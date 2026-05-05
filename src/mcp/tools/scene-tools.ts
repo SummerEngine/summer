@@ -1,11 +1,106 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { withEngine } from "./with-engine.js";
+import { readFile } from "fs/promises";
+import { join } from "path";
+
+async function readMainSceneFromProject(projectPath?: string): Promise<string | null> {
+  if (!projectPath) return null;
+  try {
+    const text = await readFile(join(projectPath, "project.godot"), "utf-8");
+    const match = text.match(/run\/main_scene="([^"]+)"/);
+    return match?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
 
 export function registerSceneTools(server: McpServer): void {
   server.tool(
+    "summer_create_scene",
+    `Create a new empty scene file safely.
+
+IMPORTANT:
+- This tool uses a temporary mutation strategy: it opens a template scene, removes children, saves to a new path, then restores the previous scene.
+- To prevent accidental destructive actions, you MUST explicitly set allow_temporary_scene_mutation=true.
+- If you don't want this strategy, stop and ask the user for manual scene creation in the editor.
+
+Recommended workflow:
+1) Call summer_get_project_context
+2) Call summer_open_main_scene (optional)
+3) Call summer_create_scene with a new path`,
+    {
+      path: z.string().describe("New scene path, e.g. 'res://scenes/empty_level.tscn'"),
+      rootName: z.string().default("Main").describe("Root node name for the new scene"),
+      allow_temporary_scene_mutation: z
+        .boolean()
+        .default(false)
+        .describe("Safety gate. Must be true to proceed."),
+    },
+    async ({ path, rootName, allow_temporary_scene_mutation }) =>
+      withEngine(async (client) => {
+        if (!allow_temporary_scene_mutation) {
+          throw new Error(
+            "Refusing to create scene without explicit approval. Re-run with allow_temporary_scene_mutation=true."
+          );
+        }
+
+        const health = (await client.health()) as Record<string, unknown>;
+        const currentScene =
+          typeof health.scene === "string" && health.scene.length > 0 ? health.scene : null;
+        const projectPath =
+          typeof health.project_path === "string" ? health.project_path : undefined;
+        const mainScene = await readMainSceneFromProject(projectPath);
+        const templateScene = currentScene || mainScene;
+
+        if (!templateScene) {
+          throw new Error(
+            "No scene open and could not resolve main scene. Call summer_get_project_context first, then open a known scene."
+          );
+        }
+
+        await client.executeOps([{ op: "OpenScene", path: templateScene }]);
+        const tree = (await client.getSceneState()) as {
+          data?: { children?: Array<{ path?: string }> };
+          children?: Array<{ path?: string }>;
+        };
+        const children =
+          tree.data?.children ?? tree.children ?? [];
+
+        const removeOps = children
+          .map((c) => c.path)
+          .filter((p): p is string => typeof p === "string" && p.length > 0)
+          .map((p) => ({ op: "RemoveNode", path: `./${p}` }));
+
+        if (removeOps.length > 0) {
+          await client.executeOps(removeOps, { groupUndo: true });
+        }
+
+        await client.executeOps([{ op: "SetProp", path: ".", key: "name", value: rootName }]);
+        await client.executeOps([{ op: "SaveScene", path }]);
+
+        if (currentScene && currentScene !== path) {
+          await client.executeOps([{ op: "OpenScene", path: currentScene }]);
+        }
+
+        return {
+          ok: true,
+          created: path,
+          rootName,
+          templateScene,
+          restoredScene: currentScene,
+        };
+      })
+  );
+
+  server.tool(
     "summer_add_node",
     `Add a new node to the scene tree.
+
+Preflight (fresh chat):
+1) summer_get_project_context
+2) summer_open_main_scene (if no scene open)
+3) summer_get_scene_tree
 
 Common node types:
 - 3D: Node3D, MeshInstance3D, CharacterBody3D, RigidBody3D, StaticBody3D, Camera3D, DirectionalLight3D, OmniLight3D, SpotLight3D, WorldEnvironment, CollisionShape3D, Area3D
@@ -85,7 +180,7 @@ Use when you need to modify a sub-property of a resource, like:
 
   server.tool(
     "summer_remove_node",
-    "Remove a node from the scene tree. All children are removed too. Cannot remove the root node. Supports undo.",
+    "Remove a node from the scene tree. All children are removed too. Cannot remove the root node. Supports undo. Destructive operation: do not delete multiple top-level nodes unless the user explicitly requests destructive changes.",
     { path: z.string().describe("Node path to remove, e.g. './World/OldEnemy'") },
     async ({ path }) =>
       withEngine(async (client) => client.executeOps([{ op: "RemoveNode", path }]))
@@ -105,7 +200,12 @@ Use when you need to modify a sub-property of a resource, like:
 
   server.tool(
     "summer_open_scene",
-    "Open a scene file in the editor. Use this to switch between scenes (e.g., open a level to edit it).",
+    `Open a scene file in the editor. Use this to switch between scenes.
+
+Do not guess paths. Prefer:
+1) summer_get_project_context (read mainScene)
+2) summer_open_main_scene (open known main scene)
+3) summer_open_scene only when user gave an explicit path.`,
     { path: z.string().describe("Scene path, e.g. 'res://main.tscn' or 'res://levels/level1.tscn'") },
     async ({ path }) =>
       withEngine(async (client) =>
@@ -190,5 +290,51 @@ The receiver node must have a script with the specified method.`,
         if (scene) op.scene = scene;
         return client.executeOps([op]);
       })
+  );
+
+  server.tool(
+    "summer_inspect_node",
+    `Get all editable properties of a node with their current values, types, and resource info.
+
+Call this before modifying a node to understand its current state. Returns every property the Godot inspector would show.
+
+Example: inspect a light to see its energy, color, shadow settings before changing them.`,
+    {
+      path: z.string().describe("Node path from scene tree, e.g. 'Player', 'World/Enemies/Boss', 'DirectionalLight3D'"),
+    },
+    async ({ path }) =>
+      withEngine(async (client) => client.inspectNode(path))
+  );
+
+  server.tool(
+    "summer_inspect_resource",
+    `Get all properties of a resource (material, mesh, shape, environment, etc).
+
+Use when you need the sub-properties of a resource attached to a node. For example, summer_inspect_node tells you a MeshInstance3D has a "StandardMaterial3D" material — this tool tells you that material's albedo_color, metallic, roughness, etc.`,
+    {
+      path: z.string().describe("Resource path, e.g. 'res://materials/ground.tres' or 'res://models/player.glb'"),
+    },
+    async ({ path }) =>
+      withEngine(async (client) => client.inspectResource(path))
+  );
+
+  server.tool(
+    "summer_batch",
+    `Execute multiple operations in a single call, grouped into one undo step.
+
+The user can undo everything with a single Ctrl+Z. Use this when building something that involves multiple nodes and properties — e.g., creating a player character with collision, camera, and properties.
+
+Each op in the array uses the same format as the individual tools:
+- {"op": "AddNode", "parent": "/", "type": "MeshInstance3D", "name": "Floor"}
+- {"op": "SetProp", "path": "Floor", "key": "position", "value": "Vector3(0, -1, 0)"}
+- {"op": "SetProp", "path": "Floor", "key": "mesh", "value": "PlaneMesh"}
+- {"op": "SetResourceProperty", "nodePath": "Floor", "resourceProperty": "mesh", "subProperty": "size", "value": "Vector2(20, 20)"}`,
+    {
+      ops: z.array(z.record(z.unknown())).describe("Array of operation objects, each with 'op' plus its parameters"),
+    },
+    async ({ ops }) =>
+      withEngine(async (client) =>
+        client.executeOps(ops as Record<string, unknown>[], { groupUndo: true })
+      )
   );
 }

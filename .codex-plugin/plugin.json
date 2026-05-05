@@ -1,0 +1,38 @@
+{
+  "name": "summer",
+  "version": "1.4.0",
+  "description": "AI game-dev studio for Godot: 19 skills, MCP bridge to the local Summer Engine, lifecycle hooks. Build games by talking.",
+  "author": {
+    "name": "Summer Engine",
+    "email": "founders@summerengine.com",
+    "url": "https://summerengine.com"
+  },
+  "homepage": "https://summerengine.com",
+  "repository": "https://github.com/SummerEngine/summer-engine-cli",
+  "license": "MIT",
+  "keywords": [
+    "game-dev", "godot", "ai-game-engine", "skills",
+    "workflow", "level-design", "vfx", "multiplayer"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "hooks": "./hooks/hooks.json",
+  "interface": {
+    "displayName": "Summer Engine",
+    "shortDescription": "Build games by talking. AI game-dev studio for Godot.",
+    "longDescription": "Summer Engine turns Codex into a game-dev studio. 12 workflow skills (brainstorm-game, design-mechanic, design-level, art-direction, audio-direction, vfx, tune-performance, design-npc, setup-multiplayer, export-and-ship, debug, play) + 7 auto-trigger specialists. The MCP bridge talks to the local Summer Engine fork of Godot for scene mutation, asset import, render, play, diagnostics. Session-start orients the session. Pre-commit doctor (opt-in) blocks bad commits.",
+    "developerName": "Summer Engine",
+    "category": "Coding",
+    "capabilities": ["Interactive", "Read", "Write"],
+    "websiteURL": "https://summerengine.com",
+    "privacyPolicyURL": "https://summerengine.com/privacy",
+    "termsOfServiceURL": "https://summerengine.com/terms",
+    "defaultPrompt": [
+      "I want to make a game.",
+      "/summer:brainstorm-game",
+      "Open this Godot project and tell me what's broken."
+    ],
+    "brandColor": "#FF8F17",
+    "screenshots": []
+  }
+}

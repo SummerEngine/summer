@@ -62,7 +62,7 @@ Typical workflow after making changes:
     "summer_play",
     `Start running the game in the engine. The game runs inside Summer Engine's viewport.
 
-After starting, use summer_game_snapshot to see what the player sees, and summer_get_diagnostics to check for runtime errors.
+After starting, use summer_get_diagnostics to check for runtime errors.
 
 You can run a specific scene instead of the main scene — useful for testing individual levels or UI screens.`,
     {
@@ -87,32 +87,14 @@ You can run a specific scene instead of the main scene — useful for testing in
   );
 
   server.tool(
-    "summer_viewport_snapshot",
-    `Capture a screenshot of the editor's 3D/2D viewport as a base64 JPEG image.
+    "summer_get_script_errors",
+    `Check a GDScript file for parse/compile errors without running the game.
 
-This shows what the EDITOR sees — the scene from the editor camera perspective. Use this to:
-- Verify scene layout after adding/moving nodes
-- Check if lighting, materials, and objects look correct
-- See the overall scene composition
-
-NOT the same as summer_game_snapshot — this is the editor view, not the game camera.`,
-    {},
-    async () => withEngine(async (client) => client.viewportSnapshot())
-  );
-
-  server.tool(
-    "summer_game_snapshot",
-    `Capture a screenshot of the RUNNING GAME as a base64 JPEG image. The game must be running (call summer_play first).
-
-This shows what the PLAYER sees — through the game's camera. Use this to:
-- Verify the game looks correct from the player's perspective
-- Check if UI elements are positioned correctly
-- Debug visual issues (objects not rendering, wrong colors, etc.)
-
-Workflow: summer_play → wait a moment → summer_game_snapshot → analyze → summer_stop
-
-Note: This captures a single frame. For movement/physics issues, you'd need multiple snapshots at different moments. Video capture is not yet available.`,
-    {},
-    async () => withEngine(async (client) => client.gameSnapshot())
+Use after writing or editing a .gd file to verify it compiles. Returns line numbers, error messages, and severity. Much faster than running the game to discover script errors.`,
+    {
+      path: z.string().describe("Script path, e.g. 'res://scripts/player.gd' or 'res://player_controller.gd'"),
+    },
+    async ({ path }) =>
+      withEngine(async (client) => client.getScriptErrors(path))
   );
 }

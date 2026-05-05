@@ -2,4 +2,4 @@
 
 import { printWelcome } from "../lib/banner.js";
 
-printWelcome("0.1.0");
+printWelcome("1.0.0");

@@ -12,7 +12,9 @@ export const statusCommand = new Command("status")
     if (authToken) {
       console.log(`  Auth: Logged in${userInfo ? ` as ${userInfo.email}` : ""}`);
     } else {
-      console.log("  Auth: Not logged in (run: summer login)");
+      console.log("  Auth: Not logged in");
+      console.log("        Run: npx summer-engine login");
+      console.log("        Or: https://www.summerengine.com/login");
     }
 
     const apiToken = await getApiToken();

@@ -1,0 +1,31 @@
+{
+  "description": "Summer Engine lifecycle hooks: session-start orientation + opt-in pre-commit doctor.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" session-start",
+            "async": false,
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git commit*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" pre-commit-doctor",
+            "async": false,
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

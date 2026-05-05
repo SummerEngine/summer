@@ -44,30 +44,73 @@ export function getWelcome(version: string): string {
   const sunC2 = "\x1b[38;2;255;163;49m";  // Orange
   const sunC3 = "\x1b[38;2;229;85;0m";    // Red-orange
 
-  const verString = version.padEnd(5, " ");
-  const boxTop = `${dim}┌───────────────────────── Summer CLI v${verString} ────────────────────────┐${reset}`;
-  const boxBottom = `${dim}└────────────────────────────────────────────────────────────────────┘${reset}`;
+  function stripAnsi(str: string) {
+    return str.replace(/\x1b\[[0-9;]*m/g, '');
+  }
+
+  function pad(str: string, target: number) {
+    const visLen = stripAnsi(str).length;
+    return str + " ".repeat(Math.max(0, target - visLen));
+  }
 
   const sessionId = Date.now().toString().slice(-6).padEnd(6, ' ');
 
+  // Left column (Sun) fixed 27 width
+  const left = [
+    pad("", 27),
+    pad(`             ${sunC2}|${reset}`, 27),
+    pad(`        ${sunC1}\\${reset}    ${sunC2}|${reset}    ${sunC1}/${reset}`, 27),
+    pad(`     ${sunC1}.${reset}    ${sunC2}..::.:..${reset}    ${sunC1}.${reset}`, 27),
+    pad(`        ${sunC2}.:::"""":::.${reset}`, 27),
+    pad(`    ${sunC3}---:::${sunC2}'      '${sunC3}:::---${reset}`, 27),
+    pad(`       ${sunC3}:::        :::${reset}`, 27),
+    pad(`    ${sunC3}---:::.      .:::---${reset}`, 27),
+    pad(`        ${sunC3}':::....:::'${reset}`, 27),
+    pad(`     ${sunC1}'${reset}    ${sunC3}''::::''${reset}    ${sunC1}'${reset}`, 27),
+    pad(`        ${sunC1}/${reset}    ${sunC3}|${reset}    ${sunC1}\\${reset}`, 27),
+    pad(`             ${sunC3}|${reset}`, 27),
+    pad("", 27),
+    pad("", 27),
+    pad("", 27)
+  ];
+
+  // Right column fixed 42 width
+  const right = [
+    pad("", 42),
+    pad(`${bold}Available Commands${reset}`, 42),
+    pad(`${dim}summer install:${reset} Download the engine`, 42),
+    pad(`${dim}summer login:${reset}   Sign in to your account`, 42),
+    pad(`${dim}summer create:${reset}  Create a new project`, 42),
+    pad(`${dim}summer mcp:${reset}     Start MCP server`, 42),
+    pad("", 42),
+    pad(`${bold}Available Skills${reset}`, 42),
+    pad(`cloud: ${dim}animation, texturing${reset}`, 42),
+    pad(`local: ${dim}debugging, 2d, scene${reset}`, 42),
+    pad("", 42),
+    pad(`${bold}Connected Engine${reset}`, 42),
+    pad(`Status:  ${dim}Ready${reset}`, 42),
+    pad(`Version: ${dim}Summer Engine v${version}${reset}`, 42),
+    pad(`Session: ${dim}summer_${sessionId}${reset}`, 42)
+  ];
+
+  const footerLines = [
+    pad("", 69),
+    pad(`  ${sunC2}summer-engine-cli${reset} · ${dim}local${reset}`, 69),
+    pad(`  ${dim}Docs: https://summerengine.com/docs/mcp${reset}`, 69)
+  ];
+
+  const title = ` Summer Engine CLI v${version} `;
+  const titleLen = stripAnsi(title).length;
+  const totalDashes = 69 - titleLen;
+  const leftDashes = Math.floor(totalDashes / 2);
+  const rightDashes = totalDashes - leftDashes;
+  
+  const boxTop = `${dim}┌${"─".repeat(leftDashes)}${title}${"─".repeat(rightDashes)}┐${reset}`;
+  const boxBottom = `${dim}└${"─".repeat(69)}┘${reset}`;
+
   const bodyLines = [
-    `${dim}│${reset}                                                                    ${dim}│${reset}`,
-    `${dim}│${reset}             ${sunC2}|${reset}             ${bold}Available Commands${reset}                       ${dim}│${reset}`,
-    `${dim}│${reset}        ${sunC1}\\${reset}    ${sunC2}|${reset}    ${sunC1}/${reset}        ${dim}summer install:${reset} Download the engine      ${dim}│${reset}`,
-    `${dim}│${reset}     ${sunC1}.${reset}    ${sunC2}..::.:..${reset}    ${sunC1}.${reset}    ${dim}summer login:${reset}   Sign in to your account  ${dim}│${reset}`,
-    `${dim}│${reset}        ${sunC2}.:::"""":::.${reset}       ${dim}summer create:${reset}  Create a new project     ${dim}│${reset}`,
-    `${dim}│${reset}    ${sunC3}---:::${sunC2}'      '${sunC3}:::---${reset}   ${dim}summer mcp:${reset}     Start MCP server         ${dim}│${reset}`,
-    `${dim}│${reset}       ${sunC3}:::        :::${reset}                                               ${dim}│${reset}`,
-    `${dim}│${reset}    ${sunC3}---:::.      .:::---${reset}   ${bold}Connected Engine${reset}                         ${dim}│${reset}`,
-    `${dim}│${reset}        ${sunC3}':::....:::'${reset}       Status: ${dim}Ready${reset}                            ${dim}│${reset}`,
-    `${dim}│${reset}     ${sunC1}'${reset}    ${sunC3}''::::''${reset}    ${sunC1}'${reset}    Version: ${dim}Godot 4.5 C++ Fork${reset}               ${dim}│${reset}`,
-    `${dim}│${reset}        ${sunC1}/${reset}    ${sunC3}|${reset}    ${sunC1}\\${reset}        Path: ${dim}./${reset}                                 ${dim}│${reset}`,
-    `${dim}│${reset}             ${sunC3}|${reset}                                                      ${dim}│${reset}`,
-    `${dim}│${reset}                           ${bold}Session Info${reset}                             ${dim}│${reset}`,
-    `${dim}│${reset}                           ID: ${dim}summer_${sessionId}${reset}                           ${dim}│${reset}`,
-    `${dim}│${reset}                                                                    ${dim}│${reset}`,
-    `${dim}│${reset}  ${sunC2}summer-cli${reset} · ${dim}local${reset}                                                ${dim}│${reset}`,
-    `${dim}│${reset}  ${dim}Docs: https://summerengine.com/docs${reset}                               ${dim}│${reset}`
+    ...left.map((l, i) => `${dim}│${reset}${l}${right[i]}${dim}│${reset}`),
+    ...footerLines.map(f => `${dim}│${reset}${f}${dim}│${reset}`)
   ];
 
   return [

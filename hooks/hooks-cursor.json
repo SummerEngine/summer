@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "matcher": "startup|clear|compact",
+        "command": "./hooks/run-hook.cmd session-start",
+        "async": false,
+        "timeout": 10
+      }
+    ],
+    "preToolUse": [
+      {
+        "matcher": "Bash(git commit*)",
+        "command": "./hooks/run-hook.cmd pre-commit-doctor",
+        "async": false,
+        "timeout": 30
+      }
+    ]
+  }
+}

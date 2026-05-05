@@ -1,5 +1,7 @@
 # Summer Engine CLI — Development Guide
 
+SUMMER ENGINE MCP & CLI IS OPENSOURCE MIT. Think of that when making changes. And when you make commits, don't attribute cursor or claude.
+
 This is the comprehensive guide for working on the Summer Engine CLI/MCP package. If you're an AI agent or developer with zero context, read this first.
 
 ---
@@ -9,15 +11,48 @@ This is the comprehensive guide for working on the Summer Engine CLI/MCP package
 The Summer Engine CLI is a **completely standalone Node.js application** that serves two purposes:
 
 1. **CLI tool** — lets users install, manage, and launch Summer Engine from their terminal
-2. **MCP server** — lets AI coding tools (Cursor, Claude Code, Windsurf) do things with the engine that they can't do on their own (scene manipulation, play/stop, screenshots, diagnostics)
+2. **MCP server** — lets AI coding tools (Cursor, Claude Code, Windsurf) do things with the engine that they can't do on their own (scene manipulation, play/stop, diagnostics)
 
 It gets published to npm as `summer-engine`. Users run it with `npx summer-engine <command>`.
 
+### Naming (Do Not Confuse)
+
+| Our package | Name | Notes |
+|-------------|------|-------|
+| npm package | `summer-engine` | What users install. Never recommend `summer-cli`. |
+| GitHub repo | `summer-engine-cli` | Public repo at github.com/SummerEngine/summer-engine-cli |
+| Internal folder | `tools/summer-cli/` | Path in engine repo only; not the package name |
+
+**Warning:** The npm package `summer-cli` is an unrelated project (inactive since ~2020). We do not own it. Never document or recommend installing `summer-cli`. Always use `summer-engine`.
+
 **It is NOT part of the engine build.** When you run `scons`, this code is not compiled. When you release a DMG/EXE, the CLI is not bundled. It's a separate product with its own build, its own version, its own publish pipeline. It happens to live in this repo for convenience.
+
+## Open Source
+
+**This code is public.** The CLI is open source at [github.com/SummerEngine/summer-engine-cli](https://github.com/SummerEngine/summer-engine-cli) (MIT license). The engine repo is private; the CLI repo is a clean copy of `tools/summer-cli/` with no engine code or history.
+
+### What this means for development
+
+- **Commit messages are public.** Don't reference internal pricing, revenue numbers, private URLs, or engine internals. Keep messages focused on what changed in the CLI.
+- **Don't commit secrets.** No API keys, internal endpoints, or auth tokens. The code reads tokens from `~/.summer/` at runtime — that's the correct pattern.
+- **Internal strategy docs stay in the engine repo only.** `MCP_PRODUCT_STRATEGY.md` and `MCP_BUSINESS_STRATEGY.md` are NOT synced to the public repo. Only `DEVELOPMENT.md` and `ADDING_TOOLS.md` are public.
+- **AI agents: be aware.** If you're an AI agent working in this codebase, your commit messages and code comments will end up in a public repo. Write them as if the world can see them — because it can.
+
+### Two-repo workflow
+
+Development happens here in the engine monorepo (`tools/summer-cli/`). The public repo is synced on release:
+
+```
+Engine repo (private)                Public repo (open source)
+tools/summer-cli/        --sync-->   SummerEngine/summer-engine-cli
+  src/, docs/, package.json, etc.      Same files, clean history
+  docs/MCP_*_STRATEGY.md              NOT synced (internal)
+  banner-preview.html                  NOT synced (dev artifact)
+```
 
 ## Why It Exists
 
-See [PRODUCT_STRATEGY.md](./PRODUCT_STRATEGY.md) for the full reasoning. The short version: AI tools can write code, but they can't build scenes, run games, take screenshots, or read engine diagnostics. The MCP gives them those capabilities.
+See [MCP_PRODUCT_STRATEGY.md](./MCP_PRODUCT_STRATEGY.md) for the full reasoning. The short version: AI tools can write code, but they can't build scenes, run games, or read engine diagnostics. The MCP gives them those capabilities.
 
 ## Why TypeScript In A C++ Engine Repo
 
@@ -73,20 +108,17 @@ tools/summer-cli/
     │   ├── open.ts            # summer open <path> — opens project
     │   ├── create.ts          # summer create <template> — scaffolds project
     │   ├── list.ts            # summer list — templates/projects
+    │   ├── skills.ts          # summer skills — install/list best-practice guides
     │   └── mcp.ts             # summer mcp — starts MCP server
     │
     ├── mcp/                   # MCP server implementation
     │   ├── server.ts          # MCP server setup — lazy-connect, stdio transport
     │   └── tools/             # Tool definitions (one file per category)
     │       ├── with-engine.ts # Wrapper: lazy-connect + error handling
-    │       ├── scene-tools.ts # 13 tools: AddNode, SetProp, RemoveNode, etc.
-    │       ├── file-tools.ts  # 7 tools: WriteFile, DeleteFile, etc.
-    │       ├── debug-tools.ts # 9 tools: Play, Stop, Diagnostics, Snapshots
-    │       ├── search-tools.ts# 2 tools: Grep, SearchInFiles
-    │       ├── git-tools.ts   # 9 tools: GitStatus, GitCommit, etc.
-    │       ├── shell-tools.ts # 2 tools: RunCommand, KillCommand
-    │       ├── text-tools.ts  # 1 tool: ReplaceText
-    │       └── project-tools.ts # 6 tools: ProjectSetting, SceneTree, etc.
+    │       ├── scene-tools.ts # 10 tools: AddNode, SetProp, RemoveNode, etc.
+    │       ├── debug-tools.ts # 7 tools: Play, Stop, Diagnostics (snapshots Summer Agent-only)
+    │       ├── project-tools.ts # 5 tools: ProjectSetting, SceneTree, Import, etc.
+    │       └── asset-tools.ts # 2 tools: SearchAssets, ImportAsset (Pro)
     │
     └── lib/                   # Shared utilities
         ├── api-client.ts      # HTTP client for engine's local API
@@ -180,35 +212,73 @@ The CLI, the engine, and the web app are **completely independent products** wit
 
 Changing the CLI does NOT require rebuilding the engine. Rebuilding the engine does NOT require republishing the CLI. The only time you touch both is when adding a new engine operation that needs a new MCP tool.
 
-### Publishing CLI Updates to npm
+### Release Checklist
+
+Full release = publish to npm + sync to public GitHub repo.
 
 ```bash
 cd tools/summer-cli
 
-# 1. Build
+# 1. Build and test
 npm run build
-
-# 2. Test
 bash scripts/smoke-test.sh
 
-# 3. Bump version
+# 2. Bump version
 npm version patch    # 0.1.0 -> 0.1.1 (bug fix)
 npm version minor    # 0.1.0 -> 0.2.0 (new feature)
 npm version major    # 0.1.0 -> 1.0.0 (breaking change)
 
-# 4. Publish (requires npm login as summer-engine user + 2FA)
+# 3. Publish to npm (requires 2FA OTP)
 npm publish --access public
 
-# 5. Verify
+# 4. Verify the published package works
 npx summer-engine@latest status
+
+# 5. Sync to public GitHub repo
+#    Create a clean copy WITHOUT internal docs, then push.
+TMPDIR=$(mktemp -d)
+rsync -av \
+  --exclude='node_modules/' \
+  --exclude='dist/' \
+  --exclude='.DS_Store' \
+  --exclude='banner-preview.html' \
+  --exclude='docs/MCP_BUSINESS_STRATEGY.md' \
+  --exclude='docs/MCP_PRODUCT_STRATEGY.md' \
+  --exclude='docs/SKILLS_SYSTEM.md' \
+  ./ "$TMPDIR/"
+cd "$TMPDIR"
+git init
+git remote add origin git@github.com:SummerEngine/summer-engine-cli.git
+git fetch origin main
+git checkout -b main origin/main
+git add -A
+git commit -m "Release v$(node -p 'require("./package.json").version')"
+git push origin main
+cd -
+rm -rf "$TMPDIR"
 ```
+
+**Before committing to the public repo, double-check:**
+- [ ] No internal URLs, pricing, or revenue numbers in any file
+- [ ] No references to private repos or internal docs
+- [ ] Commit message is clean — no internal context, no agent attribution
+- [ ] `docs/MCP_BUSINESS_STRATEGY.md`, `docs/MCP_PRODUCT_STRATEGY.md`, and `docs/SKILLS_SYSTEM.md` are excluded
 
 ### npm Account
 
 - Username: `summer-engine`
 - Email: `founders@summerengine.com`
 - 2FA: Required for publishing
-- Org: `@summerengine` (for future scoped packages)
+- Orgs: `@summerengine`, `@summer-engine` (for future scoped packages)
+
+### Reserved npm Names
+
+These are registered under the `summer-engine` npm account as placeholders:
+- Unscoped: `summer-mcp`, `summerengine`, `summer-engine-cli`, `summer-engine-mcp`, `summer-game-engine`
+- `@summerengine/`: `cli`, `mcp`, `sdk`, `tools`, `core`, `engine`
+- `@summer-engine/`: `cli`, `mcp`, `sdk`, `tools`, `core`
+
+See [MCP_PRODUCT_STRATEGY.md](./MCP_PRODUCT_STRATEGY.md) for the full list.
 
 ### Version Strategy
 
@@ -267,7 +337,7 @@ The `api-token` changes each time the engine starts. If the MCP server cached an
 
 ### CLI can't find engine binary
 
-`summer run` looks in standard install paths (`/Applications/Summer.app` on macOS, `%LOCALAPPDATA%\Programs\Summer Engine\` on Windows). If installed elsewhere, pass the project path directly.
+`summer run` looks in standard install paths (`/Applications/Summer.app` on macOS, `%LOCALAPPDATA%\SummerEngine\current\Summer.exe` first on Windows, then legacy NSIS paths as fallback). If installed elsewhere, pass the project path directly.
 
 ---
 
@@ -275,7 +345,7 @@ The `api-token` changes each time the engine starts. If the MCP server cached an
 
 ### Not Yet Built
 - [ ] `summer install` — downloads engine but hasn't been tested end-to-end (DMG mount/copy flow on macOS, silent installer on Windows)
-- [ ] `summer run` — launches engine but the binary detection paths are hardcoded guesses (`/Applications/Summer.app`, `%LOCALAPPDATA%\Programs\Summer Engine\`). Needs real-world testing on both platforms
+- [ ] `summer run` — launches engine but the binary detection paths are still hardcoded guesses (`/Applications/Summer.app`, `%LOCALAPPDATA%\SummerEngine\current\Summer.exe`, legacy NSIS fallbacks on Windows). Needs real-world testing on both platforms
 - [ ] `summer open` — currently just prints a message if engine is already running. Doesn't actually switch projects via the API (would need a new engine endpoint)
 - [ ] Remote templates — `summer create` only has 2 tiny built-in templates. No GitHub-based template downloading yet. Templates will be 100MB-2GB, need download progress, extraction, etc.
 - [ ] `summer list projects` — only scans current directory. Should eventually scan known project locations or integrate with engine's project manager

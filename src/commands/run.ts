@@ -10,6 +10,7 @@ const MAC_PATHS = [
 ];
 
 const WIN_PATHS = [
+  `${process.env.LOCALAPPDATA}\\SummerEngine\\current\\Summer.exe`,
   `${process.env.LOCALAPPDATA}\\Programs\\Summer Engine\\Summer.exe`,
   `${process.env.PROGRAMFILES}\\Summer Engine\\Summer.exe`,
 ];

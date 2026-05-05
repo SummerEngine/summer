@@ -26,20 +26,21 @@ async function doLogin(): Promise<void> {
   const sessionId = randomUUID();
 
   const loginUrl = `${GATEWAY_URL}/login?cli_session=${sessionId}`;
-  console.log(`Opening browser to sign in...\n  ${loginUrl}\n`);
+  console.log("Sign in at: " + loginUrl);
+  console.log("");
 
   try {
     await open(loginUrl);
   } catch {
-    console.log(
-      "Could not open browser automatically. Please open the URL above manually."
-    );
+    console.log("Could not open browser. Copy the URL above and open it manually.");
+    console.log("");
   }
 
   console.log("Waiting for authentication...");
 
   const pollUrl = `${GATEWAY_URL}/api/auth/cli-login?session=${sessionId}`;
   const startTime = Date.now();
+  let lastError: string | null = null;
 
   while (Date.now() - startTime < POLL_TIMEOUT_MS) {
     await sleep(POLL_INTERVAL_MS);
@@ -49,7 +50,14 @@ async function doLogin(): Promise<void> {
         signal: AbortSignal.timeout(5000),
       });
 
-      if (!res.ok) continue;
+      if (!res.ok) {
+        if (res.status === 503) {
+          lastError = "Server not ready (Redis/auth not configured). Try again later.";
+        } else if (res.status >= 500) {
+          lastError = `Server error (${res.status}). Try again later.`;
+        }
+        continue;
+      }
 
       const data = (await res.json()) as {
         status: string;
@@ -67,12 +75,16 @@ async function doLogin(): Promise<void> {
         console.log(`\nLogged in as ${data.user?.email || "unknown"}`);
         return;
       }
-    } catch {
-      // Network error, retry
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : "Network error";
     }
   }
 
   console.error("\nLogin timed out. Please try again.");
+  if (lastError) {
+    console.error(`Last error: ${lastError}`);
+  }
+  console.error("\nDid you click \"Yes, Sign In\" in the browser after opening the URL?");
   process.exit(1);
 }
 

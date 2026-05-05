@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 40px;
+    }
+    pre {
+      font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+      font-size: 14px;
+      line-height: 1.2;
+      color: #ccc;
+      padding: 32px 40px;
+      border-radius: 12px;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+    }
+    
+    /* Header Gradient Colors */
+    .g1 { color: #ffdf89; }
+    .g2 { color: #ffcb6b; }
+    .g3 { color: #ffb74e; }
+    .g4 { color: #ffa331; }
+    .g5 { color: #ff8f17; }
+    .g6 { color: #ff7b00; }
+    .g7 { color: #f26800; }
+    .g8 { color: #e55500; }
+    .g9 { color: #d74300; }
+    .g10 { color: #c93200; }
+    .g11 { color: #bb2200; }
+    .g12 { color: #ad1400; }
+
+    /* Sun Logo Colors */
+    .s-light { color: #ffdf89; }
+    .s-mid { color: #ffa331; }
+    .s-dark { color: #e55500; }
+
+    .dim { color: #666; }
+    .bold { font-weight: bold; }
+  </style>
+</head>
+<body>
+<pre>
+<span class="g1">      ██████╗ ██╗   ██╗███╗   ███╗███╗   ███╗███████╗██████╗ </span>
+<span class="g2">     ██╔════╝ ██║   ██║████╗ ████║████╗ ████║██╔════╝██╔══██╗</span>
+<span class="g3">     ███████╗ ██║   ██║██╔████╔██║██╔████╔██║█████╗  ██████╔╝</span>
+<span class="g4">     ╚════██║ ██║   ██║██║╚██╔╝██║██║╚██╔╝██║██╔══╝  ██╔══██╗</span>
+<span class="g5">     ███████║ ╚██████╔╝██║ ╚═╝ ██║██║ ╚═╝ ██║███████╗██║  ██║</span>
+<span class="g6">     ╚══════╝  ╚═════╝ ╚═╝     ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝</span>
+<span class="g7">      ███████╗███╗   ██╗ ██████╗ ██╗███╗   ██╗███████╗       </span>
+<span class="g8">      ██╔════╝████╗  ██║██╔════╝ ██║████╗  ██║██╔════╝       </span>
+<span class="g9">      █████╗  ██╔██╗ ██║██║  ███╗██║██╔██╗ ██║█████╗         </span>
+<span class="g10">      ██╔══╝  ██║╚██╗██║██║   ██║██║██║╚██╗██║██╔══╝         </span>
+<span class="g11">      ███████╗██║ ╚████║╚██████╔╝██║██║ ╚████║███████╗       </span>
+<span class="g12">      ╚══════╝╚═╝  ╚═══╝ ╚═════╝ ╚═╝╚═╝  ╚═══╝╚══════╝       </span>
+
+<span class="dim">┌───────────────────────── Summer CLI v1.0.0 ─────────────────────────┐</span>
+<span class="dim">│</span>                                                                     <span class="dim">│</span>
+<span class="dim">│</span>             <span class="s-mid">|</span>             <span class="bold">Available Commands</span>                        <span class="dim">│</span>
+<span class="dim">│</span>        <span class="s-light">\</span>    <span class="s-mid">|</span>    <span class="s-light">/</span>        <span class="dim">summer install:</span> Download the engine       <span class="dim">│</span>
+<span class="dim">│</span>     <span class="s-light">.</span>    <span class="s-mid">..::.:..</span>    <span class="s-light">.</span>    <span class="dim">summer login:</span>   Sign in to your account   <span class="dim">│</span>
+<span class="dim">│</span>        <span class="s-mid">.:::"""":::.</span>       <span class="dim">summer create:</span>  Create a new project      <span class="dim">│</span>
+<span class="dim">│</span>    <span class="s-dark">---:::</span><span class="s-mid">'      '</span><span class="s-dark">:::---</span>   <span class="dim">summer mcp:</span>     Start MCP server          <span class="dim">│</span>
+<span class="dim">│</span>       <span class="s-dark">:::        :::</span>                                                <span class="dim">│</span>
+<span class="dim">│</span>    <span class="s-dark">---:::.      .:::---</span>   <span class="bold">Available Skills</span>                          <span class="dim">│</span>
+<span class="dim">│</span>        <span class="s-dark">':::....:::'</span>       cloud: <span class="dim">animation, texturing</span>               <span class="dim">│</span>
+<span class="dim">│</span>     <span class="s-light">'</span>    <span class="s-dark">''::::''</span>    <span class="s-light">'</span>    local: <span class="dim">debugging, 2d, scene</span>               <span class="dim">│</span>
+<span class="dim">│</span>        <span class="s-light">/</span>    <span class="s-dark">|</span>    <span class="s-light">\</span>                                                  <span class="dim">│</span>
+<span class="dim">│</span>             <span class="s-dark">|</span>             <span class="bold">Connected Engine</span>                          <span class="dim">│</span>
+<span class="dim">│</span>                           Status:  <span class="dim">Ready</span>                            <span class="dim">│</span>
+<span class="dim">│</span>                           Version: <span class="dim">Summer Engine v1.0.0</span>             <span class="dim">│</span>
+<span class="dim">│</span>                           Session: <span class="dim">summer_123456</span>                    <span class="dim">│</span>
+<span class="dim">│</span>                                                                     <span class="dim">│</span>
+<span class="dim">│</span>  <span class="s-mid">summer-engine-cli</span> · <span class="dim">local</span>                                          <span class="dim">│</span>
+<span class="dim">│</span>  <span class="dim">Docs: https://summerengine.com/docs/mcp</span>                            <span class="dim">│</span>
+<span class="dim">└─────────────────────────────────────────────────────────────────────┘</span>
+
+⚠️  <span class="dim">Some tools disabled (missing engine connection):</span>
+• Scene Operations <span class="dim">(needs running editor instance)</span>
+Run '<span class="bold">summer mcp</span>' to connect.
+
+Welcome to Summer CLI! Type your message or /help for commands.
+</pre>
+</body>
+</html>

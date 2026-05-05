@@ -1,0 +1,42 @@
+{
+  "$schema": "https://cursor.com/schemas/cursor-plugin/plugin.json",
+  "name": "summer",
+  "displayName": "Summer Engine",
+  "version": "1.4.0",
+  "description": "AI game-dev studio for Godot: workflow skills, specialists, lifecycle hooks, and MCP bridge to the local Summer Engine.",
+  "author": { "name": "Summer Engine", "email": "founders@summerengine.com" },
+  "publisher": "summer-engine",
+  "homepage": "https://summerengine.com",
+  "repository": "https://github.com/SummerEngine/summer-engine-cli",
+  "license": "MIT",
+  "category": "developer-tools",
+  "keywords": [
+    "game-dev", "godot", "ai-game-engine", "skills",
+    "workflow", "level-design", "art-direction", "vfx",
+    "multiplayer", "performance"
+  ],
+  "tags": ["game-dev", "ai", "godot", "creative", "design"],
+  "skills": [
+    "./skills/scene-and-project/brainstorm-game/",
+    "./skills/debugging/debug/",
+    "./skills/scene-and-project/play/",
+    "./skills/gameplay-mechanics/design-mechanic/",
+    "./skills/level-design/design-level/",
+    "./skills/rendering-and-lighting/art-direction/",
+    "./skills/audio/audio-direction/",
+    "./skills/visual-effects/vfx/",
+    "./skills/performance/tune-performance/",
+    "./skills/ai-and-npcs/design-npc/",
+    "./skills/multiplayer-and-networking/setup-multiplayer/",
+    "./skills/deployment/export-and-ship/",
+    "./skills/character-controllers/fps-controller/",
+    "./skills/rendering-and-lighting/3d-lighting/",
+    "./skills/scripting/gdscript-patterns/",
+    "./skills/scene-and-project/scene-composition/",
+    "./skills/ui/ui-basics/",
+    "./skills/assets/asset-strategy/",
+    "./skills/scene-and-project/make-game/"
+  ],
+  "hooks": "./hooks/hooks-cursor.json",
+  "mcpServers": "./.mcp.json"
+}

@@ -11,7 +11,7 @@ export function getSummerDir(): string {
 
 async function ensureSummerDir(): Promise<void> {
   if (!existsSync(SUMMER_DIR)) {
-    await mkdir(SUMMER_DIR, { recursive: true });
+    await mkdir(SUMMER_DIR, { recursive: true, mode: 0o700 });
   }
 }
 
@@ -26,7 +26,7 @@ export async function getAuthToken(): Promise<string | null> {
 
 export async function saveAuthToken(token: string): Promise<void> {
   await ensureSummerDir();
-  await writeFile(join(SUMMER_DIR, "auth-token"), token, "utf-8");
+  await writeFile(join(SUMMER_DIR, "auth-token"), token, { encoding: "utf-8", mode: 0o600 });
 }
 
 export async function getUserInfo(): Promise<{
@@ -48,5 +48,5 @@ export async function saveUserInfo(info: {
   name?: string;
 }): Promise<void> {
   await ensureSummerDir();
-  await writeFile(join(SUMMER_DIR, "user.json"), JSON.stringify(info, null, 2), "utf-8");
+  await writeFile(join(SUMMER_DIR, "user.json"), JSON.stringify(info, null, 2), { encoding: "utf-8", mode: 0o600 });
 }

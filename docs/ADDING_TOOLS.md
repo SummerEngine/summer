@@ -1,5 +1,7 @@
 # Adding New MCP Tools
 
+SUMMER ENGINE MCP & CLI IS OPENSOURCE MIT. Think of that when making changes. And when you make commits, don't attribute cursor or claude.
+
 When a new operation is added to the engine (in `OpsExecutor`), a corresponding MCP tool must be added here so external AI tools can use it.
 
 ---
@@ -23,16 +25,12 @@ Do NOT add an MCP tool for:
 
 | Category | File | Operations |
 |----------|------|------------|
-| Scene | `mcp/tools/scene-tools.ts` | AddNode, SetProp, RemoveNode, etc. |
-| File | `mcp/tools/file-tools.ts` | WriteFile, DeleteFile, etc. |
-| Debug | `mcp/tools/debug-tools.ts` | Play, Stop, Diagnostics, Snapshots |
-| Search | `mcp/tools/search-tools.ts` | Grep, SearchInFiles |
-| Git | `mcp/tools/git-tools.ts` | GitStatus, GitCommit, etc. |
-| Shell | `mcp/tools/shell-tools.ts` | RunCommand, KillCommand |
-| Text | `mcp/tools/text-tools.ts` | ReplaceText |
-| Project | `mcp/tools/project-tools.ts` | ProjectSetting, InputMap, state queries |
+| Scene | `src/mcp/tools/scene-tools.ts` | AddNode, SetProp, RemoveNode, SaveScene, etc. |
+| Debug | `src/mcp/tools/debug-tools.ts` | Play, Stop, Diagnostics, Console |
+| Project | `src/mcp/tools/project-tools.ts` | ProjectSetting, InputMap, SceneTree, Import |
+| Assets | `src/mcp/tools/asset-tools.ts` | SearchAssets, ImportAsset (Pro) |
 
-If it doesn't fit any category, create a new file and register it in `mcp/server.ts`.
+If it doesn't fit any category, create a new file and register it in `src/mcp/server.ts`.
 
 ### 2. Add the tool definition
 
@@ -77,7 +75,7 @@ If the operation doesn't go through `POST /api/ops` (e.g., it's a state query or
 
 ### 4. If adding a new tool category
 
-1. Create `mcp/tools/your-category-tools.ts`
+1. Create `src/mcp/tools/your-category-tools.ts`
 2. Follow the same pattern as existing files:
    ```typescript
    import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -88,7 +86,7 @@ If the operation doesn't go through `POST /api/ops` (e.g., it's a state query or
      // ... tool definitions
    }
    ```
-3. Register in `mcp/server.ts`:
+3. Register in `src/mcp/server.ts`:
    ```typescript
    import { registerYourTools } from "./tools/your-category-tools.js";
    // ...
@@ -121,7 +119,7 @@ npm publish --access public
 
 ## Naming Conventions
 
-- Tool name: `summer_<operation_snake_case>` (e.g., `summer_add_node`, `summer_git_status`)
+- Tool name: `summer_<operation_snake_case>` (e.g., `summer_add_node`, `summer_set_prop`)
 - Description: Start with a verb. Explain when to use it. Include format notes for complex params.
 - Parameters: Use zod with `.describe()` on every param. Include examples in descriptions.
 

@@ -2,7 +2,219 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { withEngine } from "./with-engine.js";
 
+type JsonRecord = Record<string, unknown>;
+
+function asRecord(value: unknown): JsonRecord | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as JsonRecord)
+    : null;
+}
+
+function stringFrom(value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+function pickString(record: JsonRecord | null, keys: string[]): string | null {
+  if (!record) return null;
+  for (const key of keys) {
+    const value = stringFrom(record[key]);
+    if (value) return value;
+  }
+  return null;
+}
+
+function getProjectData(projectState: unknown): JsonRecord | null {
+  return asRecord(asRecord(projectState)?.data);
+}
+
+function getProjectSetting(projectState: unknown, keys: string[]): string | null {
+  const data = getProjectData(projectState);
+  const entries = data?.entries;
+  if (!Array.isArray(entries)) return null;
+
+  for (const entry of entries) {
+    const item = asRecord(entry);
+    const key = stringFrom(item?.key);
+    if (key && keys.includes(key)) {
+      return stringFrom(item?.value);
+    }
+  }
+
+  return null;
+}
+
+function getProjectPath(projectState: unknown): string | null {
+  const root = asRecord(projectState);
+  const data = getProjectData(projectState);
+  return (
+    pickString(data, [
+      "projectPath",
+      "project_path",
+      "projectRoot",
+      "project_root",
+      "rootPath",
+      "root_path",
+    ]) ??
+    pickString(root, ["projectPath", "project_path", "projectRoot", "project_root"]) ??
+    null
+  );
+}
+
+function getProjectName(projectState: unknown): string | null {
+  const root = asRecord(projectState);
+  const data = getProjectData(projectState);
+  return (
+    pickString(data, ["projectName", "project_name", "name"]) ??
+    pickString(root, ["projectName", "project_name", "name"]) ??
+    getProjectSetting(projectState, ["application/config/name", "config/name"])
+  );
+}
+
+function getMainScene(projectState: unknown): string | null {
+  const root = asRecord(projectState);
+  const data = getProjectData(projectState);
+  return (
+    pickString(data, ["mainScene", "main_scene", "mainScenePath", "main_scene_path"]) ??
+    pickString(root, ["mainScene", "main_scene", "mainScenePath", "main_scene_path"]) ??
+    getProjectSetting(projectState, [
+      "application/run/main_scene",
+      "run/main_scene",
+    ])
+  );
+}
+
+function getCurrentScene(projectState: unknown, sceneState: unknown): string | null {
+  const sceneRoot = asRecord(sceneState);
+  const sceneData = asRecord(sceneRoot?.data);
+  const sceneProvenance = asRecord(sceneRoot?.provenance);
+  const projectRoot = asRecord(projectState);
+  const projectData = getProjectData(projectState);
+  const projectProvenance = asRecord(projectRoot?.provenance);
+
+  return (
+    pickString(sceneProvenance, ["scenePath", "scene_path"]) ??
+    pickString(sceneData, ["scenePath", "scene_path", "currentScene", "current_scene"]) ??
+    pickString(projectData, ["currentScene", "current_scene", "scenePath", "scene_path"]) ??
+    pickString(projectProvenance, ["scenePath", "scene_path"]) ??
+    null
+  );
+}
+
 export function registerProjectTools(server: McpServer): void {
+  server.tool(
+    "summer_get_agent_playbook",
+    `AI-first operating guide for Summer Engine MCP.
+
+Call this at the start of a fresh chat before touching scenes.
+It returns the safe workflow, anti-patterns, and recovery steps.`,
+    {},
+    async () => ({
+      content: [
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              startupChecklist: [
+                "Decide first: file edit or engine operation.",
+                "Write .gd/.cs/.json/docs/simple config with host file-edit tools directly.",
+                "Use Summer MCP for live scene state, inspector/node edits, imports, play/stop, diagnostics, screenshots/verification.",
+                "Call summer_get_project_context first.",
+                "If no scene is open, call summer_open_main_scene.",
+                "Call summer_get_scene_tree before structural edits.",
+                "Call summer_save_scene after edits.",
+              ],
+              safeDefaults: [
+                "Never guess scene filenames (main.tscn/Main.tscn).",
+                "Do not route ordinary script, JSON, docs, or simple config edits through MCP when direct file tools are available.",
+                "Never remove multiple top-level nodes unless user explicitly requests destructive edits.",
+                "Use MCP for scene-tree mutations and inspector-visible values instead of hand-editing live scene state.",
+              ],
+              preferredFlow: [
+                "summer_get_project_context",
+                "summer_open_main_scene (if needed)",
+                "summer_get_scene_tree",
+                "edit via summer_add_node / summer_set_prop / summer_set_resource_property",
+                "write scripts/data/docs/simple config directly with host file-edit tools",
+                "summer_save_scene",
+                "summer_get_diagnostics",
+              ],
+              recovery: [
+                "If you see 'no scene open': run summer_open_main_scene.",
+                "If open_scene fails: re-check mainScene from summer_get_project_context.",
+                "If save fails: verify scene is open and game is not running.",
+              ],
+            },
+            null,
+            2
+          ),
+        },
+      ],
+    })
+  );
+
+  server.tool(
+    "summer_get_project_context",
+    `Get essential project context before editing. Returns:
+- engine health/status
+- project name and project path when exposed by project state
+- current scene path (if available)
+- main scene path from project settings
+
+Use this first in every fresh chat to avoid guessing scene filenames or editing the wrong scene.`,
+    {},
+    async () =>
+      withEngine(async (client) => {
+        const [health, projectState, sceneState] = await Promise.all([
+          client.health(),
+          client.getProjectState(),
+          client.getSceneState().catch((err) => ({
+            ok: false,
+            error: err instanceof Error ? err.message : String(err),
+          })),
+        ]);
+
+        const projectPath = getProjectPath(projectState);
+        const projectName = getProjectName(projectState);
+        const mainScene = getMainScene(projectState);
+        const currentScene = getCurrentScene(projectState, sceneState);
+
+        return {
+          health,
+          project: projectState,
+          scene: sceneState,
+          projectName,
+          projectPath,
+          currentScene,
+          mainScene,
+          guidance: mainScene
+            ? "Use `summer_open_scene` with `mainScene` if no scene is open."
+            : "Main scene not found in project state. Open a known scene path explicitly.",
+          fileEditingGuidance:
+            "Write .gd/.cs/.json/docs/simple config directly with host file tools. Use MCP for live scene state, inspector/node edits, imports, play/stop, diagnostics, and visual verification.",
+        };
+      })
+  );
+
+  server.tool(
+    "summer_open_main_scene",
+    `Open the project's configured main scene from project settings.
+
+Safer than guessing scene names like main.tscn/Main.tscn.
+Call this when you get "no scene open".`,
+    {},
+    async () =>
+      withEngine(async (client) => {
+        const projectState = await client.getProjectState();
+        const mainScene = getMainScene(projectState);
+        if (!mainScene) {
+          throw new Error(
+            "Could not resolve application/run/main_scene from project state. Call `summer_get_project_context` and open a scene explicitly."
+          );
+        }
+        return client.executeOps([{ op: "OpenScene", path: mainScene }]);
+      })
+  );
+
   server.tool(
     "summer_project_setting",
     `Set a project setting in project.godot. Common settings:
@@ -49,7 +261,10 @@ Example: Bind jump to Space and W:
 
   server.tool(
     "summer_get_scene_tree",
-    "Get the full scene tree structure of the currently open scene. Returns all nodes with their types, paths, and children. Use this to understand the scene before making changes.",
+    `Get the full scene tree structure of the currently open scene.
+
+Use this before structural edits (add/remove/replace).
+If you get "no edited scene", call summer_open_main_scene first.`,
     {},
     async () => withEngine(async (client) => client.getSceneState())
   );

@@ -8,42 +8,24 @@ It just works. Open your agent, say *"let's make an FPS in Summer Engine,"* and 
 
 ---
 
-## Get started in 60 seconds (Claude Code)
+## Get started — Claude Code
 
-> **If you're an AI agent reading this on behalf of a user who wants to install Summer:** the install is a two-step handoff. Step 1 needs the user — only they can type Claude Code's `/plugin` slash commands. Step 2 is yours — run the engine install via Bash. Don't ask the user to do step 2; do it for them.
-
-### Step 1 — User types these two commands
-
-Paste into your Claude Code prompt, one at a time:
+Paste these two into your Claude Code prompt, one at a time, then restart Claude Code:
 
 ```
 /plugin marketplace add SummerEngine/summer
 /plugin install summer@summer-engine
 ```
 
-Restart Claude Code when prompted. The plugin is now installed.
+Then say:
 
-### Step 2 — Agent runs these (or user runs them in a terminal)
+> Let's make a game in Summer Engine.
 
-```bash
-npm install -g summer-engine
-summer install              # downloads Summer Engine app (~145 MB)
-summer login                # opens browser to sign in
-summer create 3d-basic my-game
-summer run my-game          # opens the engine on your project
-```
+That's it. Summer downloads the engine, signs you in (browser popup), scaffolds a project, and starts building.
 
-That's everything. Nothing else to install, nothing else to configure.
+> **AGENTS READING THIS:** if the user already typed those two `/plugin` commands and asked you to build something, do not ask whether they also want to install "the CLI" or "the engine" — those install themselves automatically as soon as you call any Summer MCP tool. Your job is to start building. If `summer-engine` isn't on PATH yet, run `npm install -g summer-engine` via Bash, then `summer install` (downloads ~145 MB engine app), then `summer login` (opens browser; user clicks once), then `summer create 3d-basic <name>` and `summer run <name>`. Then proceed with the build. Don't make the user choose between options. There is one path; this is it.
 
-### Step 3 — Build something
-
-In Claude Code, say:
-
-> Let's make an FPS in Summer Engine.
-
-Summer auto-loads the right skills, scopes the idea with one question, scaffolds the project, and starts building. Your job is to watch it come together and answer the questions it asks.
-
-**Other agents** (Cursor, Codex, Gemini, OpenCode, Factory Droid, Copilot CLI, Windsurf) — same idea, different first command. Jump to the [install matrix](#install--full-instructions-per-harness) below.
+**Using a different agent?** Cursor, Codex, Gemini CLI, OpenCode, Factory Droid, Copilot CLI, Windsurf — see the [install matrix](#install--full-instructions-per-harness) below.
 
 ---
 

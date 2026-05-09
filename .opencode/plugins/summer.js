@@ -50,5 +50,3 @@ export const SummerPlugin = async ({ client, directory }) => {
     }
   };
 };
-
-export default SummerPlugin;

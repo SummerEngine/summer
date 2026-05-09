@@ -1,6 +1,6 @@
 {
   "name": "summer-engine",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Summer — superpowers for AI game dev. CLI, skills, and MCP tools for Summer Engine.",
   "keywords": [
     "game-engine",
@@ -19,6 +19,7 @@
   "license": "MIT",
   "author": "Summer Engine <founders@summerengine.com>",
   "type": "module",
+  "main": ".opencode/plugins/summer.js",
   "bin": {
     "summer": "./dist/bin/summer.js"
   },
@@ -26,16 +27,20 @@
     "dist/",
     "skills/",
     "hooks/",
+    "assets/",
     ".claude-plugin/",
     ".cursor-plugin/",
     ".codex-plugin/",
+    ".factory-plugin/",
     ".opencode/",
     "gemini-extension.json",
-    "marketplace.json",
     ".mcp.json",
     "README.md",
     "LICENSE",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "AGENTS.md",
+    "GEMINI.md",
+    "CLAUDE.md"
   ],
   "scripts": {
     "build": "tsc",

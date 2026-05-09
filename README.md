@@ -14,13 +14,13 @@ Pick your tool. If you use more than one, install for each.
 
 | Agent | Command |
 |---|---|
-| **[Claude Code](#claude-code)** | `claude /plugin install summer@summer-marketplace` |
+| **[Claude Code](#claude-code)** | `claude /plugin install summer@summer` |
 | **[Codex CLI](#codex-cli)** | `/plugins` → search `summer` → install |
 | **[Codex App](#codex-app)** | Plugins → Coding → Summer → `+` |
 | **[Cursor](#cursor)** | `/add-plugin summer` |
-| **[Factory Droid](#factory-droid)** | `droid plugin install summer@summer-marketplace` |
+| **[Factory Droid](#factory-droid)** | `droid plugin install summer@summer` |
 | **[Gemini CLI](#gemini-cli)** | `gemini extensions install https://github.com/SummerEngine/summer` |
-| **[GitHub Copilot CLI](#github-copilot-cli)** | `copilot plugin install summer@summer-marketplace` |
+| **[GitHub Copilot CLI](#github-copilot-cli)** | `copilot plugin install summer@summer` |
 | **[OpenCode](#opencode)** | Tell it: *"Fetch and follow https://raw.githubusercontent.com/SummerEngine/summer/main/.opencode/INSTALL.md"* |
 | **[Windsurf / others](#windsurf-and-others)** | `npm i -g summer-engine && summer setup <agent> --yes` |
 
@@ -168,8 +168,8 @@ Full catalog with HAVE / NEXT / LATER status: [`skills/catalog.yaml`](./skills/c
 ### Claude Code
 
 ```bash
-claude /plugin marketplace add SummerEngine/summer-marketplace
-claude /plugin install summer@summer-marketplace
+claude /plugin marketplace add SummerEngine/summer
+claude /plugin install summer@summer
 ```
 
 When Summer lands on Anthropic's official marketplace, also:
@@ -201,8 +201,8 @@ Or search `summer` in the Cursor plugin marketplace.
 ### Factory Droid
 
 ```bash
-droid plugin marketplace add https://github.com/SummerEngine/summer-marketplace
-droid plugin install summer@summer-marketplace
+droid plugin marketplace add https://github.com/SummerEngine/summer
+droid plugin install summer@summer
 ```
 
 ### Gemini CLI
@@ -216,8 +216,8 @@ Update later: `gemini extensions update summer`.
 ### GitHub Copilot CLI
 
 ```bash
-copilot plugin marketplace add SummerEngine/summer-marketplace
-copilot plugin install summer@summer-marketplace
+copilot plugin marketplace add SummerEngine/summer
+copilot plugin install summer@summer
 ```
 
 ### OpenCode
@@ -230,7 +230,7 @@ Add to `opencode.json`:
 
 ```json
 {
-  "plugin": ["summer-engine/.opencode/plugins/summer.js"],
+  "plugin": ["summer-engine"],
   "mcp": {
     "summer-engine": {
       "command": "npx",

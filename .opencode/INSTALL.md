@@ -14,9 +14,15 @@ Then add the plugin to your `opencode.json`:
 
 ```json
 {
-  "plugin": [
-    "summer-engine/.opencode/plugins/summer.js"
-  ]
+  "plugin": ["summer-engine"]
+}
+```
+
+OpenCode resolves `summer-engine` via the package's `main` field, which points to the Summer plugin entry. You can also pin to git for unreleased changes:
+
+```json
+{
+  "plugin": ["summer-engine@git+https://github.com/SummerEngine/summer.git"]
 }
 ```
 

@@ -95,11 +95,11 @@ export function getWelcome(version: string): string {
 
   const footerLines = [
     pad("", 69),
-    pad(`  ${sunC2}summer-engine-cli${reset} · ${dim}local${reset}`, 69),
+    pad(`  ${sunC2}summer${reset} · ${dim}local${reset}`, 69),
     pad(`  ${dim}Docs: https://summerengine.com/docs/mcp${reset}`, 69)
   ];
 
-  const title = ` Summer Engine CLI v${version} `;
+  const title = ` Summer v${version} `;
   const titleLen = stripAnsi(title).length;
   const totalDashes = 69 - titleLen;
   const leftDashes = Math.floor(totalDashes / 2);

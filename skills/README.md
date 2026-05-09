@@ -2,7 +2,7 @@
 
 The canonical agent-readable game-dev knowledge source for Claude Code, Cursor, Codex, and Windsurf.
 
-When an agent is asked to make a game in Godot, this is what it reads to learn how.
+When an agent is asked to make a game in Summer Engine, this is what it reads to learn how.
 
 ## Layout
 

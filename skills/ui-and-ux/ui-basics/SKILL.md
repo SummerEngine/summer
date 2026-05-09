@@ -1,6 +1,6 @@
 ---
 name: ui-basics
-description: HUD, menus, health bars, progress bars, and Control-based UI layout. Use when building menus, HUDs, health bars, or any Control-tree UI. Trigger on "UI", "HUD", "menu", "health bar", "Control".
+description: Use when building Godot UI — HUDs, main menus, pause menus, health bars, progress bars, dialogue boxes, or any Control-node tree. Covers anchors, containers (VBox/HBox/Margin), responsive layout, and theme vs inline styling. Trigger on "UI", "HUD", "menu", "health bar", "Control", "anchors", "VBoxContainer", "main menu", "pause menu".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: ui-and-ux

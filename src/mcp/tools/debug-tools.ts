@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { withEngine } from "./with-engine.js";
+import { shapeEngineLogResponse } from "../../lib/log-filters.js";
 
 export function registerDebugTools(server: McpServer): void {
   server.tool(
@@ -20,18 +21,32 @@ Typical workflow after making changes:
 
   server.tool(
     "summer_get_console",
-    "Read recent messages from the editor's Output panel. Shows print statements, warnings, and errors from both the editor and scripts. Use after summer_get_diagnostics indicates console issues.",
+    `Read recent messages from the editor's Output panel.
+
+Output is post-processed for token economy: consecutive identical messages collapse into one entry with a "(×N)" count suffix, and the response carries a "_filter" summary so you can see what was hidden. Use errors_only=true (default) to drop info/std noise; use raw=true to bypass all shaping.
+
+Use after summer_get_diagnostics indicates console issues.`,
     {
-      max_lines: z.number().optional().default(100).describe("Max lines to return (default 100)"),
+      max_lines: z.number().optional().default(100).describe("Max lines to return after dedupe (default 100)"),
       filter: z.string().optional().describe("Only return lines containing this string"),
-      type: z.enum(["error", "warning", "std", "editor"]).optional().describe("Filter by message type"),
+      type: z.enum(["error", "warning", "std", "editor"]).optional().describe("Filter by message type at the engine level"),
+      errors_only: z.boolean().optional().default(true).describe("Drop info/std noise, keep errors and warnings (default true)"),
+      strict_errors: z.boolean().optional().default(false).describe("Drop warnings too — return errors only"),
+      raw: z.boolean().optional().default(false).describe("Bypass dedupe and level filtering — return engine output verbatim"),
     },
-    async ({ max_lines, filter, type }) =>
+    async ({ max_lines, filter, type, errors_only, strict_errors, raw }) =>
       withEngine(async (client) => {
         const op: Record<string, unknown> = { op: "GetConsoleOutput", max_lines };
         if (filter) op.filter = filter;
         if (type) op.type = type;
-        return client.executeOps([op]);
+        const engineResult = await client.executeOps([op]);
+        if (raw) return engineResult;
+        const { result } = shapeEngineLogResponse(engineResult, {
+          errorsOnly: errors_only,
+          errorsOnlyStrict: strict_errors,
+          maxEntries: max_lines,
+        });
+        return result;
       })
   );
 
@@ -45,16 +60,22 @@ Typical workflow after making changes:
 
   server.tool(
     "summer_get_debugger_errors",
-    "Read runtime errors and warnings from the debugger. These are errors that occur while the game is running (null references, missing nodes, physics errors). Different from console output — these come from the debugger, not print statements.",
+    `Read runtime errors and warnings from the debugger. These are errors that occur while the game is running (null references, missing nodes, physics errors). Different from console output — these come from the debugger, not print statements.
+
+Output is deduped: identical errors firing every frame collapse into one entry with a "(×N)" count suffix. A "_filter" summary tells you exactly what was collapsed or truncated. Use raw=true to bypass shaping when you really need every entry.`,
     {
-      max_errors: z.number().optional().default(50).describe("Max errors to return"),
+      max_errors: z.number().optional().default(50).describe("Max errors to return after dedupe"),
       include_stack: z.boolean().optional().describe("Include stack traces for each error"),
+      raw: z.boolean().optional().default(false).describe("Bypass dedupe — return engine output verbatim"),
     },
-    async ({ max_errors, include_stack }) =>
+    async ({ max_errors, include_stack, raw }) =>
       withEngine(async (client) => {
         const op: Record<string, unknown> = { op: "GetDebuggerErrors", max_errors };
         if (include_stack !== undefined) op.include_stack = include_stack;
-        return client.executeOps([op]);
+        const engineResult = await client.executeOps([op]);
+        if (raw) return engineResult;
+        const { result } = shapeEngineLogResponse(engineResult, { maxEntries: max_errors });
+        return result;
       })
   );
 

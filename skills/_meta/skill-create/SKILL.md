@@ -1,6 +1,6 @@
 ---
 name: skill-create
-description: Bootstrap a new Summer skill with the canonical folder structure, frontmatter, and stub sections. Use when adding a new skill to the library. Trigger on "create skill", "add skill", "new skill".
+description: Use when a contributor wants to add a new skill to the Summer library — bootstraps the canonical folder structure, frontmatter, and stub sections. Trigger on "create skill", "add skill", "new skill", "scaffold a skill".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: _meta

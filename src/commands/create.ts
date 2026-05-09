@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { join, resolve } from "path";
+import { fetchRemoteTemplates, cloneTemplate, matchTemplate } from "../lib/remote-templates.js";
 
 interface Template {
   name: string;
@@ -37,22 +38,12 @@ const BUILTIN_TEMPLATES: Template[] = [
 ];
 
 export const createCommand = new Command("create")
-  .description("Create a new Summer Engine project from a template")
-  .argument("<template>", `Template name (${BUILTIN_TEMPLATES.map((t) => t.name).join(", ")})`)
-  .argument("[name]", "Project directory name (defaults to template name)")
-  .action(async (templateName: string, projectName?: string) => {
-    const template = BUILTIN_TEMPLATES.find((t) => t.name === templateName);
-
-    if (!template) {
-      console.error(`Unknown template: ${templateName}`);
-      console.log("\nAvailable templates:");
-      for (const t of BUILTIN_TEMPLATES) {
-        console.log(`  ${t.name.padEnd(12)} ${t.description}`);
-      }
-      console.log("\nMore templates coming soon at github.com/summerengine/templates");
-      process.exit(1);
-    }
-
+  .description("Create a new Summer Engine project. Built-in templates work offline; community templates clone from github.com/SummerEngine/template-*.")
+  .argument("<template>", `Template slug. Built-in: ${BUILTIN_TEMPLATES.map((t) => t.name).join(", ")}. Or any community slug — see "summer list templates".`)
+  .argument("[name]", "Project directory name (defaults to template slug)")
+  .option("--keep-git", "Keep the upstream .git directory after cloning a remote template (default: detach so you start fresh)")
+  .action(async (templateName: string, projectName: string | undefined, options: { keepGit?: boolean }) => {
+    const builtin = BUILTIN_TEMPLATES.find((t) => t.name === templateName);
     const dirName = projectName || templateName;
     const fullPath = resolve(dirName);
 
@@ -61,11 +52,55 @@ export const createCommand = new Command("create")
       process.exit(1);
     }
 
-    console.log(`Creating project from '${templateName}' template...`);
-    mkdirSync(fullPath, { recursive: true });
-    template.generate(fullPath, dirName);
+    if (builtin) {
+      console.log(`Creating project from built-in '${templateName}' template...`);
+      mkdirSync(fullPath, { recursive: true });
+      builtin.generate(fullPath, dirName);
+      console.log(`\nProject created at ${fullPath}`);
+      console.log("\nNext steps:");
+      console.log(`  summer run ${dirName}`);
+      return;
+    }
+
+    // Fall back to remote template lookup
+    let remote;
+    try {
+      const all = await fetchRemoteTemplates();
+      remote = matchTemplate(templateName, all);
+      if (!remote) {
+        console.error(`No template matches '${templateName}'.\n`);
+        console.error("Built-in templates:");
+        for (const t of BUILTIN_TEMPLATES) {
+          console.error(`  ${t.name.padEnd(16)} ${t.description}`);
+        }
+        if (all.length > 0) {
+          console.error("\nCommunity templates from github.com/SummerEngine:");
+          for (const t of all.slice(0, 10)) {
+            console.error(`  ${t.slug.padEnd(40)} ${t.description}`);
+          }
+          if (all.length > 10) console.error(`  ...and ${all.length - 10} more — run "summer list templates"`);
+        }
+        process.exit(1);
+      }
+    } catch (err) {
+      console.error(`Could not reach GitHub to look up community templates: ${(err as Error).message}`);
+      console.error("\nBuilt-in templates that work offline:");
+      for (const t of BUILTIN_TEMPLATES) {
+        console.error(`  ${t.name.padEnd(16)} ${t.description}`);
+      }
+      process.exit(1);
+    }
+
+    console.log(`Cloning community template '${remote.repo}' (${remote.url}) ...`);
+    try {
+      cloneTemplate(remote, { targetDir: fullPath, detach: !options.keepGit });
+    } catch (err) {
+      console.error((err as Error).message);
+      process.exit(1);
+    }
 
     console.log(`\nProject created at ${fullPath}`);
+    console.log("Source: " + remote.url);
     console.log("\nNext steps:");
     console.log(`  summer run ${dirName}`);
   });

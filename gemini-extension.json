@@ -1,7 +1,7 @@
 {
   "name": "summer",
-  "version": "1.4.0",
-  "description": "AI game-dev studio for Godot: MCP bridge to the local Summer Engine plus a context primer that teaches Gemini the 19 Summer skill names. Use with the npm CLI for skill files on disk.",
+  "version": "2.0.0",
+  "description": "Superpowers for AI game dev. MCP bridge to the local Summer Engine plus a context primer that teaches Gemini the 22 Summer skills. Use with the npm CLI for skill files on disk.",
   "contextFileName": "GEMINI.md",
   "mcpServers": {
     "summer-engine": {

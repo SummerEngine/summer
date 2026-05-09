@@ -1,6 +1,6 @@
 ---
 name: asset-strategy
-description: Decision guide for how to create different game asset types — generated 3D, library search, AI textures, or primitives. Use when planning asset creation, picking an asset pipeline, or writing image-to-3D prompts. Trigger on "assets", "3D models", "textures", "art pipeline".
+description: Use when planning asset creation, picking an asset pipeline, or writing image-to-3D prompts — decision guide for whether to generate 3D, search the library, generate AI textures, or use primitives. Includes prompt templates for the AI image-to-3D pipeline. Trigger on "assets", "3D models", "textures", "art pipeline", "make a model", "generate asset".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: asset-pipeline

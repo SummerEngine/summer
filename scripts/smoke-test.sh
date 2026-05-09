@@ -1,5 +1,5 @@
 #!/bin/bash
-# Smoke test for the Summer Engine CLI
+# Smoke test for the Summer
 # Run from: tools/summer-cli/
 # Requires: npm run build (dist/ must exist)
 
@@ -32,7 +32,7 @@ skip() {
 }
 
 echo ""
-echo "Summer Engine CLI Smoke Tests"
+echo "Summer Smoke Tests"
 echo "=============================="
 echo ""
 

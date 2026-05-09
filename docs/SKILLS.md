@@ -1,6 +1,6 @@
 # Skills
 
-Summer skills teach AI agents how to build games in Godot/Summer. Two kinds:
+Summer skills teach AI agents how to build games in Summer Engine — the AI-native game engine compatible with Godot 4.5 (GDScript and `.tscn` scenes). Two kinds:
 
 ## Workflow skills (slash commands)
 

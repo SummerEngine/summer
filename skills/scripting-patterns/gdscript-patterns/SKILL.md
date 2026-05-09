@@ -1,6 +1,6 @@
 ---
 name: gdscript-patterns
-description: Common GDScript idioms — type hints, signals, exports, onready, lifecycle methods, naming conventions. Use when writing GDScript, attaching scripts, or refactoring untyped code. Trigger on "GDScript", "script", "signals", "exports".
+description: Use when writing or refactoring GDScript — type hints, signals, exports, onready, lifecycle methods (`_ready` vs `_process` vs `_physics_process`), `get_node` vs `$NodePath`, naming conventions. Trigger on "GDScript", "script", "signals", "exports", "onready", "_ready", "_process".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: scripting-patterns

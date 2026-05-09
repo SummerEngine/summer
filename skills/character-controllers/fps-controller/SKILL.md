@@ -1,6 +1,6 @@
 ---
 name: fps-controller
-description: First-person character controller with WASD, mouse look, jump, coyote time, jump buffering, air control, and external-velocity handling. Use when building an FPS, first-person movement, or a 3D character that walks, jumps, and gets shoved around. Trigger on "FPS", "first-person", "WASD", "character controller", "mouse look".
+description: Use when building an FPS, first-person movement, or a 3D character that walks, jumps, and reacts to external forces — production-quality first-person controller with WASD, mouse look, jump, coyote time, jump buffering, air control, and external-velocity handling. Trigger on "FPS", "first-person", "WASD", "character controller", "mouse look", "player movement", "jump".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: character-controllers

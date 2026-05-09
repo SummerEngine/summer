@@ -183,7 +183,7 @@ export const SKILL_REGISTRY = [
     category: "scene-and-project",
     public: true,
     clients: ALL_CLIENTS,
-    recommended: false,
+    recommended: true,
     requiresMcpTools: [
       "summer_get_agent_playbook",
       "summer_get_project_context",
@@ -213,6 +213,30 @@ export const SKILL_REGISTRY = [
     ],
     testScenario:
       "Walk a fresh user from \"I want to make a game but I don't know what\" to a 1-page brief saved at .summer/GameSoul.md.",
+  },
+  {
+    name: "new-project",
+    category: "scene-and-project",
+    public: true,
+    clients: ALL_CLIENTS,
+    recommended: true,
+    requiresMcpTools: [
+      "summer_get_project_context",
+    ],
+    testScenario:
+      "User says \"start a blank project\" — skill asks for the name, picks empty vs 3d-basic, runs summer create, opens the engine, and stops to ask what to build.",
+  },
+  {
+    name: "browse-templates",
+    category: "scene-and-project",
+    public: true,
+    clients: ALL_CLIENTS,
+    recommended: true,
+    requiresMcpTools: [
+      "summer_get_project_context",
+    ],
+    testScenario:
+      "User says \"what templates exist?\" — skill runs summer list templates, presents 3-5 curated picks, asks the project name, and runs summer create <slug> <name>.",
   },
   {
     name: "design-mechanic",

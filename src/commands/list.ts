@@ -1,13 +1,14 @@
 import { Command } from "commander";
 import { readdirSync, existsSync } from "fs";
 import { join } from "path";
+import { fetchRemoteTemplates } from "../lib/remote-templates.js";
 
 export const listCommand = new Command("list")
   .description("List available templates or local projects")
   .argument("<what>", "'templates' or 'projects'")
   .action(async (what: string) => {
     if (what === "templates") {
-      listTemplates();
+      await listTemplates();
     } else if (what === "projects") {
       listProjects();
     } else {
@@ -16,12 +17,30 @@ export const listCommand = new Command("list")
     }
   });
 
-function listTemplates(): void {
-  console.log("Built-in Templates:\n");
+async function listTemplates(): Promise<void> {
+  console.log("Built-in templates (no download required):\n");
   console.log("  empty        Empty 3D project with just a root node");
   console.log("  3d-basic     3D scene with camera, light, and floor");
-  console.log("\nCreate a project: summer create <template> [name]");
-  console.log("\nMore templates coming soon at github.com/summerengine/templates");
+
+  console.log("\nCommunity templates from github.com/SummerEngine:\n");
+  try {
+    const remote = await fetchRemoteTemplates();
+    if (remote.length === 0) {
+      console.log("  (none yet)");
+    } else {
+      const padTo = Math.max(...remote.map((t) => t.slug.length), 16);
+      for (const t of remote) {
+        const desc = t.description || `(no description)  ${t.url}`;
+        console.log(`  ${t.slug.padEnd(padTo)}  ${desc}`);
+      }
+    }
+  } catch (err) {
+    console.log(`  (could not reach GitHub: ${(err as Error).message})`);
+    console.log("  Built-ins above still work offline.");
+  }
+
+  console.log("\nCreate a project: summer create <name> [project-dir]");
+  console.log("Example:          summer create 3d-third-person-controller my-game");
 }
 
 function listProjects(): void {

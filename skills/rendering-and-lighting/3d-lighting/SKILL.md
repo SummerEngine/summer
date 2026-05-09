@@ -1,6 +1,6 @@
 ---
 name: 3d-lighting
-description: Lighting setup, WorldEnvironment, sky, and shadows for 3D scenes. Use when setting up a 3D scene, adding lights, configuring environment, or adjusting shadows. Trigger on "lighting", "shadows", "WorldEnvironment", "sun", "ambient".
+description: Use when setting up lighting in a 3D scene — adding lights, configuring WorldEnvironment, sky, or shadows. Covers DirectionalLight3D vs Omni vs Spot, shadow tuning, ambient/sky-driven lighting, and Godot 4.5-era conventions. Trigger on "lighting", "shadows", "WorldEnvironment", "sun", "ambient", "sky", "light".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: rendering-and-lighting

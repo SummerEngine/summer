@@ -63,7 +63,6 @@ async function searchAssetsApi(params: {
   summary?: string;
   message?: string;
   error?: string;
-  plan?: string;
 }> {
   const token = await getAuthToken();
   if (!token) {
@@ -97,25 +96,23 @@ async function searchAssetsApi(params: {
     summary?: string;
     message?: string;
     error?: string;
-    plan?: string;
   };
 
   if (!res.ok) {
-    if (res.status === 402) {
-      return {
-        error: "upgrade_required",
-        message:
-          (data.message || "Asset search requires a Pro subscription.") +
-          "\nUpgrade at: https://www.summerengine.com/pricing\nFree tier includes all other MCP tools (scene editing, debugging, etc).",
-        plan: data.plan,
-      };
-    }
     if (res.status === 401) {
       return {
         error: "unauthorized",
         message:
           (data.message || "Auth token expired.") +
           " The user needs to re-authenticate:\n  npx summer-engine login --force",
+      };
+    }
+    if (res.status === 429) {
+      return {
+        error: "rate_limited",
+        message:
+          (data.message || "Asset search rate limit hit. Wait a moment and try again.") +
+          " The public library is free, but rate-limited per user to prevent bulk scraping.",
       };
     }
     return {
@@ -130,17 +127,17 @@ async function searchAssetsApi(params: {
 export function registerAssetTools(server: McpServer): void {
   server.tool(
     "summer_search_assets",
-    `Search for game assets in the Summer Engine ecosystem.
+    `Search for game assets in the Summer Engine ecosystem. **Free for all users** with rate limits.
 
 Sources:
-  - "library" (default) — Public asset library (25k+ community assets). Requires Pro plan.
-  - "my_assets" — Your own generated/uploaded assets. Free for all users. Query is optional.
+  - "library" (default) — Public asset library (25k+ community assets). Free.
+  - "my_assets" — Your own generated/uploaded assets. Free. Query is optional.
   - "all" — Search both library and your assets.
 
 Uses hybrid search: keywords + semantic similarity. Finds assets by name AND by meaning.
 Returns asset names, types, preview URLs, and import-ready file URLs.
 
-Requires authentication: run 'npx summer-engine login' first.`,
+Requires authentication (so we can attribute usage and apply per-user rate limits): run 'npx summer-engine login' first.`,
     {
       query: z.string().describe("Natural language search, e.g. 'low-poly tree', 'sci-fi weapon'. For my_assets, can be empty to list recent."),
       assetType: z.enum(["2d_image", "animation", "3d_model", "audio", "music", "all"]).default("all").describe("Filter by asset type"),
@@ -156,7 +153,7 @@ Requires authentication: run 'npx summer-engine login' first.`,
             {
               type: "text" as const,
               text: JSON.stringify(
-                { error: result.error, message: result.message, plan: result.plan },
+                { error: result.error, message: result.message },
                 null,
                 2
               ),

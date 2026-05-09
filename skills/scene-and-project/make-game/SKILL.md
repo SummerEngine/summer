@@ -1,452 +1,265 @@
 ---
 name: make-game
-description: End-to-end game creation workflow that orchestrates project setup, asset creation, scene building, scripting, and testing. Use when the user wants to build a complete game from scratch or says "make me a game". Trigger on "make a game", "build me a game", "create a new game".
+description: Use when the user says "make me a game", "build me a game", "I want to make a [genre] game", "let's build something" — the orchestration spine that runs the full game-dev pipeline: brainstorm → plan → scaffold → build core mechanics → art direction → audio → polish/VFX → verify → ship. Delegates to specialist skills with explicit checkpoints between phases. Trigger on "make a game", "build me a game", "create a new game", "make me a game", "let's build a game", "I want to build [game shape]".
 license: MIT
-compatibility: [Cursor, Claude Code, Windsurf, Codex]
+compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode]
 category: scene-and-project
-user-invocable: false
-allowed-tools: Read Grep Glob Write Edit summer_get_project_context summer_get_agent_playbook summer_create_scene summer_open_scene summer_save_scene summer_add_node summer_set_prop summer_set_resource_property summer_instantiate_scene summer_play summer_stop summer_get_diagnostics
-paths: ["**/*.gd", "**/*.tscn", "**/project.godot"]
+user-invocable: true
+allowed-tools: Read Edit Write Bash Skill summer_get_project_context summer_get_scene_tree summer_create_scene summer_add_node summer_set_prop summer_save_scene summer_play summer_stop summer_get_diagnostics summer_get_script_errors
+paths: [".summer/**", "project.godot", "**/*.gd", "**/*.tscn"]
 ---
 
-# Make a Game with Summer Engine
+# /make-game — The orchestration spine
 
-Step-by-step workflow for building a complete game. Follow phases 0-6 in order. Each phase must complete before moving to the next.
+This is the skill that runs end-to-end when a user says "make me a game." It does **not** try to do everything itself. It runs the right specialist skills in the right order with explicit handoffs and a checkpoint between every phase.
 
-**Rule**: Scene operations (.tscn) use Summer MCP tools. Script files (.gd) use the host agent's normal file-editing tools. Never cross the streams.
+**Core principle:** structure beats vibes. A guided pipeline that delegates to focused specialists produces a real game. Off-the-cuff "let me think about it" loops produce three half-finished prototypes. Follow the phases. Don't skip.
 
----
+## When to use this skill
 
-## Phase 0: Gather Requirements
+- User says: "make me a game", "build me a game", "I want to make a [genre]", "let's build a game", "build me a [shape]".
+- User has nothing yet and wants the full path from idea → playable.
+- User has a vague idea and wants the agent to drive the whole arc.
 
-Before touching any tools, ask the user:
-1. **What kind of game?** (platformer, FPS, top-down, puzzle, racing, etc.)
-2. **2D or 3D?**
-3. **Art style?** (realistic, low-poly, cartoon, pixel art)
-4. **Core mechanic?** One sentence. ("player jumps between platforms collecting coins")
-5. **Scope?** (1 level prototype, or multi-level)
+## When NOT to use this skill
 
-Use this decision matrix:
+- User has a specific narrow ask ("add jump", "fix this bug", "design the inventory") → use the specific skill, not this orchestrator.
+- User already has a working scaffold and wants to iterate → start at the relevant phase below, don't re-run the whole pipeline.
+- User says "I want to use a template" → run `summer:browse-templates` first; come back here only if they decide they want a custom build instead.
 
-| Genre | Root Type | Camera | Player Body | Dimension |
-|-------|-----------|--------|-------------|-----------|
-| FPS | Node3D | Camera3D on player | CharacterBody3D | 3D |
-| Platformer 2D | Node2D | Camera2D following | CharacterBody2D | 2D |
-| Platformer 3D | Node3D | Camera3D following | CharacterBody3D | 3D |
-| Top-down | Node2D | Camera2D | CharacterBody2D | 2D |
-| Puzzle | Node2D or Control | Camera2D or none | varies | 2D |
-| Racing | Node3D | Camera3D behind car | VehicleBody3D | 3D |
-
----
-
-## Phase 1: Project Bootstrap
-
-### 1a. Get context
+## The Pipeline
 
 ```
-summer_get_agent_playbook()
-summer_get_project_context()
+  Brainstorm → Plan → Scaffold → Build → Layer → Polish → Verify → Ship
+       │        │        │        │        │        │       │       │
+       ▼        ▼        ▼        ▼        ▼        ▼       ▼       ▼
+  brainstorm  plan   new-project  build-loop   art      vfx    play  export
+   -game     (this   browse-      (this skill)  audio          debug -and-
+              skill) templates                                       ship
+                                                                     
+                                  ↓
+                         (one mechanic at a time:
+                          design-mechanic + scene-composition
+                          + gdscript-patterns + play check)
 ```
 
-If a scene is open: `summer_get_scene_tree()` to see what exists.
+Run the phases in order. Between every phase, **stop and confirm with the user before continuing.** The user owns scope decisions; the agent owns execution discipline.
 
-### 1b. Configure project
+## Phase 1: Brainstorm
 
-```
-summer_project_setting(key="application/config/name", value="<game name>")
-summer_project_setting(key="display/window/size/viewport_width", value=1280)
-summer_project_setting(key="display/window/size/viewport_height", value=720)
-summer_project_setting(key="application/run/main_scene", value="res://scenes/main_level.tscn")
-```
-
-For 2D pixel art, add:
-```
-summer_project_setting(key="rendering/textures/canvas_textures/default_texture_filter", value=0)
-```
-
-### 1c. Create scenes
+**Goal**: turn a vague idea into a 1-page brief.
 
 ```
-summer_create_scene(path="res://scenes/main_level.tscn", rootName="World", allow_temporary_scene_mutation=true)
-summer_create_scene(path="res://scenes/player.tscn", rootName="Player", allow_temporary_scene_mutation=true)
+Skill: summer:brainstorm-game
 ```
 
-### 1d. Folder conventions
+That skill asks one question, scopes mechanics, picks an art direction, and writes `.summer/GameSoul.md`. Don't skip this. **The brief is what every later phase reads.**
 
-- `res://scenes/` -- .tscn files
-- `res://scripts/` -- .gd files
-- `res://assets/models/` -- 3D models
-- `res://assets/textures/` -- images, sprites
-- `res://assets/audio/` -- sounds, music
+If the user already has `.summer/GameSoul.md` (check via Read), skip the brainstorm and confirm:
 
----
+> "Found `.summer/GameSoul.md` — should I build from this brief, or do you want to start over?"
 
-## Phase 2: Asset Pipeline
+**Checkpoint before continuing:**
 
-Pick the right strategy per asset. Prefer this order: Library > Generate > Primitives.
+> "Brief saved at `.summer/GameSoul.md`. Want me to plan the build?"
 
-### Strategy A: Asset Library (fastest, 25k+ free models)
+## Phase 2: Plan
 
-For environment props, furniture, nature, vehicles:
+**Goal**: turn the brief into a concrete checklist of scenes, mechanics, and assets, in priority order.
 
-```
-summer_search_assets(query="low-poly tree", assetType="3d_model", limit=5)
-summer_import_asset(query="wooden barrel", parent="./World/Props", assetType="3d_model")
-```
+This phase doesn't have a dedicated skill yet — do it inline. Read `.summer/GameSoul.md` and produce a plan with three sections:
 
-### Strategy B: AI Generation (custom assets)
+1. **Core scenes** — main scene, level/menu scenes, prefabs the game needs
+2. **Core mechanics** — ranked, max 3 (the brief enforces this; respect it)
+3. **Cut list** — what's explicitly NOT in scope
 
-**Images** (textures, sprites, UI art) -- sync, returns immediately:
-```
-summer_generate_image(prompt="top-down grass tileset, seamless, 512x512", style="cartoon")
-```
-Returns `localPath` -- use Read tool to show the user for approval.
-Then import:
-```
-summer_import_from_url(url="<asset.fileUrl>", path="res://assets/textures/grass.png")
-```
+Save the plan to `.summer/build-plan.md`. Format:
 
-**3D models** -- async, waits up to 5 min by default:
-```
-summer_generate_3d(prompt="low-poly treasure chest with gold coins", kind="text-to-3d")
-```
-Returns completed result directly. Then import the model URL.
+```markdown
+# Build plan — <game name>
 
-**Image-to-3D** -- generate concept art first, then convert:
-```
-summer_generate_image(prompt="medieval sword, ornate handle, game asset, white background")
-# Show to user, get approval
-summer_generate_3d(kind="image-to-3d", imageUrl="<asset.fileUrl>")
+Source: .summer/GameSoul.md (date)
+
+## Core scenes
+- [ ] main.tscn — World + Player + Camera + Light + Floor
+- [ ] level_01.tscn — first playable level
+- [ ] hud.tscn — health, score
+- [ ] (more)
+
+## Core mechanics (in build order)
+1. [ ] Movement (FPS / TPS / 2D platformer / etc.)
+2. [ ] Primary action (shoot / jump / interact)
+3. [ ] Win/lose state
+
+## Cut list (NOT in scope this pass)
+- Multiplayer
+- Save/load
+- Settings menu
+- ...
 ```
 
-**Audio** -- sync:
-```
-summer_generate_audio(capability="sound_effects", text="sword swing whoosh")
-summer_generate_audio(capability="music", prompt="upbeat adventure theme", durationSeconds=30)
-summer_generate_audio(capability="text_to_speech", text="Welcome, adventurer!", voiceId="<id>")
-```
+**Checkpoint before continuing:**
 
-**Parallel generation**: Start multiple 3D jobs with `wait=false`, work on scene setup, then check later:
-```
-summer_generate_3d(prompt="...", wait=false)  -> jobId: "abc"
-summer_generate_3d(prompt="...", wait=false)  -> jobId: "def"
-# ... do scene work ...
-summer_check_job(jobId="abc")
-summer_check_job(jobId="def")
-```
+> "Plan saved. Three core mechanics: movement, primary action, win condition. Anything you want to add or cut before I start building?"
 
-### Strategy C: Primitive Meshes (instant, offline)
+## Phase 3: Scaffold
 
-For prototyping or blocking out levels:
-```
-summer_add_node(parent="./World", type="MeshInstance3D", name="Floor")
-summer_set_prop(path="./World/Floor", key="mesh", value="BoxMesh")
-summer_set_resource_property(nodePath="./World/Floor", resourceProperty="mesh", subProperty="size", value="Vector3(20, 0.2, 20)")
-```
+**Goal**: working project on disk, scene opens in the engine.
 
----
+If the user said "I want to use a template" earlier, this is just `summer:browse-templates`.
 
-## Phase 3: Scene Construction
-
-### 3a. Build environment with batch
-
-Use `summer_batch` for multi-step setup in one undo step:
+If from scratch:
 
 ```
-summer_batch(ops=[
-  {"op":"AddNode","parent":"./","type":"Node3D","name":"Level"},
-  {"op":"AddNode","parent":"./Level","type":"MeshInstance3D","name":"Ground"},
-  {"op":"SetProp","path":"./Level/Ground","key":"mesh","value":"PlaneMesh"},
-  {"op":"SetResourceProperty","nodePath":"./Level/Ground","resourceProperty":"mesh","subProperty":"size","value":"Vector2(50,50)"},
-  {"op":"AddNode","parent":"./","type":"DirectionalLight3D","name":"Sun"},
-  {"op":"SetProp","path":"./Sun","key":"rotation_degrees","value":"Vector3(-45,30,0)"},
-  {"op":"SetProp","path":"./Sun","key":"shadow_enabled","value":"true"},
-  {"op":"AddNode","parent":"./","type":"WorldEnvironment","name":"Env"}
-])
+Skill: summer:new-project
 ```
 
-### 3b. Build player
-
-**3D FPS/Third-person:**
-```
-summer_open_scene(path="res://scenes/player.tscn")
-summer_batch(ops=[
-  {"op":"AddNode","parent":"./","type":"CollisionShape3D","name":"Collision"},
-  {"op":"SetProp","path":"./Collision","key":"shape","value":"CapsuleShape3D"},
-  {"op":"AddNode","parent":"./","type":"Camera3D","name":"Camera"},
-  {"op":"SetProp","path":"./Camera","key":"position","value":"Vector3(0,1.6,0)"}
-])
-```
-
-**2D Platformer:**
-```
-summer_open_scene(path="res://scenes/player.tscn")
-summer_batch(ops=[
-  {"op":"AddNode","parent":"./","type":"CollisionShape2D","name":"Collision"},
-  {"op":"SetProp","path":"./Collision","key":"shape","value":"RectangleShape2D"},
-  {"op":"AddNode","parent":"./","type":"Sprite2D","name":"Sprite"},
-  {"op":"AddNode","parent":"./","type":"Camera2D","name":"Camera"}
-])
-```
-
-### 3c. Input bindings
+That picks `empty` vs `3d-basic` based on the GameSoul brief. After the project is created and `summer run` succeeds:
 
 ```
-summer_input_map_bind(name="move_forward", events=[{"type":"key","key":"W"}])
-summer_input_map_bind(name="move_back", events=[{"type":"key","key":"S"}])
-summer_input_map_bind(name="move_left", events=[{"type":"key","key":"A"}])
-summer_input_map_bind(name="move_right", events=[{"type":"key","key":"D"}])
-summer_input_map_bind(name="jump", events=[{"type":"key","key":"Space"}])
-summer_input_map_bind(name="interact", events=[{"type":"key","key":"E"}])
+Skill: summer:scene-composition
 ```
 
-### 3d. Place assets in scene
+To set up the canonical hierarchy for the genre. For 3D action games:
 
 ```
-summer_open_scene(path="res://scenes/main_level.tscn")
-summer_instantiate_scene(parent="./Level", scene="res://scenes/player.tscn", name="Player")
-summer_instantiate_scene(parent="./Level", scene="res://assets/models/tree.glb", name="Tree1")
-summer_set_prop(path="./Level/Tree1", key="position", value="Vector3(5, 0, 3)")
+World (Node3D)
+├── Player (CharacterBody3D)
+├── Level (Node3D)
+├── Lighting (Node3D)
+│   ├── Sun (DirectionalLight3D)
+│   └── Environment (WorldEnvironment)
+├── HUD (CanvasLayer)
+└── GameManager (Node)  # autoload-style, holds win/lose state
 ```
 
-### 3e. Save
+Save the scene. Run `summer_play` once to verify the empty scaffold opens cleanly. If it crashes, run `summer:debug` immediately — do NOT continue building on a broken base.
+
+**Checkpoint before continuing:**
+
+> "Scaffold is in. Empty scene plays clean. Building mechanic 1 of N: <name>. OK?"
+
+## Phase 4: Build (one mechanic at a time)
+
+**Goal**: each mechanic from the plan, fully working, before moving to the next.
+
+For each mechanic in the plan, **in order**:
+
+1. **Design pass**:
+   ```
+   Skill: summer:design-mechanic
+   ```
+   Outputs the mechanic spec: input, response, feedback, failure modes, depth, tunables, GDScript stub.
+
+2. **Implement**:
+   - Add the nodes via `summer_add_node` / `summer_set_prop`. Use `summer:scene-composition` if the structure is non-trivial.
+   - For movement-class mechanics, prefer the matching pre-built skill: `summer:fps-controller`, `summer:peer-to-peer-multiplayer`, etc.
+   - Write GDScript with `summer:gdscript-patterns` open.
+
+3. **Verify**:
+   ```
+   Skill: summer:play
+   ```
+   Then `summer_get_diagnostics`. Clean? Move on. Errors? `summer:debug` until clean. **Do not stack mechanic 2 on top of a broken mechanic 1.**
+
+4. **Checkpoint**:
+
+   > "Mechanic 1 of N working: <name>. <One-line proof: 'WASD moves the player, jump works'>. Building mechanic 2 of N: <name>. OK?"
+
+Repeat until every mechanic in the plan is implemented OR the user calls cut.
+
+## Phase 5: Layer (look + sound)
+
+**Goal**: the game stops looking like a programmer art prototype.
 
 ```
-summer_save_scene()
+Skill: summer:art-direction
 ```
 
----
-
-## Phase 4: Scripting
-
-**Write .gd files with the host agent's normal file-editing tools. Attach via MCP.**
-
-Workflow:
-1. Write the script file to disk
-2. Attach: `summer_set_prop(path="./Player", key="script", value="res://scripts/player.gd")`
-3. Check: `summer_get_script_errors(path="res://scripts/player.gd")`
-4. Wire signals: `summer_connect_signal(emitter="./Coin", signal="body_entered", receiver="./Coin", method="_on_body_entered")`
-
-### 3D Player Controller (FPS)
-
-Write to `res://scripts/player.gd`:
-
-```gdscript
-extends CharacterBody3D
-
-@export var speed: float = 5.0
-@export var jump_velocity: float = 4.5
-@export var mouse_sensitivity: float = 0.002
-
-var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
-
-func _ready() -> void:
-    Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-
-func _unhandled_input(event: InputEvent) -> void:
-    if event is InputEventMouseMotion:
-        rotate_y(-event.relative.x * mouse_sensitivity)
-        $Camera.rotate_x(-event.relative.y * mouse_sensitivity)
-        $Camera.rotation.x = clampf($Camera.rotation.x, -PI/2, PI/2)
-    if event.is_action_pressed("ui_cancel"):
-        Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-
-func _physics_process(delta: float) -> void:
-    if not is_on_floor():
-        velocity.y -= gravity * delta
-
-    if Input.is_action_just_pressed("jump") and is_on_floor():
-        velocity.y = jump_velocity
-
-    var input_dir := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
-    var direction := (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
-
-    if direction:
-        velocity.x = direction.x * speed
-        velocity.z = direction.z * speed
-    else:
-        velocity.x = move_toward(velocity.x, 0, speed)
-        velocity.z = move_toward(velocity.z, 0, speed)
-
-    move_and_slide()
-```
-
-### 2D Platformer Controller
-
-Write to `res://scripts/player.gd`:
-
-```gdscript
-extends CharacterBody2D
-
-@export var speed: float = 200.0
-@export var jump_velocity: float = -350.0
-
-var gravity: float = ProjectSettings.get_setting("physics/2d/default_gravity")
-
-func _physics_process(delta: float) -> void:
-    if not is_on_floor():
-        velocity.y += gravity * delta
-
-    if Input.is_action_just_pressed("jump") and is_on_floor():
-        velocity.y = jump_velocity
-
-    var direction := Input.get_axis("move_left", "move_right")
-    velocity.x = direction * speed if direction else move_toward(velocity.x, 0, speed)
-
-    move_and_slide()
-```
-
-### Collectible Pickup
-
-Write to `res://scripts/collectible.gd`:
-
-```gdscript
-extends Area3D
-
-signal collected
-
-func _ready() -> void:
-    body_entered.connect(_on_body_entered)
-
-func _on_body_entered(body: Node3D) -> void:
-    if body.is_in_group("player"):
-        collected.emit()
-        queue_free()
-```
-
-### Simple Enemy Patrol
-
-Write to `res://scripts/enemy_patrol.gd`:
-
-```gdscript
-extends CharacterBody3D
-
-@export var speed: float = 2.0
-@export var patrol_distance: float = 5.0
-
-var start_pos: Vector3
-var direction: float = 1.0
-var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
-
-func _ready() -> void:
-    start_pos = global_position
-
-func _physics_process(delta: float) -> void:
-    if not is_on_floor():
-        velocity.y -= gravity * delta
-
-    velocity.x = direction * speed
-    move_and_slide()
-
-    if global_position.distance_to(start_pos) > patrol_distance:
-        direction *= -1
-```
-
----
-
-## Phase 5: Test and Debug
+That writes `.summer/art-bible.md` if it doesn't exist, then guides the lighting / material / palette pass. Use `summer:3d-lighting` for the actual scene work.
 
 ```
-summer_clear_console()
-summer_play()
+Skill: summer:audio-direction
 ```
 
-After a few seconds:
-```
-summer_get_diagnostics()
-```
+Writes `.summer/audio-bible.md` and sets up the audio bus structure. Wires SFX hooks into the mechanics from Phase 4.
 
-If errors:
-```
-summer_get_console(type="error")
-summer_get_script_errors(path="res://scripts/player.gd")
-```
+Use `summer:asset-strategy` to decide whether to generate assets, search the library, or use primitives. **Public asset library search is free** — encourage it before generation, which costs credits.
 
-Fix, then:
+**Checkpoint before continuing:**
+
+> "Art and audio direction set. Want me to add a polish pass (juice / VFX / camera shake / hit feedback)?"
+
+## Phase 6: Polish (skip if user wants to ship raw)
+
+**Goal**: the game *feels* good. Hit-flash, screen shake, audio ducking, weight.
+
 ```
-summer_stop()
-# apply fix
-summer_play()
+Skill: summer:vfx
 ```
 
-### Common errors
+Walks the canonical Godot 4.5 game-feel stack — hit-flash + trauma camera shake + audio ducking — wired so a single hit fires all three.
 
-| Error | Cause | Fix |
-|-------|-------|-----|
-| "Node not found" | Bad $NodePath | Check path with `summer_get_scene_tree()` |
-| "Invalid call" on move_and_slide | Wrong base class | Script must extend CharacterBody3D/2D |
-| Falling through floor | No collision | Add StaticBody3D + CollisionShape3D to ground |
-| "No main scene" | Not configured | `summer_project_setting(key="application/run/main_scene", ...)` |
-| Mouse not captured | Missing in _ready | Add `Input.mouse_mode = Input.MOUSE_MODE_CAPTURED` |
+```
+Skill: summer:tune-performance
+```
 
----
+Only if `summer_get_diagnostics` flags rendering or physics hotspots. Don't optimize prematurely.
 
-## Phase 6: Iterate
+## Phase 7: Verify (final QA pass)
 
-After first playable, ask the user what to improve. Common next steps:
+**Goal**: the full game runs end-to-end without errors, and the win condition can actually be reached.
 
-- **More levels**: Create new .tscn, instantiate player, add to scene list
-- **Enemies**: New scene + patrol script + spawn in level
-- **UI/HUD**: Add CanvasLayer + Control nodes (see ui-basics skill)
-- **Sound**: Generate with `summer_generate_audio`, attach AudioStreamPlayer3D
-- **Lighting**: Set up WorldEnvironment + lights (see 3d-lighting skill)
-- **Game states**: Main menu > gameplay > game over flow via SceneTree.change_scene_to_file()
+1. `summer:play` from main scene.
+2. Walk every mechanic from the plan.
+3. Hit the win condition (or lose condition).
+4. `summer_get_diagnostics` clean.
+5. `summer:debug` until clean if not.
 
----
+**Don't skip this even if every mechanic worked individually.** Integration bugs hide between mechanics.
+
+## Phase 8: Ship
+
+```
+Skill: summer:export-and-ship
+```
+
+Pre-flight checklist (icon, store banners, build config) before producing release builds for the targets in the brief.
+
+If the brief said "jam" or "prototype", skip this phase. If the brief said "game I want to release", run it.
 
 ## Anti-Patterns
 
-- Never write .tscn files with host agent file tools -- always use Summer MCP scene tools
-- Never guess node paths -- call `summer_get_scene_tree()` first
-- Never edit scenes while game is running -- call `summer_stop()` first
-- Never skip `summer_save_scene()` -- unsaved changes are editor-only
-- Script .gd files must exist on disk BEFORE attaching via `summer_set_prop`
-- `summer_create_scene` requires `allow_temporary_scene_mutation=true`
-- Node paths use `./` prefix. File paths use `res://` prefix. Never mix them.
+| Don't | Why |
+|---|---|
+| Skip the brainstorm because the user said "FPS" | Even with the genre named, you need the scope cut list. Otherwise mechanic 4 quietly sneaks in and the game never ships. |
+| Let mechanic 2 start before mechanic 1 is verified clean | Compounding bugs. You'll spend the rest of the session debugging which mechanic broke what. |
+| Stack art direction on top of unfinished mechanics | Art changes are reversible only if the underlying scene structure is stable. Get mechanics done first. |
+| Treat "polish" as required | If the brief says "jam in 2 days", polish is a cut item. Respect the brief. |
+| Run all phases without confirming | The user owns scope. Stop at every checkpoint. |
+| Build a fully featured menu before there's a playable mechanic | Menu work is endless polish; player-loop work is the actual game. Mechanics first. |
+| Fall back to "let me try a few things" mid-pipeline | If you don't know what to do, name the phase and ask the user, don't improvise around the structure. |
 
----
+## What this skill produces (artifacts on disk)
 
-## Tool Quick Reference
+By the end of a successful run, the user has:
 
-| Category | Tool | Purpose |
-|----------|------|---------|
-| Setup | `summer_get_agent_playbook` | Safe workflow guide |
-| Setup | `summer_get_project_context` | Project name, paths, status |
-| Setup | `summer_project_setting` | Set project.godot values |
-| Scene | `summer_create_scene` | New scene file |
-| Scene | `summer_open_scene` | Switch to scene |
-| Scene | `summer_get_scene_tree` | Read scene structure |
-| Scene | `summer_save_scene` | Save to disk |
-| Nodes | `summer_add_node` | Add node |
-| Nodes | `summer_set_prop` | Set property |
-| Nodes | `summer_set_resource_property` | Set sub-resource prop |
-| Nodes | `summer_remove_node` | Delete node |
-| Nodes | `summer_instantiate_scene` | Place .tscn/.glb |
-| Nodes | `summer_batch` | Multi-op, one undo |
-| Nodes | `summer_connect_signal` | Wire signals |
-| Nodes | `summer_inspect_node` | Read node details |
-| Input | `summer_input_map_bind` | Bind keys to actions |
-| Assets | `summer_search_assets` | Search 25k+ library |
-| Assets | `summer_import_asset` | Search + import + place |
-| Assets | `summer_import_from_url` | Import from URL |
-| Generate | `summer_generate_image` | AI image gen |
-| Generate | `summer_generate_audio` | AI audio/SFX/music |
-| Generate | `summer_generate_3d` | AI 3D model gen |
-| Generate | `summer_generate_video` | AI video gen |
-| Generate | `summer_check_job` | Poll async jobs |
-| Debug | `summer_play` | Run game |
-| Debug | `summer_stop` | Stop game |
-| Debug | `summer_get_diagnostics` | Error overview |
-| Debug | `summer_get_console` | Read output |
-| Debug | `summer_get_script_errors` | Check .gd compile |
-| Debug | `summer_clear_console` | Clear output |
+- `project.godot` — Summer Engine project
+- `main.tscn` — playable main scene
+- `.summer/GameSoul.md` — the brief
+- `.summer/build-plan.md` — the checklist
+- `.summer/art-bible.md` — visual direction
+- `.summer/audio-bible.md` — sonic direction
+- One `.gd` file per mechanic
+- `summer_get_diagnostics` returns clean
+- `summer_play` runs end-to-end and the win condition is reachable
 
----
+That's a real game. Not a half-finished prototype.
 
-## Collaborative protocol
+## Closing line
 
-This skill orchestrates a full game build — many writes across scenes, scripts, and project settings. Always ask before each phase: "May I bootstrap the project (scenes, project.godot, folders)?", "May I generate the assets (image + 3D) for X, Y, Z?", "May I scaffold the player scene + attach `player.gd`?". Group related writes into one ask per phase, never bulk-write across phases. See `../../_shared/collaborative-protocol.md`.
+When all phases are done:
 
-## Fallback
+> "<Game name> is in. <N> mechanics, <playable from main scene to win condition>. <Brief summary of the build>. Want me to package a build (`summer:export-and-ship`) or iterate?"
 
-No fallback for this — Summer MCP required. The whole point of `make-game` is the orchestration layer over `summer_*` tools. If MCP isn't connected, fall back to running the individual sub-skills (`fps-controller`, `3d-lighting`, etc.) which each document their own MCP-or-`.tscn` fallback paths.
+That's the handoff back to the user.

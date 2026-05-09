@@ -1,6 +1,6 @@
 ---
 name: scene-composition
-description: How to structure scenes, when to use sub-scenes, node hierarchy conventions, and reusable prefabs. Use when building scenes, organizing nodes, or creating instanced prefabs. Trigger on "scene", "sub-scene", "instance", "prefab", "node hierarchy".
+description: Use when building or organizing scenes in Godot — node hierarchy conventions, when to extract sub-scenes, reusable prefab patterns, instance vs add-node decisions. Trigger on "scene", "sub-scene", "instance", "prefab", "node hierarchy", "scene structure", "PackedScene".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: scene-and-project

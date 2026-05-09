@@ -12,10 +12,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const skillsDir = path.resolve(__dirname, '../../skills');
 
 const ORIENTATION = `<EXTREMELY_IMPORTANT>
-Summer Engine is loaded. 19 skills available under the summer plugin.
-Workflow skills (slash menu): brainstorm-game, debug, play, design-mechanic, design-level, art-direction, audio-direction, vfx, tune-performance, design-npc, setup-multiplayer, export-and-ship.
-Specialists auto-trigger: fps-controller, 3d-lighting, gdscript-patterns, scene-composition, ui-basics, asset-strategy, make-game.
-Use OpenCode's native skill tool to load any of them. The summer-engine MCP server (npx summer-engine mcp) provides scene mutation, asset import, render, play, and diagnostics tools.
+Summer is loaded. 24 skills available under the summer: namespace.
+
+Activate summer:using-summer FIRST in any Summer Engine session — it sets workflow priority and the red-flag list.
+
+Process skills (run before building): brainstorm-game, debug, play.
+Discipline skills (shape what you build): gdscript-patterns, scene-composition, art-direction, audio-direction, asset-strategy.
+Build skills (produce artifacts): fps-controller, design-mechanic, design-level, setup-multiplayer, host-authoritative-state, peer-to-peer-multiplayer, design-npc, 3d-lighting, ui-basics, vfx, tune-performance, export-and-ship, make-game.
+
+Always check for a relevant skill before responding. The summer-engine MCP server (npx summer-engine mcp) provides scene mutation, asset import, render, play, and diagnostics tools — file ops, git, shell, and grep are NOT exposed (use OpenCode's native tools).
 </EXTREMELY_IMPORTANT>`;
 
 export const SummerPlugin = async ({ client, directory }) => {

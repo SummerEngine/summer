@@ -1,4 +1,5 @@
 import { getClient, resetClient } from "../server.js";
+import { recordMcpSession } from "../../lib/telemetry.js";
 
 type ToolResult = { content: { type: "text"; text: string }[]; isError?: boolean };
 
@@ -39,6 +40,10 @@ function buildActionHint(message: string): string | null {
 export async function withEngine<T>(
   fn: (client: Awaited<ReturnType<typeof getClient>>) => Promise<T>
 ): Promise<ToolResult> {
+  // Best-effort, fire-and-forget: count this MCP session as DAU for attribution.
+  // No await, no throw, no quota gating.
+  recordMcpSession();
+
   try {
     const client = await getClient();
     const result = await fn(client);

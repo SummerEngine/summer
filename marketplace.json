@@ -7,8 +7,8 @@
     {
       "name": "summer",
       "source": "./",
-      "version": "1.4.0",
-      "description": "AI game-dev studio: 19 skills under summer: namespace, MCP bridge, session-start + pre-commit hooks.",
+      "version": "2.0.0",
+      "description": "Superpowers for AI game dev. 24 auto-trigger skills under summer: namespace, MCP bridge to the local Summer Engine, session-start + pre-commit hooks.",
       "author": { "name": "Summer Engine", "email": "founders@summerengine.com" },
       "category": "game-development",
       "tags": ["game-dev", "godot", "ai-game-engine"],

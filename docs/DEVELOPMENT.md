@@ -1,17 +1,24 @@
-# Summer Engine CLI — Development Guide
+# Summer — Development Guide
 
-SUMMER ENGINE MCP & CLI IS OPENSOURCE MIT. Think of that when making changes. And when you make commits, don't attribute cursor or claude.
+This repo (npm: `summer-engine`, GitHub: [SummerEngine/summer](https://github.com/SummerEngine/summer)) is **MIT, open source**. Treat all commits and code comments as public — they ship to the public repo.
 
-This is the comprehensive guide for working on the Summer Engine CLI/MCP package. If you're an AI agent or developer with zero context, read this first.
+When committing, don't attribute Cursor, Claude, or any AI tool. Don't reference internal pricing, revenue, or private endpoints. Don't commit secrets — auth tokens are read from `~/.summer/` at runtime, never hard-coded.
+
+If you're an AI agent or developer with zero context, read this first.
 
 ---
 
 ## What This Is
 
-The Summer Engine CLI is a **completely standalone Node.js application** that serves two purposes:
+**Summer Engine** is the AI game engine — built on the Godot team's work, customized so AI agents and humans can collaborate on games. It's a proprietary binary you download via `summer install` or from [summerengine.com/download](https://summerengine.com/download).
+
+**Summer** (this repo) is the **open-source agent layer** for it. Three things in one Node.js package:
 
 1. **CLI tool** — lets users install, manage, and launch Summer Engine from their terminal
-2. **MCP server** — lets AI coding tools (Cursor, Claude Code, Windsurf) do things with the engine that they can't do on their own (scene manipulation, play/stop, diagnostics)
+2. **MCP server** — gives AI coding agents 37 tools the host can't do on its own (scene manipulation, play/stop, diagnostics, asset import/generation)
+3. **Skills bundle** — 22 SKILL.md files that auto-trigger when the agent sees the right natural-language signal
+
+Plus lifecycle hooks and per-agent plugin manifests that wire all of the above into Claude Code, Cursor, Codex, Gemini, OpenCode, Factory Droid, Copilot CLI, and Windsurf.
 
 It gets published to npm as `summer-engine`. Users run it with `npx summer-engine <command>`.
 
@@ -20,7 +27,7 @@ It gets published to npm as `summer-engine`. Users run it with `npx summer-engin
 | Our package | Name | Notes |
 |-------------|------|-------|
 | npm package | `summer-engine` | What users install. Never recommend `summer-cli`. |
-| GitHub repo | `summer-engine-cli` | Public repo at github.com/SummerEngine/summer-engine-cli |
+| GitHub repo | `summer` | Public repo at github.com/SummerEngine/summer |
 | Internal folder | `tools/summer-cli/` | Path in engine repo only; not the package name |
 
 **Warning:** The npm package `summer-cli` is an unrelated project (inactive since ~2020). We do not own it. Never document or recommend installing `summer-cli`. Always use `summer-engine`.
@@ -29,7 +36,7 @@ It gets published to npm as `summer-engine`. Users run it with `npx summer-engin
 
 ## Open Source
 
-**This code is public.** The CLI is open source at [github.com/SummerEngine/summer-engine-cli](https://github.com/SummerEngine/summer-engine-cli) (MIT license). The engine repo is private; the CLI repo is a clean copy of `tools/summer-cli/` with no engine code or history.
+**This code is public.** The CLI is open source at [github.com/SummerEngine/summer](https://github.com/SummerEngine/summer) (MIT license). The engine repo is private; the CLI repo is a clean copy of `tools/summer-cli/` with no engine code or history.
 
 ### What this means for development
 
@@ -44,7 +51,7 @@ Development happens here in the engine monorepo (`tools/summer-cli/`). The publi
 
 ```
 Engine repo (private)                Public repo (open source)
-tools/summer-cli/        --sync-->   SummerEngine/summer-engine-cli
+tools/summer-cli/        --sync-->   SummerEngine/summer
   src/, docs/, package.json, etc.      Same files, clean history
   docs/MCP_*_STRATEGY.md              NOT synced (internal)
   banner-preview.html                  NOT synced (dev artifact)
@@ -248,7 +255,7 @@ rsync -av \
   ./ "$TMPDIR/"
 cd "$TMPDIR"
 git init
-git remote add origin git@github.com:SummerEngine/summer-engine-cli.git
+git remote add origin git@github.com:SummerEngine/summer.git
 git fetch origin main
 git checkout -b main origin/main
 git add -A
@@ -274,7 +281,7 @@ rm -rf "$TMPDIR"
 ### Reserved npm Names
 
 These are registered under the `summer-engine` npm account as placeholders:
-- Unscoped: `summer-mcp`, `summerengine`, `summer-engine-cli`, `summer-engine-mcp`, `summer-game-engine`
+- Unscoped: `summer-mcp`, `summerengine`, `summer`, `summer-engine-mcp`, `summer-game-engine`
 - `@summerengine/`: `cli`, `mcp`, `sdk`, `tools`, `core`, `engine`
 - `@summer-engine/`: `cli`, `mcp`, `sdk`, `tools`, `core`
 

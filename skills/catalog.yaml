@@ -146,6 +146,20 @@ skills:
     recommended: true
     user-invocable: true
     last-tested: 2026-05-05
+  - name: new-project
+    category: scene-and-project
+    status: HAVE
+    public: true
+    recommended: true
+    user-invocable: true
+    last-tested: 2026-05-09
+  - name: browse-templates
+    category: scene-and-project
+    status: HAVE
+    public: true
+    recommended: true
+    user-invocable: true
+    last-tested: 2026-05-09
   - name: scene-composition
     category: scene-and-project
     status: HAVE
@@ -163,8 +177,9 @@ skills:
     category: scene-and-project
     status: HAVE
     public: true
-    recommended: false
-    last-tested: 2026-05-05
+    recommended: true
+    user-invocable: true
+    last-tested: 2026-05-09
   - name: godot-project-conventions
     category: scene-and-project
     status: NEXT

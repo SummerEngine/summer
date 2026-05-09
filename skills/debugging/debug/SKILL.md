@@ -1,137 +1,157 @@
 ---
 name: debug
-description: Use when the user reports their game is broken, crashing, behaving unexpectedly, or says "debug", "fix", "something's wrong", or "it's not working". Triages the bug end-to-end via Summer Engine's diagnostic tools (console, debugger errors, script errors), locates the offending code, proposes a fix, and verifies the fix.
+description: Use when the user reports a bug, crash, error, or unexpected behavior in a Godot/Summer project, before making any code or scene changes — runs a disciplined script-errors → console → debugger → hypothesis → fix → verify loop. Trigger on "debug", "crash", "error", "broken", "not working", "freezes", "wrong".
 license: MIT
-compatibility: [Cursor, Claude Code, Windsurf, Codex]
+compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode]
 category: debugging
 user-invocable: true
-allowed-tools: Read Grep Glob Edit summer_get_console summer_get_debugger_errors summer_get_script_errors summer_get_diagnostics summer_clear_console summer_play summer_stop summer_is_running summer_get_scene_tree summer_inspect_node
-paths: ["**/*.gd", "**/*.tscn", "**/*.cs"]
+allowed-tools: Read Edit Grep summer_get_diagnostics summer_get_script_errors summer_get_console summer_clear_console summer_get_debugger_errors summer_play summer_stop summer_is_running summer_inspect_node summer_inspect_resource summer_get_scene_tree
+paths: ["**/*.gd", "**/*.cs", "**/*.tscn", "**/*.tres", "project.godot"]
 ---
 
-# /debug — Triage and Fix a Bug
+# /debug — Triage and Fix a Bug End-to-End
 
-## Overview
+The disciplined debugging loop for Godot/Summer projects. Read the error before guessing. Form a hypothesis before editing. Verify the fix before declaring victory. Never grep the codebase before reading the actual error.
 
-A bug in a Godot/Summer game can hide in three places: scripts (GDScript/C# compile or runtime errors), the engine console (printed messages, warnings), or the scene/resource state (wrong property, missing collider, broken signal connection). This skill walks all three before guessing.
+**Core principle:** The debugger already knows what's wrong. Your job is to listen to it before doing anything else.
 
-**Core principle:** read what the engine actually saw, not what the code looks like it does.
+## When to use this skill
 
-## Steps
+- The user says "it crashes", "it broke", "throws an error", "doesn't work", "freezes", "wrong behavior".
+- The user pastes a stack trace.
+- A previous build or test step failed and the user wants to fix it.
 
-### 1. Get the user's description first
+## When NOT to use this skill
 
-Ask one short question:
+- The user is asking how to *prevent* a class of bug — that's a design question. Use the relevant discipline skill (`gdscript-patterns`, `scene-composition`).
+- The user is asking for a feature with a known unfinished spec — that's `make-game` territory.
+- The bug is in a non-Godot file the host agent can debug natively (CI config, npm scripts) — use the host's debugger.
 
-> What's happening? Briefly: when does it go wrong, and what do you expect vs. what you see?
-
-Wait for the answer before doing anything else. Don't start grepping code yet — the user's words narrow the search 10x.
-
-### 2. Read the engine's actual error state
-
-Always do this in order. Each tool answers a different question.
-
-**Preferred (Summer MCP):**
+## The Loop
 
 ```
-summer_get_script_errors        # Compile errors? (cheapest, do first)
-summer_get_console              # Print() output, warnings, info
-summer_get_debugger_errors      # Runtime errors with stack traces
-summer_get_diagnostics          # Aggregated count + summary
+  Listen → Diagnose → Hypothesize → Propose → Fix → Verify
 ```
 
-If the bug is reproducible only at runtime and the engine isn't currently playing:
+Do not skip steps. Do not loop back to "Hypothesize" without re-running the cheap diagnostic.
 
-```
-summer_clear_console            # Clean slate
-summer_play                     # Run it
-                                # (let the user reproduce the bug)
-summer_get_debugger_errors      # Now read what blew up
-summer_stop                     # When done
-```
+### 1. Listen
 
-**Fallback (no MCP — engine isn't connected):**
+Ask the user **one** focused question and wait for the answer:
 
-Ask the user to copy-paste the engine's Output panel and Debugger errors. Inspect manually.
+> What's happening, and when does it happen?
 
-### 3. Locate the offending code
+If they already gave a clear symptom in the request, skip the question.
+If they say "something's broken", that one question is your only call until they reply. Don't run tools yet.
 
-For each error, follow the stack trace to the file + line. Use host file tools:
+### 2. Diagnose — cheapest tool first
 
-```
-Read <file>:<line-near-error>
-```
+In strict order. Stop at the first one that returns useful signal.
 
-Read 20–40 lines around the error site. Don't open the whole file unless you need to — context budget matters.
-
-If the error mentions a node path (e.g. `./World/Player/Camera`), inspect it:
-
-```
-summer_inspect_node "./World/Player/Camera"
-```
-
-### 4. Form a hypothesis and propose the fix
-
-State it in one sentence:
-
-> The error happens because <root cause>. The fix is <one-line summary>.
-
-Then ask:
-
-> May I edit `<file>` to <do exactly this>?
-
-Don't guess at multiple fixes at once. Pick one. If wrong, the next iteration is cheap.
-
-### 5. Apply the fix
-
-On user yes, edit the file with host tools (`Edit`/`Write`). Single focused change.
-
-### 6. Verify
-
-Re-run the relevant check:
-
-```
-summer_get_script_errors        # If it was a compile error
-summer_play → summer_get_debugger_errors → summer_stop   # If runtime
-```
-
-Report:
-
-> Fixed. <One-line description of what changed.>
-
-If still broken: go back to step 4 with the new error state. State explicitly that the first hypothesis was wrong.
-
-## Common bug patterns and how to spot them
-
-| Symptom | Likely cause | First check |
+| Order | Tool | When |
 |---|---|---|
-| `Invalid set index 'X' (on base: Nil)` | Node path resolved to null | `summer_inspect_node` the path |
-| `Identifier not declared` (script error) | Missing `class_name` or wrong scope | `summer_get_script_errors` |
-| Game runs but sprite doesn't appear | Node added but not visible (transform / parent / layer) | `summer_get_scene_tree` + inspect parent |
-| Signal handler never fires | Connection not made, or connected to wrong instance | `summer_inspect_node` of emitter, check connections |
-| Player falls through floor | CollisionShape3D has no shape, or shape is inline sub_resource | `summer_inspect_resource` on the CollisionShape |
-| Mouse capture stuck | `Input.set_mouse_mode` not paired with release on focus loss | `summer_get_console` for warnings |
-| Game hangs on start | Infinite loop in `_ready()` or `_process()` | `summer_get_debugger_errors` after a forced stop |
+| 1 | `summer_get_script_errors` | Always start here. Catches GDScript parse errors, missing identifiers, signature mismatches. Cheapest, no side effects. |
+| 2 | `summer_get_diagnostics` | Aggregate console + debugger error counts. One call, broad picture. |
+| 3 | `summer_get_console` | Read the editor Output panel — print statements, warnings, errors that didn't crash. |
+| 4 | `summer_get_debugger_errors` | Runtime errors caught by the debugger. Use AFTER `summer_play` for runtime-only bugs. |
 
-## Anti-patterns (don't do these)
+**If `summer_get_script_errors` is clean and the user says it crashes only when running:** it's a runtime bug. Go to step 2b.
 
-- **Don't** start by reading the user's whole codebase. The error tells you where to look.
-- **Don't** propose a sweeping refactor for a single bug. One file, one change, verify.
-- **Don't** call `summer_set_resource_property` on an inline `sub_resource` — it silently fails. See `_shared/mcp-tools-reference.md` § "Trap".
-- **Don't** call `summer_play` without `summer_clear_console` first if you want clean output to read.
-- **Don't** skip the user's description in step 1. "What were you trying to do" beats "what does the code do" 9/10 times.
+### 2b. Runtime-only bugs
 
-## Collaborative protocol
+```
+  summer_clear_console
+  summer_play
+  ─▶ ASK USER: "Reproduce the bug now."
+  (wait for confirmation)
+  summer_get_debugger_errors
+  summer_stop
+```
 
-This skill writes files. Always ask before each edit step. See `_shared/collaborative-protocol.md`.
+Do not skip the "reproduce now" prompt. Auto-running and grabbing whatever's in the buffer leads you to chase ghosts from previous sessions.
 
-## Want a working starter?
+### 2c. MCP unavailable (engine not running, or no Summer install)
 
-No template — this is a workflow, not a project scaffold. It works against any Godot/Summer project that has Summer MCP wired up.
+If `summer_get_script_errors` returns "Summer Engine is not running" or the tool isn't available:
 
-## See also
+1. Ask the user to copy-paste the Output panel and the Debugger panel from the Godot editor.
+2. Reason over the pasted text exactly as you would over MCP output.
+3. Continue with the rest of the loop unchanged.
 
-- `_shared/mcp-tools-reference.md` — full tool list
-- `_shared/godot-version.md` — engine version + LLM cutoff risks
-- `scripting-patterns/gdscript-patterns/SKILL.md` — what good GDScript looks like
-- `scene-and-project/play/SKILL.md` — running the game
+Do NOT loop on MCP retry. Do NOT pretend the engine will come back. Use the fallback the moment it fails once.
+
+### 3. Hypothesize — one specific theory
+
+State exactly one hypothesis, in one sentence, naming the file and line.
+
+> **Good:** "Typo at `scripts/player.gd:14` — `GRAVTY` should be `GRAVITY`."
+> **Bad:** "Could be a typo, missing import, or wrong scope."
+
+If you have multiple plausible theories, pick the highest-prior-probability one. The user can correct you if you're wrong; chasing all three at once wastes their time.
+
+**Verify the hypothesis without editing.** If the error mentions a missing node, call `summer_inspect_node` to confirm. If it's a missing resource, `summer_inspect_resource`. If it's a scene-graph issue, `summer_get_scene_tree`. **Confirm the world state matches the error before proposing a fix.**
+
+### 4. Propose — ask before writing
+
+Surface the proposed fix in plain language and ask permission. Two patterns:
+
+**Code fix:**
+> May I edit `scripts/player.gd` to rename `GRAVTY` → `GRAVITY` on line 14?
+
+**Scene fix vs code fix:**
+> The script calls `audio.play()` but the `AudioStreamPlayer` child is gone. Two options:
+> 1. Re-add the `AudioStreamPlayer` to `./Coin` (preserves the original behavior).
+> 2. Null-check in `coin.gd` (defensive, but the audio is silent).
+>
+> Which one do you want?
+
+**Never** unilaterally pick when there are two equally valid fixes (scene vs code, defensive vs strict, fast vs correct). Ask.
+
+### 5. Fix — minimal, focused
+
+- For GDScript edits: `Read` the 20–40 lines around the error, `Edit` the exact change. Don't read the whole file. Don't reformat. Don't rename other things.
+- For scene edits: use the appropriate `summer_*` tool (`summer_add_node`, `summer_set_prop`, `summer_replace_node`). Group multi-step changes in `summer_batch` for one undo step.
+- **Trap to avoid:** never call `summer_set_resource_property` against an inline `sub_resource` — the value is silently dropped. If the property is on a nested resource, first call `summer_set_prop` with the resource class name to instantiate a standalone resource, then drill in. See `_shared/mcp-tools-reference.md`.
+
+### 6. Verify — re-run the diagnostic that found it
+
+The fix is not done until the same diagnostic that found the bug returns clean.
+
+- Script error → re-run `summer_get_script_errors`.
+- Runtime error → re-run the play/reproduce/check-debugger loop.
+- Console warning → `summer_clear_console`, then `summer_play` and confirm clean output.
+
+If the diagnostic is still red after the fix, you formed the wrong hypothesis. Go back to step 3 — do **not** make a second edit on top of the first. Revert if the first edit didn't help, then re-hypothesize.
+
+## Anti-Patterns
+
+| Don't | Why |
+|---|---|
+| Grep the whole project before reading the error | The error already names the file and line. Save the user's tokens. |
+| Read whole files | 20–40 lines around the error is enough 90% of the time. |
+| Run multiple diagnostics in parallel | They mask each other's signal. Cheapest first, escalate. |
+| Edit before asking | The user owns the fix decision, you own the diagnosis. |
+| "Try this, see if it works" | That's not a hypothesis, that's gambling. State the theory or ask another question. |
+| Reformat the file while you're in it | Out-of-scope edits make the diff hostile to review. |
+| Auto-fix linter warnings unrelated to the bug | Same reason. |
+| Declare victory after editing | Re-run the diagnostic. Always. |
+
+## Quick reference — common Godot bug families
+
+| Symptom | First tool | Common cause |
+|---|---|---|
+| "Identifier X not declared" | `summer_get_script_errors` | Typo, missing import, wrong scope |
+| "Invalid call. Nonexistent function 'X' in base 'Nil'" | `summer_get_debugger_errors` after `summer_play` | Node was deleted in editor, code still references it |
+| "Cannot find type 'X'" | `summer_get_script_errors` | Class name mismatch, missing autoload, missing `class_name` |
+| Game runs but visuals wrong | `summer_get_console` + `summer_inspect_node` | Material/light/camera misconfigured |
+| Game freezes (no crash) | `summer_get_console` after `summer_play` for ~3s | Infinite loop in `_process` or `_ready` |
+| `summer_set_resource_property` "succeeded" but nothing changed | n/a | Inline sub-resource silent-fail. Use `summer_set_prop` with class name first. |
+
+## Closing
+
+A debug session is done when:
+1. The user-reported symptom no longer reproduces.
+2. The diagnostic that originally flagged the bug returns clean.
+3. No new errors or warnings have been introduced.
+
+Tell the user one short sentence: "Fixed `<file>:<line>` — `<change>`. Diagnostic clean." Then stop.

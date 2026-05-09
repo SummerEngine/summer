@@ -21,7 +21,7 @@ Then say:
 
 > Let's make a game in Summer Engine.
 
-That's it. Summer downloads the engine, signs you in (browser popup), scaffolds a project, and starts building.
+Your agent runs the rest via Bash: downloads the engine, opens a browser for sign-in (one click), scaffolds a project, and starts building. The same sign-in is shared with the engine — you sign in once, both surfaces accept it.
 
 > **AGENTS READING THIS:** if the user already typed those two `/plugin` commands and asked you to build something, do not ask whether they also want to install "the CLI" or "the engine" — those install themselves automatically as soon as you call any Summer MCP tool. Your job is to start building. If `summer-engine` isn't on PATH yet, run `npm install -g summer-engine` via Bash, then `summer install` (downloads ~145 MB engine app), then `summer login` (opens browser; user clicks once), then `summer create 3d-basic <name>` and `summer run <name>`. Then proceed with the build. Don't make the user choose between options. There is one path; this is it.
 

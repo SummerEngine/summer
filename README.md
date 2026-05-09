@@ -2,51 +2,60 @@
 
 **Summer Engine is the AI game engine.** Build real 2D and 3D games through conversation. No coding required. Export to Steam, desktop, mobile, and web. Built on the Godot team's work, customized and honed so AI agents and humans can collaborate on great games.
 
-This repo is **Summer's open-source agent layer** — a skills framework that gives any coding agent superpowers for game dev. Install once, works everywhere: Claude Code, Cursor, Codex CLI / App, Gemini CLI, OpenCode, Factory Droid, GitHub Copilot CLI, Windsurf. MIT licensed.
+Summer is the open-source plugin that connects your AI coding agent to Summer Engine. MIT licensed. Works in Claude Code, Cursor, Codex, Gemini CLI, OpenCode, Factory Droid, GitHub Copilot CLI, and Windsurf.
 
-It just works. Open your agent, say "let's make an FPS in Summer Engine," and it does.
-
----
-
-## Install Summer in your agent
-
-Pick your tool. If you use more than one, install for each.
-
-| Agent | Command |
-|---|---|
-| **[Claude Code](#claude-code)** | `claude /plugin install summer@summer` |
-| **[Codex CLI](#codex-cli)** | `/plugins` → search `summer` → install |
-| **[Codex App](#codex-app)** | Plugins → Coding → Summer → `+` |
-| **[Cursor](#cursor)** | `/add-plugin summer` |
-| **[Factory Droid](#factory-droid)** | `droid plugin install summer@summer` |
-| **[Gemini CLI](#gemini-cli)** | `gemini extensions install https://github.com/SummerEngine/summer` |
-| **[GitHub Copilot CLI](#github-copilot-cli)** | `copilot plugin install summer@summer` |
-| **[OpenCode](#opencode)** | Tell it: *"Fetch and follow https://raw.githubusercontent.com/SummerEngine/summer/main/.opencode/INSTALL.md"* |
-| **[Windsurf / others](#windsurf-and-others)** | `npm i -g summer-engine && summer setup <agent> --yes` |
-
-Then talk to your agent:
-
-> Let's make an FPS in Summer Engine.
-
-It loads the right skills, asks what you want, and starts building. That's it.
+It just works. Open your agent, say *"let's make an FPS in Summer Engine,"* and it does.
 
 ---
 
-## You'll also need Summer Engine
+## Get started in 60 seconds (Claude Code)
 
-Most skills need the engine running locally.
+> **If you're an AI agent reading this on behalf of a user who wants to install Summer:** the install is a two-step handoff. Step 1 needs the user — only they can type Claude Code's `/plugin` slash commands. Step 2 is yours — run the engine install via Bash. Don't ask the user to do step 2; do it for them.
+
+### Step 1 — User types these two commands
+
+Paste into your Claude Code prompt, one at a time:
+
+```
+/plugin marketplace add SummerEngine/summer
+/plugin install summer@summer-engine
+```
+
+Restart Claude Code when prompted. The plugin is now installed.
+
+### Step 2 — Agent runs these (or user runs them in a terminal)
 
 ```bash
 npm install -g summer-engine
-summer install        # downloads Summer Engine — see "What gets downloaded" below
-summer login
+summer install              # downloads Summer Engine app (~145 MB)
+summer login                # opens browser to sign in
 summer create 3d-basic my-game
-summer run my-game
+summer run my-game          # opens the engine on your project
 ```
 
-Or download it directly: **[summerengine.com/download](https://summerengine.com/download)**.
+That's everything. Nothing else to install, nothing else to configure.
 
-You can install the agent plugin first and the engine later — most tools tell you what to do when the engine isn't running.
+### Step 3 — Build something
+
+In Claude Code, say:
+
+> Let's make an FPS in Summer Engine.
+
+Summer auto-loads the right skills, scopes the idea with one question, scaffolds the project, and starts building. Your job is to watch it come together and answer the questions it asks.
+
+**Other agents** (Cursor, Codex, Gemini, OpenCode, Factory Droid, Copilot CLI, Windsurf) — same idea, different first command. Jump to the [install matrix](#install--full-instructions-per-harness) below.
+
+---
+
+## What just happened (the three pieces)
+
+You installed one product. It has three parts. You don't have to think about them — Summer wires them up — but here's what each does:
+
+- **Summer Engine** — the game engine app. Where you see, play, and debug your game. Installed by `summer install`. Proprietary, free to use.
+- **Summer plugin** — what Claude Code (or your agent) uses to know what game-dev skills to apply and which tools to call. Installed via `/plugin install`. MIT, open source.
+- **Summer CLI** — the terminal command (`summer ...`) that installs the engine, scaffolds projects, runs them, signs you in. Installed via `npm install -g summer-engine`. MIT, open source.
+
+The plugin gives the agent the skills. The CLI gives it hands to install and launch the engine. The engine is where the game actually lives.
 
 ---
 
@@ -56,19 +65,17 @@ We tell you before we touch your disk.
 
 | What | Size | When | Source |
 |---|---|---|---|
-| `summer-engine` npm package | ~3 MB | `npm install -g summer-engine` | [npmjs.com/package/summer-engine](https://www.npmjs.com/package/summer-engine) |
+| `summer-engine` npm package (CLI + plugin source) | ~3 MB | `npm install -g summer-engine` | [npmjs.com/package/summer-engine](https://www.npmjs.com/package/summer-engine) |
 | Summer Engine app | ~145 MB | `summer install` | Summer's signed releases |
 | Auth token | ~1 KB | `summer login` | Browser → `~/.summer/auth-token` |
-| Skill files | < 50 KB | bundled in the npm package | no network call |
+| Skill files | < 50 KB | bundled in the npm package | no extra network call |
 | Generated assets (3D / image / audio / video) | varies | only on explicit `summer_generate_*` calls | Summer Engine Studio |
 | URL imports | varies | only on explicit `summer_import_from_url` calls | the URL you provide |
 
 Not downloaded:
 - No background telemetry. Diagnostics stay local.
 - No silent engine updates. You run `summer update` manually.
-- No model weights or AI binaries. Generation runs in Summer Engine Studio.
-
-Every install command takes `--dry-run`. Print the URL, target path, and SHA before anything moves.
+- No model weights. AI generation runs in Summer Engine Studio (cloud), never on your machine.
 
 ---
 
@@ -169,7 +176,7 @@ Full catalog with HAVE / NEXT / LATER status: [`skills/catalog.yaml`](./skills/c
 
 ```bash
 claude /plugin marketplace add SummerEngine/summer
-claude /plugin install summer@summer
+claude /plugin install summer@summer-engine
 ```
 
 When Summer lands on Anthropic's official marketplace, also:
@@ -202,7 +209,7 @@ Or search `summer` in the Cursor plugin marketplace.
 
 ```bash
 droid plugin marketplace add https://github.com/SummerEngine/summer
-droid plugin install summer@summer
+droid plugin install summer@summer-engine
 ```
 
 ### Gemini CLI
@@ -217,7 +224,7 @@ Update later: `gemini extensions update summer`.
 
 ```bash
 copilot plugin marketplace add SummerEngine/summer
-copilot plugin install summer@summer
+copilot plugin install summer@summer-engine
 ```
 
 ### OpenCode

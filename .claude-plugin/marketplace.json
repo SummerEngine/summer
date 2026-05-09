@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
-  "name": "summer",
+  "name": "summer-engine",
   "description": "Summer Engine plugins for Claude Code",
   "owner": { "name": "Summer Engine", "email": "founders@summerengine.com" },
   "plugins": [

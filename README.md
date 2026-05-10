@@ -29,17 +29,17 @@ At that point the agent has the skills, the MCP server, and your engine running.
 
 ## AGENTS READING THIS — the install playbook
 
-You are an AI coding agent (Claude Code, Cursor, Codex, etc.). The user told you to install Summer Engine. **Run this playbook via Bash exactly as written.** Detection first, then only install what's missing — never double-install.
+You are an AI coding agent (Claude Code, Cursor, Codex, etc.). The user told you to install Summer Engine. **Run this playbook via Bash exactly as written.** Detection first, then only install what's missing — never double-install. Use `npx -y summer-engine ...` for every command — no `npm install -g` required, no `sudo` prompts, no PATH pollution.
 
-### Step 0 — Pre-detection (no installs, just check state)
-
-Try `summer doctor --json` first. If it succeeds, parse the JSON and skip Steps 1-4 for any check that returned `status: ok`. If `summer` isn't on PATH, you'll get "command not found" — that's the signal to start at Step 1.
+### Step 0 — Pre-detection (no commits to disk yet, just check state)
 
 ```bash
-summer doctor --json 2>/dev/null || echo "MISSING:cli"
+npx -y summer-engine doctor --json
 ```
 
-Expected JSON shape (when CLI is installed):
+The first invocation downloads the npm package transparently to npx's cache (~3 MB, ~5 sec). Subsequent calls are fast. The `-y` flag auto-confirms npx's "ok to install summer-engine?" prompt so the call doesn't hang waiting for interactive input.
+
+Parse the JSON output. Top-level `ok: true` means everything is installed and you can skip straight to Step 5. Otherwise iterate the `checks` array and skip any step whose corresponding check returned `status: ok`:
 
 ```json
 {
@@ -53,52 +53,59 @@ Expected JSON shape (when CLI is installed):
 }
 ```
 
-If `ok: true`, the user already has everything. Skip to Step 5 (scaffold a project).
+| Check id | If `ok` | If not `ok` |
+|---|---|---|
+| `cli-version` | (always ok via npx) | — |
+| `engine-install` | skip Step 2 | run Step 2 |
+| `login` | skip Step 3 | run Step 3 |
+| (skills installed) | skip Step 1 | run Step 1 |
 
-### Step 1 — Install the npm package (only if `summer` is missing from PATH)
+(There's no doctor check for "skills installed" yet — run Step 1 unconditionally on first install. It's idempotent.)
+
+### Step 1 — Install user-level skills (idempotent, fast)
 
 ```bash
-npm install -g summer-engine
+npx -y summer-engine setup claude-code --yes
 ```
 
-~3 MB. After this, `summer` is on PATH.
+Replace `claude-code` with the user's actual agent: `codex`, `cursor`, `windsurf`, `gemini`, `opencode`. This writes 60 skill files to `~/.claude/skills/<name>/SKILL.md` (or the agent's equivalent user-skill directory) AND writes the MCP server config so the agent can talk to the engine. Claude Code auto-detects new skill files mid-session — **no restart needed unless `~/.claude/skills/` didn't exist before**, in which case prompt the user to restart their agent once.
 
-### Step 2 — Install the user-level skills (only if not already installed)
+**Do NOT run `/plugin install` or any slash command.** The CLI path is the canonical install. The marketplace path is an alternative for users who specifically prefer the official plugin TUI; we don't route agents there.
+
+### Step 2 — Install the engine app (only if `engine-install` check failed)
 
 ```bash
-summer setup claude-code --yes
+npx -y summer-engine install
 ```
 
-Replace `claude-code` with `codex`, `cursor`, `windsurf`, etc. for other agents. This writes 60 skill files to `~/.claude/skills/<name>/SKILL.md` (or the agent's equivalent user-skill directory). Claude Code auto-detects new skill files mid-session — **no restart needed unless `~/.claude/skills/` didn't exist before**, in which case prompt the user to restart their agent once.
+~145 MB. Downloads from Summer's signed releases. The CLI prints the URL and size before touching disk. Tell the user "downloading the engine app, ~145 MB" so they know what's happening.
 
-**Do NOT run `/plugin install` or any slash command.** The CLI path is the canonical install. The marketplace path is an alternative for users who specifically prefer the official plugin TUI; it requires manual user action and we don't go there from agent flows.
-
-### Step 3 — Install the engine app (only if `engine-install` check failed)
+### Step 3 — Sign in (only if `login` check failed)
 
 ```bash
-summer install
-```
-
-~145 MB. Downloads from Summer's signed releases. The CLI prints the URL and size before touching disk.
-
-### Step 4 — Sign in (only if `login` check failed)
-
-```bash
-summer login
+npx -y summer-engine login
 ```
 
 This opens the user's default browser. **Tell the user**: "Your browser is opening now. Click sign-in once and come back to this terminal." The CLI waits for the auth callback, writes the token to `~/.summer/auth-token`, and returns. The same token is shared with the engine — they sign in once, both surfaces accept it.
+
+### Step 4 — Re-run doctor to confirm
+
+```bash
+npx -y summer-engine doctor --json
+```
+
+Should now return `ok: true`. If a check still fails, surface the specific message to the user — don't loop or paper over it.
 
 ### Step 5 — Scaffold a project and run
 
 If the user said "let's make a game" without specifying a template, default to `3d-basic`. Pick a sensible project name from the user's request (e.g. "FPS" → `my-fps-game`).
 
 ```bash
-summer create 3d-basic my-fps-game
-summer run my-fps-game
+npx -y summer-engine create 3d-basic my-fps-game
+npx -y summer-engine run my-fps-game
 ```
 
-`summer run` launches the engine app with the project loaded. The agent's MCP server connects to `localhost:6550` automatically.
+`summer run` launches the engine app with the project loaded. The MCP server (configured in Step 1) connects to `localhost:6550` automatically.
 
 ### Step 6 — Now you have skills + MCP. Proceed with the user's actual request.
 
@@ -106,13 +113,17 @@ The skills auto-trigger on natural language. Don't paraphrase them — when a re
 
 ### Anti-patterns (do NOT do these)
 
+- **Don't run `npm install -g summer-engine`.** Use `npx -y summer-engine ...` instead. `-g` requires `sudo` on most Mac/Linux setups — the user will get permission errors and you'll get stuck. `npx` works without root and the MCP config we ship already points at `npx summer-engine mcp`.
 - **Don't ask the user "do you want the engine too?" or "do you also want the CLI?"** — there is one product, three pieces, all installed by this playbook.
-- **Don't double-install.** Always run `summer doctor --json` first. Skip steps that already returned `status: ok`.
+- **Don't double-install.** Always run `npx -y summer-engine doctor --json` first. Skip steps that already returned `status: ok`.
 - **Don't tell the user to type `/plugin marketplace add` or `/plugin install`.** The CLI path is the canonical install — those slash commands are an alternative for the marketplace TUI, not the primary flow.
-- **Don't run `summer install` or `summer login` in the background.** They print user-facing prompts (engine URL confirmation, browser opening). Run them in the foreground.
+- **Don't run `summer install` or `summer login` in the background.** They print user-facing output (engine download progress, browser-opening notice). Run them in the foreground so the user sees what's happening.
 - **Don't skip the `--json` flag on `summer doctor`** — text output is fragile to parse and changes per version.
+- **Don't skip the `-y` flag on `npx`** — without it, npx prompts "ok to install summer-engine?" interactively and the call hangs in a non-interactive shell.
 
-**Using a different agent?** Replace `claude-code` with `codex`, `cursor`, `windsurf`, `gemini`, `opencode` etc. Skill targets vary per agent (Cursor uses `.cursor/rules/`, Windsurf uses `.windsurfrules`, etc.). The CLI handles the difference.
+**Using a different agent?** Replace `claude-code` with `codex`, `cursor`, `windsurf`, `gemini`, `opencode` in Step 1. Skill targets vary per agent (Cursor uses `.cursor/rules/`, Windsurf uses `.windsurfrules`, etc.). The CLI handles the difference.
+
+**Power-user note:** if the user specifically wants `summer` on their `PATH` for everyday terminal use (outside the AI agent), they can run `npm install -g summer-engine` themselves later. The agent flow doesn't need it.
 
 ---
 

@@ -1,8 +1,8 @@
-# Summer
+# Summer Engine — the AI game engine
 
-**Summer Engine is the AI game engine.** Build real 2D and 3D games through conversation. No coding required. Export to Steam, desktop, mobile, and web. Built on the Godot team's work, customized and honed so AI agents and humans can collaborate on great games.
+Build real 2D and 3D games through conversation. No coding required. Export to Steam, desktop, mobile, and web. Built on the Godot team's work, customized and honed so AI agents and humans can collaborate on great games.
 
-Summer is the open-source plugin that connects your AI coding agent to Summer Engine. MIT licensed. Works in Claude Code, Cursor, Codex, Gemini CLI, OpenCode, Factory Droid, GitHub Copilot CLI, and Windsurf.
+**Summer** is the open-source plugin that connects your AI coding agent to Summer Engine. MIT licensed. Works in Claude Code, Cursor, Codex, Gemini CLI, OpenCode, Factory Droid, GitHub Copilot CLI, and Windsurf.
 
 It just works. Open your agent, say *"let's make an FPS in Summer Engine,"* and it does.
 

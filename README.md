@@ -8,24 +8,124 @@ It just works. Open your agent, say *"let's make an FPS in Summer Engine,"* and 
 
 ---
 
-## Get started — Claude Code
+## Get started — one prompt
 
-Paste these two into your Claude Code prompt, one at a time, then restart Claude Code:
+Open Claude Code (or Cursor / Codex / Windsurf / etc.) and paste:
+
+> Install Summer Engine and let's make a game.
+
+That's it. The agent reads this README, detects what's already on your machine, and runs only what's missing via Bash. **No `/plugin` slash commands. No manual installs. One paste.**
+
+The first run will:
+1. Install the `summer-engine` npm package (~3 MB) if it's not on `PATH`.
+2. Drop 60 skills into `~/.claude/skills/` (or your agent's user-skill directory) so the agent loads them next session.
+3. Download the Summer Engine app (~145 MB) if it's not installed.
+4. Open your browser for one-click sign-in.
+5. Scaffold a starter project and open the engine.
+
+At that point the agent has the skills, the MCP server, and your engine running. Ask it to build something.
+
+---
+
+## AGENTS READING THIS — the install playbook
+
+You are an AI coding agent (Claude Code, Cursor, Codex, etc.). The user told you to install Summer Engine. **Run this playbook via Bash exactly as written.** Detection first, then only install what's missing — never double-install.
+
+### Step 0 — Pre-detection (no installs, just check state)
+
+Try `summer doctor --json` first. If it succeeds, parse the JSON and skip Steps 1-4 for any check that returned `status: ok`. If `summer` isn't on PATH, you'll get "command not found" — that's the signal to start at Step 1.
+
+```bash
+summer doctor --json 2>/dev/null || echo "MISSING:cli"
+```
+
+Expected JSON shape (when CLI is installed):
+
+```json
+{
+  "ok": true | false,
+  "checks": [
+    { "id": "cli-version",    "status": "ok" | "warning" | "error", ... },
+    { "id": "login",          "status": "ok" | "warning" | "error", ... },
+    { "id": "engine-install", "status": "ok" | "warning" | "error", ... },
+    { "id": "mcp-server",     "status": "ok" | "warning" | "error", ... }
+  ]
+}
+```
+
+If `ok: true`, the user already has everything. Skip to Step 5 (scaffold a project).
+
+### Step 1 — Install the npm package (only if `summer` is missing from PATH)
+
+```bash
+npm install -g summer-engine
+```
+
+~3 MB. After this, `summer` is on PATH.
+
+### Step 2 — Install the user-level skills (only if not already installed)
+
+```bash
+summer setup claude-code --yes
+```
+
+Replace `claude-code` with `codex`, `cursor`, `windsurf`, etc. for other agents. This writes 60 skill files to `~/.claude/skills/<name>/SKILL.md` (or the agent's equivalent user-skill directory). Claude Code auto-detects new skill files mid-session — **no restart needed unless `~/.claude/skills/` didn't exist before**, in which case prompt the user to restart their agent once.
+
+**Do NOT run `/plugin install` or any slash command.** The CLI path is the canonical install. The marketplace path is an alternative for users who specifically prefer the official plugin TUI; it requires manual user action and we don't go there from agent flows.
+
+### Step 3 — Install the engine app (only if `engine-install` check failed)
+
+```bash
+summer install
+```
+
+~145 MB. Downloads from Summer's signed releases. The CLI prints the URL and size before touching disk.
+
+### Step 4 — Sign in (only if `login` check failed)
+
+```bash
+summer login
+```
+
+This opens the user's default browser. **Tell the user**: "Your browser is opening now. Click sign-in once and come back to this terminal." The CLI waits for the auth callback, writes the token to `~/.summer/auth-token`, and returns. The same token is shared with the engine — they sign in once, both surfaces accept it.
+
+### Step 5 — Scaffold a project and run
+
+If the user said "let's make a game" without specifying a template, default to `3d-basic`. Pick a sensible project name from the user's request (e.g. "FPS" → `my-fps-game`).
+
+```bash
+summer create 3d-basic my-fps-game
+summer run my-fps-game
+```
+
+`summer run` launches the engine app with the project loaded. The agent's MCP server connects to `localhost:6550` automatically.
+
+### Step 6 — Now you have skills + MCP. Proceed with the user's actual request.
+
+The skills auto-trigger on natural language. Don't paraphrase them — when a relevant skill applies (`brainstorm-game`, `fps-controller`, `debug`, etc.), invoke it via the `Skill` tool and follow it exactly.
+
+### Anti-patterns (do NOT do these)
+
+- **Don't ask the user "do you want the engine too?" or "do you also want the CLI?"** — there is one product, three pieces, all installed by this playbook.
+- **Don't double-install.** Always run `summer doctor --json` first. Skip steps that already returned `status: ok`.
+- **Don't tell the user to type `/plugin marketplace add` or `/plugin install`.** The CLI path is the canonical install — those slash commands are an alternative for the marketplace TUI, not the primary flow.
+- **Don't run `summer install` or `summer login` in the background.** They print user-facing prompts (engine URL confirmation, browser opening). Run them in the foreground.
+- **Don't skip the `--json` flag on `summer doctor`** — text output is fragile to parse and changes per version.
+
+**Using a different agent?** Replace `claude-code` with `codex`, `cursor`, `windsurf`, `gemini`, `opencode` etc. Skill targets vary per agent (Cursor uses `.cursor/rules/`, Windsurf uses `.windsurfrules`, etc.). The CLI handles the difference.
+
+---
+
+## Get started — alternative (manual install via plugin marketplace)
+
+If you specifically prefer the official Claude Code plugin marketplace UI, you can install via:
 
 ```
 /plugin marketplace add SummerEngine/summer
 /plugin install summer@summer-engine
 ```
 
-Then say:
-
-> Let's make a game in Summer Engine.
-
-Your agent runs the rest via Bash: downloads the engine, opens a browser for sign-in (one click), scaffolds a project, and starts building. The same sign-in is shared with the engine — you sign in once, both surfaces accept it.
-
-> **AGENTS READING THIS:** if the user already typed those two `/plugin` commands and asked you to build something, do not ask whether they also want to install "the CLI" or "the engine" — those install themselves automatically as soon as you call any Summer MCP tool. Your job is to start building. If `summer-engine` isn't on PATH yet, run `npm install -g summer-engine` via Bash, then `summer install` (downloads ~145 MB engine app), then `summer login` (opens browser; user clicks once), then `summer create 3d-basic <name>` and `summer run <name>`. Then proceed with the build. Don't make the user choose between options. There is one path; this is it.
-
-**Using a different agent?** Cursor, Codex, Gemini CLI, OpenCode, Factory Droid, Copilot CLI, Windsurf — see the [install matrix](#install--full-instructions-per-harness) below.
+This is functionally equivalent to `summer setup claude-code --yes` for the skill install. You'll still need `summer install` and `summer login` to get the engine running. The agent-driven path above is faster and idempotent; this exists for users who want everything in the plugin TUI.
 
 ---
 

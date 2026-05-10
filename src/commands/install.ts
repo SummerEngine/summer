@@ -67,7 +67,7 @@ async function installMac(releases: ReleaseInfo, customPath?: string): Promise<v
   }
 
   const dmgPath = join(tmpdir(), `Summer-v${info.version}.dmg`);
-  console.log(`Downloading Summer Engine v${info.version} (~145MB)...`);
+  console.log(`Downloading Summer Engine v${info.version} (~1 GB, includes bundled Git + runtime)...`);
 
   await downloadFile(info.dmg_url, dmgPath);
 
@@ -113,7 +113,7 @@ async function installWindows(releases: ReleaseInfo, customPath?: string): Promi
   console.log(`Latest version: ${info.version}`);
 
   const exePath = join(tmpdir(), `Summer-v${info.version}.exe`);
-  console.log(`Downloading Summer Engine v${info.version}...`);
+  console.log(`Downloading Summer Engine v${info.version} (~1 GB, includes bundled Git + runtime)...`);
 
   await downloadFile(info.url, exePath);
 

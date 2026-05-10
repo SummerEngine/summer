@@ -19,7 +19,7 @@ That's it. The agent reads this README, detects what's already on your machine, 
 The first run will:
 1. Install the `summer-engine` npm package (~3 MB) if it's not on `PATH`.
 2. Drop 60 skills into `~/.claude/skills/` (or your agent's user-skill directory) so the agent loads them next session.
-3. Download the Summer Engine app (~145 MB) if it's not installed.
+3. Download the Summer Engine app (~1 GB — bundles the engine binary plus Git and other runtime tools so users without them aren't blocked) if it's not installed.
 4. Open your browser for one-click sign-in.
 5. Scaffold a starter project and open the engine.
 
@@ -93,7 +93,7 @@ Replace `claude-code` with the user's actual agent: `codex`, `cursor`, or `winds
 npx -y summer-engine install
 ```
 
-~145 MB. Downloads from Summer's signed releases. The CLI prints the URL and size before touching disk. Tell the user "downloading the engine app, ~145 MB" so they know what's happening.
+~1 GB. Downloads from Summer's signed releases. The bundle includes the engine binary plus Git and a handful of other runtime tools so users who don't already have them aren't blocked. The CLI prints the URL and size before touching disk. Tell the user **"downloading the engine app, ~1 GB — this takes a couple minutes"** so they don't bail thinking it stalled.
 
 **Linux note:** the engine app currently supports macOS and Windows only. On Linux, `summer install` exits with a "Linux support coming soon" message. Surface the manual download URL to the user (https://summerengine.com/download) and stop — the rest of the playbook still works once they've installed manually.
 
@@ -206,7 +206,7 @@ We tell you before we touch your disk.
 | What | Size | When | Source |
 |---|---|---|---|
 | `summer-engine` npm package (CLI + plugin source) | ~3 MB | `npm install -g summer-engine` | [npmjs.com/package/summer-engine](https://www.npmjs.com/package/summer-engine) |
-| Summer Engine app | ~145 MB | `summer install` | Summer's signed releases |
+| Summer Engine app | ~1 GB (engine + bundled Git/runtime tools) | `summer install` | Summer's signed releases |
 | Auth token | ~1 KB | `summer login` | Browser → `~/.summer/auth-token` |
 | Skill files | < 50 KB | bundled in the npm package | no extra network call |
 | Generated assets (3D / image / audio / video) | varies | only on explicit `summer_generate_*` calls | Summer Engine Studio |

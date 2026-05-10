@@ -53,12 +53,14 @@ Parse the JSON output. Top-level `ok: true` means everything is installed and yo
 {
   "ok": true | false,
   "checks": [
-    { "id": "node-version",   "status": "ok" | "warning" | "fail", ... },
-    { "id": "cli-version",    "status": "ok" | "warning" | "fail", ... },
-    { "id": "login",          "status": "ok" | "warning" | "fail", ... },
-    { "id": "engine-install", "status": "ok" | "warning" | "fail", ... },
-    { "id": "local-api",      "status": "ok" | "warning" | "fail", ... },
-    { "id": "mcp-server",     "status": "ok" | "warning" | "fail", ... }
+    { "id": "node-version",        "status": "ok" | "warning" | "fail", ... },
+    { "id": "cli-version",         "status": "ok" | "warning" | "fail", ... },
+    { "id": "cli-version-current", "status": "ok" | "warning" | "fail", ... },
+    { "id": "skills-version-stale","status": "ok" | "warning" | "fail", ... },
+    { "id": "login",               "status": "ok" | "warning" | "fail", ... },
+    { "id": "engine-install",      "status": "ok" | "warning" | "fail", ... },
+    { "id": "local-api",           "status": "ok" | "warning" | "fail", ... },
+    { "id": "mcp-server",          "status": "ok" | "warning" | "fail", ... }
   ]
 }
 ```
@@ -67,21 +69,22 @@ Parse the JSON output. Top-level `ok: true` means everything is installed and yo
 |---|---|---|
 | `node-version` | continue | (Step −1 already covered this) |
 | `cli-version` | (always ok via npx) | — |
+| `cli-version-current` | continue | run `npx clear-npx-cache && npx -y summer-engine@latest doctor --json` (forces a fresh resolve) |
+| `skills-version-stale` | skip Step 1 | run Step 1 with `--force` |
 | `engine-install` | skip Step 2 | run Step 2 |
 | `login` | skip Step 3 | run Step 3 |
 | `local-api` | skip Step 5b wait-loop | run wait-loop after `summer run` |
 | `mcp-server` | skip Step 1 | run Step 1 |
-| (skills installed) | skip Step 1 | run Step 1 |
 
-(There's no doctor check for "skills installed" yet — run Step 1 unconditionally on first install. It's idempotent.)
+**On version drift:** if either `cli-version-current` or `skills-version-stale` returns `warning` or `fail`, you should refresh before proceeding. Tell the user once: "There's a newer Summer (X.Y.Z → A.B.C); updating before we start." Then run the recommended action from `details.recommendedAction` and re-run doctor. Don't ask the user to choose — they paste 'install' and want the latest.
 
 ### Step 1 — Install user-level skills (idempotent, fast)
 
 ```bash
-npx -y summer-engine@latest setup claude-code --yes
+npx -y summer-engine@latest setup claude-code --yes --force
 ```
 
-Replace `claude-code` with the user's actual agent: `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `gemini`, or `opencode`. (Factory Droid and Copilot CLI use different install paths — see [`docs/`](docs/) per harness.) This writes 60 skill files to `~/.claude/skills/<name>/SKILL.md` (or the agent's equivalent user-skill directory) AND writes the MCP server config so the agent can talk to the engine.
+Replace `claude-code` with the user's actual agent: `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `gemini`, or `opencode`. (Factory Droid and Copilot CLI use different install paths — see [`docs/`](docs/) per harness.) This writes 60 skill files to `~/.claude/skills/<name>/SKILL.md` (or the agent's equivalent user-skill directory) AND writes the MCP server config so the agent can talk to the engine. The `--force` flag wipes any stale skill content first, so re-runs always end up with the latest copy.
 
 **First-install detection:** if `~/.claude/skills/` didn't exist before this command, Claude Code wasn't watching it and won't auto-detect the new files this session. Tell the user **once**: "Skills installed — restart your agent so they load." On subsequent installs (directory already existed), skills auto-detect mid-session and no restart is needed. **You can detect first-install vs upgrade by checking if `~/.claude/skills/` existed before Step 1; record the result before running setup.**
 

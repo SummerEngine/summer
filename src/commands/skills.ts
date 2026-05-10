@@ -4,11 +4,13 @@ import {
   mkdirSync,
   readFileSync,
   cpSync,
+  rmSync,
   writeFileSync,
 } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { homedir, platform } from "os";
+import { createRequire } from "node:module";
 import {
   AGENT_CLIENTS,
   SKILL_REGISTRY,
@@ -16,6 +18,12 @@ import {
   type SkillRegistryEntry,
 } from "../lib/skills-registry.js";
 import { tildeify } from "../lib/format.js";
+import { writeSkillMarker } from "../lib/version-check.js";
+
+const requireFromHere = createRequire(import.meta.url);
+const { version: cliVersion } = requireFromHere("../../package.json") as {
+  version: string;
+};
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -42,6 +50,7 @@ interface InstallOptions {
   scope?: string;
   asClaudeSkill?: boolean;
   asCursorSkill?: boolean;
+  force?: boolean;
 }
 
 type InstallLocation =
@@ -320,7 +329,8 @@ function printAvailableSkillNames(): void {
 function installSkill(
   skill: SkillMeta,
   agent: AgentClient,
-  location: InstallLocation
+  location: InstallLocation,
+  options: { force: boolean }
 ): InstallResult {
   if (!skill.clients.includes(agent)) {
     die(`${skill.name} does not support ${agentLabel(agent)}.`);
@@ -328,7 +338,7 @@ function installSkill(
 
   switch (location.kind) {
     case "skill-dir":
-      return copySkillDirectory(skill, location.path);
+      return copySkillDirectory(skill, location.path, options);
     case "cursor-rule-dir":
       return writeCursorRule(skill, location.path);
     case "windsurf-rule-file":
@@ -342,12 +352,21 @@ function installSkill(
   }
 }
 
-function copySkillDirectory(skill: SkillMeta, targetDir: string): InstallResult {
+function copySkillDirectory(
+  skill: SkillMeta,
+  targetDir: string,
+  options: { force: boolean }
+): InstallResult {
   const src = getSkillPath(skill.name);
   if (!src) die(`Skill files missing: ${skill.name}`);
   mkdirSync(targetDir, { recursive: true });
   const dest = join(targetDir, skill.name);
-  cpSync(src, dest, { recursive: true });
+  if (options.force && existsSync(dest)) {
+    // Wipe stale skill content so re-installs overwrite cleanly even if files
+    // were renamed or removed upstream.
+    rmSync(dest, { recursive: true, force: true });
+  }
+  cpSync(src, dest, { recursive: true, force: true });
   return { action: "Installed", path: dest };
 }
 
@@ -514,6 +533,10 @@ skillsCommand
     "--as-cursor-skill",
     "Legacy alias for --agent cursor"
   )
+  .option(
+    "--force",
+    "Overwrite existing skill files (wipe stale skill dirs before copying)"
+  )
   .action((name: string | undefined, opts: InstallOptions) => {
     const agent = resolveAgent(opts);
     const scope = resolveScope(agent, opts);
@@ -526,12 +549,31 @@ skillsCommand
     }
 
     for (const skill of skills) {
-      const result = installSkill(skill, agent, location);
+      const result = installSkill(skill, agent, location, {
+        force: Boolean(opts.force),
+      });
       console.log(`  ${result.action} ${skill.name} -> ${result.path}`);
     }
 
+    writeMarkerForLocation(location);
     printInstallSummary(skills.length, agent, scope, location);
   });
+
+/**
+ * Drop a `.summer-version` marker into the install dir so doctor's
+ * `skills-version-stale` check can detect drift later. Windsurf writes a
+ * single rules file with no surrounding dir, so we skip it there.
+ */
+function writeMarkerForLocation(location: InstallLocation): void {
+  if (location.kind === "windsurf-rule-file") return;
+  try {
+    mkdirSync(location.path, { recursive: true });
+    writeSkillMarker(location.path, cliVersion);
+  } catch {
+    // Marker is purely informational. If the FS rejects it (e.g. permission
+    // surprises on locked-down corp machines) we don't want to fail the install.
+  }
+}
 
 skillsCommand
   .command("info <name>")

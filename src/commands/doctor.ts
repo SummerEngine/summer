@@ -6,6 +6,12 @@ import { Command } from "commander";
 import { getAuthToken, getUserInfo } from "../lib/auth.js";
 import { checkEngineHealth, getApiPort, getApiToken } from "../lib/engine.js";
 import { brandLine, c, pad, sym, tildeify } from "../lib/format.js";
+import {
+  buildCliVersionCheck,
+  buildSkillsVersionCheck,
+  defaultSkillMarkerCandidates,
+  fetchLatestRegistryVersion,
+} from "../lib/version-check.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../../package.json") as { version: string };
@@ -74,6 +80,9 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
     message: `v${version}`,
   });
 
+  checks.push(await checkCliVersionCurrent());
+  checks.push(checkSkillsVersion());
+
   checks.push(await checkLogin());
   checks.push(checkEngineInstall());
   checks.push(await checkLocalApi());
@@ -108,6 +117,35 @@ function checkNodeVersion(): DoctorCheck {
     label: "Node.js",
     status: "fail",
     message: `${process.version} (need 18+)`,
+  };
+}
+
+async function checkCliVersionCurrent(): Promise<DoctorCheck> {
+  const registry = await fetchLatestRegistryVersion();
+  const result = buildCliVersionCheck({
+    installedVersion: version,
+    registry,
+  });
+  return {
+    id: "cli-version-current",
+    label: "CLI up to date",
+    status: result.status,
+    message: result.message,
+    details: result.details,
+  };
+}
+
+function checkSkillsVersion(): DoctorCheck {
+  const result = buildSkillsVersionCheck({
+    installedCliVersion: version,
+    candidates: defaultSkillMarkerCandidates(),
+  });
+  return {
+    id: "skills-version-stale",
+    label: "Skills up to date",
+    status: result.status,
+    message: result.message,
+    details: result.details,
   };
 }
 

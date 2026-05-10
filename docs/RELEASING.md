@@ -114,6 +114,56 @@ You can't unpublish a version after 72 hours. If a bug ships:
 2. **Deprecate**: `npm deprecate summer-engine@<bad-version> "use <good-version>"`.
 3. **Within 72 hours, you can `npm unpublish summer-engine@<version>`** — but this breaks downstream installs that already pinned to it. Almost never the right choice.
 
+## Version drift detection
+
+As of v2.4.0, `summer doctor --json` reports two new checks that catch the
+"user is on a stale CLI / skills snapshot" failure mode without bothering the
+user:
+
+- **`cli-version-current`** — fetches `https://registry.npmjs.org/summer-engine/latest`
+  with a 3 s timeout and compares against the installed `package.json` version.
+  - `ok` if installed >= latest, or only differs on patch (so `2.4.0` vs
+    `2.4.5` is fine — patches are inconsequential and we don't want users to
+    see an "update me" message every time we ship a hotfix).
+  - `warning` if one minor behind (`2.4.0` vs `2.5.0`).
+  - `fail` if 2+ minors or any major-version drift behind (`2.4.0` vs `2.6.0`
+    or `3.0.0`).
+  - On network error / timeout / non-200 response: returns `ok` with
+    `details.reason: "registry-unreachable"`. We never false-alarm an offline
+    user.
+
+- **`skills-version-stale`** — reads a `.summer-version` marker dropped into
+  the user's skill install dir whenever `summer skills install` runs. Compares
+  the marker's recorded version to the running CLI's version, with the same
+  ok/warning/fail thresholds as above. If multiple agents have markers and
+  several are stale, the worst (most-stale) one wins so we surface the largest
+  drift to the user. If no marker exists at all, the check returns `ok` with
+  `reason: "no-marker"` so a brand-new install isn't flagged.
+
+The agent's playbook (Step 0 of the README) parses `details.recommendedAction`
+on warning/fail and re-runs the install with `--force` automatically. End
+result: the agent sees stale state, refreshes silently, the user only hears
+about it via a single one-liner ("There's a newer Summer (2.4.0 → 2.5.0);
+updating before we start.") instead of being asked to make a choice.
+
+### Manual force update
+
+If a user wants to bypass the playbook and update directly:
+
+```bash
+npx clear-npx-cache && npx -y summer-engine@latest setup <agent> --yes --force
+```
+
+`<agent>` is `claude-code`, `cursor`, `codex`, `windsurf`, `cline`, `roo-code`,
+`gemini`, or `opencode`.
+
+### Patch hotfixes don't trigger update prompts
+
+Bumping `2.4.0 → 2.4.1` for a bug fix is silent — `cli-version-current` returns
+`ok` with `reason: "patch-only"` so users don't see churn for inconsequential
+changes. Save `warning` and `fail` for minor and major bumps where the agent
+behaviour or the skill catalog actually moved.
+
 ## CI/CD (future)
 
 When ready to automate publishes from GitHub Actions:

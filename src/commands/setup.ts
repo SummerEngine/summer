@@ -35,6 +35,7 @@ interface SetupCommandOptions {
   print?: boolean;
   yes?: boolean;
   json?: boolean;
+  force?: boolean;
 }
 
 interface SkillSetupResult {
@@ -60,6 +61,10 @@ export const setupCommand = new Command("setup")
   .option("--print", "Print the MCP config snippet instead of writing files")
   .option("--yes", "Apply practical setup steps without prompting")
   .option("--json", "Print setup result as JSON")
+  .option(
+    "--force",
+    "Overwrite existing skill content (passes --force through to skills install)"
+  )
   .action(async (agentArg: string | undefined, opts: SetupCommandOptions) => {
     const agent = resolveAgent(agentArg, opts.agent);
     const scope = resolveScope(opts.scope);
@@ -74,6 +79,7 @@ export const setupCommand = new Command("setup")
     const skills = setupRecommendedSkills(agent, {
       dryRun: Boolean(opts.dryRun || opts.print),
       yes: Boolean(opts.yes),
+      force: Boolean(opts.force),
     });
 
     const doctor = await runDoctor({ quiet: true });
@@ -123,9 +129,9 @@ function resolveScope(scopeOpt: string | undefined): ConfigScope {
 
 function setupRecommendedSkills(
   agent: SupportedAgent,
-  options: { dryRun: boolean; yes: boolean }
+  options: { dryRun: boolean; yes: boolean; force: boolean }
 ): SkillSetupResult {
-  const invocation = skillInstallInvocation(agent);
+  const invocation = skillInstallInvocation(agent, { force: options.force });
 
   if (!invocation) {
     return {
@@ -167,7 +173,10 @@ function setupRecommendedSkills(
   };
 }
 
-function skillInstallInvocation(agent: SupportedAgent): SkillInstallInvocation | null {
+function skillInstallInvocation(
+  agent: SupportedAgent,
+  opts: { force: boolean } = { force: false }
+): SkillInstallInvocation | null {
   const cliPath = process.argv[1];
   if (!cliPath) return null;
 
@@ -175,6 +184,7 @@ function skillInstallInvocation(agent: SupportedAgent): SkillInstallInvocation |
   const prefix = cliPath.endsWith(".js") ? [cliPath] : [];
 
   const baseArgs = ["skills", "install", "--recommended", "--agent", agent];
+  if (opts.force) baseArgs.push("--force");
   return {
     command,
     args: [...prefix, ...baseArgs],

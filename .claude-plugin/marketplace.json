@@ -7,7 +7,7 @@
     {
       "name": "summer",
       "source": "./",
-      "version": "2.3.0",
+      "version": "2.4.0",
       "description": "Superpowers for AI game dev. 60 auto-trigger skills under summer: namespace, MCP bridge to the local Summer Engine, session-start + pre-commit hooks.",
       "author": { "name": "Summer Engine", "email": "founders@summerengine.com" },
       "category": "game-development",

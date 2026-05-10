@@ -42,7 +42,7 @@ If this fails or returns a version below 18, **stop**. Tell the user: "Summer ne
 ### Step 0 — Pre-detection (no commits to disk, just check state)
 
 ```bash
-npx -y summer-engine doctor --json
+npx -y summer-engine@latest doctor --json
 ```
 
 The first invocation downloads the npm package transparently to npx's cache (~3 MB, ~5 sec). Subsequent calls are fast. The `-y` flag auto-confirms npx's "ok to install summer-engine?" prompt so the call doesn't hang in a non-interactive shell.
@@ -78,7 +78,7 @@ Parse the JSON output. Top-level `ok: true` means everything is installed and yo
 ### Step 1 — Install user-level skills (idempotent, fast)
 
 ```bash
-npx -y summer-engine setup claude-code --yes
+npx -y summer-engine@latest setup claude-code --yes
 ```
 
 Replace `claude-code` with the user's actual agent: `codex`, `cursor`, or `windsurf`. (Gemini, OpenCode, Factory Droid, Copilot CLI use different install paths — see [`docs/`](docs/) per harness.) This writes 60 skill files to `~/.claude/skills/<name>/SKILL.md` (or the agent's equivalent user-skill directory) AND writes the MCP server config so the agent can talk to the engine.
@@ -90,7 +90,7 @@ Replace `claude-code` with the user's actual agent: `codex`, `cursor`, or `winds
 ### Step 2 — Install the engine app (only if `engine-install` check failed)
 
 ```bash
-npx -y summer-engine install
+npx -y summer-engine@latest install
 ```
 
 ~1 GB. Downloads from Summer's signed releases. The bundle includes the engine binary plus Git and a handful of other runtime tools so users who don't already have them aren't blocked. The CLI prints the URL and size before touching disk. Tell the user **"downloading the engine app, ~1 GB — this takes a couple minutes"** so they don't bail thinking it stalled.
@@ -100,15 +100,15 @@ npx -y summer-engine install
 ### Step 3 — Sign in (only if `login` check failed)
 
 ```bash
-npx -y summer-engine login
+npx -y summer-engine@latest login
 ```
 
-This opens the user's default browser. **Tell the user**: "Your browser is opening now. Click sign-in once and come back to this terminal." The CLI waits up to 120 seconds for the auth callback, writes the token to `~/.summer/auth-token`, and returns. **If the user takes longer than 120s, the command exits with an error — just re-run `npx -y summer-engine login` and tell them to be quicker.** Don't loop indefinitely. The same token is shared with the engine — they sign in once, both surfaces accept it.
+This opens the user's default browser. **Tell the user**: "Your browser is opening now. Click sign-in once and come back to this terminal." The CLI waits up to 120 seconds for the auth callback, writes the token to `~/.summer/auth-token`, and returns. **If the user takes longer than 120s, the command exits with an error — just re-run `npx -y summer-engine@latest login` and tell them to be quicker.** Don't loop indefinitely. The same token is shared with the engine — they sign in once, both surfaces accept it.
 
 ### Step 4 — Re-run doctor to confirm
 
 ```bash
-npx -y summer-engine doctor --json
+npx -y summer-engine@latest doctor --json
 ```
 
 Should now return `ok: true` for `cli-version`, `login`, and `engine-install`. (`local-api` will still be `warning` — that's expected; the engine isn't running yet.) If a setup check still fails, surface the specific message to the user — don't loop or paper over it.
@@ -124,8 +124,8 @@ cd ~/Projects   # or wherever the user keeps code
 If the user said "let's make a game" without specifying a template, default to `3d-basic`. Pick a sensible project name from the user's request (e.g. "FPS" → `my-fps-game`). Avoid spaces in the name.
 
 ```bash
-npx -y summer-engine create 3d-basic my-fps-game
-npx -y summer-engine run my-fps-game
+npx -y summer-engine@latest create 3d-basic my-fps-game
+npx -y summer-engine@latest run my-fps-game
 ```
 
 `summer run` launches the engine app with the project loaded and polls the engine's local API for up to 20 seconds before returning.
@@ -137,13 +137,13 @@ If the engine takes longer than 20s to boot (cold start, slow disk, etc.), `summ
 ```bash
 # Poll doctor until local-api flips to ok (max ~30s):
 for i in 1 2 3 4 5 6; do
-  result=$(npx -y summer-engine doctor --json)
+  result=$(npx -y summer-engine@latest doctor --json)
   echo "$result" | grep -q '"id":"local-api","status":"ok"' && break
   sleep 5
 done
 ```
 
-(Equivalent PowerShell: `for ($i=0; $i -lt 6; $i++) { $r = npx -y summer-engine doctor --json; if ($r -match '"id":"local-api","status":"ok"') { break }; Start-Sleep 5 }`)
+(Equivalent PowerShell: `for ($i=0; $i -lt 6; $i++) { $r = npx -y summer-engine@latest doctor --json; if ($r -match '"id":"local-api","status":"ok"') { break }; Start-Sleep 5 }`)
 
 Once `local-api` is `ok`, MCP tools are safe to call.
 
@@ -155,14 +155,15 @@ Only skip brainstorm if the user explicitly said "skip brainstorm" or "just buil
 
 ### Anti-patterns (do NOT do these)
 
-- **Don't run `npm install -g summer-engine`.** Use `npx -y summer-engine ...` instead. `-g` requires `sudo` on most Mac/Linux setups — the user will get permission errors and you'll get stuck. `npx` works without root and the MCP config we ship already points at `npx summer-engine mcp`.
+- **Don't run `npm install -g summer-engine`.** Use `npx -y summer-engine@latest ...` instead. `-g` requires `sudo` on most Mac/Linux setups — the user will get permission errors and you'll get stuck. `npx` works without root and the MCP config we ship already points at `npx summer-engine mcp`.
 - **Don't try to install Node.js for the user.** If `node --version` fails, point them at https://nodejs.org and stop.
 - **Don't ask the user "do you want the engine too?" or "do you also want the CLI?"** — there is one product, three pieces, all installed by this playbook.
-- **Don't double-install.** Always run `npx -y summer-engine doctor --json` first. Skip steps that already returned `status: ok`.
+- **Don't double-install.** Always run `npx -y summer-engine@latest doctor --json` first. Skip steps that already returned `status: ok`.
 - **Don't tell the user to type `/plugin marketplace add` or `/plugin install`.** The CLI path is the canonical install — those slash commands are an alternative for the marketplace TUI, not the primary flow.
 - **Don't run `summer install` or `summer login` in the background.** They print user-facing output (engine download progress, browser-opening notice). Run them in the foreground so the user sees what's happening.
 - **Don't skip the `--json` flag on `summer doctor`** — text output is fragile to parse and changes per version.
 - **Don't skip the `-y` flag on `npx`** — without it, npx prompts "ok to install summer-engine?" interactively and the call hangs in a non-interactive shell.
+- **Don't drop `@latest` from the npx commands.** `npx -y summer-engine` (no version pin) serves whatever's in npx's local cache, which can be a stale older version. The `@latest` tag forces npm to re-resolve from the registry. If a user reports "unknown command 'doctor'" or sees a much smaller skill list than expected, they got cache-served — tell them to run `npx clear-npx-cache` then retry with `@latest`.
 - **Don't call MCP tools (`summer_get_scene_tree`, etc.) until `local-api` is `ok`.** The engine takes a few seconds to boot after `summer run`. Use Step 5b's wait-loop.
 - **Don't `summer create` without `cd`'ing to a stable parent directory first.** It writes into CWD; agents that start in a temp dir will leave the project there.
 - **Don't loop `summer login` if it times out at 120s.** Re-run it once and tell the user to be quicker; loop forever and the user is stuck.

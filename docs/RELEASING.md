@@ -38,13 +38,32 @@ The dry-run prints the tarball contents. Verify:
 
 ## Publish
 
-**Use `--auth-type=web`. It bypasses the OTP requirement entirely.**
+**Use `--auth-type=web`. It bypasses the OTP requirement entirely.** Run from your interactive PowerShell / Terminal — NOT from the AI agent's shell. The CLI prints a URL and waits for you to press ENTER, which only works in an interactive TTY.
+
+Run these as **two separate lines** (don't chain with `;` or `&&` — copy each line by itself):
+
+```powershell
+cd "C:\Users\Mathias Heide\Development\SummerEngine\tools\summer-cli"
+```
 
 ```powershell
 npm publish --auth-type=web
 ```
 
-A browser tab opens. Click "Confirm" to approve the publish. Done.
+A browser tab opens. Click "Confirm" to approve the publish. Output ends with `+ summer-engine@<version>` on success.
+
+### Why two lines, not one chained
+
+Past experience: `cd "..."; npm publish` works in PowerShell, but if anything in the path has surprising chars (spaces, accents) the chained form gets parsed wrong. Two lines is safer and lets you eyeball the `cd` succeeded before publishing.
+
+### Why an interactive shell
+
+`--auth-type=web` does:
+1. Opens a `https://www.npmjs.com/auth/cli/<id>` URL in your browser.
+2. Prints "Press ENTER to open in the browser..." and waits for stdin.
+3. Once you confirm in the browser, the CLI exits with the publish.
+
+If run from a non-interactive shell (e.g. an AI agent's `Bash` tool), step 2's stdin wait fails — the CLI falls back to asking for OTP and errors with `EOTP`. So always run the publish yourself from PowerShell or Terminal, not via the agent.
 
 ### Why `--auth-type=web` and not just `npm publish`
 

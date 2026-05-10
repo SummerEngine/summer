@@ -1,5 +1,5 @@
 ---
-name: vfx
+name: game-feel
 description: Use when the user says the game "feels flat", "lacks impact", "needs juice", "needs punch", or asks for hit feedback, screen shake, camera shake, audio ducking, or general "game feel". Walks the user through the canonical Godot 4.5 game-feel stack — hit-flash + trauma camera shake + audio ducking — wired together so a single hit fires all three. Trigger on "vfx", "juice", "punch", "feels flat", "game feel", "hit flash", "screen shake", "camera shake", "ducking".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]

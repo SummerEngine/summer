@@ -481,5 +481,7 @@ For a fully-rigged enemy with anim controller + loot drop:
 - `ai-and-npcs/navmesh-pathfinding/SKILL.md` — NavigationAgent3D for movement
 - `ai-and-npcs/llm-driven-dialogue/SKILL.md` — Summer's wedge for talking NPCs
 - `ai-and-npcs/boss-patterns/SKILL.md` — phase transitions, mechanics
-- `visual-effects/vfx/SKILL.md` — hit flash and death VFX recipes
+- `visual-effects/recipes/hit-spark/SKILL.md` — hit flash recipe
+- `visual-effects/recipes/dissolve/SKILL.md` — death dissolve recipe
+- `visual-effects/game-feel/SKILL.md` — screen-feel discipline (camera shake, hit-stop)
 - `scripting-patterns/state-machine-patterns/SKILL.md` — generic FSM patterns

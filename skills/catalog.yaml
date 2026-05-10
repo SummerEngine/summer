@@ -4,7 +4,7 @@
 # When adding/changing a skill, update this file in the same commit.
 
 version: 1
-generated: 2026-05-05
+generated: 2026-05-10
 
 skills:
   # ── character-controllers ──
@@ -291,13 +291,69 @@ skills:
     public: true
 
   # ── visual-effects ──
-  - name: vfx
+  - name: game-feel
     category: visual-effects
     status: HAVE
     public: true
     recommended: true
     user-invocable: true
-    last-tested: 2026-05-05
+    last-tested: 2026-05-10
+  - name: fire
+    category: visual-effects
+    status: HAVE
+    public: true
+    recommended: true
+    user-invocable: true
+    last-tested: 2026-05-10
+  - name: muzzle-flash
+    category: visual-effects
+    status: HAVE
+    public: true
+    recommended: true
+    user-invocable: true
+    last-tested: 2026-05-10
+  - name: water-ripple
+    category: visual-effects
+    status: HAVE
+    public: true
+    recommended: false
+    user-invocable: true
+    last-tested: 2026-05-10
+  - name: lightning
+    category: visual-effects
+    status: HAVE
+    public: true
+    recommended: false
+    user-invocable: true
+    last-tested: 2026-05-10
+  - name: dissolve
+    category: visual-effects
+    status: HAVE
+    public: true
+    recommended: false
+    user-invocable: true
+    last-tested: 2026-05-10
+  - name: smoke
+    category: visual-effects
+    status: HAVE
+    public: true
+    recommended: false
+    user-invocable: true
+    last-tested: 2026-05-10
+  - name: hit-spark
+    category: visual-effects
+    status: HAVE
+    public: true
+    recommended: false
+    user-invocable: true
+    last-tested: 2026-05-10
+  - name: magic-glow
+    category: visual-effects
+    status: HAVE
+    public: true
+    recommended: false
+    user-invocable: true
+    last-tested: 2026-05-10
   - name: gpuparticles-3d-basics
     category: visual-effects
     status: NEXT
@@ -350,6 +406,41 @@ skills:
     public: true
 
   # ── animation ──
+  - name: generate-motion
+    category: animation
+    status: HAVE
+    public: true
+    recommended: true
+    user-invocable: true
+    last-tested: 2026-05-10
+  - name: retarget
+    category: animation
+    status: HAVE
+    public: true
+    recommended: false
+    user-invocable: true
+    last-tested: 2026-05-10
+  - name: animation-tree
+    category: animation
+    status: HAVE
+    public: true
+    recommended: false
+    user-invocable: true
+    last-tested: 2026-05-10
+  - name: procedural-animation
+    category: animation
+    status: HAVE
+    public: true
+    recommended: false
+    user-invocable: true
+    last-tested: 2026-05-10
+  - name: facial-and-lipsync
+    category: animation
+    status: HAVE
+    public: true
+    recommended: false
+    user-invocable: true
+    last-tested: 2026-05-10
   - name: animation-tree-basics
     category: animation
     status: NEXT
@@ -383,6 +474,41 @@ skills:
     recommended: true
     user-invocable: true
     last-tested: 2026-05-05
+  - name: sound-effect
+    category: audio
+    status: HAVE
+    public: true
+    recommended: true
+    user-invocable: true
+    last-tested: 2026-05-10
+  - name: music-track
+    category: audio
+    status: HAVE
+    public: true
+    recommended: true
+    user-invocable: true
+    last-tested: 2026-05-10
+  - name: ambient-bed
+    category: audio
+    status: HAVE
+    public: true
+    recommended: false
+    user-invocable: true
+    last-tested: 2026-05-10
+  - name: voice-line
+    category: audio
+    status: HAVE
+    public: true
+    recommended: true
+    user-invocable: true
+    last-tested: 2026-05-10
+  - name: adaptive-music
+    category: audio
+    status: HAVE
+    public: true
+    recommended: false
+    user-invocable: true
+    last-tested: 2026-05-10
   - name: audio-bus-setup
     category: audio
     status: NEXT
@@ -407,6 +533,117 @@ skills:
     category: audio
     status: LATER
     public: true
+
+  # ── 2d-assets ──
+  - name: concept-art
+    category: 2d-assets
+    status: HAVE
+    public: true
+    recommended: true
+    user-invocable: true
+    last-tested: 2026-05-10
+  - name: character-portrait
+    category: 2d-assets
+    status: HAVE
+    public: true
+    recommended: true
+    user-invocable: true
+    last-tested: 2026-05-10
+  - name: pixel-art
+    category: 2d-assets
+    status: HAVE
+    public: true
+    recommended: true
+    user-invocable: true
+    last-tested: 2026-05-10
+  - name: ui-graphics
+    category: 2d-assets
+    status: HAVE
+    public: true
+    recommended: false
+    user-invocable: true
+    last-tested: 2026-05-10
+  - name: tileable-texture
+    category: 2d-assets
+    status: HAVE
+    public: true
+    recommended: false
+    user-invocable: true
+    last-tested: 2026-05-10
+  - name: sprite-sheet
+    category: 2d-assets
+    status: HAVE
+    public: true
+    recommended: false
+    user-invocable: true
+    last-tested: 2026-05-10
+  - name: skybox-panorama
+    category: 2d-assets
+    status: HAVE
+    public: true
+    recommended: false
+    user-invocable: true
+    last-tested: 2026-05-10
+
+  # ── 3d-assets ──
+  - name: prop-model
+    category: 3d-assets
+    status: HAVE
+    public: true
+    recommended: true
+    user-invocable: true
+    last-tested: 2026-05-10
+  - name: character-model
+    category: 3d-assets
+    status: HAVE
+    public: true
+    recommended: true
+    user-invocable: true
+    last-tested: 2026-05-10
+  - name: environment-kit
+    category: 3d-assets
+    status: HAVE
+    public: true
+    recommended: false
+    user-invocable: true
+    last-tested: 2026-05-10
+  - name: vehicle-model
+    category: 3d-assets
+    status: HAVE
+    public: true
+    recommended: false
+    user-invocable: true
+    last-tested: 2026-05-10
+  - name: organic-model
+    category: 3d-assets
+    status: HAVE
+    public: true
+    recommended: false
+    user-invocable: true
+    last-tested: 2026-05-10
+
+  # ── video ──
+  - name: cinematic-cutscene
+    category: video
+    status: HAVE
+    public: true
+    recommended: true
+    user-invocable: true
+    last-tested: 2026-05-10
+  - name: trailer-shot
+    category: video
+    status: HAVE
+    public: true
+    recommended: false
+    user-invocable: true
+    last-tested: 2026-05-10
+  - name: animated-loop
+    category: video
+    status: HAVE
+    public: true
+    recommended: false
+    user-invocable: true
+    last-tested: 2026-05-10
 
   # ── physics ──
   - name: rigid-bodies
@@ -743,3 +980,12 @@ skills:
     category: deployment
     status: LATER
     public: true
+
+  # ── _persona ──
+  - name: summer
+    category: _persona
+    status: HAVE
+    public: true
+    recommended: true
+    user-invocable: true
+    last-tested: 2026-05-10

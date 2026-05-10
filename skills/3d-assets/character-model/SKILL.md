@@ -174,7 +174,7 @@ The imported `.glb` includes its own `Skeleton3D` and `AnimationPlayer` (empty l
 
 > Knight is wired at `./World/Knight` with a Meshy-rigged skeleton. `rigAssetId` saved.
 >
-> Next: `summer:animation/generate-motion` to add idle / walk / run / attack clips. Example call: `summer_generate_motion(rigAssetId: "<saved id>", backend: "meshy-library", motionName: "walk")`. The animation skill picks `meshy-library` (fast, mocap-quality, curated) for standard locomotion and `hunyuan-custom` (prompt-driven, slow) for signature moves.
+> Next: `summer:animation/generate-motion` to add idle / walk / run / attack clips. Example call: `summer_generate_motion(rigAssetId: "<saved id>", backend: "meshy-library", motionName: "walk")`. The animation skill uses Meshy's curated mocap library (~70 standard motions). Custom prompt-driven motion is on the roadmap; for one-off signature moves not on the curated list, fall back to hand-authoring in the Godot editor or importing from Mixamo.
 
 ## Anti-patterns
 

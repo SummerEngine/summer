@@ -75,20 +75,24 @@ describe("registerGenerateTools — summer_generate_motion", () => {
     const motion = getTool(tools, "summer_generate_motion");
     expect(motion.name).toBe("summer_generate_motion");
     expect(motion.description).toContain("meshy-library");
-    expect(motion.description).toContain("hunyuan-custom");
     expect(motion.description).toContain("rigAssetId");
+    // hunyuan-custom is intentionally NOT exposed yet — see header comment in
+    // generate-tools.ts. Keep this assertion as a guard against accidental
+    // re-enable without testing.
+    expect(motion.description).not.toContain("hunyuan-custom");
 
     // Schema fields exist
     expect(motion.schema.rigAssetId).toBeDefined();
     expect(motion.schema.backend).toBeDefined();
     expect(motion.schema.motionName).toBeDefined();
-    expect(motion.schema.prompt).toBeDefined();
-    expect(motion.schema.durationSeconds).toBeDefined();
     expect(motion.schema.wait).toBeDefined();
     expect(motion.schema.options).toBeDefined();
+    // prompt + durationSeconds are reserved for hunyuan-custom — not exposed.
+    expect(motion.schema.prompt).toBeUndefined();
+    expect(motion.schema.durationSeconds).toBeUndefined();
   });
 
-  it("rejects meshy-library without motionName client-side (no fetch call)", async () => {
+  it("rejects missing motionName client-side (no fetch call)", async () => {
     const { server, tools } = createFakeServer();
     registerGenerateTools(server as any);
     const motion = getTool(tools, "summer_generate_motion");
@@ -101,24 +105,7 @@ describe("registerGenerateTools — summer_generate_motion", () => {
 
     expect(result.isError).toBe(true);
     const body = parseResult(result);
-    expect(body.message).toMatch(/meshy-library backend requires motionName/);
-    expect(globalThis.fetch).not.toHaveBeenCalled();
-  });
-
-  it("rejects hunyuan-custom without prompt client-side (no fetch call)", async () => {
-    const { server, tools } = createFakeServer();
-    registerGenerateTools(server as any);
-    const motion = getTool(tools, "summer_generate_motion");
-
-    const result = await motion.handler({
-      rigAssetId: "rig_123",
-      backend: "hunyuan-custom",
-      wait: false,
-    });
-
-    expect(result.isError).toBe(true);
-    const body = parseResult(result);
-    expect(body.message).toMatch(/hunyuan-custom backend requires a prompt/);
+    expect(body.message).toMatch(/motionName is required/);
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
@@ -138,7 +125,6 @@ describe("registerGenerateTools — summer_generate_motion", () => {
       rigAssetId: "rig_123",
       backend: "meshy-library",
       motionName: "walk",
-      durationSeconds: 4,
       wait: false, // skip polling so the test stays focused on the request
     });
 
@@ -153,43 +139,15 @@ describe("registerGenerateTools — summer_generate_motion", () => {
       rigAssetId: "rig_123",
       backend: "meshy-library",
       motionName: "walk",
-      durationSeconds: 4,
     });
+    // durationSeconds + prompt are NOT exposed (hunyuan-custom not shipped).
+    expect(sent.durationSeconds).toBeUndefined();
+    expect(sent.prompt).toBeUndefined();
 
     // wait=false → handler returns the raw response (containing jobId).
     const body = parseResult(result);
     expect(body.jobId).toBe("job_abc");
     expect(result.isError).toBeUndefined();
-  });
-
-  it("calls /api/mcp/generate/motion with the correct body shape (hunyuan-custom)", async () => {
-    const fetchMock = vi.fn(async () => ({
-      ok: true,
-      status: 200,
-      json: async () => ({ jobId: "job_xyz" }),
-    }));
-    globalThis.fetch = fetchMock as any;
-
-    const { server, tools } = createFakeServer();
-    registerGenerateTools(server as any);
-    const motion = getTool(tools, "summer_generate_motion");
-
-    await motion.handler({
-      rigAssetId: "rig_456",
-      backend: "hunyuan-custom",
-      prompt: "drops to one knee, draws bow",
-      durationSeconds: 6,
-      wait: false,
-    });
-
-    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    const sent = JSON.parse(init.body as string);
-    expect(sent).toMatchObject({
-      rigAssetId: "rig_456",
-      backend: "hunyuan-custom",
-      prompt: "drops to one knee, draws bow",
-      durationSeconds: 6,
-    });
   });
 
   it("surfaces 401 errors as isError with a clean message", async () => {

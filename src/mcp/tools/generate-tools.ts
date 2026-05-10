@@ -511,34 +511,42 @@ Requires authentication: run 'npx summer-engine login' first.`,
 
   // ========================================================================
   // summer_generate_motion
+  //
+  // NOTE (2026-05-10): only the "meshy-library" backend is exposed today.
+  // The "hunyuan-custom" path exists in the Studio route but has not been
+  // tested end-to-end on a user's rig (Hunyuan returns a generic skeleton
+  // FBX that isn't retargeted onto the caller's character). The schema and
+  // call are kept commented-out below — re-enable by restoring the wider
+  // zod enum, the prompt/durationSeconds params, the validation branch, and
+  // the relevant description lines once the path is verified.
   // ========================================================================
   server.tool(
     "summer_generate_motion",
-    `Generate an animation clip for a rigged humanoid character via Summer Engine Studio.
+    `Generate an animation clip for a Meshy-rigged humanoid character via Summer Engine Studio.
 
-Two backends:
+Backend:
   - "meshy-library" — picks a clip from a curated mocap set by name (idle, walk,
     run, attack_sword, jump, ~70 standard names). Fast (~30s), cheap (~$0.10),
-    real mocap quality. Use when the action is on the curated list.
-  - "hunyuan-custom" — generates a never-before-seen clip from a text prompt.
-    Slower (1-3 min), pricier (~$0.40), non-deterministic. Use when the action
-    is specific to this character (e.g. "drops to one knee, draws bow").
+    real mocap quality.
 
-Both backends require a Meshy-rigged humanoid as the target. The 'rigAssetId'
-must come from a prior summer_generate_3d call with options.rig=true.
+Requires a Meshy-rigged humanoid as the target. The 'rigAssetId' must come from
+a prior summer_generate_3d call with options.rig=true.
 
 By default, waits for completion (up to 5 min) and returns the result directly.
 Set wait=false to get the jobId immediately and poll manually with summer_check_job.
 
-Common motion names for meshy-library:
+Common motion names:
   Locomotion: idle, idle_alert, idle_combat, walk, walk_back, run, sprint,
               crouch_idle, crouch_walk, jump, jump_loop, jump_land
   Combat: attack_sword, attack_punch, attack_kick, attack_bow, attack_cast,
           block, dodge_left, dodge_right, hit_react, death
   Social: wave, dance, sit_idle
 
-Cost: meshy-library ~$0.10, hunyuan-custom ~$0.40. Confirm with user before
-spending.
+Cost: ~$0.10 per clip. Confirm with user before spending.
+
+Custom prompt-driven motion is on the roadmap; not yet shipped. For one-off
+signature moves not on the curated list, fall back to hand-authoring in the
+Godot editor or importing from Mixamo.
 
 Requires authentication: run 'npx summer-engine login' first.`,
     {
@@ -546,21 +554,14 @@ Requires authentication: run 'npx summer-engine login' first.`,
         .string()
         .describe("Asset ID of a rigged character (from summer_generate_3d with options.rig=true)"),
       backend: z
-        .enum(["meshy-library", "hunyuan-custom"])
-        .describe("Backend: meshy-library (fast, curated) or hunyuan-custom (slow, prompt-driven)"),
+        .enum(["meshy-library"])
+        .default("meshy-library")
+        .describe("Backend: meshy-library (only option today)"),
       motionName: z
         .string()
-        .optional()
-        .describe("Curated motion name (required for meshy-library): walk, run, attack_sword, etc."),
-      prompt: z
-        .string()
-        .optional()
-        .describe("Text description of the motion (required for hunyuan-custom)"),
-      durationSeconds: z
-        .number()
-        .optional()
-        .default(4)
-        .describe("Clip duration for hunyuan-custom (1-10s typical)"),
+        .describe("Curated motion name: walk, run, attack_sword, idle, jump, etc."),
+      // prompt + durationSeconds reserved for the hunyuan-custom backend (not
+      // shipped yet — see header comment).
       wait: z
         .boolean()
         .default(true)
@@ -570,16 +571,11 @@ Requires authentication: run 'npx summer-engine login' first.`,
         .optional()
         .describe("Backend-specific passthrough"),
     },
-    async ({ rigAssetId, backend, motionName, prompt, durationSeconds, wait, options }) => {
+    async ({ rigAssetId, backend, motionName, wait, options }) => {
       // Client-side validation
-      if (backend === "meshy-library" && !motionName) {
+      if (!motionName) {
         return errorResult(
-          "meshy-library backend requires motionName (e.g. 'walk', 'run', 'attack_sword')"
-        );
-      }
-      if (backend === "hunyuan-custom" && !prompt) {
-        return errorResult(
-          "hunyuan-custom backend requires a prompt describing the motion"
+          "motionName is required (e.g. 'walk', 'run', 'attack_sword'). See the tool description for the curated list."
         );
       }
 
@@ -587,8 +583,6 @@ Requires authentication: run 'npx summer-engine login' first.`,
         rigAssetId,
         backend,
         motionName,
-        prompt,
-        durationSeconds,
         options,
       };
 

@@ -2,7 +2,7 @@
 
 Build real 2D and 3D games through conversation. No coding required. Export to Steam, desktop, mobile, and web. Built on the Godot team's work, customized and honed so AI agents and humans can collaborate on great games.
 
-**Summer** is the open-source plugin that connects your AI coding agent to Summer Engine. MIT licensed. Works in Claude Code, Cursor, Codex, Gemini CLI, OpenCode, Factory Droid, GitHub Copilot CLI, and Windsurf.
+**Summer** is the open-source plugin that connects your AI coding agent to Summer Engine. MIT licensed. Works in Claude Code, Cursor, Codex, Gemini CLI, OpenCode, Cline, Roo Code, Factory Droid, GitHub Copilot CLI, and Windsurf.
 
 It just works. Open your agent, say *"let's make an FPS in Summer Engine,"* and it does.
 
@@ -81,7 +81,7 @@ Parse the JSON output. Top-level `ok: true` means everything is installed and yo
 npx -y summer-engine@latest setup claude-code --yes
 ```
 
-Replace `claude-code` with the user's actual agent: `codex`, `cursor`, or `windsurf`. (Gemini, OpenCode, Factory Droid, Copilot CLI use different install paths — see [`docs/`](docs/) per harness.) This writes 60 skill files to `~/.claude/skills/<name>/SKILL.md` (or the agent's equivalent user-skill directory) AND writes the MCP server config so the agent can talk to the engine.
+Replace `claude-code` with the user's actual agent: `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `gemini`, or `opencode`. (Factory Droid and Copilot CLI use different install paths — see [`docs/`](docs/) per harness.) This writes 60 skill files to `~/.claude/skills/<name>/SKILL.md` (or the agent's equivalent user-skill directory) AND writes the MCP server config so the agent can talk to the engine.
 
 **First-install detection:** if `~/.claude/skills/` didn't exist before this command, Claude Code wasn't watching it and won't auto-detect the new files this session. Tell the user **once**: "Skills installed — restart your agent so they load." On subsequent installs (directory already existed), skills auto-detect mid-session and no restart is needed. **You can detect first-install vs upgrade by checking if `~/.claude/skills/` existed before Step 1; record the result before running setup.**
 
@@ -169,7 +169,7 @@ Only skip brainstorm if the user explicitly said "skip brainstorm" or "just buil
 - **Don't loop `summer login` if it times out at 120s.** Re-run it once and tell the user to be quicker; loop forever and the user is stuck.
 - **Don't jump straight into `summer create` from a vague prompt.** Invoke `summer:brainstorm-game` first (Step 6). The build skills assume `.summer/GameSoul.md` exists.
 
-**Using a different agent?** Replace `claude-code` with `codex`, `cursor`, or `windsurf` in Step 1. Skill targets vary per agent (Cursor uses `.cursor/rules/`, Windsurf uses `.windsurfrules`, etc.). The CLI handles the difference. For Gemini, OpenCode, Factory Droid, and Copilot CLI, see [`docs/`](docs/) — those agents have their own install paths that the CLI doesn't fully automate yet.
+**Using a different agent?** Replace `claude-code` with any supported agent in Step 1: `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `gemini`, or `opencode`. Skill targets vary per agent (Cursor uses `.cursor/rules/`, Windsurf uses `.windsurfrules`, Cline + Roo use `.clinerules/`, OpenCode uses agent definitions, etc.). The CLI handles the difference. After install, **Cline and Roo Code users should restart VS Code** so the extension reloads its MCP config. **Gemini users** may need to run `gemini extensions enable summer-engine` after the first install. **Factory Droid and Copilot CLI** still have their own install paths — see [`docs/`](docs/).
 
 **Power-user note:** if the user specifically wants `summer` on their `PATH` for everyday terminal use (outside the AI agent), they can run `npm install -g summer-engine` themselves later. The agent flow doesn't need it.
 
@@ -353,13 +353,29 @@ droid plugin marketplace add https://github.com/SummerEngine/summer
 droid plugin install summer@summer-engine
 ```
 
+### Cline (VS Code)
+
+```bash
+npx -y summer-engine@latest setup cline --yes
+```
+
+Writes the MCP server config to VS Code's globalStorage for the Cline extension and drops project rules into `.clinerules/`. **Restart VS Code** so Cline reloads its MCP config.
+
+### Roo Code (VS Code)
+
+```bash
+npx -y summer-engine@latest setup roo-code --yes
+```
+
+Same shape as Cline (Roo Code is a Cline fork) — writes globalStorage MCP config and `.clinerules/` files. **Restart VS Code** afterward.
+
 ### Gemini CLI
 
 ```bash
-gemini extensions install https://github.com/SummerEngine/summer
+npx -y summer-engine@latest setup gemini --yes
 ```
 
-Update later: `gemini extensions update summer`.
+Drops a Summer extension manifest at `~/.gemini/extensions/summer-engine/`. If the extension isn't auto-enabled on next launch, run `gemini extensions enable summer-engine`. The marketplace path (`gemini extensions install https://github.com/SummerEngine/summer`) still works for users who prefer it — both end up at the same place.
 
 ### GitHub Copilot CLI
 
@@ -371,24 +387,10 @@ copilot plugin install summer@summer-engine
 ### OpenCode
 
 ```bash
-npm install --save-dev summer-engine
+npx -y summer-engine@latest setup opencode --yes
 ```
 
-Add to `opencode.json`:
-
-```json
-{
-  "plugin": ["summer-engine"],
-  "mcp": {
-    "summer-engine": {
-      "command": "npx",
-      "args": ["summer-engine", "mcp"]
-    }
-  }
-}
-```
-
-Restart. Full guide: [`.opencode/INSTALL.md`](./.opencode/INSTALL.md).
+Writes the MCP server entry into `opencode.json` (`~/.config/opencode/opencode.json` for user scope, `./opencode.json` for project) using the array-shaped `command: ["npx", "-y", "summer-engine@latest", "mcp"]` format. Restart OpenCode. Full guide: [`.opencode/INSTALL.md`](./.opencode/INSTALL.md).
 
 ### Windsurf and others
 
@@ -420,7 +422,7 @@ summer doctor
 | `summer mcp setup <agent>` | Write MCP config for an agent. |
 | `summer setup <agent> [--yes]` | One shot: MCP config + recommended skills + doctor. |
 
-Agents: `claude-code`, `codex`, `cursor`, `gemini`, `opencode`, `windsurf`. Scopes: `--scope user` (default), `--scope project`.
+Agents: `claude-code`, `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `gemini`, `opencode`. Scopes: `--scope user` (default), `--scope project`.
 
 ---
 

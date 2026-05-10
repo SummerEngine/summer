@@ -22,6 +22,10 @@ const AGENT_LABEL: Record<SupportedAgent, string> = {
   codex: "Codex",
   cursor: "Cursor",
   windsurf: "Windsurf",
+  cline: "Cline",
+  "roo-code": "Roo Code",
+  gemini: "Gemini CLI",
+  opencode: "OpenCode",
 };
 
 interface SetupCommandOptions {

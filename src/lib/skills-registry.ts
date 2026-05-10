@@ -4,6 +4,10 @@ export const AGENT_CLIENTS = [
   "claude-code",
   "cursor",
   "windsurf",
+  "cline",
+  "roo-code",
+  "gemini",
+  "opencode",
 ] as const;
 
 export type AgentClient = (typeof AGENT_CLIENTS)[number];

@@ -8,7 +8,7 @@ import {
 } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import { homedir } from "os";
+import { homedir, platform } from "os";
 import {
   AGENT_CLIENTS,
   SKILL_REGISTRY,
@@ -47,7 +47,10 @@ interface InstallOptions {
 type InstallLocation =
   | { kind: "skill-dir"; path: string }
   | { kind: "cursor-rule-dir"; path: string }
-  | { kind: "windsurf-rule-file"; path: string };
+  | { kind: "windsurf-rule-file"; path: string }
+  | { kind: "cline-rule-dir"; path: string }
+  | { kind: "gemini-skill-dir"; path: string }
+  | { kind: "opencode-skill-dir"; path: string };
 
 interface InstallResult {
   action: "Installed" | "Generated";
@@ -153,7 +156,14 @@ function resolveAgent(opts: InstallOptions): AgentClient {
 
 function resolveScope(agent: AgentClient, opts: InstallOptions): SkillScope {
   if (opts.scope) return parseScope(opts.scope);
-  if (agent === "cursor" || agent === "windsurf") return "project";
+  if (
+    agent === "cursor" ||
+    agent === "windsurf" ||
+    agent === "cline" ||
+    agent === "roo-code"
+  ) {
+    return "project";
+  }
   return "user";
 }
 
@@ -167,6 +177,14 @@ function agentLabel(agent: AgentClient): string {
       return "Cursor";
     case "windsurf":
       return "Windsurf";
+    case "cline":
+      return "Cline";
+    case "roo-code":
+      return "Roo Code";
+    case "gemini":
+      return "Gemini CLI";
+    case "opencode":
+      return "OpenCode";
     case "summer":
       return "Summer";
   }
@@ -182,6 +200,15 @@ function resolveInstallLocation(
     if (agent === "windsurf") {
       return { kind: "windsurf-rule-file", path: join(overrideDir, ".windsurfrules") };
     }
+    if (agent === "cline" || agent === "roo-code") {
+      return { kind: "cline-rule-dir", path: overrideDir };
+    }
+    if (agent === "gemini") {
+      return { kind: "gemini-skill-dir", path: overrideDir };
+    }
+    if (agent === "opencode") {
+      return { kind: "opencode-skill-dir", path: overrideDir };
+    }
     return { kind: "skill-dir", path: overrideDir };
   }
 
@@ -195,9 +222,60 @@ function resolveInstallLocation(
       return { kind: "cursor-rule-dir", path: join(root, ".cursor", "rules") };
     case "windsurf":
       return { kind: "windsurf-rule-file", path: join(root, ".windsurfrules") };
+    case "cline":
+      return {
+        kind: "cline-rule-dir",
+        path:
+          scope === "user"
+            ? clineUserRulesDir()
+            : join(process.cwd(), ".clinerules"),
+      };
+    case "roo-code":
+      return {
+        kind: "cline-rule-dir",
+        path:
+          scope === "user"
+            ? rooCodeUserRulesDir()
+            : join(process.cwd(), ".clinerules"),
+      };
+    case "gemini":
+      return {
+        kind: "gemini-skill-dir",
+        path: join(homedir(), ".gemini", "extensions", "summer-engine", "skills"),
+      };
+    case "opencode":
+      return {
+        kind: "opencode-skill-dir",
+        path:
+          scope === "user"
+            ? opencodeUserAgentsDir()
+            : join(process.cwd(), ".opencode", "agents", "summer"),
+      };
     case "summer":
       return { kind: "skill-dir", path: join(root, ".summer", "skills") };
   }
+}
+
+function clineUserRulesDir(): string {
+  // Cline reads global rules from the user's Documents/Cline/Rules folder.
+  return join(homedir(), "Documents", "Cline", "Rules");
+}
+
+function rooCodeUserRulesDir(): string {
+  // Roo Code reads global rules from the user's Documents/Roo/Rules folder.
+  return join(homedir(), "Documents", "Roo", "Rules");
+}
+
+function opencodeUserAgentsDir(): string {
+  // OpenCode's user-scope agent definition directory varies by OS.
+  // On Windows, OpenCode reads from %APPDATA%/opencode/agents/summer.
+  // On Linux/macOS, it reads from $XDG_CONFIG_HOME or ~/.config/opencode/agents/summer.
+  if (platform() === "win32") {
+    const appData = process.env.APPDATA ?? join(homedir(), "AppData", "Roaming");
+    return join(appData, "opencode", "agents", "summer");
+  }
+  const xdg = process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config");
+  return join(xdg, "opencode", "agents", "summer");
 }
 
 function selectSkills(name: string | undefined, opts: InstallOptions): SkillMeta[] {
@@ -255,6 +333,12 @@ function installSkill(
       return writeCursorRule(skill, location.path);
     case "windsurf-rule-file":
       return upsertWindsurfRule(skill, location.path);
+    case "cline-rule-dir":
+      return writeClineRule(skill, location.path);
+    case "gemini-skill-dir":
+      return writeGeminiSkill(skill, location.path);
+    case "opencode-skill-dir":
+      return writeOpencodeSkill(skill, location.path);
   }
 }
 
@@ -288,6 +372,38 @@ function upsertWindsurfRule(skill: SkillMeta, rulePath: string): InstallResult {
     : `${existing.trimEnd()}${existing.trim() ? "\n\n" : ""}${block}\n`;
 
   writeFileSync(rulePath, next, "utf-8");
+  return { action: "Generated", path: rulePath };
+}
+
+function writeClineRule(skill: SkillMeta, rulesDir: string): InstallResult {
+  // Cline + Roo Code read project rules from .clinerules/ and global rules
+  // from Documents/Cline (or Roo)/Rules. Both expect plain markdown files.
+  // SKILL.md isn't recognized as a special filename, so we name files <skill>.md.
+  mkdirSync(rulesDir, { recursive: true });
+  const rulePath = join(rulesDir, `summer-${skill.name}.md`);
+  writeFileSync(rulePath, renderRuleBody(skill) + "\n", "utf-8");
+  return { action: "Generated", path: rulePath };
+}
+
+function writeGeminiSkill(skill: SkillMeta, skillsDir: string): InstallResult {
+  // Gemini extensions support a contextFileName, but skill discovery for
+  // arbitrary markdown is not standardized. We drop each SKILL.md alongside
+  // the extension so the agent can reference them by path; the install
+  // summary surfaces this so the user knows where to point Gemini.
+  mkdirSync(skillsDir, { recursive: true });
+  const rulePath = join(skillsDir, `${skill.name}.md`);
+  writeFileSync(rulePath, renderRuleBody(skill) + "\n", "utf-8");
+  return { action: "Generated", path: rulePath };
+}
+
+function writeOpencodeSkill(skill: SkillMeta, skillsDir: string): InstallResult {
+  // OpenCode supports agent markdown definitions; the exact discovery
+  // convention for ad-hoc skills isn't fully documented. We write each skill
+  // as a markdown file under agents/summer/ so OpenCode can reference them
+  // directly. The install summary shows the path.
+  mkdirSync(skillsDir, { recursive: true });
+  const rulePath = join(skillsDir, `${skill.name}.md`);
+  writeFileSync(rulePath, renderRuleBody(skill) + "\n", "utf-8");
   return { action: "Generated", path: rulePath };
 }
 
@@ -331,6 +447,17 @@ function printInstallSummary(
     console.log(`${label} can read skills from ${tildeified}/<skill>/SKILL.md`);
   } else if (location.kind === "cursor-rule-dir") {
     console.log(`Cursor rules are in ${tildeified}/summer-<skill>.mdc`);
+  } else if (location.kind === "cline-rule-dir") {
+    console.log(`${label} rules are in ${tildeified}/summer-<skill>.md`);
+    console.log("Restart VS Code to pick up new rules.");
+  } else if (location.kind === "gemini-skill-dir") {
+    console.log(`Skill files are in ${tildeified}/<skill>.md`);
+    console.log(
+      "Reference them from Gemini by path, or run `gemini extensions enable summer-engine` to load the bundled context."
+    );
+  } else if (location.kind === "opencode-skill-dir") {
+    console.log(`Skill files are in ${tildeified}/<skill>.md`);
+    console.log("Restart OpenCode so it picks up the new agent definitions.");
   } else {
     console.log(`Windsurf rules are in ${tildeified}`);
   }

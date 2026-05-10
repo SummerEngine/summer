@@ -2,7 +2,7 @@ import { existsSync } from "fs";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
-import { homedir } from "os";
+import { homedir, platform } from "os";
 
 export const SUMMER_MCP_SERVER_NAME = "summer-engine";
 
@@ -11,6 +11,10 @@ export const supportedAgents = [
   "claude-code",
   "cursor",
   "windsurf",
+  "cline",
+  "roo-code",
+  "gemini",
+  "opencode",
 ] as const;
 
 export type SupportedAgent = (typeof supportedAgents)[number];
@@ -38,7 +42,7 @@ export interface AgentConfigResult {
   path: string;
   serverName: string;
   server: StdioMcpServerConfig;
-  format: "json" | "toml";
+  format: "json" | "toml" | "json-opencode";
   snippet: string;
   changed: boolean;
   wrote: boolean;
@@ -57,6 +61,14 @@ const agentAliases: Record<string, SupportedAgent> = {
   codex: "codex",
   cursor: "cursor",
   windsurf: "windsurf",
+  cline: "cline",
+  "roo-code": "roo-code",
+  roo: "roo-code",
+  roocode: "roo-code",
+  gemini: "gemini",
+  "gemini-cli": "gemini",
+  opencode: "opencode",
+  "open-code": "opencode",
 };
 
 export function parseAgent(value: string | undefined): SupportedAgent | null {
@@ -87,7 +99,11 @@ export async function configureAgentMcp(
     ? { changed: true }
     : target.format === "toml"
       ? await upsertCodexConfig(target.path, server, shouldWrite)
-      : await upsertJsonMcpConfig(target.path, server, shouldWrite);
+      : target.format === "json-opencode"
+        ? await upsertOpencodeConfig(target.path, server, shouldWrite)
+        : options.agent === "gemini"
+          ? await upsertGeminiExtension(target.path, server, shouldWrite)
+          : await upsertJsonMcpConfig(target.path, server, shouldWrite);
 
   return {
     agent: options.agent,
@@ -117,7 +133,7 @@ export function createSummerMcpServerConfig(localDev: boolean): StdioMcpServerCo
 
   return {
     command: "npx",
-    args: ["summer-engine", "mcp"],
+    args: ["-y", "summer-engine@latest", "mcp"],
   };
 }
 
@@ -127,6 +143,27 @@ export function renderConfigSnippet(
 ): string {
   if (agent === "codex") {
     return renderCodexServerTable(server);
+  }
+
+  if (agent === "opencode") {
+    return (
+      JSON.stringify(
+        {
+          $schema: "https://opencode.ai/config.json",
+          mcp: {
+            [SUMMER_MCP_SERVER_NAME]: opencodeServerEntry(server),
+          },
+        },
+        null,
+        2
+      ) + "\n"
+    );
+  }
+
+  if (agent === "gemini") {
+    return (
+      JSON.stringify(geminiExtensionManifest(server), null, 2) + "\n"
+    );
   }
 
   return (
@@ -152,14 +189,27 @@ function resolveConfigTarget(
   scope: ConfigScope,
   cwd: string,
   env: NodeJS.ProcessEnv
-): { path: string; format: "json" | "toml"; warnings: string[] } {
+): { path: string; format: "json" | "toml" | "json-opencode"; warnings: string[] } {
   const override = getConfigPathOverride(agent, env);
   const warnings: string[] = [];
 
   if (override) {
+    if (
+      scope === "project" &&
+      (agent === "cline" || agent === "roo-code" || agent === "gemini")
+    ) {
+      warnings.push(
+        `${agent} MCP config has no project scope today; treating as user scope.`
+      );
+    }
     return {
       path: resolve(override),
-      format: agent === "codex" ? "toml" : "json",
+      format:
+        agent === "codex"
+          ? "toml"
+          : agent === "opencode"
+            ? "json-opencode"
+            : "json",
       warnings,
     };
   }
@@ -197,6 +247,62 @@ function resolveConfigTarget(
     };
   }
 
+  if (agent === "cline") {
+    if (scope === "project") {
+      warnings.push(
+        "Cline MCP config has no project scope today; writing to user-scope global VS Code storage instead."
+      );
+    }
+    return {
+      path: vsCodeGlobalStoragePath(env, "saoudrizwan.claude-dev"),
+      format: "json",
+      warnings,
+    };
+  }
+
+  if (agent === "roo-code") {
+    if (scope === "project") {
+      warnings.push(
+        "Roo Code MCP config has no project scope today; writing to user-scope global VS Code storage instead."
+      );
+    }
+    return {
+      path: vsCodeGlobalStoragePath(env, "rooveterinaryinc.roo-cline"),
+      format: "json",
+      warnings,
+    };
+  }
+
+  if (agent === "gemini") {
+    if (scope === "project") {
+      warnings.push(
+        "Gemini extensions are user-scoped today; writing to ~/.gemini/extensions/summer-engine/ instead of project."
+      );
+    }
+    return {
+      path: join(
+        homedir(),
+        ".gemini",
+        "extensions",
+        "summer-engine",
+        "gemini-extension.json"
+      ),
+      format: "json",
+      warnings,
+    };
+  }
+
+  if (agent === "opencode") {
+    return {
+      path:
+        scope === "user"
+          ? opencodeUserConfigPath(env)
+          : join(cwd, "opencode.json"),
+      format: "json-opencode",
+      warnings,
+    };
+  }
+
   if (scope === "project") {
     warnings.push(
       "Windsurf documents MCP configuration as user-scoped; project scope writes .windsurf/mcp_config.json for teams that load workspace config."
@@ -213,6 +319,61 @@ function resolveConfigTarget(
   };
 }
 
+function vsCodeGlobalStoragePath(
+  env: NodeJS.ProcessEnv,
+  extensionId: string
+): string {
+  const os = platform();
+  if (os === "win32") {
+    const appData = env.APPDATA ?? join(homedir(), "AppData", "Roaming");
+    return join(
+      appData,
+      "Code",
+      "User",
+      "globalStorage",
+      extensionId,
+      "settings",
+      "cline_mcp_settings.json"
+    );
+  }
+
+  if (os === "darwin") {
+    return join(
+      homedir(),
+      "Library",
+      "Application Support",
+      "Code",
+      "User",
+      "globalStorage",
+      extensionId,
+      "settings",
+      "cline_mcp_settings.json"
+    );
+  }
+
+  // Linux and other Unix
+  const xdg = env.XDG_CONFIG_HOME ?? join(homedir(), ".config");
+  return join(
+    xdg,
+    "Code",
+    "User",
+    "globalStorage",
+    extensionId,
+    "settings",
+    "cline_mcp_settings.json"
+  );
+}
+
+function opencodeUserConfigPath(env: NodeJS.ProcessEnv): string {
+  const os = platform();
+  if (os === "win32") {
+    const appData = env.APPDATA ?? join(homedir(), "AppData", "Roaming");
+    return join(appData, "opencode", "opencode.json");
+  }
+  const xdg = env.XDG_CONFIG_HOME ?? join(homedir(), ".config");
+  return join(xdg, "opencode", "opencode.json");
+}
+
 function getConfigPathOverride(
   agent: SupportedAgent,
   env: NodeJS.ProcessEnv
@@ -220,6 +381,10 @@ function getConfigPathOverride(
   if (agent === "codex") return env.SUMMER_CODEX_CONFIG_FILE;
   if (agent === "claude-code") return env.SUMMER_CLAUDE_CONFIG_FILE;
   if (agent === "cursor") return env.SUMMER_CURSOR_MCP_CONFIG_FILE;
+  if (agent === "cline") return env.SUMMER_CLINE_CONFIG_FILE;
+  if (agent === "roo-code") return env.SUMMER_ROO_CODE_CONFIG_FILE;
+  if (agent === "gemini") return env.SUMMER_GEMINI_CONFIG_FILE;
+  if (agent === "opencode") return env.SUMMER_OPENCODE_CONFIG_FILE;
   return env.SUMMER_WINDSURF_MCP_CONFIG_FILE;
 }
 
@@ -298,6 +463,83 @@ async function upsertCodexConfig(
   }
 
   return { changed };
+}
+
+async function upsertOpencodeConfig(
+  path: string,
+  server: StdioMcpServerConfig,
+  write: boolean
+): Promise<{ changed: boolean }> {
+  const current = await readJsonConfig(path);
+  const next = copyJsonObject(current);
+
+  if (typeof next.$schema !== "string") {
+    next.$schema = "https://opencode.ai/config.json";
+  }
+
+  const existingMcp = isJsonObject(next.mcp) ? next.mcp : {};
+  next.mcp = {
+    ...existingMcp,
+    [SUMMER_MCP_SERVER_NAME]: opencodeServerEntry(server),
+  };
+
+  const currentRendered = renderJsonFile(current);
+  const nextRendered = renderJsonFile(next);
+  const changed = currentRendered !== nextRendered;
+
+  if (write && changed) {
+    await writeTextFile(path, nextRendered);
+  }
+
+  return { changed };
+}
+
+async function upsertGeminiExtension(
+  path: string,
+  server: StdioMcpServerConfig,
+  write: boolean
+): Promise<{ changed: boolean }> {
+  const current = await readJsonConfig(path);
+  const next = geminiExtensionManifest(server, current);
+
+  const currentRendered = renderJsonFile(current);
+  const nextRendered = renderJsonFile(next);
+  const changed = currentRendered !== nextRendered;
+
+  if (write && changed) {
+    await writeTextFile(path, nextRendered);
+  }
+
+  return { changed };
+}
+
+function opencodeServerEntry(server: StdioMcpServerConfig): JsonObject {
+  const entry: JsonObject = {
+    type: "local",
+    command: [server.command, ...server.args],
+  };
+  if (server.env && Object.keys(server.env).length > 0) {
+    entry.environment = { ...server.env };
+  }
+  return entry;
+}
+
+function geminiExtensionManifest(
+  server: StdioMcpServerConfig,
+  base: JsonObject = {}
+): JsonObject {
+  const manifest: JsonObject = { ...base };
+  manifest.name = "summer";
+  manifest.description =
+    "Superpowers for AI game dev. MCP bridge to the local Summer Engine plus a context primer that teaches Gemini the Summer skills.";
+  manifest.contextFileName = "GEMINI.md";
+  manifest.mcpServers = {
+    [SUMMER_MCP_SERVER_NAME]: {
+      command: server.command,
+      args: server.args,
+    },
+  };
+  return manifest;
 }
 
 async function readTextFileIfExists(path: string): Promise<string> {
@@ -396,7 +638,15 @@ function createNextSteps(
         ? "Restart Codex or run /mcp in a new session."
         : agent === "cursor"
           ? "Restart Cursor and enable the summer-engine MCP server if prompted."
-          : "Restart Windsurf and refresh MCP servers from Cascade settings.";
+          : agent === "cline"
+            ? "Restart VS Code so Cline reloads its MCP config."
+            : agent === "roo-code"
+              ? "Restart VS Code so Roo Code reloads its MCP config."
+              : agent === "gemini"
+                ? "Run `gemini extensions enable summer-engine` (if not already enabled), then restart Gemini CLI."
+                : agent === "opencode"
+                  ? "Restart OpenCode so it reloads opencode.json."
+                  : "Restart Windsurf and refresh MCP servers from Cascade settings.";
 
   const projectTrust =
     scope === "project" && agent === "codex"

@@ -1,6 +1,6 @@
 {
   "name": "summer",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Superpowers for AI game dev. 60 auto-trigger skills, MCP bridge to the local Summer Engine, lifecycle hooks. Build games by talking.",
   "author": {
     "name": "Summer Engine",

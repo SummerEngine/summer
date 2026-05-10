@@ -29,35 +29,48 @@ At that point the agent has the skills, the MCP server, and your engine running.
 
 ## AGENTS READING THIS — the install playbook
 
-You are an AI coding agent (Claude Code, Cursor, Codex, etc.). The user told you to install Summer Engine. **Run this playbook via Bash exactly as written.** Detection first, then only install what's missing — never double-install. Use `npx -y summer-engine ...` for every command — no `npm install -g` required, no `sudo` prompts, no PATH pollution.
+You are an AI coding agent (Claude Code, Cursor, Codex, Windsurf). The user told you to install Summer Engine. **Run this playbook via your shell** — Bash on macOS/Linux or PowerShell on Windows; `npx -y` is shell-agnostic and works identically in both. Detection first, then only install what's missing — never double-install.
 
-### Step 0 — Pre-detection (no commits to disk yet, just check state)
+### Step −1 — Verify Node.js is on PATH
+
+```bash
+node --version
+```
+
+If this fails or returns a version below 18, **stop**. Tell the user: "Summer needs Node.js 18+. Install from https://nodejs.org and re-run the prompt." Do NOT try to install Node yourself.
+
+### Step 0 — Pre-detection (no commits to disk, just check state)
 
 ```bash
 npx -y summer-engine doctor --json
 ```
 
-The first invocation downloads the npm package transparently to npx's cache (~3 MB, ~5 sec). Subsequent calls are fast. The `-y` flag auto-confirms npx's "ok to install summer-engine?" prompt so the call doesn't hang waiting for interactive input.
+The first invocation downloads the npm package transparently to npx's cache (~3 MB, ~5 sec). Subsequent calls are fast. The `-y` flag auto-confirms npx's "ok to install summer-engine?" prompt so the call doesn't hang in a non-interactive shell.
 
-Parse the JSON output. Top-level `ok: true` means everything is installed and you can skip straight to Step 5. Otherwise iterate the `checks` array and skip any step whose corresponding check returned `status: ok`:
+Parse the JSON output. Top-level `ok: true` means everything is installed and you can skip straight to Step 5. Otherwise iterate the `checks` array and skip any step whose check returned `status: "ok"`:
 
 ```json
 {
   "ok": true | false,
   "checks": [
-    { "id": "cli-version",    "status": "ok" | "warning" | "error", ... },
-    { "id": "login",          "status": "ok" | "warning" | "error", ... },
-    { "id": "engine-install", "status": "ok" | "warning" | "error", ... },
-    { "id": "mcp-server",     "status": "ok" | "warning" | "error", ... }
+    { "id": "node-version",   "status": "ok" | "warning" | "fail", ... },
+    { "id": "cli-version",    "status": "ok" | "warning" | "fail", ... },
+    { "id": "login",          "status": "ok" | "warning" | "fail", ... },
+    { "id": "engine-install", "status": "ok" | "warning" | "fail", ... },
+    { "id": "local-api",      "status": "ok" | "warning" | "fail", ... },
+    { "id": "mcp-server",     "status": "ok" | "warning" | "fail", ... }
   ]
 }
 ```
 
 | Check id | If `ok` | If not `ok` |
 |---|---|---|
+| `node-version` | continue | (Step −1 already covered this) |
 | `cli-version` | (always ok via npx) | — |
 | `engine-install` | skip Step 2 | run Step 2 |
 | `login` | skip Step 3 | run Step 3 |
+| `local-api` | skip Step 5b wait-loop | run wait-loop after `summer run` |
+| `mcp-server` | skip Step 1 | run Step 1 |
 | (skills installed) | skip Step 1 | run Step 1 |
 
 (There's no doctor check for "skills installed" yet — run Step 1 unconditionally on first install. It's idempotent.)
@@ -68,7 +81,9 @@ Parse the JSON output. Top-level `ok: true` means everything is installed and yo
 npx -y summer-engine setup claude-code --yes
 ```
 
-Replace `claude-code` with the user's actual agent: `codex`, `cursor`, `windsurf`, `gemini`, `opencode`. This writes 60 skill files to `~/.claude/skills/<name>/SKILL.md` (or the agent's equivalent user-skill directory) AND writes the MCP server config so the agent can talk to the engine. Claude Code auto-detects new skill files mid-session — **no restart needed unless `~/.claude/skills/` didn't exist before**, in which case prompt the user to restart their agent once.
+Replace `claude-code` with the user's actual agent: `codex`, `cursor`, or `windsurf`. (Gemini, OpenCode, Factory Droid, Copilot CLI use different install paths — see [`docs/`](docs/) per harness.) This writes 60 skill files to `~/.claude/skills/<name>/SKILL.md` (or the agent's equivalent user-skill directory) AND writes the MCP server config so the agent can talk to the engine.
+
+**First-install detection:** if `~/.claude/skills/` didn't exist before this command, Claude Code wasn't watching it and won't auto-detect the new files this session. Tell the user **once**: "Skills installed — restart your agent so they load." On subsequent installs (directory already existed), skills auto-detect mid-session and no restart is needed. **You can detect first-install vs upgrade by checking if `~/.claude/skills/` existed before Step 1; record the result before running setup.**
 
 **Do NOT run `/plugin install` or any slash command.** The CLI path is the canonical install. The marketplace path is an alternative for users who specifically prefer the official plugin TUI; we don't route agents there.
 
@@ -80,13 +95,15 @@ npx -y summer-engine install
 
 ~145 MB. Downloads from Summer's signed releases. The CLI prints the URL and size before touching disk. Tell the user "downloading the engine app, ~145 MB" so they know what's happening.
 
+**Linux note:** the engine app currently supports macOS and Windows only. On Linux, `summer install` exits with a "Linux support coming soon" message. Surface the manual download URL to the user (https://summerengine.com/download) and stop — the rest of the playbook still works once they've installed manually.
+
 ### Step 3 — Sign in (only if `login` check failed)
 
 ```bash
 npx -y summer-engine login
 ```
 
-This opens the user's default browser. **Tell the user**: "Your browser is opening now. Click sign-in once and come back to this terminal." The CLI waits for the auth callback, writes the token to `~/.summer/auth-token`, and returns. The same token is shared with the engine — they sign in once, both surfaces accept it.
+This opens the user's default browser. **Tell the user**: "Your browser is opening now. Click sign-in once and come back to this terminal." The CLI waits up to 120 seconds for the auth callback, writes the token to `~/.summer/auth-token`, and returns. **If the user takes longer than 120s, the command exits with an error — just re-run `npx -y summer-engine login` and tell them to be quicker.** Don't loop indefinitely. The same token is shared with the engine — they sign in once, both surfaces accept it.
 
 ### Step 4 — Re-run doctor to confirm
 
@@ -94,34 +111,64 @@ This opens the user's default browser. **Tell the user**: "Your browser is openi
 npx -y summer-engine doctor --json
 ```
 
-Should now return `ok: true`. If a check still fails, surface the specific message to the user — don't loop or paper over it.
+Should now return `ok: true` for `cli-version`, `login`, and `engine-install`. (`local-api` will still be `warning` — that's expected; the engine isn't running yet.) If a setup check still fails, surface the specific message to the user — don't loop or paper over it.
 
 ### Step 5 — Scaffold a project and run
 
-If the user said "let's make a game" without specifying a template, default to `3d-basic`. Pick a sensible project name from the user's request (e.g. "FPS" → `my-fps-game`).
+**Important:** `summer create` writes the project into the current working directory. **Pick a stable parent directory first** — the user's home, a Projects folder, etc. — and `cd` there before running `create`. Don't let it land in a temp dir or wherever the agent happened to start.
+
+```bash
+cd ~/Projects   # or wherever the user keeps code
+```
+
+If the user said "let's make a game" without specifying a template, default to `3d-basic`. Pick a sensible project name from the user's request (e.g. "FPS" → `my-fps-game`). Avoid spaces in the name.
 
 ```bash
 npx -y summer-engine create 3d-basic my-fps-game
 npx -y summer-engine run my-fps-game
 ```
 
-`summer run` launches the engine app with the project loaded. The MCP server (configured in Step 1) connects to `localhost:6550` automatically.
+`summer run` launches the engine app with the project loaded and polls the engine's local API for up to 20 seconds before returning.
 
-### Step 6 — Now you have skills + MCP. Proceed with the user's actual request.
+### Step 5b — Wait for the engine to be reachable (only if `summer run` printed "API not responding yet")
 
-The skills auto-trigger on natural language. Don't paraphrase them — when a relevant skill applies (`brainstorm-game`, `fps-controller`, `debug`, etc.), invoke it via the `Skill` tool and follow it exactly.
+If the engine takes longer than 20s to boot (cold start, slow disk, etc.), `summer run` returns successfully but the local API isn't up yet. Calling `summer_get_scene_tree` or any other MCP tool will fail. Wait for it:
+
+```bash
+# Poll doctor until local-api flips to ok (max ~30s):
+for i in 1 2 3 4 5 6; do
+  result=$(npx -y summer-engine doctor --json)
+  echo "$result" | grep -q '"id":"local-api","status":"ok"' && break
+  sleep 5
+done
+```
+
+(Equivalent PowerShell: `for ($i=0; $i -lt 6; $i++) { $r = npx -y summer-engine doctor --json; if ($r -match '"id":"local-api","status":"ok"') { break }; Start-Sleep 5 }`)
+
+Once `local-api` is `ok`, MCP tools are safe to call.
+
+### Step 6 — Brainstorm the game, then build
+
+Now you have skills + MCP. **Don't jump into `summer create` content from a vague prompt** — invoke the `summer:brainstorm-game` skill via the `Skill` tool first. It scopes mechanics, art direction, and the V1 cut list, and writes the result to `.summer/GameSoul.md`. Every other Summer skill reads from that file.
+
+Only skip brainstorm if the user explicitly said "skip brainstorm" or "just build the X already." After brainstorm, the appropriate build skills (`fps-controller`, `design-mechanic`, `design-level`, `make-game`, etc.) auto-trigger from natural language.
 
 ### Anti-patterns (do NOT do these)
 
 - **Don't run `npm install -g summer-engine`.** Use `npx -y summer-engine ...` instead. `-g` requires `sudo` on most Mac/Linux setups — the user will get permission errors and you'll get stuck. `npx` works without root and the MCP config we ship already points at `npx summer-engine mcp`.
+- **Don't try to install Node.js for the user.** If `node --version` fails, point them at https://nodejs.org and stop.
 - **Don't ask the user "do you want the engine too?" or "do you also want the CLI?"** — there is one product, three pieces, all installed by this playbook.
 - **Don't double-install.** Always run `npx -y summer-engine doctor --json` first. Skip steps that already returned `status: ok`.
 - **Don't tell the user to type `/plugin marketplace add` or `/plugin install`.** The CLI path is the canonical install — those slash commands are an alternative for the marketplace TUI, not the primary flow.
 - **Don't run `summer install` or `summer login` in the background.** They print user-facing output (engine download progress, browser-opening notice). Run them in the foreground so the user sees what's happening.
 - **Don't skip the `--json` flag on `summer doctor`** — text output is fragile to parse and changes per version.
 - **Don't skip the `-y` flag on `npx`** — without it, npx prompts "ok to install summer-engine?" interactively and the call hangs in a non-interactive shell.
+- **Don't call MCP tools (`summer_get_scene_tree`, etc.) until `local-api` is `ok`.** The engine takes a few seconds to boot after `summer run`. Use Step 5b's wait-loop.
+- **Don't `summer create` without `cd`'ing to a stable parent directory first.** It writes into CWD; agents that start in a temp dir will leave the project there.
+- **Don't loop `summer login` if it times out at 120s.** Re-run it once and tell the user to be quicker; loop forever and the user is stuck.
+- **Don't jump straight into `summer create` from a vague prompt.** Invoke `summer:brainstorm-game` first (Step 6). The build skills assume `.summer/GameSoul.md` exists.
 
-**Using a different agent?** Replace `claude-code` with `codex`, `cursor`, `windsurf`, `gemini`, `opencode` in Step 1. Skill targets vary per agent (Cursor uses `.cursor/rules/`, Windsurf uses `.windsurfrules`, etc.). The CLI handles the difference.
+**Using a different agent?** Replace `claude-code` with `codex`, `cursor`, or `windsurf` in Step 1. Skill targets vary per agent (Cursor uses `.cursor/rules/`, Windsurf uses `.windsurfrules`, etc.). The CLI handles the difference. For Gemini, OpenCode, Factory Droid, and Copilot CLI, see [`docs/`](docs/) — those agents have their own install paths that the CLI doesn't fully automate yet.
 
 **Power-user note:** if the user specifically wants `summer` on their `PATH` for everyday terminal use (outside the AI agent), they can run `npm install -g summer-engine` themselves later. The agent flow doesn't need it.
 

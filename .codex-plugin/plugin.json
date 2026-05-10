@@ -1,6 +1,6 @@
 {
   "name": "summer",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Superpowers for AI game dev. 60 auto-trigger skills, MCP bridge to the local Summer Engine, lifecycle hooks. Build games by talking.",
   "author": {
     "name": "Summer Engine",
@@ -81,7 +81,7 @@
   "interface": {
     "displayName": "Summer",
     "shortDescription": "Superpowers for AI game dev. Build games by talking.",
-    "longDescription": "Summer turns Codex into a game-dev studio for Summer Engine — the AI-native game engine. 60 auto-trigger skills covering brainstorm, design, build, play, debug, ship — plus a using-summer meta-skill that establishes workflow priority on session start. The MCP bridge talks to the local Summer Engine for scene mutation, asset import, render, play, and diagnostics — 37 focused tools across scene/debug/project/asset/generate, with file/git/shell/grep deferred to the host agent. Summer Engine is compatible with Godot 4.5 — write code in GDScript, drive the engine via MCP. Session-start orients the session. Pre-commit doctor (opt-in) blocks bad commits.",
+    "longDescription": "Summer turns Codex into a game-dev studio for Summer Engine — the AI-native game engine. 60 auto-trigger skills covering brainstorm, design, build, play, debug, ship — plus a using-summer meta-skill that establishes workflow priority on session start. The MCP bridge talks to the local Summer Engine for scene mutation, asset import, render, play, and diagnostics — 38 focused tools across scene/debug/project/asset/generate, with file/git/shell/grep deferred to the host agent. Summer Engine is compatible with Godot 4.5 — write code in GDScript, drive the engine via MCP. Session-start orients the session. Pre-commit doctor (opt-in) blocks bad commits.",
     "developerName": "Summer Engine",
     "category": "Coding",
     "capabilities": ["Interactive", "Read", "Write"],

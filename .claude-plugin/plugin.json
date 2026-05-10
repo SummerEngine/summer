@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "summer",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Superpowers for AI game dev. 60 auto-trigger skills + lifecycle hooks + MCP bridge to the local Summer Engine — the AI-native game engine.",
   "author": {
     "name": "Summer Engine",

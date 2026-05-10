@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_generate_sfx summer_generate_audio summer_search_assets summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_get_scene_tree
+allowed-tools: Read Grep Glob Write Edit summer_generate_audio summer_search_assets summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_get_scene_tree
 paths: ["audio/sfx/**", "scripts/**", "**/*.tscn"]
 ---
 
@@ -15,7 +15,7 @@ paths: ["audio/sfx/**", "scripts/**", "**/*.tscn"]
 
 This skill produces one named SFX clip aligned with the audio bible's vocabulary, then wires it into the scene as an AudioStreamPlayer that plays once and frees its parent (or stops cleanly if it's a looped texture). The shape of the prompt is what makes the difference between "metal sword swing whoosh, dry, sharp, 250ms" returning the right clip on the first try and "epic battle sound" returning twenty seconds of musical noise.
 
-ElevenLabs SFX (the model behind `summer_generate_sfx`) is *literal*. It treats the prompt as a description of a real sound, not as a vibe. Concrete material + action + intensity beats adjectives every time.
+ElevenLabs SFX (the `sound_effects` capability of `summer_generate_audio`) is *literal*. It treats the prompt as a description of a real sound, not as a vibe. Concrete material + action + intensity beats adjectives every time.
 
 ## When to use
 
@@ -94,11 +94,13 @@ Show the prompt and the call before running:
 > Prompt: `metal sword swing whoosh, dry, sharp, 250ms`. Duration 0.5s (model floor). Model: ElevenLabs SFX. Cost: ~1 credit. Generate?
 
 ```
-summer_generate_sfx(
-  prompt="metal sword swing whoosh, dry, sharp, 250ms",
-  durationSeconds=0.5,
-  outputPath="audio/sfx/sword_swing_01.wav"
+summer_generate_audio(
+  capability: "sound_effects",
+  prompt: "metal sword swing whoosh, dry, sharp, 250ms",
+  durationSeconds: 0.5
 )
+// Result: { asset: { fileUrl, ... } }
+// Then: summer_import_from_url(url: "<fileUrl>", path: "res://audio/sfx/sword_swing_01.wav")
 ```
 
 `durationSeconds` floor is 0.5, ceiling is 22. If the user wants a 100ms click, generate 0.5s and the player only plays the front; or trim in the engine.

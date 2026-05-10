@@ -21,7 +21,7 @@ This skill therefore offers **three paths**, ranked by reliability:
 2. **Single-call sheet generation** (fast, unreliable) — one prompt asks for the grid. Works ~30% of the time. Worth trying once for short cycles (4 frames or fewer) before falling back to (1).
 3. **Manual authoring** (most reliable, slowest) — hand-author in **Aseprite** or **Piskel**. For pixel art at 32×32, this is often faster than fixing AI generations.
 
-**(Plan 2)** A dedicated `summer_generate_spritesheet(prompt, frameCount, gridSize)` tool is on the roadmap and will use a model fine-tuned on sprite sheets with frame-coherence loss. Until it ships, expect to do per-frame img2img or fall back to Aseprite.
+There is no dedicated sprite-sheet generation tool. Recommended path: per-frame `summer_generate_image` with `referenceImageUrl` (img2img) at consistent angle/lighting, OR external tools (Aseprite/Piskel).
 
 ## When to use
 

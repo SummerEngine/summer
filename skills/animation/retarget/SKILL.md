@@ -40,7 +40,7 @@ summer_inspect_resource(<source_rigAssetId>)
 summer_inspect_resource(<target_rigAssetId>)
 ```
 
-Both responses should include `rig_provider: "meshy"` and `bone_count: 52`. If either is missing those fields or shows a different provider, **stop**. Tell the user: "Target rig isn't Meshy-rigged — retarget will fail. Either re-rig the target via `summer_image_to_3d(..., rig: true)` or regenerate motion directly on it via `summer:animation/generate-motion`. Which?"
+Both responses should include `rig_provider: "meshy"` and `bone_count: 52`. If either is missing those fields or shows a different provider, **stop**. Tell the user: "Target rig isn't Meshy-rigged — retarget will fail. Either re-rig the target via `summer_generate_3d({ kind: \"image-to-3d\", imageUrl: \"...\", options: { rig: true } })` or regenerate motion directly on it via `summer:animation/generate-motion`. Which?"
 
 If both are Meshy-rigged but the target's mesh has wildly different proportions (e.g., source is a 1.8m human, target is a 2.5m ogre with arms-down-to-knees), retarget will succeed but the *result* will look wrong — clipping, foot-floating, or limb-twisting. Warn the user before spending: "Proportions differ a lot — retarget will run but you'll likely need procedural foot IK on the result. Continue?" Hand off to `summer:animation/procedural-animation` after.
 
@@ -109,7 +109,7 @@ summer_set_resource_property(
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| API returns `incompatible_rig` | Target isn't Meshy-rigged | Re-rig target via `summer_image_to_3d(rig: true)` |
+| API returns `incompatible_rig` | Target isn't Meshy-rigged | Re-rig target via `summer_generate_3d({ kind: "image-to-3d", options: { rig: true } })` |
 | API returns `bone_mismatch` | Source rigged with custom bones (extra wings, etc.) | Strip extras or regenerate motion natively on target |
 | Clip plays but limbs twist 180° | T-pose vs A-pose mismatch | Re-rig source from T-pose reference |
 | Feet float / clip into ground | Target is much taller/shorter | Apply foot IK — see `summer:animation/procedural-animation` |
@@ -151,7 +151,7 @@ The break-even is two characters. Past that, retarget is always cheaper.
 
 - **Source library uses additive blend tracks.** Additive clips (e.g., a "lean left" overlay) retarget but the additive flag is preserved only on Meshy-native rigs. Verify the `track_type` survived: `summer_inspect_resource(<retargeted_animationAssetId>)`.
 - **Source has facial blendshape tracks.** Meshy retarget only handles skeleton. Facial tracks are stripped. Hand off to `summer:animation/facial-and-lipsync` to re-author per character.
-- **Target rig was generated months ago and Meshy updated their skeleton schema.** Rare but happens. Symptom: bone-count mismatch even though both rigs are Meshy. Re-rig the target with a fresh `summer_image_to_3d(rig: true)` call.
+- **Target rig was generated months ago and Meshy updated their skeleton schema.** Rare but happens. Symptom: bone-count mismatch even though both rigs are Meshy. Re-rig the target with a fresh `summer_generate_3d({ kind: "image-to-3d", options: { rig: true } })` call.
 - **The user wants to retarget *to* the source rig as a sanity test.** Allowed and useful — round-trips should be near-identical.
 
 ## Fallback (no MCP)

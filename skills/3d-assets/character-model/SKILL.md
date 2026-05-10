@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 3d-assets
 user-invocable: true
-allowed-tools: Read Grep summer_search_assets summer_generate_image summer_generate_3d summer_image_to_3d summer_clean_to_tpose summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_inspect_resource summer_get_scene_tree summer_save_scene
+allowed-tools: Read Grep summer_search_assets summer_generate_image summer_generate_3d summer_import_from_url summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_inspect_resource summer_get_scene_tree summer_save_scene summer_check_job summer_generate_motion
 paths: ["assets/characters/**", "assets/models/**", "**/*.tscn", "**/*.gd"]
 ---
 
@@ -16,16 +16,15 @@ This is the **canonical Meshy auto-rig pipeline**. It produces a humanoid `.glb`
 The whole flow:
 
 ```
-1. T-pose reference image    →  summer_generate_image            (~$0.05, ~10s)
-   └─ optional cleanup pass  →  summer_clean_to_tpose (Plan 2)   (~$0.05, ~10s)
-2. Un-rigged 3D mesh         →  summer_generate_3d(image-to-3d)  (~$0.50, ~60s)
+1. T-pose reference image    →  summer_generate_image                          (~$0.05, ~10s)
+2. Un-rigged 3D mesh         →  summer_generate_3d(image-to-3d)                (~$0.50, ~60s)
 3. ── USER REVIEW GATE ──
-4. Rigged .glb               →  summer_image_to_3d(rig: true)    (Plan 2, ~$1.00, ~90s)
+4. Rigged .glb               →  summer_generate_3d(image-to-3d, rig: true)     (~$1.00, ~90s)
 5. Import → editor RESTART → wire as CharacterBody3D / Node3D
 6. Hand off to summer:animation/generate-motion for clips
 ```
 
-> **Plan 2 tools:** `summer_image_to_3d({ rig: true })` and `summer_clean_to_tpose` are not yet wired to the MCP. Until they ship, do steps 1–3 with the existing `summer_generate_3d(kind: "image-to-3d")`, return the un-rigged mesh, and tell the user "rig pass ships in Plan 2 — apply via Meshy dashboard for now". The animation skill (`summer:animation/generate-motion`) requires a rigged humanoid; static `.glb` won't drive motion.
+The animation skill (`summer:animation/generate-motion`) requires a rigged humanoid; a static `.glb` won't drive motion.
 
 ## When to use
 
@@ -70,7 +69,14 @@ summer_generate_image(
 
 The phrase `T-pose, arms straight out horizontal, legs slightly apart, front-facing` is load-bearing — drop any of those and the model will drift toward A-pose or a hero stance.
 
-**(Plan 2)** If the user already has a concept image in an action pose, run `summer_clean_to_tpose({ imageUrl })` first to re-pose to T-pose without re-rolling the design.
+If the user already has a concept image in an action pose, re-pose it to T-pose via img2img without re-rolling the design:
+
+```
+summer_generate_image({
+  referenceImageUrl: "<existing concept image>",
+  prompt: "<character> in T-pose, arms extended horizontally, neutral facing camera, white background, clean lighting"
+})
+```
 
 Show the image to the user:
 
@@ -106,17 +112,17 @@ Before paying for the rig pass, surface the un-rigged mesh:
 
 If the user wants changes, loop back to step 1 or 2. Do NOT silently run the rig pass — it doubles the cost and locks the design.
 
-### 4. Run the rig pass (Plan 2)
+### 4. Run the rig pass
 
 ```
-summer_image_to_3d({
+summer_generate_3d({
+  kind: "image-to-3d",
   imageUrl: "<image url from step 1>",
-  rig: true,
-  polyTarget: 12000
+  options: { rig: true, polyTarget: 12000 }   // polyTarget is best-effort; backend may use options.target_polycount
 })
 ```
 
-Returns `{ asset: { fileUrl }, rigAssetId }`. The `rigAssetId` is the handle `summer:animation/generate-motion` needs — store it.
+Returns a job whose result includes `{ asset: { fileUrl }, rigAssetId }`. If you ran with `wait: false`, poll via `summer_check_job(jobId)`. The `rigAssetId` is the handle `summer:animation/generate-motion` needs — store it.
 
 Import the rigged version, replacing the un-rigged file:
 
@@ -168,7 +174,7 @@ The imported `.glb` includes its own `Skeleton3D` and `AnimationPlayer` (empty l
 
 > Knight is wired at `./World/Knight` with a Meshy-rigged skeleton. `rigAssetId` saved.
 >
-> Next: `summer:animation/generate-motion` to add idle / walk / run / attack clips. The animation skill will pick `meshy-library` (fast, mocap-quality) for standard locomotion and `hunyuan-custom` for signature moves.
+> Next: `summer:animation/generate-motion` to add idle / walk / run / attack clips. Example call: `summer_generate_motion(rigAssetId: "<saved id>", backend: "meshy-library", motionName: "walk")`. The animation skill picks `meshy-library` (fast, mocap-quality, curated) for standard locomotion and `hunyuan-custom` (prompt-driven, slow) for signature moves.
 
 ## Anti-patterns
 
@@ -216,4 +222,4 @@ After the rigged character is wired:
 - `summer:asset-pipeline/asset-strategy` — meta-router; this skill is the canonical drill-down of its "Image-to-3D for characters" path.
 - `summer:3d-assets/prop-model` — for non-character props.
 - `summer:scene-composition` — for the CharacterBody3D + Mesh + Collider parent pattern.
-- `_shared/mcp-tools-reference.md` — full parameter schemas for `summer_generate_3d`, `summer_generate_image`, and (Plan 2) `summer_image_to_3d`.
+- `_shared/mcp-tools-reference.md` — full parameter schemas for `summer_generate_3d`, `summer_generate_image`, and `summer_generate_motion`.

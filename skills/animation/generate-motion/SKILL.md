@@ -13,7 +13,7 @@ paths: ["**/*.tscn", "**/*.tres", "**/*.gd"]
 
 Two backends, one decision. **Meshy library** picks a clip from a curated mocap set by name (`idle`, `walk`, `run`, `attack_sword`, ~70 standard names). **Hunyuan-Motion** generates a never-before-seen clip from a text prompt. The library is fast (~30s) and cheap (~$0.10) and looks great because it's real mocap. Hunyuan is slower (1–3 min) and pricier (~$0.40) and is the only option when the action isn't on the list. Pick correctly the first time or you waste the user's money and clock.
 
-Both backends require a **Meshy-rigged humanoid** as the target. That means a `rigAssetId` from a prior `summer_image_to_3d` call with `rig: true`. If the user points at a non-rigged mesh, stop and route to `summer:asset-pipeline/asset-strategy` (or directly call `summer_image_to_3d` with rigging enabled) before generating motion.
+Both backends require a **Meshy-rigged humanoid** as the target. That means a `rigAssetId` from a prior `summer_generate_3d({ kind: "image-to-3d", imageUrl: "...", options: { rig: true } })` call. The result job includes `rigAssetId`. If the user points at a non-rigged mesh, stop and route to `summer:asset-pipeline/asset-strategy` (or directly call `summer_generate_3d` with `options.rig: true`) before generating motion.
 
 ## When to use this skill
 
@@ -57,7 +57,7 @@ If the request is ambiguous, default to `meshy-library` — try the closest cura
 summer_search_assets(query="<character name>", kind="model")
 ```
 
-The result must include `rigAssetId: <id>` on a Meshy rig. If it shows `rigAssetId: null`, the model isn't rigged — stop, propose `summer_image_to_3d(..., rig: true)` first, or route to `summer:asset-pipeline/asset-strategy`.
+The result must include `rigAssetId: <id>` on a Meshy rig. If it shows `rigAssetId: null`, the model isn't rigged — stop, propose `summer_generate_3d({ kind: "image-to-3d", imageUrl: "...", options: { rig: true } })` first (the result includes `rigAssetId`), or route to `summer:asset-pipeline/asset-strategy`.
 
 ### 2. Confirm with the user before spending
 

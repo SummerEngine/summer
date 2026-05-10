@@ -13,9 +13,7 @@ paths: ["assets/**", "art/pixel/**", "sprites/**"]
 
 This skill generates pixel-art assets — sprites, items, tiles, icons, portraits — at a target resolution (32×32, 64×64, 128×128, etc.). Pixel art has hard constraints (grid alignment, limited palette, no anti-aliased edges) that diffusion models violate by default. This skill encodes the prompt patterns and post-processing discipline that makes the output actually look like pixel art and not "blurry small image."
 
-**Backing tool today:** `summer_generate_image` with `style: "pixel"` and explicit pixel-art prompts. Output is upscaled by the model — you generally request a small generation (or downscale post-gen) to get crisp pixels.
-
-**(Plan 2)** A dedicated `summer_generate_pixel(prompt, gridSize)` tool is on the roadmap that hits a model trained specifically on pixel art with grid-snapping. When it lands, this skill will route to it for any request that names a `gridSize`. Until then: `summer_generate_image` + downscale.
+**Backing tool:** `summer_generate_image` with `style: "pixel"` and an explicit pixel-art prompt. Pass `options.image_size: "square_hd"` and have the agent enforce pixel-perfect by setting the project's default texture filter to Nearest (and downscaling to the target resolution post-gen). Output is upscaled by the model — you generally request a small generation (or downscale post-gen) to get crisp pixels.
 
 ## When to use
 

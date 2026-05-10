@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_generate_music summer_generate_audio summer_search_assets summer_import_from_url summer_add_node summer_set_prop summer_inspect_node
+allowed-tools: Read Grep Glob Write Edit summer_generate_audio summer_search_assets summer_import_from_url summer_add_node summer_set_prop summer_inspect_node
 paths: ["audio/music/**", "scripts/**", "**/*.tscn"]
 ---
 
@@ -127,11 +127,13 @@ Show the prompt:
 > Duration 60s. Cost: ~12 credits. Generate?
 
 ```
-summer_generate_music(
-  prompt="85 BPM, D minor, 4/4, solo cello and detuned upright piano, sparse, melancholic exploration loop, no drums, gentle reverb, 60s loop",
-  durationSeconds=60,
-  outputPath="audio/music/calm_exploration.mp3"
+summer_generate_audio(
+  capability: "music",
+  prompt: "85 BPM, D minor, 4/4, solo cello and detuned upright piano, sparse, melancholic exploration loop, no drums, gentle reverb, 60s loop",
+  durationSeconds: 60
 )
+// Result: { asset: { fileUrl, ... } }
+// Then: summer_import_from_url(url: "<fileUrl>", path: "res://audio/music/calm_exploration.mp3")
 ```
 
 `durationSeconds` range is 10–300.

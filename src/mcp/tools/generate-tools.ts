@@ -320,6 +320,20 @@ Available kinds:
   - "image-to-3d" — From your own image. Requires 'imageUrl'.
   - "texture" — Generate textures for a model. Requires 'imageUrl'.
 
+Optional rig pass (image-to-3d only):
+  Set options.rig = true to add an auto-rig pass via Meshy v6. The result
+  job (poll via summer_check_job) will include rigAssetId — the asset ID
+  of the rigged glb. Use that rigAssetId with summer_generate_motion to
+  add animation clips. Adds ~$0.30 and ~60s to the job.
+
+Example:
+  summer_generate_3d({
+    kind: "image-to-3d",
+    imageUrl: "https://...",
+    options: { rig: true }
+  })
+  // Returns jobId; poll until result includes { assetId, rigAssetId }.
+
 By default, waits for completion (up to 5 min) and returns the result directly.
 Set wait=false to get the jobId immediately and poll manually with summer_check_job.
 
@@ -492,6 +506,115 @@ Requires authentication: run 'npx summer-engine login' first.`,
         const msg = err instanceof Error ? err.message : String(err);
         return errorResult(`Job status check failed: ${msg}`);
       }
+    }
+  );
+
+  // ========================================================================
+  // summer_generate_motion
+  // ========================================================================
+  server.tool(
+    "summer_generate_motion",
+    `Generate an animation clip for a rigged humanoid character via Summer Engine Studio.
+
+Two backends:
+  - "meshy-library" — picks a clip from a curated mocap set by name (idle, walk,
+    run, attack_sword, jump, ~70 standard names). Fast (~30s), cheap (~$0.10),
+    real mocap quality. Use when the action is on the curated list.
+  - "hunyuan-custom" — generates a never-before-seen clip from a text prompt.
+    Slower (1-3 min), pricier (~$0.40), non-deterministic. Use when the action
+    is specific to this character (e.g. "drops to one knee, draws bow").
+
+Both backends require a Meshy-rigged humanoid as the target. The 'rigAssetId'
+must come from a prior summer_generate_3d call with options.rig=true.
+
+By default, waits for completion (up to 5 min) and returns the result directly.
+Set wait=false to get the jobId immediately and poll manually with summer_check_job.
+
+Common motion names for meshy-library:
+  Locomotion: idle, idle_alert, idle_combat, walk, walk_back, run, sprint,
+              crouch_idle, crouch_walk, jump, jump_loop, jump_land
+  Combat: attack_sword, attack_punch, attack_kick, attack_bow, attack_cast,
+          block, dodge_left, dodge_right, hit_react, death
+  Social: wave, dance, sit_idle
+
+Cost: meshy-library ~$0.10, hunyuan-custom ~$0.40. Confirm with user before
+spending.
+
+Requires authentication: run 'npx summer-engine login' first.`,
+    {
+      rigAssetId: z
+        .string()
+        .describe("Asset ID of a rigged character (from summer_generate_3d with options.rig=true)"),
+      backend: z
+        .enum(["meshy-library", "hunyuan-custom"])
+        .describe("Backend: meshy-library (fast, curated) or hunyuan-custom (slow, prompt-driven)"),
+      motionName: z
+        .string()
+        .optional()
+        .describe("Curated motion name (required for meshy-library): walk, run, attack_sword, etc."),
+      prompt: z
+        .string()
+        .optional()
+        .describe("Text description of the motion (required for hunyuan-custom)"),
+      durationSeconds: z
+        .number()
+        .optional()
+        .default(4)
+        .describe("Clip duration for hunyuan-custom (1-10s typical)"),
+      wait: z
+        .boolean()
+        .default(true)
+        .describe("Wait for completion (default true, up to 5 min). Set false to get jobId immediately."),
+      options: z
+        .record(z.any())
+        .optional()
+        .describe("Backend-specific passthrough"),
+    },
+    async ({ rigAssetId, backend, motionName, prompt, durationSeconds, wait, options }) => {
+      // Client-side validation
+      if (backend === "meshy-library" && !motionName) {
+        return errorResult(
+          "meshy-library backend requires motionName (e.g. 'walk', 'run', 'attack_sword')"
+        );
+      }
+      if (backend === "hunyuan-custom" && !prompt) {
+        return errorResult(
+          "hunyuan-custom backend requires a prompt describing the motion"
+        );
+      }
+
+      const body = {
+        rigAssetId,
+        backend,
+        motionName,
+        prompt,
+        durationSeconds,
+        options,
+      };
+
+      const result = await mcpGenerate("/api/mcp/generate/motion", body);
+
+      if (result.error) {
+        return errorResult(result.error, result.data);
+      }
+
+      const jobId = result.data?.jobId;
+
+      if (!wait || !jobId) {
+        return successResult(result.data);
+      }
+
+      const pollResult = await pollJob(jobId);
+
+      if (pollResult.error) {
+        return errorResult(pollResult.error, { ...pollResult.data, jobId });
+      }
+
+      return successResult({
+        ...pollResult.data,
+        jobId,
+        message: "Motion generation complete. animationAssetId is in result.",
+      });
     }
   );
 }

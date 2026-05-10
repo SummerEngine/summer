@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_generate_sfx summer_generate_audio summer_search_assets summer_import_from_url summer_add_node summer_set_prop summer_inspect_node
+allowed-tools: Read Grep Glob Write Edit summer_generate_audio summer_search_assets summer_import_from_url summer_add_node summer_set_prop summer_inspect_node
 paths: ["audio/ambient/**", "**/*.tscn", "**/*.import"]
 ---
 
@@ -15,7 +15,7 @@ paths: ["audio/ambient/**", "**/*.tscn", "**/*.import"]
 
 An ambient bed is the *air* of a place. Forest at dawn, dungeon corridor, spaceship hum, market street, ocean cave. It plays at low energy under everything else — never melodic, never drawing attention, but its absence is immediately felt. Players don't notice an ambient bed; they notice the silence when you forget one.
 
-This is **not** music. Use `summer_generate_sfx` (ElevenLabs SFX), not `summer_generate_music`. SFX renders textures; Music renders melody. You want texture.
+This is **not** music. Use `summer_generate_audio({capability: 'sound_effects'})`, not `{capability: 'music'}`. SFX renders textures; Music renders melody. You want texture.
 
 Generated at 15–22 seconds (the SFX duration ceiling) and looped seamlessly with a Godot loop point and optional crossfade.
 
@@ -100,11 +100,13 @@ If the user wants a busier bed (market, party), still prevent foreground events:
 ### 5. Generate at the duration ceiling
 
 ```
-summer_generate_sfx(
-  prompt="forest at dawn, gentle wind through leaves, distant bird calls every 6 seconds, soft creaking branches, no music, no human sound, 22s seamless loop",
-  durationSeconds=22,
-  outputPath="audio/ambient/forest_dawn.wav"
+summer_generate_audio(
+  capability: "sound_effects",
+  prompt: "forest at dawn, gentle wind through leaves, distant bird calls every 6 seconds, soft creaking branches, no music, no human sound, 22s seamless loop",
+  durationSeconds: 22
 )
+// Result: { asset: { fileUrl, ... } }
+// Then: summer_import_from_url(url: "<fileUrl>", path: "res://audio/ambient/forest_dawn.wav")
 ```
 
 22s is the SFX ceiling. Always generate at the ceiling for ambient — longer cycle means less recognized repetition.
@@ -241,7 +243,7 @@ Boss arena:         vast stone arena, low ominous drone, distant rumble,
 
 ## Anti-patterns
 
-- **Using `summer_generate_music` for an ambient bed.** Music model adds melody. You don't want melody.
+- **Using `summer_generate_audio({capability: 'music'})` for an ambient bed.** Music model adds melody. You don't want melody.
 - **Foreground events in the bed.** A wolf howl, an explosion, a clear word — these promote themselves and the bed becomes annoying.
 - **Bed louder than `-10 dB` on its bus.** Beds belong under everything; default is `-12 dB` to `-15 dB`.
 - **No loop point set.** The clip plays once and silence follows.

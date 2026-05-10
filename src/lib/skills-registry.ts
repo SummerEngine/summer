@@ -571,6 +571,7 @@ export const SKILL_REGISTRY = [
     requiresMcpTools: [
       "summer_generate_image",
       "summer_generate_3d",
+      "summer_generate_motion",
       "summer_search_assets",
       "summer_inspect_resource",
       "summer_add_node",
@@ -636,6 +637,8 @@ export const SKILL_REGISTRY = [
     clients: ALL_CLIENTS,
     recommended: true,
     requiresMcpTools: [
+      "summer_generate_motion",
+      "summer_check_job",
       "summer_search_assets",
       "summer_inspect_resource",
       "summer_get_scene_tree",
@@ -654,6 +657,7 @@ export const SKILL_REGISTRY = [
     clients: ALL_CLIENTS,
     recommended: false,
     requiresMcpTools: [
+      "summer_generate_motion",
       "summer_search_assets",
       "summer_inspect_resource",
       "summer_set_resource_property",

@@ -1,6 +1,8 @@
 import { Command } from "commander";
 import { getAuthToken, getUserInfo } from "../lib/auth.js";
 import { getApiToken, getApiPort, checkEngineHealth } from "../lib/engine.js";
+import { getProjectMemorySummary } from "../lib/project-memory.js";
+import { formatStatusMemoryLine } from "./memory.js";
 
 export const statusCommand = new Command("status")
   .description("Check Summer Engine status, connection, and auth state")
@@ -42,6 +44,7 @@ export const statusCommand = new Command("status")
     }
     if (health.project_path) {
       console.log(`  Path: ${health.project_path}`);
+      console.log(`  ${formatStatusMemoryLine(getProjectMemorySummary(health.project_path))}`);
     }
     if (health.scene) {
       console.log(`  Scene: ${health.scene}`);

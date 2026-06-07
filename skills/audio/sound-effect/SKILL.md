@@ -233,5 +233,5 @@ After the SFX is wired:
 - `audio/ambient-bed` — long looping textures
 - `audio/music-track` — music
 - `audio/voice-line` — TTS
-- `_shared/mcp-tools-reference.md`
-- `_shared/godot-version.md` — Godot 4.5 audio nodes
+- `references/mcp-tools-reference.md`
+- `references/godot-version.md` — Godot 4.5 audio nodes

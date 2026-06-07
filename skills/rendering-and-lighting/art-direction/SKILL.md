@@ -261,11 +261,11 @@ End with:
 | Procedural skybox without angle | Mid-day sun + uniform fog reads generic. Always angle the sun. |
 | Skipping the lighting plan | Lighting *is* art direction in 3D. Without a plan, every level looks different. |
 | Adopting "AAA realism" at vertical-slice scope | Asset cost is brutal solo. Stylized always wins. |
-| Calling SetResourceProperty on inline sub_resources | Silent fail. See `_shared/mcp-tools-reference.md` § Trap. |
+| Calling SetResourceProperty on inline sub_resources | Silent fail. See `references/mcp-tools-reference.md` § Trap. |
 
 ## Collaborative protocol
 
-This skill writes one design doc (`.summer/art-bible.md`) and may modify `project.godot` settings + the main scene's `WorldEnvironment`. Always ask. See `_shared/collaborative-protocol.md`.
+This skill writes one design doc (`.summer/art-bible.md`) and may modify `project.godot` settings + the main scene's `WorldEnvironment`. Always ask. See `references/collaborative-protocol.md`.
 
 ## Want a working starter?
 
@@ -273,9 +273,9 @@ No template — this is a workflow that produces the bible the rest of the proje
 
 ## See also
 
-- `_shared/collaborative-protocol.md`
-- `_shared/godot-version.md` — Godot 4.5 rendering API notes (Compositor moved in 4.4 / 4.5)
-- `_shared/mcp-tools-reference.md`
+- `references/collaborative-protocol.md`
+- `references/godot-version.md` — Godot 4.5 rendering API notes (Compositor moved in 4.4 / 4.5)
+- `references/mcp-tools-reference.md`
 - `scene-and-project/brainstorm-game/SKILL.md` — produces the brief that anchors the bible
 - `audio/audio-direction/SKILL.md` — the sonic counterpart
 - `rendering-and-lighting/3d-lighting/SKILL.md` — implements the lighting plan

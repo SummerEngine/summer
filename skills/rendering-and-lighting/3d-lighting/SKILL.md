@@ -121,4 +121,4 @@ Then create `Environment` and `Sky` resources via the inspector or load from `.t
 
 ## Collaborative protocol
 
-This skill mutates the scene (adds lights + WorldEnvironment + tunes Environment sub-properties). Always ask before applying: "May I add a DirectionalLight3D Sun with shadows + a WorldEnvironment with a procedural sky?". See `../../_shared/collaborative-protocol.md`.
+This skill mutates the scene (adds lights + WorldEnvironment + tunes Environment sub-properties). Always ask before applying: "May I add a DirectionalLight3D Sun with shadows + a WorldEnvironment with a procedural sky?". See `../../references/collaborative-protocol.md`.

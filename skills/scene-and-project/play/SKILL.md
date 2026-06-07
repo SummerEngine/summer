@@ -104,5 +104,5 @@ No template — works against any Godot/Summer project that has a main scene set
 
 ## See also
 
-- `_shared/mcp-tools-reference.md` — full tool list
+- `references/mcp-tools-reference.md` — full tool list
 - `debugging/debug/SKILL.md` — what to do when /play surfaces an error

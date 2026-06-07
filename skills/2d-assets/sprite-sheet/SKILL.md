@@ -236,4 +236,4 @@ After the animation is wired:
 - `summer:2d-assets/character-portrait` — base portrait for higher-res characters.
 - `summer:animation/generate-motion` — 3D-skeletal counterpart.
 - `summer:audio/sound-effect` — frame-synced SFX.
-- `_shared/mcp-tools-reference.md` — `summer_generate_image` schema.
+- `references/mcp-tools-reference.md` — `summer_generate_image` schema.

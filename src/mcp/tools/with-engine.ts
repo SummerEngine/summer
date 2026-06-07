@@ -7,16 +7,68 @@ type OpResult = {
   ok?: boolean;
   status?: string;
   error?: string;
+  terminalState?: string;
+  errorClass?: string;
   results?: Array<{ ok?: boolean; op?: string; error?: string }>;
 };
 
-function extractOpError(result: unknown): string | null {
+// 0.5.34 Block E contract (publicsummerengine src/lib/tools/contract.ts §0.1).
+// The async lifecycle (async-op-lifecycle.ts pollOpToTerminal) merges
+// terminalState/errorClass onto the apply dict it returns. ONLY these two are
+// "applied something / applied nothing-on-purpose" — every other terminal state
+// means the op did NOT land and must be surfaced as a failure, not masked.
+const SUCCESS_TERMINAL_STATES: ReadonlySet<string> = new Set(["applied", "no_op"]);
+
+// Human-readable fallback when the engine reports a failure terminalState but no
+// `error` string (queue-full / lease-reject / identity-mismatch / no-progress
+// timeout frequently arrive with terminalState set and results[] absent).
+const TERMINAL_STATE_MESSAGES: Record<string, string> = {
+  timed_out: "Engine operation timed out (terminalState: timed_out). Nothing was applied.",
+  not_connected: "Summer Engine is not connected (terminalState: not_connected). Nothing was applied.",
+  identity_mismatch:
+    "Operation rejected — wrong project/instance (terminalState: identity_mismatch). Nothing was mutated.",
+  content_mismatch:
+    "Operation rejected — content changed since last read (terminalState: content_mismatch). Nothing was applied.",
+  denied: "Operation denied (terminalState: denied). Nothing was applied.",
+  canceled: "Operation canceled (terminalState: canceled). Nothing was applied.",
+};
+
+/**
+ * Decide whether an engine result envelope represents a FAILURE, and if so
+ * return a model-visible message. Returns null only for genuine success.
+ *
+ * Guards the two web bug classes (publicsummerengine cf17134f + contract.ts
+ * `isFailureSignal`):
+ *   - a failure `terminalState` (anything other than applied/no_op) is a failure
+ *     even when results[] is absent — the cf17134f "no-results envelope looked
+ *     applied" masking. The poll loop surfaces timed_out/etc. here.
+ *   - an explicit ok:false / status:"error" / failed op inside results[].
+ *
+ * Exported for unit tests.
+ */
+export function extractOpError(result: unknown): string | null {
   if (!result || typeof result !== "object") return null;
   const op = result as OpResult;
-  if (op.ok === false && op.error) return op.error;
-  if (op.status === "error" && op.error) return op.error;
-  const firstFailed = op.results?.find((r) => r.ok === false && r.error);
-  return firstFailed?.error ?? null;
+
+  // Failure terminalState takes precedence — it is set by the async lifecycle
+  // exactly when the op did not land (timeout, backpressure, lease/identity
+  // rejection, cancellation), often with NO results[] to inspect.
+  const ts = op.terminalState;
+  if (typeof ts === "string" && ts.length > 0 && !SUCCESS_TERMINAL_STATES.has(ts)) {
+    if (typeof op.error === "string" && op.error.length > 0) return op.error;
+    return TERMINAL_STATE_MESSAGES[ts] ?? `Engine operation failed (terminalState: ${ts}).`;
+  }
+
+  // An explicit ok:false / status:"error" is a failure even when the engine
+  // omitted an error string — surface it rather than mask it (matches the web
+  // contract `isFailureSignal`).
+  if (op.ok === false) return op.error || "Engine operation failed (ok: false).";
+  if (op.status === "error") return op.error || "Engine operation failed (status: error).";
+  const firstFailed = op.results?.find((r) => r.ok === false);
+  if (firstFailed) {
+    return firstFailed.error || `Engine op failed${firstFailed.op ? ` (${firstFailed.op})` : ""}.`;
+  }
+  return null;
 }
 
 function buildActionHint(message: string): string | null {

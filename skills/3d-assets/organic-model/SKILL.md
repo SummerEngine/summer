@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 3d-assets
 user-invocable: true
-allowed-tools: Read Grep summer_search_assets summer_generate_3d summer_generate_image summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_get_scene_tree summer_save_scene
+allowed-tools: Read Grep summer_search_assets summer_list_my_assets summer_get_asset summer_import_asset_by_id summer_generate_3d summer_generate_image summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_get_scene_tree summer_save_scene
 paths: ["assets/organic/**", "assets/models/**", "**/*.tscn", "**/*.gd"]
 ---
 
@@ -55,7 +55,7 @@ Generating a forest? Make 3 hero trees + 5 background trees + 3 rocks at low pol
 ### 1. Search before generating
 
 ```
-summer_search_assets(query="<organic type>", filter={ kind: "model" })
+summer_search_assets(query="<organic type>", assetType="3d_model", source="all")
 ```
 
 ### 2. Build the prompt
@@ -97,7 +97,8 @@ summer_generate_3d(
   options={ target_polycount: 2000 },
   wait=true
 )
-summer_import_from_url(url="<fileUrl>", path="res://assets/organic/pine_tree_01.glb")
+summer_get_asset(assetId="<assetId>")
+summer_import_asset_by_id(assetId="<assetId>", path="res://assets/organic/pine_tree_01.glb")
 ```
 
 ### 4. Generate variation, not duplication
@@ -189,4 +190,4 @@ After the organic models are scattered:
 - `summer:3d-assets/environment-kit` — pair with this skill: kit pieces give the architecture, organic gives the natural softness.
 - `summer:asset-pipeline/asset-strategy` — meta-router; ground textures and skyboxes go to Pipeline 2 / panoramic gen.
 - `summer:scene-composition` — MultiMeshInstance3D scatter pattern.
-- `_shared/mcp-tools-reference.md` — `summer_generate_3d` schema.
+- `references/mcp-tools-reference.md` — `summer_generate_3d` schema.

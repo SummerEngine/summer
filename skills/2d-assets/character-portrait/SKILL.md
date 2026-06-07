@@ -193,4 +193,4 @@ After the portrait is wired:
 - `summer:2d-assets/concept-art` — explore the look first if not yet locked.
 - `summer:asset-pipeline/asset-strategy` — meta-router and the 3D pipeline.
 - `summer:scene-composition` — wiring the portrait into a dialogue UI scene.
-- `_shared/mcp-tools-reference.md` — `summer_generate_image` parameter schema.
+- `references/mcp-tools-reference.md` — `summer_generate_image` parameter schema.

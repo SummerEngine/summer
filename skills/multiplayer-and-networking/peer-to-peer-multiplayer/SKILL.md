@@ -361,7 +361,7 @@ This skill writes multiple new files (`autoloads/network_manager.gd`, `autoloads
 
 Don't apply all four layers in one shot — checkpoint after each layer so the user can verify before adding the next.
 
-See [`_shared/collaborative-protocol.md`](../../_shared/collaborative-protocol.md).
+See [`references/collaborative-protocol.md`](../../references/collaborative-protocol.md).
 
 ## Want a working starter?
 
@@ -371,8 +371,8 @@ When the `template-co-op-3d` template ships in the registry, this skill will ref
 
 ## See also
 
-- [`_shared/godot-version.md`](../../_shared/godot-version.md) — Godot 4.5 multiplayer API stability notes
-- [`_shared/mcp-tools-reference.md`](../../_shared/mcp-tools-reference.md) — `summer_project_setting` for autoload registration
-- [`_shared/gd-style.md`](../../_shared/gd-style.md) — typed-GDScript conventions
+- [`references/godot-version.md`](../../references/godot-version.md) — Godot 4.5 multiplayer API stability notes
+- [`references/mcp-tools-reference.md`](../../references/mcp-tools-reference.md) — `summer_project_setting` for autoload registration
+- [`references/gd-style.md`](../../references/gd-style.md) — typed-GDScript conventions
 - [`host-authoritative-state`](../host-authoritative-state/SKILL.md) — deeper dive on JUST the state ownership decision matrix
 - [`setup-multiplayer`](../setup-multiplayer/SKILL.md) — lighter intro that just gets a session running (use that one if the user just wants 2 players to see each other; use this one if they want to ship a real game)

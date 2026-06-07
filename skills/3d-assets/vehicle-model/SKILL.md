@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 3d-assets
 user-invocable: true
-allowed-tools: Read Grep summer_search_assets summer_generate_3d summer_generate_image summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_inspect_resource summer_get_scene_tree summer_save_scene
+allowed-tools: Read Grep summer_search_assets summer_list_my_assets summer_get_asset summer_import_asset_by_id summer_generate_3d summer_generate_image summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_inspect_resource summer_get_scene_tree summer_save_scene
 paths: ["assets/vehicles/**", "assets/models/**", "**/*.tscn", "**/*.gd"]
 ---
 
@@ -69,7 +69,7 @@ If the user has reference images already (concept art, photos), prefer those —
 ### 1. Search before generating
 
 ```
-summer_search_assets(query="<vehicle type>", filter={ kind: "model" })
+summer_search_assets(query="<vehicle type>", assetType="3d_model", source="all")
 ```
 
 ### 2. Pick model and polycount
@@ -101,7 +101,8 @@ summer_generate_3d(
   options={ target_polycount: 25000 },
   wait=true
 )
-summer_import_from_url(url="<fileUrl>", path="res://assets/vehicles/race_car.glb")
+summer_get_asset(assetId="<assetId>")
+summer_import_asset_by_id(assetId="<assetId>", path="res://assets/vehicles/race_car.glb")
 ```
 
 ### 5. Inspect for hard-surface artifacts
@@ -199,4 +200,4 @@ After the vehicle is wired:
 - `summer:3d-assets/prop-model` — for separable parts (rotors, decals as decals, modular kit pieces).
 - `summer:asset-pipeline/asset-strategy` — meta-router.
 - `summer:character-controllers` — for player-driven vehicle input wiring.
-- `_shared/mcp-tools-reference.md` — `summer_generate_3d` schema, including `kind: "texture"` for the secondary detail pass.
+- `references/mcp-tools-reference.md` — `summer_generate_3d` schema, including `kind: "texture"` for the secondary detail pass.

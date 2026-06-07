@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import { execSync } from "child_process";
+import { createHash } from "crypto";
 import { createWriteStream, existsSync, mkdirSync } from "fs";
 import { pipeline } from "stream/promises";
 import { Readable } from "stream";
@@ -13,6 +14,41 @@ interface ReleaseInfo {
     macos?: { version: string; dmg_url: string; dmg_sha256?: string };
     windows?: { version: string; url: string; sha256?: string };
   };
+}
+
+/** Guard a download URL from the releases endpoint. A missing/empty URL (an
+ *  outdated or misconfigured endpoint) otherwise becomes a cryptic
+ *  fetch(undefined) failure — surface it clearly with a manual fallback. */
+export function requireDownloadUrl(value: string | undefined, label: string): string {
+  if (!value || value.trim().length === 0) {
+    throw new Error(
+      `Release info is missing the ${label} download URL — the releases endpoint may be ` +
+      `outdated. Download manually from https://summerengine.com/download`
+    );
+  }
+  return value;
+}
+
+/** Verify a downloaded file's sha256 against the expected hash from the releases
+ *  endpoint. Skipped when no expected hash is published. Catches a truncated or
+ *  corrupted download (a ~1GB install over a flaky network) before it becomes a
+ *  confusing DMG-mount / installer failure downstream. */
+export function verifyChecksum(actual: string, expected: string | undefined, label: string): void {
+  if (!expected || expected.trim().length === 0) return; // nothing published to verify against
+  if (actual.toLowerCase() !== expected.toLowerCase()) {
+    throw new Error(
+      `${label} checksum mismatch — the download was corrupted or incomplete ` +
+      `(expected ${expected.slice(0, 12)}…, got ${actual.slice(0, 12)}…). Re-run \`summer install\`.`
+    );
+  }
+}
+
+/** Velopack Setup.exe install args. Velopack is NOT NSIS: silent install is
+ *  `--silent` and a custom directory is `--installto <dir>` (per Velopack's
+ *  setup.exe CLI). The old NSIS flags (/S, /D=) are rejected by the Velopack
+ *  installer with "unexpected argument '/S' found" — this is the wizard bug. */
+export function windowsInstallerArgs(customPath?: string): string {
+  return customPath ? `--silent --installto "${customPath}"` : "--silent";
 }
 
 export const installCommand = new Command("install")
@@ -58,6 +94,7 @@ async function installMac(releases: ReleaseInfo, customPath?: string): Promise<v
     process.exit(1);
   }
 
+  const dmgUrl = requireDownloadUrl(info.dmg_url, "macOS DMG");
   console.log(`Latest version: ${info.version}`);
 
   const destApp = customPath || "/Applications/Summer.app";
@@ -69,7 +106,14 @@ async function installMac(releases: ReleaseInfo, customPath?: string): Promise<v
   const dmgPath = join(tmpdir(), `Summer-v${info.version}.dmg`);
   console.log(`Downloading Summer Engine v${info.version} (~1 GB, includes bundled Git + runtime)...`);
 
-  await downloadFile(info.dmg_url, dmgPath);
+  try {
+    const { sha256 } = await downloadFile(dmgUrl, dmgPath);
+    verifyChecksum(sha256, info.dmg_sha256, "DMG");
+  } catch (err) {
+    try { execSync(`rm -f "${dmgPath}"`, { stdio: "ignore" }); } catch { /* best effort */ }
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exit(1);
+  }
 
   console.log("Mounting DMG...");
   const mountOutput = execSync(`hdiutil attach "${dmgPath}" -nobrowse -noverify -noautoopen`, {
@@ -110,16 +154,24 @@ async function installWindows(releases: ReleaseInfo, customPath?: string): Promi
     process.exit(1);
   }
 
+  const exeUrl = requireDownloadUrl(info.url, "Windows installer");
   console.log(`Latest version: ${info.version}`);
 
   const exePath = join(tmpdir(), `Summer-v${info.version}.exe`);
   console.log(`Downloading Summer Engine v${info.version} (~1 GB, includes bundled Git + runtime)...`);
 
-  await downloadFile(info.url, exePath);
+  try {
+    const { sha256 } = await downloadFile(exeUrl, exePath);
+    verifyChecksum(sha256, info.sha256, "installer");
+  } catch (err) {
+    try { execSync(`del "${exePath}"`, { stdio: "ignore" }); } catch { /* best effort */ }
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exit(1);
+  }
 
   console.log("Running installer...");
   try {
-    execSync(`"${exePath}" /S${customPath ? ` /D=${customPath}` : ""}`, {
+    execSync(`"${exePath}" ${windowsInstallerArgs(customPath)}`, {
       stdio: "inherit",
     });
   } catch {
@@ -137,7 +189,7 @@ async function installWindows(releases: ReleaseInfo, customPath?: string): Promi
   console.log("  summer run      # Launch the engine");
 }
 
-async function downloadFile(url: string, dest: string): Promise<void> {
+export async function downloadFile(url: string, dest: string): Promise<{ sha256: string }> {
   const res = await fetch(url);
   if (!res.ok || !res.body) {
     throw new Error(`Download failed: HTTP ${res.status}`);
@@ -149,10 +201,14 @@ async function downloadFile(url: string, dest: string): Promise<void> {
   const fileStream = createWriteStream(dest);
   const readable = Readable.fromWeb(res.body as import("stream/web").ReadableStream);
 
+  // Hash while streaming (the 'data' listener and the pipe both see every chunk
+  // in flowing mode), so we get integrity for free without a second read pass.
+  const hash = createHash("sha256");
   let downloaded = 0;
   const total = parseInt(res.headers.get("content-length") || "0", 10);
 
   readable.on("data", (chunk: Buffer) => {
+    hash.update(chunk);
     downloaded += chunk.length;
     if (total > 0) {
       const pct = Math.round((downloaded / total) * 100);
@@ -162,4 +218,5 @@ async function downloadFile(url: string, dest: string): Promise<void> {
 
   await pipeline(readable, fileStream);
   process.stdout.write("\n");
+  return { sha256: hash.digest("hex") };
 }

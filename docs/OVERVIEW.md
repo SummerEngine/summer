@@ -2,36 +2,43 @@
 
 Summer Engine is the AI game engine. **Summer** — this repo — is the open-source layer that makes any coding agent fluent in it.
 
+Source: [github.com/SummerEngine/summer-engine-agent](https://github.com/SummerEngine/summer-engine-agent)
+
 ## What's in here
 
 Three things, plus glue.
 
-**Skills (22).** Markdown files. Each one is a discipline guide — debug, brainstorm, FPS controller, multiplayer, art direction, ship. They auto-fire on natural language. No slash command needed.
+**Skills (60).** Markdown files. Each one is a discipline guide — debug, brainstorm, FPS controller, multiplayer, art direction, ship. They auto-fire on natural language. No slash command needed.
 
 **MCP server.** Thirty-seven tools that talk to a running Summer Engine on `localhost:6550`. Scene mutation, asset import, runtime control, diagnostics, generation. Your agent calls them; the engine moves.
 
 **CLI.** Install the engine, log in, scaffold projects, run them, run doctor. The terminal side.
 
-The glue: **lifecycle hooks** (session-start orientation, optional pre-commit doctor) and **per-agent plugin manifests** for Claude Code, Cursor, Codex, Gemini, OpenCode, Factory Droid, Copilot CLI, Windsurf.
+The glue: **lifecycle hooks** (session-start orientation, optional pre-commit doctor), plugin manifests for plugin-capable harnesses, and `summer setup` targets for Claude Code, Cursor, Codex, Gemini, OpenCode, GitHub Copilot CLI, GitHub Copilot in VS Code, Cline, Roo Code, and Windsurf.
 
 ## Quick start
 
-Install the agent layer once:
+Paste this into your AI environment:
 
-```bash
-npm install -g summer-engine
-summer setup claude-code --yes      # or codex / cursor / gemini / opencode / windsurf
+```text
+Install Summer Engine and let's make a game.
 ```
 
-That writes the MCP config, installs the recommended skills, runs `summer doctor`. Done.
+That is the preferred setup wizard. The agent reads the install playbook, runs `npx -y summer-engine@latest doctor --json`, installs only what is missing, writes the MCP config, installs the recommended skills, and opens the engine.
+
+Manual fallback:
+
+```bash
+npx -y summer-engine@latest setup claude-code --yes --force
+```
 
 Get the engine:
 
 ```bash
-summer install         # downloads Summer Engine — prints URL and size first
-summer login
-summer create 3d-basic my-game
-summer run my-game
+npx -y summer-engine@latest install
+npx -y summer-engine@latest login
+npx -y summer-engine@latest create 3d-basic my-game
+npx -y summer-engine@latest run my-game
 ```
 
 Or download from [summerengine.com/download](https://summerengine.com/download).
@@ -46,8 +53,12 @@ Each agent has its own home for SKILL.md files:
 | `codex` | `~/.agents/skills` | `.agents/skills` |
 | `claude-code` | `~/.claude/skills` | `.claude/skills` |
 | `cursor` | `~/.cursor/rules` (as `summer-<skill>.mdc`) | `.cursor/rules` |
-| `gemini` | `~/.gemini/extensions` | n/a |
-| `opencode` | `node_modules/summer-engine/skills` (auto) | n/a |
+| `cline` | `~/Documents/Cline/Rules` | `.clinerules` |
+| `roo-code` | `~/Documents/Roo/Rules` | `.clinerules` |
+| `gemini` | `~/.gemini/extensions/summer-engine/skills` | n/a |
+| `github-copilot` | `~/.copilot/skills` | `.github/skills` |
+| `vscode-copilot` | `~/.copilot/skills` | `.github/skills` |
+| `opencode` | `~/.config/opencode/agents/summer` | `.opencode/agents/summer` |
 | `windsurf` | `~/.windsurfrules` (managed blocks) | `.windsurfrules` |
 
 Use `--scope project` when you want the skills committed with the game:

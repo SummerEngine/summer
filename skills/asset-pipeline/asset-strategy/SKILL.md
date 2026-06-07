@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: asset-pipeline
 user-invocable: false
-allowed-tools: Read Grep Skill summer_search_assets
+allowed-tools: Read Grep Skill summer_search_assets summer_list_my_assets summer_get_asset summer_import_asset_by_id
 ---
 
 # Asset Strategy — Meta-Router for Asset Creation
@@ -117,7 +117,8 @@ VFX is **code, not generative** — recipes are shader + GDScript + node setup, 
 
 - The user already named the specific skill — go straight there.
 - The user is debugging or running the game — route to `summer:debug` or `summer:play`.
-- The asset is being imported, not generated (existing `.glb` / `.wav` from Sketchfab, Quaternius, AmbientCG) — call `summer_import_from_url` directly.
+- The asset is an existing Summer asset ID — call `summer_get_asset`, then `summer_import_asset_by_id`.
+- The asset is being imported from a non-Summer URL (`.glb` / `.wav` from Sketchfab, Quaternius, AmbientCG) — call `summer_import_from_url` directly.
 - The user wants to plan the whole game's asset list — `summer:brainstorm-game` first, then this router on each item.
 
 ## Anti-patterns

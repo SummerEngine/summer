@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { writeFile, mkdir } from "fs/promises";
@@ -5,12 +6,102 @@ import { tmpdir } from "os";
 import { join } from "path";
 import { getAuthToken } from "../../lib/auth.js";
 
+const require = createRequire(import.meta.url);
+const { version: CLI_VERSION } = require("../../../package.json");
+
 const GATEWAY_URL =
   process.env.SUMMER_GATEWAY_URL || "https://www.summerengine.com";
+
+const TOOL_BY_ENDPOINT: Record<string, string> = {
+  "/api/mcp/generate/image": "summer_generate_image",
+  "/api/mcp/generate/audio": "summer_generate_audio",
+  "/api/mcp/generate/3d": "summer_generate_3d",
+  "/api/mcp/generate/video": "summer_generate_video",
+  "/api/mcp/generate/motion": "summer_generate_motion",
+};
 
 // ---------------------------------------------------------------------------
 // Shared helpers
 // ---------------------------------------------------------------------------
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function stringFrom(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function formatValidationDetailEntry(entry: unknown): string | null {
+  const record = asRecord(entry);
+  if (!record) {
+    return stringFrom(entry) ?? null;
+  }
+
+  const message =
+    stringFrom(record.msg) ??
+    stringFrom(record.message) ??
+    stringFrom(record.error) ??
+    null;
+  if (!message) return null;
+
+  const loc = Array.isArray(record.loc)
+    ? record.loc.map((part) => String(part)).join(".")
+    : stringFrom(record.path) ?? stringFrom(record.field);
+
+  return loc ? `${loc}: ${message}` : message;
+}
+
+function formatValidationDetails(detail: unknown): string[] {
+  if (Array.isArray(detail)) {
+    return detail
+      .map(formatValidationDetailEntry)
+      .filter((entry): entry is string => !!entry);
+  }
+  const formatted = formatValidationDetailEntry(detail);
+  return formatted ? [formatted] : [];
+}
+
+function formattedApiErrorMessage(status: number, data: unknown): string {
+  const record = asRecord(data);
+  const provider = asRecord(record?.provider);
+  const directDetailMessages = formatValidationDetails(record?.detail);
+  const detailMessages =
+    directDetailMessages.length > 0
+      ? directDetailMessages
+      : Array.isArray(provider?.detailMessages)
+        ? provider.detailMessages.filter((entry): entry is string => typeof entry === "string")
+        : formatValidationDetails(provider?.detail);
+
+  if (status === 422 && detailMessages.length > 0) {
+    return `Request validation failed (422): ${detailMessages.join("; ")}`;
+  }
+
+  return (
+    stringFrom(record?.message) ??
+    stringFrom(record?.error) ??
+    `Request failed (${status})`
+  );
+}
+
+async function readJsonResponse(res: Response): Promise<any> {
+  if (typeof res.text !== "function") {
+    if (typeof res.json === "function") {
+      return res.json().catch(() => ({}));
+    }
+    return {};
+  }
+
+  const text = await res.text().catch(() => "");
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { message: text.slice(0, 1000) };
+  }
+}
 
 async function mcpGenerate(
   endpoint: string,
@@ -26,19 +117,30 @@ async function mcpGenerate(
     };
   }
 
-  const res = await fetch(`${GATEWAY_URL}${endpoint}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(timeoutMs),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${GATEWAY_URL}${endpoint}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "X-Summer-Client": "summer-cli",
+        "X-Summer-Client-Version": CLI_VERSION,
+        "X-Summer-Client-Surface": "mcp",
+        "X-Summer-MCP-Endpoint": endpoint,
+        "X-Summer-MCP-Tool": TOOL_BY_ENDPOINT[endpoint] ?? "unknown",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { error: `Generation request failed: ${msg}`, status: 0 };
+  }
 
-  const data = await res.json();
+  const data = await readJsonResponse(res);
   if (!res.ok) {
-    let message = data.message || data.error || "Request failed";
+    let message = formattedApiErrorMessage(res.status, data);
 
     if (res.status === 402) {
       message =
@@ -51,7 +153,7 @@ async function mcpGenerate(
         "\nRe-authenticate:\n  npx summer-engine login";
     }
 
-    return { error: message, data, status: res.status };
+    return { error: message, data: { ...data, status: res.status }, status: res.status };
   }
   return { data, status: res.status };
 }
@@ -132,7 +234,7 @@ function errorResult(message: string, extra?: Record<string, any>) {
     content: [
       {
         type: "text" as const,
-        text: JSON.stringify({ error: true, message, ...extra }, null, 2),
+        text: JSON.stringify({ error: true, ...extra, message }, null, 2),
       },
     ],
     isError: true,

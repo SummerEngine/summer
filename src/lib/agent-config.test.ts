@@ -163,6 +163,37 @@ describe("configureAgentMcp", () => {
     expect(written.mcpServers["summer-engine"].args).toEqual(NPX_ARGS);
   });
 
+  it("writes a GitHub Copilot CLI config with tools enabled", async () => {
+    const dir = tmp();
+    const path = join(dir, "mcp-config.json");
+    const result = await configureAgentMcp({
+      agent: "github-copilot",
+      scope: "user",
+      env: { SUMMER_GITHUB_COPILOT_CONFIG_FILE: path } as NodeJS.ProcessEnv,
+    });
+    expect(result.wrote).toBe(true);
+    const written = JSON.parse(readFileSync(path, "utf-8"));
+    expect(written.mcpServers["summer-engine"].type).toBe("local");
+    expect(written.mcpServers["summer-engine"].command).toBe("npx");
+    expect(written.mcpServers["summer-engine"].args).toEqual(NPX_ARGS);
+    expect(written.mcpServers["summer-engine"].tools).toEqual(["*"]);
+  });
+
+  it("writes a VS Code Copilot mcp.json with servers shape", async () => {
+    const dir = tmp();
+    const path = join(dir, "mcp.json");
+    const result = await configureAgentMcp({
+      agent: "vscode-copilot",
+      scope: "user",
+      env: { SUMMER_VSCODE_COPILOT_CONFIG_FILE: path } as NodeJS.ProcessEnv,
+    });
+    expect(result.wrote).toBe(true);
+    const written = JSON.parse(readFileSync(path, "utf-8"));
+    expect(written.servers["summer-engine"].type).toBe("stdio");
+    expect(written.servers["summer-engine"].command).toBe("npx");
+    expect(written.servers["summer-engine"].args).toEqual(NPX_ARGS);
+  });
+
   it("writes a fresh opencode config with the array-shaped command", async () => {
     const dir = tmp();
     const path = join(dir, "opencode.json");

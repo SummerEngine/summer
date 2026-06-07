@@ -286,7 +286,7 @@ Test checklist:
 | Replicate every property | Replicate position, rotation, health, that's it | Bandwidth + bug surface |
 | Run physics on every peer for every player | Physics on owner only, others receive transform | Otherwise jitter and divergence |
 | Trust the client | Validate `get_remote_sender_id()` in every `any_peer` RPC | Cheaters route through the wrong RPC |
-| Inline `SceneReplicationConfig` sub_resource | Save as standalone `.tres` | Silent-fail trap (see `_shared/mcp-tools-reference.md`) |
+| Inline `SceneReplicationConfig` sub_resource | Save as standalone `.tres` | Silent-fail trap (see `references/mcp-tools-reference.md`) |
 | Roll custom transport | ENet (or WebSocket for browser) | You will hit edge cases ENet already solved |
 | Skip authority check in damage RPC | `if not multiplayer.is_server(): return` at the top of damage handlers | Otherwise damage applied N times |
 | Spawn players on every peer | MultiplayerSpawner — host spawns, clients receive | Otherwise N copies of each player |
@@ -303,22 +303,22 @@ Test checklist:
 
 ## Collaborative protocol
 
-This skill rewires the project at the architectural level. Always ask before each block of changes. Group writes — "I'm about to add the autoload + 2 scenes + 3 scripts + InputMap entries. OK?". See `_shared/collaborative-protocol.md`.
+This skill rewires the project at the architectural level. Always ask before each block of changes. Group writes — "I'm about to add the autoload + 2 scenes + 3 scripts + InputMap entries. OK?". See `references/collaborative-protocol.md`.
 
 ## Want a working starter?
 
 For a known-good multiplayer scaffold (host + join UI, ENet transport, MultiplayerSpawner, replicated player), point users at:
 
-→ **template-id**: TBD (`template-co-op-online` planned, see `_shared/template-registry.md`)
+→ **template-id**: TBD (`template-co-op-online` planned, see `references/template-registry.md`)
 
 For now: this skill produces the scaffold inline. When the template lands, link from here.
 
 ## See also
 
-- `_shared/mcp-tools-reference.md` — full MCP tool list (project-setting, autoload registration)
-- `_shared/godot-version.md` — `MultiplayerAPI` is medium-churn; `SceneReplicationConfig` settled in 4.0+
-- `_shared/collaborative-protocol.md` — "May I write" pattern
-- `_shared/gd-style.md` — typed GDScript conventions
+- `references/mcp-tools-reference.md` — full MCP tool list (project-setting, autoload registration)
+- `references/godot-version.md` — `MultiplayerAPI` is medium-churn; `SceneReplicationConfig` settled in 4.0+
+- `references/collaborative-protocol.md` — "May I write" pattern
+- `references/gd-style.md` — typed GDScript conventions
 - `multiplayer-and-networking/multiplayerapi-basics/SKILL.md` — deeper MultiplayerAPI patterns
 - `multiplayer-and-networking/client-server-pattern/SKILL.md` — dedicated server architecture
 - `multiplayer-and-networking/peer-replication/SKILL.md` — synchronizer config patterns

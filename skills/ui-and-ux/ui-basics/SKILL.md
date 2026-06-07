@@ -147,4 +147,4 @@ text = "Start Game"
 
 ## Collaborative protocol
 
-This skill writes UI scene nodes and wires button signals. Always ask before applying: "May I add the MainMenu (Control + Margin + VBox + Title + Start/Quit buttons) and connect Start.pressed to `_on_start_pressed`?". See `../../_shared/collaborative-protocol.md`.
+This skill writes UI scene nodes and wires button signals. Always ask before applying: "May I add the MainMenu (Control + Margin + VBox + Title + Start/Quit buttons) and connect Start.pressed to `_on_start_pressed`?". See `../../references/collaborative-protocol.md`.

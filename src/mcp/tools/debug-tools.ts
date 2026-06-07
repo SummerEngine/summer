@@ -60,21 +60,56 @@ Use after summer_get_diagnostics indicates console issues.`,
 
   server.tool(
     "summer_get_debugger_errors",
-    `Read runtime errors and warnings from the debugger. These are errors that occur while the game is running (null references, missing nodes, physics errors). Different from console output — these come from the debugger, not print statements.
+    `Read runtime errors from the debugger. These occur while the game is running (null references, missing nodes, physics errors). Different from console output — these come from the debugger, not print statements.
+
+For warning text, use summer_get_debugger_warnings (separate tool — engine returns warning count here but not the bodies).
 
 Output is deduped: identical errors firing every frame collapse into one entry with a "(×N)" count suffix. A "_filter" summary tells you exactly what was collapsed or truncated. Use raw=true to bypass shaping when you really need every entry.`,
     {
       max_errors: z.number().optional().default(50).describe("Max errors to return after dedupe"),
       include_stack: z.boolean().optional().describe("Include stack traces for each error"),
+      include_warnings: z.boolean().optional().default(false).describe("Forward-compat flag — when engine supports it, returns warning bodies in the same call. Today the engine ignores it; use summer_get_debugger_warnings instead."),
       raw: z.boolean().optional().default(false).describe("Bypass dedupe — return engine output verbatim"),
     },
-    async ({ max_errors, include_stack, raw }) =>
+    async ({ max_errors, include_stack, include_warnings, raw }) =>
       withEngine(async (client) => {
         const op: Record<string, unknown> = { op: "GetDebuggerErrors", max_errors };
         if (include_stack !== undefined) op.include_stack = include_stack;
+        if (include_warnings) op.include_warnings = true;
         const engineResult = await client.executeOps([op]);
         if (raw) return engineResult;
         const { result } = shapeEngineLogResponse(engineResult, { maxEntries: max_errors });
+        return result;
+      })
+  );
+
+  server.tool(
+    "summer_get_debugger_warnings",
+    `Read runtime warnings from the debugger panel. Warnings are non-fatal issues the game flags during play: missing optional resources, dead signal connections, deprecated API use, large allocations, physics warnings, etc.
+
+Returns structured entries with file/line/function/error_descr/callstack — same shape as summer_get_debugger_errors but filtered to severity = "warning". Engine-internal warnings without a source file are filtered out as noise.
+
+Use this when summer_get_diagnostics shows a non-zero \`debugger.warnings\` count and you want to see what they actually say.`,
+    {
+      max_warnings: z.number().optional().default(50).describe("Max warnings to return after dedupe"),
+      include_stack: z.boolean().optional().default(true).describe("Include stack traces"),
+      raw: z.boolean().optional().default(false).describe("Bypass dedupe"),
+    },
+    async ({ max_warnings, include_stack, raw }) =>
+      withEngine(async (client) => {
+        // Reuses the existing GetDebuggerErrors op with type: "warning" filter.
+        // Engine-side change: ScriptEditorDebugger::get_errors_data() supports
+        // include_warnings; debug_ops::get_debugger_errors honours `type` to
+        // return warnings only. Diagnostics also exposes `warnings_data`.
+        const op: Record<string, unknown> = {
+          op: "GetDebuggerErrors",
+          max_errors: max_warnings,
+          type: "warning",
+          include_stack,
+        };
+        const engineResult = await client.executeOps([op]);
+        if (raw) return engineResult;
+        const { result } = shapeEngineLogResponse(engineResult, { maxEntries: max_warnings });
         return result;
       })
   );

@@ -1,5 +1,13 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import {
+  ASSET_POLICIES,
+  GAME_TASK_MODES,
+  GAME_TASK_TARGETS,
+  VERIFICATION_LEVELS,
+  buildGameTaskPlan,
+} from "../../lib/game-task-plan.js";
+import { getProjectMemorySummary } from "../../lib/project-memory.js";
 import { withEngine } from "./with-engine.js";
 
 type JsonRecord = Record<string, unknown>;
@@ -43,9 +51,10 @@ function getProjectSetting(projectState: unknown, keys: string[]): string | null
   return null;
 }
 
-function getProjectPath(projectState: unknown): string | null {
+function getProjectPath(projectState: unknown, health: unknown): string | null {
   const root = asRecord(projectState);
   const data = getProjectData(projectState);
+  const healthRoot = asRecord(health);
   return (
     pickString(data, [
       "projectPath",
@@ -56,16 +65,19 @@ function getProjectPath(projectState: unknown): string | null {
       "root_path",
     ]) ??
     pickString(root, ["projectPath", "project_path", "projectRoot", "project_root"]) ??
+    pickString(healthRoot, ["project_path", "projectPath", "projectRoot", "project_root"]) ??
     null
   );
 }
 
-function getProjectName(projectState: unknown): string | null {
+function getProjectName(projectState: unknown, health: unknown): string | null {
   const root = asRecord(projectState);
   const data = getProjectData(projectState);
+  const healthRoot = asRecord(health);
   return (
     pickString(data, ["projectName", "project_name", "name"]) ??
     pickString(root, ["projectName", "project_name", "name"]) ??
+    pickString(healthRoot, ["project_name", "projectName", "name"]) ??
     getProjectSetting(projectState, ["application/config/name", "config/name"])
   );
 }
@@ -83,24 +95,77 @@ function getMainScene(projectState: unknown): string | null {
   );
 }
 
-function getCurrentScene(projectState: unknown, sceneState: unknown): string | null {
+function getCurrentScene(
+  projectState: unknown,
+  sceneState: unknown,
+  health: unknown
+): string | null {
   const sceneRoot = asRecord(sceneState);
   const sceneData = asRecord(sceneRoot?.data);
   const sceneProvenance = asRecord(sceneRoot?.provenance);
   const projectRoot = asRecord(projectState);
   const projectData = getProjectData(projectState);
   const projectProvenance = asRecord(projectRoot?.provenance);
+  const healthRoot = asRecord(health);
 
   return (
     pickString(sceneProvenance, ["scenePath", "scene_path"]) ??
     pickString(sceneData, ["scenePath", "scene_path", "currentScene", "current_scene"]) ??
     pickString(projectData, ["currentScene", "current_scene", "scenePath", "scene_path"]) ??
     pickString(projectProvenance, ["scenePath", "scene_path"]) ??
+    pickString(healthRoot, ["scene", "scenePath", "scene_path"]) ??
     null
   );
 }
 
 export function registerProjectTools(server: McpServer): void {
+  server.tool(
+    "summer_start_game_task",
+    `Start here for any substantial AI game-building task.
+
+Takes the user's goal and returns the recommended Summer workflow: skill routes,
+MCP tool groups, host-file boundaries, asset policy, user confirmation gates,
+and verification steps. This is the router before deep skills and before
+mutating the project.`,
+    {
+      goal: z.string().describe("The user's game-building goal or task."),
+      mode: z
+        .enum(GAME_TASK_MODES)
+        .default("auto")
+        .describe("Optional task mode override."),
+      target: z
+        .enum(GAME_TASK_TARGETS)
+        .default("auto")
+        .describe("Optional content/system target override."),
+      assetPolicy: z
+        .enum(ASSET_POLICIES)
+        .default("ask-before-paid-generation")
+        .describe("How aggressively to use paid asset generation."),
+      verification: z
+        .enum(VERIFICATION_LEVELS)
+        .default("full")
+        .describe("How much engine verification the agent should plan for."),
+    },
+    async ({ goal, mode, target, assetPolicy, verification }) => ({
+      content: [
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            buildGameTaskPlan({
+              goal,
+              mode,
+              target,
+              assetPolicy,
+              verification,
+            }),
+            null,
+            2
+          ),
+        },
+      ],
+    })
+  );
+
   server.tool(
     "summer_get_agent_playbook",
     `AI-first operating guide for Summer Engine MCP.
@@ -115,26 +180,33 @@ It returns the safe workflow, anti-patterns, and recovery steps.`,
           text: JSON.stringify(
             {
               startupChecklist: [
-                "Decide first: file edit or engine operation.",
-                "Write .gd/.cs/.json/docs/simple config with host file-edit tools directly.",
-                "Use Summer MCP for live scene state, inspector/node edits, imports, play/stop, diagnostics, screenshots/verification.",
-                "Call summer_get_project_context first.",
-                "If no scene is open, call summer_open_main_scene.",
-                "Call summer_get_scene_tree before structural edits.",
-                "Call summer_save_scene after edits.",
+                "Understand the request and outline a brief plan before reaching for tools.",
+                "Default medium is host file tools: write/edit .gd/.cs/.tscn/.tres/.json/docs/config directly as text.",
+                "Use Summer MCP only when you need the LIVE engine: play/stop, diagnostics, screenshots/verification, navmesh or light bake, runtime inspect, or asset import.",
+                "Call summer_get_project_context first so you do not guess scene paths or the project language.",
+                "Use projectMemory from summer_get_project_context to decide which .summer Markdown files to read before creative/audio/dialogue/level/character work.",
+                "After writing code, PLAY the scene you just made and read summer_get_diagnostics; iterate until it launches clean instead of waiting for the user to navigate to it.",
               ],
               safeDefaults: [
-                "Never guess scene filenames (main.tscn/Main.tscn).",
-                "Do not route ordinary script, JSON, docs, or simple config edits through MCP when direct file tools are available.",
-                "Never remove multiple top-level nodes unless user explicitly requests destructive edits.",
-                "Use MCP for scene-tree mutations and inspector-visible values instead of hand-editing live scene state.",
+                "Never guess scene filenames (main.tscn/Main.tscn) -- get them from summer_get_project_context.",
+                "Edit files (including .tscn/.tres) with host file tools by default. Reach for MCP scene-ops only for live-engine needs (bake, play, runtime inspect) or when you want the editor to manage node ids / instancing.",
+                "If you hand-edit a .tscn that is OPEN in the editor, reload it there afterward -- the editor's open tab can overwrite your file (clobber).",
+                "Write GDScript by default; use C# only if the project already uses it.",
+                "Never remove multiple top-level nodes unless the user explicitly requests destructive edits.",
+                "Never change priority: locked .summer memory, voice IDs, canon, or provider bindings without explicit user confirmation.",
               ],
-              preferredFlow: [
+              buildFlow: [
+                "1. Understand what the user wants (one pass, no tool spelunking first).",
+                "2. Outline the plan fast and briefly; proceed once it is clearly right.",
+                "3. Execute in pure code -- edit .gd/.tscn/.tres as text (GDScript by default, C# only if the project already uses it).",
+                "4. Play the scene/game (start with the scene you just made), read console + script/debugger errors via summer_get_diagnostics, fix, and repeat until it launches clean.",
+              ],
+              liveEngineFlow: [
+                "Use this flow ONLY when you genuinely need live engine state (navmesh/light bake, instancing into an already-open scene, runtime inspect):",
                 "summer_get_project_context",
                 "summer_open_main_scene (if needed)",
                 "summer_get_scene_tree",
-                "edit via summer_add_node / summer_set_prop / summer_set_resource_property",
-                "write scripts/data/docs/simple config directly with host file-edit tools",
+                "summer_add_node / summer_set_prop / summer_set_resource_property",
                 "summer_save_scene",
                 "summer_get_diagnostics",
               ],
@@ -142,6 +214,7 @@ It returns the safe workflow, anti-patterns, and recovery steps.`,
                 "If you see 'no scene open': run summer_open_main_scene.",
                 "If open_scene fails: re-check mainScene from summer_get_project_context.",
                 "If save fails: verify scene is open and game is not running.",
+                "If a .tscn you wrote keeps reverting: the editor has that scene open -- reload or close the tab, then write again.",
               ],
             },
             null,
@@ -159,6 +232,7 @@ It returns the safe workflow, anti-patterns, and recovery steps.`,
 - project name and project path when exposed by project state
 - current scene path (if available)
 - main scene path from project settings
+- lightweight .summer project memory summary when project path is available
 
 Use this first in every fresh chat to avoid guessing scene filenames or editing the wrong scene.`,
     {},
@@ -173,10 +247,10 @@ Use this first in every fresh chat to avoid guessing scene filenames or editing 
           })),
         ]);
 
-        const projectPath = getProjectPath(projectState);
-        const projectName = getProjectName(projectState);
+        const projectPath = getProjectPath(projectState, health);
+        const projectName = getProjectName(projectState, health);
         const mainScene = getMainScene(projectState);
-        const currentScene = getCurrentScene(projectState, sceneState);
+        const currentScene = getCurrentScene(projectState, sceneState, health);
 
         return {
           health,
@@ -186,11 +260,12 @@ Use this first in every fresh chat to avoid guessing scene filenames or editing 
           projectPath,
           currentScene,
           mainScene,
+          projectMemory: getProjectMemorySummary(projectPath),
           guidance: mainScene
             ? "Use `summer_open_scene` with `mainScene` if no scene is open."
             : "Main scene not found in project state. Open a known scene path explicitly.",
           fileEditingGuidance:
-            "Write .gd/.cs/.json/docs/simple config directly with host file tools. Use MCP for live scene state, inspector/node edits, imports, play/stop, diagnostics, and visual verification.",
+            "Edit files (including .gd/.cs/.tscn/.tres/.json/docs) with host file tools by default. Use MCP only for live engine state: play/stop, diagnostics, screenshots/verification, navmesh or light bake, runtime inspect, and asset import. If you edit a .tscn that is open in the editor, reload it there afterward so the editor's tab does not overwrite your changes.",
         };
       })
   );

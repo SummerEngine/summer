@@ -177,4 +177,4 @@ After the asset is wired:
 - `summer:2d-assets/sprite-sheet` — animated pixel frames.
 - `summer:2d-assets/character-portrait` — high-res counterpart.
 - `summer:asset-pipeline/asset-strategy` — meta-router.
-- `_shared/mcp-tools-reference.md` — `summer_generate_image` schema.
+- `references/mcp-tools-reference.md` — `summer_generate_image` schema.

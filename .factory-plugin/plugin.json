@@ -1,14 +1,14 @@
 {
   "name": "summer",
-  "description": "Superpowers for AI game dev. 24 auto-trigger skills + lifecycle hooks + MCP bridge to the local Summer Engine — the AI-native game engine.",
-  "version": "2.0.1",
+  "description": "Agent tooling for Summer Engine: game-dev skills, lifecycle hooks, and a 44-tool MCP bridge to the local desktop app.",
+  "version": "2.5.1",
   "author": {
     "name": "Summer Engine",
     "email": "founders@summerengine.com",
     "url": "https://summerengine.com"
   },
   "homepage": "https://summerengine.com",
-  "repository": "https://github.com/SummerEngine/summer",
+  "repository": "https://github.com/SummerEngine/summer-engine-agent",
   "license": "MIT",
   "keywords": [
     "game-dev",

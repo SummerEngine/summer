@@ -2,6 +2,11 @@ import { mkdir, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 import { getApiToken, getApiPort, checkEngineHealth } from "./engine.js";
+import {
+  classifyOpsResponse,
+  pollOpToTerminal,
+  type OpResultEnvelope,
+} from "./async-op-lifecycle.js";
 
 export type EngineSnapshot = {
   ok: boolean;
@@ -160,6 +165,70 @@ export class EngineApiClient {
     return res.json();
   }
 
+  /** Raw fetch with auth + timeout — returns the Response so callers can inspect
+   *  the status (202 queued vs 200 legacy). */
+  private async _fetchRaw(
+    method: string,
+    path: string,
+    body: unknown,
+    timeoutMs: number
+  ): Promise<Response> {
+    return fetch(`http://127.0.0.1:${this.port}${path}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        "Content-Type": "application/json",
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  }
+
+  /** One long-poll of GET /api/ops/result (up to waitMs). */
+  private async _pollResult(requestId: string, waitMs: number): Promise<OpResultEnvelope> {
+    const res = await this._fetchRaw(
+      "GET",
+      `/api/ops/result?requestId=${encodeURIComponent(requestId)}&wait=${waitMs}`,
+      undefined,
+      waitMs + 5000
+    );
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`Engine API error ${res.status}: ${text.slice(0, 200)}`);
+    }
+    return (await res.json()) as OpResultEnvelope;
+  }
+
+  /**
+   * Block E: send a mutating request, then resolve EITHER the legacy synchronous
+   * result (HTTP 200 — dormant/older engine) OR the async lifecycle (202
+   * {requestId} -> long-poll /api/ops/result until terminal). Compatible with
+   * both — inspects the HTTP status, not a flag. `timeoutMs` is the poll loop's
+   * total budget; a long op that keeps advancing is not falsely timed out.
+   */
+  private async _requestQueued(
+    method: string,
+    path: string,
+    body: unknown,
+    timeoutMs: number
+  ): Promise<unknown> {
+    const res = await this._fetchRaw(method, path, body, timeoutMs);
+    // 202 (queued) + 429 (backpressure, errorClass in body) are handled below;
+    // any other non-2xx is a real transport error.
+    if (!res.ok && res.status !== 202 && res.status !== 429) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`Engine API error ${res.status}: ${text.slice(0, 200)}`);
+    }
+    const respBody = await res.json().catch(() => ({}));
+    const classified = classifyOpsResponse(res.status, respBody);
+    if (classified.mode === "legacy") {
+      return respBody;
+    }
+    return pollOpToTerminal((waitMs) => this._pollResult(classified.requestId, waitMs), {
+      totalTimeoutMs: timeoutMs,
+    });
+  }
+
   async health(): Promise<unknown> {
     return this.request("GET", "/api/health");
   }
@@ -168,7 +237,10 @@ export class EngineApiClient {
     ops: Record<string, unknown>[],
     options?: Record<string, unknown>
   ): Promise<unknown> {
-    return this.request("POST", "/api/ops", { ops, options });
+    // Ops may include long-running work (ImportFromUrlBatch, GitCommit); the
+    // engine keeps it "running" and we poll. 120s budget. Resolves legacy-200 or
+    // async-202 (Block E).
+    return this._requestQueued("POST", "/api/ops", { ops, options }, 120_000);
   }
 
   async getSceneState(): Promise<unknown> {
@@ -196,11 +268,12 @@ export class EngineApiClient {
   }
 
   async play(scene?: string): Promise<unknown> {
-    return this.request("POST", "/api/play", scene ? { scene } : {});
+    // Cold-load on large projects can take 25-40s. 60s budget.
+    return this._requestQueued("POST", "/api/play", scene ? { scene } : {}, 60_000);
   }
 
   async stop(): Promise<unknown> {
-    return this.request("POST", "/api/stop");
+    return this._requestQueued("POST", "/api/stop", undefined, 15_000);
   }
 
   async readFile(
@@ -243,35 +316,17 @@ export class EngineApiClient {
   }
 
   private async snapshot(kind: "viewport" | "game"): Promise<EngineSnapshot> {
-    const url = `http://127.0.0.1:${this.port}/api/snapshot/${kind}`;
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${this.token}` },
-      signal: AbortSignal.timeout(30000),
-    });
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`Snapshot failed ${res.status}: ${text.slice(0, 200)}`);
+    // Block E: /api/snapshot/* is queued (GET -> 202 -> poll /api/ops/result).
+    // The terminal result is the apply dict; the image rides as base64 inside it
+    // (no raw-binary channel). Legacy/dormant engines answer 200 synchronously
+    // with the same payload shape — _requestQueued resolves both.
+    let response: unknown;
+    try {
+      response = await this._requestQueued("GET", `/api/snapshot/${kind}`, undefined, 60_000);
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
     }
 
-    const contentType = res.headers.get("content-type") ?? "";
-    if (!contentType.toLowerCase().includes("application/json")) {
-      const { format, mime, ext } = snapshotFormat({ mime: contentType });
-      const buffer = Buffer.from(await res.arrayBuffer());
-      const localPath = await this.writeSnapshotFile(kind, buffer, ext);
-
-      return {
-        ok: true,
-        localPath,
-        path: localPath,
-        format,
-        mime,
-        context: kind === "viewport" ? "scene" : "game",
-        bytes: buffer.byteLength,
-      };
-    }
-
-    const response = await res.json();
     const payload = findSnapshotPayload(response);
     if (!payload) {
       return {

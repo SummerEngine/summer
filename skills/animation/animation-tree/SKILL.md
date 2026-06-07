@@ -22,6 +22,8 @@ Character (CharacterBody3D)
 └── AnimationTree              # references AnimationPlayer, drives behavior
 ```
 
+Before adding the tree, prove direct `AnimationPlayer.play()` visibly moves the rig. Godot may import animation GLBs as `AnimationLibrary` resources or as `PackedScene`s with embedded `AnimationPlayer`s. If a copied clip appears in the list but the mesh T-poses, its tracks probably target a different root/skeleton path. Use the embedded player that came with the matching GLB, or remap/copy tracks only after confirming they target the active `Skeleton3D`. An inactive AnimationTree is also a no-op, so always set `AnimationTree.active = true`.
+
 ## When to use this skill
 
 - Character has 3+ clips and switching between them via `AnimationPlayer.play("walk")` is causing pops, T-poses, or "starts halfway through".
@@ -256,5 +258,5 @@ Open the scene in Godot 4.5 editor, add `AnimationTree` node, set `Anim Player` 
 
 - `summer:animation/generate-motion` — produce the clips this tree references.
 - `summer:animation/retarget` — share one tree across many characters.
-- `_shared/gd-style.md` — typed GDScript conventions in the controller snippets.
-- `_shared/mcp-tools-reference.md` — `summer_connect_signal` and `summer_set_resource_property` rules.
+- `references/gd-style.md` — typed GDScript conventions in the controller snippets.
+- `references/mcp-tools-reference.md` — `summer_connect_signal` and `summer_set_resource_property` rules.

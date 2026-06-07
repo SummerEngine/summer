@@ -1,6 +1,6 @@
 {
   "name": "summer-engine",
-  "version": "2.4.0",
+  "version": "2.5.1",
   "description": "Summer — superpowers for AI game dev. CLI, skills, and MCP tools for Summer Engine.",
   "keywords": [
     "game-engine",
@@ -14,18 +14,19 @@
   "homepage": "https://summerengine.com",
   "repository": {
     "type": "git",
-    "url": "https://github.com/SummerEngine/summer"
+    "url": "git+https://github.com/SummerEngine/summer-engine-agent.git"
   },
   "license": "MIT",
   "author": "Summer Engine <founders@summerengine.com>",
   "type": "module",
   "main": ".opencode/plugins/summer.js",
   "bin": {
-    "summer": "./dist/bin/summer.js"
+    "summer": "dist/bin/summer.js"
   },
   "files": [
     "dist/",
     "skills/",
+    "commands/",
     "hooks/",
     "assets/",
     "_persona/",
@@ -44,7 +45,8 @@
     "CLAUDE.md"
   ],
   "scripts": {
-    "build": "tsc",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "npm run clean && tsc",
     "dev": "tsc --watch",
     "summer": "node dist/bin/summer.js",
     "test": "vitest run",

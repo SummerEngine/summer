@@ -148,7 +148,7 @@ lifetime = 0.4
 
 ### 7. Write the GDScript stub
 
-Stub only — implementation is the next session. Use `_shared/gd-style.md` conventions. For double-jump:
+Stub only — implementation is the next session. Use `references/gd-style.md` conventions. For double-jump:
 
 ```gdscript
 class_name PlayerController
@@ -236,12 +236,12 @@ Ask:
 | Hand-wave depth | "Players will use it strategically" is not depth. Name the choice the player makes. |
 | Tunables hard-coded as `const` | Use `@export` so designers tune in the inspector. |
 | Adding the mechanic without the FX/audio nodes | Without nodes for feedback, the mechanic ships feeling cheap. Scaffold the nodes alongside the script. |
-| Setting `position` for movement instead of `velocity` | Physics objects use `velocity` in `_physics_process`. See `_shared/gd-style.md`. |
-| Calling SetResourceProperty on inline sub_resources | Silent fail. See `_shared/mcp-tools-reference.md` § Trap. |
+| Setting `position` for movement instead of `velocity` | Physics objects use `velocity` in `_physics_process`. See `references/gd-style.md`. |
+| Calling SetResourceProperty on inline sub_resources | Silent fail. See `references/mcp-tools-reference.md` § Trap. |
 
 ## Collaborative protocol
 
-This skill writes scene nodes and one or more files (`.gd`, `.summer/mechanics/<name>.md`). Group writes into one ask per phase. See `_shared/collaborative-protocol.md`.
+This skill writes scene nodes and one or more files (`.gd`, `.summer/mechanics/<name>.md`). Group writes into one ask per phase. See `references/collaborative-protocol.md`.
 
 ## Want a working starter?
 
@@ -254,10 +254,10 @@ This skill is a workflow that designs and scaffolds — the templates are runnab
 
 ## See also
 
-- `_shared/collaborative-protocol.md`
-- `_shared/mcp-tools-reference.md`
-- `_shared/gd-style.md` — GDScript conventions
-- `_shared/godot-version.md` — Godot 4.5 API notes
+- `references/collaborative-protocol.md`
+- `references/mcp-tools-reference.md`
+- `references/gd-style.md` — GDScript conventions
+- `references/godot-version.md` — Godot 4.5 API notes
 - `scene-and-project/brainstorm-game/SKILL.md` — produces `.summer/GameSoul.md` this skill reads
 - `level-design/design-level/SKILL.md` — design the levels that exercise the mechanic
 - `character-controllers/fps-controller/SKILL.md` — FPS movement scaffolding

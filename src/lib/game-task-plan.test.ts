@@ -1,0 +1,63 @@
+import { describe, expect, it } from "vitest";
+import { buildGameTaskPlan } from "./game-task-plan.js";
+
+describe("buildGameTaskPlan", () => {
+  it("routes new-game requests to the make-game workflow", () => {
+    const plan = buildGameTaskPlan({
+      goal: "Make a small 3D arena shooter from scratch",
+    });
+
+    expect(plan.mode).toBe("new-game");
+    expect(plan.target).toBe("3d");
+    expect(plan.recommendedSkills.map((skill) => skill.name)).toContain("make-game");
+    expect(plan.mcpToolPlan.start).toContain("summer_start_game_task");
+    expect(plan.mcpToolPlan.verify).toContain("summer_play");
+  });
+
+  it("routes generated 3D props through exact asset imports", () => {
+    const plan = buildGameTaskPlan({
+      goal: "Create a sword model asset and place it in the scene",
+      mode: "asset",
+      target: "3d",
+    });
+
+    expect(plan.recommendedSkills.map((skill) => skill.name)).toContain("prop-model");
+    expect(plan.mcpToolPlan.assets).toEqual(
+      expect.arrayContaining([
+        "summer_search_assets",
+        "summer_get_asset",
+        "summer_import_asset_by_id",
+        "summer_generate_3d",
+      ])
+    );
+    expect(plan.antiPatterns.join(" ")).toContain("returned asset ID");
+  });
+
+  it("routes animated 3D characters through character and motion skills", () => {
+    const plan = buildGameTaskPlan({
+      goal: "Create a 3D animated orc enemy with idle walk run and attack animations",
+      mode: "asset",
+      target: "auto",
+    });
+
+    const skills = plan.recommendedSkills.map((skill) => skill.name);
+    expect(plan.target).toBe("3d");
+    expect(skills).toContain("character-model");
+    expect(skills).toContain("generate-motion");
+    expect(skills).toContain("animation-tree");
+    expect(plan.mcpToolPlan.assets).toContain("summer_generate_motion");
+  });
+
+  it("respects no-paid-generation asset policy", () => {
+    const plan = buildGameTaskPlan({
+      goal: "Find foliage for a forest level",
+      mode: "asset",
+      target: "3d",
+      assetPolicy: "no-paid-generation",
+    });
+
+    expect(plan.assetPolicy).toBe("no-paid-generation");
+    expect(plan.mcpToolPlan.assets).toContain("summer_search_assets");
+    expect(plan.mcpToolPlan.assets).not.toContain("summer_generate_3d");
+  });
+});

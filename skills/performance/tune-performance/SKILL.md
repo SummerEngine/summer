@@ -200,7 +200,7 @@ Compare: was the metric movement at least 50% of what was promised? If yes, ship
 
 ## Collaborative protocol
 
-This skill makes scene/resource/code changes. Always ask before each fix is applied. See `_shared/collaborative-protocol.md`.
+This skill makes scene/resource/code changes. Always ask before each fix is applied. See `references/collaborative-protocol.md`.
 
 ## Want a working starter?
 
@@ -208,10 +208,10 @@ No template — this is a workflow. Performance tuning is project-specific by de
 
 ## See also
 
-- `_shared/mcp-tools-reference.md` — full MCP tool list
-- `_shared/godot-version.md` — Godot 4.5 renderer notes (Compositor, RenderSceneBuffers churn)
-- `_shared/collaborative-protocol.md` — "May I write" pattern
-- `_shared/gd-style.md` — GDScript conventions (avoid bare types, use `:=`)
+- `references/mcp-tools-reference.md` — full MCP tool list
+- `references/godot-version.md` — Godot 4.5 renderer notes (Compositor, RenderSceneBuffers churn)
+- `references/collaborative-protocol.md` — "May I write" pattern
+- `references/gd-style.md` — GDScript conventions (avoid bare types, use `:=`)
 - `performance/profiling-godot/SKILL.md` — deeper Godot profiler usage
 - `performance/draw-call-batching/SKILL.md` — MultiMeshInstance3D patterns
 - `performance/lod-and-culling/SKILL.md` — LOD setup

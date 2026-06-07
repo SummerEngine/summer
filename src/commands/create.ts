@@ -59,6 +59,7 @@ export const createCommand = new Command("create")
       console.log(`\nProject created at ${fullPath}`);
       console.log("\nNext steps:");
       console.log(`  summer run ${dirName}`);
+      console.log("  Ask your agent to run summer:brainstorm-game to create .summer/GameSoul.md");
       return;
     }
 
@@ -103,6 +104,7 @@ export const createCommand = new Command("create")
     console.log("Source: " + remote.url);
     console.log("\nNext steps:");
     console.log(`  summer run ${dirName}`);
+    console.log("  Ask your agent to run summer:brainstorm-game to create .summer/GameSoul.md");
   });
 
 function projectGodot(name: string, mainScene: string): string {

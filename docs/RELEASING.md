@@ -12,7 +12,7 @@ Step-by-step runbook for publishing a new version of `summer-engine` to npm.
 ## Bump version
 
 ```powershell
-cd "C:\Users\Mathias Heide\Development\SummerEngine\tools\summer-cli"
+cd "<SummerEngine checkout>/tools/summer-cli"
 ```
 
 Edit `package.json` `version` field manually, or use:
@@ -43,7 +43,7 @@ The dry-run prints the tarball contents. Verify:
 Run these as **two separate lines** (don't chain with `;` or `&&` — copy each line by itself):
 
 ```powershell
-cd "C:\Users\Mathias Heide\Development\SummerEngine\tools\summer-cli"
+cd "<SummerEngine checkout>/tools/summer-cli"
 ```
 
 ```powershell
@@ -96,7 +96,7 @@ Should show the new version. Or browse to https://www.npmjs.com/package/summer-e
 ## Commit the version bump
 
 ```powershell
-cd "C:\Users\Mathias Heide\Development\SummerEngine"
+cd "<SummerEngine checkout>"
 git add tools/summer-cli/package.json tools/summer-cli/docs/RELEASING.md
 git commit -m "chore(release): summer-engine v<X.Y.Z>"
 git push origin main
@@ -104,7 +104,7 @@ git push origin main
 
 ## Sync to public repo
 
-If the engine repo is the source of truth and `SummerEngine/summer` is the public mirror, sync via the existing tar-copy script (see `docs/DEVELOPMENT.md`).
+If the engine repo is the source of truth and `SummerEngine/summer-engine-agent` is the public mirror, sync via the existing tar-copy script (see `docs/DEVELOPMENT.md`).
 
 ## Rollback
 

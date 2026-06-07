@@ -1,15 +1,15 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "summer",
-  "version": "2.4.0",
-  "description": "Superpowers for AI game dev. 60 auto-trigger skills + lifecycle hooks + MCP bridge to the local Summer Engine — the AI-native game engine.",
+  "version": "2.5.1",
+  "description": "Agent tooling for Summer Engine: game-dev skills, lifecycle hooks, and a 44-tool MCP bridge to the local desktop app.",
   "author": {
     "name": "Summer Engine",
     "email": "founders@summerengine.com",
     "url": "https://summerengine.com"
   },
   "homepage": "https://summerengine.com",
-  "repository": "https://github.com/SummerEngine/summer",
+  "repository": "https://github.com/SummerEngine/summer-engine-agent",
   "license": "MIT",
   "keywords": [
     "game-dev",
@@ -26,10 +26,21 @@
     "performance"
   ],
   "skills": [
-    "./skills/_meta/using-summer/",
-    "./skills/_meta/skill-create/",
-    "./skills/_meta/skill-improve/",
-    "./skills/_meta/skill-test/",
+    "./skills/workflow/using-summer/",
+    "./skills/workflow/skill-create/",
+    "./skills/workflow/skill-improve/",
+    "./skills/workflow/skill-test/",
+    "./skills/workflow/gameskill/",
+    "./skills/workflow/mcpupdate/",
+    "./skills/workflow/brainstorming/",
+    "./skills/workflow/investigating-bugs/",
+    "./skills/workflow/verification-before-completion/",
+    "./skills/workflow/writing-plans/",
+    "./skills/workflow/dispatching-parallel-agents/",
+    "./skills/workflow/writing-skills/",
+    "./skills/workflow/playtesting-a-feature/",
+    "./skills/workflow/debugging-game-feel/",
+    "./skills/workflow/diagnosing-perf-regressions/",
     "./skills/scene-and-project/brainstorm-game/",
     "./skills/scene-and-project/new-project/",
     "./skills/scene-and-project/browse-templates/",
@@ -38,7 +49,9 @@
     "./skills/scene-and-project/make-game/",
     "./skills/debugging/debug/",
     "./skills/gameplay-mechanics/design-mechanic/",
+    "./skills/gameplay-mechanics/auto-fire-targeting/",
     "./skills/level-design/design-level/",
+    "./skills/level-design/scene-to-level/",
     "./skills/rendering-and-lighting/art-direction/",
     "./skills/rendering-and-lighting/3d-lighting/",
     "./skills/audio/audio-direction/",
@@ -60,6 +73,9 @@
     "./skills/2d-assets/tileable-texture/",
     "./skills/2d-assets/sprite-sheet/",
     "./skills/2d-assets/skybox-panorama/",
+    "./skills/2d-assets/create-asset-sheet/",
+    "./skills/2d-assets/instantiate-asset-pack/",
+    "./skills/2d-assets/use-widget-asset/",
     "./skills/3d-assets/prop-model/",
     "./skills/3d-assets/character-model/",
     "./skills/3d-assets/environment-kit/",
@@ -93,7 +109,7 @@
     "enable_pre_commit_doctor": {
       "type": "boolean",
       "title": "Run summer doctor before commits",
-      "description": "Block git commits when the Summer Engine setup has FAIL diagnostics. Off by default.",
+      "description": "Block git commits when the Summer Engine setup needs attention. Off by default.",
       "default": false
     }
   }

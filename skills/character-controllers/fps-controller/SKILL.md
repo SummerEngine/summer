@@ -48,7 +48,7 @@ summer_set_resource_property(nodePath="./World/Player/Collision", resourceProper
 summer_set_resource_property(nodePath="./World/Player/Collision", resourceProperty="shape", subProperty="height", value="1.8")
 ```
 
-`summer_set_prop` with a class-name string creates a standalone sub-resource. NEVER call `summer_set_resource_property` against an inline `sub_resource` — the value is silently dropped. See `_shared/mcp-tools-reference.md`.
+`summer_set_prop` with a class-name string creates a standalone sub-resource. NEVER call `summer_set_resource_property` against an inline `sub_resource` — the value is silently dropped. See `references/mcp-tools-reference.md`.
 
 ### 4. Add the Head pivot + Camera
 
@@ -328,14 +328,14 @@ Then patch `project.godot` with the InputMap actions (`input/move_forward = { ..
 
 ## Collaborative Protocol
 
-This skill writes scene nodes, an InputMap, and a `.gd` script. Always ask before applying. Group writes per phase: "May I add the Player + Collision + Head + Camera, bind WASD/jump/sprint, and attach `player_controller.gd`?" See `../../_shared/collaborative-protocol.md`.
+This skill writes scene nodes, an InputMap, and a `.gd` script. Always ask before applying. Group writes per phase: "May I add the Player + Collision + Head + Camera, bind WASD/jump/sprint, and attach `player_controller.gd`?" See `../../references/collaborative-protocol.md`.
 
 If the user asks for a "third-person FPS", flag the contradiction: FPS = first-person. Either clarify, or hand off to the `tps-controller` skill when it ships.
 
 ## See Also
 
-- `_shared/gd-style.md` — typed GDScript conventions used in the skeleton.
-- `_shared/mcp-tools-reference.md` — `summer_set_resource_property` rules + the inline-sub-resource silent-fail trap.
-- `_shared/collaborative-protocol.md` — when to ask before writing.
+- `references/gd-style.md` — typed GDScript conventions used in the skeleton.
+- `references/mcp-tools-reference.md` — `summer_set_resource_property` rules + the inline-sub-resource silent-fail trap.
+- `references/collaborative-protocol.md` — when to ask before writing.
 - `scripting-patterns/state-machine-patterns/SKILL.md` — once movement grows past this skeleton (slide, grapple, hover), refactor into a state machine instead of stuffing more branches into `_physics_process`.
 - `physics/character-body-tuning/SKILL.md` (when shipped) — slope handling, step-up, floor-snap.

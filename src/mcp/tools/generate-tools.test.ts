@@ -133,6 +133,9 @@ describe("registerGenerateTools — summer_generate_motion", () => {
     expect(url).toMatch(/\/api\/mcp\/generate\/motion$/);
     expect(init.method).toBe("POST");
     expect((init.headers as any).Authorization).toBe("Bearer test-token");
+    expect((init.headers as any)["X-Summer-Client"]).toBe("summer-cli");
+    expect((init.headers as any)["X-Summer-Client-Surface"]).toBe("mcp");
+    expect((init.headers as any)["X-Summer-MCP-Tool"]).toBe("summer_generate_motion");
 
     const sent = JSON.parse(init.body as string);
     expect(sent).toMatchObject({
@@ -211,5 +214,46 @@ describe("registerGenerateTools — summer_generate_3d description", () => {
     expect(gen3d.description).toMatch(/options\.rig/);
     expect(gen3d.description).toMatch(/rigAssetId/);
     expect(gen3d.description).toMatch(/summer_generate_motion/);
+  });
+});
+
+describe("registerGenerateTools — provider validation errors", () => {
+  it("formats FastAPI/FAL 422 detail arrays into a model-readable message", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: false,
+      status: 422,
+      text: async () =>
+        JSON.stringify({
+          detail: [
+            {
+              loc: ["body", "input", "image_urls"],
+              msg: "Field required",
+              type: "missing",
+            },
+          ],
+        }),
+    }));
+    globalThis.fetch = fetchMock as any;
+
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const image = getTool(tools, "summer_generate_image");
+
+    const result = await image.handler({
+      prompt: "turn this into a sprite",
+      referenceImageUrl: "https://example.com/reference.png",
+    });
+
+    expect(result.isError).toBe(true);
+    const body = parseResult(result);
+    expect(body.status).toBe(422);
+    expect(body.detail[0].loc).toEqual(["body", "input", "image_urls"]);
+    expect(body.message).toBe(
+      "Request validation failed (422): body.input.image_urls: Field required"
+    );
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect((init.headers as any)["X-Summer-MCP-Tool"]).toBe("summer_generate_image");
+    expect((init.headers as any)["X-Summer-Client-Version"]).toMatch(/\d+\.\d+\.\d+/);
   });
 });

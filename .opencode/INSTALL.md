@@ -63,7 +63,7 @@ The model should auto-invoke the `summer:fps-controller` skill before writing an
 |---|---|
 | No orientation banner appears | Verify `plugin` array in `opencode.json` and that `summer-engine` is installed in `node_modules/`. |
 | MCP tools return "not connected" | Run `summer run` to launch the engine. The MCP server lazy-connects on the first tool call. |
-| `summer` command not found | `npm install -g summer-engine` for the global CLI. |
+| `summer` command not found | Use `npx -y summer-engine@latest <command>` or install the CLI globally only if you want a persistent `summer` command. |
 | Skills don't auto-trigger | The using-summer skill loads on first user message; if that message is empty (e.g. a startup probe), they'll trigger on the second. |
 
 ## Uninstall

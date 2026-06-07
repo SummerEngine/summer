@@ -1,7 +1,7 @@
 {
   "name": "summer",
-  "version": "2.0.1",
-  "description": "Superpowers for AI game dev. MCP bridge to the local Summer Engine plus a context primer that teaches Gemini the 24 Summer skills. Use with the npm CLI for skill files on disk.",
+  "version": "2.5.1",
+  "description": "Agent tooling for Summer Engine: MCP bridge, context primer, and game-dev skills. Use with the npm CLI for skill files on disk.",
   "contextFileName": "GEMINI.md",
   "mcpServers": {
     "summer-engine": {
@@ -13,7 +13,7 @@
   "settings": [
     {
       "name": "enable_pre_commit_doctor",
-      "description": "Block git commits on summer doctor FAIL (off by default)",
+      "description": "Block git commits when summer doctor needs attention (off by default)",
       "envVar": "SUMMER_PRE_COMMIT_DOCTOR",
       "sensitive": false
     }

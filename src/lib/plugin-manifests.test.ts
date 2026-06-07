@@ -1,6 +1,6 @@
 /**
  * Validates that every agent plugin manifest references real, on-disk skills,
- * and that every skill claimed HAVE in catalog.yaml actually exists.
+ * and that every on-disk skill is registered in the Claude Code manifest.
  *
  * Catches broken-path bugs before they ship. Add a manifest, add a path here.
  */
@@ -52,7 +52,6 @@ function listSkillDirs(skillsRoot: string): string[] {
   for (const cat of entries) {
     const catPath = join(skillsRoot, cat);
     if (!statSync(catPath).isDirectory()) continue;
-    if (cat === "_shared" || cat === "_tests") continue;
     for (const skill of readdirSync(catPath)) {
       const skillPath = join(catPath, skill);
       if (!statSync(skillPath).isDirectory()) continue;
@@ -112,7 +111,7 @@ describe("agent plugin manifests", () => {
       const orphans = onDisk.filter((p) => !listed.has(p));
       expect(
         orphans,
-        `On-disk skills missing from .claude-plugin/plugin.json (add or move under skills/_shared|_tests):\n${orphans.join("\n")}`
+        `On-disk skills missing from .claude-plugin/plugin.json:\n${orphans.join("\n")}`
       ).toEqual([]);
     });
   });

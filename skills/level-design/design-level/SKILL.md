@@ -239,11 +239,11 @@ End with:
 | Reward gating too generous | Free heals before the peak deflate the peak. Gate them after the test. |
 | Blending level types | Stealth + puzzle + boss in one level = three half-baked levels. Pick one. |
 | Building geometry before the skeleton | Skeleton-first lets you iterate on layout cheaply. Geometry comes after the design is locked. |
-| Calling SetResourceProperty on inline sub_resources | Silent fail. See `_shared/mcp-tools-reference.md` § Trap. |
+| Calling SetResourceProperty on inline sub_resources | Silent fail. See `references/mcp-tools-reference.md` § Trap. |
 
 ## Collaborative protocol
 
-This skill creates a new scene file (`.tscn`) and a design doc (`.md`). Group writes per phase. Always ask before `summer_create_scene`. See `_shared/collaborative-protocol.md`.
+This skill creates a new scene file (`.tscn`) and a design doc (`.md`). Group writes per phase. Always ask before `summer_create_scene`. See `references/collaborative-protocol.md`.
 
 ## Want a working starter?
 
@@ -256,9 +256,9 @@ The skeleton this skill produces is meant to be filled in via `/summer:design-me
 
 ## See also
 
-- `_shared/collaborative-protocol.md`
-- `_shared/mcp-tools-reference.md`
-- `_shared/godot-version.md` — Godot 4.5 API notes
+- `references/collaborative-protocol.md`
+- `references/mcp-tools-reference.md`
+- `references/godot-version.md` — Godot 4.5 API notes
 - `scene-and-project/brainstorm-game/SKILL.md` — produces `.summer/GameSoul.md`
 - `gameplay-mechanics/design-mechanic/SKILL.md` — designs the verbs the level exercises
 - `ai-and-npcs/design-npc/SKILL.md` — designs the enemies the encounters reference

@@ -280,7 +280,7 @@ Use this as a one-shot grep before any export:
 
 ## Collaborative protocol
 
-This skill produces release artifacts. Always ask before each build is invoked. Group platforms — "I'm about to build Windows + Mac + Linux release configs into `build/`. OK?". See `_shared/collaborative-protocol.md`.
+This skill produces release artifacts. Always ask before each build is invoked. Group platforms — "I'm about to build Windows + Mac + Linux release configs into `build/`. OK?". See `references/collaborative-protocol.md`.
 
 ## Want a working starter?
 
@@ -288,9 +288,9 @@ No template — this is a workflow. Each project's export config and store asset
 
 ## See also
 
-- `_shared/mcp-tools-reference.md` — full MCP tool list
-- `_shared/godot-version.md` — Godot 4.5 export-template versioning
-- `_shared/collaborative-protocol.md` — "May I write" pattern
+- `references/mcp-tools-reference.md` — full MCP tool list
+- `references/godot-version.md` — Godot 4.5 export-template versioning
+- `references/collaborative-protocol.md` — "May I write" pattern
 - `deployment/export-presets/SKILL.md` — preset config deep dive
 - `deployment/web-html5-export/SKILL.md` — HTML5-specific traps
 - `deployment/steam-uploader/SKILL.md` — `steamcmd` + GodotSteam (when shipped)

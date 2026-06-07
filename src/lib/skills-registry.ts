@@ -7,13 +7,15 @@ export const AGENT_CLIENTS = [
   "cline",
   "roo-code",
   "gemini",
+  "github-copilot",
+  "vscode-copilot",
   "opencode",
 ] as const;
 
 export type AgentClient = (typeof AGENT_CLIENTS)[number];
 
 export const SKILL_CATEGORIES = [
-  "_meta",
+  "workflow",
   "2d-assets",
   "3d-assets",
   "video",
@@ -54,9 +56,10 @@ export interface SkillRegistryEntry {
 const ALL_CLIENTS = AGENT_CLIENTS;
 
 /**
- * Skills with `status: HAVE` in catalog.yaml. The catalog is the planning source
- * of truth (~85 skills); this TS registry is the install-time list (only skills
- * with shippable content). When a NEXT skill ships, mirror it here.
+ * Install-time skill registry — every skill installable via `summer skills install`.
+ * Must stay in sync with `.claude-plugin/plugin.json` (and sibling manifests) for
+ * Claude Code / Cursor / Codex plugin discovery. The `plugin-manifests.test.ts`
+ * test fails the build if a skill exists on disk but not in the manifest.
  */
 export const SKILL_REGISTRY = [
   {
@@ -976,5 +979,109 @@ export const SKILL_REGISTRY = [
     ],
     testScenario:
       "User wants 'a magical glow on a rune' — skill creates OmniLight3D with pulse-on-sin script + GPUParticles3D motes, uses additive billboard material from building blocks.",
+  },
+  {
+    name: "brainstorming",
+    category: "workflow",
+    public: true,
+    clients: ALL_CLIENTS,
+    recommended: true,
+    requiresMcpTools: [],
+    testScenario:
+      "User says 'let's make a game' — skill explores intent, scope, and references through one-question-at-a-time dialogue before any code or scene work begins.",
+  },
+  {
+    name: "investigating-bugs",
+    category: "workflow",
+    public: true,
+    clients: ALL_CLIENTS,
+    recommended: true,
+    requiresMcpTools: [],
+    testScenario:
+      "Encountering a bug whose first fix didn't stick — skill forces hypothesis-driven root cause analysis before another patch attempt.",
+  },
+  {
+    name: "verification-before-completion",
+    category: "workflow",
+    public: true,
+    clients: ALL_CLIENTS,
+    recommended: true,
+    requiresMcpTools: [],
+    testScenario:
+      "About to claim a feature is done — skill blocks the claim until verification commands have been run and their output reviewed.",
+  },
+  {
+    name: "writing-plans",
+    category: "workflow",
+    public: true,
+    clients: ALL_CLIENTS,
+    recommended: false,
+    requiresMcpTools: [],
+    testScenario:
+      "User has a multi-step spec — skill produces a written plan with checkpoints before any implementation begins.",
+  },
+  {
+    name: "dispatching-parallel-agents",
+    category: "workflow",
+    public: true,
+    clients: ALL_CLIENTS,
+    recommended: false,
+    requiresMcpTools: [],
+    testScenario:
+      "Facing 2+ independent tasks — skill prepares isolated, self-contained agent prompts and dispatches them in parallel.",
+  },
+  {
+    name: "writing-skills",
+    category: "workflow",
+    public: true,
+    clients: ALL_CLIENTS,
+    recommended: false,
+    requiresMcpTools: [],
+    testScenario:
+      "User wants a new Summer skill — skill walks through frontmatter, body structure, and the auto-trigger discipline required for the skill to fire reliably.",
+  },
+  {
+    name: "playtesting-a-feature",
+    category: "workflow",
+    public: true,
+    clients: ALL_CLIENTS,
+    recommended: true,
+    requiresMcpTools: [
+      "summer_play",
+      "summer_stop",
+      "summer_get_console",
+      "summer_get_debugger_errors",
+      "summer_get_diagnostics",
+    ],
+    testScenario:
+      "Just finished a gameplay feature — skill drives a golden-path + edge-case playthrough with diagnostics capture before the feature can be marked done.",
+  },
+  {
+    name: "debugging-game-feel",
+    category: "workflow",
+    public: true,
+    clients: ALL_CLIENTS,
+    recommended: false,
+    requiresMcpTools: [
+      "summer_play",
+      "summer_stop",
+      "summer_inspect_node",
+    ],
+    testScenario:
+      "User says 'the jump feels floaty' — skill isolates one variable at a time against a reference anchor, avoids compounding tweaks.",
+  },
+  {
+    name: "diagnosing-perf-regressions",
+    category: "workflow",
+    public: true,
+    clients: ALL_CLIENTS,
+    recommended: false,
+    requiresMcpTools: [
+      "summer_get_diagnostics",
+      "summer_play",
+      "summer_stop",
+    ],
+    testScenario:
+      "FPS dropped from 60 to 30 — skill bisects recent changes, captures before/after diagnostics, identifies the regression cause before tuning.",
   },
 ] as const satisfies readonly SkillRegistryEntry[];

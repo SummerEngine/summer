@@ -201,4 +201,4 @@ Once the cutscene is generated and wired:
 - `audio/music-track` — score the cutscene.
 - `2d-assets/concept-art` — generate the reference image axis if no character reference exists yet.
 - `2d-assets/character-portrait` — produce a high-fidelity locked character portrait for use as `imageUrl`.
-- `_shared/mcp-tools-reference.md` — `summer_generate_video` parameter schema and error codes.
+- `references/mcp-tools-reference.md` — `summer_generate_video` parameter schema and error codes.

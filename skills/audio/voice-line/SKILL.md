@@ -6,7 +6,7 @@ compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio
 user-invocable: true
 allowed-tools: Read Grep Glob Write Edit summer_generate_voice summer_generate_audio summer_list_models summer_search_assets summer_import_from_url summer_add_node summer_set_prop summer_inspect_node
-paths: ["audio/voice/**", "scripts/**", "**/*.tscn"]
+paths: [".summer/**", "audio/voice/**", "scripts/**", "**/*.tscn"]
 ---
 
 # /voice-line — Generate TTS Voice for NPCs, Narrator, Dialogue
@@ -33,8 +33,11 @@ Then it generates one line (or a multi-turn dialogue) with the right stability /
 
 ```
 Read .summer/audio-bible.md
+Read .summer/memory/casting/voices.md   # preferred cast memory, if present
+Read .summer/voice-cast.md              # legacy cast memory, if present
 Read .summer/characters.md   # if present
 Glob .summer/characters/*.md
+Glob .summer/memory/characters/*.md
 ```
 
 If a character bible exists, the voice should match the character's age / gender / regional origin / energy. If it doesn't, ask:
@@ -83,9 +86,23 @@ After the pick:
 
 > Locked voice: `Hodge` (id `21m00Tcm4TlvDq8ikWAM`). I'll use this for all `<character>` lines unless you say otherwise.
 
-Save it in `.summer/voice-cast.md`:
+Ask before writing:
+
+> May I update `.summer/memory/casting/voices.md` with this locked voice assignment?
+
+Save it in `.summer/memory/casting/voices.md`:
 
 ```markdown
+---
+id: casting.voice.main-cast
+type: casting
+status: active
+priority: locked
+stable: true
+providers:
+  - elevenlabs
+---
+
 # Voice Cast
 
 | Character | Voice name | Voice id | Notes |
@@ -95,6 +112,8 @@ Save it in `.summer/voice-cast.md`:
 ```
 
 This is the cast bible. Every future voice line uses these ids — consistency is the point.
+
+If legacy `.summer/voice-cast.md` already exists, read it first and either keep using it for this project or ask to migrate it into `.summer/memory/casting/voices.md`. Do not maintain two conflicting cast files.
 
 ### 5. Tune stability / similarity / style / speed for delivery
 
@@ -199,7 +218,9 @@ The bible's mix rule says voice ducks music: when this player starts, fade the m
 
 ### 10. Save to the cast bible
 
-After generation, append to `.summer/voice-cast.md` so future skills find existing lines and don't regenerate. Include line text + filename + voice id.
+After generation, append to `.summer/memory/casting/voices.md` so future skills find existing lines and don't regenerate. Include line text + filename + voice id.
+
+If the assignment is marked `priority: locked`, do not replace the voice id automatically. If a scene, script, import config, or user prompt conflicts with the locked memory, stop and ask whether to update memory or fix the implementation.
 
 ## Reference card — voice-pick by archetype
 
@@ -220,6 +241,7 @@ Narrator intimate:        warmer mid pitch, lower stability for breath
 
 - **Picking a voice without auditioning samples.** The user must hear it.
 - **Reusing a voice id across two characters.** Players notice instantly. Lock the cast.
+- **Changing a locked voice without approval.** A cast voice is project memory, not a throwaway generation option.
 - **Stage directions in the text.** `(angrily) Get out!` is read literally as "angrily get out". Use stability/style.
 - **One long blob for a multi-turn scene.** Use `text_to_dialogue` so pacing is dialogue-aware.
 - **Voice on `Master` bus.** Must be on `Voice` bus so it can duck music per the bible.

@@ -207,4 +207,4 @@ After the UI graphic is wired:
 - `summer:2d-assets/character-portrait` — for in-UI character images.
 - `summer:2d-assets/pixel-art` — pixel-style UI.
 - `summer:scene-composition` — Theme and Control hierarchy.
-- `_shared/mcp-tools-reference.md` — `summer_generate_image` schema.
+- `references/mcp-tools-reference.md` — `summer_generate_image` schema.

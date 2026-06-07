@@ -190,7 +190,7 @@ summer_set_prop(path="./World/Enemies/Enemy/Sight", key="enabled", value="true")
 summer_set_prop(path="./World/Enemies/Enemy/Sight", key="target_position", value="Vector3(0, 0, -12)")
 ```
 
-Save the Vision sphere as standalone `.tres` (do NOT inline sub_resource — see `_shared/mcp-tools-reference.md` § "Trap"):
+Save the Vision sphere as standalone `.tres` (do NOT inline sub_resource — see `references/mcp-tools-reference.md` § "Trap"):
 
 ```
 summer_set_prop(path="./World/Enemies/Enemy/Vision/VisionShape", key="shape", value="res://shapes/vision_sphere.tres")
@@ -460,7 +460,7 @@ If the enemy doesn't aggro, common causes:
 
 ## Collaborative protocol
 
-This skill writes scenes and scripts. Always ask before each step. Group related writes into one ask. See `_shared/collaborative-protocol.md`.
+This skill writes scenes and scripts. Always ask before each step. Group related writes into one ask. See `references/collaborative-protocol.md`.
 
 ## Want a working starter?
 
@@ -471,10 +471,10 @@ For a fully-rigged enemy with anim controller + loot drop:
 
 ## See also
 
-- `_shared/mcp-tools-reference.md` — full MCP tool list
-- `_shared/godot-version.md` — Godot 4.5 API notes
-- `_shared/collaborative-protocol.md` — "May I write" pattern
-- `_shared/gd-style.md` — typed GDScript conventions
+- `references/mcp-tools-reference.md` — full MCP tool list
+- `references/godot-version.md` — Godot 4.5 API notes
+- `references/collaborative-protocol.md` — "May I write" pattern
+- `references/gd-style.md` — typed GDScript conventions
 - `ai-and-npcs/state-machine-npc/SKILL.md` — FSM pattern deep dive
 - `ai-and-npcs/behavior-trees/SKILL.md` — when complexity demands a BT
 - `ai-and-npcs/perception-sight-and-hearing/SKILL.md` — sensor patterns

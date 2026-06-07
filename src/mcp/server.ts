@@ -57,11 +57,85 @@ export function resetClient(): void {
   cachedClient = null;
 }
 
+/**
+ * Passive result-size observability. Monkey-patches server.tool() so every
+ * registered handler's serialized text payload is measured and logged to
+ * stderr in the existing `[summer-mcp]` JSON shape. The result itself is
+ * never modified — external coding agents (Claude Code, Cursor, Codex)
+ * manage their own context budgets, and silently truncating their tool
+ * results is the wrong shape (see #102 revert). If a specific tool turns
+ * out to produce pathological payloads in practice, the right fix is
+ * adding range/depth/filter parameters to that tool — not a blanket cap.
+ */
+function installResultSizeLogger(server: {
+  tool: (...args: unknown[]) => unknown;
+}): void {
+  const original = server.tool.bind(server);
+  server.tool = function patchedTool(...args: unknown[]) {
+    if (args.length < 2) return original(...args);
+    const name = args[0];
+    if (typeof name !== "string") return original(...args);
+
+    const lastIdx = args.length - 1;
+    const handler = args[lastIdx];
+    if (typeof handler !== "function") return original(...args);
+
+    const wrapped = async (...handlerArgs: unknown[]) => {
+      const result = await (handler as (...a: unknown[]) => unknown)(
+        ...handlerArgs
+      );
+      try {
+        if (
+          result &&
+          typeof result === "object" &&
+          "content" in result &&
+          Array.isArray((result as { content: unknown }).content)
+        ) {
+          let chars = 0;
+          for (const entry of (result as { content: Array<{ type?: string; text?: unknown }> })
+            .content) {
+            if (entry && entry.type === "text" && typeof entry.text === "string") {
+              chars += entry.text.length;
+            }
+          }
+          const bytes = Buffer.byteLength(
+            (result as { content: Array<{ type?: string; text?: unknown }> }).content
+              .filter((e) => e && e.type === "text" && typeof e.text === "string")
+              .map((e) => e.text as string)
+              .join(""),
+            "utf8"
+          );
+          const line = JSON.stringify({
+            event: "mcp:result_size",
+            tool_name: name,
+            chars,
+            bytes,
+          });
+          process.stderr.write(`[summer-mcp] ${line}\n`);
+        }
+      } catch {
+        // Telemetry must never break the tool call.
+      }
+      return result;
+    };
+
+    const newArgs = [...args];
+    newArgs[lastIdx] = wrapped;
+    return original(...newArgs);
+  } as typeof server.tool;
+}
+
 export async function startMcpServer(): Promise<void> {
   const server = new McpServer({
     name: "summer-engine",
     version,
   });
+
+  // Passive observability: log result-size to stderr but do not modify
+  // results. See installResultSizeLogger above.
+  installResultSizeLogger(
+    server as unknown as { tool: (...args: unknown[]) => unknown }
+  );
 
   registerSceneTools(server);
   registerDebugTools(server);

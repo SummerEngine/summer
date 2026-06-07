@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: animation
 user-invocable: false
-allowed-tools: Read Grep summer_search_assets summer_generate_motion summer_inspect_resource summer_get_scene_tree summer_add_node summer_set_prop summer_set_resource_property summer_save_scene
+allowed-tools: Read Grep summer_search_assets summer_list_my_assets summer_get_asset summer_get_asset_download_url summer_generate_motion summer_inspect_resource summer_get_scene_tree summer_add_node summer_set_prop summer_set_resource_property summer_save_scene
 paths: ["**/*.tscn", "**/*.tres", "**/*.gd"]
 ---
 
@@ -16,6 +16,22 @@ Picks a clip from a **curated mocap library** by name (`idle`, `walk`, `run`, `a
 The target must be a **Meshy-rigged humanoid** — a `rigAssetId` from a prior `summer_generate_3d({ kind: "image-to-3d", imageUrl: "...", options: { rig: true } })` call. The result job includes `rigAssetId`. If the user points at a non-rigged mesh, stop and route to `summer:asset-pipeline/asset-strategy` (or directly call `summer_generate_3d` with `options.rig: true`) before generating motion.
 
 > **Custom prompt-driven motion** (e.g. "drops to one knee, draws bow") is on the roadmap but not shipped yet. For one-off signature moves not on the curated list, fall back to hand-authoring in the Godot editor or importing from Mixamo. See the Edge cases section.
+
+## Web Chat / Public Orchestrator Equivalent
+
+In PublicSummerEngine chat, the equivalent direct tools are:
+
+```
+rigModel({ modelAssetId })
+generateAnimation({ rigAssetId, animationName })
+meshyJobStatus({ jobId })
+```
+
+If the character came from `createCharacter`, it may already be rigged and have `metadata.meshyRigTaskId`; generate animations directly against that rig asset. Verified animation names from the recovered production flow are `idle`, `walk`, `run`, `jump`, and `attack`. `fall` returned `invalid_animation`, so do not present it as a default.
+
+Before generating clips in PublicSummerEngine chat, confirm the rig asset listing/status exposes `hasMeshyRigTask` or `animationsReady:true`. If `generateAnimation` returns `animations_preparing`, wait, poll/list the rig again, and retry; this is the post-rig setup catching up, not a reason to send the user to Studio.
+
+After animation jobs complete, import the rig plus child animation assets together and wire them through `import-character`. Do not hand off to Studio unless the user asked for Studio/manual control or the direct chat tools fail.
 
 ## When to use this skill
 
@@ -38,7 +54,7 @@ The target must be a **Meshy-rigged humanoid** — a `rigAssetId` from a prior `
 ### 1. Verify the target is a rigged humanoid
 
 ```
-summer_search_assets(query="<character name>", kind="model")
+summer_search_assets(query="<character name>", assetType="3d_model", source="my_assets")
 ```
 
 The result must include `rigAssetId: <id>` on a Meshy rig. If it shows `rigAssetId: null`, the model isn't rigged — stop, propose `summer_generate_3d({ kind: "image-to-3d", imageUrl: "...", options: { rig: true } })` first (the result includes `rigAssetId`), or route to `summer:asset-pipeline/asset-strategy`.
@@ -57,7 +73,12 @@ summer_generate_motion(
 )
 ```
 
-Returns `{ animationAssetId, durationSeconds, previewUrl }`.
+Returns `animationAssetId`, `durationSeconds`, and `previewUrl`. Resolve the
+asset before handoff so you have the stable file/download metadata:
+
+```
+summer_get_asset(assetId="<animationAssetId>")
+```
 
 ### 4. Attach to the character's AnimationPlayer
 
@@ -99,7 +120,7 @@ The full list is ~70 names. If the user asks for something not on the top-30, tr
 ## Anti-patterns
 
 - Calling `summer_generate_motion` on a `.glb` that wasn't rigged — wastes a generation; the API errors but only after 30s.
-- Generating the same clip twice because you forgot to save the `animationAssetId` from the first call. Search the asset library first: `summer_search_assets(query: "goblin run", kind: "animation")`.
+- Generating the same clip twice because you forgot to save the `animationAssetId` from the first call. Search the asset library first: `summer_search_assets(query: "goblin run", assetType: "animation", source: "my_assets")`.
 - Wiring clips into an AnimationTree inside this skill. That's the next skill's job. Generate, attach, hand off.
 - Asking the model to invent a `motionName` that isn't on the list. Quote from the list verbatim, or fall back to manual authoring.
 
@@ -123,7 +144,7 @@ The user can upload to Meshy directly at meshy.ai, generate via the dashboard, d
 
 ## See also
 
-- `_shared/mcp-tools-reference.md` — `summer_generate_motion` parameter schema, error codes.
+- `references/mcp-tools-reference.md` — `summer_generate_motion` parameter schema, error codes.
 - `summer:asset-pipeline/asset-strategy` — how to get a Meshy-rigged character in the first place.
 - `summer:animation/animation-tree` — wire the generated clips into a state machine.
 - `summer:animation/retarget` — re-use one library across many characters without regenerating.

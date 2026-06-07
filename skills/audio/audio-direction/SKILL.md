@@ -235,11 +235,11 @@ End with:
 | Pure sine "ding" for pickup | Reads as cheap mobile game. Use a major-third interval with character. |
 | Same footstep sample for all surfaces | Material-aware footsteps are 80% of the perceived audio quality. |
 | No master ceiling / true peak | Audio clips on console builds without `-1 dBTP` ceiling. Always set it. |
-| Calling SetResourceProperty on inline sub_resources | Silent fail. See `_shared/mcp-tools-reference.md` § Trap. |
+| Calling SetResourceProperty on inline sub_resources | Silent fail. See `references/mcp-tools-reference.md` § Trap. |
 
 ## Collaborative protocol
 
-This skill writes one bible (`.summer/audio-bible.md`), creates a bus layout (`audio/default_bus_layout.tres`), modifies `project.godot`, and may generate audio (metered). Always ask before writing or generating. See `_shared/collaborative-protocol.md`.
+This skill writes one bible (`.summer/audio-bible.md`), creates a bus layout (`audio/default_bus_layout.tres`), modifies `project.godot`, and may generate audio (metered). Always ask before writing or generating. See `references/collaborative-protocol.md`.
 
 ## Want a working starter?
 
@@ -247,9 +247,9 @@ No template — this is a workflow that produces the bible the rest of the proje
 
 ## See also
 
-- `_shared/collaborative-protocol.md`
-- `_shared/godot-version.md` — Godot 4.5 audio API notes
-- `_shared/mcp-tools-reference.md`
+- `references/collaborative-protocol.md`
+- `references/godot-version.md` — Godot 4.5 audio API notes
+- `references/mcp-tools-reference.md`
 - `scene-and-project/brainstorm-game/SKILL.md` — produces the brief that anchors the bible
 - `rendering-and-lighting/art-direction/SKILL.md` — the visual counterpart; audio must rhyme with it
 - `audio/audio-bus-setup/SKILL.md` (NEXT) — implements the bus layout in detail

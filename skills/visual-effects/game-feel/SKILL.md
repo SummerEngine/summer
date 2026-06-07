@@ -110,7 +110,7 @@ func flash() -> void:
 
 **Tunable knobs:** `duration` 0.06–0.12s — under 0.06 reads as a flicker, over 0.12 looks slow. `emission_energy_multiplier` 1.5–3.0.
 
-> CRITICAL: do NOT inline a `StandardMaterial3D` as a `sub_resource` via `summer_set_prop`. Build it in script (as above) or save it to `materials/flash.tres`. Inline sub_resources break `summer_set_resource_property` silently — see `_shared/mcp-tools-reference.md` § "Trap".
+> CRITICAL: do NOT inline a `StandardMaterial3D` as a `sub_resource` via `summer_set_prop`. Build it in script (as above) or save it to `materials/flash.tres`. Inline sub_resources break `summer_set_resource_property` silently — see `references/mcp-tools-reference.md` § "Trap".
 
 ## Step 5 — Install Section 2 (Trauma Camera Shake)
 
@@ -358,7 +358,7 @@ Tune one knob at a time:
 
 ## Collaborative protocol
 
-This skill writes 3 GDScript files and adds 1 node + 1 autoload entry. Always ask before each section is applied. Group related writes into one ask: "I'm about to add HitFlash + CameraShake + AudioDucker autoload, wire one signal. OK?" See `_shared/collaborative-protocol.md`.
+This skill writes 3 GDScript files and adds 1 node + 1 autoload entry. Always ask before each section is applied. Group related writes into one ask: "I'm about to add HitFlash + CameraShake + AudioDucker autoload, wire one signal. OK?" See `references/collaborative-protocol.md`.
 
 ## When NOT to use this skill
 
@@ -369,10 +369,10 @@ This skill writes 3 GDScript files and adds 1 node + 1 autoload entry. Always as
 
 ## See also
 
-- `_shared/mcp-tools-reference.md` — full MCP tool list, especially the inline-sub_resource trap
-- `_shared/godot-version.md` — Godot 4.5 API notes
-- `_shared/collaborative-protocol.md` — "May I write" pattern
-- `_shared/gd-style.md` — typed GDScript conventions
+- `references/mcp-tools-reference.md` — full MCP tool list, especially the inline-sub_resource trap
+- `references/godot-version.md` — Godot 4.5 API notes
+- `references/collaborative-protocol.md` — "May I write" pattern
+- `references/gd-style.md` — typed GDScript conventions
 - `audio/audio-direction/SKILL.md` — bus layout setup (prerequisite for ducking)
 - `post-processing/screen-shake/SKILL.md` — deeper trauma variants (Perlin noise, stacked sources)
 - `visual-effects/gpuparticles-3d-basics/SKILL.md` — particles to layer on top of the trio

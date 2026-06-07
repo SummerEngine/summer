@@ -2,12 +2,22 @@
 
 Cursor uses Summer skills as generated project rules.
 
+## Recommended Setup
+
+Paste this into Cursor:
+
+```text
+Install Summer Engine and let's make a game.
+```
+
+Cursor should run the setup playbook with `npx -y summer-engine@latest`, install project rules, configure MCP, run doctor, and open the engine.
+
 ## Install Rules
 
 Project rules:
 
 ```bash
-summer skills install --recommended --agent cursor --scope project
+npx -y summer-engine@latest setup cursor --yes --force
 ```
 
 This creates:
@@ -19,7 +29,7 @@ This creates:
 User rules:
 
 ```bash
-summer skills install --recommended --agent cursor --scope user
+npx -y summer-engine@latest skills install --recommended --agent cursor --scope user
 ```
 
 The legacy alias still works:
@@ -46,8 +56,7 @@ Add Summer to `.cursor/mcp.json`:
 Keep the engine open on the project:
 
 ```bash
-summer run path/to/project
+npx -y summer-engine@latest run path/to/project
 ```
 
 Cursor should use Summer MCP tools for scene/editor operations and its native editor for scripts and text files.
-

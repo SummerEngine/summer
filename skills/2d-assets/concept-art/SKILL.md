@@ -149,4 +149,4 @@ Once the user picks a direction:
 
 - `summer:asset-pipeline/asset-strategy` — meta-router that delegates here vs other 2d-assets skills.
 - `summer:2d-assets/character-portrait` — the polished single-image counterpart.
-- `_shared/mcp-tools-reference.md` — `summer_generate_image` parameter schema.
+- `references/mcp-tools-reference.md` — `summer_generate_image` parameter schema.

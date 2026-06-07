@@ -278,5 +278,5 @@ For projects that can't use any cloud or third-party tool, Godot 4.5's `AudioStr
 - `summer:audio/generate-voice` — TTS upstream of this skill.
 - `summer:animation/animation-tree` — wire the lipsync OneShot into the character's tree.
 - `summer:animation/procedural-animation` — eye blinks, saccades, head idle.
-- `_shared/mcp-tools-reference.md` — `summer_generate_audio` schema (TTS).
+- `references/mcp-tools-reference.md` — `summer_generate_audio` schema (TTS).
 - Rhubarb Lip Sync — https://github.com/DanielSWolf/rhubarb-lip-sync (external tool; phoneme extraction).

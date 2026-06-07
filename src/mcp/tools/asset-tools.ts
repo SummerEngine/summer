@@ -124,6 +124,219 @@ async function searchAssetsApi(params: {
   return data;
 }
 
+type McpAsset = {
+  id: string;
+  title: string;
+  type: string;
+  fileUrl: string;
+  thumbnailUrl?: string | null;
+  pack?: string | null;
+  packSlug?: string | null;
+  importUrl?: string;
+  downloadUrl?: string;
+  fileName?: string | null;
+  mimeType?: string | null;
+  visibility?: string;
+  licenseType?: string | null;
+  metadata?: Record<string, unknown>;
+};
+
+type ApiErrorBody = {
+  error?: string;
+  message?: string;
+};
+
+type AssetDownloadUrlResponse = {
+  assetId: string;
+  role: "primary" | "thumbnail";
+  url: string;
+  downloadUrl: string;
+  importUrl?: string;
+  expiresAt: string | null;
+  signed: boolean;
+};
+
+async function authedGetJson<T>(
+  endpoint: string,
+  timeoutMs = 15_000
+): Promise<{ data?: T; error?: string; message?: string; status: number }> {
+  const token = await getAuthToken();
+  if (!token) {
+    return {
+      status: 401,
+      error: "not_logged_in",
+      message:
+        "Not signed in. Run in your terminal:\n  npx summer-engine login",
+    };
+  }
+
+  const res = await fetch(`${GATEWAY_URL}${endpoint}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  const data = (await res.json()) as T & ApiErrorBody;
+  if (!res.ok) {
+    return {
+      status: res.status,
+      data,
+      error: data?.error || "request_failed",
+      message: data?.message || "Request failed",
+    };
+  }
+  return { status: res.status, data };
+}
+
+async function getAssetApi(assetId: string): Promise<{
+  asset?: McpAsset;
+  error?: string;
+  message?: string;
+}> {
+  const result = await authedGetJson<{ asset: McpAsset }>(
+    `/api/mcp/assets/${encodeURIComponent(assetId)}`
+  );
+  if (result.error) {
+    return { error: result.error, message: result.message };
+  }
+  return { asset: result.data?.asset };
+}
+
+async function getAssetDownloadUrlApi(
+  assetId: string,
+  role: "primary" | "thumbnail"
+): Promise<{ data?: AssetDownloadUrlResponse; error?: string; message?: string }> {
+  const result = await authedGetJson<AssetDownloadUrlResponse>(
+    `/api/mcp/assets/${encodeURIComponent(assetId)}/download-url?role=${encodeURIComponent(role)}`
+  );
+  if (result.error) {
+    return { error: result.error, message: result.message };
+  }
+  return { data: result.data };
+}
+
+function fileNameFromUrl(fileUrl: string): string {
+  return fileUrl.split("/").pop()?.split("?")[0] || "asset";
+}
+
+function sanitizeNodeName(name: string): string {
+  return (
+    (name || "Asset")
+      .replace(/[^\p{L}\p{N}_]+/gu, "_")
+      .replace(/^_+|_+$/g, "") || "Asset"
+  );
+}
+
+async function buildImportEntriesForAsset(
+  asset: McpAsset,
+  targetPath?: string
+): Promise<{ imports: { url: string; path: string }[]; importPath: string }> {
+  const fileUrl = asset.importUrl || asset.fileUrl;
+  if (!fileUrl) throw new Error("Asset has no import URL.");
+
+  const fileName =
+    targetPath?.split("/").pop() || asset.fileName || fileNameFromUrl(fileUrl);
+  const packSlug = asset.packSlug ?? getPackSlugFromUrl(fileUrl) ?? "misc";
+
+  if (targetPath) {
+    if (asset.type === "3d_model" && fileUrl.includes("kenney/3d/")) {
+      const textureUrl = buildKenneyTextureUrl(fileUrl);
+      const hasTexture = await textureExists(textureUrl);
+      if (hasTexture) {
+        const glbDir = targetPath.replace(/\/[^/]+$/, "");
+        return {
+          importPath: targetPath,
+          imports: [
+            { url: textureUrl, path: `${glbDir}/Textures/colormap.png` },
+            { url: fileUrl, path: targetPath },
+          ],
+        };
+      }
+    }
+    return {
+      importPath: targetPath,
+      imports: [{ url: fileUrl, path: targetPath }],
+    };
+  }
+
+  if (asset.type === "3d_model" && fileUrl.includes("kenney/3d/")) {
+    const imports = await buildKenneyImportEntries(fileUrl, packSlug, fileName);
+    return { imports, importPath: imports[imports.length - 1]!.path };
+  }
+
+  const path =
+    asset.type === "3d_model"
+      ? `res://assets/models/${fileName}`
+      : `res://assets/${fileName}`;
+  return { imports: [{ url: fileUrl, path }], importPath: path };
+}
+
+async function importResolvedAsset(args: {
+  asset: McpAsset;
+  parent?: string;
+  path?: string;
+  name?: string;
+}) {
+  const { asset, parent, path, name } = args;
+  const { imports, importPath } = await buildImportEntriesForAsset(asset, path);
+  const client = await getClient();
+  const importResult =
+    imports.length === 1
+      ? await client.executeOps([
+          { op: "ImportFromUrl", url: imports[0]!.url, path: imports[0]!.path },
+        ])
+      : await client.executeOps([{ op: "ImportFromUrlBatch", imports }]);
+
+  const ok = (importResult as { results?: { ok?: boolean }[] })?.results?.[0]?.ok;
+  if (!ok) {
+    throw new Error("Could not import asset. Check engine logs.");
+  }
+
+  let addedToScene = false;
+  if (parent && asset.type === "3d_model") {
+    await client.executeOps([
+      {
+        op: "InstantiateScene",
+        parent,
+        scene: importPath,
+        name: sanitizeNodeName(name || asset.title),
+      },
+    ]);
+    addedToScene = true;
+  }
+
+  return {
+    success: true,
+    assetId: asset.id,
+    asset: asset.title,
+    type: asset.type,
+    importedTo: importPath,
+    addedToScene,
+    parent: parent || null,
+  };
+}
+
+function jsonSuccess(data: unknown) {
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: JSON.stringify(data, null, 2),
+      },
+    ],
+  };
+}
+
+function jsonError(data: unknown) {
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: JSON.stringify(data, null, 2),
+      },
+    ],
+    isError: true,
+  };
+}
+
 export function registerAssetTools(server: McpServer): void {
   server.tool(
     "summer_search_assets",
@@ -184,6 +397,148 @@ Requires authentication (so we can attribute usage and apply per-user rate limit
   );
 
   server.tool(
+    "summer_list_my_assets",
+    `List or search the signed-in user's generated and uploaded assets.
+
+Use this after generation jobs complete, when the user says "the model I made",
+"my last character", or when you need to retrieve an asset before importing it
+into the local project.
+
+Returns exact asset IDs plus file/import URLs. Use summer_get_asset for full
+metadata or summer_import_asset_by_id to import a specific result.`,
+    {
+      query: z
+        .string()
+        .default("")
+        .describe("Optional search term. Empty string lists recent assets."),
+      assetType: z
+        .enum(["2d_image", "animation", "3d_model", "audio", "music", "all"])
+        .default("all")
+        .describe("Filter by asset type"),
+      limit: z.number().default(10).describe("Max results (1-20)"),
+    },
+    async ({ query, assetType, limit }) => {
+      const result = await searchAssetsApi({
+        query,
+        assetType,
+        limit: Math.min(limit, 20),
+        source: "my_assets",
+      });
+      if (result.error) {
+        return jsonError({ error: result.error, message: result.message });
+      }
+      return jsonSuccess({
+        assets: result.assets,
+        count: result.count,
+        message: result.message,
+      });
+    }
+  );
+
+  server.tool(
+    "summer_get_asset",
+    `Fetch one asset by exact Summer asset ID.
+
+Use this after a generation job returns assetId/rigAssetId/animationAssetId, or
+after summer_list_my_assets/search results when you need the stable file URL,
+download URL, viewer URL, metadata, license, visibility, parent chain, or
+provider details.`,
+    {
+      assetId: z.string().describe("Summer ArtAssets id"),
+    },
+    async ({ assetId }) => {
+      const result = await getAssetApi(assetId);
+      if (result.error || !result.asset) {
+        return jsonError({
+          error: result.error || "asset_not_found",
+          message: result.message || "Asset not found.",
+        });
+      }
+      return jsonSuccess({ asset: result.asset });
+    }
+  );
+
+  server.tool(
+    "summer_get_asset_download_url",
+    `Get a downloadable URL for a specific asset file.
+
+Today this usually returns the Cloudinary URL plus Summer's download proxy.
+The response shape is future-proofed for signed URLs, so prefer this tool over
+handing users raw fileUrl when they explicitly ask to download.`,
+    {
+      assetId: z.string().describe("Summer ArtAssets id"),
+      role: z
+        .enum(["primary", "thumbnail"])
+        .default("primary")
+        .describe("Which file to download"),
+    },
+    async ({ assetId, role }) => {
+      const result = await getAssetDownloadUrlApi(assetId, role);
+      if (result.error) {
+        return jsonError({ error: result.error, message: result.message });
+      }
+      return jsonSuccess(result.data);
+    }
+  );
+
+  server.tool(
+    "summer_import_asset_by_id",
+    `Import an exact Summer asset ID into the current project.
+
+Use this when the asset was just generated, selected from my assets, or returned
+by search. Unlike summer_import_asset, this does not search or guess: it fetches
+the asset by ID, downloads it through Summer Engine, and runs Godot's import
+pipeline. For 3D models, pass parent to instantiate it in the open scene after
+import.`,
+    {
+      assetId: z.string().describe("Summer ArtAssets id"),
+      path: z
+        .string()
+        .optional()
+        .describe("Optional target res:// path. If omitted, a path is inferred from asset type and filename."),
+      parent: z
+        .string()
+        .optional()
+        .describe("Optional parent node path. For 3D models only; imports and instantiates under this node."),
+      name: z
+        .string()
+        .optional()
+        .describe("Optional scene node name when parent is provided."),
+    },
+    async ({ assetId, path, parent, name }) => {
+      const fetched = await getAssetApi(assetId);
+      if (fetched.error || !fetched.asset) {
+        return jsonError({
+          error: fetched.error || "asset_not_found",
+          message: fetched.message || "Asset not found.",
+        });
+      }
+
+      try {
+        const imported = await importResolvedAsset({
+          asset: fetched.asset,
+          parent,
+          path,
+          name,
+        });
+        return jsonSuccess({
+          ...imported,
+          message: imported.addedToScene
+            ? `Imported "${fetched.asset.title}" and added it to ${parent}.`
+            : `Imported "${fetched.asset.title}" to ${imported.importedTo}.`,
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return jsonError({
+          error: "import_failed",
+          message: msg,
+          hint: "Make sure Summer Engine is running and the target scene is open.",
+        });
+      }
+    }
+  );
+
+  server.tool(
     "summer_import_asset",
     `Search the asset library and import the best match into the project in one step.
 
@@ -195,9 +550,10 @@ Requires authentication. If the user gets an auth error, they need to run 'npx s
       query: z.string().describe("What to find, e.g. 'low-poly tree', 'wooden crate'"),
       parent: z.string().optional().describe("Parent node path to add the asset under, e.g. './World'. If omitted, only imports (no scene placement)"),
       assetType: z.enum(["2d_image", "animation", "3d_model", "audio", "music", "all"]).default("3d_model").describe("Preferred asset type"),
+      source: z.enum(["library", "my_assets", "all"]).default("all").describe("Where to search before importing"),
     },
-    async ({ query, parent, assetType }) => {
-      const searchResult = await searchAssetsApi({ query, assetType, limit: 5 });
+    async ({ query, parent, assetType, source }) => {
+      const searchResult = await searchAssetsApi({ query, assetType, limit: 5, source });
 
       if (searchResult.error) {
         return {
@@ -232,7 +588,7 @@ Requires authentication. If the user gets an auth error, they need to run 'npx s
         };
       }
 
-      const best = assets[0];
+      const best = assets[0]!;
       const fileUrl = best.fileUrl;
       if (!fileUrl) {
         return {
@@ -250,55 +606,8 @@ Requires authentication. If the user gets an auth error, they need to run 'npx s
         };
       }
 
-      const fileName = fileUrl.split("/").pop()?.split("?")[0] || "asset";
-      const packSlug = best.packSlug ?? getPackSlugFromUrl(fileUrl) ?? "misc";
-
-      let imports: { url: string; path: string }[];
-      if (best.type === "3d_model" && fileUrl.includes("kenney/3d/")) {
-        imports = await buildKenneyImportEntries(fileUrl, packSlug, fileName);
-      } else {
-        const path =
-          best.type === "3d_model"
-            ? `res://assets/models/${fileName}`
-            : `res://assets/${fileName}`;
-        imports = [{ url: fileUrl, path }];
-      }
-
-      const importPath = imports[imports.length - 1]!.path;
-
       try {
-        const client = await getClient();
-        const importResult =
-          imports.length === 1
-            ? await client.executeOps([{ op: "ImportFromUrl", url: imports[0]!.url, path: imports[0]!.path }])
-            : await client.executeOps([{ op: "ImportFromUrlBatch", imports }]);
-
-        const ok = (importResult as { results?: { ok?: boolean }[] })?.results?.[0]?.ok;
-        if (!ok) {
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: JSON.stringify(
-                  {
-                    error: "Import failed",
-                    message: "Could not import asset. Check engine logs.",
-                    asset: best.title,
-                  },
-                  null,
-                  2
-                ),
-              },
-            ],
-            isError: true,
-          };
-        }
-
-        if (parent && best.type === "3d_model") {
-          await client.executeOps([
-            { op: "InstantiateScene", parent, scene: importPath, name: best.title.replace(/\s+/g, "_") },
-          ]);
-        }
+        const imported = await importResolvedAsset({ asset: best, parent });
         // 2D sprites and audio: import only; user adds to scene manually
 
         return {
@@ -308,14 +617,15 @@ Requires authentication. If the user gets an auth error, they need to run 'npx s
               text: JSON.stringify(
                 {
                   success: true,
+                  assetId: best.id,
                   asset: best.title,
                   type: best.type,
-                  importedTo: importPath,
-                  addedToScene: parent ? true : false,
-                  parent: parent || null,
-                  message: parent
+                  importedTo: imported.importedTo,
+                  addedToScene: imported.addedToScene,
+                  parent: imported.parent,
+                  message: imported.addedToScene
                     ? `Imported "${best.title}" and added to ${parent}`
-                    : `Imported "${best.title}" to ${importPath}`,
+                    : `Imported "${best.title}" to ${imported.importedTo}`,
                 },
                 null,
                 2

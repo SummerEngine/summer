@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 3d-assets
 user-invocable: true
-allowed-tools: Read Grep summer_search_assets summer_generate_image summer_generate_3d summer_import_from_url summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_inspect_resource summer_get_scene_tree summer_save_scene summer_check_job summer_generate_motion
+allowed-tools: Read Grep summer_search_assets summer_list_my_assets summer_get_asset summer_import_asset_by_id summer_generate_image summer_generate_3d summer_import_from_url summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_inspect_resource summer_get_scene_tree summer_save_scene summer_check_job summer_generate_motion
 paths: ["assets/characters/**", "assets/models/**", "**/*.tscn", "**/*.gd"]
 ---
 
@@ -25,6 +25,16 @@ The whole flow:
 ```
 
 The animation skill (`summer:animation/generate-motion`) requires a rigged humanoid; a static `.glb` won't drive motion.
+
+## Web Chat / Public Orchestrator Equivalent
+
+When this skill is running inside the PublicSummerEngine chat orchestrator, use the chat-native tools directly instead of sending the user to Studio:
+
+```
+generateImage -> createCharacter -> checkGenerationStatus/meshyJobStatus -> listUserAssets readiness -> rigModel if needed -> generateAnimation -> meshyJobStatus -> importAssets -> import-character
+```
+
+Use Studio only when the user explicitly asks for visual/manual picking or when chat-side generation fails. The recovered working flow used `createCharacter`, confirmed the rig had `hasMeshyRigTask` or `animationsReady:true`, then generated `idle`, `walk`, `run`, `jump`, and `attack`, imported the rig plus child animation GLBs into `res://characters/<slug>/`, then wired playback from the imported GLB AnimationPlayers/libraries. If `generateAnimation` returns `animations_preparing`, wait, poll/list the rig asset again, and retry instead of routing to Studio. Keep this path repeatable for "animated character", "3D character with animations", "walking enemy", and similar prompts.
 
 ## When to use
 
@@ -94,10 +104,15 @@ summer_generate_3d(
 )
 ```
 
-Returns `{ asset: { fileUrl } }` — an un-rigged static `.glb`. Import it for preview only:
+Returns a job result with `assetId` and `fileUrl` — an un-rigged static `.glb`.
+Use the asset ID as the stable handle. Import it for preview only:
 
 ```
-summer_import_from_url(url="<fileUrl>", path="res://assets/characters/knight_unrigged.glb")
+summer_get_asset(assetId="<assetId>")
+summer_import_asset_by_id(
+  assetId="<assetId>",
+  path="res://assets/characters/knight_unrigged.glb"
+)
 ```
 
 ### 3. ⛔ USER REVIEW GATE — DO NOT SKIP
@@ -122,12 +137,19 @@ summer_generate_3d({
 })
 ```
 
-Returns a job whose result includes `{ asset: { fileUrl }, rigAssetId }`. If you ran with `wait: false`, poll via `summer_check_job(jobId)`. The `rigAssetId` is the handle `summer:animation/generate-motion` needs — store it.
+Returns a job whose result includes `assetId`, `fileUrl`, and `rigAssetId`.
+If you ran with `wait: false`, poll via `summer_check_job(jobId)`. The
+`rigAssetId` is the handle `summer:animation/generate-motion` needs — store it.
+Resolve it before import so the agent has the viewer/download metadata:
 
 Import the rigged version, replacing the un-rigged file:
 
 ```
-summer_import_from_url(url="<rigged fileUrl>", path="res://assets/characters/knight.glb")
+summer_get_asset(assetId="<rigAssetId>")
+summer_import_asset_by_id(
+  assetId="<rigAssetId>",
+  path="res://assets/characters/knight.glb"
+)
 ```
 
 ### 5. ⚠️ Restart the editor
@@ -222,4 +244,4 @@ After the rigged character is wired:
 - `summer:asset-pipeline/asset-strategy` — meta-router; this skill is the canonical drill-down of its "Image-to-3D for characters" path.
 - `summer:3d-assets/prop-model` — for non-character props.
 - `summer:scene-composition` — for the CharacterBody3D + Mesh + Collider parent pattern.
-- `_shared/mcp-tools-reference.md` — full parameter schemas for `summer_generate_3d`, `summer_generate_image`, and `summer_generate_motion`.
+- `references/mcp-tools-reference.md` — full parameter schemas for `summer_generate_3d`, `summer_generate_image`, and `summer_generate_motion`.

@@ -18,7 +18,7 @@ describe("tildeify", () => {
     expect(tildeify("/tmp/foo")).toBe("/tmp/foo");
   });
 
-  it("does not partial-match (e.g. /Users/Mat vs /Users/MathiasWork)", () => {
+  it("does not partial-match sibling user directories", () => {
     const home = homedir();
     const sibling = home.slice(0, -2) + "Other";
     expect(tildeify(sibling + "/file")).toBe(sibling + "/file");

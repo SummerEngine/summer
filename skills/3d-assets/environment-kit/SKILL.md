@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 3d-assets
 user-invocable: true
-allowed-tools: Read Grep summer_search_assets summer_generate_3d summer_generate_image summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_get_scene_tree summer_save_scene
+allowed-tools: Read Grep summer_search_assets summer_list_my_assets summer_get_asset summer_import_asset_by_id summer_generate_3d summer_generate_image summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_get_scene_tree summer_save_scene
 paths: ["assets/kits/**", "assets/models/**", "**/*.tscn", "**/*.gd"]
 ---
 
@@ -82,7 +82,8 @@ summer_generate_3d(
   options={ target_polycount: 1500 },
   wait=true
 )
-summer_import_from_url(url="<fileUrl>", path="res://assets/kits/dungeon/wall.glb")
+summer_get_asset(assetId="<assetId>")
+summer_import_asset_by_id(assetId="<assetId>", path="res://assets/kits/dungeon/wall.glb")
 ```
 
 Show the result to the user. **Iterate the anchor until approved** — every other piece copies its style.
@@ -100,6 +101,10 @@ summer_generate_3d(prompt="A 3 meter tall stone dungeon pillar, square base, flu
 
 # Door, Corner, Arch — same pattern.
 ```
+
+For each completed generation, capture the returned `assetId`, then import that
+exact ID with `summer_import_asset_by_id`. Do not search for generated pieces by
+name after creating them; exact IDs are the production path.
 
 Polycount targets per kit piece: walls/floors 800–1500 tris (placed dozens of times), decorative (pillar, arch) 1500–3000, doors 2000–3000.
 

@@ -25,6 +25,8 @@ const AGENT_LABEL: Record<SupportedAgent, string> = {
   cline: "Cline",
   "roo-code": "Roo Code",
   gemini: "Gemini CLI",
+  "github-copilot": "GitHub Copilot CLI",
+  "vscode-copilot": "GitHub Copilot in VS Code",
   opencode: "OpenCode",
 };
 

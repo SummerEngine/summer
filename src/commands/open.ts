@@ -37,6 +37,6 @@ export const openCommand = new Command("open")
     console.log(`Opening project: ${fullPath}`);
     console.log(
       "Note: To switch projects, close the current one in Summer Engine first,\n" +
-      "or run: summer run " + fullPath
+      "then run: summer run " + fullPath
     );
   });

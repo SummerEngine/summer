@@ -6,6 +6,8 @@ import {
   cpSync,
   rmSync,
   writeFileSync,
+  readdirSync,
+  copyFileSync,
 } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -29,6 +31,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Resolve skills dir: from dist/commands/skills.js -> ../../skills
 const skillsDir = join(__dirname, "..", "..", "skills");
+// Resolve commands dir: same parent. Used by Claude Code installs to also copy
+// slash commands (e.g. /gameskill) to ~/.claude/commands/. Other agents don't
+// have an equivalent today, so the copy is gated to claude-code.
+const commandsDir = join(__dirname, "..", "..", "commands");
 
 const SKILL_SCOPES = ["user", "project"] as const;
 type SkillScope = (typeof SKILL_SCOPES)[number];
@@ -192,6 +198,10 @@ function agentLabel(agent: AgentClient): string {
       return "Roo Code";
     case "gemini":
       return "Gemini CLI";
+    case "github-copilot":
+      return "GitHub Copilot CLI";
+    case "vscode-copilot":
+      return "GitHub Copilot in VS Code";
     case "opencode":
       return "OpenCode";
     case "summer":
@@ -251,6 +261,15 @@ function resolveInstallLocation(
       return {
         kind: "gemini-skill-dir",
         path: join(homedir(), ".gemini", "extensions", "summer-engine", "skills"),
+      };
+    case "github-copilot":
+    case "vscode-copilot":
+      return {
+        kind: "skill-dir",
+        path:
+          scope === "user"
+            ? join(homedir(), ".copilot", "skills")
+            : join(process.cwd(), ".github", "skills"),
       };
     case "opencode":
       return {
@@ -555,9 +574,50 @@ skillsCommand
       console.log(`  ${result.action} ${skill.name} -> ${result.path}`);
     }
 
+    // Claude Code: also install slash commands (`tools/summer-cli/commands/*.md`)
+    // into `~/.claude/commands/`. Other agents don't have an equivalent today.
+    if (agent === "claude-code") {
+      const commandResults = installClaudeCommands(scope, Boolean(opts.force));
+      for (const r of commandResults) {
+        console.log(`  ${r.action} command ${r.name} -> ${r.path}`);
+      }
+    }
+
     writeMarkerForLocation(location);
     printInstallSummary(skills.length, agent, scope, location);
   });
+
+/**
+ * Copy every `.md` file in `tools/summer-cli/commands/` to the user's
+ * `~/.claude/commands/` directory so the slash commands (e.g. `/gameskill`)
+ * are available on every machine that runs `summer skills install`.
+ *
+ * Project-scope installs go to `<cwd>/.claude/commands/`. Returns one result
+ * per command file copied. Silent no-op if no commands directory exists in
+ * the package (older summer-cli releases didn't ship one).
+ */
+function installClaudeCommands(
+  scope: SkillScope,
+  force: boolean
+): Array<{ action: string; name: string; path: string }> {
+  if (!existsSync(commandsDir)) return [];
+  const root = scope === "user" ? homedir() : process.cwd();
+  const targetDir = join(root, ".claude", "commands");
+  mkdirSync(targetDir, { recursive: true });
+  const results: Array<{ action: string; name: string; path: string }> = [];
+  for (const entry of readdirSync(commandsDir)) {
+    if (!entry.endsWith(".md")) continue;
+    const src = join(commandsDir, entry);
+    const dest = join(targetDir, entry);
+    if (existsSync(dest) && !force) {
+      results.push({ action: "Kept", name: entry, path: dest });
+      continue;
+    }
+    copyFileSync(src, dest);
+    results.push({ action: "Installed", name: entry, path: dest });
+  }
+  return results;
+}
 
 /**
  * Drop a `.summer-version` marker into the install dir so doctor's

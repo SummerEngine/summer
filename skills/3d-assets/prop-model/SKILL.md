@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 3d-assets
 user-invocable: true
-allowed-tools: Read Grep summer_search_assets summer_generate_3d summer_generate_image summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_get_scene_tree summer_save_scene
+allowed-tools: Read Grep summer_search_assets summer_list_my_assets summer_get_asset summer_import_asset_by_id summer_generate_3d summer_generate_image summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_get_scene_tree summer_save_scene
 paths: ["assets/models/**", "**/*.tscn", "**/*.gd"]
 ---
 
@@ -37,7 +37,7 @@ The backing tool is `summer_generate_3d`. Default model is `hunyuan` (Hunyuan 3D
 ### 1. Search before generating
 
 ```
-summer_search_assets(query="<prop name>", filter={ kind: "model" })
+summer_search_assets(query="<prop name>", assetType="3d_model", source="all")
 ```
 
 If a fitting model exists, propose reuse:
@@ -83,25 +83,33 @@ summer_generate_3d(
 )
 ```
 
-Returns `{ asset: { fileUrl }, ... }`.
+Returns a job result with `assetId` and `fileUrl`. Treat `assetId` as the
+stable handle and `fileUrl` as a fallback preview/import URL.
 
 ### 5. Import and wire
 
 ```
-summer_import_from_url(url="<fileUrl>", path="res://assets/models/viking_axe.glb")
-summer_add_node(parent="./World/Props", type="MeshInstance3D", name="VikingAxe")
-summer_set_prop(path="./World/Props/VikingAxe", property="mesh", value="res://assets/models/viking_axe.glb")
+summer_get_asset(assetId="<assetId>")
+summer_import_asset_by_id(
+  assetId="<assetId>",
+  path="res://assets/models/viking_axe.glb",
+  parent="./World/Props",
+  name="VikingAxe"
+)
 summer_save_scene
 ```
 
-For interactive props (chest the player opens, lantern the player picks up), wrap the MeshInstance3D in a `StaticBody3D` (or `RigidBody3D` for physics props) with a `CollisionShape3D` sibling — see `summer:scene-composition` for the parent-shape pattern.
+For interactive props (chest the player opens, lantern the player picks up),
+wrap the instantiated model in a `StaticBody3D` (or `RigidBody3D` for physics
+props) with a `CollisionShape3D` sibling — see `summer:scene-composition` for
+the parent-shape pattern.
 
 ## Anti-patterns
 
 - **Scene context in the prompt.** "A sword lying on a wooden table" → the table becomes geometry. Always say `isolated object`.
 - **Multi-object prompts.** "A sword and a shield" → fused single mesh. Generate separately.
 - **Skipping `target_polycount` for background props.** A 30k-tri barrel in the background tanks frame rate when the level has 50 of them.
-- **Forgetting to import.** `fileUrl` from `summer_generate_3d` is a remote URL — you MUST `summer_import_from_url` before referencing it as `res://...`.
+- **Forgetting to import.** `fileUrl` from `summer_generate_3d` is a remote URL — you MUST `summer_import_asset_by_id` or `summer_import_from_url` before referencing it as `res://...`.
 - **Generating before searching.** Reuse beats regenerate every time.
 - **Picking `meshy` by default.** It's legacy. `hunyuan` is better; `trellis` is faster.
 
@@ -130,4 +138,4 @@ After the prop is wired:
 - `summer:asset-pipeline/asset-strategy` — the meta-router that decides between this skill and Pipeline 2 (textures).
 - `summer:3d-assets/character-model` — for humanoids.
 - `summer:3d-assets/environment-kit` — for style-locked sets.
-- `_shared/mcp-tools-reference.md` — `summer_generate_3d` parameter schema.
+- `references/mcp-tools-reference.md` — `summer_generate_3d` parameter schema.

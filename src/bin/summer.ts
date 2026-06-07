@@ -11,10 +11,12 @@ import { openCommand } from "../commands/open.js";
 import { installCommand } from "../commands/install.js";
 import { createCommand } from "../commands/create.js";
 import { listCommand } from "../commands/list.js";
+import { memoryCommand } from "../commands/memory.js";
 import { skillsCommand } from "../commands/skills.js";
 import { orchestratorCommand } from "../commands/orchestrator.js";
 import { setupCommand } from "../commands/setup.js";
 import { doctorCommand } from "../commands/doctor.js";
+import { planCommand } from "../commands/plan.js";
 import { getBanner } from "../lib/banner.js";
 import { c, sym } from "../lib/format.js";
 
@@ -39,10 +41,12 @@ program.addCommand(runCommand);
 program.addCommand(openCommand);
 program.addCommand(createCommand);
 program.addCommand(listCommand);
+program.addCommand(memoryCommand);
 program.addCommand(skillsCommand);
 program.addCommand(mcpCommand);
 program.addCommand(setupCommand);
 program.addCommand(doctorCommand);
+program.addCommand(planCommand);
 program.addCommand(orchestratorCommand);
 
 program.parseAsync().catch((err) => {
@@ -56,15 +60,22 @@ function printIntro(version: string): void {
   console.log("");
   console.log(`     ${sym.arrow()} ${c.bold("Summer Engine")} ${c.dim("v" + version)}  ${c.dim("·")}  AI-native game engine`);
   console.log("");
-  console.log(`     ${c.bold("Get started")}`);
-  console.log(`     ${c.dim("$")} summer setup claude-code      ${c.dim("Configure Claude Code (or codex/cursor/windsurf)")}`);
-  console.log(`     ${c.dim("$")} summer create 3d-basic my-game ${c.dim("Start a project")}`);
-  console.log(`     ${c.dim("$")} summer doctor                  ${c.dim("Check setup")}`);
+  console.log(`     ${c.bold("Setup wizard")}`);
+  console.log(`     Open Claude Code, Cursor, Codex, Copilot, Windsurf, or another supported agent and paste:`);
+  console.log(`     ${c.brand("\"Install Summer Engine and let's make a game.\"")}`);
+  console.log("");
+  console.log(`     ${c.bold("Manual commands")}`);
+  console.log(`     ${c.dim("$")} npx -y summer-engine@latest setup claude-code --yes`);
+  console.log(`     ${c.dim("$")} npx -y summer-engine@latest create 3d-basic my-game`);
+  console.log(`     ${c.dim("$")} npx -y summer-engine@latest plan make a small arena shooter`);
+  console.log(`     ${c.dim("$")} npx -y summer-engine@latest memory`);
+  console.log(`     ${c.dim("$")} npx -y summer-engine@latest doctor`);
   console.log("");
   console.log(`     ${c.bold("Slash commands")} ${c.dim("(in your AI agent)")}`);
   console.log(`     ${c.brand("/debug")}   ${c.dim("Triage and fix a bug end-to-end")}`);
   console.log(`     ${c.brand("/play")}    ${c.dim("Run the game and report state")}`);
   console.log("");
   console.log(`     ${c.dim("Docs:")} https://summerengine.com/docs`);
+  console.log(`     ${c.dim("Source:")} https://github.com/SummerEngine/summer-engine-agent`);
   console.log("");
 }

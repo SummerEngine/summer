@@ -202,4 +202,4 @@ After the texture is wired:
 - `summer:asset-pipeline/asset-strategy` — meta-router and 3D pipeline.
 - `summer:2d-assets/skybox-panorama` — sky/environment counterpart.
 - `summer:scene-composition` — applying textures to CSG and MeshInstance3D.
-- `_shared/mcp-tools-reference.md` — `summer_generate_image` schema.
+- `references/mcp-tools-reference.md` — `summer_generate_image` schema.

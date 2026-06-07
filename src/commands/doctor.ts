@@ -6,6 +6,7 @@ import { Command } from "commander";
 import { getAuthToken, getUserInfo } from "../lib/auth.js";
 import { checkEngineHealth, getApiPort, getApiToken } from "../lib/engine.js";
 import { brandLine, c, pad, sym, tildeify } from "../lib/format.js";
+import { getProjectMemorySummary } from "../lib/project-memory.js";
 import {
   buildCliVersionCheck,
   buildSkillsVersionCheck,
@@ -53,7 +54,7 @@ const WIN_ENGINE_PATHS = [
 ];
 
 export const doctorCommand = new Command("doctor")
-  .description("Diagnose Node, login, engine, local API, and MCP boot")
+  .description("Diagnose Node, login, engine, project memory, local API, and MCP boot")
   .option("--json", "Print diagnostics as JSON")
   .action(async (opts: { json?: boolean }) => {
     if (!opts.json) {
@@ -86,6 +87,7 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   checks.push(await checkLogin());
   checks.push(checkEngineInstall());
   checks.push(await checkLocalApi());
+  checks.push(await checkProjectMemory());
   checks.push(await checkMcpBoot());
 
   const result = summarizeChecks(checks);
@@ -227,6 +229,48 @@ async function checkLocalApi(): Promise<DoctorCheck> {
       version: health.version,
       projectName: health.project_name,
       projectPath: health.project_path,
+    },
+  };
+}
+
+async function checkProjectMemory(): Promise<DoctorCheck> {
+  const port = await getApiPort();
+  const health = await checkEngineHealth(port);
+
+  if (!health?.project_path) {
+    return {
+      id: "project-memory",
+      label: "Project Memory",
+      status: "ok",
+      message: "no project open",
+    };
+  }
+
+  const summary = getProjectMemorySummary(health.project_path);
+  if (!summary.present) {
+    return {
+      id: "project-memory",
+      label: "Project Memory",
+      status: "warning",
+      message: ".summer not created yet",
+      details: {
+        projectPath: health.project_path,
+        reason: summary.reason,
+        recommendedAction: "Ask your agent to run summer:brainstorm-game.",
+      },
+    };
+  }
+
+  return {
+    id: "project-memory",
+    label: "Project Memory",
+    status: "ok",
+    message: `${summary.files.length} files, ${summary.structured.fileCount} memory, ${summary.structured.lockedCount} locked`,
+    details: {
+      projectPath: health.project_path,
+      files: summary.files.length,
+      memoryFiles: summary.structured.fileCount,
+      locked: summary.structured.lockedCount,
     },
   };
 }

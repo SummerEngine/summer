@@ -229,6 +229,6 @@ Add modifiers in the Godot editor under Skeleton3D, set bone names from the insp
 
 ## See also
 
-- `_shared/gd-style.md` — typed GDScript conventions in the snippets.
-- `_shared/mcp-tools-reference.md` — `summer_set_prop` enum-int conventions for axis settings.
+- `references/gd-style.md` — typed GDScript conventions in the snippets.
+- `references/mcp-tools-reference.md` — `summer_set_prop` enum-int conventions for axis settings.
 - Godot 4.5 docs: `SkeletonModifier3D`, `LookAtModifier3D`, `SkeletonIK3D`, `PhysicalBoneSimulator3D`.

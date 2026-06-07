@@ -111,7 +111,7 @@ Surface the proposed fix in plain language and ask permission. Two patterns:
 
 - For GDScript edits: `Read` the 20–40 lines around the error, `Edit` the exact change. Don't read the whole file. Don't reformat. Don't rename other things.
 - For scene edits: use the appropriate `summer_*` tool (`summer_add_node`, `summer_set_prop`, `summer_replace_node`). Group multi-step changes in `summer_batch` for one undo step.
-- **Trap to avoid:** never call `summer_set_resource_property` against an inline `sub_resource` — the value is silently dropped. If the property is on a nested resource, first call `summer_set_prop` with the resource class name to instantiate a standalone resource, then drill in. See `_shared/mcp-tools-reference.md`.
+- **Trap to avoid:** never call `summer_set_resource_property` against an inline `sub_resource` — the value is silently dropped. If the property is on a nested resource, first call `summer_set_prop` with the resource class name to instantiate a standalone resource, then drill in. See `references/mcp-tools-reference.md`.
 
 ### 6. Verify — re-run the diagnostic that found it
 
@@ -155,3 +155,41 @@ A debug session is done when:
 3. No new errors or warnings have been introduced.
 
 Tell the user one short sentence: "Fixed `<file>:<line>` — `<change>`. Diagnostic clean." Then stop.
+
+## What the MCP debug tools CAN and CAN'T see (read this before claiming "clean")
+
+The `summer_*` tools are powerful for static + boot-time issues but **can't substitute for play-testing**. Knowing the gaps prevents false-clean reports.
+
+### What the MCP CAN see
+
+- **Script parse errors** (`summer_get_script_errors`) — full text + file:line. Reliable.
+- **Editor console output** (`summer_get_console`) — `print` statements, editor-side warnings, std startup messages. Full text.
+- **Runtime debugger error count + full text** (`summer_get_debugger_errors`) — returns `errors_data` with `error`, `error_descr`, `callstack`, `file`, `function`, `line`. Reliable for errors.
+- **Diagnostics summary** (`summer_get_diagnostics`) — counts of console errors, debugger errors, debugger warnings, script errors. Tells you where to drill.
+- **Scene tree + node properties** (`summer_get_scene_tree`, `summer_inspect_node`) — only the **edited** scene, not the running game's live tree.
+- **Whether the game is running** (`summer_is_running`) — and on which scene.
+
+### What the MCP CAN'T see (right now)
+
+- **Debugger warning text.** `summer_get_debugger_errors` returns a `warnings: <count>` integer but no `warnings_data` array. You see "the game has 66 warnings" but you can't read them through MCP. **Tell the user: "I see N warnings exist but the MCP doesn't expose their text — paste the Debugger panel if any feel relevant."**
+- **Live runtime scene tree.** `summer_get_scene_tree` returns the editor's edited scene, not what's currently instantiated in the running game. When debugging runtime state, you can't introspect the live nodes.
+- **Keyboard / mouse / controller input simulation.** No tool sends key presses or mouse motion. So bugs that only fire from gameplay (player movement, weapon firing, level transitions, button clicks) require the user to play.
+- **Screenshot / visual diff.** No tool captures the rendered viewport. Visual regressions ("the floor looks wrong", "the camera clips through terrain") require user eyes.
+- **Frame-by-frame physics state.** No tool steps the simulation or watches for transient errors over time.
+
+### The "static-only is not testing" rule
+
+A clean `summer_get_diagnostics` after `summer_play` only proves: **the game booted without parse errors or @implicit_ready null-derefs.** It does NOT prove gameplay works. Auto-fire weapons, level transitions, spell casting, boss attacks, UI interactions all happen *after* boot and won't surface in the diagnostics until they fire.
+
+When you've made code changes and want to declare them "verified":
+
+1. **Required**: `summer_get_script_errors` clean on every modified file.
+2. **Required**: `summer_play` boot returns 0 errors (use the scene most likely to exercise the change).
+3. **Recommended**: ask the user to play through the specific scenario the change touches, then re-run `summer_get_diagnostics`.
+4. **Never claim "verified" from static analysis alone.** Say "compiles and boots clean — needs play-test to confirm <specific behavior>."
+
+### The cost of skipping it
+
+A typical cautionary scenario: many parallel agents write thousands of lines of game code in one batch with verification static-only. The build is "diagnostic-clean" yet the running game has telegraph meshes that render the wrong axis, parse-valid scripts that crash on first autoload because of a guard pattern that doesn't compile, projectile tracers sized so they read as straight lines instead of projectiles, transform-leaked colliders from a copied scene, and `@onready` paths that throw on every boot when the script is loaded into a sibling scene that lacks one of the referenced children. None of these surface in `summer_get_diagnostics` until the user actually plays.
+
+Static analysis is necessary but never sufficient.

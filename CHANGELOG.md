@@ -2,13 +2,42 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [2.5.1] — 2026-05-27 — "README Polish"
+
+### Changed
+- Removed the pseudo-JSON status example from the npm README because npm syntax highlighting made normal setup statuses look like alarming errors.
+
+### Fixed
+- MCP generation requests now include client/tool attribution headers and surface provider 422 validation details instead of opaque `[Object]` failures.
+
+## [2.5.0] — 2026-05-27 — "Project Memory"
+
+Note: `2.1.0` through `2.4.0` were internal package/plugin snapshots in the engine repo. npm `latest` was still `2.3.0` before this release, so `2.5.0` is the public catch-up release for the memory, setup, and MCP reliability work.
+
+### Added
+- `summer memory` — read-only CLI view of `.summer` project memory, with `--json`, `show <file>`, and `path` subcommands.
+- `projectMemory` in `summer_get_project_context` — lightweight summary of `.summer` canonical files and structured memory for agents.
+- `.summer/memory/` convention for locked project facts such as voice IDs, world canon, provider bindings, and cross-session decisions.
+- Project-memory checks in `summer status` and `summer doctor`.
+- First-class `summer setup github-copilot` and `summer setup vscode-copilot` targets for Copilot CLI and GitHub Copilot in VS Code.
+- Copy-paste setup prompt docs: users can paste "Install Summer Engine and let's make a game." into their AI environment instead of starting with npm commands.
+
+### Changed
+- `/summer:voice-line` now writes locked cast assignments to `.summer/memory/casting/voices.md`, while still reading legacy `.summer/voice-cast.md`.
+- Agent playbook and `using-summer` now require agents to read relevant project memory before creative/audio/dialogue/level/character work.
+- CLI and docs now link directly to the public source repo: `https://github.com/SummerEngine/summer-engine-agent`.
+
+### Fixed
+- MCP project context now falls back to engine health fields for project path, project name, and current scene.
+- Mutating MCP tools now surface failure terminal states and no-results failure envelopes instead of masking them as success.
+
 ## [2.0.0] — 2026-05-09 — "Superpowers"
 
 The plugin rebrand. Summer is now positioned as superpowers for AI game dev — installable in Claude Code, Codex (CLI + App), Cursor, Factory Droid, Gemini CLI, OpenCode, GitHub Copilot CLI, and Windsurf with one canonical command per harness.
 
 ### Added
 - **`summer:using-summer`** meta-skill — establishes workflow priority, red-flag list, and skill-invocation discipline. Auto-loads on session start. Modeled on `superpowers:using-superpowers`.
-- **`summer:debug`** skill — the missing flagship skill. Disciplined script-errors → console → debugger → hypothesize → propose → fix → verify loop. Honors all 4 cases in `_tests/specs/debug.md`.
+- **`summer:debug`** skill — the missing flagship skill. Disciplined script-errors → console → debugger → hypothesize → propose → fix → verify loop. Honors all 4 cases in `tests/specs/debug.md`.
 - **Manifest validator** (`src/lib/plugin-manifests.test.ts`) — vitest test that walks every plugin manifest and verifies each referenced skill resolves to a real `SKILL.md` on disk. Also enforces the "Use when…" auto-trigger pattern in every skill's description.
 - **`AGENTS.md`** + **`GEMINI.md`** at repo root — context primer for harnesses that read AGENTS-style files (Codex, Factory) and the Gemini extension.
 - **`.opencode/INSTALL.md`** — explicit OpenCode setup guide.
@@ -18,7 +47,7 @@ The plugin rebrand. Summer is now positioned as superpowers for AI game dev — 
 ### Changed
 - **Brand:** "Summer" replaces "Summer Engine CLI" across all plugin descriptions, READMEs, and orientation banners. The npm package stays `summer-engine` (continuity).
 - **README** rewritten in superpowers-homepage style — install matrix per harness, philosophy section, basic workflow walkthrough.
-- **MCP_STRATEGY.md** updated: documents the deliberate decision to NOT ship file/git/shell/grep tools (host agents have those natively). 37 tools shipped.
+- **MCP_STRATEGY.md** updated: documents the deliberate decision to NOT ship file/git/shell/grep tools (host agents have those natively). The then-current tool surface shipped.
 - All 22 user-facing skill descriptions audited and rewritten to lead with "Use when X" for tighter auto-trigger.
 - `.codex-plugin/plugin.json` `longDescription` rewritten — accurate skill count, mentions the host-native tool exclusion.
 - `.opencode/plugins/summer.js` orientation banner updated to 22 skills with explicit process / discipline / build priority.
@@ -36,10 +65,10 @@ The plugin rebrand. Summer is now positioned as superpowers for AI game dev — 
 
 ### Fixed
 - `summer_input_map_bind` syntax aligned across `fps-controller` SKILL.md and its behavioral test spec.
-- `_meta/skill-test` static linter relaxed to allow forward-reference `See also` links to other SKILL.md files (warn instead of fail).
+- `workflow/skill-test` static linter relaxed to allow forward-reference `See also` links to other SKILL.md files (warn instead of fail).
 
 ### Added
-- `_shared/summer-folder.md` — canonical `.summer/` folder convention (documents files written by `/summer:brainstorm-game`, `/summer:art-direction`, etc.).
+- `references/summer-folder.md` — canonical `.summer/` folder convention (documents files written by `/summer:brainstorm-game`, `/summer:art-direction`, etc.).
 - `CHANGELOG.md` — retroactive v1.0.0 → v1.3.1 history.
 
 ## [1.3.1] — 2026-05-05
@@ -64,9 +93,9 @@ The plugin rebrand. Summer is now positioned as superpowers for AI game dev — 
 
 ### Added
 - 20-category skill library scaffold with descriptive folder names (`character-controllers`, `gameplay-mechanics`, `scripting-patterns`, etc.).
-- `_shared/` directory with 5 canonical references (godot-version, mcp-tools-reference, collaborative-protocol, template-registry, gd-style).
-- `_meta/` directory with 3 meta-skills (skill-test linter, skill-create bootstrap, skill-improve eval harness).
-- `_tests/specs/` directory with per-skill behavioral test specs (fps-controller as canonical format).
+- `references/` directory with 5 canonical references (godot-version, mcp-tools-reference, collaborative-protocol, template-registry, gd-style).
+- `workflow/` directory with 3 meta-skills (skill-test linter, skill-create bootstrap, skill-improve eval harness).
+- `tests/specs/` directory with per-skill behavioral test specs (fps-controller as canonical format).
 - `catalog.yaml` — 85-skill roadmap with HAVE / NEXT / LATER status.
 
 ### Changed

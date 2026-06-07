@@ -204,4 +204,4 @@ After the sky is wired:
 - `summer:2d-assets/tileable-texture` — ground/floor counterpart.
 - `summer:scene-composition` — WorldEnvironment placement and configuration.
 - `summer:asset-pipeline/asset-strategy` — meta-router.
-- `_shared/mcp-tools-reference.md` — `summer_generate_image` schema.
+- `references/mcp-tools-reference.md` — `summer_generate_image` schema.

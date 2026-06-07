@@ -112,6 +112,35 @@ Use `./` for paths relative to the scene root:
 
 No fallback for this — Summer MCP required. Handwriting `.tscn` files for hierarchy mutations is error-prone (UID collisions, wrong format version, broken sub_resource refs). If MCP isn't connected, open the scene in the Godot editor and use the SceneTree dock.
 
+## Trap — Cross-scene transform leak when copying a scene as a template
+
+When you duplicate a scene to spawn a sibling level (for example, `level_1.tscn` → `level_2.tscn`), every child instance carries its transform offset baked at the original level's coordinate system. If the source level places its player at world `(223, 108, -1833)` and instances a kill-volume scene at offset `(512, -3, 512)`, those numbers are anchored to the source level's terrain origin. Drop the same kill-volume instance into a level whose player spawns at world `(0, 1, 0)` and the volume's wall colliders may end up slicing the new arena at world `x = 0`. The user sees a "glitching invisible line through the middle of the map" they can't pass through. The colliders are invisible under the floor, so visual diagnosis is hard. Only collision-walking through them reveals the problem.
+
+Rule when copying a scene as a template:
+
+1. Audit every child instance for hardcoded `transform = Transform3D(...)` lines.
+2. Decide for each: keep, re-zero (origin = `(0,0,0)`), or drop entirely.
+3. The bigger the original level's world-space coordinates, the more dangerous the copy. Re-zero by default; you can move things back if needed.
+4. Levels that spawn the player at world origin (for example flat arenas centered on `(0,0,0)`) should drop ALL transform overrides from carry-over instances. Only re-add transforms relative to the new origin.
+
+## Trap — Third-person camera collision when foliage shouldn't block
+
+Godot's `SpringArm3D` shortens the camera boom when it raycasts into geometry on the configured `collision_mask`. If your trees, bushes, or grass have collision so the player physically bumps them, on the same layer the SpringArm queries, the camera shortens for foliage too. Players see the camera awkwardly snap forward whenever they walk near a tree.
+
+The pattern that works:
+
+1. Foliage gets its own physics layer. Conventionally layer 9 ("Foliage").
+   - Foliage `StaticBody3D`: `collision_layer = 256` (which is 2^8, layer 9).
+2. Player still bumps into foliage by including that layer in its `collision_mask`.
+   - Player `CharacterBody3D`: `collision_mask = 259` (which is 1 + 2 + 256, Entities + Level + Foliage).
+3. SpringArm uses a mask that catches solid level geometry but excludes foliage.
+   - SpringArm: `collision_mask = 3` (which is 1 + 2, Entities + Level only).
+4. For the visual fade the user expects when the camera is "behind" a tree, add the foliage mesh to the `camera_fade` group. An existing camera-occlusion fade system can ghost the mesh by AABB intersection with the camera-to-player segment without touching collision.
+
+Why per-layer split: there's no clean way to exclude a single body type from `SpringArm3D`'s collision check via `add_excluded_object` for dynamically-spawned foliage. You'd have to register every tree at spawn time and re-register on level change. Layer-level filtering is set-and-forget.
+
+Don't skip the player mask update. If you only move foliage to layer 9 without adding it to the player's mask, the player walks straight through trees.
+
 ## Collaborative protocol
 
-This skill creates and mutates scene files. Always ask before applying: "May I create `res://scenes/player.tscn` and instantiate it under `./World`?". See `../../_shared/collaborative-protocol.md`.
+This skill creates and mutates scene files. Always ask before applying: "May I create `res://scenes/player.tscn` and instantiate it under `./World`?". See `../../references/collaborative-protocol.md`.

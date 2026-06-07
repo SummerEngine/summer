@@ -1,6 +1,6 @@
 # Skills
 
-Summer skills teach AI agents how to build games in Summer Engine — the AI-native game engine compatible with Godot 4.5 (GDScript and `.tscn` scenes). Two kinds:
+Summer skills teach AI agents how to build games in Summer Engine, the AI-native game engine compatible with Godot 4.5 (GDScript and `.tscn` scenes). Two kinds:
 
 ## Workflow skills (slash commands)
 
@@ -11,7 +11,7 @@ User-invocable. The user types `/<name>` to trigger them. Each is a guided workf
 | `/debug` | Triage and fix a bug end-to-end |
 | `/play` | Run the game and report state |
 
-More coming as the library grows. See `catalog.yaml` for the roadmap.
+More coming as the library grows. See the `skills:` array in `.claude-plugin/plugin.json` for what ships today.
 
 ## Specialist skills (auto-triggered)
 
@@ -38,7 +38,7 @@ summer skills install --all --agent claude-code        # All public skills
 summer skills install --recommended --agent cursor --scope project   # Per-project
 ```
 
-Supported agents: `summer`, `codex`, `claude-code`, `cursor`, `windsurf`. Supported scopes: `user`, `project`.
+Supported agents: `summer`, `codex`, `claude-code`, `cursor`, `windsurf`, `cline`, `roo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`. Supported scopes: `user`, `project`.
 
 ## Recommended set
 
@@ -49,7 +49,12 @@ Supported agents: `summer`, `codex`, `claude-code`, `cursor`, `windsurf`. Suppor
 
 ## Registry
 
-Canonical registry: `src/lib/skills-registry.ts` (TS, install-time list — only skills with `status: HAVE`). Full roadmap: `skills/catalog.yaml` (~85 skills across 20 categories, HAVE / NEXT / LATER).
+Two source-of-truth files:
+
+- `.claude-plugin/plugin.json` `skills:`: what Claude Code auto-discovers when the plugin is installed. Sibling manifests such as `.codex-plugin/plugin.json` can differ when a host supports a smaller surface.
+- `src/lib/skills-registry.ts` `SKILL_REGISTRY`: what `summer skills install` writes to non-plugin agents (Windsurf, Cline, Roo, Gemini, Copilot, OpenCode).
+
+These surfaces must stay intentionally synced, but they are not always the same raw count. Do not publish a single skill total unless the sentence says whether it means disk files, plugin paths, registry entries, or recommended installs. `plugin-manifests.test.ts` catches accidental manifest drift.
 
 Per-skill metadata:
 
@@ -65,11 +70,11 @@ Per-skill metadata:
 
 1. **Specialist skills:** narrow technical knowledge, auto-trigger via rich `description:`. Set `user-invocable: false`.
 2. **Workflow skills:** action-verb names (`/debug`, `/play`), open with one clarifying question, orchestrate specialists. Set `user-invocable: true`.
-3. SKILL.md ≤ 500 lines. Push detail into `references/`.
+3. SKILL.md <= 500 lines. Push detail into `references/`.
 4. Show MCP-preferred + file-edit-fallback in every code-touching skill.
-5. Never tell agents to handwrite `.tscn` — go through MCP.
-6. "May I write …?" before any user-visible mutation. See `_shared/collaborative-protocol.md`.
-7. Every skill ships `tests/spec.md` with at least one Test Case. See `_meta/skill-test/SKILL.md`.
+5. Teach the file-first rule for `.tscn`/`.tres`: edit text files directly for static scene/resource changes, and use MCP for live-engine work such as play, diagnostics, runtime inspection, navmesh/light bake, and asset import.
+6. "May I write this change?" before any user-visible mutation. See `references/collaborative-protocol.md`.
+7. Every skill ships `tests/spec.md` with at least one Test Case. See `workflow/skill-test/SKILL.md`.
 
 ## Standard
 

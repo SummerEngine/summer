@@ -321,12 +321,12 @@ This skill writes new autoload files (one per Manager). Always ask before each:
 
 Don't bulk-create five Managers in one shot. Walk one Manager end-to-end (data → mutators → requests → broadcasts → lifecycle) so the user can verify the shape, then repeat for the next domain.
 
-After each Manager file lands, call `summer_get_script_errors` to confirm clean compile. See [`_shared/collaborative-protocol.md`](../../_shared/collaborative-protocol.md).
+After each Manager file lands, call `summer_get_script_errors` to confirm clean compile. See [`references/collaborative-protocol.md`](../../references/collaborative-protocol.md).
 
 ## See also
 
 - [`peer-to-peer-multiplayer`](../peer-to-peer-multiplayer/SKILL.md) — the four-layer architecture overview. Read this first if you haven't.
 - [`setup-multiplayer`](../setup-multiplayer/SKILL.md) — lighter intro that just gets a session running. Use that one if the user just wants two players to see each other.
-- [`_shared/godot-version.md`](../../_shared/godot-version.md) — Godot 4.5 multiplayer API stability notes.
-- [`_shared/gd-style.md`](../../_shared/gd-style.md) — typed-GDScript conventions used in the examples above.
-- [`_shared/mcp-tools-reference.md`](../../_shared/mcp-tools-reference.md) — `summer_get_script_errors` for compile verification.
+- [`references/godot-version.md`](../../references/godot-version.md) — Godot 4.5 multiplayer API stability notes.
+- [`references/gd-style.md`](../../references/gd-style.md) — typed-GDScript conventions used in the examples above.
+- [`references/mcp-tools-reference.md`](../../references/mcp-tools-reference.md) — `summer_get_script_errors` for compile verification.

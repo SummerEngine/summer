@@ -1,6 +1,6 @@
 # Summer — Context Primer for Gemini
 
-Summer is the AI game-dev studio for **Summer Engine** — the AI-native game engine. When you see this file in a session, it means the user has installed the Summer Gemini extension and you have access to the `summer-engine` MCP server plus 24 skills under the `summer:` namespace.
+Summer is the AI game-dev studio for **Summer Engine** — the AI-native game engine. When you see this file in a session, it means the user has installed the Summer Gemini extension and you have access to the `summer-engine` MCP server plus Summer skills under the `summer:` namespace.
 
 ## What Summer Engine is
 
@@ -20,11 +20,11 @@ The single most important skill to know is `summer:using-summer` — it explains
 
 ## MCP tools (when the engine is running on `localhost:6550`)
 
-The `summer-engine` MCP server exposes 37 focused tools. The most important:
+The `summer-engine` MCP server exposes 44 focused tools. The most important:
 
 - **Scene mutation**: `summer_add_node`, `summer_set_prop`, `summer_set_resource_property`, `summer_remove_node`, `summer_save_scene`, `summer_replace_node`, `summer_batch`.
 - **Scene inspection**: `summer_get_scene_tree`, `summer_inspect_node`, `summer_inspect_resource`.
-- **Diagnostics**: `summer_get_script_errors` (cheapest), `summer_get_diagnostics`, `summer_get_console`, `summer_get_debugger_errors`.
+- **Diagnostics**: `summer_get_script_errors` (cheapest), `summer_get_diagnostics`, `summer_get_console`, `summer_get_debugger_errors`, `summer_get_debugger_warnings`.
 - **Run game**: `summer_play`, `summer_stop`, `summer_is_running`.
 - **Project**: `summer_get_project_context`, `summer_open_main_scene`, `summer_project_setting`, `summer_input_map_bind`.
 - **Assets**: `summer_search_assets`, `summer_import_asset`, `summer_import_from_url`, `summer_generate_image`, `summer_generate_3d`, `summer_generate_audio`, `summer_generate_video`, `summer_check_job`.
@@ -51,6 +51,5 @@ Tools return "Summer Engine is not running." Tell the user to run `summer run` (
 
 If skills aren't loading or the MCP server fails:
 
-- `npm install -g summer-engine` — global CLI.
-- `summer setup gemini --yes` — writes the right MCP config.
-- `summer doctor` — reports auth, engine, port, skill state.
+- `npx -y summer-engine@latest setup gemini --yes --force` — writes the right MCP config.
+- `npx -y summer-engine@latest doctor` — reports auth, engine, port, project memory, and skill state.

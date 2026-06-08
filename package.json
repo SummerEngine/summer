@@ -1,15 +1,26 @@
 {
   "name": "summer-engine",
   "version": "2.5.1",
-  "description": "Summer — superpowers for AI game dev. CLI, skills, and MCP tools for Summer Engine.",
+  "description": "Summer CLI and MCP server for Summer Engine, the AI game engine. Install the engine, connect Claude Code, Cursor, Codex, Gemini, and other agents, and build real games. Skills, hooks, and plugins included.",
   "keywords": [
+    "summer-engine",
+    "summer-cli",
+    "summer-mcp",
+    "summer-agent",
+    "summer-engine-agent",
     "game-engine",
+    "ai-game-engine",
     "godot",
-    "ai",
+    "godot-ai",
     "mcp",
+    "mcp-server",
+    "claude-code",
+    "cursor",
+    "codex",
     "gamedev",
+    "game-development",
     "3d",
-    "summer-engine"
+    "ai"
   ],
   "homepage": "https://summerengine.com",
   "repository": {

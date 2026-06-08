@@ -5,7 +5,7 @@ Build real 2D and 3D games through conversation. No coding required. Export to S
 **Summer** is the MIT open-source agent layer that connects your AI coding agent to Summer Engine: CLI, MCP server, skills, hooks, and plugin manifests. First-class setup works in Claude Code, Cursor, Codex, Windsurf, Cline, Roo Code, Gemini CLI, GitHub Copilot CLI, GitHub Copilot in VS Code, and OpenCode. Factory Droid uses the plugin marketplace path.
 
 - **Source:** [github.com/SummerEngine/summer-engine-agent](https://github.com/SummerEngine/summer-engine-agent)
-- **Docs:** [summerengine.com/docs](https://summerengine.com/docs)
+- **Docs:** [summerengine.com/docs](https://docs.summerengine.com/)
 - **MCP setup:** [summerengine.com/mcp](https://summerengine.com/mcp)
 
 It just works. Open your agent, say *"let's make an FPS in Summer Engine,"* and it does.

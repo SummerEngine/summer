@@ -1,7 +1,7 @@
 import { Command } from "commander";
 import { randomUUID } from "crypto";
 import open from "open";
-import { getAuthToken, saveAuthToken, saveUserInfo } from "../lib/auth.js";
+import { getAuthToken, saveAuthToken, saveCloudToken, saveUserInfo } from "../lib/auth.js";
 
 const GATEWAY_URL =
   process.env.SUMMER_GATEWAY_URL || "https://www.summerengine.com";
@@ -62,6 +62,7 @@ async function doLogin(): Promise<void> {
       const data = (await res.json()) as {
         status: string;
         token?: string;
+        cloudToken?: string | null;
         user?: { id: string; email: string; name?: string };
       };
 
@@ -69,6 +70,9 @@ async function doLogin(): Promise<void> {
 
       if (data.status === "complete" && data.token) {
         await saveAuthToken(data.token);
+        if (data.cloudToken) {
+          await saveCloudToken(data.cloudToken);
+        }
         if (data.user) {
           await saveUserInfo(data.user);
         }

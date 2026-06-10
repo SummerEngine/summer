@@ -7,6 +7,7 @@ import { registerDebugTools } from "./tools/debug-tools.js";
 import { registerProjectTools } from "./tools/project-tools.js";
 import { registerAssetTools } from "./tools/asset-tools.js";
 import { registerGenerateTools } from "./tools/generate-tools.js";
+import { registerCloudTools } from "./tools/cloud-tools.js";
 import {
   buildBootDriftNotice,
   fetchLatestRegistryVersion,
@@ -142,6 +143,7 @@ export async function startMcpServer(): Promise<void> {
   registerProjectTools(server);
   registerAssetTools(server);
   registerGenerateTools(server);
+  registerCloudTools(server);
 
   // Fire-and-forget — never block tool registration on the npm registry.
   void probeBootDrift();

@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { platform } from "os";
 import { Command } from "commander";
 import { getAuthToken, getUserInfo } from "../lib/auth.js";
+import { isGitAvailable } from "../lib/cloud/checkpoint.js";
 import { checkEngineHealth, getApiPort, getApiToken } from "../lib/engine.js";
 import { brandLine, c, pad, sym, tildeify } from "../lib/format.js";
 import { getProjectMemorySummary } from "../lib/project-memory.js";
@@ -86,6 +87,7 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
 
   checks.push(await checkLogin());
   checks.push(checkEngineInstall());
+  checks.push(await checkGitForCheckpoints());
   checks.push(await checkLocalApi());
   checks.push(await checkProjectMemory());
   checks.push(await checkMcpBoot());
@@ -191,6 +193,24 @@ function checkEngineInstall(): DoctorCheck {
     label: "Engine",
     status: "warning",
     message: "not installed (run: summer install)",
+  };
+}
+
+async function checkGitForCheckpoints(): Promise<DoctorCheck> {
+  const available = await isGitAvailable();
+  if (available) {
+    return {
+      id: "git",
+      label: "Git (cloud checkpoints)",
+      status: "ok",
+      message: "git found on PATH",
+    };
+  }
+  return {
+    id: "git",
+    label: "Git (cloud checkpoints)",
+    status: "warning",
+    message: "git not found; Summer Cloud sync needs git for pre-sync safety checkpoints",
   };
 }
 

@@ -17,6 +17,7 @@ import { orchestratorCommand } from "../commands/orchestrator.js";
 import { setupCommand } from "../commands/setup.js";
 import { doctorCommand } from "../commands/doctor.js";
 import { planCommand } from "../commands/plan.js";
+import { cloudCommand } from "../commands/cloud.js";
 import { getBanner } from "../lib/banner.js";
 import { c, sym } from "../lib/format.js";
 
@@ -48,6 +49,7 @@ program.addCommand(setupCommand);
 program.addCommand(doctorCommand);
 program.addCommand(planCommand);
 program.addCommand(orchestratorCommand);
+program.addCommand(cloudCommand);
 
 program.parseAsync().catch((err) => {
   console.error(err instanceof Error ? err.message : String(err));

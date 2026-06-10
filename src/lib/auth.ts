@@ -29,6 +29,20 @@ export async function saveAuthToken(token: string): Promise<void> {
   await writeFile(join(SUMMER_DIR, "auth-token"), token, { encoding: "utf-8", mode: 0o600 });
 }
 
+export async function getCloudToken(): Promise<string | null> {
+  try {
+    const token = await readFile(join(SUMMER_DIR, "cloud-token"), "utf-8");
+    return token.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveCloudToken(token: string): Promise<void> {
+  await ensureSummerDir();
+  await writeFile(join(SUMMER_DIR, "cloud-token"), token, { encoding: "utf-8", mode: 0o600 });
+}
+
 export async function getUserInfo(): Promise<{
   id: string;
   email: string;

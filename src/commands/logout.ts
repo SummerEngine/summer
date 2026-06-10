@@ -7,7 +7,7 @@ export const logoutCommand = new Command("logout")
   .description("Sign out and clear stored auth tokens")
   .action(async () => {
     const dir = getSummerDir();
-    const files = ["auth-token", "user.json"];
+    const files = ["auth-token", "cloud-token", "user.json"];
 
     let cleared = false;
     for (const file of files) {

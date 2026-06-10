@@ -2,6 +2,16 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [2.6.0] — 2026-06-10 — "Summer Cloud"
+
+### Added
+- `summer cloud` command group: `init`, `status`, `push`, `pull`, `restore`, `checkpoints` — content-addressed project sync against Summer Cloud (R2-backed). Code stays in git; big assets sync by hash with three-way merge, conflict sets, and SummerGit checkpoints before any destructive apply.
+- Matching MCP tools: `summer_cloud_init`, `summer_cloud_status`, `summer_cloud_push`, `summer_cloud_pull`, `summer_cloud_restore`, `summer_cloud_checkpoints`, `summer_cloud_conflicts`.
+- `.summercloudignore` support plus built-in hard excludes (`.env*`, `.summer/local/`, `node_modules/`, OS junk) so secrets and machine-local state never upload.
+
+### Safety
+- Pulls stage to a temp dir and verify every blob hash before an atomic rename; mass-delete guardrails, edit-beats-delete conflict rule, and case-only rename handling for macOS/Windows volumes.
+
 ## [2.5.1] — 2026-05-27 — "README Polish"
 
 ### Changed

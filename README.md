@@ -2,26 +2,13 @@
 
 Build real 2D and 3D games through conversation. No coding required. Export to Steam, desktop, mobile, and web. Built on the Godot team's work, customized and honed so AI agents and humans can collaborate on great games.
 
-**Summer** is the MIT open-source agent layer that connects your AI coding agent to Summer Engine. It is the **Summer CLI**, the **Summer MCP** server, and the **Summer agent** skills, hooks, and plugin manifests, all in one package. First-class setup works in Claude Code, Cursor, Codex, Windsurf, Cline, Roo Code, Gemini CLI, GitHub Copilot CLI, GitHub Copilot in VS Code, and OpenCode. Factory Droid uses the plugin marketplace path.
+**Summer** is the MIT open-source agent layer that connects your AI coding agent to Summer Engine: CLI, MCP server, skills, hooks, and plugin manifests. First-class setup works in Claude Code, Cursor, Codex, Windsurf, Cline, Roo Code, Gemini CLI, GitHub Copilot CLI, GitHub Copilot in VS Code, and OpenCode. Factory Droid uses the plugin marketplace path.
 
 - **Source:** [github.com/SummerEngine/summer-engine-agent](https://github.com/SummerEngine/summer-engine-agent)
-- **CLI setup:** [www.summerengine.com/cli](https://www.summerengine.com/cli)
-- **MCP setup:** [www.summerengine.com/mcp](https://www.summerengine.com/mcp)
-- **Docs:** [docs.summerengine.com](https://docs.summerengine.com)
+- **Docs:** [summerengine.com/docs](https://summerengine.com/docs)
+- **MCP setup:** [summerengine.com/mcp](https://summerengine.com/mcp)
 
 It just works. Open your agent, say *"let's make an FPS in Summer Engine,"* and it does.
-
----
-
-## Summer CLI, Summer MCP, and the Summer agent
-
-Three names, one npm package (`summer-engine`):
-
-- **Summer CLI** (`npx -y summer-engine@latest`): installs the engine, signs you in, scaffolds and runs projects, and writes your agent's config. See [www.summerengine.com/cli](https://www.summerengine.com/cli).
-- **Summer MCP**: the local MCP server that gives your agent 44 engine tools to build, run, and debug a real game. See [www.summerengine.com/mcp](https://www.summerengine.com/mcp).
-- **Summer agent layer**: the game-dev skills, hooks, and plugin manifests that give your AI agent judgment, not just a chat box.
-
-All MIT, all free to use. One paste sets up all three.
 
 ---
 
@@ -29,7 +16,7 @@ All MIT, all free to use. One paste sets up all three.
 
 Open your AI agent (Claude Code, Cursor, Codex, Copilot, Windsurf, etc.) and paste:
 
-> Install Summer Engine and let's make a game. Read github.com/SummerEngine/summer-engine-agent, check what I already have installed, install whatever is missing, log me in, and scaffold a starter project so we can start building.
+> Install Summer Engine and let's make a game.
 
 That's it. The agent reads this README, detects what's already on your machine, and runs only what's missing via Bash. **No `/plugin` slash commands. No manual installs. One paste.**
 

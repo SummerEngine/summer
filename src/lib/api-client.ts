@@ -269,7 +269,10 @@ export class EngineApiClient {
 
   async play(scene?: string): Promise<unknown> {
     // Cold-load on large projects can take 25-40s. 60s budget.
-    return this._requestQueued("POST", "/api/play", scene ? { scene } : {}, 60_000);
+    // The engine reads play params from body.options (tool_net_thread.cpp:503),
+    // and the play handler reads options["scene"] — a top-level { scene } is
+    // dropped, so the scene MUST be nested inside options.
+    return this._requestQueued("POST", "/api/play", scene ? { options: { scene } } : {}, 60_000);
   }
 
   async stop(): Promise<unknown> {

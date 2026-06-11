@@ -16,6 +16,23 @@ function mockFetch(route: Route) {
   );
 }
 
+// Captures the request body each fetch call sends, keyed by url substring.
+function mockFetchCapturing(route: Route, sink: { lastBody?: unknown }) {
+  vi.stubGlobal(
+    "fetch",
+    (input: unknown, init?: { method?: string; body?: string }) => {
+      if (typeof init?.body === "string") {
+        try {
+          sink.lastBody = JSON.parse(init.body);
+        } catch {
+          sink.lastBody = init.body;
+        }
+      }
+      return Promise.resolve(route(String(input), init?.method ?? "GET"));
+    }
+  );
+}
+
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
@@ -104,6 +121,40 @@ describe("EngineApiClient — async 202->poll port", () => {
         }
       }
     }
+  });
+
+  it("play() nests scene inside options so the engine actually receives it", async () => {
+    // Regression: the engine reads play params from body.options (and the play
+    // handler reads options.scene); a top-level { scene } is silently dropped.
+    const sink: { lastBody?: unknown } = {};
+    mockFetchCapturing((url, method) => {
+      if (method === "POST" && url.includes("/api/play")) {
+        return json({ accepted: true, status: "queued", requestId: "p1" }, 202);
+      }
+      if (url.includes("/api/ops/result")) {
+        return json({ requestId: "p1", status: "done", result: { status: "ok" }, terminalState: "applied" });
+      }
+      return json({}, 404);
+    }, sink);
+
+    await client().play("res://levels/boss.tscn");
+    expect(sink.lastBody).toEqual({ options: { scene: "res://levels/boss.tscn" } });
+  });
+
+  it("play() with no scene sends an empty body (plays the main scene)", async () => {
+    const sink: { lastBody?: unknown } = {};
+    mockFetchCapturing((url, method) => {
+      if (method === "POST" && url.includes("/api/play")) {
+        return json({ accepted: true, status: "queued", requestId: "p2" }, 202);
+      }
+      if (url.includes("/api/ops/result")) {
+        return json({ requestId: "p2", status: "done", result: { status: "ok" }, terminalState: "applied" });
+      }
+      return json({}, 404);
+    }, sink);
+
+    await client().play();
+    expect(sink.lastBody).toEqual({});
   });
 
   it("surfaces a hard transport error (non-2xx, non-202/429) as a throw", async () => {

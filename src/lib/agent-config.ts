@@ -13,10 +13,12 @@ export const supportedAgents = [
   "windsurf",
   "cline",
   "roo-code",
+  "kilo-code",
   "gemini",
   "github-copilot",
   "vscode-copilot",
   "opencode",
+  "lm-studio",
 ] as const;
 
 export type SupportedAgent = (typeof supportedAgents)[number];
@@ -67,6 +69,9 @@ const agentAliases: Record<string, SupportedAgent> = {
   "roo-code": "roo-code",
   roo: "roo-code",
   roocode: "roo-code",
+  kilo: "kilo-code",
+  kilocode: "kilo-code",
+  "kilo-code": "kilo-code",
   gemini: "gemini",
   "gemini-cli": "gemini",
   copilot: "github-copilot",
@@ -80,6 +85,9 @@ const agentAliases: Record<string, SupportedAgent> = {
   "github-copilot-vscode": "vscode-copilot",
   opencode: "opencode",
   "open-code": "opencode",
+  lmstudio: "lm-studio",
+  "lm-studio": "lm-studio",
+  "lm_studio": "lm-studio",
 };
 
 export function parseAgent(value: string | undefined): SupportedAgent | null {
@@ -239,7 +247,7 @@ function resolveConfigTarget(
   if (override) {
     if (
       scope === "project" &&
-      (agent === "cline" || agent === "roo-code" || agent === "gemini")
+      (agent === "cline" || agent === "roo-code" || agent === "gemini" || agent === "lm-studio")
     ) {
       warnings.push(
         `${agent} MCP config has no project scope today; treating as user scope.`
@@ -320,6 +328,30 @@ function resolveConfigTarget(
     };
   }
 
+  if (agent === "kilo-code") {
+    return {
+      path:
+        scope === "user"
+          ? vsCodeGlobalStoragePath(env, "kilocode.kilo-code", "mcp_settings.json")
+          : join(cwd, ".kilocode", "mcp.json"),
+      format: "json",
+      warnings,
+    };
+  }
+
+  if (agent === "lm-studio") {
+    if (scope === "project") {
+      warnings.push(
+        "LM Studio's MCP config is app-global (~/.lmstudio/mcp.json); treating as user scope."
+      );
+    }
+    return {
+      path: join(homedir(), ".lmstudio", "mcp.json"),
+      format: "json",
+      warnings,
+    };
+  }
+
   if (agent === "gemini") {
     if (scope === "project") {
       warnings.push(
@@ -390,7 +422,8 @@ function resolveConfigTarget(
 
 function vsCodeGlobalStoragePath(
   env: NodeJS.ProcessEnv,
-  extensionId: string
+  extensionId: string,
+  fileName = "cline_mcp_settings.json"
 ): string {
   const os = platform();
   if (os === "win32") {
@@ -402,7 +435,7 @@ function vsCodeGlobalStoragePath(
       "globalStorage",
       extensionId,
       "settings",
-      "cline_mcp_settings.json"
+      fileName
     );
   }
 
@@ -416,7 +449,7 @@ function vsCodeGlobalStoragePath(
       "globalStorage",
       extensionId,
       "settings",
-      "cline_mcp_settings.json"
+      fileName
     );
   }
 
@@ -429,7 +462,7 @@ function vsCodeGlobalStoragePath(
     "globalStorage",
     extensionId,
     "settings",
-    "cline_mcp_settings.json"
+    fileName
   );
 }
 
@@ -465,6 +498,8 @@ function getConfigPathOverride(
   if (agent === "cursor") return env.SUMMER_CURSOR_MCP_CONFIG_FILE;
   if (agent === "cline") return env.SUMMER_CLINE_CONFIG_FILE;
   if (agent === "roo-code") return env.SUMMER_ROO_CODE_CONFIG_FILE;
+  if (agent === "kilo-code") return env.SUMMER_KILO_CODE_CONFIG_FILE;
+  if (agent === "lm-studio") return env.SUMMER_LM_STUDIO_CONFIG_FILE;
   if (agent === "gemini") return env.SUMMER_GEMINI_CONFIG_FILE;
   if (agent === "github-copilot") return env.SUMMER_GITHUB_COPILOT_CONFIG_FILE;
   if (agent === "vscode-copilot") return env.SUMMER_VSCODE_COPILOT_CONFIG_FILE;
@@ -819,6 +854,10 @@ function createNextSteps(
             ? "Restart VS Code so Cline reloads its MCP config."
             : agent === "roo-code"
               ? "Restart VS Code so Roo Code reloads its MCP config."
+              : agent === "kilo-code"
+                ? "Restart VS Code so Kilo Code reloads its MCP config."
+                : agent === "lm-studio"
+                  ? "Open LM Studio, toggle on the summer-engine MCP server in the Program tab, and raise the loaded model's context length to 32k or higher."
         : agent === "gemini"
           ? "Run `gemini extensions enable summer-engine` (if not already enabled), then restart Gemini CLI."
           : agent === "github-copilot"

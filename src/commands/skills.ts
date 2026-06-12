@@ -175,7 +175,8 @@ function resolveScope(agent: AgentClient, opts: InstallOptions): SkillScope {
     agent === "cursor" ||
     agent === "windsurf" ||
     agent === "cline" ||
-    agent === "roo-code"
+    agent === "roo-code" ||
+    agent === "kilo-code"
   ) {
     return "project";
   }
@@ -196,6 +197,8 @@ function agentLabel(agent: AgentClient): string {
       return "Cline";
     case "roo-code":
       return "Roo Code";
+    case "kilo-code":
+      return "Kilo Code";
     case "gemini":
       return "Gemini CLI";
     case "github-copilot":
@@ -219,7 +222,7 @@ function resolveInstallLocation(
     if (agent === "windsurf") {
       return { kind: "windsurf-rule-file", path: join(overrideDir, ".windsurfrules") };
     }
-    if (agent === "cline" || agent === "roo-code") {
+    if (agent === "cline" || agent === "roo-code" || agent === "kilo-code") {
       return { kind: "cline-rule-dir", path: overrideDir };
     }
     if (agent === "gemini") {
@@ -256,6 +259,14 @@ function resolveInstallLocation(
           scope === "user"
             ? rooCodeUserRulesDir()
             : join(process.cwd(), ".clinerules"),
+      };
+    case "kilo-code":
+      return {
+        kind: "cline-rule-dir",
+        path:
+          scope === "user"
+            ? join(homedir(), ".kilocode", "rules")
+            : join(process.cwd(), ".kilocode", "rules"),
       };
     case "gemini":
       return {

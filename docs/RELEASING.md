@@ -155,7 +155,7 @@ npx clear-npx-cache && npx -y summer-engine@latest setup <agent> --yes --force
 ```
 
 `<agent>` is `claude-code`, `cursor`, `codex`, `windsurf`, `cline`, `roo-code`,
-`gemini`, or `opencode`.
+`kilo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, or `lm-studio`.
 
 ### Patch hotfixes don't trigger update prompts
 

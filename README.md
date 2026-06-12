@@ -102,7 +102,7 @@ The relevant check ids are `node-version`, `cli-version`, `cli-version-current`,
 npx -y summer-engine@latest setup claude-code --yes --force
 ```
 
-Replace `claude-code` with the user's actual agent: `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `gemini`, `github-copilot`, `vscode-copilot`, or `opencode`. Use `github-copilot` for Copilot CLI and `vscode-copilot` for GitHub Copilot Chat/Agent in VS Code. Factory Droid still uses the plugin marketplace path in the install section below. This writes the current Summer skill bundle to `~/.claude/skills/<name>/SKILL.md` (or the agent's equivalent user-skill directory) AND writes the MCP server config so the agent can talk to the engine. The `--force` flag wipes any stale skill content first, so re-runs always end up with the latest copy.
+Replace `claude-code` with the user's actual agent: `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `kilo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, or `lm-studio`. Use `github-copilot` for Copilot CLI and `vscode-copilot` for GitHub Copilot Chat/Agent in VS Code. Factory Droid still uses the plugin marketplace path in the install section below. This writes the current Summer skill bundle to `~/.claude/skills/<name>/SKILL.md` (or the agent's equivalent user-skill directory) AND writes the MCP server config so the agent can talk to the engine. The `--force` flag wipes any stale skill content first, so re-runs always end up with the latest copy.
 
 **First-install detection:** if `~/.claude/skills/` didn't exist before this command, Claude Code wasn't watching it and won't auto-detect the new files this session. Tell the user **once**: "Skills installed - restart your agent so they load." On subsequent installs (directory already existed), skills auto-detect mid-session and no restart is needed. **You can detect first-install vs upgrade by checking if `~/.claude/skills/` existed before Step 1; record the result before running setup.**
 
@@ -192,7 +192,7 @@ Only skip brainstorm if the user explicitly said "skip brainstorm" or "just buil
 - **Don't loop `summer login` if it times out at 120s.** Re-run it once and tell the user to be quicker; loop forever and the user is stuck.
 - **Don't jump straight into `summer create` from a vague prompt.** Invoke `summer:brainstorm-game` first (Step 6). The build skills assume `.summer/GameSoul.md` exists.
 
-**Using a different agent?** Replace `claude-code` with any supported agent in Step 1: `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `gemini`, `github-copilot`, `vscode-copilot`, or `opencode`. Skill targets vary per agent (Cursor uses `.cursor/rules/`, Windsurf uses `.windsurfrules`, Cline + Roo use `.clinerules/`, Copilot uses `~/.copilot/skills` or `.github/skills`, OpenCode uses agent definitions, etc.). The CLI handles the difference. After install, **Cline and Roo Code users should restart VS Code** so the extension reloads its MCP config. **Gemini users** may need to run `gemini extensions enable summer-engine` after the first install. **VS Code Copilot users** should start the `summer-engine` MCP server from Agent mode if VS Code does not autostart it. **Factory Droid** still has its own plugin path below.
+**Using a different agent?** Replace `claude-code` with any supported agent in Step 1: `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `kilo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, or `lm-studio`. Skill targets vary per agent (Cursor uses `.cursor/rules/`, Windsurf uses `.windsurfrules`, Cline + Roo use `.clinerules/`, Copilot uses `~/.copilot/skills` or `.github/skills`, OpenCode uses agent definitions, etc.). The CLI handles the difference. After install, **Cline and Roo Code users should restart VS Code** so the extension reloads its MCP config. **Gemini users** may need to run `gemini extensions enable summer-engine` after the first install. **VS Code Copilot users** should start the `summer-engine` MCP server from Agent mode if VS Code does not autostart it. **Factory Droid** still has its own plugin path below.
 
 **Power-user note:** if the user specifically wants `summer` on their `PATH` for everyday terminal use outside the AI agent, a global npm install is still possible. The agent flow doesn't need it.
 
@@ -390,7 +390,15 @@ Writes the MCP server config to VS Code's globalStorage for the Cline extension 
 npx -y summer-engine@latest setup roo-code --yes
 ```
 
-Same shape as Cline (Roo Code is a Cline fork): writes globalStorage MCP config and `.clinerules/` files. **Restart VS Code** afterward.
+Same shape as Cline (Roo Code is a Cline fork): writes globalStorage MCP config and `.clinerules/` files. **Restart VS Code** afterward. Note: Roo Code shut down in May 2026 — prefer Kilo Code, its maintained successor.
+
+### Kilo Code (VS Code)
+
+```bash
+npx -y summer-engine@latest setup kilo-code --yes
+```
+
+Writes the MCP server config to VS Code's globalStorage for the Kilo Code extension (project scope writes `.kilocode/mcp.json`) and drops rules into `.kilocode/rules/`. **Restart VS Code** so Kilo reloads its MCP config.
 
 ### Gemini CLI
 
@@ -424,6 +432,18 @@ npx -y summer-engine@latest setup opencode --yes
 
 Writes the MCP server entry into `opencode.json` (`~/.config/opencode/opencode.json` for user scope, `./opencode.json` for project) using the array-shaped `command: ["npx", "-y", "summer-engine@latest", "mcp"]` format. Restart OpenCode. Full guide: [`.opencode/INSTALL.md`](./.opencode/INSTALL.md).
 
+### LM Studio (local models)
+
+```bash
+npx -y summer-engine@latest setup lm-studio --yes
+```
+
+Writes the MCP server entry into `~/.lmstudio/mcp.json` (app-global; there is no project scope). In LM Studio, toggle the `summer-engine` server on in the **Program** tab, and raise the loaded model's context length to **32k or higher** — MCP tool schemas overflow small contexts silently. LM Studio has no rules/skills folder; the MCP server's `summer_get_agent_playbook` tool covers in-chat guidance. Pair with a tool-calling-reliable local model (gpt-oss-20b on 12–16 GB VRAM, Qwen3-Coder-30B on 24 GB).
+
+### Ollama (local models)
+
+Ollama is the model backend, not an MCP client — pair it with OpenCode, Kilo Code, or Goose and point that agent's provider at `http://localhost:11434/v1`. Before connecting MCP, raise Ollama's context window (defaults to 4k under 24 GB VRAM): start with `OLLAMA_CONTEXT_LENGTH=65536 ollama serve`, then `ollama ps` to confirm the model still fits on the GPU.
+
 ### Windsurf and others
 
 ```bash
@@ -456,7 +476,7 @@ npx -y summer-engine@latest doctor
 | `summer mcp setup <agent>` | Write MCP config for an agent. |
 | `summer setup <agent> [--yes]` | One shot: MCP config + recommended skills + doctor. |
 
-Agents: `claude-code`, `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `gemini`, `opencode`. Scopes: `--scope user` (default), `--scope project`.
+Agents: `claude-code`, `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `kilo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, `lm-studio`. Scopes: `--scope user` (default), `--scope project`.
 
 ---
 

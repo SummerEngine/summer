@@ -23,7 +23,7 @@ Expected agent behavior:
 6. Create and run a starter project only after choosing a stable parent directory.
 7. Use `summer:brainstorm-game` before building from a vague prompt.
 
-First-class setup targets: `claude-code`, `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`.
+First-class setup targets: `claude-code`, `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `kilo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, `lm-studio`.
 
 Factory Droid uses its plugin marketplace path today. Other older-school or adjacent surfaces worth watching are Continue, Aider, Zed, JetBrains AI/Junie, Goose, and Amp; do not claim first-class Summer setup support for those until a real config target exists.
 

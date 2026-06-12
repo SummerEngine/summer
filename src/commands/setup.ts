@@ -24,10 +24,12 @@ const AGENT_LABEL: Record<SupportedAgent, string> = {
   windsurf: "Windsurf",
   cline: "Cline",
   "roo-code": "Roo Code",
+  "kilo-code": "Kilo Code",
   gemini: "Gemini CLI",
   "github-copilot": "GitHub Copilot CLI",
   "vscode-copilot": "GitHub Copilot in VS Code",
   opencode: "OpenCode",
+  "lm-studio": "LM Studio",
 };
 
 interface SetupCommandOptions {
@@ -133,6 +135,14 @@ function setupRecommendedSkills(
   agent: SupportedAgent,
   options: { dryRun: boolean; yes: boolean; force: boolean }
 ): SkillSetupResult {
+  if (agent === "lm-studio") {
+    return {
+      status: "skipped",
+      message:
+        "LM Studio has no rules or skills folder. The MCP server ships summer_get_agent_playbook, so the model can pull Summer guidance in-chat.",
+    };
+  }
+
   const invocation = skillInstallInvocation(agent, { force: options.force });
 
   if (!invocation) {

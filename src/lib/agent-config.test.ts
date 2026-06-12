@@ -147,6 +147,60 @@ describe("configureAgentMcp", () => {
     expect(written.mcpServers["summer-engine"].args).toEqual(NPX_ARGS);
   });
 
+  it("writes a fresh kilo-code config in mcpServers shape", async () => {
+    const dir = tmp();
+    const path = join(dir, "mcp_settings.json");
+    const result = await configureAgentMcp({
+      agent: "kilo-code",
+      scope: "user",
+      env: { SUMMER_KILO_CODE_CONFIG_FILE: path } as NodeJS.ProcessEnv,
+    });
+    expect(result.wrote).toBe(true);
+    const written = JSON.parse(readFileSync(path, "utf-8"));
+    expect(written.mcpServers["summer-engine"].command).toBe("npx");
+    expect(written.mcpServers["summer-engine"].args).toEqual(NPX_ARGS);
+  });
+
+  it("writes kilo-code project config to .kilocode/mcp.json", async () => {
+    const dir = tmp();
+    const result = await configureAgentMcp({
+      agent: "kilo-code",
+      scope: "project",
+      cwd: dir,
+      env: {} as NodeJS.ProcessEnv,
+    });
+    expect(result.wrote).toBe(true);
+    expect(result.path).toBe(join(dir, ".kilocode", "mcp.json"));
+    const written = JSON.parse(readFileSync(result.path, "utf-8"));
+    expect(written.mcpServers["summer-engine"].command).toBe("npx");
+  });
+
+  it("writes a fresh lm-studio config in mcpServers shape", async () => {
+    const dir = tmp();
+    const path = join(dir, "mcp.json");
+    const result = await configureAgentMcp({
+      agent: "lm-studio",
+      scope: "user",
+      env: { SUMMER_LM_STUDIO_CONFIG_FILE: path } as NodeJS.ProcessEnv,
+    });
+    expect(result.wrote).toBe(true);
+    const written = JSON.parse(readFileSync(path, "utf-8"));
+    expect(written.mcpServers["summer-engine"].command).toBe("npx");
+    expect(written.mcpServers["summer-engine"].args).toEqual(NPX_ARGS);
+  });
+
+  it("falls back to user scope for lm-studio when project scope is requested", async () => {
+    const dir = tmp();
+    const path = join(dir, "mcp.json");
+    const result = await configureAgentMcp({
+      agent: "lm-studio",
+      scope: "project",
+      env: { SUMMER_LM_STUDIO_CONFIG_FILE: path } as NodeJS.ProcessEnv,
+    });
+    expect(result.wrote).toBe(true);
+    expect(result.warnings.some((w) => w.includes("no project scope"))).toBe(true);
+  });
+
   it("writes a gemini extension manifest with mcpServers entry", async () => {
     const dir = tmp();
     const path = join(dir, "gemini-extension.json");

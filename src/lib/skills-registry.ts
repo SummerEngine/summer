@@ -6,6 +6,7 @@ export const AGENT_CLIENTS = [
   "windsurf",
   "cline",
   "roo-code",
+  "kilo-code",
   "gemini",
   "github-copilot",
   "vscode-copilot",

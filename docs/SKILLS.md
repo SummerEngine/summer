@@ -52,7 +52,7 @@ Supported agents: `summer`, `codex`, `claude-code`, `cursor`, `windsurf`, `cline
 Two source-of-truth files:
 
 - `.claude-plugin/plugin.json` `skills:`: what Claude Code auto-discovers when the plugin is installed. Sibling manifests such as `.codex-plugin/plugin.json` can differ when a host supports a smaller surface.
-- `src/lib/skills-registry.ts` `SKILL_REGISTRY`: what `summer skills install` writes to non-plugin agents (Windsurf, Cline, Roo, Gemini, Copilot, OpenCode).
+- `src/lib/skills-registry.ts` `SKILL_REGISTRY`: what `summer skills install` writes to non-plugin agents (Devin Desktop (formerly Windsurf), Cline, Roo, Gemini, Copilot, OpenCode).
 
 These surfaces must stay intentionally synced, but they are not always the same raw count. Do not publish a single skill total unless the sentence says whether it means disk files, plugin paths, registry entries, or recommended installs. `plugin-manifests.test.ts` catches accidental manifest drift.
 
@@ -78,4 +78,4 @@ Per-skill metadata:
 
 ## Standard
 
-Adopts the **Anthropic Agent Skills open standard** (`agentskills.io`). SKILL.md portable across Cursor / Codex / Claude Code / Windsurf. Summer-specific extensions: `compatibility`, `category`, `template-id`. Anthropic spec ignores unknown frontmatter fields, so portability holds.
+Adopts the **Anthropic Agent Skills open standard** (`agentskills.io`). SKILL.md portable across Cursor / Codex / Claude Code / Devin Desktop. Summer-specific extensions: `compatibility`, `category`, `template-id`. Anthropic spec ignores unknown frontmatter fields, so portability holds.

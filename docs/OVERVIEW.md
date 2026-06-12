@@ -14,7 +14,7 @@ Three things, plus glue.
 
 **CLI.** Install the engine, log in, scaffold projects, run them, run doctor. The terminal side.
 
-The glue: **lifecycle hooks** (session-start orientation, optional pre-commit doctor), plugin manifests for plugin-capable harnesses, and `summer setup` targets for Claude Code, Cursor, Codex, Gemini, OpenCode, GitHub Copilot CLI, GitHub Copilot in VS Code, Cline, Roo Code, and Windsurf.
+The glue: **lifecycle hooks** (session-start orientation, optional pre-commit doctor), plugin manifests for plugin-capable harnesses, and `summer setup` targets for Claude Code, Cursor, Codex, Gemini, OpenCode, GitHub Copilot CLI, GitHub Copilot in VS Code, Cline, Roo Code, and Devin Desktop (formerly Windsurf).
 
 ## Quick start
 
@@ -59,7 +59,7 @@ Each agent has its own home for SKILL.md files:
 | `github-copilot` | `~/.copilot/skills` | `.github/skills` |
 | `vscode-copilot` | `~/.copilot/skills` | `.github/skills` |
 | `opencode` | `~/.config/opencode/agents/summer` | `.opencode/agents/summer` |
-| `windsurf` | `~/.windsurfrules` (managed blocks) | `.windsurfrules` |
+| `windsurf` (Devin Desktop) | `~/.windsurfrules` (managed blocks) | `.windsurfrules` |
 
 Use `--scope project` when you want the skills committed with the game:
 

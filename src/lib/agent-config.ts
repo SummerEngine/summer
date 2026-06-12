@@ -65,6 +65,9 @@ const agentAliases: Record<string, SupportedAgent> = {
   codex: "codex",
   cursor: "cursor",
   windsurf: "windsurf",
+  devin: "windsurf",
+  "devin-desktop": "windsurf",
+  devindesktop: "windsurf",
   cline: "cline",
   "roo-code": "roo-code",
   roo: "roo-code",
@@ -406,7 +409,7 @@ function resolveConfigTarget(
 
   if (scope === "project") {
     warnings.push(
-      "Windsurf documents MCP configuration as user-scoped; project scope writes .windsurf/mcp_config.json for teams that load workspace config."
+      "Devin Desktop (formerly Windsurf) documents MCP configuration as user-scoped; project scope writes .windsurf/mcp_config.json for teams that load workspace config."
     );
   }
 
@@ -866,7 +869,7 @@ function createNextSteps(
               ? "Restart VS Code or run MCP: List Servers, then start summer-engine in Copilot Agent mode."
               : agent === "opencode"
                 ? "Restart OpenCode so it reloads opencode.json."
-                : "Restart Windsurf and refresh MCP servers from Cascade settings.";
+                : "Restart Devin Desktop (formerly Windsurf) and refresh MCP servers from the agent settings.";
 
   const projectTrust =
     scope === "project" && agent === "codex"

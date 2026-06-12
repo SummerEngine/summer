@@ -192,7 +192,7 @@ function agentLabel(agent: AgentClient): string {
     case "cursor":
       return "Cursor";
     case "windsurf":
-      return "Windsurf";
+      return "Devin Desktop (Windsurf)";
     case "cline":
       return "Cline";
     case "roo-code":
@@ -508,7 +508,7 @@ function printInstallSummary(
     console.log(`Skill files are in ${tildeified}/<skill>.md`);
     console.log("Restart OpenCode so it picks up the new agent definitions.");
   } else {
-    console.log(`Windsurf rules are in ${tildeified}`);
+    console.log(`Devin Desktop (formerly Windsurf) rules are in ${tildeified}`);
   }
 }
 
@@ -632,7 +632,7 @@ function installClaudeCommands(
 
 /**
  * Drop a `.summer-version` marker into the install dir so doctor's
- * `skills-version-stale` check can detect drift later. Windsurf writes a
+ * `skills-version-stale` check can detect drift later. Devin Desktop (formerly Windsurf) writes a
  * single rules file with no surrounding dir, so we skip it there.
  */
 function writeMarkerForLocation(location: InstallLocation): void {

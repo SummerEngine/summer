@@ -18,7 +18,7 @@ If you're an AI agent or developer with zero context, read this first.
 2. **MCP server**: gives AI coding agents 44 tools the host can't do on its own (scene manipulation, play/stop, diagnostics, asset import/generation)
 3. **Skills bundle**: the current SKILL.md playbooks that auto-trigger when the agent sees the right natural-language signal
 
-Plus lifecycle hooks, plugin manifests, and setup targets that wire all of the above into Claude Code, Cursor, Codex, Gemini, OpenCode, GitHub Copilot CLI, GitHub Copilot in VS Code, Cline, Roo Code, Factory Droid, and Windsurf.
+Plus lifecycle hooks, plugin manifests, and setup targets that wire all of the above into Claude Code, Cursor, Codex, Gemini, OpenCode, GitHub Copilot CLI, GitHub Copilot in VS Code, Cline, Roo Code, Factory Droid, and Devin Desktop (formerly Windsurf).
 
 It gets published to npm as `summer-engine`. Users run it with `npx summer-engine <command>`.
 

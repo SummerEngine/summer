@@ -21,7 +21,7 @@ const AGENT_LABEL: Record<SupportedAgent, string> = {
   "claude-code": "Claude Code",
   codex: "Codex",
   cursor: "Cursor",
-  windsurf: "Windsurf",
+  windsurf: "Devin Desktop (Windsurf)",
   cline: "Cline",
   "roo-code": "Roo Code",
   "kilo-code": "Kilo Code",

@@ -2,13 +2,31 @@ import { mkdtempSync, readFileSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import { describe, expect, it } from "vitest";
-import { configureAgentMcp, createSummerMcpServerConfig } from "./agent-config.js";
+import { configureAgentMcp, createSummerMcpServerConfig, parseAgent } from "./agent-config.js";
 
 function tmp(): string {
   return mkdtempSync(join(tmpdir(), "summer-agent-config-"));
 }
 
 const NPX_ARGS = ["-y", "summer-engine@latest", "mcp"];
+
+describe("parseAgent", () => {
+  it("maps devin to windsurf", () => {
+    expect(parseAgent("devin")).toBe("windsurf");
+  });
+
+  it("maps devin-desktop to windsurf", () => {
+    expect(parseAgent("devin-desktop")).toBe("windsurf");
+  });
+
+  it("maps devindesktop to windsurf", () => {
+    expect(parseAgent("devindesktop")).toBe("windsurf");
+  });
+
+  it("keeps windsurf as windsurf", () => {
+    expect(parseAgent("windsurf")).toBe("windsurf");
+  });
+});
 
 describe("createSummerMcpServerConfig", () => {
   it("uses npx -y summer-engine@latest mcp by default", () => {

@@ -1,6 +1,6 @@
 # Copy-Paste Setup Prompt
 
-Use this when a human wants to install Summer Engine from Claude Code, Cursor, Codex, Windsurf, Cline, Roo Code, Gemini CLI, GitHub Copilot CLI, GitHub Copilot in VS Code, or OpenCode.
+Use this when a human wants to install Summer Engine from Claude Code, Cursor, Codex, Devin Desktop (formerly Windsurf), Cline, Roo Code, Gemini CLI, GitHub Copilot CLI, GitHub Copilot in VS Code, or OpenCode.
 
 Source: https://github.com/SummerEngine/summer-engine-agent
 MCP setup page: https://summerengine.com/mcp

@@ -378,4 +378,26 @@ export class EngineApiClient {
   getPort(): number {
     return this.port;
   }
+
+  /**
+   * Cheap drift probe for the MCP client cache. The engine mints a fresh
+   * api-token on every launch (local_api_server.cpp::_generate_api_token) and can
+   * bind a different port (tool_net_thread.cpp::start increments 6550..6565 when
+   * the old socket lingers), so a client built before an engine restart holds
+   * dead credentials. Re-read the on-disk creds and report whether they no longer
+   * match this client's snapshot.
+   *
+   * Empty / unreadable creds (engine mid-write, or just closed) are treated as
+   * "no drift" so a transient read never thrashes the cache — the live request
+   * will fail and trigger a reconnect+retry if the client really is stale.
+   */
+  async credentialsChanged(): Promise<boolean> {
+    try {
+      const [port, token] = await Promise.all([getApiPort(), getApiToken()]);
+      if (!token) return false;
+      return port !== this.port || token !== this.token;
+    } catch {
+      return false;
+    }
+  }
 }

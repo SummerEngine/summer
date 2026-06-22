@@ -40,7 +40,16 @@ let cachedClient: EngineApiClient | null = null;
 
 export async function getClient(): Promise<EngineApiClient> {
   if (cachedClient) {
-    return cachedClient;
+    // The engine rotates its api-token (and can change ports) on every launch, so
+    // a cached client can outlive the engine instance it was built for. If the
+    // on-disk creds drifted, a silent engine restart happened — drop the stale
+    // client and reconnect transparently, instead of surfacing the resulting 401
+    // as a "disconnected from the project" error.
+    if (await cachedClient.credentialsChanged()) {
+      cachedClient = null;
+    } else {
+      return cachedClient;
+    }
   }
 
   try {

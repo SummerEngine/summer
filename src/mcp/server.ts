@@ -4,6 +4,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { EngineApiClient } from "../lib/api-client.js";
 import { registerSceneTools } from "./tools/scene-tools.js";
 import { registerDebugTools } from "./tools/debug-tools.js";
+import { registerVisualTools } from "./tools/visual-tools.js";
 import { registerProjectTools } from "./tools/project-tools.js";
 import { registerAssetTools } from "./tools/asset-tools.js";
 import { registerGenerateTools } from "./tools/generate-tools.js";
@@ -149,6 +150,7 @@ export async function startMcpServer(): Promise<void> {
 
   registerSceneTools(server);
   registerDebugTools(server);
+  registerVisualTools(server);
   registerProjectTools(server);
   registerAssetTools(server);
   registerGenerateTools(server);

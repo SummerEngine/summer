@@ -1,7 +1,19 @@
 import { getClient, resetClient } from "../server.js";
 import { recordMcpSession } from "../../lib/telemetry.js";
 
-type ToolResult = { content: { type: "text"; text: string }[]; isError?: boolean };
+type ToolResultContent =
+  | { type: "text"; text: string }
+  | { type: "image"; data: string; mimeType: string };
+
+type ToolResult = { content: ToolResultContent[]; isError?: boolean };
+
+/** Options for {@link withEngine}. `toContent` maps a successful engine result
+ *  to MCP content blocks — used by the screenshot tool to hand the raw frame
+ *  back as an image block instead of JSON-stringified text. Only runs on genuine
+ *  success (after extractOpError clears); failures still surface as text. */
+export interface WithEngineOptions<T> {
+  toContent?: (result: T) => ToolResultContent[];
+}
 
 type OpResult = {
   ok?: boolean;
@@ -131,7 +143,8 @@ function buildActionHint(message: string): string | null {
 }
 
 export async function withEngine<T>(
-  fn: (client: Awaited<ReturnType<typeof getClient>>) => Promise<T>
+  fn: (client: Awaited<ReturnType<typeof getClient>>) => Promise<T>,
+  opts?: WithEngineOptions<T>
 ): Promise<ToolResult> {
   // Best-effort, fire-and-forget: count this MCP session as DAU for attribution.
   // No await, no throw, no quota gating.
@@ -162,6 +175,9 @@ export async function withEngine<T>(
         const hint = buildActionHint(opError);
         const message = hint ? `${opError}\n\nHint: ${hint}` : opError;
         return { content: [{ type: "text", text: message }], isError: true };
+      }
+      if (opts?.toContent) {
+        return { content: opts.toContent(result) };
       }
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
     } catch (err) {

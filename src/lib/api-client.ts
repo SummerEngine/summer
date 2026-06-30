@@ -12,6 +12,10 @@ export type EngineSnapshot = {
   ok: boolean;
   localPath?: string;
   path?: string;
+  /** Raw image bytes, base64-encoded. Carried so a caller (e.g. the MCP
+   *  screenshot tool) can return an MCP image content block to a vision-capable
+   *  client without re-reading localPath off disk. */
+  base64?: string;
   width?: number;
   height?: number;
   format?: string;
@@ -355,6 +359,7 @@ export class EngineApiClient {
       ok: payload.ok !== false,
       localPath,
       path: localPath,
+      base64,
       width: numberFrom(payload.width),
       height: numberFrom(payload.height),
       format,

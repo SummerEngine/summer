@@ -1,14 +1,22 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 /**
- * Transient-disconnect recovery. The engine rotates its api-token on every launch
- * and can move ports, so a restart that lands DURING a tool call shows up as a
- * stale-token 401, an ECONNREFUSED on the old port, or a soft `not_connected` /
- * `identity_mismatch` terminal state. withEngine must drop the cached client and
- * retry ONCE so the drop heals itself instead of surfacing as "disconnected".
+ * Transient-disconnect recovery, NARROWED for mutation-safety.
  *
- * It must NOT retry ambiguous/intentional failures (timed_out / content_mismatch
- * / denied / canceled) — those could double-apply a mutation or mask user intent.
+ * The engine rotates its api-token on every launch and can move ports, so a
+ * restart that lands DURING a tool call shows up as a stale-token 401 or a
+ * connect failure. withEngine retries ONCE, but only where nothing could have
+ * been applied:
+ *   - a connect/preflight failure (getClient threw — request never submitted)
+ *   - a stale-token 401/403 (engine rejects at auth, before queue/apply)
+ *
+ * It must NOT retry:
+ *   - a generic connection error thrown from INSIDE the tool closure (could be a
+ *     disconnect mid-operation where a mutation already partially applied, and
+ *     the MCP sends no idempotency key the engine can dedup on)
+ *   - soft failure terminal states (not_connected / identity_mismatch): a retry
+ *     cannot fix a project switch — surface it
+ *   - ambiguous/intentional failures (timed_out / invalid op / 5xx)
  */
 
 const mockGetClient = vi.fn();
@@ -23,16 +31,16 @@ vi.mock("../../lib/telemetry.js", () => ({
   recordMcpSession: vi.fn(),
 }));
 
-import { withEngine } from "./with-engine.js";
+import { withEngine, isAuthError } from "./with-engine.js";
 
 afterEach(() => vi.clearAllMocks());
 
-function resultText(res: { content: { text: string }[]; isError?: boolean }): string {
+function resultText(res: { content: { text?: string }[]; isError?: boolean }): string {
   return res.content[0]?.text ?? "";
 }
 
-describe("withEngine — transparent reconnect on a transient drop", () => {
-  it("retries once after a stale-token 401 and returns the recovered result", async () => {
+describe("withEngine — safe retry only where nothing could have applied", () => {
+  it("retries once after a stale-token 401 (pre-apply auth reject) and recovers", async () => {
     mockGetClient.mockResolvedValue({});
     let calls = 0;
     const res = await withEngine(async () => {
@@ -46,41 +54,58 @@ describe("withEngine — transparent reconnect on a transient drop", () => {
     expect(resultText(res)).toContain("42");
   });
 
-  it("retries once after an ECONNREFUSED on the old port", async () => {
-    mockGetClient.mockResolvedValue({});
-    let calls = 0;
-    const res = await withEngine(async () => {
-      calls += 1;
-      if (calls === 1) throw new Error("fetch failed");
-      return { ok: true };
+  it("retries a connect/preflight failure (getClient threw — nothing submitted)", async () => {
+    let getCalls = 0;
+    mockGetClient.mockImplementation(async () => {
+      getCalls += 1;
+      if (getCalls === 1) throw new Error("Summer Engine is not running");
+      return {};
     });
-    expect(calls).toBe(2);
+    let fnCalls = 0;
+    const res = await withEngine(async () => {
+      fnCalls += 1;
+      return { ok: true, value: 7 };
+    });
+    expect(getCalls).toBe(2);
+    expect(fnCalls).toBe(1);
     expect(res.isError).toBeFalsy();
+    expect(resultText(res)).toContain("7");
   });
 
-  it("retries once on a soft not_connected terminalState (nothing applied) then succeeds", async () => {
+  it("does NOT retry a generic connection error thrown from inside fn (may be mid-mutation)", async () => {
     mockGetClient.mockResolvedValue({});
     let calls = 0;
     const res = await withEngine(async () => {
       calls += 1;
-      if (calls === 1) return { terminalState: "not_connected" };
-      return { status: "ok", terminalState: "applied", results: [{ ok: true, op: "AddNode" }] };
+      throw new Error("fetch failed"); // ECONNREFUSED after submission — unsafe to retry
     });
-    expect(calls).toBe(2);
-    expect(mockResetClient).toHaveBeenCalled();
-    expect(res.isError).toBeFalsy();
+    expect(calls).toBe(1); // no double-submit
+    expect(mockResetClient).toHaveBeenCalled(); // still drops the stale client
+    expect(res.isError).toBe(true);
+    expect(resultText(res)).toMatch(/fetch failed/i);
   });
 
-  it("retries once on identity_mismatch (wrong instance — never mutated) then succeeds", async () => {
+  it("surfaces a not_connected terminalState without retrying", async () => {
     mockGetClient.mockResolvedValue({});
     let calls = 0;
     const res = await withEngine(async () => {
       calls += 1;
-      if (calls === 1) return { terminalState: "identity_mismatch" };
-      return { status: "ok", terminalState: "applied", results: [{ ok: true }] };
+      return { terminalState: "not_connected" };
     });
-    expect(calls).toBe(2);
-    expect(res.isError).toBeFalsy();
+    expect(calls).toBe(1);
+    expect(res.isError).toBe(true);
+  });
+
+  it("surfaces identity_mismatch (project switch) without retrying — a retry can't fix it", async () => {
+    mockGetClient.mockResolvedValue({});
+    let calls = 0;
+    const res = await withEngine(async () => {
+      calls += 1;
+      return { terminalState: "identity_mismatch", error: "projectIdHash mismatch" };
+    });
+    expect(calls).toBe(1);
+    expect(res.isError).toBe(true);
+    expect(resultText(res)).toMatch(/mismatch/i);
   });
 
   it("does NOT retry an ambiguous timed_out (op may have landed) — surfaces it", async () => {
@@ -90,7 +115,7 @@ describe("withEngine — transparent reconnect on a transient drop", () => {
       calls += 1;
       return { terminalState: "timed_out" };
     });
-    expect(calls).toBe(1); // no double-submit
+    expect(calls).toBe(1);
     expect(res.isError).toBe(true);
     expect(resultText(res)).toMatch(/tim/i);
   });
@@ -107,7 +132,7 @@ describe("withEngine — transparent reconnect on a transient drop", () => {
     expect(resultText(res)).toContain("invalid value");
   });
 
-  it("surfaces the disconnect after the retry also fails (engine truly down)", async () => {
+  it("surfaces the disconnect after a 401 that persists across the retry", async () => {
     mockGetClient.mockResolvedValue({});
     let calls = 0;
     const res = await withEngine(async () => {
@@ -119,15 +144,30 @@ describe("withEngine — transparent reconnect on a transient drop", () => {
     expect(resultText(res)).toMatch(/401/);
   });
 
-  it("still resets the client on a non-retriable throw (preserves prior behavior)", async () => {
+  it("does NOT retry a 500 (may have mutated) — surfaces and resets", async () => {
     mockGetClient.mockResolvedValue({});
     let calls = 0;
     const res = await withEngine(async () => {
       calls += 1;
       throw new Error("Engine API error 500: internal");
     });
-    expect(calls).toBe(1); // a 500 may have mutated — do not retry
+    expect(calls).toBe(1);
     expect(mockResetClient).toHaveBeenCalled();
     expect(res.isError).toBe(true);
+  });
+});
+
+describe("isAuthError", () => {
+  it("matches 401/403/unauthorized only", () => {
+    expect(isAuthError(new Error("Engine API error 401: x"))).toBe(true);
+    expect(isAuthError(new Error("Engine API error 403"))).toBe(true);
+    expect(isAuthError(new Error("Unauthorized"))).toBe(true);
+  });
+
+  it("does NOT match connection/timeout errors (unsafe to retry from inside fn)", () => {
+    expect(isAuthError(new Error("fetch failed"))).toBe(false);
+    expect(isAuthError(new Error("ECONNREFUSED"))).toBe(false);
+    expect(isAuthError(new Error("The operation timed out"))).toBe(false);
+    expect(isAuthError(new Error("Engine API error 500"))).toBe(false);
   });
 });

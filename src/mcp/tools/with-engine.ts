@@ -83,45 +83,26 @@ export function extractOpError(result: unknown): string | null {
   return null;
 }
 
-// Terminal states where the engine GUARANTEES the op never landed, so dropping
-// the cached client and retrying once is safe (no double-mutation). Everything
-// else — timed_out (may still be running), content_mismatch / denied / canceled
-// (intentional) — must surface, never silently retry.
-const RECONNECTABLE_TERMINAL_STATES: ReadonlySet<string> = new Set([
-  "not_connected",
-  "identity_mismatch",
-]);
-
-function terminalStateOf(result: unknown): string | null {
-  if (!result || typeof result !== "object") return null;
-  const ts = (result as OpResult).terminalState;
-  return typeof ts === "string" && ts.length > 0 ? ts : null;
-}
-
 /**
- * A thrown transport error is safe to retry only when the engine provably never
- * applied the op: a stale-token rejection (401/403, after the engine rotated its
- * api-token on relaunch) or an unreachable/closed port (connection refused/reset,
- * after the engine moved ports or is mid-restart). A timeout or any 5xx may have
- * mutated, so those surface instead of risking a double-apply on retry.
+ * An auth failure is the ONE class of thrown error that is provably pre-apply:
+ * the engine rejects on the Bearer-token check (tool_net_thread.cpp::_validate_auth)
+ * BEFORE the op is queued or applied, so reconnecting with the fresh api-token and
+ * retrying cannot double-apply a mutation. This is exactly the stale-token case
+ * after the engine rotates its api-token on relaunch.
+ *
+ * Deliberately NARROW. A generic connection error (ECONNREFUSED / "fetch failed")
+ * thrown from inside the tool closure is NOT retriable here, because it may be a
+ * disconnect mid-operation where a mutation already partially applied — and the
+ * MCP sends no idempotency key the engine can dedup on, so a blind retry would
+ * re-apply it. The restart-between-calls case is handled proactively by
+ * getClient()'s credential-drift check; the connect/preflight-failure case is
+ * retried separately in withEngine (nothing is submitted there).
  *
  * Exported for unit tests.
  */
-export function isReconnectableThrow(err: unknown): boolean {
+export function isAuthError(err: unknown): boolean {
   const m = (err instanceof Error ? err.message : String(err)).toLowerCase();
-  if (m.includes("timed out") || m.includes("timeout") || m.includes("aborted")) {
-    return false;
-  }
-  return (
-    m.includes("401") ||
-    m.includes("403") ||
-    m.includes("unauthorized") ||
-    m.includes("econnrefused") ||
-    m.includes("econnreset") ||
-    m.includes("fetch failed") ||
-    m.includes("not running") ||
-    m.includes("not responding")
-  );
+  return m.includes("401") || m.includes("403") || m.includes("unauthorized");
 }
 
 function buildActionHint(message: string): string | null {
@@ -150,28 +131,36 @@ export async function withEngine<T>(
   // No await, no throw, no quota gating.
   recordMcpSession();
 
-  // The engine rotates its api-token and can move ports on every launch, so a
-  // restart that lands DURING a tool call shows up as a stale-token 401, an
-  // ECONNREFUSED on the old port, or a soft not_connected / identity_mismatch
-  // terminal state. Drop the cached client and retry ONCE so a transient drop
-  // heals itself (getClient reconnects with the fresh creds) instead of
-  // surfacing as a "disconnected" error. Only provably-not-applied failures are
-  // retried — see RECONNECTABLE_TERMINAL_STATES / isReconnectableThrow.
+  // The engine rotates its api-token (and can move ports) on every launch. The
+  // proactive credential-drift check in getClient() reconnects when a restart
+  // happened BETWEEN calls; this loop only covers the race where the restart
+  // lands DURING a call. We retry ONLY where nothing could have been applied:
+  //   - a connect/preflight failure (getClient threw — request never submitted)
+  //   - a stale-token 401/403 (engine rejects at auth, before queue/apply)
+  // A generic connection error thrown from inside fn() is NOT retried: it may be
+  // a disconnect mid-operation where a mutation already partially applied, and
+  // the MCP sends no idempotency key the engine can dedup on. A soft failure
+  // terminal state (e.g. identity_mismatch from a project switch) is surfaced,
+  // never silently retried — a retry cannot fix a project switch.
   const MAX_ATTEMPTS = 2;
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    let client: Awaited<ReturnType<typeof getClient>>;
     try {
-      const client = await getClient();
+      client = await getClient();
+    } catch (err) {
+      // Pre-submission: the request never went out, so reconnect and retry.
+      resetClient();
+      lastError = err;
+      if (attempt < MAX_ATTEMPTS) continue;
+      break;
+    }
+
+    try {
       const result = await fn(client);
       const opError = extractOpError(result);
       if (opError) {
-        const ts = terminalStateOf(result);
-        if (ts && RECONNECTABLE_TERMINAL_STATES.has(ts) && attempt < MAX_ATTEMPTS) {
-          resetClient();
-          lastError = new Error(opError);
-          continue;
-        }
         const hint = buildActionHint(opError);
         const message = hint ? `${opError}\n\nHint: ${hint}` : opError;
         return { content: [{ type: "text", text: message }], isError: true };
@@ -181,14 +170,11 @@ export async function withEngine<T>(
       }
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
     } catch (err) {
-      // A thrown error means the cached client may be pointed at a dead/rotated
-      // engine — always drop it (prior behavior). Retry once only for
-      // connection-class throws that provably did not mutate.
+      // Drop the cached client (it may point at a dead/rotated engine). Retry
+      // once only for a provably pre-apply auth failure; anything else surfaces.
       resetClient();
       lastError = err;
-      if (attempt < MAX_ATTEMPTS && isReconnectableThrow(err)) {
-        continue;
-      }
+      if (attempt < MAX_ATTEMPTS && isAuthError(err)) continue;
       break;
     }
   }

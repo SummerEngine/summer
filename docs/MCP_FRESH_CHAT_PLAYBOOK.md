@@ -14,7 +14,7 @@ The minimum safe workflow for AI agents building in a Summer Engine project.
 Reach for MCP tools only when you need the running engine:
 
 - `summer_play` / `summer_stop` + `summer_get_diagnostics` — run and read errors
-- screenshots / visual verification
+- `summer_screenshot` — see the editor viewport or running game (visual verification)
 - navmesh or light baking
 - runtime inspection of a live scene
 - asset import

@@ -20,12 +20,13 @@ The single most important skill to know is `summer:using-summer` — it explains
 
 ## MCP tools (when the engine is running on `localhost:6550`)
 
-The `summer-engine` MCP server exposes 44 focused tools. The most important:
+The `summer-engine` MCP server exposes 52 focused tools. The most important:
 
 - **Scene mutation**: `summer_add_node`, `summer_set_prop`, `summer_set_resource_property`, `summer_remove_node`, `summer_save_scene`, `summer_replace_node`, `summer_batch`.
 - **Scene inspection**: `summer_get_scene_tree`, `summer_inspect_node`, `summer_inspect_resource`.
 - **Diagnostics**: `summer_get_script_errors` (cheapest), `summer_get_diagnostics`, `summer_get_console`, `summer_get_debugger_errors`, `summer_get_debugger_warnings`.
 - **Run game**: `summer_play`, `summer_stop`, `summer_is_running`.
+- **Visual**: `summer_screenshot` (capture the viewport or running game as an image you can see).
 - **Project**: `summer_get_project_context`, `summer_open_main_scene`, `summer_project_setting`, `summer_input_map_bind`.
 - **Assets**: `summer_search_assets`, `summer_import_asset`, `summer_import_from_url`, `summer_generate_image`, `summer_generate_3d`, `summer_generate_audio`, `summer_generate_video`, `summer_check_job`.
 

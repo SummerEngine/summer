@@ -2,6 +2,14 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [2.6.3] — 2026-06-30 — "Agent vision"
+
+### Added
+- `summer_screenshot` MCP tool: capture the editor viewport or the running game as an image the agent sees directly (`target: "viewport" | "game"`, viewport by default). Lets the agent visually verify scene layout, asset placement, scale, framing, and runtime state — the client reads the actual frame, with no description step in between. Total MCP tool surface is now 52.
+
+### Fixed
+- MCP/CLI session now reconnects automatically after a transient engine restart (the engine rotates its api-token and can move its port on relaunch), instead of surfacing as a "disconnected" error.
+
 ## [2.6.0] — 2026-06-10 — "Summer Cloud"
 
 ### Added

@@ -1,7 +1,19 @@
 import { getClient, resetClient } from "../server.js";
 import { recordMcpSession } from "../../lib/telemetry.js";
 
-type ToolResult = { content: { type: "text"; text: string }[]; isError?: boolean };
+type ToolResultContent =
+  | { type: "text"; text: string }
+  | { type: "image"; data: string; mimeType: string };
+
+type ToolResult = { content: ToolResultContent[]; isError?: boolean };
+
+/** Options for {@link withEngine}. `toContent` maps a successful engine result
+ *  to MCP content blocks — used by the screenshot tool to hand the raw frame
+ *  back as an image block instead of JSON-stringified text. Only runs on genuine
+ *  success (after extractOpError clears); failures still surface as text. */
+export interface WithEngineOptions<T> {
+  toContent?: (result: T) => ToolResultContent[];
+}
 
 type OpResult = {
   ok?: boolean;
@@ -71,6 +83,47 @@ export function extractOpError(result: unknown): string | null {
   return null;
 }
 
+// Terminal states where the engine GUARANTEES the op never landed, so dropping
+// the cached client and retrying once is safe (no double-mutation). Everything
+// else — timed_out (may still be running), content_mismatch / denied / canceled
+// (intentional) — must surface, never silently retry.
+const RECONNECTABLE_TERMINAL_STATES: ReadonlySet<string> = new Set([
+  "not_connected",
+  "identity_mismatch",
+]);
+
+function terminalStateOf(result: unknown): string | null {
+  if (!result || typeof result !== "object") return null;
+  const ts = (result as OpResult).terminalState;
+  return typeof ts === "string" && ts.length > 0 ? ts : null;
+}
+
+/**
+ * A thrown transport error is safe to retry only when the engine provably never
+ * applied the op: a stale-token rejection (401/403, after the engine rotated its
+ * api-token on relaunch) or an unreachable/closed port (connection refused/reset,
+ * after the engine moved ports or is mid-restart). A timeout or any 5xx may have
+ * mutated, so those surface instead of risking a double-apply on retry.
+ *
+ * Exported for unit tests.
+ */
+export function isReconnectableThrow(err: unknown): boolean {
+  const m = (err instanceof Error ? err.message : String(err)).toLowerCase();
+  if (m.includes("timed out") || m.includes("timeout") || m.includes("aborted")) {
+    return false;
+  }
+  return (
+    m.includes("401") ||
+    m.includes("403") ||
+    m.includes("unauthorized") ||
+    m.includes("econnrefused") ||
+    m.includes("econnreset") ||
+    m.includes("fetch failed") ||
+    m.includes("not running") ||
+    m.includes("not responding")
+  );
+}
+
 function buildActionHint(message: string): string | null {
   const normalized = message.toLowerCase();
 
@@ -90,25 +143,56 @@ function buildActionHint(message: string): string | null {
 }
 
 export async function withEngine<T>(
-  fn: (client: Awaited<ReturnType<typeof getClient>>) => Promise<T>
+  fn: (client: Awaited<ReturnType<typeof getClient>>) => Promise<T>,
+  opts?: WithEngineOptions<T>
 ): Promise<ToolResult> {
   // Best-effort, fire-and-forget: count this MCP session as DAU for attribution.
   // No await, no throw, no quota gating.
   recordMcpSession();
 
-  try {
-    const client = await getClient();
-    const result = await fn(client);
-    const opError = extractOpError(result);
-    if (opError) {
-      const hint = buildActionHint(opError);
-      const message = hint ? `${opError}\n\nHint: ${hint}` : opError;
-      return { content: [{ type: "text", text: message }], isError: true };
+  // The engine rotates its api-token and can move ports on every launch, so a
+  // restart that lands DURING a tool call shows up as a stale-token 401, an
+  // ECONNREFUSED on the old port, or a soft not_connected / identity_mismatch
+  // terminal state. Drop the cached client and retry ONCE so a transient drop
+  // heals itself (getClient reconnects with the fresh creds) instead of
+  // surfacing as a "disconnected" error. Only provably-not-applied failures are
+  // retried — see RECONNECTABLE_TERMINAL_STATES / isReconnectableThrow.
+  const MAX_ATTEMPTS = 2;
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const client = await getClient();
+      const result = await fn(client);
+      const opError = extractOpError(result);
+      if (opError) {
+        const ts = terminalStateOf(result);
+        if (ts && RECONNECTABLE_TERMINAL_STATES.has(ts) && attempt < MAX_ATTEMPTS) {
+          resetClient();
+          lastError = new Error(opError);
+          continue;
+        }
+        const hint = buildActionHint(opError);
+        const message = hint ? `${opError}\n\nHint: ${hint}` : opError;
+        return { content: [{ type: "text", text: message }], isError: true };
+      }
+      if (opts?.toContent) {
+        return { content: opts.toContent(result) };
+      }
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      // A thrown error means the cached client may be pointed at a dead/rotated
+      // engine — always drop it (prior behavior). Retry once only for
+      // connection-class throws that provably did not mutate.
+      resetClient();
+      lastError = err;
+      if (attempt < MAX_ATTEMPTS && isReconnectableThrow(err)) {
+        continue;
+      }
+      break;
     }
-    return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-  } catch (err) {
-    resetClient();
-    const msg = err instanceof Error ? err.message : String(err);
-    return { content: [{ type: "text", text: msg }], isError: true };
   }
+
+  const msg = lastError instanceof Error ? lastError.message : String(lastError);
+  return { content: [{ type: "text", text: msg }], isError: true };
 }

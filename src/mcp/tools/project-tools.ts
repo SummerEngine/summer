@@ -252,6 +252,12 @@ Use this first in every fresh chat to avoid guessing scene filenames or editing 
         const mainScene = getMainScene(projectState);
         const currentScene = getCurrentScene(projectState, sceneState, health);
 
+        // This tool is the deliberate (re)bind point: capture the currently-open
+        // project as the one this session's mutations are pinned to. After an
+        // engine project switch the agent calls this to intentionally follow the
+        // new project; subsequent edits then target it instead of being rejected.
+        const boundProjectIdHash = await client.rebind();
+
         return {
           health,
           project: projectState,
@@ -260,6 +266,7 @@ Use this first in every fresh chat to avoid guessing scene filenames or editing 
           projectPath,
           currentScene,
           mainScene,
+          boundProjectIdHash,
           projectMemory: getProjectMemorySummary(projectPath),
           guidance: mainScene
             ? "Use `summer_open_scene` with `mainScene` if no scene is open."

@@ -142,6 +142,7 @@ priority: locked
           scenePath: "res://main.tscn",
         },
       })),
+      rebind: vi.fn(async () => "test-project-hash"),
     } as never);
 
     const { server, tools } = createFakeServer();

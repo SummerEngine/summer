@@ -117,10 +117,18 @@ function withoutImageData(payload: SnapshotPayload): Record<string, unknown> {
 export class EngineApiClient {
   private port: number;
   private token: string;
+  // The project this session is BOUND to — the projectIdHash reported by the
+  // engine when this client first connected. Sent on every mutating op so the
+  // engine's identity guard (local_api_server.cpp ~271-302) atomically rejects a
+  // write aimed at a DIFFERENT project (e.g. after the user switched projects
+  // in-place). Health is the only identity signal the MCP has — /api/state/project
+  // carries no path and /api/health exposes only projectIdHash, not the raw id.
+  private boundProjectIdHash?: string;
 
-  constructor(port: number, token: string) {
+  constructor(port: number, token: string, boundProjectIdHash?: string) {
     this.port = port;
     this.token = token;
+    this.boundProjectIdHash = boundProjectIdHash;
   }
 
   static async connect(): Promise<EngineApiClient> {
@@ -140,7 +148,39 @@ export class EngineApiClient {
       );
     }
 
-    return new EngineApiClient(port, token);
+    // Bind to whatever project is open right now. On a genuine engine restart the
+    // token rotates and getClient() rebuilds this client, so a restart naturally
+    // rebinds to the current project. An in-place project switch keeps the same
+    // token, so the cached client retains its original binding and the engine
+    // rejects mismatched mutations until the agent explicitly rebinds.
+    return new EngineApiClient(port, token, health.projectIdHash);
+  }
+
+  /** The projectIdHash this session is bound to (undefined if none was reported
+   *  at connect — e.g. no project open yet). */
+  getBoundProjectIdHash(): string | undefined {
+    return this.boundProjectIdHash;
+  }
+
+  /**
+   * Re-read health and rebind to the currently-open project. Called by
+   * summer_get_project_context so the agent can INTENTIONALLY follow a project
+   * switch (the deliberate escape hatch after an identity_mismatch). Returns the
+   * new bound hash. Reads carry no identity, so this always reaches the engine
+   * even when a mutation would be rejected.
+   */
+  async rebind(): Promise<string | undefined> {
+    const health = await checkEngineHealth(this.port);
+    if (health) {
+      this.boundProjectIdHash = health.projectIdHash;
+    }
+    return this.boundProjectIdHash;
+  }
+
+  /** Identity to attach to a MUTATING command's options so the engine can reject
+   *  a wrong-project write. Empty when unbound (engine then skips the check). */
+  private identityOptions(): Record<string, unknown> {
+    return this.boundProjectIdHash ? { projectIdHash: this.boundProjectIdHash } : {};
   }
 
   private async request(
@@ -244,7 +284,11 @@ export class EngineApiClient {
     // Ops may include long-running work (ImportFromUrlBatch, GitCommit); the
     // engine keeps it "running" and we poll. 120s budget. Resolves legacy-200 or
     // async-202 (Block E).
-    return this._requestQueued("POST", "/api/ops", { ops, options }, 120_000);
+    // Attach the bound project identity so the engine rejects a write aimed at a
+    // different project (identity_mismatch, atomic — before any op applies).
+    const merged = { ...this.identityOptions(), ...(options ?? {}) };
+    const body = Object.keys(merged).length ? { ops, options: merged } : { ops };
+    return this._requestQueued("POST", "/api/ops", body, 120_000);
   }
 
   async getSceneState(): Promise<unknown> {
@@ -275,12 +319,25 @@ export class EngineApiClient {
     // Cold-load on large projects can take 25-40s. 60s budget.
     // The engine reads play params from body.options (tool_net_thread.cpp:503),
     // and the play handler reads options["scene"] — a top-level { scene } is
-    // dropped, so the scene MUST be nested inside options.
-    return this._requestQueued("POST", "/api/play", scene ? { options: { scene } } : {}, 60_000);
+    // dropped, so the scene MUST be nested inside options. The bound identity
+    // rides in the same options dict so play is refused on a mismatched project.
+    const options = { ...this.identityOptions(), ...(scene ? { scene } : {}) };
+    return this._requestQueued(
+      "POST",
+      "/api/play",
+      Object.keys(options).length ? { options } : {},
+      60_000
+    );
   }
 
   async stop(): Promise<unknown> {
-    return this._requestQueued("POST", "/api/stop", undefined, 15_000);
+    const options = this.identityOptions();
+    return this._requestQueued(
+      "POST",
+      "/api/stop",
+      Object.keys(options).length ? { options } : undefined,
+      15_000
+    );
   }
 
   async readFile(

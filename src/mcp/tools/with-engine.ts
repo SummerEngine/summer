@@ -108,6 +108,15 @@ export function isAuthError(err: unknown): boolean {
 function buildActionHint(message: string): string | null {
   const normalized = message.toLowerCase();
 
+  if (
+    normalized.includes("identity_mismatch") ||
+    normalized.includes("projectidhash mismatch") ||
+    normalized.includes("projectid mismatch") ||
+    normalized.includes("wrong project/instance")
+  ) {
+    return "Summer Engine is now on a DIFFERENT project than this session is bound to — nothing was applied (your edit did NOT land in the wrong project). If you meant to work on the now-open project, call `summer_get_project_context` to rebind to it, then retry. If not, switch the engine back to the original project first.";
+  }
+
   if (normalized.includes("no scene open") || normalized.includes("no edited scene")) {
     return "No scene is currently open. Call `summer_get_project_context` first, then `summer_open_main_scene` (or `summer_open_scene` with a known .tscn path).";
   }

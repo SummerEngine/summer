@@ -7,12 +7,40 @@ type ToolResultContent =
 
 type ToolResult = { content: ToolResultContent[]; isError?: boolean };
 
+/** Diagnostics stamped by withEngine onto its ToolResult under a non-enumerable
+ *  key so the server.ts result logger can emit a single structured stderr line
+ *  per tool call WITHOUT every one of the ~31 callers having to thread its own
+ *  tool name through. Never serialized to the model (non-enumerable). */
+export interface WithEngineMeta {
+  terminalState?: string;
+  errorClass?: string;
+  failureReason?: string;
+  retried: boolean;
+  boundProjectIdHash?: string;
+}
+
+export const WITH_ENGINE_META = Symbol("summerWithEngineMeta");
+
+function attachMeta(result: ToolResult, meta: WithEngineMeta): ToolResult {
+  Object.defineProperty(result, WITH_ENGINE_META, {
+    value: meta,
+    enumerable: false,
+    configurable: true,
+  });
+  return result;
+}
+
 /** Options for {@link withEngine}. `toContent` maps a successful engine result
  *  to MCP content blocks — used by the screenshot tool to hand the raw frame
  *  back as an image block instead of JSON-stringified text. Only runs on genuine
- *  success (after extractOpError clears); failures still surface as text. */
+ *  success (after extractOpError clears); failures still surface as text.
+ *
+ *  `onResult` runs FIRST on a genuine success and may short-circuit to a custom
+ *  ToolResult (e.g. a fail-loud message for a structurally-blocked capture).
+ *  Return null to fall through to toContent / the default JSON text. */
 export interface WithEngineOptions<T> {
   toContent?: (result: T) => ToolResultContent[];
+  onResult?: (result: T) => ToolResult | null;
 }
 
 type OpResult = {
@@ -21,6 +49,8 @@ type OpResult = {
   error?: string;
   terminalState?: string;
   errorClass?: string;
+  failureReason?: string;
+  failure_reason?: string;
   results?: Array<{ ok?: boolean; op?: string; error?: string }>;
 };
 
@@ -44,6 +74,24 @@ const TERMINAL_STATE_MESSAGES: Record<string, string> = {
   denied: "Operation denied (terminalState: denied). Nothing was applied.",
   canceled: "Operation canceled (terminalState: canceled). Nothing was applied.",
 };
+
+/** Pull the failure classifiers off an engine envelope for logging (best-effort,
+ *  shape-tolerant). Does not decide success/failure — that stays in
+ *  extractOpError. */
+function readClassifiers(result: unknown): Pick<WithEngineMeta, "terminalState" | "errorClass" | "failureReason"> {
+  if (!result || typeof result !== "object") return {};
+  const op = result as OpResult;
+  return {
+    terminalState: typeof op.terminalState === "string" ? op.terminalState : undefined,
+    errorClass: typeof op.errorClass === "string" ? op.errorClass : undefined,
+    failureReason:
+      typeof op.failureReason === "string"
+        ? op.failureReason
+        : typeof op.failure_reason === "string"
+          ? op.failure_reason
+          : undefined,
+  };
+}
 
 /**
  * Decide whether an engine result envelope represents a FAILURE, and if so
@@ -153,8 +201,11 @@ export async function withEngine<T>(
   // never silently retried — a retry cannot fix a project switch.
   const MAX_ATTEMPTS = 2;
   let lastError: unknown;
+  let retried = false;
+  let boundProjectIdHash: string | undefined;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    if (attempt > 1) retried = true;
     let client: Awaited<ReturnType<typeof getClient>>;
     try {
       client = await getClient();
@@ -166,18 +217,34 @@ export async function withEngine<T>(
       break;
     }
 
+    boundProjectIdHash =
+      typeof client.getBoundProjectIdHash === "function"
+        ? client.getBoundProjectIdHash()
+        : undefined;
+
     try {
       const result = await fn(client);
       const opError = extractOpError(result);
       if (opError) {
         const hint = buildActionHint(opError);
         const message = hint ? `${opError}\n\nHint: ${hint}` : opError;
-        return { content: [{ type: "text", text: message }], isError: true };
+        return attachMeta(
+          { content: [{ type: "text", text: message }], isError: true },
+          { ...readClassifiers(result), retried, boundProjectIdHash }
+        );
+      }
+      const meta: WithEngineMeta = { ...readClassifiers(result), retried, boundProjectIdHash };
+      if (opts?.onResult) {
+        const short = opts.onResult(result);
+        if (short) return attachMeta(short, meta);
       }
       if (opts?.toContent) {
-        return { content: opts.toContent(result) };
+        return attachMeta({ content: opts.toContent(result) }, meta);
       }
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      return attachMeta(
+        { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] },
+        meta
+      );
     } catch (err) {
       // Drop the cached client (it may point at a dead/rotated engine). Retry
       // once only for a provably pre-apply auth failure; anything else surfaces.
@@ -189,5 +256,8 @@ export async function withEngine<T>(
   }
 
   const msg = lastError instanceof Error ? lastError.message : String(lastError);
-  return { content: [{ type: "text", text: msg }], isError: true };
+  return attachMeta(
+    { content: [{ type: "text", text: msg }], isError: true },
+    { errorClass: "transport", retried, boundProjectIdHash }
+  );
 }

@@ -23,7 +23,7 @@ vi.mock("../../lib/telemetry.js", () => ({
   recordMcpSession: vi.fn(),
 }));
 
-import { withEngine } from "./with-engine.js";
+import { withEngine, WITH_ENGINE_META, type WithEngineMeta } from "./with-engine.js";
 
 afterEach(() => vi.clearAllMocks());
 
@@ -59,5 +59,75 @@ describe("withEngine — toContent image mapping", () => {
     expect(toContent).not.toHaveBeenCalled();
     expect(res.content[0]).toMatchObject({ type: "text" });
     expect((res.content[0] as any).text).toContain("did not include image data");
+  });
+
+  it("onResult short-circuits a successful result before toContent (bridge-required honesty)", async () => {
+    mockGetClient.mockResolvedValue({});
+    const toContent = vi.fn();
+    const res = await withEngine(
+      async () => ({ ok: true, failureReason: "bridge_required", error: "needs bridge" }),
+      {
+        toContent,
+        onResult: (snap: any) =>
+          snap.failureReason === "bridge_required"
+            ? { content: [{ type: "text", text: "Game capture not available." }], isError: true }
+            : null,
+      }
+    );
+    expect(res.isError).toBe(true);
+    expect(toContent).not.toHaveBeenCalled();
+    expect((res.content[0] as any).text).toContain("not available");
+  });
+
+  it("onResult returning null falls through to toContent", async () => {
+    mockGetClient.mockResolvedValue({});
+    const res = await withEngine(
+      async () => ({ ok: true, base64: "ZmFrZQ==", mime: "image/png" }),
+      {
+        onResult: () => null,
+        toContent: (snap: any) => [{ type: "image", data: snap.base64, mimeType: snap.mime }],
+      }
+    );
+    expect(res.isError).toBeFalsy();
+    expect(res.content.find((c: any) => c.type === "image")).toBeDefined();
+  });
+});
+
+describe("withEngine — structured-log metadata stamping", () => {
+  const meta = (res: unknown): WithEngineMeta | undefined =>
+    (res as Record<PropertyKey, unknown>)[WITH_ENGINE_META] as WithEngineMeta | undefined;
+
+  it("stamps retried:false and the bound hash on a first-attempt success", async () => {
+    mockGetClient.mockResolvedValue({ getBoundProjectIdHash: () => "hash-abc" });
+    const res = await withEngine(async () => ({ ok: true }));
+    expect(meta(res)?.retried).toBe(false);
+    expect(meta(res)?.boundProjectIdHash).toBe("hash-abc");
+  });
+
+  it("stamps failure classifiers (terminalState/errorClass) on an op failure", async () => {
+    mockGetClient.mockResolvedValue({ getBoundProjectIdHash: () => undefined });
+    const res = await withEngine(async () => ({
+      ok: false,
+      terminalState: "identity_mismatch",
+      errorClass: "rejected_identity",
+      error: "projectIdHash mismatch",
+    }));
+    expect(res.isError).toBe(true);
+    expect(meta(res)?.terminalState).toBe("identity_mismatch");
+    expect(meta(res)?.errorClass).toBe("rejected_identity");
+  });
+
+  it("stamps retried:true after a stale-token 401 recovery", async () => {
+    mockGetClient
+      .mockResolvedValueOnce({ getBoundProjectIdHash: () => "h" })
+      .mockResolvedValueOnce({ getBoundProjectIdHash: () => "h" });
+    let calls = 0;
+    const res = await withEngine(async () => {
+      calls += 1;
+      if (calls === 1) throw new Error("Engine API error 401: unauthorized");
+      return { ok: true };
+    });
+    expect(res.isError).toBeFalsy();
+    expect(meta(res)?.retried).toBe(true);
   });
 });

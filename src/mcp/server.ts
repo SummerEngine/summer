@@ -5,6 +5,7 @@ import { EngineApiClient } from "../lib/api-client.js";
 import { registerSceneTools } from "./tools/scene-tools.js";
 import { registerDebugTools } from "./tools/debug-tools.js";
 import { registerVisualTools } from "./tools/visual-tools.js";
+import { WITH_ENGINE_META, type WithEngineMeta } from "./tools/with-engine.js";
 import { registerProjectTools } from "./tools/project-tools.js";
 import { registerAssetTools } from "./tools/asset-tools.js";
 import { registerGenerateTools } from "./tools/generate-tools.js";
@@ -92,9 +93,11 @@ function installResultSizeLogger(server: {
     if (typeof handler !== "function") return original(...args);
 
     const wrapped = async (...handlerArgs: unknown[]) => {
+      const startedAt = Date.now();
       const result = await (handler as (...a: unknown[]) => unknown)(
         ...handlerArgs
       );
+      const durationMs = Date.now() - startedAt;
       try {
         if (
           result &&
@@ -102,27 +105,58 @@ function installResultSizeLogger(server: {
           "content" in result &&
           Array.isArray((result as { content: unknown }).content)
         ) {
-          let chars = 0;
-          for (const entry of (result as { content: Array<{ type?: string; text?: unknown }> })
-            .content) {
-            if (entry && entry.type === "text" && typeof entry.text === "string") {
-              chars += entry.text.length;
-            }
+          const debug = process.env.SUMMER_MCP_DEBUG === "1";
+          const isError = (result as { isError?: boolean }).isError === true;
+          // withEngine stamps failure classifiers + retried + bound hash on a
+          // non-enumerable symbol so we can log them here without every tool
+          // threading its own name through withEngine.
+          const meta = (result as Record<PropertyKey, unknown>)[WITH_ENGINE_META] as
+            | WithEngineMeta
+            | undefined;
+
+          // Structured per-call line. Verbose behind SUMMER_MCP_DEBUG=1; when the
+          // flag is off, log ONLY failures — the success path stays quiet.
+          if (debug || isError) {
+            const callLine = JSON.stringify({
+              event: "mcp:tool_call",
+              tool: name,
+              ok: !isError,
+              isError,
+              durationMs,
+              ...(meta?.terminalState ? { terminalState: meta.terminalState } : {}),
+              ...(meta?.errorClass ? { errorClass: meta.errorClass } : {}),
+              ...(meta?.failureReason ? { failureReason: meta.failureReason } : {}),
+              ...(meta?.retried ? { retried: true } : {}),
+              ...(meta?.boundProjectIdHash
+                ? { boundProjectIdHash: meta.boundProjectIdHash }
+                : {}),
+            });
+            process.stderr.write(`[summer-mcp] ${callLine}\n`);
           }
-          const bytes = Buffer.byteLength(
-            (result as { content: Array<{ type?: string; text?: unknown }> }).content
-              .filter((e) => e && e.type === "text" && typeof e.text === "string")
-              .map((e) => e.text as string)
-              .join(""),
-            "utf8"
-          );
-          const line = JSON.stringify({
-            event: "mcp:result_size",
-            tool_name: name,
-            chars,
-            bytes,
-          });
-          process.stderr.write(`[summer-mcp] ${line}\n`);
+
+          if (debug) {
+            let chars = 0;
+            for (const entry of (result as { content: Array<{ type?: string; text?: unknown }> })
+              .content) {
+              if (entry && entry.type === "text" && typeof entry.text === "string") {
+                chars += entry.text.length;
+              }
+            }
+            const bytes = Buffer.byteLength(
+              (result as { content: Array<{ type?: string; text?: unknown }> }).content
+                .filter((e) => e && e.type === "text" && typeof e.text === "string")
+                .map((e) => e.text as string)
+                .join(""),
+              "utf8"
+            );
+            const line = JSON.stringify({
+              event: "mcp:result_size",
+              tool_name: name,
+              chars,
+              bytes,
+            });
+            process.stderr.write(`[summer-mcp] ${line}\n`);
+          }
         }
       } catch {
         // Telemetry must never break the tool call.

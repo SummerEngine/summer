@@ -276,7 +276,7 @@ Skills don't list steps. They encode the **order of operations**: diagnose befor
 | Scene | `summer_add_node`, `summer_set_prop`, `summer_instantiate_scene`, `summer_replace_node`, `summer_get_scene_tree`, `summer_inspect_node`, `summer_batch` |
 | Diagnostics | `summer_get_script_errors`, `summer_get_diagnostics`, `summer_get_console`, `summer_get_debugger_errors`, `summer_get_debugger_warnings` |
 | Runtime | `summer_play`, `summer_stop`, `summer_is_running` |
-| Visual | `summer_screenshot` (see the viewport or running game) |
+| Visual | `summer_screenshot` (see the editor viewport, an offscreen scene render, or the running game) |
 | Project | `summer_get_project_context`, `summer_open_main_scene`, `summer_project_setting`, `summer_input_map_bind` |
 | Assets | `summer_search_assets`, `summer_import_asset`, `summer_import_from_url`, `summer_generate_image`, `summer_generate_3d`, `summer_generate_audio`, `summer_generate_video` |
 

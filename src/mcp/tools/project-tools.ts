@@ -171,7 +171,8 @@ mutating the project.`,
     `AI-first operating guide for Summer Engine MCP.
 
 Call this at the start of a fresh chat before touching scenes.
-It returns the safe workflow, anti-patterns, and recovery steps.`,
+It returns the safe workflow, the verification ladder, honesty rules,
+anti-patterns, and recovery steps.`,
     {},
     async () => ({
       content: [
@@ -183,9 +184,9 @@ It returns the safe workflow, anti-patterns, and recovery steps.`,
                 "Understand the request and outline a brief plan before reaching for tools.",
                 "Default medium is host file tools: write/edit .gd/.cs/.tscn/.tres/.json/docs/config directly as text.",
                 "Use Summer MCP only when you need the LIVE engine: play/stop, diagnostics, screenshots/verification, navmesh or light bake, runtime inspect, or asset import.",
-                "Call summer_get_project_context first so you do not guess scene paths or the project language.",
+                "Call summer_get_project_context first so you do not guess scene paths or the project language. It also BINDS this session to the currently-open project (see projectBinding below).",
                 "Use projectMemory from summer_get_project_context to decide which .summer Markdown files to read before creative/audio/dialogue/level/character work.",
-                "After writing code, PLAY the scene you just made and read summer_get_diagnostics; iterate until it launches clean instead of waiting for the user to navigate to it.",
+                "After writing code, VERIFY through the engine (see verificationLadder) instead of waiting for the user to navigate to it.",
               ],
               safeDefaults: [
                 "Never guess scene filenames (main.tscn/Main.tscn) -- get them from summer_get_project_context.",
@@ -199,7 +200,54 @@ It returns the safe workflow, anti-patterns, and recovery steps.`,
                 "1. Understand what the user wants (one pass, no tool spelunking first).",
                 "2. Outline the plan fast and briefly; proceed once it is clearly right.",
                 "3. Execute in pure code -- edit .gd/.tscn/.tres as text (GDScript by default, C# only if the project already uses it).",
-                "4. Play the scene/game (start with the scene you just made), read console + script/debugger errors via summer_get_diagnostics, fix, and repeat until it launches clean.",
+                "4. Verify through the engine using the verificationLadder below, fix, and repeat until it launches clean.",
+              ],
+              // The MCP-native verification ladder. Climb only as high as the
+              // change demands: a script edit needs rung 1; a gameplay change
+              // needs rungs 3-4. Each rung is a REAL engine call, not a claim.
+              verificationLadder: {
+                "1_compiles": [
+                  "After writing/editing a .gd file, call summer_get_script_errors <path> — compiles without running the game.",
+                  "For a project-wide sweep of editor + runtime issues, call summer_get_diagnostics (it tells you whether to then read summer_get_console / summer_get_debugger_errors).",
+                ],
+                "2_looks_right": [
+                  "To SEE the result, call summer_screenshot. Pick the target deliberately:",
+                  "  target:'viewport' (default) = the editor's CURRENT open tab, exactly as it looks now. Edit-time check. No game boot.",
+                  "  target:'scene' = an OFFSCREEN render of a scene FILE (pass scenePath). No game boot; physics/particles/animations are STATIC at t=0. Best for 'is the composition/scale right' without disturbing the open tab. It also confesses if the scene has no Camera3D (renders grey/black when played) or no light (lit materials look black) — READ those warnings.",
+                  "  target:'game' = a frame from the RUNNING game (real runtime state). summer_play FIRST. Over a plain local HTTP connection this returns an honest failure (needs the Summer desktop bridge); when it fails, fall back to viewport/scene or ask the user.",
+                ],
+                "3_runs": [
+                  "Compose the run-and-check yourself — there is no single 'verify' tool:",
+                  "summer_clear_console  -> clean slate",
+                  "summer_play [scene]   -> boot the game (or a specific scene)",
+                  "summer_get_debugger_errors  -> runtime errors (null refs, missing nodes, physics)",
+                  "summer_screenshot target:'game'  -> optional visual of the live frame",
+                  "summer_stop  -> ALWAYS stop; scene mutations are refused while the game runs",
+                ],
+                "4_interactive": [
+                  "To prove input-driven behavior (does jump/move/shoot actually work), you have two routes when the engine build supports them (both go through summer_batch as raw ops — see rawOpsViaBatch):",
+                  "SimulateInput: inject a single action/key/mouse/axis into the RUNNING game, then re-check screenshot/debugger. Requires summer_play first.",
+                  "RunVerification: spawn a hidden, disposable game instance that runs a GDScript probe (press inputs, read state, save frames) and dies — never touches the user's editor. Returns results.json + frames. Best for a scripted 'does X happen when I do Y' assertion.",
+                  "If neither op is available on this engine build (failure_reason:'unsupported' or an unknown-op error comes back), do NOT fake it — ask the user to try the interaction and report what they see.",
+                ],
+              },
+              // HONESTY — mirror the in-product agent's vision rules. A capture is
+              // a fact, not a formality; a failed capture is itself a result.
+              honestyRules: [
+                "NEVER describe an image you did not actually receive. If summer_screenshot returned isError or a text-only fallback (no image block), say the capture failed and why — do not invent what the frame 'probably' shows.",
+                "A failed or blocked capture is a RESULT, not a dead end: report it, then climb down the ladder (scene->viewport) or ask the user for a screenshot.",
+                "Describe only what is actually in the returned frame. Do not pad with expected content.",
+                "target:'scene' is STATIC (t=0) and may use a synthetic camera — do not claim animation/particles/gameplay motion from it, and heed its no-camera / no-light / synthetic-camera warnings.",
+                "Pass structured engine failures (failure_reason, terminalState, errorClass) through to the user verbatim — never soften 'unsupported' or 'bridge_required' into a vague 'it didn't work'.",
+              ],
+              // The session is pinned to the project open when you first called
+              // summer_get_project_context. This keeps a mutation from landing in
+              // the WRONG project after an in-place project switch.
+              projectBinding: [
+                "summer_get_project_context binds this session to the currently-open project and is the deliberate (re)bind point.",
+                "If the engine later switches projects in place, mutating ops are REJECTED with identity_mismatch (nothing is applied — your edit did NOT land in the wrong project).",
+                "summer_screenshot adds a projectMismatch WARNING when the engine's live project no longer matches this binding — the frame may be from the wrong project; do not trust it until you rebind.",
+                "To intentionally follow the switch, call summer_get_project_context again to rebind, then retry.",
               ],
               liveEngineFlow: [
                 "Use this flow ONLY when you genuinely need live engine state (navmesh/light bake, instancing into an already-open scene, runtime inspect):",
@@ -210,11 +258,24 @@ It returns the safe workflow, anti-patterns, and recovery steps.`,
                 "summer_save_scene",
                 "summer_get_diagnostics",
               ],
+              // summer_batch forwards each {op, ...} verbatim to the engine, so
+              // engine ops that have no dedicated tool are still reachable.
+              rawOpsViaBatch: [
+                "summer_batch runs an array of raw engine ops in one undo group; each op is passed through untouched, so newer engine ops with no dedicated tool are still callable.",
+                "SimulateInput (drive the RUNNING game): summer_batch ops:[{op:'SimulateInput', type:'action', action:'jump', pressed:true}]. type is 'action' | 'key' | 'mouse_click' | 'axis'. summer_play first. Structured failure_reasons (incl 'unsupported' on older builds) come back verbatim — surface them.",
+                "RunVerification (hidden probe instance): summer_batch ops:[{op:'RunVerification', probe_source:'<gdscript>', max_seconds:20}]. probe_source extends SummerProbeBase and uses report()/save_frame()/press()/key()/finish(); returns {ok, results, frames, out_dir} or {ok:false, failure_reason: spawn_failed|timeout|bad_args|no_project}.",
+                "These are runtime ops, not scene mutations — the batch undo group is a harmless no-op for them.",
+              ],
               recovery: [
                 "If you see 'no scene open': run summer_open_main_scene.",
                 "If open_scene fails: re-check mainScene from summer_get_project_context.",
-                "If save fails: verify scene is open and game is not running.",
+                "If save fails: verify scene is open and game is not running (summer_is_running / summer_stop).",
+                "If a mutation is rejected with identity_mismatch: the engine switched projects — call summer_get_project_context to rebind (only if you meant to follow it), then retry.",
                 "If a .tscn you wrote keeps reverting: the editor has that scene open -- reload or close the tab, then write again.",
+                "If a run op or SimulateInput returns 'unsupported' / an unknown-op error: this engine build predates it — fall back to summer_play + summer_get_debugger_errors, or ask the user to interact.",
+              ],
+              debugging: [
+                "Set SUMMER_MCP_DEBUG=1 in the MCP server's environment to log a structured stderr line per tool call (tool, ok, durationMs, terminalState, errorClass, failureReason, retried, boundProjectIdHash). With the flag OFF, only failures are logged. Use it to see exactly which op failed and why.",
               ],
             },
             null,

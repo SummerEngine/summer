@@ -320,7 +320,7 @@ Use when you need the sub-properties of a resource attached to a node. For examp
 
   server.tool(
     "summer_batch",
-    `Execute multiple operations in a single call, grouped into one undo step.
+    `Execute multiple operations in a single call, grouped into one undo step. Each op is forwarded to the engine VERBATIM, so this is also how you reach engine ops that have no dedicated tool.
 
 The user can undo everything with a single Ctrl+Z. Use this when building something that involves multiple nodes and properties — e.g., creating a player character with collision, camera, and properties.
 
@@ -328,7 +328,11 @@ Each op in the array uses the same format as the individual tools:
 - {"op": "AddNode", "parent": "/", "type": "MeshInstance3D", "name": "Floor"}
 - {"op": "SetProp", "path": "Floor", "key": "position", "value": "Vector3(0, -1, 0)"}
 - {"op": "SetProp", "path": "Floor", "key": "mesh", "value": "PlaneMesh"}
-- {"op": "SetResourceProperty", "nodePath": "Floor", "resourceProperty": "mesh", "subProperty": "size", "value": "Vector2(20, 20)"}`,
+- {"op": "SetResourceProperty", "nodePath": "Floor", "resourceProperty": "mesh", "subProperty": "size", "value": "Vector2(20, 20)"}
+
+RAW RUNTIME OPS (interactive verification — engine-build dependent; structured failure_reason incl "unsupported" passes through verbatim):
+- SimulateInput — drive the RUNNING game (summer_play first): {"op": "SimulateInput", "type": "action", "action": "jump", "pressed": true}. type is "action" | "key" | "mouse_click" | "axis".
+- RunVerification — spawn a hidden, disposable game instance that runs a GDScript probe and dies (never touches the editor): {"op": "RunVerification", "probe_source": "extends SummerProbeBase\\nfunc _ready(): await super._ready(); report('ok', true); finish()", "max_seconds": 20}. Returns {ok, results, frames, out_dir}. Probe API: report()/save_frame()/press()/key()/finish().`,
     {
       ops: z.array(z.record(z.unknown())).describe("Array of operation objects, each with 'op' plus its parameters"),
     },

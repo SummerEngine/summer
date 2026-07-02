@@ -26,11 +26,28 @@ export type EngineSnapshot = {
   bytes?: number;
   error?: string;
   metadata?: Record<string, unknown>;
+  /** Structured failure classifier the engine returns on a game snapshot over
+   *  local HTTP (409 `bridge_required`) — surfaced verbatim so the tool can give
+   *  an honest, actionable message instead of a truncated generic 409 string.
+   *  When P4.4 lands (game snapshots answer 200/202 over HTTP) this simply
+   *  never fires and the tool works. */
+  failureReason?: string;
+  /** Scene-preview confession fields (P4.3). Populated only for target:"scene".
+   *  A scene with no Camera3D renders grey/black when played; the engine reports
+   *  whether it had to synthesize a camera/light so the model can warn honestly. */
+  sceneHasCamera?: boolean;
+  sceneHadLight?: boolean;
+  usedSyntheticCamera?: boolean;
+  /** Set true when the bound projectIdHash no longer matches the engine's live
+   *  health hash at capture time — the frame may be from the WRONG project
+   *  (item 4, client-side drift check). */
+  projectMismatch?: boolean;
 };
 
 type SnapshotPayload = Record<string, unknown> & {
   ok?: boolean;
   error?: string;
+  failure_reason?: string;
   base64?: string;
   image_base64?: string;
   width?: number;
@@ -40,6 +57,9 @@ type SnapshotPayload = Record<string, unknown> & {
   context?: string;
   op?: string;
   provenance?: unknown;
+  scene_has_camera?: boolean;
+  scene_had_light?: boolean;
+  used_synthetic_camera?: boolean;
 };
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -56,6 +76,10 @@ function numberFrom(value: unknown): number | undefined {
   return typeof value === "number" ? value : undefined;
 }
 
+function boolFrom(value: unknown): boolean | undefined {
+  return typeof value === "boolean" ? value : undefined;
+}
+
 function findSnapshotPayload(value: unknown): SnapshotPayload | null {
   const record = asRecord(value);
   if (!record) return null;
@@ -64,7 +88,8 @@ function findSnapshotPayload(value: unknown): SnapshotPayload | null {
     typeof record.base64 === "string" ||
     typeof record.image_base64 === "string" ||
     record.op === "ViewportSnapshot" ||
-    record.op === "GameSnapshot"
+    record.op === "GameSnapshot" ||
+    record.op === "ScenePreview"
   ) {
     return record as SnapshotPayload;
   }
@@ -365,7 +390,7 @@ export class EngineApiClient {
   }
 
   private async writeSnapshotFile(
-    kind: "viewport" | "game",
+    kind: "viewport" | "game" | "scene",
     buffer: Buffer,
     ext: string
   ): Promise<string> {
@@ -384,6 +409,17 @@ export class EngineApiClient {
     // The terminal result is the apply dict; the image rides as base64 inside it
     // (no raw-binary channel). Legacy/dormant engines answer 200 synchronously
     // with the same payload shape — _requestQueued resolves both.
+    //
+    // Game capture over local HTTP structurally 409s today with a STRUCTURED
+    // reason (`failure_reason:"unsupported_transport"`, `bridge_required:true`,
+    // tool_net_thread.cpp:495-503). Detect that specific shape and return it
+    // verbatim so the tool can give an honest message — do NOT hardcode "game
+    // always fails": once the engine answers 200/202 (P4.4), the normal path
+    // below just works.
+    if (kind === "game") {
+      const bridge = await this._detectBridgeRequired(`/api/snapshot/${kind}`);
+      if (bridge) return bridge;
+    }
     let response: unknown;
     try {
       response = await this._requestQueued("GET", `/api/snapshot/${kind}`, undefined, 60_000);
@@ -391,11 +427,20 @@ export class EngineApiClient {
       return { ok: false, error: err instanceof Error ? err.message : String(err) };
     }
 
+    return this._parseSnapshotResponse(response, kind);
+  }
+
+  /** Shared: turn an ops/snapshot response envelope into an EngineSnapshot.
+   *  Used by viewport/game snapshots and by scenePreview. */
+  private async _parseSnapshotResponse(
+    response: unknown,
+    kind: "viewport" | "game" | "scene"
+  ): Promise<EngineSnapshot> {
     const payload = findSnapshotPayload(response);
     if (!payload) {
       return {
         ok: false,
-        error: "Snapshot response did not include a viewport/game payload.",
+        error: "Snapshot response did not include an image payload.",
       };
     }
 
@@ -404,6 +449,10 @@ export class EngineApiClient {
       return {
         ok: false,
         error: stringFrom(payload.error) ?? "Snapshot response did not include image data.",
+        failureReason: stringFrom(payload.failure_reason),
+        sceneHasCamera: boolFrom(payload.scene_has_camera),
+        sceneHadLight: boolFrom(payload.scene_had_light),
+        usedSyntheticCamera: boolFrom(payload.used_synthetic_camera),
         metadata: withoutImageData(payload),
       };
     }
@@ -411,6 +460,25 @@ export class EngineApiClient {
     const { format, mime, ext } = snapshotFormat(payload);
     const buffer = Buffer.from(base64, "base64");
     const localPath = await this.writeSnapshotFile(kind, buffer, ext);
+
+    // Client-side identity drift check (item 4). The engine's identity guard only
+    // acts on options.projectIdHash inside a queued command; a GET snapshot from
+    // `fetch` carries no reliable body, so we cannot count on the engine to reject
+    // a drifted read. Re-read health and compare to the bound hash — if the engine
+    // has switched projects since we bound, this frame may be from the WRONG
+    // project. Best-effort: a failed health read never blocks the (already
+    // captured) image.
+    let projectMismatch: boolean | undefined;
+    if (this.boundProjectIdHash) {
+      try {
+        const health = await checkEngineHealth(this.port);
+        if (health?.projectIdHash && health.projectIdHash !== this.boundProjectIdHash) {
+          projectMismatch = true;
+        }
+      } catch {
+        // ignore — never fail a capture on a transient health read
+      }
+    }
 
     return {
       ok: payload.ok !== false,
@@ -425,7 +493,46 @@ export class EngineApiClient {
       op: stringFrom(payload.op),
       provenance: payload.provenance,
       bytes: buffer.byteLength,
+      sceneHasCamera: boolFrom(payload.scene_has_camera),
+      sceneHadLight: boolFrom(payload.scene_had_light),
+      usedSyntheticCamera: boolFrom(payload.used_synthetic_camera),
+      projectMismatch,
       metadata: withoutImageData(payload),
+    };
+  }
+
+  /**
+   * Probe /api/snapshot/game for the structural 409 `bridge_required` shape
+   * (tool_net_thread.cpp:495-503). Returns a structured failure only when the
+   * engine actually answers 409 with `bridge_required` / `unsupported_transport`;
+   * ANY other status (200/202/other) returns null so the caller proceeds to the
+   * normal queued path — so the moment the engine starts answering over HTTP
+   * (P4.4), game capture just works with no code change here.
+   */
+  private async _detectBridgeRequired(path: string): Promise<EngineSnapshot | null> {
+    let res: Response;
+    try {
+      res = await this._fetchRaw("GET", path, undefined, 15_000);
+    } catch {
+      // Transport error — let the normal path surface it uniformly.
+      return null;
+    }
+    if (res.status !== 409) return null;
+    const body = (await res.json().catch(() => ({}))) as SnapshotPayload;
+    const reason = stringFrom(body.failure_reason);
+    const bridge = body.bridge_required === true;
+    if (!bridge && reason !== "unsupported_transport") {
+      // A 409 we don't recognize — surface it as a plain error rather than
+      // silently claiming "bridge required".
+      return {
+        ok: false,
+        error: stringFrom(body.error) ?? "Engine returned 409 for game snapshot.",
+      };
+    }
+    return {
+      ok: false,
+      failureReason: reason ?? "bridge_required",
+      error: stringFrom(body.error) ?? "Game snapshots require the desktop bridge async transport.",
     };
   }
 
@@ -435,6 +542,39 @@ export class EngineApiClient {
 
   async gameSnapshot(): Promise<EngineSnapshot> {
     return this.snapshot("game");
+  }
+
+  /**
+   * Offscreen scene render via the `ScenePreview` op over /api/ops (no game
+   * boot; physics/animations are static). Mirrors the web previewScene op input
+   * (snapshot-tools.ts): { op:'ScenePreview', scene_path?, framing?, size?,
+   * node_path? } — scene_path optional, engine defaults to the open scene. The
+   * result carries image_base64 + mime (+ width/height) plus the P4.3 confession
+   * fields (scene_has_camera / scene_had_light / used_synthetic_camera).
+   */
+  async scenePreview(input?: {
+    scenePath?: string;
+    framing?: "auto" | "top" | "front" | "iso";
+    size?: [number, number];
+    nodePath?: string;
+  }): Promise<EngineSnapshot> {
+    const opInput: Record<string, unknown> = { op: "ScenePreview" };
+    const trimmed = input?.scenePath?.trim();
+    if (trimmed && trimmed !== "." && trimmed !== "./") opInput.scene_path = trimmed;
+    if (input?.framing) opInput.framing = input.framing;
+    if (input?.size) opInput.size = input.size;
+    if (input?.nodePath) opInput.node_path = input.nodePath;
+
+    let response: unknown;
+    try {
+      // executeOps stamps the bound identity so a drifted project is rejected
+      // (identity_mismatch) before rendering — ScenePreview reads no game state
+      // but still targets a project's resources.
+      response = await this.executeOps([opInput]);
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
+    return this._parseSnapshotResponse(response, "scene");
   }
 
   getPort(): number {

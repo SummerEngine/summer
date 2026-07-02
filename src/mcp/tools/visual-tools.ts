@@ -18,22 +18,77 @@ export function registerVisualTools(server: McpServer): void {
 Use this to visually verify your work: scene layout, asset placement, scale, framing, lighting, materials, missing/untextured assets, or runtime gameplay state. You see the actual pixels — no description layer in between.
 
 target:
-  "viewport" (default) — the editor's current 3D/2D scene view. Works without running the game. Use for edit-time checks of how the scene looks.
-  "game" — a frame from the running game. The game must be started first (summer_play). Use to verify runtime behavior.
+  "viewport" (default) — the editor's CURRENT view (whatever scene/tab is open). No game boot. Use for edit-time checks of how the scene looks right now.
+  "scene" — an OFFSCREEN render of a scene file (no game boot; physics/particles/animations are static at t=0). Optionally pass scenePath/framing/size/nodePath. Use for a quick composed look at a scene without touching the editor's open tab.
+  "game" — a frame from the RUNNING game (real runtime state). Start the game first (summer_play). Not available over a plain local connection — needs the Summer desktop app bridge.
 
-Static frame only — one moment, not motion. On macOS the game often runs in a floating window that cannot be captured; if a game capture fails, prefer "viewport", or ask the user to share a screenshot.`,
+Static frame only — one moment, not motion. If a game capture is unavailable, use "viewport" or "scene", or ask the user to share a screenshot of the running game.`,
     {
       target: z
-        .enum(["viewport", "game"])
+        .enum(["viewport", "scene", "game"])
         .optional()
         .default("viewport")
-        .describe('"viewport" = editor scene view (default), "game" = running game frame'),
+        .describe(
+          '"viewport" = editor current view (default), "scene" = offscreen render of a scene file, "game" = running game frame'
+        ),
+      scenePath: z
+        .string()
+        .optional()
+        .describe(
+          'target:"scene" only. Full scene path, e.g. "res://main.tscn". Omit to render the currently-open scene.'
+        ),
+      framing: z
+        .enum(["auto", "top", "front", "iso"])
+        .optional()
+        .describe('target:"scene" only. Camera framing preset. Default: auto.'),
+      size: z
+        .array(z.number().int().positive())
+        .length(2)
+        .optional()
+        .describe('target:"scene" only. Output image [width, height] in pixels.'),
+      nodePath: z
+        .string()
+        .optional()
+        .describe('target:"scene" only. Scene-tree node path to frame on.'),
     },
-    async ({ target }) =>
+    async ({ target, scenePath, framing, size, nodePath }) =>
       withEngine(
-        async (client) =>
-          target === "game" ? client.gameSnapshot() : client.viewportSnapshot(),
+        async (client) => {
+          if (target === "game") return client.gameSnapshot();
+          if (target === "scene")
+            return client.scenePreview({
+              scenePath,
+              framing,
+              size: size as [number, number] | undefined,
+              nodePath,
+            });
+          return client.viewportSnapshot();
+        },
         {
+          // Game capture is structurally blocked over local HTTP today (409
+          // bridge_required). Treat that as a clean, honest failure rather than a
+          // truncated generic error — fail loud (isError) so the model does not
+          // proceed as if it saw the game. Written so that when the engine starts
+          // answering over HTTP (P4.4) `failureReason` never fires and the normal
+          // image path below just works.
+          onResult: (snap: EngineSnapshot) => {
+            if (target === "game" && snap.failureReason === "bridge_required") {
+              return {
+                content: [
+                  {
+                    type: "text",
+                    text:
+                      "Game capture is not available over this connection (requires the Summer desktop app bridge). " +
+                      "Use target:'viewport' for the editor view, target:'scene' for an offscreen scene render, " +
+                      "or ask the user to describe / screenshot the running game.\n\n" +
+                      `Engine reason: ${snap.error ?? "unsupported_transport"}`,
+                  },
+                ],
+                isError: true,
+              };
+            }
+            return null;
+          },
           toContent: (snap: EngineSnapshot) => {
             // withEngine only calls toContent on success (ok:true, error cleared
             // by extractOpError). Missing image bytes on a "success" is still
@@ -51,13 +106,49 @@ Static frame only — one moment, not motion. On macOS the game often runs in a 
             }
             const dims =
               snap.width && snap.height ? `${snap.width}x${snap.height}` : "unknown size";
-            const label = target === "game" ? "Running game frame" : "Editor viewport";
+            const label =
+              target === "game"
+                ? "Running game frame"
+                : target === "scene"
+                  ? "Scene preview (offscreen render, physics/animations static)"
+                  : "Editor viewport";
+
+            const warnings: string[] = [];
+            // Project-drift warning (item 4): the engine may have switched
+            // projects since this session bound — this frame could be from the
+            // WRONG project.
+            if (snap.projectMismatch) {
+              warnings.push(
+                "WARNING: the engine is now on a DIFFERENT project than this session is bound to — this frame may be from the wrong project. Call summer_get_project_context to rebind before trusting it."
+              );
+            }
+            // Scene-preview confession fields (P4.3): a scene with no camera plays
+            // grey/black.
+            if (target === "scene") {
+              if (snap.sceneHasCamera === false) {
+                warnings.push(
+                  "WARNING: this scene has no Camera3D — it will render grey/black when played."
+                );
+              }
+              if (snap.sceneHadLight === false) {
+                warnings.push(
+                  "WARNING: this scene has no light — lit materials may appear black when played."
+                );
+              }
+              if (snap.usedSyntheticCamera) {
+                warnings.push(
+                  "NOTE: this preview used a synthetic camera the engine added just for the render — the scene itself has no camera, so it will NOT frame like this when played."
+                );
+              }
+            }
+
+            const caption =
+              `${label} (${dims}). Saved to ${snap.localPath ?? "n/a"}. Review the image above and describe what you actually see.` +
+              (warnings.length ? `\n\n${warnings.join("\n")}` : "");
+
             return [
               { type: "image", data: snap.base64, mimeType: snap.mime || "image/jpeg" },
-              {
-                type: "text",
-                text: `${label} (${dims}). Saved to ${snap.localPath ?? "n/a"}. Review the image above and describe what you actually see.`,
-              },
+              { type: "text", text: caption },
             ];
           },
         }

@@ -169,3 +169,231 @@ describe("EngineApiClient — async 202->poll port", () => {
     expect(r.errorClass).toBe("transient");
   });
 });
+
+describe("EngineApiClient — See-Work Loop P5 capture additions", () => {
+  const boundClient = () => new EngineApiClient(6550, "test-token", "bound-hash");
+
+  it("gameSnapshot detects the 409 bridge_required shape and returns it structured (not a truncated throw)", async () => {
+    mockFetch((url) => {
+      if (url.includes("/api/snapshot/game")) {
+        return json(
+          {
+            ok: false,
+            error: "Game snapshots require the desktop bridge async transport",
+            failure_reason: "unsupported_transport",
+            bridge_required: true,
+          },
+          409
+        );
+      }
+      return json({}, 404);
+    });
+    const snap = await client().gameSnapshot();
+    expect(snap.ok).toBe(false);
+    expect(snap.failureReason).toBe("unsupported_transport");
+    expect(snap.error).toContain("desktop bridge");
+  });
+
+  it("gameSnapshot falls through to the normal queued path when the engine answers 200/202 (P4.4 forward-compat)", async () => {
+    const b64 = Buffer.from("game-bytes").toString("base64");
+    mockFetch((url) => {
+      // No 409 — the bridge probe sees a 202 and returns null, so the normal
+      // queued path runs.
+      if (url.includes("/api/snapshot/game")) {
+        return json({ accepted: true, status: "queued", requestId: "g1" }, 202);
+      }
+      if (url.includes("/api/ops/result")) {
+        return json({
+          requestId: "g1",
+          status: "done",
+          result: {
+            status: "ok",
+            results: [{ op: "GameSnapshot", ok: true, image_base64: b64, mime: "image/jpeg", width: 8, height: 8 }],
+          },
+          terminalState: "applied",
+        });
+      }
+      return json({}, 404);
+    });
+    const snap = await client().gameSnapshot();
+    try {
+      expect(snap.ok).toBe(true);
+      expect(snap.failureReason).toBeUndefined();
+      expect(snap.bytes).toBeGreaterThan(0);
+    } finally {
+      if (snap.localPath) {
+        try {
+          rmSync(snap.localPath);
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+  });
+
+  it("scenePreview sends the ScenePreview op via /api/ops and surfaces confession fields", async () => {
+    const b64 = Buffer.from("scene-bytes").toString("base64");
+    const sink: { lastBody?: unknown } = {};
+    mockFetchCapturing((url, method) => {
+      if (method === "POST" && url.includes("/api/ops")) {
+        return json({ accepted: true, status: "queued", requestId: "sc1" }, 202);
+      }
+      if (url.includes("/api/ops/result")) {
+        return json({
+          requestId: "sc1",
+          status: "done",
+          result: {
+            status: "ok",
+            results: [
+              {
+                op: "ScenePreview",
+                ok: true,
+                image_base64: b64,
+                mime: "image/jpeg",
+                width: 20,
+                height: 20,
+                scene_has_camera: false,
+                scene_had_light: true,
+                used_synthetic_camera: true,
+              },
+            ],
+          },
+          terminalState: "applied",
+        });
+      }
+      return json({}, 404);
+    }, sink);
+
+    const snap = await client().scenePreview({ scenePath: "res://main.tscn", framing: "iso" });
+    try {
+      expect(snap.ok).toBe(true);
+      expect(snap.sceneHasCamera).toBe(false);
+      expect(snap.sceneHadLight).toBe(true);
+      expect(snap.usedSyntheticCamera).toBe(true);
+      // op input mirrors the web previewScene shape (scene_path / framing).
+      const body = sink.lastBody as { ops?: Array<Record<string, unknown>> };
+      expect(body.ops?.[0]).toMatchObject({ op: "ScenePreview", scene_path: "res://main.tscn", framing: "iso" });
+    } finally {
+      if (snap.localPath) {
+        try {
+          rmSync(snap.localPath);
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+  });
+
+  it("scenePreview drops sentinel '.' / './' scene paths (renders the open scene)", async () => {
+    const b64 = Buffer.from("x").toString("base64");
+    const sink: { lastBody?: unknown } = {};
+    mockFetchCapturing((url, method) => {
+      if (method === "POST" && url.includes("/api/ops")) {
+        return json({ accepted: true, status: "queued", requestId: "sc2" }, 202);
+      }
+      if (url.includes("/api/ops/result")) {
+        return json({
+          requestId: "sc2",
+          status: "done",
+          result: { status: "ok", results: [{ op: "ScenePreview", ok: true, image_base64: b64, mime: "image/jpeg" }] },
+          terminalState: "applied",
+        });
+      }
+      return json({}, 404);
+    }, sink);
+
+    const snap = await client().scenePreview({ scenePath: "." });
+    try {
+      const body = sink.lastBody as { ops?: Array<Record<string, unknown>> };
+      expect(body.ops?.[0]).toEqual({ op: "ScenePreview" });
+      expect(body.ops?.[0]).not.toHaveProperty("scene_path");
+    } finally {
+      if (snap.localPath) {
+        try {
+          rmSync(snap.localPath);
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+  });
+
+  it("viewportSnapshot flags projectMismatch when the engine's live hash drifts from the bound hash", async () => {
+    const b64 = Buffer.from("vp").toString("base64");
+    mockFetch((url) => {
+      if (url.includes("/api/snapshot/viewport")) {
+        return json({ accepted: true, status: "queued", requestId: "v1" }, 202);
+      }
+      if (url.includes("/api/ops/result")) {
+        return json({
+          requestId: "v1",
+          status: "done",
+          result: { status: "ok", results: [{ op: "ViewportSnapshot", ok: true, image_base64: b64, mime: "image/jpeg" }] },
+          terminalState: "applied",
+        });
+      }
+      if (url.includes("/api/health")) {
+        return json({
+          ok: true,
+          engine: "summer",
+          version: "0.5.43",
+          instanceId: "inst-1",
+          projectIdHash: "DIFFERENT-hash",
+        });
+      }
+      return json({}, 404);
+    });
+    const snap = await boundClient().viewportSnapshot();
+    try {
+      expect(snap.ok).toBe(true);
+      expect(snap.projectMismatch).toBe(true);
+    } finally {
+      if (snap.localPath) {
+        try {
+          rmSync(snap.localPath);
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+  });
+
+  it("viewportSnapshot does NOT flag mismatch when the live hash matches the bound hash", async () => {
+    const b64 = Buffer.from("vp").toString("base64");
+    mockFetch((url) => {
+      if (url.includes("/api/snapshot/viewport")) {
+        return json({ accepted: true, status: "queued", requestId: "v2" }, 202);
+      }
+      if (url.includes("/api/ops/result")) {
+        return json({
+          requestId: "v2",
+          status: "done",
+          result: { status: "ok", results: [{ op: "ViewportSnapshot", ok: true, image_base64: b64, mime: "image/jpeg" }] },
+          terminalState: "applied",
+        });
+      }
+      if (url.includes("/api/health")) {
+        return json({
+          ok: true,
+          engine: "summer",
+          version: "0.5.43",
+          instanceId: "inst-1",
+          projectIdHash: "bound-hash",
+        });
+      }
+      return json({}, 404);
+    });
+    const snap = await boundClient().viewportSnapshot();
+    try {
+      expect(snap.projectMismatch).toBeFalsy();
+    } finally {
+      if (snap.localPath) {
+        try {
+          rmSync(snap.localPath);
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+  });
+});

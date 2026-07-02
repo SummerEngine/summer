@@ -360,10 +360,20 @@ function buildMcpToolPlan(
   }
 
   if (verification !== "none") {
-    verify.push("summer_get_script_errors", "summer_get_diagnostics");
+    // Rung 1-2 of the ladder: does it compile / does it look right.
+    verify.push("summer_get_script_errors", "summer_get_diagnostics", "summer_screenshot");
   }
   if (verification === "full") {
-    verify.push("summer_clear_console", "summer_play", "summer_get_debugger_errors", "summer_stop");
+    // Rung 3: run it and read runtime errors. Ordered as the composed loop —
+    // clear -> play -> read runtime errors -> look at the live frame -> stop.
+    // (There is no single "verify" tool; the agent composes these.)
+    verify.push(
+      "summer_clear_console",
+      "summer_play",
+      "summer_get_debugger_errors",
+      "summer_screenshot",
+      "summer_stop"
+    );
   }
 
   return { start, mutate, assets, verify };

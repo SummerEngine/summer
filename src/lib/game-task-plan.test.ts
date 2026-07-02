@@ -14,6 +14,47 @@ describe("buildGameTaskPlan", () => {
     expect(plan.mcpToolPlan.verify).toContain("summer_play");
   });
 
+  it("full verification composes the run-and-look loop and stops the game", () => {
+    const plan = buildGameTaskPlan({
+      goal: "Add a double jump to the player and make sure it works",
+      mode: "feature",
+      verification: "full",
+    });
+
+    // Rungs 1-2: compile + look.
+    expect(plan.mcpToolPlan.verify).toEqual(
+      expect.arrayContaining([
+        "summer_get_script_errors",
+        "summer_get_diagnostics",
+        "summer_screenshot",
+      ])
+    );
+    // Rung 3: the composed run loop, and it must always end by stopping.
+    expect(plan.mcpToolPlan.verify).toEqual(
+      expect.arrayContaining([
+        "summer_clear_console",
+        "summer_play",
+        "summer_get_debugger_errors",
+        "summer_stop",
+      ])
+    );
+    // clear_console precedes play precedes stop — the loop order is coherent.
+    const v = plan.mcpToolPlan.verify;
+    expect(v.indexOf("summer_clear_console")).toBeLessThan(v.indexOf("summer_play"));
+    expect(v.indexOf("summer_play")).toBeLessThan(v.indexOf("summer_stop"));
+  });
+
+  it("fast verification checks compile + look but does not run the game", () => {
+    const plan = buildGameTaskPlan({
+      goal: "Tweak the wording of a UI label",
+      mode: "feature",
+      verification: "fast",
+    });
+
+    expect(plan.mcpToolPlan.verify).toContain("summer_screenshot");
+    expect(plan.mcpToolPlan.verify).not.toContain("summer_play");
+  });
+
   it("routes generated 3D props through exact asset imports", () => {
     const plan = buildGameTaskPlan({
       goal: "Create a sword model asset and place it in the scene",

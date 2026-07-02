@@ -277,6 +277,7 @@ Skills don't list steps. They encode the **order of operations**: diagnose befor
 | Diagnostics | `summer_get_script_errors`, `summer_get_diagnostics`, `summer_get_console`, `summer_get_debugger_errors`, `summer_get_debugger_warnings` |
 | Runtime | `summer_play`, `summer_stop`, `summer_is_running` |
 | Visual | `summer_screenshot` (see the editor viewport, an offscreen scene render, or the running game) |
+| Interactive | `SimulateInput` / `RunVerification` raw ops via `summer_batch` — drive the running game or run a hidden GDScript probe (engine-build dependent) |
 | Project | `summer_get_project_context`, `summer_open_main_scene`, `summer_project_setting`, `summer_input_map_bind` |
 | Assets | `summer_search_assets`, `summer_import_asset`, `summer_import_from_url`, `summer_generate_image`, `summer_generate_3d`, `summer_generate_audio`, `summer_generate_video` |
 
@@ -285,6 +286,36 @@ File ops, git, shell, and grep already belong to your agent. We don't shadow the
 **Lifecycle hooks.** A `session-start` hook detects whether you're in a Summer Engine project and feeds the agent a one-line orientation. An opt-in `pre-commit doctor` runs `summer doctor` before `git commit` and blocks when the setup needs attention.
 
 For the full architecture, see [docs/OVERVIEW.md](docs/OVERVIEW.md).
+
+### Using Summer via MCP: the verification loop
+
+There is no single "verify" tool. You **compose** the checks, climbing only as high as the change demands. Call `summer_get_agent_playbook` for the full ladder; the short version:
+
+**1. Does it compile?** After writing a `.gd`, call `summer_get_script_errors res://scripts/player.gd` — no game boot. For a project-wide sweep, `summer_get_diagnostics` (it tells you whether to then read `summer_get_console` / `summer_get_debugger_errors`).
+
+**2. Does it look right?** `summer_screenshot` returns the actual pixels — you see them, no description layer. Pick the target on purpose:
+- `viewport` (default) — the editor's current tab, as it looks now.
+- `scene` — an offscreen render of a scene *file* (`scenePath`). No boot; **static at t=0**. Confesses if the scene has no `Camera3D` (renders grey/black when played) or no light — read those warnings.
+- `game` — a frame from the **running** game (`summer_play` first). Over plain local HTTP this returns an honest failure until the desktop bridge is present; when it fails, drop to `viewport`/`scene` or ask the user.
+
+**3. Does it run?** Compose the loop:
+
+```
+summer_clear_console            # clean slate
+summer_play                     # boot the game (or a specific scene)
+summer_get_debugger_errors      # runtime errors: null refs, missing nodes, physics
+summer_screenshot target:game   # optional: look at the live frame
+summer_stop                     # ALWAYS stop — scene edits are refused while running
+```
+
+**4. Does the interaction work?** To prove input-driven behavior (jump/move/shoot), send a raw op through `summer_batch` (engine-build dependent — a `failure_reason:"unsupported"` comes back verbatim on older builds):
+- `SimulateInput` — inject into the **running** game: `summer_batch ops:[{op:"SimulateInput", type:"action", action:"jump", pressed:true}]`, then re-check screenshot/debugger.
+- `RunVerification` — spawn a hidden, disposable game instance that runs a GDScript probe (press inputs, read state, save frames) and dies, never touching the editor: `summer_batch ops:[{op:"RunVerification", probe_source:"…", max_seconds:20}]` → `{ok, results, frames, out_dir}`.
+- If neither is available on this build, **ask the user to try it** and report what they see — don't fake it.
+
+**Honesty.** Never describe an image you didn't receive; a failed capture is a *result* — report it and climb down (`scene`→`viewport`) or ask the user. Pass structured failures (`failure_reason`, `terminalState`, `identity_mismatch`) through verbatim. `summer_get_project_context` binds the session to the open project; a `projectMismatch` warning on a screenshot means the engine switched projects and the frame may be from the wrong one — rebind before trusting it.
+
+**Debugging the MCP itself.** Set `SUMMER_MCP_DEBUG=1` in the server's environment to log a structured stderr line per tool call (`tool`, `ok`, `durationMs`, `terminalState`, `errorClass`, `failureReason`, `retried`). With the flag off, only failures are logged.
 
 ---
 

@@ -281,6 +281,7 @@ The 'options' object is passed directly to the AI provider for full control.
 Returns the asset with fileUrl (hosted) and localPath (temp file on disk).
 Use the Read tool on localPath to show the image to the user for approval.
 
+Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
 Requires authentication: run 'npx summer-engine login' first.`,
     {
       prompt: z.string().describe("Description of the image to generate"),
@@ -349,6 +350,7 @@ The 'options' object is passed directly to ElevenLabs, so you can set any
 provider-specific parameter: stability, similarity_boost, style, speed, etc.
 
 Returns the generated audio URL and asset metadata.
+Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
 Requires authentication: run 'npx summer-engine login' first.`,
     {
       capability: z
@@ -439,6 +441,7 @@ Example:
 By default, waits for completion (up to 5 min) and returns the result directly.
 Set wait=false to get the jobId immediately and poll manually with summer_check_job.
 
+Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
 Requires authentication: run 'npx summer-engine login' first.`,
     {
       prompt: z
@@ -522,6 +525,7 @@ If imageUrl is provided, switches to image-to-video mode.
 Pass provider-specific params in 'options' (negative_prompt, num_frames, etc.).
 
 Returns the generated video URL and asset metadata.
+Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
 Requires authentication: run 'npx summer-engine login' first.`,
     {
       prompt: z
@@ -579,6 +583,7 @@ waits automatically.
 
 Status values: waiting, active, completed, failed, delayed, unknown.
 
+Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
 Requires authentication: run 'npx summer-engine login' first.`,
     {
       jobId: z.string().describe("The job ID returned by an async generation tool"),
@@ -650,6 +655,7 @@ Custom prompt-driven motion is on the roadmap; not yet shipped. For one-off
 signature moves not on the curated list, fall back to hand-authoring in the
 Godot editor or importing from Mixamo.
 
+Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
 Requires authentication: run 'npx summer-engine login' first.`,
     {
       rigAssetId: z

@@ -60,7 +60,10 @@ export async function getClient(): Promise<EngineApiClient> {
   } catch {
     cachedClient = null;
     throw new Error(
-      "Summer Engine is not running. Open it first, or run: npx summer-engine run"
+      "Summer Engine is not running. Open it first, or run: npx summer-engine run\n" +
+        "Note: only tools that touch the local project need the engine. Cloud tools " +
+        "(summer_generate_*, summer_search_assets, summer_list_my_assets, summer_get_asset, " +
+        "summer_check_job) work right now without it — they only need 'npx summer-engine login'."
     );
   }
 }

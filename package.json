@@ -1,6 +1,6 @@
 {
   "name": "summer-engine",
-  "version": "2.6.4",
+  "version": "2.6.5",
   "description": "Summer CLI and MCP server for Summer Engine, the AI game engine. Install the engine, connect Claude Code, Cursor, Codex, Gemini, and other agents, and build real games. Skills, hooks, and plugins included.",
   "keywords": [
     "summer-engine",

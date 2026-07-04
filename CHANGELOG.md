@@ -2,6 +2,18 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [2.6.5] — 2026-07-04 — "Cloud tools don't need the engine"
+
+### Fixed
+- Tool descriptions now say explicitly which tools run in Summer's cloud and work WITHOUT the engine open (`summer_generate_*`, `summer_search_assets`, `summer_list_my_assets`, `summer_get_asset`, `summer_get_asset_download_url`, `summer_check_job`) and which need the engine (imports, scene ops). Agents were misreading a missing `npx summer-engine login` as "MCP requires the engine".
+- The "Summer Engine is not running" error now tells the agent that cloud tools still work without the engine.
+
+## [2.6.4] — 2026-07-03 — "See-Work + project binding" (unpublished, ships with 2.6.5)
+
+### Added
+- MCP session binds to its project; the engine rejects wrong-project writes (`identity_mismatch`) instead of applying them to whatever project is open.
+- Structured per-tool-call stderr logging; agent playbook rewritten around the MCP verification ladder; honest game-capture failure states and identity-stamped reads.
+
 ## [2.6.3] — 2026-06-30 — "Agent vision"
 
 ### Added

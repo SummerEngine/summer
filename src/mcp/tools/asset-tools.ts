@@ -350,6 +350,7 @@ Sources:
 Uses hybrid search: keywords + semantic similarity. Finds assets by name AND by meaning.
 Returns asset names, types, preview URLs, and import-ready file URLs.
 
+Cloud tool — works WITHOUT the Summer Engine app open.
 Requires authentication (so we can attribute usage and apply per-user rate limits): run 'npx summer-engine login' first.`,
     {
       query: z.string().describe("Natural language search, e.g. 'low-poly tree', 'sci-fi weapon'. For my_assets, can be empty to list recent."),
@@ -405,7 +406,9 @@ Use this after generation jobs complete, when the user says "the model I made",
 into the local project.
 
 Returns exact asset IDs plus file/import URLs. Use summer_get_asset for full
-metadata or summer_import_asset_by_id to import a specific result.`,
+metadata or summer_import_asset_by_id to import a specific result.
+
+Cloud tool — works WITHOUT the Summer Engine app open.`,
     {
       query: z
         .string()
@@ -442,7 +445,9 @@ metadata or summer_import_asset_by_id to import a specific result.`,
 Use this after a generation job returns assetId/rigAssetId/animationAssetId, or
 after summer_list_my_assets/search results when you need the stable file URL,
 download URL, viewer URL, metadata, license, visibility, parent chain, or
-provider details.`,
+provider details.
+
+Cloud tool — works WITHOUT the Summer Engine app open.`,
     {
       assetId: z.string().describe("Summer ArtAssets id"),
     },
@@ -464,7 +469,9 @@ provider details.`,
 
 Today this usually returns the Cloudinary URL plus Summer's download proxy.
 The response shape is future-proofed for signed URLs, so prefer this tool over
-handing users raw fileUrl when they explicitly ask to download.`,
+handing users raw fileUrl when they explicitly ask to download.
+
+Cloud tool — works WITHOUT the Summer Engine app open.`,
     {
       assetId: z.string().describe("Summer ArtAssets id"),
       role: z
@@ -489,7 +496,10 @@ Use this when the asset was just generated, selected from my assets, or returned
 by search. Unlike summer_import_asset, this does not search or guess: it fetches
 the asset by ID, downloads it through Summer Engine, and runs Godot's import
 pipeline. For 3D models, pass parent to instantiate it in the open scene after
-import.`,
+import.
+
+Requires the Summer Engine app to be open with the project loaded (generation
+itself does not — only this import step does).`,
     {
       assetId: z.string().describe("Summer ArtAssets id"),
       path: z

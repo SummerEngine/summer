@@ -1,185 +1,67 @@
-# Releasing summer-engine
+# Releasing `summer-engine`
 
-Step-by-step runbook for publishing a new version of `summer-engine` to npm.
+The npm package is `summer-engine`. This repository is its public source, and its binary is `summer`.
 
-## Pre-flight
+For the exact copy-paste procedure, use [`NPM_PUBLISH_QUICK_COMMANDS.md`](./NPM_PUBLISH_QUICK_COMMANDS.md). It publishes only from a clean, fresh clone of public `main` and stops if the candidate version is not newer than npm `latest`.
 
-1. All commits merged to `main` on the engine repo (`SummerEngine/SummerEngine`).
-2. `npm test` passes (`cd tools/summer-cli && npm test`).
-3. `npm run build` succeeds.
-4. Plugin manifests (`.claude-plugin/plugin.json`, `.cursor-plugin/plugin.json`, `.codex-plugin/plugin.json`) and `marketplace.json` already bumped to the target version. (Done in feature commits, not at release time.)
+## Release contract
 
-## Bump version
+1. Reconcile all approved CLI work into this repository without overwriting newer public changes.
+2. Bump `package.json` and `package-lock.json` to the same new semver version and update `CHANGELOG.md` in a reviewed commit.
+3. Merge that commit to `main` before publishing.
+4. Run the fresh-terminal procedure from a new clone.
+5. Verify the exact version and the `latest` dist-tag from npm after publishing.
 
-```powershell
-cd "<SummerEngine checkout>/tools/summer-cli"
-```
+Never publish an uncommitted version bump. npm never allows the same package name and version to be reused, even after unpublishing.
 
-Edit `package.json` `version` field manually, or use:
+## Package commands
 
-```powershell
-npm version <patch|minor|major> --no-git-tag-version
-```
+These commands come from `package.json`:
 
-Match the version to whatever the plugin manifests are at. Don't let npm version drift from manifest version.
+| Purpose | Command | Effect |
+|---|---|---|
+| Reproducible install | `npm ci` | Installs exactly from `package-lock.json` |
+| Build | `npm run build` | Removes `dist/` and runs TypeScript compilation |
+| Test | `npm test` | Runs the Vitest suite once |
+| Package inspection | `npm pack --dry-run` | Shows the files npm would ship |
+| Publish simulation | `npm publish --dry-run` | Runs the publish lifecycle without uploading |
+| Publish | `npm publish` | Runs `prepublishOnly`, then uploads to npm |
 
-## Build + dry-run
+`prepublishOnly` is `npm run build && npm test`, so the real publish repeats both checks immediately before upload. `publishConfig` fixes the target to `https://registry.npmjs.org` with public access.
 
-```powershell
-npm run build
-npm publish --dry-run
-```
+## Authentication and signing
 
-The dry-run prints the tarball contents. Verify:
-- `total files` is roughly the expected count (currently ~198)
-- `version` matches what you set
-- New skill files / commands appear in the file list
-- No secrets, no `.env`, no internal docs (`docs/MCP_*_STRATEGY.md`, `docs/specs/`, `docs/plans/`)
+The current approved path is an interactive manual publish:
 
-## Publish
+- Sign in with `npm login --auth-type=web`.
+- Confirm `npm whoami` is exactly `summer-engine`.
+- Complete the configured security-key 2FA prompt during login or publish.
+- Do not disable 2FA or create a bypass token for a manual release.
 
-**Use `--auth-type=web`. It bypasses the OTP requirement entirely.** Run from your interactive PowerShell / Terminal — NOT from the AI agent's shell. The CLI prints a URL and waits for you to press ENTER, which only works in an interactive TTY.
+npm requires either account 2FA for an interactive publish or a granular access token with bypass 2FA for automation. See npm's [2FA publishing requirements](https://docs.npmjs.com/requiring-2fa-for-package-publishing-and-settings-modification/) and [browser login flow](https://docs.npmjs.com/accessing-npm-using-2fa/).
 
-Run these as **two separate lines** (don't chain with `;` or `&&` — copy each line by itself):
+No Apple or Windows application-signing certificate is involved in the npm package. npm adds its registry signature to published tarballs automatically. A manual publish does **not** create Sigstore provenance.
 
-```powershell
-cd "<SummerEngine checkout>/tools/summer-cli"
-```
+## Provenance and trusted publishing
 
-```powershell
-npm publish --auth-type=web
-```
+Trusted publishing is not the current release path. Before enabling it, configure npm to trust an exact workflow in this public repository and review the workflow separately.
 
-A browser tab opens. Click "Confirm" to approve the publish. Output ends with `+ summer-engine@<version>` on success.
+Current npm requirements include:
 
-### Why two lines, not one chained
+- A GitHub-hosted runner in the public repository named by `package.json`.
+- `permissions: id-token: write` for OIDC.
+- Node.js 22.14 or newer and npm 11.5.1 or newer for trusted publishing.
+- The exact repository and workflow filename configured as the package's trusted publisher on npm.
 
-Past experience: `cd "..."; npm publish` works in PowerShell, but if anything in the path has surprising chars (spaces, accents) the chained form gets parsed wrong. Two lines is safer and lets you eyeball the `cd` succeeded before publishing.
+Trusted publishing uses short-lived OIDC credentials and automatically creates provenance for a public package published from a public repository. See npm's [trusted publishing](https://docs.npmjs.com/trusted-publishers/) and [provenance](https://docs.npmjs.com/generating-provenance-statements/) documentation.
 
-### Why an interactive shell
+## Recovery after a bad release
 
-`--auth-type=web` does:
-1. Opens a `https://www.npmjs.com/auth/cli/<id>` URL in your browser.
-2. Prints "Press ENTER to open in the browser..." and waits for stdin.
-3. Once you confirm in the browser, the CLI exits with the publish.
+Prefer a patch-forward release:
 
-If run from a non-interactive shell (e.g. an AI agent's `Bash` tool), step 2's stdin wait fails — the CLI falls back to asking for OTP and errors with `EOTP`. So always run the publish yourself from PowerShell or Terminal, not via the agent.
+1. Fix the issue.
+2. Bump to a new patch version.
+3. Review and merge it.
+4. Repeat the fresh-terminal runbook.
 
-### Why `--auth-type=web` and not just `npm publish`
-
-The `summer-engine` npm account has 2FA enabled with a security key on a different machine (MacBook). On any other machine, plain `npm publish` will fail with `EOTP — This operation requires a one-time password from your authenticator` because:
-
-1. There's no authenticator app configured (only a hardware security key on the MacBook).
-2. The token in `~/.npmrc` is a classic token — classic tokens do NOT bypass 2FA-on-publish.
-3. Disabling 2FA at account-level, package-level, or org-level only partially helps because npm enforces 2FA-on-publish from multiple sources independently.
-
-`--auth-type=web` sidesteps all of that. npm CLI prints a `https://www.npmjs.com/auth/cli/<id>` URL, you open it in any browser where you're already logged into npm, click "Confirm", publish completes. **Two seconds, no OTP, no token gymnastics.**
-
-This requires npm CLI 9+ (you're fine — Node 18+ ships with this).
-
-### What NOT to do (lessons learned 2026-05-10)
-
-- **Don't try to disable account-level 2FA** to skip OTP — it's blocked by org membership requirements and only partially affects publish.
-- **Don't try to disable package-level 2FA** unless you have a specific reason — `--auth-type=web` is faster.
-- **Don't generate granular access tokens for one-off publishes.** They're correct for CI/CD, but for a manual publish from your dev machine, `--auth-type=web` is one command.
-- **Don't run `npm publish` from the wrong directory** — npm scans the current dir for `package.json`. Running from `~` will scan your entire home directory and trip on weird files (e.g. Docker named pipes → `EACCES`).
-- **Don't `npm install -g summer-engine`** to test the publish — use `npx -y summer-engine@<version>` instead. No PATH pollution, no sudo.
-
-## Verify the publish landed
-
-```powershell
-curl https://registry.npmjs.org/summer-engine/latest
-```
-
-Should show the new version. Or browse to https://www.npmjs.com/package/summer-engine.
-
-## Commit the version bump
-
-```powershell
-cd "<SummerEngine checkout>"
-git add tools/summer-cli/package.json tools/summer-cli/docs/RELEASING.md
-git commit -m "chore(release): summer-engine v<X.Y.Z>"
-git push origin main
-```
-
-## Sync to public repo
-
-If the engine repo is the source of truth and `SummerEngine/summer-engine-agent` is the public mirror, sync via the existing tar-copy script (see `docs/DEVELOPMENT.md`).
-
-## Rollback
-
-You can't unpublish a version after 72 hours. If a bug ships:
-
-1. **Patch forward**: bump to `<X.Y.Z+1>`, fix, republish. This is almost always the right answer.
-2. **Deprecate**: `npm deprecate summer-engine@<bad-version> "use <good-version>"`.
-3. **Within 72 hours, you can `npm unpublish summer-engine@<version>`** — but this breaks downstream installs that already pinned to it. Almost never the right choice.
-
-## Version drift detection
-
-As of v2.4.0, `summer doctor --json` reports two new checks that catch the
-"user is on a stale CLI / skills snapshot" failure mode without bothering the
-user:
-
-- **`cli-version-current`** — fetches `https://registry.npmjs.org/summer-engine/latest`
-  with a 3 s timeout and compares against the installed `package.json` version.
-  - `ok` if installed >= latest, or only differs on patch (so `2.4.0` vs
-    `2.4.5` is fine — patches are inconsequential and we don't want users to
-    see an "update me" message every time we ship a hotfix).
-  - `warning` if one minor behind (`2.4.0` vs `2.5.0`).
-  - `fail` if 2+ minors or any major-version drift behind (`2.4.0` vs `2.6.0`
-    or `3.0.0`).
-  - On network error / timeout / non-200 response: returns `ok` with
-    `details.reason: "registry-unreachable"`. We never false-alarm an offline
-    user.
-
-- **`skills-version-stale`** — reads a `.summer-version` marker dropped into
-  the user's skill install dir whenever `summer skills install` runs. Compares
-  the marker's recorded version to the running CLI's version, with the same
-  ok/warning/fail thresholds as above. If multiple agents have markers and
-  several are stale, the worst (most-stale) one wins so we surface the largest
-  drift to the user. If no marker exists at all, the check returns `ok` with
-  `reason: "no-marker"` so a brand-new install isn't flagged.
-
-The agent's playbook (Step 0 of the README) parses `details.recommendedAction`
-on warning/fail and re-runs the install with `--force` automatically. End
-result: the agent sees stale state, refreshes silently, the user only hears
-about it via a single one-liner ("There's a newer Summer (2.4.0 → 2.5.0);
-updating before we start.") instead of being asked to make a choice.
-
-### Manual force update
-
-If a user wants to bypass the playbook and update directly:
-
-```bash
-npx clear-npx-cache && npx -y summer-engine@latest setup <agent> --yes --force
-```
-
-`<agent>` is `claude-code`, `cursor`, `codex`, `windsurf`, `cline`, `roo-code`,
-`kilo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, or `lm-studio`.
-
-### Patch hotfixes don't trigger update prompts
-
-Bumping `2.4.0 → 2.4.1` for a bug fix is silent — `cli-version-current` returns
-`ok` with `reason: "patch-only"` so users don't see churn for inconsequential
-changes. Save `warning` and `fail` for minor and major bumps where the agent
-behaviour or the skill catalog actually moved.
-
-## CI/CD (future)
-
-When ready to automate publishes from GitHub Actions:
-
-1. Generate a **granular access token** at https://www.npmjs.com/settings/~/tokens/new
-   - Name: `github-actions-publish`
-   - Expiration: 1 year (regenerate annually)
-   - Packages: `summer-engine`
-   - Permissions: Read and write
-   - **Bypass two-factor authentication: ON**
-2. Store as `NPM_TOKEN` in GitHub Actions secrets.
-3. Workflow snippet:
-   ```yaml
-   - run: npm publish
-     env:
-       NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-   ```
-
-Until CI is wired, the manual `npm publish --auth-type=web` flow above is the canonical path.
+If necessary, deprecate a broken version with `npm deprecate summer-engine@<bad-version> "use <good-version>"`. Avoid unpublishing because consumers may already depend on that immutable version.

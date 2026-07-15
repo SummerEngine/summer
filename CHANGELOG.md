@@ -2,6 +2,17 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [2.6.6] — 2026-07-15 — "Project-bound engine requests"
+
+### Fixed
+- Every local engine request now carries the engine instance ID, stable project ID, project ID hash, and identity protocol version captured when the CLI connects. This lets compatible engine builds reject stale requests after a project or engine switch instead of acting on the wrong target.
+- An explicit project rebind now refreshes the complete engine and project identity, while keeping the existing project-hash mutation guard and screenshot drift checks.
+- Summer Cloud's engine bridge now binds its save, rescan, and scene reload requests to the project it verified on disk.
+
+### Changed
+- Summer Cloud is documented as an optional Research Preview instead of part of the core local CLI and MCP workflow.
+- Release metadata and the manual npm runbook now pin the public registry and require a clean, reviewed public source checkout.
+
 ## [2.6.5] — 2026-07-04 — "Cloud tools don't need the engine"
 
 ### Fixed

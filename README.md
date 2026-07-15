@@ -23,22 +23,6 @@ Three names, one npm package (`summer-engine`):
 
 All MIT, all free to use. One paste sets up all three.
 
-## Summer Cloud (new in 2.6.0)
-
-`summer cloud` syncs your whole game project across machines: scenes, scripts, settings, and the big binary assets that never fit in git. Files are stored by content hash, every push becomes a restorable version, and local checkpoints are taken before anything destructive touches your disk.
-
-```bash
-summer cloud init      # bind this project to your account
-summer cloud push      # upload what changed (only missing bytes travel)
-summer cloud pull      # make this machine match the cloud, verified by hash
-summer cloud status    # what differs between here and the cloud
-summer cloud restore   # roll the project back to any version
-```
-
-The same operations are available to agents as MCP tools (`summer_cloud_push`, `summer_cloud_pull`, and friends). See [www.summerengine.com/cloud](https://www.summerengine.com/cloud).
-
----
-
 ## Get started: one prompt
 
 Open your AI agent (Claude Code, Cursor, Codex, Copilot, Devin Desktop, etc.) and paste:
@@ -553,6 +537,24 @@ Skills evolve fast. Two ways to help:
 - [Skills overview](docs/SKILLS.md)
 - [Templates](docs/TEMPLATES.md)
 - [Architecture overview](docs/OVERVIEW.md)
+
+---
+
+## Research Preview: Summer Cloud
+
+Summer Cloud is an experimental R&D preview. It is optional, it may change or break, and it is **not** the core Summer CLI or MCP workflow. You do not need it to install or run Summer Engine, work with local projects, or use the local MCP server. The stable workflow is the local engine, CLI, MCP bridge, and agent skills described above.
+
+The preview explores content-addressed project sync across machines, including large assets that do not fit comfortably in git:
+
+```bash
+summer cloud init
+summer cloud status
+summer cloud push
+summer cloud pull
+summer cloud restore
+```
+
+Matching `summer_cloud_*` MCP tools are also experimental. Keep an independent backup and do not use this preview as the only recovery path for an important project. See [www.summerengine.com/cloud](https://www.summerengine.com/cloud).
 
 ---
 

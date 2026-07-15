@@ -255,61 +255,9 @@ Changing the CLI does NOT require rebuilding the engine. Rebuilding the engine d
 
 ### Release Checklist
 
-Full release = publish to npm + sync to public GitHub repo.
+A full release means the reviewed CLI changes and version bump are already on this repository's `main`, then npm is published from a fresh clone of that exact commit. Never publish first and commit source later.
 
-```bash
-cd tools/summer-cli
-
-# 1. Build and test
-npm run build
-bash scripts/smoke-test.sh
-
-# 2. Bump version
-npm version patch    # 0.1.0 -> 0.1.1 (bug fix)
-npm version minor    # 0.1.0 -> 0.2.0 (new feature)
-npm version major    # 0.1.0 -> 1.0.0 (breaking change)
-
-# 3. Publish to npm (requires 2FA OTP)
-npm publish --access public
-
-# 4. Verify the published package works
-npx summer-engine@latest status
-
-# 5. Sync to public GitHub repo
-#    Create a clean copy WITHOUT internal docs, then push.
-TMPDIR=$(mktemp -d)
-rsync -av \
-  --exclude='node_modules/' \
-  --exclude='dist/' \
-  --exclude='.DS_Store' \
-  --exclude='banner-preview.html' \
-  --exclude='docs/AGENT_EXPERIENCE_PRD.md' \
-  --exclude='docs/MCP_BUSINESS_STRATEGY.md' \
-  --exclude='docs/MCP_CLI_SECURITY_REVIEW_PLAN.md' \
-  --exclude='docs/MCP_PRICING_STRATEGY.md' \
-  --exclude='docs/MCP_PRODUCT_STRATEGY.md' \
-  --exclude='docs/HANDOFF.md' \
-  --exclude='docs/SKILLS_SYSTEM.md' \
-  --exclude='docs/specs' \
-  --exclude='docs/plans' \
-  ./ "$TMPDIR/"
-cd "$TMPDIR"
-git init
-git remote add origin git@github.com:SummerEngine/summer-engine-agent.git
-git fetch origin main
-git checkout -b main origin/main
-git add -A
-git commit -m "Release v$(node -p 'require("./package.json").version')"
-git push origin main
-cd -
-rm -rf "$TMPDIR"
-```
-
-**Before committing to the public repo, double-check:**
-- [ ] No internal URLs, pricing, or revenue numbers in any file
-- [ ] No references to private repos or internal docs
-- [ ] Commit message is clean - no internal context, no agent attribution
-- [ ] Internal strategy, pricing, security-review, handoff, spec, and plan docs are excluded
+Use [`RELEASING.md`](./RELEASING.md) for the release contract and [`NPM_PUBLISH_QUICK_COMMANDS.md`](./NPM_PUBLISH_QUICK_COMMANDS.md) for the copy-paste fresh-terminal procedure. Both contain hard stops for a stale version, a dirty tree, the wrong repository, or the wrong npm account.
 
 ### npm Account
 
@@ -417,6 +365,7 @@ The `api-token` changes each time the engine starts. If the MCP server cached an
 - [ ] Documentation for users (not devs) - the README is okay but there's no "Getting Started with MCP" tutorial that walks through the full flow with screenshots
 
 ### R&D / Future Investment
+- [ ] **Summer Cloud sync** - Experimental content-addressed project sync. Keep it clearly labeled as a Research Preview until recovery, conflicts, service availability, and cross-machine behavior have production evidence. It is not required for the stable local CLI and MCP workflow
 - [ ] **Simulated play (high value, hard problem)** - Let the AI start the game, simulate input (based on InputMap), record frames, and analyze what happens. This is the dream feedback loop: AI builds -> plays -> sees issues -> fixes. Blocked by: video-as-context is expensive and not well-supported by current models. Snapshot-per-frame is possible but noisy. Needs real R&D on frame sampling, input simulation via engine API, and cost-effective visual analysis
 - [ ] **Skills / knowledge packs** - Downloadable best-practice guides for game dev patterns (FPS, platformer, 3D optimization, GDScript patterns). Format TBD (markdown? Cursor rules? JSON?). Would make AI agents significantly better at building games
 

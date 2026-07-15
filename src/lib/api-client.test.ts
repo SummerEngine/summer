@@ -41,6 +41,59 @@ const client = () => new EngineApiClient(6550, "test-token");
 afterEach(() => vi.unstubAllGlobals());
 
 describe("EngineApiClient — async 202->poll port", () => {
+  it("pins every request to the engine and project captured at connect time", async () => {
+    const seen: string[] = [];
+    mockFetch((url) => {
+      seen.push(url);
+      return json({ nodes: [] });
+    });
+    const scoped = new EngineApiClient(6550, "test-token", {
+      instanceId: "engine-a",
+      projectId: "project-a",
+      projectIdHash: "hash-a",
+    });
+
+    await scoped.getSceneState();
+
+    const url = new URL(seen[0]);
+    expect(url.searchParams.get("instanceId")).toBe("engine-a");
+    expect(url.searchParams.get("projectId")).toBe("project-a");
+    expect(url.searchParams.get("projectIdHash")).toBe("hash-a");
+    expect(url.searchParams.get("projectIdentityVersion")).toBe("1");
+  });
+
+  it("updates the complete request identity after an explicit rebind", async () => {
+    const seen: string[] = [];
+    mockFetch((url) => {
+      if (url.includes("/api/health")) {
+        return json({
+          ok: true,
+          engine: "summer",
+          version: "0.5.43",
+          instanceId: "engine-b",
+          projectId: "project-b",
+          projectIdHash: "hash-b",
+        });
+      }
+      seen.push(url);
+      return json({ nodes: [] });
+    });
+    const scoped = new EngineApiClient(6550, "test-token", {
+      instanceId: "engine-a",
+      projectId: "project-a",
+      projectIdHash: "hash-a",
+    });
+
+    await expect(scoped.rebind()).resolves.toBe("hash-b");
+    await scoped.getSceneState();
+
+    const url = new URL(seen[0]);
+    expect(url.searchParams.get("instanceId")).toBe("engine-b");
+    expect(url.searchParams.get("projectId")).toBe("project-b");
+    expect(url.searchParams.get("projectIdHash")).toBe("hash-b");
+    expect(url.searchParams.get("projectIdentityVersion")).toBe("1");
+  });
+
   it("executeOps resolves the TERMINAL apply result via poll, not the queued ack", async () => {
     mockFetch((url, method) => {
       if (method === "POST" && url.includes("/api/ops")) {

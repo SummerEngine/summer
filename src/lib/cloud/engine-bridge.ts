@@ -54,7 +54,15 @@ async function connectForProject(projectRoot: string): Promise<EngineSession | n
     // A different project's engine instance must never be asked to save or
     // rescan; the executor rejects mismatches too, but skip the round trip.
     if (health.projectIdHash && health.projectIdHash !== projectIdHash) return null;
-    return { client: new EngineApiClient(port, token), projectIdHash, scene: health.scene };
+    return {
+      client: new EngineApiClient(port, token, {
+        instanceId: health.instanceId,
+        projectId: health.projectId,
+        projectIdHash,
+      }),
+      projectIdHash,
+      scene: health.scene,
+    };
   } catch {
     return null;
   }

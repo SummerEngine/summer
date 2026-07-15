@@ -1,7 +1,7 @@
 {
   "name": "summer-engine",
-  "version": "2.6.5",
-  "description": "Summer CLI and MCP server for Summer Engine, the AI game engine. Install the engine, connect Claude Code, Cursor, Codex, Gemini, and other agents, and build real games. Skills, hooks, and plugins included.",
+  "version": "2.6.6",
+  "description": "Local Summer CLI and MCP server for Summer Engine. Install and run the engine, connect Claude Code, Cursor, Codex, Gemini, and other agents, and build real games with bundled skills, hooks, and plugins.",
   "keywords": [
     "summer-engine",
     "summer-cli",
@@ -26,6 +26,10 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/SummerEngine/summer-engine-agent.git"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
   },
   "license": "MIT",
   "author": "Summer Engine <founders@summerengine.com>",

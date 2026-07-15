@@ -4,12 +4,6 @@ The npm package is `summer-engine`. This repository is its public source, and it
 
 For the exact copy-paste procedure, use [`NPM_PUBLISH_QUICK_COMMANDS.md`](./NPM_PUBLISH_QUICK_COMMANDS.md). It publishes only from a clean, fresh clone of public `main` and stops if the candidate version is not newer than npm `latest`.
 
-## Required before 2.6.6
-
-Reconcile the CLI protocol changes from engine PR 13 merge commit `b7a3e28245f8784d28a9f7b7e35524e0c9ccc814` before preparing the 2.6.6 version bump. The affected package files are `src/lib/api-client.ts`, `src/lib/api-client.test.ts`, and `src/lib/cloud/engine-bridge.ts`. Preserve the newer public 2.6.5 work while bringing those protocol changes across.
-
-Do not bump or publish 2.6.6 until that reconciliation has its own review and tests.
-
 ## Release contract
 
 1. Reconcile all approved CLI work into this repository without overwriting newer public changes.

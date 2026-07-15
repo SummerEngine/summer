@@ -62,6 +62,12 @@ type SnapshotPayload = Record<string, unknown> & {
   used_synthetic_camera?: boolean;
 };
 
+type EngineTargetIdentity = {
+  instanceId?: string;
+  projectId?: string;
+  projectIdHash?: string;
+};
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -142,18 +148,24 @@ function withoutImageData(payload: SnapshotPayload): Record<string, unknown> {
 export class EngineApiClient {
   private port: number;
   private token: string;
-  // The project this session is BOUND to — the projectIdHash reported by the
-  // engine when this client first connected. Sent on every mutating op so the
-  // engine's identity guard (local_api_server.cpp ~271-302) atomically rejects a
-  // write aimed at a DIFFERENT project (e.g. after the user switched projects
-  // in-place). Health is the only identity signal the MCP has — /api/state/project
-  // carries no path and /api/health exposes only projectIdHash, not the raw id.
-  private boundProjectIdHash?: string;
+  // The engine and project this session is bound to. Every request carries the
+  // identity captured from health so the engine can reject requests after an
+  // in-place project switch or an unexpected instance change. The string form
+  // preserves the pre-2.6.6 constructor contract for existing callers that only
+  // supplied a projectIdHash.
+  private targetIdentity: EngineTargetIdentity;
 
-  constructor(port: number, token: string, boundProjectIdHash?: string) {
+  constructor(
+    port: number,
+    token: string,
+    targetIdentity: EngineTargetIdentity | string = {}
+  ) {
     this.port = port;
     this.token = token;
-    this.boundProjectIdHash = boundProjectIdHash;
+    this.targetIdentity =
+      typeof targetIdentity === "string"
+        ? { projectIdHash: targetIdentity }
+        : { ...targetIdentity };
   }
 
   static async connect(): Promise<EngineApiClient> {
@@ -178,34 +190,57 @@ export class EngineApiClient {
     // rebinds to the current project. An in-place project switch keeps the same
     // token, so the cached client retains its original binding and the engine
     // rejects mismatched mutations until the agent explicitly rebinds.
-    return new EngineApiClient(port, token, health.projectIdHash);
+    return new EngineApiClient(port, token, {
+      instanceId: health.instanceId,
+      projectId: health.projectId,
+      projectIdHash: health.projectIdHash,
+    });
   }
 
   /** The projectIdHash this session is bound to (undefined if none was reported
    *  at connect — e.g. no project open yet). */
   getBoundProjectIdHash(): string | undefined {
-    return this.boundProjectIdHash;
+    return this.targetIdentity.projectIdHash;
   }
 
   /**
    * Re-read health and rebind to the currently-open project. Called by
    * summer_get_project_context so the agent can INTENTIONALLY follow a project
    * switch (the deliberate escape hatch after an identity_mismatch). Returns the
-   * new bound hash. Reads carry no identity, so this always reaches the engine
-   * even when a mutation would be rejected.
+   * new bound hash. The direct health probe is intentionally unscoped, so it can
+   * reach the current engine even when bound requests would be rejected.
    */
   async rebind(): Promise<string | undefined> {
     const health = await checkEngineHealth(this.port);
     if (health) {
-      this.boundProjectIdHash = health.projectIdHash;
+      this.targetIdentity = {
+        instanceId: health.instanceId,
+        projectId: health.projectId,
+        projectIdHash: health.projectIdHash,
+      };
     }
-    return this.boundProjectIdHash;
+    return this.targetIdentity.projectIdHash;
   }
 
   /** Identity to attach to a MUTATING command's options so the engine can reject
    *  a wrong-project write. Empty when unbound (engine then skips the check). */
   private identityOptions(): Record<string, unknown> {
-    return this.boundProjectIdHash ? { projectIdHash: this.boundProjectIdHash } : {};
+    const projectIdHash = this.targetIdentity.projectIdHash;
+    return projectIdHash ? { projectIdHash } : {};
+  }
+
+  private targetUrl(path: string): string {
+    const url = new URL(path, `http://127.0.0.1:${this.port}`);
+    const { instanceId, projectId, projectIdHash } = this.targetIdentity;
+
+    if (instanceId) url.searchParams.set("instanceId", instanceId);
+    if (projectId) url.searchParams.set("projectId", projectId);
+    if (projectIdHash) url.searchParams.set("projectIdHash", projectIdHash);
+    if (instanceId && projectId && projectIdHash) {
+      url.searchParams.set("projectIdentityVersion", "1");
+    }
+
+    return url.toString();
   }
 
   private async request(
@@ -213,7 +248,7 @@ export class EngineApiClient {
     path: string,
     body?: unknown
   ): Promise<unknown> {
-    const url = `http://127.0.0.1:${this.port}${path}`;
+    const url = this.targetUrl(path);
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.token}`,
       "Content-Type": "application/json",
@@ -242,7 +277,7 @@ export class EngineApiClient {
     body: unknown,
     timeoutMs: number
   ): Promise<Response> {
-    return fetch(`http://127.0.0.1:${this.port}${path}`, {
+    return fetch(this.targetUrl(path), {
       method,
       headers: {
         Authorization: `Bearer ${this.token}`,
@@ -461,18 +496,17 @@ export class EngineApiClient {
     const buffer = Buffer.from(base64, "base64");
     const localPath = await this.writeSnapshotFile(kind, buffer, ext);
 
-    // Client-side identity drift check (item 4). The engine's identity guard only
-    // acts on options.projectIdHash inside a queued command; a GET snapshot from
-    // `fetch` carries no reliable body, so we cannot count on the engine to reject
-    // a drifted read. Re-read health and compare to the bound hash — if the engine
-    // has switched projects since we bound, this frame may be from the WRONG
-    // project. Best-effort: a failed health read never blocks the (already
-    // captured) image.
+    // Client-side identity drift check (item 4). Current engines validate the
+    // identity query on snapshot reads, but older builds may ignore it. Re-read
+    // health and compare to the bound hash so a frame from a switched project is
+    // still marked as suspect. Best-effort: a failed health read never blocks the
+    // already captured image.
     let projectMismatch: boolean | undefined;
-    if (this.boundProjectIdHash) {
+    const boundProjectIdHash = this.targetIdentity.projectIdHash;
+    if (boundProjectIdHash) {
       try {
         const health = await checkEngineHealth(this.port);
-        if (health?.projectIdHash && health.projectIdHash !== this.boundProjectIdHash) {
+        if (health?.projectIdHash && health.projectIdHash !== boundProjectIdHash) {
           projectMismatch = true;
         }
       } catch {

@@ -70,11 +70,11 @@ summer skills install fps-controller --agent cursor --scope project
 
 ## The tool boundary
 
-Use **Summer MCP tools** for anything that needs the running engine: scene nodes, resources, project settings, asset import, play mode, console output, diagnostics.
+Use **Summer MCP tools** for project file reads/writes and anything that needs the running engine: scene nodes, resources, project settings, asset import, play mode, console output, diagnostics.
 
-Use the **host agent's native tools** (Read, Write, Edit, Grep, Bash) for everything else — code files, git, shell.
+Use the **host agent's native tools** for git, shell, and grep. Project file writes should use `summer_write_file`/`summer_replace_text` so the engine can enforce project identity and content guards.
 
-Don't hand-edit `.tscn` files when Summer scene tools are available. The editor holds in-memory state that diverges from disk and silently overwrites direct edits when it saves.
+For live scene hierarchy/inspector work, prefer scene tools. Guarded `.tscn` text writes are available for complete-file work and trigger engine reload handling.
 
 ## Scripting
 

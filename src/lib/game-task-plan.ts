@@ -296,7 +296,7 @@ function inferSkills(mode: GameTaskPlan["mode"], target: GameTaskPlan["target"],
     addSkill(routes, "design-level", "Shape the arena, spawn space, cover, and pacing.", 210);
   }
 
-  addSkill(routes, "gdscript-patterns", "Use direct host file edits for scripts, then verify through MCP.", 90);
+  addSkill(routes, "gdscript-patterns", "Use guarded Summer file tools for scripts, then verify through MCP.", 90);
   addSkill(routes, "verification-before-completion", "Do not finish without a clean verification story.", 80);
 
   return routes
@@ -412,7 +412,7 @@ export function buildGameTaskPlan(options: GameTaskPlanOptions): GameTaskPlan {
     verification,
     principles: [
       "The agent should build a playable game slice, not a static demo.",
-      "Use host file edits for code/data/docs; use MCP for live scene state, imports, inspector values, play, and diagnostics.",
+      "Use identity-bound Summer file tools for code/data/docs and Summer scene tools for live hierarchy/inspector changes.",
       "Reuse/import assets before paid generation unless the user explicitly wants custom output.",
       "Prefer exact IDs and structured tool results over search guesses after asset creation.",
       "Verify through the engine before claiming completion.",
@@ -420,8 +420,8 @@ export function buildGameTaskPlan(options: GameTaskPlanOptions): GameTaskPlan {
     recommendedSkills: inferSkills(mode, target, goal),
     mcpToolPlan: buildMcpToolPlan(mode, target, assetPolicy, verification, goal),
     hostFileWork: [
-      "Write and edit .gd/.cs scripts directly with host file tools.",
-      "Use direct file edits for JSON, markdown, project notes, and simple resources.",
+      "Read and mutate project text through summer_read_file, summer_replace_text, and guarded summer_write_file.",
+      "Use create_only:true for new files and an engine sha256 receipt for overwrites.",
       "Read relevant .summer memory files when project context reports them.",
     ],
     userGates: buildUserGates(mode, assetPolicy),

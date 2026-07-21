@@ -2,6 +2,18 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [2.7.0] — 2026-07-21 — prepared, not published
+
+### Added
+- `summer_read_file`, `summer_write_file`, and `summer_replace_text` expose engine-routed project file access, including `.tscn` and `.tres`. New files require `create_only:true`; overwrites require an engine sha256 receipt.
+- File mutations fail closed unless the MCP client has a complete engine/project identity and use the bound project hash even if caller options attempt to override it.
+
+### Changed
+- Agent playbooks now route project file mutations through Summer MCP instead of recommending host writes that bypass identity, content guards, and editor reload handling.
+
+### Limitations
+- The package cannot intercept an external agent's native filesystem tools. A host can still mutate files outside MCP, and a non-atomic external write can race the engine between validation and write; those cases remain technically unenforceable.
+
 ## [2.6.6] — 2026-07-15 — "Project-bound engine requests"
 
 ### Fixed

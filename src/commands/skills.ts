@@ -470,7 +470,7 @@ function renderRuleBody(skill: SkillMeta): string {
 
 ${skill.description}
 
-Use Summer MCP tools for scene, editor, asset, play, and diagnostics operations. Use the host agent's normal file editing tools for scripts and other text files.
+Use Summer MCP tools for project files, scenes, editor state, assets, play, and diagnostics. Read project text with summer_read_file and mutate it with summer_replace_text or guarded summer_write_file.
 
 ## Skill
 

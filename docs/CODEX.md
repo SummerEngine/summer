@@ -47,4 +47,4 @@ npx -y summer-engine@latest run path/to/project
 
 ## Prompt Seed
 
-Ask Codex to use the installed Summer skills and the Summer MCP tools for editor operations. Scripts and text files should be edited with Codex's normal file tools; scenes should be changed through Summer tools and then saved.
+Ask Codex to use the installed Summer skills and Summer MCP for project operations. Scripts and text files should use `summer_read_file`, `summer_replace_text`, or guarded `summer_write_file`; live scene hierarchy changes should use Summer scene tools and then be saved.

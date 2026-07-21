@@ -111,7 +111,7 @@ and skills, make them teach this, and flag where they don't:
 
 1. **Understand** what the user wants (one pass, no tool spelunking first).
 2. **Outline** the plan fast and briefly; proceed once it's clearly right.
-3. **Execute in pure code**. Write GDScript by default (C# only if the project already uses it). Edit `.gd`/`.tscn`/`.tres` as **text files**; that's the default medium.
+3. **Execute through Summer's identity-bound tools**. Write GDScript by default (C# only if the project already uses it). Read and mutate `.gd`/`.tscn`/`.tres` with `summer_read_file`, `summer_replace_text`, or guarded `summer_write_file`.
 4. **Play & auto-iterate**. Run the scene/game, read console + script/debugger errors, fix, repeat until clean. Crucially: **play the scene you just made first**, so boot/parse crashes surface immediately instead of after the user navigates to the feature.
 
 ## Known bad path to fix first (from real sessions)
@@ -119,11 +119,11 @@ The MCP playbook over-steered agents into **ops-first** scene editing (open/save
 instantiate) when plain **file editing** is simpler and safer for a headless agent, causing
 wasted turns, scene "rename"/save-as churn, and editor-tab clobbering. Keep these fixed:
 
-- **File-first for `.tscn`/`.tres`:** edit scene/resource files as text by default; use scene-ops
-  only for live-engine needs (navmesh/light bake, play/observe, runtime inspect) or instancing
-  into an already-open scene. The MCP `WriteFile` refusing `.tscn` means "use host file tools," not "use scene ops."
-- **Clobber gotcha:** a `.tscn` open in the editor can be overwritten by the editor's tab on save.
-  reload/close the tab after external writes.
+- **Guarded files for `.tscn`/`.tres`:** use identity-bound MCP text tools for complete-file work;
+  use scene ops for live hierarchy/inspector changes, navmesh/light bake, play/observe, runtime
+  inspection, or instancing. New files are create-only; overwrites require a read sha256.
+- **External-host limitation:** host tools can still bypass these guards. Flag any doctrine that
+  recommends doing so while MCP is available.
 - **Constraint-based flow:** the playbook's flow is conditional (`buildFlow` for the default,
   `liveEngineFlow` only when you need the running engine), not a prescriptive always-open-the-editor loop.
 

@@ -2,7 +2,7 @@
 
 > Use this as the single source of truth for which Summer MCP tool to call. Skills should reference tool names exactly as written here.
 
-## When to use Summer MCP vs. host file edits
+## When to use Summer MCP vs. host tools
 
 **Use Summer MCP for** anything that needs the live editor or Godot's import pipeline:
 - Scene graph mutation (`.tscn`)
@@ -11,16 +11,21 @@
 - Asset import (Godot's import pipeline must run)
 - Play / stop / runtime state
 - Diagnostics, console, debugger output, script errors
+- Project text reads and guarded writes (`.gd`, `.cs`, `.tscn`, `.tres`, JSON, docs, config)
 
-**Use the host agent's file tools for** plain text:
-- `.gd` GDScript files
-- `.cs` C# files
-- `.json`, `.md`, `.txt`, `.yaml`
-- Most simple `.tres` resources where the structure is well-known
+**Use host tools for** git, shell, grep, and non-project work. External host file writes bypass Summer's project-identity, sha256, and editor-reload safeguards and should not be used for project mutations while MCP is available.
 
-**Rule of thumb:** if Godot's importer or the live editor needs to know about it, MCP. Otherwise, file edits.
+**Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (52 tools)
+## Tool surface (55 tools)
+
+### Project files (3)
+
+| Tool | Use |
+|---|---|
+| `summer_read_file` | Read project text plus a full-file sha256 receipt. |
+| `summer_write_file` | Create-only or sha256-guarded complete file write. |
+| `summer_replace_text` | Unique (or explicit replace-all) text mutation with read/sha guard. |
 
 ### Scene graph (11)
 

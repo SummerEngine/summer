@@ -22,18 +22,19 @@ This file is for any AI agent that loads context from `AGENTS.md` (Codex CLI, Fa
 
 ## MCP tool palette (engine on `localhost:6550`)
 
-52 tools total. Categories:
+55 tools total. Categories:
 
 - Scene: `summer_get_scene_tree`, `summer_open_scene`, `summer_create_scene`, `summer_add_node`, `summer_set_prop`, `summer_set_resource_property`, `summer_remove_node`, `summer_save_scene`, `summer_instantiate_scene`, `summer_replace_node`, `summer_select_node`, `summer_inspect_node`, `summer_inspect_resource`, `summer_connect_signal`, `summer_batch`.
 - Diagnostics: `summer_get_script_errors`, `summer_get_diagnostics`, `summer_get_console`, `summer_clear_console`, `summer_get_debugger_errors`, `summer_get_debugger_warnings`.
 - Runtime: `summer_play`, `summer_stop`, `summer_is_running`.
 - Visual: `summer_screenshot` (capture the editor viewport or running game as an image to verify it).
 - Project: `summer_get_project_context`, `summer_open_main_scene`, `summer_project_setting`, `summer_input_map_bind`, `summer_get_agent_playbook`.
+- Files: `summer_read_file`, `summer_write_file`, `summer_replace_text` (identity-bound; create-only or sha256-guarded writes).
 - Assets: `summer_search_assets`, `summer_list_my_assets`, `summer_get_asset`, `summer_get_asset_download_url`, `summer_import_asset`, `summer_import_asset_by_id`, `summer_import_from_url`, `summer_import_from_url_batch`.
 - Generation: `summer_generate_image`, `summer_generate_3d`, `summer_generate_audio`, `summer_generate_video`, `summer_generate_motion`, `summer_check_job`.
 - Meta: `summer_start_game_task`.
 
-File ops, git, shell, and grep are NOT exposed — use the host's native tools.
+Git, shell, and grep are not exposed. Project file reads and writes are exposed through identity-bound Summer tools; do not bypass them with host writes when MCP is available. External host tools cannot be technically blocked, so the agent must follow this rule.
 
 ## Type-system gotchas
 

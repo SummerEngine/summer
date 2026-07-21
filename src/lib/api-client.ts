@@ -229,6 +229,16 @@ export class EngineApiClient {
     return projectIdHash ? { projectIdHash } : {};
   }
 
+  private requireBoundIdentity(): Record<string, unknown> {
+    const { instanceId, projectId, projectIdHash } = this.targetIdentity;
+    if (!instanceId || !projectId || !projectIdHash) {
+      throw new Error(
+        "Safe project mutation requires a complete engine/project identity. Call summer_get_project_context to bind this MCP session, then retry. Nothing was written."
+      );
+    }
+    return { projectIdHash };
+  }
+
   private targetUrl(path: string): string {
     const url = new URL(path, `http://127.0.0.1:${this.port}`);
     const { instanceId, projectId, projectIdHash } = this.targetIdentity;
@@ -346,9 +356,30 @@ export class EngineApiClient {
     // async-202 (Block E).
     // Attach the bound project identity so the engine rejects a write aimed at a
     // different project (identity_mismatch, atomic — before any op applies).
-    const merged = { ...this.identityOptions(), ...(options ?? {}) };
+    const merged = { ...(options ?? {}), ...this.identityOptions() };
     const body = Object.keys(merged).length ? { ops, options: merged } : { ops };
     return this._requestQueued("POST", "/api/ops", body, 120_000);
+  }
+
+  /**
+   * Mutation path for MCP file tools. Unlike legacy executeOps callers, this
+   * fails closed when health did not provide a complete target identity. The
+   * bound hash is stamped last so a caller cannot override it in options.
+   */
+  async executeIdentityBoundOps(
+    ops: Record<string, unknown>[],
+    options?: Record<string, unknown>
+  ): Promise<unknown> {
+    const identity = this.requireBoundIdentity();
+    return this.executeOps(ops, { ...(options ?? {}), ...identity });
+  }
+
+  async readProjectFile(path: string, maxBytes = 200_000): Promise<unknown> {
+    const query = new URLSearchParams({
+      path,
+      maxBytes: String(maxBytes),
+    });
+    return this.request("GET", `/api/state/read-file?${query.toString()}`);
   }
 
   async getSceneState(): Promise<unknown> {

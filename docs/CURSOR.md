@@ -59,4 +59,4 @@ Keep the engine open on the project:
 npx -y summer-engine@latest run path/to/project
 ```
 
-Cursor should use Summer MCP tools for scene/editor operations and its native editor for scripts and text files.
+Cursor should use Summer MCP tools for project files and scene/editor operations. Native file edits bypass project identity and content guards and should be reserved for when MCP is unavailable.

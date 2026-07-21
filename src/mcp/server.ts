@@ -7,6 +7,7 @@ import { registerDebugTools } from "./tools/debug-tools.js";
 import { registerVisualTools } from "./tools/visual-tools.js";
 import { WITH_ENGINE_META, type WithEngineMeta } from "./tools/with-engine.js";
 import { registerProjectTools } from "./tools/project-tools.js";
+import { registerFileTools } from "./tools/file-tools.js";
 import { registerAssetTools } from "./tools/asset-tools.js";
 import { registerGenerateTools } from "./tools/generate-tools.js";
 import { registerCloudTools } from "./tools/cloud-tools.js";
@@ -189,6 +190,7 @@ export async function startMcpServer(): Promise<void> {
   registerDebugTools(server);
   registerVisualTools(server);
   registerProjectTools(server);
+  registerFileTools(server);
   registerAssetTools(server);
   registerGenerateTools(server);
   registerCloudTools(server);

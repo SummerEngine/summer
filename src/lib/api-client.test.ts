@@ -133,6 +133,41 @@ describe("EngineApiClient — async 202->poll port", () => {
     expect(pollHits).toBe(0); // never polled — legacy path
   });
 
+  it("identity-bound file mutations fail closed when the client is unbound", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await expect(
+      client().executeIdentityBoundOps([{ op: "WriteFile" }])
+    ).rejects.toThrow(/complete engine\/project identity/);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("identity-bound file mutations stamp the bound hash after caller options", async () => {
+    const sink: { lastBody?: unknown } = {};
+    mockFetchCapturing(
+      (url, method) =>
+        method === "POST" && url.includes("/api/ops")
+          ? json({ status: "ok", results: [{ ok: true, op: "WriteFile" }] })
+          : json({}, 404),
+      sink
+    );
+    const scoped = new EngineApiClient(6550, "test-token", {
+      instanceId: "engine-a",
+      projectId: "project-a",
+      projectIdHash: "hash-a",
+    });
+
+    await scoped.executeIdentityBoundOps(
+      [{ op: "WriteFile", path: "res://main.tscn" }],
+      { projectIdHash: "caller-must-not-override" }
+    );
+
+    expect(sink.lastBody).toMatchObject({
+      options: { projectIdHash: "hash-a" },
+    });
+  });
+
   it("reads stay synchronous 200 (no 202/poll)", async () => {
     mockFetch((url) =>
       url.includes("/api/state/scene") ? json({ nodes: ["root"], appliedThroughSeq: 0 }) : json({}, 404)

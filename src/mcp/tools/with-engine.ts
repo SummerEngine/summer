@@ -173,10 +173,6 @@ function buildActionHint(message: string): string | null {
     return "Scene path could not be opened. Call `summer_get_project_context` to get `mainScene`, then open that exact path. Avoid guessing scene filenames.";
   }
 
-  if (normalized.includes("writefile cannot edit .tscn/.scn")) {
-    return "Write .gd/.cs/.json/docs/simple config files with normal file-edit tools. Use Summer MCP for live scene state, inspector/node edits, imports, play/stop, diagnostics, and visual verification.";
-  }
-
   return null;
 }
 

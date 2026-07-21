@@ -15,7 +15,7 @@ If you're an AI agent or developer with zero context, read this first.
 **Summer** (this repo) is the **open-source agent layer** for it. Three things in one Node.js package:
 
 1. **CLI tool**: lets users install, manage, and launch Summer Engine from their terminal
-2. **MCP server**: gives AI coding agents 52 tools the host can't do on its own (scene manipulation, play/stop, diagnostics, asset import/generation)
+2. **MCP server**: gives AI coding agents 55 tools, including identity-bound project files, scene manipulation, play/stop, diagnostics, and asset import/generation
 3. **Skills bundle**: the current SKILL.md playbooks that auto-trigger when the agent sees the right natural-language signal
 
 Plus lifecycle hooks, plugin manifests, and setup targets that wire all of the above into Claude Code, Cursor, Codex, Gemini, OpenCode, GitHub Copilot CLI, GitHub Copilot in VS Code, Cline, Roo Code, Factory Droid, and Devin Desktop (formerly Windsurf).

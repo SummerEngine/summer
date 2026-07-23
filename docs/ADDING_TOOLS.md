@@ -96,7 +96,7 @@ If the operation doesn't go through `POST /api/ops` (e.g., it's a state query or
 ### 5. Build and test
 
 ```bash
-cd tools/summer-cli
+npm run check:mcp-contract
 npm run build
 
 # Test the specific tool (requires engine running)
@@ -110,10 +110,11 @@ bash scripts/smoke-test.sh
 
 ### 6. Publish
 
-```bash
-npm version patch
-npm publish --access public
-```
+Do not publish directly after adding a tool. Follow
+[`RELEASING.md`](./RELEASING.md): update the public reference and inventory,
+run the complete release gates, choose a new version only after comparing npm
+`latest`, merge the reviewed release commit to public `main`, and publish from
+a fresh clone.
 
 ---
 

@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "characterPackage": {
+    "metadataPath": "asset.metadata.characterPackage",
+    "version": 2,
+    "readyStatus": "ready",
+    "requiredFields": [
+      "version",
+      "status",
+      "packageRevision",
+      "directoryName",
+      "rig",
+      "animations"
+    ],
+    "primaryPath": "res://characters/<directoryName>/character.tscn",
+    "manifestPath": "res://characters/<directoryName>/character.json"
+  },
+  "generationRequest": {
+    "explicitFields": [
+      "title",
+      "rig",
+      "animationNames",
+      "actionIds",
+      "targetHeightMeters",
+      "idempotencyKey"
+    ],
+    "legacyOptionsField": "options",
+    "textureSupported": false
+  },
+  "continuation": {
+    "webHttpStatus": 409,
+    "webError": "needs_animation_selection",
+    "mcpStatus": "needs_user_input",
+    "mcpCode": "needs_animation_selection",
+    "mcpIsError": false,
+    "webRequiredFields": [
+      "error",
+      "status",
+      "question",
+      "query",
+      "candidates",
+      "resume"
+    ],
+    "mcpRequiredFields": [
+      "status",
+      "code",
+      "question",
+      "query",
+      "candidates",
+      "resume",
+      "idempotencyKey"
+    ],
+    "candidateFields": [
+      "actionId",
+      "label"
+    ],
+    "resumeMethod": "POST",
+    "resumeEndpoint": "/api/mcp/generate/3d",
+    "appendSelectedActionIdTo": "options.actionIds",
+    "idempotencyRule": "reuse_same_key",
+    "hostInteraction": "ordinary_text",
+    "requestUserInputTool": false
+  }
+}

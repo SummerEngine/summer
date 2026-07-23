@@ -22,6 +22,11 @@
 
 ## Tool surface (52 tools)
 
+The machine-checkable snapshot is
+[`mcp-tool-inventory.json`](./mcp-tool-inventory.json). Run
+`npm run check:mcp-contract` whenever a tool is added, removed, or renamed; the
+check compares runtime registrations, this reference, and the snapshot.
+
 ### Scene graph (11)
 
 | Tool | Use |
@@ -106,6 +111,13 @@
 | `summer_generate_audio` | SFX / music gen. |
 | `summer_generate_video` | Video gen. |
 | `summer_generate_motion` | Generate/apply 3D skeletal motion from a rigged asset. |
+
+Animated-character ambiguity is a text-only continuation. A successful MCP
+call may return structured content with `status: "needs_user_input"`,
+`question`, `candidates`, `resume`, and the original `idempotencyKey`. This is
+not an MCP error and there is no menu, card, or `requestUserInput` tool. The
+host agent asks `question` in ordinary text, applies the user's selection to
+the provided resume request, and resubmits with the same idempotency key.
 
 ### Job tracking (2)
 

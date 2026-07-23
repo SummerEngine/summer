@@ -13,7 +13,8 @@ cd "$RELEASE_DIR"
 git pull --ff-only origin main
 ```
 
-Do not substitute an older checkout or a mirrored copy.
+Do not substitute an older checkout or the private engine-monorepo mirror. The
+mirror is intentionally marked `"private": true` and is never a publish source.
 
 ## 2. Run the hard release gates
 
@@ -47,6 +48,7 @@ If this stops, do not improvise. Fix the version or source in a reviewed commit,
 
 ```bash
 npm ci
+npm run check:mcp-contract
 npm test
 npm run build
 npm pack --dry-run

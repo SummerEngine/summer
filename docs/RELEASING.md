@@ -1,18 +1,48 @@
 # Releasing `summer-engine`
 
-The npm package is `summer-engine`. This repository is its public source, and its binary is `summer`.
+The npm package is `summer-engine`. This public
+`SummerEngine/summer-engine-agent` repository is its sole publish source, and
+its binary is `summer`.
+
+The engine monorepo may contain a private working mirror at
+`tools/summer-cli/`. That mirror must keep `"private": true` in its
+`package.json` and must never run `npm publish` or `npm publish --dry-run`.
+Reconcile approved mirror changes into this repository, then release only from
+a fresh clone of this repository's reviewed `main`.
 
 For the exact copy-paste procedure, use [`NPM_PUBLISH_QUICK_COMMANDS.md`](./NPM_PUBLISH_QUICK_COMMANDS.md). It publishes only from a clean, fresh clone of public `main` and stops if the candidate version is not newer than npm `latest`.
 
 ## Release contract
 
-1. Reconcile all approved CLI work into this repository without overwriting newer public changes.
-2. Bump `package.json` and `package-lock.json` to the same new semver version and update `CHANGELOG.md` in a reviewed commit.
-3. Merge that commit to `main` before publishing.
-4. Run the fresh-terminal procedure from a new clone.
-5. Verify the exact version and the `latest` dist-tag from npm after publishing.
+1. Reconcile all approved CLI work into this repository without overwriting
+   newer public changes. Treat the public repository as authoritative when the
+   mirror differs.
+2. Run `npm run check:mcp-contract`. For character-pipeline changes, also run
+   `npm run check:mcp-web-contract -- --web-root /path/to/PublicSummerEngine`.
+3. Run `npm test`, `npm run build`, and `git diff --check`.
+4. Compare the current package version with npm `latest`. Only then choose the
+   next semver, update `package.json`, `package-lock.json`, and `CHANGELOG.md`
+   together, and review that version commit.
+5. Merge the reviewed release commit to public `main`.
+6. Run the fresh-terminal procedure from a new clone.
+7. Verify the exact version and the `latest` dist-tag from npm after publishing.
 
 Never publish an uncommitted version bump. npm never allows the same package name and version to be reused, even after unpublishing.
+
+## Reconciling the private mirror
+
+The mirror is a development input, not a release checkout:
+
+1. Start from clean, reviewable branches at the intended commits in both
+   repositories.
+2. Diff `tools/summer-cli/` against this repository. Exclude engine-only plans,
+   strategy documents, generated artifacts, and private metadata.
+3. Apply only approved source, test, fixture, and public-documentation changes
+   here. Do not replace newer public changes or copy the mirror's
+   `package.json` wholesale.
+4. Run the MCP contract checks, full tests, build, and `git diff --check` here.
+5. Keep the mirror's `"private": true` guard. Never remove it to work around
+   release preparation.
 
 ## Package commands
 
@@ -23,6 +53,8 @@ These commands come from `package.json`:
 | Reproducible install | `npm ci` | Installs exactly from `package-lock.json` |
 | Build | `npm run build` | Removes `dist/` and runs TypeScript compilation |
 | Test | `npm test` | Runs the Vitest suite once |
+| MCP inventory | `npm run check:mcp-contract` | Compares registrations, reference, and inventory |
+| Web contract | `npm run check:mcp-web-contract -- --web-root <path>` | Compares portable character contract and fixture |
 | Package inspection | `npm pack --dry-run` | Shows the files npm would ship |
 | Publish simulation | `npm publish --dry-run` | Runs the publish lifecycle without uploading |
 | Publish | `npm publish` | Runs `prepublishOnly`, then uploads to npm |

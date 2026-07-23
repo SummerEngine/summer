@@ -65,6 +65,8 @@
     "dev": "tsc --watch",
     "summer": "node dist/bin/summer.js",
     "test": "vitest run",
+    "check:mcp-contract": "vitest run src/mcp/tool-contract.test.ts",
+    "check:mcp-web-contract": "node scripts/check-mcp-web-contract.mjs",
     "test:watch": "vitest",
     "prepublishOnly": "npm run build && npm test"
   },

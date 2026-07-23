@@ -11,6 +11,7 @@ vi.mock("node:crypto", () => ({
 }));
 
 import { registerGenerateTools } from "./generate-tools.js";
+import mcpCharacterContract from "../../../contracts/mcp-character-v1.json";
 
 // ---------------------------------------------------------------------------
 // Fake MCP server: records every server.tool() registration so we can inspect
@@ -626,6 +627,7 @@ describe("registerGenerateTools — paid generation retry receipts", () => {
             status: "needs_user_input",
             question:
               'Which animation did you mean by "cast a spell"? Reply with a candidate name or number.',
+            query: "cast a spell",
             message: "Choose the closest animation.",
             candidates: [
               { actionId: 125, label: "Charged Spell Cast" },
@@ -661,10 +663,15 @@ describe("registerGenerateTools — paid generation retry receipts", () => {
     });
     const selection = parseResult(selectionResult);
 
-    expect(selectionResult.isError).toBeUndefined();
+    expect(selectionResult.isError ?? false).toBe(
+      mcpCharacterContract.continuation.mcpIsError
+    );
+    for (const field of mcpCharacterContract.continuation.mcpRequiredFields) {
+      expect(selection).toHaveProperty(field);
+    }
     expect(selection).toMatchObject({
-      status: "needs_user_input",
-      code: "needs_animation_selection",
+      status: mcpCharacterContract.continuation.mcpStatus,
+      code: mcpCharacterContract.continuation.mcpCode,
       question:
         'Which animation did you mean by "cast a spell"? Reply with a candidate name or number.',
       idempotencyKey: "selection-key",

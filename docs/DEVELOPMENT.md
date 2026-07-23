@@ -79,15 +79,19 @@ Copy rule: use "Summer agent layer" for this repo in prose, "`summer-engine` npm
 
 ### Two-repo workflow
 
-Development happens here in the engine monorepo (`tools/summer-cli/`). The public repo is synced on release:
+This public repository is the canonical source and the only npm publish
+source. The engine monorepo may carry a private `tools/summer-cli/` working
+mirror, but that mirror is reconciled into this repository before release and
+keeps `"private": true` in its `package.json`.
 
 ```
-Engine repo (private)                Public repo (open source)
-tools/summer-cli/        --sync-->   SummerEngine/summer-engine-agent
-  src/, docs/, package.json, etc.      Same files, clean history
-  docs/MCP_*_STRATEGY.md              NOT synced (internal)
-  banner-preview.html                  NOT synced (dev artifact)
+Engine repo working mirror           Public canonical repository
+tools/summer-cli/        --review--> SummerEngine/summer-engine-agent
+  private: true                       reviewed public package metadata
+  never publishes                    sole npm publish source
 ```
+
+Follow [`RELEASING.md`](./RELEASING.md) for reconciliation and release gates.
 
 ## Why It Exists
 
@@ -248,7 +252,7 @@ The CLI, the engine, and the web app are **completely independent products** wit
 | What changed | How to deploy | Where it goes |
 |---|---|---|
 | C++ code (ops, LocalApiServer, auth) | `scons` build -> release DMG/EXE per `doc/SUMMER/releases/` | Supabase storage, auto-updater |
-| CLI commands, MCP tools | `npm run build && npm publish` (see below) | npmjs.com as `summer-engine` |
+| CLI commands, MCP tools | Reconcile here, then use the reviewed public release runbook | npmjs.com as `summer-engine` |
 | Web auth routes, API | Deploy web repo (`publicsummerengine`) as usual | Vercel/your hosting |
 
 Changing the CLI does NOT require rebuilding the engine. Rebuilding the engine does NOT require republishing the CLI. The only time you touch both is when adding a new engine operation that needs a new MCP tool.

@@ -3,6 +3,96 @@ import { z } from "zod";
 import { withEngine } from "./with-engine.js";
 import { readFile } from "fs/promises";
 import { join } from "path";
+import {
+  MAX_BATCH_OPERATIONS,
+  classifyMcpOperation,
+  isBatchSafeOperation,
+} from "./operation-classification.js";
+
+type ToolErrorResult = {
+  content: Array<{ type: "text"; text: string }>;
+  isError: true;
+};
+
+function batchError(
+  reason: string,
+  details: { rejectedIndex?: number; operation?: string | null } = {}
+): ToolErrorResult {
+  return {
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify(
+          {
+            error: "batch_rejected",
+            reason,
+            ...details,
+          },
+          null,
+          2
+        ),
+      },
+    ],
+    isError: true,
+  };
+}
+
+function validateBatch(
+  value: unknown
+):
+  | { ok: true; ops: Record<string, unknown>[] }
+  | {
+      ok: false;
+      reason: string;
+      rejectedIndex?: number;
+      operation?: string | null;
+    } {
+  if (!Array.isArray(value)) {
+    return { ok: false, reason: "ops must be an array" };
+  }
+  if (value.length < 1 || value.length > MAX_BATCH_OPERATIONS) {
+    return {
+      ok: false,
+      reason: `ops must contain between 1 and ${MAX_BATCH_OPERATIONS} operations`,
+    };
+  }
+
+  for (let index = 0; index < value.length; index += 1) {
+    const item = value[index];
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      return {
+        ok: false,
+        reason: "each operation must be an object",
+        rejectedIndex: index,
+        operation: null,
+      };
+    }
+
+    const operation = (item as Record<string, unknown>).op;
+    if (typeof operation !== "string" || operation.trim().length === 0) {
+      return {
+        ok: false,
+        reason: "each operation must have a non-empty string op",
+        rejectedIndex: index,
+        operation: null,
+      };
+    }
+
+    if (!isBatchSafeOperation(operation)) {
+      const classification = classifyMcpOperation(operation);
+      return {
+        ok: false,
+        reason: classification
+          ? `operation is ${classification}, not batch_safe`
+          : "unknown operation",
+        rejectedIndex: index,
+        operation,
+      };
+    }
+  }
+
+  return { ok: true, ops: value as Record<string, unknown>[] };
+}
 
 async function readMainSceneFromProject(projectPath?: string): Promise<string | null> {
   if (!projectPath) return null;
@@ -320,25 +410,42 @@ Use when you need the sub-properties of a resource attached to a node. For examp
 
   server.tool(
     "summer_batch",
-    `Execute multiple operations in a single call, grouped into one undo step. Each op is forwarded to the engine VERBATIM, so this is also how you reach engine ops that have no dedicated tool.
+    `Execute up to ${MAX_BATCH_OPERATIONS} scene mutations in a single call, grouped into one undo step.
 
-The user can undo everything with a single Ctrl+Z. Use this when building something that involves multiple nodes and properties — e.g., creating a player character with collision, camera, and properties.
+Only the documented scene-building operations below are accepted. The entire batch is validated before any engine request, and unknown or non-scene operations are rejected.
 
-Each op in the array uses the same format as the individual tools:
+Allowed operations use the same format as their dedicated MCP tools:
 - {"op": "AddNode", "parent": "/", "type": "MeshInstance3D", "name": "Floor"}
 - {"op": "SetProp", "path": "Floor", "key": "position", "value": "Vector3(0, -1, 0)"}
 - {"op": "SetProp", "path": "Floor", "key": "mesh", "value": "PlaneMesh"}
 - {"op": "SetResourceProperty", "nodePath": "Floor", "resourceProperty": "mesh", "subProperty": "size", "value": "Vector2(20, 20)"}
 
-RAW RUNTIME OPS (interactive verification — engine-build dependent; structured failure_reason incl "unsupported" passes through verbatim):
-- SimulateInput — drive the RUNNING game (summer_play first): {"op": "SimulateInput", "type": "action", "action": "jump", "pressed": true}. type is "action" | "key" | "mouse_click" | "axis".
-- RunVerification — spawn a hidden, disposable game instance that runs a GDScript probe and dies (never touches the editor): {"op": "RunVerification", "probe_source": "extends SummerProbeBase\\nfunc _ready(): await super._ready(); report('ok', true); finish()", "max_seconds": 20}. Returns {ok, results, frames, out_dir}. Probe API: report()/save_frame()/press()/key()/finish().`,
+Allowed op names: AddNode, SetProp, SetResourceProperty, RemoveNode, InstantiateScene, ConnectSignal, ReplaceNode.
+
+File, Git, shell, restore, verification, live-input, internal-diff, and arbitrary native operations are not available through this tool.`,
     {
-      ops: z.array(z.record(z.unknown())).describe("Array of operation objects, each with 'op' plus its parameters"),
+      ops: z
+        .array(z.record(z.unknown()))
+        .min(1)
+        .max(MAX_BATCH_OPERATIONS)
+        .describe("Bounded array of allowlisted scene operation objects"),
     },
-    async ({ ops }) =>
-      withEngine(async (client) =>
-        client.executeOps(ops as Record<string, unknown>[], { groupUndo: true })
-      )
+    async ({ ops }) => {
+      const validation = validateBatch(ops);
+      if (!validation.ok) {
+        return batchError(validation.reason, {
+          ...(validation.rejectedIndex !== undefined
+            ? { rejectedIndex: validation.rejectedIndex }
+            : {}),
+          ...(validation.operation !== undefined
+            ? { operation: validation.operation }
+            : {}),
+        });
+      }
+
+      return withEngine(async (client) =>
+        client.executeOps(validation.ops, { groupUndo: true })
+      );
+    }
   );
 }

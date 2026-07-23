@@ -112,7 +112,15 @@
 | Tool | Use |
 |---|---|
 | `summer_check_job` | Poll a generation job. |
-| `summer_batch` | Run multiple ops as a transaction. |
+| `summer_batch` | Run up to 50 allowlisted scene mutations in one undo group. The complete batch is validated before transport. |
+
+`summer_batch` accepts only `AddNode`, `SetProp`, `SetResourceProperty`,
+`RemoveNode`, `InstantiateScene`, `ConnectSignal`, and `ReplaceNode`. File,
+Git, shell, restore, live-input, verification, internal-diff, and unknown
+operations are rejected before the engine receives any item. Use the host's
+native file, search, shell, and Git capabilities instead. Summer MCP does not
+currently expose a typed verification-probe tool because no public source-size
+limit has been established.
 
 ### Meta (3)
 

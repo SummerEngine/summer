@@ -225,10 +225,9 @@ anti-patterns, and recovery steps.`,
                   "summer_stop  -> ALWAYS stop; scene mutations are refused while the game runs",
                 ],
                 "4_interactive": [
-                  "To prove input-driven behavior (does jump/move/shoot actually work), you have two routes when the engine build supports them (both go through summer_batch as raw ops — see rawOpsViaBatch):",
-                  "SimulateInput: inject a single action/key/mouse/axis into the RUNNING game, then re-check screenshot/debugger. Requires summer_play first.",
-                  "RunVerification: spawn a hidden, disposable game instance that runs a GDScript probe (press inputs, read state, save frames) and dies — never touches the user's editor. Returns results.json + frames. Best for a scripted 'does X happen when I do Y' assertion.",
-                  "If neither op is available on this engine build (failure_reason:'unsupported' or an unknown-op error comes back), do NOT fake it — ask the user to try the interaction and report what they see.",
+                  "Summer MCP does not expose live input injection or arbitrary verification probes.",
+                  "Use summer_play, diagnostics, and a game screenshot for observable runtime evidence.",
+                  "For behavior that still requires player input, ask the user to try the interaction and report what they see. Do not fake the result.",
                 ],
               },
               // HONESTY — mirror the in-product agent's vision rules. A capture is
@@ -258,13 +257,11 @@ anti-patterns, and recovery steps.`,
                 "summer_save_scene",
                 "summer_get_diagnostics",
               ],
-              // summer_batch forwards each {op, ...} verbatim to the engine, so
-              // engine ops that have no dedicated tool are still reachable.
-              rawOpsViaBatch: [
-                "summer_batch runs an array of raw engine ops in one undo group; each op is passed through untouched, so newer engine ops with no dedicated tool are still callable.",
-                "SimulateInput (drive the RUNNING game): summer_batch ops:[{op:'SimulateInput', type:'action', action:'jump', pressed:true}]. type is 'action' | 'key' | 'mouse_click' | 'axis'. summer_play first. Structured failure_reasons (incl 'unsupported' on older builds) come back verbatim — surface them.",
-                "RunVerification (hidden probe instance): summer_batch ops:[{op:'RunVerification', probe_source:'<gdscript>', max_seconds:20}]. probe_source extends SummerProbeBase and uses report()/save_frame()/press()/key()/finish(); returns {ok, results, frames, out_dir} or {ok:false, failure_reason: spawn_failed|timeout|bad_args|no_project}.",
-                "These are runtime ops, not scene mutations — the batch undo group is a harmless no-op for them.",
+              batchSafety: [
+                "summer_batch accepts only a bounded allowlist of scene mutations: AddNode, SetProp, SetResourceProperty, RemoveNode, InstantiateScene, ConnectSignal, and ReplaceNode.",
+                "The complete batch is validated before the engine receives anything. File, Git, shell, restore, live-input, verification, internal-diff, and unknown operations are rejected.",
+                "Use the host's native file, search, shell, and Git capabilities outside Summer MCP.",
+                "No typed verification-probe tool is currently exposed. Use the runtime verification ladder and ask the user for manual interaction when needed.",
               ],
               recovery: [
                 "If you see 'no scene open': run summer_open_main_scene.",
@@ -272,7 +269,7 @@ anti-patterns, and recovery steps.`,
                 "If save fails: verify scene is open and game is not running (summer_is_running / summer_stop).",
                 "If a mutation is rejected with identity_mismatch: the engine switched projects — call summer_get_project_context to rebind (only if you meant to follow it), then retry.",
                 "If a .tscn you wrote keeps reverting: the editor has that scene open -- reload or close the tab, then write again.",
-                "If a run op or SimulateInput returns 'unsupported' / an unknown-op error: this engine build predates it — fall back to summer_play + summer_get_debugger_errors, or ask the user to interact.",
+                "If runtime evidence cannot prove an input-driven behavior, fall back to summer_play + summer_get_debugger_errors and ask the user to interact.",
               ],
               debugging: [
                 "Set SUMMER_MCP_DEBUG=1 in the MCP server's environment to log a structured stderr line per tool call (tool, ok, durationMs, terminalState, errorClass, failureReason, retried, boundProjectIdHash). With the flag OFF, only failures are logged. Use it to see exactly which op failed and why.",

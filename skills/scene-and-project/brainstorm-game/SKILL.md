@@ -1,6 +1,6 @@
 ---
 name: brainstorm-game
-description: Use when the user wants help deciding what game to make, scoping a new project, or turning a vague idea into a buildable plan. Walks through genre, scope, core loop, mechanics, and art direction, then writes a 1-page brief to `.summer/GameSoul.md`. Trigger on "brainstorm a game", "what should I make", "I want to make a game", "help me scope", "new game idea".
+description: Use when the user explicitly wants to brainstorm, does not know what game to make, or has only a vague idea that lacks a buildable core loop. Walks through genre, scope, core loop, mechanics, and art direction, then writes a 1-page brief to `.summer/GameSoul.md`. Do not use when the user already supplied a concrete game brief; route that directly to make-game.
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: scene-and-project
@@ -16,6 +16,16 @@ paths: [".summer/**", "project.godot", "**/*.md"]
 Most game projects fail because they were never scoped. This skill turns "I want to make a game" into a 1-page brief that names the pitch, the core loop, three mechanics max, the art direction, and the scope (jam / vertical slice / full game). The brief lands at `.summer/GameSoul.md` — the file Summer's onboarding pipeline and every future `summer:` skill reads on first turn.
 
 **Core principle:** Constrain ruthlessly. A buildable bad idea beats an un-buildable great idea. Three mechanics, one art direction, one scope. Anything else gets parked in a "Later" list.
+
+## Concrete brief guard
+
+If the user already named the game shape and described the primary action or
+failure/restart loop, stop this interview and return the original request to
+`summer:make-game`. Do not ask them to repeat genre, core loop, mechanics, art
+direction, scope, or technical architecture.
+
+This skill is for discovering the game, not for delaying a game the user has
+already defined.
 
 ## Steps
 
@@ -99,9 +109,11 @@ Don't go deeper here — `/summer:art-direction` is where the bible gets built. 
 
 State the choices flat:
 
-> Scope. Pick one: (a) a 4-hour jam-sized prototype — one mechanic, one level, one art direction, ships in a weekend. (b) a vertical slice — 30-60 minutes of polished play that proves the core loop, ships in 2-4 weeks. (c) a full game — 4-20 hours of content, ships in 6+ months.
+> Scope. Pick one: (a) a minimum playable game — one complete interactive loop you can actually control and retry. (b) a vertical slice — 30-60 minutes of polished play that proves the core loop. (c) a full game — the complete planned content.
 
-If they flinch at (c), recommend (b). New devs almost always overestimate scope. Default recommendation if they're unsure: **vertical slice**.
+If they are unsure, recommend the minimum playable game first. "Minimum" never
+means an empty scene: it still includes the player action, challenge, and
+failure/restart or win loop.
 
 ### 7. Sanity-check the combination
 
@@ -144,21 +156,22 @@ Compose the 1-page brief. Format:
 **Parked for later:** <Things they pitched that didn't make the three.>
 ```
 
-### 9. Ask permission and write
+### 9. Confirm the brief and write
 
-**Preferred (Summer MCP + host file write):**
+Show the complete brief once and ask a visible-product question:
 
-> May I create `.summer/GameSoul.md` with this brief?
+> Does this capture the game you want to build?
 
-On yes, use `Write` (host file tool) — `.summer/GameSoul.md` is plain markdown, no engine import needed:
+On yes, use `Write` (host file tool). The accepted request authorizes this
+reversible project note; do not ask separately for file permission.
 
 ```
 Write .summer/GameSoul.md
 ```
 
-If `.summer/GameSoul.md` already exists, read it first, show what would change, ask:
-
-> `.summer/GameSoul.md` already exists. May I overwrite it, or merge into a "Revision 2" section below the existing brief?
+If `.summer/GameSoul.md` already exists, read it first and append a dated
+revision while preserving the earlier brief. Ask only if the user explicitly
+requires replacement and safe merging is impossible.
 
 **Fallback (no host write tool — agent is read-only):**
 
@@ -166,17 +179,15 @@ Print the full brief to the user with the explicit instruction:
 
 > Save this as `.summer/GameSoul.md` in your project root. Every Summer skill reads it.
 
-### 10. Route to the next step
+### 10. Return to the build
 
-End every successful brainstorm with a routing question:
+When invoked by `summer:make-game`, return the accepted brief to that
+orchestrator immediately. It should continue to the playable MVP without asking
+the user to choose another workflow or exposing the internal project setup.
 
-> Brief saved. Next step:
-> - `/summer:design-mechanic` — design the core loop in detail (recommended for vertical slice).
-> - `/summer:design-level` — sketch level 1 / the tutorial.
-> - `/summer:art-direction` — turn the one-phrase look into an art bible.
-> - Or pick up `/summer:make-game` to start scaffolding the project.
+When invoked directly, recommend one next action in ordinary text:
 
-Don't auto-pick. Let them decide.
+> Brief saved. Ready for me to build the smallest playable version?
 
 ## Anti-patterns (don't do these)
 
@@ -189,11 +200,13 @@ Don't auto-pick. Let them decide.
 | Defaulting to "full game" scope | New devs overestimate. Default to vertical slice; let them upgrade if they push. |
 | Pitching a genre they didn't ask for | The first sentence they typed is signal. Don't override it. |
 | Including art direction details | One phrase. Bible-building is `/summer:art-direction`. |
-| Saving without asking | Always ask "May I create `.summer/GameSoul.md`?" — see collaborative-protocol. |
+| Asking for separate file-write approval | The accepted brief already authorizes its reversible project note. |
 
 ## Collaborative protocol
 
-This skill writes one file (`.summer/GameSoul.md`). Always ask before writing. Always show the brief inline before saving so the user can react. See `references/collaborative-protocol.md`.
+This skill writes one file (`.summer/GameSoul.md`). Show the brief inline and
+confirm the visible game definition before saving. Do not ask separately for
+permission to write the file. See `references/collaborative-protocol.md`.
 
 ## Want a working starter?
 
@@ -201,10 +214,10 @@ No template — this is a workflow that produces the brief that drives template 
 
 ## See also
 
-- `references/collaborative-protocol.md` — "May I write?" pattern
+- `references/collaborative-protocol.md` — material-boundary rules
 - `references/template-registry.md` — templates the brief will be matched against later
 - `gameplay-mechanics/design-mechanic/SKILL.md` — design the core loop in detail
 - `level-design/design-level/SKILL.md` — sketch level 1
 - `rendering-and-lighting/art-direction/SKILL.md` — turn the one-phrase look into a full bible
 - `audio/audio-direction/SKILL.md` — sonic identity
-- `scene-and-project/make-game/SKILL.md` — scaffold the project once the brief is locked
+- `scene-and-project/make-game/SKILL.md` — build the playable MVP once the brief is locked

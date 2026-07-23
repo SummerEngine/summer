@@ -16,9 +16,15 @@ This file is for any AI agent that loads context from `AGENTS.md` (Codex CLI, Fa
 
 ## Skill priority
 
-- **Process** (`brainstorm-game`, `debug`, `play`) → how to approach.
+- **Route**: new game builds enter `make-game`; it invokes `brainstorm-game`
+  only when the idea is genuinely vague.
+- **Process** (`debug`, `play`) → how to diagnose and verify.
 - **Discipline** (`gdscript-patterns`, `scene-composition`, `art-direction`) → how to shape it.
 - **Build** (`fps-controller`, `design-mechanic`, `design-level`, `setup-multiplayer`, `vfx`, `tune-performance`, `export-and-ship`) → produce the artifact.
+
+For a concrete game brief, do not repeat onboarding, ask about file
+architecture, or stop at an empty scaffold. Ask only material product or paid
+generation questions and continue to the smallest playable result.
 
 ## MCP tool palette (engine on `localhost:6550`)
 

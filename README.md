@@ -75,7 +75,7 @@ The relevant check ids are `node-version`, `cli-version`, `cli-version-current`,
 | `engine-install` | skip Step 2 | run Step 2 |
 | `login` | skip Step 3 | run Step 3 |
 | `local-api` | skip Step 5b wait-loop | run wait-loop after `summer run` |
-| `project-memory` | continue | if a project is open, run `summer:brainstorm-game` before building |
+| `project-memory` | continue | if a project is open, route the goal through `summer_start_game_task` |
 | `mcp-server` | skip Step 1 | run Step 1 |
 
 **On version drift:** if either `cli-version-current` or `skills-version-stale` needs attention, refresh before proceeding. Tell the user once: "There's a newer Summer (X.Y.Z to A.B.C); updating before we start." Then run the recommended action from `details.recommendedAction` and re-run doctor. Don't ask the user to choose; they paste "install" and want the latest.
@@ -152,13 +152,20 @@ done
 
 Once `local-api` is `ok`, MCP tools are safe to call.
 
-### Step 6: Brainstorm the game, then build
+### Step 6: Route the idea, then build
 
-Now you have skills + MCP. **Don't jump into `summer create` content from a vague prompt**. Call `summer_start_game_task` with the user's goal, then invoke the recommended skill. For vague "make a game" requests, that should usually be `summer:brainstorm-game`. It scopes mechanics, art direction, and the V1 cut list, and writes the result to `.summer/GameSoul.md`. Every other Summer skill reads from that file.
+Now you have skills + MCP. Call `summer_start_game_task` with the user's goal,
+then invoke its top recommended skill. New game builds enter
+`summer:make-game`. For a vague request, it invokes `summer:brainstorm-game`,
+locks the brief in `.summer/GameSoul.md`, and resumes the playable build.
 
 Project memory lives in `.summer/` as readable Markdown. Use `.summer/memory/` for locked facts that should not drift across sessions, such as character voice IDs, world canon, and provider bindings. Users can inspect it with `summer memory`; agents should read relevant memory surfaced by `summer_get_project_context` before changing creative/audio/dialogue/level/character work.
 
-Only skip brainstorm if the user explicitly said "skip brainstorm" or "just build the X already." After brainstorm, the appropriate build skills (`fps-controller`, `design-mechanic`, `design-level`, `make-game`, etc.) auto-trigger from natural language.
+Use brainstorm only when the user does not know what game to make or explicitly
+asks for help exploring it. A concrete brief routes directly to
+`summer:make-game`; it should not repeat onboarding or stop at an empty
+scaffold. Ask only material product or paid-generation questions, then continue
+to the smallest playable result.
 
 ### Anti-patterns (do NOT do these)
 
@@ -174,7 +181,9 @@ Only skip brainstorm if the user explicitly said "skip brainstorm" or "just buil
 - **Don't call MCP tools (`summer_get_scene_tree`, etc.) until `local-api` is `ok`.** The engine takes a few seconds to boot after `summer run`. Use Step 5b's wait-loop.
 - **Don't `summer create` without `cd`'ing to a stable parent directory first.** It writes into CWD; agents that start in a temp dir will leave the project there.
 - **Don't loop `summer login` if it times out at 120s.** Re-run it once and tell the user to be quicker; loop forever and the user is stuck.
-- **Don't jump straight into `summer create` from a vague prompt.** Invoke `summer:brainstorm-game` first (Step 6). The build skills assume `.summer/GameSoul.md` exists.
+- **Don't jump straight into `summer create` from a vague prompt.** Invoke
+  `summer:make-game`; it runs `summer:brainstorm-game` first and resumes after
+  `.summer/GameSoul.md` exists.
 
 **Using a different agent?** Replace `claude-code` with any supported agent in Step 1: `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `kilo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, or `lm-studio`. (`devin` is also accepted as an alias for `windsurf`.) Skill targets vary per agent (Cursor uses `.cursor/rules/`, Devin Desktop uses `.windsurfrules`, Cline + Roo use `.clinerules/`, Copilot uses `~/.copilot/skills` or `.github/skills`, OpenCode uses agent definitions, etc.). The CLI handles the difference. After install, **Cline and Roo Code users should restart VS Code** so the extension reloads its MCP config. **Gemini users** may need to run `gemini extensions enable summer-engine` after the first install. **VS Code Copilot users** should start the `summer-engine` MCP server from Agent mode if VS Code does not autostart it. **Factory Droid** still has its own plugin path below.
 
@@ -314,7 +323,8 @@ tested source-size and duration contract; it is unavailable today.
 ## The basic workflow
 
 1. **using-summer** loads on session start. Sets workflow priority and the red-flag list.
-2. **brainstorm-game** scopes a new project. One question, one page, one direction.
+2. **brainstorm-game / make-game** route by intent: vague ideas are scoped;
+   concrete briefs build directly to a playable result.
 3. **scene-composition** picks the right hierarchy before any node lands.
 4. **fps-controller / design-mechanic / design-level / setup-multiplayer / vfx** produce the artifact.
 5. **gdscript-patterns** guides every `.gd` write.

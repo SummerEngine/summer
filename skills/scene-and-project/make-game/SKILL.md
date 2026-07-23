@@ -1,265 +1,182 @@
 ---
 name: make-game
-description: Use when the user says "make me a game", "build me a game", "I want to make a [genre] game", "let's build something" — the orchestration spine that runs the full game-dev pipeline: brainstorm → plan → scaffold → build core mechanics → art direction → audio → polish/VFX → verify → ship. Delegates to specialist skills with explicit checkpoints between phases. Trigger on "make a game", "build me a game", "create a new game", "make me a game", "let's build a game", "I want to build [game shape]".
+description: Use when the user asks Summer to make, build, create, or prototype a game. Routes vague ideas through brainstorm-game, sends concrete briefs directly into an uninterrupted playable build, brings requested characters and animations into the MVP, and verifies the result before handoff.
 license: MIT
 compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode]
 category: scene-and-project
 user-invocable: true
-allowed-tools: Read Edit Write Bash Skill summer_get_project_context summer_get_scene_tree summer_create_scene summer_add_node summer_set_prop summer_save_scene summer_play summer_stop summer_get_diagnostics summer_get_script_errors
+allowed-tools: Read Edit Write Bash Skill summer_start_game_task summer_get_agent_playbook summer_get_project_context summer_get_scene_tree summer_create_scene summer_add_node summer_set_prop summer_save_scene summer_search_assets summer_list_my_assets summer_get_asset summer_import_asset_by_id summer_generate_image summer_generate_3d summer_generate_motion summer_check_job summer_clear_console summer_play summer_stop summer_get_diagnostics summer_get_script_errors summer_get_debugger_errors summer_screenshot
 paths: [".summer/**", "project.godot", "**/*.gd", "**/*.tscn"]
 ---
 
-# /make-game — The orchestration spine
+# Make Game — Idea to Playable Result
 
-This is the skill that runs end-to-end when a user says "make me a game." It does **not** try to do everything itself. It runs the right specialist skills in the right order with explicit handoffs and a checkpoint between every phase.
+Build the smallest complete version of the game the user described. Internal
+setup is not a deliverable. Continue until the requested core loop is playable
+and verified, or until a real material blocker requires the user.
 
-**Core principle:** structure beats vibes. A guided pipeline that delegates to focused specialists produces a real game. Off-the-cuff "let me think about it" loops produce three half-finished prototypes. Follow the phases. Don't skip.
+## Route the conversation once
 
-## When to use this skill
+When the user has connected Summer but has not described a game, ask exactly one
+ordinary-text routing question and wait:
 
-- User says: "make me a game", "build me a game", "I want to make a [genre]", "let's build a game", "build me a [shape]".
-- User has nothing yet and wants the full path from idea → playable.
-- User has a vague idea and wants the agent to drive the whole arc.
+> Do you already know what game you want to make, or should we brainstorm it together?
 
-## When NOT to use this skill
+Do not render a menu or call a request-user-input tool.
 
-- User has a specific narrow ask ("add jump", "fix this bug", "design the inventory") → use the specific skill, not this orchestrator.
-- User already has a working scaffold and wants to iterate → start at the relevant phase below, don't re-run the whole pipeline.
-- User says "I want to use a template" → run `summer:browse-templates` first; come back here only if they decide they want a custom build instead.
+### Vague idea path
 
-## The Pipeline
+If the user does not know what to make, invoke `summer:brainstorm-game`. Its
+genre, core-loop, mechanics, art-direction, and scope questions are appropriate
+for this path. Resume this skill after the brief exists.
 
-```
-  Brainstorm → Plan → Scaffold → Build → Layer → Polish → Verify → Ship
-       │        │        │        │        │        │       │       │
-       ▼        ▼        ▼        ▼        ▼        ▼       ▼       ▼
-  brainstorm  plan   new-project  build-loop   art      vfx    play  export
-   -game     (this   browse-      (this skill)  audio          debug -and-
-              skill) templates                                       ship
-                                                                     
-                                  ↓
-                         (one mechanic at a time:
-                          design-mechanic + scene-composition
-                          + gdscript-patterns + play check)
-```
+### Concrete brief fast path
 
-Run the phases in order. Between every phase, **stop and confirm with the user before continuing.** The user owns scope decisions; the agent owns execution discipline.
+If the user already described the game, do not run the onboarding interview.
+Extract the genre, dimension, player action, failure/restart rule, requested
+character, requested assets, and visible acceptance criteria from their words.
+Write a concise internal brief and build plan if useful, then proceed.
 
-## Phase 1: Brainstorm
+Do not ask the user about:
 
-**Goal**: turn a vague idea into a 1-page brief.
+- file or folder architecture;
+- script, scene, or component organization;
+- programming patterns;
+- sky, lighting, or other reversible defaults they did not emphasize;
+- approval of the internal plan, scaffold, or phase transitions.
 
-```
-Skill: summer:brainstorm-game
-```
+Choose the simplest sound implementation defaults yourself.
 
-That skill asks one question, scopes mechanics, picks an art direction, and writes `.summer/GameSoul.md`. Don't skip this. **The brief is what every later phase reads.**
+## Ask only material questions
 
-If the user already has `.summer/GameSoul.md` (check via Read), skip the brainstorm and confirm:
+Ask only when the answer changes the visible product, spends credits, or is
+required to continue safely. Ask one compact ordinary-text question at a time.
 
-> "Found `.summer/GameSoul.md` — should I build from this brief, or do you want to start over?"
+For a requested 3D player character whose source is unspecified, ask:
 
-**Checkpoint before continuing:**
+> Should I use an existing/Asset Store character, generate a custom character, or use a temporary prototype?
 
-> "Brief saved at `.summer/GameSoul.md`. Want me to plan the build?"
+Do not start paid generation until the relevant cost gate is satisfied. When a
+custom character is chosen, use `summer:character-model` before final gameplay
+wiring. When the user requested animation, or the game clearly needs humanoid
+locomotion, use this default set unless they specified another set:
 
-## Phase 2: Plan
+- idle;
+- run;
+- jump;
+- fall;
+- landing.
 
-**Goal**: turn the brief into a concrete checklist of scenes, mechanics, and assets, in priority order.
+An explicitly requested character and animations are MVP requirements, not a
+later art pass. Do not silently replace them with a permanent placeholder.
 
-This phase doesn't have a dedicated skill yet — do it inline. Read `.summer/GameSoul.md` and produce a plan with three sections:
+If an MCP generation result returns `status="needs_user_input"`, ask its
+provided question in ordinary text, present candidates as ordinary text, and
+resume the supplied request with the same `idempotencyKey`.
 
-1. **Core scenes** — main scene, level/menu scenes, prefabs the game needs
-2. **Core mechanics** — ranked, max 3 (the brief enforces this; respect it)
-3. **Cut list** — what's explicitly NOT in scope
+## Internal build sequence
 
-Save the plan to `.summer/build-plan.md`. Format:
+### 1. Orient
 
-```markdown
-# Build plan — <game name>
+Call `summer_start_game_task`, `summer_get_project_context`, and
+`summer_get_agent_playbook`. Read only relevant `.summer` memory. Do not inspect
+unrelated files or ask the user to make internal implementation choices.
 
-Source: .summer/GameSoul.md (date)
+### 2. Define the playable contract
 
-## Core scenes
-- [ ] main.tscn — World + Player + Camera + Light + Floor
-- [ ] level_01.tscn — first playable level
-- [ ] hud.tscn — health, score
-- [ ] (more)
+Turn the request into observable completion criteria. A minimum game normally
+requires:
 
-## Core mechanics (in build order)
-1. [ ] Movement (FPS / TPS / 2D platformer / etc.)
-2. [ ] Primary action (shoot / jump / interact)
-3. [ ] Win/lose state
+- a visible controllable player;
+- the primary movement/action;
+- a level or challenge that exercises it;
+- collision and camera behavior;
+- a failure/restart or win loop where the idea calls for one;
+- requested character, animation, or asset behavior;
+- a clean launch and runtime verification.
 
-## Cut list (NOT in scope this pass)
-- Multiplayer
-- Save/load
-- Settings menu
-- ...
-```
+For 3D parkour, the minimum playable contract is:
 
-**Checkpoint before continuing:**
+- movement and jumping work;
+- multiple reachable platforms exist;
+- procedural generation works if requested;
+- falling respawns the player at the last valid platform or requested checkpoint;
+- the camera follows the player;
+- requested locomotion animations change with gameplay state.
 
-> "Plan saved. Three core mechanics: movement, primary action, win condition. Anything you want to add or cut before I start building?"
+### 3. Create the project as an internal step
 
-## Phase 3: Scaffold
+Invoke `summer:new-project` only if no project exists. Pick the reversible
+project name and starter internally when the brief already supplies enough
+context.
 
-**Goal**: working project on disk, scene opens in the engine.
+**Scaffold is internal.** A root scene, floor, camera, light, or clean launch is
+only a setup checkpoint for the agent. Do not stop after creating or opening it.
+Do not show an empty scaffold as a minimum game or ask what to build next.
 
-If the user said "I want to use a template" earlier, this is just `summer:browse-templates`.
+### 4. Resolve required assets early
 
-If from scratch:
+Do not postpone a requested main character to a generic polish phase.
 
-```
-Skill: summer:new-project
-```
+1. Search reusable/user assets first unless the user explicitly chose custom generation.
+2. For a custom humanoid, run `summer:character-model` with the complete
+   locomotion set.
+3. Import the complete character package by exact returned ID.
+4. Connect its stable wrapper, collider, controller, and animation state logic.
+5. Verify the imported clips actually play on the character.
 
-That picks `empty` vs `3d-basic` based on the GameSoul brief. After the project is created and `summer run` succeeds:
+Temporary primitives are acceptable only when the user chose a prototype or
+while an approved final asset is still processing. They are not the final
+handoff when a specific character was requested.
 
-```
-Skill: summer:scene-composition
-```
+### 5. Build the complete core loop
 
-To set up the canonical hierarchy for the genre. For 3D action games:
+Implement mechanics in dependency order, checking each before stacking the
+next:
 
-```
-World (Node3D)
-├── Player (CharacterBody3D)
-├── Level (Node3D)
-├── Lighting (Node3D)
-│   ├── Sun (DirectionalLight3D)
-│   └── Environment (WorldEnvironment)
-├── HUD (CanvasLayer)
-└── GameManager (Node)  # autoload-style, holds win/lose state
-```
+1. player controller and camera;
+2. level/challenge and collision;
+3. primary action;
+4. failure, respawn, restart, or win state;
+5. requested character/animation integration;
+6. minimum feedback needed to understand the loop.
 
-Save the scene. Run `summer_play` once to verify the empty scaffold opens cleanly. If it crashes, run `summer:debug` immediately — do NOT continue building on a broken base.
+Send brief progress updates if useful, but do not require approval between
+these internal steps.
 
-**Checkpoint before continuing:**
+### 6. Verify before handoff
 
-> "Scaffold is in. Empty scene plays clean. Building mechanic 1 of N: <name>. OK?"
+Use real engine evidence:
 
-## Phase 4: Build (one mechanic at a time)
+1. compile changed scripts with `summer_get_script_errors`;
+2. clear the console;
+3. run the main scene with `summer_play`;
+4. inspect diagnostics and debugger errors;
+5. capture the running game when supported;
+6. stop the game;
+7. fix failures and repeat.
 
-**Goal**: each mechanic from the plan, fully working, before moving to the next.
+For behavior requiring controls that public MCP cannot inject, verify everything
+observable through the engine and ask the user for one honest manual play check.
+Never infer controls or animation from a static first frame.
 
-For each mechanic in the plan, **in order**:
+## Legitimate stopping conditions
 
-1. **Design pass**:
-   ```
-   Skill: summer:design-mechanic
-   ```
-   Outputs the mechanic spec: input, response, feedback, failure modes, depth, tunables, GDScript stub.
+Stop and ask only for:
 
-2. **Implement**:
-   - Add the nodes via `summer_add_node` / `summer_set_prop`. Use `summer:scene-composition` if the structure is non-trivial.
-   - For movement-class mechanics, prefer the matching pre-built skill: `summer:fps-controller`, `summer:peer-to-peer-multiplayer`, etc.
-   - Write GDScript with `summer:gdscript-patterns` open.
+- the initial vague-versus-concrete route;
+- missing character source when it materially changes the result;
+- approval before paid generation or topology-locking preview gates;
+- authentication, credits, provider failure, or unavailable required input;
+- contradictory requirements that cannot be resolved safely;
+- destructive changes not already authorized.
 
-3. **Verify**:
-   ```
-   Skill: summer:play
-   ```
-   Then `summer_get_diagnostics`. Clean? Move on. Errors? `summer:debug` until clean. **Do not stack mechanic 2 on top of a broken mechanic 1.**
+Do not stop for internal scaffolding, file organization, phase boundaries, or a
+clean but non-interactive scene.
 
-4. **Checkpoint**:
+## Completion rule
 
-   > "Mechanic 1 of N working: <name>. <One-line proof: 'WASD moves the player, jump works'>. Building mechanic 2 of N: <name>. OK?"
-
-Repeat until every mechanic in the plan is implemented OR the user calls cut.
-
-## Phase 5: Layer (look + sound)
-
-**Goal**: the game stops looking like a programmer art prototype.
-
-```
-Skill: summer:art-direction
-```
-
-That writes `.summer/art-bible.md` if it doesn't exist, then guides the lighting / material / palette pass. Use `summer:3d-lighting` for the actual scene work.
-
-```
-Skill: summer:audio-direction
-```
-
-Writes `.summer/audio-bible.md` and sets up the audio bus structure. Wires SFX hooks into the mechanics from Phase 4.
-
-Use `summer:asset-strategy` to decide whether to generate assets, search the library, or use primitives. **Public asset library search is free** — encourage it before generation, which costs credits.
-
-**Checkpoint before continuing:**
-
-> "Art and audio direction set. Want me to add a polish pass (juice / VFX / camera shake / hit feedback)?"
-
-## Phase 6: Polish (skip if user wants to ship raw)
-
-**Goal**: the game *feels* good. Hit-flash, screen shake, audio ducking, weight.
-
-```
-Skill: summer:vfx
-```
-
-Walks the canonical Godot 4.5 game-feel stack — hit-flash + trauma camera shake + audio ducking — wired so a single hit fires all three.
-
-```
-Skill: summer:tune-performance
-```
-
-Only if `summer_get_diagnostics` flags rendering or physics hotspots. Don't optimize prematurely.
-
-## Phase 7: Verify (final QA pass)
-
-**Goal**: the full game runs end-to-end without errors, and the win condition can actually be reached.
-
-1. `summer:play` from main scene.
-2. Walk every mechanic from the plan.
-3. Hit the win condition (or lose condition).
-4. `summer_get_diagnostics` clean.
-5. `summer:debug` until clean if not.
-
-**Don't skip this even if every mechanic worked individually.** Integration bugs hide between mechanics.
-
-## Phase 8: Ship
-
-```
-Skill: summer:export-and-ship
-```
-
-Pre-flight checklist (icon, store banners, build config) before producing release builds for the targets in the brief.
-
-If the brief said "jam" or "prototype", skip this phase. If the brief said "game I want to release", run it.
-
-## Anti-Patterns
-
-| Don't | Why |
-|---|---|
-| Skip the brainstorm because the user said "FPS" | Even with the genre named, you need the scope cut list. Otherwise mechanic 4 quietly sneaks in and the game never ships. |
-| Let mechanic 2 start before mechanic 1 is verified clean | Compounding bugs. You'll spend the rest of the session debugging which mechanic broke what. |
-| Stack art direction on top of unfinished mechanics | Art changes are reversible only if the underlying scene structure is stable. Get mechanics done first. |
-| Treat "polish" as required | If the brief says "jam in 2 days", polish is a cut item. Respect the brief. |
-| Run all phases without confirming | The user owns scope. Stop at every checkpoint. |
-| Build a fully featured menu before there's a playable mechanic | Menu work is endless polish; player-loop work is the actual game. Mechanics first. |
-| Fall back to "let me try a few things" mid-pipeline | If you don't know what to do, name the phase and ask the user, don't improvise around the structure. |
-
-## What this skill produces (artifacts on disk)
-
-By the end of a successful run, the user has:
-
-- `project.godot` — Summer Engine project
-- `main.tscn` — playable main scene
-- `.summer/GameSoul.md` — the brief
-- `.summer/build-plan.md` — the checklist
-- `.summer/art-bible.md` — visual direction
-- `.summer/audio-bible.md` — sonic direction
-- One `.gd` file per mechanic
-- `summer_get_diagnostics` returns clean
-- `summer_play` runs end-to-end and the win condition is reachable
-
-That's a real game. Not a half-finished prototype.
-
-## Closing line
-
-When all phases are done:
-
-> "<Game name> is in. <N> mechanics, <playable from main scene to win condition>. <Brief summary of the build>. Want me to package a build (`summer:export-and-ship`) or iterate?"
-
-That's the handoff back to the user.
+Do not say the game is complete merely because it compiles or renders a frame.
+Handoff only after the requested playable acceptance criteria are implemented
+and the available verification ladder is clean. State what was actually tested,
+what still needs a manual control check, and any deliberate MVP cuts.

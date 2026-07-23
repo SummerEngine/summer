@@ -2,6 +2,40 @@
 
 The minimum safe workflow for AI agents building in a Summer Engine project.
 
+## Conversation routing
+
+If Summer is connected but the user has not supplied a game goal, ask one
+ordinary-text question:
+
+> Do you already know what game you want to make, or should we brainstorm it together?
+
+- Invoke `make-game` for a game build. If the idea is vague, it invokes
+  `brainstorm-game` and resumes automatically after the brief is accepted.
+- If the user already described the game shape and core loop, invoke
+  `make-game` directly and skip onboarding.
+- Ask only about material visible-product choices, paid generation,
+  authentication, contradictions, or destructive actions.
+- For an unspecified 3D player source, ask whether to use an existing/Asset
+  Store character, generate a custom character, or use a temporary prototype.
+- Do not ask about file/folder architecture, component organization,
+  programming patterns, sky, or other reversible implementation details.
+- MCP has no request-user-input menu. Ask required questions in ordinary text.
+
+## Playable MVP contract
+
+An empty scaffold is never a user-facing milestone. A floor, camera, light, or
+clean first frame is internal setup.
+
+Continue until the result has a visible controllable player, the requested
+primary action, a challenge that exercises it, collision/camera behavior, and
+the requested failure/restart or win loop. Explicitly requested characters and
+animations are part of the MVP.
+
+For 3D parkour, verify movement, jump, multiple reachable platforms, procedural
+extension when requested, fall/respawn at the requested checkpoint, a following
+camera, and requested locomotion states. Do not claim completion from
+compilation or a static screenshot.
+
 ## Build flow (default)
 
 1. **Understand** the request, then outline a brief plan. Proceed once it's clearly right.

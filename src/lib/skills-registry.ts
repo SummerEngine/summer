@@ -235,7 +235,7 @@ export const SKILL_REGISTRY = [
       "summer_get_project_context",
     ],
     testScenario:
-      "User says \"start a blank project\" — skill asks for the name, picks empty vs 3d-basic, runs summer create, opens the engine, and stops to ask what to build.",
+      "Standalone blank-project requests ask for a name; when make-game invokes the skill, it creates the project and returns immediately without a user-facing scaffold stop.",
   },
   {
     name: "browse-templates",
@@ -579,15 +579,15 @@ export const SKILL_REGISTRY = [
     requiresMcpTools: [
       "summer_generate_image",
       "summer_generate_3d",
-      "summer_generate_motion",
-      "summer_search_assets",
-      "summer_inspect_resource",
+      "summer_check_job",
+      "summer_get_asset",
+      "summer_import_asset_by_id",
       "summer_add_node",
       "summer_set_prop",
       "summer_save_scene",
     ],
     testScenario:
-      "User asks for 'a knight character' — skill produces T-pose ref via image, gates rig pass on user approval, imports rigged glb, wires CharacterBody3D + Skeleton3D, hands off to animation/generate-motion.",
+      "After custom generation is chosen, the skill approves one T-pose reference, submits one typed rig-plus-animation request, imports the complete character package, and connects requested clips to gameplay.",
   },
   {
     name: "environment-kit",
@@ -989,7 +989,7 @@ export const SKILL_REGISTRY = [
     recommended: true,
     requiresMcpTools: [],
     testScenario:
-      "User says 'let's make a game' — skill explores intent, scope, and references through one-question-at-a-time dialogue before any code or scene work begins.",
+      "User asks to design an open-ended software feature with no specialist workflow — skill explores intent and trade-offs before implementation; Summer game builds route elsewhere.",
   },
   {
     name: "investigating-bugs",

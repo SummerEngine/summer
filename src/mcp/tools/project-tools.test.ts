@@ -185,4 +185,20 @@ priority: locked
     expect(JSON.stringify(body)).toContain("projectMemory");
     expect(JSON.stringify(body)).toContain("priority: locked");
   });
+
+  it("teaches the concrete-idea fast path and playable MVP contract", async () => {
+    const { server, tools } = createFakeServer();
+    registerProjectTools(server as never);
+
+    const playbookTool = getTool(tools, "summer_get_agent_playbook");
+    const body = parseToolResult(await playbookTool.handler({}));
+    const text = JSON.stringify(body);
+
+    expect(text).toContain("Do you already know what game you want to make");
+    expect(text).toContain("ordinary text");
+    expect(text).toContain("Do not ask about file or folder architecture");
+    expect(text).toContain("An empty scaffold is never a user-facing milestone");
+    expect(text).toContain("controllable player");
+    expect(text).toContain("explicitly requested character or animation");
+  });
 });

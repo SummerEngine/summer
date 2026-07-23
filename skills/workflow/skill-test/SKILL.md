@@ -20,7 +20,12 @@ For a single skill at `skills/<category>/<name>/`, run these checks:
 3. **MCP-preferred + file-edit-fallback.** If the skill mutates scenes or resources, body must show both:
    - At least one `summer_*` MCP tool example.
    - At least one file-edit fallback block (e.g., raw `.tscn` snippet) OR an explicit "no fallback for this — Summer MCP required" note.
-4. **Collaborative protocol.** If the skill triggers user-visible writes, body must contain at least one of: `May I`, `I'm about to`, `Continue?`, `OK?`, `Proceed?`. Skills that only inspect/read are exempt.
+4. **Collaborative protocol.** If the skill mutates state, it must distinguish
+   ordinary authorized in-scope writes from material gates. PASS when the body
+   either references `references/collaborative-protocol.md` or explicitly says
+   to ask before paid, destructive, locked-memory, external-configuration, or
+   unrequested scope-expansion actions. Do not require permission for every
+   file or phase. Skills that only inspect/read are exempt.
 5. **Template-id resolved.** If the skill's frontmatter declares `template-id: <id>`, that id must exist in `references/template-registry.md`.
 6. **Tests/spec.md present.** Every skill in a non-`_meta` category must have `tests/spec.md` with at least one `## Case` heading.
 7. **Relative links resolve.** Every `](../references/...)`, `](../../references/...)`, `](./references/...)`, and `](./examples/...)` link must point at an existing file (FAIL if broken). Forward references in `## See also` to other SKILL.md files (e.g., `[design-mechanic](../../gameplay-mechanics/design-mechanic/SKILL.md)`) are allowed to dangle and only WARN if the target is missing — the catalog evolves and skills should be free to point at planned skills.

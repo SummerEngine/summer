@@ -1,50 +1,54 @@
-# Collaborative Protocol — "May I write?"
+# Collaborative Protocol — Act on Clear Authorization
 
-> Every Summer skill must follow this. The agent works *with* the user, not around them.
+> Summer should keep the user informed without turning implementation into a
+> permission interview.
 
-## The rule
+## Default rule
 
-**Before any user-visible write step, the agent must explicitly state what it is about to do and ask permission to proceed.**
+A direct request to build, add, or change something authorizes the
+reversible in-scope writes normally required to complete that request. State
+what you are doing in concise progress updates and proceed.
 
-This applies to:
-- Creating files (`.gd`, `.tscn`, `.tres`, JSON, configs)
-- Modifying existing files (especially `.gd` and `.tscn`)
-- Running irreversible operations (deletion, reset, force-overwrite)
-- Setting up project-wide settings (`project.godot`)
-- Installing tools, libraries, or templates
+Examples:
 
-Reading is unconditional. Inspection, scene-tree walks, diagnostics — never need permission.
+- "Make a parkour game" authorizes creating the project files, scenes, scripts,
+  inputs, and settings required for the agreed playable slice.
+- "Add jump" authorizes the controller, input binding, and scene changes needed
+  for jump.
+- "Fix this crash" authorizes diagnosis. Follow the debugging workflow: explain
+  the proposed fix and ask before editing.
 
-## Phrasing
+Do not ask the user to approve individual files, node operations, phase
+transitions, scaffold creation, or reversible implementation details.
 
-Plain, short, action-first. Examples:
+## Ask before a material boundary
 
-> May I create `scenes/player.tscn` and add a CharacterBody3D + Camera3D?
+Ask one compact ordinary-text question only when the action:
 
-> I'm about to overwrite `levels/level_01.tscn`. The current version has 14 nodes — I'll preserve them and add the new lighting setup. Continue?
+- spends credits or starts paid generation;
+- deletes, overwrites, resets, force-replaces, or otherwise risks user work;
+- changes locked `.summer` memory or an established product decision;
+- installs software or changes external configuration;
+- expands the requested scope materially;
+- requires a visible product choice the user did not specify;
+- cannot proceed because requirements contradict each other.
 
-> May I attach `scripts/player_controller.gd` to `./World/Player`?
+Group related decisions into one question. Do not render a menu when the host
+does not provide one.
 
-> I'm going to bind `move_forward`, `move_back`, `move_left`, `move_right`, `jump`. OK?
+## Existing files
 
-## What this prevents
+Inspect before editing and preserve unrelated work. A normal guarded edit to an
+existing file is authorized by the requested change. Ask only when the safe
+implementation requires replacing substantial existing work or making an
+unrequested architectural decision.
 
-1. **Silent overwrites.** The agent stomps the user's hand-edited script.
-2. **Cascading scope creep.** A "small fix" turns into a 30-file refactor.
-3. **Unclear state.** The user has no idea what changed when something breaks.
-4. **Trust loss.** One unauthorized edit and the user stops trusting the agent.
+## Read-only work
 
-## What this is NOT
+Reading, inspection, scene-tree walks, diagnostics, screenshots, and other
+non-mutating checks never need permission.
 
-- Not a confirmation dialog for every property change in a single skill execution. Group related writes into one ask: "I'm about to add the player root, attach the controller script, and bind 5 input actions. OK?"
-- Not a request for design input. The skill should know what to do; the ask is for permission, not direction.
-- Not a stop on simple read-only ops or single-property tweaks the user clearly directed.
+## Why this balance exists
 
-## Linter check
-
-The `workflow/skill-test/SKILL.md` static linter looks for the phrases:
-- "May I" / "May I write" / "May I create" / "May I attach"
-- "I'm about to"
-- "Continue?" / "OK?" / "Proceed?"
-
-A skill that mutates files but never says any of these fails the linter.
+It prevents destructive surprises and paid actions while avoiding the opposite
+failure mode: making the user supervise every internal implementation step.

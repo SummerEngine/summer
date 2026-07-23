@@ -14,9 +14,15 @@ The single most important skill to know is `summer:using-summer` — it explains
 
 ## Skill priority
 
-1. **Process skills first**: `brainstorm-game`, `debug`, `play`. These determine HOW.
+1. **Route first**: new game builds enter `make-game`; it invokes
+   `brainstorm-game` only when the idea is genuinely vague. Bugs use `debug`;
+   runtime requests use `play`.
 2. **Discipline skills second**: `gdscript-patterns`, `scene-composition`, `art-direction`, `audio-direction`. These shape content.
 3. **Build skills third**: `fps-controller`, `design-mechanic`, `design-level`, `setup-multiplayer`, `vfx`, `tune-performance`, `export-and-ship`.
+
+For a concrete game brief, do not repeat onboarding, ask about file
+architecture, or stop at an empty scaffold. Ask only material product or paid
+generation questions and continue to the smallest playable result.
 
 ## MCP tools (when the engine is running on `localhost:6550`)
 

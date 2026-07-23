@@ -31,11 +31,13 @@ export const ASSET_POLICIES = [
 ] as const;
 
 export const VERIFICATION_LEVELS = ["none", "fast", "full"] as const;
+export const IDEA_STATES = ["vague", "concrete"] as const;
 
 export type GameTaskMode = (typeof GAME_TASK_MODES)[number];
 export type GameTaskTarget = (typeof GAME_TASK_TARGETS)[number];
 export type AssetPolicy = (typeof ASSET_POLICIES)[number];
 export type VerificationLevel = (typeof VERIFICATION_LEVELS)[number];
+export type IdeaState = (typeof IDEA_STATES)[number];
 
 export interface GameTaskPlanOptions {
   goal: string;
@@ -59,6 +61,7 @@ export interface GameTaskPlan {
   target: Exclude<GameTaskTarget, "auto"> | "general";
   assetPolicy: AssetPolicy;
   verification: VerificationLevel;
+  ideaState: IdeaState;
   principles: string[];
   recommendedSkills: SkillRoute[];
   mcpToolPlan: {
@@ -68,6 +71,8 @@ export interface GameTaskPlan {
     verify: string[];
   };
   hostFileWork: string[];
+  materialQuestions: string[];
+  completionCriteria: string[];
   userGates: string[];
   nextAgentSteps: string[];
   antiPatterns: string[];
@@ -83,12 +88,61 @@ function includesAny(text: string, words: string[]): boolean {
   return words.some((word) => text.includes(word));
 }
 
+function hasCharacterIntent(text: string): boolean {
+  return (
+    /\b(character|player|avatar|humanoid|girl|woman|man|witch|anime)\b/.test(text) ||
+    includesAny(text, [
+      "персонаж",
+      "игрок",
+      "девуш",
+      "женщин",
+      "мужчин",
+      "ведьм",
+      "аниме",
+    ])
+  );
+}
+
+function hasDirectCharacterCreation(text: string): boolean {
+  if (
+    hasDirectAnimationCreation(text) ||
+    /\b(character (controller|system|behavior)|enemy (spawner|system|behavior)|npc (dialogue )?system)\b/.test(
+      text
+    )
+  ) {
+    return false;
+  }
+  return (
+    /\bgenerate\s+(?:an?\s+|the\s+)?(?:[\w-]+\s+){0,4}(character|enemy|npc|player|avatar|girl|woman|man|witch)\b/.test(
+      text
+    ) ||
+    /\b(create|make|design)\s+(?:an?\s+|the\s+)?(?=[^.\n]{0,50}\b(custom|animated|3d|rigged|game-ready)\b)(?:[\w-]+\s+){0,5}(character|enemy|npc|player|avatar|girl|woman|man|witch)\b/.test(
+      text
+    ) ||
+    /(сгенер\w*|созд\w*|сдел\w*)\s+(?:\w+\s+){0,4}(персонаж\w*|враг\w*|игрок\w*|девуш\w*|ведьм\w*)/.test(
+      text
+    )
+  );
+}
+
+function hasDirectAnimationCreation(text: string): boolean {
+  return (
+    /\b(create|generate|make|add)\s+(?:an?\s+|the\s+)?(?:[\w-]+\s+){0,3}(animation clip|motion clip|(run|idle|walk|jump|attack|fall|landing) animation)\b/.test(
+      text
+    ) ||
+    /(созд\w*|сгенер\w*|сдел\w*|добав\w*).{0,40}(анимационн\w*\s+клип\w*|анимац\w*\s+(бег\w*|прыж\w*|паден\w*|приземлен\w*))/.test(
+      text
+    )
+  );
+}
+
 function inferMode(goal: string, requested: GameTaskMode): Exclude<GameTaskMode, "auto"> {
   if (requested !== "auto") return requested;
   const text = goal.toLowerCase();
   const gameGenre = includesAny(text, [
     "shooter",
     "platformer",
+    "parkour",
     "roguelike",
     "rpg",
     "racing",
@@ -97,29 +151,219 @@ function inferMode(goal: string, requested: GameTaskMode): Exclude<GameTaskMode,
     "tower defense",
     "metroidvania",
     "arena",
+    "farming",
+    "simulation",
+    "sim game",
+    "cozy game",
+    "шутер",
+    "платформер",
+    "паркур",
+    "рогалик",
+    "гонк",
+    "головолом",
+    "ферм",
+    "симулятор",
   ]);
-  const buildVerb = /(^|\s)(make|build|create|start)\s/.test(text);
-  if (includesAny(text, ["crash", "bug", "error", "broken", "fix", "debug", "not working"])) return "debug";
+  const buildVerb =
+    /(^|\s)(make|build|create|start|сделай|создай|построй)\s/.test(text) ||
+    /(^|\s)хочу\s+(сделать|создать|построить)\s/.test(text);
+  const existingGameIntent =
+    /\b(existing|current|this|my|our|same)\s+(game|project)\b/.test(text) ||
+    includesAny(text, [
+      "существующ",
+      "текущ",
+      "этой игр",
+      "эту игр",
+      "моей игр",
+      "мою игр",
+      "нашей игр",
+    ]);
+  const directAssetCreation =
+    /\b(make|create|generate|produce|design)\s+(?:an?\s+|the\s+)?(?:[\w-]+\s+){0,3}(3d\s+asset|model\s+asset|character\s+asset|asset|model|sprite|texture|sound\s+effect|sfx|music\s+track|voice\s+line|animation\s+clip)\b/.test(
+      text
+    ) ||
+    /(сгенер\w*|созд\w*|сдел\w*)\s+(?:\w+\s+){0,3}(ассет\w*|модел\w*|спрайт\w*|текстур\w*|звуков\w*\s+эффект\w*|музыкальн\w*\s+трек\w*|голосов\w*\s+реплик\w*|анимационн\w*\s+клип\w*)/.test(
+      text
+    ) ||
+    hasDirectCharacterCreation(text) ||
+    hasDirectAnimationCreation(text);
+  const generalAssetRequest = includesAny(text, [
+    "model asset",
+    "3d asset",
+    "character asset",
+    "asset for",
+    "music track",
+    "sound effect",
+    "voice line",
+    "animation clip",
+    "sprite sheet",
+    "ассет",
+    "модель для",
+    "музыкальный трек",
+    "звуковой эффект",
+    "голосовая реплика",
+    "анимационный клип",
+  ]);
+  const gameConstruction =
+    /\b(make|build|create|start|prototype)\b.{0,60}\b(game|prototype)\b/.test(text) ||
+    /(сдел\w*|созд\w*|постро\w*|нач\w*|прототип\w*).{0,60}(игр\w*|прототип\w*)/.test(
+      text
+    );
+  const gameDesire =
+    /\b(i want|i'd like|i would like)\b.{0,60}\bgame\b/.test(text) ||
+    /\bхочу\b.{0,60}\bигр\w*\b/.test(text);
+  if (includesAny(text, ["crash", "bug", "error", "broken", "fix", "debug", "not working", "баг", "ошиб", "слом", "почини"])) return "debug";
   if (includesAny(text, ["export", "ship", "release", "build for", "deploy"])) return "ship";
   if (includesAny(text, ["playtest", "test the game", "feel", "tune"])) return "playtest";
-  if (includesAny(text, ["asset", "model", "sprite", "texture", "sound", "music", "voice", "animation"])) return "asset";
-  if (includesAny(text, ["new game", "start a game", "make a game", "prototype", "from scratch"]) || (buildVerb && gameGenre)) return "new-game";
+  if (directAssetCreation) return "asset";
   if (includesAny(text, ["polish", "lighting", "performance", "juice", "ui pass"])) return "polish";
+  if (
+    !existingGameIntent &&
+    (includesAny(text, [
+        "new game",
+        "start a game",
+        "make a game",
+        "build a game",
+        "create a game",
+        "prototype",
+        "from scratch",
+        "сделай игру",
+        "создай игру",
+        "хочу игру",
+        "новую игру",
+        "прототип",
+      ]) ||
+      gameConstruction ||
+      gameDesire ||
+      (buildVerb && gameGenre))
+  ) {
+    return "new-game";
+  }
+  if (existingGameIntent) return "feature";
+  if (generalAssetRequest) return "asset";
   return "feature";
 }
 
 function inferTarget(goal: string, requested: GameTaskTarget): GameTaskPlan["target"] {
   if (requested !== "auto") return requested;
   const text = goal.toLowerCase();
-  if (includesAny(text, ["3d", "model", "mesh", "glb", "character", "prop", "vehicle", "tree", "rock"])) return "3d";
-  if (includesAny(text, ["2d", "sprite", "pixel", "portrait", "icon", "texture", "tileset", "skybox"])) return "2d";
-  if (includesAny(text, ["sound", "sfx", "music", "audio", "voice", "dialogue", "ambient"])) return "audio";
-  if (includesAny(text, ["animation", "animate", "idle", "walk", "run", "attack", "motion", "retarget"])) return "animation";
-  if (includesAny(text, ["ui", "hud", "menu", "button", "inventory"])) return "ui";
+  if (/\b2d\b/.test(text) || text.includes("2д")) return "2d";
+  if (/\b3d\b/.test(text) || text.includes("3д")) return "3d";
+  if (/\b(ui|hud|menu|button|inventory)\b/.test(text) || includesAny(text, ["интерфейс", "меню", "кнопк", "инвентар"])) return "ui";
+  if (/\b(sound|sfx|music|audio|voice|dialogue|ambient)\b/.test(text) || includesAny(text, ["звук", "музык", "голос", "диалог", "эмбиент"])) return "audio";
+  if (hasDirectCharacterCreation(text)) return "3d";
+  if (hasDirectAnimationCreation(text)) return "animation";
+  if (hasCharacterIntent(text)) return "3d";
+  if (/\b(animation|animate|idle|walk|run|attack|motion|retarget)\b/.test(text) || includesAny(text, ["анимац", "движен"])) return "animation";
   if (includesAny(text, ["level", "map", "dungeon", "arena", "room", "world"])) return "level";
   if (includesAny(text, ["npc", "enemy", "boss", "dialogue", "behavior"])) return "npc";
   if (includesAny(text, ["multiplayer", "network", "server", "host", "peer"])) return "multiplayer";
+  if (/\b(sprite|pixel|portrait|icon|texture|tileset|skybox)\b/.test(text) || includesAny(text, ["спрайт", "пиксел", "портрет", "икон", "текстур", "тайл"])) return "2d";
+  if (
+    /\b(model|mesh|glb|prop|vehicle|tree|rock)\b/.test(text) ||
+    includesAny(text, ["модел", "меш", "проп", "транспорт", "дерев", "камень"])
+  ) {
+    return "3d";
+  }
   return "general";
+}
+
+function inferIdeaState(mode: GameTaskPlan["mode"], goal: string): IdeaState {
+  if (mode !== "new-game") return "concrete";
+  const text = goal.toLowerCase();
+  if (
+    includesAny(text, [
+      "do not know what",
+      "don't know what",
+      "not sure what game",
+      "help me decide",
+      "не знаю какую",
+      "не знаю, какую",
+      "не знаю что",
+      "давай придумаем",
+      "побрейншторм",
+    ])
+  ) {
+    return "vague";
+  }
+
+  const dimensionSignal = includesAny(text, ["2d", "3d", "2д", "3д"]);
+  const genreSignal = includesAny(text, [
+      "shooter",
+      "platformer",
+      "parkour",
+      "roguelike",
+      "rpg",
+      "racing",
+      "puzzle",
+      "survival",
+      "tower defense",
+      "metroidvania",
+      "arena",
+      "farming",
+      "simulation",
+      "sim game",
+      "cozy game",
+      "шутер",
+      "платформер",
+      "паркур",
+      "рогалик",
+      "гонк",
+      "головолом",
+      "башен",
+      "арен",
+      "ферм",
+      "симулятор",
+    ]);
+  const mechanicSignal = includesAny(text, [
+      "jump",
+      "fall",
+      "respawn",
+      "procedural",
+      "collect",
+      "fight",
+      "shoot",
+      "platform",
+      "rotate",
+      "connect",
+      "before time",
+      "timer",
+      "defend",
+      "plant",
+      "harvest",
+      "sell",
+      "прыж",
+      "пад",
+      "возрож",
+      "процедур",
+      "собир",
+      "стрел",
+      "платформ",
+      "вращ",
+      "соедин",
+      "таймер",
+      "врем",
+      "защищ",
+      "саж",
+      "урожай",
+      "прода",
+    ]);
+  const characterSignal = hasCharacterIntent(text);
+  const signals = [
+    dimensionSignal,
+    genreSignal,
+    mechanicSignal,
+    characterSignal,
+  ];
+  if (signals.filter(Boolean).length >= 2) return "concrete";
+
+  const wordCount = text.match(/[\p{L}\p{N}]+/gu)?.length ?? 0;
+  const hasRuleClause =
+    /\b(where|with|that|who|before|after|using|while)\b/.test(text) ||
+    /\b(где|котор\w*|чтобы|пока|после|до того)\b/.test(text);
+  return genreSignal && wordCount >= 8 && hasRuleClause
+    ? "concrete"
+    : "vague";
 }
 
 function addSkill(routes: WeightedSkill[], name: string, why: string, weight: number): void {
@@ -135,7 +379,12 @@ function addSkill(routes: WeightedSkill[], name: string, why: string, weight: nu
   routes.push({ name, why, weight });
 }
 
-function inferSkills(mode: GameTaskPlan["mode"], target: GameTaskPlan["target"], goal: string): SkillRoute[] {
+function inferSkills(
+  mode: GameTaskPlan["mode"],
+  target: GameTaskPlan["target"],
+  goal: string,
+  ideaState: IdeaState
+): SkillRoute[] {
   const text = goal.toLowerCase();
   const routes: WeightedSkill[] = [];
   const animationIntent = includesAny(text, [
@@ -152,22 +401,32 @@ function inferSkills(mode: GameTaskPlan["mode"], target: GameTaskPlan["target"],
     "locomotion",
     "animationtree",
     "state machine",
+    "fall",
+    "landing",
+    "анимац",
+    "прыж",
+    "бег",
+    "паден",
+    "приземлен",
   ]);
+  const characterIntent = hasCharacterIntent(text);
   const assetIntent =
     mode === "asset" ||
-    includesAny(text, [
-      "asset",
-      "model",
-      "mesh",
-      "glb",
-      "sprite",
-      "texture",
-      "sound",
-      "sfx",
-      "music",
-      "voice",
-      "animation clip",
-    ]);
+    (mode === "new-game" &&
+      (characterIntent ||
+        includesAny(text, [
+          "asset",
+          "model",
+          "mesh",
+          "glb",
+          "sprite",
+          "texture",
+          "sound",
+          "sfx",
+          "music",
+          "voice",
+          "animation clip",
+        ])));
 
   addSkill(routes, "using-summer", "Baseline workflow for building through Summer CLI/MCP.", 100);
 
@@ -184,8 +443,15 @@ function inferSkills(mode: GameTaskPlan["mode"], target: GameTaskPlan["target"],
 
   if (mode === "new-game") {
     addSkill(routes, "new-project", "Create/open the project if needed.", 260);
-    addSkill(routes, "brainstorm-game", "Lock a small playable brief before building.", 240);
-    addSkill(routes, "make-game", "Build one narrow playable prototype end-to-end.", 300);
+    addSkill(routes, "make-game", "Build one narrow playable prototype end-to-end.", 330);
+    if (ideaState === "vague") {
+      addSkill(
+        routes,
+        "brainstorm-game",
+        "The user has not chosen a game yet; discover and lock a small playable brief.",
+        300
+      );
+    }
   }
 
   if (mode === "ship") {
@@ -205,7 +471,7 @@ function inferSkills(mode: GameTaskPlan["mode"], target: GameTaskPlan["target"],
   }
 
   if (target === "3d" && assetIntent) {
-    if (includesAny(text, ["character", "player", "npc", "enemy", "boss", "humanoid", "rig"])) {
+    if (characterIntent || includesAny(text, ["npc", "enemy", "boss", "rig"])) {
       addSkill(routes, "character-model", "Humanoid T-pose, mesh, rig, and handoff to animation.", 300);
     } else if (includesAny(text, ["vehicle", "car", "ship", "spaceship", "mech", "tank", "bike"])) {
       addSkill(routes, "vehicle-model", "Hard-surface vehicle generation and scene wiring.", 280);
@@ -217,8 +483,7 @@ function inferSkills(mode: GameTaskPlan["mode"], target: GameTaskPlan["target"],
       addSkill(routes, "prop-model", "Single static 3D prop workflow.", 270);
     }
     addSkill(routes, "scene-composition", "Instantiate/import models into robust scene structure.", 150);
-    if (animationIntent && includesAny(text, ["character", "player", "npc", "enemy", "boss", "humanoid", "rig"])) {
-      addSkill(routes, "generate-motion", "Generate idle/walk/run/jump/attack clips for the rigged character.", 275);
+    if (animationIntent && (characterIntent || includesAny(text, ["npc", "enemy", "boss", "rig"]))) {
       addSkill(routes, "animation-tree", "Wire generated clips into playback/state-machine behavior.", 210);
     }
   }
@@ -318,23 +583,8 @@ function buildMcpToolPlan(
   mode: GameTaskPlan["mode"],
   target: GameTaskPlan["target"],
   assetPolicy: AssetPolicy,
-  verification: VerificationLevel,
-  goal = ""
+  verification: VerificationLevel
 ): GameTaskPlan["mcpToolPlan"] {
-  const text = goal.toLowerCase();
-  const animationIntent = includesAny(text, [
-    "animated",
-    "animation",
-    "animate",
-    "idle",
-    "walk",
-    "run",
-    "jump",
-    "attack",
-    "motion",
-    "mocap",
-    "locomotion",
-  ]);
   const start = ["summer_start_game_task", "summer_get_project_context", "summer_get_agent_playbook"];
   const mutate = ["summer_open_main_scene", "summer_get_scene_tree", "summer_add_node", "summer_set_prop", "summer_save_scene"];
   const assets: string[] = [];
@@ -352,7 +602,6 @@ function buildMcpToolPlan(
       if (target === "3d") assets.push("summer_generate_3d");
       if (target === "2d") assets.push("summer_generate_image");
       if (target === "audio") assets.push("summer_generate_audio");
-      if (target === "3d" && animationIntent) assets.push("summer_generate_motion");
       assets.push("summer_check_job");
     }
   } else if (assetPolicy !== "no-paid-generation") {
@@ -390,9 +639,113 @@ function buildUserGates(mode: GameTaskPlan["mode"], assetPolicy: AssetPolicy): s
     gates.push("Lock one narrow playable loop before expanding scope.");
   }
   if (mode === "asset") {
-    gates.push("For generated 3D characters, show the unrigged preview before paid rigging.");
+    gates.push(
+      "For generated 3D characters, approve the reference and the paid complete rig-plus-animation request before generation."
+    );
   }
   return gates;
+}
+
+function buildMaterialQuestions(
+  mode: GameTaskPlan["mode"],
+  ideaState: IdeaState,
+  goal: string
+): string[] {
+  if (mode === "new-game" && ideaState === "vague") {
+    return [
+      "Ask in ordinary text: “Do you already know what game you want to make, or should we brainstorm it together?” Then wait for the answer.",
+    ];
+  }
+
+  const text = goal.toLowerCase();
+  const characterIntent = hasCharacterIntent(text);
+  const sourceAlreadyChosen = includesAny(text, [
+    "asset store",
+    "asset library",
+    "existing asset",
+    "use an asset",
+    "existing character",
+    "current character",
+    "this character",
+    "existing rig",
+    "this rig",
+    "custom character",
+    "placeholder",
+    "prototype character",
+    "магазин",
+    "библиотек",
+    "готовый ассет",
+    "кастом",
+    "заглуш",
+    "прототип персонаж",
+  ]) ||
+    hasDirectCharacterCreation(text) ||
+    /(generate|create|make)\s+(?:a\s+)?(?:custom\s+)?(?:character|player|girl|woman|man|witch|avatar)/.test(
+      text
+    ) ||
+    /(сгенер\w*|созд\w*)\s+(?:кастом\w*\s+)?(?:персонаж\w*|игрок\w*|девуш\w*|ведьм\w*)/.test(
+      text
+    );
+
+  if (
+    (mode === "new-game" || mode === "asset") &&
+    characterIntent &&
+    !sourceAlreadyChosen
+  ) {
+    return [
+      "Ask one ordinary text question: “Should I use an existing/Asset Store character, generate a custom character, or use a temporary prototype?” Do not render a menu. Do not ask unrelated visual or technical questions.",
+    ];
+  }
+  return [];
+}
+
+function buildCompletionCriteria(
+  mode: GameTaskPlan["mode"],
+  goal: string
+): string[] {
+  if (mode !== "new-game") return [];
+  const text = goal.toLowerCase();
+  const criteria = [
+    "The main scene launches with a visible, controllable player and a working camera.",
+    "The requested core loop, failure/restart loop, and required collisions work at runtime.",
+    "The game is played and checked through Summer MCP before completion is claimed.",
+  ];
+  if (includesAny(text, ["parkour", "platformer", "паркур", "платформер"])) {
+    criteria.push(
+      "Player movement and jumping work across multiple reachable platforms.",
+      includesAny(text, ["procedural", "процедур"])
+        ? "Procedurally generated platforms extend the playable route."
+        : "The level contains a playable platform route.",
+      includesAny(text, ["last valid platform", "последн", "предыдущ"])
+        ? "Falling respawns the player on the last valid platform."
+        : "Falling respawns the player at a valid checkpoint."
+    );
+  }
+  const characterIntent = hasCharacterIntent(text);
+  const animationIntent = includesAny(text, [
+    "animated",
+    "animation",
+    "jump",
+    "fall",
+    "landing",
+    "run",
+    "анимац",
+    "прыж",
+    "паден",
+    "приземлен",
+    "бег",
+  ]);
+  if (characterIntent) {
+    criteria.push(
+      "The chosen character source is imported and connected to the player controller."
+    );
+  }
+  if (characterIntent && animationIntent) {
+    criteria.push(
+      "The locomotion state machine plays idle, run, jump, fall, and landing animations in the corresponding gameplay states."
+    );
+  }
+  return criteria;
 }
 
 export function buildGameTaskPlan(options: GameTaskPlanOptions): GameTaskPlan {
@@ -403,6 +756,7 @@ export function buildGameTaskPlan(options: GameTaskPlanOptions): GameTaskPlan {
   const verification = options.verification ?? "full";
   const mode = inferMode(goal, options.mode ?? "auto");
   const target = inferTarget(goal, options.target ?? "auto");
+  const ideaState = inferIdeaState(mode, goal);
 
   return {
     goal,
@@ -410,33 +764,42 @@ export function buildGameTaskPlan(options: GameTaskPlanOptions): GameTaskPlan {
     target,
     assetPolicy,
     verification,
+    ideaState,
     principles: [
       "The agent should build a playable game slice, not a static demo.",
       "Use host file edits for code/data/docs; use MCP for live scene state, imports, inspector values, play, and diagnostics.",
       "Reuse/import assets before paid generation unless the user explicitly wants custom output.",
       "Prefer exact IDs and structured tool results over search guesses after asset creation.",
       "Verify through the engine before claiming completion.",
+      "Do not ask about file or folder architecture, scene organization, sky, or other reversible implementation details.",
     ],
-    recommendedSkills: inferSkills(mode, target, goal),
-    mcpToolPlan: buildMcpToolPlan(mode, target, assetPolicy, verification, goal),
+    recommendedSkills: inferSkills(mode, target, goal, ideaState),
+    mcpToolPlan: buildMcpToolPlan(mode, target, assetPolicy, verification),
     hostFileWork: [
       "Write and edit .gd/.cs scripts directly with host file tools.",
       "Use direct file edits for JSON, markdown, project notes, and simple resources.",
       "Read relevant .summer memory files when project context reports them.",
     ],
+    materialQuestions: buildMaterialQuestions(mode, ideaState, goal),
+    completionCriteria: buildCompletionCriteria(mode, goal),
     userGates: buildUserGates(mode, assetPolicy),
     nextAgentSteps: [
       "Call summer_get_project_context and read relevant .summer memory.",
       "Open the main scene if no scene is active.",
       "Load the top recommended skill before mutating the project.",
-      "Make the smallest coherent change that advances the playable loop.",
-      "Save, run diagnostics, and playtest according to the verification level.",
+      ideaState === "vague"
+        ? "Run brainstorm-game and wait only for the game-defining answers."
+        : "Treat the concrete brief as authorization to build; ask only the listed materialQuestions.",
+      "Continue through the smallest complete playable loop; do not hand off an internal scaffold.",
+      "Save, run diagnostics, playtest the completionCriteria, fix failures, and only then report the result.",
     ],
     antiPatterns: [
       "Do not hand-edit .tscn scene structure when Summer MCP can mutate the live scene.",
       "Do not generate assets before checking library/user assets.",
       "Do not search by name for an asset immediately after generation; use the returned asset ID.",
       "Do not finish with only code changes when the request affects gameplay; run engine verification.",
+      "Do not present an empty scaffold, floor-and-camera scene, or non-interactive frame as the minimum game.",
+      "Do not ask the user to choose file or folder architecture or other internal implementation details.",
     ],
   };
 }

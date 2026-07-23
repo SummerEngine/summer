@@ -1,6 +1,6 @@
 ---
 name: brainstorming
-description: "Use when starting creative work — designing a game, picking a mechanic, building features or components, modifying behavior. Explores user intent, requirements, and design before implementation. MUST run before any creative work."
+description: "Use when designing an open-ended software feature and no specialist workflow owns the request. Do not use for a Summer game build handled by make-game or brainstorm-game. Explores user intent, requirements, and design before implementation."
 ---
 
 # Brainstorming Ideas Into Designs
@@ -9,8 +9,22 @@ Help turn ideas into fully formed designs and specs through natural collaborativ
 
 Start by understanding the current project context, then ask questions one at a time to refine the idea. Once you understand what you're building, present the design and get user approval.
 
+## Summer game routing exception
+
+Do not use this generic workflow for a Summer game build. Route a vague game
+idea to `summer:brainstorm-game` and a concrete game brief to
+`summer:make-game`. Those specialist skills own the appropriate game questions
+and playable acceptance criteria.
+
+Never ask the player about file or folder architecture, component boundaries,
+data flow, error handling, or testing strategy. Those are internal engineering
+decisions unless the user explicitly asks to participate in them.
+
 <HARD-GATE>
-Do NOT invoke any implementation skill, write any code, scaffold any project, or take any implementation action until you have presented a design and the user has approved it. This applies to EVERY project regardless of perceived simplicity.
+For requests owned by this generic workflow, do NOT invoke an implementation
+skill, write code, scaffold a project, or take implementation action until you
+have presented a design and the user has approved it. The Summer game routing
+exception above is handled by its specialist skills instead.
 </HARD-GATE>
 
 ## Anti-Pattern: "This Is Too Simple To Need A Design"

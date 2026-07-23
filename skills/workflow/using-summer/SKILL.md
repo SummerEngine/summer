@@ -38,6 +38,17 @@ Two layers:
 - **Skills** — discipline guides that fire on specific situations: brainstorming a game, designing a mechanic, building an FPS controller, debugging a crash, shipping a build. Each one is a SKILL.md you load via the Skill tool.
 - **MCP tools** — `summer_*` tools that talk to the running Summer Engine on `localhost:6550`. Scene mutation (`summer_add_node`, `summer_set_prop`), inspection (`summer_get_scene_tree`, `summer_inspect_node`), play/diagnostics (`summer_play`, `summer_get_diagnostics`), asset import/generation (`summer_import_from_url`, `summer_generate_3d`), and 30+ more.
 
+## Fresh post-connect route
+
+If Summer was just connected and the user has not supplied a game goal, ask one
+ordinary-text question and wait:
+
+> Do you already know what game you want to make, or should we brainstorm it together?
+
+Do not render a menu. A game build routes to `make-game`; for a vague answer it
+invokes `brainstorm-game` and resumes after the brief is accepted. A concrete
+description skips that interview.
+
 **Scripting language:** Summer Engine is compatible with Godot 4.5. You can write game code in either:
 
 - **GDScript** (`.gd`) — the default. Best supported by Summer skills (see `summer:gdscript-patterns`). Use this unless the user has explicitly chosen C#.
@@ -82,11 +93,11 @@ These thoughts mean STOP. Check skills first.
 |---|---|
 | "This is just a quick fix" | Quick fixes break games. Check the skill. |
 | "I know how to add a node, I'll just call the MCP" | The skill encodes the order of operations. Check it. |
-| "The user just wants me to start" | Most "just build it" requests still benefit from the brainstorm-game skill. Offer it. |
+| "The user just wants me to start" | Route the game build to `make-game`; it invokes `brainstorm-game` only for a vague idea. |
 | "I can read the .tscn file directly" | `summer_get_scene_tree` and `summer_inspect_node` are authoritative. Files lag the editor's in-memory state. |
 | "I'll skip the soul file" | `.summer/GameSoul.md` is what every other skill reads. Honor it. |
 | "This voice or canon fact is probably fine to change" | Check `.summer/memory` first. `priority: locked` facts require explicit user confirmation. |
-| "I don't need to brainstorm — they said FPS" | Even with the genre named, brainstorm-game scopes mechanics, art direction, and the cut list. Skip only if explicitly told to. |
+| "They named the game and core loop, but I should still onboard them" | Do not repeat onboarding for a concrete brief. Extract acceptance criteria and invoke `make-game`. |
 | "I'll write the GDScript myself, no skill" | `gdscript-patterns` encodes idioms that Claude/Codex/Cursor regularly get wrong (signal connection, type hints, `_ready` vs `_process`). |
 | "The engine isn't running, I'll just edit files" | Editing scene files directly while the engine is running silently overwrites in-memory state. Check the skill. |
 | "I remember this skill" | Skills evolve. Re-read the current version. |
@@ -95,11 +106,15 @@ These thoughts mean STOP. Check skills first.
 
 When multiple Summer skills could apply, run them in this order:
 
-1. **Process skills first** — `brainstorm-game`, `debug`, `play`. These determine HOW to approach the task.
+1. **Route first** — new-game requests use `make-game`; it invokes
+   `brainstorm-game` only for vague ideas. Bugs use `debug`; runtime requests
+   use `play`.
 2. **Discipline skills second** — `gdscript-patterns`, `scene-composition`, `art-direction`, `audio-direction`. These shape the content.
 3. **Build skills third** — `fps-controller`, `design-mechanic`, `design-level`, `setup-multiplayer`. These produce the artifacts.
 
-> "I want to make a game" → `brainstorm-game` first, then build skills.
+> "I want to make a game, but I do not know what" → `make-game`, then its
+> `brainstorm-game` branch.
+> "Make a 3D parkour game with jumping and respawn" → `make-game` directly.
 > "Fix this crash" → `debug` first, then domain skills.
 > "Add an FPS controller" → check `scene-composition` first, then `fps-controller`.
 

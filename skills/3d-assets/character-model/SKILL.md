@@ -1,247 +1,166 @@
 ---
 name: character-model
-description: Use when generating a humanoid character ready for animation — player avatar, NPC, enemy, boss, companion. Generates a T-pose reference image, gates an un-rigged preview past the user, then runs the Meshy auto-rig pass and wires the result as a CharacterBody3D (movement) or Node3D (cinematic). Trigger on "make a character", "generate the player", "I need an enemy model", "create an NPC", "rigged humanoid", "character with a skeleton", "model for animation".
+description: Use when the user has chosen to generate a custom humanoid player, NPC, enemy, boss, or companion. Creates or accepts a T-pose reference, submits one typed Meshy rig-and-animation request, handles ordinary-text animation selection, imports the complete character package, and connects it to the game build.
 license: MIT
-compatibility: [Cursor, Claude Code, Windsurf, Codex]
+compatibility: [Cursor, Claude Code, Windsurf, Codex, Gemini, OpenCode]
 category: 3d-assets
 user-invocable: true
-allowed-tools: Read Grep summer_search_assets summer_list_my_assets summer_get_asset summer_import_asset_by_id summer_generate_image summer_generate_3d summer_import_from_url summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_inspect_resource summer_get_scene_tree summer_save_scene summer_check_job summer_generate_motion
-paths: ["assets/characters/**", "assets/models/**", "**/*.tscn", "**/*.gd"]
+allowed-tools: Read Grep Edit Write Skill summer_generate_image summer_generate_3d summer_check_job summer_get_asset summer_import_asset_by_id summer_get_scene_tree summer_add_node summer_set_prop summer_save_scene summer_get_script_errors summer_play summer_get_debugger_errors summer_screenshot summer_stop
+paths: ["assets/characters/**", "characters/**", "**/*.tscn", "**/*.gd"]
 ---
 
-# Character Model — T-Pose to Rigged Humanoid, Gated
+# Character Model — Complete Animated Humanoid
 
-This is the **canonical Meshy auto-rig pipeline**. It produces a humanoid `.glb` with a Meshy-compatible skeleton that `summer:animation/generate-motion` can drive directly. The work is split into two paid passes with a **mandatory user-review gate between them** — the rig pass is more expensive and locks the topology, so the user must see the un-rigged preview and approve before you spend on the rig.
+Use the canonical Summer/Meshy character pipeline. The result is not a loose
+mesh followed by a promise to animate it later. Produce and import one complete
+character package containing the rig, requested clips, stable wrapper scene,
+and manifest.
 
-The whole flow:
+## Preconditions
 
-```
-1. T-pose reference image    →  summer_generate_image                          (~$0.05, ~10s)
-2. Un-rigged 3D mesh         →  summer_generate_3d(image-to-3d)                (~$0.50, ~60s)
-3. ── USER REVIEW GATE ──
-4. Rigged .glb               →  summer_generate_3d(image-to-3d, rig: true)     (~$1.00, ~90s)
-5. Import → editor RESTART → wire as CharacterBody3D / Node3D
-6. Hand off to summer:animation/generate-motion for clips
-```
+Run this skill after the user chose custom generation. If the game request only
+says "an anime girl" or "a knight" without choosing a source, return to
+`summer:make-game` and ask whether to use an existing/Asset Store character,
+generate a custom character, or use a temporary prototype.
 
-The animation skill (`summer:animation/generate-motion`) requires a rigged humanoid; a static `.glb` won't drive motion.
+Custom generation is metered. Before calling `summer_generate_image` or
+`summer_generate_3d`, state that the reference plus complete
+mesh/rig/animation pipeline consumes credits and get one explicit approval.
+Do not repeatedly ask about provider names, topology, polycount, or technical
+model selection unless the user made those details part of the request.
 
-## Web Chat / Public Orchestrator Equivalent
+## 1. Lock the visible character
 
-When this skill is running inside the PublicSummerEngine chat orchestrator, use the chat-native tools directly instead of sending the user to Studio:
+Create or reuse one front-facing full-body T-pose reference:
 
-```
-generateImage -> createCharacter -> checkGenerationStatus/meshyJobStatus -> listUserAssets readiness -> rigModel if needed -> generateAnimation -> meshyJobStatus -> importAssets -> import-character
-```
+- arms straight out horizontally;
+- legs slightly apart;
+- neutral pose and expression;
+- entire silhouette visible;
+- simple background;
+- requested clothing, hair, carried props, and proportions visible.
 
-Use Studio only when the user explicitly asks for visual/manual picking or when chat-side generation fails. The recovered working flow used `createCharacter`, confirmed the rig had `hasMeshyRigTask` or `animationsReady:true`, then generated `idle`, `walk`, `run`, `jump`, and `attack`, imported the rig plus child animation GLBs into `res://characters/<slug>/`, then wired playback from the imported GLB AnimationPlayers/libraries. If `generateAnimation` returns `animations_preparing`, wait, poll/list the rig asset again, and retry instead of routing to Studio. Keep this path repeatable for "animated character", "3D character with animations", "walking enemy", and similar prompts.
+If the user supplied an image, preserve the design and re-pose only when needed.
+If no image exists, call `summer_generate_image` once with the user's visual
+description and the T-pose constraints.
 
-## When to use
+Show the reference and ask one visible-product approval:
 
-- "Make a knight character for the player to control."
-- "I need a goblin enemy."
-- "Generate an old wizard NPC for the tavern."
-- "Create a boss — a four-armed demon."
-- The user is about to ask for animations and has nothing rigged yet.
+> This is the character design I will turn into the rigged game model. Should I proceed with this version?
 
-## When NOT to use
+Do not ask unrelated questions while waiting.
 
-- Static statue / mannequin display piece (no rig needed) → `summer:3d-assets/prop-model`.
-- Vehicle with a "driver" silhouette but no skeleton needed → `summer:3d-assets/vehicle-model`.
-- Quadruped (wolf, horse, dragon) → Meshy auto-rig is humanoid-only. Generate the mesh here for visuals, but skip the rig step — animation will need a hand-authored skeleton or a quadruped-specific provider (out of scope for this skill).
-- The user already has a rigged character and just wants a re-skin — that's a retexture pass, not this skill.
-- Facial blendshapes / lipsync rig → `summer:animation/facial-and-lipsync`.
+## 2. Resolve the animation set before generation
 
-## Polycount targets
+Use the movements the user named. For a standard third-person playable
+character, default to:
 
-| Role | Tris | Pass via |
-|---|---|---|
-| Hero character (player, close camera) | 8k–15k | `target_polycount: 12000` |
-| Grunt enemy (mid-range, multiple onscreen) | 3k–6k | `target_polycount: 5000` |
-| Crowd / background NPC (LOD-able) | 1k–2k | `target_polycount: 1500` |
-| Mobile-game character | 1k–3k | `target_polycount: 2000` |
-| Cinematic hero (no realtime constraint) | 20k–40k | `target_polycount: 30000` |
+- idle;
+- run;
+- jump;
+- fall;
+- landing.
 
-Pass at the **mesh-generation step** (step 2). The rig pass preserves the topology; you can't reduce polycount after rigging without breaking weights.
+Add walk, attack, interact, or other clips only when the game needs them. Do not
+omit explicitly requested animation and do not defer it to a later polish phase.
 
-## Steps
+## 3. Submit one typed character request
 
-### 1. Generate the T-pose reference image
+Use the approved reference with the top-level character fields:
 
-The rig pass requires a **front-facing T-pose** with arms out and legs slightly apart. If the reference is in an action pose, the rig will bend wrong and locomotion clips will look broken (knees inverted, elbows snapped — common Meshy failure mode).
-
-```
-summer_generate_image(
-  prompt="A fantasy knight in full plate armor, red cape, T-pose, arms straight out horizontal, legs slightly apart, front-facing, neutral expression. Game character asset, stylized, clean white background, soft studio lighting, full body in frame, ready for 3D mesh generation.",
-  model="nano-banana-2"
-)
-```
-
-The phrase `T-pose, arms straight out horizontal, legs slightly apart, front-facing` is load-bearing — drop any of those and the model will drift toward A-pose or a hero stance.
-
-If the user already has a concept image in an action pose, re-pose it to T-pose via img2img without re-rolling the design:
-
-```
-summer_generate_image({
-  referenceImageUrl: "<existing concept image>",
-  prompt: "<character> in T-pose, arms extended horizontally, neutral facing camera, white background, clean lighting"
-})
-```
-
-Show the image to the user:
-
-> Generated the T-pose reference. [link]. Approve to proceed to mesh generation, or regenerate?
-
-### 2. Generate the un-rigged 3D mesh
-
-```
+```text
 summer_generate_3d(
   kind="image-to-3d",
-  imageUrl="<image url from step 1>",
-  model="hunyuan",
-  options={ target_polycount: 12000 },
-  wait=true
+  imageUrl="<approved reference URL>",
+  title="<character name>",
+  rig=true,
+  animationNames=["Idle", "Run", "Jump", "Fall", "Landing"],
+  targetHeightMeters=<game-appropriate height>,
+  wait=false
 )
 ```
 
-Returns a job result with `assetId` and `fileUrl` — an un-rigged static `.glb`.
-Use the asset ID as the stable handle. Import it for preview only:
+For the initial request, use top-level `rig`, `animationNames`, and `actionIds`
+instead of legacy `options`. Capture the returned `jobId` and
+`idempotencyKey`.
 
-```
-summer_get_asset(assetId="<assetId>")
-summer_import_asset_by_id(
-  assetId="<assetId>",
-  path="res://assets/characters/knight_unrigged.glb"
-)
-```
+If the response has `status="needs_user_input"`:
 
-### 3. ⛔ USER REVIEW GATE — DO NOT SKIP
+1. ask the supplied `question` in ordinary text;
+2. list the supplied candidates as ordinary text;
+3. accept the user's name or number;
+4. append the exact selected `actionId` at the supplied resume path, including
+   `options.actionIds` when that is the path returned by the server;
+5. resubmit `resume.request` unchanged with the same `idempotencyKey`.
 
-Before paying for the rig pass, surface the un-rigged mesh:
+There is no menu, card, or request-user-input MCP tool. Repeat only when another
+animation name is genuinely ambiguous.
 
-> Un-rigged knight mesh ready: `res://assets/characters/knight_unrigged.glb` (~12k tris, [preview link]).
->
-> Next step is the **rig pass** (~$1.00, ~90s, Meshy auto-rig). It locks the topology and adds a skeleton compatible with `summer:animation/generate-motion`. Once you approve I'll run it.
->
-> **Approve the mesh and proceed to rig?** Or regenerate the mesh first (different prompt, different polycount, different model)?
+Poll async work with `summer_check_job(jobId)`. Reuse the returned
+`idempotencyKey` for transport retries. Do not submit a second paid character
+job because a poll or client response timed out.
 
-If the user wants changes, loop back to step 1 or 2. Do NOT silently run the rig pass — it doubles the cost and locks the design.
+## 4. Import the complete character package
 
-### 4. Run the rig pass
+When the job is complete:
 
-```
-summer_generate_3d({
-  kind: "image-to-3d",
-  imageUrl: "<image url from step 1>",
-  options: { rig: true, polyTarget: 12000 }   // polyTarget is best-effort; backend may use options.target_polycount
-})
-```
+1. resolve the exact returned character asset with `summer_get_asset`;
+2. confirm `asset.metadata.characterPackage.status` is `ready`;
+3. call `summer_import_asset_by_id` with that exact asset ID;
+4. pass `parent` and `name` when the current game scene is ready for placement.
 
-Returns a job whose result includes `assetId`, `fileUrl`, and `rigAssetId`.
-If you ran with `wait: false`, poll via `summer_check_job(jobId)`. The
-`rigAssetId` is the handle `summer:animation/generate-motion` needs — store it.
-Resolve it before import so the agent has the viewer/download metadata:
+A ready package imports to:
 
-Import the rigged version, replacing the un-rigged file:
+- `res://characters/<directoryName>/character.tscn`;
+- `res://characters/<directoryName>/character.json`;
+- its rig and every requested animation clip.
 
-```
-summer_get_asset(assetId="<rigAssetId>")
-summer_import_asset_by_id(
-  assetId="<rigAssetId>",
-  path="res://assets/characters/knight.glb"
-)
-```
+Use the returned `primaryPath`, `manifestPath`, and `packageRevision`. Do not
+download one GLB by URL and leave the rest of the package behind. Do not search
+by title after generation.
 
-### 5. ⚠️ Restart the editor
+## 5. Connect the package to gameplay
 
-**Known Godot 4.5 gotcha:** after importing a rigged `.glb`, the `Skeleton3D` node appears stale in the scene dock — bones are missing, `skeleton.get_bone_count()` returns 0, and `AnimationPlayer` libraries fail to bind. The fix:
+For a playable character:
 
-> The rigged mesh is imported. Please restart the Summer Engine editor (close and reopen) so the Skeleton3D rebuilds correctly. Without the restart, animations will fail to bind.
+1. wrap or place the imported character under the game's `CharacterBody3D`;
+2. add the collider and controller required by the game;
+3. connect the imported animation player/library to the locomotion state logic;
+4. map grounded idle/run, upward jump, downward fall, and landing;
+5. keep the visual wrapper stable so character regeneration does not rewrite the
+   controller.
 
-There is no programmatic workaround as of Godot 4.5.x. Tell the user, wait, then continue.
+For a non-moving cinematic NPC, a `Node3D` parent is enough. Do not wrap a
+playable player in a visual-only `Node3D`.
 
-### 6. Wire as CharacterBody3D or Node3D — pick the right parent
+When this skill was invoked by `summer:make-game`, return control immediately
+after package import so the orchestrator can finish controller, level, respawn,
+and runtime integration. The overall game task is not complete until the
+requested clips respond to gameplay state.
 
-| Use case | Parent type | Why |
-|---|---|---|
-| Player or enemy that moves with code, collides with walls, jumps | `CharacterBody3D` | `move_and_slide()` API, kinematic physics, slope handling |
-| Cinematic NPC (talks, idles, never moves under physics) | `Node3D` | No physics overhead; cheaper for crowds |
-| Pure-visual character (background extra, dialogue head) | `Node3D` | Same as above |
-| Ragdoll-on-death enemy | `CharacterBody3D` while alive, swap to `RigidBody3D` skeleton on death | Two-mode rig; see `summer:animation/procedural-animation` |
+## 6. Verify
 
-**CharacterBody3D wiring (player / enemy):**
+Before reporting the character ready:
 
-```
-summer_add_node(parent="./World", type="CharacterBody3D", name="Knight")
-summer_set_prop(path="./World/Knight", property="position", value="Vector3(0, 0, 0)")
-summer_add_node(parent="./World/Knight", type="Node3D", name="Mesh")
-# Instantiate the imported scene as a child of the Mesh node
-summer_set_prop(path="./World/Knight/Mesh", property="scene", value="res://assets/characters/knight.glb")
-summer_add_node(parent="./World/Knight", type="CollisionShape3D", name="Collider")
-# Add a CapsuleShape3D resource (height ~1.7m, radius ~0.4m) to the collider
-summer_save_scene
-```
+1. compile changed controller/state scripts;
+2. run the scene;
+3. read debugger errors;
+4. verify the imported character is visible and correctly scaled;
+5. verify every required animation exists;
+6. exercise all observable state transitions available through the verification
+   path;
+7. stop the game.
 
-**Node3D wiring (cinematic NPC):**
+If public MCP cannot inject controls, state that limitation and ask for one
+manual movement/jump check. Never claim animation works from a T-pose preview or
+static screenshot.
 
-```
-summer_add_node(parent="./World/Tavern", type="Node3D", name="OldWizard")
-summer_set_prop(path="./World/Tavern/OldWizard", property="scene", value="res://assets/characters/wizard.glb")
-summer_save_scene
-```
+## Do not
 
-The imported `.glb` includes its own `Skeleton3D` and `AnimationPlayer` (empty library). The animation skill writes into that AnimationPlayer.
-
-### 7. Hand off to animation
-
-> Knight is wired at `./World/Knight` with a Meshy-rigged skeleton. `rigAssetId` saved.
->
-> Next: `summer:animation/generate-motion` to add idle / walk / run / attack clips. Example call: `summer_generate_motion(rigAssetId: "<saved id>", backend: "meshy-library", motionName: "walk")`. The animation skill uses Meshy's curated mocap library (~70 standard motions). Custom prompt-driven motion is on the roadmap; for one-off signature moves not on the curated list, fall back to hand-authoring in the Godot editor or importing from Mixamo.
-
-## Anti-patterns
-
-- **Skipping the user-review gate.** Doubles cost, locks the design, and removes the user's chance to course-correct cheaply.
-- **Generating the mesh from a non-T-pose image.** Locomotion will look broken (inverted knees, snapped elbows). Always re-pose first.
-- **Forgetting the editor restart.** Animations will appear to bind successfully but play to a stale skeleton — the character T-poses motionless. The fix is always restart, never code.
-- **Wrapping a cinematic NPC in CharacterBody3D.** Wastes physics ticks; use Node3D.
-- **Wrapping the player in Node3D.** No `move_and_slide()`, no collision — the player walks through walls.
-- **Picking the rig pass before approving the silhouette.** The mesh defines what the character looks like; once the rig is on, you can't cheaply iterate the design.
-- **Using `meshy` model for the mesh step.** Legacy. `hunyuan` is the default and produces cleaner topology that Meshy's auto-rig handles better.
-
-## Edge cases
-
-- **Multiple characters share a silhouette.** Generate the rig once, then re-skin via texture swap (cheaper than re-rigging). See `summer:3d-assets/character-model` retexture flow (TBD) — for now, route to `summer:asset-pipeline/asset-strategy`.
-- **Character has wings, tail, extra limbs.** Meshy's humanoid rig only weights the standard skeleton — extras sag. Either prompt them as static (e.g. cape held by physics in-engine) or hand-rig in Blender post-export.
-- **Child / dwarf / giant.** Generate at correct proportions in the T-pose; the rig retargets cleanly. Locomotion clips from `summer:animation/generate-motion` will retarget but stride length needs `playback_speed` tuning on the AnimationPlayer.
-- **First-person hands-only character.** Generate just hands + forearms in T-pose; rig pass still works. See `summer:character-controllers/fps-controller` for first-person wiring.
-- **Stylized non-human (goblin, orc, halfling).** Works fine as long as the silhouette is bipedal with two arms, two legs, one head. Quadrupeds and centaurs do not.
-
-## Fallback (no MCP)
-
-1. Generate the T-pose reference at the Summer dashboard (or any image gen — Midjourney, nano-banana web, DALL-E).
-2. Upload to Meshy at meshy.ai → Image to 3D → enable rigging.
-3. Download the `.glb`.
-4. Drop into `res://assets/characters/` — Godot's import dock picks it up.
-5. Restart the editor.
-6. Wire as CharacterBody3D / Node3D in the Godot editor manually.
-
-The output is identical to the MCP path — same Meshy skeleton, same compatibility with `summer:animation/generate-motion` (which has its own dashboard fallback).
-
-## Handoff
-
-After the rigged character is wired:
-
-> `Knight` is at `./World/Knight` with a Meshy-rigged skeleton. Next:
-> - **Animations:** `summer:animation/generate-motion` for idle / walk / run / attack. Pass the `rigAssetId` returned in step 4.
-> - **State machine:** after a few clips exist, `summer:animation/animation-tree` for idle → walk → run blends.
-> - **Player input:** if this is the player, wire WASD + mouse via `summer:character-controllers/fps-controller` or a third-person controller skill.
-> - **NPC behavior:** if it's an NPC, `summer:ai-and-npcs/design-npc` for behavior trees and dialogue hooks.
-> - **Re-skin variants** (palette swap, armor swap): retexture pass — generate new albedo, assign via material override. Avoid re-rigging.
-
-## See also
-
-- `summer:animation/generate-motion` — the next-step animation skill that consumes the `rigAssetId` produced here.
-- `summer:asset-pipeline/asset-strategy` — meta-router; this skill is the canonical drill-down of its "Image-to-3D for characters" path.
-- `summer:3d-assets/prop-model` — for non-character props.
-- `summer:scene-composition` — for the CharacterBody3D + Mesh + Collider parent pattern.
-- `references/mcp-tools-reference.md` — full parameter schemas for `summer_generate_3d`, `summer_generate_image`, and `summer_generate_motion`.
+- generate a static humanoid when animation is required;
+- split a normal character into unrelated rig and per-clip paid jobs;
+- omit explicit animation requests from the MVP;
+- finish after importing only the mesh;
+- invent a request-user-input menu;
+- retry paid work with a new idempotency key;
+- claim success before the package is imported and connected.

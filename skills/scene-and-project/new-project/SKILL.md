@@ -24,18 +24,23 @@ When the user wants to start from a blank canvas — not a community template, n
 ## When NOT to use this skill
 
 - "Show me templates" / "use a template" → `summer:browse-templates`.
-- "Make me a game" with a defined idea → run `summer:brainstorm-game` first to scope, then come back here once the user knows what they want.
+- "Make me a game" with a defined idea → let `summer:make-game` invoke this as
+  one internal setup step. Do not force `summer:brainstorm-game`.
 - "I have an existing Godot project I want to import" → not this skill; have the user run `summer open <path>` directly.
 
 ## Steps
 
-### 1. Ask the project name
+### 1. Resolve the project name
 
-One question, no menu:
+When invoked standalone, ask one question with no menu:
 
 > "What do you want to call your project?"
 
 Default: `my-game`. If they say "anything is fine" or similar, use `my-game` and move on. The directory name is reversible — they can always rename.
+
+When invoked from `summer:make-game`, infer a short reversible name from the
+brief or use `my-game`. Do not interrupt an otherwise concrete build only to
+approve a directory name.
 
 ### 2. Pick the starting scene
 
@@ -72,16 +77,15 @@ summer run my-game
 
 Confirm the engine launched and the project loaded. If `summer run` fails, run `summer doctor` and surface the failure to the user.
 
-### 5. Don't keep going automatically
+### 5. Return to the caller
 
-After scaffolding, **stop and let the user direct.** A common mistake: fire `summer:fps-controller` or `summer:design-mechanic` automatically because "now we make a game." Wait. The user might want to:
+When invoked from `summer:make-game`, report the created path to the
+orchestrator and return immediately to the build. The project scaffold is an
+internal prerequisite, not a user-facing milestone.
 
-- Brainstorm what to build (`summer:brainstorm-game`)
-- Set the visual direction (`summer:art-direction`)
-- Jump straight into a known mechanic (`summer:design-mechanic`)
-- Build a specific controller (`summer:fps-controller`)
+When invoked standalone with no game brief, end with:
 
-Ask: "Project is open. What do you want to build?"
+> Project is open. What do you want to build?
 
 ## Anti-patterns
 
@@ -90,7 +94,7 @@ Ask: "Project is open. What do you want to build?"
 | Skip the name question and use `my-game` silently | The user has opinions about the directory name. Two seconds of asking saves a `mv` later. |
 | Use `summer create 3d-basic` for a 2D game | Wrong starting scene. Use `empty` and let the user/agent build the 2D root from there. |
 | Default to a community template | That's `summer:browse-templates`. This skill is specifically for "blank canvas." |
-| Continue into `summer:fps-controller` automatically | Most users want to brainstorm or set art direction first. Stop and ask. |
+| Stop a running `summer:make-game` flow after project creation | The caller already owns the game brief; return control so it can continue to a playable result. |
 | Run this when the user is in an existing project | Check `summer status` or `summer_get_project_context` first. If a project is already open, the user probably wanted to modify it, not create a new one. |
 
 ## Edge cases
@@ -101,6 +105,7 @@ Ask: "Project is open. What do you want to build?"
 
 ## Closing
 
-End with: "Project `<name>` is created and open. What do you want to build first?"
+Standalone: "Project `<name>` is created and open. What do you want to build first?"
 
-That's the handoff to whatever skill comes next.
+Inside `summer:make-game`: return the path and starter type without asking a
+new question.

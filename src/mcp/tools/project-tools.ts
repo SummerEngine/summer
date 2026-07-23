@@ -188,6 +188,27 @@ anti-patterns, and recovery steps.`,
                 "Use projectMemory from summer_get_project_context to decide which .summer Markdown files to read before creative/audio/dialogue/level/character work.",
                 "After writing code, VERIFY through the engine (see verificationLadder) instead of waiting for the user to navigate to it.",
               ],
+              conversationRouting: {
+                noGameGoal:
+                  "Ask in ordinary text: “Do you already know what game you want to make, or should we brainstorm it together?” Then wait.",
+                vagueIdea:
+                  "Invoke make-game. It should invoke brainstorm-game, use its game-design questions, then resume the playable build automatically.",
+                concreteIdea:
+                  "Invoke make-game directly. Treat the supplied brief as authorization to build and skip the onboarding interview.",
+                materialQuestionsOnly: [
+                  "Ask only about a missing visible-product choice, paid generation, authentication, contradictory requirements, or a destructive action.",
+                  "For an unspecified 3D player source, ask one ordinary text question: existing/Asset Store character, generated custom character, or temporary prototype.",
+                  "Do not ask about file or folder architecture, component organization, programming patterns, sky, or other reversible implementation details.",
+                  "MCP has no request-user-input menu. Ask every required question in ordinary text.",
+                ],
+              },
+              playableMvp: [
+                "An empty scaffold is never a user-facing milestone. A floor, camera, light, or clean first frame is internal setup.",
+                "Continue until there is a visible, controllable player, the requested primary action, a challenge that exercises it, collision/camera behavior, and the requested failure/restart or win loop.",
+                "An explicitly requested character or animation is part of the MVP, not a later polish layer.",
+                "For 3D parkour, require movement and jump, multiple reachable platforms, procedural extension when requested, fall/respawn at the requested checkpoint, a following camera, and requested locomotion states.",
+                "Do not claim completion from compilation or a static screenshot. Run the game, inspect diagnostics, and report any interaction that still requires an honest manual check.",
+              ],
               safeDefaults: [
                 "Never guess scene filenames (main.tscn/Main.tscn) -- get them from summer_get_project_context.",
                 "Edit files (including .tscn/.tres) with host file tools by default. Reach for MCP scene-ops only for live-engine needs (bake, play, runtime inspect) or when you want the editor to manage node ids / instancing.",

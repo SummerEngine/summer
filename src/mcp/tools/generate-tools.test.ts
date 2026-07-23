@@ -5,6 +5,11 @@ vi.mock("../../lib/auth.js", () => ({
   getAuthToken: vi.fn(async () => "test-token"),
 }));
 
+const randomUUIDMock = vi.hoisted(() => vi.fn(() => "generated-idempotency-key"));
+vi.mock("node:crypto", () => ({
+  randomUUID: randomUUIDMock,
+}));
+
 import { registerGenerateTools } from "./generate-tools.js";
 
 // ---------------------------------------------------------------------------
@@ -56,10 +61,12 @@ const realFetch = globalThis.fetch;
 beforeEach(() => {
   // Reset fetch before each test; individual tests assign their own mock.
   globalThis.fetch = vi.fn() as any;
+  randomUUIDMock.mockClear();
 });
 
 afterEach(() => {
   globalThis.fetch = realFetch;
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -85,8 +92,11 @@ describe("registerGenerateTools — summer_generate_motion", () => {
     expect(motion.schema.rigAssetId).toBeDefined();
     expect(motion.schema.backend).toBeDefined();
     expect(motion.schema.motionName).toBeDefined();
+    expect(motion.schema.motionNames).toBeDefined();
+    expect(motion.schema.actionIds).toBeDefined();
     expect(motion.schema.wait).toBeDefined();
     expect(motion.schema.options).toBeDefined();
+    expect(motion.schema.idempotencyKey).toBeDefined();
     // prompt + durationSeconds are reserved for hunyuan-custom — not exposed.
     expect(motion.schema.prompt).toBeUndefined();
     expect(motion.schema.durationSeconds).toBeUndefined();
@@ -105,7 +115,7 @@ describe("registerGenerateTools — summer_generate_motion", () => {
 
     expect(result.isError).toBe(true);
     const body = parseResult(result);
-    expect(body.message).toMatch(/motionName is required/);
+    expect(body.message).toMatch(/Provide motionName, motionNames, or actionIds/);
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
@@ -142,6 +152,7 @@ describe("registerGenerateTools — summer_generate_motion", () => {
       rigAssetId: "rig_123",
       backend: "meshy-library",
       motionName: "walk",
+      idempotencyKey: "generated-idempotency-key",
     });
     // durationSeconds + prompt are NOT exposed (hunyuan-custom not shipped).
     expect(sent.durationSeconds).toBeUndefined();
@@ -150,6 +161,7 @@ describe("registerGenerateTools — summer_generate_motion", () => {
     // wait=false → handler returns the raw response (containing jobId).
     const body = parseResult(result);
     expect(body.jobId).toBe("job_abc");
+    expect(body.idempotencyKey).toBe("generated-idempotency-key");
     expect(result.isError).toBeUndefined();
   });
 
@@ -255,5 +267,347 @@ describe("registerGenerateTools — provider validation errors", () => {
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect((init.headers as any)["X-Summer-MCP-Tool"]).toBe("summer_generate_image");
     expect((init.headers as any)["X-Summer-Client-Version"]).toMatch(/\d+\.\d+\.\d+/);
+  });
+});
+
+describe("registerGenerateTools — paid generation retry receipts", () => {
+  const cases = [
+    ["summer_generate_image", { prompt: "a sprite" }],
+    ["summer_generate_audio", { capability: "music", prompt: "battle theme" }],
+    ["summer_generate_3d", { prompt: "a chest", wait: false }],
+    ["summer_generate_video", { prompt: "a slow pan" }],
+    [
+      "summer_generate_motion",
+      {
+        rigAssetId: "rig_123",
+        backend: "meshy-library",
+        motionName: "walk",
+        wait: false,
+      },
+    ],
+  ] as const;
+
+  it("exposes idempotencyKey on every paid tool schema", () => {
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+
+    for (const [toolName] of cases) {
+      expect(getTool(tools, toolName).schema.idempotencyKey).toBeDefined();
+    }
+  });
+
+  it.each(cases)(
+    "%s forwards a supplied key unchanged and returns it",
+    async (toolName, args) => {
+      const fetchMock = vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ jobId: "job_1" }),
+      }));
+      globalThis.fetch = fetchMock as any;
+
+      const { server, tools } = createFakeServer();
+      registerGenerateTools(server as any);
+      const result = await getTool(tools, toolName).handler({
+        ...args,
+        idempotencyKey: "caller-key",
+      });
+
+      const sent = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+      expect(sent.idempotencyKey).toBe("caller-key");
+      expect(parseResult(result).idempotencyKey).toBe("caller-key");
+      expect(randomUUIDMock).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(cases)(
+    "%s creates one key when omitted and returns the same key",
+    async (toolName, args) => {
+      const fetchMock = vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ jobId: "job_1" }),
+      }));
+      globalThis.fetch = fetchMock as any;
+
+      const { server, tools } = createFakeServer();
+      registerGenerateTools(server as any);
+      const result = await getTool(tools, toolName).handler(args);
+
+      const sent = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+      expect(sent.idempotencyKey).toBe("generated-idempotency-key");
+      expect(parseResult(result).idempotencyKey).toBe(
+        "generated-idempotency-key"
+      );
+      expect(randomUUIDMock).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  it.each([
+    [400, { error: "invalid_request", message: "Bad request" }],
+    [409, { error: "duplicate_in_progress", message: "Still processing" }],
+    [409, { error: "idempotency_conflict", message: "Different intent" }],
+    [503, { error: "idempotency_unavailable", message: "Try later" }],
+  ])(
+    "preserves the original key for HTTP %i responses",
+    async (status, responseBody) => {
+      globalThis.fetch = vi.fn(async () => ({
+        ok: false,
+        status,
+        text: async () => JSON.stringify(responseBody),
+      })) as any;
+
+      const { server, tools } = createFakeServer();
+      registerGenerateTools(server as any);
+      const result = await getTool(tools, "summer_generate_image").handler({
+        prompt: "a sprite",
+        idempotencyKey: "caller-key",
+      });
+
+      expect(result.isError).toBe(true);
+      expect(parseResult(result)).toMatchObject({
+        idempotencyKey: "caller-key",
+        status,
+      });
+    }
+  );
+
+  it("returns a replayed job with the original key", async () => {
+    globalThis.fetch = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          replayed: true,
+          jobId: "original-job",
+        }),
+    })) as any;
+
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const result = await getTool(tools, "summer_generate_3d").handler({
+      prompt: "a castle",
+      idempotencyKey: "replay-key",
+      wait: false,
+    });
+
+    expect(parseResult(result)).toMatchObject({
+      replayed: true,
+      jobId: "original-job",
+      idempotencyKey: "replay-key",
+    });
+  });
+
+  it("preserves the original key when the network request times out", async () => {
+    globalThis.fetch = vi.fn(async () => {
+      throw new Error("The operation was aborted due to timeout");
+    }) as any;
+
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const result = await getTool(tools, "summer_generate_video").handler({
+      prompt: "a slow pan",
+      idempotencyKey: "caller-key",
+    });
+
+    expect(result.isError).toBe(true);
+    expect(parseResult(result)).toMatchObject({
+      idempotencyKey: "caller-key",
+      status: 0,
+    });
+  });
+
+  it("returns animation selection as normal structured content and reuses its key", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 409,
+        text: async () =>
+          JSON.stringify({
+            error: "needs_animation_selection",
+            message: "Choose the closest animation.",
+            candidates: [
+              { actionId: 125, displayName: "Charged Spell Cast" },
+              { actionId: 126, displayName: "Quick Spell Cast" },
+            ],
+            resume: {
+              request: {
+                kind: "image-to-3d",
+                imageUrl: "https://example.com/mage.png",
+                idempotencyKey: "selection-key",
+                options: { rig: true, actionIds: [] },
+              },
+              appendSelectedActionIdTo: "options.actionIds",
+            },
+          }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ jobId: "character-job" }),
+      });
+    globalThis.fetch = fetchMock as any;
+
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const generate3d = getTool(tools, "summer_generate_3d");
+
+    const selectionResult = await generate3d.handler({
+      kind: "image-to-3d",
+      imageUrl: "https://example.com/mage.png",
+      options: { rig: true, animationNames: ["cast a spell"] },
+      idempotencyKey: "selection-key",
+    });
+    const selection = parseResult(selectionResult);
+
+    expect(selectionResult.isError).toBeUndefined();
+    expect(selection).toMatchObject({
+      status: "needs_user_input",
+      code: "needs_animation_selection",
+      idempotencyKey: "selection-key",
+      candidates: [{ actionId: 125 }, { actionId: 126 }],
+      resume: {
+        request: { idempotencyKey: "selection-key" },
+      },
+    });
+
+    const resumedRequest = selection.resume.request;
+    resumedRequest.options.actionIds.push(125);
+    const resumedResult = await generate3d.handler(resumedRequest);
+    expect(parseResult(resumedResult)).toMatchObject({
+      jobId: "character-job",
+      idempotencyKey: "selection-key",
+    });
+
+    const firstSent = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    const resumedSent = JSON.parse(fetchMock.mock.calls[1][1].body as string);
+    expect(firstSent.idempotencyKey).toBe("selection-key");
+    expect(resumedSent.idempotencyKey).toBe("selection-key");
+    expect(resumedSent.options.actionIds).toEqual([125]);
+    expect(randomUUIDMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("registerGenerateTools — long job defaults", () => {
+  it("returns an animated-character job immediately unless wait=true", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ jobId: "character-job-1" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ jobId: "character-job-2" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ status: "completed", result: { assetId: "asset-1" } }),
+      });
+    globalThis.fetch = fetchMock as any;
+
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const generate3d = getTool(tools, "summer_generate_3d");
+    const args = {
+      kind: "image-to-3d",
+      imageUrl: "https://example.com/hero.png",
+      options: { rig: true, animationNames: ["Idle", "Walk"] },
+      idempotencyKey: "character-key",
+    };
+
+    const immediate = await generate3d.handler(args);
+    expect(parseResult(immediate)).toMatchObject({
+      jobId: "character-job-1",
+      idempotencyKey: "character-key",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    const waited = await generate3d.handler({ ...args, wait: true });
+    expect(parseResult(waited)).toMatchObject({
+      jobId: "character-job-2",
+      idempotencyKey: "character-key",
+      message: "3D generation complete.",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("returns a multi-motion job immediately unless wait=true", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ jobId: "motion-job-1" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ jobId: "motion-job-2" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ status: "completed", result: { animationAssetId: "anim-1" } }),
+      });
+    globalThis.fetch = fetchMock as any;
+
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const generateMotion = getTool(tools, "summer_generate_motion");
+    const args = {
+      rigAssetId: "rig-1",
+      backend: "meshy-library",
+      motionNames: ["Idle", "Walk"],
+      idempotencyKey: "motion-key",
+    };
+
+    const immediate = await generateMotion.handler(args);
+    expect(parseResult(immediate)).toMatchObject({
+      jobId: "motion-job-1",
+      idempotencyKey: "motion-key",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    const waited = await generateMotion.handler({ ...args, wait: true });
+    expect(parseResult(waited)).toMatchObject({
+      jobId: "motion-job-2",
+      idempotencyKey: "motion-key",
+      message: "Motion generation complete. animationAssetId is in result.",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("keeps the job receipt if explicit polling fails", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ jobId: "character-job-1" }),
+      })
+      .mockRejectedValueOnce(new Error("poll timeout"));
+    globalThis.fetch = fetchMock as any;
+
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const result = await getTool(tools, "summer_generate_3d").handler({
+      kind: "image-to-3d",
+      imageUrl: "https://example.com/hero.png",
+      options: { rig: true, animationNames: ["Idle", "Walk"] },
+      idempotencyKey: "character-key",
+      wait: true,
+    });
+
+    expect(result.isError).toBe(true);
+    expect(parseResult(result)).toMatchObject({
+      jobId: "character-job-1",
+      idempotencyKey: "character-key",
+    });
+    expect(parseResult(result).message).toMatch(/poll timeout/);
   });
 });

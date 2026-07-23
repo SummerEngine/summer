@@ -1,4 +1,5 @@
 import { createRequire } from "node:module";
+import { randomUUID } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { writeFile, mkdir } from "fs/promises";
@@ -108,11 +109,20 @@ async function mcpGenerate(
   body: Record<string, any>,
   timeoutMs = 120_000
 ): Promise<{ data?: any; error?: string; status: number }> {
+  const idempotencyKey = stringFrom(body.idempotencyKey) ?? randomUUID();
+  const requestBody = { ...body, idempotencyKey };
+  const withReceipt = (value: unknown, status?: number) => ({
+    ...(asRecord(value) ?? {}),
+    idempotencyKey,
+    ...(status === undefined ? {} : { status }),
+  });
+
   const token = await getAuthToken();
   if (!token) {
     return {
       error:
         "Not signed in. Run in your terminal:\n  npx summer-engine login\nOr open: https://www.summerengine.com/login",
+      data: withReceipt({}, 401),
       status: 401,
     };
   }
@@ -130,16 +140,39 @@ async function mcpGenerate(
         "X-Summer-MCP-Endpoint": endpoint,
         "X-Summer-MCP-Tool": TOOL_BY_ENDPOINT[endpoint] ?? "unknown",
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(requestBody),
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return { error: `Generation request failed: ${msg}`, status: 0 };
+    return {
+      error: `Generation request failed: ${msg}`,
+      data: withReceipt({}, 0),
+      status: 0,
+    };
   }
 
   const data = await readJsonResponse(res);
   if (!res.ok) {
+    const record = asRecord(data);
+    if (
+      res.status === 409 &&
+      record?.error === "needs_animation_selection" &&
+      asRecord(record.resume)
+    ) {
+      const { error: continuationCode, ...continuationData } = record;
+      return {
+        data: withReceipt(
+          {
+            ...continuationData,
+            status: "needs_user_input",
+            code: continuationCode,
+          }
+        ),
+        status: res.status,
+      };
+    }
+
     let message = formattedApiErrorMessage(res.status, data);
 
     if (res.status === 402) {
@@ -153,9 +186,13 @@ async function mcpGenerate(
         "\nRe-authenticate:\n  npx summer-engine login";
     }
 
-    return { error: message, data: { ...data, status: res.status }, status: res.status };
+    return {
+      error: message,
+      data: withReceipt(data, res.status),
+      status: res.status,
+    };
   }
-  return { data, status: res.status };
+  return { data: withReceipt(data), status: res.status };
 }
 
 /**
@@ -301,14 +338,19 @@ Requires authentication: run 'npx summer-engine login' first.`,
         .record(z.any())
         .optional()
         .describe("Provider-specific params (guidance_scale, seed, image_size, negative_prompt, etc.)"),
+      idempotencyKey: z
+        .string()
+        .optional()
+        .describe("Stable key for this user intent. Omit on the first call; reuse the returned key for retries or continuation."),
     },
-    async ({ prompt, model, style, referenceImageUrl, options }) => {
+    async ({ prompt, model, style, referenceImageUrl, options, idempotencyKey }) => {
       const result = await mcpGenerate("/api/mcp/generate/image", {
         prompt,
         model,
         style,
         referenceImageUrl,
         options,
+        idempotencyKey,
       });
 
       if (result.error) {
@@ -384,8 +426,12 @@ Requires authentication: run 'npx summer-engine login' first.`,
         .record(z.any())
         .optional()
         .describe("Provider-specific params (stability, similarity_boost, style, speed, etc.)"),
+      idempotencyKey: z
+        .string()
+        .optional()
+        .describe("Stable key for this user intent. Omit on the first call; reuse the returned key for retries or continuation."),
     },
-    async ({ capability, text, prompt, voiceId, modelId, durationSeconds, inputs, options }) => {
+    async ({ capability, text, prompt, voiceId, modelId, durationSeconds, inputs, options, idempotencyKey }) => {
       const body: Record<string, any> = { capability };
       if (text) body.text = text;
       if (prompt) body.prompt = prompt;
@@ -394,6 +440,7 @@ Requires authentication: run 'npx summer-engine login' first.`,
       if (durationSeconds) body.durationSeconds = durationSeconds;
       if (inputs) body.inputs = inputs;
       if (options) body.options = options;
+      if (idempotencyKey) body.idempotencyKey = idempotencyKey;
 
       const result = await mcpGenerate("/api/mcp/generate/audio", body);
 
@@ -438,8 +485,9 @@ Example:
   })
   // Returns jobId; poll until result includes { assetId, rigAssetId }.
 
-By default, waits for completion (up to 5 min) and returns the result directly.
-Set wait=false to get the jobId immediately and poll manually with summer_check_job.
+By default, regular 3D jobs wait for completion (up to 5 min). Animated-character
+jobs return jobId immediately because they commonly exceed that budget. Set
+wait=true to explicitly wait, or wait=false to always return immediately.
 
 Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
 Requires authentication: run 'npx summer-engine login' first.`,
@@ -462,20 +510,25 @@ Requires authentication: run 'npx summer-engine login' first.`,
         .describe("Source image URL for image-to-3d or texture"),
       wait: z
         .boolean()
-        .default(true)
-        .describe("Wait for completion (default true, up to 5 min). Set false to get jobId immediately."),
+        .optional()
+        .describe("Wait for completion. Defaults to false for animated characters and true for regular 3D jobs."),
       options: z
         .record(z.any())
         .optional()
         .describe("Provider-specific params (target_polycount, topology, art_style, etc.)"),
+      idempotencyKey: z
+        .string()
+        .optional()
+        .describe("Stable key for this user intent. Omit on the first call; reuse the returned key for retries or continuation."),
     },
-    async ({ prompt, kind, model, imageUrl, wait, options }) => {
+    async ({ prompt, kind, model, imageUrl, wait, options, idempotencyKey }) => {
       const result = await mcpGenerate("/api/mcp/generate/3d", {
         prompt,
         kind,
         model,
         imageUrl,
         options,
+        idempotencyKey,
       });
 
       if (result.error) {
@@ -483,9 +536,14 @@ Requires authentication: run 'npx summer-engine login' first.`,
       }
 
       const jobId = result.data?.jobId;
+      const isAnimatedCharacter =
+        options?.rig === true &&
+        ((Array.isArray(options.animationNames) && options.animationNames.length > 0) ||
+          (Array.isArray(options.actionIds) && options.actionIds.length > 0));
+      const shouldWait = wait ?? !isAnimatedCharacter;
 
       // If not waiting or no jobId, return immediately
-      if (!wait || !jobId) {
+      if (!shouldWait || !jobId) {
         return successResult(result.data);
       }
 
@@ -493,12 +551,17 @@ Requires authentication: run 'npx summer-engine login' first.`,
       const pollResult = await pollJob(jobId);
 
       if (pollResult.error) {
-        return errorResult(pollResult.error, { ...pollResult.data, jobId });
+        return errorResult(pollResult.error, {
+          ...pollResult.data,
+          jobId,
+          idempotencyKey: result.data.idempotencyKey,
+        });
       }
 
       return successResult({
         ...pollResult.data,
         jobId,
+        idempotencyKey: result.data.idempotencyKey,
         message: "3D generation complete.",
       });
     }
@@ -551,8 +614,12 @@ Requires authentication: run 'npx summer-engine login' first.`,
         .record(z.any())
         .optional()
         .describe("Provider-specific params (negative_prompt, num_frames, guidance_scale, etc.)"),
+      idempotencyKey: z
+        .string()
+        .optional()
+        .describe("Stable key for this user intent. Omit on the first call; reuse the returned key for retries or continuation."),
     },
-    async ({ prompt, model, imageUrl, duration, aspectRatio, options }) => {
+    async ({ prompt, model, imageUrl, duration, aspectRatio, options, idempotencyKey }) => {
       const result = await mcpGenerate("/api/mcp/generate/video", {
         prompt,
         model,
@@ -560,6 +627,7 @@ Requires authentication: run 'npx summer-engine login' first.`,
         duration,
         aspectRatio,
         options,
+        idempotencyKey,
       });
 
       if (result.error) {
@@ -639,8 +707,9 @@ Backend:
 Requires a Meshy-rigged humanoid as the target. The 'rigAssetId' must come from
 a prior summer_generate_3d call with options.rig=true.
 
-By default, waits for completion (up to 5 min) and returns the result directly.
-Set wait=false to get the jobId immediately and poll manually with summer_check_job.
+By default, one motion waits for completion (up to 5 min). Multi-motion requests
+return jobId immediately. Set wait=true to explicitly wait, or wait=false to
+always return immediately.
 
 Common motion names:
   Locomotion: idle, idle_alert, idle_combat, walk, walk_back, run, sprint,
@@ -667,23 +736,36 @@ Requires authentication: run 'npx summer-engine login' first.`,
         .describe("Backend: meshy-library (only option today)"),
       motionName: z
         .string()
-        .describe("Curated motion name: walk, run, attack_sword, idle, jump, etc."),
+        .optional()
+        .describe("One curated motion name: walk, run, attack_sword, idle, jump, etc."),
+      motionNames: z
+        .array(z.string())
+        .optional()
+        .describe("Multiple curated motion names to add in one request."),
+      actionIds: z
+        .array(z.number().int())
+        .optional()
+        .describe("Resolved Meshy action IDs, including IDs selected after a needs_user_input response."),
       // prompt + durationSeconds reserved for the hunyuan-custom backend (not
       // shipped yet — see header comment).
       wait: z
         .boolean()
-        .default(true)
-        .describe("Wait for completion (default true, up to 5 min). Set false to get jobId immediately."),
+        .optional()
+        .describe("Wait for completion. Defaults to false for multi-motion requests and true for one motion."),
       options: z
         .record(z.any())
         .optional()
         .describe("Backend-specific passthrough"),
+      idempotencyKey: z
+        .string()
+        .optional()
+        .describe("Stable key for this user intent. Omit on the first call; reuse the returned key for retries or continuation."),
     },
-    async ({ rigAssetId, backend, motionName, wait, options }) => {
+    async ({ rigAssetId, backend, motionName, motionNames, actionIds, wait, options, idempotencyKey }) => {
       // Client-side validation
-      if (!motionName) {
+      if (!motionName && !motionNames?.length && !actionIds?.length) {
         return errorResult(
-          "motionName is required (e.g. 'walk', 'run', 'attack_sword'). See the tool description for the curated list."
+          "Provide motionName, motionNames, or actionIds. See the tool description for the curated list."
         );
       }
 
@@ -691,7 +773,10 @@ Requires authentication: run 'npx summer-engine login' first.`,
         rigAssetId,
         backend,
         motionName,
+        motionNames,
+        actionIds,
         options,
+        idempotencyKey,
       };
 
       const result = await mcpGenerate("/api/mcp/generate/motion", body);
@@ -701,20 +786,28 @@ Requires authentication: run 'npx summer-engine login' first.`,
       }
 
       const jobId = result.data?.jobId;
+      const requestedMotionCount =
+        (motionName ? 1 : 0) + (motionNames?.length ?? 0) + (actionIds?.length ?? 0);
+      const shouldWait = wait ?? requestedMotionCount <= 1;
 
-      if (!wait || !jobId) {
+      if (!shouldWait || !jobId) {
         return successResult(result.data);
       }
 
       const pollResult = await pollJob(jobId);
 
       if (pollResult.error) {
-        return errorResult(pollResult.error, { ...pollResult.data, jobId });
+        return errorResult(pollResult.error, {
+          ...pollResult.data,
+          jobId,
+          idempotencyKey: result.data.idempotencyKey,
+        });
       }
 
       return successResult({
         ...pollResult.data,
         jobId,
+        idempotencyKey: result.data.idempotencyKey,
         message: "Motion generation complete. animationAssetId is in result.",
       });
     }

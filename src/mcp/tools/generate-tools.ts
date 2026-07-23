@@ -289,6 +289,98 @@ function successResult(data: any) {
   };
 }
 
+function sameInputValue(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function normalizeGenerate3DRequest(args: {
+  prompt?: string;
+  kind?: string;
+  model?: string;
+  imageUrl?: string;
+  title?: string;
+  rig?: boolean;
+  animationNames?: string[];
+  actionIds?: number[];
+  targetHeightMeters?: number;
+  options?: Record<string, any>;
+  idempotencyKey?: string;
+}):
+  | {
+      body: Record<string, any>;
+      isAnimatedCharacter: boolean;
+    }
+  | { error: string } {
+  const kind = args.kind ?? "text-to-3d";
+  const model = args.model ?? "hunyuan";
+  if (kind !== "text-to-3d" && kind !== "image-to-3d") {
+    return {
+      error:
+        'kind must be "text-to-3d" or "image-to-3d". Retexture is not available through summer_generate_3d.',
+    };
+  }
+
+  const options = args.options ? { ...args.options } : {};
+  const mergeExplicit = (
+    field: "rig" | "animationNames" | "actionIds",
+    explicitValue: unknown
+  ): string | undefined => {
+    const legacyValue = options[field];
+    if (
+      explicitValue !== undefined &&
+      legacyValue !== undefined &&
+      !sameInputValue(explicitValue, legacyValue)
+    ) {
+      return `Conflicting values for ${field} and options.${field}. Use the top-level ${field} field.`;
+    }
+    if (explicitValue !== undefined) options[field] = explicitValue;
+    return undefined;
+  };
+
+  for (const [field, value] of [
+    ["rig", args.rig],
+    ["animationNames", args.animationNames],
+    ["actionIds", args.actionIds],
+  ] as const) {
+    const error = mergeExplicit(field, value);
+    if (error) return { error };
+  }
+
+  const legacyHeight =
+    options.riggingHeightMeters ?? options.rigging_height_meters;
+  if (
+    args.targetHeightMeters !== undefined &&
+    legacyHeight !== undefined &&
+    !sameInputValue(args.targetHeightMeters, legacyHeight)
+  ) {
+    return {
+      error:
+        "Conflicting values for targetHeightMeters and options.riggingHeightMeters. Use the top-level targetHeightMeters field.",
+    };
+  }
+  if (args.targetHeightMeters !== undefined) {
+    options.riggingHeightMeters = args.targetHeightMeters;
+    delete options.rigging_height_meters;
+  }
+
+  return {
+    body: {
+      prompt: args.prompt,
+      kind,
+      model,
+      imageUrl: args.imageUrl,
+      title: args.title,
+      options: Object.keys(options).length > 0 ? options : undefined,
+      idempotencyKey: args.idempotencyKey,
+    },
+    isAnimatedCharacter:
+      options.rig === true &&
+      ((Array.isArray(options.animationNames) &&
+        options.animationNames.length > 0) ||
+        (Array.isArray(options.actionIds) && options.actionIds.length > 0)),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Registration
 // ---------------------------------------------------------------------------
@@ -469,21 +561,31 @@ Available kinds:
   - "text-to-3d" (default) — From text description. Requires 'prompt'.
     Internally generates a 3D-optimized reference image first, then converts to 3D.
   - "image-to-3d" — From your own image. Requires 'imageUrl'.
-  - "texture" — Generate textures for a model. Requires 'imageUrl'.
 
-Optional rig pass (image-to-3d only):
-  Set options.rig = true to add an auto-rig pass via Meshy v6. The result
-  job (poll via summer_check_job) will include rigAssetId — the asset ID
-  of the rigged glb. Use that rigAssetId with summer_generate_motion to
-  add animation clips. Adds ~$0.30 and ~60s to the job.
+Humanoid character generation (text or image):
+  Set rig=true and provide animationNames or actionIds. Use title as the
+  character name and targetHeightMeters for rig scale. Multiple animations
+  are submitted together through the shared Meshy character pipeline.
+
+If an animation name is ambiguous, the tool returns status="needs_user_input",
+a plain-text question, candidate data, and resume.request as normal MCP content.
+Ask the question in ordinary text, show candidates as ordinary text, accept the
+user's name or number, append the exact actionId at the supplied path, and retry
+resume.request unchanged with the same idempotencyKey. There is no menu, card,
+or separate request-user-input tool.
+
+Legacy options.rig/options.animationNames/options.actionIds remain accepted for
+compatibility, but new callers should use the typed top-level fields.
 
 Example:
   summer_generate_3d({
     kind: "image-to-3d",
     imageUrl: "https://...",
-    options: { rig: true }
+    title: "Knight",
+    rig: true,
+    animationNames: ["Idle", "Walk", "Run"]
   })
-  // Returns jobId; poll until result includes { assetId, rigAssetId }.
+  // Returns a jobId immediately for the animated-character pipeline.
 
 By default, regular 3D jobs wait for completion (up to 5 min). Animated-character
 jobs return jobId immediately because they commonly exceed that budget. Set
@@ -497,9 +599,9 @@ Requires authentication: run 'npx summer-engine login' first.`,
         .optional()
         .describe("Description of the 3D model, e.g. 'a low-poly treasure chest'"),
       kind: z
-        .string()
+        .enum(["text-to-3d", "image-to-3d"])
         .default("text-to-3d")
-        .describe("Generation type: text-to-3d, image-to-3d, texture"),
+        .describe("Generation type: text-to-3d or image-to-3d"),
       model: z
         .string()
         .default("hunyuan")
@@ -507,7 +609,29 @@ Requires authentication: run 'npx summer-engine login' first.`,
       imageUrl: z
         .string()
         .optional()
-        .describe("Source image URL for image-to-3d or texture"),
+        .describe("Source image URL for image-to-3d"),
+      title: z
+        .string()
+        .optional()
+        .describe("Character name/title stored with a humanoid generation."),
+      rig: z
+        .boolean()
+        .optional()
+        .describe("Enable the shared Meshy humanoid rig pipeline."),
+      animationNames: z
+        .array(z.string())
+        .optional()
+        .describe("Curated animation names to generate together for a humanoid."),
+      actionIds: z
+        .array(z.number().int().min(0).max(696))
+        .optional()
+        .describe("Exact Meshy action IDs, including IDs selected during text continuation."),
+      targetHeightMeters: z
+        .number()
+        .positive()
+        .max(10)
+        .optional()
+        .describe("Target humanoid rig height in meters."),
       wait: z
         .boolean()
         .optional()
@@ -515,32 +639,54 @@ Requires authentication: run 'npx summer-engine login' first.`,
       options: z
         .record(z.any())
         .optional()
-        .describe("Provider-specific params (target_polycount, topology, art_style, etc.)"),
+        .describe("Provider-specific params. options.rig/animationNames/actionIds are deprecated; use top-level fields."),
       idempotencyKey: z
         .string()
         .optional()
         .describe("Stable key for this user intent. Omit on the first call; reuse the returned key for retries or continuation."),
     },
-    async ({ prompt, kind, model, imageUrl, wait, options, idempotencyKey }) => {
-      const result = await mcpGenerate("/api/mcp/generate/3d", {
+    async ({
+      prompt,
+      kind,
+      model,
+      imageUrl,
+      title,
+      rig,
+      animationNames,
+      actionIds,
+      targetHeightMeters,
+      wait,
+      options,
+      idempotencyKey,
+    }) => {
+      const normalized = normalizeGenerate3DRequest({
         prompt,
         kind,
         model,
         imageUrl,
+        title,
+        rig,
+        animationNames,
+        actionIds,
+        targetHeightMeters,
         options,
         idempotencyKey,
       });
+      if ("error" in normalized) {
+        return errorResult(normalized.error);
+      }
+
+      const result = await mcpGenerate(
+        "/api/mcp/generate/3d",
+        normalized.body
+      );
 
       if (result.error) {
         return errorResult(result.error, result.data);
       }
 
       const jobId = result.data?.jobId;
-      const isAnimatedCharacter =
-        options?.rig === true &&
-        ((Array.isArray(options.animationNames) && options.animationNames.length > 0) ||
-          (Array.isArray(options.actionIds) && options.actionIds.length > 0));
-      const shouldWait = wait ?? !isAnimatedCharacter;
+      const shouldWait = wait ?? !normalized.isAnimatedCharacter;
 
       // If not waiting or no jobId, return immediately
       if (!shouldWait || !jobId) {
@@ -769,11 +915,12 @@ Requires authentication: run 'npx summer-engine login' first.`,
         );
       }
 
+      const normalizedMotionNames =
+        motionNames?.length ? motionNames : motionName ? [motionName] : undefined;
       const body = {
         rigAssetId,
         backend,
-        motionName,
-        motionNames,
+        motionNames: normalizedMotionNames,
         actionIds,
         options,
         idempotencyKey,
@@ -787,7 +934,7 @@ Requires authentication: run 'npx summer-engine login' first.`,
 
       const jobId = result.data?.jobId;
       const requestedMotionCount =
-        (motionName ? 1 : 0) + (motionNames?.length ?? 0) + (actionIds?.length ?? 0);
+        (normalizedMotionNames?.length ?? 0) + (actionIds?.length ?? 0);
       const shouldWait = wait ?? requestedMotionCount <= 1;
 
       if (!shouldWait || !jobId) {

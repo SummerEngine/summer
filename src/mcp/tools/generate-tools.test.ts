@@ -151,9 +151,10 @@ describe("registerGenerateTools — summer_generate_motion", () => {
     expect(sent).toMatchObject({
       rigAssetId: "rig_123",
       backend: "meshy-library",
-      motionName: "walk",
+      motionNames: ["walk"],
       idempotencyKey: "generated-idempotency-key",
     });
+    expect(sent.motionName).toBeUndefined();
     // durationSeconds + prompt are NOT exposed (hunyuan-custom not shipped).
     expect(sent.durationSeconds).toBeUndefined();
     expect(sent.prompt).toBeUndefined();
@@ -163,6 +164,36 @@ describe("registerGenerateTools — summer_generate_motion", () => {
     expect(body.jobId).toBe("job_abc");
     expect(body.idempotencyKey).toBe("generated-idempotency-key");
     expect(result.isError).toBeUndefined();
+  });
+
+  it("forwards motion name batches and resolved action IDs together", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ jobId: "job_batch" }),
+    }));
+    globalThis.fetch = fetchMock as any;
+
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const motion = getTool(tools, "summer_generate_motion");
+
+    await motion.handler({
+      rigAssetId: "rig_123",
+      backend: "meshy-library",
+      motionNames: ["walk", "run"],
+      actionIds: [0],
+      wait: false,
+      idempotencyKey: "motion-batch-key",
+    });
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).toEqual({
+      rigAssetId: "rig_123",
+      backend: "meshy-library",
+      motionNames: ["walk", "run"],
+      actionIds: [0],
+      idempotencyKey: "motion-batch-key",
+    });
   });
 
   it("surfaces 401 errors as isError with a clean message", async () => {
@@ -217,15 +248,181 @@ describe("registerGenerateTools — summer_generate_motion", () => {
   });
 });
 
-describe("registerGenerateTools — summer_generate_3d description", () => {
-  it("documents the optional rig pass via options.rig", () => {
+describe("registerGenerateTools — typed summer_generate_3d contract", () => {
+  it("publishes explicit humanoid fields and text-only continuation guidance", () => {
     const { server, tools } = createFakeServer();
     registerGenerateTools(server as any);
 
     const gen3d = getTool(tools, "summer_generate_3d");
-    expect(gen3d.description).toMatch(/options\.rig/);
-    expect(gen3d.description).toMatch(/rigAssetId/);
-    expect(gen3d.description).toMatch(/summer_generate_motion/);
+    expect(gen3d.schema.title).toBeDefined();
+    expect(gen3d.schema.rig).toBeDefined();
+    expect(gen3d.schema.animationNames).toBeDefined();
+    expect(gen3d.schema.actionIds).toBeDefined();
+    expect(gen3d.schema.targetHeightMeters).toBeDefined();
+    expect(gen3d.description).toContain('status="needs_user_input"');
+    expect(gen3d.description).toContain("Ask the question in ordinary text");
+    expect(gen3d.description).toContain("There is no menu, card");
+    expect(gen3d.description).toContain("Legacy options.rig");
+    expect(gen3d.description).not.toContain('"texture"');
+  });
+
+  it("normalizes a text humanoid batch into the existing web request shape", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ jobId: "character-job" }),
+    }));
+    globalThis.fetch = fetchMock as any;
+
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const result = await getTool(tools, "summer_generate_3d").handler({
+      prompt: "a silver-haired mage",
+      kind: "text-to-3d",
+      model: "meshy",
+      title: "Alya",
+      rig: true,
+      animationNames: ["Idle", "Walk"],
+      targetHeightMeters: 1.7,
+      wait: false,
+      idempotencyKey: "text-character-key",
+    });
+
+    expect(result.isError).toBeUndefined();
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(sent).toEqual({
+      prompt: "a silver-haired mage",
+      kind: "text-to-3d",
+      model: "meshy",
+      title: "Alya",
+      options: {
+        rig: true,
+        animationNames: ["Idle", "Walk"],
+        riggingHeightMeters: 1.7,
+      },
+      idempotencyKey: "text-character-key",
+    });
+  });
+
+  it("normalizes an image humanoid with exact action IDs", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ jobId: "character-job" }),
+    }));
+    globalThis.fetch = fetchMock as any;
+
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    await getTool(tools, "summer_generate_3d").handler({
+      kind: "image-to-3d",
+      model: "meshy",
+      imageUrl: "https://example.com/hero.png",
+      rig: true,
+      actionIds: [0, 1, 15],
+      wait: false,
+      idempotencyKey: "image-character-key",
+    });
+
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(sent).toEqual({
+      kind: "image-to-3d",
+      model: "meshy",
+      imageUrl: "https://example.com/hero.png",
+      options: {
+        rig: true,
+        actionIds: [0, 1, 15],
+      },
+      idempotencyKey: "image-character-key",
+    });
+  });
+
+  it("keeps a regular default 3D request free of character options", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ jobId: "model-job" }),
+    }));
+    globalThis.fetch = fetchMock as any;
+
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    await getTool(tools, "summer_generate_3d").handler({
+      prompt: "a treasure chest",
+      kind: "text-to-3d",
+      model: "hunyuan",
+      wait: false,
+      idempotencyKey: "model-key",
+    });
+
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(sent).toEqual({
+      prompt: "a treasure chest",
+      kind: "text-to-3d",
+      model: "hunyuan",
+      idempotencyKey: "model-key",
+    });
+  });
+
+  it("keeps matching legacy options but rejects conflicting explicit fields", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ jobId: "character-job" }),
+    }));
+    globalThis.fetch = fetchMock as any;
+
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const generate3d = getTool(tools, "summer_generate_3d");
+    const compatible = await generate3d.handler({
+      kind: "image-to-3d",
+      model: "meshy",
+      imageUrl: "https://example.com/hero.png",
+      rig: true,
+      animationNames: ["Idle"],
+      options: { rig: true, animationNames: ["Idle"], target_polycount: 30000 },
+      wait: false,
+      idempotencyKey: "legacy-key",
+    });
+
+    expect(compatible.isError).toBeUndefined();
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string).options).toEqual({
+      rig: true,
+      animationNames: ["Idle"],
+      target_polycount: 30000,
+    });
+
+    const conflict = await generate3d.handler({
+      kind: "image-to-3d",
+      model: "meshy",
+      imageUrl: "https://example.com/hero.png",
+      rig: true,
+      options: { rig: false },
+      wait: false,
+    });
+
+    expect(conflict.isError).toBe(true);
+    expect(parseResult(conflict).message).toContain(
+      "Conflicting values for rig and options.rig"
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects the unimplemented texture kind before calling the web API", async () => {
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+
+    const result = await getTool(tools, "summer_generate_3d").handler({
+      kind: "texture",
+      model: "meshy",
+      imageUrl: "https://example.com/model.png",
+      wait: false,
+    });
+
+    expect(result.isError).toBe(true);
+    expect(parseResult(result).message).toContain("Retexture is not available");
+    expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 });
 
@@ -426,10 +623,13 @@ describe("registerGenerateTools — paid generation retry receipts", () => {
         text: async () =>
           JSON.stringify({
             error: "needs_animation_selection",
+            status: "needs_user_input",
+            question:
+              'Which animation did you mean by "cast a spell"? Reply with a candidate name or number.',
             message: "Choose the closest animation.",
             candidates: [
-              { actionId: 125, displayName: "Charged Spell Cast" },
-              { actionId: 126, displayName: "Quick Spell Cast" },
+              { actionId: 125, label: "Charged Spell Cast" },
+              { actionId: 126, label: "Quick Spell Cast" },
             ],
             resume: {
               request: {
@@ -465,6 +665,8 @@ describe("registerGenerateTools — paid generation retry receipts", () => {
     expect(selection).toMatchObject({
       status: "needs_user_input",
       code: "needs_animation_selection",
+      question:
+        'Which animation did you mean by "cast a spell"? Reply with a candidate name or number.',
       idempotencyKey: "selection-key",
       candidates: [{ actionId: 125 }, { actionId: 126 }],
       resume: {

@@ -1,0 +1,59 @@
+{
+  "asset": {
+    "id": "fixture-character-v2",
+    "title": "Fixture Hero",
+    "fileUrl": "https://assets.example.test/source-rig.glb",
+    "metadata": {
+      "characterPackage": {
+        "version": 2,
+        "status": "ready",
+        "packageRevision": "fixture-v2-r1",
+        "directoryName": "fixture_hero_v2",
+        "targetHeightMeters": 1.8,
+        "sourceForwardAxis": "+Z",
+        "forwardAxis": "-Z",
+        "normalization": {
+          "scaleMultiplier": 0.5,
+          "groundOffsetMeters": 0.125,
+          "rootYawRadians": 3.141592653589793
+        },
+        "rig": {
+          "assetId": "fixture-character-v2",
+          "fileUrl": "https://assets.example.test/runtime-rig.glb",
+          "artifactFingerprint": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          "path": "rig.glb"
+        },
+        "animations": [
+          {
+            "assetId": "fixture-character-v2",
+            "actionId": 0,
+            "name": "Idle",
+            "semanticRole": "idle",
+            "fileUrl": "https://assets.example.test/runtime-rig.glb",
+            "artifactFingerprint": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+            "path": "rig.glb"
+          },
+          {
+            "assetId": "fixture-jump-v2",
+            "actionId": 13,
+            "name": "Jump",
+            "semanticRole": "jump",
+            "fileUrl": "https://assets.example.test/jump.glb",
+            "artifactFingerprint": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+            "path": "animations/jump.glb"
+          }
+        ]
+      }
+    }
+  },
+  "expectations": {
+    "primaryPath": "res://characters/fixture_hero_v2/character.tscn",
+    "manifestPath": "res://characters/fixture_hero_v2/character.json",
+    "rigPath": "res://characters/fixture_hero_v2/rig.glb",
+    "animationPaths": [
+      "res://characters/fixture_hero_v2/rig.glb",
+      "res://characters/fixture_hero_v2/animations/jump.glb"
+    ],
+    "packageRevision": "fixture-v2-r1"
+  }
+}

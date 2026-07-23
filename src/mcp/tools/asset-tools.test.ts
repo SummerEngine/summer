@@ -1,6 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const executeOpsMock = vi.hoisted(() => vi.fn());
+const characterClientMocks = vi.hoisted(() => ({
+  readProjectTextFile: vi.fn(),
+  listProjectFiles: vi.fn(),
+  importProjectFiles: vi.fn(),
+  renameProjectFile: vi.fn(),
+  deleteProjectFile: vi.fn(),
+  writeProjectTextFile: vi.fn(),
+  instantiateProjectScene: vi.fn(),
+}));
 
 vi.mock("../../lib/auth.js", () => ({
   getAuthToken: vi.fn(async () => "test-token"),
@@ -9,6 +18,7 @@ vi.mock("../../lib/auth.js", () => ({
 vi.mock("../server.js", () => ({
   getClient: vi.fn(async () => ({
     executeOps: executeOpsMock,
+    ...characterClientMocks,
   })),
 }));
 
@@ -53,6 +63,7 @@ const realFetch = globalThis.fetch;
 beforeEach(() => {
   globalThis.fetch = vi.fn() as any;
   executeOpsMock.mockReset();
+  for (const mock of Object.values(characterClientMocks)) mock.mockReset();
 });
 
 afterEach(() => {
@@ -182,4 +193,193 @@ describe("registerAssetTools", () => {
       addedToScene: true,
     });
   });
+
+  it("imports a complete character package by exact id and instantiates its wrapper", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        asset: readyCharacterAsset(),
+      }),
+    }));
+    globalThis.fetch = fetchMock as any;
+    characterClientMocks.readProjectTextFile.mockRejectedValue(
+      new Error("not found")
+    );
+    characterClientMocks.listProjectFiles.mockResolvedValue({
+      ok: true,
+      exists: false,
+      files: [],
+    });
+    characterClientMocks.importProjectFiles.mockImplementation(
+      async (imports: Array<{ path: string }>) => ({
+        results: [
+          {
+            ok: true,
+            op: "ImportFromUrlBatch",
+            meta: {
+              paths: imports.map(({ path }) => path),
+              imported: imports.map(() => true),
+              collisions: imports.map(() => false),
+              failed: [],
+            },
+          },
+        ],
+      })
+    );
+    characterClientMocks.renameProjectFile.mockResolvedValue({
+      results: [{ ok: true, op: "RenameFile" }],
+    });
+    characterClientMocks.writeProjectTextFile.mockResolvedValue({
+      results: [{ ok: true, op: "WriteFile" }],
+    });
+    characterClientMocks.instantiateProjectScene.mockResolvedValue({
+      results: [{ ok: true, op: "InstantiateScene" }],
+    });
+
+    const { server, tools } = createFakeServer();
+    registerAssetTools(server as any);
+    const result = await getTool(tools, "summer_import_asset_by_id").handler({
+      assetId: "character-1",
+      parent: "./World/Actors",
+      name: "Player",
+    });
+    const parsed = parseResult(result);
+
+    expect(characterClientMocks.importProjectFiles).toHaveBeenCalledTimes(1);
+    expect(executeOpsMock).not.toHaveBeenCalled();
+    expect(characterClientMocks.instantiateProjectScene).toHaveBeenCalledWith(
+      "./World/Actors",
+      "res://characters/hero_character_1/character.tscn",
+      "Player"
+    );
+    expect(parsed).toMatchObject({
+      success: true,
+      assetId: "character-1",
+      primaryPath: "res://characters/hero_character_1/character.tscn",
+      manifestPath: "res://characters/hero_character_1/character.json",
+      packageRevision: "character-r2",
+      importedTo: "res://characters/hero_character_1/character.tscn",
+      addedToScene: true,
+    });
+  });
+
+  it("resolves a search result by exact id before importing its character package", async () => {
+    const fetchMock = vi.fn(async (input: string) => {
+      if (input.includes("/api/mcp/assets?")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            assets: [
+              {
+                id: "character-1",
+                title: "Hero",
+                type: "3d_model",
+                fileUrl: "https://assets.example.test/source.glb",
+              },
+            ],
+          }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ asset: readyCharacterAsset() }),
+      };
+    });
+    globalThis.fetch = fetchMock as any;
+    characterClientMocks.readProjectTextFile.mockRejectedValue(
+      new Error("not found")
+    );
+    characterClientMocks.listProjectFiles.mockResolvedValue({
+      ok: true,
+      exists: false,
+      files: [],
+    });
+    characterClientMocks.importProjectFiles.mockImplementation(
+      async (imports: Array<{ path: string }>) => ({
+        results: [
+          {
+            ok: true,
+            op: "ImportFromUrlBatch",
+            meta: {
+              paths: imports.map(({ path }) => path),
+              imported: imports.map(() => true),
+              collisions: imports.map(() => false),
+              failed: [],
+            },
+          },
+        ],
+      })
+    );
+    characterClientMocks.renameProjectFile.mockResolvedValue({
+      results: [{ ok: true, op: "RenameFile" }],
+    });
+    characterClientMocks.writeProjectTextFile.mockResolvedValue({
+      results: [{ ok: true, op: "WriteFile" }],
+    });
+
+    const { server, tools } = createFakeServer();
+    registerAssetTools(server as any);
+    const result = await getTool(tools, "summer_import_asset").handler({
+      query: "hero",
+      assetType: "3d_model",
+      source: "my_assets",
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1]?.[0]).toMatch(
+      /\/api\/mcp\/assets\/character-1$/
+    );
+    expect(parseResult(result)).toMatchObject({
+      success: true,
+      importedTo: "res://characters/hero_character_1/character.tscn",
+    });
+    expect(characterClientMocks.importProjectFiles).toHaveBeenCalledTimes(1);
+    expect(executeOpsMock).not.toHaveBeenCalled();
+  });
 });
+
+function readyCharacterAsset() {
+  return {
+    id: "character-1",
+    title: "Hero",
+    type: "3d_model",
+    fileUrl: "https://assets.example.test/source.glb",
+    metadata: {
+      characterPackage: {
+        version: 2,
+        status: "ready",
+        packageRevision: "character-r2",
+        directoryName: "hero_character_1",
+        rig: {
+          assetId: "character-1",
+          fileUrl: "https://assets.example.test/runtime.glb",
+          artifactFingerprint: "sha256:rig",
+          path: "rig.glb",
+        },
+        animations: [
+          {
+            assetId: "character-1",
+            actionId: 0,
+            name: "Idle",
+            semanticRole: "idle",
+            fileUrl: "https://assets.example.test/runtime.glb",
+            artifactFingerprint: "sha256:rig",
+            path: "rig.glb",
+          },
+          {
+            assetId: "animation-13",
+            actionId: 13,
+            name: "Jump",
+            semanticRole: "jump",
+            fileUrl: "https://assets.example.test/jump.glb",
+            artifactFingerprint: "sha256:jump",
+            path: "animations/jump.glb",
+          },
+        ],
+      },
+    },
+  };
+}

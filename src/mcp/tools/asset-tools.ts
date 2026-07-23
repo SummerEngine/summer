@@ -2,6 +2,10 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getAuthToken } from "../../lib/auth.js";
 import { getClient } from "../server.js";
+import {
+  CharacterPackageImportError,
+  executeCharacterPackageImport,
+} from "../character-package.js";
 
 const GATEWAY_URL =
   process.env.SUMMER_GATEWAY_URL || "https://www.summerengine.com";
@@ -58,7 +62,7 @@ async function searchAssetsApi(params: {
   limit?: number;
   source?: string;
 }): Promise<{
-  assets?: { id: string; title: string; type: string; fileUrl: string; thumbnailUrl: string | null; pack: string | null; packSlug: string | null; similarity?: number }[];
+  assets?: McpAsset[];
   count?: number;
   summary?: string;
   message?: string;
@@ -91,7 +95,7 @@ async function searchAssetsApi(params: {
   });
 
   const data = (await res.json()) as {
-    assets?: { id: string; title: string; type: string; fileUrl: string; thumbnailUrl: string | null; pack: string | null; packSlug: string | null; similarity?: number }[];
+    assets?: McpAsset[];
     count?: number;
     summary?: string;
     message?: string;
@@ -276,8 +280,23 @@ async function importResolvedAsset(args: {
   name?: string;
 }) {
   const { asset, parent, path, name } = args;
-  const { imports, importPath } = await buildImportEntriesForAsset(asset, path);
   const client = await getClient();
+  const characterPackage = await executeCharacterPackageImport({
+    asset,
+    client,
+    parent,
+    name: sanitizeNodeName(name || asset.title),
+  });
+  if (characterPackage) {
+    return {
+      ...characterPackage,
+      assetId: asset.id,
+      asset: asset.title,
+      type: asset.type,
+    };
+  }
+
+  const { imports, importPath } = await buildImportEntriesForAsset(asset, path);
   const importResult =
     imports.length === 1
       ? await client.executeOps([
@@ -496,7 +515,8 @@ Use this when the asset was just generated, selected from my assets, or returned
 by search. Unlike summer_import_asset, this does not search or guess: it fetches
 the asset by ID, downloads it through Summer Engine, and runs Godot's import
 pipeline. For 3D models, pass parent to instantiate it in the open scene after
-import.
+import. Ready character packages always use their stable res://characters path;
+the path override applies only to ordinary assets.
 
 Requires the Summer Engine app to be open with the project loaded (generation
 itself does not — only this import step does).`,
@@ -542,6 +562,9 @@ itself does not — only this import step does).`,
         return jsonError({
           error: "import_failed",
           message: msg,
+          ...(err instanceof CharacterPackageImportError
+            ? { packageState: err.state }
+            : {}),
           hint: "Make sure Summer Engine is running and the target scene is open.",
         });
       }
@@ -598,7 +621,17 @@ Requires authentication. If the user gets an auth error, they need to run 'npx s
         };
       }
 
-      const best = assets[0]!;
+      const selected = assets[0]!;
+      const exact = await getAssetApi(selected.id);
+      if (exact.error || !exact.asset) {
+        return jsonError({
+          error: exact.error || "asset_not_found",
+          message:
+            exact.message ||
+            "The selected asset could not be resolved by exact ID.",
+        });
+      }
+      const best = exact.asset;
       const fileUrl = best.fileUrl;
       if (!fileUrl) {
         return {
@@ -626,13 +659,7 @@ Requires authentication. If the user gets an auth error, they need to run 'npx s
               type: "text" as const,
               text: JSON.stringify(
                 {
-                  success: true,
-                  assetId: best.id,
-                  asset: best.title,
-                  type: best.type,
-                  importedTo: imported.importedTo,
-                  addedToScene: imported.addedToScene,
-                  parent: imported.parent,
+                  ...imported,
                   message: imported.addedToScene
                     ? `Imported "${best.title}" and added to ${parent}`
                     : `Imported "${best.title}" to ${imported.importedTo}`,
@@ -653,6 +680,9 @@ Requires authentication. If the user gets an auth error, they need to run 'npx s
                 {
                   error: "Engine error",
                   message: msg,
+                  ...(err instanceof CharacterPackageImportError
+                    ? { packageState: err.state }
+                    : {}),
                   hint: "Make sure Summer Engine is running.",
                 },
                 null,

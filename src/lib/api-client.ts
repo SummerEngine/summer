@@ -52,6 +52,35 @@ export type EngineSnapshot = {
   projectMismatch?: boolean;
 };
 
+export type ProjectImportEntry = {
+  url: string;
+  path: string;
+};
+
+export type ProjectOpReceipt = {
+  results?: Array<{
+    ok?: boolean;
+    op?: string;
+    error?: string;
+    meta?: unknown;
+  }>;
+};
+
+export type ProjectFileReadState = {
+  ok?: boolean;
+  path?: string;
+  content?: string;
+  error?: string;
+};
+
+export type ProjectFileTreeState = {
+  ok?: boolean;
+  root?: string;
+  exists?: boolean;
+  files?: Array<{ path?: string }>;
+  error?: string;
+};
+
 type SnapshotPayload = Record<string, unknown> & {
   ok?: boolean;
   error?: string;
@@ -293,6 +322,14 @@ export class EngineApiClient {
   private identityOptions(): Record<string, unknown> {
     const projectIdHash = this.targetIdentity.projectIdHash;
     return projectIdHash ? { projectIdHash } : {};
+  }
+
+  private requireBoundMutationIdentity(): void {
+    if (!this.targetIdentity.projectIdHash) {
+      throw new Error(
+        "Cannot mutate project files without a bound Summer Engine project identity."
+      );
+    }
   }
 
   private targetUrl(path: string): string {
@@ -590,6 +627,64 @@ export class EngineApiClient {
       limit: String(limit),
     });
     return this.request("GET", `/api/state/fs-tree?${params}`);
+  }
+
+  async readProjectTextFile(
+    path: string,
+    maxBytes = 1024 * 1024
+  ): Promise<ProjectFileReadState> {
+    return (await this.readFile(path, maxBytes)) as ProjectFileReadState;
+  }
+
+  async listProjectFiles(
+    root: string,
+    limit = 2000
+  ): Promise<ProjectFileTreeState> {
+    return (await this.getFsTree(root, limit)) as ProjectFileTreeState;
+  }
+
+  async importProjectFiles(
+    imports: ProjectImportEntry[]
+  ): Promise<ProjectOpReceipt> {
+    this.requireBoundMutationIdentity();
+    return (await this.executeOps([
+      { op: "ImportFromUrlBatch", imports },
+    ])) as ProjectOpReceipt;
+  }
+
+  async renameProjectFile(from: string, to: string): Promise<ProjectOpReceipt> {
+    this.requireBoundMutationIdentity();
+    return (await this.executeOps([
+      { op: "RenameFile", from, to },
+    ])) as ProjectOpReceipt;
+  }
+
+  async deleteProjectFile(path: string): Promise<ProjectOpReceipt> {
+    this.requireBoundMutationIdentity();
+    return (await this.executeOps([
+      { op: "DeleteFile", path },
+    ])) as ProjectOpReceipt;
+  }
+
+  async writeProjectTextFile(
+    path: string,
+    content: string
+  ): Promise<ProjectOpReceipt> {
+    this.requireBoundMutationIdentity();
+    return (await this.executeOps([
+      { op: "WriteFile", path, content },
+    ])) as ProjectOpReceipt;
+  }
+
+  async instantiateProjectScene(
+    parent: string,
+    scene: string,
+    name: string
+  ): Promise<ProjectOpReceipt> {
+    this.requireBoundMutationIdentity();
+    return (await this.executeOps([
+      { op: "InstantiateScene", parent, scene, name },
+    ])) as ProjectOpReceipt;
   }
 
   async getSelection(): Promise<unknown> {

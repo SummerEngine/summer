@@ -120,6 +120,24 @@ describe("withEngine — safe retry only where nothing could have applied", () =
     expect(resultText(res)).toMatch(/tim/i);
   });
 
+  it("does NOT retry unknown_outcome and tells the agent to inspect state", async () => {
+    mockGetClient.mockResolvedValue({});
+    let calls = 0;
+    const res = await withEngine(async () => {
+      calls += 1;
+      return {
+        terminalState: "unknown_outcome",
+        requestId: "unknown-r",
+        error:
+          "Operation unknown-r may still complete. Inspect the project state before retrying.",
+      };
+    });
+    expect(calls).toBe(1);
+    expect(res.isError).toBe(true);
+    expect(resultText(res)).toMatch(/may still complete/i);
+    expect(resultText(res)).toMatch(/inspect the project state/i);
+  });
+
   it("does NOT retry a normal op failure (invalid value) — surfaces immediately", async () => {
     mockGetClient.mockResolvedValue({});
     let calls = 0;

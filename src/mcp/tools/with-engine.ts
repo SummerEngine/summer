@@ -65,8 +65,12 @@ const SUCCESS_TERMINAL_STATES: ReadonlySet<string> = new Set(["applied", "no_op"
 // `error` string (queue-full / lease-reject / identity-mismatch / no-progress
 // timeout frequently arrive with terminalState set and results[] absent).
 const TERMINAL_STATE_MESSAGES: Record<string, string> = {
-  timed_out: "Engine operation timed out (terminalState: timed_out). Nothing was applied.",
-  not_connected: "Summer Engine is not connected (terminalState: not_connected). Nothing was applied.",
+  timed_out:
+    "Engine operation timed out locally (terminalState: timed_out). Its native outcome is not confirmed; inspect project state before retrying.",
+  unknown_outcome:
+    "Engine operation outcome is unknown (terminalState: unknown_outcome). The request may still complete; inspect project state before retrying.",
+  not_connected:
+    "Summer Engine is not connected (terminalState: not_connected). The operation outcome is not confirmed.",
   identity_mismatch:
     "Operation rejected — wrong project/instance (terminalState: identity_mismatch). Nothing was mutated.",
   content_mismatch:

@@ -116,11 +116,14 @@ priority: locked
     );
 
     vi.mocked(getClient).mockResolvedValue({
-      health: vi.fn(async () => ({
+      rebindToCurrentProject: vi.fn(async () => ({
         ok: true,
-        engine: "Summer Engine",
+        engine: "summer",
         version: "test",
         port: 6550,
+        instanceId: "test-instance",
+        projectId: "test-project",
+        projectIdHash: "test-project-hash",
         project_path: project,
         project_name: "Memory Test",
         scene: "res://main.tscn",
@@ -142,7 +145,7 @@ priority: locked
           scenePath: "res://main.tscn",
         },
       })),
-      rebind: vi.fn(async () => "test-project-hash"),
+      getBoundProjectIdHash: vi.fn(() => "test-project-hash"),
     } as never);
 
     const { server, tools } = createFakeServer();

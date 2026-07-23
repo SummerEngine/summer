@@ -9,12 +9,12 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
  * A fake engine emulates the identity preflight (local_api_server.cpp ~271-302):
  * a command carrying options.projectIdHash that differs from the engine's current
  * project is rejected with terminalState "identity_mismatch" BEFORE anything is
- * applied; an empty/absent hash skips the check. Reads (GET /api/state/*) carry
- * no identity and always succeed.
+ * applied; an empty/absent hash skips the check. Reads validate the same query
+ * identity, while GET /api/health is the one deliberate unscoped rebind path.
  *
  * Proves: the MCP client binds to the open project on connect, sends that hash on
  * mutations (so a write aimed at a switched-to project is atomically rejected),
- * never sends it on reads (so the rebind path stays open), and rebinds on demand.
+ * keeps ordinary reads scoped, and rebinds through unscoped health on demand.
  *
  * Only the credential-file readers are stubbed, so nothing touches ~/.summer.
  */
@@ -25,6 +25,7 @@ const engine = {
   projectIdHash: "hash-A",
   lastOpsBody: null as unknown,
   lastReadHadIdentity: false,
+  lastHealthHadIdentity: false,
 };
 
 vi.mock("../lib/engine.js", async (importActual) => {
@@ -64,12 +65,18 @@ beforeAll(async () => {
     const url = req.url ?? "";
 
     if (url.startsWith("/api/health")) {
+      const parsed = new URL(url, `http://127.0.0.1:${engine.port}`);
+      engine.lastHealthHadIdentity =
+        parsed.searchParams.has("instanceId") ||
+        parsed.searchParams.has("projectId") ||
+        parsed.searchParams.has("projectIdHash");
       send(200, {
         ok: true,
         engine: "summer",
         version: "0.5.42",
         port: engine.port,
         instanceId: "inst",
+        projectId: `project-${engine.projectIdHash}`,
         projectIdHash: engine.projectIdHash,
       });
       return;
@@ -96,8 +103,19 @@ beforeAll(async () => {
     }
 
     if (url.startsWith("/api/state/")) {
-      // A read must NOT carry identity (GET has no body); record that we saw none.
-      engine.lastReadHadIdentity = false;
+      const parsed = new URL(url, `http://127.0.0.1:${engine.port}`);
+      const want = parsed.searchParams.get("projectIdHash") ?? "";
+      engine.lastReadHadIdentity = want.length > 0;
+      if (want && want !== engine.projectIdHash) {
+        send(409, {
+          ok: false,
+          status: "error",
+          terminalState: "identity_mismatch",
+          errorClass: "rejected_identity",
+          error: "projectIdHash mismatch",
+        });
+        return;
+      }
       send(200, { ok: true, data: { entries: [] } });
       return;
     }
@@ -138,17 +156,22 @@ describe("MCP project binding — engine-enforced, atomic", () => {
     expect(res.terminalState).toBe("identity_mismatch"); // never applied to B
   });
 
-  it("keeps READS working after a switch (no identity on GET) so the session can recover", async () => {
+  it("rebinds through unscoped health before scoped reads after a switch", async () => {
     engine.projectIdHash = "hash-A";
     const client = await getClient();
     engine.projectIdHash = "hash-B"; // switch
 
-    const scene = (await client.getSceneState()) as Record<string, unknown>;
-    expect(scene.ok).toBe(true); // read is not identity-gated
+    await expect(client.getSceneState()).rejects.toThrow(/409/);
 
-    // Explicit rebind (what summer_get_project_context does) follows the switch.
-    const rebound = await client.rebind();
-    expect(rebound).toBe("hash-B");
+    // The exact first step summer_get_project_context performs follows the
+    // switch without carrying the stale A identity.
+    const health = await client.rebindToCurrentProject();
+    expect(health.projectIdHash).toBe("hash-B");
+    expect(engine.lastHealthHadIdentity).toBe(false);
+
+    const scene = (await client.getSceneState()) as Record<string, unknown>;
+    expect(scene.ok).toBe(true);
+    expect(engine.lastReadHadIdentity).toBe(true);
 
     // Now mutations target B and apply.
     const res = (await client.executeOps([{ op: "Probe" }])) as Record<string, unknown>;

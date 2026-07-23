@@ -1,7 +1,12 @@
 import { mkdir, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
-import { getApiToken, getApiPort, checkEngineHealth } from "./engine.js";
+import {
+  getApiToken,
+  getApiPort,
+  checkEngineHealth,
+  type EngineHealth,
+} from "./engine.js";
 import {
   classifyOpsResponse,
   pollOpToTerminal,
@@ -32,6 +37,9 @@ export type EngineSnapshot = {
    *  When P4.4 lands (game snapshots answer 200/202 over HTTP) this simply
    *  never fires and the tool works. */
   failureReason?: string;
+  terminalState?: string;
+  errorClass?: string;
+  requestId?: string;
   /** Scene-preview confession fields (P4.3). Populated only for target:"scene".
    *  A scene with no Camera3D renders grey/black when played; the engine reports
    *  whether it had to synthesize a camera/light so the model can warn honestly. */
@@ -204,22 +212,80 @@ export class EngineApiClient {
   }
 
   /**
-   * Re-read health and rebind to the currently-open project. Called by
-   * summer_get_project_context so the agent can INTENTIONALLY follow a project
-   * switch (the deliberate escape hatch after an identity_mismatch). Returns the
-   * new bound hash. The direct health probe is intentionally unscoped, so it can
-   * reach the current engine even when bound requests would be rejected.
+   * The only unscoped authenticated request this client may make. Health is the
+   * deliberate discovery/rebind escape hatch after an in-place project switch;
+   * every state read and mutation remains pinned to targetIdentity.
    */
-  async rebind(): Promise<string | undefined> {
-    const health = await checkEngineHealth(this.port);
-    if (health) {
-      this.targetIdentity = {
-        instanceId: health.instanceId,
-        projectId: health.projectId,
-        projectIdHash: health.projectIdHash,
-      };
+  private async unscopedHealthRequest(): Promise<EngineHealth> {
+    const res = await fetch(`http://127.0.0.1:${this.port}/api/health`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        "Content-Type": "application/json",
+      },
+      signal: AbortSignal.timeout(2000),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`Engine API error ${res.status}: ${text.slice(0, 200)}`);
     }
-    return this.targetIdentity.projectIdHash;
+
+    const health = asRecord(await res.json());
+    const engine = stringFrom(health?.engine);
+    const version = stringFrom(health?.version);
+    const instanceId = stringFrom(health?.instanceId);
+    const projectId = stringFrom(health?.projectId);
+    const projectIdHash = stringFrom(health?.projectIdHash);
+    if (
+      health?.ok !== true ||
+      engine !== "summer" ||
+      !version ||
+      !instanceId ||
+      !projectId ||
+      !projectIdHash
+    ) {
+      throw new Error(
+        "Summer Engine health did not include a complete project identity; refusing to rebind."
+      );
+    }
+
+    return {
+      ok: true,
+      engine,
+      version,
+      port: numberFrom(health.port) ?? this.port,
+      pid: numberFrom(health.pid),
+      instanceId,
+      projectId,
+      projectIdHash,
+      mainAliveMs: numberFrom(health.mainAliveMs),
+      queueDepth: numberFrom(health.queueDepth),
+      project_name: stringFrom(health.project_name),
+      project_path: stringFrom(health.project_path),
+      scene: stringFrom(health.scene),
+    };
+  }
+
+  /**
+   * Read unscoped health, validate the complete current identity, and rebind.
+   * Called first by summer_get_project_context so a switched project can be
+   * followed intentionally before any identity-scoped state read.
+   */
+  async rebindToCurrentProject(): Promise<EngineHealth> {
+    const health = await this.unscopedHealthRequest();
+    this.targetIdentity = {
+      instanceId: health.instanceId,
+      projectId: health.projectId,
+      projectIdHash: health.projectIdHash,
+    };
+    return health;
+  }
+
+  /** Backward-compatible hash-only wrapper for existing internal callers. */
+  async rebind(): Promise<string | undefined> {
+    const health = await this.rebindToCurrentProject();
+    return health.projectIdHash;
   }
 
   /** Identity to attach to a MUTATING command's options so the engine can reject
@@ -303,6 +369,125 @@ export class EngineApiClient {
     return (await res.json()) as OpResultEnvelope;
   }
 
+  private unknownOutcome(
+    requestId: string,
+    detail: string
+  ): Record<string, unknown> {
+    return {
+      status: "error",
+      terminalState: "unknown_outcome",
+      errorClass: "ambiguous",
+      requestId,
+      error:
+        `Engine operation ${requestId} timed out locally and its terminal outcome ` +
+        `could not be confirmed (${detail}). It may still complete. Inspect the ` +
+        "project state before retrying; do not retry automatically.",
+    };
+  }
+
+  /**
+   * After a local poll timeout, ask the native server to cancel the exact
+   * request, then consume its one terminal receipt. A cancel response is only an
+   * acknowledgement: canceled/applied is trustworthy only after result polling
+   * confirms a terminal state.
+   */
+  private async _cancelTimedOutRequest(requestId: string): Promise<Record<string, unknown>> {
+    let cancelResponse: Response;
+    try {
+      cancelResponse = await this._fetchRaw(
+        "POST",
+        `/api/ops/cancel?requestId=${encodeURIComponent(requestId)}`,
+        undefined,
+        10_000
+      );
+    } catch (err) {
+      return this.unknownOutcome(
+        requestId,
+        `cancel transport failed: ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
+
+    const cancelBody = asRecord(await cancelResponse.json().catch(() => ({}))) ?? {};
+    const cancelAccepted =
+      cancelResponse.ok &&
+      cancelBody.ok === true &&
+      (cancelBody.canceled === true ||
+        cancelBody.accepted === true ||
+        cancelBody.preempted === true);
+
+    // A rejected cancel can race with normal completion. Consume one immediate
+    // result receipt before declaring the outcome unknown.
+    if (!cancelAccepted) {
+      try {
+        const raced = await this._pollResult(requestId, 0);
+        if (raced.status === "done" || raced.status === "failed" || raced.status === "canceled") {
+          return pollOpToTerminal(async () => raced, {
+            totalTimeoutMs: 1,
+            requestId,
+            sleep: async () => {},
+          });
+        }
+      } catch {
+        // The cancel response below remains the best available evidence.
+      }
+
+      const reason =
+        stringFrom(cancelBody.error) ??
+        stringFrom(cancelBody.errorClass) ??
+        `cancel returned HTTP ${cancelResponse.status}`;
+      return this.unknownOutcome(requestId, reason);
+    }
+
+    let terminal: Record<string, unknown>;
+    try {
+      terminal = await pollOpToTerminal(
+        (waitMs) => this._pollResult(requestId, waitMs),
+        {
+          totalTimeoutMs: 15_000,
+          noProgressTimeoutMs: 15_000,
+          requestId,
+        }
+      );
+    } catch (err) {
+      return this.unknownOutcome(
+        requestId,
+        `terminal confirmation failed: ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
+    if (terminal.terminalState === "timed_out") {
+      return this.unknownOutcome(requestId, "cancel was accepted but no terminal receipt arrived");
+    }
+    return terminal;
+  }
+
+  private async _resolveQueuedResponse(
+    res: Response,
+    timeoutMs: number
+  ): Promise<unknown> {
+    // 202 (queued) + 429 (backpressure, errorClass in body) are handled below;
+    // any other non-2xx is a real transport error.
+    if (!res.ok && res.status !== 202 && res.status !== 429) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`Engine API error ${res.status}: ${text.slice(0, 200)}`);
+    }
+    const respBody = await res.json().catch(() => ({}));
+    const classified = classifyOpsResponse(res.status, respBody);
+    if (classified.mode === "legacy") {
+      return respBody;
+    }
+    const terminal = await pollOpToTerminal(
+      (waitMs) => this._pollResult(classified.requestId, waitMs),
+      {
+        totalTimeoutMs: timeoutMs,
+        requestId: classified.requestId,
+      }
+    );
+    if (terminal.terminalState === "timed_out") {
+      return this._cancelTimedOutRequest(classified.requestId);
+    }
+    return terminal;
+  }
+
   /**
    * Block E: send a mutating request, then resolve EITHER the legacy synchronous
    * result (HTTP 200 — dormant/older engine) OR the async lifecycle (202
@@ -317,20 +502,7 @@ export class EngineApiClient {
     timeoutMs: number
   ): Promise<unknown> {
     const res = await this._fetchRaw(method, path, body, timeoutMs);
-    // 202 (queued) + 429 (backpressure, errorClass in body) are handled below;
-    // any other non-2xx is a real transport error.
-    if (!res.ok && res.status !== 202 && res.status !== 429) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`Engine API error ${res.status}: ${text.slice(0, 200)}`);
-    }
-    const respBody = await res.json().catch(() => ({}));
-    const classified = classifyOpsResponse(res.status, respBody);
-    if (classified.mode === "legacy") {
-      return respBody;
-    }
-    return pollOpToTerminal((waitMs) => this._pollResult(classified.requestId, waitMs), {
-      totalTimeoutMs: timeoutMs,
-    });
+    return this._resolveQueuedResponse(res, timeoutMs);
   }
 
   async health(): Promise<unknown> {
@@ -451,13 +623,34 @@ export class EngineApiClient {
     // verbatim so the tool can give an honest message — do NOT hardcode "game
     // always fails": once the engine answers 200/202 (P4.4), the normal path
     // below just works.
-    if (kind === "game") {
-      const bridge = await this._detectBridgeRequired(`/api/snapshot/${kind}`);
-      if (bridge) return bridge;
-    }
     let response: unknown;
     try {
-      response = await this._requestQueued("GET", `/api/snapshot/${kind}`, undefined, 60_000);
+      // Exactly one snapshot request. Its response decides the legacy, queued,
+      // or recognized bridge-required path; never probe and then enqueue again.
+      const res = await this._fetchRaw(
+        "GET",
+        `/api/snapshot/${kind}`,
+        undefined,
+        60_000
+      );
+      if (kind === "game" && res.status === 409) {
+        const body = (await res.json().catch(() => ({}))) as SnapshotPayload;
+        const reason = stringFrom(body.failure_reason);
+        const bridge = body.bridge_required === true;
+        if (bridge || reason === "unsupported_transport") {
+          return {
+            ok: false,
+            failureReason: reason ?? "bridge_required",
+            error:
+              stringFrom(body.error) ??
+              "Game snapshots require the desktop bridge async transport.",
+          };
+        }
+        throw new Error(
+          stringFrom(body.error) ?? "Engine returned an unrecognized 409 for game snapshot."
+        );
+      }
+      response = await this._resolveQueuedResponse(res, 60_000);
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : String(err) };
     }
@@ -473,9 +666,16 @@ export class EngineApiClient {
   ): Promise<EngineSnapshot> {
     const payload = findSnapshotPayload(response);
     if (!payload) {
+      const envelope = asRecord(response);
       return {
         ok: false,
-        error: "Snapshot response did not include an image payload.",
+        error:
+          stringFrom(envelope?.error) ??
+          "Snapshot response did not include an image payload.",
+        terminalState: stringFrom(envelope?.terminalState),
+        errorClass: stringFrom(envelope?.errorClass),
+        requestId: stringFrom(envelope?.requestId),
+        metadata: envelope ?? undefined,
       };
     }
 
@@ -532,41 +732,6 @@ export class EngineApiClient {
       usedSyntheticCamera: boolFrom(payload.used_synthetic_camera),
       projectMismatch,
       metadata: withoutImageData(payload),
-    };
-  }
-
-  /**
-   * Probe /api/snapshot/game for the structural 409 `bridge_required` shape
-   * (tool_net_thread.cpp:495-503). Returns a structured failure only when the
-   * engine actually answers 409 with `bridge_required` / `unsupported_transport`;
-   * ANY other status (200/202/other) returns null so the caller proceeds to the
-   * normal queued path — so the moment the engine starts answering over HTTP
-   * (P4.4), game capture just works with no code change here.
-   */
-  private async _detectBridgeRequired(path: string): Promise<EngineSnapshot | null> {
-    let res: Response;
-    try {
-      res = await this._fetchRaw("GET", path, undefined, 15_000);
-    } catch {
-      // Transport error — let the normal path surface it uniformly.
-      return null;
-    }
-    if (res.status !== 409) return null;
-    const body = (await res.json().catch(() => ({}))) as SnapshotPayload;
-    const reason = stringFrom(body.failure_reason);
-    const bridge = body.bridge_required === true;
-    if (!bridge && reason !== "unsupported_transport") {
-      // A 409 we don't recognize — surface it as a plain error rather than
-      // silently claiming "bridge required".
-      return {
-        ok: false,
-        error: stringFrom(body.error) ?? "Engine returned 409 for game snapshot.",
-      };
-    }
-    return {
-      ok: false,
-      failureReason: reason ?? "bridge_required",
-      error: stringFrom(body.error) ?? "Game snapshots require the desktop bridge async transport.",
     };
   }
 

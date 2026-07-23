@@ -52,6 +52,10 @@ export function classifyOpsResponse(httpStatus: number, body: unknown): OpsRespo
 export interface PollOpts {
   /** Hard wall-clock cap on the whole poll loop (ms). The per-tool budget. */
   totalTimeoutMs: number;
+  /** Stable identity assigned by the engine when it accepted the operation.
+   *  Retained in timeout results so callers can cancel or reconcile the exact
+   *  operation instead of losing track of work that may still be running. */
+  requestId?: string;
   /** Give up if the op hasn't advanced for this long (ms). Default = totalTimeoutMs. */
   noProgressTimeoutMs?: number;
   /** Server long-poll wait per GET (ms). Default 5000 — the engine holds the
@@ -64,18 +68,23 @@ export interface PollOpts {
   sleep?: (ms: number) => Promise<void>;
 }
 
-const TIMED_OUT_RESULT: Record<string, unknown> = {
-  status: "error",
-  error: "Tool timeout - Summer Engine may be unresponsive",
-  terminalState: "timed_out",
-  errorClass: "transient",
-};
+function timedOutResult(requestId?: string): Record<string, unknown> {
+  return {
+    status: "error",
+    error: "Tool timeout - Summer Engine may be unresponsive",
+    terminalState: "timed_out",
+    errorClass: "transient",
+    ...(requestId ? { requestId } : {}),
+  };
+}
 
 /**
  * Drive an async op to a terminal result by polling. `pollOnce(waitMs)` performs
  * one GET /api/ops/result (long-poll up to waitMs). Returns the engine's apply
  * dict with terminalState/errorClass/appliedSeq merged on top, or a synthetic
- * `timed_out` result if the budget is exhausted.
+ * `timed_out` result if the budget is exhausted. The timeout result retains the
+ * requestId when one is known; a timeout is only a local observation, not proof
+ * that the native operation stopped or applied nothing.
  */
 export async function pollOpToTerminal(
   pollOnce: (waitMs: number) => Promise<OpResultEnvelope>,
@@ -98,6 +107,8 @@ export async function pollOpToTerminal(
 
     if (isTerminalStatus(env.status)) {
       const out: Record<string, unknown> = { ...(env.result ?? {}) };
+      const requestId = env.requestId ?? opts.requestId;
+      if (requestId) out.requestId = requestId;
       if (env.terminalState) out.terminalState = env.terminalState;
       if (env.errorClass) out.errorClass = env.errorClass;
       if (env.appliedSeq != null) out.appliedSeq = env.appliedSeq;
@@ -117,7 +128,7 @@ export async function pollOpToTerminal(
     }
 
     if (t - start >= opts.totalTimeoutMs || t - lastAdvanceAt >= noProgressMs) {
-      return { ...TIMED_OUT_RESULT };
+      return timedOutResult(env.requestId ?? opts.requestId);
     }
 
     await sleep(pacingMs);

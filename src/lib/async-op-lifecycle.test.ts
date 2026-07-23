@@ -53,11 +53,29 @@ describe("pollOpToTerminal", () => {
     const out = await pollOpToTerminal(async () => ({ requestId: "r", status: "running" }), {
       totalTimeoutMs: 1000,
       noProgressTimeoutMs: 500,
+      requestId: "r",
       now: () => (t += 600), // each tick jumps 600ms -> trips the 500ms no-progress budget
       sleep: async () => {},
     });
     expect(out.terminalState).toBe("timed_out");
     expect(out.errorClass).toBe("transient");
+    expect(out.requestId).toBe("r");
+  });
+
+  it("retains the accepted requestId when timeout frames omit it", async () => {
+    let t = 0;
+    const out = await pollOpToTerminal(async () => ({ status: "running" }), {
+      totalTimeoutMs: 1000,
+      noProgressTimeoutMs: 500,
+      requestId: "accepted-r",
+      now: () => (t += 600),
+      sleep: async () => {},
+    });
+
+    expect(out).toMatchObject({
+      requestId: "accepted-r",
+      terminalState: "timed_out",
+    });
   });
 });
 

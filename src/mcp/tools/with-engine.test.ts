@@ -89,6 +89,17 @@ describe("extractOpError — failure terminalState with NO results[] (the cf1713
     const err = extractOpError({ terminalState: "timed_out", errorClass: "transient" });
     expect(err).not.toBeNull();
     expect(err).toMatch(/tim/i);
+    expect(err).not.toMatch(/nothing was applied/i);
+  });
+
+  it("tells the agent to inspect state for an unknown outcome", () => {
+    const err = extractOpError({
+      terminalState: "unknown_outcome",
+      requestId: "r-unknown",
+    });
+    expect(err).toMatch(/may still complete/i);
+    expect(err).toMatch(/inspect project state/i);
+    expect(err).not.toMatch(/nothing was applied/i);
   });
 
   it("flags identity_mismatch (wrong project/instance — never mutated) as a failure", () => {

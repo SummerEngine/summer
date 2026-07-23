@@ -296,8 +296,12 @@ Use this first in every fresh chat to avoid guessing scene filenames or editing 
     {},
     async () =>
       withEngine(async (client) => {
-        const [health, projectState, sceneState] = await Promise.all([
-          client.health(),
+        // Health is the one intentional unscoped request: validate and bind the
+        // currently-open project's complete identity before any state read.
+        // This keeps the recovery path reachable after an in-place switch while
+        // every ordinary read/mutation remains identity-scoped.
+        const health = await client.rebindToCurrentProject();
+        const [projectState, sceneState] = await Promise.all([
           client.getProjectState(),
           client.getSceneState().catch((err) => ({
             ok: false,
@@ -310,11 +314,7 @@ Use this first in every fresh chat to avoid guessing scene filenames or editing 
         const mainScene = getMainScene(projectState);
         const currentScene = getCurrentScene(projectState, sceneState, health);
 
-        // This tool is the deliberate (re)bind point: capture the currently-open
-        // project as the one this session's mutations are pinned to. After an
-        // engine project switch the agent calls this to intentionally follow the
-        // new project; subsequent edits then target it instead of being rejected.
-        const boundProjectIdHash = await client.rebind();
+        const boundProjectIdHash = client.getBoundProjectIdHash();
 
         return {
           health,

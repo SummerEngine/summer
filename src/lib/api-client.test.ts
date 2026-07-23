@@ -64,8 +64,10 @@ describe("EngineApiClient — async 202->poll port", () => {
 
   it("updates the complete request identity after an explicit rebind", async () => {
     const seen: string[] = [];
+    const healthUrls: string[] = [];
     mockFetch((url) => {
       if (url.includes("/api/health")) {
+        healthUrls.push(url);
         return json({
           ok: true,
           engine: "summer",
@@ -87,11 +89,65 @@ describe("EngineApiClient — async 202->poll port", () => {
     await expect(scoped.rebind()).resolves.toBe("hash-b");
     await scoped.getSceneState();
 
+    expect(healthUrls).toHaveLength(1);
+    expect(new URL(healthUrls[0]).search).toBe("");
     const url = new URL(seen[0]);
     expect(url.searchParams.get("instanceId")).toBe("engine-b");
     expect(url.searchParams.get("projectId")).toBe("project-b");
     expect(url.searchParams.get("projectIdHash")).toBe("hash-b");
     expect(url.searchParams.get("projectIdentityVersion")).toBe("1");
+  });
+
+  it("authenticates the unscoped health request used for rebind", async () => {
+    let authorization: string | undefined;
+    vi.stubGlobal(
+      "fetch",
+      (
+        input: unknown,
+        init?: { headers?: Record<string, string> }
+      ) => {
+        expect(new URL(String(input)).search).toBe("");
+        authorization = init?.headers?.Authorization;
+        return Promise.resolve(
+          json({
+            ok: true,
+            engine: "summer",
+            version: "0.5.43",
+            instanceId: "engine-b",
+            projectId: "project-b",
+            projectIdHash: "hash-b",
+          })
+        );
+      }
+    );
+
+    await new EngineApiClient(6550, "test-token").rebindToCurrentProject();
+    expect(authorization).toBe("Bearer test-token");
+  });
+
+  it("refuses to replace the binding from incomplete unscoped health", async () => {
+    mockFetch((url) => {
+      if (url.includes("/api/health")) {
+        return json({
+          ok: true,
+          engine: "summer",
+          version: "0.5.43",
+          instanceId: "engine-b",
+          projectIdHash: "hash-b",
+        });
+      }
+      return json({}, 404);
+    });
+    const scoped = new EngineApiClient(6550, "test-token", {
+      instanceId: "engine-a",
+      projectId: "project-a",
+      projectIdHash: "hash-a",
+    });
+
+    await expect(scoped.rebindToCurrentProject()).rejects.toThrow(
+      /complete project identity/
+    );
+    expect(scoped.getBoundProjectIdHash()).toBe("hash-a");
   });
 
   it("executeOps resolves the TERMINAL apply result via poll, not the queued ack", async () => {
@@ -221,6 +277,157 @@ describe("EngineApiClient — async 202->poll port", () => {
     expect(r.ok).toBe(false);
     expect(r.errorClass).toBe("transient");
   });
+
+  it("times out once, cancels the exact request, and consumes its canceled terminal receipt", async () => {
+    const hits = { submit: 0, cancel: 0, poll: 0 };
+    let cancelAccepted = false;
+    mockFetch((url, method) => {
+      if (url.includes("/api/ops/result")) {
+        hits.poll++;
+        return cancelAccepted
+          ? json({
+              requestId: "timeout-1",
+              status: "canceled",
+              terminalState: "canceled",
+            })
+          : json({ requestId: "timeout-1", status: "running" });
+      }
+      if (url.includes("/api/ops/cancel")) {
+        hits.cancel++;
+        cancelAccepted = true;
+        return json({
+          ok: true,
+          accepted: true,
+          preempted: true,
+          requestId: "timeout-1",
+        });
+      }
+      if (method === "POST" && url.includes("/api/ops")) {
+        hits.submit++;
+        return json(
+          { accepted: true, status: "queued", requestId: "timeout-1" },
+          202
+        );
+      }
+      return json({}, 404);
+    });
+    const testClient = client() as unknown as {
+      _requestQueued(
+        method: string,
+        path: string,
+        body: unknown,
+        timeoutMs: number
+      ): Promise<Record<string, unknown>>;
+    };
+
+    const result = await testClient._requestQueued(
+      "POST",
+      "/api/ops",
+      { ops: [{ op: "Probe" }] },
+      1
+    );
+
+    expect(result).toMatchObject({
+      requestId: "timeout-1",
+      terminalState: "canceled",
+    });
+    expect(hits.submit).toBe(1);
+    expect(hits.cancel).toBe(1);
+    expect(hits.poll).toBeGreaterThanOrEqual(2);
+  });
+
+  it("returns the applied receipt when cancel rejection raced with completion", async () => {
+    mockFetch((url) => {
+      if (url.includes("/api/ops/cancel")) {
+        return json(
+          { ok: false, errorClass: "not_found", error: "request is not running" },
+          409
+        );
+      }
+      if (url.includes("/api/ops/result")) {
+        return json({
+          requestId: "race-1",
+          status: "done",
+          terminalState: "applied",
+          result: { status: "ok", results: [{ ok: true, op: "Probe" }] },
+        });
+      }
+      return json({}, 404);
+    });
+    const testClient = client() as unknown as {
+      _cancelTimedOutRequest(requestId: string): Promise<Record<string, unknown>>;
+    };
+
+    await expect(testClient._cancelTimedOutRequest("race-1")).resolves.toMatchObject({
+      requestId: "race-1",
+      terminalState: "applied",
+    });
+  });
+
+  it("returns unknown_outcome with requestId when cancel is rejected and work is still running", async () => {
+    mockFetch((url) => {
+      if (url.includes("/api/ops/cancel")) {
+        return json(
+          { ok: false, errorClass: "not_cancellable", error: "cannot cancel" },
+          409
+        );
+      }
+      if (url.includes("/api/ops/result")) {
+        return json({ requestId: "unknown-1", status: "running" });
+      }
+      return json({}, 404);
+    });
+    const testClient = client() as unknown as {
+      _cancelTimedOutRequest(requestId: string): Promise<Record<string, unknown>>;
+    };
+
+    const result = await testClient._cancelTimedOutRequest("unknown-1");
+    expect(result).toMatchObject({
+      requestId: "unknown-1",
+      terminalState: "unknown_outcome",
+      errorClass: "ambiguous",
+    });
+    expect(String(result.error)).toContain("Inspect the project state before retrying");
+  });
+
+  it("returns unknown_outcome with requestId when cancel transport fails", async () => {
+    vi.stubGlobal("fetch", () => Promise.reject(new Error("socket closed")));
+    const testClient = client() as unknown as {
+      _cancelTimedOutRequest(requestId: string): Promise<Record<string, unknown>>;
+    };
+
+    await expect(
+      testClient._cancelTimedOutRequest("unknown-transport")
+    ).resolves.toMatchObject({
+      requestId: "unknown-transport",
+      terminalState: "unknown_outcome",
+      errorClass: "ambiguous",
+    });
+  });
+
+  it("returns unknown_outcome when cancel is accepted but terminal confirmation loses transport", async () => {
+    let call = 0;
+    vi.stubGlobal("fetch", () => {
+      call++;
+      if (call === 1) {
+        return Promise.resolve(
+          json({ ok: true, accepted: true, preempted: true })
+        );
+      }
+      return Promise.reject(new Error("poll transport failed"));
+    });
+    const testClient = client() as unknown as {
+      _cancelTimedOutRequest(requestId: string): Promise<Record<string, unknown>>;
+    };
+
+    const result = await testClient._cancelTimedOutRequest("unknown-confirm");
+    expect(result).toMatchObject({
+      requestId: "unknown-confirm",
+      terminalState: "unknown_outcome",
+      errorClass: "ambiguous",
+    });
+    expect(String(result.error)).toContain("terminal confirmation failed");
+  });
 });
 
 describe("EngineApiClient — See-Work Loop P5 capture additions", () => {
@@ -247,13 +454,36 @@ describe("EngineApiClient — See-Work Loop P5 capture additions", () => {
     expect(snap.error).toContain("desktop bridge");
   });
 
+  it("gameSnapshot surfaces an unrecognized 409 as a real error without a second request", async () => {
+    let snapshotGets = 0;
+    mockFetch((url) => {
+      if (url.includes("/api/snapshot/game")) {
+        snapshotGets++;
+        return json({ ok: false, error: "snapshot conflict" }, 409);
+      }
+      return json({}, 404);
+    });
+
+    const snap = await client().gameSnapshot();
+    expect(snap).toMatchObject({ ok: false, error: "snapshot conflict" });
+    expect(snap.failureReason).toBeUndefined();
+    expect(snapshotGets).toBe(1);
+  });
+
   it("gameSnapshot falls through to the normal queued path when the engine answers 200/202 (P4.4 forward-compat)", async () => {
     const b64 = Buffer.from("game-bytes").toString("base64");
+    let snapshotGets = 0;
     mockFetch((url) => {
-      // No 409 — the bridge probe sees a 202 and returns null, so the normal
-      // queued path runs.
       if (url.includes("/api/snapshot/game")) {
-        return json({ accepted: true, status: "queued", requestId: "g1" }, 202);
+        snapshotGets++;
+        return json(
+          {
+            accepted: true,
+            status: "queued",
+            requestId: `g${snapshotGets}`,
+          },
+          202
+        );
       }
       if (url.includes("/api/ops/result")) {
         return json({
@@ -273,6 +503,39 @@ describe("EngineApiClient — See-Work Loop P5 capture additions", () => {
       expect(snap.ok).toBe(true);
       expect(snap.failureReason).toBeUndefined();
       expect(snap.bytes).toBeGreaterThan(0);
+      expect(snapshotGets).toBe(1);
+    } finally {
+      if (snap.localPath) {
+        try {
+          rmSync(snap.localPath);
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+  });
+
+  it("gameSnapshot consumes a legacy 200 image from its single request", async () => {
+    const b64 = Buffer.from("legacy-game").toString("base64");
+    let snapshotGets = 0;
+    mockFetch((url) => {
+      if (url.includes("/api/snapshot/game")) {
+        snapshotGets++;
+        return json({
+          ok: true,
+          op: "GameSnapshot",
+          image_base64: b64,
+          mime: "image/jpeg",
+        });
+      }
+      return json({}, 404);
+    });
+
+    const snap = await client().gameSnapshot();
+    try {
+      expect(snap.ok).toBe(true);
+      expect(snap.bytes).toBeGreaterThan(0);
+      expect(snapshotGets).toBe(1);
     } finally {
       if (snap.localPath) {
         try {

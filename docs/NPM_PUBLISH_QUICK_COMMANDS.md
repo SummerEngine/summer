@@ -29,7 +29,8 @@ test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
 export PACKAGE_NAME="$(node -p 'require("./package.json").name')"
 export PACKAGE_VERSION="$(node -p 'require("./package.json").version')"
 export LOCK_VERSION="$(node -p 'require("./package-lock.json").packages[""].version')"
-export REGISTRY_VERSION="$(npm view summer-engine dist-tags.latest)"
+export REGISTRY_CACHE="$(mktemp -d)"
+export REGISTRY_VERSION="$(npm view summer-engine dist-tags.latest --prefer-online --cache "$REGISTRY_CACHE")"
 
 test "$PACKAGE_NAME" = "summer-engine"
 test "$PACKAGE_VERSION" = "$LOCK_VERSION"
@@ -79,9 +80,14 @@ Success ends with `+ summer-engine@<version>`.
 ## 5. Verify the exact release
 
 ```bash
-test "$(npm view "summer-engine@$PACKAGE_VERSION" version)" = "$PACKAGE_VERSION"
-test "$(npm view summer-engine dist-tags.latest)" = "$PACKAGE_VERSION"
-npx -y "summer-engine@$PACKAGE_VERSION" --version
+export VERIFY_CACHE="$(mktemp -d)"
+export VERIFY_DIR="$(mktemp -d)"
+
+test "$(npm view "summer-engine@$PACKAGE_VERSION" version --prefer-online --cache "$VERIFY_CACHE")" = "$PACKAGE_VERSION"
+test "$(npm view summer-engine dist-tags.latest --prefer-online --cache "$VERIFY_CACHE")" = "$PACKAGE_VERSION"
+test "$(cd "$VERIFY_DIR" && npm exec --yes --cache "$VERIFY_CACHE" --package="summer-engine@$PACKAGE_VERSION" --call "summer --version")" = "$PACKAGE_VERSION"
 ```
+
+Use a fresh npm cache so a pre-publish registry response cannot produce a false failure. Run the CLI smoke test outside the package checkout so npm links the published binary instead of resolving an older global `summer` command.
 
 Keep the terminal output with the release record. The temporary clone can be deleted after verification.

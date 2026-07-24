@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_generate_image summer_search_assets summer_import_from_url
+allowed-tools: Read Grep Glob Write Edit summer_get_studio_workflow summer_generate_image summer_slice_asset_sheet summer_search_assets summer_import_asset_by_id summer_import_from_url
 paths: ["assets/**", "art/**", "sprites/**"]
 ---
 
@@ -58,13 +58,16 @@ Direct the user there if they're working in the browser. The wizard:
 - Has per-slice HD upscale + bulk "Upscale all"
 - Saves as a pack ArtAsset visible in the user's library
 
-If the user is in a chat / agent context and can't open the browser, fall back to the programmatic path below.
+If the user is in a chat / agent context, use the programmatic path below. It
+now calls the same server-side slicer as the Studio wizard.
 
 ## Programmatic path (chat / agent driving the engine)
 
-The slicing + classification endpoints are not yet exposed as `summer_*` MCP tools. Until they are, the agent can replicate the flow manually:
+1. **Load the exact current recipe.** Call
+   `summer_get_studio_workflow({workflowId: "asset-pack"})`. Follow its ordered
+   steps and report any `manual` handoff instead of pretending it ran.
 
-1. **Generate the sheet.** Call `summer_generate_image` with a prompt like:
+2. **Generate the sheet.** Call `summer_generate_image` with a prompt like:
 
    ```
    <theme> asset sheet: <comma-separated list of items>. Each item isolated with empty space around it, transparent or neutral background.
@@ -74,21 +77,18 @@ The slicing + classification endpoints are not yet exposed as `summer_*` MCP too
    - 1024x1024 is the sweet spot. Larger sheets fragment in the slicer when individual assets get below ~64px.
    - Keep the asset list to 6–20 items per sheet. Past 20, model attention degrades and slices get muddy.
 
-2. **Remove background.** Call `fal-ai/bria/background/remove` on the generated URL. Cost: $0.05.
-
-3. **Detect + name + classify.** Send the transparent PNG to a vision LLM (Gemini 3 Pro is currently the strongest at bbox + category in one shot). Use this system prompt structure:
+3. **Slice, remove background, detect, name, classify, crop, and save.** Pass
+   the returned image asset id to:
 
    ```
-   Output strict JSON array, no prose:
-   [{"name":"snake_case_name","category":"character|terrain|nature|lighting|water|decorative|buildings|ui|vfx","x":<0-100>,"y":<0-100>,"w":<0-100>,"h":<0-100>}]
-
-   Coordinates are percentages of image dimensions, top-left origin.
-   Names are 1-3 words, snake_case, specific (stone_lantern, not lamp).
+   summer_slice_asset_sheet({ assetId: "<generated asset id>" })
    ```
 
-4. **Crop** each region with sharp / PIL / equivalent. Pad bboxes by 4px to leave breathing room.
+   This is the same cloud slicing pipeline used by the Studio flow. Keep the
+   returned slice ids/names/categories; do not reimplement the vision boxes
+   locally.
 
-5. **Optional upscale.** For any crop where longest side < 256px, send through fal flux-2/edit i2i with prompt:
+4. **Optional upscale.** For any crop where longest side < 256px, send through fal flux-2/edit i2i with prompt:
 
    ```
    Recreate this exact <name> at high resolution. Preserve every detail, the exact pose, the exact style. Sharper edges, more detail. Transparent background. Single isolated asset, no scene.
@@ -97,7 +97,9 @@ The slicing + classification endpoints are not yet exposed as `summer_*` MCP too
    - Scale longest side to 1024, preserve aspect ratio (FLUX requires multiples of 32).
    - Don't blindly upscale everything — high-res slices get diminishing returns and you spend $0.04/slice.
 
-6. **Save** as a pack record in `art_assets`: `isPack: true`, `packFiles: [{url, name, type: "image/png"}]`, `metadata.sliceBboxes`, `parentAssetId` pointing to the source sheet.
+5. **Import what the game needs.** Use the returned asset ids with
+   `summer_import_asset_by_id`. Keep the source pack in My Assets so the agent
+   and the human Studio session see the same result.
 
 ## Prompt patterns that work
 

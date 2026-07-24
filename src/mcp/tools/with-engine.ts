@@ -65,7 +65,14 @@ const SUCCESS_TERMINAL_STATES: ReadonlySet<string> = new Set(["applied", "no_op"
 // `error` string (queue-full / lease-reject / identity-mismatch / no-progress
 // timeout frequently arrive with terminalState set and results[] absent).
 const TERMINAL_STATE_MESSAGES: Record<string, string> = {
-  timed_out: "Engine operation timed out (terminalState: timed_out). Nothing was applied.",
+  timed_out:
+    "Engine operation timed out. Its final state is unknown; inspect the target before retrying.",
+  still_queued:
+    "Summer Engine accepted the operation, but it was still queued when the client stopped waiting. It may still run; do not retry blindly.",
+  still_running:
+    "Summer Engine accepted and started the operation, but no final receipt arrived. It may still be running or may already have applied; inspect the target before retrying.",
+  uncertain:
+    "Summer Engine did not provide a final operation receipt. The current state is uncertain; inspect the target before retrying.",
   not_connected: "Summer Engine is not connected (terminalState: not_connected). Nothing was applied.",
   identity_mismatch:
     "Operation rejected — wrong project/instance (terminalState: identity_mismatch). Nothing was mutated.",
@@ -171,10 +178,6 @@ function buildActionHint(message: string): string | null {
 
   if (normalized.includes("failed to open scene")) {
     return "Scene path could not be opened. Call `summer_get_project_context` to get `mainScene`, then open that exact path. Avoid guessing scene filenames.";
-  }
-
-  if (normalized.includes("writefile cannot edit .tscn/.scn")) {
-    return "Write .gd/.cs/.json/docs/simple config files with normal file-edit tools. Use Summer MCP for live scene state, inspector/node edits, imports, play/stop, diagnostics, and visual verification.";
   }
 
   return null;

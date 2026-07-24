@@ -44,20 +44,43 @@ describe("pollOpToTerminal", () => {
       sleep: async () => {},
     });
     expect(out.status).toBe("ok");
+    expect(out.requestId).toBe("r");
     expect(out.terminalState).toBe("applied");
     expect(out.appliedSeq).toBe(2);
   });
 
-  it("returns a synthetic timeout result when the op never advances", async () => {
+  it("returns a truthful still-running receipt when the op never advances", async () => {
     let t = 0;
     const out = await pollOpToTerminal(async () => ({ requestId: "r", status: "running" }), {
       totalTimeoutMs: 1000,
       noProgressTimeoutMs: 500,
+      requestId: "r",
       now: () => (t += 600), // each tick jumps 600ms -> trips the 500ms no-progress budget
       sleep: async () => {},
     });
-    expect(out.terminalState).toBe("timed_out");
+    expect(out.terminalState).toBe("still_running");
     expect(out.errorClass).toBe("transient");
+    expect(out.requestId).toBe("r");
+    expect(out.dispatchState).toBe("sent");
+    expect(out.error).toMatch(/may still be running|inspect/i);
+  });
+
+  it("does not claim an accepted queued operation was never applied", async () => {
+    let t = 0;
+    const out = await pollOpToTerminal(async () => ({ requestId: "q", status: "queued" }), {
+      totalTimeoutMs: 1000,
+      noProgressTimeoutMs: 500,
+      requestId: "q",
+      now: () => (t += 600),
+      sleep: async () => {},
+    });
+    expect(out).toMatchObject({
+      terminalState: "still_queued",
+      dispatchState: "accepted",
+      requestId: "q",
+      lastKnownStatus: "queued",
+    });
+    expect(String(out.error)).toContain("may still run");
   });
 });
 

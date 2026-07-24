@@ -70,6 +70,7 @@ export const SKILL_REGISTRY = [
     clients: ALL_CLIENTS,
     recommended: true,
     requiresMcpTools: [
+      "summer_create_debug_report",
       "summer_get_console",
       "summer_get_debugger_errors",
       "summer_get_script_errors",
@@ -128,6 +129,24 @@ export const SKILL_REGISTRY = [
     ],
     testScenario:
       "Build a small reusable player scene, instantiate it in a main scene, and save both scenes through Summer tools.",
+  },
+  {
+    name: "summer-cloud",
+    category: "scene-and-project",
+    public: true,
+    clients: ALL_CLIENTS,
+    recommended: true,
+    requiresMcpTools: [
+      "summer_cloud_init",
+      "summer_cloud_status",
+      "summer_cloud_push",
+      "summer_cloud_pull",
+      "summer_cloud_restore",
+      "summer_cloud_checkpoints",
+      "summer_cloud_conflicts",
+    ],
+    testScenario:
+      "Enable Cloud for a project, push it, then pull it onto a second machine, taking the bootstrap choice and surfacing the delete count before any guarded deletion.",
   },
   {
     name: "fps-controller",
@@ -454,6 +473,21 @@ export const SKILL_REGISTRY = [
       "Run the Steam pre-flight checklist (Windows + Mac + Linux), validate icons/banners/screenshots/build config, and produce a release build only when green.",
   },
   {
+    name: "remote-deploy",
+    category: "deployment",
+    public: true,
+    clients: ALL_CLIENTS,
+    recommended: true,
+    requiresMcpTools: [
+      "summer_project_setting",
+      "summer_get_diagnostics",
+      "summer_get_console",
+      "summer_get_script_errors",
+    ],
+    testScenario:
+      "User says \"deploy the game to my Android phone\" — skill walks the prerequisites (runnable export preset, installed export templates, USB-debugging device), checks diagnostics are clean, and points them at the topnav Remote Deploy button to deploy a debug build with on-device remote debugging.",
+  },
+  {
     name: "concept-art",
     category: "2d-assets",
     public: true,
@@ -539,6 +573,21 @@ export const SKILL_REGISTRY = [
     ],
     testScenario:
       "User requests a '4-frame walk cycle for the goblin' — skill generates per-frame at locked anchor, builds SpriteFrames resource, wires AnimatedSprite2D.",
+  },
+  {
+    name: "create-asset-sheet",
+    category: "2d-assets",
+    public: true,
+    clients: ALL_CLIENTS,
+    recommended: false,
+    requiresMcpTools: [
+      "summer_get_studio_workflow",
+      "summer_generate_image",
+      "summer_slice_asset_sheet",
+      "summer_import_asset_by_id",
+    ],
+    testScenario:
+      "User requests a Japanese village asset pack — skill loads the Guided asset-pack recipe, generates one coherent sheet, slices it through the shared cloud pipeline, and imports selected results.",
   },
   {
     name: "skybox-panorama",

@@ -1,5 +1,7 @@
 # Summer Engine: the AI game engine
 
+> **Engine mirror only.** This directory is intentionally marked `private` and must never be published to npm. Review and reconcile changes into [SummerEngine/summer-engine-agent](https://github.com/SummerEngine/summer-engine-agent), which is the only npm release source.
+
 Build real 2D and 3D games through conversation. No coding required. Export to Steam, desktop, mobile, and web. Built on the Godot team's work, customized and honed so AI agents and humans can collaborate on great games.
 
 **Summer** is the MIT open-source agent layer that connects your AI coding agent to Summer Engine. It is the **Summer CLI**, the **Summer MCP** server, and the **Summer agent** skills, hooks, and plugin manifests, all in one package. First-class setup works in Claude Code, Cursor, Codex, Devin Desktop (formerly Windsurf), Cline, Roo Code, Gemini CLI, GitHub Copilot CLI, GitHub Copilot in VS Code, and OpenCode. Factory Droid uses the plugin marketplace path.
@@ -18,7 +20,7 @@ It just works. Open your agent, say *"let's make an FPS in Summer Engine,"* and 
 Three names, one npm package (`summer-engine`):
 
 - **Summer CLI** (`npx -y summer-engine@latest`): installs the engine, signs you in, scaffolds and runs projects, and writes your agent's config. See [www.summerengine.com/cli](https://www.summerengine.com/cli).
-- **Summer MCP**: the local MCP server that gives your agent 52 engine tools to build, run, and debug a real game. See [www.summerengine.com/mcp](https://www.summerengine.com/mcp).
+- **Summer MCP**: the local MCP server that gives your agent 56 engine tools to build, run, and debug a real game. See [www.summerengine.com/mcp](https://www.summerengine.com/mcp).
 - **Summer agent layer**: the game-dev skills, hooks, and plugin manifests that give your AI agent judgment, not just a chat box.
 
 All MIT, all free to use. One paste sets up all three.
@@ -253,19 +255,20 @@ Two pieces, plus the glue.
 
 Skills don't list steps. They encode the **order of operations**: diagnose before editing, scope before building, ask before guessing. [Agent Skills](https://agentskills.io) format, so any conformant tool picks them up.
 
-**MCP bridge.** The `summer-engine` MCP server gives the agent 52 tools that talk to your local engine on `localhost:6550`:
+**MCP bridge.** The `summer-engine` MCP server gives the agent 56 tools that talk to your local engine on `localhost:6550`:
 
 | | |
 |---|---|
 | Scene | `summer_add_node`, `summer_set_prop`, `summer_instantiate_scene`, `summer_replace_node`, `summer_get_scene_tree`, `summer_inspect_node`, `summer_batch` |
-| Diagnostics | `summer_get_script_errors`, `summer_get_diagnostics`, `summer_get_console`, `summer_get_debugger_errors`, `summer_get_debugger_warnings` |
+| Diagnostics | `summer_create_debug_report`, `summer_get_script_errors`, `summer_get_diagnostics`, `summer_get_console`, `summer_clear_console`, `summer_get_debugger_errors`, `summer_get_debugger_warnings` |
 | Runtime | `summer_play`, `summer_stop`, `summer_is_running` |
 | Visual | `summer_screenshot` (see the editor viewport, an offscreen scene render, or the running game) |
 | Interactive | `SimulateInput` / `RunVerification` raw ops via `summer_batch` — drive the running game or run a hidden GDScript probe (engine-build dependent) |
 | Project | `summer_get_project_context`, `summer_open_main_scene`, `summer_project_setting`, `summer_input_map_bind` |
+| Files | `summer_read_file`, `summer_write_file`, `summer_replace_text` — identity-bound, create-only or sha256-guarded mutations |
 | Assets | `summer_search_assets`, `summer_import_asset`, `summer_import_from_url`, `summer_generate_image`, `summer_generate_3d`, `summer_generate_audio`, `summer_generate_video` |
 
-File ops, git, shell, and grep already belong to your agent. We don't shadow them.
+Git, shell, and grep remain host-native. Project file reads and writes use Summer's identity-bound tools so compatible engine builds can reject wrong-project and stale-content mutations. A host agent can still bypass these safeguards with its own file tools; the package cannot technically intercept that external process.
 
 **Lifecycle hooks.** A `session-start` hook detects whether you're in a Summer Engine project and feeds the agent a one-line orientation. An opt-in `pre-commit doctor` runs `summer doctor` before `git commit` and blocks when the setup needs attention.
 

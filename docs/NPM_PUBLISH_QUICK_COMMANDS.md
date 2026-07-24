@@ -1,6 +1,6 @@
 # Publish `summer-engine` from a fresh terminal
 
-This is the approved manual release path until trusted publishing is configured in this public repository. Run it yourself in an interactive macOS Terminal. Do not run the final publish through an AI shell.
+This is the approved manual release path until trusted publishing is configured in the public repository. Run it yourself in an interactive macOS Terminal. Do not run the final publish through an AI shell.
 
 The version bump, changelog, and release contents must already be reviewed, committed, and merged to `SummerEngine/summer-engine-agent` `main`. This procedure intentionally makes no source changes.
 
@@ -13,7 +13,7 @@ cd "$RELEASE_DIR"
 git pull --ff-only origin main
 ```
 
-Do not substitute an older checkout or a mirrored copy.
+Do not substitute an older checkout or the engine monorepo. The public package repository can be ahead of a mirrored copy.
 
 ## 2. Run the hard release gates
 

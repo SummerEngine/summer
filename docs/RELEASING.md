@@ -1,22 +1,22 @@
 # Releasing `summer-engine`
 
-The npm package is `summer-engine`. This repository is its public source, and its binary is `summer`.
+The npm package is `summer-engine`, its binary is `summer`, and its public source is [SummerEngine/summer-engine-agent](https://github.com/SummerEngine/summer-engine-agent). This nested engine-monorepo copy is kept in sync for product development and testing; it is not the approved npm publication checkout.
 
 For the exact copy-paste procedure, use [`NPM_PUBLISH_QUICK_COMMANDS.md`](./NPM_PUBLISH_QUICK_COMMANDS.md). It publishes only from a clean, fresh clone of public `main` and stops if the candidate version is not newer than npm `latest`.
 
 ## Release contract
 
-1. Reconcile all approved CLI work into this repository without overwriting newer public changes.
+1. Reconcile all approved CLI work into the public repository without overwriting newer public changes.
 2. Bump `package.json` and `package-lock.json` to the same new semver version and update `CHANGELOG.md` in a reviewed commit.
-3. Merge that commit to `main` before publishing.
-4. Run the fresh-terminal procedure from a new clone.
+3. Merge that commit to public `main` before publishing.
+4. Run the fresh-terminal procedure from a new clone of the public repository.
 5. Verify the exact version and the `latest` dist-tag from npm after publishing.
 
-Never publish an uncommitted version bump. npm never allows the same package name and version to be reused, even after unpublishing.
+Never publish an uncommitted version bump or publish from this engine-monorepo mirror. npm never allows the same package name and version to be reused, even after unpublishing.
 
 ## Package commands
 
-These commands come from `package.json`:
+These commands describe the public release checkout. The engine-monorepo copy may run install, build, and test commands, but must not be used for either publish command.
 
 | Purpose | Command | Effect |
 |---|---|---|
@@ -44,7 +44,7 @@ No Apple or Windows application-signing certificate is involved in the npm packa
 
 ## Provenance and trusted publishing
 
-Trusted publishing is not the current release path. Before enabling it, configure npm to trust an exact workflow in this public repository and review the workflow separately.
+Trusted publishing is not the current release path. Before enabling it, configure npm to trust an exact workflow in the public `SummerEngine/summer-engine-agent` repository and review the workflow separately.
 
 Current npm requirements include:
 

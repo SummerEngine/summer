@@ -206,7 +206,7 @@ describe("registerGenerateTools — summer_generate_motion", () => {
 });
 
 describe("registerGenerateTools — summer_generate_3d description", () => {
-  it("documents the optional rig pass via options.rig", () => {
+  it("documents the shared preparation and character package contract", () => {
     const { server, tools } = createFakeServer();
     registerGenerateTools(server as any);
 
@@ -214,6 +214,127 @@ describe("registerGenerateTools — summer_generate_3d description", () => {
     expect(gen3d.description).toMatch(/options\.rig/);
     expect(gen3d.description).toMatch(/rigAssetId/);
     expect(gen3d.description).toMatch(/summer_generate_motion/);
+    expect(gen3d.description).toMatch(/automatically assesses/);
+    expect(gen3d.description).toMatch(/up to 10 min/);
+    expect(gen3d.schema.referencePreparation).toBeDefined();
+    expect(gen3d.schema.assetIntent).toBeDefined();
+    expect(gen3d.schema.animationNames).toBeDefined();
+    expect(gen3d.schema.actionIds).toBeDefined();
+    expect(gen3d.schema.idempotencyKey).toBeDefined();
+  });
+
+  it("maps first-class character and preparation fields into the cloud route contract", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ jobId: "job_character_1" }),
+    }));
+    globalThis.fetch = fetchMock as any;
+
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const gen3d = getTool(tools, "summer_generate_3d");
+    await gen3d.handler({
+      kind: "image-to-3d",
+      model: "hunyuan",
+      imageUrl: "https://media.summerengine.com/hero.png",
+      title: "Hero",
+      idempotencyKey: "hero-v1",
+      assetIntent: "character",
+      referencePreparation: "auto",
+      rig: true,
+      animationNames: ["Idle", "Walk", "Run"],
+      riggingHeightMeters: 1.8,
+      wait: false,
+    });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toMatchObject({
+      kind: "image-to-3d",
+      imageUrl: "https://media.summerengine.com/hero.png",
+      title: "Hero",
+      idempotencyKey: "hero-v1",
+      options: {
+        assetIntent: "character",
+        referencePreparation: "auto",
+        rig: true,
+        animationNames: ["Idle", "Walk", "Run"],
+        riggingHeightMeters: 1.8,
+      },
+    });
+  });
+});
+
+describe("registerGenerateTools — summer_get_studio_workflow", () => {
+  it("lists Guided workflows and can request one exact recipe", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          workflow: {
+            id: "character-pack",
+            supportLevel: "partial",
+            requiredTools: ["summer_generate_image"],
+          },
+        }),
+    }));
+    globalThis.fetch = fetchMock as any;
+
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const workflow = getTool(tools, "summer_get_studio_workflow");
+
+    expect(workflow.description).toContain("Guided");
+    expect(workflow.description).toContain("honest limitations");
+    expect(workflow.schema.workflowId).toBeDefined();
+
+    const result = await workflow.handler({ workflowId: "character-pack" });
+    expect(parseResult(result).workflow.id).toBe("character-pack");
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toMatch(/\/api\/mcp\/workflows\?id=character-pack$/);
+    expect((init.headers as any)["X-Summer-MCP-Tool"]).toBe(
+      "summer_get_studio_workflow"
+    );
+  });
+});
+
+describe("registerGenerateTools — summer_slice_asset_sheet", () => {
+  it("registers a guided sheet slicer and calls the MCP route with the asset id", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          success: true,
+          source: { width: 1024, height: 1024 },
+          slices: [{ index: 0, name: "torii_gate", category: "buildings" }],
+        }),
+    }));
+    globalThis.fetch = fetchMock as any;
+
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const slicer = getTool(tools, "summer_slice_asset_sheet");
+
+    expect(slicer.description).toContain("asset sheet");
+    expect(slicer.description).toContain("summer_generate_image");
+    expect(slicer.schema.assetId).toBeDefined();
+
+    const result = await slicer.handler({ assetId: "asset_japan_123" });
+
+    expect(result.isError).toBeUndefined();
+    expect(parseResult(result).slices[0].name).toBe("torii_gate");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toMatch(/\/api\/mcp\/generate\/slice-asset-sheet$/);
+    expect((init.headers as any)["X-Summer-MCP-Tool"]).toBe(
+      "summer_slice_asset_sheet"
+    );
+    expect(JSON.parse(init.body as string)).toEqual({
+      assetId: "asset_japan_123",
+    });
   });
 });
 

@@ -18,6 +18,8 @@ const TOOL_BY_ENDPOINT: Record<string, string> = {
   "/api/mcp/generate/3d": "summer_generate_3d",
   "/api/mcp/generate/video": "summer_generate_video",
   "/api/mcp/generate/motion": "summer_generate_motion",
+  "/api/mcp/generate/slice-asset-sheet": "summer_slice_asset_sheet",
+  "/api/mcp/workflows": "summer_get_studio_workflow",
 };
 
 // ---------------------------------------------------------------------------
@@ -158,6 +160,42 @@ async function mcpGenerate(
   return { data, status: res.status };
 }
 
+async function mcpGet(
+  endpoint: string,
+  searchParams?: URLSearchParams,
+  timeoutMs = 30_000
+): Promise<{ data?: any; error?: string; status: number }> {
+  const token = await getAuthToken();
+  const suffix = searchParams?.size ? `?${searchParams.toString()}` : "";
+  let res: Response;
+  try {
+    res = await fetch(`${GATEWAY_URL}${endpoint}${suffix}`, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "X-Summer-Client": "summer-cli",
+        "X-Summer-Client-Version": CLI_VERSION,
+        "X-Summer-Client-Surface": "mcp",
+        "X-Summer-MCP-Endpoint": endpoint,
+        "X-Summer-MCP-Tool": TOOL_BY_ENDPOINT[endpoint] ?? "unknown",
+      },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { error: `Request failed: ${msg}`, status: 0 };
+  }
+
+  const data = await readJsonResponse(res);
+  if (!res.ok) {
+    return {
+      error: formattedApiErrorMessage(res.status, data),
+      data: { ...data, status: res.status },
+      status: res.status,
+    };
+  }
+  return { data, status: res.status };
+}
+
 /**
  * Download an image URL to a temp file so the AI can Read it and show the user.
  */
@@ -189,7 +227,7 @@ async function downloadToTemp(
  */
 async function pollJob(
   jobId: string,
-  maxWaitMs = 300_000,
+  maxWaitMs = 600_000,
   intervalMs = 5_000
 ): Promise<{ data?: any; error?: string }> {
   const token = await getAuthToken();
@@ -257,6 +295,32 @@ function successResult(data: any) {
 // ---------------------------------------------------------------------------
 
 export function registerGenerateTools(server: McpServer): void {
+  // ========================================================================
+  // summer_get_studio_workflow
+  // ========================================================================
+  server.tool(
+    "summer_get_studio_workflow",
+    `Discover the same Guided workflow recipes shown in Summer Engine Studio.
+
+Call without workflowId to list every workflow and its support level. Call with
+an id to get the exact starter prompt, ordered steps, required MCP tools, and
+honest limitations. A "manual" support level means Studio still has a visual
+handoff that MCP cannot perform automatically; do not pretend that stage ran.`,
+    {
+      workflowId: z
+        .string()
+        .optional()
+        .describe("Guided workflow id, e.g. sprite-sheet, character-pack, asset-pack, or component-compiler"),
+    },
+    async ({ workflowId }) => {
+      const params = new URLSearchParams();
+      if (workflowId) params.set("id", workflowId);
+      const result = await mcpGet("/api/mcp/workflows", params);
+      if (result.error) return errorResult(result.error, result.data);
+      return successResult(result.data);
+    }
+  );
+
   // ========================================================================
   // summer_generate_image
   // ========================================================================
@@ -329,6 +393,49 @@ Requires authentication: run 'npx summer-engine login' first.`,
         hint: localPath
           ? `Image saved to ${localPath}. Use the Read tool on this path to show it to the user.`
           : undefined,
+      });
+    }
+  );
+
+  // ========================================================================
+  // summer_slice_asset_sheet
+  // ========================================================================
+  server.tool(
+    "summer_slice_asset_sheet",
+    `Detect and crop every distinct game asset from an existing image asset sheet.
+
+Use the assetId returned by summer_generate_image (or another Summer image asset).
+The same guided workflow used in Studio removes the sheet background when needed,
+detects named/category-aware bounding boxes, crops each item, and uploads the slices.
+
+Returns source dimensions plus the generated slice URLs, names, categories, bounding
+boxes, and widget metadata when the sheet contains UI controls.
+
+Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
+Requires authentication: run 'npx summer-engine login' first.`,
+    {
+      assetId: z
+        .string()
+        .describe(
+          "Summer image asset ID to slice, usually returned by summer_generate_image"
+        ),
+    },
+    async ({ assetId }) => {
+      const result = await mcpGenerate(
+        "/api/mcp/generate/slice-asset-sheet",
+        { assetId },
+        300_000
+      );
+
+      if (result.error) {
+        return errorResult(result.error, result.data);
+      }
+
+      return successResult({
+        ...result.data,
+        sliceCount: Array.isArray(result.data?.slices)
+          ? result.data.slices.length
+          : 0,
       });
     }
   );
@@ -438,7 +545,16 @@ Example:
   })
   // Returns jobId; poll until result includes { assetId, rigAssetId }.
 
-By default, waits for completion (up to 5 min) and returns the result directly.
+Single-image generation automatically assesses whether the source is suitable
+for 3D. If needed, Summer prepares an isolated object view or rig-safe character
+pose before conversion. Set referencePreparation="always" or "never" only when
+you intentionally want to override that shared Studio behavior.
+
+For a complete animated humanoid package, pass rig=true plus animationNames or
+actionIds. This routes through the shared character pipeline instead of a
+one-off mesh job.
+
+By default, waits for completion (up to 10 min) and returns the result directly.
 Set wait=false to get the jobId immediately and poll manually with summer_check_job.
 
 Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
@@ -460,22 +576,83 @@ Requires authentication: run 'npx summer-engine login' first.`,
         .string()
         .optional()
         .describe("Source image URL for image-to-3d or texture"),
+      imageUrls: z
+        .array(z.string())
+        .max(4)
+        .optional()
+        .describe("Up to four views for multi-image-to-3d"),
+      title: z.string().optional().describe("Asset or character title"),
+      idempotencyKey: z
+        .string()
+        .optional()
+        .describe("Stable retry key so the same logical request is not billed or queued twice"),
+      assetIntent: z
+        .enum(["character", "object"])
+        .optional()
+        .describe("Controls whether hidden reference preparation targets a rig-safe character pose or isolated object view"),
+      referencePreparation: z
+        .enum(["auto", "always", "never"])
+        .default("auto")
+        .describe("Shared Studio reference-preparation policy; auto is recommended"),
+      rig: z.boolean().default(false).describe("Auto-rig the generated model"),
+      animationNames: z
+        .array(z.string())
+        .optional()
+        .describe("Animation names for the shared animated-character pipeline, e.g. Idle, Walk, Run, Jump"),
+      actionIds: z
+        .array(z.number().int().min(0).max(696))
+        .optional()
+        .describe("Exact Meshy action ids for the shared animated-character pipeline"),
+      riggingHeightMeters: z
+        .number()
+        .positive()
+        .max(10)
+        .optional()
+        .describe("Character height used by auto-rigging"),
       wait: z
         .boolean()
         .default(true)
-        .describe("Wait for completion (default true, up to 5 min). Set false to get jobId immediately."),
+        .describe("Wait for completion (default true, up to 10 min). Set false to get jobId immediately."),
       options: z
         .record(z.any())
         .optional()
         .describe("Provider-specific params (target_polycount, topology, art_style, etc.)"),
     },
-    async ({ prompt, kind, model, imageUrl, wait, options }) => {
+    async ({
+      prompt,
+      kind,
+      model,
+      imageUrl,
+      imageUrls,
+      title,
+      idempotencyKey,
+      assetIntent,
+      referencePreparation,
+      rig,
+      animationNames,
+      actionIds,
+      riggingHeightMeters,
+      wait,
+      options,
+    }) => {
+      const mergedOptions = {
+        ...(options ?? {}),
+        ...(imageUrls ? { imageUrls } : {}),
+        ...(assetIntent ? { assetIntent } : {}),
+        referencePreparation,
+        ...(rig ? { rig: true } : {}),
+        ...(animationNames ? { animationNames } : {}),
+        ...(actionIds ? { actionIds } : {}),
+        ...(riggingHeightMeters !== undefined ? { riggingHeightMeters } : {}),
+      };
       const result = await mcpGenerate("/api/mcp/generate/3d", {
         prompt,
         kind,
         model,
         imageUrl,
-        options,
+        title,
+        idempotencyKey,
+        options: mergedOptions,
       });
 
       if (result.error) {

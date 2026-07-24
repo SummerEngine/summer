@@ -119,6 +119,78 @@ describe("EngineApiClient — async 202->poll port", () => {
     expect((r.results as unknown[])).toHaveLength(1);
   });
 
+  it("mints one stable requestId before POST and uses it for polling", async () => {
+    let submittedRequestId = "";
+    let polledRequestId = "";
+    vi.stubGlobal(
+      "fetch",
+      async (input: unknown, init?: { method?: string; body?: string }) => {
+        const url = String(input);
+        if (init?.method === "POST" && url.includes("/api/ops")) {
+          const body = JSON.parse(init.body ?? "{}") as {
+            options?: { requestId?: string };
+          };
+          submittedRequestId = body.options?.requestId ?? "";
+          return json(
+            { accepted: true, status: "queued", requestId: submittedRequestId },
+            202
+          );
+        }
+        if (url.includes("/api/ops/result")) {
+          polledRequestId = new URL(url).searchParams.get("requestId") ?? "";
+          return json({
+            requestId: polledRequestId,
+            status: "done",
+            result: { status: "ok", results: [] },
+            terminalState: "applied",
+          });
+        }
+        return json({}, 404);
+      }
+    );
+
+    await client().executeOps([{ op: "X" }]);
+    expect(submittedRequestId).toMatch(/^mcp-/);
+    expect(polledRequestId).toBe(submittedRequestId);
+  });
+
+  it("polls an older engine's acknowledged requestId when it differs from the submitted ID", async () => {
+    let submittedRequestId = "";
+    let polledRequestId = "";
+    vi.stubGlobal(
+      "fetch",
+      async (input: unknown, init?: { method?: string; body?: string }) => {
+        const url = String(input);
+        if (init?.method === "POST" && url.includes("/api/ops")) {
+          const body = JSON.parse(init.body ?? "{}") as {
+            options?: { requestId?: string };
+          };
+          submittedRequestId = body.options?.requestId ?? "";
+          return json(
+            { accepted: true, status: "queued", requestId: "legacy-engine-id" },
+            202
+          );
+        }
+        if (url.includes("/api/ops/result")) {
+          polledRequestId = new URL(url).searchParams.get("requestId") ?? "";
+          return json({
+            requestId: polledRequestId,
+            status: "done",
+            result: { status: "ok", results: [] },
+            terminalState: "applied",
+          });
+        }
+        return json({}, 404);
+      }
+    );
+
+    const result = (await client().executeOps([{ op: "X" }])) as Record<string, unknown>;
+    expect(submittedRequestId).toMatch(/^mcp-/);
+    expect(polledRequestId).toBe("legacy-engine-id");
+    expect(result.requestId).toBe("legacy-engine-id");
+    expect(result.submissionRequestId).toBe(submittedRequestId);
+  });
+
   it("executeOps passes a legacy synchronous 200 result straight through (no poll)", async () => {
     let pollHits = 0;
     mockFetch((url, method) => {
@@ -131,6 +203,41 @@ describe("EngineApiClient — async 202->poll port", () => {
     const r = (await client().executeOps([{ op: "X" }])) as Record<string, unknown>;
     expect(r.legacy).toBe(true);
     expect(pollHits).toBe(0); // never polled — legacy path
+  });
+
+  it("identity-bound file mutations fail closed when the client is unbound", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await expect(
+      client().executeIdentityBoundOps([{ op: "WriteFile" }])
+    ).rejects.toThrow(/complete engine\/project identity/);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("identity-bound file mutations stamp the bound hash after caller options", async () => {
+    const sink: { lastBody?: unknown } = {};
+    mockFetchCapturing(
+      (url, method) =>
+        method === "POST" && url.includes("/api/ops")
+          ? json({ status: "ok", results: [{ ok: true, op: "WriteFile" }] })
+          : json({}, 404),
+      sink
+    );
+    const scoped = new EngineApiClient(6550, "test-token", {
+      instanceId: "engine-a",
+      projectId: "project-a",
+      projectIdHash: "hash-a",
+    });
+
+    await scoped.executeIdentityBoundOps(
+      [{ op: "WriteFile", path: "res://main.tscn" }],
+      { projectIdHash: "caller-must-not-override" }
+    );
+
+    expect(sink.lastBody).toMatchObject({
+      options: { projectIdHash: "hash-a" },
+    });
   });
 
   it("reads stay synchronous 200 (no 202/poll)", async () => {
@@ -191,10 +298,15 @@ describe("EngineApiClient — async 202->poll port", () => {
     }, sink);
 
     await client().play("res://levels/boss.tscn");
-    expect(sink.lastBody).toEqual({ options: { scene: "res://levels/boss.tscn" } });
+    expect(sink.lastBody).toMatchObject({
+      options: {
+        scene: "res://levels/boss.tscn",
+        requestId: expect.stringMatching(/^mcp-/),
+      },
+    });
   });
 
-  it("play() with no scene sends an empty body (plays the main scene)", async () => {
+  it("play() with no scene sends only lifecycle options (plays the main scene)", async () => {
     const sink: { lastBody?: unknown } = {};
     mockFetchCapturing((url, method) => {
       if (method === "POST" && url.includes("/api/play")) {
@@ -207,7 +319,9 @@ describe("EngineApiClient — async 202->poll port", () => {
     }, sink);
 
     await client().play();
-    expect(sink.lastBody).toEqual({});
+    expect(sink.lastBody).toEqual({
+      options: { requestId: expect.stringMatching(/^mcp-/) },
+    });
   });
 
   it("surfaces a hard transport error (non-2xx, non-202/429) as a throw", async () => {
@@ -220,6 +334,37 @@ describe("EngineApiClient — async 202->poll port", () => {
     const r = (await client().executeOps([{ op: "X" }])) as Record<string, unknown>;
     expect(r.ok).toBe(false);
     expect(r.errorClass).toBe("transient");
+    expect(r.dispatchState).toBe("not_sent");
+    expect(r.requestId).toMatch(/^mcp-/);
+  });
+
+  it("preserves the accepted requestId when the final receipt cannot be fetched", async () => {
+    let submittedRequestId = "";
+    vi.stubGlobal(
+      "fetch",
+      async (input: unknown, init?: { method?: string; body?: string }) => {
+        const url = String(input);
+        if (init?.method === "POST" && url.includes("/api/ops")) {
+          const body = JSON.parse(init.body ?? "{}") as {
+            options?: { requestId?: string };
+          };
+          submittedRequestId = body.options?.requestId ?? "";
+          return json(
+            { accepted: true, status: "queued", requestId: submittedRequestId },
+            202
+          );
+        }
+        throw new Error("socket closed");
+      }
+    );
+
+    const r = (await client().executeOps([{ op: "X" }])) as Record<string, unknown>;
+    expect(r).toMatchObject({
+      terminalState: "uncertain",
+      dispatchState: "uncertain",
+      requestId: submittedRequestId,
+    });
+    expect(String(r.error)).toContain("may still be running or may already have applied");
   });
 });
 

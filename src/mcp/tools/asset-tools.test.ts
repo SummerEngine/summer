@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const executeOpsMock = vi.hoisted(() => vi.fn());
+const executeIdentityBoundOpsMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../../lib/auth.js", () => ({
   getAuthToken: vi.fn(async () => "test-token"),
@@ -9,6 +10,7 @@ vi.mock("../../lib/auth.js", () => ({
 vi.mock("../server.js", () => ({
   getClient: vi.fn(async () => ({
     executeOps: executeOpsMock,
+    executeIdentityBoundOps: executeIdentityBoundOpsMock,
   })),
 }));
 
@@ -53,6 +55,7 @@ const realFetch = globalThis.fetch;
 beforeEach(() => {
   globalThis.fetch = vi.fn() as any;
   executeOpsMock.mockReset();
+  executeIdentityBoundOpsMock.mockReset();
 });
 
 afterEach(() => {
@@ -149,6 +152,7 @@ describe("registerAssetTools", () => {
     }));
     globalThis.fetch = fetchMock as any;
     executeOpsMock.mockResolvedValue({ results: [{ ok: true }] });
+    executeIdentityBoundOpsMock.mockResolvedValue({ results: [{ ok: true }, { ok: true }] });
 
     const { server, tools } = createFakeServer();
     registerAssetTools(server as any);
@@ -156,6 +160,7 @@ describe("registerAssetTools", () => {
     const result = await getTool(tools, "summer_import_asset_by_id").handler({
       assetId: "asset-1",
       parent: "./World/Props",
+      scenePath: "res://main.tscn",
       name: "HeroSword",
     });
 
@@ -166,14 +171,18 @@ describe("registerAssetTools", () => {
         path: "res://assets/models/iron_sword.glb",
       },
     ]);
-    expect(executeOpsMock).toHaveBeenCalledWith([
-      {
-        op: "InstantiateScene",
-        parent: "./World/Props",
-        scene: "res://assets/models/iron_sword.glb",
-        name: "HeroSword",
-      },
-    ]);
+    expect(executeIdentityBoundOpsMock).toHaveBeenCalledWith(
+      [
+        {
+          op: "InstantiateScene",
+          parent: "./World/Props",
+          scene: "res://assets/models/iron_sword.glb",
+          name: "HeroSword",
+        },
+        { op: "SaveScene" },
+      ],
+      { scenePath: "res://main.tscn" },
+    );
 
     expect(parseResult(result)).toMatchObject({
       success: true,

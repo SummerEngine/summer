@@ -3,6 +3,35 @@ import { z } from "zod";
 import { withEngine } from "./with-engine.js";
 import { readFile } from "fs/promises";
 import { join } from "path";
+import type { EngineApiClient } from "../../lib/api-client.js";
+
+function sceneMutationOps(ops: Record<string, unknown>[]): Record<string, unknown>[] {
+  const saveIndexes = ops
+    .map((op, index) => op.op === "SaveScene" ? index : -1)
+    .filter((index) => index >= 0);
+  if (saveIndexes.length > 1) {
+    throw new Error("A scene mutation batch may contain only one SaveScene");
+  }
+  if (saveIndexes.length === 1) {
+    if (saveIndexes[0] !== ops.length - 1) {
+      throw new Error("SaveScene must be the final operation in a scene mutation batch");
+    }
+    return ops;
+  }
+  return [...ops, { op: "SaveScene" }];
+}
+
+function executeSceneMutation(
+  client: EngineApiClient,
+  scenePath: string,
+  ops: Record<string, unknown>[],
+  options?: Record<string, unknown>,
+): Promise<unknown> {
+  return client.executeIdentityBoundOps(sceneMutationOps(ops), {
+    ...(options ?? {}),
+    scenePath,
+  });
+}
 
 async function readMainSceneFromProject(projectPath?: string): Promise<string | null> {
   if (!projectPath) return null;
@@ -13,6 +42,22 @@ async function readMainSceneFromProject(projectPath?: string): Promise<string | 
   } catch {
     return null;
   }
+}
+
+function requireSuccessfulOps(result: unknown, context: string): Record<string, unknown> {
+  const receipt = (result ?? {}) as Record<string, unknown>;
+  const results = Array.isArray(receipt.results)
+    ? receipt.results as Array<Record<string, unknown>>
+    : [];
+  const failed = results.find((entry) => entry?.ok === false);
+  if (receipt.status === "error" || failed) {
+    const error =
+      (typeof failed?.error === "string" && failed.error) ||
+      (typeof receipt.error === "string" && receipt.error) ||
+      `${context} failed`;
+    throw new Error(error);
+  }
+  return receipt;
 }
 
 export function registerSceneTools(server: McpServer): void {
@@ -60,7 +105,7 @@ Recommended workflow:
         }
 
         await client.executeOps([{ op: "OpenScene", path: templateScene }]);
-        const tree = (await client.getSceneState()) as {
+        const tree = (await client.getSceneState(templateScene)) as {
           data?: { children?: Array<{ path?: string }> };
           children?: Array<{ path?: string }>;
         };
@@ -72,15 +117,23 @@ Recommended workflow:
           .filter((p): p is string => typeof p === "string" && p.length > 0)
           .map((p) => ({ op: "RemoveNode", path: `./${p}` }));
 
-        if (removeOps.length > 0) {
-          await client.executeOps(removeOps, { groupUndo: true });
-        }
-
-        await client.executeOps([{ op: "SetProp", path: ".", key: "name", value: rootName }]);
-        await client.executeOps([{ op: "SaveScene", path }]);
+        const createOps = [
+          ...removeOps,
+          { op: "SetProp", path: ".", key: "name", value: rootName },
+          { op: "SaveScene", path },
+        ];
+        const createReceipt = requireSuccessfulOps(
+          await executeSceneMutation(client, templateScene, createOps, {
+            groupUndo: true,
+          }),
+          `Creating ${path}`,
+        );
 
         if (currentScene && currentScene !== path) {
-          await client.executeOps([{ op: "OpenScene", path: currentScene }]);
+          requireSuccessfulOps(
+            await client.executeOps([{ op: "OpenScene", path: currentScene }]),
+            `Restoring ${currentScene}`,
+          );
         }
 
         return {
@@ -89,6 +142,7 @@ Recommended workflow:
           rootName,
           templateScene,
           restoredScene: currentScene,
+          receipt: createReceipt,
         };
       })
   );
@@ -97,10 +151,8 @@ Recommended workflow:
     "summer_add_node",
     `Add a new node to the scene tree.
 
-Preflight (fresh chat):
-1) summer_get_project_context
-2) summer_open_main_scene (if no scene open)
-3) summer_get_scene_tree
+Pass the exact res:// scenePath to mutate. The scene does not need to be the
+active editor tab.
 
 Common node types:
 - 3D: Node3D, MeshInstance3D, CharacterBody3D, RigidBody3D, StaticBody3D, Camera3D, DirectionalLight3D, OmniLight3D, SpotLight3D, WorldEnvironment, CollisionShape3D, Area3D
@@ -110,13 +162,14 @@ Common node types:
 
 The parent path uses "./" prefix for relative paths from scene root. E.g., "./World" means the "World" child of the root node.`,
     {
+      scenePath: z.string().describe("Target scene path, e.g. 'res://main.tscn'"),
       parent: z.string().describe("Parent node path, e.g. './World' or './World/Enemies'"),
       type: z.string().describe("Godot node type, e.g. 'MeshInstance3D', 'CharacterBody3D'"),
       name: z.string().describe("Name for the new node, e.g. 'Player', 'MainCamera'"),
     },
-    async ({ parent, type, name }) =>
+    async ({ scenePath, parent, type, name }) =>
       withEngine(async (client) =>
-        client.executeOps([{ op: "AddNode", parent, type, name }])
+        executeSceneMutation(client, scenePath, [{ op: "AddNode", parent, type, name }])
       )
   );
 
@@ -144,15 +197,16 @@ COMMON PROPERTIES:
 - light_energy: 1.5 — light intensity
 - fov: 75.0 — camera field of view`,
     {
+      scenePath: z.string().describe("Target scene path, e.g. 'res://main.tscn'"),
       path: z.string().describe("Node path, e.g. './World/Player'"),
       key: z.string().describe("Property name, e.g. 'position', 'mesh', 'visible'"),
       value: z.union([z.string(), z.number(), z.boolean()]).describe(
         "Value in Godot string format for complex types, native JSON for primitives"
       ),
     },
-    async ({ path, key, value }) =>
+    async ({ scenePath, path, key, value }) =>
       withEngine(async (client) =>
-        client.executeOps([{ op: "SetProp", path, key, value }])
+        executeSceneMutation(client, scenePath, [{ op: "SetProp", path, key, value }])
       )
   );
 
@@ -165,14 +219,15 @@ Use when you need to modify a sub-property of a resource, like:
 - Material albedo color: nodePath="./Floor", resourceProperty="material_override", subProperty="albedo_color", value="Color(0.2, 0.5, 0.2, 1)"
 - Mesh size: nodePath="./Box", resourceProperty="mesh", subProperty="size", value="Vector3(2, 2, 2)"`,
     {
+      scenePath: z.string().describe("Target scene path, e.g. 'res://main.tscn'"),
       nodePath: z.string().describe("Node path, e.g. './Player/CollisionShape3D'"),
       resourceProperty: z.string().describe("Resource property on the node, e.g. 'shape', 'mesh', 'material_override'"),
       subProperty: z.string().describe("Property on the resource, e.g. 'size', 'radius', 'albedo_color'"),
       value: z.union([z.string(), z.number(), z.boolean()]).describe("Value in Godot string format"),
     },
-    async ({ nodePath, resourceProperty, subProperty, value }) =>
+    async ({ scenePath, nodePath, resourceProperty, subProperty, value }) =>
       withEngine(async (client) =>
-        client.executeOps([
+        executeSceneMutation(client, scenePath, [
           { op: "SetResourceProperty", nodePath, resourceProperty, subProperty, value },
         ])
       )
@@ -181,20 +236,26 @@ Use when you need to modify a sub-property of a resource, like:
   server.tool(
     "summer_remove_node",
     "Remove a node from the scene tree. All children are removed too. Cannot remove the root node. Supports undo. Destructive operation: do not delete multiple top-level nodes unless the user explicitly requests destructive changes.",
-    { path: z.string().describe("Node path to remove, e.g. './World/OldEnemy'") },
-    async ({ path }) =>
-      withEngine(async (client) => client.executeOps([{ op: "RemoveNode", path }]))
+    {
+      scenePath: z.string().describe("Target scene path, e.g. 'res://main.tscn'"),
+      path: z.string().describe("Node path to remove, e.g. './World/OldEnemy'"),
+    },
+    async ({ scenePath, path }) =>
+      withEngine(async (client) => executeSceneMutation(client, scenePath, [{ op: "RemoveNode", path }]))
   );
 
   server.tool(
     "summer_save_scene",
-    "Save the current scene to disk. Call this after making scene changes to persist them. Without saving, changes only exist in the editor's memory.",
-    { path: z.string().optional().describe("Save-as path for creating a new scene file, e.g. 'res://levels/level2.tscn'") },
-    async ({ path }) =>
+    "Save an explicit scene to disk. Mutation tools already append one save; use this for a standalone save or save-as.",
+    {
+      scenePath: z.string().describe("Scene to save, e.g. 'res://main.tscn'"),
+      path: z.string().optional().describe("Optional save-as path, e.g. 'res://levels/level2.tscn'"),
+    },
+    async ({ scenePath, path }) =>
       withEngine(async (client) => {
         const op: Record<string, unknown> = { op: "SaveScene" };
         if (path) op.path = path;
-        return client.executeOps([op]);
+        return executeSceneMutation(client, scenePath, [op]);
       })
   );
 
@@ -222,15 +283,16 @@ Do not guess paths. Prefer:
 
 The scene must already exist in the project. Use summer_import_from_url first if importing from external sources.`,
     {
+      scenePath: z.string().describe("Target scene to receive the instance, e.g. 'res://main.tscn'"),
       parent: z.string().describe("Parent node path, e.g. './World'"),
       scene: z.string().describe("Scene/model path, e.g. 'res://player.tscn' or 'res://models/tree.glb'"),
       name: z.string().optional().describe("Override the instance name"),
     },
-    async ({ parent, scene, name }) =>
+    async ({ scenePath, parent, scene, name }) =>
       withEngine(async (client) => {
         const op: Record<string, unknown> = { op: "InstantiateScene", parent, scene };
         if (name) op.name = name;
-        return client.executeOps([op]);
+        return executeSceneMutation(client, scenePath, [op]);
       })
   );
 
@@ -247,14 +309,15 @@ Common signals:
 
 The receiver node must have a script with the specified method.`,
     {
+      scenePath: z.string().describe("Target scene path, e.g. 'res://main.tscn'"),
       emitter: z.string().describe("Node that fires the signal, e.g. './Player/HitArea'"),
       signal: z.string().describe("Signal name, e.g. 'body_entered'"),
       receiver: z.string().describe("Node with the handler script, e.g. './Player'"),
       method: z.string().describe("Method name in the receiver's script, e.g. '_on_hit_area_body_entered'"),
     },
-    async ({ emitter, signal, receiver, method }) =>
+    async ({ scenePath, emitter, signal, receiver, method }) =>
       withEngine(async (client) =>
-        client.executeOps([
+        executeSceneMutation(client, scenePath, [
           { op: "ConnectSignal", emitter, signal, receiver, method },
         ])
       )
@@ -279,16 +342,17 @@ The receiver node must have a script with the specified method.`,
     "summer_replace_node",
     "Replace a node with a different type or scene, preserving its position in the tree and its children. Useful for changing a StaticBody3D to a RigidBody3D, or swapping a placeholder with a proper prefab.",
     {
+      scenePath: z.string().describe("Target scene path, e.g. 'res://main.tscn'"),
       path: z.string().describe("Node path to replace"),
       type: z.string().optional().describe("New node type, e.g. 'RigidBody3D'"),
       scene: z.string().optional().describe("Scene to replace with, e.g. 'res://enemies/boss.tscn'"),
     },
-    async ({ path, type, scene }) =>
+    async ({ scenePath, path, type, scene }) =>
       withEngine(async (client) => {
         const op: Record<string, unknown> = { op: "ReplaceNode", path };
         if (type) op.type = type;
         if (scene) op.scene = scene;
-        return client.executeOps([op]);
+        return executeSceneMutation(client, scenePath, [op]);
       })
   );
 
@@ -332,13 +396,43 @@ Each op in the array uses the same format as the individual tools:
 
 RAW RUNTIME OPS (interactive verification — engine-build dependent; structured failure_reason incl "unsupported" passes through verbatim):
 - SimulateInput — drive the RUNNING game (summer_play first): {"op": "SimulateInput", "type": "action", "action": "jump", "pressed": true}. type is "action" | "key" | "mouse_click" | "axis".
-- RunVerification — spawn a hidden, disposable game instance that runs a GDScript probe and dies (never touches the editor): {"op": "RunVerification", "probe_source": "extends SummerProbeBase\\nfunc _ready(): await super._ready(); report('ok', true); finish()", "max_seconds": 20}. Returns {ok, results, frames, out_dir}. Probe API: report()/save_frame()/press()/key()/finish().`,
+- RunVerification — spawn a hidden, disposable game instance that runs a GDScript probe and dies (never touches the editor): {"op": "RunVerification", "probe_source": "extends SummerProbeBase\\nfunc _ready(): await super._ready(); report('ok', true); finish()", "max_seconds": 20}. Returns {ok, results, frames, out_dir}. Probe API: report()/save_frame()/press()/key()/finish().
+
+Do not mix OpenScene with scene mutations in one batch. OpenScene is a UI action;
+send it separately. scenePath selects every mutation target. The tool appends one
+final SaveScene when the batch mutates a scene; if supplied explicitly, SaveScene
+must appear exactly once and be the final operation.`,
     {
+      scenePath: z.string().optional().describe(
+        "Required when ops contains scene mutations; exact res:// target scene path",
+      ),
       ops: z.array(z.record(z.unknown())).describe("Array of operation objects, each with 'op' plus its parameters"),
     },
-    async ({ ops }) =>
-      withEngine(async (client) =>
-        client.executeOps(ops as Record<string, unknown>[], { groupUndo: true })
-      )
+    async ({ scenePath, ops }) =>
+      withEngine(async (client) => {
+        const rawFileMutation = ops.find((op) => {
+          const kind = String(op.op ?? "");
+          return kind === "WriteFile" || kind === "ReplaceText";
+        });
+        if (rawFileMutation) {
+          throw new Error(
+            `summer_batch does not accept raw ${String(rawFileMutation.op)} operations. ` +
+            "Use summer_write_file or summer_replace_text so project identity, content guards, and same-file ordering are enforced."
+          );
+        }
+        const sceneMutations = new Set([
+          "AddNode", "RemoveNode", "MoveNode", "ReparentNode", "ReplaceNode",
+          "SetProp", "SetResourceProperty", "ConnectSignal", "DisconnectSignal",
+          "InstantiateScene", "SaveScene", "Undo",
+        ]);
+        const needsScenePath = ops.some((op) => sceneMutations.has(String(op.op ?? "")));
+        if (needsScenePath && !scenePath) {
+          throw new Error("summer_batch requires scenePath when ops contains scene mutations");
+        }
+        const options = { groupUndo: true, ...(scenePath ? { scenePath } : {}) };
+        return needsScenePath
+          ? executeSceneMutation(client, scenePath!, ops as Record<string, unknown>[], options)
+          : client.executeOps(ops as Record<string, unknown>[], options);
+      })
   );
 }

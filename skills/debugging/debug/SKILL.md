@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode]
 category: debugging
 user-invocable: true
-allowed-tools: Read Edit Grep summer_get_diagnostics summer_get_script_errors summer_get_console summer_clear_console summer_get_debugger_errors summer_play summer_stop summer_is_running summer_inspect_node summer_inspect_resource summer_get_scene_tree
+allowed-tools: Read Edit Grep summer_create_debug_report summer_get_diagnostics summer_get_script_errors summer_get_console summer_clear_console summer_get_debugger_errors summer_play summer_stop summer_is_running summer_inspect_node summer_inspect_resource summer_get_scene_tree
 paths: ["**/*.gd", "**/*.cs", "**/*.tscn", "**/*.tres", "project.godot"]
 ---
 
@@ -18,6 +18,7 @@ The disciplined debugging loop for Godot/Summer projects. Read the error before 
 ## When to use this skill
 
 - The user says "it crashes", "it broke", "throws an error", "doesn't work", "freezes", "wrong behavior".
+- The user invokes `/summer debug`, asks for a support report, or wants something they can send to Summer.
 - The user pastes a stack trace.
 - A previous build or test step failed and the user wants to fix it.
 
@@ -34,6 +35,27 @@ The disciplined debugging loop for Godot/Summer projects. Read the error before 
 ```
 
 Do not skip steps. Do not loop back to "Hypothesize" without re-running the cheap diagnostic.
+
+### 0. Support report mode
+
+If the user asks for `/summer debug`, "send this to Summer", "make a report", or they are stuck in Codex/cloud/another agent environment, create a portable report first:
+
+```
+summer_create_debug_report({
+  issue: "<one-sentence user symptom>",
+  include_play_session: <true only when the issue appears during runtime>
+})
+```
+
+Tell the user where the Markdown file was written and remind them to review local paths and stack traces before sending. Then continue the normal debug loop only if they also asked you to fix the bug.
+
+Fallback when the MCP tool is not available but shell is available:
+
+```
+summer debug "<one-sentence user symptom>"
+```
+
+Add `--play` only when the issue appears after pressing Play.
 
 ### 1. Listen
 

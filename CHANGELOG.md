@@ -2,6 +2,36 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [2.7.0] — 2026-07-24 — "Reliable project mutations"
+
+### Added
+- `summer_read_file`, `summer_write_file`, and `summer_replace_text` expose engine-routed project file access, including `.tscn` and `.tres`. New files require `create_only:true`; overwrites require an engine sha256 receipt.
+- File mutations fail closed unless the MCP client has a complete engine/project identity and use the bound project hash even if caller options attempt to override it.
+
+### Changed
+- Agent playbooks now route project file mutations through Summer MCP instead of recommending host writes that bypass identity, content guards, and editor reload handling.
+- Scene mutation tools require an explicit `scenePath`; the target scene does not need to be the visible editor tab.
+- `summer_open_scene` is navigation only and no longer acts as implicit mutation targeting.
+- Dedicated scene mutations and mutation batches append one final `SaveScene` at the transaction boundary.
+- Agent guidance no longer claims that routine scene edits require stopping the running game.
+
+### Fixed
+- Bridge/project identity rejections now return one correlated `not_sent`
+  terminal, allowing the web harness to retry safely instead of waiting for a
+  mutation receipt that cannot exist.
+- Same-file MCP mutations now serialize the complete read-to-write transaction,
+  preventing concurrent replacements from racing on a stale file preimage.
+- Accepted engine operations preserve their request identity and report whether
+  they are still queued, still running, or uncertain instead of claiming that
+  nothing was applied after a client wait deadline.
+- `summer_batch` no longer permits raw file mutations that bypass the guarded
+  `summer_write_file` and `summer_replace_text` tools.
+- Scene operations return target/persistence evidence and concrete dependency errors instead of relying on ambient open-scene state.
+- Asset placement reports success only after both the import and explicit target-scene mutation are confirmed.
+
+### Limitations
+- The package cannot intercept an external agent's native filesystem tools. A host can still mutate files outside MCP, and a non-atomic external write can race the engine between validation and write; those cases remain technically unenforceable.
+
 ## [2.6.6] — 2026-07-15 — "Project-bound engine requests"
 
 ### Fixed

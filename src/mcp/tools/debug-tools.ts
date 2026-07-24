@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { withEngine } from "./with-engine.js";
 import { shapeEngineLogResponse } from "../../lib/log-filters.js";
+import { createDebugReportArtifact } from "../../lib/debug-report.js";
 
 export function registerDebugTools(server: McpServer): void {
   server.tool(
@@ -129,7 +130,7 @@ You can run a specific scene instead of the main scene — useful for testing in
 
   server.tool(
     "summer_stop",
-    "Stop the running game. Call this before making scene changes — some operations require the game to not be running.",
+    "Stop the running game. Use after runtime verification or when you intentionally need to restart the running instance; ordinary editor scene mutations do not require a blanket stop.",
     {},
     async () => withEngine(async (client) => client.stop())
   );
@@ -152,5 +153,67 @@ Use after writing or editing a .gd file to verify it compiles. Returns line numb
     },
     async ({ path }) =>
       withEngine(async (client) => client.getScriptErrors(path))
+  );
+
+  server.tool(
+    "summer_create_debug_report",
+    `Create a support-ready Markdown report for /summer debug.
+
+Use this when the user says "/summer debug", asks to send Summer a bug report,
+or needs a portable artifact from a failing Codex/cloud/agent session. The
+report includes Summer doctor checks, engine health, diagnostics, console
+output, debugger errors/warnings, and an agent handoff prompt. It omits auth
+tokens and project file contents, but the user should still review it before
+sending because local paths and stack traces may appear.`,
+    {
+      issue: z.string().optional().describe("User-visible issue or repro summary."),
+      output_path: z.string().optional().describe("Where to write the Markdown report. Defaults to the open project root, or the current working directory if no project is open."),
+      include_play_session: z.boolean().optional().default(false).describe("Launch the game briefly and collect post-play diagnostics."),
+      play_wait_ms: z.number().optional().default(2500).describe("Milliseconds to wait after launching the game when include_play_session is true."),
+      max_console_lines: z.number().optional().default(200).describe("Console lines to include after filtering/deduping."),
+      max_debugger_entries: z.number().optional().default(100).describe("Debugger error/warning entries to include after filtering/deduping."),
+      include_doctor: z.boolean().optional().default(true).describe("Include summer doctor checks in the report."),
+    },
+    async ({
+      issue,
+      output_path,
+      include_play_session,
+      play_wait_ms,
+      max_console_lines,
+      max_debugger_entries,
+      include_doctor,
+    }) => {
+      const artifact = await createDebugReportArtifact({
+        issue,
+        outputPath: output_path,
+        includePlaySession: include_play_session,
+        playWaitMs: play_wait_ms,
+        maxConsoleLines: max_console_lines,
+        maxDebuggerEntries: max_debugger_entries,
+        includeDoctor: include_doctor,
+      });
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                ok: true,
+                path: artifact.path,
+                engineConnected: artifact.report.engine.connected,
+                generatedAt: artifact.report.generatedAt,
+                issue: artifact.report.issue,
+                doctorSummary: artifact.report.doctor?.summary ?? null,
+                reviewNote:
+                  "Report omits auth tokens, but the user should review local paths and stack traces before sending.",
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    }
   );
 }

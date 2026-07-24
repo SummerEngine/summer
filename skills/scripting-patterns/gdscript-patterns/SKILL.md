@@ -145,6 +145,6 @@ Note the field name difference too: `LabelSettings.outline_color` (Label 2D) vs 
 
 ## Scene Integration
 
-When the AI adds a node with Summer MCP tools and attaches a script, the script path is set via `summer_set_prop(path, "script", "res://path/to/script.gd")`. The script file must exist first. Create or edit `.gd` files with the host agent's normal file-editing tools, then use Summer MCP only to attach the script and connect scene signals.
+When the AI adds a node with Summer MCP tools and attaches a script, the script path is set via `summer_set_prop(path, "script", "res://path/to/script.gd")`. The script file must exist first. Create it with guarded `summer_write_file` or edit it with `summer_replace_text`, then attach the script and connect scene signals.
 
 For signal connections, the receiver must have the handler method. Create the script with the method stub before calling `summer_connect_signal`.

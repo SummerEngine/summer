@@ -7,23 +7,26 @@ import { registerDebugTools } from "./tools/debug-tools.js";
 import { registerVisualTools } from "./tools/visual-tools.js";
 import { WITH_ENGINE_META, type WithEngineMeta } from "./tools/with-engine.js";
 import { registerProjectTools } from "./tools/project-tools.js";
+import { registerFileTools } from "./tools/file-tools.js";
 import { registerAssetTools } from "./tools/asset-tools.js";
 import { registerGenerateTools } from "./tools/generate-tools.js";
 import { registerCloudTools } from "./tools/cloud-tools.js";
 import {
+  getCachedBootDriftNotice as getCachedNotice,
+  setCachedBootDriftNotice,
+} from "../lib/mcp-boot-notice.js";
+import { appendMcpLogEvent } from "../lib/mcp-log.js";
+import {
   buildBootDriftNotice,
   fetchLatestRegistryVersion,
-  type BootDriftNotice,
 } from "../lib/version-check.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../../package.json");
 
-let cachedBootDriftNotice: BootDriftNotice | null = null;
+let processDiagnosticsInstalled = false;
 
-export function getCachedBootDriftNotice(): BootDriftNotice | null {
-  return cachedBootDriftNotice;
-}
+export const getCachedBootDriftNotice = getCachedNotice;
 
 /**
  * Fire-and-forget probe of the npm registry on MCP boot. Caches the result for
@@ -35,7 +38,7 @@ async function probeBootDrift(): Promise<void> {
   const registry = await fetchLatestRegistryVersion();
   // Agent is unknown at the MCP layer; use a generic placeholder. Doctor still
   // prescribes the correct agent-aware command via setup recommendations.
-  cachedBootDriftNotice = buildBootDriftNotice(version, registry);
+  setCachedBootDriftNotice(buildBootDriftNotice(version, registry));
 }
 
 let cachedClient: EngineApiClient | null = null;
@@ -82,10 +85,65 @@ export function resetClient(): void {
  * out to produce pathological payloads in practice, the right fix is
  * adding range/depth/filter parameters to that tool — not a blanket cap.
  */
+function errorDetails(error: unknown): Record<string, unknown> {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    };
+  }
+  return { message: String(error) };
+}
+
+function writeMcpStderr(event: string, details: Record<string, unknown> = {}): void {
+  process.stderr.write(`[summer-mcp] ${JSON.stringify({ event, ...details })}\n`);
+}
+
+function installMcpProcessDiagnostics(): void {
+  if (processDiagnosticsInstalled) return;
+  processDiagnosticsInstalled = true;
+
+  process.once("uncaughtException", (error) => {
+    const details = errorDetails(error);
+    appendMcpLogEvent("mcp:uncaught_exception", details);
+    writeMcpStderr("mcp:uncaught_exception", {
+      message: details.message,
+      log: "~/.summer/mcp.log",
+    });
+    process.exit(1);
+  });
+
+  process.once("unhandledRejection", (reason) => {
+    const details = errorDetails(reason);
+    appendMcpLogEvent("mcp:unhandled_rejection", details);
+    writeMcpStderr("mcp:unhandled_rejection", {
+      message: details.message,
+      log: "~/.summer/mcp.log",
+    });
+    process.exit(1);
+  });
+
+  process.once("SIGTERM", () => {
+    appendMcpLogEvent("mcp:sigterm", { pid: process.pid });
+    process.exit(0);
+  });
+
+  process.once("SIGINT", () => {
+    appendMcpLogEvent("mcp:sigint", { pid: process.pid });
+    process.exit(0);
+  });
+
+  process.once("exit", (code) => {
+    appendMcpLogEvent("mcp:exit", { pid: process.pid, code });
+  });
+}
+
 function installResultSizeLogger(server: {
   tool: (...args: unknown[]) => unknown;
-}): void {
+}): () => number {
   const original = server.tool.bind(server);
+  let registeredToolCount = 0;
   server.tool = function patchedTool(...args: unknown[]) {
     if (args.length < 2) return original(...args);
     const name = args[0];
@@ -94,6 +152,7 @@ function installResultSizeLogger(server: {
     const lastIdx = args.length - 1;
     const handler = args[lastIdx];
     if (typeof handler !== "function") return original(...args);
+    registeredToolCount += 1;
 
     const wrapped = async (...handlerArgs: unknown[]) => {
       const startedAt = Date.now();
@@ -158,6 +217,11 @@ function installResultSizeLogger(server: {
               chars,
               bytes,
             });
+            appendMcpLogEvent("mcp:result_size", {
+              toolName: name,
+              chars,
+              bytes,
+            });
             process.stderr.write(`[summer-mcp] ${line}\n`);
           }
         }
@@ -171,9 +235,18 @@ function installResultSizeLogger(server: {
     newArgs[lastIdx] = wrapped;
     return original(...newArgs);
   } as typeof server.tool;
+  return () => registeredToolCount;
 }
 
 export async function startMcpServer(): Promise<void> {
+  installMcpProcessDiagnostics();
+  appendMcpLogEvent("mcp:start", {
+    version,
+    pid: process.pid,
+    node: process.version,
+    cwd: process.cwd(),
+  });
+
   const server = new McpServer({
     name: "summer-engine",
     version,
@@ -181,7 +254,7 @@ export async function startMcpServer(): Promise<void> {
 
   // Passive observability: log result-size to stderr but do not modify
   // results. See installResultSizeLogger above.
-  installResultSizeLogger(
+  const getRegisteredToolCount = installResultSizeLogger(
     server as unknown as { tool: (...args: unknown[]) => unknown }
   );
 
@@ -189,14 +262,23 @@ export async function startMcpServer(): Promise<void> {
   registerDebugTools(server);
   registerVisualTools(server);
   registerProjectTools(server);
+  registerFileTools(server);
   registerAssetTools(server);
   registerGenerateTools(server);
   registerCloudTools(server);
 
   // Fire-and-forget — never block tool registration on the npm registry.
-  void probeBootDrift();
+  void probeBootDrift().catch((error) => {
+    setCachedBootDriftNotice(null);
+    appendMcpLogEvent("mcp:boot_drift_probe_failed", errorDetails(error));
+  });
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
+  appendMcpLogEvent("mcp:ready", {
+    version,
+    pid: process.pid,
+    toolCount: getRegisteredToolCount(),
+  });
   process.stderr.write(`[summer-mcp] MCP server running v${version}.\n`);
 }

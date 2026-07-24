@@ -146,21 +146,21 @@ Compose the 1-page brief. Format:
 
 ### 9. Ask permission and write
 
-**Preferred (Summer MCP + host file write):**
+**Preferred (Summer MCP):**
 
 > May I create `.summer/GameSoul.md` with this brief?
 
-On yes, use `Write` (host file tool) — `.summer/GameSoul.md` is plain markdown, no engine import needed:
+On yes, use guarded `summer_write_file` — `.summer/GameSoul.md` is plain markdown but still belongs to the bound project:
 
 ```
-Write .summer/GameSoul.md
+summer_write_file path="res://.summer/GameSoul.md" create_only=true content="<brief>"
 ```
 
 If `.summer/GameSoul.md` already exists, read it first, show what would change, ask:
 
 > `.summer/GameSoul.md` already exists. May I overwrite it, or merge into a "Revision 2" section below the existing brief?
 
-**Fallback (no host write tool — agent is read-only):**
+**Fallback (Summer MCP unavailable — agent is read-only):**
 
 Print the full brief to the user with the explicit instruction:
 

@@ -36,7 +36,7 @@ If `CLAUDE.md` says "skip the brainstorm, just build it" and a skill says "alway
 Two layers:
 
 - **Skills** — discipline guides that fire on specific situations: brainstorming a game, designing a mechanic, building an FPS controller, debugging a crash, shipping a build. Each one is a SKILL.md you load via the Skill tool.
-- **MCP tools** — `summer_*` tools that talk to the running Summer Engine on `localhost:6550`. Scene mutation (`summer_add_node`, `summer_set_prop`), inspection (`summer_get_scene_tree`, `summer_inspect_node`), play/diagnostics (`summer_play`, `summer_get_diagnostics`), asset import/generation (`summer_import_from_url`, `summer_generate_3d`), and 30+ more.
+- **MCP tools** — `summer_*` tools that talk to the running Summer Engine on `localhost:6550`. Scene mutation (`summer_add_node`, `summer_set_prop`), inspection (`summer_get_scene_tree`, `summer_inspect_node`), play/diagnostics (`summer_play`, `summer_get_diagnostics`), asset import/generation (`summer_import_from_url`, `summer_generate_3d`), whole-project sync to Summer Cloud (`summer_cloud_push`, `summer_cloud_pull`; see `summer:summer-cloud`), and 30+ more.
 
 **Scripting language:** Summer Engine is compatible with Godot 4.5. You can write game code in either:
 
@@ -90,6 +90,7 @@ These thoughts mean STOP. Check skills first.
 | "I'll write the GDScript myself, no skill" | `gdscript-patterns` encodes idioms that Claude/Codex/Cursor regularly get wrong (signal connection, type hints, `_ready` vs `_process`). |
 | "The engine isn't running, I'll just edit files" | Editing scene files directly while the engine is running silently overwrites in-memory state. Check the skill. |
 | "I remember this skill" | Skills evolve. Re-read the current version. |
+| "I'll just zip the project to move it to another machine" | `summer:summer-cloud` syncs the whole project (big assets included) by hash, with restorable versions. Load it whenever the user mentions sync, a second machine, sharing with a teammate, backing up assets, or restoring a version. |
 
 ## Skill Priority
 
@@ -127,6 +128,24 @@ If skills aren't found or the MCP server fails to start:
 1. Check whether `summer` is on PATH: `which summer` / `where summer`.
 2. If not, point them at: `npx -y summer-engine@latest setup <agent> --yes --force`.
 3. If `summer doctor` is available, run it: `summer doctor` reports auth, engine, port, project memory, and skill state.
+
+## When Summer Is Stale
+
+Run `summer doctor` early in a fresh Summer session when setup, MCP tools, slash commands, or skills behave oddly. If doctor reports `cli-version-current` or `skills-version-stale` as warning/fail, refresh before continuing:
+
+```
+npx clear-npx-cache && npx -y summer-engine@latest setup <agent> --yes --force
+```
+
+Use the real agent slug from doctor or the current environment (`claude-code`, `codex`, `cursor`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, etc.).
+
+Why this exact command matters:
+
+- `@latest` forces npm/npx to resolve the current published Summer CLI instead of reusing a stale cached package.
+- `clear-npx-cache` clears old npx package material on machines that keep serving an older Summer.
+- `setup ... --force` rewrites copied skill/slash-command files, which do not update just because the MCP server restarted.
+
+After the refresh, restart or reload the agent/MCP session if tools were missing. MCP tool changes load on MCP reconnect; copied skills and slash commands load when the agent notices the rewritten files or starts a fresh session.
 
 ## User Instructions Trump Everything
 

@@ -7,6 +7,7 @@ import {
   VERIFICATION_LEVELS,
   buildGameTaskPlan,
 } from "../../lib/game-task-plan.js";
+import { getCachedBootDriftNotice } from "../../lib/mcp-boot-notice.js";
 import { getProjectMemorySummary } from "../../lib/project-memory.js";
 import { withEngine } from "./with-engine.js";
 
@@ -180,18 +181,19 @@ anti-patterns, and recovery steps.`,
           type: "text" as const,
           text: JSON.stringify(
             {
+              summerUpdateNotice: getCachedBootDriftNotice()?.text ?? null,
               startupChecklist: [
                 "Understand the request and outline a brief plan before reaching for tools.",
-                "Default medium is host file tools: write/edit .gd/.cs/.tscn/.tres/.json/docs/config directly as text.",
-                "Use Summer MCP only when you need the LIVE engine: play/stop, diagnostics, screenshots/verification, navmesh or light bake, runtime inspect, or asset import.",
+                "Use summer_read_file, summer_write_file, and summer_replace_text for project text files so reads and guarded writes stay bound to the open engine project.",
+                "Use Summer MCP for project mutations and live-engine work: scenes, resources, play/stop, diagnostics, screenshots/verification, bake, runtime inspection, and asset import.",
                 "Call summer_get_project_context first so you do not guess scene paths or the project language. It also BINDS this session to the currently-open project (see projectBinding below).",
                 "Use projectMemory from summer_get_project_context to decide which .summer Markdown files to read before creative/audio/dialogue/level/character work.",
                 "After writing code, VERIFY through the engine (see verificationLadder) instead of waiting for the user to navigate to it.",
               ],
               safeDefaults: [
                 "Never guess scene filenames (main.tscn/Main.tscn) -- get them from summer_get_project_context.",
-                "Edit files (including .tscn/.tres) with host file tools by default. Reach for MCP scene-ops only for live-engine needs (bake, play, runtime inspect) or when you want the editor to manage node ids / instancing.",
-                "If you hand-edit a .tscn that is OPEN in the editor, reload it there afterward -- the editor's open tab can overwrite your file (clobber).",
+                "Use summer_replace_text for existing project text and summer_write_file with create_only:true for new files; overwrites require the sha256 from summer_read_file.",
+                "For live scene hierarchy and inspector changes, prefer scene tools. Guarded text writes support .tscn/.tres, and the engine schedules editor reloads after they land.",
                 "Write GDScript by default; use C# only if the project already uses it.",
                 "Never remove multiple top-level nodes unless the user explicitly requests destructive edits.",
                 "Never change priority: locked .summer memory, voice IDs, canon, or provider bindings without explicit user confirmation.",
@@ -199,7 +201,7 @@ anti-patterns, and recovery steps.`,
               buildFlow: [
                 "1. Understand what the user wants (one pass, no tool spelunking first).",
                 "2. Outline the plan fast and briefly; proceed once it is clearly right.",
-                "3. Execute in pure code -- edit .gd/.tscn/.tres as text (GDScript by default, C# only if the project already uses it).",
+                "3. Execute through identity-bound MCP mutations -- guarded text tools for files, scene tools for live hierarchy/inspector work (GDScript by default, C# only if the project already uses it).",
                 "4. Verify through the engine using the verificationLadder below, fix, and repeat until it launches clean.",
               ],
               // The MCP-native verification ladder. Climb only as high as the
@@ -218,11 +220,10 @@ anti-patterns, and recovery steps.`,
                 ],
                 "3_runs": [
                   "Compose the run-and-check yourself — there is no single 'verify' tool:",
-                  "summer_clear_console  -> clean slate",
                   "summer_play [scene]   -> boot the game (or a specific scene)",
                   "summer_get_debugger_errors  -> runtime errors (null refs, missing nodes, physics)",
                   "summer_screenshot target:'game'  -> optional visual of the live frame",
-                  "summer_stop  -> ALWAYS stop; scene mutations are refused while the game runs",
+                  "summer_stop  -> stop when runtime verification is finished; editor scene mutations are not categorically blocked by a running game, but an existing game instance may need a restart to observe them",
                 ],
                 "4_interactive": [
                   "To prove input-driven behavior (does jump/move/shoot actually work), you have two routes when the engine build supports them (both go through summer_batch as raw ops — see rawOpsViaBatch):",
@@ -250,12 +251,12 @@ anti-patterns, and recovery steps.`,
                 "To intentionally follow the switch, call summer_get_project_context again to rebind, then retry.",
               ],
               liveEngineFlow: [
-                "Use this flow ONLY when you genuinely need live engine state (navmesh/light bake, instancing into an already-open scene, runtime inspect):",
+                "Use this flow when you genuinely need live engine state (navmesh/light bake, scene mutation, runtime inspect):",
                 "summer_get_project_context",
-                "summer_open_main_scene (if needed)",
-                "summer_get_scene_tree",
-                "summer_add_node / summer_set_prop / summer_set_resource_property",
-                "summer_save_scene",
+                "Choose the exact res:// scenePath. OpenScene is a user-visible tab action, not a mutation prerequisite.",
+                "summer_get_scene_tree with scenePath when that exact scene is already loaded; omit it only for the visible tab.",
+                "summer_add_node / summer_set_prop / summer_set_resource_property with scenePath",
+                "Mutation tools append one final SaveScene; use summer_save_scene only for a standalone save/save-as.",
                 "summer_get_diagnostics",
               ],
               // summer_batch forwards each {op, ...} verbatim to the engine, so
@@ -267,11 +268,12 @@ anti-patterns, and recovery steps.`,
                 "These are runtime ops, not scene mutations — the batch undo group is a harmless no-op for them.",
               ],
               recovery: [
-                "If you see 'no scene open': run summer_open_main_scene.",
+                "If a scene mutation reports missing_scene_path: pass the exact res:// scenePath and retry.",
+                "If a scene target cannot load: repair the named missing/invalid dependency, then retry the same scenePath.",
                 "If open_scene fails: re-check mainScene from summer_get_project_context.",
-                "If save fails: verify scene is open and game is not running (summer_is_running / summer_stop).",
+                "If save fails: use the returned scenePath/error to repair the exact cause. A running game alone is not a generic scene-mutation blocker.",
                 "If a mutation is rejected with identity_mismatch: the engine switched projects — call summer_get_project_context to rebind (only if you meant to follow it), then retry.",
-                "If a .tscn you wrote keeps reverting: the editor has that scene open -- reload or close the tab, then write again.",
+                "If a guarded file mutation is rejected with content mismatch: call summer_read_file again, review the new content, and retry with its new sha256 only if the edit is still valid.",
                 "If a run op or SimulateInput returns 'unsupported' / an unknown-op error: this engine build predates it — fall back to summer_play + summer_get_debugger_errors, or ask the user to interact.",
               ],
               debugging: [
@@ -329,11 +331,12 @@ Use this first in every fresh chat to avoid guessing scene filenames or editing 
           mainScene,
           boundProjectIdHash,
           projectMemory: getProjectMemorySummary(projectPath),
+          summerUpdateNotice: getCachedBootDriftNotice()?.text ?? null,
           guidance: mainScene
             ? "Use `summer_open_scene` with `mainScene` if no scene is open."
             : "Main scene not found in project state. Open a known scene path explicitly.",
           fileEditingGuidance:
-            "Edit files (including .gd/.cs/.tscn/.tres/.json/docs) with host file tools by default. Use MCP only for live engine state: play/stop, diagnostics, screenshots/verification, navmesh or light bake, runtime inspect, and asset import. If you edit a .tscn that is open in the editor, reload it there afterward so the editor's tab does not overwrite your changes.",
+            "Use summer_read_file plus summer_replace_text or guarded summer_write_file for project files, including .gd/.cs/.tscn/.tres/.json/docs. New files require create_only:true; overwrites require the sha256 receipt from summer_read_file. Prefer scene tools for live hierarchy/inspector changes.",
         };
       })
   );
@@ -404,12 +407,14 @@ Example: Bind jump to Space and W:
 
   server.tool(
     "summer_get_scene_tree",
-    `Get the full scene tree structure of the currently open scene.
-
-Use this before structural edits (add/remove/replace).
-If you get "no edited scene", call summer_open_main_scene first.`,
-    {},
-    async () => withEngine(async (client) => client.getSceneState())
+    `Get a scene tree. Pass scenePath to read that exact in-memory/open scene;
+omit it only when you intentionally want the currently visible editor scene.
+Scene mutations load their explicit target, so a follow-up targeted read does
+not require OpenScene.`,
+    {
+      scenePath: z.string().optional().describe("Exact res:// scene path to inspect"),
+    },
+    async ({ scenePath }) => withEngine(async (client) => client.getSceneState(scenePath))
   );
 
   server.tool(

@@ -41,6 +41,7 @@ When the user invokes `/summer`, you:
 | "/summer add ambient music" | `summer:audio/music-track` |
 | "/summer make me [a VFX effect]" | `summer:visual-effects/recipes/<closest>` (e.g., "make me fire" -> `recipes/fire`; "lightning" -> `recipes/lightning`; "muzzle flash" -> `recipes/muzzle-flash`; "smoke" -> `recipes/smoke`; "magic glow" -> `recipes/magic-glow`; "hit spark" -> `recipes/hit-spark`; "dissolve" -> `recipes/dissolve`; "water ripple" -> `recipes/water-ripple`) |
 | "/summer build the FPS controller" | `summer:character-controllers/fps-controller` |
+| "/summer debug" or "/summer debug [issue]" | `summer:debugging/debug` (support report mode first) |
 | "/summer the game crashes when [X]" | `summer:debugging/debug` |
 | "/summer add an animation to [character]" | `summer:animation/generate-motion` |
 | "/summer wire up a state machine for [character]" | `summer:animation/animation-tree` |

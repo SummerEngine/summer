@@ -8,6 +8,7 @@ User-invocable. The user types `/<name>` to trigger them. Each is a guided workf
 
 | Slash | What it does |
 |---|---|
+| `/summer debug` | Create a support-ready debug report, then optionally continue the debug loop |
 | `/debug` | Triage and fix a bug end-to-end |
 | `/play` | Run the game and report state |
 
@@ -71,8 +72,8 @@ Per-skill metadata:
 1. **Specialist skills:** narrow technical knowledge, auto-trigger via rich `description:`. Set `user-invocable: false`.
 2. **Workflow skills:** action-verb names (`/debug`, `/play`), open with one clarifying question, orchestrate specialists. Set `user-invocable: true`.
 3. SKILL.md <= 500 lines. Push detail into `references/`.
-4. Show MCP-preferred + file-edit-fallback in every code-touching skill.
-5. Teach the file-first rule for `.tscn`/`.tres`: edit text files directly for static scene/resource changes, and use MCP for live-engine work such as play, diagnostics, runtime inspection, navmesh/light bake, and asset import.
+4. Show Summer MCP-preferred + explicit offline/manual fallback in every code-touching skill.
+5. Teach identity-bound file mutation for `.tscn`/`.tres`: use `summer_read_file` plus guarded `summer_replace_text`/`summer_write_file`, and use scene tools for live hierarchy/inspector work.
 6. "May I write this change?" before any user-visible mutation. See `references/collaborative-protocol.md`.
 7. Every skill ships `tests/spec.md` with at least one Test Case. See `workflow/skill-test/SKILL.md`.
 

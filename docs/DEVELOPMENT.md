@@ -15,7 +15,7 @@ If you're an AI agent or developer with zero context, read this first.
 **Summer** (this repo) is the **open-source agent layer** for it. Three things in one Node.js package:
 
 1. **CLI tool**: lets users install, manage, and launch Summer Engine from their terminal
-2. **MCP server**: gives AI coding agents 52 tools the host can't do on its own (scene manipulation, play/stop, diagnostics, asset import/generation)
+2. **MCP server**: gives AI coding agents 56 tools, including identity-bound project files, scene manipulation, play/stop, diagnostics, and asset import/generation
 3. **Skills bundle**: the current SKILL.md playbooks that auto-trigger when the agent sees the right natural-language signal
 
 Plus lifecycle hooks, plugin manifests, and setup targets that wire all of the above into Claude Code, Cursor, Codex, Gemini, OpenCode, GitHub Copilot CLI, GitHub Copilot in VS Code, Cline, Roo Code, Factory Droid, and Devin Desktop (formerly Windsurf).
@@ -80,6 +80,8 @@ Copy rule: use "Summer agent layer" for this repo in prose, "`summer-engine` npm
 ### Two-repo workflow
 
 Development happens here in the engine monorepo (`tools/summer-cli/`). The public repo is synced on release:
+
+The engine mirror's `package.json` is intentionally marked `private: true`. That guard does not affect local installs, builds, tests, or source reconciliation, but it makes `npm publish` fail from this stale mirror. The public repository owns the reviewed, releasable package metadata. Never remove the guard as a shortcut to publish from the engine checkout.
 
 ```
 Engine repo (private)                Public repo (open source)
@@ -248,14 +250,14 @@ The CLI, the engine, and the web app are **completely independent products** wit
 | What changed | How to deploy | Where it goes |
 |---|---|---|
 | C++ code (ops, LocalApiServer, auth) | `scons` build -> release DMG/EXE per `doc/SUMMER/releases/` | Supabase storage, auto-updater |
-| CLI commands, MCP tools | `npm run build && npm publish` (see below) | npmjs.com as `summer-engine` |
+| CLI commands, MCP tools | Reconcile into the public repo, then follow its reviewed npm release runbook | npmjs.com as `summer-engine` |
 | Web auth routes, API | Deploy web repo (`publicsummerengine`) as usual | Vercel/your hosting |
 
 Changing the CLI does NOT require rebuilding the engine. Rebuilding the engine does NOT require republishing the CLI. The only time you touch both is when adding a new engine operation that needs a new MCP tool.
 
 ### Release Checklist
 
-A full release means the reviewed CLI changes and version bump are already on this repository's `main`, then npm is published from a fresh clone of that exact commit. Never publish first and commit source later.
+A full release means the reviewed CLI changes and version bump are already on the public repository's `main`, then npm is published from a fresh clone of that exact commit. Never publish first and sync source later.
 
 Use [`RELEASING.md`](./RELEASING.md) for the release contract and [`NPM_PUBLISH_QUICK_COMMANDS.md`](./NPM_PUBLISH_QUICK_COMMANDS.md) for the copy-paste fresh-terminal procedure. Both contain hard stops for a stale version, a dirty tree, the wrong repository, or the wrong npm account.
 
@@ -359,7 +361,7 @@ The `api-token` changes each time the engine starts. If the MCP server cached an
 - [ ] MCP tool descriptions are the main thing AI agents read to understand how to use Summer Engine. Current descriptions are minimal. Each tool should have examples of usage, common parameter values, and links to Godot docs where relevant
 - [ ] The `create` command templates are bare-bones. The 3d-basic scene doesn't have a WorldEnvironment configured properly. Templates should be polished enough to be impressive on first use
 - [ ] Testing - only a smoke test script exists. No unit tests for individual commands, no integration tests for the MCP server, no mock engine for testing without the real engine running
-- [ ] CI/CD - no automated build/test/publish pipeline. Publishing is manual `npm publish`
+- [ ] CI/CD - no automated build/test/publish pipeline. Publishing is manual from a clean public-repository clone
 - [ ] The engine's `LocalApiServer` (C++) is polling-based at 50ms intervals. Should benchmark whether this causes any frame drops in the editor. Might need to throttle or use a different approach for heavy operations
 - [ ] Windows testing - everything was built on macOS. The Windows paths in `run.ts` and `install.ts` are untested
 - [ ] Documentation for users (not devs) - the README is okay but there's no "Getting Started with MCP" tutorial that walks through the full flow with screenshots

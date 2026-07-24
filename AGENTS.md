@@ -13,6 +13,9 @@ This file is for any AI agent that loads context from `AGENTS.md` (Codex CLI, Fa
 3. **Don't grep the whole project before reading the actual error.** Use `summer_get_script_errors` first.
 4. **Don't edit `.tscn` files directly while the engine is running.** Use the `summer_*` MCP tools — direct edits get overwritten when the editor saves.
 5. **Never call `summer_set_resource_property` against an inline `sub_resource`** — it silently drops the value. Instantiate via `summer_set_prop` with a class-name string first.
+6. **Every scene mutation names its target.** Pass the exact `res://...tscn` as `scenePath` to add/set/remove/replace/connect/instantiate/save tools and mutation batches. `summer_open_scene` is a user-visible tab action, not a prerequisite or target selector.
+7. **Never mix `OpenScene` with scene mutations in one batch.** Send the UI action separately; `scenePath` already selects the mutation target.
+8. **Save once at the transaction boundary.** Dedicated scene mutation tools and `summer_batch` append one final `SaveScene`. Raw engine batches must include one final `SaveScene` themselves.
 
 ## Skill priority
 
@@ -22,18 +25,19 @@ This file is for any AI agent that loads context from `AGENTS.md` (Codex CLI, Fa
 
 ## MCP tool palette (engine on `localhost:6550`)
 
-52 tools total. Categories:
+56 tools total. Categories:
 
 - Scene: `summer_get_scene_tree`, `summer_open_scene`, `summer_create_scene`, `summer_add_node`, `summer_set_prop`, `summer_set_resource_property`, `summer_remove_node`, `summer_save_scene`, `summer_instantiate_scene`, `summer_replace_node`, `summer_select_node`, `summer_inspect_node`, `summer_inspect_resource`, `summer_connect_signal`, `summer_batch`.
-- Diagnostics: `summer_get_script_errors`, `summer_get_diagnostics`, `summer_get_console`, `summer_clear_console`, `summer_get_debugger_errors`, `summer_get_debugger_warnings`.
+- Diagnostics: `summer_create_debug_report`, `summer_get_script_errors`, `summer_get_diagnostics`, `summer_get_console`, `summer_clear_console`, `summer_get_debugger_errors`, `summer_get_debugger_warnings`.
 - Runtime: `summer_play`, `summer_stop`, `summer_is_running`.
 - Visual: `summer_screenshot` (capture the editor viewport or running game as an image to verify it).
 - Project: `summer_get_project_context`, `summer_open_main_scene`, `summer_project_setting`, `summer_input_map_bind`, `summer_get_agent_playbook`.
+- Files: `summer_read_file`, `summer_write_file`, `summer_replace_text` (identity-bound; create-only or sha256-guarded writes).
 - Assets: `summer_search_assets`, `summer_list_my_assets`, `summer_get_asset`, `summer_get_asset_download_url`, `summer_import_asset`, `summer_import_asset_by_id`, `summer_import_from_url`, `summer_import_from_url_batch`.
 - Generation: `summer_generate_image`, `summer_generate_3d`, `summer_generate_audio`, `summer_generate_video`, `summer_generate_motion`, `summer_check_job`.
 - Meta: `summer_start_game_task`.
 
-File ops, git, shell, and grep are NOT exposed — use the host's native tools.
+Git, shell, and grep are not exposed. Project file reads and writes are exposed through identity-bound Summer tools; do not bypass them with host writes when MCP is available. External host tools cannot be technically blocked, so the agent must follow this rule.
 
 ## Type-system gotchas
 
@@ -50,5 +54,5 @@ Resources are class names: `"BoxMesh"`, `"StandardMaterial3D"`, `"CapsuleShape3D
 |---|---|
 | MCP tool returns "Summer Engine is not running" | Tell user `summer run`. Continue with non-MCP work. |
 | Skill loads but seems wrong | Re-read it. Skills evolve. |
-| Skill not found | Check `summer skills list`, then `summer setup <agent> --yes`. |
+| Skill not found or stale | Run `summer doctor`; if `cli-version-current` or `skills-version-stale` warns, run `npx clear-npx-cache && npx -y summer-engine@latest setup <agent> --yes --force`. |
 | Generic engine errors on launch | Run `summer doctor` first — usually reveals auth/port/path issues. |

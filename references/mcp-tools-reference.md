@@ -2,7 +2,7 @@
 
 > Use this as the single source of truth for which Summer MCP tool to call. Skills should reference tool names exactly as written here.
 
-## When to use Summer MCP vs. host file edits
+## When to use Summer MCP vs. host tools
 
 **Use Summer MCP for** anything that needs the live editor or Godot's import pipeline:
 - Scene graph mutation (`.tscn`)
@@ -11,16 +11,21 @@
 - Asset import (Godot's import pipeline must run)
 - Play / stop / runtime state
 - Diagnostics, console, debugger output, script errors
+- Project text reads and guarded writes (`.gd`, `.cs`, `.tscn`, `.tres`, JSON, docs, config)
 
-**Use the host agent's file tools for** plain text:
-- `.gd` GDScript files
-- `.cs` C# files
-- `.json`, `.md`, `.txt`, `.yaml`
-- Most simple `.tres` resources where the structure is well-known
+**Use host tools for** git, shell, grep, and non-project work. External host file writes bypass Summer's project-identity, sha256, and editor-reload safeguards and should not be used for project mutations while MCP is available.
 
-**Rule of thumb:** if Godot's importer or the live editor needs to know about it, MCP. Otherwise, file edits.
+**Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (52 tools)
+## Tool surface (56 tools)
+
+### Project files (3)
+
+| Tool | Use |
+|---|---|
+| `summer_read_file` | Read project text plus a full-file sha256 receipt. |
+| `summer_write_file` | Create-only or sha256-guarded complete file write. |
+| `summer_replace_text` | Unique (or explicit replace-all) text mutation with read/sha guard. |
 
 ### Scene graph (11)
 
@@ -32,18 +37,18 @@
 | `summer_create_scene` | Create a new scene. |
 | `summer_instantiate_scene` | Add an existing scene or 3D model as a child node. |
 | `summer_inspect_node` | Read a single node's properties. |
-| `summer_add_node` | Add a node to the active scene. |
-| `summer_remove_node` | Remove a node. |
-| `summer_replace_node` | Swap a node's type, preserving children. |
+| `summer_add_node` | Add a node to the explicit `scenePath`; the tab need not be open. |
+| `summer_remove_node` | Remove a node from the explicit `scenePath`. |
+| `summer_replace_node` | Swap a node's type in the explicit `scenePath`, preserving children. |
 | `summer_select_node` | Set editor selection (visual feedback for the user). |
-| `summer_save_scene` | Persist changes. **Always save before play.** |
+| `summer_save_scene` | Explicitly save/save-as a `scenePath`; mutation tools already append one final save. |
 
 ### Properties / resources (4)
 
 | Tool | Use |
 |---|---|
-| `summer_set_prop` | Set a typed property (Vector3, Color, etc.) using Godot's `str_to_var()`. |
-| `summer_set_resource_property` | Set a property on a nested resource (e.g., CollisionShape's `shape.radius`). |
+| `summer_set_prop` | Set a typed property in an explicit `scenePath` using Godot's `str_to_var()`. |
+| `summer_set_resource_property` | Set a nested resource property in an explicit `scenePath`. |
 | `summer_inspect_resource` | Read a resource's properties. |
 | `summer_connect_signal` | Wire a signal between nodes. |
 
@@ -75,10 +80,11 @@
 |---|---|
 | `summer_screenshot` | Capture a frame and return it as an image the agent sees directly — editor viewport (`target:"viewport"`, default; no play needed) or running game (`target:"game"`). Use to visually verify scene layout, asset placement, scale, framing, lighting, or runtime state. On macOS the running game is a floating window that can't be captured; prefer `viewport`. |
 
-### Diagnostics (6)
+### Diagnostics (7)
 
 | Tool | Use |
 |---|---|
+| `summer_create_debug_report` | Create a support-ready Markdown report for `/summer debug`. |
 | `summer_get_diagnostics` | Aggregate error/warning summary. Call after every change. |
 | `summer_get_console` | Engine output panel. |
 | `summer_clear_console` | Clear before a fresh play, so post-run output is clean. |
@@ -141,9 +147,9 @@ Every scene-touching skill should follow this loop:
 1. `summer_start_game_task` — route the goal into skills/tools/gates.
 2. `summer_get_project_context` — orient.
 3. `summer_get_agent_playbook` — read the rules.
-4. `summer_get_scene_tree` — see what's there.
-5. (mutations: `summer_add_node`, `summer_set_prop`, `summer_connect_signal`, ...)
-6. `summer_save_scene` — persist.
+4. Resolve the exact `res://` scene path; open it only for an intentional current-tab read/UI action.
+5. Pass that `scenePath` to mutations (`summer_add_node`, `summer_set_prop`, `summer_connect_signal`, ...).
+6. Mutation tools append one final `SaveScene`; use `summer_save_scene` directly only for a standalone save/save-as.
 7. `summer_get_script_errors` — catch GDScript breakage.
 8. `summer_play` → `summer_get_debugger_errors` → `summer_screenshot` (see what's on screen) → `summer_stop` if verifying runtime.
 

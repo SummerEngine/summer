@@ -18,6 +18,7 @@ import { setupCommand } from "../commands/setup.js";
 import { doctorCommand } from "../commands/doctor.js";
 import { planCommand } from "../commands/plan.js";
 import { cloudCommand } from "../commands/cloud.js";
+import { debugCommand } from "../commands/debug.js";
 import { getBanner } from "../lib/banner.js";
 import { c, sym } from "../lib/format.js";
 
@@ -47,6 +48,7 @@ program.addCommand(skillsCommand);
 program.addCommand(mcpCommand);
 program.addCommand(setupCommand);
 program.addCommand(doctorCommand);
+program.addCommand(debugCommand);
 program.addCommand(planCommand);
 program.addCommand(orchestratorCommand);
 program.addCommand(cloudCommand);
@@ -70,10 +72,12 @@ function printIntro(version: string): void {
   console.log(`     ${c.dim("$")} npx -y summer-engine@latest setup claude-code --yes`);
   console.log(`     ${c.dim("$")} npx -y summer-engine@latest create 3d-basic my-game`);
   console.log(`     ${c.dim("$")} npx -y summer-engine@latest plan make a small arena shooter`);
+  console.log(`     ${c.dim("$")} npx -y summer-engine@latest debug "player crashes on pickup"`);
   console.log(`     ${c.dim("$")} npx -y summer-engine@latest memory`);
   console.log(`     ${c.dim("$")} npx -y summer-engine@latest doctor`);
   console.log("");
   console.log(`     ${c.bold("Slash commands")} ${c.dim("(in your AI agent)")}`);
+  console.log(`     ${c.brand("/summer debug")}   ${c.dim("Create a support-ready debug report")}`);
   console.log(`     ${c.brand("/debug")}   ${c.dim("Triage and fix a bug end-to-end")}`);
   console.log(`     ${c.brand("/play")}    ${c.dim("Run the game and report state")}`);
   console.log("");

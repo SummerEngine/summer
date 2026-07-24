@@ -169,15 +169,25 @@ describe("MCP project binding — engine-enforced, atomic", () => {
     expect(text).toContain("summer_get_project_context");
   });
 
-  it("sends NO identity when unbound (no project hash) so the engine skips the check", async () => {
+  it("sends no project identity when unbound while retaining request correlation", async () => {
     engine.projectIdHash = ""; // engine reports no project hash
     const client = await getClient();
     expect(client.getBoundProjectIdHash()).toBeFalsy();
 
     const res = (await client.executeOps([{ op: "Probe" }])) as Record<string, unknown>;
     expect(res.terminalState).toBe("applied");
-    const body = engine.lastOpsBody as { ops?: unknown; options?: unknown };
-    // Backward-compatible body shape: no options injected.
-    expect(body.options).toBeUndefined();
+    const body = engine.lastOpsBody as {
+      ops?: unknown;
+      options?: {
+        requestId?: string;
+        projectId?: string;
+        projectIdHash?: string;
+        instanceId?: string;
+      };
+    };
+    expect(body.options?.requestId).toMatch(/^mcp-/);
+    expect(body.options?.projectId).toBeUndefined();
+    expect(body.options?.projectIdHash).toBeUndefined();
+    expect(body.options?.instanceId).toBeUndefined();
   });
 });

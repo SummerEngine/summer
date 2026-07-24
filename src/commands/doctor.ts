@@ -3,10 +3,13 @@ import { existsSync } from "fs";
 import { createRequire } from "node:module";
 import { platform } from "os";
 import { Command } from "commander";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { getAuthToken, getUserInfo } from "../lib/auth.js";
 import { isGitAvailable } from "../lib/cloud/checkpoint.js";
 import { checkEngineHealth, getApiPort, getApiToken } from "../lib/engine.js";
 import { brandLine, c, pad, sym, tildeify } from "../lib/format.js";
+import { getMcpLogPath } from "../lib/mcp-log.js";
 import { getProjectMemorySummary } from "../lib/project-memory.js";
 import {
   buildCliVersionCheck,
@@ -17,6 +20,12 @@ import {
 
 const require = createRequire(import.meta.url);
 const { version } = require("../../package.json") as { version: string };
+const MIN_EXPECTED_MCP_TOOLS = 50;
+const REQUIRED_MCP_TOOLS = [
+  "summer_get_project_context",
+  "summer_generate_image",
+  "summer_create_debug_report",
+];
 
 export type DoctorStatus = "ok" | "warning" | "fail";
 
@@ -55,7 +64,7 @@ const WIN_ENGINE_PATHS = [
 ];
 
 export const doctorCommand = new Command("doctor")
-  .description("Diagnose Node, login, engine, project memory, local API, and MCP boot")
+  .description("Diagnose Node, login, engine, project memory, local API, and MCP registration")
   .option("--json", "Print diagnostics as JSON")
   .action(async (opts: { json?: boolean }) => {
     if (!opts.json) {
@@ -91,6 +100,7 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   checks.push(await checkLocalApi());
   checks.push(await checkProjectMemory());
   checks.push(await checkMcpBoot());
+  checks.push(await checkMcpToolsList());
 
   const result = summarizeChecks(checks);
 
@@ -296,8 +306,8 @@ async function checkProjectMemory(): Promise<DoctorCheck> {
 }
 
 async function checkMcpBoot(): Promise<DoctorCheck> {
-  const cliPath = process.argv[1];
-  if (!cliPath) {
+  const resolved = resolveCurrentMcpCommand();
+  if (!resolved) {
     return {
       id: "mcp-boot",
       label: "MCP Server",
@@ -307,9 +317,7 @@ async function checkMcpBoot(): Promise<DoctorCheck> {
   }
 
   return new Promise<DoctorCheck>((resolve) => {
-    const command = cliPath.endsWith(".js") ? process.execPath : cliPath;
-    const args = cliPath.endsWith(".js") ? [cliPath, "mcp"] : ["mcp"];
-    const child = spawn(command, args, {
+    const child = spawn(resolved.command, resolved.args, {
       env: process.env,
       stdio: ["pipe", "pipe", "pipe"],
     });
@@ -331,7 +339,7 @@ async function checkMcpBoot(): Promise<DoctorCheck> {
         label: "MCP Server",
         status: "fail",
         message: "MCP server did not finish startup within 3 seconds.",
-        details: trimOutput({ stdout, stderr }),
+        details: { ...trimOutput({ stdout, stderr }), ...resolved },
       });
     }, 3000);
 
@@ -344,6 +352,7 @@ async function checkMcpBoot(): Promise<DoctorCheck> {
           label: "MCP Server",
           status: "ok",
           message: "ready",
+          details: { ...resolved },
         });
       }
     });
@@ -359,6 +368,7 @@ async function checkMcpBoot(): Promise<DoctorCheck> {
         label: "MCP Server",
         status: "fail",
         message: `Could not start MCP server: ${error.message}`,
+        details: { ...resolved },
       });
     });
 
@@ -370,11 +380,109 @@ async function checkMcpBoot(): Promise<DoctorCheck> {
           label: "MCP Server",
           status: "fail",
           message: `MCP server exited before reporting readiness${code === null ? "" : ` (code ${code})`}.`,
-          details: trimOutput({ stdout, stderr }),
+          details: { ...trimOutput({ stdout, stderr }), ...resolved },
         });
       }
     });
   });
+}
+
+function resolveCurrentMcpCommand(): { command: string; args: string[] } | null {
+  const cliPath = process.argv[1];
+  if (!cliPath) return null;
+  return cliPath.endsWith(".js")
+    ? { command: process.execPath, args: [cliPath, "mcp"] }
+    : { command: cliPath, args: ["mcp"] };
+}
+
+function inheritedEnv(extra: Record<string, string> = {}): Record<string, string> {
+  const env: Record<string, string> = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined) env[key] = value;
+  }
+  return { ...env, ...extra };
+}
+
+async function checkMcpToolsList(): Promise<DoctorCheck> {
+  const resolved = resolveCurrentMcpCommand();
+  if (!resolved) {
+    return {
+      id: "mcp-tools-list",
+      label: "MCP Tools",
+      status: "fail",
+      message: "Could not resolve the current Summer CLI entrypoint.",
+    };
+  }
+
+  const client = new Client({ name: "summer-doctor", version });
+  const transport = new StdioClientTransport({
+    ...resolved,
+    env: inheritedEnv({ SUMMER_MCP_DOCTOR: "1" }),
+    stderr: "pipe",
+  });
+  let stderr = "";
+  transport.stderr?.on("data", (chunk) => {
+    stderr += Buffer.isBuffer(chunk) ? chunk.toString("utf-8") : String(chunk);
+  });
+
+  try {
+    await client.connect(transport, { timeout: 5000 });
+    const listed = await client.listTools(undefined, { timeout: 5000 });
+    const toolNames = listed.tools.map((tool) => tool.name).sort();
+    const missing = REQUIRED_MCP_TOOLS.filter((tool) => !toolNames.includes(tool));
+    const details = {
+      ...resolved,
+      toolCount: toolNames.length,
+      requiredTools: REQUIRED_MCP_TOOLS,
+      missing,
+      server: client.getServerVersion(),
+      stderr: stderr.trim().slice(-1000),
+      logPath: getMcpLogPath(),
+    };
+
+    if (missing.length > 0) {
+      return {
+        id: "mcp-tools-list",
+        label: "MCP Tools",
+        status: "fail",
+        message: `missing required tools: ${missing.join(", ")}`,
+        details,
+      };
+    }
+
+    if (toolNames.length < MIN_EXPECTED_MCP_TOOLS) {
+      return {
+        id: "mcp-tools-list",
+        label: "MCP Tools",
+        status: "fail",
+        message: `only ${toolNames.length} tools listed; expected ${MIN_EXPECTED_MCP_TOOLS}+`,
+        details,
+      };
+    }
+
+    return {
+      id: "mcp-tools-list",
+      label: "MCP Tools",
+      status: "ok",
+      message: `${toolNames.length} tools registered`,
+      details,
+    };
+  } catch (error) {
+    return {
+      id: "mcp-tools-list",
+      label: "MCP Tools",
+      status: "fail",
+      message: `protocol handshake/list failed: ${error instanceof Error ? error.message : String(error)}`,
+      details: {
+        ...resolved,
+        stderr: stderr.trim().slice(-1000),
+        logPath: getMcpLogPath(),
+      },
+    };
+  } finally {
+    await client.close().catch(() => undefined);
+    await transport.close().catch(() => undefined);
+  }
 }
 
 function summarizeChecks(checks: DoctorCheck[]): DoctorResult {

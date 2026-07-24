@@ -20,7 +20,7 @@ Process skills (run before building): brainstorm-game, debug, play.
 Discipline skills (shape what you build): gdscript-patterns, scene-composition, art-direction, audio-direction, asset-strategy.
 Build skills (produce artifacts): fps-controller, design-mechanic, design-level, setup-multiplayer, host-authoritative-state, peer-to-peer-multiplayer, design-npc, 3d-lighting, ui-basics, vfx, tune-performance, export-and-ship, make-game.
 
-Always check for a relevant skill before responding. The summer-engine MCP server (npx summer-engine mcp) provides scene mutation, asset import, render, play, and diagnostics tools — file ops, git, shell, and grep are NOT exposed (use OpenCode's native tools).
+Always check for a relevant skill before responding. The summer-engine MCP server (npx summer-engine mcp) provides identity-bound project file mutations plus scene, asset, render, play, and diagnostics tools. Git, shell, and grep remain native; do not bypass Summer's file guards when MCP is available.
 </EXTREMELY_IMPORTANT>`;
 
 export const SummerPlugin = async ({ client, directory }) => {

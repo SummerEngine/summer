@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
+import { randomUUID } from "node:crypto";
 import { getApiToken, getApiPort, checkEngineHealth } from "./engine.js";
 import {
   classifyOpsResponse,
@@ -229,6 +230,16 @@ export class EngineApiClient {
     return projectIdHash ? { projectIdHash } : {};
   }
 
+  private requireBoundIdentity(): Record<string, unknown> {
+    const { instanceId, projectId, projectIdHash } = this.targetIdentity;
+    if (!instanceId || !projectId || !projectIdHash) {
+      throw new Error(
+        "Safe project mutation requires a complete engine/project identity. Call summer_get_project_context to bind this MCP session, then retry. Nothing was written."
+      );
+    }
+    return { projectIdHash };
+  }
+
   private targetUrl(path: string): string {
     const url = new URL(path, `http://127.0.0.1:${this.port}`);
     const { instanceId, projectId, projectIdHash } = this.targetIdentity;
@@ -308,7 +319,8 @@ export class EngineApiClient {
    * result (HTTP 200 — dormant/older engine) OR the async lifecycle (202
    * {requestId} -> long-poll /api/ops/result until terminal). Compatible with
    * both — inspects the HTTP status, not a flag. `timeoutMs` is the poll loop's
-   * total budget; a long op that keeps advancing is not falsely timed out.
+   * client wait budget; expiry preserves the requestId and last known lifecycle
+   * state instead of pretending the accepted operation did not apply.
    */
   private async _requestQueued(
     method: string,
@@ -316,21 +328,98 @@ export class EngineApiClient {
     body: unknown,
     timeoutMs: number
   ): Promise<unknown> {
-    const res = await this._fetchRaw(method, path, body, timeoutMs);
+    // Mint the request ID before submission. If the acknowledgement or a later
+    // poll is lost, callers retain the exact identity needed to reconcile the
+    // accepted lifecycle instead of issuing an unsafe blind retry.
+    let clientRequestId: string | undefined;
+    let requestBody = body;
+    if (method === "POST") {
+      const bodyRecord = asRecord(body) ?? {};
+      const existingOptions = asRecord(bodyRecord.options) ?? {};
+      clientRequestId =
+        stringFrom(existingOptions.requestId) ?? `mcp-${randomUUID()}`;
+      requestBody = {
+        ...bodyRecord,
+        options: {
+          ...existingOptions,
+          requestId: clientRequestId,
+        },
+      };
+    }
+
+    let res: Response;
+    try {
+      res = await this._fetchRaw(method, path, requestBody, timeoutMs);
+    } catch (error) {
+      if (!clientRequestId) throw error;
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `Summer Engine did not acknowledge request ${clientRequestId}; dispatch state is unknown. Do not retry blindly. ${detail}`
+      );
+    }
     // 202 (queued) + 429 (backpressure, errorClass in body) are handled below;
     // any other non-2xx is a real transport error.
     if (!res.ok && res.status !== 202 && res.status !== 429) {
       const text = await res.text().catch(() => "");
-      throw new Error(`Engine API error ${res.status}: ${text.slice(0, 200)}`);
+      const suffix = clientRequestId ? ` (requestId ${clientRequestId})` : "";
+      throw new Error(`Engine API error ${res.status}${suffix}: ${text.slice(0, 200)}`);
     }
     const respBody = await res.json().catch(() => ({}));
     const classified = classifyOpsResponse(res.status, respBody);
     if (classified.mode === "legacy") {
+      if (res.status === 429) {
+        return {
+          ...(asRecord(respBody) ?? {}),
+          requestId: clientRequestId,
+          terminalState: stringFrom(asRecord(respBody)?.terminalState) ?? "queue_full",
+          dispatchState: "not_sent",
+        };
+      }
       return respBody;
     }
-    return pollOpToTerminal((waitMs) => this._pollResult(classified.requestId, waitMs), {
-      totalTimeoutMs: timeoutMs,
-    });
+    // The acknowledgement is authoritative for polling. Current engines echo
+    // the client-generated ID, while older engines may ignore options.requestId
+    // and mint their own; polling the submitted ID against those engines would
+    // wait forever on an unknown lifecycle.
+    const acceptedRequestId = classified.requestId || clientRequestId;
+    if (!acceptedRequestId) {
+      return {
+        status: "error",
+        error: "Summer Engine accepted an operation without returning a requestId; final state is uncertain.",
+        terminalState: "uncertain",
+        errorClass: "transient",
+        dispatchState: "uncertain",
+      };
+    }
+    try {
+      const terminal = await pollOpToTerminal(
+        (waitMs) => this._pollResult(acceptedRequestId, waitMs),
+        {
+          totalTimeoutMs: timeoutMs,
+          requestId: acceptedRequestId,
+        }
+      );
+      if (clientRequestId && clientRequestId !== acceptedRequestId) {
+        terminal.submissionRequestId = clientRequestId;
+      }
+      return terminal;
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      return {
+        status: "error",
+        error:
+          `Summer Engine accepted request ${acceptedRequestId}, but its final receipt could not be retrieved. ` +
+          `The operation may still be running or may already have applied; inspect the target before retrying. ${detail}`,
+        terminalState: "uncertain",
+        errorClass: "transient",
+        dispatchState: "uncertain",
+        requestId: acceptedRequestId,
+        ...(clientRequestId && clientRequestId !== acceptedRequestId
+          ? { submissionRequestId: clientRequestId }
+          : {}),
+        lastKnownStatus: "unknown",
+      };
+    }
   }
 
   async health(): Promise<unknown> {
@@ -346,13 +435,37 @@ export class EngineApiClient {
     // async-202 (Block E).
     // Attach the bound project identity so the engine rejects a write aimed at a
     // different project (identity_mismatch, atomic — before any op applies).
-    const merged = { ...this.identityOptions(), ...(options ?? {}) };
+    const merged = { ...(options ?? {}), ...this.identityOptions() };
     const body = Object.keys(merged).length ? { ops, options: merged } : { ops };
     return this._requestQueued("POST", "/api/ops", body, 120_000);
   }
 
-  async getSceneState(): Promise<unknown> {
-    return this.request("GET", "/api/state/scene");
+  /**
+   * Mutation path for MCP file tools. Unlike legacy executeOps callers, this
+   * fails closed when health did not provide a complete target identity. The
+   * bound hash is stamped last so a caller cannot override it in options.
+   */
+  async executeIdentityBoundOps(
+    ops: Record<string, unknown>[],
+    options?: Record<string, unknown>
+  ): Promise<unknown> {
+    const identity = this.requireBoundIdentity();
+    return this.executeOps(ops, { ...(options ?? {}), ...identity });
+  }
+
+  async readProjectFile(path: string, maxBytes = 200_000): Promise<unknown> {
+    const query = new URLSearchParams({
+      path,
+      maxBytes: String(maxBytes),
+    });
+    return this.request("GET", `/api/state/read-file?${query.toString()}`);
+  }
+
+  async getSceneState(scenePath?: string): Promise<unknown> {
+    const query = scenePath
+      ? `?scene=${encodeURIComponent(scenePath)}`
+      : "";
+    return this.request("GET", `/api/state/scene${query}`);
   }
 
   async getProjectState(): Promise<unknown> {

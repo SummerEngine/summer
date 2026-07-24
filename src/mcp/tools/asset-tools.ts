@@ -272,10 +272,14 @@ async function buildImportEntriesForAsset(
 async function importResolvedAsset(args: {
   asset: McpAsset;
   parent?: string;
+  scenePath?: string;
   path?: string;
   name?: string;
 }) {
-  const { asset, parent, path, name } = args;
+  const { asset, parent, scenePath, path, name } = args;
+  if (parent && !scenePath) {
+    throw new Error("scenePath is required when importing an asset into a scene");
+  }
   const { imports, importPath } = await buildImportEntriesForAsset(asset, path);
   const client = await getClient();
   const importResult =
@@ -285,21 +289,34 @@ async function importResolvedAsset(args: {
         ])
       : await client.executeOps([{ op: "ImportFromUrlBatch", imports }]);
 
-  const ok = (importResult as { results?: { ok?: boolean }[] })?.results?.[0]?.ok;
-  if (!ok) {
-    throw new Error("Could not import asset. Check engine logs.");
+  const importReceipts = (importResult as { results?: Array<{ ok?: boolean; error?: string }> })?.results ?? [];
+  const importFailure = importReceipts.find((receipt) => receipt?.ok === false);
+  if ((importResult as { status?: string })?.status === "error" || importFailure) {
+    throw new Error(importFailure?.error || "Could not import asset. Check engine logs.");
   }
 
   let addedToScene = false;
+  let sceneReceipt: unknown = null;
   if (parent && asset.type === "3d_model") {
-    await client.executeOps([
+    sceneReceipt = await client.executeIdentityBoundOps([
       {
         op: "InstantiateScene",
         parent,
         scene: importPath,
         name: sanitizeNodeName(name || asset.title),
       },
-    ]);
+      { op: "SaveScene" },
+    ], { scenePath });
+    const placementReceipts =
+      (sceneReceipt as { results?: Array<{ ok?: boolean; error?: string }> })?.results ?? [];
+    const placementFailure = placementReceipts.find((receipt) => receipt?.ok !== true);
+    if (
+      (sceneReceipt as { status?: string })?.status === "error" ||
+      placementReceipts.length !== 2 ||
+      placementFailure
+    ) {
+      throw new Error(placementFailure?.error || `Could not add asset to ${scenePath}`);
+    }
     addedToScene = true;
   }
 
@@ -311,6 +328,8 @@ async function importResolvedAsset(args: {
     importedTo: importPath,
     addedToScene,
     parent: parent || null,
+    scenePath: scenePath || null,
+    sceneReceipt,
   };
 }
 
@@ -495,8 +514,8 @@ Cloud tool — works WITHOUT the Summer Engine app open.`,
 Use this when the asset was just generated, selected from my assets, or returned
 by search. Unlike summer_import_asset, this does not search or guess: it fetches
 the asset by ID, downloads it through Summer Engine, and runs Godot's import
-pipeline. For 3D models, pass parent to instantiate it in the open scene after
-import.
+pipeline. For 3D models, pass parent and scenePath to instantiate it in that
+exact scene; it does not need to be the active editor tab.
 
 Requires the Summer Engine app to be open with the project loaded (generation
 itself does not — only this import step does).`,
@@ -510,12 +529,16 @@ itself does not — only this import step does).`,
         .string()
         .optional()
         .describe("Optional parent node path. For 3D models only; imports and instantiates under this node."),
+      scenePath: z
+        .string()
+        .optional()
+        .describe("Required with parent. Exact res:// scene that receives the 3D model."),
       name: z
         .string()
         .optional()
         .describe("Optional scene node name when parent is provided."),
     },
-    async ({ assetId, path, parent, name }) => {
+    async ({ assetId, path, parent, scenePath, name }) => {
       const fetched = await getAssetApi(assetId);
       if (fetched.error || !fetched.asset) {
         return jsonError({
@@ -528,6 +551,7 @@ itself does not — only this import step does).`,
         const imported = await importResolvedAsset({
           asset: fetched.asset,
           parent,
+          scenePath,
           path,
           name,
         });
@@ -542,7 +566,7 @@ itself does not — only this import step does).`,
         return jsonError({
           error: "import_failed",
           message: msg,
-          hint: "Make sure Summer Engine is running and the target scene is open.",
+          hint: "Make sure Summer Engine is running and pass the exact scenePath when parent is set.",
         });
       }
     }
@@ -559,10 +583,11 @@ Requires authentication. If the user gets an auth error, they need to run 'npx s
     {
       query: z.string().describe("What to find, e.g. 'low-poly tree', 'wooden crate'"),
       parent: z.string().optional().describe("Parent node path to add the asset under, e.g. './World'. If omitted, only imports (no scene placement)"),
+      scenePath: z.string().optional().describe("Required with parent. Exact res:// target scene path."),
       assetType: z.enum(["2d_image", "animation", "3d_model", "audio", "music", "all"]).default("3d_model").describe("Preferred asset type"),
       source: z.enum(["library", "my_assets", "all"]).default("all").describe("Where to search before importing"),
     },
-    async ({ query, parent, assetType, source }) => {
+    async ({ query, parent, scenePath, assetType, source }) => {
       const searchResult = await searchAssetsApi({ query, assetType, limit: 5, source });
 
       if (searchResult.error) {
@@ -617,7 +642,7 @@ Requires authentication. If the user gets an auth error, they need to run 'npx s
       }
 
       try {
-        const imported = await importResolvedAsset({ asset: best, parent });
+        const imported = await importResolvedAsset({ asset: best, parent, scenePath });
         // 2D sprites and audio: import only; user adds to scene manually
 
         return {

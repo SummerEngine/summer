@@ -61,9 +61,16 @@ describe("Summer-first public product language", () => {
 
   it("keeps current distribution availability explicit", async () => {
     const readme = await readFile(join(ROOT, "README.md"), "utf8");
+    const installer = await readFile(join(ROOT, "src/commands/install.ts"), "utf8");
     expect(readme).toContain("macOS on Apple silicon and Windows");
     expect(readme).toMatch(/planned\s+targets, not shipping promises/);
     expect(readme).toContain("no supported public Linux installer");
+    expect(installer).toContain("macOS on Apple silicon and Windows");
+    expect(installer).toContain("Linux does not have a supported public installer");
+    expect(installer).toContain("no manual Linux download is available");
+    expect(installer).not.toMatch(
+      /Linux support is coming soon\.[\s\S]{0,120}summerengine\.com\/download/
+    );
   });
 
   it("keeps the public MCP total aligned with registered source tools", async () => {

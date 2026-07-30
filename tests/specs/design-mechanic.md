@@ -2,7 +2,7 @@
 
 ## Fixture
 
-- Godot 4.5 / Summer Engine project with `World/Player` (CharacterBody3D + CollisionShape3D + Camera3D) already in the main scene.
+- Summer Engine project with `World/Player` (CharacterBody3D + CollisionShape3D + Camera3D) already in the main scene.
 - A `scripts/player_controller.gd` exists with single-jump logic.
 - `.summer/GameSoul.md` exists, brief says: "core loop is precise platforming, three mechanics: dash, double-jump, parry".
 - Summer MCP available.

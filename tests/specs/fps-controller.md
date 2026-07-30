@@ -2,7 +2,7 @@
 
 ## Fixture
 
-- Empty Godot 4.5 / Summer Engine project, main scene open with a single `World` (Node3D) root.
+- Empty Summer Engine project, main scene open with a single `World` (Node3D) root.
 - Summer MCP tools available (engine running on localhost:6550).
 - No existing input actions in InputMap beyond Godot defaults.
 - No script files attached.

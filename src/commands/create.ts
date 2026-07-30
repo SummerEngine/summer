@@ -115,7 +115,7 @@ function projectGodot(name: string, mainScene: string): string {
 
 config/name="${name}"
 run/main_scene="${mainScene}"
-config/features=PackedStringArray("4.5")
+config/features=PackedStringArray("4.6")
 
 [rendering]
 

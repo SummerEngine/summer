@@ -257,7 +257,7 @@ This skill is a workflow that designs and scaffolds — the templates are runnab
 - `references/collaborative-protocol.md`
 - `references/mcp-tools-reference.md`
 - `references/gd-style.md` — GDScript conventions
-- `references/godot-version.md` — Godot 4.5 API notes
+- `references/godot-version.md` — Summer Engine API notes
 - `scene-and-project/brainstorm-game/SKILL.md` — produces `.summer/GameSoul.md` this skill reads
 - `level-design/design-level/SKILL.md` — design the levels that exercise the mechanic
 - `character-controllers/fps-controller/SKILL.md` — FPS movement scaffolding

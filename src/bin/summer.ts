@@ -19,6 +19,10 @@ import { doctorCommand } from "../commands/doctor.js";
 import { planCommand } from "../commands/plan.js";
 import { cloudCommand } from "../commands/cloud.js";
 import { debugCommand } from "../commands/debug.js";
+import { configCommand } from "../commands/config.js";
+import { publishCommand } from "../commands/publish.js";
+import { releasesCommand } from "../commands/releases.js";
+import { logsCommand } from "../commands/logs.js";
 import { getBanner } from "../lib/banner.js";
 import { c, sym } from "../lib/format.js";
 
@@ -52,6 +56,10 @@ program.addCommand(debugCommand);
 program.addCommand(planCommand);
 program.addCommand(orchestratorCommand);
 program.addCommand(cloudCommand);
+program.addCommand(configCommand);
+program.addCommand(publishCommand);
+program.addCommand(releasesCommand);
+program.addCommand(logsCommand);
 
 program.parseAsync().catch((err) => {
   console.error(err instanceof Error ? err.message : String(err));

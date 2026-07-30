@@ -2,7 +2,7 @@
 
 ## Fixture
 
-- A Godot 4.5 / Summer Engine project with `/peer-to-peer-multiplayer` Layer 1 already done — `NetworkManager` autoload exists, exposes `peer_joined` / `peer_left` signals.
+- A Summer Engine project with `/peer-to-peer-multiplayer` Layer 1 already done — `NetworkManager` autoload exists, exposes `peer_joined` / `peer_left` signals.
 - Project may have a partial player scene; no Managers yet.
 - Summer MCP tools available; engine on localhost:6550.
 

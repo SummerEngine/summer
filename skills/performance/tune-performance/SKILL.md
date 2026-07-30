@@ -73,7 +73,7 @@ Decision tree:
 
 ### 4a. Rendering hotspot
 
-Common Godot 4.5 rendering costs, ordered by frequency:
+Common Summer Engine rendering costs, ordered by frequency:
 
 | Pattern | Symptom | Fix |
 |---|---|---|
@@ -209,7 +209,7 @@ No template — this is a workflow. Performance tuning is project-specific by de
 ## See also
 
 - `references/mcp-tools-reference.md` — full MCP tool list
-- `references/godot-version.md` — Godot 4.5 renderer notes (Compositor, RenderSceneBuffers churn)
+- `references/godot-version.md` — Summer Engine renderer notes (Compositor, RenderSceneBuffers churn)
 - `references/collaborative-protocol.md` — "May I write" pattern
 - `references/gd-style.md` — GDScript conventions (avoid bare types, use `:=`)
 - `performance/profiling-godot/SKILL.md` — deeper Godot profiler usage

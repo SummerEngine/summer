@@ -15,6 +15,13 @@ paths: ["**/*.gd", "**/*.tscn", "project.godot", "export_presets.cfg", "**/*.png
 
 Shipping is a checklist, not a creative act. This skill walks the platform-specific asset and config requirements, runs a pre-flight check against the project, and produces a release build only after every blocker is green. Better to fail at this step than fail submission.
 
+Availability boundary: the public Summer Engine currently ships on macOS
+Apple silicon and Windows. Steam, browser, mobile, Linux, and other store
+distribution lanes are planned targets. The checklists below may prepare a
+project for those targets, but must not claim that Summer's integrated export
+or submission path is shipping until the installed engine, templates,
+toolchain, and current platform documentation prove it.
+
 **Core principle:** every platform has a list. Read the list, satisfy the list, ship.
 
 ## Steps
@@ -289,7 +296,7 @@ No template — this is a workflow. Each project's export config and store asset
 ## See also
 
 - `references/mcp-tools-reference.md` — full MCP tool list
-- `references/godot-version.md` — Godot 4.5 export-template versioning
+- `references/godot-version.md` — Summer Engine export-template versioning
 - `references/collaborative-protocol.md` — "May I write" pattern
 - `deployment/export-presets/SKILL.md` — preset config deep dive
 - `deployment/web-html5-export/SKILL.md` — HTML5-specific traps

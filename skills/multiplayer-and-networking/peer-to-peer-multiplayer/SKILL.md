@@ -1,6 +1,6 @@
 ---
 name: peer-to-peer-multiplayer
-description: Use when starting a multiplayer Godot game from scratch — peer-to-peer with host authority. Build the network architecture top-down so authoritative state, routing rules, and real-time rendering aren't bolted on later. Use BEFORE writing game logic, not after. Trigger on "multiplayer", "peer-to-peer", "p2p", "co-op", "host", "multiplayer architecture", "add multiplayer".
+description: Use when starting a multiplayer Summer game from scratch — peer-to-peer with host authority. Build the network architecture top-down so authoritative state, routing rules, and real-time rendering aren't bolted on later. Use BEFORE writing game logic, not after. Trigger on "multiplayer", "peer-to-peer", "p2p", "co-op", "host", "multiplayer architecture", "add multiplayer".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: multiplayer-and-networking
@@ -371,7 +371,7 @@ When the `template-co-op-3d` template ships in the registry, this skill will ref
 
 ## See also
 
-- [`references/godot-version.md`](../../references/godot-version.md) — Godot 4.5 multiplayer API stability notes
+- [`references/godot-version.md`](../../references/godot-version.md) — Summer Engine multiplayer API stability notes
 - [`references/mcp-tools-reference.md`](../../references/mcp-tools-reference.md) — `summer_project_setting` for autoload registration
 - [`references/gd-style.md`](../../references/gd-style.md) — typed-GDScript conventions
 - [`host-authoritative-state`](../host-authoritative-state/SKILL.md) — deeper dive on JUST the state ownership decision matrix

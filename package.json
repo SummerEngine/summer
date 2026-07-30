@@ -41,6 +41,7 @@
   "files": [
     "dist/",
     "skills/",
+    "references/",
     "commands/",
     "hooks/",
     "assets/",

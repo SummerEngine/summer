@@ -2,7 +2,7 @@
 
 ## Fixture
 
-- Godot 4.5 / Summer Engine project, main scene with `World/WorldEnvironment` and `World/Sun` (DirectionalLight3D) present.
+- Summer Engine project, main scene with `World/WorldEnvironment` and `World/Sun` (DirectionalLight3D) present.
 - `.summer/GameSoul.md` exists; brief: "Cozy farming sim, vertical slice scope."
 - No `.summer/art-bible.md` yet.
 - Summer MCP available.

@@ -135,7 +135,7 @@ This re-textures the existing mesh with sharper detail — panel lines, decals, 
 
 | Use case | Parent type | Notes |
 |---|---|---|
-| Player-driven (car, bike, hover) | `VehicleBody3D` (Godot 4.5 wheeled) or `RigidBody3D` (free physics) | Add `VehicleWheel3D` children for wheeled vehicles |
+| Player-driven (car, bike, hover) | `VehicleBody3D` (Summer Engine wheeled) or `RigidBody3D` (free physics) | Add `VehicleWheel3D` children for wheeled vehicles |
 | Player-driven (spaceship, mech) | `RigidBody3D` or `CharacterBody3D` | Custom thrust / walk code, see `summer:character-controllers` |
 | Background scenery (parked, flyby) | `MeshInstance3D` under a `Node3D` | No physics, no collision needed for distant traffic |
 | Background traffic (moving but not interactive) | `Node3D` + `AnimationPlayer` driving the position | Cheap, no physics overhead |

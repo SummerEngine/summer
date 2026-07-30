@@ -2,7 +2,7 @@
 
 ## Fixture
 
-- Godot 4.5 / Summer Engine project, main scene with `World/Player` (CharacterBody3D in `player` group) and an empty `World/Enemies` parent.
+- Summer Engine project, main scene with `World/Player` (CharacterBody3D in `player` group) and an empty `World/Enemies` parent.
 - Summer MCP tools available.
 - Host file tools available (Read, Edit, Write).
 

@@ -323,4 +323,4 @@ Print the bus layout, the node tree, and the GDScript. User constructs in the Go
 - `audio/audio-direction` — defines the dynamic music plan and bus layout
 - `audio/music-track` — generates the stems
 - `audio/voice-line` — the voice bus that triggers ducking
-- `references/godot-version.md` — Godot 4.5 AudioServer and Tween API
+- `references/godot-version.md` — Summer Engine AudioServer and Tween API

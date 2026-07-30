@@ -263,7 +263,7 @@ If the user has a CMUDict-style phoneme list and wants to map manually, this is 
 
 If Rhubarb won't install on the user's platform, run a Whisper-phoneme model on Replicate (e.g., `cjwbw/whisper-phoneme`) or `aeneas-align` for forced alignment. Download the JSON, swap the bake function for one that consumes ARPAbet phonemes (table in Reference card). Same end result — replayable BlendShape Animation resource.
 
-For projects that can't use any cloud or third-party tool, Godot 4.5's `AudioStreamGenerator` with hand-rolled vowel/consonant detection from RMS + zero-crossings gives ~50% accuracy — enough for a stylized character but not photoreal.
+For projects that can't use any cloud or third-party tool, Summer Engine's `AudioStreamGenerator` with hand-rolled vowel/consonant detection from RMS + zero-crossings gives ~50% accuracy — enough for a stylized character but not photoreal.
 
 ## Handoff
 

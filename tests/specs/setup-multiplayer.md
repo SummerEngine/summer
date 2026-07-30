@@ -2,7 +2,7 @@
 
 ## Fixture
 
-- Godot 4.5 / Summer Engine project, single-player game with `World/Player` (CharacterBody3D) and a working camera + movement script.
+- Summer Engine project, single-player game with `World/Player` (CharacterBody3D) and a working camera + movement script.
 - Summer MCP tools available.
 - Host file tools available (Read, Edit, Write).
 - No multiplayer setup yet (no autoloads, no MultiplayerSpawner, no Synchronizer).
@@ -96,7 +96,7 @@
 **Assertions:**
 
 - [ ] Skill does not blindly call `summer_*` tools and fail.
-- [ ] Generated scripts compile in Godot 4.5 / Summer Engine.
+- [ ] Generated scripts compile in Summer Engine.
 - [ ] Skill provides a `project.godot` patch in valid Godot project format.
 - [ ] Skill still asks for confirmation on each write.
 - [ ] Same opinionated decisions hold (host authority, ENet, no replication of cosmetic VFX).

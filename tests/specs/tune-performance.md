@@ -2,7 +2,7 @@
 
 ## Fixture
 
-- Godot 4.5 / Summer Engine project with a 3D scene.
+- Summer Engine project with a 3D scene.
 - Summer MCP tools available (engine running on localhost:6550).
 - Host file tools available (Read, Edit, Write).
 

@@ -4,7 +4,12 @@ Summer is the AI game-dev studio for **Summer Engine** — the AI-native game en
 
 ## What Summer Engine is
 
-A game engine designed for AI agents — editor, scene graph, asset pipeline, and runtime are all instrumented for programmatic control via MCP. Summer Engine is compatible with Godot 4.5: projects use GDScript (`.gd`), C# (`.cs`), scenes (`.tscn`/`.scn`), and resources (`.tres`/`.res`). Write code in those languages; talk to the engine through `summer_*` tools.
+A game engine designed for AI agents. The user is making a **Summer game**
+with the **Summer SDK**. Editor, scene graph, asset pipeline, and runtime are
+instrumented for programmatic control via MCP. GDScript (`.gd`) is the default
+language; C# (`.cs`), scenes (`.tscn`/`.scn`), and resources (`.tres`/`.res`)
+are also supported. Talk to the engine through `summer_*` tools, and use the
+bundled technical compatibility reference for version-sensitive upstream APIs.
 
 ## How to behave
 
@@ -20,7 +25,7 @@ The single most important skill to know is `summer:using-summer` — it explains
 
 ## MCP tools (when the engine is running on `localhost:6550`)
 
-The `summer-engine` MCP server exposes 56 focused tools. The most important:
+The `summer-engine` MCP server exposes 62 tools. The most important:
 
 - **Scene mutation**: `summer_add_node`, `summer_set_prop`, `summer_set_resource_property`, `summer_remove_node`, `summer_save_scene`, `summer_replace_node`, `summer_batch`. Every scene mutation requires the exact `res://...tscn` `scenePath`; opening a scene is a user-visible UI action, not a mutation prerequisite. Mutation tools append one final `SaveScene`; raw engine batches must do the same.
 - **Scene inspection**: `summer_get_scene_tree`, `summer_inspect_node`, `summer_inspect_resource`.
@@ -35,7 +40,7 @@ Git, shell, and grep remain host-native. Use the Summer file tools for project r
 
 ## Type-system traps
 
-`SetProp` values are engine-formatted **strings** (Godot 4.5 type-system compatible):
+`SetProp` values are Summer Engine-formatted **strings**:
 
 - `"Vector3(0, 10, 0)"` — NOT `{x: 0, y: 10, z: 0}`.
 - `"Color(1, 0.5, 0, 1)"` — RGBA, 4 components.

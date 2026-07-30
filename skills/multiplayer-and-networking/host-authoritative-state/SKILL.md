@@ -1,6 +1,6 @@
 ---
 name: host-authoritative-state
-description: Use when designing the state layer of a multiplayer Godot game — deciding what's host-owned, how clients request changes, how the host validates and broadcasts. Pairs with `/peer-to-peer-multiplayer`. Trigger on "host authority", "authoritative state", "state ownership", "MP cheating", "client validation", "RPC patterns".
+description: Use when designing the state layer of a multiplayer Summer game — deciding what's host-owned, how clients request changes, how the host validates and broadcasts. Pairs with `/peer-to-peer-multiplayer`. Trigger on "host authority", "authoritative state", "state ownership", "MP cheating", "client validation", "RPC patterns".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: multiplayer-and-networking
@@ -327,6 +327,6 @@ After each Manager file lands, call `summer_get_script_errors` to confirm clean 
 
 - [`peer-to-peer-multiplayer`](../peer-to-peer-multiplayer/SKILL.md) — the four-layer architecture overview. Read this first if you haven't.
 - [`setup-multiplayer`](../setup-multiplayer/SKILL.md) — lighter intro that just gets a session running. Use that one if the user just wants two players to see each other.
-- [`references/godot-version.md`](../../references/godot-version.md) — Godot 4.5 multiplayer API stability notes.
+- [`references/godot-version.md`](../../references/godot-version.md) — Summer Engine multiplayer API stability notes.
 - [`references/gd-style.md`](../../references/gd-style.md) — typed-GDScript conventions used in the examples above.
 - [`references/mcp-tools-reference.md`](../../references/mcp-tools-reference.md) — `summer_get_script_errors` for compile verification.

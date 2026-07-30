@@ -2,7 +2,7 @@
 
 ## Fixture
 
-- Godot 4.5 / Summer Engine project, complete game with main scene set, no script errors, basic icon at `icon.png` (256×256).
+- Summer Engine project, complete game with main scene set, no script errors, basic icon at `icon.png` (256×256).
 - Existing `export_presets.cfg` with Windows/Mac/Linux presets, all `debug = true` (development defaults).
 - No `LICENSE` file at repo root.
 - No `attribution.md`.

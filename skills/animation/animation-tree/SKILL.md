@@ -1,6 +1,6 @@
 ---
 name: animation-tree
-description: Use when the user has clips on a character and needs them to play in response to gameplay — idle/walk/run blend, attacks that interrupt locomotion, hit reactions that override everything. Designs and wires AnimationTree state machines and blend trees in Godot 4.5. Trigger on "AnimationTree", "state machine", "blend tree", "transition", "play animation when", "character keeps T-posing", "wire animations".
+description: Use when the user has clips on a character and needs them to play in response to gameplay — idle/walk/run blend, attacks that interrupt locomotion, hit reactions that override everything. Designs and wires AnimationTree state machines and blend trees in Summer Engine. Trigger on "AnimationTree", "state machine", "blend tree", "transition", "play animation when", "character keeps T-posing", "wire animations".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: animation
@@ -13,7 +13,7 @@ paths: ["**/*.gd", "**/*.tscn", "**/*.tres"]
 
 Generation gives you clips. The AnimationTree gives the character life. This skill is **not generative** — no FAL, no MCP AI calls. It composes existing clips on an `AnimationPlayer` into an `AnimationTree` with a `StateMachine` for distinct states (idle / attack / hit / dead) and `BlendSpace` nodes for continuous parameters (walk-run blend by speed). Done right, the character moves like a shipped game; done wrong, you get T-poses, snapping, or animations that "eat" each other.
 
-The canonical Godot 4.5 stack:
+The canonical Summer Engine stack:
 
 ```
 Character (CharacterBody3D)
@@ -190,7 +190,7 @@ Then `summer_play` and watch — the goblin should idle in place, blend up to wa
 
 ## Reference card
 
-### Parameter paths cheat-sheet (Godot 4.5)
+### Parameter paths cheat-sheet (Summer Engine)
 
 | Goal | Path |
 |---|---|
@@ -245,7 +245,7 @@ Then `summer_play` and watch — the goblin should idle in place, blend up to wa
 
 ## Fallback (no MCP)
 
-Open the scene in Godot 4.5 editor, add `AnimationTree` node, set `Anim Player` to the AnimationPlayer, set `Active = on`, double-click `Tree Root` and edit visually. Drag `AnimationNodeStateMachine` as the root, drop nodes inside, draw transitions by Shift-dragging. Save the scene. The visual editor produces the same `.tres` — slower but discoverable.
+Open the scene in Summer Engine editor, add `AnimationTree` node, set `Anim Player` to the AnimationPlayer, set `Active = on`, double-click `Tree Root` and edit visually. Drag `AnimationNodeStateMachine` as the root, drop nodes inside, draw transitions by Shift-dragging. Save the scene. The visual editor produces the same `.tres` — slower but discoverable.
 
 ## Handoff
 

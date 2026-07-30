@@ -2,7 +2,7 @@
 
 ## Fixture
 
-- A Godot 4.5 / Summer Engine project that does NOT yet have multiplayer.
+- A Summer Engine project that does NOT yet have multiplayer.
 - Project may be empty or may have an existing single-player scene.
 - Summer MCP tools available; engine running on localhost:6550.
 
@@ -78,7 +78,7 @@
 
 **Fixture:** Same as Case 1, but Summer MCP unavailable.
 
-**Input:** "Add multiplayer to my Godot game (P2P, friend invite)."
+**Input:** "Add multiplayer to my Summer game (P2P, friend invite)."
 
 **Expected behavior:**
 

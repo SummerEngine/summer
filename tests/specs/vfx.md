@@ -2,7 +2,7 @@
 
 ## Fixture
 
-- Godot 4.5 / Summer Engine project, main scene with `World/Player` (CharacterBody3D + Camera3D) and `World/Enemy` (CharacterBody3D + MeshInstance3D + a `damaged(amount)` signal).
+- Summer Engine project, main scene with `World/Player` (CharacterBody3D + Camera3D) and `World/Enemy` (CharacterBody3D + MeshInstance3D + a `damaged(amount)` signal).
 - `default_bus_layout.tres` defines `Master`, `Music`, `Ambient`, `SFX` buses (at minimum).
 - Summer MCP tools available (engine running on localhost:6550).
 - Host file tools available (Read, Edit, Write).
@@ -105,7 +105,7 @@
 **Assertions:**
 
 - [ ] Skill identifies MCP unavailable and adapts.
-- [ ] Generated GDScript is syntactically valid Godot 4.5 with type hints.
+- [ ] Generated GDScript is syntactically valid Summer Engine with type hints.
 - [ ] Skill asks the user to paste the scene snippet AND the bus list.
 - [ ] Skill provides explicit autoload-registration instructions (no `summer_*` autoload tool exists).
 - [ ] Skill applies "May I write …" protocol on each of the 3 file writes.

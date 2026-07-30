@@ -156,7 +156,7 @@ The break-even is two characters. Past that, retarget is always cheaper.
 
 ## Fallback (no MCP)
 
-Open the source `.glb` in Blender, export the animation, then in Godot 4.5 use the BoneMap-based humanoid retargeting workflow (Project → Tools → Bone Map). Set both source and target as humanoid profile, configure the bone mapping if names differ, save the retargeted clip into the target's `AnimationLibrary`. ~5 minutes per clip vs ~10 seconds via MCP. Documented in the Godot 4.5 character animation docs.
+Open the source `.glb` in Blender, export the animation, then in Summer Engine use the BoneMap-based humanoid retargeting workflow (Project → Tools → Bone Map). Set both source and target as humanoid profile, configure the bone mapping if names differ, save the retargeted clip into the target's `AnimationLibrary`. ~5 minutes per clip vs ~10 seconds via MCP. Documented in the Summer Engine character animation docs.
 
 ## Handoff
 

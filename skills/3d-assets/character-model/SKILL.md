@@ -154,11 +154,11 @@ summer_import_asset_by_id(
 
 ### 5. ⚠️ Restart the editor
 
-**Known Godot 4.5 gotcha:** after importing a rigged `.glb`, the `Skeleton3D` node appears stale in the scene dock — bones are missing, `skeleton.get_bone_count()` returns 0, and `AnimationPlayer` libraries fail to bind. The fix:
+**Known Summer Engine gotcha:** after importing a rigged `.glb`, the `Skeleton3D` node appears stale in the scene dock — bones are missing, `skeleton.get_bone_count()` returns 0, and `AnimationPlayer` libraries fail to bind. The fix:
 
 > The rigged mesh is imported. Please restart the Summer Engine editor (close and reopen) so the Skeleton3D rebuilds correctly. Without the restart, animations will fail to bind.
 
-There is no programmatic workaround as of Godot 4.5.x. Tell the user, wait, then continue.
+There is no programmatic workaround as of the current Summer Engine base. Tell the user, wait, then continue.
 
 ### 6. Wire as CharacterBody3D or Node3D — pick the right parent
 

@@ -1,6 +1,6 @@
 ---
 name: game-feel
-description: Use when the user says the game "feels flat", "lacks impact", "needs juice", "needs punch", or asks for hit feedback, screen shake, camera shake, audio ducking, or general "game feel". Walks the user through the canonical Godot 4.5 game-feel stack — hit-flash + trauma camera shake + audio ducking — wired together so a single hit fires all three. Trigger on "vfx", "juice", "punch", "feels flat", "game feel", "hit flash", "screen shake", "camera shake", "ducking".
+description: Use when the user says the game "feels flat", "lacks impact", "needs juice", "needs punch", or asks for hit feedback, screen shake, camera shake, audio ducking, or general "game feel". Walks the user through the canonical Summer Engine game-feel stack — hit-flash + trauma camera shake + audio ducking — wired together so a single hit fires all three. Trigger on "vfx", "juice", "punch", "feels flat", "game feel", "hit flash", "screen shake", "camera shake", "ducking".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects
@@ -11,7 +11,7 @@ paths: ["**/*.gd", "**/*.tscn", "**/*.tres"]
 
 # /vfx — The Trio That Makes Games Feel Punchy
 
-Particles don't make a game feel good. Screen shake alone doesn't either. What makes a hit *land in the body* is three systems firing on the same frame: a sub-frame **hit flash** on the body that got hit, **trauma-based camera shake** with quadratic falloff so big hits saturate, and **audio ducking** that briefly squashes Music/Ambient so the impact SFX punches through. Skip any one and the game drops back to "tech demo". This skill installs the canonical Godot 4.5 stack — three small, self-contained systems wired to a single signal — so one `hit()` call fires all three.
+Particles don't make a game feel good. Screen shake alone doesn't either. What makes a hit *land in the body* is three systems firing on the same frame: a sub-frame **hit flash** on the body that got hit, **trauma-based camera shake** with quadratic falloff so big hits saturate, and **audio ducking** that briefly squashes Music/Ambient so the impact SFX punches through. Skip any one and the game drops back to "tech demo". This skill installs the canonical Summer Engine stack — three small, self-contained systems wired to a single signal — so one `hit()` call fires all three.
 
 ## Step 1 — Ask what feels flat
 
@@ -370,7 +370,7 @@ This skill writes 3 GDScript files and adds 1 node + 1 autoload entry. Always as
 ## See also
 
 - `references/mcp-tools-reference.md` — full MCP tool list, especially the inline-sub_resource trap
-- `references/godot-version.md` — Godot 4.5 API notes
+- `references/godot-version.md` — Summer Engine API notes
 - `references/collaborative-protocol.md` — "May I write" pattern
 - `references/gd-style.md` — typed GDScript conventions
 - `audio/audio-direction/SKILL.md` — bus layout setup (prerequisite for ducking)

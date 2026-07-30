@@ -113,7 +113,7 @@ Ask:
 
 ### 6. Write the lighting plan
 
-State the plan in one block. For Godot 4.5:
+State the plan in one block. For Summer Engine:
 
 ```
 Sun: DirectionalLight3D, color #fff2d9, energy 0.9, angle ~30° (warm low-angle)
@@ -133,7 +133,7 @@ NEVER: full-bright modulation, no soft falloff
 
 ### 7. Define post-processing rules
 
-Godot 4.5 post stack: Glow, SDFGI, SSAO, SSR, Adjustments, Color Correction (LUT). State opinions, not options.
+Summer Engine post stack: Glow, SDFGI, SSAO, SSR, Adjustments, Color Correction (LUT). State opinions, not options.
 
 ```
 Glow: ON, threshold 0.9, intensity 0.5  (soft bloom on highlights only)
@@ -274,7 +274,7 @@ No template — this is a workflow that produces the bible the rest of the proje
 ## See also
 
 - `references/collaborative-protocol.md`
-- `references/godot-version.md` — Godot 4.5 rendering API notes (Compositor moved in 4.4 / 4.5)
+- `references/godot-version.md` — Summer Engine rendering API notes (Compositor moved in 4.4 / 4.5)
 - `references/mcp-tools-reference.md`
 - `scene-and-project/brainstorm-game/SKILL.md` — produces the brief that anchors the bible
 - `audio/audio-direction/SKILL.md` — the sonic counterpart

@@ -113,7 +113,7 @@ The full list is ~70 names. If the user asks for something not on the top-30, tr
 ### Pitfalls
 
 - **`motionName` typos silently match nothing.** `"run_fast"` is not on the list — the call returns an error. Always check the curated list first. Use exact strings from the list above.
-- **Locomotion clips have a forward bias.** Meshy's `run` translates the root forward by ~5m. If you're driving root motion in code, set `root_motion_track` correctly or strip the translation in an AnimationPlayer Edit. See the Godot 4.5 root motion docs.
+- **Locomotion clips have a forward bias.** Meshy's `run` translates the root forward by ~5m. If you're driving root motion in code, set `root_motion_track` correctly or strip the translation in an AnimationPlayer Edit. See the Summer Engine root motion docs.
 - **Rig pose mismatch.** If your rig was rigged with a non-T-pose reference image, the limbs may bend wrong. Re-rig from a T-pose mannequin (see `summer:asset-pipeline/asset-strategy`) before re-generating.
 - **Rig still preparing.** New rigs need ~3 minutes after the rig job completes before the animation library is ready. The MCP route returns 425 "animations_preparing" if you call too early. Wait and retry.
 

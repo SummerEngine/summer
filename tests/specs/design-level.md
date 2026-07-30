@@ -2,7 +2,7 @@
 
 ## Fixture
 
-- Godot 4.5 / Summer Engine project, main scene already has a `World/Player` (CharacterBody3D) with FPS controller wired.
+- Summer Engine project, main scene already has a `World/Player` (CharacterBody3D) with FPS controller wired.
 - `.summer/GameSoul.md` exists; brief: "Action-combat game, three mechanics: dash, parry, double-jump. Vertical slice scope."
 - `.summer/mechanics/parry.md` exists.
 - No `levels/` folder yet.

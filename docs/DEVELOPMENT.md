@@ -10,12 +10,15 @@ If you're an AI agent or developer with zero context, read this first.
 
 ## What This Is
 
-**Summer Engine** is the AI game engine, built on the Godot team's work and customized so AI agents and humans can collaborate on games. It's a proprietary binary you download via `summer install` or from [summerengine.com/download](https://summerengine.com/download).
+**Summer Engine** is the proprietary AI game engine binary users download via
+`summer install` or from
+[summerengine.com/download](https://summerengine.com/download). Users make
+Summer games with the Summer SDK and GDScript.
 
 **Summer** (this repo) is the **open-source agent layer** for it. Three things in one Node.js package:
 
 1. **CLI tool**: lets users install, manage, and launch Summer Engine from their terminal
-2. **MCP server**: gives AI coding agents 56 tools, including identity-bound project files, scene manipulation, play/stop, diagnostics, and asset import/generation
+2. **MCP server**: gives AI coding agents 62 tools, including identity-bound project files, scene manipulation, play/stop, diagnostics, asset import/generation, cloud workflows, and creator publishing
 3. **Skills bundle**: the current SKILL.md playbooks that auto-trigger when the agent sees the right natural-language signal
 
 Plus lifecycle hooks, plugin manifests, and setup targets that wire all of the above into Claude Code, Cursor, Codex, Gemini, OpenCode, GitHub Copilot CLI, GitHub Copilot in VS Code, Cline, Roo Code, Factory Droid, and Devin Desktop (formerly Windsurf).
@@ -144,6 +147,10 @@ tools/summer-cli/
     │   ├── install.ts         # summer install - downloads engine
     │   ├── login.ts           # summer login - browser OAuth
     │   ├── logout.ts          # summer logout - clears tokens
+    │   ├── config.ts          # summer config - shared non-secret config
+    │   ├── publish.ts         # summer publish - confirmed creator release
+    │   ├── releases.ts        # summer releases - creator history
+    │   ├── logs.ts            # summer logs - explicit durable-log boundary
     │   ├── status.ts          # summer status - engine diagnostics
     │   ├── run.ts             # summer run [path] - launches engine
     │   ├── open.ts            # summer open <path> - opens project
@@ -164,7 +171,10 @@ tools/summer-cli/
     │
     └── lib/                   # Shared utilities
         ├── api-client.ts      # HTTP client for engine's local API
-        ├── auth.ts            # Read/write ~/.summer/auth-token
+        ├── store.ts           # Hardened shared ~/.summer store
+        ├── auth.ts            # Core-compatible identity + token metadata
+        ├── config.ts          # Typed non-secret configuration
+        ├── creator.ts         # Versioned creator publish/history client
         ├── engine.ts          # Engine detection, health check, port reading
         └── project-memory.ts  # Lightweight .summer memory summary
 ```
@@ -175,12 +185,25 @@ tools/summer-cli/
 
 The MCP server does NOT require the engine to be running at startup. It starts immediately, registers all tools, and connects to the engine lazily on first tool call. If the engine stops mid-session, the next tool call retries. This is handled by `with-engine.ts`.
 
-### Auth Token Flow
+### Shared `~/.summer/` Store
 
-Two separate tokens in `~/.summer/`:
+The CLI, existing MCP, exporters, and desktop engine share one secured
+`~/.summer/` directory. Existing filenames are preserved because other Summer
+Engine consumers already read them:
+
 - `api-token` - written by the engine's `LocalApiServer` on startup. Random per-session. The MCP server reads this to authenticate with the engine. **Only valid while engine is running.**
-- `auth-token` - written by `summer login`. Long-lived JWT for user identity. Used for analytics/tracking. **Persists across sessions.**
-- `user.json` - written by the engine when user signs in via WebView. Contains `{id, email}`.
+- `auth-token` - core Summer CLI JWT written by `summer login`.
+- `cloud-token` - separate Summer Cloud credential.
+- `creator-token` - separate Summercraft `sc_` credential connected by
+  `summer login --creator`; it never replaces `auth-token`.
+- `user.json` - validated `{id, email, name?}` core identity.
+- `credential-metadata.json` - non-secret audience, scope, type, and expiry.
+- `config.json` - typed, non-secret shared configuration.
+- `creator-audit.jsonl` - secret-free local creator publish receipts.
+
+Normal users need no new environment variables. See
+[GATE_E3_CREATOR_CLI.md](GATE_E3_CREATOR_CLI.md) for the exact API,
+confirmation, credential, and residual activation contract.
 
 ### Template System (`commands/create.ts`)
 

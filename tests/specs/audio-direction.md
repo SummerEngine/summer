@@ -2,7 +2,7 @@
 
 ## Fixture
 
-- Godot 4.5 / Summer Engine project, default audio bus layout (Master only).
+- Summer Engine project, default audio bus layout (Master only).
 - `.summer/GameSoul.md` exists; brief: "Cozy farming sim, vertical slice scope."
 - `.summer/art-bible.md` exists; mood: "soft, hand-warmed, golden-hour, painterly".
 - No `.summer/audio-bible.md` yet.

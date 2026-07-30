@@ -258,7 +258,7 @@ The skeleton this skill produces is meant to be filled in via `/summer:design-me
 
 - `references/collaborative-protocol.md`
 - `references/mcp-tools-reference.md`
-- `references/godot-version.md` — Godot 4.5 API notes
+- `references/godot-version.md` — Summer Engine API notes
 - `scene-and-project/brainstorm-game/SKILL.md` — produces `.summer/GameSoul.md`
 - `gameplay-mechanics/design-mechanic/SKILL.md` — designs the verbs the level exercises
 - `ai-and-npcs/design-npc/SKILL.md` — designs the enemies the encounters reference

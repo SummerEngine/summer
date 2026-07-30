@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "summer",
   "version": "2.5.1",
-  "description": "Agent tooling for Summer Engine: game-dev skills, lifecycle hooks, and a 56-tool MCP bridge to the local desktop app.",
+  "description": "Summer SDK agent tooling: game-dev skills, lifecycle hooks, and a 62-tool MCP bridge for making Summer games.",
   "author": {
     "name": "Summer Engine",
     "email": "founders@summerengine.com",

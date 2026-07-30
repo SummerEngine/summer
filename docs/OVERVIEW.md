@@ -10,7 +10,8 @@ Three things, plus glue.
 
 **Skills (60).** Markdown files. Each one is a discipline guide — debug, brainstorm, FPS controller, multiplayer, art direction, ship. They auto-fire on natural language. No slash command needed.
 
-**MCP server.** Thirty-seven tools that talk to a running Summer Engine on `localhost:6550`. Scene mutation, asset import, runtime control, diagnostics, generation. Your agent calls them; the engine moves.
+**MCP server.** Sixty-two tools spanning local Summer Engine control, cloud
+workflows, and creator publishing. Your agent calls them; the engine moves.
 
 **CLI.** Install the engine, log in, scaffold projects, run them, run doctor. The terminal side.
 
@@ -78,10 +79,13 @@ For live scene hierarchy/inspector work, prefer scene tools. Guarded `.tscn` tex
 
 ## Scripting
 
-Summer Engine is compatible with Godot 4.5. Pick one:
+You are writing a Summer game with the Summer SDK. Pick one:
 
 - **GDScript** (`.gd`) — default. Best supported by Summer skills (see `summer:gdscript-patterns`).
-- **C#** (`.cs`) — fully supported by the engine. No `summer:csharp-patterns` skill yet — write from Godot 4.5 C# docs. Different lifecycle, different signal API, different export attributes. Don't blindly translate GDScript idioms.
+- **C#** (`.cs`) — fully supported by the engine. No `summer:csharp-patterns`
+  skill exists yet; use the bundled compatibility reference for
+  version-sensitive APIs. Different lifecycle, signal, and export-attribute
+  patterns mean GDScript idioms should not be translated blindly.
 
 Scenes are always `.tscn`/`.scn`. Resources are always `.tres`/`.res`.
 

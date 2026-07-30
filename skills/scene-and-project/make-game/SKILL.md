@@ -198,7 +198,7 @@ Use `summer:asset-strategy` to decide whether to generate assets, search the lib
 Skill: summer:vfx
 ```
 
-Walks the canonical Godot 4.5 game-feel stack — hit-flash + trauma camera shake + audio ducking — wired so a single hit fires all three.
+Walks the canonical Summer Engine game-feel stack — hit-flash + trauma camera shake + audio ducking — wired so a single hit fires all three.
 
 ```
 Skill: summer:tune-performance

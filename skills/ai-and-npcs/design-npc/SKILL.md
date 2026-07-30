@@ -472,7 +472,7 @@ For a fully-rigged enemy with anim controller + loot drop:
 ## See also
 
 - `references/mcp-tools-reference.md` — full MCP tool list
-- `references/godot-version.md` — Godot 4.5 API notes
+- `references/godot-version.md` — Summer Engine API notes
 - `references/collaborative-protocol.md` — "May I write" pattern
 - `references/gd-style.md` — typed GDScript conventions
 - `ai-and-npcs/state-machine-npc/SKILL.md` — FSM pattern deep dive

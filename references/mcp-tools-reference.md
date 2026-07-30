@@ -17,7 +17,7 @@
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (56 tools)
+## Tool surface (62 tools)
 
 ### Project files (3)
 
@@ -139,6 +139,15 @@
 | `summer_cloud_restore` | Restore a retained cloud version, or a local pre-sync checkpoint. |
 | `summer_cloud_checkpoints` | List local pre-sync checkpoints. |
 | `summer_cloud_conflicts` | List conflict sets, or restore a preserved conflict file. |
+
+### Creator platform (4)
+
+| Tool | Use |
+|---|---|
+| `summer_creator_publish` | Compute the exact `.pck` digest and size, require user confirmation, then run versioned prepare → write-once upload → finalize. |
+| `summer_creator_releases` | List real creator-owned releases from `summer.creator.v1`, preserving opaque pagination cursors. |
+| `summer_creator_logs` | Fail closed until a durable, authorized, redacted runtime-log source exists. |
+| `summer_creator_config` | Read or confirm changes to shared non-secret configuration. It never accepts or returns tokens. |
 
 ## Common pattern
 

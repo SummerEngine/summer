@@ -11,9 +11,9 @@ paths: ["**/*.gd", "**/*.tscn", "**/*.tres"]
 
 # Procedural Animation — Bones Driven by Code
 
-Generated clips give you 80% of a character. The remaining 20% — the eye contact when an NPC speaks, feet that plant on slopes, hands that wrap a sword grip, the lean into a sprint, the recoil from a hit on the left shoulder — is procedural. In Godot 4.5 this is done via the `SkeletonModifier3D` family attached to the `Skeleton3D`, plus tween-driven additive blend layers on the `AnimationTree`. None of it is generative; this skill is a recipe set.
+Generated clips give you 80% of a character. The remaining 20% — the eye contact when an NPC speaks, feet that plant on slopes, hands that wrap a sword grip, the lean into a sprint, the recoil from a hit on the left shoulder — is procedural. In Summer Engine this is done via the `SkeletonModifier3D` family attached to the `Skeleton3D`, plus tween-driven additive blend layers on the `AnimationTree`. None of it is generative; this skill is a recipe set.
 
-Honest limit: Godot 4.5's IK is good enough for look-at, foot-snap, and simple two-bone arm/leg chains. It is NOT good enough for full-body IK with weight redistribution (a la UE5 Control Rig). For combat-grappling or contact-heavy interactions, hand-author the contact frame and accept some clipping.
+Honest limit: Summer Engine's IK is good enough for look-at, foot-snap, and simple two-bone arm/leg chains. It is NOT good enough for full-body IK with weight redistribution (a la UE5 Control Rig). For combat-grappling or contact-heavy interactions, hand-author the contact frame and accept some clipping.
 
 ## When to use this skill
 
@@ -89,7 +89,7 @@ Multiple `LookAtModifier3D` nodes on the same chain — one for `Spine1` (limit 
 
 ### A3 — Foot IK (slopes & uneven terrain)
 
-The clip has the foot at Y=0; on a slope the ground is at Y=0.15. Without IK, foot floats. Use `SkeletonIK3D` (Godot 4.5 legacy IK still works for two-bone chains; the new chain modifier is preferred for production):
+The clip has the foot at Y=0; on a slope the ground is at Y=0.15. Without IK, foot floats. Use `SkeletonIK3D` (Summer Engine legacy IK still works for two-bone chains; the new chain modifier is preferred for production):
 
 ```gdscript
 @onready var skel: Skeleton3D = $Skeleton3D
@@ -231,4 +231,4 @@ Add modifiers in the Godot editor under Skeleton3D, set bone names from the insp
 
 - `references/gd-style.md` — typed GDScript conventions in the snippets.
 - `references/mcp-tools-reference.md` — `summer_set_prop` enum-int conventions for axis settings.
-- Godot 4.5 docs: `SkeletonModifier3D`, `LookAtModifier3D`, `SkeletonIK3D`, `PhysicalBoneSimulator3D`.
+- Summer Engine docs: `SkeletonModifier3D`, `LookAtModifier3D`, `SkeletonIK3D`, `PhysicalBoneSimulator3D`.

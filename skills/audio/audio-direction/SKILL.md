@@ -248,7 +248,7 @@ No template — this is a workflow that produces the bible the rest of the proje
 ## See also
 
 - `references/collaborative-protocol.md`
-- `references/godot-version.md` — Godot 4.5 audio API notes
+- `references/godot-version.md` — Summer Engine audio API notes
 - `references/mcp-tools-reference.md`
 - `scene-and-project/brainstorm-game/SKILL.md` — produces the brief that anchors the bible
 - `rendering-and-lighting/art-direction/SKILL.md` — the visual counterpart; audio must rhyme with it

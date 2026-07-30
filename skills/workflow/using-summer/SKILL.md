@@ -38,10 +38,11 @@ Two layers:
 - **Skills** — discipline guides that fire on specific situations: brainstorming a game, designing a mechanic, building an FPS controller, debugging a crash, shipping a build. Each one is a SKILL.md you load via the Skill tool.
 - **MCP tools** — `summer_*` tools that talk to the running Summer Engine on `localhost:6550`. Scene mutation (`summer_add_node`, `summer_set_prop`), inspection (`summer_get_scene_tree`, `summer_inspect_node`), play/diagnostics (`summer_play`, `summer_get_diagnostics`), asset import/generation (`summer_import_from_url`, `summer_generate_3d`), whole-project sync to Summer Cloud (`summer_cloud_push`, `summer_cloud_pull`; see `summer:summer-cloud`), and 30+ more.
 
-**Scripting language:** Summer Engine is compatible with Godot 4.5. You can write game code in either:
+**Scripting language:** You are making a Summer game with the Summer SDK. You
+can write game code in either:
 
 - **GDScript** (`.gd`) — the default. Best supported by Summer skills (see `summer:gdscript-patterns`). Use this unless the user has explicitly chosen C#.
-- **C#** (`.cs`) — fully supported by the engine. There is no `summer:csharp-patterns` skill yet — when writing C#, use the Godot 4.5 C# API from first principles. The patterns are different (different lifecycle method names, different signal API, different export attributes), so don't blindly translate GDScript idioms. Confirm with the user that they want C# before producing it; switching languages mid-project is painful.
+- **C#** (`.cs`) — fully supported by the engine. There is no `summer:csharp-patterns` skill yet — when writing C#, use the Summer Engine C# API from first principles. The patterns are different (different lifecycle method names, different signal API, different export attributes), so don't blindly translate GDScript idioms. Confirm with the user that they want C# before producing it; switching languages mid-project is painful.
 
 Scenes are always `.tscn`/`.scn`. Resources are always `.tres`/`.res`. Drive the engine through `summer_*` tools — do not hand-edit `.tscn` files; the editor holds in-memory state that diverges from disk.
 

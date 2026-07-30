@@ -234,4 +234,4 @@ After the SFX is wired:
 - `audio/music-track` — music
 - `audio/voice-line` — TTS
 - `references/mcp-tools-reference.md`
-- `references/godot-version.md` — Godot 4.5 audio nodes
+- `references/godot-version.md` — Summer Engine audio nodes

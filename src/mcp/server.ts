@@ -2,6 +2,7 @@ import { createRequire } from "node:module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { EngineApiClient } from "../lib/api-client.js";
+import type { EngineSelection } from "../lib/engine.js";
 import { registerSceneTools } from "./tools/scene-tools.js";
 import { registerDebugTools } from "./tools/debug-tools.js";
 import { registerVisualTools } from "./tools/visual-tools.js";
@@ -43,6 +44,14 @@ async function probeBootDrift(): Promise<void> {
 }
 
 let cachedClient: EngineApiClient | null = null;
+let engineSelection: EngineSelection | undefined;
+
+export function configureMcpEngineSelection(
+  selection?: EngineSelection
+): void {
+  engineSelection = selection ? { ...selection } : undefined;
+  cachedClient = null;
+}
 
 export async function getClient(): Promise<EngineApiClient> {
   if (cachedClient) {
@@ -59,12 +68,17 @@ export async function getClient(): Promise<EngineApiClient> {
   }
 
   try {
-    cachedClient = await EngineApiClient.connect();
+    cachedClient = await EngineApiClient.connect(engineSelection);
     return cachedClient;
-  } catch {
+  } catch (error) {
     cachedClient = null;
+    const reason =
+      error instanceof Error
+        ? error.message
+        : "Summer Engine is not running.";
     throw new Error(
-      "Summer Engine is not running. Open it first, or run: npx summer-engine run\n" +
+      reason + "\n" +
+        "Open the intended project in Summer Engine, or run: npx summer-engine run\n" +
         "Note: only tools that touch the local project need the engine. Cloud tools " +
         "(summer_generate_*, summer_search_assets, summer_list_my_assets, summer_get_asset, " +
         "summer_check_job) work right now without it — they only need 'npx summer-engine login'."
@@ -239,13 +253,33 @@ function installResultSizeLogger(server: {
   return () => registeredToolCount;
 }
 
-export async function startMcpServer(): Promise<void> {
+export interface StartMcpServerOptions {
+  projectPath?: string;
+  instanceId?: string;
+  cwd?: string;
+}
+
+export async function startMcpServer(
+  options: StartMcpServerOptions = {}
+): Promise<void> {
+  configureMcpEngineSelection({
+    instanceId:
+      options.instanceId ?? process.env.SUMMER_ENGINE_INSTANCE_ID,
+    projectPath:
+      options.projectPath ?? process.env.SUMMER_ENGINE_PROJECT,
+    cwd: options.cwd ?? process.cwd(),
+  });
   installMcpProcessDiagnostics();
   appendMcpLogEvent("mcp:start", {
     version,
     pid: process.pid,
     node: process.version,
     cwd: process.cwd(),
+    selection: {
+      instanceId: options.instanceId ? "explicit" : undefined,
+      projectPath: options.projectPath ? "explicit" : undefined,
+      cwd: options.cwd ?? process.cwd(),
+    },
   });
 
   const server = new McpServer({

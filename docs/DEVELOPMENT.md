@@ -185,6 +185,20 @@ tools/summer-cli/
 
 The MCP server does NOT require the engine to be running at startup. It starts immediately, registers all tools, and connects to the engine lazily on first tool call. If the engine stops mid-session, the next tool call retries. This is handled by `with-engine.ts`.
 
+### Multi-Editor Discovery
+
+Current desktop builds publish one secured registry entry per live editor at
+`~/.summer/instances/<instanceId>.json`. On MCP startup, the CLI walks upward
+from its current working directory to find `project.godot`, matches that
+project root to the registry, and validates the chosen instance against
+`/api/health` before using its port and token.
+
+Selection priority is an explicit `--instance`, an explicit `--project`, the
+agent's current project directory, then the only live instance. If multiple
+instances remain and no project is known, connection fails closed. The legacy
+`api-port`/`api-token` pair remains as a compatibility fallback when no live
+registry entries exist.
+
 ### Shared `~/.summer/` Store
 
 The CLI, existing MCP, exporters, and desktop engine share one secured

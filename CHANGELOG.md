@@ -2,6 +2,16 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- MCP discovers every live Summer editor through `~/.summer/instances/` and automatically binds local tools to the editor whose project contains the agent's current working directory.
+- `summer mcp --project <path>` and `summer mcp --instance <id>` provide explicit selection for hosts that do not start the MCP server from a project directory.
+
+### Changed
+- Multiple live editors are now a fail-closed state when no project can be inferred. MCP lists the non-secret project/instance choices instead of following the machine-global last-opened editor pointer.
+- Selected MCP sessions keep following the same project across editor restarts and validate registry identity against `/api/health` before connecting.
+
 ## [2.7.0] — 2026-07-24 — "Reliable project mutations"
 
 ### Added

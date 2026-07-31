@@ -9,8 +9,19 @@ import { startMcpServer } from "../mcp/server.js";
 
 export const mcpCommand = new Command("mcp")
   .description("Start the MCP server for AI tool integration (Cursor, Claude Code, etc.)")
-  .action(async () => {
-    await startMcpServer();
+  .option(
+    "--project <path>",
+    "Bind local engine tools to the editor running this project"
+  )
+  .option(
+    "--instance <id>",
+    "Bind local engine tools to one exact Summer editor instance"
+  )
+  .action(async (opts: { project?: string; instance?: string }) => {
+    await startMcpServer({
+      projectPath: opts.project,
+      instanceId: opts.instance,
+    });
   });
 
 mcpCommand

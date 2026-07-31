@@ -29,7 +29,7 @@ technical compatibility reference for version-sensitive upstream APIs.
 - **Discipline** (`gdscript-patterns`, `scene-composition`, `art-direction`) → how to shape it.
 - **Build** (`fps-controller`, `design-mechanic`, `design-level`, `setup-multiplayer`, `vfx`, `tune-performance`, `export-and-ship`) → produce the artifact.
 
-## MCP tool palette (engine on `localhost:6550`)
+## MCP tool palette (project-matched local editor)
 
 62 tools total. Categories:
 

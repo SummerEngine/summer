@@ -2,7 +2,13 @@ import { mkdir, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 import { randomUUID } from "node:crypto";
-import { getApiToken, getApiPort, checkEngineHealth } from "./engine.js";
+import {
+  getApiToken,
+  getApiPort,
+  checkEngineHealth,
+  resolveEngineConnection,
+  type EngineSelection,
+} from "./engine.js";
 import {
   classifyOpsResponse,
   pollOpToTerminal,
@@ -155,11 +161,13 @@ export class EngineApiClient {
   // preserves the pre-2.6.6 constructor contract for existing callers that only
   // supplied a projectIdHash.
   private targetIdentity: EngineTargetIdentity;
+  private selection: EngineSelection | null;
 
   constructor(
     port: number,
     token: string,
-    targetIdentity: EngineTargetIdentity | string = {}
+    targetIdentity: EngineTargetIdentity | string = {},
+    selection: EngineSelection | null = null
   ) {
     this.port = port;
     this.token = token;
@@ -167,9 +175,26 @@ export class EngineApiClient {
       typeof targetIdentity === "string"
         ? { projectIdHash: targetIdentity }
         : { ...targetIdentity };
+    this.selection = selection ? { ...selection } : null;
   }
 
-  static async connect(): Promise<EngineApiClient> {
+  static async connect(
+    selection?: EngineSelection
+  ): Promise<EngineApiClient> {
+    if (selection) {
+      const connection = await resolveEngineConnection(selection);
+      return new EngineApiClient(
+        connection.port,
+        connection.token,
+        {
+          instanceId: connection.health.instanceId,
+          projectId: connection.health.projectId,
+          projectIdHash: connection.health.projectIdHash,
+        },
+        { ...selection }
+      );
+    }
+
     const port = await getApiPort();
     const token = await getApiToken();
 
@@ -741,6 +766,22 @@ export class EngineApiClient {
    * will fail and trigger a reconnect+retry if the client really is stale.
    */
   async credentialsChanged(): Promise<boolean> {
+    if (this.selection) {
+      try {
+        const connection = await resolveEngineConnection(this.selection);
+        return (
+          connection.port !== this.port ||
+          connection.token !== this.token ||
+          connection.health.instanceId !== this.targetIdentity.instanceId
+        );
+      } catch {
+        // A selected editor disappearing is real drift. Dropping the cached
+        // client makes the next connect report which project/instance is absent
+        // instead of silently following another editor's global pointer.
+        return true;
+      }
+    }
+
     try {
       const [port, token] = await Promise.all([getApiPort(), getApiToken()]);
       if (!token) return false;

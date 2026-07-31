@@ -23,7 +23,7 @@ The single most important skill to know is `summer:using-summer` — it explains
 2. **Discipline skills second**: `gdscript-patterns`, `scene-composition`, `art-direction`, `audio-direction`. These shape content.
 3. **Build skills third**: `fps-controller`, `design-mechanic`, `design-level`, `setup-multiplayer`, `vfx`, `tune-performance`, `export-and-ship`.
 
-## MCP tools (when the engine is running on `localhost:6550`)
+## MCP tools (when the project-matched local editor is running)
 
 The `summer-engine` MCP server exposes 62 tools. The most important:
 

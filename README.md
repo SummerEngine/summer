@@ -262,9 +262,9 @@ Two pieces, plus the glue.
 Skills don't list steps. They encode the **order of operations**: diagnose before editing, scope before building, ask before guessing. [Agent Skills](https://agentskills.io) format, so any conformant tool picks them up.
 
 **MCP bridge.** The `summer-engine` MCP server gives the agent 62 tools. Local
-project tools connect to your engine on `localhost:6550`; cloud and creator
-tools use their documented remote or local contracts without requiring the
-editor:
+project tools connect to the project-matched live editor on its loopback port;
+cloud and creator tools use their documented remote or local contracts without
+requiring the editor:
 
 | | |
 |---|---|
@@ -279,6 +279,13 @@ editor:
 | Creator | `summer_creator_publish`, `summer_creator_releases`, `summer_creator_logs`, `summer_creator_config` — confirmed immutable publishing, real release history, explicit unsupported logs, and non-secret shared configuration |
 
 Git, shell, and grep remain host-native. Project file reads and writes use Summer's identity-bound tools so compatible engine builds can reject wrong-project and stale-content mutations. A host agent can still bypass these safeguards with its own file tools; the package cannot technically intercept that external process.
+
+When several Summer editors are open, MCP automatically selects the one whose
+project contains the agent's current working directory. Normal agent configs do
+not need a path or one MCP entry per editor. Hosts that launch MCP outside a
+project can use `summer mcp --project <path>`; `--instance <id>` is available
+when two editors intentionally show the same project. An ambiguous unscoped
+connection is rejected rather than routed to the last editor that opened.
 
 **Lifecycle hooks.** A `session-start` hook detects whether you're in a Summer Engine project and feeds the agent a one-line orientation. An opt-in `pre-commit doctor` runs `summer doctor` before `git commit` and blocks when the setup needs attention.
 
@@ -508,7 +515,7 @@ npx -y summer-engine@latest doctor
 | `summer skills list` | Show all skills. |
 | `summer skills install <name>` | Install one. |
 | `summer skills install --recommended --agent <agent>` | Install the recommended set. |
-| `summer mcp` | Start the MCP server. |
+| `summer mcp [--project <path> \| --instance <id>]` | Start MCP; normally auto-binds from the agent's project directory. |
 | `summer mcp setup <agent>` | Write MCP config for an agent. |
 | `summer setup <agent> [--yes]` | One shot: MCP config + recommended skills + doctor. |
 

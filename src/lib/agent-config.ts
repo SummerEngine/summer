@@ -1,6 +1,6 @@
 import { existsSync } from "fs";
 import { mkdir, readFile, writeFile } from "fs/promises";
-import { dirname, join, resolve } from "path";
+import { delimiter, dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { homedir, platform } from "os";
 
@@ -19,6 +19,7 @@ export const supportedAgents = [
   "vscode-copilot",
   "opencode",
   "lm-studio",
+  "antigravity",
 ] as const;
 
 export type SupportedAgent = (typeof supportedAgents)[number];
@@ -30,12 +31,23 @@ export interface StdioMcpServerConfig {
   env?: Record<string, string>;
 }
 
+export interface OpencodeLmStudioConfig {
+  modelId: string;
+  baseUrl?: string;
+  context?: number;
+  output?: number;
+  vision?: boolean;
+  reasoningEffort?: "none" | "minimal" | "low" | "medium" | "high";
+}
+
 export interface AgentConfigOptions {
   agent: SupportedAgent;
   scope: ConfigScope;
   dryRun?: boolean;
   print?: boolean;
   localDev?: boolean;
+  projectPath?: string;
+  opencodeLmStudio?: OpencodeLmStudioConfig;
   cwd?: string;
   env?: NodeJS.ProcessEnv;
 }
@@ -53,6 +65,8 @@ export interface AgentConfigResult {
   dryRun: boolean;
   print: boolean;
   localDev: boolean;
+  projectPath: string | null;
+  opencodeLmStudio: Required<OpencodeLmStudioConfig> | null;
   warnings: string[];
   nextSteps: string[];
 }
@@ -91,6 +105,9 @@ const agentAliases: Record<string, SupportedAgent> = {
   lmstudio: "lm-studio",
   "lm-studio": "lm-studio",
   "lm_studio": "lm-studio",
+  antigravity: "antigravity",
+  "antigravity-ide": "antigravity",
+  "antigravity-cli": "antigravity",
 };
 
 export function parseAgent(value: string | undefined): SupportedAgent | null {
@@ -105,14 +122,78 @@ export function parseScope(value: string | undefined): ConfigScope | null {
   return null;
 }
 
+export function resolveAgentConfigScope(
+  agent: SupportedAgent,
+  requestedScope: string | undefined,
+  projectPath: string | undefined
+): ConfigScope | null {
+  if (requestedScope !== undefined) return parseScope(requestedScope);
+  if ((agent === "opencode" || agent === "antigravity") && projectPath) {
+    return "project";
+  }
+  return "user";
+}
+
+function normalizeOpencodeLmStudio(
+  value: OpencodeLmStudioConfig | undefined
+): Required<OpencodeLmStudioConfig> | null {
+  if (!value) return null;
+
+  const modelId = value.modelId.trim();
+  if (!modelId) throw new Error("LM Studio model ID cannot be empty.");
+
+  const baseUrl = (value.baseUrl ?? "http://127.0.0.1:1234/v1").replace(/\/$/, "");
+  const parsedUrl = new URL(baseUrl);
+  if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+    throw new Error("LM Studio URL must use http or https.");
+  }
+
+  const context = value.context ?? 131072;
+  const output = value.output ?? 8192;
+  if (!Number.isInteger(context) || context < 65536) {
+    throw new Error("LM Studio context must be an integer of at least 65536.");
+  }
+  if (!Number.isInteger(output) || output < 1024) {
+    throw new Error("LM Studio output limit must be an integer of at least 1024.");
+  }
+
+  return {
+    modelId,
+    baseUrl,
+    context,
+    output,
+    vision: value.vision ?? false,
+    reasoningEffort: value.reasoningEffort ?? "none",
+  };
+}
+
 export async function configureAgentMcp(
   options: AgentConfigOptions
 ): Promise<AgentConfigResult> {
   const env = options.env ?? process.env;
   const cwd = resolve(options.cwd ?? process.cwd());
-  const server = createSummerMcpServerConfig(Boolean(options.localDev));
-  const target = resolveConfigTarget(options.agent, options.scope, cwd, env);
-  const snippet = renderConfigSnippet(options.agent, server);
+  const opencodeLmStudio = normalizeOpencodeLmStudio(options.opencodeLmStudio);
+  if (opencodeLmStudio && options.agent !== "opencode") {
+    throw new Error("LM Studio provider setup is only available for OpenCode.");
+  }
+  const projectPath = options.projectPath
+    ? resolve(cwd, options.projectPath)
+    : undefined;
+  const server = createSummerMcpServerConfig(Boolean(options.localDev), {
+    projectPath,
+    command:
+      options.agent === "lm-studio" && !options.localDev
+        ? findCommandOnPath("npx", env)
+        : undefined,
+  });
+  const target = resolveConfigTarget(
+    options.agent,
+    options.scope,
+    cwd,
+    env,
+    projectPath
+  );
+  const snippet = renderConfigSnippet(options.agent, server, opencodeLmStudio);
   const dryRun = Boolean(options.dryRun);
   const print = Boolean(options.print);
   const shouldWrite = !dryRun && !print;
@@ -122,7 +203,7 @@ export async function configureAgentMcp(
     : target.format === "toml"
       ? await upsertCodexConfig(target.path, server, shouldWrite)
       : target.format === "json-opencode"
-        ? await upsertOpencodeConfig(target.path, server, shouldWrite)
+        ? await upsertOpencodeConfig(target.path, server, shouldWrite, opencodeLmStudio)
         : target.format === "json-copilot"
           ? await upsertCopilotConfig(target.path, server, shouldWrite)
           : target.format === "json-vscode"
@@ -144,46 +225,44 @@ export async function configureAgentMcp(
     dryRun,
     print,
     localDev: Boolean(options.localDev),
+    projectPath: projectPath ?? null,
+    opencodeLmStudio,
     warnings: target.warnings,
     nextSteps: createNextSteps(options.agent, options.scope, target.path),
   };
 }
 
-export function createSummerMcpServerConfig(localDev: boolean): StdioMcpServerConfig {
+export function createSummerMcpServerConfig(
+  localDev: boolean,
+  options: { projectPath?: string; command?: string } = {}
+): StdioMcpServerConfig {
+  const args = ["mcp"];
+  if (options.projectPath) args.push("--project", resolve(options.projectPath));
+
   if (localDev) {
     return {
       command: "node",
-      args: [resolveLocalCliPath(), "mcp"],
+      args: [resolveLocalCliPath(), ...args],
     };
   }
 
   return {
-    command: "npx",
-    args: ["-y", "summer-engine@latest", "mcp"],
+    command: options.command ?? "npx",
+    args: ["-y", "summer-engine@latest", ...args],
   };
 }
 
 export function renderConfigSnippet(
   agent: SupportedAgent,
-  server: StdioMcpServerConfig
+  server: StdioMcpServerConfig,
+  opencodeLmStudio: Required<OpencodeLmStudioConfig> | null = null
 ): string {
   if (agent === "codex") {
     return renderCodexServerTable(server);
   }
 
   if (agent === "opencode") {
-    return (
-      JSON.stringify(
-        {
-          $schema: "https://opencode.ai/config.json",
-          mcp: {
-            [SUMMER_MCP_SERVER_NAME]: opencodeServerEntry(server),
-          },
-        },
-        null,
-        2
-      ) + "\n"
-    );
+    return `${JSON.stringify(opencodeConfigDocument(server, opencodeLmStudio), null, 2)}\n`;
   }
 
   if (agent === "github-copilot") {
@@ -242,10 +321,12 @@ function resolveConfigTarget(
   agent: SupportedAgent,
   scope: ConfigScope,
   cwd: string,
-  env: NodeJS.ProcessEnv
+  env: NodeJS.ProcessEnv,
+  projectPath?: string
 ): { path: string; format: "json" | "toml" | "json-opencode" | "json-copilot" | "json-vscode"; warnings: string[] } {
   const override = getConfigPathOverride(agent, env);
   const warnings: string[] = [];
+  const projectRoot = projectPath ?? cwd;
 
   if (override) {
     if (
@@ -343,13 +424,14 @@ function resolveConfigTarget(
   }
 
   if (agent === "lm-studio") {
+    const path = lmStudioConfigPath(env);
     if (scope === "project") {
       warnings.push(
-        "LM Studio's MCP config is app-global (~/.lmstudio/mcp.json); treating as user scope."
+        `LM Studio's MCP config is app-global (${path}); treating as user scope. Use --project <path> to bind the server entry to one Summer project.`
       );
     }
     return {
-      path: join(homedir(), ".lmstudio", "mcp.json"),
+      path,
       format: "json",
       warnings,
     };
@@ -401,8 +483,19 @@ function resolveConfigTarget(
       path:
         scope === "user"
           ? opencodeUserConfigPath(env)
-          : join(cwd, "opencode.json"),
+          : join(projectRoot, "opencode.json"),
       format: "json-opencode",
+      warnings,
+    };
+  }
+
+  if (agent === "antigravity") {
+    return {
+      path:
+        scope === "user"
+          ? antigravityUserConfigPath(env)
+          : join(projectRoot, ".agents", "mcp_config.json"),
+      format: "json",
       warnings,
     };
   }
@@ -469,6 +562,41 @@ function vsCodeGlobalStoragePath(
   );
 }
 
+function lmStudioConfigPath(env: NodeJS.ProcessEnv): string {
+  const home =
+    platform() === "win32"
+      ? env.USERPROFILE ?? homedir()
+      : env.HOME ?? homedir();
+  const runtimePath = join(home, ".cache", "lm-studio", "mcp.json");
+  const documentedPath = join(home, ".lmstudio", "mcp.json");
+
+  if (existsSync(runtimePath) || existsSync(dirname(runtimePath))) {
+    return runtimePath;
+  }
+  if (existsSync(documentedPath) || existsSync(dirname(documentedPath))) {
+    return documentedPath;
+  }
+  return documentedPath;
+}
+
+function findCommandOnPath(
+  command: string,
+  env: NodeJS.ProcessEnv
+): string | undefined {
+  const pathValue = env.PATH;
+  if (!pathValue) return undefined;
+  const names =
+    platform() === "win32" ? [`${command}.cmd`, `${command}.exe`, command] : [command];
+  for (const directory of pathValue.split(delimiter)) {
+    if (!directory) continue;
+    for (const name of names) {
+      const candidate = join(directory, name);
+      if (existsSync(candidate)) return candidate;
+    }
+  }
+  return undefined;
+}
+
 function opencodeUserConfigPath(env: NodeJS.ProcessEnv): string {
   const os = platform();
   if (os === "win32") {
@@ -477,6 +605,14 @@ function opencodeUserConfigPath(env: NodeJS.ProcessEnv): string {
   }
   const xdg = env.XDG_CONFIG_HOME ?? join(homedir(), ".config");
   return join(xdg, "opencode", "opencode.json");
+}
+
+function antigravityUserConfigPath(env: NodeJS.ProcessEnv): string {
+  const home =
+    platform() === "win32"
+      ? env.USERPROFILE ?? homedir()
+      : env.HOME ?? homedir();
+  return join(home, ".gemini", "config", "mcp_config.json");
 }
 
 function vsCodeUserMcpPath(env: NodeJS.ProcessEnv): string {
@@ -507,6 +643,7 @@ function getConfigPathOverride(
   if (agent === "github-copilot") return env.SUMMER_GITHUB_COPILOT_CONFIG_FILE;
   if (agent === "vscode-copilot") return env.SUMMER_VSCODE_COPILOT_CONFIG_FILE;
   if (agent === "opencode") return env.SUMMER_OPENCODE_CONFIG_FILE;
+  if (agent === "antigravity") return env.SUMMER_ANTIGRAVITY_CONFIG_FILE;
   return env.SUMMER_WINDSURF_MCP_CONFIG_FILE;
 }
 
@@ -590,7 +727,8 @@ async function upsertCodexConfig(
 async function upsertOpencodeConfig(
   path: string,
   server: StdioMcpServerConfig,
-  write: boolean
+  write: boolean,
+  opencodeLmStudio: Required<OpencodeLmStudioConfig> | null = null
 ): Promise<{ changed: boolean }> {
   const current = await readJsonConfig(path);
   const next = copyJsonObject(current);
@@ -604,6 +742,10 @@ async function upsertOpencodeConfig(
     ...existingMcp,
     [SUMMER_MCP_SERVER_NAME]: opencodeServerEntry(server),
   };
+
+  if (opencodeLmStudio) {
+    upsertOpencodeLmStudioProvider(next, opencodeLmStudio);
+  }
 
   const currentRendered = renderJsonFile(current);
   const nextRendered = renderJsonFile(next);
@@ -696,6 +838,88 @@ function opencodeServerEntry(server: StdioMcpServerConfig): JsonObject {
     entry.environment = { ...server.env };
   }
   return entry;
+}
+
+function opencodeConfigDocument(
+  server: StdioMcpServerConfig,
+  opencodeLmStudio: Required<OpencodeLmStudioConfig> | null
+): JsonObject {
+  const config: JsonObject = {
+    $schema: "https://opencode.ai/config.json",
+    mcp: {
+      [SUMMER_MCP_SERVER_NAME]: opencodeServerEntry(server),
+    },
+  };
+  if (opencodeLmStudio) {
+    upsertOpencodeLmStudioProvider(config, opencodeLmStudio);
+  }
+  return config;
+}
+
+function upsertOpencodeLmStudioProvider(
+  config: JsonObject,
+  lmStudio: Required<OpencodeLmStudioConfig>
+): void {
+  const providers = isJsonObject(config.provider) ? config.provider : {};
+  const currentProvider = isJsonObject(providers.lmstudio) ? providers.lmstudio : {};
+  const currentOptions = isJsonObject(currentProvider.options)
+    ? currentProvider.options
+    : {};
+  const currentModels = isJsonObject(currentProvider.models) ? currentProvider.models : {};
+  const currentModelValue = currentModels[lmStudio.modelId];
+  const currentModel = isJsonObject(currentModelValue) ? currentModelValue : {};
+  const currentLimit = isJsonObject(currentModel.limit) ? currentModel.limit : {};
+  const currentModelOptions = isJsonObject(currentModel.options)
+    ? currentModel.options
+    : {};
+  const currentModalities = isJsonObject(currentModel.modalities)
+    ? currentModel.modalities
+    : {};
+
+  config.provider = {
+    ...providers,
+    lmstudio: {
+      ...currentProvider,
+      npm: "@ai-sdk/openai-compatible",
+      name: "LM Studio (local)",
+      options: {
+        ...currentOptions,
+        baseURL: lmStudio.baseUrl,
+      },
+      models: {
+        ...currentModels,
+        [lmStudio.modelId]: {
+          ...currentModel,
+          name:
+            typeof currentModel.name === "string"
+              ? currentModel.name
+              : `${lmStudio.modelId} (local)`,
+          limit: {
+            ...currentLimit,
+            context: lmStudio.context,
+            output: lmStudio.output,
+          },
+          ...(lmStudio.vision
+            ? {
+                modalities: {
+                  ...currentModalities,
+                  input: ["text", "image"],
+                  output: ["text"],
+                },
+              }
+            : {}),
+          options: {
+            ...currentModelOptions,
+            reasoningEffort: lmStudio.reasoningEffort,
+          },
+        },
+      },
+    },
+  };
+
+  const selectedModel = `lmstudio/${lmStudio.modelId}`;
+  config.model = selectedModel;
+  config.small_model = selectedModel;
 }
 
 function copilotServerEntry(server: StdioMcpServerConfig): JsonObject {
@@ -860,7 +1084,7 @@ function createNextSteps(
               : agent === "kilo-code"
                 ? "Restart VS Code so Kilo Code reloads its MCP config."
                 : agent === "lm-studio"
-                  ? "Open LM Studio, toggle on the summer-engine MCP server in the Program tab, and raise the loaded model's context length to 32k or higher."
+                  ? "Open LM Studio, enable summer-engine under Chat > Integrations (called Program in older versions), and load a tool-calling model with at least 64k context. If the server is not listed, use LM Studio's in-app Edit mcp.json action and compare it with the updated path above."
         : agent === "gemini"
           ? "Run `gemini extensions enable summer-engine` (if not already enabled), then restart Gemini CLI."
           : agent === "github-copilot"
@@ -869,6 +1093,8 @@ function createNextSteps(
               ? "Restart VS Code or run MCP: List Servers, then start summer-engine in Copilot Agent mode."
               : agent === "opencode"
                 ? "Restart OpenCode so it reloads opencode.json."
+                : agent === "antigravity"
+                  ? "For the terminal client, start a normal interactive `agy` session in this project and run /mcp; Antigravity CLI 1.1.10 print mode (`agy -p`) does not activate project MCP tools. In the desktop app, open Customizations > MCP Servers and refresh summer-engine. Keep tools in Ask mode for the first test."
                 : "Restart Devin Desktop (formerly Windsurf) and refresh MCP servers from the agent settings.";
 
   const projectTrust =

@@ -16,6 +16,7 @@ import {
   buildSkillsVersionCheck,
   defaultSkillMarkerCandidates,
   fetchLatestRegistryVersion,
+  type SkillMarkerCandidate,
 } from "../lib/version-check.js";
 
 const require = createRequire(import.meta.url);
@@ -47,9 +48,10 @@ export interface DoctorResult {
   };
 }
 
-interface DoctorOptions {
+export interface DoctorOptions {
   json?: boolean;
   quiet?: boolean;
+  skillCandidates?: SkillMarkerCandidate[];
 }
 
 const MAC_ENGINE_PATHS = [
@@ -92,7 +94,7 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   });
 
   checks.push(await checkCliVersionCurrent());
-  checks.push(checkSkillsVersion());
+  checks.push(checkSkillsVersion(options.skillCandidates));
 
   checks.push(await checkLogin());
   checks.push(checkEngineInstall());
@@ -149,10 +151,10 @@ async function checkCliVersionCurrent(): Promise<DoctorCheck> {
   };
 }
 
-function checkSkillsVersion(): DoctorCheck {
+function checkSkillsVersion(candidates?: SkillMarkerCandidate[]): DoctorCheck {
   const result = buildSkillsVersionCheck({
     installedCliVersion: version,
-    candidates: defaultSkillMarkerCandidates(),
+    candidates: candidates ?? defaultSkillMarkerCandidates(),
   });
   return {
     id: "skills-version-stale",

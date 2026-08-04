@@ -176,7 +176,8 @@ function resolveScope(agent: AgentClient, opts: InstallOptions): SkillScope {
     agent === "windsurf" ||
     agent === "cline" ||
     agent === "roo-code" ||
-    agent === "kilo-code"
+    agent === "kilo-code" ||
+    agent === "antigravity"
   ) {
     return "project";
   }
@@ -207,6 +208,8 @@ function agentLabel(agent: AgentClient): string {
       return "GitHub Copilot in VS Code";
     case "opencode":
       return "OpenCode";
+    case "antigravity":
+      return "Antigravity";
     case "summer":
       return "Summer";
   }
@@ -289,6 +292,14 @@ function resolveInstallLocation(
           scope === "user"
             ? opencodeUserAgentsDir()
             : join(process.cwd(), ".opencode", "agents", "summer"),
+      };
+    case "antigravity":
+      return {
+        kind: "skill-dir",
+        path:
+          scope === "user"
+            ? join(homedir(), ".gemini", "config", "skills")
+            : join(process.cwd(), ".agents", "skills"),
       };
     case "summer":
       return { kind: "skill-dir", path: join(root, ".summer", "skills") };

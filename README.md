@@ -6,7 +6,7 @@ Engine installers currently ship for macOS on Apple silicon and Windows;
 Steam, browser, mobile, and additional desktop distribution are planned
 targets, not shipping promises.
 
-**Summer** is the MIT open-source agent layer that connects your AI coding agent to Summer Engine. It is the **Summer CLI**, the **Summer MCP** server, and the **Summer agent** skills, hooks, and plugin manifests, all in one package. First-class setup works in Claude Code, Cursor, Codex, Devin Desktop (formerly Windsurf), Cline, Roo Code, Gemini CLI, GitHub Copilot CLI, GitHub Copilot in VS Code, and OpenCode. Factory Droid uses the plugin marketplace path.
+**Summer** is the MIT open-source agent layer that connects your AI coding agent to Summer Engine. It is the **Summer CLI**, the **Summer MCP** server, and the **Summer agent** skills, hooks, and plugin manifests, all in one package. First-class setup works in Claude Code, Cursor, Codex, Devin Desktop (formerly Windsurf), Cline, Roo Code, Gemini CLI, GitHub Copilot CLI, GitHub Copilot in VS Code, OpenCode, LM Studio, and Antigravity. Factory Droid uses the plugin marketplace path.
 
 - **Source:** [github.com/SummerEngine/summer-engine-agent](https://github.com/SummerEngine/summer-engine-agent)
 - **CLI setup:** [www.summerengine.com/cli](https://www.summerengine.com/cli)
@@ -25,24 +25,27 @@ Three names, one npm package (`summer-engine`):
 - **Summer MCP**: the MCP server that gives your agent 62 tools spanning local engine work, cloud workflows, and creator publishing. See [www.summerengine.com/mcp](https://www.summerengine.com/mcp).
 - **Summer agent layer**: the game-dev skills, hooks, and plugin manifests that give your AI agent judgment, not just a chat box.
 
-All MIT, all free to use. One paste sets up all three.
+The CLI, MCP bridge, and agent layer are MIT licensed. The Summer Engine app
+has its own license. MCP setup is deliberately separate from installing the
+app, signing in, choosing a model, or creating a project.
 
 ## Get started: one prompt
 
-Open your AI agent (Claude Code, Cursor, Codex, Copilot, Devin Desktop, etc.) and paste:
+Open your AI agent and paste:
 
-> Install Summer Engine and let's make a game. Read github.com/SummerEngine/summer-engine-agent, check what I already have installed, install whatever is missing, log me in, and scaffold a starter project so we can start building.
+> Set up Summer MCP for this coding agent and the current project. The MCP client and model provider are separate choices. Before writing anything, run `npx -y summer-engine@latest setup --help` and confirm that the exact client target and the `--project` option are both listed. Use `opencode` for OpenCode and `antigravity` for Antigravity. If either requirement is missing, STOP and report that npm latest is older than these instructions. Do not substitute a different client, omit `--project`, change to user/global scope, or hand-edit a fallback config. Otherwise run `npx -y summer-engine@latest setup <client> --yes --force --project "$PWD"`. Do not change my model provider, install the engine app, sign me in, or create a project. Show the config path. A doctor result such as "MCP Tools registered" proves only that the server can load; it does not prove this agent can see or call the tools. If the client needs a restart, ask me to restart it. Before any mutation, call `summer_get_agent_playbook`, `summer_get_project_context`, and `summer_get_scene_tree`, consume their results, and report the exact bound project and scene. If any tool is missing or rejected, quote the error and STOP.
 
-That's it. The agent reads this README, detects what's already on your machine, and runs only what's missing via Bash. **No `/plugin` slash commands. No manual installs. One paste.**
+That's it. The agent follows a bounded command instead of inventing an installation flow. **No `/plugin` slash commands. No provider rewrites. One paste.**
 
-The first run will:
-1. Install the `summer-engine` npm package (~3 MB) if it's not on `PATH`.
-2. Install Summer's game-dev skills into `~/.claude/skills/` (or your agent's user-skill directory) so the agent loads them next session.
-3. Download the Summer Engine app (~1 GB, including the engine binary, Git, and other runtime tools so users without them aren't blocked) if it's not installed.
-4. Open your browser for one-click sign-in.
-5. Scaffold a starter project and open the engine.
+The setup command will:
+1. Merge the `summer-engine` server into the selected client's MCP config.
+2. Bind that server to the exact current project.
+3. Install recommended Summer skills when the client supports them.
+4. Run diagnostics and print the config path plus reload steps.
 
-At that point the agent has the skills, the MCP server, and your engine running. Ask it to build something.
+It will not install the engine app, sign you in, create a project, or rewrite a
+model provider. Those are separate, explicit workflows. The optional OpenCode
++ LM Studio recipe is the only setup path that writes provider/model keys.
 
 ---
 
@@ -90,7 +93,7 @@ The relevant check ids are `node-version`, `cli-version`, `cli-version-current`,
 npx -y summer-engine@latest setup claude-code --yes --force
 ```
 
-Replace `claude-code` with the user's actual agent: `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `kilo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, or `lm-studio`. Use `github-copilot` for Copilot CLI and `vscode-copilot` for GitHub Copilot Chat/Agent in VS Code. Factory Droid still uses the plugin marketplace path in the install section below. This writes the current Summer skill bundle to `~/.claude/skills/<name>/SKILL.md` (or the agent's equivalent user-skill directory) AND writes the MCP server config so the agent can talk to the engine. The `--force` flag wipes any stale skill content first, so re-runs always end up with the latest copy.
+Replace `claude-code` with the user's actual MCP client: `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `kilo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, `lm-studio`, or `antigravity`. Use `github-copilot` for Copilot CLI and `vscode-copilot` for GitHub Copilot Chat/Agent in VS Code. A model runtime such as LM Studio or Ollama is not the client unless the user is chatting directly in that app. Factory Droid still uses the plugin marketplace path in the install section below. This writes the current Summer skill bundle to the client's native directory when it supports skills and writes the MCP server config so the client can talk to the engine. The `--force` flag wipes stale Summer skill content first, so re-runs end up with the latest copy.
 
 **First-install detection:** if `~/.claude/skills/` didn't exist before this command, Claude Code wasn't watching it and won't auto-detect the new files this session. Tell the user **once**: "Skills installed - restart your agent so they load." On subsequent installs (directory already existed), skills auto-detect mid-session and no restart is needed. **You can detect first-install vs upgrade by checking if `~/.claude/skills/` existed before Step 1; record the result before running setup.**
 
@@ -183,7 +186,7 @@ Only skip brainstorm if the user explicitly said "skip brainstorm" or "just buil
 - **Don't loop `summer login` if it times out at 120s.** Re-run it once and tell the user to be quicker; loop forever and the user is stuck.
 - **Don't jump straight into `summer create` from a vague prompt.** Invoke `summer:brainstorm-game` first (Step 6). The build skills assume `.summer/GameSoul.md` exists.
 
-**Using a different agent?** Replace `claude-code` with any supported agent in Step 1: `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `kilo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, or `lm-studio`. (`devin` is also accepted as an alias for `windsurf`.) Skill targets vary per agent (Cursor uses `.cursor/rules/`, Devin Desktop uses `.windsurfrules`, Cline + Roo use `.clinerules/`, Copilot uses `~/.copilot/skills` or `.github/skills`, OpenCode uses agent definitions, etc.). The CLI handles the difference. After install, **Cline and Roo Code users should restart VS Code** so the extension reloads its MCP config. **Gemini users** may need to run `gemini extensions enable summer-engine` after the first install. **VS Code Copilot users** should start the `summer-engine` MCP server from Agent mode if VS Code does not autostart it. **Factory Droid** still has its own plugin path below.
+**Using a different agent?** Replace `claude-code` with any supported agent in Step 1: `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `kilo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, `lm-studio`, or `antigravity`. (`devin` is also accepted as an alias for `windsurf`.) Skill targets vary per agent (Cursor uses `.cursor/rules/`, Devin Desktop uses `.windsurfrules`, Cline + Roo use `.clinerules/`, Copilot uses `~/.copilot/skills` or `.github/skills`, Antigravity uses `.agents/skills`, etc.). The CLI handles the difference. After install, **Cline and Roo Code users should restart VS Code** so the extension reloads its MCP config. **Gemini users** may need to run `gemini extensions enable summer-engine` after the first install. **VS Code Copilot users** should start the `summer-engine` MCP server from Agent mode if VS Code does not autostart it. **Factory Droid** still has its own plugin path below.
 
 **Power-user note:** if the user specifically wants `summer` on their `PATH` for everyday terminal use outside the AI agent, a global npm install is still possible. The agent flow doesn't need it.
 
@@ -465,18 +468,68 @@ Writes MCP config to VS Code's user `mcp.json` and skills to `~/.copilot/skills/
 ### OpenCode
 
 ```bash
-npx -y summer-engine@latest setup opencode --yes
+npx -y summer-engine@latest setup opencode --yes --project "$PWD"
 ```
 
-Writes the MCP server entry into `opencode.json` (`~/.config/opencode/opencode.json` for user scope, `./opencode.json` for project) using the array-shaped `command: ["npx", "-y", "summer-engine@latest", "mcp"]` format. Restart OpenCode. Full guide: [`.opencode/INSTALL.md`](./.opencode/INSTALL.md).
+With `--project` and no explicit scope, OpenCode setup writes `./opencode.json`,
+binds MCP to that exact project, installs Summer guidance, and leaves every
+model/provider setting untouched. OpenCode receives the same complete Summer
+MCP tool registry as every other supported client. Restart OpenCode after setup.
+
+If LM Studio is the model provider, configure the provider and MCP together
+using the exact ID returned by `curl http://127.0.0.1:1234/v1/models`:
+
+```bash
+npx -y summer-engine@latest mcp setup opencode \
+  --project "$PWD" \
+  --lm-studio-model "your-loaded-model-id" \
+  --lm-studio-vision \
+  --json
+```
+
+This preserves unrelated OpenCode config, selects the local model, gives it a
+131k context, disables hidden reasoning by default, declares image input for a
+vision-capable model, and writes the array-shaped Summer MCP command. Omit
+`--lm-studio-vision` for a text-only model. Full manual config, restart boundary,
+verification prompt, and troubleshooting: [`.opencode/INSTALL.md`](./.opencode/INSTALL.md).
+
+### Antigravity
+
+```bash
+npx -y summer-engine@latest setup antigravity --yes --project "$PWD"
+```
+
+This writes the current workspace MCP config to `.agents/mcp_config.json` and
+recommended Summer skills to `.agents/skills/`. It preserves other MCP servers
+and does not change Antigravity's model. Open **Customizations > MCP Servers**,
+refresh `summer-engine`, and approve tool use when prompted. Use `--scope user`
+without `--project` for the global `~/.gemini/config/` paths. See the
+[Antigravity setup and verification guide](./references/antigravity.md).
+
+For terminal verification, start a normal interactive `agy` session in the
+configured project and run `/mcp`. Antigravity CLI 1.1.10 headless print mode
+(`agy -p`) can list a project MCP server yet reject its calls; the same
+project-scoped configuration executes correctly in the interactive client.
 
 ### LM Studio (local models)
 
 ```bash
-npx -y summer-engine@latest setup lm-studio --yes
+npx -y summer-engine@latest setup lm-studio --yes --project "/absolute/path/to/your-project"
 ```
 
-Writes the MCP server entry into `~/.lmstudio/mcp.json` (app-global; there is no project scope). In LM Studio, toggle the `summer-engine` server on in the **Program** tab, and raise the loaded model's context length to **32k or higher** — MCP tool schemas overflow small contexts silently. LM Studio has no rules/skills folder; the MCP server's `summer_get_agent_playbook` tool covers in-chat guidance. Pair with a tool-calling-reliable local model (gpt-oss-20b on 12–16 GB VRAM, Qwen3-Coder-30B on 24 GB).
+Detects the active LM Studio config, preserves other MCP servers, binds Summer
+to the named project, and exposes the same complete Summer MCP tool registry as
+other clients. In LM Studio, enable `summer-engine` under **Chat > Integrations**
+(**Program** in older versions), load a multi-turn tool-calling model with at
+least **64k** context, and start a fresh chat. LM Studio has no Summer skills
+folder, so the model must call `summer_get_agent_playbook` itself.
+
+LM Studio is a model runtime and MCP host, not a full coding agent. If automatic
+setup does not make the integration visible, use LM Studio's own **Edit
+mcp.json** action and follow the complete [manual LM Studio setup and first
+prompt](./references/lm-studio.md). Do not assume a fixed config path: current
+releases may use `~/.cache/lm-studio/mcp.json`, while older releases and their
+documentation use `~/.lmstudio/mcp.json`.
 
 ### Ollama (local models)
 
@@ -519,7 +572,7 @@ npx -y summer-engine@latest doctor
 | `summer mcp setup <agent>` | Write MCP config for an agent. |
 | `summer setup <agent> [--yes]` | One shot: MCP config + recommended skills + doctor. |
 
-Agents: `claude-code`, `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `kilo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, `lm-studio`. (`devin` and `devin-desktop` are accepted as aliases for `windsurf`.) Scopes: `--scope user` (default), `--scope project`.
+Agents: `claude-code`, `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `kilo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, `lm-studio`, `antigravity`. (`devin` and `devin-desktop` are accepted as aliases for `windsurf`.) Scopes: `--scope user` (default), `--scope project`. For OpenCode and Antigravity, passing `--project` without `--scope` defaults to project scope; use `--scope user` explicitly for a shared config.
 
 ---
 

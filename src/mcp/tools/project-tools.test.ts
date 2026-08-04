@@ -182,4 +182,5 @@ priority: locked
     expect(JSON.stringify(body)).toContain("projectMemory");
     expect(JSON.stringify(body)).toContain("priority: locked");
   });
+
 });

@@ -11,6 +11,7 @@ export const AGENT_CLIENTS = [
   "github-copilot",
   "vscode-copilot",
   "opencode",
+  "antigravity",
 ] as const;
 
 export type AgentClient = (typeof AGENT_CLIENTS)[number];

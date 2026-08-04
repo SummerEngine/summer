@@ -4,13 +4,21 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+## [2.8.0] — 2026-08-03 — "One-command MCP onboarding"
+
 ### Added
 - MCP discovers every live Summer editor through `~/.summer/instances/` and automatically binds local tools to the editor whose project contains the agent's current working directory.
 - `summer mcp --project <path>` and `summer mcp --instance <id>` provide explicit selection for hosts that do not start the MCP server from a project directory.
+- OpenCode setup can configure a loaded LM Studio model alongside the unchanged complete Summer MCP tool registry with `--lm-studio-model <id>`, with opt-in screenshot input through `--lm-studio-vision`.
+- `summer setup antigravity` writes Antigravity's current project or user MCP configuration and installs Summer skills into its native `.agents` or `~/.gemini/config` directories.
 
 ### Changed
 - Multiple live editors are now a fail-closed state when no project can be inferred. MCP lists the non-secret project/instance choices instead of following the machine-global last-opened editor pointer.
 - Selected MCP sessions keep following the same project across editor restarts and validate registry identity against `/api/health` before connecting.
+- OpenCode setup now treats `--project` as project scope unless `--scope user` is explicit, and the OpenCode guide includes a complete local-model configuration and verification path.
+- OpenCode, direct LM Studio, and Antigravity setup are independent client targets. Plain OpenCode and Antigravity setup preserve the user's existing model provider.
+- `summer_remove_node` keeps the preferred exact `path` argument and also accepts the common small-model `parent` + `name` shape for one direct child.
+- `summer_batch` infers unambiguous op-less AddNode and SetProp items emitted in individual-tool form by smaller models while keeping explicit `op` as the preferred shape.
 
 ## [2.7.0] — 2026-07-24 — "Reliable project mutations"
 

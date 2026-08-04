@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getAuthToken } from "../../lib/auth.js";
 import { getClient } from "../server.js";
+import { executeSceneMutation } from "./scene-mutation.js";
 
 const GATEWAY_URL =
   process.env.SUMMER_GATEWAY_URL || "https://www.summerengine.com";
@@ -298,15 +299,14 @@ async function importResolvedAsset(args: {
   let addedToScene = false;
   let sceneReceipt: unknown = null;
   if (parent && asset.type === "3d_model") {
-    sceneReceipt = await client.executeIdentityBoundOps([
+    sceneReceipt = await executeSceneMutation(client, scenePath!, [
       {
         op: "InstantiateScene",
         parent,
         scene: importPath,
         name: sanitizeNodeName(name || asset.title),
       },
-      { op: "SaveScene" },
-    ], { scenePath });
+    ]);
     const placementReceipts =
       (sceneReceipt as { results?: Array<{ ok?: boolean; error?: string }> })?.results ?? [];
     const placementFailure = placementReceipts.find((receipt) => receipt?.ok !== true);

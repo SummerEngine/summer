@@ -1,37 +1,9 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { withEngine } from "./with-engine.js";
+import { executeSceneMutation } from "./scene-mutation.js";
 import { readFile } from "fs/promises";
 import { join } from "path";
-import type { EngineApiClient } from "../../lib/api-client.js";
-
-function sceneMutationOps(ops: Record<string, unknown>[]): Record<string, unknown>[] {
-  const saveIndexes = ops
-    .map((op, index) => op.op === "SaveScene" ? index : -1)
-    .filter((index) => index >= 0);
-  if (saveIndexes.length > 1) {
-    throw new Error("A scene mutation batch may contain only one SaveScene");
-  }
-  if (saveIndexes.length === 1) {
-    if (saveIndexes[0] !== ops.length - 1) {
-      throw new Error("SaveScene must be the final operation in a scene mutation batch");
-    }
-    return ops;
-  }
-  return [...ops, { op: "SaveScene" }];
-}
-
-function executeSceneMutation(
-  client: EngineApiClient,
-  scenePath: string,
-  ops: Record<string, unknown>[],
-  options?: Record<string, unknown>,
-): Promise<unknown> {
-  return client.executeIdentityBoundOps(sceneMutationOps(ops), {
-    ...(options ?? {}),
-    scenePath,
-  });
-}
 
 async function readMainSceneFromProject(projectPath?: string): Promise<string | null> {
   if (!projectPath) return null;
@@ -58,6 +30,59 @@ function requireSuccessfulOps(result: unknown, context: string): Record<string, 
     throw new Error(error);
   }
   return receipt;
+}
+
+function resolveRemoveNodePath(
+  path: string | undefined,
+  parent: string | undefined,
+  name: string | undefined,
+): string {
+  const explicitPath = path?.trim();
+  if (explicitPath) return explicitPath;
+
+  const childName = name?.trim();
+  if (!childName) {
+    throw new Error(
+      "summer_remove_node requires either path (preferred) or name with optional parent.",
+    );
+  }
+  if (childName === "." || childName === ".." || childName.includes("/")) {
+    throw new Error(
+      "summer_remove_node name must be one direct child name without '/'; use path for nested nodes.",
+    );
+  }
+
+  const parentPath = parent?.trim() || ".";
+  if (parentPath === "." || parentPath === "./") return `./${childName}`;
+  return `${parentPath.replace(/\/+$/, "")}/${childName}`;
+}
+
+function normalizeBatchOp(op: Record<string, unknown>): Record<string, unknown> {
+  if (typeof op.op === "string" && op.op.trim()) return op;
+
+  const args = { ...op };
+  delete args.scenePath;
+
+  if (
+    typeof args.parent === "string" &&
+    typeof args.type === "string" &&
+    typeof args.name === "string"
+  ) {
+    return { op: "AddNode", ...args };
+  }
+  if (
+    typeof args.path === "string" &&
+    typeof args.key === "string" &&
+    Object.hasOwn(args, "value")
+  ) {
+    return { op: "SetProp", ...args };
+  }
+
+  throw new Error(
+    "Each summer_batch item requires an op discriminator. " +
+    "For small-model compatibility, unambiguous AddNode {parent,type,name} and " +
+    "SetProp {path,key,value} items are inferred automatically.",
+  );
 }
 
 export function registerSceneTools(server: McpServer): void {
@@ -235,13 +260,23 @@ Use when you need to modify a sub-property of a resource, like:
 
   server.tool(
     "summer_remove_node",
-    "Remove a node from the scene tree. All children are removed too. Cannot remove the root node. Supports undo. Destructive operation: do not delete multiple top-level nodes unless the user explicitly requests destructive changes.",
+    `Remove a node from the scene tree. All children are removed too. Cannot remove the root node. Supports undo.
+
+Preferred arguments: { scenePath: "res://main.tscn", path: "./World/OldEnemy" }.
+Compatibility arguments for small models: { scenePath, parent: "./World", name: "OldEnemy" } resolves to the same path.
+Destructive operation: do not delete multiple top-level nodes unless the user explicitly requests destructive changes.`,
     {
       scenePath: z.string().describe("Target scene path, e.g. 'res://main.tscn'"),
-      path: z.string().describe("Node path to remove, e.g. './World/OldEnemy'"),
+      path: z.string().optional().describe("Preferred exact node path to remove, e.g. './World/OldEnemy'"),
+      parent: z.string().optional().describe("Compatibility alias: parent path used with name, e.g. './World'"),
+      name: z.string().optional().describe("Compatibility alias: direct child name used with parent, e.g. 'OldEnemy'"),
     },
-    async ({ scenePath, path }) =>
-      withEngine(async (client) => executeSceneMutation(client, scenePath, [{ op: "RemoveNode", path }]))
+    async ({ scenePath, path, parent, name }) => {
+      const resolvedPath = resolveRemoveNodePath(path, parent, name);
+      return withEngine(async (client) =>
+        executeSceneMutation(client, scenePath, [{ op: "RemoveNode", path: resolvedPath }])
+      );
+    }
   );
 
   server.tool(
@@ -394,6 +429,11 @@ Each op in the array uses the same format as the individual tools:
 - {"op": "SetProp", "path": "Floor", "key": "mesh", "value": "PlaneMesh"}
 - {"op": "SetResourceProperty", "nodePath": "Floor", "resourceProperty": "mesh", "subProperty": "size", "value": "Vector2(20, 20)"}
 
+The op discriminator is preferred and required for every other shape. For small
+models, unambiguous individual-tool-shaped AddNode (parent, type, name) and
+SetProp (path, key, value) items are inferred when op is omitted; a repeated
+per-item scenePath is ignored in favor of the batch-level target.
+
 RAW RUNTIME OPS (interactive verification — engine-build dependent; structured failure_reason incl "unsupported" passes through verbatim):
 - SimulateInput — drive the RUNNING game (summer_play first): {"op": "SimulateInput", "type": "action", "action": "jump", "pressed": true}. type is "action" | "key" | "mouse_click" | "axis".
 - RunVerification — spawn a hidden, disposable game instance that runs a GDScript probe and dies (never touches the editor): {"op": "RunVerification", "probe_source": "extends SummerProbeBase\\nfunc _ready(): await super._ready(); report('ok', true); finish()", "max_seconds": 20}. Returns {ok, results, frames, out_dir}. Probe API: report()/save_frame()/press()/key()/finish().
@@ -410,7 +450,8 @@ must appear exactly once and be the final operation.`,
     },
     async ({ scenePath, ops }) =>
       withEngine(async (client) => {
-        const rawFileMutation = ops.find((op) => {
+        const normalizedOps = ops.map(normalizeBatchOp);
+        const rawFileMutation = normalizedOps.find((op) => {
           const kind = String(op.op ?? "");
           return kind === "WriteFile" || kind === "ReplaceText";
         });
@@ -425,14 +466,14 @@ must appear exactly once and be the final operation.`,
           "SetProp", "SetResourceProperty", "ConnectSignal", "DisconnectSignal",
           "InstantiateScene", "SaveScene", "Undo",
         ]);
-        const needsScenePath = ops.some((op) => sceneMutations.has(String(op.op ?? "")));
+        const needsScenePath = normalizedOps.some((op) => sceneMutations.has(String(op.op ?? "")));
         if (needsScenePath && !scenePath) {
           throw new Error("summer_batch requires scenePath when ops contains scene mutations");
         }
         const options = { groupUndo: true, ...(scenePath ? { scenePath } : {}) };
         return needsScenePath
-          ? executeSceneMutation(client, scenePath!, ops as Record<string, unknown>[], options)
-          : client.executeOps(ops as Record<string, unknown>[], options);
+          ? executeSceneMutation(client, scenePath!, normalizedOps, options)
+          : client.executeOps(normalizedOps, options);
       })
   );
 }

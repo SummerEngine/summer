@@ -40,8 +40,9 @@ technical compatibility reference for version-sensitive upstream APIs.
 - Project: `summer_get_project_context`, `summer_open_main_scene`, `summer_project_setting`, `summer_input_map_bind`, `summer_get_agent_playbook`.
 - Files: `summer_read_file`, `summer_write_file`, `summer_replace_text` (identity-bound; create-only or sha256-guarded writes).
 - Assets: `summer_search_assets`, `summer_list_my_assets`, `summer_get_asset`, `summer_get_asset_download_url`, `summer_import_asset`, `summer_import_asset_by_id`, `summer_import_from_url`, `summer_import_from_url_batch`.
-- Generation: `summer_generate_image`, `summer_generate_3d`, `summer_generate_audio`, `summer_generate_video`, `summer_generate_motion`, `summer_check_job`.
+- Generation: `summer_get_studio_workflow`, `summer_generate_image`, `summer_slice_asset_sheet`, `summer_generate_3d`, `summer_generate_audio`, `summer_generate_video`, `summer_generate_motion`, `summer_check_job`.
 - Meta: `summer_start_game_task`.
+- Cloud: `summer_cloud_init`, `summer_cloud_status`, `summer_cloud_push`, `summer_cloud_pull`, `summer_cloud_restore`, `summer_cloud_checkpoints`, `summer_cloud_conflicts`.
 - Creator: `summer_creator_publish`, `summer_creator_releases`, `summer_creator_logs`, `summer_creator_config`.
 
 Git, shell, and grep are not exposed. Project file reads and writes are exposed through identity-bound Summer tools; do not bypass them with host writes when MCP is available. External host tools cannot be technically blocked, so the agent must follow this rule.

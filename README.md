@@ -281,6 +281,13 @@ requiring the editor:
 | Assets | `summer_search_assets`, `summer_import_asset`, `summer_import_from_url`, `summer_generate_image`, `summer_generate_3d`, `summer_generate_audio`, `summer_generate_video` |
 | Creator | `summer_creator_publish`, `summer_creator_releases`, `summer_creator_logs`, `summer_creator_config` — confirmed immutable publishing, real release history, explicit unsupported logs, and non-secret shared configuration |
 
+The 62 total is the complete `tools/list` surface of the `summer-engine` 2.8 candidate,
+not the smaller local-operation registry exposed by a particular desktop engine
+build. The published 2.7.0 package registers 58 tools; 2.8 adds exactly four:
+`summer_creator_publish`, `summer_creator_releases`, `summer_creator_logs`, and
+`summer_creator_config`. The 2.8 onboarding and editor-routing changes do not
+add further tools.
+
 Git, shell, and grep remain host-native. Project file reads and writes use Summer's identity-bound tools so compatible engine builds can reject wrong-project and stale-content mutations. A host agent can still bypass these safeguards with its own file tools; the package cannot technically intercept that external process.
 
 When several Summer editors are open, MCP automatically selects the one whose

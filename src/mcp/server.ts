@@ -259,6 +259,18 @@ export interface StartMcpServerOptions {
   cwd?: string;
 }
 
+export function registerMcpTools(server: McpServer): void {
+  registerSceneTools(server);
+  registerDebugTools(server);
+  registerVisualTools(server);
+  registerProjectTools(server);
+  registerFileTools(server);
+  registerAssetTools(server);
+  registerGenerateTools(server);
+  registerCloudTools(server);
+  registerCreatorTools(server);
+}
+
 export async function startMcpServer(
   options: StartMcpServerOptions = {}
 ): Promise<void> {
@@ -293,15 +305,7 @@ export async function startMcpServer(
     server as unknown as { tool: (...args: unknown[]) => unknown }
   );
 
-  registerSceneTools(server);
-  registerDebugTools(server);
-  registerVisualTools(server);
-  registerProjectTools(server);
-  registerFileTools(server);
-  registerAssetTools(server);
-  registerGenerateTools(server);
-  registerCloudTools(server);
-  registerCreatorTools(server);
+  registerMcpTools(server);
 
   // Fire-and-forget — never block tool registration on the npm registry.
   void probeBootDrift().catch((error) => {

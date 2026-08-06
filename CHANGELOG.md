@@ -4,13 +4,23 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+## [2.8.0] — 2026-08-03 — "One-command MCP onboarding"
+
 ### Added
+- The complete MCP registry grows from the 58 tools registered by the published 2.7.0 package to 62 tools. The only new registrations are `summer_creator_publish`, `summer_creator_releases`, `summer_creator_logs`, and `summer_creator_config`.
 - MCP discovers every live Summer editor through `~/.summer/instances/` and automatically binds local tools to the editor whose project contains the agent's current working directory.
 - `summer mcp --project <path>` and `summer mcp --instance <id>` provide explicit selection for hosts that do not start the MCP server from a project directory.
+- OpenCode setup can configure a loaded LM Studio model alongside the unchanged complete Summer MCP tool registry with `--lm-studio-model <id>`, with opt-in screenshot input through `--lm-studio-vision`.
+- `summer setup antigravity` writes Antigravity's current project or user MCP configuration and installs Summer skills into its native `.agents` or `~/.gemini/config` directories.
 
 ### Changed
+- The onboarding and routing work in this release does not add or remove MCP registrations relative to its 2.8 development base: both the base and this change expose the same 62-tool registry. It changes client setup, editor selection, compatibility handling, and documentation.
 - Multiple live editors are now a fail-closed state when no project can be inferred. MCP lists the non-secret project/instance choices instead of following the machine-global last-opened editor pointer.
 - Selected MCP sessions keep following the same project across editor restarts and validate registry identity against `/api/health` before connecting.
+- OpenCode setup now treats `--project` as project scope unless `--scope user` is explicit, and the OpenCode guide includes a complete local-model configuration and verification path.
+- OpenCode, direct LM Studio, and Antigravity setup are independent client targets. Plain OpenCode and Antigravity setup preserve the user's existing model provider.
+- `summer_remove_node` keeps the preferred exact `path` argument and also accepts the common small-model `parent` + `name` shape for one direct child.
+- `summer_batch` infers unambiguous op-less AddNode and SetProp items emitted in individual-tool form by smaller models while keeping explicit `op` as the preferred shape.
 
 ## [2.7.0] — 2026-07-24 — "Reliable project mutations"
 

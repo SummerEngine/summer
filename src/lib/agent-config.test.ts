@@ -1,8 +1,13 @@
-import { mkdtempSync, readFileSync, writeFileSync } from "fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import { describe, expect, it } from "vitest";
-import { configureAgentMcp, createSummerMcpServerConfig, parseAgent } from "./agent-config.js";
+import {
+  configureAgentMcp,
+  createSummerMcpServerConfig,
+  parseAgent,
+  resolveAgentConfigScope,
+} from "./agent-config.js";
 
 function tmp(): string {
   return mkdtempSync(join(tmpdir(), "summer-agent-config-"));
@@ -26,6 +31,32 @@ describe("parseAgent", () => {
   it("keeps windsurf as windsurf", () => {
     expect(parseAgent("windsurf")).toBe("windsurf");
   });
+
+  it("maps current Antigravity client names", () => {
+    expect(parseAgent("antigravity")).toBe("antigravity");
+    expect(parseAgent("antigravity-ide")).toBe("antigravity");
+    expect(parseAgent("antigravity-cli")).toBe("antigravity");
+  });
+});
+
+describe("resolveAgentConfigScope", () => {
+  it("defaults OpenCode with an explicit project to project scope", () => {
+    expect(resolveAgentConfigScope("opencode", undefined, ".")).toBe("project");
+  });
+
+  it("preserves an explicit OpenCode user scope", () => {
+    expect(resolveAgentConfigScope("opencode", "user", ".")).toBe("user");
+  });
+
+  it("defaults Antigravity with an explicit project to project scope", () => {
+    expect(resolveAgentConfigScope("antigravity", undefined, ".")).toBe(
+      "project"
+    );
+  });
+
+  it("keeps the existing user default for other agents", () => {
+    expect(resolveAgentConfigScope("codex", undefined, ".")).toBe("user");
+  });
 });
 
 describe("createSummerMcpServerConfig", () => {
@@ -33,6 +64,14 @@ describe("createSummerMcpServerConfig", () => {
     const server = createSummerMcpServerConfig(false);
     expect(server.command).toBe("npx");
     expect(server.args).toEqual(NPX_ARGS);
+  });
+
+  it("adds an explicit project when requested", () => {
+    const project = join(tmp(), "game");
+    const server = createSummerMcpServerConfig(false, {
+      projectPath: project,
+    });
+    expect(server.args).toEqual([...NPX_ARGS, "--project", project]);
   });
 });
 
@@ -49,6 +88,42 @@ describe("configureAgentMcp", () => {
     const written = JSON.parse(readFileSync(path, "utf-8"));
     expect(written.mcpServers["summer-engine"].command).toBe("npx");
     expect(written.mcpServers["summer-engine"].args).toEqual(NPX_ARGS);
+  });
+
+  it("prefers the active LM Studio runtime config directory when present", async () => {
+    const home = tmp();
+    const runtimeDir = join(home, ".cache", "lm-studio");
+    mkdirSync(runtimeDir, { recursive: true });
+
+    const result = await configureAgentMcp({
+      agent: "lm-studio",
+      scope: "user",
+      env: { HOME: home, USERPROFILE: home } as NodeJS.ProcessEnv,
+    });
+
+    expect(result.path).toBe(join(runtimeDir, "mcp.json"));
+    const written = JSON.parse(readFileSync(result.path, "utf-8"));
+    expect(written.mcpServers["summer-engine"].args).toEqual(NPX_ARGS);
+  });
+
+  it("binds an LM Studio config entry to an explicit project", async () => {
+    const dir = tmp();
+    const path = join(dir, "mcp.json");
+    const project = join(dir, "project");
+    const result = await configureAgentMcp({
+      agent: "lm-studio",
+      scope: "user",
+      projectPath: project,
+      env: { SUMMER_LM_STUDIO_CONFIG_FILE: path } as NodeJS.ProcessEnv,
+    });
+
+    const written = JSON.parse(readFileSync(path, "utf-8"));
+    expect(written.mcpServers["summer-engine"].args).toEqual([
+      ...NPX_ARGS,
+      "--project",
+      project,
+    ]);
+    expect(result.projectPath).toBe(project);
   });
 
   it("preserves unrelated keys when merging claude-code config", async () => {
@@ -319,5 +394,164 @@ describe("configureAgentMcp", () => {
       "summer-engine@latest",
       "mcp",
     ]);
+    expect(written.provider).toBeUndefined();
+    expect(written.model).toBeUndefined();
+  });
+
+  it("writes current Antigravity project MCP config without touching providers", async () => {
+    const dir = tmp();
+    const project = join(dir, "game");
+    mkdirSync(join(project, ".agents"), { recursive: true });
+    const path = join(project, ".agents", "mcp_config.json");
+    writeFileSync(
+      path,
+      JSON.stringify({
+        theme: "preserve-me",
+        mcpServers: { other: { command: "node", args: ["other.js"] } },
+      })
+    );
+
+    const result = await configureAgentMcp({
+      agent: "antigravity",
+      scope: "project",
+      cwd: dir,
+      projectPath: project,
+      env: {} as NodeJS.ProcessEnv,
+    });
+
+    expect(result.path).toBe(path);
+    const written = JSON.parse(readFileSync(path, "utf-8"));
+    expect(written.theme).toBe("preserve-me");
+    expect(written.mcpServers.other.command).toBe("node");
+    expect(written.mcpServers["summer-engine"].args).toEqual([
+      ...NPX_ARGS,
+      "--project",
+      project,
+    ]);
+    expect(written.provider).toBeUndefined();
+    expect(written.model).toBeUndefined();
+    expect(result.nextSteps.join("\n")).toContain(
+      "normal interactive `agy` session"
+    );
+    expect(result.nextSteps.join("\n")).toContain("`agy -p`");
+  });
+
+  it("writes current Antigravity user MCP config path", async () => {
+    const home = tmp();
+    const result = await configureAgentMcp({
+      agent: "antigravity",
+      scope: "user",
+      env: { HOME: home, USERPROFILE: home } as NodeJS.ProcessEnv,
+    });
+
+    expect(result.path).toBe(
+      join(home, ".gemini", "config", "mcp_config.json")
+    );
+    const written = JSON.parse(readFileSync(result.path, "utf-8"));
+    expect(written.mcpServers["summer-engine"].command).toBe("npx");
+  });
+
+  it("configures an OpenCode LM Studio provider without changing the MCP surface", async () => {
+    const dir = tmp();
+    const path = join(dir, "opencode.json");
+    const result = await configureAgentMcp({
+      agent: "opencode",
+      scope: "project",
+      cwd: dir,
+      projectPath: dir,
+      opencodeLmStudio: {
+        modelId: "google/gemma-4-26b-a4b-qat",
+        vision: true,
+      },
+      env: { SUMMER_OPENCODE_CONFIG_FILE: path } as NodeJS.ProcessEnv,
+    });
+
+    const written = JSON.parse(readFileSync(path, "utf-8"));
+    expect(written.model).toBe("lmstudio/google/gemma-4-26b-a4b-qat");
+    expect(written.small_model).toBe("lmstudio/google/gemma-4-26b-a4b-qat");
+    expect(written.provider.lmstudio.npm).toBe("@ai-sdk/openai-compatible");
+    expect(written.provider.lmstudio.options.baseURL).toBe(
+      "http://127.0.0.1:1234/v1"
+    );
+    expect(
+      written.provider.lmstudio.models["google/gemma-4-26b-a4b-qat"]
+    ).toMatchObject({
+      limit: { context: 131072, output: 8192 },
+      modalities: { input: ["text", "image"], output: ["text"] },
+      options: { reasoningEffort: "none" },
+    });
+    expect(written.mcp["summer-engine"].command).toEqual([
+      "npx",
+      ...NPX_ARGS,
+      "--project",
+      dir,
+    ]);
+  });
+
+  it("does not advertise image input for a text-only LM Studio setup", async () => {
+    const dir = tmp();
+    const path = join(dir, "opencode.json");
+
+    await configureAgentMcp({
+      agent: "opencode",
+      scope: "project",
+      cwd: dir,
+      projectPath: dir,
+      opencodeLmStudio: { modelId: "text-only-model" },
+      env: { SUMMER_OPENCODE_CONFIG_FILE: path } as NodeJS.ProcessEnv,
+    });
+
+    const written = JSON.parse(readFileSync(path, "utf-8"));
+    expect(
+      written.provider.lmstudio.models["text-only-model"].modalities
+    ).toBeUndefined();
+  });
+
+  it("preserves unrelated OpenCode providers and LM Studio model keys", async () => {
+    const dir = tmp();
+    const path = join(dir, "opencode.json");
+    writeFileSync(
+      path,
+      JSON.stringify({
+        provider: {
+          other: { npm: "other-provider" },
+          lmstudio: {
+            options: { apiKey: "local-placeholder" },
+            models: {
+              existing: { name: "Existing model" },
+              "google/gemma-4-26b-a4b-qat": {
+                custom: true,
+                modalities: { input: ["text", "audio"], custom: true },
+              },
+            },
+          },
+        },
+      })
+    );
+
+    await configureAgentMcp({
+      agent: "opencode",
+      scope: "user",
+      opencodeLmStudio: {
+        modelId: "google/gemma-4-26b-a4b-qat",
+        vision: true,
+      },
+      env: { SUMMER_OPENCODE_CONFIG_FILE: path } as NodeJS.ProcessEnv,
+    });
+
+    const written = JSON.parse(readFileSync(path, "utf-8"));
+    expect(written.provider.other.npm).toBe("other-provider");
+    expect(written.provider.lmstudio.options.apiKey).toBe("local-placeholder");
+    expect(written.provider.lmstudio.models.existing.name).toBe("Existing model");
+    expect(
+      written.provider.lmstudio.models["google/gemma-4-26b-a4b-qat"].custom
+    ).toBe(true);
+    expect(
+      written.provider.lmstudio.models["google/gemma-4-26b-a4b-qat"].modalities
+    ).toEqual({
+      input: ["text", "image"],
+      output: ["text"],
+      custom: true,
+    });
   });
 });

@@ -6,7 +6,7 @@ import {
   SupportedAgent,
   configureAgentMcp,
   parseAgent,
-  parseScope,
+  resolveAgentConfigScope,
   supportedAgents,
 } from "../lib/agent-config.js";
 import { DoctorResult, printDoctorResult, runDoctor } from "./doctor.js";
@@ -30,6 +30,7 @@ const AGENT_LABEL: Record<SupportedAgent, string> = {
   "vscode-copilot": "GitHub Copilot in VS Code",
   opencode: "OpenCode",
   "lm-studio": "LM Studio",
+  antigravity: "Antigravity",
 };
 
 interface SetupCommandOptions {
@@ -40,6 +41,10 @@ interface SetupCommandOptions {
   yes?: boolean;
   json?: boolean;
   force?: boolean;
+  project?: string;
+  lmStudioModel?: string;
+  lmStudioUrl?: string;
+  lmStudioVision?: boolean;
 }
 
 interface SkillSetupResult {
@@ -54,39 +59,79 @@ interface SkillInstallInvocation {
   command: string;
   args: string[];
   display: string[];
+  cwd?: string;
 }
 
 export const setupCommand = new Command("setup")
   .description("Configure Summer Engine for an AI agent and run diagnostics")
   .argument("[agent]", `Agent to configure: ${supportedAgents.join(", ")}`)
   .option("--agent <agent>", `Agent to configure: ${supportedAgents.join(", ")}`)
-  .option("--scope <scope>", "Configuration scope: user or project", "user")
+  .option(
+    "--scope <scope>",
+    "Configuration scope: user or project (OpenCode/Antigravity + --project default to project)"
+  )
   .option("--dry-run", "Show planned changes without writing files")
   .option("--print", "Print the MCP config snippet instead of writing files")
   .option("--yes", "Apply practical setup steps without prompting")
   .option("--json", "Print setup result as JSON")
+  .option("--project <path>", "Bind the MCP server entry to one Summer project")
+  .option(
+    "--lm-studio-model <id>",
+    "Configure OpenCode to use this loaded LM Studio model ID"
+  )
+  .option(
+    "--lm-studio-url <url>",
+    "LM Studio OpenAI-compatible base URL",
+    "http://127.0.0.1:1234/v1"
+  )
+  .option(
+    "--lm-studio-vision",
+    "Declare image input support for a vision-capable LM Studio model"
+  )
   .option(
     "--force",
     "Overwrite existing skill content (passes --force through to skills install)"
   )
   .action(async (agentArg: string | undefined, opts: SetupCommandOptions) => {
     const agent = resolveAgent(agentArg, opts.agent);
-    const scope = resolveScope(opts.scope);
+    const scope = resolveScope(agent, opts.scope, opts.project);
+    if (opts.lmStudioModel && agent !== "opencode") {
+      throw new Error("--lm-studio-model is only supported with `summer setup opencode`.");
+    }
 
     const config = await configureAgentMcp({
       agent,
       scope,
       dryRun: opts.dryRun,
       print: opts.print,
+      projectPath: opts.project,
+      opencodeLmStudio: opts.lmStudioModel
+        ? {
+            modelId: opts.lmStudioModel,
+            baseUrl: opts.lmStudioUrl,
+            vision: opts.lmStudioVision,
+          }
+        : undefined,
     });
 
     const skills = setupRecommendedSkills(agent, {
       dryRun: Boolean(opts.dryRun || opts.print),
       yes: Boolean(opts.yes),
       force: Boolean(opts.force),
+      scope,
+      projectPath: config.projectPath,
     });
 
-    const doctor = await runDoctor({ quiet: true });
+    const installedSkillsDir =
+      skills.status === "installed" ? parseSkillTargetDir(skills.stdout) : null;
+    const doctor = await runDoctor({
+      quiet: true,
+      // Setup should validate the skills it just installed, not fail because an
+      // unrelated agent has an older global skill marker elsewhere on disk.
+      skillCandidates: installedSkillsDir
+        ? [{ agent, dir: installedSkillsDir }]
+        : [],
+    });
 
     if (opts.json) {
       console.log(
@@ -123,8 +168,12 @@ function resolveAgent(agentArg: string | undefined, agentOpt: string | undefined
   return parsed;
 }
 
-function resolveScope(scopeOpt: string | undefined): ConfigScope {
-  const parsed = parseScope(scopeOpt);
+function resolveScope(
+  agent: SupportedAgent,
+  scopeOpt: string | undefined,
+  projectPath: string | undefined
+): ConfigScope {
+  const parsed = resolveAgentConfigScope(agent, scopeOpt, projectPath);
   if (!parsed) {
     throw new Error("Invalid --scope. Use user or project.");
   }
@@ -133,7 +182,13 @@ function resolveScope(scopeOpt: string | undefined): ConfigScope {
 
 function setupRecommendedSkills(
   agent: SupportedAgent,
-  options: { dryRun: boolean; yes: boolean; force: boolean }
+  options: {
+    dryRun: boolean;
+    yes: boolean;
+    force: boolean;
+    scope: ConfigScope;
+    projectPath: string | null;
+  }
 ): SkillSetupResult {
   if (agent === "lm-studio") {
     return {
@@ -143,7 +198,11 @@ function setupRecommendedSkills(
     };
   }
 
-  const invocation = skillInstallInvocation(agent, { force: options.force });
+  const invocation = skillInstallInvocation(agent, {
+    force: options.force,
+    scope: options.scope,
+    projectPath: options.projectPath,
+  });
 
   if (!invocation) {
     return {
@@ -164,6 +223,7 @@ function setupRecommendedSkills(
   const result = spawnSync(invocation.command, invocation.args, {
     env: process.env,
     encoding: "utf-8",
+    cwd: invocation.cwd,
   });
 
   if (result.status === 0) {
@@ -187,7 +247,11 @@ function setupRecommendedSkills(
 
 function skillInstallInvocation(
   agent: SupportedAgent,
-  opts: { force: boolean } = { force: false }
+  opts: {
+    force: boolean;
+    scope: ConfigScope;
+    projectPath: string | null;
+  }
 ): SkillInstallInvocation | null {
   const cliPath = process.argv[1];
   if (!cliPath) return null;
@@ -195,12 +259,24 @@ function skillInstallInvocation(
   const command = cliPath.endsWith(".js") ? process.execPath : cliPath;
   const prefix = cliPath.endsWith(".js") ? [cliPath] : [];
 
-  const baseArgs = ["skills", "install", "--recommended", "--agent", agent];
+  const baseArgs = [
+    "skills",
+    "install",
+    "--recommended",
+    "--agent",
+    agent,
+    "--scope",
+    opts.scope,
+  ];
   if (opts.force) baseArgs.push("--force");
   return {
     command,
     args: [...prefix, ...baseArgs],
     display: [cliPath, ...baseArgs],
+    cwd:
+      opts.scope === "project" && opts.projectPath
+        ? opts.projectPath
+        : undefined,
   };
 }
 
@@ -259,11 +335,28 @@ function printSetupResult(
   console.log("");
   printDoctorResult(doctor);
 
+  if (config.agent === "lm-studio" && !config.dryRun) {
+    console.log("");
+    console.log(`  ${c.bold("LM Studio next steps")}`);
+    for (const step of config.nextSteps) {
+      console.log(`  - ${step}`);
+    }
+    console.log(
+      "  - Manual setup and first prompt: https://github.com/SummerEngine/summer-engine-agent/blob/main/references/lm-studio.md"
+    );
+  }
+
   if (doctor.ok && skills.status !== "failed" && !config.dryRun) {
     console.log("");
-    console.log(
-      `${c.dim("Try it:")} open ${AGENT_LABEL[config.agent] ?? config.agent} and ask: ${c.bold("\"add a DirectionalLight3D and Camera3D to my scene\"")}`
-    );
+    if (config.agent === "lm-studio") {
+      console.log(
+        `${c.dim("Safe first chat:")} ask: ${c.bold("\"call summer_get_agent_playbook, read its result, then inspect my project without changing it\"")}`
+      );
+    } else {
+      console.log(
+        `${c.dim("Safe first chat:")} open ${AGENT_LABEL[config.agent] ?? config.agent} and ask: ${c.bold("\"call summer_get_agent_playbook, read it, then report my exact project and scene without changing anything\"")}`
+      );
+    }
   }
 }
 

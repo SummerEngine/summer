@@ -103,11 +103,18 @@
 | `summer_import_asset` | Search, choose the top match, download, run Godot import, and optionally instantiate 3D models. |
 | `summer_import_asset_by_id` | Import one exact Summer asset ID. Use after generation jobs or when the user selects a specific asset. |
 
-### Asset generation (5 — metered)
+### Studio workflows (1)
+
+| Tool | Use |
+|---|---|
+| `summer_get_studio_workflow` | List Studio's guided workflow recipes, or return the exact steps, required tools, support level, and limitations for one workflow. |
+
+### Asset generation and processing (6 — generation is metered)
 
 | Tool | Use |
 |---|---|
 | `summer_generate_image` | AI image gen. |
+| `summer_slice_asset_sheet` | Detect, crop, name, and upload the distinct assets in an existing Summer image asset sheet. |
 | `summer_generate_3d` | Image-to-3D. |
 | `summer_generate_audio` | SFX / music gen. |
 | `summer_generate_video` | Video gen. |

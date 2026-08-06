@@ -2,7 +2,7 @@ import { Command } from "commander";
 import {
   configureAgentMcp,
   parseAgent,
-  parseScope,
+  resolveAgentConfigScope,
   supportedAgents,
 } from "../lib/agent-config.js";
 import { startMcpServer } from "../mcp/server.js";
@@ -27,10 +27,27 @@ export const mcpCommand = new Command("mcp")
 mcpCommand
   .command("setup <agent>")
   .description("Configure an AI agent to use the Summer Engine MCP server")
-  .option("--scope <scope>", "Configuration scope: user or project", "user")
+  .option(
+    "--scope <scope>",
+    "Configuration scope: user or project (OpenCode + --project defaults to project)"
+  )
   .option("--print", "Print the MCP config snippet instead of writing files")
   .option("--dry-run", "Show planned changes without writing files")
   .option("--local-dev", "Use the local built CLI instead of npx summer-engine")
+  .option("--project <path>", "Bind the MCP server entry to one Summer project")
+  .option(
+    "--lm-studio-model <id>",
+    "Configure OpenCode to use this loaded LM Studio model ID"
+  )
+  .option(
+    "--lm-studio-url <url>",
+    "LM Studio OpenAI-compatible base URL",
+    "http://127.0.0.1:1234/v1"
+  )
+  .option(
+    "--lm-studio-vision",
+    "Declare image input support for a vision-capable LM Studio model"
+  )
   .option("--json", "Print the setup result as JSON")
   .action(
     async (
@@ -40,6 +57,10 @@ mcpCommand
         print?: boolean;
         dryRun?: boolean;
         localDev?: boolean;
+        project?: string;
+        lmStudioModel?: string;
+        lmStudioUrl?: string;
+        lmStudioVision?: boolean;
         json?: boolean;
       }
     ) => {
@@ -48,9 +69,13 @@ mcpCommand
         throw new Error(`Unsupported agent. Use one of: ${supportedAgents.join(", ")}`);
       }
 
-      const scope = parseScope(opts.scope);
+      const projectPath = opts.project ?? mcpCommand.opts().project;
+      const scope = resolveAgentConfigScope(agent, opts.scope, projectPath);
       if (!scope) {
         throw new Error("Invalid --scope. Use user or project.");
+      }
+      if (opts.lmStudioModel && agent !== "opencode") {
+        throw new Error("--lm-studio-model is only supported with `summer mcp setup opencode`.");
       }
 
       const result = await configureAgentMcp({
@@ -59,6 +84,14 @@ mcpCommand
         print: opts.print,
         dryRun: opts.dryRun,
         localDev: opts.localDev,
+        projectPath,
+        opencodeLmStudio: opts.lmStudioModel
+          ? {
+              modelId: opts.lmStudioModel,
+              baseUrl: opts.lmStudioUrl,
+              vision: opts.lmStudioVision,
+            }
+          : undefined,
       });
 
       if (opts.json) {

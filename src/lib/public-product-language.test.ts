@@ -18,6 +18,28 @@ const PUBLIC_ROOTS = [
 ] as const;
 const TEXT_EXTENSIONS = new Set([".md", ".json", ".ts"]);
 
+async function registeredMcpToolNames(): Promise<string[]> {
+  const toolsDir = join(ROOT, "src/mcp/tools");
+  const toolFiles = (await readdir(toolsDir))
+    .filter((name) => name.endsWith("-tools.ts") && !name.endsWith(".test.ts"));
+  const names = new Set<string>();
+  for (const file of toolFiles) {
+    const source = await readFile(join(toolsDir, file), "utf8");
+    for (const match of source.matchAll(
+      /\bserver\.tool\(\s*["'](summer_[a-z0-9_]+)["']/g
+    )) {
+      names.add(match[1]);
+    }
+  }
+  return [...names].sort();
+}
+
+function documentedMcpToolNames(text: string): string[] {
+  return [...new Set(
+    [...text.matchAll(/`(summer_[a-z0-9_]+)`/g)].map((match) => match[1])
+  )].sort();
+}
+
 async function publicTextFiles(path: string): Promise<string[]> {
   const absolute = join(ROOT, path);
   const entries = await readdir(absolute, { withFileTypes: true }).catch(() => []);
@@ -74,15 +96,8 @@ describe("Summer-first public product language", () => {
   });
 
   it("keeps the public MCP total aligned with registered source tools", async () => {
-    const toolsDir = join(ROOT, "src/mcp/tools");
-    const toolFiles = (await readdir(toolsDir))
-      .filter((name) => name.endsWith("-tools.ts") && !name.endsWith(".test.ts"));
-    let registered = 0;
-    for (const file of toolFiles) {
-      const source = await readFile(join(toolsDir, file), "utf8");
-      registered += source.match(/\bserver\.tool\(/g)?.length ?? 0;
-    }
-    expect(registered).toBe(62);
+    const registered = await registeredMcpToolNames();
+    expect(registered).toHaveLength(62);
 
     for (const path of [
       "README.md",
@@ -96,6 +111,14 @@ describe("Summer-first public product language", () => {
       const text = await readFile(join(ROOT, path), "utf8");
       expect(text, path).toMatch(/\b62(?: tools|-tool)/);
       expect(text, path).not.toMatch(/\b(?:56|60)(?: tools|-tool)/);
+    }
+  });
+
+  it("keeps canonical tool inventories identical to registered source names", async () => {
+    const registered = await registeredMcpToolNames();
+    for (const path of ["AGENTS.md", "references/mcp-tools-reference.md"]) {
+      const text = await readFile(join(ROOT, path), "utf8");
+      expect(documentedMcpToolNames(text), path).toEqual(registered);
     }
   });
 });

@@ -4,13 +4,7 @@ This file is for any AI agent that loads context from `AGENTS.md` (Codex CLI, Fa
 
 ## What you're working with
 
-**Summer Engine** is the AI-native game engine the user is building in. They
-are making a **Summer game** with the **Summer SDK**. Editor, scene graph,
-asset pipeline, and runtime are instrumented for programmatic control via the
-`summer-engine` MCP server. GDScript (`.gd`) is the default language; C#
-(`.cs`), scenes (`.tscn`/`.scn`), and resources (`.tres`/`.res`) are also
-supported. Talk to the engine through Summer MCP tools. Use the bundled
-technical compatibility reference for version-sensitive upstream APIs.
+**Summer Engine** is the AI-native game engine the user is building in. The user is making a **Summer game** with the **Summer SDK**, normally in GDScript. The editor, scene graph, asset pipeline, and runtime are instrumented for programmatic control through the `summer-engine` MCP server. Summer currently uses the 4.6.1 upstream technical base, plans to adopt 4.7.1 next, and follows upstream continuously. Those numbers are compatibility facts, not the product identity. Projects use GDScript (`.gd`), C# (`.cs`), scenes (`.tscn`/`.scn`), resources (`.tres`/`.res`), and the technical `project.godot` filename.
 
 ## Critical rules
 
@@ -31,7 +25,7 @@ technical compatibility reference for version-sensitive upstream APIs.
 
 ## MCP tool palette (project-matched local editor)
 
-62 tools total. Categories:
+The current MCP registry is grouped into these categories:
 
 - Scene: `summer_get_scene_tree`, `summer_open_scene`, `summer_create_scene`, `summer_add_node`, `summer_set_prop`, `summer_set_resource_property`, `summer_remove_node`, `summer_save_scene`, `summer_instantiate_scene`, `summer_replace_node`, `summer_select_node`, `summer_inspect_node`, `summer_inspect_resource`, `summer_connect_signal`, `summer_batch`.
 - Diagnostics: `summer_create_debug_report`, `summer_get_script_errors`, `summer_get_diagnostics`, `summer_get_console`, `summer_clear_console`, `summer_get_debugger_errors`, `summer_get_debugger_warnings`.
@@ -42,13 +36,12 @@ technical compatibility reference for version-sensitive upstream APIs.
 - Assets: `summer_search_assets`, `summer_list_my_assets`, `summer_get_asset`, `summer_get_asset_download_url`, `summer_import_asset`, `summer_import_asset_by_id`, `summer_import_from_url`, `summer_import_from_url_batch`.
 - Generation: `summer_generate_image`, `summer_generate_3d`, `summer_generate_audio`, `summer_generate_video`, `summer_generate_motion`, `summer_check_job`.
 - Meta: `summer_start_game_task`.
-- Creator: `summer_creator_publish`, `summer_creator_releases`, `summer_creator_logs`, `summer_creator_config`.
 
 Git, shell, and grep are not exposed. Project file reads and writes are exposed through identity-bound Summer tools; do not bypass them with host writes when MCP is available. External host tools cannot be technically blocked, so the agent must follow this rule.
 
 ## Type-system gotchas
 
-`SetProp` values are engine-formatted strings (Godot type-system compatible), not JSON objects:
+`SetProp` values are Summer Engine variant strings, not JSON objects:
 - `"Vector3(0, 10, 0)"`
 - `"Color(1, 0.5, 0, 1)"` (RGBA, 4 components)
 - `"Transform3D(1,0,0, 0,1,0, 0,0,1, 0,5,0)"`

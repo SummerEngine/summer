@@ -19,7 +19,7 @@ The whole flow:
 1. T-pose reference image    →  summer_generate_image                          (~$0.05, ~10s)
 2. Un-rigged 3D mesh         →  summer_generate_3d(image-to-3d)                (~$0.50, ~60s)
 3. ── USER REVIEW GATE ──
-4. Rigged .glb               →  summer_generate_3d(image-to-3d, rig: true)     (~$1.00, ~90s)
+4. Rigged .glb               →  summer_generate_3d(image-to-3d, rig=true)      (~$1.00, ~90s)
 5. Import → editor RESTART → wire as CharacterBody3D / Node3D
 6. Hand off to summer:animation/generate-motion for clips
 ```
@@ -133,9 +133,12 @@ If the user wants changes, loop back to step 1 or 2. Do NOT silently run the rig
 summer_generate_3d({
   kind: "image-to-3d",
   imageUrl: "<image url from step 1>",
-  options: { rig: true, polyTarget: 12000 }   // polyTarget is best-effort; backend may use options.target_polycount
+  rig: true,
+  options: { target_polycount: 12000 }
 })
 ```
+
+`rig` is a **top-level boolean argument** on `summer_generate_3d` (the tool also merges it into `options.rig`, so `options: { rig: true }` works too). There is no `polyTarget` — the polycount key is `target_polycount` inside `options`, exactly as in step 2. Related top-level arguments worth knowing here: `riggingHeightMeters` for character height, and `animationNames` / `actionIds` to have the shared animated-character pipeline produce clips in the same job instead of a separate `summer_generate_motion` pass.
 
 Returns a job whose result includes `assetId`, `fileUrl`, and `rigAssetId`.
 If you ran with `wait: false`, poll via `summer_check_job(jobId)`. The
@@ -154,11 +157,11 @@ summer_import_asset_by_id(
 
 ### 5. ⚠️ Restart the editor
 
-**Known Summer Engine gotcha:** after importing a rigged `.glb`, the `Skeleton3D` node appears stale in the scene dock — bones are missing, `skeleton.get_bone_count()` returns 0, and `AnimationPlayer` libraries fail to bind. The fix:
+**Known gotcha:** after importing a rigged `.glb`, the `Skeleton3D` node appears stale in the scene dock — bones are missing, `skeleton.get_bone_count()` returns 0, and `AnimationPlayer` libraries fail to bind. The fix:
 
 > The rigged mesh is imported. Please restart the Summer Engine editor (close and reopen) so the Skeleton3D rebuilds correctly. Without the restart, animations will fail to bind.
 
-There is no programmatic workaround as of the current Summer Engine base. Tell the user, wait, then continue.
+No programmatic workaround is known. Tell the user, wait, then continue.
 
 ### 6. Wire as CharacterBody3D or Node3D — pick the right parent
 
@@ -169,25 +172,33 @@ There is no programmatic workaround as of the current Summer Engine base. Tell t
 | Pure-visual character (background extra, dialogue head) | `Node3D` | Same as above |
 | Ragdoll-on-death enemy | `CharacterBody3D` while alive, swap to `RigidBody3D` skeleton on death | Two-mode rig; see `summer:animation/procedural-animation` |
 
+Four things the call shapes below encode:
+
+- **Every scene-mutating tool takes an explicit `scenePath`** and the scene need not be the active editor tab.
+- **Node paths are relative to that scene's root (`./`)**, not absolute `/root/...` runtime paths.
+- **`summer_set_prop`'s property argument is named `key`**, not `property`.
+- **A `.glb` is instantiated, not assigned.** There is no `scene` property on `Node3D`, and an imported `.glb` is a scene rather than a `Mesh` — on the shipped 4.6.1 binary `ResourceLoader.get_recognized_extensions_for_type("Mesh")` returns `["tres", "mesh", "res"]`, with no `glb`. Use `summer_instantiate_scene`.
+
 **CharacterBody3D wiring (player / enemy):**
 
 ```
-summer_add_node(parent="./World", type="CharacterBody3D", name="Knight")
-summer_set_prop(path="./World/Knight", property="position", value="Vector3(0, 0, 0)")
-summer_add_node(parent="./World/Knight", type="Node3D", name="Mesh")
-# Instantiate the imported scene as a child of the Mesh node
-summer_set_prop(path="./World/Knight/Mesh", property="scene", value="res://assets/characters/knight.glb")
-summer_add_node(parent="./World/Knight", type="CollisionShape3D", name="Collider")
-# Add a CapsuleShape3D resource (height ~1.7m, radius ~0.4m) to the collider
-summer_save_scene
+summer_add_node(scenePath="res://main.tscn", parent="./World", type="CharacterBody3D", name="Knight")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Knight", key="position", value="Vector3(0, 0, 0)")
+summer_instantiate_scene(scenePath="res://main.tscn", parent="./World/Knight", scene="res://assets/characters/knight.glb", name="Mesh")
+summer_add_node(scenePath="res://main.tscn", parent="./World/Knight", type="CollisionShape3D", name="Collider")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Knight/Collider", key="shape", value="CapsuleShape3D")
+summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/Knight/Collider", resourceProperty="shape", subProperty="height", value=1.7)
+summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/Knight/Collider", resourceProperty="shape", subProperty="radius", value=0.4)
+summer_save_scene(scenePath="res://main.tscn")
 ```
+
+Assigning a bare class name like `"CapsuleShape3D"` to a resource property auto-instantiates it, which is how you get a shape you can then size. `summer_set_resource_property` needs all five of `scenePath`, `nodePath`, `resourceProperty`, `subProperty`, `value`.
 
 **Node3D wiring (cinematic NPC):**
 
 ```
-summer_add_node(parent="./World/Tavern", type="Node3D", name="OldWizard")
-summer_set_prop(path="./World/Tavern/OldWizard", property="scene", value="res://assets/characters/wizard.glb")
-summer_save_scene
+summer_instantiate_scene(scenePath="res://main.tscn", parent="./World/Tavern", scene="res://assets/characters/wizard.glb", name="OldWizard")
+summer_save_scene(scenePath="res://main.tscn")
 ```
 
 The imported `.glb` includes its own `Skeleton3D` and `AnimationPlayer` (empty library). The animation skill writes into that AnimationPlayer.
@@ -196,7 +207,11 @@ The imported `.glb` includes its own `Skeleton3D` and `AnimationPlayer` (empty l
 
 > Knight is wired at `./World/Knight` with a Meshy-rigged skeleton. `rigAssetId` saved.
 >
-> Next: `summer:animation/generate-motion` to add idle / walk / run / attack clips. Example call: `summer_generate_motion(rigAssetId: "<saved id>", backend: "meshy-library", motionName: "walk")`. The animation skill uses Meshy's curated mocap library (~70 standard motions). Custom prompt-driven motion is on the roadmap; for one-off signature moves not on the curated list, fall back to hand-authoring in the Godot editor or importing from Mixamo.
+> Next: `summer:animation/generate-motion` to add idle / walk / run / attack
+> clips. Example call: `summer_generate_motion(rigAssetId: "<saved id>",
+> backend: "meshy-library", motionName: "walk")`. Custom prompt-driven motion
+> is not shipped; hand-author one-off moves in Summer Engine or import a
+> licensed clip.
 
 ## Anti-patterns
 
@@ -221,9 +236,9 @@ The imported `.glb` includes its own `Skeleton3D` and `AnimationPlayer` (empty l
 1. Generate the T-pose reference at the Summer dashboard (or any image gen — Midjourney, nano-banana web, DALL-E).
 2. Upload to Meshy at meshy.ai → Image to 3D → enable rigging.
 3. Download the `.glb`.
-4. Drop into `res://assets/characters/` — Godot's import dock picks it up.
+4. Drop into `res://assets/characters/`; Summer Engine's Import dock picks it up.
 5. Restart the editor.
-6. Wire as CharacterBody3D / Node3D in the Godot editor manually.
+6. Wire as CharacterBody3D / Node3D in Summer Engine manually.
 
 The output is identical to the MCP path — same Meshy skeleton, same compatibility with `summer:animation/generate-motion` (which has its own dashboard fallback).
 
@@ -244,4 +259,4 @@ After the rigged character is wired:
 - `summer:asset-pipeline/asset-strategy` — meta-router; this skill is the canonical drill-down of its "Image-to-3D for characters" path.
 - `summer:3d-assets/prop-model` — for non-character props.
 - `summer:scene-composition` — for the CharacterBody3D + Mesh + Collider parent pattern.
-- `references/mcp-tools-reference.md` — full parameter schemas for `summer_generate_3d`, `summer_generate_image`, and `summer_generate_motion`.
+- `../../../references/mcp-tools-reference.md` — full parameter schemas for `summer_generate_3d`, `summer_generate_image`, and `summer_generate_motion`.

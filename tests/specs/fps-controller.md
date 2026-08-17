@@ -72,7 +72,7 @@
 
 ## Case 3: Edge Case — user says "third-person"
 
-**Fixture:** Empty Godot project, main scene with `World` only.
+**Fixture:** Empty Summer project, main scene with `World` only.
 
 **Input:** "Build a third-person FPS controller."
 

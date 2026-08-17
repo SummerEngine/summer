@@ -60,15 +60,16 @@ angle: three-quarter view, slight turn to character's left
 lighting: soft warm key from upper right, cool fill from left, gentle rim
 background: muted painterly gradient, dark teal to deep brown, no scene detail
 style: semi-realistic painterly, soft edges, oil-painting feel
-aspect: portrait_4_3
 ```
+
+Note there is no aspect line. `summer_generate_image` has no size or aspect argument — every MCP image comes back at the server's 1:1 default. Bust framing reads fine square, which is why this skill works over MCP at all; if the cast needs true portrait framing, generate in the Summer dashboard (which exposes aspect ratio) and bring the results back with `summer_import_from_url`, or crop after. Whichever you pick, do it for the *whole* cast — mixed aspect is as visible as mixed lighting.
 
 Every subsequent portrait in this cast appends the anchor to the prompt verbatim. **Do not edit the anchor mid-cast** unless the user explicitly says "I want the new ones to look different."
 
 ### 2. Search for an existing portrait
 
 ```
-summer_search_assets(query="<character name> portrait", filter={ kind: "image" })
+summer_search_assets(query="<character name> portrait", assetType="2d_image", source="all")
 ```
 
 Reuse beats regenerate. If the user wants to iterate on an existing one, pull its URL and pass it as `referenceImageUrl` for img2img.
@@ -91,12 +92,13 @@ The character description should include: identity (age, build, hair, distinctiv
 summer_generate_image(
   prompt="Aria, young witch, mid-twenties, pale skin, long black hair with silver streak, sharp green eyes, half-smile, wearing dark indigo robes with silver embroidery, raven on shoulder. <anchor verbatim>",
   model="nano-banana-2",
-  style="none",
-  options={ image_size: "portrait_4_3" }
+  style="none"
 )
 ```
 
-`style: "none"` because the anchor's "semi-realistic painterly" already specifies style; the preset would fight it.
+`style: "none"` because the anchor's "semi-realistic painterly" already specifies style. Be clear about what the preset actually does though: only `cartoon` and `anime` append anything to the prompt, and `realistic` / `none` append nothing — any other value is coerced to `none`. So the preset cannot "fight" a painterly anchor; it just does nothing either way, and every bit of the look has to be in the prompt.
+
+`options={ image_size: ... }` is dropped without an error — see the anchor note above.
 
 ### 5. Import and wire into UI
 
@@ -110,12 +112,15 @@ summer_import_from_url(
 For dialogue UI nodes, wire the texture into a `TextureRect`:
 
 ```
-summer_set_resource_property(
-  nodePath="/root/UI/DialogueBox/PortraitRect",
-  resourceProperty="texture",
+summer_set_prop(
+  scenePath="res://ui/dialogue.tscn",
+  path="./DialogueBox/PortraitRect",
+  key="texture",
   value="res://ui/portraits/aria.png"
 )
 ```
+
+`texture` is a property on the node, so this is `summer_set_prop` — which needs an explicit `scenePath`, a node path relative to that scene's root (`./`), and a `key` argument, not `property`. `summer_set_resource_property` is for reaching one level *inside* a resource the node already holds and requires all five of `scenePath`, `nodePath`, `resourceProperty`, `subProperty`, `value`.
 
 For character-select with multiple portraits, name files consistently: `aria.png`, `borin.png`, `cael.png`, `dara.png`. Index-able from code via `"res://ui/portraits/%s.png" % character_id`.
 
@@ -150,7 +155,7 @@ summer_generate_image(
 | `cool warrior portrait` | No identity, no anchor. Returns generic stock art. |
 | `the witch but make her sad` (no img2img ref) | Without `referenceImageUrl`, you get a *different* witch who is sad. Identity drift. |
 | Anchor inconsistent across cast | Each portrait looks like a different game. The cast doesn't read as a cast. |
-| `full body portrait` | "Portrait" implies bust. If you want full body, say so explicitly AND switch to `image_size: "portrait_4_3"` framed full-body — but that's a different asset class; consider `concept-art` or 3D pipeline. |
+| `full body portrait` | "Portrait" implies bust. If you want full body, say so explicitly in the prompt — there is no size argument to reframe with, and full body in a square frame is a different asset class anyway; consider `concept-art` or the 3D pipeline. |
 | `transparent background` for a painterly portrait | Painterly + transparent fails on most models. Use a flat or gradient background, then alpha-cut in an editor if you must. |
 
 ## Anti-patterns
@@ -159,7 +164,7 @@ summer_generate_image(
 - **Editing the anchor mid-cast.** If you change lighting from "warm key" to "dramatic side" halfway through, the cast splits visually. Either commit to the change and regenerate everyone, or stick with the anchor.
 - **Regenerating from scratch when img2img would do.** Identity drifts every regen. Iterate via `referenceImageUrl`.
 - **Using the portrait as a 3D reference.** Portraits have dramatic lighting, painterly backgrounds, and cropped framing — all of which corrupt 3D generation. For 3D, generate a separate clean white-bg full-body T-pose via `summer:asset-pipeline/asset-strategy`.
-- **Using `style: "realistic"` or `"cartoon"`** when the anchor already names a style. The preset overrides the anchor.
+- **Expecting `style` to carry the look.** Only `cartoon` and `anime` append anything; `realistic` and `none` append nothing and any other value is coerced to `none`. If the anchor names the style, `"none"` is correct — but the anchor text is doing all the work, not the preset.
 
 ## Edge cases
 
@@ -173,7 +178,7 @@ summer_generate_image(
 Print the prompt and the call:
 
 ```
-summer_generate_image(prompt="<character + anchor>", model="nano-banana-2", style="none", options={ image_size: "portrait_4_3" })
+summer_generate_image(prompt="<character + anchor>", model="nano-banana-2", style="none")
 ```
 
 Tell the user to run via the Summer dashboard, then `summer_import_from_url` the result to `res://ui/portraits/<name>.png`.
@@ -193,4 +198,4 @@ After the portrait is wired:
 - `summer:2d-assets/concept-art` — explore the look first if not yet locked.
 - `summer:asset-pipeline/asset-strategy` — meta-router and the 3D pipeline.
 - `summer:scene-composition` — wiring the portrait into a dialogue UI scene.
-- `references/mcp-tools-reference.md` — `summer_generate_image` parameter schema.
+- `../../../references/mcp-tools-reference.md` — `summer_generate_image` parameter schema.

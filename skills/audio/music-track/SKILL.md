@@ -13,7 +13,7 @@ paths: ["audio/music/**", "scripts/**", "**/*.tscn"]
 
 ## Overview
 
-ElevenLabs Music renders 10–300 seconds of music from a prompt. The output quality depends entirely on prompt specificity: tempo (BPM), key, instrumentation, mood, structural cue. "Epic orchestral" returns generic stock music. "85 BPM, D minor, solo cello and detuned upright piano, sparse, melancholic, no drums, 4/4" returns a usable score for a melancholic exploration scene.
+ElevenLabs Music renders a track from a prompt. Summer clamps the requested length to **3–600 seconds** before sending it, so anything outside that range is silently pulled to the nearest bound. The output quality depends entirely on prompt specificity: tempo (BPM), key, instrumentation, mood, structural cue. "Epic orchestral" returns generic stock music. "85 BPM, D minor, solo cello and detuned upright piano, sparse, melancholic, no drums, 4/4" returns a usable score for a melancholic exploration scene.
 
 This skill produces one track aligned with the audio bible's music style and dynamic music plan, then wires it as an `AudioStreamPlayer` on the `Music` bus with a marked loop point if it's a loop, or as a linear cinematic stream if it's a one-shot.
 
@@ -126,21 +126,26 @@ Show the prompt:
 > `85 BPM, D minor, 4/4, solo cello and detuned upright piano, sparse, melancholic exploration loop, no drums, gentle reverb, 60s loop`
 > Duration 60s. Cost: ~12 credits. Generate?
 
+The `music` capability reads the description from **`prompt`**, not `text` — the mirror image of `sound_effects`. Passing `text` here is a 400 `prompt_required`.
+
 ```
 summer_generate_audio(
   capability: "music",
   prompt: "85 BPM, D minor, 4/4, solo cello and detuned upright piano, sparse, melancholic exploration loop, no drums, gentle reverb, 60s loop",
   durationSeconds: 60
 )
-// Result: { asset: { fileUrl, ... } }
 // Then: summer_import_from_url(url: "<fileUrl>", path: "res://audio/music/calm_exploration.mp3")
 ```
 
-`durationSeconds` range is 10–300.
+`durationSeconds` is clamped to 3–600. Music comes back as MP3 (`audio/mpeg`), so a `.mp3` target path is correct.
 
-### 7. Mark the loop point in Godot
+### 7. Mark the loop point in Summer Engine
 
-ElevenLabs Music does not return a loop-clean cut. You must mark the loop point in Godot's import dock so playback returns to the loop point on completion, not to 0:00.
+ElevenLabs Music does not return a loop-clean cut. You must mark the loop point
+in Summer Engine's Import dock so playback returns to the loop point on
+completion, not to 0:00.
+
+The MP3 importer exposes exactly five options — `loop`, `loop_offset`, `bpm`, `beat_count`, `bar_beats`. There is **no `loop_mode`** on MP3 or OGG; `loop_mode` belongs to the WAV importer, where it is spelled `edit/loop_mode`.
 
 In `audio/music/calm_exploration.mp3.import`:
 
@@ -148,21 +153,22 @@ In `audio/music/calm_exploration.mp3.import`:
 [params]
 loop = true
 loop_offset = 0.0
-loop_mode = 0  # 0=disabled, 1=forward, 2=ping-pong, 3=backward
 ```
 
-If the start has a fade-in but the body is loopable, set `loop_offset = 4.0` (4 seconds of intro skipped on loop, plays full track first time).
+If the start has a fade-in but the body is loopable, set `loop_offset = 4.0` (4 seconds of intro skipped on loop, plays full track first time). `bpm` + `beat_count` + `bar_beats` are what you set if you want beat-synced transitions later — see `audio/adaptive-music`.
 
 For seamless looping, the cleaner option is to ask the model to generate a cell (one bar / one phrase) and concatenate; or generate at 60s and trust the model's structural cue. Crossfade looping in code is the practical fallback (see step 9).
 
 ### 8. Wire it as `AudioStreamPlayer` on the `Music` bus
 
+Every scene-mutating tool takes an explicit `scenePath`, node paths are relative to the scene root (`./`), and the property argument is named `key`, not `property`:
+
 ```
-summer_add_node(parentPath="/root/Game", type="AudioStreamPlayer", name="MusicCalm")
-summer_set_prop(path="/root/Game/MusicCalm", property="stream", value="res://audio/music/calm_exploration.mp3")
-summer_set_prop(path="/root/Game/MusicCalm", property="bus", value="Music")
-summer_set_prop(path="/root/Game/MusicCalm", property="volume_db", value=-8.0)
-summer_set_prop(path="/root/Game/MusicCalm", property="autoplay", value=true)
+summer_add_node(scenePath="res://main.tscn", parent=".", type="AudioStreamPlayer", name="MusicCalm")
+summer_set_prop(scenePath="res://main.tscn", path="./MusicCalm", key="stream", value="res://audio/music/calm_exploration.mp3")
+summer_set_prop(scenePath="res://main.tscn", path="./MusicCalm", key="bus", value="Music")
+summer_set_prop(scenePath="res://main.tscn", path="./MusicCalm", key="volume_db", value=-8.0)
+summer_set_prop(scenePath="res://main.tscn", path="./MusicCalm", key="autoplay", value=true)
 ```
 
 Music is `AudioStreamPlayer` (not 2D / 3D) — non-positional. The bible's `Music -8 dB` mix sits the music behind SFX where it belongs.

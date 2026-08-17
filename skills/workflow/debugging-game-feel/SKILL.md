@@ -11,7 +11,7 @@ description: Use when a gameplay feature works correctly but feels wrong — flo
 
 **Core principle:** Game-feel bugs are tuning bugs, not logic bugs. Treat them with discipline — isolate one variable, compare to a reference, measure what you can, feel what you can't.
 
-This skill is for the diagnostic phase. The polish-and-juice layer (screen shake, hit-stop, particles, sound design) is `summer:visual-effects/game-feel` — go there once you've identified WHICH variable is wrong.
+This skill is for the diagnostic phase. The polish-and-juice layer (screen shake, hit-stop, particles, sound design) is `summer:game-feel` — go there once you've identified WHICH variable is wrong.
 
 ## When To Use
 
@@ -80,16 +80,36 @@ Two compare modes:
 
 **Feel:** subjective. The user (or you, if you have eyes on the screen) reports "warmer" or "colder." This is fine. Most game-feel work is felt, not measured.
 
-**Measure:** objective. When the feel is ambiguous, drop down to frame counts.
+**Measure:** objective. When the feel is ambiguous, drop down to frame counts — and take them yourself with a `RunVerification` probe rather than asking the user to eyeball anything. The probe presses the input, samples per frame, and hands back an array.
 
 | Question | Measurement |
 |---|---|
-| "Does the jump peak too fast?" | `print` the y-velocity in `_physics_process`, count frames from launch to peak |
-| "Is the camera too laggy?" | `print` `camera.global_position - target.global_position` per frame |
-| "Is the input dead?" | Log input event frame and resulting state-machine transition frame; subtract |
-| "Is the hit-stop too short?" | Log frame at hit + frame at unfreeze |
+| "Does the jump peak too fast?" | Probe: `press("jump")`, sample `player.velocity.y` every `process_frame`, count frames to the sign flip |
+| "Is the camera too laggy?" | Probe: sample `camera.global_position - target.global_position` per frame while driving movement |
+| "Is the input dead?" | Probe: report the frame input was injected and the frame the state machine changed; subtract |
+| "Is the hit-stop too short?" | Probe: report frame at hit and frame at unfreeze |
 
-The point of measurement is to ground the conversation in numbers when "feels off" stops being useful. You do not need to measure most tweaks — only the ambiguous ones.
+Sketch:
+
+```gdscript
+extends SummerProbeBase
+func _ready() -> void:
+    await super._ready()
+    await get_tree().process_frame
+    var p := get_tree().root.find_child("Player", true, false)
+    var trace: Array = []
+    await press("jump", 100)
+    for i in 40:
+        await get_tree().process_frame
+        trace.append(p.velocity.y)
+    report("vel_y_per_frame", trace)
+    save_frame("apex")
+    finish()
+```
+
+Send it with `summer_batch ops:[{"op":"RunVerification","probe_source":"<the probe>","max_seconds":20}]`.
+
+The point of measurement is to ground the conversation in numbers when "feels off" stops being useful. You do not need to measure most tweaks — only the ambiguous ones. **The verdict on whether it now feels right stays with the user** — that part is genuinely subjective, and it is the only part of this loop you hand over.
 
 ### 5. Decide
 
@@ -144,7 +164,7 @@ These are diagnostic tools, not lecture material. When the user says "feels weig
 | "The user said floaty so I'm jacking gravity" | "Floaty" can also mean weak air control, slow terminal velocity, or too-long apex hang. Confirm before tweaking. |
 | Skipping the play step ("I'll just bump the number and trust the feel") | Game feel is felt, not predicted. Play every tweak. |
 | Adding "while I'm here" tweaks to unrelated features | Game feel debugging is a focused activity. Stay on the one feature. |
-| Going to `summer:visual-effects/game-feel` before identifying the broken variable | Juice on top of a broken tuning makes the bug louder. Fix tuning first. |
+| Going to `summer:game-feel` before identifying the broken variable | Juice on top of a broken tuning makes the bug louder. Fix tuning first. |
 | Spending >30 minutes on one variable without progress | The anchor is wrong, or the variable is wrong. Step back, re-anchor. |
 
 ## Rationalization Prevention
@@ -161,7 +181,7 @@ These are diagnostic tools, not lecture material. When the user says "feels weig
 
 After diagnosis pins down which variable(s) are wrong, the tuning is done — but the feature may still want polish. Hand off to:
 
-- `summer:visual-effects/game-feel` — for the screen-shake, hit-stop, particle, sound layer once tuning is locked.
+- `summer:game-feel` — for the screen-shake, hit-stop, particle, sound layer once tuning is locked.
 - `summer:debug` — if mid-debug you discover an actual error (signal not firing, node freed) hiding under the feel issue.
 
 ## The Bottom Line

@@ -43,17 +43,26 @@ Vehicles benefit more from polycount than props — flat panels need edge densit
 
 ## Multi-angle reference — the single biggest quality lever
 
-Vehicles are highly view-dependent. A front-only reference produces a mesh with great front detail and a melted rear. The fix: generate a **front + 3/4 side composite reference** before the 3D pass.
+Vehicles are highly view-dependent. A front-only reference produces a mesh with great front detail and a melted rear. There are two ways to give the mesher more than one angle, and they are not the same thing:
+
+**(a) A real multi-image request — prefer this.** `summer_generate_3d` takes an `imageUrls` array of up to four views. These are passed through as separate views, not fused into one picture.
+
+```
+summer_generate_3d(
+  kind="image-to-3d",
+  imageUrls=["<front url>", "<3/4 rear-side url>", "<profile url>"],
+  model="hunyuan",
+  options={ target_polycount: 25000 }
+)
+```
+
+**(b) A composite reference image**, when you only have one slot to work with:
 
 ```
 summer_generate_image(
   prompt="A sleek red sports car, front view AND 3/4 rear-side view side by side, two angles in one image, white background, studio lighting, clean references for 3D modeling, isolated, no scenery."
 )
-```
 
-Most image models will produce a two-view composite. Then feed it to image-to-3D:
-
-```
 summer_generate_3d(
   kind="image-to-3d",
   imageUrl="<composite reference url>",
@@ -62,7 +71,7 @@ summer_generate_3d(
 )
 ```
 
-If the user has reference images already (concept art, photos), prefer those — composite them into a single image first if they aren't already.
+If the user has reference images already (concept art, photos), pass them straight to `imageUrls` — do not composite them down into one image first; that throws away the multi-view path.
 
 ## Steps
 
@@ -88,7 +97,7 @@ Pattern: `<vehicle type> + <silhouette / era / style> + <materials> + <surface s
 | Mech | `A 4 meter tall bipedal combat mech, blocky armored torso, articulated arms with rifle and missile pod, thick legs with hydraulic pistons, painted olive drab with hazard stripes. Front and 3/4 side views. Game asset, hard-surface stylized, white background, isolated vehicle.` |
 | Background sedan | `A generic 90s civilian sedan, four doors, beige paint, slightly worn. Front and 3/4 side views. Game asset, low-detail stylized, white background, isolated vehicle.` |
 
-The phrase `front and 3/4 side views` is what triggers the multi-angle composite reference internally.
+Nothing in the prompt text "triggers" multi-view. The phrase `front and 3/4 side views` only shapes what the *image* model draws; the 3D tool has no prompt-sniffing and sees whatever pixels you hand it. Multi-view comes from the `imageUrls` array, nothing else.
 
 ### 4. Confirm and call
 
@@ -135,7 +144,7 @@ This re-textures the existing mesh with sharper detail — panel lines, decals, 
 
 | Use case | Parent type | Notes |
 |---|---|---|
-| Player-driven (car, bike, hover) | `VehicleBody3D` (Summer Engine wheeled) or `RigidBody3D` (free physics) | Add `VehicleWheel3D` children for wheeled vehicles |
+| Player-driven (car, bike, hover) | `VehicleBody3D` (wheeled) or `RigidBody3D` (free physics) | Add `VehicleWheel3D` children for wheeled vehicles |
 | Player-driven (spaceship, mech) | `RigidBody3D` or `CharacterBody3D` | Custom thrust / walk code, see `summer:character-controllers` |
 | Background scenery (parked, flyby) | `MeshInstance3D` under a `Node3D` | No physics, no collision needed for distant traffic |
 | Background traffic (moving but not interactive) | `Node3D` + `AnimationPlayer` driving the position | Cheap, no physics overhead |
@@ -143,26 +152,30 @@ This re-textures the existing mesh with sharper detail — panel lines, decals, 
 **Player car wiring:**
 
 ```
-summer_add_node(parent="./World", type="VehicleBody3D", name="RaceCar")
-summer_add_node(parent="./World/RaceCar", type="MeshInstance3D", name="Body")
-summer_set_prop(path="./World/RaceCar/Body", property="mesh", value="res://assets/vehicles/race_car.glb")
-summer_add_node(parent="./World/RaceCar", type="CollisionShape3D", name="Collider")
-# Add a BoxShape3D resource matched to the AABB
+summer_add_node(scenePath="res://main.tscn", parent="./World", type="VehicleBody3D", name="RaceCar")
+summer_instantiate_scene(scenePath="res://main.tscn", parent="./World/RaceCar", scene="res://assets/vehicles/race_car.glb", name="Body")
+summer_add_node(scenePath="res://main.tscn", parent="./World/RaceCar", type="CollisionShape3D", name="Collider")
+summer_set_prop(scenePath="res://main.tscn", path="./World/RaceCar/Collider", key="shape", value="BoxShape3D")
+summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/RaceCar/Collider", resourceProperty="shape", subProperty="size", value="Vector3(4.5, 1.1, 1.9)")
 # Add VehicleWheel3D children at each wheel position
-summer_save_scene
+summer_save_scene(scenePath="res://main.tscn")
 ```
+
+A `.glb` cannot be assigned to `MeshInstance3D.mesh` — an imported `.glb` is a scene, not a `Mesh` (`ResourceLoader.get_recognized_extensions_for_type("Mesh")` on the shipped 4.6.1 binary returns `["tres", "mesh", "res"]`, no `glb`). Instantiate it. Assigning a bare class name like `"BoxShape3D"` to a resource property auto-instantiates it, which is how you get a shape you can then size.
+
+Every scene-mutating tool takes an explicit `scenePath`; node paths are relative to that scene's root (`./`); `summer_set_prop`'s property argument is `key`; and `summer_set_resource_property` needs all five of `scenePath`, `nodePath`, `resourceProperty`, `subProperty`, `value`.
 
 **Background scenery wiring:**
 
 ```
-summer_add_node(parent="./World/Street", type="MeshInstance3D", name="ParkedSedan")
-summer_set_prop(path="./World/Street/ParkedSedan", property="mesh", value="res://assets/vehicles/sedan.glb")
-summer_save_scene
+summer_instantiate_scene(scenePath="res://main.tscn", parent="./World/Street", scene="res://assets/vehicles/sedan.glb", name="ParkedSedan")
+summer_save_scene(scenePath="res://main.tscn")
 ```
 
 ## Anti-patterns
 
-- **Single-angle reference for a hero vehicle.** Front-only → melted rear. Always go multi-angle for anything the player gets close to.
+- **Single-angle reference for a hero vehicle.** Front-only → melted rear. Pass an `imageUrls` array (up to four views) for anything the player gets close to.
+- **Expecting the prompt to request multi-view.** It cannot. `imageUrls` is the only multi-view mechanism.
 - **Flat-shaded prompt for hard surfaces.** "Smooth shading", "rounded edges" → loses the panel-line crispness that defines vehicles. Prefer "hard-surface", "panel-lined", "crisp edges".
 - **Skipping symmetry callouts.** Vehicles are bilaterally symmetric — without `symmetric, mirrored` you get one headlight bigger than the other 30% of the time.
 - **Asking the mesh pass to invent decals / liveries.** It can't — the mesh has the silhouette but the decals get geometry-baked weirdly. Use the texture pass for liveries.
@@ -182,7 +195,7 @@ summer_save_scene
 1. Generate the multi-angle reference at the Summer dashboard (or Midjourney / nano-banana web).
 2. Upload to Hunyuan or Trellis web playground → image-to-3D → download `.glb`.
 3. Drop into `res://assets/vehicles/`.
-4. Wire as VehicleBody3D / MeshInstance3D in the Godot editor manually.
+4. Wire as VehicleBody3D / MeshInstance3D in Summer Engine manually.
 
 ## Handoff
 
@@ -200,4 +213,4 @@ After the vehicle is wired:
 - `summer:3d-assets/prop-model` — for separable parts (rotors, decals as decals, modular kit pieces).
 - `summer:asset-pipeline/asset-strategy` — meta-router.
 - `summer:character-controllers` — for player-driven vehicle input wiring.
-- `references/mcp-tools-reference.md` — `summer_generate_3d` schema, including `kind: "texture"` for the secondary detail pass.
+- `../../../references/mcp-tools-reference.md` — `summer_generate_3d` schema, including `kind: "texture"` for the secondary detail pass.

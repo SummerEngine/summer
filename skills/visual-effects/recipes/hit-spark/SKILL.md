@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects
 user-invocable: true
-allowed-tools: Read Write Edit summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_save_scene
+allowed-tools: Read Write Edit summer_write_file summer_read_file summer_create_scene summer_add_node summer_replace_node summer_set_prop summer_set_resource_property summer_inspect_node summer_save_scene summer_get_script_errors summer_get_debugger_errors summer_play summer_stop
 paths: ["**/*.tscn", "**/*.gd", "**/*.gdshader", "addons/vfx/**"]
 ---
 
@@ -39,7 +39,7 @@ addons/vfx/hit-spark/hit_spark.gd
 addons/vfx/hit-spark/hit_spark.tscn
 ```
 
-No custom shader — uses the canonical additive billboard material (see `_building-blocks/additive-billboard-particles.md`). The default `BaseMaterial3D` with the right flags is enough.
+No custom shader — uses the canonical additive billboard material (see `_building-blocks/additive-billboard-particles.md`). A `StandardMaterial3D` with the right flags is enough. (`BaseMaterial3D` is abstract: `BaseMaterial3D.new()` is a parse error. Its enum constants are still the right names to use.)
 
 ### 2. GDScript controller
 
@@ -101,7 +101,9 @@ func _ensure_material() -> void:
     if draw_pass_1 == null:
         var mesh := QuadMesh.new()
         mesh.size = Vector2(0.08, 0.30) if stretch_to_velocity else Vector2(0.10, 0.10)
-        var bm := BaseMaterial3D.new()
+        # BaseMaterial3D is abstract ("Native class "BaseMaterial3D" cannot be
+        # constructed as it is abstract"); StandardMaterial3D is the concrete subclass.
+        var bm := StandardMaterial3D.new()
         bm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
         bm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
         bm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -137,7 +139,12 @@ static func spawn_hit_spark(
     if not ResourceLoader.exists(scene_path):
         push_error("HitSpark: scene missing at %s" % scene_path)
         return null
+    # `var inst := load(...).instantiate()` cannot infer a type; the `as HitSpark`
+    # cast is what gives this one a static type.
     var inst := load(scene_path).instantiate() as HitSpark
+    if inst == null:
+        push_error("HitSpark: %s is not a HitSpark scene" % scene_path)
+        return null
     parent.add_child(inst)
     inst.global_position = position
     # Orient local +Y (cone direction) to the surface normal.
@@ -167,11 +174,34 @@ The script builds material and process material on `_ready` if missing, so the `
 
 ### 4. Wire it in (MCP calls)
 
-This recipe is a `.tscn` you instantiate per impact, not added once to the scene. After writing the files, the rest is gameplay code:
+This recipe is a `.tscn` you instantiate per impact, not added once to the open scene.
+Building that `.tscn` is itself an MCP job — `summer_create_scene` makes it,
+`summer_set_prop` attaches the script, `summer_save_scene` writes it out. Every
+scene-mutating call takes an explicit `scenePath`, and `summer_set_prop` uses `key`
+(not `property`).
 
 ```
-# No scene mutation — just create the .tscn at addons/vfx/hit-spark/hit_spark.tscn
-# with one root GPUParticles3D node, script attached, and save it.
+summer_write_file(path="res://addons/vfx/hit-spark/hit_spark.gd", content="<section 2>", create_only=true)
+
+summer_create_scene(path="res://addons/vfx/hit-spark/hit_spark.tscn", rootName="HitSpark", allow_temporary_scene_mutation=true)
+# The .tscn root must be a GPUParticles3D, since hit_spark.gd extends it.
+# Inspect what summer_create_scene produced and convert the root if it isn't one:
+summer_inspect_node(path="HitSpark")
+summer_replace_node(scenePath="res://addons/vfx/hit-spark/hit_spark.tscn", path=".", type="GPUParticles3D")
+summer_set_prop(scenePath="res://addons/vfx/hit-spark/hit_spark.tscn", path=".", key="script", value="res://addons/vfx/hit-spark/hit_spark.gd")
+summer_save_scene(scenePath="res://addons/vfx/hit-spark/hit_spark.tscn")
+```
+
+### 4b. Verify
+
+`hit_spark.gd` is the whole recipe — if it did not parse, every `spawn_hit_spark`
+call is a no-op.
+
+```
+summer_get_script_errors          # hit_spark.gd parsed?
+summer_play
+summer_get_debugger_errors        # e.g. a wrong root type on the .tscn shows up here
+summer_stop
 ```
 
 Then from any impact handler:
@@ -284,6 +314,7 @@ emission_boost = 9.0
 - **Skipping the surface-normal orientation.** Sparks always shoot upward regardless of impact direction. The `spawn_hit_spark` helper handles `look_at` + the −90° rotate-around-X (because `look_at` uses −Z as forward).
 - **Spawning the spark scene as a child of the impacted object.** If the object moves or frees, the sparks vanish. Spawn under the scene tree root.
 - **`BLEND_MODE_MIX` instead of `BLEND_MODE_ADD`.** Sparks don't bloom; they look like flat orange triangles.
+- **`BaseMaterial3D.new()`.** `BaseMaterial3D` is abstract — that line is a parse error and takes the whole script down. Instantiate `StandardMaterial3D`; keep using the `BaseMaterial3D.*` enum constants.
 - **Forgetting to free.** The `spawn_hit_spark` helper creates a `Timer`-equivalent via `get_tree().create_timer` to free after lifetime. Otherwise spent emitters accumulate forever.
 - **`spark_lifetime > 1.0` for sharp impacts.** Sparks lingering for a full second look like fairy dust. Keep ≤ 0.5 s for snappy hits.
 
@@ -305,11 +336,17 @@ emission_boost = 9.0
 
 ## Fallback (no MCP)
 
-VFX is code, no MCP required:
+Section 4 is fully automatable — `summer_write_file` writes the controller and
+`summer_create_scene` + `summer_set_prop` + `summer_save_scene` build `hit_spark.tscn`.
+Do not hand these steps to the user when the MCP tools are available.
+
+Without the MCP connection there is no engine to drive, so the user does it
+manually in Summer Engine:
 
 1. Create `addons/vfx/hit-spark/` with the two files above.
-2. In Godot, add a `GPUParticles3D` to a new scene, attach `hit_spark.gd`. Save as `hit_spark.tscn`.
+2. Add a `GPUParticles3D` to a new scene, attach `hit_spark.gd`. Save as `hit_spark.tscn`.
 3. From any impact handler: `HitSpark.spawn_hit_spark(get_tree().root, position, normal)`.
+4. Check the Errors dock before wiring the first impact.
 
 ## Handoff
 

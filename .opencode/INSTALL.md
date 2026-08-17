@@ -30,7 +30,7 @@ Restart OpenCode. The orientation banner ("Summer Engine is loaded. N skills ava
 
 ## What this gives you
 
-- **24 auto-trigger skills** under the `summer:` namespace, including `using-summer`, `brainstorm-game`, `debug`, `play`, `fps-controller`, `gdscript-patterns`, `scene-composition`, `art-direction`, and more.
+- **Summer skills** under the `summer:` namespace, including `using-summer`, `brainstorm-game`, `debug`, `play`, `fps-controller`, `gdscript-patterns`, `scene-composition`, `art-direction`, and more.
 - **A `summer-engine` MCP server** — start it with `npx summer-engine mcp` and OpenCode will route scene/diagnostics/asset tools to your local Summer Engine running on `localhost:6550`.
 - **Session-start orientation** — first user message of every session is prefixed with the using-summer primer so the model invokes skills before responding.
 

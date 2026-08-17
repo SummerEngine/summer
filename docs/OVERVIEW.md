@@ -8,10 +8,9 @@ Source: [github.com/SummerEngine/summer-engine-agent](https://github.com/SummerE
 
 Three things, plus glue.
 
-**Skills (60).** Markdown files. Each one is a discipline guide — debug, brainstorm, FPS controller, multiplayer, art direction, ship. They auto-fire on natural language. No slash command needed.
+**Skills.** Markdown files. Each one is a discipline guide — debug, brainstorm, FPS controller, multiplayer, art direction, ship. They auto-fire on natural language. No slash command needed.
 
-**MCP server.** Sixty-two tools spanning local Summer Engine control, cloud
-workflows, and creator publishing. Your agent calls them; the engine moves.
+**MCP server.** A focused tool registry that talks to a running Summer Engine on `localhost:6550`. Scene mutation, asset import, runtime control, diagnostics, generation. Your agent calls them; the engine moves.
 
 **CLI.** Install the engine, log in, scaffold projects, run them, run doctor. The terminal side.
 
@@ -79,13 +78,14 @@ For live scene hierarchy/inspector work, prefer scene tools. Guarded `.tscn` tex
 
 ## Scripting
 
-You are writing a Summer game with the Summer SDK. Pick one:
+Summer games use the Summer SDK. GDScript is the default creator language. Pick
+one:
 
 - **GDScript** (`.gd`) — default. Best supported by Summer skills (see `summer:gdscript-patterns`).
-- **C#** (`.cs`) — fully supported by the engine. No `summer:csharp-patterns`
-  skill exists yet; use the bundled compatibility reference for
-  version-sensitive APIs. Different lifecycle, signal, and export-attribute
-  patterns mean GDScript idioms should not be translated blindly.
+- **C#** (`.cs`) — supported by the engine. No `summer:csharp-patterns` skill
+  exists yet. Use the upstream C# API reference matching the current Summer
+  technical base. C# has a different lifecycle, signal API, and export
+  attributes, so do not blindly translate GDScript idioms.
 
 Scenes are always `.tscn`/`.scn`. Resources are always `.tres`/`.res`.
 

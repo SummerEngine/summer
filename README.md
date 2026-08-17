@@ -1,10 +1,13 @@
 # Summer Engine: the AI game engine
 
-Build real 2D and 3D Summer games through conversation. Start visually or in
-GDScript and collaborate with AI agents through the Summer SDK. Public Summer
-Engine installers currently ship for macOS on Apple silicon and Windows;
-Steam, browser, mobile, and additional desktop distribution are planned
-targets, not shipping promises.
+> **Engine mirror only.** This directory is intentionally marked `private` and must never be published to npm. Review and reconcile changes into [SummerEngine/summer-engine-agent](https://github.com/SummerEngine/summer-engine-agent), which is the only npm release source.
+
+Build real 2D and 3D Summer games with Summer Engine, the Summer SDK, and
+GDScript. The agent layer can help author code and scenes, but creators remain
+in control of changes and release decisions. Local export support depends on
+the templates present in the installed engine. The package does not silently
+build, host, or submit games to stores; its explicit, confirmed creator command
+can publish an already-exported Summer `.pck` to Summercraft for review.
 
 **Summer** is the MIT open-source agent layer that connects your AI coding agent to Summer Engine. It is the **Summer CLI**, the **Summer MCP** server, and the **Summer agent** skills, hooks, and plugin manifests, all in one package. First-class setup works in Claude Code, Cursor, Codex, Devin Desktop (formerly Windsurf), Cline, Roo Code, Gemini CLI, GitHub Copilot CLI, GitHub Copilot in VS Code, and OpenCode. Factory Droid uses the plugin marketplace path.
 
@@ -13,7 +16,9 @@ targets, not shipping promises.
 - **MCP setup:** [www.summerengine.com/mcp](https://www.summerengine.com/mcp)
 - **Docs:** [docs.summerengine.com](https://docs.summerengine.com)
 
-It just works. Open your agent, say *"let's make an FPS in Summer Engine,"* and it does.
+Once setup checks pass, open your agent and say *"let's make an FPS in Summer
+Engine."* The agent can then use the Summer SDK and local editor tools to build
+and verify the project.
 
 ---
 
@@ -22,10 +27,11 @@ It just works. Open your agent, say *"let's make an FPS in Summer Engine,"* and 
 Three names, one npm package (`summer-engine`):
 
 - **Summer CLI** (`npx -y summer-engine@latest`): installs the engine, signs you in, scaffolds and runs projects, and writes your agent's config. See [www.summerengine.com/cli](https://www.summerengine.com/cli).
-- **Summer MCP**: the MCP server that gives your agent 62 tools spanning local engine work, cloud workflows, and creator publishing. See [www.summerengine.com/mcp](https://www.summerengine.com/mcp).
+- **Summer MCP**: the local MCP server that gives your agent 58 engine tools to build, run, and debug a real game. See [www.summerengine.com/mcp](https://www.summerengine.com/mcp).
 - **Summer agent layer**: the game-dev skills, hooks, and plugin manifests that give your AI agent judgment, not just a chat box.
 
-All MIT, all free to use. One paste sets up all three.
+The CLI, MCP bridge, and agent layer are MIT licensed. The Summer Engine app has
+its own license. One setup flow wires the pieces together.
 
 ## Get started: one prompt
 
@@ -104,10 +110,7 @@ npx -y summer-engine@latest install
 
 ~1 GB. Downloads from Summer's signed releases. The bundle includes the engine binary plus Git and a handful of other runtime tools so users who don't already have them aren't blocked. The CLI prints the URL and size before touching disk. Tell the user **"downloading the engine app, ~1 GB, this takes a couple minutes"** so they don't bail thinking it stalled.
 
-**Linux note:** there is no supported public Linux installer. On Linux,
-`summer install` exits with a "Linux support coming soon" message. Tell the
-user Linux support is planned and stop; do not imply that a manual Linux
-engine download is available.
+**Linux note:** the engine app currently supports macOS and Windows only. On Linux, `summer install` exits with a "Linux support coming soon" message. Surface the manual download URL to the user (https://summerengine.com/download) and stop. The rest of the playbook still works once they've installed manually.
 
 ### Step 3: Sign in (only if `login` needs attention)
 
@@ -115,7 +118,7 @@ engine download is available.
 npx -y summer-engine@latest login
 ```
 
-This opens the user's default browser. **Tell the user**: "Your browser is opening now. Click sign-in once and come back to this terminal." The CLI waits up to 120 seconds for the auth callback, writes the token to `~/.summer/auth-token`, and returns. **If the user takes longer than 120 seconds, re-run `npx -y summer-engine@latest login` and tell them to come back to the terminal quickly.** Don't loop indefinitely. The same token is shared with the engine; they sign in once, both surfaces accept it.
+This opens the user's default browser. **Tell the user**: "Your browser is opening now. Click sign-in once and come back to this terminal." The CLI waits up to 120 seconds for the auth callback, validates that the returned identity matches the CLI token, writes the core-compatible session to the secured `~/.summer/` store, and returns. **If the user takes longer than 120 seconds, re-run `npx -y summer-engine@latest login` and tell them to come back to the terminal quickly.** Don't loop indefinitely. The same `auth-token` and `user.json` filenames remain shared with the engine; they sign in once, both surfaces accept it.
 
 ### Step 4: Re-run doctor to confirm
 
@@ -223,9 +226,9 @@ We tell you before we touch your disk.
 | `summer-engine` npm package (CLI + plugin source) | ~3 MB | first `npx -y summer-engine@latest ...` call | [npmjs.com/package/summer-engine](https://www.npmjs.com/package/summer-engine) |
 | Summer Engine app | ~1 GB (engine + bundled Git/runtime tools) | `npx -y summer-engine@latest install` | Summer's signed releases |
 | Auth token | ~1 KB | `npx -y summer-engine@latest login` | Browser to `~/.summer/auth-token` |
-| Creator token | ~50 bytes | only after `summer login --creator` and explicit token minting | One-time browser value to `~/.summer/creator-token`; never replaces the auth token |
+| Creator token | ~50 bytes | only when you run `summer login --creator` and mint one | One-time browser value to `~/.summer/creator-token`; never replaces the auth token |
 | Skill files | < 50 KB | bundled in the npm package | no extra network call |
-| Generated assets (3D / image / audio / video) | varies | only on explicit `summer_generate_*` calls | Summer Engine Studio |
+| Generated assets (3D / image / audio / video) | varies | only on explicit `summer_generate_*` calls when that provider route is enabled for the account | Summer Engine Studio |
 | URL imports | varies | only on explicit `summer_import_from_url` calls | the URL you provide |
 
 Not downloaded:
@@ -241,9 +244,14 @@ Not downloaded:
 |---|---|---|
 | **Summer** (this repo: CLI, MCP server, skills, hooks, plugin manifests) | **MIT** | [SummerEngine/summer-engine-agent](https://github.com/SummerEngine/summer-engine-agent) |
 | **Summer Engine app** (the desktop editor and runtime) | free to download, closed source for now | [summerengine.com/download](https://summerengine.com/download) |
-| **Hosted Summer AI and cloud services** (asset generation, storage, multiplayer, orchestration) | paid Summer services | [summerengine.com/pricing](https://summerengine.com/pricing) |
+| **Hosted Summer integrations** | availability and terms vary by rollout; preview features are labeled in the CLI | [summerengine.com/pricing](https://summerengine.com/pricing) |
 
-The desktop app is free to download. The AI-agent layer, meaning the CLI, MCP server, skills, and plugin manifests, is MIT open source. Hosted Summer AI, asset generation, storage, multiplayer, and cloud features are paid Summer services.
+The desktop app is free to download. The AI-agent layer, meaning the CLI, MCP
+server, skills, and plugin manifests, is MIT open source. A command, tool
+contract, or roadmap entry does not by itself mean a hosted service is
+production-ready. Summer Cloud is explicitly a research preview, and managed
+publishing, hosting, store submission, and matchmaking are not promised by this
+package.
 
 ---
 
@@ -261,10 +269,7 @@ Two pieces, plus the glue.
 
 Skills don't list steps. They encode the **order of operations**: diagnose before editing, scope before building, ask before guessing. [Agent Skills](https://agentskills.io) format, so any conformant tool picks them up.
 
-**MCP bridge.** The `summer-engine` MCP server gives the agent 62 tools. Local
-project tools connect to the project-matched live editor on its loopback port;
-cloud and creator tools use their documented remote or local contracts without
-requiring the editor:
+**MCP bridge.** The `summer-engine` MCP server gives the agent 62 tools. Local project tools connect to the matching live editor on its loopback port; cloud and creator tools use their documented remote or local configuration contracts without requiring the editor:
 
 | | |
 |---|---|
@@ -272,11 +277,11 @@ requiring the editor:
 | Diagnostics | `summer_create_debug_report`, `summer_get_script_errors`, `summer_get_diagnostics`, `summer_get_console`, `summer_clear_console`, `summer_get_debugger_errors`, `summer_get_debugger_warnings` |
 | Runtime | `summer_play`, `summer_stop`, `summer_is_running` |
 | Visual | `summer_screenshot` (see the editor viewport, an offscreen scene render, or the running game) |
-| Interactive | `SimulateInput` / `RunVerification` raw ops via `summer_batch` — drive the running game or run a hidden GDScript probe (engine-build dependent) |
+| Interactive | `RunVerification` raw op via `summer_batch` — a hidden GDScript probe that presses real inputs, saves rendered frames, and asserts. `SimulateInput` is editor-bridge only and not reachable from MCP. |
 | Project | `summer_get_project_context`, `summer_open_main_scene`, `summer_project_setting`, `summer_input_map_bind` |
 | Files | `summer_read_file`, `summer_write_file`, `summer_replace_text` — identity-bound, create-only or sha256-guarded mutations |
 | Assets | `summer_search_assets`, `summer_import_asset`, `summer_import_from_url`, `summer_generate_image`, `summer_generate_3d`, `summer_generate_audio`, `summer_generate_video` |
-| Creator | `summer_creator_publish`, `summer_creator_releases`, `summer_creator_logs`, `summer_creator_config` — confirmed immutable publishing, real release history, explicit unsupported logs, and non-secret shared configuration |
+| Creator | `summer_creator_publish`, `summer_creator_releases`, `summer_creator_logs`, `summer_creator_config` — confirmed immutable publish and real release history through `summer.creator.v1`, explicit unsupported logs, and shared non-secret configuration. |
 
 Git, shell, and grep remain host-native. Project file reads and writes use Summer's identity-bound tools so compatible engine builds can reject wrong-project and stale-content mutations. A host agent can still bypass these safeguards with its own file tools; the package cannot technically intercept that external process.
 
@@ -309,13 +314,21 @@ summer_clear_console            # clean slate
 summer_play                     # boot the game (or a specific scene)
 summer_get_debugger_errors      # runtime errors: null refs, missing nodes, physics
 summer_screenshot target:game   # optional: look at the live frame
-summer_stop                     # ALWAYS stop — scene edits are refused while running
+summer_stop                     # stop when runtime checks are done
 ```
 
-**4. Does the interaction work?** To prove input-driven behavior (jump/move/shoot), send a raw op through `summer_batch` (engine-build dependent — a `failure_reason:"unsupported"` comes back verbatim on older builds):
-- `SimulateInput` — inject into the **running** game: `summer_batch ops:[{op:"SimulateInput", type:"action", action:"jump", pressed:true}]`, then re-check screenshot/debugger.
-- `RunVerification` — spawn a hidden, disposable game instance that runs a GDScript probe (press inputs, read state, save frames) and dies, never touching the editor: `summer_batch ops:[{op:"RunVerification", probe_source:"…", max_seconds:20}]` → `{ok, results, frames, out_dir}`.
-- If neither is available on this build, **ask the user to try it** and report what they see — don't fake it.
+**4. Does the interaction work?** To prove input-driven behavior (jump/move/shoot), use `RunVerification` — a raw op through `summer_batch`. It spawns a hidden, disposable game instance that runs your GDScript probe, presses real inputs, reads state back across frames, saves rendered frames, and dies without ever touching the editor:
+
+```
+summer_batch ops:[{op:"RunVerification", probe_source:"…", max_seconds:20}]
+                                      → {ok, results, frames, out_dir}
+```
+
+Unlike `--headless`, that instance has a real renderer, so `save_frame()` writes an actual image. Probe API: `report()` / `save_frame()` / `dump_tree()` / `press()` / `key()` / `finish()`. **`press()` and `key()` are coroutines — `await` them.** Every project scaffolded by `summer create` ships a working example at `tests/autopilot/`.
+
+`SimulateInput` is **not** reachable from MCP or the CLI, on any build. It needs the in-editor chat bridge's async reply channel; every queued caller is answered `{ok:false, failure_reason:"unsupported_transport"}`. Use the probe.
+
+Ask the user to play only for what a probe cannot hold an opinion about: whether it *feels* right, whether it *looks* good, whether it is fun. "I can't simulate input" is not on that list.
 
 **Honesty.** Never describe an image you didn't receive; a failed capture is a *result* — report it and climb down (`scene`→`viewport`) or ask the user. Pass structured failures (`failure_reason`, `terminalState`, `identity_mismatch`) through verbatim. `summer_get_project_context` binds the session to the open project; a `projectMismatch` warning on a screenshot means the engine switched projects and the frame may be from the wrong one — rebind before trusting it.
 
@@ -332,7 +345,9 @@ summer_stop                     # ALWAYS stop — scene edits are refused while 
 5. **gdscript-patterns** guides every `.gd` write.
 6. **play** runs the game and reports clean or broken.
 7. **debug** runs the cheapest diagnostic, forms one specific hypothesis, asks before editing, re-verifies after the fix.
-8. **export-and-ship** runs the pre-flight checklist before producing a release build.
+8. **export-and-ship** inventories installed export templates, runs pre-flight,
+   and produces only supported local builds after approval. It does not upload,
+   host, publish, or submit them.
 
 The skill bundle replaces "agent flailing through tutorials" with measurable craft.
 
@@ -357,8 +372,8 @@ The skill bundle replaces "agent flailing through tutorials" with measurable cra
 **Skill authoring**: `skill-create`, `skill-improve`, `skill-test`
 
 C# is supported by the engine. A `summer:csharp-patterns` skill is on the
-roadmap; for version-sensitive APIs, use the bundled
-[Summer Engine compatibility reference](references/godot-version.md).
+roadmap; for now use the upstream C# API reference matching the current Summer
+technical base.
 
 Full list of shipping skills: the `skills:` array in [`.claude-plugin/plugin.json`](./.claude-plugin/plugin.json).
 
@@ -499,10 +514,10 @@ npx -y summer-engine@latest doctor
 | `summer login` | Browser-based core Summer sign-in. |
 | `summer login --creator` | Open Summercraft token settings and securely connect a separate publish-scoped creator token. |
 | `summer logout` | Clear auth tokens. |
-| `summer config [get\|set\|unset]` | Read or update shared non-secret configuration. |
-| `summer publish [project] --artifact <game.pck> --version <value> [--confirm]` | Review an exact immutable artifact target, then publish it through prepare → write-once upload → finalize. |
+| `summer config [get\|set\|unset]` | Read or update the shared non-secret `~/.summer/config.json`. |
+| `summer publish [project] --artifact <game.pck> --version <value> [--confirm]` | Compute and show the exact immutable target; after approval, stream it through prepare → write-once PUT → finalize. |
 | `summer releases [--cursor <value>]` | List real creator-owned release history. |
-| `summer logs` | Fail closed until the platform has a durable, authorized runtime-log source. |
+| `summer logs` | Read creator runtime logs. Fails closed while no durable runtime-log source exists. |
 | `summer status` | Engine state, port, auth. |
 | `summer doctor` | Diagnose Node, login, engine, project memory, MCP. |
 | `summer plan <goal>` | Route a game-building goal into skills, MCP tools, gates, and verification. |

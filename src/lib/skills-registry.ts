@@ -1107,6 +1107,16 @@ export const SKILL_REGISTRY = [
       "Just finished a gameplay feature — skill drives a golden-path + edge-case playthrough with diagnostics capture before the feature can be marked done.",
   },
   {
+    name: "headless-scripting",
+    category: "workflow",
+    public: true,
+    clients: ALL_CLIENTS,
+    recommended: true,
+    requiresMcpTools: ["summer_get_project_context", "summer_write_file"],
+    testScenario:
+      "User needs a navmesh baked, collision generated, an Animation authored, or raw assets re-imported — skill runs a GDScript file against the real engine binary instead of reporting the capability as missing, and blocks the 'run it headless and screenshot it' plan that silently returns null.",
+  },
+  {
     name: "debugging-game-feel",
     category: "workflow",
     public: true,

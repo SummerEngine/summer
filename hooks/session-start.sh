@@ -3,7 +3,7 @@
 #
 # Event:    SessionStart (matcher: startup|clear|compact)
 # Purpose:  Orient Claude on every fresh Summer-enabled session.
-#           Detect Godot project + GameSoul + doctor health, surface a one-line
+#           Detect Summer project + GameSoul + doctor health, surface a one-line
 #           Bob-style greeting as additional context.
 #
 # Input:    JSON on stdin with { session_id, source, model, cwd, ... }
@@ -36,7 +36,7 @@ else
     LINES+=("Summer ready.")
 fi
 
-# Line 2: Godot project + GameSoul one-liner (only if project.godot exists)
+# Line 2: Summer project + GameSoul one-liner (only if project.godot exists)
 if [ -f "${PROJECT_DIR}/project.godot" ]; then
     PROJECT_NAME=$(grep -E '^config/name=' "${PROJECT_DIR}/project.godot" 2>/dev/null \
         | head -1 | sed 's/^config\/name=//;s/^"//;s/"$//')
@@ -48,12 +48,12 @@ if [ -f "${PROJECT_DIR}/project.godot" ]; then
         SOUL_LINE=$(awk 'BEGIN{p=""} /^[^#[:space:]]/ && NF>0 {p=$0; exit} END{print p}' \
             "$SOUL_FILE" 2>/dev/null | cut -c1-120)
         if [ -n "$SOUL_LINE" ]; then
-            LINES+=("Godot project: ${PROJECT_NAME}. GameSoul: ${SOUL_LINE}")
+            LINES+=("Summer project: ${PROJECT_NAME}. GameSoul: ${SOUL_LINE}")
         else
-            LINES+=("Godot project: ${PROJECT_NAME}.")
+            LINES+=("Summer project: ${PROJECT_NAME}.")
         fi
     else
-        LINES+=("Godot project: ${PROJECT_NAME}.")
+        LINES+=("Summer project: ${PROJECT_NAME}.")
     fi
 fi
 

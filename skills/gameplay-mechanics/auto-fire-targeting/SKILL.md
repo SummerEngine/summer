@@ -167,4 +167,29 @@ Test scenario: spawn a single weak enemy directly in front of the player at poin
 Before: 5-15 bullets continue past the corpse over the next ~0.5s.
 After: 1-2 bullets continue (the ones that were already past the half-flight point), the rest of the fire pool redirects to whatever target Targeting picks next, or stops if there's none in range.
 
-Use `summer_get_diagnostics` to confirm no new errors. Use `summer_inspect_node` on a sample enemy mid-fight to confirm `pending_damage` is being incremented and decremented as expected.
+Use `summer_get_diagnostics` to confirm no new errors.
+
+`summer_inspect_node` will **not** show you `pending_damage` mid-fight. It reads
+the edited scene in the editor — the response even tags itself
+`provenance: editor_scene` — so it reports the saved node, not the live
+instance. Runtime values need a runtime probe.
+
+The route that works from MCP is the `RunVerification` op, sent through
+`summer_batch`. It spins up a hidden, disposable game instance that runs a
+GDScript probe and exits; it never touches the editor:
+
+```
+summer_batch(ops=[{
+  "op": "RunVerification",
+  "max_seconds": 20,
+  "probe_source": "extends SummerProbeBase\nfunc _ready():\n\tawait super._ready()\n\t# spawn one enemy, fire at it, then:\n\treport('pending_damage', enemy.pending_damage)\n\tfinish()"
+}])
+```
+
+Probe API: `report()`, `save_frame()`, `press()`, `key()`, `finish()`. Returns
+`{ok, results, frames, out_dir}`.
+
+Do **not** reach for `SimulateInput` here. It is only reachable from the
+in-editor chat bridge; an MCP or CLI caller gets
+`{ok: false, failure_reason: "unsupported_transport"}` back. Drive input from
+inside the probe with `press()` / `key()` instead.

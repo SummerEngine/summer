@@ -2,7 +2,7 @@
 
 ## Fixture
 
-- A Godot/Summer project with a main scene set in `project.godot`.
+- A Summer project with a main scene set in `project.godot`.
 - Summer Engine running, MCP available.
 
 ## Case 1: Happy Path — clean run

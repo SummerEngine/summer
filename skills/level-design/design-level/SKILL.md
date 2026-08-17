@@ -150,9 +150,20 @@ Show the skeleton. Ask:
 
 **Preferred (Summer MCP):**
 
+`summer_create_scene` takes `path`, `rootName`, and a mandatory safety gate.
+There is no `root_type` or `root_name` argument. The tool refuses to run unless
+`allow_temporary_scene_mutation` is explicitly true, because of how it works: it
+opens the currently-open scene (or the project's main scene) as a template,
+removes every child, renames the root, saves-as to the new path, then reopens
+the original. Ask the user before setting the flag.
+
+The consequence to plan around: **the new scene's root node type is copied from
+the template's root**, not chosen by you. Create levels from a scene whose root
+is already `Node3D`, or fix the root afterwards in the editor.
+
 ```
-summer_create_scene(path="res://levels/level_01.tscn", root_type="Node3D", root_name="World")
-summer_add_node(parent="./World", type="Node3D", name="Geometry")
+summer_create_scene(path="res://levels/level_01.tscn", rootName="World", allow_temporary_scene_mutation=true)
+summer_add_node(scenePath="res://levels/level_01.tscn", parent="./World", type="Node3D", name="Geometry")
 summer_add_node(parent="./World/Geometry", type="Node3D", name="IntroAtrium")
 summer_add_node(parent="./World/Geometry", type="Node3D", name="Corridor")
 summer_add_node(parent="./World/Geometry", type="Node3D", name="PeakArena")
@@ -167,8 +178,14 @@ summer_add_node(parent="./World/Triggers", type="Area3D", name="E2_GateTrigger")
 summer_add_node(parent="./World", type="Node3D", name="Lighting")
 summer_add_node(parent="./World/Lighting", type="WorldEnvironment", name="WorldEnvironment")
 summer_add_node(parent="./World/Lighting", type="DirectionalLight3D", name="Sun")
-summer_save_scene
+summer_save_scene(scenePath="res://levels/level_01.tscn")
 ```
+
+Every `summer_add_node` above takes the same required
+`scenePath="res://levels/level_01.tscn"`; it is elided after the first line only
+to keep the tree readable. A call without `scenePath` is rejected by the tool
+schema. Better still, send the whole block as one `summer_batch(scenePath=...,
+ops=[...])` so the user can undo the skeleton with a single Ctrl+Z.
 
 This is a **skeleton, not playable geometry**. Markers and Area3Ds, no meshes, no enemy scripts. Implementation in subsequent sessions / templates.
 
@@ -239,11 +256,11 @@ End with:
 | Reward gating too generous | Free heals before the peak deflate the peak. Gate them after the test. |
 | Blending level types | Stealth + puzzle + boss in one level = three half-baked levels. Pick one. |
 | Building geometry before the skeleton | Skeleton-first lets you iterate on layout cheaply. Geometry comes after the design is locked. |
-| Calling SetResourceProperty on inline sub_resources | Silent fail. See `references/mcp-tools-reference.md` § Trap. |
+| Calling SetResourceProperty before the property holds a resource | Explicit `resource is null` error, not a silent drop. Assign the resource first (`summer_set_prop key="mesh" value="BoxMesh"`), then set its sub-properties. Scene-embedded sub_resources are fully supported targets. |
 
 ## Collaborative protocol
 
-This skill creates a new scene file (`.tscn`) and a design doc (`.md`). Group writes per phase. Always ask before `summer_create_scene`. See `references/collaborative-protocol.md`.
+This skill creates a new scene file (`.tscn`) and a design doc (`.md`). Group writes per phase. Always ask before `summer_create_scene`.
 
 ## Want a working starter?
 
@@ -256,9 +273,6 @@ The skeleton this skill produces is meant to be filled in via `/summer:design-me
 
 ## See also
 
-- `references/collaborative-protocol.md`
-- `references/mcp-tools-reference.md`
-- `references/godot-version.md` — Summer Engine API notes
 - `scene-and-project/brainstorm-game/SKILL.md` — produces `.summer/GameSoul.md`
 - `gameplay-mechanics/design-mechanic/SKILL.md` — designs the verbs the level exercises
 - `ai-and-npcs/design-npc/SKILL.md` — designs the enemies the encounters reference

@@ -1,6 +1,6 @@
 ---
 name: ui-basics
-description: Use when building Godot UI — HUDs, main menus, pause menus, health bars, progress bars, dialogue boxes, or any Control-node tree. Covers anchors, containers (VBox/HBox/Margin), responsive layout, and theme vs inline styling. Trigger on "UI", "HUD", "menu", "health bar", "Control", "anchors", "VBoxContainer", "main menu", "pause menu".
+description: Use when building Summer Engine UI: HUDs, main menus, pause menus, health bars, progress bars, dialogue boxes, or any Control-node tree. Covers anchors, containers (VBox/HBox/Margin), responsive layout, and theme versus inline styling. Trigger on "UI", "HUD", "menu", "health bar", "Control", "anchors", "VBoxContainer", "main menu", "pause menu".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: ui-and-ux
@@ -11,7 +11,8 @@ paths: ["**/*.tscn", "**/*.gd"]
 
 # UI Basics for Summer Engine
 
-Build menus and HUDs using Godot's Control nodes. Follow these patterns for layout, buttons, and responsive design.
+Build menus and HUDs using Summer Engine Control nodes. Follow these patterns
+for layout, buttons, and responsive design.
 
 ## Control Hierarchy
 
@@ -57,14 +58,17 @@ summer_add_node(parent="./MainMenu/Margin/VBox", type="Button", name="QuitButton
 summer_set_prop(path="./MainMenu/Margin/VBox/QuitButton", key="text", value="Quit")
 ```
 
-For nested theme overrides, use `summer_set_resource_property` if the property is on a resource. For `theme_override_constants/margin_left`, it may be a direct node property—check Godot docs. Some constants are set via `add_theme_constant_override`. If `summer_set_prop` accepts `theme_override_constants/margin_left`, use it; otherwise the UI may need a script or theme resource.
+For nested theme overrides, use `summer_set_resource_property` if the property
+is on a resource. For `theme_override_constants/margin_left`, inspect the live
+node or the upstream API reference matching the current Summer technical base.
+Some constants use `add_theme_constant_override`.
 
 ## HUD (Health Bar)
 
 ```
 summer_add_node(parent="./", type="CanvasLayer", name="HUD")
 summer_add_node(parent="./HUD", type="MarginContainer", name="TopLeft")
-summer_set_prop(path="./HUD/TopLeft", key="anchors_preset", value="1")  # Top-left
+summer_set_prop(path="./HUD/TopLeft", key="anchors_preset", value="0")  # Top-left is 0; 1 is Top-right
 summer_add_node(parent="./HUD/TopLeft", type="HBoxContainer", name="HealthContainer")
 summer_add_node(parent="./HUD/TopLeft/HealthContainer", type="Label", name="HealthLabel")
 summer_set_prop(path="./HUD/TopLeft/HealthContainer/HealthLabel", key="text", value="Health:")
@@ -78,7 +82,7 @@ ProgressBar uses `value` and `max_value` for the fill. Update `value` from a scr
 
 ## Anchors Preset
 
-Common preset values (Godot 4):
+Common preset values in the current Summer Engine UI API:
 
 | Preset | Value | Description |
 |--------|-------|-------------|
@@ -95,8 +99,13 @@ Set via `summer_set_prop(path, key="anchors_preset", value="15")`.
 Wire the `pressed` signal to a handler:
 
 ```
-summer_connect_signal(emitter="./MainMenu/Margin/VBox/StartButton", signal="pressed", receiver="./MainMenu", method="_on_start_pressed")
+summer_connect_signal(scenePath="res://main.tscn", emitter="./MainMenu/Margin/VBox/StartButton", signal="pressed", receiver="./MainMenu", method="_on_start_pressed")
 ```
+
+`scenePath` is required on every scene-mutating tool in this skill
+(`summer_add_node`, `summer_set_prop`, `summer_connect_signal`,
+`summer_save_scene`). The examples above omit it only for readability — a real
+call without it is rejected before it reaches the engine.
 
 The receiver node must have a script with `func _on_start_pressed() -> void:`.
 
@@ -147,4 +156,4 @@ text = "Start Game"
 
 ## Collaborative protocol
 
-This skill writes UI scene nodes and wires button signals. Always ask before applying: "May I add the MainMenu (Control + Margin + VBox + Title + Start/Quit buttons) and connect Start.pressed to `_on_start_pressed`?". See `../../references/collaborative-protocol.md`.
+This skill writes UI scene nodes and wires button signals. Always ask before applying: "May I add the MainMenu (Control + Margin + VBox + Title + Start/Quit buttons) and connect Start.pressed to `_on_start_pressed`?".

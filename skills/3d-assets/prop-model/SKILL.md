@@ -94,10 +94,13 @@ summer_import_asset_by_id(
   assetId="<assetId>",
   path="res://assets/models/viking_axe.glb",
   parent="./World/Props",
+  scenePath="res://main.tscn",
   name="VikingAxe"
 )
-summer_save_scene
+summer_save_scene(scenePath="res://main.tscn")
 ```
+
+`scenePath` is **required whenever `parent` is set** — it names the exact scene that receives the model, and the scene does not have to be the active editor tab. Omitting it fails the import with a `pass the exact scenePath when parent is set` hint. `summer_save_scene` likewise takes an explicit `scenePath`; there is no bare form.
 
 For interactive props (chest the player opens, lantern the player picks up),
 wrap the instantiated model in a `StaticBody3D` (or `RigidBody3D` for physics
@@ -122,7 +125,10 @@ the parent-shape pattern.
 
 ## Fallback (no MCP)
 
-The user can run the same prompt at the Summer dashboard (or directly via the Hunyuan / Trellis web UIs), download the `.glb`, drop it into `res://assets/models/`, and Godot's import dock will pick it up. Then add a MeshInstance3D manually in the Godot editor and assign the mesh.
+The user can run the same prompt in the Summer dashboard or a supported
+provider UI, download the `.glb`, and drop it into `res://assets/models/`.
+Summer Engine's Import dock will pick it up. Then add a MeshInstance3D and
+assign the mesh.
 
 ## Handoff
 
@@ -138,4 +144,4 @@ After the prop is wired:
 - `summer:asset-pipeline/asset-strategy` — the meta-router that decides between this skill and Pipeline 2 (textures).
 - `summer:3d-assets/character-model` — for humanoids.
 - `summer:3d-assets/environment-kit` — for style-locked sets.
-- `references/mcp-tools-reference.md` — `summer_generate_3d` parameter schema.
+- `../../../references/mcp-tools-reference.md` — `summer_generate_3d` parameter schema.

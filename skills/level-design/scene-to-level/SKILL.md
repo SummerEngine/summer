@@ -1,6 +1,6 @@
 ---
 name: scene-to-level
-description: Use when the user wants to go from a single scene reference image (a screenshot or concept art of how the final game should look) all the way to a playable Godot scene populated with the right assets and terrain. Orchestrates concept → asset pack → terrain → composition → scene assembly. Trigger on "build this scene", "make this playable", "I want a level that looks like this", "from a screenshot to a game", "implement this concept".
+description: Use when the user wants to go from a scene reference image or concept art to a playable Summer Engine scene populated with the right assets and terrain. Orchestrates concept, asset pack, terrain, composition, and scene assembly. Trigger on "build this scene", "make this playable", "I want a level that looks like this", "from a screenshot to a game", "implement this concept".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: level-design
@@ -11,7 +11,9 @@ paths: ["**/*.tscn", "**/*.gd", "assets/**", ".summer/**", "levels/**"]
 
 # scene-to-level — From a reference image to a playable scene
 
-This is the **orchestrator** skill. It doesn't generate art, doesn't slice sheets, doesn't write game code — it routes the user through the chain of skills that do, and stitches their outputs together into a placeable Godot scene.
+This is the **orchestrator** skill. It does not generate art, slice sheets, or
+write game code. It routes the user through the chain of skills that do and
+stitches their outputs into a placeable Summer Engine scene.
 
 Use it when the user shows you a screenshot or concept image and says "build this." The output is a `.tscn` you can hit play on, populated with assets that match the reference's style.
 
@@ -53,16 +55,20 @@ Use it when the user shows you a screenshot or concept image and says "build thi
    / etc. (see summer:2d-assets/use-widget-asset)
 
 4. Compose the scene:
-   - summer_create_scene with a Node2D / Control root depending on the
-     scene type
-   - Add a TileMap node for terrain; assign the generated tileset
-     resource
+   - summer_create_scene(path=..., rootName=..., allow_temporary_scene_mutation=true).
+     It has no root-type argument: the new scene's root is copied from the
+     currently-open (or main) scene's root, children stripped and root renamed.
+     Start from a 2D scene if you want a Node2D root.
+   - Add a TileMapLayer node for terrain; assign the generated tileset
+     resource (`TileMap` is deprecated on the current Summer technical line)
    - Place props as Sprite2D / TextureRect children, positioned to
      match the reference's composition
    - Wire UI as Control nodes anchored to the viewport
+   - Every mutation tool here takes a required `scenePath`
 
 5. Validate:
-   - summer_get_script_errors
+   - summer_get_diagnostics (no args, project-wide) — or
+     summer_get_script_errors(path="res://...gd") for one specific file
    - summer_play (the user takes over from here)
 ```
 

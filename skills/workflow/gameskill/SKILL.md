@@ -17,9 +17,18 @@ This is the meta-skill: the loop that turns ad-hoc fixes into reusable expertise
 
 Three repos, one ecosystem:
 
-1. **SummerEngine repo** — the desktop engine (Godot fork in C++) plus the canonical CLI. Engine source: `editor/`, `core/`, and the Summer-specific module at `modules/1summer_engine/`. CLI source: `tools/summer-cli/`. The CLI ships as `npm i -g summer-engine`. It does install/login/create/run for the engine, plus `summer skills install --agent claude-code` which writes a curated subset of skills into `~/.claude/skills/` for any agent to auto-discover.
+1. **SummerEngine repo** — the Summer Engine desktop source plus the canonical
+   CLI. The C++ engine is maintained against the upstream Godot Engine codebase;
+   the Summer-owned module lives at `modules/1summer_engine/`. CLI source lives
+   at `tools/summer-cli/` and is normally invoked with
+   `npx -y summer-engine@latest`. It installs, signs in, creates, and runs Summer
+   projects and can install the current Summer skill bundle for supported
+   agents.
 2. **PublicSummerEngine repo** — the web app at summerengine.com. Has its own AI skill stores at `src/lib/ai/skills/bundled/` and `public/knowledge/summer/skills/` for the in-browser chat agent. Also has its own consumers of the engine API in `src/lib/bridge/direct-executor.ts` and `src/lib/ai/tools/run-and-verify.ts` which call the same engine endpoints the CLI does.
-3. **The active game project** — usually `~/development/<game-name>` (Godot 4.6) or whatever game you were just working on. Real working code in this repo is the gold standard for examples.
+3. **The active Summer game project** — usually
+   `~/development/<game-name>` or whatever game you were just working on. The
+   live compatibility line comes from Summer Engine, not this prompt. Real
+   working code in this repo is the gold standard for examples.
 
 The skill system is the value flywheel. Every game shipped teaches lessons. Lessons become skills. Next user starts smarter. Your job here is to close that loop for what you just did.
 

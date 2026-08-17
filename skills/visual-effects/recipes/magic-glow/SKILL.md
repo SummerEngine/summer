@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects
 user-invocable: true
-allowed-tools: Read Write Edit summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_save_scene
+allowed-tools: Read Write Edit summer_write_file summer_read_file summer_create_scene summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_save_scene summer_get_script_errors summer_get_debugger_errors summer_play summer_stop
 paths: ["**/*.tscn", "**/*.gd", "**/*.gdshader", "addons/vfx/**"]
 ---
 
@@ -85,6 +85,7 @@ var _motes: GPUParticles3D
 var _source_mesh: MeshInstance3D
 var _source_mat: BaseMaterial3D
 var _t: float = 0.0
+var _intensity: float = 1.0
 
 func _ready() -> void:
     _build_light()
@@ -127,7 +128,9 @@ func _build_motes() -> void:
 
     var mesh := QuadMesh.new()
     mesh.size = Vector2.ONE
-    var bm := BaseMaterial3D.new()
+    # BaseMaterial3D is abstract ("Native class "BaseMaterial3D" cannot be
+    # constructed as it is abstract"); StandardMaterial3D is the concrete subclass.
+    var bm := StandardMaterial3D.new()
     bm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
     bm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
     bm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -160,14 +163,17 @@ func _process(delta: float) -> void:
         phase = pulse_easing.sample(phase)
 
     if _light:
-        _light.light_energy = light_energy_base + light_energy_amplitude * phase
+        _light.light_energy = (light_energy_base + light_energy_amplitude * phase) * _intensity
     if _source_mat:
-        _source_mat.emission_energy_multiplier = source_emission_base + source_emission_amplitude * phase
+        _source_mat.emission_energy_multiplier = (source_emission_base + source_emission_amplitude * phase) * _intensity
 
 func set_intensity(scale: float) -> void:
     ## Scale all visible cues 0..1+ (e.g., charge-up: tween from 0 to 1 over a second).
-    light_energy_base *= scale
-    light_energy_amplitude *= scale
+    ## Held as a separate factor rather than multiplied into light_energy_base /
+    ## light_energy_amplitude: a multiplying version (`light_energy_base *= scale`)
+    ## pins both fields to 0.0 forever after set_intensity(0.0), so the charge-up
+    ## tween from 0 to 1 never brings the glow back.
+    _intensity = scale
     if _motes:
         _motes.amount_ratio = scale
 
@@ -191,26 +197,40 @@ Node3D ("MagicGlow") [script: magic_glow.gd]
 
 For an enchanted sword:
 
+Every scene-mutating call takes an explicit `scenePath`. `summer_set_prop` uses `key`
+(not `property`) and only accepts a string, number, or boolean.
+
 ```
-summer_add_node(parent="./Player/Hand/Sword", type="Node3D", name="Glow")
-summer_set_prop(path="./Player/Hand/Sword/Glow", property="script", value="res://addons/vfx/magic-glow/magic_glow.gd")
-summer_set_prop(path="./Player/Hand/Sword/Glow", property="glow_color", value="Color(0.55, 0.85, 1.0)")
-summer_set_prop(path="./Player/Hand/Sword/Glow", property="light_energy_base", value=1.2)
-summer_set_prop(path="./Player/Hand/Sword/Glow", property="light_energy_amplitude", value=0.6)
-summer_set_prop(path="./Player/Hand/Sword/Glow", property="mote_count", value=16)
-summer_set_prop(path="./Player/Hand/Sword/Glow", property="mote_radius", value=0.20)
-summer_set_prop(path="./Player/Hand/Sword/Glow", property="pulse_source_mesh", value="../Blade")
-summer_save_scene
+summer_write_file(path="res://addons/vfx/magic-glow/magic_glow.gd", content="<section 2>", create_only=true)
+
+summer_add_node(scenePath="res://main.tscn", parent="./Player/Hand/Sword", type="Node3D", name="Glow")
+summer_set_prop(scenePath="res://main.tscn", path="./Player/Hand/Sword/Glow", key="script", value="res://addons/vfx/magic-glow/magic_glow.gd")
+summer_set_prop(scenePath="res://main.tscn", path="./Player/Hand/Sword/Glow", key="glow_color", value="Color(0.55, 0.85, 1.0)")
+summer_set_prop(scenePath="res://main.tscn", path="./Player/Hand/Sword/Glow", key="light_energy_base", value=1.2)
+summer_set_prop(scenePath="res://main.tscn", path="./Player/Hand/Sword/Glow", key="light_energy_amplitude", value=0.6)
+summer_set_prop(scenePath="res://main.tscn", path="./Player/Hand/Sword/Glow", key="mote_count", value=16)
+summer_set_prop(scenePath="res://main.tscn", path="./Player/Hand/Sword/Glow", key="mote_radius", value=0.20)
+summer_set_prop(scenePath="res://main.tscn", path="./Player/Hand/Sword/Glow", key="pulse_source_mesh", value="../Blade")
+summer_save_scene(scenePath="res://main.tscn")
 ```
 
 For a soul gem on a pedestal:
 
 ```
-summer_add_node(parent="./World/Pedestal/SoulGem", type="Node3D", name="Glow")
-summer_set_prop(path="./World/Pedestal/SoulGem/Glow", property="glow_color", value="Color(0.85, 0.45, 1.0)")
-summer_set_prop(path="./World/Pedestal/SoulGem/Glow", property="pulse_hz", value=0.4)
-summer_set_prop(path="./World/Pedestal/SoulGem/Glow", property="mote_count", value=32)
-summer_set_prop(path="./World/Pedestal/SoulGem/Glow", property="mote_radius", value=0.30)
+summer_add_node(scenePath="res://main.tscn", parent="./World/Pedestal/SoulGem", type="Node3D", name="Glow")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Pedestal/SoulGem/Glow", key="glow_color", value="Color(0.85, 0.45, 1.0)")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Pedestal/SoulGem/Glow", key="pulse_hz", value=0.4)
+summer_set_prop(scenePath="res://main.tscn", path="./World/Pedestal/SoulGem/Glow", key="mote_count", value=32)
+summer_set_prop(scenePath="res://main.tscn", path="./World/Pedestal/SoulGem/Glow", key="mote_radius", value=0.30)
+```
+
+Then verify — this recipe is one script, so a parse error is the whole effect:
+
+```
+summer_get_script_errors          # magic_glow.gd parsed?
+summer_play
+summer_get_debugger_errors
+summer_stop
 ```
 
 For a charge-up before casting:
@@ -313,11 +333,12 @@ mote_drift_up        = 0.0
 
 ### charge-up (paired with lightning/muzzle-flash)
 
-Starts at 0 intensity, ramped via `set_intensity`. Set initial values for fully-charged state.
+Author the **fully-charged** values here; `set_intensity(0.0 → 1.0)` scales them at
+runtime. Leaving `light_energy_base` at 0.0 means the fully-charged glow is also 0.0.
 
 ```
 glow_color           = Color(0.55, 0.75, 1.0)
-light_energy_base    = 0.0     # script tweens this up
+light_energy_base    = 1.5     # fully-charged value; set_intensity scales it
 light_energy_amplitude = 2.0
 pulse_hz             = 2.5     # buzzing
 mote_count           = 24
@@ -334,11 +355,16 @@ mote_drift_up        = 0.5
 - **Forgetting to enable the source mesh's emission before assigning the glow color.** The shader's emission stays black. The controller's `_resolve_source_mesh` enables it.
 - **`pulse_hz` too high.** Above 3 Hz it strobes — accessibility issue (photosensitivity). Default 0.7 is calm.
 - **Generating an "aura" PNG and using as a billboard sprite.** The misroute. The procedural light + motes are alive and scale to any item.
+- **`BaseMaterial3D.new()` for the mote material.** `BaseMaterial3D` is abstract — that line is a parse error and takes the whole script down. Instantiate `StandardMaterial3D`; keep using the `BaseMaterial3D.*` enum constants.
+- **A multiplicative `set_intensity` (`light_energy_base *= scale`).** One `set_intensity(0.0)` pins the field to 0.0 permanently, so the charge-up tween from 0 to 1 does nothing. Hold the scale in its own variable and apply it where the energy is written.
 
 ## Performance notes
 
-- One glow = 1 light + 16–32 particles. ~0.05 ms total. Cheap.
-- N glowing items in a scene: budget ~12 active `OmniLight3D`s before you should consider `LightOccluder3D` culling. Motes scale linearly to ~512 across all glows.
+- One glow = 1 light + 16–32 particles. Sub-millisecond — an order-of-magnitude expectation, not a measurement.
+- N glowing items in a scene: budget ~12 active `OmniLight3D`s before you start
+  culling. The current Summer build has no `LightOccluder3D`
+  (`ClassDB.class_exists` is `false`; `LightOccluder2D` is 2D-only). Cull with
+  `distance_fade_enabled` / `distance_fade_begin` or a smaller `omni_range`.
 - Mobile: drop `mote_count` to 8, `light_range` × 0.5, `light_shadow_enabled = false` always.
 - LOD: in `_process`, scale `_motes.amount_ratio` and `_light.light_energy` by `clamp(1.5 - dist_to_camera / 20.0, 0.10, 1.0)`. Past 20 m, drop motes entirely; keep light.
 
@@ -352,11 +378,18 @@ mote_drift_up        = 0.5
 
 ## Fallback (no MCP)
 
-VFX is code, no MCP required:
+Section 4 is fully automatable — `summer_write_file` writes the controller,
+`summer_add_node` + `summer_set_prop` attach and tune it, and `summer_create_scene` +
+`summer_save_scene` produce `magic_glow.tscn`. Do not hand these steps to the user
+when the MCP tools are available.
+
+Without the MCP connection there is no engine to drive, so the user does it
+manually in Summer Engine:
 
 1. Create `addons/vfx/magic-glow/` with the two files above.
-2. In Godot, add a `Node3D` child to the glowing object, attach `magic_glow.gd`. Save as `magic_glow.tscn` if you want a scene to instantiate.
+2. Add a `Node3D` child to the glowing object, attach `magic_glow.gd`. Save as `magic_glow.tscn` if you want a scene to instantiate.
 3. Tune the exported parameters in the inspector or via script.
+4. Check the Errors dock before tuning anything.
 
 ## Handoff
 

@@ -15,7 +15,7 @@ You write test cases (pressure scenarios with subagents), watch them fail (basel
 
 **Core principle:** If you didn't watch an agent fail without the skill, you don't know if the skill teaches the right thing.
 
-**REQUIRED BACKGROUND:** You MUST understand summer:test-driven-development before using this skill. That skill defines the fundamental RED-GREEN-REFACTOR cycle. This skill adapts TDD to documentation.
+**REQUIRED BACKGROUND:** This skill adapts the RED-GREEN-REFACTOR cycle to documentation. The cycle: write the test first and watch it FAIL for the reason you expect (red), make the smallest change that passes it (green), then clean up without changing behaviour (refactor). A test you never saw fail proves nothing.
 
 **Official guidance:** For Anthropic's official skill authoring best practices, see anthropic-best-practices.md. This document provides additional patterns and guidelines that complement the TDD-focused approach in this skill.
 
@@ -280,10 +280,12 @@ wc -w skills/path/SKILL.md
 **When writing documentation that references other skills:**
 
 Use skill name only, with explicit requirement markers:
-- ✅ Good: `**REQUIRED SUB-SKILL:** Use summer:test-driven-development`
+- ✅ Good: `**REQUIRED SUB-SKILL:** Use summer:verification-before-completion`
 - ✅ Good: `**REQUIRED BACKGROUND:** You MUST understand summer:investigating-bugs`
-- ❌ Bad: `See skills/testing/test-driven-development` (unclear if required)
-- ❌ Bad: `@skills/testing/test-driven-development/SKILL.md` (force-loads, burns context)
+- ❌ Bad: `See skills/debugging/debug` (unclear if required)
+- ❌ Bad: `@skills/debugging/debug/SKILL.md` (force-loads, burns context)
+
+**Check the skill exists before you point at it.** The registry of shipped skills is the `SKILL_REGISTRY` array in `src/lib/skills-registry.ts` and the `skills:` array in `.claude-plugin/plugin.json`. A `REQUIRED SUB-SKILL` pointing at a skill that was never shipped is worse than no cross-reference: the reader stops and looks for something that does not exist.
 
 **Why no @ links:** `@` syntax force-loads files immediately, consuming 200k+ context before you need them.
 
@@ -390,7 +392,7 @@ Edit skill without testing? Same violation.
 - Don't "adapt" while running tests
 - Delete means delete
 
-**REQUIRED BACKGROUND:** The summer:test-driven-development skill explains why this matters. Same principles apply to documentation.
+**Why this matters:** an untested change is an assertion, not a result. Same principle in documentation as in code.
 
 ## Testing All Skill Types
 

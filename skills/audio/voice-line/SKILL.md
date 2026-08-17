@@ -1,11 +1,11 @@
 ---
 name: voice-line
-description: Use when generating TTS voice lines — NPC barks, narrator, dialogue. Includes voice-id discovery via summer_list_models family:'audio-voice', a character-to-voice decision tree, stability/style/similarity guidance, and the multi-line dialogue case via text_to_dialogue. Trigger on "make a voice line", "narrator", "NPC says", "voice for the merchant", "TTS line", "dialogue".
+description: Use when generating TTS voice lines — NPC barks, narrator, dialogue. Covers where voice ids come from, a character-to-voice decision tree, stability/style/similarity guidance, and the multi-line dialogue case via text_to_dialogue. Trigger on "make a voice line", "narrator", "NPC says", "voice for the merchant", "TTS line", "dialogue".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_generate_voice summer_generate_audio summer_list_models summer_search_assets summer_import_from_url summer_add_node summer_set_prop summer_inspect_node
+allowed-tools: Read Grep Glob Write Edit summer_generate_audio summer_search_assets summer_import_from_url summer_add_node summer_set_prop summer_inspect_node
 paths: [".summer/**", "audio/voice/**", "scripts/**", "**/*.tscn"]
 ---
 
@@ -13,7 +13,7 @@ paths: [".summer/**", "audio/voice/**", "scripts/**", "**/*.tscn"]
 
 ## Overview
 
-The hardest part of TTS isn't the line — it's picking the right voice. ElevenLabs ships hundreds; pick wrong and a tough warlord NPC sounds like a podcast host. This skill walks the voice-id discovery flow (`summer_list_models` family `audio-voice`), narrows by gender / accent / age / energy, presents 4–5 finalists with sample URLs for the user to audition, and locks the pick before generating.
+The hardest part of TTS isn't the line — it's picking the right voice. ElevenLabs ships hundreds; pick wrong and a tough warlord NPC sounds like a podcast host. **There is no MCP tool that lists voices** — the only voice-related input Summer exposes is the `voiceId` string on `summer_generate_audio`. So the voice pick has to come from the user (or from the project's cast bible), and this skill's job is to get that pick made deliberately and then locked.
 
 Then it generates one line (or a multi-turn dialogue) with the right stability / style / similarity / speed for the delivery — flat for narration, expressive for a bark, fast for an excited shout.
 
@@ -44,24 +44,21 @@ If a character bible exists, the voice should match the character's age / gender
 
 > Tell me the character: gender, rough age, accent or regional flavor, and energy (calm / measured / excited / gruff). Or just give me a reference — "sounds like the captain in Mass Effect" works.
 
-### 2. Browse the voice catalog
+### 2. Get the voice id
 
-```
-summer_list_models(family="audio-voice")
-```
+Check the cast bible first (step 1). If the character already has a locked id, use it and skip to step 5.
 
-Returns a list with `id`, `name`, `accent`, `gender`, `age`, `description`, and `previewUrl`. Filter mentally to 8–12 candidates by the character's hard constraints (gender + age + accent), then pick 4–5 finalists with maximally distinct character (gruff vs warm vs neutral vs theatrical).
+If not, you need a `voiceId` from the user. There is no catalog tool and no preview-URL endpoint on this surface — do not invent one, and do not claim you auditioned anything. Ask:
 
-Present them to the user like this:
+> I need an ElevenLabs voice id for `<character>`. Two ways to get one:
+> - Browse and audition at `elevenlabs.io/app/voice-library` (or your Voices page) and paste me the voice id.
+> - Or say "use the default" and I'll generate with Summer's default voice so you can hear the line, then we swap the id later.
+>
+> Describe the target if it helps me sanity-check the pick: gender, rough age, accent, and energy (calm / measured / excited / gruff).
 
-> Four finalists for "old gruff dwarven warlord":
-> 1. **Brogan** — male, 50s, rough Scottish, gravelly. Sample: `<previewUrl>`
-> 2. **Hodge** — male, 60s, neutral, weathered baritone. Sample: `<previewUrl>`
-> 3. **Marrick** — male, 40s, rough English, mid-energy. Sample: `<previewUrl>`
-> 4. **Old Drum** — male, 70s, deep, slow speech. Sample: `<previewUrl>`
-> Audition and pick one. Or ask for four more.
+Omitting `voiceId` entirely is valid — `summer_generate_audio` falls back to a single default voice (`JBFqnCBsd6RMkjVDRZzb`). That is fine for a throwaway read-through, never for a shipped cast.
 
-Wait for the user. Do not pick for them — voice is the highest-stakes audio decision in the project.
+Voice is the highest-stakes audio decision in the project. Do not pick an id for the user and do not guess ids — a wrong id is a hard provider error, not a different-sounding voice.
 
 ### 3. Character-to-voice decision tree (when the user wants a recommendation)
 
@@ -117,18 +114,18 @@ If legacy `.summer/voice-cast.md` already exists, read it first and either keep 
 
 ### 5. Tune stability / similarity / style / speed for delivery
 
-ElevenLabs voice options:
+These are **not** top-level tool arguments. They go inside `options.voiceSettings`, in camelCase, exactly as the ElevenLabs SDK's `VoiceSettings` type spells them — `stability`, `similarityBoost`, `style`, `speed`, `useSpeakerBoost`. `options` is spread straight into the SDK call, so a flat `similarity_boost` at the top of `options` is silently dropped.
 
 | Param | Range | Effect |
 |---|---|---|
 | `stability` | 0.0–1.0 | Higher = monotone, consistent. Lower = expressive, variable. |
-| `similarity_boost` | 0.0–1.0 | Higher = closer to the original sample. Lower = more freedom (can drift). |
+| `similarityBoost` | 0.0–1.0 | Higher = closer to the original sample. Lower = more freedom (can drift). |
 | `style` | 0.0–1.0 | Higher = more theatrical / exaggerated. 0 = neutral. |
 | `speed` | 0.7–1.2 | Speech speed multiplier. |
 
 Defaults that work as a starting point:
 
-| Delivery | stability | similarity_boost | style | speed |
+| Delivery | stability | similarityBoost | style | speed |
 |---|---|---|---|---|
 | Calm narration | 0.75 | 0.75 | 0.0 | 1.0 |
 | Cinematic narration | 0.5 | 0.85 | 0.4 | 0.95 |
@@ -166,50 +163,52 @@ Example lines:
 ### 7. Confirm and call
 
 ```
-summer_generate_voice(
+summer_generate_audio(
+  capability="text_to_speech",
   text="Hold the line. They're coming through the south gate. Ready arrows.",
   voiceId="21m00Tcm4TlvDq8ikWAM",
   modelId="eleven_multilingual_v2",
-  stability=0.6,
-  similarity_boost=0.75,
-  style=0.2,
-  speed=1.0,
-  outputPath="audio/voice/hodge_hold_the_line.mp3"
+  options={ voiceSettings: { stability: 0.6, similarityBoost: 0.75, style: 0.2, speed: 1.0 } }
 )
 ```
 
 `modelId` defaults to `eleven_multilingual_v2`. For very short / latency-sensitive in-game barks, `eleven_turbo_v2_5` is faster; for highest fidelity, `eleven_multilingual_v2` is the default.
 
+There is no `outputPath` — the tool returns a hosted asset (MP3, `audio/mpeg`). Land it in the project explicitly:
+
+```
+summer_import_from_url(url="<fileUrl>", path="res://audio/voice/hodge_hold_the_line.mp3")
+```
+
 ### 8. Multi-line dialogue (two or more speakers)
 
 Use `summer_generate_audio` with `capability: "text_to_dialogue"`:
 
+There is no `speakers` roster and no `script` array. The whole conversation is one flat `inputs` array of `{ text, voiceId }` objects, in turn order — the voice id is repeated on every line:
+
 ```
 summer_generate_audio(
   capability="text_to_dialogue",
-  speakers=[
-    { name: "Hodge",   voiceId: "21m00Tcm4TlvDq8ikWAM" },
-    { name: "Brogan",  voiceId: "<brogan-id>" }
-  ],
-  script=[
-    { speaker: "Hodge",  text: "They're at the gate." },
-    { speaker: "Brogan", text: "Aye. Let 'em come." },
-    { speaker: "Hodge",  text: "Steady. On my mark." }
-  ],
-  outputPath="audio/voice/dialogue_gate_warning.mp3"
+  inputs=[
+    { text: "They're at the gate.",   voiceId: "21m00Tcm4TlvDq8ikWAM" },
+    { text: "Aye. Let 'em come.",     voiceId: "<brogan-id>" },
+    { text: "Steady. On my mark.",    voiceId: "21m00Tcm4TlvDq8ikWAM" }
+  ]
 )
 ```
 
-This produces a single MP3 with both voices, with dialogue-aware pacing the model handles internally. For very long scripts, split into chunks of ~6 turns and concatenate.
+`inputs` is required for this capability; omitting it is a 400 `inputs_required`. `modelId` defaults to `eleven_v3` here, not `eleven_multilingual_v2`. The result is a single MP3 with both voices and dialogue-aware pacing the model handles internally — import it with `summer_import_from_url` like any other clip. For very long scripts, split into chunks of ~6 turns and concatenate.
 
 ### 9. Wire the line as `AudioStreamPlayer` on the Voice bus
 
+Every scene-mutating tool takes an explicit `scenePath`, node paths are relative to the scene root (`./`), and the property argument is named `key`, not `property`:
+
 ```
-summer_add_node(parentPath="/root/Game/NPC", type="AudioStreamPlayer", name="VoiceLine")
-summer_set_prop(path="/root/Game/NPC/VoiceLine", property="stream", value="res://audio/voice/hodge_hold_the_line.mp3")
-summer_set_prop(path="/root/Game/NPC/VoiceLine", property="bus", value="Voice")
-summer_set_prop(path="/root/Game/NPC/VoiceLine", property="volume_db", value=0.0)
-summer_set_prop(path="/root/Game/NPC/VoiceLine", property="autoplay", value=false)
+summer_add_node(scenePath="res://main.tscn", parent="./NPC", type="AudioStreamPlayer", name="VoiceLine")
+summer_set_prop(scenePath="res://main.tscn", path="./NPC/VoiceLine", key="stream", value="res://audio/voice/hodge_hold_the_line.mp3")
+summer_set_prop(scenePath="res://main.tscn", path="./NPC/VoiceLine", key="bus", value="Voice")
+summer_set_prop(scenePath="res://main.tscn", path="./NPC/VoiceLine", key="volume_db", value=0.0)
+summer_set_prop(scenePath="res://main.tscn", path="./NPC/VoiceLine", key="autoplay", value=false)
 ```
 
 For positional NPCs, `AudioStreamPlayer3D` with `max_distance=15.0` so distant NPCs aren't audible.
@@ -239,7 +238,8 @@ Narrator intimate:        warmer mid pitch, lower stability for breath
 
 ## Anti-patterns
 
-- **Picking a voice without auditioning samples.** The user must hear it.
+- **Inventing a voice catalog.** There is no `summer_list_models`, no voice-listing tool, and no preview URLs on this surface. Ask the user for the id.
+- **Guessing a voice id.** A wrong id is a provider error, not a different voice.
 - **Reusing a voice id across two characters.** Players notice instantly. Lock the cast.
 - **Changing a locked voice without approval.** A cast voice is project memory, not a throwaway generation option.
 - **Stage directions in the text.** `(angrily) Get out!` is read literally as "angrily get out". Use stability/style.

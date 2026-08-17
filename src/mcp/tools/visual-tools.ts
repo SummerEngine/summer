@@ -15,14 +15,15 @@ export function registerVisualTools(server: McpServer): void {
     "summer_screenshot",
     `Capture a frame from Summer Engine and return it as an image you can look at directly.
 
-Use this to visually verify your work: scene layout, asset placement, scale, framing, lighting, materials, missing/untextured assets, or runtime gameplay state. You see the actual pixels — no description layer in between.
+Use this to visually verify your work: scene layout, asset placement, scale, framing, missing/untextured assets, or runtime gameplay state. You see the actual pixels — no description layer in between. Lighting and materials are only truthfully shown by the "viewport" and "game" targets — see the note on "scene" below.
 
 target:
   "viewport" (default) — the editor's CURRENT view (whatever scene/tab is open). No game boot. Use for edit-time checks of how the scene looks right now.
-  "scene" — an OFFSCREEN render of a scene file (no game boot; physics/particles/animations are static at t=0). Optionally pass scenePath/framing/size/nodePath. Use for a quick composed look at a scene without touching the editor's open tab.
+  "scene" — an OFFSCREEN render of a scene file (no game boot; physics/particles/animations are static at t=0). Optionally pass scenePath/framing/size/nodePath. Use for COMPOSITION, SCALE and FRAMING without touching the editor's open tab.
+    It does NOT use the scene's environment/sky, and it injects a synthetic camera and light when the scene has none. The scene's WorldEnvironment — sky, fog, tonemap, glow, SSAO, ambient — is replaced by a flat preview environment. So this target CANNOT verify lighting, mood, or any material property that depends on the environment: change them and the frame comes back identical. For those, boot the game or run a RunVerification probe, whose instance renders the real environment.
   "game" — a frame from the RUNNING game (real runtime state). Start the game first (summer_play). Not available over a plain local connection — needs the Summer desktop app bridge.
 
-Static frame only — one moment, not motion. If a game capture is unavailable, use "viewport" or "scene", or ask the user to share a screenshot of the running game.`,
+Static frame only — one moment, not motion. For a SEQUENCE of frames over time, or for anything lighting-dependent when the desktop bridge is unavailable, use a RunVerification probe's save_frame() — its instance has a real renderer.`,
     {
       target: z
         .enum(["viewport", "scene", "game"])

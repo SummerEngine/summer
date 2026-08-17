@@ -22,8 +22,7 @@ func _process(delta: float) -> void:
         if camera == null:
             return
     if trauma > 0.0:
-        var s = trauma * trauma     // perceived intensity grows quadratically
-        var t = Time.get_ticks_msec() * 0.01
+        var s := trauma * trauma  # perceived intensity grows quadratically
         camera.h_offset = max_offset.x * s * (randf() * 2.0 - 1.0)
         camera.v_offset = max_offset.y * s * (randf() * 2.0 - 1.0)
         camera.rotation.x += max_pitch * s * (randf() * 2.0 - 1.0) * 0.1
@@ -37,7 +36,10 @@ func add_trauma(amount: float) -> void:
     trauma = clamp(trauma + amount, 0.0, 1.0)
 ```
 
-Register `CameraShake` as autoload in Project Settings.
+Register `CameraShake` as autoload in Project Settings. An autoload is a node at
+`/root/CameraShake`, not an engine singleton — reach it with
+`get_node_or_null("/root/CameraShake")`. `Engine.has_singleton("CameraShake")` is
+always `false` for an autoload (measured), so never gate the call on it.
 
 ## Usage
 

@@ -45,6 +45,7 @@ Skip any step = lying, not verifying
 | Linter clean | Linter output: 0 errors | Partial check, extrapolation |
 | Build succeeds | Build command: exit 0 | Linter passing, logs look good |
 | Bug fixed | Test original symptom: passes | Code changed, assumed fixed |
+| Gameplay behaviour works | `RunVerification` probe: pressed the input, read the state back | Script compiles, game boots, diagnostics clean |
 | Regression test works | Red-green cycle verified | Test passes once |
 | Agent completed | VCS diff shows changes | Agent reports "success" |
 | Requirements met | Line-by-line checklist | Tests passing |
@@ -72,6 +73,7 @@ Skip any step = lying, not verifying
 | "I'm tired" | Exhaustion ≠ excuse |
 | "Partial check is enough" | Partial proves nothing |
 | "Different words so rule doesn't apply" | Spirit over letter |
+| "There's no way to test gameplay, I'll ask the user" | There is. A `RunVerification` probe presses input and reads state back. Ask the user only for what a probe cannot judge. |
 
 ## Key Patterns
 

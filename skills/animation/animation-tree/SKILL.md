@@ -1,6 +1,6 @@
 ---
 name: animation-tree
-description: Use when the user has clips on a character and needs them to play in response to gameplay — idle/walk/run blend, attacks that interrupt locomotion, hit reactions that override everything. Designs and wires AnimationTree state machines and blend trees in Summer Engine. Trigger on "AnimationTree", "state machine", "blend tree", "transition", "play animation when", "character keeps T-posing", "wire animations".
+description: Use when the user has clips on a character and needs them to play in response to gameplay — idle/walk/run blend, attacks that interrupt locomotion, hit reactions that override everything. Designs and wires Summer Engine AnimationTree state machines and blend trees. Trigger on "AnimationTree", "state machine", "blend tree", "transition", "play animation when", "character keeps T-posing", "wire animations".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: animation
@@ -79,10 +79,16 @@ Confirm there's a `Skeleton3D` and an `AnimationPlayer` with at least `idle` + `
 ### 2. Add the AnimationTree
 
 ```
-summer_add_node(parent: "./World/Goblin", type: "AnimationTree", name: "AnimationTree")
-summer_set_prop(path: "./World/Goblin/AnimationTree", key: "anim_player", value: "../AnimationPlayer")
-summer_set_prop(path: "./World/Goblin/AnimationTree", key: "active", value: "true")
+summer_add_node(scenePath: "res://main.tscn", parent: "./World/Goblin", type: "AnimationTree", name: "AnimationTree")
+summer_set_prop(scenePath: "res://main.tscn", path: "./World/Goblin/AnimationTree", key: "anim_player", value: "../AnimationPlayer")
+summer_set_prop(scenePath: "res://main.tscn", path: "./World/Goblin/AnimationTree", key: "active", value: "true")
 ```
+
+`scenePath` is a **required** argument on every scene-mutating tool
+(`summer_add_node`, `summer_set_prop`, `summer_set_resource_property`,
+`summer_connect_signal`, `summer_save_scene`, `summer_instantiate_scene`,
+`summer_remove_node`, `summer_replace_node`). Omit it and the call is rejected
+before it reaches the engine. Get the path from `summer_get_project_context`.
 
 `anim_player` must be a relative NodePath; `../AnimationPlayer` from a sibling. Don't use absolute paths — breaks scene reuse.
 
@@ -90,7 +96,10 @@ summer_set_prop(path: "./World/Goblin/AnimationTree", key: "active", value: "tru
 
 The `tree_root` is a single `AnimationNodeStateMachine`. Inside it, a `Locomotion` node which is itself an `AnimationNodeBlendSpace1D`, plus `Attack`, `Hit`, `Dead` nodes.
 
-This is more readable to edit by hand or in the Godot editor, then commit the `.tres`. The MCP tool `summer_set_resource_property` can build it node-by-node, but the tree-resource model is verbose enough that **writing the `.tres` and importing it is faster** for the canonical structure. Skeleton:
+This is more readable to edit by hand or in Summer Engine, then commit the
+`.tres`. The MCP tool `summer_set_resource_property` can build it node-by-node,
+but the tree-resource model is verbose enough that **writing the `.tres` and
+importing it is faster** for the canonical structure. Skeleton:
 
 ```
 [gd_resource type="AnimationNodeStateMachine" load_steps=8 format=3]
@@ -164,21 +173,28 @@ func die() -> void:
 
 ```
 summer_connect_signal(
-  source: "./World/Goblin",
+  scenePath: "res://main.tscn",
+  emitter: "./World/Goblin",
   signal: "damaged",
-  target: "./World/Goblin",
+  receiver: "./World/Goblin",
   method: "take_hit"
 )
 ```
+
+The parameters are `emitter` and `receiver` — not `source`/`target`, not
+`from`/`to`. Those spellings fail schema validation.
 
 If the goblin has an HP component emitting `died`, connect that to `die`.
 
 ### 6. Save & verify
 
 ```
-summer_save_scene
-summer_get_script_errors
+summer_save_scene(scenePath: "res://main.tscn")
+summer_get_script_errors(path: "res://scripts/goblin.gd")
 ```
+
+`summer_get_script_errors` checks **one** file and requires `path`; there is no
+"check everything" form. For a project-wide sweep use `summer_get_diagnostics`.
 
 Then `summer_play` and watch — the goblin should idle in place, blend up to walk/run as it moves, fire attack on input/AI, snap to hit on damage, end in Dead.
 
@@ -190,7 +206,7 @@ Then `summer_play` and watch — the goblin should idle in place, blend up to wa
 
 ## Reference card
 
-### Parameter paths cheat-sheet (Summer Engine)
+### Parameter paths cheat-sheet
 
 | Goal | Path |
 |---|---|
@@ -216,7 +232,13 @@ Then `summer_play` and watch — the goblin should idle in place, blend up to wa
 - **Walk-to-run pops.** Transition `switch_mode` is `Immediate`. Set to `Sync` so the cycle phase matches across the crossfade.
 - **Attack one-shot fires every frame as long as input is held.** Use `Input.is_action_just_pressed`, not `is_action_pressed`. Or store a `_can_attack` flag with cooldown.
 - **Hit reaction interrupts itself when hit twice in 100ms.** Set `fadein_time = 0.0` and gate from script: `if sm.get_current_node() == "Hit": return`.
-- **Attack plays but locomotion is invisible (lower body T-pose).** OneShot's `mix_mode` is `BLEND` (full body). For upper-body-only attacks, set `mix_mode = ADD` and use an additive clip (recorded as the offset from idle), or split the rig with a SkeletonModification3D mask.
+- **Attack plays but locomotion is invisible (lower body T-pose).** OneShot's
+  `mix_mode` is `BLEND` (full body). For upper-body-only attacks, set
+  `mix_mode = ADD` and use an additive clip, or drive the lower body from a
+  second `AnimationTree` branch and blend by bone with an
+  `AnimationNodeBlend2` plus filters. `SkeletonModification3D` is an old
+  upstream class name and `ClassDB.class_exists("SkeletonModification3D")`
+  returns false on the current Summer build.
 - **Dead state replays from start every time HP < 0.** Add a guard in the controller: `if is_dead: return`.
 
 ### One-shot vs StateMachine — which to use
@@ -245,7 +267,11 @@ Then `summer_play` and watch — the goblin should idle in place, blend up to wa
 
 ## Fallback (no MCP)
 
-Open the scene in Summer Engine editor, add `AnimationTree` node, set `Anim Player` to the AnimationPlayer, set `Active = on`, double-click `Tree Root` and edit visually. Drag `AnimationNodeStateMachine` as the root, drop nodes inside, draw transitions by Shift-dragging. Save the scene. The visual editor produces the same `.tres` — slower but discoverable.
+Open the scene in Summer Engine, add an `AnimationTree` node, set `Anim Player`
+to the AnimationPlayer, set `Active = on`, double-click `Tree Root`, and edit
+visually. Drag `AnimationNodeStateMachine` as the root, drop nodes inside, draw
+transitions by Shift-dragging, and save the scene. The visual editor produces
+the same `.tres`; it is slower but discoverable.
 
 ## Handoff
 
@@ -258,5 +284,3 @@ Open the scene in Summer Engine editor, add `AnimationTree` node, set `Anim Play
 
 - `summer:animation/generate-motion` — produce the clips this tree references.
 - `summer:animation/retarget` — share one tree across many characters.
-- `references/gd-style.md` — typed GDScript conventions in the controller snippets.
-- `references/mcp-tools-reference.md` — `summer_connect_signal` and `summer_set_resource_property` rules.

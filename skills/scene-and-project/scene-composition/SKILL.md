@@ -1,6 +1,6 @@
 ---
 name: scene-composition
-description: Use when building or organizing scenes in Godot — node hierarchy conventions, when to extract sub-scenes, reusable prefab patterns, instance vs add-node decisions. Trigger on "scene", "sub-scene", "instance", "prefab", "node hierarchy", "scene structure", "PackedScene".
+description: Use when building or organizing Summer Engine scenes: node hierarchy conventions, when to extract sub-scenes, reusable prefab patterns, and instance-versus-add-node decisions. Trigger on "scene", "sub-scene", "instance", "prefab", "node hierarchy", "scene structure", "PackedScene".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: scene-and-project
@@ -80,8 +80,8 @@ Use `./` for paths relative to the scene root:
 
 1. Build the hierarchy in the main scene
 2. Select the root of what you want to extract
-3. Save as scene: `summer_save_scene(path="res://scenes/player.tscn")`. SaveScene saves the current open scene, so build reusable scenes in their own open scene and save them there. Do not handwrite `.tscn` files as the preferred path.
-4. In the main scene, add it with `summer_instantiate_scene(parent="./World", scene="res://scenes/player.tscn", name="Player")`
+3. Save as scene: `summer_save_scene(scenePath="res://scenes/source.tscn", path="res://scenes/player.tscn")`. `scenePath` names the scene being saved and is **required**; `path` is the optional save-as target. There is no "current scene" default.
+4. In the main scene, add it with `summer_instantiate_scene(scenePath="res://main.tscn", parent="./World", scene="res://scenes/player.tscn", name="Player")`
 
 **Practical approach:** Create reusable scenes (player.tscn, enemy.tscn) as separate scene files, then instantiate them into levels.
 
@@ -97,9 +97,9 @@ Use `./` for paths relative to the scene root:
 
 ## Save Conventions
 
-- Always call `summer_save_scene` after changes you want to keep
-- For new scenes: `summer_save_scene(path="res://scenes/level1.tscn")`
-- For existing scenes: `summer_save_scene` (no path, uses current scene path)
+- The mutation tools (`summer_add_node`, `summer_set_prop`, ...) already append one save per call, so a standalone `summer_save_scene` is only for a save-as or an explicit extra flush
+- Save-as: `summer_save_scene(scenePath="res://main.tscn", path="res://scenes/level1.tscn")`
+- Plain save: `summer_save_scene(scenePath="res://main.tscn")` — `scenePath` is required in both forms
 
 ## Common Mistakes
 
@@ -110,7 +110,20 @@ Use `./` for paths relative to the scene root:
 
 ## Fallback
 
-No fallback for this — Summer MCP required. Handwriting `.tscn` files for hierarchy mutations is error-prone (UID collisions, wrong format version, broken sub_resource refs). If MCP isn't connected, open the scene in the Godot editor and use the SceneTree dock.
+MCP is the preferred path, not a requirement. Hand-written `.tscn` text loads and
+instantiates fine — including `[ext_resource]` lines with **no `uid=` field**,
+which the engine resolves by path (verified by loading such a scene on the
+shipped 4.6.1 build). Format version 3 is current for Godot 4.
+
+What actually goes wrong when you hand-write scenes is mundane and checkable:
+a `SubResource("id")` with no matching `[sub_resource id="id"]` block, a
+`parent=` path naming a node that isn't declared above it, or an
+`[ext_resource path=...]` pointing at a file that hasn't been imported yet
+(`--headless --import`, or `summer_import_from_url`, before it will load).
+
+So: use MCP when it's connected because the ops are undoable as one step and the
+engine validates paths for you. When it isn't, write the `.tscn` and then open it
+once to confirm it loads. Do not tell the user it's impossible.
 
 ## Trap — Cross-scene transform leak when copying a scene as a template
 
@@ -143,4 +156,4 @@ Don't skip the player mask update. If you only move foliage to layer 9 without a
 
 ## Collaborative protocol
 
-This skill creates and mutates scene files. Always ask before applying: "May I create `res://scenes/player.tscn` and instantiate it under `./World`?". See `../../references/collaborative-protocol.md`.
+This skill creates and mutates scene files. Always ask before applying: "May I create `res://scenes/player.tscn` and instantiate it under `./World`?".

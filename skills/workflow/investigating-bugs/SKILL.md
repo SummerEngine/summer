@@ -176,7 +176,8 @@ You MUST complete each phase before proceeding to the next.
    - Automated test if possible
    - One-off test script if no framework
    - MUST have before fixing
-   - Use the `summer:test-driven-development` skill for writing proper failing tests
+   - Verify it red-green: run the test before the fix and confirm it FAILS for the stated reason. A test you never saw fail proves nothing.
+   - For a runtime game bug, the reproduction is a `RunVerification` probe: press the input, assert the state. Re-run the same probe after the fix.
 
 2. **Implement Single Fix**
    - Address the root cause identified
@@ -284,8 +285,9 @@ These techniques are part of systematic debugging and available in this director
 - **`condition-based-waiting.md`** - Replace arbitrary timeouts with condition polling
 
 **Related skills:**
-- **summer:test-driven-development** - For creating failing test case (Phase 4, Step 1)
 - **summer:verification-before-completion** - Verify fix worked before claiming success
+- **summer:debug** - The Summer-specific triage loop (script errors → console → debugger → probe)
+- **summer:playtesting-a-feature** - When the fix is a gameplay behaviour that has to be walked
 
 ## Real-World Impact
 

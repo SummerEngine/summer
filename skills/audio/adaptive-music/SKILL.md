@@ -56,7 +56,7 @@ For 90% of indie games, **horizontal sequencing** is correct. It's cheaper to au
 ### 3. Confirm stems exist (or generate them)
 
 ```
-summer_search_assets(query="music", filter={ kind: "audio" })
+summer_search_assets(query="music", assetType="music", source="all")
 ```
 
 You need (typical case):
@@ -100,24 +100,26 @@ For ducking, add a sidechain compressor on the `Music` bus with the `Voice` bus 
 For horizontal sequencing, instantiate one `AudioStreamPlayer` per state, all on the Music bus, all autoplay, all looping, all starting at `-60 dB` except the active state:
 
 ```
-summer_add_node(parentPath="/root/Game/Music", type="AudioStreamPlayer", name="Calm")
-summer_set_prop(path="/root/Game/Music/Calm", property="stream", value="res://audio/music/calm.mp3")
-summer_set_prop(path="/root/Game/Music/Calm", property="bus", value="Music")
-summer_set_prop(path="/root/Game/Music/Calm", property="volume_db", value=0.0)
-summer_set_prop(path="/root/Game/Music/Calm", property="autoplay", value=true)
+summer_add_node(scenePath="res://main.tscn", parent="./Music", type="AudioStreamPlayer", name="Calm")
+summer_set_prop(scenePath="res://main.tscn", path="./Music/Calm", key="stream", value="res://audio/music/calm.mp3")
+summer_set_prop(scenePath="res://main.tscn", path="./Music/Calm", key="bus", value="Music")
+summer_set_prop(scenePath="res://main.tscn", path="./Music/Calm", key="volume_db", value=0.0)
+summer_set_prop(scenePath="res://main.tscn", path="./Music/Calm", key="autoplay", value=true)
 
-summer_add_node(parentPath="/root/Game/Music", type="AudioStreamPlayer", name="Tension")
-summer_set_prop(path="/root/Game/Music/Tension", property="stream", value="res://audio/music/tension.mp3")
-summer_set_prop(path="/root/Game/Music/Tension", property="bus", value="Music")
-summer_set_prop(path="/root/Game/Music/Tension", property="volume_db", value=-60.0)
-summer_set_prop(path="/root/Game/Music/Tension", property="autoplay", value=true)
+summer_add_node(scenePath="res://main.tscn", parent="./Music", type="AudioStreamPlayer", name="Tension")
+summer_set_prop(scenePath="res://main.tscn", path="./Music/Tension", key="stream", value="res://audio/music/tension.mp3")
+summer_set_prop(scenePath="res://main.tscn", path="./Music/Tension", key="bus", value="Music")
+summer_set_prop(scenePath="res://main.tscn", path="./Music/Tension", key="volume_db", value=-60.0)
+summer_set_prop(scenePath="res://main.tscn", path="./Music/Tension", key="autoplay", value=true)
 
-summer_add_node(parentPath="/root/Game/Music", type="AudioStreamPlayer", name="Combat")
-summer_set_prop(path="/root/Game/Music/Combat", property="stream", value="res://audio/music/combat.mp3")
-summer_set_prop(path="/root/Game/Music/Combat", property="bus", value="Music")
-summer_set_prop(path="/root/Game/Music/Combat", property="volume_db", value=-60.0)
-summer_set_prop(path="/root/Game/Music/Combat", property="autoplay", value=true)
+summer_add_node(scenePath="res://main.tscn", parent="./Music", type="AudioStreamPlayer", name="Combat")
+summer_set_prop(scenePath="res://main.tscn", path="./Music/Combat", key="stream", value="res://audio/music/combat.mp3")
+summer_set_prop(scenePath="res://main.tscn", path="./Music/Combat", key="bus", value="Music")
+summer_set_prop(scenePath="res://main.tscn", path="./Music/Combat", key="volume_db", value=-60.0)
+summer_set_prop(scenePath="res://main.tscn", path="./Music/Combat", key="autoplay", value=true)
 ```
+
+Every scene-mutating tool takes an explicit `scenePath`; node paths are relative to that scene's root (`./`), not absolute `/root/...` runtime paths; and the property argument is named `key`, not `property`.
 
 All three play simultaneously, in sync, but only one is audible. State transitions tween volumes — the music never restarts, only fades.
 
@@ -309,7 +311,8 @@ Master
 
 ## Fallback (no MCP)
 
-Print the bus layout, the node tree, and the GDScript. User constructs in the Godot editor manually.
+Print the bus layout, node tree, and GDScript. The user constructs it manually
+in Summer Engine.
 
 ## Handoff
 
@@ -323,4 +326,5 @@ Print the bus layout, the node tree, and the GDScript. User constructs in the Go
 - `audio/audio-direction` — defines the dynamic music plan and bus layout
 - `audio/music-track` — generates the stems
 - `audio/voice-line` — the voice bus that triggers ducking
-- `references/godot-version.md` — Summer Engine AudioServer and Tween API
+- `../../../references/godot-version.md` — Summer compatibility for AudioServer
+  and Tween APIs

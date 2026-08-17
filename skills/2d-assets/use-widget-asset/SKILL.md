@@ -1,6 +1,6 @@
 ---
 name: use-widget-asset
-description: Use when consuming a widget slice (panel, button, slider, progress bar, or toggle pair) from a `create-asset-sheet` pack into a Godot scene. The pack's metadata.sliceMeta carries 9-slice margins, fill rects, and on/off pair links per slice — this skill explains how to wire those into NinePatchRect / TextureProgressBar / TextureRect so the asset behaves like a real UI control instead of a static texture.
+description: Use when consuming a widget slice (panel, button, slider, progress bar, or toggle pair) from a `create-asset-sheet` pack in a Summer Engine scene. The pack's metadata.sliceMeta carries 9-slice margins, fill rects, and on/off pair links per slice. This skill explains how to wire those into NinePatchRect, TextureProgressBar, or TextureRect so the asset behaves like a real UI control instead of a static texture.
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
@@ -9,9 +9,9 @@ allowed-tools: Read Grep Glob Write Edit summer_add_node summer_set_prop summer_
 paths: ["assets/**", "art/**", "ui/**", "scenes/**"]
 ---
 
-# use-widget-asset — Wire a sliced widget into a real Godot control
+# use-widget-asset — Wire a sliced widget into a Summer Engine control
 
-When the `create-asset-sheet` wizard sees a stretchable UI element (a panel, a slider, a progress bar, a toggle), it returns more than a flat PNG. It returns geometry: **9-slice frame margins** for stretchable rectangles, and a **fill rect** for value-driven widgets. It also pairs ON/OFF toggle slices via `pairWith`. This skill is the runtime side: how to read that metadata and wire the asset into the right Godot node.
+When the `create-asset-sheet` wizard sees a stretchable UI element (a panel, a slider, a progress bar, a toggle), it returns more than a flat PNG. It returns geometry: **9-slice frame margins** for stretchable rectangles, and a **fill rect** for value-driven widgets. It also pairs ON/OFF toggle slices via `pairWith`. This skill is the runtime side: how to read that metadata and wire the asset into the right Summer Engine node.
 
 If a slice has no widget metadata, treat it as a static texture (`TextureRect`) and skip this skill.
 
@@ -57,7 +57,7 @@ metadata.sliceMeta:   { "0": { category, widget?, pairWith?, parentSliceIndex? }
 }
 ```
 
-Margins and rect are **percentages of the SLICE's own pixel dimensions** (not the source sheet). Convert to pixels with `Math.round(pct * sliceWidth / 100)` before applying to a Godot node.
+Margins and rect are **percentages of the SLICE's own pixel dimensions** (not the source sheet). Convert to pixels with `Math.round(pct * sliceWidth / 100)` before applying to a Summer Engine node.
 
 ## Decision tree
 
@@ -132,7 +132,9 @@ Set `value` from 0 to 100 to drive the bar.
 
 ### 3. Slider — HSlider with TextureRect overlays
 
-`Slider` in Godot is a behavioral node (drag input + value range); it doesn't ship visuals on its own. Combine it with two `TextureRect`s underneath: one for the track (the slice texture, optionally as NinePatchRect for stretch) and one for the knob (a separate small slice cut from the slider's `fillRect` end).
+`Slider` in Summer Engine is a behavioral node (drag input + value range); it
+does not ship visuals on its own. Combine it with two `TextureRect`s underneath:
+one for the track and one for the knob.
 
 Simplest wiring: NinePatchRect for the track using `frameMargins`, an HSlider on top with `flat = true` and `theme_override_styles/grabber_area = null`, and a child `TextureRect` for the knob positioned via `slider.ratio`.
 
@@ -181,7 +183,7 @@ The wizard's Break-down pass produces two new per-slice fields the runtime must 
 | `zOrder` | number | Back-to-front paint order on children. Lower = behind. Matches Godot `z_index`, Unity `sortingOrder`, CSS `z-index`. |
 | `parentSliceIndex` | number | Set on each child, points at the composite parent. Used to group children. |
 
-The full schema lives at `publicsummerengine/public/knowledge/asset_pack_schema.json`. Read it once if you need to know every field.
+The full schema is the zod definition at `publicsummerengine/src/lib/asset-packs/schema.ts` (`SliceMetaSchema`, `PACK_SCHEMA_VERSION`, and the legacy-migration helper). Read it once if you need to know every field.
 
 ### Consume recipe
 

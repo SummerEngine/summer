@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects
 user-invocable: true
-allowed-tools: Read Write Edit summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_save_scene
+allowed-tools: Read Write Edit summer_write_file summer_read_file summer_create_scene summer_add_node summer_set_prop summer_set_resource_property summer_connect_signal summer_inspect_node summer_save_scene summer_get_script_errors summer_get_debugger_errors summer_play summer_stop
 paths: ["**/*.tscn", "**/*.gd", "**/*.gdshader", "addons/vfx/**"]
 ---
 
@@ -25,7 +25,9 @@ A muzzle flash is on screen for 60–100 ms. Long enough to read, too short to a
 
 - The user wants a *continuous* flame (flamethrower) — use `fire`, not muzzle-flash.
 - The user wants the impact spark on the wall the bullet hit — that's `hit-spark`.
-- The user wants a tracer line from barrel to target — use a `Line3D`/`ImmediateMesh` recipe, not this. (Or pair this with `lightning` for an energy weapon.)
+- The user wants a tracer line from barrel to target — use an `ImmediateMesh`
+  recipe, not this. The current Summer build has no `Line3D`
+  (`ClassDB.class_exists("Line3D")` is `false`).
 - The user wants a slow-glowing spell charge-up — use `magic-glow` for the buildup, then this for the release frame.
 
 ## Recipe
@@ -55,12 +57,19 @@ uniform float ray_sharpness  : hint_range(0.5, 32.0) = 8.0;
 uniform float random_seed    : hint_range(0.0, 6.2831) = 0.0;    // rotates the star per shot
 
 void vertex() {
+    // Billboard toward the camera. The bare mat4(INV_VIEW_MATRIX[0..2], MODEL_MATRIX[3])
+    // form discards the node's scale, so the per-shot `flash_size` randomisation in
+    // fire() would never reach the screen — normalize the basis and re-apply scale.
     MODELVIEW_MATRIX = VIEW_MATRIX * mat4(
-        INV_VIEW_MATRIX[0],
-        INV_VIEW_MATRIX[1],
-        INV_VIEW_MATRIX[2],
-        MODEL_MATRIX[3]
-    );
+        normalize(INV_VIEW_MATRIX[0]),
+        normalize(INV_VIEW_MATRIX[1]),
+        normalize(INV_VIEW_MATRIX[2]),
+        MODEL_MATRIX[3]) * mat4(
+        vec4(length(MODEL_MATRIX[0].xyz), 0.0, 0.0, 0.0),
+        vec4(0.0, length(MODEL_MATRIX[1].xyz), 0.0, 0.0),
+        vec4(0.0, 0.0, length(MODEL_MATRIX[2].xyz), 0.0),
+        vec4(0.0, 0.0, 0.0, 1.0));
+    MODELVIEW_NORMAL_MATRIX = mat3(MODELVIEW_MATRIX);
 }
 
 void fragment() {
@@ -81,9 +90,11 @@ void fragment() {
     // Mix core color (white-hot) into flash color at the very center.
     vec3 col = mix(flash_color.rgb, core_color.rgb, pow(core, 4.0));
 
-    ALBEDO   = col;
-    EMISSION = col * emission_boost * intensity;
-    ALPHA    = mask * intensity;
+    // `render_mode unshaded` outputs ALBEDO and discards EMISSION entirely
+    // (scene_forward_clustered.glsl:2962 — `frag_color = vec4(albedo, alpha)`
+    // under MODE_UNSHADED), so the bloom boost has to live in ALBEDO.
+    ALBEDO = col * emission_boost * intensity;
+    ALPHA  = mask * intensity;
 }
 ```
 
@@ -97,6 +108,8 @@ class_name MuzzleFlash
 extends Node3D
 
 ## Spawn one of these as a child of the gun's barrel tip and call `fire()` on each shot.
+
+const SPARK_SCENE := "res://addons/vfx/hit-spark/hit_spark.tscn"
 
 @export var flash_color: Color = Color(1.0, 0.85, 0.45)
 @export_range(0.02, 0.30) var flash_duration: float = 0.08  ## seconds visible
@@ -134,8 +147,12 @@ func _ready() -> void:
     _light.shadow_enabled = false
     add_child(_light)
 
-    if spawn_sparks:
-        _sparks = preload("res://addons/vfx/hit-spark/hit_spark.tscn").instantiate() if ResourceLoader.exists("res://addons/vfx/hit-spark/hit_spark.tscn") else null
+    # preload() resolves at PARSE time, so a runtime ResourceLoader.exists() check
+    # cannot guard it — "Parse Error: Preload file ... does not exist" takes the
+    # whole script down when hit-spark hasn't been installed. Use load().
+    if spawn_sparks and ResourceLoader.exists(SPARK_SCENE):
+        var packed: PackedScene = load(SPARK_SCENE)
+        _sparks = packed.instantiate() as GPUParticles3D
         if _sparks:
             _sparks.one_shot = true
             _sparks.emitting = false
@@ -184,13 +201,19 @@ Node3D ("MuzzleFlash") [script: muzzle_flash.gd]
 
 Place the node at the **barrel tip** of the weapon. If your gun model has a `BarrelTip` Marker3D, parent there directly.
 
+Every scene-mutating call takes an explicit `scenePath`. `summer_set_prop` uses `key`
+(not `property`) and only accepts a string, number, or boolean.
+
 ```
-summer_add_node(parent="./Player/Weapon/BarrelTip", type="Node3D", name="MuzzleFlash")
-summer_set_prop(path="./Player/Weapon/BarrelTip/MuzzleFlash", property="script", value="res://addons/vfx/muzzle-flash/muzzle_flash.gd")
-summer_set_prop(path="./Player/Weapon/BarrelTip/MuzzleFlash", property="flash_size", value=0.6)
-summer_set_prop(path="./Player/Weapon/BarrelTip/MuzzleFlash", property="flash_duration", value=0.08)
-summer_set_prop(path="./Player/Weapon/BarrelTip/MuzzleFlash", property="light_energy", value=4.0)
-summer_save_scene
+summer_write_file(path="res://addons/vfx/muzzle-flash/muzzle_flash.gdshader", content="<section 2>", create_only=true)
+summer_write_file(path="res://addons/vfx/muzzle-flash/muzzle_flash.gd", content="<section 3>", create_only=true)
+
+summer_add_node(scenePath="res://main.tscn", parent="./Player/Weapon/BarrelTip", type="Node3D", name="MuzzleFlash")
+summer_set_prop(scenePath="res://main.tscn", path="./Player/Weapon/BarrelTip/MuzzleFlash", key="script", value="res://addons/vfx/muzzle-flash/muzzle_flash.gd")
+summer_set_prop(scenePath="res://main.tscn", path="./Player/Weapon/BarrelTip/MuzzleFlash", key="flash_size", value=0.6)
+summer_set_prop(scenePath="res://main.tscn", path="./Player/Weapon/BarrelTip/MuzzleFlash", key="flash_duration", value=0.08)
+summer_set_prop(scenePath="res://main.tscn", path="./Player/Weapon/BarrelTip/MuzzleFlash", key="light_energy", value=4.0)
+summer_save_scene(scenePath="res://main.tscn")
 ```
 
 Then in your weapon script, on `fire()`:
@@ -199,10 +222,22 @@ Then in your weapon script, on `fire()`:
 $BarrelTip/MuzzleFlash.fire()
 ```
 
-Or connect a signal:
+Or connect the weapon's `fired` signal in the scene:
 
-```gdscript
-weapon.fired.connect($BarrelTip/MuzzleFlash.fire)
+```
+summer_connect_signal(scenePath="res://main.tscn", emitter="./Player/Weapon", signal="fired", receiver="./Player/Weapon/BarrelTip/MuzzleFlash", method="fire")
+```
+
+### 5b. Verify
+
+`muzzle_flash.gd` `preload`s its own shader, so a shader that failed to write takes
+the script down at parse time. Check before firing a shot.
+
+```
+summer_get_script_errors          # muzzle_flash.gd parsed?
+summer_play
+summer_get_debugger_errors        # shader compile errors surface here at runtime
+summer_stop
 ```
 
 ### 6. Parameters to tune
@@ -283,11 +318,12 @@ ray_sharpness  = 18.0
 - **OmniLight3D with shadows enabled.** A 60 ms shadow pass costs more than the flash itself. `shadow_enabled = false`.
 - **Flash duration > 150 ms.** Reads as a flamethrower or a stuck animation. Stay under 100 ms unless intentional.
 - **Spawning a new MuzzleFlash each shot and freeing it.** Rapid-fire weapons leak. Reuse one anchored to the barrel and call `fire()`.
+- **`preload`ing the optional hit-spark scene.** `preload()` resolves at parse time, so wrapping it in a runtime `ResourceLoader.exists()` check does nothing — the script fails to load entirely when hit-spark isn't installed. Use `load()` behind the check.
 - **Generating an animated flash sprite.** That's the misroute this skill exists to prevent. The procedural shader rotates per shot for free, and you can recolor without regenerating.
 
 ## Performance notes
 
-- One quad + one light + ~8 sparks = under 0.02 ms. Safe at any rate of fire.
+- One quad + one light + ~8 sparks is negligible — safe at any rate of fire. That is an order-of-magnitude expectation, not a measurement.
 - The `OmniLight3D` snapping on/off per shot will trigger a shadow re-bake on lights with `shadow_enabled = true` — keep it off, always.
 - For full-auto weapons (10+ shots/sec), consider raising `flash_duration` to 0.10 and dropping `intensity` to 0.6 so consecutive flashes blend instead of strobe.
 
@@ -297,16 +333,23 @@ ray_sharpness  = 18.0
 - **Weapon visible in a mirror / scope.** The additive quad will appear in reflections only if the reflection probe captures it; for scope ADS, render the flash into the scope's separate viewport.
 - **Underwater shooting.** Tint the flash blue-green via `flash_color`, drop `light_range` to 30%.
 - **Silenced weapon.** `flash_size = 0.10`, `light_energy = 0.5`, `flash_duration = 0.04`. Just a wink at the barrel.
-- **Suppressed flash with a tracer.** Pair this with a `Line3D` tracer from barrel to hit point, fired in the same call.
+- **Suppressed flash with a tracer.** Pair this with an `ImmediateMesh` tracer from barrel to hit point, fired in the same call.
 
 ## Fallback (no MCP)
 
-VFX is code, no MCP required:
+Section 5 is fully automatable — `summer_write_file` writes the shader and the
+controller, `summer_add_node` + `summer_set_prop` place it, and
+`summer_connect_signal` wires `fired` → `fire`. Do not hand these steps to the user
+when the MCP tools are available.
+
+Without the MCP connection there is no engine to drive, so the user does it
+manually in Summer Engine:
 
 1. Create `addons/vfx/muzzle-flash/` and write the three files above.
-2. In Godot, add a `Node3D` child to your weapon's barrel tip Marker3D.
+2. Add a `Node3D` child to your weapon's barrel tip Marker3D.
 3. Attach `muzzle_flash.gd` as the script. The runtime builds the quad + light.
 4. In your weapon's fire code: `$BarrelTip/MuzzleFlash.fire()`.
+5. Check the Errors dock — `muzzle_flash.gd` `preload`s the shader, so a broken shader path fails the script too.
 
 ## Handoff
 

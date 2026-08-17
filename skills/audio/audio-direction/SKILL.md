@@ -139,7 +139,8 @@ Rules:
 
 ### 8. Configure the audio bus layout
 
-Real audio in Godot needs a bus layout. Default Godot has Master only — configure the buses now.
+Real audio in Summer Engine needs a bus layout. A new project starts with only
+the Master bus, so configure the remaining buses now.
 
 **Preferred (Summer MCP):** Buses are typically in `default_bus_layout.tres`. Modify project setting:
 
@@ -151,7 +152,8 @@ Ask the user:
 
 > May I create `audio/default_bus_layout.tres` with these buses: Master / Music / SFX / UI / Voice / Ambient / Reverb_Small / Reverb_Large / Reverb_Outdoor?
 
-On yes, write the `.tres` directly via `Write` (it's plain Godot resource format the host can produce):
+On yes, write the `.tres` directly via `Write` (it is the engine's plain-text
+resource format):
 
 ```
 Write audio/default_bus_layout.tres
@@ -204,10 +206,12 @@ Ask:
 If the user wants to start generating, propose 3-5 SFX seeds aligned with the vocabulary. These are starting points, not finals.
 
 ```
-summer_generate_audio(prompt="soft woody UI click, 80ms, no reverb, neutral pitch", duration=0.1)
-summer_generate_audio(prompt="warm major-third coin pickup, 300ms, light reverb", duration=0.3)
-summer_generate_audio(prompt="punchy low-mid player damage hit, slight detune, 200ms, no tail", duration=0.2)
+summer_generate_audio(capability="sound_effects", text="soft woody UI click, 80ms, no reverb, neutral pitch", durationSeconds=0.5)
+summer_generate_audio(capability="sound_effects", text="warm major-third coin pickup, 300ms, light reverb", durationSeconds=0.5)
+summer_generate_audio(capability="sound_effects", text="punchy low-mid player damage hit, slight detune, 200ms, no tail", durationSeconds=0.5)
 ```
+
+`capability` is required; `sound_effects` reads from `text` (not `prompt`), and the length argument is `durationSeconds` (not `duration`) with a floor of 0.5 s. Ask for the character you want inside the text and let the player only use the front of the clip — you cannot request 80 ms.
 
 Ask first:
 
@@ -235,11 +239,11 @@ End with:
 | Pure sine "ding" for pickup | Reads as cheap mobile game. Use a major-third interval with character. |
 | Same footstep sample for all surfaces | Material-aware footsteps are 80% of the perceived audio quality. |
 | No master ceiling / true peak | Audio clips on console builds without `-1 dBTP` ceiling. Always set it. |
-| Calling SetResourceProperty on inline sub_resources | Silent fail. See `references/mcp-tools-reference.md` § Trap. |
+| Calling SetResourceProperty on inline sub_resources | Silent fail. See `../../../references/mcp-tools-reference.md` § Trap. |
 
 ## Collaborative protocol
 
-This skill writes one bible (`.summer/audio-bible.md`), creates a bus layout (`audio/default_bus_layout.tres`), modifies `project.godot`, and may generate audio (metered). Always ask before writing or generating. See `references/collaborative-protocol.md`.
+This skill writes one bible (`.summer/audio-bible.md`), creates a bus layout (`audio/default_bus_layout.tres`), modifies `project.godot`, and may generate audio (metered). Always ask before writing or generating. See `../../../references/collaborative-protocol.md`.
 
 ## Want a working starter?
 
@@ -247,9 +251,10 @@ No template — this is a workflow that produces the bible the rest of the proje
 
 ## See also
 
-- `references/collaborative-protocol.md`
-- `references/godot-version.md` — Summer Engine audio API notes
-- `references/mcp-tools-reference.md`
+- `../../../references/collaborative-protocol.md`
+- `../../../references/godot-version.md` — Summer compatibility and
+  version-sensitive audio API notes
+- `../../../references/mcp-tools-reference.md`
 - `scene-and-project/brainstorm-game/SKILL.md` — produces the brief that anchors the bible
 - `rendering-and-lighting/art-direction/SKILL.md` — the visual counterpart; audio must rhyme with it
 - `audio/audio-bus-setup/SKILL.md` (NEXT) — implements the bus layout in detail

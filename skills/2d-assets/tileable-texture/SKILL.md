@@ -35,7 +35,7 @@ The hard part is "seamless." Most diffusion models violate edge continuity by de
 ### 1. Search for an existing texture
 
 ```
-summer_search_assets(query="<material> tileable", filter={ kind: "image" })
+summer_search_assets(query="<material> tileable", assetType="2d_image", source="all")
 ```
 
 Texture libraries (AmbientCG, Polyhaven) often have free PBR sets that beat AI generation for realism. If the user wants photorealistic tiling, pause and suggest those.
@@ -60,17 +60,16 @@ The load-bearing phrases are:
 
 ```
 summer_generate_image(
-  prompt="weathered red brick wall, seamless tileable texture, top-down view, uniform lighting, no perspective, no shadows, no specific objects, square format, photographic detail",
+  prompt="weathered red brick wall, seamless tileable texture, top-down view, uniform lighting, no perspective, no shadows, no specific objects, square format, photographic detail. No vanishing point, no directional shadow, no vignette, no single standout feature, no scene context, no sky, no sun.",
   model="nano-banana-2",
-  style="realistic",
-  options={
-    image_size: "square_hd",
-    negative_prompt: "perspective, vanishing point, directional shadow, vignette, single feature, scene context, sky, sun"
-  }
+  style="realistic"
 )
 ```
 
-`style: "realistic"` is the right default for textures (most are aiming for photographic surface). Switch to `"none"` for stylized/painterly.
+Two things about the arguments:
+
+- **There is no `image_size` and no `negative_prompt`.** `summer_generate_image` takes only `prompt`, `model`, `style`, `referenceImageUrl`, and `options`, and `options` only recognizes Nano Banana provider keys (`seed`, `outputFormat`, `safetyTolerance`, `syncMode`, `systemPrompt`, `limitGenerations`, `thinkingLevel`) plus `removeBackground`. Anything else is dropped without an error, so the call looks like it worked. Put the negations in the prompt text. Square is what you get regardless — MCP images come back at the server's 1:1 default, which is exactly what a tileable texture wants.
+- **`style: "realistic"` is a no-op.** Only `cartoon` and `anime` append anything to the prompt; `realistic` and `none` append nothing, and any other value is coerced to `none`. The photographic look has to come from the prompt (`photographic detail`). Switching to `"none"` for stylized work likewise changes nothing on its own — change the prompt.
 
 ### 4. Import to project
 
@@ -97,27 +96,35 @@ If you see hard horizontal/vertical seams, the edges don't match — regenerate 
 
 **On a PlaneMesh (floor/ceiling):**
 
-```
-summer_add_node(parentPath="/root/Level", type="MeshInstance3D", name="Floor")
-summer_set_resource_property(nodePath="/root/Level/Floor", resourceProperty="mesh", value="<new PlaneMesh resource>")
-summer_set_prop(path="/root/Level/Floor", property="mesh:size", value="Vector2(20, 20)")
-```
+Every scene-mutating tool takes an explicit `scenePath`; node paths are relative to that scene's root (`./`); `summer_set_prop`'s property argument is named `key`; and `summer_set_resource_property` needs all five of `scenePath`, `nodePath`, `resourceProperty`, `subProperty`, `value` (there is no two-argument form and no `"mesh:size"` colon-path form).
 
-Then create a `StandardMaterial3D`, set `albedo_texture` to the imported texture, and crank `uv1_scale` so each tile covers ~1m of world space:
+Assigning a bare class name to a resource property auto-instantiates it, so the mesh comes first:
 
 ```
+summer_add_node(scenePath="res://levels/level_01.tscn", parent="./Level", type="MeshInstance3D", name="Floor")
+summer_set_prop(scenePath="res://levels/level_01.tscn", path="./Level/Floor", key="mesh", value="PlaneMesh")
+summer_set_resource_property(scenePath="res://levels/level_01.tscn", nodePath="./Level/Floor", resourceProperty="mesh", subProperty="size", value="Vector2(20, 20)")
+```
+
+Then the material. `material_override` is a `Material`, and `StandardMaterial3D` is the class name that auto-instantiates:
+
+```
+summer_set_prop(scenePath="res://levels/level_01.tscn", path="./Level/Floor", key="material_override", value="StandardMaterial3D")
 summer_set_resource_property(
-  nodePath="/root/Level/Floor",
+  scenePath="res://levels/level_01.tscn",
+  nodePath="./Level/Floor",
   resourceProperty="material_override",
   subProperty="albedo_texture",
   value="res://art/textures/brick_red.png"
 )
 summer_set_resource_property(
-  nodePath="/root/Level/Floor",
+  scenePath="res://levels/level_01.tscn",
+  nodePath="./Level/Floor",
   resourceProperty="material_override",
   subProperty="uv1_scale",
   value="Vector3(20, 20, 1)"
 )
+summer_save_scene(scenePath="res://levels/level_01.tscn")
 ```
 
 `uv1_scale = (20, 20, 1)` on a 20m plane means the texture tiles 20× across — each tile covers 1m².
@@ -125,8 +132,8 @@ summer_set_resource_property(
 **On a CSGBox3D (walls):**
 
 ```
-summer_add_node(parentPath="/root/Level", type="CSGBox3D", name="WallNorth")
-summer_set_prop(path="/root/Level/WallNorth", property="size", value="Vector3(10, 3, 0.3)")
+summer_add_node(scenePath="res://levels/level_01.tscn", parent="./Level", type="CSGBox3D", name="WallNorth")
+summer_set_prop(scenePath="res://levels/level_01.tscn", path="./Level/WallNorth", key="size", value="Vector3(10, 3, 0.3)")
 ```
 
 Then attach the same material with `uv1_scale` tuned to wall dimensions.
@@ -141,7 +148,7 @@ Then attach the same material with `uv1_scale` tuned to wall dimensions.
 | Stone tiles | `cobblestone path, seamless tileable, top-down, uniform lighting, no shadows, no moss patches, square, photographic` | "No moss patches" kills hotspot |
 | Metal panel | `industrial metal floor panel, seamless tileable, top-down, uniform lighting, no rust hotspots, no scratches concentrated, square` | Diffuse rust spreads across the tile instead of clumping |
 | Sand / dirt | `dry desert sand, seamless tileable, top-down view, uniform soft lighting, no footprints, no rocks, no shadows, square` | Negative space is ideal for tiling |
-| Stylized painterly grass | `stylized painterly grass, Studio Ghibli, seamless tileable, top-down, uniform lighting, no specific blades emphasized, square` (style: "none") | Style preset would fight the painterly direction |
+| Stylized painterly grass | `stylized painterly grass, Studio Ghibli, seamless tileable, top-down, uniform lighting, no specific blades emphasized, square` | The painterly direction has to be in the prompt; no `style` value produces it |
 | Sci-fi panel | `sci-fi metal floor panel with subtle glowing seams, seamless tileable, top-down, uniform lighting, square, the glowing seams form a regular grid that aligns with tile edges` | Make the seams part of the design |
 
 ### Bad prompts (and why)
@@ -167,7 +174,7 @@ Then attach the same material with `uv1_scale` tuned to wall dimensions.
 
 - **User wants normal map / roughness / AO too.** Generation today produces albedo only. Use `Materialize` (free) or `MaterialMaker` (open source) to derive a normal from the albedo. Hand-paint roughness if the surface is heterogeneous (wood = low roughness on knots, high on grain). Set the user's expectation: AI gives albedo; PBR is a follow-up step.
 - **Texture must tile in only one direction (e.g., a brick wall that runs horizontally but not vertically).** Generate 1024×1024 seamless, then crop to your actual aspect; the horizontal tile remains seamless. Or: prompt `tileable horizontally only, distinct top and bottom edges` for ceiling-to-floor walls.
-- **Texture must read at very low resolution (mobile, distant LOD).** Generate at `square_hd`, downscale on import via `Compress: VRAM Compressed`. Avoid generating at low resolution — model quality drops.
+- **Texture must read at very low resolution (mobile, distant LOD).** You cannot request a generation size over MCP anyway — take the default and downscale on import (`Compress: VRAM Compressed`, or set a smaller size in the import dock).
 - **User wants animated water / lava texture.** Generate a still tileable texture and use a `ShaderMaterial` with UV scrolling to animate. Don't try to generate frames.
 - **Visible seam after generation.** Run through GIMP `Filters → Map → Make Seamless` or open in Aseprite, set Tiled mode, paint over the seam manually. AI-generated tileables often need a 5-minute touch-up.
 
@@ -177,10 +184,9 @@ Print the call:
 
 ```
 summer_generate_image(
-  prompt="<material> seamless tileable texture, top-down view, uniform lighting, no perspective, no shadows, no specific objects, square",
+  prompt="<material> seamless tileable texture, top-down view, uniform lighting, no perspective, no shadows, no specific objects, square. No directional shadow, no single standout feature, no scene context.",
   model="nano-banana-2",
-  style="realistic",
-  options={ image_size: "square_hd", negative_prompt: "perspective, directional shadow, single feature, scene context" }
+  style="realistic"
 )
 ```
 
@@ -202,4 +208,4 @@ After the texture is wired:
 - `summer:asset-pipeline/asset-strategy` — meta-router and 3D pipeline.
 - `summer:2d-assets/skybox-panorama` — sky/environment counterpart.
 - `summer:scene-composition` — applying textures to CSG and MeshInstance3D.
-- `references/mcp-tools-reference.md` — `summer_generate_image` schema.
+- `../../../references/mcp-tools-reference.md` — `summer_generate_image` schema.

@@ -2,7 +2,7 @@
 
 ## Fixture
 
-- Empty Summer Engine project, `project.godot` exists, no `.summer/` folder yet.
+- Empty Summer Engine project. `project.godot` exists and no `.summer/` folder exists yet.
 - Summer MCP available.
 - Host file tools available (Read, Write, Edit).
 

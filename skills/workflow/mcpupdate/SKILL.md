@@ -16,7 +16,7 @@ This skill lives in the **summer-cli** repo (the CLI + MCP + skills), normally a
 `<SummerEngine checkout>/tools/summer-cli/`. Paths below are relative to that repo root.
 
 - `src/mcp/tools/*.ts`: the `summer_*` MCP tool definitions ("ops": scene/asset/project/etc.)
-- `references/mcp-tools-reference.md`: human-readable tool reference
+- `../../../references/mcp-tools-reference.md`: human-readable tool reference
 - `src/mcp/tools/project-tools.ts` + `docs/MCP_FRESH_CHAT_PLAYBOOK.md`: the **agent playbook** returned by `summer_get_agent_playbook` (startup flow / defaults that steer agents)
 - `src/lib/skills-registry.ts`: how skills are discovered/surfaced to the agent
 - `skills/<category>/<name>/SKILL.md`: the **prompt-engineering skills** (e.g. `character-controllers/fps-controller`, `scene-and-project/make-game`, `level-design/design-level`, `visual-effects/*`)
@@ -53,7 +53,7 @@ node -e "import('./dist/lib/skills-registry.js').then(m=>{const r=m.SKILL_REGIST
    - `.codex-plugin/plugin.json`
    - `AGENTS.md`
    - `GEMINI.md`
-   - `references/mcp-tools-reference.md`
+   - `../../../references/mcp-tools-reference.md`
    - `docs/DEVELOPMENT.md`
    - `docs/SKILLS.md`
 
@@ -75,7 +75,7 @@ node -e "import('./dist/lib/skills-registry.js').then(m=>{const r=m.SKILL_REGIST
 2. **Open the exact file from the map above**. Do not scan the tree.
 3. **Make the change** using the existing maintenance skills:
    - New skill: `skills/workflow/skill-create`. Edit/append: `skills/workflow/skill-improve`. Game-dev win: `skills/workflow/gameskill`.
-   - Tool behavior / playbook: edit `src/mcp/tools/*.ts` and/or `docs/MCP_FRESH_CHAT_PLAYBOOK.md`; keep `references/mcp-tools-reference.md` in sync. Check `src/mcp/tools/project-tools.test.ts` still passes.
+   - Tool behavior / playbook: edit `src/mcp/tools/*.ts` and/or `docs/MCP_FRESH_CHAT_PLAYBOOK.md`; keep `../../../references/mcp-tools-reference.md` in sync. Check `src/mcp/tools/project-tools.test.ts` still passes.
    - Public-facing change: update the matching file in the `docs` repo.
 4. **Keep it concrete**. Every captured pattern gets a real, runnable code block (below), not prose.
 5. **Verify + commit.** If you touched `src/`, run `npm test`. Commit on a branch and summarize.

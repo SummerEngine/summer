@@ -1,6 +1,6 @@
 ---
 name: host-authoritative-state
-description: Use when designing the state layer of a multiplayer Summer game — deciding what's host-owned, how clients request changes, how the host validates and broadcasts. Pairs with `/peer-to-peer-multiplayer`. Trigger on "host authority", "authoritative state", "state ownership", "MP cheating", "client validation", "RPC patterns".
+description: Use when designing the state layer of a multiplayer Summer game: deciding what the host owns, how clients request changes, and how the host validates and broadcasts. Pairs with `/peer-to-peer-multiplayer`. Trigger on "host authority", "authoritative state", "state ownership", "MP cheating", "client validation", "RPC patterns".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: multiplayer-and-networking
@@ -134,7 +134,7 @@ func _broadcast_score(peer: int, value: int) -> void:
     score_updated.emit(peer, value)
 ```
 
-- `authority` = only host can call this. Anyone else's call is dropped by Godot.
+- `authority` = only the host can call this. Summer Engine drops other calls.
 - `call_remote` = doesn't run on the caller. Host already wrote the dictionary; no need to re-run locally.
 - `reliable` = state must arrive. Lost packets retry.
 - **Bug if wrong:** if you mark this `any_peer`, a client can fake a score broadcast → desync.
@@ -151,7 +151,8 @@ func _client_request_use_item(item_id: String) -> void:
 ```
 
 - `any_peer` = any client can call.
-- First line is **always** `if not NetworkManager.is_host: return`. Defensive — Godot already routes correctly, this guards against misconfiguration.
+- First line is **always** `if not NetworkManager.is_host: return`. Summer
+  Engine already routes correctly; this also guards against misconfiguration.
 - `multiplayer.get_remote_sender_id()` is trustworthy — clients can't lie about who sent the request.
 - **Bug if wrong:** missing the `is_host` guard means peers process each other's requests and corrupt local state.
 
@@ -284,7 +285,9 @@ Use flavor 4 (`rpc_id`) so only the joining peer gets the replay. Broadcasting t
 
 ## Anti-pattern: the "synced var" temptation
 
-Godot 4 ships a `MultiplayerSynchronizer` node that automatically replicates a list of properties across the network. It's tempting because it removes RPC boilerplate. **It is wrong for anything game-logic-relevant.**
+Summer Engine ships a `MultiplayerSynchronizer` node that automatically
+replicates a list of properties across the network. It is tempting because it
+removes RPC boilerplate. **It is wrong for anything game-logic-relevant.**
 
 `MultiplayerSynchronizer`:
 - Has no validation hook. Writes go through unconditionally.
@@ -321,12 +324,9 @@ This skill writes new autoload files (one per Manager). Always ask before each:
 
 Don't bulk-create five Managers in one shot. Walk one Manager end-to-end (data → mutators → requests → broadcasts → lifecycle) so the user can verify the shape, then repeat for the next domain.
 
-After each Manager file lands, call `summer_get_script_errors` to confirm clean compile. See [`references/collaborative-protocol.md`](../../references/collaborative-protocol.md).
+After each Manager file lands, call `summer_get_script_errors` to confirm clean compile.
 
 ## See also
 
 - [`peer-to-peer-multiplayer`](../peer-to-peer-multiplayer/SKILL.md) — the four-layer architecture overview. Read this first if you haven't.
 - [`setup-multiplayer`](../setup-multiplayer/SKILL.md) — lighter intro that just gets a session running. Use that one if the user just wants two players to see each other.
-- [`references/godot-version.md`](../../references/godot-version.md) — Summer Engine multiplayer API stability notes.
-- [`references/gd-style.md`](../../references/gd-style.md) — typed-GDScript conventions used in the examples above.
-- [`references/mcp-tools-reference.md`](../../references/mcp-tools-reference.md) — `summer_get_script_errors` for compile verification.

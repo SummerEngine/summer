@@ -2,7 +2,7 @@
 
 ## Fixture
 
-- A Summer Engine project that does NOT yet have multiplayer.
+- A Summer Engine project that does not yet have multiplayer.
 - Project may be empty or may have an existing single-player scene.
 - Summer MCP tools available; engine running on localhost:6550.
 
@@ -85,7 +85,8 @@
 - Skill detects MCP unavailable.
 - Walks the same 4 layers.
 - Instead of `summer_project_setting`, asks the user to manually edit `project.godot`'s `[autoload]` section — provides the exact lines to paste.
-- Instead of `summer_save_scene` / `summer_get_script_errors`, asks the user to save and check errors via the Godot editor.
+- Instead of `summer_save_scene` / `summer_get_script_errors`, asks the user to
+  save and check errors manually in Summer Engine.
 - All file writes still go through `Write` host tool with "May I…" approval per file.
 
 **Assertions:**

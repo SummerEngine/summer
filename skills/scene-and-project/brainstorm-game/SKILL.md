@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: scene-and-project
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_get_project_context summer_get_scene_tree
+allowed-tools: Read Grep Glob Write Edit summer_get_project_context summer_get_scene_tree summer_read_file summer_write_file
 paths: [".summer/**", "project.godot", "**/*.md"]
 ---
 
@@ -193,16 +193,14 @@ Don't auto-pick. Let them decide.
 
 ## Collaborative protocol
 
-This skill writes one file (`.summer/GameSoul.md`). Always ask before writing. Always show the brief inline before saving so the user can react. See `references/collaborative-protocol.md`.
+This skill writes one file (`.summer/GameSoul.md`). Always ask before writing. Always show the brief inline before saving so the user can react.
 
 ## Want a working starter?
 
-No template — this is a workflow that produces the brief that drives template selection later. Once `.summer/GameSoul.md` exists, `/summer:make-game` can match it against `references/template-registry.md`.
+No template — this is a workflow that produces the brief that drives template selection later. Once `.summer/GameSoul.md` exists, `/summer:make-game` reads it and `summer list templates` shows what's actually available to match against.
 
 ## See also
 
-- `references/collaborative-protocol.md` — "May I write?" pattern
-- `references/template-registry.md` — templates the brief will be matched against later
 - `gameplay-mechanics/design-mechanic/SKILL.md` — design the core loop in detail
 - `level-design/design-level/SKILL.md` — sketch level 1
 - `rendering-and-lighting/art-direction/SKILL.md` — turn the one-phrase look into a full bible

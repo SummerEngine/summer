@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects
 user-invocable: true
-allowed-tools: Read Write Edit summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_save_scene
+allowed-tools: Read Write Edit summer_write_file summer_read_file summer_inspect_node summer_inspect_resource summer_get_script_errors summer_get_debugger_errors summer_play summer_stop
 paths: ["**/*.tscn", "**/*.gd", "**/*.gdshader", "addons/vfx/**"]
 ---
 
@@ -36,11 +36,16 @@ The dissolve shader samples 3D noise per fragment and clips pixels whose noise v
 ### 1. Files to create
 
 ```
+addons/vfx/_building-blocks/noise-3d-fbm.gdshaderinc   # copy from this skill FIRST
 addons/vfx/dissolve/dissolve.gdshader
 addons/vfx/dissolve/dissolve_controller.gd
 ```
 
 No `.tscn` needed — this overrides materials on existing meshes.
+
+`dissolve.gdshader` `#include`s the FBM noise file. A missing include is a hard
+compile error, so copy `_building-blocks/noise-3d-fbm.gdshaderinc` from this skill
+into `res://addons/vfx/_building-blocks/` before writing the shader.
 
 ### 2. Shader code
 
@@ -68,8 +73,16 @@ uniform vec3  noise_offset                            = vec3(0.0);
 uniform bool  use_object_space                        = true;
 
 void fragment() {
-    // Sample noise in object space so the dissolve pattern stays attached to the mesh.
-    vec3 npos = (use_object_space ? (inverse(MODEL_MATRIX) * vec4(VERTEX, 1.0)).xyz : VERTEX) * noise_scale + noise_offset;
+    // In fragment(), VERTEX is in VIEW space — not world, not object. Undo the view
+    // transform first, then the model transform, or neither branch samples where it
+    // claims to (`inverse(MODEL_MATRIX) * vec4(VERTEX, 1.0)` alone is object-space
+    // noise driven by camera-relative coordinates, which slides with the camera).
+    vec3 wpos = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
+    vec3 opos = (inverse(MODEL_MATRIX) * vec4(wpos, 1.0)).xyz;
+
+    // Object space keeps the dissolve pattern attached to the mesh; world space
+    // keeps it fixed in the level and lets the mesh move through it.
+    vec3 npos = (use_object_space ? opos : wpos) * noise_scale + noise_offset;
     float n = fbm3(npos);
 
     // Discard everything below the threshold.
@@ -204,7 +217,15 @@ No new nodes added. The recipe overrides the `material_override` on every `MeshI
 
 ### 5. Wire it in (MCP calls)
 
-This recipe is mostly script-driven, no scene mutation needed. Just create the files (Write tool) and call from gameplay code.
+This recipe is script-driven — no scene mutation. Write the two files with
+`summer_write_file` (one of `create_only` or `expected_sha256` is required), plus the
+`.gdshaderinc`, then call from gameplay code.
+
+```
+summer_write_file(path="res://addons/vfx/_building-blocks/noise-3d-fbm.gdshaderinc", content="<from this skill>", create_only=true)
+summer_write_file(path="res://addons/vfx/dissolve/dissolve.gdshader", content="<section 2>", create_only=true)
+summer_write_file(path="res://addons/vfx/dissolve/dissolve_controller.gd", content="<section 3>", create_only=true)
+```
 
 ```gdscript
 # When the enemy dies:
@@ -225,6 +246,20 @@ DissolveController.dissolve_object(target, 1.2, Color(1, 0.55, 0.1), 6.0, false)
 DissolveController.materialize_object(target, 0.8)
 ```
 
+### 5b. Verify
+
+Both files are compiled code. Check them before claiming the dissolve works.
+
+```
+summer_get_script_errors          # dissolve_controller.gd parsed?
+summer_play
+summer_get_debugger_errors        # shader compile errors surface here at runtime
+summer_stop
+```
+
+A missing `noise-3d-fbm.gdshaderinc` fails the whole shader, and the mesh then
+renders with the fallback material rather than dissolving.
+
 ### 6. Parameters to tune
 
 | Parameter | Range | Effect |
@@ -234,7 +269,7 @@ DissolveController.materialize_object(target, 0.8)
 | `edge_color` | Color | rim glow tint; orange = fire, blue = magic, green = poison, white = holy |
 | `edge_emission` | 0.0–16.0 | rim bloom strength; needs Bloom in WorldEnvironment |
 | `noise_scale` | 0.5–12.0 | small = big patches dissolving; large = fine pixel-grain dust |
-| `use_object_space` | bool | true = pattern attached to mesh; false = pattern stays in world (cool for moving objects) |
+| `use_object_space` | bool | true = pattern attached to mesh; false = pattern stays in world (cool for moving objects). Both branches derive their position from `INV_VIEW_MATRIX * vec4(VERTEX, 1.0)`, because `VERTEX` in `fragment()` is view space |
 
 ## Cookbook — named variants
 
@@ -304,13 +339,15 @@ noise_scale    = 4.0
 - **Dissolving a particle system (e.g., torch flame).** The shader is `spatial`, not `particles`. Stop the particles, don't try to dissolve them.
 - **Forgetting to seed `noise_offset` per instance.** Two enemies dissolving at the same frame use identical patterns → they look like clones. The included controller randomizes per-instance.
 - **Using world-space noise on a moving target.** The dissolve pattern slides over the surface as the mesh moves. Use `use_object_space = true` (default).
+- **Treating `VERTEX` in `fragment()` as world space.** It is view space. Sampling noise from it directly makes the pattern slide as the *camera* moves, and `inverse(MODEL_MATRIX) * vec4(VERTEX, 1.0)` is not object space either. Go through `INV_VIEW_MATRIX` first, as section 2 does.
 - **Skipping the texture inheritance.** The mesh dissolves but goes white because `base_color` defaults to white and no texture is set. The controller pulls from the original `BaseMaterial3D`; if your mesh uses a custom shader, manually wire the textures.
 - **Dissolving a `Skeleton3D` directly.** It's not a mesh — recurse into `MeshInstance3D` children. The controller's `_collect_meshes` does this.
 
 ## Performance notes
 
-- Per fragment: one FBM noise call + one branch. ~0.05 ms per dissolving object at 1080p covering 10% of the screen. Cheap.
-- Multiple meshes on a character (head, body, weapon, cape): each gets its own override. ~5 materials × 0.05 ms = 0.25 ms during the dissolve. Still fine.
+- Per fragment: one FBM noise call (4 octaves, 8 hashes each) + one branch + two 4×4 inversions. Sub-millisecond per dissolving object at 1080p covering 10% of the screen — an order-of-magnitude expectation, not a measurement. Profile if you need a number.
+- Multiple meshes on a character (head, body, weapon, cape): each gets its own override, and the cost scales with the number of materials. Still fine for a handful.
+- `inverse(MODEL_MATRIX)` runs per fragment. If you are dissolving a large screen-filling mesh and profiling says this hurts, hoist the object-space position into a `varying` computed in `vertex()`.
 - `discard` defeats early-Z. For a screen full of dissolving enemies, consider `cull_back` (already enabled) and avoid stacking 20+ dissolves at once.
 - Mobile: drop `noise_scale` to a value the FBM can compute in 1–2 octaves, or replace the `fbm3` include with a single-octave noise.
 
@@ -324,11 +361,16 @@ noise_scale    = 4.0
 
 ## Fallback (no MCP)
 
-VFX is code, no MCP required:
+Section 5 is fully automatable — `summer_write_file` writes all three files and
+`summer_get_script_errors` proves they parsed. Do not hand these steps to the user
+when the MCP tools are available.
 
-1. Create `addons/vfx/dissolve/` and write the two files above.
+Without the MCP connection there is no engine to drive, so the user does it themselves:
+
+1. Create `addons/vfx/_building-blocks/` and `addons/vfx/dissolve/` and write the three files above.
 2. From any gameplay script, call `DissolveController.dissolve_object(target_node)`.
 3. The controller handles material override, texture inheritance, tween, and freeing.
+4. Check the Errors dock — a missing `.gdshaderinc` fails the whole shader.
 
 ## Handoff
 

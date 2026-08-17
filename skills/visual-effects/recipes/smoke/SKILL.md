@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects
 user-invocable: true
-allowed-tools: Read Write Edit summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_save_scene
+allowed-tools: Read Write Edit summer_write_file summer_read_file summer_create_scene summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_inspect_resource summer_save_scene summer_get_script_errors summer_get_debugger_errors summer_play summer_stop
 paths: ["**/*.tscn", "**/*.gd", "**/*.gdshader", "addons/vfx/**"]
 ---
 
@@ -36,10 +36,15 @@ Smoke is the same particle pattern as fire — billboard quads emitted from a sm
 ### 1. Files to create
 
 ```
+addons/vfx/_building-blocks/noise-3d-fbm.gdshaderinc   # copy from this skill FIRST
 addons/vfx/smoke/smoke.gdshader
 addons/vfx/smoke/smoke_controller.gd
 addons/vfx/smoke/smoke.tscn
 ```
+
+`smoke.gdshader` `#include`s the FBM noise file. A missing include is a hard compile
+error, so copy `_building-blocks/noise-3d-fbm.gdshaderinc` from this skill into
+`res://addons/vfx/_building-blocks/` before writing the shader.
 
 ### 2. Shader code
 
@@ -59,20 +64,41 @@ uniform float noise_speed       : hint_range(0.0, 2.0) = 0.5;
 uniform float soft_edge         : hint_range(0.01, 0.5) = 0.30;
 uniform float depth_fade        : hint_range(0.0, 4.0) = 1.0;  // soft against geometry behind
 
+// INSTANCE_CUSTOM is vertex-stage only, so carry what fragment() needs across.
+varying float age;
+varying float seed;
+
 void vertex() {
-    MODELVIEW_MATRIX = VIEW_MATRIX * mat4(
-        INV_VIEW_MATRIX[0],
-        INV_VIEW_MATRIX[1],
-        INV_VIEW_MATRIX[2],
-        MODEL_MATRIX[3]
-    );
+    // Billboard toward the camera, keeping per-particle rotation (INSTANCE_CUSTOM.x)
+    // and per-particle scale. The bare `VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0..2],
+    // MODEL_MATRIX[3])` form throws both away — this mirrors what Godot's own
+    // BILLBOARD_PARTICLES generator emits (scene/resources/material.cpp:1313-1334).
+    mat4 mat_world = mat4(
+        normalize(INV_VIEW_MATRIX[0]),
+        normalize(INV_VIEW_MATRIX[1]),
+        normalize(INV_VIEW_MATRIX[2]),
+        MODEL_MATRIX[3]);
+    mat_world = mat_world * mat4(
+        vec4(cos(INSTANCE_CUSTOM.x), -sin(INSTANCE_CUSTOM.x), 0.0, 0.0),
+        vec4(sin(INSTANCE_CUSTOM.x),  cos(INSTANCE_CUSTOM.x), 0.0, 0.0),
+        vec4(0.0, 0.0, 1.0, 0.0),
+        vec4(0.0, 0.0, 0.0, 1.0));
+    MODELVIEW_MATRIX = VIEW_MATRIX * mat_world * mat4(
+        vec4(length(MODEL_MATRIX[0].xyz), 0.0, 0.0, 0.0),
+        vec4(0.0, length(MODEL_MATRIX[1].xyz), 0.0, 0.0),
+        vec4(0.0, 0.0, length(MODEL_MATRIX[2].xyz), 0.0),
+        vec4(0.0, 0.0, 0.0, 1.0));
+    MODELVIEW_NORMAL_MATRIX = mat3(MODELVIEW_MATRIX);
+
+    // CUSTOM.x is the rotation angle, NOT the age. The age lives in CUSTOM.y
+    // (it counts up by DELTA/LIFETIME) and CUSTOM.w holds the lifetime scale.
+    age  = clamp(INSTANCE_CUSTOM.y / max(INSTANCE_CUSTOM.w, 0.0001), 0.0, 1.0);
+    seed = fract(sin(float(INSTANCE_ID) * 12.9898) * 43758.5453);
 }
 
 void fragment() {
-    float age = CUSTOM.x;
-
     // Distort UVs with slow noise.
-    vec3 np = vec3(UV * noise_scale, TIME * noise_speed + CUSTOM.y * 10.0);
+    vec3 np = vec3(UV * noise_scale, TIME * noise_speed + seed * 10.0);
     float n = fbm3(np);
 
     // Soft round mask, modulated by noise so the silhouette is wispy not circular.
@@ -162,6 +188,10 @@ func _apply() -> void:
 
 func _make_scale_curve(end_mult: float) -> CurveTexture:
     var c := Curve.new()
+    # Curve clamps every sample to max_value, which defaults to 1.0. Without this
+    # line every end multiplier above 1.0 is silently flattened back to 1.0 and the
+    # whole cookbook's growth numbers do nothing.
+    c.max_value = maxf(1.0, end_mult)
     c.add_point(Vector2(0.0, 0.4))
     c.add_point(Vector2(0.3, 1.0))
     c.add_point(Vector2(1.0, end_mult))
@@ -188,30 +218,52 @@ func stop_smoke(fade_seconds: float = 1.5) -> void:
 ```
 GPUParticles3D ("Smoke") [script: smoke_controller.gd]
   ├── process_material: ParticleProcessMaterial
-  └── draw_pass_1: QuadMesh (size 1.0 × 1.0)
-        └── surface_material_override[0]: ShaderMaterial (shader: smoke.gdshader)
+  └── draw_pass_1: QuadMesh (size Vector2(1, 1))
+        └── material: ShaderMaterial (shader: smoke.gdshader)
 ```
 
+`process_material` and `draw_pass_1` are resource properties on the one node, not
+child nodes, and `ParticleProcessMaterial` is a `Material` — you cannot
+`summer_add_node` it.
+
 ### 5. Wire it in (MCP calls)
+
+Every scene-mutating call takes an explicit `scenePath`. `summer_set_prop` uses `key`
+(not `property`) and only accepts a string, number, or boolean.
 
 For chimney smoke or fire pairing, parent the Smoke just above the heat source:
 
 ```
-summer_add_node(parent="./World/Cottage/Chimney", type="GPUParticles3D", name="Smoke")
-summer_set_prop(path="./World/Cottage/Chimney/Smoke", property="script", value="res://addons/vfx/smoke/smoke_controller.gd")
-summer_set_prop(path="./World/Cottage/Chimney/Smoke", property="position", value="Vector3(0, 0.3, 0)")
-summer_set_prop(path="./World/Cottage/Chimney/Smoke", property="rise_height", value=4.0)
-summer_set_prop(path="./World/Cottage/Chimney/Smoke", property="particle_count", value=48)
-summer_set_prop(path="./World/Cottage/Chimney/Smoke", property="wind_direction", value="Vector3(0.4, 0, 0.1)")
-summer_save_scene
+summer_write_file(path="res://addons/vfx/_building-blocks/noise-3d-fbm.gdshaderinc", content="<from this skill>", create_only=true)
+summer_write_file(path="res://addons/vfx/smoke/smoke.gdshader", content="<section 2>", create_only=true)
+summer_write_file(path="res://addons/vfx/smoke/smoke_controller.gd", content="<section 3>", create_only=true)
+
+summer_add_node(scenePath="res://main.tscn", parent="./World/Cottage/Chimney", type="GPUParticles3D", name="Smoke")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Cottage/Chimney/Smoke", key="script", value="res://addons/vfx/smoke/smoke_controller.gd")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Cottage/Chimney/Smoke", key="position", value="Vector3(0, 0.3, 0)")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Cottage/Chimney/Smoke", key="rise_height", value=4.0)
+summer_set_prop(scenePath="res://main.tscn", path="./World/Cottage/Chimney/Smoke", key="particle_count", value=48)
+summer_set_prop(scenePath="res://main.tscn", path="./World/Cottage/Chimney/Smoke", key="wind_direction", value="Vector3(0.4, 0, 0.1)")
+summer_save_scene(scenePath="res://main.tscn")
 ```
 
 For pairing with a fire:
 
 ```
-summer_add_node(parent="./World/Campfire", type="GPUParticles3D", name="Smoke")
-summer_set_prop(path="./World/Campfire/Smoke", property="position", value="Vector3(0, 1.5, 0)")  # above flame top
-summer_set_prop(path="./World/Campfire/Smoke", property="rise_height", value=3.0)
+summer_add_node(scenePath="res://main.tscn", parent="./World/Campfire", type="GPUParticles3D", name="Smoke")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Campfire/Smoke", key="position", value="Vector3(0, 1.5, 0)")  # above flame top
+summer_set_prop(scenePath="res://main.tscn", path="./World/Campfire/Smoke", key="rise_height", value=3.0)
+```
+
+### 5b. Verify
+
+The shader and the controller are compiled code. Check them before tuning anything.
+
+```
+summer_get_script_errors          # smoke_controller.gd parsed?
+summer_play
+summer_get_debugger_errors        # shader compile errors surface here at runtime
+summer_stop
 ```
 
 For a rocket trail (smoke follows the rocket):
@@ -323,13 +375,15 @@ color_old      = Color(0.65, 0.68, 0.75)
 - **Forgetting `cull_disabled`.** Billboarded quads disappear at certain camera angles otherwise.
 - **`puff_lifetime < 1.0`.** Smoke needs time to spread out and dilute. Short-lifetime smoke looks like spray.
 - **No scale curve.** Smoke that doesn't grow looks like a row of identical balls. The controller's `_make_scale_curve` ramps from 0.4× → 1.0× → end_mult.
+- **A scale curve built without raising `Curve.max_value`.** `Curve` defaults to `max_value = 1.0` and silently clamps, so every `end_scale_multiplier` above 1.0 is inert and the smoke never grows. Set `c.max_value` before adding the points.
+- **Reading `CUSTOM` in `fragment()`.** In a `spatial` shader `CUSTOM` does not exist at all ("SHADER ERROR: Unknown identifier in expression: 'CUSTOM'"). The particle built-in is `INSTANCE_CUSTOM`, it is vertex-stage only, and `INSTANCE_CUSTOM.x` is the rotation angle — the age is in `.y`.
 - **`emission_energy > 0` on the shader's quad material.** Smoke isn't bright. Keep `unshaded` and let `ALBEDO` carry the look. (The shader as written has no EMISSION line — correct.)
 - **Smoke local-space when paired with a moving emitter (rocket).** Set `local_coords = false` so puffs stay where they were emitted.
-- **Skipping the angular velocity.** Static-rotation smoke looks weird. The controller adds ±25 deg/s for organic tumbling.
+- **Skipping the angular velocity.** Static-rotation smoke looks weird. The controller adds ±25 deg/s for organic tumbling — but that only reaches the screen if the vertex billboard applies the `INSTANCE_CUSTOM.x` rotation, which is why section 2 uses the full block rather than the bare `VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0..2], MODEL_MATRIX[3])` form.
 
 ## Performance notes
 
-- Default 48 particles per smoke source: ~0.03 ms on desktop.
+- Default 48 particles per smoke source is sub-millisecond on desktop. That is an order-of-magnitude expectation, not a measurement — profile your own scene.
 - Heavy `density` at high count (128 particles, density 0.85) gets fillrate-bound — overdraw on a screen full of smoke. Budget ~256 smoke particles total visible at once.
 - Mobile: drop default to 24, drop `puff_lifetime` to 2.5, drop `density` to 0.35.
 - LOD: scale `amount_ratio` by `clamp(1.5 - dist_to_camera / 40.0, 0.10, 1.0)` for distant chimneys.
@@ -356,13 +410,20 @@ ALPHA *= clamp(d * depth_fade, 0.0, 1.0);
 
 ## Fallback (no MCP)
 
-VFX is code, no MCP required:
+Section 5 is fully automatable — `summer_write_file` writes the shader and the
+controller, `summer_create_scene` + `summer_add_node` + `summer_set_prop` +
+`summer_save_scene` build and save `smoke.tscn`. Do not hand these steps to the user
+when the MCP tools are available.
 
-1. Create `addons/vfx/smoke/` with the three files.
-2. In Godot, add a `GPUParticles3D`, attach `smoke_controller.gd`.
+Without the MCP connection there is no engine to drive, so the user does it
+manually in Summer Engine:
+
+1. Create `addons/vfx/_building-blocks/` and `addons/vfx/smoke/` with the files above.
+2. Add a `GPUParticles3D`, attach `smoke_controller.gd`.
 3. Set `process_material` to a new `ParticleProcessMaterial` (script configures it).
-4. Set `draw_pass_1` to a new `QuadMesh` with `surface_material_override[0]` = `ShaderMaterial(smoke.gdshader)`.
+4. Set `draw_pass_1` to a new `QuadMesh` with its `material` = `ShaderMaterial(smoke.gdshader)`.
 5. Save as `smoke.tscn`; instantiate at every smoke source.
+6. Check the Errors dock — a missing `.gdshaderinc` fails the whole shader.
 
 ## Handoff
 

@@ -29,12 +29,9 @@ Static analysis is necessary but never sufficient for gameplay features. A clean
 NO "FEATURE SHIPPED" CLAIM WITHOUT A PLAYED WALKTHROUGH
 ```
 
-If you have not, in this session, called `summer_play` and either:
+If you have not, in this session, driven the feature and read back what happened, you cannot claim it works.
 
-1. Walked the feature yourself via MCP-driven repros where possible, OR
-2. Asked the user to walk it and confirmed the result via `summer_get_console` / `summer_get_debugger_errors`
-
-— then you cannot claim the feature works.
+**You walk the feature. Not the user.** A `RunVerification` probe presses your game's real inputs, reads state back across frames, and saves real rendered frames. Handing the walkthrough to the user is a last resort for things a probe genuinely cannot judge — see [What only a human can answer](#what-only-a-human-can-answer) — not the default.
 
 ## The Loop
 
@@ -51,7 +48,57 @@ Before pressing play, write down — in one or two sentences — what "feature w
 
 If you cannot describe the golden path in one sentence, you do not understand the feature well enough to verify it. Ask the user.
 
-### 2. Press play
+### 2. Walk the golden path with a probe
+
+Write the golden path as a `RunVerification` probe and send it as a raw op through `summer_batch`. The engine spawns a hidden, disposable game instance positioned offscreen, runs your GDScript, writes `results.json` plus any frames you saved, and kills the instance. It never touches the user's open editor, and nothing appears on their screen.
+
+```
+summer_batch ops:[{
+  "op": "RunVerification",
+  "probe_source": "<your GDScript>",
+  "max_seconds": 20
+}]
+```
+
+A probe extends `SummerProbeBase` and has: `report(key, value)`, `save_frame(name)`, `dump_tree()`, `press(action, hold_ms)`, `key(keycode, hold_ms)`, `finish()`.
+
+```gdscript
+extends SummerProbeBase
+
+func _ready() -> void:
+    await super._ready()
+    for i in 20:
+        await get_tree().physics_frame          # let the scene settle
+
+    var player := get_tree().current_scene.get_node("Player")
+    var start: Vector2 = player.position
+    save_frame("00_start")
+
+    await press("move_right", 500)              # await, or the hold never elapses
+    await get_tree().physics_frame
+    report("walked_right", player.position.x > start.x + 50)
+    save_frame("01_after_walk")
+
+    var y_before: float = player.position.y
+    await press("jump", 50)
+    var apex := y_before
+    for i in 25:
+        await get_tree().physics_frame
+        apex = min(apex, player.position.y)
+    report("jumped", apex < y_before - 30)
+    save_frame("02_after_jump")
+
+    finish()
+```
+
+Four rules the probe API will punish you for breaking:
+
+- **`press()` and `key()` are coroutines.** `await press("jump", 50)` — calling them bare starts the press and never releases it. You also cannot store one in a variable and await it later; it returns void.
+- **Assert on physics-frame-derived state.** `await get_tree().physics_frame` N times, then read positions. That is reproducible run to run.
+- **Assert inequalities, never exact values.** `press(hold_ms)` waits on the wall clock, so the number of physics frames a key is held drifts between runs — the same walk lands on x=245 one run and x=250 the next. `position.x > start.x + 50` is a real assertion; `position.x == 250.0` is a flaky test you wrote yourself.
+- **The global RNG is not seeded.** Anything downstream of `randf()` differs every run. Assert ranges, or seed it yourself in the probe.
+
+If the probe cannot express the check — no `SummerProbeBase` in this build, or a genuinely out-of-process feature — fall back to `summer_play` + console reads:
 
 ```
   summer_clear_console
@@ -61,14 +108,9 @@ If you cannot describe the golden path in one sentence, you do not understand th
 
 `summer_clear_console` first so the buffer is not polluted by a previous session's errors. If you skip this, you will chase ghost errors that have nothing to do with the current feature.
 
-### 3. Walk the golden path
+### 3. Read back what actually happened
 
-The MCP cannot simulate keyboard input, mouse motion, or controller. So either:
-
-- **The user plays.** Ask them to walk the exact golden path you defined. Wait for their confirmation that they did. Then check state.
-- **You drive via scene mutation.** For features that can be triggered through `summer_set_prop` or function calls exposed to the editor (e.g. autoload methods), drive them programmatically. Be honest about which path you took.
-
-After the walkthrough:
+The probe's `results.json` is your primary evidence. Then check the editor's own view:
 
 ```
   summer_get_console            (look for unexpected prints, warnings)
@@ -76,7 +118,19 @@ After the walkthrough:
   summer_get_diagnostics        (overall counts)
 ```
 
+A probe also collects engine errors itself — `results.json` carries `errors_seen`. Read it. An empty `reports` block with `finished: false` means the probe hit its `max_seconds` ceiling before calling `finish()`, which is a failure, not a pass.
+
 If anything is non-zero or unexpected, the feature is not done. Go to `summer:debug`.
+
+### What only a human can answer
+
+A probe reports facts. It cannot hold an opinion. Ask the user only when the question is genuinely experiential:
+
+- **Does it feel right?** Floaty jumps, sluggish input, mushy hit feedback — see `summer:debugging-game-feel`.
+- **Does it look good?** Composition, colour, readability. A probe can prove a light exists and prove the frame is not black; it cannot tell you the scene is ugly.
+- **Is this fun?** Not a measurable property.
+
+"I cannot simulate input" is not on that list, and has not been true since `RunVerification` shipped. If you catch yourself asking the user to press a key, write the probe instead.
 
 ### 4. Probe the edges
 
@@ -120,13 +174,15 @@ The console catches "looks right but isn't right" cases — silent errors, depre
 
 ## When to record video vs when console+diagnostics is enough
 
-Console + diagnostics + your walkthrough description is usually enough. Ask the user for a video or screenshot when:
+Your probe already produces the visual record: `save_frame()` writes a real rendered JPEG at each step, and a sequence of them across a movement is a flipbook of the feature happening. **You are not the only one who cannot see the game — until you save frames, nobody can.** Save them at the interesting moments and read them back.
 
-- The feature is **visual** (camera, lighting, particles, animation, UI layout) and the user is the only one who can see the result.
+Ask the user for a video or a live look only when:
+
 - The feature **feels wrong** — see `summer:debugging-game-feel`. Frame counts and console output cannot capture "the jump feels floaty."
-- The bug is **non-deterministic** — sometimes-works features need a recording to share with anyone diagnosing later.
+- The bug is **non-deterministic** and your probe cannot reproduce it after several attempts.
+- The judgement is aesthetic — see [What only a human can answer](#what-only-a-human-can-answer).
 
-Don't ask for video reflexively. Most features can be verified through `summer_get_console` + a "did the golden path work?" question. Cost-aware.
+Don't ask reflexively. A saved frame sequence answers most "did it visually work" questions without involving the user at all.
 
 ## Red Flags — STOP
 
@@ -137,10 +193,15 @@ Don't ask for video reflexively. Most features can be verified through `summer_g
 | "User said make this — I'll move on once it builds" | The user wants the feature to work, not to build. |
 | "It would take too long to play" | Playtest takes 60 seconds. Shipping a broken feature costs hours. |
 | "The unit test passes" | Unit tests cover code paths, not gameplay sequences. |
-| "I already played it in a previous session" | State changed. Press play in this session. |
+| "I already played it in a previous session" | State changed. Verify in this session. |
 | "I'll let the user catch any issues" | That is the user's job description for a non-AI engineer. Yours is to ship working features. |
 | Skipping `summer_clear_console` before `summer_play` | You will chase last session's errors. |
 | Skipping `summer_get_console` because diagnostics looked fine | Silent warnings and signal misfires hide there. |
+| "The MCP can't simulate input, so the user has to test it" | False. `RunVerification` presses actions and keys. Write the probe. |
+| "I'll ask the user to press jump and tell me what happened" | You can press jump. They should not have to QA your work. |
+| Probe returned `finished: false`, you called it a pass | It hit `max_seconds` before `finish()`. That is a failure. |
+| Asserting `position.x == 250.0` in a probe | Hold time is wall-clock. Assert `> start.x + 50`. |
+| `press("jump", 50)` without `await` | It is a coroutine. The key is never released. |
 
 ## Rationalization Prevention
 
@@ -154,10 +215,22 @@ Don't ask for video reflexively. Most features can be verified through `summer_g
 
 ## When the engine isn't running
 
-If `summer_play` returns "Summer Engine is not running":
+`RunVerification` is dispatched by the editor, so it needs the editor running. **The verify instance itself does not.** You can spawn exactly the same probe runtime straight from your shell, with no editor at all:
 
-1. Tell the user: `summer run` to start it.
-2. Do not claim the feature is verified from static analysis alone. Say: "Code compiles and looks correct, but I cannot playtest until the engine is running."
+```bash
+/Applications/Summer.app/Contents/MacOS/Summer \
+  --path <project-dir> \
+  --summer-verify <abs-path-to-probe.gd> \
+  --summer-verify-out <abs-out-dir> \
+  --summer-verify-max 30
+```
+
+Then read `<out-dir>/results.json` and the JPEGs beside it. The probe must extend the base class — copy `summer_probe_base.gd` into the project and `extends "res://summer_probe_base.gd"`, or use the project's `tests/autopilot/` scaffold if it has one. See `summer:headless-scripting` for the full pattern and its traps.
+
+So if `summer_play` returns "Summer Engine is not running":
+
+1. Run the probe directly from the shell as above. That is a real playtest.
+2. Only if that is also impossible: tell the user `summer run` to start the editor, and say plainly "code compiles and looks correct, but I have not played it" — do not claim verification from static analysis alone.
 3. When the engine comes back, run the loop.
 
 ## The Bottom Line

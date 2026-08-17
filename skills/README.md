@@ -70,7 +70,7 @@ Cross-portable. Cursor / Codex / Windsurf understand the same SKILL.md.
 
 1. **SKILL.md ≤ 500 lines.** Push detail into `references/`. Progressive disclosure.
 2. **MCP-preferred + file-edit-fallback.** Every code-touching skill must show both paths so the skill works without Summer MCP installed.
-3. **Collaborative protocol.** "May I write…?" before any user-visible mutation. See `references/collaborative-protocol.md`.
+3. **Collaborative protocol.** "May I write…?" before any user-visible mutation. See `../references/collaborative-protocol.md`.
 4. **Template cross-link.** When a working starter exists, link via `template-id` and the section "Want a working starter?".
 5. **Test spec.** Every non-`_meta` skill ships `tests/spec.md` with at least one Test Case.
 

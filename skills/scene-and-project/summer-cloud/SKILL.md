@@ -89,4 +89,4 @@ If the MCP tools are unavailable, run the `summer cloud ...` CLI commands direct
 
 ## Collaborative protocol
 
-Push and pull move bytes and can replace files. Always run `summer cloud status` and say what will move before you push or pull: "Push will upload 4 files and delete 0. OK to push?" For any gated deletion, state the exact count and get explicit confirmation before setting `confirmDeletes`. See `../../references/collaborative-protocol.md`.
+Push and pull move bytes and can replace files. Always run `summer cloud status` and say what will move before you push or pull: "Push will upload 4 files and delete 0. OK to push?" For any gated deletion, state the exact count and get explicit confirmation before setting `confirmDeletes`.

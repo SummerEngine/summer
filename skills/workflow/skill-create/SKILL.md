@@ -15,9 +15,9 @@ allowed-tools: Read Write Glob Grep
 
 Ask the user:
 - **Name** (kebab-case, ≤ 64 chars). Example: `state-machine-patterns`.
-- **Category** (one of the 20 in `SKILL_CATEGORIES` at `src/lib/skills-registry.ts`). Example: `scripting-patterns`.
+- **Category** (must be one of the values in the `SKILL_CATEGORIES` array at `src/lib/skills-registry.ts` — read it, do not guess). Example: `scripting-patterns`.
 - **One-sentence description** for the frontmatter.
-- **Template-id** (optional). Lookup against `references/template-registry.md`.
+- **Template-id** (optional). Lookup against `../../../references/template-registry.md`.
 
 ### 2. Create the folder
 
@@ -80,13 +80,13 @@ May I <action>?
 
 → **template-id**: `<template-id>`
 → **Repo**: <github URL from references/template-registry.md>
-→ **Bootstrap**: `summer template clone <template-id> my-game`
+→ **Bootstrap**: `summer create <template-id> my-game` (see `summer list templates` for the slugs)
 
 ## See also
 
-- `references/godot-version.md`
-- `references/mcp-tools-reference.md`
-- `references/gd-style.md`
+- `../../../references/godot-version.md`
+- `../../../references/mcp-tools-reference.md`
+- `../../../references/gd-style.md`
 - (other relevant skills)
 ```
 
@@ -149,5 +149,5 @@ This skill writes files (the new skill folder + plugin manifest update + TS regi
 
 ## See also
 
-- `references/collaborative-protocol.md`
+- `../../../references/collaborative-protocol.md`
 - `workflow/skill-test/SKILL.md`

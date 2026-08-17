@@ -332,7 +332,9 @@ Known models:
   - "nano-banana-2" (default) — High quality, supports txt2img and img2img
   - "gemini-flash" — Google Gemini 2.5 Flash, fast
   - "flux-2" — FLUX.2, good for specific styles
-  - Any fal-ai model ID works as a passthrough
+
+Model ids are an ALLOWLIST, not a passthrough. An unrecognised id is rejected
+with 400 and the response lists every accepted id — it is not silently swapped.
 
 Two modes:
   - txt2img (default): just pass prompt
@@ -453,8 +455,12 @@ Capabilities:
   - "music" — Generate background music. Requires 'prompt'. Optional 'durationSeconds'.
   - "text_to_dialogue" — Multi-voice dialogue. Requires 'inputs' array of {text, voiceId} objects.
 
-The 'options' object is passed directly to ElevenLabs, so you can set any
-provider-specific parameter: stability, similarity_boost, style, speed, etc.
+The 'options' object is spread into the ElevenLabs SDK call at the TOP level, so
+only keys the SDK accepts there have any effect. Voice tuning is NOT top-level and
+is NOT snake_case: pass it as options.voiceSettings with camelCase keys —
+{ voiceSettings: { stability, similarityBoost, style, speed, useSpeakerBoost } }.
+Flat snake_case keys are accepted by the schema, silently dropped by the SDK, and
+return a normal 200 with the setting ignored.
 
 Returns the generated audio URL and asset metadata.
 Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
@@ -490,7 +496,11 @@ Requires authentication: run 'npx summer-engine login' first.`,
       options: z
         .record(z.any())
         .optional()
-        .describe("Provider-specific params (stability, similarity_boost, style, speed, etc.)"),
+        .describe(
+          "Provider params, spread at the SDK's top level. Voice tuning goes in " +
+          "options.voiceSettings with camelCase keys (stability, similarityBoost, " +
+          "style, speed, useSpeakerBoost); flat snake_case is silently ignored."
+        ),
     },
     async ({ capability, text, prompt, voiceId, modelId, durationSeconds, inputs, options }) => {
       const body: Record<string, any> = { capability };
@@ -523,7 +533,9 @@ Available models:
   - "hunyuan" (default) — Hunyuan 3D v3.1 Pro, high quality
   - "trellis" — Trellis 2, fast and detailed
   - "meshy" — Meshy, legacy option
-  - Any fal-ai model ID works as a passthrough
+
+Model ids are an ALLOWLIST, not a passthrough. An unrecognised id is rejected
+with 400 listing the accepted ids.
 
 Available kinds:
   - "text-to-3d" (default) — From text description. Requires 'prompt'.
@@ -830,7 +842,7 @@ Cost: ~$0.10 per clip. Confirm with user before spending.
 
 Custom prompt-driven motion is on the roadmap; not yet shipped. For one-off
 signature moves not on the curated list, fall back to hand-authoring in the
-Godot editor or importing from Mixamo.
+Summer Engine or importing from Mixamo.
 
 Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
 Requires authentication: run 'npx summer-engine login' first.`,

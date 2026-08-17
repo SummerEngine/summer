@@ -5,13 +5,13 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects
 user-invocable: true
-allowed-tools: Read Write Edit summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_save_scene
+allowed-tools: Read Write Edit summer_write_file summer_read_file summer_create_scene summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_inspect_resource summer_save_scene summer_get_script_errors summer_get_debugger_errors summer_play summer_stop
 paths: ["**/*.tscn", "**/*.gd", "**/*.gdshader", "addons/vfx/**"]
 ---
 
 # water-ripple — Impact Ripples on a Water Plane
 
-Concentric expanding rings on a water surface, normal-distorted so the ripple actually refracts the reflection. The shader keeps a small ring buffer of (origin, time, amplitude) tuples and renders all of them simultaneously over a base water plane. GDScript exposes `add_ripple(world_pos, amplitude)` so any system (rain, footsteps, projectile impacts, fish) can spawn one with a single call. Tested in BotW-style stylized water and in flat-puddle FPS scenes.
+Concentric expanding rings on a water surface, normal-distorted so the ripple actually refracts the reflection. The shader keeps a small ring buffer of (origin, time, amplitude) tuples and renders all of them simultaneously over a base water plane. GDScript exposes `add_ripple(world_pos, amplitude)` so any system (rain, footsteps, projectile impacts, fish) can spawn one with a single call.
 
 ## When to use
 
@@ -60,6 +60,12 @@ uniform sampler2D normal_map : hint_normal;
 // Per-ripple data: (origin.xz, start_time, amplitude * (1 if active else 0))
 uniform vec4 ripples[MAX_RIPPLES];
 
+// Ripple ages run off the controller's own clock, pushed here every frame. They
+// cannot run off TIME: shader TIME wraps at
+// rendering/limits/time/time_rollover_secs (3600 by default, verified), which
+// would send every live ripple to a negative age once an hour of uptime.
+uniform float now = 0.0;
+
 uniform float ripple_speed       : hint_range(0.5, 8.0)  = 2.5;   // m/s expansion
 uniform float ripple_wavelength  : hint_range(0.05, 1.0) = 0.20;  // distance between crests
 uniform float ripple_lifetime    : hint_range(0.5, 6.0)  = 2.5;   // seconds visible
@@ -72,7 +78,7 @@ void vertex() {
     for (int i = 0; i < MAX_RIPPLES; i++) {
         vec4 r = ripples[i];
         if (r.w <= 0.0) continue;
-        float age = TIME - r.z;
+        float age = now - r.z;
         if (age < 0.0 || age > ripple_lifetime) continue;
         float dist = length(wpos.xz - r.xy);
         float front = age * ripple_speed;
@@ -95,7 +101,7 @@ void fragment() {
     for (int i = 0; i < MAX_RIPPLES; i++) {
         vec4 r = ripples[i];
         if (r.w <= 0.0) continue;
-        float age = TIME - r.z;
+        float age = now - r.z;
         if (age < 0.0 || age > ripple_lifetime) continue;
         vec2 d = wpos.xz - r.xy;
         float dist = length(d);
@@ -108,7 +114,11 @@ void fragment() {
         ripple_glow += ring * fade * r.w * 0.5;
     }
 
-    NORMAL_MAP = normalize(base_n + vec3(ripple_n.xy, 0.0));
+    // NORMAL_MAP is decoded by the engine (scene_forward_clustered.glsl:1427 —
+    // `normal_map.xy = normal_map.xy * 2.0 - 1.0`), so hand it the RAW [0,1] texel
+    // encoding. Assigning an already-decoded +/-1 vector makes a flat surface read
+    // as permanent maximum tilt.
+    NORMAL_MAP = normalize(base_n + vec3(ripple_n.xy, 0.0)) * 0.5 + 0.5;
     NORMAL_MAP_DEPTH = 0.6;
 
     // Fresnel-tinted color.
@@ -142,6 +152,7 @@ const MAX_RIPPLES := 16
 var _ripples: Array[Vector4] = []
 var _next_slot: int = 0
 var _mat: ShaderMaterial
+var _time: float = 0.0
 
 func _ready() -> void:
     _ripples.resize(MAX_RIPPLES)
@@ -168,21 +179,33 @@ func _apply() -> void:
 ## Spawn a ripple at a world position.
 ##   amplitude: 0..1 (raindrop ~0.2, footstep ~0.5, body splash ~1.0)
 func add_ripple(world_pos: Vector3, amplitude: float = 0.5) -> void:
-    var local := global_transform.affine_inverse() * world_pos
-    var t := float(Time.get_ticks_msec()) / 1000.0 - _shader_time_origin()
-    _ripples[_next_slot] = Vector4(world_pos.x, world_pos.z, t, clamp(amplitude, 0.0, 1.0))
+    # Stamp with our own clock, not Time.get_ticks_msec(): the shader compares
+    # against the same `now` uniform, so the two only line up if one source drives both.
+    _ripples[_next_slot] = Vector4(world_pos.x, world_pos.z, _time, clamp(amplitude, 0.0, 1.0))
     _next_slot = (_next_slot + 1) % MAX_RIPPLES
     _push()
+
+## True when `world_pos` is over this surface (XZ against the mesh's local AABB).
+## Use this rather than a containment method on the caller — there isn't one.
+func contains_point(world_pos: Vector3) -> bool:
+    if mesh == null:
+        return false
+    var local := to_local(world_pos)
+    var box := mesh.get_aabb()
+    return local.x >= box.position.x and local.x <= box.end.x \
+        and local.z >= box.position.z and local.z <= box.end.z
 
 func _push() -> void:
     if _mat == null: return
     _mat.set_shader_parameter("ripples", _ripples)
 
-func _shader_time_origin() -> float:
-    # Shader's TIME starts at scene load; align our timestamps to it.
-    return 0.0
-
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+    # Drive ripple age from this clock and push it every frame. Using the shader's
+    # TIME instead would silently kill every ripple after
+    # rendering/limits/time/time_rollover_secs (3600 s default) of uptime.
+    _time += delta
+    if _mat:
+        _mat.set_shader_parameter("now", _time)
     # Re-push so editor updates pick up changes; cheap.
     if Engine.is_editor_hint():
         _push()
@@ -198,20 +221,48 @@ MeshInstance3D ("Water") [script: water_ripple_surface.gd]
 
 ### 5. Wire it in (MCP calls)
 
+Every scene-mutating call takes an explicit `scenePath`. `summer_set_prop` uses `key`
+(not `property`); `summer_set_resource_property` always needs a `subProperty` and is
+for reaching *into* a resource, not for assigning one.
+
 ```
-summer_add_node(parent="./World", type="MeshInstance3D", name="Puddle")
-summer_set_prop(path="./World/Puddle", property="script", value="res://addons/vfx/water-ripple/water_ripple_surface.gd")
-summer_set_prop(path="./World/Puddle", property="position", value="Vector3(0, 0.01, 0)")
-summer_set_resource_property(nodePath="./World/Puddle", resourceProperty="mesh", value="res://addons/vfx/water-ripple/plane.tres")
-summer_set_resource_property(nodePath="./World/Puddle", resourceProperty="normal_texture", value="res://addons/vfx/water-ripple/water_normals.png")
-summer_save_scene
+summer_write_file(path="res://addons/vfx/water-ripple/water_ripple.gdshader", content="<section 2>", create_only=true)
+summer_write_file(path="res://addons/vfx/water-ripple/water_ripple_surface.gd", content="<section 3>", create_only=true)
+
+summer_add_node(scenePath="res://main.tscn", parent="./World", type="MeshInstance3D", name="Puddle")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Puddle", key="script", value="res://addons/vfx/water-ripple/water_ripple_surface.gd")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Puddle", key="position", value="Vector3(0, 0.01, 0)")
+
+# Whole resources are assigned by path with summer_set_prop.
+summer_set_prop(scenePath="res://main.tscn", path="./World/Puddle", key="mesh", value="res://addons/vfx/water-ripple/plane.tres")
+# `normal_texture` is an exported script property on the controller, not a
+# MeshInstance3D property — MeshInstance3D has no `normal_texture`.
+summer_set_prop(scenePath="res://main.tscn", path="./World/Puddle", key="normal_texture", value="res://addons/vfx/water-ripple/water_normals.png")
+
+# subProperty is required — this is how you reach into the PlaneMesh itself.
+summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/Puddle", resourceProperty="mesh", subProperty="subdivide_width", value=32)
+summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/Puddle", resourceProperty="mesh", subProperty="subdivide_depth", value=32)
+
+summer_save_scene(scenePath="res://main.tscn")
+```
+
+### 5b. Verify
+
+The shader and the controller are compiled code, and the controller `preload`s the
+shader — a shader that failed to write takes the script down at parse time.
+
+```
+summer_get_script_errors          # water_ripple_surface.gd parsed?
+summer_play
+summer_get_debugger_errors        # shader compile errors surface here at runtime
+summer_stop
 ```
 
 Then trigger ripples from any system. Footstep:
 
 ```gdscript
 # In your character controller's footstep callback:
-if puddle and puddle.is_in_water(global_position):
+if puddle and puddle.contains_point(global_position):
     puddle.add_ripple(global_position, 0.5)
 ```
 
@@ -295,13 +346,15 @@ ripple_wavelength= 0.40
 - **Spawning more than 16 ripples per surface.** The shader has a fixed array. Older ripples get overwritten — fine for rain (they were fading anyway), bad if you spawn 50 in one frame. Either raise `MAX_RIPPLES` (and the GLSL `MAX_RIPPLES`) together, or throttle spawns.
 - **Ripple position in local instead of world space.** The shader expects world XZ. Always convert in the GDScript before pushing.
 - **No normal map assigned.** The surface looks like flat-shaded plastic. Always assign a tileable water normals texture (any blue noise normals will do).
+- **Writing a decoded ±1 vector into `NORMAL_MAP`.** The engine decodes it again (`normal_map.xy = normal_map.xy * 2.0 - 1.0`), so a flat surface reads as permanent maximum tilt. Re-encode with `* 0.5 + 0.5` before assigning, as section 2 does.
+- **Timing ripples against shader `TIME`.** `TIME` wraps at `rendering/limits/time/time_rollover_secs` (3600 s default) and is not `Time.get_ticks_msec() / 1000`. Push your own accumulated clock as a uniform and compare against that; otherwise every ripple silently vanishes after an hour of uptime.
 - **PlaneMesh too low-res.** The vertex displacement needs ~2–4 verts per meter or the silhouette wobble looks blocky. Use `subdivide_width = 32, subdivide_depth = 32` minimum on a 10×10 plane.
 - **`depth_draw_disabled` on the water material.** You'll see the bottom of the puddle through the water at every angle. Use `depth_draw_opaque`.
 - **Triggering ripples in `_process` without spacing.** Spamming 60/sec floods the buffer. Throttle to ~5 ripples/sec for rain unless tuned.
 
 ## Performance notes
 
-- Cost is O(MAX_RIPPLES × pixels_drawn × 2). With 16 ripples on a 5×5 m puddle visible at 1080p: ~0.15 ms. Cheap.
+- Cost is O(MAX_RIPPLES × pixels_drawn) in the fragment loop plus O(MAX_RIPPLES × verts) in the vertex loop. 16 ripples on a 5×5 m puddle at 1080p is cheap — an order-of-magnitude expectation, not a measurement. Profile if you need a number.
 - The vertex displacement loop runs per vertex; raising plane subdivision past 64 starts to hurt. 32×32 is plenty.
 - For lakes (large planes), don't apply this shader to the entire lake — split the lake into chunks and only apply ripples to the chunk near impacts. Or use a `Decal` projection instead (see edge cases).
 - Mobile: drop `MAX_RIPPLES` to 8, disable vertex displacement (set `ripple_height = 0` and skip the vertex loop), and rely on normal-only ripples.
@@ -316,12 +369,19 @@ ripple_wavelength= 0.40
 
 ## Fallback (no MCP)
 
-VFX is code, no MCP required:
+Section 5 is fully automatable — `summer_write_file` writes the shader and the
+controller, and `summer_add_node` + `summer_set_prop` +
+`summer_set_resource_property` + `summer_save_scene` build the plane including its
+subdivision. Do not hand these steps to the user when the MCP tools are available.
+
+Without the MCP connection there is no engine to drive, so the user does it
+manually in Summer Engine:
 
 1. Create `addons/vfx/water-ripple/` and write the three files above.
-2. In Godot, add a `MeshInstance3D` with a high-subdivision `PlaneMesh`.
+2. Add a `MeshInstance3D` with a high-subdivision `PlaneMesh` (32×32 minimum).
 3. Attach `water_ripple_surface.gd` and assign a tileable water normals texture.
 4. From your trigger code, call `$Puddle.add_ripple(impact_pos, amplitude)`.
+5. Check the Errors dock — the controller `preload`s the shader, so a broken shader path fails the script too.
 
 ## Handoff
 

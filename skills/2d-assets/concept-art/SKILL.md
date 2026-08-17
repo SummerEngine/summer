@@ -44,7 +44,7 @@ If "final" → hand off to `summer:2d-assets/character-portrait`. If "explore" �
 ### 2. Search for prior concepts
 
 ```
-summer_search_assets(query="<subject> concept", filter={ kind: "image" })
+summer_search_assets(query="<subject> concept", assetType="2d_image", source="all")
 ```
 
 If something already exists, ask if the user wants to riff on it (img2img via `referenceImageUrl`) or start fresh.
@@ -69,14 +69,15 @@ Issue 3-4 calls in parallel, one per variant. Use the same subject phrasing acro
 
 ```
 summer_generate_image(
-  prompt="<subject>. <axis variant 1>. concept art, evocative, rough painterly, atmospheric lighting",
+  prompt="<subject>. <axis variant 1>. concept art, evocative, rough painterly, atmospheric lighting, wide cinematic framing",
   model="nano-banana-2",
-  style="none",
-  options={ image_size: "landscape_16_9" }
+  style="none"
 )
 ```
 
-`style: "none"` is intentional — concept art doesn't want the default "realistic" or "cartoon" preset overriding the prompt's stylistic direction.
+`style: "none"` is intentional, but be precise about why: only `cartoon` and `anime` append anything to the prompt, `realistic` and `none` append nothing, and any other value is coerced to `none`. So the preset cannot override the prompt's stylistic direction — it just contributes nothing, which is what concept art wants. All four variants' divergence has to come from the prompt.
+
+There is no `image_size` argument, and `options` only recognizes Nano Banana provider keys plus `removeBackground` — an unrecognized key is dropped without an error. Every MCP image comes back at the server's 1:1 default. For wide key art, ask for "wide cinematic framing" in the prompt and accept the square canvas, or generate in the Summer dashboard where aspect ratio is exposed. Since these are exploration images the user reacts to and throws away, square is usually fine.
 
 ### 5. Present the batch
 
@@ -112,7 +113,7 @@ The structure: **subject + axis variant + "concept art" + lighting/atmosphere**.
 
 - **Generating 4 near-identical variants** because you didn't pick a real axis. The user can't choose between four images that all look like the same painting.
 - **Importing concept art as final assets.** These are exploration. The polished version comes from `character-portrait` after a direction is picked.
-- **Using `style: "realistic"` or `style: "cartoon"`** — the preset fights the prompt's stylistic direction. Use `style: "none"` for concept art.
+- **Treating `style` as the variant axis.** The presets are `realistic | cartoon | anime | none`, and only two of them append anything. Four "stylization" variants have to differ in their prompt text, not in the `style` argument.
 - **Skipping the disambiguation question.** If you don't ask, you'll get yelled at when you generate 4 portraits and the user wanted one polished bust.
 - **Generating before the GameSoul.md is written.** If `.summer/GameSoul.md` exists, read it first — its visual-style section narrows the axis.
 
@@ -120,7 +121,7 @@ The structure: **subject + axis variant + "concept art" + lighting/atmosphere**.
 
 - **User says "just one" after you propose 4.** That's a `character-portrait` job. Hand off.
 - **User wants 8+ variants.** Generate 4 first; if the user wants more on the same axis, generate 4 more. Don't dump 8 at once — overload paralyzes choice.
-- **Subject is a fully described scene, not an asset.** You're producing key art, not asset reference. Use `image_size: "landscape_16_9"` and bias toward atmospheric.
+- **Subject is a fully described scene, not an asset.** You're producing key art, not asset reference. Ask for wide cinematic framing in the prompt and bias toward atmospheric — you cannot set an aspect ratio over MCP.
 - **User wants the final to be 3D.** After they pick a direction, route to `summer:asset-pipeline/asset-strategy` — concept-art images are not 3D-ready references (they have backgrounds, scene context, dramatic lighting baked in). The 3D pipeline needs its own clean white-background reference.
 
 ## Fallback (no MCP)
@@ -128,7 +129,7 @@ The structure: **subject + axis variant + "concept art" + lighting/atmosphere**.
 Print the 4 prompts and the call for each:
 
 ```
-summer_generate_image(prompt="<variant 1>", model="nano-banana-2", style="none", options={ image_size: "landscape_16_9" })
+summer_generate_image(prompt="<variant 1>", model="nano-banana-2", style="none")
 summer_generate_image(prompt="<variant 2>", ...)
 ...
 ```
@@ -149,4 +150,4 @@ Once the user picks a direction:
 
 - `summer:asset-pipeline/asset-strategy` — meta-router that delegates here vs other 2d-assets skills.
 - `summer:2d-assets/character-portrait` — the polished single-image counterpart.
-- `references/mcp-tools-reference.md` — `summer_generate_image` parameter schema.
+- `../../../references/mcp-tools-reference.md` — `summer_generate_image` parameter schema.

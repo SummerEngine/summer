@@ -1,6 +1,6 @@
 ---
 name: 3d-lighting
-description: Use when setting up lighting in a 3D scene — adding lights, configuring WorldEnvironment, sky, or shadows. Covers DirectionalLight3D vs Omni vs Spot, shadow tuning, ambient/sky-driven lighting, and current Summer Engine conventions. Trigger on "lighting", "shadows", "WorldEnvironment", "sun", "ambient", "sky", "light".
+description: Use when setting up lighting in a Summer Engine 3D scene — adding lights, configuring WorldEnvironment, sky, or shadows. Covers DirectionalLight3D versus Omni versus Spot, shadow tuning, ambient and sky-driven lighting, and the current Summer rendering conventions. Trigger on "lighting", "shadows", "WorldEnvironment", "sun", "ambient", "sky", "light".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: rendering-and-lighting
@@ -25,9 +25,13 @@ Set up lighting and environment for 3D scenes. Follow these patterns for outdoor
 
 ### 1. Directional Light (Sun)
 
+Every tool below also takes a **required** `scenePath` (the exact `res://` scene
+to mutate — get it from `summer_get_project_context`). It is elided in these
+snippets for readability; a real call without it is rejected by the tool schema.
+
 ```
-summer_add_node(parent="./World", type="DirectionalLight3D", name="Sun")
-summer_set_prop(path="./World/Sun", key="rotation_degrees", value="Vector3(-45, 30, 0)")
+summer_add_node(scenePath="res://main.tscn", parent="./World", type="DirectionalLight3D", name="Sun")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Sun", key="rotation_degrees", value="Vector3(-45, 30, 0)")
 summer_set_prop(path="./World/Sun", key="light_energy", value="1.0")
 summer_set_prop(path="./World/Sun", key="shadow_enabled", value="true")
 summer_set_prop(path="./World/Sun", key="light_color", value="Color(1, 0.95, 0.9, 1)")
@@ -43,7 +47,7 @@ summer_set_prop(path="./World/WorldEnvironment", key="environment", value="Envir
 ```
 
 Then configure the Environment's sub-properties. The Environment resource has:
-- `background_mode` — 2 for sky, 1 for color, 3 for canvas
+- `background_mode` — 2 for sky, 1 for color, 3 for canvas (`Environment.BG_SKY` = 2, `BG_COLOR` = 1, `BG_CANVAS` = 3; default is 0, `BG_CLEAR_COLOR`)
 - `sky` — Sky resource (ProceduralSkyMaterial or PhysicalSkyMaterial)
 - `ambient_light_source` — AMBIENT_SOURCE_SKY or AMBIENT_SOURCE_COLOR
 - `ambient_light_color`
@@ -103,6 +107,31 @@ Always use `Color(r, g, b, a)` with values 0.0–1.0:
 - Orange (torch): `Color(1, 0.6, 0.2, 1)`
 - Green (alien): `Color(0.5, 1, 0.5, 1)`
 
+## Baked lighting — what you can and cannot do from here
+
+Real-time lighting (everything above) is fully scriptable. Baking is not, and the
+split is worth stating before you promise a user a bake.
+
+| Approach | Callable from MCP / a script? |
+|---|---|
+| DirectionalLight3D / Omni / Spot with `shadow_enabled` | Yes |
+| `WorldEnvironment` + `Environment` (sky, ambient, tonemap, glow, SSAO, SSR) | Yes |
+| `SDFGI` real-time GI | Yes — `Environment.sdfgi_enabled = true`, no bake step at all |
+| `VoxelGI` | Yes — `VoxelGI.bake()` **is** bound to script (`ClassDB.class_has_method("VoxelGI", "bake")` is true) |
+| **`LightmapGI` bake** | **No.** `LightmapGI` exposes only its `set_*` / `get_*` configuration methods — there is no `bake` in its method list on this build. It runs from the editor's Bake Lightmaps button only. |
+| **`OccluderInstance3D` occlusion bake** | **No.** `bake_single_node` is not script-callable either. Editor-only. |
+
+So when the user asks for baked lighting: add and configure the `LightmapGI`
+node and set the meshes' `gi_mode`, then tell them plainly that the bake itself
+is a button they press in the editor and that you cannot trigger it. Do not claim
+a bake happened. If they want GI without a manual step, steer to `SDFGI`
+(`Environment.sdfgi_enabled`, no bake) or `VoxelGI` (whose `bake()` you can call).
+
+Note the related trap: `Engine.has_singleton("EditorInterface")` returns **true**
+even in a headless non-editor process, so it is not a valid capability probe.
+`ClassDB.can_instantiate("EditorScript")` returns false outside the editor and is
+the reliable check.
+
 ## Fallback (no MCP — edit `.tscn` directly)
 
 If Summer MCP isn't connected, append the lighting block to your scene file:
@@ -121,4 +150,4 @@ Then create `Environment` and `Sky` resources via the inspector or load from `.t
 
 ## Collaborative protocol
 
-This skill mutates the scene (adds lights + WorldEnvironment + tunes Environment sub-properties). Always ask before applying: "May I add a DirectionalLight3D Sun with shadows + a WorldEnvironment with a procedural sky?". See `../../references/collaborative-protocol.md`.
+This skill mutates the scene (adds lights + WorldEnvironment + tunes Environment sub-properties). Always ask before applying: "May I add a DirectionalLight3D Sun with shadows + a WorldEnvironment with a procedural sky?".

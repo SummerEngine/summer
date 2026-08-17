@@ -11,11 +11,14 @@ paths: ["**/*.tscn", "**/*.tres", "**/*.gd"]
 
 # Generate Motion — Curated Meshy Library
 
-Picks a clip from a **curated mocap library** by name (`idle`, `walk`, `run`, `attack_sword`, ~70 standard names) and wires it onto a Meshy-rigged humanoid. Fast (~30s) and cheap (~$0.10) and looks great because it's real mocap.
+Picks a clip from a **curated mocap library** by name and wires it onto a Meshy-rigged humanoid. Fast (~30s) and cheap (~$0.10) and looks great because it's real mocap. The five short aliases that always work are `idle`, `walk`, `run`, `jump`, `attack`; anything else must be an exact library name — see the Reference card before you invent one.
 
 The target must be a **Meshy-rigged humanoid** — a `rigAssetId` from a prior `summer_generate_3d({ kind: "image-to-3d", imageUrl: "...", options: { rig: true } })` call. The result job includes `rigAssetId`. If the user points at a non-rigged mesh, stop and route to `summer:asset-pipeline/asset-strategy` (or directly call `summer_generate_3d` with `options.rig: true`) before generating motion.
 
-> **Custom prompt-driven motion** (e.g. "drops to one knee, draws bow") is on the roadmap but not shipped yet. For one-off signature moves not on the curated list, fall back to hand-authoring in the Godot editor or importing from Mixamo. See the Edge cases section.
+> **Custom prompt-driven motion** (e.g. "drops to one knee, draws bow") is on
+> the roadmap but not shipped yet. For one-off signature moves not on the
+> curated list, fall back to hand-authoring in Summer Engine or importing from
+> Mixamo. See the Edge cases section.
 
 ## Web Chat / Public Orchestrator Equivalent
 
@@ -73,8 +76,9 @@ summer_generate_motion(
 )
 ```
 
-Returns `animationAssetId`, `durationSeconds`, and `previewUrl`. Resolve the
-asset before handoff so you have the stable file/download metadata:
+With the default `wait: true` the tool polls to completion and returns the job
+result with `animationAssetId` in it. Don't assume any other field is present —
+resolve the asset to get stable file/download metadata:
 
 ```
 summer_get_asset(assetId="<animationAssetId>")
@@ -83,16 +87,21 @@ summer_get_asset(assetId="<animationAssetId>")
 ### 4. Attach to the character's AnimationPlayer
 
 ```
-summer_inspect_node("./World/Goblin")             // confirm it has an AnimationPlayer child
-summer_add_node(parent="./World/Goblin", type="AnimationPlayer", name="AnimationPlayer")  // only if missing
+summer_inspect_node(path="./World/Goblin")        // confirm it has an AnimationPlayer child
+summer_add_node(scenePath="res://main.tscn", parent="./World/Goblin", type="AnimationPlayer", name="AnimationPlayer")  // only if missing
 summer_set_resource_property(
+  scenePath="res://main.tscn",
   nodePath="./World/Goblin/AnimationPlayer",
   resourceProperty="libraries/default",
   subProperty="<motion_name>",
   value="<animationAssetId>"
 )
-summer_save_scene
+summer_save_scene(scenePath="res://main.tscn")
 ```
+
+`scenePath` is required on `summer_add_node`, `summer_set_resource_property` and
+`summer_save_scene`. `summer_inspect_node` takes only `path` — it has no
+`scenePath` and reads the currently-edited scene.
 
 If the character will use multiple clips, leave the AnimationPlayer in place — every subsequent generation appends to the same library. State-machine wiring belongs to `summer:animation/animation-tree`, not here.
 
@@ -104,16 +113,34 @@ If the character will use multiple clips, leave the AnimationPlayer in place —
 
 ## Reference card
 
-### Curated motion library — top 30 names (Meshy, exact strings)
+### Curated motion library — what `motionName` actually accepts
 
-`idle`, `idle_alert`, `idle_combat`, `walk`, `walk_strafe_left`, `walk_strafe_right`, `walk_back`, `run`, `run_strafe_left`, `run_strafe_right`, `sprint`, `jump`, `jump_loop`, `jump_land`, `crouch_idle`, `crouch_walk`, `attack_sword`, `attack_punch`, `attack_kick`, `attack_bow`, `attack_cast`, `block`, `dodge_left`, `dodge_right`, `hit_react`, `death`, `death_back`, `wave`, `dance`, `sit_idle`.
+There are **five** short canonical aliases, and only five:
 
-The full list is ~70 names. If the user asks for something not on the top-30, try the closest curated name first; if nothing fits, route to the manual-authoring fallback.
+`idle`, `walk`, `run`, `jump`, `attack`
+
+Everything else must be an **exact raw Meshy library name** (or its display name,
+or its numeric action id 0–696). The library is 678 entries, and its naming is
+nothing like a tidy snake_case scheme — real names look like `Walking_Woman`,
+`Jump_Run`, `Run_02`, `Hit_Reaction`, `Roll_Dodge`, `Block1`, `Dead`,
+`Stand_Dodge`, `Triple_Combo_Attack`, `Wave_One_Hand`, `Chair_Sit_Idle_F`,
+`Lean_Forward_Sprint`.
+
+Plausible-looking names that do **not** resolve, verified against the resolver:
+`attack_sword`, `hit_react`, `death`, `sprint`, `block`, `dodge_left`,
+`crouch_idle`, `walk_back`, `run_strafe_left`, `jump_land`, `idle_combat`,
+`wave`, `dance`, `sit_idle`. They return `null` and the call errors. The tool's
+own description uses `attack_sword` as an example — that example is wrong; use
+`attack`.
+
+So: if the user asks for something outside the five aliases, do not guess a
+snake_case name. Either use one of the five, quote an exact raw library name you
+have actually seen, or route to the manual-authoring fallback.
 
 ### Pitfalls
 
-- **`motionName` typos silently match nothing.** `"run_fast"` is not on the list — the call returns an error. Always check the curated list first. Use exact strings from the list above.
-- **Locomotion clips have a forward bias.** Meshy's `run` translates the root forward by ~5m. If you're driving root motion in code, set `root_motion_track` correctly or strip the translation in an AnimationPlayer Edit. See the Summer Engine root motion docs.
+- **Invented `motionName` strings fail.** `"run_fast"`, `"attack_sword"`, `"death"` all resolve to nothing and the call errors. Name resolution is exact — five aliases, or a real library name / display name / numeric id. Do not extrapolate a naming scheme.
+- **Locomotion clips have a forward bias.** Meshy's `run` translates the root forward by ~5m. If you're driving root motion in code, set `root_motion_track` correctly or strip the translation in an AnimationPlayer Edit. Check the upstream root-motion API reference matching the current Summer technical base.
 - **Rig pose mismatch.** If your rig was rigged with a non-T-pose reference image, the limbs may bend wrong. Re-rig from a T-pose mannequin (see `summer:asset-pipeline/asset-strategy`) before re-generating.
 - **Rig still preparing.** New rigs need ~3 minutes after the rig job completes before the animation library is ready. The MCP route returns 425 "animations_preparing" if you call too early. Wait and retry.
 
@@ -126,14 +153,20 @@ The full list is ~70 names. If the user asks for something not on the top-30, tr
 
 ## Edge cases
 
-- **Custom signature move** (e.g. "drops to one knee, draws bow"). The custom prompt-driven backend is on the roadmap but not shipped today. Workarounds: (a) hand-author the clip in the Godot editor's animation panel; (b) record/buy from Mixamo and import as `AnimationLibrary`; (c) compose two curated clips in an `AnimationTree`'s `OneShot` blend.
+- **Custom signature move** (e.g. "drops to one knee, draws bow"). The custom
+  prompt-driven backend is on the roadmap but not shipped today. Workarounds:
+  hand-author the clip in Summer Engine's animation panel, import a licensed
+  clip as an `AnimationLibrary`, or compose curated clips in an
+  `AnimationTree` OneShot blend.
 - **Quadruped rig.** Meshy library is humanoid-only. For quadrupeds, hand-author or import a Mixamo-style external library (out of scope for this skill).
 - **Character is < 1m tall (child / dwarf).** Library clips assume a ~1.8m humanoid. Apply the clip; the proportions retarget but stride length looks long. Either accept it or tune `playback_speed` on the AnimationPlayer track.
 - **Character has wings / tail.** The library ignores the extra bones — they sag. Hand-author additive overlays for the extra bones, or accept the visual hit.
 
 ## Fallback (no MCP)
 
-The user can upload to Meshy directly at meshy.ai, generate via the dashboard, download `.glb`, and import as an `AnimationLibrary` in the Godot editor. Slower, but identical output.
+The user can upload to Meshy directly at meshy.ai, generate through the
+dashboard, download `.glb`, and import it as an `AnimationLibrary` in Summer
+Engine.
 
 ## Handoff
 
@@ -144,7 +177,6 @@ The user can upload to Meshy directly at meshy.ai, generate via the dashboard, d
 
 ## See also
 
-- `references/mcp-tools-reference.md` — `summer_generate_motion` parameter schema, error codes.
 - `summer:asset-pipeline/asset-strategy` — how to get a Meshy-rigged character in the first place.
 - `summer:animation/animation-tree` — wire the generated clips into a state machine.
 - `summer:animation/retarget` — re-use one library across many characters without regenerating.

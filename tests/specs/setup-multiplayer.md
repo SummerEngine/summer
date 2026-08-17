@@ -96,7 +96,7 @@
 **Assertions:**
 
 - [ ] Skill does not blindly call `summer_*` tools and fail.
-- [ ] Generated scripts compile in Summer Engine.
+- [ ] Generated scripts compile in the current Summer Engine compatibility line.
 - [ ] Skill provides a `project.godot` patch in valid Godot project format.
 - [ ] Skill still asks for confirmation on each write.
 - [ ] Same opinionated decisions hold (host authority, ENet, no replication of cosmetic VFX).

@@ -116,7 +116,7 @@ export const runCommand = new Command("run")
       if (!existsSync(join(fullProjectPath, "project.godot"))) {
         console.error(
           `No project.godot found in ${fullProjectPath}\n` +
-          "This doesn't look like a Godot/Summer Engine project."
+          "This doesn't look like a Summer Engine project."
         );
         process.exit(1);
       }

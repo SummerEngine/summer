@@ -13,7 +13,10 @@ paths: ["**/*.gd", "**/*.tscn", "**/*.tres"]
 
 Generated clips give you 80% of a character. The remaining 20% — the eye contact when an NPC speaks, feet that plant on slopes, hands that wrap a sword grip, the lean into a sprint, the recoil from a hit on the left shoulder — is procedural. In Summer Engine this is done via the `SkeletonModifier3D` family attached to the `Skeleton3D`, plus tween-driven additive blend layers on the `AnimationTree`. None of it is generative; this skill is a recipe set.
 
-Honest limit: Summer Engine's IK is good enough for look-at, foot-snap, and simple two-bone arm/leg chains. It is NOT good enough for full-body IK with weight redistribution (a la UE5 Control Rig). For combat-grappling or contact-heavy interactions, hand-author the contact frame and accept some clipping.
+Honest limit: Summer Engine's current IK is good enough for look-at, foot-snap,
+and simple two-bone arm/leg chains. It is not a full-body IK system with weight
+redistribution. For combat-grappling or contact-heavy interactions, hand-author
+the contact frame and accept some clipping.
 
 ## When to use this skill
 
@@ -60,9 +63,20 @@ summer_set_prop "./World/NPC/Skeleton3D/HeadLookAt" key="bone_name" value="Head"
 summer_set_prop "./World/NPC/Skeleton3D/HeadLookAt" key="forward_axis" value=2   # +Z forward (Meshy default)
 summer_set_prop "./World/NPC/Skeleton3D/HeadLookAt" key="primary_rotation_axis" value=1   # Y-up
 summer_set_prop "./World/NPC/Skeleton3D/HeadLookAt" key="use_secondary_rotation" value=true
-summer_set_prop "./World/NPC/Skeleton3D/HeadLookAt" key="secondary_rotation_axis" value=0
-summer_set_prop "./World/NPC/Skeleton3D/HeadLookAt" key="symmetry_limit" value=1.4   # ~80°, prevents the Exorcist
+summer_set_prop "./World/NPC/Skeleton3D/HeadLookAt" key="use_angle_limitation" value=true    # OFF by default — nothing clamps until you set this
+summer_set_prop "./World/NPC/Skeleton3D/HeadLookAt" key="symmetry_limitation" value=true     # one angle drives both directions
+summer_set_prop "./World/NPC/Skeleton3D/HeadLookAt" key="primary_limit_angle" value=1.4      # ~80°, prevents the Exorcist
+summer_set_prop "./World/NPC/Skeleton3D/HeadLookAt" key="secondary_limit_angle" value=1.0
 ```
+
+Every `summer_set_prop` above also needs the required `scenePath` (e.g.
+`scenePath="res://main.tscn"`); the paths are shown bare here for readability.
+
+There is no `symmetry_limit` and no `secondary_rotation_axis` property on
+`LookAtModifier3D` — the real names are the ones above, and the secondary
+rotation axis is derived, not set. Confirmed against the shipped 4.6.1 binary;
+`ClassDB.class_get_property_list("LookAtModifier3D")` is the check if you're
+unsure of a name.
 
 Drive the target each frame:
 
@@ -81,15 +95,17 @@ func _process(_delta: float) -> void:
     head_look.influence = clamp(1.0 - (dist - 6.0) / 2.0, 0.0, 1.0)   # fade out 6→8m
 ```
 
-The `symmetry_limit` is the production trick — without it, the head can rotate 180° and the model looks possessed. ~80° matches a human's neck-only range; for a "whole-body turn" use it with the spine chain (next recipe).
+`use_angle_limitation` is the production trick, and it defaults to **false** — a stock `LookAtModifier3D` does not clamp at all, so the head can rotate 180° and the model looks possessed. Turn it on and set `primary_limit_angle` to ~80° (1.4 rad), which matches a human's neck-only range; for a "whole-body turn" use it with the spine chain (next recipe). `primary_limit_angle` defaults to 2π, i.e. unlimited.
 
 ### A2 — Spine + head chain (look-at with body turn)
 
-Multiple `LookAtModifier3D` nodes on the same chain — one for `Spine1` (limit 0.4 rad), one for `Spine2` (limit 0.4 rad), one for `Head` (limit 1.0 rad). Total reach: ~110°, distributed naturally. Without the spine contribution, big angles look like the head detaches.
+Multiple `LookAtModifier3D` nodes on the same chain — one for `Spine1` (`primary_limit_angle` 0.4 rad), one for `Spine2` (0.4 rad), one for `Head` (1.0 rad), each with `use_angle_limitation = true`. Total reach: ~110°, distributed naturally. Without the spine contribution, big angles look like the head detaches.
 
 ### A3 — Foot IK (slopes & uneven terrain)
 
-The clip has the foot at Y=0; on a slope the ground is at Y=0.15. Without IK, foot floats. Use `SkeletonIK3D` (Summer Engine legacy IK still works for two-bone chains; the new chain modifier is preferred for production):
+The clip has the foot at Y=0; on a slope the ground is at Y=0.15. Without IK,
+the foot floats. `SkeletonIK3D` remains available for two-bone chains in the
+current Summer technical base; prefer the newer chain modifier for production:
 
 ```gdscript
 @onready var skel: Skeleton3D = $Skeleton3D
@@ -170,7 +186,7 @@ You need PhysicalBone3D children matching every major bone (set up once via the 
 
 | Setting | Value (Meshy default) |
 |---|---|
-| Forward axis (head/spine) | Z+ |
+| Forward axis (head/spine) | Z+ (`forward_axis`) |
 | Up axis | Y+ |
 | Right axis | X+ |
 | Foot down | Y- |
@@ -187,7 +203,7 @@ You need PhysicalBone3D children matching every major bone (set up once via the 
 
 ### Pitfalls
 
-- **LookAt rotates wildly past the symmetry_limit.** You set the limit too high. ~80° (1.4 rad) for a head-only modifier; ~25° (0.4 rad) for a single spine bone.
+- **LookAt rotates wildly / no clamp at all.** `use_angle_limitation` is false by default and `primary_limit_angle` defaults to 2π. Set both. ~80° (1.4 rad) for a head-only modifier; ~25° (0.4 rad) for a single spine bone.
 - **IK pops on the first frame.** Solver hasn't been initialized. Call `ik.start()` after the AnimationTree's first tick, not in `_ready()` — the bone pose is identity until the tree runs.
 - **Foot IK pushes the body up on stairs but the camera doesn't follow.** Camera is parented to the root, not the head. Either parent the camera to a chest bone via `BoneAttachment3D`, or accept that the camera doesn't bob with foot IK.
 - **Additive layer doubles the clip.** The "additive" clip wasn't authored as a delta. Re-export from Blender with `Pose Mode → bake additive`.
@@ -217,7 +233,9 @@ You need PhysicalBone3D children matching every major bone (set up once via the 
 
 ## Fallback (no MCP)
 
-Add modifiers in the Godot editor under Skeleton3D, set bone names from the inspector dropdown (Godot autocompletes from the rig). Hand-write the GDScript driving them. Foot raycasts can be set up visually with a RayCast3D child.
+Add modifiers in Summer Engine under Skeleton3D and set bone names from the
+Inspector dropdown, which autocompletes from the rig. Hand-write the GDScript
+driving them. Foot raycasts can be set up visually with a RayCast3D child.
 
 ## Handoff
 
@@ -229,6 +247,6 @@ Add modifiers in the Godot editor under Skeleton3D, set bone names from the insp
 
 ## See also
 
-- `references/gd-style.md` — typed GDScript conventions in the snippets.
-- `references/mcp-tools-reference.md` — `summer_set_prop` enum-int conventions for axis settings.
-- Summer Engine docs: `SkeletonModifier3D`, `LookAtModifier3D`, `SkeletonIK3D`, `PhysicalBoneSimulator3D`.
+- Upstream API reference matching the current Summer technical base:
+  `SkeletonModifier3D`, `LookAtModifier3D`, `SkeletonIK3D`,
+  `PhysicalBoneSimulator3D`.

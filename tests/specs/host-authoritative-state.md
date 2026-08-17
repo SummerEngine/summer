@@ -2,7 +2,7 @@
 
 ## Fixture
 
-- A Summer Engine project with `/peer-to-peer-multiplayer` Layer 1 already done — `NetworkManager` autoload exists, exposes `peer_joined` / `peer_left` signals.
+- A Summer Engine project with `/peer-to-peer-multiplayer` Layer 1 already done. `NetworkManager` autoload exists and exposes `peer_joined` / `peer_left` signals.
 - Project may have a partial player scene; no Managers yet.
 - Summer MCP tools available; engine on localhost:6550.
 
@@ -89,7 +89,8 @@
 
 - Skill detects MCP unavailable.
 - Walks the same Manager shape (data, mutators, requests, broadcasts, lifecycle).
-- Instead of `summer_get_script_errors`, asks the user to save and check errors via the Godot editor.
+- Instead of `summer_get_script_errors`, asks the user to save and check errors
+  manually in Summer Engine.
 - Provides exact `[autoload]` lines for `project.godot` to paste.
 - File write still goes through `Write` host tool with "May I…" approval.
 

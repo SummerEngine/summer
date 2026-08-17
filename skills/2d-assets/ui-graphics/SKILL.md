@@ -11,7 +11,9 @@ paths: ["assets/**", "ui/**", "art/ui/**"]
 
 # ui-graphics — Icons, Buttons, Panels, HUD
 
-This skill generates flat, game-UI-style graphics: icons (skill / item / status), buttons (idle / hover / pressed states), panels and frames (NinePatch-friendly), HUD widgets (health frames, minimaps, badges). Output is **transparent PNG** by default and wires via Godot's `TextureRect`, `NinePatchRect`, or `AtlasTexture`.
+This skill generates flat game-UI graphics: icons, button states, panels,
+frames, and HUD widgets. Output is **transparent PNG** by default and wires
+through Summer Engine `TextureRect`, `NinePatchRect`, or `AtlasTexture` nodes.
 
 UI graphics succeed or fail on **two specific things**: a clean transparent background (no checkerboard residue) and a consistent visual language across the set (all icons share line weight, color treatment, lighting). This skill encodes both.
 
@@ -52,18 +54,20 @@ Every icon / button / panel re-uses this anchor verbatim. Skipping this step pro
 ### 2. Search before generating
 
 ```
-summer_search_assets(query="<subject> icon", filter={ kind: "image" })
+summer_search_assets(query="<subject> icon", assetType="2d_image", source="all")
 ```
 
 ### 3. Pick the right pattern (icon vs button vs panel)
 
-| Asset class | Image size | Wiring node | Notes |
+`summer_generate_image` has no size or aspect argument — every MCP image comes back at the server's 1:1 default. Square suits icons, panels, and badges; for wide assets (buttons, HUD bar frames) describe the proportions in the prompt and crop after, or generate in the Summer dashboard where aspect ratio is exposed.
+
+| Asset class | Framing | Wiring node | Notes |
 |---|---|---|---|
-| Icon (ability, item, status) | `square_hd` | `TextureRect` (or `AtlasTexture` if part of an icon sheet) | Centered subject, generous padding |
-| Button (idle / hover / pressed) | `landscape_4_3` | `Button` with custom theme OR `TextureButton` | Generate 3 variants of the same shape |
-| Panel / frame (NinePatch-friendly) | `square_hd` | `NinePatchRect` | Border + center MUST be visually separable for 9-slicing |
-| HUD bar frame | `landscape_16_9` | `NinePatchRect` over `ProgressBar` | Frame only — bar fill is a separate gradient texture |
-| Badge / emblem | `square_hd` | `TextureRect` | Symmetric, centered, no text |
+| Icon (ability, item, status) | square (default) | `TextureRect` (or `AtlasTexture` if part of an icon sheet) | Centered subject, generous padding |
+| Button (idle / hover / pressed) | wide — prompt for it, crop after | `Button` with custom theme OR `TextureButton` | Generate 3 variants of the same shape |
+| Panel / frame (NinePatch-friendly) | square (default) | `NinePatchRect` | Border + center MUST be visually separable for 9-slicing |
+| HUD bar frame | wide — prompt for it, crop after | `NinePatchRect` over `ProgressBar` | Frame only — bar fill is a separate gradient texture |
+| Badge / emblem | square (default) | `TextureRect` | Symmetric, centered, no text |
 
 ### 4. Build the prompt — subject + anchor + transparent
 
@@ -73,19 +77,21 @@ Pattern:
 <asset class> of <subject>, game UI, <anchor style>, flat design, clean edges, transparent background, centered, isolated
 ```
 
-`transparent background` and `isolated` are the load-bearing words. Without them, you get a square card with a textured background that defeats the purpose.
+`isolated` is load-bearing. For the background, **do not rely on the prompt** — pass `options.removeBackground: true`, which runs a real background-removal pass after generation and returns a PNG with true alpha. That is the single highest-value argument in this skill, and it is the actual fix for the checkerboard failure listed below: models asked for a "transparent background" in text frequently paint the checkerboard.
 
 ### 5. Generate
 
 **Icon example:**
 ```
 summer_generate_image(
-  prompt="ability icon for a fire spell, glowing flame in cupped hand, game UI, flat design with subtle gradient and soft inner shadow, 2px deep navy outline, gold and parchment palette, rounded square frame, transparent background, centered, isolated",
+  prompt="ability icon for a fire spell, glowing flame in cupped hand, game UI, flat design with subtle gradient and soft inner shadow, 2px deep navy outline, gold and parchment palette, rounded square frame, centered, isolated on a plain background. Not photorealistic, no 3D render, no scene background, not busy, no multiple objects.",
   model="nano-banana-2",
   style="none",
-  options={ image_size: "square_hd", negative_prompt: "photorealistic, 3D render, scene background, busy, multiple objects" }
+  options={ removeBackground: true }
 )
 ```
+
+`image_size` and `negative_prompt` do not exist on this tool and are dropped without an error — the negations have to live in the prompt text, and the size is fixed. `removeBackground` is the one `options` key here that does real work.
 
 **Button (3 states in 3 calls):**
 ```
@@ -114,22 +120,25 @@ Verify in the import dock: `Mipmaps: off` (UI shouldn't mipmap), `Filter: Linear
 
 ### 7. Wire into the scene
 
+Every scene-mutating tool takes an explicit `scenePath`, node paths are relative to that scene's root (`./`) rather than absolute `/root/...` runtime paths, and the property argument is named `key`, not `property`.
+
 **Icon as TextureRect:**
 ```
-summer_add_node(parentPath="/root/UI/AbilityBar", type="TextureRect", name="FireSpellIcon")
-summer_set_prop(path="/root/UI/AbilityBar/FireSpellIcon", property="texture", value="res://ui/icons/fire_spell.png")
-summer_set_prop(path="/root/UI/AbilityBar/FireSpellIcon", property="expand_mode", value=1)  # KEEP_SIZE → 1 = STRETCH
-summer_set_prop(path="/root/UI/AbilityBar/FireSpellIcon", property="stretch_mode", value=5)  # KEEP_ASPECT_CENTERED
+summer_add_node(scenePath="res://ui/hud.tscn", parent="./AbilityBar", type="TextureRect", name="FireSpellIcon")
+summer_set_prop(scenePath="res://ui/hud.tscn", path="./AbilityBar/FireSpellIcon", key="texture", value="res://ui/icons/fire_spell.png")
+summer_set_prop(scenePath="res://ui/hud.tscn", path="./AbilityBar/FireSpellIcon", key="expand_mode", value=1)  # EXPAND_IGNORE_SIZE
+summer_set_prop(scenePath="res://ui/hud.tscn", path="./AbilityBar/FireSpellIcon", key="stretch_mode", value=5)  # STRETCH_KEEP_ASPECT_CENTERED
 ```
 
 **Panel as NinePatchRect:**
 ```
-summer_add_node(parentPath="/root/UI", type="NinePatchRect", name="InventoryPanel")
-summer_set_prop(path="/root/UI/InventoryPanel", property="texture", value="res://ui/panels/parchment.png")
-summer_set_prop(path="/root/UI/InventoryPanel", property="patch_margin_left", value=24)
-summer_set_prop(path="/root/UI/InventoryPanel", property="patch_margin_right", value=24)
-summer_set_prop(path="/root/UI/InventoryPanel", property="patch_margin_top", value=24)
-summer_set_prop(path="/root/UI/InventoryPanel", property="patch_margin_bottom", value=24)
+summer_add_node(scenePath="res://ui/hud.tscn", parent=".", type="NinePatchRect", name="InventoryPanel")
+summer_set_prop(scenePath="res://ui/hud.tscn", path="./InventoryPanel", key="texture", value="res://ui/panels/parchment.png")
+summer_set_prop(scenePath="res://ui/hud.tscn", path="./InventoryPanel", key="patch_margin_left", value=24)
+summer_set_prop(scenePath="res://ui/hud.tscn", path="./InventoryPanel", key="patch_margin_right", value=24)
+summer_set_prop(scenePath="res://ui/hud.tscn", path="./InventoryPanel", key="patch_margin_top", value=24)
+summer_set_prop(scenePath="res://ui/hud.tscn", path="./InventoryPanel", key="patch_margin_bottom", value=24)
+summer_save_scene(scenePath="res://ui/hud.tscn")
 ```
 
 Tune patch margins to match the actual border width in the generated texture. Open the texture in the editor's NinePatch preview to verify.
@@ -155,26 +164,30 @@ If you generate a 4×4 grid of icons in one image, each icon becomes an `AtlasTe
 | Bad | Failure mode |
 |---|---|
 | `cool button` | No subject, no anchor. Returns a generic button on a card background. |
-| `transparent button with icon` (no negative prompt) | Model often renders a checkerboard "transparent" pattern as the actual fill. Add `no checkerboard pattern` to negative. |
+| `transparent button with icon` | Model often renders a checkerboard "transparent" pattern as the actual fill. There is no negative-prompt argument to counter it — drop the word "transparent" from the prompt entirely and pass `options.removeBackground: true` instead. |
 | `8 ability icons in one image` | Inconsistent style across the 8. Generate one at a time with the same anchor. |
 | `realistic 3D rendered button` | Conflicts with flat-UI. Stay flat. |
-| `button with the word "Play"` on it | Models render text badly. Add text in Godot via a `Label` over the button, not in the texture. |
+| `button with the word "Play"` on it | Models render text badly. Add text in Summer Engine via a `Label` over the button, not in the texture. |
 
 ## Anti-patterns
 
 - **Skipping the anchor.** A 12-icon ability bar with no anchor looks like 12 unrelated games. Define the anchor on icon #1.
-- **Letting the model render text.** Diffusion models can't render reliable text. Always overlay text in Godot via a `Label` node. The button texture is the frame; the label is the word.
-- **Forgetting `transparent background` in the prompt.** Default is opaque. Without the keyword, you import an icon with a 200×200 white square around the actual icon.
-- **Using `style: "realistic"` for UI.** UI is flat. `style: "none"` lets the prompt's "flat design" land cleanly.
+- **Letting the model render text.** Diffusion models cannot render reliable
+  text. Always overlay text in Summer Engine with a `Label` node. The button
+  texture is the frame; the label is the word.
+- **Forgetting `options.removeBackground: true`.** Default is opaque. Prompting for "transparent background" instead is what produces the painted-checkerboard failure below — the option runs a real alpha pass and does not.
+- **Expecting `style` to do the work.** Only `cartoon` and `anime` append anything; `realistic` and `none` append nothing, and any other value is coerced to `none`. `style: "none"` is right for UI, but "flat design" has to be in the prompt regardless.
 - **NinePatch with no border-vs-center distinction.** The 9-slice scaling smears the border into the center.
 - **Mipmaps on UI.** UI textures shouldn't mipmap — they're displayed at 1:1 or near it. Mipmaps waste memory and blur sharp edges.
 
 ## Edge cases
 
-- **User wants the same icon at multiple sizes (32, 64, 128).** Generate once at high res. Godot's `TextureRect` with `STRETCH_KEEP_ASPECT_CENTERED` scales it down cleanly. Don't generate three sizes.
+- **User wants the same icon at multiple sizes (32, 64, 128).** Generate once
+  at high resolution. Summer Engine's `TextureRect` with
+  `STRETCH_KEEP_ASPECT_CENTERED` scales it down cleanly.
 - **User wants pixel-style UI.** Route to `summer:2d-assets/pixel-art` — different prompt pattern, different filter, different anchor.
 - **User wants animated UI (spinning loading icon).** Generate the static frame here. Animate via `AnimationPlayer` rotating the `TextureRect`, not as a sprite sheet.
-- **Transparency comes back as a checkerboard pattern in the image.** The model rendered the checkerboard literally. Regenerate with `no checkerboard pattern, true alpha transparency` in the negative prompt.
+- **Transparency comes back as a checkerboard pattern in the image.** The model rendered the checkerboard literally because the prompt asked for transparency. Remove every mention of transparency from the prompt, generate on a plain background, and pass `options.removeBackground: true` to cut the alpha server-side.
 - **Icons need to read at very small size (16-24px in a packed bar).** Bias prompts toward bold silhouette + minimal interior detail. Ornate detail is invisible at 16px and adds noise.
 
 ## Fallback (no MCP)
@@ -183,10 +196,10 @@ Print the call:
 
 ```
 summer_generate_image(
-  prompt="<asset + anchor + transparent>",
+  prompt="<asset + anchor>, isolated on a plain background. No scene background, not photorealistic, no 3D, not busy.",
   model="nano-banana-2",
   style="none",
-  options={ image_size: "square_hd", negative_prompt: "scene background, photorealistic, 3D, busy" }
+  options={ removeBackground: true }
 )
 ```
 
@@ -198,7 +211,8 @@ After the UI graphic is wired:
 
 - **More icons in the same set** → re-invoke this skill with the same anchor.
 - **Button states (hover/pressed)** → re-invoke for each state.
-- **Theme assembly (combining icons + panels into a Godot Theme resource)** → `summer:scene-composition` for the Theme resource wiring.
+- **Theme assembly (combining icons + panels into a Summer Engine Theme
+  resource)** → `summer:scene-composition` for the resource wiring.
 - **Pixel-art UI** → `summer:2d-assets/pixel-art`.
 - **Dialogue UI with portraits** → `summer:2d-assets/character-portrait` for the portrait, then back here for the surrounding panel.
 
@@ -207,4 +221,4 @@ After the UI graphic is wired:
 - `summer:2d-assets/character-portrait` — for in-UI character images.
 - `summer:2d-assets/pixel-art` — pixel-style UI.
 - `summer:scene-composition` — Theme and Control hierarchy.
-- `references/mcp-tools-reference.md` — `summer_generate_image` schema.
+- `../../../references/mcp-tools-reference.md` — `summer_generate_image` schema.

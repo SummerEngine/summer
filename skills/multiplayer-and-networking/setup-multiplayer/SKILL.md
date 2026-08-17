@@ -1,6 +1,6 @@
 ---
 name: setup-multiplayer
-description: Use when the user wants to add multiplayer to an existing single-player game — co-op LAN, co-op online, competitive PvP, or lobbies/matchmaking. Strong opinion that you start with Godot's high-level MultiplayerAPI plus MultiplayerSpawner and MultiplayerSynchronizer; only roll custom networking with a justified reason. Walks peer authority, RPC patterns, replication graph, and irreversible architecture decisions. Trigger on "multiplayer", "co-op", "PvP", "online", "netcode", "rollback", "MultiplayerAPI", "host migration", "matchmaking".
+description: Use when the user wants to add multiplayer to an existing Summer game: co-op LAN, co-op online, competitive PvP, or a lobby. Start with Summer Engine's high-level MultiplayerAPI plus MultiplayerSpawner and MultiplayerSynchronizer; use custom networking only with a justified reason. Walks peer authority, RPC patterns, replication, and irreversible architecture decisions. It does not claim that managed matchmaking or hosting is live. Trigger on "multiplayer", "co-op", "PvP", "online", "netcode", "rollback", "MultiplayerAPI", "host migration", "matchmaking".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: multiplayer-and-networking
@@ -13,7 +13,10 @@ paths: ["**/*.gd", "**/*.tscn", "**/*.tres", "project.godot"]
 
 ## Overview
 
-Multiplayer is a one-way door. Pick the wrong authority model and refactoring later is brutal. This skill enforces an opinionated path: **start with Godot's high-level MultiplayerAPI + MultiplayerSpawner + MultiplayerSynchronizer + ENet**. Don't roll custom networking unless you have a measured reason. Make the irreversible decisions up front, in writing.
+Multiplayer is a one-way door. Pick the wrong authority model and refactoring
+later is brutal. Start with **Summer Engine's high-level MultiplayerAPI +
+MultiplayerSpawner + MultiplayerSynchronizer + ENet**. Do not roll custom
+networking without a measured reason.
 
 **Core principle:** the architecture decision (peer authority vs server authority) is harder than the code. Lock it before touching a single RPC.
 
@@ -48,7 +51,9 @@ State the choice explicitly:
 
 ### 3. Pick the transport
 
-Almost always: **ENetMultiplayerPeer**. It's UDP with reliability layers, ships with Godot, and just works for < 32 peers.
+Almost always: **ENetMultiplayerPeer**. It is UDP with reliability layers and
+ships with Summer Engine. Validate the actual game topology and player count;
+this is local netcode, not managed hosting or matchmaking.
 
 When to switch:
 - **WebSocketMultiplayerPeer**: if you need the game to run in the browser (HTML5 export). ENet doesn't work in browsers.
@@ -163,7 +168,7 @@ func _spawn_player(peer_id: int) -> void:
 Register as autoload in `project.godot`:
 
 ```
-summer_project_setting(name="autoload/Network", value="*res://scripts/network.gd")
+summer_project_setting(key="autoload/Network", value="*res://scripts/network.gd")
 ```
 
 #### b) Player scene with MultiplayerSynchronizer
@@ -179,10 +184,14 @@ Player (CharacterBody3D)
 ```
 
 ```
-summer_add_node(parent="./World/Players/Player", type="MultiplayerSynchronizer", name="Sync")
+summer_add_node(scenePath="res://scenes/player.tscn", parent="./World/Players/Player", type="MultiplayerSynchronizer", name="Sync")
 ```
 
-Configure the synchronizer to replicate `position`, `rotation.y`, `health`. Save as a `SceneReplicationConfig.tres` (NOT inline sub_resource — silent-fail trap):
+`scenePath` is required on `summer_add_node`, `summer_set_prop`,
+`summer_connect_signal` and `summer_save_scene`; it names the exact `res://`
+scene to mutate and does not default to the open tab.
+
+Configure the synchronizer to replicate `position`, `rotation.y`, `health`. A standalone `SceneReplicationConfig.tres` is worth it here because the same config is shared by every player instance — not because embedded sub_resources fail (they don't):
 
 ```gdscript
 # scripts/player_net.gd
@@ -259,15 +268,17 @@ Defer to a specialist skill, but flag the basics:
 
 - For projectiles: spawn locally on owner's machine at fire time, replicate the spawn event with a timestamp. Other peers fast-forward the projectile by their RTT.
 - For hit detection: server-authoritative + simple latency tolerance (host accepts hits within ~100ms past server time).
-- For movement: client-side prediction + server reconciliation is the standard model. Godot doesn't ship this — you write it. If users ask for "competitive PvP shooter", say: this is a deeper specialist topic and link `multiplayer-and-networking/lag-compensation/SKILL.md` when it ships.
+- For movement: client-side prediction plus server reconciliation is the
+  standard model. Summer Engine does not provide this game-specific layer; you
+  write it. Competitive PvP requires specialist lag-compensation work.
 
 ### 8. Save and verify
 
 ```
-summer_save_scene
-summer_get_script_errors
+summer_save_scene(scenePath="res://scenes/player.tscn")
+summer_get_script_errors(path="res://scripts/player_net.gd")   # one file per call; path required
 summer_play
-# user tests by running two instances locally (Project → Run Multiple Instances → 2)
+# user tests by running two instances locally (Debug → Customize Run Instances → 2)
 summer_stop
 ```
 
@@ -286,7 +297,7 @@ Test checklist:
 | Replicate every property | Replicate position, rotation, health, that's it | Bandwidth + bug surface |
 | Run physics on every peer for every player | Physics on owner only, others receive transform | Otherwise jitter and divergence |
 | Trust the client | Validate `get_remote_sender_id()` in every `any_peer` RPC | Cheaters route through the wrong RPC |
-| Inline `SceneReplicationConfig` sub_resource | Save as standalone `.tres` | Silent-fail trap (see `references/mcp-tools-reference.md`) |
+| Copy-pasting a `SceneReplicationConfig` per player scene | One standalone `.tres`, referenced everywhere | Replication config must match on every peer; duplicated copies drift |
 | Roll custom transport | ENet (or WebSocket for browser) | You will hit edge cases ENet already solved |
 | Skip authority check in damage RPC | `if not multiplayer.is_server(): return` at the top of damage handlers | Otherwise damage applied N times |
 | Spawn players on every peer | MultiplayerSpawner — host spawns, clients receive | Otherwise N copies of each player |
@@ -298,27 +309,24 @@ Test checklist:
 - **"Let's also have rollback netcode for our co-op shooter."** Rollback is a 6-month project on its own. Use it for fighting games and lock-step RTS, not co-op.
 - **NAT punchthrough on day one.** Use Steam Networking or a relay; don't write punchthrough yourself for v1.
 - **Dedicated servers without a deploy story.** If you can't redeploy in < 5 min, the dedicated path isn't ready.
-- **Custom serialization.** Godot's variant serialization is fine. Don't write your own packing until you measure bandwidth.
+- **Custom serialization.** Summer Engine's variant serialization is fine. Do
+  not write your own packing until you measure bandwidth.
 - **Host migration in v1.** It's a feature, not a primitive. Ship without it; add later if churn data demands.
 
 ## Collaborative protocol
 
-This skill rewires the project at the architectural level. Always ask before each block of changes. Group writes — "I'm about to add the autoload + 2 scenes + 3 scripts + InputMap entries. OK?". See `references/collaborative-protocol.md`.
+This skill rewires the project at the architectural level. Always ask before each block of changes. Group writes — "I'm about to add the autoload + 2 scenes + 3 scripts + InputMap entries. OK?".
 
 ## Want a working starter?
 
 For a known-good multiplayer scaffold (host + join UI, ENet transport, MultiplayerSpawner, replicated player), point users at:
 
-→ **template-id**: TBD (`template-co-op-online` planned, see `references/template-registry.md`)
+→ **template-id**: none ships today. Run `summer list templates` for the live list rather than naming one from memory.
 
 For now: this skill produces the scaffold inline. When the template lands, link from here.
 
 ## See also
 
-- `references/mcp-tools-reference.md` — full MCP tool list (project-setting, autoload registration)
-- `references/godot-version.md` — `MultiplayerAPI` is medium-churn; `SceneReplicationConfig` settled in 4.0+
-- `references/collaborative-protocol.md` — "May I write" pattern
-- `references/gd-style.md` — typed GDScript conventions
 - `multiplayer-and-networking/multiplayerapi-basics/SKILL.md` — deeper MultiplayerAPI patterns
 - `multiplayer-and-networking/client-server-pattern/SKILL.md` — dedicated server architecture
 - `multiplayer-and-networking/peer-replication/SKILL.md` — synchronizer config patterns

@@ -2,7 +2,7 @@
 
 ## Fixture
 
-- A Godot/Summer project with one or more reproducible bugs.
+- A Summer project with one or more reproducible bugs.
 - Summer Engine running, MCP available.
 - Host file tools available (Read, Edit, Write).
 

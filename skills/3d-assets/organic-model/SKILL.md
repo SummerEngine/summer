@@ -129,10 +129,13 @@ Then scatter all five with random rotation. Five unique meshes + rotation = look
 **Hero tree:**
 
 ```
-summer_add_node(parent="./World/Forest", type="MeshInstance3D", name="HeroOak")
-summer_set_prop(path="./World/Forest/HeroOak", property="mesh", value="res://assets/organic/oak_tree.glb")
-summer_save_scene
+summer_instantiate_scene(scenePath="res://main.tscn", parent="./World/Forest", scene="res://assets/organic/oak_tree.glb", name="HeroOak")
+summer_save_scene(scenePath="res://main.tscn")
 ```
+
+A `.glb` cannot be assigned to `MeshInstance3D.mesh`. An imported `.glb` is a scene, not a `Mesh` — on the shipped 4.6.1 binary `ResourceLoader.get_recognized_extensions_for_type("Mesh")` returns `["tres", "mesh", "res"]`, with no `glb`. `summer_instantiate_scene` adds it as a child in one op. (For the `MultiMeshInstance3D` path below you do need a real `Mesh`: pull it out of the instantiated scene's `MeshInstance3D` in script, or save it as a `.tres`.)
+
+Every scene-mutating tool takes an explicit `scenePath`; node paths are relative to that scene's root (`./`).
 
 **Forest scatter (MultiMesh):** create a `MultiMeshInstance3D`, assign a `MultiMesh` resource referencing the tree mesh, set `instance_count` to e.g. 100, and populate `set_instance_transform()` from a script with random positions + rotations. See `summer:scene-composition` for the scatter pattern.
 
@@ -169,7 +172,7 @@ For a 200-tree forest, ~10 close trees are real meshes, 190 are billboards. Fram
 
 1. Run prompts at the Summer dashboard or any 3D-gen web playground (Hunyuan, Trellis, Meshy).
 2. Download `.glb` files into `res://assets/organic/`.
-3. Build scatter scenes manually in Godot.
+3. Build scatter scenes manually in Summer Engine.
 
 For totally free / offline alternatives: **Quaternius** (free stylized organics), **AmbientCG** (rocks + textures), **Sketchfab** free filter, **Polyhaven** (HDRIs + scans).
 
@@ -190,4 +193,4 @@ After the organic models are scattered:
 - `summer:3d-assets/environment-kit` — pair with this skill: kit pieces give the architecture, organic gives the natural softness.
 - `summer:asset-pipeline/asset-strategy` — meta-router; ground textures and skyboxes go to Pipeline 2 / panoramic gen.
 - `summer:scene-composition` — MultiMeshInstance3D scatter pattern.
-- `references/mcp-tools-reference.md` — `summer_generate_3d` schema.
+- `../../../references/mcp-tools-reference.md` — `summer_generate_3d` schema.

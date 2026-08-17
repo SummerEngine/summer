@@ -13,7 +13,15 @@ paths: ["assets/**", "art/pixel/**", "sprites/**"]
 
 This skill generates pixel-art assets — sprites, items, tiles, icons, portraits — at a target resolution (32×32, 64×64, 128×128, etc.). Pixel art has hard constraints (grid alignment, limited palette, no anti-aliased edges) that diffusion models violate by default. This skill encodes the prompt patterns and post-processing discipline that makes the output actually look like pixel art and not "blurry small image."
 
-**Backing tool:** `summer_generate_image` with `style: "pixel"` and an explicit pixel-art prompt. Pass `options.image_size: "square_hd"` and have the agent enforce pixel-perfect by setting the project's default texture filter to Nearest (and downscaling to the target resolution post-gen). Output is upscaled by the model — you generally request a small generation (or downscale post-gen) to get crisp pixels.
+**Backing tool:** `summer_generate_image` with an explicit pixel-art prompt.
+
+Two things about that tool you have to know before writing a call, because both silently do nothing:
+
+- **There is no `"pixel"` style preset.** `style` accepts exactly `realistic`, `cartoon`, `anime`, `none`; anything else is coerced to `none`. Only `cartoon` and `anime` do anything at all (they append a short suffix); `realistic` and `none` append nothing. So `style: "pixel"` is identical to `style: "none"` — the pixel look has to come entirely from the prompt. Use `style: "none"` and say so honestly.
+- **`options` is not a general passthrough.** The MCP tool forwards `options` to the server, which only recognizes Nano Banana provider keys: `seed`, `outputFormat`, `safetyTolerance`, `syncMode`, `systemPrompt`, `limitGenerations`, `thinkingLevel`. `image_size` and `negative_prompt` are not among them and are dropped without an error. There is no size or aspect-ratio argument on this tool at all — MCP images come back at the server's 1:1 default. Put framing and exclusions in the prompt text instead.
+
+Pixel-perfect output is enforced in Summer Engine with Nearest texture filtering
+and by downscaling to the target resolution after generation.
 
 ## When to use
 
@@ -54,7 +62,7 @@ shading: 3-tone (light, mid, shadow), no gradients, no AA
 ### 2. Search for existing assets
 
 ```
-summer_search_assets(query="<subject> pixel", filter={ kind: "image" })
+summer_search_assets(query="<subject> pixel", assetType="2d_image", source="all")
 ```
 
 ### 3. Build the prompt
@@ -71,17 +79,17 @@ The model can't actually generate at 32×32 — it generates at 1024×1024 with 
 
 ```
 summer_generate_image(
-  prompt="pixel art slime monster, 32x32 sprite, PICO-8 palette, hard 1px outline in palette's darkest color, 3-tone shading, no anti-aliasing, no blur, sharp pixel edges, transparent background, front-facing",
+  prompt="pixel art slime monster, 32x32 sprite, PICO-8 palette, hard 1px outline in palette's darkest color, 3-tone shading, no anti-aliasing, no blur, sharp pixel edges, front-facing. Not blurry, no smooth gradients, no soft edges, not photorealistic, no 3D render.",
   model="nano-banana-2",
-  style="pixel",
-  options={
-    image_size: "square_hd",
-    negative_prompt: "blurry, smooth gradients, anti-aliasing, photorealistic, 3D render, soft edges"
-  }
+  style="none",
+  options={ removeBackground: true }
 )
 ```
 
-`negative_prompt` is critical for pixel art — without it the model smuggles in soft edges and gradients.
+Two deliberate choices there:
+
+- **The negations live in the prompt.** There is no `negative_prompt` argument — putting one in `options` is dropped silently. Diffusion models honor in-prompt negations less reliably than a real negative-prompt field, so state them as plain sentences at the end and expect to regenerate more often than you would on a provider UI that exposes the field.
+- **`options.removeBackground: true` is real** and is the only `options` key in this skill that does anything: it runs a real background-removal pass after generation and returns a PNG with true alpha. Prefer it over asking for "transparent background" in the prompt, which is what makes models paint a literal checkerboard.
 
 ### 5. Downscale to target resolution
 
@@ -89,7 +97,9 @@ The generated image is 1024×1024 pixel-style. To get true crisp pixels at 32×3
 
 - Import to the engine, then in the import dock set `Filter: Nearest` (no smoothing).
 - For a true 32×32 atlas/icon, downscale in an external editor (Aseprite, GIMP "nearest neighbor") to 32×32 before importing. Aseprite's "Sprite > Sprite Size" with Nearest gives the cleanest result.
-- In Godot, set `Project Settings → Rendering → Textures → Default Texture Filter: Nearest` if the entire game is pixel-art. This kills bilinear smoothing project-wide.
+- In Summer Engine, set `Project Settings → Rendering → Textures → Default
+  Texture Filter: Nearest` if the entire game is pixel art. This disables
+  bilinear smoothing project-wide.
 
 ### 6. Import and wire
 
@@ -100,12 +110,15 @@ summer_import_from_url(url="<fileUrl>", path="res://sprites/slime.png")
 For a `Sprite2D`:
 
 ```
-summer_set_resource_property(
-  nodePath="/root/Game/Slime/Sprite2D",
-  resourceProperty="texture",
+summer_set_prop(
+  scenePath="res://main.tscn",
+  path="./Slime/Sprite2D",
+  key="texture",
   value="res://sprites/slime.png"
 )
 ```
+
+`texture` is a property **on the node**, so it is `summer_set_prop`. `summer_set_resource_property` is for reaching *inside* a resource the node already holds (mesh size, material albedo) and needs all five of `scenePath`, `nodePath`, `resourceProperty`, `subProperty`, `value` — there is no two-argument form.
 
 Confirm `Filter: Nearest` is set in the import dock OR project-wide.
 
@@ -126,15 +139,16 @@ Confirm `Filter: Nearest` is set in the import dock OR project-wide.
 |---|---|
 | `8-bit sword` | "8-bit" is interpreted loosely. Returns a smooth render of a sword with vague pixel feel. Specify resolution + palette + "no AA" explicitly. |
 | `pixel art knight, photorealistic` | Conflicting directives. Model averages and gives you neither. |
-| `pixel art at 32x32` (no negative_prompt) | Model adds soft edges and gradient shading. Always add negative prompt for AA / blur / gradients. |
+| `pixel art at 32x32` with no negations | Model adds soft edges and gradient shading. Always spell out "no anti-aliasing, no blur, no smooth gradients" in the prompt itself — there is no negative-prompt argument to fall back on. |
 | `pixel sprite walk cycle` | Walk cycles need consistent frames — single-prompt sprite sheets fail. Route to `summer:2d-assets/sprite-sheet`. |
 | `cute pixel art` | "Cute" without subject is undefined. Specify what. |
 
 ## Anti-patterns
 
 - **Skipping the downscale.** The model returns a 1024×1024 pixel-style image. If you import that as a 1024 texture, the "pixels" are actually 32-pixel blocks of soft color. Downscale to true target resolution OR set `Filter: Nearest` so the up-rendering doesn't smooth.
-- **No `Filter: Nearest`.** Default Godot texture filtering is bilinear. Pixel art bilinearly filtered looks like garbage. Set it on import or project-wide.
-- **No negative prompt.** Without `blurry, anti-aliasing, gradients, soft edges` in the negative, ~50% of generations are off-style.
+- **No `Filter: Nearest`.** The default texture filtering is bilinear. Set
+  Nearest on import or project-wide for pixel art.
+- **Reaching for `negative_prompt` or `image_size`.** Neither exists on this tool; both are dropped without an error, so the call looks like it worked and the output is off-style. Negations go in the prompt text; size is fixed.
 - **Inconsistent palette across the cast.** Pick a named palette (PICO-8, NES, custom hex list) and re-use across every asset in the project. Different palettes = the project doesn't read as one game.
 - **Generating walk-cycle frames as one image.** Sprite sheets via single-prompt are unreliable. Route to `summer:2d-assets/sprite-sheet`.
 
@@ -152,12 +166,14 @@ Print the call:
 
 ```
 summer_generate_image(
-  prompt="<pixel art prompt with full anchor>",
+  prompt="<pixel art prompt with full anchor>. Not blurry, no smooth gradients, no anti-aliasing.",
   model="nano-banana-2",
-  style="pixel",
-  options={ image_size: "square_hd", negative_prompt: "blurry, smooth gradients, anti-aliasing" }
+  style="none",
+  options={ removeBackground: true }
 )
 ```
+
+The Summer dashboard *does* expose size and negative-prompt controls that the MCP tool does not — if the user is running it there, tell them to set square + a real negative prompt.
 
 Tell the user to run via the Summer dashboard, downscale in Aseprite/GIMP to true target resolution with nearest-neighbor, then `summer_import_from_url` (or drop into `res://sprites/`) and set `Filter: Nearest`.
 
@@ -177,4 +193,4 @@ After the asset is wired:
 - `summer:2d-assets/sprite-sheet` — animated pixel frames.
 - `summer:2d-assets/character-portrait` — high-res counterpart.
 - `summer:asset-pipeline/asset-strategy` — meta-router.
-- `references/mcp-tools-reference.md` — `summer_generate_image` schema.
+- `../../../references/mcp-tools-reference.md` — `summer_generate_image` schema.

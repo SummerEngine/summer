@@ -1,76 +1,91 @@
-# Gate E3: Creator CLI and MCP
+# Gate E3: Creator CLI and MCP Contract
 
-Status: publish and release history are implemented against
-`summer.creator.v1`; runtime logs remain explicitly unsupported.
+Status: publish and release history implemented against `summer.creator.v1`;
+runtime logs remain explicitly unsupported.
 
 Last audited: 2026-07-30 against Summercraft main
 `76b893838be0743912efa2d35484966a5ee0156d`.
 
-## What works
+## What exists now
 
-- `POST /api/creator/v1/publish` supports `prepare` and `finalize`.
-- Publish delegates to the existing immutable R2 upload, checksum, ownership,
-  rate-limit, review, and release-record plane.
-- `GET /api/creator/v1/releases` returns creator-owned cursor-paginated
-  history.
-- The server independently verifies the existing exact `publish` scope and
-  project ownership on every request.
-- Creator runtime logs are not fabricated. No route is enabled because the
-  platform has no durable log owner, retention policy, redaction policy, or
-  authorized query store.
+- Summercraft exposes `POST /api/creator/v1/publish` and
+  `GET /api/creator/v1/releases`.
+- Publish delegates to the existing immutable R2 prepare/finalize, streamed
+  checksum, ownership, rate-limit, review, and release-record plane.
+- Releases returns creator-owned, cursor-paginated history.
+- Both routes accept browser/Supabase identity or a Summercraft `sc_` API token.
+  API tokens need the exact existing `publish` scope. The server independently
+  verifies that scope and project ownership on every call.
+- No creator runtime-log route exists because Summercraft has no durable
+  runtime-log owner, retention policy, redaction policy, or query store.
 
-The core Summer browser-login JWT remains `type=cli`, `aud=summer-cli`.
-It is not a Summercraft creator token and is never overwritten or repurposed.
+The Summer Engine browser-login JWT is still `type=cli`, `aud=summer-cli`.
+That credential is used by the engine and existing Summer gateway surfaces; it
+is not a Summercraft creator token. The CLI never overwrites or repurposes it.
 
-## Local credential and config contract
+## One shared local store
 
-All surfaces share the secured `~/.summer/` directory:
+All local surfaces use `~/.summer/`. The store contract is:
 
-| File | Purpose |
-|---|---|
-| `auth-token` | Core Summer CLI JWT. Existing filename preserved for Summer Engine consumers. |
-| `cloud-token` | Existing separate Summer Cloud credential. |
-| `creator-token` | Separate Summercraft `sc_` token with exact `publish` scope. |
-| `user.json` | Core identity matched against the CLI JWT subject before persistence. |
-| `credential-metadata.json` | Non-secret audience, scope, type, and expiry metadata. |
-| `config.json` | Versioned non-secret CLI/MCP configuration. |
-| `creator-audit.jsonl` | Secret-free local creator publish attempts and outcomes. |
+| File | Secret | Owner / purpose |
+|---|---:|---|
+| `auth-token` | yes | Canonical Summer CLI JWT. Filename preserved because Summer Engine already reads it. |
+| `cloud-token` | yes | Existing Summer Cloud credential with a separate issuer/audience. |
+| `creator-token` | yes | Separately scoped Summercraft `sc_` API token. Never copied into `auth-token`. |
+| `api-token`, `api-port` | yes / no | Ephemeral local-engine discovery written by the running engine. Creator commands do not rewrite them. |
+| `user.json` | personal | Identity matched against the Summer CLI JWT subject before persistence. |
+| `credential-metadata.json` | no | Advisory audience, token type, scopes, and expiry only. Never contains token bytes. |
+| `config.json` | no | Versioned non-secret CLI/MCP configuration. |
+| `creator-audit.jsonl` | no | Local publish target, confirmation, status, and release ID. Never contains tokens or presigned URLs. |
 
-On POSIX, the directory is `0700` and files are `0600`. Writes use
-same-directory temporary files and atomic rename. Symlinked credential files
-are refused. Logout clears identity credentials, including `creator-token`,
-but does not rotate or rename any platform secret.
+On POSIX, the directory is repaired to `0700` and files to `0600`. Writes use
+same-directory temporary files and atomic rename. Symlinked store files are
+refused. Logout removes all identity credentials, including `creator-token`,
+but preserves config, audit history, and a running engine's local token.
 
-Normal users need no new environment variables. Defaults are:
+Do not rename, consolidate, derive, rotate, or reuse `auth-token`,
+`cloud-token`, `creator-token`, `api-token`, or any signing secret without
+coordinating every owning consumer first.
+
+## Configuration and environment
+
+Normal users need no environment variables. Defaults are built in:
 
 - Summer gateway: `https://www.summerengine.com`
 - Summercraft creator API: `https://summercraft.ai`
 
-Supported non-secret config keys:
+Supported non-secret keys:
 
 - `gateway.url`
 - `creator.apiUrl`
 - `creator.projectId`
 - `creator.channel`
 
-Remote origins require HTTPS; HTTP is accepted only for loopback development.
-`creator.channel` currently supports only `production`, because the v1 backend
-does not pretend to provide preview-channel semantics.
+`creator.channel` must currently be `production`; the v1 backend does not
+pretend to have preview-channel semantics. Remote origins require HTTPS; HTTP
+is accepted only for loopback development. Tokens cannot be set or returned
+through `summer config` or the MCP config tool.
 
-## One-time creator setup
+`SUMMER_GATEWAY_URL` remains an optional gateway-development override. No new
+creator environment variable is required.
 
-1. Keep using `summer login` for core Summer identity.
-2. Run `summer login --creator`.
-3. The CLI opens Summercraft creator token settings.
-4. Mint a token with the exact `publish` scope and paste the one-time `sc_`
-   value into the hidden terminal prompt.
+## One-time setup
+
+1. Keep using `summer login` for the core Summer identity.
+2. Run `summer login --creator`. The CLI opens
+   `https://summercraft.ai/creator/settings/tokens`.
+3. In the browser, mint a token with the exact `publish` scope and copy the
+   one-time `sc_` value.
+4. Return to the hidden terminal prompt and paste it. The CLI stores it in
+   `~/.summer/creator-token`; `auth-token` is unchanged.
 5. Configure the Summer game UUID:
    `summer config set creator.projectId <uuid>`.
 
-The additive `cApiTokens` catalog objects already exist and are recorded in
-shared Supabase migration history as version `20260730073920`. The client
-treats server token refusal as authoritative and never falls back to an
-unrelated credential.
+Live token minting and verification use the additive Summercraft `cApiTokens`
+table. Its existing catalog objects were verified and the migration is
+explicitly recorded in shared Supabase history as version `20260730073920`.
+The client still treats a token failure as authoritative and never falls back
+to an unrelated credential.
 
 ## Publishing
 
@@ -83,43 +98,55 @@ summer publish . \
   --notes "First release"
 ```
 
-The first call omits `--confirm`. It computes the real size and SHA-256,
-records the target locally, and returns the exact project, version, digest,
-size, and path without making a network request.
+The first call omits `--confirm`. It computes the real file size and SHA-256,
+records the target locally, prints an error containing the exact project,
+version, digest, size, and path, and makes no network request.
 
-Only after the user approves that exact target should the command be repeated
-with `--confirm`. The client then:
+After the user approves that exact target, repeat with `--confirm`. The client:
 
-1. recomputes artifact digest and size;
-2. sends `operation=prepare` with an exact repeated confirmation object;
-3. validates the versioned response, HTTPS or loopback upload URL, expected
-   content type, and `if-none-match: *`;
-4. streams the `.pck` directly to the presigned URL without exposing the
-   creator token to object storage;
-5. sends `operation=finalize` with the same exact target;
-6. accepts success only when the server echoes the project, version, digest,
-   size, valid release ID, and `pending_review` state;
-7. records a secret-free success or failure in `creator-audit.jsonl`.
+1. recomputes the artifact digest and size;
+2. sends `operation=prepare` plus a confirmation object repeating the exact
+   game UUID, version, and digest;
+3. validates the versioned response, HTTPS/loopback upload URL, signed
+   `content-type`, and write-once `if-none-match: *`;
+4. streams the `.pck` directly to the presigned URL without sending the creator
+   token to R2;
+5. sends `operation=finalize` with the same target and confirmation;
+6. accepts success only when the server echoes the exact game, version, digest,
+   size, release ID, and status;
+7. records success or a secret-free failure in `creator-audit.jsonl`.
 
-The same implementation backs `summer_creator_publish`. Agents must call it
-with `confirm=false`, present the exact target, obtain approval, and only then
-call it with `confirm=true`.
+The server remains authoritative for token scope, ownership, actual stored
+bytes, immutable version, and review state. A successful finalize returns
+`pending_review`; it does not bypass the existing human review gate.
 
-`summer releases` and `summer_creator_releases` return real history. The
-opaque `nextCursor` must be reused unchanged. `summer logs` and
-`summer_creator_logs` fail closed until a durable log plane exists.
+The MCP tool `summer_creator_publish` calls this same implementation. Agents
+must call it with `confirm=false`, show the exact computed target, obtain user
+approval, and only then call it with `confirm=true`.
 
-## Remaining activation work
+## Release history and logs
 
-| Residual | Owner / next action |
-|---|---|
-| No real disposable-token artifact witness from the canonical npm client | Operator: after merge and release, mint a disposable scoped token, publish a non-production witness artifact through review, verify history, then revoke it. |
-| No npm release containing this client | CLI release owner: version and publish only after this PR is merged and reviewed. This change does not publish npm. |
-| No durable runtime-log source | Runtime platform: define ingestion, retention, redaction, authorization, and query ownership first. |
-| No automatic export handoff | Export pipeline: produce an immutable `.pck` explicitly; the CLI must not guess or build without approval. |
-| Finalize response can be lost after server success | Operator: query `summer releases` before retrying; immutable version/digest prevents silent replacement. |
-| Broader public-language corpus still contains technical upstream references | Docs owner: audit remaining references by context, preserving legal/history and technical node/file-format facts while keeping product language Summer-first. |
+`summer releases` and `summer_creator_releases` query real server history. Use
+the returned opaque `nextCursor` unchanged for the next page.
 
-Focused tests use temporary stores, artifact files, and mock HTTP/object-store
-responses. They perform no production requests, secret changes, migrations,
-deployments, npm publishing, or key rotation.
+`summer logs` and `summer_creator_logs` remain fail-closed. They return the
+durable-log ownership requirement, never mock rows, provider-console scraping,
+or placeholder output.
+
+## Residuals and owners
+
+| Residual | Owner | Required next action |
+|---|---|---|
+| No real creator-token artifact witness has run from this client | Summercraft operator | After the client reaches the public CLI source, mint a disposable scoped token, publish a non-production artifact through review, verify history, then revoke the token. |
+| No durable runtime-log source | Runtime/hosting platform | Choose ingestion, retention, redaction, project/release authorization, and query ownership before enabling logs. |
+| No automatic export handoff | Export pipeline | Produce an immutable `.pck` and pass it explicitly; do not make the CLI guess output layout or trigger builds without approval. |
+| Finalize network ambiguity | Creator client/operator | If finalize loses its response, query `summer releases` before retrying; immutable version and digest prevent silent replacement. |
+
+## Verification boundary
+
+Focused tests use temporary stores, artifact files, and mock HTTP/R2 responses.
+They prove prepare → streaming write-once PUT → finalize, exact response
+binding, server-authoritative refusal, real release history, hidden creator
+credential separation, confirmation/audit, unsafe-header refusal, and the same
+path through MCP. No tests use production requests, secrets, environment
+changes, migrations, deployments, or key rotation.

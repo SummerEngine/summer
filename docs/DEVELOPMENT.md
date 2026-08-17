@@ -10,15 +10,17 @@ If you're an AI agent or developer with zero context, read this first.
 
 ## What This Is
 
-**Summer Engine** is the proprietary AI game engine binary users download via
+**Summer Engine** is the AI game engine where creators make Summer games with
+the Summer SDK and GDScript. It is a proprietary binary downloaded through
 `summer install` or from
-[summerengine.com/download](https://summerengine.com/download). Users make
-Summer games with the Summer SDK and GDScript.
+[summerengine.com/download](https://summerengine.com/download). Its technical
+lineage and upstream compatibility are tracked separately; they do not replace
+the Summer product identity.
 
 **Summer** (this repo) is the **open-source agent layer** for it. Three things in one Node.js package:
 
 1. **CLI tool**: lets users install, manage, and launch Summer Engine from their terminal
-2. **MCP server**: gives AI coding agents 62 tools, including identity-bound project files, scene manipulation, play/stop, diagnostics, asset import/generation, cloud workflows, and creator publishing
+2. **MCP server**: gives AI coding agents a focused tool registry, including identity-bound project files, scene manipulation, play/stop, diagnostics, and asset import/generation
 3. **Skills bundle**: the current SKILL.md playbooks that auto-trigger when the agent sees the right natural-language signal
 
 Plus lifecycle hooks, plugin manifests, and setup targets that wire all of the above into Claude Code, Cursor, Codex, Gemini, OpenCode, GitHub Copilot CLI, GitHub Copilot in VS Code, Cline, Roo Code, Factory Droid, and Devin Desktop (formerly Windsurf).
@@ -150,7 +152,7 @@ tools/summer-cli/
     │   ├── config.ts          # summer config - shared non-secret config
     │   ├── publish.ts         # summer publish - confirmed creator release
     │   ├── releases.ts        # summer releases - creator history
-    │   ├── logs.ts            # summer logs - explicit durable-log boundary
+    │   ├── logs.ts            # summer logs - creator runtime logs
     │   ├── status.ts          # summer status - engine diagnostics
     │   ├── run.ts             # summer run [path] - launches engine
     │   ├── open.ts            # summer open <path> - opens project
@@ -174,7 +176,7 @@ tools/summer-cli/
         ├── store.ts           # Hardened shared ~/.summer store
         ├── auth.ts            # Core-compatible identity + token metadata
         ├── config.ts          # Typed non-secret configuration
-        ├── creator.ts         # Versioned creator publish/history client
+        ├── creator.ts         # Creator command/MCP service contract
         ├── engine.ts          # Engine detection, health check, port reading
         └── project-memory.ts  # Lightweight .summer memory summary
 ```
@@ -202,27 +204,35 @@ registry entries exist.
 ### Shared `~/.summer/` Store
 
 The CLI, existing MCP, exporters, and desktop engine share one secured
-`~/.summer/` directory. Existing filenames are preserved because other Summer
-Engine consumers already read them:
+`~/.summer/` directory. The CLI creates it as `0700`, writes credential and
+configuration files as `0600`, uses atomic replacement, and refuses symlink
+credentials.
+
+The existing filenames are deliberately preserved because the desktop engine
+already reads them:
 
 - `api-token` - written by the engine's `LocalApiServer` on startup. Random per-session. The MCP server reads this to authenticate with the engine. **Only valid while engine is running.**
-- `auth-token` - core Summer CLI JWT written by `summer login`.
-- `cloud-token` - separate Summer Cloud credential.
-- `creator-token` - separate Summercraft `sc_` credential connected by
-  `summer login --creator`; it never replaces `auth-token`.
-- `user.json` - validated `{id, email, name?}` core identity.
-- `credential-metadata.json` - non-secret audience, scope, type, and expiry.
-- `config.json` - typed, non-secret shared configuration.
-- `creator-audit.jsonl` - secret-free local creator publish receipts.
+- `auth-token` - written by `summer login`. Long-lived `summer-cli` JWT for user identity. **Persists across sessions.**
+- `cloud-token` - the separate Summer Cloud token when the login endpoint returns one.
+- `creator-token` - a separate Summercraft `sc_` token with exact `publish` scope, connected by `summer login --creator`. Never replaces `auth-token`.
+- `user.json` - the validated `{id, email, name?}` identity shared with the desktop engine.
+- `credential-metadata.json` - audience, scopes, and expiry metadata only. It never duplicates a token.
+- `config.json` - typed, non-secret settings shared by CLI and MCP.
+- `creator-audit.jsonl` - local append-only creator publish attempts and outcomes.
 
-Normal users need no new environment variables. See
-[GATE_E3_CREATOR_CLI.md](GATE_E3_CREATOR_CLI.md) for the exact API,
-confirmation, credential, and residual activation contract.
+No environment variables are required for normal CLI use. The production
+Summer gateway and Summercraft creator API are the defaults.
+`SUMMER_GATEWAY_URL` remains an optional gateway-development override; users
+can instead set `gateway.url` or `creator.apiUrl` with `summer config`.
+
+See [GATE_E3_CREATOR_CLI.md](GATE_E3_CREATOR_CLI.md) for the versioned endpoint,
+credential firewall, confirmation flow, and remaining activation/log blockers.
 
 ### Template System (`commands/create.ts`)
 
 Two tiers:
-- **Built-in**: Tiny templates embedded in code (empty, 3d-basic). Just Godot config strings.
+- **Built-in**: Tiny templates embedded in code (empty, 3d-basic). They contain
+  Summer project configuration strings.
 - **Remote** (future): Hosted in GitHub repo, downloaded on demand. 100MB-2GB per template.
 
 ---
@@ -258,6 +268,10 @@ node dist/bin/summer.js create 3d-basic test-project
 
 # Run MCP server (requires engine running)
 node dist/bin/summer.js mcp
+
+# Explicit selectors for hosts launched outside a project directory
+node dist/bin/summer.js mcp --project /absolute/path/to/game
+node dist/bin/summer.js mcp --instance <instance-id>
 
 # Run smoke tests
 bash scripts/smoke-test.sh
@@ -391,11 +405,16 @@ The `api-token` changes each time the engine starts. If the MCP server cached an
 - [ ] Error handling in `api-client.ts` - all methods return `Promise<unknown>` with no typed responses. Network errors surface as generic messages
 - [ ] No retry logic - if a single API call errors, the tool just returns that error. No automatic retry
 - [ ] `with-engine.ts` resets the entire client on any error, even if it's a 400 (bad request) not a connection issue
-- [ ] MCP tool descriptions - functional but could be much richer. Should include examples, common patterns, and type system documentation (e.g., Godot string format for Vector3)
+- [ ] MCP tool descriptions - functional but could be richer. They should
+  include examples, common patterns, and Summer Engine variant-string
+  documentation (for example `Vector3(...)`).
 - [ ] No input validation - CLI commands don't validate paths exist before passing to the engine (some do, most don't)
 
 ### Should Spend More Time On
-- [ ] MCP tool descriptions are the main thing AI agents read to understand how to use Summer Engine. Current descriptions are minimal. Each tool should have examples of usage, common parameter values, and links to Godot docs where relevant
+- [ ] MCP tool descriptions are the main thing AI agents read to understand how
+  to use Summer Engine. Current descriptions are minimal. Each tool should have
+  examples, common parameter values, and upstream API links where technically
+  relevant.
 - [ ] The `create` command templates are bare-bones. The 3d-basic scene doesn't have a WorldEnvironment configured properly. Templates should be polished enough to be impressive on first use
 - [ ] Testing - only a smoke test script exists. No unit tests for individual commands, no integration tests for the MCP server, no mock engine for testing without the real engine running
 - [ ] CI/CD - no automated build/test/publish pipeline. Publishing is manual from a clean public-repository clone
@@ -411,7 +430,9 @@ The `api-token` changes each time the engine starts. If the MCP server cached an
 ### Nice To Have (Future)
 - [ ] `summer doctor` - diagnose common issues (engine installed? right version? port available? auth valid?)
 - [ ] `summer upgrade` - update the engine to latest version
-- [ ] `summer publish` - export/publish your game
+- [ ] Creator runtime logs - publish and release history use
+  `summer.creator.v1`; logs remain blocked until the runtime platform owns a
+  durable, authorized, redacted source
 - [ ] Tab completion for commands and template names
 - [ ] MCP resources (read-only data like scene tree, file tree) in addition to tools
 - [ ] Streaming results for long operations (e.g., ImportFromUrlBatch)

@@ -58,7 +58,7 @@ function listProjects(): void {
   }
 
   if (projects.length === 0) {
-    console.log("No Summer Engine / Godot projects found in current directory.");
+    console.log("No Summer Engine projects found in current directory.");
     console.log("\nCreate one: summer create 3d-basic my-game");
     return;
   }

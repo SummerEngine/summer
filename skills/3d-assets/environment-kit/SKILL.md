@@ -113,12 +113,17 @@ Polycount targets per kit piece: walls/floors 800–1500 tris (placed dozens of 
 Don't dump the kit into the level scene. Make a `kit_dungeon.tscn` that holds one of every piece, labelled, positioned next to each other on the snap grid. The level designer instantiates from there.
 
 ```
-summer_add_node(parent="./KitRoot", type="Node3D", name="Wall")
-summer_set_prop(path="./KitRoot/Wall", property="scene", value="res://assets/kits/dungeon/wall.glb")
-summer_set_prop(path="./KitRoot/Wall", property="position", value="Vector3(0, 0, 0)")
+summer_instantiate_scene(scenePath="res://assets/kits/dungeon/kit_dungeon.tscn", parent="./KitRoot", scene="res://assets/kits/dungeon/wall.glb", name="Wall")
+summer_set_prop(scenePath="res://assets/kits/dungeon/kit_dungeon.tscn", path="./KitRoot/Wall", key="position", value="Vector3(0, 0, 0)")
 # ...repeat for floor, pillar, door, corner, arch with positions Vector3(2,0,0), Vector3(4,0,0), ...
-summer_save_scene
+summer_save_scene(scenePath="res://assets/kits/dungeon/kit_dungeon.tscn")
 ```
+
+Three things the shape of those calls encodes:
+
+- **A `.glb` is instantiated, not assigned.** There is no `scene` property on `Node3D`, and an imported `.glb` is a scene, not a `Mesh` — `ResourceLoader.get_recognized_extensions_for_type("Mesh")` on the shipped 4.6.1 binary returns `["tres", "mesh", "res"]`, with no `glb`. Use `summer_instantiate_scene`, which adds the model as a child in one op.
+- **Every scene-mutating tool takes an explicit `scenePath`**, and node paths are relative to that scene's root (`./`).
+- **`summer_set_prop`'s property argument is named `key`**, not `property`.
 
 ### 5. Verify scale and pivots
 
@@ -149,7 +154,8 @@ Check the AABB. If the wall is 1.85m tall when you asked for 3m, scale it in the
 1. Run each prompt at the Summer dashboard (or Hunyuan / Trellis web UIs), keeping the locked suffix.
 2. Download each `.glb`.
 3. Drop into `res://assets/kits/<kit-name>/`.
-4. Build the kit-display scene manually in Godot — one of each piece, snapped to grid.
+4. Build the kit-display scene manually in Summer Engine, with one of each piece
+   snapped to the grid.
 5. Hand to the level designer.
 
 ## Handoff

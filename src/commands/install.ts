@@ -51,14 +51,6 @@ export function windowsInstallerArgs(customPath?: string): string {
   return customPath ? `--silent --installto "${customPath}"` : "--silent";
 }
 
-export function unsupportedInstallPlatformMessage(): string {
-  return (
-    "summer install currently supports macOS on Apple silicon and Windows.\n" +
-    "Linux does not have a supported public installer yet. Linux support is planned; " +
-    "no manual Linux download is available."
-  );
-}
-
 export const installCommand = new Command("install")
   .description("Download and install Summer Engine")
   .option("--path <dir>", "Custom install directory")
@@ -66,7 +58,10 @@ export const installCommand = new Command("install")
     const os = platform();
 
     if (os !== "darwin" && os !== "win32") {
-      console.error(unsupportedInstallPlatformMessage());
+      console.error(
+        "Linux support is coming soon.\n" +
+        "For now, download from: https://summerengine.com/download"
+      );
       process.exit(1);
     }
 

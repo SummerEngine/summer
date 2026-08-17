@@ -42,21 +42,40 @@ You cannot fix a regression you have not measured. Eyeballing "feels laggy" is n
 
 ### 1. Measure now
 
+Measure in a `RunVerification` probe, not by eye. It spawns a hidden, disposable game instance with a real renderer, so `Performance.get_monitor(...)` returns the game's actual numbers and the user's editor session is untouched.
+
 ```
-  summer_play  (on the scene that's slow)
-  ── wait 5-10 seconds of normal play ──
-  summer_get_diagnostics
-  summer_get_console
-  summer_stop
+summer_batch ops:[{"op":"RunVerification","probe_source":"<probe>","max_seconds":20}]
+```
+
+```gdscript
+extends SummerProbeBase
+func _ready() -> void:
+    await super._ready()
+    await get_tree().process_frame
+    var samples: Array = []
+    for i in 30:                                  # ~5 s at 60 fps, sampled over time
+        await get_tree().create_timer(0.16).timeout
+        samples.append(Performance.get_monitor(Performance.TIME_FPS))
+    report("fps_samples", samples)                # spike pattern lives here
+    report("draw_calls", Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
+    report("bodies_3d", Performance.get_monitor(Performance.PHYSICS_3D_ACTIVE_OBJECTS))
+    report("objects", Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME))
+    dump_tree()
+    finish()
 ```
 
 What to capture:
 
 | Metric | Source | Why |
 |---|---|---|
-| Avg FPS / frame time | `summer_get_diagnostics` or in-game perf monitor | Headline number |
-| Spike pattern | `summer_get_console` if user has frame-time prints, else in-game monitor | Steady 30 vs intermittent stutters → different causes |
-| Scene complexity | `summer_get_scene_tree` (root counts) | Establishes baseline for instance/body count cliffs |
+| Avg FPS / frame time | `Performance.TIME_FPS` / `TIME_PROCESS` sampled in the probe | Headline number |
+| Spike pattern | the per-sample FPS array above | Steady 30 vs intermittent stutters → different causes |
+| Scene complexity | probe `dump_tree()` for the live tree; `summer_get_scene_tree` for the edited scene | Establishes baseline for instance/body count cliffs |
+
+`summer_get_diagnostics` does **not** report performance. It returns counts of console errors, debugger errors, debugger warnings and script errors. Use it to confirm the slow run isn't also throwing, never as a source of FPS or draw-call numbers.
+
+Discard every sample from the first second — `TIME_FPS` is a per-second average and reads exactly `1.0` until it has a second of history. A leading run of `1.0` in the array is warm-up, not a stall.
 
 Write the bad-state number down. "Scene `Level3` runs at 31fps avg, drops to 12fps when 5+ enemies are on screen."
 
@@ -96,7 +115,7 @@ Read the list. Group commits into suspects:
 
 If a single commit is the obvious suspect (e.g. "Added 200 enemies to spawner"), test it first. Otherwise actually `git bisect` — check out the midpoint, measure FPS, repeat. Don't theorize through it; the bisect is fast and definitive.
 
-### 4. Match to one of the four Godot perf cliffs
+### 4. Match to one of the four Summer Engine performance cliffs
 
 Godot 4.x regressions cluster heavily into four categories. Knowing them shortens diagnosis to minutes.
 
@@ -127,13 +146,7 @@ If no → that wasn't it. Restore. Try the next suspect.
 
 The fix is not done until the same measurement that found the regression returns the good number. Same scene, same play duration, same warm-up.
 
-```
-  summer_clear_console
-  summer_play
-  ── 5-10 seconds of play ──
-  summer_get_diagnostics
-  summer_stop
-```
+Re-run the identical probe from step 1 — same scene, same sample count, same drive sequence. A number taken a different way is not a comparison.
 
 State the result with the number: "Reverted the per-frame `get_tree().get_nodes_in_group()` call in `enemy_manager.gd`. Level3 back to 58fps avg." Not "should be faster now."
 
@@ -156,7 +169,9 @@ State the result with the number: "Reverted the per-frame `get_tree().get_nodes_
 | Skipping the known-good measurement | Without a baseline, you don't know when you're done. |
 | Reading the slow scene's code top-to-bottom looking for inefficiency | The regression is in what changed, not in what was already there. |
 | Adding caching / pooling / LOD before identifying the cause | These are tuning moves. They can hide the regression instead of fixing it. |
-| Trusting editor FPS as ground truth | Editor runs `@tool` scripts, debug overlays, and a different render pipeline. Measure in a built or `--game` run when possible. |
+| Trusting editor FPS as ground truth | Editor runs `@tool` scripts, debug overlays, and a different render pipeline. Measure in a `RunVerification` probe or a built binary. |
+| Profiling with `--headless` | No renderer: draw calls read `0.0` and the FPS figure is a bare loop rate. The verify instance is windowed-offscreen for exactly this reason. |
+| Quoting FPS from `summer_get_diagnostics` | It returns error/warning counts only. That number did not come from where you said it did. |
 | "Maybe it's just a Tuesday thing" | Performance does not regress randomly. There is a cause. |
 
 ## Rationalization Prevention
@@ -171,11 +186,21 @@ State the result with the number: "Reverted the per-frame `get_tree().get_nodes_
 
 ## When The Engine Isn't Running
 
-If `summer_play` is unavailable:
+If the MCP tools report the engine isn't running:
 
-1. Ask the user for an in-game perf overlay screenshot (FPS, frame time, draw call count).
-2. Walk the bisect logically with them: "Run on commit X, tell me the FPS. Run on commit Y, tell me the FPS."
-3. Do not claim a fix is verified from code reading alone.
+1. **Get it running.** `summer run` starts it and restores the probe route. That is one command, and it is almost always the right answer — do not degrade to interviewing the user because a tool returned "not running" once.
+2. **If you have shell access, you can run a probe without the editor at all.** The same verify instance is a plain flag on the Summer binary:
+
+   ```bash
+   "<summer-binary>" --path <project-dir> \
+     --summer-verify <abs/path/probe.gd> \
+     --summer-verify-out <abs/out-dir> \
+     --summer-verify-max 20
+   ```
+
+   Then read `<out-dir>/results.json` (`reports`, `frames`, `errors_seen`, `duration_ms`). Locate the binary rather than guessing a path — on macOS it is the executable inside the installed `Summer.app` bundle. The probe file must extend the probe base; when you invoke the binary directly, write the base alongside it and `extends` it by path.
+3. Only if neither is possible: ask the user for an in-game perf overlay reading (FPS, frame time, draw call count) and walk the bisect with them — "run on commit X, tell me the FPS; run on commit Y, tell me the FPS."
+4. Do not claim a fix is verified from code reading alone.
 
 ## The Bottom Line
 

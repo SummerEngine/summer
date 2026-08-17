@@ -113,7 +113,7 @@ Ask:
 
 ### 6. Write the lighting plan
 
-State the plan in one block. For Summer Engine:
+State the plan in one block. For the current Summer Engine rendering stack:
 
 ```
 Sun: DirectionalLight3D, color #fff2d9, energy 0.9, angle ~30° (warm low-angle)
@@ -133,7 +133,8 @@ NEVER: full-bright modulation, no soft falloff
 
 ### 7. Define post-processing rules
 
-Summer Engine post stack: Glow, SDFGI, SSAO, SSR, Adjustments, Color Correction (LUT). State opinions, not options.
+Summer Engine post stack: Glow, SDFGI, SSAO, SSR, Adjustments, Color Correction
+(LUT). State opinions, not options.
 
 ```
 Glow: ON, threshold 0.9, intensity 0.5  (soft bloom on highlights only)
@@ -168,7 +169,7 @@ This is the contract. Five do's, five don'ts. Specific, enforceable.
 - No chromatic aberration / lens flare / motion blur — they're cheap and date-fast.
 ```
 
-### 9. Apply Godot project-level settings
+### 9. Apply Summer project-level settings
 
 Some art-direction calls translate to `project.godot` settings. Apply them.
 
@@ -261,11 +262,11 @@ End with:
 | Procedural skybox without angle | Mid-day sun + uniform fog reads generic. Always angle the sun. |
 | Skipping the lighting plan | Lighting *is* art direction in 3D. Without a plan, every level looks different. |
 | Adopting "AAA realism" at vertical-slice scope | Asset cost is brutal solo. Stylized always wins. |
-| Calling SetResourceProperty on inline sub_resources | Silent fail. See `references/mcp-tools-reference.md` § Trap. |
+| Calling SetResourceProperty before the property holds a resource | Explicit `resource is null` error, not a silent drop. Assign the resource first (`summer_set_prop key="environment" value="Environment"`), then set its sub-properties. Scene-embedded sub_resources are fully supported targets. |
 
 ## Collaborative protocol
 
-This skill writes one design doc (`.summer/art-bible.md`) and may modify `project.godot` settings + the main scene's `WorldEnvironment`. Always ask. See `references/collaborative-protocol.md`.
+This skill writes one design doc (`.summer/art-bible.md`) and may modify `project.godot` settings + the main scene's `WorldEnvironment`. Always ask.
 
 ## Want a working starter?
 
@@ -273,9 +274,6 @@ No template — this is a workflow that produces the bible the rest of the proje
 
 ## See also
 
-- `references/collaborative-protocol.md`
-- `references/godot-version.md` — Summer Engine rendering API notes (Compositor moved in 4.4 / 4.5)
-- `references/mcp-tools-reference.md`
 - `scene-and-project/brainstorm-game/SKILL.md` — produces the brief that anchors the bible
 - `audio/audio-direction/SKILL.md` — the sonic counterpart
 - `rendering-and-lighting/3d-lighting/SKILL.md` — implements the lighting plan

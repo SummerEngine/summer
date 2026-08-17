@@ -4,12 +4,7 @@ Summer is the AI game-dev studio for **Summer Engine** — the AI-native game en
 
 ## What Summer Engine is
 
-A game engine designed for AI agents. The user is making a **Summer game**
-with the **Summer SDK**. Editor, scene graph, asset pipeline, and runtime are
-instrumented for programmatic control via MCP. GDScript (`.gd`) is the default
-language; C# (`.cs`), scenes (`.tscn`/`.scn`), and resources (`.tres`/`.res`)
-are also supported. Talk to the engine through `summer_*` tools, and use the
-bundled technical compatibility reference for version-sensitive upstream APIs.
+Summer Engine is designed for AI-assisted creation. The user is making a **Summer game** with the **Summer SDK**, normally in GDScript. The editor, scene graph, asset pipeline, and runtime are instrumented for programmatic control via MCP. Summer currently uses the 4.6.1 upstream technical base, plans to adopt 4.7.1 next, and follows upstream continuously. Those numbers are compatibility facts, not the product identity. Projects use GDScript (`.gd`), C# (`.cs`), scenes (`.tscn`/`.scn`), resources (`.tres`/`.res`), and the technical `project.godot` filename.
 
 ## How to behave
 
@@ -25,7 +20,7 @@ The single most important skill to know is `summer:using-summer` — it explains
 
 ## MCP tools (when the project-matched local editor is running)
 
-The `summer-engine` MCP server exposes 62 tools. The most important:
+The `summer-engine` MCP server exposes a focused tool registry. The most important:
 
 - **Scene mutation**: `summer_add_node`, `summer_set_prop`, `summer_set_resource_property`, `summer_remove_node`, `summer_save_scene`, `summer_replace_node`, `summer_batch`. Every scene mutation requires the exact `res://...tscn` `scenePath`; opening a scene is a user-visible UI action, not a mutation prerequisite. Mutation tools append one final `SaveScene`; raw engine batches must do the same.
 - **Scene inspection**: `summer_get_scene_tree`, `summer_inspect_node`, `summer_inspect_resource`.
@@ -40,7 +35,8 @@ Git, shell, and grep remain host-native. Use the Summer file tools for project r
 
 ## Type-system traps
 
-`SetProp` values are Summer Engine-formatted **strings**:
+`SetProp` values are engine-formatted **strings** compatible with the current
+Summer Engine type system:
 
 - `"Vector3(0, 10, 0)"` — NOT `{x: 0, y: 10, z: 0}`.
 - `"Color(1, 0.5, 0, 1)"` — RGBA, 4 components.

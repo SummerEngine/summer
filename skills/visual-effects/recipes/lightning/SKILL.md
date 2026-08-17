@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects
 user-invocable: true
-allowed-tools: Read Write Edit summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_save_scene
+allowed-tools: Read Write Edit summer_write_file summer_read_file summer_create_scene summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_save_scene summer_project_setting summer_get_script_errors summer_get_debugger_errors summer_play summer_stop
 paths: ["**/*.tscn", "**/*.gd", "**/*.gdshader", "addons/vfx/**"]
 ---
 
@@ -27,7 +27,9 @@ A lightning bolt is a noisy line from A to B, drawn for ~150 ms with a glow shad
 - The user wants a continuous beam that holds (e.g., laser sniper holding the trigger) — use the same shader on a `MeshInstance3D` cylinder with continuous emission, not the `ImmediateMesh` one-shot pattern. (See variants for `held-beam`.)
 - The user wants ambient electricity *on* an object (Frankenstein arcs) — use a custom shader on the mesh with screen-space arcs; this recipe is for two-point bolts.
 - The user wants a 2D lightning effect on UI — `canvas_item` shader, not this.
-- The user wants a tracer line for a bullet — use a simple `Line3D`/`ImmediateMesh` without the noise displacement; skip this recipe.
+- The user wants a tracer line for a bullet — use a simple `ImmediateMesh`
+  without noise displacement; skip this recipe. The current Summer build has no
+  `Line3D` (`ClassDB.class_exists("Line3D")` is `false`); `Line2D` is 2D-only.
 
 ## Recipe
 
@@ -56,8 +58,7 @@ uniform float flicker_rate  : hint_range(0.0, 60.0) = 30.0;
 
 void vertex() {
     // Billboard each segment toward the camera around its own forward axis.
-    vec3 right = INV_VIEW_MATRIX[0].xyz;
-    vec3 up    = INV_VIEW_MATRIX[1].xyz;
+    vec3 up = INV_VIEW_MATRIX[1].xyz;
     VERTEX += UV.y > 0.5 ? up * thickness * 0.5 : -up * thickness * 0.5;
 }
 
@@ -76,8 +77,10 @@ void fragment() {
     vec3 col = mix(bolt_color.rgb, core_color.rgb, core);
     float a = (core + halo * 0.4) * intensity * flick;
 
-    ALBEDO = col;
-    EMISSION = col * emission_boost * intensity * flick * (core + halo * 0.5);
+    // `render_mode unshaded` outputs ALBEDO and discards EMISSION entirely
+    // (scene_forward_clustered.glsl:2962 — `frag_color = vec4(albedo, alpha)`
+    // under MODE_UNSHADED), so the bloom boost has to live in ALBEDO.
+    ALBEDO = col * emission_boost * flick * (core + halo * 0.5);
     ALPHA = clamp(a, 0.0, 1.0);
 }
 ```
@@ -117,14 +120,14 @@ func cast_lightning(from: Vector3, to: Vector3, intensity_scale: float = 1.0) ->
         _spawn_sparks(from)
         _spawn_sparks(to)
 
-    if Engine.has_singleton("CameraShake") or _has_autoload("CameraShake"):
-        var cs := Engine.get_main_loop().root.get_node_or_null("/root/CameraShake")
-        if cs and cs.has_method("add_trauma"):
-            cs.add_trauma(trauma_amount * intensity_scale)
-
-func _has_autoload(name: String) -> bool:
-    var root := Engine.get_main_loop().root
-    return root and root.has_node("/root/" + name)
+    # An autoload is a node at /root/<Name>, not an engine singleton:
+    # Engine.has_singleton("CameraShake") is always false for one (measured).
+    # get_node_or_null returns null when nothing is registered — that is the guard.
+    # (MainLoop has no `root`, so `var root := Engine.get_main_loop().root` is a
+    # parse error that takes the entire script down with it.)
+    var cs := get_node_or_null(^"/root/CameraShake")
+    if cs and cs.has_method("add_trauma"):
+        cs.add_trauma(trauma_amount * intensity_scale)
 
 func _build_bolt_node(from: Vector3, to: Vector3, intensity_scale: float) -> Node3D:
     var holder := Node3D.new()
@@ -193,7 +196,10 @@ func _draw_polyline(mesh: ImmediateMesh, points: PackedVector3Array) -> void:
 func _spawn_sparks(at: Vector3) -> void:
     if not ResourceLoader.exists(spark_scene_path):
         return
-    var sparks := load(spark_scene_path).instantiate()
+    # `var sparks := load(...).instantiate()` is a parse error — load() has no
+    # static return type, so `:=` cannot infer. Annotate both steps.
+    var packed: PackedScene = load(spark_scene_path)
+    var sparks: Node3D = packed.instantiate()
     add_child(sparks)
     sparks.global_position = at
     if sparks.has_method("restart"):
@@ -216,12 +222,28 @@ Recommended: register one `LightningCaster` as an autoload (`/root/Lightning`) s
 
 Place one `LightningCaster` per "world" (or autoload it), then call from gameplay code.
 
+Every scene-mutating call takes an explicit `scenePath`. `summer_set_prop` uses `key`
+(not `property`) and only accepts a string, number, or boolean.
+
 ```
-summer_add_node(parent="./World", type="Node3D", name="LightningCaster")
-summer_set_prop(path="./World/LightningCaster", property="script", value="res://addons/vfx/lightning/lightning_caster.gd")
-summer_set_prop(path="./World/LightningCaster", property="bolt_color", value="Color(0.55, 0.75, 1.0)")
-summer_set_prop(path="./World/LightningCaster", property="trauma_amount", value=0.6)
-summer_save_scene
+summer_write_file(path="res://addons/vfx/lightning/lightning.gdshader", content="<section 2>", create_only=true)
+summer_write_file(path="res://addons/vfx/lightning/lightning_caster.gd", content="<section 3>", create_only=true)
+
+summer_add_node(scenePath="res://main.tscn", parent="./World", type="Node3D", name="LightningCaster")
+summer_set_prop(scenePath="res://main.tscn", path="./World/LightningCaster", key="script", value="res://addons/vfx/lightning/lightning_caster.gd")
+summer_set_prop(scenePath="res://main.tscn", path="./World/LightningCaster", key="bolt_color", value="Color(0.55, 0.75, 1.0)")
+summer_set_prop(scenePath="res://main.tscn", path="./World/LightningCaster", key="trauma_amount", value=0.6)
+summer_save_scene(scenePath="res://main.tscn")
+```
+
+Then verify — the caster `preload`s its own shader, so a shader that failed to write
+takes the whole script down at parse time:
+
+```
+summer_get_script_errors          # lightning_caster.gd parsed?
+summer_play
+summer_get_debugger_errors        # shader compile errors surface here at runtime
+summer_stop
 ```
 
 Then from the spell code:
@@ -319,18 +341,21 @@ trauma_amount = 0.0  # no shake on a held beam
 
 ## Anti-patterns
 
-- **Drawing the bolt as a `Line3D`.** Line3D doesn't billboard or accept the additive shader cleanly. Use `ImmediateMesh` triangle strip with the billboard vertex shader.
+- **Reaching for a `Line3D`.** The current Summer build has no such class
+  (`ClassDB.class_exists("Line3D")` is `false`); `Line2D` is 2D-only. Use an
+  `ImmediateMesh` triangle strip with the billboard vertex shader.
 - **Animating the path frame-by-frame.** A bolt is one shape, on screen for 150 ms. You don't see the inside detail moving. One generation per cast.
 - **Forgetting `blend_add`.** A bolt that doesn't bloom looks like a curved metal stick.
-- **No camera shake.** Lightning without screen shake feels weightless. Always call `CameraShake.add_trauma`.
+- **No camera shake.** Lightning without screen shake feels weightless. Always call `add_trauma` on the `/root/CameraShake` autoload.
+- **Gating the shake on `Engine.has_singleton("CameraShake")`.** That is always `false` for an autoload (measured) — the shake would never fire. Autoloads are nodes at `/root/<Name>`; look them up with `get_node_or_null`.
 - **Spawning lightning every frame for a "continuous" beam.** Use the `plasma-laser` variant pattern instead — one mesh, updated per-frame transform, never re-instantiated.
 - **`SEGMENTS` too low (< 6).** Bolt looks like a zigzag triangle. Default 18 is right.
 - **`DISPLACEMENT` proportional to total length without falloff.** Endpoints drift away from `from`/`to`. The included code uses `sin(t * PI)` falloff so endpoints meet cleanly.
 
 ## Performance notes
 
-- One bolt: ~36 verts, one draw call, freed after 150 ms. Effectively free.
-- Chain lightning with 5 segments: still under 0.05 ms.
+- One bolt at `SEGMENTS = 18`: 19 path points × 2 verts = 38 verts for the trunk, plus 2 × (`SEGMENTS / 3` + 1) = 14 verts per forked branch. One draw call, freed after 150 ms. Effectively free.
+- Chain lightning with 5 segments stays in the same negligible band — that is an order-of-magnitude expectation, not a measurement.
 - Endpoint sparks (instantiated `hit-spark` scenes) are the bigger cost — 64 particles × 2 = 128 particles per cast. Throttle for storms (see edge cases).
 - The shader's flicker uses `floor(TIME * flicker_rate)`, so it ages with `TIME` not particle time — flicker is consistent across all bolts in flight.
 
@@ -341,16 +366,23 @@ trauma_amount = 0.0  # no shake on a held beam
 - **Bolt origin and target at the same point.** Falloff goes to zero; `_generate_path` returns a degenerate strip. Add a guard: if `(to - from).length() < 0.01`, skip.
 - **Underwater bolt.** Tint blue-green, drop `emission_boost` to 5.0; underwater bloom is muted.
 - **First-person caster (player's hand).** The bolt starts inside the player's view and reads as a flash. Use a `held-beam` variant or shorten `LIFETIME` to 0.08.
-- **No `CameraShake` autoload registered.** The script's `_has_autoload` guard prevents a crash; the bolt fires without shake. Suggest `_building-blocks/trauma-shake-snippet.md` to wire it.
+- **No `CameraShake` autoload registered.** `get_node_or_null("/root/CameraShake")` returns null and the `if cs` check skips the call; the bolt fires without shake. Suggest `_building-blocks/trauma-shake-snippet.md` to wire it.
 
 ## Fallback (no MCP)
 
-VFX is code, no MCP required:
+Section 5 is fully automatable — `summer_write_file` writes the shader and the
+caster, `summer_add_node` + `summer_set_prop` + `summer_save_scene` place it, and
+`summer_project_setting` registers the autoload. Do not hand these steps to the user
+when the MCP tools are available.
+
+Without the MCP connection there is no engine to drive, so the user does it
+manually in Summer Engine:
 
 1. Create `addons/vfx/lightning/` and write the three files above.
-2. In Godot, add a `Node3D`, attach `lightning_caster.gd`. Optionally autoload as `Lightning`.
+2. Add a `Node3D`, attach `lightning_caster.gd`. Optionally autoload as `Lightning`.
 3. From any spell script, call `Lightning.cast_lightning(from_pos, to_pos)`.
 4. Wire the `CameraShake` autoload from `_building-blocks/trauma-shake-snippet.md` for the punch.
+5. Check the Errors dock — `lightning_caster.gd` `preload`s the shader, so a broken shader path fails the script too.
 
 ## Handoff
 

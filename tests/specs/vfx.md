@@ -105,7 +105,8 @@
 **Assertions:**
 
 - [ ] Skill identifies MCP unavailable and adapts.
-- [ ] Generated GDScript is syntactically valid Summer Engine with type hints.
+- [ ] Generated GDScript is syntactically valid for the current Summer Engine
+      compatibility line and uses type hints.
 - [ ] Skill asks the user to paste the scene snippet AND the bus list.
 - [ ] Skill provides explicit autoload-registration instructions (no `summer_*` autoload tool exists).
 - [ ] Skill applies "May I write …" protocol on each of the 3 file writes.

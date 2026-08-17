@@ -144,10 +144,10 @@
 
 | Tool | Use |
 |---|---|
-| `summer_creator_publish` | Compute the exact `.pck` digest and size, require user confirmation, then run versioned prepare → write-once upload → finalize. |
-| `summer_creator_releases` | List real creator-owned releases from `summer.creator.v1`, preserving opaque pagination cursors. |
-| `summer_creator_logs` | Fail closed until a durable, authorized, redacted runtime-log source exists. |
-| `summer_creator_config` | Read or confirm changes to shared non-secret configuration. It never accepts or returns tokens. |
+| `summer_creator_publish` | Compute the exact `.pck` digest and size, require user confirmation, then run versioned prepare → write-once upload → finalize. The server independently verifies `publish` scope, ownership, bytes, and review state. |
+| `summer_creator_releases` | List real creator-owned releases from `summer.creator.v1`, with opaque cursor pagination. |
+| `summer_creator_logs` | Read runtime logs for a project or release. Remains fail-closed until a durable platform log source exists. |
+| `summer_creator_config` | Read or confirm updates to the shared non-secret `~/.summer/config.json`. It never accepts or returns tokens. |
 
 ## Common pattern
 
@@ -171,14 +171,29 @@ Every asset-generation skill should follow this loop:
 5. `summer_import_asset_by_id` — import the exact result into Godot's pipeline.
 6. `summer_get_asset_download_url` — only when the user explicitly wants a downloadable file/link.
 
-## Trap: silent-fail on inline sub-resource SetResourceProperty
+## summer_set_resource_property — nested properties
 
-`summer_set_resource_property` will silently fail if the target resource is an inline `sub_resource` rather than a standalone `.tres`. If you need to set nested properties (mesh size, shape radius, material color), make the resource standalone first:
+Use it to reach a property *of a resource attached to a node* — mesh size, shape radius, material colour — the thing `summer_set_prop` cannot reach.
 
 ```
-summer_add_node(... mesh = "BoxMesh" ...)         # creates inline sub_resource
-# WRONG: summer_set_resource_property("./Box", "mesh.size", "Vector3(2,2,2)")  ← silently fails
-# RIGHT: save mesh as .tres, then SetResourceProperty
+summer_add_node(parent="/", type="MeshInstance3D", name="Box", scenePath="res://main.tscn")
+summer_set_prop(path="Box", key="mesh", value="BoxMesh", scenePath="res://main.tscn")
+summer_set_resource_property(
+    nodePath="Box", resourceProperty="mesh", subProperty="size",
+    value="Vector3(2, 2, 2)", scenePath="res://main.tscn")
 ```
 
-This is documented in `public/knowledge/asset_pipeline.json`.
+`nodePath`, `resourceProperty` and `subProperty` are all required and canonical. There is no dotted `"mesh.size"` form.
+
+**Inline `sub_resource` targets work.** An earlier revision of this file claimed the op silently fails on an inline sub-resource and told you to save the resource as a standalone `.tres` first. That was wrong, and it propagated into nine skills. The implementation reads `node->get(resourceProperty)` and sets the sub-property on whatever comes back (`modules/1summer_engine/editor/ops/scene_ops.cpp:1273-1400`) — there is no inline-versus-external branch anywhere in it. The canonical example in the shipped `summer_batch` description does exactly this against an inline mesh.
+
+Failures are explicit, never silent:
+
+| Error | Meaning |
+|---|---|
+| `no edited scene` | Nothing open — pass `scenePath`. |
+| `node not found: <path>` | `nodePath` is wrong; it is relative to the scene root. |
+| `property is not a resource` | `resourceProperty` names a plain value, not a resource. |
+| `resource is null` | The node has the property but nothing is assigned yet. Assign it first. |
+
+If you get none of those and the value still did not change, that is a bug worth reporting — not expected behaviour to design around.

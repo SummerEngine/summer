@@ -1,7 +1,9 @@
 # Skills
 
-Summer skills teach AI agents how to build Summer games with the Summer SDK.
-GDScript and `.tscn` scenes are first-class. Two kinds:
+Summer skills teach AI agents how to build Summer games in Summer Engine with
+the Summer SDK, GDScript, and `.tscn` scenes. Version-sensitive guidance follows
+the repository compatibility contract instead of pinning onboarding to one
+upstream release. Two kinds:
 
 ## Workflow skills (slash commands)
 

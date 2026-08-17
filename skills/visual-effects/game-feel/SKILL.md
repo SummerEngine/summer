@@ -1,17 +1,22 @@
 ---
 name: game-feel
-description: Use when the user says the game "feels flat", "lacks impact", "needs juice", "needs punch", or asks for hit feedback, screen shake, camera shake, audio ducking, or general "game feel". Walks the user through the canonical Summer Engine game-feel stack — hit-flash + trauma camera shake + audio ducking — wired together so a single hit fires all three. Trigger on "vfx", "juice", "punch", "feels flat", "game feel", "hit flash", "screen shake", "camera shake", "ducking".
+description: Use when a Summer game "feels flat", "lacks impact", "needs juice", or "needs punch", or the user asks for hit feedback, screen shake, camera shake, audio ducking, or general game feel. Walks through Summer Engine's hit-flash, trauma camera shake, and audio-ducking stack, wired so one hit fires all three. Trigger on "vfx", "juice", "punch", "feels flat", "game feel", "hit flash", "screen shake", "camera shake", "ducking".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects
 user-invocable: true
-allowed-tools: Read Grep Edit Write summer_get_scene_tree summer_inspect_node summer_inspect_resource summer_add_node summer_set_prop summer_set_resource_property summer_connect_signal summer_save_scene summer_get_script_errors summer_play summer_stop
+allowed-tools: Read Grep Edit Write summer_write_file summer_read_file summer_get_scene_tree summer_inspect_node summer_inspect_resource summer_add_node summer_set_prop summer_set_resource_property summer_connect_signal summer_project_setting summer_save_scene summer_get_script_errors summer_get_debugger_errors summer_play summer_stop
 paths: ["**/*.gd", "**/*.tscn", "**/*.tres"]
 ---
 
 # /vfx — The Trio That Makes Games Feel Punchy
 
-Particles don't make a game feel good. Screen shake alone doesn't either. What makes a hit *land in the body* is three systems firing on the same frame: a sub-frame **hit flash** on the body that got hit, **trauma-based camera shake** with quadratic falloff so big hits saturate, and **audio ducking** that briefly squashes Music/Ambient so the impact SFX punches through. Skip any one and the game drops back to "tech demo". This skill installs the canonical Summer Engine stack — three small, self-contained systems wired to a single signal — so one `hit()` call fires all three.
+Particles do not make a game feel good. Screen shake alone does not either.
+What makes a hit land is three systems firing on the same frame: a sub-frame
+**hit flash** on the body that got hit, **trauma-based camera shake** with
+quadratic falloff so big hits saturate, and **audio ducking** that briefly
+squashes Music/Ambient so the impact SFX punches through. This skill installs
+the canonical Summer Engine stack as three small systems wired to one signal.
 
 ## Step 1 — Ask what feels flat
 
@@ -62,13 +67,15 @@ World/
     HitFlash (Node)              # holds the script, no transform
 ```
 
-**MCP path:**
+**MCP path** (every scene-mutating call takes an explicit `scenePath`):
 
 ```
-summer_add_node(parent="./World/Enemy", type="Node", name="HitFlash")
+summer_add_node(scenePath="res://levels/world.tscn", parent="./World/Enemy", type="Node", name="HitFlash")
+summer_set_prop(scenePath="res://levels/world.tscn", path="./World/Enemy/HitFlash", key="script", value="res://scripts/vfx/hit_flash.gd")
 ```
 
-Then write `scripts/vfx/hit_flash.gd`:
+Then write `scripts/vfx/hit_flash.gd` (via `summer_write_file`, which requires exactly
+one of `create_only` or `expected_sha256`):
 
 ```gdscript
 class_name HitFlash
@@ -110,7 +117,7 @@ func flash() -> void:
 
 **Tunable knobs:** `duration` 0.06–0.12s — under 0.06 reads as a flicker, over 0.12 looks slow. `emission_energy_multiplier` 1.5–3.0.
 
-> CRITICAL: do NOT inline a `StandardMaterial3D` as a `sub_resource` via `summer_set_prop`. Build it in script (as above) or save it to `materials/flash.tres`. Inline sub_resources break `summer_set_resource_property` silently — see `references/mcp-tools-reference.md` § "Trap".
+> CRITICAL: do NOT inline a `StandardMaterial3D` as a `sub_resource` via `summer_set_prop`. Build it in script (as above) or save it to `materials/flash.tres`. Inline sub_resources break `summer_set_resource_property` silently — see `../../../references/mcp-tools-reference.md` § "Trap".
 
 ## Step 5 — Install Section 2 (Trauma Camera Shake)
 
@@ -121,8 +128,8 @@ func flash() -> void:
 **Node tree:** the script attaches to the existing `./World/Player/Camera3D`. No new nodes.
 
 ```
-summer_inspect_node "./World/Player/Camera3D"
-# attach scripts/vfx/camera_shake.gd
+summer_inspect_node(path="./World/Player/Camera3D")
+summer_set_prop(scenePath="res://levels/world.tscn", path="./World/Player/Camera3D", key="script", value="res://scripts/vfx/camera_shake.gd")
 ```
 
 `scripts/vfx/camera_shake.gd`:
@@ -137,6 +144,11 @@ extends Camera3D
 
 var _trauma: float = 0.0
 var _shake_offset: Vector3 = Vector3.ZERO
+
+func _ready() -> void:
+    # Node has no `groups` property, so there is nothing to set from the outside.
+    # Joining the group here is how any actor finds this camera later.
+    add_to_group(&"player_camera")
 
 func add_trauma(amount: float) -> void:
     _trauma = clamp(_trauma + amount, 0.0, 1.0)
@@ -236,12 +248,9 @@ func duck(amount: float, duration: float = 0.5) -> void:
         var drop_db := -24.0 * amount * weight
         var target_db := base_db + drop_db
 
-        var seq := create_tween()
-        seq.tween_property(AudioServer, "bus_volume_db", target_db, attack).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)\
-            .from(base_db)
-        # NOTE: AudioServer doesn't expose bus volume as an animatable
-        # property — use a method tween instead. See actual call below.
-        # (The simpler, real implementation:)
+        # AudioServer exposes bus volume through a method, not an animatable
+        # property, so tween_method is the only form that works here.
+        # `tween_property(AudioServer, "bus_volume_db", ...)` errors at runtime.
         _tween.tween_method(_set_bus_db.bind(idx), base_db, target_db, attack)\
             .set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
         _tween.tween_method(_set_bus_db.bind(idx), target_db, base_db, release)\
@@ -255,8 +264,11 @@ func _set_bus_db(idx: int, db: float) -> void:
 Register it as an autoload:
 
 ```
-Project Settings → Autoload → Add scripts/vfx/audio_ducker.gd as "AudioDucker"
+summer_project_setting(...)   # autoload/AudioDucker = "*res://scripts/vfx/audio_ducker.gd"
 ```
+
+(Equivalently, by hand: Project Settings → Autoload → Add `scripts/vfx/audio_ducker.gd`
+as `AudioDucker`.)
 
 **Calling it:**
 
@@ -290,25 +302,27 @@ func _on_damaged(amount: float) -> void:
     # 1. Hit flash on this body.
     _hit_flash.flash()
     # 2. Camera shake on the player's camera, scaled by hit weight.
-    var trauma := clamp(0.2 + amount * 0.05, 0.2, 0.9)
+    # clampf(), not clamp(): clamp() returns Variant, and inferring a variable from
+    # a Variant is an error under Godot's default warning settings.
+    var trauma := clampf(0.2 + amount * 0.05, 0.2, 0.9)
     if _player_camera:
         _player_camera.add_trauma(trauma)
     # 3. Audio duck, scaled by hit weight.
-    var duck_amount := clamp(0.3 + amount * 0.04, 0.3, 1.0)
+    var duck_amount := clampf(0.3 + amount * 0.04, 0.3, 1.0)
     AudioDucker.duck(duck_amount, 0.45)
 ```
 
-Add the camera to a group so any actor can find it:
+The camera joins `player_camera` from its own `_ready()` (Step 5). `Node` has no
+`groups` property, so `summer_set_prop(key="groups", ...)` cannot do this — and
+`summer_set_prop` only accepts a string, number, or boolean anyway, never an array.
+The two ways that do work are the `add_to_group()` call in `_ready()` or a `groups =
+["player_camera"]` line written into the `.tscn` node header.
+
+Or wire the signal explicitly via MCP if you prefer (`emitter`/`receiver`, not
+`from`/`to`, and `scenePath` is required):
 
 ```
-summer_add_node(...)   # ./World/Player/Camera3D already exists
-summer_set_prop(path="./World/Player/Camera3D", key="groups", value='["player_camera"]')
-```
-
-Or wire the signal explicitly via MCP if you prefer:
-
-```
-summer_connect_signal(from="./World/Enemy", signal="damaged", to="./World/Enemy/HitFlash", method="flash")
+summer_connect_signal(scenePath="res://levels/world.tscn", emitter="./World/Enemy", signal="damaged", receiver="./World/Enemy/HitFlash", method="flash")
 ```
 
 ## Step 8 — Scaling intensity per hit weight
@@ -328,10 +342,11 @@ Because trauma is squared inside the camera, the *felt* difference between 0.35 
 ## Step 9 — Verify
 
 ```
-summer_save_scene
-summer_get_script_errors
+summer_save_scene(scenePath="res://levels/world.tscn")
+summer_get_script_errors          # all three scripts parsed?
 summer_play
 # user reproduces a hit
+summer_get_debugger_errors        # runtime errors from the tweens / bus lookups
 summer_stop
 ```
 
@@ -355,10 +370,12 @@ Tune one knob at a time:
 | Equal pitch/yaw shake | `yaw_factor ≤ 0.5` | Eyes are sensitive to vertical motion; equal axes feel mechanical |
 | `Engine.time_scale` for every hit | Reserve hit-stop for big events only (boss hits, deaths) | Time-scale dips on every hit feel laggy, not impactful |
 | Inline `StandardMaterial3D` sub_resource via `summer_set_prop` | Build in script or save standalone `.tres` | Inline sub_resources silently break `summer_set_resource_property` |
+| `summer_set_prop(key="groups", value='["player_camera"]')` | `add_to_group(&"player_camera")` in `_ready()`, or a `groups = [...]` line in the `.tscn` | `Node` has no `groups` property, and `summer_set_prop` takes only string/number/boolean — never an array |
+| `BaseMaterial3D.new()` | `StandardMaterial3D.new()` | `BaseMaterial3D` is abstract; constructing it is a parse error that kills the whole script |
 
 ## Collaborative protocol
 
-This skill writes 3 GDScript files and adds 1 node + 1 autoload entry. Always ask before each section is applied. Group related writes into one ask: "I'm about to add HitFlash + CameraShake + AudioDucker autoload, wire one signal. OK?" See `references/collaborative-protocol.md`.
+This skill writes 3 GDScript files and adds 1 node + 1 autoload entry. Always ask before each section is applied. Group related writes into one ask: "I'm about to add HitFlash + CameraShake + AudioDucker autoload, wire one signal. OK?" See `../../../references/collaborative-protocol.md`.
 
 ## When NOT to use this skill
 
@@ -369,10 +386,11 @@ This skill writes 3 GDScript files and adds 1 node + 1 autoload entry. Always as
 
 ## See also
 
-- `references/mcp-tools-reference.md` — full MCP tool list, especially the inline-sub_resource trap
-- `references/godot-version.md` — Summer Engine API notes
-- `references/collaborative-protocol.md` — "May I write" pattern
-- `references/gd-style.md` — typed GDScript conventions
+- `../../../references/mcp-tools-reference.md` — full MCP tool list, especially the inline-sub_resource trap
+- `../../../references/godot-version.md` — Summer compatibility and
+  version-sensitive API notes
+- `../../../references/collaborative-protocol.md` — "May I write" pattern
+- `../../../references/gd-style.md` — typed GDScript conventions
 - `audio/audio-direction/SKILL.md` — bus layout setup (prerequisite for ducking)
 - `post-processing/screen-shake/SKILL.md` — deeper trauma variants (Perlin noise, stacked sources)
 - `visual-effects/gpuparticles-3d-basics/SKILL.md` — particles to layer on top of the trio

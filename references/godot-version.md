@@ -1,51 +1,51 @@
-# Summer Engine Technical Compatibility Reference
+# Summer Engine Compatibility Reference
 
-> This is an implementation note for version-sensitive engine work. Product
-> language should say **Summer Engine**, **Summer SDK**, and **Summer game**.
+> Read this before writing version-sensitive code, especially shaders,
+> rendering code, extensions, or export configuration.
 
-## Current and planned upstream base
+## Current technical base
 
-- Current Summer Engine base: **4.6.1**
-- Planned next base: **4.7.1**
-- Policy: Summer Engine follows upstream Godot continuously. Do not pin public
-  onboarding, skills, or product descriptions to one upstream version.
+Summer Engine is the product. Its current upstream technical base is **4.6.1**
+(stable, Mono), the approved next target is **4.7.1**, and Summer follows
+upstream continuously. These are compatibility and lineage facts. They are not
+the Summer product name or a permanent SDK version.
 
-Summer Engine is its own product and SDK. It inherits parts of its scene,
-resource, scripting, and rendering API from the upstream Godot codebase, while
-adding Summer-specific editor, agent, platform, and runtime capabilities.
-Use the live Summer Engine build and this compatibility reference as the
-authority; do not describe a creator's project as a Godot game.
+The repository source of truth is
+`compatibility/summer-engine.json`. The running engine also reports its measured
+technical version:
 
-## Version-sensitive areas
+```bash
+<engineBinaryPath> --version      # measured: 4.6.1.stable.mono.custom_build.b708b1182
+```
 
-| Domain | Expected churn | Action |
+Get `engineBinaryPath` from `summer_get_project_context`. Prefer live
+inspection to a copied version string. Creator onboarding and headlines should
+say Summer Engine, Summer game, Summer SDK, and GDScript. Use the upstream name
+only where technical compatibility, migration, extension APIs, contribution
+routing, attribution, or licensing requires it.
+
+## LLM training cutoff versus upstream releases
+
+| Domain | Godot 4.x churn | Action |
 |---|---|---|
-| GDScript core | low | Prefer current Summer SDK patterns; spot-check signatures when uncertain. |
-| Scene and node APIs | low | Prefer Summer MCP inspection over guessing. |
-| Renderer (`RenderingServer`, `Compositor`) | high | Verify against the installed Summer Engine build before writing. |
-| Shaders (`canvas_item`, `spatial`, `compute`) | medium | Verify built-ins and `hint_*` syntax against the installed build. |
-| Animation (`AnimationTree`, `AnimationMixer`) | medium | Prefer current, non-deprecated Summer Engine APIs. |
-| Multiplayer (`MultiplayerAPI`) | medium | Verify transport and replication behavior against Summer Engine. |
-| Editor / `EditorPlugin` | medium | Treat as Engine-contributor work and spot-check the current source. |
-| `Tween` / `SceneTreeTween` | low | Use current Summer SDK conventions. |
+| Scripting (GDScript core) | low | Trust your training. Spot-check signatures only when something feels off. |
+| Scene / node tree APIs | low | Trust your training. |
+| Renderer (`RenderingServer`, `Compositor`) | high in 4.4 / 4.5 | Verify before writing. Check `MovieMaker`, `Compositor` effects, `RenderSceneBuffers` — these renamed/added recently. |
+| Shaders (`canvas_item`, `spatial`, `compute`) | medium | Built-in functions stable, but `hint_*` flags shifted. Verify `hint_screen_texture` / `hint_depth_texture` syntax. |
+| Animation (`AnimationTree`, `AnimationMixer`) | high (4.0 → 4.3 rename) | Use `AnimationMixer` for new code, not deprecated `AnimationPlayer`-as-mixer. |
+| Multiplayer (`MultiplayerAPI`) | medium | High-level API stable. `SceneReplicationConfig` settled in 4.0+. |
+| Editor / EditorPlugin | medium | Spot-check. |
+| `Tween` / `SceneTreeTween` | low | Stable since 4.0. |
 
-## Summer-specific surfaces
+## Summer-specific deltas from the upstream engine
 
-- The local Summer API server runs on `localhost:6550` and authenticates with
-  the per-machine `~/.summer/api-token`.
-- Summer editor integration lives in Summer-specific engine modules; do not
-  assume an upstream editor build for editor or platform patches.
-- Project memory lives in the project-root `.summer/` directory.
-- Creator publishing uses the versioned `summer.creator.v1` contract and a
-  separate Summercraft `creator-token`; it never replaces the core
-  `auth-token`.
+- Local API server runs on `localhost:6550` (set per machine via `~/.summer/api-token`).
+- Engine ships a webview module in `modules/1summer_engine/`. Do not assume the
+  unmodified upstream editor for UI patches.
+- Project root contains `.summer/` for project memory; do not delete it.
 
 ## When in doubt
 
-1. Use Summer MCP tools such as `summer_inspect_node` and
-   `summer_inspect_resource` to read live engine state.
-2. Run `summer_get_diagnostics` after scene changes.
-3. Check `references/mcp-tools-reference.md` for the canonical Summer tool
-   surface.
-4. For Engine-fork work, inspect the current source base rather than relying
-   on a fixed-version tutorial.
+1. Use Summer MCP tools (`summer_inspect_node`, `summer_inspect_resource`) to read live editor state instead of guessing.
+2. Use `summer_get_diagnostics` after every scene change.
+3. Check `references/mcp-tools-reference.md` for the canonical tool list.

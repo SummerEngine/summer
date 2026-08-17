@@ -5,13 +5,7 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import {
-  downloadFile,
-  requireDownloadUrl,
-  unsupportedInstallPlatformMessage,
-  verifyChecksum,
-  windowsInstallerArgs,
-} from "./install.js";
+import { downloadFile, requireDownloadUrl, verifyChecksum, windowsInstallerArgs } from "./install.js";
 
 describe("requireDownloadUrl", () => {
   it("returns a present URL", () => {
@@ -49,17 +43,6 @@ describe("windowsInstallerArgs (Velopack Setup.exe — NOT NSIS)", () => {
     expect(args).toContain("--silent");
     expect(args).toContain('--installto "C:\\Apps\\Summer Engine"');
     expect(args).not.toContain("/D=");
-  });
-});
-
-describe("unsupportedInstallPlatformMessage", () => {
-  it("names the shipping installers and does not imply a manual Linux download exists", () => {
-    const message = unsupportedInstallPlatformMessage();
-    expect(message).toContain("macOS on Apple silicon and Windows");
-    expect(message).toContain("Linux does not have a supported public installer");
-    expect(message).toContain("no manual Linux download is available");
-    expect(message).not.toContain("summerengine.com/download");
-    expect(message).not.toMatch(/download manually|for now, download/i);
   });
 });
 

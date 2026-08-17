@@ -35,27 +35,40 @@ Always call `summer_get_scene_tree` before mutating. If `World/Player`, `World/P
 ### 2. Add the Player root
 
 ```
-summer_add_node(parent="./World", type="CharacterBody3D", name="Player")
-summer_set_prop(path="./World/Player", key="position", value="Vector3(0, 1, 0)")
+summer_add_node(scenePath="res://main.tscn", parent="./World", type="CharacterBody3D", name="Player")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Player", key="position", value="Vector3(0, 1, 0)")
 ```
 
-### 3. Add the collision shape (standalone resource, NOT inline)
+### 3. Add the collision shape and size it
 
 ```
-summer_add_node(parent="./World/Player", type="CollisionShape3D", name="Collision")
-summer_set_prop(path="./World/Player/Collision", key="shape", value="CapsuleShape3D")
-summer_set_resource_property(nodePath="./World/Player/Collision", resourceProperty="shape", subProperty="radius", value="0.4")
-summer_set_resource_property(nodePath="./World/Player/Collision", resourceProperty="shape", subProperty="height", value="1.8")
+summer_add_node(scenePath="res://main.tscn", parent="./World/Player", type="CollisionShape3D", name="Collision")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Player/Collision", key="shape", value="CapsuleShape3D")
+summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/Player/Collision", resourceProperty="shape", subProperty="radius", value="0.4")
+summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/Player/Collision", resourceProperty="shape", subProperty="height", value="1.8")
 ```
 
-`summer_set_prop` with a class-name string creates a standalone sub-resource. NEVER call `summer_set_resource_property` against an inline `sub_resource` — the value is silently dropped. See `references/mcp-tools-reference.md`.
+Two things the older version of this skill got wrong:
+
+- **`scenePath` is required** on `summer_add_node`, `summer_set_prop`,
+  `summer_set_resource_property` and `summer_save_scene`. Omit it and the call
+  never reaches the engine. (`summer_input_map_bind` is the exception — it edits
+  `project.godot`, not a scene, and takes only `name` + `events`.)
+- **This inline-resource sequence is the supported pattern, not a trap.**
+  `summer_set_prop` with a class-name string instantiates a scene-embedded
+  (`[sub_resource]`) resource, and `summer_set_resource_property` then reads that
+  property off the node and writes the sub-property straight onto it. Embedded
+  and external `.tres` resources take the same path. The op has no silent-drop
+  branch: the only failures are explicit — `node not found`, `property is not a
+  resource`, or `resource is null` when the property was never assigned. Assign
+  the resource first, then set its sub-properties.
 
 ### 4. Add the Head pivot + Camera
 
 ```
-summer_add_node(parent="./World/Player", type="Node3D", name="Head")
-summer_set_prop(path="./World/Player/Head", key="position", value="Vector3(0, 1.6, 0)")
-summer_add_node(parent="./World/Player/Head", type="Camera3D", name="Camera")
+summer_add_node(scenePath="res://main.tscn", parent="./World/Player", type="Node3D", name="Head")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Player/Head", key="position", value="Vector3(0, 1.6, 0)")
+summer_add_node(scenePath="res://main.tscn", parent="./World/Player/Head", type="Camera3D", name="Camera")
 ```
 
 Eye height of 1.6 sits the camera right at the top of a 1.8-tall capsule (capsule center 0.9, plus 0.7 to the eye). Tweak per art style.
@@ -73,7 +86,7 @@ summer_input_map_bind(name="sprint",       events=[{type:"key", key:"Shift"}])
 
 ### 6. Attach the controller script
 
-Ask before writing: "May I create `scripts/player_controller.gd` and attach it to `./World/Player`?" Then `Write` the file with the skeleton in the next section, attach via inspector, and finish with `summer_save_scene` + `summer_get_script_errors`.
+Ask before writing: "May I create `scripts/player_controller.gd` and attach it to `./World/Player`?" Then `Write` the file with the skeleton in the next section, attach via inspector, and finish with `summer_save_scene(scenePath="res://main.tscn")` + `summer_get_script_errors(path="res://scripts/player_controller.gd")` (that tool checks one file and requires `path`).
 
 ## Physics-Process Flow (the order matters)
 
@@ -328,14 +341,11 @@ Then patch `project.godot` with the InputMap actions (`input/move_forward = { ..
 
 ## Collaborative Protocol
 
-This skill writes scene nodes, an InputMap, and a `.gd` script. Always ask before applying. Group writes per phase: "May I add the Player + Collision + Head + Camera, bind WASD/jump/sprint, and attach `player_controller.gd`?" See `../../references/collaborative-protocol.md`.
+This skill writes scene nodes, an InputMap, and a `.gd` script. Always ask before applying. Group writes per phase: "May I add the Player + Collision + Head + Camera, bind WASD/jump/sprint, and attach `player_controller.gd`?"
 
 If the user asks for a "third-person FPS", flag the contradiction: FPS = first-person. Either clarify, or hand off to the `tps-controller` skill when it ships.
 
 ## See Also
 
-- `references/gd-style.md` — typed GDScript conventions used in the skeleton.
-- `references/mcp-tools-reference.md` — `summer_set_resource_property` rules + the inline-sub-resource silent-fail trap.
-- `references/collaborative-protocol.md` — when to ask before writing.
 - `scripting-patterns/state-machine-patterns/SKILL.md` — once movement grows past this skeleton (slide, grapple, hover), refactor into a state machine instead of stuffing more branches into `_physics_process`.
 - `physics/character-body-tuning/SKILL.md` (when shipped) — slope handling, step-up, floor-snap.

@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects
 user-invocable: true
-allowed-tools: Read Write Edit summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_save_scene
+allowed-tools: Read Write Edit summer_write_file summer_read_file summer_create_scene summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_inspect_resource summer_save_scene summer_get_script_errors summer_get_debugger_errors summer_play summer_stop
 paths: ["**/*.tscn", "**/*.gd", "**/*.gdshader", "addons/vfx/**"]
 ---
 
@@ -35,11 +35,16 @@ Fire in games is almost never a video clip and never an AI-generated sprite. It'
 ### 1. Files to create
 
 ```
+addons/vfx/_building-blocks/noise-3d-fbm.gdshaderinc   # copy from this skill FIRST
 addons/vfx/fire/fire.gdshader              # spatial shader for the visual quad
 addons/vfx/fire/fire_process.gdshader      # particle shader for the simulation
 addons/vfx/fire/fire_controller.gd          # parameter dials + lifetime
 addons/vfx/fire/fire.tscn                   # reusable scene (instantiate per torch)
 ```
+
+`fire.gdshader` `#include`s the FBM noise file. A missing include is a hard compile
+error, so copy `_building-blocks/noise-3d-fbm.gdshaderinc` from this skill into
+`res://addons/vfx/_building-blocks/` before writing the shader.
 
 ### 2. Visual shader code
 
@@ -62,22 +67,41 @@ uniform float distortion      : hint_range(0.0, 0.6)  = 0.20;
 uniform float emission_energy : hint_range(0.0, 8.0)  = 3.5;
 uniform float soft_edge       : hint_range(0.01, 0.5) = 0.20;
 
+// INSTANCE_CUSTOM is vertex-stage only, so carry what fragment() needs across.
+varying float age;
+varying float seed;
+
 void vertex() {
-    // Billboard the quad toward the camera (view-space).
-    MODELVIEW_MATRIX = VIEW_MATRIX * mat4(
-        INV_VIEW_MATRIX[0],
-        INV_VIEW_MATRIX[1],
-        INV_VIEW_MATRIX[2],
-        MODEL_MATRIX[3]
-    );
+    // Billboard toward the camera, keeping per-particle rotation (INSTANCE_CUSTOM.x)
+    // and per-particle scale. The bare `VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0..2],
+    // MODEL_MATRIX[3])` form throws both away — this mirrors what Godot's own
+    // BILLBOARD_PARTICLES generator emits (scene/resources/material.cpp:1313-1334).
+    mat4 mat_world = mat4(
+        normalize(INV_VIEW_MATRIX[0]),
+        normalize(INV_VIEW_MATRIX[1]),
+        normalize(INV_VIEW_MATRIX[2]),
+        MODEL_MATRIX[3]);
+    mat_world = mat_world * mat4(
+        vec4(cos(INSTANCE_CUSTOM.x), -sin(INSTANCE_CUSTOM.x), 0.0, 0.0),
+        vec4(sin(INSTANCE_CUSTOM.x),  cos(INSTANCE_CUSTOM.x), 0.0, 0.0),
+        vec4(0.0, 0.0, 1.0, 0.0),
+        vec4(0.0, 0.0, 0.0, 1.0));
+    MODELVIEW_MATRIX = VIEW_MATRIX * mat_world * mat4(
+        vec4(length(MODEL_MATRIX[0].xyz), 0.0, 0.0, 0.0),
+        vec4(0.0, length(MODEL_MATRIX[1].xyz), 0.0, 0.0),
+        vec4(0.0, 0.0, length(MODEL_MATRIX[2].xyz), 0.0),
+        vec4(0.0, 0.0, 0.0, 1.0));
+    MODELVIEW_NORMAL_MATRIX = mat3(MODELVIEW_MATRIX);
+
+    // CUSTOM.x is the rotation angle, NOT the age. The age lives in CUSTOM.y
+    // (it counts up by DELTA/LIFETIME) and CUSTOM.w holds the lifetime scale.
+    age  = clamp(INSTANCE_CUSTOM.y / max(INSTANCE_CUSTOM.w, 0.0001), 0.0, 1.0);
+    seed = fract(sin(float(INSTANCE_ID) * 12.9898) * 43758.5453);
 }
 
 void fragment() {
-    // CUSTOM.x is particle age 0..1 (set by the process material).
-    float age = CUSTOM.x;
-
     // Distort UVs with scrolling 3D noise so the flame writhes.
-    vec3 np = vec3(UV * noise_scale, TIME * noise_speed);
+    vec3 np = vec3(UV * noise_scale, TIME * noise_speed + seed * 10.0);
     float n = fbm3(np);
     vec2 uv = UV + vec2(n - 0.5) * distortion;
 
@@ -99,8 +123,10 @@ void fragment() {
     // Add the noise as a brightness modulation so flames flicker.
     float flicker = mix(0.6, 1.2, n);
 
-    ALBEDO = col.rgb * flicker;
-    EMISSION = col.rgb * flicker * emission_energy * (1.0 - age);
+    // `render_mode unshaded` outputs ALBEDO and discards EMISSION entirely
+    // (scene_forward_clustered.glsl:2962 — `frag_color = vec4(albedo, alpha)`
+    // under MODE_UNSHADED), so the HDR boost that drives glow lives in ALBEDO.
+    ALBEDO = col.rgb * flicker * emission_energy * (1.0 - age * 0.5);
     ALPHA = col.a * mask * (1.0 - age * age);
 }
 ```
@@ -118,36 +144,61 @@ uniform float rise_speed   : hint_range(0.1, 6.0) = 1.8;
 uniform float spread_angle : hint_range(0.0, 1.5) = 0.35;
 uniform float lifetime_var : hint_range(0.0, 1.0) = 0.25;
 
+// `rand_from_seed()` is generated into ParticleProcessMaterial's own shader; it is
+// NOT a built-in you can call from a hand-written particles shader
+// ("SHADER ERROR: No matching function found for: 'rand_from_seed'"). Supply one.
+uint hash_u(uint x) {
+    x ^= x >> 16u;
+    x *= 0x7feb352du;
+    x ^= x >> 15u;
+    x *= 0x846ca68bu;
+    x ^= x >> 16u;
+    return x;
+}
+
+float rnd(uint s) {
+    return float(hash_u(s) & 0x00ffffffu) / 16777216.0;
+}
+
 void start() {
+    uint s = RANDOM_SEED + INDEX * 747796405u;
+
     // Random spawn within a small disc.
-    float r  = sqrt(rand_from_seed(RANDOM_SEED + uint(7))) * 0.18;
-    float th = rand_from_seed(RANDOM_SEED + uint(11)) * 6.2831853;
+    float r  = sqrt(rnd(s + 7u)) * 0.18;
+    float th = rnd(s + 11u) * 6.2831853;
     TRANSFORM[3].xyz = vec3(cos(th) * r, 0.0, sin(th) * r);
 
     // Initial velocity: mostly up, slight cone.
     vec3 dir = vec3(
-        (rand_from_seed(RANDOM_SEED + uint(13)) - 0.5) * spread_angle,
+        (rnd(s + 13u) - 0.5) * spread_angle,
         1.0,
-        (rand_from_seed(RANDOM_SEED + uint(17)) - 0.5) * spread_angle
+        (rnd(s + 17u) - 0.5) * spread_angle
     );
     VELOCITY = normalize(dir) * rise_speed;
 
-    // Stagger lifetimes for variety.
-    LIFETIME = LIFETIME * (1.0 + (rand_from_seed(RANDOM_SEED + uint(19)) - 0.5) * 2.0 * lifetime_var);
-
-    CUSTOM.x = 0.0; // age
-    CUSTOM.y = rand_from_seed(RANDOM_SEED + uint(23)); // per-particle seed
+    // LIFETIME is read-only ("SHADER ERROR: Constants cannot be modified") and there
+    // is no TOTAL_LIFETIME. Stagger lifetimes the way ParticleProcessMaterial does:
+    // keep a per-particle lifetime scale in CUSTOM.w and retire the particle when
+    // the age in CUSTOM.y passes it.
+    CUSTOM = vec4(0.0);
+    CUSTOM.w = 1.0 + (rnd(s + 19u) - 0.5) * 2.0 * lifetime_var;
+    CUSTOM.z = rnd(s + 23u); // per-particle seed
 }
 
 void process() {
+    // CUSTOM.x = rotation angle, .y = age, .z = per-particle seed, .w = lifetime scale.
+    CUSTOM.y += DELTA / LIFETIME;
+    if (CUSTOM.y > CUSTOM.w) {
+        ACTIVE = false;
+    }
+    float age = clamp(CUSTOM.y / max(CUSTOM.w, 0.0001), 0.0, 1.0);
+
     // Rise + small horizontal sway.
     VELOCITY.y += DELTA * 0.6;
-    VELOCITY.x += sin(TIME * 2.0 + CUSTOM.y * 6.28) * DELTA * 0.4;
-    VELOCITY.z += cos(TIME * 2.3 + CUSTOM.y * 6.28) * DELTA * 0.4;
+    VELOCITY.x += sin(TIME * 2.0 + CUSTOM.z * 6.28) * DELTA * 0.4;
+    VELOCITY.z += cos(TIME * 2.3 + CUSTOM.z * 6.28) * DELTA * 0.4;
 
     // Shrink as it ages.
-    float age = clamp(1.0 - LIFETIME / TOTAL_LIFETIME, 0.0, 1.0);
-    CUSTOM.x = age;
     float scale = mix(1.0, 0.35, age);
     TRANSFORM[0].xyz = vec3(scale, 0.0, 0.0);
     TRANSFORM[1].xyz = vec3(0.0, scale, 0.0);
@@ -224,35 +275,62 @@ func extinguish(fade_seconds: float = 0.5) -> void:
 ```
 GPUParticles3D ("Fire") [script: fire_controller.gd]
   ├── process_material: ParticleProcessMaterial (or ShaderMaterial w/ fire_process.gdshader)
-  └── draw_pass_1: QuadMesh (size 1.0 × 1.0)
-        └── surface_material_override[0]: ShaderMaterial (shader: fire.gdshader)
+  └── draw_pass_1: QuadMesh (size Vector2(1, 1))
+        └── material: ShaderMaterial (shader: fire.gdshader)
 ```
+
+`process_material` and `draw_pass_1` are resource properties on the one node, not
+child nodes. `surface_material_override` belongs to `MeshInstance3D` and does not
+apply here — a draw pass mesh carries its material in `Mesh.material`.
 
 Add an OmniLight3D as a sibling (parented to the same anchor as the GPUParticles3D, NOT under it) for proper light cast. Recommended: `light_color = Color(1.0, 0.6, 0.25)`, `light_energy = 1.6`, `omni_range = 6.0`. Pulse it lightly via the controller for free atmosphere.
 
 ### 6. Wire it in (MCP calls)
 
+Every scene-mutating call takes an explicit `scenePath`. `summer_set_prop` uses `key`
+(not `property`) and only accepts a string, number, or boolean.
+
 ```
-summer_add_node(parent="./World/Torch", type="GPUParticles3D", name="Fire")
-summer_set_prop(path="./World/Torch/Fire", property="script", value="res://addons/vfx/fire/fire_controller.gd")
+summer_write_file(path="res://addons/vfx/_building-blocks/noise-3d-fbm.gdshaderinc", content="<from this skill>", create_only=true)
+summer_write_file(path="res://addons/vfx/fire/fire.gdshader", content="<section 2>", create_only=true)
+summer_write_file(path="res://addons/vfx/fire/fire_controller.gd", content="<section 4>", create_only=true)
 
-summer_add_node(parent="./World/Torch/Fire", type="ParticleProcessMaterial", name="ProcessMat")
-summer_set_resource_property(nodePath="./World/Torch/Fire", resourceProperty="process_material", value="res://addons/vfx/fire/process_mat.tres")
+summer_add_node(scenePath="res://main.tscn", parent="./World/Torch", type="GPUParticles3D", name="Fire")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Torch/Fire", key="script", value="res://addons/vfx/fire/fire_controller.gd")
 
-summer_set_resource_property(nodePath="./World/Torch/Fire", resourceProperty="draw_pass_1", value="res://addons/vfx/fire/quad.tres")
-# quad.tres is a QuadMesh with size (1,1) and surface_material_override[0] = fire_material.tres (ShaderMaterial wrapping fire.gdshader)
+# ParticleProcessMaterial is a Material, not a Node — you cannot summer_add_node it.
+# Assign the resource by path; the controller configures it on _ready().
+summer_set_prop(scenePath="res://main.tscn", path="./World/Torch/Fire", key="process_material", value="res://addons/vfx/fire/process_mat.tres")
 
-summer_set_prop(path="./World/Torch/Fire", property="flame_height", value=1.2)
-summer_set_prop(path="./World/Torch/Fire", property="flame_radius", value=0.35)
-summer_set_prop(path="./World/Torch/Fire", property="particle_count", value=96)
+summer_set_prop(scenePath="res://main.tscn", path="./World/Torch/Fire", key="draw_pass_1", value="res://addons/vfx/fire/quad.tres")
+# quad.tres is a QuadMesh with size (1,1) and material = fire_material.tres (ShaderMaterial wrapping fire.gdshader)
+summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/Torch/Fire", resourceProperty="draw_pass_1", subProperty="size", value="Vector2(1, 1)")
 
-summer_add_node(parent="./World/Torch", type="OmniLight3D", name="FireLight")
-summer_set_prop(path="./World/Torch/FireLight", property="light_color", value="Color(1.0, 0.6, 0.25)")
-summer_set_prop(path="./World/Torch/FireLight", property="light_energy", value=1.6)
-summer_set_prop(path="./World/Torch/FireLight", property="omni_range", value=6.0)
+summer_set_prop(scenePath="res://main.tscn", path="./World/Torch/Fire", key="flame_height", value=1.2)
+summer_set_prop(scenePath="res://main.tscn", path="./World/Torch/Fire", key="flame_radius", value=0.35)
+summer_set_prop(scenePath="res://main.tscn", path="./World/Torch/Fire", key="particle_count", value=96)
 
-summer_save_scene
+summer_add_node(scenePath="res://main.tscn", parent="./World/Torch", type="OmniLight3D", name="FireLight")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Torch/FireLight", key="light_color", value="Color(1.0, 0.6, 0.25)")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Torch/FireLight", key="light_energy", value=1.6)
+summer_set_prop(scenePath="res://main.tscn", path="./World/Torch/FireLight", key="omni_range", value=6.0)
+
+summer_save_scene(scenePath="res://main.tscn")
 ```
+
+### 6b. Verify
+
+Every file this recipe writes is compiled code. Check it before claiming the fire works.
+
+```
+summer_get_script_errors          # fire_controller.gd parsed?
+summer_play
+summer_get_debugger_errors        # shader compile errors surface here at runtime
+summer_stop
+```
+
+A missing `noise-3d-fbm.gdshaderinc` and an un-copied shader both show up as compile
+errors, not as an invisible flame. Read the errors before tuning any dial.
 
 ### 7. Parameters to tune
 
@@ -337,12 +415,14 @@ OmniLight3D: light_color = Color(0.40, 0.65, 1.0), light_energy = 2.4
 - **Missing `cull_disabled`.** Particles billboard toward camera; if you cull backfaces, the flame disappears at certain angles.
 - **`depth_draw_opaque` on the visual material.** You'll z-fight with anything inside the flame (the torch handle). Use `depth_draw_never`.
 - **OmniLight3D parented under the GPUParticles3D.** The particles emit in local space; the light moves with them. Sibling, not child.
-- **Procedural noise computed in world space without a per-instance seed.** Every particle pulses identically, looking like a strobe. The included shader uses `CUSTOM.y` as a per-particle seed.
+- **Procedural noise computed in world space without a per-instance seed.** Every particle pulses identically, looking like a strobe. The included shader hashes `INSTANCE_ID` into a per-particle seed in `vertex()` and passes it to `fragment()` via a varying.
+- **Reading `CUSTOM` in `fragment()`.** In a `spatial` shader `CUSTOM` does not exist at all ("SHADER ERROR: Unknown identifier in expression: 'CUSTOM'"). The particle built-in is `INSTANCE_CUSTOM`, it is vertex-stage only, and `INSTANCE_CUSTOM.x` is the rotation angle — the age is in `.y`.
+- **Hand-rolling the billboard as `VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0..2], MODEL_MATRIX[3])`.** That form discards per-particle scale *and* rotation, so `flame_radius`'s per-particle scale never reaches the screen. Use the full block in section 2.
 - **Generating a fire image and using it as the particle texture.** That's the misroute this skill exists to prevent. The shader-driven look is more alive and trivially recolorable.
 
 ## Performance notes
 
-- Default 96 particles per fire: ~0.05 ms on desktop GPU, scales linearly. Budget ~512 fire particles total in a scene before you should think about LOD.
+- Default 96 particles per fire is sub-millisecond on a desktop GPU and scales linearly with count. That is an order-of-magnitude expectation, not a measurement — profile your own scene before budgeting. Budget ~512 fire particles total in a scene before you should think about LOD.
 - Mobile: drop default to 48, disable the `OmniLight3D` shadow cast, and use a 64×64 noise texture instead of FBM if FPS dips.
 - LOD: in the controller's `_process`, scale `amount_ratio` by `clamp(1.0 - dist_to_camera / 30.0, 0.05, 1.0)`. Past 30 m, drop to a single billboard quad with the same shader (no particles).
 - The OmniLight3D shadow is the expensive part. Disable shadows on torches that aren't doing dramatic work.
@@ -358,13 +438,20 @@ OmniLight3D: light_color = Color(0.40, 0.65, 1.0), light_energy = 2.4
 
 ## Fallback (no MCP)
 
-VFX is code, no MCP required. The user can:
+Section 6 is fully automatable — `summer_write_file` writes the shaders and the
+controller, `summer_create_scene` + `summer_add_node` + `summer_set_prop` +
+`summer_save_scene` build and save `fire.tscn`. Do not hand these steps to the user
+when the MCP tools are available.
 
-1. Create the four files at `addons/vfx/fire/` with the contents above.
-2. In Godot, add a `GPUParticles3D` node, attach `fire_controller.gd`.
+Without the MCP connection there is no engine to drive, so the user does it
+manually in Summer Engine:
+
+1. Create the files at `addons/vfx/_building-blocks/` and `addons/vfx/fire/` with the contents above.
+2. Add a `GPUParticles3D` node, attach `fire_controller.gd`.
 3. Set `process_material` to a new `ParticleProcessMaterial` (the script configures it on `_ready`).
-4. Set `draw_pass_1` to a new `QuadMesh` (size 1×1), with `surface_material_override[0]` set to a `ShaderMaterial` whose shader is `fire.gdshader`.
+4. Set `draw_pass_1` to a new `QuadMesh` (size 1×1), with the mesh's `material` set to a `ShaderMaterial` whose shader is `fire.gdshader`.
 5. Save as `fire.tscn` and instantiate at every torch / brazier.
+6. Check the Errors dock — a missing `.gdshaderinc` fails the whole shader.
 
 ## Handoff
 

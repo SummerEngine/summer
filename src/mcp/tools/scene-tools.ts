@@ -164,7 +164,7 @@ The parent path uses "./" prefix for relative paths from scene root. E.g., "./Wo
     {
       scenePath: z.string().describe("Target scene path, e.g. 'res://main.tscn'"),
       parent: z.string().describe("Parent node path, e.g. './World' or './World/Enemies'"),
-      type: z.string().describe("Godot node type, e.g. 'MeshInstance3D', 'CharacterBody3D'"),
+      type: z.string().describe("Summer Engine node type, e.g. 'MeshInstance3D', 'CharacterBody3D'"),
       name: z.string().describe("Name for the new node, e.g. 'Player', 'MainCamera'"),
     },
     async ({ scenePath, parent, type, name }) =>
@@ -201,7 +201,7 @@ COMMON PROPERTIES:
       path: z.string().describe("Node path, e.g. './World/Player'"),
       key: z.string().describe("Property name, e.g. 'position', 'mesh', 'visible'"),
       value: z.union([z.string(), z.number(), z.boolean()]).describe(
-        "Value in Godot string format for complex types, native JSON for primitives"
+        "Value in Summer Engine variant-string format for complex types, native JSON for primitives"
       ),
     },
     async ({ scenePath, path, key, value }) =>
@@ -223,7 +223,7 @@ Use when you need to modify a sub-property of a resource, like:
       nodePath: z.string().describe("Node path, e.g. './Player/CollisionShape3D'"),
       resourceProperty: z.string().describe("Resource property on the node, e.g. 'shape', 'mesh', 'material_override'"),
       subProperty: z.string().describe("Property on the resource, e.g. 'size', 'radius', 'albedo_color'"),
-      value: z.union([z.string(), z.number(), z.boolean()]).describe("Value in Godot string format"),
+      value: z.union([z.string(), z.number(), z.boolean()]).describe("Value in Summer Engine variant-string format"),
     },
     async ({ scenePath, nodePath, resourceProperty, subProperty, value }) =>
       withEngine(async (client) =>
@@ -394,9 +394,9 @@ Each op in the array uses the same format as the individual tools:
 - {"op": "SetProp", "path": "Floor", "key": "mesh", "value": "PlaneMesh"}
 - {"op": "SetResourceProperty", "nodePath": "Floor", "resourceProperty": "mesh", "subProperty": "size", "value": "Vector2(20, 20)"}
 
-RAW RUNTIME OPS (interactive verification — engine-build dependent; structured failure_reason incl "unsupported" passes through verbatim):
-- SimulateInput — drive the RUNNING game (summer_play first): {"op": "SimulateInput", "type": "action", "action": "jump", "pressed": true}. type is "action" | "key" | "mouse_click" | "axis".
-- RunVerification — spawn a hidden, disposable game instance that runs a GDScript probe and dies (never touches the editor): {"op": "RunVerification", "probe_source": "extends SummerProbeBase\\nfunc _ready(): await super._ready(); report('ok', true); finish()", "max_seconds": 20}. Returns {ok, results, frames, out_dir}. Probe API: report()/save_frame()/press()/key()/finish().
+RAW RUNTIME OPS (interactive verification — structured failure_reason passes through verbatim):
+- RunVerification — spawn a hidden, disposable game instance that runs a GDScript probe and dies (never touches the editor): {"op": "RunVerification", "probe_source": "extends SummerProbeBase\\nfunc _ready(): await super._ready(); report('ok', true); finish()", "max_seconds": 20}. Returns {ok, results, frames, out_dir}. Probe API: report()/save_frame()/press()/key()/finish(). This is the ONLY way to drive input from MCP, and unlike the editor it renders real pixels, so save_frame() produces a real image.
+- SimulateInput is NOT reachable from MCP or the CLI. It requires the in-editor chat bridge's async reply channel; every queued caller gets {"ok": false, "failure_reason": "unsupported_transport"} on every engine build. Do not send it and do not treat that reply as a version problem — use RunVerification's press()/key() instead.
 
 Do not mix OpenScene with scene mutations in one batch. OpenScene is a UI action;
 send it separately. scenePath selects every mutation target. The tool appends one

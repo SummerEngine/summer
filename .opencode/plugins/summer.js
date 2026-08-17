@@ -12,7 +12,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const skillsDir = path.resolve(__dirname, '../../skills');
 
 const ORIENTATION = `<EXTREMELY_IMPORTANT>
-Summer is loaded. 24 skills available under the summer: namespace.
+Summer is loaded. Summer skills are available under the summer: namespace.
 
 Activate summer:using-summer FIRST in any Summer Engine session — it sets workflow priority and the red-flag list.
 

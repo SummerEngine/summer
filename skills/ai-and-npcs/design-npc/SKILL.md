@@ -179,8 +179,13 @@ Identify where the NPC will live (an `Enemies` parent, or directly under World).
 
 **Preferred (Summer MCP):**
 
+Every tool below takes a required `scenePath` naming the exact `res://` scene;
+it is written out on the first line and elided after for readability. Better
+still, send the whole block as one `summer_batch(scenePath=..., ops=[...])` so
+the user can undo the enemy with a single Ctrl+Z.
+
 ```
-summer_add_node(parent="./World/Enemies", type="CharacterBody3D", name="Enemy")
+summer_add_node(scenePath="res://main.tscn", parent="./World/Enemies", type="CharacterBody3D", name="Enemy")
 summer_add_node(parent="./World/Enemies/Enemy", type="CollisionShape3D", name="Body")
 summer_add_node(parent="./World/Enemies/Enemy", type="MeshInstance3D", name="Mesh")
 summer_add_node(parent="./World/Enemies/Enemy", type="Area3D", name="Vision")
@@ -190,17 +195,34 @@ summer_set_prop(path="./World/Enemies/Enemy/Sight", key="enabled", value="true")
 summer_set_prop(path="./World/Enemies/Enemy/Sight", key="target_position", value="Vector3(0, 0, -12)")
 ```
 
-Save the Vision sphere as standalone `.tres` (do NOT inline sub_resource — see `references/mcp-tools-reference.md` § "Trap"):
+Give the Vision area its sphere. Either form works — a class-name string embeds
+the resource in the scene, a `res://` path reuses a shared one. Prefer the shared
+`.tres` when several enemy archetypes want the same sight radius:
 
 ```
-summer_set_prop(path="./World/Enemies/Enemy/Vision/VisionShape", key="shape", value="res://shapes/vision_sphere.tres")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Enemies/Enemy/Vision/VisionShape", key="shape", value="res://shapes/vision_sphere.tres")
+# or, embedded, then tune it:
+summer_set_prop(scenePath="res://main.tscn", path="./World/Enemies/Enemy/Vision/VisionShape", key="shape", value="SphereShape3D")
+summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/Enemies/Enemy/Vision/VisionShape", resourceProperty="shape", subProperty="radius", value="12.0")
 ```
+
+`summer_set_resource_property` works against scene-embedded (`[sub_resource]`)
+resources exactly as it does against external `.tres` files — it reads the
+property off the node and writes the sub-property onto whatever Resource is
+there. Its only failures are explicit errors (`node not found`, `property is not
+a resource`, `resource is null`). The order that matters is: assign the resource
+first, then set sub-properties.
 
 Connect signals:
 
 ```
-summer_connect_signal(from="./World/Enemies/Enemy/Vision", signal="body_entered", to="./World/Enemies/Enemy", method="_on_body_entered")
+summer_connect_signal(scenePath="res://main.tscn", emitter="./World/Enemies/Enemy/Vision", signal="body_entered", receiver="./World/Enemies/Enemy", method="_on_body_entered")
 ```
+
+The parameters are `scenePath`, `emitter`, `signal`, `receiver`, `method`. There
+is no `from` / `to`; those spellings fail schema validation. The same required
+`scenePath` applies to `summer_add_node`, `summer_set_prop` and
+`summer_save_scene` in the block above.
 
 **Fallback (no MCP):** write the scene as `.tscn` text. Ask the user to paste their existing scene first, then propose a unified diff.
 
@@ -418,8 +440,8 @@ Set base values via `@export` in the scene's inspector, not hard-coded in script
 ### 9. Verify
 
 ```
-summer_save_scene
-summer_get_script_errors
+summer_save_scene(scenePath="res://main.tscn")
+summer_get_script_errors(path="res://scripts/enemy_ai.gd")   # one file per call; path required
 summer_play
 # user tests
 summer_stop
@@ -427,7 +449,7 @@ summer_stop
 
 If the enemy doesn't aggro, common causes:
 - Player isn't in `player` group.
-- Vision Area3D's sphere shape is inline sub_resource (silent fail).
+- Vision Area3D's `shape` was never assigned, so its radius writes errored with `resource is null`.
 - Sight RayCast3D `enabled = false` or `collide_with_areas = true` blocking on its own Vision area.
 - Personality jitter pushed `aggression` close to 0 — check inspector values.
 
@@ -446,7 +468,7 @@ If the enemy doesn't aggro, common causes:
 | `distance_to` in `_physics_process` | `distance_squared_to` for comparisons | Square root costs at scale |
 | Same animation in all states | Distinct anim per action state | The state machine is invisible; animation makes it visible |
 | `queue_free()` instantly on death | Death anim → 2 sec → free | Instant despawn breaks immersion + skips loot drops |
-| Inline SphereShape3D for Vision Area3D | Standalone `.tres` | Inline sub_resources break SetResourceProperty |
+| Setting `shape`'s radius before `shape` holds a resource | Assign the shape, then set sub-properties | `SetResourceProperty` errors with `resource is null` when the property is empty |
 | 100+ enemies with full FSM | Wave-mob archetype (no intent layer, single KILL intent) | Cheap mobs need cheap brains |
 | No `died` / `ally_defeated` signals | Emit both | Gameplay + squad logic both need hooks |
 
@@ -460,7 +482,7 @@ If the enemy doesn't aggro, common causes:
 
 ## Collaborative protocol
 
-This skill writes scenes and scripts. Always ask before each step. Group related writes into one ask. See `references/collaborative-protocol.md`.
+This skill writes scenes and scripts. Always ask before each step. Group related writes into one ask.
 
 ## Want a working starter?
 
@@ -471,10 +493,6 @@ For a fully-rigged enemy with anim controller + loot drop:
 
 ## See also
 
-- `references/mcp-tools-reference.md` — full MCP tool list
-- `references/godot-version.md` — Summer Engine API notes
-- `references/collaborative-protocol.md` — "May I write" pattern
-- `references/gd-style.md` — typed GDScript conventions
 - `ai-and-npcs/state-machine-npc/SKILL.md` — FSM pattern deep dive
 - `ai-and-npcs/behavior-trees/SKILL.md` — when complexity demands a BT
 - `ai-and-npcs/perception-sight-and-hearing/SKILL.md` — sensor patterns

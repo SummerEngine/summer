@@ -1,6 +1,6 @@
 {
   "name": "summer-engine",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "description": "Local Summer CLI and MCP server for Summer Engine. Install and run the engine, connect Claude Code, Cursor, Codex, Gemini, and other agents, and build real games with bundled skills, hooks, and plugins.",
   "keywords": [
     "summer-engine",
@@ -66,6 +66,7 @@
     "dev": "tsc --watch",
     "summer": "node dist/bin/summer.js",
     "test": "vitest run",
+    "test:public-language": "vitest run src/lib/public-surface-language.test.ts",
     "test:watch": "vitest",
     "prepublishOnly": "npm run build && npm test"
   },

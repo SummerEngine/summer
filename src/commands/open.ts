@@ -17,7 +17,7 @@ export const openCommand = new Command("open")
     if (!existsSync(`${fullPath}/project.godot`)) {
       console.error(
         `No project.godot found in ${fullPath}\n` +
-        "This doesn't look like a Godot/Summer Engine project.\n" +
+        "This doesn't look like a Summer Engine project.\n" +
         "Create one with: summer create 3d-basic my-game"
       );
       process.exit(1);

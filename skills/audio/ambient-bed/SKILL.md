@@ -17,7 +17,8 @@ An ambient bed is the *air* of a place. Forest at dawn, dungeon corridor, spaces
 
 This is **not** music. Use `summer_generate_audio({capability: 'sound_effects'})`, not `{capability: 'music'}`. SFX renders textures; Music renders melody. You want texture.
 
-Generated at 15–22 seconds (the SFX duration ceiling) and looped seamlessly with a Godot loop point and optional crossfade.
+Generated at 15–22 seconds (the SFX duration ceiling) and looped with a Summer
+Engine import loop point and optional crossfade.
 
 ## When to use
 
@@ -102,37 +103,42 @@ If the user wants a busier bed (market, party), still prevent foreground events:
 ```
 summer_generate_audio(
   capability: "sound_effects",
-  prompt: "forest at dawn, gentle wind through leaves, distant bird calls every 6 seconds, soft creaking branches, no music, no human sound, 22s seamless loop",
+  text: "forest at dawn, gentle wind through leaves, distant bird calls every 6 seconds, soft creaking branches, no music, no human sound, 22s seamless loop",
   durationSeconds: 22
 )
-// Result: { asset: { fileUrl, ... } }
 // Then: summer_import_from_url(url: "<fileUrl>", path: "res://audio/ambient/forest_dawn.wav")
 ```
+
+`sound_effects` reads from **`text`**, not `prompt` — passing `prompt` is a 400 `text_required`. (`prompt` is the `music` capability's field.) The clip comes back as WAV, so a `.wav` target path is correct.
 
 22s is the SFX ceiling. Always generate at the ceiling for ambient — longer cycle means less recognized repetition.
 
 If the model returns a clip with a loud event near the start or end (a sudden bird right at 0:00), regenerate. That kills loop seamlessness.
 
-### 6. Mark the seamless loop in Godot's import dock
+### 6. Mark the seamless loop in Summer Engine's Import dock
 
 This step is what makes the bed sound like a place rather than a 22-second sample.
 
-In the Godot editor, select the `.wav`, open the Import dock:
+WAV and MP3 use **different importers with different option names** — do not copy the MP3 block from `audio/music-track` here. The WAV importer has no `loop` / `loop_offset`; it has an `edit/loop_mode` enum plus sample-frame bounds.
+
+In Summer Engine, select the `.wav` and open the Import dock:
 
 | Setting | Value |
 |---|---|
-| Loop | On |
-| Loop Mode | Forward |
-| Loop Begin | 0 (or 0.5 if there's a fade-in artifact) |
+| Edit > Loop Mode | Forward |
+| Edit > Loop Begin | 0 |
+| Edit > Loop End | -1 (end of file) |
 
 The `.import` file:
 
 ```
 [params]
-loop = true
-loop_offset = 0.0
-loop_mode = 1
+edit/loop_mode = 2
+edit/loop_begin = 0
+edit/loop_end = -1
 ```
+
+`edit/loop_mode` is `0 = Detect From WAV, 1 = Disabled, 2 = Forward, 3 = Ping-Pong, 4 = Backward` — Forward is **2**, not 1. `edit/loop_begin` / `edit/loop_end` are integer sample frames, not seconds; to skip a 0.5 s fade-in artifact at 44.1 kHz set `edit/loop_begin = 22050`.
 
 After changing, click `Reimport`.
 
@@ -190,11 +196,11 @@ This eliminates the click and adds variation through phase-overlap (the loop ove
 For most beds, non-positional is correct (the player is *in* the place; the bed isn't an emitter):
 
 ```
-summer_add_node(parentPath="/root/Game/Level", type="AudioStreamPlayer", name="AmbientBed")
-summer_set_prop(path="/root/Game/Level/AmbientBed", property="stream", value="res://audio/ambient/forest_dawn.wav")
-summer_set_prop(path="/root/Game/Level/AmbientBed", property="bus", value="Ambient")
-summer_set_prop(path="/root/Game/Level/AmbientBed", property="volume_db", value=-12.0)
-summer_set_prop(path="/root/Game/Level/AmbientBed", property="autoplay", value=true)
+summer_add_node(scenePath="res://levels/level_01.tscn", parent="./Level", type="AudioStreamPlayer", name="AmbientBed")
+summer_set_prop(scenePath="res://levels/level_01.tscn", path="./Level/AmbientBed", key="stream", value="res://audio/ambient/forest_dawn.wav")
+summer_set_prop(scenePath="res://levels/level_01.tscn", path="./Level/AmbientBed", key="bus", value="Ambient")
+summer_set_prop(scenePath="res://levels/level_01.tscn", path="./Level/AmbientBed", key="volume_db", value=-12.0)
+summer_set_prop(scenePath="res://levels/level_01.tscn", path="./Level/AmbientBed", key="autoplay", value=true)
 ```
 
 Or attach the script in step 7 to a Node, set its `stream` to the imported audio, and skip the `AudioStreamPlayer` node — the script provides its own.

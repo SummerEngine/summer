@@ -11,7 +11,10 @@ paths: ["assets/**", "art/sky/**", "environments/**"]
 
 # skybox-panorama — 360° Sky for WorldEnvironment
 
-This skill generates a single equirectangular panoramic image (2:1 aspect, e.g. 2048×1024 or 4096×2048) suitable for Godot's `PanoramaSkyMaterial`. Wires it into a `Sky` resource on a `WorldEnvironment` node so the sky is visible from every camera angle in your 3D scene.
+This skill generates a single equirectangular panoramic image (2:1 aspect,
+e.g. 2048×1024 or 4096×2048) suitable for Summer Engine's
+`PanoramaSkyMaterial`. It wires the image into a `Sky` resource on a
+`WorldEnvironment` node so the sky is visible from every camera angle.
 
 The single biggest failure mode is **non-equirectangular output**. Diffusion models default to flat 2D scenes; if you don't explicitly demand "equirectangular projection," the result looks fine in a thumbnail but distorts brutally when wrapped onto a sphere — horizon bows, zenith pinches, the sun stretches into a smear. This skill encodes the prompt suffix and the import discipline that produces a usable sky on the first or second try.
 
@@ -35,7 +38,7 @@ The single biggest failure mode is **non-equirectangular output**. Diffusion mod
 ### 1. Search for an existing sky
 
 ```
-summer_search_assets(query="<vibe> sky panorama", filter={ kind: "image" })
+summer_search_assets(query="<vibe> sky panorama", assetType="2d_image", source="all")
 ```
 
 Polyhaven (`polyhaven.com/hdris`) hosts hundreds of free CC0 HDRIs that beat AI generation for realism and provide IBL data. For realistic exterior scenes, prefer Polyhaven; for stylized / fantasy / sci-fi, AI generation wins.
@@ -55,22 +58,25 @@ Load-bearing phrases:
 - **`no foreground objects, no ground horizon line`** — skies show only sky. If you include a horizon, it warps weirdly when sphere-mapped and kills the illusion that the sky is at infinite distance.
 - **`distortion-correct for sphere mapping`** — reminds the model that the top/bottom of the image map to the zenith/nadir.
 
-### 3. Generate at 2:1 aspect
+### 3. Generate, then fix the aspect yourself
+
+Equirectangular MUST be 2:1 (width = 2× height). **`summer_generate_image` cannot give you that.** The tool takes only `prompt`, `model`, `style`, `referenceImageUrl`, and `options` — there is no aspect or size argument, so every MCP image comes back at the server's 1:1 default. `aspectRatio` and `image_size` inside `options` are not recognized and are dropped without an error; the underlying provider does support 2:1-class aspect ratios, but nothing on this surface lets you request one.
 
 ```
 summer_generate_image(
-  prompt="dramatic fantasy sky, golden hour, large purple-orange clouds, distant mountains silhouetted at very bottom, soft god-rays, 360 degree panoramic equirectangular projection, seamless horizontal wrap, no visible seam, no foreground objects, sky only",
+  prompt="dramatic fantasy sky, golden hour, large purple-orange clouds, distant mountains silhouetted at very bottom, soft god-rays, 360 degree panoramic equirectangular projection, wide 2:1 panoramic framing, seamless horizontal wrap, no visible seam, no foreground objects, sky only. No vertical seam, no ground objects, no horizon-level detail, not distorted or warped, no characters, no buildings.",
   model="nano-banana-2",
-  style="realistic",
-  options={
-    aspectRatio: "2:1",
-    image_size: "landscape_16_9",
-    negative_prompt: "vertical seam, ground objects, horizon-level details, distorted, warped, characters, buildings"
-  }
+  style="realistic"
 )
 ```
 
-`aspectRatio: "2:1"` is critical. Equirectangular MUST be 2:1 (width = 2× height). If the model returns 16:9 or 4:3, the wrap will be wrong.
+Asking for "2:1 panoramic framing" in the prompt biases the composition; it does not change the returned pixel dimensions. So one of these has to happen before the image is usable as a panorama:
+
+- **Generate in the Summer dashboard instead**, which does expose aspect ratio, and bring the 2:1 result back with `summer_import_from_url`. This is the right path when the sky matters.
+- **Or crop the 1:1 result to 2:1** in any image editor before importing. You lose the top and bottom, which is usually acceptable for sky-only content — the zenith and nadir are the least informative regions — but it will clip a sun placed high in frame.
+- **Or use a Polyhaven HDRI**, already 2:1 and better for realistic exteriors.
+
+Do not import a 1:1 image as a `PanoramaSkyMaterial` panorama and call it done — it wraps with obvious horizontal compression.
 
 ### 4. Verify the seam and projection
 
@@ -97,38 +103,28 @@ In the import dock:
 
 ### 6. Wire into WorldEnvironment (3 lines)
 
-```
-summer_add_node(parentPath="/root/Game", type="WorldEnvironment", name="WorldEnvironment")
+This is not three tool calls. `summer_set_resource_property` reaches exactly **one** level into a resource — it takes `scenePath`, `nodePath`, `resourceProperty`, `subProperty`, `value`, and there is no `"a:b:c"` colon-path form for walking Environment → Sky → SkyMaterial. Write the `Environment` (with its `Sky` and `PanoramaSkyMaterial` as sub-resources) as a `.tres`, then attach it in one property set:
 
-summer_set_resource_property(
-  nodePath="/root/Game/WorldEnvironment",
-  resourceProperty="environment:background_mode",
-  value=2  # BG_SKY
+```
+summer_write_file(
+  path="res://environments/fantasy_sunset.tres",
+  content="<Environment .tres: background_mode = 2 (BG_SKY), sky = Sky with a PanoramaSkyMaterial whose panorama is res://art/sky/fantasy_sunset.png, ambient_light_source = 3 (AMBIENT_SOURCE_SKY) if you want IBL>",
+  create_only=true
 )
 
-summer_set_resource_property(
-  nodePath="/root/Game/WorldEnvironment",
-  resourceProperty="environment:sky:sky_material",
-  value="<new PanoramaSkyMaterial with panorama: res://art/sky/fantasy_sunset.png>"
-)
+summer_add_node(scenePath="res://main.tscn", parent=".", type="WorldEnvironment", name="WorldEnvironment")
+summer_set_prop(scenePath="res://main.tscn", path="./WorldEnvironment", key="environment", value="res://environments/fantasy_sunset.tres")
+summer_save_scene(scenePath="res://main.tscn")
 ```
 
-Then, if the user wants the sky to also light the scene (image-based lighting):
-
-```
-summer_set_resource_property(
-  nodePath="/root/Game/WorldEnvironment",
-  resourceProperty="environment:ambient_light_source",
-  value=3  # AMBIENT_SOURCE_SKY
-)
-```
+Every scene-mutating tool takes an explicit `scenePath`; node paths are relative to that scene's root (`./`), not absolute `/root/...` runtime paths.
 
 Note: AI-generated panoramas are LDR (8-bit per channel). For physically-correct IBL with bright suns, the lighting is muted compared to true HDRI. Mention this to the user if they expect strong IBL.
 
 ### 7. Verify in scene
 
 ```
-summer_inspect_node(path="/root/Game/WorldEnvironment")
+summer_inspect_node(path="WorldEnvironment")
 ```
 
 Then `summer_play` and look around. Sun in the right place? Seam invisible? Top/bottom okay?
@@ -158,7 +154,7 @@ Then `summer_play` and look around. Sun in the right place? Seam invisible? Top/
 ## Anti-patterns
 
 - **Including foreground or horizon.** Mountains, trees, buildings at horizon level warp weirdly when sphere-mapped (the "swimming horizon" effect). Skies show ONLY sky. If the level needs distant mountains, model them as low-poly meshes in the scene, not in the sky texture.
-- **Not specifying 2:1 aspect.** A 16:9 panorama wrapped equirectangular has obvious horizontal compression. Always `aspectRatio: "2:1"`.
+- **Assuming `options.aspectRatio` gave you 2:1.** It is silently ignored — the call succeeds and hands you a square image. A 1:1 or 16:9 panorama wrapped equirectangular has obvious horizontal compression. Crop it, or generate in the dashboard where the control exists.
 - **Tight features at zenith/nadir.** Anything in the top or bottom 10% of the image gets pinched. Bias toward soft, diffuse features there.
 - **Expecting HDR / IBL quality.** AI panoramas are 8-bit. If the user needs realistic environment lighting from the sky, point them at Polyhaven HDRIs (CC0). AI is for visual sky, not for lighting.
 - **Forgetting `Repeat: Disabled` on import.** Panoramas wrap once via the material; if `Repeat` is on, you can get duplicate-tile artifacts at the seam.
@@ -180,12 +176,11 @@ Print the call:
 summer_generate_image(
   prompt="<sky> 360 degree panoramic equirectangular projection, seamless horizontal wrap, no visible seam, no foreground objects, sky only",
   model="nano-banana-2",
-  style="realistic",
-  options={ aspectRatio: "2:1", negative_prompt: "vertical seam, foreground, distorted, warped, characters, buildings" }
+  style="realistic"
 )
 ```
 
-User runs via Summer dashboard, then `summer_import_from_url` to `res://art/sky/<name>.png`, sets `Repeat: Disabled`, and wires the WorldEnvironment manually.
+The dashboard is actually the *better* surface for this skill, not just the fallback: it exposes aspect ratio and a real negative prompt, which MCP does not. Tell the user to set 2:1 and a negative of `vertical seam, foreground, distorted, warped, characters, buildings`, then `summer_import_from_url` to `res://art/sky/<name>.png`, set `Repeat: Disabled`, and wire the WorldEnvironment.
 
 If MCP is offline entirely: Polyhaven (`polyhaven.com/hdris`) has hundreds of free CC0 HDRIs ready to drop into `PanoramaSkyMaterial`. Often a better choice than AI for realistic exteriors anyway.
 
@@ -204,4 +199,4 @@ After the sky is wired:
 - `summer:2d-assets/tileable-texture` — ground/floor counterpart.
 - `summer:scene-composition` — WorldEnvironment placement and configuration.
 - `summer:asset-pipeline/asset-strategy` — meta-router.
-- `references/mcp-tools-reference.md` — `summer_generate_image` schema.
+- `../../../references/mcp-tools-reference.md` — `summer_generate_image` schema.

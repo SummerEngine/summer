@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_generate_image summer_search_assets summer_import_from_url summer_set_resource_property summer_add_node summer_set_prop
+allowed-tools: Read Grep Glob Write Edit summer_generate_image summer_slice_asset_sheet summer_get_studio_workflow summer_search_assets summer_import_from_url summer_import_asset_by_id summer_set_resource_property summer_add_node summer_set_prop
 paths: ["assets/**", "sprites/**", "art/sprites/**"]
 ---
 
@@ -18,10 +18,12 @@ This skill produces a grid of animation frames for a 2D character — walk cycle
 This skill therefore offers **three paths**, ranked by reliability:
 
 1. **Per-frame img2img** (most reliable) — generate the base pose, then generate each subsequent frame via `referenceImageUrl` with a small pose delta. Composite the frames into a sheet externally or wire each as a separate `SpriteFrames` entry.
-2. **Single-call sheet generation** (fast, unreliable) — one prompt asks for the grid. Works ~30% of the time. Worth trying once for short cycles (4 frames or fewer) before falling back to (1).
+2. **Single-call sheet + auto-slice** (fast; sheet coherence is the gamble, not the cutting) — one prompt asks for the grid, then `summer_slice_asset_sheet` cuts it into individual frame assets server-side. Worth trying once for short cycles (4 frames or fewer) before falling back to (1).
 3. **Manual authoring** (most reliable, slowest) — hand-author in **Aseprite** or **Piskel**. For pixel art at 32×32, this is often faster than fixing AI generations.
 
-There is no dedicated sprite-sheet generation tool. Recommended path: per-frame `summer_generate_image` with `referenceImageUrl` (img2img) at consistent angle/lighting, OR external tools (Aseprite/Piskel).
+There is no single "generate a sprite sheet" tool, but there **is** a shared two-tool sheet pipeline, and it is the same one Studio's Guided "sprite-sheet" workflow runs: `summer_generate_image` produces one sheet, then `summer_slice_asset_sheet({ assetId })` runs the server-side vision slicer that removes the background, detects each frame's bounding box, crops, and uploads every frame as its own asset. Call `summer_get_studio_workflow({ workflowId: "sprite-sheet" })` for the current ordered recipe and its stated limitations. Only Studio's frame-preview and visual timing-review UI is unreachable from MCP — the generation and the slicing both are reachable.
+
+So do not tell the user to cut a generated sheet by hand or in ImageMagick. The cutting is automated; what is unreliable is inter-frame *consistency* inside the generated sheet.
 
 ## When to use
 
@@ -68,33 +70,44 @@ Generate frame 1 (or use existing base). For each subsequent frame, prompt the p
 
 ```
 summer_generate_image(
-  prompt="goblin warrior, walk cycle frame 2 of 6, right leg forward, slight bob upward, identical character, same costume, same palette, transparent background",
+  prompt="goblin warrior, walk cycle frame 2 of 6, right leg forward, slight bob upward, identical character, same costume, same palette. Not a different character, not a different costume, no scene background.",
   referenceImageUrl="<frame 1 fileUrl>",
   model="nano-banana-2",
   style="<same as base>",
-  options={ image_size: "square_hd", negative_prompt: "different character, different costume, scene background" }
+  options={ removeBackground: true }
 )
 ```
+
+`summer_generate_image` has no `image_size` and no `negative_prompt` — put negations in the prompt text; there is no size argument at all. `options.removeBackground: true` is real and gives you true alpha instead of a prompted "transparent background" the model may paint as a literal checkerboard. `referenceImageUrl` only works on edit-capable models (`nano-banana-2`, `seedream-5-pro`, `nano-banana-lite`, `gpt-image-2`, `gemini-flash`, `flux-2`); `grok-imagine` has no edit endpoint and returns `edit_not_supported`.
 
 Repeat for each frame. Save each as `goblin_walk_01.png`, `goblin_walk_02.png`, etc.
 
-After all frames return, either:
+After all frames return, wire each as a separate frame in a `SpriteFrames`
+resource. Summer Engine treats them as a sequence; there is no need to
+composite them into one sheet image.
 
-- Wire each as a separate frame in a `SpriteFrames` resource (Godot will treat them as a sequence — no need to composite into a single sheet image).
-- Composite into a single sheet image via Aseprite (`File → Import Sprite Sheet`) or ImageMagick (`montage frame_*.png -tile 6x1 -geometry +0+0 sheet.png`).
-
-### 3b. Path 2 — Single-call sheet (try once)
+### 3b. Path 2 — Single-call sheet, then auto-slice
 
 ```
 summer_generate_image(
-  prompt="goblin warrior walk cycle, sprite sheet, 6 frames in a horizontal row, identical character across frames, side view, transparent background, frames clearly separated, consistent lighting, consistent palette",
+  prompt="goblin warrior walk cycle, sprite sheet, 6 frames in a horizontal row, identical character across frames, side view, frames clearly separated with empty space between them, consistent lighting, consistent palette. No scene background, no varying lighting, not a different character per frame.",
   model="nano-banana-2",
-  style="pixel",
-  options={ image_size: "landscape_16_9", negative_prompt: "different character per frame, scene background, varying lighting" }
+  style="none",
+  options={ removeBackground: true }
 )
 ```
 
-Inspect the result. If frames are coherent and the count matches, proceed. If anatomy morphs or count is wrong, fall back to Path 1 or Path 3.
+There is no `"pixel"` style preset (`style` is `realistic | cartoon | anime | none`; anything else is coerced to `none`), no `image_size`, and no `negative_prompt` — the layout and the negations have to be in the prompt.
+
+Then cut it with the same server-side slicer Studio uses, passing the asset id the generation returned:
+
+```
+summer_slice_asset_sheet(assetId="<generated sheet assetId>")
+```
+
+It returns the source dimensions plus per-slice URLs, names, categories, and bounding boxes. Import the frames you want by id with `summer_import_asset_by_id`.
+
+Inspect the result. If the frames are coherent and the count matches, proceed. If anatomy morphs across the row, or the slicer returns one giant box (items touching / no gaps), fall back to Path 1 or Path 3 — re-prompting with more separation between frames is the first thing to try.
 
 ### 3c. Path 3 — Aseprite manual fallback
 
@@ -104,7 +117,7 @@ Tell the user:
 
 If yes, generate the static base via `summer:2d-assets/pixel-art` and stop here. The user takes it to Aseprite.
 
-### 4. Import frames into Godot
+### 4. Import frames into Summer Engine
 
 For per-frame import (Path 1):
 
@@ -125,30 +138,21 @@ Set `Filter: Nearest` on import for pixel art, `Linear` for high-res.
 ### 5. Wire as AnimatedSprite2D
 
 ```
-summer_add_node(parentPath="/root/Game/Goblin", type="AnimatedSprite2D", name="Sprite")
+summer_add_node(scenePath="res://main.tscn", parent="./Goblin", type="AnimatedSprite2D", name="Sprite")
 ```
 
-Create a `SpriteFrames` resource and add an animation named `walk`. For per-frame textures:
+Every scene-mutating tool takes an explicit `scenePath`, and node paths are relative to that scene's root (`./`), not absolute `/root/...` runtime paths.
+
+Building the `SpriteFrames` itself is **not** an MCP job. `summer_set_resource_property` takes five flat arguments (`scenePath`, `nodePath`, `resourceProperty`, `subProperty`, `value`) and its `value` is restricted to a single string, number, or boolean — it cannot take a frame array, and there is no `"a:b/c"` colon-path form for reaching nested sub-resources. Author the `SpriteFrames` as a `.tres` with `summer_write_file` and then point the node at it:
 
 ```
-summer_set_resource_property(
-  nodePath="/root/Game/Goblin/Sprite",
-  resourceProperty="sprite_frames:animations/walk/frames",
-  value=["res://sprites/goblin/walk_01.png", "res://sprites/goblin/walk_02.png", ...]
-)
-summer_set_resource_property(
-  nodePath="/root/Game/Goblin/Sprite",
-  resourceProperty="sprite_frames:animations/walk/speed",
-  value=8.0
-)
-summer_set_resource_property(
-  nodePath="/root/Game/Goblin/Sprite",
-  resourceProperty="sprite_frames:animations/walk/loop",
-  value=true
-)
+summer_write_file(path="res://sprites/goblin/goblin_frames.tres", content="<SpriteFrames .tres with the walk animation, its frames, speed and loop>", create_only=true)
+summer_set_prop(scenePath="res://main.tscn", path="./Goblin/Sprite", key="sprite_frames", value="res://sprites/goblin/goblin_frames.tres")
+summer_set_prop(scenePath="res://main.tscn", path="./Goblin/Sprite", key="animation", value="walk")
+summer_save_scene(scenePath="res://main.tscn")
 ```
 
-For sheet-based (Path 2): use `AtlasTexture` with one region per frame, then add each AtlasTexture as a frame.
+For sheet-based (Path 2): the slicer already returns individual frame images, so import those and list them as frames. If you would rather keep one packed sheet, declare `AtlasTexture` sub-resources with one region per frame inside the same `.tres`.
 
 ### 6. Trigger from code
 
@@ -198,6 +202,7 @@ func _physics_process(delta):
 - **Wiring an inconsistent sheet anyway** because you don't want to regenerate. Ship the inconsistency and the player notices the morphing limbs immediately. Cut the frame count or hand-author instead.
 - **Sprite-sheeting things that don't need to be sprite-sheeted.** UI animation, simple bobs, fades — use `AnimationPlayer` to tween a static texture instead. Sprite sheets are for character animation specifically.
 - **Pretending Aseprite is a failure.** Hand-authoring 4 pixel-art frames takes 10 minutes and looks better than 8 AI generations. Don't oversell AI here.
+- **Sending the user to ImageMagick or Aseprite to *cut* a generated sheet.** `summer_slice_asset_sheet` does that server-side. Hand off the creative work, not the mechanical work.
 
 ## Edge cases
 
@@ -212,7 +217,7 @@ func _physics_process(delta):
 Print the per-frame call sequence:
 
 ```
-Frame 1: summer_generate_image(prompt="<base>", model="nano-banana-2", style="pixel", ...)
+Frame 1: summer_generate_image(prompt="<base>", model="nano-banana-2", style="none", ...)
 Frame 2: summer_generate_image(prompt="<base + delta>", referenceImageUrl="<frame 1>", ...)
 Frame 3: summer_generate_image(prompt="<base + delta>", referenceImageUrl="<frame 2>", ...)
 ...
@@ -236,4 +241,4 @@ After the animation is wired:
 - `summer:2d-assets/character-portrait` — base portrait for higher-res characters.
 - `summer:animation/generate-motion` — 3D-skeletal counterpart.
 - `summer:audio/sound-effect` — frame-synced SFX.
-- `references/mcp-tools-reference.md` — `summer_generate_image` schema.
+- `../../../references/mcp-tools-reference.md` — `summer_generate_image` schema.

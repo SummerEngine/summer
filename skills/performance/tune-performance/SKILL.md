@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: performance
 user-invocable: true
-allowed-tools: Read Grep Glob Edit summer_get_diagnostics summer_get_console summer_get_scene_tree summer_inspect_node summer_inspect_resource summer_play summer_stop summer_is_running summer_clear_console summer_set_prop summer_project_setting
+allowed-tools: Read Grep Glob Edit summer_get_diagnostics summer_get_console summer_get_scene_tree summer_inspect_node summer_inspect_resource summer_play summer_stop summer_is_running summer_clear_console summer_set_prop summer_add_node summer_save_scene summer_batch summer_screenshot summer_project_setting
 paths: ["**/*.gd", "**/*.tscn", "**/*.tres", "project.godot"]
 ---
 
@@ -37,27 +37,45 @@ Wait. The answer narrows the fix domain by 5x:
 
 Don't guess. Read the engine's actual numbers.
 
-**Preferred (Summer MCP):**
+**`summer_get_diagnostics` is NOT a profiler.** It returns counts of console errors, debugger errors, debugger warnings and script errors — nothing else. It carries no FPS, no frame time, no draw calls, no body counts. Never quote a performance number you claim came from it.
+
+**Preferred (Summer MCP): measure inside a verification probe.** `RunVerification` spawns a hidden, disposable game instance with a real renderer, runs your GDScript probe, and dies without touching the user's editor. `Performance.get_monitor(...)` inside that probe returns the real numbers.
 
 ```
-summer_clear_console
-summer_play
-# user reproduces the slowdown for 5–10 seconds
-summer_get_diagnostics
-summer_get_console               # check for warnings (e.g. "shader compilation hot-path")
-summer_stop
+summer_batch ops:[{
+  "op": "RunVerification",
+  "probe_source": "<probe below>",
+  "max_seconds": 20
+}]
 ```
 
-`summer_get_diagnostics` returns the aggregate metrics. Note (write down before fixing anything):
+```gdscript
+extends SummerProbeBase
+func _ready() -> void:
+    await super._ready()
+    await get_tree().process_frame
+    await get_tree().create_timer(3.0).timeout    # let it settle, then sample
+    report("fps", Performance.get_monitor(Performance.TIME_FPS))
+    report("process_ms", Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
+    report("physics_ms", Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0)
+    report("draw_calls", Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
+    report("objects", Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME))
+    report("primitives", Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME))
+    report("video_mem", Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED))
+    report("bodies_3d", Performance.get_monitor(Performance.PHYSICS_3D_ACTIVE_OBJECTS))
+    report("bodies_2d", Performance.get_monitor(Performance.PHYSICS_2D_ACTIVE_OBJECTS))
+    report("objects_total", Performance.get_monitor(Performance.OBJECT_COUNT))
+    save_frame("baseline")
+    finish()
+```
 
-- Average FPS during the slow section
-- Frame time (ms) — anything over 16.67 ms = below 60 fps
-- Draw calls per frame
-- Active physics bodies
-- Active GPUParticles instances
-- Script time vs. physics time vs. render time
+Write the returned numbers down before fixing anything. Drive the probe to the slow state first (`press()` / `key()` to spawn the enemies, walk into the bad room) — measuring the main menu tells you nothing.
 
-**Fallback (no MCP):** ask the user to enable Godot's built-in monitor (`Debug → Monitor` or in-game with `Performance.get_monitor`) and paste numbers. At minimum: FPS, frame time, draw calls, physics active objects.
+**Let it settle for at least a second before sampling.** `TIME_FPS` is a per-second average, so a probe that reports at 0.5 s returns exactly `1.0` and looks like a catastrophic stall. An `fps` of exactly `1.0` almost always means you sampled too early, not that the game runs at 1 fps.
+
+**Never profile with `--headless`.** A headless instance has no renderer: `RENDER_TOTAL_DRAW_CALLS_IN_FRAME` and `RENDER_TOTAL_OBJECTS_IN_FRAME` read `0.0`, and the FPS figure is an uncapped loop rate, not the game's framerate. The verify instance is windowed-offscreen precisely so the numbers are real.
+
+**Genuine fallback (engine not running at all):** ask the user to enable Godot's built-in monitor (`Debug → Monitor`, or in-game with `Performance.get_monitor`) and paste numbers. At minimum: FPS, frame time, draw calls, physics active objects.
 
 ### 3. Identify the dominant cost
 
@@ -73,7 +91,7 @@ Decision tree:
 
 ### 4a. Rendering hotspot
 
-Common Summer Engine rendering costs, ordered by frequency:
+Common Godot 4.x rendering costs, ordered by frequency:
 
 | Pattern | Symptom | Fix |
 |---|---|---|
@@ -90,6 +108,8 @@ To inspect a suspect node:
 summer_inspect_node "./World/Enemy"
 summer_inspect_resource "./World/Enemy"   # for mesh/material/shape details
 ```
+
+**Bakes you cannot run for the user.** `LightmapGI` bake and the `OccluderInstance3D` bake are editor-process operations — `LightmapGI.bake()` is not exposed to scripting at all, and there is no MCP op for either. You can add and configure the nodes, but the bake itself is a button the user presses in the editor. Say so explicitly rather than reporting the optimization as applied. Navmesh baking, collision-shape generation from meshes, and `ImporterMesh.generate_lods` are all scriptable and remain yours to do.
 
 ### 4b. Physics hotspot
 
@@ -165,12 +185,11 @@ After the user approves:
 ```
 # apply the fix (Edit / summer_add_node / summer_set_prop / etc)
 summer_save_scene
-summer_clear_console
-summer_play
-# user reproduces the same scenario
-summer_get_diagnostics
-summer_stop
+# re-run the SAME probe from step 2 — same scene, same settle time, same drive sequence
+summer_batch ops:[{"op": "RunVerification", "probe_source": "<same probe>", "max_seconds": 20}]
 ```
+
+Re-running the identical probe is the whole point: same instance type, same warm-up, same sample point, so the delta is attributable to the fix and not to how the run was taken.
 
 Compare: was the metric movement at least 50% of what was promised? If yes, ship it. If no, the hypothesis was wrong — go back to step 3 with the new numbers.
 
@@ -180,7 +199,9 @@ Compare: was the metric movement at least 50% of what was promised? If yes, ship
 
 | Don't | Do | Why |
 |---|---|---|
-| Optimize without baseline metrics | Always `summer_get_diagnostics` before and after | "Felt faster" is not a measurement |
+| Optimize without baseline metrics | Always run the measurement probe before and after | "Felt faster" is not a measurement |
+| Quote FPS or draw calls from `summer_get_diagnostics` | It returns error/warning counts only — get numbers from `Performance.get_monitor` in a probe | Reporting a metric the tool never returned is fabrication |
+| Profile with `--headless` | Use the windowed-offscreen verify instance | Headless has no renderer: draw calls read 0 and FPS is a meaningless loop rate |
 | Fix the second-biggest cost | Fix the biggest first, re-measure, re-prioritize | Amdahl's law — the small win evaporates next to the big one |
 | Bundle 5 fixes into one PR | One fix at a time, verify each | Bundles hide regressions. Hard to attribute the win or the loss. |
 | `_process` for everything | 10 Hz timer for AI / distance checks / range polls | 60 Hz AI is wasted CPU |
@@ -200,7 +221,7 @@ Compare: was the metric movement at least 50% of what was promised? If yes, ship
 
 ## Collaborative protocol
 
-This skill makes scene/resource/code changes. Always ask before each fix is applied. See `references/collaborative-protocol.md`.
+This skill makes scene/resource/code changes. Always ask before each fix is applied. See `../../../references/collaborative-protocol.md`.
 
 ## Want a working starter?
 
@@ -208,12 +229,10 @@ No template — this is a workflow. Performance tuning is project-specific by de
 
 ## See also
 
-- `references/mcp-tools-reference.md` — full MCP tool list
-- `references/godot-version.md` — Summer Engine renderer notes (Compositor, RenderSceneBuffers churn)
-- `references/collaborative-protocol.md` — "May I write" pattern
-- `references/gd-style.md` — GDScript conventions (avoid bare types, use `:=`)
-- `performance/profiling-godot/SKILL.md` — deeper Godot profiler usage
-- `performance/draw-call-batching/SKILL.md` — MultiMeshInstance3D patterns
-- `performance/lod-and-culling/SKILL.md` — LOD setup
+- `../../../references/mcp-tools-reference.md` — full MCP tool list
+- `../../../references/godot-version.md` — renderer API churn notes (Compositor, RenderSceneBuffers)
+- `../../../references/collaborative-protocol.md` — "May I write" pattern
+- `../../../references/gd-style.md` — GDScript conventions (avoid bare types, use `:=`)
 - `debugging/debug/SKILL.md` — bug triage (related but different)
-- `rendering-and-lighting/baked-vs-realtime-lighting/SKILL.md` — bake decisions
+- `workflow/diagnosing-perf-regressions/SKILL.md` — when it *got* slow rather than always was
+- `rendering-and-lighting/3d-lighting/SKILL.md` — light setup and bake decisions

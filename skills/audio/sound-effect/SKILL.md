@@ -49,7 +49,7 @@ The bible defines an SFX *class* (UI, Pickup positive, Damage, Footstep, Attack,
 Generation is metered. Reuse beats regenerate.
 
 ```
-summer_search_assets(query="<class> <subject>", filter={ kind: "audio" })
+summer_search_assets(query="<class> <subject>", assetType="audio", source="all")
 ```
 
 If something fits, ask:
@@ -93,17 +93,20 @@ Show the prompt and the call before running:
 
 > Prompt: `metal sword swing whoosh, dry, sharp, 250ms`. Duration 0.5s (model floor). Model: ElevenLabs SFX. Cost: ~1 credit. Generate?
 
+The `sound_effects` capability reads the description from **`text`**, not `prompt`. Passing `prompt` here is a 400 `text_required` — `prompt` is only for the `music` capability.
+
 ```
 summer_generate_audio(
   capability: "sound_effects",
-  prompt: "metal sword swing whoosh, dry, sharp, 250ms",
+  text: "metal sword swing whoosh, dry, sharp, 250ms",
   durationSeconds: 0.5
 )
-// Result: { asset: { fileUrl, ... } }
 // Then: summer_import_from_url(url: "<fileUrl>", path: "res://audio/sfx/sword_swing_01.wav")
 ```
 
 `durationSeconds` floor is 0.5, ceiling is 22. If the user wants a 100ms click, generate 0.5s and the player only plays the front; or trim in the engine.
+
+SFX comes back as **WAV**, not MP3 — Summer requests raw PCM from the provider, trims the model's lead-in silence, applies short anti-click fades, and emits a 16-bit mono WAV. A `.wav` target path is therefore correct, and the usual "ElevenLabs one-shots start with dead air" problem is already handled upstream.
 
 ### 5. Decision: one-shot vs loop
 
@@ -126,13 +129,15 @@ Choose the right player node:
 
 Add it under the emitting node:
 
+Every scene-mutating tool takes an explicit `scenePath`, node paths are relative to the scene root (`./`), and the property argument is named `key`, not `property`:
+
 ```
-summer_add_node(parentPath="/root/Game/Player", type="AudioStreamPlayer3D", name="SwingSFX")
-summer_set_prop(path="/root/Game/Player/SwingSFX", property="stream", value="res://audio/sfx/sword_swing_01.wav")
-summer_set_prop(path="/root/Game/Player/SwingSFX", property="bus", value="SFX")
-summer_set_prop(path="/root/Game/Player/SwingSFX", property="volume_db", value=0.0)
-summer_set_prop(path="/root/Game/Player/SwingSFX", property="max_distance", value=25.0)
-summer_set_prop(path="/root/Game/Player/SwingSFX", property="attenuation_model", value=0)
+summer_add_node(scenePath="res://main.tscn", parent="./Player", type="AudioStreamPlayer3D", name="SwingSFX")
+summer_set_prop(scenePath="res://main.tscn", path="./Player/SwingSFX", key="stream", value="res://audio/sfx/sword_swing_01.wav")
+summer_set_prop(scenePath="res://main.tscn", path="./Player/SwingSFX", key="bus", value="SFX")
+summer_set_prop(scenePath="res://main.tscn", path="./Player/SwingSFX", key="volume_db", value=0.0)
+summer_set_prop(scenePath="res://main.tscn", path="./Player/SwingSFX", key="max_distance", value=25.0)
+summer_set_prop(scenePath="res://main.tscn", path="./Player/SwingSFX", key="attenuation_model", value=0)
 ```
 
 Bus name must match the bible (`SFX`, `UI`, `Ambient`, etc.). If the bus doesn't exist, run `/audio-direction` step 8.
@@ -150,7 +155,7 @@ func _ready() -> void:
 	play()
 ```
 
-Save it as a `.tscn`, then `summer_instantiate_scene` at the emitter's global position when the event fires. The node frees itself when the stream finishes — no leaks.
+Save it as a `.tscn`, then `summer_instantiate_scene(scenePath, parent, scene, name)` to place it. Note this only wires the node into a scene at author time — spawning one per event at the emitter's runtime position is a job for GDScript (`preload(...).instantiate()` + `add_child`), not for an MCP call. The node frees itself when the stream finishes — no leaks.
 
 ### 8. Volume calibration
 
@@ -233,5 +238,5 @@ After the SFX is wired:
 - `audio/ambient-bed` — long looping textures
 - `audio/music-track` — music
 - `audio/voice-line` — TTS
-- `references/mcp-tools-reference.md`
-- `references/godot-version.md` — Summer Engine audio nodes
+- `../../../references/mcp-tools-reference.md`
+- `../../../references/godot-version.md` — Summer compatibility for audio nodes

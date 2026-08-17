@@ -126,14 +126,26 @@ Show this to the user. Ask:
 **Preferred (Summer MCP):**
 
 ```
-summer_get_scene_tree                       # confirm Player exists where expected
-summer_add_node(parent="./World/Player", type="GPUParticles3D", name="DoubleJumpFX")
-summer_set_prop("./World/Player/DoubleJumpFX", "emitting", "false")
-summer_add_node(parent="./World/Player", type="AudioStreamPlayer3D", name="JumpAudio")
-summer_input_map_bind(name="jump", events=[{type:"key", key:"Space"}])  # idempotent
-summer_save_scene
-summer_get_script_errors
+summer_get_scene_tree()                     # confirm Player exists where expected
+summer_add_node(scenePath="res://main.tscn", parent="./World/Player", type="GPUParticles3D", name="DoubleJumpFX")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Player/DoubleJumpFX", key="emitting", value="false")
+summer_add_node(scenePath="res://main.tscn", parent="./World/Player", type="AudioStreamPlayer3D", name="JumpAudio")
+summer_input_map_bind(name="jump", events=[{"type": "key", "key": "Space"}])   # idempotent
+summer_save_scene(scenePath="res://main.tscn")
+summer_get_script_errors(path="res://scripts/player_controller.gd")
 ```
+
+Argument notes, all of which the tool schema enforces:
+
+- `scenePath` is required on `summer_add_node`, `summer_set_prop` and
+  `summer_save_scene`. It names the exact `res://` scene; there is no
+  "current scene" default.
+- `summer_set_prop` takes named `path` / `key` / `value` — not positional.
+- `summer_input_map_bind` events are dicts. `{"type": "key", "key": "Space"}`
+  works; key names go through Godot's keycode table, so `W`, `Space`, `Shift`,
+  `Escape` resolve and typos silently produce no event.
+- `summer_get_script_errors` checks one file and requires `path`. Use
+  `summer_get_diagnostics()` (no args) for a project-wide check.
 
 **Fallback (no MCP):** Print the `.tscn` snippet for the user to paste:
 
@@ -148,7 +160,7 @@ lifetime = 0.4
 
 ### 7. Write the GDScript stub
 
-Stub only — implementation is the next session. Use `references/gd-style.md` conventions. For double-jump:
+Stub only — implementation is the next session. Typed GDScript throughout (see `summer:scripting-patterns/gdscript-patterns`). For double-jump:
 
 ```gdscript
 class_name PlayerController
@@ -236,12 +248,12 @@ Ask:
 | Hand-wave depth | "Players will use it strategically" is not depth. Name the choice the player makes. |
 | Tunables hard-coded as `const` | Use `@export` so designers tune in the inspector. |
 | Adding the mechanic without the FX/audio nodes | Without nodes for feedback, the mechanic ships feeling cheap. Scaffold the nodes alongside the script. |
-| Setting `position` for movement instead of `velocity` | Physics objects use `velocity` in `_physics_process`. See `references/gd-style.md`. |
-| Calling SetResourceProperty on inline sub_resources | Silent fail. See `references/mcp-tools-reference.md` § Trap. |
+| Setting `position` for movement instead of `velocity` | Physics objects use `velocity` in `_physics_process`. |
+| Calling SetResourceProperty before the property holds a resource | Explicit `resource is null` error, not a silent drop. Assign the resource first (`summer_set_prop key="mesh" value="BoxMesh"`), then set its sub-properties. Scene-embedded sub_resources are fully supported targets. |
 
 ## Collaborative protocol
 
-This skill writes scene nodes and one or more files (`.gd`, `.summer/mechanics/<name>.md`). Group writes into one ask per phase. See `references/collaborative-protocol.md`.
+This skill writes scene nodes and one or more files (`.gd`, `.summer/mechanics/<name>.md`). Group writes into one ask per phase.
 
 ## Want a working starter?
 
@@ -254,10 +266,6 @@ This skill is a workflow that designs and scaffolds — the templates are runnab
 
 ## See also
 
-- `references/collaborative-protocol.md`
-- `references/mcp-tools-reference.md`
-- `references/gd-style.md` — GDScript conventions
-- `references/godot-version.md` — Summer Engine API notes
 - `scene-and-project/brainstorm-game/SKILL.md` — produces `.summer/GameSoul.md` this skill reads
 - `level-design/design-level/SKILL.md` — design the levels that exercise the mechanic
 - `character-controllers/fps-controller/SKILL.md` — FPS movement scaffolding

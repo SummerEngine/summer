@@ -1,6 +1,6 @@
 ---
 name: peer-to-peer-multiplayer
-description: Use when starting a multiplayer Summer game from scratch — peer-to-peer with host authority. Build the network architecture top-down so authoritative state, routing rules, and real-time rendering aren't bolted on later. Use BEFORE writing game logic, not after. Trigger on "multiplayer", "peer-to-peer", "p2p", "co-op", "host", "multiplayer architecture", "add multiplayer".
+description: Use when starting a multiplayer Summer game from scratch with peer-to-peer host authority. Build the network architecture top-down so authoritative state, routing rules, and real-time rendering are not bolted on later. Use before writing game logic, not after. Trigger on "multiplayer", "peer-to-peer", "p2p", "co-op", "host", "multiplayer architecture", "add multiplayer".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: multiplayer-and-networking
@@ -42,7 +42,7 @@ If P2P is right, continue. Otherwise, stop and route to the right skill.
 
 A single autoload that owns the network. Nothing else in the game touches `MultiplayerAPI` directly.
 
-May I create `autoloads/network_manager.gd` and register it as a Godot autoload?
+May I create `autoloads/network_manager.gd` and register it as a Summer Engine autoload?
 
 ```gdscript
 class_name NetworkManager
@@ -361,8 +361,6 @@ This skill writes multiple new files (`autoloads/network_manager.gd`, `autoloads
 
 Don't apply all four layers in one shot — checkpoint after each layer so the user can verify before adding the next.
 
-See [`references/collaborative-protocol.md`](../../references/collaborative-protocol.md).
-
 ## Want a working starter?
 
 No template ships with this exact architecture yet — it's deliberately built fresh for each project because the State Layer's authority decisions are game-specific (a stealth game's "visibility" and a shooter's "ammo count" both want host authority but for different reasons). Run this skill from scratch.
@@ -371,8 +369,5 @@ When the `template-co-op-3d` template ships in the registry, this skill will ref
 
 ## See also
 
-- [`references/godot-version.md`](../../references/godot-version.md) — Summer Engine multiplayer API stability notes
-- [`references/mcp-tools-reference.md`](../../references/mcp-tools-reference.md) — `summer_project_setting` for autoload registration
-- [`references/gd-style.md`](../../references/gd-style.md) — typed-GDScript conventions
 - [`host-authoritative-state`](../host-authoritative-state/SKILL.md) — deeper dive on JUST the state ownership decision matrix
 - [`setup-multiplayer`](../setup-multiplayer/SKILL.md) — lighter intro that just gets a session running (use that one if the user just wants 2 players to see each other; use this one if they want to ship a real game)

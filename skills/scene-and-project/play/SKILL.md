@@ -34,9 +34,15 @@ If not running, continue.
 
 Cheapest call. If the script won't compile, play will fail with a noisy error — better to surface that clearly first.
 
+`summer_get_script_errors` checks **one** file and `path` is required — there is
+no project-wide form. Call it on the scripts you just touched:
+
 ```
-summer_get_script_errors
+summer_get_script_errors(path="res://scripts/player.gd")
 ```
+
+If you don't know which scripts changed, use `summer_get_diagnostics` instead —
+it takes no arguments and reports editor + runtime counts across the project.
 
 If errors found:
 > Won't run yet — there's a script error: `<one-line summary>`. Want me to /debug it?
@@ -85,7 +91,7 @@ Leave the game running. The user wants to play it. Stop only on explicit ask.
 |---|---|
 | User says "play" with no context | Steps 1–5 above |
 | User says "play and watch it for me" | After step 5, set a timer / poll `summer_get_debugger_errors` every few seconds for the duration the user specifies |
-| User says "play the boss fight scene" | Open the specific scene first (`summer_open_scene "scenes/boss_fight.tscn"`), then steps 1–5 |
+| User says "play the boss fight scene" | Pass it directly: `summer_play(scene="res://scenes/boss_fight.tscn")`. `summer_open_scene(path=...)` needs a full `res://` path too — never a bare relative one |
 | Game is already running and user says "play" again | Step 1's check covers it — ask before restarting |
 
 ## Anti-patterns
@@ -100,9 +106,9 @@ This skill mutates engine state (clearing console, starting play). It's a read-s
 
 ## Want a working starter?
 
-No template — works against any Godot/Summer project that has a main scene set in `project.godot`.
+No template. Works against any Summer project that has a main scene set in the
+technical `project.godot` file.
 
 ## See also
 
-- `references/mcp-tools-reference.md` — full tool list
 - `debugging/debug/SKILL.md` — what to do when /play surfaces an error

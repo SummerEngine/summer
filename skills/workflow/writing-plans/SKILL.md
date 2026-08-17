@@ -13,7 +13,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 **Announce at start:** "I'm using the writing-plans skill to create the implementation plan."
 
-**Context:** If working in an isolated worktree, it should have been created via the `summer:using-git-worktrees` skill at execution time.
+**Context:** If the work needs isolation from the current checkout, create a git worktree for it before execution starts.
 
 **Save plans to:** `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`
 - (User preferences for plan location override this default)
@@ -49,7 +49,7 @@ This structure informs the task decomposition. Each task should produce self-con
 ```markdown
 # [Feature Name] Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use summer:subagent-driven-development (recommended) or summer:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** implement this plan task-by-task, in order, checking off each step as it lands. Steps use checkbox (`- [ ]`) syntax for tracking. Dispatch a fresh subagent per task where the tasks are independent (see summer:dispatching-parallel-agents), otherwise execute inline with a review checkpoint after each task.
 
 **Goal:** [One sentence describing what this builds]
 
@@ -139,14 +139,14 @@ After saving the plan, offer execution choice:
 
 **1. Subagent-Driven (recommended)** - I dispatch a fresh subagent per task, review between tasks, fast iteration
 
-**2. Inline Execution** - Execute tasks in this session using executing-plans, batch execution with checkpoints
+**2. Inline Execution** - Execute tasks in this session, batched with checkpoints
 
 **Which approach?"**
 
 **If Subagent-Driven chosen:**
-- **REQUIRED SUB-SKILL:** Use summer:subagent-driven-development
-- Fresh subagent per task + two-stage review
+- One fresh subagent per task, each given the task's full text and nothing else from this session's history. See `summer:dispatching-parallel-agents` for prompt structure and when parallelism is safe.
+- Two-stage review: read the subagent's summary, then verify the diff yourself before starting the next task.
 
 **If Inline Execution chosen:**
-- **REQUIRED SUB-SKILL:** Use summer:executing-plans
-- Batch execution with checkpoints for review
+- Execute tasks in order in this session, stopping at a checkpoint after each task for review.
+- Never batch past a failing step. Fix it, verify it, then continue.

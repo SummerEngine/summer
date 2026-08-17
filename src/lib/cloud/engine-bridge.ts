@@ -84,29 +84,61 @@ export async function saveDirtyScenesIfRunning(projectRoot: string): Promise<boo
 }
 
 /**
- * After apply (spec 8.7): trigger a filesystem rescan and reload the open
- * scene if the pull replaced it. ScanChanges is the engine-side hook; older
- * engines without it simply reject the op and the editor's own focus scan
- * picks the changes up.
+ * After apply (spec 8.7): tell the open editor that files changed underneath it.
+ *
+ * BOTH HALVES OF THIS ARE CURRENTLY DEAD, and the user-visible symptom is that
+ * after a cloud pull the editor keeps showing the pre-pull bytes:
+ *
+ *  - `ScanChanges` is not an engine op. The dispatch ladder
+ *    (modules/1summer_engine/editor/ops_executor.cpp:1060-1290) has 84 op kinds and
+ *    no ScanChanges branch, so this fails on EVERY build, not just older ones. The
+ *    engine-side capability exists as EditorFileSystem::scan_changes() but is
+ *    exposed neither as an op nor to GDScript, so there is no caller-reachable
+ *    rescan verb at all. O2 owns adding one.
+ *  - The scene reload depends on `session.scene`, which /api/health never returns
+ *    (see the note in lib/engine.ts), so it is always undefined and never fires.
+ *
+ * Until the engine exposes a rescan, say so out loud rather than swallowing it —
+ * a stale editor that looks correct is exactly the failure this codebase is trying
+ * to stop shipping.
  */
 export async function notifyEngineAfterApply(projectRoot: string, appliedPaths: readonly string[]): Promise<void> {
   if (!appliedPaths.length) return;
   const session = await connectForProject(projectRoot);
   if (!session) return;
+
+  let rescanned = false;
   try {
     await session.client.executeOps([{ op: "ScanChanges" }], { projectIdHash: session.projectIdHash });
+    rescanned = true;
   } catch {
-    // Engine build without the ScanChanges op; non-fatal.
+    rescanned = false;
   }
+
+  let reloaded = false;
   try {
     const scene = session.scene;
     if (scene && scene.startsWith("res://")) {
       const sceneRel = scene.slice("res://".length);
       if (appliedPaths.includes(sceneRel)) {
         await session.client.executeOps([{ op: "OpenScene", path: scene }], { projectIdHash: session.projectIdHash });
+        reloaded = true;
       }
     }
   } catch {
-    // Reload is best-effort; the editor reloads from disk on focus.
+    reloaded = false;
+  }
+
+  if (!rescanned) {
+    console.warn(
+      `Pulled ${appliedPaths.length} file(s), but could not tell the running editor to rescan ` +
+        "(this engine build exposes no rescan op). The editor may still be showing the old " +
+        "contents — click into its window, or reopen the affected scene, before trusting what you see."
+    );
+  } else if (!reloaded) {
+    console.warn(
+      "Pulled files and rescanned, but could not confirm which scene is open, so an open " +
+        "scene replaced by the pull was not reloaded. Reopen it before trusting what you see."
+    );
   }
 }

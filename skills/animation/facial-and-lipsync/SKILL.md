@@ -26,7 +26,7 @@ The 2026 production stack:
 - NPC has voice lines and the mouth doesn't move.
 - Cinematic with VO that needs lipsync.
 - "Make him sing the lyrics."
-- Animating expressions on a face that has BlendShapes (Meshy character heads ship with the ARKit-52 set by default).
+- Animating expressions on a face that has BlendShapes. Never assume it does — step 1 below is the check, and generated characters frequently come back with zero.
 - Reactive face: smile when player gives gold, scowl when attacked.
 
 ## When NOT to use this skill
@@ -43,11 +43,16 @@ The 2026 production stack:
 summer_inspect_node "./World/NPC/Head"     # or wherever the head MeshInstance3D lives
 ```
 
-Look for `mesh.blend_shape_count` > 0 and a list of names. The Meshy ARKit-52 set (default for Meshy character heads) has names like `jawOpen`, `mouthClose`, `mouthFunnel`, `mouthPucker`, `mouthLeft`, `mouthRight`, `mouthSmile_L`, `mouthSmile_R`, `mouthFrown_L`, `mouthFrown_R`, `browInnerUp`, `browOuterUp_L`, `browDown_L`, `eyeBlink_L`, `eyeWide_L`, `eyeSquint_L` (mirrored on R).
+Look for `mesh.blend_shape_count` > 0 and a list of names. An ARKit-52 head has names like `jawOpen`, `mouthClose`, `mouthFunnel`, `mouthPucker`, `mouthLeft`, `mouthRight`, `mouthSmile_L`, `mouthSmile_R`, `mouthFrown_L`, `mouthFrown_R`, `browInnerUp`, `browOuterUp_L`, `browDown_L`, `eyeBlink_L`, `eyeWide_L`, `eyeSquint_L` (mirrored on R).
 
-If the head has zero BlendShapes, stop. Tell the user: "This head mesh has no BlendShapes — facial animation is impossible without re-meshing. Options: regenerate the character with the `face_blendshapes: arkit` option (`summer_generate_3d({ kind: \"image-to-3d\", options: { rig: true, face_blendshapes: \"arkit\" } })`), use an emotional body-language overlay instead, or hand off the character to a 3D artist for shape-key authoring." Don't proceed.
+If the head has zero BlendShapes, stop. Tell the user: "This head mesh has no BlendShapes — facial animation needs shape keys on the mesh. Options: use an emotional body-language overlay instead, author shape keys in Blender and re-import, or hand the character to a 3D artist." Don't proceed.
 
-Note: the `face_blendshapes` option is a Meshy passthrough; if your target backend doesn't support it, the rig will use the default skeleton — adjust manually in the Meshy dashboard.
+Do **not** promise a `face_blendshapes` generation option. `summer_generate_3d`
+has no such parameter and nothing in the Summer generation pipeline handles one
+— `options` is an untyped passthrough, so a bogus key is accepted by the schema
+and then silently ignored by the backend. Regenerating will not add BlendShapes.
+Shape keys come from the mesh author (Blender / an ARKit-52 source mesh), not
+from a rig pass.
 
 ### 2. Get the audio
 
@@ -121,7 +126,9 @@ Cost: Rhubarb is free + ~5s CPU per 30s clip locally. Cloud fallback ~$0.02 / mi
 
 ### 4. Persist the viseme track as an AnimationLibrary entry
 
-Convert Rhubarb's `mouthCues` into a Godot Animation resource — one track per BlendShape, keyframes at each viseme transition. This makes lipsync replayable via the same AnimationPlayer/AnimationTree as body motion.
+Convert Rhubarb's `mouthCues` into a Summer Engine Animation resource: one
+track per BlendShape with keyframes at each viseme transition. This makes lip
+sync replayable through the same AnimationPlayer/AnimationTree as body motion.
 
 ```gdscript
 # scripts/lipsync_baker.gd — run once per VO line at edit time
@@ -155,6 +162,14 @@ static func bake_from_rhubarb(rhubarb_json_path: String, head_path: NodePath) ->
 ```
 
 Bake once, save into the character's AnimationLibrary as `dialogue_<line_id>`, and play via the AnimationTree.
+
+This is a plain `Animation` resource authored in code — no editor required.
+`Animation.new()` + `add_track()` + `track_set_path()` + `track_insert_key()` +
+`ResourceSaver.save()` works from a headless `-s` script and the resource
+reloads with every track and track type intact (verified on the shipped 4.6.1
+binary with value, blend-shape and method tracks in one resource). Any advice
+that says animation tracks or keyframes can only be authored in the editor GUI
+is wrong.
 
 If you used the Whisper/ARPAbet cloud fallback instead of Rhubarb, swap `bake_from_rhubarb` for a variant that consumes `{ phoneme, start, duration }` triples and applies the ARPAbet → viseme table from the Reference card.
 
@@ -234,7 +249,7 @@ If the user has a CMUDict-style phoneme list and wants to map manually, this is 
 
 - **Mouth never closes between words.** No `viseme_sil` keyframes at silence intervals. The bake step must scan the audio for silence (RMS below threshold for 100ms+) and insert sil keys, OR the phoneme extractor must emit silence markers. Rhubarb emits `X` cues for silence (mapped above to `viseme_sil`); cloud Whisper-phoneme models often don't — add a silence-detection pass if you go that route.
 - **Lipsync drifts behind audio.** Audio playback latency on some platforms is 30–60ms. Either delay the audio start by 1 frame, or pre-shift the animation by the platform's known latency. On desktop Linux audio output can be 60ms behind; on Steam Deck ~20ms.
-- **Visemes pop on/off.** Crossfade between viseme keyframes — set `Animation.TRACK_INTERPOLATION_LINEAR` (default) and ensure each viseme's weight ramps from previous to current. Default bake does this; if you wrote custom keyframes with NEAREST interp, switch.
+- **Visemes pop on/off.** Crossfade between viseme keyframes — the constant is `Animation.INTERPOLATION_LINEAR` (there is no `TRACK_INTERPOLATION_LINEAR`; the real set is `INTERPOLATION_NEAREST` / `_LINEAR` / `_CUBIC` / `_LINEAR_ANGLE` / `_CUBIC_ANGLE`). Apply it per track with `anim.track_set_interpolation_type(idx, Animation.INTERPOLATION_LINEAR)` and ensure each viseme's weight ramps from previous to current. Default bake does this; if you wrote custom keyframes with NEAREST interp, switch.
 - **Smile fights lipsync.** Both write to mouth BlendShapes. Solve by additive layering: lipsync layer outputs deltas from neutral, smile layer outputs deltas from neutral, sum them, clamp 0..1. ARKit shapes are sum-safe up to ~1.5; clamp prevents over-rotation.
 - **Eyes look dead.** Lipsync is mouth-only; without blinks and saccades the face is uncanny. Add an idle blink track (every 4–8s, jittered) and a small saccade track (random eye movement up to 5°). Both can be one-shots fired by a `Timer`.
 - **Phoneme extraction returns gibberish.** Audio is too noisy, mismatched language code, or compressed too aggressively. Re-export the source as 22kHz mono WAV before sending. Don't lipsync from a 64kbps MP3.
@@ -263,7 +278,10 @@ If the user has a CMUDict-style phoneme list and wants to map manually, this is 
 
 If Rhubarb won't install on the user's platform, run a Whisper-phoneme model on Replicate (e.g., `cjwbw/whisper-phoneme`) or `aeneas-align` for forced alignment. Download the JSON, swap the bake function for one that consumes ARPAbet phonemes (table in Reference card). Same end result — replayable BlendShape Animation resource.
 
-For projects that can't use any cloud or third-party tool, Summer Engine's `AudioStreamGenerator` with hand-rolled vowel/consonant detection from RMS + zero-crossings gives ~50% accuracy — enough for a stylized character but not photoreal.
+For projects that cannot use any cloud or third-party tool, Summer Engine's
+`AudioStreamGenerator` with hand-rolled vowel/consonant detection from RMS and
+zero-crossings gives only a rough stylized approximation. Do not present it as
+production speech recognition or photoreal lip sync.
 
 ## Handoff
 
@@ -278,5 +296,4 @@ For projects that can't use any cloud or third-party tool, Summer Engine's `Audi
 - `summer:audio/generate-voice` — TTS upstream of this skill.
 - `summer:animation/animation-tree` — wire the lipsync OneShot into the character's tree.
 - `summer:animation/procedural-animation` — eye blinks, saccades, head idle.
-- `references/mcp-tools-reference.md` — `summer_generate_audio` schema (TTS).
 - Rhubarb Lip Sync — https://github.com/DanielSWolf/rhubarb-lip-sync (external tool; phoneme extraction).

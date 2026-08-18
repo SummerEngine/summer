@@ -51,8 +51,25 @@ type OpResult = {
   errorClass?: string;
   failureReason?: string;
   failure_reason?: string;
-  results?: Array<{ ok?: boolean; op?: string; error?: string }>;
+  results?: Array<{
+    ok?: boolean;
+    op?: string;
+    error?: string;
+    failureReason?: string;
+    failure_reason?: string;
+  }>;
 };
+
+function getFailureReason(value: {
+  failureReason?: string;
+  failure_reason?: string;
+}): string | undefined {
+  return typeof value.failureReason === "string"
+    ? value.failureReason
+    : typeof value.failure_reason === "string"
+      ? value.failure_reason
+      : undefined;
+}
 
 // 0.5.34 Block E contract (publicsummerengine src/lib/tools/contract.ts §0.1).
 // The async lifecycle (async-op-lifecycle.ts pollOpToTerminal) merges
@@ -88,15 +105,11 @@ const TERMINAL_STATE_MESSAGES: Record<string, string> = {
 function readClassifiers(result: unknown): Pick<WithEngineMeta, "terminalState" | "errorClass" | "failureReason"> {
   if (!result || typeof result !== "object") return {};
   const op = result as OpResult;
+  const failed = op.results?.find((entry) => entry.ok === false);
   return {
     terminalState: typeof op.terminalState === "string" ? op.terminalState : undefined,
     errorClass: typeof op.errorClass === "string" ? op.errorClass : undefined,
-    failureReason:
-      typeof op.failureReason === "string"
-        ? op.failureReason
-        : typeof op.failure_reason === "string"
-          ? op.failure_reason
-          : undefined,
+    failureReason: getFailureReason(op) ?? (failed ? getFailureReason(failed) : undefined),
   };
 }
 
@@ -116,24 +129,61 @@ function readClassifiers(result: unknown): Pick<WithEngineMeta, "terminalState" 
 export function extractOpError(result: unknown): string | null {
   if (!result || typeof result !== "object") return null;
   const op = result as OpResult;
+  const firstFailed = op.results?.find((r) => r.ok === false);
+  // The engine stamps failure classifiers on the envelope OR per-op inside
+  // results[] (the batch gate does the latter) — read both.
+  const failureReason = getFailureReason(op) ?? (firstFailed ? getFailureReason(firstFailed) : undefined);
+
+  // Classified failures are rendered as JSON so callers can reliably read
+  // failure_reason instead of scraping a sentence. A plain-text "Hint:" line may
+  // follow the JSON in the final tool text. Unclassified failures stay plain.
+  const classify = (message: string): string => {
+    if (!failureReason) return message;
+    return JSON.stringify(
+      {
+        error: message,
+        failure_reason: failureReason,
+        ...(typeof firstFailed?.error === "string" && firstFailed.error.length > 0 && firstFailed.error !== message
+          ? { op_error: firstFailed.error }
+          : {}),
+        ...(typeof firstFailed?.op === "string" ? { op: firstFailed.op } : {}),
+        ...(typeof op.terminalState === "string" ? { terminalState: op.terminalState } : {}),
+        ...(typeof op.errorClass === "string" ? { errorClass: op.errorClass } : {}),
+      },
+      null,
+      2
+    );
+  };
 
   // Failure terminalState takes precedence — it is set by the async lifecycle
   // exactly when the op did not land (timeout, backpressure, lease/identity
-  // rejection, cancellation), often with NO results[] to inspect.
+  // rejection, cancellation), sometimes with NO results[] to inspect. Prefer the
+  // precise engine rejection (envelope error, then the failed op's error) over
+  // the generic terminal-state sentence.
   const ts = op.terminalState;
   if (typeof ts === "string" && ts.length > 0 && !SUCCESS_TERMINAL_STATES.has(ts)) {
-    if (typeof op.error === "string" && op.error.length > 0) return op.error;
-    return TERMINAL_STATE_MESSAGES[ts] ?? `Engine operation failed (terminalState: ${ts}).`;
+    const message =
+      (typeof op.error === "string" && op.error.length > 0 && op.error) ||
+      (typeof firstFailed?.error === "string" && firstFailed.error.length > 0 && firstFailed.error) ||
+      TERMINAL_STATE_MESSAGES[ts] ||
+      `Engine operation failed (terminalState: ${ts}).`;
+    return classify(message);
   }
 
-  // An explicit ok:false / status:"error" is a failure even when the engine
-  // omitted an error string — surface it rather than mask it (matches the web
-  // contract `isFailureSignal`).
-  if (op.ok === false) return op.error || "Engine operation failed (ok: false).";
-  if (op.status === "error") return op.error || "Engine operation failed (status: error).";
-  const firstFailed = op.results?.find((r) => r.ok === false);
-  if (firstFailed) {
-    return firstFailed.error || `Engine op failed${firstFailed.op ? ` (${firstFailed.op})` : ""}.`;
+  // An explicit ok:false / status:"error" / failed op inside results[] is a
+  // failure even when the engine omitted an error string — surface it rather
+  // than mask it (matches the web contract `isFailureSignal`). The envelope
+  // error is kept when present; the failed op's own error backs it up.
+  if (op.ok === false || op.status === "error" || firstFailed) {
+    const message =
+      (typeof op.error === "string" && op.error.length > 0 && op.error) ||
+      (typeof firstFailed?.error === "string" && firstFailed.error.length > 0 && firstFailed.error) ||
+      (firstFailed
+        ? `Engine op failed${firstFailed.op ? ` (${firstFailed.op})` : ""}.`
+        : op.ok === false
+          ? "Engine operation failed (ok: false)."
+          : "Engine operation failed (status: error).");
+    return classify(message);
   }
   return null;
 }

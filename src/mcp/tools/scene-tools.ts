@@ -1,9 +1,24 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { withEngine } from "./with-engine.js";
-import { readFile } from "fs/promises";
-import { join } from "path";
+import { withEngine, extractOpError } from "./with-engine.js";
 import type { EngineApiClient } from "../../lib/api-client.js";
+
+// Engine ops that MUST be dispatched as their own single-op request. Mirrors
+// _summer_requires_single_async_dispatch (local_api_server.cpp, engine 0.5.60+):
+// the engine rejects any multi-op batch containing one of these WHOLESALE —
+// nothing in the batch executes, and the batch fails with per-op
+// failure_reason "unsupported_transport"/"skipped". Git ops are covered by the
+// prefix check below.
+const SINGLE_ONLY_OPS = new Set([
+  "SaveScene", "InstantiateScene", "ReplaceNode",
+  "SimulateInput", "ViewportSnapshot", "GameSnapshot",
+  "RunCommand", "RunVerification", "RunEditorScript",
+  "ImportFromUrl", "ImportFromUrlBatch", "ExtractZipFromUrl",
+]);
+
+function isSingleOnlyOp(kind: string): boolean {
+  return SINGLE_ONLY_OPS.has(kind) || kind.startsWith("Git");
+}
 
 function sceneMutationOps(ops: Record<string, unknown>[]): Record<string, unknown>[] {
   const saveIndexes = ops
@@ -21,27 +36,85 @@ function sceneMutationOps(ops: Record<string, unknown>[]): Record<string, unknow
   return [...ops, { op: "SaveScene" }];
 }
 
+/** Split an op list into sequential engine requests: consecutive batchable ops
+ *  stay grouped, each single-only op becomes its own request. Order preserved. */
+function chunkOpsForDispatch(ops: Record<string, unknown>[]): Record<string, unknown>[][] {
+  const chunks: Record<string, unknown>[][] = [];
+  let current: Record<string, unknown>[] = [];
+  for (const op of ops) {
+    if (isSingleOnlyOp(String(op.op ?? ""))) {
+      if (current.length > 0) {
+        chunks.push(current);
+        current = [];
+      }
+      chunks.push([op]);
+    } else {
+      current.push(op);
+    }
+  }
+  if (current.length > 0) chunks.push(current);
+  return chunks;
+}
+
+/** Execute an op list as sequential engine requests honoring the single-op
+ *  dispatch contract. Receipts from every request are preserved and merged, so
+ *  an op that applied followed by one that failed is reported honestly instead
+ *  of masked. */
+async function executeOpsChunked(
+  send: (chunk: Record<string, unknown>[]) => Promise<unknown>,
+  ops: Record<string, unknown>[],
+): Promise<unknown> {
+  const chunks = chunkOpsForDispatch(ops);
+  if (chunks.length === 1) return send(chunks[0]!);
+
+  const receipts: unknown[] = [];
+  const combinedResults: Array<Record<string, unknown>> = [];
+  for (let i = 0; i < chunks.length; i++) {
+    const receipt = await send(chunks[i]!);
+    receipts.push(receipt);
+    const envelope = (receipt ?? {}) as Record<string, unknown>;
+    if (Array.isArray(envelope.results)) {
+      combinedResults.push(...(envelope.results as Array<Record<string, unknown>>));
+    }
+    if (extractOpError(receipt)) {
+      const failedKind = String(chunks[i]![0]?.op ?? "batch");
+      const appliedOps = chunks.slice(0, i).flat().map((op) => String(op.op ?? ""));
+      const notSent = chunks.slice(i + 1).flat().map((op) => String(op.op ?? ""));
+      const baseError =
+        (typeof envelope.error === "string" && envelope.error) || `Engine request failed (${failedKind}).`;
+      const honestError =
+        appliedOps.length > 0
+          ? `${baseError} NOTE: ${appliedOps.length} earlier op(s) already applied (${appliedOps.join(", ")})` +
+            (failedKind === "SaveScene"
+              ? " — the scene is modified in the editor but NOT saved to disk. Fix the problem, then call summer_save_scene."
+              : ".") +
+            (notSent.length > 0 ? ` Not sent: ${notSent.join(", ")}.` : "")
+          : baseError;
+      return {
+        ...envelope,
+        error: honestError,
+        results: combinedResults,
+        receipts,
+      };
+    }
+  }
+  const last = (receipts[receipts.length - 1] ?? {}) as Record<string, unknown>;
+  return { ...last, results: combinedResults, requests: chunks.length, receipts };
+}
+
+/** Scene mutation entry point: appends the transaction-boundary SaveScene, then
+ *  dispatches with the single-op contract (mutations batch together, SaveScene
+ *  and other single-only ops travel alone). */
 function executeSceneMutation(
   client: EngineApiClient,
   scenePath: string,
   ops: Record<string, unknown>[],
   options?: Record<string, unknown>,
 ): Promise<unknown> {
-  return client.executeIdentityBoundOps(sceneMutationOps(ops), {
-    ...(options ?? {}),
-    scenePath,
-  });
-}
-
-async function readMainSceneFromProject(projectPath?: string): Promise<string | null> {
-  if (!projectPath) return null;
-  try {
-    const text = await readFile(join(projectPath, "project.godot"), "utf-8");
-    const match = text.match(/run\/main_scene="([^"]+)"/);
-    return match?.[1] ?? null;
-  } catch {
-    return null;
-  }
+  return executeOpsChunked(
+    (chunk) => client.executeIdentityBoundOps(chunk, { ...(options ?? {}), scenePath }),
+    sceneMutationOps(ops),
+  );
 }
 
 function requireSuccessfulOps(result: unknown, context: string): Record<string, unknown> {
@@ -60,89 +133,115 @@ function requireSuccessfulOps(result: unknown, context: string): Record<string, 
   return receipt;
 }
 
+/** Compose the minimal valid .tscn text scene: header + one root node.
+ *  `uid` and `load_steps` are optional in the engine parser
+ *  (resource_format_text.cpp treats a missing uid as INVALID_ID); the editor
+ *  assigns a uid on first save. */
+function minimalSceneText(rootName: string, rootType: string): string {
+  return `[gd_scene format=3]\n\n[node name="${rootName}" type="${rootType}"]\n`;
+}
+
+// Node names reject . : @ / " %; the type must be a plain class name.
+// Both are interpolated into quoted .tscn fields, so validate before composing.
+const VALID_ROOT_NAME = /^[A-Za-z_][A-Za-z0-9_\- ]*$/;
+const VALID_ROOT_TYPE = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
 export function registerSceneTools(server: McpServer): void {
   server.tool(
     "summer_create_scene",
-    `Create a new empty scene file safely.
+    `Create a new empty scene file. Writes a minimal .tscn through the identity-bound engine with a create-only guard: it fails if the path already exists, and it never touches the currently open scene.
 
-IMPORTANT:
-- This tool uses a temporary mutation strategy: it opens a template scene, removes children, saves to a new path, then restores the previous scene.
-- To prevent accidental destructive actions, you MUST explicitly set allow_temporary_scene_mutation=true.
-- If you don't want this strategy, stop and ask the user for manual scene creation in the editor.
+The new scene is on disk but NOT opened. Call summer_open_scene to start editing it, then summer_add_node to build it out.
 
 Recommended workflow:
 1) Call summer_get_project_context
-2) Call summer_open_main_scene (optional)
-3) Call summer_create_scene with a new path`,
+2) Call summer_create_scene with a new res:// path
+3) Call summer_open_scene with that path`,
     {
       path: z.string().describe("New scene path, e.g. 'res://scenes/empty_level.tscn'"),
       rootName: z.string().default("Main").describe("Root node name for the new scene"),
+      rootType: z
+        .string()
+        .default("Node3D")
+        .describe(
+          "Root node type. Default 'Node3D' (3D scenes); common alternatives: 'Node2D' (2D scenes), 'Control' (UI scenes), 'Node' (logic-only)."
+        ),
       allow_temporary_scene_mutation: z
         .boolean()
-        .default(false)
-        .describe("Safety gate. Must be true to proceed."),
+        .optional()
+        .describe(
+          "DEPRECATED, ignored. Scene creation no longer mutates any open scene; kept only so older callers don't break."
+        ),
     },
-    async ({ path, rootName, allow_temporary_scene_mutation }) =>
+    async ({ path, rootName, rootType }) =>
       withEngine(async (client) => {
-        if (!allow_temporary_scene_mutation) {
+        const safePath = path.trim().replace(/\\/g, "/");
+        if (!safePath.startsWith("res://") || safePath.includes("..")) {
+          throw new Error("Scene path must be a traversal-free res:// project path.");
+        }
+        if (!safePath.endsWith(".tscn")) {
+          throw new Error("New scenes must use the text format: the path must end in .tscn.");
+        }
+        if (!VALID_ROOT_NAME.test(rootName)) {
           throw new Error(
-            "Refusing to create scene without explicit approval. Re-run with allow_temporary_scene_mutation=true."
+            `Invalid rootName "${rootName}": use letters, digits, underscores, hyphens, or spaces, starting with a letter or underscore.`
+          );
+        }
+        if (!VALID_ROOT_TYPE.test(rootType)) {
+          throw new Error(
+            `Invalid rootType "${rootType}": must be a plain class name like 'Node3D', 'Node2D', or 'Control'.`
           );
         }
 
-        const health = (await client.health()) as Record<string, unknown>;
-        const currentScene =
-          typeof health.scene === "string" && health.scene.length > 0 ? health.scene : null;
-        const projectPath =
-          typeof health.project_path === "string" ? health.project_path : undefined;
-        const mainScene = await readMainSceneFromProject(projectPath);
-        const templateScene = currentScene || mainScene;
-
-        if (!templateScene) {
-          throw new Error(
-            "No scene open and could not resolve main scene. Call summer_get_project_context first, then open a known scene."
-          );
-        }
-
-        await client.executeOps([{ op: "OpenScene", path: templateScene }]);
-        const tree = (await client.getSceneState(templateScene)) as {
-          data?: { children?: Array<{ path?: string }> };
-          children?: Array<{ path?: string }>;
-        };
-        const children =
-          tree.data?.children ?? tree.children ?? [];
-
-        const removeOps = children
-          .map((c) => c.path)
-          .filter((p): p is string => typeof p === "string" && p.length > 0)
-          .map((p) => ({ op: "RemoveNode", path: `./${p}` }));
-
-        const createOps = [
-          ...removeOps,
-          { op: "SetProp", path: ".", key: "name", value: rootName },
-          { op: "SaveScene", path },
-        ];
-        const createReceipt = requireSuccessfulOps(
-          await executeSceneMutation(client, templateScene, createOps, {
-            groupUndo: true,
-          }),
-          `Creating ${path}`,
+        // Same engine-routed guarded write path summer_write_file uses:
+        // identity-bound, and mustNotExist makes the engine refuse (create-only)
+        // if the path already exists. The open scene is never touched.
+        const receipt = requireSuccessfulOps(
+          await client.executeIdentityBoundOps([
+            {
+              op: "WriteFile",
+              path: safePath,
+              content: minimalSceneText(rootName, rootType),
+              mustNotExist: true,
+            },
+          ]),
+          `Creating ${safePath}`,
         );
 
-        if (currentScene && currentScene !== path) {
-          requireSuccessfulOps(
-            await client.executeOps([{ op: "OpenScene", path: currentScene }]),
-            `Restoring ${currentScene}`,
-          );
+        // Post-write verification: read the file back through the engine. The
+        // write receipt already passed; a read-back failure is reported honestly
+        // instead of failing the create or being masked.
+        let verified = false;
+        let verifyError: string | undefined;
+        try {
+          const read = (await client.readProjectFile(safePath, 4096)) as {
+            ok?: boolean;
+            error?: unknown;
+            data?: { content?: unknown };
+          };
+          const content = typeof read?.data?.content === "string" ? read.data.content : null;
+          if (read?.ok === false) {
+            verifyError = String(read.error ?? "engine could not read the file back");
+          } else if (content === null) {
+            verifyError = "engine returned no text content on read-back";
+          } else if (!content.includes(`[node name="${rootName}"`)) {
+            verifyError = "read-back content does not contain the expected root node";
+          } else {
+            verified = true;
+          }
+        } catch (err) {
+          verifyError = err instanceof Error ? err.message : String(err);
         }
 
         return {
           ok: true,
-          created: path,
+          created: safePath,
           rootName,
-          templateScene,
-          restoredScene: currentScene,
-          receipt: createReceipt,
+          rootType,
+          verified,
+          ...(verifyError ? { verifyError } : {}),
+          receipt,
+          hint: "The new scene is on disk but not open. Call summer_open_scene to start editing it.",
         };
       })
   );
@@ -395,13 +494,18 @@ Each op in the array uses the same format as the individual tools:
 - {"op": "SetResourceProperty", "nodePath": "Floor", "resourceProperty": "mesh", "subProperty": "size", "value": "Vector2(20, 20)"}
 
 RAW RUNTIME OPS (interactive verification — structured failure_reason passes through verbatim):
-- RunVerification — spawn a hidden, disposable game instance that runs a GDScript probe and dies (never touches the editor): {"op": "RunVerification", "probe_source": "extends SummerProbeBase\\nfunc _ready(): await super._ready(); report('ok', true); finish()", "max_seconds": 20}. Returns {ok, results, frames, out_dir}. Probe API: report()/save_frame()/press()/key()/finish(). This is the ONLY way to drive input from MCP, and unlike the editor it renders real pixels, so save_frame() produces a real image.
-- SimulateInput is NOT reachable from MCP or the CLI. It requires the in-editor chat bridge's async reply channel; every queued caller gets {"ok": false, "failure_reason": "unsupported_transport"} on every engine build. Do not send it and do not treat that reply as a version problem — use RunVerification's press()/key() instead.
+- RunVerification — spawn a hidden, disposable game instance that runs a GDScript probe and dies (never touches the editor): {"op": "RunVerification", "probe_source": "...", "max_seconds": 20}. Returns {ok, results, frames, out_dir}. Probe API: report(name, value) / save_frame(name) / press(action) / key(keycode) / finish(). save_frame REQUIRES a name argument — save_frame() with no args is a script error. Mount scenes deferred: get_tree().root.add_child.call_deferred(instance); await get_tree().process_frame; await settle() — a direct add_child in _ready can hit the parent-busy guard and capture a black frame.
+- SimulateInput — inject an action/key/mouse/axis into the RUNNING game (summer_play first): {"op": "SimulateInput", "type": "action", "action": "jump", "pressed": true}. It MUST be sent alone (single-op batch). failure_reason "not_running" = start the game first; "unsupported" = the running game build predates the handler — fall back to RunVerification or ask the user.
 
 Do not mix OpenScene with scene mutations in one batch. OpenScene is a UI action;
 send it separately. scenePath selects every mutation target. The tool appends one
 final SaveScene when the batch mutates a scene; if supplied explicitly, SaveScene
-must appear exactly once and be the final operation.`,
+must appear exactly once and be the final operation. The engine requires
+SaveScene, InstantiateScene, ReplaceNode, SimulateInput, and the Run*/Import*
+ops to travel as their own request, so this tool automatically splits your op
+list into sequential requests around them — each split chunk is its own undo
+step, and if a later chunk fails the receipt reports exactly which earlier ops
+already applied.`,
     {
       scenePath: z.string().optional().describe(
         "Required when ops contains scene mutations; exact res:// target scene path",
@@ -432,7 +536,10 @@ must appear exactly once and be the final operation.`,
         const options = { groupUndo: true, ...(scenePath ? { scenePath } : {}) };
         return needsScenePath
           ? executeSceneMutation(client, scenePath!, ops as Record<string, unknown>[], options)
-          : client.executeOps(ops as Record<string, unknown>[], options);
+          : executeOpsChunked(
+              (chunk) => client.executeOps(chunk, options),
+              ops as Record<string, unknown>[],
+            );
       })
   );
 }

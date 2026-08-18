@@ -1,7 +1,5 @@
 # Summer Engine: the AI game engine
 
-> **Engine mirror only.** This directory is intentionally marked `private` and must never be published to npm. Review and reconcile changes into [SummerEngine/summer-engine-agent](https://github.com/SummerEngine/summer-engine-agent), which is the only npm release source.
-
 Build real 2D and 3D Summer games with Summer Engine, the Summer SDK, and
 GDScript. The agent layer can help author code and scenes, but creators remain
 in control of changes and release decisions. Local export support depends on
@@ -324,7 +322,7 @@ summer_batch ops:[{op:"RunVerification", probe_source:"…", max_seconds:20}]
                                       → {ok, results, frames, out_dir}
 ```
 
-Unlike `--headless`, that instance has a real renderer, so `save_frame()` writes an actual image. Probe API: `report()` / `save_frame()` / `dump_tree()` / `press()` / `key()` / `finish()`. **`press()` and `key()` are coroutines — `await` them.** Every project scaffolded by `summer create` ships a working example at `tests/autopilot/`.
+Unlike `--headless`, that instance has a real renderer, so `save_frame("name")` writes an actual image (the name argument is required). Probe API: `report(name, value)` / `save_frame(name)` / `dump_tree()` / `press(action)` / `key(keycode)` / `finish()`. **`press()` and `key()` are coroutines — `await` them.** Every project scaffolded by `summer create` ships a working example at `tests/autopilot/`.
 
 `SimulateInput` is **not** reachable from MCP or the CLI, on any build. It needs the in-editor chat bridge's async reply channel; every queued caller is answered `{ok:false, failure_reason:"unsupported_transport"}`. Use the probe.
 

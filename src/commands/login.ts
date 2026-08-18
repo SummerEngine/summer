@@ -10,7 +10,13 @@ import {
 import { getCreatorApiUrl, getGatewayUrl } from "../lib/config.js";
 
 const POLL_INTERVAL_MS = 2000;
-const POLL_TIMEOUT_MS = 120000;
+// One generous window on ONE session id. First-time users may need to create an
+// account and confirm an email before they can approve the CLI. The gateway
+// never expires a pending session (the completed payload waits under this id
+// for pickup), so the worst mistake would be rotating ids mid-wait — the user
+// would approve the original browser tab while we poll a different session.
+const POLL_TIMEOUT_MS = 900000;
+const HEARTBEAT_MS = 30000;
 
 export const loginCommand = new Command("login")
   .description("Sign in to Summer Engine via your browser")
@@ -162,10 +168,19 @@ export async function runLogin(
 
   const pollUrl = `${gatewayUrl}/api/auth/cli-login?session=${encodeURIComponent(sessionId)}`;
   const startTime = deps.now();
+  let lastHeartbeat = startTime;
   let lastError: string | null = null;
 
   while (deps.now() - startTime < POLL_TIMEOUT_MS) {
     await deps.sleep(POLL_INTERVAL_MS);
+
+    if (deps.now() - lastHeartbeat >= HEARTBEAT_MS) {
+      lastHeartbeat = deps.now();
+      deps.log(
+        'Still waiting — finish signing in (or creating your account) in the browser, then click "Yes, Sign In". Same link: ' +
+          loginUrl
+      );
+    }
 
     try {
       const res = await deps.fetch(pollUrl, {
@@ -213,6 +228,6 @@ export async function runLogin(
   }
 
   throw new Error(
-    `Login timed out after 120 seconds.${lastError ? ` Last error: ${lastError}` : ""} Recovery: run "summer login" again, complete "Yes, Sign In" in the browser, and return to the terminal within two minutes.`
+    `Login timed out after ${Math.round(POLL_TIMEOUT_MS / 60000)} minutes.${lastError ? ` Last error: ${lastError}` : ""} Recovery: run "summer login" again and complete "Yes, Sign In" in the browser tab it opens.`
   );
 }

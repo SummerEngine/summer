@@ -134,3 +134,85 @@ describe("extractOpError — non-records", () => {
     expect(extractOpError(42)).toBeNull();
   });
 });
+
+describe("extractOpError — classified failures preserve failure_reason (E-hotfix 2.8.1)", () => {
+  it("surfaces a nested failure_reason even when the envelope carries its own error string", () => {
+    const text = extractOpError({
+      status: "error",
+      terminalState: "failed",
+      errorClass: "fatal",
+      error: "failed",
+      results: [
+        {
+          ok: false,
+          op: "SimulateInput",
+          error: "SimulateInput must be sent as a single op so it cannot block the editor thread.",
+          failure_reason: "unsupported_transport",
+        },
+      ],
+    });
+    const parsed = JSON.parse(text ?? "");
+    expect(parsed.failure_reason).toBe("unsupported_transport");
+    expect(parsed.error).toBe("failed");
+    expect(parsed.op_error).toContain("single op");
+    expect(parsed.op).toBe("SimulateInput");
+    expect(parsed.terminalState).toBe("failed");
+  });
+
+  it("prefers the failed op's precise error over the generic terminal-state sentence (the 2.8.0 masking bug)", () => {
+    const text = extractOpError({
+      terminalState: "failed",
+      errorClass: "fatal",
+      results: [
+        {
+          ok: false,
+          op: "SaveScene",
+          error: "SaveScene must be sent as a single op so it cannot block the editor thread.",
+          failure_reason: "unsupported_transport",
+        },
+      ],
+    });
+    const parsed = JSON.parse(text ?? "");
+    expect(parsed.error).toContain("must be sent as a single op");
+    expect(parsed.failure_reason).toBe("unsupported_transport");
+    expect(text).not.toContain("Engine operation failed (terminalState: failed)");
+  });
+
+  it("keeps the informative envelope error (plain text) when the failed results entry has no classifier", () => {
+    expect(
+      extractOpError({
+        status: "error",
+        error: "scene locked by running game — stop first",
+        results: [{ ok: false, op: "SetProp" }],
+      })
+    ).toBe("scene locked by running game — stop first");
+  });
+
+  it("surfaces a nested failure_reason on an ok:false envelope", () => {
+    const text = extractOpError({
+      ok: false,
+      error: "op rejected",
+      results: [{ ok: false, op: "SimulateInput", failure_reason: "unsupported_transport" }],
+    });
+    const parsed = JSON.parse(text ?? "");
+    expect(parsed.failure_reason).toBe("unsupported_transport");
+    expect(parsed.error).toBe("op rejected");
+  });
+
+  it("surfaces a top-level failure_reason on a bare terminal envelope (no error, no results)", () => {
+    const text = extractOpError({ terminalState: "timed_out", failure_reason: "queue_full" });
+    const parsed = JSON.parse(text ?? "");
+    expect(parsed.failure_reason).toBe("queue_full");
+    expect(parsed.terminalState).toBe("timed_out");
+    expect(parsed.error).toMatch(/timed out/i);
+  });
+
+  it("accepts the camelCase failureReason spelling on nested entries", () => {
+    const text = extractOpError({
+      terminalState: "failed",
+      results: [{ ok: false, op: "AddNode", failureReason: "skipped" }],
+    });
+    const parsed = JSON.parse(text ?? "");
+    expect(parsed.failure_reason).toBe("skipped");
+  });
+});

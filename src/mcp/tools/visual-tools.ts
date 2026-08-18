@@ -23,7 +23,7 @@ target:
     It does NOT use the scene's environment/sky, and it injects a synthetic camera and light when the scene has none. The scene's WorldEnvironment — sky, fog, tonemap, glow, SSAO, ambient — is replaced by a flat preview environment. So this target CANNOT verify lighting, mood, or any material property that depends on the environment: change them and the frame comes back identical. For those, boot the game or run a RunVerification probe, whose instance renders the real environment.
   "game" — a frame from the RUNNING game (real runtime state). Start the game first (summer_play). Not available over a plain local connection — needs the Summer desktop app bridge.
 
-Static frame only — one moment, not motion. For a SEQUENCE of frames over time, or for anything lighting-dependent when the desktop bridge is unavailable, use a RunVerification probe's save_frame() — its instance has a real renderer.`,
+Static frame only — one moment, not motion. For a SEQUENCE of frames over time, or for anything lighting-dependent when the desktop bridge is unavailable, use a RunVerification probe's save_frame(name) — its instance has a real renderer.`,
     {
       target: z
         .enum(["viewport", "scene", "game"])
@@ -39,9 +39,14 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
           'target:"scene" only. Full scene path, e.g. "res://main.tscn". Omit to render the currently-open scene.'
         ),
       framing: z
-        .enum(["auto", "top", "front", "iso"])
+        .enum(["auto", "iso", "top", "front", "back", "left", "right"])
         .optional()
-        .describe('target:"scene" only. Camera framing preset. Default: auto.'),
+        .describe(
+          'target:"scene" only, 3D scenes. Camera direction preset: "iso" = 3/4 diagonal view, ' +
+            '"top" = straight down, "front" = camera at +Z, "back" = camera at -Z, ' +
+            '"left" = camera at -X, "right" = camera at +X. "auto" (default) is an alias of "iso". ' +
+            "The result reports the resolved framing."
+        ),
       size: z
         .array(z.number().int().positive())
         .length(2)
@@ -50,7 +55,12 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
       nodePath: z
         .string()
         .optional()
-        .describe('target:"scene" only. Scene-tree node path to frame on.'),
+        .describe(
+          'target:"scene" only. Node path relative to the scene root (e.g. "Player/Mesh") to frame ' +
+            "INSTEAD of the whole scene — the camera fits that node's combined bounds (3D visual AABBs " +
+            "or 2D rects, children included). A bare unique name is also found recursively. " +
+            'Fails with failure_reason "node_not_found" when the path does not resolve (no silent whole-scene fallback).'
+        ),
     },
     async ({ target, scenePath, framing, size, nodePath }) =>
       withEngine(
@@ -136,15 +146,30 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
                   "WARNING: this scene has no light — lit materials may appear black when played."
                 );
               }
+              // The engine ALWAYS synthesizes the preview camera (preview_ops.cpp
+              // sets used_synthetic_camera unconditionally) — the flag says nothing
+              // about the scene's own cameras. sceneHasCamera above is the
+              // authoritative "does this scene have a camera" answer.
               if (snap.usedSyntheticCamera) {
                 warnings.push(
-                  "NOTE: this preview used a synthetic camera the engine added just for the render — the scene itself has no camera, so it will NOT frame like this when played."
+                  "NOTE: this preview is framed by a synthetic render camera, NOT the scene's own camera — the played game will not frame like this image."
                 );
               }
             }
 
+            // Scene-preview capture details: resolved framing ("auto" -> "iso"),
+            // which node was framed (confirms nodePath resolved), and how many
+            // blank-readback retries the engine needed (0 = omitted).
+            const details: string[] = [];
+            if (target === "scene") {
+              if (snap.framing) details.push(`framing: ${snap.framing}`);
+              if (snap.framedNode) details.push(`framed node: ${snap.framedNode}`);
+              if (snap.renderRetries) details.push(`render retries: ${snap.renderRetries}`);
+            }
+            const detailNote = details.length ? `; ${details.join(", ")}` : "";
+
             const caption =
-              `${label} (${dims}). Saved to ${snap.localPath ?? "n/a"}. Review the image above and describe what you actually see.` +
+              `${label} (${dims}${detailNote}). Saved to ${snap.localPath ?? "n/a"}. Review the image above and describe what you actually see.` +
               (warnings.length ? `\n\n${warnings.join("\n")}` : "");
 
             return [

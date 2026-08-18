@@ -2,7 +2,25 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [2.8.1] — 2026-08-18 — "Scene mutations work again on engine 0.5.60+"
+
+### Added
+- `summer_get_scene_tree` accepts optional `depth` and `limit` params (engine defaults: depth 2, limit 200 — a 102-node scene silently truncated to 61 nodes at the defaults). The engine only honors them on scene-targeted reads, so the tool resolves the current scene path first when needed and says so when it can't. `summer_get_project_context` accepts an optional `settingsPrefix` and, without one, trims `project.data.entries` to a curated prefix set (application/, display/, input/, physics/, rendering/) instead of returning the full ~188KB settings dump — the payload declares the trim via `settingsTruncated`/`totalSettings`/`settingsHint`.
+- `summer_screenshot` scene captures accept `nodePath` (frame a specific node, honest `node_not_found` failure) and new framing directions `back`/`left`/`right`; captions report the resolved framing and any render retries. Requires engine 0.5.62+ to take effect — older engines silently ignore the new fields.
+- `summer_get_diagnostics` returns a prioritized bounded view (errors first, then warnings, capped info tail) with honest suppression counters, plus `includeAll: true` for the untrimmed payload. Severity + recency + caps only — no noise-pattern matching.
+- `scripts/compat-smoke.sh`: a latest-MCP × candidate-engine release gate that drives the real built MCP server against a live engine and fails loudly on batch-contract incompatibilities (the class of bug that broke 2.7.0–2.8.0 × engine 0.5.60+). Run it before every engine release and every npm publish.
+
+### Fixed
+- `summer_create_scene` no longer uses the destructive temporary-template strategy (open current scene → delete its children → save-as → restore). It now writes a minimal `.tscn` through the identity-bound engine `WriteFile` with a create-only guard, never touches the open scene, verifies by reading the file back, and gained a `rootType` param (Node3D/Node2D/Control). `allow_temporary_scene_mutation` remains accepted as a deprecated no-op.
+- **Scene mutations were completely broken against engine 0.5.60/0.5.61.** The engine now requires `SaveScene`, `InstantiateScene`, `ReplaceNode`, `SimulateInput`, and the `Run*`/`Import*`/`Git*` ops to travel as their own single-op request, and rejects any multi-op batch containing one of them wholesale (`failure_reason: "unsupported_transport"`). Since 2.7.0 appended `SaveScene` to every mutation batch, every `summer_add_node`/`summer_set_prop`/`summer_batch`/`summer_create_scene` call was rejected before anything executed. Mutation batches are now automatically split into sequential requests around single-only ops; all receipts are preserved and merged, and a mutation that applied followed by a save that failed is reported honestly (including which ops already applied and which were not sent).
+- Engine failures no longer hide the precise rejection. `extractOpError` previously returned a generic `"Engine operation failed (terminalState: failed)"` without inspecting `results[]`; it now surfaces the failed op's own error and `failure_reason` (envelope or per-op, either spelling), rendered as JSON when a classifier is present so agents can key on `failure_reason` reliably.
+- `save_frame` is documented with its required `name` argument everywhere (`save_frame()` with no args is a probe script error), plus the deferred scene-mount pattern that avoids black frames.
+- SimulateInput guidance corrected: it IS reachable over MCP/CLI as a single op against the running game (`failure_reason: "not_running"`/`"unsupported"` are the real failure modes); `"unsupported_transport"` only means it was batched with other ops. The previous claim that it needs the in-editor bridge on every build was stale.
+- The scene-preview synthetic-camera note no longer claims the scene has no camera — the engine always synthesizes the preview camera; `sceneHasCamera` is the authoritative signal and keeps its own warning.
+- `summer login` waits 15 minutes on one session id (was 2) with periodic reminders, covering first-time account creation + email confirmation. The gateway never expires a pending session, so the single id stays valid the whole window.
+- Removed the stale "Engine mirror only" banner from the README (it shipped to npm and the public repo, and its claims were wrong).
+
+## [2.8.0] — 2026-08-17 — "Multi-editor MCP routing"
 
 ### Added
 - MCP discovers every live Summer editor through `~/.summer/instances/` and automatically binds local tools to the editor whose project contains the agent's current working directory.

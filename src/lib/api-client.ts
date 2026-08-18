@@ -45,6 +45,15 @@ export type EngineSnapshot = {
   sceneHasCamera?: boolean;
   sceneHadLight?: boolean;
   usedSyntheticCamera?: boolean;
+  /** Scene-preview only: the framing the engine actually rendered with
+   *  ("auto" resolves to "iso"). */
+  framing?: string;
+  /** Scene-preview only: path (relative to the scene root) of the node the
+   *  camera framed when nodePath was given. */
+  framedNode?: string;
+  /** Scene-preview only: how many blank-readback retries the engine needed
+   *  before the capture produced a non-blank frame (0 = clean first read). */
+  renderRetries?: number;
   /** Set true when the bound projectIdHash no longer matches the engine's live
    *  health hash at capture time — the frame may be from the WRONG project
    *  (item 4, client-side drift check). */
@@ -67,6 +76,9 @@ type SnapshotPayload = Record<string, unknown> & {
   scene_has_camera?: boolean;
   scene_had_light?: boolean;
   used_synthetic_camera?: boolean;
+  framing?: string;
+  framed_node?: string;
+  render_retries?: number;
 };
 
 type EngineTargetIdentity = {
@@ -486,15 +498,34 @@ export class EngineApiClient {
     return this.request("GET", `/api/state/read-file?${query.toString()}`);
   }
 
-  async getSceneState(scenePath?: string): Promise<unknown> {
-    const query = scenePath
-      ? `?scene=${encodeURIComponent(scenePath)}`
-      : "";
+  async getSceneState(
+    scenePath?: string,
+    options?: { depth?: number; limit?: number }
+  ): Promise<unknown> {
+    // depth/limit only take effect on targeted (scene=) reads: the engine
+    // routes those through the live command queue and forwards every query
+    // param into StateProvider::scene_state (tool_net_thread.cpp
+    // _parse_state_args). An UNtargeted read is answered from a pre-published
+    // snapshot built with the defaults (depth 2, limit 200) and its query
+    // params are ignored — callers who need depth/limit must pass scenePath
+    // (summer_get_scene_tree resolves the current scene path for this).
+    const parts: string[] = [];
+    if (scenePath) parts.push(`scene=${encodeURIComponent(scenePath)}`);
+    if (options?.depth !== undefined) parts.push(`depth=${options.depth}`);
+    if (options?.limit !== undefined) parts.push(`limit=${options.limit}`);
+    const query = parts.length ? `?${parts.join("&")}` : "";
     return this.request("GET", `/api/state/scene${query}`);
   }
 
-  async getProjectState(): Promise<unknown> {
-    return this.request("GET", "/api/state/project");
+  async getProjectState(prefix?: string): Promise<unknown> {
+    // ?prefix= is sent for forward-compatibility, but current engine builds
+    // IGNORE it: /api/state/project is always served from the snapshot, which
+    // is published with empty args (local_api_server.cpp
+    // _maybe_publish_snapshot), so StateProvider::project_state never sees the
+    // query. Callers that need a prefix subset must also filter client-side
+    // (summer_get_project_context does).
+    const query = prefix ? `?prefix=${encodeURIComponent(prefix)}` : "";
+    return this.request("GET", `/api/state/project${query}`);
   }
 
   async getDiagnostics(): Promise<unknown> {
@@ -668,6 +699,9 @@ export class EngineApiClient {
       sceneHasCamera: boolFrom(payload.scene_has_camera),
       sceneHadLight: boolFrom(payload.scene_had_light),
       usedSyntheticCamera: boolFrom(payload.used_synthetic_camera),
+      framing: stringFrom(payload.framing),
+      framedNode: stringFrom(payload.framed_node),
+      renderRetries: numberFrom(payload.render_retries),
       projectMismatch,
       metadata: withoutImageData(payload),
     };
@@ -720,13 +754,18 @@ export class EngineApiClient {
    * Offscreen scene render via the `ScenePreview` op over /api/ops (no game
    * boot; physics/animations are static). Mirrors the web previewScene op input
    * (snapshot-tools.ts): { op:'ScenePreview', scene_path?, framing?, size?,
-   * node_path? } — scene_path optional, engine defaults to the open scene. The
-   * result carries image_base64 + mime (+ width/height) plus the P4.3 confession
-   * fields (scene_has_camera / scene_had_light / used_synthetic_camera).
+   * node? } — scene_path optional, engine defaults to the open scene. `node` is
+   * the canonical focus-node arg (the engine also accepts the legacy web wire
+   * name `node_path`); an unresolvable node fails with failure_reason
+   * "node_not_found". framing "auto" is an alias of "iso"; the engine also
+   * accepts "top"/"front"/"back"/"left"/"right" and echoes the resolved framing.
+   * The result carries image_base64 + mime (+ width/height) plus the P4.3
+   * confession fields (scene_has_camera / scene_had_light /
+   * used_synthetic_camera) and framing / framed_node / render_retries.
    */
   async scenePreview(input?: {
     scenePath?: string;
-    framing?: "auto" | "top" | "front" | "iso";
+    framing?: "auto" | "iso" | "top" | "front" | "back" | "left" | "right";
     size?: [number, number];
     nodePath?: string;
   }): Promise<EngineSnapshot> {
@@ -735,7 +774,7 @@ export class EngineApiClient {
     if (trimmed && trimmed !== "." && trimmed !== "./") opInput.scene_path = trimmed;
     if (input?.framing) opInput.framing = input.framing;
     if (input?.size) opInput.size = input.size;
-    if (input?.nodePath) opInput.node_path = input.nodePath;
+    if (input?.nodePath) opInput.node = input.nodePath;
 
     let response: unknown;
     try {

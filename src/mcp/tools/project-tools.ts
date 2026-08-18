@@ -119,6 +119,69 @@ function getCurrentScene(
   );
 }
 
+function getScenePathFromSceneState(sceneState: unknown): string | null {
+  const root = asRecord(sceneState);
+  return (
+    pickString(asRecord(root?.provenance), ["scenePath", "scene_path"]) ??
+    pickString(asRecord(root?.data), ["scenePath", "scene_path"]) ??
+    null
+  );
+}
+
+/** Default prefix set kept in summer_get_project_context when no settingsPrefix
+ *  is given. The full settings dump measured 188KB (~47k tokens) on a real
+ *  project; these prefixes cover what agents actually key on (main scene,
+ *  window size, input actions, physics, renderer). */
+const CONTEXT_SETTINGS_PREFIXES = [
+  "application/",
+  "display/",
+  "input/",
+  "physics/",
+  "rendering/",
+] as const;
+
+/**
+ * Bound the project-state payload. The engine ignores ?prefix= on
+ * /api/state/project (snapshot-served with empty args — see
+ * ApiClient.getProjectState), so ALL filtering here is client-side:
+ * - settingsPrefix given: keep only entries under that prefix.
+ * - no prefix: keep only the curated CONTEXT_SETTINGS_PREFIXES.
+ * Trimming is always declared in the payload (settingsTruncated /
+ * totalSettings / hint); everything outside data.entries is preserved.
+ */
+function trimProjectSettings(projectState: unknown, settingsPrefix?: string): unknown {
+  const root = asRecord(projectState);
+  const data = asRecord(root?.data);
+  const entries = data?.entries;
+  if (!root || !data || !Array.isArray(entries)) return projectState;
+
+  const keyOf = (entry: unknown): string | null => stringFrom(asRecord(entry)?.key);
+  const kept = settingsPrefix
+    ? entries.filter((entry) => keyOf(entry)?.startsWith(settingsPrefix) ?? false)
+    : entries.filter((entry) => {
+        const key = keyOf(entry);
+        return key !== null && CONTEXT_SETTINGS_PREFIXES.some((p) => key.startsWith(p));
+      });
+
+  return {
+    ...root,
+    data: {
+      ...data,
+      entries: kept,
+      settingsTruncated: kept.length < entries.length,
+      totalSettings: entries.length,
+      returnedSettings: kept.length,
+      ...(settingsPrefix
+        ? { settingsPrefix }
+        : {
+            settingsPrefixesIncluded: [...CONTEXT_SETTINGS_PREFIXES],
+            settingsHint:
+              "Settings were trimmed to the curated prefixes above to bound payload size. Pass settingsPrefix (e.g. 'audio/' or 'layer_names/') to read another settings group.",
+          }),
+    },
+  };
+}
+
 export function registerProjectTools(server: McpServer): void {
   server.tool(
     "summer_start_game_task",
@@ -226,12 +289,12 @@ anti-patterns, and recovery steps.`,
                   "summer_stop  -> stop when runtime verification is finished; editor scene mutations are not categorically blocked by a running game, but an existing game instance may need a restart to observe them",
                 ],
                 "4_interactive": [
-                  "To prove input-driven behavior (does jump/move/shoot actually work), use RunVerification. It is the ONLY interactive route available to MCP, and it is a real one — do NOT hand this rung to the user.",
+                  "To prove input-driven behavior (does jump/move/shoot actually work), prefer RunVerification — a scripted, repeatable probe. SimulateInput is also reachable as a single op against the RUNNING game (see rawOpsViaBatch); do NOT hand this rung to the user while either route works.",
                   "RunVerification: spawn a hidden, disposable game instance that runs a GDScript probe (press inputs, read state, save frames) and dies — never touches the user's editor. Returns results.json + frames. Send it as a raw op through summer_batch (see rawOpsViaBatch).",
-                  "Unlike the editor's own --headless mode, the verify instance renders REAL PIXELS, so save_frame() writes a real image and Performance.TIME_FPS reports a real number.",
+                  "Unlike the editor's own --headless mode, the verify instance renders REAL PIXELS, so save_frame('name') writes a real image and Performance.TIME_FPS reports a real number. save_frame REQUIRES a name argument — save_frame() with no args is a script error (probe fails).",
+                  "Mount probe scenes DEFERRED: get_tree().root.add_child.call_deferred(instance); await get_tree().process_frame; await settle(). A direct add_child during _ready can hit the parent-busy guard and 'succeed' while capturing a black frame.",
                   "press()/key() are COROUTINES — 'await press(\"move_right\", 500)' or the hold never elapses and the input does nothing.",
                   "Assert on physics-frame-derived state (positions after N 'await get_tree().physics_frame'), which is reproducible. press(hold_ms) waits on wall clock, so distance-travelled jitters run to run — assert 'moved more than X', never an exact value.",
-                  "SimulateInput is NOT reachable from MCP — see rawOpsViaBatch. Do not attempt it as a fallback.",
                 ],
               },
               // HONESTY — mirror the in-product agent's vision rules. A capture is
@@ -265,8 +328,9 @@ anti-patterns, and recovery steps.`,
               // engine ops that have no dedicated tool are still reachable.
               rawOpsViaBatch: [
                 "summer_batch runs an array of raw engine ops in one undo group; each op is passed through untouched, so newer engine ops with no dedicated tool are still callable.",
-                "RunVerification (hidden probe instance): summer_batch ops:[{op:'RunVerification', probe_source:'<gdscript>', max_seconds:20}]. probe_source extends SummerProbeBase and uses report()/save_frame()/press()/key()/finish(); returns {ok, results, frames, out_dir} or {ok:false, failure_reason: spawn_failed|timeout|bad_args|no_project|probe_not_node}.",
-                "SimulateInput is NOT reachable this way, on any engine build. It needs the in-editor chat bridge's async reply channel; every queued caller (MCP, CLI) is answered with {ok:false, failure_reason:'unsupported_transport'}. Use RunVerification's press()/key() instead.",
+                "RunVerification (hidden probe instance): summer_batch ops:[{op:'RunVerification', probe_source:'<gdscript>', max_seconds:20}]. probe_source extends SummerProbeBase and uses report(name, value)/save_frame(name)/press(action)/key(keycode)/finish(); returns {ok, results, frames, out_dir} or {ok:false, failure_reason: spawn_failed|timeout|bad_args|no_project|probe_not_node}. save_frame REQUIRES a name argument.",
+                "SimulateInput (drive the RUNNING game — summer_play first): summer_batch ops:[{op:'SimulateInput', type:'action', action:'jump', pressed:true}], sent ALONE as the only op. failure_reason 'not_running' = start the game first; 'unsupported' = the running game build predates the handler — use RunVerification instead.",
+                "SINGLE-OP CONTRACT: the engine rejects any multi-op batch containing SaveScene, InstantiateScene, ReplaceNode, SimulateInput, ViewportSnapshot, GameSnapshot, Run*/Import* or Git* ops (failure_reason 'unsupported_transport', nothing executes). summer_batch splits these into sequential requests for you; when composing raw batches keep them as their own call anyway.",
                 "WriteFile and ReplaceText are rejected here by design — use summer_write_file / summer_replace_text so project identity, content guards and same-file ordering are enforced.",
                 "You do not need an engine op to run a shell command: your own host already has a shell. The engine binary that runs project scripts is at OS.get_executable_path() (on macOS, /Applications/Summer.app/Contents/MacOS/Summer); see the summer-cli headless-scripting skill.",
                 "These are runtime ops, not scene mutations — the batch undo group is a harmless no-op for them.",
@@ -279,7 +343,7 @@ anti-patterns, and recovery steps.`,
                 "If a mutation is rejected with identity_mismatch: the engine switched projects — call summer_get_project_context to rebind (only if you meant to follow it), then retry.",
                 "If a guarded file mutation is rejected with content mismatch: call summer_read_file again, review the new content, and retry with its new sha256 only if the edit is still valid.",
                 "If a run op returns 'unsupported' / an unknown-op error: this engine build predates it — fall back to summer_play + summer_get_debugger_errors.",
-                "If SimulateInput returns 'unsupported_transport': that is permanent for MCP, not a build gap. Rewrite the check as a RunVerification probe.",
+                "If any op returns 'unsupported_transport': it was batched with other ops. Resend it as the ONLY op in the request (nothing from the rejected batch was applied).",
               ],
               debugging: [
                 "Set SUMMER_MCP_DEBUG=1 in the MCP server's environment to log a structured stderr line per tool call (tool, ok, durationMs, terminalState, errorClass, failureReason, retried, boundProjectIdHash). With the flag OFF, only failures are logged. Use it to see exactly which op failed and why.",
@@ -302,23 +366,39 @@ anti-patterns, and recovery steps.`,
 - main scene path from project settings
 - lightweight .summer project memory summary when project path is available
 
-Use this first in every fresh chat to avoid guessing scene filenames or editing the wrong scene.`,
-    {},
-    async () =>
+Use this first in every fresh chat to avoid guessing scene filenames or editing the wrong scene.
+
+Project settings in project.data.entries are trimmed to a curated prefix set
+(application/, display/, input/, physics/, rendering/) to bound payload size —
+the untrimmed dump can exceed 45k tokens. The payload declares the trim
+(settingsTruncated, totalSettings, settingsPrefixesIncluded). Pass
+settingsPrefix to read a specific settings group (e.g. 'audio/') instead.`,
+    {
+      settingsPrefix: z
+        .string()
+        .optional()
+        .describe(
+          "Only return project settings whose key starts with this prefix, e.g. 'audio/' or 'application/config/'. Omit for the curated default set."
+        ),
+    },
+    async ({ settingsPrefix }) =>
       withEngine(async (client) => {
-        const [health, projectState, sceneState] = await Promise.all([
+        const [health, fullProjectState, sceneState] = await Promise.all([
           client.health(),
-          client.getProjectState(),
+          client.getProjectState(settingsPrefix),
           client.getSceneState().catch((err) => ({
             ok: false,
             error: err instanceof Error ? err.message : String(err),
           })),
         ]);
+        // Derived fields read the UNtrimmed state so a narrow settingsPrefix
+        // cannot hide mainScene/projectPath from the context summary.
+        const projectState = trimProjectSettings(fullProjectState, settingsPrefix);
 
-        const projectPath = getProjectPath(projectState, health);
-        const projectName = getProjectName(projectState, health);
-        const mainScene = getMainScene(projectState);
-        const currentScene = getCurrentScene(projectState, sceneState, health);
+        const projectPath = getProjectPath(fullProjectState, health);
+        const projectName = getProjectName(fullProjectState, health);
+        const mainScene = getMainScene(fullProjectState);
+        const currentScene = getCurrentScene(fullProjectState, sceneState, health);
 
         // This tool is the deliberate (re)bind point: capture the currently-open
         // project as the one this session's mutations are pinned to. After an
@@ -415,11 +495,51 @@ Example: Bind jump to Space and W:
     `Get a scene tree. Pass scenePath to read that exact in-memory/open scene;
 omit it only when you intentionally want the currently visible editor scene.
 Scene mutations load their explicit target, so a follow-up targeted read does
-not require OpenScene.`,
+not require OpenScene.
+
+The engine defaults to depth 2 and limit 200 nodes and SILENTLY truncates
+deeper hierarchies (the response then carries truncated: true and a visited
+count lower than the real node count). Pass an explicit depth (e.g. 10) to
+read a full tree — a 102-node scene returns only 61 nodes at the defaults.`,
     {
       scenePath: z.string().optional().describe("Exact res:// scene path to inspect"),
+      depth: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe("Maximum tree depth to walk. Engine default is 2 — pass a larger value for deep hierarchies."),
+      limit: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe("Maximum number of nodes to return. Engine default is 200."),
     },
-    async ({ scenePath }) => withEngine(async (client) => client.getSceneState(scenePath))
+    async ({ scenePath, depth, limit }) =>
+      withEngine(async (client) => {
+        if (depth === undefined && limit === undefined) {
+          return client.getSceneState(scenePath);
+        }
+        // The engine honors depth/limit ONLY on targeted (scene=) reads; an
+        // untargeted read is served from a pre-published snapshot built with
+        // the defaults, and its query params are dropped. Resolve the current
+        // scene path first so depth/limit actually take effect.
+        let target = scenePath;
+        if (!target) {
+          const snapshot = await client.getSceneState();
+          target = getScenePathFromSceneState(snapshot) ?? undefined;
+          if (!target) {
+            const record = asRecord(snapshot);
+            return {
+              ...(record ?? { snapshot }),
+              depthLimitApplied: false,
+              note: "depth/limit were IGNORED: the current scene path could not be resolved, and the engine only honors depth/limit on scene-targeted reads. Pass scenePath explicitly to apply them.",
+            };
+          }
+        }
+        return client.getSceneState(target, { depth, limit });
+      })
   );
 
   server.tool(

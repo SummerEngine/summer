@@ -4,6 +4,94 @@ import { withEngine } from "./with-engine.js";
 import { shapeEngineLogResponse } from "../../lib/log-filters.js";
 import { createDebugReportArtifact } from "../../lib/debug-report.js";
 
+// summer_get_diagnostics view shaping. The engine serves /api/state/diagnostics
+// from a pre-published snapshot (empty args — query params are NOT forwarded on
+// that route), so trimming has to happen here. The snapshot defaults bury
+// task-specific failures under baseline info noise (50 console messages, up to
+// 100 debugger entries); this reorders by severity and caps ONLY the
+// low-severity bodies. All counts stay intact and honest. No pattern-matching
+// against specific noise strings — severity + recency + caps only.
+const CONSOLE_NOISE_TAIL_CAP = 10;
+const DEBUGGER_WARNING_CAP = 20;
+
+/**
+ * Prioritized, bounded view of the engine diagnostics payload:
+ * - console.messages reordered: errors first, then warnings, then a capped tail
+ *   of info/std/editor noise (engine order is newest-first; that order is
+ *   preserved within each severity bucket, so the kept tail is the most recent).
+ * - debugger.errors_data untouched; debugger.warnings_data capped to the most
+ *   recent DEBUGGER_WARNING_CAP entries (engine emits newest-first).
+ * - a `_view` block with honest counters and a hint pointing at includeAll.
+ * Shape-tolerant: anything unexpected passes through unchanged.
+ * Exported for unit tests.
+ */
+export function prioritizeDiagnostics(payload: unknown): unknown {
+  if (!payload || typeof payload !== "object") return payload;
+  const root = payload as Record<string, unknown>;
+  if (!root.data || typeof root.data !== "object") return payload;
+  const data = root.data as Record<string, unknown>;
+  const shapedData: Record<string, unknown> = { ...data };
+
+  let totalConsole = 0;
+  let shownConsole = 0;
+  let suppressedInfo = 0;
+  if (data.console && typeof data.console === "object") {
+    const c = data.console as Record<string, unknown>;
+    totalConsole = typeof c.total === "number" ? c.total : 0;
+    if (Array.isArray(c.messages)) {
+      const errors: unknown[] = [];
+      const warnings: unknown[] = [];
+      const rest: unknown[] = [];
+      for (const m of c.messages) {
+        const type =
+          m && typeof m === "object" ? (m as Record<string, unknown>).type : undefined;
+        if (type === "error") errors.push(m);
+        else if (type === "warning") warnings.push(m);
+        else rest.push(m);
+      }
+      const keptRest = rest.slice(0, CONSOLE_NOISE_TAIL_CAP);
+      suppressedInfo = rest.length - keptRest.length;
+      const messages = [...errors, ...warnings, ...keptRest];
+      shownConsole = messages.length;
+      shapedData.console = { ...c, messages, returned: messages.length };
+    }
+  }
+
+  let totalDebugger = 0;
+  let shownDebugger = 0;
+  let suppressedDebuggerWarnings = 0;
+  if (data.debugger && typeof data.debugger === "object") {
+    const g = data.debugger as Record<string, unknown>;
+    totalDebugger =
+      (typeof g.errors === "number" ? g.errors : 0) +
+      (typeof g.warnings === "number" ? g.warnings : 0);
+    const errorsData = Array.isArray(g.errors_data) ? g.errors_data : [];
+    if (Array.isArray(g.warnings_data)) {
+      const keptWarnings = g.warnings_data.slice(0, DEBUGGER_WARNING_CAP);
+      suppressedDebuggerWarnings = g.warnings_data.length - keptWarnings.length;
+      shownDebugger = errorsData.length + keptWarnings.length;
+      shapedData.debugger = { ...g, warnings_data: keptWarnings };
+    } else {
+      shownDebugger = errorsData.length;
+    }
+  }
+
+  return {
+    ...root,
+    data: shapedData,
+    _view: {
+      mode: "prioritized",
+      totalConsole,
+      shownConsole,
+      suppressedInfo,
+      totalDebugger,
+      shownDebugger,
+      suppressedDebuggerWarnings,
+      hint: "All counts are complete; only low-severity message bodies were trimmed. Re-call with includeAll: true for the untrimmed payload, or use summer_get_console / summer_get_debugger_warnings for targeted reads.",
+    },
+  };
+}
+
 export function registerDebugTools(server: McpServer): void {
   server.tool(
     "summer_get_diagnostics",
@@ -11,13 +99,27 @@ export function registerDebugTools(server: McpServer): void {
 
 ALWAYS call this FIRST before diving into summer_get_console or summer_get_debugger_errors. It tells you where to look.
 
+By default the response is a prioritized view: errors first, then warnings, then a small capped tail of recent info/std noise. Counts (console totals, debugger totals) are always complete — only low-severity message bodies are trimmed, and a "_view" block reports exactly what was suppressed. Pass includeAll: true for the full untrimmed engine payload.
+
 Typical workflow after making changes:
 1. summer_get_diagnostics — are there issues?
 2. If errors: summer_get_console or summer_get_debugger_errors for details
 3. Fix the issues
 4. summer_get_diagnostics again to verify`,
-    {},
-    async () => withEngine(async (client) => client.getDiagnostics())
+    {
+      includeAll: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe(
+          "Return the full engine diagnostics payload untrimmed (no severity reordering, no info-noise cap)."
+        ),
+    },
+    async ({ includeAll }) =>
+      withEngine(async (client) => {
+        const raw = await client.getDiagnostics();
+        return includeAll ? raw : prioritizeDiagnostics(raw);
+      })
   );
 
   server.tool(

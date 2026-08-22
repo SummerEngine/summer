@@ -17,6 +17,16 @@ ElevenLabs Music renders a track from a prompt. Summer clamps the requested leng
 
 This skill produces one track aligned with the audio bible's music style and dynamic music plan, then wires it as an `AudioStreamPlayer` on the `Music` bus with a marked loop point if it's a loop, or as a linear cinematic stream if it's a one-shot.
 
+## Studio-only generation boundary
+
+Create the music only with Summer Engine Studio's `summer_generate_audio`
+music capability. Never synthesize or encode the track with Python, GDScript,
+shell tools, oscillators, MIDI, a chat artifact, or an external generator. Code
+may import, configure, loop, crossfade, and play the Studio-generated track; it
+must not author the music itself. Preserve the returned Summer asset id and
+import it through Summer tools. If Studio generation is unavailable, provide
+the exact Summer Studio dashboard prompt and stop instead of switching methods.
+
 ## When to use
 
 - Looped track for a level, biome, menu, or game state (calm / tension / combat).
@@ -241,6 +251,8 @@ Cutscene (cinematic):   varies tempo, D minor, 4/4, solo piano opens,
 ## Anti-patterns
 
 - **Genre adjectives only.** `epic`, `chill`, `hype` — meaningless.
+- **Synthesizing the track in code.** Python, GDScript, shell audio tools,
+  oscillators, and MIDI are not substitutes for Studio music generation.
 - **Naming a game or composer.** Model won't replicate; use ingredients.
 - **Loop shorter than 30s.** Recognized as repetition fast.
 - **Music on `Master` bus at 0 dB.** Buries SFX. Use `Music` bus at `-8 dB`.

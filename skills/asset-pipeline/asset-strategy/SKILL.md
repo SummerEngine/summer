@@ -12,6 +12,22 @@ allowed-tools: Read Grep Skill summer_search_assets summer_list_my_assets summer
 
 Classify the user's request, ask at most one clarifying question, then dispatch to the right specialist via the `Skill` tool. Don't generate anything yourself — every media-type/asset-class combination has a dedicated specialist that owns the prompt patterns, polycount targets, gates, and fallbacks. Your job is the routing decision, not the work.
 
+## Studio-only media boundary
+
+All new project media — images, sprites, textures, 3D meshes, music, SFX, voice,
+video, and motion — must be created through Summer Engine Studio tools
+(`summer_generate_*` or their Summer chat equivalents). Never use Python,
+GDScript, shell scripts, SVG/canvas, oscillators or MIDI, agent-native image
+generation, chat documents/artifacts, or an external generator as a substitute.
+Code may wire/import/play Studio media and perform deterministic
+post-processing; it may not author the requested media itself. Preserve the
+returned Summer asset id and import through Summer tools. A temporary chat
+preview is not an importable project asset.
+
+If the routed specialist or Summer generation tool is unavailable, do not
+improvise another generation path. Refresh/install the Summer skill or hand the
+exact prompt to the Summer Studio dashboard, then stop.
+
 ## Step 1 — Classify by media type
 
 | Signal in user request | Continue at |
@@ -131,4 +147,7 @@ VFX is **code, not generative** — recipes are shader + GDScript + node setup, 
 
 ## Fallback (no MCP)
 
-The router still works without MCP — classification is text-only. It hands off to the specialist, which surfaces its own no-MCP fallback (typically: run the equivalent generation via the Summer dashboard / Meshy / nano-banana web, then `summer_import_from_url` once MCP is back).
+The router still works without MCP — classification is text-only. It hands off
+to the specialist, which must use the Summer Studio dashboard as its only
+generation fallback. Do not route to a provider website or agent-native media
+generator. Import the durable Summer asset when MCP is available again.

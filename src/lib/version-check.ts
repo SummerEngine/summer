@@ -296,6 +296,7 @@ export function defaultSkillMarkerCandidates(): SkillMarkerCandidate[] {
   const candidates: SkillMarkerCandidate[] = [
     { agent: "claude-code", dir: join(home, ".claude", "skills") },
     { agent: "codex", dir: join(home, ".agents", "skills") },
+    { agent: "bionic", dir: join(home, ".lmstudio", "skills") },
     { agent: "summer", dir: join(home, ".summer", "skills") },
     { agent: "cline", dir: join(home, "Documents", "Cline", "Rules") },
     { agent: "roo-code", dir: join(home, "Documents", "Roo", "Rules") },

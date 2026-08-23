@@ -73,7 +73,7 @@ function printIntro(version: string): void {
   console.log(`     ${sym.arrow()} ${c.bold("Summer Engine")} ${c.dim("v" + version)}  ${c.dim("·")}  AI-native game engine`);
   console.log("");
   console.log(`     ${c.bold("Setup wizard")}`);
-  console.log(`     Open Claude Code, Cursor, Codex, Copilot, Devin Desktop (formerly Windsurf), or another supported agent and paste:`);
+  console.log(`     Open Claude Code, Cursor, Codex, Copilot, Bionic, Devin Desktop (formerly Windsurf), or another supported agent and paste:`);
   console.log(`     ${c.brand("\"Install Summer Engine and let's make a game.\"")}`);
   console.log("");
   console.log(`     ${c.bold("Manual commands")}`);

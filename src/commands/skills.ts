@@ -207,6 +207,8 @@ function agentLabel(agent: AgentClient): string {
       return "GitHub Copilot in VS Code";
     case "opencode":
       return "OpenCode";
+    case "bionic":
+      return "Bionic";
     case "summer":
       return "Summer";
   }
@@ -238,6 +240,14 @@ function resolveInstallLocation(
   switch (agent) {
     case "codex":
       return { kind: "skill-dir", path: join(root, ".agents", "skills") };
+    case "bionic":
+      return {
+        kind: "skill-dir",
+        path:
+          scope === "user"
+            ? join(homedir(), ".lmstudio", "skills")
+            : join(process.cwd(), ".agents", "skills"),
+      };
     case "claude-code":
       return { kind: "skill-dir", path: join(root, ".claude", "skills") };
     case "cursor":
@@ -494,6 +504,9 @@ function printInstallSummary(
 
   if (location.kind === "skill-dir") {
     console.log(`${label} can read skills from ${tildeified}/<skill>/SKILL.md`);
+    if (agent === "bionic") {
+      console.log("Open Bionic Settings > Skills to verify or enable the Summer skills.");
+    }
   } else if (location.kind === "cursor-rule-dir") {
     console.log(`Cursor rules are in ${tildeified}/summer-<skill>.mdc`);
   } else if (location.kind === "cline-rule-dir") {

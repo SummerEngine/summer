@@ -29,6 +29,7 @@ const AGENT_LABEL: Record<SupportedAgent, string> = {
   "github-copilot": "GitHub Copilot CLI",
   "vscode-copilot": "GitHub Copilot in VS Code",
   opencode: "OpenCode",
+  bionic: "Bionic",
   "lm-studio": "LM Studio",
 };
 
@@ -84,6 +85,7 @@ export const setupCommand = new Command("setup")
       dryRun: Boolean(opts.dryRun || opts.print),
       yes: Boolean(opts.yes),
       force: Boolean(opts.force),
+      scope,
     });
 
     const doctor = await runDoctor({ quiet: true });
@@ -133,7 +135,7 @@ function resolveScope(scopeOpt: string | undefined): ConfigScope {
 
 function setupRecommendedSkills(
   agent: SupportedAgent,
-  options: { dryRun: boolean; yes: boolean; force: boolean }
+  options: { dryRun: boolean; yes: boolean; force: boolean; scope: ConfigScope }
 ): SkillSetupResult {
   if (agent === "lm-studio") {
     return {
@@ -143,7 +145,10 @@ function setupRecommendedSkills(
     };
   }
 
-  const invocation = skillInstallInvocation(agent, { force: options.force });
+  const invocation = skillInstallInvocation(agent, {
+    force: options.force,
+    scope: options.scope,
+  });
 
   if (!invocation) {
     return {
@@ -187,7 +192,10 @@ function setupRecommendedSkills(
 
 function skillInstallInvocation(
   agent: SupportedAgent,
-  opts: { force: boolean } = { force: false }
+  opts: { force: boolean; scope: ConfigScope } = {
+    force: false,
+    scope: "user",
+  }
 ): SkillInstallInvocation | null {
   const cliPath = process.argv[1];
   if (!cliPath) return null;
@@ -196,6 +204,10 @@ function skillInstallInvocation(
   const prefix = cliPath.endsWith(".js") ? [cliPath] : [];
 
   const baseArgs = ["skills", "install", "--recommended", "--agent", agent];
+  // Bionic has distinct native user and project skill roots. Preserve the
+  // established defaults of older harnesses while honoring Bionic's explicit
+  // setup scope end to end.
+  if (agent === "bionic") baseArgs.push("--scope", opts.scope);
   if (opts.force) baseArgs.push("--force");
   return {
     command,

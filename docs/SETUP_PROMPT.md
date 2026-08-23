@@ -1,6 +1,6 @@
 # Copy-Paste Setup Prompt
 
-Use this when a human wants to install Summer Engine from Claude Code, Cursor, Codex, Devin Desktop (formerly Windsurf), Cline, Roo Code, Gemini CLI, GitHub Copilot CLI, GitHub Copilot in VS Code, or OpenCode.
+Use this when a human wants to install Summer Engine from Claude Code, Cursor, Codex, Devin Desktop (formerly Windsurf), Cline, Roo Code, Kilo Code, Gemini CLI, GitHub Copilot CLI, GitHub Copilot in VS Code, OpenCode, Bionic, or LM Studio.
 
 Source: https://github.com/SummerEngine/summer-engine-agent
 MCP setup page: https://summerengine.com/mcp
@@ -23,7 +23,7 @@ Expected agent behavior:
 6. Create and run a starter project only after choosing a stable parent directory.
 7. Use `summer:brainstorm-game` before building from a vague prompt.
 
-First-class setup targets: `claude-code`, `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `kilo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, `lm-studio`.
+First-class setup targets: `claude-code`, `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `kilo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, `bionic`, `lm-studio`.
 
 Factory Droid uses its plugin marketplace path today. Other older-school or adjacent surfaces worth watching are Continue, Aider, Zed, JetBrains AI/Junie, Goose, and Amp; do not claim first-class Summer setup support for those until a real config target exists.
 

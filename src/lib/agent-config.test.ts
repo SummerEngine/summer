@@ -26,6 +26,12 @@ describe("parseAgent", () => {
   it("keeps windsurf as windsurf", () => {
     expect(parseAgent("windsurf")).toBe("windsurf");
   });
+
+  it("maps Bionic aliases to bionic", () => {
+    expect(parseAgent("bionic")).toBe("bionic");
+    expect(parseAgent("lm-bionic")).toBe("bionic");
+    expect(parseAgent("lm-studio-bionic")).toBe("bionic");
+  });
 });
 
 describe("createSummerMcpServerConfig", () => {
@@ -217,6 +223,79 @@ describe("configureAgentMcp", () => {
     });
     expect(result.wrote).toBe(true);
     expect(result.warnings.some((w) => w.includes("no project scope"))).toBe(true);
+  });
+
+  it("writes a fresh bionic config in the shared LM Studio mcpServers shape", async () => {
+    const dir = tmp();
+    const path = join(dir, "mcp.json");
+    const result = await configureAgentMcp({
+      agent: "bionic",
+      scope: "user",
+      env: { SUMMER_BIONIC_CONFIG_FILE: path } as NodeJS.ProcessEnv,
+    });
+    expect(result.wrote).toBe(true);
+    const written = JSON.parse(readFileSync(path, "utf-8"));
+    expect(written.mcpServers["summer-engine"].command).toBe("npx");
+    expect(written.mcpServers["summer-engine"].args).toEqual(NPX_ARGS);
+    expect(result.nextSteps).toContain(
+      "Open Bionic Settings > Connected Apps and enable the summer-engine MCP server."
+    );
+  });
+
+  it("preserves unrelated Bionic MCP entries and is idempotent", async () => {
+    const dir = tmp();
+    const path = join(dir, "mcp.json");
+    writeFileSync(
+      path,
+      JSON.stringify(
+        {
+          mcpServers: {
+            other: { command: "node", args: ["other.js"] },
+          },
+        },
+        null,
+        2
+      )
+    );
+
+    const first = await configureAgentMcp({
+      agent: "bionic",
+      scope: "user",
+      env: { SUMMER_BIONIC_CONFIG_FILE: path } as NodeJS.ProcessEnv,
+    });
+    const second = await configureAgentMcp({
+      agent: "bionic",
+      scope: "user",
+      env: { SUMMER_BIONIC_CONFIG_FILE: path } as NodeJS.ProcessEnv,
+    });
+
+    const written = JSON.parse(readFileSync(path, "utf-8"));
+    expect(first.wrote).toBe(true);
+    expect(second.wrote).toBe(false);
+    expect(written.mcpServers.other).toEqual({
+      command: "node",
+      args: ["other.js"],
+    });
+    expect(written.mcpServers["summer-engine"].args).toEqual(NPX_ARGS);
+  });
+
+  it("statically binds Bionic's global MCP entry when project scope is requested", async () => {
+    const dir = tmp();
+    const path = join(dir, "mcp.json");
+    const project = join(dir, "game");
+    const result = await configureAgentMcp({
+      agent: "bionic",
+      scope: "project",
+      cwd: project,
+      env: { SUMMER_BIONIC_CONFIG_FILE: path } as NodeJS.ProcessEnv,
+    });
+    expect(result.wrote).toBe(true);
+    const written = JSON.parse(readFileSync(path, "utf-8"));
+    expect(written.mcpServers["summer-engine"].cwd).toBe(project);
+    expect(written.mcpServers["summer-engine"].env).toEqual({
+      SUMMER_ENGINE_PROJECT: project,
+    });
+    expect(result.warnings.some((w) => w.includes("statically bound"))).toBe(true);
   });
 
   it("writes a gemini extension manifest with mcpServers entry", async () => {

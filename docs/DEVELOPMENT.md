@@ -23,7 +23,7 @@ the Summer product identity.
 2. **MCP server**: gives AI coding agents a focused tool registry, including identity-bound project files, scene manipulation, play/stop, diagnostics, and asset import/generation
 3. **Skills bundle**: the current SKILL.md playbooks that auto-trigger when the agent sees the right natural-language signal
 
-Plus lifecycle hooks, plugin manifests, and setup targets that wire all of the above into Claude Code, Cursor, Codex, Gemini, OpenCode, GitHub Copilot CLI, GitHub Copilot in VS Code, Cline, Roo Code, Factory Droid, and Devin Desktop (formerly Windsurf).
+Plus lifecycle hooks and plugin manifests. First-class setup targets wire MCP into Claude Code, Cursor, Codex, Gemini, OpenCode, GitHub Copilot CLI, GitHub Copilot in VS Code, Cline, Roo Code, Kilo Code, Devin Desktop (formerly Windsurf), Bionic, and LM Studio; skills follow each host's capabilities, so LM Studio setup is MCP-only. Factory Droid uses its plugin marketplace path.
 
 It gets published to npm as `summer-engine`. Users run it with `npx summer-engine <command>`.
 

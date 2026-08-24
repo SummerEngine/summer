@@ -9,11 +9,25 @@ import {
   classifyDrift,
   compareSemver,
   fetchLatestRegistryVersion,
+  defaultSkillMarkerCandidates,
   parseSemver,
   readSkillMarker,
   SKILL_VERSION_MARKER_FILENAME,
   writeSkillMarker,
 } from "./version-check.js";
+
+describe("defaultSkillMarkerCandidates", () => {
+  it("includes Bionic's native global skills directory", () => {
+    expect(defaultSkillMarkerCandidates()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          agent: "bionic",
+          dir: expect.stringMatching(/\.lmstudio[\\/]skills$/),
+        }),
+      ])
+    );
+  });
+});
 
 describe("parseSemver", () => {
   it("parses normal versions", () => {

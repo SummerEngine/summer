@@ -7,7 +7,7 @@ the templates present in the installed engine. The package does not silently
 build, host, or submit games to stores; its explicit, confirmed creator command
 can publish an already-exported Summer `.pck` to Summercraft for review.
 
-**Summer** is the MIT open-source agent layer that connects your AI coding agent to Summer Engine. It is the **Summer CLI**, the **Summer MCP** server, and the **Summer agent** skills, hooks, and plugin manifests, all in one package. First-class setup works in Claude Code, Cursor, Codex, Devin Desktop (formerly Windsurf), Cline, Roo Code, Gemini CLI, GitHub Copilot CLI, GitHub Copilot in VS Code, and OpenCode. Factory Droid uses the plugin marketplace path.
+**Summer** is the MIT open-source agent layer that connects your AI coding agent to Summer Engine. It is the **Summer CLI**, the **Summer MCP** server, and the **Summer agent** skills, hooks, and plugin manifests, all in one package. First-class setup works in Claude Code, Cursor, Codex, Devin Desktop (formerly Windsurf), Cline, Roo Code, Kilo Code, Gemini CLI, GitHub Copilot CLI, GitHub Copilot in VS Code, OpenCode, Bionic, and LM Studio. Factory Droid uses the plugin marketplace path.
 
 - **Source:** [github.com/SummerEngine/summer-engine-agent](https://github.com/SummerEngine/summer-engine-agent)
 - **CLI setup:** [www.summerengine.com/cli](https://www.summerengine.com/cli)
@@ -33,7 +33,7 @@ its own license. One setup flow wires the pieces together.
 
 ## Get started: one prompt
 
-Open your AI agent (Claude Code, Cursor, Codex, Copilot, Devin Desktop, etc.) and paste:
+Open your AI agent (Claude Code, Cursor, Codex, Copilot, Bionic, Devin Desktop, etc.) and paste:
 
 > Install Summer Engine and let's make a game. Read github.com/SummerEngine/summer-engine-agent, check what I already have installed, install whatever is missing, log me in, and scaffold a starter project so we can start building.
 
@@ -94,7 +94,7 @@ The relevant check ids are `node-version`, `cli-version`, `cli-version-current`,
 npx -y summer-engine@latest setup claude-code --yes --force
 ```
 
-Replace `claude-code` with the user's actual agent: `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `kilo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, or `lm-studio`. Use `github-copilot` for Copilot CLI and `vscode-copilot` for GitHub Copilot Chat/Agent in VS Code. Factory Droid still uses the plugin marketplace path in the install section below. This writes the current Summer skill bundle to `~/.claude/skills/<name>/SKILL.md` (or the agent's equivalent user-skill directory) AND writes the MCP server config so the agent can talk to the engine. The `--force` flag wipes any stale skill content first, so re-runs always end up with the latest copy.
+Replace `claude-code` with the user's actual agent: `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `kilo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, `bionic`, or `lm-studio`. Use `github-copilot` for Copilot CLI and `vscode-copilot` for GitHub Copilot Chat/Agent in VS Code. Factory Droid still uses the plugin marketplace path in the install section below. For skill-capable targets, setup writes the current Summer skill bundle to the agent's user-skill directory and writes the MCP server config. The `lm-studio` target is MCP-only and uses `summer_get_agent_playbook` for in-chat guidance; the separate `bionic` target installs native Agent Skills. The `--force` flag wipes stale skill content first, so re-runs end up with the latest copy.
 
 **First-install detection:** if `~/.claude/skills/` didn't exist before this command, Claude Code wasn't watching it and won't auto-detect the new files this session. Tell the user **once**: "Skills installed - restart your agent so they load." On subsequent installs (directory already existed), skills auto-detect mid-session and no restart is needed. **You can detect first-install vs upgrade by checking if `~/.claude/skills/` existed before Step 1; record the result before running setup.**
 
@@ -184,7 +184,7 @@ Only skip brainstorm if the user explicitly said "skip brainstorm" or "just buil
 - **Don't loop `summer login` if it times out at 120s.** Re-run it once and tell the user to be quicker; loop forever and the user is stuck.
 - **Don't jump straight into `summer create` from a vague prompt.** Invoke `summer:brainstorm-game` first (Step 6). The build skills assume `.summer/GameSoul.md` exists.
 
-**Using a different agent?** Replace `claude-code` with any supported agent in Step 1: `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `kilo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, or `lm-studio`. (`devin` is also accepted as an alias for `windsurf`.) Skill targets vary per agent (Cursor uses `.cursor/rules/`, Devin Desktop uses `.windsurfrules`, Cline + Roo use `.clinerules/`, Copilot uses `~/.copilot/skills` or `.github/skills`, OpenCode uses agent definitions, etc.). The CLI handles the difference. After install, **Cline and Roo Code users should restart VS Code** so the extension reloads its MCP config. **Gemini users** may need to run `gemini extensions enable summer-engine` after the first install. **VS Code Copilot users** should start the `summer-engine` MCP server from Agent mode if VS Code does not autostart it. **Factory Droid** still has its own plugin path below.
+**Using a different agent?** Replace `claude-code` with any supported agent in Step 1: `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `kilo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, `bionic`, or `lm-studio`. (`devin` is also accepted as an alias for `windsurf`.) Skill targets vary per agent (Cursor uses `.cursor/rules/`, Devin Desktop uses `.windsurfrules`, Cline + Roo use `.clinerules/`, Copilot uses `~/.copilot/skills` or `.github/skills`, OpenCode uses agent definitions, Bionic uses `~/.lmstudio/skills`, etc.). The CLI handles the difference. After install, **Bionic users** should enable `summer-engine` under **Settings → Connected Apps** and verify Summer skills under **Settings → Skills**. **Cline and Roo Code users** should restart VS Code so the extension reloads its MCP config. **Gemini users** may need to run `gemini extensions enable summer-engine` after the first install. **VS Code Copilot users** should start the `summer-engine` MCP server from Agent mode if VS Code does not autostart it. **Factory Droid** still has its own plugin path below.
 
 **Power-user note:** if the user specifically wants `summer` on their `PATH` for everyday terminal use outside the AI agent, a global npm install is still possible. The agent flow doesn't need it.
 
@@ -483,13 +483,21 @@ npx -y summer-engine@latest setup opencode --yes
 
 Writes the MCP server entry into `opencode.json` (`~/.config/opencode/opencode.json` for user scope, `./opencode.json` for project) using the array-shaped `command: ["npx", "-y", "summer-engine@latest", "mcp"]` format. Restart OpenCode. Full guide: [`.opencode/INSTALL.md`](./.opencode/INSTALL.md).
 
+### Bionic (local models and cloud-hosted open models)
+
+```bash
+npx -y summer-engine@latest setup bionic --scope project --yes --force
+```
+
+Bionic is a separate agentic app from LM Studio. Run the command from the Summer game directory. It publishes Summer's MCP entry to `~/.lmstudio/mcp.json`, which Bionic discovers under **Settings → Connected Apps**, statically binds the global connection to that game, and installs native Agent Skills under `.agents/skills/`. Enable `summer-engine` under **Connected Apps**, then verify the Summer skills under **Settings → Skills**. Bionic currently does not pass its active Code Project to MCP servers, so re-run setup from a new game directory when switching games. User-scope setup without `--scope project` remains available for global skills when exactly one Summer editor is running. Full guide: [`docs/BIONIC.md`](docs/BIONIC.md).
+
 ### LM Studio (local models)
 
 ```bash
 npx -y summer-engine@latest setup lm-studio --yes
 ```
 
-Writes the MCP server entry into `~/.lmstudio/mcp.json` (app-global; there is no project scope). In LM Studio, toggle the `summer-engine` server on in the **Program** tab, and raise the loaded model's context length to **32k or higher** — MCP tool schemas overflow small contexts silently. LM Studio has no rules/skills folder; the MCP server's `summer_get_agent_playbook` tool covers in-chat guidance. Pair with a tool-calling-reliable local model (gpt-oss-20b on 12–16 GB VRAM, Qwen3-Coder-30B on 24 GB).
+Writes the MCP server entry into `~/.lmstudio/mcp.json` (app-global; there is no project scope). In LM Studio, toggle the `summer-engine` server on in the **Program** tab, and raise the loaded model's context length to **32k or higher** — MCP tool schemas overflow small contexts silently. The LM Studio app does not natively discover Agent Skills; the separate Bionic app does. Therefore `setup lm-studio` installs MCP only and relies on `summer_get_agent_playbook` for in-chat guidance. Pair with a tool-calling-reliable local model (gpt-oss-20b on 12–16 GB VRAM, Qwen3-Coder-30B on 24 GB).
 
 ### Ollama (local models)
 
@@ -532,7 +540,7 @@ npx -y summer-engine@latest doctor
 | `summer mcp setup <agent>` | Write MCP config for an agent. |
 | `summer setup <agent> [--yes]` | One shot: MCP config + recommended skills + doctor. |
 
-Agents: `claude-code`, `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `kilo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, `lm-studio`. (`devin` and `devin-desktop` are accepted as aliases for `windsurf`.) Scopes: `--scope user` (default), `--scope project`.
+Agents: `claude-code`, `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `kilo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, `bionic`, `lm-studio`. (`devin` and `devin-desktop` are accepted as aliases for `windsurf`; `lm-bionic` and `lm-studio-bionic` are accepted as aliases for `bionic`.) Scopes: `--scope user` (default), `--scope project`.
 
 ---
 
@@ -573,6 +581,7 @@ Skills evolve fast. Two ways to help:
 - [Claude Code](docs/CLAUDE_CODE.md)
 - [Codex](docs/CODEX.md)
 - [Cursor](docs/CURSOR.md)
+- [Bionic](docs/BIONIC.md)
 - [OpenCode](.opencode/INSTALL.md)
 - [Skills overview](docs/SKILLS.md)
 - [Templates](docs/TEMPLATES.md)

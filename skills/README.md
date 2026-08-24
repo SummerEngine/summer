@@ -1,6 +1,6 @@
 # Summer Skill Library
 
-The canonical agent-readable game-dev knowledge source for Claude Code, Cursor, Codex, and Windsurf.
+The canonical agent-readable game-dev knowledge source for Claude Code, Cursor, Codex, Bionic, and Windsurf.
 
 When an agent is asked to make a game in Summer Engine, this is what it reads to learn how.
 
@@ -64,7 +64,7 @@ paths: ["**/*.gd", "**/*.tscn"]
 ---
 ```
 
-Cross-portable. Cursor / Codex / Windsurf understand the same SKILL.md.
+Cross-portable. Cursor / Codex / Bionic / Windsurf understand the same SKILL.md.
 
 ## Authoring rules
 

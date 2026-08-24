@@ -2,7 +2,11 @@ import { createRequire } from "node:module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { EngineApiClient } from "../lib/api-client.js";
-import type { EngineSelection } from "../lib/engine.js";
+import { findProjectRoot, type EngineSelection } from "../lib/engine.js";
+import {
+  installClientRootsHandlers,
+  resolveClientRootSelection,
+} from "./client-roots.js";
 import { registerSceneTools } from "./tools/scene-tools.js";
 import { registerDebugTools } from "./tools/debug-tools.js";
 import { registerVisualTools } from "./tools/visual-tools.js";
@@ -45,44 +49,99 @@ async function probeBootDrift(): Promise<void> {
 
 let cachedClient: EngineApiClient | null = null;
 let engineSelection: EngineSelection | undefined;
+let engineSelectionError: string | null = null;
+let engineSelectionReady: Promise<void> = Promise.resolve();
+let engineSelectionGeneration = 0;
+
+function applyMcpEngineSelection(
+  selection: EngineSelection | undefined,
+  error: string | null = null
+): void {
+  engineSelection = selection ? { ...selection } : undefined;
+  engineSelectionError = error;
+  engineSelectionGeneration += 1;
+  cachedClient = null;
+}
 
 export function configureMcpEngineSelection(
   selection?: EngineSelection
 ): void {
-  engineSelection = selection ? { ...selection } : undefined;
-  cachedClient = null;
+  applyMcpEngineSelection(selection);
+  engineSelectionReady = Promise.resolve();
+}
+
+export function queueMcpEngineSelectionRefresh(
+  refreshSelection: () => void | Promise<void>
+): Promise<void> {
+  const refresh = engineSelectionReady
+    .catch(() => undefined)
+    .then(refreshSelection);
+  // Assign before refreshSelection runs, so an immediate tool call cannot use
+  // the previous cwd while the client roots request is still in flight.
+  engineSelectionReady = refresh;
+  return refresh;
 }
 
 export async function getClient(): Promise<EngineApiClient> {
-  if (cachedClient) {
-    // The engine rotates its api-token (and can change ports) on every launch, so
-    // a cached client can outlive the engine instance it was built for. If the
-    // on-disk creds drifted, a silent engine restart happened — drop the stale
-    // client and reconnect transparently, instead of surfacing the resulting 401
-    // as a "disconnected from the project" error.
-    if (await cachedClient.credentialsChanged()) {
-      cachedClient = null;
-    } else {
-      return cachedClient;
+  while (true) {
+    const selectionGate = engineSelectionReady;
+    await selectionGate;
+    if (selectionGate !== engineSelectionReady) continue;
+    if (engineSelectionError) {
+      throw new Error(
+        engineSelectionError + "\n" +
+          "Open the intended Summer project in your MCP client's workspace, or run " +
+          "`summer mcp --project <path>`."
+      );
     }
-  }
 
-  try {
-    cachedClient = await EngineApiClient.connect(engineSelection);
-    return cachedClient;
-  } catch (error) {
-    cachedClient = null;
-    const reason =
-      error instanceof Error
-        ? error.message
-        : "Summer Engine is not running.";
-    throw new Error(
-      reason + "\n" +
-        "Open the intended project in Summer Engine, or run: npx summer-engine run\n" +
-        "Note: only tools that touch the local project need the engine. Cloud tools " +
-        "(summer_generate_*, summer_search_assets, summer_list_my_assets, summer_get_asset, " +
-        "summer_check_job) work right now without it — they only need 'npx summer-engine login'."
-    );
+    const generation = engineSelectionGeneration;
+    const existingClient = cachedClient;
+    if (existingClient) {
+      // The engine rotates its api-token (and can change ports) on every launch, so
+      // a cached client can outlive the engine instance it was built for. If the
+      // on-disk creds drifted, a silent engine restart happened — drop the stale
+      // client and reconnect transparently, instead of surfacing the resulting 401
+      // as a "disconnected from the project" error.
+      if (await existingClient.credentialsChanged()) {
+        if (cachedClient === existingClient) cachedClient = null;
+      } else if (
+        generation === engineSelectionGeneration &&
+        selectionGate === engineSelectionReady &&
+        cachedClient === existingClient
+      ) {
+        return existingClient;
+      }
+      continue;
+    }
+
+    const selection = engineSelection ? { ...engineSelection } : undefined;
+    try {
+      const connectedClient = await EngineApiClient.connect(selection);
+      if (
+        generation !== engineSelectionGeneration ||
+        selectionGate !== engineSelectionReady
+      ) continue;
+      cachedClient = connectedClient;
+      return connectedClient;
+    } catch (error) {
+      if (
+        generation !== engineSelectionGeneration ||
+        selectionGate !== engineSelectionReady
+      ) continue;
+      cachedClient = null;
+      const reason =
+        error instanceof Error
+          ? error.message
+          : "Summer Engine is not running.";
+      throw new Error(
+        reason + "\n" +
+          "Open the intended project in Summer Engine, or run: npx summer-engine run\n" +
+          "Note: only tools that touch the local project need the engine. Cloud tools " +
+          "(summer_generate_*, summer_search_assets, summer_list_my_assets, summer_get_asset, " +
+          "summer_check_job) work right now without it — they only need 'npx summer-engine login'."
+      );
+    }
   }
 }
 
@@ -262,13 +321,16 @@ export interface StartMcpServerOptions {
 export async function startMcpServer(
   options: StartMcpServerOptions = {}
 ): Promise<void> {
-  configureMcpEngineSelection({
-    instanceId:
-      options.instanceId ?? process.env.SUMMER_ENGINE_INSTANCE_ID,
-    projectPath:
-      options.projectPath ?? process.env.SUMMER_ENGINE_PROJECT,
+  const configuredInstanceId =
+    options.instanceId ?? process.env.SUMMER_ENGINE_INSTANCE_ID;
+  const configuredProjectPath =
+    options.projectPath ?? process.env.SUMMER_ENGINE_PROJECT;
+  const baseSelection: EngineSelection = {
+    instanceId: configuredInstanceId,
+    projectPath: configuredProjectPath,
     cwd: options.cwd ?? process.cwd(),
-  });
+  };
+  configureMcpEngineSelection(baseSelection);
   installMcpProcessDiagnostics();
   appendMcpLogEvent("mcp:start", {
     version,
@@ -285,6 +347,76 @@ export async function startMcpServer(
   const server = new McpServer({
     name: "summer-engine",
     version,
+  });
+
+  // Some app-global MCP configurations launch stdio servers outside the active
+  // workspace, so process.cwd() cannot identify the project. MCP Roots is the
+  // protocol-native project context when a client advertises it. Explicit
+  // CLI/env binding still wins, and roots ambiguity fails closed instead of
+  // selecting an unrelated running editor.
+  const explicitEngineSelection = Boolean(
+    configuredInstanceId?.trim() || configuredProjectPath?.trim()
+  );
+  const applyClientRoots = async (
+    roots: Array<{ uri: string; name?: string }>
+  ): Promise<void> => {
+    const resolution = await resolveClientRootSelection(roots);
+    let status = resolution.selection ? "bound" : "rejected";
+    if (resolution.selection) {
+      applyMcpEngineSelection({ ...baseSelection, ...resolution.selection });
+    } else if (
+      resolution.projectRoots.length === 0 &&
+      baseSelection.cwd &&
+      (await findProjectRoot(baseSelection.cwd))
+    ) {
+      // Empty/non-Summer roots are legal. Preserve an already-valid cwd for
+      // clients launched inside the project, but never let an app-global cwd
+      // silently fall through to an unrelated sole editor.
+      applyMcpEngineSelection(baseSelection);
+      status = "cwd_fallback";
+    } else {
+      applyMcpEngineSelection(
+        baseSelection,
+        resolution.error ?? "Unable to resolve the MCP client project root."
+      );
+    }
+    appendMcpLogEvent("mcp:roots", {
+      status,
+      rootCount: roots.length,
+      fileRootCount: resolution.fileRoots.length,
+      projectRootCount: resolution.projectRoots.length,
+      projectPath: resolution.selection?.projectPath,
+      error: status === "rejected" ? resolution.error : undefined,
+    });
+  };
+  installClientRootsHandlers(server, {
+    disabled: explicitEngineSelection,
+    onRefresh: (loadRoots) =>
+      queueMcpEngineSelectionRefresh(async () => {
+        try {
+          await applyClientRoots(await loadRoots());
+        } catch (error) {
+          const safeCwd = baseSelection.cwd
+            ? await findProjectRoot(baseSelection.cwd)
+            : null;
+          if (safeCwd) {
+            applyMcpEngineSelection(baseSelection);
+          } else {
+            const reason =
+              error instanceof Error ? error.message : String(error);
+            applyMcpEngineSelection(
+              baseSelection,
+              "The MCP client advertised project roots, but roots/list failed: " + reason
+            );
+          }
+          appendMcpLogEvent("mcp:roots_failed", errorDetails(error));
+        }
+      }),
+    onStatus: (status) => {
+      appendMcpLogEvent("mcp:roots", {
+        status: status === "disabled" ? "explicit_selection" : "unsupported",
+      });
+    },
   });
 
   // Passive observability: log result-size to stderr but do not modify

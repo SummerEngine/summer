@@ -18,6 +18,7 @@ export const supportedAgents = [
   "github-copilot",
   "vscode-copilot",
   "opencode",
+  "bionic",
   "lm-studio",
 ] as const;
 
@@ -27,6 +28,7 @@ export type ConfigScope = "user" | "project";
 export interface StdioMcpServerConfig {
   command: string;
   args: string[];
+  cwd?: string;
   env?: Record<string, string>;
 }
 
@@ -88,6 +90,10 @@ const agentAliases: Record<string, SupportedAgent> = {
   "github-copilot-vscode": "vscode-copilot",
   opencode: "opencode",
   "open-code": "opencode",
+  bionic: "bionic",
+  "lm-bionic": "bionic",
+  "lm-studio-bionic": "bionic",
+  lmstudiobionic: "bionic",
   lmstudio: "lm-studio",
   "lm-studio": "lm-studio",
   "lm_studio": "lm-studio",
@@ -111,6 +117,13 @@ export async function configureAgentMcp(
   const env = options.env ?? process.env;
   const cwd = resolve(options.cwd ?? process.cwd());
   const server = createSummerMcpServerConfig(Boolean(options.localDev));
+  if (options.agent === "bionic" && options.scope === "project") {
+    // Bionic's MCP process is app-global and otherwise starts from `/`; current
+    // releases do not advertise MCP Roots. Bind both supported stdio channels
+    // so project-local setup cannot attach to an unrelated running editor.
+    server.cwd = cwd;
+    server.env = { SUMMER_ENGINE_PROJECT: cwd };
+  }
   const target = resolveConfigTarget(options.agent, options.scope, cwd, env);
   const snippet = renderConfigSnippet(options.agent, server);
   const dryRun = Boolean(options.dryRun);
@@ -250,10 +263,15 @@ function resolveConfigTarget(
   if (override) {
     if (
       scope === "project" &&
-      (agent === "cline" || agent === "roo-code" || agent === "gemini" || agent === "lm-studio")
+      (agent === "cline" ||
+        agent === "roo-code" ||
+        agent === "gemini" ||
+        agent === "lm-studio")
     ) {
+      warnings.push(`${agent} MCP config has no project scope today; treating as user scope.`);
+    } else if (scope === "project" && agent === "bionic") {
       warnings.push(
-        `${agent} MCP config has no project scope today; treating as user scope.`
+        "Bionic stores MCP connections globally; this entry is statically bound to the current project. Re-run setup from another project to switch it."
       );
     }
     return {
@@ -342,10 +360,12 @@ function resolveConfigTarget(
     };
   }
 
-  if (agent === "lm-studio") {
+  if (agent === "bionic" || agent === "lm-studio") {
     if (scope === "project") {
       warnings.push(
-        "LM Studio's MCP config is app-global (~/.lmstudio/mcp.json); treating as user scope."
+        agent === "bionic"
+          ? "Bionic stores MCP connections globally; this entry is statically bound to the current project. Re-run setup from another project to switch it."
+          : "LM Studio's MCP config is app-global (~/.lmstudio/mcp.json); treating as user scope."
       );
     }
     return {
@@ -507,6 +527,7 @@ function getConfigPathOverride(
   if (agent === "github-copilot") return env.SUMMER_GITHUB_COPILOT_CONFIG_FILE;
   if (agent === "vscode-copilot") return env.SUMMER_VSCODE_COPILOT_CONFIG_FILE;
   if (agent === "opencode") return env.SUMMER_OPENCODE_CONFIG_FILE;
+  if (agent === "bionic") return env.SUMMER_BIONIC_CONFIG_FILE;
   return env.SUMMER_WINDSURF_MCP_CONFIG_FILE;
 }
 
@@ -859,8 +880,10 @@ function createNextSteps(
               ? "Restart VS Code so Roo Code reloads its MCP config."
               : agent === "kilo-code"
                 ? "Restart VS Code so Kilo Code reloads its MCP config."
-                : agent === "lm-studio"
-                  ? "Open LM Studio, toggle on the summer-engine MCP server in the Program tab, and raise the loaded model's context length to 32k or higher."
+                : agent === "bionic"
+                  ? "Open Bionic Settings > Connected Apps and enable the summer-engine MCP server."
+                  : agent === "lm-studio"
+                    ? "Open LM Studio, toggle on the summer-engine MCP server in the Program tab, and raise the loaded model's context length to 32k or higher."
         : agent === "gemini"
           ? "Run `gemini extensions enable summer-engine` (if not already enabled), then restart Gemini CLI."
           : agent === "github-copilot"

@@ -2,6 +2,12 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- First-class LM Studio Bionic setup through `summer setup bionic`: public MCP discovery configuration, native Bionic Agent Skills, statically bound project-scope connections, setup aliases, diagnostics markers, tests, and a dedicated guide.
+- MCP Roots-based project routing for clients that advertise the capability, including safe rebinding on `roots/list_changed` and ambiguity protection.
+
 ## [2.8.1] — 2026-08-18 — "Scene mutations work again on engine 0.5.60+"
 
 ### Added

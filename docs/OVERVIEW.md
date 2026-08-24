@@ -14,7 +14,7 @@ Three things, plus glue.
 
 **CLI.** Install the engine, log in, scaffold projects, run them, run doctor. The terminal side.
 
-The glue: **lifecycle hooks** (session-start orientation, optional pre-commit doctor), plugin manifests for plugin-capable harnesses, and `summer setup` targets for Claude Code, Cursor, Codex, Gemini, OpenCode, GitHub Copilot CLI, GitHub Copilot in VS Code, Cline, Roo Code, and Devin Desktop (formerly Windsurf).
+The glue: **lifecycle hooks** (session-start orientation, optional pre-commit doctor), plugin manifests for plugin-capable harnesses, and `summer setup` targets for Claude Code, Cursor, Codex, Gemini, OpenCode, GitHub Copilot CLI, GitHub Copilot in VS Code, Cline, Roo Code, Kilo Code, Devin Desktop (formerly Windsurf), Bionic, and LM Studio.
 
 ## Quick start
 
@@ -55,10 +55,12 @@ Each agent has its own home for SKILL.md files:
 | `cursor` | `~/.cursor/rules` (as `summer-<skill>.mdc`) | `.cursor/rules` |
 | `cline` | `~/Documents/Cline/Rules` | `.clinerules` |
 | `roo-code` | `~/Documents/Roo/Rules` | `.clinerules` |
+| `kilo-code` | `~/.kilocode/rules` | `.kilocode/rules` |
 | `gemini` | `~/.gemini/extensions/summer-engine/skills` | n/a |
 | `github-copilot` | `~/.copilot/skills` | `.github/skills` |
 | `vscode-copilot` | `~/.copilot/skills` | `.github/skills` |
 | `opencode` | `~/.config/opencode/agents/summer` | `.opencode/agents/summer` |
+| `bionic` | `~/.lmstudio/skills` | `.agents/skills` |
 | `windsurf` (Devin Desktop) | `~/.windsurfrules` (managed blocks) | `.windsurfrules` |
 
 Use `--scope project` when you want the skills committed with the game:

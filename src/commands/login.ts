@@ -8,6 +8,7 @@ import {
   saveLoginSession,
 } from "../lib/auth.js";
 import { getCreatorApiUrl, getGatewayUrl } from "../lib/config.js";
+import { hasPlatformSession, runPlatformLogin } from "../lib/platform-auth.js";
 
 const POLL_INTERVAL_MS = 2000;
 // One generous window on ONE session id. First-time users may need to create an
@@ -24,8 +25,25 @@ export const loginCommand = new Command("login")
     "--creator",
     "Connect a separately scoped Summercraft creator token for publishing"
   )
+  .option(
+    "--platform",
+    "Sign in directly to the Summer developer platform with Supabase OAuth"
+  )
   .option("--force", "Force re-authentication even if already logged in")
-  .action(async (opts: { creator?: boolean; force?: boolean }) => {
+  .action(async (opts: { creator?: boolean; platform?: boolean; force?: boolean }) => {
+    if (opts.creator && opts.platform) {
+      throw new Error("Choose either --creator or --platform, not both.");
+    }
+    if (opts.platform) {
+      if ((await hasPlatformSession()) && !opts.force) {
+        console.log(
+          "A developer platform session already exists. Use --platform --force to replace it."
+        );
+        return;
+      }
+      await runPlatformLogin();
+      return;
+    }
     if (opts.creator) {
       const existingCreator = await getCreatorToken();
       if (existingCreator && !opts.force) {

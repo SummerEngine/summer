@@ -3,6 +3,8 @@ import { readStoreJson, writeStoreJson } from "./store.js";
 const CONFIG_FILE = "config.json";
 const DEFAULT_GATEWAY_URL = "https://www.summerengine.com";
 const DEFAULT_CREATOR_API_URL = "https://summercraft.ai";
+const DEFAULT_DEVELOPER_OAUTH_ISSUER =
+  "https://bjhcdenhsahdyirbbzlx.supabase.co/auth/v1";
 
 export interface SummerConfig {
   schemaVersion: 1;
@@ -14,6 +16,11 @@ export interface SummerConfig {
     projectId?: string;
     channel?: string;
   };
+  platform?: {
+    managementUrl?: string;
+    oauthIssuer?: string;
+    oauthClientId?: string;
+  };
 }
 
 export const CONFIG_KEYS = [
@@ -21,6 +28,9 @@ export const CONFIG_KEYS = [
   "creator.apiUrl",
   "creator.projectId",
   "creator.channel",
+  "platform.managementUrl",
+  "platform.oauthIssuer",
+  "platform.oauthClientId",
 ] as const;
 
 export type ConfigKey = (typeof CONFIG_KEYS)[number];
@@ -98,6 +108,57 @@ function validateCreatorApiUrl(value: string): string {
   return parsed.origin;
 }
 
+function validateOrigin(key: string, value: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error(`${key} must be a complete URL.`);
+  }
+  const local =
+    parsed.hostname === "localhost" ||
+    parsed.hostname === "127.0.0.1" ||
+    parsed.hostname === "::1";
+  if (parsed.protocol !== "https:" && !(local && parsed.protocol === "http:")) {
+    throw new Error(
+      `${key} must use HTTPS (HTTP is allowed only for localhost).`
+    );
+  }
+  if (
+    parsed.username ||
+    parsed.password ||
+    parsed.pathname !== "/" ||
+    parsed.search ||
+    parsed.hash
+  ) {
+    throw new Error(
+      `${key} must be an origin without credentials, a path, query parameters, or fragments.`
+    );
+  }
+  return parsed.origin;
+}
+
+function validateIssuer(value: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error("platform.oauthIssuer must be a complete HTTPS URL.");
+  }
+  if (
+    parsed.protocol !== "https:" ||
+    parsed.username ||
+    parsed.password ||
+    parsed.search ||
+    parsed.hash
+  ) {
+    throw new Error(
+      "platform.oauthIssuer must be a complete HTTPS URL without credentials, query parameters, or fragments."
+    );
+  }
+  return parsed.toString().replace(/\/+$/, "");
+}
+
 function validateValue(key: ConfigKey, value: string): string {
   const clean = value.trim();
   if (!clean) {
@@ -107,6 +168,14 @@ function validateValue(key: ConfigKey, value: string): string {
   }
   if (key === "gateway.url") return validateGatewayUrl(clean);
   if (key === "creator.apiUrl") return validateCreatorApiUrl(clean);
+  if (key === "platform.managementUrl") return validateOrigin(key, clean);
+  if (key === "platform.oauthIssuer") return validateIssuer(clean);
+  if (
+    key === "platform.oauthClientId" &&
+    !/^[A-Za-z0-9._~-]{8,256}$/.test(clean)
+  ) {
+    throw new Error("platform.oauthClientId is not a valid public OAuth client ID.");
+  }
   if (key === "creator.channel" && !/^[a-z0-9][a-z0-9._-]{0,63}$/i.test(clean)) {
     throw new Error(
       "creator.channel may contain letters, numbers, dots, underscores, and hyphens. Recovery: choose a channel such as production or preview."
@@ -127,7 +196,10 @@ export function getConfigValue(
   if (key === "gateway.url") return config.gateway?.url;
   if (key === "creator.apiUrl") return config.creator?.apiUrl;
   if (key === "creator.projectId") return config.creator?.projectId;
-  return config.creator?.channel;
+  if (key === "creator.channel") return config.creator?.channel;
+  if (key === "platform.managementUrl") return config.platform?.managementUrl;
+  if (key === "platform.oauthIssuer") return config.platform?.oauthIssuer;
+  return config.platform?.oauthClientId;
 }
 
 export async function setConfigValue(
@@ -142,8 +214,14 @@ export async function setConfigValue(
     config.creator = { ...config.creator, apiUrl: value };
   } else if (key === "creator.projectId") {
     config.creator = { ...config.creator, projectId: value };
-  } else {
+  } else if (key === "creator.channel") {
     config.creator = { ...config.creator, channel: value };
+  } else if (key === "platform.managementUrl") {
+    config.platform = { ...config.platform, managementUrl: value };
+  } else if (key === "platform.oauthIssuer") {
+    config.platform = { ...config.platform, oauthIssuer: value };
+  } else {
+    config.platform = { ...config.platform, oauthClientId: value };
   }
   await writeStoreJson(CONFIG_FILE, config);
   return config;
@@ -157,11 +235,23 @@ export async function unsetConfigValue(key: ConfigKey): Promise<SummerConfig> {
     delete config.creator.projectId;
   }
   if (key === "creator.channel" && config.creator) delete config.creator.channel;
+  if (key === "platform.managementUrl" && config.platform) {
+    delete config.platform.managementUrl;
+  }
+  if (key === "platform.oauthIssuer" && config.platform) {
+    delete config.platform.oauthIssuer;
+  }
+  if (key === "platform.oauthClientId" && config.platform) {
+    delete config.platform.oauthClientId;
+  }
   if (config.gateway && Object.keys(config.gateway).length === 0) {
     delete config.gateway;
   }
   if (config.creator && Object.keys(config.creator).length === 0) {
     delete config.creator;
+  }
+  if (config.platform && Object.keys(config.platform).length === 0) {
+    delete config.platform;
   }
   await writeStoreJson(CONFIG_FILE, config);
   return config;
@@ -181,4 +271,31 @@ export async function getGatewayUrl(): Promise<string> {
 export async function getCreatorApiUrl(): Promise<string> {
   const config = await readSummerConfig();
   return config.creator?.apiUrl ?? DEFAULT_CREATOR_API_URL;
+}
+
+export async function getManagementUrl(): Promise<string | null> {
+  const environment = process.env.SUMMER_MANAGEMENT_URL?.trim();
+  if (environment) return validateOrigin("SUMMER_MANAGEMENT_URL", environment);
+  const config = await readSummerConfig();
+  return config.platform?.managementUrl
+    ? validateOrigin("platform.managementUrl", config.platform.managementUrl)
+    : null;
+}
+
+export async function getDeveloperOAuthIssuer(): Promise<string> {
+  const environment = process.env.SUMMER_DEVELOPER_OAUTH_ISSUER?.trim();
+  if (environment) return validateIssuer(environment);
+  const config = await readSummerConfig();
+  return config.platform?.oauthIssuer
+    ? validateIssuer(config.platform.oauthIssuer)
+    : DEFAULT_DEVELOPER_OAUTH_ISSUER;
+}
+
+export async function getDeveloperOAuthClientId(): Promise<string | null> {
+  const environment = process.env.SUMMER_DEVELOPER_OAUTH_CLIENT_ID?.trim();
+  if (environment) return validateValue("platform.oauthClientId", environment);
+  const config = await readSummerConfig();
+  return config.platform?.oauthClientId
+    ? validateValue("platform.oauthClientId", config.platform.oauthClientId)
+    : null;
 }

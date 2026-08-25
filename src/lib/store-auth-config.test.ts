@@ -13,6 +13,7 @@ import {
 } from "./auth.js";
 import {
   getConfigValue,
+  getManagementUrl,
   getGatewayUrl,
   readSummerConfig,
   setConfigValue,
@@ -147,6 +148,8 @@ describe("shared Summer config", () => {
     await setConfigValue("creator.channel", "preview");
     await setConfigValue("creator.apiUrl", "http://localhost:3000");
     await setConfigValue("gateway.url", "https://gateway.example/");
+    await setConfigValue("platform.managementUrl", "https://management.example/");
+    await setConfigValue("platform.oauthClientId", "summer-public-cli");
 
     const config = await readSummerConfig();
     expect(getConfigValue(config, "creator.projectId")).toBe("project-123");
@@ -155,6 +158,10 @@ describe("shared Summer config", () => {
       "http://localhost:3000"
     );
     expect(await getGatewayUrl()).toBe("https://gateway.example");
+    expect(await getManagementUrl()).toBe("https://management.example");
+    expect(getConfigValue(config, "platform.oauthClientId")).toBe(
+      "summer-public-cli"
+    );
 
     await unsetConfigValue("creator.channel");
     expect(

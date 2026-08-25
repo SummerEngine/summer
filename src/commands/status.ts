@@ -3,6 +3,7 @@ import { getAuthToken, getUserInfo } from "../lib/auth.js";
 import { getApiToken, getApiPort, checkEngineHealth } from "../lib/engine.js";
 import { getProjectMemorySummary } from "../lib/project-memory.js";
 import { formatStatusMemoryLine } from "./memory.js";
+import { hasPlatformSession } from "../lib/platform-auth.js";
 
 export const statusCommand = new Command("status")
   .description("Check Summer Engine status, connection, and auth state")
@@ -18,6 +19,10 @@ export const statusCommand = new Command("status")
       console.log("        Run: npx summer-engine login");
       console.log("        Or: https://www.summerengine.com/login");
     }
+
+    console.log(
+      `  Developer platform: ${(await hasPlatformSession()) ? "Session stored" : "Not signed in"}`
+    );
 
     const apiToken = await getApiToken();
     const port = await getApiPort();

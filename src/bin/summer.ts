@@ -23,6 +23,7 @@ import { configCommand } from "../commands/config.js";
 import { publishCommand } from "../commands/publish.js";
 import { releasesCommand } from "../commands/releases.js";
 import { logsCommand } from "../commands/logs.js";
+import { buildCommand } from "../commands/build.js";
 import { getBanner } from "../lib/banner.js";
 import { c, sym } from "../lib/format.js";
 
@@ -60,6 +61,7 @@ program.addCommand(configCommand);
 program.addCommand(publishCommand);
 program.addCommand(releasesCommand);
 program.addCommand(logsCommand);
+program.addCommand(buildCommand);
 
 program.parseAsync().catch((err) => {
   console.error(err instanceof Error ? err.message : String(err));

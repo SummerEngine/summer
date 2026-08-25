@@ -3,9 +3,10 @@
 Build real 2D and 3D Summer games with Summer Engine, the Summer SDK, and
 GDScript. The agent layer can help author code and scenes, but creators remain
 in control of changes and release decisions. Local export support depends on
-the templates present in the installed engine. The package does not silently
-build, host, or submit games to stores; its explicit, confirmed creator command
-can publish an already-exported Summer `.pck` to Summercraft for review.
+the templates present in the installed engine. The package never silently
+publishes or deploys. Its explicit commands can publish an already-exported
+Summer `.pck` to Summercraft for review or submit a declared server source
+archive to a configured Summer platform BuildPublication pipeline.
 
 **Summer** is the MIT open-source agent layer that connects your AI coding agent to Summer Engine. It is the **Summer CLI**, the **Summer MCP** server, and the **Summer agent** skills, hooks, and plugin manifests, all in one package. First-class setup works in Claude Code, Cursor, Codex, Devin Desktop (formerly Windsurf), Cline, Roo Code, Gemini CLI, GitHub Copilot CLI, GitHub Copilot in VS Code, and OpenCode. Factory Droid uses the plugin marketplace path.
 
@@ -225,6 +226,7 @@ We tell you before we touch your disk.
 | Summer Engine app | ~1 GB (engine + bundled Git/runtime tools) | `npx -y summer-engine@latest install` | Summer's signed releases |
 | Auth token | ~1 KB | `npx -y summer-engine@latest login` | Browser to `~/.summer/auth-token` |
 | Creator token | ~50 bytes | only when you run `summer login --creator` and mint one | One-time browser value to `~/.summer/creator-token`; never replaces the auth token |
+| Developer platform session | ~2 KB | only when you run `summer login --platform` | Supabase OAuth 2.1 authorization code + PKCE; access and refresh tokens stay in mode-`0600` `~/.summer/platform-session.json` |
 | Skill files | < 50 KB | bundled in the npm package | no extra network call |
 | Generated assets (3D / image / audio / video) | varies | only on explicit `summer_generate_*` calls when that provider route is enabled for the account | Summer Engine Studio |
 | URL imports | varies | only on explicit `summer_import_from_url` calls | the URL you provide |
@@ -506,13 +508,58 @@ npx -y summer-engine@latest doctor
 
 ## CLI reference
 
+### Developer Preview: publish a hosted server Build
+
+Hosted Build publication follows one supported creator path. The CLI packages
+the current source deterministically, creates a platform `BuildPublication`
+draft, uploads through that draft's bounded one-time grant, completes source
+intake, explicitly publishes the sealed draft, and waits for trusted platform
+workers to return an immutable ready Build. It does not run the trusted
+toolchain locally, push an image, mint
+provenance, or create/deploy a Release.
+
+Commit one stable `summer.build.json` at the archive root:
+
+```json
+{
+  "schema": "summer.build.v1",
+  "gameId": "game_your_game",
+  "project": { "directory": "." },
+  "server": { "exportPreset": "Summer Dedicated Server" },
+  "runtime": {
+    "protocolVersion": "1",
+    "scenes": ["res://AuthorityMain.tscn"],
+    "queues": []
+  }
+}
+```
+
+Configure the real deployment and its registered public OAuth client once;
+neither value is a secret. No production management hostname is assumed.
+
+```bash
+summer config set platform.managementUrl https://management.example
+summer config set platform.oauthClientId summer-public-cli
+summer login --platform
+summer build publish . --version 1.0.0
+```
+
+The project must contain `project.godot` and `export_presets.cfg` at the
+declared directory. Local caches, `.env*`, and other machine state are always
+excluded; any remaining symlink or file changing during packaging fails the
+attempt before a draft is created. `--no-wait` returns once the sealed draft
+has been explicitly published and queued. A Release remains a separate,
+explicit operation.
+
 | Command | What it does |
 |---|---|
 | `summer install` | Download Summer Engine. Prints URL and size first. |
 | `summer login` | Browser-based core Summer sign-in. |
 | `summer login --creator` | Open Summercraft token settings and securely connect a separate publish-scoped creator token. |
+| `summer login --platform` | Sign in directly to the configured developer platform with Supabase OAuth 2.1 + PKCE. |
 | `summer logout` | Clear auth tokens. |
 | `summer config [get\|set\|unset]` | Read or update the shared non-secret `~/.summer/config.json`. |
+| `summer build publish [project] --version <value> [--no-wait]` | Draft, upload, seal, explicitly publish, and observe a hosted server Build through platform workers. Never deploys a Release. |
 | `summer publish [project] --artifact <game.pck> --version <value> [--confirm]` | Compute and show the exact immutable target; after approval, stream it through prepare → write-once PUT → finalize. |
 | `summer releases [--cursor <value>]` | List real creator-owned release history. |
 | `summer logs` | Read creator runtime logs. Fails closed while no durable runtime-log source exists. |

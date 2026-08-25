@@ -2,6 +2,25 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+- `summer build publish [project] --version <value>` is the supported hosted
+  server-Build client: deterministic source ZIP, platform-owned
+  `BuildPublication` draft, bounded direct upload, source sealing, explicit
+  draft publication, and worker-state observation through immutable Build
+  readiness. It never creates or deploys a Release.
+- `summer login --platform` uses a separately stored Supabase developer access
+  token obtained with OAuth authorization code + PKCE. The existing core and
+  Summercraft creator credentials remain separate.
+
+### Changed
+
+- Hosted Build declarations keep only stable creator intent in
+  `summer.build.json`; the platform supplies active Engine and SDK policy when
+  those optional compatibility assertions are omitted.
+
 ## [2.8.1] — 2026-08-18 — "Scene mutations work again on engine 0.5.60+"
 
 ### Added

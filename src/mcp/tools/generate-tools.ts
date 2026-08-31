@@ -342,6 +342,13 @@ Two modes:
 
 Style presets: "realistic" (default), "cartoon", "anime", "none"
 
+Transparent backgrounds: image models CANNOT output an alpha channel. If the
+prompt asks for a "transparent background", the model paints a fake grey
+checkerboard into the pixels instead — unusable as a sprite. For sprites,
+icons, and isolated objects set removeBackground: true and keep transparency
+wording OUT of the prompt: Summer strips the background server-side and
+returns a real alpha PNG.
+
 The 'options' object is passed directly to the AI provider for full control.
 
 Returns the asset with fileUrl (hosted) and localPath (temp file on disk).
@@ -363,17 +370,24 @@ Requires authentication: run 'npx summer-engine login' first.`,
         .string()
         .optional()
         .describe("Source image URL for img2img / edit mode. The prompt describes how to transform this image."),
+      removeBackground: z
+        .boolean()
+        .optional()
+        .describe(
+          "Set true for sprites, icons, or isolated objects that need a real transparent background (alpha PNG). Do NOT ask for transparency in the prompt — models bake a fake checkerboard into the pixels instead."
+        ),
       options: z
         .record(z.any())
         .optional()
         .describe("Provider-specific params (guidance_scale, seed, image_size, negative_prompt, etc.)"),
     },
-    async ({ prompt, model, style, referenceImageUrl, options }) => {
+    async ({ prompt, model, style, referenceImageUrl, removeBackground, options }) => {
       const result = await mcpGenerate("/api/mcp/generate/image", {
         prompt,
         model,
         style,
         referenceImageUrl,
+        removeBackground,
         options,
       });
 

@@ -1,0 +1,34 @@
+id: skill/using-summer
+kind: skill
+version: 1.0.0
+summary: Session bootstrap for Summer projects — establishes how to find and use Summer skills and the summer-engine MCP before any response.
+use_when:
+  - starting any conversation in a Summer Engine project
+facets:
+  lifecycle:
+    - build
+  domains:
+    - agent-workflow
+    - meta
+  modalities:
+    - docs
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/audio-direction
+    - skill/fps-controller
+    - skill/debug
+    - skill/design-mechanic
+    - skill/design-level
+    - skill/setup-multiplayer
+    - skill/art-direction
+    - skill/brainstorm-game
+    - skill/play
+    - skill/scene-composition
+    - skill/gdscript-patterns
+source: official
+license: MIT
+status: stable
+aliases:
+  - skills/workflow/using-summer

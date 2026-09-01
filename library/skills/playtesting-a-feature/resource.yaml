@@ -1,0 +1,20 @@
+id: skill/playtesting-a-feature
+kind: skill
+version: 1.0.0
+summary: "Before claiming a gameplay feature done: actually run the game and walk through the feature. Static diagnostics and type checks do not count."
+use_when:
+  - about to claim a gameplay feature is done, shipped, or working — requires actually running the game and walking through the feature first
+facets:
+  lifecycle:
+    - build
+  domains:
+    - agent-workflow
+  modalities:
+    - project
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - skills/workflow/playtesting-a-feature

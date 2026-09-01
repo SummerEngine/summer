@@ -1,0 +1,20 @@
+id: skill/verification-before-completion
+kind: skill
+version: 1.0.0
+summary: Run verification commands and confirm output before claiming work complete, fixed, or passing — evidence before assertions, always.
+use_when:
+  - about to claim work is complete, fixed, or passing, before committing or creating PRs
+facets:
+  lifecycle:
+    - build
+  domains:
+    - agent-workflow
+  modalities:
+    - project
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - skills/workflow/verification-before-completion

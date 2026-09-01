@@ -1,35 +1,40 @@
-# Summer Engine: the AI game engine
+# Summer Engine
 
-Build real 2D and 3D Summer games with Summer Engine, the Summer SDK, and
-GDScript. The agent layer can help author code and scenes, but creators remain
-in control of changes and release decisions. Local export support depends on
-the templates present in the installed engine. The package does not silently
-build, host, or submit games to stores; its explicit, confirmed creator command
-can publish an already-exported Summer `.pck` to Summercraft for review.
+<div align="center">
 
-**Summer** is the MIT open-source agent layer that connects your AI coding agent to Summer Engine. It is the **Summer CLI**, the **Summer MCP** server, and the **Summer agent** skills, hooks, and plugin manifests, all in one package. First-class setup works in Claude Code, Cursor, Codex, Devin Desktop (formerly Windsurf), Cline, Roo Code, Gemini CLI, GitHub Copilot CLI, GitHub Copilot in VS Code, and OpenCode. Factory Droid uses the plugin marketplace path.
+<img src="docs/brand/sun.png" alt="" width="128">
 
-- **Source:** [github.com/SummerEngine/summer-engine-agent](https://github.com/SummerEngine/summer-engine-agent)
-- **CLI setup:** [www.summerengine.com/cli](https://www.summerengine.com/cli)
-- **MCP setup:** [www.summerengine.com/mcp](https://www.summerengine.com/mcp)
-- **Docs:** [docs.summerengine.com](https://docs.summerengine.com)
+### The AI game engine — and the package that plugs your coding agent into it
 
-Once setup checks pass, open your agent and say *"let's make an FPS in Summer
-Engine."* The agent can then use the Summer SDK and local editor tools to build
-and verify the project.
+**Summer CLI · Summer MCP · Summer agent skills — one npm package.**
+
+[![npm](https://img.shields.io/npm/v/summer-engine?label=npm&color=f7b731)](https://www.npmjs.com/package/summer-engine)
+[![downloads](https://img.shields.io/npm/dm/summer-engine?label=installs&color=f7b731)](https://www.npmjs.com/package/summer-engine)
+[![license](https://img.shields.io/badge/license-MIT-1a1a1a)](LICENSE)
+
+[**Website**](https://www.summerengine.com) · [**Docs**](https://docs.summerengine.com) · [**CLI setup**](https://www.summerengine.com/cli) · [**MCP setup**](https://www.summerengine.com/mcp)
+
+</div>
 
 ---
 
-## Summer CLI, Summer MCP, and the Summer agent
+Your agent gets a real engine, not a chat box: it builds scenes, plays the game, takes screenshots, reads the debugger, generates assets, and verifies its own work — while you stay in control of every change and release.
 
-Three names, one npm package (`summer-engine`):
+| Piece | What it does |
+|---|---|
+| **Summer CLI** | Installs the engine, signs you in, scaffolds and runs projects, and writes your agent's config — all via `npx -y summer-engine@latest`. |
+| **Summer MCP** | A local MCP server with 60+ engine tools: scene mutation, play/stop, screenshots, diagnostics, verification probes, 2D/3D/audio generation. |
+| **Summer skills** | Game-dev skills, hooks, and plugin manifests that give the agent judgment — brainstorming, scene composition, debugging discipline, shipping. |
 
-- **Summer CLI** (`npx -y summer-engine@latest`): installs the engine, signs you in, scaffolds and runs projects, and writes your agent's config. See [www.summerengine.com/cli](https://www.summerengine.com/cli).
-- **Summer MCP**: the local MCP server that gives your agent 58 engine tools to build, run, and debug a real game. See [www.summerengine.com/mcp](https://www.summerengine.com/mcp).
-- **Summer agent layer**: the game-dev skills, hooks, and plugin manifests that give your AI agent judgment, not just a chat box.
+First-class setup works in **Claude Code, Cursor, Codex, Devin Desktop, Cline, Roo Code, Gemini CLI, GitHub Copilot (CLI & VS Code), and OpenCode**; Factory Droid uses the plugin marketplace path.
 
-The CLI, MCP bridge, and agent layer are MIT licensed. The Summer Engine app has
-its own license. One setup flow wires the pieces together.
+The agent layer can help author code and scenes, but creators remain
+in control of changes and release decisions. Local export support depends on
+the templates present in the installed engine. The package does not silently
+build, host, or submit games to stores; its explicit, confirmed creator command
+can publish an already-exported Summer `.pck` to Summercraft for review. The
+CLI, MCP bridge, and agent layer are MIT licensed; the Summer Engine app has
+its own license.
 
 ## Get started: one prompt
 

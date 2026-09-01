@@ -1,0 +1,5 @@
+{
+  "targets": [
+    { "generated": "gemini-extension.json", "destination": "gemini-extension.json" }
+  ]
+}

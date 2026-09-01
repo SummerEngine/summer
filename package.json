@@ -40,8 +40,10 @@
   },
   "files": [
     "dist/",
-    "skills/",
-    "references/",
+    "library/",
+    "registry/generated/",
+    "registry/schemas/",
+    "integrations/",
     "commands/",
     "hooks/",
     "assets/",

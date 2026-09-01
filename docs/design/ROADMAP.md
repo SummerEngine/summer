@@ -16,11 +16,12 @@ Single source of truth for sequencing. Every "later" from the v3 design sessions
 Waves; each gated by tsc + vitest + validate-library:
 
 1. ✅ Contract + decisions + self-improving-library spec (`docs/design/`).
-2. ⏳ Inventory extraction (`migration/*.json`) — skills/tools/manifests/templates/references ground truth.
-3. ⏳ `registry/schemas/` + `scripts/validate-library` + capability lint + tests.
-4. ⏳ `src/` restructure → core / cli / mcp / project-memory / installer, import-direction test.
-5. Registry compiler (`scripts/generate-registry`) → `registry/generated/` (index, all agent manifests, counts, aliases) + CI parity gate.
-6. Library migration fleet: 79 skills → `library/skills/<slug>/` + resource.yaml (aliases for every old path); 62 tools → `library/tools/<slug>/` descriptors; references/ + docs → `library/references/`; templates → `library/templates/<slug>/` pinned (commit + tree_digest, resolved from live repos).
+2. ✅ Inventory extraction (`migration/*.json`) — skills/tools/manifests/templates/references ground truth.
+3. ✅ `registry/schemas/` + `scripts/validate-library` + capability lint + tests.
+4. ✅ `src/` restructure → core / cli / mcp / project-memory / installer, import-direction test.
+5. ✅ Registry compiler (`scripts/generate-registry`) → `registry/generated/` (index, all agent manifests, counts, aliases) + CI parity gate.
+6. ✅ Library migration fleet: 79 skills → `library/skills/<slug>/` + resource.yaml (aliases for every old path); 63 tools → `library/tools/<slug>/` descriptors; references/ + docs → `library/references/`; templates → `library/templates/<slug>/` pinned (commit + tree_digest, resolved from live repos).
+6b. ✅ Cutover: `summer skills list/install/info` + `summer setup` read `registry/generated/skills-registry.json` (installer copies from `library/skills/<slug>/`; `recommended` lives in resource.yaml, compiled into the registry); hand-written `SKILL_REGISTRY` deleted; legacy `skills/` + `references/` trees deleted (aliases keep old paths resolving); guard tests repointed at library/; package `files` ships `library/`, `registry/generated/`, `registry/schemas/`, `integrations/`.
 7. MCP SDK v2 bump (`@modelcontextprotocol/sdk` → v2 major; stdio unchanged; no elicitation to migrate).
 8. AGENTS.md rewrite (trust / understand / navigate / work router) + README update; docs/.
 9. Evals: routing eval suite (query → expected entries) + per-kind scaffolding + CI workflow.

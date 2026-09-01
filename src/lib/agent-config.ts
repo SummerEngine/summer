@@ -149,11 +149,26 @@ export async function configureAgentMcp(
   };
 }
 
-export function createSummerMcpServerConfig(localDev: boolean): StdioMcpServerConfig {
+export function createSummerMcpServerConfig(
+  localDev: boolean,
+  platform: NodeJS.Platform = process.platform
+): StdioMcpServerConfig {
   if (localDev) {
+    // node is a real executable on every platform; spawn("node") resolves fine.
     return {
       command: "node",
       args: [resolveLocalCliPath(), "mcp"],
+    };
+  }
+
+  // On Windows, npx is a .cmd/.ps1 shim, and Node's spawn() does not do PATHEXT
+  // resolution — hosts that spawn("npx") directly (Claude Code, Kimi Code,
+  // Cursor, ...) fail with ENOENT even though npx works in a terminal. Route
+  // through cmd.exe so the shim resolves. (User-reported: Imitater967, 2026-09-01.)
+  if (platform === "win32") {
+    return {
+      command: "cmd.exe",
+      args: ["/c", "npx", "-y", "summer-engine@latest", "mcp"],
     };
   }
 

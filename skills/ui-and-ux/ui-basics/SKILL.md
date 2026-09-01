@@ -1,6 +1,6 @@
 ---
 name: ui-basics
-description: Use when building Summer Engine UI: HUDs, main menus, pause menus, health bars, progress bars, dialogue boxes, or any Control-node tree. Covers anchors, containers (VBox/HBox/Margin), responsive layout, and theme versus inline styling. Trigger on "UI", "HUD", "menu", "health bar", "Control", "anchors", "VBoxContainer", "main menu", "pause menu".
+description: "Use when building Summer Engine UI: HUDs, main menus, pause menus, health bars, progress bars, dialogue boxes, or any Control-node tree. Covers anchors, containers (VBox/HBox/Margin), responsive layout, and theme versus inline styling. Trigger on \"UI\", \"HUD\", \"menu\", \"health bar\", \"Control\", \"anchors\", \"VBoxContainer\", \"main menu\", \"pause menu\"."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: ui-and-ux

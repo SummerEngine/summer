@@ -1,6 +1,6 @@
 ---
 name: host-authoritative-state
-description: Use when designing the state layer of a multiplayer Summer game: deciding what the host owns, how clients request changes, and how the host validates and broadcasts. Pairs with `/peer-to-peer-multiplayer`. Trigger on "host authority", "authoritative state", "state ownership", "MP cheating", "client validation", "RPC patterns".
+description: "Use when designing the state layer of a multiplayer Summer game: deciding what the host owns, how clients request changes, and how the host validates and broadcasts. Pairs with `/peer-to-peer-multiplayer`. Trigger on \"host authority\", \"authoritative state\", \"state ownership\", \"MP cheating\", \"client validation\", \"RPC patterns\"."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: multiplayer-and-networking

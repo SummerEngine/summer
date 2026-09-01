@@ -34,6 +34,24 @@ describe("createSummerMcpServerConfig", () => {
     expect(server.command).toBe("npx");
     expect(server.args).toEqual(NPX_ARGS);
   });
+
+  it("routes npx through cmd.exe on Windows (spawn does no PATHEXT resolution)", () => {
+    const server = createSummerMcpServerConfig(false, "win32");
+    expect(server.command).toBe("cmd.exe");
+    expect(server.args).toEqual(["/c", "npx", ...NPX_ARGS]);
+  });
+
+  it("keeps plain npx on non-Windows platforms", () => {
+    for (const platform of ["darwin", "linux"] as const) {
+      const server = createSummerMcpServerConfig(false, platform);
+      expect(server.command).toBe("npx");
+      expect(server.args).toEqual(NPX_ARGS);
+    }
+  });
+
+  it("keeps node (a real executable) for localDev on every platform", () => {
+    expect(createSummerMcpServerConfig(true, "win32").command).toBe("node");
+  });
 });
 
 describe("configureAgentMcp", () => {

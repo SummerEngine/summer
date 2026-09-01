@@ -18,7 +18,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = { port: 6550, token: "tokenA" };
 
-vi.mock("../lib/engine.js", () => ({
+vi.mock("../core/engine.js", () => ({
   getApiPort: vi.fn(async () => state.port),
   getApiToken: vi.fn(async () => state.token),
   checkEngineHealth: vi.fn(async () => ({

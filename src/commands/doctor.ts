@@ -5,11 +5,11 @@ import { platform } from "os";
 import { Command } from "commander";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { getAuthToken, getUserInfo } from "../lib/auth.js";
-import { isGitAvailable } from "../lib/cloud/checkpoint.js";
-import { checkEngineHealth, getApiPort, getApiToken } from "../lib/engine.js";
-import { brandLine, c, pad, sym, tildeify } from "../lib/format.js";
-import { getMcpLogPath } from "../lib/mcp-log.js";
+import { getAuthToken, getUserInfo } from "../core/auth.js";
+import { isGitAvailable } from "../core/capabilities/cloud/checkpoint.js";
+import { checkEngineHealth, getApiPort, getApiToken } from "../core/engine.js";
+import { brandLine, c, pad, sym, tildeify } from "../core/format.js";
+import { getMcpLogPath } from "../core/mcp-log.js";
 import { getProjectMemorySummary } from "../project-memory/project-memory.js";
 import {
   buildCliVersionCheck,

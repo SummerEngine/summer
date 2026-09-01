@@ -1,8 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { withEngine } from "./with-engine.js";
-import { shapeEngineLogResponse } from "../../lib/log-filters.js";
-import { createDebugReportArtifact } from "../../lib/debug-report.js";
+import { shapeEngineLogResponse } from "../../core/log-filters.js";
+import { createDebugReportArtifact } from "../../core/capabilities/debug-report.js";
 
 // summer_get_diagnostics view shaping. The engine serves /api/state/diagnostics
 // from a pre-published snapshot (empty args — query params are NOT forwarded on

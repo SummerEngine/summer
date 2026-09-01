@@ -1,4 +1,4 @@
-import { SKILL_REGISTRY, type SkillRegistryEntry } from "./skills-registry.js";
+import { SKILL_REGISTRY, type SkillRegistryEntry } from "../skills-registry.js";
 
 export const GAME_TASK_MODES = [
   "auto",

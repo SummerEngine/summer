@@ -1,6 +1,6 @@
 import { Command } from "commander";
-import { getAuthToken, getUserInfo } from "../lib/auth.js";
-import { getApiToken, getApiPort, checkEngineHealth } from "../lib/engine.js";
+import { getAuthToken, getUserInfo } from "../core/auth.js";
+import { getApiToken, getApiPort, checkEngineHealth } from "../core/engine.js";
 import { getProjectMemorySummary } from "../project-memory/project-memory.js";
 import { formatStatusMemoryLine } from "./memory.js";
 

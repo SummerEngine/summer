@@ -3,9 +3,9 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { saveCreatorToken } from "../../lib/auth.js";
-import { setConfigValue } from "../../lib/config.js";
-import { setSummerDirForTests } from "../../lib/store.js";
+import { saveCreatorToken } from "../../core/auth.js";
+import { setConfigValue } from "../../core/config.js";
+import { setSummerDirForTests } from "../../core/store.js";
 import { registerCreatorTools } from "./creator-tools.js";
 
 type Registered = {

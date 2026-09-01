@@ -10,7 +10,7 @@ import {
   supportedAgents,
 } from "../lib/agent-config.js";
 import { DoctorResult, printDoctorResult, runDoctor } from "./doctor.js";
-import { brandLine, c, sym, tildeify } from "../lib/format.js";
+import { brandLine, c, sym, tildeify } from "../core/format.js";
 
 const requireFromHere = createRequire(import.meta.url);
 const { version: cliVersion } = requireFromHere("../../package.json") as {

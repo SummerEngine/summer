@@ -9,8 +9,8 @@ import { spawn } from "node:child_process";
 import { readFile, access, writeFile } from "node:fs/promises";
 import { join, resolve, dirname } from "node:path";
 import { homedir } from "node:os";
-import { getApiToken, getApiPort, checkEngineHealth } from "../lib/engine.js";
-import { getSummerDir } from "../lib/auth.js";
+import { getApiToken, getApiPort, checkEngineHealth } from "../core/engine.js";
+import { getSummerDir } from "../core/auth.js";
 
 async function findWebAppPath(): Promise<string | null> {
   // 1. Check env var

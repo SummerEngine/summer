@@ -1,4 +1,4 @@
-import { getCloudToken } from "../auth.js";
+import { getCloudToken } from "../../auth.js";
 import { parseManifest } from "./manifest.js";
 import type { CloudManifest } from "./types.js";
 

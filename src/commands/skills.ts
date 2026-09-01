@@ -18,8 +18,8 @@ import {
   SKILL_REGISTRY,
   type AgentClient,
   type SkillRegistryEntry,
-} from "../lib/skills-registry.js";
-import { tildeify } from "../lib/format.js";
+} from "../core/skills-registry.js";
+import { tildeify } from "../core/format.js";
 import { writeSkillMarker } from "../lib/version-check.js";
 
 const requireFromHere = createRequire(import.meta.url);

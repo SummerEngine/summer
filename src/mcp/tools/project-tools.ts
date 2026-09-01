@@ -6,7 +6,7 @@ import {
   GAME_TASK_TARGETS,
   VERIFICATION_LEVELS,
   buildGameTaskPlan,
-} from "../../lib/game-task-plan.js";
+} from "../../core/capabilities/game-task-plan.js";
 import { getCachedBootDriftNotice } from "../../lib/mcp-boot-notice.js";
 import { getProjectMemorySummary } from "../../project-memory/project-memory.js";
 import { withEngine } from "./with-engine.js";

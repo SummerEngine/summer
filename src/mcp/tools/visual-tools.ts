@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { withEngine } from "./with-engine.js";
-import type { EngineSnapshot } from "../../lib/api-client.js";
+import type { EngineSnapshot } from "../../core/api-client.js";
 
 /**
  * Visual capture tools. Unlike the in-product chat agent (a text-only "brain"

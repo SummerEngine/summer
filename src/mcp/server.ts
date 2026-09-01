@@ -1,8 +1,8 @@
 import { createRequire } from "node:module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { EngineApiClient } from "../lib/api-client.js";
-import type { EngineSelection } from "../lib/engine.js";
+import { EngineApiClient } from "../core/api-client.js";
+import type { EngineSelection } from "../core/engine.js";
 import { registerSceneTools } from "./tools/scene-tools.js";
 import { registerDebugTools } from "./tools/debug-tools.js";
 import { registerVisualTools } from "./tools/visual-tools.js";
@@ -17,7 +17,7 @@ import {
   getCachedBootDriftNotice as getCachedNotice,
   setCachedBootDriftNotice,
 } from "../lib/mcp-boot-notice.js";
-import { appendMcpLogEvent } from "../lib/mcp-log.js";
+import { appendMcpLogEvent } from "../core/mcp-log.js";
 import {
   buildBootDriftNotice,
   fetchLatestRegistryVersion,

@@ -27,7 +27,7 @@ vi.mock("../server.js", () => ({
   resetClient: (...args: unknown[]) => mockResetClient(...args),
 }));
 
-vi.mock("../../lib/telemetry.js", () => ({
+vi.mock("../../core/telemetry.js", () => ({
   recordMcpSession: vi.fn(),
 }));
 

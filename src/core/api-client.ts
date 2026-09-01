@@ -771,7 +771,7 @@ export class EngineApiClient {
   }): Promise<EngineSnapshot> {
     const opInput: Record<string, unknown> = { op: "ScenePreview" };
     const trimmed = input?.scenePath?.trim();
-    if (trimmed && trimmed !== "." && trimmed !== "./") opInput.scene_path = trimmed;
+    if (trimmed && trimmed !== "." && trimmed !== "../lib") opInput.scene_path = trimmed;
     if (input?.framing) opInput.framing = input.framing;
     if (input?.size) opInput.size = input.size;
     if (input?.nodePath) opInput.node = input.nodePath;

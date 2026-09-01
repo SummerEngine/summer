@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { readCreatorLogs } from "../lib/creator.js";
+import { readCreatorLogs } from "../core/capabilities/creator.js";
 
 export const logsCommand = new Command("logs")
   .description("Read creator runtime logs")

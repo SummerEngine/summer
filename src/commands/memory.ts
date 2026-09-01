@@ -1,13 +1,13 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { Command } from "commander";
-import { checkEngineHealth, getApiPort } from "../lib/engine.js";
+import { checkEngineHealth, getApiPort } from "../core/engine.js";
 import {
   getProjectMemorySummary,
   type ProjectMemoryFileSummary,
   type ProjectMemorySummary,
 } from "../project-memory/project-memory.js";
-import { c, pad, tildeify } from "../lib/format.js";
+import { c, pad, tildeify } from "../core/format.js";
 
 interface MemoryOptions {
   project?: string;

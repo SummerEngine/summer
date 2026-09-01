@@ -7,8 +7,8 @@ import {
   cloudPush,
   cloudRestore,
   cloudStatus,
-} from "../lib/cloud/sync.js";
-import type { BootstrapChoice, SyncOptions, SyncResult } from "../lib/cloud/types.js";
+} from "../core/capabilities/cloud/sync.js";
+import type { BootstrapChoice, SyncOptions, SyncResult } from "../core/capabilities/cloud/types.js";
 
 export const cloudCommand = new Command("cloud").description("Sync Summer Engine projects with Summer Cloud");
 

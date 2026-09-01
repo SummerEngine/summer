@@ -6,12 +6,12 @@ import { resolve } from "node:path";
 import {
   getCredentialMetadata,
   getCreatorToken,
-} from "./auth.js";
+} from "../auth.js";
 import {
   getCreatorApiUrl,
   readSummerConfig,
-} from "./config.js";
-import { appendStoreJsonLine } from "./store.js";
+} from "../config.js";
+import { appendStoreJsonLine } from "../store.js";
 
 export type CreatorOperation = "publish" | "releases" | "logs";
 export type CreatorFace = "cli" | "mcp";

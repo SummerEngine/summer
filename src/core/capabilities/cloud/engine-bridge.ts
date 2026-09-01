@@ -1,8 +1,8 @@
 import { createHash } from "crypto";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
-import { EngineApiClient } from "../api-client.js";
-import { checkEngineHealth, getApiPort, getApiToken } from "../engine.js";
+import { EngineApiClient } from "../../api-client.js";
+import { checkEngineHealth, getApiPort, getApiToken } from "../../engine.js";
 
 /**
  * Engine coordination (spec 8.6.1 and 8.7). All calls degrade gracefully: an

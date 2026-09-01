@@ -6,9 +6,9 @@ import {
   getAuthToken,
   getCreatorToken,
   getUserInfo,
-} from "../lib/auth.js";
-import { setConfigValue } from "../lib/config.js";
-import { setSummerDirForTests } from "../lib/store.js";
+} from "../core/auth.js";
+import { setConfigValue } from "../core/config.js";
+import { setSummerDirForTests } from "../core/store.js";
 import { runCreatorLogin, runLogin } from "./login.js";
 
 let root = "";

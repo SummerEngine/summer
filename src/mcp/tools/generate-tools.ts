@@ -4,7 +4,7 @@ import { z } from "zod";
 import { writeFile, mkdir } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
-import { getAuthToken } from "../../lib/auth.js";
+import { getAuthToken } from "../../core/auth.js";
 
 const require = createRequire(import.meta.url);
 const { version: CLI_VERSION } = require("../../../package.json");

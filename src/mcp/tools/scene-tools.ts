@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { withEngine, extractOpError } from "./with-engine.js";
-import type { EngineApiClient } from "../../lib/api-client.js";
+import type { EngineApiClient } from "../../core/api-client.js";
 
 // Engine ops that MUST be dispatched as their own single-op request. Mirrors
 // _summer_requires_single_async_dispatch (local_api_server.cpp, engine 0.5.60+):

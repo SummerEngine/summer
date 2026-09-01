@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { saveCreatorToken } from "./auth.js";
-import { setConfigValue } from "./config.js";
+import { saveCreatorToken } from "../auth.js";
+import { setConfigValue } from "../config.js";
 import {
   CREATOR_API_CONTRACT,
   CreatorOperationError,
@@ -13,7 +13,7 @@ import {
   publishCreator,
   readCreatorLogs,
 } from "./creator.js";
-import { setSummerDirForTests } from "./store.js";
+import { setSummerDirForTests } from "../store.js";
 
 const GAME_ID = "11111111-1111-4111-8111-111111111111";
 const RELEASE_ID = "22222222-2222-4222-8222-222222222222";

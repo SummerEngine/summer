@@ -6,7 +6,7 @@ import {
   readSummerConfig,
   setConfigValue,
   unsetConfigValue,
-} from "../lib/config.js";
+} from "../core/config.js";
 
 function requireKey(value: string) {
   if (isConfigKey(value)) return value;

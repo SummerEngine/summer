@@ -8,7 +8,7 @@ import {
   cloudPush,
   cloudRestore,
   cloudStatus,
-} from "../../lib/cloud/sync.js";
+} from "../../core/capabilities/cloud/sync.js";
 
 const projectArg = z.object({
   project: z.string().optional().describe("Project root path. Defaults to the current working directory."),

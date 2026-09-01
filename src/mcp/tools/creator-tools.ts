@@ -5,7 +5,7 @@ import {
   listCreatorReleases,
   publishCreator,
   readCreatorLogs,
-} from "../../lib/creator.js";
+} from "../../core/capabilities/creator.js";
 import {
   CONFIG_KEYS,
   getConfigValue,
@@ -13,7 +13,7 @@ import {
   readSummerConfig,
   setConfigValue,
   unsetConfigValue,
-} from "../../lib/config.js";
+} from "../../core/config.js";
 
 function textJson(value: unknown, isError = false) {
   return {

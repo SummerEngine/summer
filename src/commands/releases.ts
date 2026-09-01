@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { listCreatorReleases } from "../lib/creator.js";
+import { listCreatorReleases } from "../core/capabilities/creator.js";
 
 export const releasesCommand = new Command("releases")
   .description("List creator releases for a project")

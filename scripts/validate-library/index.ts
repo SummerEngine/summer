@@ -1,7 +1,7 @@
 /**
  * validate-library — CI gate for library/** (CONTRACT.md §5–§6).
  *
- * Validates every library/**/resource.yaml against its kind schema in
+ * Validates every library/<kind-plural>/<slug>/resource.yaml against its kind schema in
  * registry/schemas/, runs cross-resource integrity checks (duplicate IDs,
  * duplicate aliases, alias/ID collisions, related targets, required body
  * files, evidence media), and runs the capability lint over resource.yaml

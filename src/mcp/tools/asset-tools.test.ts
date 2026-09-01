@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const executeOpsMock = vi.hoisted(() => vi.fn());
 const executeIdentityBoundOpsMock = vi.hoisted(() => vi.fn());
 
-vi.mock("../../lib/auth.js", () => ({
+vi.mock("../../core/auth.js", () => ({
   getAuthToken: vi.fn(async () => "test-token"),
 }));
 

@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getAuthToken } from "../../lib/auth.js";
+import { getAuthToken } from "../../core/auth.js";
 import { getClient } from "../server.js";
 
 const GATEWAY_URL =

@@ -1,5 +1,5 @@
 import { getClient, resetClient } from "../server.js";
-import { recordMcpSession } from "../../lib/telemetry.js";
+import { recordMcpSession } from "../../core/telemetry.js";
 
 type ToolResultContent =
   | { type: "text"; text: string }

@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { publishCreator } from "../lib/creator.js";
+import { publishCreator } from "../core/capabilities/creator.js";
 
 export const publishCommand = new Command("publish")
   .description("Publish a confirmed creator release")

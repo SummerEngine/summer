@@ -1,6 +1,6 @@
 import { Command } from "commander";
-import { createDebugReportArtifact, redactDebugReport } from "../lib/debug-report.js";
-import { c, sym, tildeify } from "../lib/format.js";
+import { createDebugReportArtifact, redactDebugReport } from "../core/capabilities/debug-report.js";
+import { c, sym, tildeify } from "../core/format.js";
 
 interface DebugCommandOptions {
   output?: string;

@@ -2,14 +2,14 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { hostname, platform, release } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
-import { EngineApiClient } from "./api-client.js";
-import { shapeEngineLogResponse } from "./log-filters.js";
-import { tildeify } from "./format.js";
-import { getMcpLogPath, readRecentMcpLogLines } from "./mcp-log.js";
-import { runDoctor, type DoctorResult } from "../commands/doctor.js";
+import { EngineApiClient } from "../api-client.js";
+import { shapeEngineLogResponse } from "../log-filters.js";
+import { tildeify } from "../format.js";
+import { getMcpLogPath, readRecentMcpLogLines } from "../mcp-log.js";
+import { runDoctor, type DoctorResult } from "../../commands/doctor.js";
 
 const require = createRequire(import.meta.url);
-const { version } = require("../../package.json") as { version: string };
+const { version } = require("../../../package.json") as { version: string };
 
 export interface DebugReportOptions {
   issue?: string;

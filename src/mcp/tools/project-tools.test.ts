@@ -9,7 +9,7 @@ vi.mock("../server.js", () => ({
   resetClient: vi.fn(),
 }));
 
-vi.mock("../../lib/telemetry.js", () => ({
+vi.mock("../../core/telemetry.js", () => ({
   recordMcpSession: vi.fn(),
 }));
 

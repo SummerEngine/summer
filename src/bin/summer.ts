@@ -24,7 +24,7 @@ import { publishCommand } from "../commands/publish.js";
 import { releasesCommand } from "../commands/releases.js";
 import { logsCommand } from "../commands/logs.js";
 import { getBanner } from "../lib/banner.js";
-import { c, sym } from "../lib/format.js";
+import { c, sym } from "../core/format.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../../package.json");

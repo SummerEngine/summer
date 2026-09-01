@@ -2,8 +2,8 @@ import { Command } from "commander";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
-import { fetchRemoteTemplates, cloneTemplate, matchTemplate } from "../lib/remote-templates.js";
-import { SUMMER_ENGINE_COMPATIBILITY } from "../lib/summer-compatibility.js";
+import { fetchRemoteTemplates, cloneTemplate, matchTemplate } from "../core/remote-templates.js";
+import { SUMMER_ENGINE_COMPATIBILITY } from "../core/summer-compatibility.js";
 
 interface Template {
   name: string;

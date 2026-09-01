@@ -13,7 +13,7 @@ import {
   writeProjectPathMarker,
 } from "./engine-bridge.js";
 import { walkProject } from "./hash.js";
-import { acquireCloudLock } from "../../project-memory/cloud-lock.js";
+import { acquireCloudLock } from "../../../project-memory/cloud-lock.js";
 import { serializeManifest, sha256Hex } from "./manifest.js";
 import {
   ensureCloudDirs,
@@ -26,7 +26,7 @@ import {
   writeBase,
   writeBinding,
   writeJournal,
-} from "../../project-memory/cloud-paths.js";
+} from "../../../project-memory/cloud-paths.js";
 import { isTrackedByCurrentRules, loadTrackedRules, RULES_VERSION, type TrackedRules } from "./rules.js";
 import { downloadBlobs, uploadBlobs, type UploadSource } from "./transfer.js";
 import type { BaseState, CloudManifest, SyncOptions, SyncResult, WalkResult } from "./types.js";

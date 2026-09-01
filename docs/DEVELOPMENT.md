@@ -1,454 +1,154 @@
 # Summer: Development Guide
 
-This repo (npm: `summer-engine`, GitHub: [SummerEngine/summer-engine-agent](https://github.com/SummerEngine/summer-engine-agent)) is **MIT, open source**. Treat all commits and code comments as public; they ship to the public repo.
+This repo (npm: `summer-engine`, GitHub: `summerengine/summer` — being renamed from `SummerEngine/summer-engine-agent`, redirects keep old links working) is **MIT, open source**. Treat all commits and code comments as public.
 
 When committing, don't attribute Cursor, Claude, or any AI tool. Don't reference internal pricing, revenue, or private endpoints. Don't commit secrets. Auth tokens are read from `~/.summer/` at runtime, never hard-coded.
 
-If you're an AI agent or developer with zero context, read this first.
+If you're an AI agent or developer with zero context: read [`AGENTS.md`](../AGENTS.md) for how the system is *used*, [`docs/design/CONTRACT.md`](design/CONTRACT.md) for the rules everything here is built against, then this file for how to *change* it.
 
 ---
 
-## What This Is
+## What this is
 
-**Summer Engine** is the AI game engine where creators make Summer games with
-the Summer SDK and GDScript. It is a proprietary binary downloaded through
-`summer install` or from
-[summerengine.com/download](https://summerengine.com/download). Its technical
-lineage and upstream compatibility are tracked separately; they do not replace
-the Summer product identity.
+**Summer Engine** is the AI game engine where creators make Summer games with the Summer SDK and GDScript. It is a proprietary binary downloaded through `summer install` or from [summerengine.com/download](https://summerengine.com/download).
 
-**Summer** (this repo) is the **open-source agent layer** for it. Three things in one Node.js package:
+**Summer** (this repo) is the open-source system agents use with it:
 
-1. **CLI tool**: lets users install, manage, and launch Summer Engine from their terminal
-2. **MCP server**: gives AI coding agents a focused tool registry, including identity-bound project files, scene manipulation, play/stop, diagnostics, and asset import/generation
-3. **Skills bundle**: the current SKILL.md playbooks that auto-trigger when the agent sees the right natural-language signal
+1. **The Library** (`library/`) — skills, examples, templates, collections, references, and tool descriptors, each described once by a `resource.yaml`.
+2. **The software** (`src/`) — CLI, MCP server, project memory, and the per-agent installer.
+3. **The registry** (`registry/`) — schemas plus the generated catalog every surface reads.
+4. **Evidence** (`evals/`) — proof the library works, gated in CI.
 
-Plus lifecycle hooks, plugin manifests, and setup targets that wire all of the above into Claude Code, Cursor, Codex, Gemini, OpenCode, GitHub Copilot CLI, GitHub Copilot in VS Code, Cline, Roo Code, Factory Droid, and Devin Desktop (formerly Windsurf).
+### Naming (do not confuse)
 
-It gets published to npm as `summer-engine`. Users run it with `npx summer-engine <command>`.
+| Thing | Name | Notes |
+|---|---|---|
+| npm package | `summer-engine` | What users install. Never recommend `summer-cli` (an unrelated, inactive package we do not own). |
+| GitHub repo | `summerengine/summer` | Renamed from `SummerEngine/summer-engine-agent`; redirects hold. |
+| Binary | `summer` | The CLI entry point. |
+| Copy rule | — | "Summer" for the system, "`summer-engine` npm package" for the package, "Summer Engine app" for the closed desktop engine. |
 
-### Naming (Do Not Confuse)
+---
 
-| Our package | Name | Notes |
-|-------------|------|-------|
-| npm package | `summer-engine` | What users install. Never recommend `summer-cli`. |
-| GitHub repo | `summer-engine-agent` | Public repo at github.com/SummerEngine/summer-engine-agent |
-| Internal folder | `tools/summer-cli/` | Path in engine repo only; not the package name |
+## Repository layout
 
-**Warning:** The npm package `summer-cli` is an unrelated project (inactive since ~2020). We do not own it. Never document or recommend installing `summer-cli`. Always use `summer-engine`.
+```
+src/
+├── bin/              # entry point — composes cli + mcp
+├── cli/              # commander wiring ONLY (src/cli/commands/*) — no business logic
+├── mcp/              # MCP server + tool adapters ONLY (src/mcp/tools/*) — no business logic
+├── core/             # shared implementations: auth, config, engine connection, store,
+│                     #   capabilities/ (logic shared by CLI and MCP)
+├── project-memory/   # .summer/ read/write, cloud sync locks
+└── installer/        # agent detection, per-client config writing, version checks
 
-**It is NOT part of the engine build.** When you run `scons`, this code is not compiled. When you release a DMG/EXE, the CLI is not bundled. It's a separate product with its own build, its own version, its own publish pipeline. It happens to live in this repo for convenience.
+library/              # content — flat folders per kind, one resource.yaml each
+registry/
+├── schemas/          # JSON Schemas validating every resource.yaml, per kind
+└── generated/        # BUILD ARTIFACT of the compiler — never hand-edited
+evals/                # routing (live), skills, examples, templates, tools, end-to-end
+integrations/         # one folder per supported agent: what gets generated/written where
+scripts/
+├── generate-registry/  # the compiler: library/ -> registry/generated/ + root manifests
+└── validate-library/   # schema validation + capability lint
+```
 
-### Public Surface Sync
+The import direction is a tested invariant (`src/import-direction.test.ts`): `cli/` and `mcp/` are thin surfaces over `core/`; logic lives in `core/` (notably `core/capabilities/`) so every capability exists once and is exposed twice.
 
-When tools, skills, setup targets, license language, or counts change, update every public surface in the same change. Do not leave stale totals in README text, plugin manifests, docs, or SEO pages.
+---
 
-Current count commands:
+## Commands
 
 ```bash
-rg "server\\.tool\\(" src/mcp/tools -g '*.ts' -g '!*.test.ts' | wc -l
-find skills -name SKILL.md | wc -l
-npm run build
-node -e "import('./dist/lib/skills-registry.js').then(m=>{const r=m.SKILL_REGISTRY||[]; console.log({registry:r.length,recommended:r.filter(s=>s.recommended).length})})"
+npm install
+npm run build              # tsc -> dist/
+npm run dev                # tsc --watch
+npm test                   # vitest + validate:library
+npm run validate:library   # schema validation + capability lint over library/
+npm run eval:routing       # routing eval: real asks vs the index, gated on baseline.json
+node scripts/generate-registry/cli.ts          # regenerate registry/generated/ + root manifests
+node scripts/generate-registry/cli.ts --check  # CI parity gate: fails on any drift, writes nothing
+bash scripts/smoke-test.sh # CLI smoke test
 ```
 
-Update these CLI repo files when the public surface changes:
+The registry and validation scripts run TypeScript natively and need **Node >= 22.18**; the published package itself supports users on Node 18+.
 
-- `README.md`
-- `.claude-plugin/plugin.json`
-- `.codex-plugin/plugin.json`
-- `AGENTS.md`
-- `GEMINI.md`
-- `references/mcp-tools-reference.md`
-- `docs/DEVELOPMENT.md`
-- `docs/SKILLS.md`
+### Test the CLI and MCP locally
 
-Update sibling public repos when relevant:
-
-- `docs`: Mintlify docs, especially `cli/overview.mdx`, `ai-tools/operations.mdx`, `api-reference/`, setup guides, and any count-bearing page.
-- `PublicSummerEngine`: guide data, `llms.txt` routes, README, and blog posts that mention counts or openness.
-- `summer-strategy`: positioning, licensing, and launch strategy pages when the product story changes.
-
-Copy rule: use "Summer agent layer" for this repo in prose, "`summer-engine` npm package" for the package, and "Summer Engine app" for the closed desktop engine. Avoid brittle skill totals in public copy unless you generated them in this change. Never show scary doctor JSON in the README just to explain remediation.
-
-## Open Source
-
-**This code is public.** The CLI is open source at [github.com/SummerEngine/summer-engine-agent](https://github.com/SummerEngine/summer-engine-agent) (MIT license). The engine repo is private; the CLI repo is a clean copy of `tools/summer-cli/` with no engine code or history.
-
-### What this means for development
-
-- **Commit messages are public.** Don't reference internal pricing, revenue numbers, private URLs, or engine internals. Keep messages focused on what changed in the CLI.
-- **Don't commit secrets.** No API keys, internal endpoints, or auth tokens. The code reads tokens from `~/.summer/` at runtime - that's the correct pattern.
-- **Internal strategy docs stay in the engine repo only.** Strategy, pricing, security-review, handoff, spec, and plan docs are NOT synced to the public repo. Keep public docs focused on setup, architecture, naming, tools, and release workflow.
-- **AI agents: be aware.** If you're an AI agent working in this codebase, your commit messages and code comments will end up in a public repo. Write them as if the world can see them - because it can.
-
-### Two-repo workflow
-
-Development happens here in the engine monorepo (`tools/summer-cli/`). The public repo is synced on release:
-
-The engine mirror's `package.json` is intentionally marked `private: true`. That guard does not affect local installs, builds, tests, or source reconciliation, but it makes `npm publish` fail from this stale mirror. The public repository owns the reviewed, releasable package metadata. Never remove the guard as a shortcut to publish from the engine checkout.
-
-```
-Engine repo (private)                Public repo (open source)
-tools/summer-cli/        --sync-->   SummerEngine/summer-engine-agent
-  src/, docs/, package.json, etc.      Same files, clean history
-  docs/MCP_*_STRATEGY.md              NOT synced (internal)
-  banner-preview.html                  NOT synced (dev artifact)
+```bash
+node dist/bin/summer.js status
+node dist/bin/summer.js list templates
+node dist/bin/summer.js mcp                       # requires a running engine
+node dist/bin/summer.js mcp --project /abs/path   # explicit selectors for hosts
+node dist/bin/summer.js mcp --instance <id>       # launched outside a project dir
 ```
 
-## Why It Exists
+To point an agent at the local build, set its MCP config command to `node <abs-path>/dist/bin/summer.js mcp`.
 
-The short version: AI tools can write code, but they can't build scenes, run games, or read engine diagnostics. The MCP gives them those capabilities.
+---
 
-## Why TypeScript In A C++ Engine Repo
+## One definition, every surface
 
-MCP's official SDK (`@modelcontextprotocol/sdk`) is JavaScript/TypeScript. There's no C++ MCP SDK. The MCP server needs to be a separate process that AI tools launch via stdin/stdout.
+Nothing is registered twice. Every skill, template, reference, and tool descriptor is a `library/<kind>/<slug>/resource.yaml`; `scripts/generate-registry` compiles them into `registry/generated/` (the searchable `index.json`, `counts.json`, `aliases.json`, `skills-registry.json`) and applies the agent manifests (`.claude-plugin/plugin.json`, `gemini-extension.json`, …) to the repo root. Those root dot-files are build artifacts — edit the source, rerun the compiler, commit both.
 
-It lives in this repo (rather than the web repo or a separate repo) because the MCP tool definitions map to C++ engine operations. When you add an op in `ops_executor.cpp`, the matching tool updates here. That said, the coupling is loose - moving it to a separate repo later is trivial.
+CI (`--check` + `npm test`) fails on: schema violations, duplicate IDs/aliases, dangling `related` links, capability-lint violations, regenerated output differing from what's committed, manifest versions ≠ `package.json`, and numeric "N tools"/"N skills" claims in `README.md`/`AGENTS.md`/`GEMINI.md` that contradict `counts.json`. **Don't write literal tool/skill counts in those files** — phrase around them or the guard will (correctly) fail your PR.
 
-**The .ts files never run inside the engine.** They compile to JavaScript, get published to npm, and run as a completely separate Node.js process.
+### Adding a library entry
+
+1. Create `library/<kind>/<slug>/resource.yaml` per the schema in `registry/schemas/` (skills also get `SKILL.md`; templates are pin manifests — see [`library/templates/README.md`](../library/templates/README.md) for the commit + tree-digest rules).
+2. `npm run validate:library` — schema + capability lint (no URLs off the allowlist, no install commands, no credential references).
+3. `node scripts/generate-registry/cli.ts` — regenerate; commit the generated diff together with the entry.
+4. `npm run eval:routing` — if your entry serves one of the known gap queries, update `evals/routing/queries.yaml` + baseline in the same PR.
+
+IDs (`<kind>/<slug>`) are permanent. Renaming means a new ID plus an `aliases` entry on the new resource — never a silent move.
+
+### Adding an MCP tool
+
+The implementation lives in `src/` (`src/mcp/tools/` adapter over `src/core/`), the descriptor in `library/tools/`. Mechanics of the engine side: [`ADDING_TOOLS.md`](ADDING_TOOLS.md).
+
+### Adding an agent integration
+
+One folder in `integrations/` (plus, if the client has a manifest file in this repo, a builder in `scripts/generate-registry/manifests.ts` and a target in `scripts/generate-registry/targets.ts`), then regenerate. Never hand-edit root manifest files. The full per-client map: [`integrations/README.md`](../integrations/README.md).
 
 ---
 
 ## Architecture
 
 ```
-AI Tool (Cursor/Claude Code)
-    |  stdio (MCP protocol)
+AI agent (Claude Code / Cursor / Codex / ...)
+    |  stdio (MCP) or shell (CLI)
     v
-summer-engine CLI (this package - Node.js)
-    |  HTTP (localhost:6550)
+summer-engine (this package - Node.js)
+    |  HTTP (localhost, per-instance port + token)
     v
-Summer Engine (C++ - LocalApiServer)
-    |  direct call
-    v
-OpsExecutor::apply() (same path as integrated chat)
+Summer Engine app (LocalApiServer -> OpsExecutor)
 ```
 
-## Folder Structure
+- **Lazy connect** (`src/mcp/server.ts`): the MCP server starts without a running engine, registers tools immediately, and connects on first call; if the engine restarts, the next call retries.
+- **Multi-editor discovery**: each live editor publishes `~/.summer/instances/<id>.json`; the MCP walks up from CWD to find `project.godot` and binds to the matching instance, failing closed when ambiguous. Explicit `--project` / `--instance` override.
+- **Shared `~/.summer/` store** (`src/core/store.ts`): `0700` dir, `0600` files, atomic replacement, symlink refusal. Filenames (`api-token`, `auth-token`, `cloud-token`, `creator-token`, `user.json`, `config.json`, `credential-metadata.json`, `creator-audit.jsonl`) are shared with the desktop engine — do not rename them.
+- **Ops values are engine variant strings** (`"Vector3(0, 10, 0)"`, `"Color(1, 0.9, 0.8)"`), never JSON objects. This crosses both repos; coordinate changes.
 
-```
-tools/summer-cli/
-├── package.json              # npm package config - published as "summer-engine"
-├── tsconfig.json             # TypeScript compiler config
-├── README.md                 # User-facing documentation
-├── .gitignore                # Excludes dist/ and node_modules/
-│
-├── docs/                     # Developer documentation (you are here)
-│   ├── DEVELOPMENT.md        # This file - architecture, workflow, deployment
-│   └── ADDING_TOOLS.md       # How to add new MCP tools when ops change
-│
-├── scripts/
-│   └── smoke-test.sh         # Quick validation that CLI commands work
-│
-└── src/                      # TypeScript source
-    ├── bin/
-    │   └── summer.ts         # CLI entry point - registers all commands
-    │
-    ├── commands/              # CLI commands (one file per command)
-    │   ├── install.ts         # summer install - downloads engine
-    │   ├── login.ts           # summer login - browser OAuth
-    │   ├── logout.ts          # summer logout - clears tokens
-    │   ├── config.ts          # summer config - shared non-secret config
-    │   ├── publish.ts         # summer publish - confirmed creator release
-    │   ├── releases.ts        # summer releases - creator history
-    │   ├── logs.ts            # summer logs - creator runtime logs
-    │   ├── status.ts          # summer status - engine diagnostics
-    │   ├── run.ts             # summer run [path] - launches engine
-    │   ├── open.ts            # summer open <path> - opens project
-    │   ├── create.ts          # summer create <template> - scaffolds project
-    │   ├── list.ts            # summer list - templates/projects
-    │   ├── memory.ts          # summer memory - inspect .summer project memory
-    │   ├── skills.ts          # summer skills - install/list best-practice guides
-    │   └── mcp.ts             # summer mcp - starts MCP server
-    │
-    ├── mcp/                   # MCP server implementation
-    │   ├── server.ts          # MCP server setup - lazy-connect, stdio transport
-    │   └── tools/             # Tool definitions (one file per category)
-    │       ├── with-engine.ts # Wrapper: lazy-connect + error handling
-    │       ├── scene-tools.ts # 10 tools: AddNode, SetProp, RemoveNode, etc.
-    │       ├── debug-tools.ts # 7 tools: Play, Stop, Diagnostics (snapshots Summer Agent-only)
-    │       ├── project-tools.ts # 5 tools: ProjectSetting, SceneTree, Import, etc.
-    │       └── asset-tools.ts # 2 tools: SearchAssets, ImportAsset (Pro)
-    │
-    └── lib/                   # Shared utilities
-        ├── api-client.ts      # HTTP client for engine's local API
-        ├── store.ts           # Hardened shared ~/.summer store
-        ├── auth.ts            # Core-compatible identity + token metadata
-        ├── config.ts          # Typed non-secret configuration
-        ├── creator.ts         # Creator command/MCP service contract
-        ├── engine.ts          # Engine detection, health check, port reading
-        └── project-memory.ts  # Lightweight .summer memory summary
-```
-
-## Key Concepts
-
-### Lazy-Connect Pattern (`mcp/server.ts`)
-
-The MCP server does NOT require the engine to be running at startup. It starts immediately, registers all tools, and connects to the engine lazily on first tool call. If the engine stops mid-session, the next tool call retries. This is handled by `with-engine.ts`.
-
-### Multi-Editor Discovery
-
-Current desktop builds publish one secured registry entry per live editor at
-`~/.summer/instances/<instanceId>.json`. On MCP startup, the CLI walks upward
-from its current working directory to find `project.godot`, matches that
-project root to the registry, and validates the chosen instance against
-`/api/health` before using its port and token.
-
-Selection priority is an explicit `--instance`, an explicit `--project`, the
-agent's current project directory, then the only live instance. If multiple
-instances remain and no project is known, connection fails closed. The legacy
-`api-port`/`api-token` pair remains as a compatibility fallback when no live
-registry entries exist.
-
-### Shared `~/.summer/` Store
-
-The CLI, existing MCP, exporters, and desktop engine share one secured
-`~/.summer/` directory. The CLI creates it as `0700`, writes credential and
-configuration files as `0600`, uses atomic replacement, and refuses symlink
-credentials.
-
-The existing filenames are deliberately preserved because the desktop engine
-already reads them:
-
-- `api-token` - written by the engine's `LocalApiServer` on startup. Random per-session. The MCP server reads this to authenticate with the engine. **Only valid while engine is running.**
-- `auth-token` - written by `summer login`. Long-lived `summer-cli` JWT for user identity. **Persists across sessions.**
-- `cloud-token` - the separate Summer Cloud token when the login endpoint returns one.
-- `creator-token` - a separate Summercraft `sc_` token with exact `publish` scope, connected by `summer login --creator`. Never replaces `auth-token`.
-- `user.json` - the validated `{id, email, name?}` identity shared with the desktop engine.
-- `credential-metadata.json` - audience, scopes, and expiry metadata only. It never duplicates a token.
-- `config.json` - typed, non-secret settings shared by CLI and MCP.
-- `creator-audit.jsonl` - local append-only creator publish attempts and outcomes.
-
-No environment variables are required for normal CLI use. The production
-Summer gateway and Summercraft creator API are the defaults.
-`SUMMER_GATEWAY_URL` remains an optional gateway-development override; users
-can instead set `gateway.url` or `creator.apiUrl` with `summer config`.
-
-See [GATE_E3_CREATOR_CLI.md](GATE_E3_CREATOR_CLI.md) for the versioned endpoint,
-credential firewall, confirmation flow, and remaining activation/log blockers.
-
-### Template System (`commands/create.ts`)
-
-Two tiers:
-- **Built-in**: Tiny templates embedded in code (empty, 3d-basic). They contain
-  Summer project configuration strings.
-- **Remote** (future): Hosted in GitHub repo, downloaded on demand. 100MB-2GB per template.
+No environment variables are required for normal use. `SUMMER_GATEWAY_URL` is an optional gateway-development override; `SUMMER_MCP_DEBUG=1` logs a structured stderr line per tool call; `SUMMER_NO_TELEMETRY=1` / `DO_NOT_TRACK` disable the library feedback mailbox.
 
 ---
 
-## Development Workflow
+## Releasing
 
-### Prerequisites
+The CLI/MCP/library ship together as the npm package; the engine app and the web platform deploy independently. A release means the reviewed changes and version bump are on this repo's `main`, then npm is published from a fresh clone of that exact commit — never publish first and sync later.
 
-- Node.js 18+
-- npm
+- Release contract: [`RELEASING.md`](RELEASING.md)
+- Copy-paste procedure: [`NPM_PUBLISH_QUICK_COMMANDS.md`](NPM_PUBLISH_QUICK_COMMANDS.md)
+- Versioning: semver, independent of engine versions; the package stays backwards-compatible with older engines (tools report unsupported capabilities gracefully).
+- npm account: `summer-engine` (2FA required). Reserved placeholder names (`summer`, `summer-mcp`, `@summerengine/*`, …) stay reserved; never publish to them casually.
 
-### Setup
-
-```bash
-cd tools/summer-cli
-npm install
-```
-
-### Build
-
-```bash
-npm run build          # Compile TypeScript to dist/
-npm run dev            # Watch mode - recompiles on change
-```
-
-### Test Locally
-
-```bash
-# Run CLI commands directly from source
-node dist/bin/summer.js status
-node dist/bin/summer.js list templates
-node dist/bin/summer.js create 3d-basic test-project
-
-# Run MCP server (requires engine running)
-node dist/bin/summer.js mcp
-
-# Explicit selectors for hosts launched outside a project directory
-node dist/bin/summer.js mcp --project /absolute/path/to/game
-node dist/bin/summer.js mcp --instance <instance-id>
-
-# Run smoke tests
-bash scripts/smoke-test.sh
-```
-
-### Test MCP with Cursor
-
-Add to `.cursor/mcp.json` (point to local build):
-
-```json
-{
-  "mcpServers": {
-    "summer-engine": {
-      "command": "node",
-      "args": ["/Users/YOU/development/summerengine/tools/summer-cli/dist/bin/summer.js", "mcp"]
-    }
-  }
-}
-```
+An engine-repo mirror of this package exists for historical reasons; its `package.json` is `private: true` specifically so `npm publish` fails from there. This repo owns the releasable package.
 
 ---
 
-## Three Independent Deploy Pipelines
+## Related docs
 
-The CLI, the engine, and the web app are **completely independent products** with separate deploy processes:
-
-| What changed | How to deploy | Where it goes |
-|---|---|---|
-| C++ code (ops, LocalApiServer, auth) | `scons` build -> release DMG/EXE per `doc/SUMMER/releases/` | Supabase storage, auto-updater |
-| CLI commands, MCP tools | Reconcile into the public repo, then follow its reviewed npm release runbook | npmjs.com as `summer-engine` |
-| Web auth routes, API | Deploy web repo (`publicsummerengine`) as usual | Vercel/your hosting |
-
-Changing the CLI does NOT require rebuilding the engine. Rebuilding the engine does NOT require republishing the CLI. The only time you touch both is when adding a new engine operation that needs a new MCP tool.
-
-### Release Checklist
-
-A full release means the reviewed CLI changes and version bump are already on the public repository's `main`, then npm is published from a fresh clone of that exact commit. Never publish first and sync source later.
-
-Use [`RELEASING.md`](./RELEASING.md) for the release contract and [`NPM_PUBLISH_QUICK_COMMANDS.md`](./NPM_PUBLISH_QUICK_COMMANDS.md) for the copy-paste fresh-terminal procedure. Both contain hard stops for a stale version, a dirty tree, the wrong repository, or the wrong npm account.
-
-### npm Account
-
-- Username: `summer-engine`
-- Email: `founders@summerengine.com`
-- 2FA: Required for publishing
-- Orgs: `@summerengine`, `@summer-engine` (for future scoped packages)
-
-### Reserved npm Names
-
-These are registered under the `summer-engine` npm account as placeholders:
-- Unscoped: `summer-mcp`, `summerengine`, `summer`, `summer-engine-mcp`, `summer-game-engine`
-- `@summerengine/`: `cli`, `mcp`, `sdk`, `tools`, `core`, `engine`
-- `@summer-engine/`: `cli`, `mcp`, `sdk`, `tools`, `core`
-
-Keep this list in sync with the npm account and package metadata.
-
-### Version Strategy
-
-- CLI version is independent of engine version
-- CLI must be backwards-compatible with older engine versions (tools gracefully report unsupported engine capabilities)
-- Use semver: patch for fixes, minor for new tools, major for breaking changes
-
----
-
-## How the CLI Relates to the Engine
-
-### Engine Side (C++)
-
-The engine runs a `LocalApiServer` (at `modules/1summer_engine/api/local_api_server.cpp`) that:
-- Listens on `localhost:6550`
-- Writes `~/.summer/api-token` and `~/.summer/api-port` on startup
-- Accepts HTTP requests with Bearer token auth
-- Routes to `OpsExecutor::apply()` for operations
-- Routes to `StateProvider` for state queries
-
-### Web Side (Next.js)
-
-The web repo at `development/publicsummerengine` has:
-- `app/api/auth/cli-login/route.ts` - CLI login polling endpoint
-- `app/(core)/loginDeepPage/LoginDeepPageClient.tsx` - handles `cli_session` param
-- `app/(core)/login/page.tsx` - passes `cli_session` through OAuth
-
-### The Connection
-
-```
-Engine ops (C++)           MCP tools (TypeScript)        Web auth (TypeScript)
-ops_executor.cpp    <-->   mcp/tools/*.ts          -->   api/auth/cli-login/
-  AddNode                    summer_add_node              GET/POST polling
-  SetProp                    summer_set_prop
-  PlayGame                   summer_play
-  ...                        ...
-```
-
-When an op changes in C++, the matching tool in `mcp/tools/` must be updated. See `docs/ADDING_TOOLS.md`.
-
----
-
-## Troubleshooting
-
-### "Cannot find module" errors in IDE
-
-Run `npm install` in `tools/summer-cli/`. The IDE needs `node_modules/` to resolve imports.
-
-### MCP tools return "Summer Engine is not running"
-
-The engine must be open. The MCP server connects via localhost to the engine's API.
-
-### "Unauthorized" errors from engine API
-
-The `api-token` changes each time the engine starts. If the MCP server cached an old token, it will reset and retry on the next call.
-
-### CLI can't find engine binary
-
-`summer run` looks in standard install paths (`/Applications/Summer.app` on macOS, `%LOCALAPPDATA%\SummerEngine\current\Summer.exe` first on Windows, then legacy NSIS paths as fallback). If installed elsewhere, pass the project path directly.
-
----
-
-## TODO - What's Missing / Thin / Needs Work
-
-### Not Yet Built
-- [ ] `summer install` - downloads engine but hasn't been tested end-to-end (DMG mount/copy flow on macOS, silent installer on Windows)
-- [ ] `summer run` - launches engine but the binary detection paths are still hardcoded guesses (`/Applications/Summer.app`, `%LOCALAPPDATA%\SummerEngine\current\Summer.exe`, legacy NSIS fallbacks on Windows). Needs real-world testing on both platforms
-- [ ] `summer open` - currently just prints a message if engine is already running. Doesn't actually switch projects via the API (would need a new engine endpoint)
-- [ ] Remote templates - `summer create` only has 2 tiny built-in templates. No GitHub-based template downloading yet. Templates will be 100MB-2GB, need download progress, extraction, etc.
-- [ ] `summer list projects` - only scans current directory. Should eventually scan known project locations or integrate with engine's project manager
-- [ ] Linux support - `summer install` and `summer run` only handle macOS/Windows
-- [ ] Auto-update mechanism - no way for the CLI to tell users a new version is available
-
-### Thin / Fragile
-- [ ] CLI login flow - works but hasn't been tested end-to-end with the web route (`/api/auth/cli-login`). The deep link page changes for `cli_session` need real browser testing
-- [ ] Error handling in `api-client.ts` - all methods return `Promise<unknown>` with no typed responses. Network errors surface as generic messages
-- [ ] No retry logic - if a single API call errors, the tool just returns that error. No automatic retry
-- [ ] `with-engine.ts` resets the entire client on any error, even if it's a 400 (bad request) not a connection issue
-- [ ] MCP tool descriptions - functional but could be richer. They should
-  include examples, common patterns, and Summer Engine variant-string
-  documentation (for example `Vector3(...)`).
-- [ ] No input validation - CLI commands don't validate paths exist before passing to the engine (some do, most don't)
-
-### Should Spend More Time On
-- [ ] MCP tool descriptions are the main thing AI agents read to understand how
-  to use Summer Engine. Current descriptions are minimal. Each tool should have
-  examples, common parameter values, and upstream API links where technically
-  relevant.
-- [ ] The `create` command templates are bare-bones. The 3d-basic scene doesn't have a WorldEnvironment configured properly. Templates should be polished enough to be impressive on first use
-- [ ] Testing - only a smoke test script exists. No unit tests for individual commands, no integration tests for the MCP server, no mock engine for testing without the real engine running
-- [ ] CI/CD - no automated build/test/publish pipeline. Publishing is manual from a clean public-repository clone
-- [ ] The engine's `LocalApiServer` (C++) is polling-based at 50ms intervals. Should benchmark whether this causes any frame drops in the editor. Might need to throttle or use a different approach for heavy operations
-- [ ] Windows testing - everything was built on macOS. The Windows paths in `run.ts` and `install.ts` are untested
-- [ ] Documentation for users (not devs) - the README is okay but there's no "Getting Started with MCP" tutorial that walks through the full flow with screenshots
-
-### R&D / Future Investment
-- [ ] **Summer Cloud sync** - Experimental content-addressed project sync. Keep it clearly labeled as a Research Preview until recovery, conflicts, service availability, and cross-machine behavior have production evidence. It is not required for the stable local CLI and MCP workflow
-- [ ] **Simulated play (high value, hard problem)** - Let the AI start the game, simulate input (based on InputMap), record frames, and analyze what happens. This is the dream feedback loop: AI builds -> plays -> sees issues -> fixes. Blocked by: video-as-context is expensive and not well-supported by current models. Snapshot-per-frame is possible but noisy. Needs real R&D on frame sampling, input simulation via engine API, and cost-effective visual analysis
-- [ ] **Skills / knowledge packs** - Downloadable best-practice guides for game dev patterns (FPS, platformer, 3D optimization, GDScript patterns). Format TBD (markdown? Cursor rules? JSON?). Would make AI agents significantly better at building games
-
-### Nice To Have (Future)
-- [ ] `summer doctor` - diagnose common issues (engine installed? right version? port available? auth valid?)
-- [ ] `summer upgrade` - update the engine to latest version
-- [ ] Creator runtime logs - publish and release history use
-  `summer.creator.v1`; logs remain blocked until the runtime platform owns a
-  durable, authorized, redacted source
-- [ ] Tab completion for commands and template names
-- [ ] MCP resources (read-only data like scene tree, file tree) in addition to tools
-- [ ] Streaming results for long operations (e.g., ImportFromUrlBatch)
-- [ ] Telemetry/analytics on CLI usage (opt-in)
-
----
-
-## File Ownership
-
-| Area | Repo | Key Files |
-|------|------|-----------|
-| LocalApiServer | engine (C++) | `modules/1summer_engine/api/local_api_server.*` |
-| Auth token writing | engine (C++) | `modules/1summer_engine/auth/auth_manager.cpp` |
-| Editor init | engine (C++) | `editor/editor_node.cpp` |
-| CLI commands | engine (Node.js) | `tools/summer-cli/src/commands/` |
-| MCP tools | engine (Node.js) | `tools/summer-cli/src/mcp/tools/` |
-| CLI auth route | web (Next.js) | `publicsummerengine/app/api/auth/cli-login/` |
-| Login page changes | web (Next.js) | `publicsummerengine/app/(core)/login/page.tsx` |
-| Deep link page | web (Next.js) | `publicsummerengine/app/(core)/loginDeepPage/` |
+- v2 → v3: what moved and why nothing breaks — [`MIGRATION-V2-V3.md`](MIGRATION-V2-V3.md)
+- The rules — [`design/CONTRACT.md`](design/CONTRACT.md) · the reasoning — [`design/DECISIONS.md`](design/DECISIONS.md) · the sequence — [`design/ROADMAP.md`](design/ROADMAP.md)
+- Evals and their CI gates — [`../evals/README.md`](../evals/README.md)
+- Engine-side tool mechanics — [`ADDING_TOOLS.md`](ADDING_TOOLS.md) · architecture tour — [`OVERVIEW.md`](OVERVIEW.md)

@@ -16,7 +16,7 @@ import { registerCreatorTools } from "./tools/creator-tools.js";
 import {
   getCachedBootDriftNotice as getCachedNotice,
   setCachedBootDriftNotice,
-} from "../lib/mcp-boot-notice.js";
+} from "./boot-notice.js";
 import { appendMcpLogEvent } from "../core/mcp-log.js";
 import {
   buildBootDriftNotice,

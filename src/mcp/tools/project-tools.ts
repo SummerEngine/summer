@@ -7,7 +7,7 @@ import {
   VERIFICATION_LEVELS,
   buildGameTaskPlan,
 } from "../../core/capabilities/game-task-plan.js";
-import { getCachedBootDriftNotice } from "../../lib/mcp-boot-notice.js";
+import { getCachedBootDriftNotice } from "../boot-notice.js";
 import { getProjectMemorySummary } from "../../project-memory/project-memory.js";
 import { withEngine } from "./with-engine.js";
 

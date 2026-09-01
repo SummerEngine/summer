@@ -2,7 +2,7 @@
 
 import { createRequire } from "node:module";
 import { Command } from "commander";
-import { mcpCommand } from "../commands/mcp.js";
+import { mcpCommand } from "../mcp/command.js";
 import { loginCommand } from "../commands/login.js";
 import { logoutCommand } from "../commands/logout.js";
 import { statusCommand } from "../commands/status.js";

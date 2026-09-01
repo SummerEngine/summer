@@ -5,7 +5,7 @@ import {
   parseScope,
   supportedAgents,
 } from "../installer/agent-config.js";
-import { startMcpServer } from "../mcp/server.js";
+import { startMcpServer } from "./server.js";
 
 export const mcpCommand = new Command("mcp")
   .description("Start the MCP server for AI tool integration (Cursor, Claude Code, etc.)")

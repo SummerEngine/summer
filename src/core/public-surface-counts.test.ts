@@ -25,7 +25,7 @@ function countMcpTools(): number {
 }
 
 function countSkills(): number {
-  return walk(resolve(packageRoot, "skills")).filter(
+  return walk(resolve(packageRoot, "library/skills")).filter(
     (path) => basename(path) === "SKILL.md"
   ).length;
 }
@@ -40,7 +40,7 @@ describe("public setup surface counts", () => {
     ".opencode/INSTALL.md",
     ".opencode/plugins/summer.js",
     ".codex-plugin/plugin.json",
-    "references/mcp-tools-reference.md",
+    "library/references/mcp-tools-reference/mcp-tools-reference.md",
   ];
 
   it("keeps the checked registry totals tied to source inventory", () => {

@@ -1,8 +1,12 @@
 /**
- * Validates that every agent plugin manifest references real, on-disk skills,
- * and that every on-disk skill is registered in the Claude Code manifest.
+ * Validates that every agent plugin manifest references real, on-disk library
+ * skills, and that every on-disk library skill is registered in the Claude
+ * Code manifest.
  *
- * Catches broken-path bugs before they ship. Add a manifest, add a path here.
+ * The manifests are GENERATED from library/ by `npm run generate:registry`
+ * (parity with registry/generated/ is enforced by `generate:registry --check`);
+ * this test guards the applied root manifests directly so a stale or
+ * hand-edited manifest fails the build even without running the compiler.
  */
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -35,6 +39,11 @@ const MANIFESTS: Manifest[] = [
     path: join(repoRoot, ".codex-plugin", "plugin.json"),
     skillsField: [],
   },
+  {
+    name: ".factory-plugin/plugin.json",
+    path: join(repoRoot, ".factory-plugin", "plugin.json"),
+    skillsField: [],
+  },
 ];
 
 function loadSkillsField(manifestPath: string): string[] | string {
@@ -46,21 +55,18 @@ function loadSkillsField(manifestPath: string): string[] | string {
   return json.skills;
 }
 
-function listSkillDirs(skillsRoot: string): string[] {
-  const entries = readdirSync(skillsRoot);
+/** Every library/skills/<slug>/ dir containing a SKILL.md, as manifest paths. */
+function listLibrarySkillDirs(): string[] {
+  const skillsRoot = join(repoRoot, "library", "skills");
   const out: string[] = [];
-  for (const cat of entries) {
-    const catPath = join(skillsRoot, cat);
-    if (!statSync(catPath).isDirectory()) continue;
-    for (const skill of readdirSync(catPath)) {
-      const skillPath = join(catPath, skill);
-      if (!statSync(skillPath).isDirectory()) continue;
-      if (existsSync(join(skillPath, "SKILL.md"))) {
-        out.push(`./skills/${cat}/${skill}/`);
-      }
+  for (const slug of readdirSync(skillsRoot)) {
+    const skillPath = join(skillsRoot, slug);
+    if (!statSync(skillPath).isDirectory()) continue;
+    if (existsSync(join(skillPath, "SKILL.md"))) {
+      out.push(`./library/skills/${slug}/`);
     }
   }
-  return out;
+  return out.sort();
 }
 
 describe("agent plugin manifests", () => {
@@ -74,7 +80,7 @@ describe("agent plugin manifests", () => {
       it("every referenced skill path resolves to a SKILL.md on disk", () => {
         const skills = m.skillsField;
         if (typeof skills === "string") {
-          // Directory pointer mode (e.g. "./skills/")
+          // Directory pointer mode (e.g. "./library/skills/")
           const dir = join(repoRoot, skills);
           expect(existsSync(dir), `${m.name}: skills dir ${skills} missing`).toBe(true);
           return;
@@ -101,9 +107,9 @@ describe("agent plugin manifests", () => {
     });
   }
 
-  describe("skills directory <-> manifest coverage", () => {
-    it("every on-disk skill is listed in .claude-plugin/plugin.json", () => {
-      const onDisk = listSkillDirs(join(repoRoot, "skills"));
+  describe("library/skills <-> manifest coverage", () => {
+    it("every on-disk library skill is listed in .claude-plugin/plugin.json", () => {
+      const onDisk = listLibrarySkillDirs();
       const claudeManifest = JSON.parse(
         readFileSync(join(repoRoot, ".claude-plugin", "plugin.json"), "utf-8")
       ) as { skills: string[] };
@@ -111,7 +117,27 @@ describe("agent plugin manifests", () => {
       const orphans = onDisk.filter((p) => !listed.has(p));
       expect(
         orphans,
-        `On-disk skills missing from .claude-plugin/plugin.json:\n${orphans.join("\n")}`
+        `On-disk library skills missing from .claude-plugin/plugin.json:\n${orphans.join("\n")}`
+      ).toEqual([]);
+    });
+
+    it("every generated-registry skill path exists on disk with a resource.yaml", () => {
+      const registry = JSON.parse(
+        readFileSync(
+          join(repoRoot, "registry", "generated", "skills-registry.json"),
+          "utf-8"
+        )
+      ) as { skills: Array<{ path: string }> };
+      const broken = registry.skills
+        .map((s) => s.path)
+        .filter(
+          (rel) =>
+            !existsSync(join(repoRoot, rel, "SKILL.md")) ||
+            !existsSync(join(repoRoot, rel, "resource.yaml"))
+        );
+      expect(
+        broken,
+        `skills-registry.json entries without SKILL.md + resource.yaml:\n${broken.join("\n")}`
       ).toEqual([]);
     });
   });
@@ -119,8 +145,7 @@ describe("agent plugin manifests", () => {
 
 describe("skill SKILL.md frontmatter", () => {
   it("every shipped SKILL.md has name and Use-when-style description", () => {
-    const skillsRoot = join(repoRoot, "skills");
-    const skillDirs = listSkillDirs(skillsRoot);
+    const skillDirs = listLibrarySkillDirs();
     const failures: string[] = [];
 
     for (const rel of skillDirs) {

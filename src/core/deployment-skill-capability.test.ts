@@ -6,11 +6,11 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(here, "../..");
 const exportSkill = readFileSync(
-  resolve(packageRoot, "skills/deployment/export-and-ship/SKILL.md"),
+  resolve(packageRoot, "library/skills/export-and-ship/SKILL.md"),
   "utf8"
 );
 const remoteDeploySkill = readFileSync(
-  resolve(packageRoot, "skills/deployment/remote-deploy/SKILL.md"),
+  resolve(packageRoot, "library/skills/remote-deploy/SKILL.md"),
   "utf8"
 );
 

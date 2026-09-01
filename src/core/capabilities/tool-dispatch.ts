@@ -1374,6 +1374,9 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     return sendLibraryFeedback({
       reports: args.reports as LibraryFeedbackReport[],
       engine_version: engineVersion,
+      // Self-reported model id; "unknown" is the documented CLI default when
+      // the calling agent does not identify itself.
+      agent_model: optStr(args, "agent_model") ?? "unknown",
     });
   }),
 ];

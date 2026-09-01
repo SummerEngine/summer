@@ -1,0 +1,24 @@
+id: skill/play
+kind: skill
+version: 1.0.0
+summary: Run the project in Summer Engine, wait briefly, then report what's happening — clean run, errors, or warnings.
+use_when:
+  - the user says 'play', 'run it', 'test it', 'let me see it', or 'start the game'
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - project
+  modalities:
+    - project
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/debug
+source: official
+license: MIT
+status: stable
+aliases:
+  - skills/scene-and-project/play

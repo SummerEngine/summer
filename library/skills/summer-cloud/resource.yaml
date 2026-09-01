@@ -1,0 +1,22 @@
+id: skill/summer-cloud
+kind: skill
+version: 1.0.0
+summary: Sync, back up, restore, and share Summer projects via Summer Cloud — move machines, share exact bytes, checkpoint before risky bulk operations.
+use_when:
+  - syncing a project, moving it to another machine, sharing exact bytes with a collaborator, backing up big generated assets, or restoring an earlier version
+  - the user wants a safety net before a risky bulk operation
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - project
+  modalities:
+    - project
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - skills/scene-and-project/summer-cloud

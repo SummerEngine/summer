@@ -1,0 +1,26 @@
+id: skill/export-and-ship
+kind: skill
+version: 1.0.0
+summary: "Assess and prepare a game export: inventory installed templates and targets, validate release assets and config, produce supported builds after approval."
+use_when:
+  - the user wants to assess or prepare a Summer game export — Steam, itch, HTML5, iOS, Android targets as available in the installed build
+do_not_use_when:
+  - publishing, uploading, hosting, or submitting a game — this skill only produces local builds
+facets:
+  lifecycle:
+    - launch
+  domains:
+    - deployment
+  modalities:
+    - project
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/debug
+    - skill/tune-performance
+source: official
+license: MIT
+status: stable
+aliases:
+  - skills/deployment/export-and-ship

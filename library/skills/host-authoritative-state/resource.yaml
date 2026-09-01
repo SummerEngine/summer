@@ -1,0 +1,26 @@
+id: skill/host-authoritative-state
+kind: skill
+version: 1.0.0
+summary: Design the state layer of a multiplayer game — what the host owns, how clients request changes, and how the host validates and broadcasts.
+use_when:
+  - "designing the state layer of a multiplayer Summer game: host ownership, client change requests, host validation and broadcast"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - multiplayer
+    - networking
+  modalities:
+    - scripts
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/peer-to-peer-multiplayer
+    - skill/setup-multiplayer
+source: official
+license: MIT
+status: stable
+aliases:
+  - skills/multiplayer-and-networking/host-authoritative-state

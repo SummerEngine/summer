@@ -32,3 +32,6 @@ license: MIT
 status: stable
 aliases:
   - skills/workflow/using-summer
+lint_exceptions:
+  - install-command
+lint_exception_reason: The body documents `npx clear-npx-cache`, Summer's own documented fix for machines whose stale npx cache keeps serving an old summer-engine CLI; it is a user-run recovery step in the body, not agent-autonomous package installation.

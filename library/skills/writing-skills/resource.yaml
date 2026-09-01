@@ -21,3 +21,6 @@ license: MIT
 status: stable
 aliases:
   - skills/workflow/writing-skills
+lint_exceptions:
+  - url-allowlist
+lint_exception_reason: Links to platform.claude.com — Anthropic's canonical, read-only skill-authoring best-practices documentation, replacing a previously vendored copy of the same doc.

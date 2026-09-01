@@ -24,3 +24,6 @@ license: MIT
 status: stable
 aliases:
   - skills/deployment/export-and-ship
+lint_exceptions:
+  - url-allowlist
+lint_exception_reason: godotsteam.com is a read-only documentation link for the GodotSteam integration the export flow references.

@@ -40,7 +40,16 @@ const INSTALL_PATTERNS: Array<{ re: RegExp; label: string }> = [
   { re: /\bwget\s/i, label: "wget" },
 ];
 
-const NPX_RE = /\bnpx\s+(?:-y\s+|--yes\s+)?([@a-z0-9][@a-z0-9._\/-]*)/gi;
+/**
+ * npx execution of a third-party package. Group 1 = a forcing flag (-y/--yes),
+ * group 2 = the target token. Only flagged when the token is a plausible
+ * package name — scoped (@scope/name) or containing a hyphen, dot, slash, or
+ * digit — or when the forcing flag makes it an unambiguous exec regardless.
+ * Bare dictionary words after "npx" in prose ("npx to resolve", "old npx
+ * package material") are not commands and must not fire this rule.
+ */
+const NPX_RE = /\bnpx\s+(-y\s+|--yes\s+)?([@a-z0-9][@a-z0-9._\/-]*)/gi;
+const NPX_PACKAGE_LIKE_RE = /[@/.\d-]/;
 
 const CREDENTIAL_PATTERNS: Array<{ re: RegExp; label: string }> = [
   { re: /~\/\.ssh/, label: "~/.ssh" },
@@ -85,6 +94,11 @@ function urlAllowed(raw: string, allowed: AllowedHost[]): boolean {
     return false; // unparseable URL-looking string: fail closed
   }
   const host = url.hostname.toLowerCase();
+  // Loopback URLs (any port) are always allowed: skills legitimately document
+  // bundled local servers (e.g. a preview server the skill itself starts).
+  // A loopback URL cannot exfiltrate data or fetch remote content — it only
+  // reaches software already running on the user's own machine.
+  if (host === "localhost" || host === "127.0.0.1") return true;
   const path = url.pathname.toLowerCase();
   return allowed.some((a) => {
     if (host !== a.host) return false;
@@ -118,10 +132,11 @@ export function lintText(text: string, location: string, allowed: AllowedHost[])
   }
 
   for (const match of text.matchAll(NPX_RE)) {
-    const pkg = match[1].toLowerCase();
-    if (pkg !== "summer-engine" && !pkg.startsWith("summer-engine@")) {
-      findings.push({ rule: "install-command", location, message: `npx targeting non-summer-engine package: ${match[1]}` });
-    }
+    const forced = match[1] !== undefined;
+    const pkg = match[2].toLowerCase();
+    if (pkg === "summer-engine" || pkg.startsWith("summer-engine@")) continue;
+    if (!forced && !NPX_PACKAGE_LIKE_RE.test(pkg)) continue; // prose, not a command
+    findings.push({ rule: "install-command", location, message: `npx targeting non-summer-engine package: ${match[2]}` });
   }
 
   for (const { re, label } of CREDENTIAL_PATTERNS) {

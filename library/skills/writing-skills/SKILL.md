@@ -17,7 +17,7 @@ You write test cases (pressure scenarios with subagents), watch them fail (basel
 
 **REQUIRED BACKGROUND:** This skill adapts the RED-GREEN-REFACTOR cycle to documentation. The cycle: write the test first and watch it FAIL for the reason you expect (red), make the smallest change that passes it (green), then clean up without changing behaviour (refactor). A test you never saw fail proves nothing.
 
-**Official guidance:** For Anthropic's official skill authoring best practices, see anthropic-best-practices.md. This document provides additional patterns and guidelines that complement the TDD-focused approach in this skill.
+**Official guidance:** For Anthropic's official skill authoring best practices, see https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices. That document provides additional patterns and guidelines that complement the TDD-focused approach in this skill.
 
 ## What is a Skill?
 

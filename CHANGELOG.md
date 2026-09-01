@@ -2,6 +2,12 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [2.8.2] — 2026-09-01 — "Windows setup works out of the box"
+
+### Fixed
+- Windows: generated MCP configs now launch the server via `cmd.exe /c npx ...` instead of `command: "npx"`. `npx` is a `.cmd`/`.ps1` shim on Windows and Node's `spawn()` does no PATHEXT resolution, so agent hosts that spawn the command directly (Claude Code, Kimi Code, Cursor, ...) failed with `spawn npx ENOENT` even though npx worked in a terminal. Reported by Imitater967 — thank you. Re-run `npx -y summer-engine@latest setup <agent> --yes --force` on Windows to rewrite the config; docs for manual configs carry the same note.
+- Six shipped skills (`host-authoritative-state`, `setup-multiplayer`, `scene-composition`, `make-game`, `ui-basics`, `mcpupdate`) had unquoted colons in their YAML frontmatter descriptions — strict YAML parsers rejected the frontmatter and skipped the skill entirely. Descriptions are now quoted; all shipped skill frontmatter is YAML-validated.
+
 ## [2.8.1] — 2026-08-18 — "Scene mutations work again on engine 0.5.60+"
 
 ### Added

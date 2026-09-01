@@ -53,6 +53,8 @@ Add Summer to `.cursor/mcp.json`:
 }
 ```
 
+> **Windows:** use `"command": "cmd.exe", "args": ["/c", "npx", "-y", "summer-engine@latest", "mcp"]` instead — `npx` is a `.cmd` shim on Windows and hosts that spawn it directly fail with ENOENT. `summer setup` writes the right form automatically.
+
 Keep the engine open on the project:
 
 ```bash

@@ -1,6 +1,6 @@
 ---
 name: mcpupdate
-description: Use when improving or maintaining the Summer Engine CLI, its MCP tools (summer_* / "ops"), or its prompt-engineering skills based on a real working session. Examples: the user types /mcpupdate, says "mcpskillify this", "log this as a skill/example", "this <feature> feels great, capture it", or notes that an agent went down a bad path with the Summer tools/skills and the prompts should be fixed. Works from ANY chat, not just inside the summer-cli repo.
+description: "Use when improving or maintaining the Summer Engine CLI, its MCP tools (summer_* / \"ops\"), or its prompt-engineering skills based on a real working session. Examples: the user types /mcpupdate, says \"mcpskillify this\", \"log this as a skill/example\", \"this <feature> feels great, capture it\", or notes that an agent went down a bad path with the Summer tools/skills and the prompts should be fixed. Works from ANY chat, not just inside the summer-cli repo."
 ---
 
 # mcpupdate: turn a session into improvements to the Summer CLI / MCP / skills

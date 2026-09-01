@@ -1,6 +1,6 @@
 ---
 name: setup-multiplayer
-description: Use when the user wants to add multiplayer to an existing Summer game: co-op LAN, co-op online, competitive PvP, or a lobby. Start with Summer Engine's high-level MultiplayerAPI plus MultiplayerSpawner and MultiplayerSynchronizer; use custom networking only with a justified reason. Walks peer authority, RPC patterns, replication, and irreversible architecture decisions. It does not claim that managed matchmaking or hosting is live. Trigger on "multiplayer", "co-op", "PvP", "online", "netcode", "rollback", "MultiplayerAPI", "host migration", "matchmaking".
+description: "Use when the user wants to add multiplayer to an existing Summer game: co-op LAN, co-op online, competitive PvP, or a lobby. Start with Summer Engine's high-level MultiplayerAPI plus MultiplayerSpawner and MultiplayerSynchronizer; use custom networking only with a justified reason. Walks peer authority, RPC patterns, replication, and irreversible architecture decisions. It does not claim that managed matchmaking or hosting is live. Trigger on \"multiplayer\", \"co-op\", \"PvP\", \"online\", \"netcode\", \"rollback\", \"MultiplayerAPI\", \"host migration\", \"matchmaking\"."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: multiplayer-and-networking

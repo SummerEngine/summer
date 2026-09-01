@@ -1,6 +1,6 @@
 ---
 name: make-game
-description: Use when the user says "make me a game", "build me a game", "I want to make a [genre] game", "let's build something" — the orchestration spine that runs the full game-dev pipeline: brainstorm → plan → scaffold → build core mechanics → art direction → audio → polish/VFX → verify → ship. Delegates to specialist skills with explicit checkpoints between phases. Trigger on "make a game", "build me a game", "create a new game", "make me a game", "let's build a game", "I want to build [game shape]".
+description: "Use when the user says \"make me a game\", \"build me a game\", \"I want to make a [genre] game\", \"let's build something\" \u2014 the orchestration spine that runs the full game-dev pipeline: brainstorm \u2192 plan \u2192 scaffold \u2192 build core mechanics \u2192 art direction \u2192 audio \u2192 polish/VFX \u2192 verify \u2192 ship. Delegates to specialist skills with explicit checkpoints between phases. Trigger on \"make a game\", \"build me a game\", \"create a new game\", \"make me a game\", \"let's build a game\", \"I want to build [game shape]\"."
 license: MIT
 compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode]
 category: scene-and-project

@@ -1,0 +1,41 @@
+id: tool/cloud-status
+kind: tool
+version: 1.0.0
+summary: "Show what a cloud sync would move: file counts, queued push and pull paths, and waiting
+  conflict sets."
+use_when:
+  - before every cloud push or pull, to report delete and change counts to the user
+facets:
+  lifecycle:
+    - build
+  domains:
+    - cloud
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_cloud_status
+implementation:
+  module: src/core/capabilities/cloud/sync.ts
+  export: cloudStatus
+surfaces:
+  mcp:
+    tool_name: summer_cloud_status
+    remote: true
+  cli:
+    command: summer cloud status
+input_schema:
+  type: object
+  properties:
+    project:
+      type: string
+      description: Project root path. Defaults to the current working directory.
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false

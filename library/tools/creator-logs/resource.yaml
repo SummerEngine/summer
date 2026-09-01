@@ -1,0 +1,49 @@
+id: tool/creator-logs
+kind: tool
+version: 1.0.0
+summary: Read creator runtime logs for a project or release; returns the exact recovery action when
+  a route or token scope is missing.
+use_when:
+  - investigating a live release's runtime behavior
+facets:
+  lifecycle:
+    - launch
+  domains:
+    - creator
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_creator_logs
+implementation:
+  module: src/core/capabilities/creator.ts
+  export: readCreatorLogs
+surfaces:
+  mcp:
+    tool_name: summer_creator_logs
+    remote: true
+  cli:
+    command: summer logs
+input_schema:
+  type: object
+  properties:
+    projectId:
+      type: string
+      description: Creator project ID. Defaults to ~/.summer/config.json.
+    releaseId:
+      type: string
+      description: Optional release ID.
+    limit:
+      type: integer
+      minimum: 1
+      maximum: 1000
+      default: 100
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false

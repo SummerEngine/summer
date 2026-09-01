@@ -1,0 +1,40 @@
+id: tool/play
+kind: tool
+version: 1.0.0
+summary: Start the game (main scene or a specific scene) inside Summer Engine's viewport.
+use_when:
+  - runtime verification after edits
+  - testing one level or UI screen in isolation
+facets:
+  lifecycle:
+    - build
+  domains:
+    - debug
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_play
+implementation:
+  module: src/mcp/tools/debug-tools.ts
+  export: registerDebugTools
+surfaces:
+  mcp:
+    tool_name: summer_play
+input_schema:
+  type: object
+  properties:
+    scene:
+      type: string
+      description: Scene to run instead of main scene, e.g. 'res://levels/test_level.tscn'
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - is-running

@@ -1,0 +1,39 @@
+id: tool/inspect-resource
+kind: tool
+version: 1.0.0
+summary: Get all properties of a resource such as a material, mesh, shape, or environment.
+use_when:
+  - reading sub-properties that the node inspector only names
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scene
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_inspect_resource
+implementation:
+  module: src/mcp/tools/scene-tools.ts
+  export: registerSceneTools
+surfaces:
+  mcp:
+    tool_name: summer_inspect_resource
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: Resource path, e.g. 'res://materials/ground.tres' or 'res://models/player.glb'
+  required:
+    - path
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

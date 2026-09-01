@@ -1,0 +1,82 @@
+id: tool/screenshot
+kind: tool
+version: 1.0.0
+summary: Capture a frame from the editor viewport, an offscreen scene render, or the running game,
+  returned as an actual image.
+use_when:
+  - visually verifying layout, scale, framing, or runtime state
+do_not_use_when:
+  - verifying lighting or environment-dependent materials from the scene target (boot the game
+    instead)
+facets:
+  lifecycle:
+    - build
+  domains:
+    - visual
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_screenshot
+implementation:
+  module: src/mcp/tools/visual-tools.ts
+  export: registerVisualTools
+surfaces:
+  mcp:
+    tool_name: summer_screenshot
+input_schema:
+  type: object
+  properties:
+    target:
+      type: string
+      enum:
+        - viewport
+        - scene
+        - game
+      default: viewport
+      description: '"viewport" = editor current view (default), "scene" = offscreen render of a scene
+        file, "game" = running game frame'
+    scenePath:
+      type: string
+      description: target:"scene" only. Full scene path, e.g. "res://main.tscn". Omit to render the
+        currently-open scene.
+    framing:
+      type: string
+      enum:
+        - auto
+        - iso
+        - top
+        - front
+        - back
+        - left
+        - right
+      description: 'target:"scene" only, 3D scenes. Camera direction preset: "iso" = 3/4 diagonal view,
+        "top" = straight down, "front" = camera at +Z, "back" = camera at -Z, "left" = camera at -X,
+        "right" = camera at +X. "auto" (default) is an alias of "iso". The result reports the
+        resolved framing.'
+    size:
+      type: array
+      items:
+        type: integer
+        exclusiveMinimum: 0
+      minItems: 2
+      maxItems: 2
+      description: target:"scene" only. Output image [width, height] in pixels.
+    nodePath:
+      type: string
+      description: target:"scene" only. Node path relative to the scene root (e.g. "Player/Mesh") to frame
+        INSTEAD of the whole scene — the camera fits that node's combined bounds (3D visual AABBs or
+        2D rects, children included). A bare unique name is also found recursively. Fails with
+        failure_reason "node_not_found" when the path does not resolve (no silent whole-scene
+        fallback).
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - frame-captured

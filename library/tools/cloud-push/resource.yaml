@@ -1,0 +1,64 @@
+id: tool/cloud-push
+kind: tool
+version: 1.0.0
+summary: Upload local project changes to Summer Cloud as a new restorable version; large deletions
+  are gated behind explicit confirmation.
+use_when:
+  - backing up big assets or snapshotting before a risky bulk operation
+  - moving a project to another machine
+do_not_use_when:
+  - cloud status has not been run and its delete counts shown to the user
+facets:
+  lifecycle:
+    - build
+  domains:
+    - cloud
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_cloud_push
+implementation:
+  module: src/core/capabilities/cloud/sync.ts
+  export: cloudPush
+surfaces:
+  mcp:
+    tool_name: summer_cloud_push
+    remote: true
+  cli:
+    command: summer cloud push
+input_schema:
+  type: object
+  properties:
+    project:
+      type: string
+      description: Project root path. Defaults to the current working directory.
+    confirmDeletes:
+      type: boolean
+      default: false
+      description: Gate for large cloud deletions. Required when a push would delete more than 10 files,
+        at least 20% of the tracked tree, or the entire tree. Surface the delete count from
+        summer_cloud_status to the user before setting this; never set it blindly.
+    bootstrap:
+      type: string
+      enum:
+        - keep-cloud
+        - keep-local
+        - merge
+      description: "No-base bootstrap choice when local and cloud both have files: keep-cloud, keep-local,
+        or merge. Present the choice to the user."
+    adoptPath:
+      type: boolean
+      description: Accept that the project folder moved and update the recorded path. Only set after
+        confirming the move is intentional, not a copy.
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false
+evidence_checks:
+  - sync-receipt

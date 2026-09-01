@@ -131,6 +131,26 @@ export const SKILL_REGISTRY = [
       "Build a small reusable player scene, instantiate it in a main scene, and save both scenes through Summer tools.",
   },
   {
+    name: "world-building-3d",
+    category: "scene-and-project",
+    public: true,
+    clients: ALL_CLIENTS,
+    recommended: true,
+    requiresMcpTools: [
+      "summer_get_scene_tree",
+      "summer_inspect_node",
+      "summer_test_placement",
+      "summer_snap_to_surface",
+      "summer_align_distribute_3d",
+      "summer_frame_camera",
+      "summer_camera_visibility",
+      "summer_navigation_probe",
+      "summer_screenshot",
+    ],
+    testScenario:
+      "Place props on mixed supports, align a group, frame the result, and verify visibility and navigation with bounded spatial evidence.",
+  },
+  {
     name: "summer-cloud",
     category: "scene-and-project",
     public: true,

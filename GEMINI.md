@@ -15,7 +15,7 @@ The single most important skill to know is `summer:using-summer` — it explains
 ## Skill priority
 
 1. **Process skills first**: `brainstorm-game`, `debug`, `play`. These determine HOW.
-2. **Discipline skills second**: `gdscript-patterns`, `scene-composition`, `art-direction`, `audio-direction`. These shape content.
+2. **Discipline skills second**: `gdscript-patterns`, `scene-composition`, `world-building-3d`, `art-direction`, `audio-direction`. These shape content.
 3. **Build skills third**: `fps-controller`, `design-mechanic`, `design-level`, `setup-multiplayer`, `vfx`, `tune-performance`, `export-and-ship`.
 
 ## MCP tools (when the project-matched local editor is running)
@@ -27,6 +27,7 @@ The `summer-engine` MCP server exposes a focused tool registry. The most importa
 - **Diagnostics**: `summer_create_debug_report`, `summer_get_script_errors` (cheapest), `summer_get_diagnostics`, `summer_get_console`, `summer_get_debugger_errors`, `summer_get_debugger_warnings`.
 - **Run game**: `summer_play`, `summer_stop`, `summer_is_running`.
 - **Visual**: `summer_screenshot` (capture the viewport or running game as an image you can see).
+- **Spatial layout**: `summer_test_placement`, `summer_snap_to_surface`, `summer_align_distribute_3d`, `summer_frame_camera`, `summer_camera_visibility`, `summer_navigation_probe`.
 - **Project**: `summer_get_project_context`, `summer_open_main_scene`, `summer_project_setting`, `summer_input_map_bind`.
 - **Files**: `summer_read_file`, `summer_write_file`, `summer_replace_text` (identity-bound, create-only or sha256-guarded mutations).
 - **Assets**: `summer_search_assets`, `summer_import_asset`, `summer_import_from_url`, `summer_generate_image`, `summer_generate_3d`, `summer_generate_audio`, `summer_generate_video`, `summer_check_job`.

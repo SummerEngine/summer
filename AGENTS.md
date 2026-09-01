@@ -20,7 +20,7 @@ This file is for any AI agent that loads context from `AGENTS.md` (Codex CLI, Fa
 ## Skill priority
 
 - **Process** (`brainstorm-game`, `debug`, `play`) → how to approach.
-- **Discipline** (`gdscript-patterns`, `scene-composition`, `art-direction`) → how to shape it.
+- **Discipline** (`gdscript-patterns`, `scene-composition`, `world-building-3d`, `art-direction`) → how to shape it.
 - **Build** (`fps-controller`, `design-mechanic`, `design-level`, `setup-multiplayer`, `vfx`, `tune-performance`, `export-and-ship`) → produce the artifact.
 
 ## MCP tool palette (project-matched local editor)
@@ -31,6 +31,7 @@ The current MCP registry is grouped into these categories:
 - Diagnostics: `summer_create_debug_report`, `summer_get_script_errors`, `summer_get_diagnostics`, `summer_get_console`, `summer_clear_console`, `summer_get_debugger_errors`, `summer_get_debugger_warnings`.
 - Runtime: `summer_play`, `summer_stop`, `summer_is_running`.
 - Visual: `summer_screenshot` (capture the editor viewport or running game as an image to verify it).
+- Spatial layout: `summer_test_placement`, `summer_snap_to_surface`, `summer_align_distribute_3d`, `summer_frame_camera`, `summer_camera_visibility`, `summer_navigation_probe`.
 - Project: `summer_get_project_context`, `summer_open_main_scene`, `summer_project_setting`, `summer_input_map_bind`, `summer_get_agent_playbook`.
 - Files: `summer_read_file`, `summer_write_file`, `summer_replace_text` (identity-bound; create-only or sha256-guarded writes).
 - Assets: `summer_search_assets`, `summer_list_my_assets`, `summer_get_asset`, `summer_get_asset_download_url`, `summer_import_asset`, `summer_import_asset_by_id`, `summer_import_from_url`, `summer_import_from_url_batch`.

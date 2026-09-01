@@ -343,7 +343,7 @@ Ask the user to play only for what a probe cannot hold an opinion about: whether
 
 1. **using-summer** loads on session start. Sets workflow priority and the red-flag list.
 2. **brainstorm-game** scopes a new project. One question, one page, one direction.
-3. **scene-composition** picks the right hierarchy before any node lands.
+3. **scene-composition** picks the right hierarchy before any node lands; **world-building-3d** places, grounds, spaces, frames, and validates the resulting 3D scene.
 4. **fps-controller / design-mechanic / design-level / setup-multiplayer / vfx** produce the artifact.
 5. **gdscript-patterns** guides every `.gd` write.
 6. **play** runs the game and reports clean or broken.
@@ -360,7 +360,7 @@ The skill bundle replaces "agent flailing through tutorials" with measurable cra
 
 **Process**: `using-summer`, `brainstorm-game`, `debug`, `play`
 
-**Project setup**: `new-project`, `browse-templates`, `make-game`, `scene-composition`
+**Project setup**: `new-project`, `browse-templates`, `make-game`, `scene-composition`, `world-building-3d`
 
 **Build**: `fps-controller`, `design-mechanic`, `design-level`, `design-npc`
 

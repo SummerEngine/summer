@@ -27,8 +27,12 @@ LINES=()
 # Line 1: Summer ready + skill count
 SKILL_COUNT=""
 if command -v summer >/dev/null 2>&1; then
-    # `summer skills count` is best-effort; ignore failure
-    SKILL_COUNT=$(summer skills count 2>/dev/null | grep -oE '[0-9]+' | head -1)
+    # Count skill rows in `summer skills list` output (two-space-indented
+    # lines); best-effort — drop the count gracefully on any failure.
+    SKILL_COUNT=$(summer skills list 2>/dev/null | grep -cE '^  [a-z0-9]')
+    case "$SKILL_COUNT" in
+        ''|0|*[!0-9]*) SKILL_COUNT="" ;;
+    esac
 fi
 if [ -n "$SKILL_COUNT" ]; then
     LINES+=("Summer ready. ${SKILL_COUNT} skills.")

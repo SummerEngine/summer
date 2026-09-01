@@ -22,6 +22,7 @@ related:
 source: official
 license: MIT
 status: stable
+recommended: true
 aliases:
   - skills/deployment/export-and-ship
 lint_exceptions:

@@ -25,6 +25,7 @@ related:
 source: official
 license: MIT
 status: stable
+recommended: false
 aliases:
   - skills/visual-effects/recipes/hit-spark
   - hit-spark

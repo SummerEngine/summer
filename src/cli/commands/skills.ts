@@ -15,7 +15,8 @@ import { homedir, platform } from "os";
 import { createRequire } from "node:module";
 import {
   AGENT_CLIENTS,
-  SKILL_REGISTRY,
+  getSkillRegistry,
+  resolveSkillDir,
   type AgentClient,
   type SkillRegistryEntry,
 } from "../../core/skills-registry.js";
@@ -29,9 +30,10 @@ const { version: cliVersion } = requireFromHere("../../../package.json") as {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// Resolve skills dir: from dist/cli/commands/skills.js -> ../../../skills
-const skillsDir = join(__dirname, "..", "..", "..", "skills");
-// Resolve commands dir: same parent. Used by Claude Code installs to also copy
+// Skill files live in library/skills/<slug>/ and are resolved through the
+// generated registry (registry/generated/skills-registry.json).
+// Resolve commands dir: from dist/cli/commands/skills.js -> ../../../commands.
+// Used by Claude Code installs to also copy
 // slash commands (e.g. /gameskill) to ~/.claude/commands/. Other agents don't
 // have an equivalent today, so the copy is gated to claude-code.
 const commandsDir = join(__dirname, "..", "..", "..", "commands");
@@ -39,15 +41,7 @@ const commandsDir = join(__dirname, "..", "..", "..", "commands");
 const SKILL_SCOPES = ["user", "project"] as const;
 type SkillScope = (typeof SKILL_SCOPES)[number];
 
-interface SkillMeta extends SkillRegistryEntry {
-  name: string;
-  description: string;
-}
-
-interface ParsedSkillFrontmatter {
-  name: string;
-  description: string;
-}
+type SkillMeta = SkillRegistryEntry;
 
 interface InstallOptions {
   all?: boolean;
@@ -73,35 +67,9 @@ interface InstallResult {
 }
 
 function getBuiltinSkills(): SkillMeta[] {
-  const skills: SkillMeta[] = [];
-  for (const entry of SKILL_REGISTRY) {
-    if (!entry.public) continue;
-    const skillPath = join(skillsDir, entry.category, entry.name, "SKILL.md");
-    if (!existsSync(skillPath)) continue;
-    const frontmatter = parseSkillFrontmatter(skillPath);
-    if (!frontmatter) continue;
-    skills.push({
-      ...entry,
-      name: entry.name,
-      description: frontmatter.description,
-    });
-  }
-  return skills;
-}
-
-function parseSkillFrontmatter(skillPath: string): ParsedSkillFrontmatter | null {
-  try {
-    const content = readFileSync(skillPath, "utf-8");
-    const match = content.match(/^---\s*\n([\s\S]*?)\n---/);
-    if (!match) return null;
-    const front = match[1];
-    const name = front.match(/^name:\s*(.+)$/m)?.[1]?.trim();
-    const description = front.match(/^description:\s*(.+)$/m)?.[1]?.trim();
-    if (!name || !description) return null;
-    return { name, description };
-  } catch {
-    return null;
-  }
+  return getSkillRegistry().filter((entry) =>
+    existsSync(join(resolveSkillDir(entry), "SKILL.md"))
+  );
 }
 
 function getSkillMeta(name: string): SkillMeta | null {
@@ -109,18 +77,17 @@ function getSkillMeta(name: string): SkillMeta | null {
 }
 
 function getSkillPath(name: string): string | null {
-  const entry = SKILL_REGISTRY.find((s) => s.name === name);
+  const entry = getSkillRegistry().find((s) => s.name === name);
   if (!entry) return null;
-  const path = join(skillsDir, entry.category, entry.name);
+  const path = resolveSkillDir(entry);
   if (!existsSync(path) || !existsSync(join(path, "SKILL.md"))) return null;
   return path;
 }
 
 function getSkillBody(name: string): string {
-  const entry = SKILL_REGISTRY.find((s) => s.name === name);
-  if (!entry) throw new Error(`Unknown skill: ${name}`);
-  const skillPath = join(skillsDir, entry.category, entry.name, "SKILL.md");
-  const content = readFileSync(skillPath, "utf-8");
+  const path = getSkillPath(name);
+  if (!path) throw new Error(`Unknown skill: ${name}`);
+  const content = readFileSync(join(path, "SKILL.md"), "utf-8");
   return content.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, "").trim();
 }
 
@@ -362,10 +329,7 @@ function installSkill(
   location: InstallLocation,
   options: { force: boolean }
 ): InstallResult {
-  if (!skill.clients.includes(agent)) {
-    die(`${skill.name} does not support ${agentLabel(agent)}.`);
-  }
-
+  // Every library skill supports every agent client (registry clients: "all").
   switch (location.kind) {
     case "skill-dir":
       return copySkillDirectory(skill, location.path, options);
@@ -531,7 +495,7 @@ skillsCommand
     for (const s of skills) {
       const badge = s.recommended ? "recommended" : "optional";
       console.log(
-        `  ${s.name.padEnd(20)} ${s.category.padEnd(10)} ${badge.padEnd(11)} ${s.description}`
+        `  ${s.name.padEnd(24)} ${badge.padEnd(11)} ${s.description}`
       );
     }
     console.log("\nInstall recommended: summer skills install --recommended");
@@ -662,13 +626,9 @@ skillsCommand
     console.log(`\n${meta.name}`);
     console.log("-".repeat(40));
     console.log(meta.description);
-    console.log(`Category: ${meta.category}`);
+    console.log(`Id: ${meta.id}`);
     console.log(`Recommended: ${meta.recommended ? "yes" : "no"}`);
-    console.log(`Agents: ${meta.clients.join(", ")}`);
-    console.log(
-      `MCP tools: ${meta.requiresMcpTools.length > 0 ? meta.requiresMcpTools.join(", ") : "none"}`
-    );
-    console.log(`Test scenario: ${meta.testScenario}`);
+    console.log(`Agents: ${AGENT_CLIENTS.join(", ")}`);
     console.log("\n" + "-".repeat(40));
     const body = content.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, "");
     const preview = body.split("\n").slice(0, 30).join("\n");

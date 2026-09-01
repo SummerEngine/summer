@@ -1,4 +1,4 @@
-import { SKILL_REGISTRY, type SkillRegistryEntry } from "../skills-registry.js";
+import { getSkillRegistry, type SkillRegistryEntry } from "../skills-registry.js";
 
 export const GAME_TASK_MODES = [
   "auto",
@@ -46,11 +46,10 @@ export interface GameTaskPlanOptions {
 }
 
 export interface SkillRoute {
+  /** Library resource id, e.g. "skill/make-game". */
   id: string;
   name: string;
-  category: string;
   why: string;
-  requiresMcpTools: readonly string[];
 }
 
 export interface GameTaskPlan {
@@ -76,7 +75,7 @@ export interface GameTaskPlan {
 type WeightedSkill = { name: string; why: string; weight: number };
 
 const SKILL_BY_NAME: Map<string, SkillRegistryEntry> = new Map(
-  SKILL_REGISTRY.map((skill) => [skill.name, skill])
+  getSkillRegistry().map((skill) => [skill.name, skill])
 );
 
 function includesAny(text: string, words: string[]): boolean {
@@ -305,11 +304,9 @@ function inferSkills(mode: GameTaskPlan["mode"], target: GameTaskPlan["target"],
     .map((route) => {
       const skill = SKILL_BY_NAME.get(route.name) as SkillRegistryEntry;
       return {
-        id: `summer:${skill.category}/${skill.name}`,
+        id: skill.id,
         name: skill.name,
-        category: skill.category,
         why: route.why,
-        requiresMcpTools: skill.requiresMcpTools,
       };
     });
 }

@@ -4,7 +4,11 @@
   "type": "object",
   "allOf": [{ "$ref": "resource.schema.json" }],
   "properties": {
-    "kind": { "const": "skill" }
+    "kind": { "const": "skill" },
+    "recommended": {
+      "type": "boolean",
+      "description": "Installed by `summer skills install --recommended` (and `summer setup`). Omitted means false."
+    }
   },
   "unevaluatedProperties": false
 }

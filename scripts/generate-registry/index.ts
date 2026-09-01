@@ -247,6 +247,7 @@ function buildSkillsRegistry(resources: LoadedResource[]): string {
         name,
         description,
         clients: "all",
+        recommended: res.data.recommended === true,
         path: `library/skills/${res.slug}/`,
       };
     });

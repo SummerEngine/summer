@@ -17,5 +17,6 @@ compatibility:
 source: official
 license: MIT
 status: stable
+recommended: false
 aliases:
   - skills/audio/ambient-bed

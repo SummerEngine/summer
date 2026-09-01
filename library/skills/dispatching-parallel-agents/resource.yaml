@@ -16,5 +16,6 @@ compatibility:
 source: official
 license: MIT
 status: stable
+recommended: false
 aliases:
   - skills/workflow/dispatching-parallel-agents

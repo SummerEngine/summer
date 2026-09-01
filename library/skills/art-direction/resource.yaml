@@ -22,5 +22,6 @@ related:
 source: official
 license: MIT
 status: stable
+recommended: true
 aliases:
   - skills/rendering-and-lighting/art-direction

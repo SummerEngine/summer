@@ -39,7 +39,7 @@ Implications:
 
 - **A C++ change in `SummerEngine/modules/1summer_engine/` or `SummerEngine/editor/` reaches everyone** (CLI MCP, web app, future tools). Most powerful, also highest blast radius.
 - **A TypeScript change in `tools/summer-cli/src/mcp/`** only changes what the CLI exposes. The web app has its own TypeScript layer in `PublicSummerEngine/src/lib/bridge/` — same engine endpoints, different glue. Don't assume your CLI tool change is web-app-aware.
-- **A skill update in `tools/summer-cli/skills/`** affects every agent that runs `summer skills install`. The web app's skill store is separate (`PublicSummerEngine/src/lib/ai/skills/bundled/`) and currently uses a different format (template wizards, not Markdown discipline guides). Don't try to mirror skills there blindly.
+- **A skill update in `library/skills/`** affects every agent that runs `summer skills install`. The web app's skill store is separate (`PublicSummerEngine/src/lib/ai/skills/bundled/`) and currently uses a different format (template wizards, not Markdown discipline guides). Don't try to mirror skills there blindly.
 
 When you change an engine endpoint's response shape (add fields, rename fields, change semantics):
 
@@ -52,9 +52,9 @@ Engine binary changes ship via a rebuild + new release. The user has to pull the
 
 ## The four skill stores (probe each before doing anything)
 
-1. **Canonical source** — `~/development/SummerEngine/tools/summer-cli/skills/`
-   - Single source of truth. Domains: `ui-and-ux`, `gameplay-mechanics`, `character-controllers`, `scripting-patterns`, `visual-effects`, `debugging`, `rendering-and-lighting`, `scene-and-project`, `level-design`, `audio`, `ai-and-npcs`, `asset-pipeline`, `performance`, `deployment`, `multiplayer-and-networking`, plus `workflow` for process skills.
-   - The `skills:` array in `.claude-plugin/plugin.json` is the registry. Sibling shared docs live at top-level `references/`; test specs at top-level `tests/`.
+1. **Canonical source** — `library/skills/<slug>/` in the summer-engine agent repo (flat slugs, no category folders).
+   - Single source of truth. Each skill is a directory with `resource.yaml` (id, summary, facets, recommended) + `SKILL.md`.
+   - `registry/generated/skills-registry.json` and the `skills:` arrays in `.claude-plugin/plugin.json` (+ sibling manifests) are GENERATED from the library — run `npm run generate:registry` after editing; never hand-edit them. Shared agent-facing docs live in `library/references/`; test specs at top-level `tests/`.
 2. **Claude auto-discovery** — `~/.claude/skills/` (currently 7 skills, written here by `summer skills install --as-claude-skill`).
 3. **Web-app stores** — `~/development/PublicSummerEngine/src/lib/ai/skills/` and `public/knowledge/summer/skills/`. Mirror only if the learning applies to the web chat agent too — check what's there before assuming.
 4. **The active game** — read it as ground truth. Working code from the real project beats invented examples.
@@ -89,8 +89,8 @@ Engine binary changes ship via a rebuild + new release. The user has to pull the
 5. **One tight pause for the user.** Five-to-ten lines max: what files you'll touch, what each one captures, what gets left out. Wait for OK or redirect. Don't ask multiple questions.
 
 6. **Apply.**
-   - Write/edit `.md` files under `tools/summer-cli/skills/<domain>/`.
-   - Register a new skill in `.claude-plugin/plugin.json` (plus `.codex-plugin/`, `.cursor-plugin/`) AND in `src/lib/skills-registry.ts` `SKILL_REGISTRY`. Both are required.
+   - Write/edit skills under `library/skills/<slug>/` (`resource.yaml` + `SKILL.md`).
+   - Then run `npm run generate:registry` — it regenerates `registry/generated/` and every plugin manifest (`.claude-plugin/`, `.codex-plugin/`, `.cursor-plugin/`, …). Do not hand-edit manifests or generated registry files.
    - If the skill belongs in the curated Claude set, also write it to `~/.claude/skills/<name>/` so it's live in the current session — and tell the user to consider adding it to the CLI's default install set.
    - If the learning applies to the web chat agent, mirror to `PublicSummerEngine` skill stores too.
    - Run `git status` in `~/development/SummerEngine` (and `PublicSummerEngine` if touched) so the diff is visible.

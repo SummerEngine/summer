@@ -30,5 +30,6 @@ related:
 source: official
 license: MIT
 status: stable
+recommended: true
 aliases:
   - skills/3d-assets/character-model

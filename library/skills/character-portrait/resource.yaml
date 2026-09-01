@@ -23,5 +23,6 @@ related:
 source: official
 license: MIT
 status: stable
+recommended: true
 aliases:
   - skills/2d-assets/character-portrait

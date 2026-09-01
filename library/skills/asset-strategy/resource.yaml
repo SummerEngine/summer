@@ -55,5 +55,6 @@ related:
 source: official
 license: MIT
 status: stable
+recommended: true
 aliases:
   - skills/asset-pipeline/asset-strategy

@@ -25,6 +25,7 @@ related:
 source: official
 license: MIT
 status: stable
+recommended: false
 aliases:
   - skills/animation/facial-and-lipsync
 lint_exceptions:

@@ -26,7 +26,7 @@ OpenCode resolves `summer-engine` via the package's `main` field, which points t
 }
 ```
 
-Restart OpenCode. The orientation banner ("Summer Engine is loaded. N skills available…") will appear at the top of every new session, and skills will auto-discover from `node_modules/summer-engine/skills/`.
+Restart OpenCode. The orientation banner ("Summer Engine is loaded. N skills available…") will appear at the top of every new session, and skills will auto-discover from `node_modules/summer-engine/library/skills/`.
 
 ## What this gives you
 

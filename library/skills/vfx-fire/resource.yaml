@@ -26,6 +26,7 @@ related:
 source: official
 license: MIT
 status: stable
+recommended: true
 aliases:
   - skills/visual-effects/recipes/fire
   - fire

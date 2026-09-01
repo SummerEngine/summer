@@ -1,0 +1,9 @@
+{
+  "comment": "Capability-lint URL allowlist. An entry is either a bare host (matches that exact host) or host/path-prefix (matches URLs on that host whose path starts with /path-prefix/). Grown only by PR to this file.",
+  "allowed": [
+    "summerengine.com",
+    "docs.summerengine.com",
+    "github.com/SummerEngine",
+    "raw.githubusercontent.com/SummerEngine"
+  ]
+}

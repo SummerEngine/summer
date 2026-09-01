@@ -9,7 +9,7 @@ import { containedProjectPath } from "./containment.js";
 import { diffManifests } from "./diff.js";
 import { walkProject } from "./hash.js";
 import { sha256Hex } from "./manifest.js";
-import { stagingDir, conflictsDir } from "./paths.js";
+import { stagingDir, conflictsDir } from "../../project-memory/cloud-paths.js";
 import type { CloudManifest } from "./types.js";
 
 const projectId = "11111111-1111-4111-8111-111111111111";

@@ -8,7 +8,7 @@ import {
   buildGameTaskPlan,
 } from "../../lib/game-task-plan.js";
 import { getCachedBootDriftNotice } from "../../lib/mcp-boot-notice.js";
-import { getProjectMemorySummary } from "../../lib/project-memory.js";
+import { getProjectMemorySummary } from "../../project-memory/project-memory.js";
 import { withEngine } from "./with-engine.js";
 
 type JsonRecord = Record<string, unknown>;

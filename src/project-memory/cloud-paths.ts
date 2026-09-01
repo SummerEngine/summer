@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { existsSync } from "fs";
 import { basename, dirname, isAbsolute, join, resolve } from "path";
-import type { BaseState, CloudBinding, PullJournal } from "./types.js";
+import type { BaseState, CloudBinding, PullJournal } from "../lib/cloud/types.js";
 
 export function resolveProjectRoot(project?: string): string {
   return resolve(project ? (isAbsolute(project) ? project : join(process.cwd(), project)) : process.cwd());

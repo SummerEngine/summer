@@ -1,0 +1,29 @@
+{
+  "$id": "template.schema.json",
+  "title": "Summer resource.yaml — kind: template (pin manifest; CONTRACT.md §7)",
+  "type": "object",
+  "allOf": [{ "$ref": "resource.schema.json" }],
+  "properties": {
+    "kind": { "const": "template" },
+    "repo": { "type": "string", "minLength": 1 },
+    "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "tree_digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "default_branch": { "type": "string", "minLength": 1 },
+    "zip": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      },
+      "required": ["url", "sha256"],
+      "additionalProperties": false
+    },
+    "systems": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "smoke_test": { "type": "string", "minLength": 1 }
+  },
+  "required": ["repo", "commit", "tree_digest"],
+  "unevaluatedProperties": false
+}

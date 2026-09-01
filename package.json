@@ -65,8 +65,9 @@
     "build": "npm run clean && tsc",
     "dev": "tsc --watch",
     "summer": "node dist/bin/summer.js",
-    "test": "vitest run",
+    "test": "vitest run && npm run validate:library",
     "test:public-language": "vitest run src/lib/public-surface-language.test.ts",
+    "validate:library": "node scripts/validate-library/cli.ts",
     "test:watch": "vitest",
     "prepublishOnly": "npm run build && npm test"
   },
@@ -86,6 +87,7 @@
     "@types/diff": "^7.0.0",
     "@types/node": "^20.0.0",
     "typescript": "^5.5.0",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "yaml": "^2.9.0"
   }
 }

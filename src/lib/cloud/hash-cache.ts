@@ -1,5 +1,5 @@
 import { readFile } from "fs/promises";
-import { hashCachePath, writeJsonAtomic } from "./paths.js";
+import { hashCachePath, writeJsonAtomic } from "../../project-memory/cloud-paths.js";
 
 export interface HashCacheEntry {
   sha256: string;

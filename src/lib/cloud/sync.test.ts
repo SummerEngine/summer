@@ -7,7 +7,7 @@ import { setCloudApiForTests } from "./api.js";
 import { listConflictSets } from "./conflicts.js";
 import { setBlobTransportForTests } from "./http.js";
 import { sha256Hex } from "./manifest.js";
-import { readBase, readJournal, writeJournal } from "./paths.js";
+import { readBase, readJournal, writeJournal } from "../../project-memory/cloud-paths.js";
 import { FakeCloud } from "./test-helpers/fake-cloud.js";
 import { CAS_BACKOFF_MS, cloudConflicts, cloudPull, cloudPush, cloudRestore, cloudStatus } from "./sync.js";
 

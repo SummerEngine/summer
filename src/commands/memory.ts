@@ -6,7 +6,7 @@ import {
   getProjectMemorySummary,
   type ProjectMemoryFileSummary,
   type ProjectMemorySummary,
-} from "../lib/project-memory.js";
+} from "../project-memory/project-memory.js";
 import { c, pad, tildeify } from "../lib/format.js";
 
 interface MemoryOptions {

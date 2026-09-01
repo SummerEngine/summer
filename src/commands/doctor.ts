@@ -10,7 +10,7 @@ import { isGitAvailable } from "../lib/cloud/checkpoint.js";
 import { checkEngineHealth, getApiPort, getApiToken } from "../lib/engine.js";
 import { brandLine, c, pad, sym, tildeify } from "../lib/format.js";
 import { getMcpLogPath } from "../lib/mcp-log.js";
-import { getProjectMemorySummary } from "../lib/project-memory.js";
+import { getProjectMemorySummary } from "../project-memory/project-memory.js";
 import {
   buildCliVersionCheck,
   buildSkillsVersionCheck,

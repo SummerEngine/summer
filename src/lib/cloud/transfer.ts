@@ -3,7 +3,7 @@ import { join } from "path";
 import { getCloudApi, type PresignedBlob } from "./api.js";
 import { getBlobTransport } from "./http.js";
 import { sha256Hex } from "./manifest.js";
-import { stagingDir } from "./paths.js";
+import { stagingDir } from "../../project-memory/cloud-paths.js";
 
 /** Server batch caps (spec 7.5 to 7.8); the server 400s above these. */
 export const CHECK_BATCH = 10_000;

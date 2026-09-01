@@ -3,7 +3,7 @@ import { mkdir, readFile, rm, writeFile } from "fs/promises";
 import { existsSync } from "fs";
 import { join } from "path";
 import { promisify } from "util";
-import { localCloudDir } from "./paths.js";
+import { localCloudDir } from "../../project-memory/cloud-paths.js";
 
 const execFileAsync = promisify(execFile);
 

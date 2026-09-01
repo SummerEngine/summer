@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import { open, readFile, rename, rm, stat, writeFile } from "fs/promises";
-import { lockPath } from "./lock-path.js";
+import { lockPath } from "./cloud-lock-path.js";
 
 export interface CloudLock {
   release(): Promise<void>;

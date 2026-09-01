@@ -1,7 +1,7 @@
 import { Command } from "commander";
 import { getAuthToken, getUserInfo } from "../lib/auth.js";
 import { getApiToken, getApiPort, checkEngineHealth } from "../lib/engine.js";
-import { getProjectMemorySummary } from "../lib/project-memory.js";
+import { getProjectMemorySummary } from "../project-memory/project-memory.js";
 import { formatStatusMemoryLine } from "./memory.js";
 
 export const statusCommand = new Command("status")

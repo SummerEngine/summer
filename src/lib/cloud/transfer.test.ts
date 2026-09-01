@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { setCloudApiForTests } from "./api.js";
 import { setBlobTransportForTests } from "./http.js";
 import { sha256Hex } from "./manifest.js";
-import { stagingDir } from "./paths.js";
+import { stagingDir } from "../../project-memory/cloud-paths.js";
 import { FakeCloud } from "./test-helpers/fake-cloud.js";
 import { downloadBlobs, uploadBlobs } from "./transfer.js";
 

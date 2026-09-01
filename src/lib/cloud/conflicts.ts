@@ -1,6 +1,6 @@
 import { copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "fs/promises";
 import { dirname, join } from "path";
-import { conflictsDir, writeJsonAtomic } from "./paths.js";
+import { conflictsDir, writeJsonAtomic } from "../../project-memory/cloud-paths.js";
 import { containedProjectPath } from "./containment.js";
 
 /**

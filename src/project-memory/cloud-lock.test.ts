@@ -2,8 +2,8 @@ import { mkdtemp, mkdir, readFile, rm, stat, utimes, writeFile } from "fs/promis
 import { tmpdir } from "os";
 import { join } from "path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { acquireCloudLock } from "./lock.js";
-import { lockPath } from "./lock-path.js";
+import { acquireCloudLock } from "./cloud-lock.js";
+import { lockPath } from "./cloud-lock-path.js";
 
 let projectRoot: string;
 

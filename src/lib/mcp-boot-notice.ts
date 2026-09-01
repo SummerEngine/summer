@@ -1,4 +1,4 @@
-import type { BootDriftNotice } from "./version-check.js";
+import type { BootDriftNotice } from "../installer/version-check.js";
 
 let cachedBootDriftNotice: BootDriftNotice | null = null;
 

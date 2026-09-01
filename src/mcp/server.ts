@@ -21,7 +21,7 @@ import { appendMcpLogEvent } from "../core/mcp-log.js";
 import {
   buildBootDriftNotice,
   fetchLatestRegistryVersion,
-} from "../lib/version-check.js";
+} from "../installer/version-check.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../../package.json");

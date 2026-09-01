@@ -4,7 +4,7 @@ import {
   parseAgent,
   parseScope,
   supportedAgents,
-} from "../lib/agent-config.js";
+} from "../installer/agent-config.js";
 import { startMcpServer } from "../mcp/server.js";
 
 export const mcpCommand = new Command("mcp")

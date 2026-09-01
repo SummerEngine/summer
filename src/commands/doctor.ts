@@ -16,7 +16,7 @@ import {
   buildSkillsVersionCheck,
   defaultSkillMarkerCandidates,
   fetchLatestRegistryVersion,
-} from "../lib/version-check.js";
+} from "../installer/version-check.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../../package.json") as { version: string };

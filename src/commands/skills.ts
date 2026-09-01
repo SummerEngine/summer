@@ -20,7 +20,7 @@ import {
   type SkillRegistryEntry,
 } from "../core/skills-registry.js";
 import { tildeify } from "../core/format.js";
-import { writeSkillMarker } from "../lib/version-check.js";
+import { writeSkillMarker } from "../installer/version-check.js";
 
 const requireFromHere = createRequire(import.meta.url);
 const { version: cliVersion } = requireFromHere("../../package.json") as {

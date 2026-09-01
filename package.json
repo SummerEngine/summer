@@ -68,6 +68,7 @@
     "test": "vitest run && npm run validate:library",
     "test:public-language": "vitest run src/lib/public-surface-language.test.ts",
     "validate:library": "node scripts/validate-library/cli.ts",
+    "eval:routing": "node evals/routing/runner.ts",
     "test:watch": "vitest",
     "prepublishOnly": "npm run build && npm test"
   },

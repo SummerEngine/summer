@@ -18,7 +18,9 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const defaultRoot = path.resolve(scriptDir, "..", "..");
 const rootDir = process.argv[2] ? path.resolve(process.argv[2]) : defaultRoot;
 
-const result = runValidation(rootDir);
+// Schemas always come from this repo's registry/schemas, even when validating
+// another root (e.g. a fixture tree).
+const result = runValidation(rootDir, { schemasDir: path.join(defaultRoot, "registry", "schemas") });
 
 if (result.note) {
   console.log(`validate-library: ${result.note}`);

@@ -113,7 +113,9 @@ evidence:                             # REQUIRED for example; optional otherwise
 ```
 
 Per-kind extensions (defined in the per-kind schemas):
-- **tool**: `implementation` (module + export in `src/core/capabilities/`), `surfaces` (`cli`, `mcp`, or both — including CLI command path and MCP tool name), `input_schema` (JSON Schema; the single source for both zod and commander), `authority` (`filesystem`, `editor_mutation`, `network`, `credentials`, `publish` — booleans), `evidence_checks`.
+- **tool**: `implementation` (module + export in `src/core/capabilities/`), `surfaces` (`cli`, `mcp`, or both — including CLI command path and MCP tool name; `mcp.remote: true` marks tools that require no local engine and are eligible for the hosted stateless MCP v2 endpoint), `input_schema` (JSON Schema; the single source for both zod and commander), `authority` (`filesystem`, `editor_mutation`, `network`, `credentials`, `publish` — booleans), `evidence_checks`.
+
+MCP protocol posture: the local server stays stdio (unchanged in MCP v2, spec 2026-07-28); the SDK is kept on the v2-supporting major; no elicitation patterns. Engine-free tools (`mcp.remote: true`) may additionally be served by a hosted stateless Streamable-HTTP endpoint (`summerengine.com/mcp`) — a fast-follow after the registry compiler, not part of the v1 cut.
 - **template**: `repo`, `commit` (full SHA), `tree_digest` (sha256), `default_branch` (informational only — never used for resolution), `zip` (optional release-asset URL + sha256), `systems` (list), `smoke_test` (eval ref).
 - **collection**: `items` (asset refs: catalog id or URL + sha256 + license each), `style` (rules text/file), `presets` (named subsets), `recommended` (skill/template IDs). Collections carry **no executable instructions** — they may only *reference* trusted skills by ID.
 

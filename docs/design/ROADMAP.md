@@ -40,6 +40,12 @@ Waves; each gated by tsc + vitest + validate-library:
 7. **`summer_get_help` support channel.** v1 = registry/knowledge lookup + stuck-report capture (the highest-value gap signal); later = live support agent. Humans route through it too.
 8. **`summer_library_contribute`.** Candidate examples from users' verified builds — double consent gate (chat ask + native app sheet showing the literal payload), ≤5 files / ≤32KB, evidence by captured asset id, candidate queue only.
 
+### Added 2026-09-01 (CLI/MCP parity + Node-less distribution)
+- **MCP SDK v2 watch:** the 2026-07-28 spec is live but `@modelcontextprotocol/sdk` has published no v2 major (latest 1.30.0, protocol 2025-11-25). We are pinned at ^1.30.0; adopt the v2 SDK when it ships. stdio is unaffected by v2's statelessness change; the remote MCP endpoint (below) is where v2 matters.
+- **Full CLI parity (this build):** generic `summer tool <name> --json '<args>'` passthrough exposing every tool via the shared capability layer, so shell-native agents get 100% of MCP capability with zero config. Both surfaces generated from one descriptor — parity is enforced, never maintained.
+- **Native single-file binaries (fast-follow):** compile the CLI+MCP into per-platform executables (Bun/Deno compile) so Node is no longer required at all — the Unity CLI Loop v3 lesson without dropping MCP. One binary serves `summer …` and `summer mcp`.
+- **Two setup modes (fast-follow):** `summer setup <agent>` default = MCP (one-paste onboarding, host permission UX); `--mode cli` = no MCP config at all — CLI-first for power users, headless, CI, and scripting loops (MCP's one-shot RPC can't express loops/pipes; CLI discovery via --help costs zero standing context vs ~62 always-loaded schemas). Watch real usage; flipping the recommended default for technical users is a docs change, not a rebuild. The incoming MCP-scripting and fully-headless agent work slots into this lane.
+
 ## 4. Later (design constraints recorded; not scheduled)
 
 - **Automation ladder L2/L3** — auto-merge bounded classes then post-hoc review; written promotion criteria in SELF_IMPROVING_LIBRARY.md §6 are binding; per-class, auto-demotion on any revert.

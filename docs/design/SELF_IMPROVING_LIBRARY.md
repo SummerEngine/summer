@@ -62,9 +62,12 @@ The moat is not library size — anyone can pile up markdown. The moat is **inde
     "note": "≤280 chars, optional — about the ENTRY, never the project",
     "deviation": "≤280 chars, optional — what the agent did instead"
   }],
-  "engine_version": "4.6.1"
+  "engine_version": "4.6.1",
+  "agent_model": "claude-fable-5"
 }
 ```
+
+`agent_model` is required and self-reported (the literal "unknown" is accepted so no report is ever blocked); the MCP server additionally auto-captures the host app (`client`, e.g. claude-code) from the initialize handshake — never self-reported. Model identity is a first-class triage dimension: an entry failing only for weaker models is a different fix than one failing for everyone, and ranking can segment by model tier later.
 
 - **Batched, fire-and-forget, async**: one call at a natural checkpoint, 1s timeout, silent failure, never blocks or retries in-session. The user's agent spends ~0 tokens and 0 wait. Building the game always comes first.
 - **Structurally leak-proof**: enum-first, hard caps, no field capable of carrying code. Server additionally rejects notes with code fences or paths. Privacy by schema, not by promise — that is what makes a privacy-trained agent comfortable calling it.

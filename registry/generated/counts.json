@@ -1,0 +1,12 @@
+{
+  "_generated": "GENERATED — do not edit; run npm run generate:registry",
+  "byKind": {
+    "collection": 0,
+    "example": 0,
+    "reference": 7,
+    "skill": 79,
+    "template": 19,
+    "tool": 63
+  },
+  "total": 168
+}

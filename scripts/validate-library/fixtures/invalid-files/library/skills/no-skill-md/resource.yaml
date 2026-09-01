@@ -1,0 +1,11 @@
+id: skill/no-skill-md
+kind: skill
+version: 1.0.0
+summary: A skill directory without a SKILL.md body.
+use_when:
+  - testing file requirements
+facets:
+  lifecycle: [build]
+source: official
+license: MIT
+status: stable

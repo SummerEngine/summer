@@ -1,0 +1,14 @@
+id: template/bad-pin
+kind: template
+version: 1.0.0
+summary: A template with a short commit hash and bad digest.
+use_when:
+  - testing schema violations
+facets:
+  lifecycle: [build]
+source: official
+license: MIT
+status: stable
+repo: https://github.com/SummerEngine/template-bad-pin
+commit: abc123
+tree_digest: not-a-digest

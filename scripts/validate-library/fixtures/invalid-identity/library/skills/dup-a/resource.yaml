@@ -1,0 +1,13 @@
+id: skill/dup-a
+kind: skill
+version: 1.0.0
+summary: First claimant of a duplicated id and alias.
+use_when:
+  - testing identity violations
+facets:
+  lifecycle: [build]
+source: official
+license: MIT
+status: stable
+aliases:
+  - legacy/skills/one

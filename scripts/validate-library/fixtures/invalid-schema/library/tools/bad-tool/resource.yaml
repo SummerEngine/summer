@@ -1,0 +1,25 @@
+id: tool/bad-tool
+kind: tool
+version: "1.0"
+summary: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+use_when:
+  - testing schema violations
+facets:
+  lifecycle: [build]
+source: official
+license: MIT
+status: stable
+extra_field: not allowed
+implementation:
+  module: core/capabilities/bad-tool
+  export: badTool
+surfaces:
+  cli:
+    command: summer bad-tool
+input_schema:
+  type: object
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false

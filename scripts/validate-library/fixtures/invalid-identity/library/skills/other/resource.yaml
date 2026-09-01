@@ -1,0 +1,15 @@
+id: skill/other
+kind: skill
+version: 1.0.0
+summary: Alias collides with a live id and related target is missing.
+use_when:
+  - testing identity violations
+facets:
+  lifecycle: [build]
+related:
+  examples: [example/does-not-exist]
+source: official
+license: MIT
+status: stable
+aliases:
+  - skill/dup-a

@@ -1,0 +1,11 @@
+id: example/no-evidence
+kind: example
+version: 1.0.0
+summary: An example that forgot its evidence.
+use_when:
+  - testing schema violations
+facets:
+  lifecycle: [build]
+source: official
+license: MIT
+status: stable

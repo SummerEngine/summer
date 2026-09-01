@@ -4,9 +4,9 @@
 
 <img src="docs/brand/sun.png" alt="" width="128">
 
-### The AI game engine — and the package that plugs your coding agent into it
+### The AI game engine. This package plugs your coding agent into it.
 
-**Summer CLI · Summer MCP · Summer agent skills — one npm package.**
+**Summer CLI · Summer MCP · Summer agent skills. One npm package.**
 
 [![npm](https://img.shields.io/npm/v/summer-engine?label=npm&color=f7b731)](https://www.npmjs.com/package/summer-engine)
 [![downloads](https://img.shields.io/npm/dm/summer-engine?label=installs&color=f7b731)](https://www.npmjs.com/package/summer-engine)
@@ -18,13 +18,13 @@
 
 ---
 
-Your agent gets a real engine, not a chat box: it builds scenes, plays the game, takes screenshots, reads the debugger, generates assets, and verifies its own work — while you stay in control of every change and release.
+Your agent gets a real engine, not a chat box: it builds scenes, plays the game, takes screenshots, reads the debugger, generates assets, and verifies its own work, while you stay in control of every change and release.
 
 | Piece | What it does |
 |---|---|
-| **Summer CLI** | Installs the engine, signs you in, scaffolds and runs projects, and writes your agent's config — all via `npx -y summer-engine@latest`. |
+| **Summer CLI** | Installs the engine, signs you in, scaffolds and runs projects, and writes your agent's config, all via `npx -y summer-engine@latest`. |
 | **Summer MCP** | A local MCP server with 60+ engine tools: scene mutation, play/stop, screenshots, diagnostics, verification probes, 2D/3D/audio generation. |
-| **Summer skills** | Game-dev skills, hooks, and plugin manifests that give the agent judgment — brainstorming, scene composition, debugging discipline, shipping. |
+| **Summer skills** | Game-dev skills, hooks, and plugin manifests that give the agent judgment: brainstorming, scene composition, debugging discipline, shipping. |
 
 First-class setup works in **Claude Code, Cursor, Codex, Devin Desktop, Cline, Roo Code, Gemini CLI, GitHub Copilot (CLI & VS Code), and OpenCode**; Factory Droid uses the plugin marketplace path.
 

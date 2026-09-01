@@ -17,7 +17,7 @@
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (62 tools)
+## Tool surface (63 tools)
 
 ### Project files (3)
 
@@ -148,6 +148,12 @@
 | `summer_creator_releases` | List real creator-owned releases from `summer.creator.v1`, with opaque cursor pagination. |
 | `summer_creator_logs` | Read runtime logs for a project or release. Remains fail-closed until a durable platform log source exists. |
 | `summer_creator_config` | Read or confirm updates to the shared non-secret `~/.summer/config.json`. It never accepts or returns tokens. |
+
+### Library feedback (1)
+
+| Tool | Use |
+|---|---|
+| `summer_library_feedback` | Report library-entry outcomes (worked/wrong/outdated/...) so entries get fixed and re-ranked. Fire-and-forget with a 1s cap; enum-first schema with no field for project files, chat content, or code; honors `SUMMER_NO_TELEMETRY=1` and `DO_NOT_TRACK=1`. |
 
 ## Common pattern
 

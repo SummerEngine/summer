@@ -13,6 +13,7 @@ import { registerAssetTools } from "./tools/asset-tools.js";
 import { registerGenerateTools } from "./tools/generate-tools.js";
 import { registerCloudTools } from "./tools/cloud-tools.js";
 import { registerCreatorTools } from "./tools/creator-tools.js";
+import { registerFeedbackTools } from "./tools/feedback-tools.js";
 import {
   getCachedBootDriftNotice as getCachedNotice,
   setCachedBootDriftNotice,
@@ -302,6 +303,7 @@ export async function startMcpServer(
   registerGenerateTools(server);
   registerCloudTools(server);
   registerCreatorTools(server);
+  registerFeedbackTools(server);
 
   // Fire-and-forget — never block tool registration on the npm registry.
   void probeBootDrift().catch((error) => {

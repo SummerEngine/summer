@@ -20,6 +20,7 @@ import { configCommand } from "./commands/config.js";
 import { publishCommand } from "./commands/publish.js";
 import { releasesCommand } from "./commands/releases.js";
 import { logsCommand } from "./commands/logs.js";
+import { toolCommand } from "./commands/tool.js";
 import { getBanner } from "./banner.js";
 import { c, sym } from "../core/format.js";
 
@@ -62,6 +63,7 @@ export function runCli(mcpCommand: Command): void {
   program.addCommand(publishCommand);
   program.addCommand(releasesCommand);
   program.addCommand(logsCommand);
+  program.addCommand(toolCommand);
 
   program.parseAsync().catch((err) => {
     console.error(err instanceof Error ? err.message : String(err));

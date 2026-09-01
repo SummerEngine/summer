@@ -1,0 +1,1428 @@
+/**
+ * tool-dispatch — the shared per-tool dispatch registry (CONTRACT.md §2, §5).
+ *
+ * One entry per library `tool` resource (library/tools/<slug>/resource.yaml),
+ * dispatching through the SAME underlying implementations the MCP server uses:
+ * core capabilities (cloud sync, creator, debug-report, game-task-plan,
+ * library feedback), the core EngineApiClient for engine ops, and the same
+ * gateway endpoints for Studio generation / asset APIs.
+ *
+ * Consumed today by `summer tool <name>` (src/cli/commands/tool.ts).
+ *
+ * // v3-followup: src/mcp (server.ts + tools/*) should adopt this registry as
+ * // the single per-tool dispatch table — moving the handler bodies that still
+ * // live only in the MCP tool closures (Kenney import pairing, scene-mutation
+ * // chunking, guarded file writes, agent playbook content) in here so both
+ * // surfaces share one implementation per tool instead of two mirrors. The
+ * // mcp layer is owned by another workstream right now, so this file does not
+ * // touch it; the small mirrored helpers below are marked and must fold into
+ * // one copy at adoption time.
+ */
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { mkdir, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import { EngineApiClient, type EngineSnapshot } from "../api-client.js";
+import { getAuthToken } from "../auth.js";
+import { shapeEngineLogResponse } from "../log-filters.js";
+import {
+  cloudCheckpoints,
+  cloudConflicts,
+  cloudInit,
+  cloudPull,
+  cloudPush,
+  cloudRestore,
+  cloudStatus,
+} from "./cloud/sync.js";
+import {
+  listCreatorReleases,
+  publishCreator,
+  readCreatorLogs,
+} from "./creator.js";
+import {
+  CONFIG_KEYS,
+  getConfigValue,
+  isConfigKey,
+  readSummerConfig,
+  setConfigValue,
+  unsetConfigValue,
+} from "../config.js";
+import { createDebugReportArtifact } from "./debug-report.js";
+import {
+  buildGameTaskPlan,
+  type AssetPolicy,
+  type GameTaskMode,
+  type GameTaskTarget,
+  type VerificationLevel,
+} from "./game-task-plan.js";
+import {
+  sendLibraryFeedback,
+  type LibraryFeedbackReport,
+} from "../feedback/client.js";
+
+const require = createRequire(import.meta.url);
+const { version: CLI_VERSION } = require("../../../package.json");
+
+const GATEWAY_URL =
+  process.env.SUMMER_GATEWAY_URL || "https://www.summerengine.com";
+
+export type DispatchArgs = Record<string, unknown>;
+
+export interface ToolDispatchContext {
+  /** Lazily connect to the local engine. Throws EngineUnavailableError with a
+   *  clean, actionable message when the engine is not running. */
+  engine(): Promise<EngineApiClient>;
+}
+
+export interface ToolDispatchEntry {
+  /** Canonical MCP tool name, e.g. "summer_add_node". */
+  name: string;
+  /** Library slug (tool/<slug>), e.g. "add-node". */
+  slug: string;
+  /** One-line summary for --list. */
+  summary: string;
+  /** True when the tool needs the local Summer Engine running. */
+  engineRequired: boolean;
+  handler(args: DispatchArgs, ctx: ToolDispatchContext): Promise<unknown>;
+}
+
+/** Dispatch-level failure with a user-facing message (no stack needed). */
+export class ToolDispatchError extends Error {}
+
+/** The local engine is not reachable — a clean state, not a crash. */
+export class EngineUnavailableError extends ToolDispatchError {}
+
+export function createDefaultDispatchContext(): ToolDispatchContext {
+  let cached: EngineApiClient | null = null;
+  return {
+    async engine() {
+      if (cached) return cached;
+      try {
+        cached = await EngineApiClient.connect();
+        return cached;
+      } catch (error) {
+        const reason =
+          error instanceof Error ? error.message : String(error);
+        throw new EngineUnavailableError(
+          "Summer Engine is not running (or no project is open).\n" +
+            `${reason}\n` +
+            "Start it with 'summer run' or open the project in the Summer desktop app, then retry.\n" +
+            "Engine-free tools (generate-*, asset search/list/get, cloud, creator, plan) work without it."
+        );
+      }
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Engine receipt failure extraction.
+// Mirror of the failure semantics in src/mcp/tools/with-engine.ts
+// (extractOpError): a failure terminalState (anything but applied/no_op), an
+// explicit ok:false / status:"error", or a failed op inside results[] is a
+// failure even when no error string was provided.
+// v3-followup: fold into one copy when mcp adopts this registry.
+// ---------------------------------------------------------------------------
+const SUCCESS_TERMINAL_STATES = new Set(["applied", "no_op"]);
+
+type OpReceipt = {
+  ok?: boolean;
+  status?: string;
+  error?: string;
+  terminalState?: string;
+  results?: Array<{ ok?: boolean; op?: string; error?: string }>;
+};
+
+export function extractEngineFailure(result: unknown): string | null {
+  if (!result || typeof result !== "object") return null;
+  const op = result as OpReceipt;
+  const failed = op.results?.find((entry) => entry.ok === false);
+  const ts = op.terminalState;
+  if (typeof ts === "string" && ts.length > 0 && !SUCCESS_TERMINAL_STATES.has(ts)) {
+    return (
+      (typeof op.error === "string" && op.error) ||
+      (typeof failed?.error === "string" && failed.error) ||
+      `Engine operation failed (terminalState: ${ts}).`
+    );
+  }
+  if (op.ok === false || op.status === "error" || failed) {
+    return (
+      (typeof op.error === "string" && op.error) ||
+      (typeof failed?.error === "string" && failed.error) ||
+      (failed
+        ? `Engine op failed${failed.op ? ` (${failed.op})` : ""}.`
+        : op.ok === false
+          ? "Engine operation failed (ok: false)."
+          : "Engine operation failed (status: error).")
+    );
+  }
+  return null;
+}
+
+function requireEngineSuccess<T>(result: T): T {
+  const failure = extractEngineFailure(result);
+  if (failure) throw new ToolDispatchError(failure);
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Scene-mutation dispatch. Mirror of the single-op contract in
+// src/mcp/tools/scene-tools.ts (sceneMutationOps / chunkOpsForDispatch /
+// executeOpsChunked): the engine rejects multi-op batches containing
+// single-only ops wholesale, and every scene mutation batch ends in exactly
+// one SaveScene. v3-followup: fold into one copy when mcp adopts the registry.
+// ---------------------------------------------------------------------------
+const SINGLE_ONLY_OPS = new Set([
+  "SaveScene", "InstantiateScene", "ReplaceNode",
+  "SimulateInput", "ViewportSnapshot", "GameSnapshot",
+  "RunCommand", "RunVerification", "RunEditorScript",
+  "ImportFromUrl", "ImportFromUrlBatch", "ExtractZipFromUrl",
+]);
+
+function isSingleOnlyOp(kind: string): boolean {
+  return SINGLE_ONLY_OPS.has(kind) || kind.startsWith("Git");
+}
+
+function withFinalSaveScene(ops: DispatchArgs[]): DispatchArgs[] {
+  const saveIndexes = ops
+    .map((op, index) => (op.op === "SaveScene" ? index : -1))
+    .filter((index) => index >= 0);
+  if (saveIndexes.length > 1) {
+    throw new ToolDispatchError("A scene mutation batch may contain only one SaveScene");
+  }
+  if (saveIndexes.length === 1) {
+    if (saveIndexes[0] !== ops.length - 1) {
+      throw new ToolDispatchError("SaveScene must be the final operation in a scene mutation batch");
+    }
+    return ops;
+  }
+  return [...ops, { op: "SaveScene" }];
+}
+
+function chunkOps(ops: DispatchArgs[]): DispatchArgs[][] {
+  const chunks: DispatchArgs[][] = [];
+  let current: DispatchArgs[] = [];
+  for (const op of ops) {
+    if (isSingleOnlyOp(String(op.op ?? ""))) {
+      if (current.length > 0) {
+        chunks.push(current);
+        current = [];
+      }
+      chunks.push([op]);
+    } else {
+      current.push(op);
+    }
+  }
+  if (current.length > 0) chunks.push(current);
+  return chunks;
+}
+
+async function executeOpsChunked(
+  send: (chunk: DispatchArgs[]) => Promise<unknown>,
+  ops: DispatchArgs[]
+): Promise<unknown> {
+  const chunks = chunkOps(ops);
+  if (chunks.length === 1) return send(chunks[0]!);
+
+  const receipts: unknown[] = [];
+  const combinedResults: DispatchArgs[] = [];
+  for (let i = 0; i < chunks.length; i++) {
+    const receipt = await send(chunks[i]!);
+    receipts.push(receipt);
+    const envelope = (receipt ?? {}) as DispatchArgs;
+    if (Array.isArray(envelope.results)) {
+      combinedResults.push(...(envelope.results as DispatchArgs[]));
+    }
+    if (extractEngineFailure(receipt)) {
+      const failedKind = String(chunks[i]![0]?.op ?? "batch");
+      const appliedOps = chunks.slice(0, i).flat().map((op) => String(op.op ?? ""));
+      const notSent = chunks.slice(i + 1).flat().map((op) => String(op.op ?? ""));
+      const baseError =
+        (typeof envelope.error === "string" && envelope.error) ||
+        `Engine request failed (${failedKind}).`;
+      const honestError =
+        appliedOps.length > 0
+          ? `${baseError} NOTE: ${appliedOps.length} earlier op(s) already applied (${appliedOps.join(", ")})` +
+            (failedKind === "SaveScene"
+              ? " — the scene is modified in the editor but NOT saved to disk."
+              : ".") +
+            (notSent.length > 0 ? ` Not sent: ${notSent.join(", ")}.` : "")
+          : baseError;
+      return {
+        ...envelope,
+        error: honestError,
+        results: combinedResults,
+        receipts,
+      };
+    }
+  }
+  const last = (receipts[receipts.length - 1] ?? {}) as DispatchArgs;
+  return { ...last, results: combinedResults, requests: chunks.length, receipts };
+}
+
+function executeSceneMutation(
+  client: EngineApiClient,
+  scenePath: string,
+  ops: DispatchArgs[],
+  options?: DispatchArgs
+): Promise<unknown> {
+  return executeOpsChunked(
+    (chunk) => client.executeIdentityBoundOps(chunk, { ...(options ?? {}), scenePath }),
+    withFinalSaveScene(ops)
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Guarded file helpers. Mirror of src/mcp/tools/file-tools.ts safety guards
+// (fail-closed writes, sha256 receipts). v3-followup: fold into one copy.
+// ---------------------------------------------------------------------------
+function safeProjectPath(path: string): string {
+  const normalized = path.trim().replace(/\\/g, "/");
+  if (!normalized.startsWith("res://") || normalized.includes("..")) {
+    throw new ToolDispatchError("File path must be a traversal-free res:// project path.");
+  }
+  return normalized;
+}
+
+function validSha256(value: unknown): value is string {
+  return typeof value === "string" && /^[0-9a-f]{64}$/i.test(value);
+}
+
+function readTextPayload(result: unknown): { content: string; sha256: string } {
+  const root = (result ?? {}) as DispatchArgs;
+  const data = (root.data ?? {}) as DispatchArgs;
+  if (root.ok === false) {
+    throw new ToolDispatchError(String(root.error ?? "Engine could not read the file."));
+  }
+  if (data.encoding === "binary" || typeof data.content !== "string") {
+    throw new ToolDispatchError("Safe text mutation refused: the engine did not return text content.");
+  }
+  if (data.truncated === true) {
+    throw new ToolDispatchError("Safe text mutation refused: the file exceeds the 1 MB read limit.");
+  }
+  if (!validSha256(data.sha256)) {
+    throw new ToolDispatchError(
+      "Safe text mutation refused: the engine did not return a full-file sha256 receipt."
+    );
+  }
+  return { content: data.content, sha256: data.sha256 as string };
+}
+
+function occurrenceCount(content: string, needle: string): number {
+  let count = 0;
+  let offset = 0;
+  while (true) {
+    const index = content.indexOf(needle, offset);
+    if (index < 0) return count;
+    count++;
+    offset = index + needle.length;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Gateway helpers (Studio generation + asset APIs). Same endpoints, bodies,
+// and auth the MCP tools use (src/mcp/tools/generate-tools.ts,
+// asset-tools.ts) with surface header "cli".
+// ---------------------------------------------------------------------------
+async function requireToken(): Promise<string> {
+  const token = await getAuthToken();
+  if (!token) {
+    throw new ToolDispatchError(
+      "Not signed in. Run 'summer login' first — cloud tools require a Summer Engine account."
+    );
+  }
+  return token;
+}
+
+function gatewayHeaders(token: string, endpoint: string): Record<string, string> {
+  return {
+    Authorization: `Bearer ${token}`,
+    "X-Summer-Client": "summer-cli",
+    "X-Summer-Client-Version": CLI_VERSION,
+    "X-Summer-Client-Surface": "cli",
+    "X-Summer-MCP-Endpoint": endpoint,
+  };
+}
+
+async function readJsonBody(res: Response): Promise<DispatchArgs> {
+  const text = await res.text().catch(() => "");
+  if (!text) return {};
+  try {
+    return JSON.parse(text) as DispatchArgs;
+  } catch {
+    return { message: text.slice(0, 1000) };
+  }
+}
+
+async function gatewayGet(
+  endpoint: string,
+  params?: URLSearchParams,
+  timeoutMs = 30_000
+): Promise<DispatchArgs> {
+  const token = await requireToken();
+  const suffix = params && params.size ? `?${params.toString()}` : "";
+  let res: Response;
+  try {
+    res = await fetch(`${GATEWAY_URL}${endpoint}${suffix}`, {
+      headers: gatewayHeaders(token, endpoint),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (err) {
+    throw new ToolDispatchError(
+      `Request failed: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+  const data = await readJsonBody(res);
+  if (!res.ok) {
+    throw new ToolDispatchError(
+      String(data.message || data.error || `Request failed (${res.status})`)
+    );
+  }
+  return data;
+}
+
+async function gatewayPost(
+  endpoint: string,
+  body: DispatchArgs,
+  timeoutMs = 120_000
+): Promise<DispatchArgs> {
+  const token = await requireToken();
+  let res: Response;
+  try {
+    res = await fetch(`${GATEWAY_URL}${endpoint}`, {
+      method: "POST",
+      headers: {
+        ...gatewayHeaders(token, endpoint),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (err) {
+    throw new ToolDispatchError(
+      `Generation request failed: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+  const data = await readJsonBody(res);
+  if (!res.ok) {
+    let message = String(data.message || data.error || `Request failed (${res.status})`);
+    if (res.status === 402) {
+      message = `${message} — insufficient credits; top up or upgrade on the Summer dashboard.`;
+    }
+    if (res.status === 401) {
+      message = `${message} — auth token expired; run 'summer login' again.`;
+    }
+    throw new ToolDispatchError(message);
+  }
+  return data;
+}
+
+async function pollGenerationJob(
+  jobId: string,
+  maxWaitMs = 600_000,
+  intervalMs = 5_000
+): Promise<DispatchArgs> {
+  const token = await requireToken();
+  const deadline = Date.now() + maxWaitMs;
+  let interval = intervalMs;
+  while (Date.now() < deadline) {
+    const res = await fetch(
+      `${GATEWAY_URL}/api/mcp/jobs/${encodeURIComponent(jobId)}`,
+      {
+        headers: gatewayHeaders(token, "/api/mcp/jobs"),
+        signal: AbortSignal.timeout(15_000),
+      }
+    );
+    const data = await readJsonBody(res);
+    if (!res.ok) {
+      throw new ToolDispatchError(String(data.message || "Job poll failed"));
+    }
+    if (data.status === "completed") return data;
+    if (data.status === "failed") {
+      throw new ToolDispatchError(String(data.error || "Job failed"));
+    }
+    await new Promise((resolve) => setTimeout(resolve, interval));
+    interval = Math.min(interval * 1.2, 15_000);
+  }
+  throw new ToolDispatchError(
+    `Timed out after ${maxWaitMs / 1000}s. Re-check later with: summer tool check-job --json '{"jobId":"${jobId}"}'`
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Asset import helpers. Mirror of src/mcp/tools/asset-tools.ts (Kenney texture
+// pairing + path inference). v3-followup: fold into one copy.
+// ---------------------------------------------------------------------------
+type GatewayAsset = {
+  id: string;
+  title: string;
+  type: string;
+  fileUrl: string;
+  fileName?: string | null;
+  packSlug?: string | null;
+  importUrl?: string;
+};
+
+const KENNEY_URL_PATTERN = /\/kenney\/3d\/([^/]+)\//;
+
+function buildKenneyTextureUrl(fileUrl: string): string {
+  const lastSlash = fileUrl.lastIndexOf("/");
+  const base = lastSlash >= 0 ? fileUrl.slice(0, lastSlash) : fileUrl;
+  return `${base}/Textures/colormap.png`;
+}
+
+async function textureExists(url: string): Promise<boolean> {
+  try {
+    const res = await fetch(url, { method: "HEAD", signal: AbortSignal.timeout(5000) });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+function sanitizeNodeName(name: string): string {
+  return (
+    (name || "Asset")
+      .replace(/[^\p{L}\p{N}_]+/gu, "_")
+      .replace(/^_+|_+$/g, "") || "Asset"
+  );
+}
+
+async function buildImportEntries(
+  asset: GatewayAsset,
+  targetPath?: string
+): Promise<{ imports: { url: string; path: string }[]; importPath: string }> {
+  const fileUrl = asset.importUrl || asset.fileUrl;
+  if (!fileUrl) throw new ToolDispatchError("Asset has no import URL.");
+  const fileName =
+    targetPath?.split("/").pop() ||
+    asset.fileName ||
+    fileUrl.split("/").pop()?.split("?")[0] ||
+    "asset";
+  const packSlug = asset.packSlug ?? fileUrl.match(KENNEY_URL_PATTERN)?.[1] ?? "misc";
+
+  const isKenney3d = asset.type === "3d_model" && fileUrl.includes("kenney/3d/");
+  if (isKenney3d) {
+    const textureUrl = buildKenneyTextureUrl(fileUrl);
+    if (await textureExists(textureUrl)) {
+      const glbPath = targetPath ?? `res://assets/models/kenney/${packSlug}/${fileName}`;
+      const glbDir = glbPath.replace(/\/[^/]+$/, "");
+      return {
+        importPath: glbPath,
+        imports: [
+          { url: textureUrl, path: `${glbDir}/Textures/colormap.png` },
+          { url: fileUrl, path: glbPath },
+        ],
+      };
+    }
+  }
+  const path =
+    targetPath ??
+    (asset.type === "3d_model"
+      ? `res://assets/models/${isKenney3d ? `kenney/${packSlug}/` : ""}${fileName}`
+      : `res://assets/${fileName}`);
+  return { imports: [{ url: fileUrl, path }], importPath: path };
+}
+
+async function importResolvedAsset(
+  client: EngineApiClient,
+  args: {
+    asset: GatewayAsset;
+    parent?: string;
+    scenePath?: string;
+    path?: string;
+    name?: string;
+  }
+): Promise<DispatchArgs> {
+  const { asset, parent, scenePath, path, name } = args;
+  if (parent && !scenePath) {
+    throw new ToolDispatchError("scenePath is required when importing an asset into a scene");
+  }
+  const { imports, importPath } = await buildImportEntries(asset, path);
+  const importResult =
+    imports.length === 1
+      ? await client.executeOps([
+          { op: "ImportFromUrl", url: imports[0]!.url, path: imports[0]!.path },
+        ])
+      : await client.executeOps([{ op: "ImportFromUrlBatch", imports }]);
+  requireEngineSuccess(importResult);
+
+  let addedToScene = false;
+  let sceneReceipt: unknown = null;
+  if (parent && asset.type === "3d_model") {
+    sceneReceipt = requireEngineSuccess(
+      await client.executeIdentityBoundOps(
+        [
+          {
+            op: "InstantiateScene",
+            parent,
+            scene: importPath,
+            name: sanitizeNodeName(name || asset.title),
+          },
+          { op: "SaveScene" },
+        ],
+        { scenePath }
+      )
+    );
+    addedToScene = true;
+  }
+  return {
+    success: true,
+    assetId: asset.id,
+    asset: asset.title,
+    type: asset.type,
+    importedTo: importPath,
+    addedToScene,
+    parent: parent ?? null,
+    scenePath: scenePath ?? null,
+    sceneReceipt,
+  };
+}
+
+async function searchAssetsGateway(params: {
+  query: string;
+  assetType?: string;
+  limit?: number;
+  source?: string;
+}): Promise<DispatchArgs> {
+  const search = new URLSearchParams();
+  search.set("query", params.query);
+  if (params.assetType && params.assetType !== "all") search.set("assetType", params.assetType);
+  if (params.limit) search.set("limit", String(Math.min(params.limit, 20)));
+  if (params.source) search.set("source", params.source);
+  return gatewayGet("/api/mcp/assets", search, 15_000);
+}
+
+// ---------------------------------------------------------------------------
+// Small engine helpers
+// ---------------------------------------------------------------------------
+function projectSettingValue(projectState: unknown, keys: string[]): string | null {
+  const data = ((projectState ?? {}) as DispatchArgs).data as DispatchArgs | undefined;
+  const entries = data?.entries;
+  if (!Array.isArray(entries)) return null;
+  for (const entry of entries) {
+    const item = (entry ?? {}) as DispatchArgs;
+    if (typeof item.key === "string" && keys.includes(item.key)) {
+      return typeof item.value === "string" && item.value.length > 0 ? item.value : null;
+    }
+  }
+  return null;
+}
+
+function str(args: DispatchArgs, key: string): string {
+  const value = args[key];
+  if (typeof value !== "string" || value.length === 0) {
+    throw new ToolDispatchError(`Missing required string argument: ${key}`);
+  }
+  return value;
+}
+
+function optStr(args: DispatchArgs, key: string): string | undefined {
+  const value = args[key];
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+async function snapshotResult(snap: EngineSnapshot, target: string): Promise<DispatchArgs> {
+  const failure = extractEngineFailure(snap);
+  if (failure) throw new ToolDispatchError(failure);
+  if (target === "game" && snap.failureReason === "bridge_required") {
+    throw new ToolDispatchError(
+      "Game capture is not available over this connection (requires the Summer desktop app bridge). " +
+        "Use target 'viewport' or 'scene' instead."
+    );
+  }
+  let localPath = snap.localPath;
+  if (!localPath && snap.base64) {
+    const dir = join(tmpdir(), "summer-cli");
+    await mkdir(dir, { recursive: true });
+    const ext = snap.mime?.includes("png") ? "png" : "jpg";
+    localPath = join(dir, `screenshot-${Date.now()}.${ext}`);
+    await writeFile(localPath, Buffer.from(snap.base64, "base64"));
+  }
+  const { base64: _dropped, ...rest } = snap;
+  return { ...rest, localPath };
+}
+
+// ---------------------------------------------------------------------------
+// The registry
+// ---------------------------------------------------------------------------
+function entry(
+  name: string,
+  summary: string,
+  engineRequired: boolean,
+  handler: ToolDispatchEntry["handler"]
+): ToolDispatchEntry {
+  return {
+    name,
+    slug: name.replace(/^summer_/, "").replace(/_/g, "-"),
+    summary,
+    engineRequired,
+    handler,
+  };
+}
+
+const SCENE_MUTATION_OPS = new Set([
+  "AddNode", "RemoveNode", "MoveNode", "ReparentNode", "ReplaceNode",
+  "SetProp", "SetResourceProperty", "ConnectSignal", "DisconnectSignal",
+  "InstantiateScene", "SaveScene", "Undo",
+]);
+
+export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
+  // --- asset ---
+  entry(
+    "summer_search_assets",
+    "Search the Summer asset library and your own assets; returns import-ready URLs",
+    false,
+    (args) =>
+      searchAssetsGateway({
+        query: String(args.query ?? ""),
+        assetType: optStr(args, "assetType"),
+        limit: typeof args.limit === "number" ? args.limit : 10,
+        source: optStr(args, "source") ?? "library",
+      })
+  ),
+  entry(
+    "summer_list_my_assets",
+    "List or search the signed-in user's generated and uploaded assets",
+    false,
+    (args) =>
+      searchAssetsGateway({
+        query: String(args.query ?? ""),
+        assetType: optStr(args, "assetType"),
+        limit: typeof args.limit === "number" ? args.limit : 10,
+        source: "my_assets",
+      })
+  ),
+  entry(
+    "summer_get_asset",
+    "Fetch one asset by exact Summer asset id (file URL, metadata, license)",
+    false,
+    (args) => gatewayGet(`/api/mcp/assets/${encodeURIComponent(str(args, "assetId"))}`)
+  ),
+  entry(
+    "summer_get_asset_download_url",
+    "Get a downloadable URL for an asset file (primary or thumbnail)",
+    false,
+    (args) =>
+      gatewayGet(
+        `/api/mcp/assets/${encodeURIComponent(str(args, "assetId"))}/download-url`,
+        new URLSearchParams({ role: optStr(args, "role") ?? "primary" })
+      )
+  ),
+  entry(
+    "summer_import_asset_by_id",
+    "Import an exact Summer asset id into the open project (optionally into a scene)",
+    true,
+    async (args, ctx) => {
+      const fetched = await gatewayGet(
+        `/api/mcp/assets/${encodeURIComponent(str(args, "assetId"))}`
+      );
+      const asset = fetched.asset as GatewayAsset | undefined;
+      if (!asset) throw new ToolDispatchError("Asset not found.");
+      return importResolvedAsset(await ctx.engine(), {
+        asset,
+        parent: optStr(args, "parent"),
+        scenePath: optStr(args, "scenePath"),
+        path: optStr(args, "path"),
+        name: optStr(args, "name"),
+      });
+    }
+  ),
+  entry(
+    "summer_import_asset",
+    "Search the asset library and import the best match in one step",
+    true,
+    async (args, ctx) => {
+      const result = await searchAssetsGateway({
+        query: str(args, "query"),
+        assetType: optStr(args, "assetType") ?? "3d_model",
+        limit: 5,
+        source: optStr(args, "source") ?? "all",
+      });
+      const assets = (result.assets ?? []) as GatewayAsset[];
+      if (assets.length === 0) {
+        throw new ToolDispatchError(
+          `No assets found for "${String(args.query)}". Try different keywords.`
+        );
+      }
+      return importResolvedAsset(await ctx.engine(), {
+        asset: assets[0]!,
+        parent: optStr(args, "parent"),
+        scenePath: optStr(args, "scenePath"),
+      });
+    }
+  ),
+
+  // --- cloud (shared core capability, face: cli) ---
+  entry("summer_cloud_init", "Enable Summer Cloud sync for a project", false, (args) =>
+    cloudInit({ project: optStr(args, "project"), face: "cli" })
+  ),
+  entry("summer_cloud_status", "Show what a cloud sync would move", false, (args) =>
+    cloudStatus({ project: optStr(args, "project"), face: "cli" })
+  ),
+  entry("summer_cloud_push", "Upload local project changes to Summer Cloud", false, (args) =>
+    cloudPush({
+      project: optStr(args, "project"),
+      confirmDeletes: args.confirmDeletes === true,
+      bootstrap: args.bootstrap as never,
+      adoptPath: args.adoptPath === true,
+      face: "cli",
+    })
+  ),
+  entry("summer_cloud_pull", "Download Summer Cloud changes into the local project", false, (args) =>
+    cloudPull({
+      project: optStr(args, "project"),
+      bootstrap: args.bootstrap as never,
+      adoptPath: args.adoptPath === true,
+      face: "cli",
+    })
+  ),
+  entry("summer_cloud_restore", "Roll a project back to a cloud version or local checkpoint", false, (args) =>
+    cloudRestore({
+      project: optStr(args, "project"),
+      version: typeof args.version === "number" ? args.version : undefined,
+      checkpoint: optStr(args, "checkpointStamp"),
+      face: "cli",
+    })
+  ),
+  entry("summer_cloud_checkpoints", "List local pre-sync checkpoints", false, (args) =>
+    cloudCheckpoints({ project: optStr(args, "project"), face: "cli" })
+  ),
+  entry("summer_cloud_conflicts", "List or recover preserved cloud conflict sets", false, (args) =>
+    cloudConflicts({
+      project: optStr(args, "project"),
+      restorePath: optStr(args, "restorePath"),
+      set: optStr(args, "set"),
+      face: "cli",
+    })
+  ),
+
+  // --- creator (shared core capability, face: cli) ---
+  entry("summer_creator_publish", "Publish an exported .pck through the creator API (confirm-gated)", false, (args) =>
+    publishCreator({
+      project: optStr(args, "project"),
+      artifact: optStr(args, "artifact"),
+      version: optStr(args, "version"),
+      manifest: optStr(args, "manifest"),
+      projectId: optStr(args, "projectId"),
+      channel: optStr(args, "channel"),
+      notes: optStr(args, "notes"),
+      confirm: args.confirm === true,
+      face: "cli",
+    })
+  ),
+  entry("summer_creator_releases", "List creator-owned releases", false, (args) =>
+    listCreatorReleases({
+      projectId: optStr(args, "projectId"),
+      limit: typeof args.limit === "number" ? args.limit : 20,
+      cursor: optStr(args, "cursor"),
+      face: "cli",
+    })
+  ),
+  entry("summer_creator_logs", "Read creator runtime logs for a project or release", false, (args) =>
+    readCreatorLogs({
+      projectId: optStr(args, "projectId"),
+      releaseId: optStr(args, "releaseId"),
+      limit: typeof args.limit === "number" ? args.limit : 100,
+      face: "cli",
+    })
+  ),
+  entry("summer_creator_config", "Read or update the shared non-secret Summer configuration", false, async (args) => {
+    const action = str(args, "action");
+    if (action === "list") {
+      const config = await readSummerConfig();
+      return {
+        ok: true,
+        values: Object.fromEntries(
+          CONFIG_KEYS.map((name) => [name, getConfigValue(config, name) ?? null])
+        ),
+      };
+    }
+    const key = optStr(args, "key");
+    if (!key || !isConfigKey(key)) {
+      throw new ToolDispatchError(`A valid key is required. Use one of ${CONFIG_KEYS.join(", ")}.`);
+    }
+    if (action === "get") {
+      return { ok: true, key, value: getConfigValue(await readSummerConfig(), key) ?? null };
+    }
+    if (args.confirm !== true) {
+      throw new ToolDispatchError(
+        `Changing ${key} requires confirmation. Retry with "confirm": true after the user approves the exact change.`
+      );
+    }
+    if (action === "set") {
+      const value = optStr(args, "value");
+      if (value === undefined) {
+        throw new ToolDispatchError(`A value is required for ${key}.`);
+      }
+      const config = await setConfigValue(key, value);
+      return { ok: true, key, value: getConfigValue(config, key) };
+    }
+    if (action === "unset") {
+      const config = await unsetConfigValue(key);
+      return { ok: true, key, value: getConfigValue(config, key) ?? null };
+    }
+    throw new ToolDispatchError(`Unknown action "${action}". Use list, get, set, or unset.`);
+  }),
+
+  // --- debug ---
+  entry("summer_get_diagnostics", "Overview of editor console and runtime debugger errors/warnings", true, async (args, ctx) =>
+    requireEngineSuccess(await (await ctx.engine()).getDiagnostics())
+  ),
+  entry("summer_get_console", "Read recent editor Output panel messages (deduplicated)", true, async (args, ctx) => {
+    const op: DispatchArgs = {
+      op: "GetConsoleOutput",
+      max_lines: typeof args.max_lines === "number" ? args.max_lines : 100,
+    };
+    if (optStr(args, "filter")) op.filter = args.filter;
+    if (optStr(args, "type")) op.type = args.type;
+    const engineResult = requireEngineSuccess(await (await ctx.engine()).executeOps([op]));
+    if (args.raw === true) return engineResult;
+    const { result } = shapeEngineLogResponse(engineResult, {
+      errorsOnly: args.errors_only !== false,
+      errorsOnlyStrict: args.strict_errors === true,
+      maxEntries: typeof args.max_lines === "number" ? args.max_lines : 100,
+    });
+    return result;
+  }),
+  entry("summer_clear_console", "Clear the editor's Output panel", true, async (args, ctx) =>
+    requireEngineSuccess(await (await ctx.engine()).executeOps([{ op: "ClearConsoleOutput" }]))
+  ),
+  entry("summer_get_debugger_errors", "Read deduplicated runtime errors from the debugger", true, async (args, ctx) => {
+    const maxErrors = typeof args.max_errors === "number" ? args.max_errors : 50;
+    const op: DispatchArgs = { op: "GetDebuggerErrors", max_errors: maxErrors };
+    if (args.include_stack !== undefined) op.include_stack = args.include_stack === true;
+    if (args.include_warnings === true) op.include_warnings = true;
+    const engineResult = requireEngineSuccess(await (await ctx.engine()).executeOps([op]));
+    if (args.raw === true) return engineResult;
+    return shapeEngineLogResponse(engineResult, { maxEntries: maxErrors }).result;
+  }),
+  entry("summer_get_debugger_warnings", "Read runtime warnings from the debugger panel", true, async (args, ctx) => {
+    const maxWarnings = typeof args.max_warnings === "number" ? args.max_warnings : 50;
+    const op: DispatchArgs = {
+      op: "GetDebuggerErrors",
+      max_errors: maxWarnings,
+      type: "warning",
+      include_stack: args.include_stack !== false,
+    };
+    const engineResult = requireEngineSuccess(await (await ctx.engine()).executeOps([op]));
+    if (args.raw === true) return engineResult;
+    return shapeEngineLogResponse(engineResult, { maxEntries: maxWarnings }).result;
+  }),
+  entry("summer_play", "Start the game (main scene or a specific scene)", true, async (args, ctx) =>
+    requireEngineSuccess(await (await ctx.engine()).play(optStr(args, "scene")))
+  ),
+  entry("summer_stop", "Stop the running game", true, async (_args, ctx) =>
+    requireEngineSuccess(await (await ctx.engine()).stop())
+  ),
+  entry("summer_is_running", "Check whether the game is running", true, async (_args, ctx) =>
+    requireEngineSuccess(await (await ctx.engine()).executeOps([{ op: "IsGameRunning" }]))
+  ),
+  entry("summer_get_script_errors", "Check a GDScript file for parse/compile errors", true, async (args, ctx) =>
+    requireEngineSuccess(await (await ctx.engine()).getScriptErrors(str(args, "path")))
+  ),
+  entry("summer_create_debug_report", "Create a support-ready Markdown debug report", false, async (args) => {
+    const artifact = await createDebugReportArtifact({
+      issue: optStr(args, "issue"),
+      outputPath: optStr(args, "output_path"),
+      includePlaySession: args.include_play_session === true,
+      playWaitMs: typeof args.play_wait_ms === "number" ? args.play_wait_ms : 2500,
+      maxConsoleLines: typeof args.max_console_lines === "number" ? args.max_console_lines : 200,
+      maxDebuggerEntries:
+        typeof args.max_debugger_entries === "number" ? args.max_debugger_entries : 100,
+      includeDoctor: args.include_doctor !== false,
+    });
+    return {
+      ok: true,
+      path: artifact.path,
+      engineConnected: artifact.report.engine.connected,
+      generatedAt: artifact.report.generatedAt,
+      issue: artifact.report.issue,
+      reviewNote:
+        "Report omits auth tokens, but review local paths and stack traces before sending.",
+    };
+  }),
+
+  // --- file ---
+  entry("summer_read_file", "Read a project text file and its sha256 receipt", true, async (args, ctx) =>
+    requireEngineSuccess(
+      await (await ctx.engine()).readProjectFile(
+        safeProjectPath(str(args, "path")),
+        typeof args.max_bytes === "number" ? args.max_bytes : 200_000
+      )
+    )
+  ),
+  entry("summer_write_file", "Create or safely overwrite one complete project text file", true, async (args, ctx) => {
+    const safePath = safeProjectPath(str(args, "path"));
+    const content = args.content;
+    if (typeof content !== "string") {
+      throw new ToolDispatchError("Missing required string argument: content");
+    }
+    const guardedCreate = args.create_only === true;
+    const guardedOverwrite = validSha256(args.expected_sha256);
+    if (args.expected_sha256 !== undefined && !guardedOverwrite) {
+      throw new ToolDispatchError(
+        "Safe write refused: expected_sha256 must be a 64-character hexadecimal sha256 from read-file. Nothing was written."
+      );
+    }
+    if (guardedCreate === guardedOverwrite) {
+      throw new ToolDispatchError(
+        "Safe write requires exactly one guard: create_only:true for a new file, or expected_sha256 from read-file for an existing file. Nothing was written."
+      );
+    }
+    const op: DispatchArgs = { op: "WriteFile", path: safePath, content };
+    if (guardedCreate) op.mustNotExist = true;
+    if (guardedOverwrite) op.expectedSha256 = (args.expected_sha256 as string).toLowerCase();
+    return requireEngineSuccess(await (await ctx.engine()).executeIdentityBoundOps([op]));
+  }),
+  entry("summer_replace_text", "Safely replace text in an existing project file", true, async (args, ctx) => {
+    const safePath = safeProjectPath(str(args, "path"));
+    const oldText = str(args, "old_text");
+    const newText = typeof args.new_text === "string" ? args.new_text : "";
+    const replaceAll = args.replace_all === true;
+    const client = await ctx.engine();
+    const current = readTextPayload(await client.readProjectFile(safePath, 1_000_000));
+    const matches = occurrenceCount(current.content, oldText);
+    if (matches === 0) {
+      throw new ToolDispatchError("Safe replace refused: old_text was not found. Nothing was written.");
+    }
+    if (!replaceAll && matches !== 1) {
+      throw new ToolDispatchError(
+        `Safe replace refused: old_text matched ${matches} times. Provide a unique span or set replace_all:true. Nothing was written.`
+      );
+    }
+    const content = replaceAll
+      ? current.content.split(oldText).join(newText)
+      : current.content.replace(oldText, newText);
+    if (content === current.content) {
+      return { ok: true, noOp: true, path: safePath, sha256: current.sha256, matches };
+    }
+    return requireEngineSuccess(
+      await client.executeIdentityBoundOps([
+        { op: "WriteFile", path: safePath, content, expectedSha256: current.sha256 },
+      ])
+    );
+  }),
+
+  // --- generate ---
+  entry("summer_get_studio_workflow", "Discover Summer Studio guided workflow recipes", false, (args) => {
+    const params = new URLSearchParams();
+    const workflowId = optStr(args, "workflowId");
+    if (workflowId) params.set("id", workflowId);
+    return gatewayGet("/api/mcp/workflows", params);
+  }),
+  entry("summer_generate_image", "Generate or edit an image via Summer Studio", false, (args) =>
+    gatewayPost("/api/mcp/generate/image", {
+      prompt: str(args, "prompt"),
+      model: optStr(args, "model") ?? "nano-banana-2",
+      style: optStr(args, "style") ?? "realistic",
+      referenceImageUrl: optStr(args, "referenceImageUrl"),
+      options: args.options,
+    })
+  ),
+  entry("summer_slice_asset_sheet", "Detect and crop every asset from a generated sheet image", false, (args) =>
+    gatewayPost("/api/mcp/generate/slice-asset-sheet", { assetId: str(args, "assetId") }, 300_000)
+  ),
+  entry("summer_generate_audio", "Generate speech, sound effects, music, or dialogue", false, (args) => {
+    const body: DispatchArgs = { capability: str(args, "capability") };
+    for (const key of ["text", "prompt", "voiceId", "modelId"]) {
+      if (optStr(args, key)) body[key] = args[key];
+    }
+    if (typeof args.durationSeconds === "number") body.durationSeconds = args.durationSeconds;
+    if (Array.isArray(args.inputs)) body.inputs = args.inputs;
+    if (args.options) body.options = args.options;
+    return gatewayPost("/api/mcp/generate/audio", body);
+  }),
+  entry("summer_generate_3d", "Generate a 3D model (optional auto-rig + animations)", false, async (args) => {
+    const options = {
+      ...((args.options as DispatchArgs) ?? {}),
+      ...(Array.isArray(args.imageUrls) ? { imageUrls: args.imageUrls } : {}),
+      ...(optStr(args, "assetIntent") ? { assetIntent: args.assetIntent } : {}),
+      referencePreparation: optStr(args, "referencePreparation") ?? "auto",
+      ...(args.rig === true ? { rig: true } : {}),
+      ...(Array.isArray(args.animationNames) ? { animationNames: args.animationNames } : {}),
+      ...(Array.isArray(args.actionIds) ? { actionIds: args.actionIds } : {}),
+      ...(typeof args.riggingHeightMeters === "number"
+        ? { riggingHeightMeters: args.riggingHeightMeters }
+        : {}),
+    };
+    const result = await gatewayPost("/api/mcp/generate/3d", {
+      prompt: optStr(args, "prompt"),
+      kind: optStr(args, "kind") ?? "text-to-3d",
+      model: optStr(args, "model") ?? "hunyuan",
+      imageUrl: optStr(args, "imageUrl"),
+      title: optStr(args, "title"),
+      idempotencyKey: optStr(args, "idempotencyKey"),
+      options,
+    });
+    const jobId = typeof result.jobId === "string" ? result.jobId : undefined;
+    if (args.wait === false || !jobId) return result;
+    const final = await pollGenerationJob(jobId);
+    return { ...final, jobId };
+  }),
+  entry("summer_generate_video", "Generate a video from text or an image", false, (args) =>
+    gatewayPost("/api/mcp/generate/video", {
+      prompt: str(args, "prompt"),
+      model: optStr(args, "model") ?? "ltx",
+      imageUrl: optStr(args, "imageUrl"),
+      duration: typeof args.duration === "number" ? args.duration : 5,
+      aspectRatio: optStr(args, "aspectRatio") ?? "16:9",
+      options: args.options,
+    })
+  ),
+  entry("summer_check_job", "Check the status of an async generation job", false, (args) =>
+    gatewayGet(`/api/mcp/jobs/${encodeURIComponent(str(args, "jobId"))}`, undefined, 15_000)
+  ),
+  entry("summer_generate_motion", "Generate a curated mocap clip for a rigged humanoid", false, async (args) => {
+    const result = await gatewayPost("/api/mcp/generate/motion", {
+      rigAssetId: str(args, "rigAssetId"),
+      backend: optStr(args, "backend") ?? "meshy-library",
+      motionName: str(args, "motionName"),
+      options: args.options,
+    });
+    const jobId = typeof result.jobId === "string" ? result.jobId : undefined;
+    if (args.wait === false || !jobId) return result;
+    const final = await pollGenerationJob(jobId, 300_000);
+    return { ...final, jobId };
+  }),
+
+  // --- project ---
+  entry("summer_start_game_task", "Plan the right Summer workflow for a game-building task", false, async (args) =>
+    buildGameTaskPlan({
+      goal: str(args, "goal"),
+      mode: optStr(args, "mode") as GameTaskMode | undefined,
+      target: optStr(args, "target") as GameTaskTarget | undefined,
+      assetPolicy: optStr(args, "assetPolicy") as AssetPolicy | undefined,
+      verification: optStr(args, "verification") as VerificationLevel | undefined,
+    })
+  ),
+  entry("summer_get_agent_playbook", "AI-first operating guide for Summer MCP", false, async () => {
+    // v3-followup: the playbook content lives inside src/mcp/tools/project-tools.ts
+    // today; when mcp adopts this registry the content moves here and this
+    // becomes the single source for both surfaces.
+    throw new ToolDispatchError(
+      "The agent playbook is served by the MCP surface today. Connect via 'summer mcp' " +
+        "and call summer_get_agent_playbook, or start from 'summer tool start-game-task' " +
+        "and the library's skills instead."
+    );
+  }),
+  entry("summer_get_project_context", "Engine health, project/scene state, and session rebind", true, async (args, ctx) => {
+    const client = await ctx.engine();
+    const settingsPrefix = optStr(args, "settingsPrefix");
+    const [health, project, scene] = await Promise.all([
+      client.health(),
+      client.getProjectState(settingsPrefix),
+      client.getSceneState().catch((err) => ({
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      })),
+    ]);
+    const boundProjectIdHash = await client.rebind();
+    return {
+      health,
+      project,
+      scene,
+      mainScene: projectSettingValue(project, ["application/run/main_scene", "run/main_scene"]),
+      boundProjectIdHash,
+    };
+  }),
+  entry("summer_open_main_scene", "Open the project's configured main scene", true, async (_args, ctx) => {
+    const client = await ctx.engine();
+    const projectState = await client.getProjectState();
+    const mainScene = projectSettingValue(projectState, [
+      "application/run/main_scene",
+      "run/main_scene",
+    ]);
+    if (!mainScene) {
+      throw new ToolDispatchError(
+        "Could not resolve application/run/main_scene from project state. Open a scene explicitly with open-scene."
+      );
+    }
+    return requireEngineSuccess(
+      await client.executeOps([{ op: "OpenScene", path: mainScene }])
+    );
+  }),
+  entry("summer_project_setting", "Set one project.godot setting", true, async (args, ctx) => {
+    const value = args.value;
+    if (
+      typeof value !== "string" &&
+      typeof value !== "number" &&
+      typeof value !== "boolean"
+    ) {
+      throw new ToolDispatchError("value must be a string, number, or boolean");
+    }
+    return requireEngineSuccess(
+      await (await ctx.engine()).executeOps([
+        { op: "ProjectSetting", key: str(args, "key"), value },
+      ])
+    );
+  }),
+  entry("summer_input_map_bind", "Create an input action and bind events to it", true, async (args, ctx) => {
+    if (!Array.isArray(args.events)) {
+      throw new ToolDispatchError("events must be an array of input event objects");
+    }
+    return requireEngineSuccess(
+      await (await ctx.engine()).executeOps([
+        { op: "InputMapAddAction", name: str(args, "name") },
+        { op: "InputMapBind", name: str(args, "name"), events: args.events },
+      ])
+    );
+  }),
+  entry("summer_get_scene_tree", "Read a scene's node tree (explicit depth/limit honored)", true, async (args, ctx) => {
+    const client = await ctx.engine();
+    const scenePath = optStr(args, "scenePath");
+    const depth = typeof args.depth === "number" ? args.depth : undefined;
+    const limit = typeof args.limit === "number" ? args.limit : undefined;
+    if (depth === undefined && limit === undefined) {
+      return requireEngineSuccess(await client.getSceneState(scenePath));
+    }
+    let target = scenePath;
+    if (!target) {
+      const snapshot = (await client.getSceneState()) as DispatchArgs;
+      const provenance = (snapshot?.provenance ?? {}) as DispatchArgs;
+      const data = (snapshot?.data ?? {}) as DispatchArgs;
+      target =
+        (typeof provenance.scenePath === "string" && provenance.scenePath) ||
+        (typeof data.scenePath === "string" && data.scenePath) ||
+        undefined;
+      if (!target) {
+        return {
+          ...snapshot,
+          depthLimitApplied: false,
+          note: "depth/limit were IGNORED: the current scene path could not be resolved. Pass scenePath explicitly to apply them.",
+        };
+      }
+    }
+    return requireEngineSuccess(await client.getSceneState(target, { depth, limit }));
+  }),
+  entry("summer_import_from_url", "Download one file by URL through Godot's import pipeline", true, async (args, ctx) => {
+    const op: DispatchArgs = { op: "ImportFromUrl", url: str(args, "url") };
+    if (optStr(args, "path")) op.path = args.path;
+    return requireEngineSuccess(await (await ctx.engine()).executeOps([op]));
+  }),
+  entry("summer_import_from_url_batch", "Download multiple files by URL in one operation", true, async (args, ctx) => {
+    if (!Array.isArray(args.imports)) {
+      throw new ToolDispatchError("imports must be an array of {url, path} objects");
+    }
+    return requireEngineSuccess(
+      await (await ctx.engine()).executeOps([{ op: "ImportFromUrlBatch", imports: args.imports }])
+    );
+  }),
+
+  // --- scene ---
+  entry("summer_create_scene", "Create a new minimal .tscn with a create-only guard", true, async (args, ctx) => {
+    const safePath = str(args, "path").trim().replace(/\\/g, "/");
+    const rootName = optStr(args, "rootName") ?? "Main";
+    const rootType = optStr(args, "rootType") ?? "Node3D";
+    if (!safePath.startsWith("res://") || safePath.includes("..")) {
+      throw new ToolDispatchError("Scene path must be a traversal-free res:// project path.");
+    }
+    if (!safePath.endsWith(".tscn")) {
+      throw new ToolDispatchError("New scenes must use the text format: the path must end in .tscn.");
+    }
+    if (!/^[A-Za-z_][A-Za-z0-9_\- ]*$/.test(rootName)) {
+      throw new ToolDispatchError(`Invalid rootName "${rootName}".`);
+    }
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(rootType)) {
+      throw new ToolDispatchError(`Invalid rootType "${rootType}".`);
+    }
+    const client = await ctx.engine();
+    const receipt = requireEngineSuccess(
+      await client.executeIdentityBoundOps([
+        {
+          op: "WriteFile",
+          path: safePath,
+          content: `[gd_scene format=3]\n\n[node name="${rootName}" type="${rootType}"]\n`,
+          mustNotExist: true,
+        },
+      ])
+    );
+    return {
+      ok: true,
+      created: safePath,
+      rootName,
+      rootType,
+      receipt,
+      hint: "The new scene is on disk but not open. Use open-scene to start editing it.",
+    };
+  }),
+  entry("summer_add_node", "Add a node to an exact scene", true, async (args, ctx) =>
+    executeSceneMutation(await ctx.engine(), str(args, "scenePath"), [
+      { op: "AddNode", parent: str(args, "parent"), type: str(args, "type"), name: str(args, "name") },
+    ])
+  ),
+  entry("summer_set_prop", "Set a node property (Godot string syntax for complex types)", true, async (args, ctx) =>
+    executeSceneMutation(await ctx.engine(), str(args, "scenePath"), [
+      { op: "SetProp", path: str(args, "path"), key: str(args, "key"), value: args.value },
+    ])
+  ),
+  entry("summer_set_resource_property", "Set a nested property on a node's resource", true, async (args, ctx) =>
+    executeSceneMutation(await ctx.engine(), str(args, "scenePath"), [
+      {
+        op: "SetResourceProperty",
+        nodePath: str(args, "nodePath"),
+        resourceProperty: str(args, "resourceProperty"),
+        subProperty: str(args, "subProperty"),
+        value: args.value,
+      },
+    ])
+  ),
+  entry("summer_remove_node", "Remove a node (and children) from a scene", true, async (args, ctx) =>
+    executeSceneMutation(await ctx.engine(), str(args, "scenePath"), [
+      { op: "RemoveNode", path: str(args, "path") },
+    ])
+  ),
+  entry("summer_save_scene", "Save an explicit scene to disk (or save-as)", true, async (args, ctx) => {
+    const op: DispatchArgs = { op: "SaveScene" };
+    if (optStr(args, "path")) op.path = args.path;
+    return executeSceneMutation(await ctx.engine(), str(args, "scenePath"), [op]);
+  }),
+  entry("summer_open_scene", "Open a scene file in the editor", true, async (args, ctx) =>
+    requireEngineSuccess(
+      await (await ctx.engine()).executeOps([{ op: "OpenScene", path: str(args, "path") }])
+    )
+  ),
+  entry("summer_instantiate_scene", "Add an existing scene or 3D model as a child node", true, async (args, ctx) => {
+    const op: DispatchArgs = {
+      op: "InstantiateScene",
+      parent: str(args, "parent"),
+      scene: str(args, "scene"),
+    };
+    if (optStr(args, "name")) op.name = args.name;
+    return executeSceneMutation(await ctx.engine(), str(args, "scenePath"), [op]);
+  }),
+  entry("summer_connect_signal", "Connect a signal between two nodes", true, async (args, ctx) =>
+    executeSceneMutation(await ctx.engine(), str(args, "scenePath"), [
+      {
+        op: "ConnectSignal",
+        emitter: str(args, "emitter"),
+        signal: str(args, "signal"),
+        receiver: str(args, "receiver"),
+        method: str(args, "method"),
+      },
+    ])
+  ),
+  entry("summer_select_node", "Select a node in the editor scene tree", true, async (args, ctx) => {
+    const op: DispatchArgs = { op: "SelectNode", nodePath: str(args, "nodePath") };
+    if (optStr(args, "scenePath")) op.scenePath = args.scenePath;
+    return requireEngineSuccess(await (await ctx.engine()).executeOps([op]));
+  }),
+  entry("summer_replace_node", "Replace a node with a different type or scene", true, async (args, ctx) => {
+    const op: DispatchArgs = { op: "ReplaceNode", path: str(args, "path") };
+    if (optStr(args, "type")) op.type = args.type;
+    if (optStr(args, "scene")) op.scene = args.scene;
+    return executeSceneMutation(await ctx.engine(), str(args, "scenePath"), [op]);
+  }),
+  entry("summer_inspect_node", "Get all editable properties of a node", true, async (args, ctx) =>
+    requireEngineSuccess(await (await ctx.engine()).inspectNode(str(args, "path")))
+  ),
+  entry("summer_inspect_resource", "Get all properties of a resource", true, async (args, ctx) =>
+    requireEngineSuccess(await (await ctx.engine()).inspectResource(str(args, "path")))
+  ),
+  entry("summer_batch", "Run multiple engine ops as one undo group (verbatim passthrough)", true, async (args, ctx) => {
+    if (!Array.isArray(args.ops)) {
+      throw new ToolDispatchError("ops must be an array of operation objects");
+    }
+    const ops = args.ops as DispatchArgs[];
+    const rawFileMutation = ops.find((op) => {
+      const kind = String(op.op ?? "");
+      return kind === "WriteFile" || kind === "ReplaceText";
+    });
+    if (rawFileMutation) {
+      throw new ToolDispatchError(
+        `batch does not accept raw ${String(rawFileMutation.op)} operations. ` +
+          "Use write-file or replace-text so content guards are enforced."
+      );
+    }
+    const scenePath = optStr(args, "scenePath");
+    const needsScenePath = ops.some((op) => SCENE_MUTATION_OPS.has(String(op.op ?? "")));
+    if (needsScenePath && !scenePath) {
+      throw new ToolDispatchError("batch requires scenePath when ops contains scene mutations");
+    }
+    const client = await ctx.engine();
+    const options: DispatchArgs = { groupUndo: true, ...(scenePath ? { scenePath } : {}) };
+    return needsScenePath
+      ? executeSceneMutation(client, scenePath!, ops, options)
+      : executeOpsChunked((chunk) => client.executeOps(chunk, options), ops);
+  }),
+
+  // --- visual ---
+  entry("summer_screenshot", "Capture an editor viewport, scene render, or game frame to a file", true, async (args, ctx) => {
+    const client = await ctx.engine();
+    const target = optStr(args, "target") ?? "viewport";
+    let snap: EngineSnapshot;
+    if (target === "game") {
+      snap = await client.gameSnapshot();
+    } else if (target === "scene") {
+      snap = await client.scenePreview({
+        scenePath: optStr(args, "scenePath"),
+        framing: optStr(args, "framing") as never,
+        size: Array.isArray(args.size) ? (args.size as [number, number]) : undefined,
+        nodePath: optStr(args, "nodePath"),
+      });
+    } else {
+      snap = await client.viewportSnapshot();
+    }
+    return snapshotResult(snap, target);
+  }),
+
+  // --- feedback ---
+  entry("summer_library_feedback", "Report library entry outcomes so Summer can fix and re-rank them", false, async (args) => {
+    if (!Array.isArray(args.reports) || args.reports.length === 0) {
+      throw new ToolDispatchError("reports must be a non-empty array of outcome reports");
+    }
+    const engineVersion = str(args, "engine_version");
+    return sendLibraryFeedback({
+      reports: args.reports as LibraryFeedbackReport[],
+      engine_version: engineVersion,
+    });
+  }),
+];
+
+// ---------------------------------------------------------------------------
+// Lookup API
+// ---------------------------------------------------------------------------
+const BY_KEY = new Map<string, ToolDispatchEntry>();
+for (const dispatchEntry of TOOL_DISPATCH) {
+  for (const key of [dispatchEntry.slug, dispatchEntry.name]) {
+    if (BY_KEY.has(key)) {
+      throw new Error(`Duplicate tool dispatch key: ${key}`);
+    }
+    BY_KEY.set(key, dispatchEntry);
+  }
+}
+
+export function listToolDispatches(): readonly ToolDispatchEntry[] {
+  return TOOL_DISPATCH;
+}
+
+/** Resolve by library slug ("add-node"), MCP name ("summer_add_node"), or the
+ *  underscore-less mixed forms users type ("add_node", "summer-add-node"). */
+export function resolveToolDispatch(nameOrSlug: string): ToolDispatchEntry | null {
+  const raw = nameOrSlug.trim();
+  const candidates = [
+    raw,
+    raw.replace(/_/g, "-"),
+    raw.replace(/-/g, "_"),
+    raw.replace(/^summer[-_]/, "").replace(/_/g, "-"),
+    raw.replace(/^tool\//, ""),
+  ];
+  for (const candidate of candidates) {
+    const hit = BY_KEY.get(candidate);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+export async function dispatchTool(
+  nameOrSlug: string,
+  args: DispatchArgs,
+  ctx: ToolDispatchContext = createDefaultDispatchContext()
+): Promise<unknown> {
+  const dispatchEntry = resolveToolDispatch(nameOrSlug);
+  if (!dispatchEntry) {
+    throw new ToolDispatchError(
+      `Unknown tool "${nameOrSlug}". Run 'summer tool --list' to see all ${TOOL_DISPATCH.length} tools.`
+    );
+  }
+  return dispatchEntry.handler(args, ctx);
+}

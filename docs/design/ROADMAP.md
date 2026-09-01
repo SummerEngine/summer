@@ -22,11 +22,11 @@ Waves; each gated by tsc + vitest + validate-library:
 5. ✅ Registry compiler (`scripts/generate-registry`) → `registry/generated/` (index, all agent manifests, counts, aliases) + CI parity gate.
 6. ✅ Library migration fleet: 79 skills → `library/skills/<slug>/` + resource.yaml (aliases for every old path); 63 tools → `library/tools/<slug>/` descriptors; references/ + docs → `library/references/`; templates → `library/templates/<slug>/` pinned (commit + tree_digest, resolved from live repos).
 6b. ✅ Cutover: `summer skills list/install/info` + `summer setup` read `registry/generated/skills-registry.json` (installer copies from `library/skills/<slug>/`; `recommended` lives in resource.yaml, compiled into the registry); hand-written `SKILL_REGISTRY` deleted; legacy `skills/` + `references/` trees deleted (aliases keep old paths resolving); guard tests repointed at library/; package `files` ships `library/`, `registry/generated/`, `registry/schemas/`, `integrations/`.
-7. MCP SDK v2 bump (`@modelcontextprotocol/sdk` → v2 major; stdio unchanged; no elicitation to migrate).
-8. AGENTS.md rewrite (trust / understand / navigate / work router) + README update; docs/.
-9. Evals: routing eval suite (query → expected entries) + per-kind scaffolding + CI workflow.
-10. Feedback mailbox v1: `summer_library_feedback` MCP tool (agent repo) + `/api/mcp/library-feedback` route + append-only table (web repo; table via Supabase direct SQL — Drizzle migrator history is unreliable; API-writes only, no anon insert policy, capped fields) + first-run telemetry notice + `SUMMER_NO_TELEMETRY` / `DO_NOT_TRACK`.
-11. Full verify (tsc, vitest, build, smoke, validate-library, parity), push branch, PR for Mathias sign-off.
+7. ✅ MCP SDK pinned ^1.30.0 (no v2 major published yet — see watch item) (`@modelcontextprotocol/sdk` → v2 major; stdio unchanged; no elicitation to migrate).
+8. ✅ AGENTS.md rewrite (trust / understand / navigate / work router) + README update; docs/.
+9. ✅ Evals: routing eval suite (84 queries, recall@5 0.958 baseline) (query → expected entries) + per-kind scaffolding + CI workflow.
+10. ✅ Feedback mailbox v1 (+ agent_model/client attribution): `summer_library_feedback` MCP tool (agent repo) + `/api/mcp/library-feedback` route + append-only table (web repo; table via Supabase direct SQL — Drizzle migrator history is unreliable; API-writes only, no anon insert policy, capped fields) + first-run telemetry notice + `SUMMER_NO_TELEMETRY` / `DO_NOT_TRACK`.
+11. ✅ Full verify (tsc clean, 560/560, parity no-drift, npm pack verified) + branch pushed. PR open for Mathias sign-off.
 
 **Human-gated actions (Mathias only):** merge the PR; npm publish 3.0.0; GitHub repo rename → `summer` + org casing → `summerengine` (do both together when the new README lands); web-repo rename copy pass (one constant `src/lib/data/agent-guides.ts` + ~25 hard-coded spots: 6× i18n `home.json` L119, 3 blog MDX + 15 translations, `source-status/page.tsx` L7, Docs/plans).
 

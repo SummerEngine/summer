@@ -1,0 +1,31 @@
+id: skill/generate-motion
+kind: skill
+version: 1.0.0
+summary: Attach an animation clip to a rigged character from the curated Meshy motion library — idle, walk, run, attack — wired via AnimationPlayer.
+use_when:
+  - the user needs an animation clip on a rigged character — idle/walk/run/attack from the curated Meshy library
+facets:
+  lifecycle:
+    - build
+  domains:
+    - animation
+    - 3d
+  modalities:
+    - animation
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/design-npc
+    - skill/animation-tree
+    - skill/facial-and-lipsync
+    - skill/procedural-animation
+    - skill/retarget
+    - skill/asset-strategy
+    - skill/fps-controller
+source: official
+license: MIT
+status: stable
+aliases:
+  - skills/animation/generate-motion

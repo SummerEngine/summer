@@ -1,0 +1,22 @@
+id: skill/voice-line
+kind: skill
+version: 1.0.0
+summary: Generate TTS voice lines — NPC barks, narrator, dialogue — with voice-id sourcing, a character-to-voice decision tree, and multi-line dialogue support.
+use_when:
+  - generating TTS voice lines — NPC barks, narrator, dialogue
+  - multi-line dialogue via text_to_dialogue
+facets:
+  lifecycle:
+    - build
+  domains:
+    - audio
+  modalities:
+    - audio
+    - assets
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - skills/audio/voice-line

@@ -1,0 +1,21 @@
+id: template/3d-third-person-controller
+kind: template
+version: 1.0.0
+summary: 3D third-person character controller built on GDQuest's open-source work, inspired by Ratchet and Clank-style movement.
+use_when:
+  - starting a 3D game around a polished third-person character controller
+facets:
+  lifecycle: [build]
+  domains: [3d, third-person]
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - template-3d-third-person-controller
+repo: https://github.com/SummerEngine/template-3d-third-person-controller
+commit: 337f9354dd7ffa631e7cab5bd4c806161688e5e8
+tree_digest: e9140d525be64075b6c0ac5f6b7b7e6623fb5e07013ddd8f2999f45ad6ac5dcd
+default_branch: master
+systems: [third-person-controller, camera-rig, animation]

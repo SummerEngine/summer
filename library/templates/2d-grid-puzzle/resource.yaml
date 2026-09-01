@@ -1,0 +1,21 @@
+id: template/2d-grid-puzzle
+kind: template
+version: 1.0.0
+summary: Grid-based 2D puzzle starter with tile logic and move handling.
+use_when:
+  - starting a match/slide/sokoban-style grid puzzle game
+facets:
+  lifecycle: [build]
+  domains: [2d, puzzle]
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - template-2d-grid-puzzle
+repo: https://github.com/SummerEngine/template-2d-grid-puzzle
+commit: 14409a7dbbabe08bf7ba3397b9c2ee29f6a15420
+tree_digest: 76257b6e3c71c25e23b634036864ce9ab6b7e51e340df61f9fa02a6587d51165
+default_branch: main
+systems: [grid-logic, input]

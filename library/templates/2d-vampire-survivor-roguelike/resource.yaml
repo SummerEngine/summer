@@ -1,0 +1,21 @@
+id: template/2d-vampire-survivor-roguelike
+kind: template
+version: 1.0.0
+summary: Survivors-like roguelike starter — auto-attacking hero, swarming enemies, run-based upgrades.
+use_when:
+  - starting a Vampire Survivors-style horde roguelike
+facets:
+  lifecycle: [build]
+  domains: [2d, roguelike, survivors-like]
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - template-2d-vampire-survivor-roguelike
+repo: https://github.com/SummerEngine/template-2d-vampire-survivor-roguelike
+commit: c30b12ad90ec466aaffaab47e671198570242347
+tree_digest: e2891177eecc654771c0ae96105500b1b7682b38e851c94490de6bf262ab81c4
+default_branch: main
+systems: [auto-attack, enemy-swarms, upgrades]

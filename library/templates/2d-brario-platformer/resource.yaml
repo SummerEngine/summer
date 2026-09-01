@@ -1,0 +1,21 @@
+id: template/2d-brario-platformer
+kind: template
+version: 1.0.0
+summary: Classic Mario-style 2D platformer starter with enemies, blocks, and level progression.
+use_when:
+  - starting a classic run-and-jump platformer with enemies and pickups
+facets:
+  lifecycle: [build]
+  domains: [2d, platformer]
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - template-2d-brario-platformer
+repo: https://github.com/SummerEngine/template-2d-brario-platformer
+commit: 6cee7474f68f00675f64bc4eb9c86e77418724ef
+tree_digest: 96293d3ea0e997ac869a7a549f442b31457a6099dc5ad7dd0fa1bc9d4a81c5ef
+default_branch: main
+systems: [character-controller, enemies, levels]

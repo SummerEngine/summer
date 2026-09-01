@@ -1,0 +1,19 @@
+id: template/empty
+kind: template
+version: 1.0.0
+summary: "Built-in: empty 3D project with just a root node — generated locally by summer create, no download."
+use_when:
+  - starting from a completely blank project
+facets:
+  lifecycle: [build]
+  domains: [3d, builtin]
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+repo: https://github.com/SummerEngine/summer-engine-agent
+commit: e49189b93fcfee88b57e22ba8467cc782b292ac0
+tree_digest: 17e52c05f84531a5f4828902c40005fcd4c3285dae26eac46f73ea5ed01da004
+default_branch: main
+systems: [project-scaffold]

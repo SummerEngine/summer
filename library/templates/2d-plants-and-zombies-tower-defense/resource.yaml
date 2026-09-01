@@ -1,0 +1,21 @@
+id: template/2d-plants-and-zombies-tower-defense
+kind: template
+version: 1.0.0
+summary: Lane tower-defense starter in the Plants vs. Zombies style — placeable defenders, waves of lane attackers.
+use_when:
+  - starting a lane-based tower defense game
+facets:
+  lifecycle: [build]
+  domains: [2d, tower-defense]
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - template-2d-plants-and-zombies-tower-defense
+repo: https://github.com/SummerEngine/template-2d-plants-and-zombies-tower-defense
+commit: bc48f4c73861094e63e9304e630a49a48a605819
+tree_digest: 60c24cade6590a1d867f29d108ee782f85c84157e43d3fd5b6fe8fe69fc4d98e
+default_branch: main
+systems: [lanes, spawning, placement, waves]

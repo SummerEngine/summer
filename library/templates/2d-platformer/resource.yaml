@@ -1,0 +1,22 @@
+id: template/2d-platformer
+kind: template
+version: 1.0.0
+summary: 2D platformer starter with TileMap levels, a CharacterBody2D controller, and parallax backgrounds.
+use_when:
+  - starting a 2D side-scrolling platformer
+  - needing a working TileMap + CharacterBody2D baseline
+facets:
+  lifecycle: [build]
+  domains: [2d, platformer]
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - template-2d-platformer
+repo: https://github.com/SummerEngine/template-2d-platformer
+commit: 66fc71b8edcd1c7023b890c7c0ef7cc55d80748e
+tree_digest: 76ac4aee9a8a9d4d9ced0a3bc7b0cab76a4fc6eefd04403df967890c05a34c6c
+default_branch: main
+systems: [tilemap, character-controller, parallax]

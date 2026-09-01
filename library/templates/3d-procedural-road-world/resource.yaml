@@ -1,0 +1,21 @@
+id: template/3d-procedural-road-world
+kind: template
+version: 1.0.0
+summary: Playable procedural open-world starter — generated roads and world around a drivable/walkable space.
+use_when:
+  - starting a procedurally generated open-world game
+facets:
+  lifecycle: [build]
+  domains: [3d, procedural, open-world]
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - template-3d-procedural-road-world
+repo: https://github.com/SummerEngine/template-3d-procedural-road-world
+commit: 31494077cfad5a9c44685deb767d891ec68f2f05
+tree_digest: 38fb9438d0cb8711aff786ac452d457242a8a1bd757ddc19ac980611e85b54d8
+default_branch: codex/importable-template
+systems: [procedural-generation, roads, world]

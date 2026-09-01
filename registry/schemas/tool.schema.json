@@ -28,7 +28,8 @@
         "mcp": {
           "type": "object",
           "properties": {
-            "tool_name": { "type": "string", "minLength": 1 }
+            "tool_name": { "type": "string", "minLength": 1 },
+            "remote": { "type": "boolean" }
           },
           "required": ["tool_name"],
           "additionalProperties": false

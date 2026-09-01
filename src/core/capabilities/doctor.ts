@@ -2,24 +2,23 @@ import { spawn } from "child_process";
 import { existsSync } from "fs";
 import { createRequire } from "node:module";
 import { platform } from "os";
-import { Command } from "commander";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { getAuthToken, getUserInfo } from "../core/auth.js";
-import { isGitAvailable } from "../core/capabilities/cloud/checkpoint.js";
-import { checkEngineHealth, getApiPort, getApiToken } from "../core/engine.js";
-import { brandLine, c, pad, sym, tildeify } from "../core/format.js";
-import { getMcpLogPath } from "../core/mcp-log.js";
-import { getProjectMemorySummary } from "../project-memory/project-memory.js";
+import { getAuthToken, getUserInfo } from "../auth.js";
+import { isGitAvailable } from "./cloud/checkpoint.js";
+import { checkEngineHealth, getApiPort, getApiToken } from "../engine.js";
+import { brandLine, c, pad, sym, tildeify } from "../format.js";
+import { getMcpLogPath } from "../mcp-log.js";
+import { getProjectMemorySummary } from "../../project-memory/project-memory.js";
 import {
   buildCliVersionCheck,
   buildSkillsVersionCheck,
   defaultSkillMarkerCandidates,
   fetchLatestRegistryVersion,
-} from "../installer/version-check.js";
+} from "../../installer/version-check.js";
 
 const require = createRequire(import.meta.url);
-const { version } = require("../../package.json") as { version: string };
+const { version } = require("../../../package.json") as { version: string };
 const MIN_EXPECTED_MCP_TOOLS = 50;
 const REQUIRED_MCP_TOOLS = [
   "summer_get_project_context",
@@ -62,23 +61,6 @@ const WIN_ENGINE_PATHS = [
   `${process.env.LOCALAPPDATA}\\Programs\\Summer Engine\\Summer.exe`,
   `${process.env.PROGRAMFILES}\\Summer Engine\\Summer.exe`,
 ];
-
-export const doctorCommand = new Command("doctor")
-  .description("Diagnose Node, login, engine, project memory, local API, and MCP registration")
-  .option("--json", "Print diagnostics as JSON")
-  .action(async (opts: { json?: boolean }) => {
-    if (!opts.json) {
-      const { createRequire: req } = await import("node:module");
-      const ver = req(import.meta.url)("../../package.json").version as string;
-      console.log("");
-      console.log(brandLine(ver));
-      console.log("");
-    }
-    const result = await runDoctor({ json: Boolean(opts.json) });
-    if (!result.ok) {
-      process.exit(1);
-    }
-  });
 
 export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResult> {
   const checks: DoctorCheck[] = [];

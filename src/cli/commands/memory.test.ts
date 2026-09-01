@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { getProjectMemorySummary } from "../project-memory/project-memory.js";
+import { getProjectMemorySummary } from "../../project-memory/project-memory.js";
 import {
   findProjectRoot,
   formatMemorySummary,

@@ -9,8 +9,8 @@ import { spawn } from "node:child_process";
 import { readFile, access, writeFile } from "node:fs/promises";
 import { join, resolve, dirname } from "node:path";
 import { homedir } from "node:os";
-import { getApiToken, getApiPort, checkEngineHealth } from "../core/engine.js";
-import { getSummerDir } from "../core/auth.js";
+import { getApiToken, getApiPort, checkEngineHealth } from "../../core/engine.js";
+import { getSummerDir } from "../../core/auth.js";
 
 async function findWebAppPath(): Promise<string | null> {
   // 1. Check env var
@@ -32,10 +32,11 @@ async function findWebAppPath(): Promise<string | null> {
   }
 
   // 3. Search common sibling locations
-  const cliDir = dirname(dirname(dirname(new URL(import.meta.url).pathname)));
+  // dist/cli/commands/orchestrator.js -> package root
+  const cliDir = dirname(dirname(dirname(dirname(new URL(import.meta.url).pathname))));
   const searchPaths = [
     resolve(cliDir, "../../publicsummerengine"), // sibling in development/
-    resolve(cliDir, "../../../publicsummerengine"), // one level up
+    resolve(cliDir, "../../../../publicsummerengine"), // one level up
     resolve(homedir(), "development/publicsummerengine"),
   ];
 

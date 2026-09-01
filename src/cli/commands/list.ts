@@ -1,7 +1,7 @@
 import { Command } from "commander";
 import { readdirSync, existsSync } from "fs";
 import { join } from "path";
-import { fetchRemoteTemplates } from "../core/remote-templates.js";
+import { fetchRemoteTemplates } from "../../core/remote-templates.js";
 
 export const listCommand = new Command("list")
   .description("List available templates or local projects")

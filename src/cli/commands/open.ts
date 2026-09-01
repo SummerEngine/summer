@@ -1,7 +1,7 @@
 import { Command } from "commander";
 import { existsSync } from "fs";
 import { resolve } from "path";
-import { getApiPort, checkEngineHealth } from "../core/engine.js";
+import { getApiPort, checkEngineHealth } from "../../core/engine.js";
 
 export const openCommand = new Command("open")
   .description("Open a project in Summer Engine")

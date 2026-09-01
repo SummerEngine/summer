@@ -6,7 +6,7 @@ import { EngineApiClient } from "../api-client.js";
 import { shapeEngineLogResponse } from "../log-filters.js";
 import { tildeify } from "../format.js";
 import { getMcpLogPath, readRecentMcpLogLines } from "../mcp-log.js";
-import { runDoctor, type DoctorResult } from "../../commands/doctor.js";
+import { runDoctor, type DoctorResult } from "./doctor.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../../../package.json") as { version: string };

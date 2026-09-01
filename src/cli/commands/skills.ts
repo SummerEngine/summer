@@ -18,23 +18,23 @@ import {
   SKILL_REGISTRY,
   type AgentClient,
   type SkillRegistryEntry,
-} from "../core/skills-registry.js";
-import { tildeify } from "../core/format.js";
-import { writeSkillMarker } from "../installer/version-check.js";
+} from "../../core/skills-registry.js";
+import { tildeify } from "../../core/format.js";
+import { writeSkillMarker } from "../../installer/version-check.js";
 
 const requireFromHere = createRequire(import.meta.url);
-const { version: cliVersion } = requireFromHere("../../package.json") as {
+const { version: cliVersion } = requireFromHere("../../../package.json") as {
   version: string;
 };
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// Resolve skills dir: from dist/commands/skills.js -> ../../skills
-const skillsDir = join(__dirname, "..", "..", "skills");
+// Resolve skills dir: from dist/cli/commands/skills.js -> ../../../skills
+const skillsDir = join(__dirname, "..", "..", "..", "skills");
 // Resolve commands dir: same parent. Used by Claude Code installs to also copy
 // slash commands (e.g. /gameskill) to ~/.claude/commands/. Other agents don't
 // have an equivalent today, so the copy is gated to claude-code.
-const commandsDir = join(__dirname, "..", "..", "commands");
+const commandsDir = join(__dirname, "..", "..", "..", "commands");
 
 const SKILL_SCOPES = ["user", "project"] as const;
 type SkillScope = (typeof SKILL_SCOPES)[number];

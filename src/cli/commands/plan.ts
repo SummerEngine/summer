@@ -9,8 +9,8 @@ import {
   type GameTaskMode,
   type GameTaskTarget,
   type VerificationLevel,
-} from "../core/capabilities/game-task-plan.js";
-import { c } from "../core/format.js";
+} from "../../core/capabilities/game-task-plan.js";
+import { c } from "../../core/format.js";
 
 interface PlanCommandOptions {
   mode?: string;

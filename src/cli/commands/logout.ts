@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { clearAuthCredentials } from "../core/auth.js";
+import { clearAuthCredentials } from "../../core/auth.js";
 
 export const logoutCommand = new Command("logout")
   .description("Sign out and clear stored auth tokens")

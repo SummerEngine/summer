@@ -4,8 +4,8 @@ import { existsSync } from "fs";
 import { mkdir, readFile, rm, writeFile } from "fs/promises";
 import { platform } from "os";
 import { join, resolve } from "path";
-import { getSummerDir } from "../core/auth.js";
-import { getApiPort, checkEngineHealth } from "../core/engine.js";
+import { getSummerDir } from "../../core/auth.js";
+import { getApiPort, checkEngineHealth } from "../../core/engine.js";
 
 const MAC_PATHS = [
   "/Applications/Summer.app/Contents/MacOS/Summer",

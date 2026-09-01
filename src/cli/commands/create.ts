@@ -2,8 +2,8 @@ import { Command } from "commander";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
-import { fetchRemoteTemplates, cloneTemplate, matchTemplate } from "../core/remote-templates.js";
-import { SUMMER_ENGINE_COMPATIBILITY } from "../core/summer-compatibility.js";
+import { fetchRemoteTemplates, cloneTemplate, matchTemplate } from "../../core/remote-templates.js";
+import { SUMMER_ENGINE_COMPATIBILITY } from "../../core/summer-compatibility.js";
 
 interface Template {
   name: string;
@@ -51,8 +51,8 @@ const BUILTIN_TEMPLATES: Template[] = [
  */
 function scaffoldAutopilot(projectDir: string): boolean {
   const here = dirname(fileURLToPath(import.meta.url));
-  // dist/commands/create.js -> package root
-  const source = resolve(here, "..", "..", "assets", "autopilot");
+  // dist/cli/commands/create.js -> package root
+  const source = resolve(here, "..", "..", "..", "assets", "autopilot");
   const target = join(projectDir, "tests", "autopilot");
 
   if (!existsSync(source) || existsSync(target)) return false;

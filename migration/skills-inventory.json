@@ -1,0 +1,2696 @@
+{
+  "generatedAt": "2026-09-01T14:11:54.745Z",
+  "sourceCommit": "e49189b93fcfee88b57e22ba8467cc782b292ac0 (origin/main at inventory time)",
+  "totalSkills": 79,
+  "manifestCounts": {
+    "claudePlugin": 79,
+    "codexPlugin": 75,
+    "cursorPlugin": 75,
+    "skillRegistry": 69
+  },
+  "idCollisions": [],
+  "nameFolderMismatches": [],
+  "registryEntriesNotOnDisk": [],
+  "manifestPathsNotOnDisk": {
+    "claudePlugin": [],
+    "codexPlugin": [],
+    "cursorPlugin": []
+  },
+  "skills": [
+    {
+      "path": "skills/2d-assets/character-portrait/SKILL.md",
+      "dir": "skills/2d-assets/character-portrait",
+      "proposedId": "character-portrait",
+      "category": "2d-assets",
+      "name": "character-portrait",
+      "description": "Use when generating a single, polished bust/portrait of a character for dialogue UI, character-select screens, lore cards, or codex entries. One character, locked composition, VN-style. Trigger on \"character portrait\", \"dialogue portrait\", \"VN portrait\", \"character bust\", \"headshot\", \"character select image\", \"lore card art\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "2d-assets",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Glob Write Edit summer_generate_image summer_search_assets summer_import_from_url summer_set_resource_property",
+        "paths": [
+          "assets/**",
+          "art/portraits/**",
+          "ui/portraits/**"
+        ]
+      },
+      "lineCount": 201,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/2d-assets/concept-art/SKILL.md",
+      "dir": "skills/2d-assets/concept-art",
+      "proposedId": "concept-art",
+      "category": "2d-assets",
+      "name": "concept-art",
+      "description": "Use when the user is exploring art direction — wants 3-4 rough variants of a character, environment, or prop to pick a vibe before committing to a final asset. Generates a batch of evocative concept images, not finals. Trigger on \"concept art\", \"art direction\", \"explore the look\", \"give me some variants\", \"what could this character look like\", \"mood board\", \"rough sketches\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "2d-assets",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Glob Write Edit summer_generate_image summer_search_assets summer_import_from_url",
+        "paths": [
+          "assets/**",
+          "art/**",
+          "concepts/**"
+        ]
+      },
+      "lineCount": 153,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/2d-assets/create-asset-sheet/SKILL.md",
+      "dir": "skills/2d-assets/create-asset-sheet",
+      "proposedId": "create-asset-sheet",
+      "category": "2d-assets",
+      "name": "create-asset-sheet",
+      "description": "Use when the user wants to generate a pack of 2D game assets from a single prompt — a tile sheet, UI kit, menu screen, character pack, or biome set. The skill plans the prompt, generates a coherent sheet, removes the background, vision-detects each item, classifies it, and saves as a single pack ArtAsset. Trigger on \"asset sheet\", \"asset pack\", \"tile sheet\", \"tileset\", \"UI kit\", \"asset pack for\", \"make me a sheet of\", \"generate a bunch of <category> assets\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "2d-assets",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Glob Write Edit summer_get_studio_workflow summer_generate_image summer_slice_asset_sheet summer_search_assets summer_import_asset_by_id summer_import_from_url",
+        "paths": [
+          "assets/**",
+          "art/**",
+          "sprites/**"
+        ]
+      },
+      "lineCount": 165,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/2d-assets/instantiate-asset-pack/SKILL.md",
+      "dir": "skills/2d-assets/instantiate-asset-pack",
+      "proposedId": "instantiate-asset-pack",
+      "category": "2d-assets",
+      "name": "instantiate-asset-pack",
+      "description": "Use when the user wants to import or spawn an entire asset pack (the multi-slice ArtAsset produced by `create-asset-sheet`) into the current scene — not a single slice, the whole pack. Reads the pack's per-slice metadata (zOrder, isComposite, parentSliceIndex, widget, bbox), groups composites, sorts children by paint order, and emits the Sprite2D / Node2D / NinePatchRect ops to lay it out correctly. Trigger on \"import the X pack\", \"spawn the UI from pack Y\", \"bring in that asset sheet\", \"add the panel from the pack\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "2d-assets",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Glob Write Edit summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_get_scene_tree summer_import_from_url",
+        "paths": [
+          "assets/**",
+          "art/**",
+          "ui/**",
+          "scenes/**"
+        ]
+      },
+      "lineCount": 245,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": false,
+        "cursorPlugin": false,
+        "skillRegistry": false
+      }
+    },
+    {
+      "path": "skills/2d-assets/pixel-art/SKILL.md",
+      "dir": "skills/2d-assets/pixel-art",
+      "proposedId": "pixel-art",
+      "category": "2d-assets",
+      "name": "pixel-art",
+      "description": "Use when generating pixel-art assets — sprites, items, tiles, portraits in a pixel style at a specific resolution (32×32, 64×64, 128×128). Pixel-perfect grid, limited palette, retro feel. Trigger on \"pixel art\", \"8-bit art\", \"16-bit sprite\", \"pixel sprite\", \"retro tileset\", \"pixel icon\", \"pixel portrait\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "2d-assets",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Glob Write Edit summer_generate_image summer_search_assets summer_import_from_url summer_set_resource_property",
+        "paths": [
+          "assets/**",
+          "art/pixel/**",
+          "sprites/**"
+        ]
+      },
+      "lineCount": 196,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/2d-assets/skybox-panorama/SKILL.md",
+      "dir": "skills/2d-assets/skybox-panorama",
+      "proposedId": "skybox-panorama",
+      "category": "2d-assets",
+      "name": "skybox-panorama",
+      "description": "Use when generating a 360° panoramic sky image for use as a Sky resource (PanoramaSkyMaterial) in a 3D scene. Equirectangular projection, 2:1 aspect. Wires into WorldEnvironment.sky. Trigger on \"skybox\", \"sky panorama\", \"360 background\", \"environment sky\", \"HDRI sky\", \"panoramic background\", \"panorama sky\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "2d-assets",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Glob Write Edit summer_generate_image summer_search_assets summer_import_from_url summer_set_resource_property summer_add_node summer_set_prop summer_inspect_node",
+        "paths": [
+          "assets/**",
+          "art/sky/**",
+          "environments/**"
+        ]
+      },
+      "lineCount": 202,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/2d-assets/sprite-sheet/SKILL.md",
+      "dir": "skills/2d-assets/sprite-sheet",
+      "proposedId": "sprite-sheet",
+      "category": "2d-assets",
+      "name": "sprite-sheet",
+      "description": "Use when generating animated 2D character sprites laid out as a sprite sheet (grid of frames) — walk cycle, attack frames, idle bob, death sequence. Wires into AnimatedSprite2D / SpriteFrames. Trigger on \"sprite sheet\", \"walk cycle\", \"attack frames\", \"animated sprite\", \"frame-by-frame animation\", \"2D character animation\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "2d-assets",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Glob Write Edit summer_generate_image summer_slice_asset_sheet summer_get_studio_workflow summer_search_assets summer_import_from_url summer_import_asset_by_id summer_set_resource_property summer_add_node summer_set_prop",
+        "paths": [
+          "assets/**",
+          "sprites/**",
+          "art/sprites/**"
+        ]
+      },
+      "lineCount": 244,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/2d-assets/tileable-texture/SKILL.md",
+      "dir": "skills/2d-assets/tileable-texture",
+      "proposedId": "tileable-texture",
+      "category": "2d-assets",
+      "name": "tileable-texture",
+      "description": "Use when generating a seamless tileable texture for walls, floors, terrain, ceilings — square tile that repeats cleanly on all four edges. Wires onto PlaneMesh / CSGBox3D / MeshInstance3D as a StandardMaterial3D albedo. Trigger on \"tileable texture\", \"seamless texture\", \"wall texture\", \"floor texture\", \"ground texture\", \"terrain texture\", \"tiled material\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "2d-assets",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Glob Write Edit summer_generate_image summer_search_assets summer_import_from_url summer_set_resource_property summer_add_node summer_set_prop summer_inspect_node",
+        "paths": [
+          "assets/**",
+          "art/textures/**",
+          "materials/**"
+        ]
+      },
+      "lineCount": 211,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/2d-assets/ui-graphics/SKILL.md",
+      "dir": "skills/2d-assets/ui-graphics",
+      "proposedId": "ui-graphics",
+      "category": "2d-assets",
+      "name": "ui-graphics",
+      "description": "Use when generating UI elements — icons, buttons, panels, frames, HUD widgets, badges. Flat-design, transparent-background, game-UI style. Wires the result via TextureRect / NinePatchRect / AtlasTexture. Trigger on \"UI icon\", \"button graphic\", \"HUD element\", \"panel frame\", \"menu background\", \"inventory slot\", \"ability icon\", \"badge\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "2d-assets",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Glob Write Edit summer_generate_image summer_search_assets summer_import_from_url summer_set_resource_property summer_add_node summer_set_prop",
+        "paths": [
+          "assets/**",
+          "ui/**",
+          "art/ui/**"
+        ]
+      },
+      "lineCount": 224,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/2d-assets/use-widget-asset/SKILL.md",
+      "dir": "skills/2d-assets/use-widget-asset",
+      "proposedId": "use-widget-asset",
+      "category": "2d-assets",
+      "name": "use-widget-asset",
+      "description": "Use when consuming a widget slice (panel, button, slider, progress bar, or toggle pair) from a `create-asset-sheet` pack in a Summer Engine scene. The pack's metadata.sliceMeta carries 9-slice margins, fill rects, and on/off pair links per slice. This skill explains how to wire those into NinePatchRect, TextureProgressBar, or TextureRect so the asset behaves like a real UI control instead of a static texture.",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "2d-assets",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Glob Write Edit summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_get_scene_tree",
+        "paths": [
+          "assets/**",
+          "art/**",
+          "ui/**",
+          "scenes/**"
+        ]
+      },
+      "lineCount": 219,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": false,
+        "cursorPlugin": false,
+        "skillRegistry": false
+      }
+    },
+    {
+      "path": "skills/3d-assets/character-model/SKILL.md",
+      "dir": "skills/3d-assets/character-model",
+      "proposedId": "character-model",
+      "category": "3d-assets",
+      "name": "character-model",
+      "description": "Use when generating a humanoid character ready for animation — player avatar, NPC, enemy, boss, companion. Generates a T-pose reference image, gates an un-rigged preview past the user, then runs the Meshy auto-rig pass and wires the result as a CharacterBody3D (movement) or Node3D (cinematic). Trigger on \"make a character\", \"generate the player\", \"I need an enemy model\", \"create an NPC\", \"rigged humanoid\", \"character with a skeleton\", \"model for animation\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "3d-assets",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep summer_search_assets summer_list_my_assets summer_get_asset summer_import_asset_by_id summer_generate_image summer_generate_3d summer_import_from_url summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_inspect_resource summer_get_scene_tree summer_save_scene summer_check_job summer_generate_motion",
+        "paths": [
+          "assets/characters/**",
+          "assets/models/**",
+          "**/*.tscn",
+          "**/*.gd"
+        ]
+      },
+      "lineCount": 262,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/3d-assets/environment-kit/SKILL.md",
+      "dir": "skills/3d-assets/environment-kit",
+      "proposedId": "environment-kit",
+      "category": "3d-assets",
+      "name": "environment-kit",
+      "description": "Use when generating a modular environment kit — wall pieces, floor tiles, pillars, doors, arches, corner blocks that snap together to form a level. Multiple meshes that share a visual style. Trigger on \"build a dungeon kit\", \"modular walls\", \"level kit\", \"tileset\", \"interior pieces\", \"snap-together pieces\", \"make a kit for the temple\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "3d-assets",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep summer_search_assets summer_list_my_assets summer_get_asset summer_import_asset_by_id summer_generate_3d summer_generate_image summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_get_scene_tree summer_save_scene",
+        "paths": [
+          "assets/kits/**",
+          "assets/models/**",
+          "**/*.tscn",
+          "**/*.gd"
+        ]
+      },
+      "lineCount": 175,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/3d-assets/organic-model/SKILL.md",
+      "dir": "skills/3d-assets/organic-model",
+      "proposedId": "organic-model",
+      "category": "3d-assets",
+      "name": "organic-model",
+      "description": "Use when generating organic shapes — trees, rocks, mushrooms, coral, bushes, alien plants, vines, crystals, fruit, bones. The \"easy mode\" of 3D generation; AI artifacts read as natural irregularity. Trigger on \"make a tree\", \"generate rocks\", \"I need foliage\", \"mushroom prop\", \"alien plants\", \"fill the scene with shrubs\", \"scatter some boulders\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "3d-assets",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep summer_search_assets summer_list_my_assets summer_get_asset summer_import_asset_by_id summer_generate_3d summer_generate_image summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_get_scene_tree summer_save_scene",
+        "paths": [
+          "assets/organic/**",
+          "assets/models/**",
+          "**/*.tscn",
+          "**/*.gd"
+        ]
+      },
+      "lineCount": 196,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/3d-assets/prop-model/SKILL.md",
+      "dir": "skills/3d-assets/prop-model",
+      "proposedId": "prop-model",
+      "category": "3d-assets",
+      "name": "prop-model",
+      "description": "Use when generating a single static 3D prop — sword, barrel, chest, lantern, throne, statue, crate, key, potion, banner. One isolated object, no rigging, wired into the scene as a MeshInstance3D. Trigger on \"make a sword\", \"generate a chest\", \"I need a barrel\", \"add a lantern model\", \"give me a treasure prop\", \"create a statue\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "3d-assets",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep summer_search_assets summer_list_my_assets summer_get_asset summer_import_asset_by_id summer_generate_3d summer_generate_image summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_get_scene_tree summer_save_scene",
+        "paths": [
+          "assets/models/**",
+          "**/*.tscn",
+          "**/*.gd"
+        ]
+      },
+      "lineCount": 147,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/3d-assets/vehicle-model/SKILL.md",
+      "dir": "skills/3d-assets/vehicle-model",
+      "proposedId": "vehicle-model",
+      "category": "3d-assets",
+      "name": "vehicle-model",
+      "description": "Use when generating a hard-surface vehicle — car, motorcycle, spaceship, hover bike, boat, mech, tank, helicopter. Static mesh, optional secondary detail-texture pass, wired as Vehicle3D (player-driven) or MeshInstance3D (background). Trigger on \"make a car\", \"spaceship model\", \"generate a mech\", \"I need a vehicle\", \"hover bike\", \"tank model\", \"racing car\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "3d-assets",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep summer_search_assets summer_list_my_assets summer_get_asset summer_import_asset_by_id summer_generate_3d summer_generate_image summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_inspect_resource summer_get_scene_tree summer_save_scene",
+        "paths": [
+          "assets/vehicles/**",
+          "assets/models/**",
+          "**/*.tscn",
+          "**/*.gd"
+        ]
+      },
+      "lineCount": 216,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/ai-and-npcs/design-npc/SKILL.md",
+      "dir": "skills/ai-and-npcs/design-npc",
+      "proposedId": "design-npc",
+      "category": "ai-and-npcs",
+      "name": "design-npc",
+      "description": "Use when the user wants to design an enemy, NPC, boss, companion, civilian, or wave-spawned mob's behavior. Walks perception, personality knobs, intent layer, action state machine, telegraphs, defeat handling, and group emergence — outputs a state-machine GDScript stub plus the recommended node tree. Trigger on \"enemy\", \"NPC\", \"boss\", \"companion\", \"AI\", \"behavior\", \"mob\", \"perception\", \"design enemy\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "ai-and-npcs",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Edit Write summer_get_scene_tree summer_inspect_node summer_add_node summer_set_prop summer_set_resource_property summer_connect_signal summer_save_scene summer_get_script_errors summer_input_map_bind",
+        "paths": [
+          "**/*.gd",
+          "**/*.tscn"
+        ]
+      },
+      "lineCount": 505,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/animation/animation-tree/SKILL.md",
+      "dir": "skills/animation/animation-tree",
+      "proposedId": "animation-tree",
+      "category": "animation",
+      "name": "animation-tree",
+      "description": "Use when the user has clips on a character and needs them to play in response to gameplay — idle/walk/run blend, attacks that interrupt locomotion, hit reactions that override everything. Designs and wires Summer Engine AnimationTree state machines and blend trees. Trigger on \"AnimationTree\", \"state machine\", \"blend tree\", \"transition\", \"play animation when\", \"character keeps T-posing\", \"wire animations\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "animation",
+        "user-invocable": "false",
+        "allowed-tools": "Read Grep Edit Write summer_get_scene_tree summer_inspect_node summer_inspect_resource summer_add_node summer_set_prop summer_set_resource_property summer_save_scene summer_get_script_errors",
+        "paths": [
+          "**/*.gd",
+          "**/*.tscn",
+          "**/*.tres"
+        ]
+      },
+      "lineCount": 286,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/animation/facial-and-lipsync/SKILL.md",
+      "dir": "skills/animation/facial-and-lipsync",
+      "proposedId": "facial-and-lipsync",
+      "category": "animation",
+      "name": "facial-and-lipsync",
+      "description": "Use when the user has a voice-over (or wants one) and needs the character's mouth to actually move with the words — phoneme extraction from audio, mapping to viseme blendshapes, plus emotional facial expressions (smile, frown, surprise). Trigger on \"lipsync\", \"lip sync\", \"talking head\", \"phonemes\", \"viseme\", \"facial animation\", \"blendshapes\", \"make him talk\", \"dialogue animation\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "animation",
+        "user-invocable": "false",
+        "allowed-tools": "Read Grep Edit Write summer_search_assets summer_inspect_resource summer_inspect_node summer_generate_audio summer_generate_motion summer_add_node summer_set_prop summer_set_resource_property summer_save_scene summer_get_script_errors",
+        "paths": [
+          "**/*.gd",
+          "**/*.tscn",
+          "**/*.tres"
+        ]
+      },
+      "lineCount": 299,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/animation/generate-motion/SKILL.md",
+      "dir": "skills/animation/generate-motion",
+      "proposedId": "generate-motion",
+      "category": "animation",
+      "name": "generate-motion",
+      "description": "Use when the user needs an animation clip on a rigged character — idle/walk/run/attack from the curated Meshy library. Picks the right curated motion, attaches the resulting clip to an AnimationPlayer. Trigger on \"animation\", \"animate\", \"idle\", \"walk\", \"run\", \"attack animation\", \"motion\", \"mocap\", \"dance\", \"death animation\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "animation",
+        "user-invocable": "false",
+        "allowed-tools": "Read Grep summer_search_assets summer_list_my_assets summer_get_asset summer_get_asset_download_url summer_generate_motion summer_inspect_resource summer_get_scene_tree summer_add_node summer_set_prop summer_set_resource_property summer_save_scene",
+        "paths": [
+          "**/*.tscn",
+          "**/*.tres",
+          "**/*.gd"
+        ]
+      },
+      "lineCount": 182,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/animation/procedural-animation/SKILL.md",
+      "dir": "skills/animation/procedural-animation",
+      "proposedId": "procedural-animation",
+      "category": "animation",
+      "name": "procedural-animation",
+      "description": "Use when the user needs runtime-driven bone modification on top of clips — head look-at, foot IK on uneven ground, hand-grabs-prop, additive lean, hit-direction recoil. Code-and-modifier patterns, not generation. Trigger on \"look at\", \"IK\", \"foot placement\", \"foot IK\", \"lean\", \"additive layer\", \"feet floating\", \"hand penetration\", \"head tracks player\", \"ragdoll\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "animation",
+        "user-invocable": "false",
+        "allowed-tools": "Read Grep Edit Write summer_get_scene_tree summer_inspect_node summer_inspect_resource summer_add_node summer_set_prop summer_set_resource_property summer_save_scene summer_get_script_errors",
+        "paths": [
+          "**/*.gd",
+          "**/*.tscn",
+          "**/*.tres"
+        ]
+      },
+      "lineCount": 252,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/animation/retarget/SKILL.md",
+      "dir": "skills/animation/retarget",
+      "proposedId": "retarget",
+      "category": "animation",
+      "name": "retarget",
+      "description": "Use when the user wants to apply existing animation clips from one rigged character to a different rigged character — same library, multiple models, no regeneration. Trigger on \"retarget\", \"reuse animation\", \"apply to other character\", \"same animations on different model\", \"share animation library\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "animation",
+        "user-invocable": "false",
+        "allowed-tools": "Read Grep summer_search_assets summer_inspect_resource summer_generate_motion summer_get_scene_tree summer_set_resource_property summer_save_scene",
+        "paths": [
+          "**/*.tscn",
+          "**/*.tres"
+        ]
+      },
+      "lineCount": 220,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/asset-pipeline/asset-strategy/SKILL.md",
+      "dir": "skills/asset-pipeline/asset-strategy",
+      "proposedId": "asset-strategy",
+      "category": "asset-pipeline",
+      "name": "asset-strategy",
+      "description": "Use when planning asset creation, picking an asset pipeline, or routing an \"I need a [thing]\" request to the right specialist skill. Disambiguates between 2D / 3D / audio / video / VFX / animation pipelines and dispatches via the Skill tool. Trigger on \"assets\", \"asset pipeline\", \"make a model\", \"I need a sound\", \"create concept art\", \"generate something\", broad creative requests.",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "asset-pipeline",
+        "user-invocable": "false",
+        "allowed-tools": "Read Grep Skill summer_search_assets summer_list_my_assets summer_get_asset summer_import_asset_by_id"
+      },
+      "lineCount": 134,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/audio/adaptive-music/SKILL.md",
+      "dir": "skills/audio/adaptive-music",
+      "proposedId": "adaptive-music",
+      "category": "audio",
+      "name": "adaptive-music",
+      "description": "Use when wiring music stems to game state — combat / explore / boss / tension crossfades on a shared bus. Pairs generated stems with a state machine and AudioBus structure. Trigger on \"adaptive music\", \"dynamic music\", \"music changes when combat starts\", \"layered music\", \"vertical music\", \"wire stems\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "audio",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Glob Write Edit summer_generate_audio summer_search_assets summer_import_from_url summer_add_node summer_set_prop summer_connect_signal summer_inspect_node summer_get_scene_tree summer_project_setting",
+        "paths": [
+          "audio/music/**",
+          "scripts/audio/**",
+          "**/*.tscn",
+          "default_bus_layout.tres"
+        ]
+      },
+      "lineCount": 330,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/audio/ambient-bed/SKILL.md",
+      "dir": "skills/audio/ambient-bed",
+      "proposedId": "ambient-bed",
+      "category": "audio",
+      "name": "ambient-bed",
+      "description": "Use when generating a long looping location ambience — forest at dawn, dungeon air, city street, spaceship hum, cave drip. Non-melodic, low-energy, never draws attention. Wires as a looping AudioStreamPlayer on the Ambient bus with a marked seamless loop. Trigger on \"ambient bed\", \"room tone\", \"background ambience\", \"forest ambience\", \"dungeon air\", \"make it sound like a cave\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "audio",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Glob Write Edit summer_generate_audio summer_search_assets summer_import_from_url summer_add_node summer_set_prop summer_inspect_node",
+        "paths": [
+          "audio/ambient/**",
+          "**/*.tscn",
+          "**/*.import"
+        ]
+      },
+      "lineCount": 284,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/audio/audio-direction/SKILL.md",
+      "dir": "skills/audio/audio-direction",
+      "proposedId": "audio-direction",
+      "category": "audio",
+      "name": "audio-direction",
+      "description": "Use when defining the sonic identity — music style, instruments, SFX vocabulary, dynamic music plan. Outputs an audio bible at `.summer/audio-bible.md`. Trigger on \"audio direction\", \"audio bible\", \"music style\", \"sound design\", \"what should it sound like\", \"dynamic music\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "audio",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Glob Write Edit summer_get_project_context summer_get_scene_tree summer_inspect_node summer_add_node summer_project_setting summer_generate_audio",
+        "paths": [
+          ".summer/**",
+          "project.godot",
+          "**/*.tscn",
+          "audio/**"
+        ]
+      },
+      "lineCount": 263,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/audio/music-track/SKILL.md",
+      "dir": "skills/audio/music-track",
+      "proposedId": "music-track",
+      "category": "audio",
+      "name": "music-track",
+      "description": "Use when generating a looped or cinematic music track. Loops are authored at >=30s with a marked loop point; cinematic tracks at >=60s linear. Trigger on \"generate music\", \"make a calm track\", \"boss music\", \"title screen music\", \"main theme\", \"exploration loop\", \"combat track\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "audio",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Glob Write Edit summer_generate_audio summer_search_assets summer_import_from_url summer_add_node summer_set_prop summer_inspect_node",
+        "paths": [
+          "audio/music/**",
+          "scripts/**",
+          "**/*.tscn"
+        ]
+      },
+      "lineCount": 274,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/audio/sound-effect/SKILL.md",
+      "dir": "skills/audio/sound-effect",
+      "proposedId": "sound-effect",
+      "category": "audio",
+      "name": "sound-effect",
+      "description": "Use when generating short SFX one-shots — footsteps, weapon swings, UI clicks, hit impacts, environmental cues. Wires the resulting clip as an AudioStreamPlayer / 2D / 3D and auto-frees on finished. Trigger on \"make a sword swing sound\", \"generate a UI click\", \"I need a footstep\", \"add a hit sound\", \"spawn an SFX\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "audio",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Glob Write Edit summer_generate_audio summer_search_assets summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_get_scene_tree",
+        "paths": [
+          "audio/sfx/**",
+          "scripts/**",
+          "**/*.tscn"
+        ]
+      },
+      "lineCount": 242,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/audio/voice-line/SKILL.md",
+      "dir": "skills/audio/voice-line",
+      "proposedId": "voice-line",
+      "category": "audio",
+      "name": "voice-line",
+      "description": "Use when generating TTS voice lines — NPC barks, narrator, dialogue. Covers where voice ids come from, a character-to-voice decision tree, stability/style/similarity guidance, and the multi-line dialogue case via text_to_dialogue. Trigger on \"make a voice line\", \"narrator\", \"NPC says\", \"voice for the merchant\", \"TTS line\", \"dialogue\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "audio",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Glob Write Edit summer_generate_audio summer_search_assets summer_import_from_url summer_add_node summer_set_prop summer_inspect_node",
+        "paths": [
+          ".summer/**",
+          "audio/voice/**",
+          "scripts/**",
+          "**/*.tscn"
+        ]
+      },
+      "lineCount": 275,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/character-controllers/fps-controller/SKILL.md",
+      "dir": "skills/character-controllers/fps-controller",
+      "proposedId": "fps-controller",
+      "category": "character-controllers",
+      "name": "fps-controller",
+      "description": "Use when building an FPS, first-person movement, or a 3D character that walks, jumps, and reacts to external forces — production-quality first-person controller with WASD, mouse look, jump, coyote time, jump buffering, air control, and external-velocity handling. Trigger on \"FPS\", \"first-person\", \"WASD\", \"character controller\", \"mouse look\", \"player movement\", \"jump\".",
+      "templateId": "template-3d-fps",
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "character-controllers",
+        "user-invocable": "false",
+        "allowed-tools": "Read Grep summer_get_scene_tree summer_add_node summer_set_prop summer_set_resource_property summer_input_map_bind summer_save_scene summer_get_script_errors",
+        "paths": [
+          "**/*.gd",
+          "**/*.tscn"
+        ]
+      },
+      "lineCount": 351,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/debugging/debug/SKILL.md",
+      "dir": "skills/debugging/debug",
+      "proposedId": "debug",
+      "category": "debugging",
+      "name": "debug",
+      "description": "Use when the user reports a bug, crash, error, or unexpected behavior in a Summer project, before making code or scene changes. Runs a disciplined script-errors, console, debugger, hypothesis, fix, and verify loop. Trigger on \"debug\", \"crash\", \"error\", \"broken\", \"not working\", \"freezes\", \"wrong\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Codex",
+          "Windsurf",
+          "Gemini",
+          "OpenCode"
+        ],
+        "category": "debugging",
+        "user-invocable": "true",
+        "allowed-tools": "Read Edit Grep summer_create_debug_report summer_get_diagnostics summer_get_script_errors summer_get_console summer_clear_console summer_get_debugger_errors summer_get_debugger_warnings summer_play summer_stop summer_is_running summer_inspect_node summer_inspect_resource summer_get_scene_tree summer_screenshot summer_batch",
+        "paths": [
+          "**/*.gd",
+          "**/*.cs",
+          "**/*.tscn",
+          "**/*.tres",
+          "project.godot"
+        ]
+      },
+      "lineCount": 249,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/deployment/export-and-ship/SKILL.md",
+      "dir": "skills/deployment/export-and-ship",
+      "proposedId": "export-and-ship",
+      "category": "deployment",
+      "name": "export-and-ship",
+      "description": "Use when the user wants to assess or prepare a Summer game export. Inventories the templates and targets actually available in the installed Summer Engine build, validates release assets and configuration, and produces only locally supported builds after approval. It does not publish, upload, host, or submit a game. Trigger on \"export\", \"ship\", \"release\", \"build\", \"Steam\", \"itch\", \"HTML5\", \"iOS\", \"Android\", \"submit\", \"publish\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "deployment",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Glob Edit Write summer_get_scene_tree summer_inspect_node summer_project_setting summer_get_console summer_get_diagnostics",
+        "paths": [
+          "**/*.gd",
+          "**/*.tscn",
+          "project.godot",
+          "export_presets.cfg",
+          "**/*.png",
+          "**/*.svg",
+          "**/*.icns",
+          "**/*.ico"
+        ]
+      },
+      "lineCount": 367,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/deployment/remote-deploy/SKILL.md",
+      "dir": "skills/deployment/remote-deploy",
+      "proposedId": "remote-deploy",
+      "category": "deployment",
+      "name": "remote-deploy",
+      "description": "Use when the user wants to run or test the game on a real target instead of the editor — a phone, tablet, or another computer (\"deploy to my phone\", \"run on device\", \"test on Android/iOS\", \"remote deploy\", \"one-click deploy\", \"play on hardware\"). Covers the topnav Remote Deploy button, runnable export presets, export templates, and on-device remote debugging. Use when the Remote Deploy button is greyed out and the user wants to know why.",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "deployment",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Edit summer_project_setting summer_get_diagnostics summer_get_console summer_get_script_errors",
+        "paths": [
+          "project.godot",
+          "export_presets.cfg"
+        ]
+      },
+      "lineCount": 140,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/gameplay-mechanics/auto-fire-targeting/SKILL.md",
+      "dir": "skills/gameplay-mechanics/auto-fire-targeting",
+      "proposedId": "auto-fire-targeting",
+      "category": "gameplay-mechanics",
+      "name": "auto-fire-targeting",
+      "description": "Use when designing or fixing the targeting system for an auto-fire weapon (survivors-genre, top-down ARPG, tower-defense). Covers the pending-damage pattern that prevents over-commit when bullet flight time is longer than fire rate. Trigger on \"auto-fire\", \"auto-aim\", \"weapon targeting\", \"targeting\", \"wasted bullets\", \"overkill\", \"damage prediction\", \"survivors weapon\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "gameplay-mechanics",
+        "allowed-tools": "Read Edit Grep",
+        "paths": [
+          "**/*.gd"
+        ]
+      },
+      "lineCount": 195,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": false,
+        "cursorPlugin": false,
+        "skillRegistry": false
+      }
+    },
+    {
+      "path": "skills/gameplay-mechanics/design-mechanic/SKILL.md",
+      "dir": "skills/gameplay-mechanics/design-mechanic",
+      "proposedId": "design-mechanic",
+      "category": "gameplay-mechanics",
+      "name": "design-mechanic",
+      "description": "Use when designing one specific game mechanic in detail — input, response, feedback, failure modes, depth, tunables. Outputs a design doc and a scaffolding-ready node-graph sketch + GDScript stub. Trigger on \"design a mechanic\", \"how should X work\", \"design the parry\", \"design the dash\", \"design the inventory\", \"the loop is broken\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "gameplay-mechanics",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Glob Write Edit summer_get_scene_tree summer_inspect_node summer_add_node summer_set_prop summer_input_map_bind summer_save_scene summer_get_script_errors",
+        "paths": [
+          "**/*.gd",
+          "**/*.tscn",
+          ".summer/**"
+        ]
+      },
+      "lineCount": 273,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/level-design/design-level/SKILL.md",
+      "dir": "skills/level-design/design-level",
+      "proposedId": "design-level",
+      "category": "level-design",
+      "name": "design-level",
+      "description": "Use when designing a single level — layout, pacing, encounters, secrets, reward gating. Outputs a level design doc and a concrete node-tree skeleton for `summer_create_scene`. Trigger on \"design a level\", \"design level 1\", \"tutorial level\", \"boss arena\", \"design the encounter\", \"make a level layout\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "level-design",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Glob Write Edit summer_get_scene_tree summer_create_scene summer_open_scene summer_add_node summer_set_prop summer_save_scene summer_get_script_errors",
+        "paths": [
+          "**/*.tscn",
+          "**/*.gd",
+          ".summer/**",
+          "levels/**"
+        ]
+      },
+      "lineCount": 280,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/level-design/scene-to-level/SKILL.md",
+      "dir": "skills/level-design/scene-to-level",
+      "proposedId": "scene-to-level",
+      "category": "level-design",
+      "name": "scene-to-level",
+      "description": "Use when the user wants to go from a scene reference image or concept art to a playable Summer Engine scene populated with the right assets and terrain. Orchestrates concept, asset pack, terrain, composition, and scene assembly. Trigger on \"build this scene\", \"make this playable\", \"I want a level that looks like this\", \"from a screenshot to a game\", \"implement this concept\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "level-design",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Glob Write Edit summer_create_scene summer_open_scene summer_add_node summer_set_prop summer_set_resource_property summer_save_scene summer_get_scene_tree summer_inspect_node summer_search_assets summer_import_from_url",
+        "paths": [
+          "**/*.tscn",
+          "**/*.gd",
+          "assets/**",
+          ".summer/**",
+          "levels/**"
+        ]
+      },
+      "lineCount": 131,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": false,
+        "cursorPlugin": false,
+        "skillRegistry": false
+      }
+    },
+    {
+      "path": "skills/multiplayer-and-networking/host-authoritative-state/SKILL.md",
+      "dir": "skills/multiplayer-and-networking/host-authoritative-state",
+      "proposedId": "host-authoritative-state",
+      "category": "multiplayer-and-networking",
+      "name": "host-authoritative-state",
+      "description": "Use when designing the state layer of a multiplayer Summer game: deciding what the host owns, how clients request changes, and how the host validates and broadcasts. Pairs with `/peer-to-peer-multiplayer`. Trigger on \\\"host authority\\\", \\\"authoritative state\\\", \\\"state ownership\\\", \\\"MP cheating\\\", \\\"client validation\\\", \\\"RPC patterns\\\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "multiplayer-and-networking",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep summer_get_scene_tree summer_inspect_node summer_save_scene summer_get_script_errors"
+      },
+      "lineCount": 332,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/multiplayer-and-networking/peer-to-peer-multiplayer/SKILL.md",
+      "dir": "skills/multiplayer-and-networking/peer-to-peer-multiplayer",
+      "proposedId": "peer-to-peer-multiplayer",
+      "category": "multiplayer-and-networking",
+      "name": "peer-to-peer-multiplayer",
+      "description": "Use when starting a multiplayer Summer game from scratch with peer-to-peer host authority. Build the network architecture top-down so authoritative state, routing rules, and real-time rendering are not bolted on later. Use before writing game logic, not after. Trigger on \"multiplayer\", \"peer-to-peer\", \"p2p\", \"co-op\", \"host\", \"multiplayer architecture\", \"add multiplayer\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "multiplayer-and-networking",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Glob summer_get_scene_tree summer_inspect_node summer_create_scene summer_add_node summer_set_prop summer_connect_signal summer_save_scene summer_get_script_errors summer_project_setting",
+        "paths": [
+          "**/*.gd",
+          "**/*.tscn",
+          "**/project.godot"
+        ]
+      },
+      "lineCount": 373,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/multiplayer-and-networking/setup-multiplayer/SKILL.md",
+      "dir": "skills/multiplayer-and-networking/setup-multiplayer",
+      "proposedId": "setup-multiplayer",
+      "category": "multiplayer-and-networking",
+      "name": "setup-multiplayer",
+      "description": "Use when the user wants to add multiplayer to an existing Summer game: co-op LAN, co-op online, competitive PvP, or a lobby. Start with Summer Engine's high-level MultiplayerAPI plus MultiplayerSpawner and MultiplayerSynchronizer; use custom networking only with a justified reason. Walks peer authority, RPC patterns, replication, and irreversible architecture decisions. It does not claim that managed matchmaking or hosting is live. Trigger on \\\"multiplayer\\\", \\\"co-op\\\", \\\"PvP\\\", \\\"online\\\", \\\"netcode\\\", \\\"rollback\\\", \\\"MultiplayerAPI\\\", \\\"host migration\\\", \\\"matchmaking\\\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "multiplayer-and-networking",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Edit Write summer_get_scene_tree summer_inspect_node summer_add_node summer_set_prop summer_connect_signal summer_save_scene summer_get_script_errors summer_project_setting summer_play summer_stop",
+        "paths": [
+          "**/*.gd",
+          "**/*.tscn",
+          "**/*.tres",
+          "project.godot"
+        ]
+      },
+      "lineCount": 336,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/performance/tune-performance/SKILL.md",
+      "dir": "skills/performance/tune-performance",
+      "proposedId": "tune-performance",
+      "category": "performance",
+      "name": "tune-performance",
+      "description": "Use when the user reports the game is slow, drops framerate, stutters, takes forever to start, or runs poorly on specific hardware. Profiles the running game via summer_get_diagnostics, identifies hotspots (rendering / physics / scripting), and proposes specific fixes with before/after metric expectations. Trigger on \"slow\", \"lag\", \"fps drop\", \"stuttering\", \"performance\", \"optimize\", \"profile\", \"framerate\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "performance",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Glob Edit summer_get_diagnostics summer_get_console summer_get_scene_tree summer_inspect_node summer_inspect_resource summer_play summer_stop summer_is_running summer_clear_console summer_set_prop summer_add_node summer_save_scene summer_batch summer_screenshot summer_project_setting",
+        "paths": [
+          "**/*.gd",
+          "**/*.tscn",
+          "**/*.tres",
+          "project.godot"
+        ]
+      },
+      "lineCount": 238,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/rendering-and-lighting/3d-lighting/SKILL.md",
+      "dir": "skills/rendering-and-lighting/3d-lighting",
+      "proposedId": "3d-lighting",
+      "category": "rendering-and-lighting",
+      "name": "3d-lighting",
+      "description": "Use when setting up lighting in a Summer Engine 3D scene — adding lights, configuring WorldEnvironment, sky, or shadows. Covers DirectionalLight3D versus Omni versus Spot, shadow tuning, ambient and sky-driven lighting, and the current Summer rendering conventions. Trigger on \"lighting\", \"shadows\", \"WorldEnvironment\", \"sun\", \"ambient\", \"sky\", \"light\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "rendering-and-lighting",
+        "user-invocable": "false",
+        "allowed-tools": "Read Grep summer_add_node summer_set_prop summer_set_resource_property summer_save_scene",
+        "paths": [
+          "**/*.tscn",
+          "**/*.tres"
+        ]
+      },
+      "lineCount": 153,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/rendering-and-lighting/art-direction/SKILL.md",
+      "dir": "skills/rendering-and-lighting/art-direction",
+      "proposedId": "art-direction",
+      "category": "rendering-and-lighting",
+      "name": "art-direction",
+      "description": "Use when defining the visual style of the game — references, palette, mood, lighting plan, post-processing, do/don't list. Outputs an art bible at `.summer/art-bible.md`. Trigger on \"art direction\", \"art bible\", \"visual style\", \"color palette\", \"what should it look like\", \"the look\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "rendering-and-lighting",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Glob Write Edit summer_get_project_context summer_project_setting summer_inspect_node summer_set_prop",
+        "paths": [
+          ".summer/**",
+          "project.godot",
+          "**/*.tscn"
+        ]
+      },
+      "lineCount": 282,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/scene-and-project/brainstorm-game/SKILL.md",
+      "dir": "skills/scene-and-project/brainstorm-game",
+      "proposedId": "brainstorm-game",
+      "category": "scene-and-project",
+      "name": "brainstorm-game",
+      "description": "Use when the user wants help deciding what game to make, scoping a new project, or turning a vague idea into a buildable plan. Walks through genre, scope, core loop, mechanics, and art direction, then writes a 1-page brief to `.summer/GameSoul.md`. Trigger on \"brainstorm a game\", \"what should I make\", \"I want to make a game\", \"help me scope\", \"new game idea\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "scene-and-project",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Glob Write Edit summer_get_project_context summer_get_scene_tree summer_read_file summer_write_file",
+        "paths": [
+          ".summer/**",
+          "project.godot",
+          "**/*.md"
+        ]
+      },
+      "lineCount": 208,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/scene-and-project/browse-templates/SKILL.md",
+      "dir": "skills/scene-and-project/browse-templates",
+      "proposedId": "browse-templates",
+      "category": "scene-and-project",
+      "name": "browse-templates",
+      "description": "Use when the user wants to see available Summer Engine project templates, start from an existing template, or asks \"what templates exist?\" — fetches the live list from github.com/SummerEngine, presents the choices, and creates a project from the chosen template via `summer create <slug> <project-name>`. Trigger on \"templates\", \"starter\", \"boilerplate\", \"from a template\", \"what's available\", \"show me templates\", \"third-person\", \"platformer\", \"multiplayer starter\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Codex",
+          "Windsurf",
+          "Gemini",
+          "OpenCode"
+        ],
+        "category": "scene-and-project",
+        "user-invocable": "true",
+        "allowed-tools": "Bash Read summer_get_project_context",
+        "paths": [
+          "**/project.godot"
+        ]
+      },
+      "lineCount": 105,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/scene-and-project/make-game/SKILL.md",
+      "dir": "skills/scene-and-project/make-game",
+      "proposedId": "make-game",
+      "category": "scene-and-project",
+      "name": "make-game",
+      "description": "Use when the user says \\\"make me a game\\\", \\\"build me a game\\\", \\\"I want to make a [genre] game\\\", \\\"let's build something\\\" \\u2014 the orchestration spine that runs the full game-dev pipeline: brainstorm \\u2192 plan \\u2192 scaffold \\u2192 build core mechanics \\u2192 art direction \\u2192 audio \\u2192 polish/VFX \\u2192 verify \\u2192 ship. Delegates to specialist skills with explicit checkpoints between phases. Trigger on \\\"make a game\\\", \\\"build me a game\\\", \\\"create a new game\\\", \\\"make me a game\\\", \\\"let's build a game\\\", \\\"I want to build [game shape]\\\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Codex",
+          "Windsurf",
+          "Gemini",
+          "OpenCode"
+        ],
+        "category": "scene-and-project",
+        "user-invocable": "true",
+        "allowed-tools": "Read Edit Write Bash Skill summer_get_project_context summer_get_scene_tree summer_create_scene summer_add_node summer_set_prop summer_save_scene summer_play summer_stop summer_get_diagnostics summer_get_script_errors",
+        "paths": [
+          ".summer/**",
+          "project.godot",
+          "**/*.gd",
+          "**/*.tscn"
+        ]
+      },
+      "lineCount": 266,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/scene-and-project/new-project/SKILL.md",
+      "dir": "skills/scene-and-project/new-project",
+      "proposedId": "new-project",
+      "category": "scene-and-project",
+      "name": "new-project",
+      "description": "Use when the user wants a fresh blank Summer Engine project — not from a template. Asks one question (project name) and runs `summer create empty <name>`. Trigger on \"new project\", \"blank project\", \"empty project\", \"from scratch\", \"start fresh\", \"create new game\", \"blank canvas\", \"scaffold a project\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Codex",
+          "Windsurf",
+          "Gemini",
+          "OpenCode"
+        ],
+        "category": "scene-and-project",
+        "user-invocable": "true",
+        "allowed-tools": "Bash Read summer_get_project_context",
+        "paths": [
+          "**/project.godot"
+        ]
+      },
+      "lineCount": 106,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/scene-and-project/play/SKILL.md",
+      "dir": "skills/scene-and-project/play",
+      "proposedId": "play",
+      "category": "scene-and-project",
+      "name": "play",
+      "description": "Use when the user says \"play\", \"run it\", \"test it\", \"let me see it\", or \"start the game\". Runs the project in Summer Engine, briefly waits, then reports what's happening — clean run, errors, or warnings.",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "scene-and-project",
+        "user-invocable": "true",
+        "allowed-tools": "summer_is_running summer_play summer_stop summer_clear_console summer_get_console summer_get_debugger_errors summer_get_script_errors summer_get_diagnostics",
+        "paths": [
+          "**/project.godot",
+          "**/*.tscn"
+        ]
+      },
+      "lineCount": 114,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/scene-and-project/scene-composition/SKILL.md",
+      "dir": "skills/scene-and-project/scene-composition",
+      "proposedId": "scene-composition",
+      "category": "scene-and-project",
+      "name": "scene-composition",
+      "description": "Use when building or organizing Summer Engine scenes: node hierarchy conventions, when to extract sub-scenes, reusable prefab patterns, and instance-versus-add-node decisions. Trigger on \\\"scene\\\", \\\"sub-scene\\\", \\\"instance\\\", \\\"prefab\\\", \\\"node hierarchy\\\", \\\"scene structure\\\", \\\"PackedScene\\\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "scene-and-project",
+        "user-invocable": "false",
+        "allowed-tools": "Read Grep summer_create_scene summer_open_scene summer_get_scene_tree summer_add_node summer_instantiate_scene summer_save_scene",
+        "paths": [
+          "**/*.tscn"
+        ]
+      },
+      "lineCount": 159,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/scene-and-project/summer-cloud/SKILL.md",
+      "dir": "skills/scene-and-project/summer-cloud",
+      "proposedId": "summer-cloud",
+      "category": "scene-and-project",
+      "name": "summer-cloud",
+      "description": "Use when the user wants to sync a Summer Engine project, move it to another machine or laptop, share the exact bytes with a collaborator, back up big generated assets that do not belong in git, restore an earlier version, or wants a safety net before a risky bulk operation. Trigger on \"sync\", \"Summer Cloud\", \"cloud push\", \"cloud pull\", \"move to another machine\", \"other computer\", \"second machine\", \"share project\", \"back up assets\", \"big assets\", \"collaborator\", \"teammate\", \"restore a version\", \"checkpoint\", \"conflict\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "scene-and-project",
+        "user-invocable": "true",
+        "allowed-tools": "Read summer_cloud_init summer_cloud_status summer_cloud_push summer_cloud_pull summer_cloud_restore summer_cloud_checkpoints summer_cloud_conflicts",
+        "paths": [
+          "summer-cloud.json"
+        ]
+      },
+      "lineCount": 92,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/scripting-patterns/gdscript-patterns/SKILL.md",
+      "dir": "skills/scripting-patterns/gdscript-patterns",
+      "proposedId": "gdscript-patterns",
+      "category": "scripting-patterns",
+      "name": "gdscript-patterns",
+      "description": "Use when writing or refactoring GDScript — type hints, signals, exports, onready, lifecycle methods (`_ready` vs `_process` vs `_physics_process`), `get_node` vs `$NodePath`, naming conventions. Trigger on \"GDScript\", \"script\", \"signals\", \"exports\", \"onready\", \"_ready\", \"_process\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "scripting-patterns",
+        "user-invocable": "false",
+        "allowed-tools": "Read Grep summer_get_script_errors",
+        "paths": [
+          "**/*.gd"
+        ]
+      },
+      "lineCount": 150,
+      "files": [
+        "SKILL.md",
+        "reference.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/ui-and-ux/ui-basics/SKILL.md",
+      "dir": "skills/ui-and-ux/ui-basics",
+      "proposedId": "ui-basics",
+      "category": "ui-and-ux",
+      "name": "ui-basics",
+      "description": "Use when building Summer Engine UI: HUDs, main menus, pause menus, health bars, progress bars, dialogue boxes, or any Control-node tree. Covers anchors, containers (VBox/HBox/Margin), responsive layout, and theme versus inline styling. Trigger on \\\"UI\\\", \\\"HUD\\\", \\\"menu\\\", \\\"health bar\\\", \\\"Control\\\", \\\"anchors\\\", \\\"VBoxContainer\\\", \\\"main menu\\\", \\\"pause menu\\\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "ui-and-ux",
+        "user-invocable": "false",
+        "allowed-tools": "Read Grep summer_add_node summer_set_prop summer_connect_signal summer_save_scene",
+        "paths": [
+          "**/*.tscn",
+          "**/*.gd"
+        ]
+      },
+      "lineCount": 159,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/video/animated-loop/SKILL.md",
+      "dir": "skills/video/animated-loop",
+      "proposedId": "animated-loop",
+      "category": "video",
+      "name": "animated-loop",
+      "description": "Use when generating a short looping video clip — splash screen background, animated logo backdrop, idle title-screen footage, looping environment ambience. Output must loop seamlessly and is wired as a VideoStreamPlayer with autoplay and loop set true. Trigger on \"looping background\", \"splash loop\", \"title screen video\", \"animated backdrop\", \"menu background loop\", \"ambient loop video\", \"looping clip\", \"seamless loop\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "video",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Glob Write Edit summer_generate_video summer_check_job summer_generate_image summer_search_assets summer_import_from_url summer_add_node summer_set_prop",
+        "paths": [
+          "assets/video/**",
+          "menus/**",
+          "ui/**"
+        ]
+      },
+      "lineCount": 224,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/video/cinematic-cutscene/SKILL.md",
+      "dir": "skills/video/cinematic-cutscene",
+      "proposedId": "cinematic-cutscene",
+      "category": "video",
+      "name": "cinematic-cutscene",
+      "description": "Use when generating a non-interactive cutscene clip — opening scene, story beat, character intro, ending. Locks the look with a reference image, image-to-videos a 5-10s shot, optionally adds TTS dialogue, and wires it as a VideoStreamPlayer that fades in/out. Trigger on \"cutscene\", \"intro cinematic\", \"opening scene\", \"ending cinematic\", \"story beat video\", \"character intro video\", \"in-engine cinematic\", \"non-playable scene\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "video",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Glob Write Edit summer_generate_video summer_check_job summer_generate_image summer_generate_audio summer_search_assets summer_import_from_url summer_add_node summer_set_prop",
+        "paths": [
+          "assets/video/**",
+          "cinematics/**",
+          "trailers/**"
+        ]
+      },
+      "lineCount": 240,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/video/trailer-shot/SKILL.md",
+      "dir": "skills/video/trailer-shot",
+      "proposedId": "trailer-shot",
+      "category": "video",
+      "name": "trailer-shot",
+      "description": "Use when generating marketing or trailer footage — slow-mo combat, dramatic establishing shots, hero beats, splash screens, pitch-deck B-roll. Optimizes for maximum visual punch in 5-10 seconds. Trigger on \"trailer\", \"marketing footage\", \"Steam capsule video\", \"splash screen\", \"hero shot\", \"pitch deck clip\", \"promo clip\", \"money shot\", \"B-roll\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "video",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Glob Write Edit summer_generate_video summer_check_job summer_generate_image summer_search_assets summer_import_from_url summer_add_node summer_set_prop",
+        "paths": [
+          "assets/video/**",
+          "trailers/**",
+          "marketing/**"
+        ]
+      },
+      "lineCount": 212,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/visual-effects/game-feel/SKILL.md",
+      "dir": "skills/visual-effects/game-feel",
+      "proposedId": "game-feel",
+      "category": "visual-effects",
+      "name": "game-feel",
+      "description": "Use when a Summer game \"feels flat\", \"lacks impact\", \"needs juice\", or \"needs punch\", or the user asks for hit feedback, screen shake, camera shake, audio ducking, or general game feel. Walks through Summer Engine's hit-flash, trauma camera shake, and audio-ducking stack, wired so one hit fires all three. Trigger on \"vfx\", \"juice\", \"punch\", \"feels flat\", \"game feel\", \"hit flash\", \"screen shake\", \"camera shake\", \"ducking\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "visual-effects",
+        "user-invocable": "true",
+        "allowed-tools": "Read Grep Edit Write summer_write_file summer_read_file summer_get_scene_tree summer_inspect_node summer_inspect_resource summer_add_node summer_set_prop summer_set_resource_property summer_connect_signal summer_project_setting summer_save_scene summer_get_script_errors summer_get_debugger_errors summer_play summer_stop",
+        "paths": [
+          "**/*.gd",
+          "**/*.tscn",
+          "**/*.tres"
+        ]
+      },
+      "lineCount": 397,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/visual-effects/recipes/dissolve/SKILL.md",
+      "dir": "skills/visual-effects/recipes/dissolve",
+      "proposedId": "dissolve",
+      "category": "visual-effects",
+      "name": "dissolve",
+      "description": "Use when authoring a dissolve effect — an object's mesh disintegrating with a glowing burning edge, driven by a noise threshold ShaderMaterial overriding the target's existing material. Trigger on \"dissolve\", \"disintegrate\", \"burn away\", \"Thanos snap\", \"vanish into ash\", \"enemy fades out\", \"object burns up\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "visual-effects",
+        "user-invocable": "true",
+        "allowed-tools": "Read Write Edit summer_write_file summer_read_file summer_inspect_node summer_inspect_resource summer_get_script_errors summer_get_debugger_errors summer_play summer_stop",
+        "paths": [
+          "**/*.tscn",
+          "**/*.gd",
+          "**/*.gdshader",
+          "addons/vfx/**"
+        ]
+      },
+      "lineCount": 391,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/visual-effects/recipes/fire/SKILL.md",
+      "dir": "skills/visual-effects/recipes/fire",
+      "proposedId": "fire",
+      "category": "visual-effects",
+      "name": "fire",
+      "description": "Use when authoring a fire visual effect — animated flames built with a particle shader, GPUParticles3D, and a noise-based color ramp. Trigger on \"torch\", \"campfire\", \"bonfire\", \"flame\", \"fire effect\", \"burning\", \"make this thing on fire\", \"candle\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "visual-effects",
+        "user-invocable": "true",
+        "allowed-tools": "Read Write Edit summer_write_file summer_read_file summer_create_scene summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_inspect_resource summer_save_scene summer_get_script_errors summer_get_debugger_errors summer_play summer_stop",
+        "paths": [
+          "**/*.tscn",
+          "**/*.gd",
+          "**/*.gdshader",
+          "addons/vfx/**"
+        ]
+      },
+      "lineCount": 474,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/visual-effects/recipes/hit-spark/SKILL.md",
+      "dir": "skills/visual-effects/recipes/hit-spark",
+      "proposedId": "hit-spark",
+      "category": "visual-effects",
+      "name": "hit-spark",
+      "description": "Use when authoring a hit-spark visual effect — a one-shot burst of additive billboard particles oriented to a surface normal, fired on impact. Trigger on \"hit spark\", \"impact spark\", \"bullet hit\", \"sword clash\", \"metal-on-metal\", \"ricochet\", \"impact effect\", \"spawn sparks at hit point\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "visual-effects",
+        "user-invocable": "true",
+        "allowed-tools": "Read Write Edit summer_write_file summer_read_file summer_create_scene summer_add_node summer_replace_node summer_set_prop summer_set_resource_property summer_inspect_node summer_save_scene summer_get_script_errors summer_get_debugger_errors summer_play summer_stop",
+        "paths": [
+          "**/*.tscn",
+          "**/*.gd",
+          "**/*.gdshader",
+          "addons/vfx/**"
+        ]
+      },
+      "lineCount": 367,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/visual-effects/recipes/lightning/SKILL.md",
+      "dir": "skills/visual-effects/recipes/lightning",
+      "proposedId": "lightning",
+      "category": "visual-effects",
+      "name": "lightning",
+      "description": "Use when authoring a lightning bolt visual effect — procedural jagged path drawn via ImmediateMesh, glow shader, sparks at endpoints, screen shake. Trigger on \"lightning bolt\", \"chain lightning\", \"electric attack\", \"tesla coil\", \"shock spell\", \"thunderbolt\", \"energy beam\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "visual-effects",
+        "user-invocable": "true",
+        "allowed-tools": "Read Write Edit summer_write_file summer_read_file summer_create_scene summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_save_scene summer_project_setting summer_get_script_errors summer_get_debugger_errors summer_play summer_stop",
+        "paths": [
+          "**/*.tscn",
+          "**/*.gd",
+          "**/*.gdshader",
+          "addons/vfx/**"
+        ]
+      },
+      "lineCount": 404,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/visual-effects/recipes/magic-glow/SKILL.md",
+      "dir": "skills/visual-effects/recipes/magic-glow",
+      "proposedId": "magic-glow",
+      "category": "visual-effects",
+      "name": "magic-glow",
+      "description": "Use when authoring a magic-glow visual effect — a pulsing OmniLight3D plus drifting additive motes plus optional emission shader on the source mesh. Trigger on \"magic glow\", \"enchanted item\", \"soul gem\", \"pulsing aura\", \"rune glow\", \"magical orb\", \"summon circle glow\", \"fairy\", \"wisp\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "visual-effects",
+        "user-invocable": "true",
+        "allowed-tools": "Read Write Edit summer_write_file summer_read_file summer_create_scene summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_save_scene summer_get_script_errors summer_get_debugger_errors summer_play summer_stop",
+        "paths": [
+          "**/*.tscn",
+          "**/*.gd",
+          "**/*.gdshader",
+          "addons/vfx/**"
+        ]
+      },
+      "lineCount": 410,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/visual-effects/recipes/muzzle-flash/SKILL.md",
+      "dir": "skills/visual-effects/recipes/muzzle-flash",
+      "proposedId": "muzzle-flash",
+      "category": "visual-effects",
+      "name": "muzzle-flash",
+      "description": "Use when authoring a muzzle-flash visual effect — a one-shot ~80 ms burst at a gun barrel built with a particle one-shot OR a flashing quad with a star-burst shader. Trigger on \"muzzle flash\", \"gun fire\", \"weapon flash\", \"barrel flash\", \"shoot a gun\", \"spell-cast burst at hand\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "visual-effects",
+        "user-invocable": "true",
+        "allowed-tools": "Read Write Edit summer_write_file summer_read_file summer_create_scene summer_add_node summer_set_prop summer_set_resource_property summer_connect_signal summer_inspect_node summer_save_scene summer_get_script_errors summer_get_debugger_errors summer_play summer_stop",
+        "paths": [
+          "**/*.tscn",
+          "**/*.gd",
+          "**/*.gdshader",
+          "addons/vfx/**"
+        ]
+      },
+      "lineCount": 369,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/visual-effects/recipes/smoke/SKILL.md",
+      "dir": "skills/visual-effects/recipes/smoke",
+      "proposedId": "smoke",
+      "category": "visual-effects",
+      "name": "smoke",
+      "description": "Use when authoring a smoke visual effect — a slow-rising column or puff of soft particles built with a noise + density falloff shader on a quad mesh, GPUParticles3D. Trigger on \"smoke\", \"smoke trail\", \"puff\", \"chimney smoke\", \"smoke from a fire\", \"steam\", \"fog cloud\", \"explosion smoke\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "visual-effects",
+        "user-invocable": "true",
+        "allowed-tools": "Read Write Edit summer_write_file summer_read_file summer_create_scene summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_inspect_resource summer_save_scene summer_get_script_errors summer_get_debugger_errors summer_play summer_stop",
+        "paths": [
+          "**/*.tscn",
+          "**/*.gd",
+          "**/*.gdshader",
+          "addons/vfx/**"
+        ]
+      },
+      "lineCount": 442,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/visual-effects/recipes/water-ripple/SKILL.md",
+      "dir": "skills/visual-effects/recipes/water-ripple",
+      "proposedId": "water-ripple",
+      "category": "visual-effects",
+      "name": "water-ripple",
+      "description": "Use when authoring a water-ripple visual effect — animated normal-distortion ripples on a water plane (or as a Decal) triggered by impacts. Trigger on \"water ripple\", \"ripples on water\", \"raindrop ripple\", \"splash ripple\", \"rain on water\", \"footstep in puddle\", \"fish jumps\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "visual-effects",
+        "user-invocable": "true",
+        "allowed-tools": "Read Write Edit summer_write_file summer_read_file summer_create_scene summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_inspect_resource summer_save_scene summer_get_script_errors summer_get_debugger_errors summer_play summer_stop",
+        "paths": [
+          "**/*.tscn",
+          "**/*.gd",
+          "**/*.gdshader",
+          "addons/vfx/**"
+        ]
+      },
+      "lineCount": 400,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/workflow/brainstorming/SKILL.md",
+      "dir": "skills/workflow/brainstorming",
+      "proposedId": "brainstorming",
+      "category": "workflow",
+      "name": "brainstorming",
+      "description": "Use when starting creative work — designing a game, picking a mechanic, building features or components, modifying behavior. Explores user intent, requirements, and design before implementation. MUST run before any creative work.",
+      "templateId": null,
+      "otherFrontmatter": {},
+      "lineCount": 164,
+      "files": [
+        "SKILL.md",
+        "scripts/frame-template.html",
+        "scripts/helper.js",
+        "scripts/server.cjs",
+        "scripts/start-server.sh",
+        "scripts/stop-server.sh",
+        "spec-document-reviewer-prompt.md",
+        "visual-companion.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/workflow/debugging-game-feel/SKILL.md",
+      "dir": "skills/workflow/debugging-game-feel",
+      "proposedId": "debugging-game-feel",
+      "category": "workflow",
+      "name": "debugging-game-feel",
+      "description": "Use when a gameplay feature works correctly but feels wrong — floaty jumps, mushy combat, sluggish camera, weightless impacts. Different from logical bug debugging; the bug is subjective and lives in tuning, timing, and feedback layers.",
+      "templateId": null,
+      "otherFrontmatter": {},
+      "lineCount": 194,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/workflow/diagnosing-perf-regressions/SKILL.md",
+      "dir": "skills/workflow/diagnosing-perf-regressions",
+      "proposedId": "diagnosing-perf-regressions",
+      "category": "workflow",
+      "name": "diagnosing-perf-regressions",
+      "description": "Use when frame rate, frame time, or load time has gotten worse since a known-good state — \"it used to run at 60, now it's at 30.\" Focused on finding the cause of a regression, not general performance tuning.",
+      "templateId": null,
+      "otherFrontmatter": {},
+      "lineCount": 215,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/workflow/dispatching-parallel-agents/SKILL.md",
+      "dir": "skills/workflow/dispatching-parallel-agents",
+      "proposedId": "dispatching-parallel-agents",
+      "category": "workflow",
+      "name": "dispatching-parallel-agents",
+      "description": "Use when facing 2+ independent tasks that can be worked on without shared state or sequential dependencies",
+      "templateId": null,
+      "otherFrontmatter": {},
+      "lineCount": 182,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/workflow/gameskill/SKILL.md",
+      "dir": "skills/workflow/gameskill",
+      "proposedId": "gameskill",
+      "category": "workflow",
+      "name": "gameskill",
+      "description": "Use when finishing a game-development session and you want to capture what you just learned into Summer's canonical skill library so the next session and every Summer user start smarter. Trigger on \"gameskill\", \"/gameskill\", \"capture learnings\", \"save to skills\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "workflow",
+        "allowed-tools": "Read Write Edit Glob Grep Bash"
+      },
+      "lineCount": 120,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": false
+      }
+    },
+    {
+      "path": "skills/workflow/headless-scripting/SKILL.md",
+      "dir": "skills/workflow/headless-scripting",
+      "proposedId": "headless-scripting",
+      "category": "workflow",
+      "name": "headless-scripting",
+      "description": "Use when a Summer project needs an operation no MCP tool exposes, such as baking a navmesh, generating collision shapes, authoring an Animation, building a TileSet, re-importing assets after file changes, or preparing a supported local export. Runs a GDScript file against Summer Engine from the shell. Also use when a plan involves \"run it headless and screenshot it\", which does not work and this skill explains why.",
+      "templateId": null,
+      "otherFrontmatter": {},
+      "lineCount": 407,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/workflow/investigating-bugs/SKILL.md",
+      "dir": "skills/workflow/investigating-bugs",
+      "proposedId": "investigating-bugs",
+      "category": "workflow",
+      "name": "investigating-bugs",
+      "description": "Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes",
+      "templateId": null,
+      "otherFrontmatter": {},
+      "lineCount": 298,
+      "files": [
+        "CREATION-LOG.md",
+        "SKILL.md",
+        "condition-based-waiting-example.ts",
+        "condition-based-waiting.md",
+        "defense-in-depth.md",
+        "find-polluter.sh",
+        "root-cause-tracing.md",
+        "test-academic.md",
+        "test-pressure-1.md",
+        "test-pressure-2.md",
+        "test-pressure-3.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/workflow/mcpupdate/SKILL.md",
+      "dir": "skills/workflow/mcpupdate",
+      "proposedId": "mcpupdate",
+      "category": "workflow",
+      "name": "mcpupdate",
+      "description": "Use when improving or maintaining the Summer Engine CLI, its MCP tools (summer_* / \\\"ops\\\"), or its prompt-engineering skills based on a real working session. Examples: the user types /mcpupdate, says \\\"mcpskillify this\\\", \\\"log this as a skill/example\\\", \\\"this <feature> feels great, capture it\\\", or notes that an agent went down a bad path with the Summer tools/skills and the prompts should be fixed. Works from ANY chat, not just inside the summer-cli repo.",
+      "templateId": null,
+      "otherFrontmatter": {},
+      "lineCount": 134,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": false
+      }
+    },
+    {
+      "path": "skills/workflow/playtesting-a-feature/SKILL.md",
+      "dir": "skills/workflow/playtesting-a-feature",
+      "proposedId": "playtesting-a-feature",
+      "category": "workflow",
+      "name": "playtesting-a-feature",
+      "description": "Use when about to claim a gameplay feature is done, shipped, or working — requires actually running the game and walking through the feature before declaring completion. Static diagnostics and type checks do not count as playtesting.",
+      "templateId": null,
+      "otherFrontmatter": {},
+      "lineCount": 246,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/workflow/skill-create/SKILL.md",
+      "dir": "skills/workflow/skill-create",
+      "proposedId": "skill-create",
+      "category": "workflow",
+      "name": "skill-create",
+      "description": "Use when a contributor wants to add a new skill to the Summer library — bootstraps the canonical folder structure, frontmatter, and stub sections. Trigger on \"create skill\", \"add skill\", \"new skill\", \"scaffold a skill\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "workflow",
+        "allowed-tools": "Read Write Glob Grep"
+      },
+      "lineCount": 153,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": false
+      }
+    },
+    {
+      "path": "skills/workflow/skill-improve/SKILL.md",
+      "dir": "skills/workflow/skill-improve",
+      "proposedId": "skill-improve",
+      "category": "workflow",
+      "name": "skill-improve",
+      "description": "Use when a contributor wants to upgrade a Summer skill that is underperforming or to fix a regression — runs the skill against a behavioral spec with and without proposed changes via parallel-eval harness and ships the version that wins. Trigger on \"improve skill\", \"iterate on skill\", \"make this skill better\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "workflow",
+        "allowed-tools": "Read Write Edit Task"
+      },
+      "lineCount": 88,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": false
+      }
+    },
+    {
+      "path": "skills/workflow/skill-test/SKILL.md",
+      "dir": "skills/workflow/skill-test",
+      "proposedId": "skill-test",
+      "category": "workflow",
+      "name": "skill-test",
+      "description": "Use when a contributor wants to lint a Summer skill before commit, audit the whole library, or check a behavioral spec assertion — validates against static structural rules and per-skill behavioral specs. Trigger on \"skill test\", \"lint skill\", \"validate skill\".",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Windsurf",
+          "Codex"
+        ],
+        "category": "workflow",
+        "allowed-tools": "Read Glob Grep"
+      },
+      "lineCount": 86,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": false
+      }
+    },
+    {
+      "path": "skills/workflow/using-summer/SKILL.md",
+      "dir": "skills/workflow/using-summer",
+      "proposedId": "using-summer",
+      "category": "workflow",
+      "name": "using-summer",
+      "description": "Use when starting any conversation in a Summer Engine project — establishes how to find and use Summer skills and the summer-engine MCP, requiring Skill tool invocation before ANY response including clarifying questions.",
+      "templateId": null,
+      "otherFrontmatter": {
+        "license": "MIT",
+        "compatibility": [
+          "Cursor",
+          "Claude Code",
+          "Codex",
+          "Windsurf",
+          "Gemini",
+          "OpenCode",
+          "Factory",
+          "Copilot"
+        ],
+        "category": "_meta",
+        "user-invocable": "false"
+      },
+      "lineCount": 162,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": false
+      }
+    },
+    {
+      "path": "skills/workflow/verification-before-completion/SKILL.md",
+      "dir": "skills/workflow/verification-before-completion",
+      "proposedId": "verification-before-completion",
+      "category": "workflow",
+      "name": "verification-before-completion",
+      "description": "Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires running verification commands and confirming output before making any success claims; evidence before assertions always",
+      "templateId": null,
+      "otherFrontmatter": {},
+      "lineCount": 141,
+      "files": [
+        "SKILL.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/workflow/writing-plans/SKILL.md",
+      "dir": "skills/workflow/writing-plans",
+      "proposedId": "writing-plans",
+      "category": "workflow",
+      "name": "writing-plans",
+      "description": "Use when you have a spec or requirements for a multi-step task, before touching code",
+      "templateId": null,
+      "otherFrontmatter": {},
+      "lineCount": 152,
+      "files": [
+        "SKILL.md",
+        "plan-document-reviewer-prompt.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    },
+    {
+      "path": "skills/workflow/writing-skills/SKILL.md",
+      "dir": "skills/workflow/writing-skills",
+      "proposedId": "writing-skills",
+      "category": "workflow",
+      "name": "writing-skills",
+      "description": "Use when creating new skills, editing existing skills, or verifying skills work before deployment",
+      "templateId": null,
+      "otherFrontmatter": {},
+      "lineCount": 657,
+      "files": [
+        "SKILL.md",
+        "anthropic-best-practices.md",
+        "examples/CLAUDE_MD_TESTING.md",
+        "graphviz-conventions.dot",
+        "persuasion-principles.md",
+        "render-graphs.js",
+        "testing-skills-with-subagents.md"
+      ],
+      "manifests": {
+        "claudePlugin": true,
+        "codexPlugin": true,
+        "cursorPlugin": true,
+        "skillRegistry": true
+      }
+    }
+  ]
+}

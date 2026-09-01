@@ -1,0 +1,154 @@
+{
+  "generatedAt": "2026-09-01T14:11:54.954Z",
+  "sourceCommit": "e49189b93fcfee88b57e22ba8467cc782b292ac0 (origin/main at inventory time)",
+  "count": 24,
+  "files": [
+    {
+      "path": "docs/ADDING_TOOLS.md",
+      "title": "Adding New MCP Tools",
+      "summary": "SUMMER ENGINE MCP & CLI IS OPENSOURCE MIT. Think of that when making changes. And when you make commits, don't attribute cursor or claude.",
+      "lineCount": 168
+    },
+    {
+      "path": "docs/CLAUDE_CODE.md",
+      "title": "Claude Code",
+      "summary": "Claude Code can use Summer skills from `.claude/skills`.",
+      "lineCount": 62
+    },
+    {
+      "path": "docs/CODEX.md",
+      "title": "Codex",
+      "summary": "Codex can use Summer skills from the standard `.agents/skills` locations.",
+      "lineCount": 51
+    },
+    {
+      "path": "docs/CURSOR.md",
+      "title": "Cursor",
+      "summary": "Cursor uses Summer skills as generated project rules.",
+      "lineCount": 65
+    },
+    {
+      "path": "docs/DEVELOPMENT.md",
+      "title": "Summer: Development Guide",
+      "summary": "This repo (npm: `summer-engine`, GitHub: [SummerEngine/summer-engine-agent](https://github.com/SummerEngine/summer-engine-agent)) is **MIT, open source**. Treat all commits and code comments as public; they ship to the public repo.",
+      "lineCount": 455
+    },
+    {
+      "path": "docs/GATE_E3_CREATOR_CLI.md",
+      "title": "Gate E3: Creator CLI and MCP Contract",
+      "summary": "Status: publish and release history implemented against `summer.creator.v1`;",
+      "lineCount": 153
+    },
+    {
+      "path": "docs/MCP_FRESH_CHAT_PLAYBOOK.md",
+      "title": "Summer MCP Fresh-Chat Playbook",
+      "summary": "The minimum safe workflow for AI agents building in a Summer Engine project.",
+      "lineCount": 50
+    },
+    {
+      "path": "docs/NAMING.md",
+      "title": "Naming conventions",
+      "summary": "This is the single source of truth for what's called what. **Do not deviate without updating this file first.** A misalignment between the brand, the plugin, the marketplace, and the npm package wastes hours and confuses every reviewer who touches the project.",
+      "lineCount": 91
+    },
+    {
+      "path": "docs/NPM_PUBLISH_QUICK_COMMANDS.md",
+      "title": "Publish `summer-engine` from a fresh terminal",
+      "summary": "This is the approved manual release path until trusted publishing is configured in the public repository. Run it yourself in an interactive macOS Terminal. Do not run the final publish through an AI shell.",
+      "lineCount": 94
+    },
+    {
+      "path": "docs/OVERVIEW.md",
+      "title": "How Summer Works",
+      "summary": "Summer Engine is the AI game engine. **Summer** — this repo — is the open-source layer that makes any coding agent fluent in it.",
+      "lineCount": 130
+    },
+    {
+      "path": "docs/RELEASING.md",
+      "title": "Releasing `summer-engine`",
+      "summary": "The npm package is `summer-engine`, its binary is `summer`, and its public source is [SummerEngine/summer-engine-agent](https://github.com/SummerEngine/summer-engine-agent). This nested engine-monorepo copy is kept in sync for product development and testing; it is not the approved npm publication c",
+      "lineCount": 68
+    },
+    {
+      "path": "docs/SETUP_PROMPT.md",
+      "title": "Copy-Paste Setup Prompt",
+      "summary": "Use this when a human wants to install Summer Engine from Claude Code, Cursor, Codex, Devin Desktop (formerly Windsurf), Cline, Roo Code, Gemini CLI, GitHub Copilot CLI, GitHub Copilot in VS Code, or OpenCode.",
+      "lineCount": 31
+    },
+    {
+      "path": "docs/SKILLS.md",
+      "title": "Skills",
+      "summary": "Summer skills teach AI agents how to build Summer games in Summer Engine with",
+      "lineCount": 86
+    },
+    {
+      "path": "docs/TEMPLATES.md",
+      "title": "Templates",
+      "summary": "Templates create starter Summer Engine projects. They are separate from skills: templates create files, while skills guide the agent after the project exists.",
+      "lineCount": 32
+    },
+    {
+      "path": "docs/brand/sun.png",
+      "title": "sun.png",
+      "summary": "binary asset",
+      "lineCount": null,
+      "bytes": 82610
+    },
+    {
+      "path": "docs/brand/wordmark-dark.png",
+      "title": "wordmark-dark.png",
+      "summary": "binary asset",
+      "lineCount": null,
+      "bytes": 23014
+    },
+    {
+      "path": "docs/brand/wordmark-light.png",
+      "title": "wordmark-light.png",
+      "summary": "binary asset",
+      "lineCount": null,
+      "bytes": 22805
+    },
+    {
+      "path": "references/collaborative-protocol.md",
+      "title": "Collaborative Protocol — \"May I write?\"",
+      "summary": "Every Summer skill must follow this. The agent works *with* the user, not around them.",
+      "lineCount": 51
+    },
+    {
+      "path": "references/gd-style.md",
+      "title": "GDScript Style — Summer Conventions",
+      "summary": "The bar for GDScript in Summer. Skills should produce code that matches this. Where Godot's official style guide is silent, this is the tiebreaker.",
+      "lineCount": 122
+    },
+    {
+      "path": "references/godot-version.md",
+      "title": "Summer Engine Compatibility Reference",
+      "summary": "Read this before writing version-sensitive code, especially shaders,",
+      "lineCount": 52
+    },
+    {
+      "path": "references/mcp-tools-reference.md",
+      "title": "Summer MCP Tools — Canonical Reference",
+      "summary": "Use this as the single source of truth for which Summer MCP tool to call. Skills should reference tool names exactly as written here.",
+      "lineCount": 200
+    },
+    {
+      "path": "references/public-surface-language.md",
+      "title": "Summer public-surface language boundary",
+      "summary": "Summer Engine is the creator product. Users make a **Summer game** with the",
+      "lineCount": 31
+    },
+    {
+      "path": "references/summer-folder.md",
+      "title": "`.summer/` Folder Convention",
+      "summary": "The canonical layout for project-scoped Summer state. Read this if you're authoring a skill that writes durable design output, locked project memory, or agent-readable design notes.",
+      "lineCount": 91
+    },
+    {
+      "path": "references/template-registry.md",
+      "title": "Template Registry",
+      "summary": "Skills cross-link to template repos via the `template-id` frontmatter field.",
+      "lineCount": 74
+    }
+  ]
+}

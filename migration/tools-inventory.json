@@ -1,0 +1,1870 @@
+{
+  "generatedAt": "2026-09-01T14:11:54.947Z",
+  "sourceCommit": "e49189b93fcfee88b57e22ba8467cc782b292ac0 (origin/main at inventory time)",
+  "mcpToolCount": 62,
+  "mcpToolsByFile": {
+    "src/mcp/tools/asset-tools.ts": 6,
+    "src/mcp/tools/cloud-tools.ts": 7,
+    "src/mcp/tools/creator-tools.ts": 4,
+    "src/mcp/tools/debug-tools.ts": 10,
+    "src/mcp/tools/file-tools.ts": 3,
+    "src/mcp/tools/generate-tools.ts": 8,
+    "src/mcp/tools/project-tools.ts": 9,
+    "src/mcp/tools/scene-tools.ts": 14,
+    "src/mcp/tools/visual-tools.ts": 1,
+    "src/mcp/tools/with-engine.ts": 0
+  },
+  "notes": [
+    "with-engine.ts registers no tools itself; it provides the withEngine() wrapper that scene/debug/visual/file/project/asset tools use to talk to the local desktop engine over the binding socket.",
+    "sharedLibCalls are derived from imports of src/lib/* referenced inside each tool handler / command file (static analysis).",
+    "usesWithEngine=true means the tool executes ops against the running Summer Engine desktop app rather than a shared lib function."
+  ],
+  "mcpTools": [
+    {
+      "name": "summer_search_assets",
+      "sourceFile": "src/mcp/tools/asset-tools.ts",
+      "description": "Search for game assets in the Summer Engine ecosystem. **Free for all users** with rate limits.\n\nSources:\n  - \"library\" (default) — Public asset library (25k+ community assets). Free.\n  - \"my_assets\" — Your own generated/uploaded assets. Free. Query is optional.\n  - \"all\" — Search both library and your assets.\n\nUses hybrid search: keywords + semantic similarity. Finds assets by name AND by meaning.\nReturns asset names, types, preview URLs, and import-ready file URLs.\n\nCloud tool — works WITHOUT the Summer Engine app open.\nRequires authentication (so we can attribute usage and apply per-user rate limits): run 'npx summer-engine login' first.",
+      "inputSchemaKeys": [
+        "query",
+        "assetType",
+        "limit",
+        "source"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_list_my_assets",
+      "sourceFile": "src/mcp/tools/asset-tools.ts",
+      "description": "List or search the signed-in user's generated and uploaded assets.\n\nUse this after generation jobs complete, when the user says \"the model I made\",\n\"my last character\", or when you need to retrieve an asset before importing it\ninto the local project.\n\nReturns exact asset IDs plus file/import URLs. Use summer_get_asset for full\nmetadata or summer_import_asset_by_id to import a specific result.\n\nCloud tool — works WITHOUT the Summer Engine app open.",
+      "inputSchemaKeys": [
+        "query",
+        "assetType",
+        "limit"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_get_asset",
+      "sourceFile": "src/mcp/tools/asset-tools.ts",
+      "description": "Fetch one asset by exact Summer asset ID.\n\nUse this after a generation job returns assetId/rigAssetId/animationAssetId, or\nafter summer_list_my_assets/search results when you need the stable file URL,\ndownload URL, viewer URL, metadata, license, visibility, parent chain, or\nprovider details.\n\nCloud tool — works WITHOUT the Summer Engine app open.",
+      "inputSchemaKeys": [
+        "assetId"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_get_asset_download_url",
+      "sourceFile": "src/mcp/tools/asset-tools.ts",
+      "description": "Get a downloadable URL for a specific asset file.\n\nToday this usually returns the Cloudinary URL plus Summer's download proxy.\nThe response shape is future-proofed for signed URLs, so prefer this tool over\nhanding users raw fileUrl when they explicitly ask to download.\n\nCloud tool — works WITHOUT the Summer Engine app open.",
+      "inputSchemaKeys": [
+        "assetId",
+        "role"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_import_asset_by_id",
+      "sourceFile": "src/mcp/tools/asset-tools.ts",
+      "description": "Import an exact Summer asset ID into the current project.\n\nUse this when the asset was just generated, selected from my assets, or returned\nby search. Unlike summer_import_asset, this does not search or guess: it fetches\nthe asset by ID, downloads it through Summer Engine, and runs Godot's import\npipeline. For 3D models, pass parent and scenePath to instantiate it in that\nexact scene; it does not need to be the active editor tab.\n\nRequires the Summer Engine app to be open with the project loaded (generation\nitself does not — only this import step does).",
+      "inputSchemaKeys": [
+        "assetId",
+        "path",
+        "parent",
+        "scenePath",
+        "name"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_import_asset",
+      "sourceFile": "src/mcp/tools/asset-tools.ts",
+      "description": "Search the asset library and import the best match into the project in one step.\n\nUse when the user wants a specific type of asset added: \"Add a tree to the scene\", \"Import a wooden barrel\".\nSearches, picks the top result, downloads and imports it, then optionally adds it to the scene.\n\nRequires authentication. If the user gets an auth error, they need to run 'npx summer-engine login' in their terminal first. Summer Engine must be running.",
+      "inputSchemaKeys": [
+        "query",
+        "parent",
+        "scenePath",
+        "assetType",
+        "source"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_cloud_init",
+      "sourceFile": "src/mcp/tools/cloud-tools.ts",
+      "description": "Enable Summer Cloud (content-addressed whole-project sync) for a project, writing the git-tracked summer-cloud.json binding. Use once per project before the first push, or after deleting the binding to fork the project into a new cloud line.",
+      "inputSchemaKeys": [
+        "project"
+      ],
+      "sharedLibCalls": [
+        {
+          "fn": "cloudInit",
+          "module": "../../lib/cloud/sync.js"
+        }
+      ],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_cloud_status",
+      "sourceFile": "src/mcp/tools/cloud-tools.ts",
+      "description": "Show what a sync would move: file counts, paths queued to push or pull, and any waiting conflict sets. Always call this before push or pull so you can report the delete and change counts to the user; never sync blind.",
+      "inputSchemaKeys": [
+        "project"
+      ],
+      "sharedLibCalls": [
+        {
+          "fn": "cloudStatus",
+          "module": "../../lib/cloud/sync.js"
+        }
+      ],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_cloud_push",
+      "sourceFile": "src/mcp/tools/cloud-tools.ts",
+      "description": "Upload local project changes to Summer Cloud as a new restorable version (use to back up big assets, move to another machine, or snapshot before a risky bulk op). confirmDeletes gates large deletions (more than 10 files, or >=20% of the tree, or the whole tree): run summer_cloud_status first, show the exact delete count to the user, and only set it once they confirm. Never pass confirmDeletes blindly.",
+      "inputSchemaKeys": [
+        "project",
+        "confirmDeletes",
+        "bootstrap",
+        "adoptPath"
+      ],
+      "sharedLibCalls": [
+        {
+          "fn": "cloudPush",
+          "module": "../../lib/cloud/sync.js"
+        }
+      ],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_cloud_pull",
+      "sourceFile": "src/mcp/tools/cloud-tools.ts",
+      "description": "Download Summer Cloud changes into the local project (use to fetch a teammate's bytes or hydrate on a second machine). A local checkpoint is written before any destructive apply, and concurrent edits become recoverable conflict sets rather than silent overwrites. Run summer_cloud_status first.",
+      "inputSchemaKeys": [
+        "project",
+        "bootstrap",
+        "adoptPath"
+      ],
+      "sharedLibCalls": [
+        {
+          "fn": "cloudPull",
+          "module": "../../lib/cloud/sync.js"
+        }
+      ],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_cloud_restore",
+      "sourceFile": "src/mcp/tools/cloud-tools.ts",
+      "description": "Roll a project back to an earlier state. Pass version to restore a retained cloud version (creates a new head version server-side, then pulls); pass checkpointStamp to restore a local pre-sync checkpoint for unpushed work. The restore restores bytes but does not delete files a later sync added, so review the extraneous-file list it returns.",
+      "inputSchemaKeys": [
+        "project",
+        "version",
+        "checkpointStamp"
+      ],
+      "sharedLibCalls": [
+        {
+          "fn": "cloudRestore",
+          "module": "../../lib/cloud/sync.js"
+        }
+      ],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_cloud_checkpoints",
+      "sourceFile": "src/mcp/tools/cloud-tools.ts",
+      "description": "List the local pre-sync checkpoints taken before destructive applies. Use to find a checkpoint stamp to pass to summer_cloud_restore when recovering local-only work.",
+      "inputSchemaKeys": [
+        "project"
+      ],
+      "sharedLibCalls": [
+        {
+          "fn": "cloudCheckpoints",
+          "module": "../../lib/cloud/sync.js"
+        }
+      ],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_cloud_conflicts",
+      "sourceFile": "src/mcp/tools/cloud-tools.ts",
+      "description": "List preserved Summer Cloud conflict sets (the losing bytes from concurrent edits, never discarded), or recover one by passing restorePath to re-enter it as a fresh edit. Use after a push or pull reports conflicts so the user can choose what to keep.",
+      "inputSchemaKeys": [
+        "project",
+        "restorePath",
+        "set"
+      ],
+      "sharedLibCalls": [
+        {
+          "fn": "cloudConflicts",
+          "module": "../../lib/cloud/sync.js"
+        }
+      ],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_creator_publish",
+      "sourceFile": "src/mcp/tools/creator-tools.ts",
+      "description": "Publish an exact exported Summer .pck through the versioned Summercraft creator API. First call with confirm=false and present the returned project, version, digest, size, artifact path, channel, and notes; set confirm only after the user approves that exact target. The server independently verifies token scope, ownership, bytes, and review state.",
+      "inputSchemaKeys": [
+        "project",
+        "artifact",
+        "version",
+        "manifest",
+        "projectId",
+        "channel",
+        "notes",
+        "confirm"
+      ],
+      "sharedLibCalls": [
+        {
+          "fn": "publishCreator",
+          "module": "../../lib/creator.js"
+        }
+      ],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_creator_releases",
+      "sourceFile": "src/mcp/tools/creator-tools.ts",
+      "description": "List real creator-owned releases from the versioned Summercraft creator API. The server independently verifies the exact publish scope and project ownership.",
+      "inputSchemaKeys": [
+        "projectId",
+        "limit",
+        "cursor"
+      ],
+      "sharedLibCalls": [
+        {
+          "fn": "listCreatorReleases",
+          "module": "../../lib/creator.js"
+        }
+      ],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_creator_logs",
+      "sourceFile": "src/mcp/tools/creator-tools.ts",
+      "description": "Read creator runtime logs for a project or release. If the required platform route or token scope is unavailable, returns the exact recovery action instead of placeholder logs.",
+      "inputSchemaKeys": [
+        "projectId",
+        "releaseId",
+        "limit"
+      ],
+      "sharedLibCalls": [
+        {
+          "fn": "readCreatorLogs",
+          "module": "../../lib/creator.js"
+        }
+      ],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_creator_config",
+      "sourceFile": "src/mcp/tools/creator-tools.ts",
+      "description": "Read or update the shared non-secret ~/.summer configuration used by the CLI and this MCP. Mutations require confirm=true. Tokens are never returned or accepted by this tool.",
+      "inputSchemaKeys": [
+        "action",
+        "key",
+        "value",
+        "confirm"
+      ],
+      "sharedLibCalls": [
+        {
+          "fn": "CONFIG_KEYS",
+          "module": "../../lib/config.js"
+        },
+        {
+          "fn": "getConfigValue",
+          "module": "../../lib/config.js"
+        },
+        {
+          "fn": "isConfigKey",
+          "module": "../../lib/config.js"
+        },
+        {
+          "fn": "readSummerConfig",
+          "module": "../../lib/config.js"
+        },
+        {
+          "fn": "setConfigValue",
+          "module": "../../lib/config.js"
+        },
+        {
+          "fn": "unsetConfigValue",
+          "module": "../../lib/config.js"
+        }
+      ],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_get_diagnostics",
+      "sourceFile": "src/mcp/tools/debug-tools.ts",
+      "description": "Quick overview of all errors and warnings from both the editor console and the runtime debugger. Returns error counts and a guidance message.\n\nALWAYS call this FIRST before diving into summer_get_console or summer_get_debugger_errors. It tells you where to look.\n\nBy default the response is a prioritized view: errors first, then warnings, then a small capped tail of recent info/std noise. Counts (console totals, debugger totals) are always complete — only low-severity message bodies are trimmed, and a \"_view\" block reports exactly what was suppressed. Pass includeAll: true for the full untrimmed engine payload.\n\nTypical workflow after making changes:\n1. summer_get_diagnostics — are there issues?\n2. If errors: summer_get_console or summer_get_debugger_errors for details\n3. Fix the issues\n4. summer_get_diagnostics again to verify",
+      "inputSchemaKeys": [
+        "includeAll"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_get_console",
+      "sourceFile": "src/mcp/tools/debug-tools.ts",
+      "description": "Read recent messages from the editor's Output panel.\n\nOutput is post-processed for token economy: consecutive identical messages collapse into one entry with a \"(×N)\" count suffix, and the response carries a \"_filter\" summary so you can see what was hidden. Use errors_only=true (default) to drop info/std noise; use raw=true to bypass all shaping.\n\nUse after summer_get_diagnostics indicates console issues.",
+      "inputSchemaKeys": [
+        "max_lines",
+        "filter",
+        "type",
+        "errors_only",
+        "strict_errors",
+        "raw"
+      ],
+      "sharedLibCalls": [
+        {
+          "fn": "shapeEngineLogResponse",
+          "module": "../../lib/log-filters.js"
+        }
+      ],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_clear_console",
+      "sourceFile": "src/mcp/tools/debug-tools.ts",
+      "description": "Clear the editor's Output panel. Useful before running the game to get a clean slate for error checking.",
+      "inputSchemaKeys": [],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_get_debugger_errors",
+      "sourceFile": "src/mcp/tools/debug-tools.ts",
+      "description": "Read runtime errors from the debugger. These occur while the game is running (null references, missing nodes, physics errors). Different from console output — these come from the debugger, not print statements.\n\nFor warning text, use summer_get_debugger_warnings (separate tool — engine returns warning count here but not the bodies).\n\nOutput is deduped: identical errors firing every frame collapse into one entry with a \"(×N)\" count suffix. A \"_filter\" summary tells you exactly what was collapsed or truncated. Use raw=true to bypass shaping when you really need every entry.",
+      "inputSchemaKeys": [
+        "max_errors",
+        "include_stack",
+        "include_warnings",
+        "raw"
+      ],
+      "sharedLibCalls": [
+        {
+          "fn": "shapeEngineLogResponse",
+          "module": "../../lib/log-filters.js"
+        }
+      ],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_get_debugger_warnings",
+      "sourceFile": "src/mcp/tools/debug-tools.ts",
+      "description": "Read runtime warnings from the debugger panel. Warnings are non-fatal issues the game flags during play: missing optional resources, dead signal connections, deprecated API use, large allocations, physics warnings, etc.\n\nReturns structured entries with file/line/function/error_descr/callstack — same shape as summer_get_debugger_errors but filtered to severity = \"warning\". Engine-internal warnings without a source file are filtered out as noise.\n\nUse this when summer_get_diagnostics shows a non-zero `debugger.warnings` count and you want to see what they actually say.",
+      "inputSchemaKeys": [
+        "max_warnings",
+        "include_stack",
+        "raw"
+      ],
+      "sharedLibCalls": [
+        {
+          "fn": "shapeEngineLogResponse",
+          "module": "../../lib/log-filters.js"
+        }
+      ],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_play",
+      "sourceFile": "src/mcp/tools/debug-tools.ts",
+      "description": "Start running the game in the engine. The game runs inside Summer Engine's viewport.\n\nAfter starting, use summer_get_diagnostics to check for runtime errors.\n\nYou can run a specific scene instead of the main scene — useful for testing individual levels or UI screens.",
+      "inputSchemaKeys": [
+        "scene"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_stop",
+      "sourceFile": "src/mcp/tools/debug-tools.ts",
+      "description": "Stop the running game. Use after runtime verification or when you intentionally need to restart the running instance; ordinary editor scene mutations do not require a blanket stop.",
+      "inputSchemaKeys": [],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_is_running",
+      "sourceFile": "src/mcp/tools/debug-tools.ts",
+      "description": "Check if the game is currently running. Returns the active scene path if running.",
+      "inputSchemaKeys": [],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_get_script_errors",
+      "sourceFile": "src/mcp/tools/debug-tools.ts",
+      "description": "Check a GDScript file for parse/compile errors without running the game.\n\nUse after writing or editing a .gd file to verify it compiles. Returns line numbers, error messages, and severity. Much faster than running the game to discover script errors.",
+      "inputSchemaKeys": [
+        "path"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_create_debug_report",
+      "sourceFile": "src/mcp/tools/debug-tools.ts",
+      "description": "Create a support-ready Markdown report for /summer debug.\n\nUse this when the user says \"/summer debug\", asks to send Summer a bug report,\nor needs a portable artifact from a failing Codex/cloud/agent session. The\nreport includes Summer doctor checks, engine health, diagnostics, console\noutput, debugger errors/warnings, and an agent handoff prompt. It omits auth\ntokens and project file contents, but the user should still review it before\nsending because local paths and stack traces may appear.",
+      "inputSchemaKeys": [
+        "issue",
+        "output_path",
+        "include_play_session",
+        "play_wait_ms",
+        "max_console_lines",
+        "max_debugger_entries",
+        "include_doctor"
+      ],
+      "sharedLibCalls": [
+        {
+          "fn": "createDebugReportArtifact",
+          "module": "../../lib/debug-report.js"
+        }
+      ],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_read_file",
+      "sourceFile": "src/mcp/tools/file-tools.ts",
+      "description": "Read a text file from the engine-bound project and return its full-file sha256 receipt.\n\nUse the returned sha256 as expected_sha256 when overwriting an existing file. Paths must begin with res://.",
+      "inputSchemaKeys": [
+        "path",
+        "max_bytes"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_write_file",
+      "sourceFile": "src/mcp/tools/file-tools.ts",
+      "description": "Create or safely overwrite a complete text file through the identity-bound engine.\n\nFor a new file, set create_only:true. For an existing file, first call summer_read_file and pass its sha256 as expected_sha256. Exactly one guard is required; unguarded writes fail closed. Supports scripts, .tscn scenes, .tres resources, JSON, docs, and project config.",
+      "inputSchemaKeys": [
+        "path",
+        "content",
+        "create_only",
+        "expected_sha256"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_replace_text",
+      "sourceFile": "src/mcp/tools/file-tools.ts",
+      "description": "Safely replace text in an existing project file through the identity-bound engine.\n\nThe MCP server reads the complete file, requires a unique match by default, computes the new content, and submits a sha256-guarded WriteFile. Set replace_all:true only when every exact occurrence should change.",
+      "inputSchemaKeys": [
+        "path",
+        "old_text",
+        "new_text",
+        "replace_all"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_get_studio_workflow",
+      "sourceFile": "src/mcp/tools/generate-tools.ts",
+      "description": "Discover the same Guided workflow recipes shown in Summer Engine Studio.\n\nCall without workflowId to list every workflow and its support level. Call with\nan id to get the exact starter prompt, ordered steps, required MCP tools, and\nhonest limitations. A \"manual\" support level means Studio still has a visual\nhandoff that MCP cannot perform automatically; do not pretend that stage ran.",
+      "inputSchemaKeys": [
+        "workflowId"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_generate_image",
+      "sourceFile": "src/mcp/tools/generate-tools.ts",
+      "description": "Generate an image using AI models via Summer Engine Studio.\n\nKnown models:\n  - \"nano-banana-2\" (default) — High quality, supports txt2img and img2img\n  - \"gemini-flash\" — Google Gemini 2.5 Flash, fast\n  - \"flux-2\" — FLUX.2, good for specific styles\n\nModel ids are an ALLOWLIST, not a passthrough. An unrecognised id is rejected\nwith 400 and the response lists every accepted id — it is not silently swapped.\n\nTwo modes:\n  - txt2img (default): just pass prompt\n  - img2img (edit): pass prompt + referenceImageUrl to edit/transform an existing image\n\nStyle presets: \"realistic\" (default), \"cartoon\", \"anime\", \"none\"\n\nThe 'options' object is passed directly to the AI provider for full control.\n\nReturns the asset with fileUrl (hosted) and localPath (temp file on disk).\nUse the Read tool on localPath to show the image to the user for approval.\n\nCloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.\nRequires authentication: run 'npx summer-engine login' first.",
+      "inputSchemaKeys": [
+        "prompt",
+        "model",
+        "style",
+        "referenceImageUrl",
+        "options"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_slice_asset_sheet",
+      "sourceFile": "src/mcp/tools/generate-tools.ts",
+      "description": "Detect and crop every distinct game asset from an existing image asset sheet.\n\nUse the assetId returned by summer_generate_image (or another Summer image asset).\nThe same guided workflow used in Studio removes the sheet background when needed,\ndetects named/category-aware bounding boxes, crops each item, and uploads the slices.\n\nReturns source dimensions plus the generated slice URLs, names, categories, bounding\nboxes, and widget metadata when the sheet contains UI controls.\n\nCloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.\nRequires authentication: run 'npx summer-engine login' first.",
+      "inputSchemaKeys": [
+        "assetId"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_generate_audio",
+      "sourceFile": "src/mcp/tools/generate-tools.ts",
+      "description": "Generate audio using AI providers via Summer Engine Studio.\n\nCapabilities:\n  - \"text_to_speech\" — Convert text to spoken audio. Requires 'text'. Optional 'voiceId'.\n  - \"sound_effects\" — Generate sound effects from description. Requires 'text'. Optional 'durationSeconds'.\n  - \"music\" — Generate background music. Requires 'prompt'. Optional 'durationSeconds'.\n  - \"text_to_dialogue\" — Multi-voice dialogue. Requires 'inputs' array of {text, voiceId} objects.\n\nThe 'options' object is spread into the ElevenLabs SDK call at the TOP level, so\nonly keys the SDK accepts there have any effect. Voice tuning is NOT top-level and\nis NOT snake_case: pass it as options.voiceSettings with camelCase keys —\n{ voiceSettings: { stability, similarityBoost, style, speed, useSpeakerBoost } }.\nFlat snake_case keys are accepted by the schema, silently dropped by the SDK, and\nreturn a normal 200 with the setting ignored.\n\nReturns the generated audio URL and asset metadata.\nCloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.\nRequires authentication: run 'npx summer-engine login' first.",
+      "inputSchemaKeys": [
+        "capability",
+        "text",
+        "prompt",
+        "voiceId",
+        "modelId",
+        "durationSeconds",
+        "inputs",
+        "options"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_generate_3d",
+      "sourceFile": "src/mcp/tools/generate-tools.ts",
+      "description": "Generate a 3D model via Summer Engine Studio.\n\nAvailable models:\n  - \"hunyuan\" (default) — Hunyuan 3D v3.1 Pro, high quality\n  - \"trellis\" — Trellis 2, fast and detailed\n  - \"meshy\" — Meshy, legacy option\n\nModel ids are an ALLOWLIST, not a passthrough. An unrecognised id is rejected\nwith 400 listing the accepted ids.\n\nAvailable kinds:\n  - \"text-to-3d\" (default) — From text description. Requires 'prompt'.\n    Internally generates a 3D-optimized reference image first, then converts to 3D.\n  - \"image-to-3d\" — From your own image. Requires 'imageUrl'.\n  - \"texture\" — Generate textures for a model. Requires 'imageUrl'.\n\nOptional rig pass (image-to-3d only):\n  Set options.rig = true to add an auto-rig pass via Meshy v6. The result\n  job (poll via summer_check_job) will include rigAssetId — the asset ID\n  of the rigged glb. Use that rigAssetId with summer_generate_motion to\n  add animation clips. Adds ~$0.30 and ~60s to the job.\n\nExample:\n  summer_generate_3d({\n    kind: \"image-to-3d\",\n    imageUrl: \"https://...\",\n    options: { rig: true }\n  })\n  // Returns jobId; poll until result includes { assetId, rigAssetId }.\n\nSingle-image generation automatically assesses whether the source is suitable\nfor 3D. If needed, Summer prepares an isolated object view or rig-safe character\npose before conversion. Set referencePreparation=\"always\" or \"never\" only when\nyou intentionally want to override that shared Studio behavior.\n\nFor a complete animated humanoid package, pass rig=true plus animationNames or\nactionIds. This routes through the shared character pipeline instead of a\none-off mesh job.\n\nBy default, waits for completion (up to 10 min) and returns the result directly.\nSet wait=false to get the jobId immediately and poll manually with summer_check_job.\n\nCloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.\nRequires authentication: run 'npx summer-engine login' first.",
+      "inputSchemaKeys": [
+        "prompt",
+        "kind",
+        "model",
+        "imageUrl",
+        "imageUrls",
+        "title",
+        "idempotencyKey",
+        "assetIntent",
+        "referencePreparation",
+        "rig",
+        "animationNames",
+        "actionIds",
+        "riggingHeightMeters",
+        "wait",
+        "options"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_generate_video",
+      "sourceFile": "src/mcp/tools/generate-tools.ts",
+      "description": "Generate a video using AI models via Summer Engine Studio.\n\nKnown models (text-to-video):\n  - \"ltx\" (default) — LTX Video, fast (~$0.10)\n  - \"kling\" — Kling 2 Master, high quality (~$0.50)\n  - \"kling-turbo\" — Kling 2.5 Turbo Pro (~$0.30)\n  - \"minimax\" — MiniMax (~$0.25)\n  - \"veo3\" — Google Veo 3, premium (~$1.00)\n\nKnown models (image-to-video, when imageUrl provided):\n  - \"ltx\" (default), \"kling\", \"minimax\"\n\nIf imageUrl is provided, switches to image-to-video mode.\nPass provider-specific params in 'options' (negative_prompt, num_frames, etc.).\n\nReturns the generated video URL and asset metadata.\nCloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.\nRequires authentication: run 'npx summer-engine login' first.",
+      "inputSchemaKeys": [
+        "prompt",
+        "model",
+        "imageUrl",
+        "duration",
+        "aspectRatio",
+        "options"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_check_job",
+      "sourceFile": "src/mcp/tools/generate-tools.ts",
+      "description": "Check the status of an async generation job.\n\nUse this when you called summer_generate_3d with wait=false, or need to re-check\na job that timed out. Most of the time you won't need this — summer_generate_3d\nwaits automatically.\n\nStatus values: waiting, active, completed, failed, delayed, unknown.\n\nCloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.\nRequires authentication: run 'npx summer-engine login' first.",
+      "inputSchemaKeys": [
+        "jobId"
+      ],
+      "sharedLibCalls": [
+        {
+          "fn": "getAuthToken",
+          "module": "../../lib/auth.js"
+        }
+      ],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_generate_motion",
+      "sourceFile": "src/mcp/tools/generate-tools.ts",
+      "description": "Generate an animation clip for a Meshy-rigged humanoid character via Summer Engine Studio.\n\nBackend:\n  - \"meshy-library\" — picks a clip from a curated mocap set by name (idle, walk,\n    run, attack_sword, jump, ~70 standard names). Fast (~30s), cheap (~$0.10),\n    real mocap quality.\n\nRequires a Meshy-rigged humanoid as the target. The 'rigAssetId' must come from\na prior summer_generate_3d call with options.rig=true.\n\nBy default, waits for completion (up to 5 min) and returns the result directly.\nSet wait=false to get the jobId immediately and poll manually with summer_check_job.\n\nCommon motion names:\n  Locomotion: idle, idle_alert, idle_combat, walk, walk_back, run, sprint,\n              crouch_idle, crouch_walk, jump, jump_loop, jump_land\n  Combat: attack_sword, attack_punch, attack_kick, attack_bow, attack_cast,\n          block, dodge_left, dodge_right, hit_react, death\n  Social: wave, dance, sit_idle\n\nCost: ~$0.10 per clip. Confirm with user before spending.\n\nCustom prompt-driven motion is on the roadmap; not yet shipped. For one-off\nsignature moves not on the curated list, fall back to hand-authoring in the\nSummer Engine or importing from Mixamo.\n\nCloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.\nRequires authentication: run 'npx summer-engine login' first.",
+      "inputSchemaKeys": [
+        "rigAssetId",
+        "backend",
+        "motionName",
+        "wait",
+        "options"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_start_game_task",
+      "sourceFile": "src/mcp/tools/project-tools.ts",
+      "description": "Start here for any substantial AI game-building task.\n\nTakes the user's goal and returns the recommended Summer workflow: skill routes,\nMCP tool groups, host-file boundaries, asset policy, user confirmation gates,\nand verification steps. This is the router before deep skills and before\nmutating the project.",
+      "inputSchemaKeys": [
+        "goal",
+        "mode",
+        "target",
+        "assetPolicy",
+        "verification"
+      ],
+      "sharedLibCalls": [
+        {
+          "fn": "buildGameTaskPlan",
+          "module": "../../lib/game-task-plan.js"
+        }
+      ],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_get_agent_playbook",
+      "sourceFile": "src/mcp/tools/project-tools.ts",
+      "description": "AI-first operating guide for Summer Engine MCP.\n\nCall this at the start of a fresh chat before touching scenes.\nIt returns the safe workflow, the verification ladder, honesty rules,\nanti-patterns, and recovery steps.",
+      "inputSchemaKeys": [],
+      "sharedLibCalls": [
+        {
+          "fn": "getCachedBootDriftNotice",
+          "module": "../../lib/mcp-boot-notice.js"
+        }
+      ],
+      "usesWithEngine": false
+    },
+    {
+      "name": "summer_get_project_context",
+      "sourceFile": "src/mcp/tools/project-tools.ts",
+      "description": "Get essential project context before editing. Returns:\n- engine health/status\n- project name and project path when exposed by project state\n- current scene path (if available)\n- main scene path from project settings\n- lightweight .summer project memory summary when project path is available\n\nUse this first in every fresh chat to avoid guessing scene filenames or editing the wrong scene.\n\nProject settings in project.data.entries are trimmed to a curated prefix set\n(application/, display/, input/, physics/, rendering/) to bound payload size —\nthe untrimmed dump can exceed 45k tokens. The payload declares the trim\n(settingsTruncated, totalSettings, settingsPrefixesIncluded). Pass\nsettingsPrefix to read a specific settings group (e.g. 'audio/') instead.",
+      "inputSchemaKeys": [
+        "settingsPrefix"
+      ],
+      "sharedLibCalls": [
+        {
+          "fn": "getCachedBootDriftNotice",
+          "module": "../../lib/mcp-boot-notice.js"
+        },
+        {
+          "fn": "getProjectMemorySummary",
+          "module": "../../lib/project-memory.js"
+        }
+      ],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_open_main_scene",
+      "sourceFile": "src/mcp/tools/project-tools.ts",
+      "description": "Open the project's configured main scene from project settings.\n\nSafer than guessing scene names like main.tscn/Main.tscn.\nCall this when you get \"no scene open\".",
+      "inputSchemaKeys": [],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_project_setting",
+      "sourceFile": "src/mcp/tools/project-tools.ts",
+      "description": "Set a project setting in project.godot. Common settings:\n- \"application/config/name\" — project name\n- \"application/run/main_scene\" — main scene path\n- \"rendering/renderer/rendering_method\" — \"forward_plus\", \"mobile\", or \"gl_compatibility\"\n- \"display/window/size/viewport_width\" — window width\n- \"display/window/size/viewport_height\" — window height\n- \"physics/3d/default_gravity\" — gravity value (float)",
+      "inputSchemaKeys": [
+        "key",
+        "value"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_input_map_bind",
+      "sourceFile": "src/mcp/tools/project-tools.ts",
+      "description": "Set up input controls. Creates the action if it doesn't exist, then binds events to it.\n\nEvent format:\n- Keyboard: { type: \"key\", key: \"W\" } or { type: \"key\", key: \"Space\" }\n- Mouse button: { type: \"mouse_button\", button: 1 } (1=left, 2=right, 3=middle)\n- Common keys: \"W\", \"A\", \"S\", \"D\", \"Space\", \"Shift\", \"E\", \"Escape\", \"Up\", \"Down\", \"Left\", \"Right\"\n\nExample: Bind jump to Space and W:\n  name: \"jump\", events: [{ type: \"key\", key: \"Space\" }, { type: \"key\", key: \"W\" }]",
+      "inputSchemaKeys": [
+        "name",
+        "events"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_get_scene_tree",
+      "sourceFile": "src/mcp/tools/project-tools.ts",
+      "description": "Get a scene tree. Pass scenePath to read that exact in-memory/open scene;\nomit it only when you intentionally want the currently visible editor scene.\nScene mutations load their explicit target, so a follow-up targeted read does\nnot require OpenScene.\n\nThe engine defaults to depth 2 and limit 200 nodes and SILENTLY truncates\ndeeper hierarchies (the response then carries truncated: true and a visited\ncount lower than the real node count). Pass an explicit depth (e.g. 10) to\nread a full tree — a 102-node scene returns only 61 nodes at the defaults.",
+      "inputSchemaKeys": [
+        "scenePath",
+        "depth",
+        "limit"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_import_from_url",
+      "sourceFile": "src/mcp/tools/project-tools.ts",
+      "description": "Download a file from a URL and import it into the project. Triggers Godot's full import pipeline — generates .import files, extracts textures from .glb models, creates materials.\n\nUse this for:\n- 3D models (.glb, .gltf, .obj)\n- Textures (.png, .jpg, .webp)\n- Audio (.ogg, .wav, .mp3)\n\nThe path is auto-inferred from the URL filename if not specified. After import, the asset is immediately usable in scenes.",
+      "inputSchemaKeys": [
+        "url",
+        "path"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_import_from_url_batch",
+      "sourceFile": "src/mcp/tools/project-tools.ts",
+      "description": "Download multiple files from URLs in one operation. Performs a single filesystem scan after all downloads, which is faster than importing one at a time.",
+      "inputSchemaKeys": [
+        "imports"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_create_scene",
+      "sourceFile": "src/mcp/tools/scene-tools.ts",
+      "description": "Create a new empty scene file. Writes a minimal .tscn through the identity-bound engine with a create-only guard: it fails if the path already exists, and it never touches the currently open scene.\n\nThe new scene is on disk but NOT opened. Call summer_open_scene to start editing it, then summer_add_node to build it out.\n\nRecommended workflow:\n1) Call summer_get_project_context\n2) Call summer_create_scene with a new res:// path\n3) Call summer_open_scene with that path",
+      "inputSchemaKeys": [
+        "path",
+        "rootName",
+        "rootType",
+        "allow_temporary_scene_mutation"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_add_node",
+      "sourceFile": "src/mcp/tools/scene-tools.ts",
+      "description": "Add a new node to the scene tree.\n\nPass the exact res:// scenePath to mutate. The scene does not need to be the\nactive editor tab.\n\nCommon node types:\n- 3D: Node3D, MeshInstance3D, CharacterBody3D, RigidBody3D, StaticBody3D, Camera3D, DirectionalLight3D, OmniLight3D, SpotLight3D, WorldEnvironment, CollisionShape3D, Area3D\n- 2D: Node2D, Sprite2D, CharacterBody2D, RigidBody2D, StaticBody2D, Camera2D, CollisionShape2D, Area2D, TileMapLayer\n- UI: Control, Label, Button, TextEdit, Panel, VBoxContainer, HBoxContainer, MarginContainer\n- Audio: AudioStreamPlayer, AudioStreamPlayer3D\n\nThe parent path uses \"./\" prefix for relative paths from scene root. E.g., \"./World\" means the \"World\" child of the root node.",
+      "inputSchemaKeys": [
+        "scenePath",
+        "parent",
+        "type",
+        "name"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_set_prop",
+      "sourceFile": "src/mcp/tools/scene-tools.ts",
+      "description": "Set a property on a node. This is the primary way to configure nodes after adding them.\n\nVALUE FORMAT — Godot string syntax for complex types:\n- Vector3: \"Vector3(0, 10, 0)\" — position, scale, rotation_degrees\n- Vector2: \"Vector2(100, 200)\" — 2D position, size\n- Color: \"Color(1, 0.5, 0, 1)\" — RGBA, always 4 components, values 0.0-1.0\n- Transform3D: \"Transform3D(1,0,0, 0,1,0, 0,0,1, 0,5,0)\" — basis + origin\n- Resource class name: \"BoxMesh\", \"SphereMesh\", \"StandardMaterial3D\" — auto-instantiated\n- Numbers: 1.5, 42 — native JSON\n- Booleans: true, false — native JSON\n- Strings: \"hello\" — native JSON\n\nCOMMON PROPERTIES:\n- position: \"Vector3(x, y, z)\" — world position\n- rotation_degrees: \"Vector3(rx, ry, rz)\" — rotation in degrees\n- scale: \"Vector3(sx, sy, sz)\" — scale factor\n- visible: true/false — visibility\n- mesh: \"BoxMesh\", \"SphereMesh\", \"CapsuleMesh\", \"CylinderMesh\", \"PlaneMesh\"\n- shadow_enabled: true — for lights\n- light_energy: 1.5 — light intensity\n- fov: 75.0 — camera field of view",
+      "inputSchemaKeys": [
+        "scenePath",
+        "path",
+        "key",
+        "value"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_set_resource_property",
+      "sourceFile": "src/mcp/tools/scene-tools.ts",
+      "description": "Set a nested property on a resource attached to a node.\n\nUse when you need to modify a sub-property of a resource, like:\n- CollisionShape3D shape size: nodePath=\"./Player/CollisionShape3D\", resourceProperty=\"shape\", subProperty=\"size\", value=\"Vector3(1, 2, 1)\"\n- Material albedo color: nodePath=\"./Floor\", resourceProperty=\"material_override\", subProperty=\"albedo_color\", value=\"Color(0.2, 0.5, 0.2, 1)\"\n- Mesh size: nodePath=\"./Box\", resourceProperty=\"mesh\", subProperty=\"size\", value=\"Vector3(2, 2, 2)\"",
+      "inputSchemaKeys": [
+        "scenePath",
+        "nodePath",
+        "resourceProperty",
+        "subProperty",
+        "value"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_remove_node",
+      "sourceFile": "src/mcp/tools/scene-tools.ts",
+      "description": "Remove a node from the scene tree. All children are removed too. Cannot remove the root node. Supports undo. Destructive operation: do not delete multiple top-level nodes unless the user explicitly requests destructive changes.",
+      "inputSchemaKeys": [
+        "scenePath",
+        "path"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_save_scene",
+      "sourceFile": "src/mcp/tools/scene-tools.ts",
+      "description": "Save an explicit scene to disk. Mutation tools already append one save; use this for a standalone save or save-as.",
+      "inputSchemaKeys": [
+        "scenePath",
+        "path"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_open_scene",
+      "sourceFile": "src/mcp/tools/scene-tools.ts",
+      "description": "Open a scene file in the editor. Use this to switch between scenes.\n\nDo not guess paths. Prefer:\n1) summer_get_project_context (read mainScene)\n2) summer_open_main_scene (open known main scene)\n3) summer_open_scene only when user gave an explicit path.",
+      "inputSchemaKeys": [
+        "path"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_instantiate_scene",
+      "sourceFile": "src/mcp/tools/scene-tools.ts",
+      "description": "Add an existing scene or 3D model as a child node. Use this to:\n- Add a .tscn prefab (reusable scene) as a child\n- Add a .glb/.gltf 3D model into the scene\n- Compose scenes from smaller scenes (e.g., add a \"Player\" scene into a \"Level\" scene)\n\nThe scene must already exist in the project. Use summer_import_from_url first if importing from external sources.",
+      "inputSchemaKeys": [
+        "scenePath",
+        "parent",
+        "scene",
+        "name"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_connect_signal",
+      "sourceFile": "src/mcp/tools/scene-tools.ts",
+      "description": "Connect a signal between two nodes. Signals are Godot's event system — they notify when something happens.\n\nCommon signals:\n- \"body_entered\" / \"body_exited\" — Area3D/Area2D detects physics bodies\n- \"pressed\" — Button clicked\n- \"timeout\" — Timer finished\n- \"area_entered\" — Area detects another area\n- \"input_event\" — CollisionObject received input\n\nThe receiver node must have a script with the specified method.",
+      "inputSchemaKeys": [
+        "scenePath",
+        "emitter",
+        "signal",
+        "receiver",
+        "method"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_select_node",
+      "sourceFile": "src/mcp/tools/scene-tools.ts",
+      "description": "Select a node in the editor's scene tree and show it in the inspector panel. Useful for focusing the editor on a specific node.",
+      "inputSchemaKeys": [
+        "nodePath",
+        "scenePath"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_replace_node",
+      "sourceFile": "src/mcp/tools/scene-tools.ts",
+      "description": "Replace a node with a different type or scene, preserving its position in the tree and its children. Useful for changing a StaticBody3D to a RigidBody3D, or swapping a placeholder with a proper prefab.",
+      "inputSchemaKeys": [
+        "scenePath",
+        "path",
+        "type",
+        "scene"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_inspect_node",
+      "sourceFile": "src/mcp/tools/scene-tools.ts",
+      "description": "Get all editable properties of a node with their current values, types, and resource info.\n\nCall this before modifying a node to understand its current state. Returns every property the Godot inspector would show.\n\nExample: inspect a light to see its energy, color, shadow settings before changing them.",
+      "inputSchemaKeys": [
+        "path"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_inspect_resource",
+      "sourceFile": "src/mcp/tools/scene-tools.ts",
+      "description": "Get all properties of a resource (material, mesh, shape, environment, etc).\n\nUse when you need the sub-properties of a resource attached to a node. For example, summer_inspect_node tells you a MeshInstance3D has a \"StandardMaterial3D\" material — this tool tells you that material's albedo_color, metallic, roughness, etc.",
+      "inputSchemaKeys": [
+        "path"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_batch",
+      "sourceFile": "src/mcp/tools/scene-tools.ts",
+      "description": "Execute multiple operations in a single call, grouped into one undo step. Each op is forwarded to the engine VERBATIM, so this is also how you reach engine ops that have no dedicated tool.\n\nThe user can undo everything with a single Ctrl+Z. Use this when building something that involves multiple nodes and properties — e.g., creating a player character with collision, camera, and properties.\n\nEach op in the array uses the same format as the individual tools:\n- {\"op\": \"AddNode\", \"parent\": \"/\", \"type\": \"MeshInstance3D\", \"name\": \"Floor\"}\n- {\"op\": \"SetProp\", \"path\": \"Floor\", \"key\": \"position\", \"value\": \"Vector3(0, -1, 0)\"}\n- {\"op\": \"SetProp\", \"path\": \"Floor\", \"key\": \"mesh\", \"value\": \"PlaneMesh\"}\n- {\"op\": \"SetResourceProperty\", \"nodePath\": \"Floor\", \"resourceProperty\": \"mesh\", \"subProperty\": \"size\", \"value\": \"Vector2(20, 20)\"}\n\nRAW RUNTIME OPS (interactive verification — structured failure_reason passes through verbatim):\n- RunVerification — spawn a hidden, disposable game instance that runs a GDScript probe and dies (never touches the editor): {\"op\": \"RunVerification\", \"probe_source\": \"...\", \"max_seconds\": 20}. Returns {ok, results, frames, out_dir}. Probe API: report(name, value) / save_frame(name) / press(action) / key(keycode) / finish(). save_frame REQUIRES a name argument — save_frame() with no args is a script error. Mount scenes deferred: get_tree().root.add_child.call_deferred(instance); await get_tree().process_frame; await settle() — a direct add_child in _ready can hit the parent-busy guard and capture a black frame.\n- SimulateInput — inject an action/key/mouse/axis into the RUNNING game (summer_play first): {\"op\": \"SimulateInput\", \"type\": \"action\", \"action\": \"jump\", \"pressed\": true}. It MUST be sent alone (single-op batch). failure_reason \"not_running\" = start the game first; \"unsupported\" = the running game build predates the handler — fall back to RunVerification or ask the user.\n\nDo not mix OpenScene with scene mutations in one batch. OpenScene is a UI action;\nsend it separately. scenePath selects every mutation target. The tool appends one\nfinal SaveScene when the batch mutates a scene; if supplied explicitly, SaveScene\nmust appear exactly once and be the final operation. The engine requires\nSaveScene, InstantiateScene, ReplaceNode, SimulateInput, and the Run*/Import*\nops to travel as their own request, so this tool automatically splits your op\nlist into sequential requests around them — each split chunk is its own undo\nstep, and if a later chunk fails the receipt reports exactly which earlier ops\nalready applied.",
+      "inputSchemaKeys": [
+        "scenePath",
+        "ops"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    },
+    {
+      "name": "summer_screenshot",
+      "sourceFile": "src/mcp/tools/visual-tools.ts",
+      "description": "Capture a frame from Summer Engine and return it as an image you can look at directly.\n\nUse this to visually verify your work: scene layout, asset placement, scale, framing, missing/untextured assets, or runtime gameplay state. You see the actual pixels — no description layer in between. Lighting and materials are only truthfully shown by the \"viewport\" and \"game\" targets — see the note on \"scene\" below.\n\ntarget:\n  \"viewport\" (default) — the editor's CURRENT view (whatever scene/tab is open). No game boot. Use for edit-time checks of how the scene looks right now.\n  \"scene\" — an OFFSCREEN render of a scene file (no game boot; physics/particles/animations are static at t=0). Optionally pass scenePath/framing/size/nodePath. Use for COMPOSITION, SCALE and FRAMING without touching the editor's open tab.\n    It does NOT use the scene's environment/sky, and it injects a synthetic camera and light when the scene has none. The scene's WorldEnvironment — sky, fog, tonemap, glow, SSAO, ambient — is replaced by a flat preview environment. So this target CANNOT verify lighting, mood, or any material property that depends on the environment: change them and the frame comes back identical. For those, boot the game or run a RunVerification probe, whose instance renders the real environment.\n  \"game\" — a frame from the RUNNING game (real runtime state). Start the game first (summer_play). Not available over a plain local connection — needs the Summer desktop app bridge.\n\nStatic frame only — one moment, not motion. For a SEQUENCE of frames over time, or for anything lighting-dependent when the desktop bridge is unavailable, use a RunVerification probe's save_frame(name) — its instance has a real renderer.",
+      "inputSchemaKeys": [
+        "target",
+        "scenePath",
+        "framing",
+        "size",
+        "nodePath"
+      ],
+      "sharedLibCalls": [],
+      "usesWithEngine": true
+    }
+  ],
+  "cliCommandCount": 21,
+  "cliRegistrationOrder": [
+    "installCommand",
+    "loginCommand",
+    "logoutCommand",
+    "statusCommand",
+    "runCommand",
+    "openCommand",
+    "createCommand",
+    "listCommand",
+    "memoryCommand",
+    "skillsCommand",
+    "mcpCommand",
+    "setupCommand",
+    "doctorCommand",
+    "debugCommand",
+    "planCommand",
+    "orchestratorCommand",
+    "cloudCommand",
+    "configCommand",
+    "publishCommand",
+    "releasesCommand",
+    "logsCommand"
+  ],
+  "cliCommands": [
+    {
+      "sourceFile": "src/commands/cloud.ts",
+      "command": "cloud",
+      "allCommandNames": [
+        "cloud",
+        "conflicts"
+      ],
+      "subcommands": [
+        "init",
+        "status",
+        "push",
+        "pull",
+        "restore",
+        "checkpoints",
+        "list",
+        "restore <path>"
+      ],
+      "options": [
+        "--project <path>",
+        "--json",
+        "--project <path>",
+        "--json",
+        "--project <path>",
+        "--json",
+        "--confirm-deletes",
+        "--bootstrap <choice>",
+        "--adopt-path",
+        "--project <path>",
+        "--json",
+        "--bootstrap <choice>",
+        "--adopt-path",
+        "--version <number>",
+        "--checkpoint <stamp>",
+        "--project <path>",
+        "--json",
+        "--project <path>",
+        "--json",
+        "--project <path>",
+        "--json",
+        "--set <stamp>",
+        "--project <path>",
+        "--json"
+      ],
+      "description": "Sync Summer Engine projects with Summer Cloud",
+      "sharedLibCalls": [
+        {
+          "fn": "cloudCheckpoints",
+          "module": "../lib/cloud/sync.js"
+        },
+        {
+          "fn": "cloudConflicts",
+          "module": "../lib/cloud/sync.js"
+        },
+        {
+          "fn": "cloudInit",
+          "module": "../lib/cloud/sync.js"
+        },
+        {
+          "fn": "cloudPull",
+          "module": "../lib/cloud/sync.js"
+        },
+        {
+          "fn": "cloudPush",
+          "module": "../lib/cloud/sync.js"
+        },
+        {
+          "fn": "cloudRestore",
+          "module": "../lib/cloud/sync.js"
+        },
+        {
+          "fn": "cloudStatus",
+          "module": "../lib/cloud/sync.js"
+        }
+      ]
+    },
+    {
+      "sourceFile": "src/commands/config.ts",
+      "command": "config",
+      "allCommandNames": [
+        "config"
+      ],
+      "subcommands": [
+        "get",
+        "set",
+        "unset"
+      ],
+      "options": [
+        "--json"
+      ],
+      "description": "Read or update the shared ~/.summer configuration",
+      "sharedLibCalls": [
+        {
+          "fn": "CONFIG_KEYS",
+          "module": "../lib/config.js"
+        },
+        {
+          "fn": "getConfigValue",
+          "module": "../lib/config.js"
+        },
+        {
+          "fn": "isConfigKey",
+          "module": "../lib/config.js"
+        },
+        {
+          "fn": "readSummerConfig",
+          "module": "../lib/config.js"
+        },
+        {
+          "fn": "setConfigValue",
+          "module": "../lib/config.js"
+        },
+        {
+          "fn": "unsetConfigValue",
+          "module": "../lib/config.js"
+        }
+      ]
+    },
+    {
+      "sourceFile": "src/commands/create.ts",
+      "command": "create",
+      "allCommandNames": [
+        "create"
+      ],
+      "subcommands": [],
+      "options": [
+        "--keep-git"
+      ],
+      "description": "Create a new Summer Engine project. Built-in templates work offline; community templates clone from github.com/SummerEngine/template-*.",
+      "sharedLibCalls": [
+        {
+          "fn": "fetchRemoteTemplates",
+          "module": "../lib/remote-templates.js"
+        },
+        {
+          "fn": "cloneTemplate",
+          "module": "../lib/remote-templates.js"
+        },
+        {
+          "fn": "matchTemplate",
+          "module": "../lib/remote-templates.js"
+        },
+        {
+          "fn": "SUMMER_ENGINE_COMPATIBILITY",
+          "module": "../lib/summer-compatibility.js"
+        }
+      ]
+    },
+    {
+      "sourceFile": "src/commands/debug.ts",
+      "command": "debug",
+      "allCommandNames": [
+        "debug"
+      ],
+      "subcommands": [],
+      "options": [
+        "-o, --output <path>",
+        "--json",
+        "--play",
+        "--no-doctor",
+        "--max-console-lines <n>",
+        "--max-debugger-entries <n>",
+        "--play-wait-ms <n>"
+      ],
+      "description": "Create a support-ready Markdown debug report",
+      "sharedLibCalls": [
+        {
+          "fn": "createDebugReportArtifact",
+          "module": "../lib/debug-report.js"
+        },
+        {
+          "fn": "redactDebugReport",
+          "module": "../lib/debug-report.js"
+        },
+        {
+          "fn": "c",
+          "module": "../lib/format.js"
+        },
+        {
+          "fn": "sym",
+          "module": "../lib/format.js"
+        },
+        {
+          "fn": "tildeify",
+          "module": "../lib/format.js"
+        }
+      ]
+    },
+    {
+      "sourceFile": "src/commands/doctor.ts",
+      "command": "doctor",
+      "allCommandNames": [
+        "doctor"
+      ],
+      "subcommands": [],
+      "options": [
+        "--json"
+      ],
+      "description": "Diagnose Node, login, engine, project memory, local API, and MCP registration",
+      "sharedLibCalls": [
+        {
+          "fn": "getAuthToken",
+          "module": "../lib/auth.js"
+        },
+        {
+          "fn": "getUserInfo",
+          "module": "../lib/auth.js"
+        },
+        {
+          "fn": "isGitAvailable",
+          "module": "../lib/cloud/checkpoint.js"
+        },
+        {
+          "fn": "checkEngineHealth",
+          "module": "../lib/engine.js"
+        },
+        {
+          "fn": "getApiPort",
+          "module": "../lib/engine.js"
+        },
+        {
+          "fn": "getApiToken",
+          "module": "../lib/engine.js"
+        },
+        {
+          "fn": "brandLine",
+          "module": "../lib/format.js"
+        },
+        {
+          "fn": "c",
+          "module": "../lib/format.js"
+        },
+        {
+          "fn": "pad",
+          "module": "../lib/format.js"
+        },
+        {
+          "fn": "sym",
+          "module": "../lib/format.js"
+        },
+        {
+          "fn": "tildeify",
+          "module": "../lib/format.js"
+        },
+        {
+          "fn": "getMcpLogPath",
+          "module": "../lib/mcp-log.js"
+        },
+        {
+          "fn": "getProjectMemorySummary",
+          "module": "../lib/project-memory.js"
+        },
+        {
+          "fn": "buildCliVersionCheck",
+          "module": "../lib/version-check.js"
+        },
+        {
+          "fn": "buildSkillsVersionCheck",
+          "module": "../lib/version-check.js"
+        },
+        {
+          "fn": "defaultSkillMarkerCandidates",
+          "module": "../lib/version-check.js"
+        },
+        {
+          "fn": "fetchLatestRegistryVersion",
+          "module": "../lib/version-check.js"
+        }
+      ]
+    },
+    {
+      "sourceFile": "src/commands/install.ts",
+      "command": "install",
+      "allCommandNames": [
+        "install"
+      ],
+      "subcommands": [],
+      "options": [
+        "--path <dir>"
+      ],
+      "description": "Download and install Summer Engine",
+      "sharedLibCalls": []
+    },
+    {
+      "sourceFile": "src/commands/list.ts",
+      "command": "list",
+      "allCommandNames": [
+        "list"
+      ],
+      "subcommands": [],
+      "options": [],
+      "description": "List available templates or local projects",
+      "sharedLibCalls": [
+        {
+          "fn": "fetchRemoteTemplates",
+          "module": "../lib/remote-templates.js"
+        }
+      ]
+    },
+    {
+      "sourceFile": "src/commands/login.ts",
+      "command": "login",
+      "allCommandNames": [
+        "login"
+      ],
+      "subcommands": [],
+      "options": [
+        "--creator",
+        "--force"
+      ],
+      "description": "Sign in to Summer Engine via your browser",
+      "sharedLibCalls": [
+        {
+          "fn": "getAuthToken",
+          "module": "../lib/auth.js"
+        },
+        {
+          "fn": "getCreatorToken",
+          "module": "../lib/auth.js"
+        },
+        {
+          "fn": "saveCreatorToken",
+          "module": "../lib/auth.js"
+        },
+        {
+          "fn": "saveLoginSession",
+          "module": "../lib/auth.js"
+        },
+        {
+          "fn": "getCreatorApiUrl",
+          "module": "../lib/config.js"
+        },
+        {
+          "fn": "getGatewayUrl",
+          "module": "../lib/config.js"
+        }
+      ]
+    },
+    {
+      "sourceFile": "src/commands/logout.ts",
+      "command": "logout",
+      "allCommandNames": [
+        "logout"
+      ],
+      "subcommands": [],
+      "options": [],
+      "description": "Sign out and clear stored auth tokens",
+      "sharedLibCalls": [
+        {
+          "fn": "clearAuthCredentials",
+          "module": "../lib/auth.js"
+        }
+      ]
+    },
+    {
+      "sourceFile": "src/commands/logs.ts",
+      "command": "logs",
+      "allCommandNames": [
+        "logs"
+      ],
+      "subcommands": [],
+      "options": [
+        "--project-id <id>",
+        "--release <id>",
+        "--limit <count>"
+      ],
+      "description": "Read creator runtime logs",
+      "sharedLibCalls": [
+        {
+          "fn": "readCreatorLogs",
+          "module": "../lib/creator.js"
+        }
+      ]
+    },
+    {
+      "sourceFile": "src/commands/mcp.ts",
+      "command": "mcp",
+      "allCommandNames": [
+        "mcp"
+      ],
+      "subcommands": [
+        "setup <agent>"
+      ],
+      "options": [
+        "--project <path>",
+        "--instance <id>",
+        "--scope <scope>",
+        "--print",
+        "--dry-run",
+        "--local-dev",
+        "--json"
+      ],
+      "description": "Start the MCP server for AI tool integration (Cursor, Claude Code, etc.)",
+      "sharedLibCalls": [
+        {
+          "fn": "configureAgentMcp",
+          "module": "../lib/agent-config.js"
+        },
+        {
+          "fn": "parseAgent",
+          "module": "../lib/agent-config.js"
+        },
+        {
+          "fn": "parseScope",
+          "module": "../lib/agent-config.js"
+        },
+        {
+          "fn": "supportedAgents",
+          "module": "../lib/agent-config.js"
+        }
+      ]
+    },
+    {
+      "sourceFile": "src/commands/memory.ts",
+      "command": "memory",
+      "allCommandNames": [
+        "memory"
+      ],
+      "subcommands": [
+        "show <file>",
+        "path"
+      ],
+      "options": [
+        "--project <path>",
+        "--json",
+        "--project <path>",
+        "--project <path>"
+      ],
+      "description": "Inspect project memory in .summer",
+      "sharedLibCalls": [
+        {
+          "fn": "checkEngineHealth",
+          "module": "../lib/engine.js"
+        },
+        {
+          "fn": "getApiPort",
+          "module": "../lib/engine.js"
+        },
+        {
+          "fn": "getProjectMemorySummary",
+          "module": "../lib/project-memory.js"
+        },
+        {
+          "fn": "c",
+          "module": "../lib/format.js"
+        },
+        {
+          "fn": "pad",
+          "module": "../lib/format.js"
+        },
+        {
+          "fn": "tildeify",
+          "module": "../lib/format.js"
+        }
+      ]
+    },
+    {
+      "sourceFile": "src/commands/open.ts",
+      "command": "open",
+      "allCommandNames": [
+        "open"
+      ],
+      "subcommands": [],
+      "options": [],
+      "description": "Open a project in Summer Engine",
+      "sharedLibCalls": [
+        {
+          "fn": "getApiPort",
+          "module": "../lib/engine.js"
+        },
+        {
+          "fn": "checkEngineHealth",
+          "module": "../lib/engine.js"
+        }
+      ]
+    },
+    {
+      "sourceFile": "src/commands/orchestrator.ts",
+      "command": "agent",
+      "allCommandNames": [
+        "agent"
+      ],
+      "subcommands": [],
+      "options": [
+        "-p, --port <number>",
+        "--web-path <path>",
+        "--dev"
+      ],
+      "description": "Start the web app locally with direct engine execution. \" +",
+      "sharedLibCalls": [
+        {
+          "fn": "getApiToken",
+          "module": "../lib/engine.js"
+        },
+        {
+          "fn": "getApiPort",
+          "module": "../lib/engine.js"
+        },
+        {
+          "fn": "checkEngineHealth",
+          "module": "../lib/engine.js"
+        },
+        {
+          "fn": "getSummerDir",
+          "module": "../lib/auth.js"
+        }
+      ]
+    },
+    {
+      "sourceFile": "src/commands/plan.ts",
+      "command": "plan",
+      "allCommandNames": [
+        "plan"
+      ],
+      "subcommands": [],
+      "options": [
+        "--mode <mode>",
+        "--target <target>",
+        "--asset-policy <policy>",
+        "--verification <level>",
+        "--json"
+      ],
+      "description": "Plan the right Summer CLI/MCP workflow for an AI game-building task",
+      "sharedLibCalls": [
+        {
+          "fn": "ASSET_POLICIES",
+          "module": "../lib/game-task-plan.js"
+        },
+        {
+          "fn": "GAME_TASK_MODES",
+          "module": "../lib/game-task-plan.js"
+        },
+        {
+          "fn": "GAME_TASK_TARGETS",
+          "module": "../lib/game-task-plan.js"
+        },
+        {
+          "fn": "VERIFICATION_LEVELS",
+          "module": "../lib/game-task-plan.js"
+        },
+        {
+          "fn": "buildGameTaskPlan",
+          "module": "../lib/game-task-plan.js"
+        },
+        {
+          "fn": "c",
+          "module": "../lib/format.js"
+        }
+      ]
+    },
+    {
+      "sourceFile": "src/commands/publish.ts",
+      "command": "publish",
+      "allCommandNames": [
+        "publish"
+      ],
+      "subcommands": [],
+      "options": [
+        "--manifest <path>",
+        "--project-id <id>",
+        "--channel <name>",
+        "--notes <text>",
+        "--confirm"
+      ],
+      "description": "Publish a confirmed creator release",
+      "sharedLibCalls": [
+        {
+          "fn": "publishCreator",
+          "module": "../lib/creator.js"
+        }
+      ]
+    },
+    {
+      "sourceFile": "src/commands/releases.ts",
+      "command": "releases",
+      "allCommandNames": [
+        "releases"
+      ],
+      "subcommands": [],
+      "options": [
+        "--project-id <id>",
+        "--limit <count>",
+        "--cursor <value>"
+      ],
+      "description": "List creator releases for a project",
+      "sharedLibCalls": [
+        {
+          "fn": "listCreatorReleases",
+          "module": "../lib/creator.js"
+        }
+      ]
+    },
+    {
+      "sourceFile": "src/commands/run.ts",
+      "command": "run",
+      "allCommandNames": [
+        "run"
+      ],
+      "subcommands": [],
+      "options": [],
+      "description": "Launch Summer Engine, optionally opening a project",
+      "sharedLibCalls": [
+        {
+          "fn": "getSummerDir",
+          "module": "../lib/auth.js"
+        },
+        {
+          "fn": "getApiPort",
+          "module": "../lib/engine.js"
+        },
+        {
+          "fn": "checkEngineHealth",
+          "module": "../lib/engine.js"
+        }
+      ]
+    },
+    {
+      "sourceFile": "src/commands/setup.ts",
+      "command": "setup",
+      "allCommandNames": [
+        "setup"
+      ],
+      "subcommands": [],
+      "options": [
+        "--agent <agent>",
+        "--scope <scope>",
+        "--dry-run",
+        "--print",
+        "--yes",
+        "--json",
+        "--force"
+      ],
+      "description": "Configure Summer Engine for an AI agent and run diagnostics",
+      "sharedLibCalls": [
+        {
+          "fn": "ConfigScope",
+          "module": "../lib/agent-config.js"
+        },
+        {
+          "fn": "SupportedAgent",
+          "module": "../lib/agent-config.js"
+        },
+        {
+          "fn": "configureAgentMcp",
+          "module": "../lib/agent-config.js"
+        },
+        {
+          "fn": "parseAgent",
+          "module": "../lib/agent-config.js"
+        },
+        {
+          "fn": "parseScope",
+          "module": "../lib/agent-config.js"
+        },
+        {
+          "fn": "supportedAgents",
+          "module": "../lib/agent-config.js"
+        },
+        {
+          "fn": "brandLine",
+          "module": "../lib/format.js"
+        },
+        {
+          "fn": "c",
+          "module": "../lib/format.js"
+        },
+        {
+          "fn": "sym",
+          "module": "../lib/format.js"
+        },
+        {
+          "fn": "tildeify",
+          "module": "../lib/format.js"
+        }
+      ]
+    },
+    {
+      "sourceFile": "src/commands/skills.ts",
+      "command": "skills",
+      "allCommandNames": [
+        "skills"
+      ],
+      "subcommands": [
+        "list",
+        "install [name]",
+        "info <name>"
+      ],
+      "options": [
+        "--all",
+        "--recommended",
+        "--agent <agent>",
+        "--scope <scope>",
+        "--as-claude-skill",
+        "--as-cursor-skill",
+        "--force"
+      ],
+      "description": "Install and manage best-practice guides for AI agents building games",
+      "sharedLibCalls": [
+        {
+          "fn": "AGENT_CLIENTS",
+          "module": "../lib/skills-registry.js"
+        },
+        {
+          "fn": "SKILL_REGISTRY",
+          "module": "../lib/skills-registry.js"
+        },
+        {
+          "fn": "tildeify",
+          "module": "../lib/format.js"
+        },
+        {
+          "fn": "writeSkillMarker",
+          "module": "../lib/version-check.js"
+        }
+      ]
+    },
+    {
+      "sourceFile": "src/commands/status.ts",
+      "command": "status",
+      "allCommandNames": [
+        "status"
+      ],
+      "subcommands": [],
+      "options": [],
+      "description": "Check Summer Engine status, connection, and auth state",
+      "sharedLibCalls": [
+        {
+          "fn": "getAuthToken",
+          "module": "../lib/auth.js"
+        },
+        {
+          "fn": "getUserInfo",
+          "module": "../lib/auth.js"
+        },
+        {
+          "fn": "getApiToken",
+          "module": "../lib/engine.js"
+        },
+        {
+          "fn": "getApiPort",
+          "module": "../lib/engine.js"
+        },
+        {
+          "fn": "checkEngineHealth",
+          "module": "../lib/engine.js"
+        },
+        {
+          "fn": "getProjectMemorySummary",
+          "module": "../lib/project-memory.js"
+        }
+      ]
+    }
+  ],
+  "sharedCapabilities": [
+    {
+      "libFunction": "buildGameTaskPlan",
+      "module": "../../lib/game-task-plan.js",
+      "mcpTools": [
+        "summer_start_game_task"
+      ],
+      "cliCommands": [
+        "plan"
+      ]
+    },
+    {
+      "libFunction": "cloudCheckpoints",
+      "module": "../../lib/cloud/sync.js",
+      "mcpTools": [
+        "summer_cloud_checkpoints"
+      ],
+      "cliCommands": [
+        "cloud"
+      ]
+    },
+    {
+      "libFunction": "cloudConflicts",
+      "module": "../../lib/cloud/sync.js",
+      "mcpTools": [
+        "summer_cloud_conflicts"
+      ],
+      "cliCommands": [
+        "cloud"
+      ]
+    },
+    {
+      "libFunction": "cloudInit",
+      "module": "../../lib/cloud/sync.js",
+      "mcpTools": [
+        "summer_cloud_init"
+      ],
+      "cliCommands": [
+        "cloud"
+      ]
+    },
+    {
+      "libFunction": "cloudPull",
+      "module": "../../lib/cloud/sync.js",
+      "mcpTools": [
+        "summer_cloud_pull"
+      ],
+      "cliCommands": [
+        "cloud"
+      ]
+    },
+    {
+      "libFunction": "cloudPush",
+      "module": "../../lib/cloud/sync.js",
+      "mcpTools": [
+        "summer_cloud_push"
+      ],
+      "cliCommands": [
+        "cloud"
+      ]
+    },
+    {
+      "libFunction": "cloudRestore",
+      "module": "../../lib/cloud/sync.js",
+      "mcpTools": [
+        "summer_cloud_restore"
+      ],
+      "cliCommands": [
+        "cloud"
+      ]
+    },
+    {
+      "libFunction": "cloudStatus",
+      "module": "../../lib/cloud/sync.js",
+      "mcpTools": [
+        "summer_cloud_status"
+      ],
+      "cliCommands": [
+        "cloud"
+      ]
+    },
+    {
+      "libFunction": "CONFIG_KEYS",
+      "module": "../../lib/config.js",
+      "mcpTools": [
+        "summer_creator_config"
+      ],
+      "cliCommands": [
+        "config"
+      ]
+    },
+    {
+      "libFunction": "createDebugReportArtifact",
+      "module": "../../lib/debug-report.js",
+      "mcpTools": [
+        "summer_create_debug_report"
+      ],
+      "cliCommands": [
+        "debug"
+      ]
+    },
+    {
+      "libFunction": "getAuthToken",
+      "module": "../../lib/auth.js",
+      "mcpTools": [
+        "summer_check_job"
+      ],
+      "cliCommands": [
+        "doctor",
+        "login",
+        "status"
+      ]
+    },
+    {
+      "libFunction": "getConfigValue",
+      "module": "../../lib/config.js",
+      "mcpTools": [
+        "summer_creator_config"
+      ],
+      "cliCommands": [
+        "config"
+      ]
+    },
+    {
+      "libFunction": "getProjectMemorySummary",
+      "module": "../../lib/project-memory.js",
+      "mcpTools": [
+        "summer_get_project_context"
+      ],
+      "cliCommands": [
+        "doctor",
+        "memory",
+        "status"
+      ]
+    },
+    {
+      "libFunction": "isConfigKey",
+      "module": "../../lib/config.js",
+      "mcpTools": [
+        "summer_creator_config"
+      ],
+      "cliCommands": [
+        "config"
+      ]
+    },
+    {
+      "libFunction": "listCreatorReleases",
+      "module": "../../lib/creator.js",
+      "mcpTools": [
+        "summer_creator_releases"
+      ],
+      "cliCommands": [
+        "releases"
+      ]
+    },
+    {
+      "libFunction": "publishCreator",
+      "module": "../../lib/creator.js",
+      "mcpTools": [
+        "summer_creator_publish"
+      ],
+      "cliCommands": [
+        "publish"
+      ]
+    },
+    {
+      "libFunction": "readCreatorLogs",
+      "module": "../../lib/creator.js",
+      "mcpTools": [
+        "summer_creator_logs"
+      ],
+      "cliCommands": [
+        "logs"
+      ]
+    },
+    {
+      "libFunction": "readSummerConfig",
+      "module": "../../lib/config.js",
+      "mcpTools": [
+        "summer_creator_config"
+      ],
+      "cliCommands": [
+        "config"
+      ]
+    },
+    {
+      "libFunction": "setConfigValue",
+      "module": "../../lib/config.js",
+      "mcpTools": [
+        "summer_creator_config"
+      ],
+      "cliCommands": [
+        "config"
+      ]
+    },
+    {
+      "libFunction": "unsetConfigValue",
+      "module": "../../lib/config.js",
+      "mcpTools": [
+        "summer_creator_config"
+      ],
+      "cliCommands": [
+        "config"
+      ]
+    }
+  ]
+}

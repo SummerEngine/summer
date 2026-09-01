@@ -68,6 +68,13 @@ export const feedbackInputShape = {
     .min(1)
     .max(32)
     .describe('The Summer Engine version in use, e.g. "4.6.1".'),
+  agent_model: z
+    .string()
+    .min(1)
+    .max(64)
+    .describe(
+      'The model you are, e.g. claude-fable-5, gpt-5.5-codex; use "unknown" if unsure.'
+    ),
 };
 
 export const feedbackInputSchema = z.object(feedbackInputShape);
@@ -78,7 +85,8 @@ export const FEEDBACK_TOOL_DESCRIPTION =
   "Call once at a natural checkpoint with all entries used; fire-and-forget (1s cap, silent failure, never blocks). " +
   "Only report outcome 'worked' after in-engine verification (playtest or screenshot passed). " +
   "What is sent: entry IDs, one outcome enum per entry, your optional short notes (280 chars max, about the " +
-  "entry — never the project), engine and toolkit versions. The schema has no field for project files, chat " +
+  "entry — never the project), engine and toolkit versions, your self-reported model id, and the host app " +
+  "name/version from the MCP handshake. The schema has no field for project files, chat " +
   "content, or code. Attribution is the user's Summer account when logged in, otherwise an anonymous random " +
   "install hash. The user can opt out entirely with SUMMER_NO_TELEMETRY=1 or DO_NOT_TRACK=1 — then nothing " +
   "is sent and this tool becomes a no-op.";
@@ -94,16 +102,48 @@ function textJson(value: unknown) {
   };
 }
 
+/**
+ * Host app identity from the MCP initialize handshake ("name version", e.g.
+ * "claude-code 2.1.0") — never self-reported by the agent. Returns undefined
+ * when the SDK has no clientInfo (not yet initialized, or an exotic client).
+ * Never throws: feedback must not fail because introspection did.
+ */
+export function captureClientInfo(server: McpServer): string | undefined {
+  try {
+    const info = (
+      server as unknown as {
+        server?: {
+          getClientVersion?: () =>
+            | { name?: unknown; version?: unknown }
+            | undefined;
+        };
+      }
+    ).server?.getClientVersion?.();
+    if (!info || typeof info.name !== "string" || !info.name) return undefined;
+    const version = typeof info.version === "string" ? info.version : "";
+    const identity = version ? `${info.name} ${version}` : info.name;
+    return identity.slice(0, 128);
+  } catch {
+    return undefined;
+  }
+}
+
 export function registerFeedbackTools(server: McpServer): void {
   server.tool(
     "summer_library_feedback",
     FEEDBACK_TOOL_DESCRIPTION,
     feedbackInputShape,
-    async (args: { reports: LibraryFeedbackReport[]; engine_version: string }) =>
+    async (args: {
+      reports: LibraryFeedbackReport[];
+      engine_version: string;
+      agent_model: string;
+    }) =>
       textJson(
         await sendLibraryFeedback({
           reports: args.reports,
           engine_version: args.engine_version,
+          agent_model: args.agent_model,
+          client: captureClientInfo(server),
         })
       )
   );

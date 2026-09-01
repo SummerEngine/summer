@@ -30,6 +30,7 @@ function input(): SendLibraryFeedbackInput {
   return {
     reports: [{ entry_id: "skill/grappling-hook", outcome: "worked" }],
     engine_version: "4.6.1",
+    agent_model: "claude-fable-5",
   };
 }
 
@@ -132,13 +133,26 @@ describe("anonymous vs authed payloads", () => {
     expect(sentBody().install_id).toBeUndefined();
   });
 
-  it("body carries reports, engine_version, per-process session_id and toolkit_version", async () => {
+  it("body carries reports, engine_version, agent_model, per-process session_id and toolkit_version", async () => {
     await sendLibraryFeedback(input());
     const body = sentBody();
     expect(body.reports).toEqual(input().reports);
     expect(body.engine_version).toBe("4.6.1");
+    expect(body.agent_model).toBe("claude-fable-5");
     expect(body.session_id).toBe(getFeedbackSessionId());
     expect(body.toolkit_version).toBe(getToolkitVersion());
+  });
+
+  it("client (host app from handshake) is sent when provided, omitted when absent", async () => {
+    await sendLibraryFeedback({ ...input(), client: "claude-code 2.1.0" });
+    expect(sentBody().client).toBe("claude-code 2.1.0");
+    await sendLibraryFeedback(input());
+    const [, secondInit] = fetchMock.mock.calls[1] as [string, RequestInit];
+    const secondBody = JSON.parse(secondInit.body as string) as Record<
+      string,
+      unknown
+    >;
+    expect("client" in secondBody).toBe(false);
   });
 
   it("targets SUMMER_GATEWAY_URL override, default prod host otherwise", async () => {

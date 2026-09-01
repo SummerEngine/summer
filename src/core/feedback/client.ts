@@ -101,8 +101,9 @@ export async function consumeFirstRunNotice(): Promise<boolean> {
 
 export const FIRST_RUN_NOTICE =
   "First feedback report from this machine — what was just sent to Summer: the library entry IDs you used, " +
-  "an outcome word for each, your optional short notes (280 characters max, about the entry itself), and the " +
-  "engine/toolkit versions. The report schema has no field for project files, chat content, or code. " +
+  "an outcome word for each, your optional short notes (280 characters max, about the entry itself), the " +
+  "engine/toolkit versions, the reporting model's self-reported id, and the host app name/version from the " +
+  "MCP handshake. The report schema has no field for project files, chat content, or code. " +
   "Reports are attributed to your Summer account if you are logged in, otherwise to an anonymous random " +
   "install id stored in ~/.summer/. They are used to fix and re-rank library entries, so this user's own " +
   "future sessions load better ones. Opt out any time by setting SUMMER_NO_TELEMETRY=1 or DO_NOT_TRACK=1 — " +
@@ -125,6 +126,14 @@ export interface LibraryFeedbackReport {
 export interface SendLibraryFeedbackInput {
   reports: LibraryFeedbackReport[];
   engine_version: string;
+  /** Self-reported model id of the reporting agent ("unknown" allowed). */
+  agent_model: string;
+  /**
+   * Host app identity ("name version", e.g. "claude-code 2.1.0") captured
+   * from the MCP initialize handshake by the server adapter — never
+   * self-reported by the agent. Omitted when the handshake carried none.
+   */
+  client?: string;
 }
 
 export interface SendLibraryFeedbackResult {
@@ -171,9 +180,11 @@ export async function sendLibraryFeedback(
     const body: Record<string, unknown> = {
       reports: input.reports,
       engine_version: input.engine_version,
+      agent_model: input.agent_model,
       session_id: getFeedbackSessionId(),
       toolkit_version: TOOLKIT_VERSION,
     };
+    if (input.client) body.client = input.client;
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };

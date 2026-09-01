@@ -1,0 +1,13 @@
+id: skill/second-skill
+kind: skill
+version: 1.0.0
+summary: Second fixture skill claiming the same shared alias.
+use_when:
+  - testing duplicate alias detection
+facets:
+  lifecycle: [build]
+source: official
+license: MIT
+status: stable
+aliases:
+  - skills/legacy/shared-name

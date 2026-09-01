@@ -40,7 +40,7 @@
 - [ ] Skill asks "May I modify ..." before script edits.
 - [ ] Skill writes the design doc to `.summer/mechanics/<name>.md`.
 - [ ] Skill never calls `summer_set_resource_property` on an inline sub_resource (silent-fail trap).
-- [ ] Generated GDScript uses typed vars, `@export`, `class_name`, `@onready`, signals (matches `references/gd-style.md`).
+- [ ] Generated GDScript uses typed vars, `@export`, `class_name`, `@onready`, signals (matches `library/references/gd-style/gd-style.md`).
 - [ ] Final step is `summer_save_scene` then `summer_get_script_errors`.
 
 ## Case 2: Failure Path — user names a system, not a mechanic

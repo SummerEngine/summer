@@ -2384,7 +2384,7 @@
       "id": "skill/vfx-dissolve",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "9f9f2aed360f3fdbcb2c80cc85e6ffd1982047b7ec3729e8ee346e807174462b",
+      "content_hash": "d8ed305cb6c3302f1f4b7e709b5f0d0285f87bf40d8d1ad0ad9b294558d0f8e6",
       "summary": "Dissolve effect — a mesh disintegrating with a glowing burning edge, driven by a noise-threshold ShaderMaterial overriding the target's material.",
       "use_when": [
         "authoring a dissolve effect — an object disintegrating with a glowing burning edge (disintegrate, burn away, vanish into ash)"
@@ -2419,7 +2419,7 @@
       "id": "skill/vfx-fire",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "5aa2102bfb8698631c55cc41137222daa389d19e9c9f8dff13b8a187591eb582",
+      "content_hash": "7984752303e5408f9dd57f2189459f9189d53550da762cca2fd61cf4f9bd94ff",
       "summary": "Fire effect — animated flames built with a particle shader, GPUParticles3D, and a noise-based color ramp — torches, campfires, candles.",
       "use_when": [
         "authoring a fire visual effect — torch, campfire, bonfire, flame, burning object, candle"
@@ -2456,7 +2456,7 @@
       "id": "skill/vfx-hit-spark",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "83c35081d6b2d4bf370efe0aa21765137651ace13c39f87cd9a4ed1c1b3a0528",
+      "content_hash": "bbebdb8c158eafdbcfbf92323476a7034f474c3684e12a03c9c58b587f9e19a7",
       "summary": "Hit-spark effect — a one-shot burst of additive billboard particles oriented to a surface normal, fired on impact.",
       "use_when": [
         "authoring a hit-spark effect — impact spark, bullet hit, sword clash, ricochet, sparks at a hit point"
@@ -2492,7 +2492,7 @@
       "id": "skill/vfx-lightning",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "201abe6baf181bee2d83821d80ea3912fe8e1de8798ac6f9ad022c716120d1ae",
+      "content_hash": "1f46b65dcc07178501eee5e3abccc5564d46ba826dca7a9100466f8394bbff0f",
       "summary": "Lightning bolt effect — procedural jagged path drawn via ImmediateMesh, glow shader, sparks at endpoints, screen shake.",
       "use_when": [
         "authoring a lightning bolt effect — chain lightning, electric attack, tesla coil, shock spell, energy beam"
@@ -2527,7 +2527,7 @@
       "id": "skill/vfx-magic-glow",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "c49428b614e31d5b760fc1bf34442ec55bf6aa642ada9e75e93e98ed125e7cd7",
+      "content_hash": "5e2e0b3db61a3216062553d2e1c6ceab6cecb2e8ea0e77fe6255e1eeec42aa3d",
       "summary": "Magic-glow effect — a pulsing OmniLight3D plus drifting additive motes plus optional emission shader on the source mesh.",
       "use_when": [
         "authoring a magic-glow effect — enchanted item, soul gem, pulsing aura, rune glow, magical orb, wisp"
@@ -2563,7 +2563,7 @@
       "id": "skill/vfx-muzzle-flash",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "a1ee58d01011087ceaf8259d1c80ac69e7649265ebbedd43bc592a15f64b0c8d",
+      "content_hash": "4a5321d5ee5eaa1e1eb2200f479c0e03761b528c375f68fba0e46304ad4f825c",
       "summary": "Muzzle-flash effect — a one-shot ~80 ms burst at a gun barrel built with a particle one-shot or a flashing quad with a star-burst shader.",
       "use_when": [
         "authoring a muzzle-flash effect — gun fire, weapon flash, barrel flash, spell-cast burst at a hand"
@@ -2600,7 +2600,7 @@
       "id": "skill/vfx-smoke",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "844de6953e81fda1247041b4768bf4c848bfacc8f8dfbd1acb7b33a2d2c6676e",
+      "content_hash": "07681843fa64002d4450a3abf574ebc8e70f60d98ca6fb5fb5eb84ec4b8085fb",
       "summary": "Smoke effect — a slow-rising column or puff of soft particles built with a noise + density falloff shader on a quad mesh, GPUParticles3D.",
       "use_when": [
         "authoring a smoke effect — smoke trail, puff, chimney smoke, steam, fog cloud, explosion smoke"
@@ -2634,7 +2634,7 @@
       "id": "skill/vfx-water-ripple",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "e7ce7534a259cbcfaf6c405aa95d4c1723cef3eeb1886e952244643e4ce6bded",
+      "content_hash": "29bf26cfe62ba609cce02b1d862a50dc0afd8e562198324cfdfede68733dfa3a",
       "summary": "Water-ripple effect — animated normal-distortion ripples on a water plane (or as a Decal) triggered by impacts.",
       "use_when": [
         "authoring a water-ripple effect — raindrop ripples, splash ripples, footstep in a puddle, fish jumps"

@@ -15,6 +15,7 @@ implementation:
 surfaces:
   mcp:
     tool_name: summer_ghost
+    remote: false
 input_schema:
   type: object
   properties:

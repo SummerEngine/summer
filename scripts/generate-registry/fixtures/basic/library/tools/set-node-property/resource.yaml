@@ -25,6 +25,7 @@ surfaces:
     command: summer node set-property
   mcp:
     tool_name: summer_set_prop
+    remote: false
 input_schema:
   type: object
   properties:

@@ -137,7 +137,7 @@ describe("generateRegistry: catalog outputs", () => {
       "authority",
     ]);
     expect(tool.mcp_tool_name).toBe("summer_set_prop");
-    expect(tool.remote).toBe(false); // unset in the fixture -> default false
+    expect(tool.remote).toBe(false); // explicit remote:false in the fixture (schema requires it)
     expect(tool.cli_command).toBe("summer node set-property");
     expect(tool.authority).toEqual({
       filesystem: false,
@@ -159,7 +159,7 @@ describe("generateRegistry: catalog outputs", () => {
     const yaml = fs
       .readFileSync(yamlPath, "utf8")
       .replace("  cli:\n    command: summer node set-property\n", "")
-      .replace("    tool_name: summer_set_prop\n", "    tool_name: summer_set_prop\n    remote: true\n");
+      .replace("    remote: false\n", "    remote: true\n");
     fs.writeFileSync(yamlPath, yaml);
     const result = gen(root);
     const resources = (parse(result.files, "index.json").resources as Array<Record<string, unknown>>);

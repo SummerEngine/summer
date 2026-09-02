@@ -15,6 +15,7 @@ implementation:
 surfaces:
   mcp:
     tool_name: summer_bad_schema
+    remote: false
 input_schema:
   type: banana
   properties: 5

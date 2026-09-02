@@ -15,6 +15,7 @@ implementation:
 surfaces:
   mcp:
     tool_name: summer_untyped
+    remote: false
 input_schema:
   type: object
   properties:

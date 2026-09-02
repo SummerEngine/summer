@@ -85,11 +85,13 @@ node dist/bin/summer.js mcp --instance <id>       # launched outside a project d
 
 To point an agent at the local build, set its MCP config command to `node <abs-path>/dist/bin/summer.js mcp`.
 
+Templates (`summer list templates`, `summer create <template> [name]`) resolve only through the pin manifests in `library/templates/` — how resolution, digest verification, and `.summer/project.json` work is documented in [`library/templates/README.md`](../library/templates/README.md) (the former `docs/TEMPLATES.md` is retired).
+
 ---
 
 ## One definition, every surface
 
-Nothing is registered twice. Every skill, template, reference, and tool descriptor is a `library/<kind>/<slug>/resource.yaml`; `scripts/generate-registry` compiles them into `registry/generated/` (the searchable `index.json`, `counts.json`, `aliases.json`, `skills-registry.json`) and applies the agent manifests (`.claude-plugin/plugin.json`, `gemini-extension.json`, …) to the repo root. Those root dot-files are build artifacts — edit the source, rerun the compiler, commit both.
+Nothing is registered twice. Every skill, template, reference, and tool descriptor is a `library/<kind>/<slug>/resource.yaml`; `scripts/generate-registry` compiles them into `registry/generated/` (the searchable `index.json`, `counts.json`, `aliases.json`, `skills-registry.json`, `templates-registry.json`) and applies the agent manifests (`.claude-plugin/plugin.json`, `gemini-extension.json`, …) to the repo root. Those root dot-files are build artifacts — edit the source, rerun the compiler, commit both.
 
 CI (`--check` + `npm test`) fails on: schema violations, duplicate IDs/aliases, dangling `related` links, capability-lint violations, regenerated output differing from what's committed, manifest versions ≠ `package.json`, and numeric "N tools"/"N skills" claims in `README.md`/`AGENTS.md`/`GEMINI.md` that contradict `counts.json`. **Don't write literal tool/skill counts in those files** — phrase around them or the guard will (correctly) fail your PR.
 

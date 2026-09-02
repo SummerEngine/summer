@@ -62,6 +62,8 @@ describe("filterAndDedupe", () => {
     const { entries, summary } = filterAndDedupe(input, { maxEntries: 3 });
     expect(entries).toHaveLength(3);
     expect(summary.truncated).toBe(7);
+    // The tail (newest) survives, not the head — the current error lives there.
+    expect(entries.map((e) => e.message)).toEqual(["Err 7", "Err 8", "Err 9"]);
   });
 
   it("noDedupe preserves runs verbatim", () => {

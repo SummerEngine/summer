@@ -2,27 +2,13 @@ import { appendFileSync, mkdirSync, readFileSync, statSync, writeFileSync } from
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { getSummerDir } from "./auth.js";
+import { redactSensitive } from "./redact.js";
 
 const MAX_LOG_BYTES = 512 * 1024;
 const RETAIN_LOG_BYTES = 256 * 1024;
 
 export function getMcpLogPath(): string {
   return join(getSummerDir(), "mcp.log");
-}
-
-function redact(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map((item) => redact(item));
-  if (!value || typeof value !== "object") return value;
-
-  const out: Record<string, unknown> = {};
-  for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
-    if (/token|secret|password|authorization|cookie|api[-_]?key/i.test(key)) {
-      out[key] = "[REDACTED]";
-    } else {
-      out[key] = redact(nested);
-    }
-  }
-  return out;
 }
 
 function rotateIfNeeded(path: string): void {
@@ -48,7 +34,7 @@ export function appendMcpLogEvent(
     mkdirSync(dir, { recursive: true, mode: 0o700 });
     const path = getMcpLogPath();
     rotateIfNeeded(path);
-    const safeDetails = redact(details) as Record<string, unknown>;
+    const safeDetails = redactSensitive(details, { strings: true }) as Record<string, unknown>;
     const payload = {
       ts: new Date().toISOString(),
       event,

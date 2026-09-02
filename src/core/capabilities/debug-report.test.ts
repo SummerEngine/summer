@@ -38,6 +38,13 @@ describe("debug report", () => {
             event: "mcp:ready",
             toolCount: 52,
           }),
+          // Free-text error strings are spliced verbatim into the markdown —
+          // they must be scrubbed too, not only sensitive keys.
+          JSON.stringify({
+            event: "mcp:tool_error",
+            error: "gateway 401 for Bearer abcdefgh12345678xyz",
+            message: "retry with token=supersecretvalue",
+          }),
         ],
       },
       engine: {
@@ -62,6 +69,9 @@ describe("debug report", () => {
     expect(markdown).toContain("## Agent Handoff Prompt");
     expect(markdown).toContain("[REDACTED]");
     expect(markdown).not.toContain("secret");
+    expect(markdown).toContain("mcp:tool_error");
+    expect(markdown).not.toContain("abcdefgh12345678xyz");
+    expect(markdown).not.toContain("supersecretvalue");
   });
 
   it("creates filesystem-safe default report names", () => {

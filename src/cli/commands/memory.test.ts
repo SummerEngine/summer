@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -85,6 +85,29 @@ priority: locked
     );
     expect(() => resolveMemoryFilePath(project, "../project.godot")).toThrow(
       /inside.*\.summer/
+    );
+  });
+
+  it("refuses a symlink inside .summer that points outside it", () => {
+    const project = makeProject();
+    write(project, "secrets.md", "# not memory\n");
+    write(project, ".summer/memory/world/canon.md", "# Canon\n");
+    symlinkSync(join(project, "secrets.md"), join(project, ".summer", "escape.md"));
+
+    expect(() => resolveMemoryFilePath(project, "escape.md")).toThrow(/symlink|inside.*\.summer/);
+    // A link that stays inside .summer is fine.
+    symlinkSync(
+      join(project, ".summer", "memory", "world", "canon.md"),
+      join(project, ".summer", "alias.md")
+    );
+    expect(resolveMemoryFilePath(project, "alias.md")).toBe(join(project, ".summer", "alias.md"));
+  });
+
+  it("accepts the Windows-style .summer\\ prefix", () => {
+    const project = makeProject();
+    write(project, ".summer/GameSoul.md", "# Brief\n");
+    expect(resolveMemoryFilePath(project, ".summer\\GameSoul.md")).toBe(
+      join(project, ".summer", "GameSoul.md")
     );
   });
 });

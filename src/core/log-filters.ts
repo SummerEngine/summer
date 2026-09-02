@@ -118,10 +118,12 @@ export function filterAndDedupe<T extends LogEntry>(
     }
   }
 
-  // Pass 3: truncate
+  // Pass 3: truncate — keep the NEWEST entries. Engine logs are chronological
+  // and the failure being debugged is at the end; keeping the head returned
+  // startup noise and hid the current error.
   let final = deduped;
   if (deduped.length > maxEntries) {
-    final = deduped.slice(0, maxEntries);
+    final = deduped.slice(-maxEntries);
     summary.truncated = deduped.length - maxEntries;
   }
 

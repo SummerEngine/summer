@@ -15,7 +15,15 @@ import { describe, expect, it } from "vitest";
  */
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const vendored = join(packageRoot, "assets", "autopilot", "probe_base.gd");
-const canonical = resolve(packageRoot, "..", "..", "modules", "1summer_engine", "verify", "summer_probe_base.gd");
+// Engine checkout: $SUMMER_ENGINE_REPO, else the `summerengine` sibling. This
+// package is not inside the engine monorepo, so the old ../../modules path
+// never existed and the tripwire silently never fired.
+const engineRepo = process.env.SUMMER_ENGINE_REPO
+  ? resolve(process.env.SUMMER_ENGINE_REPO)
+  : resolve(packageRoot, "..", "summerengine");
+const canonical = join(engineRepo, "modules", "1summer_engine", "verify", "summer_probe_base.gd");
+const canonicalFound = existsSync(canonical);
+const checkCanonical = canonicalFound ? it : it.skip;
 
 describe("autopilot scaffold", () => {
   it("ships every file the scaffold needs", () => {
@@ -39,10 +47,12 @@ describe("autopilot scaffold", () => {
     expect(code).toMatch(/--disable-crash-handler/);
   });
 
-  it("keeps probe_base.gd byte-identical to the engine's canonical copy", () => {
-    // Only enforceable inside the engine monorepo; the published package has no
-    // modules/ tree, so skip rather than fail there.
-    if (!existsSync(canonical)) return;
-    expect(readFileSync(vendored, "utf-8")).toBe(readFileSync(canonical, "utf-8"));
-  });
+  checkCanonical(
+    `keeps probe_base.gd byte-identical to the engine's canonical copy${
+      canonicalFound ? "" : ` (SKIPPED: no engine checkout at ${canonical}; set SUMMER_ENGINE_REPO)`
+    }`,
+    () => {
+      expect(readFileSync(vendored, "utf-8")).toBe(readFileSync(canonical, "utf-8"));
+    }
+  );
 });

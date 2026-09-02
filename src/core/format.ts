@@ -12,7 +12,7 @@ const ANSI = {
   brand: "\x1b[38;2;255;143;23m",
 } as const;
 
-export function useColor(): boolean {
+function useColor(): boolean {
   if (process.env.NO_COLOR) return false;
   if (process.env.FORCE_COLOR) return true;
   return Boolean(process.stdout.isTTY);

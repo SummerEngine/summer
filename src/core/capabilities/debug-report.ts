@@ -6,6 +6,7 @@ import { EngineApiClient } from "../api-client.js";
 import { shapeEngineLogResponse } from "../log-filters.js";
 import { tildeify } from "../format.js";
 import { getMcpLogPath, readRecentMcpLogLines } from "../mcp-log.js";
+import { redactLogLine, redactSensitive } from "../redact.js";
 import { runDoctor, type DoctorResult } from "./doctor.js";
 
 const require = createRequire(import.meta.url);
@@ -207,19 +208,9 @@ async function collectPlaySession(
   return session;
 }
 
+/** Debug reports also blank hostnames — a support artifact needs none. */
 function redact(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map((item) => redact(item));
-  if (!value || typeof value !== "object") return value;
-
-  const out: Record<string, unknown> = {};
-  for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
-    if (/token|secret|password|authorization|cookie|api[-_]?key|hostname/i.test(key)) {
-      out[key] = "[REDACTED]";
-    } else {
-      out[key] = redact(nested);
-    }
-  }
-  return out;
+  return redactSensitive(value, { extraKeys: /hostname/i, strings: true });
 }
 
 export function redactDebugReport(report: DebugReport): DebugReport {
@@ -281,7 +272,7 @@ ${report.doctor ? jsonBlock(report.doctor) : "Doctor was skipped."}
 
 Log path: ${tildeify(report.mcp.logPath)}
 
-${report.mcp.recentLog.length > 0 ? `\`\`\`jsonl\n${report.mcp.recentLog.join("\n")}\n\`\`\`` : "No MCP lifecycle log entries found."}
+${report.mcp.recentLog.length > 0 ? `\`\`\`jsonl\n${report.mcp.recentLog.map(redactLogLine).join("\n")}\n\`\`\`` : "No MCP lifecycle log entries found."}
 
 ## Engine Health
 

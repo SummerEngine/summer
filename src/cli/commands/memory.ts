@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { Command } from "commander";
 import { checkEngineHealth, getApiPort } from "../../core/engine.js";
@@ -86,7 +86,7 @@ memoryCommand
     console.log(join(resolvedProject.projectPath, ".summer"));
   });
 
-export async function resolveMemoryProject(
+async function resolveMemoryProject(
   projectOption?: string
 ): Promise<ResolvedMemoryProject> {
   if (projectOption) {
@@ -137,18 +137,29 @@ export function findProjectRoot(startDir: string): string | null {
 
 export function resolveMemoryFilePath(projectPath: string, requested: string): string {
   const summerDir = resolve(projectPath, ".summer");
-  const rawPath = requested.startsWith(".summer/")
-    ? resolve(projectPath, requested)
-    : resolve(summerDir, requested);
+  // Accept Windows-style separators in the requested name on every platform;
+  // memory file names never legitimately contain a backslash.
+  const normalized = requested.replace(/\\/g, "/");
+  const rawPath = normalized.startsWith(".summer/")
+    ? resolve(projectPath, normalized)
+    : resolve(summerDir, normalized);
 
-  const withinSummer = isPathInside(summerDir, rawPath);
-  if (!withinSummer) {
+  if (!isPathInside(summerDir, rawPath)) {
     throw new Error("Memory files must be inside the project's .summer directory.");
   }
   if (!existsSync(rawPath)) {
     throw new Error(`Memory file not found: ${requested}`);
   }
-  if (!statSync(rawPath).isFile()) {
+  // The lexical check above follows nothing; a symlink placed inside .summer
+  // can point anywhere. Compare real paths on BOTH sides so a link that leaves
+  // .summer is refused (and a legitimately symlinked .summer still works).
+  const realPath = realpathSync(rawPath);
+  if (!isPathInside(realpathSync(summerDir), realPath)) {
+    throw new Error(
+      "Memory files must be inside the project's .summer directory (a symlink that leaves it is refused)."
+    );
+  }
+  if (!statSync(realPath).isFile()) {
     throw new Error(`Memory path is not a file: ${requested}`);
   }
   return rawPath;

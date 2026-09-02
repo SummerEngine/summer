@@ -372,8 +372,10 @@ describe("EngineApiClient — See-Work Loop P5 capture additions", () => {
   const boundClient = () => new EngineApiClient(6550, "test-token", "bound-hash");
 
   it("gameSnapshot detects the 409 bridge_required shape and returns it structured (not a truncated throw)", async () => {
+    let snapshotGets = 0;
     mockFetch((url) => {
       if (url.includes("/api/snapshot/game")) {
+        snapshotGets += 1;
         return json(
           {
             ok: false,
@@ -390,16 +392,21 @@ describe("EngineApiClient — See-Work Loop P5 capture additions", () => {
     expect(snap.ok).toBe(false);
     expect(snap.failureReason).toBe("unsupported_transport");
     expect(snap.error).toContain("desktop bridge");
+    expect(snapshotGets).toBe(1);
   });
 
   it("gameSnapshot falls through to the normal queued path when the engine answers 200/202 (P4.4 forward-compat)", async () => {
     const b64 = Buffer.from("game-bytes").toString("base64");
+    let snapshotGets = 0;
+    let resultPolls = 0;
     mockFetch((url) => {
-      // No 409 — the bridge probe sees a 202 and returns null, so the normal
-      // queued path runs.
+      // No 409 — the same 202 response flows into the queued path; a separate
+      // probe request would capture the game twice (and orphan requestId g1).
       if (url.includes("/api/snapshot/game")) {
+        snapshotGets += 1;
         return json({ accepted: true, status: "queued", requestId: "g1" }, 202);
       }
+      if (url.includes("/api/ops/result")) resultPolls += 1;
       if (url.includes("/api/ops/result")) {
         return json({
           requestId: "g1",
@@ -418,6 +425,8 @@ describe("EngineApiClient — See-Work Loop P5 capture additions", () => {
       expect(snap.ok).toBe(true);
       expect(snap.failureReason).toBeUndefined();
       expect(snap.bytes).toBeGreaterThan(0);
+      expect(snapshotGets).toBe(1);
+      expect(resultPolls).toBeGreaterThan(0);
     } finally {
       if (snap.localPath) {
         try {

@@ -416,6 +416,21 @@ export class EngineApiClient {
         `Summer Engine did not acknowledge request ${clientRequestId}; dispatch state is unknown. Do not retry blindly. ${detail}`
       );
     }
+    return this._resolveQueuedResponse(res, clientRequestId, timeoutMs);
+  }
+
+  /**
+   * The post-submission half of _requestQueued: classify an already-fetched
+   * response (200 legacy / 202 queued / 429 backpressure) and, for 202, poll
+   * the accepted requestId to its terminal receipt. Split out so a caller that
+   * has to inspect the raw status first (gameSnapshot's 409 bridge check) can
+   * feed its ONE response in here instead of issuing a second request.
+   */
+  private async _resolveQueuedResponse(
+    res: Response,
+    clientRequestId: string | undefined,
+    timeoutMs: number
+  ): Promise<unknown> {
     // 202 (queued) + 429 (backpressure, errorClass in body) are handled below;
     // any other non-2xx is a real transport error.
     if (!res.ok && res.status !== 202 && res.status !== 429) {
@@ -644,15 +659,17 @@ export class EngineApiClient {
     // reason (`failure_reason:"unsupported_transport"`, `bridge_required:true`,
     // tool_net_thread.cpp:495-503). Detect that specific shape and return it
     // verbatim so the tool can give an honest message — do NOT hardcode "game
-    // always fails": once the engine answers 200/202 (P4.4), the normal path
-    // below just works.
-    if (kind === "game") {
-      const bridge = await this._detectBridgeRequired(`/api/snapshot/${kind}`);
-      if (bridge) return bridge;
-    }
+    // always fails": once the engine answers 200/202 (P4.4), the same response
+    // flows into the normal queued path. ONE request either way: a probe that
+    // discarded a 200 (or orphaned an accepted 202 requestId) and then asked
+    // again would capture the game twice.
     let response: unknown;
     try {
-      response = await this._requestQueued("GET", `/api/snapshot/${kind}`, undefined, 60_000);
+      const res = await this._fetchRaw("GET", `/api/snapshot/${kind}`, undefined, 60_000);
+      if (kind === "game" && res.status === 409) {
+        return this._bridgeRequiredFromResponse(res);
+      }
+      response = await this._resolveQueuedResponse(res, undefined, 60_000);
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : String(err) };
     }
@@ -734,22 +751,12 @@ export class EngineApiClient {
   }
 
   /**
-   * Probe /api/snapshot/game for the structural 409 `bridge_required` shape
-   * (tool_net_thread.cpp:495-503). Returns a structured failure only when the
-   * engine actually answers 409 with `bridge_required` / `unsupported_transport`;
-   * ANY other status (200/202/other) returns null so the caller proceeds to the
-   * normal queued path — so the moment the engine starts answering over HTTP
-   * (P4.4), game capture just works with no code change here.
+   * Turn a 409 from /api/snapshot/game into a structured failure. The engine's
+   * structural refusal carries `bridge_required` / `unsupported_transport`
+   * (tool_net_thread.cpp:495-503); a 409 without that shape is surfaced as a
+   * plain error rather than silently claiming "bridge required".
    */
-  private async _detectBridgeRequired(path: string): Promise<EngineSnapshot | null> {
-    let res: Response;
-    try {
-      res = await this._fetchRaw("GET", path, undefined, 15_000);
-    } catch {
-      // Transport error — let the normal path surface it uniformly.
-      return null;
-    }
-    if (res.status !== 409) return null;
+  private async _bridgeRequiredFromResponse(res: Response): Promise<EngineSnapshot> {
     const body = (await res.json().catch(() => ({}))) as SnapshotPayload;
     const reason = stringFrom(body.failure_reason);
     const bridge = body.bridge_required === true;

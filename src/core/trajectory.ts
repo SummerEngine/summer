@@ -125,24 +125,60 @@ function appendRecord(record: Record<string, unknown>): boolean {
 
 export interface TrajectoryToolCall {
   tool: string;
+  /** The tool's parsed arguments; `null` means the tool takes no input
+   *  schema (recorded as argsRedacted: null, never as the SDK's request extra). */
   args?: unknown;
   isError?: boolean;
   terminalState?: string;
   errorClass?: string;
   failureReason?: string;
+  /** Message of a handler THROW (as opposed to an isError result). Recorded
+   *  with ok:false, errorClass "exception". Redacted like any other string. */
+  exception?: string;
   durationMs?: number;
+}
+
+/**
+ * Does a server.tool(...) registration carry an input schema? The MCP SDK
+ * accepts tool(name, description?, paramsSchema?, annotations?, cb): when a
+ * paramsSchema is present the callback receives (args, extra); when it is
+ * absent the callback receives (extra) ONLY — and recording extra as the
+ * tool's args would write {signal, requestId, ...} junk into the stream. A
+ * paramsSchema is a zod raw shape (record of zod schemas, or {} for "no
+ * parameters") or a zod object instance; a flat object of primitives is
+ * ToolAnnotations. Exported for unit tests.
+ */
+export function registrationHasInputSchema(registrationArgs: readonly unknown[]): boolean {
+  // Everything between the name (index 0) and the callback (last).
+  const middle = registrationArgs.slice(1, -1);
+  return middle.some((candidate) => {
+    if (!candidate || typeof candidate !== "object" || typeof candidate === "string") return false;
+    const record = candidate as Record<string, unknown>;
+    if (typeof (record as { safeParse?: unknown }).safeParse === "function" && "_def" in record) return true; // zod instance
+    const values = Object.values(record);
+    if (values.length === 0) return true; // {} = no parameters, still a schema
+    return values.every((value) => !!value && typeof value === "object" && "_def" in (value as object));
+  });
+}
+
+/** The args to record for one handler invocation: the parsed args when the
+ *  tool has an input schema, else null (the SDK passes only `extra`). */
+export function trajectoryArgsFor(hasInputSchema: boolean, handlerArgs: readonly unknown[]): unknown | null {
+  return hasInputSchema ? (handlerArgs[0] ?? {}) : null;
 }
 
 /** One line per MCP tool call. No-op (false) when capture is off. */
 export function recordToolCall(call: TrajectoryToolCall): boolean {
+  const threw = typeof call.exception === "string";
   return appendRecord({
     kind: "tool_call",
     tool: call.tool,
-    argsRedacted: redactTrajectoryArgs(call.args ?? {}),
-    ok: call.isError !== true,
+    argsRedacted: call.args === null ? null : redactTrajectoryArgs(call.args ?? {}),
+    ok: !threw && call.isError !== true,
     ...(call.terminalState ? { terminalState: call.terminalState } : {}),
-    ...(call.errorClass ? { errorClass: call.errorClass } : {}),
+    ...(threw ? { errorClass: "exception" } : call.errorClass ? { errorClass: call.errorClass } : {}),
     ...(call.failureReason ? { failureReason: call.failureReason } : {}),
+    ...(threw ? { exception: redactTrajectoryArgs(call.exception) } : {}),
     ...(typeof call.durationMs === "number" ? { durationMs: call.durationMs } : {}),
   });
 }

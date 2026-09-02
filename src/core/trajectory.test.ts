@@ -8,7 +8,12 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { recordToolCall, redactTrajectoryArgs } from "./trajectory.js";
+import {
+  recordToolCall,
+  redactTrajectoryArgs,
+  registrationHasInputSchema,
+  trajectoryArgsFor,
+} from "./trajectory.js";
 
 let tempDirs: string[] = [];
 const originalEnv = process.env.SUMMER_TRAJECTORY_DIR;
@@ -151,5 +156,54 @@ describe("redactTrajectoryArgs", () => {
     expect(recordToolCall({ tool: "t", args: circular })).toBe(true);
     const [line] = readLines(dir);
     expect(JSON.stringify(line!.argsRedacted)).toContain("[redacted: depth]");
+  });
+});
+
+describe("schema-less tools and handler throws", () => {
+  it("registrationHasInputSchema: raw shape / {} / zod instance yes; description-only or annotations no", () => {
+    const zodish = { _def: {}, safeParse: () => ({ success: true }) };
+    const cb = async () => ({});
+    expect(registrationHasInputSchema(["t", "desc", { path: zodish }, cb])).toBe(true);
+    expect(registrationHasInputSchema(["t", "desc", {}, cb])).toBe(true);
+    expect(registrationHasInputSchema(["t", { path: zodish }, cb])).toBe(true);
+    expect(registrationHasInputSchema(["t", "desc", zodish, cb])).toBe(true);
+    expect(registrationHasInputSchema(["t", "desc", cb])).toBe(false);
+    expect(registrationHasInputSchema(["t", cb])).toBe(false);
+    // ToolAnnotations (flat primitives) is not a schema.
+    expect(registrationHasInputSchema(["t", "desc", { readOnlyHint: true, title: "x" }, cb])).toBe(false);
+  });
+
+  it("trajectoryArgsFor: parsed args when there is a schema, null (never the SDK extra) when there is none", () => {
+    const extra = { signal: new AbortController().signal, requestId: 7 };
+    expect(trajectoryArgsFor(true, [{ scene: "res://a.tscn" }, extra])).toEqual({ scene: "res://a.tscn" });
+    expect(trajectoryArgsFor(true, [])).toEqual({});
+    expect(trajectoryArgsFor(false, [extra])).toBeNull();
+  });
+
+  it("records args:null as argsRedacted:null instead of an empty object", () => {
+    const dir = makeDir();
+    process.env.SUMMER_TRAJECTORY_DIR = dir;
+    expect(recordToolCall({ tool: "summer_stop", args: null })).toBe(true);
+    const [line] = readLines(dir);
+    expect(line!.argsRedacted).toBeNull();
+    expect(line!.ok).toBe(true);
+  });
+
+  it("records a handler throw as ok:false, errorClass exception, with the (redacted) message", () => {
+    const dir = makeDir();
+    process.env.SUMMER_TRAJECTORY_DIR = dir;
+    expect(
+      recordToolCall({
+        tool: "summer_open_main_scene",
+        args: {},
+        exception: "No main scene configured. " + "x".repeat(400),
+        durationMs: 12,
+      })
+    ).toBe(true);
+    const [line] = readLines(dir);
+    expect(line!.ok).toBe(false);
+    expect(line!.errorClass).toBe("exception");
+    expect(line!.exception).toBe("[redacted 426 chars]");
+    expect(line!.durationMs).toBe(12);
   });
 });

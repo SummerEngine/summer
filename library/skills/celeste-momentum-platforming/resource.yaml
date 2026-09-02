@@ -1,0 +1,33 @@
+id: skill/celeste-momentum-platforming
+kind: skill
+version: 0.1.0
+summary: "Celeste-style 2D precision platformer movement — momentum running, coyote time, variable jumps, dash, wall jump/slide, climb stamina, pixel corner correction."
+use_when:
+  - "make the platformer movement feel like Celeste"
+  - "add coyote time, variable jump height, and a dash to my 2D platformer"
+  - "add wall jumps, wall slides, or climb stamina to a 2D character"
+  - "my 2D platformer controller feels unfair or unresponsive"
+do_not_use_when:
+  - "3D character controllers, physics-driven RigidBody movement, or games that want floaty arcade jump physics over momentum precision"
+  - "treat as unverified intake: extracted from source material by the gamedev-knowledge pipeline, not yet verified in-engine — validate before relying on it"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - gameplay
+    - character-controller
+    - game-design
+  modalities:
+    - scripts
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/design-mechanic
+    - skill/game-feel
+    - skill/debugging-game-feel
+source: official
+license: MIT
+status: preview
+recommended: false

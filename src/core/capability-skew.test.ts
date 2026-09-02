@@ -1,10 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   CLI_KNOWN_OP_NEEDS,
   CLI_PROTOCOL_VERSION,
   buildCapabilitySkewWarning,
   buildMissingOpResult,
   engineLacksOp,
+  isCapabilityPreflightDisabled,
+  missingEngineOpResult,
   parseEngineCapabilities,
 } from "./capability-skew.js";
 
@@ -116,5 +118,64 @@ describe("engineLacksOp / buildMissingOpResult", () => {
     const result = buildMissingOpResult("RunSceneScript", null, "use summer_run_editor_script");
     expect(result.engine_version).toBeNull();
     expect(result.error).not.toContain("engine version");
+  });
+});
+
+describe("CLI_KNOWN_OP_NEEDS completeness", () => {
+  it("lists every op literal this package constructs (src/, non-test)", async () => {
+    const { readdirSync, readFileSync, statSync } = await import("node:fs");
+    const { dirname, join, resolve } = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const srcRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+    const files: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir)) {
+        const full = join(dir, entry);
+        if (statSync(full).isDirectory()) walk(full);
+        else if (entry.endsWith(".ts") && !entry.endsWith(".test.ts")) files.push(full);
+      }
+    };
+    walk(srcRoot);
+    const known = new Set(CLI_KNOWN_OP_NEEDS);
+    const missing = new Set<string>();
+    for (const file of files) {
+      for (const match of readFileSync(file, "utf-8").matchAll(/\bop:\s*["']([A-Z][A-Za-z0-9]*)["']/g)) {
+        if (!known.has(match[1]!)) missing.add(`${match[1]} (${file.slice(srcRoot.length + 1)})`);
+      }
+    }
+    expect([...missing]).toEqual([]);
+  });
+});
+
+describe("SUMMER_CAPABILITY_PREFLIGHT=off escape hatch", () => {
+  const client = {
+    getEngineCapabilities: () => ({ opKinds: ["AddNode"] }),
+    getEngineVersion: () => "0.5.70",
+  };
+
+  afterEach(() => {
+    delete process.env.SUMMER_CAPABILITY_PREFLIGHT;
+  });
+
+  it("pre-flight refuses a non-advertised op by default and tells the agent about the hatch", () => {
+    delete process.env.SUMMER_CAPABILITY_PREFLIGHT;
+    const result = missingEngineOpResult(client, "SnapToSurface", "set the position by hand");
+    expect(result?.failure_reason).toBe("engine_lacks_op");
+    expect(result?.error).toContain("SUMMER_CAPABILITY_PREFLIGHT=off");
+    expect(result?.hint).toContain("SUMMER_CAPABILITY_PREFLIGHT=off");
+    expect(buildCapabilitySkewWarning({ capabilities: { opKinds: ["AddNode"] } })).toContain(
+      "SUMMER_CAPABILITY_PREFLIGHT=off"
+    );
+  });
+
+  it("off/0/false send the call through; the skew warning says the pre-flight is off", () => {
+    for (const value of ["off", "OFF", "0", "false"]) {
+      process.env.SUMMER_CAPABILITY_PREFLIGHT = value;
+      expect(isCapabilityPreflightDisabled(), value).toBe(true);
+      expect(missingEngineOpResult(client, "SnapToSurface", "fallback")).toBeNull();
+    }
+    expect(buildCapabilitySkewWarning({ capabilities: { opKinds: ["AddNode"] } })).toContain("is set");
+    process.env.SUMMER_CAPABILITY_PREFLIGHT = "on";
+    expect(isCapabilityPreflightDisabled()).toBe(false);
   });
 });

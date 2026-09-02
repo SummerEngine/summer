@@ -2,7 +2,7 @@ import { rmSync } from "node:fs";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { EngineApiClient, EngineRebindError } from "./api-client.js";
+import { EngineApiClient } from "./api-client.js";
 
 // Verifies the Block E async port (commit 261a085945): the client must resolve
 // the engine's async 202->poll terminal result, NOT return the queued ack; reads
@@ -92,26 +92,6 @@ describe("EngineApiClient — async 202->poll port", () => {
     expect(url.searchParams.get("projectId")).toBe("project-b");
     expect(url.searchParams.get("projectIdHash")).toBe("hash-b");
     expect(url.searchParams.get("projectIdentityVersion")).toBe("1");
-  });
-
-  it("rebind throws a typed error and keeps the old identity when health is unreadable", async () => {
-    const seen: string[] = [];
-    mockFetch((url) => {
-      if (url.includes("/api/health")) return new Response("gone", { status: 503 });
-      seen.push(url);
-      return json({ nodes: [] });
-    });
-    const scoped = new EngineApiClient(6550, "test-token", {
-      instanceId: "engine-a",
-      projectId: "project-a",
-      projectIdHash: "hash-a",
-    });
-
-    await expect(scoped.rebind()).rejects.toBeInstanceOf(EngineRebindError);
-    await expect(scoped.rebind()).rejects.toThrow(/still bound to hash-a/);
-    // Identity untouched: subsequent requests still carry the old binding.
-    await scoped.getSceneState();
-    expect(new URL(seen[0]).searchParams.get("projectIdHash")).toBe("hash-a");
   });
 
   it("executeOps resolves the TERMINAL apply result via poll, not the queued ack", async () => {

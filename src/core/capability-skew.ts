@@ -22,9 +22,18 @@
 export const CLI_PROTOCOL_VERSION = 1;
 
 /**
- * Every engine op kind this package's MCP tools can dispatch. Keep in sync
- * with the `op:` literals under src/ — the op-registry drift test guards the
- * other direction (never send an op the engine repo lacks a branch for).
+ * Every engine op kind this package's tools CONSTRUCT themselves (every
+ * `op: "<Kind>"` literal under src/, MCP tools and the CLI dispatcher alike).
+ * capability-skew.test.ts scans the sources and fails when a literal is
+ * missing here; src/core/op-registry-drift.test.ts guards the other direction
+ * inside the engine monorepo (never send an op the engine has no branch for).
+ *
+ * Deliberately NOT listed: ops an agent may compose by hand through
+ * summer_batch / `summer tool batch` (MoveNode, ReparentNode, DisconnectSignal,
+ * Undo, Git*, RunCommand, ExtractZipFromUrl, CustomBake, ...). The CLI only
+ * classifies those for dispatch (single-only / scene-mutation sets) and never
+ * sends them on its own, so listing them would warn about skew the CLI cannot
+ * cause; the engine's per-op "unknown op" error still covers them at call time.
  */
 export const CLI_KNOWN_OP_NEEDS: readonly string[] = [
   // Scene graph + properties
@@ -32,6 +41,8 @@ export const CLI_KNOWN_OP_NEEDS: readonly string[] = [
   "ConnectSignal", "SelectNode", "OpenScene", "SaveScene", "InstantiateScene",
   // Project + input
   "ProjectSetting", "InputMapAddAction", "InputMapBind",
+  // Files (summer_write_file / summer_replace_text / summer_create_scene)
+  "WriteFile",
   // Import
   "ImportFromUrl", "ImportFromUrlBatch",
   // Diagnostics + runtime control
@@ -49,6 +60,24 @@ export const CLI_KNOWN_OP_NEEDS: readonly string[] = [
 
 /** The `capabilities` block of /api/health, shape-checked. Every field is
  *  optional: an older engine advertises none of them. */
+/**
+ * Escape hatch for the capability pre-flight. The op advert and the ops
+ * themselves ship on different engine branches, so an engine can IMPLEMENT an
+ * op it does not yet ADVERTISE; with the pre-flight on, such a tool would be
+ * refused before sending. `SUMMER_CAPABILITY_PREFLIGHT=off` sends every call
+ * and lets the engine's own "unknown op" error decide. The skew warning still
+ * prints (it is informational) but notes that the pre-flight is off.
+ */
+export const CAPABILITY_PREFLIGHT_ENV = "SUMMER_CAPABILITY_PREFLIGHT";
+
+export function isCapabilityPreflightDisabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  const raw = env[CAPABILITY_PREFLIGHT_ENV]?.trim().toLowerCase();
+  return raw === "off" || raw === "0" || raw === "false";
+}
+
+const PREFLIGHT_OFF_HINT =
+  `If your engine build implements this op but does not advertise it yet, set ${CAPABILITY_PREFLIGHT_ENV}=off in the MCP server's environment to skip this pre-flight and let the engine answer.`;
+
 export interface EngineCapabilities {
   protocolVersion?: number;
   /** Full dispatch-ladder op set. Absent = engine predates the advert. */
@@ -130,8 +159,8 @@ export function buildMissingOpResult(
     error:
       `This Summer Engine build${version ? ` (engine version ${version})` : ""} does not support the ${op} op — ` +
       "nothing was sent. Update Summer Engine (restart it after updating). " +
-      `Until then: ${fallback}.`,
-    hint: fallback,
+      `Until then: ${fallback}. ${PREFLIGHT_OFF_HINT}`,
+    hint: `${fallback}. ${PREFLIGHT_OFF_HINT}`,
   };
 }
 
@@ -169,9 +198,12 @@ export function buildCapabilitySkewWarning(health: unknown): string | null {
   }
 
   if (parts.length === 0) return null;
+  const preflight = isCapabilityPreflightDisabled()
+    ? `Non-fatal — ${CAPABILITY_PREFLIGHT_ENV}=off is set, so affected tools are sent anyway and the engine's own unknown-op error decides.`
+    : `Non-fatal — affected tools return a structured engine_lacks_op result instead of running (set ${CAPABILITY_PREFLIGHT_ENV}=off to send them anyway if your engine implements an op it does not advertise).`;
   return (
     `Engine/CLI version skew detected: ${parts.join("; ")}. ` +
-    "Non-fatal — affected tools return a structured engine_lacks_op result instead of running. Update Summer Engine (or the summer-engine CLI) so both sides match."
+    `${preflight} Update Summer Engine (or the summer-engine CLI) so both sides match.`
   );
 }
 
@@ -231,6 +263,7 @@ export function missingEngineOpResult(
   op: string,
   fallback: string
 ): MissingOpResult | null {
+  if (isCapabilityPreflightDisabled()) return null;
   const capabilities =
     typeof client.getEngineCapabilities === "function"
       ? client.getEngineCapabilities()

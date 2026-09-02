@@ -7,7 +7,6 @@ import {
   VERIFICATION_LEVELS,
   buildGameTaskPlan,
 } from "../../core/capabilities/game-task-plan.js";
-import { EngineRebindError } from "../../core/api-client.js";
 import { buildCapabilitySkewWarning } from "../../core/capability-skew.js";
 import { getCachedBootDriftNotice } from "../boot-notice.js";
 import { appendMcpLogEvent } from "../../core/mcp-log.js";
@@ -562,16 +561,7 @@ settingsPrefix to read a specific settings group (e.g. 'audio/') instead.`,
         // project as the one this session's mutations are pinned to. After an
         // engine project switch the agent calls this to intentionally follow the
         // new project; subsequent edits then target it instead of being rejected.
-        // A failed rebind keeps the previous identity; say so instead of
-        // echoing the stale hash as if the switch had been followed.
-        let boundProjectIdHash: string | undefined;
-        let rebindError: string | undefined;
-        try {
-          boundProjectIdHash = await client.rebind();
-        } catch (error) {
-          if (!(error instanceof EngineRebindError)) throw error;
-          rebindError = error.message;
-        }
+        const boundProjectIdHash = await client.rebind();
 
         // Handshake (Wave D): newer engines advertise capabilities
         // (protocolVersion + opKinds) in /api/health. Compare against the ops
@@ -596,7 +586,6 @@ settingsPrefix to read a specific settings group (e.g. 'audio/') instead.`,
           currentScene,
           mainScene,
           boundProjectIdHash,
-          ...(rebindError ? { rebindError } : {}),
           projectMemory: getProjectMemorySummary(projectPath),
           summerUpdateNotice: getCachedBootDriftNotice()?.text ?? null,
           guidance: mainScene

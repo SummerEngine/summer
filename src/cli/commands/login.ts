@@ -6,6 +6,7 @@ import {
   getCreatorToken,
   saveCreatorToken,
   saveLoginSession,
+  type LoginSession,
 } from "../../core/auth.js";
 import { getCreatorApiUrl, resolveGatewayUrl } from "../../core/config.js";
 
@@ -128,6 +129,9 @@ export async function runCreatorLogin(
   );
 }
 
+/** The gateway answered with a terminal 4xx — retrying the same URL cannot help. */
+class LoginRejectedError extends Error {}
+
 export interface LoginDependencies {
   fetch: typeof fetch;
   openUrl: (url: string) => Promise<unknown>;
@@ -178,10 +182,17 @@ export async function runLogin(
       lastHeartbeat = deps.now();
       deps.log(
         'Still waiting — finish signing in (or creating your account) in the browser, then click "Yes, Sign In". Same link: ' +
-          loginUrl
+          loginUrl +
+          (lastError ? ` (last error: ${lastError})` : "")
       );
     }
 
+    // Only the network round-trip is retried. A completed session is handled
+    // OUTSIDE this try: saveLoginSession rejecting the token (mismatched sub,
+    // non-CLI token type, already expired) is terminal — the gateway will
+    // return the same payload forever, so polling on would only bury the
+    // recovery message under a 15-minute timeout.
+    let completed: LoginSession | null = null;
     try {
       const res = await deps.fetch(pollUrl, {
         signal: AbortSignal.timeout(5000),
@@ -191,10 +202,16 @@ export async function runLogin(
         if (res.status === 503) {
           lastError =
             "The login service is unavailable (Redis/auth is not configured).";
-        } else if (res.status >= 400 && res.status < 500) {
-          lastError = `The login request was rejected (${res.status}).`;
         } else if (res.status >= 500) {
           lastError = `The login service failed (${res.status}).`;
+        } else if (res.status === 429 || res.status === 408) {
+          lastError = `The login service asked us to slow down (${res.status}).`;
+        } else {
+          // 401/403/404 and the other 4xx are terminal: this URL will not
+          // start succeeding on its own.
+          throw new LoginRejectedError(
+            `The login request was rejected (${res.status}). Recovery: check that gateway.url (${gatewayUrl}) is the Summer gateway you meant, then run "summer login" again.`
+          );
         }
         continue;
       }
@@ -209,17 +226,19 @@ export async function runLogin(
       if (data.status === "pending") continue;
 
       if (data.status === "complete" && data.token) {
-        await saveLoginSession({
-          token: data.token,
-          user: data.user,
-          scopes: data.scopes,
-        });
-        deps.log(`\nLogged in as ${data.user?.email || "unknown"}`);
-        return;
+        completed = { token: data.token, user: data.user, scopes: data.scopes };
+      } else {
+        lastError = "The login service returned an incomplete authentication result.";
       }
-      lastError = "The login service returned an incomplete authentication result.";
     } catch (err) {
+      if (err instanceof LoginRejectedError) throw err;
       lastError = err instanceof Error ? err.message : "Network error";
+    }
+
+    if (completed) {
+      await saveLoginSession(completed);
+      deps.log(`\nLogged in as ${completed.user?.email || "unknown"}`);
+      return;
     }
   }
 

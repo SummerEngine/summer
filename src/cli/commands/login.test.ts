@@ -83,6 +83,91 @@ describe("runLogin", () => {
   });
 });
 
+describe("runLogin failure handling", () => {
+  /** Clock that advances 1s per read, so a runaway poll loop ends in ~900
+   *  iterations instead of hanging the suite — and the fetch count exposes it. */
+  function ticking() {
+    let t = 0;
+    return () => (t += 1000);
+  }
+
+  it("fails immediately when the completed session fails validation (no 15-minute poll)", async () => {
+    const mismatched = cliToken(); // sub user-1
+    const fetchMock = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          status: "complete",
+          token: mismatched,
+          user: { id: "someone-else", email: "other@example.com" },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } }
+      )
+    );
+
+    await expect(
+      runLogin({
+        randomId: () => "s",
+        openUrl: async () => undefined,
+        fetch: fetchMock as typeof fetch,
+        sleep: async () => undefined,
+        now: ticking(),
+        log: () => undefined,
+      })
+    ).rejects.toThrow(/mismatched identity.*summer login --force/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(await getAuthToken()).toBeNull();
+  });
+
+  it("aborts on a terminal 4xx instead of polling it for 15 minutes", async () => {
+    const fetchMock = vi.fn(async () => new Response("not found", { status: 404 }));
+
+    await expect(
+      runLogin({
+        randomId: () => "s",
+        openUrl: async () => undefined,
+        fetch: fetchMock as typeof fetch,
+        sleep: async () => undefined,
+        now: ticking(),
+        log: () => undefined,
+      })
+    ).rejects.toThrow(/rejected \(404\).*gateway\.example/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries a 503 and reports the last error in the heartbeat", async () => {
+    const logs: string[] = [];
+    let calls = 0;
+    const fetchMock = vi.fn(async () => {
+      calls += 1;
+      if (calls < 3) return new Response("unavailable", { status: 503 });
+      return new Response(
+        JSON.stringify({
+          status: "complete",
+          token: cliToken(),
+          user: { id: "user-1", email: "maker@example.com" },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } }
+      );
+    });
+    // 20s per read: the heartbeat (30s) fires between the failed polls.
+    let t = 0;
+    await runLogin({
+      randomId: () => "s",
+      openUrl: async () => undefined,
+      fetch: fetchMock as typeof fetch,
+      sleep: async () => undefined,
+      now: () => (t += 20000),
+      log: (message) => logs.push(message),
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(await getAuthToken()).toBe(cliToken());
+    const heartbeats = logs.filter((line) => line.startsWith("Still waiting"));
+    expect(heartbeats.length).toBeGreaterThan(0);
+    expect(heartbeats.at(-1)).toContain("last error: The login service is unavailable");
+  });
+});
+
 describe("runCreatorLogin", () => {
   it("opens scoped token settings and stores creator auth separately", async () => {
     const logs: string[] = [];

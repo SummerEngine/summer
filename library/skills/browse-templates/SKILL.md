@@ -1,6 +1,6 @@
 ---
 name: browse-templates
-description: Use when the user wants to see available Summer Engine project templates, start from an existing template, or asks "what templates exist?" — fetches the live list from github.com/SummerEngine, presents the choices, and creates a project from the chosen template via `summer create <slug> <project-name>`. Trigger on "templates", "starter", "boilerplate", "from a template", "what's available", "show me templates", "third-person", "platformer", "multiplayer starter".
+description: Use when the user wants to see available Summer Engine project templates, start from an existing template, or asks "what templates exist?" — lists the pinned template registry via `summer list templates`, presents the choices, and creates a project from the chosen template via `summer create <slug> <project-name>`. Trigger on "templates", "starter", "boilerplate", "from a template", "what's available", "show me templates", "third-person", "platformer", "multiplayer starter".
 license: MIT
 compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode]
 category: scene-and-project

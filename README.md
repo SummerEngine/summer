@@ -321,7 +321,6 @@ matchmaking are not promised by this package.
 | `summer config [get\|set\|unset]` | Read or update the shared non-secret `~/.summer/config.json`. |
 | `summer publish [project] --artifact <game.pck> --version <value> [--confirm]` | Compute and show the exact immutable target; after approval, stream it through prepare → write-once PUT → finalize. |
 | `summer releases [--cursor <value>]` | List real creator-owned release history. |
-| `summer logs` | Read creator runtime logs. Fails closed while no durable runtime-log source exists. |
 | `summer status` | Engine state, port, auth. |
 | `summer doctor` | Diagnose Node, login, engine, project memory, MCP. |
 | `summer plan <goal>` | Route a game-building goal into skills, MCP tools, gates, and verification. |

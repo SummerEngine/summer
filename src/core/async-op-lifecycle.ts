@@ -1,9 +1,8 @@
 /**
- * 0.5.34 Block E — async tool-lifecycle consumer for the CLI/MCP.
+ * Async tool-lifecycle consumer for the CLI/MCP.
  *
- * Ported from the web orchestrator (publicsummerengine
- * src/lib/bridge/async-op-lifecycle.ts) so the CLI speaks the SAME contract as
- * the engine's responsive tool server (Block E):
+ * Speaks the engine tool server's async op contract (the same one the Summer
+ * web app uses), so both clients read engine responses identically:
  *   - NEW path: `202 {requestId, status:"queued"}` -> long-poll
  *     GET /api/ops/result?requestId=&wait=ms until terminal (done|failed|canceled).
  *   - LEGACY path (dormant/older engine): a synchronous `200` with the full apply

@@ -11,7 +11,6 @@ import {
   CreatorOperationError,
   listCreatorReleases,
   publishCreator,
-  readCreatorLogs,
 } from "./creator.js";
 import { setSummerDirForTests } from "../store.js";
 
@@ -270,13 +269,6 @@ describe("versioned creator API client", () => {
       sha256,
     });
     expect(result.nextCursor).toBe("cursor-2");
-  });
-
-  it("keeps logs explicitly unsupported without returning placeholders", async () => {
-    await expect(readCreatorLogs({ face: "cli" })).rejects.toMatchObject({
-      code: "creator_backend_unavailable",
-      operation: "logs",
-    });
   });
 
   it("refuses unsafe prepare headers before uploading bytes", async () => {

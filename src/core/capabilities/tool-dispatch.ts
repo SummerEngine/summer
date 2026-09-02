@@ -37,7 +37,6 @@ import { shapeEngineLogResponse } from "../log-filters.js";
 import {
   listCreatorReleases,
   publishCreator,
-  readCreatorLogs,
 } from "./creator.js";
 import {
   CONFIG_KEYS,
@@ -878,14 +877,6 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       projectId: optStr(args, "projectId"),
       limit: typeof args.limit === "number" ? args.limit : 20,
       cursor: optStr(args, "cursor"),
-      face: "cli",
-    })
-  ),
-  entry("summer_creator_logs", "Read creator runtime logs for a project or release", false, (args) =>
-    readCreatorLogs({
-      projectId: optStr(args, "projectId"),
-      releaseId: optStr(args, "releaseId"),
-      limit: typeof args.limit === "number" ? args.limit : 100,
       face: "cli",
     })
   ),

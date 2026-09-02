@@ -10,7 +10,6 @@ import { createCommand } from "./commands/create.js";
 import { listCommand } from "./commands/list.js";
 import { memoryCommand } from "./commands/memory.js";
 import { skillsCommand } from "./commands/skills.js";
-import { orchestratorCommand } from "./commands/orchestrator.js";
 import { setupCommand } from "./commands/setup.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { planCommand } from "./commands/plan.js";
@@ -18,7 +17,6 @@ import { debugCommand } from "./commands/debug.js";
 import { configCommand } from "./commands/config.js";
 import { publishCommand } from "./commands/publish.js";
 import { releasesCommand } from "./commands/releases.js";
-import { logsCommand } from "./commands/logs.js";
 import { toolCommand } from "./commands/tool.js";
 import { getBanner } from "./banner.js";
 import { runRootAction } from "./root-action.js";
@@ -57,11 +55,9 @@ export function runCli(mcpCommand: Command): void {
   program.addCommand(doctorCommand);
   program.addCommand(debugCommand);
   program.addCommand(planCommand);
-  program.addCommand(orchestratorCommand);
   program.addCommand(configCommand);
   program.addCommand(publishCommand);
   program.addCommand(releasesCommand);
-  program.addCommand(logsCommand);
   program.addCommand(toolCommand);
 
   program.parseAsync().catch((err) => {

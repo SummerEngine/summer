@@ -68,13 +68,12 @@ afterEach(async () => {
 });
 
 describe("registerCreatorTools", () => {
-  it("extends the existing MCP with four creator tools", () => {
+  it("extends the existing MCP with three creator tools", () => {
     const { server, tools } = createFakeServer();
     registerCreatorTools(server as any);
     expect(tools.map((tool) => tool.name)).toEqual([
       "summer_creator_publish",
       "summer_creator_releases",
-      "summer_creator_logs",
       "summer_creator_config",
     ]);
   });

@@ -13,7 +13,7 @@ import {
 } from "../config.js";
 import { appendStoreJsonLine } from "../store.js";
 
-export type CreatorOperation = "publish" | "releases" | "logs";
+export type CreatorOperation = "publish" | "releases";
 export type CreatorFace = "cli" | "mcp";
 
 export const CREATOR_API_CONTRACT = "summer.creator.v1" as const;
@@ -24,21 +24,6 @@ const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const VERSION = /^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/;
 
-export const CREATOR_API_AUDIT = {
-  auditedAt: "2026-07-30",
-  repository: "SummerEngine/summercraft",
-  contract: CREATOR_API_CONTRACT,
-  credentialAudience: "summercraft-creator",
-  requiredServerScope: REQUIRED_SCOPE,
-  operations: {
-    publish: { supported: true, route: CREATOR_PUBLISH_PATH },
-    releases: { supported: true, route: CREATOR_RELEASES_PATH },
-    logs: { supported: false, route: null },
-  },
-} as const;
-
-const LOGS_RECOVERY =
-  "Recovery: Summercraft must first own a durable runtime-log source with retention, redaction, project/release authorization, and a versioned query route. No placeholder logs were returned.";
 
 export class CreatorOperationError extends Error {
   constructor(
@@ -87,7 +72,7 @@ async function requireCreatorCredential(
     throw new CreatorOperationError(
       "creator_token_required",
       operation,
-      "Creator publishing needs a separate Summercraft API token.",
+      "Creator publishing needs a separate Summer Platform creator API token.",
       'Recovery: run "summer login --creator", mint a token with the exact "publish" scope in the opened browser page, and paste its one-time sc_ value. Your core Summer login will not be changed.'
     );
   }
@@ -113,7 +98,7 @@ function recoveryForStatus(operation: CreatorOperation, status: number): string 
   if (status === 409 && operation === "publish") {
     return "Recovery: read the server detail, bump an immutable version when required, then repeat the unconfirmed command to review the new exact target.";
   }
-  return `Recovery: retry once; if it repeats, check creator.apiUrl and the Summercraft creator API health.`;
+  return `Recovery: retry once; if it repeats, check creator.apiUrl and the Summer Platform creator API health.`;
 }
 
 async function readJsonResponse(
@@ -247,7 +232,7 @@ function assertUploadUrl(value: unknown): string {
       "creator_invalid_response",
       "publish",
       "The prepare response did not contain an uploadUrl.",
-      "Recovery: retry once; if it repeats, report the Summercraft creator API as unhealthy."
+      "Recovery: retry once; if it repeats, report the Summer Platform creator API as unhealthy."
     );
   }
   let url: URL;
@@ -286,7 +271,7 @@ function assertUploadHeaders(value: unknown): Record<string, string> {
       "creator_invalid_response",
       "publish",
       "The prepare response did not contain signed upload headers.",
-      "Recovery: retry once; if it repeats, report the Summercraft creator API as unhealthy."
+      "Recovery: retry once; if it repeats, report the Summer Platform creator API as unhealthy."
     );
   }
   const headers = Object.fromEntries(
@@ -388,7 +373,7 @@ export async function publishCreator(
     throw new CreatorOperationError(
       "creator_channel_unsupported",
       "publish",
-      `The Summercraft creator API has no "${channel}" release channel.`,
+      `The Summer Platform creator API has no "${channel}" release channel.`,
       'Recovery: use --channel production or run "summer config set creator.channel production". No release was created.'
     );
   }
@@ -679,23 +664,4 @@ export async function listCreatorReleases(
     releases: readReleases(payload.releases, projectId),
     nextCursor: payload.nextCursor,
   };
-}
-
-export interface ReadCreatorLogsInput {
-  projectId?: string;
-  releaseId?: string;
-  limit?: number;
-  face: CreatorFace;
-}
-
-export async function readCreatorLogs(
-  input: ReadCreatorLogsInput
-): Promise<never> {
-  await resolveProjectId(input.projectId);
-  throw new CreatorOperationError(
-    "creator_backend_unavailable",
-    "logs",
-    "Summercraft does not have a durable creator runtime-log API.",
-    LOGS_RECOVERY
-  );
 }

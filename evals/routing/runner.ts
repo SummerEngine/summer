@@ -1,12 +1,17 @@
 #!/usr/bin/env node
 /**
- * Routing eval runner — lexical retrieval baseline over the library index.
+ * Routing eval runner — retrieval quality over the library index.
  *
  * WHAT THIS TESTS (be honest about it): the quality of the INDEX + metadata
- * (ids, summaries, use_when/description text) under a dumb-but-stable BM25
- * ranker. It does NOT test an LLM's routing judgment. If this eval scores
- * well, a real agent searching the registry has good raw material; if it
- * scores badly, no amount of model quality fixes bad metadata.
+ * (ids, summaries, use_when/description text) under the deterministic,
+ * kind-aware ranker in src/core/registry-search.ts (BM25 + documented kind
+ * prior + related boost — the SAME ranker runtime search uses). It does NOT
+ * test an LLM's routing judgment. If this eval scores well, a real agent
+ * searching the registry has good raw material; if it scores badly, no amount
+ * of model quality fixes bad metadata.
+ *
+ * Reports recall@5 overall AND per kind (skill / tool / template / reference)
+ * so a ranking change that helps skills by burying tools is visible.
  *
  * Corpus resolution order (CONTRACT.md §6):
  *   1. registry/generated/index.json          (once the registry compiler lands)
@@ -18,7 +23,8 @@
  *   node evals/routing/runner.ts                    run + compare to baseline (exit 1 on regression)
  *   node evals/routing/runner.ts --update-baseline  run + write baseline.json
  *   node evals/routing/runner.ts --check            alias of default; also fails if baseline missing
- *   node evals/routing/runner.ts --verbose          per-query detail
+ *   node evals/routing/runner.ts --verbose          per-query detail (fired prior rules, gaps)
+ *   node evals/routing/runner.ts --lexical-only     A/B: disable kind prior + related boost
  *
  * Requires Node >= 22.18 (native TypeScript type stripping).
  */
@@ -28,6 +34,12 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
+import {
+  buildSearchIndex,
+  inferKindPrior,
+  rankEntries,
+  type SearchEntry,
+} from "../../src/core/registry-search.ts";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -39,11 +51,7 @@ interface QuerySpec {
   note?: string;
 }
 
-interface CorpusEntry {
-  id: string;
-  text: string; // searchable text: summary/description + use_when
-  slugTokens: string[];
-}
+type CorpusEntry = SearchEntry;
 
 interface QueryResult {
   query: string;
@@ -51,6 +59,7 @@ interface QueryResult {
   top5: { id: string; score: number }[];
   recallAt5: number; // |expected ∩ top5| / |expected|
   hijackers: string[]; // non-expected ids ranked above the first expected hit
+  rules: string[]; // kind-prior rules that fired
 }
 
 interface Baseline {
@@ -60,6 +69,8 @@ interface Baseline {
   query_count: number;
   gap_count: number;
   mean_recall_at_5: number;
+  /** kind -> recall@5 over expected ids of that kind (id-level, not query-level) */
+  per_kind: Record<string, { expected: number; hit: number; recall_at_5: number }>;
   hijacked_queries: number;
   per_query: Record<string, number>; // query -> recall@5 (scored queries only)
 }
@@ -73,21 +84,6 @@ const baselinePath = path.join(here, "baseline.json");
 
 // ── Corpus loading ─────────────────────────────────────────────────────────
 
-function tokenize(s: string): string[] {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .split(/\s+/)
-    .filter((t) => t.length > 1 && !STOPWORDS.has(t));
-}
-
-const STOPWORDS = new Set([
-  "a", "an", "the", "of", "to", "in", "on", "for", "and", "or", "is", "are",
-  "it", "my", "me", "i", "with", "when", "use", "this", "that", "via", "into",
-  "from", "as", "at", "be", "by", "not", "no", "so", "do", "how", "what",
-  "should", "want", "wants", "user", "trigger", "covers", "like",
-]);
-
 function loadFromGeneratedIndex(): CorpusEntry[] | null {
   const p = path.join(repoRoot, "registry", "generated", "index.json");
   if (!fs.existsSync(p)) return null;
@@ -95,9 +91,15 @@ function loadFromGeneratedIndex(): CorpusEntry[] | null {
   const entries: unknown[] = Array.isArray(raw) ? raw : raw.entries ?? raw.resources ?? [];
   if (!Array.isArray(entries) || entries.length === 0) return null;
   return entries.map((e) => {
-    const r = e as { id: string; summary?: string; use_when?: string[] };
-    const text = [r.summary ?? "", ...(r.use_when ?? [])].join(" ");
-    return { id: r.id, text, slugTokens: tokenize(r.id.split("/").pop() ?? "") };
+    const r = e as SearchEntry;
+    return {
+      id: r.id,
+      kind: r.kind ?? r.id.split("/")[0],
+      summary: r.summary,
+      use_when: r.use_when,
+      facets: r.facets,
+      related: r.related,
+    };
   });
 }
 
@@ -114,8 +116,7 @@ function loadFromLibraryResources(): CorpusEntry[] | null {
       use_when?: string[];
     };
     const id = r.id ?? `skill/${slug}`;
-    const text = [r.summary ?? "", ...(r.use_when ?? [])].join(" ");
-    out.push({ id, text, slugTokens: tokenize(slug) });
+    out.push({ id, kind: "skill", summary: r.summary, use_when: r.use_when });
   }
   return out.length > 0 ? out : null;
 }
@@ -135,8 +136,8 @@ function loadFromSkillsTree(): CorpusEntry[] | null {
         const slug = (fm.name as string) ?? name; // locked slug rule: leaf folder name
         out.push({
           id: `skill/${slug}`,
-          text: (fm.description as string) ?? "",
-          slugTokens: tokenize(slug),
+          kind: "skill",
+          summary: (fm.description as string) ?? "",
         });
       } else {
         walk(p); // category folders / recipes nesting
@@ -157,51 +158,6 @@ function parseFrontmatter(md: string): Record<string, unknown> {
   }
 }
 
-// ── BM25 ───────────────────────────────────────────────────────────────────
-
-const K1 = 1.5;
-const B = 0.75;
-const SLUG_BOOST = 3; // slug tokens are the strongest routing signal
-
-interface Doc {
-  id: string;
-  tf: Map<string, number>;
-  len: number;
-}
-
-function buildDocs(corpus: CorpusEntry[]): { docs: Doc[]; df: Map<string, number>; avgLen: number } {
-  const docs: Doc[] = [];
-  const df = new Map<string, number>();
-  let totalLen = 0;
-  for (const e of corpus) {
-    const tokens = [...tokenize(e.text)];
-    for (const st of e.slugTokens) for (let i = 0; i < SLUG_BOOST; i++) tokens.push(st);
-    const tf = new Map<string, number>();
-    for (const t of tokens) tf.set(t, (tf.get(t) ?? 0) + 1);
-    for (const t of tf.keys()) df.set(t, (df.get(t) ?? 0) + 1);
-    docs.push({ id: e.id, tf, len: tokens.length });
-    totalLen += tokens.length;
-  }
-  return { docs, df, avgLen: totalLen / Math.max(docs.length, 1) };
-}
-
-function rank(query: string, docs: Doc[], df: Map<string, number>, avgLen: number, n: number) {
-  const qTokens = tokenize(query);
-  const N = docs.length;
-  const scored = docs.map((d) => {
-    let score = 0;
-    for (const t of qTokens) {
-      const f = d.tf.get(t) ?? 0;
-      if (f === 0) continue;
-      const idf = Math.log(1 + (N - (df.get(t) ?? 0) + 0.5) / ((df.get(t) ?? 0) + 0.5));
-      score += idf * ((f * (K1 + 1)) / (f + K1 * (1 - B + B * (d.len / avgLen))));
-    }
-    return { id: d.id, score };
-  });
-  scored.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
-  return scored.slice(0, n);
-}
-
 // ── Eval ───────────────────────────────────────────────────────────────────
 
 function round4(n: number): number {
@@ -213,6 +169,7 @@ function main(): number {
   const updateBaseline = args.has("--update-baseline");
   const checkMode = args.has("--check");
   const verbose = args.has("--verbose");
+  const lexicalOnly = args.has("--lexical-only");
 
   // Corpus
   let corpus: CorpusEntry[] | null;
@@ -244,13 +201,15 @@ function main(): number {
     return 1;
   }
 
-  const { docs, df, avgLen } = buildDocs(corpus);
+  const index = buildSearchIndex(corpus);
+  const rankOpts = lexicalOnly ? { limit: 5, kindPrior: false, relatedBoost: false } : { limit: 5 };
+  const kindOf = new Map(corpus.map((e) => [e.id, e.kind]));
 
   const scored: QueryResult[] = [];
   const gaps: { query: string; top3: { id: string; score: number }[]; closest?: string; note?: string }[] = [];
 
   for (const q of queries) {
-    const top = rank(q.query, docs, df, avgLen, 5);
+    const top = rankEntries(index, q.query, rankOpts);
     if (q.expected_gap) {
       gaps.push({ query: q.query, top3: top.slice(0, 3).map((t) => ({ id: t.id, score: round4(t.score) })), closest: q.closest, note: q.note });
       continue;
@@ -270,16 +229,39 @@ function main(): number {
       top5: top.map((t) => ({ id: t.id, score: round4(t.score) })),
       recallAt5: round4(hits.length / q.expected.length),
       hijackers,
+      rules: lexicalOnly ? [] : inferKindPrior(q.query).rules,
     });
   }
 
   const meanRecall = round4(scored.reduce((s, r) => s + r.recallAt5, 0) / Math.max(scored.length, 1));
   const hijackedQueries = scored.filter((r) => r.hijackers.length > 0).length;
 
+  // Per-kind recall: over expected IDs grouped by their kind. Id-level so a
+  // mixed-kind query contributes to each kind it touches.
+  const perKindAcc: Record<string, { expected: number; hit: number }> = {};
+  for (const r of scored) {
+    const topIds = new Set(r.top5.map((t) => t.id));
+    for (const id of r.expected) {
+      const k = kindOf.get(id) ?? id.split("/")[0];
+      const acc = (perKindAcc[k] ??= { expected: 0, hit: 0 });
+      acc.expected++;
+      if (topIds.has(id)) acc.hit++;
+    }
+  }
+  const perKind: Baseline["per_kind"] = Object.fromEntries(
+    Object.keys(perKindAcc)
+      .sort()
+      .map((k) => [k, { ...perKindAcc[k], recall_at_5: round4(perKindAcc[k].hit / perKindAcc[k].expected) }]),
+  );
+
   // ── Report ──
   console.log(`routing-eval  corpus: ${source} (${corpus.length} entries)`);
   console.log(`queries: ${scored.length} scored + ${gaps.length} expected gaps`);
+  console.log(`ranker: ${lexicalOnly ? "lexical only (A/B)" : "kind-aware (bm25 x kind prior + related boost)"}`);
   console.log(`mean recall@5: ${meanRecall}`);
+  for (const [k, v] of Object.entries(perKind)) {
+    console.log(`  recall@5 [${k}]: ${v.recall_at_5}  (${v.hit}/${v.expected} expected ids)`);
+  }
   console.log(`queries with a hijacker above the first expected hit: ${hijackedQueries}`);
 
   const misses = scored.filter((r) => r.recallAt5 < 1);
@@ -289,9 +271,16 @@ function main(): number {
       console.log(`  [${r.recallAt5}] "${r.query}"`);
       console.log(`     expected: ${r.expected.join(", ")}`);
       console.log(`     top5:     ${r.top5.map((t) => t.id).join(", ")}`);
+      if (r.rules.length > 0) console.log(`     rules:    ${r.rules.join(" ")}`);
     }
   }
   if (verbose) {
+    console.log("\nper-query detail:");
+    for (const r of scored) {
+      console.log(`  [${r.recallAt5}] "${r.query}"  rules: ${r.rules.join(" ") || "-"}`);
+      console.log(`     top5: ${r.top5.map((t) => `${t.id}:${t.score}`).join(", ")}`);
+      if (r.hijackers.length > 0) console.log(`     hijackers: ${r.hijackers.join(", ")}`);
+    }
     console.log("\nexpected gaps (authoring backlog):");
     for (const g of gaps) {
       console.log(`  "${g.query}"${g.closest ? ` (closest: ${g.closest})` : ""}`);
@@ -307,9 +296,15 @@ function main(): number {
     query_count: scored.length,
     gap_count: gaps.length,
     mean_recall_at_5: meanRecall,
+    per_kind: perKind,
     hijacked_queries: hijackedQueries,
     per_query: Object.fromEntries(scored.map((r) => [r.query, r.recallAt5])),
   };
+
+  if (lexicalOnly) {
+    console.log("\n(--lexical-only is an A/B view; baseline gate skipped)");
+    return 0;
+  }
 
   if (updateBaseline) {
     fs.writeFileSync(baselinePath, JSON.stringify(current, null, 2) + "\n");
@@ -330,6 +325,12 @@ function main(): number {
   const failures: string[] = [];
   if (current.mean_recall_at_5 < baseline.mean_recall_at_5) {
     failures.push(`mean recall@5 regressed: ${baseline.mean_recall_at_5} -> ${current.mean_recall_at_5}`);
+  }
+  for (const [k, prev] of Object.entries(baseline.per_kind ?? {})) {
+    const now = current.per_kind[k];
+    if (now && now.recall_at_5 < prev.recall_at_5) {
+      failures.push(`recall@5 [${k}] regressed: ${prev.recall_at_5} -> ${now.recall_at_5}`);
+    }
   }
   if (current.hijacked_queries > baseline.hijacked_queries) {
     failures.push(`hijacked queries increased: ${baseline.hijacked_queries} -> ${current.hijacked_queries}`);

@@ -4,8 +4,11 @@
 # Rules:
 # - `query` is written the way a real user (or a fresh agent relaying a user)
 #   actually phrases it. No keyword-stuffed synthetic filler.
-# - `expected` are permanent IDs (`skill/<slug>`, CONTRACT.md §4). Every ID must
-#   exist on disk; the runner errors on unknown IDs.
+# - `expected` are permanent IDs (`skill/<slug>`, `tool/<slug>`, ..., CONTRACT.md
+#   §4). Every ID must exist on disk; the runner errors on unknown IDs.
+# - Mix kinds deliberately. The runner reports recall@5 per kind, so tool-intent
+#   queries (below) keep the kind prior honest: skill routing must not improve
+#   by burying tools.
 # - Order within `expected` does not matter; recall@5 counts how many expected
 #   IDs land in the top 5.
 # - `expected_gap: true` marks queries the library genuinely cannot serve today.
@@ -185,6 +188,32 @@ queries:
     expected: [skill/trailer-shot]
   - query: "animated looping background for the splash screen"
     expected: [skill/animated-loop]
+
+  # ── Tool intent (engine/editor actions a single tool performs) ─────────
+  - query: "take a screenshot of the running game"
+    expected: [tool/screenshot]
+  - query: "stop the game"
+    expected: [tool/stop]
+  - query: "is the game currently running"
+    expected: [tool/is-running]
+  - query: "add a Camera3D node under the Player"
+    expected: [tool/add-node]
+  - query: "set the player's position to 0, 10, 0"
+    expected: [tool/set-prop]
+  - query: "connect the button's pressed signal to my script"
+    expected: [tool/connect-signal]
+  - query: "what's in the scene tree right now"
+    expected: [tool/get-scene-tree]
+  - query: "bind the space key to a jump action"
+    expected: [tool/input-map-bind]
+  - query: "show me the errors in the console"
+    expected: [tool/get-console]
+  - query: "does this script have any compile errors"
+    expected: [tool/get-script-errors]
+  - query: "import this glb from a url into my project"
+    expected: [tool/import-from-url]
+  - query: "change the main scene in project settings"
+    expected: [tool/project-setting]
 
   # ── Known gaps (expected_gap: true — the authoring backlog) ────────────
   - query: "add enemy pathfinding"

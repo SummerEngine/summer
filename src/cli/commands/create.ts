@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { cpSync, existsSync, mkdirSync, writeFileSync } from "fs";
 import { join, resolve } from "path";
+import { checkEngineHealth, getApiPort } from "../../core/engine.js";
 import { PACKAGE_ROOT } from "../../core/package-root.js";
 import { SUMMER_ENGINE_COMPATIBILITY } from "../../core/summer-compatibility.js";
 import {
@@ -13,6 +14,16 @@ import {
 import { PROJECT_MANIFEST_RELPATH, writeProjectManifest } from "../../project-memory/project-manifest.js";
 
 import { TOOLKIT_VERSION as toolkitVersion } from "../../core/version.js";
+
+/** Summer Engine's version when it is reachable right now, else undefined —
+ *  the manifest then omits engine_version rather than guessing. */
+async function detectEngineVersion(): Promise<string | undefined> {
+  try {
+    return (await checkEngineHealth(await getApiPort()))?.version;
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * Built-in templates are generated in-process — no download, no pin. Their
@@ -134,6 +145,7 @@ export const createCommand = new Command("create")
       writeProjectManifest(fullPath, {
         template: { id: entry.id, version: entry.version, builtin: true },
         toolkit_version: toolkitVersion,
+        engine_version: await detectEngineVersion(),
       });
       printNextSteps(fullPath, dirName, scaffolded);
       return;
@@ -162,6 +174,7 @@ export const createCommand = new Command("create")
         tree_digest: materialized.tree_digest,
       },
       toolkit_version: toolkitVersion,
+      engine_version: await detectEngineVersion(),
     });
 
     console.log(`Source: ${pin.repo} @ ${materialized.commit.slice(0, 12)} (tree digest verified)`);

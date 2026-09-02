@@ -45,6 +45,14 @@ describe(".summer/project.json", () => {
     expect(readProjectManifest(dir)?.template).toEqual({ id: "template/empty", version: "1.1.0", builtin: true });
   });
 
+  it("records engine_version when given and keeps it across a patch without one", () => {
+    const template = { id: "template/empty", version: "1.1.0", builtin: true } as const;
+    writeProjectManifest(dir, { template, toolkit_version: "2.8.2", engine_version: "4.6.1.summer.7" });
+    expect(readProjectManifest(dir)?.engine_version).toBe("4.6.1.summer.7");
+    writeProjectManifest(dir, { template, toolkit_version: "2.8.3" });
+    expect(readProjectManifest(dir)).toMatchObject({ toolkit_version: "2.8.3", engine_version: "4.6.1.summer.7" });
+  });
+
   it("merges into an existing manifest, preserving foreign keys and created_at", () => {
     mkdirSync(join(dir, ".summer"));
     writeFileSync(

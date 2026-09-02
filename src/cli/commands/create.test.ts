@@ -4,6 +4,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parse as parseYaml } from "yaml";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("../../core/engine.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../core/engine.js")>()),
+  checkEngineHealth: vi.fn(async () => null),
+}));
+
+import { checkEngineHealth } from "../../core/engine.js";
 import { PACKAGE_ROOT } from "../../core/package-root.js";
 import { BUILTIN_GENERATORS, createCommand, escapeGodotString, renderProjectSettings } from "./create.js";
 
@@ -76,11 +83,27 @@ describe("summer create <builtin>", () => {
     const manifest = JSON.parse(readFileSync(join(target, ".summer", "project.json"), "utf8"));
     expect(manifest.template).toEqual({ id: "template/empty", version: expect.stringMatching(/^\d+\.\d+\.\d+$/), builtin: true });
     expect(manifest.toolkit_version).toBe(pkgVersion);
+    expect(manifest).not.toHaveProperty("engine_version"); // no engine reachable -> omitted, not guessed
     expect(manifest.created_at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
 
     const out = log.mock.calls.map((c) => String(c[0])).join("\n");
     expect(out).toContain("brainstorm-game skill");
     expect(out).not.toContain("summer:brainstorm-game");
+  });
+
+  it("records engine_version when Summer Engine is reachable at create time", async () => {
+    vi.mocked(checkEngineHealth).mockResolvedValueOnce({
+      ok: true,
+      engine: "summer",
+      version: "4.6.1.summer.7",
+      instanceId: "inst",
+      port: 6543,
+    } as never);
+    const target = join(scratch, "with-engine");
+    await createCommand.parseAsync(["empty", target], { from: "user" });
+
+    const manifest = JSON.parse(readFileSync(join(target, ".summer", "project.json"), "utf8"));
+    expect(manifest.engine_version).toBe("4.6.1.summer.7");
   });
 
   it("refuses an unknown template and lists what exists", async () => {

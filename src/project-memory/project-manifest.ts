@@ -18,6 +18,8 @@ export type ProjectTemplateRecord =
 export interface ProjectManifest {
   template?: ProjectTemplateRecord;
   toolkit_version?: string;
+  /** Summer Engine version seen at create time; absent when no engine was reachable. */
+  engine_version?: string;
   created_at?: string;
   [key: string]: unknown;
 }
@@ -44,13 +46,16 @@ export function readProjectManifest(projectDir: string): ProjectManifest | null 
 export interface ProjectManifestPatch {
   template: ProjectTemplateRecord;
   toolkit_version: string;
+  /** Recorded when given; an existing value survives a patch without one. */
+  engine_version?: string;
   /** Override for tests; defaults to now. Only used when the file has no created_at yet. */
   now?: () => Date;
 }
 
 /**
  * Write (or merge into) `.summer/project.json`. Existing keys are preserved;
- * `template` and `toolkit_version` are replaced; `created_at` is set once.
+ * `template` and `toolkit_version` (and `engine_version` when given) are
+ * replaced; `created_at` is set once.
  */
 export function writeProjectManifest(projectDir: string, patch: ProjectManifestPatch): ProjectManifest {
   const existing = readProjectManifest(projectDir) ?? {};
@@ -59,6 +64,7 @@ export function writeProjectManifest(projectDir: string, patch: ProjectManifestP
     ...existing,
     template: patch.template,
     toolkit_version: patch.toolkit_version,
+    ...(patch.engine_version ? { engine_version: patch.engine_version } : {}),
     created_at: typeof existing.created_at === "string" ? existing.created_at : now().toISOString(),
   };
   const file = projectManifestPath(projectDir);

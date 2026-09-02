@@ -55,6 +55,20 @@ export function configureMcpEngineSelection(
 }
 
 export async function getClient(): Promise<EngineApiClient> {
+  // Opt-in per-project routing (editor -> live worker -> spawned worker).
+  // OFF by default: with the flag unset this block is skipped entirely and
+  // src/core/headless/ is never even loaded (dynamic import). With the flag
+  // set, the router returns null whenever the existing path should serve the
+  // call (no project context, or a live editor has the project open), so
+  // editor behavior stays identical. See docs/HEADLESS_ROUTING.md.
+  if (process.env.SUMMER_HEADLESS_ROUTING === "1") {
+    const { getHeadlessRoutedClient } = await import(
+      "../core/headless/mcp-routing.js"
+    );
+    const routed = await getHeadlessRoutedClient(engineSelection);
+    if (routed) return routed;
+  }
+
   if (cachedClient) {
     // The engine rotates its api-token (and can change ports) on every launch, so
     // a cached client can outlive the engine instance it was built for. If the

@@ -248,7 +248,7 @@ Agents don't browse folders; they search the compiled index (`registry/generated
  Summer Engine (desktop app: editor + runtime)
         │
         ▼
- Summer Cloud (sync, preview) · Summercraft (publishing) · your players
+ Summercraft (publishing) · your players
 ```
 
 Summer is agent-neutral by construction: `integrations/` adapts one generated system to each agent; no agent is the foundation. Currently 13 clients are supported end-to-end — the full map of what gets installed where is [`integrations/README.md`](integrations/README.md).
@@ -307,9 +307,8 @@ Not downloaded, not collected:
 | **Hosted Summer integrations** | availability and terms vary by rollout; preview features are labeled in the CLI | [summerengine.com/pricing](https://summerengine.com/pricing) |
 
 A command, tool contract, or roadmap entry does not by itself mean a hosted
-service is production-ready. Summer Cloud is explicitly a research preview, and
-managed publishing, hosting, store submission, and matchmaking are not promised
-by this package.
+service is production-ready. Managed publishing, hosting, store submission, and
+matchmaking are not promised by this package.
 
 ## CLI reference
 
@@ -340,10 +339,6 @@ by this package.
 | `summer setup <agent> [--yes]` | One shot: MCP config + recommended skills + doctor. |
 
 Agents: `claude-code`, `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `kilo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, `lm-studio`. (`devin` and `devin-desktop` are accepted as aliases for `windsurf`.) Scopes: `--scope user` (default), `--scope project`.
-
-## Research Preview: Summer Cloud
-
-Summer Cloud is an experimental R&D preview for content-addressed project sync across machines (including large assets that don't fit comfortably in git): `summer cloud init / status / push / pull / restore`, plus matching `summer_cloud_*` MCP tools. It is optional, it may change or break, and it is **not** the core workflow. Keep an independent backup and do not use it as the only recovery path for an important project. See [www.summerengine.com/cloud](https://www.summerengine.com/cloud).
 
 ## Contributing
 

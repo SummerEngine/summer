@@ -5,7 +5,7 @@ Single source of truth for sequencing. Every "later" from the v3 design sessions
 ## 1. What is there (before this build)
 
 - npm `summer-engine` 2.8.2 (~2.9k installs/mo), stdio MCP (62 tools), CLI (21 commands), 79 skills, 12-agent setup support.
-- `.summer/` project memory (GameSoul.md, classified memory tree, locked flags) + cloud sync (atomic writes, lock, 11 test files).
+- `.summer/` project memory (GameSoul.md, classified memory tree, locked flags). The v2 Summer Cloud sync (atomic writes, lock, 11 test files) that lived beside it was **removed in this build** — unmaintained research preview, Platform publish/releases is the wired path. Web-repo counterpart (`/cloud` page, `app/api/cloud/*` routes, cli-login `cloudToken` minting) is a separate cleanup PR.
 - Update/staleness checks (`.summer-version` markers across 7 agent dirs; npm-latest doctor check).
 - 21 prose eval specs (6 TBD stubs incl. make-game), no automated runner.
 - Known debts fixed by this build: 6-way manifest drift, unpinned templates (mutable branch clone + `.git` deleted), hand-written registries, dead `summer skills count` hook call, stale count claims (44/50+/52/62).

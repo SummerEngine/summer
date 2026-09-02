@@ -39,7 +39,7 @@ src/
 ├── mcp/              # MCP server + tool adapters ONLY (src/mcp/tools/*) — no business logic
 ├── core/             # shared implementations: auth, config, engine connection, store,
 │                     #   capabilities/ (logic shared by CLI and MCP)
-├── project-memory/   # .summer/ read/write, cloud sync locks
+├── project-memory/   # .summer/ read/write
 └── installer/        # agent detection, per-client config writing, version checks
 
 library/              # content — flat folders per kind, one resource.yaml each
@@ -126,7 +126,7 @@ Summer Engine app (LocalApiServer -> OpsExecutor)
 
 - **Lazy connect** (`src/mcp/server.ts`): the MCP server starts without a running engine, registers tools immediately, and connects on first call; if the engine restarts, the next call retries.
 - **Multi-editor discovery**: each live editor publishes `~/.summer/instances/<id>.json`; the MCP walks up from CWD to find `project.godot` and binds to the matching instance, failing closed when ambiguous. Explicit `--project` / `--instance` override.
-- **Shared `~/.summer/` store** (`src/core/store.ts`): `0700` dir, `0600` files, atomic replacement, symlink refusal. Filenames (`api-token`, `auth-token`, `cloud-token`, `creator-token`, `user.json`, `config.json`, `credential-metadata.json`, `creator-audit.jsonl`) are shared with the desktop engine — do not rename them.
+- **Shared `~/.summer/` store** (`src/core/store.ts`): `0700` dir, `0600` files, atomic replacement, symlink refusal. Filenames (`api-token`, `auth-token`, `creator-token`, `user.json`, `config.json`, `credential-metadata.json`, `creator-audit.jsonl`) are shared with the desktop engine — do not rename them.
 - **Ops values are engine variant strings** (`"Vector3(0, 10, 0)"`, `"Color(1, 0.9, 0.8)"`), never JSON objects. This crosses both repos; coordinate changes.
 
 No environment variables are required for normal use. `SUMMER_GATEWAY_URL` is an optional gateway-development override; `SUMMER_MCP_DEBUG=1` logs a structured stderr line per tool call; `SUMMER_NO_TELEMETRY=1` / `DO_NOT_TRACK` disable the library feedback mailbox.

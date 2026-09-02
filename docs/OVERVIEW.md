@@ -123,7 +123,3 @@ The agent layer is open so you can audit, fork, and extend. The engine is the mo
 ```
 
 The left column — skills + MCP + CLI — is what this repo ships. The bottom box is Summer Engine, which you download and run separately.
-
-## Research previews
-
-`summer cloud` and the matching `summer_cloud_*` MCP tools are an experimental R&D preview. They are optional and are not part of the core local CLI, engine, skills, or MCP workflow shown above. Expect the preview surface and behavior to change, and keep an independent backup for important projects.

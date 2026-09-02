@@ -30,7 +30,7 @@ All local surfaces use `~/.summer/`. The store contract is:
 | File | Secret | Owner / purpose |
 |---|---:|---|
 | `auth-token` | yes | Canonical Summer CLI JWT. Filename preserved because Summer Engine already reads it. |
-| `cloud-token` | yes | Existing Summer Cloud credential with a separate issuer/audience. |
+| `cloud-token` | yes | Legacy: written by v2 logins for the since-removed Summer Cloud sync. v3 never writes or reads it; `summer logout` still deletes it. |
 | `creator-token` | yes | Separately scoped Summercraft `sc_` API token. Never copied into `auth-token`. |
 | `api-token`, `api-port` | yes / no | Ephemeral local-engine discovery written by the running engine. Creator commands do not rewrite them. |
 | `user.json` | personal | Identity matched against the Summer CLI JWT subject before persistence. |

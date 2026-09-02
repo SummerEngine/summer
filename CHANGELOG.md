@@ -2,6 +2,11 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased] — 3.0.0
+
+### Removed
+- **Summer Cloud** (research preview): the `summer cloud` command group, the seven `summer_cloud_*` MCP tools, the `summer-cloud` skill, the `library/tools/cloud-*` descriptors, the sync engine under `src/core/capabilities/cloud/`, and cloud-token minting during `summer login`. It was not operational or maintained; Summer Platform publish/releases is the supported path. `summer-cloud.json` and `.summer/local/cloud/` in old projects are inert and can be deleted; `summer logout` still removes a legacy `~/.summer/cloud-token`. The `doctor` "Git (cloud checkpoints)" check went with it. Web-side cleanup (`/cloud` page, `app/api/cloud/*`, cli-login `cloudToken` minting) is a separate web-repo PR.
+
 ## [2.8.2] — 2026-09-01 — "Windows setup works out of the box"
 
 ### Fixed

@@ -13,11 +13,17 @@
  * Reports recall@5 overall AND per kind (skill / tool / template / reference)
  * so a ranking change that helps skills by burying tools is visible.
  *
- * Corpus resolution order (CONTRACT.md §6):
- *   1. registry/generated/index.json          (once the registry compiler lands)
- *   2. library/skills/<slug>/resource.yaml     (post-migration, pre-compiler)
- *   3. skills/** SKILL.md frontmatter          (pre-migration fallback, ids per
- *      the locked slug rule: skill/<leaf-folder-name>)
+ * Corpus (CONTRACT.md §6): registry/generated/index.json — the compiled
+ * catalog is the ONLY corpus --check and --update-baseline accept, because a
+ * baseline written from anything else measures a different index than the
+ * one agents search. Ad-hoc runs (no --check) may fall back to
+ * library/skills/<slug>/resource.yaml or skills/** SKILL.md frontmatter with a
+ * loud warning; such runs are never compared to the baseline.
+ *
+ * The baseline records corpus_source, corpus_size, and query_count; --check
+ * FAILS when any of them differ from the current run (a stale baseline is not
+ * a passing baseline). The gate is recall@5 non-regression; recall@1 and
+ * MRR@5 are reported alongside for visibility only.
  *
  * Usage:
  *   node evals/routing/runner.ts                    run + compare to baseline (exit 1 on regression)
@@ -61,6 +67,8 @@ interface QueryResult {
   expected: string[];
   top5: { id: string; score: number }[];
   recallAt5: number; // |expected ∩ top5| / |expected|
+  recallAt1: number; // |expected ∩ top1| / |expected|
+  reciprocalRank: number; // 1/rank of the first expected id within the top5, else 0
   hijackers: string[]; // non-expected ids ranked above the first expected hit
   rules: string[]; // kind-prior rules that fired
 }
@@ -72,6 +80,10 @@ interface Baseline {
   query_count: number;
   gap_count: number;
   mean_recall_at_5: number;
+  /** reported, not gated */
+  mean_recall_at_1: number;
+  /** mean reciprocal rank of the first expected id within the top 5; reported, not gated */
+  mrr_at_5: number;
   /** kind -> recall@5 over expected ids of that kind (id-level, not query-level) */
   per_kind: Record<string, { expected: number; hit: number; recall_at_5: number }>;
   hijacked_queries: number;
@@ -85,6 +97,7 @@ const repoRoot = path.resolve(here, "..", "..");
 const tuningQueriesPath = path.join(here, "queries.yaml");
 const heldoutQueriesPath = path.join(here, "heldout.yaml");
 const baselinePath = path.join(here, "baseline.json");
+const GENERATED_INDEX_SOURCE = "registry/generated/index.json";
 
 // ── Corpus loading ─────────────────────────────────────────────────────────
 
@@ -181,15 +194,26 @@ function main(): number {
   }
   const queriesPath = heldout ? heldoutQueriesPath : tuningQueriesPath;
 
-  // Corpus
+  // Corpus. --check / --update-baseline REQUIRE the compiled index: a
+  // baseline measured against a scan of skills/** or resource.yaml describes
+  // a corpus no agent ever searches, and would silently pass.
+  const gated = checkMode || updateBaseline;
   let corpus: CorpusEntry[] | null;
   let source: string;
-  if ((corpus = loadFromGeneratedIndex())) source = "registry/generated/index.json";
-  else if ((corpus = loadFromLibraryResources())) source = "library/skills/*/resource.yaml";
+  if ((corpus = loadFromGeneratedIndex())) source = GENERATED_INDEX_SOURCE;
+  else if (gated) {
+    console.error(
+      `routing-eval: ${checkMode ? "--check" : "--update-baseline"} requires ${GENERATED_INDEX_SOURCE} (run npm run generate:registry). Refusing to fall back to a library/ or skills/ scan.`,
+    );
+    return 1;
+  } else if ((corpus = loadFromLibraryResources())) source = "library/skills/*/resource.yaml";
   else if ((corpus = loadFromSkillsTree())) source = "skills/** SKILL.md frontmatter";
   else {
     console.error("routing-eval: no corpus found (no registry index, no library/, no skills/)");
     return 1;
+  }
+  if (source !== GENERATED_INDEX_SOURCE) {
+    console.warn(`routing-eval: WARNING corpus is a fallback scan (${source}), not the compiled index — numbers are not comparable to the baseline`);
   }
 
   const spec = parseYaml(fs.readFileSync(queriesPath, "utf8")) as { queries: QuerySpec[] };
@@ -226,6 +250,7 @@ function main(): number {
     }
     const topIds = top.map((t) => t.id);
     const hits = q.expected.filter((id) => topIds.includes(id));
+    const hitsAt1 = topIds.length > 0 && q.expected.includes(topIds[0]) ? 1 : 0;
     const firstExpectedRank = topIds.findIndex((id) => q.expected.includes(id));
     const hijackers =
       firstExpectedRank > 0
@@ -238,12 +263,16 @@ function main(): number {
       expected: q.expected,
       top5: top.map((t) => ({ id: t.id, score: round4(t.score) })),
       recallAt5: round4(hits.length / q.expected.length),
+      recallAt1: round4(hitsAt1 / q.expected.length),
+      reciprocalRank: firstExpectedRank === -1 ? 0 : round4(1 / (firstExpectedRank + 1)),
       hijackers,
       rules: lexicalOnly ? [] : inferKindPrior(q.query).rules,
     });
   }
 
   const meanRecall = round4(scored.reduce((s, r) => s + r.recallAt5, 0) / Math.max(scored.length, 1));
+  const meanRecallAt1 = round4(scored.reduce((s, r) => s + r.recallAt1, 0) / Math.max(scored.length, 1));
+  const mrr = round4(scored.reduce((s, r) => s + r.reciprocalRank, 0) / Math.max(scored.length, 1));
   const hijackedQueries = scored.filter((r) => r.hijackers.length > 0).length;
 
   // Per-kind recall: over expected IDs grouped by their kind. Id-level so a
@@ -268,7 +297,8 @@ function main(): number {
   console.log(`routing-eval${heldout ? " [HELD-OUT — report only, not a tuning target]" : ""}  corpus: ${source} (${corpus.length} entries)`);
   console.log(`queries: ${scored.length} scored + ${gaps.length} expected gaps`);
   console.log(`ranker: ${lexicalOnly ? "lexical only (A/B)" : "kind-aware (bm25 x kind prior + related boost)"}`);
-  console.log(`mean recall@5: ${meanRecall}`);
+  console.log(`mean recall@5: ${meanRecall}   ${heldout ? "(held-out: no gate)" : "(gate)"}`);
+  console.log(`mean recall@1: ${meanRecallAt1}   MRR@5: ${mrr}   (reported, not gated)`);
   for (const [k, v] of Object.entries(perKind)) {
     console.log(`  recall@5 [${k}]: ${v.recall_at_5}  (${v.hit}/${v.expected} expected ids)`);
   }
@@ -306,6 +336,8 @@ function main(): number {
     query_count: scored.length,
     gap_count: gaps.length,
     mean_recall_at_5: meanRecall,
+    mean_recall_at_1: meanRecallAt1,
+    mrr_at_5: mrr,
     per_kind: perKind,
     hijacked_queries: hijackedQueries,
     per_query: Object.fromEntries(scored.map((r) => [r.query, r.recallAt5])),
@@ -338,6 +370,17 @@ function main(): number {
 
   const baseline = JSON.parse(fs.readFileSync(baselinePath, "utf8")) as Baseline;
   const failures: string[] = [];
+  // A baseline that describes a different corpus or query set is stale, and a
+  // stale baseline cannot certify anything — fail before comparing scores.
+  if (baseline.corpus_source !== current.corpus_source) {
+    failures.push(`baseline corpus_source is "${baseline.corpus_source}" but this run used "${current.corpus_source}"`);
+  }
+  if (baseline.corpus_size !== current.corpus_size) {
+    failures.push(`stale baseline: corpus_size ${baseline.corpus_size} -> ${current.corpus_size} (index changed; re-run --update-baseline and commit)`);
+  }
+  if (baseline.query_count !== current.query_count) {
+    failures.push(`stale baseline: query_count ${baseline.query_count} -> ${current.query_count} (queries.yaml changed; re-run --update-baseline and commit)`);
+  }
   if (current.mean_recall_at_5 < baseline.mean_recall_at_5) {
     failures.push(`mean recall@5 regressed: ${baseline.mean_recall_at_5} -> ${current.mean_recall_at_5}`);
   }

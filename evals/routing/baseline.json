@@ -1,10 +1,12 @@
 {
   "generated_at": "2026-09-02",
   "corpus_source": "registry/generated/index.json",
-  "corpus_size": 173,
+  "corpus_size": 180,
   "query_count": 83,
   "gap_count": 13,
   "mean_recall_at_5": 1,
+  "mean_recall_at_1": 0.8072,
+  "mrr_at_5": 0.8888,
   "per_kind": {
     "skill": {
       "expected": 75,

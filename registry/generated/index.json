@@ -149,7 +149,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.0.0",
-      "content_hash": "bb6027177bb6f8d49b936ad76cb26775762218d65b06f642d74bb6073a6f46b3",
+      "content_hash": "49865fe398b9a359f672257fa6fa60e33d959c995a002882cadd79d5553fb452",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -196,8 +196,8 @@
     {
       "id": "reference/summer-folder",
       "kind": "reference",
-      "version": "1.0.0",
-      "content_hash": "32dd6c060d6c221c292522c3cd7e8aa049d87b869b7a986d17a57284106c5d6f",
+      "version": "1.0.1",
+      "content_hash": "ede82000ffc385112e6f4f4ffe30efdf00094622c6757136d01d0e702cda600c",
       "summary": "The canonical layout of the project-scoped .summer/ folder — GameSoul.md, art/audio bibles, build plan, memory, and locked state.",
       "use_when": [
         "authoring a skill that writes durable design output or project memory",
@@ -225,8 +225,8 @@
     {
       "id": "skill/3d-lighting",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "d6d2f28cc11bf659848dddeb171817dc7bd99f6f67c605920306cd5510bb43f0",
+      "version": "1.0.1",
+      "content_hash": "43b3da47ce7009b3e642ac97333d608883c35e593c60b82109c835970e42f54b",
       "summary": "Set up 3D scene lighting — DirectionalLight3D vs Omni vs Spot, WorldEnvironment, sky, shadow tuning, ambient — per current Summer conventions.",
       "use_when": [
         "setting up lighting in a Summer Engine 3D scene — adding lights, configuring WorldEnvironment, sky, or shadows"
@@ -252,13 +252,14 @@
           "skill/scene-scripting"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/adaptive-music",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "ce08be52e2f255a4b289a17f6c3750659a437102b0aa81c7dab0a89b5c370bf0",
+      "version": "1.0.1",
+      "content_hash": "31525997ccc1a464ca8ae3782ca03c4e58f3c0a6f88e0c264bbc8336df26dbb5",
       "summary": "Wire music stems to game state — combat/explore/boss/tension crossfades on a shared bus, paired with a state machine and AudioBus structure.",
       "use_when": [
         "wiring music stems to game state — combat / explore / boss / tension crossfades on a shared bus",
@@ -285,7 +286,8 @@
           "skill/music-track"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/ambient-bed",
@@ -311,13 +313,14 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/animated-loop",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "2695052bdcbd38512350d312d66dbac59fe7b0356023158bdde5a6be7c2cc618",
+      "version": "1.0.1",
+      "content_hash": "53dc3937d5c21fb5db6ad0e79b6bc0ee63d9b0ca12f546e2f7aaeb572735d628",
       "summary": "Generate a short seamlessly-looping video clip — splash background, animated logo backdrop, idle title-screen footage — wired as a looping VideoStreamPlayer.",
       "use_when": [
         "generating a short looping video clip — splash screen background, animated logo backdrop, idle title-screen footage, looping environment ambience"
@@ -338,13 +341,14 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/animation-tree",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "0c9a0d77ee5fe66541fede657c33481f766e0e06bc77e52215c8297dcf3a1492",
+      "version": "1.0.1",
+      "content_hash": "32185fbbf324502565cc15cc43ff73ef084126a6cd68f6e6f69624e2f36d2333",
       "summary": "Design and wire AnimationTree state machines and blend trees so clips respond to gameplay — locomotion blends, attack interrupts, hit reactions.",
       "use_when": [
         "the character has clips that must play in response to gameplay — idle/walk/run blends, attacks that interrupt locomotion, hit reactions",
@@ -377,13 +381,14 @@
           "skill/fps-controller"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/art-direction",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "69078fbf6d0cf0c724a4284ab056699ff5cc906e31ced8b008a687888e14bbdf",
+      "version": "1.0.2",
+      "content_hash": "ff2c24ab80cfa8b2ca435778a4f2b673a8d224a73e8abe926e611d5910d0c33e",
       "summary": "Define the game's visual style — references, palette, mood, lighting plan, post-processing, do/don't list — output as an art bible at .summer/art-bible.md.",
       "use_when": [
         "defining the visual style of the game — references, palette, mood, lighting plan, post-processing",
@@ -412,13 +417,14 @@
           "skill/brainstorm-game"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/asset-strategy",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "7ccae1c6119643a2d04987141668c3739453d045b14a9030a37b89289c934ac6",
+      "version": "1.0.1",
+      "content_hash": "fe0cff67c294fe96847292582b909efe39a988c8107ded24d1615111c4550824",
       "summary": "Route any 'I need a [thing]' asset request to the right specialist skill — disambiguates 2D / 3D / audio / video / VFX / animation pipelines.",
       "use_when": [
         "planning asset creation, picking an asset pipeline, or routing an 'I need a [thing]' request to the right specialist skill",
@@ -478,13 +484,14 @@
           "skill/vfx-water-ripple"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/audio-direction",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "99181e367a7dd89511deceb59a50f8cdb7d18097aafc9f1e5771ffedc8adc812",
+      "version": "1.0.1",
+      "content_hash": "f7f0a5bb0dfb0b89a3285ed6a40a4483536619bebd1d66d428d255ccb85f5fd3",
       "summary": "Define the game's sonic identity — music style, instruments, SFX vocabulary, dynamic music plan — output as an audio bible at .summer/audio-bible.md.",
       "use_when": [
         "defining the sonic identity — music style, instruments, SFX vocabulary, dynamic music plan"
@@ -510,7 +517,8 @@
           "skill/brainstorm-game"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/auto-fire-targeting",
@@ -537,13 +545,14 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/brainstorm-game",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "6ae18b15acfa2ac98fea330379c7e5f11d8486e4bce5501db05e55293959a296",
+      "version": "1.0.1",
+      "content_hash": "e38819c7e7ac1593462cca3305247b489e14a4fc9bbb1ac291dde7d40b1bdd80",
       "summary": "Turn a vague idea into a buildable plan — genre, scope, core loop, mechanics, art direction — written as a 1-page brief to .summer/GameSoul.md.",
       "use_when": [
         "the user wants help deciding what game to make, scoping a new project, or turning a vague idea into a buildable plan"
@@ -572,13 +581,14 @@
           "skill/make-game"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/brainstorming",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "9eb0f74e83eb1eb7c659516b31ae2034122eed1cec5b29b55267fab74a596d97",
+      "version": "1.0.1",
+      "content_hash": "c1288ff10270aa228b67ef056a0dda31e5ad93c471c27b04a80f893371bbb817",
       "summary": "Explore user intent, requirements, and design before implementation — must run before any creative work: features, components, mechanics, behavior.",
       "use_when": [
         "starting creative work — designing a game, picking a mechanic, building features or components, modifying behavior"
@@ -597,13 +607,14 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/browse-templates",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "97cc329bb1efd74f62056922de7abb45d360a3b2e7fb8f5c7b1f3418133f6090",
+      "version": "1.0.2",
+      "content_hash": "fbf39537e47a7a6168428b11e73ca93d440c3e1618d1279300d884c2d97eb8d0",
       "summary": "List available Summer Engine project templates, present the choices, and create a project from the chosen one via summer create.",
       "use_when": [
         "the user wants to see available Summer Engine project templates, start from an existing template, or asks what templates exist"
@@ -623,13 +634,14 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/character-animation-wiring",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "b15424f9c3c09f87d222fab90bb3ceb4cb41223a0debdf45a34083209f334850",
+      "version": "1.0.1",
+      "content_hash": "2315e29f6f88ace851bce527cc5198b36e670313c7809702d758a6a6bad424a4",
       "summary": "Wire a rigged, animated character end to end — inspect real clips and bones, locomotion state machine, method-track events, poses, blend shapes, root motion.",
       "use_when": [
         "a rigged GLB or Meshy rig with generated clips is in the scene and needs idle/walk/run wiring with blend times",
@@ -669,13 +681,14 @@
           "skill/verifying-scenes"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/character-model",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "4acfd1b5935ae08bf16bea9177371bba51408b96e9722b0afd7216643ac2b624",
+      "version": "1.0.1",
+      "content_hash": "639d1f8a5c4db102db2adcbef23d3e9ae292b42cbfdd5bb133519b46adbd045b",
       "summary": "Generate a rigged humanoid — player, NPC, enemy, boss — via T-pose reference, user-gated preview, and Meshy auto-rig, wired as CharacterBody3D or Node3D.",
       "use_when": [
         "generating a humanoid character ready for animation — player avatar, NPC, enemy, boss, companion",
@@ -710,13 +723,14 @@
           "skill/fps-controller"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/character-portrait",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "d1306963774b1e22ea12249ec419e6b9d89bbc0d865a7b96cde1884e9b4edeff",
+      "version": "1.0.1",
+      "content_hash": "252896318e3a9587471810cdb3f17420654f513b273214b26efaee43ea9ebd58",
       "summary": "Generate a single polished character bust for dialogue UI, character select, lore cards, or codex entries. One character, locked composition, VN-style.",
       "use_when": [
         "generating a single polished bust/portrait of a character for dialogue UI, character-select screens, lore cards, or codex entries"
@@ -744,13 +758,14 @@
           "skill/asset-strategy"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/cinematic-cutscene",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "30ae9a3f4ae58d9735059e5f63fa9e8c2147355b37b5e4ef43d6b0314d3c599d",
+      "version": "1.0.1",
+      "content_hash": "22ccff28fcadce4cff4c8cd158a3b0d3d597bcb88ec2d3cd165a3e67b527e50e",
       "summary": "Generate a non-interactive cutscene — reference-locked look, a 5-10s image-to-video shot, optional TTS dialogue — wired as a fading VideoStreamPlayer.",
       "use_when": [
         "generating a non-interactive cutscene clip — opening scene, story beat, character intro, ending"
@@ -777,13 +792,14 @@
           "skill/concept-art"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/concept-art",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "14ff3a676d772469f188c92923f6cfa01399479b3bf6e5e6bb8410fed25c93b9",
+      "version": "1.0.1",
+      "content_hash": "5508834dcd0648f861192eab34000e3ce83f6bdc251adb0a86a166c41de0c20b",
       "summary": "Explore art direction with 3-4 rough concept variants of a character, environment, or prop to pick a vibe before committing to a final asset.",
       "use_when": [
         "exploring art direction with rough variants before committing to a final asset",
@@ -814,13 +830,14 @@
           "skill/asset-strategy"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/create-asset-sheet",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "b6376001c7647186ac2af912dc89efb98db57fc887b03e6c4083d06d3add1a5c",
+      "version": "1.0.1",
+      "content_hash": "099730f765ca9ee13c80461645cb49544028b726b5b27bf005198d5508a56df6",
       "summary": "Generate a pack of 2D game assets from one prompt — tile sheet, UI kit, character pack, or biome set — sliced, classified, and saved as one pack ArtAsset.",
       "use_when": [
         "generating a pack of 2D game assets from a single prompt — a tile sheet, UI kit, menu screen, character pack, or biome set"
@@ -852,13 +869,14 @@
           "skill/design-level"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/debug",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "dcf79fe56c052767251d827d3eeaea08bfdd85e4ad4847a60f8408ea13f753b3",
+      "version": "1.0.2",
+      "content_hash": "f01e6ab3d87107634ec76178e8246af2266baafdf83a39f1a34e3ebd29bb4ca6",
       "summary": "Disciplined bug/crash/error loop for Summer projects — script errors, console, debugger, hypothesis, fix, verify — before making code or scene changes.",
       "use_when": [
         "the user reports a bug, crash, error, or unexpected behavior in a Summer project, before making code or scene changes",
@@ -888,13 +906,14 @@
           "skill/gdscript-patterns"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/debugging-game-feel",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "e429a17787744ff8c85168467578dfc8632061663ede66231792629ce72c37a1",
+      "version": "1.0.1",
+      "content_hash": "f6d0fbca4773c18b37198d5a2b7f1f5b62e2db0e55637720658465b85069a1f5",
       "summary": "Debug features that work but feel wrong — floaty jumps, mushy combat, sluggish camera — subjective bugs living in tuning, timing, and feedback layers.",
       "use_when": [
         "a gameplay feature works correctly but feels wrong — floaty jumps, mushy combat, sluggish camera, weightless impacts"
@@ -913,13 +932,14 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/design-level",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "90f4a3b81b9ddb2df5de7049e1fef51ef9be8d6cd9657db4635b7d7107976e46",
+      "version": "1.0.1",
+      "content_hash": "5db724d7683ee06d5f8f5d3fe83de1b6fd1925bdbee884b4e18613061de5e10c",
       "summary": "Design a single level — layout, pacing, encounters, secrets, reward gating — outputs a level design doc and a node-tree skeleton for summer_create_scene.",
       "use_when": [
         "designing a single level — layout, pacing, encounters, secrets, reward gating"
@@ -949,13 +969,14 @@
           "skill/brainstorm-game"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/design-mechanic",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "1c59976853b7ed3051ed9d0b2e3a87418814ab136eefcea2580811a29e14372b",
+      "version": "1.0.2",
+      "content_hash": "ad443ee5f52cc5a0d67925a95295b3714001f888d69aad07e93ffd014cfe21a6",
       "summary": "Design one game mechanic in detail — input, response, feedback, failure modes, depth, tunables — outputs a design doc, node-graph sketch, GDScript stub.",
       "use_when": [
         "designing one specific game mechanic in detail — input, response, feedback, failure modes, depth, tunables",
@@ -986,7 +1007,8 @@
           "skill/gdscript-patterns"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/design-npc",
@@ -1021,13 +1043,14 @@
           "skill/vfx-hit-spark"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/diagnosing-perf-regressions",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "6db88c2983bca19f822984b4f7b3ebeab6decbafa4dd6160aefd486bc6285d13",
+      "version": "1.0.1",
+      "content_hash": "057e9514b4891d76e1530c2e292380f0d150c4f83f6d41f6c2a086d31cadab2e",
       "summary": "Find why frame rate, frame time, or load time got worse since a known-good state — regression hunting, not general performance tuning.",
       "use_when": [
         "frame rate, frame time, or load time has gotten worse since a known-good state — 'it used to run at 60, now it's at 30'"
@@ -1046,13 +1069,14 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/dispatching-parallel-agents",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "78d49494eb467ed171cb87afb30f4cbc4e8c0ab76b6008660ddde0bf54ba58b7",
+      "version": "1.0.1",
+      "content_hash": "95ec86b8a310ce4f5ba48bdc64cebbf00ed2eb3d4ef0832782106d1cb29aac89",
       "summary": "Work 2+ independent tasks in parallel when they share no state and have no sequential dependencies.",
       "use_when": [
         "facing 2+ independent tasks that can be worked on without shared state or sequential dependencies"
@@ -1071,13 +1095,14 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/environment-kit",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "cab30efb6050600df49e355f99fb6094d40b351b168240402b569d77d3565a0f",
+      "version": "1.0.1",
+      "content_hash": "a4196e0f7ac35ec1d185dc19cef12bc6a760b2f95b902f5250097ec1af7327a6",
       "summary": "Generate a modular environment kit — wall pieces, floor tiles, pillars, doors, arches, corners — snap-together meshes sharing one visual style.",
       "use_when": [
         "generating a modular environment kit of snap-together pieces that form a level — dungeon kit, modular walls, interior pieces"
@@ -1105,13 +1130,14 @@
           "skill/asset-strategy"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/export-and-ship",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "6626058540cf1bc2cba56489dfb53e6948d4174896641f01b0d8016b3120370e",
+      "version": "1.0.2",
+      "content_hash": "b3dc70b0d3b3ef613d96e469484cde91dae76c3f8be6c80950735e9233549dcd",
       "summary": "Assess and prepare a game export: inventory installed templates and targets, validate release assets and config, produce supported builds after approval.",
       "use_when": [
         "the user wants to assess or prepare a Summer game export — Steam, itch, HTML5, iOS, Android targets as available in the installed build",
@@ -1137,13 +1163,14 @@
           "skill/tune-performance"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/facial-and-lipsync",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "a3ce26e827a7be4a04494945ba6ac11132cdc6b9f04ab4c4cff3182c074c633b",
+      "version": "1.0.1",
+      "content_hash": "1f8242491ff3d09bf223e34c748d4d61cc407ade497046ada1d3ca4e7675ccd8",
       "summary": "Make a character's mouth move with a voice-over — phoneme extraction from audio, viseme blendshape mapping, and emotional facial expressions.",
       "use_when": [
         "the user has (or wants) a voice-over and needs the character's mouth to move with the words",
@@ -1174,7 +1201,8 @@
           "skill/procedural-animation"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/fps-controller",
@@ -1206,13 +1234,14 @@
           "template/3d-fps-old-school"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/game-feel",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "a7951de322241695443fa2377e0b1967c5ef4a29ced426875302b44fadb7b5d4",
+      "version": "1.0.1",
+      "content_hash": "790976a313ea0916aef15a97fdbe4316a541922447822247482423982efb17d9",
       "summary": "Add juice: hit-flash, trauma-based camera shake, and audio ducking wired so one hit fires all three — for games that feel flat or lack impact.",
       "use_when": [
         "a Summer game feels flat, lacks impact, needs juice or punch",
@@ -1238,7 +1267,8 @@
           "skill/audio-direction"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/gameskill",
@@ -1264,7 +1294,8 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/gdscript-patterns",
@@ -1290,13 +1321,14 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/generate-motion",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "7960b85c563e2a45f72487e90c9600c28b8200bc449350d70ae338467557b2fa",
+      "version": "1.0.1",
+      "content_hash": "d56f7cf7c3a23c1df0a36ffd4260821cc0974776d8c6017ad96cf00114986488",
       "summary": "Attach an animation clip to a rigged character from the curated Meshy motion library — idle, walk, run, attack — wired via AnimationPlayer.",
       "use_when": [
         "the user needs an animation clip on a rigged character — idle/walk/run/attack from the curated Meshy library"
@@ -1329,13 +1361,14 @@
           "skill/fps-controller"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/headless-scripting",
       "kind": "skill",
-      "version": "1.1.0",
-      "content_hash": "db56b49d85d36d5828aae12b3cbd9036836554ab8b579285ea3c3e0229d4e2b0",
+      "version": "1.1.1",
+      "content_hash": "decb3dc321eae5dac5a4b7437e682c4164f5b5566d0749d8e24e139e67076c8b",
       "summary": "Run a GDScript file against Summer Engine from the shell for operations no MCP tool exposes — navmesh baking, collision shapes, TileSets, re-imports.",
       "use_when": [
         "a Summer project needs an operation no MCP tool exposes — baking a navmesh, generating collision shapes, authoring an Animation, building a TileSet, re-importing assets",
@@ -1355,7 +1388,8 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/host-authoritative-state",
@@ -1388,13 +1422,14 @@
           "skill/setup-multiplayer"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/instantiate-asset-pack",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "c69ea3b7d0dc49944ed4df61d77468898e15689e06d62bd8c4aeeb66cc60af20",
+      "version": "1.0.1",
+      "content_hash": "46f1c1c421d1045cd3576954fb8b85fc3fd1eb934a79d955a4239cff6a5620eb",
       "summary": "Import a whole create-asset-sheet pack into the scene: groups composites, sorts paint order, emits Sprite2D/Node2D/NinePatchRect ops to lay it out.",
       "use_when": [
         "importing or spawning an entire asset pack (multi-slice ArtAsset from create-asset-sheet) into the current scene"
@@ -1421,13 +1456,14 @@
           "skill/use-widget-asset"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/investigating-bugs",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "1eabf83677257727b049da4b309f8d72e84936383bc63165e8ff67dcf3455834",
+      "version": "1.0.2",
+      "content_hash": "72e3b2df586a443bc46a453511500065e6401fe22159069479a47d92ee6b729f",
       "summary": "Systematic investigation of any bug, test failure, or unexpected behavior before proposing fixes.",
       "use_when": [
         "encountering any bug, test failure, or unexpected behavior, before proposing fixes",
@@ -1448,13 +1484,14 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/make-game",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "b9ce2c6bdbebfc8f056769616c698b26bc7693ddcbc2458d42723090e73d8631",
+      "version": "1.0.1",
+      "content_hash": "90d1a28d8bdc31d2ce80ec0a18bc2d23d6743e4ad63824ab598344a18a6b464b",
       "summary": "Orchestration spine for 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship — delegates to specialist skills.",
       "use_when": [
         "the user says 'make me a game', 'build me a game', 'I want to make a [genre] game', or 'let's build something' — running the full game-dev pipeline"
@@ -1488,13 +1525,14 @@
           "skill/scene-composition"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/mcpupdate",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "2b8da9d60289fea202ebaeb03f1ce843c0824cd67d228ec7945d3c0571e4212f",
+      "version": "1.0.1",
+      "content_hash": "d2c1b8f52277dcd36e25af10ce2dfdb8af9bf9d524b1f340282cd6e64105f053",
       "summary": "Improve the Summer CLI, its MCP tools, or its skills from a real working session — capture what worked, fix prompts where an agent went down a bad path.",
       "use_when": [
         "improving or maintaining the Summer Engine CLI, its MCP tools (summer_*), or its prompt-engineering skills based on a real working session"
@@ -1519,7 +1557,8 @@
           "skill/skill-create"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/music-track",
@@ -1551,13 +1590,14 @@
           "skill/audio-direction"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/new-project",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "d43e346cb0b3e0202ce6cf841374e5d42f1defacd55c1f4e4fe0cee26cc1f264",
+      "version": "1.0.1",
+      "content_hash": "b5322f0f250a6d8572645dfc23cd0e9ae7ca2030c07563e5d7041fb5187b7834",
       "summary": "Create a fresh blank Summer Engine project — asks one question (project name) and runs summer create empty.",
       "use_when": [
         "the user wants a fresh blank Summer Engine project — from scratch, blank canvas"
@@ -1577,13 +1617,14 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/organic-model",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "6bf5c85547fb7bbfc0f2fac5ffe19253a4298382153a8fa29b35b55f109915e9",
+      "version": "1.0.1",
+      "content_hash": "c8383c7db9a1610a547cf68271c05341a366de7230fd00bde5a3421970e027a7",
       "summary": "Generate organic 3D shapes — trees, rocks, mushrooms, coral, plants, vines, crystals — where AI artifacts read as natural irregularity.",
       "use_when": [
         "generating organic shapes — trees, rocks, mushrooms, coral, bushes, alien plants, vines, crystals, fruit, bones"
@@ -1614,13 +1655,14 @@
           "skill/ambient-bed"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/peer-to-peer-multiplayer",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "e49b1683de14be3379117a0aabb2e2603bc627a2d318577fd650f86ad2017e7d",
+      "version": "1.0.2",
+      "content_hash": "95b9193d9292541fe175665666d22eddbd391ad63f579c9a74a2ecb44c447897",
       "summary": "Start a multiplayer game from scratch with peer-to-peer host authority — network architecture built top-down, before writing game logic.",
       "use_when": [
         "starting a multiplayer Summer game from scratch with peer-to-peer host authority, before writing game logic",
@@ -1648,13 +1690,14 @@
           "skill/setup-multiplayer"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/pixel-art",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "3bb320afad0e78efe0c6f40ae005b13e46835e32f0d88f050cc204cae8d663a7",
+      "version": "1.0.1",
+      "content_hash": "49b4cbbc1c10bdfe996a1715667e24e98b0be0e84596856c7fbb8869260bba06",
       "summary": "Generate pixel-art assets — sprites, items, tiles, portraits — at a specific resolution with pixel-perfect grid, limited palette, retro feel.",
       "use_when": [
         "generating pixel-art assets — sprites, items, tiles, portraits — in a pixel style at a specific resolution (32x32, 64x64, 128x128)"
@@ -1683,7 +1726,8 @@
           "skill/asset-strategy"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/play",
@@ -1714,13 +1758,14 @@
           "skill/debug"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/playtesting-a-feature",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "0735f335b8afba77d7b051431aa25062f2c6c868f58dacaf3f4064ab7db49f38",
+      "version": "1.0.1",
+      "content_hash": "180a3d4dcd684293e7f1beb7ab1a5e3510b2d4c97465da03d2fc2700541b42ad",
       "summary": "Before claiming a gameplay feature done: actually run the game and walk through the feature. Static diagnostics and type checks do not count.",
       "use_when": [
         "about to claim a gameplay feature is done, shipped, or working — requires actually running the game and walking through the feature first"
@@ -1739,13 +1784,14 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/procedural-animation",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "d7ed486a470627f24399ec64a873c5e8f40d9dcb3c1289c72367c31198e91775",
+      "version": "1.0.2",
+      "content_hash": "6c8cbdfdff887fe6a56d07f2f0964e40cc1cad5a138270b303acfd88a3ff9fb1",
       "summary": "Runtime bone modification on top of clips — head look-at, foot IK, hand-grabs-prop, additive lean, recoil. Code-and-modifier patterns, not generation.",
       "use_when": [
         "the user needs runtime-driven bone modification on top of clips — head look-at, foot IK on uneven ground, additive lean, hit recoil, ragdoll",
@@ -1777,13 +1823,14 @@
           "skill/fps-controller"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/prop-model",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "69d2e21fe20c61b6bc8dbd5802213d72cb579e55c1a7f4a5f72ce6e473a83b5c",
+      "version": "1.0.1",
+      "content_hash": "93eb30f14b3cadc2af4bc1f4af2374d5c47fd7fd2b323390968d54247181fe23",
       "summary": "Generate a single static 3D prop — sword, barrel, chest, lantern, throne, statue — one isolated object, no rigging, wired as a MeshInstance3D.",
       "use_when": [
         "generating a single static 3D prop — sword, barrel, chest, lantern, throne, statue, crate, key, potion, banner"
@@ -1813,13 +1860,14 @@
           "skill/asset-strategy"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/remote-deploy",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "5a27c27ceb89f5fa39d9a6b1a30c69c155c2cc3fc2a7c781f83471624c2effb0",
+      "version": "1.0.1",
+      "content_hash": "0a9f4c74755a5a3567293d8533748ad343872f34b2d654e591c90fb1c286988b",
       "summary": "Run or test the game on a real device — phone, tablet, another computer — via the Remote Deploy button, runnable export presets, and on-device debugging.",
       "use_when": [
         "the user wants to run or test the game on a real target instead of the editor — a phone, tablet, or another computer",
@@ -1839,13 +1887,14 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/retarget",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "3a11fca0631caefb494c43ff25a8ae365e0bc73d79cdf16846aeefda8e096385",
+      "version": "1.0.1",
+      "content_hash": "4ee5701a0ab2cd6a92edfedfc854f2497121f671dfaba6c61ec4fe6ec99a7c31",
       "summary": "Apply existing animation clips from one rigged character to a different rigged character — same library, multiple models, no regeneration.",
       "use_when": [
         "applying existing animation clips from one rigged character to a different rigged character — sharing one animation library across models"
@@ -1877,13 +1926,14 @@
           "skill/asset-strategy"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/running-in-the-cloud",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "d23f103bf7fcd0e7f93c519a8a58bb3006a18f98e924f271d9e4048c89f3d8b6",
+      "version": "1.0.3",
+      "content_hash": "b2d2371114fb0831cd2d9d2ca36988588bd7dac9893f48538372eca83636e6f6",
       "summary": "Run Summer Engine on a Linux box with no display — install it, launch headless, know when xvfb + software GL are needed, authenticate without a browser.",
       "use_when": [
         "Summer Engine runs in a cloud container, CI job, remote agent sandbox, or any Linux machine with no desktop",
@@ -1913,7 +1963,8 @@
           "skill/verification-before-completion"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/scene-composition",
@@ -1939,13 +1990,14 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/scene-scripting",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "3efa261ea0d82e94e79c40a77443b46efe1b496b859add7c838b9e00c8e7aaf7",
+      "version": "1.0.1",
+      "content_hash": "fab1ffb936fc0c3b4252e98e72d407b73c34a1a9fdbdd5db284a796142582c09",
       "summary": "Build or modify scenes with one GDScript run inside the live editor (summer_run_script) instead of long CRUD chains; verify with snapshot diff + screenshot.",
       "use_when": [
         "a scene change needs 3+ related ops or any computed placement — scattering, grids, rings, procedural meshes, geometry helpers, terrain, lighting rigs, keyframe animation, shader FX",
@@ -1986,13 +2038,14 @@
           "skill/verification-before-completion"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/scene-to-level",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "c2383d3f36c666b92e3d235bee270182d4e9d6b268c7582c9b28b5fa682a6a55",
+      "version": "1.0.1",
+      "content_hash": "c91621ac620a2333da395e20875f99c700ddcaa17cf68e2380035f8189c1850d",
       "summary": "Go from a scene reference image or concept art to a playable scene — orchestrates concept, asset pack, terrain, composition, and scene assembly.",
       "use_when": [
         "going from a scene reference image or concept art to a playable Summer Engine scene populated with the right assets and terrain"
@@ -2025,7 +2078,8 @@
           "skill/design-level"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/setup-multiplayer",
@@ -2058,13 +2112,14 @@
           "skill/host-authoritative-state"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/skill-create",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "ae04a962592726a41e5730204eeb2751462638bf10352ed5b82cc45f25065eee",
+      "version": "1.0.1",
+      "content_hash": "d7dee99566622509c4f702825d4ddd7ed5d6013c85d306fbdde487392760901f",
       "summary": "Bootstrap a new Summer library skill — canonical folder structure, frontmatter, and stub sections.",
       "use_when": [
         "a contributor wants to add a new skill to the Summer library"
@@ -2089,13 +2144,14 @@
           "skill/skill-test"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/skill-improve",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "6b94753d56b315513c930a61e424050b27b985110a8b6a343acd904f908751ec",
+      "version": "1.0.1",
+      "content_hash": "05e17aea4fcbc5c970b63902022f17c875d18223348bdeb1c12053a1c433ebd0",
       "summary": "Upgrade an underperforming Summer skill — run it against a behavioral spec with and without changes via a parallel-eval harness; ship the winner.",
       "use_when": [
         "a contributor wants to upgrade a Summer skill that is underperforming or to fix a regression"
@@ -2120,13 +2176,14 @@
           "skill/skill-test"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/skill-test",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "7d379f26db21a3a9486b9837a449d0080590c200e7b4701d98a18855cf323403",
+      "version": "1.0.1",
+      "content_hash": "d78840e114260ac0680a202d62d53f4f4ed0caad09d35c3b493d2c779f362866",
       "summary": "Lint a Summer skill before commit, audit the whole library, or check a behavioral spec assertion — static structural rules plus behavioral specs.",
       "use_when": [
         "a contributor wants to lint a Summer skill before commit, audit the whole library, or check a behavioral spec assertion"
@@ -2146,13 +2203,14 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/skybox-panorama",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "19be4efd53d45047feb83a3d833d80f8363195bec9c488d28ea8c74a578d3739",
+      "version": "1.0.1",
+      "content_hash": "f3e967bfc352bd0aba623246414d8a2cb9bfa1d5d555befaba7337f8e34b9483",
       "summary": "Generate a 360-degree equirectangular sky panorama and wire it as a PanoramaSkyMaterial Sky resource on WorldEnvironment in a 3D scene.",
       "use_when": [
         "generating a 360-degree panoramic sky image for use as a Sky resource (PanoramaSkyMaterial) in a 3D scene"
@@ -2179,13 +2237,14 @@
           "skill/asset-strategy"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/sound-effect",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "1b15ed1b59cc8eee9a61f5dc0dbadc0ada628881fab19be0b7fd50f60e0e42b2",
+      "version": "1.0.1",
+      "content_hash": "36481629a754910693cebe1b90d81519c68c1e38efcfc43e370041c072f617a1",
       "summary": "Generate short SFX one-shots — footsteps, weapon swings, UI clicks, hit impacts — wired as AudioStreamPlayer/2D/3D that auto-frees on finished.",
       "use_when": [
         "generating short SFX one-shots — footsteps, weapon swings, UI clicks, hit impacts, environmental cues"
@@ -2210,13 +2269,14 @@
           "skill/audio-direction"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/sprite-sheet",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "23eabef484d0a2070359fdd8a4f0a0e79ad60ae8b9a9972969900b39e455674d",
+      "version": "1.0.1",
+      "content_hash": "b490cf99e172acfad2cdd84bbbd0c00ddfbe36e09466f61fa784b6736860d007",
       "summary": "Generate animated 2D character sprites laid out as a sprite sheet — walk cycle, attack, idle, death — wired into AnimatedSprite2D / SpriteFrames.",
       "use_when": [
         "generating animated 2D character sprites laid out as a grid of frames — walk cycle, attack frames, idle bob, death sequence"
@@ -2245,13 +2305,14 @@
           "skill/sound-effect"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/tileable-texture",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "d4613001b0dbfd4841411e1e3da71082362874daee6f2d06996e35edb152adcd",
+      "version": "1.0.1",
+      "content_hash": "e3b69d760bb0b814800783234a72a56af6ec5023a0ce2352bdc1488de5070fed",
       "summary": "Generate a seamless tileable texture for walls, floors, or terrain — repeats cleanly on all four edges, wired as a StandardMaterial3D albedo.",
       "use_when": [
         "generating a seamless tileable texture for walls, floors, terrain, or ceilings — a square tile that repeats cleanly on all four edges"
@@ -2280,13 +2341,14 @@
           "skill/asset-strategy"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/trailer-shot",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "423c816a555b57aec416326bf1ffd7ea4d7fb9ee12673313673e212966920889",
+      "version": "1.0.1",
+      "content_hash": "599c5b9338996b26a65454a5da37b484fba7b0cc5f9a69b704c6cadee936c03c",
       "summary": "Generate marketing or trailer footage — slow-mo combat, establishing shots, hero beats, splash screens, pitch-deck B-roll — max punch in 5-10 seconds.",
       "use_when": [
         "generating marketing or trailer footage — slow-mo combat, dramatic establishing shots, hero beats, splash screens, pitch-deck B-roll"
@@ -2307,13 +2369,14 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/tune-performance",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "93c49391f831f4add82e2e95f726a5a92c62d15d3358684d6d077c28b4d798ca",
+      "version": "1.0.1",
+      "content_hash": "e9241fdd2e7d7483ce4f6ef01d954667625ac2065a562d9805bf4705a0150253",
       "summary": "Profile a slow game via summer_get_diagnostics, identify rendering/physics/scripting hotspots, propose fixes with before/after metric expectations.",
       "use_when": [
         "the game is slow, drops framerate, stutters, takes forever to start, or runs poorly on specific hardware"
@@ -2342,7 +2405,8 @@
           "skill/diagnosing-perf-regressions"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/ui-basics",
@@ -2369,13 +2433,14 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/ui-graphics",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "e8e03021d04673ae26ff452c18ffef2400db03f2d4b0ceb4c273cdcf772020d8",
+      "version": "1.0.1",
+      "content_hash": "230ec24bfe67aa824b473d1047f94b5f213f74826bb632a85c8de629de0600ac",
       "summary": "Generate game-UI elements — icons, buttons, panels, frames, HUD widgets, badges — flat design, transparent background, wired via TextureRect/NinePatchRect.",
       "use_when": [
         "generating UI elements — icons, buttons, panels, frames, HUD widgets, badges — in flat-design, transparent-background game-UI style"
@@ -2403,13 +2468,14 @@
           "skill/asset-strategy"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/use-widget-asset",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "194d9bae814d00c692cf434b473bb16254030ab23339cbe3d0318caca5845909",
+      "version": "1.0.1",
+      "content_hash": "52034101298ec2ff9c82a84f8afb6674b430c40a96c462e1e528f7bab47304e3",
       "summary": "Wire a widget slice from a create-asset-sheet pack (panel, button, slider, bar, toggle) into NinePatchRect, TextureProgressBar, or TextureRect via sliceMeta.",
       "use_when": [
         "consuming a widget slice (panel, button, slider, progress bar, toggle pair) from a create-asset-sheet pack so it behaves like a real UI control"
@@ -2438,13 +2504,14 @@
           "skill/tileable-texture"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/using-summer",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "fbd08872f8a480a00e89444e0edc2feeb6993ac90232cfa58652b742ff643764",
+      "version": "1.0.2",
+      "content_hash": "89e2eaa2c143dd64082b6c1235d955714a848dec28a6c0a62ca46585fe3c08e1",
       "summary": "Session bootstrap for Summer projects — establishes how to find and use Summer skills and the summer-engine MCP before any response.",
       "use_when": [
         "starting any conversation in a Summer Engine project"
@@ -2479,13 +2546,14 @@
           "skill/gdscript-patterns"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/vehicle-model",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "cbc19610320f70239fca47268238d03caa79548ccf911a1ec2c3a7917a508ed4",
+      "version": "1.0.1",
+      "content_hash": "3f2c171bd6774ac6b2e78fffb46dfd6fcc4ae401722850dad556809acedd6b71",
       "summary": "Generate a hard-surface vehicle — car, spaceship, mech, boat, tank — static mesh with optional detail-texture pass, wired as Vehicle3D or MeshInstance3D.",
       "use_when": [
         "generating a hard-surface vehicle — car, motorcycle, spaceship, hover bike, boat, mech, tank, helicopter"
@@ -2517,13 +2585,14 @@
           "skill/sound-effect"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/verification-before-completion",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "e687285d4e12e00640cc58409e5ba500d7fbdbb05c8eeee7e1bce9c569014085",
+      "version": "1.0.1",
+      "content_hash": "b01ecc8174b27078a7a9959c72176e32a1487cab83f6e0fd7bd8252cd13429fa",
       "summary": "Run verification commands and confirm output before claiming work complete, fixed, or passing — evidence before assertions, always.",
       "use_when": [
         "about to claim work is complete, fixed, or passing, before committing or creating PRs"
@@ -2542,13 +2611,14 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/verifying-scenes",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "f41f37ec5cd9551fcbd941487b2e533141394b733b9d817e715215666a16a59a",
+      "version": "1.0.1",
+      "content_hash": "36b328fedaba9bcf2d9e25784dc85070635d5ca739b3543d44bfb40874e63767",
       "summary": "Prove scene work landed — snapshot before, diff + screenshot after, live runtime reads during playtests — before claiming any visual or structural result.",
       "use_when": [
         "after any mutation batch, asset import, or lighting change, before claiming it worked",
@@ -2585,13 +2655,14 @@
           "skill/verification-before-completion"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/vfx-dissolve",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "92bae34a867c478d3ab68d1fa762dc40711ee2b3b2eb0e8b7b57f365f6624f21",
+      "version": "1.0.1",
+      "content_hash": "0ab1a699df214634db02b73a2c366a718313870488b2b3c9453cfa74c24ef404",
       "summary": "Dissolve effect — a mesh disintegrating with a glowing burning edge, driven by a noise-threshold ShaderMaterial overriding the target's material.",
       "use_when": [
         "authoring a dissolve effect — an object disintegrating with a glowing burning edge (disintegrate, burn away, vanish into ash)"
@@ -2621,13 +2692,14 @@
           "skill/vfx-smoke"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/vfx-fire",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "05e1cecb723b187774d7a2c669798ce08013c2c7dfbb74274930cb335c19058e",
+      "version": "1.0.1",
+      "content_hash": "2f0ba364cf469c8e4103025827770a9d7cb18e78cbd705e5da7ac1850a9bfdf9",
       "summary": "Fire effect — animated flames built with a particle shader, GPUParticles3D, and a noise-based color ramp — torches, campfires, candles.",
       "use_when": [
         "authoring a fire visual effect — torch, campfire, bonfire, flame, burning object, candle"
@@ -2659,13 +2731,14 @@
           "skill/vfx-smoke"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/vfx-hit-spark",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "cb6d06ab3fbc546026dca4e03888a07d8f644f524466797dc6d81e8c7e6f4524",
+      "version": "1.0.1",
+      "content_hash": "23845124d8bf40df25914b1d9518a2fffcb1320edf014bad8292f9113b697f47",
       "summary": "Hit-spark effect — a one-shot burst of additive billboard particles oriented to a surface normal, fired on impact.",
       "use_when": [
         "authoring a hit-spark effect — impact spark, bullet hit, sword clash, ricochet, sparks at a hit point"
@@ -2696,13 +2769,14 @@
           "skill/vfx-water-ripple"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/vfx-lightning",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "e38722f7241a3fdcee28c186ddcb3f7cf9d9fc64f2aab075def554d48bc252ff",
+      "version": "1.0.1",
+      "content_hash": "5ffa291b7091b37490b163226560615c014e016cdc0c4335661eb9fccf1635b0",
       "summary": "Lightning bolt effect — procedural jagged path drawn via ImmediateMesh, glow shader, sparks at endpoints, screen shake.",
       "use_when": [
         "authoring a lightning bolt effect — chain lightning, electric attack, tesla coil, shock spell, energy beam"
@@ -2732,13 +2806,14 @@
           "skill/vfx-muzzle-flash"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/vfx-magic-glow",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "5a06ee235b5f7f43023105f3f66e735f40c0fa3e9bcc45ee64a83e826d9f9d26",
+      "version": "1.0.1",
+      "content_hash": "94d8ae9391161675b0159a346f0df76b67e471d7e79d512d881ae63892337806",
       "summary": "Magic-glow effect — a pulsing OmniLight3D plus drifting additive motes plus optional emission shader on the source mesh.",
       "use_when": [
         "authoring a magic-glow effect — enchanted item, soul gem, pulsing aura, rune glow, magical orb, wisp"
@@ -2769,13 +2844,14 @@
           "skill/vfx-muzzle-flash"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/vfx-muzzle-flash",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "d92fe28eb9c8168955df75f3d20ca770c5d373712422eafeb19be7e0b6886ccf",
+      "version": "1.0.1",
+      "content_hash": "eb02786c2c3ef07535451ab607fed91369dd90965d83fe82526e7b14717d79c3",
       "summary": "Muzzle-flash effect — a one-shot ~80 ms burst at a gun barrel built with a particle one-shot or a flashing quad with a star-burst shader.",
       "use_when": [
         "authoring a muzzle-flash effect — gun fire, weapon flash, barrel flash, spell-cast burst at a hand"
@@ -2807,13 +2883,14 @@
           "skill/vfx-smoke"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/vfx-smoke",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "99a3769ee81a6b72ed561aa18bc00ff2c16aaf2fe6c44095a865adc2d9f42d42",
+      "version": "1.0.1",
+      "content_hash": "7169ba6c7fa1d384ef673ae99fb8d98ea248d7dc47232643fba330bf215ea3b8",
       "summary": "Smoke effect — a slow-rising column or puff of soft particles built with a noise + density falloff shader on a quad mesh, GPUParticles3D.",
       "use_when": [
         "authoring a smoke effect — smoke trail, puff, chimney smoke, steam, fog cloud, explosion smoke"
@@ -2842,13 +2919,14 @@
           "skill/vfx-lightning"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/vfx-water-ripple",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "a586f3574839cc2186fcfde9b3f51759326c429a09ae40d3052ec1a622cb6cca",
+      "version": "1.0.1",
+      "content_hash": "cf34b261ce4bcf96960dad557e6711ad52d4706f76e3351079c48b9a68b55c19",
       "summary": "Water-ripple effect — animated normal-distortion ripples on a water plane (or as a Decal) triggered by impacts.",
       "use_when": [
         "authoring a water-ripple effect — raindrop ripples, splash ripples, footstep in a puddle, fish jumps"
@@ -2876,7 +2954,8 @@
           "skill/vfx-smoke"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/voice-line",
@@ -2903,7 +2982,8 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": true
     },
     {
       "id": "skill/world-building-3d",
@@ -2953,13 +3033,14 @@
           "skill/scene-scripting"
         ]
       },
-      "status": "preview"
+      "status": "preview",
+      "recommended": true
     },
     {
       "id": "skill/writing-plans",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "b81e1057c22990cd9bdd0618cc084f0aa9f743fab5de76c50f193ae0c5af01c4",
+      "version": "1.0.1",
+      "content_hash": "a4ef9712f1a2407e306d20afad6e61bd7e71c00e22dae27db1ccacf9b73e22a5",
       "summary": "Turn a spec or requirements for a multi-step task into a written implementation plan before touching code.",
       "use_when": [
         "you have a spec or requirements for a multi-step task, before touching code"
@@ -2978,13 +3059,14 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/writing-skills",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "c8ce3bbb40b83f5c1f40fb9790dab2c8f718dabc629da54bbbd982937a8a7cf9",
+      "version": "1.0.1",
+      "content_hash": "c2bbe4cc3b90d85909c78fe4854daecc7141853acd7ecc9ac87c280cd192fdae",
       "summary": "Create, edit, and verify agent skills — format, structure, testing with subagents, and best practices.",
       "use_when": [
         "creating new skills, editing existing skills, or verifying skills work before deployment"
@@ -3008,7 +3090,8 @@
           "skill/debug"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "template/2d-brario-platformer",
@@ -3036,8 +3119,8 @@
     {
       "id": "template/2d-dungeon-roguelike",
       "kind": "template",
-      "version": "1.0.0",
-      "content_hash": "77f83dd4eecdeb23317774f984d695ac15604569768ec73149dbe1cf765e4dcf",
+      "version": "1.0.1",
+      "content_hash": "96b55b7829c101c597c34add6992824bad6d0cfd20f3379bb2049254611b148e",
       "summary": "Room-based dungeon-crawl roguelike starter — ASCII room tables, melee combat, procedural floors.",
       "use_when": [
         "starting a room-based dungeon crawler with procedural floors"
@@ -3055,7 +3138,7 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "preview"
     },
     {
       "id": "template/2d-grid-puzzle",
@@ -3177,8 +3260,8 @@
     {
       "id": "template/3d-basic",
       "kind": "template",
-      "version": "1.0.0",
-      "content_hash": "d3e995108937d71c1d4060e859dd398a21168c833478e11bf6f63db364c7624b",
+      "version": "1.1.0",
+      "content_hash": "68d69ef9253ff9a5cbeb42a831188a07772477072f0cfbafc9ddd2e9787eeefb",
       "summary": "Built-in: 3D scene with camera, light, and floor — generated locally by summer create, no download.",
       "use_when": [
         "starting a minimal 3D scene with camera, light, and floor already wired"
@@ -3437,8 +3520,8 @@
     {
       "id": "template/empty",
       "kind": "template",
-      "version": "1.0.0",
-      "content_hash": "7eb9941674a3781135fc7760bf64c2dbb9164f5f3722fa78adfc7f90654520fa",
+      "version": "1.1.0",
+      "content_hash": "7990c7a19b492576c68414ec7b46c56bc4e89879598d7e10ec18c98128cea420",
       "summary": "Built-in: empty 3D project with just a root node — generated locally by summer create, no download.",
       "use_when": [
         "starting from a completely blank project"
@@ -3477,7 +3560,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_add_node",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/align-distribute-3d",
@@ -3515,7 +3607,16 @@
           "skill/world-building-3d"
         ]
       },
-      "status": "preview"
+      "status": "preview",
+      "mcp_tool_name": "summer_align_distribute_3d",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/api-docs",
@@ -3550,16 +3651,25 @@
           "skill/gdscript-patterns"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_api_docs",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/batch",
       "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "a7d8910fb6e7e2824a5c0414983f56207e663bd547f2ddc40d164b62222b218c",
-      "summary": "Run multiple engine ops as one undo group, forwarded verbatim; also the path to raw ops with no dedicated tool.",
+      "version": "1.0.1",
+      "content_hash": "9bc4e7517b51191045fce2e9170934e1ee5bfc6e771b81bfc2ef99ff4f071594",
+      "summary": "Run multiple engine ops in one call, forwarded verbatim; one undo step unless single-only ops force a split (then one per chunk). Also reaches raw ops.",
       "use_when": [
-        "multi-node builds that should undo as one step",
+        "multi-node builds that should undo as one step (no single-only ops in the list)",
         "reaching engine ops that have no dedicated tool"
       ],
       "facets": {
@@ -3573,7 +3683,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_batch",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/camera-visibility",
@@ -3613,7 +3732,16 @@
           "skill/world-building-3d"
         ]
       },
-      "status": "preview"
+      "status": "preview",
+      "mcp_tool_name": "summer_camera_visibility",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/check-job",
@@ -3635,7 +3763,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_check_job",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/clear-console",
@@ -3657,7 +3794,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_clear_console",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/connect-signal",
@@ -3679,7 +3825,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_connect_signal",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/create-debug-report",
@@ -3702,7 +3857,17 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_create_debug_report",
+      "remote": false,
+      "cli_command": "summer debug",
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": true,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/create-scene",
@@ -3724,7 +3889,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_create_scene",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/creator-config",
@@ -3746,29 +3920,17 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
-    },
-    {
-      "id": "tool/creator-logs",
-      "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "bafe50ccd17cb167d604bea5c8efed094ee12bdd9fc5c3c36bb2cf300988d9f5",
-      "summary": "Read creator runtime logs for a project or release; returns the exact recovery action when a route or token scope is missing.",
-      "use_when": [
-        "investigating a live release's runtime behavior"
-      ],
-      "facets": {
-        "lifecycle": [
-          "launch"
-        ],
-        "domains": [
-          "creator"
-        ]
-      },
-      "compatibility": {
-        "engine": ">=4.6"
-      },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_creator_config",
+      "remote": true,
+      "cli_command": "summer config",
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/creator-publish",
@@ -3790,7 +3952,17 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_creator_publish",
+      "remote": true,
+      "cli_command": "summer publish",
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": true
+      }
     },
     {
       "id": "tool/creator-releases",
@@ -3812,7 +3984,17 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_creator_releases",
+      "remote": true,
+      "cli_command": "summer releases",
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/frame-camera",
@@ -3851,7 +4033,16 @@
           "skill/world-building-3d"
         ]
       },
-      "status": "preview"
+      "status": "preview",
+      "mcp_tool_name": "summer_frame_camera",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/generate-3d",
@@ -3873,7 +4064,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_generate_3d",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/generate-audio",
@@ -3895,7 +4095,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_generate_audio",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/generate-image",
@@ -3918,7 +4127,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_generate_image",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/generate-motion",
@@ -3940,7 +4158,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_generate_motion",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/generate-video",
@@ -3962,7 +4189,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_generate_video",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/get-agent-playbook",
@@ -3984,7 +4220,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_get_agent_playbook",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/get-asset",
@@ -4007,7 +4252,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_get_asset",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/get-asset-download-url",
@@ -4029,7 +4283,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_get_asset_download_url",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/get-console",
@@ -4051,7 +4314,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_get_console",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/get-debugger-errors",
@@ -4073,7 +4345,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_get_debugger_errors",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/get-debugger-warnings",
@@ -4095,7 +4376,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_get_debugger_warnings",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/get-diagnostics",
@@ -4118,7 +4408,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_get_diagnostics",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/get-project-context",
@@ -4141,7 +4440,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_get_project_context",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/get-runtime-tree",
@@ -4178,7 +4486,16 @@
           "skill/playtesting-a-feature"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_get_runtime_tree",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/get-scene-tree",
@@ -4200,7 +4517,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_get_scene_tree",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/get-script-errors",
@@ -4222,7 +4548,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_get_script_errors",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/get-studio-workflow",
@@ -4244,7 +4579,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_get_studio_workflow",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/import-asset",
@@ -4266,7 +4610,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_import_asset",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": true,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/import-asset-by-id",
@@ -4289,7 +4642,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_import_asset_by_id",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": true,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/import-from-url",
@@ -4311,7 +4673,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_import_from_url",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/import-from-url-batch",
@@ -4333,7 +4704,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_import_from_url_batch",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/import-hdri",
@@ -4372,7 +4752,16 @@
           "skill/skybox-panorama"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_import_hdri",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/input-map-bind",
@@ -4394,7 +4783,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_input_map_bind",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/inspect-node",
@@ -4416,7 +4814,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_inspect_node",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/inspect-resource",
@@ -4438,7 +4845,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_inspect_resource",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/inspect-runtime-node",
@@ -4473,13 +4889,22 @@
           "skill/verifying-scenes"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_inspect_runtime_node",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/instantiate-scene",
       "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "237c74ca6471908c4a5cb995fea006f25f995a53e785003a77919a1ad49d64ae",
+      "version": "1.0.1",
+      "content_hash": "067f9b4ee1b937e7a7951d93e24085644a2a2eef5479c4542e5aed258ace5ace",
       "summary": "Add an existing scene or 3D model file as a child node, composing scenes from prefabs.",
       "use_when": [
         "placing a .tscn prefab or imported 3D model into a scene"
@@ -4495,7 +4920,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_instantiate_scene",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/is-running",
@@ -4517,13 +4951,22 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_is_running",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/library-feedback",
       "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "85709127ca57cf722424fc2e809897762cdfe90cef3f3a2e676629f87abcd421",
+      "version": "1.0.1",
+      "content_hash": "32977000c5f4d3e0533c0eafecb77a51a780e5f442d5ac0c1eda49406521f0c1",
       "summary": "Report how library entries worked out (worked, wrong, outdated, ...) so Summer can fix and re-rank them; fire-and-forget, opt-out honored.",
       "use_when": [
         "a natural checkpoint after using library entries, batching all outcomes in one call",
@@ -4541,7 +4984,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_library_feedback",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/list-my-assets",
@@ -4564,7 +5016,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_list_my_assets",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/navigation-probe",
@@ -4604,7 +5065,16 @@
           "skill/world-building-3d"
         ]
       },
-      "status": "preview"
+      "status": "preview",
+      "mcp_tool_name": "summer_navigation_probe",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/open-main-scene",
@@ -4626,7 +5096,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_open_main_scene",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/open-scene",
@@ -4648,7 +5127,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_open_scene",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/play",
@@ -4671,7 +5159,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_play",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/project-setting",
@@ -4693,7 +5190,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_project_setting",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/read-file",
@@ -4716,7 +5222,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_read_file",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/remove-node",
@@ -4738,7 +5253,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_remove_node",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/replace-node",
@@ -4760,7 +5284,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_replace_node",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/replace-text",
@@ -4782,7 +5315,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_replace_text",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/run-editor-script",
@@ -4817,7 +5359,16 @@
           "skill/headless-scripting"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_run_editor_script",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/run-script",
@@ -4857,7 +5408,16 @@
           "skill/verifying-scenes"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_run_script",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/save-scene",
@@ -4879,13 +5439,22 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_save_scene",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/screenshot",
       "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "7d4ac40cc169a7856f38359bf97d48876172ba0b90913eaa68ed926deac6e8e7",
+      "version": "1.0.1",
+      "content_hash": "9b6d49067751d837a578fa4156ed6563f2453f225352746d6f76e187635d8d33",
       "summary": "Capture a frame from the editor viewport, an offscreen scene render, or the running game, returned as an actual image.",
       "use_when": [
         "visually verifying layout, scale, framing, or runtime state"
@@ -4901,7 +5470,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_screenshot",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/search-assets",
@@ -4924,7 +5502,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_search_assets",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/select-node",
@@ -4946,7 +5533,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_select_node",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/set-prop",
@@ -4968,7 +5564,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_set_prop",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/set-resource-property",
@@ -4990,7 +5595,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_set_resource_property",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/slice-asset-sheet",
@@ -5012,7 +5626,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_slice_asset_sheet",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/snap-to-surface",
@@ -5051,7 +5674,16 @@
           "skill/world-building-3d"
         ]
       },
-      "status": "preview"
+      "status": "preview",
+      "mcp_tool_name": "summer_snap_to_surface",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/snapshot-diff",
@@ -5086,7 +5718,16 @@
           "skill/verifying-scenes"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_snapshot_diff",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/start-game-task",
@@ -5108,7 +5749,17 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_start_game_task",
+      "remote": true,
+      "cli_command": "summer plan",
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/stop",
@@ -5131,7 +5782,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_stop",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/test-placement",
@@ -5171,7 +5831,16 @@
           "skill/world-building-3d"
         ]
       },
-      "status": "preview"
+      "status": "preview",
+      "mcp_tool_name": "summer_test_placement",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/world-snapshot",
@@ -5207,7 +5876,16 @@
           "skill/verifying-scenes"
         ]
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_world_snapshot",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     },
     {
       "id": "tool/write-file",
@@ -5230,7 +5908,16 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "stable",
+      "mcp_tool_name": "summer_write_file",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
     }
   ]
 }

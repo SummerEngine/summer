@@ -92,7 +92,7 @@
     {
       "id": "skill/browse-templates",
       "name": "browse-templates",
-      "description": "Use when the user wants to see available Summer Engine project templates, start from an existing template, or asks \"what templates exist?\" — fetches the live list from github.com/SummerEngine, presents the choices, and creates a project from the chosen template via `summer create <slug> <project-name>`. Trigger on \"templates\", \"starter\", \"boilerplate\", \"from a template\", \"what's available\", \"show me templates\", \"third-person\", \"platformer\", \"multiplayer starter\".",
+      "description": "Use when the user wants to see available Summer Engine project templates, start from an existing template, or asks \"what templates exist?\" — lists the pinned template registry via `summer list templates`, presents the choices, and creates a project from the chosen template via `summer create <slug> <project-name>`. Trigger on \"templates\", \"starter\", \"boilerplate\", \"from a template\", \"what's available\", \"show me templates\", \"third-person\", \"platformer\", \"multiplayer starter\".",
       "clients": "all",
       "recommended": true,
       "path": "library/skills/browse-templates/"
@@ -571,7 +571,7 @@
     },
     {
       "id": "skill/vfx-dissolve",
-      "name": "dissolve",
+      "name": "vfx-dissolve",
       "description": "Use when authoring a dissolve effect — an object's mesh disintegrating with a glowing burning edge, driven by a noise threshold ShaderMaterial overriding the target's existing material. Trigger on \"dissolve\", \"disintegrate\", \"burn away\", \"Thanos snap\", \"vanish into ash\", \"enemy fades out\", \"object burns up\".",
       "clients": "all",
       "recommended": false,
@@ -579,7 +579,7 @@
     },
     {
       "id": "skill/vfx-fire",
-      "name": "fire",
+      "name": "vfx-fire",
       "description": "Use when authoring a fire visual effect — animated flames built with a particle shader, GPUParticles3D, and a noise-based color ramp. Trigger on \"torch\", \"campfire\", \"bonfire\", \"flame\", \"fire effect\", \"burning\", \"make this thing on fire\", \"candle\".",
       "clients": "all",
       "recommended": true,
@@ -587,7 +587,7 @@
     },
     {
       "id": "skill/vfx-hit-spark",
-      "name": "hit-spark",
+      "name": "vfx-hit-spark",
       "description": "Use when authoring a hit-spark visual effect — a one-shot burst of additive billboard particles oriented to a surface normal, fired on impact. Trigger on \"hit spark\", \"impact spark\", \"bullet hit\", \"sword clash\", \"metal-on-metal\", \"ricochet\", \"impact effect\", \"spawn sparks at hit point\".",
       "clients": "all",
       "recommended": false,
@@ -595,7 +595,7 @@
     },
     {
       "id": "skill/vfx-lightning",
-      "name": "lightning",
+      "name": "vfx-lightning",
       "description": "Use when authoring a lightning bolt visual effect — procedural jagged path drawn via ImmediateMesh, glow shader, sparks at endpoints, screen shake. Trigger on \"lightning bolt\", \"chain lightning\", \"electric attack\", \"tesla coil\", \"shock spell\", \"thunderbolt\", \"energy beam\".",
       "clients": "all",
       "recommended": false,
@@ -603,7 +603,7 @@
     },
     {
       "id": "skill/vfx-magic-glow",
-      "name": "magic-glow",
+      "name": "vfx-magic-glow",
       "description": "Use when authoring a magic-glow visual effect — a pulsing OmniLight3D plus drifting additive motes plus optional emission shader on the source mesh. Trigger on \"magic glow\", \"enchanted item\", \"soul gem\", \"pulsing aura\", \"rune glow\", \"magical orb\", \"summon circle glow\", \"fairy\", \"wisp\".",
       "clients": "all",
       "recommended": false,
@@ -611,7 +611,7 @@
     },
     {
       "id": "skill/vfx-muzzle-flash",
-      "name": "muzzle-flash",
+      "name": "vfx-muzzle-flash",
       "description": "Use when authoring a muzzle-flash visual effect — a one-shot ~80 ms burst at a gun barrel built with a particle one-shot OR a flashing quad with a star-burst shader. Trigger on \"muzzle flash\", \"gun fire\", \"weapon flash\", \"barrel flash\", \"shoot a gun\", \"spell-cast burst at hand\".",
       "clients": "all",
       "recommended": true,
@@ -619,7 +619,7 @@
     },
     {
       "id": "skill/vfx-smoke",
-      "name": "smoke",
+      "name": "vfx-smoke",
       "description": "Use when authoring a smoke visual effect — a slow-rising column or puff of soft particles built with a noise + density falloff shader on a quad mesh, GPUParticles3D. Trigger on \"smoke\", \"smoke trail\", \"puff\", \"chimney smoke\", \"smoke from a fire\", \"steam\", \"fog cloud\", \"explosion smoke\".",
       "clients": "all",
       "recommended": false,
@@ -627,7 +627,7 @@
     },
     {
       "id": "skill/vfx-water-ripple",
-      "name": "water-ripple",
+      "name": "vfx-water-ripple",
       "description": "Use when authoring a water-ripple visual effect — animated normal-distortion ripples on a water plane (or as a Decal) triggered by impacts. Trigger on \"water ripple\", \"ripples on water\", \"raindrop ripple\", \"splash ripple\", \"rain on water\", \"footstep in puddle\", \"fish jumps\".",
       "clients": "all",
       "recommended": false,

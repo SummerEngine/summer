@@ -6,10 +6,14 @@
     "github.com/SummerEngine",
     "raw.githubusercontent.com/SummerEngine",
     "github.com/orgs/SummerEngine",
-    "agentskills.io"
+    "agentskills.io",
+    "polyhaven.com",
+    "elevenlabs.io"
   ],
   "entry_notes": {
     "github.com/orgs/SummerEngine": "Org-listing URL form (github.com/orgs/SummerEngine/...) of the already-allowed SummerEngine GitHub org.",
-    "agentskills.io": "The open Agent Skills specification, which Summer adopts as its skill format; read-only spec documentation."
+    "agentskills.io": "The open Agent Skills specification, which Summer adopts as its skill format; read-only spec documentation.",
+    "polyhaven.com": "First-party HDRI/asset integration target (summer_import_hdri allowlists it); documentation links are legitimate.",
+    "elevenlabs.io": "Summer's voice provider (summer_generate_audio); documentation links are legitimate."
   }
 }

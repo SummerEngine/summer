@@ -110,7 +110,6 @@
     "summer_create_debug_report": "tool/create-debug-report",
     "summer_create_scene": "tool/create-scene",
     "summer_creator_config": "tool/creator-config",
-    "summer_creator_logs": "tool/creator-logs",
     "summer_creator_publish": "tool/creator-publish",
     "summer_creator_releases": "tool/creator-releases",
     "summer_frame_camera": "tool/frame-camera",

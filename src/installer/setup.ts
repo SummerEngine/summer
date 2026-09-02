@@ -1,5 +1,11 @@
 import { spawnSync } from "child_process";
 import { SupportedAgent } from "./agent-config.js";
+import {
+  AGENT_CLIENTS,
+  getSkillRegistry,
+  type AgentClient,
+} from "../core/skills-registry.js";
+import { describeInstallLocation, resolveInstallLocation } from "./skill-locations.js";
 
 export interface SkillSetupResult {
   status: "installed" | "planned" | "skipped" | "failed";
@@ -7,6 +13,12 @@ export interface SkillSetupResult {
   command?: string[];
   stdout?: string;
   stderr?: string;
+  /** Number of skills selected for install (all, or the recommended subset). */
+  count?: number;
+  /** Where the skills land, e.g. "~/.claude/skills/<skill>/SKILL.md". */
+  destination?: string;
+  /** Post-install tallies parsed from `skills install` output. */
+  installed?: { total: number; added: number; updated: number };
 }
 
 export interface SkillInstallInvocation {
@@ -15,9 +27,28 @@ export interface SkillInstallInvocation {
   display: string[];
 }
 
-export function setupRecommendedSkills(
+export interface SkillSetupOptions {
+  dryRun: boolean;
+  yes: boolean;
+  force: boolean;
+  /** Skills scope; defaults to the MCP scope so both land in the same place. */
+  scope?: "user" | "project";
+  /** Install only `recommended: true` skills instead of the whole library. */
+  recommended?: boolean;
+}
+
+/**
+ * Install the Summer skill library for an agent as part of `summer setup`.
+ *
+ * Installs EVERY library skill by default: skills are progressive-disclosure
+ * (name + description in context, body on activation), and the session entry
+ * skill `using-summer` is not in the recommended subset, so a
+ * recommended-only default left the documented starting point uninstalled.
+ * `--recommended` keeps the smaller subset as an opt-in.
+ */
+export function setupSkills(
   agent: SupportedAgent,
-  options: { dryRun: boolean; yes: boolean; force: boolean }
+  options: SkillSetupOptions
 ): SkillSetupResult {
   if (agent === "lm-studio") {
     return {
@@ -27,7 +58,9 @@ export function setupRecommendedSkills(
     };
   }
 
-  const invocation = skillInstallInvocation(agent, { force: options.force });
+  const scope = options.scope ?? "user";
+  const recommended = Boolean(options.recommended);
+  const invocation = skillInstallInvocation(agent, { force: options.force, scope, recommended });
 
   if (!invocation) {
     return {
@@ -37,11 +70,21 @@ export function setupRecommendedSkills(
     };
   }
 
+  const skills = getSkillRegistry();
+  const selected = recommended ? skills.filter((skill) => skill.recommended) : skills;
+  const count = selected.length;
+  const destination = isAgentClient(agent)
+    ? describeInstallLocation(resolveInstallLocation(agent, scope))
+    : undefined;
+  const subset = recommended ? "recommended " : "";
+
   if (options.dryRun || !options.yes) {
     return {
       status: "planned",
       command: invocation.display,
-      message: `Recommended skills can be installed with: ${invocation.display.join(" ")}`,
+      count,
+      destination,
+      message: `Would install ${count} ${subset}skills to ${destination ?? "the agent's skills directory"} with: ${invocation.display.join(" ")}`,
     };
   }
 
@@ -51,10 +94,14 @@ export function setupRecommendedSkills(
   });
 
   if (result.status === 0) {
+    const installed = tallyInstallOutput(result.stdout);
     return {
       status: "installed",
       command: invocation.display,
-      message: "Recommended Summer skills installed.",
+      count,
+      destination,
+      installed,
+      message: `Installed ${installed.total} ${subset}skills (${installed.added} new, ${installed.updated} updated).`,
       stdout: result.stdout.trim(),
       stderr: result.stderr.trim(),
     };
@@ -63,15 +110,49 @@ export function setupRecommendedSkills(
   return {
     status: "failed",
     command: invocation.display,
-    message: `Recommended skill install failed with exit code ${result.status ?? "unknown"}.`,
+    count,
+    destination,
+    message: `Skill install failed with exit code ${result.status ?? "unknown"}.`,
     stdout: result.stdout.trim(),
     stderr: result.stderr.trim(),
   };
 }
 
+/** @deprecated use setupSkills; kept for older callers. */
+export const setupRecommendedSkills = (
+  agent: SupportedAgent,
+  options: { dryRun: boolean; yes: boolean; force: boolean }
+): SkillSetupResult => setupSkills(agent, { ...options, recommended: true });
+
+function isAgentClient(agent: SupportedAgent): agent is SupportedAgent & AgentClient {
+  return (AGENT_CLIENTS as readonly string[]).includes(agent);
+}
+
+/**
+ * Count `skills install` result lines. Directory installs print
+ * "Installed <skill> -> <path>" for new copies and "Updated <skill> -> <path>"
+ * for re-installs; rule-file agents (Cursor, Cline, ...) always print
+ * "Generated <skill> -> <path>" and are counted as updated-or-new (added).
+ */
+export function tallyInstallOutput(stdout: string): {
+  total: number;
+  added: number;
+  updated: number;
+} {
+  let added = 0;
+  let updated = 0;
+  for (const line of stdout.split("\n")) {
+    const m = line.match(/^\s*(Installed|Updated|Generated)\s+([a-z0-9-]+)\s+->/i);
+    if (!m) continue;
+    if (m[1].toLowerCase() === "updated") updated += 1;
+    else added += 1;
+  }
+  return { total: added + updated, added, updated };
+}
+
 function skillInstallInvocation(
   agent: SupportedAgent,
-  opts: { force: boolean } = { force: false }
+  opts: { force: boolean; scope: "user" | "project"; recommended: boolean }
 ): SkillInstallInvocation | null {
   const cliPath = process.argv[1];
   if (!cliPath) return null;
@@ -79,7 +160,15 @@ function skillInstallInvocation(
   const command = cliPath.endsWith(".js") ? process.execPath : cliPath;
   const prefix = cliPath.endsWith(".js") ? [cliPath] : [];
 
-  const baseArgs = ["skills", "install", "--recommended", "--agent", agent];
+  const baseArgs = [
+    "skills",
+    "install",
+    opts.recommended ? "--recommended" : "--all",
+    "--agent",
+    agent,
+    "--scope",
+    opts.scope,
+  ];
   if (opts.force) baseArgs.push("--force");
   return {
     command,

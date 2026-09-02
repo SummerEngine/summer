@@ -8,7 +8,7 @@ import {
   parseScope,
   supportedAgents,
 } from "../../installer/agent-config.js";
-import { SkillSetupResult, setupRecommendedSkills } from "../../installer/setup.js";
+import { SkillSetupResult, setupSkills } from "../../installer/setup.js";
 import { DoctorResult, printDoctorResult, runDoctor } from "../../core/capabilities/doctor.js";
 import { brandLine, c, sym, tildeify } from "../../core/format.js";
 
@@ -40,6 +40,7 @@ interface SetupCommandOptions {
   yes?: boolean;
   json?: boolean;
   force?: boolean;
+  recommended?: boolean;
 }
 
 export const setupCommand = new Command("setup")
@@ -55,6 +56,10 @@ export const setupCommand = new Command("setup")
     "--force",
     "Overwrite existing skill content (passes --force through to skills install)"
   )
+  .option(
+    "--recommended",
+    "Install only the recommended skill subset instead of the whole library"
+  )
   .action(async (agentArg: string | undefined, opts: SetupCommandOptions) => {
     const agent = resolveAgent(agentArg, opts.agent);
     const scope = resolveScope(opts.scope);
@@ -66,10 +71,12 @@ export const setupCommand = new Command("setup")
       print: opts.print,
     });
 
-    const skills = setupRecommendedSkills(agent, {
+    const skills = setupSkills(agent, {
       dryRun: Boolean(opts.dryRun || opts.print),
       yes: Boolean(opts.yes),
       force: Boolean(opts.force),
+      scope,
+      recommended: Boolean(opts.recommended),
     });
 
     const doctor = await runDoctor({ quiet: true });
@@ -145,7 +152,10 @@ function printSetupResult(
     const installed = parseInstalledSkills(skills.stdout);
     if (installed.length > 0) {
       const where = parseSkillTargetDir(skills.stdout);
-      console.log(`  ${sym.ok()}  Installed ${c.bold(String(installed.length) + " skills")}  ${where ? c.dim(tildeify(where)) : ""}`);
+      const tally = skills.installed
+        ? c.dim(` (${skills.installed.added} new, ${skills.installed.updated} updated)`)
+        : "";
+      console.log(`  ${sym.ok()}  Installed ${c.bold(String(installed.length) + " skills")}${tally}  ${where ? c.dim(tildeify(where)) : ""}`);
       const grouped = installed.reduce<string[][]>((rows, name, i) => {
         const row = Math.floor(i / 3);
         rows[row] = rows[row] ?? [];
@@ -156,8 +166,12 @@ function printSetupResult(
         console.log(`     ${c.dim(row.join(" · "))}`);
       }
     } else {
-      console.log(`  ${sym.ok()}  Installed recommended skills`);
+      console.log(`  ${sym.ok()}  ${skills.message}`);
     }
+  } else if (skills.status === "planned" && config.dryRun) {
+    console.log(
+      `  ${c.dim("(dry run)")}  Would install ${c.bold(String(skills.count ?? "?") + " skills")}  ${c.dim(skills.destination ?? "")}`
+    );
   } else if (skills.status === "planned" || skills.status === "skipped") {
     console.log(`  ${sym.warn()}  Skills: ${c.dim(skills.message)}`);
   } else if (skills.status === "failed") {
@@ -185,7 +199,7 @@ function parseInstalledSkills(stdout: string | undefined): string[] {
   // Lines look like: "  Installed fps-controller -> /path/.../fps-controller"
   const names: string[] = [];
   for (const line of stdout.split("\n")) {
-    const m = line.match(/^\s*Installed\s+([a-z0-9-]+)\s+->/i);
+    const m = line.match(/^\s*(?:Installed|Updated|Generated)\s+([a-z0-9-]+)\s+->/i);
     if (m) names.push(m[1]);
   }
   return names;
@@ -194,7 +208,7 @@ function parseInstalledSkills(stdout: string | undefined): string[] {
 function parseSkillTargetDir(stdout: string | undefined): string | null {
   if (!stdout) return null;
   for (const line of stdout.split("\n")) {
-    const m = line.match(/^\s*Installed\s+[a-z0-9-]+\s+->\s+(.+)$/i);
+    const m = line.match(/^\s*(?:Installed|Updated|Generated)\s+[a-z0-9-]+\s+->\s+(.+)$/i);
     if (m) {
       const path = m[1].trim();
       // Strip trailing /<skill-name> to get the parent dir

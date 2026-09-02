@@ -463,7 +463,9 @@ export function printDoctorResult(result: DoctorResult): void {
   console.log(c.bold("Doctor"));
   console.log("");
 
-  const labelWidth = 14;
+  // Widest label + 2 so long labels ("CLI up to date") keep their gap.
+  const labelWidth =
+    result.checks.reduce((w, check) => Math.max(w, check.label.length), 0) + 2;
   for (const check of result.checks) {
     const mark =
       check.status === "ok"

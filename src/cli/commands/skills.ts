@@ -1,4 +1,4 @@
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import {
   existsSync,
   mkdirSync,
@@ -22,6 +22,12 @@ import {
 } from "../../core/skills-registry.js";
 import { tildeify } from "../../core/format.js";
 import { writeSkillMarker } from "../../installer/version-check.js";
+import {
+  SKILL_SCOPES,
+  resolveInstallLocation,
+  type InstallLocation,
+  type SkillScope,
+} from "../../installer/skill-locations.js";
 
 const requireFromHere = createRequire(import.meta.url);
 const { version: cliVersion } = requireFromHere("../../../package.json") as {
@@ -38,8 +44,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // have an equivalent today, so the copy is gated to claude-code.
 const commandsDir = join(__dirname, "..", "..", "..", "commands");
 
-const SKILL_SCOPES = ["user", "project"] as const;
-type SkillScope = (typeof SKILL_SCOPES)[number];
 
 type SkillMeta = SkillRegistryEntry;
 
@@ -53,16 +57,8 @@ interface InstallOptions {
   force?: boolean;
 }
 
-type InstallLocation =
-  | { kind: "skill-dir"; path: string }
-  | { kind: "cursor-rule-dir"; path: string }
-  | { kind: "windsurf-rule-file"; path: string }
-  | { kind: "cline-rule-dir"; path: string }
-  | { kind: "gemini-skill-dir"; path: string }
-  | { kind: "opencode-skill-dir"; path: string };
-
 interface InstallResult {
-  action: "Installed" | "Generated";
+  action: "Installed" | "Updated" | "Generated";
   path: string;
 }
 
@@ -179,111 +175,6 @@ function agentLabel(agent: AgentClient): string {
   }
 }
 
-function resolveInstallLocation(
-  agent: AgentClient,
-  scope: SkillScope
-): InstallLocation {
-  const overrideDir = process.env.SUMMER_SKILLS_DIR;
-  if (overrideDir) {
-    if (agent === "cursor") return { kind: "cursor-rule-dir", path: overrideDir };
-    if (agent === "windsurf") {
-      return { kind: "windsurf-rule-file", path: join(overrideDir, ".windsurfrules") };
-    }
-    if (agent === "cline" || agent === "roo-code" || agent === "kilo-code") {
-      return { kind: "cline-rule-dir", path: overrideDir };
-    }
-    if (agent === "gemini") {
-      return { kind: "gemini-skill-dir", path: overrideDir };
-    }
-    if (agent === "opencode") {
-      return { kind: "opencode-skill-dir", path: overrideDir };
-    }
-    return { kind: "skill-dir", path: overrideDir };
-  }
-
-  const root = scope === "user" ? homedir() : process.cwd();
-  switch (agent) {
-    case "codex":
-      return { kind: "skill-dir", path: join(root, ".agents", "skills") };
-    case "claude-code":
-      return { kind: "skill-dir", path: join(root, ".claude", "skills") };
-    case "cursor":
-      return { kind: "cursor-rule-dir", path: join(root, ".cursor", "rules") };
-    case "windsurf":
-      return { kind: "windsurf-rule-file", path: join(root, ".windsurfrules") };
-    case "cline":
-      return {
-        kind: "cline-rule-dir",
-        path:
-          scope === "user"
-            ? clineUserRulesDir()
-            : join(process.cwd(), ".clinerules"),
-      };
-    case "roo-code":
-      return {
-        kind: "cline-rule-dir",
-        path:
-          scope === "user"
-            ? rooCodeUserRulesDir()
-            : join(process.cwd(), ".clinerules"),
-      };
-    case "kilo-code":
-      return {
-        kind: "cline-rule-dir",
-        path:
-          scope === "user"
-            ? join(homedir(), ".kilocode", "rules")
-            : join(process.cwd(), ".kilocode", "rules"),
-      };
-    case "gemini":
-      return {
-        kind: "gemini-skill-dir",
-        path: join(homedir(), ".gemini", "extensions", "summer-engine", "skills"),
-      };
-    case "github-copilot":
-    case "vscode-copilot":
-      return {
-        kind: "skill-dir",
-        path:
-          scope === "user"
-            ? join(homedir(), ".copilot", "skills")
-            : join(process.cwd(), ".github", "skills"),
-      };
-    case "opencode":
-      return {
-        kind: "opencode-skill-dir",
-        path:
-          scope === "user"
-            ? opencodeUserAgentsDir()
-            : join(process.cwd(), ".opencode", "agents", "summer"),
-      };
-    case "summer":
-      return { kind: "skill-dir", path: join(root, ".summer", "skills") };
-  }
-}
-
-function clineUserRulesDir(): string {
-  // Cline reads global rules from the user's Documents/Cline/Rules folder.
-  return join(homedir(), "Documents", "Cline", "Rules");
-}
-
-function rooCodeUserRulesDir(): string {
-  // Roo Code reads global rules from the user's Documents/Roo/Rules folder.
-  return join(homedir(), "Documents", "Roo", "Rules");
-}
-
-function opencodeUserAgentsDir(): string {
-  // OpenCode's user-scope agent definition directory varies by OS.
-  // On Windows, OpenCode reads from %APPDATA%/opencode/agents/summer.
-  // On Linux/macOS, it reads from $XDG_CONFIG_HOME or ~/.config/opencode/agents/summer.
-  if (platform() === "win32") {
-    const appData = process.env.APPDATA ?? join(homedir(), "AppData", "Roaming");
-    return join(appData, "opencode", "agents", "summer");
-  }
-  const xdg = process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config");
-  return join(xdg, "opencode", "agents", "summer");
-}
-
 function selectSkills(name: string | undefined, opts: InstallOptions): SkillMeta[] {
   if (opts.all && opts.recommended) {
     die("Use only one bulk option: --all or --recommended.");
@@ -339,8 +230,6 @@ function installSkill(
       return upsertWindsurfRule(skill, location.path);
     case "cline-rule-dir":
       return writeClineRule(skill, location.path);
-    case "gemini-skill-dir":
-      return writeGeminiSkill(skill, location.path);
     case "opencode-skill-dir":
       return writeOpencodeSkill(skill, location.path);
   }
@@ -355,13 +244,14 @@ function copySkillDirectory(
   if (!src) die(`Skill files missing: ${skill.name}`);
   mkdirSync(targetDir, { recursive: true });
   const dest = join(targetDir, skill.name);
-  if (options.force && existsSync(dest)) {
+  const existed = existsSync(dest);
+  if (options.force && existed) {
     // Wipe stale skill content so re-installs overwrite cleanly even if files
     // were renamed or removed upstream.
     rmSync(dest, { recursive: true, force: true });
   }
   cpSync(src, dest, { recursive: true, force: true });
-  return { action: "Installed", path: dest };
+  return { action: existed ? "Updated" : "Installed", path: dest };
 }
 
 function writeCursorRule(skill: SkillMeta, rulesDir: string): InstallResult {
@@ -394,17 +284,6 @@ function writeClineRule(skill: SkillMeta, rulesDir: string): InstallResult {
   // SKILL.md isn't recognized as a special filename, so we name files <skill>.md.
   mkdirSync(rulesDir, { recursive: true });
   const rulePath = join(rulesDir, `summer-${skill.name}.md`);
-  writeFileSync(rulePath, renderRuleBody(skill) + "\n", "utf-8");
-  return { action: "Generated", path: rulePath };
-}
-
-function writeGeminiSkill(skill: SkillMeta, skillsDir: string): InstallResult {
-  // Gemini extensions support a contextFileName, but skill discovery for
-  // arbitrary markdown is not standardized. We drop each SKILL.md alongside
-  // the extension so the agent can reference them by path; the install
-  // summary surfaces this so the user knows where to point Gemini.
-  mkdirSync(skillsDir, { recursive: true });
-  const rulePath = join(skillsDir, `${skill.name}.md`);
   writeFileSync(rulePath, renderRuleBody(skill) + "\n", "utf-8");
   return { action: "Generated", path: rulePath };
 }
@@ -458,16 +337,16 @@ function printInstallSummary(
 
   if (location.kind === "skill-dir") {
     console.log(`${label} can read skills from ${tildeified}/<skill>/SKILL.md`);
+    if (agent === "gemini") {
+      console.log(
+        "Gemini loads them as extension skills; run `summer setup gemini` once so the extension manifest exists, then restart Gemini CLI."
+      );
+    }
   } else if (location.kind === "cursor-rule-dir") {
     console.log(`Cursor rules are in ${tildeified}/summer-<skill>.mdc`);
   } else if (location.kind === "cline-rule-dir") {
     console.log(`${label} rules are in ${tildeified}/summer-<skill>.md`);
     console.log("Restart VS Code to pick up new rules.");
-  } else if (location.kind === "gemini-skill-dir") {
-    console.log(`Skill files are in ${tildeified}/<skill>.md`);
-    console.log(
-      "Reference them from Gemini by path, or run `gemini extensions enable summer-engine` to load the bundled context."
-    );
   } else if (location.kind === "opencode-skill-dir") {
     console.log(`Skill files are in ${tildeified}/<skill>.md`);
     console.log("Restart OpenCode so it picks up the new agent definitions.");
@@ -509,7 +388,7 @@ skillsCommand
   .option("--all", "Install all available skills")
   .option(
     "--recommended",
-    "Install recommended public skills (excludes make-game)"
+    "Install only the recommended skill subset (summer setup installs all by default)"
   )
   .option(
     "--agent <agent>",
@@ -519,14 +398,9 @@ skillsCommand
     "--scope <scope>",
     "Install scope: user or project"
   )
-  .option(
-    "--as-claude-skill",
-    "Legacy alias for --agent claude-code"
-  )
-  .option(
-    "--as-cursor-skill",
-    "Legacy alias for --agent cursor"
-  )
+  // Legacy aliases: still accepted for old scripts, hidden from --help.
+  .addOption(new Option("--as-claude-skill", "Legacy alias for --agent claude-code").hideHelp())
+  .addOption(new Option("--as-cursor-skill", "Legacy alias for --agent cursor").hideHelp())
   .option(
     "--force",
     "Overwrite existing skill files (wipe stale skill dirs before copying)"

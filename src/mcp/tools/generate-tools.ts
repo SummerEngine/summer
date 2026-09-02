@@ -112,7 +112,7 @@ async function mcpGenerate(
   if (!token) {
     return {
       error:
-        "Not signed in. Run in your terminal:\n  npx summer-engine login\nOr open: https://www.summerengine.com/login",
+        "Not signed in. Run in your terminal:\n  npx -y summer-engine@latest login\nOr open: https://www.summerengine.com/login",
       status: 401,
     };
   }
@@ -151,7 +151,7 @@ async function mcpGenerate(
     if (res.status === 401) {
       message =
         (data.message || "Auth token expired.") +
-        "\nRe-authenticate:\n  npx summer-engine login";
+        "\nRe-authenticate:\n  npx -y summer-engine@latest login";
     }
 
     return { error: message, data: { ...data, status: res.status }, status: res.status };
@@ -349,7 +349,7 @@ Returns the asset with fileUrl (hosted) and localPath (temp file on disk).
 Use the Read tool on localPath to show the image to the user for approval.
 
 Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
-Requires authentication: run 'npx summer-engine login' first.`,
+Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     {
       prompt: z.string().describe("Description of the image to generate"),
       model: z
@@ -415,7 +415,7 @@ Returns source dimensions plus the generated slice URLs, names, categories, boun
 boxes, and widget metadata when the sheet contains UI controls.
 
 Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
-Requires authentication: run 'npx summer-engine login' first.`,
+Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     {
       assetId: z
         .string()
@@ -465,7 +465,7 @@ return a normal 200 with the setting ignored.
 
 Returns the generated audio URL and asset metadata.
 Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
-Requires authentication: run 'npx summer-engine login' first.`,
+Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     {
       capability: z
         .string()
@@ -571,7 +571,7 @@ By default, waits for completion (up to 10 min) and returns the result directly.
 Set wait=false to get the jobId immediately and poll manually with summer_check_job.
 
 Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
-Requires authentication: run 'npx summer-engine login' first.`,
+Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     {
       prompt: z
         .string()
@@ -716,7 +716,7 @@ Pass provider-specific params in 'options' (negative_prompt, num_frames, etc.).
 
 Returns the generated video URL and asset metadata.
 Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
-Requires authentication: run 'npx summer-engine login' first.`,
+Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     {
       prompt: z
         .string()
@@ -774,7 +774,7 @@ waits automatically.
 Status values: waiting, active, completed, failed, delayed, unknown.
 
 Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
-Requires authentication: run 'npx summer-engine login' first.`,
+Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     {
       jobId: z.string().describe("The job ID returned by an async generation tool"),
     },
@@ -782,7 +782,7 @@ Requires authentication: run 'npx summer-engine login' first.`,
       const token = await getAuthToken();
       if (!token) {
         return errorResult(
-          "Not signed in. Run: npx summer-engine login"
+          "Not signed in. Run: npx -y summer-engine@latest login"
         );
       }
 
@@ -847,7 +847,7 @@ signature moves not on the curated list, fall back to hand-authoring in the
 Summer Engine or importing from Mixamo.
 
 Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
-Requires authentication: run 'npx summer-engine login' first.`,
+Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     {
       rigAssetId: z
         .string()

@@ -72,7 +72,7 @@ async function searchAssetsApi(params: {
     return {
       error: "Not logged in",
       message:
-        "Not signed in. The user needs to run this in their terminal:\n  npx summer-engine login\nOr open: https://www.summerengine.com/login\nAsset search requires a Summer Engine account (free to create).",
+        "Not signed in. The user needs to run this in their terminal:\n  npx -y summer-engine@latest login\nOr open: https://www.summerengine.com/login\nAsset search requires a Summer Engine account (free to create).",
     };
   }
 
@@ -108,7 +108,7 @@ async function searchAssetsApi(params: {
         error: "unauthorized",
         message:
           (data.message || "Auth token expired.") +
-          " The user needs to re-authenticate:\n  npx summer-engine login --force",
+          " The user needs to re-authenticate:\n  npx -y summer-engine@latest login --force",
       };
     }
     if (res.status === 429) {
@@ -170,7 +170,7 @@ async function authedGetJson<T>(
       status: 401,
       error: "not_logged_in",
       message:
-        "Not signed in. Run in your terminal:\n  npx summer-engine login",
+        "Not signed in. Run in your terminal:\n  npx -y summer-engine@latest login",
     };
   }
 
@@ -375,7 +375,7 @@ Uses hybrid search: keywords + semantic similarity. Finds assets by name AND by 
 Returns asset names, types, preview URLs, and import-ready file URLs.
 
 Cloud tool — works WITHOUT the Summer Engine app open.
-Requires authentication (so we can attribute usage and apply per-user rate limits): run 'npx summer-engine login' first.`,
+Requires authentication (so we can attribute usage and apply per-user rate limits): run 'npx -y summer-engine@latest login' first.`,
     {
       query: z.string().describe("Natural language search, e.g. 'low-poly tree', 'sci-fi weapon'. For my_assets, can be empty to list recent."),
       assetType: z.enum(["2d_image", "animation", "3d_model", "audio", "music", "all"]).default("all").describe("Filter by asset type"),
@@ -584,7 +584,7 @@ itself does not — only this import step does).`,
 Use when the user wants a specific type of asset added: "Add a tree to the scene", "Import a wooden barrel".
 Searches, picks the top result, downloads and imports it, then optionally adds it to the scene.
 
-Requires authentication. If the user gets an auth error, they need to run 'npx summer-engine login' in their terminal first. Summer Engine must be running.`,
+Requires authentication. If the user gets an auth error, they need to run 'npx -y summer-engine@latest login' in their terminal first. Summer Engine must be running.`,
     {
       query: z.string().describe("What to find, e.g. 'low-poly tree', 'wooden crate'"),
       parent: z.string().optional().describe("Parent node path to add the asset under, e.g. './World'. If omitted, only imports (no scene placement)"),

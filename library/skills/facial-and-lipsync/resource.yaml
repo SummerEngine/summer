@@ -18,6 +18,7 @@ compatibility:
   engine: ">=4.6"
 related:
   skills:
+    - skill/character-animation-wiring
     - skill/design-npc
     - skill/animation-tree
     - skill/generate-motion

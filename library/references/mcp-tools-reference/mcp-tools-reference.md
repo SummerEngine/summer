@@ -17,7 +17,7 @@
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (63 tools)
+## Tool surface (64 tools)
 
 ### Project files (3)
 
@@ -66,6 +66,23 @@
 | `summer_import_from_url` | Download a `.glb`/`.png`/etc and run Godot's full import pipeline. |
 | `summer_import_from_url_batch` | Same, batched (single filesystem scan). |
 
+### Scene scripting (3)
+
+| Tool | Use |
+|---|---|
+| `summer_run_script` | Run a GDScript (`func run(ctx):`) inside the live editor against the OPEN scene. Prefer it over 3+ CRUD ops or any computed placement (scatter, procedural meshes, bulk edits). Created nodes need `ctx.set_owner_recursive(node)` after `add_child`. |
+| `summer_run_editor_script` | Run an EditorScript (`func _run():`) in a fresh headless child editor against the ON-DISK project. Cold path for batch/project-wide jobs; unsaved live edits are invisible to it. |
+| `summer_api_docs` | Offline class-reference lookup (properties, methods, signals, constants). Verify names before scripting instead of guessing; works without the engine. |
+
+### Perception (4)
+
+| Tool | Use |
+|---|---|
+| `summer_world_snapshot` | Compact structured snapshot of the edited scene (paths, classes, transforms, world AABBs, visibility, resource fingerprints, light/camera/counts summary). The cheap read to run BEFORE and AFTER every mutation batch; keep the `snapshot_id`. |
+| `summer_snapshot_diff` | Diff two snapshots into added/removed/changed + count deltas — the structural receipt that a mutation did exactly what was intended. Omit `to_id` to diff against a fresh snapshot taken now. |
+| `summer_get_runtime_tree` | Scene tree of the RUNNING game (spawned enemies, autoloads, pooled nodes) — live state the editor reads can't show. Needs `summer_play` first. |
+| `summer_inspect_runtime_node` | One running-game node's live properties (actual stats/position/flags) without stopping the game. Get paths from `summer_get_runtime_tree`. |
+
 ### Play / runtime (3)
 
 | Tool | Use |
@@ -78,7 +95,7 @@
 
 | Tool | Use |
 |---|---|
-| `summer_screenshot` | Capture a frame and return it as an image the agent sees directly — editor viewport (`target:"viewport"`, default; no play needed) or running game (`target:"game"`). Use to visually verify scene layout, asset placement, scale, framing, lighting, or runtime state. On macOS the running game is a floating window that can't be captured; prefer `viewport`. |
+| `summer_screenshot` | Capture a frame and return it as an image the agent sees directly — editor viewport (`target:"viewport"`, default; no play needed), offscreen scene render (`target:"scene"`, presets or `framing:"camera"` which renders through the scene's OWN camera with its REAL WorldEnvironment — the trustworthy edit-time lighting check), or running game (`target:"game"`). Use to visually verify scene layout, asset placement, scale, framing, lighting, or runtime state. On macOS the running game is a floating window that can't be captured; prefer `viewport`. |
 
 ### Diagnostics (7)
 
@@ -92,7 +109,7 @@
 | `summer_get_debugger_warnings` | Runtime warnings from the debugger panel. |
 | `summer_get_script_errors` | Script compilation errors. |
 
-### Asset library (6)
+### Asset library (7)
 
 | Tool | Use |
 |---|---|
@@ -102,6 +119,7 @@
 | `summer_get_asset_download_url` | Get the primary or thumbnail download URL for a specific asset. Stable shape for future signed URLs. |
 | `summer_import_asset` | Search, choose the top match, download, run Godot import, and optionally instantiate 3D models. |
 | `summer_import_asset_by_id` | Import one exact Summer asset ID. Use after generation jobs or when the user selects a specific asset. |
+| `summer_import_hdri` | Search Poly Haven's CC0 HDRIs (public API, no Summer login), import the `.hdr`/`.exr` into `res://sky/`, and get the exact `summer_run_script` snippet that wires it as the WorldEnvironment sky. The cheapest whole-scene lighting upgrade. |
 
 ### Asset generation (5 — metered)
 

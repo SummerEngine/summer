@@ -140,7 +140,7 @@ have actually seen, or route to the manual-authoring fallback.
 ### Pitfalls
 
 - **Invented `motionName` strings fail.** `"run_fast"`, `"attack_sword"`, `"death"` all resolve to nothing and the call errors. Name resolution is exact — five aliases, or a real library name / display name / numeric id. Do not extrapolate a naming scheme.
-- **Locomotion clips have a forward bias.** Meshy's `run` translates the root forward by ~5m. If you're driving root motion in code, set `root_motion_track` correctly or strip the translation in an AnimationPlayer Edit. Check the upstream root-motion API reference matching the current Summer technical base.
+- **Locomotion clips have a forward bias.** Meshy's `run` translates the root forward by ~5m. Either the code drives movement (then the baked root translation causes a lunge-and-snap every loop — strip it) or the clip does via `root_motion_track` + `get_root_motion_position()` — never both. The full root-motion setup and its playtest verification live in `summer:animation/character-animation-wiring`.
 - **Rig pose mismatch.** If your rig was rigged with a non-T-pose reference image, the limbs may bend wrong. Re-rig from a T-pose mannequin (see `summer:asset-pipeline/asset-strategy`) before re-generating.
 - **Rig still preparing.** New rigs need ~3 minutes after the rig job completes before the animation library is ready. The MCP route returns 425 "animations_preparing" if you call too early. Wait and retry.
 
@@ -170,7 +170,7 @@ Engine.
 
 ## Handoff
 
-- After generating locomotion clips, suggest `summer:animation/animation-tree` to wire idle → walk → run.
+- After generating locomotion clips, suggest `summer:animation/character-animation-wiring` — the end-to-end wiring path (inspect what landed, idle/walk/run state machine with blend times, footstep method tracks, root motion, playtest proof). For blend spaces and attack/hit overlays on top, `summer:animation/animation-tree`.
 - After generating a one-shot (death, hit-react), suggest `summer:ai-and-npcs/design-npc` to fire it from the behavior state machine.
 - For first-person hand animations on a player, use this skill on a *hands-only rig* and then `summer:character-controllers/fps-controller` for the wiring.
 - If the user wants to apply these clips to a second character, hand off to `summer:animation/retarget`.

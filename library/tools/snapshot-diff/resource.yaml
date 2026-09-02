@@ -1,0 +1,54 @@
+id: tool/snapshot-diff
+kind: tool
+version: 1.0.0
+summary: Diff two world snapshots into added/removed/changed nodes and count deltas — the structural receipt that a mutation did exactly what was intended.
+use_when:
+  - verifying a mutation batch against the snapshot_id taken before it
+do_not_use_when:
+  - no baseline snapshot exists — take summer_world_snapshot first
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - verification
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/world-snapshot
+    - tool/screenshot
+  skills:
+    - skill/verifying-scenes
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_snapshot_diff
+implementation:
+  module: src/mcp/tools/perception-tools.ts
+  export: registerPerceptionTools
+surfaces:
+  mcp:
+    tool_name: summer_snapshot_diff
+    remote: false
+input_schema:
+  type: object
+  properties:
+    from_id:
+      type: string
+      description: snapshot_id of the BEFORE snapshot (from summer_world_snapshot).
+    to_id:
+      type: string
+      description: snapshot_id of the AFTER snapshot. Omit to snapshot the current state now and diff against that.
+  required:
+    - from_id
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

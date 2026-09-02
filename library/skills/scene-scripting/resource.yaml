@@ -1,0 +1,43 @@
+id: skill/scene-scripting
+kind: skill
+version: 1.0.0
+summary: Build or modify scenes with one GDScript run inside the live editor (summer_run_script) instead of long CRUD chains; verify with snapshot diff + screenshot.
+use_when:
+  - a scene change needs 3+ related ops or any computed placement — scattering, grids, rings, procedural meshes, geometry helpers, terrain, lighting rigs, keyframe animation, shader FX
+  - an API property/method name must be verified with summer_api_docs before scripting
+  - a cold project-wide batch job belongs in summer_run_editor_script
+do_not_use_when:
+  - a single property tweak — summer_set_prop is cheaper
+  - the engine build lacks RunSceneScript (the tool says so) — fall back to scene tools or summer_run_editor_script
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - scripting
+    - agent-workflow
+  modalities:
+    - scripts
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/run-script
+    - tool/run-editor-script
+    - tool/api-docs
+    - tool/world-snapshot
+    - tool/snapshot-diff
+    - tool/screenshot
+  skills:
+    - skill/verifying-scenes
+    - skill/headless-scripting
+    - skill/scene-composition
+    - skill/character-animation-wiring
+    - skill/verification-before-completion
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/workflow/scene-scripting

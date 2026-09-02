@@ -1,0 +1,36 @@
+id: skill/verifying-scenes
+kind: skill
+version: 1.0.0
+summary: Prove scene work landed — snapshot before, diff + screenshot after, live runtime reads during playtests — before claiming any visual or structural result.
+use_when:
+  - after any mutation batch, asset import, or lighting change, before claiming it worked
+  - during a playtest, to read live runtime state (spawned nodes, actual stats) without stopping the game
+  - deciding what counts as evidence for a visual or structural claim
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - verification
+    - agent-workflow
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/world-snapshot
+    - tool/snapshot-diff
+    - tool/get-runtime-tree
+    - tool/inspect-runtime-node
+    - tool/screenshot
+  skills:
+    - skill/scene-scripting
+    - skill/playtesting-a-feature
+    - skill/verification-before-completion
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/workflow/verifying-scenes

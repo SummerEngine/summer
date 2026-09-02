@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: animation
 user-invocable: false
-allowed-tools: Read Grep Edit Write summer_search_assets summer_inspect_resource summer_inspect_node summer_generate_audio summer_generate_motion summer_add_node summer_set_prop summer_set_resource_property summer_save_scene summer_get_script_errors
+allowed-tools: Read Grep Edit Write summer_search_assets summer_inspect_resource summer_inspect_node summer_generate_audio summer_generate_motion summer_run_script summer_add_node summer_set_prop summer_set_resource_property summer_save_scene summer_get_script_errors
 paths: ["**/*.gd", "**/*.tscn", "**/*.tres"]
 ---
 
@@ -169,7 +169,18 @@ This is a plain `Animation` resource authored in code — no editor required.
 reloads with every track and track type intact (verified on the shipped 4.6.1
 binary with value, blend-shape and method tracks in one resource). Any advice
 that says animation tracks or keyframes can only be authored in the editor GUI
-is wrong.
+is wrong. The bake function also runs unchanged inside a `summer_run_script`
+body against the live editor — often more convenient than the headless lane
+because the result lands in the open scene's library and the run is
+transactional.
+
+For QUICK facial keys that don't need a viseme timeline (a roar, a wince, an
+eyebrow raise), Wave G engines collapse the whole bake into `ctx.animate` with
+a `"blend_shapes/<name>"` property path (value tracks, verified working) — one
+call per shape, same `anim_name` appends tracks to one clip. Recipe in
+`summer:animation/character-animation-wiring`. The Rhubarb bake loop above
+stays the right tool for full audio-synced viseme timelines — 15 tracks with
+per-cue keys is exactly what the loop is for.
 
 If you used the Whisper/ARPAbet cloud fallback instead of Rhubarb, swap `bake_from_rhubarb` for a variant that consumes `{ phoneme, start, duration }` triples and applies the ARPAbet → viseme table from the Reference card.
 
@@ -294,6 +305,7 @@ production speech recognition or photoreal lip sync.
 ## See also
 
 - `summer:audio/generate-voice` — TTS upstream of this skill.
+- `summer:animation/character-animation-wiring` — the blend-shape `ctx.animate` mechanism, plus the body wiring this face layer sits on.
 - `summer:animation/animation-tree` — wire the lipsync OneShot into the character's tree.
 - `summer:animation/procedural-animation` — eye blinks, saccades, head idle.
 - Rhubarb Lip Sync — https://github.com/DanielSWolf/rhubarb-lip-sync (external tool; phoneme extraction).

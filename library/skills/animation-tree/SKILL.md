@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: animation
 user-invocable: false
-allowed-tools: Read Grep Edit Write summer_get_scene_tree summer_inspect_node summer_inspect_resource summer_add_node summer_set_prop summer_set_resource_property summer_save_scene summer_get_script_errors
+allowed-tools: Read Grep Edit Write summer_get_scene_tree summer_inspect_node summer_inspect_resource summer_run_script summer_add_node summer_set_prop summer_set_resource_property summer_connect_signal summer_save_scene summer_get_script_errors summer_play summer_stop
 paths: ["**/*.gd", "**/*.tscn", "**/*.tres"]
 ---
 
@@ -65,6 +65,15 @@ This is the production-default for a humanoid character that can move, attack, t
 - **Hit** same pattern, higher priority — interrupts attack. Fires on `damaged` signal.
 - **Dead** is a transition-target with no exit. Trigger via `state_machine.travel("dead")`.
 
+## The fast lane: script the wiring (preferred)
+
+Before walking the CRUD steps below, check the ctx lane — one `summer_run_script` call replaces the add-node/set-prop chain AND the hand-written `.tres`:
+
+- **Wave G engines:** `ctx.anim_state_machine(character, {states: {...}, transitions: [[from, to, {blend_s: 0.2}], ...], start: "idle"})` gets-or-creates the AnimationTree, wires it to the player, builds the state machine, sets `active = true`. Unknown clip names come back as a report entry listing the player's REAL clips — never wire against guessed names. Full recipe (inspect clips/bones first, method-track events, root motion, playtest verification): `summer:animation/character-animation-wiring`.
+- **Any engine (raw fallback):** the same classes are fully script-bound — `AnimationNodeStateMachine.add_node(name, AnimationNodeAnimation)`, `add_transition(from, to, AnimationNodeStateMachineTransition)` (one transition resource each, `xfade_time` on it), then `tree.anim_player = tree.get_path_to(player)`, `tree.tree_root = sm`, `tree.active = true`, and `ctx.set_owner_recursive(tree)`. The raw script is quoted in `summer:animation/character-animation-wiring`.
+
+Note the helper's scope honestly: `anim_state_machine` builds clip states + transitions only. The canonical machine below — BlendSpace1D locomotion, OneShot attack/hit — still needs the `.tres` (or raw-script) lane for those node types. Discrete idle/walk/run backbones don't.
+
 ## Steps via MCP
 
 ### 1. Inspect the current character
@@ -96,10 +105,15 @@ before it reaches the engine. Get the path from `summer_get_project_context`.
 
 The `tree_root` is a single `AnimationNodeStateMachine`. Inside it, a `Locomotion` node which is itself an `AnimationNodeBlendSpace1D`, plus `Attack`, `Hit`, `Dead` nodes.
 
-This is more readable to edit by hand or in Summer Engine, then commit the
-`.tres`. The MCP tool `summer_set_resource_property` can build it node-by-node,
-but the tree-resource model is verbose enough that **writing the `.tres` and
-importing it is faster** for the canonical structure. Skeleton:
+Three ways to build it, in preference order: (1) a `summer_run_script` GDScript
+constructing the node graph via the script-bound API — transactional, no
+hand-parsed text format (see the fast-lane section above; BlendSpace1D and
+OneShot nodes are `AnimationNodeBlendSpace1D.new()` + `add_blend_point(...)`
+and `AnimationNodeOneShot.new()` with `fadein_time`/`fadeout_time`, composed
+with the same `add_node`/`add_transition` calls); (2) hand-writing the `.tres`
+below and importing it; (3) `summer_set_resource_property` node-by-node — the
+most verbose, use only for touch-ups. The `.tres` skeleton, for the read/write
+fallback lane:
 
 ```
 [gd_resource type="AnimationNodeStateMachine" load_steps=8 format=3]
@@ -282,5 +296,6 @@ the same `.tres`; it is slower but discoverable.
 
 ## See also
 
+- `summer:animation/character-animation-wiring` — the end-to-end rigged-GLB path: inspect real clip/bone names, `ctx.anim_state_machine`, method tracks, root motion, playtest verification.
 - `summer:animation/generate-motion` — produce the clips this tree references.
 - `summer:animation/retarget` — share one tree across many characters.

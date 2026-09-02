@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects
 user-invocable: true
-allowed-tools: Read Write Edit summer_write_file summer_read_file summer_inspect_node summer_inspect_resource summer_get_script_errors summer_get_debugger_errors summer_play summer_stop
+allowed-tools: Read Write Edit summer_write_file summer_read_file summer_inspect_node summer_inspect_resource summer_run_script summer_screenshot summer_get_script_errors summer_get_debugger_errors summer_play summer_stop
 paths: ["**/*.tscn", "**/*.gd", "**/*.gdshader", "addons/vfx/**"]
 ---
 
@@ -245,6 +245,26 @@ DissolveController.dissolve_object(target, 1.2, Color(1, 0.55, 0.1), 6.0, false)
 # ...then re-materialize later
 DissolveController.materialize_object(target, 0.8)
 ```
+
+### 5a. Iterate on the shader with ctx.make_shader (summer_run_script)
+
+On engines with the Wave F ctx stdlib (see `summer:scene-scripting`), prototype the
+shader BEFORE committing it to a file: `ctx.make_shader(code, params)` compiles the
+source and returns compile errors **verbatim** in the result (the
+`make_shader_errors` report entry, line numbers included) — no silent magenta
+material, no play-mode round-trip:
+
+```gdscript
+func run(ctx):
+    var mat := ctx.make_shader("<section 2 source>", {"threshold": 0.4})
+    ctx.apply_material(ctx.find("TestDummy"), mat)   # eyeball it with summer_screenshot
+```
+
+The loop: read the exact error from the report → fix that line → re-run. Once it
+compiles and a screenshot at `threshold: 0.4` shows the edge glow, write the final
+source to `dissolve.gdshader` with `summer_write_file` so the controller can preload
+it. (The editor-side preview does not replace 5b — the tweened runtime effect still
+needs a play-mode check.)
 
 ### 5b. Verify
 

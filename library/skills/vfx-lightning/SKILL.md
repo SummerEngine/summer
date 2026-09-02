@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects
 user-invocable: true
-allowed-tools: Read Write Edit summer_write_file summer_read_file summer_create_scene summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_save_scene summer_project_setting summer_get_script_errors summer_get_debugger_errors summer_play summer_stop
+allowed-tools: Read Write Edit summer_write_file summer_read_file summer_create_scene summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_save_scene summer_run_script summer_project_setting summer_get_script_errors summer_get_debugger_errors summer_play summer_stop
 paths: ["**/*.tscn", "**/*.gd", "**/*.gdshader", "addons/vfx/**"]
 ---
 
@@ -234,6 +234,19 @@ summer_set_prop(scenePath="res://main.tscn", path="./World/LightningCaster", key
 summer_set_prop(scenePath="res://main.tscn", path="./World/LightningCaster", key="bolt_color", value="Color(0.55, 0.75, 1.0)")
 summer_set_prop(scenePath="res://main.tscn", path="./World/LightningCaster", key="trauma_amount", value=0.6)
 summer_save_scene(scenePath="res://main.tscn")
+```
+
+Or, on engines with `summer_run_script` (see `summer:scene-scripting`), the two node
+calls collapse into one transactional ctx script — worth it when placing several
+casters or anything computed:
+
+```gdscript
+func run(ctx):
+    var caster := ctx.add_node("Node3D", "LightningCaster", null)
+    caster.set_script(load("res://addons/vfx/lightning/lightning_caster.gd"))
+    caster.set("bolt_color", Color(0.55, 0.75, 1.0))
+    caster.set("trauma_amount", 0.6)
+    ctx.save_scene()
 ```
 
 Then verify — the caster `preload`s its own shader, so a shader that failed to write

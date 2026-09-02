@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects
 user-invocable: true
-allowed-tools: Read Write Edit summer_write_file summer_read_file summer_create_scene summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_inspect_resource summer_save_scene summer_get_script_errors summer_get_debugger_errors summer_play summer_stop
+allowed-tools: Read Write Edit summer_write_file summer_read_file summer_create_scene summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_inspect_resource summer_save_scene summer_run_script summer_get_script_errors summer_get_debugger_errors summer_play summer_stop
 paths: ["**/*.tscn", "**/*.gd", "**/*.gdshader", "addons/vfx/**"]
 ---
 
@@ -245,6 +245,28 @@ summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/Pudd
 
 summer_save_scene(scenePath="res://main.tscn")
 ```
+
+### 5a. One-script wiring (summer_run_script)
+
+On engines with `summer_run_script` (see `summer:scene-scripting`), the node and
+resource wiring is ONE transactional ctx script — and it builds the subdivided
+PlaneMesh directly, so the `plane.tres` sidecar disappears:
+
+```gdscript
+func run(ctx):
+    var puddle := ctx.add_node("MeshInstance3D", "Puddle", null)
+    var plane := PlaneMesh.new()
+    plane.subdivide_width = 32
+    plane.subdivide_depth = 32
+    puddle.mesh = plane
+    puddle.position = Vector3(0, 0.01, 0)
+    puddle.set_script(load("res://addons/vfx/water-ripple/water_ripple_surface.gd"))
+    puddle.set("normal_texture", load("res://addons/vfx/water-ripple/water_normals.png"))
+    ctx.save_scene()
+```
+
+Set the mesh BEFORE the script if the controller reads it in `_ready`; either way,
+`ctx.add_node` has already owned the node, so it survives the save.
 
 ### 5b. Verify
 

@@ -192,6 +192,12 @@ summer_set_prop(scenePath="res://addons/vfx/hit-spark/hit_spark.tscn", path=".",
 summer_save_scene(scenePath="res://addons/vfx/hit-spark/hit_spark.tscn")
 ```
 
+Note on the script lane: `summer_run_script` operates on the **open** scene, and
+this recipe builds a standalone `hit_spark.tscn` — so the `summer_create_scene` /
+`summer_replace_node` chain above stays the right wiring here. Reach for
+`summer:scene-scripting` only if you are placing many pre-spawned spark emitters
+into the open scene with computed positions.
+
 ### 4b. Verify
 
 `hit_spark.gd` is the whole recipe — if it did not parse, every `spawn_hit_spark`

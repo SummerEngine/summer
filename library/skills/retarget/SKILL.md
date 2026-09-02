@@ -207,7 +207,9 @@ Documented in the Godot 4.x "Retargeting 3D Skeletons" docs.
 ## Handoff
 
 - After the clips are on the target, the wiring is identical to a freshly-generated
-  clip — hand off to `summer:animation/animation-tree` for state-machine integration.
+  clip — hand off to `summer:animation/character-animation-wiring` for the end-to-end
+  path (inspect the target's real clip/bone names first — retargeted imports rename
+  things), or `summer:animation/animation-tree` for blend-space/overlay graph design.
 - If the result shows foot-clipping or hand-pen-through-prop issues, hand off to
   `summer:animation/procedural-animation` for IK correction.
 - For NPC behavior driving these clips, hand off to `summer:ai-and-npcs/design-npc`.

@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: animation
 user-invocable: false
-allowed-tools: Read Grep Edit Write summer_get_scene_tree summer_inspect_node summer_inspect_resource summer_add_node summer_set_prop summer_set_resource_property summer_save_scene summer_get_script_errors
+allowed-tools: Read Grep Edit Write summer_get_scene_tree summer_inspect_node summer_inspect_resource summer_run_script summer_add_node summer_set_prop summer_set_resource_property summer_save_scene summer_get_script_errors
 paths: ["**/*.gd", "**/*.tscn", "**/*.tres"]
 ---
 
@@ -54,7 +54,21 @@ The skeleton hands off to physics on death. Bones become `PhysicalBone3D` rigid 
 
 ### A1 — Head look-at the player
 
-The bread-and-butter NPC liveliness fix. Three lines of scene + one script function.
+The bread-and-butter NPC liveliness fix.
+
+**ctx lane (Wave G engines):** one `summer_run_script` call creates the owned modifier and sets the props — prefer it over the 10-call CRUD chain below:
+
+```gdscript
+func run(ctx):
+    var skel = ctx.find("NPC").find_children("*", "Skeleton3D", true, false)[0]
+    var mod := ctx.look_at_modifier(skel, ctx.find("Player"), {
+        "bone_name": "Head", "forward_axis": 2, "primary_rotation_axis": 1,
+        "use_secondary_rotation": true, "use_angle_limitation": true,
+        "symmetry_limitation": true, "primary_limit_angle": 1.4, "secondary_limit_angle": 1.0,
+    })
+```
+
+Unknown prop names land in the `prop_warnings` report entry instead of failing silently — read it. On an older engine the helper is a plain script error; fall back to the structured ops:
 
 ```
 summer_inspect_node "./World/NPC/Skeleton3D"   # confirm bone names
@@ -219,7 +233,7 @@ You need PhysicalBone3D children matching every major bone (set up once via the 
 
 ## Anti-patterns
 
-- Writing `skel.set_bone_pose_position(...)` in `_process`. Bypasses the AnimationTree, fights it next frame, results in jitter. Use modifiers instead — they integrate with the pipeline.
+- Writing `skel.set_bone_pose_position(...)` in `_process`. Bypasses the AnimationTree, fights it next frame, results in jitter. Use modifiers instead — they integrate with the pipeline. (Edit-time STILL poses — a corpse, a statue — are the exception: no tree is running, so `ctx.bone_pose(skel, bone, {position/rotation/scale})` on Wave G engines, or `set_bone_pose_*` in a one-off `summer_run_script`, is exactly right. See `summer:animation/character-animation-wiring`.)
 - Putting IK targets in worldspace and forgetting they don't follow the character. Parent IK targets under the character root or bone — IK target is in the modifier's local space.
 - Procedural look-at without a fade-out at distance. Distant NPCs all snap to player every frame, looks like a hivemind.
 - Foot IK on flying / floating characters. Disable when `is_on_floor() == false`.
@@ -239,6 +253,7 @@ driving them. Foot raycasts can be set up visually with a RayCast3D child.
 
 ## Handoff
 
+- For the end-to-end rigged-character wiring these layers sit on top of (locomotion, method-track events, root motion), `summer:animation/character-animation-wiring`.
 - For the AnimationTree these procedural layers compose with, `summer:animation/animation-tree`.
 - For the source clips that procedural overlays modify, `summer:animation/generate-motion`.
 - For face / lipsync (a different modifier family — BlendShapes, not bones), `summer:animation/facial-and-lipsync`.

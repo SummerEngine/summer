@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects
 user-invocable: true
-allowed-tools: Read Write Edit summer_write_file summer_read_file summer_create_scene summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_inspect_resource summer_save_scene summer_get_script_errors summer_get_debugger_errors summer_play summer_stop
+allowed-tools: Read Write Edit summer_write_file summer_read_file summer_create_scene summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_inspect_resource summer_save_scene summer_run_script summer_world_snapshot summer_snapshot_diff summer_screenshot summer_get_script_errors summer_get_debugger_errors summer_play summer_stop
 paths: ["**/*.tscn", "**/*.gd", "**/*.gdshader", "addons/vfx/**"]
 ---
 
@@ -254,6 +254,32 @@ summer_add_node(scenePath="res://main.tscn", parent="./World/Campfire", type="GP
 summer_set_prop(scenePath="res://main.tscn", path="./World/Campfire/Smoke", key="position", value="Vector3(0, 1.5, 0)")  # above flame top
 summer_set_prop(scenePath="res://main.tscn", path="./World/Campfire/Smoke", key="rise_height", value=3.0)
 ```
+
+### 5a. One-script wiring (summer_run_script)
+
+On engines with `summer_run_script` (see `summer:scene-scripting`), the node wiring
+above is ONE ctx script — transactional, and it builds the QuadMesh + ShaderMaterial
+resources directly instead of `.tres` sidecars:
+
+```gdscript
+func run(ctx):
+    var smoke := ctx.add_node("GPUParticles3D", "Smoke", ctx.find("Chimney"))
+    smoke.set_script(load("res://addons/vfx/smoke/smoke_controller.gd"))
+    smoke.process_material = ParticleProcessMaterial.new()
+    var quad := QuadMesh.new()
+    quad.size = Vector2(1, 1)
+    var mat := ShaderMaterial.new()
+    mat.shader = load("res://addons/vfx/smoke/smoke.gdshader")
+    quad.material = mat
+    smoke.draw_pass_1 = quad
+    smoke.position = Vector3(0, 0.3, 0)
+    smoke.set("rise_height", 4.0)
+    smoke.set("particle_count", 48)
+    smoke.set("wind_direction", Vector3(0.4, 0, 0.1))
+    ctx.save_scene()
+```
+
+Verify with `summer_snapshot_diff` (exactly one node added) and a `summer_screenshot`.
 
 ### 5b. Verify
 

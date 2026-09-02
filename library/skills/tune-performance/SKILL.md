@@ -109,7 +109,7 @@ summer_inspect_node "./World/Enemy"
 summer_inspect_resource "./World/Enemy"   # for mesh/material/shape details
 ```
 
-**Bakes you cannot run for the user.** `LightmapGI` bake and the `OccluderInstance3D` bake are editor-process operations — `LightmapGI.bake()` is not exposed to scripting at all, and there is no MCP op for either. You can add and configure the nodes, but the bake itself is a button the user presses in the editor. Say so explicitly rather than reporting the optimization as applied. Navmesh baking, collision-shape generation from meshes, and `ImporterMesh.generate_lods` are all scriptable and remain yours to do.
+**Bakes: know which process can run them.** `LightmapGI.bake(from_node, image_data_path)` IS script-bound on this build — run it from `summer_run_script` in the live editor (the GPU lightmapper needs a real renderer: desktop editors have one, cloud containers need xvfb + GL per `summer:running-in-the-cloud`, and pure-headless returns `BAKE_ERROR_NO_LIGHTMAPPER`). The `OccluderInstance3D` bake remains editor-button only — say so rather than reporting it as applied. Navmesh baking, collision-shape generation from meshes, and `ImporterMesh.generate_lods` are all scriptable and remain yours to do.
 
 ### 4b. Physics hotspot
 

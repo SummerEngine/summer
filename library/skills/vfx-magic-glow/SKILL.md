@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects
 user-invocable: true
-allowed-tools: Read Write Edit summer_write_file summer_read_file summer_create_scene summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_save_scene summer_get_script_errors summer_get_debugger_errors summer_play summer_stop
+allowed-tools: Read Write Edit summer_write_file summer_read_file summer_create_scene summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_save_scene summer_run_script summer_screenshot summer_get_script_errors summer_get_debugger_errors summer_play summer_stop
 paths: ["**/*.tscn", "**/*.gd", "**/*.gdshader", "addons/vfx/**"]
 ---
 
@@ -223,6 +223,26 @@ summer_set_prop(scenePath="res://main.tscn", path="./World/Pedestal/SoulGem/Glow
 summer_set_prop(scenePath="res://main.tscn", path="./World/Pedestal/SoulGem/Glow", key="mote_count", value=32)
 summer_set_prop(scenePath="res://main.tscn", path="./World/Pedestal/SoulGem/Glow", key="mote_radius", value=0.30)
 ```
+
+Either wiring block is also ONE ctx script on engines with `summer_run_script`
+(see `summer:scene-scripting`) — the eight `summer_set_prop` calls become one
+transactional run, and computed placement (a glow per gem in a ring) becomes a loop:
+
+```gdscript
+func run(ctx):
+    var glow := ctx.add_node("Node3D", "Glow", ctx.find("Sword"))
+    glow.set_script(load("res://addons/vfx/magic-glow/magic_glow.gd"))
+    glow.set("glow_color", Color(0.55, 0.85, 1.0))
+    glow.set("light_energy_base", 1.2)
+    glow.set("light_energy_amplitude", 0.6)
+    glow.set("mote_count", 16)
+    glow.set("mote_radius", 0.20)
+    glow.set("pulse_source_mesh", NodePath("../Blade"))
+    ctx.save_scene()
+```
+
+Judge the pulse with `summer_screenshot framing:"camera"` — emissive glow does not
+survive the preset framings' substitute environment.
 
 Then verify — this recipe is one script, so a parse error is the whole effect:
 

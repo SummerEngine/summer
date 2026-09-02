@@ -1,0 +1,76 @@
+---
+name: verifying-scenes
+description: Use when verifying that scene work actually landed — after any mutation batch, asset import, lighting change, or during a playtest — and before claiming any visual or structural result. Runs the before/after discipline (summer_world_snapshot → mutate → summer_snapshot_diff + summer_screenshot), reads live runtime state with summer_get_runtime_tree / summer_inspect_runtime_node instead of stopping the game, and enforces honest-claim rules.
+---
+
+# Verifying Scenes
+
+## Two signals, two jobs
+
+- **Structured state** (`summer_world_snapshot`, `summer_snapshot_diff`, `summer_get_scene_tree`, runtime reads) proves **facts**: paths, classes, transforms, world AABBs, counts, what changed.
+- **Pixels** (`summer_screenshot`) prove **appearance**: composition, scale-to-the-eye, lighting, "does it read as a forest".
+
+Neither substitutes for the other. A diff can say "40 trees added at plausible positions" while the screenshot shows them all untextured magenta; a screenshot can look right while the diff reveals half the trees are unowned and will vanish on save. Run both.
+
+## The before/after discipline
+
+Around **every** mutation batch (script, scene tools, import):
+
+1. **BEFORE**: `summer_world_snapshot` — keep `snapshot_id`. First time in a session, also screenshot so you know the starting state.
+2. Mutate.
+3. **AFTER**: `summer_snapshot_diff from_id:<id>` (omit `to_id` — the engine snapshots now). Check the receipt against your INTENT:
+   - `added` = exactly what you meant to add — no more, no less.
+   - `removed` = empty unless you deleted on purpose. A node you created appearing here (or missing from `added` after a save) is the ownership bug — see `summer:scene-scripting`.
+   - `changed` = only nodes you touched. Unexpected entries mean your script had side effects.
+4. **AFTER**: `summer_screenshot` — and LOOK at it.
+5. Fix before stacking more work on a broken base. An empty diff after a "successful" mutation is a red flag, not a success.
+
+Snapshot ids: the engine retains the last 8 per session; `unknown_snapshot` means the baseline expired — take a fresh one and redo the pair.
+
+## Physical plausibility — check AABBs
+
+`summer_world_snapshot` carries a world AABB per 3D visual. After placing or importing anything:
+
+- Nothing clips that shouldn't (compare AABBs of neighbors).
+- Nothing floats above or sinks into its support.
+- Sizes are real-world plausible: door ≈ 2 units, person ≈ 1.7, car ≈ 4.5. An AABB of 40 on a "chair" is an import-scale bug — pass `target_size` to `summer_instantiate_scene` and re-check.
+
+## Choosing the right screenshot
+
+| Question | Call |
+|---|---|
+| How does the open tab look right now? | `target:"viewport"` (default) |
+| Is the composition/scale of a scene file right? | `target:"scene"` (+ `scenePath`, preset framing) |
+| Is the **lighting / mood / environment** right? | `target:"scene" framing:"camera"` — renders through the scene's OWN camera with its REAL WorldEnvironment. Preset framings substitute a flat environment and CANNOT answer this. |
+| What does the running game show? | `target:"game"` (`summer_play` first; needs the desktop bridge) |
+
+Read the confession warnings in every capture (no camera, no light, synthetic camera, project mismatch, "engine predates camera framing"). They are part of the result.
+
+## Runtime reads during playtests
+
+The edited scene is not the running game. While the game runs:
+
+- `summer_get_runtime_tree` — what ACTUALLY spawned (enemies, projectiles, autoloads, pooled nodes). Runtime paths often differ from edited-scene paths.
+- `summer_inspect_runtime_node path:"/root/..."` — one node's live properties: actual stats, actual position, actual flags.
+
+Inspect live instead of stopping the game — stopping usually resets the bug you are chasing. `game_not_running` means exactly that: `summer_play`, then re-run. For input-driven proof, climb to a RunVerification probe (see the playbook's `rawOpsViaBatch`).
+
+## Honest-claim rules
+
+- Claim only what a diff, frame, or diagnostics call **proved**, and cite it: "the diff shows 40 trees added; the camera-framing screenshot shows them lit on the terrain."
+- NEVER describe an image you did not receive. A failed capture is a result — report it and climb down (scene → viewport) or ask the user.
+- Preset-framing scene renders are static (t=0), synthetic-camera, flat-environment: no claims about animation, particles, lighting, or mood from them.
+- Pass structured failures (`failure_reason`, `terminalState`) through verbatim — never soften them into "it didn't work".
+- When the user reacts to a result, record it: `summer_record_feedback` (accept / reject / undo / correction + their words). Opt-in and local; if it says capture is off, move on.
+
+## Red Flags — STOP
+
+| Red flag | Reality |
+|---|---|
+| Mutating twice in a row without a diff or screenshot between | You are compounding on an unverified base. Verify, then continue. |
+| "The diff is probably fine, the script said ok" | `ok:true` scripts still drop unowned nodes on save. Read the diff. |
+| Judging lighting from an iso/top framing | Flat substitute environment. Use `framing:"camera"`, boot the game, or a probe. |
+| Stopping the game to inspect a runtime bug | The stop resets the state. Use the runtime reads first. |
+| "Looks great!" with no capture in the transcript | Fabrication. Capture, look, then claim. |
+
+**Related skills:** `summer:scene-scripting` carries the mutation loop and ctx API this discipline wraps; `summer:playtesting-a-feature` and `summer:verification-before-completion` carry the broader done-claiming rules.

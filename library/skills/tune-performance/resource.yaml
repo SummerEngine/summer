@@ -16,6 +16,8 @@ compatibility:
   engine: ">=4.6"
 related:
   skills:
+    - skill/running-in-the-cloud
+    - skill/scene-scripting
     - skill/debug
     - skill/3d-lighting
     - skill/diagnosing-perf-regressions

@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects
 user-invocable: true
-allowed-tools: Read Write Edit summer_write_file summer_read_file summer_create_scene summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_inspect_resource summer_save_scene summer_get_script_errors summer_get_debugger_errors summer_play summer_stop
+allowed-tools: Read Write Edit summer_write_file summer_read_file summer_create_scene summer_add_node summer_set_prop summer_set_resource_property summer_inspect_node summer_inspect_resource summer_save_scene summer_run_script summer_world_snapshot summer_snapshot_diff summer_screenshot summer_get_script_errors summer_get_debugger_errors summer_play summer_stop
 paths: ["**/*.tscn", "**/*.gd", "**/*.gdshader", "addons/vfx/**"]
 ---
 
@@ -317,6 +317,37 @@ summer_set_prop(scenePath="res://main.tscn", path="./World/Torch/FireLight", key
 
 summer_save_scene(scenePath="res://main.tscn")
 ```
+
+### 6a. One-script wiring (summer_run_script)
+
+On engines with `summer_run_script` (see `summer:scene-scripting`), everything after
+the `summer_write_file` calls above is ONE ctx script — transactional (rollback on a
+mid-script error), no `.tres` sidecar files needed because the script builds the
+resources directly:
+
+```gdscript
+func run(ctx):
+    var anchor := ctx.find("Torch")
+    var fire := ctx.add_node("GPUParticles3D", "Fire", anchor)
+    fire.set_script(load("res://addons/vfx/fire/fire_controller.gd"))
+    fire.process_material = ParticleProcessMaterial.new()   # controller configures it on _ready
+    var quad := QuadMesh.new()
+    quad.size = Vector2(1, 1)
+    var mat := ShaderMaterial.new()
+    mat.shader = load("res://addons/vfx/fire/fire.gdshader")
+    quad.material = mat
+    fire.draw_pass_1 = quad
+    fire.set("flame_height", 1.2)
+    fire.set("flame_radius", 0.35)
+    fire.set("particle_count", 96)
+    ctx.add_node("OmniLight3D", "FireLight", anchor, {
+        "light_color": Color(1.0, 0.6, 0.25), "light_energy": 1.6, "omni_range": 6.0})
+    ctx.save_scene()
+```
+
+`ctx.add_node` sets owners for you. Take a `summer_world_snapshot` before, and verify
+after with `summer_snapshot_diff` (exactly `Fire` + `FireLight` added) plus a
+`summer_screenshot` — flames are pixels, judge them as pixels.
 
 ### 6b. Verify
 

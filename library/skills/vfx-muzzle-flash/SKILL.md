@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects
 user-invocable: true
-allowed-tools: Read Write Edit summer_write_file summer_read_file summer_create_scene summer_add_node summer_set_prop summer_set_resource_property summer_connect_signal summer_inspect_node summer_save_scene summer_get_script_errors summer_get_debugger_errors summer_play summer_stop
+allowed-tools: Read Write Edit summer_write_file summer_read_file summer_create_scene summer_add_node summer_set_prop summer_set_resource_property summer_connect_signal summer_inspect_node summer_save_scene summer_run_script summer_get_script_errors summer_get_debugger_errors summer_play summer_stop
 paths: ["**/*.tscn", "**/*.gd", "**/*.gdshader", "addons/vfx/**"]
 ---
 
@@ -226,6 +226,26 @@ Or connect the weapon's `fired` signal in the scene:
 
 ```
 summer_connect_signal(scenePath="res://main.tscn", emitter="./Player/Weapon", signal="fired", receiver="./Player/Weapon/BarrelTip/MuzzleFlash", method="fire")
+```
+
+### 5a. One-script wiring (summer_run_script)
+
+On engines with `summer_run_script` (see `summer:scene-scripting`), the node calls
+above are ONE transactional ctx script — and mounting a flash on every weapon in the
+scene becomes a loop instead of a CRUD chain per gun:
+
+```gdscript
+func run(ctx):
+    var tip := ctx.find("BarrelTip")
+    var flash := ctx.add_node("Node3D", "MuzzleFlash", tip)
+    flash.set_script(load("res://addons/vfx/muzzle-flash/muzzle_flash.gd"))
+    flash.set("flash_size", 0.6)
+    flash.set("flash_duration", 0.08)
+    flash.set("light_energy", 4.0)
+    var weapon := ctx.find("Weapon")
+    weapon.connect("fired", Callable(flash, "fire"), CONNECT_PERSIST)
+    # CONNECT_PERSIST is required — a bare connect() works live but is NOT saved
+    ctx.save_scene()
 ```
 
 ### 5b. Verify

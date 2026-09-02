@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: rendering-and-lighting
 user-invocable: false
-allowed-tools: Read Grep summer_add_node summer_set_prop summer_set_resource_property summer_save_scene
+allowed-tools: Read Grep summer_add_node summer_set_prop summer_set_resource_property summer_save_scene summer_run_script summer_screenshot
 paths: ["**/*.tscn", "**/*.tres"]
 ---
 
@@ -109,8 +109,9 @@ Always use `Color(r, g, b, a)` with values 0.0–1.0:
 
 ## Baked lighting — what you can and cannot do from here
 
-Real-time lighting (everything above) is fully scriptable. Baking is not, and the
-split is worth stating before you promise a user a bake.
+Real-time lighting (everything above) is fully scriptable. Baking mostly is too on
+this build — the split that matters is *which process* runs the bake, not whether a
+script can trigger it.
 
 | Approach | Callable from MCP / a script? |
 |---|---|
@@ -118,14 +119,17 @@ split is worth stating before you promise a user a bake.
 | `WorldEnvironment` + `Environment` (sky, ambient, tonemap, glow, SSAO, SSR) | Yes |
 | `SDFGI` real-time GI | Yes — `Environment.sdfgi_enabled = true`, no bake step at all |
 | `VoxelGI` | Yes — `VoxelGI.bake()` **is** bound to script (`ClassDB.class_has_method("VoxelGI", "bake")` is true) |
-| **`LightmapGI` bake** | **No.** `LightmapGI` exposes only its `set_*` / `get_*` configuration methods — there is no `bake` in its method list on this build. It runs from the editor's Bake Lightmaps button only. |
-| **`OccluderInstance3D` occlusion bake** | **No.** `bake_single_node` is not script-callable either. Editor-only. |
+| **`LightmapGI` bake** | **Yes, from the live editor.** Summer binds `LightmapGI.bake(from_node, image_data_path)` to script (upstream leaves it button-only). Call it from `summer_run_script`. The GPU lightmapper needs a real renderer (a RenderingDevice): a normal desktop editor has one; a cloud container needs xvfb + GL (`summer:running-in-the-cloud`); a **pure-headless** process has none and the call returns `BAKE_ERROR_NO_LIGHTMAPPER`. |
+| **`OccluderInstance3D` occlusion bake** | **No.** `bake_single_node` is not script-callable. Editor-button only. |
 
-So when the user asks for baked lighting: add and configure the `LightmapGI`
-node and set the meshes' `gi_mode`, then tell them plainly that the bake itself
-is a button they press in the editor and that you cannot trigger it. Do not claim
-a bake happened. If they want GI without a manual step, steer to `SDFGI`
-(`Environment.sdfgi_enabled`, no bake) or `VoxelGI` (whose `bake()` you can call).
+So when the user asks for baked lighting: add and configure the `LightmapGI` node,
+set the meshes' `gi_mode`, then run the bake yourself from `summer_run_script` —
+`lgi.bake(lgi, "res://lightmaps/scene_lm.exr")` — and check the returned bake-error
+enum (0 is OK; `BAKE_ERROR_NO_LIGHTMAPPER` means no renderer in this process, not a
+missing binding). Verify with a `framing:"camera"` screenshot, which renders the
+real environment. Only fall back to "press Bake Lightmaps in the editor" when
+there is genuinely no renderer available. If they want GI with zero bake step,
+steer to `SDFGI` (`Environment.sdfgi_enabled`) or `VoxelGI`.
 
 Note the related trap: `Engine.has_singleton("EditorInterface")` returns **true**
 even in a headless non-editor process, so it is not a valid capability probe.

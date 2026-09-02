@@ -16,6 +16,7 @@ compatibility:
   engine: ">=4.6"
 related:
   skills:
+    - skill/scene-scripting
     - skill/sound-effect
     - skill/vfx-dissolve
     - skill/vfx-fire

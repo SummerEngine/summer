@@ -45,7 +45,7 @@ describe("public setup surface counts", () => {
 
   it("keeps the checked registry totals tied to source inventory", () => {
     expect(countMcpTools()).toBe(70);
-    expect(countSkills()).toBe(82);
+    expect(countSkills()).toBe(83);
   });
 
   it("does not publish stale setup counts", () => {

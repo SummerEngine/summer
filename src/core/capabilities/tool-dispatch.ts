@@ -660,8 +660,99 @@ function entry(
 const SCENE_MUTATION_OPS = new Set([
   "AddNode", "RemoveNode", "MoveNode", "ReparentNode", "ReplaceNode",
   "SetProp", "SetResourceProperty", "ConnectSignal", "DisconnectSignal",
-  "InstantiateScene", "SaveScene", "Undo",
+  "InstantiateScene", "SaveScene", "SnapToSurface", "AlignDistribute3D",
+  "FrameCamera3D", "Undo",
 ]);
+
+/** Read-only spatial queries: identity-bound to an exact scene, never saved. */
+const SCENE_QUERY_OPS = new Set(["TestPlacement3D", "CameraVisibility3D", "NavigationProbe3D"]);
+
+// ---------------------------------------------------------------------------
+// Spatial tool argument helpers. Mirror of the bounds in
+// src/mcp/tools/spatial-tools.ts (exact paths, UTF-8 byte limits, subject
+// counts). v3-followup: fold into one copy when mcp adopts this registry.
+// ---------------------------------------------------------------------------
+const SPATIAL_SCENE_PATH_LIMIT_BYTES = 512;
+const SPATIAL_NODE_PATH_LIMIT_BYTES = 256;
+
+function exactPath(args: DispatchArgs, key: string, limitBytes: number): string {
+  const value = str(args, key).trim();
+  if (!value) throw new ToolDispatchError(`${key} must name one exact path.`);
+  if (Buffer.byteLength(value, "utf8") > limitBytes) {
+    throw new ToolDispatchError(`${key} must be at most ${limitBytes} UTF-8 bytes after trimming.`);
+  }
+  return value;
+}
+
+function exactSubjectPaths(args: DispatchArgs, min: number, max: number): string[] {
+  const raw = args.subjectPaths;
+  if (!Array.isArray(raw) || raw.some((entry) => typeof entry !== "string")) {
+    throw new ToolDispatchError("subjectPaths must be an array of exact node path strings");
+  }
+  const subjects = (raw as string[]).map((entry, index) => {
+    const value = entry.trim();
+    if (!value) throw new ToolDispatchError(`subjectPaths[${index}] must name one exact path.`);
+    if (Buffer.byteLength(value, "utf8") > SPATIAL_NODE_PATH_LIMIT_BYTES) {
+      throw new ToolDispatchError(
+        `subjectPaths[${index}] must be at most ${SPATIAL_NODE_PATH_LIMIT_BYTES} UTF-8 bytes after trimming.`
+      );
+    }
+    return value;
+  });
+  if (subjects.length < min || subjects.length > max) {
+    throw new ToolDispatchError(`subjectPaths must contain ${min}..${max} exact paths.`);
+  }
+  if (new Set(subjects).size !== subjects.length) {
+    throw new ToolDispatchError("subjectPaths must not contain duplicates.");
+  }
+  return subjects;
+}
+
+function finiteVector3(
+  args: DispatchArgs,
+  key: string,
+  fallback?: [number, number, number]
+): [number, number, number] {
+  const value = args[key];
+  if (value === undefined && fallback) return fallback;
+  if (
+    !Array.isArray(value) ||
+    value.length !== 3 ||
+    !value.every((n) => typeof n === "number" && Number.isFinite(n))
+  ) {
+    throw new ToolDispatchError(`${key} must be an array of exactly three finite numbers`);
+  }
+  return value as [number, number, number];
+}
+
+function optNumber(args: DispatchArgs, key: string, fallback: number): number {
+  const value = args[key];
+  if (value === undefined) return fallback;
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new ToolDispatchError(`${key} must be a finite number`);
+  }
+  return value;
+}
+
+function optBoolean(args: DispatchArgs, key: string, fallback: boolean): boolean {
+  const value = args[key];
+  if (value === undefined) return fallback;
+  if (typeof value !== "boolean") throw new ToolDispatchError(`${key} must be a boolean`);
+  return value;
+}
+
+/** Capability pre-flight shared by the six spatial tools: refuse before
+ *  sending when the engine advert PROVES the op is missing. */
+async function requireSpatialOp(
+  ctx: ToolDispatchContext,
+  op: string,
+  fallback: string
+): Promise<EngineApiClient> {
+  const client = await ctx.engine();
+  const missing = missingEngineOpResult(client, op, fallback);
+  if (missing) throw new ToolDispatchError(missing.error);
+  return client;
+}
 
 export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   // --- asset ---
@@ -1305,15 +1396,23 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       );
     }
     const scenePath = optStr(args, "scenePath");
-    const needsScenePath = ops.some((op) => SCENE_MUTATION_OPS.has(String(op.op ?? "")));
+    const containsMutation = ops.some((op) => SCENE_MUTATION_OPS.has(String(op.op ?? "")));
+    const needsScenePath =
+      containsMutation || ops.some((op) => SCENE_QUERY_OPS.has(String(op.op ?? "")));
     if (needsScenePath && !scenePath) {
-      throw new ToolDispatchError("batch requires scenePath when ops contains scene mutations");
+      throw new ToolDispatchError("batch requires scenePath when ops targets a scene");
     }
     const client = await ctx.engine();
     const options: DispatchArgs = { groupUndo: true, ...(scenePath ? { scenePath } : {}) };
-    return needsScenePath
-      ? executeSceneMutation(client, scenePath!, ops, options)
-      : executeOpsChunked((chunk) => client.executeOps(chunk, options), ops, resolveSingleOnlyOps(client));
+    if (containsMutation) return executeSceneMutation(client, scenePath!, ops, options);
+    return executeOpsChunked(
+      (chunk) =>
+        needsScenePath
+          ? client.executeIdentityBoundOps(chunk, options)
+          : client.executeOps(chunk, options),
+      ops,
+      resolveSingleOnlyOps(client)
+    );
   }),
 
   // --- scene scripting ---
@@ -1379,6 +1478,142 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     if (missing) throw new ToolDispatchError(missing.error);
     return requireEngineSuccess(
       await client.executeOps([{ op: "GetRuntimeNode", path: str(args, "path") }])
+    );
+  }),
+
+  // --- spatial / world building ---
+  entry("summer_test_placement", "Ghost-test one node at a candidate global pose (read-only, never saves)", true, async (args, ctx) => {
+    const client = await requireSpatialOp(ctx, "TestPlacement3D", "judge clearance from summer_world_snapshot AABBs and verify with summer_screenshot");
+    const scenePath = exactPath(args, "scenePath", SPATIAL_SCENE_PATH_LIMIT_BYTES);
+    const maxFloorDistance = optNumber(args, "maxFloorDistance", 5);
+    if (maxFloorDistance < 0.001) throw new ToolDispatchError("maxFloorDistance must be at least 0.001.");
+    return requireEngineSuccess(
+      await client.executeIdentityBoundOps(
+        [
+          {
+            op: "TestPlacement3D",
+            subject_path: exactPath(args, "subjectPath", SPATIAL_NODE_PATH_LIMIT_BYTES),
+            candidate_global_position: finiteVector3(args, "candidateGlobalPosition"),
+            candidate_global_rotation_degrees: finiteVector3(args, "candidateGlobalRotationDegrees"),
+            collision_mask: optNumber(args, "collisionMask", 0xffffffff),
+            collide_with_areas: optBoolean(args, "collideWithAreas", true),
+            max_floor_distance: maxFloorDistance,
+            ground_tolerance: optNumber(args, "groundTolerance", 0.05),
+            margin: optNumber(args, "margin", 0.001),
+          },
+        ],
+        { scenePath }
+      )
+    );
+  }),
+  entry("summer_snap_to_surface", "Seat one subject on the first surface along a world ray (mutation + save)", true, async (args, ctx) => {
+    const client = await requireSpatialOp(ctx, "SnapToSurface", "set the subject's position with summer_set_prop from summer_world_snapshot AABBs");
+    const scenePath = exactPath(args, "scenePath", SPATIAL_SCENE_PATH_LIMIT_BYTES);
+    const direction = finiteVector3(args, "direction", [0, -1, 0]);
+    if (direction.reduce((sum, n) => sum + n * n, 0) <= 0.00001) {
+      throw new ToolDispatchError("direction squared length must exceed 0.00001.");
+    }
+    const maxDistance = optNumber(args, "maxDistance", 20);
+    const gap = optNumber(args, "gap", 0);
+    if (maxDistance <= 0) throw new ToolDispatchError("maxDistance must be positive.");
+    if (gap < 0 || gap > maxDistance) throw new ToolDispatchError("gap must be >= 0 and must not exceed maxDistance.");
+    return requireEngineSuccess(
+      await executeSceneMutation(client, scenePath, [
+        {
+          op: "SnapToSurface",
+          subject_path: exactPath(args, "subjectPath", SPATIAL_NODE_PATH_LIMIT_BYTES),
+          direction,
+          max_distance: maxDistance,
+          gap,
+          align_up: optBoolean(args, "alignUp", false),
+        },
+      ])
+    );
+  }),
+  entry("summer_align_distribute_3d", "Align or equal-space 2-16 ordered subjects along one world axis (mutation + save)", true, async (args, ctx) => {
+    const client = await requireSpatialOp(ctx, "AlignDistribute3D", "compute anchors from summer_world_snapshot AABBs and set positions with summer_set_prop");
+    const scenePath = exactPath(args, "scenePath", SPATIAL_SCENE_PATH_LIMIT_BYTES);
+    const axis = finiteVector3(args, "axis");
+    if (Math.hypot(...axis) <= 1e-6) throw new ToolDispatchError("axis must be non-zero.");
+    const mode = str(args, "mode");
+    if (!["align_min", "align_center", "align_max", "distribute_centers", "distribute_gaps"].includes(mode)) {
+      throw new ToolDispatchError("mode must be one of align_min, align_center, align_max, distribute_centers, distribute_gaps.");
+    }
+    return requireEngineSuccess(
+      await executeSceneMutation(client, scenePath, [
+        { op: "AlignDistribute3D", subject_paths: exactSubjectPaths(args, 2, 16), axis, mode },
+      ])
+    );
+  }),
+  entry("summer_frame_camera", "Move one perspective Camera3D to frame 1-8 subjects at an explicit aspect (mutation + save)", true, async (args, ctx) => {
+    const client = await requireSpatialOp(ctx, "FrameCamera3D", "position the camera with summer_set_prop and check with summer_screenshot target 'scene'");
+    const scenePath = exactPath(args, "scenePath", SPATIAL_SCENE_PATH_LIMIT_BYTES);
+    const aspect = optNumber(args, "aspect", Number.NaN);
+    if (!(aspect > 0)) throw new ToolDispatchError("aspect is required and must be a positive finite number.");
+    const padding = optNumber(args, "padding", Number.NaN);
+    if (!(padding >= 0 && padding <= 0.45)) throw new ToolDispatchError("padding is required and must be from 0 through 0.45.");
+    const op: DispatchArgs = {
+      op: "FrameCamera3D",
+      camera_path: exactPath(args, "cameraPath", SPATIAL_NODE_PATH_LIMIT_BYTES),
+      subject_paths: exactSubjectPaths(args, 1, 8),
+      aspect,
+      padding,
+    };
+    if (args.viewDirection !== undefined) {
+      const viewDirection = finiteVector3(args, "viewDirection");
+      if (viewDirection.reduce((sum, n) => sum + n * n, 0) <= 1e-12) {
+        throw new ToolDispatchError("viewDirection must be finite and nonzero.");
+      }
+      op.view_direction = viewDirection;
+    }
+    return requireEngineSuccess(await executeSceneMutation(client, scenePath, [op]));
+  }),
+  entry("summer_camera_visibility", "Read-only framing + sampled occlusion check for up to 5 subjects from one camera", true, async (args, ctx) => {
+    const client = await requireSpatialOp(ctx, "CameraVisibility3D", "check framing visually with summer_screenshot target 'scene'");
+    const scenePath = exactPath(args, "scenePath", SPATIAL_SCENE_PATH_LIMIT_BYTES);
+    const aspect = optNumber(args, "aspect", Number.NaN);
+    if (!(aspect > 0)) throw new ToolDispatchError("aspect is required and must be a positive finite number.");
+    const occlusionSamples = optNumber(args, "occlusionSamples", 5);
+    if (!Number.isInteger(occlusionSamples) || occlusionSamples < 1 || occlusionSamples > 5) {
+      throw new ToolDispatchError("occlusionSamples must be an integer from 1 through 5.");
+    }
+    return requireEngineSuccess(
+      await client.executeIdentityBoundOps(
+        [
+          {
+            op: "CameraVisibility3D",
+            camera_path: exactPath(args, "cameraPath", SPATIAL_NODE_PATH_LIMIT_BYTES),
+            subject_paths: exactSubjectPaths(args, 1, 5),
+            aspect,
+            occlusion_samples: occlusionSamples,
+            collision_mask: optNumber(args, "collisionMask", 0xffffffff),
+            collide_with_areas: optBoolean(args, "collideWithAreas", false),
+          },
+        ],
+        { scenePath }
+      )
+    );
+  }),
+  entry("summer_navigation_probe", "Read-only navigation reachability between two world points on the scene's nav map", true, async (args, ctx) => {
+    const client = await requireSpatialOp(ctx, "NavigationProbe3D", "probe reachability from a RunVerification probe (NavigationServer3D.map_get_path)");
+    const scenePath = exactPath(args, "scenePath", SPATIAL_SCENE_PATH_LIMIT_BYTES);
+    const navigationLayers = optNumber(args, "navigationLayers", 1);
+    if (!Number.isInteger(navigationLayers) || navigationLayers < 1 || navigationLayers > 0xffffffff) {
+      throw new ToolDispatchError("navigationLayers must be an integer from 1 through 4294967295.");
+    }
+    return requireEngineSuccess(
+      await client.executeIdentityBoundOps(
+        [
+          {
+            op: "NavigationProbe3D",
+            start: finiteVector3(args, "start"),
+            end: finiteVector3(args, "end"),
+            navigation_layers: navigationLayers,
+            optimize: optBoolean(args, "optimize", true),
+          },
+        ],
+        { scenePath }
+      )
     );
   }),
 

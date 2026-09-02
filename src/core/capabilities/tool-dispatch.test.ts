@@ -232,3 +232,111 @@ describe("scene-scripting and perception dispatch entries", () => {
     expect(calls).toEqual([]);
   });
 });
+
+describe("spatial dispatch entries", () => {
+  const spatialSlugs = [
+    "test-placement",
+    "snap-to-surface",
+    "align-distribute-3d",
+    "frame-camera",
+    "camera-visibility",
+    "navigation-probe",
+  ];
+
+  it("registers all six spatial tools as engine-required", () => {
+    for (const slug of spatialSlugs) {
+      expect(resolveToolDispatch(slug)?.engineRequired, slug).toBe(true);
+    }
+  });
+
+  it("refuses before sending when the engine advert lacks the op", async () => {
+    const { ctx, calls } = fakeEngineContext({
+      getEngineCapabilities: () => ({ opKinds: ["AddNode", "SaveScene"] }),
+      getEngineVersion: () => "0.5.61",
+    });
+    await expect(
+      dispatchTool("snap-to-surface", { scenePath: "res://a.tscn", subjectPath: "./Crate" }, ctx)
+    ).rejects.toThrow(/does not support the SnapToSurface op/);
+    await expect(
+      dispatchTool(
+        "test-placement",
+        {
+          scenePath: "res://a.tscn",
+          subjectPath: "./Crate",
+          candidateGlobalPosition: [0, 0, 0],
+          candidateGlobalRotationDegrees: [0, 0, 0],
+        },
+        ctx
+      )
+    ).rejects.toThrow(/does not support the TestPlacement3D op/);
+    expect(calls).toEqual([]);
+  });
+
+  it("snap-to-surface sends the mutation then SaveScene, identity-bound to the exact scene", async () => {
+    const { ctx, calls } = fakeEngineContext();
+    await dispatchTool("snap-to-surface", { scenePath: "res://a.tscn", subjectPath: " ./Crate " }, ctx);
+    expect(calls.map((call) => call.method)).toEqual(["executeIdentityBoundOps", "executeIdentityBoundOps"]);
+    expect(calls[0]!.args[0]).toEqual([
+      { op: "SnapToSurface", subject_path: "./Crate", direction: [0, -1, 0], max_distance: 20, gap: 0, align_up: false },
+    ]);
+    expect(calls[1]!.args[0]).toEqual([{ op: "SaveScene" }]);
+    for (const call of calls) {
+      expect((call.args[1] as Record<string, unknown>).scenePath).toBe("res://a.tscn");
+    }
+  });
+
+  it("read-only spatial queries send exactly one identity-bound op and never save", async () => {
+    const { ctx, calls } = fakeEngineContext();
+    await dispatchTool(
+      "camera-visibility",
+      { scenePath: "res://a.tscn", cameraPath: "./Cam", subjectPaths: ["./Hero"], aspect: 16 / 9 },
+      ctx
+    );
+    await dispatchTool("navigation-probe", { scenePath: "res://a.tscn", start: [0, 0, 0], end: [1, 0, 0] }, ctx);
+    expect(calls.map((call) => call.method)).toEqual(["executeIdentityBoundOps", "executeIdentityBoundOps"]);
+    expect(calls[0]!.args[0]).toEqual([
+      {
+        op: "CameraVisibility3D",
+        camera_path: "./Cam",
+        subject_paths: ["./Hero"],
+        aspect: 16 / 9,
+        occlusion_samples: 5,
+        collision_mask: 0xffffffff,
+        collide_with_areas: false,
+      },
+    ]);
+    expect(calls[1]!.args[0]).toEqual([
+      { op: "NavigationProbe3D", start: [0, 0, 0], end: [1, 0, 0], navigation_layers: 1, optimize: true },
+    ]);
+  });
+
+  it("validates spatial arguments before touching the engine", async () => {
+    const { ctx, calls } = fakeEngineContext();
+    await expect(
+      dispatchTool("align-distribute-3d", { scenePath: "res://a.tscn", subjectPaths: ["./A"], axis: [1, 0, 0], mode: "align_min" }, ctx)
+    ).rejects.toThrow(/2\.\.16/);
+    await expect(
+      dispatchTool("align-distribute-3d", { scenePath: "res://a.tscn", subjectPaths: ["./A", "./B"], axis: [0, 0, 0], mode: "align_min" }, ctx)
+    ).rejects.toThrow(/axis must be non-zero/);
+    await expect(
+      dispatchTool("frame-camera", { scenePath: "res://a.tscn", cameraPath: "./Cam", subjectPaths: ["./A"], aspect: 16 / 9, padding: 0.5 }, ctx)
+    ).rejects.toThrow(/padding/);
+    await expect(
+      dispatchTool("snap-to-surface", { scenePath: "res://a.tscn", subjectPath: "./A", gap: 30, maxDistance: 20 }, ctx)
+    ).rejects.toThrow(/gap/);
+    expect(calls).toEqual([]);
+  });
+
+  it("batch identity-binds a read-only spatial query and treats a spatial mutation as a scene mutation", async () => {
+    const { ctx, calls } = fakeEngineContext();
+    await dispatchTool("batch", { scenePath: "res://a.tscn", ops: [{ op: "TestPlacement3D" }] }, ctx);
+    expect(calls.map((call) => call.method)).toEqual(["executeIdentityBoundOps"]);
+    expect(calls[0]!.args[0]).toEqual([{ op: "TestPlacement3D" }]);
+
+    const second = fakeEngineContext();
+    await dispatchTool("batch", { scenePath: "res://a.tscn", ops: [{ op: "AlignDistribute3D" }] }, second.ctx);
+    expect(second.calls.map((call) => call.args[0])).toEqual([[{ op: "AlignDistribute3D" }], [{ op: "SaveScene" }]]);
+
+    await expect(dispatchTool("batch", { ops: [{ op: "NavigationProbe3D" }] }, ctx)).rejects.toThrow(/requires scenePath/);
+  });
+});

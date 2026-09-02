@@ -1,0 +1,85 @@
+id: tool/navigation-probe
+kind: tool
+version: 1.0.0
+summary: Read-only reachability between two world points on the scene's Godot navigation map — readiness, snapped endpoints, route length, up to 16 route points.
+use_when:
+  - placing an NPC, pickup, portal, or encounter anchor whose route from spawn matters
+  - checking that a moved prop did not cut the navigation mesh between two areas
+do_not_use_when:
+  - the scene has no NavigationRegion3D (ready is false; there is nothing to probe)
+  - you need live agent behaviour — playtest with summer_play and read summer_get_runtime_tree
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - 3d
+    - world-building
+    - navigation
+    - verification
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/test-placement
+    - tool/world-snapshot
+    - tool/play
+  skills:
+    - skill/world-building-3d
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_navigation_probe
+implementation:
+  module: src/mcp/tools/spatial-tools.ts
+  export: registerSpatialTools
+surfaces:
+  mcp:
+    tool_name: summer_navigation_probe
+    remote: false
+input_schema:
+  type: object
+  properties:
+    scenePath:
+      type: string
+      minLength: 1
+      maxLength: 512
+      description: Exact 3D scene whose World3D navigation map should be queried.
+    start:
+      type: array
+      items:
+        type: number
+      minItems: 3
+      maxItems: 3
+      description: Requested world-space route start [x,y,z].
+    end:
+      type: array
+      items:
+        type: number
+      minItems: 3
+      maxItems: 3
+      description: Requested world-space route destination [x,y,z].
+    navigationLayers:
+      type: integer
+      minimum: 1
+      maximum: 4294967295
+      default: 1
+      description: Godot navigation-layer bitmask; only enabled matching regions are used.
+    optimize:
+      type: boolean
+      default: true
+      description: Use Godot's corridor-funnel path post-processing; false uses edge-centered points.
+  required:
+    - scenePath
+    - start
+    - end
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

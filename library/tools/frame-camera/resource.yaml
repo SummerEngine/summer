@@ -1,0 +1,94 @@
+id: tool/frame-camera
+kind: tool
+version: 1.0.0
+summary: Move one perspective Camera3D just far enough to frame 1-8 subjects at an explicit aspect and screen padding, then save the scene.
+use_when:
+  - framing a diorama, hero prop, or encounter for a fixed camera, cutscene, or screenshot
+  - re-framing after props moved so the camera still shows every subject
+do_not_use_when:
+  - the camera is orthographic or frustum projection (rejected without mutation)
+  - you only want to check the current framing — summer_camera_visibility is read-only
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - 3d
+    - world-building
+    - camera
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/camera-visibility
+    - tool/screenshot
+    - tool/world-snapshot
+  skills:
+    - skill/world-building-3d
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_frame_camera
+implementation:
+  module: src/mcp/tools/spatial-tools.ts
+  export: registerSpatialTools
+surfaces:
+  mcp:
+    tool_name: summer_frame_camera
+    remote: false
+input_schema:
+  type: object
+  properties:
+    scenePath:
+      type: string
+      minLength: 1
+      maxLength: 512
+      description: Exact scene to mutate and save, e.g. 'res://levels/diorama.tscn'.
+    cameraPath:
+      type: string
+      minLength: 1
+      maxLength: 256
+      description: Exact perspective Camera3D path relative to the scene root, e.g. './Cameras/Main'.
+    subjectPaths:
+      type: array
+      items:
+        type: string
+        minLength: 1
+        maxLength: 256
+      minItems: 1
+      maxItems: 8
+      description: One to eight exact nonduplicate subject paths; visible descendants contribute framing bounds.
+    aspect:
+      type: number
+      exclusiveMinimum: 0
+      description: Target viewport width divided by height, e.g. 1.7777778 for 16:9.
+    padding:
+      type: number
+      minimum: 0
+      maximum: 0.45
+      description: Required normalized empty margin on every screen edge, from 0 through 0.45.
+    viewDirection:
+      type: array
+      items:
+        type: number
+      minItems: 3
+      maxItems: 3
+      description: Optional finite nonzero world-space camera forward vector [x, y, z]. Omit to keep the current forward direction.
+  required:
+    - scenePath
+    - cameraPath
+    - subjectPaths
+    - aspect
+    - padding
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - scene-valid

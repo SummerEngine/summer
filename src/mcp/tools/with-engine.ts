@@ -132,6 +132,33 @@ function readClassifiers(result: unknown): Pick<WithEngineMeta, "terminalState" 
  *
  * Exported for unit tests.
  */
+/** An older engine answers an unknown op with a per-op "unknown op: <Kind>"
+ *  (ops_executor.cpp fallthrough). Amend the envelope's error so the model gets
+ *  the upgrade path instead of retrying. Engines WITH a capability advert never
+ *  reach this — the pre-flight in missingEngineOpResult refuses before sending.
+ *  A chunked mutation (executeSceneMutation) rewrites the envelope error into
+ *  the "N earlier op(s) already applied" receipt, so the raw per-op text lives
+ *  only inside results[] — both are read before deciding this is an old engine. */
+export function withOldEngineHint(result: unknown, opName: string, fallback: string): unknown {
+  const opError = extractOpError(result);
+  if (!opError) return result;
+  const envelope = (result ?? {}) as Record<string, unknown> & {
+    results?: Array<{ ok?: boolean; error?: unknown }>;
+  };
+  const failedOpError = envelope.results?.find((entry) => entry.ok === false && typeof entry.error === "string")
+    ?.error as string | undefined;
+  const engineSaid =
+    (typeof envelope.error === "string" && envelope.error) || failedOpError || opError;
+  if (!/unknown op/i.test(opError) && !/unknown op/i.test(failedOpError ?? "")) return result;
+  return {
+    ...envelope,
+    error:
+      `This Summer Engine build doesn't support ${opName} yet — ` +
+      `${fallback}, or update Summer Engine (restart it after updating). ` +
+      `Engine said: ${failedOpError ?? engineSaid}`,
+  };
+}
+
 export function extractOpError(result: unknown): string | null {
   if (!result || typeof result !== "object") return null;
   const op = result as OpResult;

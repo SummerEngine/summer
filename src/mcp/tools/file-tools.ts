@@ -1,8 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { withEngine } from "./with-engine.js";
-
-type JsonRecord = Record<string, unknown>;
+import { asRecord, type JsonRecord } from "../../core/util/json.js";
 
 // MCP clients may issue tool calls concurrently. Keep the complete read->write
 // transaction ordered for one project file while allowing unrelated files to
@@ -36,12 +35,6 @@ async function withFileMutationTurn<T>(
       fileMutationTails.delete(key);
     }
   }
-}
-
-function asRecord(value: unknown): JsonRecord | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as JsonRecord)
-    : null;
 }
 
 function safeProjectPath(path: string): string {

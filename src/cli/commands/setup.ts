@@ -1,21 +1,16 @@
-import { createRequire } from "node:module";
 import { Command } from "commander";
 import {
-  ConfigScope,
   SupportedAgent,
   configureAgentMcp,
-  parseAgent,
-  parseScope,
+  resolveAgentSelection,
+  resolveConfigScope,
   supportedAgents,
 } from "../../installer/agent-config.js";
 import { SkillSetupResult, setupSkills } from "../../installer/setup.js";
 import { DoctorResult, printDoctorResult, runDoctor } from "../../core/capabilities/doctor.js";
 import { brandLine, c, sym, tildeify } from "../../core/format.js";
 
-const requireFromHere = createRequire(import.meta.url);
-const { version: cliVersion } = requireFromHere("../../../package.json") as {
-  version: string;
-};
+import { TOOLKIT_VERSION as cliVersion } from "../../core/version.js";
 
 const AGENT_LABEL: Record<SupportedAgent, string> = {
   "claude-code": "Claude Code",
@@ -61,8 +56,8 @@ export const setupCommand = new Command("setup")
     "Install only the recommended skill subset instead of the whole library"
   )
   .action(async (agentArg: string | undefined, opts: SetupCommandOptions) => {
-    const agent = resolveAgent(agentArg, opts.agent);
-    const scope = resolveScope(opts.scope);
+    const agent = resolveAgentSelection(agentArg, opts.agent);
+    const scope = resolveConfigScope(opts.scope);
 
     const config = await configureAgentMcp({
       agent,
@@ -102,27 +97,6 @@ export const setupCommand = new Command("setup")
       process.exit(1);
     }
   });
-
-function resolveAgent(agentArg: string | undefined, agentOpt: string | undefined): SupportedAgent {
-  if (agentArg && agentOpt && parseAgent(agentArg) !== parseAgent(agentOpt)) {
-    throw new Error("Specify the agent either positionally or with --agent, not both.");
-  }
-
-  const parsed = parseAgent(agentOpt ?? agentArg);
-  if (!parsed) {
-    throw new Error(`Specify an agent: ${supportedAgents.join(", ")}`);
-  }
-
-  return parsed;
-}
-
-function resolveScope(scopeOpt: string | undefined): ConfigScope {
-  const parsed = parseScope(scopeOpt);
-  if (!parsed) {
-    throw new Error("Invalid --scope. Use user or project.");
-  }
-  return parsed;
-}
 
 function printSetupResult(
   config: Awaited<ReturnType<typeof configureAgentMcp>>,

@@ -10,9 +10,7 @@ import {
   copyFileSync,
 } from "fs";
 import { join, dirname } from "path";
-import { fileURLToPath } from "url";
 import { homedir, platform } from "os";
-import { createRequire } from "node:module";
 import {
   AGENT_CLIENTS,
   getSkillRegistry,
@@ -23,18 +21,15 @@ import {
 import { tildeify } from "../../core/format.js";
 import { writeSkillMarker } from "../../installer/version-check.js";
 import {
-  SKILL_SCOPES,
   resolveInstallLocation,
+  resolveSkillAgent,
+  resolveSkillScope,
   type InstallLocation,
   type SkillScope,
 } from "../../installer/skill-locations.js";
 
-const requireFromHere = createRequire(import.meta.url);
-const { version: cliVersion } = requireFromHere("../../../package.json") as {
-  version: string;
-};
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
+import { PACKAGE_ROOT } from "../../core/package-root.js";
+import { TOOLKIT_VERSION as cliVersion } from "../../core/version.js";
 
 // Skill files live in library/skills/<slug>/ and are resolved through the
 // generated registry (registry/generated/skills-registry.json).
@@ -42,7 +37,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // Used by Claude Code installs to also copy
 // slash commands (e.g. /gameskill) to ~/.claude/commands/. Other agents don't
 // have an equivalent today, so the copy is gated to claude-code.
-const commandsDir = join(__dirname, "..", "..", "..", "commands");
+const commandsDir = join(PACKAGE_ROOT, "commands");
 
 
 type SkillMeta = SkillRegistryEntry;
@@ -92,58 +87,13 @@ function die(message: string): never {
   process.exit(1);
 }
 
-function isAgentClient(value: string): value is AgentClient {
-  return (AGENT_CLIENTS as readonly string[]).includes(value);
-}
-
-function isSkillScope(value: string): value is SkillScope {
-  return (SKILL_SCOPES as readonly string[]).includes(value);
-}
-
-function parseAgent(value: string): AgentClient {
-  if (isAgentClient(value)) return value;
-  die(
-    `Unknown agent: ${value}. Use one of: ${AGENT_CLIENTS.join(", ")}.`
-  );
-}
-
-function parseScope(value: string): SkillScope {
-  if (isSkillScope(value)) return value;
-  die(`Unknown scope: ${value}. Use user or project.`);
-}
-
-function resolveAgent(opts: InstallOptions): AgentClient {
-  if (opts.asClaudeSkill && opts.asCursorSkill) {
-    die("Use only one legacy alias: --as-claude-skill or --as-cursor-skill.");
+/** Run an installer-layer option parser; its Error message becomes the CLI's exit line. */
+function orDie<T>(parse: () => T): T {
+  try {
+    return parse();
+  } catch (error) {
+    die(error instanceof Error ? error.message : String(error));
   }
-
-  const legacyAgent = opts.asClaudeSkill
-    ? "claude-code"
-    : opts.asCursorSkill
-      ? "cursor"
-      : undefined;
-
-  if (opts.agent && legacyAgent && opts.agent !== legacyAgent) {
-    die(
-      `Conflicting agent options: --agent ${opts.agent} with legacy alias for ${legacyAgent}.`
-    );
-  }
-
-  return parseAgent(opts.agent ?? legacyAgent ?? "summer");
-}
-
-function resolveScope(agent: AgentClient, opts: InstallOptions): SkillScope {
-  if (opts.scope) return parseScope(opts.scope);
-  if (
-    agent === "cursor" ||
-    agent === "windsurf" ||
-    agent === "cline" ||
-    agent === "roo-code" ||
-    agent === "kilo-code"
-  ) {
-    return "project";
-  }
-  return "user";
 }
 
 function agentLabel(agent: AgentClient): string {
@@ -406,8 +356,8 @@ skillsCommand
     "Overwrite existing skill files (wipe stale skill dirs before copying)"
   )
   .action((name: string | undefined, opts: InstallOptions) => {
-    const agent = resolveAgent(opts);
-    const scope = resolveScope(agent, opts);
+    const agent = orDie(() => resolveSkillAgent(opts));
+    const scope = orDie(() => resolveSkillScope(agent, opts));
     const location = resolveInstallLocation(agent, scope);
     const skills = selectSkills(name, opts);
 

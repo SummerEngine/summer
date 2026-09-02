@@ -1,4 +1,3 @@
-import { createRequire } from "node:module";
 import { Command } from "commander";
 import { loginCommand } from "./commands/login.js";
 import { logoutCommand } from "./commands/logout.js";
@@ -22,8 +21,7 @@ import { getBanner } from "./banner.js";
 import { runRootAction } from "./root-action.js";
 import { c, sym } from "../core/format.js";
 
-const require = createRequire(import.meta.url);
-const { version } = require("../../package.json");
+import { TOOLKIT_VERSION as version } from "../core/version.js";
 
 /**
  * Build and run the summer CLI. The `mcp` command is injected by the bin

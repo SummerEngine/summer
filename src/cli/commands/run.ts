@@ -6,6 +6,7 @@ import { join, resolve } from "path";
 import { getSummerDir } from "../../core/auth.js";
 import { getApiPort, checkEngineHealth } from "../../core/engine.js";
 import { findEngineBinary } from "../../core/engine-install.js";
+import { sleep } from "../../core/util/sleep.js";
 
 const LAUNCH_LOCK_STALE_MS = 60_000;
 const LAUNCH_LOCK_WAIT_MS = 15_000;
@@ -216,8 +217,4 @@ function reportSpawnFailure(error: NodeJS.ErrnoException, binary: string): void 
       "Re-run 'summer install' to repair the installation, or check the binary path."
   );
   process.exitCode = 1;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

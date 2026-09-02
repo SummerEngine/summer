@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { withEngine, extractOpError, missingEngineOpResult, ToolInputError } from "./with-engine.js";
+import { withEngine, missingEngineOpResult, ToolInputError, withOldEngineHint } from "./with-engine.js";
 import { executeSceneMutation } from "./scene-tools.js";
 
 /**
@@ -114,32 +114,6 @@ function opResult(receipt: unknown, op: string): unknown {
   const results = (receipt as { results?: unknown[] })?.results;
   if (!Array.isArray(results)) return receipt;
   return results.find((entry) => (entry as { op?: unknown })?.op === op) ?? results[0] ?? receipt;
-}
-
-/** An older engine answers an unknown op with a per-op "unknown op: <Kind>".
- *  Amend the envelope's error so the model gets the upgrade path instead of
- *  retrying — same pattern as perception-tools / summer_run_script. */
-function withOldEngineHint(result: unknown, opName: string, fallback: string): unknown {
-  const opError = extractOpError(result);
-  if (!opError) return result;
-  const envelope = (result ?? {}) as Record<string, unknown> & {
-    results?: Array<{ ok?: boolean; error?: unknown }>;
-  };
-  // A chunked mutation (executeSceneMutation) rewrites the envelope error into
-  // the "N earlier op(s) already applied" receipt, so the raw per-op text lives
-  // only inside results[] — read both before deciding this is an old engine.
-  const failedOpError = envelope.results?.find((entry) => entry.ok === false && typeof entry.error === "string")
-    ?.error as string | undefined;
-  const engineSaid =
-    (typeof envelope.error === "string" && envelope.error) || failedOpError || opError;
-  if (!/unknown op/i.test(opError) && !/unknown op/i.test(failedOpError ?? "")) return result;
-  return {
-    ...envelope,
-    error:
-      `This Summer Engine build doesn't support ${opName} yet — ` +
-      `${fallback}, or update Summer Engine (restart it after updating). ` +
-      `Engine said: ${failedOpError ?? engineSaid}`,
-  };
 }
 
 interface CompactResultOptions {

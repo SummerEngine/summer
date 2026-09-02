@@ -11,6 +11,7 @@ import {
   sendLibraryFeedback,
   type LibraryFeedbackReport,
 } from "../../core/feedback/client.js";
+import { textJson } from "./text-json.js";
 
 export const ENTRY_ID_PATTERN =
   /^(tool|skill|example|template|collection|reference)\/[a-z0-9-]+(@[a-f0-9]{8,64})?$/;
@@ -91,17 +92,6 @@ export const FEEDBACK_TOOL_DESCRIPTION =
   "dropped:true} means the 1s POST failed and the batch is gone (no retry). The user can opt out entirely " +
   "with SUMMER_NO_TELEMETRY=1 or DO_NOT_TRACK=1 — then nothing is sent and this tool returns " +
   "{recorded:false, disabled:true}.";
-
-function textJson(value: unknown) {
-  return {
-    content: [
-      {
-        type: "text" as const,
-        text: JSON.stringify(value, null, 2),
-      },
-    ],
-  };
-}
 
 /**
  * Host app identity from the MCP initialize handshake ("name version", e.g.

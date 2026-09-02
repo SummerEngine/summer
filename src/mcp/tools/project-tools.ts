@@ -15,20 +15,14 @@ import { appendMcpLogEvent } from "../../core/mcp-log.js";
 import { getProjectMemorySummary } from "../../project-memory/project-memory.js";
 import { withEngine } from "./with-engine.js";
 
-type JsonRecord = Record<string, unknown>;
+import { asRecord, stringFrom as stringOrUndefined, type JsonRecord } from "../../core/util/json.js";
 
 // One skew log line per MCP process — the warning itself stays in every
 // summer_get_project_context payload.
 let capabilitySkewLogged = false;
 
-function asRecord(value: unknown): JsonRecord | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as JsonRecord)
-    : null;
-}
-
 function stringFrom(value: unknown): string | null {
-  return typeof value === "string" && value.length > 0 ? value : null;
+  return stringOrUndefined(value) ?? null;
 }
 
 function pickString(record: JsonRecord | null, keys: string[]): string | null {

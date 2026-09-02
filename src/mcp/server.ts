@@ -1,4 +1,3 @@
-import { createRequire } from "node:module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { EngineApiClient } from "../core/api-client.js";
@@ -34,8 +33,7 @@ import {
   fetchLatestRegistryVersion,
 } from "../installer/version-check.js";
 
-const require = createRequire(import.meta.url);
-const { version } = require("../../package.json");
+import { TOOLKIT_VERSION as version } from "../core/version.js";
 
 let processDiagnosticsInstalled = false;
 

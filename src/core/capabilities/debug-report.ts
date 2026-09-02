@@ -1,5 +1,4 @@
 import { mkdir, writeFile } from "node:fs/promises";
-import { createRequire } from "node:module";
 import { hostname, platform, release } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { EngineApiClient } from "../api-client.js";
@@ -9,8 +8,9 @@ import { getMcpLogPath, readRecentMcpLogLines } from "../mcp-log.js";
 import { redactLogLine, redactSensitive } from "../redact.js";
 import { runDoctor, type DoctorResult } from "./doctor.js";
 
-const require = createRequire(import.meta.url);
-const { version } = require("../../../package.json") as { version: string };
+import { asRecord } from "../util/json.js";
+import { sleep } from "../util/sleep.js";
+import { TOOLKIT_VERSION as version } from "../version.js";
 
 export interface DebugReportOptions {
   issue?: string;
@@ -59,10 +59,6 @@ export interface DebugReport {
   };
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
-}
-
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -73,12 +69,6 @@ function timestampForFile(date: Date): string {
 
 export function defaultDebugReportFilename(date = new Date()): string {
   return `summer-debug-report-${timestampForFile(date)}.md`;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
 }
 
 function pickString(value: unknown, keys: string[]): string | null {

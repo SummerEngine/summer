@@ -1,6 +1,8 @@
 import { lstat, readFile, readdir, realpath, stat } from "fs/promises";
 import { dirname, join, resolve } from "path";
 import { getSummerDir } from "./auth.js";
+import { asRecord, numberFrom, stringFrom } from "./util/json.js";
+import { processIsAlive } from "./util/process.js";
 import {
   parseEngineCapabilities,
   type EngineCapabilities,
@@ -74,22 +76,6 @@ function stringFromUnknown(value: unknown): string | undefined {
     : undefined;
 }
 
-function numberFromUnknown(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value)
-    ? value
-    : undefined;
-}
-
-function processIsAlive(pid: number): boolean {
-  if (!Number.isInteger(pid) || pid <= 0) return false;
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return (error as NodeJS.ErrnoException).code === "EPERM";
-  }
-}
-
 async function canonicalPath(path: string): Promise<string> {
   const absolute = resolve(path);
   try {
@@ -130,11 +116,11 @@ function parseEngineInstance(value: unknown): EngineInstance | null {
   if (!record || record.schemaVersion !== INSTANCE_SCHEMA_VERSION) return null;
 
   const instanceId = stringFromUnknown(record.instanceId);
-  const pid = numberFromUnknown(record.pid);
-  const port = numberFromUnknown(record.port);
+  const pid = numberFrom(record.pid);
+  const port = numberFrom(record.port);
   const token = stringFromUnknown(record.token);
   const resourceRoot = stringFromUnknown(record.resourceRoot);
-  const heartbeatAt = numberFromUnknown(record.heartbeatAt);
+  const heartbeatAt = numberFrom(record.heartbeatAt);
 
   if (
     !instanceId ||
@@ -384,20 +370,6 @@ export interface EngineHealth {
   project_name?: string;
   project_path?: string;
   scene?: string;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
-}
-
-function stringFrom(value: unknown): string | undefined {
-  return typeof value === "string" && value.length > 0 ? value : undefined;
-}
-
-function numberFrom(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
 export async function checkEngineHealth(

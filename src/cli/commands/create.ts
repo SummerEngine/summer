@@ -1,6 +1,5 @@
 import { Command } from "commander";
 import { cpSync, existsSync, mkdirSync, writeFileSync } from "fs";
-import { createRequire } from "module";
 import { join, resolve } from "path";
 import { PACKAGE_ROOT } from "../../core/package-root.js";
 import { SUMMER_ENGINE_COMPATIBILITY } from "../../core/summer-compatibility.js";
@@ -13,8 +12,7 @@ import {
 } from "../../core/templates.js";
 import { PROJECT_MANIFEST_RELPATH, writeProjectManifest } from "../../project-memory/project-manifest.js";
 
-const require = createRequire(import.meta.url);
-const { version: toolkitVersion } = require("../../../package.json") as { version: string };
+import { TOOLKIT_VERSION as toolkitVersion } from "../../core/version.js";
 
 /**
  * Built-in templates are generated in-process — no download, no pin. Their

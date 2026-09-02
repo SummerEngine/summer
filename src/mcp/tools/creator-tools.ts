@@ -13,18 +13,7 @@ import {
   setConfigValue,
   unsetConfigValue,
 } from "../../core/config.js";
-
-function textJson(value: unknown, isError = false) {
-  return {
-    content: [
-      {
-        type: "text" as const,
-        text: JSON.stringify(value, null, 2),
-      },
-    ],
-    ...(isError ? { isError: true } : {}),
-  };
-}
+import { textJson } from "./text-json.js";
 
 async function creatorResult<T>(operation: () => Promise<T>) {
   try {

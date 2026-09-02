@@ -11,6 +11,7 @@ import {
   type EngineSelection,
 } from "./engine.js";
 import type { EngineCapabilities } from "./capability-skew.js";
+import { asRecord, boolFrom, numberFrom, stringFrom } from "./util/json.js";
 import {
   classifyOpsResponse,
   pollOpToTerminal,
@@ -88,24 +89,6 @@ type EngineTargetIdentity = {
   projectId?: string;
   projectIdHash?: string;
 };
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
-}
-
-function stringFrom(value: unknown): string | undefined {
-  return typeof value === "string" && value.length > 0 ? value : undefined;
-}
-
-function numberFrom(value: unknown): number | undefined {
-  return typeof value === "number" ? value : undefined;
-}
-
-function boolFrom(value: unknown): boolean | undefined {
-  return typeof value === "boolean" ? value : undefined;
-}
 
 function findSnapshotPayload(value: unknown): SnapshotPayload | null {
   const record = asRecord(value);

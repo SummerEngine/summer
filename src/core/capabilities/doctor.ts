@@ -1,5 +1,4 @@
 import { spawn } from "child_process";
-import { createRequire } from "node:module";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { getAuthToken, getUserInfo } from "../auth.js";
@@ -15,8 +14,7 @@ import {
   fetchLatestRegistryVersion,
 } from "../../installer/version-check.js";
 
-const require = createRequire(import.meta.url);
-const { version } = require("../../../package.json") as { version: string };
+import { TOOLKIT_VERSION as version } from "../version.js";
 const MIN_EXPECTED_MCP_TOOLS = 50;
 const REQUIRED_MCP_TOOLS = [
   "summer_get_project_context",

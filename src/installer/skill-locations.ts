@@ -8,11 +8,76 @@
 
 import { join } from "path";
 import { homedir, platform } from "os";
-import type { AgentClient } from "../core/skills-registry.js";
+import { AGENT_CLIENTS, type AgentClient } from "../core/skills-registry.js";
 import { tildeify } from "../core/format.js";
 
 export const SKILL_SCOPES = ["user", "project"] as const;
 export type SkillScope = (typeof SKILL_SCOPES)[number];
+
+/** The agent/scope flags `summer skills install` accepts (legacy aliases included). */
+export interface SkillInstallSelection {
+  agent?: string;
+  scope?: string;
+  asClaudeSkill?: boolean;
+  asCursorSkill?: boolean;
+}
+
+function isAgentClient(value: string): value is AgentClient {
+  return (AGENT_CLIENTS as readonly string[]).includes(value);
+}
+
+function isSkillScope(value: string): value is SkillScope {
+  return (SKILL_SCOPES as readonly string[]).includes(value);
+}
+
+/** Throws with a user-facing message on an unknown agent. */
+export function parseSkillAgent(value: string): AgentClient {
+  if (isAgentClient(value)) return value;
+  throw new Error(`Unknown agent: ${value}. Use one of: ${AGENT_CLIENTS.join(", ")}.`);
+}
+
+/** Throws with a user-facing message on an unknown scope. */
+export function parseSkillScope(value: string): SkillScope {
+  if (isSkillScope(value)) return value;
+  throw new Error(`Unknown scope: ${value}. Use user or project.`);
+}
+
+/** Pick the agent from --agent / legacy --as-claude-skill / --as-cursor-skill
+ *  (default "summer"); throws on conflicting flags. */
+export function resolveSkillAgent(opts: SkillInstallSelection): AgentClient {
+  if (opts.asClaudeSkill && opts.asCursorSkill) {
+    throw new Error("Use only one legacy alias: --as-claude-skill or --as-cursor-skill.");
+  }
+
+  const legacyAgent = opts.asClaudeSkill
+    ? "claude-code"
+    : opts.asCursorSkill
+      ? "cursor"
+      : undefined;
+
+  if (opts.agent && legacyAgent && opts.agent !== legacyAgent) {
+    throw new Error(
+      `Conflicting agent options: --agent ${opts.agent} with legacy alias for ${legacyAgent}.`
+    );
+  }
+
+  return parseSkillAgent(opts.agent ?? legacyAgent ?? "summer");
+}
+
+/** Explicit --scope wins; otherwise project-rooted agents default to "project". */
+export function resolveSkillScope(agent: AgentClient, opts: SkillInstallSelection): SkillScope {
+  if (opts.scope) return parseSkillScope(opts.scope);
+  if (
+    agent === "cursor" ||
+    agent === "windsurf" ||
+    agent === "cline" ||
+    agent === "roo-code" ||
+    agent === "kilo-code"
+  ) {
+    return "project";
+  }
+  return "user";
+}
 
 export type InstallLocation =
   | { kind: "skill-dir"; path: string }

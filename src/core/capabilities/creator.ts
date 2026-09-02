@@ -12,6 +12,7 @@ import {
   readSummerConfig,
 } from "../config.js";
 import { appendStoreJsonLine } from "../store.js";
+import { readJsonResponse } from "../util/http.js";
 
 export type CreatorOperation = "publish" | "releases";
 export type CreatorFace = "cli" | "mcp";
@@ -101,15 +102,13 @@ function recoveryForStatus(operation: CreatorOperation, status: number): string 
   return `Recovery: retry once; if it repeats, check creator.apiUrl and the Summer Platform creator API health.`;
 }
 
-async function readJsonResponse(
+async function readCreatorResponse(
   response: Response,
   operation: CreatorOperation
 ): Promise<Record<string, unknown>> {
-  const text = await response.text();
-  let payload: Record<string, unknown>;
-  try {
-    payload = JSON.parse(text) as Record<string, unknown>;
-  } catch {
+  const { json, parsed } = await readJsonResponse(response);
+  const payload = json as Record<string, unknown>;
+  if (!parsed) {
     throw new CreatorOperationError(
       "creator_invalid_response",
       operation,
@@ -178,7 +177,7 @@ async function creatorRequest(
       "Recovery: check your network and creator.apiUrl, then retry. No successful release is being claimed."
     );
   }
-  return readJsonResponse(response, operation);
+  return readCreatorResponse(response, operation);
 }
 
 async function inspectArtifact(path: string): Promise<{

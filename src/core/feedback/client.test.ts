@@ -9,13 +9,13 @@ vi.mock("../auth.js", () => ({
 
 import { getAuthToken } from "../auth.js";
 import { setSummerDirForTests } from "../store.js";
+import { TOOLKIT_VERSION } from "../version.js";
 import {
   _resetFeedbackSessionForTests,
   consumeFirstRunNotice,
   FIRST_RUN_NOTICE,
   getFeedbackSessionId,
   getInstallId,
-  getToolkitVersion,
   isFeedbackDisabled,
   sendLibraryFeedback,
   type SendLibraryFeedbackInput,
@@ -168,7 +168,7 @@ describe("anonymous vs authed payloads", () => {
     expect(body.engine_version).toBe("4.6.1");
     expect(body.agent_model).toBe("claude-fable-5");
     expect(body.session_id).toBe(getFeedbackSessionId());
-    expect(body.toolkit_version).toBe(getToolkitVersion());
+    expect(body.toolkit_version).toBe(TOOLKIT_VERSION);
   });
 
   it("client (host app from handshake) is sent when provided, omitted when absent", async () => {

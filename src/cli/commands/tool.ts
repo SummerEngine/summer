@@ -9,8 +9,8 @@
  * library ids and legacy aliases through it.
  */
 import { existsSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
+import { PACKAGE_ROOT } from "../../core/package-root.js";
 import { Command, Option } from "commander";
 import {
   ToolDispatchError,
@@ -29,12 +29,6 @@ interface ToolCommandOptions {
   list?: boolean;
 }
 
-/** Repo/package root: this file lives at <root>/src/cli/commands (dev) or
- *  <root>/dist/cli/commands (published) — three levels up either way. */
-function packageRoot(): string {
-  return join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
-}
-
 interface RegistryIndexResource {
   id?: string;
   kind?: string;
@@ -47,7 +41,7 @@ interface RegistryIndexResource {
  *  name is not a tool resource. */
 export function resolveViaRegistryIndex(
   name: string,
-  root: string = packageRoot()
+  root: string = PACKAGE_ROOT
 ): string | null {
   const indexPath = join(root, "registry", "generated", "index.json");
   if (!existsSync(indexPath)) return null;

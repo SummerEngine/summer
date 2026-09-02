@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { withEngine, extractOpError, missingEngineOpResult } from "./with-engine.js";
+import { withEngine, missingEngineOpResult, withOldEngineHint } from "./with-engine.js";
 
 /**
  * Perception tools. Two signals, two jobs: these ops return STRUCTURED state —
@@ -15,23 +15,6 @@ import { withEngine, extractOpError, missingEngineOpResult } from "./with-engine
  * nothing, a post-hoc rewrite of the per-op "unknown op" error into the same
  * upgrade path.
  */
-
-/** An older engine answers an unknown op with a per-op "unknown op: <Kind>"
- *  (ops_executor.cpp fallthrough). Amend the envelope's error so the model gets
- *  the upgrade path instead of retrying — same pattern as summer_run_script. */
-function withOldEngineHint(result: unknown, opName: string, fallback: string): unknown {
-  const opError = extractOpError(result);
-  if (!opError || !/unknown op/i.test(opError)) return result;
-  const envelope = (result ?? {}) as Record<string, unknown>;
-  return {
-    ...envelope,
-    error:
-      `This Summer Engine build doesn't support ${opName} yet — ` +
-      `${fallback}, or update Summer Engine (restart it after updating). ` +
-      "Engine said: " +
-      (typeof envelope.error === "string" && envelope.error ? envelope.error : opError),
-  };
-}
 
 /** Amend a classified failure_reason with prescriptive recovery text. The
  *  structured failure_reason stays intact for programmatic callers; only the

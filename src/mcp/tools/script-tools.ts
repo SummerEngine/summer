@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { withEngine, extractOpError, missingEngineOpResult } from "./with-engine.js";
+import { withEngine, missingEngineOpResult, withOldEngineHint } from "./with-engine.js";
 import { lookupApiDocs } from "../../core/capabilities/api-docs.js";
 import {
   RUN_EDITOR_SCRIPT_FALLBACK,
@@ -16,25 +16,6 @@ export {
   lookupApiDocs,
   resetApiDocsForTests,
 } from "../../core/capabilities/api-docs.js";
-
-/** An older engine that advertises no capabilities answers a RunSceneScript
- *  submission with a per-op "unknown op: RunSceneScript" (ops_executor.cpp
- *  fallthrough). Amend the envelope's error so the model gets the upgrade path
- *  instead of retrying. Engines WITH an advert never reach this — the
- *  pre-flight in missingEngineOpResult refuses before sending. */
-function withOldEngineHint(result: unknown): unknown {
-  const opError = extractOpError(result);
-  if (!opError || !/unknown op/i.test(opError)) return result;
-  const envelope = (result ?? {}) as Record<string, unknown>;
-  return {
-    ...envelope,
-    error:
-      "This Summer Engine build doesn't support RunSceneScript yet — " +
-      "use summer_run_editor_script instead, or update Summer Engine " +
-      "(restart it after updating). Engine said: " +
-      (typeof envelope.error === "string" && envelope.error ? envelope.error : opError),
-  };
-}
 
 export function registerScriptTools(server: McpServer): void {
   server.tool(
@@ -92,7 +73,7 @@ Returns {ok, ran, result, reports, output, errors, duration_ms, checkpoint} — 
         if (missing) return missing;
         const { op, timeoutMs } = buildRunSceneScriptOp({ source, max_seconds, checkpoint, undo });
         const result = await client.executeIdentityBoundOps([op], undefined, timeoutMs);
-        return withOldEngineHint(result);
+        return withOldEngineHint(result, "RunSceneScript", "use summer_run_editor_script instead");
       })
   );
 

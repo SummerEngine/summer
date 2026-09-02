@@ -4,6 +4,7 @@ import { mkdir } from "fs/promises";
 import { platform, tmpdir } from "os";
 import { join, resolve } from "path";
 import { findEngineBinary as findInstalledEngineBinary } from "../engine-install.js";
+import { sleep } from "../util/sleep.js";
 import { envMs, HeadlessTimeoutError, scrubSecrets } from "./connection.js";
 import {
   findWorkerEntry,
@@ -164,10 +165,6 @@ function defaultLaunch(binary: string, args: string[]): LaunchHandle {
 
 function workerLogDir(): string {
   return join(tmpdir(), "summer-engine", "worker-logs");
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
 }
 
 // Single-flight: canonical project path -> in-flight spawn attempt.

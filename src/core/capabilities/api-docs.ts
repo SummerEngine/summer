@@ -8,8 +8,8 @@
  * structured api_docs_not_installed result instead of throwing.
  */
 import { existsSync, readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
+import { PACKAGE_ROOT } from "../package-root.js";
 import { gunzipSync } from "node:zlib";
 
 export interface ApiDocsProperty { name: string; type: string; default?: string; desc?: string }
@@ -29,11 +29,7 @@ export interface ApiDocs {
   technical_base?: string;
 }
 
-// src/core/capabilities -> package root is three levels up, in src and dist alike.
-const DEFAULT_API_DOCS_PATH = resolve(
-  dirname(fileURLToPath(import.meta.url)),
-  "../../../assets/api-docs.json.gz"
-);
+const DEFAULT_API_DOCS_PATH = resolve(PACKAGE_ROOT, "assets/api-docs.json.gz");
 
 let apiDocsPath = DEFAULT_API_DOCS_PATH;
 let apiDocsCache: ApiDocs | null = null;

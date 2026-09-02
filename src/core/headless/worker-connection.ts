@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { asRecord } from "../util/json.js";
 import { createConnection, type Socket } from "node:net";
 import {
   envMs,
@@ -89,12 +90,6 @@ interface PendingCall {
   onProgress?: (progress: unknown) => void;
   timer: NodeJS.Timeout | null;
   restartTimer: () => void;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
 }
 
 function sha256Hex(text: string): string {

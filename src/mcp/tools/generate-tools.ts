@@ -1,4 +1,3 @@
-import { createRequire } from "node:module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { writeFile, mkdir } from "fs/promises";
@@ -6,9 +5,9 @@ import { tmpdir } from "os";
 import { join } from "path";
 import { getAuthToken } from "../../core/auth.js";
 import { resolveGatewayUrl } from "../../core/config.js";
-
-const require = createRequire(import.meta.url);
-const { version: CLI_VERSION } = require("../../../package.json");
+import { readJsonResponse } from "../../core/util/http.js";
+import { asRecord, stringFrom } from "../../core/util/json.js";
+import { TOOLKIT_VERSION as CLI_VERSION } from "../../core/version.js";
 
 const TOOL_BY_ENDPOINT: Record<string, string> = {
   "/api/mcp/generate/image": "summer_generate_image",
@@ -23,16 +22,6 @@ const TOOL_BY_ENDPOINT: Record<string, string> = {
 // ---------------------------------------------------------------------------
 // Shared helpers
 // ---------------------------------------------------------------------------
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
-}
-
-function stringFrom(value: unknown): string | undefined {
-  return typeof value === "string" && value.length > 0 ? value : undefined;
-}
 
 function formatValidationDetailEntry(entry: unknown): string | null {
   const record = asRecord(entry);
@@ -86,21 +75,12 @@ function formattedApiErrorMessage(status: number, data: unknown): string {
   );
 }
 
-async function readJsonResponse(res: Response): Promise<any> {
-  if (typeof res.text !== "function") {
-    if (typeof res.json === "function") {
-      return res.json().catch(() => ({}));
-    }
-    return {};
-  }
-
-  const text = await res.text().catch(() => "");
-  if (!text) return {};
-  try {
-    return JSON.parse(text);
-  } catch {
-    return { message: text.slice(0, 1000) };
-  }
+/** Lenient body read for Studio generation endpoints: {} for an empty body,
+ *  {message} for a non-JSON one, so callers can always index the result. */
+async function readLenientJson(res: Response): Promise<any> {
+  const { text, json, parsed } = await readJsonResponse(res);
+  if (parsed) return json;
+  return text ? { message: text.slice(0, 1000) } : {};
 }
 
 async function mcpGenerate(
@@ -139,7 +119,7 @@ async function mcpGenerate(
     return { error: `Generation request failed: ${msg}`, status: 0 };
   }
 
-  const data = await readJsonResponse(res);
+  const data = await readLenientJson(res);
   if (!res.ok) {
     let message = formattedApiErrorMessage(res.status, data);
 
@@ -185,7 +165,7 @@ async function mcpGet(
     return { error: `Request failed: ${msg}`, status: 0 };
   }
 
-  const data = await readJsonResponse(res);
+  const data = await readLenientJson(res);
   if (!res.ok) {
     return {
       error: formattedApiErrorMessage(res.status, data),

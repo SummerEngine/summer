@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "fs";
 import { copyFile, mkdir, readFile, writeFile } from "fs/promises";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
+import { PACKAGE_ROOT } from "../core/package-root.js";
 import { homedir, platform } from "os";
 
 export const SUMMER_MCP_SERVER_NAME = "summer-engine";
@@ -103,6 +104,33 @@ export function parseScope(value: string | undefined): ConfigScope | null {
   const normalized = value.trim().toLowerCase();
   if (normalized === "user" || normalized === "project") return normalized;
   return null;
+}
+
+/** `summer setup [agent] --agent <agent>`: positional and option must agree;
+ *  throws with a user-facing message when neither names a supported agent. */
+export function resolveAgentSelection(
+  agentArg: string | undefined,
+  agentOpt: string | undefined
+): SupportedAgent {
+  if (agentArg && agentOpt && parseAgent(agentArg) !== parseAgent(agentOpt)) {
+    throw new Error("Specify the agent either positionally or with --agent, not both.");
+  }
+
+  const parsed = parseAgent(agentOpt ?? agentArg);
+  if (!parsed) {
+    throw new Error(`Specify an agent: ${supportedAgents.join(", ")}`);
+  }
+
+  return parsed;
+}
+
+/** `--scope` with a user-facing error; absent means "user". */
+export function resolveConfigScope(scopeOpt: string | undefined): ConfigScope {
+  const parsed = parseScope(scopeOpt);
+  if (!parsed) {
+    throw new Error("Invalid --scope. Use user or project.");
+  }
+  return parsed;
 }
 
 export async function configureAgentMcp(
@@ -251,9 +279,9 @@ function resolveLocalCliPath(): string {
   return resolve(dirname(thisFile), "..", "bin", "summer.js");
 }
 
-/** Package root: dist/installer/agent-config.js -> ../.. (also src/installer in tests). */
+/** Installed package root (dist/ and src/ alike). */
 export function resolvePackageRoot(): string {
-  return resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+  return PACKAGE_ROOT;
 }
 
 /** Directory name Gemini expects the extension under; the manifest `name` must match it. */

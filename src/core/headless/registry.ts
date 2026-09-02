@@ -77,16 +77,8 @@ export function normalizeProjectPath(
   return normalized;
 }
 
-export function processIsAlive(pid: number): boolean {
-  if (!Number.isInteger(pid) || pid <= 0) return false;
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    // EPERM = alive but not ours; ESRCH = dead.
-    return (error as NodeJS.ErrnoException).code === "EPERM";
-  }
-}
+import { processIsAlive } from "../util/process.js";
+export { processIsAlive };
 
 /**
  * Resolve the editor cache dir that holds summer_processes.cfg.

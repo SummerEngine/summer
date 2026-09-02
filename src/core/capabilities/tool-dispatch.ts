@@ -21,7 +21,6 @@
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
-import { createRequire } from "node:module";
 import { EngineApiClient, EngineRebindError, type EngineSnapshot } from "../api-client.js";
 import { missingEngineOpResult, resolveSingleOnlyOps } from "../capability-skew.js";
 import { buildAgentPlaybook } from "./agent-playbook.js";
@@ -56,8 +55,7 @@ import {
   type LibraryFeedbackReport,
 } from "../feedback/client.js";
 
-const require = createRequire(import.meta.url);
-const { version: CLI_VERSION } = require("../../../package.json");
+import { TOOLKIT_VERSION as CLI_VERSION } from "../version.js";
 
 export type DispatchArgs = Record<string, unknown>;
 

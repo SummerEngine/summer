@@ -21,15 +21,11 @@
  * nothing is logged on failure — silence is the contract.
  */
 import { randomUUID } from "node:crypto";
-import { createRequire } from "node:module";
 import { getAuthToken } from "../auth.js";
 import { resolveGatewayUrl } from "../config.js";
 import { readStoreText, writeStoreText } from "../store.js";
 
-const require = createRequire(import.meta.url);
-const { version: TOOLKIT_VERSION } = require("../../../package.json") as {
-  version: string;
-};
+import { TOOLKIT_VERSION } from "../version.js";
 
 const FEEDBACK_PATH = "/api/mcp/library-feedback";
 const TIMEOUT_MS = 1000;
@@ -47,10 +43,6 @@ export function getFeedbackSessionId(): string {
 /** Test-only seam. */
 export function _resetFeedbackSessionForTests(): void {
   sessionId = null;
-}
-
-export function getToolkitVersion(): string {
-  return TOOLKIT_VERSION;
 }
 
 async function feedbackUrl(): Promise<string> {

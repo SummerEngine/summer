@@ -4,12 +4,12 @@
   "corpus_size": 173,
   "query_count": 83,
   "gap_count": 13,
-  "mean_recall_at_5": 0.9337,
+  "mean_recall_at_5": 1,
   "per_kind": {
     "skill": {
       "expected": 75,
-      "hit": 68,
-      "recall_at_5": 0.9067
+      "hit": 75,
+      "recall_at_5": 1
     },
     "tool": {
       "expected": 12,
@@ -17,7 +17,7 @@
       "recall_at_5": 1
     }
   },
-  "hijacked_queries": 20,
+  "hijacked_queries": 14,
   "per_query": {
     "draw a portrait of my wizard for the dialogue box": 1,
     "show me a few different art styles for the main character before we commit": 1,
@@ -38,7 +38,7 @@
     "put a walk animation on my character": 1,
     "blend idle walk and run based on movement speed": 1,
     "make the NPC's mouth move when the voice line plays": 1,
-    "the character's feet float above the stairs": 0,
+    "the character's feet float above the stairs": 1,
     "reuse the zombie animations on my new skeleton model": 1,
     "make a satisfying click sound for the UI": 1,
     "I need looping background music for the title screen": 1,
@@ -46,7 +46,7 @@
     "add creepy dungeon ambience": 1,
     "give the shopkeeper a voice": 1,
     "what should my game sound like overall": 1,
-    "add a grappling hook": 0,
+    "add a grappling hook": 1,
     "design a boss arena for level 3": 1,
     "make an enemy that patrols and attacks when it sees the player": 1,
     "my auto-fire weapon keeps overkilling enemies that are already dead": 1,
@@ -54,12 +54,12 @@
     "make an FPS": 1,
     "add WASD movement and mouse look": 1,
     "add a multiplayer lobby": 1,
-    "I want to play my game co-op with a friend online": 0.5,
+    "I want to play my game co-op with a friend online": 1,
     "how do I stop clients from cheating their own health": 1,
     "starting a multiplayer game from scratch, how should I architect the networking": 1,
     "my grass lighting looks flat": 1,
     "the scene is too dark and the shadows are blocky": 1,
-    "make it look like PS1 horror": 0,
+    "make it look like PS1 horror": 1,
     "pick a color palette and visual style for my cozy farming game": 1,
     "make a fireball": 1,
     "add sparks when the sword hits metal": 1,
@@ -71,12 +71,12 @@
     "make stylized water": 1,
     "the amulet should glow like it's enchanted": 1,
     "combat feels flat, it needs more punch": 1,
-    "the character falls through the floor": 0,
+    "the character falls through the floor": 1,
     "game crashes when I open the inventory": 1,
     "fps drops when lots of enemies spawn": 1,
     "it used to run at 60fps, now it's 30 after my last change": 1,
     "the jump works but it feels floaty and mushy": 1,
-    "publish my game": 0,
+    "publish my game": 1,
     "export a windows build I can send to my friend": 1,
     "test the game on my phone": 1,
     "I want to make a game but I'm not sure what yet": 1,

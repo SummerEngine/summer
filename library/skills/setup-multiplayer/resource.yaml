@@ -1,6 +1,6 @@
 id: skill/setup-multiplayer
 kind: skill
-version: 1.0.0
+version: 1.0.1
 summary: Add multiplayer to an existing game — LAN/online co-op, PvP, lobbies — via MultiplayerAPI, MultiplayerSpawner, and MultiplayerSynchronizer.
 use_when:
   - "adding multiplayer to an existing Summer game: co-op LAN, co-op online, competitive PvP, or a lobby"
@@ -15,6 +15,10 @@ facets:
     - scenes
 compatibility:
   engine: ">=4.6"
+related:
+  skills:
+    - skill/peer-to-peer-multiplayer
+    - skill/host-authoritative-state
 source: official
 license: MIT
 status: stable

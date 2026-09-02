@@ -143,10 +143,18 @@ async function updateMetadata(
  * with the engine-minted ~/.summer/api-token (see core/engine.ts).
  */
 export async function getAuthToken(): Promise<string | null> {
-  const envToken = process.env.SUMMER_TOKEN?.trim();
-  if (envToken) return envToken;
+  if (hasEnvAuthToken()) return process.env.SUMMER_TOKEN!.trim();
   const token = await readStoreText(AUTH_TOKEN_FILE);
   return token?.trim() || null;
+}
+
+/**
+ * True when SUMMER_TOKEN (env) is the credential in effect. `summer logout`
+ * only clears the store, so status/logout must say the env token still
+ * applies rather than reporting the stored identity as the active one.
+ */
+export function hasEnvAuthToken(): boolean {
+  return Boolean(process.env.SUMMER_TOKEN?.trim());
 }
 
 export async function saveAuthToken(
@@ -268,17 +276,4 @@ export async function clearAuthCredentials(): Promise<number> {
     if (await removeStoreFile(file)) removed += 1;
   }
   return removed;
-}
-
-export function assertCredentialScopes(
-  metadata: CredentialMetadata | undefined,
-  requiredScopes: string[]
-): void {
-  const missing = requiredScopes.filter(
-    (scope) => !metadata?.scopes.includes(scope)
-  );
-  if (missing.length === 0) return;
-  throw new Error(
-    `This sign-in does not grant ${missing.join(", ")}. Recovery: run "summer login --force" after the platform enables scoped creator tokens, then retry.`
-  );
 }

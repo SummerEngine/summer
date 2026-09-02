@@ -249,9 +249,9 @@ describe("validate-library: capability lint", () => {
     ["pipe-to-shell (curl | sh)", /\[install-command\] body\.md: install command detected \(curl \| sh\)/],
     ["credential pattern in markdown (~/.ssh)", /\[credential-pattern\] body\.md: credential\/env pattern detected \(~\/\.ssh\)/],
     ["credential pattern in resource.yaml strings (token=)", /\[credential-pattern\] resource\.yaml use_when\[0\]: credential\/env pattern detected \(token=\)/],
-    ["base64 blob over 200 chars", /\[base64-blob\] body\.md: encoded blob detected/],
+    ["base64 blob at or over 160 chars", /\[base64-blob\] body\.md: encoded blob detected/],
     ["invisible unicode (zero-width space)", /\[invisible-unicode\] body\.md: invisible\/bidi unicode character detected \(U\+200B\)/],
-    ["prompt-injection phrase", /\[prompt-injection-phrase\] body\.md: prompt-injection phrase detected \("ignore previous"\)/],
+    ["prompt-injection phrase", /\[prompt-injection-phrase\] body\.md: prompt-injection phrase detected \("ignore \(all\) previous\/prior\/above\/earlier"\)/],
     ["lint_exceptions without lint_exception_reason", /exception-no-reason.*field "lint_exceptions" requires field "lint_exception_reason"/],
   ])("reports %s", (_name, pattern) => {
     expect(result.errors.some((e) => pattern.test(e))).toBe(true);

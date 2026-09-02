@@ -1,6 +1,6 @@
 id: skill/world-building-3d
 kind: skill
-version: 1.0.0
+version: 1.0.1
 summary: Compose, ground, space, frame, and validate 3D scenes with Summer's six bounded spatial tools — exact paths, one geometric decision at a time, verified.
 use_when:
   - placing or grounding props on floors, shelves, ramps, or tables without hand-tuning transforms
@@ -38,6 +38,7 @@ related:
     - skill/scene-composition
     - skill/verifying-scenes
     - skill/scene-scripting
+    - skill/spatial-placement
 source: official
 license: MIT
 status: preview

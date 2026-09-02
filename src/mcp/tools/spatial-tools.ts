@@ -4,20 +4,21 @@ import { withEngine, missingEngineOpResult, ToolInputError, withOldEngineHint } 
 import { executeSceneMutation } from "./scene-tools.js";
 
 /**
- * Spatial / world-building tools. Six bounded engine ops that turn "roughly
+ * Spatial / world-building tools. Seven bounded engine ops that turn "roughly
  * positioned" into "deliberately arranged": ghost-test a pose, seat a prop on
  * a surface, align or space a group along one axis, frame a camera on its
- * subjects, check framing + coarse occlusion, and probe navigation
- * reachability. Every op is evidence with a stated boundary (physics sweep vs
- * visual-AABB broad phase, sampled rays vs renderer visibility) and every
- * result is COMPACT by construction — the engine returns a receipt, never a
- * scene dump.
+ * subjects, check framing + coarse occlusion, probe navigation reachability,
+ * and starcast a placed subject (26 directional clearance casts plus contact
+ * and grounding evidence). Every op is evidence with a stated boundary
+ * (physics sweep vs visual-AABB broad phase, sampled rays vs renderer
+ * visibility) and every result is COMPACT by construction — the engine
+ * returns a receipt, never a scene dump.
  *
  * Three mutate the scene (snap, align/distribute, frame camera) and go through
  * the scene-mutation contract (one undoable action + one final SaveScene);
- * three are read-only and never save (placement test, camera visibility,
- * navigation probe). All six take exact scenePath + node paths — editor
- * selection is never consulted.
+ * four are read-only and never save (placement test, camera visibility,
+ * navigation probe, starcast). All seven take exact scenePath + node paths —
+ * editor selection is never consulted.
  *
  * Every op here is newer than the perception ops and an engine in the field
  * may lack it. Same two layers as perception-tools: a capability pre-flight
@@ -56,6 +57,16 @@ const VISIBILITY_FALLBACK =
   "check framing visually with summer_screenshot target 'scene' from that camera";
 const NAVIGATION_FALLBACK =
   "probe reachability from a RunVerification probe (NavigationServer3D.map_get_path — see the playbook's rawOpsViaBatch)";
+const STARCAST_FALLBACK =
+  "read the subject and its neighbours with summer_inspect_node (or summer_world_snapshot) and judge support, contact, and clearance from their world AABBs, then verify with summer_screenshot";
+/** Starcast's own ceilings (engine spatial_ops.cpp starcast_3d): the engine
+ *  measures the compact receipt as UTF-8 JSON, downgrades full -> summary
+ *  above 12 KiB, and strips secondary paths above 5 KiB, so a receipt past the
+ *  ceiling for its returnedDetail is one this CLI does not understand. Unlike
+ *  COMPACT_RESULT_LIMIT_BYTES these are inclusive: the engine's contract is
+ *  "at most". */
+const STARCAST_SUMMARY_LIMIT_BYTES = 5 * 1024;
+const STARCAST_FULL_LIMIT_BYTES = 12 * 1024;
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -154,6 +165,46 @@ function compactResult(options: CompactResultOptions) {
 
 const MUTATION_LANDED = { mutationApplied: true, saved: true, retrySafe: false } as const;
 const READ_ONLY = { readOnly: true } as const;
+
+/** withEngine options for summer_starcast: return ONLY the compact native op
+ *  result and fail loud when it exceeds the ceiling for its returnedDetail
+ *  (at most 5 KiB summary, at most 12 KiB full — the engine's own contract).
+ *  A downgraded receipt (requestedDetail full, returnedDetail summary) is
+ *  judged against the summary ceiling, exactly as the engine judged it. */
+function starcastResult() {
+  const op = "Starcast3D";
+  const resultText = (receipt: unknown): string => JSON.stringify(opResult(receipt, op));
+  const returnedDetail = (receipt: unknown): "summary" | "full" => {
+    const detail = (opResult(receipt, op) as { returnedDetail?: unknown } | null | undefined)?.returnedDetail;
+    return detail === "full" ? "full" : "summary";
+  };
+  return {
+    onResult: (receipt: unknown): ToolResult | null => {
+      const text = resultText(receipt);
+      const bytes = Buffer.byteLength(text, "utf8");
+      const detail = returnedDetail(receipt);
+      const limitBytes = detail === "full" ? STARCAST_FULL_LIMIT_BYTES : STARCAST_SUMMARY_LIMIT_BYTES;
+      if (bytes <= limitBytes) return null;
+      return {
+        isError: true,
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            ok: false,
+            op,
+            failure_reason: "starcast_result_exceeded_byte_limit",
+            ...READ_ONLY,
+            returnedDetail: detail,
+            actualBytes: bytes,
+            limitBytes,
+            hint: "Update Summer Engine so Starcast3D returns its compact schema (schemaVersion 1).",
+          }),
+        }],
+      };
+    },
+    toContent: (receipt: unknown): ToolResultContent[] => [{ type: "text", text: resultText(receipt) }],
+  };
+}
 
 // Every check the engine would reject on is expressed in the schema so the
 // MCP host rejects the call BEFORE the handler runs (an -32602 invalid-args
@@ -583,5 +634,130 @@ Always pass an exact scenePath and finite world-space start/end points. This rea
         failureReason: "navigation_probe_result_exceeded_byte_limit",
         extra: { ...READ_ONLY, evidence: "navigation" },
       })),
+  );
+
+  server.tool(
+    "summer_starcast",
+    `Read a 3D spatial rundown for one exact node in an exact scene without moving it or saving the scene: 26 directional clearance casts (6 axes, 12 edges, 8 corners) from the subject's bounds, contact-or-overlap evidence, grounded state, and, in full detail, bounded nearby-object lists. Use it before and after placing an object to learn which side is blocked, by what, and at what distance.
+
+detail 'summary' (default) is a placement report of at most 5 KB: subject position and size, grounded and contactStatus, deduplicated contact paths, one compact record per direction (status open|blocked, nearest distance, object, evidence, relationship), coverage, and warnings. detail 'full' adds per-direction hit geometry, an objects table, nearby lists, and the query echo, at most 12 KB; the engine downgrades to summary rather than exceed that (warning full_result_exceeded_12kb_returned_summary) and always reports requestedDetail vs returnedDetail.
+
+EVIDENCE BOUNDARY:
+- evidence 'physics' uses Godot's PhysicsDirectSpaceState3D against exact collider geometry on collisionMask. Shape intersections say contact_or_overlap because the query does not establish penetration depth; touching and anything within margin are included.
+- evidence 'visual_aabb' uses visible world-axis-aligned bounding boxes: it catches meshes without colliders but is broad-phase only, never triangle-level contact.
+- Lights, cameras, audio, navigation, scripts, and plain Nodes are not obstacles unless they own visual or collision geometry. One representative ray per direction can miss off-center geometry.
+
+scenePath and path are exact; editor selection is never consulted. This tool is read-only: it never moves the node or saves the scene. On an engine build that predates Starcast3D the result is a structured engine_lacks_op failure naming the fallback.`,
+    {
+      scenePath: exactScenePath.describe("Exact scene containing the subject, e.g. 'res://levels/level1.tscn'."),
+      path: exactNodePath.describe("Exact Node3D path relative to the scene root, e.g. './World/Crate'."),
+      detail: z
+        .enum(["summary", "full"])
+        .optional()
+        .default("summary")
+        .describe("summary: compact placement report (at most 5 KB). full: adds bounded hit geometry, an objects table, and nearby lists (at most 12 KB; the engine downgrades to summary rather than exceed it)."),
+      maxDistance: z
+        .number()
+        .positive()
+        .max(10000)
+        .optional()
+        .default(20)
+        .describe("Maximum outward cast distance in scene units."),
+      nearbyRadius: z
+        .number()
+        .nonnegative()
+        .max(10000)
+        .optional()
+        .default(10)
+        .describe("Maximum gap from the subject bounds for the nearby-object lists (full detail)."),
+      directionSpace: z
+        .enum(["world", "local"])
+        .optional()
+        .default("world")
+        .describe("Cast along world axes, or along the subject's orthonormalized local axes when 'front', 'side', or 'up' mean the rotated subject's own orientation."),
+      collisionMask: z
+        .number()
+        .int()
+        .nonnegative()
+        .max(0xffffffff)
+        .optional()
+        .default(0xffffffff)
+        .describe("Godot 3D physics layer mask queried by rays, shape contacts/overlaps, and nearby-collider scans."),
+      collideWithAreas: z
+        .boolean()
+        .optional()
+        .default(true)
+        .describe("Include Area3D objects as well as physics bodies."),
+      maxHitsPerDirection: z
+        .number()
+        .int()
+        .min(1)
+        .max(8)
+        .optional()
+        .default(3)
+        .describe("Maximum physics hits and visual AABB hits retained for each direction."),
+      maxResults: z
+        .number()
+        .int()
+        .min(1)
+        .max(128)
+        .optional()
+        .default(64)
+        .describe("Maximum retained contact/overlap and nearby entries per evidence channel."),
+      margin: z
+        .number()
+        .nonnegative()
+        .max(1)
+        .optional()
+        .default(0.001)
+        .describe("Tolerance for exact-geometry physics shape intersection queries; touching and candidates within this margin are reported as contact_or_overlap."),
+    },
+    async ({
+      scenePath,
+      path,
+      detail,
+      maxDistance,
+      nearbyRadius,
+      directionSpace,
+      collisionMask,
+      collideWithAreas,
+      maxHitsPerDirection,
+      maxResults,
+      margin,
+    }) =>
+      withEngine(async (client) => {
+        const missing = missingEngineOpResult(client, "Starcast3D", STARCAST_FALLBACK);
+        if (missing) return missing;
+        const exactScene = requireBoundedExactPath(scenePath, "scenePath", SCENE_PATH_LIMIT_BYTES);
+        const exactSubject = requireBoundedExactPath(
+          path,
+          "path",
+          NODE_PATH_LIMIT_BYTES,
+          "path must name one exact Node3D; selection fallback is not supported.",
+        );
+        if (!Number.isFinite(maxDistance) || maxDistance <= 0) {
+          throw new ToolInputError("maxDistance must be positive.");
+        }
+        if (!Number.isFinite(nearbyRadius) || nearbyRadius < 0) {
+          throw new ToolInputError("nearbyRadius must be zero or positive.");
+        }
+        const receipt = await client.executeIdentityBoundOps(
+          [{
+            op: "Starcast3D",
+            path: exactSubject,
+            detail,
+            max_distance: maxDistance,
+            nearby_radius: nearbyRadius,
+            direction_space: directionSpace,
+            collision_mask: collisionMask,
+            collide_with_areas: collideWithAreas,
+            max_hits_per_direction: maxHitsPerDirection,
+            max_results: maxResults,
+            margin,
+          }],
+          { scenePath: exactScene },
+        );
+        return withOldEngineHint(receipt, "Starcast3D", STARCAST_FALLBACK);
+      }, starcastResult()),
   );
 }

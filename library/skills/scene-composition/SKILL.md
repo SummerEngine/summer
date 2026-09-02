@@ -101,6 +101,14 @@ Use `./` for paths relative to the scene root:
 - Save-as: `summer_save_scene(scenePath="res://main.tscn", path="res://scenes/level1.tscn")`
 - Plain save: `summer_save_scene(scenePath="res://main.tscn")` — `scenePath` is required in both forms
 
+## Spatial Placement
+
+When a 3D prop, character, collider, platform, wall-mounted object, shelf item,
+or tight-space asset must sit flush, avoid overlap, or preserve clearance, load
+the `spatial-placement` skill. Follow its inspect -> place -> Starcast -> correct
+-> verify loop instead of judging precise placement from transforms or a
+screenshot alone.
+
 ## Common Mistakes
 
 1. **Wrong parent path:** `./NonExistent` fails. Ensure the parent exists before adding children.

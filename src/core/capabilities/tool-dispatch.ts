@@ -392,7 +392,7 @@ const SCENE_MUTATION_OPS = new Set([
 ]);
 
 /** Read-only spatial queries: identity-bound to an exact scene, never saved. */
-const SCENE_QUERY_OPS = new Set(["TestPlacement3D", "CameraVisibility3D", "NavigationProbe3D"]);
+const SCENE_QUERY_OPS = new Set(["TestPlacement3D", "CameraVisibility3D", "NavigationProbe3D", "Starcast3D"]);
 
 // ---------------------------------------------------------------------------
 // Spatial tool argument helpers. Mirror of the bounds in
@@ -501,6 +501,8 @@ const FRAME_CAMERA_FALLBACK =
 const CAMERA_VISIBILITY_FALLBACK = "check framing visually with summer_screenshot target 'scene'";
 const NAVIGATION_PROBE_FALLBACK =
   "probe reachability from a RunVerification probe (NavigationServer3D.map_get_path)";
+const STARCAST_FALLBACK =
+  "judge support, contact, and clearance from summer_inspect_node / summer_world_snapshot AABBs and verify with summer_screenshot";
 
 export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   // --- asset ---
@@ -1371,6 +1373,58 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       ),
       "NavigationProbe3D",
       NAVIGATION_PROBE_FALLBACK
+    );
+  }),
+  entry("summer_starcast", "Read-only 26-direction spatial rundown around one exact node: clearance, contacts, grounding (never saves)", true, async (args, ctx) => {
+    const client = await requireSpatialOp(ctx, "Starcast3D", STARCAST_FALLBACK);
+    const scenePath = exactPath(args, "scenePath", SPATIAL_SCENE_PATH_LIMIT_BYTES);
+    const detail = optStr(args, "detail") ?? "summary";
+    if (detail !== "summary" && detail !== "full") {
+      throw new ToolDispatchError("detail must be one of summary, full.");
+    }
+    const directionSpace = optStr(args, "directionSpace") ?? "world";
+    if (directionSpace !== "world" && directionSpace !== "local") {
+      throw new ToolDispatchError("directionSpace must be one of world, local.");
+    }
+    const maxDistance = optNumber(args, "maxDistance", 20);
+    if (maxDistance <= 0 || maxDistance > 10000) throw new ToolDispatchError("maxDistance must be positive and at most 10000.");
+    const nearbyRadius = optNumber(args, "nearbyRadius", 10);
+    if (nearbyRadius < 0 || nearbyRadius > 10000) throw new ToolDispatchError("nearbyRadius must be from 0 through 10000.");
+    const collisionMask = optNumber(args, "collisionMask", 0xffffffff);
+    if (!Number.isInteger(collisionMask) || collisionMask < 0 || collisionMask > 0xffffffff) {
+      throw new ToolDispatchError("collisionMask must be an integer from 0 through 4294967295.");
+    }
+    const maxHitsPerDirection = optNumber(args, "maxHitsPerDirection", 3);
+    if (!Number.isInteger(maxHitsPerDirection) || maxHitsPerDirection < 1 || maxHitsPerDirection > 8) {
+      throw new ToolDispatchError("maxHitsPerDirection must be an integer from 1 through 8.");
+    }
+    const maxResults = optNumber(args, "maxResults", 64);
+    if (!Number.isInteger(maxResults) || maxResults < 1 || maxResults > 128) {
+      throw new ToolDispatchError("maxResults must be an integer from 1 through 128.");
+    }
+    const margin = optNumber(args, "margin", 0.001);
+    if (margin < 0 || margin > 1) throw new ToolDispatchError("margin must be from 0 through 1.");
+    return requireSupportedOp(
+      await client.executeIdentityBoundOps(
+        [
+          {
+            op: "Starcast3D",
+            path: exactPath(args, "path", SPATIAL_NODE_PATH_LIMIT_BYTES),
+            detail,
+            max_distance: maxDistance,
+            nearby_radius: nearbyRadius,
+            direction_space: directionSpace,
+            collision_mask: collisionMask,
+            collide_with_areas: optBoolean(args, "collideWithAreas", true),
+            max_hits_per_direction: maxHitsPerDirection,
+            max_results: maxResults,
+            margin,
+          },
+        ],
+        { scenePath }
+      ),
+      "Starcast3D",
+      STARCAST_FALLBACK
     );
   }),
 

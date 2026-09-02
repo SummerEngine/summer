@@ -144,6 +144,19 @@ const ARGS = {
     navigationLayers: 1,
     optimize: true,
   },
+  summer_starcast: {
+    scenePath: "res://levels/test_room.tscn",
+    path: " ./World/Crate ",
+    detail: "full",
+    maxDistance: 30,
+    nearbyRadius: 12,
+    directionSpace: "local",
+    collisionMask: 5,
+    collideWithAreas: false,
+    maxHitsPerDirection: 4,
+    maxResults: 48,
+    margin: 0.002,
+  },
 } as const;
 
 const OPS: Record<keyof typeof ARGS, { op: string; mutation: boolean; failure: string; fallback: string }> = {
@@ -153,12 +166,16 @@ const OPS: Record<keyof typeof ARGS, { op: string; mutation: boolean; failure: s
   summer_frame_camera: { op: "FrameCamera3D", mutation: true, failure: "frame_camera_result_exceeded_byte_limit", fallback: "summer_screenshot" },
   summer_camera_visibility: { op: "CameraVisibility3D", mutation: false, failure: "camera_visibility_result_exceeded_byte_limit", fallback: "summer_screenshot" },
   summer_navigation_probe: { op: "NavigationProbe3D", mutation: false, failure: "navigation_probe_result_exceeded_byte_limit", fallback: "RunVerification" },
+  summer_starcast: { op: "Starcast3D", mutation: false, failure: "starcast_result_exceeded_byte_limit", fallback: "summer_inspect_node" },
 };
 
 const TOOL_NAMES = Object.keys(ARGS) as Array<keyof typeof ARGS>;
+/** The six tools sharing the exclusive 5 KiB compactResult cap. Starcast has
+ *  its own inclusive ceilings (5 KiB summary / 12 KiB full), tested below. */
+const COMPACT_TOOL_NAMES = TOOL_NAMES.filter((name) => name !== "summer_starcast");
 
 describe("registration", () => {
-  it("registers the six spatial tools", () => {
+  it("registers the seven spatial tools", () => {
     expect(tools().map((t) => t.name)).toEqual([
       "summer_test_placement",
       "summer_snap_to_surface",
@@ -166,6 +183,7 @@ describe("registration", () => {
       "summer_frame_camera",
       "summer_camera_visibility",
       "summer_navigation_probe",
+      "summer_starcast",
     ]);
   });
 });
@@ -208,6 +226,20 @@ describe("old engine with no capability advert (per-op unknown op)", () => {
     expect(result.isError).toBe(true);
     expect(text(result)).toContain("doesn't support TestPlacement3D yet");
     expect(text(result)).toContain("summer_world_snapshot");
+  });
+
+  it("rewrites starcast's unknown-op failure into the upgrade path and stamps engine_lacks_op", async () => {
+    mockClient({
+      executeIdentityBoundOps: vi.fn(async () => ({
+        ok: false,
+        results: [{ ok: false, op: "Starcast3D", error: "unknown op: Starcast3D" }],
+      })),
+    });
+    const result = (await tool("summer_starcast").handler({ ...ARGS.summer_starcast })) as Response;
+    expect(result.isError).toBe(true);
+    expect(text(result)).toContain("doesn't support Starcast3D yet");
+    expect(text(result)).toContain("summer_inspect_node");
+    expect(text(result)).toContain('"failure_reason": "engine_lacks_op"');
   });
 
   it("rewrites a chunked mutation's unknown-op failure too (SaveScene never sent)", async () => {
@@ -438,8 +470,132 @@ describe("summer_navigation_probe", () => {
   });
 });
 
+describe("summer_starcast", () => {
+  it("sends one exact identity-bound op, never appends SaveScene, and returns only the compact op result", async () => {
+    const { calls, optionsSeen, executeOps } = mockClient();
+    const result = (await tool("summer_starcast").handler({ ...ARGS.summer_starcast })) as Response;
+    expect(result.isError).toBeUndefined();
+    expect(calls).toEqual([[{
+      op: "Starcast3D",
+      path: "./World/Crate",
+      detail: "full",
+      max_distance: 30,
+      nearby_radius: 12,
+      direction_space: "local",
+      collision_mask: 5,
+      collide_with_areas: false,
+      max_hits_per_direction: 4,
+      max_results: 48,
+      margin: 0.002,
+    }]]);
+    expect(optionsSeen).toEqual([{ scenePath: "res://levels/test_room.tscn" }]);
+    expect(executeOps).not.toHaveBeenCalled();
+    expect(text(result)).toBe('{"ok":true,"op":"Starcast3D"}');
+  });
+
+  it("returns the engine's compact receipt untouched (schemaVersion 1 summary shape)", async () => {
+    const native = {
+      schemaVersion: 1,
+      ok: true,
+      op: "Starcast3D",
+      readOnly: true,
+      requestedDetail: "summary",
+      returnedDetail: "summary",
+      subject: { path: "./World/Crate", position: [1.25, 0.5, -0.5], size: [1, 1, 1] },
+      grounded: true,
+      contactStatus: "none_detected",
+      contacts: [],
+      directions: {
+        down: { status: "blocked", distance: 0, object: "./World/Floor", evidence: "physics", relationship: "contact_or_overlap" },
+        forward: { status: "open" },
+        back: { status: "blocked", distance: 0.04, object: "./World/Shelf/BackPanel", evidence: "visual_aabb" },
+      },
+      coverage: { physics: true, visualBounds: true, directionCount: 26, truncated: false },
+      warnings: [],
+    };
+    mockClient({
+      executeIdentityBoundOps: vi.fn(async () => ({ status: "ok", terminalState: "applied", results: [native] })),
+    });
+    const result = (await tool("summer_starcast").handler({ ...ARGS.summer_starcast, detail: "summary" })) as Response;
+    expect(result.isError).toBeUndefined();
+    expect(JSON.parse(text(result))).toEqual(native);
+  });
+
+  it("requires one exact path — no editor-selection fallback — and rejects blank or oversized paths before dispatch", async () => {
+    const { executeIdentityBoundOps } = mockClient();
+    const registered = tool("summer_starcast");
+    expect(input(registered, "path").safeParse(undefined).success).toBe(false);
+    expect(input(registered, "path").safeParse("   ").success).toBe(false);
+    expect(input(registered, "path").safeParse("./" + "€".repeat(200)).success).toBe(false);
+    const blank = (await registered.handler({ ...ARGS.summer_starcast, path: "   " })) as Response;
+    expect(blank.isError).toBe(true);
+    expect(text(blank)).toContain("selection fallback is not supported");
+    const oversized = (await registered.handler({ ...ARGS.summer_starcast, path: `./World/${"x".repeat(42 * 1024)}` })) as Response;
+    expect(oversized.isError).toBe(true);
+    expect(Buffer.byteLength(text(oversized), "utf8")).toBeLessThan(1024);
+    expect(executeIdentityBoundOps).not.toHaveBeenCalled();
+  });
+
+  it("schema pins detail, directionSpace, and the integer bounds the engine enforces", () => {
+    const registered = tool("summer_starcast");
+    expect(input(registered, "detail").safeParse("full").success).toBe(true);
+    expect(input(registered, "detail").safeParse("verbose").success).toBe(false);
+    expect(input(registered, "directionSpace").safeParse("local").success).toBe(true);
+    expect(input(registered, "directionSpace").safeParse("camera").success).toBe(false);
+    expect(input(registered, "maxHitsPerDirection").safeParse(8).success).toBe(true);
+    expect(input(registered, "maxHitsPerDirection").safeParse(9).success).toBe(false);
+    expect(input(registered, "maxHitsPerDirection").safeParse(0).success).toBe(false);
+    expect(input(registered, "maxResults").safeParse(128).success).toBe(true);
+    expect(input(registered, "maxResults").safeParse(129).success).toBe(false);
+    expect(input(registered, "maxDistance").safeParse(0).success).toBe(false);
+    expect(input(registered, "margin").safeParse(1.5).success).toBe(false);
+  });
+
+  /** A Starcast receipt padded to EXACTLY targetBytes of UTF-8 JSON. */
+  function starcastReceiptAtUtf8Bytes(targetBytes: number, detail: Record<string, unknown>): Record<string, unknown> {
+    const result: Record<string, unknown> = { ok: true, op: "Starcast3D", ...detail, padding: "" };
+    const fixedBytes = Buffer.byteLength(JSON.stringify(result), "utf8");
+    if (fixedBytes > targetBytes) throw new Error("Result framing exceeds target byte length");
+    result.padding = "x".repeat(targetBytes - fixedBytes);
+    expect(Buffer.byteLength(JSON.stringify(result), "utf8")).toBe(targetBytes);
+    return result;
+  }
+
+  it.each([
+    ["summary", { returnedDetail: "summary" }, 5 * 1024],
+    ["full", { returnedDetail: "full" }, 12 * 1024],
+    ["downgraded full", { requestedDetail: "full", returnedDetail: "summary" }, 5 * 1024],
+    ["legacy (no returnedDetail)", {}, 5 * 1024],
+  ] as const)("%s receipts forward at the ceiling and fail loud one byte past it", async (_label, detail, limit) => {
+    for (const targetBytes of [limit, limit + 1]) {
+      const native = starcastReceiptAtUtf8Bytes(targetBytes, { ...detail });
+      mockClient({
+        executeIdentityBoundOps: vi.fn(async () => ({ status: "ok", terminalState: "applied", results: [native] })),
+      });
+      const result = (await tool("summer_starcast").handler({ ...ARGS.summer_starcast })) as Response;
+      if (targetBytes === limit) {
+        expect(result.isError).toBeUndefined();
+        expect(Buffer.byteLength(text(result), "utf8")).toBe(limit);
+        expect(JSON.parse(text(result))).toEqual(native);
+      } else {
+        expect(result.isError).toBe(true);
+        expect(Buffer.byteLength(text(result), "utf8")).toBeLessThan(512);
+        expect(JSON.parse(text(result))).toMatchObject({
+          ok: false,
+          op: "Starcast3D",
+          failure_reason: "starcast_result_exceeded_byte_limit",
+          readOnly: true,
+          returnedDetail: limit === 12 * 1024 ? "full" : "summary",
+          actualBytes: limit + 1,
+          limitBytes: limit,
+        });
+      }
+    }
+  });
+});
+
 describe("compact-result byte boundary", () => {
-  it.each(TOOL_NAMES)("%s forwards 5119 bytes but fails loud at 5120", async (name) => {
+  it.each(COMPACT_TOOL_NAMES)("%s forwards 5119 bytes but fails loud at 5120", async (name) => {
     const { op, mutation, failure } = OPS[name];
     for (const targetBytes of [5119, 5120]) {
       const native = nativeResultAtUtf8Bytes(op, targetBytes);

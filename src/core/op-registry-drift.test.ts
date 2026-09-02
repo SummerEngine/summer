@@ -47,6 +47,7 @@ const KNOWN_UNIMPLEMENTED: Record<string, string> = {
   NavigationProbe3D: "codex spatial branch (6 spatial ops)",
   SnapToSurface: "codex spatial branch (6 spatial ops)",
   TestPlacement3D: "codex spatial branch (6 spatial ops)",
+  Starcast3D: "engine PR #147 (codex/starcast-spatial-probe: read-only 26-direction placement rundown)",
   CustomBake: "engine PR #155/#156 (bake helpers) — not on engine main",
   Probe: "engine PR #155/#156 (verify probe op) — not on engine main",
 };

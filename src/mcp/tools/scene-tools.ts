@@ -459,7 +459,7 @@ reports exactly which earlier ops already applied.`,
         // Read-only spatial queries target an exact scene (identity-bound) but
         // never save — no SaveScene is appended for them.
         const sceneQueries = new Set([
-          "TestPlacement3D", "CameraVisibility3D", "NavigationProbe3D",
+          "TestPlacement3D", "CameraVisibility3D", "NavigationProbe3D", "Starcast3D",
         ]);
         const containsMutation = ops.some((op) => sceneMutations.has(String(op.op ?? "")));
         const needsScenePath = containsMutation ||

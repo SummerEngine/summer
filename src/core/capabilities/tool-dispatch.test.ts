@@ -311,9 +311,10 @@ describe("spatial dispatch entries", () => {
     "frame-camera",
     "camera-visibility",
     "navigation-probe",
+    "starcast",
   ];
 
-  it("registers all six spatial tools as engine-required", () => {
+  it("registers all seven spatial tools as engine-required", () => {
     for (const slug of spatialSlugs) {
       expect(resolveToolDispatch(slug)?.engineRequired, slug).toBe(true);
     }
@@ -395,6 +396,92 @@ describe("spatial dispatch entries", () => {
       dispatchTool("snap-to-surface", { scenePath: "res://a.tscn", subjectPath: "./A", gap: 30, maxDistance: 20 }, ctx)
     ).rejects.toThrow(/gap/);
     expect(calls).toEqual([]);
+  });
+
+  it("starcast pre-flight refusal is the structured engine_lacks_op receipt `summer tool` prints (nothing sent)", async () => {
+    const { ctx, calls } = fakeEngineContext({
+      getEngineCapabilities: () => ({ opKinds: ["AddNode", "SaveScene"] }),
+      getEngineVersion: () => "0.5.61",
+    });
+    const failure = await dispatchTool("starcast", { scenePath: "res://a.tscn", path: "./Crate" }, ctx).catch(
+      (error: unknown) => error
+    );
+    expect(failure).toBeInstanceOf(ToolResultError);
+    const { result } = failure as ToolResultError;
+    expect(result).toMatchObject({
+      ok: false,
+      op: "Starcast3D",
+      failure_reason: "engine_lacks_op",
+      engine_version: "0.5.61",
+    });
+    expect(String(result.error)).toContain("does not support the Starcast3D op");
+    expect(String(result.error)).toContain("summer_inspect_node");
+    expect(calls).toEqual([]);
+  });
+
+  it("starcast on an engine with no capability advert rewrites the per-op unknown-op error into engine_lacks_op", async () => {
+    const { ctx } = fakeEngineContext({
+      executeIdentityBoundOps: async () => ({
+        ok: false,
+        results: [{ ok: false, op: "Starcast3D", error: "unknown op: Starcast3D" }],
+      }),
+    });
+    const failure = await dispatchTool("starcast", { scenePath: "res://a.tscn", path: "./Crate" }, ctx).catch(
+      (error: unknown) => error
+    );
+    expect(failure).toBeInstanceOf(ToolResultError);
+    const { result } = failure as ToolResultError;
+    expect(result).toMatchObject({ op: "Starcast3D", failure_reason: "engine_lacks_op" });
+    expect(String(result.error)).toContain("doesn't support Starcast3D yet");
+    expect(String(result.error)).toContain("unknown op: Starcast3D");
+  });
+
+  it("starcast sends exactly one identity-bound op with the engine defaults and never saves", async () => {
+    const { ctx, calls } = fakeEngineContext();
+    await dispatchTool("starcast", { scenePath: "res://a.tscn", path: " ./Crate " }, ctx);
+    expect(calls).toEqual([
+      {
+        method: "executeIdentityBoundOps",
+        args: [
+          [
+            {
+              op: "Starcast3D",
+              path: "./Crate",
+              detail: "summary",
+              max_distance: 20,
+              nearby_radius: 10,
+              direction_space: "world",
+              collision_mask: 0xffffffff,
+              collide_with_areas: true,
+              max_hits_per_direction: 3,
+              max_results: 64,
+              margin: 0.001,
+            },
+          ],
+          { scenePath: "res://a.tscn" },
+        ],
+      },
+    ]);
+  });
+
+  it("starcast validates detail, directionSpace, path, and integer bounds before touching the engine", async () => {
+    const { ctx, calls } = fakeEngineContext();
+    const base = { scenePath: "res://a.tscn", path: "./Crate" };
+    await expect(dispatchTool("starcast", { ...base, detail: "verbose" }, ctx)).rejects.toThrow(/detail must be one of summary, full/);
+    await expect(dispatchTool("starcast", { ...base, directionSpace: "camera" }, ctx)).rejects.toThrow(/directionSpace must be one of world, local/);
+    await expect(dispatchTool("starcast", { ...base, maxHitsPerDirection: 9 }, ctx)).rejects.toThrow(/maxHitsPerDirection/);
+    await expect(dispatchTool("starcast", { ...base, maxResults: 0 }, ctx)).rejects.toThrow(/maxResults/);
+    await expect(dispatchTool("starcast", { ...base, maxDistance: 0 }, ctx)).rejects.toThrow(/maxDistance/);
+    await expect(dispatchTool("starcast", { scenePath: "res://a.tscn" }, ctx)).rejects.toThrow(/path/);
+    expect(calls).toEqual([]);
+  });
+
+  it("batch identity-binds a raw Starcast3D op to the exact scene and never appends SaveScene", async () => {
+    const { ctx, calls } = fakeEngineContext();
+    await dispatchTool("batch", { scenePath: "res://a.tscn", ops: [{ op: "Starcast3D", path: "./Crate" }] }, ctx);
+    expect(calls.map((call) => call.method)).toEqual(["executeIdentityBoundOps"]);
+    expect(calls[0]!.args[0]).toEqual([{ op: "Starcast3D", path: "./Crate" }]);
+    await expect(dispatchTool("batch", { ops: [{ op: "Starcast3D" }] }, ctx)).rejects.toThrow(/requires scenePath/);
   });
 
   it("batch identity-binds a read-only spatial query and treats a spatial mutation as a scene mutation", async () => {

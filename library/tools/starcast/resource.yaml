@@ -1,0 +1,120 @@
+id: tool/starcast
+kind: tool
+version: 1.0.0
+summary: Read-only 3D placement rundown for one node — 26 directional clearance casts, contact-or-overlap evidence, grounding, nearby geometry. Never moves or saves.
+use_when:
+  - learning what surrounds a placed prop before and after a correction — which direction is blocked, by what, and at what distance
+  - diagnosing an overlap or a floating object when summer_test_placement reports fits false or grounded false and you need to know which side to move
+  - checking wall gaps, shelf support, or alcove clearance for a rotated subject (directionSpace local)
+do_not_use_when:
+  - you want the engine to move the prop for you — summer_snap_to_surface or summer_align_distribute_3d
+  - you only need a yes/no on one candidate pose — summer_test_placement is cheaper
+  - the subject is 2D or has neither visual nor collision geometry
+  - "requires an engine build with Starcast3D (engine PR #147, codex/starcast-spatial-probe); on current shipped engines this returns engine_lacks_op"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - 3d
+    - world-building
+    - verification
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/test-placement
+    - tool/snap-to-surface
+    - tool/inspect-node
+    - tool/world-snapshot
+    - tool/screenshot
+  skills:
+    - skill/spatial-placement
+    - skill/world-building-3d
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_starcast
+implementation:
+  module: src/mcp/tools/spatial-tools.ts
+  export: registerSpatialTools
+surfaces:
+  mcp:
+    tool_name: summer_starcast
+    remote: false
+input_schema:
+  type: object
+  properties:
+    scenePath:
+      type: string
+      minLength: 1
+      maxLength: 512
+      description: Exact scene containing the subject, e.g. 'res://levels/level1.tscn'.
+    path:
+      type: string
+      minLength: 1
+      maxLength: 256
+      description: Exact Node3D path relative to the scene root, e.g. './World/Crate'.
+    detail:
+      type: string
+      enum: [summary, full]
+      default: summary
+      description: "summary: compact placement report (at most 5 KB). full: adds bounded hit geometry, an objects table, and nearby lists (at most 12 KB; the engine downgrades to summary rather than exceed it)."
+    maxDistance:
+      type: number
+      exclusiveMinimum: 0
+      maximum: 10000
+      default: 20
+      description: Maximum outward cast distance in scene units.
+    nearbyRadius:
+      type: number
+      minimum: 0
+      maximum: 10000
+      default: 10
+      description: Maximum gap from the subject bounds for the nearby-object lists (full detail).
+    directionSpace:
+      type: string
+      enum: [world, local]
+      default: world
+      description: Cast along world axes, or along the subject's orthonormalized local axes for rotated subjects.
+    collisionMask:
+      type: integer
+      minimum: 0
+      maximum: 4294967295
+      default: 4294967295
+      description: Godot 3D physics layer mask queried by rays, shape contacts/overlaps, and nearby-collider scans.
+    collideWithAreas:
+      type: boolean
+      default: true
+      description: Include Area3D objects as well as physics bodies.
+    maxHitsPerDirection:
+      type: integer
+      minimum: 1
+      maximum: 8
+      default: 3
+      description: Maximum physics hits and visual AABB hits retained for each direction.
+    maxResults:
+      type: integer
+      minimum: 1
+      maximum: 128
+      default: 64
+      description: Maximum retained contact/overlap and nearby entries per evidence channel.
+    margin:
+      type: number
+      minimum: 0
+      maximum: 1
+      default: 0.001
+      description: Tolerance for exact-geometry physics shape intersection queries; touching and candidates within this margin are reported as contact_or_overlap.
+  required:
+    - scenePath
+    - path
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

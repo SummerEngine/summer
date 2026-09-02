@@ -1,5 +1,5 @@
-import { existsSync } from "fs";
-import { mkdir, readFile, writeFile } from "fs/promises";
+import { existsSync, readFileSync } from "fs";
+import { copyFile, mkdir, readFile, writeFile } from "fs/promises";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { homedir, platform } from "os";
@@ -230,9 +230,7 @@ export function renderConfigSnippet(
   }
 
   if (agent === "gemini") {
-    return (
-      JSON.stringify(geminiExtensionManifest(server), null, 2) + "\n"
-    );
+    return renderJsonFile(geminiExtensionManifest(server, readBundledGeminiManifestSync()));
   }
 
   return (
@@ -252,6 +250,17 @@ function resolveLocalCliPath(): string {
   const thisFile = fileURLToPath(import.meta.url);
   return resolve(dirname(thisFile), "..", "bin", "summer.js");
 }
+
+/** Package root: dist/installer/agent-config.js -> ../.. (also src/installer in tests). */
+export function resolvePackageRoot(): string {
+  return resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+}
+
+/** Directory name Gemini expects the extension under; the manifest `name` must match it. */
+export const GEMINI_EXTENSION_DIR_NAME = "summer-engine";
+
+/** Files copied next to the extension manifest so `contextFileName` (GEMINI.md, which imports AGENTS.md) resolves. */
+const GEMINI_CONTEXT_FILES = ["GEMINI.md", "AGENTS.md"] as const;
 
 function resolveConfigTarget(
   agent: SupportedAgent,
@@ -689,17 +698,102 @@ async function upsertGeminiExtension(
   write: boolean
 ): Promise<{ changed: boolean }> {
   const current = await readJsonConfig(path);
-  const next = geminiExtensionManifest(server, current);
+  const bundled = await readBundledGeminiManifest();
+  const next = geminiExtensionManifest(server, bundled, current);
 
   const currentRendered = renderJsonFile(current);
   const nextRendered = renderJsonFile(next);
-  const changed = currentRendered !== nextRendered;
+  let changed = currentRendered !== nextRendered;
 
   if (write && changed) {
     await writeTextFile(path, nextRendered);
   }
 
+  // GEMINI.md (the declared contextFileName) and AGENTS.md (which it imports)
+  // must sit next to the manifest or Gemini has no context file to load.
+  const extensionDir = dirname(path);
+  const packageRoot = resolvePackageRoot();
+  for (const name of GEMINI_CONTEXT_FILES) {
+    const src = join(packageRoot, name);
+    if (!existsSync(src)) continue;
+    const dest = join(extensionDir, name);
+    const srcText = await readFile(src, "utf-8");
+    const destText = existsSync(dest) ? await readFile(dest, "utf-8") : null;
+    if (destText === srcText) continue;
+    changed = true;
+    if (write) {
+      await mkdir(extensionDir, { recursive: true, mode: 0o700 });
+      await copyFile(src, dest);
+    }
+  }
+
   return { changed };
+}
+
+/**
+ * The GENERATED gemini-extension.json shipped at the package root
+ * (registry/generated/gemini-extension.json -> gemini-extension.json). Absent
+ * only in broken installs; the installer then falls back to a minimal manifest.
+ */
+async function readBundledGeminiManifest(): Promise<JsonObject> {
+  const path = join(resolvePackageRoot(), "gemini-extension.json");
+  if (!existsSync(path)) return {};
+  try {
+    return await readJsonConfig(path);
+  } catch {
+    return {};
+  }
+}
+
+function readBundledGeminiManifestSync(): JsonObject {
+  const path = join(resolvePackageRoot(), "gemini-extension.json");
+  if (!existsSync(path)) return {};
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(path, "utf-8"));
+    return isJsonObject(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Manifest written to ~/.gemini/extensions/summer-engine/gemini-extension.json.
+ *
+ * Starts from the generated package manifest (version, description, settings,
+ * contextFileName, ...) so the installed copy never drifts from the registry,
+ * then overrides what only makes sense at install time:
+ *  - `name` = the extension directory name (Gemini requires them to match;
+ *    geminicli.com/docs/extensions/reference), which is "summer-engine".
+ *  - `mcpServers` = the same launcher every other host gets (npx -y ...@latest,
+ *    cmd.exe-wrapped on Windows). The bundled entry runs from `${extensionPath}`
+ *    where no package is installed, and that only works inside the npm layout.
+ *  - `skills` is dropped: Gemini has no such manifest field; it discovers
+ *    <extension>/skills/<name>/SKILL.md, which `summer skills install --agent
+ *    gemini` writes.
+ *  - the `_generated` banner is dropped: this file is written by the installer.
+ * Unknown keys already present in the user's file (`base`) are preserved.
+ */
+function geminiExtensionManifest(
+  server: StdioMcpServerConfig,
+  bundled: JsonObject,
+  base: JsonObject = {}
+): JsonObject {
+  const { _generated: _banner, skills: _skills, ...fromPackage } = bundled;
+  const manifest: JsonObject = { ...base, ...fromPackage };
+  manifest.name = GEMINI_EXTENSION_DIR_NAME;
+  if (typeof manifest.description !== "string") {
+    manifest.description =
+      "Agent tooling for Summer Engine: MCP bridge, context primer, and game-dev skills.";
+  }
+  manifest.contextFileName = "GEMINI.md";
+  manifest.mcpServers = {
+    [SUMMER_MCP_SERVER_NAME]: {
+      command: server.command,
+      args: server.args,
+      ...(server.env && Object.keys(server.env).length > 0 ? { env: { ...server.env } } : {}),
+    },
+  };
+  return manifest;
 }
 
 function opencodeServerEntry(server: StdioMcpServerConfig): JsonObject {
@@ -736,24 +830,6 @@ function vsCodeServerEntry(server: StdioMcpServerConfig): JsonObject {
     entry.env = { ...server.env };
   }
   return entry;
-}
-
-function geminiExtensionManifest(
-  server: StdioMcpServerConfig,
-  base: JsonObject = {}
-): JsonObject {
-  const manifest: JsonObject = { ...base };
-  manifest.name = "summer";
-  manifest.description =
-    "Superpowers for AI game dev. MCP bridge to the local Summer Engine plus a context primer that teaches Gemini the Summer skills.";
-  manifest.contextFileName = "GEMINI.md";
-  manifest.mcpServers = {
-    [SUMMER_MCP_SERVER_NAME]: {
-      command: server.command,
-      args: server.args,
-    },
-  };
-  return manifest;
 }
 
 async function readTextFileIfExists(path: string): Promise<string> {
@@ -877,7 +953,7 @@ function createNextSteps(
                 : agent === "lm-studio"
                   ? "Open LM Studio, toggle on the summer-engine MCP server in the Program tab, and raise the loaded model's context length to 32k or higher."
         : agent === "gemini"
-          ? "Run `gemini extensions enable summer-engine` (if not already enabled), then restart Gemini CLI."
+          ? "Run `summer skills install --all --agent gemini` if skills were not installed, then restart Gemini CLI (or `gemini extensions enable summer-engine` if it is disabled)."
           : agent === "github-copilot"
             ? "Restart Copilot CLI, or run /mcp reload and /skills reload in the active session."
             : agent === "vscode-copilot"

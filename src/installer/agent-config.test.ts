@@ -1,12 +1,28 @@
-import { mkdtempSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
-import { describe, expect, it } from "vitest";
-import { configureAgentMcp, createSummerMcpServerConfig, parseAgent } from "./agent-config.js";
+import { afterEach, describe, expect, it } from "vitest";
+import {
+  GEMINI_EXTENSION_DIR_NAME,
+  configureAgentMcp,
+  createSummerMcpServerConfig,
+  parseAgent,
+  resolvePackageRoot,
+} from "./agent-config.js";
+
+const tmpDirs: string[] = [];
 
 function tmp(): string {
-  return mkdtempSync(join(tmpdir(), "summer-agent-config-"));
+  const dir = mkdtempSync(join(tmpdir(), "summer-agent-config-"));
+  tmpDirs.push(dir);
+  return dir;
 }
+
+afterEach(() => {
+  for (const dir of tmpDirs.splice(0)) {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 const NPX_ARGS = ["-y", "summer-engine@latest", "mcp"];
 
@@ -237,7 +253,7 @@ describe("configureAgentMcp", () => {
     expect(result.warnings.some((w) => w.includes("no project scope"))).toBe(true);
   });
 
-  it("writes a gemini extension manifest with mcpServers entry", async () => {
+  it("writes the generated gemini manifest (renamed to the extension dir) plus GEMINI.md/AGENTS.md", async () => {
     const dir = tmp();
     const path = join(dir, "gemini-extension.json");
     const result = await configureAgentMcp({
@@ -247,10 +263,35 @@ describe("configureAgentMcp", () => {
     });
     expect(result.wrote).toBe(true);
     const written = JSON.parse(readFileSync(path, "utf-8"));
-    expect(written.name).toBe("summer");
+    const bundled = JSON.parse(readFileSync(join(resolvePackageRoot(), "gemini-extension.json"), "utf-8"));
+    // Gemini requires manifest name == extension directory name.
+    expect(written.name).toBe(GEMINI_EXTENSION_DIR_NAME);
     expect(written.contextFileName).toBe("GEMINI.md");
+    // Carried over from the generated package manifest, never hand-rolled.
+    expect(written.version).toBe(bundled.version);
+    expect(written.description).toBe(bundled.description);
+    expect(written.settings).toEqual(bundled.settings);
+    // Install-time overrides / drops.
+    expect(written._generated).toBeUndefined();
+    expect(written.skills).toBeUndefined();
     expect(written.mcpServers["summer-engine"].command).toBe("npx");
     expect(written.mcpServers["summer-engine"].args).toEqual(NPX_ARGS);
+    expect(written.mcpServers["summer-engine"].cwd).toBeUndefined();
+    // Context files land next to the manifest.
+    expect(readFileSync(join(dir, "GEMINI.md"), "utf-8")).toBe(
+      readFileSync(join(resolvePackageRoot(), "GEMINI.md"), "utf-8")
+    );
+    expect(existsSync(join(dir, "AGENTS.md"))).toBe(true);
+  });
+
+  it("reports gemini as unchanged on a second run", async () => {
+    const dir = tmp();
+    const path = join(dir, "gemini-extension.json");
+    const env = { SUMMER_GEMINI_CONFIG_FILE: path } as NodeJS.ProcessEnv;
+    await configureAgentMcp({ agent: "gemini", scope: "user", env });
+    const second = await configureAgentMcp({ agent: "gemini", scope: "user", env });
+    expect(second.changed).toBe(false);
+    expect(second.wrote).toBe(false);
   });
 
   it("writes a GitHub Copilot CLI config with tools enabled", async () => {

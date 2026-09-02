@@ -24,6 +24,7 @@ implementation:
 surfaces:
   mcp:
     tool_name: summer_open_scene
+    remote: false
 input_schema:
   type: object
   properties:

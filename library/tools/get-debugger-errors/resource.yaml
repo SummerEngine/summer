@@ -1,8 +1,7 @@
 id: tool/get-debugger-errors
 kind: tool
 version: 1.0.0
-summary: Read deduplicated runtime errors from the debugger, distinct from console prints; optional
-  stack traces.
+summary: Read deduplicated runtime errors from the debugger, distinct from console prints; optional stack traces.
 use_when:
   - the running game hit failures like null references or missing nodes
 facets:
@@ -23,6 +22,7 @@ implementation:
 surfaces:
   mcp:
     tool_name: summer_get_debugger_errors
+    remote: false
 input_schema:
   type: object
   properties:
@@ -36,8 +36,7 @@ input_schema:
     include_warnings:
       type: boolean
       default: false
-      description: Forward-compat flag — when engine supports it, returns warning bodies in the same call.
-        Today the engine ignores it; use summer_get_debugger_warnings instead.
+      description: Forward-compat flag — when engine supports it, returns warning bodies in the same call. Today the engine ignores it; use summer_get_debugger_warnings instead.
     raw:
       type: boolean
       default: false

@@ -1,8 +1,7 @@
 id: tool/set-prop
 kind: tool
 version: 1.0.0
-summary: Set a node property using Godot string syntax for vectors, colors, transforms, and resource
-  class names.
+summary: Set a node property using Godot string syntax for vectors, colors, transforms, and resource class names.
 use_when:
   - configuring nodes after adding them
 facets:
@@ -23,6 +22,7 @@ implementation:
 surfaces:
   mcp:
     tool_name: summer_set_prop
+    remote: false
 input_schema:
   type: object
   properties:

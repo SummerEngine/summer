@@ -1,8 +1,7 @@
 id: tool/import-asset
 kind: tool
 version: 1.0.0
-summary: Search the asset library and import the best match into the project in one step, optionally
-  adding 3D models to a scene.
+summary: Search the asset library and import the best match into the project in one step, optionally adding 3D models to a scene.
 use_when:
   - the user asks to add a kind of asset, like 'add a tree to the scene'
 do_not_use_when:
@@ -25,6 +24,7 @@ implementation:
 surfaces:
   mcp:
     tool_name: summer_import_asset
+    remote: false
 input_schema:
   type: object
   properties:
@@ -33,8 +33,7 @@ input_schema:
       description: What to find, e.g. 'low-poly tree', 'wooden crate'
     parent:
       type: string
-      description: Parent node path to add the asset under, e.g. './World'. If omitted, only imports (no
-        scene placement)
+      description: Parent node path to add the asset under, e.g. './World'. If omitted, only imports (no scene placement)
     scenePath:
       type: string
       description: Required with parent. Exact res:// target scene path.

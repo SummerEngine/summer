@@ -31,7 +31,7 @@
             "tool_name": { "type": "string", "minLength": 1 },
             "remote": { "type": "boolean" }
           },
-          "required": ["tool_name"],
+          "required": ["tool_name", "remote"],
           "additionalProperties": false
         }
       },

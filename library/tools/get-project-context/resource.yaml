@@ -1,8 +1,7 @@
 id: tool/get-project-context
 kind: tool
 version: 1.0.0
-summary: Bind to the open project and return engine health, project name and path, current and main
-  scene, trimmed settings, and memory summary.
+summary: Bind to the open project and return engine health, project name and path, current and main scene, trimmed settings, and memory summary.
 use_when:
   - first call in every fresh session, to avoid guessing scene filenames
   - deliberately rebinding after the engine switched projects
@@ -24,13 +23,13 @@ implementation:
 surfaces:
   mcp:
     tool_name: summer_get_project_context
+    remote: false
 input_schema:
   type: object
   properties:
     settingsPrefix:
       type: string
-      description: Only return project settings whose key starts with this prefix, e.g. 'audio/' or
-        'application/config/'. Omit for the curated default set.
+      description: Only return project settings whose key starts with this prefix, e.g. 'audio/' or 'application/config/'. Omit for the curated default set.
   additionalProperties: false
 authority:
   filesystem: false

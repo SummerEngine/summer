@@ -1,8 +1,7 @@
 id: tool/get-diagnostics
 kind: tool
 version: 1.0.0
-summary: Prioritized overview of editor console and runtime debugger errors and warnings, with
-  complete counts and a trimmed noise tail.
+summary: Prioritized overview of editor console and runtime debugger errors and warnings, with complete counts and a trimmed noise tail.
 use_when:
   - first stop after any change, before targeted console or debugger reads
   - verifying a fix removed the errors it targeted
@@ -24,14 +23,14 @@ implementation:
 surfaces:
   mcp:
     tool_name: summer_get_diagnostics
+    remote: false
 input_schema:
   type: object
   properties:
     includeAll:
       type: boolean
       default: false
-      description: Return the full engine diagnostics payload untrimmed (no severity reordering, no
-        info-noise cap).
+      description: Return the full engine diagnostics payload untrimmed (no severity reordering, no info-noise cap).
   additionalProperties: false
 authority:
   filesystem: false

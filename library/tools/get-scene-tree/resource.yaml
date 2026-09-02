@@ -1,8 +1,7 @@
 id: tool/get-scene-tree
 kind: tool
 version: 1.0.0
-summary: Read a scene's node tree, with explicit depth and limit to avoid the engine's silent
-  default truncation.
+summary: Read a scene's node tree, with explicit depth and limit to avoid the engine's silent default truncation.
 use_when:
   - inspecting scene structure before or after mutations
 facets:
@@ -23,6 +22,7 @@ implementation:
 surfaces:
   mcp:
     tool_name: summer_get_scene_tree
+    remote: false
 input_schema:
   type: object
   properties:

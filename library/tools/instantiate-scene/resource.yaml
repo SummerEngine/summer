@@ -22,6 +22,7 @@ implementation:
 surfaces:
   mcp:
     tool_name: summer_instantiate_scene
+    remote: false
 input_schema:
   type: object
   properties:
@@ -40,10 +41,7 @@ input_schema:
     target_size:
       type: number
       exclusiveMinimum: 0
-      description: Normalize the instance's physical size - uniformly scale it so its largest world-AABB
-        dimension equals this many units (chair 1.0, car 4.5, person 1.7). Strongly recommended for
-        imported .glb/.gltf models. Older engine builds ignore it; the result then lacks scale_applied
-        and carries a target_size_note.
+      description: Normalize the instance's physical size - uniformly scale it so its largest world-AABB dimension equals this many units (chair 1.0, car 4.5, person 1.7). Strongly recommended for imported .glb/.gltf models. Older engine builds ignore it; the result then lacks scale_applied and carries a target_size_note.
   required:
     - scenePath
     - parent

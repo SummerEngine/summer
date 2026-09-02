@@ -1,8 +1,7 @@
 id: tool/creator-config
 kind: tool
 version: 1.0.0
-summary: Read or update the shared non-secret Summer configuration; mutations require confirm, and
-  tokens are never returned or accepted.
+summary: Read or update the shared non-secret Summer configuration; mutations require confirm, and tokens are never returned or accepted.
 use_when:
   - inspecting or changing shared CLI and MCP configuration values
 facets:
@@ -23,7 +22,7 @@ implementation:
 surfaces:
   mcp:
     tool_name: summer_creator_config
-    remote: true
+    remote: false
   cli:
     command: summer config
 input_schema:

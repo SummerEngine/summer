@@ -1,8 +1,7 @@
 id: tool/import-asset-by-id
 kind: tool
 version: 1.0.0
-summary: Import an exact Summer asset id into the open project via the engine's import pipeline;
-  optionally instantiate 3D models into a scene.
+summary: Import an exact Summer asset id into the open project via the engine's import pipeline; optionally instantiate 3D models into a scene.
 use_when:
   - importing a just-generated or searched asset without guessing
   - placing a 3D model into an exact scene by parent path
@@ -24,6 +23,7 @@ implementation:
 surfaces:
   mcp:
     tool_name: summer_import_asset_by_id
+    remote: false
 input_schema:
   type: object
   properties:

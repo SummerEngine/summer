@@ -1,11 +1,12 @@
 id: tool/create-debug-report
 kind: tool
 version: 1.0.0
-summary: "Create a support-ready Markdown debug report: doctor checks, engine health, diagnostics,
-  console, and debugger output."
+summary: "Create a support-ready Markdown debug report: doctor checks, engine health, diagnostics, console, and debugger output."
 use_when:
   - the user wants to send Summer a bug report
   - handing a failing session to another agent as a portable artifact
+do_not_use_when:
+  - running against a hosted/remote MCP endpoint — it probes the local disk (~/.summer, MCP log, project files) and must run where the CLI is installed
 facets:
   lifecycle:
     - build
@@ -24,6 +25,7 @@ implementation:
 surfaces:
   mcp:
     tool_name: summer_create_debug_report
+    remote: false
   cli:
     command: summer debug
 input_schema:
@@ -34,8 +36,7 @@ input_schema:
       description: User-visible issue or repro summary.
     output_path:
       type: string
-      description: Where to write the Markdown report. Defaults to the open project root, or the current
-        working directory if no project is open.
+      description: Where to write the Markdown report. Defaults to the open project root, or the current working directory if no project is open.
     include_play_session:
       type: boolean
       default: false

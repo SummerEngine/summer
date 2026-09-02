@@ -47,7 +47,6 @@
     "commands/",
     "hooks/",
     "assets/",
-    "_persona/",
     ".claude-plugin/",
     ".cursor-plugin/",
     ".codex-plugin/",

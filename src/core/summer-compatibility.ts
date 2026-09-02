@@ -2,9 +2,9 @@
  * Summer CLI compatibility values.
  *
  * Keep the current technical base in one place. The project feature tag is
- * derived from it so `summer create` cannot drift to a different line. This
- * source is cross-checked against the repository compatibility contract by
- * `summer-compatibility.test.ts`.
+ * derived from it so `summer create` cannot drift to a different line. The
+ * only consumer is src/cli/commands/create.ts; create.test.ts pins the
+ * rendered "Technical base <version>" line and config/features tag.
  */
 const CURRENT_TECHNICAL_BASE_VERSION = "4.6.1";
 

@@ -277,16 +277,3 @@ export async function clearAuthCredentials(): Promise<number> {
   }
   return removed;
 }
-
-export function assertCredentialScopes(
-  metadata: CredentialMetadata | undefined,
-  requiredScopes: string[]
-): void {
-  const missing = requiredScopes.filter(
-    (scope) => !metadata?.scopes.includes(scope)
-  );
-  if (missing.length === 0) return;
-  throw new Error(
-    `This sign-in does not grant ${missing.join(", ")}. Recovery: run "summer login --force" after the platform enables scoped creator tokens, then retry.`
-  );
-}

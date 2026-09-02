@@ -5,8 +5,11 @@ summary: Construction starter for importing and navigating large 3D city kits in
 use_when:
   - building a game on a large imported 3D city kit
 facets:
-  lifecycle: [build]
-  domains: [3d, city, asset-import]
+  lifecycle: [ build ]
+  domains:
+    - 3d
+    - world-building
+    - asset-import
 compatibility:
   engine: ">=4.6"
 source: official
@@ -18,4 +21,4 @@ repo: https://github.com/SummerEngine/template-3d-city-kit
 commit: 63f58a5fe02bd657bcdf4e10157c69d7761bb4bd
 tree_digest: 1acaba730c64920d51145cd0064e1675a5e329044f88da59d74611f77c345255
 default_branch: codex/importable-template
-systems: [kit-import, navigation, world]
+systems: [ kit-import, navigation, world ]

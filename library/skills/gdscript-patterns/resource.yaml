@@ -9,7 +9,6 @@ facets:
     - build
   domains:
     - scripting
-    - gdscript
   modalities:
     - scripts
 compatibility:

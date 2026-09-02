@@ -13,7 +13,7 @@ facets:
     - support
   domains:
     - feedback
-    - telemetry
+    - meta
 compatibility:
   engine: ">=4.6"
 source: official

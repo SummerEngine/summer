@@ -6,8 +6,9 @@ use_when:
   - writing shaders, rendering code, extensions, or export configuration
   - deciding which engine APIs or features are safe to target
 facets:
-  lifecycle: [build]
-  domains: [compatibility, engine-version]
+  lifecycle: [ build ]
+  domains:
+    - engine
 compatibility:
   engine: ">=4.6"
 related:

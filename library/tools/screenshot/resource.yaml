@@ -11,7 +11,7 @@ facets:
   lifecycle:
     - build
   domains:
-    - visual
+    - verification
 compatibility:
   engine: ">=4.6"
 source: official

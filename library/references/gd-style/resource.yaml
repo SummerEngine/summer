@@ -8,8 +8,9 @@ use_when:
 do_not_use_when:
   - writing C# (this covers GDScript conventions only)
 facets:
-  lifecycle: [build]
-  domains: [gdscript, code-style]
+  lifecycle: [ build ]
+  domains:
+    - scripting
 compatibility:
   engine: ">=4.6"
 source: official

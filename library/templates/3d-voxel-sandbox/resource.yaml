@@ -5,8 +5,11 @@ summary: Voxel sandbox starter — chunked world, face culling, mining and build
 use_when:
   - starting a Minecraft-like voxel sandbox
 facets:
-  lifecycle: [build]
-  domains: [3d, voxel, sandbox]
+  lifecycle: [ build ]
+  domains:
+    - 3d
+    - world-building
+    - open-world
 compatibility:
   engine: ">=4.6"
 source: official
@@ -18,4 +21,4 @@ repo: https://github.com/SummerEngine/template-3d-voxel-sandbox
 commit: 954e92b3368545ef1f75415ddf50df6aa8c81566
 tree_digest: 8d94e38875b27ffcdae1d498cbfff00e0529f0b8aa5bc10770e69e23e11638f7
 default_branch: main
-systems: [chunked-world, face-culling, mining-building, seeded-generation]
+systems: [ chunked-world, face-culling, mining-building, seeded-generation ]

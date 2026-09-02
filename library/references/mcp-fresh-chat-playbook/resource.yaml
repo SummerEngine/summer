@@ -6,8 +6,10 @@ use_when:
   - starting work in a Summer Engine project from a fresh conversation
   - deciding the safe default order of MCP calls for a build task
 facets:
-  lifecycle: [build]
-  domains: [mcp, workflow, agent-behavior]
+  lifecycle: [ build ]
+  domains:
+    - mcp
+    - agent-workflow
 compatibility:
   engine: ">=4.6"
 related:

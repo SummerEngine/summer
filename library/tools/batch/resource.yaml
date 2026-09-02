@@ -11,7 +11,7 @@ facets:
   lifecycle:
     - build
   domains:
-    - scene
+    - scenes
 compatibility:
   engine: ">=4.6"
 source: official

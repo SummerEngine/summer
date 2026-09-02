@@ -8,8 +8,9 @@ use_when:
 do_not_use_when:
   - purely read-only inspection work with no user-visible writes
 facets:
-  lifecycle: [build]
-  domains: [agent-behavior, workflow]
+  lifecycle: [ build ]
+  domains:
+    - agent-workflow
 compatibility:
   engine: ">=4.6"
 related:

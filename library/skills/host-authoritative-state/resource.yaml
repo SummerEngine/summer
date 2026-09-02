@@ -9,7 +9,6 @@ facets:
     - build
   domains:
     - multiplayer
-    - networking
   modalities:
     - scripts
     - scenes

@@ -1,8 +1,7 @@
 id: tool/search-assets
 kind: tool
 version: 1.0.0
-summary: Search the Summer asset library and your own assets by keyword and meaning; returns names,
-  types, preview and import-ready URLs.
+summary: Search the Summer asset library and your own assets by keyword and meaning; returns names, types, preview and import-ready URLs.
 use_when:
   - finding an existing asset in the public library before generating a new one
   - locating a user's generated or uploaded asset by description
@@ -12,7 +11,7 @@ facets:
   lifecycle:
     - build
   domains:
-    - asset
+    - assets
 compatibility:
   engine: ">=4.6"
 source: official
@@ -32,8 +31,7 @@ input_schema:
   properties:
     query:
       type: string
-      description: Natural language search, e.g. 'low-poly tree', 'sci-fi weapon'. For my_assets, can be
-        empty to list recent.
+      description: Natural language search, e.g. 'low-poly tree', 'sci-fi weapon'. For my_assets, can be empty to list recent.
     assetType:
       type: string
       enum:

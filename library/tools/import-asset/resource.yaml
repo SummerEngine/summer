@@ -10,7 +10,7 @@ facets:
   lifecycle:
     - build
   domains:
-    - asset
+    - assets
 compatibility:
   engine: ">=4.6"
 source: official

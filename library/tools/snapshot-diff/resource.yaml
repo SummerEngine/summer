@@ -6,6 +6,7 @@ use_when:
   - verifying a mutation batch against the snapshot_id taken before it
 do_not_use_when:
   - no baseline snapshot exists — take summer_world_snapshot first
+  - "requires an engine build with DiffWorldSnapshot (engine PR #156); on current shipped engines this returns engine_lacks_op"
 facets:
   lifecycle:
     - build
@@ -24,7 +25,7 @@ related:
     - skill/verifying-scenes
 source: official
 license: MIT
-status: stable
+status: preview
 aliases:
   - summer_snapshot_diff
 implementation:

@@ -6,6 +6,7 @@ use_when:
   - answering "where IS the player" or "what are this enemy's stats right now" during a playtest
 do_not_use_when:
   - no game is running — summer_play first; for the edited scene use summer_inspect_node
+  - "requires an engine build with GetRuntimeNode (engine PR #156); on current shipped engines this returns engine_lacks_op"
 facets:
   lifecycle:
     - build
@@ -24,7 +25,7 @@ related:
     - skill/verifying-scenes
 source: official
 license: MIT
-status: stable
+status: preview
 aliases:
   - summer_inspect_runtime_node
 implementation:

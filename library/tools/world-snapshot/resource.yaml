@@ -6,6 +6,7 @@ use_when:
   - taking a diffable baseline before a mutation batch, or verifying transforms/AABBs/fingerprints after one
 do_not_use_when:
   - you only need the hierarchy shape — summer_get_scene_tree
+  - "requires an engine build with GetWorldSnapshot (engine PR #156); on current shipped engines this returns engine_lacks_op"
 facets:
   lifecycle:
     - build
@@ -25,7 +26,7 @@ related:
     - skill/verifying-scenes
 source: official
 license: MIT
-status: stable
+status: preview
 aliases:
   - summer_world_snapshot
 implementation:

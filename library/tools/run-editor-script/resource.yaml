@@ -7,6 +7,7 @@ use_when:
 do_not_use_when:
   - work on the currently OPEN scene or anything relying on unsaved live edits — summer_run_script
   - anything needing pixels — the headless child has no renderer
+  - "requires an engine build with RunEditorScript (engine PR #156); on current shipped engines this returns engine_lacks_op"
 facets:
   lifecycle:
     - build
@@ -25,7 +26,7 @@ related:
     - skill/headless-scripting
 source: official
 license: MIT
-status: stable
+status: preview
 aliases:
   - summer_run_editor_script
 implementation:

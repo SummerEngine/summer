@@ -6,6 +6,8 @@ use_when:
   - after any mutation batch, asset import, or lighting change, before claiming it worked
   - during a playtest, to read live runtime state (spawned nodes, actual stats) without stopping the game
   - deciding what counts as evidence for a visual or structural claim
+do_not_use_when:
+  - "the engine build lacks GetWorldSnapshot/DiffWorldSnapshot/GetRuntimeSceneTree/GetRuntimeNode (engine PR #156); current shipped engines return engine_lacks_op — fall back to summer_get_scene_tree + summer_screenshot"
 facets:
   lifecycle:
     - build
@@ -30,7 +32,7 @@ related:
     - skill/verification-before-completion
 source: official
 license: MIT
-status: stable
+status: preview
 recommended: true
 aliases:
   - skills/workflow/verifying-scenes

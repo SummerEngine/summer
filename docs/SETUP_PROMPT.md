@@ -17,7 +17,7 @@ Expected agent behavior:
 
 1. Check Node.js 20+.
 2. Run `npx -y summer-engine@latest doctor --json` (its top-level `ok` means "no check failed", not "installed").
-3. Always run `npx -y summer-engine@latest setup <agent> --yes --force` — idempotent; installs every stable skill and the MCP config.
+3. Always run `npx -y summer-engine@latest setup <agent> --yes --force` — idempotent; installs every skill and the MCP config.
 4. Run `npx -y summer-engine@latest install` if the `engine-install` check needs attention.
 5. Run `npx -y summer-engine@latest login` if the `login` check needs attention.
 6. Create and run a starter project only after choosing a stable parent directory.

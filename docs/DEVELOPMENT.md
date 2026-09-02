@@ -93,9 +93,9 @@ Two tests need a sibling checkout to do real work and **skip loudly** otherwise:
 | `summer create <template> [name] [--keep-git]` | Scaffold from a pinned (or built-in) template; writes `.summer/project.json`. |
 | `summer list templates \| projects` | Browse the template registry / local projects. |
 | `summer memory [show <file>]` | Inspect `.summer/` project memory. |
-| `summer skills list \| info <name> \| install [name] [--all \| --recommended] [--include-preview] [--agent <a>] [--scope user\|project] [--force]` | Skill installer over `skills-registry.json`. Bulk installs take `status: stable`; `--include-preview` adds preview (unverified intake) skills; `skills list` tags them `[preview]`. |
+| `summer skills list \| info <name> \| install [name] [--all \| --recommended] [--stable-only] [--agent <a>] [--scope user\|project] [--force]` | Skill installer over `skills-registry.json`. Bulk installs take every `stable` and `preview` skill (`deprecated` only by name); `--stable-only` skips preview; `skills list` tags them `[preview]`. `--include-preview` is a hidden no-op alias for one release. |
 | `summer mcp [--project <path> \| --instance <id>]` | Start the MCP server (stdio). `summer mcp setup <agent>` is a deprecated alias of `summer setup`. |
-| `summer setup [agent] [--yes] [--force] [--recommended] [--include-preview] [--scope …] [--local-dev]` | MCP config + all stable skills (`--include-preview` adds preview) + doctor, one shot, idempotent. `--local-dev` (or `SUMMER_DEV=1`) points the agent at this checkout's `dist/bin/summer.js` instead of `npx summer-engine@latest`. |
+| `summer setup [agent] [--yes] [--force] [--recommended] [--stable-only] [--scope …] [--local-dev]` | MCP config + all skills (preview included; `--stable-only` skips them) + doctor, one shot, idempotent. `--local-dev` (or `SUMMER_DEV=1`) points the agent at this checkout's `dist/bin/summer.js` instead of `npx summer-engine@latest`. |
 | `summer doctor [--json]` | Checks: `node-version`, `cli-version`, `cli-version-current`, `skills-version-stale`, `login`, `engine-install`, `local-api`, `project-memory`, `mcp-boot`, `mcp-tools-list`. `ok` = no failures. |
 | `summer debug [issue…]` | Support-ready Markdown debug report. |
 | `summer plan <goal…>` | Route a goal to skills / tools / gates. |

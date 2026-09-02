@@ -1,6 +1,6 @@
 id: skill/scene-hierarchy-design
 kind: skill
-version: 0.1.0
+version: 0.1.1
 summary: "Structure Summer Engine scenes by access pattern — asset vs live hierarchies, wrapper nodes per operation, sub-scenes for reuse, path-agnostic logic."
 use_when:
   - "how should I structure the node hierarchy for this level or character"
@@ -9,7 +9,7 @@ use_when:
   - "scripts break whenever I move nodes because of hardcoded paths"
 do_not_use_when:
   - "shader or material work, asset import mechanics, or gameplay tuning — this is purely about hierarchy shape"
-  - "treat as unverified intake: extracted from source material by the gamedev-knowledge pipeline, not yet verified in-engine — validate before relying on it"
+  - "intake from the gamedev-knowledge pipeline (source-cited, pipeline-validated, not yet exercised in-engine by the Summer team) — verify results in the engine as you would any technique"
 facets:
   lifecycle:
     - build

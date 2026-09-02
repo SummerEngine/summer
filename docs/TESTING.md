@@ -40,15 +40,15 @@ What it does (verified output at the time of writing; counts move as the library
 ```
   ✓  Linked to Claude Code  ~/.claude.json
   (local dev)  MCP server command: node /abs/path/summer-engine-agent/dist/bin/summer.js mcp
-  ✓  Installed every stable skill (preview skills are skipped unless `--include-preview`) (80 new, 0 updated; 10 preview skipped — use --include-preview)  ~/.claude/skills/
+  ✓  Installed <N> skills (<N> new, 0 updated; <M> preview — labelled in each skill's guidance; use --stable-only to skip)  ~/.claude/skills/
 Doctor …
 ```
 
 - `~/.claude.json` gets `mcpServers.summer-engine = { command: "node", args: ["<abs>/dist/bin/summer.js", "mcp"] }` — the checkout, not `npx summer-engine@latest`. Any other `mcpServers` entries are kept.
-- Skills land in `~/.claude/skills/<skill>/SKILL.md` (plus `~/.claude/commands/summer.md` and `gameskill.md`). Only `status: stable` skills install by default; the `status: preview` ones (the intake skills plus `scene-scripting`, `verifying-scenes`, `world-building-3d`) need `--include-preview`:
+- Skills land in `~/.claude/skills/<skill>/SKILL.md` (plus `~/.claude/commands/summer.md` and `gameskill.md`). Every skill installs by default, `status: preview` ones included (the gamedev-knowledge intake skills, plus `scene-scripting`, `verifying-scenes`, `world-building-3d`, which wait on unmerged engine ops) — preview is a label carried in each skill's guidance, not a gate. To install only `status: stable` skills:
 
   ```bash
-  node dist/bin/summer.js setup claude-code --local-dev --yes --include-preview
+  node dist/bin/summer.js setup claude-code --local-dev --yes --stable-only
   ```
 
 - `--scope project` writes `.mcp.json` and `.claude/skills/` in the current directory instead of `~`.
@@ -82,7 +82,7 @@ Run these from any directory with the engine open on a project.
 | `summer tool get-project-context` | JSON: project, open scene, engine version, capabilities. Read `capabilitySkewWarning` if present — it names ops this CLI can send that the engine build does not advertise. |
 | `summer tool get-scene-tree --args '{"depth":1}'` | JSON tree of the open scene, one level deep. |
 | `summer tool screenshot` | Captures the editor viewport and prints the receipt JSON with `localPath` (`<tmpdir>/summer-cli/screenshot-<timestamp>.png`). Open the file. |
-| `summer skills list` | One line per library skill (`recommended`/`optional`, `[preview]` tag on preview skills), footer naming `--include-preview`. |
+| `summer skills list` | One line per library skill (`recommended`/`optional`, `[preview]` tag on preview skills), footer naming `--stable-only`. |
 | `summer tool api-docs --args '{"class_name":"MeshInstance3D","member":"mesh"}'` | Works without the engine (offline class reference) — a sanity check that the build itself is fine. |
 
 Engine not running, each `[engine]` command prints exactly this and exits 1:

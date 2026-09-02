@@ -38,8 +38,8 @@ summer skills list                                     # List all
 summer skills info <name>                              # Detail on one
 summer skills install <name>                           # Install one
 summer skills install --recommended --agent codex      # Install recommended set
-summer skills install --all --agent claude-code        # All stable skills
-summer skills install --all --include-preview --agent claude-code   # + preview (unverified intake) skills
+summer skills install --all --agent claude-code        # All skills (preview included)
+summer skills install --all --stable-only --agent claude-code   # Stable skills only (skip preview)
 summer skills install --recommended --agent cursor --scope project   # Per-project
 ```
 
@@ -72,9 +72,10 @@ Per-skill metadata lives in `resource.yaml` (schema:
 `registry/schemas/skill.schema.json`): `id`, `summary`, `use_when`, `facets`,
 `recommended` (drives `summer skills install --recommended` / `summer setup`),
 `aliases` (old `skills/<category>/<name>` paths keep resolving), `status`
-(`stable` installs in bulk; `preview` is unverified intake that `--all` /
-`--recommended` / `summer setup` skip unless `--include-preview` is given;
-`deprecated` installs only by name), `version`.
+(`stable` and `preview` both install in bulk — `preview` is a label for work
+not yet exercised in-engine by the Summer team, carried in the skill's own
+guidance, and `--stable-only` skips it; `deprecated` installs only by name),
+`version`.
 
 ## Authoring rules
 

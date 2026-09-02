@@ -1,6 +1,6 @@
 id: skill/psx-retro-rendering
 kind: skill
-version: 0.1.0
+version: 0.1.1
 summary: "Hardware-informed PlayStation 1 rendering in Godot 4 — low-res output, RGB5 and exact dither, affine textures, vertex snapping, blend modes, fog; limits named."
 use_when:
   - "make my game render like a PlayStation 1 game, with texture warping, vertex wobble, and dithering"
@@ -10,7 +10,7 @@ use_when:
 do_not_use_when:
   - "an ordinary low-resolution or pixel-art presentation that does not need PS1-specific rendering behavior"
   - "defining the overall visual style, palette, or mood — use art-direction first"
-  - "treat as unverified intake: extracted from source material by the gamedev-knowledge pipeline, not yet verified in-engine — validate before relying on it"
+  - "intake from the gamedev-knowledge pipeline (source-cited, pipeline-validated, not yet exercised in-engine by the Summer team) — verify results in the engine as you would any technique"
 facets:
   lifecycle:
     - build

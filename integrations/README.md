@@ -14,8 +14,8 @@ Each folder contains:
   time: MCP config path and skills destination.
 
 `summer setup <client>` (default `--scope user`) writes the MCP config AND
-installs every stable skill (`skills install --all`; `--include-preview` adds
-preview intake) in the SAME scope,
+installs every skill (`skills install --all`, preview included; `--stable-only`
+skips preview) in the SAME scope,
 so a user-scope MCP config never ends up beside project-scope skills.
 `--scope project` moves both; `--recommended` installs only the recommended
 subset. Clients whose MCP config is user-only (cline, roo-code, lm-studio,

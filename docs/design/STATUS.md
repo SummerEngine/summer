@@ -1,6 +1,6 @@
 # STATUS — where everything is, what actually works
 
-Single page. If it isn't here, it isn't real. Updated 2026-09-02 (post hardening fix wave — see REVIEW-2026-09-02.md for what was found and fixed). Companion: ROADMAP.md (sequencing), CONTRACT.md (rules).
+Single page. If it isn't here, it isn't real. Updated 2026-09-02 end of day — hardening fix wave + three follow-up passes (metadata honesty, docs/contract truth, src consolidation) all landed and re-verified. Findings ledger: REVIEW-2026-09-02.md. Companion: ROADMAP.md (sequencing), CONTRACT.md (rules).
 
 ## The one place
 **`SummerEngine/summer-engine-agent` branch `v3-foundation`** (PR #18 open, NOT for merging yet). Everything toolkit-side lives here. Nothing has shipped: origin `main` and npm `summer-engine@2.8.2` are untouched.
@@ -10,9 +10,9 @@ All rows re-verified after the 2026-09-02 fix wave; agent self-reports were NOT 
 | Thing | Verified by |
 |---|---|
 | Registry compiler → all root manifests, index, counts, aliases | `generate:registry --check` no drift; 23 compiler tests; CI parity step |
-| Library: 180 resources validate, capability lint clean (6 documented exceptions) | `validate:library` |
-| `summer` CLI boots; `summer tool --list` (70) ; `summer skills list` (83) | `npm run build` + smoke |
-| 56 pre-existing MCP tools (scene/debug/project/asset/generate/creator/file/screenshot) | unit tests; `summer tool summer_get_diagnostics` smoked against a live engine during the build |
+| Library: 179 resources validate (69 tools / 83 skills / 19 templates / 8 references), capability lint clean (8 documented exceptions), `remote` explicit on every tool, authority fields audited against implementations | `validate:library` + resource.yaml audit |
+| `summer` CLI boots; `summer tool --list` (69); `summer skills list` (83); unknown commands exit 1; `summer open`/`run`/`install` safe paths | `npm run build` + smoke + 844 tests |
+| 55 engine tools + 14 gated (preview) tools; one behavior per tool, CLI + MCP faces share the same functions | descriptor↔zod parity test; mirror-parity test (both faces import identical function objects); live-engine smoke during the build |
 | `summer_library_feedback` → live endpoint → Supabase table → /admin view | 29 MCP tests + 25 route tests; loopback wire proof; table verified live |
 | Headless routing layer | 58 unit tests + fake worker; real-binary test SKIPS (no engine build) |
 | Routing eval — tuning set (83 q): recall@5 1.0 / recall@1 0.81 / MRR 0.89. **Held-out set (42 q, written blind): recall@5 0.79 / recall@1 0.50 / MRR 0.70** | `npm run eval:routing` (gated) + `eval:routing:heldout` (report-only). The held-out numbers are the real index quality. |
@@ -32,7 +32,9 @@ Unblocked by: **SummerEngine/SummerEngine PR #155 (headless worker) + #156 (scen
 - Held-out routing eval: added (report-only). Closing the 21-point tuning/held-out gap is content work (use_when phrasing), tracked in ROADMAP.
 - `feat/templates-mcp-tool` dirty checkout (someone's uncommitted `with-engine.ts` + `summer_list_templates` work) — unreconciled with v3's `with-engine.ts` changes.
 - Count guards now derive from counts.json (no literals).
-- STILL OPEN: `.summer/state.json` / `decisions.ndjson` / `receipts/` named in CONTRACT §8 are spec-only (nothing writes them) — contract being corrected; CONTRACT §2/§3/§5 architectural claims (implementation in core, mcp adapters only, zod derived from input_schema) are false today — being rewritten honestly + consolidation pass scheduled; aliases.json has no runtime consumer yet.
+- CONTRACT/AGENTS/README/CHANGELOG now match the code (truth pass 2026-09-02); planned-not-implemented is labelled as such: `.summer/state.json`/`decisions.ndjson`/`receipts/`, runtime alias resolution for skills/tools (aliases.json is generated, only template aliases resolve), Tier-1 1500-char feedback notes, Summer-aware side-loading. Folding the CLI/MCP mirror into shared capabilities: helpers deduped (one copy each, parity-tested); registration still happens twice by design for now.
+- Live-engine verification of the 14 preview tools: impossible until engine PRs #155/#156 merge.
+- Two P2 leftovers: 3 "Summercraft" strings in src/core/auth.ts + login.ts; the tuning/held-out routing gap (1.0 vs 0.80) is content work.
 
 ## Other places (dependencies, not homes)
 - Web repo branch `feat/library-feedback-mailbox` (endpoint + admin; pushed, no PR). Salt env set in Vercel. RLS fix applied.

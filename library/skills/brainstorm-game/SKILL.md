@@ -13,7 +13,7 @@ paths: [".summer/**", "project.godot", "**/*.md"]
 
 ## Overview
 
-Most game projects fail because they were never scoped. This skill turns "I want to make a game" into a 1-page brief that names the pitch, the core loop, three mechanics max, the art direction, and the scope (jam / vertical slice / full game). The brief lands at `.summer/GameSoul.md` — the file Summer's onboarding pipeline and every future `summer:` skill reads on first turn.
+Most game projects fail because they were never scoped. This skill turns "I want to make a game" into a 1-page brief that names the pitch, the core loop, three mechanics max, the art direction, and the scope (jam / vertical slice / full game). The brief lands at `.summer/GameSoul.md` — the file Summer's onboarding pipeline and every future Summer skill reads on first turn.
 
 **Core principle:** Constrain ruthlessly. A buildable bad idea beats an un-buildable great idea. Three mechanics, one art direction, one scope. Anything else gets parked in a "Later" list.
 

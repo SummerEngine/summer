@@ -48,6 +48,13 @@ Waves; each gated by tsc + vitest + validate-library:
 - Registry after wave: **180 resources — 70 tools / 83 skills / 19 templates / 8 references.** Suite 640 green, parity clean.
 - Engine floor kept at 4.6.1 (conservative; revisit when 4.7.x engine is the shipped minimum).
 
+
+### Hardening 2026-09-02 ✅ (see REVIEW-2026-09-02.md)
+- Six adversarial reviews + cold-install e2e → 8 P0 / ~25 P1 fixed in one wave; three follow-up passes (library metadata honesty, docs/contract truth, src consolidation). Final: 179 resources (69/83/19/8), 844 tests, parity clean, held-out routing recall@5 0.80 (tuning 1.0).
+- Real template pinning; descriptor↔zod + mirror parity gates; validator cross-checks registrations; hardened capability lint (+destructive-command rule); hooks fire; OpenCode loads skills; setup installs all skills; install/open/run/unknown-command safe; login loop terminal; gateway.url everywhere; Summer Cloud gone; 359 stale refs purged.
+- Process rules adopted (DECISIONS D14): single writer per surface, `git commit --only -- <paths>` in shared worktrees, review agents read-only and never run side-effecting product commands.
+- NEXT for the index: close the tuning/held-out gap with content (use_when phrasing) — held-out is the number that counts. NEXT for tools: merge engine PRs #155/#156, then flip the 14 preview resources to stable and run the live-engine e2e step.
+
 ## 3. Next (ordered fast-follows, design already locked)
 
 1. **Remote stateless MCP (MCP v2, spec 2026-07-28).** Serve every `mcp.remote: true` tool (library search, generation, templates, feedback — engine-free) at `summerengine.com/mcp` as stateless Streamable HTTP on Vercel. Zero-install funnel. Depends on: registry compiler. Bonus: makes the already-published blog config (`"url": "https://www.summerengine.com/mcp"`) true instead of wrong.

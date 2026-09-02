@@ -190,7 +190,7 @@
     {
       "id": "template/3d-city-kit",
       "slug": "3d-city-kit",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "summary": "Construction starter for importing and navigating large 3D city kits in Summer Engine.",
       "status": "stable",
       "aliases": [
@@ -406,7 +406,7 @@
     {
       "id": "template/3d-voxel-sandbox",
       "slug": "3d-voxel-sandbox",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "summary": "Voxel sandbox starter — chunked world, face culling, mining and building, seeded generation.",
       "status": "stable",
       "aliases": [

@@ -270,7 +270,7 @@ This skill writes one design doc (`.summer/art-bible.md`) and may modify `projec
 
 ## Want a working starter?
 
-No template — this is a workflow that produces the bible the rest of the project obeys. After the bible exists, every `summer:` rendering / lighting / shader / VFX skill reads it.
+No template — this is a workflow that produces the bible the rest of the project obeys. After the bible exists, every Summer rendering / lighting / shader / VFX skill reads it.
 
 ## See also
 

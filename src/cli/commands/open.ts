@@ -28,9 +28,11 @@ export const openCommand = new Command("open")
 
     if (!health) {
       console.log("Engine not running. Launching with this project...");
-      // Import dynamically to avoid circular deps
+      // Import dynamically to avoid circular deps. `from: "user"` means the
+      // array holds ONLY user arguments — no node/script prefix — otherwise
+      // commander binds `[path]` to "node".
       const { runCommand } = await import("./run.js");
-      await runCommand.parseAsync(["node", "summer", fullPath], { from: "user" });
+      await runCommand.parseAsync([fullPath], { from: "user" });
       return;
     }
 

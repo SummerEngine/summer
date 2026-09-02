@@ -1,3 +1,4 @@
+import { EventEmitter } from "node:events";
 import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -20,8 +21,21 @@ vi.mock("../../core/engine.js", async (importOriginal) => {
 
 vi.mock("child_process", async (importOriginal) => {
   const actual = await importOriginal<typeof import("child_process")>();
-  return { ...actual, spawn: vi.fn(() => ({ unref: vi.fn() })) };
+  return { ...actual, spawn: vi.fn(() => fakeChild()) };
 });
+
+/** A spawn() double that behaves like a real ChildProcess for the bits
+ *  `summer run` touches: unref() and the async "error" event. Set
+ *  `nextSpawnError` before the call to emit ENOENT/EACCES on the next tick. */
+let nextSpawnError: NodeJS.ErrnoException | null = null;
+function fakeChild() {
+  const child = new EventEmitter() as EventEmitter & { unref: () => void };
+  child.unref = vi.fn();
+  const error = nextSpawnError;
+  nextSpawnError = null;
+  if (error) setTimeout(() => child.emit("error", error), 0);
+  return child;
+}
 
 import { spawn } from "child_process";
 import { checkEngineHealth } from "../../core/engine.js";
@@ -53,6 +67,7 @@ beforeEach(async () => {
   checkEngineHealthMock.mockReset();
   checkEngineHealthMock.mockResolvedValue(null);
   spawnMock.mockClear();
+  nextSpawnError = null;
   process.exitCode = undefined;
 });
 
@@ -64,8 +79,17 @@ afterEach(async () => {
 });
 
 describe("summer run engine resolution", () => {
-  it("asks the shared engine-install resolver and refuses to launch when it finds nothing", async () => {
+  it("refuses a bare launch without --no-project (agents probe commands)", async () => {
     await runCommand.parseAsync([], { from: "user" });
+
+    expect(findEngineBinaryMock).not.toHaveBeenCalled();
+    expect(spawnMock).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
+    expect(errors.join("\n")).toContain("--no-project");
+  });
+
+  it("asks the shared engine-install resolver and refuses to launch when it finds nothing", async () => {
+    await runCommand.parseAsync(["--no-project"], { from: "user" });
 
     expect(findEngineBinaryMock).toHaveBeenCalledTimes(1);
     expect(spawnMock).not.toHaveBeenCalled();
@@ -80,7 +104,7 @@ describe("summer run engine resolution", () => {
       .mockResolvedValueOnce(null)
       .mockResolvedValue({ version: "0.9.0", project_name: "Demo" } as never);
 
-    await runCommand.parseAsync([], { from: "user" });
+    await runCommand.parseAsync(["--no-project"], { from: "user" });
 
     expect(spawnMock).toHaveBeenCalledTimes(1);
     expect(spawnMock).toHaveBeenCalledWith(
@@ -91,5 +115,20 @@ describe("summer run engine resolution", () => {
     expect(process.exitCode).toBeUndefined();
     expect(logs.join("\n")).toContain("Summer Engine running (v0.9.0) on port 6543");
     expect(logs.join("\n")).toContain("Project: Demo");
+  });
+
+  it("reports a binary that fails to start instead of crashing with a raw stack", async () => {
+    findEngineBinaryMock.mockReturnValue("/opt/stale/summer-linux-x86_64");
+    const enoent = Object.assign(new Error("spawn ENOENT"), { code: "ENOENT" });
+    nextSpawnError = enoent;
+
+    await runCommand.parseAsync(["--no-project"], { from: "user" });
+
+    expect(spawnMock).toHaveBeenCalledTimes(1);
+    expect(process.exitCode).toBe(1);
+    expect(errors.join("\n")).toContain(
+      "Summer Engine binary failed to start: ENOENT (/opt/stale/summer-linux-x86_64)"
+    );
+    expect(logs.join("\n")).not.toContain("Summer Engine running");
   });
 });

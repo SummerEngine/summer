@@ -84,10 +84,25 @@ async function withLaunchLock<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 export const runCommand = new Command("run")
-  .description("Launch Summer Engine, optionally opening a project")
+  .description(
+    "Launch Summer Engine with a project. Without a path it launches a bare " +
+      "detached editor (project manager), which requires --no-project."
+  )
   .argument("[path]", "Path to a project directory (must contain project.godot)")
-  .action(async (projectPath?: string) => {
+  .option(
+    "--no-project",
+    "Launch a bare detached editor (project manager) without opening a project"
+  )
+  .action(async (projectPath: string | undefined, opts: { project: boolean }) => {
     const fullProjectPath = projectPath ? resolve(projectPath) : null;
+    if (!fullProjectPath && opts.project !== false) {
+      console.error(
+        "summer run needs a project path (a directory containing project.godot).\n" +
+          "To launch a bare editor without a project, pass --no-project."
+      );
+      process.exitCode = 1;
+      return;
+    }
     if (fullProjectPath) {
       if (!existsSync(fullProjectPath)) {
         console.error(`Directory not found: ${fullProjectPath}`);
@@ -152,6 +167,13 @@ export const runCommand = new Command("run")
       console.log("Launching Summer Engine...");
 
       const child = spawn(binary, args, { detached: true, stdio: "ignore" });
+      // A stale or non-executable binary surfaces as an async "error" event
+      // (ENOENT/EACCES). Without a listener Node raises it as an uncaught
+      // exception with a raw stack; catch it and report the path instead.
+      const spawnState: { error: NodeJS.ErrnoException | null } = { error: null };
+      child.on("error", (error: NodeJS.ErrnoException) => {
+        spawnState.error = error;
+      });
       child.unref();
 
       // Wait for engine to start responding
@@ -160,6 +182,10 @@ export const runCommand = new Command("run")
 
       while (Date.now() - startTime < timeout) {
         await sleep(500);
+        if (spawnState.error) {
+          reportSpawnFailure(spawnState.error, binary);
+          return;
+        }
         const newPort = await getApiPort();
         const h = await checkEngineHealth(newPort);
         if (h) {
@@ -171,12 +197,26 @@ export const runCommand = new Command("run")
         }
       }
 
+      if (spawnState.error) {
+        reportSpawnFailure(spawnState.error, binary);
+        return;
+      }
+
       console.log(
         "Summer Engine launched but API not responding yet.\n" +
         "It may still be loading. Run 'summer status' to check."
       );
     });
   });
+
+function reportSpawnFailure(error: NodeJS.ErrnoException, binary: string): void {
+  const code = error.code ?? error.message;
+  console.error(
+    `Summer Engine binary failed to start: ${code} (${binary})\n` +
+      "Re-run 'summer install' to repair the installation, or check the binary path."
+  );
+  process.exitCode = 1;
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));

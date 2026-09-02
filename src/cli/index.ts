@@ -21,6 +21,7 @@ import { releasesCommand } from "./commands/releases.js";
 import { logsCommand } from "./commands/logs.js";
 import { toolCommand } from "./commands/tool.js";
 import { getBanner } from "./banner.js";
+import { runRootAction } from "./root-action.js";
 import { c, sym } from "../core/format.js";
 
 const require = createRequire(import.meta.url);
@@ -37,8 +38,8 @@ export function runCli(mcpCommand: Command): void {
     .name("summer")
     .description("CLI and MCP tools for Summer Engine — the AI-native game engine")
     .version(version)
-    .action(() => {
-      printIntro(version);
+    .action((_opts: unknown, command: Command) => {
+      runRootAction(command.args, () => printIntro(version));
     });
 
   program.addCommand(installCommand);

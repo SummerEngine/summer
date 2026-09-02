@@ -2,7 +2,7 @@ id: tool/batch
 kind: tool
 version: 1.0.1
 summary: Run multiple engine ops in one call, forwarded verbatim; one undo step unless single-only ops
-  force a split (then one per chunk). Also reaches raw ops with no tool.
+  force a split (then one per chunk). Also reaches raw ops.
 use_when:
   - multi-node builds that should undo as one step (no single-only ops in the list)
   - reaching engine ops that have no dedicated tool

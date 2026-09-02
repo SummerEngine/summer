@@ -370,9 +370,8 @@ export interface EngineHealth {
   //
   // They stay declared rather than deleted because O5 is landing the engine side.
   // Until it lands, every consumer of these is dead code: `summer run`'s
-  // second-editor guard, the Project/Path/Scene lines in `summer status`,
-  // orchestrator's project label, and the post-pull scene reload in
-  // lib/cloud/engine-bridge.ts.
+  // second-editor guard, the Project/Path/Scene lines in `summer status`, and
+  // orchestrator's project label.
   //
   // Do not add a consumer without first confirming the engine emits it.
   project_name?: string;

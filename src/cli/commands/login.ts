@@ -202,10 +202,8 @@ export async function runLogin(
       const data = (await res.json()) as {
         status: string;
         token?: string;
-        cloudToken?: string | null;
         user?: { id: string; email: string; name?: string };
         scopes?: string[];
-        cloudScopes?: string[];
       };
 
       if (data.status === "pending") continue;
@@ -213,10 +211,8 @@ export async function runLogin(
       if (data.status === "complete" && data.token) {
         await saveLoginSession({
           token: data.token,
-          cloudToken: data.cloudToken,
           user: data.user,
           scopes: data.scopes,
-          cloudScopes: data.cloudScopes,
         });
         deps.log(`\nLogged in as ${data.user?.email || "unknown"}`);
         return;

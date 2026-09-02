@@ -11,7 +11,6 @@ import { registerProjectTools } from "./tools/project-tools.js";
 import { registerFileTools } from "./tools/file-tools.js";
 import { registerAssetTools } from "./tools/asset-tools.js";
 import { registerGenerateTools } from "./tools/generate-tools.js";
-import { registerCloudTools } from "./tools/cloud-tools.js";
 import { registerCreatorTools } from "./tools/creator-tools.js";
 import { registerFeedbackTools } from "./tools/feedback-tools.js";
 import {
@@ -315,7 +314,6 @@ export async function startMcpServer(
   registerFileTools(server);
   registerAssetTools(server);
   registerGenerateTools(server);
-  registerCloudTools(server);
   registerCreatorTools(server);
   registerFeedbackTools(server);
 

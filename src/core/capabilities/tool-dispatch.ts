@@ -3,7 +3,7 @@
  *
  * One entry per library `tool` resource (library/tools/<slug>/resource.yaml),
  * dispatching through the SAME underlying implementations the MCP server uses:
- * core capabilities (cloud sync, creator, debug-report, game-task-plan,
+ * core capabilities (creator, debug-report, game-task-plan,
  * library feedback), the core EngineApiClient for engine ops, and the same
  * gateway endpoints for Studio generation / asset APIs.
  *
@@ -25,15 +25,6 @@ import { createRequire } from "node:module";
 import { EngineApiClient, type EngineSnapshot } from "../api-client.js";
 import { getAuthToken } from "../auth.js";
 import { shapeEngineLogResponse } from "../log-filters.js";
-import {
-  cloudCheckpoints,
-  cloudConflicts,
-  cloudInit,
-  cloudPull,
-  cloudPush,
-  cloudRestore,
-  cloudStatus,
-} from "./cloud/sync.js";
 import {
   listCreatorReleases,
   publishCreator,
@@ -107,7 +98,7 @@ export function createDefaultDispatchContext(): ToolDispatchContext {
           "Summer Engine is not running (or no project is open).\n" +
             `${reason}\n` +
             "Start it with 'summer run' or open the project in the Summer desktop app, then retry.\n" +
-            "Engine-free tools (generate-*, asset search/list/get, cloud, creator, plan) work without it."
+            "Engine-free tools (generate-*, asset search/list/get, creator, plan) work without it."
         );
       }
     },
@@ -327,7 +318,7 @@ async function requireToken(): Promise<string> {
   const token = await getAuthToken();
   if (!token) {
     throw new ToolDispatchError(
-      "Not signed in. Run 'summer login' first — cloud tools require a Summer Engine account."
+      "Not signed in. Run 'summer login' first — these tools require a Summer Engine account."
     );
   }
   return token;
@@ -750,50 +741,6 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
         scenePath: optStr(args, "scenePath"),
       });
     }
-  ),
-
-  // --- cloud (shared core capability, face: cli) ---
-  entry("summer_cloud_init", "Enable Summer Cloud sync for a project", false, (args) =>
-    cloudInit({ project: optStr(args, "project"), face: "cli" })
-  ),
-  entry("summer_cloud_status", "Show what a cloud sync would move", false, (args) =>
-    cloudStatus({ project: optStr(args, "project"), face: "cli" })
-  ),
-  entry("summer_cloud_push", "Upload local project changes to Summer Cloud", false, (args) =>
-    cloudPush({
-      project: optStr(args, "project"),
-      confirmDeletes: args.confirmDeletes === true,
-      bootstrap: args.bootstrap as never,
-      adoptPath: args.adoptPath === true,
-      face: "cli",
-    })
-  ),
-  entry("summer_cloud_pull", "Download Summer Cloud changes into the local project", false, (args) =>
-    cloudPull({
-      project: optStr(args, "project"),
-      bootstrap: args.bootstrap as never,
-      adoptPath: args.adoptPath === true,
-      face: "cli",
-    })
-  ),
-  entry("summer_cloud_restore", "Roll a project back to a cloud version or local checkpoint", false, (args) =>
-    cloudRestore({
-      project: optStr(args, "project"),
-      version: typeof args.version === "number" ? args.version : undefined,
-      checkpoint: optStr(args, "checkpointStamp"),
-      face: "cli",
-    })
-  ),
-  entry("summer_cloud_checkpoints", "List local pre-sync checkpoints", false, (args) =>
-    cloudCheckpoints({ project: optStr(args, "project"), face: "cli" })
-  ),
-  entry("summer_cloud_conflicts", "List or recover preserved cloud conflict sets", false, (args) =>
-    cloudConflicts({
-      project: optStr(args, "project"),
-      restorePath: optStr(args, "restorePath"),
-      set: optStr(args, "set"),
-      face: "cli",
-    })
   ),
 
   // --- creator (shared core capability, face: cli) ---

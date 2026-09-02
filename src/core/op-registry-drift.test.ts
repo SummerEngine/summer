@@ -11,10 +11,10 @@ import { describe, expect, it } from "vitest";
  * our side: if this package sends an `op` the engine has no branch for, fail here
  * rather than at a user's machine.
  *
- * This is not hypothetical. It is exactly how `ScanChanges` — the post-cloud-pull
- * filesystem rescan — went unnoticed: not an engine op on ANY build, wrapped in a
- * catch that called itself an old-build compatibility case, so the editor silently
- * kept showing pre-pull bytes.
+ * This is not hypothetical. It is exactly how `ScanChanges` — the filesystem rescan
+ * the since-removed Summer Cloud pull sent — went unnoticed: not an engine op on ANY
+ * build, wrapped in a catch that called itself an old-build compatibility case, so
+ * the editor silently kept showing pre-pull bytes.
  */
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const registryPath = resolve(
@@ -22,12 +22,7 @@ const registryPath = resolve(
 );
 
 /** Ops we knowingly send that the engine does not implement, with why. Empty is the goal. */
-const KNOWN_UNIMPLEMENTED: Record<string, string> = {
-  ScanChanges:
-    "No engine branch on any build. The capability exists as EditorFileSystem::scan_changes() " +
-    "but is exposed neither as an op nor to GDScript. Tracked with O2; the call site in " +
-    "lib/cloud/engine-bridge.ts now warns the user instead of silently swallowing it.",
-};
+const KNOWN_UNIMPLEMENTED: Record<string, string> = {};
 
 function sourceFiles(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {

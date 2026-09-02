@@ -10,7 +10,8 @@ import {
 export { getSummerDir } from "./store.js";
 
 const AUTH_TOKEN_FILE = "auth-token";
-const CLOUD_TOKEN_FILE = "cloud-token";
+/** Written by v2 `summer login` for the removed Summer Cloud sync. Only ever removed now (logout). */
+const LEGACY_CLOUD_TOKEN_FILE = "cloud-token";
 const CREATOR_TOKEN_FILE = "creator-token";
 const USER_FILE = "user.json";
 const METADATA_FILE = "credential-metadata.json";
@@ -32,16 +33,13 @@ export interface CredentialMetadata {
 interface CredentialMetadataDocument {
   schemaVersion: 1;
   auth?: CredentialMetadata;
-  cloud?: CredentialMetadata;
   creator?: CredentialMetadata;
 }
 
 export interface LoginSession {
   token: string;
-  cloudToken?: string | null;
   user?: SummerUserInfo;
   scopes?: string[];
-  cloudScopes?: string[];
 }
 
 function decodeJwtMetadata(
@@ -105,7 +103,7 @@ async function readMetadata(): Promise<CredentialMetadataDocument> {
 }
 
 async function updateMetadata(
-  kind: "auth" | "cloud" | "creator",
+  kind: "auth" | "creator",
   value: CredentialMetadata | undefined
 ): Promise<void> {
   const current = await readMetadata();
@@ -115,7 +113,6 @@ async function updateMetadata(
     [kind]: value,
   };
   if (!next.auth) delete next.auth;
-  if (!next.cloud) delete next.cloud;
   if (!next.creator) delete next.creator;
   await writeStoreJson(METADATA_FILE, next);
 }
@@ -143,21 +140,6 @@ export async function saveAuthToken(
   if (!clean) throw new Error("Cannot save an empty auth token.");
   await writeStoreText(AUTH_TOKEN_FILE, `${clean}\n`);
   await updateMetadata("auth", decodeJwtMetadata(clean, scopes));
-}
-
-export async function getCloudToken(): Promise<string | null> {
-  const token = await readStoreText(CLOUD_TOKEN_FILE);
-  return token?.trim() || null;
-}
-
-export async function saveCloudToken(
-  token: string,
-  scopes: string[] = []
-): Promise<void> {
-  const clean = token.trim();
-  if (!clean) throw new Error("Cannot save an empty cloud token.");
-  await writeStoreText(CLOUD_TOKEN_FILE, `${clean}\n`);
-  await updateMetadata("cloud", decodeJwtMetadata(clean, scopes));
 }
 
 /**
@@ -225,24 +207,17 @@ export async function saveLoginSession(session: LoginSession): Promise<void> {
   // against user.json, so an interrupted multi-file write fails closed instead
   // of adopting a mismatched identity.
   if (session.user) await saveUserInfo(session.user);
-  if (session.cloudToken) {
-    await saveCloudToken(session.cloudToken, session.cloudScopes);
-  }
   await saveAuthToken(session.token, session.scopes);
 }
 
 export async function getCredentialMetadata(): Promise<CredentialMetadataDocument> {
   const metadata = await readMetadata();
   const token = await getAuthToken();
-  const cloudToken = await getCloudToken();
   const creatorToken = await getCreatorToken();
   return {
     schemaVersion: 1,
     ...(token
       ? { auth: metadata.auth ?? decodeJwtMetadata(token) }
-      : {}),
-    ...(cloudToken
-      ? { cloud: metadata.cloud ?? decodeJwtMetadata(cloudToken) }
       : {}),
     ...(creatorToken
       ? {
@@ -260,7 +235,7 @@ export async function clearAuthCredentials(): Promise<number> {
   let removed = 0;
   for (const file of [
     AUTH_TOKEN_FILE,
-    CLOUD_TOKEN_FILE,
+    LEGACY_CLOUD_TOKEN_FILE,
     CREATOR_TOKEN_FILE,
     USER_FILE,
     METADATA_FILE,

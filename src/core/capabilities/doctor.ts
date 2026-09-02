@@ -4,7 +4,6 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { getAuthToken, getUserInfo } from "../auth.js";
 import { ENGINE_BINARY_ENV, findEngineBinary } from "../engine-install.js";
-import { isGitAvailable } from "./cloud/checkpoint.js";
 import { checkEngineHealth, getApiPort, getApiToken } from "../engine.js";
 import { brandLine, c, pad, sym, tildeify } from "../format.js";
 import { getMcpLogPath } from "../mcp-log.js";
@@ -66,7 +65,6 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
 
   checks.push(await checkLogin());
   checks.push(checkEngineInstall());
-  checks.push(await checkGitForCheckpoints());
   checks.push(await checkLocalApi());
   checks.push(await checkProjectMemory());
   checks.push(await checkMcpBoot());
@@ -183,24 +181,6 @@ export function checkEngineInstall(): DoctorCheck {
     label: "Engine",
     status: "warning",
     message: `not installed (run: summer install, or set ${ENGINE_BINARY_ENV} to an existing binary)`,
-  };
-}
-
-async function checkGitForCheckpoints(): Promise<DoctorCheck> {
-  const available = await isGitAvailable();
-  if (available) {
-    return {
-      id: "git",
-      label: "Git (cloud checkpoints)",
-      status: "ok",
-      message: "git found on PATH",
-    };
-  }
-  return {
-    id: "git",
-    label: "Git (cloud checkpoints)",
-    status: "warning",
-    message: "git not found; Summer Cloud sync needs git for pre-sync safety checkpoints",
   };
 }
 

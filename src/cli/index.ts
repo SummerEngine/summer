@@ -14,7 +14,6 @@ import { orchestratorCommand } from "./commands/orchestrator.js";
 import { setupCommand } from "./commands/setup.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { planCommand } from "./commands/plan.js";
-import { cloudCommand } from "./commands/cloud.js";
 import { debugCommand } from "./commands/debug.js";
 import { configCommand } from "./commands/config.js";
 import { publishCommand } from "./commands/publish.js";
@@ -58,7 +57,6 @@ export function runCli(mcpCommand: Command): void {
   program.addCommand(debugCommand);
   program.addCommand(planCommand);
   program.addCommand(orchestratorCommand);
-  program.addCommand(cloudCommand);
   program.addCommand(configCommand);
   program.addCommand(publishCommand);
   program.addCommand(releasesCommand);

@@ -501,3 +501,52 @@ describe("single-only ops from the engine capability advert", () => {
     );
   });
 });
+
+describe("summer_batch spatial ops", () => {
+  function spatialMockClient() {
+    const identityCalls: Array<Record<string, unknown>[]> = [];
+    const plainCalls: Array<Record<string, unknown>[]> = [];
+    vi.mocked(getClient).mockResolvedValue({
+      getBoundProjectIdHash: () => "hash-a",
+      executeIdentityBoundOps: vi.fn(async (ops: Record<string, unknown>[]) => {
+        identityCalls.push(ops);
+        return okReceipt(ops);
+      }),
+      executeOps: vi.fn(async (ops: Record<string, unknown>[]) => {
+        plainCalls.push(ops);
+        return okReceipt(ops);
+      }),
+    } as never);
+    return { identityCalls, plainCalls };
+  }
+
+  it.each(["SnapToSurface", "AlignDistribute3D", "FrameCamera3D"])(
+    "treats %s as a scene mutation and appends one SaveScene",
+    async (kind) => {
+      const { identityCalls, plainCalls } = spatialMockClient();
+      await batchTool().handler({ scenePath: "res://main.tscn", ops: [{ op: kind }] });
+      expect(identityCalls).toEqual([[{ op: kind }], [{ op: "SaveScene" }]]);
+      expect(plainCalls).toEqual([]);
+    },
+  );
+
+  it.each(["TestPlacement3D", "CameraVisibility3D", "NavigationProbe3D"])(
+    "identity-binds read-only scene query %s to the exact scene without saving",
+    async (kind) => {
+      const { identityCalls, plainCalls } = spatialMockClient();
+      await batchTool().handler({ scenePath: "res://main.tscn", ops: [{ op: kind }] });
+      expect(identityCalls).toEqual([[{ op: kind }]]);
+      expect(plainCalls).toEqual([]);
+    },
+  );
+
+  it("requires scenePath for a read-only scene query", async () => {
+    spatialMockClient();
+    const result = (await batchTool().handler({ ops: [{ op: "TestPlacement3D" }] })) as {
+      isError?: boolean;
+      content?: Array<{ text?: string }>;
+    };
+    expect(result.isError).toBe(true);
+    expect(result.content?.[0]?.text).toContain("requires scenePath when ops targets a scene");
+  });
+});

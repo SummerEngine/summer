@@ -42,6 +42,9 @@ export const CLI_KNOWN_OP_NEEDS: readonly string[] = [
   "RunSceneScript", "RunEditorScript", "RunVerification", "SimulateInput",
   // Perception
   "GetWorldSnapshot", "DiffWorldSnapshot", "GetRuntimeSceneTree", "GetRuntimeNode",
+  // Spatial / world building
+  "TestPlacement3D", "SnapToSurface", "AlignDistribute3D", "FrameCamera3D",
+  "CameraVisibility3D", "NavigationProbe3D",
 ];
 
 /** The `capabilities` block of /api/health, shape-checked. Every field is

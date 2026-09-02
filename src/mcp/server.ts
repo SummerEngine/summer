@@ -12,6 +12,7 @@ import {
   registerProjectTools,
 } from "./tools/project-tools.js";
 import { registerPerceptionTools } from "./tools/perception-tools.js";
+import { registerSpatialTools } from "./tools/spatial-tools.js";
 import { registerScriptTools } from "./tools/script-tools.js";
 import { recordToolCall } from "../core/trajectory.js";
 import { registerFileTools } from "./tools/file-tools.js";
@@ -345,6 +346,7 @@ export async function startMcpServer(
   registerFeedbackTools(server);
   registerScriptTools(server);
   registerPerceptionTools(server);
+  registerSpatialTools(server);
   // The playbook is also an MCP prompt so prompt-surfacing hosts get it
   // natively (same content as the summer_get_agent_playbook tool).
   registerPlaybookPrompt(server);

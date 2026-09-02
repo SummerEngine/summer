@@ -102,8 +102,9 @@ async function executeOpsChunked(
 
 /** Scene mutation entry point: appends the transaction-boundary SaveScene, then
  *  dispatches with the single-op contract (mutations batch together, SaveScene
- *  and other single-only ops travel alone). */
-function executeSceneMutation(
+ *  and other single-only ops travel alone). Exported for the spatial tools
+ *  (snap / align / frame camera), which are scene mutations too. */
+export function executeSceneMutation(
   client: EngineApiClient,
   scenePath: string,
   ops: Record<string, unknown>[],
@@ -557,20 +558,31 @@ already applied.`,
         const sceneMutations = new Set([
           "AddNode", "RemoveNode", "MoveNode", "ReparentNode", "ReplaceNode",
           "SetProp", "SetResourceProperty", "ConnectSignal", "DisconnectSignal",
-          "InstantiateScene", "SaveScene", "Undo",
+          "InstantiateScene", "SaveScene", "SnapToSurface", "AlignDistribute3D",
+          "FrameCamera3D", "Undo",
         ]);
-        const needsScenePath = ops.some((op) => sceneMutations.has(String(op.op ?? "")));
+        // Read-only spatial queries target an exact scene (identity-bound) but
+        // never save — no SaveScene is appended for them.
+        const sceneQueries = new Set([
+          "TestPlacement3D", "CameraVisibility3D", "NavigationProbe3D",
+        ]);
+        const containsMutation = ops.some((op) => sceneMutations.has(String(op.op ?? "")));
+        const needsScenePath = containsMutation ||
+          ops.some((op) => sceneQueries.has(String(op.op ?? "")));
         if (needsScenePath && !scenePath) {
-          throw new Error("summer_batch requires scenePath when ops contains scene mutations");
+          throw new Error("summer_batch requires scenePath when ops targets a scene");
         }
         const options = { groupUndo: true, ...(scenePath ? { scenePath } : {}) };
-        return needsScenePath
-          ? executeSceneMutation(client, scenePath!, ops as Record<string, unknown>[], options)
-          : executeOpsChunked(
-              (chunk) => client.executeOps(chunk, options),
-              ops as Record<string, unknown>[],
-              resolveSingleOnlyOps(client),
-            );
+        if (containsMutation) {
+          return executeSceneMutation(client, scenePath!, ops as Record<string, unknown>[], options);
+        }
+        return executeOpsChunked(
+          (chunk) => needsScenePath
+            ? client.executeIdentityBoundOps(chunk, options)
+            : client.executeOps(chunk, options),
+          ops as Record<string, unknown>[],
+          resolveSingleOnlyOps(client),
+        );
       })
   );
 }

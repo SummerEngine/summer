@@ -225,4 +225,5 @@ An engine-repo mirror of this package exists for historical reasons; its `packag
 - v2 → v3: what moved and why nothing breaks — [`MIGRATION-V2-V3.md`](MIGRATION-V2-V3.md)
 - The rules — [`design/CONTRACT.md`](design/CONTRACT.md) · the reasoning — [`design/DECISIONS.md`](design/DECISIONS.md) · the sequence — [`design/ROADMAP.md`](design/ROADMAP.md)
 - Evals and their CI gates — [`../evals/README.md`](../evals/README.md)
+- Test an unpublished build end to end (local-dev setup, engine-less checks, expected failures, gates) — [`TESTING.md`](TESTING.md)
 - Engine-side tool mechanics — [`ADDING_TOOLS.md`](ADDING_TOOLS.md) · architecture tour — [`OVERVIEW.md`](OVERVIEW.md)

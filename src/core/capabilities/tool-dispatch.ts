@@ -349,7 +349,10 @@ async function gatewayGet(
 ): Promise<DispatchArgs> {
   const token = await requireToken();
   const gatewayUrl = await resolveGatewayUrl();
-  const suffix = params && params.size ? `?${params.toString()}` : "";
+  // URLSearchParams.size is undefined on Node < 18.16 (falsy -> the whole
+  // query used to be dropped silently); stringify instead.
+  const query = params?.toString() ?? "";
+  const suffix = query ? `?${query}` : "";
   let res: Response;
   try {
     res = await fetch(`${gatewayUrl}${endpoint}${suffix}`, {

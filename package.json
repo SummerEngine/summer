@@ -67,7 +67,6 @@
     "dev": "tsc --watch",
     "summer": "node dist/bin/summer.js",
     "test": "vitest run && npm run validate:library",
-    "test:public-language": "vitest run src/lib/public-surface-language.test.ts",
     "validate:library": "node scripts/validate-library/cli.ts",
     "eval:routing": "node evals/routing/runner.ts",
     "eval:routing:heldout": "node evals/routing/runner.ts --heldout",
@@ -76,12 +75,10 @@
     "generate:registry": "node scripts/generate-registry/cli.ts"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.0",
     "@modelcontextprotocol/sdk": "^1.30.0",
-    "ai": "^6.0.0",
     "commander": "^12.0.0",
     "open": "^10.0.0",
     "zod": "^3.23.0"

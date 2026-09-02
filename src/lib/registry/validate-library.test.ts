@@ -140,6 +140,61 @@ describe("validate-library: id namespacing (CONTRACT.md §4)", () => {
   });
 });
 
+describe("validate-library: id namespacing (CONTRACT.md §4)", () => {
+  function writeSkill(root: string, dir: string, id: string): void {
+    const abs = path.join(root, "library", "skills", dir);
+    fs.mkdirSync(abs, { recursive: true });
+    fs.writeFileSync(path.join(abs, "SKILL.md"), `---\nname: ${dir}\ndescription: Fixture.\n---\n\n# ${dir}\n`);
+    fs.writeFileSync(
+      path.join(abs, "resource.yaml"),
+      [
+        `id: ${id}`,
+        "kind: skill",
+        "version: 1.0.0",
+        "summary: Namespacing fixture.",
+        "use_when:",
+        "  - testing id namespacing",
+        "facets:",
+        "  lifecycle: [build]",
+        "source: official",
+        "license: MIT",
+        "status: stable",
+        "",
+      ].join("\n"),
+    );
+  }
+
+  it("the schema accepts a <publisher>/<kind>/<slug> id; the library rejects it as side-load-only (not a pattern violation)", () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "vl-namespaced-"));
+    try {
+      writeSkill(tmp, "forest-kit", "acme/skill/forest-kit");
+      const result = runValidation(tmp, { schemasDir });
+      expect(result.ok).toBe(false);
+      expect(result.errors.some((e) => /id: must match pattern/.test(e))).toBe(false);
+      expect(
+        result.errors.some((e) =>
+          /id "acme\/skill\/forest-kit" is publisher-namespaced — namespaced ids are only valid for side-loaded resources outside library\/; official resources use "skill\/forest-kit"/.test(e),
+        ),
+      ).toBe(true);
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("still rejects malformed publisher prefixes at the schema level", () => {
+    for (const bad of ["Acme/skill/forest-kit", "acme//skill/forest-kit", "-acme/skill/forest-kit", "acme/acme/skill/forest-kit"]) {
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "vl-namespaced-bad-"));
+      try {
+        writeSkill(tmp, "forest-kit", bad);
+        const result = runValidation(tmp, { schemasDir });
+        expect(result.errors.some((e) => /id: must match pattern/.test(e)), bad).toBe(true);
+      } finally {
+        fs.rmSync(tmp, { recursive: true, force: true });
+      }
+    }
+  });
+});
+
 describe("validate-library: file requirements", () => {
   const result = run("invalid-files");
 

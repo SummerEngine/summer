@@ -171,7 +171,15 @@ export function runValidation(rootDir: string, options?: { schemasDir?: string }
     }
     const expectedId = `${expectedKind}/${res.slug}`;
     if (id !== expectedId) {
-      errors.push(`${prefix}: id "${id}" does not match its directory — expected "${expectedId}"`);
+      // CONTRACT.md §4: "<publisher>/<kind>/<slug>" is the namespace for
+      // external (side-loaded) resources. Everything under library/ is the
+      // official namespace and must carry the bare "<kind>/<slug>" id.
+      const namespaced = /^[a-z0-9][a-z0-9-]*\/(tool|skill|example|template|collection|reference)\//.test(id);
+      errors.push(
+        namespaced
+          ? `${prefix}: id "${id}" is publisher-namespaced — namespaced ids are only valid for side-loaded resources outside library/; official resources use "${expectedId}"`
+          : `${prefix}: id "${id}" does not match its directory — expected "${expectedId}"`,
+      );
     }
   }
 

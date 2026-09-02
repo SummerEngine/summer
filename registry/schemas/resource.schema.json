@@ -5,7 +5,7 @@
   "properties": {
     "id": {
       "type": "string",
-      "pattern": "^(tool|skill|example|template|collection|reference)/[a-z0-9]+(-[a-z0-9]+)*$"
+      "pattern": "^([a-z0-9][a-z0-9-]*/)?(tool|skill|example|template|collection|reference)/[a-z0-9]+(-[a-z0-9]+)*$"
     },
     "kind": {
       "type": "string",
@@ -101,7 +101,7 @@
       "type": "array",
       "items": {
         "type": "string",
-        "pattern": "^(tool|skill|example|template|collection|reference)/[a-z0-9]+(-[a-z0-9]+)*$"
+        "pattern": "^([a-z0-9][a-z0-9-]*/)?(tool|skill|example|template|collection|reference)/[a-z0-9]+(-[a-z0-9]+)*$"
       },
       "uniqueItems": true
     },

@@ -37,6 +37,7 @@ interface SetupCommandOptions {
   json?: boolean;
   force?: boolean;
   recommended?: boolean;
+  includePreview?: boolean;
 }
 
 export const setupCommand = new Command("setup")
@@ -60,6 +61,10 @@ export const setupCommand = new Command("setup")
     "--recommended",
     "Install only the recommended skill subset instead of the whole library"
   )
+  .option(
+    "--include-preview",
+    "Also install preview skills (unverified intake); skipped by default"
+  )
   .action(async (agentArg: string | undefined, opts: SetupCommandOptions) => {
     const agent = resolveAgentSelection(agentArg, opts.agent);
     const scope = resolveConfigScope(opts.scope);
@@ -78,6 +83,7 @@ export const setupCommand = new Command("setup")
       force: Boolean(opts.force),
       scope,
       recommended: Boolean(opts.recommended),
+      includePreview: Boolean(opts.includePreview),
     });
 
     const doctor = await runDoctor({ quiet: true });
@@ -137,8 +143,11 @@ function printSetupResult(
     const installed = parseInstalledSkills(skills.stdout);
     if (installed.length > 0) {
       const where = parseSkillTargetDir(skills.stdout);
+      const skipped = skills.previewSkipped
+        ? `; ${skills.previewSkipped} preview skipped — use --include-preview`
+        : "";
       const tally = skills.installed
-        ? c.dim(` (${skills.installed.added} new, ${skills.installed.updated} updated)`)
+        ? c.dim(` (${skills.installed.added} new, ${skills.installed.updated} updated${skipped})`)
         : "";
       console.log(`  ${sym.ok()}  Installed ${c.bold(String(installed.length) + " skills")}${tally}  ${where ? c.dim(tildeify(where)) : ""}`);
       const grouped = installed.reduce<string[][]>((rows, name, i) => {
@@ -155,7 +164,11 @@ function printSetupResult(
     }
   } else if (skills.status === "planned" && config.dryRun) {
     console.log(
-      `  ${c.dim("(dry run)")}  Would install ${c.bold(String(skills.count ?? "?") + " skills")}  ${c.dim(skills.destination ?? "")}`
+      `  ${c.dim("(dry run)")}  Would install ${c.bold(String(skills.count ?? "?") + " skills")}${
+        skills.previewSkipped
+          ? c.dim(` (${skills.previewSkipped} preview skipped — use --include-preview)`)
+          : ""
+      }  ${c.dim(skills.destination ?? "")}`
     );
   } else if (skills.status === "planned" || skills.status === "skipped") {
     console.log(`  ${sym.warn()}  Skills: ${c.dim(skills.message)}`);

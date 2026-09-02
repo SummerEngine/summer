@@ -6,7 +6,7 @@ Short version: **users do nothing.** MCP configs run `npx -y summer-engine@lates
 npx -y summer-engine@latest setup <agent> --yes --force
 ```
 
-(`summer doctor` flags a stale snapshot via `skills-version-stale` anyway.) One behavior change worth knowing: **`setup` now installs every skill in the library**, not the recommended subset v2 installed — so a `--force` re-run both refreshes and completes the set (v2 never installed `using-summer`, the session entry skill). `--recommended` restores the old subset.
+(`summer doctor` flags a stale snapshot via `skills-version-stale` anyway.) One behavior change worth knowing: **`setup` now installs every stable skill in the library** (preview intake needs `--include-preview`), not the recommended subset v2 installed — so a `--force` re-run both refreshes and completes the set (v2 never installed `using-summer`, the session entry skill). `--recommended` restores the old subset.
 
 ## What v3 is
 

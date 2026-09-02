@@ -269,6 +269,9 @@ function buildSkillsRegistry(resources: LoadedResource[]): string {
         description,
         clients: "all",
         recommended: res.data.recommended === true,
+        // The installer gates on this: bulk installs take `stable`, `preview`
+        // (unverified intake) needs --include-preview.
+        status: String(res.data.status ?? "stable"),
         path: `library/skills/${res.slug}/`,
       };
     });

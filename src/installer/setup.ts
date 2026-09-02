@@ -3,6 +3,7 @@ import { SupportedAgent } from "./agent-config.js";
 import {
   AGENT_CLIENTS,
   getSkillRegistry,
+  selectSkillsForBulkInstall,
   type AgentClient,
 } from "../core/skills-registry.js";
 import { describeInstallLocation, resolveInstallLocation } from "./skill-locations.js";
@@ -15,6 +16,8 @@ export interface SkillSetupResult {
   stderr?: string;
   /** Number of skills selected for install (all, or the recommended subset). */
   count?: number;
+  /** Preview skills left out because --include-preview was not given. */
+  previewSkipped?: number;
   /** Where the skills land, e.g. "~/.claude/skills/<skill>/SKILL.md". */
   destination?: string;
   /** Post-install tallies parsed from `skills install` output. */
@@ -35,6 +38,8 @@ export interface SkillSetupOptions {
   scope?: "user" | "project";
   /** Install only `recommended: true` skills instead of the whole library. */
   recommended?: boolean;
+  /** Also install `status: preview` skills (unverified intake). Off by default. */
+  includePreview?: boolean;
 }
 
 /**
@@ -60,7 +65,13 @@ export function setupSkills(
 
   const scope = options.scope ?? "user";
   const recommended = Boolean(options.recommended);
-  const invocation = skillInstallInvocation(agent, { force: options.force, scope, recommended });
+  const includePreview = Boolean(options.includePreview);
+  const invocation = skillInstallInvocation(agent, {
+    force: options.force,
+    scope,
+    recommended,
+    includePreview,
+  });
 
   if (!invocation) {
     return {
@@ -70,9 +81,13 @@ export function setupSkills(
     };
   }
 
-  const skills = getSkillRegistry();
-  const selected = recommended ? skills.filter((skill) => skill.recommended) : skills;
+  const { selected, previewSkipped } = selectSkillsForBulkInstall(getSkillRegistry(), {
+    recommended,
+    includePreview,
+  });
   const count = selected.length;
+  const skippedNote =
+    previewSkipped > 0 ? `${previewSkipped} preview skipped — use --include-preview` : "";
   const destination = isAgentClient(agent)
     ? describeInstallLocation(resolveInstallLocation(agent, scope))
     : undefined;
@@ -83,8 +98,9 @@ export function setupSkills(
       status: "planned",
       command: invocation.display,
       count,
+      previewSkipped,
       destination,
-      message: `Would install ${count} ${subset}skills to ${destination ?? "the agent's skills directory"} with: ${invocation.display.join(" ")}`,
+      message: `Would install ${count} ${subset}skills${skippedNote ? ` (${skippedNote})` : ""} to ${destination ?? "the agent's skills directory"} with: ${invocation.display.join(" ")}`,
     };
   }
 
@@ -99,9 +115,10 @@ export function setupSkills(
       status: "installed",
       command: invocation.display,
       count,
+      previewSkipped,
       destination,
       installed,
-      message: `Installed ${installed.total} ${subset}skills (${installed.added} new, ${installed.updated} updated).`,
+      message: `Installed ${installed.total} ${subset}skills (${installed.added} new, ${installed.updated} updated${skippedNote ? `; ${skippedNote}` : ""}).`,
       stdout: result.stdout.trim(),
       stderr: result.stderr.trim(),
     };
@@ -152,7 +169,7 @@ export function tallyInstallOutput(stdout: string): {
 
 function skillInstallInvocation(
   agent: SupportedAgent,
-  opts: { force: boolean; scope: "user" | "project"; recommended: boolean }
+  opts: { force: boolean; scope: "user" | "project"; recommended: boolean; includePreview: boolean }
 ): SkillInstallInvocation | null {
   const cliPath = process.argv[1];
   if (!cliPath) return null;
@@ -170,6 +187,7 @@ function skillInstallInvocation(
     opts.scope,
   ];
   if (opts.force) baseArgs.push("--force");
+  if (opts.includePreview) baseArgs.push("--include-preview");
   return {
     command,
     args: [...prefix, ...baseArgs],

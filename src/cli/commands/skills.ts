@@ -15,6 +15,7 @@ import {
   AGENT_CLIENTS,
   getSkillRegistry,
   resolveSkillDir,
+  selectSkillsForBulkInstall,
   type AgentClient,
   type SkillRegistryEntry,
 } from "../../core/skills-registry.js";
@@ -45,6 +46,7 @@ type SkillMeta = SkillRegistryEntry;
 interface InstallOptions {
   all?: boolean;
   recommended?: boolean;
+  includePreview?: boolean;
   agent?: string;
   scope?: string;
   asClaudeSkill?: boolean;
@@ -125,7 +127,14 @@ function agentLabel(agent: AgentClient): string {
   }
 }
 
-function selectSkills(name: string | undefined, opts: InstallOptions): SkillMeta[] {
+function previewSkippedLine(count: number): string {
+  return `  Skipped ${count} preview skill${count === 1 ? "" : "s"} (unverified intake) — add --include-preview to install them too.`;
+}
+
+function selectSkills(
+  name: string | undefined,
+  opts: InstallOptions
+): { skills: SkillMeta[]; previewSkipped: number } {
   if (opts.all && opts.recommended) {
     die("Use only one bulk option: --all or --recommended.");
   }
@@ -134,8 +143,15 @@ function selectSkills(name: string | undefined, opts: InstallOptions): SkillMeta
   }
 
   const skills = getBuiltinSkills();
-  if (opts.all) return skills;
-  if (opts.recommended) return skills.filter((skill) => skill.recommended);
+  if (opts.all || opts.recommended) {
+    // Bulk installs take stable skills; preview (unverified intake) only with
+    // --include-preview. An explicit name below installs regardless of status.
+    const { selected, previewSkipped } = selectSkillsForBulkInstall(skills, {
+      recommended: Boolean(opts.recommended),
+      includePreview: Boolean(opts.includePreview),
+    });
+    return { skills: selected, previewSkipped };
+  }
 
   if (!name) {
     console.error(
@@ -152,7 +168,7 @@ function selectSkills(name: string | undefined, opts: InstallOptions): SkillMeta
     process.exit(1);
   }
 
-  return [skill];
+  return { skills: [skill], previewSkipped: 0 };
 }
 
 function printAvailableSkillNames(): void {
@@ -323,8 +339,15 @@ skillsCommand
     console.log("Available public skills:\n");
     for (const s of skills) {
       const badge = s.recommended ? "recommended" : "optional";
+      const tag = s.status === "preview" ? "[preview] " : "";
       console.log(
-        `  ${s.name.padEnd(24)} ${badge.padEnd(11)} ${s.description}`
+        `  ${s.name.padEnd(24)} ${badge.padEnd(11)} ${tag}${s.description}`
+      );
+    }
+    const previewCount = skills.filter((s) => s.status === "preview").length;
+    if (previewCount > 0) {
+      console.log(
+        `\n[preview] = unverified intake (${previewCount}). --all / --recommended skip these unless you add --include-preview.`
       );
     }
     console.log("\nInstall recommended: summer skills install --recommended");
@@ -339,6 +362,10 @@ skillsCommand
   .option(
     "--recommended",
     "Install only the recommended skill subset (summer setup installs all by default)"
+  )
+  .option(
+    "--include-preview",
+    "With --all / --recommended, also install preview skills (unverified intake; skipped by default)"
   )
   .option(
     "--agent <agent>",
@@ -359,10 +386,11 @@ skillsCommand
     const agent = orDie(() => resolveSkillAgent(opts));
     const scope = orDie(() => resolveSkillScope(agent, opts));
     const location = resolveInstallLocation(agent, scope);
-    const skills = selectSkills(name, opts);
+    const { skills, previewSkipped } = selectSkills(name, opts);
 
     if (skills.length === 0) {
       console.log("No skills found.");
+      if (previewSkipped > 0) console.log(previewSkippedLine(previewSkipped));
       return;
     }
 
@@ -370,8 +398,13 @@ skillsCommand
       const result = installSkill(skill, agent, location, {
         force: Boolean(opts.force),
       });
+      // Keep this line's shape: setup tallies it (Installed|Updated|Generated <name> -> <path>).
       console.log(`  ${result.action} ${skill.name} -> ${result.path}`);
     }
+    if (name && skills[0]?.status === "preview") {
+      console.log(`  Note: ${name} is a preview skill (unverified intake).`);
+    }
+    if (previewSkipped > 0) console.log(previewSkippedLine(previewSkipped));
 
     // Claude Code: also install slash commands (`tools/summer-cli/commands/*.md`)
     // into `~/.claude/commands/`. Other agents don't have an equivalent today.
@@ -452,6 +485,7 @@ skillsCommand
     console.log(meta.description);
     console.log(`Id: ${meta.id}`);
     console.log(`Recommended: ${meta.recommended ? "yes" : "no"}`);
+    console.log(`Status: ${meta.status}`);
     console.log(`Agents: ${AGENT_CLIENTS.join(", ")}`);
     console.log("\n" + "-".repeat(40));
     const body = content.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, "");

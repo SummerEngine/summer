@@ -93,7 +93,7 @@ The check ids are `node-version`, `cli-version`, `cli-version-current`, `skills-
 npx -y summer-engine@latest setup claude-code --yes --force
 ```
 
-Replace `claude-code` with the user's actual agent: `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `kilo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, or `lm-studio`. Use `github-copilot` for Copilot CLI and `vscode-copilot` for GitHub Copilot Chat/Agent in VS Code. Factory Droid uses the plugin marketplace path (see [`integrations/README.md`](integrations/README.md)). This installs **every skill in the library** (not a subset) to `~/.claude/skills/<slug>/SKILL.md` (or the agent's equivalent user-skill directory) AND writes the MCP server config so the agent can talk to the engine, then runs doctor and prints what it installed and where. The `--force` flag wipes any stale skill content first, so re-runs always end up with the latest copy. `--recommended` installs only the recommended subset — don't use it from this playbook.
+Replace `claude-code` with the user's actual agent: `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `kilo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, or `lm-studio`. Use `github-copilot` for Copilot CLI and `vscode-copilot` for GitHub Copilot Chat/Agent in VS Code. Factory Droid uses the plugin marketplace path (see [`integrations/README.md`](integrations/README.md)). This installs **every stable skill in the library** (preview skills — unverified intake — are skipped unless you add `--include-preview`) to `~/.claude/skills/<slug>/SKILL.md` (or the agent's equivalent user-skill directory) AND writes the MCP server config so the agent can talk to the engine, then runs doctor and prints what it installed and where. The `--force` flag wipes any stale skill content first, so re-runs always end up with the latest copy. `--recommended` installs only the recommended subset — don't use it from this playbook.
 
 **First-install detection:** if `~/.claude/skills/` didn't exist before this command, Claude Code wasn't watching it and won't auto-detect the new files this session. Tell the user **once**: "Skills installed - restart your agent so they load." On subsequent installs (directory already existed), skills auto-detect mid-session and no restart is needed. **You can detect first-install vs upgrade by checking if `~/.claude/skills/` existed before Step 1; record the result before running setup.**
 
@@ -336,11 +336,11 @@ matchmaking are not promised by this package.
 | `summer list templates` / `projects` | Browse. |
 | `summer skills list` | Show all skills. |
 | `summer skills install <name>` | Install one. |
-| `summer skills install --all --agent <agent>` / `--recommended` | Install every skill, or only the recommended subset. |
+| `summer skills install --all --agent <agent>` / `--recommended` [`--include-preview`] | Install every stable skill, or only the recommended subset; `--include-preview` adds preview (unverified) skills. |
 | `summer tool <name> --args '<json>'` | Run any Summer tool from the shell — the same implementation the MCP tool uses. `summer tool --list` prints them all. |
 | `summer mcp [--project <path> \| --instance <id>]` | Start MCP; normally auto-binds from the agent's project directory. |
 | `summer mcp setup <agent>` | Deprecated alias of `summer setup <agent>`. |
-| `summer setup <agent> [--yes] [--force] [--recommended]` | One shot: MCP config + all skills (or the recommended subset) + doctor. Idempotent. |
+| `summer setup <agent> [--yes] [--force] [--recommended] [--include-preview]` | One shot: MCP config + all stable skills (or the recommended subset; `--include-preview` adds preview skills) + doctor. Idempotent. |
 
 Agents: `claude-code`, `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `kilo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, `lm-studio`. (`devin` and `devin-desktop` are accepted as aliases for `windsurf`.) Scopes: `--scope user` (default), `--scope project`.
 

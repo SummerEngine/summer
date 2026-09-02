@@ -29,6 +29,9 @@ export const AGENT_CLIENTS = [
 
 export type AgentClient = (typeof AGENT_CLIENTS)[number];
 
+/** resource.yaml `status` (registry/schemas/skill.schema.json). */
+export type SkillStatus = "stable" | "preview" | "deprecated";
+
 export interface SkillRegistryEntry {
   /** Library resource id, e.g. "skill/3d-lighting". */
   id: string;
@@ -37,6 +40,10 @@ export interface SkillRegistryEntry {
   description: string;
   /** Installed by `summer skills install --recommended` (used by `summer setup`). */
   recommended: boolean;
+  /** Bulk installs take `stable`; `preview` (unverified intake) needs
+   *  --include-preview; `deprecated` installs only by explicit name. A registry
+   *  generated before this field existed reads as `stable`. */
+  status: SkillStatus;
   /** Package-root-relative skill dir, e.g. "library/skills/3d-lighting/". */
   path: string;
 }
@@ -50,6 +57,7 @@ interface RawSkillEntry {
   name?: unknown;
   description?: unknown;
   recommended?: unknown;
+  status?: unknown;
   path?: unknown;
 }
 
@@ -63,11 +71,15 @@ let cache: SkillRegistryEntry[] | null = null;
 export function getSkillRegistry(): readonly SkillRegistryEntry[] {
   if (cache) return cache;
   const file = join(packageRoot, REGISTRY_RELPATH);
-  const json = JSON.parse(readFileSync(file, "utf-8")) as {
-    skills?: RawSkillEntry[];
-  };
-  const skills = Array.isArray(json.skills) ? json.skills : [];
-  cache = skills
+  cache = parseSkillRegistry(JSON.parse(readFileSync(file, "utf-8")));
+  return cache;
+}
+
+/** Shape-tolerant parse of skills-registry.json. Exported for unit tests. */
+export function parseSkillRegistry(json: unknown): SkillRegistryEntry[] {
+  const raw = (json ?? {}) as { skills?: RawSkillEntry[] };
+  const skills = Array.isArray(raw.skills) ? raw.skills : [];
+  return skills
     .filter(
       (s) =>
         typeof s.id === "string" &&
@@ -79,9 +91,31 @@ export function getSkillRegistry(): readonly SkillRegistryEntry[] {
       name: s.name as string,
       description: typeof s.description === "string" ? s.description : "",
       recommended: s.recommended === true,
+      status: s.status === "preview" || s.status === "deprecated" ? s.status : "stable",
       path: s.path as string,
     }));
-  return cache;
+}
+
+/**
+ * The one bulk-install rule (`skills install --all/--recommended` and
+ * `summer setup` both use it): `stable` skills install; `preview` skills —
+ * unverified intake — only with includePreview; `deprecated` never in bulk.
+ * `previewSkipped` is how many preview skills the caller left out, so it can
+ * say so instead of silently installing fewer than the library holds.
+ */
+export function selectSkillsForBulkInstall(
+  skills: readonly SkillRegistryEntry[],
+  options: { recommended?: boolean; includePreview?: boolean }
+): { selected: SkillRegistryEntry[]; previewSkipped: number } {
+  const candidates = options.recommended ? skills.filter((skill) => skill.recommended) : [...skills];
+  const selected = candidates.filter(
+    (skill) =>
+      skill.status === "stable" || (options.includePreview === true && skill.status === "preview")
+  );
+  const previewSkipped = options.includePreview
+    ? 0
+    : candidates.filter((skill) => skill.status === "preview").length;
+  return { selected, previewSkipped };
 }
 
 /** Absolute directory of a skill's library files (contains SKILL.md). */

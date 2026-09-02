@@ -24,7 +24,7 @@ Paste this into your AI environment:
 Install Summer Engine and let's make a game.
 ```
 
-That is the preferred setup wizard. The agent reads the install playbook, runs `npx -y summer-engine@latest doctor --json`, downloads and logs in only if those checks need it, always runs `setup` (idempotent: MCP config + every skill in the library), and opens the engine.
+That is the preferred setup wizard. The agent reads the install playbook, runs `npx -y summer-engine@latest doctor --json`, downloads and logs in only if those checks need it, always runs `setup` (idempotent: MCP config + every stable skill in the library), and opens the engine.
 
 Manual fallback:
 

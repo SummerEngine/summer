@@ -47,6 +47,15 @@ async function printedSnippet(args: string[]): Promise<{ command: string; args: 
   return snippet.mcpServers["summer-engine"]!;
 }
 
+describe("summer setup --include-preview", () => {
+  it("is a visible option (preview skills are skipped unless asked for)", () => {
+    const option = setupCommand.options.find((entry) => entry.long === "--include-preview");
+    expect(option).toBeDefined();
+    expect(option?.hidden).toBeFalsy();
+    expect(setupCommand.helpInformation()).toContain("--include-preview");
+  });
+});
+
 describe("summer setup --local-dev", () => {
   it("is a visible, documented option", () => {
     const option = setupCommand.options.find((entry) => entry.long === "--local-dev");

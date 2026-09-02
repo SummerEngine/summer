@@ -188,6 +188,7 @@ describe("generateRegistry: catalog outputs", () => {
         description: 'Use when testing the compiler frontmatter path. Trigger on "alpha".',
         clients: "all",
         recommended: true,
+        status: "stable",
         path: "library/skills/alpha-skill/",
       },
       {
@@ -196,6 +197,7 @@ describe("generateRegistry: catalog outputs", () => {
         description: "Fixture skill without frontmatter, exercising fallbacks.",
         clients: "all",
         recommended: false,
+        status: "preview",
         path: "library/skills/beta-skill/",
       },
     ]);

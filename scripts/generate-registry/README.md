@@ -34,7 +34,7 @@ Requires Node >= 22.18 (native TypeScript type stripping), same as
 | `index.json` | Searchable catalog: id, kind, version, content_hash, summary, use_when, facets, compatibility, related, status (sorted by id) |
 | `counts.json` | Per-kind totals + grand total (README badges, website `toolsNumber`) |
 | `aliases.json` | legacy alias -> id map (generation fails on a duplicate alias) |
-| `skills-registry.json` | Data replacing the hand-written TS `SKILL_REGISTRY`: id, name, description, clients, path |
+| `skills-registry.json` | Data replacing the hand-written TS `SKILL_REGISTRY`: id, name, description, clients, recommended, status, path |
 | `templates-registry.json` | What `summer create` / `summer list templates` read (`src/core/templates.ts`): id, slug, version, summary, status, aliases, systems, do_not_use_when, path, and `builtin` or `pin {repo, commit, tree_digest, default_branch}` |
 | `plugin.claude.json` | -> `.claude-plugin/plugin.json` |
 | `marketplace.claude.json` | -> `.claude-plugin/marketplace.json` |

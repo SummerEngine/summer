@@ -10,6 +10,8 @@ import {
   resolveToolDispatch,
   type ToolDispatchContext,
 } from "./tool-dispatch.js";
+import { buildAgentPlaybook } from "./agent-playbook.js";
+import { isApiDocsBundleInstalled } from "./api-docs.js";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
@@ -174,6 +176,15 @@ describe("tool-dispatch registry", () => {
     await expect(dispatchTool("add-node", { scenePath: "res://a.tscn" }, ctx)).rejects.toBeInstanceOf(
       ToolDispatchError
     );
+  });
+});
+
+describe("agent playbook dispatch entry", () => {
+  it("serves the real playbook from the shared core module, not a redirect", async () => {
+    const playbook = (await dispatchTool("get-agent-playbook", {})) as Record<string, unknown>;
+    expect(Object.keys(playbook)).toEqual(Object.keys(buildAgentPlaybook()));
+    expect(Array.isArray(playbook.verificationRitual)).toBe(true);
+    expect(playbook.summerUpdateNotice).toBeNull();
   });
 });
 

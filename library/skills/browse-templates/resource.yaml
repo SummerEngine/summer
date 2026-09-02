@@ -1,6 +1,6 @@
 id: skill/browse-templates
 kind: skill
-version: 1.0.1
+version: 1.0.2
 summary: List available Summer Engine project templates, present the choices, and create a project from the chosen one via summer create.
 use_when:
   - the user wants to see available Summer Engine project templates, start from an existing template, or asks what templates exist

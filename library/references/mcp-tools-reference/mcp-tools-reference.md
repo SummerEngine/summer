@@ -122,7 +122,7 @@ Bounded spatial evidence for deliberate 3D arrangement. All six take exact `scen
 | `summer_get_debugger_warnings` | Runtime warnings from the debugger panel. |
 | `summer_get_script_errors` | Script compilation errors. |
 
-### Asset library (7)
+### Asset library (8)
 
 | Tool | Use |
 |---|---|
@@ -133,6 +133,7 @@ Bounded spatial evidence for deliberate 3D arrangement. All six take exact `scen
 | `summer_import_asset` | Search, choose the top match, download, run Godot import, and optionally instantiate 3D models. |
 | `summer_import_asset_by_id` | Import one exact Summer asset ID. Use after generation jobs or when the user selects a specific asset. |
 | `summer_import_hdri` | Search Poly Haven's CC0 HDRIs (public API, no Summer login), import the `.hdr`/`.exr` into `res://sky/`, and get the exact `summer_run_script` snippet that wires it as the WorldEnvironment sky. The cheapest whole-scene lighting upgrade. |
+| `summer_slice_asset_sheet` | Detect and crop every distinct asset from a generated sheet image into named individual assets (works without the engine; import the results afterwards). |
 
 ### Asset generation (5 — metered)
 
@@ -151,11 +152,12 @@ Bounded spatial evidence for deliberate 3D arrangement. All six take exact `scen
 | `summer_check_job` | Poll a generation job. |
 | `summer_batch` | Run multiple ops as a transaction. |
 
-### Meta (3)
+### Meta (4)
 
 | Tool | Use |
 |---|---|
 | `summer_start_game_task` | Route a user goal into the right workflow, skills, MCP tool groups, asset policy, gates, and verification path. |
+| `summer_get_studio_workflow` | Discover Summer Studio's guided workflow recipes (starter prompts, ordered steps, required tools) for a goal. |
 | `summer_get_project_context` | Project, scene, and `.summer` memory summary — call at start of session. Binds the session to the open project and surfaces a `capabilitySkewWarning` when the engine build and CLI have drifted; tools whose op the engine provably lacks return a structured `engine_lacks_op` result instead of running. |
 | `summer_get_agent_playbook` | Daily operating contract (observe-first loop, content routing, invariants, verification ritual) — call at start of session. Also served natively as the `summer_agent_playbook` MCP prompt. |
 

@@ -8,6 +8,7 @@
 - `art-bible.md` — visual style reference. Created by `/art-direction`. Contains: palette (6–15 hex codes), mood adjectives, lighting plan, post-processing notes, do/don't list, references.
 - `audio-bible.md` — sonic identity. Created by `/audio-direction`. Contains: music style + tempo range, SFX vocabulary (8 classes), dynamic music FSM, bus layout reference.
 - `build-plan.md` — implementation plan derived from `GameSoul.md`. Created by `/make-game` before scaffold/build work.
+- `project.json` — written by `summer create`, not by skills: the template pin (`id`, `version`, and `repo` + `commit` + `tree_digest` or `builtin: true`), `toolkit_version`, `created_at`. Read it to learn which template started the project; never edit it by hand.
 
 ## Subdirectories
 
@@ -87,4 +88,4 @@ Then write the fact in normal Markdown so users can inspect and edit it:
 
 ## Linter check (future)
 
-Once `workflow/skill-test` gains an executable mode, it should validate that any skill writing to `.summer/` is documented in the table above.
+Once the `skill-test` skill gains an executable mode, it should validate that any skill writing to `.summer/` is documented in the table above.

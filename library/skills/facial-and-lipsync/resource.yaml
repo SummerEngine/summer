@@ -1,6 +1,6 @@
 id: skill/facial-and-lipsync
 kind: skill
-version: 1.0.1
+version: 1.0.2
 summary: Make a character's mouth move with a voice-over — phoneme extraction from audio, viseme blendshape mapping, and emotional facial expressions.
 use_when:
   - the user has (or wants) a voice-over and needs the character's mouth to move with the words

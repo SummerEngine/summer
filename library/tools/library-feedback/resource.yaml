@@ -1,6 +1,6 @@
 id: tool/library-feedback
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Report how library entries worked out (worked, wrong, outdated, ...) so Summer can fix and re-rank them; fire-and-forget, opt-out honored.
 use_when:
   - a natural checkpoint after using library entries, batching all outcomes in one call

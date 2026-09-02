@@ -1,6 +1,6 @@
 id: skill/concept-art
 kind: skill
-version: 1.0.1
+version: 1.0.2
 summary: Explore art direction with 3-4 rough concept variants of a character, environment, or prop to pick a vibe before committing to a final asset.
 use_when:
   - exploring art direction with rough variants before committing to a final asset

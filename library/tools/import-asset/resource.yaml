@@ -1,6 +1,6 @@
 id: tool/import-asset
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: Search the asset library and import the best match into the project in one step, optionally adding 3D models to a scene.
 use_when:
   - the user asks to add a kind of asset, like 'add a tree to the scene'

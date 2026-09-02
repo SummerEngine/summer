@@ -1,6 +1,6 @@
 id: tool/replace-node
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: Replace a node with a different type or scene, preserving its tree position and children.
 use_when:
   - swapping a placeholder for a prefab or changing a body type

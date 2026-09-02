@@ -1,6 +1,6 @@
 id: tool/creator-releases
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: List creator-owned releases from the Summercraft creator API with server-verified scope and ownership.
 use_when:
   - reviewing which versions of a project are live per channel

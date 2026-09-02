@@ -1,6 +1,6 @@
 id: tool/snapshot-diff
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: Diff two world snapshots into added/removed/changed nodes and count deltas — the structural receipt that a mutation did exactly what was intended.
 use_when:
   - verifying a mutation batch against the snapshot_id taken before it

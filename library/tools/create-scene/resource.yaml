@@ -1,6 +1,6 @@
 id: tool/create-scene
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: Create a new minimal .tscn on disk with a create-only guard and read-back verification; never touches the open scene.
 use_when:
   - starting a new level, prefab, or UI scene file

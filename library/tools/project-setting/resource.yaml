@@ -1,6 +1,6 @@
 id: tool/project-setting
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: Set one project.godot setting, like main scene, window size, renderer, or gravity.
 use_when:
   - configuring project-level behavior

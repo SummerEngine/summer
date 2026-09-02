@@ -1,6 +1,6 @@
 id: tool/instantiate-scene
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Add an existing scene or 3D model file as a child node, composing scenes from prefabs.
 use_when:
   - placing a .tscn prefab or imported 3D model into a scene

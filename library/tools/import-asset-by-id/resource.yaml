@@ -1,6 +1,6 @@
 id: tool/import-asset-by-id
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: Import an exact Summer asset id into the open project via the engine's import pipeline; optionally instantiate 3D models into a scene.
 use_when:
   - importing a just-generated or searched asset without guessing

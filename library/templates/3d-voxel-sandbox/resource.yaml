@@ -1,6 +1,6 @@
 id: template/3d-voxel-sandbox
 kind: template
-version: 1.0.0
+version: 1.0.1
 summary: Voxel sandbox starter — chunked world, face culling, mining and building, seeded generation.
 use_when:
   - starting a Minecraft-like voxel sandbox

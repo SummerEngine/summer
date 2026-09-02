@@ -1,6 +1,6 @@
 id: tool/inspect-runtime-node
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: Live properties of one node in the RUNNING game — actual stats, position, flags — without stopping the game and losing the state.
 use_when:
   - answering "where IS the player" or "what are this enemy's stats right now" during a playtest

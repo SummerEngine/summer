@@ -1,6 +1,6 @@
 id: tool/get-diagnostics
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: Prioritized overview of editor console and runtime debugger errors and warnings, with complete counts and a trimmed noise tail.
 use_when:
   - first stop after any change, before targeted console or debugger reads

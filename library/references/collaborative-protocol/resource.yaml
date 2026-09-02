@@ -1,6 +1,6 @@
 id: reference/collaborative-protocol
 kind: reference
-version: 1.0.0
+version: 1.0.1
 summary: The "May I write?" protocol — before any user-visible write step, the agent states what it is about to do and asks permission.
 use_when:
   - authoring a skill that creates or modifies project files

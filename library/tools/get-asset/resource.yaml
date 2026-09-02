@@ -1,6 +1,6 @@
 id: tool/get-asset
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: Fetch one asset by exact Summer asset id, including stable file URL, metadata, license, visibility, and provider details.
 use_when:
   - a generation job returned an asset id and you need its file URL or metadata

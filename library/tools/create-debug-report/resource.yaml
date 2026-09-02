@@ -1,6 +1,6 @@
 id: tool/create-debug-report
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: "Create a support-ready Markdown debug report: doctor checks, engine health, diagnostics, console, and debugger output."
 use_when:
   - the user wants to send Summer a bug report

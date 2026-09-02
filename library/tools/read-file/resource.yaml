@@ -1,6 +1,6 @@
 id: tool/read-file
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: Read a text file from the engine-bound project and return its full-file sha256 receipt for guarded overwrites.
 use_when:
   - reading project files through the engine

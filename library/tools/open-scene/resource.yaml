@@ -1,6 +1,6 @@
 id: tool/open-scene
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: Open a scene file in the editor to switch tabs.
 use_when:
   - switching the editor to an explicitly known scene path

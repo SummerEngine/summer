@@ -1,6 +1,6 @@
 id: tool/run-script
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: Run a GDScript `func run(ctx):` inside the live editor against the open scene — one script instead of a chain of add-node/set-prop calls.
 use_when:
   - a change needs 3+ related ops or any computed placement (scatter, grids, procedural meshes, bulk edits)

@@ -1,6 +1,6 @@
 id: tool/set-prop
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: Set a node property using Godot string syntax for vectors, colors, transforms, and resource class names.
 use_when:
   - configuring nodes after adding them

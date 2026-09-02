@@ -1,6 +1,6 @@
 id: tool/get-asset-download-url
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: Get a download URL for a specific asset file (primary or thumbnail), future-proofed for signed URLs.
 use_when:
   - the user explicitly asks to download an asset file

@@ -1,6 +1,6 @@
 id: tool/import-from-url
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: Download one file from a URL and run Godot's full import pipeline so the asset is immediately usable.
 use_when:
   - importing a model, texture, or audio file from an external URL

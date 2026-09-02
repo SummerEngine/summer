@@ -1,6 +1,6 @@
 id: tool/replace-text
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: "Safely replace text in an existing project file: unique match required by default, then a sha256-guarded write."
 use_when:
   - targeted edits to scripts, scenes, or config without resending the whole file

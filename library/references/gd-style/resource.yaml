@@ -1,6 +1,6 @@
 id: reference/gd-style
 kind: reference
-version: 1.0.0
+version: 1.0.1
 summary: GDScript style conventions for Summer — the tiebreaker where Godot's official style guide is silent; skills should produce code matching this.
 use_when:
   - writing or reviewing GDScript in a Summer project

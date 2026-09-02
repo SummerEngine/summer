@@ -1,6 +1,6 @@
 id: template/3d-city-kit
 kind: template
-version: 1.0.0
+version: 1.0.1
 summary: Construction starter for importing and navigating large 3D city kits in Summer Engine.
 use_when:
   - building a game on a large imported 3D city kit

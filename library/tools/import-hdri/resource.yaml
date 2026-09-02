@@ -1,6 +1,6 @@
 id: tool/import-hdri
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: Search Poly Haven's CC0 HDRI library and import one into res://sky/ as environment lighting, with the exact run-script snippet that wires the sky.
 use_when:
   - a 3D scene needs real environment lighting and reflections — the cheapest whole-scene visual upgrade

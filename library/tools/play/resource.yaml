@@ -1,6 +1,6 @@
 id: tool/play
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: Start the game (main scene or a specific scene) inside Summer Engine's viewport.
 use_when:
   - runtime verification after edits

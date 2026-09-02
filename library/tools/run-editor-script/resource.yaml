@@ -1,6 +1,6 @@
 id: tool/run-editor-script
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: Run an EditorScript `func _run():` in a fresh headless child editor against the on-disk project — the cold path for batch and project-wide jobs.
 use_when:
   - re-saving many scenes, sweeping resources, mass import fixes, generating .tres assets, long bakes that should not block the live editor

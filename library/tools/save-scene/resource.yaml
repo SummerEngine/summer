@@ -1,6 +1,6 @@
 id: tool/save-scene
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: Save an explicit scene to disk, for standalone saves or save-as.
 use_when:
   - a standalone save or save-as is needed

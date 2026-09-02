@@ -14,7 +14,11 @@ import {
 import { registerPerceptionTools } from "./tools/perception-tools.js";
 import { registerSpatialTools } from "./tools/spatial-tools.js";
 import { registerScriptTools } from "./tools/script-tools.js";
-import { recordToolCall } from "../core/trajectory.js";
+import {
+  recordToolCall,
+  registrationHasInputSchema,
+  trajectoryArgsFor,
+} from "../core/trajectory.js";
 import { registerFileTools } from "./tools/file-tools.js";
 import { registerAssetTools } from "./tools/asset-tools.js";
 import { registerGenerateTools } from "./tools/generate-tools.js";
@@ -99,10 +103,10 @@ export async function getClient(): Promise<EngineApiClient> {
         : "Summer Engine is not running.";
     throw new Error(
       reason + "\n" +
-        "Open the intended project in Summer Engine, or run: npx summer-engine run\n" +
+        "Open the intended project in Summer Engine, or run: npx -y summer-engine@latest run\n" +
         "Note: only tools that touch the local project need the engine. Cloud tools " +
         "(summer_generate_*, summer_search_assets, summer_list_my_assets, summer_get_asset, " +
-        "summer_check_job) work right now without it — they only need 'npx summer-engine login'."
+        "summer_check_job) work right now without it — they only need 'npx -y summer-engine@latest login'."
     );
   }
 }
@@ -189,12 +193,27 @@ function installResultSizeLogger(server: {
     const handler = args[lastIdx];
     if (typeof handler !== "function") return original(...args);
     registeredToolCount += 1;
+    // Schema-less tools receive only the SDK's `extra` — never record that as
+    // the tool's arguments (see registrationHasInputSchema).
+    const hasInputSchema = registrationHasInputSchema(args);
 
     const wrapped = async (...handlerArgs: unknown[]) => {
       const startedAt = Date.now();
-      const result = await (handler as (...a: unknown[]) => unknown)(
-        ...handlerArgs
-      );
+      let result: unknown;
+      try {
+        result = await (handler as (...a: unknown[]) => unknown)(...handlerArgs);
+      } catch (error) {
+        // A handler THROW never produced a result to classify; record it as
+        // ok:false / exception so the stream does not silently skip failures,
+        // then let the SDK turn it into the protocol error it always did.
+        recordToolCall({
+          tool: name,
+          args: trajectoryArgsFor(hasInputSchema, handlerArgs),
+          exception: error instanceof Error ? error.message : String(error),
+          durationMs: Date.now() - startedAt,
+        });
+        throw error;
+      }
       const durationMs = Date.now() - startedAt;
       try {
         // Opt-in local trajectory capture: one JSONL line per tool call when
@@ -210,7 +229,7 @@ function installResultSizeLogger(server: {
               : undefined;
           recordToolCall({
             tool: name,
-            args: handlerArgs[0],
+            args: trajectoryArgsFor(hasInputSchema, handlerArgs),
             isError: record?.isError === true,
             terminalState: callMeta?.terminalState,
             errorClass: callMeta?.errorClass,

@@ -440,3 +440,20 @@ priority: locked
     expect(body.capabilitySkewWarning).toBeUndefined();
   });
 });
+
+describe("playbook step 0 survives engines without the perception ops", () => {
+  it("makes summer_world_snapshot conditional on the GetWorldSnapshot advert and names the fallback", () => {
+    const step0 = JSON.stringify(buildAgentPlaybook().step0_observeFirst);
+    expect(step0).toContain("GetWorldSnapshot");
+    expect(step0).toContain("summer_get_scene_tree");
+    expect(step0).toContain("engine_lacks_op");
+    // Not an unconditional "call it before and after every batch".
+    expect(step0).not.toMatch(/Then call summer_world_snapshot/);
+  });
+
+  it("names only real summer_search_assets sources (library | my_assets | all)", () => {
+    const text = JSON.stringify(buildAgentPlaybook());
+    expect(text).not.toContain("community");
+    expect(text).toContain("library | my_assets | all");
+  });
+});

@@ -1,6 +1,6 @@
 id: tool/library-feedback
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: Report how library entries worked out (worked, wrong, outdated, ...) so Summer can fix and
   re-rank them; fire-and-forget, opt-out honored.
 use_when:
@@ -78,9 +78,15 @@ input_schema:
       minLength: 1
       maxLength: 32
       description: The Summer Engine version in use, e.g. "4.6.1".
+    agent_model:
+      type: string
+      minLength: 1
+      maxLength: 64
+      description: The model you are, e.g. claude-fable-5, gpt-5.5-codex; use "unknown" if unsure.
   required:
     - reports
     - engine_version
+    - agent_model
   additionalProperties: false
 authority:
   filesystem: false

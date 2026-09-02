@@ -1,13 +1,15 @@
 id: tool/screenshot
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: Capture a frame from the editor viewport, an offscreen scene render, or the running game,
   returned as an actual image.
 use_when:
   - visually verifying layout, scale, framing, or runtime state
 do_not_use_when:
-  - verifying lighting or environment-dependent materials from the scene target (boot the game
-    instead)
+  - verifying lighting, mood, or environment-dependent materials with a preset framing (iso/top/front/...)
+    of the scene target - those replace the WorldEnvironment with a flat preview; use framing "camera"
+    (the scene's own Camera3D + real environment) or the game target instead
+  - capturing motion or a sequence of frames (use a RunVerification probe's save_frame)
 facets:
   lifecycle:
     - build
@@ -52,10 +54,12 @@ input_schema:
         - back
         - left
         - right
+        - camera
       description: 'target:"scene" only, 3D scenes. Camera direction preset: "iso" = 3/4 diagonal view,
         "top" = straight down, "front" = camera at +Z, "back" = camera at -Z, "left" = camera at -X,
-        "right" = camera at +X. "auto" (default) is an alias of "iso". The result reports the
-        resolved framing.'
+        "right" = camera at +X. "auto" (default) is an alias of "iso". "camera" = render through the
+        scene''s OWN Camera3D with its REAL WorldEnvironment - the only edit-time framing that
+        truthfully shows lighting/mood. The result reports the resolved framing.'
     size:
       type: array
       items:
@@ -71,6 +75,11 @@ input_schema:
         2D rects, children included). A bare unique name is also found recursively. Fails with
         failure_reason "node_not_found" when the path does not resolve (no silent whole-scene
         fallback).
+    camera_path:
+      type: string
+      description: framing:"camera" only. Path of the Camera3D to render through (relative to the scene
+        root) when the scene has several cameras or none marked current. Omit to use the scene's
+        current/first Camera3D.
   additionalProperties: false
 authority:
   filesystem: false

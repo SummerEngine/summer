@@ -1,6 +1,6 @@
 id: tool/instantiate-scene
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: Add an existing scene or 3D model file as a child node, composing scenes from prefabs.
 use_when:
   - placing a .tscn prefab or imported 3D model into a scene
@@ -37,6 +37,13 @@ input_schema:
     name:
       type: string
       description: Override the instance name
+    target_size:
+      type: number
+      exclusiveMinimum: 0
+      description: Normalize the instance's physical size - uniformly scale it so its largest world-AABB
+        dimension equals this many units (chair 1.0, car 4.5, person 1.7). Strongly recommended for
+        imported .glb/.gltf models. Older engine builds ignore it; the result then lacks scale_applied
+        and carries a target_size_note.
   required:
     - scenePath
     - parent

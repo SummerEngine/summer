@@ -1,4 +1,4 @@
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import {
   configureAgentMcp,
   parseAgent,
@@ -24,13 +24,23 @@ export const mcpCommand = new Command("mcp")
     });
   });
 
+// Deprecated alias. `summer setup <agent>` (src/cli/commands/setup.ts) is the
+// one setup path: the same configureAgentMcp() write plus skills + doctor.
+// This stays for one release so existing docs/scripts keep working; it cannot
+// delegate to the cli layer (contract §2: mcp never imports cli), so it calls
+// the shared installer directly and says where to go.
 mcpCommand
   .command("setup <agent>")
-  .description("Configure an AI agent to use the Summer Engine MCP server")
+  .description("Deprecated alias of `summer setup <agent>`: write only the MCP config for an agent")
   .option("--scope <scope>", "Configuration scope: user or project", "user")
   .option("--print", "Print the MCP config snippet instead of writing files")
   .option("--dry-run", "Show planned changes without writing files")
-  .option("--local-dev", "Use the local built CLI instead of npx summer-engine")
+  .addOption(
+    // Contributor-only: point the config at this checkout's built CLI instead
+    // of npx summer-engine. Hidden from the public surface; also honoured
+    // when SUMMER_DEV=1 is set.
+    new Option("--local-dev", "Use the local built CLI instead of npx summer-engine").hideHelp()
+  )
   .option("--json", "Print the setup result as JSON")
   .action(
     async (
@@ -58,12 +68,18 @@ mcpCommand
         scope,
         print: opts.print,
         dryRun: opts.dryRun,
-        localDev: opts.localDev,
+        localDev: opts.localDev || process.env.SUMMER_DEV === "1",
       });
 
       if (opts.json) {
         console.log(JSON.stringify(result, null, 2));
         return;
+      }
+
+      if (!opts.print) {
+        console.warn(
+          `Note: 'summer mcp setup' is deprecated; use 'summer setup ${agent}' (same MCP config, plus skills and doctor).`
+        );
       }
 
       if (result.print) {

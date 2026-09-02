@@ -4,6 +4,12 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased] — 3.0.0
 
+### Changed
+- `summer install` no longer deletes an installed `/Applications/Summer.app` before copying the new one. An equal version exits 0 as "up to date"; replacing a different version needs `--yes` or a TTY confirmation; the new bundle is staged as `Summer.app.new` and swapped in only after the copy succeeds, so a failed copy leaves the old engine in place; Ctrl-C mid-download removes the partial DMG.
+- `summer tool <name> --args <json>` replaces `--json <args>` (every other command's `--json` is a boolean output switch). `--json <args>` still works for one release as a hidden alias and prints a deprecation note.
+- `summer mcp setup <agent>` is a deprecated alias of `summer setup <agent>` (the one setup path: MCP config + skills + doctor). Its contributor-only `--local-dev` flag is hidden from `--help` (also honoured via `SUMMER_DEV=1`).
+- `summer run` with no path requires `--no-project` to launch a bare editor; `summer <unknown-command>` exits 1 instead of printing the intro.
+
 ### Removed
 - **Summer Cloud** (research preview): the `summer cloud` command group, the seven `summer_cloud_*` MCP tools, the `summer-cloud` skill, the `library/tools/cloud-*` descriptors, the sync engine under `src/core/capabilities/cloud/`, and cloud-token minting during `summer login`. It was not operational or maintained; Summer Platform publish/releases is the supported path. `summer-cloud.json` and `.summer/local/cloud/` in old projects are inert and can be deleted; `summer logout` still removes a legacy `~/.summer/cloud-token`. The `doctor` "Git (cloud checkpoints)" check went with it. Web-side cleanup (`/cloud` page, `app/api/cloud/*`, cli-login `cloudToken` minting) is a separate web-repo PR.
 - **`summer agent`** (`src/cli/commands/orchestrator.ts`): a development-only launcher for the web app from a sibling checkout (hardcoded sibling paths, non-portable `URL.pathname`, `spawn("pnpm")` without a shell). It never belonged in the published CLI. Its `~/.summer/web-app-path` and `~/.summer/agent-port` files are inert.

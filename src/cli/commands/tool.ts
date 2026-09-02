@@ -11,7 +11,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import {
   ToolDispatchError,
   dispatchTool,
@@ -22,6 +22,9 @@ import {
 import { c } from "../../core/format.js";
 
 interface ToolCommandOptions {
+  args?: string;
+  /** Deprecated alias of --args (one release). Every other command's --json is
+   *  a boolean output switch; taking a JSON string here was the odd one out. */
   json?: string;
   list?: boolean;
 }
@@ -83,11 +86,11 @@ export function parseJsonArgs(raw: string | undefined): Record<string, unknown> 
     parsed = JSON.parse(raw);
   } catch (err) {
     throw new ToolDispatchError(
-      `--json must be valid JSON: ${err instanceof Error ? err.message : String(err)}`
+      `--args must be valid JSON: ${err instanceof Error ? err.message : String(err)}`
     );
   }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new ToolDispatchError("--json must be a JSON object of tool arguments");
+    throw new ToolDispatchError("--args must be a JSON object of tool arguments");
   }
   return parsed as Record<string, unknown>;
 }
@@ -105,7 +108,7 @@ export function formatToolList(entries: readonly ToolDispatchEntry[]): string {
     ...lines,
     "",
     c.dim("[engine] needs the Summer Engine app running with the project open."),
-    c.dim(`Run one: summer tool <name> --json '{"arg": "value"}'`),
+    c.dim(`Run one: summer tool <name> --args '{"arg": "value"}'`),
   ].join("\n");
 }
 
@@ -114,7 +117,8 @@ export const toolCommand = new Command("tool")
     "Run any Summer tool from the CLI — same implementations as the MCP surface"
   )
   .argument("[name]", "Tool name: library slug (add-node) or MCP alias (summer_add_node)")
-  .option("--json <args>", "Tool arguments as a JSON object (matches the tool's input_schema)")
+  .option("--args <json>", "Tool arguments as a JSON object (matches the tool's input_schema)")
+  .addOption(new Option("--json <args>", "Deprecated alias of --args").hideHelp())
   .option("--list", "List every tool with a one-line summary")
   .action(async (name: string | undefined, options: ToolCommandOptions) => {
     if (options.list || name === undefined) {
@@ -133,7 +137,10 @@ export const toolCommand = new Command("tool")
       );
     }
 
-    const args = parseJsonArgs(options.json);
+    if (options.json !== undefined && options.args === undefined) {
+      console.error("Note: 'summer tool --json <args>' is deprecated; use --args <json>.");
+    }
+    const args = parseJsonArgs(options.args ?? options.json);
     const result = await dispatchTool(entry.slug, args);
     console.log(JSON.stringify(result, null, 2));
   });

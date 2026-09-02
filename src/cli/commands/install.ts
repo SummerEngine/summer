@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import { execSync } from "child_process";
+import { createInterface } from "node:readline/promises";
 import { createHash } from "crypto";
 import {
   chmodSync,
@@ -7,6 +8,7 @@ import {
   existsSync,
   mkdirSync,
   readdirSync,
+  readFileSync,
   renameSync,
   rmSync,
   symlinkSync,
@@ -62,6 +64,104 @@ export function verifyChecksum(actual: string, expected: string | undefined, lab
   }
 }
 
+/** Version string of an installed macOS bundle (CFBundleShortVersionString in
+ *  Contents/Info.plist), or null when unreadable. */
+export function readMacBundleVersion(appPath: string): string | null {
+  try {
+    return parseMacBundleVersion(readFileSync(join(appPath, "Contents", "Info.plist"), "utf-8"));
+  } catch {
+    return null;
+  }
+}
+
+export function parseMacBundleVersion(plistText: string): string | null {
+  const match = plistText.match(
+    /<key>CFBundleShortVersionString<\/key>\s*<string>([^<]+)<\/string>/
+  );
+  return match ? match[1].trim() : null;
+}
+
+export function isSameVersion(installed: string | null, latest: string): boolean {
+  if (!installed) return false;
+  const norm = (value: string) => value.trim().replace(/^v/i, "");
+  return norm(installed) === norm(latest);
+}
+
+export type MacInstallPlan =
+  | { action: "install" }
+  | { action: "up-to-date"; version: string }
+  | { action: "needs-confirmation"; installed: string | null }
+  | { action: "refuse"; reason: string };
+
+/** Decide what `summer install` may do about an existing /Applications/Summer.app.
+ *  Replacing an installed engine is destructive, so it needs --yes or a TTY
+ *  prompt; an equal version is a no-op success. */
+export function planMacInstall(input: {
+  exists: boolean;
+  installedVersion: string | null;
+  latestVersion: string;
+  yes: boolean;
+  isTTY: boolean;
+}): MacInstallPlan {
+  if (!input.exists) return { action: "install" };
+  if (isSameVersion(input.installedVersion, input.latestVersion)) {
+    return { action: "up-to-date", version: input.latestVersion };
+  }
+  if (input.yes) return { action: "install" };
+  if (input.isTTY) return { action: "needs-confirmation", installed: input.installedVersion };
+  return {
+    action: "refuse",
+    reason:
+      `Summer Engine ${input.installedVersion ?? "(unknown version)"} is already installed; ` +
+      `updating to v${input.latestVersion} replaces it. Re-run with --yes to confirm.`,
+  };
+}
+
+export type ShellExec = (command: string) => void;
+
+/** Replace destApp with the bundle on the mounted DMG WITHOUT a window where
+ *  no engine exists: copy to <destApp>.new first, and only after that
+ *  succeeds remove the old bundle and rename the staged copy into place. A
+ *  failed copy leaves the existing install untouched. */
+export function replaceMacApp(mountPoint: string, destApp: string, exec: ShellExec): void {
+  const staged = `${destApp}.new`;
+  exec(`rm -rf "${staged}"`);
+  try {
+    exec(`cp -R "${mountPoint}/Summer.app" "${staged}"`);
+  } catch (err) {
+    try { exec(`rm -rf "${staged}"`); } catch { /* best effort */ }
+    throw err;
+  }
+  exec(`rm -rf "${destApp}"`);
+  exec(`mv "${staged}" "${destApp}"`);
+}
+
+/** Remove partial downloads / staged bundles when the user interrupts. */
+function cleanupOnSignal(paths: string[]): () => void {
+  const handler = () => {
+    for (const path of paths) {
+      try { rmSync(path, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
+    process.exit(130);
+  };
+  process.on("SIGINT", handler);
+  process.on("SIGTERM", handler);
+  return () => {
+    process.off("SIGINT", handler);
+    process.off("SIGTERM", handler);
+  };
+}
+
+async function confirm(question: string): Promise<boolean> {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const answer = (await rl.question(`${question} [y/N] `)).trim().toLowerCase();
+    return answer === "y" || answer === "yes";
+  } finally {
+    rl.close();
+  }
+}
+
 /** Velopack Setup.exe install args. Velopack is NOT NSIS: silent install is
  *  `--silent` and a custom directory is `--installto <dir>` (per Velopack's
  *  setup.exe CLI). The old NSIS flags (/S, /D=) are rejected by the Velopack
@@ -73,7 +173,8 @@ export function windowsInstallerArgs(customPath?: string): string {
 export const installCommand = new Command("install")
   .description("Download and install Summer Engine")
   .option("--path <dir>", "Custom install directory")
-  .action(async (opts: { path?: string }) => {
+  .option("--yes", "Replace an already-installed engine without prompting")
+  .action(async (opts: { path?: string; yes?: boolean }) => {
     const os = platform();
 
     if (os === "linux") {
@@ -106,13 +207,13 @@ export const installCommand = new Command("install")
     }
 
     if (os === "darwin") {
-      await installMac(releases, opts.path);
+      await installMac(releases, opts.path, Boolean(opts.yes));
     } else {
       await installWindows(releases, opts.path);
     }
   });
 
-async function installMac(releases: ReleaseInfo, customPath?: string): Promise<void> {
+async function installMac(releases: ReleaseInfo, customPath?: string, yes = false): Promise<void> {
   const info = releases.latest.macos;
   if (!info) {
     console.error("No macOS release found.");
@@ -123,18 +224,44 @@ async function installMac(releases: ReleaseInfo, customPath?: string): Promise<v
   console.log(`Latest version: ${info.version}`);
 
   const destApp = customPath || "/Applications/Summer.app";
-  if (existsSync(destApp)) {
-    console.log(`Summer Engine already installed at ${destApp}`);
-    console.log("Updating to latest version...");
+  const exists = existsSync(destApp);
+  const installedVersion = exists ? readMacBundleVersion(destApp) : null;
+  const plan = planMacInstall({
+    exists,
+    installedVersion,
+    latestVersion: info.version,
+    yes,
+    isTTY: Boolean(process.stdin.isTTY),
+  });
+  if (plan.action === "up-to-date") {
+    console.log(`Summer Engine v${plan.version} is already installed at ${destApp} (up to date).`);
+    return;
+  }
+  if (plan.action === "refuse") {
+    console.error(plan.reason);
+    process.exitCode = 1;
+    return;
+  }
+  if (plan.action === "needs-confirmation") {
+    console.log(
+      `Summer Engine ${plan.installed ?? "(unknown version)"} is installed at ${destApp}.`
+    );
+    if (!(await confirm(`Replace it with v${info.version}?`))) {
+      console.log("Cancelled. Nothing was changed.");
+      return;
+    }
   }
 
   const dmgPath = join(tmpdir(), `Summer-v${info.version}.dmg`);
+  const stagedApp = `${destApp}.new`;
+  const releaseSignals = cleanupOnSignal([dmgPath, stagedApp]);
   console.log(`Downloading Summer Engine v${info.version} (~1 GB, includes bundled Git + runtime)...`);
 
   try {
     const { sha256 } = await downloadFile(dmgUrl, dmgPath);
     verifyChecksum(sha256, info.dmg_sha256, "DMG");
   } catch (err) {
+    releaseSignals();
     try { execSync(`rm -f "${dmgPath}"`, { stdio: "ignore" }); } catch { /* best effort */ }
     console.error(err instanceof Error ? err.message : String(err));
     process.exit(1);
@@ -158,12 +285,19 @@ async function installMac(releases: ReleaseInfo, customPath?: string): Promise<v
 
   try {
     console.log("Installing to " + destApp + "...");
-    execSync(`rm -rf "${destApp}"`, { stdio: "ignore" });
-    execSync(`cp -R "${mountPoint}/Summer.app" "${destApp}"`);
+    replaceMacApp(mountPoint, destApp, (command) => execSync(command, { stdio: "ignore" }));
     console.log("Done!");
+  } catch (err) {
+    console.error(
+      `Install failed: ${err instanceof Error ? err.message : String(err)}\n` +
+        (exists ? `The existing ${destApp} was left in place.` : "Nothing was installed.")
+    );
+    process.exitCode = 1;
+    return;
   } finally {
     execSync(`hdiutil detach "${mountPoint}" -quiet`, { stdio: "ignore" });
     try { execSync(`rm "${dmgPath}"`, { stdio: "ignore" }); } catch {}
+    releaseSignals();
   }
 
   console.log(`\nSummer Engine v${info.version} installed to ${destApp}`);

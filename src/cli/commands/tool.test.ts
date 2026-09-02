@@ -12,11 +12,15 @@ import {
 import { listToolDispatches } from "../../core/capabilities/tool-dispatch.js";
 
 describe("summer tool command", () => {
-  it("is registered as 'tool' with the list/json options", () => {
+  it("is registered as 'tool' with --list and --args; --json is a hidden deprecated alias", () => {
     expect(toolCommand.name()).toBe("tool");
     const optionNames = toolCommand.options.map((option) => option.long);
     expect(optionNames).toContain("--list");
-    expect(optionNames).toContain("--json");
+    expect(optionNames).toContain("--args");
+    const json = toolCommand.options.find((option) => option.long === "--json");
+    expect(json?.hidden).toBe(true);
+    expect(toolCommand.helpInformation()).toContain("--args <json>");
+    expect(toolCommand.helpInformation()).not.toContain("--json");
   });
 
   it("lists every dispatchable tool with a one-line summary", () => {
@@ -35,7 +39,7 @@ describe("summer tool command", () => {
     expect(resolveToolForCli("definitely-not-a-tool")).toBeNull();
   });
 
-  it("parses --json into an args object and rejects non-objects", () => {
+  it("parses --args into an args object and rejects non-objects", () => {
     expect(parseJsonArgs(undefined)).toEqual({});
     expect(parseJsonArgs('{"path": "res://a.gd"}')).toEqual({ path: "res://a.gd" });
     expect(() => parseJsonArgs("not json")).toThrow(/valid JSON/);

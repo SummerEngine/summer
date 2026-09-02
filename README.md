@@ -334,7 +334,7 @@ matchmaking are not promised by this package.
 | `summer skills install <name>` | Install one. |
 | `summer skills install --recommended --agent <agent>` | Install the recommended set. |
 | `summer mcp [--project <path> \| --instance <id>]` | Start MCP; normally auto-binds from the agent's project directory. |
-| `summer mcp setup <agent>` | Write MCP config for an agent. |
+| `summer mcp setup <agent>` | Deprecated alias of `summer setup <agent>` (writes only the MCP config). |
 | `summer setup <agent> [--yes]` | One shot: MCP config + recommended skills + doctor. |
 
 Agents: `claude-code`, `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `kilo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, `lm-studio`. (`devin` and `devin-desktop` are accepted as aliases for `windsurf`.) Scopes: `--scope user` (default), `--scope project`.

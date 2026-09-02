@@ -32,6 +32,7 @@ interface SetupCommandOptions {
   scope?: string;
   dryRun?: boolean;
   print?: boolean;
+  localDev?: boolean;
   yes?: boolean;
   json?: boolean;
   force?: boolean;
@@ -45,6 +46,10 @@ export const setupCommand = new Command("setup")
   .option("--scope <scope>", "Configuration scope: user or project", "user")
   .option("--dry-run", "Show planned changes without writing files")
   .option("--print", "Print the MCP config snippet instead of writing files")
+  .option(
+    "--local-dev",
+    "Point the agent at this checkout's built CLI (node <repo>/dist/bin/summer.js mcp) instead of npx summer-engine@latest — for testing unpublished builds. SUMMER_DEV=1 does the same."
+  )
   .option("--yes", "Apply practical setup steps without prompting")
   .option("--json", "Print setup result as JSON")
   .option(
@@ -64,6 +69,7 @@ export const setupCommand = new Command("setup")
       scope,
       dryRun: opts.dryRun,
       print: opts.print,
+      localDev: Boolean(opts.localDev) || process.env.SUMMER_DEV === "1",
     });
 
     const skills = setupSkills(agent, {
@@ -120,6 +126,11 @@ function printSetupResult(
     console.log(`  ${sym.ok()}  Linked to ${c.bold(agentLabel)}  ${c.dim(tildeify(config.path))}`);
   } else {
     console.log(`  ${sym.ok()}  Already linked to ${c.bold(agentLabel)}  ${c.dim(tildeify(config.path))}`);
+  }
+  if (config.localDev) {
+    console.log(
+      `  ${c.dim("(local dev)")}  MCP server command: ${c.dim(`${config.server.command} ${config.server.args.join(" ")}`)}`
+    );
   }
 
   if (skills.status === "installed") {

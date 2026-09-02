@@ -95,7 +95,7 @@ Two tests need a sibling checkout to do real work and **skip loudly** otherwise:
 | `summer memory [show <file>]` | Inspect `.summer/` project memory. |
 | `summer skills list \| info <name> \| install [name] [--all \| --recommended] [--agent <a>] [--scope user\|project] [--force]` | Skill installer over `skills-registry.json`. |
 | `summer mcp [--project <path> \| --instance <id>]` | Start the MCP server (stdio). `summer mcp setup <agent>` is a deprecated alias of `summer setup`. |
-| `summer setup [agent] [--yes] [--force] [--recommended] [--scope …]` | MCP config + all skills + doctor, one shot, idempotent. |
+| `summer setup [agent] [--yes] [--force] [--recommended] [--scope …] [--local-dev]` | MCP config + all skills + doctor, one shot, idempotent. `--local-dev` (or `SUMMER_DEV=1`) points the agent at this checkout's `dist/bin/summer.js` instead of `npx summer-engine@latest`. |
 | `summer doctor [--json]` | Checks: `node-version`, `cli-version`, `cli-version-current`, `skills-version-stale`, `login`, `engine-install`, `local-api`, `project-memory`, `mcp-boot`, `mcp-tools-list`. `ok` = no failures. |
 | `summer debug [issue…]` | Support-ready Markdown debug report. |
 | `summer plan <goal…>` | Route a goal to skills / tools / gates. |
@@ -117,7 +117,15 @@ node dist/bin/summer.js mcp --project /abs/path   # explicit selectors for hosts
 node dist/bin/summer.js mcp --instance <id>       # launched outside a project dir
 ```
 
-To point an agent at the local build, set its MCP config command to `node <abs-path>/dist/bin/summer.js mcp`.
+To point an agent at the local build instead of the published package:
+
+```bash
+node dist/bin/summer.js setup claude-code --local-dev --yes    # writes command: node, args: [<abs>/dist/bin/summer.js, mcp]
+node dist/bin/summer.js setup claude-code --local-dev --print  # show the entry without writing
+npx -y summer-engine@latest setup claude-code --yes --force    # revert to npx + published skills
+```
+
+`SUMMER_DEV=1` has the same effect as `--local-dev`. The full end-to-end recipe for testing an unpublished build is [`TESTING.md`](TESTING.md).
 
 Templates (`summer list templates`, `summer create <template> [name]`) resolve only through the pin manifests in `library/templates/` — how resolution, digest verification, and `.summer/project.json` work is documented in [`library/templates/README.md`](../library/templates/README.md) (the former `docs/TEMPLATES.md` is retired).
 

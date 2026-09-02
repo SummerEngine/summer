@@ -77,7 +77,7 @@ Run these from any directory with the engine open on a project.
 
 | Command | Expect |
 |---|---|
-| `summer doctor` | 10 checks. `Local API` and `MCP Tools 69 tools registered` OK when the engine is up. Exit 0 with warnings; only failures make it exit 1. Not signed in is a warning — engine tools do not need login. |
+| `summer doctor` | 10 checks. `Local API` and `MCP Tools the registered tool count matches `registry/generated/counts.json`` OK when the engine is up. Exit 0 with warnings; only failures make it exit 1. Not signed in is a warning — engine tools do not need login. |
 | `summer tool --list` | `Summer tools (69)`, one line each; `[engine]` marks the ones that need the editor. |
 | `summer tool get-project-context` | JSON: project, open scene, engine version, capabilities. Read `capabilitySkewWarning` if present — it names ops this CLI can send that the engine build does not advertise. |
 | `summer tool get-scene-tree --args '{"depth":1}'` | JSON tree of the open scene, one level deep. |

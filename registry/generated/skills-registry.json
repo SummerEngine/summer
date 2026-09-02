@@ -605,6 +605,15 @@
       "path": "library/skills/sound-effect/"
     },
     {
+      "id": "skill/spatial-placement",
+      "name": "spatial-placement",
+      "description": "Use when positioning or verifying 3D objects with surrounding-scene evidence — floor and shelf support, wall gaps, collider or mesh overlap, directional clearance, alcoves, rotated props, and post-placement checks. Trigger on \"place\", \"position\", \"align\", \"sit on\", \"against the wall\", \"inside\", \"overlap\", \"clearance\", \"grounded\", \"flush\", \"spatial\", \"Starcast\".",
+      "clients": "all",
+      "recommended": true,
+      "status": "preview",
+      "path": "library/skills/spatial-placement/"
+    },
+    {
       "id": "skill/sprite-sheet",
       "name": "sprite-sheet",
       "description": "Use when generating animated 2D character sprites laid out as a sprite sheet (grid of frames) — walk cycle, attack frames, idle bob, death sequence. Wires into AnimatedSprite2D / SpriteFrames. Trigger on \"sprite sheet\", \"walk cycle\", \"attack frames\", \"animated sprite\", \"frame-by-frame animation\", \"2D character animation\".",

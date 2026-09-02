@@ -90,6 +90,7 @@
     "./library/skills/skintokens-auto-rigging/",
     "./library/skills/skybox-panorama/",
     "./library/skills/sound-effect/",
+    "./library/skills/spatial-placement/",
     "./library/skills/sprite-sheet/",
     "./library/skills/tileable-texture/",
     "./library/skills/trailer-shot/",

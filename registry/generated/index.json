@@ -144,8 +144,8 @@
     {
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
-      "version": "1.0.0",
-      "content_hash": "96da4fb36f1b77261f7fcb45dd685a4b43b191592585fae82bcf90832a6c1fbb",
+      "version": "1.0.1",
+      "content_hash": "7a08489724046eb8cb153d21c0a836cc999ad71c3c8f8f0e0aff5fd84d21bc8d",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -645,8 +645,8 @@
     {
       "id": "skill/celeste-momentum-platforming",
       "kind": "skill",
-      "version": "0.1.0",
-      "content_hash": "f5d8082f77862ee883f71418e82d56e15fd231be26fe9cbe0c062993f3824f9c",
+      "version": "0.1.1",
+      "content_hash": "229b5e6d5fb9014e7079cfb47233bf59522be64a23acd9945e9807b170be626a",
       "summary": "Celeste-style 2D precision platformer movement — momentum running, coyote time, variable jumps, dash, wall jump/slide, climb stamina, pixel corner correction.",
       "use_when": [
         "make the platformer movement feel like Celeste",
@@ -1415,8 +1415,8 @@
     {
       "id": "skill/godogen-visual-proof-game-generation",
       "kind": "skill",
-      "version": "0.1.0",
-      "content_hash": "a2bb39252723b11ea81fd6a202f028d5a1389351385d35ff39fb39e360aefa69",
+      "version": "0.1.1",
+      "content_hash": "330eeefab61106eca5051ad556b6aea5e2ddb644c2ed9eb1dc1f616c677f9b3d",
       "summary": "Godogen-style game generation with a visual QC loop — capture frames from the running game, self-verify against the brief, bounded fix rounds, proof clip.",
       "use_when": [
         "generate a whole small game from a short brief and prove it actually runs",
@@ -1581,8 +1581,8 @@
     {
       "id": "skill/lumera-single-image-scene-reconstruction",
       "kind": "skill",
-      "version": "0.1.0",
-      "content_hash": "710d95fea5f7d92bd0adade36b7e73d65982aacf1e80f100affa9ebbfc81065f",
+      "version": "0.1.1",
+      "content_hash": "13f2c529e358aa92805c9e35bdd7b55d6c396245ef15bb5eadc1e4d42c8b6d4d",
       "summary": "Lumera-style single image to editable 3D scene — VLM-parsed object boxes and parametric lights, per-object meshes, HDR probe, .tscn assembly, refinement loop.",
       "use_when": [
         "turn this concept art or screenshot into an editable 3D scene with separate objects and lights",
@@ -2003,8 +2003,8 @@
     {
       "id": "skill/psx-retro-rendering",
       "kind": "skill",
-      "version": "0.1.0",
-      "content_hash": "10dff93c018ab5ea00d628f1bffa6ee9dac141ed020c8031ae89580d1f672994",
+      "version": "0.1.1",
+      "content_hash": "9c9dd57b35e4ce79c9535a382f850f84b8f44b5296eb15805b3f4f6903d5efd1",
       "summary": "Hardware-informed PlayStation 1 rendering in Godot 4 — low-res output, RGB5 and exact dither, affine textures, vertex snapping, blend modes, fog; limits named.",
       "use_when": [
         "make my game render like a PlayStation 1 game, with texture warping, vertex wobble, and dithering",
@@ -2041,8 +2041,8 @@
     {
       "id": "skill/realtime-wet-surfaces",
       "kind": "skill",
-      "version": "0.1.0",
-      "content_hash": "0a616c011961e34f7c78fb3584cfacef785a1938d88a6fb9bb028b884562c3d7",
+      "version": "0.1.1",
+      "content_hash": "6f820717e31181c3eabddcb1ae9db4b71c3d71f1b1acf697c661303efbbfa5cd",
       "summary": "Real-time wetness on existing Godot 4 materials without losing their values — value-copying wet shader, geometry-driven wet mask, instance-uniform wet amount.",
       "use_when": [
         "make surfaces look wet when it rains and dry off afterwards",
@@ -2181,8 +2181,8 @@
     {
       "id": "skill/scene-composition",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "6d9b9cdd71172557ad7a6f13ac6ba127765cd98052b11ee7cc2cc48f6fa2ec2d",
+      "version": "1.0.2",
+      "content_hash": "672feeacd0114ee8d61031132f0f8321e569b01a806cb045e53dd4124aa0e60d",
       "summary": "Scene structure conventions — node hierarchy, when to extract sub-scenes, reusable prefab patterns, and instance-versus-add-node decisions.",
       "use_when": [
         "building or organizing Summer Engine scenes: node hierarchy conventions, sub-scene extraction, prefab patterns, PackedScene decisions"
@@ -2204,7 +2204,8 @@
       },
       "related": {
         "skills": [
-          "skill/scene-scripting"
+          "skill/scene-scripting",
+          "skill/spatial-placement"
         ]
       },
       "status": "stable",
@@ -2213,8 +2214,8 @@
     {
       "id": "skill/scene-hierarchy-design",
       "kind": "skill",
-      "version": "0.1.0",
-      "content_hash": "a0800fdae14da29337edb6aafd41da115afe0337cb230780e4b22fc54f551faf",
+      "version": "0.1.1",
+      "content_hash": "29be5fdd7695d7f688842835e9ef1209aa0af4e06a7a5beeaf7e42076ea48e53",
       "summary": "Structure Summer Engine scenes by access pattern — asset vs live hierarchies, wrapper nodes per operation, sub-scenes for reuse, path-agnostic logic.",
       "use_when": [
         "how should I structure the node hierarchy for this level or character",
@@ -2468,8 +2469,8 @@
     {
       "id": "skill/skintokens-auto-rigging",
       "kind": "skill",
-      "version": "0.1.0",
-      "content_hash": "a04e34c0cd0336cb0faa4ddf4f442a034c6152922908a01210e5f109e558bdb5",
+      "version": "0.1.1",
+      "content_hash": "b3dffd671db7d9382ed82198997b787fe1f0db5196783bbde20ecdeacee99479",
       "summary": "Offline auto-rigging with skin-tokens.cpp (GGML SkinTokens/TokenRig port) — skeleton and skin weights from a static GLB mesh on CPU/Vulkan, into Godot 4.",
       "use_when": [
         "auto-rig this static GLB mesh so I can animate it",
@@ -2568,6 +2569,52 @@
         ]
       },
       "status": "stable",
+      "recommended": true
+    },
+    {
+      "id": "skill/spatial-placement",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "7e65467f5aaaa5513c1b3cbf313e96d46a92c3fac1458d31c131c3262151e5b6",
+      "summary": "Place and verify 3D objects with Starcast evidence — inspect, place, starcast, correct, verify; floor, shelf, wall, alcove recipes and overlap repair.",
+      "use_when": [
+        "positioning a prop, character, collider, or platform so it sits flush, avoids overlap, or keeps clearance",
+        "placing something against a wall, inside an alcove, or on a shelf and needing to know which side is blocked and by how much",
+        "repairing an overlap or a floating object after a placement",
+        "post-placement checks on a rotated prop using its own local axes"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "3d",
+          "world-building",
+          "level-design",
+          "verification"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/starcast",
+          "tool/get-scene-tree",
+          "tool/inspect-node",
+          "tool/set-prop",
+          "tool/batch"
+        ],
+        "skills": [
+          "skill/world-building-3d",
+          "skill/scene-composition"
+        ]
+      },
+      "status": "preview",
       "recommended": true
     },
     {
@@ -3296,8 +3343,8 @@
     {
       "id": "skill/world-building-3d",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "9ad8d15339329934510f41f46203badeac49a6d7b4f1baeace31bbfeb7a2a773",
+      "version": "1.0.1",
+      "content_hash": "e5fa8ede11dd8d0bd08b59868caee20d113feac412227152fff40cd549f43a1f",
       "summary": "Compose, ground, space, frame, and validate 3D scenes with Summer's six bounded spatial tools — exact paths, one geometric decision at a time, verified.",
       "use_when": [
         "placing or grounding props on floors, shelves, ramps, or tables without hand-tuning transforms",
@@ -3338,7 +3385,8 @@
         "skills": [
           "skill/scene-composition",
           "skill/verifying-scenes",
-          "skill/scene-scripting"
+          "skill/scene-scripting",
+          "skill/spatial-placement"
         ]
       },
       "status": "preview",
@@ -6121,6 +6169,58 @@
       },
       "status": "preview",
       "mcp_tool_name": "summer_snapshot_diff",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/starcast",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "5a7d1433d64dc5a90be32bd08e5270ae56fdc3b3229988646d076743784e85a8",
+      "summary": "Read-only 3D placement rundown for one node — 26 directional clearance casts, contact-or-overlap evidence, grounding, nearby geometry. Never moves or saves.",
+      "use_when": [
+        "learning what surrounds a placed prop before and after a correction — which direction is blocked, by what, and at what distance",
+        "diagnosing an overlap or a floating object when summer_test_placement reports fits false or grounded false and you need to know which side to move",
+        "checking wall gaps, shelf support, or alcove clearance for a rotated subject (directionSpace local)"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "3d",
+          "world-building",
+          "verification"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/test-placement",
+          "tool/snap-to-surface",
+          "tool/inspect-node",
+          "tool/world-snapshot",
+          "tool/screenshot"
+        ],
+        "skills": [
+          "skill/spatial-placement",
+          "skill/world-building-3d"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_starcast",
       "remote": false,
       "authority": {
         "filesystem": false,

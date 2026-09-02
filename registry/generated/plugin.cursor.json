@@ -4,7 +4,7 @@
   "name": "summer",
   "displayName": "Summer",
   "version": "2.8.2",
-  "description": "Agent tooling for Summer Engine: game-dev skills, lifecycle hooks, and a 69-tool MCP bridge to the local desktop app.",
+  "description": "Agent tooling for Summer Engine: game-dev skills, lifecycle hooks, and a 70-tool MCP bridge to the local desktop app.",
   "author": {
     "name": "Summer Engine",
     "email": "founders@summerengine.com"
@@ -101,6 +101,7 @@
     "./library/skills/skintokens-auto-rigging/",
     "./library/skills/skybox-panorama/",
     "./library/skills/sound-effect/",
+    "./library/skills/spatial-placement/",
     "./library/skills/sprite-sheet/",
     "./library/skills/tileable-texture/",
     "./library/skills/trailer-shot/",

@@ -24,6 +24,7 @@ related:
     - skill/asset-strategy
     - skill/ambient-bed
     - skill/sound-effect
+    - skill/organic-model
 source: official
 license: MIT
 status: stable

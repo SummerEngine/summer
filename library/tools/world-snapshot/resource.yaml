@@ -22,8 +22,12 @@ related:
     - tool/snapshot-diff
     - tool/get-scene-tree
     - tool/screenshot
+    - tool/navigation-probe
+    - tool/test-placement
+    - tool/camera-visibility
   skills:
     - skill/verifying-scenes
+    - skill/scene-scripting
 source: official
 license: MIT
 status: preview

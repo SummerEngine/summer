@@ -21,6 +21,8 @@ related:
     - skill/pixel-art
     - skill/generate-motion
     - skill/sound-effect
+    - skill/create-asset-sheet
+    - skill/asset-strategy
 source: official
 license: MIT
 status: stable

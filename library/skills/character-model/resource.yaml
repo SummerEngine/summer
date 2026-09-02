@@ -27,6 +27,7 @@ related:
     - skill/procedural-animation
     - skill/asset-strategy
     - skill/fps-controller
+    - skill/organic-model
 source: official
 license: MIT
 status: stable

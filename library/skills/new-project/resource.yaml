@@ -16,6 +16,9 @@ facets:
     - project
 compatibility:
   engine: ">=4.6"
+related:
+  skills:
+    - skill/make-game
 source: official
 license: MIT
 status: stable

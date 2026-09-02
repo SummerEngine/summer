@@ -14,6 +14,10 @@ facets:
     - docs
 compatibility:
   engine: ">=4.6"
+related:
+  skills:
+    - skill/skill-create
+    - skill/skill-improve
 source: official
 license: MIT
 status: stable

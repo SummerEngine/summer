@@ -15,6 +15,9 @@ facets:
     - assets
 compatibility:
   engine: ">=4.6"
+related:
+  skills:
+    - skill/asset-strategy
 source: official
 license: MIT
 status: stable

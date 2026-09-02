@@ -23,6 +23,7 @@ related:
     - skill/animation-tree
     - skill/generate-motion
     - skill/procedural-animation
+    - skill/retarget
 source: official
 license: MIT
 status: stable

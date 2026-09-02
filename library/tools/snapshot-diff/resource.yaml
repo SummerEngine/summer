@@ -23,6 +23,7 @@ related:
     - tool/screenshot
   skills:
     - skill/verifying-scenes
+    - skill/scene-scripting
 source: official
 license: MIT
 status: preview

@@ -190,9 +190,30 @@ function buildIndex(resources: LoadedResource[]): string {
     if (d.compatibility !== undefined) entry.compatibility = d.compatibility;
     if (d.related !== undefined) entry.related = d.related;
     entry.status = d.status;
+    if (res.kind === "tool") {
+      // CONTRACT.md §5 tool extensions an agent needs to map an index entry to
+      // its host surface: MCP tool name, hosted-MCP eligibility, CLI command,
+      // and the authority booleans. Without these the index cannot be routed.
+      const surfaces = asRecord(d.surfaces);
+      const mcp = asRecord(surfaces.mcp);
+      const cli = asRecord(surfaces.cli);
+      if (typeof mcp.tool_name === "string") entry.mcp_tool_name = mcp.tool_name;
+      entry.remote = mcp.remote === true;
+      if (typeof cli.command === "string") entry.cli_command = cli.command;
+      entry.authority = d.authority;
+    }
+    if (res.kind === "skill") {
+      entry.recommended = d.recommended === true;
+    }
     return entry;
   });
   return stableJson({ _generated: GENERATED_BANNER, resources: entries });
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 function buildCounts(resources: LoadedResource[]): {
@@ -254,6 +275,39 @@ function buildSkillsRegistry(resources: LoadedResource[]): string {
   return stableJson({ _generated: GENERATED_BANNER, skills });
 }
 
+function buildTemplatesRegistry(resources: LoadedResource[]): string {
+  const strList = (v: unknown): string[] =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  const templates = resources
+    .filter((res) => res.kind === "template")
+    .map((res) => {
+      const d = res.data;
+      const builtin = d.builtin === true;
+      const pin = builtin
+        ? null
+        : {
+            repo: String(d.repo ?? ""),
+            commit: String(d.commit ?? ""),
+            tree_digest: String(d.tree_digest ?? ""),
+            ...(typeof d.default_branch === "string" ? { default_branch: d.default_branch } : {}),
+          };
+      return {
+        id: res.id,
+        slug: res.slug,
+        version: String(d.version ?? ""),
+        summary: String(d.summary ?? ""),
+        status: String(d.status ?? "stable"),
+        aliases: strList(d.aliases),
+        systems: strList(d.systems),
+        do_not_use_when: strList(d.do_not_use_when),
+        path: `library/templates/${res.slug}/`,
+        builtin,
+        pin,
+      };
+    });
+  return stableJson({ _generated: GENERATED_BANNER, templates });
+}
+
 // ---------- duplicate-id/alias compiler checks (also caught by validate-library) ----------
 
 function compilerChecks(resources: LoadedResource[]): string[] {
@@ -298,6 +352,7 @@ export function generateRegistry(rootDir: string, options?: GenerateOptions): Ge
   files.set("counts.json", countsJson);
   files.set("aliases.json", aliasesJson);
   files.set("skills-registry.json", buildSkillsRegistry(resources));
+  files.set("templates-registry.json", buildTemplatesRegistry(resources));
 
   const skillSlugs = resources.filter((r) => r.kind === "skill").map((r) => r.slug);
   for (const [name, content] of buildManifests({

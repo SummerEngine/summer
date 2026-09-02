@@ -47,7 +47,7 @@ function parse(files: Map<string, string>, name: string): Record<string, unknown
 }
 
 describe("generateRegistry: catalog outputs", () => {
-  it("produces index/counts/aliases/skills-registry plus all six manifests", () => {
+  it("produces index/counts/aliases/skills-registry/templates-registry plus all six manifests", () => {
     const result = gen(basicRoot);
     expect([...result.files.keys()].sort()).toEqual([
       "aliases.json",
@@ -60,6 +60,7 @@ describe("generateRegistry: catalog outputs", () => {
       "plugin.cursor.json",
       "plugin.factory.json",
       "skills-registry.json",
+      "templates-registry.json",
     ]);
     expect(result.counts).toEqual({
       byKind: { collection: 0, example: 0, reference: 1, skill: 2, template: 0, tool: 1 },
@@ -90,6 +91,7 @@ describe("generateRegistry: catalog outputs", () => {
       "compatibility",
       "related",
       "status",
+      "recommended",
     ]);
     expect(alpha.content_hash).toBe(
       computeContentHash(path.join(basicRoot, "library", "skills", "alpha-skill")),
@@ -98,6 +100,72 @@ describe("generateRegistry: catalog outputs", () => {
     // beta-skill has no compatibility/related: optional keys are omitted
     expect(Object.keys(resources[2])).not.toContain("compatibility");
     expect(Object.keys(resources[2])).not.toContain("related");
+  });
+
+  it("index.json carries status for every entry and recommended for skills", () => {
+    const result = gen(basicRoot);
+    const resources = (parse(result.files, "index.json").resources as Array<Record<string, unknown>>);
+    for (const r of resources) expect(["stable", "preview", "deprecated"], String(r.id)).toContain(r.status);
+    const alpha = resources.find((r) => r.id === "skill/alpha-skill")!;
+    const beta = resources.find((r) => r.id === "skill/beta-skill")!;
+    expect(alpha.recommended).toBe(true);
+    expect(beta.recommended).toBe(false);
+    expect(Object.keys(alpha).slice(-2)).toEqual(["status", "recommended"]);
+    // non-skills never carry recommended
+    expect(Object.keys(resources.find((r) => r.id === "reference/engine-versions")!)).not.toContain("recommended");
+  });
+
+  it("index.json tool entries expose the host mapping: mcp_tool_name, remote, cli_command, authority", () => {
+    const result = gen(basicRoot);
+    const resources = (parse(result.files, "index.json").resources as Array<Record<string, unknown>>);
+    const tool = resources.find((r) => r.id === "tool/set-node-property")!;
+    expect(Object.keys(tool)).toEqual([
+      "id",
+      "kind",
+      "version",
+      "content_hash",
+      "summary",
+      "use_when",
+      "facets",
+      "compatibility",
+      "related",
+      "status",
+      "mcp_tool_name",
+      "remote",
+      "cli_command",
+      "authority",
+    ]);
+    expect(tool.mcp_tool_name).toBe("summer_set_prop");
+    expect(tool.remote).toBe(false); // unset in the fixture -> default false
+    expect(tool.cli_command).toBe("summer node set-property");
+    expect(tool.authority).toEqual({
+      filesystem: false,
+      editor_mutation: true,
+      network: false,
+      credentials: false,
+      publish: false,
+    });
+    // skills never carry the tool-only fields
+    const alpha = resources.find((r) => r.id === "skill/alpha-skill")!;
+    for (const key of ["mcp_tool_name", "remote", "cli_command", "authority"]) {
+      expect(Object.keys(alpha)).not.toContain(key);
+    }
+  });
+
+  it("index.json remote follows surfaces.mcp.remote and cli_command is omitted without a CLI surface", () => {
+    const root = copyBasicFixture();
+    const yamlPath = path.join(root, "library", "tools", "set-node-property", "resource.yaml");
+    const yaml = fs
+      .readFileSync(yamlPath, "utf8")
+      .replace("  cli:\n    command: summer node set-property\n", "")
+      .replace("    tool_name: summer_set_prop\n", "    tool_name: summer_set_prop\n    remote: true\n");
+    fs.writeFileSync(yamlPath, yaml);
+    const result = gen(root);
+    const resources = (parse(result.files, "index.json").resources as Array<Record<string, unknown>>);
+    const tool = resources.find((r) => r.id === "tool/set-node-property")!;
+    expect(tool.remote).toBe(true);
+    expect(Object.keys(tool)).not.toContain("cli_command");
+    expect(tool.mcp_tool_name).toBe("summer_set_prop");
   });
 
   it("aliases.json maps every alias to its id, sorted", () => {

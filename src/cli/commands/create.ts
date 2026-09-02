@@ -1,43 +1,38 @@
 import { Command } from "commander";
-import { copyFileSync, existsSync, mkdirSync, readdirSync, writeFileSync } from "fs";
-import { dirname, join, resolve } from "path";
-import { fileURLToPath } from "url";
-import { fetchRemoteTemplates, cloneTemplate, matchTemplate } from "../../core/remote-templates.js";
+import { cpSync, existsSync, mkdirSync, writeFileSync } from "fs";
+import { createRequire } from "module";
+import { join, resolve } from "path";
+import { PACKAGE_ROOT } from "../../core/package-root.js";
 import { SUMMER_ENGINE_COMPATIBILITY } from "../../core/summer-compatibility.js";
+import {
+  getTemplateRegistry,
+  materializePinnedTemplate,
+  resolveTemplate,
+  TemplateDigestMismatchError,
+  type TemplateEntry,
+} from "../../core/templates.js";
+import { PROJECT_MANIFEST_RELPATH, writeProjectManifest } from "../../project-memory/project-manifest.js";
 
-interface Template {
-  name: string;
-  description: string;
-  builtin: boolean;
-  generate: (dir: string, projectName: string) => void;
-}
+const require = createRequire(import.meta.url);
+const { version: toolkitVersion } = require("../../../package.json") as { version: string };
 
-const BUILTIN_TEMPLATES: Template[] = [
-  {
-    name: "empty",
-    description: "Empty 3D project with just a root node",
-    builtin: true,
-    generate: (dir, name) => {
-      writeFileSync(
-        join(dir, "project.godot"),
-        renderProjectSettings(name, "res://main.tscn")
-      );
-      writeFileSync(join(dir, "main.tscn"), emptyScene());
-    },
+/**
+ * Built-in templates are generated in-process — no download, no pin. Their
+ * library manifests (`library/templates/<slug>/resource.yaml`) declare
+ * `builtin: true`; this map supplies the generator for each such slug.
+ */
+type BuiltinGenerator = (dir: string, projectName: string) => void;
+
+export const BUILTIN_GENERATORS: Readonly<Record<string, BuiltinGenerator>> = {
+  empty: (dir, name) => {
+    writeFileSync(join(dir, "project.godot"), renderProjectSettings(name, "res://main.tscn"));
+    writeFileSync(join(dir, "main.tscn"), emptyScene());
   },
-  {
-    name: "3d-basic",
-    description: "3D scene with camera, light, and floor",
-    builtin: true,
-    generate: (dir, name) => {
-      writeFileSync(
-        join(dir, "project.godot"),
-        renderProjectSettings(name, "res://main.tscn")
-      );
-      writeFileSync(join(dir, "main.tscn"), basicScene3D());
-    },
+  "3d-basic": (dir, name) => {
+    writeFileSync(join(dir, "project.godot"), renderProjectSettings(name, "res://main.tscn"));
+    writeFileSync(join(dir, "main.tscn"), basicScene3D());
   },
-];
+};
 
 /**
  * Copy the autopilot verification scaffold into a fresh project.
@@ -50,94 +45,138 @@ const BUILTIN_TEMPLATES: Template[] = [
  * Never overwrites — an existing tests/autopilot/ is the user's, not ours.
  */
 function scaffoldAutopilot(projectDir: string): boolean {
-  const here = dirname(fileURLToPath(import.meta.url));
-  // dist/cli/commands/create.js -> package root
-  const source = resolve(here, "..", "..", "..", "assets", "autopilot");
+  const source = join(PACKAGE_ROOT, "assets", "autopilot");
   const target = join(projectDir, "tests", "autopilot");
 
   if (!existsSync(source) || existsSync(target)) return false;
 
-  mkdirSync(target, { recursive: true });
-  for (const entry of readdirSync(source)) {
-    copyFileSync(join(source, entry), join(target, entry));
-  }
+  cpSync(source, target, { recursive: true });
   return true;
 }
 
-export const createCommand = new Command("create")
-  .description("Create a new Summer Engine project. Built-in templates work offline; community templates clone from github.com/SummerEngine/template-*.")
-  .argument("<template>", `Template slug. Built-in: ${BUILTIN_TEMPLATES.map((t) => t.name).join(", ")}. Or any community slug — see "summer list templates".`)
-  .argument("[name]", "Project directory name (defaults to template slug)")
-  .option("--keep-git", "Keep the upstream .git directory after cloning a remote template (default: detach so you start fresh)")
-  .action(async (templateName: string, projectName: string | undefined, options: { keepGit?: boolean }) => {
-    const builtin = BUILTIN_TEMPLATES.find((t) => t.name === templateName);
-    const dirName = projectName || templateName;
-    const fullPath = resolve(dirName);
+function printNextSteps(fullPath: string, dirName: string, scaffolded: boolean): void {
+  console.log(`\nProject created at ${fullPath}`);
+  console.log(`Recorded template pin in ${join(dirName, PROJECT_MANIFEST_RELPATH)}`);
+  console.log("\nNext steps:");
+  console.log(`  summer run ${dirName}`);
+  if (scaffolded) {
+    const script = join(dirName, "tests", "autopilot", "run.sh");
+    const hint = process.platform === "win32" ? `bash ${script}   (Git Bash or WSL;` : `bash ${script}   (`;
+    console.log(`  ${hint}verify the game without opening it)`);
+  }
+  console.log("  Ask your agent to use the brainstorm-game skill to create .summer/GameSoul.md");
+}
 
+function describeTemplates(entries: readonly TemplateEntry[], out: (line: string) => void): void {
+  const builtins = entries.filter((e) => e.builtin);
+  const pinned = entries.filter((e) => !e.builtin && e.status !== "deprecated");
+  const pad = Math.max(16, ...entries.map((e) => e.slug.length));
+  out("Built-in templates (generated locally, no download):");
+  for (const t of builtins) out(`  ${t.slug.padEnd(pad)}  ${t.summary}`);
+  out("\nPinned templates (exact commit, verified tree digest):");
+  for (const t of pinned) {
+    const flag = t.status === "preview" ? " [preview]" : "";
+    out(`  ${t.slug.padEnd(pad)}  ${t.summary}${flag}`);
+  }
+  out('\nRun "summer list templates" for details.');
+}
+
+export const createCommand = new Command("create")
+  .description(
+    "Create a new Summer Engine project from a library template. Built-in templates generate offline; pinned templates fetch exactly the reviewed commit and verify its tree digest."
+  )
+  .argument("<template>", 'Template slug (or legacy alias / unambiguous prefix). See "summer list templates".')
+  .argument("[name]", "Project directory name (defaults to template slug)")
+  .option(
+    "--keep-git",
+    "Keep the fetched .git directory, detached at the pinned commit (default: remove it so you start fresh)"
+  )
+  .action(async (templateName: string, projectName: string | undefined, options: { keepGit?: boolean }) => {
+    const entries = getTemplateRegistry();
+    const resolution = resolveTemplate(templateName, entries);
+
+    if (resolution.kind === "none") {
+      console.error(`No template matches '${templateName}'.\n`);
+      describeTemplates(entries, (l) => console.error(l));
+      process.exit(1);
+    }
+    if (resolution.kind === "ambiguous") {
+      console.error(`'${templateName}' is ambiguous. Did you mean one of:`);
+      for (const c of resolution.candidates) console.error(`  ${c.slug}`);
+      process.exit(1);
+    }
+
+    const entry = resolution.entry;
+    if (resolution.via === "alias" || resolution.via === "prefix") {
+      console.log(`Resolved '${templateName}' -> ${entry.slug}`);
+    }
+
+    const dirName = projectName || entry.slug;
+    const fullPath = resolve(dirName);
     if (existsSync(fullPath)) {
       console.error(`Directory already exists: ${fullPath}`);
       process.exit(1);
     }
 
-    if (builtin) {
-      console.log(`Creating project from built-in '${templateName}' template...`);
+    if (entry.status !== "stable") {
+      console.error(`Warning: ${entry.slug} is marked '${entry.status}'.`);
+      for (const note of entry.do_not_use_when) console.error(`  ${note}`);
+    }
+
+    if (entry.builtin) {
+      const generate = BUILTIN_GENERATORS[entry.slug];
+      if (!generate) {
+        console.error(`${entry.id} is declared builtin but this CLI has no generator for it. Update the CLI.`);
+        process.exit(1);
+      }
+      console.log(`Creating project from built-in '${entry.slug}' template...`);
       mkdirSync(fullPath, { recursive: true });
-      builtin.generate(fullPath, dirName);
+      generate(fullPath, dirName);
       const scaffolded = scaffoldAutopilot(fullPath);
-      console.log(`\nProject created at ${fullPath}`);
-      console.log("\nNext steps:");
-      console.log(`  summer run ${dirName}`);
-      if (scaffolded) console.log(`  bash ${dirName}/tests/autopilot/run.sh   (verify the game without opening it)`);
-      console.log("  Ask your agent to run summer:brainstorm-game to create .summer/GameSoul.md");
+      writeProjectManifest(fullPath, {
+        template: { id: entry.id, version: entry.version, builtin: true },
+        toolkit_version: toolkitVersion,
+      });
+      printNextSteps(fullPath, dirName, scaffolded);
       return;
     }
 
-    // Fall back to remote template lookup
-    let remote;
+    const pin = entry.pin!;
+    let materialized;
     try {
-      const all = await fetchRemoteTemplates();
-      remote = matchTemplate(templateName, all);
-      if (!remote) {
-        console.error(`No template matches '${templateName}'.\n`);
-        console.error("Built-in templates:");
-        for (const t of BUILTIN_TEMPLATES) {
-          console.error(`  ${t.name.padEnd(16)} ${t.description}`);
-        }
-        if (all.length > 0) {
-          console.error("\nCommunity templates from github.com/SummerEngine:");
-          for (const t of all.slice(0, 10)) {
-            console.error(`  ${t.slug.padEnd(40)} ${t.description}`);
-          }
-          if (all.length > 10) console.error(`  ...and ${all.length - 10} more — run "summer list templates"`);
-        }
-        process.exit(1);
-      }
+      materialized = materializePinnedTemplate(entry, {
+        targetDir: fullPath,
+        keepGit: options.keepGit,
+        log: (line) => console.log(line),
+      });
     } catch (err) {
-      console.error(`Could not reach GitHub to look up community templates: ${(err as Error).message}`);
-      console.error("\nBuilt-in templates that work offline:");
-      for (const t of BUILTIN_TEMPLATES) {
-        console.error(`  ${t.name.padEnd(16)} ${t.description}`);
-      }
-      process.exit(1);
-    }
-
-    console.log(`Cloning community template '${remote.repo}' (${remote.url}) ...`);
-    try {
-      cloneTemplate(remote, { targetDir: fullPath, detach: !options.keepGit });
-    } catch (err) {
-      console.error((err as Error).message);
+      console.error(err instanceof TemplateDigestMismatchError ? err.message : (err as Error).message);
       process.exit(1);
     }
 
     const scaffolded = scaffoldAutopilot(fullPath);
+    writeProjectManifest(fullPath, {
+      template: {
+        id: entry.id,
+        version: entry.version,
+        repo: pin.repo,
+        commit: materialized.commit,
+        tree_digest: materialized.tree_digest,
+      },
+      toolkit_version: toolkitVersion,
+    });
 
-    console.log(`\nProject created at ${fullPath}`);
-    console.log("Source: " + remote.url);
-    console.log("\nNext steps:");
-    console.log(`  summer run ${dirName}`);
-    if (scaffolded) console.log(`  bash ${dirName}/tests/autopilot/run.sh   (verify the game without opening it)`);
-    console.log("  Ask your agent to run summer:brainstorm-game to create .summer/GameSoul.md");
+    console.log(`Source: ${pin.repo} @ ${materialized.commit.slice(0, 12)} (tree digest verified)`);
+    printNextSteps(fullPath, dirName, scaffolded);
   });
+
+/**
+ * project.godot uses C-style double-quoted strings; a project name containing
+ * `"` or `\` must be escaped or the file does not parse.
+ */
+export function escapeGodotString(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\r?\n/g, "\\n");
+}
 
 export function renderProjectSettings(name: string, mainScene: string): string {
   return `; Summer Engine Project
@@ -146,8 +185,8 @@ export function renderProjectSettings(name: string, mainScene: string): string {
 
 [application]
 
-config/name="${name}"
-run/main_scene="${mainScene}"
+config/name="${escapeGodotString(name)}"
+run/main_scene="${escapeGodotString(mainScene)}"
 config/features=PackedStringArray("${SUMMER_ENGINE_COMPATIBILITY.projectFeatureTag}")
 
 [rendering]

@@ -1,14 +1,14 @@
 import { Command } from "commander";
 import { readdirSync, existsSync } from "fs";
 import { join } from "path";
-import { fetchRemoteTemplates } from "../../core/remote-templates.js";
+import { getTemplateRegistry, type TemplateEntry } from "../../core/templates.js";
 
 export const listCommand = new Command("list")
   .description("List available templates or local projects")
   .argument("<what>", "'templates' or 'projects'")
   .action(async (what: string) => {
     if (what === "templates") {
-      await listTemplates();
+      listTemplates();
     } else if (what === "projects") {
       listProjects();
     } else {
@@ -17,30 +17,35 @@ export const listCommand = new Command("list")
     }
   });
 
-async function listTemplates(): Promise<void> {
-  console.log("Built-in templates (no download required):\n");
-  console.log("  empty        Empty 3D project with just a root node");
-  console.log("  3d-basic     3D scene with camera, light, and floor");
+/**
+ * Registry-only listing (CONTRACT.md §7): every template shown here resolves
+ * through its library pin manifest. There is no live GitHub-org listing —
+ * anything not in the registry is not installable by `summer create`.
+ */
+function listTemplates(): void {
+  const entries = getTemplateRegistry();
+  const builtins = entries.filter((e) => e.builtin);
+  const pinned = entries.filter((e) => !e.builtin);
+  const pad = Math.max(16, ...entries.map((e) => e.slug.length));
 
-  console.log("\nCommunity templates from github.com/SummerEngine:\n");
-  try {
-    const remote = await fetchRemoteTemplates();
-    if (remote.length === 0) {
-      console.log("  (none yet)");
-    } else {
-      const padTo = Math.max(...remote.map((t) => t.slug.length), 16);
-      for (const t of remote) {
-        const desc = t.description || `(no description)  ${t.url}`;
-        console.log(`  ${t.slug.padEnd(padTo)}  ${desc}`);
-      }
-    }
-  } catch (err) {
-    console.log(`  (could not reach GitHub: ${(err as Error).message})`);
-    console.log("  Built-ins above still work offline.");
+  const line = (t: TemplateEntry): string => {
+    const flag = t.status === "stable" ? "" : ` [${t.status}]`;
+    return `  ${t.slug.padEnd(pad)}  ${t.summary}${flag}`;
+  };
+
+  console.log("Built-in templates (generated locally, no download):\n");
+  for (const t of builtins) console.log(line(t));
+
+  console.log("\nPinned templates (fetched at an exact commit; tree digest verified before use):\n");
+  for (const t of pinned) {
+    console.log(line(t));
+    if (t.systems.length > 0) console.log(`  ${"".padEnd(pad)}  systems: ${t.systems.join(", ")}`);
+    if (t.status !== "stable") for (const note of t.do_not_use_when) console.log(`  ${"".padEnd(pad)}  note: ${note}`);
   }
 
-  console.log("\nCreate a project: summer create <name> [project-dir]");
+  console.log("\nCreate a project: summer create <template> [name]");
   console.log("Example:          summer create 3d-third-person-controller my-game");
+  console.log("Pinning rules:    library/templates/README.md");
 }
 
 function listProjects(): void {

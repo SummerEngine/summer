@@ -171,11 +171,22 @@ export function isConfigKey(value: string): value is ConfigKey {
   return (CONFIG_KEYS as readonly string[]).includes(value);
 }
 
-export async function getGatewayUrl(): Promise<string> {
+/**
+ * The ONE gateway base URL for every Summer gateway call: login, generation,
+ * asset search/get, job polling, telemetry, and library feedback all resolve
+ * through here so a token minted against one gateway is never posted to
+ * another. Precedence: SUMMER_GATEWAY_URL env > ~/.summer/config.json
+ * gateway.url > production. Resolved at CALL time (never at import) so a
+ * config change is seen by every caller in the same process, and validated on
+ * every read: HTTPS only, except plain HTTP to loopback for local development.
+ * Returns an origin-like base without a trailing slash.
+ */
+export async function resolveGatewayUrl(): Promise<string> {
   const environment = process.env.SUMMER_GATEWAY_URL?.trim();
   if (environment) return validateGatewayUrl(environment);
   const config = await readSummerConfig();
-  return config.gateway?.url ?? DEFAULT_GATEWAY_URL;
+  const configured = config.gateway?.url?.trim();
+  return configured ? validateGatewayUrl(configured) : DEFAULT_GATEWAY_URL;
 }
 
 export async function getCreatorApiUrl(): Promise<string> {

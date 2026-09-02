@@ -21,6 +21,7 @@
 import { randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
 import { getAuthToken } from "../auth.js";
+import { resolveGatewayUrl } from "../config.js";
 import { readStoreText, writeStoreText } from "../store.js";
 
 const require = createRequire(import.meta.url);
@@ -50,12 +51,8 @@ export function getToolkitVersion(): string {
   return TOOLKIT_VERSION;
 }
 
-function gatewayUrl(): string {
-  const raw = process.env.SUMMER_GATEWAY_URL?.trim();
-  const base = raw
-    ? raw.replace(/\/+$/, "")
-    : "https://www.summerengine.com";
-  return `${base}${FEEDBACK_PATH}`;
+async function feedbackUrl(): Promise<string> {
+  return `${await resolveGatewayUrl()}${FEEDBACK_PATH}`;
 }
 
 /** Kill switches: send NOTHING when either is set to "1". */
@@ -197,7 +194,7 @@ export async function sendLibraryFeedback(
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
     try {
-      const res = await fetch(gatewayUrl(), {
+      const res = await fetch(await feedbackUrl(), {
         method: "POST",
         signal: ctrl.signal,
         headers,

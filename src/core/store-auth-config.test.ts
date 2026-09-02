@@ -13,7 +13,7 @@ import {
 } from "./auth.js";
 import {
   getConfigValue,
-  getGatewayUrl,
+  resolveGatewayUrl,
   readSummerConfig,
   setConfigValue,
   unsetConfigValue,
@@ -154,7 +154,7 @@ describe("shared Summer config", () => {
     expect(getConfigValue(config, "creator.apiUrl")).toBe(
       "http://localhost:3000"
     );
-    expect(await getGatewayUrl()).toBe("https://gateway.example");
+    expect(await resolveGatewayUrl()).toBe("https://gateway.example");
 
     await unsetConfigValue("creator.channel");
     expect(
@@ -162,9 +162,29 @@ describe("shared Summer config", () => {
     ).toBeUndefined();
   });
 
+  it("resolveGatewayUrl is the one gateway source: env > config > default, validated on read", async () => {
+    delete process.env.SUMMER_GATEWAY_URL;
+    expect(await resolveGatewayUrl()).toBe("https://www.summerengine.com");
+
+    await setConfigValue("gateway.url", "https://staging.example/");
+    expect(await resolveGatewayUrl()).toBe("https://staging.example");
+
+    process.env.SUMMER_GATEWAY_URL = "https://gateway.example/";
+    expect(await resolveGatewayUrl()).toBe("https://gateway.example");
+
+    // A hand-edited config.json cannot smuggle an insecure remote origin past
+    // the read path either.
+    delete process.env.SUMMER_GATEWAY_URL;
+    await writeStoreText(
+      "config.json",
+      JSON.stringify({ schemaVersion: 1, gateway: { url: "http://gateway.example" } })
+    );
+    await expect(resolveGatewayUrl()).rejects.toThrow(/must use HTTPS/);
+  });
+
   it("allows local HTTP development but rejects insecure remote gateways", async () => {
     await setConfigValue("gateway.url", "http://localhost:3000");
-    expect(await getGatewayUrl()).toBe("http://localhost:3000");
+    expect(await resolveGatewayUrl()).toBe("http://localhost:3000");
     await expect(
       setConfigValue("gateway.url", "http://gateway.example")
     ).rejects.toThrow(/must use HTTPS/);

@@ -7,9 +7,8 @@
  * ignored entirely on the CLI side.
  */
 import { getAuthToken } from "./auth.js";
+import { resolveGatewayUrl } from "./config.js";
 
-const TELEMETRY_URL =
-  process.env.SUMMER_GATEWAY_URL?.replace(/\/+$/, "") ?? "https://www.summerengine.com";
 const TELEMETRY_PATH = "/api/mcp/log-local-call";
 const TIMEOUT_MS = 5000;
 
@@ -33,11 +32,14 @@ export function recordMcpSession(): void {
     try {
       const token = await getAuthToken();
       if (!token) return; // unauthenticated MCP usage is allowed; we just can't attribute it
+      // Resolved per call, not at import: the gateway the token belongs to is
+      // whatever env/config says NOW (see config.resolveGatewayUrl).
+      const gatewayUrl = await resolveGatewayUrl();
 
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
       try {
-        await fetch(`${TELEMETRY_URL}${TELEMETRY_PATH}`, {
+        await fetch(`${gatewayUrl}${TELEMETRY_PATH}`, {
           method: "POST",
           signal: ctrl.signal,
           headers: {

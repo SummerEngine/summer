@@ -7,7 +7,7 @@ import {
   saveCreatorToken,
   saveLoginSession,
 } from "../../core/auth.js";
-import { getCreatorApiUrl, getGatewayUrl } from "../../core/config.js";
+import { getCreatorApiUrl, resolveGatewayUrl } from "../../core/config.js";
 
 const POLL_INTERVAL_MS = 2000;
 // One generous window on ONE session id. First-time users may need to create an
@@ -150,7 +150,7 @@ export async function runLogin(
   overrides: Partial<LoginDependencies> = {}
 ): Promise<void> {
   const deps = { ...defaultDependencies, ...overrides };
-  const gatewayUrl = await getGatewayUrl();
+  const gatewayUrl = await resolveGatewayUrl();
   const sessionId = deps.randomId();
 
   const loginUrl = `${gatewayUrl}/login?cli_session=${encodeURIComponent(sessionId)}`;

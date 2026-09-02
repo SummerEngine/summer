@@ -1,15 +1,13 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getAuthToken } from "../../core/auth.js";
+import { resolveGatewayUrl } from "../../core/config.js";
 import { getClient } from "../server.js";
 import {
   ImportHdriError,
   importPolyHavenHdri,
   type HdriResolution,
 } from "../../core/capabilities/hdri-import.js";
-
-const GATEWAY_URL =
-  process.env.SUMMER_GATEWAY_URL || "https://www.summerengine.com";
 
 /** Kenney Cloudinary URL pattern: .../summer_art/kenney/3d/{pack-slug}/{filename}.glb */
 const KENNEY_URL_PATTERN = /\/kenney\/3d\/([^/]+)\//;
@@ -90,7 +88,8 @@ async function searchAssetsApi(params: {
     searchParams.set("source", params.source);
   }
 
-  const res = await fetch(`${GATEWAY_URL}/api/mcp/assets?${searchParams}`, {
+  const gatewayUrl = await resolveGatewayUrl();
+  const res = await fetch(`${gatewayUrl}/api/mcp/assets?${searchParams}`, {
     headers: { Authorization: `Bearer ${token}` },
     signal: AbortSignal.timeout(15000),
   });
@@ -175,7 +174,8 @@ async function authedGetJson<T>(
     };
   }
 
-  const res = await fetch(`${GATEWAY_URL}${endpoint}`, {
+  const gatewayUrl = await resolveGatewayUrl();
+  const res = await fetch(`${gatewayUrl}${endpoint}`, {
     headers: { Authorization: `Bearer ${token}` },
     signal: AbortSignal.timeout(timeoutMs),
   });

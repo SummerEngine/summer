@@ -5,12 +5,10 @@ import { writeFile, mkdir } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 import { getAuthToken } from "../../core/auth.js";
+import { resolveGatewayUrl } from "../../core/config.js";
 
 const require = createRequire(import.meta.url);
 const { version: CLI_VERSION } = require("../../../package.json");
-
-const GATEWAY_URL =
-  process.env.SUMMER_GATEWAY_URL || "https://www.summerengine.com";
 
 const TOOL_BY_ENDPOINT: Record<string, string> = {
   "/api/mcp/generate/image": "summer_generate_image",
@@ -119,9 +117,10 @@ async function mcpGenerate(
     };
   }
 
+  const gatewayUrl = await resolveGatewayUrl();
   let res: Response;
   try {
-    res = await fetch(`${GATEWAY_URL}${endpoint}`, {
+    res = await fetch(`${gatewayUrl}${endpoint}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -167,9 +166,10 @@ async function mcpGet(
 ): Promise<{ data?: any; error?: string; status: number }> {
   const token = await getAuthToken();
   const suffix = searchParams?.size ? `?${searchParams.toString()}` : "";
+  const gatewayUrl = await resolveGatewayUrl();
   let res: Response;
   try {
-    res = await fetch(`${GATEWAY_URL}${endpoint}${suffix}`, {
+    res = await fetch(`${gatewayUrl}${endpoint}${suffix}`, {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         "X-Summer-Client": "summer-cli",
@@ -233,12 +233,13 @@ async function pollJob(
   const token = await getAuthToken();
   if (!token) return { error: "Not signed in" };
 
+  const gatewayUrl = await resolveGatewayUrl();
   const deadline = Date.now() + maxWaitMs;
 
   while (Date.now() < deadline) {
     try {
       const res = await fetch(
-        `${GATEWAY_URL}/api/mcp/jobs/${encodeURIComponent(jobId)}`,
+        `${gatewayUrl}/api/mcp/jobs/${encodeURIComponent(jobId)}`,
         {
           headers: { Authorization: `Bearer ${token}` },
           signal: AbortSignal.timeout(15_000),
@@ -786,7 +787,8 @@ Requires authentication: run 'npx summer-engine login' first.`,
       }
 
       try {
-        const res = await fetch(`${GATEWAY_URL}/api/mcp/jobs/${encodeURIComponent(jobId)}`, {
+        const gatewayUrl = await resolveGatewayUrl();
+        const res = await fetch(`${gatewayUrl}/api/mcp/jobs/${encodeURIComponent(jobId)}`, {
           headers: { Authorization: `Bearer ${token}` },
           signal: AbortSignal.timeout(15_000),
         });

@@ -44,6 +44,7 @@ import {
   getConfigValue,
   isConfigKey,
   readSummerConfig,
+  resolveGatewayUrl,
   setConfigValue,
   unsetConfigValue,
 } from "../config.js";
@@ -62,9 +63,6 @@ import {
 
 const require = createRequire(import.meta.url);
 const { version: CLI_VERSION } = require("../../../package.json");
-
-const GATEWAY_URL =
-  process.env.SUMMER_GATEWAY_URL || "https://www.summerengine.com";
 
 export type DispatchArgs = Record<string, unknown>;
 
@@ -356,10 +354,11 @@ async function gatewayGet(
   timeoutMs = 30_000
 ): Promise<DispatchArgs> {
   const token = await requireToken();
+  const gatewayUrl = await resolveGatewayUrl();
   const suffix = params && params.size ? `?${params.toString()}` : "";
   let res: Response;
   try {
-    res = await fetch(`${GATEWAY_URL}${endpoint}${suffix}`, {
+    res = await fetch(`${gatewayUrl}${endpoint}${suffix}`, {
       headers: gatewayHeaders(token, endpoint),
       signal: AbortSignal.timeout(timeoutMs),
     });
@@ -383,9 +382,10 @@ async function gatewayPost(
   timeoutMs = 120_000
 ): Promise<DispatchArgs> {
   const token = await requireToken();
+  const gatewayUrl = await resolveGatewayUrl();
   let res: Response;
   try {
-    res = await fetch(`${GATEWAY_URL}${endpoint}`, {
+    res = await fetch(`${gatewayUrl}${endpoint}`, {
       method: "POST",
       headers: {
         ...gatewayHeaders(token, endpoint),
@@ -419,11 +419,12 @@ async function pollGenerationJob(
   intervalMs = 5_000
 ): Promise<DispatchArgs> {
   const token = await requireToken();
+  const gatewayUrl = await resolveGatewayUrl();
   const deadline = Date.now() + maxWaitMs;
   let interval = intervalMs;
   while (Date.now() < deadline) {
     const res = await fetch(
-      `${GATEWAY_URL}/api/mcp/jobs/${encodeURIComponent(jobId)}`,
+      `${gatewayUrl}/api/mcp/jobs/${encodeURIComponent(jobId)}`,
       {
         headers: gatewayHeaders(token, "/api/mcp/jobs"),
         signal: AbortSignal.timeout(15_000),

@@ -190,7 +190,18 @@ describe("tool registration", () => {
     expect(tool.description).toContain(
       "no field for project files, chat content, or code"
     );
-    expect(tool.description).toContain("anonymous random install hash");
+    // Every body key the client sends is named, and the anonymous id is
+    // described as what it is (a random uuid, not a "hash").
+    for (const field of [
+      "entry_id", "outcome", "note", "deviation", "engine_version", "agent_model",
+      "toolkit_version", "client", "session_id", "install_id", "bearer",
+    ]) {
+      expect(tool.description, field).toContain(field);
+    }
+    expect(tool.description).toContain("uuid");
+    expect(tool.description).not.toContain("install hash");
+    expect(tool.description).toContain("first_run");
+    expect(tool.description).toContain("dropped:true");
     expect(tool.description).toContain("SUMMER_NO_TELEMETRY=1");
     expect(tool.description).toContain("DO_NOT_TRACK=1");
     expect(tool.description).toContain("future sessions");

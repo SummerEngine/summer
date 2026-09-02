@@ -25,7 +25,8 @@ import { createRequire } from "node:module";
 import { EngineApiClient, EngineRebindError, type EngineSnapshot } from "../api-client.js";
 import { missingEngineOpResult, resolveSingleOnlyOps } from "../capability-skew.js";
 import { lookupApiDocs } from "./api-docs.js";
-import { ImportHdriError, importPolyHavenHdri, type HdriResolution } from "./hdri-import.js";
+import { z, type ZodTypeAny } from "zod";
+import { ImportHdriError, importHdriArgsSchema, importPolyHavenHdri } from "./hdri-import.js";
 import {
   RUN_EDITOR_SCRIPT_FALLBACK,
   RUN_SCRIPT_FALLBACK,
@@ -48,13 +49,7 @@ import {
   unsetConfigValue,
 } from "../config.js";
 import { createDebugReportArtifact } from "./debug-report.js";
-import {
-  buildGameTaskPlan,
-  type AssetPolicy,
-  type GameTaskMode,
-  type GameTaskTarget,
-  type VerificationLevel,
-} from "./game-task-plan.js";
+import { buildGameTaskPlan, gameTaskPlanInputSchema } from "./game-task-plan.js";
 import {
   sendLibraryFeedback,
   type LibraryFeedbackReport,
@@ -618,6 +613,17 @@ function optStr(args: DispatchArgs, key: string): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
+/** Validate CLI args against the SAME zod schema the MCP face uses, so the
+ *  two surfaces reject the same inputs with a readable message. */
+function parseToolArgs<T extends ZodTypeAny>(schema: T, args: DispatchArgs, tool: string): z.output<T> {
+  const parsed = schema.safeParse(args);
+  if (parsed.success) return parsed.data as z.output<T>;
+  const issues = parsed.error.issues
+    .map((issue) => `${issue.path.join(".") || "args"}: ${issue.message}`)
+    .join("; ");
+  throw new ToolDispatchError(`Invalid arguments for ${tool}: ${issues}`);
+}
+
 async function snapshotResult(snap: EngineSnapshot, target: string): Promise<DispatchArgs> {
   const failure = extractEngineFailure(snap);
   if (failure) throw new ToolDispatchError(failure);
@@ -842,15 +848,9 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
 
   // --- creator (shared core capability, face: cli) ---
   entry("summer_import_hdri", "Search Poly Haven's CC0 HDRIs and import one as environment lighting", true, async (args, ctx) => {
+    const parsed = parseToolArgs(importHdriArgsSchema, args, "import-hdri");
     try {
-      return await importPolyHavenHdri(
-        {
-          query: optStr(args, "query"),
-          assetId: optStr(args, "assetId"),
-          resolution: optStr(args, "resolution") as HdriResolution | undefined,
-        },
-        () => ctx.engine()
-      );
+      return await importPolyHavenHdri(parsed, () => ctx.engine());
     } catch (err) {
       if (err instanceof ImportHdriError) {
         throw new ToolDispatchError(`${err.message}${err.hint ? ` ${err.hint}` : ""}`);
@@ -1141,13 +1141,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
 
   // --- project ---
   entry("summer_start_game_task", "Plan the right Summer workflow for a game-building task", false, async (args) =>
-    buildGameTaskPlan({
-      goal: str(args, "goal"),
-      mode: optStr(args, "mode") as GameTaskMode | undefined,
-      target: optStr(args, "target") as GameTaskTarget | undefined,
-      assetPolicy: optStr(args, "assetPolicy") as AssetPolicy | undefined,
-      verification: optStr(args, "verification") as VerificationLevel | undefined,
-    })
+    buildGameTaskPlan(parseToolArgs(gameTaskPlanInputSchema, args, "start-game-task"))
   ),
   entry("summer_get_agent_playbook", "AI-first operating guide for Summer MCP", false, async () => {
     // v3-followup: the playbook content lives inside src/mcp/tools/project-tools.ts
@@ -1170,23 +1164,13 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
         error: err instanceof Error ? err.message : String(err),
       })),
     ]);
-    // A failed rebind keeps the previous identity; report that honestly
-    // instead of echoing the stale hash as if the switch had been followed.
-    let boundProjectIdHash: string | undefined;
-    let rebindError: string | undefined;
-    try {
-      boundProjectIdHash = await client.rebind();
-    } catch (error) {
-      if (!(error instanceof EngineRebindError)) throw error;
-      rebindError = error.message;
-    }
+    const boundProjectIdHash = await client.rebind();
     return {
       health,
       project,
       scene,
       mainScene: projectSettingValue(project, ["application/run/main_scene", "run/main_scene"]),
       boundProjectIdHash,
-      ...(rebindError ? { rebindError } : {}),
     };
   }),
   entry("summer_open_main_scene", "Open the project's configured main scene", true, async (_args, ctx) => {

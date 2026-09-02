@@ -84,12 +84,34 @@ describe("kill switches", () => {
   });
 });
 
-describe("first-run notice", () => {
-  it("appears exactly once per machine", async () => {
+describe("first-run notice (CONTRACT §10: notice BEFORE the first event)", () => {
+  it("the first call on a machine sends NOTHING and returns first_run + notice; the second call sends", async () => {
     const first = await sendLibraryFeedback(input());
-    expect(first.notice).toBe(FIRST_RUN_NOTICE);
+    expect(first).toEqual({ recorded: false, first_run: true, notice: FIRST_RUN_NOTICE });
+    expect(fetchMock).not.toHaveBeenCalled();
     const second = await sendLibraryFeedback(input());
+    expect(second).toEqual({ recorded: true });
     expect(second.notice).toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("the notice discloses every field the POST carries and tells the agent nothing was sent", async () => {
+    const { notice } = await sendLibraryFeedback(input());
+    for (const field of [
+      "entry_id", "outcome", "note", "deviation", "engine_version", "agent_model",
+      "toolkit_version", "client", "session_id", "install_id", "bearer",
+    ]) {
+      expect(notice, field).toContain(field);
+    }
+    expect(notice).toContain("uuid");
+    expect(notice).not.toContain("hash");
+    expect(notice).toContain("NOTHING has been sent");
+    expect(notice).toContain("SUMMER_NO_TELEMETRY=1");
+    expect(notice).toContain("DO_NOT_TRACK=1");
+    // The disclosure names exactly the body keys the second call sends.
+    await sendLibraryFeedback({ ...input(), client: "claude-code 2.1.0" });
+    const body = sentBody();
+    for (const key of Object.keys(body)) expect(notice, key).toContain(key);
   });
 
   it("consumeFirstRunNotice persists a marker file", async () => {
@@ -104,6 +126,12 @@ describe("first-run notice", () => {
 });
 
 describe("anonymous vs authed payloads", () => {
+  beforeEach(async () => {
+    // The first call on a machine never sends; consume it so these tests
+    // observe the POST.
+    await consumeFirstRunNotice();
+  });
+
   it("anonymous: no bearer header, install_id in body, persisted across calls", async () => {
     const result = await sendLibraryFeedback(input());
     expect(result.recorded).toBe(true);
@@ -181,10 +209,10 @@ describe("failure silence", () => {
     await consumeFirstRunNotice();
   });
 
-  it("network failure returns recorded:true, queued:false and never throws", async () => {
+  it("network failure returns recorded:false, dropped:true and never throws", async () => {
     fetchMock.mockRejectedValue(new Error("ECONNREFUSED"));
     const result = await sendLibraryFeedback(input());
-    expect(result).toEqual({ recorded: true, queued: false });
+    expect(result).toEqual({ recorded: false, dropped: true });
   });
 
   it("abort (timeout) is swallowed the same way", async () => {
@@ -199,7 +227,7 @@ describe("failure silence", () => {
     const started = Date.now();
     const result = await sendLibraryFeedback(input());
     expect(Date.now() - started).toBeLessThan(5000);
-    expect(result).toEqual({ recorded: true, queued: false });
+    expect(result).toEqual({ recorded: false, dropped: true });
   });
 
   it("passes a 1s abort signal to fetch", async () => {
@@ -208,15 +236,15 @@ describe("failure silence", () => {
     expect(init.signal).toBeInstanceOf(AbortSignal);
   });
 
-  it("non-2xx response is honest: recorded:true, queued:false", async () => {
+  it("non-2xx response is honest: recorded:false, dropped:true (no queue, no retry)", async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 429 }));
     const result = await sendLibraryFeedback(input());
-    expect(result).toEqual({ recorded: true, queued: false });
+    expect(result).toEqual({ recorded: false, dropped: true });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("2xx response returns plain recorded:true (no queued key)", async () => {
+  it("2xx response returns exactly { recorded: true }", async () => {
     const result = await sendLibraryFeedback(input());
-    expect(result.recorded).toBe(true);
-    expect("queued" in result).toBe(false);
+    expect(result).toEqual({ recorded: true });
   });
 });

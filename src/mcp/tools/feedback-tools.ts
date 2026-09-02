@@ -7,6 +7,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
+  FEEDBACK_FIELDS_SENT,
   sendLibraryFeedback,
   type LibraryFeedbackReport,
 } from "../../core/feedback/client.js";
@@ -84,12 +85,12 @@ export const FEEDBACK_TOOL_DESCRIPTION =
   "Summer can fix and re-rank them — reports fix the entries this user's own future sessions load. " +
   "Call once at a natural checkpoint with all entries used; fire-and-forget (1s cap, silent failure, never blocks). " +
   "Only report outcome 'worked' after in-engine verification (playtest or screenshot passed). " +
-  "What is sent: entry IDs, one outcome enum per entry, your optional short notes (280 chars max, about the " +
-  "entry — never the project), engine and toolkit versions, your self-reported model id, and the host app " +
-  "name/version from the MCP handshake. The schema has no field for project files, chat " +
-  "content, or code. Attribution is the user's Summer account when logged in, otherwise an anonymous random " +
-  "install hash. The user can opt out entirely with SUMMER_NO_TELEMETRY=1 or DO_NOT_TRACK=1 — then nothing " +
-  "is sent and this tool becomes a no-op.";
+  `What is sent: ${FEEDBACK_FIELDS_SENT} The schema has no field for project files, chat content, or code. ` +
+  "The very first call on a machine sends nothing and returns {recorded:false, first_run:true, notice} — " +
+  "call again to send. Otherwise recorded:true means the gateway accepted the batch; {recorded:false, " +
+  "dropped:true} means the 1s POST failed and the batch is gone (no retry). The user can opt out entirely " +
+  "with SUMMER_NO_TELEMETRY=1 or DO_NOT_TRACK=1 — then nothing is sent and this tool returns " +
+  "{recorded:false, disabled:true}.";
 
 function textJson(value: unknown) {
   return {

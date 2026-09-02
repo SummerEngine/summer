@@ -9,8 +9,10 @@
  *
  * Consent (SELF_IMPROVING_LIBRARY.md §3.4):
  * - SUMMER_NO_TELEMETRY=1 or DO_NOT_TRACK=1 → nothing is ever sent.
- * - First-run notice: the first call ever made on a machine returns a
- *   one-paragraph notice of what was sent + the opt-out env vars.
+ * - First-run notice BEFORE the first event (CONTRACT §10): the first call
+ *   ever made on a machine sends NOTHING and returns a one-paragraph notice
+ *   of what a report contains + the opt-out env vars; sending starts on the
+ *   next call.
  * - Authenticated installs attribute via the auth bearer; anonymous
  *   installs use a random persisted install id (a uuid — no hardware,
  *   user, or project identity).
@@ -82,7 +84,8 @@ export async function getInstallId(): Promise<string> {
 /**
  * First-run notice gate: returns true exactly once per machine — the first
  * time the feedback tool is ever called — and writes the marker so every
- * later call returns false. Errors → false (no notice beats a crash, and
+ * later call returns false. That first call sends nothing (the notice must
+ * precede the first event). Errors → false (no notice beats a crash, and
  * the disclosure also lives in the tool description).
  */
 export async function consumeFirstRunNotice(): Promise<boolean> {
@@ -96,15 +99,23 @@ export async function consumeFirstRunNotice(): Promise<boolean> {
   }
 }
 
+/** Every field a report POST carries, in one place so the tool description,
+ *  the first-run notice and the tests cannot disagree about what is sent. */
+export const FEEDBACK_FIELDS_SENT =
+  "the library entry ids you used (entry_id), one outcome word per entry, your optional note and deviation " +
+  "(280 characters max each, about the entry itself), engine_version, agent_model (your self-reported model id), " +
+  "toolkit_version (this CLI's version), client (the host app name/version from the MCP handshake), " +
+  "session_id (a random id per MCP server process, never persisted), and — only when not logged in — " +
+  "install_id (a random uuid stored in ~/.summer/; no hardware, user, or project identity). When logged in, " +
+  "the Summer account bearer token is sent instead of install_id.";
+
 export const FIRST_RUN_NOTICE =
-  "First feedback report from this machine — what was just sent to Summer: the library entry IDs you used, " +
-  "an outcome word for each, your optional short notes (280 characters max, about the entry itself), the " +
-  "engine/toolkit versions, the reporting model's self-reported id, and the host app name/version from the " +
-  "MCP handshake. The report schema has no field for project files, chat content, or code. " +
-  "Reports are attributed to your Summer account if you are logged in, otherwise to an anonymous random " +
-  "install id stored in ~/.summer/. They are used to fix and re-rank library entries, so this user's own " +
-  "future sessions load better ones. Opt out any time by setting SUMMER_NO_TELEMETRY=1 or DO_NOT_TRACK=1 — " +
-  "then nothing is ever sent. This notice appears only once.";
+  "First use of summer_library_feedback on this machine — NOTHING has been sent yet, including this batch. " +
+  "Call the tool again with the same reports to send them; this notice appears only once. " +
+  `What every report sends to Summer (POST ${FEEDBACK_PATH}): ${FEEDBACK_FIELDS_SENT} ` +
+  "The report schema has no field for project files, chat content, or code. Reports are used to fix and " +
+  "re-rank library entries, so this user's own future sessions load better ones. Opt out any time by setting " +
+  "SUMMER_NO_TELEMETRY=1 or DO_NOT_TRACK=1 — then nothing is ever sent.";
 
 export interface LibraryFeedbackReport {
   entry_id: string;
@@ -134,13 +145,17 @@ export interface SendLibraryFeedbackInput {
 }
 
 export interface SendLibraryFeedbackResult {
-  /** false only when a kill-switch env var suppressed the send entirely. */
+  /** true ONLY when the gateway accepted the report (2xx) within the timeout. */
   recorded: boolean;
-  /** present (true) only when disabled by env. */
+  /** present (true) only when disabled by env — nothing sent. */
   disabled?: boolean;
-  /** present (false) only when the POST did not land — honest, non-fatal. */
-  queued?: boolean;
-  /** present only on the very first call ever made on this machine. */
+  /** present (true) only on the very first call ever made on this machine —
+   *  nothing sent; `notice` explains and asks for a re-send. */
+  first_run?: boolean;
+  /** present (true) when the POST failed / timed out / was refused. There is
+   *  no queue and no retry: the batch is gone. Honest, non-fatal. */
+  dropped?: boolean;
+  /** present only alongside first_run. */
   notice?: string;
 }
 
@@ -148,10 +163,10 @@ export interface SendLibraryFeedbackResult {
  * Send one batched feedback report. Never throws. Blocks at most TIMEOUT_MS.
  *
  * Result matrix:
- * - env kill switch          → { recorded: false, disabled: true }
+ * - env kill switch          → { recorded: false, disabled: true }     (nothing sent)
+ * - first call on machine    → { recorded: false, first_run: true, notice } (nothing sent)
  * - gateway accepted (2xx)   → { recorded: true }
- * - any failure / timeout    → { recorded: true, queued: false }
- * - first call on machine    → + { notice: FIRST_RUN_NOTICE }
+ * - any failure / timeout    → { recorded: false, dropped: true }      (no retry exists)
  */
 export async function sendLibraryFeedback(
   input: SendLibraryFeedbackInput
@@ -160,13 +175,13 @@ export async function sendLibraryFeedback(
     return { recorded: false, disabled: true };
   }
 
-  const result: SendLibraryFeedbackResult = { recorded: true };
+  // The notice must precede the first event: the first call on a machine
+  // returns the disclosure and sends nothing at all.
+  if (await consumeFirstRunNotice()) {
+    return { recorded: false, first_run: true, notice: FIRST_RUN_NOTICE };
+  }
 
   try {
-    if (await consumeFirstRunNotice()) {
-      result.notice = FIRST_RUN_NOTICE;
-    }
-
     let token: string | null = null;
     try {
       token = await getAuthToken();
@@ -200,14 +215,14 @@ export async function sendLibraryFeedback(
         headers,
         body: JSON.stringify(body),
       });
-      if (!res.ok) result.queued = false;
+      if (!res.ok) return { recorded: false, dropped: true };
     } finally {
       clearTimeout(timer);
     }
   } catch {
     // Silent failure is the contract: no retry, no log, no throw.
-    result.queued = false;
+    return { recorded: false, dropped: true };
   }
 
-  return result;
+  return { recorded: true };
 }

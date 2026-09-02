@@ -643,6 +643,45 @@
       "recommended": true
     },
     {
+      "id": "skill/celeste-momentum-platforming",
+      "kind": "skill",
+      "version": "0.1.0",
+      "content_hash": "f5d8082f77862ee883f71418e82d56e15fd231be26fe9cbe0c062993f3824f9c",
+      "summary": "Celeste-style 2D precision platformer movement — momentum running, coyote time, variable jumps, dash, wall jump/slide, climb stamina, pixel corner correction.",
+      "use_when": [
+        "make the platformer movement feel like Celeste",
+        "add coyote time, variable jump height, and a dash to my 2D platformer",
+        "add wall jumps, wall slides, or climb stamina to a 2D character",
+        "my 2D platformer controller feels unfair or unresponsive"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "gameplay",
+          "character-controller",
+          "game-design"
+        ],
+        "modalities": [
+          "scripts",
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/design-mechanic",
+          "skill/game-feel",
+          "skill/debugging-game-feel"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
       "id": "skill/character-animation-wiring",
       "kind": "skill",
       "version": "1.0.1",
@@ -1374,6 +1413,45 @@
       "recommended": true
     },
     {
+      "id": "skill/godogen-visual-proof-game-generation",
+      "kind": "skill",
+      "version": "0.1.0",
+      "content_hash": "a2bb39252723b11ea81fd6a202f028d5a1389351385d35ff39fb39e360aefa69",
+      "summary": "Godogen-style game generation with a visual QC loop — capture frames from the running game, self-verify against the brief, bounded fix rounds, proof clip.",
+      "use_when": [
+        "generate a whole small game from a short brief and prove it actually runs",
+        "the agent says the game works but never looked at it running — make it verify from captured frames",
+        "add a visual QC loop with a capped number of fix rounds and a proof recording at the end",
+        "set up headless capture so an unattended generation run ends with a 15-20 second proof clip"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "agent-workflow",
+          "verification"
+        ],
+        "modalities": [
+          "project",
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/verification-before-completion",
+          "skill/playtesting-a-feature",
+          "skill/verifying-scenes",
+          "skill/make-game"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
       "id": "skill/headless-scripting",
       "kind": "skill",
       "version": "1.1.2",
@@ -1499,6 +1577,46 @@
       },
       "status": "stable",
       "recommended": true
+    },
+    {
+      "id": "skill/lumera-single-image-scene-reconstruction",
+      "kind": "skill",
+      "version": "0.1.0",
+      "content_hash": "710d95fea5f7d92bd0adade36b7e73d65982aacf1e80f100affa9ebbfc81065f",
+      "summary": "Lumera-style single image to editable 3D scene — VLM-parsed object boxes and parametric lights, per-object meshes, HDR probe, .tscn assembly, refinement loop.",
+      "use_when": [
+        "turn this concept art or screenshot into an editable 3D scene with separate objects and lights",
+        "block out a level from a single reference image",
+        "reconstruct a room from one photo as movable meshes and tunable lights, not a point cloud or splat",
+        "build a bounded agent loop that refines a generated scene against a reference image"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "assets",
+          "pipeline",
+          "3d",
+          "scenes"
+        ],
+        "modalities": [
+          "scenes",
+          "3d-models"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/environment-kit",
+          "skill/3d-lighting",
+          "skill/scene-composition"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
     },
     {
       "id": "skill/make-game",
@@ -1883,6 +2001,81 @@
       "recommended": true
     },
     {
+      "id": "skill/psx-retro-rendering",
+      "kind": "skill",
+      "version": "0.1.0",
+      "content_hash": "10dff93c018ab5ea00d628f1bffa6ee9dac141ed020c8031ae89580d1f672994",
+      "summary": "Hardware-informed PlayStation 1 rendering in Godot 4 — low-res output, RGB5 and exact dither, affine textures, vertex snapping, blend modes, fog; limits named.",
+      "use_when": [
+        "make my game render like a PlayStation 1 game, with texture warping, vertex wobble, and dithering",
+        "add a PSX retro shader to the 3D scene",
+        "check an existing PS1-style shader against what the real hardware did",
+        "my retro shader looks merely pixelated, not like a real PS1 game"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "rendering",
+          "3d"
+        ],
+        "modalities": [
+          "shaders",
+          "scenes",
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/art-direction",
+          "skill/3d-lighting"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
+      "id": "skill/realtime-wet-surfaces",
+      "kind": "skill",
+      "version": "0.1.0",
+      "content_hash": "0a616c011961e34f7c78fb3584cfacef785a1938d88a6fb9bb028b884562c3d7",
+      "summary": "Real-time wetness on existing Godot 4 materials without losing their values — value-copying wet shader, geometry-driven wet mask, instance-uniform wet amount.",
+      "use_when": [
+        "make surfaces look wet when it rains and dry off afterwards",
+        "add rain wetness to the level without redoing every material",
+        "darken and gloss up the ground after rain, driven by a weather system",
+        "wet cave, shoreline, or post-rain look on existing PBR materials"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "rendering",
+          "vfx"
+        ],
+        "modalities": [
+          "shaders",
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/vfx-water-ripple",
+          "skill/3d-lighting"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
       "id": "skill/remote-deploy",
       "kind": "skill",
       "version": "1.0.1",
@@ -2016,6 +2209,43 @@
       },
       "status": "stable",
       "recommended": true
+    },
+    {
+      "id": "skill/scene-hierarchy-design",
+      "kind": "skill",
+      "version": "0.1.0",
+      "content_hash": "a0800fdae14da29337edb6aafd41da115afe0337cb230780e4b22fc54f551faf",
+      "summary": "Structure Summer Engine scenes by access pattern — asset vs live hierarchies, wrapper nodes per operation, sub-scenes for reuse, path-agnostic logic.",
+      "use_when": [
+        "how should I structure the node hierarchy for this level or character",
+        "reorganize a scene that grew ad hoc — long node chains, duplicated clusters, hard-to-delete groups",
+        "should this setup be inline or its own sub-scene",
+        "scripts break whenever I move nodes because of hardcoded paths"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "project",
+          "agent-workflow"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/scene-composition",
+          "skill/gdscript-patterns"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
     },
     {
       "id": "skill/scene-scripting",
@@ -2233,6 +2463,45 @@
         ]
       },
       "status": "stable",
+      "recommended": false
+    },
+    {
+      "id": "skill/skintokens-auto-rigging",
+      "kind": "skill",
+      "version": "0.1.0",
+      "content_hash": "a04e34c0cd0336cb0faa4ddf4f442a034c6152922908a01210e5f109e558bdb5",
+      "summary": "Offline auto-rigging with skin-tokens.cpp (GGML SkinTokens/TokenRig port) — skeleton and skin weights from a static GLB mesh on CPU/Vulkan, into Godot 4.",
+      "use_when": [
+        "auto-rig this static GLB mesh so I can animate it",
+        "generate skin weights for a mesh that already has a skeleton",
+        "batch-rig many creature or character meshes without hand-painting weights",
+        "I have an unrigged AI-generated character and need a first-pass rig"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "assets",
+          "pipeline",
+          "3d",
+          "animation"
+        ],
+        "modalities": [
+          "3d-models",
+          "assets"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/character-model",
+          "skill/retarget"
+        ]
+      },
+      "status": "preview",
       "recommended": false
     },
     {

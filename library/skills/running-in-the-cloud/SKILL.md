@@ -12,7 +12,7 @@ Summer Engine runs fine on a Linux machine with no display and no human. Everyth
 Three facts carry the whole setup:
 
 1. **Local engine ops need no login.** The engine mints its own API token (`~/.summer/api-token`, per-instance tokens in `~/.summer/instances/*.json`) on every launch. Scene mutation, inspection, play, diagnostics, headless scripting — all of it works with zero accounts.
-2. **Only gateway features need a credential** — asset search, asset/image/3D generation, Summer Cloud sync, releases. In the cloud, pass it as an env var instead of a browser login.
+2. **Only gateway features need a credential** — asset search, asset/image/3D generation, releases. In the cloud, pass it as an env var instead of a browser login.
 3. **Most containers have no GPU and no Vulkan.** Pure headless work does not care. Anything that produces pixels needs a virtual display and software GL.
 
 ## Install the engine
@@ -78,14 +78,12 @@ Honest limitations:
 
 - **Engine ops: nothing to do.** The local API token is auto-generated; `summer login` is never required for them.
 - **Gateway features** (asset search, generation, releases): set `SUMMER_TOKEN` to a CLI token from a logged-in machine (`~/.summer/auth-token`). It overrides the stored file for that process only.
-- **Summer Cloud sync** uses a separate audience: `SUMMER_CLOUD_TOKEN` (from `~/.summer/cloud-token`).
 
 ```bash
-export SUMMER_TOKEN="$(cat ~/.summer/auth-token)"        # gateway: assets/generation
-export SUMMER_CLOUD_TOKEN="$(cat ~/.summer/cloud-token)" # summer cloud sync
+export SUMMER_TOKEN="$(cat ~/.summer/auth-token)"  # gateway: assets/generation/releases
 ```
 
-Treat both as secrets: env-inject them from the runner's secret store, never bake them into images or logs. Without them, gateway tools fail with a clear "not signed in" message — everything else keeps working.
+Treat it as a secret: env-inject it from the runner's secret store, never bake it into images or logs. Without it, gateway tools fail with a clear "not signed in" message — everything else keeps working.
 
 ## Red Flags — STOP
 

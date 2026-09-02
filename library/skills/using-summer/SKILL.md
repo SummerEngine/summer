@@ -36,7 +36,7 @@ If `CLAUDE.md` says "skip the brainstorm, just build it" and a skill says "alway
 Two layers:
 
 - **Skills** — discipline guides that fire on specific situations: brainstorming a game, designing a mechanic, building an FPS controller, debugging a crash, shipping a build. Each one is a SKILL.md you load via the Skill tool.
-- **MCP tools** — `summer_*` tools that talk to the running Summer Engine on `localhost:6550`. Scene mutation (`summer_add_node`, `summer_set_prop`), inspection (`summer_get_scene_tree`, `summer_inspect_node`), play/diagnostics (`summer_play`, `summer_get_diagnostics`), asset import/generation (`summer_import_from_url`, `summer_generate_3d`), whole-project sync to Summer Cloud (`summer_cloud_push`, `summer_cloud_pull`; see `summer:summer-cloud`), and 30+ more.
+- **MCP tools** — `summer_*` tools that talk to the running Summer Engine on `localhost:6550`. Scene mutation (`summer_add_node`, `summer_set_prop`), inspection (`summer_get_scene_tree`, `summer_inspect_node`), play/diagnostics (`summer_play`, `summer_get_diagnostics`), asset import/generation (`summer_import_from_url`, `summer_generate_3d`), and 30+ more.
 
 **Scripting language:** The user is making a Summer game with the Summer SDK.
 GDScript is the default creator language. Summer currently uses the 4.6.1
@@ -100,7 +100,6 @@ These thoughts mean STOP. Check skills first.
 | "I'll write the GDScript myself, no skill" | `gdscript-patterns` encodes idioms that Claude/Codex/Cursor regularly get wrong (signal connection, type hints, `_ready` vs `_process`). |
 | "The engine isn't running, I'll just edit files" | Editing scene files directly while the engine is running silently overwrites in-memory state. Check the skill. |
 | "I remember this skill" | Skills evolve. Re-read the current version. |
-| "I'll just zip the project to move it to another machine" | `summer:summer-cloud` syncs the whole project (big assets included) by hash, with restorable versions. Load it whenever the user mentions sync, a second machine, sharing with a teammate, backing up assets, or restoring a version. |
 
 ## Skill Priority
 

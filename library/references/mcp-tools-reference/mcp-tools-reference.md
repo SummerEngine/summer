@@ -125,20 +125,8 @@
 | Tool | Use |
 |---|---|
 | `summer_start_game_task` | Route a user goal into the right workflow, skills, MCP tool groups, asset policy, gates, and verification path. |
-| `summer_get_project_context` | Project, scene, and `.summer` memory summary — call at start of session. |
-| `summer_get_agent_playbook` | Daily operating contract — call at start of session. |
-
-### Cloud sync (7)
-
-| Tool | Use |
-|---|---|
-| `summer_cloud_init` | Enable Summer Cloud for a project. |
-| `summer_cloud_status` | Show Summer Cloud sync status. |
-| `summer_cloud_push` | Push local project changes to Summer Cloud. |
-| `summer_cloud_pull` | Pull Summer Cloud changes into the local project. |
-| `summer_cloud_restore` | Restore a retained cloud version, or a local pre-sync checkpoint. |
-| `summer_cloud_checkpoints` | List local pre-sync checkpoints. |
-| `summer_cloud_conflicts` | List conflict sets, or restore a preserved conflict file. |
+| `summer_get_project_context` | Project, scene, and `.summer` memory summary — call at start of session. Binds the session to the open project and surfaces a `capabilitySkewWarning` when the engine build and CLI have drifted; tools whose op the engine provably lacks return a structured `engine_lacks_op` result instead of running. |
+| `summer_get_agent_playbook` | Daily operating contract (observe-first loop, content routing, invariants, verification ritual) — call at start of session. Also served natively as the `summer_agent_playbook` MCP prompt. |
 
 ### Creator platform (4)
 

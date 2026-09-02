@@ -70,7 +70,7 @@ If neither is available (an older engine build that predates `engineBinaryPath`,
 |---|---|
 | macOS | `/Applications/Summer.app/Contents/MacOS/Summer` |
 | Windows | `%LOCALAPPDATA%\Summer\current\Summer.exe` |
-| Linux | wherever the AppImage/binary was installed |
+| Linux | `~/.summer/engine/summer-linux-x86_64`, or `$SUMMER_ENGINE_BINARY` (see `summer:running-in-the-cloud`) |
 
 <EXTREMELY-IMPORTANT>
 There is no `godot` binary on a Summer user's machine. `godot --headless`, `godot4`, `/usr/local/bin/godot` — none of these exist. A command built on that name fails with "command not found" on every single user, and no amount of retrying changes it. This skill exists partly because that exact instruction shipped in our own docs for months.
@@ -348,8 +348,15 @@ For writing probes — the `SummerProbeBase` API, the coroutine rules, what is a
 
 Short list, and it is short on purpose. Everything not on it is worth attempting.
 
-- **Lightmap baking.** `LightmapGI::bake` is not runtime-callable. Editor process only.
-- **Occlusion culling bake.** `OccluderInstance3D.bake_single_node`, same.
+- **Lightmap baking — headless specifically.** The binding exists on this build
+  (Summer script-binds `LightmapGI.bake(from_node, image_data_path)`), but the GPU
+  lightmapper needs a RenderingDevice, which a `--headless` process never has: the
+  call returns `BAKE_ERROR_NO_LIGHTMAPPER`. Bake from `summer_run_script` in the
+  **live editor** instead — a normal desktop editor works as-is; a cloud container
+  needs the xvfb + GL renderer setup from `summer:running-in-the-cloud`. Wrong
+  reason kills the right fix: it is "no renderer in this process", not "no binding".
+- **Occlusion culling bake.** `OccluderInstance3D.bake_single_node` is not
+  script-callable at all. Editor-button only.
 - **Anything needing `EditorInterface`.** Outside the editor, `ClassDB.can_instantiate("EditorScript")` is `false`.
   **Trap:** `Engine.has_singleton("EditorInterface")` returns **`true`** even in a plain headless script — it lies. Retrieving the singleton then fails with `Can't retrieve singleton 'EditorInterface' outside of editor`. Test with `ClassDB.can_instantiate("EditorScript")`, which tells the truth.
 

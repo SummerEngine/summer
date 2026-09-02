@@ -87,9 +87,14 @@ Reference implementation: `computeContentHash()` in `index.ts`.
 
 ## Count-claims guard (part of `--check`)
 
-Scans `README.md`, `AGENTS.md`, `GEMINI.md` for numeric claims matching
-`\b(\d+)[ -](tools?|skills?)\b` (e.g. "58 tools", "58-tool", "3 skills") and
-fails when the number differs from `counts.json`.
+Scans the docs that actually carry numeric claims — `README.md`, `AGENTS.md`,
+`GEMINI.md`, `CLAUDE.md`, `library/references/**/*.md`, `_persona/**/*.md`,
+`.opencode/**/*.md`, `docs/*.md` (top level only; `docs/design/` is a dated
+historical record), `integrations/**/*.md` — for claims matching
+`(?<![\w.])(\d+)[ -](tools?|skills?)(?![\w-])` (e.g. "58 tools", "58-tool",
+"3 skills") and fails when the number differs from `counts.json`. The
+look-arounds keep "4.6 tools" and "pre-v3 skill" (versions), "skills-based",
+and "3-toolkit" from matching.
 
 Limitations (simple, honest regex — by design):
 

@@ -13,7 +13,7 @@ import {
 import { applyManifests } from "./apply.ts";
 import { manifestBanner } from "./shared.ts";
 import { checkRegistry } from "./check.ts";
-import { checkCountClaims } from "./count-claims.ts";
+import { checkCountClaims, collectCountClaimFiles, CLAIM_PATTERN } from "./count-claims.ts";
 import { MANIFEST_TARGETS, allTargets } from "./targets.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -411,6 +411,48 @@ describe("count-claims guard", () => {
     expect(violations).toEqual([
       { file: "AGENTS.md", line: 2, claim: "7 skills", found: 7, expected: 2, noun: "skills" },
     ]);
+  });
+
+  it("scans the docs that carry the live claims: references, CLAUDE.md, _persona, .opencode, docs/*.md, integrations", () => {
+    const root = tmpDir("genreg-claims-scope-");
+    const write = (rel: string, text: string) => {
+      const abs = path.join(root, rel);
+      fs.mkdirSync(path.dirname(abs), { recursive: true });
+      fs.writeFileSync(abs, text);
+    };
+    write("CLAUDE.md", "70 tools here\n");
+    write("library/references/mcp-tools-reference/mcp-tools-reference.md", "## Tool surface (70 tools)\n");
+    write("_persona/summer/SOUL.md", "I know 70 tools\n");
+    write(".opencode/INSTALL.md", "installs 83 skills\n");
+    write("docs/OVERVIEW.md", "70 tools and 83 skills\n");
+    write("docs/design/ROADMAP.md", "historical: 62 tools, 79 skills\n"); // NOT scanned (dated record)
+    write("integrations/cursor/README.md", "a 5-skill gap\n");
+    write("scripts/notes.md", "9 tools\n"); // NOT scanned
+    expect(collectCountClaimFiles(root)).toEqual([
+      ".opencode/INSTALL.md",
+      "CLAUDE.md",
+      "_persona/summer/SOUL.md",
+      "docs/OVERVIEW.md",
+      "integrations/cursor/README.md",
+      "library/references/mcp-tools-reference/mcp-tools-reference.md",
+    ]);
+    const violations = checkCountClaims(root, { byKind: { tool: 69, skill: 83 } });
+    expect(violations.map((v) => `${v.file}:${v.line} ${v.claim}`)).toEqual([
+      "CLAUDE.md:1 70 tools",
+      "_persona/summer/SOUL.md:1 70 tools",
+      "docs/OVERVIEW.md:1 70 tools",
+      "integrations/cursor/README.md:1 5-skill",
+      "library/references/mcp-tools-reference/mcp-tools-reference.md:1 70 tools",
+    ]);
+  });
+
+  it("claim pattern: no false positives on versions, compounds, or hyphenated modifiers", () => {
+    const matches = (text: string) => [...text.matchAll(CLAIM_PATTERN)].map((m) => m[0]);
+    expect(matches("Godot 4.6 tools are great")).toEqual([]); // "4.6 tools" = version
+    expect(matches("every pre-v3 skill path has an alias")).toEqual([]); // "v3 skill" = version
+    expect(matches("a 12 skills-based approach")).toEqual([]); // "skills-based"
+    expect(matches("a 3-toolkit and a 3-tool-chain")).toEqual([]); // hyphen continues the compound
+    expect(matches("ships 58-tool MCP bridge with 79 skills and 1 skill.")).toEqual(["58-tool", "79 skills", "1 skill"]);
   });
 });
 

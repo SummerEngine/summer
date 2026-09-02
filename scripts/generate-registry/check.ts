@@ -5,7 +5,8 @@
  * Regenerates in memory and byte-compares against:
  *  1. every committed file in registry/generated/ (missing, extra, differing),
  *  2. every applied root manifest per targets.ts,
- *  3. count claims in README.md / AGENTS.md / GEMINI.md vs counts.json.
+ *  3. numeric "N tools"/"N skills" claims in the scanned docs (see
+ *     count-claims.ts for the exact scope) vs counts.json.
  *
  * Returns a precise drift summary; the CLI exits 1 on any drift.
  */

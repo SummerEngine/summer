@@ -295,6 +295,45 @@ function installResultSizeLogger(server: {
   return () => registeredToolCount;
 }
 
+/**
+ * Build the MCP server with every Summer tool registered, without connecting
+ * a transport. startMcpServer() uses this; tests use it to count the live
+ * tool surface against registry/generated/counts.json.
+ */
+export function createMcpServer(): {
+  server: McpServer;
+  getRegisteredToolCount: () => number;
+} {
+  const server = new McpServer({
+    name: "summer-engine",
+    version,
+  });
+
+  // Passive observability: log result-size to stderr but do not modify
+  // results. See installResultSizeLogger above.
+  const getRegisteredToolCount = installResultSizeLogger(
+    server as unknown as { tool: (...args: unknown[]) => unknown }
+  );
+
+  registerSceneTools(server);
+  registerDebugTools(server);
+  registerVisualTools(server);
+  registerProjectTools(server);
+  registerFileTools(server);
+  registerAssetTools(server);
+  registerGenerateTools(server);
+  registerCreatorTools(server);
+  registerFeedbackTools(server);
+  registerScriptTools(server);
+  registerPerceptionTools(server);
+  registerSpatialTools(server);
+  // The playbook is also an MCP prompt so prompt-surfacing hosts get it
+  // natively (same content as the summer_get_agent_playbook tool).
+  registerPlaybookPrompt(server);
+
+  return { server, getRegisteredToolCount };
+}
+
 export interface StartMcpServerOptions {
   projectPath?: string;
   instanceId?: string;
@@ -324,32 +363,7 @@ export async function startMcpServer(
     },
   });
 
-  const server = new McpServer({
-    name: "summer-engine",
-    version,
-  });
-
-  // Passive observability: log result-size to stderr but do not modify
-  // results. See installResultSizeLogger above.
-  const getRegisteredToolCount = installResultSizeLogger(
-    server as unknown as { tool: (...args: unknown[]) => unknown }
-  );
-
-  registerSceneTools(server);
-  registerDebugTools(server);
-  registerVisualTools(server);
-  registerProjectTools(server);
-  registerFileTools(server);
-  registerAssetTools(server);
-  registerGenerateTools(server);
-  registerCreatorTools(server);
-  registerFeedbackTools(server);
-  registerScriptTools(server);
-  registerPerceptionTools(server);
-  registerSpatialTools(server);
-  // The playbook is also an MCP prompt so prompt-surfacing hosts get it
-  // natively (same content as the summer_get_agent_playbook tool).
-  registerPlaybookPrompt(server);
+  const { server, getRegisteredToolCount } = createMcpServer();
 
   // Fire-and-forget — never block tool registration on the npm registry.
   void probeBootDrift().catch((error) => {

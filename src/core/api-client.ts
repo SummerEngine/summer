@@ -166,6 +166,14 @@ function withoutImageData(payload: SnapshotPayload): Record<string, unknown> {
   return metadata;
 }
 
+/** rebind() could not re-read engine health; the session identity is unchanged. */
+export class EngineRebindError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "EngineRebindError";
+  }
+}
+
 export class EngineApiClient {
   private port: number;
   private token: string;
@@ -268,17 +276,26 @@ export class EngineApiClient {
    * switch (the deliberate escape hatch after an identity_mismatch). Returns the
    * new bound hash. The direct health probe is intentionally unscoped, so it can
    * reach the current engine even when bound requests would be rejected.
+   *
+   * Throws EngineRebindError when the health probe fails: the previous identity
+   * is kept, and reporting it as "the rebound hash" would tell the agent a
+   * switch it never followed had succeeded.
    */
   async rebind(): Promise<string | undefined> {
     const health = await checkEngineHealth(this.port);
-    if (health) {
-      this.lastHealth = health;
-      this.targetIdentity = {
-        instanceId: health.instanceId,
-        projectId: health.projectId,
-        projectIdHash: health.projectIdHash,
-      };
+    if (!health) {
+      throw new EngineRebindError(
+        `Summer Engine did not answer the health probe on port ${this.port}; this session is still bound to ${
+          this.targetIdentity.projectIdHash ?? "no project"
+        }. Recovery: confirm the engine is running with the project open, then call summer_get_project_context again.`
+      );
     }
+    this.lastHealth = health;
+    this.targetIdentity = {
+      instanceId: health.instanceId,
+      projectId: health.projectId,
+      projectIdHash: health.projectIdHash,
+    };
     return this.targetIdentity.projectIdHash;
   }
 

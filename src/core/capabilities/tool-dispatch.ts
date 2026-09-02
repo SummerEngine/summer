@@ -22,7 +22,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { EngineApiClient, type EngineSnapshot } from "../api-client.js";
+import { EngineApiClient, EngineRebindError, type EngineSnapshot } from "../api-client.js";
 import { missingEngineOpResult, resolveSingleOnlyOps } from "../capability-skew.js";
 import { lookupApiDocs } from "./api-docs.js";
 import { ImportHdriError, importPolyHavenHdri, type HdriResolution } from "./hdri-import.js";
@@ -1170,13 +1170,23 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
         error: err instanceof Error ? err.message : String(err),
       })),
     ]);
-    const boundProjectIdHash = await client.rebind();
+    // A failed rebind keeps the previous identity; report that honestly
+    // instead of echoing the stale hash as if the switch had been followed.
+    let boundProjectIdHash: string | undefined;
+    let rebindError: string | undefined;
+    try {
+      boundProjectIdHash = await client.rebind();
+    } catch (error) {
+      if (!(error instanceof EngineRebindError)) throw error;
+      rebindError = error.message;
+    }
     return {
       health,
       project,
       scene,
       mainScene: projectSettingValue(project, ["application/run/main_scene", "run/main_scene"]),
       boundProjectIdHash,
+      ...(rebindError ? { rebindError } : {}),
     };
   }),
   entry("summer_open_main_scene", "Open the project's configured main scene", true, async (_args, ctx) => {

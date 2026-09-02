@@ -1,8 +1,7 @@
 id: tool/library-feedback
 kind: tool
 version: 1.0.1
-summary: Report how library entries worked out (worked, wrong, outdated, ...) so Summer can fix and
-  re-rank them; fire-and-forget, opt-out honored.
+summary: Report how library entries worked out (worked, wrong, outdated, ...) so Summer can fix and re-rank them; fire-and-forget, opt-out honored.
 use_when:
   - a natural checkpoint after using library entries, batching all outcomes in one call
   - an entry was wrong, outdated, incomplete, or misrouted and Summer should know
@@ -40,8 +39,7 @@ input_schema:
           entry_id:
             type: string
             pattern: ^(tool|skill|example|template|collection|reference)\/[a-z0-9-]+(@[a-f0-9]{8,64})?$
-            description: The library entry ID exactly as the loader printed it (kind/slug, optionally
-              @content-hash). Never guess or reconstruct it.
+            description: The library entry ID exactly as the loader printed it (kind/slug, optionally @content-hash). Never guess or reconstruct it.
           outcome:
             type: string
             enum:
@@ -52,16 +50,11 @@ input_schema:
               - incomplete
               - did_not_apply
               - misrouted
-            description: worked = verified in-engine (playtest/screenshot passed). worked_with_fixes = worked
-              after your changes (say what in deviation). wrong = incorrect content. outdated = no
-              longer matches this engine version. incomplete = missing a needed case. did_not_apply
-              = loaded but irrelevant to the task. misrouted = the description/metadata led you here
-              wrongly.
+            description: worked = verified in-engine (playtest/screenshot passed). worked_with_fixes = worked after your changes (say what in deviation). wrong = incorrect content. outdated = no longer matches this engine version. incomplete = missing a needed case. did_not_apply = loaded but irrelevant to the task. misrouted = the description/metadata led you here wrongly.
           note:
             type: string
             maxLength: 280
-            description: Optional, max 280 chars. About the ENTRY only — never the user's project, files, or
-              code.
+            description: Optional, max 280 chars. About the ENTRY only — never the user's project, files, or code.
           deviation:
             type: string
             maxLength: 280
@@ -89,7 +82,7 @@ input_schema:
     - agent_model
   additionalProperties: false
 authority:
-  filesystem: false
+  filesystem: true
   editor_mutation: false
   network: true
   credentials: false

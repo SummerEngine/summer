@@ -1,8 +1,7 @@
 id: tool/creator-publish
 kind: tool
 version: 1.0.0
-summary: Publish an exported Summer .pck through the versioned Summercraft creator API, with an
-  explicit confirm step before upload.
+summary: Publish an exported Summer .pck through the versioned Summercraft creator API, with an explicit confirm step before upload.
 use_when:
   - releasing a user-approved build to a Summercraft channel
 do_not_use_when:
@@ -61,7 +60,7 @@ input_schema:
     - version
   additionalProperties: false
 authority:
-  filesystem: false
+  filesystem: true
   editor_mutation: false
   network: true
   credentials: false

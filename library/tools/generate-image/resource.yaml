@@ -1,8 +1,7 @@
 id: tool/generate-image
 kind: tool
 version: 1.0.0
-summary: Generate or edit an image with allowlisted AI models via Summer Studio; supports
-  text-to-image and image-to-image with style presets.
+summary: Generate or edit an image with allowlisted AI models via Summer Studio; supports text-to-image and image-to-image with style presets.
 use_when:
   - creating concept art, textures, or sprites from a prompt
   - transforming an existing image given a reference URL
@@ -50,7 +49,7 @@ input_schema:
     - prompt
   additionalProperties: false
 authority:
-  filesystem: false
+  filesystem: true
   editor_mutation: false
   network: true
   credentials: false

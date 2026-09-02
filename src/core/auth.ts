@@ -120,7 +120,17 @@ async function updateMetadata(
   await writeStoreJson(METADATA_FILE, next);
 }
 
+/**
+ * Gateway credential. SUMMER_TOKEN wins over ~/.summer/auth-token so a
+ * headless/cloud agent can authenticate gateway features (asset search,
+ * generation, releases) without a browser login. The env override never
+ * touches the store: `summer login` still writes the file, and the desktop
+ * engine keeps reading it. Local engine ops need neither — they authenticate
+ * with the engine-minted ~/.summer/api-token (see core/engine.ts).
+ */
 export async function getAuthToken(): Promise<string | null> {
+  const envToken = process.env.SUMMER_TOKEN?.trim();
+  if (envToken) return envToken;
   const token = await readStoreText(AUTH_TOKEN_FILE);
   return token?.trim() || null;
 }

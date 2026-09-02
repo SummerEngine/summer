@@ -2,32 +2,13 @@ import { Command } from "commander";
 import { spawn } from "child_process";
 import { existsSync } from "fs";
 import { mkdir, readFile, rm, writeFile } from "fs/promises";
-import { platform } from "os";
 import { join, resolve } from "path";
 import { getSummerDir } from "../../core/auth.js";
 import { getApiPort, checkEngineHealth } from "../../core/engine.js";
-
-const MAC_PATHS = [
-  "/Applications/Summer.app/Contents/MacOS/Summer",
-  `${process.env.HOME}/Applications/Summer.app/Contents/MacOS/Summer`,
-];
-
-const WIN_PATHS = [
-  `${process.env.LOCALAPPDATA}\\SummerEngine\\current\\Summer.exe`,
-  `${process.env.LOCALAPPDATA}\\Programs\\Summer Engine\\Summer.exe`,
-  `${process.env.PROGRAMFILES}\\Summer Engine\\Summer.exe`,
-];
+import { findEngineBinary } from "../../core/engine-install.js";
 
 const LAUNCH_LOCK_STALE_MS = 60_000;
 const LAUNCH_LOCK_WAIT_MS = 15_000;
-
-function findEngineBinary(): string | null {
-  const paths = platform() === "darwin" ? MAC_PATHS : WIN_PATHS;
-  for (const p of paths) {
-    if (existsSync(p)) return p;
-  }
-  return null;
-}
 
 function isProcessAlive(pid: number): boolean {
   if (!Number.isInteger(pid) || pid <= 0) return false;

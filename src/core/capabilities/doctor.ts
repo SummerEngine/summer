@@ -1,10 +1,9 @@
 import { spawn } from "child_process";
-import { existsSync } from "fs";
 import { createRequire } from "node:module";
-import { platform } from "os";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { getAuthToken, getUserInfo } from "../auth.js";
+import { ENGINE_BINARY_ENV, findEngineBinary } from "../engine-install.js";
 import { isGitAvailable } from "./cloud/checkpoint.js";
 import { checkEngineHealth, getApiPort, getApiToken } from "../engine.js";
 import { brandLine, c, pad, sym, tildeify } from "../format.js";
@@ -50,17 +49,6 @@ interface DoctorOptions {
   json?: boolean;
   quiet?: boolean;
 }
-
-const MAC_ENGINE_PATHS = [
-  "/Applications/Summer.app/Contents/MacOS/Summer",
-  `${process.env.HOME}/Applications/Summer.app/Contents/MacOS/Summer`,
-];
-
-const WIN_ENGINE_PATHS = [
-  `${process.env.LOCALAPPDATA}\\SummerEngine\\current\\Summer.exe`,
-  `${process.env.LOCALAPPDATA}\\Programs\\Summer Engine\\Summer.exe`,
-  `${process.env.PROGRAMFILES}\\Summer Engine\\Summer.exe`,
-];
 
 export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResult> {
   const checks: DoctorCheck[] = [];
@@ -145,7 +133,7 @@ function checkSkillsVersion(): DoctorCheck {
   };
 }
 
-async function checkLogin(): Promise<DoctorCheck> {
+export async function checkLogin(): Promise<DoctorCheck> {
   const token = await getAuthToken();
   const user = await getUserInfo();
 
@@ -154,7 +142,17 @@ async function checkLogin(): Promise<DoctorCheck> {
       id: "login",
       label: "Login",
       status: "warning",
-      message: "not signed in (run: summer login)",
+      message:
+        "not signed in (run: summer login — only gateway features need it; engine tools work without)",
+    };
+  }
+
+  if (process.env.SUMMER_TOKEN?.trim()) {
+    return {
+      id: "login",
+      label: "Login",
+      status: "ok",
+      message: "token from SUMMER_TOKEN env",
     };
   }
 
@@ -166,7 +164,7 @@ async function checkLogin(): Promise<DoctorCheck> {
   };
 }
 
-function checkEngineInstall(): DoctorCheck {
+export function checkEngineInstall(): DoctorCheck {
   const binary = findEngineBinary();
   if (binary) {
     // Shorten /Applications/Summer.app/Contents/MacOS/Summer -> /Applications/Summer.app
@@ -184,7 +182,7 @@ function checkEngineInstall(): DoctorCheck {
     id: "engine-install",
     label: "Engine",
     status: "warning",
-    message: "not installed (run: summer install)",
+    message: `not installed (run: summer install, or set ${ENGINE_BINARY_ENV} to an existing binary)`,
   };
 }
 
@@ -512,14 +510,6 @@ export function printDoctorResult(result: DoctorResult): void {
   } else {
     console.log(c.green("Everything's wired up."));
   }
-}
-
-function findEngineBinary(): string | null {
-  const paths = platform() === "darwin" ? MAC_ENGINE_PATHS : WIN_ENGINE_PATHS;
-  for (const path of paths) {
-    if (path && existsSync(path)) return path;
-  }
-  return null;
 }
 
 function trimOutput(output: { stdout: string; stderr: string }): Record<string, string> {

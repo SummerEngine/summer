@@ -9,14 +9,12 @@
  *
  * Consumed today by `summer tool <name>` (src/cli/commands/tool.ts).
  *
- * // v3-followup: src/mcp (server.ts + tools/*) should adopt this registry as
- * // the single per-tool dispatch table — moving the handler bodies that still
- * // live only in the MCP tool closures (Kenney import pairing, scene-mutation
- * // chunking, guarded file writes) in here so both
- * // surfaces share one implementation per tool instead of two mirrors. The
- * // mcp layer is owned by another workstream right now, so this file does not
- * // touch it; the small mirrored helpers below are marked and must fold into
- * // one copy at adoption time.
+ * The helpers both faces need (scene-mutation chunking, guarded file writes,
+ * Kenney import pairing, engine receipt failure semantics) live in ONE copy
+ * each — ./engine-ops.ts, ./asset-import.ts, ./engine-receipt.ts — imported
+ * here and by src/mcp/tools/*. v3-followup: src/mcp should adopt this registry
+ * as the single per-tool dispatch table so the handler bodies stop being two
+ * mirrors as well.
  */
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -24,6 +22,16 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { EngineApiClient, EngineRebindError, type EngineSnapshot } from "../api-client.js";
 import { missingEngineOpResult, resolveSingleOnlyOps } from "../capability-skew.js";
 import { buildAgentPlaybook } from "./agent-playbook.js";
+import { importResolvedAsset, type GatewayAsset } from "./asset-import.js";
+import {
+  executeOpsChunked,
+  executeSceneMutation,
+  occurrenceCount,
+  readTextPayload,
+  safeProjectPath,
+  validSha256,
+} from "./engine-ops.js";
+import { extractOpError } from "./engine-receipt.js";
 import { lookupApiDocs } from "./api-docs.js";
 import { z, type ZodTypeAny } from "zod";
 import { ImportHdriError, importHdriArgsSchema, importPolyHavenHdri } from "./hdri-import.js";
@@ -105,205 +113,10 @@ export function createDefaultDispatchContext(): ToolDispatchContext {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Engine receipt failure extraction.
-// Mirror of the failure semantics in src/mcp/tools/with-engine.ts
-// (extractOpError): a failure terminalState (anything but applied/no_op), an
-// explicit ok:false / status:"error", or a failed op inside results[] is a
-// failure even when no error string was provided.
-// v3-followup: fold into one copy when mcp adopts this registry.
-// ---------------------------------------------------------------------------
-const SUCCESS_TERMINAL_STATES = new Set(["applied", "no_op"]);
-
-type OpReceipt = {
-  ok?: boolean;
-  status?: string;
-  error?: string;
-  terminalState?: string;
-  results?: Array<{ ok?: boolean; op?: string; error?: string }>;
-};
-
-export function extractEngineFailure(result: unknown): string | null {
-  if (!result || typeof result !== "object") return null;
-  const op = result as OpReceipt;
-  const failed = op.results?.find((entry) => entry.ok === false);
-  const ts = op.terminalState;
-  if (typeof ts === "string" && ts.length > 0 && !SUCCESS_TERMINAL_STATES.has(ts)) {
-    return (
-      (typeof op.error === "string" && op.error) ||
-      (typeof failed?.error === "string" && failed.error) ||
-      `Engine operation failed (terminalState: ${ts}).`
-    );
-  }
-  if (op.ok === false || op.status === "error" || failed) {
-    return (
-      (typeof op.error === "string" && op.error) ||
-      (typeof failed?.error === "string" && failed.error) ||
-      (failed
-        ? `Engine op failed${failed.op ? ` (${failed.op})` : ""}.`
-        : op.ok === false
-          ? "Engine operation failed (ok: false)."
-          : "Engine operation failed (status: error).")
-    );
-  }
-  return null;
-}
-
 function requireEngineSuccess<T>(result: T): T {
-  const failure = extractEngineFailure(result);
+  const failure = extractOpError(result);
   if (failure) throw new ToolDispatchError(failure);
   return result;
-}
-
-// ---------------------------------------------------------------------------
-// Scene-mutation dispatch. Mirror of the single-op contract in
-// src/mcp/tools/scene-tools.ts (sceneMutationOps / chunkOpsForDispatch /
-// executeOpsChunked): the engine rejects multi-op batches containing
-// single-only ops wholesale, and every scene mutation batch ends in exactly
-// one SaveScene. v3-followup: fold into one copy when mcp adopts the registry.
-// ---------------------------------------------------------------------------
-// Single-only classification comes from the engine's /api/health advert when
-// present, else core/capability-skew FALLBACK_SINGLE_ONLY_OPS (resolveSingleOnlyOps).
-function isSingleOnlyOp(kind: string, singleOnly: ReadonlySet<string>): boolean {
-  return singleOnly.has(kind) || kind.startsWith("Git");
-}
-
-function withFinalSaveScene(ops: DispatchArgs[]): DispatchArgs[] {
-  const saveIndexes = ops
-    .map((op, index) => (op.op === "SaveScene" ? index : -1))
-    .filter((index) => index >= 0);
-  if (saveIndexes.length > 1) {
-    throw new ToolDispatchError("A scene mutation batch may contain only one SaveScene");
-  }
-  if (saveIndexes.length === 1) {
-    if (saveIndexes[0] !== ops.length - 1) {
-      throw new ToolDispatchError("SaveScene must be the final operation in a scene mutation batch");
-    }
-    return ops;
-  }
-  return [...ops, { op: "SaveScene" }];
-}
-
-function chunkOps(ops: DispatchArgs[], singleOnly: ReadonlySet<string>): DispatchArgs[][] {
-  const chunks: DispatchArgs[][] = [];
-  let current: DispatchArgs[] = [];
-  for (const op of ops) {
-    if (isSingleOnlyOp(String(op.op ?? ""), singleOnly)) {
-      if (current.length > 0) {
-        chunks.push(current);
-        current = [];
-      }
-      chunks.push([op]);
-    } else {
-      current.push(op);
-    }
-  }
-  if (current.length > 0) chunks.push(current);
-  return chunks;
-}
-
-async function executeOpsChunked(
-  send: (chunk: DispatchArgs[]) => Promise<unknown>,
-  ops: DispatchArgs[],
-  singleOnly: ReadonlySet<string>
-): Promise<unknown> {
-  const chunks = chunkOps(ops, singleOnly);
-  if (chunks.length === 1) return send(chunks[0]!);
-
-  const receipts: unknown[] = [];
-  const combinedResults: DispatchArgs[] = [];
-  for (let i = 0; i < chunks.length; i++) {
-    const receipt = await send(chunks[i]!);
-    receipts.push(receipt);
-    const envelope = (receipt ?? {}) as DispatchArgs;
-    if (Array.isArray(envelope.results)) {
-      combinedResults.push(...(envelope.results as DispatchArgs[]));
-    }
-    if (extractEngineFailure(receipt)) {
-      const failedKind = String(chunks[i]![0]?.op ?? "batch");
-      const appliedOps = chunks.slice(0, i).flat().map((op) => String(op.op ?? ""));
-      const notSent = chunks.slice(i + 1).flat().map((op) => String(op.op ?? ""));
-      const baseError =
-        (typeof envelope.error === "string" && envelope.error) ||
-        `Engine request failed (${failedKind}).`;
-      const honestError =
-        appliedOps.length > 0
-          ? `${baseError} NOTE: ${appliedOps.length} earlier op(s) already applied (${appliedOps.join(", ")})` +
-            (failedKind === "SaveScene"
-              ? " — the scene is modified in the editor but NOT saved to disk."
-              : ".") +
-            (notSent.length > 0 ? ` Not sent: ${notSent.join(", ")}.` : "")
-          : baseError;
-      return {
-        ...envelope,
-        error: honestError,
-        results: combinedResults,
-        receipts,
-      };
-    }
-  }
-  const last = (receipts[receipts.length - 1] ?? {}) as DispatchArgs;
-  return { ...last, results: combinedResults, requests: chunks.length, receipts };
-}
-
-function executeSceneMutation(
-  client: EngineApiClient,
-  scenePath: string,
-  ops: DispatchArgs[],
-  options?: DispatchArgs
-): Promise<unknown> {
-  return executeOpsChunked(
-    (chunk) => client.executeIdentityBoundOps(chunk, { ...(options ?? {}), scenePath }),
-    withFinalSaveScene(ops),
-    resolveSingleOnlyOps(client)
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Guarded file helpers. Mirror of src/mcp/tools/file-tools.ts safety guards
-// (fail-closed writes, sha256 receipts). v3-followup: fold into one copy.
-// ---------------------------------------------------------------------------
-function safeProjectPath(path: string): string {
-  const normalized = path.trim().replace(/\\/g, "/");
-  if (!normalized.startsWith("res://") || normalized.includes("..")) {
-    throw new ToolDispatchError("File path must be a traversal-free res:// project path.");
-  }
-  return normalized;
-}
-
-function validSha256(value: unknown): value is string {
-  return typeof value === "string" && /^[0-9a-f]{64}$/i.test(value);
-}
-
-function readTextPayload(result: unknown): { content: string; sha256: string } {
-  const root = (result ?? {}) as DispatchArgs;
-  const data = (root.data ?? {}) as DispatchArgs;
-  if (root.ok === false) {
-    throw new ToolDispatchError(String(root.error ?? "Engine could not read the file."));
-  }
-  if (data.encoding === "binary" || typeof data.content !== "string") {
-    throw new ToolDispatchError("Safe text mutation refused: the engine did not return text content.");
-  }
-  if (data.truncated === true) {
-    throw new ToolDispatchError("Safe text mutation refused: the file exceeds the 1 MB read limit.");
-  }
-  if (!validSha256(data.sha256)) {
-    throw new ToolDispatchError(
-      "Safe text mutation refused: the engine did not return a full-file sha256 receipt."
-    );
-  }
-  return { content: data.content, sha256: data.sha256 as string };
-}
-
-function occurrenceCount(content: string, needle: string): number {
-  let count = 0;
-  let offset = 0;
-  while (true) {
-    const index = content.indexOf(needle, offset);
-    if (index < 0) return count;
-    count++;
-    offset = index + needle.length;
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -442,136 +255,6 @@ async function pollGenerationJob(
   );
 }
 
-// ---------------------------------------------------------------------------
-// Asset import helpers. Mirror of src/mcp/tools/asset-tools.ts (Kenney texture
-// pairing + path inference). v3-followup: fold into one copy.
-// ---------------------------------------------------------------------------
-type GatewayAsset = {
-  id: string;
-  title: string;
-  type: string;
-  fileUrl: string;
-  fileName?: string | null;
-  packSlug?: string | null;
-  importUrl?: string;
-};
-
-const KENNEY_URL_PATTERN = /\/kenney\/3d\/([^/]+)\//;
-
-function buildKenneyTextureUrl(fileUrl: string): string {
-  const lastSlash = fileUrl.lastIndexOf("/");
-  const base = lastSlash >= 0 ? fileUrl.slice(0, lastSlash) : fileUrl;
-  return `${base}/Textures/colormap.png`;
-}
-
-async function textureExists(url: string): Promise<boolean> {
-  try {
-    const res = await fetch(url, { method: "HEAD", signal: AbortSignal.timeout(5000) });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
-function sanitizeNodeName(name: string): string {
-  return (
-    (name || "Asset")
-      .replace(/[^\p{L}\p{N}_]+/gu, "_")
-      .replace(/^_+|_+$/g, "") || "Asset"
-  );
-}
-
-async function buildImportEntries(
-  asset: GatewayAsset,
-  targetPath?: string
-): Promise<{ imports: { url: string; path: string }[]; importPath: string }> {
-  const fileUrl = asset.importUrl || asset.fileUrl;
-  if (!fileUrl) throw new ToolDispatchError("Asset has no import URL.");
-  const fileName =
-    targetPath?.split("/").pop() ||
-    asset.fileName ||
-    fileUrl.split("/").pop()?.split("?")[0] ||
-    "asset";
-  const packSlug = asset.packSlug ?? fileUrl.match(KENNEY_URL_PATTERN)?.[1] ?? "misc";
-
-  const isKenney3d = asset.type === "3d_model" && fileUrl.includes("kenney/3d/");
-  if (isKenney3d) {
-    const textureUrl = buildKenneyTextureUrl(fileUrl);
-    if (await textureExists(textureUrl)) {
-      const glbPath = targetPath ?? `res://assets/models/kenney/${packSlug}/${fileName}`;
-      const glbDir = glbPath.replace(/\/[^/]+$/, "");
-      return {
-        importPath: glbPath,
-        imports: [
-          { url: textureUrl, path: `${glbDir}/Textures/colormap.png` },
-          { url: fileUrl, path: glbPath },
-        ],
-      };
-    }
-  }
-  const path =
-    targetPath ??
-    (asset.type === "3d_model"
-      ? `res://assets/models/${isKenney3d ? `kenney/${packSlug}/` : ""}${fileName}`
-      : `res://assets/${fileName}`);
-  return { imports: [{ url: fileUrl, path }], importPath: path };
-}
-
-async function importResolvedAsset(
-  client: EngineApiClient,
-  args: {
-    asset: GatewayAsset;
-    parent?: string;
-    scenePath?: string;
-    path?: string;
-    name?: string;
-  }
-): Promise<DispatchArgs> {
-  const { asset, parent, scenePath, path, name } = args;
-  if (parent && !scenePath) {
-    throw new ToolDispatchError("scenePath is required when importing an asset into a scene");
-  }
-  const { imports, importPath } = await buildImportEntries(asset, path);
-  const importResult =
-    imports.length === 1
-      ? await client.executeOps([
-          { op: "ImportFromUrl", url: imports[0]!.url, path: imports[0]!.path },
-        ])
-      : await client.executeOps([{ op: "ImportFromUrlBatch", imports }]);
-  requireEngineSuccess(importResult);
-
-  let addedToScene = false;
-  let sceneReceipt: unknown = null;
-  if (parent && asset.type === "3d_model") {
-    sceneReceipt = requireEngineSuccess(
-      await client.executeIdentityBoundOps(
-        [
-          {
-            op: "InstantiateScene",
-            parent,
-            scene: importPath,
-            name: sanitizeNodeName(name || asset.title),
-          },
-          { op: "SaveScene" },
-        ],
-        { scenePath }
-      )
-    );
-    addedToScene = true;
-  }
-  return {
-    success: true,
-    assetId: asset.id,
-    asset: asset.title,
-    type: asset.type,
-    importedTo: importPath,
-    addedToScene,
-    parent: parent ?? null,
-    scenePath: scenePath ?? null,
-    sceneReceipt,
-  };
-}
-
 async function searchAssetsGateway(params: {
   query: string;
   assetType?: string;
@@ -627,7 +310,7 @@ function parseToolArgs<T extends ZodTypeAny>(schema: T, args: DispatchArgs, tool
 }
 
 async function snapshotResult(snap: EngineSnapshot, target: string): Promise<DispatchArgs> {
-  const failure = extractEngineFailure(snap);
+  const failure = extractOpError(snap);
   if (failure) throw new ToolDispatchError(failure);
   if (target === "game" && snap.failureReason === "bridge_required") {
     throw new ToolDispatchError(

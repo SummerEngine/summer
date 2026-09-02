@@ -12,6 +12,7 @@ this file is the map.
 | [`templates/`](templates/) | Pin integrity: clone-at-commit, tree-digest verify, project-opens smoke | contract defined; lands with template migration | steps 1–3 on `library/templates/**` PRs |
 | [`tools/`](tools/) | Conformance: input_schema round-trips to zod + commander with zero drift | lands with the registry compiler (shares its derivation code) | vitest, once compiler lands |
 | [`end-to-end/`](end-to-end/) | The make-a-game ladder E0–E5: whole-system builds of real games | definition binding; runner future | nightly/weekly, never per-PR |
+| [`canary/`](canary/) | Blind A/B gateway: a stdio MCP proxy that hides or reveals one canary tool per arm, enforces a call budget, records evidence | **LIVE** (`npm run eval:canary`; needs `npm run build` + a fixture project) | none — manual trials; its policy core is unit-tested in `npm test` |
 
 ## Routing eval (the one that runs today)
 

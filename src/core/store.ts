@@ -24,6 +24,11 @@ export class SummerStoreError extends Error {
   }
 }
 
+/** The OS error code (EACCES, ENOSPC, EROFS, ...) — the one detail a user needs to fix a store failure. */
+function errnoCode(error: unknown): string {
+  return (error as NodeJS.ErrnoException | null)?.code ?? "unknown";
+}
+
 export function getSummerDir(): string {
   return summerDirOverride ?? join(homedir(), ".summer");
 }
@@ -70,7 +75,7 @@ export async function ensureSummerStore(): Promise<string> {
     if (error instanceof SummerStoreError) throw error;
     throw new SummerStoreError(
       "store_unavailable",
-      `Cannot secure ${dir}. Recovery: make sure the directory is owned and writable by your user, then run the command again.`
+      `Cannot secure ${dir} (${errnoCode(error)}). Recovery: make sure the directory is owned and writable by your user, then run the command again.`
     );
   }
 }
@@ -101,7 +106,7 @@ export async function readStoreText(name: string): Promise<string | null> {
     if (error instanceof SummerStoreError) throw error;
     throw new SummerStoreError(
       "store_read_failed",
-      `Cannot read ${path}. Recovery: make sure the file is owned and readable by your user, then run the command again.`
+      `Cannot read ${path} (${errnoCode(error)}). Recovery: make sure the file is owned and readable by your user, then run the command again.`
     );
   }
 }
@@ -139,7 +144,7 @@ export async function writeStoreText(name: string, value: string): Promise<void>
     if (error instanceof SummerStoreError) throw error;
     throw new SummerStoreError(
       "store_write_failed",
-      `Cannot write ${destination}. Recovery: make sure ${dir} is owned and writable by your user, then run the command again.`
+      `Cannot write ${destination} (${errnoCode(error)}). Recovery: make sure ${dir} is owned and writable by your user, then run the command again.`
     );
   }
 }
@@ -161,10 +166,10 @@ export async function appendStoreJsonLine(
       mode: 0o600,
     });
     await hardenMode(path, 0o600);
-  } catch {
+  } catch (error) {
     throw new SummerStoreError(
       "store_append_failed",
-      `Cannot append to ${path}. Recovery: make sure the file is owned and writable by your user, then run the command again.`
+      `Cannot append to ${path} (${errnoCode(error)}). Recovery: make sure the file is owned and writable by your user, then run the command again.`
     );
   }
 }
@@ -175,10 +180,10 @@ export async function removeStoreFile(name: string): Promise<boolean> {
   try {
     await rm(path);
     return true;
-  } catch {
+  } catch (error) {
     throw new SummerStoreError(
       "store_remove_failed",
-      `Cannot remove ${path}. Recovery: make sure the file is owned and writable by your user, then run the command again.`
+      `Cannot remove ${path} (${errnoCode(error)}). Recovery: make sure the file is owned and writable by your user, then run the command again.`
     );
   }
 }

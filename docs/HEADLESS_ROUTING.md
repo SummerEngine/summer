@@ -271,9 +271,21 @@ with the flag on or off, including client caching, credential-drift
 reconnects, and identity binding. Only when no editor has the project does
 the hook return a `WorkerEngineClient`.
 
-`WorkerEngineClient` implements the full public method surface of
-`EngineApiClient` so the registered tools run unmodified. Verified param
-mapping (integration-tested against the real worker):
+`WorkerEngineClient` presents the same TypeScript surface as `EngineApiClient`
+so the registered tools run unmodified — but only the methods in the table
+below are *implemented* against the worker: `health`, `readFile` /
+`readProjectFile`, `getFsTree`, `getSceneState`, `play`, `stop`,
+`gameSnapshot`, and `executeOps` for the `WriteFile`, `GetConsoleOutput`,
+and `IsGameRunning` ops, plus the identity/lifecycle getters
+(`isAlive`, `close`, `getEngineCapabilities`, `getEngineVersion`,
+`getBoundProjectIdHash`, `rebind`, `getPort`, `credentialsChanged`). Every
+other method — `getProjectState`, `getDiagnostics`, `inspectNode`,
+`inspectResource`, `getScriptErrors`, `getSelection`, `viewportSnapshot`,
+`scenePreview`, and any other `executeOps` op — throws a typed
+`UnsupportedOperationError` before anything is sent
+(`src/core/headless/worker-engine-client.ts`). Verified param mapping for the
+implemented set (integration-tested against a fake worker; the real-binary
+test skips until an engine build ships worker mode):
 
 All paths are sent PROJECT-RELATIVE: a leading `res://` is stripped
 client-side before any path crosses the wire (the worker also tolerates
@@ -321,15 +333,27 @@ client-side before any path crosses the wire (the worker also tolerates
   targeting arrives, replace it with a `Map<projectPath, connection>` —
   everything below the hook already keys by explicit `projectPath`.
 
-## What was NOT touched
+## Blast radius (what the layer touches)
 
-- `src/core/api-client.ts`, `src/core/engine.ts` — the existing editor
-  transport and discovery: zero changes.
-- `src/mcp/tools/*` (all tool registrations and `with-engine.ts`): zero
-  changes. `library/tools/` unchanged — no tool-surface change.
-- `src/mcp/server.ts`: only the guarded block quoted above.
-- `src/cli/`: zero changes (`run.ts` keeps its own binary list, see above).
-- No behavior change anywhere with `SUMMER_HEADLESS_ROUTING` unset.
+- The layer lives entirely in `src/core/headless/`; the only edge into it is
+  the guarded dynamic import in `src/mcp/server.ts` `getClient()` quoted
+  above. Nothing else in `src/` imports it statically
+  (`src/import-direction.test.ts`).
+- `src/core/api-client.ts` and `src/core/engine.ts` (editor transport and
+  discovery) are consumed, not modified, by the layer. Engine-binary
+  discovery is shared: `SUMMER_ENGINE_BIN` is checked first by this layer,
+  then the common resolver (`SUMMER_ENGINE_BINARY`, install locations) from
+  `src/core/engine-install.ts`.
+- Tool registrations (`src/mcp/tools/*`, `with-engine.ts`) and
+  `library/tools/` descriptors are unaware of the layer; the
+  `UnsupportedOperationError` it throws is what `withEngine` already
+  classifies as `unsupported`. No tool-surface change.
+- With `SUMMER_HEADLESS_ROUTING` unset there is no behavior change anywhere.
+
+(The original "what was NOT touched" list described the port commit
+`4b1c61f`; later commits — `b9c03a0` capability getters and spawn env,
+`54dc82e` shared resolver — changed the shared files, so the blast radius
+above replaces it.)
 
 ## v2: receipts (planned — NOT in v1.1)
 

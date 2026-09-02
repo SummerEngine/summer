@@ -23,10 +23,12 @@ If you're an AI agent or developer with zero context: read [`AGENTS.md`](../AGEN
 
 | Thing | Name | Notes |
 |---|---|---|
+| Product | Summer | The system: library + tools + project memory (this repo). |
 | npm package | `summer-engine` | What users install. Never recommend `summer-cli` (an unrelated, inactive package we do not own). |
-| GitHub repo | `summerengine/summer` | Renamed from `SummerEngine/summer-engine-agent`; redirects hold. |
+| GitHub repo | `summerengine/summer` | Rename pending — today the repo is `SummerEngine/summer-engine-agent`; redirects will hold once renamed. |
 | Binary | `summer` | The CLI entry point. |
-| Copy rule | — | "Summer" for the system, "`summer-engine` npm package" for the package, "Summer Engine app" for the closed desktop engine. |
+| Brand for the editor | Summer Engine | The closed desktop app (editor + runtime). |
+| Copy rule | — | "Summer" for the system, "`summer-engine` npm package" for the package, "Summer Engine" for the editor. Full conventions: [`NAMING.md`](NAMING.md). |
 
 ---
 
@@ -35,12 +37,13 @@ If you're an AI agent or developer with zero context: read [`AGENTS.md`](../AGEN
 ```
 src/
 ├── bin/              # entry point — composes cli + mcp
-├── cli/              # commander wiring ONLY (src/cli/commands/*) — no business logic
-├── mcp/              # MCP server + tool adapters ONLY (src/mcp/tools/*) — no business logic
-├── core/             # shared implementations: auth, config, engine connection, store,
-│                     #   capabilities/ (logic shared by CLI and MCP)
-├── project-memory/   # .summer/ read/write
-└── installer/        # agent detection, per-client config writing, version checks
+├── cli/              # commander wiring (src/cli/commands/*); `summer tool` dispatches through core/capabilities/tool-dispatch.ts
+├── mcp/              # MCP server + src/mcp/tools/*.ts — where most tool implementations live today
+├── core/             # auth, config, engine connection, store, feedback/, headless/, capabilities/
+│                     #   (a few tools + doctor, plan, debug-report, and the CLI dispatch table)
+├── lib/              # registry helpers shared with scripts/ (capability lint)
+├── project-memory/   # .summer/ read/write (project.json, memory index)
+└── installer/        # agent detection, per-client config writing, skill install, version checks
 
 library/              # content — flat folders per kind, one resource.yaml each
 registry/
@@ -53,7 +56,7 @@ scripts/
 └── validate-library/   # schema validation + capability lint
 ```
 
-The import direction is a tested invariant (`src/import-direction.test.ts`): `cli/` and `mcp/` are thin surfaces over `core/`; logic lives in `core/` (notably `core/capabilities/`) so every capability exists once and is exposed twice.
+The import direction is a tested invariant (`src/import-direction.test.ts`): `cli/` never imports `mcp/`; `bin/` composes the two. The *layering* is not yet the ideal the contract describes: 64 of the 69 tools are implemented in `src/mcp/tools/*.ts` with hand-written zod, and `core/capabilities/tool-dispatch.ts` mirrors them so `summer tool <slug>` reaches the same functions. What keeps the two faces honest is `src/mcp/tools/descriptor-parity.test.ts` (zod shape ↔ `library/tools/*/resource.yaml` `input_schema`) plus the validator's cross-checks; folding the mirror into one registration is the scheduled consolidation pass (CONTRACT §3, DECISIONS D13).
 
 ---
 
@@ -66,12 +69,43 @@ npm run dev                # tsc --watch
 npm test                   # vitest + validate:library
 npm run validate:library   # schema validation + capability lint over library/
 npm run eval:routing       # routing eval: real asks vs the index, gated on baseline.json
-node scripts/generate-registry/cli.ts          # regenerate registry/generated/ + root manifests
+npm run eval:routing:heldout   # blind held-out set, report-only (the honest index-quality number)
+npm run generate:registry  # = node scripts/generate-registry/cli.ts — regenerate registry/generated/ + root manifests
 node scripts/generate-registry/cli.ts --check  # CI parity gate: fails on any drift, writes nothing
-bash scripts/smoke-test.sh # CLI smoke test
 ```
 
-The registry and validation scripts run TypeScript natively and need **Node >= 22.18**; the published package itself supports users on Node 18+.
+The registry and validation scripts run TypeScript natively and need **Node >= 22.18**; the published package requires Node 20+ (`engines.node`).
+
+Two tests need a sibling checkout to do real work and **skip loudly** otherwise: `src/core/op-registry-drift.test.ts` compares the CLI's known engine ops against the engine's op registry — set `SUMMER_ENGINE_REPO=/path/to/summerengine` (default: a `summerengine` sibling directory); the headless real-binary test needs an engine build with worker mode. A skip is printed by name; do not read a skip as a pass.
+
+### CLI command reference
+
+`summer --help` is the source of truth; this is its current shape (19 commands plus `help`).
+
+| Command | Does |
+|---|---|
+| `summer install [--yes] [--path <dir>]` | Download and install Summer Engine (macOS, Windows, Linux x86_64). Never replaces an installed engine without `--yes` or a TTY confirmation. |
+| `summer login [--creator] [--force]` | Browser sign-in; `--creator` connects a separately scoped publish token. |
+| `summer logout` | Clear stored tokens (says so when `SUMMER_TOKEN` is in effect instead). |
+| `summer status` | Engine state, port, auth. |
+| `summer run [path] [--no-project]` | Launch the engine with a project; bare editor needs `--no-project`. |
+| `summer open <path>` | Open a project in a running engine. |
+| `summer create <template> [name] [--keep-git]` | Scaffold from a pinned (or built-in) template; writes `.summer/project.json`. |
+| `summer list templates \| projects` | Browse the template registry / local projects. |
+| `summer memory [show <file>]` | Inspect `.summer/` project memory. |
+| `summer skills list \| info <name> \| install [name] [--all \| --recommended] [--agent <a>] [--scope user\|project] [--force]` | Skill installer over `skills-registry.json`. |
+| `summer mcp [--project <path> \| --instance <id>]` | Start the MCP server (stdio). `summer mcp setup <agent>` is a deprecated alias of `summer setup`. |
+| `summer setup [agent] [--yes] [--force] [--recommended] [--scope …]` | MCP config + all skills + doctor, one shot, idempotent. |
+| `summer doctor [--json]` | Checks: `node-version`, `cli-version`, `cli-version-current`, `skills-version-stale`, `login`, `engine-install`, `local-api`, `project-memory`, `mcp-boot`, `mcp-tools-list`. `ok` = no failures. |
+| `summer debug [issue…]` | Support-ready Markdown debug report. |
+| `summer plan <goal…>` | Route a goal to skills / tools / gates. |
+| `summer config [get \| set \| unset \| path]` | Shared non-secret `~/.summer/config.json` (`gateway.url`, …). |
+| `summer publish [project] --artifact <pck> --version <v> [--confirm]` | Confirmed creator release. |
+| `summer releases [--cursor <c>]` | Creator release history. |
+| `summer tool [name] [--args '<json>'] [--list]` | Run any tool with the MCP implementation; `--list` prints every slug. |
+| `summer help [command]` | Commander's built-in help. |
+
+Unknown commands exit 1. `summer` alone prints the intro.
 
 ### Test the CLI and MCP locally
 
@@ -113,11 +147,18 @@ Why the bare slug and not a namespaced form: skills reach a host along two paths
 - `summer setup <agent>` / `summer skills install` (the canonical path) copies each skill into the host's user-skill directory (`~/.claude/skills/<slug>/`, and the equivalent for Cursor, Codex, Gemini, …). Hosts expose those as plain user skills — Claude Code as `/<slug>` — and there is no `summer:` namespace.
 - The plugin-marketplace path (`.claude-plugin/plugin.json`, generated from `integrations/claude`) loads the same directories as plugin skills, which Claude Code exposes as `/summer:<slug>`.
 
-Hosts match on the skill name in both cases, so the bare slug resolves under either install; `summer:<slug>` resolves only under the second. Never use the v2 forms `summer:<category>/<name>`, `<category>/<name>`, or `skills/<category>/<name>` — categories are gone (`library/skills/` is flat) and the VFX recipes are `vfx-<effect>` (`vfx-fire`, `vfx-smoke`, …). Cross-links to shared documents are relative paths into the library: `../../references/<slug>/<slug>.md` from a skill, `../../templates/README.md` for the template catalog. Legacy names still resolve through `registry/generated/aliases.json`, but new prose must not rely on that.
+Hosts match on the skill name in both cases, so the bare slug resolves under either install; `summer:<slug>` resolves only under the second. Never use the v2 forms `summer:<category>/<name>`, `<category>/<name>`, or `skills/<category>/<name>` — categories are gone (`library/skills/` is flat) and the VFX recipes are `vfx-<effect>` (`vfx-fire`, `vfx-smoke`, …). Cross-links to shared documents are relative paths into the library: `../../references/<slug>/<slug>.md` from a skill, `../../templates/README.md` for the template catalog. Legacy names are *recorded* in `registry/generated/aliases.json` but nothing resolves them at runtime yet (only `summer create` resolves legacy template names) — new prose must use the bare slug.
 
 ### Adding an MCP tool
 
-The implementation lives in `src/` (`src/mcp/tools/` adapter over `src/core/`), the descriptor in `library/tools/`. Mechanics of the engine side: [`ADDING_TOOLS.md`](ADDING_TOOLS.md).
+Today a tool is four edits, kept in step by tests:
+
+1. Register it in the relevant `src/mcp/tools/*.ts` (`server.registerTool` with a zod raw shape) — or, for engine-free logic, implement in `src/core/capabilities/` and register there.
+2. Add a dispatch entry in `src/core/capabilities/tool-dispatch.ts` so `summer tool <slug>` reaches the same function with the same zod validation.
+3. Add `library/tools/<slug>/resource.yaml` (descriptor: `implementation.module/export`, `surfaces.mcp.tool_name` + `remote`, `input_schema`, the five `authority` booleans).
+4. `npm run generate:registry`; then `npm test` — `descriptor-parity.test.ts` fails if the zod shape and `input_schema` disagree, `tool-dispatch.test.ts` if the CLI face is missing, and the validator if the descriptor names a module/export/tool that does not exist.
+
+Mechanics of the engine side (ops, capability list): [`ADDING_TOOLS.md`](ADDING_TOOLS.md).
 
 ### Adding an agent integration
 
@@ -142,7 +183,19 @@ Summer Engine app (LocalApiServer -> OpsExecutor)
 - **Shared `~/.summer/` store** (`src/core/store.ts`): `0700` dir, `0600` files, atomic replacement, symlink refusal. Filenames (`api-token`, `auth-token`, `creator-token`, `user.json`, `config.json`, `credential-metadata.json`, `creator-audit.jsonl`) are shared with the desktop engine — do not rename them.
 - **Ops values are engine variant strings** (`"Vector3(0, 10, 0)"`, `"Color(1, 0.9, 0.8)"`), never JSON objects. This crosses both repos; coordinate changes.
 
-No environment variables are required for normal use. `SUMMER_GATEWAY_URL` is an optional gateway-development override; `SUMMER_MCP_DEBUG=1` logs a structured stderr line per tool call; `SUMMER_NO_TELEMETRY=1` / `DO_NOT_TRACK` disable the library feedback mailbox.
+No environment variables are required for normal use. Optional: `SUMMER_GATEWAY_URL` (gateway override; `gateway.url` in `~/.summer/config.json` does the same for every gateway caller), `SUMMER_TOKEN` (auth token override for CI/cloud sessions), `SUMMER_ENGINE_BINARY` (engine binary override), `SUMMER_MCP_DEBUG=1` (structured stderr line per tool call), `SUMMER_NO_TELEMETRY=1` / `DO_NOT_TRACK=1` (disable the feedback mailbox), `SUMMER_CAPABILITY_PREFLIGHT=off` (send every call even when the engine lacks the op), `SUMMER_HEADLESS_ROUTING=1` (headless worker routing — needs an engine build with worker mode), `SUMMER_TRAJECTORY_DIR` (opt-in per-tool-call JSONL capture), `SUMMER_PRE_COMMIT_DOCTOR=1` (the opt-in pre-commit hook), `SUMMER_ENGINE_REPO` (tests only, above).
+
+---
+
+## Working in a shared worktree (multi-agent)
+
+The v3 build ran several agents in one checkout at once and lost work to it (DECISIONS D14). When more than one agent — or one agent and a human — edits the same worktree, these are not suggestions:
+
+- **Own disjoint paths.** Before starting, agree who owns which files or directories for the duration of the task. Do not touch files outside your set; if you must, ask the owner.
+- **Commit with `--only`.** `git commit --only -m "…" -- <your exact paths>`. Never `git add`, never a bare `git commit` (it sweeps whatever anyone else staged), never `--amend`, `git reset`, `git stash`, or `git checkout -- <file>` — each of those can silently destroy or revert a sibling's work.
+- **Check the index first.** `git diff --cached HEAD --stat` before every commit; if it lists anything you did not stage, stop and find out whose it is.
+- **Review is read-only.** A review agent edits nothing and never runs product commands with side effects on the machine it audits (`summer login/logout/install/run/setup/publish`). Read the code; run the tests; say what you found.
+- **Green means the real artifact.** A test written alongside a fix that only exercises a mock is not verification. Prefer the gates that load the real thing: `generate-registry --check`, `validate:library`, the parity test, a cold install into a fake `HOME`.
 
 ---
 

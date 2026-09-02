@@ -6,7 +6,7 @@ Short version: **users do nothing.** MCP configs run `npx -y summer-engine@lates
 npx -y summer-engine@latest setup <agent> --yes --force
 ```
 
-(`summer doctor` flags a stale snapshot via `skills-version-stale` anyway.)
+(`summer doctor` flags a stale snapshot via `skills-version-stale` anyway.) One behavior change worth knowing: **`setup` now installs every skill in the library**, not the recommended subset v2 installed — so a `--force` re-run both refreshes and completes the set (v2 never installed `using-summer`, the session entry skill). `--recommended` restores the old subset.
 
 ## What v3 is
 
@@ -26,20 +26,26 @@ v3 rebuilds the repo around one idea: **every resource is described once, and ev
 ## What stayed exactly the same
 
 - Your projects and everything in `.summer/` (GameSoul.md, memory).
-- The `summer` binary and every CLI command.
+- The `summer` binary and every CLI command except three removals (below): `summer cloud`, `summer agent`, `summer logs`. New: `summer tool <name> --args '<json>'` runs any MCP tool from the shell.
 - The npm package name `summer-engine` and the `npx -y summer-engine@latest …` invocations.
 - Auth: `~/.summer/` tokens and sign-in state.
 - Agent MCP configs — `summer setup` migrates anything that needs touching.
 
-## Aliases: old names keep resolving
+## Aliases: old names are recorded; automatic resolution is not built yet
 
-Every pre-v3 skill path and name has an alias in `registry/generated/aliases.json` mapping it to the new permanent ID (`skill/<slug>`, `template/<slug>`, …). Anything that references an old path — older docs, saved prompts, other tools — resolves for at least one major release. Removal of alias support requires a changelog entry.
+Every pre-v3 skill path and name is recorded as an `aliases` entry on its resource and compiled into `registry/generated/aliases.json`, mapping it to the new permanent ID (`skill/<slug>`, `template/<slug>`, …). That table is kept for at least one major release; removing it requires a changelog entry.
+
+What resolves **today**: `summer create` accepts the legacy `template-<slug>` names (via the aliases compiled into `templates-registry.json`). What does **not** resolve yet: legacy skill names in `summer skills install <old-name>`, and the v2 `summer:<category>/<name>` skill references — nothing in the CLI reads `aliases.json` at runtime. If you have saved prompts or docs using old skill names, look them up in `aliases.json` and switch to the bare slug (`brainstorm-game`, `vfx-fire`, …); every shipped skill body was rewritten that way. See `DEVELOPMENT.md`, "How skills reference each other".
 
 ## Removed: Summer Cloud
 
 The v2 research preview `summer cloud` (content-addressed whole-project sync: `init / status / push / pull / restore / checkpoints / conflicts`), the seven `summer_cloud_*` MCP tools, and the `summer-cloud` skill are gone. It was never operational or maintained past the preview, so removing it is cleaner than shipping dormant code. Summer Platform publish/releases (`summer publish`, `summer releases`, `summer_creator_*`) is the wired path for getting a project off your machine; git remains the answer for moving code between machines.
 
 Old projects may still contain a `summer-cloud.json` binding at the root and a `.summer/local/cloud/` directory. Both are inert and can be deleted. A `~/.summer/cloud-token` left by a v2 login is never read; `summer logout` removes it.
+
+## Also removed: `summer agent`, `summer logs`
+
+`summer agent` was a development-only launcher for the web app from a sibling checkout; `summer logs` / `summer_creator_logs` could only ever fail (no runtime-log API exists). Neither had a working path in v2. Details in the CHANGELOG.
 
 ## For contributors
 

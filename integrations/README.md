@@ -31,6 +31,24 @@ Generated root dot-files (`.claude-plugin/plugin.json`, `gemini-extension.json`,
 edit; npm run generate:registry"). CI `--check` fails on any drift between
 `library/`, `registry/generated/`, and the applied root files.
 
+How the plugin manifests reference skills, and what is verified:
+
+- **Claude Code** — the plugin-manifest `skills` field accepts a string or an
+  array of `./`-relative directory paths and *extends* the default `skills/`
+  scan (Claude Code plugins reference, "Plugin manifest schema"). The
+  generated `.claude-plugin/plugin.json` lists one entry per skill
+  (`./library/skills/<slug>/`). The docs do not say whether a listed
+  directory is loaded as one skill or scanned for skill subfolders, and this
+  repo has not yet loaded the generated manifest through the real plugin
+  path (the smoke tests exercise the `summer setup` install path, not the
+  marketplace one) — treat the marketplace install as unverified until that
+  run exists.
+- **Codex** — `.codex-plugin/plugin.json` carries the same per-skill `skills`
+  array. Whether Codex reads that field, and with which type, is
+  **unverified**; the v2 manifest carried it and nobody has confirmed a load.
+- **Factory** — reads skills only from a root `skills/` directory; the
+  manifest's `skills` array is not read (open gap, see the table).
+
 | Client | Manifest generated in this repo | `summer setup` writes |
 |---|---|---|
 | claude | `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `.mcp.json` | MCP: `~/.claude.json` (user) / `.mcp.json` (project); skills: `~/.claude/skills/` (user) / `.claude/skills/` (project); slash commands from `commands/` to `~/.claude/commands/` |

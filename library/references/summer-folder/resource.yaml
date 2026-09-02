@@ -1,6 +1,6 @@
 id: reference/summer-folder
 kind: reference
-version: 1.0.0
+version: 1.0.1
 summary: The canonical layout of the project-scoped .summer/ folder — GameSoul.md, art/audio bibles, build plan, memory, and locked state.
 use_when:
   - authoring a skill that writes durable design output or project memory

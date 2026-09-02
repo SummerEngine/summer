@@ -25,9 +25,9 @@ The backing tool is `summer_generate_3d`, called multiple times. Each call costs
 
 ## When NOT to use
 
-- A single hero prop (single chest, single throne) → `summer:3d-assets/prop-model`.
-- Open-world terrain (rolling hills, forests) → use a heightmap + scattered organic models from `summer:3d-assets/organic-model`.
-- Repeating flat surfaces only (just walls and floors, no decorative pieces) → `summer:asset-pipeline/asset-strategy` Pipeline 2 (textures + CSG) is cheaper and snaps perfectly to grid.
+- A single hero prop (single chest, single throne) → `prop-model`.
+- Open-world terrain (rolling hills, forests) → use a heightmap + scattered organic models from `organic-model`.
+- Repeating flat surfaces only (just walls and floors, no decorative pieces) → `asset-strategy` Pipeline 2 (textures + CSG) is cheaper and snaps perfectly to grid.
 - Characters or vehicles in the scene — those are separate skills.
 
 ## The style anchor pattern
@@ -144,8 +144,8 @@ Check the AABB. If the wall is 1.85m tall when you asked for 3m, scale it in the
 
 ## Edge cases
 
-- **Curved or organic kit (cave, alien hive).** Modular geometry resists snapping. Generate longer pieces (4m walls, transition tiles) and accept some overlap. Or switch to procedural — `summer:level-design` can scatter cave pieces with rotation jitter.
-- **Outdoor kit (cliffs, ruins, forest path).** Use the kit pattern but accept rotation/jitter at placement time. Mesh edges should fade naturally rather than snap cleanly. Pair with `summer:3d-assets/organic-model` for foliage scatter.
+- **Curved or organic kit (cave, alien hive).** Modular geometry resists snapping. Generate longer pieces (4m walls, transition tiles) and accept some overlap. Or switch to procedural — `design-level` can scatter cave pieces with rotation jitter.
+- **Outdoor kit (cliffs, ruins, forest path).** Use the kit pattern but accept rotation/jitter at placement time. Mesh edges should fade naturally rather than snap cleanly. Pair with `organic-model` for foliage scatter.
 - **Sci-fi kit (corridors, doors, terminals).** The style suffix becomes critical — `clean panels, soft cyan emissive trim, brushed metal, white background, isolated object`. Hard surfaces drift more than organic ones; review every piece.
 - **The user wants to add a piece later.** The locked suffix lives in the kit's notes (drop it in `assets/kits/dungeon/STYLE.md` if the user wants persistence). Reuse it verbatim for any addition — never re-derive.
 
@@ -164,12 +164,12 @@ After the kit is staged:
 
 > Dungeon kit ready: `res://assets/kits/dungeon/` with wall, floor, pillar, door, corner, arch on a 2m snap grid. Display scene at `res://assets/kits/dungeon/kit_dungeon.tscn`.
 >
-> Next: hand off to the level-design step — instantiate kit pieces into `level_01.tscn`, snap to the 2m grid, dress with props (`summer:3d-assets/prop-model`) and foliage (`summer:3d-assets/organic-model`). For lighting, see `summer:3d-lighting`.
+> Next: hand off to the level-design step — instantiate kit pieces into `level_01.tscn`, snap to the 2m grid, dress with props (`prop-model`) and foliage (`organic-model`). For lighting, see `3d-lighting`.
 
 ## See also
 
-- `summer:3d-assets/prop-model` — for the chests, statues, and decorative props that dress the kit.
-- `summer:3d-assets/organic-model` — for foliage and rocks that break up modular repetition.
-- `summer:asset-pipeline/asset-strategy` — Pipeline 2 (textures + CSG) is the cheaper alternative when pieces are flat.
-- `summer:scene-composition` — how to organize the kit scene and the level scenes that consume it.
-- `summer:3d-lighting` — interior kit pieces typically need warm point lights at sconce positions.
+- `prop-model` — for the chests, statues, and decorative props that dress the kit.
+- `organic-model` — for foliage and rocks that break up modular repetition.
+- `asset-strategy` — Pipeline 2 (textures + CSG) is the cheaper alternative when pieces are flat.
+- `scene-composition` — how to organize the kit scene and the level scenes that consume it.
+- `3d-lighting` — interior kit pieces typically need warm point lights at sconce positions.

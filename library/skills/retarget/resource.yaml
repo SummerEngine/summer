@@ -1,6 +1,6 @@
 id: skill/retarget
 kind: skill
-version: 1.0.0
+version: 1.0.1
 summary: Apply existing animation clips from one rigged character to a different rigged character — same library, multiple models, no regeneration.
 use_when:
   - applying existing animation clips from one rigged character to a different rigged character — sharing one animation library across models

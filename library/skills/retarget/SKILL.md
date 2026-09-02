@@ -39,8 +39,8 @@ retarget API that does not exist; the honest math is below.
 
 ## When NOT to use this skill
 
-- The user wants ONE new clip on ONE character — just call `summer:animation/generate-motion`.
-- The user wants to retime, edit, or layer the animation — that's `summer:animation/animation-tree` and the `summer:animation/procedural-animation` additive layers.
+- The user wants ONE new clip on ONE character — just call `generate-motion`.
+- The user wants to retime, edit, or layer the animation — that's `animation-tree` and the `procedural-animation` additive layers.
 - Target is a quadruped or non-humanoid (wings-only, mech, blob). The curated Meshy
   library is humanoid-only and `SkeletonProfileHumanoid` is a humanoid profile.
   Hand-author instead.
@@ -67,7 +67,7 @@ summer_search_assets(query: "<target character>", assetType: "3d_model", source:
 
 Confirm a `rigAssetId` is present. If it is null the model was never rigged —
 stop and propose `summer_generate_3d({ kind: "image-to-3d", imageUrl: "...", options: { rig: true } })`
-first, or route to `summer:asset-pipeline/asset-strategy`.
+first, or route to `asset-strategy`.
 
 ### 3. Confirm with user before spending
 
@@ -167,7 +167,7 @@ same rigged `.glb`, nothing needs retargeting — instance the scene.
   humanoid profile.
 - **Proportion mismatch.** A library authored on a 1.8m humanoid on a 2.5m ogre
   runs, but you get foot-float and limb-twist. Layer foot IK afterwards — see
-  `summer:animation/procedural-animation`.
+  `procedural-animation`.
 
 ### Quality bar
 
@@ -188,7 +188,7 @@ same rigged `.glb`, nothing needs retargeting — instance the scene.
 ## Edge cases
 
 - **Source has facial blendshape tracks.** Skeleton retargeting only handles
-  bones. Facial tracks do not transfer. Hand off to `summer:animation/facial-and-lipsync`
+  bones. Facial tracks do not transfer. Hand off to `facial-and-lipsync`
   to re-author per character.
 - **Target rig is a different Meshy skeleton generation.** Symptom: bone-count
   mismatch even though both are Meshy. Re-rig the target with a fresh
@@ -207,16 +207,16 @@ Documented in the Godot 4.x "Retargeting 3D Skeletons" docs.
 ## Handoff
 
 - After the clips are on the target, the wiring is identical to a freshly-generated
-  clip — hand off to `summer:animation/character-animation-wiring` for the end-to-end
+  clip — hand off to `character-animation-wiring` for the end-to-end
   path (inspect the target's real clip/bone names first — retargeted imports rename
-  things), or `summer:animation/animation-tree` for blend-space/overlay graph design.
+  things), or `animation-tree` for blend-space/overlay graph design.
 - If the result shows foot-clipping or hand-pen-through-prop issues, hand off to
-  `summer:animation/procedural-animation` for IK correction.
-- For NPC behavior driving these clips, hand off to `summer:ai-and-npcs/design-npc`.
+  `procedural-animation` for IK correction.
+- For NPC behavior driving these clips, hand off to `design-npc`.
 
 ## See also
 
-- `summer:animation/generate-motion` — the tool that actually produces clips, and the curated name list.
-- `summer:asset-pipeline/asset-strategy` — getting characters rigged in the first place.
-- `summer:animation/animation-tree` — wire the clips into a state machine.
-- `summer:animation/procedural-animation` — fix proportional mismatches with foot IK.
+- `generate-motion` — the tool that actually produces clips, and the curated name list.
+- `asset-strategy` — getting characters rigged in the first place.
+- `animation-tree` — wire the clips into a state machine.
+- `procedural-animation` — fix proportional mismatches with foot IK.

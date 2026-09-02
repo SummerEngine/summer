@@ -23,8 +23,8 @@ When the user wants to start from a blank canvas — not a community template, n
 
 ## When NOT to use this skill
 
-- "Show me templates" / "use a template" → `summer:browse-templates`.
-- "Make me a game" with a defined idea → run `summer:brainstorm-game` first to scope, then come back here once the user knows what they want.
+- "Show me templates" / "use a template" → `browse-templates`.
+- "Make me a game" with a defined idea → run `brainstorm-game` first to scope, then come back here once the user knows what they want.
 - "I have an existing Godot project I want to import" → not this skill; have the user run `summer open <path>` directly.
 
 ## Steps
@@ -48,7 +48,7 @@ If you're not sure which fits, ask:
 
 > "Empty (just a root node) or 3d-basic (camera, light, and a floor — you can press play immediately)?"
 
-If the user has clearly invoked `summer:brainstorm-game` already and the brief calls for 3D, default to `3d-basic` and mention you did. If 2D, use `empty` (we don't ship a 2D-basic yet).
+If the user has clearly invoked `brainstorm-game` already and the brief calls for 3D, default to `3d-basic` and mention you did. If 2D, use `empty` (we don't ship a 2D-basic yet).
 
 ### 3. Create
 
@@ -74,12 +74,12 @@ Confirm the engine launched and the project loaded. If `summer run` fails, run `
 
 ### 5. Don't keep going automatically
 
-After scaffolding, **stop and let the user direct.** A common mistake: fire `summer:fps-controller` or `summer:design-mechanic` automatically because "now we make a game." Wait. The user might want to:
+After scaffolding, **stop and let the user direct.** A common mistake: fire `fps-controller` or `design-mechanic` automatically because "now we make a game." Wait. The user might want to:
 
-- Brainstorm what to build (`summer:brainstorm-game`)
-- Set the visual direction (`summer:art-direction`)
-- Jump straight into a known mechanic (`summer:design-mechanic`)
-- Build a specific controller (`summer:fps-controller`)
+- Brainstorm what to build (`brainstorm-game`)
+- Set the visual direction (`art-direction`)
+- Jump straight into a known mechanic (`design-mechanic`)
+- Build a specific controller (`fps-controller`)
 
 Ask: "Project is open. What do you want to build?"
 
@@ -89,8 +89,8 @@ Ask: "Project is open. What do you want to build?"
 |---|---|
 | Skip the name question and use `my-game` silently | The user has opinions about the directory name. Two seconds of asking saves a `mv` later. |
 | Use `summer create 3d-basic` for a 2D game | Wrong starting scene. Use `empty` and let the user/agent build the 2D root from there. |
-| Default to a community template | That's `summer:browse-templates`. This skill is specifically for "blank canvas." |
-| Continue into `summer:fps-controller` automatically | Most users want to brainstorm or set art direction first. Stop and ask. |
+| Default to a community template | That's `browse-templates`. This skill is specifically for "blank canvas." |
+| Continue into `fps-controller` automatically | Most users want to brainstorm or set art direction first. Stop and ask. |
 | Run this when the user is in an existing project | Check `summer status` or `summer_get_project_context` first. If a project is already open, the user probably wanted to modify it, not create a new one. |
 
 ## Edge cases

@@ -26,33 +26,32 @@ Use it when the user shows you a screenshot or concept image and says "build thi
         │   └── route to TERRAIN + 2D ASSETS path
         ├─ 3D third-person / first-person
         │   └── route to 3D ASSETS path (out of scope for this skill —
-        │       use summer:3d-assets/ subskills directly)
+        │       use `asset-strategy` directly)
         └─ UI-only screen (menu, HUD)
             └── route to UI ASSETS path (just plan-asset-pack)
 
 2. For each visible element, route to the right sub-pipeline:
 
-   TERRAIN  → summer:2d-assets/tileable-texture
+   TERRAIN  → tileable-texture
               (auto-tiling Wang / 47-tile sheet; CURRENTLY a placeholder
               that generates a single tile — full auto-tile work is
-              tracked in publicsummerengine/Docs/assetCreation/
-              TERRAIN_AUTOTILE_IDEA.md and not yet built)
+              not yet built)
 
    PROPS / DECOR / LIGHTING / NATURE / WATER / BUILDINGS / UI / VFX
        ── If user has time for individual generation, prefer:
-       │   summer:2d-assets/create-asset-sheet (Plan + Generate Pack
+       │   create-asset-sheet (Plan + Generate Pack
        │   mode at /studio/plan-asset-pack — higher quality, each asset
        │   gets full model attention)
        └── If user wants fast / exploratory:
-           summer:2d-assets/create-asset-sheet (Slice from a sheet at
+           create-asset-sheet (Slice from a sheet at
            /studio/create-tileset — one sheet, autoslice, cheaper)
 
-   CHARACTERS → summer:2d-assets/character-portrait first for the static
-                frame, then summer:2d-assets/sprite-sheet for animation
+   CHARACTERS → character-portrait first for the static
+                frame, then sprite-sheet for animation
 
 3. Once assets exist, USE-WIDGET-ASSET on any UI / panel / bar /
    toggle pack files to wire them as NinePatchRect / TextureProgressBar
-   / etc. (see summer:2d-assets/use-widget-asset)
+   / etc. (see use-widget-asset)
 
 4. Compose the scene:
    - summer_create_scene(path=..., rootName=..., allow_temporary_scene_mutation=true).
@@ -81,10 +80,10 @@ Use it when the user shows you a screenshot or concept image and says "build thi
 
 ## When NOT to use
 
-- The user wants a **single asset** → `summer:2d-assets/pixel-art` or a leaf skill directly.
-- The user wants to **design** a level from scratch (gameplay beats, pacing, encounters) → `summer:level-design/design-level`. This skill is post-design — it implements a known visual target.
-- The user wants a **3D level** → use `summer:3d-assets/` subskills directly; the orchestration for 3D scenes isn't in this skill yet.
-- The user wants a **playable prototype with mechanics already** → mechanics aren't in scope. This skill produces the *visuals*; the mechanic skills (e.g. `summer:gameplay-mechanics/design-mechanic`) handle behavior.
+- The user wants a **single asset** → `pixel-art` or a leaf skill directly.
+- The user wants to **design** a level from scratch (gameplay beats, pacing, encounters) → `design-level`. This skill is post-design — it implements a known visual target.
+- The user wants a **3D level** → use `asset-strategy` directly; the orchestration for 3D scenes isn't in this skill yet.
+- The user wants a **playable prototype with mechanics already** → mechanics aren't in scope. This skill produces the *visuals*; the mechanic skills (e.g. `design-mechanic`) handle behavior.
 
 ## Required up-front
 
@@ -117,7 +116,7 @@ User shows you a screenshot of a Japanese village with multiple islands, water b
 3. **Plan the buildings pack**: 5 distinct buildings (small house, barn, shop, pagoda, watchtower).
 4. **Generate terrain**: today, single grass tile + single water tile + edge variant placeholders. Full Wang-tile auto-tiling is the TERRAIN_AUTOTILE_IDEA.md unbuilt path.
 5. **Plan the UI pack** via the planner with theme "isometric voxel game UI: bottom palette, toolbar with Place/Erase/Pan/Save/Reset, asset category tabs, instruction panel."
-6. **For each UI slice that's a panel / button**, use `summer:2d-assets/use-widget-asset` to wire as NinePatchRect.
+6. **For each UI slice that's a panel / button**, use `use-widget-asset` to wire as NinePatchRect.
 7. **Compose**: TileMap for terrain; Sprite2D placement matching the reference; Control nodes for the UI.
 8. **Validate + hand off**.
 
@@ -125,7 +124,7 @@ Total wall-clock: maybe 30 min for the asset packs (parallel), another 15 for sc
 
 ## What this skill explicitly defers
 
-- **3D scene assembly.** Out of scope; use `summer:3d-assets/` directly until a 3D variant of this orchestrator exists.
-- **Auto-tiling terrain.** The pipeline node exists in the decision tree but the leaf skill that implements it is not built — see `publicsummerengine/Docs/assetCreation/TERRAIN_AUTOTILE_IDEA.md`.
-- **Animation orchestration.** Per-character `summer:2d-assets/sprite-sheet` is invoked manually; no auto-pairing of characters with their animation pipelines yet.
+- **3D scene assembly.** Out of scope; use `asset-strategy` directly until a 3D variant of this orchestrator exists.
+- **Auto-tiling terrain.** The pipeline node exists in the decision tree but the leaf skill that implements it is not built.
+- **Animation orchestration.** Per-character `sprite-sheet` is invoked manually; no auto-pairing of characters with their animation pipelines yet.
 - **Gameplay code.** Player movement, interactions, win conditions — those are level-design + gameplay-mechanics skills, not this one.

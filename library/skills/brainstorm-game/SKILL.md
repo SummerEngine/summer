@@ -93,7 +93,7 @@ Ask:
 
 > One phrase for the look. If a stranger asked your screenshot's style in 6 words, what do you say?
 
-Don't go deeper here — `/summer:art-direction` is where the bible gets built. This is one phrase to seed it.
+Don't go deeper here — `/art-direction` is where the bible gets built. This is one phrase to seed it.
 
 ### 6. Pin the scope
 
@@ -171,10 +171,10 @@ Print the full brief to the user with the explicit instruction:
 End every successful brainstorm with a routing question:
 
 > Brief saved. Next step:
-> - `/summer:design-mechanic` — design the core loop in detail (recommended for vertical slice).
-> - `/summer:design-level` — sketch level 1 / the tutorial.
-> - `/summer:art-direction` — turn the one-phrase look into an art bible.
-> - Or pick up `/summer:make-game` to start scaffolding the project.
+> - `/design-mechanic` — design the core loop in detail (recommended for vertical slice).
+> - `/design-level` — sketch level 1 / the tutorial.
+> - `/art-direction` — turn the one-phrase look into an art bible.
+> - Or pick up `/make-game` to start scaffolding the project.
 
 Don't auto-pick. Let them decide.
 
@@ -188,7 +188,7 @@ Don't auto-pick. Let them decide.
 | Writing the brief without showing it first | They have to react to it. They'll catch their own bad fits when they read it back. |
 | Defaulting to "full game" scope | New devs overestimate. Default to vertical slice; let them upgrade if they push. |
 | Pitching a genre they didn't ask for | The first sentence they typed is signal. Don't override it. |
-| Including art direction details | One phrase. Bible-building is `/summer:art-direction`. |
+| Including art direction details | One phrase. Bible-building is `/art-direction`. |
 | Saving without asking | Always ask "May I create `.summer/GameSoul.md`?" — see collaborative-protocol. |
 
 ## Collaborative protocol
@@ -197,7 +197,7 @@ This skill writes one file (`.summer/GameSoul.md`). Always ask before writing. A
 
 ## Want a working starter?
 
-No template — this is a workflow that produces the brief that drives template selection later. Once `.summer/GameSoul.md` exists, `/summer:make-game` reads it and `summer list templates` shows what's actually available to match against.
+No template — this is a workflow that produces the brief that drives template selection later. Once `.summer/GameSoul.md` exists, `/make-game` reads it and `summer list templates` shows what's actually available to match against.
 
 ## See also
 

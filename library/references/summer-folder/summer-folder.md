@@ -4,16 +4,16 @@
 
 ## Files at the root of `.summer/`
 
-- `GameSoul.md` — the project brief. Created by `/summer:brainstorm-game`. Contains: name, one-sentence pitch, core loop, 3 mechanics max, art direction summary, scope. Updated whenever the game's high-level direction changes.
-- `art-bible.md` — visual style reference. Created by `/summer:art-direction`. Contains: palette (6–15 hex codes), mood adjectives, lighting plan, post-processing notes, do/don't list, references.
-- `audio-bible.md` — sonic identity. Created by `/summer:audio-direction`. Contains: music style + tempo range, SFX vocabulary (8 classes), dynamic music FSM, bus layout reference.
-- `build-plan.md` — implementation plan derived from `GameSoul.md`. Created by `/summer:make-game` before scaffold/build work.
+- `GameSoul.md` — the project brief. Created by `/brainstorm-game`. Contains: name, one-sentence pitch, core loop, 3 mechanics max, art direction summary, scope. Updated whenever the game's high-level direction changes.
+- `art-bible.md` — visual style reference. Created by `/art-direction`. Contains: palette (6–15 hex codes), mood adjectives, lighting plan, post-processing notes, do/don't list, references.
+- `audio-bible.md` — sonic identity. Created by `/audio-direction`. Contains: music style + tempo range, SFX vocabulary (8 classes), dynamic music FSM, bus layout reference.
+- `build-plan.md` — implementation plan derived from `GameSoul.md`. Created by `/make-game` before scaffold/build work.
 
 ## Subdirectories
 
-- `mechanics/<mechanic-name>.md` — one file per designed mechanic (e.g., `double-jump.md`, `parry.md`). Created by `/summer:design-mechanic`. Contains: input → response → feedback → failure modes → tunable parameters.
-- `levels/<level-name>.md` — one file per designed level. Created by `/summer:design-level`. Contains: teaching goal, pacing curve (5 beats), encounters, secrets, reward gating.
-- `npcs/<npc-name>.md` — one file per designed NPC. Created by `/summer:design-npc`. Contains: archetype, perception model, decision tree, escalation, defeat sequence.
+- `mechanics/<mechanic-name>.md` — one file per designed mechanic (e.g., `double-jump.md`, `parry.md`). Created by `/design-mechanic`. Contains: input → response → feedback → failure modes → tunable parameters.
+- `levels/<level-name>.md` — one file per designed level. Created by `/design-level`. Contains: teaching goal, pacing curve (5 beats), encounters, secrets, reward gating.
+- `npcs/<npc-name>.md` — one file per designed NPC. Created by `/design-npc`. Contains: archetype, perception model, decision tree, escalation, defeat sequence.
 - `memory/` — structured project memory for durable facts that must survive future sessions. Use this for locked cast decisions, character facts, provider IDs, world canon, and conflict notes.
 - `skills/` — installed project-scoped Summer skills. Do not put game design memory here.
 
@@ -71,19 +71,19 @@ Then write the fact in normal Markdown so users can inspect and edit it:
 
 | Skill | Writes |
 |---|---|
-| `/summer:brainstorm-game` | `.summer/GameSoul.md` |
-| `/summer:art-direction` | `.summer/art-bible.md` |
-| `/summer:audio-direction` | `.summer/audio-bible.md` |
-| `/summer:design-mechanic` | `.summer/mechanics/<name>.md` |
-| `/summer:design-level` | `.summer/levels/<name>.md` |
-| `/summer:design-npc` | `.summer/npcs/<name>.md` |
-| `/summer:voice-line` | `.summer/memory/casting/voices.md` |
-| `/summer:debug` | does NOT write here |
-| `/summer:play` | does NOT write here |
-| `/summer:vfx` | does NOT write here (VFX edits scenes/scripts) |
-| `/summer:tune-performance` | optionally writes `.summer/perf-notes.md` if user requests |
-| `/summer:setup-multiplayer` | optionally writes `.summer/multiplayer-architecture.md` |
-| `/summer:export-and-ship` | does NOT write here (writes export configs in `project.godot`) |
+| `/brainstorm-game` | `.summer/GameSoul.md` |
+| `/art-direction` | `.summer/art-bible.md` |
+| `/audio-direction` | `.summer/audio-bible.md` |
+| `/design-mechanic` | `.summer/mechanics/<name>.md` |
+| `/design-level` | `.summer/levels/<name>.md` |
+| `/design-npc` | `.summer/npcs/<name>.md` |
+| `/voice-line` | `.summer/memory/casting/voices.md` |
+| `/debug` | does NOT write here |
+| `/play` | does NOT write here |
+| `/game-feel`, `/vfx-<effect>` | does NOT write here (VFX edits scenes/scripts) |
+| `/tune-performance` | optionally writes `.summer/perf-notes.md` if user requests |
+| `/setup-multiplayer` | optionally writes `.summer/multiplayer-architecture.md` |
+| `/export-and-ship` | does NOT write here (writes export configs in `project.godot`) |
 
 ## Linter check (future)
 

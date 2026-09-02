@@ -275,7 +275,7 @@ To enable another target, prove one of these before returning to step 2:
 
 On Apple Silicon, `binary_format/architecture="arm64"` is the natural guess, and it fails leaving a **0-byte `.app` that looks like success**. Only `"universal"` ships.
 
-See `summer:headless-scripting` for the wider pattern this is one instance of.
+See `headless-scripting` for the wider pattern this is one instance of.
 
 If the user is on a CI system (GitHub Actions etc), this is the right place to point them at a cross-compile workflow — Godot can export Windows + Linux from a Linux runner.
 
@@ -346,7 +346,7 @@ Use this as a one-shot grep before any export:
 
 ## Collaborative protocol
 
-This skill produces release artifacts. Always ask before each build is invoked. Group platforms — "I'm about to build Windows + Mac + Linux release configs into `build/`. OK?". See `../../../references/collaborative-protocol.md`.
+This skill produces release artifacts. Always ask before each build is invoked. Group platforms — "I'm about to build Windows + Mac + Linux release configs into `build/`. OK?". See `../../references/collaborative-protocol/collaborative-protocol.md`.
 
 ## Want a working starter?
 
@@ -354,10 +354,10 @@ No template — this is a workflow. Each project's export config and store asset
 
 ## See also
 
-- `../../../references/mcp-tools-reference.md` — full MCP tool list
-- `../../../references/godot-version.md` — Summer compatibility and
+- `../../references/mcp-tools-reference/mcp-tools-reference.md` — full MCP tool list
+- `../../references/godot-version/godot-version.md` — Summer compatibility and
   export-template versioning
-- `../../../references/collaborative-protocol.md` — "May I write" pattern
+- `../../references/collaborative-protocol/collaborative-protocol.md` — "May I write" pattern
 - `deployment/export-presets/SKILL.md` — preset config deep dive
 - `deployment/web-html5-export/SKILL.md` — HTML5-specific traps
 - `deployment/steam-uploader/SKILL.md` — `steamcmd` + GodotSteam (when shipped)

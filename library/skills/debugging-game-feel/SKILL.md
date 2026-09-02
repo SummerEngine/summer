@@ -11,19 +11,19 @@ description: Use when a gameplay feature works correctly but feels wrong — flo
 
 **Core principle:** Game-feel bugs are tuning bugs, not logic bugs. Treat them with discipline — isolate one variable, compare to a reference, measure what you can, feel what you can't.
 
-This skill is for the diagnostic phase. The polish-and-juice layer (screen shake, hit-stop, particles, sound design) is `summer:game-feel` — go there once you've identified WHICH variable is wrong.
+This skill is for the diagnostic phase. The polish-and-juice layer (screen shake, hit-stop, particles, sound design) is `game-feel` — go there once you've identified WHICH variable is wrong.
 
 ## When To Use
 
 - The user says: "feels floaty", "feels mushy", "feels off", "feels sluggish", "doesn't feel right", "lacks impact", "lacks weight", "doesn't feel satisfying".
-- The feature passes `summer:playtesting-a-feature` (no errors, golden path runs) but still doesn't feel right.
+- The feature passes `playtesting-a-feature` (no errors, golden path runs) but still doesn't feel right.
 - You're tuning movement, combat, camera, or any interaction with frame-level timing.
 
 ## When NOT To Use
 
-- The feature has a **concrete reproducible bug** — go to `summer:investigating-bugs`.
-- The feature **crashes or throws** — go to `summer:debug`.
-- The feature **hasn't been built yet** — design it via `summer:brainstorming` first.
+- The feature has a **concrete reproducible bug** — go to `investigating-bugs`.
+- The feature **crashes or throws** — go to `debug`.
+- The feature **hasn't been built yet** — design it via `brainstorming` first.
 
 ## The Iron Law
 
@@ -164,7 +164,7 @@ These are diagnostic tools, not lecture material. When the user says "feels weig
 | "The user said floaty so I'm jacking gravity" | "Floaty" can also mean weak air control, slow terminal velocity, or too-long apex hang. Confirm before tweaking. |
 | Skipping the play step ("I'll just bump the number and trust the feel") | Game feel is felt, not predicted. Play every tweak. |
 | Adding "while I'm here" tweaks to unrelated features | Game feel debugging is a focused activity. Stay on the one feature. |
-| Going to `summer:game-feel` before identifying the broken variable | Juice on top of a broken tuning makes the bug louder. Fix tuning first. |
+| Going to `game-feel` before identifying the broken variable | Juice on top of a broken tuning makes the bug louder. Fix tuning first. |
 | Spending >30 minutes on one variable without progress | The anchor is wrong, or the variable is wrong. Step back, re-anchor. |
 
 ## Rationalization Prevention
@@ -181,14 +181,14 @@ These are diagnostic tools, not lecture material. When the user says "feels weig
 
 After diagnosis pins down which variable(s) are wrong, the tuning is done — but the feature may still want polish. Hand off to:
 
-- `summer:game-feel` — for the screen-shake, hit-stop, particle, sound layer once tuning is locked.
-- `summer:debug` — if mid-debug you discover an actual error (signal not firing, node freed) hiding under the feel issue.
+- `game-feel` — for the screen-shake, hit-stop, particle, sound layer once tuning is locked.
+- `debug` — if mid-debug you discover an actual error (signal not firing, node freed) hiding under the feel issue.
 
 ## The Bottom Line
 
 Feel bugs are tuning bugs. Tuning is a one-variable-at-a-time discipline. Anchor to a reference. Tweak one number. Play it. Decide. Repeat.
 
 **Related skills:**
-- `summer:investigating-bugs` — for logical bugs with concrete repros, not feel.
-- `summer:playtesting-a-feature` — the playtest discipline this skill plugs into.
-- `summer:debug` — when the feel investigation surfaces an actual error.
+- `investigating-bugs` — for logical bugs with concrete repros, not feel.
+- `playtesting-a-feature` — the playtest discipline this skill plugs into.
+- `debug` — when the feel investigation surfaces an actual error.

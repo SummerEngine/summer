@@ -35,8 +35,8 @@ So do not tell the user to cut a generated sheet by hand or in ImageMagick. The 
 
 ## When NOT to use
 
-- The character is 3D — use `summer:animation/generate-motion` for skeletal animation.
-- The user wants a single static sprite → `summer:2d-assets/pixel-art` or `summer:2d-assets/character-portrait`.
+- The character is 3D — use `generate-motion` for skeletal animation.
+- The user wants a single static sprite → `pixel-art` or `character-portrait`.
 - The user wants UI animation (loading spinner, button hover) — animate via `AnimationPlayer` rotating/tweening a static texture instead. Don't sprite-sheet UI.
 - The user has 12+ frames per animation and 4+ animations — that's hundreds of generations at $0.02 each. Pause and discuss budget.
 
@@ -47,7 +47,7 @@ So do not tell the user to cut a generated sheet by hand or in ImageMagick. The 
 You need a stable reference. Either:
 
 - The user has a static sprite already (`res://sprites/goblin.png`) — use it as `referenceImageUrl`.
-- Generate a base sprite via `summer:2d-assets/pixel-art` or `summer:2d-assets/character-portrait` first, then return here.
+- Generate a base sprite via `pixel-art` or `character-portrait` first, then return here.
 
 Without a base, every frame drifts.
 
@@ -115,7 +115,7 @@ Tell the user:
 
 > AI sprite-sheet generation is unreliable — best path for clean pixel animation is to hand-author in Aseprite (or Piskel for free in-browser). Onion-skin frame-by-frame; ~10 minutes for a 4-frame walk cycle. Want me to generate a base reference image you can trace?
 
-If yes, generate the static base via `summer:2d-assets/pixel-art` and stop here. The user takes it to Aseprite.
+If yes, generate the static base via `pixel-art` and stop here. The user takes it to Aseprite.
 
 ### 4. Import frames into Summer Engine
 
@@ -230,15 +230,15 @@ Tell the user to run via the Summer dashboard. Or recommend Aseprite (paid, $20)
 After the animation is wired:
 
 - **More animations on the same character** (idle, attack, death) → re-invoke this skill with the same base anchor, vary the delta.
-- **Sound effects synced to animation frames** → `summer:audio/sound-effect`, then wire via `Call Method Track` in `AnimationPlayer`.
+- **Sound effects synced to animation frames** → `sound-effect`, then wire via `Call Method Track` in `AnimationPlayer`.
 - **Multi-direction sprites** → re-invoke per direction (budget warning).
-- **Pixel-art static base if not yet generated** → `summer:2d-assets/pixel-art` first.
-- **3D character animation instead** → `summer:animation/generate-motion`.
+- **Pixel-art static base if not yet generated** → `pixel-art` first.
+- **3D character animation instead** → `generate-motion`.
 
 ## See also
 
-- `summer:2d-assets/pixel-art` — base sprite generation.
-- `summer:2d-assets/character-portrait` — base portrait for higher-res characters.
-- `summer:animation/generate-motion` — 3D-skeletal counterpart.
-- `summer:audio/sound-effect` — frame-synced SFX.
-- `../../../references/mcp-tools-reference.md` — `summer_generate_image` schema.
+- `pixel-art` — base sprite generation.
+- `character-portrait` — base portrait for higher-res characters.
+- `generate-motion` — 3D-skeletal counterpart.
+- `sound-effect` — frame-synced SFX.
+- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_image` schema.

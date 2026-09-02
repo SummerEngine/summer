@@ -1,6 +1,6 @@
 id: skill/asset-strategy
 kind: skill
-version: 1.0.0
+version: 1.0.1
 summary: Route any 'I need a [thing]' asset request to the right specialist skill — disambiguates 2D / 3D / audio / video / VFX / animation pipelines.
 use_when:
   - planning asset creation, picking an asset pipeline, or routing an 'I need a [thing]' request to the right specialist skill

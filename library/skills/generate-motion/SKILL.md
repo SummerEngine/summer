@@ -13,7 +13,7 @@ paths: ["**/*.tscn", "**/*.tres", "**/*.gd"]
 
 Picks a clip from a **curated mocap library** by name and wires it onto a Meshy-rigged humanoid. Fast (~30s) and cheap (~$0.10) and looks great because it's real mocap. The five short aliases that always work are `idle`, `walk`, `run`, `jump`, `attack`; anything else must be an exact library name — see the Reference card before you invent one.
 
-The target must be a **Meshy-rigged humanoid** — a `rigAssetId` from a prior `summer_generate_3d({ kind: "image-to-3d", imageUrl: "...", options: { rig: true } })` call. The result job includes `rigAssetId`. If the user points at a non-rigged mesh, stop and route to `summer:asset-pipeline/asset-strategy` (or directly call `summer_generate_3d` with `options.rig: true`) before generating motion.
+The target must be a **Meshy-rigged humanoid** — a `rigAssetId` from a prior `summer_generate_3d({ kind: "image-to-3d", imageUrl: "...", options: { rig: true } })` call. The result job includes `rigAssetId`. If the user points at a non-rigged mesh, stop and route to `asset-strategy` (or directly call `summer_generate_3d` with `options.rig: true`) before generating motion.
 
 > **Custom prompt-driven motion** (e.g. "drops to one knee, draws bow") is on
 > the roadmap but not shipped yet. For one-off signature moves not on the
@@ -45,11 +45,11 @@ After animation jobs complete, import the rig plus child animation assets togeth
 
 ## When NOT to use this skill
 
-- The user wants to apply an *existing* animation to a *new* model — use `summer:animation/retarget` instead. Don't regenerate.
-- The user wants state-machine wiring (idle → walk → run blend) — generate the clips here, then hand off to `summer:animation/animation-tree`.
-- The user wants facial / lipsync animation — that's `summer:animation/facial-and-lipsync`.
+- The user wants to apply an *existing* animation to a *new* model — use `retarget` instead. Don't regenerate.
+- The user wants state-machine wiring (idle → walk → run blend) — generate the clips here, then hand off to `animation-tree`.
+- The user wants facial / lipsync animation — that's `facial-and-lipsync`.
 - The mesh isn't rigged. Rig first; never call `summer_generate_motion` on a static `.glb`.
-- The user wants procedural look-at, IK, foot placement — that's `summer:animation/procedural-animation`.
+- The user wants procedural look-at, IK, foot placement — that's `procedural-animation`.
 - The user described a **custom signature move** that isn't on the curated list. Today, route to the manual-authoring fallback below.
 
 ## Steps
@@ -60,7 +60,7 @@ After animation jobs complete, import the rig plus child animation assets togeth
 summer_search_assets(query="<character name>", assetType="3d_model", source="my_assets")
 ```
 
-The result must include `rigAssetId: <id>` on a Meshy rig. If it shows `rigAssetId: null`, the model isn't rigged — stop, propose `summer_generate_3d({ kind: "image-to-3d", imageUrl: "...", options: { rig: true } })` first (the result includes `rigAssetId`), or route to `summer:asset-pipeline/asset-strategy`.
+The result must include `rigAssetId: <id>` on a Meshy rig. If it shows `rigAssetId: null`, the model isn't rigged — stop, propose `summer_generate_3d({ kind: "image-to-3d", imageUrl: "...", options: { rig: true } })` first (the result includes `rigAssetId`), or route to `asset-strategy`.
 
 ### 2. Confirm with the user before spending
 
@@ -103,7 +103,7 @@ summer_save_scene(scenePath="res://main.tscn")
 `summer_save_scene`. `summer_inspect_node` takes only `path` — it has no
 `scenePath` and reads the currently-edited scene.
 
-If the character will use multiple clips, leave the AnimationPlayer in place — every subsequent generation appends to the same library. State-machine wiring belongs to `summer:animation/animation-tree`, not here.
+If the character will use multiple clips, leave the AnimationPlayer in place — every subsequent generation appends to the same library. State-machine wiring belongs to `animation-tree`, not here.
 
 ## Confirmation gates
 
@@ -140,8 +140,8 @@ have actually seen, or route to the manual-authoring fallback.
 ### Pitfalls
 
 - **Invented `motionName` strings fail.** `"run_fast"`, `"attack_sword"`, `"death"` all resolve to nothing and the call errors. Name resolution is exact — five aliases, or a real library name / display name / numeric id. Do not extrapolate a naming scheme.
-- **Locomotion clips have a forward bias.** Meshy's `run` translates the root forward by ~5m. Either the code drives movement (then the baked root translation causes a lunge-and-snap every loop — strip it) or the clip does via `root_motion_track` + `get_root_motion_position()` — never both. The full root-motion setup and its playtest verification live in `summer:animation/character-animation-wiring`.
-- **Rig pose mismatch.** If your rig was rigged with a non-T-pose reference image, the limbs may bend wrong. Re-rig from a T-pose mannequin (see `summer:asset-pipeline/asset-strategy`) before re-generating.
+- **Locomotion clips have a forward bias.** Meshy's `run` translates the root forward by ~5m. Either the code drives movement (then the baked root translation causes a lunge-and-snap every loop — strip it) or the clip does via `root_motion_track` + `get_root_motion_position()` — never both. The full root-motion setup and its playtest verification live in `character-animation-wiring`.
+- **Rig pose mismatch.** If your rig was rigged with a non-T-pose reference image, the limbs may bend wrong. Re-rig from a T-pose mannequin (see `asset-strategy`) before re-generating.
 - **Rig still preparing.** New rigs need ~3 minutes after the rig job completes before the animation library is ready. The MCP route returns 425 "animations_preparing" if you call too early. Wait and retry.
 
 ## Anti-patterns
@@ -170,13 +170,13 @@ Engine.
 
 ## Handoff
 
-- After generating locomotion clips, suggest `summer:animation/character-animation-wiring` — the end-to-end wiring path (inspect what landed, idle/walk/run state machine with blend times, footstep method tracks, root motion, playtest proof). For blend spaces and attack/hit overlays on top, `summer:animation/animation-tree`.
-- After generating a one-shot (death, hit-react), suggest `summer:ai-and-npcs/design-npc` to fire it from the behavior state machine.
-- For first-person hand animations on a player, use this skill on a *hands-only rig* and then `summer:character-controllers/fps-controller` for the wiring.
-- If the user wants to apply these clips to a second character, hand off to `summer:animation/retarget`.
+- After generating locomotion clips, suggest `character-animation-wiring` — the end-to-end wiring path (inspect what landed, idle/walk/run state machine with blend times, footstep method tracks, root motion, playtest proof). For blend spaces and attack/hit overlays on top, `animation-tree`.
+- After generating a one-shot (death, hit-react), suggest `design-npc` to fire it from the behavior state machine.
+- For first-person hand animations on a player, use this skill on a *hands-only rig* and then `fps-controller` for the wiring.
+- If the user wants to apply these clips to a second character, hand off to `retarget`.
 
 ## See also
 
-- `summer:asset-pipeline/asset-strategy` — how to get a Meshy-rigged character in the first place.
-- `summer:animation/animation-tree` — wire the generated clips into a state machine.
-- `summer:animation/retarget` — re-use one library across many characters without regenerating.
+- `asset-strategy` — how to get a Meshy-rigged character in the first place.
+- `animation-tree` — wire the generated clips into a state machine.
+- `retarget` — re-use one library across many characters without regenerating.

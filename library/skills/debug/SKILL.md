@@ -143,7 +143,7 @@ Surface the proposed fix in plain language and ask permission. Two patterns:
 
 - For GDScript edits: `Read` the 20–40 lines around the error, `Edit` the exact change. Don't read the whole file. Don't reformat. Don't rename other things.
 - For scene edits: use the appropriate `summer_*` tool (`summer_add_node`, `summer_set_prop`, `summer_replace_node`). Group multi-step changes in `summer_batch` for one undo step.
-- **Trap to avoid:** never call `summer_set_resource_property` against an inline `sub_resource` — the value is silently dropped. If the property is on a nested resource, first call `summer_set_prop` with the resource class name to instantiate a standalone resource, then drill in. See `../../../references/mcp-tools-reference.md`.
+- **Nested resource properties:** `summer_set_resource_property` works against inline `sub_resource` targets too — pass `nodePath`, `resourceProperty`, and `subProperty` (there is no dotted `"mesh.size"` form). Failures are explicit errors, never silent. See `../../references/mcp-tools-reference/mcp-tools-reference.md`.
 
 ### 6. Verify — re-run the diagnostic that found it
 
@@ -224,7 +224,7 @@ This covers what static diagnostics cannot: pressed input, live scene tree (`dum
 
 ### What still genuinely needs the user
 
-- **Whether it feels right.** Frame counts and reports cannot tell you the jump feels floaty. See `summer:debugging-game-feel`.
+- **Whether it feels right.** Frame counts and reports cannot tell you the jump feels floaty. See `debugging-game-feel`.
 - **Hardware-specific and non-deterministic behaviour.** A bug that only fires on their GPU, their controller, or one run in twenty.
 - **A judgement call on intent.** "Is this the behaviour you wanted?" is a question, not a measurement.
 

@@ -11,9 +11,9 @@ paths: ["assets/**", "art/**", "ui/**", "scenes/**"]
 
 # instantiate-asset-pack — Instantiate Asset Pack into Scene
 
-A pack ArtAsset (produced by `summer:2d-assets/create-asset-sheet`) is a bundle of cropped slice PNGs with per-slice metadata. This skill is the runtime side: given a pack, lay its slices into the current scene as a correctly-grouped, correctly-layered set of nodes.
+A pack ArtAsset (produced by `create-asset-sheet`) is a bundle of cropped slice PNGs with per-slice metadata. This skill is the runtime side: given a pack, lay its slices into the current scene as a correctly-grouped, correctly-layered set of nodes.
 
-For wiring individual widget slices (9-slice panels, progress bars, toggles), this skill delegates to `summer:2d-assets/use-widget-asset`. This skill handles the pack-level layout: grouping composites, paint order, spatial offset, naming.
+For wiring individual widget slices (9-slice panels, progress bars, toggles), this skill delegates to `use-widget-asset`. This skill handles the pack-level layout: grouping composites, paint order, spatial offset, naming.
 
 ## When to use
 
@@ -25,13 +25,11 @@ For wiring individual widget slices (9-slice panels, progress bars, toggles), th
 
 ## When NOT to use
 
-- User wants a single slice → import it directly as a `Sprite2D` (or `summer:2d-assets/use-widget-asset` if it's a UI widget).
-- User wants to **generate** a new pack → `summer:2d-assets/create-asset-sheet`.
+- User wants a single slice → import it directly as a `Sprite2D` (or `use-widget-asset` if it's a UI widget).
+- User wants to **generate** a new pack → `create-asset-sheet`.
 - User wants to apply a slice as a material/texture on a 3D mesh → not the pack flow; see `asset_pipeline.json`.
 
 ## Pack JSON shape
-
-Full schema: `publicsummerengine/public/knowledge/asset_pack_schema.json`.
 
 The per-slice fields this skill cares about:
 
@@ -58,7 +56,7 @@ A standalone slice has no `parentSliceIndex` and isn't a composite parent. Spawn
 3. `summer_set_prop` — `texture = res://...`.
 4. If `slice.zOrder` is set, `summer_set_prop` — `z_index = slice.zOrder`.
 
-If the slice has a `widget` field, hand off to `summer:2d-assets/use-widget-asset` after step 1.
+If the slice has a `widget` field, hand off to `use-widget-asset` after step 1.
 
 ## Composite parent + children
 
@@ -89,7 +87,7 @@ When a child slice has `widget.kind` set, the bare Sprite2D is not the right nod
 | `slider` | `HSlider`/`VSlider` + `NinePatchRect` track | track uses `frameMargins`; slider sits on top |
 | `toggle` | `TextureRect` | Swap `texture` between this slice and `packFiles[pairWith].url` |
 
-Delegate the actual wiring (percentage-to-pixel conversion, node-specific props) to `summer:2d-assets/use-widget-asset`. This skill places the node; that skill configures the geometry.
+Delegate the actual wiring (percentage-to-pixel conversion, node-specific props) to `use-widget-asset`. This skill places the node; that skill configures the geometry.
 
 ## Naming convention
 
@@ -224,9 +222,9 @@ Pack has a composite parent `settings_panel` (filtered out) plus three children:
 }
 ```
 
-After this, hand `panel_bg` and `apply_button` to `summer:2d-assets/use-widget-asset` to set `patch_margin_*` from their `widget.frameMargins`.
+After this, hand `panel_bg` and `apply_button` to `use-widget-asset` to set `patch_margin_*` from their `widget.frameMargins`.
 
-Note the ops format: `position` is the **Godot string** `"Vector2(0, 0)"`, not a JSON object. `z_index` is a bare integer. This is the format Summer Engine expects — see the publicsummerengine CLAUDE.md.
+Note the ops format: `position` is the **Godot string** `"Vector2(0, 0)"`, not a JSON object. `z_index` is a bare integer. This is the format Summer Engine expects — see `../../references/mcp-tools-reference/mcp-tools-reference.md`.
 
 ## Failure modes
 
@@ -240,6 +238,6 @@ Note the ops format: `position` is the **Godot string** `"Vector2(0, 0)"`, not a
 
 ## Related skills
 
-- `summer:2d-assets/create-asset-sheet` — production side; how the pack was made.
-- `summer:2d-assets/use-widget-asset` — wiring an individual widget slice (NinePatchRect, TextureProgressBar geometry).
+- `create-asset-sheet` — production side; how the pack was made.
+- `use-widget-asset` — wiring an individual widget slice (NinePatchRect, TextureProgressBar geometry).
 - `asset_pipeline.json` — broader find-or-generate -> import -> apply flow.

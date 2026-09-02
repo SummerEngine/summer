@@ -17,7 +17,7 @@ Ask the user:
 - **Name** (kebab-case, ≤ 64 chars). Example: `state-machine-patterns`.
 - **Category** (must be one of the values in the `SKILL_CATEGORIES` array at `src/lib/skills-registry.ts` — read it, do not guess). Example: `scripting-patterns`.
 - **One-sentence description** for the frontmatter.
-- **Template-id** (optional). Lookup against `../../../references/template-registry.md`.
+- **Template-id** (optional). Lookup against the template registry: `library/templates/<id>/resource.yaml` (see `library/templates/README.md`).
 
 ### 2. Create the folder
 
@@ -40,7 +40,7 @@ description: <one-sentence what + when. Lead with key trigger phrases.>
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: <category>
-template-id: <optional template-id from references/template-registry.md>
+template-id: <optional template-id from library/templates/<id>/resource.yaml>
 allowed-tools: Read Grep <summer_* tools this skill uses>
 paths: ["**/*.gd", "**/*.tscn"]
 ---
@@ -79,14 +79,14 @@ May I <action>?
 ## Want a working starter?
 
 → **template-id**: `<template-id>`
-→ **Repo**: <github URL from references/template-registry.md>
+→ **Repo**: <github URL from library/templates/<id>/resource.yaml>
 → **Bootstrap**: `summer create <template-id> my-game` (see `summer list templates` for the slugs)
 
 ## See also
 
-- `../../../references/godot-version.md`
-- `../../../references/mcp-tools-reference.md`
-- `../../../references/gd-style.md`
+- `../../references/godot-version/godot-version.md`
+- `../../references/mcp-tools-reference/mcp-tools-reference.md`
+- `../../references/gd-style/gd-style.md`
 - (other relevant skills)
 ```
 
@@ -149,5 +149,5 @@ This skill writes files (the new skill folder + plugin manifest update + TS regi
 
 ## See also
 
-- `../../../references/collaborative-protocol.md`
+- `../../references/collaborative-protocol/collaborative-protocol.md`
 - `workflow/skill-test/SKILL.md`

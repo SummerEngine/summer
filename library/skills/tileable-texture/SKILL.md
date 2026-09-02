@@ -25,9 +25,9 @@ The hard part is "seamless." Most diffusion models violate edge continuity by de
 
 ## When NOT to use
 
-- The user wants a 3D-modeled wall with geometric brick relief → `summer:asset-pipeline/asset-strategy` (image-to-3D).
-- The user wants a unique mural / non-tiling artwork → `summer:2d-assets/concept-art` or `summer:2d-assets/character-portrait`.
-- The user wants a skybox / 360° environment → `summer:2d-assets/skybox-panorama`.
+- The user wants a 3D-modeled wall with geometric brick relief → `asset-strategy` (image-to-3D).
+- The user wants a unique mural / non-tiling artwork → `concept-art` or `character-portrait`.
+- The user wants a skybox / 360° environment → `skybox-panorama`.
 - The user wants a normal map / PBR material set — generation today is albedo-only. Normals must be derived (`MaterialMaker`, `NormalMap-Online`) or hand-authored.
 
 ## Steps
@@ -199,13 +199,13 @@ If MCP is offline entirely: AmbientCG and Polyhaven offer free CC0 PBR texture s
 After the texture is wired:
 
 - **More textures in the same biome** → re-invoke this skill, hold style/lighting consistent.
-- **Apply to a procedurally-built level** → `summer:scene-composition` for CSG and modular wall kits.
+- **Apply to a procedurally-built level** → `scene-composition` for CSG and modular wall kits.
 - **PBR set with normals/roughness** → out of MCP scope today; user runs derivation in MaterialMaker.
-- **Skybox for the level's environment** → `summer:2d-assets/skybox-panorama`.
+- **Skybox for the level's environment** → `skybox-panorama`.
 
 ## See also
 
-- `summer:asset-pipeline/asset-strategy` — meta-router and 3D pipeline.
-- `summer:2d-assets/skybox-panorama` — sky/environment counterpart.
-- `summer:scene-composition` — applying textures to CSG and MeshInstance3D.
-- `../../../references/mcp-tools-reference.md` — `summer_generate_image` schema.
+- `asset-strategy` — meta-router and 3D pipeline.
+- `skybox-panorama` — sky/environment counterpart.
+- `scene-composition` — applying textures to CSG and MeshInstance3D.
+- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_image` schema.

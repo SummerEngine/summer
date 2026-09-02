@@ -132,7 +132,7 @@ look_at_modifier(node: Node, target: Node, props: Dictionary = {}) -> Node
     # LookAtModifier3D under the skeleton/node, owned
 ```
 
-Blend shapes key through plain `animate()` with property `"blend_shapes/<name>"` (value tracks) — no separate helper. The end-to-end recipe (inspect an imported rig's real clips/bones, locomotion wiring, footstep method tracks, root motion, the raw-GDScript fallback for engines without these helpers) lives in `summer:character-animation-wiring` — one hop, not duplicated here.
+Blend shapes key through plain `animate()` with property `"blend_shapes/<name>"` (value tracks) — no separate helper. The end-to-end recipe (inspect an imported rig's real clips/bones, locomotion wiring, footstep method tracks, root motion, the raw-GDScript fallback for engines without these helpers) lives in `character-animation-wiring` — one hop, not duplicated here.
 
 ## Owner rules — the silent killer
 
@@ -155,7 +155,7 @@ ctx.set_owner_recursive(node)   # node + every descendant
 4. Read `errors`, `reports`, and `rolled_back` in the result — `rolled_back: true` means a runtime error undid everything (fix and re-run); on older engines / `undo: "none"`, an error can leave a partial mutation.
 5. `summer_snapshot_diff from_id:<the id>` — the structural receipt: exactly the nodes you meant to add were added, nothing else changed, nothing vanished (an unowned node dropping on save shows up HERE).
 6. `summer_screenshot` — LOOK at it. Use `target:"scene" framing:"camera"` when the change touched lighting, environment, or emissive materials — the preset framings render a flat substitute environment and cannot show those.
-7. Iterate. Never claim visual success without steps 5–6 (honesty rule: a capture is a fact; describing an unseen frame is fabrication). The full perception discipline lives in `summer:verifying-scenes`.
+7. Iterate. Never claim visual success without steps 5–6 (honesty rule: a capture is a fact; describing an unseen frame is fabrication). The full perception discipline lives in `verifying-scenes`.
 
 ## Verify names with summer_api_docs — never guess
 
@@ -230,7 +230,7 @@ func run(ctx):
     ctx.set_owner_recursive(body)           # owner is the SCENE root, not the parent
 ```
 
-Live CSG nodes are the **older-engine fallback** — they re-evaluate every frame and should be converted before shipping (`summer:scene-composition`). On a Wave F engine prefer `ctx.boolean(...)`, which bakes to a plain ArrayMesh and leaves no CSG nodes behind.
+Live CSG nodes are the **older-engine fallback** — they re-evaluate every frame and should be converted before shipping (`scene-composition`). On a Wave F engine prefer `ctx.boolean(...)`, which bakes to a plain ArrayMesh and leaves no CSG nodes behind.
 
 ### Boolean blockout — carve a doorway (Wave F)
 
@@ -388,7 +388,7 @@ void fragment() {
     ctx.apply_material(ctx.find("Crystal"), mat)
 ```
 
-The loop when it fails: read the exact compile error (line number included) from the `make_shader_errors` report entry → fix that line → re-run. Do not guess-and-mutate; the error text names the line and identifier. For production-grade dissolve/fire/glow (FBM noise include, controllers, cookbook variants) use the `summer:visual-effects` recipes — `make_shader` is the fast lane for one-off FX and for iterating on a shader before writing it to a file.
+The loop when it fails: read the exact compile error (line number included) from the `make_shader_errors` report entry → fix that line → re-run. Do not guess-and-mutate; the error text names the line and identifier. For production-grade dissolve/fire/glow (FBM noise include, controllers, cookbook variants) use the `vfx-<effect>` recipes — `make_shader` is the fast lane for one-off FX and for iterating on a shader before writing it to a file.
 
 ### GridMap fills
 
@@ -445,7 +445,7 @@ A different tool for a different job: it boots a **fresh headless child editor a
 - Use for batch/project-wide work: re-saving every scene, sweeping resources, mass fixes, generating `.tres` assets.
 - Budget default 120s, clamp 15–600 — include boot time (30s+ on large projects).
 - It confesses `no_rewind_point:true` when no pre-run checkpoint could be taken — surface that to the user before more destructive work.
-- No renderer: it can never screenshot. Judge it by artifacts on disk (see `summer:headless-scripting` for the full discipline).
+- No renderer: it can never screenshot. Judge it by artifacts on disk (see `headless-scripting` for the full discipline).
 
 If `summer_run_script` fails with "doesn't support RunSceneScript yet", the engine build is too old — fall back to `summer_run_editor_script` or tell the user to update Summer Engine.
 
@@ -466,7 +466,7 @@ If `summer_run_script` fails with "doesn't support RunSceneScript yet", the engi
 | Hand-writing AnimationPlayer/library/track plumbing | `ctx.animate` is one call per property and dodges the quaternion trap. |
 
 **Related skills:**
-- `summer:verifying-scenes` — the perception discipline: snapshot/diff/screenshot before-and-after, runtime reads, honest claims.
-- `summer:headless-scripting` — shell-launched engine scripts, imports, exports.
-- `summer:scene-composition` — what a well-structured scene looks like before you generate one.
-- `summer:verification-before-completion` — proving the result before claiming done.
+- `verifying-scenes` — the perception discipline: snapshot/diff/screenshot before-and-after, runtime reads, honest claims.
+- `headless-scripting` — shell-launched engine scripts, imports, exports.
+- `scene-composition` — what a well-structured scene looks like before you generate one.
+- `verification-before-completion` — proving the result before claiming done.

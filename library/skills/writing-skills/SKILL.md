@@ -158,16 +158,16 @@ When the description was changed to just "Use when executing implementation plan
 **The trap:** Descriptions that summarize workflow create a shortcut Claude will take. The skill body becomes documentation Claude skips.
 
 ```yaml
-# ❌ BAD: Summarizes workflow - Claude may follow this instead of reading skill
+# BAD: Summarizes workflow - Claude may follow this instead of reading skill
 description: Use when executing plans - dispatches subagent per task with code review between tasks
 
-# ❌ BAD: Too much process detail
+# BAD: Too much process detail
 description: Use for TDD - write test first, watch it fail, write minimal code, refactor
 
-# ✅ GOOD: Just triggering conditions, no workflow summary
+# GOOD: Just triggering conditions, no workflow summary
 description: Use when executing implementation plans with independent tasks in the current session
 
-# ✅ GOOD: Triggering conditions only
+# GOOD: Triggering conditions only
 description: Use when implementing any feature or bugfix, before writing implementation code
 ```
 
@@ -180,19 +180,19 @@ description: Use when implementing any feature or bugfix, before writing impleme
 - **NEVER summarize the skill's process or workflow**
 
 ```yaml
-# ❌ BAD: Too abstract, vague, doesn't include when to use
+# BAD: Too abstract, vague, doesn't include when to use
 description: For async testing
 
-# ❌ BAD: First person
+# BAD: First person
 description: I can help you with async tests when they're flaky
 
-# ❌ BAD: Mentions technology but skill isn't specific to it
+# BAD: Mentions technology but skill isn't specific to it
 description: Use when tests use setTimeout/sleep and are flaky
 
-# ✅ GOOD: Starts with "Use when", describes problem, no workflow
+# GOOD: Starts with "Use when", describes problem, no workflow
 description: Use when tests have race conditions, timing dependencies, or pass/fail inconsistently
 
-# ✅ GOOD: Technology-specific skill with explicit trigger
+# GOOD: Technology-specific skill with explicit trigger
 description: Use when using React Router and handling authentication redirects
 ```
 
@@ -207,8 +207,8 @@ Use words Claude would search for:
 ### 3. Descriptive Naming
 
 **Use active voice, verb-first:**
-- ✅ `creating-skills` not `skill-creation`
-- ✅ `condition-based-waiting` not `async-test-helpers`
+- Good: `creating-skills` not `skill-creation`
+- Good: `condition-based-waiting` not `async-test-helpers`
 
 ### 4. Token Efficiency (Critical)
 
@@ -223,31 +223,31 @@ Use words Claude would search for:
 
 **Move details to tool help:**
 ```bash
-# ❌ BAD: Document all flags in SKILL.md
+# BAD: Document all flags in SKILL.md
 search-conversations supports --text, --both, --after DATE, --before DATE, --limit N
 
-# ✅ GOOD: Reference --help
+# GOOD: Reference --help
 search-conversations supports multiple modes and filters. Run --help for details.
 ```
 
 **Use cross-references:**
 ```markdown
-# ❌ BAD: Repeat workflow details
+# BAD: Repeat workflow details
 When searching, dispatch subagent with template...
 [20 lines of repeated instructions]
 
-# ✅ GOOD: Reference other skill
+# GOOD: Reference other skill
 Always use subagents (50-100x context savings). REQUIRED: Use [other-skill-name] for workflow.
 ```
 
 **Compress examples:**
 ```markdown
-# ❌ BAD: Verbose example (42 words)
+# BAD: Verbose example (42 words)
 the user: "How did we handle authentication errors in React Router before?"
 You: I'll search past conversations for React Router authentication patterns.
 [Dispatch subagent with search query: "React Router authentication error handling 401"]
 
-# ✅ GOOD: Minimal example (20 words)
+# GOOD: Minimal example (20 words)
 Partner: "How did we handle auth errors in React Router?"
 You: Searching...
 [Dispatch subagent → synthesis]
@@ -266,10 +266,10 @@ wc -w skills/path/SKILL.md
 ```
 
 **Name by what you DO or core insight:**
-- ✅ `condition-based-waiting` > `async-test-helpers`
-- ✅ `using-skills` not `skill-usage`
-- ✅ `flatten-with-flags` > `data-structure-refactoring`
-- ✅ `root-cause-tracing` > `debugging-techniques`
+- Good: `condition-based-waiting` > `async-test-helpers`
+- Good: `using-skills` not `skill-usage`
+- Good: `flatten-with-flags` > `data-structure-refactoring`
+- Good: `root-cause-tracing` > `debugging-techniques`
 
 **Gerunds (-ing) work well for processes:**
 - `creating-skills`, `testing-skills`, `debugging-with-logs`
@@ -280,10 +280,10 @@ wc -w skills/path/SKILL.md
 **When writing documentation that references other skills:**
 
 Use skill name only, with explicit requirement markers:
-- ✅ Good: `**REQUIRED SUB-SKILL:** Use summer:verification-before-completion`
-- ✅ Good: `**REQUIRED BACKGROUND:** You MUST understand summer:investigating-bugs`
-- ❌ Bad: `See skills/debugging/debug` (unclear if required)
-- ❌ Bad: `@skills/debugging/debug/SKILL.md` (force-loads, burns context)
+- Good: `**REQUIRED SUB-SKILL:** Use verification-before-completion`
+- Good: `**REQUIRED BACKGROUND:** You MUST understand investigating-bugs`
+- Bad: `See library/skills/debug` (unclear if required)
+- Bad: `@library/skills/debug/SKILL.md` (force-loads, burns context)
 
 **Check the skill exists before you point at it.** The registry of shipped skills is the `SKILL_REGISTRY` array in `src/lib/skills-registry.ts` and the `skills:` array in `.claude-plugin/plugin.json`. A `REQUIRED SUB-SKILL` pointing at a skill that was never shipped is worse than no cross-reference: the reader stops and looks for something that does not exist.
 
@@ -563,22 +563,22 @@ Agent found new rationalization? Add explicit counter. Re-test until bulletproof
 
 ## Anti-Patterns
 
-### ❌ Narrative Example
+### Bad: Narrative Example
 "In session 2025-10-03, we found empty projectDir caused..."
 **Why bad:** Too specific, not reusable
 
-### ❌ Multi-Language Dilution
+### Bad: Multi-Language Dilution
 example-js.js, example-py.py, example-go.go
 **Why bad:** Mediocre quality, maintenance burden
 
-### ❌ Code in Flowcharts
+### Bad: Code in Flowcharts
 ```dot
 step1 [label="import fs"];
 step2 [label="read file"];
 ```
 **Why bad:** Can't copy-paste, hard to read
 
-### ❌ Generic Labels
+### Bad: Generic Labels
 helper1, helper2, step3, pattern4
 **Why bad:** Labels should have semantic meaning
 

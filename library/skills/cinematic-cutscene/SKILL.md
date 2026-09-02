@@ -29,7 +29,7 @@ If the user wants 5 seconds of marketing footage, that's `video/trailer-shot`. I
 - "5-second slow-mo combat shot for the trailer" — `video/trailer-shot`.
 - "Looping splash screen background" — `video/animated-loop`.
 - "Animated logo backdrop on the title screen" — `video/animated-loop`.
-- Real-time in-engine cinematic with the actual gameplay characters and camera — that's a Godot AnimationPlayer / Timeline job, not generated video. Route to `summer:scene-composition`.
+- Real-time in-engine cinematic with the actual gameplay characters and camera — that's a Godot AnimationPlayer / Timeline job, not generated video. Route to `scene-composition`.
 - Voice-only narration over a static image — generate the dialogue with `summer_generate_audio` and use a static `TextureRect`, no video needed.
 
 ## Steps
@@ -237,4 +237,4 @@ Once the cutscene is generated and wired:
 - `audio/music-track` — score the cutscene.
 - `2d-assets/concept-art` — generate the reference image axis if no character reference exists yet.
 - `2d-assets/character-portrait` — produce a high-fidelity locked character portrait for use as `imageUrl`.
-- `../../../references/mcp-tools-reference.md` — `summer_generate_video` parameter schema and error codes.
+- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_video` parameter schema and error codes.

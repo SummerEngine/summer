@@ -45,9 +45,9 @@ continuously. Confirm version-sensitive behavior from the engine's own version
 string rather than turning that base into the product identity. You can write
 game code in either:
 
-- **GDScript** (`.gd`) — the default. Best supported by Summer skills (see `summer:gdscript-patterns`). Use this unless the user has explicitly chosen C#.
-- **C#** (`.cs`) — supported by the shipped Mono build. There is no
-  `summer:csharp-patterns` skill yet. When writing C#, use the upstream C# API
+- **GDScript** (`.gd`) — the default. Best supported by Summer skills (see `gdscript-patterns`). Use this unless the user has explicitly chosen C#.
+- **C#** (`.cs`) — supported by the shipped Mono build. The GDScript
+  conventions in `gdscript-patterns` have no C# counterpart yet. When writing C#, use the upstream C# API
   reference matching the current Summer technical base. The lifecycle, signal
   API, and export attributes differ, so do not blindly translate GDScript
   idioms. Confirm that the user wants C# before producing it; switching
@@ -79,7 +79,7 @@ User message arrives.
   │                                 Yes
   │                                  │
   ├── Invoke the Skill tool.
-  ├── Announce: "Using summer:<skill> to <purpose>."
+  ├── Announce: "Using <skill> to <purpose>."
   ├── If the skill has a checklist, create a todo per item.
   └── Follow the skill exactly.
 ```

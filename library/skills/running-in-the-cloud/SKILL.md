@@ -43,7 +43,7 @@ summer install      # registers it; summer doctor now shows Engine: ok
 
 That boots the real editor — import pipeline, local API server, MCP reachability — with no window and no display. Give it a few seconds, then `summer doctor` should show `Local API: :6550`.
 
-- One-shot work (bake, import, export, scripted authoring) uses `--headless ... -s res://script.gd` — load `summer:headless-scripting`, it is the authoritative guide including the crash-handler flag and the exit-code traps.
+- One-shot work (bake, import, export, scripted authoring) uses `--headless ... -s res://script.gd` — load `headless-scripting`, it is the authoritative guide including the crash-handler flag and the exit-code traps.
 - **Boot → act → exit.** A long-lived headless editor never rescans the filesystem; it serves a boot-time snapshot forever.
 
 ### Instance discovery
@@ -98,6 +98,6 @@ Treat it as a secret: env-inject it from the runner's secret store, never bake i
 | Baking a token into an image or committing it | Tokens are secrets. Env-inject at runtime. |
 
 **Related skills:**
-- `summer:headless-scripting` — the headless invocation contract, exit-code traps, and what scripts unlock.
-- `summer:playtesting-a-feature` — the verify instance and probes (run them under xvfb in the cloud).
-- `summer:verification-before-completion` — judging work by artifacts, which matters double when nobody can see a screen.
+- `headless-scripting` — the headless invocation contract, exit-code traps, and what scripts unlock.
+- `playtesting-a-feature` — the verify instance and probes (run them under xvfb in the cloud).
+- `verification-before-completion` — judging work by artifacts, which matters double when nobody can see a screen.

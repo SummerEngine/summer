@@ -22,7 +22,7 @@ Summer's community templates live in [github.com/SummerEngine](https://github.co
 
 ## When NOT to use this skill
 
-- User says "blank project" / "empty project" / "from scratch" → use `summer:new-project`.
+- User says "blank project" / "empty project" / "from scratch" → use `new-project`.
 - User wants to *make* a new template (contribute one) → that's not this skill; point them at the README's contributing section.
 
 ## Steps
@@ -76,7 +76,7 @@ Pass `--keep-git` if the user wants the upstream history (rare).
 summer run <project-name>
 ```
 
-Confirm it opens. Then invoke `summer:play` to verify the template runs as expected before doing any custom work on top.
+Confirm it opens. Then invoke `play` to verify the template runs as expected before doing any custom work on top.
 
 ## Anti-patterns
 
@@ -98,8 +98,8 @@ Confirm it opens. Then invoke `summer:play` to verify the template runs as expec
 
 Once the project is created and running, hand off cleanly. The next skill that fires depends on the template:
 
-- Third-person controller → likely `summer:scene-composition` or `summer:gdscript-patterns` next.
-- Multiplayer starter → `summer:setup-multiplayer` or `summer:host-authoritative-state`.
-- 2D platformer → `summer:design-mechanic` for the platforming feel, then `summer:design-level`.
+- Third-person controller → likely `scene-composition` or `gdscript-patterns` next.
+- Multiplayer starter → `setup-multiplayer` or `host-authoritative-state`.
+- 2D platformer → `design-mechanic` for the platforming feel, then `design-level`.
 
 Don't auto-fire the next skill — wait for the user to say what they want to change first.

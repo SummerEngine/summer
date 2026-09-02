@@ -222,8 +222,8 @@ Ask first:
 End with:
 
 > Bible saved. Next:
-> - `/summer:design-mechanic` to wire SFX cues into specific mechanics.
-> - `/summer:vfx` if you haven't paired audio with visual effect cues yet.
+> - `/design-mechanic` to wire SFX cues into specific mechanics.
+> - `/game-feel` if you haven't paired audio with visual effect cues yet.
 > - Author or generate the calm music track first; it's the longest-running and sets the room tone.
 
 ## Common mistakes
@@ -239,11 +239,11 @@ End with:
 | Pure sine "ding" for pickup | Reads as cheap mobile game. Use a major-third interval with character. |
 | Same footstep sample for all surfaces | Material-aware footsteps are 80% of the perceived audio quality. |
 | No master ceiling / true peak | Audio clips on console builds without `-1 dBTP` ceiling. Always set it. |
-| Calling SetResourceProperty on inline sub_resources | Silent fail. See `../../../references/mcp-tools-reference.md` § Trap. |
+| Assuming SetResourceProperty fails silently on inline sub_resources | It does not — inline targets work and failures are explicit errors. See `../../references/mcp-tools-reference/mcp-tools-reference.md`. |
 
 ## Collaborative protocol
 
-This skill writes one bible (`.summer/audio-bible.md`), creates a bus layout (`audio/default_bus_layout.tres`), modifies `project.godot`, and may generate audio (metered). Always ask before writing or generating. See `../../../references/collaborative-protocol.md`.
+This skill writes one bible (`.summer/audio-bible.md`), creates a bus layout (`audio/default_bus_layout.tres`), modifies `project.godot`, and may generate audio (metered). Always ask before writing or generating. See `../../references/collaborative-protocol/collaborative-protocol.md`.
 
 ## Want a working starter?
 
@@ -251,10 +251,10 @@ No template — this is a workflow that produces the bible the rest of the proje
 
 ## See also
 
-- `../../../references/collaborative-protocol.md`
-- `../../../references/godot-version.md` — Summer compatibility and
+- `../../references/collaborative-protocol/collaborative-protocol.md`
+- `../../references/godot-version/godot-version.md` — Summer compatibility and
   version-sensitive audio API notes
-- `../../../references/mcp-tools-reference.md`
+- `../../references/mcp-tools-reference/mcp-tools-reference.md`
 - `scene-and-project/brainstorm-game/SKILL.md` — produces the brief that anchors the bible
 - `rendering-and-lighting/art-direction/SKILL.md` — the visual counterpart; audio must rhyme with it
 - `audio/audio-bus-setup/SKILL.md` (NEXT) — implements the bus layout in detail

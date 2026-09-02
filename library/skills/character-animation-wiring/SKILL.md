@@ -18,7 +18,7 @@ Two lanes throughout:
 - **ctx lane (Wave G engines):** the Wave G ctx helpers on `summer_run_script` — `anim_state_machine`, `animate_method`, `bone_pose`, `look_at_modifier`, plus the `animate()` v2 extensions. One script per step, owner handled, failures come back as report entries.
 - **raw lane (any engine):** the same wiring through plain GDScript in `summer_run_script` — the Animation/AnimationTree classes are fully script-bound, just verbose. On an older engine a missing ctx helper is a plain `Invalid call to method ...` script error; fall back to the raw lane, which works everywhere.
 
-Frozen Wave G signatures (see `summer:scene-scripting` for the full stdlib):
+Frozen Wave G signatures (see `scene-scripting` for the full stdlib):
 
 ```gdscript
 anim_state_machine(target: Node, spec: Dictionary, player: AnimationPlayer = null) -> AnimationTree
@@ -46,10 +46,10 @@ animate(...) v2: keys entries also accept {time, value, interpolation: "nearest"
 
 ## When NOT to use this skill
 
-- No clips yet — generate first via `summer:animation/generate-motion` (rigged Meshy target) or import them.
-- Continuous walk↔run blending by speed, upper-body attack overlays, OneShot hit reactions — that graph design lives in `summer:animation/animation-tree`; this skill's state machine is the discrete idle/walk/run backbone.
-- Foot IK, additive lean, ragdoll — `summer:animation/procedural-animation`.
-- Full viseme lipsync from audio — `summer:animation/facial-and-lipsync` (this skill covers the blend-shape keying mechanism it builds on).
+- No clips yet — generate first via `generate-motion` (rigged Meshy target) or import them.
+- Continuous walk↔run blending by speed, upper-body attack overlays, OneShot hit reactions — that graph design lives in `animation-tree`; this skill's state machine is the discrete idle/walk/run backbone.
+- Foot IK, additive lean, ragdoll — `procedural-animation`.
+- Full viseme lipsync from audio — `facial-and-lipsync` (this skill covers the blend-shape keying mechanism it builds on).
 
 ## Step 1 — Inspect what actually came in
 
@@ -76,7 +76,7 @@ func run(ctx):
             ctx.report("blend_shapes:" + str(character.get_path_to(m)), shapes)
 ```
 
-Read the reports. Every later step quotes these exact strings. If the clip list is empty, the GLB imported without animations (or they landed as a separate AnimationLibrary asset) — route back to `summer:animation/generate-motion` / `summer:animation/retarget` before wiring anything.
+Read the reports. Every later step quotes these exact strings. If the clip list is empty, the GLB imported without animations (or they landed as a separate AnimationLibrary asset) — route back to `generate-motion` / `retarget` before wiring anything.
 
 ## Step 2 — Locomotion state machine (ctx lane)
 
@@ -115,7 +115,7 @@ func _physics_process(_delta: float) -> void:
     else: sm.travel("run")
 ```
 
-Thresholded `travel()` is the discrete backbone. When the user wants a continuous speed blend or attack/hit overlays, extend the tree per `summer:animation/animation-tree` — those node types are beyond the `anim_state_machine` spec dict.
+Thresholded `travel()` is the discrete backbone. When the user wants a continuous speed blend or attack/hit overlays, extend the tree per `animation-tree` — those node types are beyond the `anim_state_machine` spec dict.
 
 ## Step 3 — Method tracks: footsteps and attack frames
 
@@ -153,7 +153,7 @@ Head tracking — one call creates the owned `LookAtModifier3D` under the skelet
     var mod := ctx.look_at_modifier(skel, ctx.find("Player"), {"bone_name": "Head"})
 ```
 
-Unknown props land in `prop_warnings` — read them. Angle limits, influence fade-out by distance, and spine-chain distribution are the difference between alive and possessed: tune per `summer:animation/procedural-animation` (A1/A2).
+Unknown props land in `prop_warnings` — read them. Angle limits, influence fade-out by distance, and spine-chain distribution are the difference between alive and possessed: tune per `procedural-animation` (A1/A2).
 
 ## Step 5 — Facial keys via blend shapes
 
@@ -170,7 +170,7 @@ func run(ctx):
     ctx.animate(head, "blend_shapes/browDown_L", [[0.0, 0.0], [0.2, 1.0]], "roar")  # same clip — track appended
 ```
 
-That is the mechanism; a full audio-synced viseme timeline is `summer:animation/facial-and-lipsync`. Bone-track keyframes work the same way through `animate()` v2 — `ctx.animate(character, "Skeleton3D:Head/rotation", keys, "nod")` creates a proper bone rotation track (the helper owns the quaternion conversion; never hand-build quaternion tracks).
+That is the mechanism; a full audio-synced viseme timeline is `facial-and-lipsync`. Bone-track keyframes work the same way through `animate()` v2 — `ctx.animate(character, "Skeleton3D:Head/rotation", keys, "nod")` creates a proper bone rotation track (the helper owns the quaternion conversion; never hand-build quaternion tracks).
 
 ## Step 6 — Root motion, honestly
 
@@ -220,7 +220,7 @@ Method tracks raw: `anim.add_track(Animation.TYPE_METHOD)` + `track_set_path(idx
 2. Run the script; read `errors`, `reports`, `prop_warnings`, `rolled_back`.
 3. `summer_snapshot_diff from_id:<id>` — exactly the nodes you meant (AnimationTree added, nothing vanished).
 4. `summer_save_scene`, then behavior: `summer_play` → `summer_get_runtime_tree` / `summer_inspect_runtime_node` for live state, `summer_screenshot target:"game"` for pixels → `summer_stop`.
-5. Claim only what the capture and the runtime reads show. "The script succeeded" is not "the character walks." Full discipline: `summer:verifying-scenes`.
+5. Claim only what the capture and the runtime reads show. "The script succeeded" is not "the character walks." Full discipline: `verifying-scenes`.
 
 ## Red Flags — STOP
 
@@ -237,13 +237,13 @@ Method tracks raw: `anim.add_track(Animation.TYPE_METHOD)` + `track_set_path(idx
 
 ## Handoff
 
-- Blend spaces, OneShot attacks/hit-reacts, upper-body filters — `summer:animation/animation-tree`.
-- Foot IK, additive lean, ragdoll — `summer:animation/procedural-animation`.
-- Audio-synced lipsync on the blend shapes — `summer:animation/facial-and-lipsync`.
-- Clips missing or on the wrong rig — `summer:animation/generate-motion`, `summer:animation/retarget`.
-- NPC behavior deciding when to travel/fire states — `summer:ai-and-npcs/design-npc`.
+- Blend spaces, OneShot attacks/hit-reacts, upper-body filters — `animation-tree`.
+- Foot IK, additive lean, ragdoll — `procedural-animation`.
+- Audio-synced lipsync on the blend shapes — `facial-and-lipsync`.
+- Clips missing or on the wrong rig — `generate-motion`, `retarget`.
+- NPC behavior deciding when to travel/fire states — `design-npc`.
 
 ## See also
 
-- `summer:scene-scripting` — the ctx stdlib contract, owner rules, budgets, undo/rollback.
-- `summer:verifying-scenes` — snapshot/diff/screenshot/runtime-read discipline this skill leans on.
+- `scene-scripting` — the ctx stdlib contract, owner rules, budgets, undo/rollback.
+- `verifying-scenes` — snapshot/diff/screenshot/runtime-read discipline this skill leans on.

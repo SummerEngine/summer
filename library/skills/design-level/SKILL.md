@@ -239,9 +239,9 @@ Ask:
 End with:
 
 > Skeleton + design doc saved. Next:
-> - `/summer:design-mechanic` to design any mechanics this level requires that aren't designed yet.
-> - `/summer:design-npc` to design the enemies (E1-E4) in detail.
-> - `/summer:art-direction` if the visual style isn't pinned yet.
+> - `/design-mechanic` to design any mechanics this level requires that aren't designed yet.
+> - `/design-npc` to design the enemies (E1-E4) in detail.
+> - `/art-direction` if the visual style isn't pinned yet.
 > - Or open `levels/<level-name>.tscn` and start blocking out geometry.
 
 ## Common mistakes
@@ -269,7 +269,7 @@ This is a workflow that produces a skeleton scene. For runnable level examples, 
 - `template-id: template-3d-fps` (https://github.com/SummerEngine/FPS-template-Summer-Engine) ships a sample arena.
 - `template-id: template-3d-platformer` (TBD) for jump-based level samples.
 
-The skeleton this skill produces is meant to be filled in via `/summer:design-mechanic`, gridmap blockout, or a template merge.
+The skeleton this skill produces is meant to be filled in via `/design-mechanic`, gridmap blockout, or a template merge.
 
 ## See also
 

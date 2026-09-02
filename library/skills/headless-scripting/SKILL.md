@@ -70,7 +70,7 @@ If neither is available (an older engine build that predates `engineBinaryPath`,
 |---|---|
 | macOS | `/Applications/Summer.app/Contents/MacOS/Summer` |
 | Windows | `%LOCALAPPDATA%\Summer\current\Summer.exe` |
-| Linux | `~/.summer/engine/summer-linux-x86_64`, or `$SUMMER_ENGINE_BINARY` (see `summer:running-in-the-cloud`) |
+| Linux | `~/.summer/engine/summer-linux-x86_64`, or `$SUMMER_ENGINE_BINARY` (see `running-in-the-cloud`) |
 
 <EXTREMELY-IMPORTANT>
 There is no `godot` binary on a Summer user's machine. `godot --headless`, `godot4`, `/usr/local/bin/godot` — none of these exist. A command built on that name fails with "command not found" on every single user, and no amount of retrying changes it. This skill exists partly because that exact instruction shipped in our own docs for months.
@@ -342,7 +342,7 @@ frames saved        : 00_start.jpg  01_after_walk.jpg  02_after_jump.jpg
 
 So: **scripting and authoring go through `--headless`. Seeing and measuring go through the verify instance.** Choose on that axis and you will not get a null.
 
-For writing probes — the `SummerProbeBase` API, the coroutine rules, what is and is not reproducible — see `summer:playtesting-a-feature`.
+For writing probes — the `SummerProbeBase` API, the coroutine rules, what is and is not reproducible — see `playtesting-a-feature`.
 
 ## What a script genuinely cannot do
 
@@ -353,7 +353,7 @@ Short list, and it is short on purpose. Everything not on it is worth attempting
   lightmapper needs a RenderingDevice, which a `--headless` process never has: the
   call returns `BAKE_ERROR_NO_LIGHTMAPPER`. Bake from `summer_run_script` in the
   **live editor** instead — a normal desktop editor works as-is; a cloud container
-  needs the xvfb + GL renderer setup from `summer:running-in-the-cloud`. Wrong
+  needs the xvfb + GL renderer setup from `running-in-the-cloud`. Wrong
   reason kills the right fix: it is "no renderer in this process", not "no binding".
 - **Occlusion culling bake.** `OccluderInstance3D.bake_single_node` is not
   script-callable at all. Editor-button only.
@@ -409,6 +409,6 @@ Keep scripts in the project (`res://` is required for `-s`), but name them so th
 | "There's no tool for that, so it can't be done" | There is a script for it. Write the script. |
 
 **Related skills:**
-- `summer:playtesting-a-feature` — the verify instance, probes, and proving gameplay behaviour.
-- `summer:export-and-ship` — the full release pipeline this skill's export example is one step of.
-- `summer:verification-before-completion` — checking the artifact before claiming done.
+- `playtesting-a-feature` — the verify instance, probes, and proving gameplay behaviour.
+- `export-and-ship` — the full release pipeline this skill's export example is one step of.
+- `verification-before-completion` — checking the artifact before claiming done.

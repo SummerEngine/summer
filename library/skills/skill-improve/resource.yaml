@@ -1,6 +1,6 @@
 id: skill/skill-improve
 kind: skill
-version: 1.0.0
+version: 1.0.1
 summary: Upgrade an underperforming Summer skill — run it against a behavioral spec with and without changes via a parallel-eval harness; ship the winner.
 use_when:
   - a contributor wants to upgrade a Summer skill that is underperforming or to fix a regression

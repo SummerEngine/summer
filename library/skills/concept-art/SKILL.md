@@ -13,7 +13,7 @@ paths: ["assets/**", "art/**", "concepts/**"]
 
 This skill produces **3-4 rough concept images** of the same subject under different stylistic interpretations. The goal is not the final asset — the goal is to give the user something visual to react to so they can lock a direction. Variants are deliberately divergent (different palette, mood, framing, era) so the user has real choices, not four near-identical takes.
 
-If the user wants ONE polished image (a dialogue portrait, a hero card), this is the wrong skill — route to `summer:2d-assets/character-portrait`. The `summer:asset-pipeline/asset-strategy` meta-router uses the disambiguation phrase **"Quick check — exploring the look (3-4 variants for art direction) or generating a final character portrait for dialogue UI?"** to send users to one of the two. If you arrived here without that question being asked, ask it before generating.
+If the user wants ONE polished image (a dialogue portrait, a hero card), this is the wrong skill — route to `character-portrait`. The `asset-strategy` meta-router uses the disambiguation phrase **"Quick check — exploring the look (3-4 variants for art direction) or generating a final character portrait for dialogue UI?"** to send users to one of the two. If you arrived here without that question being asked, ask it before generating.
 
 ## When to use
 
@@ -25,11 +25,11 @@ If the user wants ONE polished image (a dialogue portrait, a hero card), this is
 
 ## When NOT to use
 
-- The user wants a single locked portrait for a dialogue UI → `summer:2d-assets/character-portrait`.
-- The user wants pixel art specifically → `summer:2d-assets/pixel-art`.
-- The user wants a UI icon or HUD element → `summer:2d-assets/ui-graphics`.
-- The user wants a tileable wall/floor texture → `summer:2d-assets/tileable-texture`.
-- The user wants an image-to-3D reference → `summer:asset-pipeline/asset-strategy` (the 3D pipeline has its own prompt suffix).
+- The user wants a single locked portrait for a dialogue UI → `character-portrait`.
+- The user wants pixel art specifically → `pixel-art`.
+- The user wants a UI icon or HUD element → `ui-graphics`.
+- The user wants a tileable wall/floor texture → `tileable-texture`.
+- The user wants an image-to-3D reference → `asset-strategy` (the 3D pipeline has its own prompt suffix).
 
 ## Steps
 
@@ -39,7 +39,7 @@ Before generating, ask once:
 
 > Quick check — exploring the look (3-4 variants for art direction) or generating a final character portrait for dialogue UI?
 
-If "final" → hand off to `summer:2d-assets/character-portrait`. If "explore" → continue.
+If "final" → hand off to `character-portrait`. If "explore" → continue.
 
 ### 2. Search for prior concepts
 
@@ -122,7 +122,7 @@ The structure: **subject + axis variant + "concept art" + lighting/atmosphere**.
 - **User says "just one" after you propose 4.** That's a `character-portrait` job. Hand off.
 - **User wants 8+ variants.** Generate 4 first; if the user wants more on the same axis, generate 4 more. Don't dump 8 at once — overload paralyzes choice.
 - **Subject is a fully described scene, not an asset.** You're producing key art, not asset reference. Ask for wide cinematic framing in the prompt and bias toward atmospheric — you cannot set an aspect ratio over MCP.
-- **User wants the final to be 3D.** After they pick a direction, route to `summer:asset-pipeline/asset-strategy` — concept-art images are not 3D-ready references (they have backgrounds, scene context, dramatic lighting baked in). The 3D pipeline needs its own clean white-background reference.
+- **User wants the final to be 3D.** After they pick a direction, route to `asset-strategy` — concept-art images are not 3D-ready references (they have backgrounds, scene context, dramatic lighting baked in). The 3D pipeline needs its own clean white-background reference.
 
 ## Fallback (no MCP)
 
@@ -140,14 +140,14 @@ Tell the user to run via the Summer dashboard, then come back and `summer_import
 
 Once the user picks a direction:
 
-- **Character / NPC final** → `summer:2d-assets/character-portrait` (use the picked variant as `referenceImageUrl`).
-- **3D model from this concept** → `summer:asset-pipeline/asset-strategy` (regenerate a 3D-ready reference; concept art is not 3D-ready as-is).
-- **Tileable texture from this mood** → `summer:2d-assets/tileable-texture`.
-- **Pixel-art version** → `summer:2d-assets/pixel-art`.
+- **Character / NPC final** → `character-portrait` (use the picked variant as `referenceImageUrl`).
+- **3D model from this concept** → `asset-strategy` (regenerate a 3D-ready reference; concept art is not 3D-ready as-is).
+- **Tileable texture from this mood** → `tileable-texture`.
+- **Pixel-art version** → `pixel-art`.
 - **Lock the visual direction** → write the choice into `.summer/GameSoul.md` under `## Visual style` so future asset skills inherit it.
 
 ## See also
 
-- `summer:asset-pipeline/asset-strategy` — meta-router that delegates here vs other 2d-assets skills.
-- `summer:2d-assets/character-portrait` — the polished single-image counterpart.
-- `../../../references/mcp-tools-reference.md` — `summer_generate_image` parameter schema.
+- `asset-strategy` — meta-router that delegates here vs other 2d-assets skills.
+- `character-portrait` — the polished single-image counterpart.
+- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_image` parameter schema.

@@ -1,6 +1,6 @@
 id: skill/make-game
 kind: skill
-version: 1.0.0
+version: 1.0.1
 summary: "Orchestration spine for 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship — delegates to specialist skills."
 use_when:
   - the user says 'make me a game', 'build me a game', 'I want to make a [genre] game', or 'let's build something' — running the full game-dev pipeline

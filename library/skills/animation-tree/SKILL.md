@@ -36,8 +36,8 @@ Before adding the tree, prove direct `AnimationPlayer.play()` visibly moves the 
 
 - Single-clip looping background prop (banner waving, water surface). Just `AnimationPlayer.play("loop")` is fine.
 - Cinematic with hand-authored timing. Use `AnimationPlayer` directly with `play_with_capture`; AnimationTree is overkill.
-- Character has zero clips — generate first via `summer:animation/generate-motion`.
-- Procedural-only animation (no clips, all IK). That's `summer:animation/procedural-animation`.
+- Character has zero clips — generate first via `generate-motion`.
+- Procedural-only animation (no clips, all IK). That's `procedural-animation`.
 
 ## Canonical state machine
 
@@ -69,8 +69,8 @@ This is the production-default for a humanoid character that can move, attack, t
 
 Before walking the CRUD steps below, check the ctx lane — one `summer_run_script` call replaces the add-node/set-prop chain AND the hand-written `.tres`:
 
-- **Wave G engines:** `ctx.anim_state_machine(character, {states: {...}, transitions: [[from, to, {blend_s: 0.2}], ...], start: "idle"})` gets-or-creates the AnimationTree, wires it to the player, builds the state machine, sets `active = true`. Unknown clip names come back as a report entry listing the player's REAL clips — never wire against guessed names. Full recipe (inspect clips/bones first, method-track events, root motion, playtest verification): `summer:animation/character-animation-wiring`.
-- **Any engine (raw fallback):** the same classes are fully script-bound — `AnimationNodeStateMachine.add_node(name, AnimationNodeAnimation)`, `add_transition(from, to, AnimationNodeStateMachineTransition)` (one transition resource each, `xfade_time` on it), then `tree.anim_player = tree.get_path_to(player)`, `tree.tree_root = sm`, `tree.active = true`, and `ctx.set_owner_recursive(tree)`. The raw script is quoted in `summer:animation/character-animation-wiring`.
+- **Wave G engines:** `ctx.anim_state_machine(character, {states: {...}, transitions: [[from, to, {blend_s: 0.2}], ...], start: "idle"})` gets-or-creates the AnimationTree, wires it to the player, builds the state machine, sets `active = true`. Unknown clip names come back as a report entry listing the player's REAL clips — never wire against guessed names. Full recipe (inspect clips/bones first, method-track events, root motion, playtest verification): `character-animation-wiring`.
+- **Any engine (raw fallback):** the same classes are fully script-bound — `AnimationNodeStateMachine.add_node(name, AnimationNodeAnimation)`, `add_transition(from, to, AnimationNodeStateMachineTransition)` (one transition resource each, `xfade_time` on it), then `tree.anim_player = tree.get_path_to(player)`, `tree.tree_root = sm`, `tree.active = true`, and `ctx.set_owner_recursive(tree)`. The raw script is quoted in `character-animation-wiring`.
 
 Note the helper's scope honestly: `anim_state_machine` builds clip states + transitions only. The canonical machine below — BlendSpace1D locomotion, OneShot attack/hit — still needs the `.tres` (or raw-script) lane for those node types. Discrete idle/walk/run backbones don't.
 
@@ -83,7 +83,7 @@ summer_get_scene_tree
 summer_inspect_node "./World/Goblin"
 ```
 
-Confirm there's a `Skeleton3D` and an `AnimationPlayer` with at least `idle` + `walk` + `run` populated. If clips are missing, route to `summer:animation/generate-motion`.
+Confirm there's a `Skeleton3D` and an `AnimationPlayer` with at least `idle` + `walk` + `run` populated. If clips are missing, route to `generate-motion`.
 
 ### 2. Add the AnimationTree
 
@@ -289,13 +289,13 @@ the same `.tres`; it is slower but discoverable.
 
 ## Handoff
 
-- For NPC behavior firing these states (decide-when-to-attack), hand off to `summer:ai-and-npcs/design-npc`.
-- For first-person hand animations on the player rig, the same pattern applies — hand off to `summer:character-controllers/fps-controller` for the state inputs.
-- For procedural overlays on top of the tree (look-at the player while idling), hand off to `summer:animation/procedural-animation`.
-- For lipsync layered on the face during dialogue states, hand off to `summer:animation/facial-and-lipsync`.
+- For NPC behavior firing these states (decide-when-to-attack), hand off to `design-npc`.
+- For first-person hand animations on the player rig, the same pattern applies — hand off to `fps-controller` for the state inputs.
+- For procedural overlays on top of the tree (look-at the player while idling), hand off to `procedural-animation`.
+- For lipsync layered on the face during dialogue states, hand off to `facial-and-lipsync`.
 
 ## See also
 
-- `summer:animation/character-animation-wiring` — the end-to-end rigged-GLB path: inspect real clip/bone names, `ctx.anim_state_machine`, method tracks, root motion, playtest verification.
-- `summer:animation/generate-motion` — produce the clips this tree references.
-- `summer:animation/retarget` — share one tree across many characters.
+- `character-animation-wiring` — the end-to-end rigged-GLB path: inspect real clip/bone names, `ctx.anim_state_machine`, method tracks, root motion, playtest verification.
+- `generate-motion` — produce the clips this tree references.
+- `retarget` — share one tree across many characters.

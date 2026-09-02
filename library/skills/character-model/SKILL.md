@@ -11,7 +11,7 @@ paths: ["assets/characters/**", "assets/models/**", "**/*.tscn", "**/*.gd"]
 
 # Character Model — T-Pose to Rigged Humanoid, Gated
 
-This is the **canonical Meshy auto-rig pipeline**. It produces a humanoid `.glb` with a Meshy-compatible skeleton that `summer:animation/generate-motion` can drive directly. The work is split into two paid passes with a **mandatory user-review gate between them** — the rig pass is more expensive and locks the topology, so the user must see the un-rigged preview and approve before you spend on the rig.
+This is the **canonical Meshy auto-rig pipeline**. It produces a humanoid `.glb` with a Meshy-compatible skeleton that `generate-motion` can drive directly. The work is split into two paid passes with a **mandatory user-review gate between them** — the rig pass is more expensive and locks the topology, so the user must see the un-rigged preview and approve before you spend on the rig.
 
 The whole flow:
 
@@ -21,10 +21,10 @@ The whole flow:
 3. ── USER REVIEW GATE ──
 4. Rigged .glb               →  summer_generate_3d(image-to-3d, rig=true)      (~$1.00, ~90s)
 5. Import → editor RESTART → wire as CharacterBody3D / Node3D
-6. Hand off to summer:animation/generate-motion for clips
+6. Hand off to generate-motion for clips
 ```
 
-The animation skill (`summer:animation/generate-motion`) requires a rigged humanoid; a static `.glb` won't drive motion.
+The animation skill (`generate-motion`) requires a rigged humanoid; a static `.glb` won't drive motion.
 
 ## Web Chat / Public Orchestrator Equivalent
 
@@ -46,11 +46,11 @@ Use Studio only when the user explicitly asks for visual/manual picking or when 
 
 ## When NOT to use
 
-- Static statue / mannequin display piece (no rig needed) → `summer:3d-assets/prop-model`.
-- Vehicle with a "driver" silhouette but no skeleton needed → `summer:3d-assets/vehicle-model`.
+- Static statue / mannequin display piece (no rig needed) → `prop-model`.
+- Vehicle with a "driver" silhouette but no skeleton needed → `vehicle-model`.
 - Quadruped (wolf, horse, dragon) → Meshy auto-rig is humanoid-only. Generate the mesh here for visuals, but skip the rig step — animation will need a hand-authored skeleton or a quadruped-specific provider (out of scope for this skill).
 - The user already has a rigged character and just wants a re-skin — that's a retexture pass, not this skill.
-- Facial blendshapes / lipsync rig → `summer:animation/facial-and-lipsync`.
+- Facial blendshapes / lipsync rig → `facial-and-lipsync`.
 
 ## Polycount targets
 
@@ -115,13 +115,13 @@ summer_import_asset_by_id(
 )
 ```
 
-### 3. ⛔ USER REVIEW GATE — DO NOT SKIP
+### 3. STOP: USER REVIEW GATE — DO NOT SKIP
 
 Before paying for the rig pass, surface the un-rigged mesh:
 
 > Un-rigged knight mesh ready: `res://assets/characters/knight_unrigged.glb` (~12k tris, [preview link]).
 >
-> Next step is the **rig pass** (~$1.00, ~90s, Meshy auto-rig). It locks the topology and adds a skeleton compatible with `summer:animation/generate-motion`. Once you approve I'll run it.
+> Next step is the **rig pass** (~$1.00, ~90s, Meshy auto-rig). It locks the topology and adds a skeleton compatible with `generate-motion`. Once you approve I'll run it.
 >
 > **Approve the mesh and proceed to rig?** Or regenerate the mesh first (different prompt, different polycount, different model)?
 
@@ -142,7 +142,7 @@ summer_generate_3d({
 
 Returns a job whose result includes `assetId`, `fileUrl`, and `rigAssetId`.
 If you ran with `wait: false`, poll via `summer_check_job(jobId)`. The
-`rigAssetId` is the handle `summer:animation/generate-motion` needs — store it.
+`rigAssetId` is the handle `generate-motion` needs — store it.
 Resolve it before import so the agent has the viewer/download metadata:
 
 Import the rigged version, replacing the un-rigged file:
@@ -155,7 +155,7 @@ summer_import_asset_by_id(
 )
 ```
 
-### 5. ⚠️ Restart the editor
+### 5. WARNING: Restart the editor
 
 **Known gotcha:** after importing a rigged `.glb`, the `Skeleton3D` node appears stale in the scene dock — bones are missing, `skeleton.get_bone_count()` returns 0, and `AnimationPlayer` libraries fail to bind. The fix:
 
@@ -170,7 +170,7 @@ No programmatic workaround is known. Tell the user, wait, then continue.
 | Player or enemy that moves with code, collides with walls, jumps | `CharacterBody3D` | `move_and_slide()` API, kinematic physics, slope handling |
 | Cinematic NPC (talks, idles, never moves under physics) | `Node3D` | No physics overhead; cheaper for crowds |
 | Pure-visual character (background extra, dialogue head) | `Node3D` | Same as above |
-| Ragdoll-on-death enemy | `CharacterBody3D` while alive, swap to `RigidBody3D` skeleton on death | Two-mode rig; see `summer:animation/procedural-animation` |
+| Ragdoll-on-death enemy | `CharacterBody3D` while alive, swap to `RigidBody3D` skeleton on death | Two-mode rig; see `procedural-animation` |
 
 Four things the call shapes below encode:
 
@@ -207,7 +207,7 @@ The imported `.glb` includes its own `Skeleton3D` and `AnimationPlayer` (empty l
 
 > Knight is wired at `./World/Knight` with a Meshy-rigged skeleton. `rigAssetId` saved.
 >
-> Next: `summer:animation/generate-motion` to add idle / walk / run / attack
+> Next: `generate-motion` to add idle / walk / run / attack
 > clips. Example call: `summer_generate_motion(rigAssetId: "<saved id>",
 > backend: "meshy-library", motionName: "walk")`. Custom prompt-driven motion
 > is not shipped; hand-author one-off moves in Summer Engine or import a
@@ -225,10 +225,10 @@ The imported `.glb` includes its own `Skeleton3D` and `AnimationPlayer` (empty l
 
 ## Edge cases
 
-- **Multiple characters share a silhouette.** Generate the rig once, then re-skin via texture swap (cheaper than re-rigging). See `summer:3d-assets/character-model` retexture flow (TBD) — for now, route to `summer:asset-pipeline/asset-strategy`.
+- **Multiple characters share a silhouette.** Generate the rig once, then re-skin via texture swap (cheaper than re-rigging). See `character-model` retexture flow (TBD) — for now, route to `asset-strategy`.
 - **Character has wings, tail, extra limbs.** Meshy's humanoid rig only weights the standard skeleton — extras sag. Either prompt them as static (e.g. cape held by physics in-engine) or hand-rig in Blender post-export.
-- **Child / dwarf / giant.** Generate at correct proportions in the T-pose; the rig retargets cleanly. Locomotion clips from `summer:animation/generate-motion` will retarget but stride length needs `playback_speed` tuning on the AnimationPlayer.
-- **First-person hands-only character.** Generate just hands + forearms in T-pose; rig pass still works. See `summer:character-controllers/fps-controller` for first-person wiring.
+- **Child / dwarf / giant.** Generate at correct proportions in the T-pose; the rig retargets cleanly. Locomotion clips from `generate-motion` will retarget but stride length needs `playback_speed` tuning on the AnimationPlayer.
+- **First-person hands-only character.** Generate just hands + forearms in T-pose; rig pass still works. See `fps-controller` for first-person wiring.
 - **Stylized non-human (goblin, orc, halfling).** Works fine as long as the silhouette is bipedal with two arms, two legs, one head. Quadrupeds and centaurs do not.
 
 ## Fallback (no MCP)
@@ -240,23 +240,23 @@ The imported `.glb` includes its own `Skeleton3D` and `AnimationPlayer` (empty l
 5. Restart the editor.
 6. Wire as CharacterBody3D / Node3D in Summer Engine manually.
 
-The output is identical to the MCP path — same Meshy skeleton, same compatibility with `summer:animation/generate-motion` (which has its own dashboard fallback).
+The output is identical to the MCP path — same Meshy skeleton, same compatibility with `generate-motion` (which has its own dashboard fallback).
 
 ## Handoff
 
 After the rigged character is wired:
 
 > `Knight` is at `./World/Knight` with a Meshy-rigged skeleton. Next:
-> - **Animations:** `summer:animation/generate-motion` for idle / walk / run / attack. Pass the `rigAssetId` returned in step 4.
-> - **State machine:** after a few clips exist, `summer:animation/animation-tree` for idle → walk → run blends.
-> - **Player input:** if this is the player, wire WASD + mouse via `summer:character-controllers/fps-controller` or a third-person controller skill.
-> - **NPC behavior:** if it's an NPC, `summer:ai-and-npcs/design-npc` for behavior trees and dialogue hooks.
+> - **Animations:** `generate-motion` for idle / walk / run / attack. Pass the `rigAssetId` returned in step 4.
+> - **State machine:** after a few clips exist, `animation-tree` for idle → walk → run blends.
+> - **Player input:** if this is the player, wire WASD + mouse via `fps-controller` or a third-person controller skill.
+> - **NPC behavior:** if it's an NPC, `design-npc` for behavior trees and dialogue hooks.
 > - **Re-skin variants** (palette swap, armor swap): retexture pass — generate new albedo, assign via material override. Avoid re-rigging.
 
 ## See also
 
-- `summer:animation/generate-motion` — the next-step animation skill that consumes the `rigAssetId` produced here.
-- `summer:asset-pipeline/asset-strategy` — meta-router; this skill is the canonical drill-down of its "Image-to-3D for characters" path.
-- `summer:3d-assets/prop-model` — for non-character props.
-- `summer:scene-composition` — for the CharacterBody3D + Mesh + Collider parent pattern.
-- `../../../references/mcp-tools-reference.md` — full parameter schemas for `summer_generate_3d`, `summer_generate_image`, and `summer_generate_motion`.
+- `generate-motion` — the next-step animation skill that consumes the `rigAssetId` produced here.
+- `asset-strategy` — meta-router; this skill is the canonical drill-down of its "Image-to-3D for characters" path.
+- `prop-model` — for non-character props.
+- `scene-composition` — for the CharacterBody3D + Mesh + Collider parent pattern.
+- `../../references/mcp-tools-reference/mcp-tools-reference.md` — full parameter schemas for `summer_generate_3d`, `summer_generate_image`, and `summer_generate_motion`.

@@ -183,7 +183,7 @@ The wizard's Break-down pass produces two new per-slice fields the runtime must 
 | `zOrder` | number | Back-to-front paint order on children. Lower = behind. Matches Godot `z_index`, Unity `sortingOrder`, CSS `z-index`. |
 | `parentSliceIndex` | number | Set on each child, points at the composite parent. Used to group children. |
 
-The full schema is the zod definition at `publicsummerengine/src/lib/asset-packs/schema.ts` (`SliceMetaSchema`, `PACK_SCHEMA_VERSION`, and the legacy-migration helper). Read it once if you need to know every field.
+The table above lists every field this skill reads; treat any other field in the pack manifest as opaque.
 
 ### Consume recipe
 
@@ -197,7 +197,7 @@ The full schema is the zod definition at `publicsummerengine/src/lib/asset-packs
    - `position = Vector2(child.bbox.x - parent.bbox.x, child.bbox.y - parent.bbox.y)` — offset relative to the parent's source-sheet rect.
 5. **Apply widget post-processing.** If any child has a `widget` field, wrap or replace its `Sprite2D` with the appropriate Control node per the recipes above (panel → `NinePatchRect`, progress_bar → `TextureProgressBar`, etc.).
 
-For the full instantiation flow (op JSON, examples), use `summer:2d-assets/instantiate-asset-pack`.
+For the full instantiation flow (op JSON, examples), use `instantiate-asset-pack`.
 
 ### Legacy compatibility
 
@@ -214,6 +214,6 @@ Check `metadata.schemaVersion` on the pack: `null` (or absent) = legacy, `1` = c
 
 ## What this skill does NOT cover
 
-- Auto-tiling terrain (Wang / 47-tile). Different format entirely — see `summer:2d-assets/tileable-texture`.
-- Animated UI (button press-down sprites, hover glow). The wizard captures static frames; for animation see `summer:2d-assets/sprite-sheet`.
+- Auto-tiling terrain (Wang / 47-tile). Different format entirely — see `tileable-texture`.
+- Animated UI (button press-down sprites, hover glow). The wizard captures static frames; for animation see `sprite-sheet`.
 - Non-AABB widgets in the 9-slice path. See the **Shape support** table at the top — for circles, hexagons, organic shapes, fall through to `TextureRect` and skip 9-slice entirely.

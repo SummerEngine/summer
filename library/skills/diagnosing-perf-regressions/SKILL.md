@@ -11,7 +11,7 @@ There is a difference between "this game is slow" and "this game got slow." This
 
 **Core principle:** A regression has a cause. The cause is a specific change. Bisect to find the change, then root-cause from there.
 
-This skill is **not** general performance tuning. If the game has always run at 30fps and you want to push it to 60, that is `summer:tune-performance` (the domain skill for budget-driven optimization). This skill is the diagnostic — what broke, where, when.
+This skill is **not** general performance tuning. If the game has always run at 30fps and you want to push it to 60, that is `tune-performance` (the domain skill for budget-driven optimization). This skill is the diagnostic — what broke, where, when.
 
 ## When To Use
 
@@ -22,9 +22,9 @@ This skill is **not** general performance tuning. If the game has always run at 
 
 ## When NOT To Use
 
-- "The game has always been slow, help me speed it up." → `summer:tune-performance`.
-- "I want to know if my game is fast enough to ship." → `summer:tune-performance`.
-- "The game crashes." → `summer:debug`.
+- "The game has always been slow, help me speed it up." → `tune-performance`.
+- "I want to know if my game is fast enough to ship." → `tune-performance`.
+- "The game crashes." → `debug`.
 
 ## The Iron Law
 
@@ -154,8 +154,8 @@ State the result with the number: "Reverted the per-frame `get_tree().get_nodes_
 
 | Situation | Go to |
 |---|---|
-| Regression confirmed and root cause known, but the fix is "make the feature cheaper" rather than "undo the change" | `summer:tune-performance` for the optimization pass |
-| The regression turns out to be a crash or error in disguise (the slow path is throwing exceptions in a tight loop) | `summer:debug` |
+| Regression confirmed and root cause known, but the fix is "make the feature cheaper" rather than "undo the change" | `tune-performance` for the optimization pass |
+| The regression turns out to be a crash or error in disguise (the slow path is throwing exceptions in a tight loop) | `debug` |
 | The cause is a Godot version change or engine-side regression | Surface to the user; this is not a project-side fix |
 | Bisect lands on a commit that touches 40 files | Subdivide the commit: check out the commit, revert subsets, re-measure |
 
@@ -209,7 +209,7 @@ A regression is a delta. Diagnose the delta, not the codebase.
 Measure now. Measure last-good. Bisect what changed. Match to a Godot perf cliff. A/B one variable. Re-measure. Done.
 
 **Related skills:**
-- `summer:tune-performance` — for general optimization once the regression is fixed or when no regression exists.
-- `summer:investigating-bugs` — when the slow path turns out to be a logic bug (errors in a tight loop).
-- `summer:debug` — when the perf issue is actually a crash or freeze.
-- `summer:verification-before-completion` — to claim the fix worked, with numbers.
+- `tune-performance` — for general optimization once the regression is fixed or when no regression exists.
+- `investigating-bugs` — when the slow path turns out to be a logic bug (errors in a tight loop).
+- `debug` — when the perf issue is actually a crash or freeze.
+- `verification-before-completion` — to claim the fix worked, with numbers.

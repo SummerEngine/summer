@@ -1,5 +1,5 @@
 ---
-name: dissolve
+name: vfx-dissolve
 description: Use when authoring a dissolve effect — an object's mesh disintegrating with a glowing burning edge, driven by a noise threshold ShaderMaterial overriding the target's existing material. Trigger on "dissolve", "disintegrate", "burn away", "Thanos snap", "vanish into ash", "enemy fades out", "object burns up".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
@@ -248,7 +248,7 @@ DissolveController.materialize_object(target, 0.8)
 
 ### 5a. Iterate on the shader with ctx.make_shader (summer_run_script)
 
-On engines with the Wave F ctx stdlib (see `summer:scene-scripting`), prototype the
+On engines with the Wave F ctx stdlib (see `scene-scripting`), prototype the
 shader BEFORE committing it to a file: `ctx.make_shader(code, params)` compiles the
 source and returns compile errors **verbatim** in the result (the
 `make_shader_errors` report entry, line numbers included) — no silent magenta
@@ -396,16 +396,16 @@ Without the MCP connection there is no engine to drive, so the user does it them
 
 After firing this recipe, suggest:
 
-- `summer:visual-effects/recipes/smoke` — recolor pale gray, spawn at the target's bounds for ash particles. Especially good for `thanos-snap`.
-- `summer:visual-effects/recipes/magic-glow` — for `holy-banish` and `summon-arrival` variants, add a vertical beam of light at the target.
-- `summer:visual-effects/recipes/fire` — pair `enemy-burn-death` with a brief flame burst at the start of the dissolve.
-- `summer:visual-effects/game-feel` — add a slow-mo on enemy death (`Engine.time_scale = 0.4` for 0.3 s) to emphasize the dissolve.
-- `summer:audio/sound-effect` — generate `magical disintegration whoosh, fading shimmer, 1.5s` and play in sync.
+- `vfx-smoke` — recolor pale gray, spawn at the target's bounds for ash particles. Especially good for `thanos-snap`.
+- `vfx-magic-glow` — for `holy-banish` and `summon-arrival` variants, add a vertical beam of light at the target.
+- `vfx-fire` — pair `enemy-burn-death` with a brief flame burst at the start of the dissolve.
+- `game-feel` — add a slow-mo on enemy death (`Engine.time_scale = 0.4` for 0.3 s) to emphasize the dissolve.
+- `sound-effect` — generate `magical disintegration whoosh, fading shimmer, 1.5s` and play in sync.
 
 ## See also
 
 - `_building-blocks/noise-3d-fbm.gdshaderinc` — the FBM noise this shader includes
-- `summer:visual-effects/recipes/smoke` — pair for the ash cloud
-- `summer:visual-effects/recipes/magic-glow` — for arrival/departure beams
-- `summer:visual-effects/recipes/fire` — for the burn-up variant pairing
-- `summer:gdscript-patterns` — for the static-API class pattern
+- `vfx-smoke` — pair for the ash cloud
+- `vfx-magic-glow` — for arrival/departure beams
+- `vfx-fire` — for the burn-up variant pairing
+- `gdscript-patterns` — for the static-API class pattern

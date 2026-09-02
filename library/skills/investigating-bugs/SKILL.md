@@ -105,7 +105,7 @@ You MUST complete each phase before proceeding to the next.
    codesign --sign "$IDENTITY" --verbose=4 "$APP"
    ```
 
-   **This reveals:** Which layer fails (secrets → workflow ✓, workflow → build ✗)
+   **This reveals:** Which layer fails (secrets → workflow passes, workflow → build fails)
 
 5. **Trace Data Flow**
 
@@ -285,9 +285,9 @@ These techniques are part of systematic debugging and available in this director
 - **`condition-based-waiting.md`** - Replace arbitrary timeouts with condition polling
 
 **Related skills:**
-- **summer:verification-before-completion** - Verify fix worked before claiming success
-- **summer:debug** - The Summer-specific triage loop (script errors → console → debugger → probe)
-- **summer:playtesting-a-feature** - When the fix is a gameplay behaviour that has to be walked
+- **verification-before-completion** - Verify fix worked before claiming success
+- **debug** - The Summer-specific triage loop (script errors → console → debugger → probe)
+- **playtesting-a-feature** - When the fix is a gameplay behaviour that has to be walked
 
 ## Real-World Impact
 

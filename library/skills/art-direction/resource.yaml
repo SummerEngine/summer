@@ -1,6 +1,6 @@
 id: skill/art-direction
 kind: skill
-version: 1.0.1
+version: 1.0.2
 summary: Define the game's visual style — references, palette, mood, lighting plan, post-processing, do/don't list — output as an art bible at .summer/art-bible.md.
 use_when:
   - defining the visual style of the game — references, palette, mood, lighting plan, post-processing

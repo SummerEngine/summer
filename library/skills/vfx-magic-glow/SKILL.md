@@ -1,5 +1,5 @@
 ---
-name: magic-glow
+name: vfx-magic-glow
 description: Use when authoring a magic-glow visual effect — a pulsing OmniLight3D plus drifting additive motes plus optional emission shader on the source mesh. Trigger on "magic glow", "enchanted item", "soul gem", "pulsing aura", "rune glow", "magical orb", "summon circle glow", "fairy", "wisp".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
@@ -225,7 +225,7 @@ summer_set_prop(scenePath="res://main.tscn", path="./World/Pedestal/SoulGem/Glow
 ```
 
 Either wiring block is also ONE ctx script on engines with `summer_run_script`
-(see `summer:scene-scripting`) — the eight `summer_set_prop` calls become one
+(see `scene-scripting`) — the eight `summer_set_prop` calls become one
 transactional run, and computed placement (a glow per gem in a ring) becomes a loop:
 
 ```gdscript
@@ -415,16 +415,16 @@ manually in Summer Engine:
 
 After firing this recipe, suggest:
 
-- `summer:visual-effects/recipes/lightning` — perfect pre-cast charge-up. Use the `charge-up` variant and ramp `set_intensity(0→1)` then call `Lightning.cast_lightning`.
-- `summer:visual-effects/recipes/dissolve` — pair `summon-arrival` (materialize_object) with the `summoning-circle` variant.
-- `summer:visual-effects/recipes/fire` (the `magic-fire` variant) — for items that should glow AND flame.
-- `summer:visual-effects/game-feel` — slight time-dilation when picking up a pulsing quest item adds weight.
-- `summer:audio/sound-effect` — generate `magical hum, ethereal shimmer, 2s loop` and play on the same anchor.
+- `vfx-lightning` — perfect pre-cast charge-up. Use the `charge-up` variant and ramp `set_intensity(0→1)` then call `Lightning.cast_lightning`.
+- `vfx-dissolve` — pair `summon-arrival` (materialize_object) with the `summoning-circle` variant.
+- `vfx-fire` (the `magic-fire` variant) — for items that should glow AND flame.
+- `game-feel` — slight time-dilation when picking up a pulsing quest item adds weight.
+- `sound-effect` — generate `magical hum, ethereal shimmer, 2s loop` and play on the same anchor.
 
 ## See also
 
 - `_building-blocks/additive-billboard-particles.md` — canonical additive material settings (this recipe uses them for motes)
-- `summer:visual-effects/recipes/lightning` — pre-cast charge-up partner
-- `summer:visual-effects/recipes/dissolve` — for summon arrival pairing
-- `summer:visual-effects/recipes/fire` — for the `magic-fire` variant
-- `summer:gdscript-patterns` — for the controller idioms (signals, exports, `@tool`)
+- `vfx-lightning` — pre-cast charge-up partner
+- `vfx-dissolve` — for summon arrival pairing
+- `vfx-fire` — for the `magic-fire` variant
+- `gdscript-patterns` — for the controller idioms (signals, exports, `@tool`)

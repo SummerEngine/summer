@@ -1,5 +1,5 @@
 ---
-name: muzzle-flash
+name: vfx-muzzle-flash
 description: Use when authoring a muzzle-flash visual effect — a one-shot ~80 ms burst at a gun barrel built with a particle one-shot OR a flashing quad with a star-burst shader. Trigger on "muzzle flash", "gun fire", "weapon flash", "barrel flash", "shoot a gun", "spell-cast burst at hand".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
@@ -230,7 +230,7 @@ summer_connect_signal(scenePath="res://main.tscn", emitter="./Player/Weapon", si
 
 ### 5a. One-script wiring (summer_run_script)
 
-On engines with `summer_run_script` (see `summer:scene-scripting`), the node calls
+On engines with `summer_run_script` (see `scene-scripting`), the node calls
 above are ONE transactional ctx script — and mounting a flash on every weapon in the
 scene becomes a loop instead of a CRUD chain per gun:
 
@@ -375,15 +375,15 @@ manually in Summer Engine:
 
 After firing this recipe, suggest:
 
-- `summer:visual-effects/recipes/hit-spark` — pair on the bullet impact end.
-- `summer:visual-effects/recipes/smoke` — for a small puff at the barrel after the flash for high-caliber weapons.
-- `summer:visual-effects/game-feel` — recoil camera kick + screen shake (`CameraShake.add_trauma(0.15)`) on every shot makes the flash feel 5× more powerful.
-- `summer:audio/sound-effect` — generate `9mm pistol shot, sharp crack, indoor, short tail, 400ms` and play in the same `fire()`.
+- `vfx-hit-spark` — pair on the bullet impact end.
+- `vfx-smoke` — for a small puff at the barrel after the flash for high-caliber weapons.
+- `game-feel` — recoil camera kick + screen shake (`CameraShake.add_trauma(0.15)`) on every shot makes the flash feel 5× more powerful.
+- `sound-effect` — generate `9mm pistol shot, sharp crack, indoor, short tail, 400ms` and play in the same `fire()`.
 
 ## See also
 
 - `_building-blocks/additive-billboard-particles.md` — canonical additive material reference
 - `_building-blocks/trauma-shake-snippet.md` — `CameraShake.add_trauma()` for the recoil punch
-- `summer:visual-effects/recipes/hit-spark` — companion impact effect
-- `summer:visual-effects/recipes/lightning` — for energy weapons (replace the flash with a beam)
-- `summer:visual-effects/game-feel` — recoil + hit-stop wiring
+- `vfx-hit-spark` — companion impact effect
+- `vfx-lightning` — for energy weapons (replace the flash with a beam)
+- `game-feel` — recoil + hit-stop wiring

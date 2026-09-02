@@ -35,10 +35,10 @@ Categories the classifier outputs (used to route into downstream pipelines):
 
 ## When NOT to use
 
-- The user wants a **single** asset → `summer:2d-assets/pixel-art` or `summer:2d-assets/character-portrait`.
-- The user wants character **animation** (walk cycle, attack frames) → `summer:2d-assets/sprite-sheet`.
-- The user wants **3D models** of a planned pack → not yet supported in one shot; loop `summer:2d-assets/concept-art` → image-to-3D per item, or use `summer:asset-pipeline/asset-strategy` to pick the right path.
-- The user wants **terrain tiles that connect seamlessly** (auto-tiling / Wang tiles) → `summer:2d-assets/tileable-texture` is the right home for edge logic; this skill produces standalone tiles, not edge variants.
+- The user wants a **single** asset → `pixel-art` or `character-portrait`.
+- The user wants character **animation** (walk cycle, attack frames) → `sprite-sheet`.
+- The user wants **3D models** of a planned pack → not yet supported in one shot; loop `concept-art` → image-to-3D per item, or use `asset-strategy` to pick the right path.
+- The user wants **terrain tiles that connect seamlessly** (auto-tiling / Wang tiles) → `tileable-texture` is the right home for edge logic; this skill produces standalone tiles, not edge variants.
 
 ## The cleanest path: the studio wizard
 
@@ -50,7 +50,7 @@ https://summerengine.com/studio/create-tileset
 
 Direct the user there if they're working in the browser. The wizard:
 
-- Offers a 2D / 3D mode toggle (2D is the slice flow described here; 3D is a soft pointer to `summer:2d-assets/concept-art` + per-asset image-to-3D for now)
+- Offers a 2D / 3D mode toggle (2D is the slice flow described here; 3D is a soft pointer to `concept-art` + per-asset image-to-3D for now)
 - Surfaces six prompt templates (tile sheet, UI kit, menu, character pack, biome, freeform)
 - Lets the user upload an existing sheet if they have one (skip generation)
 - Shows variants in a grid with full-screen lightbox + arrow-key toggling
@@ -147,10 +147,10 @@ now calls the same server-side slicer as the Studio wizard.
 ## What this skill does NOT do (yet)
 
 - Per-asset planning + individual generation (the Codex-style flow where each asset is generated separately at full resolution). The planner endpoint exists (`POST /api/art/plan-asset-pack`) but the per-asset gen loop is not wired into the wizard yet.
-- 3D pack assembly. The 3D mode in the wizard is a placeholder pointer to `summer:2d-assets/concept-art` + image-to-3D for now.
+- 3D pack assembly. The 3D mode in the wizard is a placeholder pointer to `concept-art` + image-to-3D for now.
 - Character animation routing. Once a slice is classified as `character`, the next step (sprite-sheet generation) is a separate skill that the user has to invoke manually. Auto-routing is on the roadmap.
-- Terrain auto-tiling / Wang-tile generation. Use `summer:2d-assets/tileable-texture` for that.
-- Level composition / scene assembly. Use `summer:level-design/design-level`.
+- Terrain auto-tiling / Wang-tile generation. Use `tileable-texture` for that.
+- Level composition / scene assembly. Use `design-level`.
 
 ## Honest cost estimate
 

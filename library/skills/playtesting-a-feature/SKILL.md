@@ -13,9 +13,9 @@ A game feature is not done because it compiles. It is not done because the tests
 
 This skill governs the play-the-game layer of verification. It does not replace:
 
-- `summer:verification-before-completion` — type checks, build output, test runs. Run that for the code layer.
-- `summer:debug` — operational triage when a feature is actively broken or crashing.
-- `summer:investigating-bugs` — root-cause analysis once a specific bug is reproducible.
+- `verification-before-completion` — type checks, build output, test runs. Run that for the code layer.
+- `debug` — operational triage when a feature is actively broken or crashing.
+- `investigating-bugs` — root-cause analysis once a specific bug is reproducible.
 
 Use those skills first if they apply. This skill runs **after** code-level verification, **before** telling the user the feature is done.
 
@@ -120,13 +120,13 @@ The probe's `results.json` is your primary evidence. Then check the editor's own
 
 A probe also collects engine errors itself — `results.json` carries `errors_seen`. Read it. An empty `reports` block with `finished: false` means the probe hit its `max_seconds` ceiling before calling `finish()`, which is a failure, not a pass.
 
-If anything is non-zero or unexpected, the feature is not done. Go to `summer:debug`.
+If anything is non-zero or unexpected, the feature is not done. Go to `debug`.
 
 ### What only a human can answer
 
 A probe reports facts. It cannot hold an opinion. Ask the user only when the question is genuinely experiential:
 
-- **Does it feel right?** Floaty jumps, sluggish input, mushy hit feedback — see `summer:debugging-game-feel`.
+- **Does it feel right?** Floaty jumps, sluggish input, mushy hit feedback — see `debugging-game-feel`.
 - **Does it look good?** Composition, colour, readability. A probe can prove a light exists and prove the frame is not black; it cannot tell you the scene is ugly.
 - **Is this fun?** Not a measurable property.
 
@@ -160,7 +160,7 @@ State the result in plain language:
 
 Or:
 
-> "Played the chest-open feature: golden path works, but pressing E twice in 100ms duplicates the pickup. Not done — going to summer:debug."
+> "Played the chest-open feature: golden path works, but pressing E twice in 100ms duplicates the pickup. Not done — going to debug."
 
 ## "Looks right" vs "is right"
 
@@ -178,7 +178,7 @@ Your probe already produces the visual record: `save_frame()` writes a real rend
 
 Ask the user for a video or a live look only when:
 
-- The feature **feels wrong** — see `summer:debugging-game-feel`. Frame counts and console output cannot capture "the jump feels floaty."
+- The feature **feels wrong** — see `debugging-game-feel`. Frame counts and console output cannot capture "the jump feels floaty."
 - The bug is **non-deterministic** and your probe cannot reproduce it after several attempts.
 - The judgement is aesthetic — see [What only a human can answer](#what-only-a-human-can-answer).
 
@@ -225,7 +225,7 @@ Don't ask reflexively. A saved frame sequence answers most "did it visually work
   --summer-verify-max 30
 ```
 
-Then read `<out-dir>/results.json` and the JPEGs beside it. The probe must extend the base class — copy `summer_probe_base.gd` into the project and `extends "res://summer_probe_base.gd"`, or use the project's `tests/autopilot/` scaffold if it has one. See `summer:headless-scripting` for the full pattern and its traps.
+Then read `<out-dir>/results.json` and the JPEGs beside it. The probe must extend the base class — copy `summer_probe_base.gd` into the project and `extends "res://summer_probe_base.gd"`, or use the project's `tests/autopilot/` scaffold if it has one. See `headless-scripting` for the full pattern and its traps.
 
 So if `summer_play` returns "Summer Engine is not running":
 
@@ -240,7 +240,7 @@ A game feature is a promise to the player. Verifying it means seeing the promise
 Press play. Walk the path. Probe the edges. Read the console. Then claim done.
 
 **Related skills:**
-- `summer:verification-before-completion` — the code-layer verification this skill builds on.
-- `summer:debug` — when the playtest surfaces a crash or error.
-- `summer:investigating-bugs` — when the playtest surfaces a reproducible logical bug.
-- `summer:debugging-game-feel` — when the feature works but feels wrong.
+- `verification-before-completion` — the code-layer verification this skill builds on.
+- `debug` — when the playtest surfaces a crash or error.
+- `investigating-bugs` — when the playtest surfaces a reproducible logical bug.
+- `debugging-game-feel` — when the feature works but feels wrong.

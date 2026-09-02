@@ -31,7 +31,7 @@ the contact frame and accept some clipping.
 
 - The clip already covers it. Don't IK what mocap already nailed — adds CPU cost and rounding error.
 - The character is far from the camera (LOD2+). Procedural cost outpaces visual benefit. Disable modifiers past 15m.
-- You need facial animation. That's `summer:animation/facial-and-lipsync`.
+- You need facial animation. That's `facial-and-lipsync`.
 - You haven't generated base clips yet. Skeleton modifiers compose ON TOP of clips; without a base pose they'll stack on T-pose and look wrong.
 
 ## The three patterns
@@ -233,7 +233,7 @@ You need PhysicalBone3D children matching every major bone (set up once via the 
 
 ## Anti-patterns
 
-- Writing `skel.set_bone_pose_position(...)` in `_process`. Bypasses the AnimationTree, fights it next frame, results in jitter. Use modifiers instead — they integrate with the pipeline. (Edit-time STILL poses — a corpse, a statue — are the exception: no tree is running, so `ctx.bone_pose(skel, bone, {position/rotation/scale})` on Wave G engines, or `set_bone_pose_*` in a one-off `summer_run_script`, is exactly right. See `summer:animation/character-animation-wiring`.)
+- Writing `skel.set_bone_pose_position(...)` in `_process`. Bypasses the AnimationTree, fights it next frame, results in jitter. Use modifiers instead — they integrate with the pipeline. (Edit-time STILL poses — a corpse, a statue — are the exception: no tree is running, so `ctx.bone_pose(skel, bone, {position/rotation/scale})` on Wave G engines, or `set_bone_pose_*` in a one-off `summer_run_script`, is exactly right. See `character-animation-wiring`.)
 - Putting IK targets in worldspace and forgetting they don't follow the character. Parent IK targets under the character root or bone — IK target is in the modifier's local space.
 - Procedural look-at without a fade-out at distance. Distant NPCs all snap to player every frame, looks like a hivemind.
 - Foot IK on flying / floating characters. Disable when `is_on_floor() == false`.
@@ -243,7 +243,7 @@ You need PhysicalBone3D children matching every major bone (set up once via the 
 - **Character is mounted (riding a horse).** Disable foot IK on the rider; ride animation already sells the contact. Enable upper-body additive sway driven by horse acceleration.
 - **First-person hands.** Same modifier set, but only the arm chain is visible — disable head/spine modifiers, keep hand-on-prop IK.
 - **Character is a quadruped.** All four legs need foot IK. The bone names are different (`FrontLeftLeg`, `BackRightLeg`, etc.); inspect first.
-- **Network-synced ragdoll.** Don't simulate on every client. Simulate on the host, send bone transforms via `MultiplayerSynchronizer`, blend on receivers. Out of scope; see `summer:multiplayer-and-networking`.
+- **Network-synced ragdoll.** Don't simulate on every client. Simulate on the host, send bone transforms via `MultiplayerSynchronizer`, blend on receivers. Out of scope; see `setup-multiplayer`.
 
 ## Fallback (no MCP)
 
@@ -253,12 +253,12 @@ driving them. Foot raycasts can be set up visually with a RayCast3D child.
 
 ## Handoff
 
-- For the end-to-end rigged-character wiring these layers sit on top of (locomotion, method-track events, root motion), `summer:animation/character-animation-wiring`.
-- For the AnimationTree these procedural layers compose with, `summer:animation/animation-tree`.
-- For the source clips that procedural overlays modify, `summer:animation/generate-motion`.
-- For face / lipsync (a different modifier family — BlendShapes, not bones), `summer:animation/facial-and-lipsync`.
-- For NPC behavior triggering ragdoll on death, `summer:ai-and-npcs/design-npc`.
-- For first-person aim sway / ADS, `summer:character-controllers/fps-controller`.
+- For the end-to-end rigged-character wiring these layers sit on top of (locomotion, method-track events, root motion), `character-animation-wiring`.
+- For the AnimationTree these procedural layers compose with, `animation-tree`.
+- For the source clips that procedural overlays modify, `generate-motion`.
+- For face / lipsync (a different modifier family — BlendShapes, not bones), `facial-and-lipsync`.
+- For NPC behavior triggering ragdoll on death, `design-npc`.
+- For first-person aim sway / ADS, `fps-controller`.
 
 ## See also
 

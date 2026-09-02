@@ -1,6 +1,6 @@
 id: skill/pixel-art
 kind: skill
-version: 1.0.0
+version: 1.0.1
 summary: Generate pixel-art assets — sprites, items, tiles, portraits — at a specific resolution with pixel-perfect grid, limited palette, retro feel.
 use_when:
   - generating pixel-art assets — sprites, items, tiles, portraits — in a pixel style at a specific resolution (32x32, 64x64, 128x128)

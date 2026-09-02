@@ -25,11 +25,11 @@ The backing tool is `summer_generate_3d`. Default model is `hunyuan` (Hunyuan 3D
 
 ## When NOT to use
 
-- Character / humanoid → `summer:3d-assets/character-model` (needs T-pose + rig pass).
-- A set of matching pieces (walls, floors, doors, pillars) → `summer:3d-assets/environment-kit` (style-locked family).
-- Trees, rocks, foliage → `summer:3d-assets/organic-model` (organic forgives AI artifacts; cheaper recipe).
-- Cars, ships, mechs → `summer:3d-assets/vehicle-model` (hard-surface specifics).
-- Walls / floors / repeating geometry → `summer:asset-pipeline/asset-strategy` Pipeline 2 (textures + CSG).
+- Character / humanoid → `character-model` (needs T-pose + rig pass).
+- A set of matching pieces (walls, floors, doors, pillars) → `environment-kit` (style-locked family).
+- Trees, rocks, foliage → `organic-model` (organic forgives AI artifacts; cheaper recipe).
+- Cars, ships, mechs → `vehicle-model` (hard-surface specifics).
+- Walls / floors / repeating geometry → `asset-strategy` Pipeline 2 (textures + CSG).
 - "I just need a placeholder" → propose a primitive (`BoxMesh` / `CylinderMesh`) instead. Generation is metered.
 
 ## Steps
@@ -104,7 +104,7 @@ summer_save_scene(scenePath="res://main.tscn")
 
 For interactive props (chest the player opens, lantern the player picks up),
 wrap the instantiated model in a `StaticBody3D` (or `RigidBody3D` for physics
-props) with a `CollisionShape3D` sibling — see `summer:scene-composition` for
+props) with a `CollisionShape3D` sibling — see `scene-composition` for
 the parent-shape pattern.
 
 ## Anti-patterns
@@ -135,13 +135,13 @@ assign the mesh.
 After the prop is wired:
 
 > `viking_axe.glb` imported and placed at `./World/Props/VikingAxe`. Next:
-> - For physics (player can knock it over), wrap in `RigidBody3D` + `CollisionShape3D` — see `summer:scene-composition`.
-> - For pickup interaction, see `summer:design-mechanic` for the pickup pattern.
-> - For matching props in the same style (chest → barrel → crate as a treasure-room kit), use `summer:3d-assets/environment-kit` with this prop as the style anchor.
+> - For physics (player can knock it over), wrap in `RigidBody3D` + `CollisionShape3D` — see `scene-composition`.
+> - For pickup interaction, see `design-mechanic` for the pickup pattern.
+> - For matching props in the same style (chest → barrel → crate as a treasure-room kit), use `environment-kit` with this prop as the style anchor.
 
 ## See also
 
-- `summer:asset-pipeline/asset-strategy` — the meta-router that decides between this skill and Pipeline 2 (textures).
-- `summer:3d-assets/character-model` — for humanoids.
-- `summer:3d-assets/environment-kit` — for style-locked sets.
-- `../../../references/mcp-tools-reference.md` — `summer_generate_3d` parameter schema.
+- `asset-strategy` — the meta-router that decides between this skill and Pipeline 2 (textures).
+- `character-model` — for humanoids.
+- `environment-kit` — for style-locked sets.
+- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_3d` parameter schema.

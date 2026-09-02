@@ -49,7 +49,7 @@ This structure informs the task decomposition. Each task should produce self-con
 ```markdown
 # [Feature Name] Implementation Plan
 
-> **For agentic workers:** implement this plan task-by-task, in order, checking off each step as it lands. Steps use checkbox (`- [ ]`) syntax for tracking. Dispatch a fresh subagent per task where the tasks are independent (see summer:dispatching-parallel-agents), otherwise execute inline with a review checkpoint after each task.
+> **For agentic workers:** implement this plan task-by-task, in order, checking off each step as it lands. Steps use checkbox (`- [ ]`) syntax for tracking. Dispatch a fresh subagent per task where the tasks are independent (see dispatching-parallel-agents), otherwise execute inline with a review checkpoint after each task.
 
 **Goal:** [One sentence describing what this builds]
 
@@ -144,7 +144,7 @@ After saving the plan, offer execution choice:
 **Which approach?"**
 
 **If Subagent-Driven chosen:**
-- One fresh subagent per task, each given the task's full text and nothing else from this session's history. See `summer:dispatching-parallel-agents` for prompt structure and when parallelism is safe.
+- One fresh subagent per task, each given the task's full text and nothing else from this session's history. See `dispatching-parallel-agents` for prompt structure and when parallelism is safe.
 - Two-stage review: read the subagent's summary, then verify the diff yourself before starting the next task.
 
 **If Inline Execution chosen:**

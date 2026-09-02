@@ -119,7 +119,7 @@ script can trigger it.
 | `WorldEnvironment` + `Environment` (sky, ambient, tonemap, glow, SSAO, SSR) | Yes |
 | `SDFGI` real-time GI | Yes — `Environment.sdfgi_enabled = true`, no bake step at all |
 | `VoxelGI` | Yes — `VoxelGI.bake()` **is** bound to script (`ClassDB.class_has_method("VoxelGI", "bake")` is true) |
-| **`LightmapGI` bake** | **Yes, from the live editor.** Summer binds `LightmapGI.bake(from_node, image_data_path)` to script (upstream leaves it button-only). Call it from `summer_run_script`. The GPU lightmapper needs a real renderer (a RenderingDevice): a normal desktop editor has one; a cloud container needs xvfb + GL (`summer:running-in-the-cloud`); a **pure-headless** process has none and the call returns `BAKE_ERROR_NO_LIGHTMAPPER`. |
+| **`LightmapGI` bake** | **Yes, from the live editor.** Summer binds `LightmapGI.bake(from_node, image_data_path)` to script (upstream leaves it button-only). Call it from `summer_run_script`. The GPU lightmapper needs a real renderer (a RenderingDevice): a normal desktop editor has one; a cloud container needs xvfb + GL (`running-in-the-cloud`); a **pure-headless** process has none and the call returns `BAKE_ERROR_NO_LIGHTMAPPER`. |
 | **`OccluderInstance3D` occlusion bake** | **No.** `bake_single_node` is not script-callable. Editor-button only. |
 
 So when the user asks for baked lighting: add and configure the `LightmapGI` node,

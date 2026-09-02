@@ -1,6 +1,6 @@
 id: skill/environment-kit
 kind: skill
-version: 1.0.0
+version: 1.0.1
 summary: Generate a modular environment kit — wall pieces, floor tiles, pillars, doors, arches, corners — snap-together meshes sharing one visual style.
 use_when:
   - generating a modular environment kit of snap-together pieces that form a level — dungeon kit, modular walls, interior pieces

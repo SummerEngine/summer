@@ -160,7 +160,7 @@ lifetime = 0.4
 
 ### 7. Write the GDScript stub
 
-Stub only — implementation is the next session. Typed GDScript throughout (see `summer:scripting-patterns/gdscript-patterns`). For double-jump:
+Stub only — implementation is the next session. Typed GDScript throughout (see `gdscript-patterns`). For double-jump:
 
 ```gdscript
 class_name PlayerController

@@ -1,6 +1,6 @@
 id: skill/dispatching-parallel-agents
 kind: skill
-version: 1.0.0
+version: 1.0.1
 summary: Work 2+ independent tasks in parallel when they share no state and have no sequential dependencies.
 use_when:
   - facing 2+ independent tasks that can be worked on without shared state or sequential dependencies

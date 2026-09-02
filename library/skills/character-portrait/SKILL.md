@@ -11,11 +11,11 @@ paths: ["assets/**", "art/portraits/**", "ui/portraits/**"]
 
 # character-portrait — Locked Bust for Dialogue UI
 
-This skill produces ONE polished character portrait — bust or shoulders-up framing, neutral or stylized background, designed to drop into a dialogue UI, character-select screen, or lore card. It is the **opposite** of `summer:2d-assets/concept-art`: concept art explores; this skill commits.
+This skill produces ONE polished character portrait — bust or shoulders-up framing, neutral or stylized background, designed to drop into a dialogue UI, character-select screen, or lore card. It is the **opposite** of `concept-art`: concept art explores; this skill commits.
 
 The single biggest failure mode is **inconsistency across a cast**. Generating five party members one at a time without a locked anchor produces five images that look like they're from five different games — different lighting, different angle, different palette, different rendering style. This skill makes you write a **locked anchor suffix** the first time and re-use it verbatim for every subsequent portrait.
 
-If the user is still exploring the look, this is the wrong skill — route to `summer:2d-assets/concept-art` first, lock a direction, then come back here. The `summer:asset-pipeline/asset-strategy` meta-router asks **"Quick check — exploring the look (3-4 variants for art direction) or generating a final character portrait for dialogue UI?"** to disambiguate.
+If the user is still exploring the look, this is the wrong skill — route to `concept-art` first, lock a direction, then come back here. The `asset-strategy` meta-router asks **"Quick check — exploring the look (3-4 variants for art direction) or generating a final character portrait for dialogue UI?"** to disambiguate.
 
 ## When to use
 
@@ -27,9 +27,9 @@ If the user is still exploring the look, this is the wrong skill — route to `s
 
 ## When NOT to use
 
-- The user is still exploring → `summer:2d-assets/concept-art`.
-- The user wants pixel art → `summer:2d-assets/pixel-art`.
-- The user wants a full-body 3D model → `summer:asset-pipeline/asset-strategy`.
+- The user is still exploring → `concept-art`.
+- The user wants pixel art → `pixel-art`.
+- The user wants a full-body 3D model → `asset-strategy`.
 - The user wants 4+ animated expressions of the same character — generate one base portrait here, then use img2img with the base as `referenceImageUrl` for each expression.
 
 ## Steps
@@ -163,7 +163,7 @@ summer_generate_image(
 - **No anchor file.** Every cast member generated ad-hoc looks unrelated. Define the anchor on portrait #1, re-use for the rest of the cast.
 - **Editing the anchor mid-cast.** If you change lighting from "warm key" to "dramatic side" halfway through, the cast splits visually. Either commit to the change and regenerate everyone, or stick with the anchor.
 - **Regenerating from scratch when img2img would do.** Identity drifts every regen. Iterate via `referenceImageUrl`.
-- **Using the portrait as a 3D reference.** Portraits have dramatic lighting, painterly backgrounds, and cropped framing — all of which corrupt 3D generation. For 3D, generate a separate clean white-bg full-body T-pose via `summer:asset-pipeline/asset-strategy`.
+- **Using the portrait as a 3D reference.** Portraits have dramatic lighting, painterly backgrounds, and cropped framing — all of which corrupt 3D generation. For 3D, generate a separate clean white-bg full-body T-pose via `asset-strategy`.
 - **Expecting `style` to carry the look.** Only `cartoon` and `anime` append anything; `realistic` and `none` append nothing and any other value is coerced to `none`. If the anchor names the style, `"none"` is correct — but the anchor text is doing all the work, not the preset.
 
 ## Edge cases
@@ -171,7 +171,7 @@ summer_generate_image(
 - **Character has a non-human silhouette (lizardfolk, demon, robot).** The anchor still applies — framing, lighting, background, rendering style. Only the subject description changes. Verify the model can hold the silhouette under "bust framing" — some models default to humanoid.
 - **Player wants to swap costumes mid-game.** Generate one base portrait per costume (`aria_traveler.png`, `aria_robes.png`, `aria_armored.png`) and switch by index. Use img2img from the base for consistency.
 - **Cast of 12+ characters.** Anchor discipline gets harder as fatigue sets in. Print the anchor as a header in your generation script and don't write any prompt without it.
-- **User wants the portrait to "read at small size" (32×32 in a portrait list).** That's pixel-art territory; route to `summer:2d-assets/pixel-art`.
+- **User wants the portrait to "read at small size" (32×32 in a portrait list).** That's pixel-art territory; route to `pixel-art`.
 
 ## Fallback (no MCP)
 
@@ -189,13 +189,13 @@ After the portrait is wired:
 
 - **More cast members** → re-invoke this skill with the same anchor. Don't redefine.
 - **Expression variants** → re-invoke with `referenceImageUrl` set to the base portrait.
-- **Pixel-art version of the same character** → `summer:2d-assets/pixel-art`.
-- **3D model of the same character** → `summer:asset-pipeline/asset-strategy` (the portrait is NOT a usable 3D reference; generate a separate T-pose).
-- **Dialogue system wiring** → `summer:scene-composition` for the UI hierarchy.
+- **Pixel-art version of the same character** → `pixel-art`.
+- **3D model of the same character** → `asset-strategy` (the portrait is NOT a usable 3D reference; generate a separate T-pose).
+- **Dialogue system wiring** → `scene-composition` for the UI hierarchy.
 
 ## See also
 
-- `summer:2d-assets/concept-art` — explore the look first if not yet locked.
-- `summer:asset-pipeline/asset-strategy` — meta-router and the 3D pipeline.
-- `summer:scene-composition` — wiring the portrait into a dialogue UI scene.
-- `../../../references/mcp-tools-reference.md` — `summer_generate_image` parameter schema.
+- `concept-art` — explore the look first if not yet locked.
+- `asset-strategy` — meta-router and the 3D pipeline.
+- `scene-composition` — wiring the portrait into a dialogue UI scene.
+- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_image` parameter schema.

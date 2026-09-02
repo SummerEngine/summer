@@ -1,6 +1,6 @@
 id: skill/vfx-fire
 kind: skill
-version: 1.0.0
+version: 1.0.1
 summary: Fire effect — animated flames built with a particle shader, GPUParticles3D, and a noise-based color ramp — torches, campfires, candles.
 use_when:
   - authoring a fire visual effect — torch, campfire, bonfire, flame, burning object, candle

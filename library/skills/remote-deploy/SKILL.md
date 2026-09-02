@@ -31,9 +31,9 @@ It is **not** the same as two neighbours:
 |---|---|---|
 | **Play** (▶) | Runs in the editor (embedded or windowed) | Fast iteration on the dev machine |
 | **Remote Deploy** | Debug build → installs + runs on a device, remote-debugged | Testing real input/perf/screen on hardware |
-| **export-and-ship** (`summer:export-and-ship`) | Supported local release builds | Preparing an artifact for a separate user-controlled distribution workflow |
+| **export-and-ship** (`export-and-ship`) | Supported local release builds | Preparing an artifact for a separate user-controlled distribution workflow |
 
-If the user wants a release build for Steam / itch / the App Store, that is `summer:export-and-ship`, not this.
+If the user wants a release build for Steam / itch / the App Store, that is `export-and-ship`, not this.
 
 ## Where it is in the UI
 
@@ -125,7 +125,7 @@ never replaces the proof.
 
 ## Common mistakes
 
-- **Confusing it with shipping.** Remote Deploy makes *debug* builds for testing. Store/distribution builds are `summer:export-and-ship`.
+- **Confusing it with shipping.** Remote Deploy makes *debug* builds for testing. Store/distribution builds are `export-and-ship`.
 - **Preset exists but isn't Runnable** → button stays greyed. The Runnable toggle is the gate, not the preset's existence.
 - **Expecting it to work without export templates** → button may be enabled (device detected) but the deploy then fails in the result dialog. Install templates.
 - **Android device `unauthorized`** in `adb devices` → the device won't show as a target. Re-accept the USB-debugging prompt on the phone.

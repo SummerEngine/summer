@@ -221,4 +221,4 @@ Once the loop is wired:
 - `audio/music-track` — score the menu.
 - `2d-assets/ui-graphics` — logo, menu buttons, HUD that sits over the loop.
 - `2d-assets/concept-art` — produce the reference still that anchors the loop.
-- `../../../references/mcp-tools-reference.md` — `summer_generate_video` parameter schema and error codes.
+- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_video` parameter schema and error codes.

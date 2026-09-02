@@ -20,7 +20,7 @@ Around **every** mutation batch (script, scene tools, import):
 2. Mutate.
 3. **AFTER**: `summer_snapshot_diff from_id:<id>` (omit `to_id` — the engine snapshots now). Check the receipt against your INTENT:
    - `added` = exactly what you meant to add — no more, no less.
-   - `removed` = empty unless you deleted on purpose. A node you created appearing here (or missing from `added` after a save) is the ownership bug — see `summer:scene-scripting`.
+   - `removed` = empty unless you deleted on purpose. A node you created appearing here (or missing from `added` after a save) is the ownership bug — see `scene-scripting`.
    - `changed` = only nodes you touched. Unexpected entries mean your script had side effects.
 4. **AFTER**: `summer_screenshot` — and LOOK at it.
 5. Fix before stacking more work on a broken base. An empty diff after a "successful" mutation is a red flag, not a success.
@@ -61,7 +61,7 @@ Inspect live instead of stopping the game — stopping usually resets the bug yo
 - NEVER describe an image you did not receive. A failed capture is a result — report it and climb down (scene → viewport) or ask the user.
 - Preset-framing scene renders are static (t=0), synthetic-camera, flat-environment: no claims about animation, particles, lighting, or mood from them.
 - Pass structured failures (`failure_reason`, `terminalState`) through verbatim — never soften them into "it didn't work".
-- When the user reacts to a result, record it: `summer_record_feedback` (accept / reject / undo / correction + their words). Opt-in and local; if it says capture is off, move on.
+- After the result is verified, record the outcome with `summer_library_feedback` (worked / worked with fixes / wrong / outdated / incomplete + a short note). Optional and fire-and-forget; if telemetry is off, move on.
 
 ## Red Flags — STOP
 
@@ -73,4 +73,4 @@ Inspect live instead of stopping the game — stopping usually resets the bug yo
 | Stopping the game to inspect a runtime bug | The stop resets the state. Use the runtime reads first. |
 | "Looks great!" with no capture in the transcript | Fabrication. Capture, look, then claim. |
 
-**Related skills:** `summer:scene-scripting` carries the mutation loop and ctx API this discipline wraps; `summer:playtesting-a-feature` and `summer:verification-before-completion` carry the broader done-claiming rules.
+**Related skills:** `scene-scripting` carries the mutation loop and ctx API this discipline wraps; `playtesting-a-feature` and `verification-before-completion` carry the broader done-claiming rules.

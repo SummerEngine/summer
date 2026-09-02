@@ -33,9 +33,9 @@ and by downscaling to the target resolution after generation.
 
 ## When NOT to use
 
-- The user wants a high-resolution painterly portrait → `summer:2d-assets/character-portrait`.
-- The user wants animated frames (walk cycle, attack) → `summer:2d-assets/sprite-sheet` (pixel art is harder for sprite sheets — read that skill's caveats).
-- The user wants a tileable seamless texture (not pixel art) → `summer:2d-assets/tileable-texture`.
+- The user wants a high-resolution painterly portrait → `character-portrait`.
+- The user wants animated frames (walk cycle, attack) → `sprite-sheet` (pixel art is harder for sprite sheets — read that skill's caveats).
+- The user wants a tileable seamless texture (not pixel art) → `tileable-texture`.
 - The game is 3D / non-pixel — verify the user actually wants pixel before generating.
 
 ## Steps
@@ -140,7 +140,7 @@ Confirm `Filter: Nearest` is set in the import dock OR project-wide.
 | `8-bit sword` | "8-bit" is interpreted loosely. Returns a smooth render of a sword with vague pixel feel. Specify resolution + palette + "no AA" explicitly. |
 | `pixel art knight, photorealistic` | Conflicting directives. Model averages and gives you neither. |
 | `pixel art at 32x32` with no negations | Model adds soft edges and gradient shading. Always spell out "no anti-aliasing, no blur, no smooth gradients" in the prompt itself — there is no negative-prompt argument to fall back on. |
-| `pixel sprite walk cycle` | Walk cycles need consistent frames — single-prompt sprite sheets fail. Route to `summer:2d-assets/sprite-sheet`. |
+| `pixel sprite walk cycle` | Walk cycles need consistent frames — single-prompt sprite sheets fail. Route to `sprite-sheet`. |
 | `cute pixel art` | "Cute" without subject is undefined. Specify what. |
 
 ## Anti-patterns
@@ -150,13 +150,13 @@ Confirm `Filter: Nearest` is set in the import dock OR project-wide.
   Nearest on import or project-wide for pixel art.
 - **Reaching for `negative_prompt` or `image_size`.** Neither exists on this tool; both are dropped without an error, so the call looks like it worked and the output is off-style. Negations go in the prompt text; size is fixed.
 - **Inconsistent palette across the cast.** Pick a named palette (PICO-8, NES, custom hex list) and re-use across every asset in the project. Different palettes = the project doesn't read as one game.
-- **Generating walk-cycle frames as one image.** Sprite sheets via single-prompt are unreliable. Route to `summer:2d-assets/sprite-sheet`.
+- **Generating walk-cycle frames as one image.** Sprite sheets via single-prompt are unreliable. Route to `sprite-sheet`.
 
 ## Edge cases
 
-- **User wants animated pixel sprites.** Generate base sprite here, then per-frame variants via img2img with the base as `referenceImageUrl`. For more than 2-3 frames, route to `summer:2d-assets/sprite-sheet` (and read its caveats).
+- **User wants animated pixel sprites.** Generate base sprite here, then per-frame variants via img2img with the base as `referenceImageUrl`. For more than 2-3 frames, route to `sprite-sheet` (and read its caveats).
 - **User wants the entire game in pixel art.** Set `Project Settings → Rendering → Textures → Default Texture Filter: Nearest` once. Saves you from re-setting it on every import.
-- **User wants a high-res "pixel art" portrait that's not actually pixelated** (faux-pixel-aesthetic at full resolution). That's `summer:2d-assets/character-portrait` with a "pixel art aesthetic" prompt — not this skill.
+- **User wants a high-res "pixel art" portrait that's not actually pixelated** (faux-pixel-aesthetic at full resolution). That's `character-portrait` with a "pixel art aesthetic" prompt — not this skill.
 - **User specifies a palette like "Sweetie-16" or "Endesga-32" and the model ignores it.** Name the hex codes explicitly. Palette names alone are unreliable below the top 5-10 famous ones.
 - **Tilesets need to tile cleanly.** Pixel-art tile-edge cleanliness from raw generation is poor. Generate the tile grid, then manually fix edge seams in Aseprite. The AI gets you 80% there.
 
@@ -184,13 +184,13 @@ If MCP is offline entirely: open Aseprite or Piskel and hand-author the asset. F
 After the asset is wired:
 
 - **More assets in the same style** → re-invoke this skill, re-use the pixel anchor.
-- **Animation frames for the sprite** → `summer:2d-assets/sprite-sheet` with the base sprite as anchor.
+- **Animation frames for the sprite** → `sprite-sheet` with the base sprite as anchor.
 - **Pixel UI** → re-invoke with UI subjects (icons, button frames) at appropriate resolution.
-- **Tilemap setup** → `summer:scene-composition` for `TileMap` / `TileMapLayer` wiring.
+- **Tilemap setup** → `scene-composition` for `TileMap` / `TileMapLayer` wiring.
 
 ## See also
 
-- `summer:2d-assets/sprite-sheet` — animated pixel frames.
-- `summer:2d-assets/character-portrait` — high-res counterpart.
-- `summer:asset-pipeline/asset-strategy` — meta-router.
-- `../../../references/mcp-tools-reference.md` — `summer_generate_image` schema.
+- `sprite-sheet` — animated pixel frames.
+- `character-portrait` — high-res counterpart.
+- `asset-strategy` — meta-router.
+- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_image` schema.

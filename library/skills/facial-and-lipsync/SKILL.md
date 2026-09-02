@@ -31,7 +31,7 @@ The 2026 production stack:
 
 ## When NOT to use this skill
 
-- Character has no face / no BlendShapes (helmeted soldier, robot, mascot). Hard-skip to body language via `summer:animation/generate-motion`.
+- Character has no face / no BlendShapes (helmeted soldier, robot, mascot). Hard-skip to body language via `generate-motion`.
 - The dialogue is written but not yet voiced — generate audio first via `summer_generate_audio({capability: "text_to_speech", ...})`. Lipsync without audio has nothing to sync to.
 - Pre-rendered cinematic from external DCC. Lipsync is in the rendered video, not the engine.
 
@@ -178,7 +178,7 @@ For QUICK facial keys that don't need a viseme timeline (a roar, a wince, an
 eyebrow raise), Wave G engines collapse the whole bake into `ctx.animate` with
 a `"blend_shapes/<name>"` property path (value tracks, verified working) — one
 call per shape, same `anim_name` appends tracks to one clip. Recipe in
-`summer:animation/character-animation-wiring`. The Rhubarb bake loop above
+`character-animation-wiring`. The Rhubarb bake loop above
 stays the right tool for full audio-synced viseme timelines — 15 tracks with
 per-cue keys is exactly what the loop is for.
 
@@ -269,7 +269,7 @@ If the user has a CMUDict-style phoneme list and wants to map manually, this is 
 ### Quality bar
 
 - ~12 phonemes/sec is normal English speech; the bake produces ~25 keyframes/sec across all tracks. Below 60fps playback on weak hardware: enable `BlendShape track interpolation = NEAREST` (loses smoothness, gains 30% perf). Reserve for mobile / very crowded crowd scenes.
-- Lipsync alone is ~70% of "alive". Add idle blink + idle micro-head-bob (`summer:animation/procedural-animation`) and you're at ~95%. The remaining 5% is brow articulation tied to dialogue sentiment, which is bespoke per scene.
+- Lipsync alone is ~70% of "alive". Add idle blink + idle micro-head-bob (`procedural-animation`) and you're at ~95%. The remaining 5% is brow articulation tied to dialogue sentiment, which is bespoke per scene.
 
 ## Anti-patterns
 
@@ -296,16 +296,16 @@ production speech recognition or photoreal lip sync.
 
 ## Handoff
 
-- For voice generation upstream, `summer:audio/generate-voice` (which wraps `summer_generate_audio({capability: "text_to_speech", ...})`).
-- For dialogue scripts and conversation flow, `summer:ai-and-npcs/design-npc`.
-- For the AnimationTree this layer composes into, `summer:animation/animation-tree`.
-- For idle blinks, saccades, and head-tracking that complement lipsync, `summer:animation/procedural-animation`.
+- For voice generation upstream, `voice-line` (which wraps `summer_generate_audio({capability: "text_to_speech", ...})`).
+- For dialogue scripts and conversation flow, `design-npc`.
+- For the AnimationTree this layer composes into, `animation-tree`.
+- For idle blinks, saccades, and head-tracking that complement lipsync, `procedural-animation`.
 - For full performance capture (face + body together), out of scope — see Meshy's mocap docs or external pipelines.
 
 ## See also
 
-- `summer:audio/generate-voice` — TTS upstream of this skill.
-- `summer:animation/character-animation-wiring` — the blend-shape `ctx.animate` mechanism, plus the body wiring this face layer sits on.
-- `summer:animation/animation-tree` — wire the lipsync OneShot into the character's tree.
-- `summer:animation/procedural-animation` — eye blinks, saccades, head idle.
+- `voice-line` — TTS upstream of this skill.
+- `character-animation-wiring` — the blend-shape `ctx.animate` mechanism, plus the body wiring this face layer sits on.
+- `animation-tree` — wire the lipsync OneShot into the character's tree.
+- `procedural-animation` — eye blinks, saccades, head idle.
 - Rhubarb Lip Sync — https://github.com/DanielSWolf/rhubarb-lip-sync (external tool; phoneme extraction).

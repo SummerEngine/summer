@@ -1,6 +1,6 @@
 id: skill/running-in-the-cloud
 kind: skill
-version: 1.0.1
+version: 1.0.2
 summary: Run Summer Engine on a Linux box with no display — install it, launch headless, know when xvfb + software GL are needed, authenticate without a browser.
 use_when:
   - Summer Engine runs in a cloud container, CI job, remote agent sandbox, or any Linux machine with no desktop

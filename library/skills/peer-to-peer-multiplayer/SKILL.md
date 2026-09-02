@@ -33,7 +33,7 @@ Ask the user before anything else:
 | Answer | Architecture |
 |---|---|
 | Friend-invite / small lobby (≤8 players) | **P2P with host authority.** This skill. |
-| Matchmaking + anti-cheat + scale | **Dedicated client-server.** Different skill (`/summer:client-server-multiplayer`). |
+| Matchmaking + anti-cheat + scale | **Dedicated client-server.** Different skill (`/host-authoritative-state`). |
 | MMO / persistent world | **Custom server.** Out of scope for this skill. |
 
 If P2P is right, continue. Otherwise, stop and route to the right skill.
@@ -348,7 +348,7 @@ func _interpolate_to_buffer() -> void:
 
 - **Single-player game with leaderboards.** No multiplayer needed.
 - **Async multiplayer** (turn-based via REST API). This skill assumes real-time.
-- **Dedicated server with anti-cheat.** Use `/summer:client-server-multiplayer` (when shipped).
+- **Dedicated server with anti-cheat.** Use `/host-authoritative-state`.
 - **Already-shipped game getting multiplayer retrofit.** Sorry — you're in for a refactor. This skill helps for the redesign but not the migration.
 
 ## Collaborative protocol

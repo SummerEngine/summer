@@ -1,5 +1,5 @@
 ---
-name: fire
+name: vfx-fire
 description: Use when authoring a fire visual effect — animated flames built with a particle shader, GPUParticles3D, and a noise-based color ramp. Trigger on "torch", "campfire", "bonfire", "flame", "fire effect", "burning", "make this thing on fire", "candle".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
@@ -320,7 +320,7 @@ summer_save_scene(scenePath="res://main.tscn")
 
 ### 6a. One-script wiring (summer_run_script)
 
-On engines with `summer_run_script` (see `summer:scene-scripting`), everything after
+On engines with `summer_run_script` (see `scene-scripting`), everything after
 the `summer_write_file` calls above is ONE ctx script — transactional (rollback on a
 mid-script error), no `.tres` sidecar files needed because the script builds the
 resources directly:
@@ -488,18 +488,18 @@ manually in Summer Engine:
 
 After firing this recipe, suggest neighbors:
 
-- `summer:visual-effects/recipes/smoke` — every fire that lasts > 5 s wants smoke rising above. Spawn 0.5 m above the flame top.
-- `summer:visual-effects/recipes/dissolve` — if the user wants the *fuel* (logs, body, paper) to gradually disappear as it burns.
-- `summer:visual-effects/recipes/magic-glow` — for an `OmniLight3D` with proper sin-wave pulsing if the default is too constant.
-- `summer:visual-effects/game-feel` — for a slight camera flicker / thermal heat-haze post-process near very large fires.
-- `summer:audio/sound-effect` — generate `fire crackle, dry wood, soft pops, 2s loop` and wire to an `AudioStreamPlayer3D` on the same anchor.
+- `vfx-smoke` — every fire that lasts > 5 s wants smoke rising above. Spawn 0.5 m above the flame top.
+- `vfx-dissolve` — if the user wants the *fuel* (logs, body, paper) to gradually disappear as it burns.
+- `vfx-magic-glow` — for an `OmniLight3D` with proper sin-wave pulsing if the default is too constant.
+- `game-feel` — for a slight camera flicker / thermal heat-haze post-process near very large fires.
+- `sound-effect` — generate `fire crackle, dry wood, soft pops, 2s loop` and wire to an `AudioStreamPlayer3D` on the same anchor.
 
 ## See also
 
 - `_building-blocks/noise-3d-fbm.gdshaderinc` — the FBM noise this shader includes
 - `_building-blocks/additive-billboard-particles.md` — canonical additive material settings
-- `summer:visual-effects/recipes/smoke` — sister recipe for the column rising above
-- `summer:visual-effects/recipes/dissolve` — for objects burning away
-- `summer:visual-effects/recipes/magic-glow` — for the light source pulsing
-- `summer:visual-effects/game-feel` — non-particle game-feel pairings
-- `summer:gdscript-patterns` — for the controller's idioms (signals, exports, `@tool`)
+- `vfx-smoke` — sister recipe for the column rising above
+- `vfx-dissolve` — for objects burning away
+- `vfx-magic-glow` — for the light source pulsing
+- `game-feel` — non-particle game-feel pairings
+- `gdscript-patterns` — for the controller's idioms (signals, exports, `@tool`)

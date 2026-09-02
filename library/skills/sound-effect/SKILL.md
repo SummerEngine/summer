@@ -238,5 +238,5 @@ After the SFX is wired:
 - `audio/ambient-bed` — long looping textures
 - `audio/music-track` — music
 - `audio/voice-line` — TTS
-- `../../../references/mcp-tools-reference.md`
-- `../../../references/godot-version.md` — Summer compatibility for audio nodes
+- `../../references/mcp-tools-reference/mcp-tools-reference.md`
+- `../../references/godot-version/godot-version.md` — Summer compatibility for audio nodes

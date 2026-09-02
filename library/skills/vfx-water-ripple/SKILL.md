@@ -1,5 +1,5 @@
 ---
-name: water-ripple
+name: vfx-water-ripple
 description: Use when authoring a water-ripple visual effect — animated normal-distortion ripples on a water plane (or as a Decal) triggered by impacts. Trigger on "water ripple", "ripples on water", "raindrop ripple", "splash ripple", "rain on water", "footstep in puddle", "fish jumps".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
@@ -248,7 +248,7 @@ summer_save_scene(scenePath="res://main.tscn")
 
 ### 5a. One-script wiring (summer_run_script)
 
-On engines with `summer_run_script` (see `summer:scene-scripting`), the node and
+On engines with `summer_run_script` (see `scene-scripting`), the node and
 resource wiring is ONE transactional ctx script — and it builds the subdivided
 PlaneMesh directly, so the `plane.tres` sidecar disappears:
 
@@ -409,14 +409,14 @@ manually in Summer Engine:
 
 After firing this recipe, suggest:
 
-- `summer:visual-effects/recipes/hit-spark` — recolor white-blue and spawn at the impact point for a few water droplets flying up. Pair them.
-- `summer:visual-effects/recipes/smoke` — recolor pale gray for the steam if you're hitting hot water or lava.
-- `summer:audio/sound-effect` — generate `single water drop in shallow puddle, splash, 200ms` and trigger on each `add_ripple`.
-- For weather-driven rain ripples, see `summer:visual-effects/weather` (if available) or scaffold a simple Rain node that calls `add_ripple` 30×/sec across the puddle bounds.
+- `vfx-hit-spark` — recolor white-blue and spawn at the impact point for a few water droplets flying up. Pair them.
+- `vfx-smoke` — recolor pale gray for the steam if you're hitting hot water or lava.
+- `sound-effect` — generate `single water drop in shallow puddle, splash, 200ms` and trigger on each `add_ripple`.
+- For weather-driven rain ripples, scaffold a simple Rain node that calls `add_ripple` 30×/sec across the puddle bounds.
 
 ## See also
 
 - `_building-blocks/additive-billboard-particles.md` — for paired splash droplets
-- `summer:visual-effects/recipes/hit-spark` — sister recipe for the upward droplets
-- `summer:visual-effects/recipes/smoke` — for steam over hot liquids
-- `summer:gdscript-patterns` — for the controller idioms
+- `vfx-hit-spark` — sister recipe for the upward droplets
+- `vfx-smoke` — for steam over hot liquids
+- `gdscript-patterns` — for the controller idioms

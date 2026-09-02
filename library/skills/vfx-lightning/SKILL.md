@@ -1,5 +1,5 @@
 ---
-name: lightning
+name: vfx-lightning
 description: Use when authoring a lightning bolt visual effect — procedural jagged path drawn via ImmediateMesh, glow shader, sparks at endpoints, screen shake. Trigger on "lightning bolt", "chain lightning", "electric attack", "tesla coil", "shock spell", "thunderbolt", "energy beam".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
@@ -236,7 +236,7 @@ summer_set_prop(scenePath="res://main.tscn", path="./World/LightningCaster", key
 summer_save_scene(scenePath="res://main.tscn")
 ```
 
-Or, on engines with `summer_run_script` (see `summer:scene-scripting`), the two node
+Or, on engines with `summer_run_script` (see `scene-scripting`), the two node
 calls collapse into one transactional ctx script — worth it when placing several
 casters or anything computed:
 
@@ -401,17 +401,17 @@ manually in Summer Engine:
 
 After firing this recipe, suggest:
 
-- `summer:visual-effects/recipes/hit-spark` — automatically called at endpoints; tune the spark color to match `bolt_color`.
-- `summer:visual-effects/recipes/magic-glow` — for the wizard's hand glow during charge-up before the cast.
-- `summer:visual-effects/recipes/muzzle-flash` — for the brief bright flash at the casting hand on release frame.
-- `summer:visual-effects/game-feel` — `CameraShake.add_trauma` is already called; pair with hit-stop on the target for impact emphasis.
-- `summer:audio/sound-effect` — generate `electric crack thunder, sharp impact, rumble tail, 800ms` and play on cast.
+- `vfx-hit-spark` — automatically called at endpoints; tune the spark color to match `bolt_color`.
+- `vfx-magic-glow` — for the wizard's hand glow during charge-up before the cast.
+- `vfx-muzzle-flash` — for the brief bright flash at the casting hand on release frame.
+- `game-feel` — `CameraShake.add_trauma` is already called; pair with hit-stop on the target for impact emphasis.
+- `sound-effect` — generate `electric crack thunder, sharp impact, rumble tail, 800ms` and play on cast.
 
 ## See also
 
 - `_building-blocks/trauma-shake-snippet.md` — `CameraShake` autoload (REQUIRED for the shake call)
 - `_building-blocks/additive-billboard-particles.md` — for the endpoint sparks
-- `summer:visual-effects/recipes/hit-spark` — endpoint companion
-- `summer:visual-effects/recipes/magic-glow` — pre-cast charge-up
-- `summer:visual-effects/recipes/muzzle-flash` — for the cast-release flash
-- `summer:visual-effects/game-feel` — full game-feel pairing
+- `vfx-hit-spark` — endpoint companion
+- `vfx-magic-glow` — pre-cast charge-up
+- `vfx-muzzle-flash` — for the cast-release flash
+- `game-feel` — full game-feel pairing

@@ -25,10 +25,10 @@ Backing tool: `summer_generate_3d`. Default model is `hunyuan` (best general qua
 
 ## When NOT to use
 
-- Character driving the vehicle → that's `summer:3d-assets/character-model`. Generate them separately and parent the character to the vehicle's seat.
-- Vehicle interior (cockpit, dashboard) as a first-person view → generate as a separate "interior" prop via `summer:3d-assets/prop-model` with first-person framing.
-- A scenery vehicle that never moves and is far from camera (parked truck in the distance) → `summer:3d-assets/prop-model` is fine; vehicle-model's overhead isn't worth it.
-- Procedural / customizable vehicles (modular ship parts) → use `summer:3d-assets/environment-kit` to generate a vehicle-parts kit instead.
+- Character driving the vehicle → that's `character-model`. Generate them separately and parent the character to the vehicle's seat.
+- Vehicle interior (cockpit, dashboard) as a first-person view → generate as a separate "interior" prop via `prop-model` with first-person framing.
+- A scenery vehicle that never moves and is far from camera (parked truck in the distance) → `prop-model` is fine; vehicle-model's overhead isn't worth it.
+- Procedural / customizable vehicles (modular ship parts) → use `environment-kit` to generate a vehicle-parts kit instead.
 
 ## Polycount targets
 
@@ -145,7 +145,7 @@ This re-textures the existing mesh with sharper detail — panel lines, decals, 
 | Use case | Parent type | Notes |
 |---|---|---|
 | Player-driven (car, bike, hover) | `VehicleBody3D` (wheeled) or `RigidBody3D` (free physics) | Add `VehicleWheel3D` children for wheeled vehicles |
-| Player-driven (spaceship, mech) | `RigidBody3D` or `CharacterBody3D` | Custom thrust / walk code, see `summer:character-controllers` |
+| Player-driven (spaceship, mech) | `RigidBody3D` or `CharacterBody3D` | Custom thrust / walk code, see `fps-controller` |
 | Background scenery (parked, flyby) | `MeshInstance3D` under a `Node3D` | No physics, no collision needed for distant traffic |
 | Background traffic (moving but not interactive) | `Node3D` + `AnimationPlayer` driving the position | Cheap, no physics overhead |
 
@@ -184,11 +184,11 @@ summer_save_scene(scenePath="res://main.tscn")
 
 ## Edge cases
 
-- **Tracked vehicle (tank).** AI mesh-gen handles the hull but the tracks come back as a fused ring. Generate the hull only, then add tracks as a separate `summer:3d-assets/prop-model` (or use a tiled texture on a torus). For animation, scroll the track texture's UV.
-- **Articulated vehicle (mech with shoulders, hips, knees).** The mesh is one piece — joints aren't separated. For animated mechs, treat as a humanoid: generate as `summer:3d-assets/character-model` with the rig pass, then animate via `summer:animation/generate-motion` (custom backend, prompt as "mech walks heavily").
-- **Vehicle with rotor (helicopter, drone).** Generate without rotor, then add the rotor as a separate `summer:3d-assets/prop-model` and parent it. Spin via code in `_process`.
+- **Tracked vehicle (tank).** AI mesh-gen handles the hull but the tracks come back as a fused ring. Generate the hull only, then add tracks as a separate `prop-model` (or use a tiled texture on a torus). For animation, scroll the track texture's UV.
+- **Articulated vehicle (mech with shoulders, hips, knees).** The mesh is one piece — joints aren't separated. For animated mechs, treat as a humanoid: generate as `character-model` with the rig pass, then animate via `generate-motion` (custom backend, prompt as "mech walks heavily").
+- **Vehicle with rotor (helicopter, drone).** Generate without rotor, then add the rotor as a separate `prop-model` and parent it. Spin via code in `_process`.
 - **Open-top vehicle (convertible, jeep).** Specify "open top, no roof" — defaults often add a roof.
-- **The user wants the cockpit interior visible.** Generate exterior here, then a separate `summer:3d-assets/prop-model` for the interior, and switch meshes when the camera enters first-person view.
+- **The user wants the cockpit interior visible.** Generate exterior here, then a separate `prop-model` for the interior, and switch meshes when the camera enters first-person view.
 
 ## Fallback (no MCP)
 
@@ -202,15 +202,15 @@ summer_save_scene(scenePath="res://main.tscn")
 After the vehicle is wired:
 
 > `race_car.glb` placed at `./World/RaceCar` as a VehicleBody3D. Next:
-> - **Vehicle controls:** WASD steering / accel — see `summer:character-controllers` for the vehicle controller pattern (or write directly with `engine_force`, `steering`, and `brake` on VehicleBody3D).
-> - **Driver character:** generate via `summer:3d-assets/character-model` and parent to the seat position.
-> - **Engine sound + tire screech:** `summer:audio/sound-effect` for one-shots, `summer:audio/ambient-bed` for the engine loop.
-> - **Particles:** exhaust smoke, dust trail, sparks on collision — `summer:vfx/particles` (when available) or built-in GPUParticles3D.
+> - **Vehicle controls:** WASD steering / accel — see `fps-controller` for the vehicle controller pattern (or write directly with `engine_force`, `steering`, and `brake` on VehicleBody3D).
+> - **Driver character:** generate via `character-model` and parent to the seat position.
+> - **Engine sound + tire screech:** `sound-effect` for one-shots, `ambient-bed` for the engine loop.
+> - **Particles:** exhaust smoke, dust trail, sparks on collision — `vfx-smoke` / `vfx-hit-spark` or built-in GPUParticles3D.
 
 ## See also
 
-- `summer:3d-assets/character-model` — for the driver/pilot.
-- `summer:3d-assets/prop-model` — for separable parts (rotors, decals as decals, modular kit pieces).
-- `summer:asset-pipeline/asset-strategy` — meta-router.
-- `summer:character-controllers` — for player-driven vehicle input wiring.
-- `../../../references/mcp-tools-reference.md` — `summer_generate_3d` schema, including `kind: "texture"` for the secondary detail pass.
+- `character-model` — for the driver/pilot.
+- `prop-model` — for separable parts (rotors, decals as decals, modular kit pieces).
+- `asset-strategy` — meta-router.
+- `fps-controller` — for player-driven vehicle input wiring.
+- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_3d` schema, including `kind: "texture"` for the secondary detail pass.

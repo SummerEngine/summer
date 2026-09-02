@@ -29,11 +29,11 @@ Backing tool: `summer_generate_3d`. Default `hunyuan` is great here, but `trelli
 
 ## When NOT to use
 
-- Character (humanoid, even if "tree-person") → `summer:3d-assets/character-model` (rigging matters).
-- Vehicle, weapon, hard-surface object → `summer:3d-assets/prop-model` or `summer:3d-assets/vehicle-model`.
-- Tileable ground (grass field, sand) → `summer:asset-pipeline/asset-strategy` Pipeline 2 (textures, not meshes).
+- Character (humanoid, even if "tree-person") → `character-model` (rigging matters).
+- Vehicle, weapon, hard-surface object → `prop-model` or `vehicle-model`.
+- Tileable ground (grass field, sand) → `asset-strategy` Pipeline 2 (textures, not meshes).
 - Animated organic (Venus fly trap that opens, breathing pod) → generate static here, animate in-engine with bones or shape keys.
-- A single hero-tree centerpiece (Yggdrasil, the One Tree) — generate via `summer:3d-assets/prop-model` with higher polycount and detail attention.
+- A single hero-tree centerpiece (Yggdrasil, the One Tree) — generate via `prop-model` with higher polycount and detail attention.
 
 ## Polycount targets
 
@@ -137,7 +137,7 @@ A `.glb` cannot be assigned to `MeshInstance3D.mesh`. An imported `.glb` is a sc
 
 Every scene-mutating tool takes an explicit `scenePath`; node paths are relative to that scene's root (`./`).
 
-**Forest scatter (MultiMesh):** create a `MultiMeshInstance3D`, assign a `MultiMesh` resource referencing the tree mesh, set `instance_count` to e.g. 100, and populate `set_instance_transform()` from a script with random positions + rotations. See `summer:scene-composition` for the scatter pattern.
+**Forest scatter (MultiMesh):** create a `MultiMeshInstance3D`, assign a `MultiMesh` resource referencing the tree mesh, set `instance_count` to e.g. 100, and populate `set_instance_transform()` from a script with random positions + rotations. See `scene-composition` for the scatter pattern.
 
 ### 6. LOD and billboards
 
@@ -161,7 +161,7 @@ For a 200-tree forest, ~10 close trees are real meshes, 190 are billboards. Fram
 
 ## Edge cases
 
-- **Animated foliage (wind sway).** Generate static here, then add wind sway via a vertex shader on the material — `summer:vfx/shaders` (when available). No animation rig needed.
+- **Animated foliage (wind sway).** Generate static here, then add wind sway via a hand-written vertex displacement shader on the material. No animation rig needed.
 - **Underwater organics (kelp, anemones).** Same flow; expect Hunyuan to add a "ground attachment" base unless you say `floating, suspended in water`.
 - **Branching meshes (vines, roots) come back too thick.** Specify `thin tendril, fine branches`, or accept and scale Y down in the editor.
 - **Snow / ice / frozen variant.** Add `covered in snow, frosted, ice crystals` to the prompt — works well on trees and rocks. For temperature variants of the same scene, generate the variant rather than retexturing.
@@ -181,16 +181,16 @@ For totally free / offline alternatives: **Quaternius** (free stylized organics)
 After the organic models are scattered:
 
 > Forest scatter ready: 3 species at `res://assets/organic/`, 100 instances each via MultiMeshInstance3D in `./World/Forest`. Next:
-> - **Wind shader** (sway in breeze): `summer:vfx/shaders` when available, or hand-write a vertex displacement shader.
-> - **Ground texture** (grass beneath the trees): `summer:asset-pipeline/asset-strategy` Pipeline 2 for tileable ground.
-> - **Lighting / fog** (forest mood): `summer:3d-lighting` for ambient + directional sun + volumetric fog.
-> - **Ambient audio** (forest birds, leaves): `summer:audio/ambient-bed`.
-> - **Hero props** (a stump, a fallen log, a shrine): `summer:3d-assets/prop-model` for the hand-placed standouts.
+> - **Wind shader** (sway in breeze): hand-write a vertex displacement shader.
+> - **Ground texture** (grass beneath the trees): `asset-strategy` Pipeline 2 for tileable ground.
+> - **Lighting / fog** (forest mood): `3d-lighting` for ambient + directional sun + volumetric fog.
+> - **Ambient audio** (forest birds, leaves): `ambient-bed`.
+> - **Hero props** (a stump, a fallen log, a shrine): `prop-model` for the hand-placed standouts.
 
 ## See also
 
-- `summer:3d-assets/prop-model` — for hand-placed standout pieces.
-- `summer:3d-assets/environment-kit` — pair with this skill: kit pieces give the architecture, organic gives the natural softness.
-- `summer:asset-pipeline/asset-strategy` — meta-router; ground textures and skyboxes go to Pipeline 2 / panoramic gen.
-- `summer:scene-composition` — MultiMeshInstance3D scatter pattern.
-- `../../../references/mcp-tools-reference.md` — `summer_generate_3d` schema.
+- `prop-model` — for hand-placed standout pieces.
+- `environment-kit` — pair with this skill: kit pieces give the architecture, organic gives the natural softness.
+- `asset-strategy` — meta-router; ground textures and skyboxes go to Pipeline 2 / panoramic gen.
+- `scene-composition` — MultiMeshInstance3D scatter pattern.
+- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_3d` schema.

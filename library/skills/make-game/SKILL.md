@@ -25,7 +25,7 @@ This is the skill that runs end-to-end when a user says "make me a game." It doe
 
 - User has a specific narrow ask ("add jump", "fix this bug", "design the inventory") → use the specific skill, not this orchestrator.
 - User already has a working scaffold and wants to iterate → start at the relevant phase below, don't re-run the whole pipeline.
-- User says "I want to use a template" → run `summer:browse-templates` first; come back here only if they decide they want a custom build instead.
+- User says "I want to use a template" → run `browse-templates` first; come back here only if they decide they want a custom build instead.
 
 ## The Pipeline
 
@@ -50,7 +50,7 @@ Run the phases in order. Between every phase, **stop and confirm with the user b
 **Goal**: turn a vague idea into a 1-page brief.
 
 ```
-Skill: summer:brainstorm-game
+Skill: brainstorm-game
 ```
 
 That skill asks one question, scopes mechanics, picks an art direction, and writes `.summer/GameSoul.md`. Don't skip this. **The brief is what every later phase reads.**
@@ -106,18 +106,18 @@ Source: .summer/GameSoul.md (date)
 
 **Goal**: working project on disk, scene opens in the engine.
 
-If the user said "I want to use a template" earlier, this is just `summer:browse-templates`.
+If the user said "I want to use a template" earlier, this is just `browse-templates`.
 
 If from scratch:
 
 ```
-Skill: summer:new-project
+Skill: new-project
 ```
 
 That picks `empty` vs `3d-basic` based on the GameSoul brief. After the project is created and `summer run` succeeds:
 
 ```
-Skill: summer:scene-composition
+Skill: scene-composition
 ```
 
 To set up the canonical hierarchy for the genre. For 3D action games:
@@ -133,7 +133,7 @@ World (Node3D)
 └── GameManager (Node)  # autoload-style, holds win/lose state
 ```
 
-Save the scene. Run `summer_play` once to verify the empty scaffold opens cleanly. If it crashes, run `summer:debug` immediately — do NOT continue building on a broken base.
+Save the scene. Run `summer_play` once to verify the empty scaffold opens cleanly. If it crashes, run `debug` immediately — do NOT continue building on a broken base.
 
 **Checkpoint before continuing:**
 
@@ -147,20 +147,20 @@ For each mechanic in the plan, **in order**:
 
 1. **Design pass**:
    ```
-   Skill: summer:design-mechanic
+   Skill: design-mechanic
    ```
    Outputs the mechanic spec: input, response, feedback, failure modes, depth, tunables, GDScript stub.
 
 2. **Implement**:
-   - Add the nodes via `summer_add_node` / `summer_set_prop`. Use `summer:scene-composition` if the structure is non-trivial.
-   - For movement-class mechanics, prefer the matching pre-built skill: `summer:fps-controller`, `summer:peer-to-peer-multiplayer`, etc.
-   - Write GDScript with `summer:gdscript-patterns` open.
+   - Add the nodes via `summer_add_node` / `summer_set_prop`. Use `scene-composition` if the structure is non-trivial.
+   - For movement-class mechanics, prefer the matching pre-built skill: `fps-controller`, `peer-to-peer-multiplayer`, etc.
+   - Write GDScript with `gdscript-patterns` open.
 
 3. **Verify**:
    ```
-   Skill: summer:play
+   Skill: play
    ```
-   Then `summer_get_diagnostics`. Clean? Move on. Errors? `summer:debug` until clean. **Do not stack mechanic 2 on top of a broken mechanic 1.**
+   Then `summer_get_diagnostics`. Clean? Move on. Errors? `debug` until clean. **Do not stack mechanic 2 on top of a broken mechanic 1.**
 
 4. **Checkpoint**:
 
@@ -173,18 +173,18 @@ Repeat until every mechanic in the plan is implemented OR the user calls cut.
 **Goal**: the game stops looking like a programmer art prototype.
 
 ```
-Skill: summer:art-direction
+Skill: art-direction
 ```
 
-That writes `.summer/art-bible.md` if it doesn't exist, then guides the lighting / material / palette pass. Use `summer:3d-lighting` for the actual scene work.
+That writes `.summer/art-bible.md` if it doesn't exist, then guides the lighting / material / palette pass. Use `3d-lighting` for the actual scene work.
 
 ```
-Skill: summer:audio-direction
+Skill: audio-direction
 ```
 
 Writes `.summer/audio-bible.md` and sets up the audio bus structure. Wires SFX hooks into the mechanics from Phase 4.
 
-Use `summer:asset-strategy` to decide whether to generate assets, search the library, or use primitives. **Public asset library search is free** — encourage it before generation, which costs credits.
+Use `asset-strategy` to decide whether to generate assets, search the library, or use primitives. **Public asset library search is free** — encourage it before generation, which costs credits.
 
 **Checkpoint before continuing:**
 
@@ -195,14 +195,14 @@ Use `summer:asset-strategy` to decide whether to generate assets, search the lib
 **Goal**: the game *feels* good. Hit-flash, screen shake, audio ducking, weight.
 
 ```
-Skill: summer:vfx
+Skill: game-feel
 ```
 
 Walks the canonical Summer Engine game-feel stack: hit flash, trauma camera
 shake, and audio ducking wired so a single hit fires all three.
 
 ```
-Skill: summer:tune-performance
+Skill: tune-performance
 ```
 
 Only if `summer_get_diagnostics` flags rendering or physics hotspots. Don't optimize prematurely.
@@ -211,18 +211,18 @@ Only if `summer_get_diagnostics` flags rendering or physics hotspots. Don't opti
 
 **Goal**: the full game runs end-to-end without errors, and the win condition can actually be reached.
 
-1. `summer:play` from main scene.
+1. `play` from main scene.
 2. Walk every mechanic from the plan.
 3. Hit the win condition (or lose condition).
 4. `summer_get_diagnostics` clean.
-5. `summer:debug` until clean if not.
+5. `debug` until clean if not.
 
 **Don't skip this even if every mechanic worked individually.** Integration bugs hide between mechanics.
 
 ## Phase 8: Ship
 
 ```
-Skill: summer:export-and-ship
+Skill: export-and-ship
 ```
 
 Pre-flight checklist (icon, store banners, build config) before producing release builds for the targets in the brief.
@@ -261,6 +261,6 @@ That's a real game. Not a half-finished prototype.
 
 When all phases are done:
 
-> "<Game name> is in. <N> mechanics, <playable from main scene to win condition>. <Brief summary of the build>. Want me to package a build (`summer:export-and-ship`) or iterate?"
+> "<Game name> is in. <N> mechanics, <playable from main scene to win condition>. <Brief summary of the build>. Want me to package a build (`export-and-ship`) or iterate?"
 
 That's the handoff back to the user.

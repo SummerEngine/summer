@@ -27,9 +27,9 @@ UI graphics succeed or fail on **two specific things**: a clean transparent back
 
 ## When NOT to use
 
-- The user wants a character portrait → `summer:2d-assets/character-portrait`.
-- The user wants pixel-art UI → `summer:2d-assets/pixel-art` (UI in pixel style needs a different prompt pattern).
-- The user wants a 3D HUD element → that's a 3D mesh job; route to `summer:asset-pipeline/asset-strategy`.
+- The user wants a character portrait → `character-portrait`.
+- The user wants pixel-art UI → `pixel-art` (UI in pixel style needs a different prompt pattern).
+- The user wants a 3D HUD element → that's a 3D mesh job; route to `asset-strategy`.
 - The user wants a font → fonts aren't generated; use a `.ttf`/`.otf` and import via `FontFile`.
 
 ## Steps
@@ -185,7 +185,7 @@ If you generate a 4×4 grid of icons in one image, each icon becomes an `AtlasTe
 - **User wants the same icon at multiple sizes (32, 64, 128).** Generate once
   at high resolution. Summer Engine's `TextureRect` with
   `STRETCH_KEEP_ASPECT_CENTERED` scales it down cleanly.
-- **User wants pixel-style UI.** Route to `summer:2d-assets/pixel-art` — different prompt pattern, different filter, different anchor.
+- **User wants pixel-style UI.** Route to `pixel-art` — different prompt pattern, different filter, different anchor.
 - **User wants animated UI (spinning loading icon).** Generate the static frame here. Animate via `AnimationPlayer` rotating the `TextureRect`, not as a sprite sheet.
 - **Transparency comes back as a checkerboard pattern in the image.** The model rendered the checkerboard literally because the prompt asked for transparency. Remove every mention of transparency from the prompt, generate on a plain background, and pass `options.removeBackground: true` to cut the alpha server-side.
 - **Icons need to read at very small size (16-24px in a packed bar).** Bias prompts toward bold silhouette + minimal interior detail. Ornate detail is invisible at 16px and adds noise.
@@ -212,13 +212,13 @@ After the UI graphic is wired:
 - **More icons in the same set** → re-invoke this skill with the same anchor.
 - **Button states (hover/pressed)** → re-invoke for each state.
 - **Theme assembly (combining icons + panels into a Summer Engine Theme
-  resource)** → `summer:scene-composition` for the resource wiring.
-- **Pixel-art UI** → `summer:2d-assets/pixel-art`.
-- **Dialogue UI with portraits** → `summer:2d-assets/character-portrait` for the portrait, then back here for the surrounding panel.
+  resource)** → `scene-composition` for the resource wiring.
+- **Pixel-art UI** → `pixel-art`.
+- **Dialogue UI with portraits** → `character-portrait` for the portrait, then back here for the surrounding panel.
 
 ## See also
 
-- `summer:2d-assets/character-portrait` — for in-UI character images.
-- `summer:2d-assets/pixel-art` — pixel-style UI.
-- `summer:scene-composition` — Theme and Control hierarchy.
-- `../../../references/mcp-tools-reference.md` — `summer_generate_image` schema.
+- `character-portrait` — for in-UI character images.
+- `pixel-art` — pixel-style UI.
+- `scene-composition` — Theme and Control hierarchy.
+- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_image` schema.

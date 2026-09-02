@@ -209,4 +209,4 @@ Once the shots are generated:
 - `audio/music-track` — trailer score.
 - `audio/sound-effect` — cut SFX (whooshes, impacts, stingers).
 - `2d-assets/concept-art` — generate the reference image axis when no asset exists yet.
-- `../../../references/mcp-tools-reference.md` — `summer_generate_video` parameter schema and error codes.
+- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_video` parameter schema and error codes.

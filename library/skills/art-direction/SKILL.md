@@ -244,8 +244,8 @@ Ask:
 End with:
 
 > Bible saved. Next:
-> - `/summer:audio-direction` to define the sonic identity that pairs with this look.
-> - `/summer:vfx` to design particle / hit-feedback styles within the palette.
+> - `/audio-direction` to define the sonic identity that pairs with this look.
+> - `/game-feel` to design particle / hit-feedback styles within the palette.
 > - Open the project's `WorldEnvironment` node and dial in the lighting plan.
 > - Or generate first-pass concept assets via `summer_generate_image` using the palette + mood as the prompt prefix.
 

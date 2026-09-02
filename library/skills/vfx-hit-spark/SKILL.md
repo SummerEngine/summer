@@ -1,5 +1,5 @@
 ---
-name: hit-spark
+name: vfx-hit-spark
 description: Use when authoring a hit-spark visual effect — a one-shot burst of additive billboard particles oriented to a surface normal, fired on impact. Trigger on "hit spark", "impact spark", "bullet hit", "sword clash", "metal-on-metal", "ricochet", "impact effect", "spawn sparks at hit point".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
@@ -195,7 +195,7 @@ summer_save_scene(scenePath="res://addons/vfx/hit-spark/hit_spark.tscn")
 Note on the script lane: `summer_run_script` operates on the **open** scene, and
 this recipe builds a standalone `hit_spark.tscn` — so the `summer_create_scene` /
 `summer_replace_node` chain above stays the right wiring here. Reach for
-`summer:scene-scripting` only if you are placing many pre-spawned spark emitters
+`scene-scripting` only if you are placing many pre-spawned spark emitters
 into the open scene with computed positions.
 
 ### 4b. Verify
@@ -358,16 +358,16 @@ manually in Summer Engine:
 
 After firing this recipe, suggest:
 
-- `summer:visual-effects/recipes/muzzle-flash` — pair on the gun side; this recipe handles the bullet-impact side.
-- `summer:visual-effects/recipes/lightning` — automatically calls this at endpoints.
-- `summer:visual-effects/recipes/water-ripple` — pair the `water-droplet` variant with a ripple ring at the impact for water surfaces.
-- `summer:visual-effects/game-feel` — `CameraShake.add_trauma(0.15)` on heavy hits, hit-stop for crit kills.
-- `summer:audio/sound-effect` — generate `metal-on-metal clang, sharp transient, short ring, 350ms` per spark variant.
+- `vfx-muzzle-flash` — pair on the gun side; this recipe handles the bullet-impact side.
+- `vfx-lightning` — automatically calls this at endpoints.
+- `vfx-water-ripple` — pair the `water-droplet` variant with a ripple ring at the impact for water surfaces.
+- `game-feel` — `CameraShake.add_trauma(0.15)` on heavy hits, hit-stop for crit kills.
+- `sound-effect` — generate `metal-on-metal clang, sharp transient, short ring, 350ms` per spark variant.
 
 ## See also
 
 - `_building-blocks/additive-billboard-particles.md` — canonical additive material settings (this recipe uses them)
-- `summer:visual-effects/recipes/muzzle-flash` — the gun-end companion
-- `summer:visual-effects/recipes/lightning` — caller; spawns sparks at bolt endpoints
-- `summer:visual-effects/recipes/water-ripple` — surface companion for water impacts
-- `summer:visual-effects/game-feel` — shake/hit-stop pairings
+- `vfx-muzzle-flash` — the gun-end companion
+- `vfx-lightning` — caller; spawns sparks at bolt endpoints
+- `vfx-water-ripple` — surface companion for water impacts
+- `game-feel` — shake/hit-stop pairings

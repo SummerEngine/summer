@@ -62,8 +62,8 @@ For each Case, score:
 Output:
 
 ```
-Case 1 (Happy):     baseline 4/6  proposed 6/6  ✓ ship proposed
-Case 2 (Failure):   baseline 3/4  proposed 4/4  ✓ ship proposed
+Case 1 (Happy):     baseline 4/6  proposed 6/6  yes ship proposed
+Case 2 (Failure):   baseline 3/4  proposed 4/4  yes ship proposed
 Case 3 (Edge):      baseline 3/3  proposed 3/3  = no change
 ```
 

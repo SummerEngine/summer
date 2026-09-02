@@ -1,5 +1,5 @@
 ---
-name: smoke
+name: vfx-smoke
 description: Use when authoring a smoke visual effect — a slow-rising column or puff of soft particles built with a noise + density falloff shader on a quad mesh, GPUParticles3D. Trigger on "smoke", "smoke trail", "puff", "chimney smoke", "smoke from a fire", "steam", "fog cloud", "explosion smoke".
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
@@ -257,7 +257,7 @@ summer_set_prop(scenePath="res://main.tscn", path="./World/Campfire/Smoke", key=
 
 ### 5a. One-script wiring (summer_run_script)
 
-On engines with `summer_run_script` (see `summer:scene-scripting`), the node wiring
+On engines with `summer_run_script` (see `scene-scripting`), the node wiring
 above is ONE ctx script — transactional, and it builds the QuadMesh + ShaderMaterial
 resources directly instead of `.tres` sidecars:
 
@@ -455,14 +455,14 @@ manually in Summer Engine:
 
 After firing this recipe, suggest:
 
-- `summer:visual-effects/recipes/fire` — the partner; almost any fire wants smoke 0.5–2 m above the flame top.
-- `summer:visual-effects/recipes/dissolve` — pair `black-fire-smoke` with a dissolving target for "the bandit camp burns and ashes drift away."
-- `summer:visual-effects/recipes/lightning` — for a smoke flash from a lightning strike (use `puff()` on impact).
-- `summer:audio/sound-effect` — generate `gentle wind through smoke, soft hiss, 4s loop` for chimneys.
+- `vfx-fire` — the partner; almost any fire wants smoke 0.5–2 m above the flame top.
+- `vfx-dissolve` — pair `black-fire-smoke` with a dissolving target for "the bandit camp burns and ashes drift away."
+- `vfx-lightning` — for a smoke flash from a lightning strike (use `puff()` on impact).
+- `sound-effect` — generate `gentle wind through smoke, soft hiss, 4s loop` for chimneys.
 
 ## See also
 
 - `_building-blocks/noise-3d-fbm.gdshaderinc` — the FBM noise this shader includes
-- `summer:visual-effects/recipes/fire` — sister recipe, almost always paired
-- `summer:visual-effects/recipes/dissolve` — for ash particles after disintegration
-- `summer:gdscript-patterns` — for the controller idioms (signals, exports, `@tool`)
+- `vfx-fire` — sister recipe, almost always paired
+- `vfx-dissolve` — for ash particles after disintegration
+- `gdscript-patterns` — for the controller idioms (signals, exports, `@tool`)

@@ -102,6 +102,17 @@ CI (`--check` + `npm test`) fails on: schema violations, duplicate IDs/aliases, 
 
 IDs (`<kind>/<slug>`) are permanent. Renaming means a new ID plus an `aliases` entry on the new resource — never a silent move.
 
+### How skills reference each other
+
+Inside `library/skills/**/SKILL.md` and `library/references/**/*.md`, refer to another skill by its **bare slug** — the `library/skills/<slug>` directory name, which is also the `name:` in its SKILL.md frontmatter and the `<slug>` half of its `skill/<slug>` id. Write it as inline code or as an explicit instruction: `` `vfx-fire` ``, "use the `design-mechanic` skill", `Skill: gdscript-patterns`, `/play`.
+
+Why the bare slug and not a namespaced form: skills reach a host along two paths that name them differently.
+
+- `summer setup <agent>` / `summer skills install` (the canonical path) copies each skill into the host's user-skill directory (`~/.claude/skills/<slug>/`, and the equivalent for Cursor, Codex, Gemini, …). Hosts expose those as plain user skills — Claude Code as `/<slug>` — and there is no `summer:` namespace.
+- The plugin-marketplace path (`.claude-plugin/plugin.json`, generated from `integrations/claude`) loads the same directories as plugin skills, which Claude Code exposes as `/summer:<slug>`.
+
+Hosts match on the skill name in both cases, so the bare slug resolves under either install; `summer:<slug>` resolves only under the second. Never use the v2 forms `summer:<category>/<name>`, `<category>/<name>`, or `skills/<category>/<name>` — categories are gone (`library/skills/` is flat) and the VFX recipes are `vfx-<effect>` (`vfx-fire`, `vfx-smoke`, …). Cross-links to shared documents are relative paths into the library: `../../references/<slug>/<slug>.md` from a skill, `../../templates/README.md` for the template catalog. Legacy names still resolve through `registry/generated/aliases.json`, but new prose must not rely on that.
+
 ### Adding an MCP tool
 
 The implementation lives in `src/` (`src/mcp/tools/` adapter over `src/core/`), the descriptor in `library/tools/`. Mechanics of the engine side: [`ADDING_TOOLS.md`](ADDING_TOOLS.md).

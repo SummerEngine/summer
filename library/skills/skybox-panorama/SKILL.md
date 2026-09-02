@@ -188,15 +188,15 @@ If MCP is offline entirely: Polyhaven (`polyhaven.com/hdris`) has hundreds of fr
 
 After the sky is wired:
 
-- **Add atmospheric fog matching the sky's mood** → `summer:scene-composition` (fog is on the same Environment resource).
-- **Add a directional `DirectionalLight3D` matching the sun position in the panorama** → `summer:3d-lighting` for sun + shadows.
+- **Add atmospheric fog matching the sky's mood** → `scene-composition` (fog is on the same Environment resource).
+- **Add a directional `DirectionalLight3D` matching the sun position in the panorama** → `3d-lighting` for sun + shadows.
 - **Day/night cycle** → re-invoke this skill for the night sky, then write a small tween between the two `panorama` properties.
-- **Tileable ground texture for the level floor** → `summer:2d-assets/tileable-texture`.
+- **Tileable ground texture for the level floor** → `tileable-texture`.
 
 ## See also
 
-- `summer:3d-lighting` — sun, ambient, fog wired alongside the sky.
-- `summer:2d-assets/tileable-texture` — ground/floor counterpart.
-- `summer:scene-composition` — WorldEnvironment placement and configuration.
-- `summer:asset-pipeline/asset-strategy` — meta-router.
-- `../../../references/mcp-tools-reference.md` — `summer_generate_image` schema.
+- `3d-lighting` — sun, ambient, fog wired alongside the sky.
+- `tileable-texture` — ground/floor counterpart.
+- `scene-composition` — WorldEnvironment placement and configuration.
+- `asset-strategy` — meta-router.
+- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_image` schema.

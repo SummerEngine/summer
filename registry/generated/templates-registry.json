@@ -1,0 +1,447 @@
+{
+  "_generated": "GENERATED — do not edit; run npm run generate:registry",
+  "templates": [
+    {
+      "id": "template/2d-brario-platformer",
+      "slug": "2d-brario-platformer",
+      "version": "1.0.0",
+      "summary": "Classic Mario-style 2D platformer starter with enemies, blocks, and level progression.",
+      "status": "stable",
+      "aliases": [
+        "template-2d-brario-platformer"
+      ],
+      "systems": [
+        "character-controller",
+        "enemies",
+        "levels"
+      ],
+      "do_not_use_when": [],
+      "path": "library/templates/2d-brario-platformer/",
+      "builtin": false,
+      "pin": {
+        "repo": "https://github.com/SummerEngine/template-2d-brario-platformer",
+        "commit": "6cee7474f68f00675f64bc4eb9c86e77418724ef",
+        "tree_digest": "96293d3ea0e997ac869a7a549f442b31457a6099dc5ad7dd0fa1bc9d4a81c5ef",
+        "default_branch": "main"
+      }
+    },
+    {
+      "id": "template/2d-dungeon-roguelike",
+      "slug": "2d-dungeon-roguelike",
+      "version": "1.0.1",
+      "summary": "Room-based dungeon-crawl roguelike starter — ASCII room tables, melee combat, procedural floors.",
+      "status": "preview",
+      "aliases": [
+        "template-2d-dungeon-roguelike"
+      ],
+      "systems": [
+        "procedural-floors",
+        "melee-combat",
+        "rooms"
+      ],
+      "do_not_use_when": [
+        "the repository is private; not installable from the public CLI until it is published"
+      ],
+      "path": "library/templates/2d-dungeon-roguelike/",
+      "builtin": false,
+      "pin": {
+        "repo": "https://github.com/SummerEngine/template-2d-dungeon-roguelike",
+        "commit": "6d88c704c4ed77c4c67bc16f8ec887133418ee7a",
+        "tree_digest": "ce0bcea0cb4b7196a7a248b1522cd5b8d724cddd8a9cb2296228af2e9557f14a",
+        "default_branch": "master"
+      }
+    },
+    {
+      "id": "template/2d-grid-puzzle",
+      "slug": "2d-grid-puzzle",
+      "version": "1.0.0",
+      "summary": "Grid-based 2D puzzle starter with tile logic and move handling.",
+      "status": "stable",
+      "aliases": [
+        "template-2d-grid-puzzle"
+      ],
+      "systems": [
+        "grid-logic",
+        "input"
+      ],
+      "do_not_use_when": [],
+      "path": "library/templates/2d-grid-puzzle/",
+      "builtin": false,
+      "pin": {
+        "repo": "https://github.com/SummerEngine/template-2d-grid-puzzle",
+        "commit": "14409a7dbbabe08bf7ba3397b9c2ee29f6a15420",
+        "tree_digest": "76257b6e3c71c25e23b634036864ce9ab6b7e51e340df61f9fa02a6587d51165",
+        "default_branch": "main"
+      }
+    },
+    {
+      "id": "template/2d-plants-and-zombies-tower-defense",
+      "slug": "2d-plants-and-zombies-tower-defense",
+      "version": "1.0.0",
+      "summary": "Lane tower-defense starter in the Plants vs. Zombies style — placeable defenders, waves of lane attackers.",
+      "status": "stable",
+      "aliases": [
+        "template-2d-plants-and-zombies-tower-defense"
+      ],
+      "systems": [
+        "lanes",
+        "spawning",
+        "placement",
+        "waves"
+      ],
+      "do_not_use_when": [],
+      "path": "library/templates/2d-plants-and-zombies-tower-defense/",
+      "builtin": false,
+      "pin": {
+        "repo": "https://github.com/SummerEngine/template-2d-plants-and-zombies-tower-defense",
+        "commit": "bc48f4c73861094e63e9304e630a49a48a605819",
+        "tree_digest": "60c24cade6590a1d867f29d108ee782f85c84157e43d3fd5b6fe8fe69fc4d98e",
+        "default_branch": "main"
+      }
+    },
+    {
+      "id": "template/2d-platformer",
+      "slug": "2d-platformer",
+      "version": "1.0.0",
+      "summary": "2D platformer starter with TileMap levels, a CharacterBody2D controller, and parallax backgrounds.",
+      "status": "stable",
+      "aliases": [
+        "template-2d-platformer"
+      ],
+      "systems": [
+        "tilemap",
+        "character-controller",
+        "parallax"
+      ],
+      "do_not_use_when": [],
+      "path": "library/templates/2d-platformer/",
+      "builtin": false,
+      "pin": {
+        "repo": "https://github.com/SummerEngine/template-2d-platformer",
+        "commit": "66fc71b8edcd1c7023b890c7c0ef7cc55d80748e",
+        "tree_digest": "76ac4aee9a8a9d4d9ced0a3bc7b0cab76a4fc6eefd04403df967890c05a34c6c",
+        "default_branch": "main"
+      }
+    },
+    {
+      "id": "template/2d-rpg",
+      "slug": "2d-rpg",
+      "version": "1.0.0",
+      "summary": "2D top-down RPG starter built on GDQuest's open-source work — movement, interactions, and world structure.",
+      "status": "stable",
+      "aliases": [
+        "template-2d-rpg"
+      ],
+      "systems": [
+        "top-down-movement",
+        "interactions",
+        "world"
+      ],
+      "do_not_use_when": [],
+      "path": "library/templates/2d-rpg/",
+      "builtin": false,
+      "pin": {
+        "repo": "https://github.com/SummerEngine/template-2d-rpg",
+        "commit": "e779c972a63fb70a2eace25014d4e1d97a8e97da",
+        "tree_digest": "a3a3e646bae7bf8ed4d1fb3daa50d6fd7a841c3d3e7a5cd03a51f3144a66e27f",
+        "default_branch": "main"
+      }
+    },
+    {
+      "id": "template/2d-vampire-survivor-roguelike",
+      "slug": "2d-vampire-survivor-roguelike",
+      "version": "1.0.0",
+      "summary": "Survivors-like roguelike starter — auto-attacking hero, swarming enemies, run-based upgrades.",
+      "status": "stable",
+      "aliases": [
+        "template-2d-vampire-survivor-roguelike"
+      ],
+      "systems": [
+        "auto-attack",
+        "enemy-swarms",
+        "upgrades"
+      ],
+      "do_not_use_when": [],
+      "path": "library/templates/2d-vampire-survivor-roguelike/",
+      "builtin": false,
+      "pin": {
+        "repo": "https://github.com/SummerEngine/template-2d-vampire-survivor-roguelike",
+        "commit": "c30b12ad90ec466aaffaab47e671198570242347",
+        "tree_digest": "e2891177eecc654771c0ae96105500b1b7682b38e851c94490de6bf262ab81c4",
+        "default_branch": "main"
+      }
+    },
+    {
+      "id": "template/3d-basic",
+      "slug": "3d-basic",
+      "version": "1.1.0",
+      "summary": "Built-in: 3D scene with camera, light, and floor — generated locally by summer create, no download.",
+      "status": "stable",
+      "aliases": [],
+      "systems": [
+        "project-scaffold",
+        "basic-scene"
+      ],
+      "do_not_use_when": [],
+      "path": "library/templates/3d-basic/",
+      "builtin": true,
+      "pin": null
+    },
+    {
+      "id": "template/3d-city-kit",
+      "slug": "3d-city-kit",
+      "version": "1.0.0",
+      "summary": "Construction starter for importing and navigating large 3D city kits in Summer Engine.",
+      "status": "stable",
+      "aliases": [
+        "template-3d-city-kit"
+      ],
+      "systems": [
+        "kit-import",
+        "navigation",
+        "world"
+      ],
+      "do_not_use_when": [],
+      "path": "library/templates/3d-city-kit/",
+      "builtin": false,
+      "pin": {
+        "repo": "https://github.com/SummerEngine/template-3d-city-kit",
+        "commit": "63f58a5fe02bd657bcdf4e10157c69d7761bb4bd",
+        "tree_digest": "1acaba730c64920d51145cd0064e1675a5e329044f88da59d74611f77c345255",
+        "default_branch": "codex/importable-template"
+      }
+    },
+    {
+      "id": "template/3d-fps-old-school",
+      "slug": "3d-fps-old-school",
+      "version": "1.0.0",
+      "summary": "Retro first-person shooter starter in the old-school boomer-shooter style.",
+      "status": "stable",
+      "aliases": [
+        "template-3d-fps-old-school"
+      ],
+      "systems": [
+        "fps-controller",
+        "weapons",
+        "enemies"
+      ],
+      "do_not_use_when": [],
+      "path": "library/templates/3d-fps-old-school/",
+      "builtin": false,
+      "pin": {
+        "repo": "https://github.com/SummerEngine/template-3d-fps-old-school",
+        "commit": "2ce48a2db0bdd26f9d8366a2150bf22ae1a3e9d2",
+        "tree_digest": "7d84e098d50eb012414f0e0830f775e87be8bb43ff8629424670703b1008b55a",
+        "default_branch": "bror-templates"
+      }
+    },
+    {
+      "id": "template/3d-fps-simple-animated-npc",
+      "slug": "3d-fps-simple-animated-npc",
+      "version": "1.0.0",
+      "summary": "FPS starter with an animated NPC — first-person controller plus a rigged, animated character to build on.",
+      "status": "stable",
+      "aliases": [
+        "template-3d-fps-simple-animated-npc"
+      ],
+      "systems": [
+        "fps-controller",
+        "npc",
+        "animation"
+      ],
+      "do_not_use_when": [],
+      "path": "library/templates/3d-fps-simple-animated-npc/",
+      "builtin": false,
+      "pin": {
+        "repo": "https://github.com/SummerEngine/template-3d-fps-simple-animated-npc",
+        "commit": "95f3ec8d8457411bf77908ad0363f4c0a0c2fba5",
+        "tree_digest": "f884f6d25658fbf7a6605d9dcd39644980ee06d48080f34e04c1401efd5ac26b",
+        "default_branch": "main"
+      }
+    },
+    {
+      "id": "template/3d-lan-multiplayer-starter",
+      "slug": "3d-lan-multiplayer-starter",
+      "version": "1.0.0",
+      "summary": "3D LAN multiplayer starter built on GDQuest's open-source work — host/join flow and synced players.",
+      "status": "stable",
+      "aliases": [
+        "template-3d-lan-multiplayer-starter"
+      ],
+      "systems": [
+        "multiplayer",
+        "lan",
+        "player-sync"
+      ],
+      "do_not_use_when": [],
+      "path": "library/templates/3d-lan-multiplayer-starter/",
+      "builtin": false,
+      "pin": {
+        "repo": "https://github.com/SummerEngine/template-3d-lan-multiplayer-starter",
+        "commit": "ccaead4cb01ede9537a20a39845bcdaa486cedb2",
+        "tree_digest": "2890f7a5eb67092b536efbc9e1e65e4da7002cb3318a5548500140f4b787834d",
+        "default_branch": "main"
+      }
+    },
+    {
+      "id": "template/3d-open-world-explore-tps",
+      "slug": "3d-open-world-explore-tps",
+      "version": "1.0.0",
+      "summary": "Third-person open-world exploration starter — camera rig, traversal, and a large explorable space.",
+      "status": "stable",
+      "aliases": [
+        "template-3d-open-world-explore-tps"
+      ],
+      "systems": [
+        "third-person-controller",
+        "camera-rig",
+        "world"
+      ],
+      "do_not_use_when": [],
+      "path": "library/templates/3d-open-world-explore-tps/",
+      "builtin": false,
+      "pin": {
+        "repo": "https://github.com/SummerEngine/template-3d-open-world-explore-tps",
+        "commit": "03dfd7d90399a7ce4badc39d880c895b82944529",
+        "tree_digest": "48cb2567f5a5128de128371b74a8c9ecd3c70a4f0e0cd8211e579df8967beb19",
+        "default_branch": "main"
+      }
+    },
+    {
+      "id": "template/3d-procedural-road-world",
+      "slug": "3d-procedural-road-world",
+      "version": "1.0.0",
+      "summary": "Playable procedural open-world starter — generated roads and world around a drivable/walkable space.",
+      "status": "stable",
+      "aliases": [
+        "template-3d-procedural-road-world"
+      ],
+      "systems": [
+        "procedural-generation",
+        "roads",
+        "world"
+      ],
+      "do_not_use_when": [],
+      "path": "library/templates/3d-procedural-road-world/",
+      "builtin": false,
+      "pin": {
+        "repo": "https://github.com/SummerEngine/template-3d-procedural-road-world",
+        "commit": "31494077cfad5a9c44685deb767d891ec68f2f05",
+        "tree_digest": "38fb9438d0cb8711aff786ac452d457242a8a1bd757ddc19ac980611e85b54d8",
+        "default_branch": "codex/importable-template"
+      }
+    },
+    {
+      "id": "template/3d-racing-game",
+      "slug": "3d-racing-game",
+      "version": "1.0.0",
+      "summary": "Racing starter — drivable vehicle, track, and lap structure to build a racing game on.",
+      "status": "stable",
+      "aliases": [
+        "template-3d-racing-game"
+      ],
+      "systems": [
+        "vehicle",
+        "track",
+        "laps"
+      ],
+      "do_not_use_when": [],
+      "path": "library/templates/3d-racing-game/",
+      "builtin": false,
+      "pin": {
+        "repo": "https://github.com/SummerEngine/template-3d-racing-game",
+        "commit": "1c115a283a3fcc272ea186cfa17a12afc141b663",
+        "tree_digest": "6514e33ec0ff0f815178191979a746e4ea5c20e03d02d1051172c2539ef96877",
+        "default_branch": "main"
+      }
+    },
+    {
+      "id": "template/3d-royale-clash-type",
+      "slug": "3d-royale-clash-type",
+      "version": "1.0.0",
+      "summary": "Auto-battler / lane-pusher starter inspired by Clash Royale-style games — make your own spin on it.",
+      "status": "stable",
+      "aliases": [
+        "template-3d-royale-clash-type"
+      ],
+      "systems": [
+        "lanes",
+        "unit-spawning",
+        "auto-battle"
+      ],
+      "do_not_use_when": [],
+      "path": "library/templates/3d-royale-clash-type/",
+      "builtin": false,
+      "pin": {
+        "repo": "https://github.com/SummerEngine/template-3d-royale-clash-type",
+        "commit": "2d6184a3fcfee7cb9b15483259714a660e16a58e",
+        "tree_digest": "2a4f23563140a06510ca79b4621691b49b28393da630be48296976cda236348c",
+        "default_branch": "main"
+      }
+    },
+    {
+      "id": "template/3d-third-person-controller",
+      "slug": "3d-third-person-controller",
+      "version": "1.0.0",
+      "summary": "3D third-person character controller built on GDQuest's open-source work, inspired by Ratchet and Clank-style movement.",
+      "status": "stable",
+      "aliases": [
+        "template-3d-third-person-controller"
+      ],
+      "systems": [
+        "third-person-controller",
+        "camera-rig",
+        "animation"
+      ],
+      "do_not_use_when": [],
+      "path": "library/templates/3d-third-person-controller/",
+      "builtin": false,
+      "pin": {
+        "repo": "https://github.com/SummerEngine/template-3d-third-person-controller",
+        "commit": "337f9354dd7ffa631e7cab5bd4c806161688e5e8",
+        "tree_digest": "e9140d525be64075b6c0ac5f6b7b7e6623fb5e07013ddd8f2999f45ad6ac5dcd",
+        "default_branch": "master"
+      }
+    },
+    {
+      "id": "template/3d-voxel-sandbox",
+      "slug": "3d-voxel-sandbox",
+      "version": "1.0.0",
+      "summary": "Voxel sandbox starter — chunked world, face culling, mining and building, seeded generation.",
+      "status": "stable",
+      "aliases": [
+        "template-3d-voxel-sandbox"
+      ],
+      "systems": [
+        "chunked-world",
+        "face-culling",
+        "mining-building",
+        "seeded-generation"
+      ],
+      "do_not_use_when": [],
+      "path": "library/templates/3d-voxel-sandbox/",
+      "builtin": false,
+      "pin": {
+        "repo": "https://github.com/SummerEngine/template-3d-voxel-sandbox",
+        "commit": "954e92b3368545ef1f75415ddf50df6aa8c81566",
+        "tree_digest": "8d94e38875b27ffcdae1d498cbfff00e0529f0b8aa5bc10770e69e23e11638f7",
+        "default_branch": "main"
+      }
+    },
+    {
+      "id": "template/empty",
+      "slug": "empty",
+      "version": "1.1.0",
+      "summary": "Built-in: empty 3D project with just a root node — generated locally by summer create, no download.",
+      "status": "stable",
+      "aliases": [],
+      "systems": [
+        "project-scaffold"
+      ],
+      "do_not_use_when": [],
+      "path": "library/templates/empty/",
+      "builtin": true,
+      "pin": null
+    }
+  ]
+}

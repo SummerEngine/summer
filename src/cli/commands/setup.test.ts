@@ -47,12 +47,22 @@ async function printedSnippet(args: string[]): Promise<{ command: string; args: 
   return snippet.mcpServers["summer-engine"]!;
 }
 
-describe("summer setup --include-preview", () => {
-  it("is a visible option (preview skills are skipped unless asked for)", () => {
-    const option = setupCommand.options.find((entry) => entry.long === "--include-preview");
+describe("summer setup: preview skills install by default", () => {
+  it("--stable-only is the visible opt-out", () => {
+    const option = setupCommand.options.find((entry) => entry.long === "--stable-only");
     expect(option).toBeDefined();
     expect(option?.hidden).toBeFalsy();
-    expect(setupCommand.helpInformation()).toContain("--include-preview");
+    expect(setupCommand.helpInformation()).toContain("--stable-only");
+  });
+
+  it("--include-preview is still accepted as a hidden no-op alias (one release)", async () => {
+    const option = setupCommand.options.find((entry) => entry.long === "--include-preview");
+    expect(option).toBeDefined();
+    expect(option?.hidden).toBe(true);
+    expect(setupCommand.helpInformation()).not.toContain("--include-preview");
+    // Old scripts keep parsing; the flag changes nothing.
+    const server = await printedSnippet(["claude-code", "--include-preview", "--print"]);
+    expect(server.args).toContain("mcp");
   });
 });
 

@@ -16,7 +16,9 @@ export interface SkillSetupResult {
   stderr?: string;
   /** Number of skills selected for install (all, or the recommended subset). */
   count?: number;
-  /** Preview skills left out because --include-preview was not given. */
+  /** Preview skills installed alongside the stable ones (the default). */
+  previewIncluded?: number;
+  /** Preview skills left out because --stable-only was given. */
   previewSkipped?: number;
   /** Where the skills land, e.g. "~/.claude/skills/<skill>/SKILL.md". */
   destination?: string;
@@ -38,8 +40,24 @@ export interface SkillSetupOptions {
   scope?: "user" | "project";
   /** Install only `recommended: true` skills instead of the whole library. */
   recommended?: boolean;
-  /** Also install `status: preview` skills (unverified intake). Off by default. */
-  includePreview?: boolean;
+  /** Skip `status: preview` skills. By default they install like any other
+   *  skill — preview is a label carried in the skill's guidance, not a gate. */
+  stableOnly?: boolean;
+}
+
+/**
+ * The preview clause of the setup summary — one wording for the result message
+ * and the CLI line, e.g. "10 preview — labelled in each skill's guidance; use
+ * --stable-only to skip". Empty when there is nothing to say.
+ */
+export function previewNote(result: { previewIncluded?: number; previewSkipped?: number }): string {
+  if (result.previewIncluded) {
+    return `${result.previewIncluded} preview — labelled in each skill's guidance; use --stable-only to skip`;
+  }
+  if (result.previewSkipped) {
+    return `${result.previewSkipped} preview skipped by --stable-only`;
+  }
+  return "";
 }
 
 /**
@@ -49,7 +67,8 @@ export interface SkillSetupOptions {
  * (name + description in context, body on activation), and the session entry
  * skill `using-summer` is not in the recommended subset, so a
  * recommended-only default left the documented starting point uninstalled.
- * `--recommended` keeps the smaller subset as an opt-in.
+ * `--recommended` keeps the smaller subset as an opt-in; `--stable-only` drops
+ * the preview skills (installed by default, labelled in their guidance).
  */
 export function setupSkills(
   agent: SupportedAgent,
@@ -65,12 +84,12 @@ export function setupSkills(
 
   const scope = options.scope ?? "user";
   const recommended = Boolean(options.recommended);
-  const includePreview = Boolean(options.includePreview);
+  const stableOnly = Boolean(options.stableOnly);
   const invocation = skillInstallInvocation(agent, {
     force: options.force,
     scope,
     recommended,
-    includePreview,
+    stableOnly,
   });
 
   if (!invocation) {
@@ -81,13 +100,12 @@ export function setupSkills(
     };
   }
 
-  const { selected, previewSkipped } = selectSkillsForBulkInstall(getSkillRegistry(), {
-    recommended,
-    includePreview,
-  });
+  const { selected, previewIncluded, previewSkipped } = selectSkillsForBulkInstall(
+    getSkillRegistry(),
+    { recommended, stableOnly }
+  );
   const count = selected.length;
-  const skippedNote =
-    previewSkipped > 0 ? `${previewSkipped} preview skipped — use --include-preview` : "";
+  const note = previewNote({ previewIncluded, previewSkipped });
   const destination = isAgentClient(agent)
     ? describeInstallLocation(resolveInstallLocation(agent, scope))
     : undefined;
@@ -98,9 +116,10 @@ export function setupSkills(
       status: "planned",
       command: invocation.display,
       count,
+      previewIncluded,
       previewSkipped,
       destination,
-      message: `Would install ${count} ${subset}skills${skippedNote ? ` (${skippedNote})` : ""} to ${destination ?? "the agent's skills directory"} with: ${invocation.display.join(" ")}`,
+      message: `Would install ${count} ${subset}skills${note ? ` (${note})` : ""} to ${destination ?? "the agent's skills directory"} with: ${invocation.display.join(" ")}`,
     };
   }
 
@@ -115,10 +134,11 @@ export function setupSkills(
       status: "installed",
       command: invocation.display,
       count,
+      previewIncluded,
       previewSkipped,
       destination,
       installed,
-      message: `Installed ${installed.total} ${subset}skills (${installed.added} new, ${installed.updated} updated${skippedNote ? `; ${skippedNote}` : ""}).`,
+      message: `Installed ${installed.total} ${subset}skills (${installed.added} new, ${installed.updated} updated${note ? `; ${note}` : ""}).`,
       stdout: result.stdout.trim(),
       stderr: result.stderr.trim(),
     };
@@ -169,7 +189,7 @@ export function tallyInstallOutput(stdout: string): {
 
 function skillInstallInvocation(
   agent: SupportedAgent,
-  opts: { force: boolean; scope: "user" | "project"; recommended: boolean; includePreview: boolean }
+  opts: { force: boolean; scope: "user" | "project"; recommended: boolean; stableOnly: boolean }
 ): SkillInstallInvocation | null {
   const cliPath = process.argv[1];
   if (!cliPath) return null;
@@ -187,7 +207,7 @@ function skillInstallInvocation(
     opts.scope,
   ];
   if (opts.force) baseArgs.push("--force");
-  if (opts.includePreview) baseArgs.push("--include-preview");
+  if (opts.stableOnly) baseArgs.push("--stable-only");
   return {
     command,
     args: [...prefix, ...baseArgs],

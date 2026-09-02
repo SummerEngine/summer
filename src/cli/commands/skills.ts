@@ -46,6 +46,8 @@ type SkillMeta = SkillRegistryEntry;
 interface InstallOptions {
   all?: boolean;
   recommended?: boolean;
+  stableOnly?: boolean;
+  /** Hidden no-op alias kept for one release; preview skills install by default now. */
   includePreview?: boolean;
   agent?: string;
   scope?: string;
@@ -128,13 +130,17 @@ function agentLabel(agent: AgentClient): string {
 }
 
 function previewSkippedLine(count: number): string {
-  return `  Skipped ${count} preview skill${count === 1 ? "" : "s"} (unverified intake) — add --include-preview to install them too.`;
+  return `  Skipped ${count} preview skill${count === 1 ? "" : "s"} (--stable-only).`;
+}
+
+function previewIncludedLine(count: number): string {
+  return `  ${count} preview skill${count === 1 ? "" : "s"} included — labelled in ${count === 1 ? "its" : "each skill's"} guidance; add --stable-only to skip.`;
 }
 
 function selectSkills(
   name: string | undefined,
   opts: InstallOptions
-): { skills: SkillMeta[]; previewSkipped: number } {
+): { skills: SkillMeta[]; previewIncluded: number; previewSkipped: number } {
   if (opts.all && opts.recommended) {
     die("Use only one bulk option: --all or --recommended.");
   }
@@ -144,13 +150,14 @@ function selectSkills(
 
   const skills = getBuiltinSkills();
   if (opts.all || opts.recommended) {
-    // Bulk installs take stable skills; preview (unverified intake) only with
-    // --include-preview. An explicit name below installs regardless of status.
-    const { selected, previewSkipped } = selectSkillsForBulkInstall(skills, {
+    // Bulk installs take stable and preview skills (preview is a label, not a
+    // gate); --stable-only skips preview. An explicit name below installs
+    // regardless of status.
+    const { selected, previewIncluded, previewSkipped } = selectSkillsForBulkInstall(skills, {
       recommended: Boolean(opts.recommended),
-      includePreview: Boolean(opts.includePreview),
+      stableOnly: Boolean(opts.stableOnly),
     });
-    return { skills: selected, previewSkipped };
+    return { skills: selected, previewIncluded, previewSkipped };
   }
 
   if (!name) {
@@ -168,7 +175,7 @@ function selectSkills(
     process.exit(1);
   }
 
-  return { skills: [skill], previewSkipped: 0 };
+  return { skills: [skill], previewIncluded: 0, previewSkipped: 0 };
 }
 
 function printAvailableSkillNames(): void {
@@ -347,7 +354,7 @@ skillsCommand
     const previewCount = skills.filter((s) => s.status === "preview").length;
     if (previewCount > 0) {
       console.log(
-        `\n[preview] = unverified intake (${previewCount}). --all / --recommended skip these unless you add --include-preview.`
+        `\n[preview] = not yet exercised in-engine by the Summer team (${previewCount}); labelled in the skill's guidance. --all / --recommended and summer setup install these like any other skill — add --stable-only to skip them.`
       );
     }
     console.log("\nInstall recommended: summer skills install --recommended");
@@ -364,8 +371,8 @@ skillsCommand
     "Install only the recommended skill subset (summer setup installs all by default)"
   )
   .option(
-    "--include-preview",
-    "With --all / --recommended, also install preview skills (unverified intake; skipped by default)"
+    "--stable-only",
+    "With --all / --recommended, skip preview skills (installed by default; labelled preview in their guidance)"
   )
   .option(
     "--agent <agent>",
@@ -378,6 +385,8 @@ skillsCommand
   // Legacy aliases: still accepted for old scripts, hidden from --help.
   .addOption(new Option("--as-claude-skill", "Legacy alias for --agent claude-code").hideHelp())
   .addOption(new Option("--as-cursor-skill", "Legacy alias for --agent cursor").hideHelp())
+  // Pre-reversal opt-in, kept one release as a hidden no-op so old scripts still parse.
+  .addOption(new Option("--include-preview", "No-op: preview skills install by default").hideHelp())
   .option(
     "--force",
     "Overwrite existing skill files (wipe stale skill dirs before copying)"
@@ -386,7 +395,7 @@ skillsCommand
     const agent = orDie(() => resolveSkillAgent(opts));
     const scope = orDie(() => resolveSkillScope(agent, opts));
     const location = resolveInstallLocation(agent, scope);
-    const { skills, previewSkipped } = selectSkills(name, opts);
+    const { skills, previewIncluded, previewSkipped } = selectSkills(name, opts);
 
     if (skills.length === 0) {
       console.log("No skills found.");
@@ -402,8 +411,11 @@ skillsCommand
       console.log(`  ${result.action} ${skill.name} -> ${result.path}`);
     }
     if (name && skills[0]?.status === "preview") {
-      console.log(`  Note: ${name} is a preview skill (unverified intake).`);
+      console.log(
+        `  Note: ${name} is a preview skill — not yet exercised in-engine by the Summer team; its guidance says so.`
+      );
     }
+    if (previewIncluded > 0) console.log(previewIncludedLine(previewIncluded));
     if (previewSkipped > 0) console.log(previewSkippedLine(previewSkipped));
 
     // Claude Code: also install slash commands (`tools/summer-cli/commands/*.md`)

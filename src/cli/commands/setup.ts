@@ -1,4 +1,4 @@
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import {
   SupportedAgent,
   configureAgentMcp,
@@ -6,7 +6,7 @@ import {
   resolveConfigScope,
   supportedAgents,
 } from "../../installer/agent-config.js";
-import { SkillSetupResult, setupSkills } from "../../installer/setup.js";
+import { SkillSetupResult, previewNote, setupSkills } from "../../installer/setup.js";
 import { DoctorResult, printDoctorResult, runDoctor } from "../../core/capabilities/doctor.js";
 import { brandLine, c, sym, tildeify } from "../../core/format.js";
 
@@ -37,6 +37,8 @@ interface SetupCommandOptions {
   json?: boolean;
   force?: boolean;
   recommended?: boolean;
+  stableOnly?: boolean;
+  /** Hidden no-op alias kept for one release; preview skills install by default now. */
   includePreview?: boolean;
 }
 
@@ -62,9 +64,11 @@ export const setupCommand = new Command("setup")
     "Install only the recommended skill subset instead of the whole library"
   )
   .option(
-    "--include-preview",
-    "Also install preview skills (unverified intake); skipped by default"
+    "--stable-only",
+    "Skip preview skills (installed by default; each is labelled preview in its guidance)"
   )
+  // Pre-reversal opt-in, kept one release as a hidden no-op so old scripts still parse.
+  .addOption(new Option("--include-preview", "No-op: preview skills install by default").hideHelp())
   .action(async (agentArg: string | undefined, opts: SetupCommandOptions) => {
     const agent = resolveAgentSelection(agentArg, opts.agent);
     const scope = resolveConfigScope(opts.scope);
@@ -83,7 +87,7 @@ export const setupCommand = new Command("setup")
       force: Boolean(opts.force),
       scope,
       recommended: Boolean(opts.recommended),
-      includePreview: Boolean(opts.includePreview),
+      stableOnly: Boolean(opts.stableOnly),
     });
 
     const doctor = await runDoctor({ quiet: true });
@@ -143,11 +147,9 @@ function printSetupResult(
     const installed = parseInstalledSkills(skills.stdout);
     if (installed.length > 0) {
       const where = parseSkillTargetDir(skills.stdout);
-      const skipped = skills.previewSkipped
-        ? `; ${skills.previewSkipped} preview skipped — use --include-preview`
-        : "";
+      const note = previewNote(skills);
       const tally = skills.installed
-        ? c.dim(` (${skills.installed.added} new, ${skills.installed.updated} updated${skipped})`)
+        ? c.dim(` (${skills.installed.added} new, ${skills.installed.updated} updated${note ? `; ${note}` : ""})`)
         : "";
       console.log(`  ${sym.ok()}  Installed ${c.bold(String(installed.length) + " skills")}${tally}  ${where ? c.dim(tildeify(where)) : ""}`);
       const grouped = installed.reduce<string[][]>((rows, name, i) => {
@@ -163,11 +165,10 @@ function printSetupResult(
       console.log(`  ${sym.ok()}  ${skills.message}`);
     }
   } else if (skills.status === "planned" && config.dryRun) {
+    const note = previewNote(skills);
     console.log(
       `  ${c.dim("(dry run)")}  Would install ${c.bold(String(skills.count ?? "?") + " skills")}${
-        skills.previewSkipped
-          ? c.dim(` (${skills.previewSkipped} preview skipped — use --include-preview)`)
-          : ""
+        note ? c.dim(` (${note})`) : ""
       }  ${c.dim(skills.destination ?? "")}`
     );
   } else if (skills.status === "planned" || skills.status === "skipped") {

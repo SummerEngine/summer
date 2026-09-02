@@ -40,9 +40,10 @@ export interface SkillRegistryEntry {
   description: string;
   /** Installed by `summer skills install --recommended` (used by `summer setup`). */
   recommended: boolean;
-  /** Bulk installs take `stable`; `preview` (unverified intake) needs
-   *  --include-preview; `deprecated` installs only by explicit name. A registry
-   *  generated before this field existed reads as `stable`. */
+  /** Bulk installs take `stable` and `preview` (preview is a label — "not yet
+   *  exercised in-engine by the Summer team" — carried in the skill's guidance;
+   *  --stable-only skips it); `deprecated` installs only by explicit name. A
+   *  registry generated before this field existed reads as `stable`. */
   status: SkillStatus;
   /** Package-root-relative skill dir, e.g. "library/skills/3d-lighting/". */
   path: string;
@@ -98,24 +99,28 @@ export function parseSkillRegistry(json: unknown): SkillRegistryEntry[] {
 
 /**
  * The one bulk-install rule (`skills install --all/--recommended` and
- * `summer setup` both use it): `stable` skills install; `preview` skills —
- * unverified intake — only with includePreview; `deprecated` never in bulk.
- * `previewSkipped` is how many preview skills the caller left out, so it can
- * say so instead of silently installing fewer than the library holds.
+ * `summer setup` both use it): `stable` and `preview` skills install —
+ * preview is a label ("not yet exercised in-engine by the Summer team"),
+ * carried in each skill's own guidance, not a reason to hide contributed work;
+ * `deprecated` never installs in bulk. `stableOnly` opts out of preview.
+ * The counts let the caller say how many preview skills it installed (or, with
+ * stableOnly, left out) instead of printing a bare total.
  */
 export function selectSkillsForBulkInstall(
   skills: readonly SkillRegistryEntry[],
-  options: { recommended?: boolean; includePreview?: boolean }
-): { selected: SkillRegistryEntry[]; previewSkipped: number } {
+  options: { recommended?: boolean; stableOnly?: boolean }
+): { selected: SkillRegistryEntry[]; previewIncluded: number; previewSkipped: number } {
   const candidates = options.recommended ? skills.filter((skill) => skill.recommended) : [...skills];
+  const stableOnly = options.stableOnly === true;
   const selected = candidates.filter(
-    (skill) =>
-      skill.status === "stable" || (options.includePreview === true && skill.status === "preview")
+    (skill) => skill.status === "stable" || (!stableOnly && skill.status === "preview")
   );
-  const previewSkipped = options.includePreview
-    ? 0
-    : candidates.filter((skill) => skill.status === "preview").length;
-  return { selected, previewSkipped };
+  const preview = candidates.filter((skill) => skill.status === "preview").length;
+  return {
+    selected,
+    previewIncluded: stableOnly ? 0 : preview,
+    previewSkipped: stableOnly ? preview : 0,
+  };
 }
 
 /** Absolute directory of a skill's library files (contains SKILL.md). */

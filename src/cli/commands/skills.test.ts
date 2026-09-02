@@ -21,8 +21,8 @@ vi.mock("../../core/skills-registry.js", async (importOriginal) => {
   };
 });
 
-describe("summer skills: preview intake", () => {
-  it("list tags preview skills and names the opt-in flag", async () => {
+describe("summer skills: preview skills", () => {
+  it("list tags preview skills and names the opt-out flag", async () => {
     const lines: string[] = [];
     const log = vi.spyOn(console, "log").mockImplementation((line: unknown) => {
       lines.push(String(line));
@@ -35,12 +35,17 @@ describe("summer skills: preview intake", () => {
     const output = lines.join("\n");
     expect(output).toMatch(/intake-skill\s+optional\s+\[preview\] intake-skill description/);
     expect(output).toMatch(/stable-skill\s+recommended\s+stable-skill description/);
-    expect(output).toContain("--include-preview");
+    expect(output).toContain("--stable-only");
+    expect(output).not.toContain("--include-preview");
   });
 
-  it("install exposes --include-preview", () => {
+  it("install exposes --stable-only and hides the --include-preview alias", () => {
     const install = skillsCommand.commands.find((command) => command.name() === "install")!;
-    expect(install.options.map((option) => option.long)).toContain("--include-preview");
-    expect(install.helpInformation()).toContain("--include-preview");
+    const longs = install.options.map((option) => option.long);
+    expect(longs).toContain("--stable-only");
+    expect(longs).toContain("--include-preview");
+    expect(install.options.find((option) => option.long === "--include-preview")?.hidden).toBe(true);
+    expect(install.helpInformation()).toContain("--stable-only");
+    expect(install.helpInformation()).not.toContain("--include-preview");
   });
 });

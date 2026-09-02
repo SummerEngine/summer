@@ -25,6 +25,9 @@
  *   node evals/routing/runner.ts --check            alias of default; also fails if baseline missing
  *   node evals/routing/runner.ts --verbose          per-query detail (fired prior rules, gaps)
  *   node evals/routing/runner.ts --lexical-only     A/B: disable kind prior + related boost
+ *   node evals/routing/runner.ts --heldout          run heldout.yaml instead — REPORT ONLY.
+ *                                                   No baseline, no gate, never tuned against.
+ *                                                   The number it prints is the honest one.
  *
  * Requires Node >= 22.18 (native TypeScript type stripping).
  */
@@ -79,7 +82,8 @@ interface Baseline {
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "..", "..");
-const queriesPath = path.join(here, "queries.yaml");
+const tuningQueriesPath = path.join(here, "queries.yaml");
+const heldoutQueriesPath = path.join(here, "heldout.yaml");
 const baselinePath = path.join(here, "baseline.json");
 
 // ── Corpus loading ─────────────────────────────────────────────────────────
@@ -170,6 +174,12 @@ function main(): number {
   const checkMode = args.has("--check");
   const verbose = args.has("--verbose");
   const lexicalOnly = args.has("--lexical-only");
+  const heldout = args.has("--heldout");
+  if (heldout && (updateBaseline || checkMode)) {
+    console.error("routing-eval: --heldout is report-only; it has no baseline to update or check");
+    return 1;
+  }
+  const queriesPath = heldout ? heldoutQueriesPath : tuningQueriesPath;
 
   // Corpus
   let corpus: CorpusEntry[] | null;
@@ -255,7 +265,7 @@ function main(): number {
   );
 
   // ── Report ──
-  console.log(`routing-eval  corpus: ${source} (${corpus.length} entries)`);
+  console.log(`routing-eval${heldout ? " [HELD-OUT — report only, not a tuning target]" : ""}  corpus: ${source} (${corpus.length} entries)`);
   console.log(`queries: ${scored.length} scored + ${gaps.length} expected gaps`);
   console.log(`ranker: ${lexicalOnly ? "lexical only (A/B)" : "kind-aware (bm25 x kind prior + related boost)"}`);
   console.log(`mean recall@5: ${meanRecall}`);
@@ -300,6 +310,11 @@ function main(): number {
     hijacked_queries: hijackedQueries,
     per_query: Object.fromEntries(scored.map((r) => [r.query, r.recallAt5])),
   };
+
+  if (heldout) {
+    console.log("\n(held-out set: no baseline gate. Do not add use_when phrasings to chase these queries.)");
+    return 0;
+  }
 
   if (lexicalOnly) {
     console.log("\n(--lexical-only is an A/B view; baseline gate skipped)");

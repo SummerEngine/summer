@@ -1,0 +1,130 @@
+# HELD-OUT routing eval — report only. NEVER tune metadata against this file.
+#
+# queries.yaml is the tuning set: entries get use_when phrasings added until its
+# misses resolve, so its recall says little about unseen asks. This file exists
+# so recall means something. Rules:
+#
+# - The queries were written blind — from the perspective of real users of a
+#   game engine (2D/3D, art, audio, multiplayer, debugging, publishing, editor
+#   tools) — BEFORE reading queries.yaml or the id list. The two reference-kind
+#   queries at the end were added after seeing the kind list, to cover that kind.
+# - Expected ids were mapped afterwards from registry/generated/index.json.
+# - `npm run eval:routing:heldout` prints recall@5 overall and per kind. There is
+#   no baseline and no gate. If a number here is bad, fix the METADATA for real
+#   users, then check this file again — do not add phrasings that mirror these
+#   queries. If you find yourself editing a use_when to match a line below, stop.
+# - `expected_gap: true` marks asks the library genuinely cannot serve; they are
+#   excluded from recall and reported as authoring backlog.
+
+queries:
+  # ── debugging ────────────────────────────────────────────────────────────
+  - query: "my player falls through the floor when I jump on the moving platform"
+    expected: [skill/debug]
+  - query: "why does my script say Invalid get index on a null instance"
+    expected: [tool/get-script-errors, skill/debug]
+  - query: "what errors are in the console right now"
+    expected: [tool/get-console, tool/get-debugger-errors]
+  - query: "the game runs at 20 fps in the forest level"
+    expected: [skill/tune-performance, skill/diagnosing-perf-regressions]
+  - query: "the jump feels floaty and unresponsive"
+    expected: [skill/game-feel, skill/debugging-game-feel]
+
+  # ── scene / editor tools ────────────────────────────────────────────────
+  - query: "take a picture of what the game looks like right now"
+    expected: [tool/screenshot]
+  - query: "start the game so I can try it"
+    expected: [tool/play, skill/play]
+  - query: "show me the node tree of the current scene"
+    expected: [tool/get-scene-tree]
+  - query: "connect the button pressed signal to my script"
+    expected: [tool/connect-signal]
+  - query: "make WASD move the character and space jump"
+    expected: [tool/input-map-bind, skill/fps-controller]
+  - query: "change the window size to 1920x1080"
+    expected: [tool/project-setting]
+  - query: "make the coins spin and bob up and down"
+    expected: [skill/scene-scripting]
+  - query: "rename the node Player to Hero"
+    expected: []
+    expected_gap: true
+    closest: tool/set-prop
+    note: "No rename tool; set-prop on `name` is the workaround but nothing routes to it."
+  - query: "undo the last change I made"
+    expected: []
+    expected_gap: true
+    closest: tool/snapshot-diff
+    note: "No undo/revert tool or skill; snapshot-diff only reports what changed."
+
+  # ── 2D art ──────────────────────────────────────────────────────────────
+  - query: "I need a pixel art sprite for a slime enemy"
+    expected: [skill/pixel-art]
+  - query: "split this sprite sheet into individual frames"
+    expected: [tool/slice-asset-sheet]
+  - query: "add a health bar to the HUD"
+    expected: [skill/ui-basics]
+  - query: "a sky with clouds at sunset"
+    expected: [skill/skybox-panorama]
+
+  # ── 3D art / lighting ───────────────────────────────────────────────────
+  - query: "make a low poly tree model"
+    expected: [skill/organic-model]
+  - query: "I need a 3D car for a racing game"
+    expected: [skill/vehicle-model, template/3d-racing-game]
+  - query: "the shadows look blocky and jagged"
+    expected: [skill/3d-lighting]
+  - query: "add fog and a moody atmosphere to the level"
+    expected: [skill/3d-lighting, skill/art-direction]
+  - query: "I want a top-down zelda style dungeon with rooms and doors"
+    expected: [skill/design-level, template/2d-dungeon-roguelike]
+
+  # ── VFX ─────────────────────────────────────────────────────────────────
+  - query: "make the enemy burst into sparks when it dies"
+    expected: [skill/vfx-hit-spark]
+  - query: "a wizard casts a glowing spell"
+    expected: [skill/vfx-magic-glow]
+
+  # ── animation / characters ──────────────────────────────────────────────
+  - query: "generate a walk cycle for my character"
+    expected: [skill/generate-motion]
+  - query: "make the character talk with moving lips"
+    expected: [skill/facial-and-lipsync]
+  - query: "an NPC that wanders around and talks to the player"
+    expected: [skill/design-npc]
+
+  # ── audio ───────────────────────────────────────────────────────────────
+  - query: "make a sword swing sound"
+    expected: [skill/sound-effect]
+  - query: "background music that gets more intense when enemies show up"
+    expected: [skill/adaptive-music]
+
+  # ── video ───────────────────────────────────────────────────────────────
+  - query: "record a trailer for the steam page"
+    expected: [skill/trailer-shot]
+  - query: "an intro cinematic where the camera flies over the castle"
+    expected: [skill/cinematic-cutscene]
+
+  # ── multiplayer ─────────────────────────────────────────────────────────
+  - query: "let two people play together over the internet"
+    expected: [skill/setup-multiplayer, skill/peer-to-peer-multiplayer]
+  - query: "how do I stop players from cheating by editing their own health"
+    expected: [skill/host-authoritative-state]
+
+  # ── project lifecycle / publishing ──────────────────────────────────────
+  - query: "start a brand new empty project"
+    expected: [skill/new-project, template/empty]
+  - query: "what templates can I start from"
+    expected: [skill/browse-templates]
+  - query: "export a windows build of my game"
+    expected: [skill/export-and-ship]
+  - query: "put my game online so my friends can play it in the browser"
+    expected: [tool/creator-publish, skill/export-and-ship]
+  - query: "run the game from CI without opening the editor window"
+    expected: [skill/headless-scripting, skill/running-in-the-cloud]
+  - query: "teach summer a new trick I just figured out so the next agent knows it"
+    expected: [skill/gameskill, skill/skill-create]
+
+  # ── references (added after seeing the kind list) ───────────────────────
+  - query: "which godot version is summer based on"
+    expected: [reference/godot-version]
+  - query: "what is the .summer folder in my project for"
+    expected: [reference/summer-folder]

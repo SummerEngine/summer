@@ -26,22 +26,29 @@ jobs:
       - name: Unit tests
         run: npx vitest run
 
-      - name: Validate library (schemas + capability lint)
+      # Schemas, identity/link integrity, host cross-checks (module exists,
+      # MCP registrations == descriptors, input_schema shape, evidence dates,
+      # SKILL.md names), capability lint. Explicit so a red library is a
+      # named failure, not something buried in `npm test`.
+      - name: Validate library (schemas + cross-checks + capability lint)
         run: npm run validate:library
 
+      # Gate: recall@5 non-regression vs the committed baseline; fails on a
+      # stale baseline (corpus_size / query_count / corpus_source mismatch).
       - name: Routing eval (no regression vs baseline)
         run: npm run eval:routing -- --check
+
+      # Held-out set: REPORT ONLY (exit 0). Numbers are for humans reading the
+      # log; never a tuning target.
+      - name: Routing eval — held-out (report only)
+        run: npm run eval:routing:heldout
 
       - name: Example evals (SKIP until runner lands)
         run: node evals/examples/runner-stub.ts
 
       # CONTRACT.md §6 parity gate: regenerated registry output must equal the
-      # committed registry/generated/. Soft-skips until scripts/generate-registry
-      # lands (ROADMAP wave 5), then this step becomes a hard drift gate.
-      - name: Registry parity (placeholder until compiler lands)
-        run: |
-          if node -e "process.exit(require('./package.json').scripts['generate:registry'] ? 0 : 1)"; then
-            npm run generate:registry -- --check
-          else
-            echo "::warning::generate:registry script not present yet — parity gate skipped (ROADMAP wave 5)"
-          fi
+      # committed registry/generated/ AND the applied root manifests, and every
+      # numeric tool/skill claim in the scanned docs must equal counts.json.
+      # Unconditional: the compiler exists; a missing script is a failure.
+      - name: Registry parity (regenerate == committed, count claims == counts.json)
+        run: npm run generate:registry -- --check

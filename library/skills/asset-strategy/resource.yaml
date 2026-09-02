@@ -4,7 +4,10 @@ version: 1.0.1
 summary: Route any 'I need a [thing]' asset request to the right specialist skill — disambiguates 2D / 3D / audio / video / VFX / animation pipelines.
 use_when:
   - planning asset creation, picking an asset pipeline, or routing an 'I need a [thing]' request to the right specialist skill
-  - broad creative requests
+  - '"I need a sword / a forest / a boss theme / an explosion" and it is unclear which pipeline (2D, 3D, audio, video, VFX, animation) fits'
+  - deciding what to generate versus import from the library before a big content pass
+do_not_use_when:
+  - the pipeline is already obvious — go straight to the specialist skill (pixel-art, character-model, sound-effect, ...)
 facets:
   lifecycle:
     - build

@@ -4,6 +4,10 @@ version: 1.0.0
 summary: Replace a node with a different type or scene, preserving its tree position and children.
 use_when:
   - swapping a placeholder for a prefab or changing a body type
+  - '"turn this StaticBody3D into a RigidBody3D but keep its children"'
+  - swapping the placeholder cube for the real prefab in place
+do_not_use_when:
+  - adding alongside instead of replacing — summer_add_node / summer_instantiate_scene
 facets:
   lifecycle:
     - build

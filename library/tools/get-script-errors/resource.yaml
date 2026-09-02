@@ -4,6 +4,10 @@ version: 1.0.0
 summary: Check one GDScript file for parse and compile errors without running the game.
 use_when:
   - after writing or editing a .gd file, to verify it compiles
+  - '"does this script compile?" / "is there a syntax error in player.gd?"'
+  - the editor shows a red error marker on a .gd file
+do_not_use_when:
+  - runtime failures while playing — summer_get_debugger_errors
 facets:
   lifecycle:
     - build

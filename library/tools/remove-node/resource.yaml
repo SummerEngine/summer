@@ -4,6 +4,8 @@ version: 1.0.0
 summary: Remove a node and all its children from a scene; undoable, but destructive.
 use_when:
   - deleting scene content the user asked to remove
+  - '"delete the old camera" / "get rid of the debug label"'
+  - removing the placeholder cube now that the real model is in
 do_not_use_when:
   - bulk-deleting top-level nodes without an explicit user request
 facets:

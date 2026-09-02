@@ -1,10 +1,13 @@
 id: tool/creator-releases
 kind: tool
 version: 1.0.0
-summary: List creator-owned releases from the Summercraft creator API with server-verified scope and
-  ownership.
+summary: List creator-owned releases from the Summercraft creator API with server-verified scope and ownership.
 use_when:
   - reviewing which versions of a project are live per channel
+  - '"what version is live right now?"'
+  - '"did the publish go through?" — confirming a release landed'
+do_not_use_when:
+  - publishing a new release — summer_creator_publish
 facets:
   lifecycle:
     - launch

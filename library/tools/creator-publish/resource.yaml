@@ -4,8 +4,11 @@ version: 1.0.0
 summary: Publish an exported Summer .pck through the versioned Summercraft creator API, with an explicit confirm step before upload.
 use_when:
   - releasing a user-approved build to a Summercraft channel
+  - '"ship this exported build to the live channel"'
+  - '"release version 1.2.0 of my game"'
 do_not_use_when:
   - the user has not approved the exact version, digest, and channel
+  - the game is not exported yet — export the .pck first (skill/export-and-ship)
 facets:
   lifecycle:
     - launch

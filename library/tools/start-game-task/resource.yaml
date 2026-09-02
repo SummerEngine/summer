@@ -1,10 +1,13 @@
 id: tool/start-game-task
 kind: tool
 version: 1.0.0
-summary: "Plan the right Summer workflow for a game-building task: skill routes, tool groups,
-  confirmation gates, and verification steps."
+summary: "Plan the right Summer workflow for a game-building task: skill routes, tool groups, confirmation gates, and verification steps."
 use_when:
   - starting any substantial AI game-building task, before mutating the project
+  - the user asks for a whole feature (inventory, boss fight, day-night cycle) and the path is not obvious
+  - choosing which skills and confirmation gates apply before touching the project
+do_not_use_when:
+  - a one-step edit (one property, one node) — call the tool directly
 facets:
   lifecycle:
     - build

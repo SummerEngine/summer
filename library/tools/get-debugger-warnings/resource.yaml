@@ -4,6 +4,10 @@ version: 1.0.0
 summary: Read runtime warnings from the debugger panel as structured entries with file, line, and callstack.
 use_when:
   - diagnostics show a non-zero debugger warning count
+  - '"the debugger shows yellow warnings, what are they?"'
+  - checking for deprecated calls or node configuration warnings after a run
+do_not_use_when:
+  - errors, not warnings — summer_get_debugger_errors
 facets:
   lifecycle:
     - build

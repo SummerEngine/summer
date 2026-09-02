@@ -1,12 +1,14 @@
 id: tool/generate-motion
 kind: tool
 version: 1.0.0
-summary: Generate a curated mocap animation clip for a Summer-rigged humanoid; costs credits, so
-  confirm with the user first.
+summary: Generate a curated mocap animation clip for a Summer-rigged humanoid; costs credits, so confirm with the user first.
 use_when:
   - adding idle, walk, run, or combat clips to a rigged character
+  - '"make my character walk / run / swing a sword"'
+  - '"I need an idle animation for the rigged NPC"'
 do_not_use_when:
   - the target model was not rigged by the Summer pipeline
+  - the motion is not humanoid (doors, vehicles, cameras) — animate with a script or AnimationPlayer
 facets:
   lifecycle:
     - build

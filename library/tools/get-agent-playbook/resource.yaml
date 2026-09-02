@@ -1,10 +1,13 @@
 id: tool/get-agent-playbook
 kind: tool
 version: 1.0.0
-summary: "AI-first operating guide for Summer MCP: safe workflow, verification ladder, honesty
-  rules, anti-patterns, and recovery steps."
+summary: "AI-first operating guide for Summer MCP: safe workflow, verification ladder, honesty rules, anti-patterns, and recovery steps."
 use_when:
   - at the start of a fresh session, before touching scenes
+  - a new chat is about to touch a project it has never seen
+  - the agent is unsure of Summer's safety rules or verification ladder
+do_not_use_when:
+  - mid-task lookups of a specific tool's arguments — read that tool's description instead
 facets:
   lifecycle:
     - build

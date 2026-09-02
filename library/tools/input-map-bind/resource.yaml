@@ -4,6 +4,10 @@ version: 1.0.0
 summary: Create an input action if needed and bind keyboard or mouse events to it.
 use_when:
   - setting up player controls like jump, move, or interact
+  - '"make E interact" / "bind shoot to left mouse"'
+  - adding a gamepad button for an existing action
+do_not_use_when:
+  - reading which keys are already bound — summer_get_project_context / project.godot
 facets:
   lifecycle:
     - build

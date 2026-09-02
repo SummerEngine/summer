@@ -4,6 +4,11 @@ version: 1.0.0
 summary: Add a node of any Godot type to an exact scene, which does not need to be the active editor tab.
 use_when:
   - building out scene structure node by node
+  - '"add a Camera3D / DirectionalLight3D / Area2D / Timer to this scene"'
+  - giving the player a child node for a hitbox, sprite, or audio player
+do_not_use_when:
+  - placing an existing .tscn prefab or imported model — summer_instantiate_scene
+  - 3+ related nodes or any computed placement — summer_run_script
 facets:
   lifecycle:
     - build

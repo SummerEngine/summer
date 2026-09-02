@@ -4,6 +4,10 @@ version: 1.0.0
 summary: Read or update the shared non-secret Summer configuration; mutations require confirm, and tokens are never returned or accepted.
 use_when:
   - inspecting or changing shared CLI and MCP configuration values
+  - '"which creator project id / channel is this CLI pointed at?"'
+  - switching the default publish channel
+do_not_use_when:
+  - reading or setting auth tokens — they never pass through this tool; use summer login / logout
 facets:
   lifecycle:
     - launch

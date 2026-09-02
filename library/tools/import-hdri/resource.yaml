@@ -4,8 +4,11 @@ version: 1.0.0
 summary: Search Poly Haven's CC0 HDRI library and import one into res://sky/ as environment lighting, with the exact run-script snippet that wires the sky.
 use_when:
   - a 3D scene needs real environment lighting and reflections — the cheapest whole-scene visual upgrade
+  - '"give this scene realistic sky lighting" / "add a sunset sky"'
+  - '"the 3D scene looks flat and grey"'
 do_not_use_when:
   - the project already has a sky/HDRI to reuse
+  - a 2D project — HDRIs are 3D environment lighting
 facets:
   lifecycle:
     - build

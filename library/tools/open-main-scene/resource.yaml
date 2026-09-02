@@ -4,6 +4,10 @@ version: 1.0.0
 summary: Open the project's configured main scene from project settings instead of guessing scene filenames.
 use_when:
   - any tool reports that no scene is open
+  - "\"get me back to the game's main scene\""
+  - a fresh session with no active scene tab
+do_not_use_when:
+  - a specific non-main scene — summer_open_scene with its path
 facets:
   lifecycle:
     - build

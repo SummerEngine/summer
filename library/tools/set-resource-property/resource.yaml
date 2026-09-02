@@ -4,6 +4,10 @@ version: 1.0.0
 summary: Set a nested property on a resource attached to a node, like a collision shape size or material color.
 use_when:
   - modifying sub-properties of meshes, materials, or shapes
+  - '"make the box mesh 2 metres wide" / "change the capsule radius"'
+  - setting the material albedo colour or roughness on a mesh
+do_not_use_when:
+  - the property is on the node itself (position, visible, scale) — summer_set_prop
 facets:
   lifecycle:
     - build

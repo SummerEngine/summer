@@ -4,6 +4,8 @@ version: 1.0.0
 summary: Compact structured snapshot of the edited scene (paths, transforms, world AABBs, fingerprints, counts) — the cheap read before and after every mutation batch.
 use_when:
   - taking a diffable baseline before a mutation batch, or verifying transforms/AABBs/fingerprints after one
+  - '"where exactly is everything in this scene?" — positions, sizes, bounds'
+  - '"are these two props overlapping?" / "is anything floating?"'
 do_not_use_when:
   - you only need the hierarchy shape — summer_get_scene_tree
   - "requires an engine build with GetWorldSnapshot (engine PR #156); on current shipped engines this returns engine_lacks_op"

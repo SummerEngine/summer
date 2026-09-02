@@ -4,6 +4,11 @@ version: 1.0.0
 summary: Get every editable property of a node with current values, types, and resource info.
 use_when:
   - before modifying a node, to understand its current state
+  - "\"what is the player's speed / position / collision layer?\""
+  - '"which material and mesh does this MeshInstance3D use?"'
+do_not_use_when:
+  - sub-properties of the material, mesh, or shape itself — summer_inspect_resource
+  - live values while the game runs — summer_inspect_runtime_node
 facets:
   lifecycle:
     - build

@@ -4,6 +4,10 @@ version: 1.0.0
 summary: Check whether the game is running; returns the active scene path when it is.
 use_when:
   - deciding whether to boot, restart, or capture the running game
+  - '"is the game already open / still playing?"'
+  - before summer_play or a game-target screenshot, to avoid a double launch
+do_not_use_when:
+  - you need the live scene contents — summer_get_runtime_tree
 facets:
   lifecycle:
     - build

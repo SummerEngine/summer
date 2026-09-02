@@ -4,7 +4,11 @@ version: 1.0.0
 summary: Start the game (main scene or a specific scene) inside Summer Engine's viewport.
 use_when:
   - runtime verification after edits
-  - testing one level or UI screen in isolation
+  - the user wants to try the game or one level after a change
+  - reproducing a bug that only shows at runtime
+do_not_use_when:
+  - the game is already running and needs a restart — summer_stop first
+  - only checking whether it is running — summer_is_running
 facets:
   lifecycle:
     - build

@@ -4,6 +4,10 @@ version: 1.0.0
 summary: "Generate audio via Summer Studio: text-to-speech, sound effects, music, or multi-voice dialogue."
 use_when:
   - creating sound effects, music beds, or spoken lines for the game
+  - '"I need a jump sound / a sword swing / a coin pickup"'
+  - '"read this dialogue line in a gruff voice" or "background music for the menu"'
+do_not_use_when:
+  - a .wav/.ogg already exists online — summer_import_from_url
 facets:
   lifecycle:
     - build
@@ -61,9 +65,7 @@ input_schema:
     options:
       type: object
       additionalProperties: {}
-      description: Provider params, spread at the SDK's top level. Voice tuning goes in
-        options.voiceSettings with camelCase keys (stability, similarityBoost, style, speed,
-        useSpeakerBoost); flat snake_case is silently ignored.
+      description: Provider params, spread at the SDK's top level. Voice tuning goes in options.voiceSettings with camelCase keys (stability, similarityBoost, style, speed, useSpeakerBoost); flat snake_case is silently ignored.
   required:
     - capability
   additionalProperties: false

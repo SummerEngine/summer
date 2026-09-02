@@ -1,10 +1,14 @@
 id: tool/generate-3d
 kind: tool
 version: 1.0.0
-summary: Generate a 3D model from text or images via Summer Studio, with optional auto-rig and
-  animation pipeline; waits or returns a job id.
+summary: Generate a 3D model from text or images via Summer Studio, with optional auto-rig and animation pipeline; waits or returns a job id.
 use_when:
   - creating a 3D asset or character from a prompt or reference image
+  - '"make me a low-poly tree / a sci-fi crate / a goblin for my game"'
+  - turning a concept image into a 3D model
+do_not_use_when:
+  - a 2D sprite, icon, or texture — summer_generate_image
+  - the model file already exists at a URL — summer_import_from_url
 facets:
   lifecycle:
     - build
@@ -58,8 +62,7 @@ input_schema:
       enum:
         - character
         - object
-      description: Controls whether hidden reference preparation targets a rig-safe character pose or
-        isolated object view
+      description: Controls whether hidden reference preparation targets a rig-safe character pose or isolated object view
     referencePreparation:
       type: string
       enum:

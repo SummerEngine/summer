@@ -4,6 +4,11 @@ version: 1.0.0
 summary: Read a scene's node tree, with explicit depth and limit to avoid the engine's silent default truncation.
 use_when:
   - inspecting scene structure before or after mutations
+  - '"what nodes are in this scene?" / "how is the level structured?"'
+  - finding the path of the player node before editing it
+do_not_use_when:
+  - the RUNNING game's tree — summer_get_runtime_tree
+  - transforms and bounds, not just names — summer_world_snapshot
 facets:
   lifecycle:
     - build

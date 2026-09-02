@@ -4,8 +4,11 @@ version: 1.0.0
 summary: Search the asset library and import the best match into the project in one step, optionally adding 3D models to a scene.
 use_when:
   - the user asks to add a kind of asset, like 'add a tree to the scene'
+  - '"put a rock / a barrel / a torch in the scene from the library"'
+  - '"find me a free chest model and drop it in"'
 do_not_use_when:
   - you already know the exact asset id (import by id instead)
+  - the asset is at a URL, not in the Summer library — summer_import_from_url
 facets:
   lifecycle:
     - build

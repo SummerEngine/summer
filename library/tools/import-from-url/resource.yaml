@@ -4,6 +4,11 @@ version: 1.0.0
 summary: Download one file from a URL and run Godot's full import pipeline so the asset is immediately usable.
 use_when:
   - importing a model, texture, or audio file from an external URL
+  - '"grab this .glb from the link and add it to my project"'
+  - '"download this texture from the web into res://"'
+do_not_use_when:
+  - several files at once — summer_import_from_url_batch
+  - searching the Summer library instead of a known URL — summer_import_asset
 facets:
   lifecycle:
     - build

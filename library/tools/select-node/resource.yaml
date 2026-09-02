@@ -4,6 +4,10 @@ version: 1.0.0
 summary: Select a node in the editor scene tree and show it in the inspector.
 use_when:
   - focusing the user's editor on a specific node
+  - highlighting the player in the scene tree so the user can see it
+  - showing the user the node whose properties are about to change
+do_not_use_when:
+  - reading properties — summer_inspect_node; selection changes nothing
 facets:
   lifecycle:
     - build

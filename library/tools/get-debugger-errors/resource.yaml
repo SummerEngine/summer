@@ -4,6 +4,11 @@ version: 1.0.0
 summary: Read deduplicated runtime errors from the debugger, distinct from console prints; optional stack traces.
 use_when:
   - the running game hit failures like null references or missing nodes
+  - '"the game crashed while I was playing, what was it?"'
+  - '"why did my scene fail at runtime?"'
+do_not_use_when:
+  - the script will not even compile — summer_get_script_errors
+  - plain print output — summer_get_console
 facets:
   lifecycle:
     - build

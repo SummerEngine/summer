@@ -4,6 +4,11 @@ version: 1.0.0
 summary: Create a new minimal .tscn on disk with a create-only guard and read-back verification; never touches the open scene.
 use_when:
   - starting a new level, prefab, or UI scene file
+  - '"make a new empty scene file for the enemy prefab"'
+  - starting Level2.tscn from scratch as its own file
+do_not_use_when:
+  - adding nodes into the currently open scene — summer_add_node
+  - the file already exists — the create-only guard refuses; summer_open_scene it instead
 facets:
   lifecycle:
     - build

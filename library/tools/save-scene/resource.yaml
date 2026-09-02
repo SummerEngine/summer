@@ -4,6 +4,8 @@ version: 1.0.0
 summary: Save an explicit scene to disk, for standalone saves or save-as.
 use_when:
   - a standalone save or save-as is needed
+  - '"save a copy of this scene as level1_backup.tscn"'
+  - the user explicitly asks to save
 do_not_use_when:
   - after ordinary mutation tools, which already append one save
 facets:

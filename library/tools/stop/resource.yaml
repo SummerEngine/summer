@@ -1,10 +1,14 @@
 id: tool/stop
 kind: tool
 version: 1.0.0
-summary: Stop the running game.
+summary: Stop the running game. Does not revert scene edits, undo anything, or save — the editor state is left exactly as it is.
 use_when:
   - runtime verification is finished
-  - an existing instance must restart to observe changes
+  - the game must restart to pick up scene or script changes
+  - a runaway or frozen playtest needs killing
+do_not_use_when:
+  - you want to undo scene edits — stopping reverts nothing; use editor undo / summer_batch Undo
+  - saving — stopping does not save; summer_save_scene
 facets:
   lifecycle:
     - build

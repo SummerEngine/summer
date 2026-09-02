@@ -4,6 +4,11 @@ version: 1.0.0
 summary: "Safely replace text in an existing project file: unique match required by default, then a sha256-guarded write."
 use_when:
   - targeted edits to scripts, scenes, or config without resending the whole file
+  - '"change speed = 5 to speed = 8 in player.gd"'
+  - renaming one function call in a script without rewriting the file
+do_not_use_when:
+  - writing a new file or rewriting most of it — summer_write_file
+  - the same text appears more than once and you have not narrowed the match
 facets:
   lifecycle:
     - build

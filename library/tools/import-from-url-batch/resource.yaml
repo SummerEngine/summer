@@ -4,6 +4,10 @@ version: 1.0.0
 summary: Download multiple files by URL in one operation with a single filesystem scan afterwards.
 use_when:
   - importing several related files, like a model plus its textures
+  - '"download the model plus its three textures together"'
+  - '"pull all these sound files into the project"'
+do_not_use_when:
+  - one file — summer_import_from_url
 facets:
   lifecycle:
     - build

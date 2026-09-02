@@ -1,10 +1,13 @@
 id: tool/get-studio-workflow
 kind: tool
 version: 1.0.0
-summary: "Discover Summer Studio's guided workflow recipes: starter prompts, ordered steps, required
-  tools, and honest support levels."
+summary: "Discover Summer Studio's guided workflow recipes: starter prompts, ordered steps, required tools, and honest support levels."
 use_when:
   - planning a multi-step asset workflow like sprite sheets or character packs
+  - '"what is the recommended sequence for a full character with animations?"'
+  - '"which tools do I need for a tileset pack?"'
+do_not_use_when:
+  - you already know the exact tool to call — call it
 facets:
   lifecycle:
     - build

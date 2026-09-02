@@ -4,6 +4,11 @@ version: 1.0.0
 summary: Read recent editor Output panel messages, deduplicated and filterable by level, type, or substring.
 use_when:
   - diagnostics report console issues and you need the message bodies
+  - '"what did the game print?" / "show me the log output"'
+  - checking whether your print() statements fired
+do_not_use_when:
+  - runtime errors with stack traces — summer_get_debugger_errors
+  - compile errors in a script you just edited — summer_get_script_errors
 facets:
   lifecycle:
     - build

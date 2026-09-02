@@ -4,6 +4,10 @@ version: 1.0.0
 summary: Connect a signal between two nodes; the receiver's script must define the target method.
 use_when:
   - wiring events like body_entered, pressed, or timeout
+  - '"when the button is pressed, call my function"'
+  - running code when the player enters an Area3D or a Timer finishes
+do_not_use_when:
+  - the receiver script does not define the target method yet — write it first with summer_write_file / summer_replace_text
 facets:
   lifecycle:
     - build

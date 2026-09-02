@@ -4,6 +4,8 @@ version: 1.0.0
 summary: Diff two world snapshots into added/removed/changed nodes and count deltas — the structural receipt that a mutation did exactly what was intended.
 use_when:
   - verifying a mutation batch against the snapshot_id taken before it
+  - '"what changed in the scene after that script ran?"'
+  - proving a batch only moved the props it was meant to
 do_not_use_when:
   - no baseline snapshot exists — take summer_world_snapshot first
   - "requires an engine build with DiffWorldSnapshot (engine PR #156); on current shipped engines this returns engine_lacks_op"

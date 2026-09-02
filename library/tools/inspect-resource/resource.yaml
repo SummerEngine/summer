@@ -4,6 +4,10 @@ version: 1.0.0
 summary: Get all properties of a resource such as a material, mesh, shape, or environment.
 use_when:
   - reading sub-properties that the node inspector only names
+  - '"what colour is this material?" / "how big is this collision shape?"'
+  - '"what settings does the WorldEnvironment resource have?"'
+do_not_use_when:
+  - top-level node properties — summer_inspect_node
 facets:
   lifecycle:
     - build

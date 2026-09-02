@@ -4,8 +4,11 @@ version: 1.0.0
 summary: Open a scene file in the editor to switch tabs.
 use_when:
   - switching the editor to an explicitly known scene path
+  - '"switch to level2.tscn" / "open the player prefab in the editor"'
+  - a tool needs a different scene to be the active tab
 do_not_use_when:
   - guessing scene filenames (resolve them from project context first)
+  - the project's main scene — summer_open_main_scene
 facets:
   lifecycle:
     - build

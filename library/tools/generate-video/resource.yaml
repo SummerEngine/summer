@@ -4,6 +4,10 @@ version: 1.0.0
 summary: Generate a video from text or an image with allowlisted models via Summer Studio.
 use_when:
   - creating cutscene, trailer, or reference footage from a prompt
+  - '"make a short intro cinematic from this concept art"'
+  - '"a 5-second clip of the castle at sunset for the trailer"'
+do_not_use_when:
+  - a looping in-game animation or sprite frames — summer_generate_image / skill/sprite-sheet
 facets:
   lifecycle:
     - build

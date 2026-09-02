@@ -40,7 +40,7 @@ What it does (verified output at the time of writing; counts move as the library
 ```
   ✓  Linked to Claude Code  ~/.claude.json
   (local dev)  MCP server command: node /abs/path/summer-engine-agent/dist/bin/summer.js mcp
-  ✓  Installed 80 skills (80 new, 0 updated; 10 preview skipped — use --include-preview)  ~/.claude/skills/
+  ✓  Installed every stable skill (preview skills are skipped unless `--include-preview`) (80 new, 0 updated; 10 preview skipped — use --include-preview)  ~/.claude/skills/
 Doctor …
 ```
 

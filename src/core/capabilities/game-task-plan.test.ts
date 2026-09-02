@@ -101,4 +101,35 @@ describe("buildGameTaskPlan", () => {
     expect(plan.mcpToolPlan.assets).toContain("summer_search_assets");
     expect(plan.mcpToolPlan.assets).not.toContain("summer_generate_3d");
   });
+
+  describe("keyword routing matches whole words, not substrings", () => {
+    const cases: Array<{ goal: string; mode: string; target: string }> = [
+      // "spaceship" used to match the ship-mode keyword "ship".
+      { goal: "Make a spaceship model", mode: "asset", target: "3d" },
+      // "build" used to match the ui-target keyword "ui" (b-ui-ld).
+      { goal: "Build a dungeon level", mode: "feature", target: "level" },
+      // "fortune" used to match the playtest keyword "tune".
+      { goal: "Add a fortune wheel", mode: "feature", target: "general" },
+      // "terror" used to match the debug keyword "error".
+      { goal: "Add a terror enemy", mode: "feature", target: "npc" },
+      // "suit" used to match the ui-target keyword "ui".
+      { goal: "Create a suit", mode: "feature", target: "general" },
+    ];
+
+    for (const { goal, mode, target } of cases) {
+      it(`"${goal}" -> mode ${mode}, target ${target}`, () => {
+        const plan = buildGameTaskPlan({ goal });
+        expect(plan.mode).toBe(mode);
+        expect(plan.target).toBe(target);
+      });
+    }
+
+    it("still matches real keywords, including plurals and phrases", () => {
+      expect(buildGameTaskPlan({ goal: "Export and ship the game to Steam" }).mode).toBe("ship");
+      expect(buildGameTaskPlan({ goal: "The player controller is not working" }).mode).toBe("debug");
+      expect(buildGameTaskPlan({ goal: "Generate three rock models" }).target).toBe("3d");
+      expect(buildGameTaskPlan({ goal: "Spawn more enemies in wave two" }).target).toBe("npc");
+      expect(buildGameTaskPlan({ goal: "Do a ui pass on the menus" }).mode).toBe("polish");
+    });
+  });
 });

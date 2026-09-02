@@ -74,12 +74,52 @@ export interface GameTaskPlan {
 
 type WeightedSkill = { name: string; why: string; weight: number };
 
-const SKILL_BY_NAME: Map<string, SkillRegistryEntry> = new Map(
-  getSkillRegistry().map((skill) => [skill.name, skill])
-);
+let skillIndex: Map<string, SkillRegistryEntry> | null = null;
+
+/**
+ * Lazily load the generated skill registry on first use. Loading at module
+ * import made a missing or corrupt registry/generated/skills-registry.json
+ * crash the whole MCP server / CLI at import time; now only this tool fails,
+ * with an actionable message.
+ */
+function skillByName(): Map<string, SkillRegistryEntry> {
+  if (skillIndex) return skillIndex;
+  let skills: readonly SkillRegistryEntry[];
+  try {
+    skills = getSkillRegistry();
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      "The Summer skill registry could not be loaded (registry/generated/skills-registry.json): " +
+        `${reason}. Reinstall summer-engine, or in a source checkout run 'npm run generate:registry'.`
+    );
+  }
+  skillIndex = new Map(skills.map((skill) => [skill.name, skill]));
+  return skillIndex;
+}
+
+const PATTERN_CACHE = new Map<string, RegExp>();
+
+/**
+ * Whole-word / whole-phrase match with light plural tolerance ("model" also
+ * matches "models", "enemy" also matches "enemies"). Substring matching routed
+ * "spaceship" to ship mode, "build" to the ui target ("b-ui-ld"), "fortune" to
+ * playtest ("tune") and "terror" to debug ("error").
+ */
+function wordPattern(word: string): RegExp {
+  const cached = PATTERN_CACHE.get(word);
+  if (cached) return cached;
+  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const plural = word.endsWith("y")
+    ? `(?:${escaped}|${escaped.slice(0, -1)}ies)`
+    : `${escaped}(?:e?s)?`;
+  const pattern = new RegExp(`(?<![a-z0-9])${plural}(?![a-z0-9])`, "i");
+  PATTERN_CACHE.set(word, pattern);
+  return pattern;
+}
 
 function includesAny(text: string, words: string[]): boolean {
-  return words.some((word) => text.includes(word));
+  return words.some((word) => wordPattern(word).test(text));
 }
 
 function inferMode(goal: string, requested: GameTaskMode): Exclude<GameTaskMode, "auto"> {
@@ -122,7 +162,7 @@ function inferTarget(goal: string, requested: GameTaskTarget): GameTaskPlan["tar
 }
 
 function addSkill(routes: WeightedSkill[], name: string, why: string, weight: number): void {
-  if (!SKILL_BY_NAME.has(name)) return;
+  if (!skillByName().has(name)) return;
   const existing = routes.find((route) => route.name === name);
   if (existing) {
     if (weight > existing.weight) {
@@ -302,7 +342,7 @@ function inferSkills(mode: GameTaskPlan["mode"], target: GameTaskPlan["target"],
     .sort((a, b) => b.weight - a.weight)
     .slice(0, 7)
     .map((route) => {
-      const skill = SKILL_BY_NAME.get(route.name) as SkillRegistryEntry;
+      const skill = skillByName().get(route.name) as SkillRegistryEntry;
       return {
         id: skill.id,
         name: skill.name,

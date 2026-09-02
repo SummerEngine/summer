@@ -1,4 +1,5 @@
 import {
+  SummerStoreError,
   getSummerDir,
   readStoreJson,
   readStoreText,
@@ -94,19 +95,35 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
   return {};
 }
 
+/**
+ * credential-metadata.json is ADVISORY: everything in it is re-derivable from
+ * the JWT (see getCredentialMetadata's fallback), so unparseable contents are
+ * treated as an empty document and rewritten on the next save. It must never
+ * strand a valid token behind an "Already logged in" that cannot be used.
+ * Unsafe files (symlink/directory) and unreadable stores still fail: those are
+ * the store's security contract, not a stale-content problem.
+ */
 async function readMetadata(): Promise<CredentialMetadataDocument> {
-  return (
-    (await readStoreJson<CredentialMetadataDocument>(METADATA_FILE)) ?? {
-      schemaVersion: 1,
+  try {
+    return (
+      (await readStoreJson<CredentialMetadataDocument>(METADATA_FILE)) ?? {
+        schemaVersion: 1,
+      }
+    );
+  } catch (error) {
+    if (error instanceof SummerStoreError && error.code === "invalid_store_json") {
+      return { schemaVersion: 1 };
     }
-  );
+    throw error;
+  }
 }
 
 async function updateMetadata(
   kind: "auth" | "creator",
-  value: CredentialMetadata | undefined
+  value: CredentialMetadata | undefined,
+  current?: CredentialMetadataDocument
 ): Promise<void> {
-  const current = await readMetadata();
+  current ??= await readMetadata();
   const next: CredentialMetadataDocument = {
     ...current,
     schemaVersion: 1,
@@ -138,8 +155,12 @@ export async function saveAuthToken(
 ): Promise<void> {
   const clean = token.trim();
   if (!clean) throw new Error("Cannot save an empty auth token.");
+  // Read (and so validate) the metadata document BEFORE the token goes live:
+  // a metadata file the store refuses must fail the login while nothing has
+  // been written, not after auth-token already exists.
+  const metadata = await readMetadata();
   await writeStoreText(AUTH_TOKEN_FILE, `${clean}\n`);
-  await updateMetadata("auth", decodeJwtMetadata(clean, scopes));
+  await updateMetadata("auth", decodeJwtMetadata(clean, scopes), metadata);
 }
 
 /**
@@ -203,10 +224,14 @@ export async function saveLoginSession(session: LoginSession): Promise<void> {
   // Keep auth-token and user.json canonical: the desktop engine already reads
   // those exact files. credential-metadata.json adds audience/scope information
   // without changing or duplicating the secret.
-  // Activate the new auth token last. The desktop engine cross-checks token.sub
-  // against user.json, so an interrupted multi-file write fails closed instead
-  // of adopting a mismatched identity.
-  if (session.user) await saveUserInfo(session.user);
+  // Write order: user.json, then auth-token, then the advisory metadata. The
+  // desktop engine cross-checks token.sub against user.json's id
+  // (summerengine auth_manager.cpp, inspect_cli_bootstrap_credential), so a
+  // write interrupted between the first two files fails closed instead of
+  // adopting a mismatched identity. The metadata write is last and is NOT a
+  // gate: the token is already live by then, and its contents are re-derived
+  // from the JWT whenever the file is missing or unparseable.
+  await saveUserInfo(session.user);
   await saveAuthToken(session.token, session.scopes);
 }
 

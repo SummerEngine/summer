@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, stat, symlink } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, symlink } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -137,6 +137,40 @@ describe("secure Summer store", () => {
         user: { id: "user-1", email: "maker@example.com" },
       })
     ).rejects.toThrow(/mismatched identity/);
+    expect(await getAuthToken()).toBeNull();
+  });
+});
+
+describe("advisory credential metadata", () => {
+  const jwt = token({
+    sub: "user-1",
+    aud: "summer-cli",
+    type: "cli",
+    exp: Math.floor(Date.now() / 1000) + 3600,
+  });
+  const session = { token: jwt, user: { id: "user-1", email: "maker@example.com" } };
+
+  it("treats corrupt credential-metadata.json as empty instead of stranding the token", async () => {
+    await writeStoreText("credential-metadata.json", "{not json");
+
+    await expect(saveLoginSession(session)).resolves.toBeUndefined();
+    expect(await getAuthToken()).toBe(jwt);
+    expect(await getUserInfo()).toMatchObject({ id: "user-1" });
+    expect(await getCredentialMetadata()).toMatchObject({
+      auth: { audience: ["summer-cli"], tokenType: "cli" },
+    });
+    expect(
+      JSON.parse(await readFile(join(root, ".summer", "credential-metadata.json"), "utf8"))
+    ).toMatchObject({ schemaVersion: 1 });
+  });
+
+  it("validates the metadata file BEFORE the token is written", async () => {
+    // A directory where the store expects a regular file is refused by the
+    // store's safety contract; that refusal must leave no token behind.
+    await writeStoreText("placeholder", "x"); // creates ~/.summer
+    await mkdir(join(root, ".summer", "credential-metadata.json"));
+
+    await expect(saveLoginSession(session)).rejects.toThrow(/regular file/);
     expect(await getAuthToken()).toBeNull();
   });
 });

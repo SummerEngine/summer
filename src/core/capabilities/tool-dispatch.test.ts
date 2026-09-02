@@ -176,3 +176,59 @@ describe("tool-dispatch registry", () => {
     );
   });
 });
+
+describe("scene-scripting and perception dispatch entries", () => {
+  it("run-script refuses before sending when the engine advert lacks RunSceneScript", async () => {
+    const { ctx, calls } = fakeEngineContext({
+      getEngineCapabilities: () => ({ opKinds: ["AddNode"] }),
+      getEngineVersion: () => "0.5.61",
+    });
+    await expect(
+      dispatchTool("run-script", { source: "func run(ctx):\n\tpass" }, ctx)
+    ).rejects.toThrow(/does not support the RunSceneScript op/);
+    expect(calls).toEqual([]);
+  });
+
+  it("run-script sends a clamped RunSceneScript op with an identity-bound call and a longer client budget", async () => {
+    const { ctx, calls } = fakeEngineContext();
+    await dispatchTool("run-script", { source: "func run(ctx):\n\tpass", max_seconds: 999 }, ctx);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.method).toBe("executeIdentityBoundOps");
+    const [ops, , timeoutMs] = calls[0]!.args as [Array<Record<string, unknown>>, unknown, number];
+    expect(ops[0]).toMatchObject({ op: "RunSceneScript", max_seconds: 120, checkpoint: true });
+    expect(timeoutMs).toBeGreaterThan(120_000);
+  });
+
+  it("world-snapshot and snapshot-diff dispatch single ops and surface failures", async () => {
+    const { ctx, calls } = fakeEngineContext();
+    await dispatchTool("world-snapshot", { max_nodes: 100 }, ctx);
+    await dispatchTool("snapshot-diff", { from_id: "snap-1" }, ctx);
+    expect(calls.map((call) => call.args[0])).toEqual([
+      [{ op: "GetWorldSnapshot", max_nodes: 100 }],
+      [{ op: "DiffWorldSnapshot", from_id: "snap-1" }],
+    ]);
+    const failing = fakeEngineContext({
+      executeOps: async () => ({ ok: false, results: [{ ok: false, failure_reason: "game_not_running", error: "no running game" }] }),
+    });
+    await expect(dispatchTool("get-runtime-tree", {}, failing.ctx)).rejects.toThrow("no running game");
+  });
+
+  it("api-docs is engine-free and returns the lookup result as data (misses included)", async () => {
+    const engine = async () => {
+      throw new EngineUnavailableError("engine must not be needed");
+    };
+    const result = (await dispatchTool("api-docs", { class_name: "NoSuchClassAnywhere" }, { engine })) as {
+      ok: boolean;
+      failure_reason?: string;
+    };
+    expect(result.ok).toBe(false);
+    // Either the bundle is installed (class miss) or it is not (structured not-installed result).
+    expect(["api_docs_not_installed", undefined]).toContain(result.failure_reason);
+  });
+
+  it("import-hdri rejects a call with neither query nor assetId before touching the network", async () => {
+    const { ctx, calls } = fakeEngineContext();
+    await expect(dispatchTool("import-hdri", {}, ctx)).rejects.toThrow(/Pass query/);
+    expect(calls).toEqual([]);
+  });
+});

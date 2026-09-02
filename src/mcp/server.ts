@@ -7,7 +7,13 @@ import { registerSceneTools } from "./tools/scene-tools.js";
 import { registerDebugTools } from "./tools/debug-tools.js";
 import { registerVisualTools } from "./tools/visual-tools.js";
 import { WITH_ENGINE_META, type WithEngineMeta } from "./tools/with-engine.js";
-import { registerProjectTools } from "./tools/project-tools.js";
+import {
+  registerPlaybookPrompt,
+  registerProjectTools,
+} from "./tools/project-tools.js";
+import { registerPerceptionTools } from "./tools/perception-tools.js";
+import { registerScriptTools } from "./tools/script-tools.js";
+import { recordToolCall } from "../core/trajectory.js";
 import { registerFileTools } from "./tools/file-tools.js";
 import { registerAssetTools } from "./tools/asset-tools.js";
 import { registerGenerateTools } from "./tools/generate-tools.js";
@@ -190,6 +196,27 @@ function installResultSizeLogger(server: {
       );
       const durationMs = Date.now() - startedAt;
       try {
+        // Opt-in local trajectory capture: one JSONL line per tool call when
+        // SUMMER_TRAJECTORY_DIR is set. recordToolCall never throws and is a
+        // no-op when the env var is unset.
+        {
+          const record = result as
+            | (Record<PropertyKey, unknown> & { isError?: boolean })
+            | null;
+          const callMeta =
+            record && typeof record === "object"
+              ? (record[WITH_ENGINE_META] as WithEngineMeta | undefined)
+              : undefined;
+          recordToolCall({
+            tool: name,
+            args: handlerArgs[0],
+            isError: record?.isError === true,
+            terminalState: callMeta?.terminalState,
+            errorClass: callMeta?.errorClass,
+            failureReason: callMeta?.failureReason,
+            durationMs,
+          });
+        }
         if (
           result &&
           typeof result === "object" &&
@@ -316,6 +343,11 @@ export async function startMcpServer(
   registerGenerateTools(server);
   registerCreatorTools(server);
   registerFeedbackTools(server);
+  registerScriptTools(server);
+  registerPerceptionTools(server);
+  // The playbook is also an MCP prompt so prompt-surfacing hosts get it
+  // natively (same content as the summer_get_agent_playbook tool).
+  registerPlaybookPrompt(server);
 
   // Fire-and-forget — never block tool registration on the npm registry.
   void probeBootDrift().catch((error) => {

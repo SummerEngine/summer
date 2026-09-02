@@ -1,5 +1,9 @@
 import { getClient, resetClient } from "../server.js";
 import { recordMcpSession } from "../../core/telemetry.js";
+export {
+  missingEngineOpResult,
+  type CapabilityAdvertisingClient,
+} from "../../core/capability-skew.js";
 
 type ToolResultContent =
   | { type: "text"; text: string }
@@ -83,13 +87,13 @@ const SUCCESS_TERMINAL_STATES: ReadonlySet<string> = new Set(["applied", "no_op"
 // timeout frequently arrive with terminalState set and results[] absent).
 const TERMINAL_STATE_MESSAGES: Record<string, string> = {
   timed_out:
-    "Engine operation timed out. Its final state is unknown; inspect the target before retrying.",
+    "Engine operation timed out. Its final state is unknown; inspect the target before retrying (summer_get_scene_tree / summer_world_snapshot / summer_read_file). To recover: break the work into smaller pieces — several short scripts or batches instead of one long one — raise the tool's max_seconds if it has one, and confirm the engine is still responsive (summer_get_project_context, or `summer doctor` from a shell).",
   still_queued:
-    "Summer Engine accepted the operation, but it was still queued when the client stopped waiting. It may still run; do not retry blindly.",
+    "Summer Engine accepted the operation, but it was still queued when the client stopped waiting. It may still run; do NOT retry blindly — inspect the target first (summer_get_scene_tree / summer_world_snapshot), and if the queue stays stuck check whether the editor is busy (modal dialog, long import) or run `summer doctor`.",
   still_running:
-    "Summer Engine accepted and started the operation, but no final receipt arrived. It may still be running or may already have applied; inspect the target before retrying.",
+    "Summer Engine accepted and started the operation, but no final receipt arrived. It may still be running or may already have applied; inspect the target before retrying (summer_get_scene_tree / summer_world_snapshot / summer_read_file). For long jobs, split the work into smaller scripts/batches so each finishes inside its budget.",
   uncertain:
-    "Summer Engine did not provide a final operation receipt. The current state is uncertain; inspect the target before retrying.",
+    "Summer Engine did not provide a final operation receipt. The current state is uncertain; inspect the target before retrying (summer_get_scene_tree / summer_world_snapshot / summer_read_file), and verify the engine is healthy with summer_get_project_context.",
   not_connected: "Summer Engine is not connected (terminalState: not_connected). Nothing was applied.",
   identity_mismatch:
     "Operation rejected — wrong project/instance (terminalState: identity_mismatch). Nothing was mutated.",
@@ -310,7 +314,24 @@ export async function withEngine<T>(
 
   const msg = lastError instanceof Error ? lastError.message : String(lastError);
   return attachMeta(
-    { content: [{ type: "text", text: msg }], isError: true },
+    { content: [{ type: "text", text: withTransportRecovery(msg) }], isError: true },
     { errorClass: "transport", retried, boundProjectIdHash }
+  );
+}
+
+/** Every transport-level failure must TEACH recovery, not just name the error.
+ *  getClient()'s connect failure already carries its own instructions; anything
+ *  else (fetch failed / abort / HTTP status thrown mid-call) gets the generic
+ *  recovery recipe appended. Exported for unit tests. */
+export function withTransportRecovery(message: string): string {
+  // Connect-path failures already prescribe (server.ts getClient appends the
+  // "Open the intended project…" instructions). Don't stack a second recipe.
+  if (message.includes("npx summer-engine run")) return message;
+  return (
+    message +
+    "\n\nRecovery: (1) check the engine is running and responsive — summer_get_project_context here, or `summer doctor` in a shell; " +
+    "(2) if this was a MUTATION, do NOT blind-retry — it may have partially applied; inspect the target first (summer_get_scene_tree / summer_world_snapshot / summer_read_file); " +
+    "(3) if the call was large or long-running, break it into smaller scripts/batches and re-run piece by piece; " +
+    "(4) if the engine restarted, the next tool call reconnects automatically — just retry a READ to confirm."
   );
 }

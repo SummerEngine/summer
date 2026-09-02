@@ -10,7 +10,7 @@ vi.mock("../../core/telemetry.js", () => ({
 }));
 
 import { getClient } from "../server.js";
-import { registerSceneTools } from "./scene-tools.js";
+import { FALLBACK_SINGLE_ONLY_OPS, registerSceneTools, resolveSingleOnlyOps } from "./scene-tools.js";
 
 type RegisteredTool = {
   name: string;
@@ -355,5 +355,149 @@ describe("single-op dispatch contract (engine 0.5.60+)", () => {
     expect(executeOps.mock.calls[0]?.[0]).toEqual([
       { op: "SimulateInput", type: "action", action: "jump", pressed: true },
     ]);
+  });
+});
+
+describe("summer_instantiate_scene target_size", () => {
+  function mockInstantiateClient(instanceReceipt: Record<string, unknown>) {
+    const executeIdentityBoundOps = vi.fn(async (ops: Record<string, unknown>[]) => ({
+      status: "ok",
+      terminalState: "applied",
+      results: ops.map((op) =>
+        op.op === "InstantiateScene"
+          ? { ok: true, op: "InstantiateScene", ...instanceReceipt }
+          : { ok: true, op: String(op.op ?? "") }
+      ),
+    }));
+    vi.mocked(getClient).mockResolvedValue({
+      getBoundProjectIdHash: () => "hash-a",
+      executeIdentityBoundOps,
+    } as never);
+    return executeIdentityBoundOps;
+  }
+
+  const args = {
+    scenePath: "res://main.tscn",
+    parent: "./World",
+    scene: "res://models/chair.glb",
+    target_size: 1.0,
+  };
+
+  it("passes target_size through to the InstantiateScene op", async () => {
+    const executeIdentityBoundOps = mockInstantiateClient({
+      scale_applied: 0.025,
+      dimensions: [0.4, 1.0, 0.4],
+    });
+
+    const result = (await sceneTool("summer_instantiate_scene").handler(args)) as {
+      isError?: boolean;
+      content?: Array<{ text?: string }>;
+    };
+
+    expect(result.isError).toBeUndefined();
+    const sent = executeIdentityBoundOps.mock.calls
+      .flatMap((call) => call[0] as Array<Record<string, unknown>>)
+      .find((op) => op.op === "InstantiateScene");
+    expect(sent).toMatchObject({ target_size: 1.0 });
+    // Engine honored it — no old-engine note.
+    expect(result.content?.[0]?.text).not.toContain("IGNORED target_size");
+  });
+
+  it("appends an honest note when an older engine drops target_size (no scale_applied)", async () => {
+    mockInstantiateClient({});
+
+    const result = (await sceneTool("summer_instantiate_scene").handler(args)) as {
+      isError?: boolean;
+      content?: Array<{ text?: string }>;
+    };
+
+    expect(result.isError).toBeUndefined();
+    const body = JSON.parse(result.content?.[0]?.text ?? "{}");
+    expect(String(body.target_size_note)).toContain("IGNORED target_size");
+    expect(String(body.target_size_note)).toContain("summer_set_prop");
+  });
+
+  it("adds no note when target_size was not requested", async () => {
+    mockInstantiateClient({});
+    const result = (await sceneTool("summer_instantiate_scene").handler({
+      scenePath: "res://main.tscn",
+      parent: "./World",
+      scene: "res://player.tscn",
+    })) as { content?: Array<{ text?: string }> };
+    expect(result.content?.[0]?.text).not.toContain("target_size_note");
+  });
+});
+
+describe("single-only ops from the engine capability advert", () => {
+  function mockAdvertisingClient(singleOnlyOps?: string[]) {
+    const calls: Array<Record<string, unknown>[]> = [];
+    const executeIdentityBoundOps = vi.fn(async (ops: Record<string, unknown>[]) => {
+      calls.push(ops);
+      return okReceipt(ops);
+    });
+    vi.mocked(getClient).mockResolvedValue({
+      getBoundProjectIdHash: () => "hash-a",
+      executeIdentityBoundOps,
+      executeOps: vi.fn(async (ops: Record<string, unknown>[]) => okReceipt(ops)),
+      ...(singleOnlyOps
+        ? { getEngineCapabilities: () => ({ singleOnlyOps }) }
+        : { getEngineCapabilities: () => undefined }),
+    } as never);
+    return calls;
+  }
+
+  it("falls back to the hardcoded list when the engine predates the advert", async () => {
+    const calls = mockAdvertisingClient(undefined);
+    await batchTool().handler({
+      scenePath: "res://main.tscn",
+      ops: [
+        { op: "AddNode", parent: "/", type: "Node3D", name: "A" },
+        { op: "ReplaceNode", path: "A", type: "MeshInstance3D" },
+        { op: "SetProp", path: "A", key: "visible", value: true },
+      ],
+    });
+    // ReplaceNode is single-only in the fallback list -> travels alone.
+    expect(calls).toEqual([
+      [{ op: "AddNode", parent: "/", type: "Node3D", name: "A" }],
+      [{ op: "ReplaceNode", path: "A", type: "MeshInstance3D" }],
+      [{ op: "SetProp", path: "A", key: "visible", value: true }],
+      [{ op: "SaveScene" }],
+    ]);
+    expect(resolveSingleOnlyOps({})).toBe(FALLBACK_SINGLE_ONLY_OPS);
+    expect(FALLBACK_SINGLE_ONLY_OPS.has("RunSceneScript")).toBe(true);
+    expect(FALLBACK_SINGLE_ONLY_OPS.has("GetRuntimeSceneTree")).toBe(true);
+  });
+
+  it("uses the engine's advertised singleOnlyOps when present (authoritative over the fallback)", async () => {
+    // This engine says ReplaceNode batches fine but a new CustomBake op must travel alone.
+    const calls = mockAdvertisingClient(["SaveScene", "CustomBake"]);
+    await batchTool().handler({
+      scenePath: "res://main.tscn",
+      ops: [
+        { op: "AddNode", parent: "/", type: "Node3D", name: "A" },
+        { op: "ReplaceNode", path: "A", type: "MeshInstance3D" },
+        { op: "CustomBake", path: "A" },
+        { op: "SetProp", path: "A", key: "visible", value: true },
+      ],
+    });
+    expect(calls).toEqual([
+      [
+        { op: "AddNode", parent: "/", type: "Node3D", name: "A" },
+        { op: "ReplaceNode", path: "A", type: "MeshInstance3D" },
+      ],
+      [{ op: "CustomBake", path: "A" }],
+      [{ op: "SetProp", path: "A", key: "visible", value: true }],
+      [{ op: "SaveScene" }],
+    ]);
+    const resolved = resolveSingleOnlyOps({
+      getEngineCapabilities: () => ({ singleOnlyOps: ["SaveScene", "CustomBake"] }),
+    });
+    expect([...resolved]).toEqual(["SaveScene", "CustomBake"]);
+  });
+
+  it("treats an empty advertised list as no advert (fallback), never as 'everything batches'", () => {
+    expect(resolveSingleOnlyOps({ getEngineCapabilities: () => ({ singleOnlyOps: [] }) })).toBe(
+      FALLBACK_SINGLE_ONLY_OPS
+    );
   });
 });

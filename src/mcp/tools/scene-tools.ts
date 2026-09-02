@@ -2,22 +2,16 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { withEngine, extractOpError } from "./with-engine.js";
 import type { EngineApiClient } from "../../core/api-client.js";
+import {
+  FALLBACK_SINGLE_ONLY_OPS,
+  resolveSingleOnlyOps,
+} from "../../core/capability-skew.js";
 
-// Engine ops that MUST be dispatched as their own single-op request. Mirrors
-// _summer_requires_single_async_dispatch (local_api_server.cpp, engine 0.5.60+):
-// the engine rejects any multi-op batch containing one of these WHOLESALE —
-// nothing in the batch executes, and the batch fails with per-op
-// failure_reason "unsupported_transport"/"skipped". Git ops are covered by the
-// prefix check below.
-const SINGLE_ONLY_OPS = new Set([
-  "SaveScene", "InstantiateScene", "ReplaceNode",
-  "SimulateInput", "ViewportSnapshot", "GameSnapshot",
-  "RunCommand", "RunVerification", "RunEditorScript",
-  "ImportFromUrl", "ImportFromUrlBatch", "ExtractZipFromUrl",
-]);
+// Re-exported for tests and for callers that reason about dispatch classes.
+export { FALLBACK_SINGLE_ONLY_OPS, resolveSingleOnlyOps };
 
-function isSingleOnlyOp(kind: string): boolean {
-  return SINGLE_ONLY_OPS.has(kind) || kind.startsWith("Git");
+function isSingleOnlyOp(kind: string, singleOnly: ReadonlySet<string>): boolean {
+  return singleOnly.has(kind) || kind.startsWith("Git");
 }
 
 function sceneMutationOps(ops: Record<string, unknown>[]): Record<string, unknown>[] {
@@ -38,11 +32,14 @@ function sceneMutationOps(ops: Record<string, unknown>[]): Record<string, unknow
 
 /** Split an op list into sequential engine requests: consecutive batchable ops
  *  stay grouped, each single-only op becomes its own request. Order preserved. */
-function chunkOpsForDispatch(ops: Record<string, unknown>[]): Record<string, unknown>[][] {
+function chunkOpsForDispatch(
+  ops: Record<string, unknown>[],
+  singleOnly: ReadonlySet<string>,
+): Record<string, unknown>[][] {
   const chunks: Record<string, unknown>[][] = [];
   let current: Record<string, unknown>[] = [];
   for (const op of ops) {
-    if (isSingleOnlyOp(String(op.op ?? ""))) {
+    if (isSingleOnlyOp(String(op.op ?? ""), singleOnly)) {
       if (current.length > 0) {
         chunks.push(current);
         current = [];
@@ -63,8 +60,9 @@ function chunkOpsForDispatch(ops: Record<string, unknown>[]): Record<string, unk
 async function executeOpsChunked(
   send: (chunk: Record<string, unknown>[]) => Promise<unknown>,
   ops: Record<string, unknown>[],
+  singleOnly: ReadonlySet<string>,
 ): Promise<unknown> {
-  const chunks = chunkOpsForDispatch(ops);
+  const chunks = chunkOpsForDispatch(ops, singleOnly);
   if (chunks.length === 1) return send(chunks[0]!);
 
   const receipts: unknown[] = [];
@@ -114,6 +112,7 @@ function executeSceneMutation(
   return executeOpsChunked(
     (chunk) => client.executeIdentityBoundOps(chunk, { ...(options ?? {}), scenePath }),
     sceneMutationOps(ops),
+    resolveSingleOnlyOps(client),
   );
 }
 
@@ -380,18 +379,48 @@ Do not guess paths. Prefer:
 - Add a .glb/.gltf 3D model into the scene
 - Compose scenes from smaller scenes (e.g., add a "Player" scene into a "Level" scene)
 
-The scene must already exist in the project. Use summer_import_from_url first if importing from external sources.`,
+The scene must already exist in the project. Use summer_import_from_url first if importing from external sources.
+
+PASS target_size FOR IMPORTED MODELS. Downloaded/generated .glb assets arrive at arbitrary scale (a "chair" can be 40 units tall). target_size uniformly scales the instanced subtree so its largest world-AABB dimension equals that many units — commit to real-world size: chair 1.0, door 2.0, car 4.5, person 1.7, tree 6-10. The result then reports dimensions + scale_applied; verify placement afterwards (summer_world_snapshot AABBs, summer_screenshot). Older engine builds ignore target_size — when the result lacks scale_applied, this tool appends a note and you must scale the node yourself (summer_set_prop scale) and re-check.`,
     {
       scenePath: z.string().describe("Target scene to receive the instance, e.g. 'res://main.tscn'"),
       parent: z.string().describe("Parent node path, e.g. './World'"),
       scene: z.string().describe("Scene/model path, e.g. 'res://player.tscn' or 'res://models/tree.glb'"),
       name: z.string().optional().describe("Override the instance name"),
+      target_size: z
+        .number()
+        .positive()
+        .optional()
+        .describe(
+          "Normalize the instance's physical size: uniformly scale it so its largest world-AABB dimension equals this many units (chair 1.0, car 4.5, person 1.7). Strongly recommended for imported .glb/.gltf models."
+        ),
     },
-    async ({ scenePath, parent, scene, name }) =>
+    async ({ scenePath, parent, scene, name, target_size }) =>
       withEngine(async (client) => {
         const op: Record<string, unknown> = { op: "InstantiateScene", parent, scene };
         if (name) op.name = name;
-        return executeSceneMutation(client, scenePath, [op]);
+        if (target_size !== undefined) op.target_size = target_size;
+        const result = await executeSceneMutation(client, scenePath, [op]);
+        // An older engine applies the op but silently drops target_size — its
+        // receipt then lacks scale_applied. Confess that instead of letting a
+        // 40-unit "chair" pass as normalized.
+        if (target_size !== undefined && result && typeof result === "object") {
+          const envelope = result as Record<string, unknown> & {
+            results?: Array<Record<string, unknown>>;
+          };
+          const instanced = envelope.results?.find(
+            (entry) => entry.op === "InstantiateScene" && entry.ok === true
+          );
+          if (instanced && !("scale_applied" in instanced)) {
+            return {
+              ...envelope,
+              target_size_note:
+                `This Summer Engine build IGNORED target_size (no scale_applied in the receipt) — the instance is at the asset's raw scale, NOT normalized to ${target_size}. ` +
+                "Scale it yourself (summer_set_prop scale, or ctx code in summer_run_script), verify with summer_world_snapshot/summer_screenshot, or update Summer Engine.",
+            };
+          }
+        }
+        return result;
       })
   );
 
@@ -501,7 +530,8 @@ Do not mix OpenScene with scene mutations in one batch. OpenScene is a UI action
 send it separately. scenePath selects every mutation target. The tool appends one
 final SaveScene when the batch mutates a scene; if supplied explicitly, SaveScene
 must appear exactly once and be the final operation. The engine requires
-SaveScene, InstantiateScene, ReplaceNode, SimulateInput, and the Run*/Import*
+SaveScene, InstantiateScene, ReplaceNode, SimulateInput, the runtime reads
+(GetRuntimeSceneTree/GetRuntimeNode), and the Run*/Import*
 ops to travel as their own request, so this tool automatically splits your op
 list into sequential requests around them — each split chunk is its own undo
 step, and if a later chunk fails the receipt reports exactly which earlier ops
@@ -539,6 +569,7 @@ already applied.`,
           : executeOpsChunked(
               (chunk) => client.executeOps(chunk, options),
               ops as Record<string, unknown>[],
+              resolveSingleOnlyOps(client),
             );
       })
   );

@@ -23,6 +23,15 @@ import { join } from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { EngineApiClient, type EngineSnapshot } from "../api-client.js";
+import { missingEngineOpResult, resolveSingleOnlyOps } from "../capability-skew.js";
+import { lookupApiDocs } from "./api-docs.js";
+import { ImportHdriError, importPolyHavenHdri, type HdriResolution } from "./hdri-import.js";
+import {
+  RUN_EDITOR_SCRIPT_FALLBACK,
+  RUN_SCRIPT_FALLBACK,
+  buildRunEditorScriptOp,
+  buildRunSceneScriptOp,
+} from "./scene-script.js";
 import { getAuthToken } from "../auth.js";
 import { shapeEngineLogResponse } from "../log-filters.js";
 import {
@@ -162,15 +171,10 @@ function requireEngineSuccess<T>(result: T): T {
 // single-only ops wholesale, and every scene mutation batch ends in exactly
 // one SaveScene. v3-followup: fold into one copy when mcp adopts the registry.
 // ---------------------------------------------------------------------------
-const SINGLE_ONLY_OPS = new Set([
-  "SaveScene", "InstantiateScene", "ReplaceNode",
-  "SimulateInput", "ViewportSnapshot", "GameSnapshot",
-  "RunCommand", "RunVerification", "RunEditorScript",
-  "ImportFromUrl", "ImportFromUrlBatch", "ExtractZipFromUrl",
-]);
-
-function isSingleOnlyOp(kind: string): boolean {
-  return SINGLE_ONLY_OPS.has(kind) || kind.startsWith("Git");
+// Single-only classification comes from the engine's /api/health advert when
+// present, else core/capability-skew FALLBACK_SINGLE_ONLY_OPS (resolveSingleOnlyOps).
+function isSingleOnlyOp(kind: string, singleOnly: ReadonlySet<string>): boolean {
+  return singleOnly.has(kind) || kind.startsWith("Git");
 }
 
 function withFinalSaveScene(ops: DispatchArgs[]): DispatchArgs[] {
@@ -189,11 +193,11 @@ function withFinalSaveScene(ops: DispatchArgs[]): DispatchArgs[] {
   return [...ops, { op: "SaveScene" }];
 }
 
-function chunkOps(ops: DispatchArgs[]): DispatchArgs[][] {
+function chunkOps(ops: DispatchArgs[], singleOnly: ReadonlySet<string>): DispatchArgs[][] {
   const chunks: DispatchArgs[][] = [];
   let current: DispatchArgs[] = [];
   for (const op of ops) {
-    if (isSingleOnlyOp(String(op.op ?? ""))) {
+    if (isSingleOnlyOp(String(op.op ?? ""), singleOnly)) {
       if (current.length > 0) {
         chunks.push(current);
         current = [];
@@ -209,9 +213,10 @@ function chunkOps(ops: DispatchArgs[]): DispatchArgs[][] {
 
 async function executeOpsChunked(
   send: (chunk: DispatchArgs[]) => Promise<unknown>,
-  ops: DispatchArgs[]
+  ops: DispatchArgs[],
+  singleOnly: ReadonlySet<string>
 ): Promise<unknown> {
-  const chunks = chunkOps(ops);
+  const chunks = chunkOps(ops, singleOnly);
   if (chunks.length === 1) return send(chunks[0]!);
 
   const receipts: unknown[] = [];
@@ -258,7 +263,8 @@ function executeSceneMutation(
 ): Promise<unknown> {
   return executeOpsChunked(
     (chunk) => client.executeIdentityBoundOps(chunk, { ...(options ?? {}), scenePath }),
-    withFinalSaveScene(ops)
+    withFinalSaveScene(ops),
+    resolveSingleOnlyOps(client)
   );
 }
 
@@ -744,6 +750,24 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   ),
 
   // --- creator (shared core capability, face: cli) ---
+  entry("summer_import_hdri", "Search Poly Haven's CC0 HDRIs and import one as environment lighting", true, async (args, ctx) => {
+    try {
+      return await importPolyHavenHdri(
+        {
+          query: optStr(args, "query"),
+          assetId: optStr(args, "assetId"),
+          resolution: optStr(args, "resolution") as HdriResolution | undefined,
+        },
+        () => ctx.engine()
+      );
+    } catch (err) {
+      if (err instanceof ImportHdriError) {
+        throw new ToolDispatchError(`${err.message}${err.hint ? ` ${err.hint}` : ""}`);
+      }
+      throw err;
+    }
+  }),
+
   entry("summer_creator_publish", "Publish an exported .pck through the creator API (confirm-gated)", false, (args) =>
     publishCreator({
       project: optStr(args, "project"),
@@ -1289,7 +1313,73 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     const options: DispatchArgs = { groupUndo: true, ...(scenePath ? { scenePath } : {}) };
     return needsScenePath
       ? executeSceneMutation(client, scenePath!, ops, options)
-      : executeOpsChunked((chunk) => client.executeOps(chunk, options), ops);
+      : executeOpsChunked((chunk) => client.executeOps(chunk, options), ops, resolveSingleOnlyOps(client));
+  }),
+
+  // --- scene scripting ---
+  entry("summer_run_script", "Run a GDScript func run(ctx) inside the live editor against the open scene", true, async (args, ctx) => {
+    const client = await ctx.engine();
+    const missing = missingEngineOpResult(client, "RunSceneScript", RUN_SCRIPT_FALLBACK);
+    if (missing) throw new ToolDispatchError(missing.error);
+    const undo = optStr(args, "undo");
+    const { op, timeoutMs } = buildRunSceneScriptOp({
+      source: str(args, "source"),
+      max_seconds: typeof args.max_seconds === "number" ? args.max_seconds : undefined,
+      checkpoint: typeof args.checkpoint === "boolean" ? args.checkpoint : undefined,
+      undo: undo === "action" || undo === "none" ? undo : undefined,
+    });
+    return requireEngineSuccess(await client.executeIdentityBoundOps([op], undefined, timeoutMs));
+  }),
+  entry("summer_run_editor_script", "Run an EditorScript in a fresh headless child editor against the on-disk project", true, async (args, ctx) => {
+    const client = await ctx.engine();
+    const missing = missingEngineOpResult(client, "RunEditorScript", RUN_EDITOR_SCRIPT_FALLBACK);
+    if (missing) throw new ToolDispatchError(missing.error);
+    const { op, timeoutMs } = buildRunEditorScriptOp({
+      source: str(args, "source"),
+      max_seconds: typeof args.max_seconds === "number" ? args.max_seconds : undefined,
+      checkpoint: typeof args.checkpoint === "boolean" ? args.checkpoint : undefined,
+    });
+    return requireEngineSuccess(await client.executeIdentityBoundOps([op], undefined, timeoutMs));
+  }),
+  entry("summer_api_docs", "Offline engine class-reference lookup (properties, methods, signals, constants)", false, async (args) =>
+    lookupApiDocs(str(args, "class_name"), optStr(args, "member"))
+  ),
+
+  // --- perception ---
+  entry("summer_world_snapshot", "Structured snapshot of the edited scene (transforms, AABBs, fingerprints, counts)", true, async (args, ctx) => {
+    const client = await ctx.engine();
+    const missing = missingEngineOpResult(client, "GetWorldSnapshot", "read structure with summer_get_scene_tree and verify visually with summer_screenshot");
+    if (missing) throw new ToolDispatchError(missing.error);
+    const op: DispatchArgs = { op: "GetWorldSnapshot" };
+    if (optStr(args, "scene_path")) op.scene_path = args.scene_path;
+    if (typeof args.max_nodes === "number") op.max_nodes = args.max_nodes;
+    return requireEngineSuccess(await client.executeOps([op]));
+  }),
+  entry("summer_snapshot_diff", "Diff two world snapshots into added/removed/changed nodes and count deltas", true, async (args, ctx) => {
+    const client = await ctx.engine();
+    const missing = missingEngineOpResult(client, "DiffWorldSnapshot", "compare two summer_world_snapshot results yourself");
+    if (missing) throw new ToolDispatchError(missing.error);
+    const op: DispatchArgs = { op: "DiffWorldSnapshot", from_id: str(args, "from_id") };
+    if (optStr(args, "to_id")) op.to_id = args.to_id;
+    return requireEngineSuccess(await client.executeOps([op]));
+  }),
+  entry("summer_get_runtime_tree", "Scene tree of the RUNNING game (live runtime state)", true, async (args, ctx) => {
+    const client = await ctx.engine();
+    const missing = missingEngineOpResult(client, "GetRuntimeSceneTree", "probe runtime state with a RunVerification probe");
+    if (missing) throw new ToolDispatchError(missing.error);
+    const op: DispatchArgs = { op: "GetRuntimeSceneTree" };
+    if (optStr(args, "path")) op.path = args.path;
+    if (typeof args.depth === "number") op.depth = args.depth;
+    if (typeof args.limit === "number") op.limit = args.limit;
+    return requireEngineSuccess(await client.executeOps([op]));
+  }),
+  entry("summer_inspect_runtime_node", "Live properties of one node in the RUNNING game", true, async (args, ctx) => {
+    const client = await ctx.engine();
+    const missing = missingEngineOpResult(client, "GetRuntimeNode", "probe the node from a RunVerification probe");
+    if (missing) throw new ToolDispatchError(missing.error);
+    return requireEngineSuccess(
+      await client.executeOps([{ op: "GetRuntimeNode", path: str(args, "path") }])
+    );
   }),
 
   // --- visual ---

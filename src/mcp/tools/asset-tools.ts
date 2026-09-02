@@ -2,6 +2,11 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getAuthToken } from "../../core/auth.js";
 import { getClient } from "../server.js";
+import {
+  ImportHdriError,
+  importPolyHavenHdri,
+  type HdriResolution,
+} from "../../core/capabilities/hdri-import.js";
 
 const GATEWAY_URL =
   process.env.SUMMER_GATEWAY_URL || "https://www.summerengine.com";
@@ -687,6 +692,61 @@ Requires authentication. If the user gets an auth error, they need to run 'npx s
           ],
           isError: true,
         };
+      }
+    }
+  );
+
+  server.tool(
+    "summer_import_hdri",
+    `Search Poly Haven's CC0 HDRI library and import one as environment lighting.
+
+The single cheapest visual-quality upgrade for a 3D scene: a real HDRI sky lights
+and reflects the whole world. Searches ~1,000 CC0 HDRIs on Poly Haven's public API
+(no account, no key), downloads the .hdr/.exr through the engine's import pipeline
+into res://sky/, and returns a ready-to-run summer_run_script snippet that wires it
+into the WorldEnvironment (PanoramaSkyMaterial + sky ambient/reflections).
+
+Pass query ("sunset beach", "night city", "studio") to search, or assetId for an
+exact Poly Haven id. resolution 2k is right for most games; 4k for hero skies.
+All results are CC0 — no attribution required.
+
+Requires the Summer Engine app to be open with the project loaded (the download
+runs through the engine). No Summer login needed.`,
+    {
+      query: z
+        .string()
+        .optional()
+        .describe("What kind of sky/environment, e.g. 'sunset beach', 'overcast field', 'studio'. Omit when assetId is given."),
+      assetId: z
+        .string()
+        .optional()
+        .describe("Exact Poly Haven asset id (lowercase slug, e.g. 'kloppenheim_02'). Skips the search."),
+      resolution: z
+        .enum(["1k", "2k", "4k"])
+        .default("2k")
+        .describe("HDRI resolution. 2k (default) is right for most games; 4k for hero skies; 1k for quick blockouts."),
+    },
+    async ({ query, assetId, resolution }) => {
+      try {
+        const result = await importPolyHavenHdri(
+          { query, assetId, resolution: resolution as HdriResolution },
+          () => getClient()
+        );
+        return jsonSuccess(result);
+      } catch (err) {
+        if (err instanceof ImportHdriError) {
+          return jsonError({
+            error: err.code,
+            message: err.message,
+            ...(err.hint ? { hint: err.hint } : {}),
+          });
+        }
+        const msg = err instanceof Error ? err.message : String(err);
+        return jsonError({
+          error: "hdri_import_failed",
+          message: msg,
+          hint: "Poly Haven may be unreachable, or Summer Engine is not running.",
+        });
       }
     }
   );

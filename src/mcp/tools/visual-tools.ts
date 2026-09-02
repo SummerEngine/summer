@@ -20,10 +20,11 @@ Use this to visually verify your work: scene layout, asset placement, scale, fra
 target:
   "viewport" (default) — the editor's CURRENT view (whatever scene/tab is open). No game boot. Use for edit-time checks of how the scene looks right now.
   "scene" — an OFFSCREEN render of a scene file (no game boot; physics/particles/animations are static at t=0). Optionally pass scenePath/framing/size/nodePath. Use for COMPOSITION, SCALE and FRAMING without touching the editor's open tab.
-    It does NOT use the scene's environment/sky, and it injects a synthetic camera and light when the scene has none. The scene's WorldEnvironment — sky, fog, tonemap, glow, SSAO, ambient — is replaced by a flat preview environment. So this target CANNOT verify lighting, mood, or any material property that depends on the environment: change them and the frame comes back identical. For those, boot the game or run a RunVerification probe, whose instance renders the real environment.
+    With the preset framings (iso/top/...), it does NOT use the scene's environment/sky, and it injects a synthetic camera and light when the scene has none. The scene's WorldEnvironment — sky, fog, tonemap, glow, SSAO, ambient — is replaced by a flat preview environment. So those framings CANNOT verify lighting, mood, or any material property that depends on the environment: change them and the frame comes back identical.
+    framing:"camera" is the exception and the trustworthy way to check lighting edit-time: it renders through the scene's OWN current/first Camera3D (or the one named by camera_path) with the scene's REAL WorldEnvironment — sky, fog, tonemap, glow, ambient all live. Use it before/after any lighting, environment, or emissive-material change, and to see the scene the way the played game will actually frame it.
   "game" — a frame from the RUNNING game (real runtime state). Start the game first (summer_play). Not available over a plain local connection — needs the Summer desktop app bridge.
 
-Static frame only — one moment, not motion. For a SEQUENCE of frames over time, or for anything lighting-dependent when the desktop bridge is unavailable, use a RunVerification probe's save_frame(name) — its instance has a real renderer.`,
+Static frame only — one moment, not motion. For a SEQUENCE of frames over time, or for anything lighting-dependent on an engine build without framing:"camera", use a RunVerification probe's save_frame(name) — its instance has a real renderer.`,
     {
       target: z
         .enum(["viewport", "scene", "game"])
@@ -39,12 +40,14 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
           'target:"scene" only. Full scene path, e.g. "res://main.tscn". Omit to render the currently-open scene.'
         ),
       framing: z
-        .enum(["auto", "iso", "top", "front", "back", "left", "right"])
+        .enum(["auto", "iso", "top", "front", "back", "left", "right", "camera"])
         .optional()
         .describe(
           'target:"scene" only, 3D scenes. Camera direction preset: "iso" = 3/4 diagonal view, ' +
             '"top" = straight down, "front" = camera at +Z, "back" = camera at -Z, ' +
             '"left" = camera at -X, "right" = camera at +X. "auto" (default) is an alias of "iso". ' +
+            '"camera" = render through the scene\'s OWN Camera3D with its REAL WorldEnvironment — ' +
+            "the only edit-time framing that truthfully shows lighting/mood. " +
             "The result reports the resolved framing."
         ),
       size: z
@@ -61,8 +64,15 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
             "or 2D rects, children included). A bare unique name is also found recursively. " +
             'Fails with failure_reason "node_not_found" when the path does not resolve (no silent whole-scene fallback).'
         ),
+      camera_path: z
+        .string()
+        .optional()
+        .describe(
+          'framing:"camera" only. Path of the Camera3D to render through (relative to the scene root) when ' +
+            "the scene has several cameras or none marked current. Omit to use the scene's current/first Camera3D."
+        ),
     },
-    async ({ target, scenePath, framing, size, nodePath }) =>
+    async ({ target, scenePath, framing, size, nodePath, camera_path }) =>
       withEngine(
         async (client) => {
           if (target === "game") return client.gameSnapshot();
@@ -72,6 +82,7 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
               framing,
               size: size as [number, number] | undefined,
               nodePath,
+              cameraPath: camera_path,
             });
           return client.viewportSnapshot();
         },
@@ -155,6 +166,14 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
                   "NOTE: this preview is framed by a synthetic render camera, NOT the scene's own camera — the played game will not frame like this image."
                 );
               }
+              // Old engines that predate framing:"camera" resolve unknown
+              // framings to a preset and echo the result. Confess it rather
+              // than let a flat-environment frame pass as a lighting check.
+              if (framing === "camera" && snap.framing && snap.framing !== "camera") {
+                warnings.push(
+                  `WARNING: you asked for framing:"camera" but this Summer Engine build resolved it to "${snap.framing}" — it predates camera framing. This frame uses the synthetic preview camera and FLAT environment, so it does NOT verify lighting/mood. Update Summer Engine, or verify lighting by booting the game / a RunVerification probe.`
+                );
+              }
             }
 
             // Scene-preview capture details: resolved framing ("auto" -> "iso"),
@@ -165,6 +184,15 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
               if (snap.framing) details.push(`framing: ${snap.framing}`);
               if (snap.framedNode) details.push(`framed node: ${snap.framedNode}`);
               if (snap.renderRetries) details.push(`render retries: ${snap.renderRetries}`);
+              // Camera-framing provenance (contracts Wave B): which camera the
+              // engine rendered through and which environment was live.
+              const meta = snap.metadata as Record<string, unknown> | undefined;
+              if (typeof meta?.camera_path === "string" && meta.camera_path) {
+                details.push(`scene camera: ${meta.camera_path}`);
+              }
+              if (typeof meta?.environment_used === "string" && meta.environment_used) {
+                details.push(`environment: ${meta.environment_used}`);
+              }
             }
             const detailNote = details.length ? `; ${details.join(", ")}` : "";
 

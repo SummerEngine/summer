@@ -27,6 +27,25 @@ function skillPaths(slugs: string[]): string[] {
   return [...slugs].sort().map((slug) => `./library/skills/${slug}/`);
 }
 
+/**
+ * The ONE MCP server entry every manifest points at. Plugin hosts spawn it
+ * from the plugin root, where the npm package is not installed, so it goes
+ * through npx. Gemini inlines it; Claude / Codex / Cursor / Factory read it
+ * from the generated root `.mcp.json`.
+ */
+export function bundledMcpServer(): { command: string; args: string[] } {
+  return { command: "npx", args: ["summer-engine", "mcp"] };
+}
+
+function buildMcpJson(): string {
+  return stableJson({
+    _generated: manifestBanner("claude"),
+    mcpServers: {
+      "summer-engine": bundledMcpServer(),
+    },
+  });
+}
+
 function author(): Record<string, string> {
   return {
     name: "Summer Engine",
@@ -67,7 +86,8 @@ function buildClaudePlugin(i: ManifestInputs): string {
       enable_pre_commit_doctor: {
         type: "boolean",
         title: "Run summer doctor before commits",
-        description: "Block git commits when the Summer Engine setup needs attention. Off by default.",
+        description:
+          "Block git commits when the Summer Engine setup needs attention (runs `summer doctor` before each `git commit`). Off by default. Reaches the hook as CLAUDE_PLUGIN_OPTION_ENABLE_PRE_COMMIT_DOCTOR; SUMMER_PRE_COMMIT_DOCTOR=1 in the environment enables it too.",
         default: false,
       },
     },
@@ -210,8 +230,7 @@ function buildGeminiExtension(i: ManifestInputs): string {
     contextFileName: "GEMINI.md",
     mcpServers: {
       "summer-engine": {
-        command: "npx",
-        args: ["summer-engine", "mcp"],
+        ...bundledMcpServer(),
         cwd: "${extensionPath}",
       },
     },
@@ -236,5 +255,6 @@ export function buildManifests(i: ManifestInputs): Map<string, string> {
   out.set("plugin.cursor.json", buildCursorPlugin(i));
   out.set("plugin.factory.json", buildFactoryPlugin(i));
   out.set("gemini-extension.json", buildGeminiExtension(i));
+  out.set("mcp.json", buildMcpJson());
   return out;
 }

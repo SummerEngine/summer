@@ -55,6 +55,7 @@ describe("generateRegistry: catalog outputs", () => {
       "gemini-extension.json",
       "index.json",
       "marketplace.claude.json",
+      "mcp.json",
       "plugin.claude.json",
       "plugin.codex.json",
       "plugin.cursor.json",

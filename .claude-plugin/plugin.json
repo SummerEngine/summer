@@ -117,7 +117,7 @@
     "enable_pre_commit_doctor": {
       "type": "boolean",
       "title": "Run summer doctor before commits",
-      "description": "Block git commits when the Summer Engine setup needs attention. Off by default.",
+      "description": "Block git commits when the Summer Engine setup needs attention (runs `summer doctor` before each `git commit`). Off by default. Reaches the hook as CLAUDE_PLUGIN_OPTION_ENABLE_PRE_COMMIT_DOCTOR; SUMMER_PRE_COMMIT_DOCTOR=1 in the environment enables it too.",
       "default": false
     }
   }

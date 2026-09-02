@@ -23,6 +23,9 @@ export const MANIFEST_TARGETS: Record<string, ManifestTarget[]> = {
   claude: [
     { generated: "plugin.claude.json", destination: ".claude-plugin/plugin.json" },
     { generated: "marketplace.claude.json", destination: ".claude-plugin/marketplace.json" },
+    // Root .mcp.json is the MCP pointer shared by the claude, codex, cursor
+    // (and factory, via its mcp.json convention) manifests; owned here once.
+    { generated: "mcp.json", destination: ".mcp.json" },
   ],
   codex: [{ generated: "plugin.codex.json", destination: ".codex-plugin/plugin.json" }],
   cursor: [{ generated: "plugin.cursor.json", destination: ".cursor-plugin/plugin.json" }],

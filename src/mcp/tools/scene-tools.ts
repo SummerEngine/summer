@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { withEngine, extractOpError } from "./with-engine.js";
+import { withEngine, extractOpError, ToolInputError } from "./with-engine.js";
 import type { EngineApiClient } from "../../core/api-client.js";
 import {
   FALLBACK_SINGLE_ONLY_OPS,
@@ -19,11 +19,11 @@ function sceneMutationOps(ops: Record<string, unknown>[]): Record<string, unknow
     .map((op, index) => op.op === "SaveScene" ? index : -1)
     .filter((index) => index >= 0);
   if (saveIndexes.length > 1) {
-    throw new Error("A scene mutation batch may contain only one SaveScene");
+    throw new ToolInputError("A scene mutation batch may contain only one SaveScene");
   }
   if (saveIndexes.length === 1) {
     if (saveIndexes[0] !== ops.length - 1) {
-      throw new Error("SaveScene must be the final operation in a scene mutation batch");
+      throw new ToolInputError("SaveScene must be the final operation in a scene mutation batch");
     }
     return ops;
   }
@@ -177,18 +177,18 @@ Recommended workflow:
       withEngine(async (client) => {
         const safePath = path.trim().replace(/\\/g, "/");
         if (!safePath.startsWith("res://") || safePath.includes("..")) {
-          throw new Error("Scene path must be a traversal-free res:// project path.");
+          throw new ToolInputError("Scene path must be a traversal-free res:// project path.");
         }
         if (!safePath.endsWith(".tscn")) {
-          throw new Error("New scenes must use the text format: the path must end in .tscn.");
+          throw new ToolInputError("New scenes must use the text format: the path must end in .tscn.");
         }
         if (!VALID_ROOT_NAME.test(rootName)) {
-          throw new Error(
+          throw new ToolInputError(
             `Invalid rootName "${rootName}": use letters, digits, underscores, hyphens, or spaces, starting with a letter or underscore.`
           );
         }
         if (!VALID_ROOT_TYPE.test(rootType)) {
-          throw new Error(
+          throw new ToolInputError(
             `Invalid rootType "${rootType}": must be a plain class name like 'Node3D', 'Node2D', or 'Control'.`
           );
         }
@@ -550,7 +550,7 @@ already applied.`,
           return kind === "WriteFile" || kind === "ReplaceText";
         });
         if (rawFileMutation) {
-          throw new Error(
+          throw new ToolInputError(
             `summer_batch does not accept raw ${String(rawFileMutation.op)} operations. ` +
             "Use summer_write_file or summer_replace_text so project identity, content guards, and same-file ordering are enforced."
           );
@@ -570,7 +570,7 @@ already applied.`,
         const needsScenePath = containsMutation ||
           ops.some((op) => sceneQueries.has(String(op.op ?? "")));
         if (needsScenePath && !scenePath) {
-          throw new Error("summer_batch requires scenePath when ops targets a scene");
+          throw new ToolInputError("summer_batch requires scenePath when ops targets a scene");
         }
         const options = { groupUndo: true, ...(scenePath ? { scenePath } : {}) };
         if (containsMutation) {

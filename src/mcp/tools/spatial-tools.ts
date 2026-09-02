@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { withEngine, extractOpError, missingEngineOpResult } from "./with-engine.js";
+import { withEngine, extractOpError, missingEngineOpResult, ToolInputError } from "./with-engine.js";
 import { executeSceneMutation } from "./scene-tools.js";
 
 /**
@@ -67,8 +67,10 @@ function snapDirectionExceedsNativeMinimum(direction: readonly number[]): boolea
 }
 
 /** Zod's .max() counts UTF-16 code units; the engine's limit is UTF-8 bytes.
- *  Re-check the trimmed path against the definitive byte boundary so a
- *  multi-byte path that passes Zod cannot reach the engine oversized. */
+ *  The schemas below carry the same byte-boundary refine, so a host that
+ *  validates the schema never reaches these; they stay as the defence for
+ *  direct callers and throw ToolInputError (classified "input", nothing sent —
+ *  never "transport"). */
 function requireBoundedExactPath(
   value: string,
   label: string,
@@ -77,11 +79,11 @@ function requireBoundedExactPath(
 ): string {
   const exactPath = value.trim();
   if (!exactPath) {
-    throw new Error(emptyMessage ?? `${label} must name one exact path.`);
+    throw new ToolInputError(emptyMessage ?? `${label} must name one exact path.`);
   }
   const pathBytes = Buffer.byteLength(exactPath, "utf8");
   if (pathBytes > limitBytes) {
-    throw new Error(`${label} must be at most ${limitBytes} UTF-8 bytes after trimming.`);
+    throw new ToolInputError(`${label} must be at most ${limitBytes} UTF-8 bytes after trimming.`);
   }
   return exactPath;
 }
@@ -95,13 +97,13 @@ function requireBoundedSubjects(
   const subjects = subjectPaths.map((path, index) =>
     requireBoundedExactPath(path, `subjectPaths[${index}]`, NODE_PATH_LIMIT_BYTES));
   if (subjects.length < min || subjects.length > max) {
-    throw new Error(`subjectPaths must contain ${min}..${max} exact paths.`);
+    throw new ToolInputError(`subjectPaths must contain ${min}..${max} exact paths.`);
   }
   if (subjects.reduce((sum, path) => sum + Buffer.byteLength(path, "utf8"), 0) > combinedLimitBytes) {
-    throw new Error(`Combined subject paths exceed the ${combinedLimitBytes}-byte UTF-8 limit.`);
+    throw new ToolInputError(`Combined subject paths exceed the ${combinedLimitBytes}-byte UTF-8 limit.`);
   }
   if (new Set(subjects).size !== subjects.length) {
-    throw new Error("subjectPaths must not contain duplicates.");
+    throw new ToolInputError("subjectPaths must not contain duplicates.");
   }
   return subjects;
 }
@@ -179,17 +181,40 @@ function compactResult(options: CompactResultOptions) {
 const MUTATION_LANDED = { mutationApplied: true, saved: true, retrySafe: false } as const;
 const READ_ONLY = { readOnly: true } as const;
 
+// Every check the engine would reject on is expressed in the schema so the
+// MCP host rejects the call BEFORE the handler runs (an -32602 invalid-args
+// error, never a tool result that looks like an engine failure). Byte caps
+// and dedupe live here as refines; the fn-side helpers above repeat them only
+// for direct callers.
+const utf8Within = (limitBytes: number) => (value: string) => Buffer.byteLength(value, "utf8") <= limitBytes;
 const exactScenePath = z
   .string()
   .trim()
   .min(1)
-  .max(512);
+  .max(SCENE_PATH_LIMIT_BYTES)
+  .refine(utf8Within(SCENE_PATH_LIMIT_BYTES), `scenePath must be at most ${SCENE_PATH_LIMIT_BYTES} UTF-8 bytes`);
 const exactNodePath = z
   .string()
   .trim()
   .min(1)
-  .max(256);
+  .max(NODE_PATH_LIMIT_BYTES)
+  .refine(utf8Within(NODE_PATH_LIMIT_BYTES), `node paths must be at most ${NODE_PATH_LIMIT_BYTES} UTF-8 bytes`);
+const noDuplicates = (paths: readonly string[]) => new Set(paths).size === paths.length;
+const combinedUtf8Within = (limitBytes: number) => (paths: readonly string[]) =>
+  paths.reduce((sum, path) => sum + Buffer.byteLength(path, "utf8"), 0) <= limitBytes;
+/** Ordered, nonduplicate exact node paths with the engine's combined byte cap. */
+const subjectPathList = (min: number, max: number, combinedLimitBytes: number) =>
+  z
+    .array(exactNodePath)
+    .min(min)
+    .max(max)
+    .refine(noDuplicates, "subjectPaths must not contain duplicates")
+    .refine(combinedUtf8Within(combinedLimitBytes), `Combined subject paths exceed the ${combinedLimitBytes}-byte UTF-8 limit`);
 const finiteVector3 = z.tuple([z.number().finite(), z.number().finite(), z.number().finite()]);
+const nonzeroVector3 = finiteVector3.refine(
+  (vector) => vector.reduce((sum, component) => sum + component * component, 0) > 1e-12,
+  "vector must be finite and nonzero",
+);
 
 // ---------------------------------------------------------------------------
 // Registration
@@ -262,7 +287,7 @@ The pose is always global/world-space: position and Euler rotation in degrees ar
         const exactScene = requireBoundedExactPath(scenePath, "scenePath", SCENE_PATH_LIMIT_BYTES);
         const exactSubject = requireBoundedExactPath(subjectPath, "subjectPath", NODE_PATH_LIMIT_BYTES);
         if (!Number.isFinite(maxFloorDistance) || maxFloorDistance < MIN_PLACEMENT_FLOOR_DISTANCE) {
-          throw new Error("maxFloorDistance must be at least 0.001.");
+          throw new ToolInputError("maxFloorDistance must be at least 0.001.");
         }
         const receipt = await client.executeIdentityBoundOps(
           [{
@@ -338,9 +363,10 @@ The normal result is bounded below 5 KB and returns before/after transforms, sup
           "subjectPath must name one exact Node3D; selection fallback is not supported.",
         );
         if (!snapDirectionExceedsNativeMinimum(direction)) {
-          throw new Error("direction squared length must exceed 0.00001.");
+          throw new ToolInputError("direction squared length must exceed 0.00001.");
         }
-        if (gap > maxDistance) throw new Error("gap must not exceed maxDistance.");
+        // Cross-field: a raw zod shape cannot express it, so it stays here.
+        if (gap > maxDistance) throw new ToolInputError("gap must not exceed maxDistance.");
         const receipt = await executeSceneMutation(client, exactScene, [{
           op: "SnapToSurface",
           subject_path: exactSubject,
@@ -366,11 +392,8 @@ Every anchor and extent comes from visible descendant GeometryInstance3D world A
 Alignment modes use the first ordered subject's minimum, center, or maximum projected anchor. Distribution modes keep the first and last subjects fixed and honor caller order. distribute_gaps accounts for each subject's projected half-extent and fails if the endpoint span cannot fit non-overlapping equal gaps. The compact result returns ordered before/after origins, resolved spacing, and numeric residuals under 5 KB. On an engine build that predates AlignDistribute3D the result is a structured engine_lacks_op failure naming the fallback.`,
     {
       scenePath: exactScenePath.describe("Exact target scene, e.g. 'res://levels/market.tscn'."),
-      subjectPaths: z
-        .array(exactNodePath)
-        .min(2)
-        .max(16)
-        .describe("Two to sixteen exact Node3D paths in the order to align or distribute."),
+      subjectPaths: subjectPathList(2, 16, 1536)
+        .describe("Two to sixteen exact nonduplicate Node3D paths in the order to align or distribute."),
       axis: finiteVector3
         .refine(([x, y, zValue]) => Math.hypot(x, y, zValue) > 1e-6, "axis must be non-zero")
         .describe("Finite, non-zero world axis [x,y,z]; normalization is automatic."),
@@ -385,7 +408,7 @@ Alignment modes use the first ordered subject's minimum, center, or maximum proj
         const exactScene = requireBoundedExactPath(scenePath, "scenePath", SCENE_PATH_LIMIT_BYTES);
         const paths = requireBoundedSubjects(subjectPaths, 2, 16, 1536);
         if (axis.some((component) => !Number.isFinite(component)) || Math.hypot(...axis) <= 1e-6) {
-          throw new Error("axis must contain three finite values and have non-zero length.");
+          throw new ToolInputError("axis must contain three finite values and have non-zero length.");
         }
         const receipt = await executeSceneMutation(client, exactScene, [{
           op: "AlignDistribute3D",
@@ -413,10 +436,7 @@ Always pass exact scenePath, cameraPath, and subjectPaths. Editor selection is n
     {
       scenePath: exactScenePath.describe("Exact scene to mutate and save, e.g. 'res://levels/diorama.tscn'."),
       cameraPath: exactNodePath.describe("Exact perspective Camera3D path relative to the scene root, e.g. './Cameras/Main'."),
-      subjectPaths: z
-        .array(exactNodePath)
-        .min(1)
-        .max(8)
+      subjectPaths: subjectPathList(1, 8, 2048)
         .describe("One to eight exact nonduplicate subject paths; visible descendants contribute framing bounds."),
       aspect: z
         .number()
@@ -429,7 +449,7 @@ Always pass exact scenePath, cameraPath, and subjectPaths. Editor selection is n
         .min(0)
         .max(0.45)
         .describe("Required normalized empty margin on every screen edge, from 0 through 0.45."),
-      viewDirection: finiteVector3
+      viewDirection: nonzeroVector3
         .optional()
         .describe("Optional finite nonzero world-space camera forward vector [x, y, z]."),
     },
@@ -443,7 +463,7 @@ Always pass exact scenePath, cameraPath, and subjectPaths. Editor selection is n
         if (viewDirection) {
           const lengthSquared = viewDirection.reduce((sum, component) => sum + component * component, 0);
           if (!Number.isFinite(lengthSquared) || lengthSquared <= 1e-12) {
-            throw new Error("viewDirection must be finite and nonzero.");
+            throw new ToolInputError("viewDirection must be finite and nonzero.");
           }
         }
         const op: Record<string, unknown> = {
@@ -478,11 +498,8 @@ Always pass exact scenePath, cameraPath, and subjectPaths. Editor selection is n
     {
       scenePath: exactScenePath.describe("Exact scene containing the camera and subjects, e.g. 'res://levels/courtyard.tscn'"),
       cameraPath: exactNodePath.describe("Exact Camera3D path relative to the scene root, e.g. './Cameras/MainCamera'"),
-      subjectPaths: z
-        .array(exactNodePath)
-        .min(1)
-        .max(5)
-        .describe("One to five exact subject paths; descendants contribute visible visual bounds and colliders."),
+      subjectPaths: subjectPathList(1, 5, 1024)
+        .describe("One to five exact nonduplicate subject paths; descendants contribute visible visual bounds and colliders."),
       aspect: z
         .number()
         .finite()
@@ -571,10 +588,10 @@ Always pass an exact scenePath and finite world-space start/end points. This rea
         const exactScene = requireBoundedExactPath(scenePath, "scenePath", SCENE_PATH_LIMIT_BYTES);
         if (start.length !== 3 || end.length !== 3 ||
             !start.every(Number.isFinite) || !end.every(Number.isFinite)) {
-          throw new Error("start and end must each contain exactly three finite world-space numbers.");
+          throw new ToolInputError("start and end must each contain exactly three finite world-space numbers.");
         }
         if (!Number.isInteger(navigationLayers) || navigationLayers < 1 || navigationLayers > 0xffffffff) {
-          throw new Error("navigationLayers must be an integer from 1 through 4294967295.");
+          throw new ToolInputError("navigationLayers must be an integer from 1 through 4294967295.");
         }
         const receipt = await client.executeIdentityBoundOps(
           [{

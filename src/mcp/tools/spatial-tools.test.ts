@@ -470,3 +470,44 @@ describe("compact-result byte boundary", () => {
     }
   });
 });
+
+describe("schema-level validation (rejected by the host before the handler runs)", () => {
+  it("subjectPaths refuse duplicates and the combined UTF-8 cap in the schema itself", () => {
+    const align = input(tool("summer_align_distribute_3d"), "subjectPaths");
+    expect(align.safeParse(["./A", "./B"]).success).toBe(true);
+    expect(align.safeParse(["./A", " ./A "]).success).toBe(false);
+    // 16 paths x 255 bytes passes the per-path cap but blows the 1536-byte combined cap.
+    const wide = Array.from({ length: 16 }, (_, index) => `./${"x".repeat(250)}${index.toString(36).padStart(3, "0")}`);
+    expect(align.safeParse(wide).success).toBe(false);
+    const frame = input(tool("summer_frame_camera"), "subjectPaths");
+    expect(frame.safeParse(["./A", "./A"]).success).toBe(false);
+    const visibility = input(tool("summer_camera_visibility"), "subjectPaths");
+    expect(visibility.safeParse(["./A", "./A"]).success).toBe(false);
+  });
+
+  it("paths are capped in UTF-8 bytes, not UTF-16 code units", () => {
+    // 200 three-byte characters: 200 code units (passes .max(256)), 600 bytes (fails the engine cap).
+    const multiByte = "./" + "€".repeat(200);
+    expect(input(tool("summer_test_placement"), "subjectPath").safeParse(multiByte).success).toBe(false);
+    expect(input(tool("summer_test_placement"), "scenePath").safeParse("res://" + "€".repeat(300)).success).toBe(false);
+    expect(input(tool("summer_test_placement"), "subjectPath").safeParse("./Props/Crate").success).toBe(true);
+  });
+
+  it("viewDirection must be nonzero in the schema", () => {
+    const viewDirection = input(tool("summer_frame_camera"), "viewDirection");
+    expect(viewDirection.safeParse([0, 0, 0]).success).toBe(false);
+    expect(viewDirection.safeParse([0, 0, -1]).success).toBe(true);
+    expect(viewDirection.safeParse(undefined).success).toBe(true);
+  });
+
+  it("handler-level argument rejections are classified input (nothing sent), never transport", async () => {
+    const { executeIdentityBoundOps } = mockClient();
+    const result = (await tool("summer_snap_to_surface").handler({ ...ARGS.summer_snap_to_surface, gap: 21 })) as Response;
+    expect(result.isError).toBe(true);
+    const body = JSON.parse(text(result)) as Record<string, unknown>;
+    expect(body.failure_reason).toBe("invalid_input");
+    expect(body.sent).toBe(false);
+    expect(text(result)).not.toContain("may have partially applied");
+    expect(executeIdentityBoundOps).not.toHaveBeenCalled();
+  });
+});

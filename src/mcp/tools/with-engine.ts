@@ -1,9 +1,11 @@
 import { getClient, resetClient } from "../server.js";
 import { recordMcpSession } from "../../core/telemetry.js";
+import { thrownErrorClass } from "../../core/tool-errors.js";
 export {
   missingEngineOpResult,
   type CapabilityAdvertisingClient,
 } from "../../core/capability-skew.js";
+export { ToolInputError, UnsupportedOperationError } from "../../core/tool-errors.js";
 
 type ToolResultContent =
   | { type: "text"; text: string }
@@ -303,6 +305,18 @@ export async function withEngine<T>(
         meta
       );
     } catch (err) {
+      // A tagged pre-apply throw (argument validation, or a client that cannot
+      // perform the op at all) never reached the engine: keep the cached
+      // client, skip the transport recovery recipe, and say so.
+      const preApply = thrownErrorClass(err);
+      if (preApply) {
+        return attachMeta(preApplyFailureResult(preApply, err), {
+          errorClass: preApply,
+          failureReason: PRE_APPLY_FAILURE_REASON[preApply],
+          retried,
+          boundProjectIdHash,
+        });
+      }
       // Drop the cached client (it may point at a dead/rotated engine). Retry
       // once only for a provably pre-apply auth failure; anything else surfaces.
       resetClient();
@@ -319,6 +333,42 @@ export async function withEngine<T>(
   );
 }
 
+const PRE_APPLY_FAILURE_REASON = {
+  input: "invalid_input",
+  unsupported: "unsupported_operation",
+} as const;
+
+/** Model-visible result for a throw that is provably pre-apply. Rendered as
+ *  JSON like every other classified failure (callers read failure_reason
+ *  instead of scraping a sentence); `sent:false` is the load-bearing bit —
+ *  no mutation could have landed, so the model may fix the call and retry. */
+function preApplyFailureResult(
+  errorClass: keyof typeof PRE_APPLY_FAILURE_REASON,
+  err: unknown
+): ToolResult {
+  const message = err instanceof Error ? err.message : String(err);
+  return {
+    isError: true,
+    content: [{
+      type: "text",
+      text: JSON.stringify(
+        {
+          error: message,
+          failure_reason: PRE_APPLY_FAILURE_REASON[errorClass],
+          errorClass,
+          sent: false,
+          hint:
+            errorClass === "input"
+              ? "Nothing was sent to the engine. Fix the argument named in the error and call again — no inspection needed."
+              : "Nothing was sent or applied. This client cannot perform the operation; use the alternative named in the error.",
+        },
+        null,
+        2
+      ),
+    }],
+  };
+}
+
 /** Every transport-level failure must TEACH recovery, not just name the error.
  *  getClient()'s connect failure already carries its own instructions; anything
  *  else (fetch failed / abort / HTTP status thrown mid-call) gets the generic
@@ -326,7 +376,7 @@ export async function withEngine<T>(
 export function withTransportRecovery(message: string): string {
   // Connect-path failures already prescribe (server.ts getClient appends the
   // "Open the intended project…" instructions). Don't stack a second recipe.
-  if (message.includes("npx summer-engine run")) return message;
+  if (message.includes("summer-engine run") || message.includes("summer-engine@latest run")) return message;
   return (
     message +
     "\n\nRecovery: (1) check the engine is running and responsive — summer_get_project_context here, or `summer doctor` in a shell; " +

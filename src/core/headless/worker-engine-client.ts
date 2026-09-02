@@ -1,5 +1,6 @@
 import type { EngineSnapshot } from "../api-client.js";
 import type { WorkerConnection } from "./worker-connection.js";
+import { UnsupportedOperationError } from "../tool-errors.js";
 
 /**
  * EngineApiClient-shaped facade over a WorkerConnection, so the existing MCP
@@ -16,11 +17,13 @@ import type { WorkerConnection } from "./worker-connection.js";
  * SUMMER_HEADLESS_ROUTING=1 and no live editor has the project open.
  */
 
+/** Tagged so withEngine classifies it "unsupported" (nothing sent, keep the
+ *  client, no transport recovery recipe) instead of "transport". */
 function unsupported(method: string): never {
-  throw new Error(
+  throw new UnsupportedOperationError(
     `"${method}" is not supported by the headless worker serving this project. ` +
       "Only file, import, scene-read, and game run/stop/log/screenshot operations work headless. " +
-      "Open the project in the Summer editor (npx summer-engine run <path>) for full coverage."
+      "Open the project in the Summer editor (npx -y summer-engine@latest run <path>) for full coverage."
   );
 }
 

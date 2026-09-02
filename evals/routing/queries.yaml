@@ -119,23 +119,23 @@ queries:
 
   # ── VFX ────────────────────────────────────────────────────────────────
   - query: "make a fireball"
-    expected: [skill/fire]
+    expected: [skill/vfx-fire]
   - query: "add sparks when the sword hits metal"
-    expected: [skill/hit-spark]
+    expected: [skill/vfx-hit-spark]
   - query: "the boss should disintegrate when it dies"
-    expected: [skill/dissolve]
+    expected: [skill/vfx-dissolve]
   - query: "smoke coming out of the chimney"
-    expected: [skill/smoke]
+    expected: [skill/vfx-smoke]
   - query: "chain lightning spell effect"
-    expected: [skill/lightning]
+    expected: [skill/vfx-lightning]
   - query: "muzzle flash on the shotgun"
-    expected: [skill/muzzle-flash]
+    expected: [skill/vfx-muzzle-flash]
   - query: "make the pond ripple when raindrops hit it"
-    expected: [skill/water-ripple]
+    expected: [skill/vfx-water-ripple]
   - query: "make stylized water"
-    expected: [skill/water-ripple]
+    expected: [skill/vfx-water-ripple]
   - query: "the amulet should glow like it's enchanted"
-    expected: [skill/magic-glow]
+    expected: [skill/vfx-magic-glow]
   - query: "combat feels flat, it needs more punch"
     expected: [skill/game-feel]
 
@@ -165,7 +165,10 @@ queries:
   - query: "what templates can I start from"
     expected: [skill/browse-templates]
   - query: "move my project over to my laptop"
-    expected: [skill/summer-cloud]
+    expected: []
+    expected_gap: true
+    closest: skill/using-summer
+    note: Summer Cloud sync was removed (unmaintained research preview); no project-transfer skill exists. Use git or copy the project folder.
   - query: "run it and tell me if it works"
     expected: [skill/play]
   - query: "everything is in one giant scene file, how should I organize this"

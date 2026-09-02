@@ -84,6 +84,37 @@
       "status": "stable"
     },
     {
+      "id": "reference/headless-routing",
+      "kind": "reference",
+      "version": "1.0.0",
+      "content_hash": "d6182726cca1100b56804e5e31d016b60efed4d7f0221a763f599247f18341d3",
+      "summary": "How MCP tool calls reach a project with no editor open — editor, then live headless worker, then spawned worker — behind SUMMER_HEADLESS_ROUTING=1.",
+      "use_when": [
+        "a Summer MCP tool call must run against a project that no editor has open (CI, servers, scripting loops)",
+        "deciding whether SUMMER_HEADLESS_ROUTING should be enabled for a session and what changes when it is",
+        "a tool result mentions a headless worker, a [headless:<stage>] error, or an outcome-unknown quarantine"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "mcp",
+          "engine",
+          "headless"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.7"
+      },
+      "related": {
+        "references": [
+          "reference/mcp-tools-reference"
+        ]
+      },
+      "status": "preview"
+    },
+    {
       "id": "reference/mcp-fresh-chat-playbook",
       "kind": "reference",
       "version": "1.0.0",
@@ -118,7 +149,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.0.0",
-      "content_hash": "6b190676b0210c09303c2bf64bdd16baffd84b716e92569f2ea941f11e8cabb0",
+      "content_hash": "70880be8ccd2dba2143818a642bdcbc802a345d07c5b53fcfa614ffebd52d59a",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -195,7 +226,7 @@
       "id": "skill/3d-lighting",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "1a47c99b3703e37a97ac0232ded9104591cc6f556068cf13c4807d9075ebf0f9",
+      "content_hash": "d6d2f28cc11bf659848dddeb171817dc7bd99f6f67c605920306cd5510bb43f0",
       "summary": "Set up 3D scene lighting — DirectionalLight3D vs Omni vs Spot, WorldEnvironment, sky, shadow tuning, ambient — per current Summer conventions.",
       "use_when": [
         "setting up lighting in a Summer Engine 3D scene — adding lights, configuring WorldEnvironment, sky, or shadows"
@@ -214,6 +245,12 @@
       },
       "compatibility": {
         "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/running-in-the-cloud",
+          "skill/scene-scripting"
+        ]
       },
       "status": "stable"
     },
@@ -307,7 +344,7 @@
       "id": "skill/animation-tree",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "b7f26d26811a4b9c987f00b7092c18f5a1f2e8097b7db945724e318b7c150041",
+      "content_hash": "0c9a0d77ee5fe66541fede657c33481f766e0e06bc77e52215c8297dcf3a1492",
       "summary": "Design and wire AnimationTree state machines and blend trees so clips respond to gameplay — locomotion blends, attack interrupts, hit reactions.",
       "use_when": [
         "the character has clips that must play in response to gameplay — idle/walk/run blends, attacks that interrupt locomotion, hit reactions",
@@ -331,6 +368,7 @@
       },
       "related": {
         "skills": [
+          "skill/character-animation-wiring",
           "skill/design-npc",
           "skill/facial-and-lipsync",
           "skill/generate-motion",
@@ -582,6 +620,52 @@
       },
       "compatibility": {
         "engine": ">=4.6"
+      },
+      "status": "stable"
+    },
+    {
+      "id": "skill/character-animation-wiring",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "b15424f9c3c09f87d222fab90bb3ceb4cb41223a0debdf45a34083209f334850",
+      "summary": "Wire a rigged, animated character end to end — inspect real clips and bones, locomotion state machine, method-track events, poses, blend shapes, root motion.",
+      "use_when": [
+        "a rigged GLB or Meshy rig with generated clips is in the scene and needs idle/walk/run wiring with blend times",
+        "footstep or attack-frame events, head tracking, still poses, blend-shape facial keys, or root motion must be hooked up",
+        "the user says the character slides while walking, or the GLB has animations but nothing plays"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "animation",
+          "3d"
+        ],
+        "modalities": [
+          "animation",
+          "scenes",
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/run-script",
+          "tool/api-docs"
+        ],
+        "skills": [
+          "skill/animation-tree",
+          "skill/generate-motion",
+          "skill/retarget",
+          "skill/procedural-animation",
+          "skill/facial-and-lipsync",
+          "skill/design-npc",
+          "skill/scene-scripting",
+          "skill/verifying-scenes"
+        ]
       },
       "status": "stable"
     },
@@ -1051,7 +1135,7 @@
       "id": "skill/facial-and-lipsync",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "c66cac78ca1737dac3095c66c22779413556b7916746d9f84e51ffdcaa479dc6",
+      "content_hash": "a3ce26e827a7be4a04494945ba6ac11132cdc6b9f04ab4c4cff3182c074c633b",
       "summary": "Make a character's mouth move with a voice-over — phoneme extraction from audio, viseme blendshape mapping, and emotional facial expressions.",
       "use_when": [
         "the user has (or wants) a voice-over and needs the character's mouth to move with the words",
@@ -1075,6 +1159,7 @@
       },
       "related": {
         "skills": [
+          "skill/character-animation-wiring",
           "skill/design-npc",
           "skill/animation-tree",
           "skill/generate-motion",
@@ -1203,7 +1288,7 @@
       "id": "skill/generate-motion",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "aaa68ed8c2ac87945cf4b969107c5b9e885d381c8cea20757ec551f06442caa6",
+      "content_hash": "7960b85c563e2a45f72487e90c9600c28b8200bc449350d70ae338467557b2fa",
       "summary": "Attach an animation clip to a rigged character from the curated Meshy motion library — idle, walk, run, attack — wired via AnimationPlayer.",
       "use_when": [
         "the user needs an animation clip on a rigged character — idle/walk/run/attack from the curated Meshy library"
@@ -1226,6 +1311,7 @@
       },
       "related": {
         "skills": [
+          "skill/character-animation-wiring",
           "skill/design-npc",
           "skill/animation-tree",
           "skill/facial-and-lipsync",
@@ -1240,8 +1326,8 @@
     {
       "id": "skill/headless-scripting",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "e7c8b0a973750da10c09972632bdf22d9b4b0843eb341c22e6b8a2e4e85f4895",
+      "version": "1.1.0",
+      "content_hash": "db56b49d85d36d5828aae12b3cbd9036836554ab8b579285ea3c3e0229d4e2b0",
       "summary": "Run a GDScript file against Summer Engine from the shell for operations no MCP tool exposes — navmesh baking, collision shapes, TileSets, re-imports.",
       "use_when": [
         "a Summer project needs an operation no MCP tool exposes — baking a navmesh, generating collision shapes, authoring an Animation, building a TileSet, re-importing assets",
@@ -1648,7 +1734,7 @@
       "id": "skill/procedural-animation",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "04a9ba1531796fcb5a95be44ea6d18d8117a8877aa10c59922e49d7835276b0d",
+      "content_hash": "4de47370fab881acce604c4f96128a69071f903546b74bc7045e1c0b662f50c7",
       "summary": "Runtime bone modification on top of clips — head look-at, foot IK, hand-grabs-prop, additive lean, recoil. Code-and-modifier patterns, not generation.",
       "use_when": [
         "the user needs runtime-driven bone modification on top of clips — head look-at, foot IK on uneven ground, additive lean, hit recoil, ragdoll"
@@ -1671,6 +1757,7 @@
       },
       "related": {
         "skills": [
+          "skill/character-animation-wiring",
           "skill/design-npc",
           "skill/animation-tree",
           "skill/facial-and-lipsync",
@@ -1746,7 +1833,7 @@
       "id": "skill/retarget",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "dec9042a70553020026b7d4eea5ba7e21921a34adfad312719b30885425d4bb7",
+      "content_hash": "3a11fca0631caefb494c43ff25a8ae365e0bc73d79cdf16846aeefda8e096385",
       "summary": "Apply existing animation clips from one rigged character to a different rigged character — same library, multiple models, no regeneration.",
       "use_when": [
         "applying existing animation clips from one rigged character to a different rigged character — sharing one animation library across models"
@@ -1769,12 +1856,49 @@
       },
       "related": {
         "skills": [
+          "skill/character-animation-wiring",
           "skill/design-npc",
           "skill/animation-tree",
           "skill/facial-and-lipsync",
           "skill/generate-motion",
           "skill/procedural-animation",
           "skill/asset-strategy"
+        ]
+      },
+      "status": "stable"
+    },
+    {
+      "id": "skill/running-in-the-cloud",
+      "kind": "skill",
+      "version": "1.0.1",
+      "content_hash": "d23f103bf7fcd0e7f93c519a8a58bb3006a18f98e924f271d9e4048c89f3d8b6",
+      "summary": "Run Summer Engine on a Linux box with no display — install it, launch headless, know when xvfb + software GL are needed, authenticate without a browser.",
+      "use_when": [
+        "Summer Engine runs in a cloud container, CI job, remote agent sandbox, or any Linux machine with no desktop",
+        "installing the engine on Linux, or a tool reports \"engine not running\" in an environment that has no display",
+        "deciding whether a render path (screenshots, previews, verification frames) needs xvfb-run and software GL",
+        "SUMMER_ENGINE_BINARY, SUMMER_ENGINE_URL, or SUMMER_TOKEN come up"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "agent-workflow",
+          "project"
+        ],
+        "modalities": [
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/headless-scripting",
+          "skill/playtesting-a-feature",
+          "skill/verification-before-completion"
         ]
       },
       "status": "stable"
@@ -1802,6 +1926,53 @@
       },
       "compatibility": {
         "engine": ">=4.6"
+      },
+      "status": "stable"
+    },
+    {
+      "id": "skill/scene-scripting",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "3efa261ea0d82e94e79c40a77443b46efe1b496b859add7c838b9e00c8e7aaf7",
+      "summary": "Build or modify scenes with one GDScript run inside the live editor (summer_run_script) instead of long CRUD chains; verify with snapshot diff + screenshot.",
+      "use_when": [
+        "a scene change needs 3+ related ops or any computed placement — scattering, grids, rings, procedural meshes, geometry helpers, terrain, lighting rigs, keyframe animation, shader FX",
+        "an API property/method name must be verified with summer_api_docs before scripting",
+        "a cold project-wide batch job belongs in summer_run_editor_script"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "scripting",
+          "agent-workflow"
+        ],
+        "modalities": [
+          "scripts",
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/run-script",
+          "tool/run-editor-script",
+          "tool/api-docs",
+          "tool/world-snapshot",
+          "tool/snapshot-diff",
+          "tool/screenshot"
+        ],
+        "skills": [
+          "skill/verifying-scenes",
+          "skill/headless-scripting",
+          "skill/scene-composition",
+          "skill/character-animation-wiring",
+          "skill/verification-before-completion"
+        ]
       },
       "status": "stable"
     },
@@ -2059,33 +2230,6 @@
       "status": "stable"
     },
     {
-      "id": "skill/summer-cloud",
-      "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "11cd4d9ff083ebcd4759932e1f13858977bc035463a398536c87bacefc505ae4",
-      "summary": "Sync, back up, restore, and share Summer projects via Summer Cloud — move machines, share exact bytes, checkpoint before risky bulk operations.",
-      "use_when": [
-        "syncing a project, moving it to another machine, sharing exact bytes with a collaborator, backing up big generated assets, or restoring an earlier version",
-        "the user wants a safety net before a risky bulk operation"
-      ],
-      "facets": {
-        "lifecycle": [
-          "build"
-        ],
-        "domains": [
-          "scenes",
-          "project"
-        ],
-        "modalities": [
-          "project"
-        ]
-      },
-      "compatibility": {
-        "engine": ">=4.6"
-      },
-      "status": "stable"
-    },
-    {
       "id": "skill/tileable-texture",
       "kind": "skill",
       "version": "1.0.0",
@@ -2151,7 +2295,7 @@
       "id": "skill/tune-performance",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "939c13616f765295fe6091b10ae78bf1ce6d5edcf16a9ac413cad42f69efd2e4",
+      "content_hash": "93c49391f831f4add82e2e95f726a5a92c62d15d3358684d6d077c28b4d798ca",
       "summary": "Profile a slow game via summer_get_diagnostics, identify rendering/physics/scripting hotspots, propose fixes with before/after metric expectations.",
       "use_when": [
         "the game is slow, drops framerate, stutters, takes forever to start, or runs poorly on specific hardware"
@@ -2173,6 +2317,8 @@
       },
       "related": {
         "skills": [
+          "skill/running-in-the-cloud",
+          "skill/scene-scripting",
           "skill/debug",
           "skill/3d-lighting",
           "skill/diagnosing-perf-regressions"
@@ -2279,8 +2425,8 @@
     {
       "id": "skill/using-summer",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "c98c9322b9615db0d1c7a6a6f3c69939fd726b2c832d7e2630c98ceb9923a869",
+      "version": "1.0.1",
+      "content_hash": "fbd08872f8a480a00e89444e0edc2feeb6993ac90232cfa58652b742ff643764",
       "summary": "Session bootstrap for Summer projects — establishes how to find and use Summer skills and the summer-engine MCP before any response.",
       "use_when": [
         "starting any conversation in a Summer Engine project"
@@ -2381,10 +2527,53 @@
       "status": "stable"
     },
     {
+      "id": "skill/verifying-scenes",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "f41f37ec5cd9551fcbd941487b2e533141394b733b9d817e715215666a16a59a",
+      "summary": "Prove scene work landed — snapshot before, diff + screenshot after, live runtime reads during playtests — before claiming any visual or structural result.",
+      "use_when": [
+        "after any mutation batch, asset import, or lighting change, before claiming it worked",
+        "during a playtest, to read live runtime state (spawned nodes, actual stats) without stopping the game",
+        "deciding what counts as evidence for a visual or structural claim"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "verification",
+          "agent-workflow"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/world-snapshot",
+          "tool/snapshot-diff",
+          "tool/get-runtime-tree",
+          "tool/inspect-runtime-node",
+          "tool/screenshot"
+        ],
+        "skills": [
+          "skill/scene-scripting",
+          "skill/playtesting-a-feature",
+          "skill/verification-before-completion"
+        ]
+      },
+      "status": "stable"
+    },
+    {
       "id": "skill/vfx-dissolve",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "d8ed305cb6c3302f1f4b7e709b5f0d0285f87bf40d8d1ad0ad9b294558d0f8e6",
+      "content_hash": "92bae34a867c478d3ab68d1fa762dc40711ee2b3b2eb0e8b7b57f365f6624f21",
       "summary": "Dissolve effect — a mesh disintegrating with a glowing burning edge, driven by a noise-threshold ShaderMaterial overriding the target's material.",
       "use_when": [
         "authoring a dissolve effect — an object disintegrating with a glowing burning edge (disintegrate, burn away, vanish into ash)"
@@ -2406,6 +2595,7 @@
       },
       "related": {
         "skills": [
+          "skill/scene-scripting",
           "skill/sound-effect",
           "skill/game-feel",
           "skill/vfx-fire",
@@ -2419,7 +2609,7 @@
       "id": "skill/vfx-fire",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "7984752303e5408f9dd57f2189459f9189d53550da762cca2fd61cf4f9bd94ff",
+      "content_hash": "05e1cecb723b187774d7a2c669798ce08013c2c7dfbb74274930cb335c19058e",
       "summary": "Fire effect — animated flames built with a particle shader, GPUParticles3D, and a noise-based color ramp — torches, campfires, candles.",
       "use_when": [
         "authoring a fire visual effect — torch, campfire, bonfire, flame, burning object, candle"
@@ -2441,6 +2631,7 @@
       },
       "related": {
         "skills": [
+          "skill/scene-scripting",
           "skill/sound-effect",
           "skill/game-feel",
           "skill/vfx-dissolve",
@@ -2456,7 +2647,7 @@
       "id": "skill/vfx-hit-spark",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "bbebdb8c158eafdbcfbf92323476a7034f474c3684e12a03c9c58b587f9e19a7",
+      "content_hash": "cb6d06ab3fbc546026dca4e03888a07d8f644f524466797dc6d81e8c7e6f4524",
       "summary": "Hit-spark effect — a one-shot burst of additive billboard particles oriented to a surface normal, fired on impact.",
       "use_when": [
         "authoring a hit-spark effect — impact spark, bullet hit, sword clash, ricochet, sparks at a hit point"
@@ -2478,6 +2669,7 @@
       },
       "related": {
         "skills": [
+          "skill/scene-scripting",
           "skill/sound-effect",
           "skill/game-feel",
           "skill/vfx-fire",
@@ -2492,7 +2684,7 @@
       "id": "skill/vfx-lightning",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "1f46b65dcc07178501eee5e3abccc5564d46ba826dca7a9100466f8394bbff0f",
+      "content_hash": "e38722f7241a3fdcee28c186ddcb3f7cf9d9fc64f2aab075def554d48bc252ff",
       "summary": "Lightning bolt effect — procedural jagged path drawn via ImmediateMesh, glow shader, sparks at endpoints, screen shake.",
       "use_when": [
         "authoring a lightning bolt effect — chain lightning, electric attack, tesla coil, shock spell, energy beam"
@@ -2514,6 +2706,7 @@
       },
       "related": {
         "skills": [
+          "skill/scene-scripting",
           "skill/sound-effect",
           "skill/game-feel",
           "skill/vfx-hit-spark",
@@ -2527,7 +2720,7 @@
       "id": "skill/vfx-magic-glow",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "5e2e0b3db61a3216062553d2e1c6ceab6cecb2e8ea0e77fe6255e1eeec42aa3d",
+      "content_hash": "5a06ee235b5f7f43023105f3f66e735f40c0fa3e9bcc45ee64a83e826d9f9d26",
       "summary": "Magic-glow effect — a pulsing OmniLight3D plus drifting additive motes plus optional emission shader on the source mesh.",
       "use_when": [
         "authoring a magic-glow effect — enchanted item, soul gem, pulsing aura, rune glow, magical orb, wisp"
@@ -2549,6 +2742,7 @@
       },
       "related": {
         "skills": [
+          "skill/scene-scripting",
           "skill/sound-effect",
           "skill/game-feel",
           "skill/vfx-dissolve",
@@ -2563,7 +2757,7 @@
       "id": "skill/vfx-muzzle-flash",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "4a5321d5ee5eaa1e1eb2200f479c0e03761b528c375f68fba0e46304ad4f825c",
+      "content_hash": "d92fe28eb9c8168955df75f3d20ca770c5d373712422eafeb19be7e0b6886ccf",
       "summary": "Muzzle-flash effect — a one-shot ~80 ms burst at a gun barrel built with a particle one-shot or a flashing quad with a star-burst shader.",
       "use_when": [
         "authoring a muzzle-flash effect — gun fire, weapon flash, barrel flash, spell-cast burst at a hand"
@@ -2585,6 +2779,7 @@
       },
       "related": {
         "skills": [
+          "skill/scene-scripting",
           "skill/sound-effect",
           "skill/game-feel",
           "skill/vfx-fire",
@@ -2600,7 +2795,7 @@
       "id": "skill/vfx-smoke",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "07681843fa64002d4450a3abf574ebc8e70f60d98ca6fb5fb5eb84ec4b8085fb",
+      "content_hash": "99a3769ee81a6b72ed561aa18bc00ff2c16aaf2fe6c44095a865adc2d9f42d42",
       "summary": "Smoke effect — a slow-rising column or puff of soft particles built with a noise + density falloff shader on a quad mesh, GPUParticles3D.",
       "use_when": [
         "authoring a smoke effect — smoke trail, puff, chimney smoke, steam, fog cloud, explosion smoke"
@@ -2622,6 +2817,7 @@
       },
       "related": {
         "skills": [
+          "skill/scene-scripting",
           "skill/sound-effect",
           "skill/vfx-dissolve",
           "skill/vfx-fire",
@@ -2634,7 +2830,7 @@
       "id": "skill/vfx-water-ripple",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "29bf26cfe62ba609cce02b1d862a50dc0afd8e562198324cfdfede68733dfa3a",
+      "content_hash": "a586f3574839cc2186fcfde9b3f51759326c429a09ae40d3052ec1a622cb6cca",
       "summary": "Water-ripple effect — animated normal-distortion ripples on a water plane (or as a Decal) triggered by impacts.",
       "use_when": [
         "authoring a water-ripple effect — raindrop ripples, splash ripples, footstep in a puddle, fish jumps"
@@ -2656,6 +2852,7 @@
       },
       "related": {
         "skills": [
+          "skill/scene-scripting",
           "skill/sound-effect",
           "skill/vfx-hit-spark",
           "skill/vfx-smoke"
@@ -3215,6 +3412,41 @@
       "status": "stable"
     },
     {
+      "id": "tool/api-docs",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "c9b47b2574fd5e7eb63aabe45f645a9b965523dcc9cd80e8be645e76a826c313",
+      "summary": "Offline engine class-reference lookup — verify a property, method, signal, or constant before writing script code instead of guessing names.",
+      "use_when": [
+        "checking an exact property/method/signal/constant name or default before summer_run_script or a .gd edit"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scripting",
+          "reference"
+        ],
+        "modalities": [
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/run-script"
+        ],
+        "skills": [
+          "skill/scene-scripting",
+          "skill/gdscript-patterns"
+        ]
+      },
+      "status": "stable"
+    },
+    {
       "id": "tool/batch",
       "kind": "tool",
       "version": "1.0.0",
@@ -3274,163 +3506,6 @@
         ],
         "domains": [
           "debug"
-        ]
-      },
-      "compatibility": {
-        "engine": ">=4.6"
-      },
-      "status": "stable"
-    },
-    {
-      "id": "tool/cloud-checkpoints",
-      "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "7f8c8c40f174433c7f5c391d2bb3c8a6c3a6e32464101e0c39edef3e4ca6fdb1",
-      "summary": "List local pre-sync checkpoints taken before destructive applies, with stamps usable by cloud restore.",
-      "use_when": [
-        "finding a checkpoint stamp to recover unpushed local work"
-      ],
-      "facets": {
-        "lifecycle": [
-          "build"
-        ],
-        "domains": [
-          "cloud"
-        ]
-      },
-      "compatibility": {
-        "engine": ">=4.6"
-      },
-      "status": "stable"
-    },
-    {
-      "id": "tool/cloud-conflicts",
-      "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "44faa1379543579538040af6fb58854f149b0ede015c3f6cc83ba35726a3eee9",
-      "summary": "List preserved Summer Cloud conflict sets from concurrent edits, or recover one back into the project as a fresh edit.",
-      "use_when": [
-        "after a push or pull reports conflicts and the user must choose what to keep"
-      ],
-      "facets": {
-        "lifecycle": [
-          "build"
-        ],
-        "domains": [
-          "cloud"
-        ]
-      },
-      "compatibility": {
-        "engine": ">=4.6"
-      },
-      "status": "stable"
-    },
-    {
-      "id": "tool/cloud-init",
-      "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "fc78ed93c9c3419bb7b769423b7bbbe6612ba0a5d3ebc137510e275fbdd49336",
-      "summary": "Enable Summer Cloud whole-project sync for a project by writing its git-tracked summer-cloud.json binding.",
-      "use_when": [
-        "once per project before the first cloud push",
-        "forking a project into a new cloud line after deleting the binding"
-      ],
-      "facets": {
-        "lifecycle": [
-          "build"
-        ],
-        "domains": [
-          "cloud"
-        ]
-      },
-      "compatibility": {
-        "engine": ">=4.6"
-      },
-      "status": "stable"
-    },
-    {
-      "id": "tool/cloud-pull",
-      "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "4342bafb21ffc2a5e6d66b1b084d17564baef06388eb02ef7147eae3ab61567d",
-      "summary": "Download Summer Cloud changes into the local project; writes a local checkpoint before any destructive apply and preserves conflicts.",
-      "use_when": [
-        "fetching a teammate's changes",
-        "hydrating a project on a second machine"
-      ],
-      "facets": {
-        "lifecycle": [
-          "build"
-        ],
-        "domains": [
-          "cloud"
-        ]
-      },
-      "compatibility": {
-        "engine": ">=4.6"
-      },
-      "status": "stable"
-    },
-    {
-      "id": "tool/cloud-push",
-      "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "c93c731c74055f6b0286066227fa88c0cfb4facf7882106f0bb512e799072875",
-      "summary": "Upload local project changes to Summer Cloud as a new restorable version; large deletions are gated behind explicit confirmation.",
-      "use_when": [
-        "backing up big assets or snapshotting before a risky bulk operation",
-        "moving a project to another machine"
-      ],
-      "facets": {
-        "lifecycle": [
-          "build"
-        ],
-        "domains": [
-          "cloud"
-        ]
-      },
-      "compatibility": {
-        "engine": ">=4.6"
-      },
-      "status": "stable"
-    },
-    {
-      "id": "tool/cloud-restore",
-      "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "acf59cee9f9f5a592d795cdf709ab71a1edce15474c120e0c7f3ac2e8307e67c",
-      "summary": "Roll a project back to a retained cloud version or a local pre-sync checkpoint; returns an extraneous-file list to review.",
-      "use_when": [
-        "recovering an earlier project state after a bad sync or bulk edit"
-      ],
-      "facets": {
-        "lifecycle": [
-          "build"
-        ],
-        "domains": [
-          "cloud"
-        ]
-      },
-      "compatibility": {
-        "engine": ">=4.6"
-      },
-      "status": "stable"
-    },
-    {
-      "id": "tool/cloud-status",
-      "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "5e308e57eee6c909b947e0c60ffd39dcddeaad2b673ff2ae38c65b468e967ed8",
-      "summary": "Show what a cloud sync would move: file counts, queued push and pull paths, and waiting conflict sets.",
-      "use_when": [
-        "before every cloud push or pull, to report delete and change counts to the user"
-      ],
-      "facets": {
-        "lifecycle": [
-          "build"
-        ],
-        "domains": [
-          "cloud"
         ]
       },
       "compatibility": {
@@ -3884,6 +3959,43 @@
       "status": "stable"
     },
     {
+      "id": "tool/get-runtime-tree",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "80cf55d8dd3e7722c4ec587df46371240a84061ef8e37ef9bd642e50f158b6ba",
+      "summary": "Scene tree of the RUNNING game — spawned enemies, autoloads, pooled nodes — live state the editor reads can never show.",
+      "use_when": [
+        "inspecting what actually spawned during a playtest without stopping the game"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "runtime",
+          "verification"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/inspect-runtime-node",
+          "tool/play",
+          "tool/get-scene-tree"
+        ],
+        "skills": [
+          "skill/verifying-scenes",
+          "skill/playtesting-a-feature"
+        ]
+      },
+      "status": "stable"
+    },
+    {
       "id": "tool/get-scene-tree",
       "kind": "tool",
       "version": "1.0.0",
@@ -4039,6 +4151,45 @@
       "status": "stable"
     },
     {
+      "id": "tool/import-hdri",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "d23e73eabe4e895a7d0e7d8c2f3b701a089fed4eadcfac53003186cf288a1dc3",
+      "summary": "Search Poly Haven's CC0 HDRI library and import one into res://sky/ as environment lighting, with the exact run-script snippet that wires the sky.",
+      "use_when": [
+        "a 3D scene needs real environment lighting and reflections — the cheapest whole-scene visual upgrade"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "assets",
+          "lighting",
+          "3d"
+        ],
+        "modalities": [
+          "assets",
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/run-script",
+          "tool/import-from-url",
+          "tool/screenshot"
+        ],
+        "skills": [
+          "skill/3d-lighting",
+          "skill/skybox-panorama"
+        ]
+      },
+      "status": "stable"
+    },
+    {
       "id": "tool/input-map-bind",
       "kind": "tool",
       "version": "1.0.0",
@@ -4101,6 +4252,41 @@
       },
       "compatibility": {
         "engine": ">=4.6"
+      },
+      "status": "stable"
+    },
+    {
+      "id": "tool/inspect-runtime-node",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "0a516788468152ed4bce99d18f7d0627005fbecbcd8c0f7ba8101ad00d98dc16",
+      "summary": "Live properties of one node in the RUNNING game — actual stats, position, flags — without stopping the game and losing the state.",
+      "use_when": [
+        "answering \"where IS the player\" or \"what are this enemy's stats right now\" during a playtest"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "runtime",
+          "verification"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/get-runtime-tree",
+          "tool/inspect-node"
+        ],
+        "skills": [
+          "skill/verifying-scenes"
+        ]
       },
       "status": "stable"
     },
@@ -4374,6 +4560,81 @@
       "status": "stable"
     },
     {
+      "id": "tool/run-editor-script",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "e17a0efb34e256c2c9a16479d8b7d3c25bb82b54d42c12fdee7417a6e0e88cdd",
+      "summary": "Run an EditorScript `func _run():` in a fresh headless child editor against the on-disk project — the cold path for batch and project-wide jobs.",
+      "use_when": [
+        "re-saving many scenes, sweeping resources, mass import fixes, generating .tres assets, long bakes that should not block the live editor"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "project",
+          "scripting"
+        ],
+        "modalities": [
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/run-script"
+        ],
+        "skills": [
+          "skill/scene-scripting",
+          "skill/headless-scripting"
+        ]
+      },
+      "status": "stable"
+    },
+    {
+      "id": "tool/run-script",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "7cd66b0c9e523fc5867a8ff4cb832be122b60e86fd627d13716dd602ec868fbb",
+      "summary": "Run a GDScript `func run(ctx):` inside the live editor against the open scene — one script instead of a chain of add-node/set-prop calls.",
+      "use_when": [
+        "a change needs 3+ related ops or any computed placement (scatter, grids, procedural meshes, bulk edits)",
+        "the ctx helpers (add_node, add_mesh, grid, scatter, light rig, environment) fit the job"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "scripting"
+        ],
+        "modalities": [
+          "scripts",
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/run-editor-script",
+          "tool/api-docs",
+          "tool/world-snapshot",
+          "tool/snapshot-diff"
+        ],
+        "skills": [
+          "skill/scene-scripting",
+          "skill/verifying-scenes"
+        ]
+      },
+      "status": "stable"
+    },
+    {
       "id": "tool/save-scene",
       "kind": "tool",
       "version": "1.0.0",
@@ -4529,6 +4790,41 @@
       "status": "stable"
     },
     {
+      "id": "tool/snapshot-diff",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "49ae59a52a109aafb5944437ebd2e4b4e23f181a6910c9568c75877d618dea20",
+      "summary": "Diff two world snapshots into added/removed/changed nodes and count deltas — the structural receipt that a mutation did exactly what was intended.",
+      "use_when": [
+        "verifying a mutation batch against the snapshot_id taken before it"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "verification"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/world-snapshot",
+          "tool/screenshot"
+        ],
+        "skills": [
+          "skill/verifying-scenes"
+        ]
+      },
+      "status": "stable"
+    },
+    {
       "id": "tool/start-game-task",
       "kind": "tool",
       "version": "1.0.0",
@@ -4570,6 +4866,42 @@
       },
       "compatibility": {
         "engine": ">=4.6"
+      },
+      "status": "stable"
+    },
+    {
+      "id": "tool/world-snapshot",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "939227205cbcca0255d2aa6151f57a9e09b9cbf815c460c6711c6291993a8567",
+      "summary": "Compact structured snapshot of the edited scene (paths, transforms, world AABBs, fingerprints, counts) — the cheap read before and after every mutation batch.",
+      "use_when": [
+        "taking a diffable baseline before a mutation batch, or verifying transforms/AABBs/fingerprints after one"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "verification"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/snapshot-diff",
+          "tool/get-scene-tree",
+          "tool/screenshot"
+        ],
+        "skills": [
+          "skill/verifying-scenes"
+        ]
       },
       "status": "stable"
     },

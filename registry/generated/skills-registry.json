@@ -98,6 +98,14 @@
       "path": "library/skills/browse-templates/"
     },
     {
+      "id": "skill/character-animation-wiring",
+      "name": "character-animation-wiring",
+      "description": "Use when a rigged, animated character is in the scene (Meshy rig + generated clips, or an imported GLB) and needs to be wired end to end — inspect the clips and bones that actually arrived, build idle/walk/run locomotion with blend times, method-track footsteps and attack frames, still poses and head tracking, blend-shape facial keys, root motion. Trigger on \"wire the character\", \"hook up the animations\", \"make it walk around\", \"the GLB has animations\", \"footstep events\", \"attack frame\", \"root motion\", \"character slides while walking\".",
+      "clients": "all",
+      "recommended": false,
+      "path": "library/skills/character-animation-wiring/"
+    },
+    {
       "id": "skill/character-model",
       "name": "character-model",
       "description": "Use when generating a humanoid character ready for animation — player avatar, NPC, enemy, boss, companion. Generates a T-pose reference image, gates an un-rigged preview past the user, then runs the Meshy auto-rig pass and wires the result as a CharacterBody3D (movement) or Node3D (cinematic). Trigger on \"make a character\", \"generate the player\", \"I need an enemy model\", \"create an NPC\", \"rigged humanoid\", \"character with a skeleton\", \"model for animation\".",
@@ -394,12 +402,28 @@
       "path": "library/skills/retarget/"
     },
     {
+      "id": "skill/running-in-the-cloud",
+      "name": "running-in-the-cloud",
+      "description": "Use when Summer Engine runs in a cloud container, CI job, remote agent sandbox, or any Linux box with no desktop — installing the engine there, launching it headless, deciding when xvfb-run and software GL are required, and authenticating without a browser. Also use when a tool reports \"engine not running\" in an environment that has no display, or when SUMMER_ENGINE_BINARY / SUMMER_TOKEN come up.",
+      "clients": "all",
+      "recommended": false,
+      "path": "library/skills/running-in-the-cloud/"
+    },
+    {
       "id": "skill/scene-composition",
       "name": "scene-composition",
       "description": "Use when building or organizing Summer Engine scenes: node hierarchy conventions, when to extract sub-scenes, reusable prefab patterns, and instance-versus-add-node decisions. Trigger on \"scene\", \"sub-scene\", \"instance\", \"prefab\", \"node hierarchy\", \"scene structure\", \"PackedScene\".",
       "clients": "all",
       "recommended": true,
       "path": "library/skills/scene-composition/"
+    },
+    {
+      "id": "skill/scene-scripting",
+      "name": "scene-scripting",
+      "description": "Use when building or modifying a scene takes more than a couple of node/property calls — scattering instances, procedural meshes, booleans/lathe/sweep geometry, terrain, GridMap fills, lighting rigs, keyframe animation, shader FX, or anything with computed placement. Runs one GDScript inside the live editor via summer_run_script instead of long CRUD chains, verifies with summer_snapshot_diff + summer_screenshot, and checks API names with summer_api_docs instead of guessing.",
+      "clients": "all",
+      "recommended": true,
+      "path": "library/skills/scene-scripting/"
     },
     {
       "id": "skill/scene-to-level",
@@ -464,14 +488,6 @@
       "clients": "all",
       "recommended": false,
       "path": "library/skills/sprite-sheet/"
-    },
-    {
-      "id": "skill/summer-cloud",
-      "name": "summer-cloud",
-      "description": "Use when the user wants to sync a Summer Engine project, move it to another machine or laptop, share the exact bytes with a collaborator, back up big generated assets that do not belong in git, restore an earlier version, or wants a safety net before a risky bulk operation. Trigger on \"sync\", \"Summer Cloud\", \"cloud push\", \"cloud pull\", \"move to another machine\", \"other computer\", \"second machine\", \"share project\", \"back up assets\", \"big assets\", \"collaborator\", \"teammate\", \"restore a version\", \"checkpoint\", \"conflict\".",
-      "clients": "all",
-      "recommended": true,
-      "path": "library/skills/summer-cloud/"
     },
     {
       "id": "skill/tileable-texture",
@@ -544,6 +560,14 @@
       "clients": "all",
       "recommended": true,
       "path": "library/skills/verification-before-completion/"
+    },
+    {
+      "id": "skill/verifying-scenes",
+      "name": "verifying-scenes",
+      "description": "Use when verifying that scene work actually landed — after any mutation batch, asset import, lighting change, or during a playtest — and before claiming any visual or structural result. Runs the before/after discipline (summer_world_snapshot → mutate → summer_snapshot_diff + summer_screenshot), reads live runtime state with summer_get_runtime_tree / summer_inspect_runtime_node instead of stopping the game, and enforces honest-claim rules.",
+      "clients": "all",
+      "recommended": true,
+      "path": "library/skills/verifying-scenes/"
     },
     {
       "id": "skill/vfx-dissolve",

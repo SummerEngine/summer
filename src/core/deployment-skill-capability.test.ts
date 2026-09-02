@@ -14,7 +14,7 @@ const remoteDeploySkill = readFileSync(
   "utf8"
 );
 
-describe("deployment skills prove capabilities before actions", () => {
+describe("repo-lint: deployment skills prove capabilities before actions", () => {
   it("places export capability proof before destination choice or commands", () => {
     const proof = exportSkill.indexOf("### 1. Prove local export capability");
     const destination = exportSkill.indexOf(

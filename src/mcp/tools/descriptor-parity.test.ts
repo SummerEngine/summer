@@ -298,7 +298,7 @@ function collectDescriptors(): Descriptor[] {
 
 // ---------------------------------------------------------------------------
 
-describe("descriptor <-> zod parity (library/tools/*/resource.yaml vs registered MCP shapes)", () => {
+describe("repo-lint: descriptor <-> zod parity (library/tools/*/resource.yaml vs registered MCP shapes)", () => {
   const registered = collectRegisteredTools();
   const descriptors = collectDescriptors();
   const byToolName = new Map(descriptors.map((descriptor) => [descriptor.toolName, descriptor]));

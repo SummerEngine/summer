@@ -69,7 +69,7 @@ function listLibrarySkillDirs(): string[] {
   return out.sort();
 }
 
-describe("agent plugin manifests", () => {
+describe("repo-lint: agent plugin manifests", () => {
   for (const m of MANIFESTS) {
     describe(m.name, () => {
       it("exists and parses as JSON", () => {
@@ -143,7 +143,7 @@ describe("agent plugin manifests", () => {
   });
 });
 
-describe("skill SKILL.md frontmatter", () => {
+describe("repo-lint: skill SKILL.md frontmatter", () => {
   it("every shipped SKILL.md has name and Use-when-style description", () => {
     const skillDirs = listLibrarySkillDirs();
     const failures: string[] = [];

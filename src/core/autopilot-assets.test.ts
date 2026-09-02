@@ -25,7 +25,7 @@ const canonical = join(engineRepo, "modules", "1summer_engine", "verify", "summe
 const canonicalFound = existsSync(canonical);
 const checkCanonical = canonicalFound ? it : it.skip;
 
-describe("autopilot scaffold", () => {
+describe("repo-lint: autopilot scaffold", () => {
   it("ships every file the scaffold needs", () => {
     for (const name of ["autopilot.gd", "probe_base.gd", "run.sh", "README.md"]) {
       expect(existsSync(join(packageRoot, "assets", "autopilot", name)), name).toBe(true);

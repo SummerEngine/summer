@@ -46,7 +46,7 @@ function fakeEngineContext(overrides: Record<string, unknown> = {}): {
   return { ctx: { engine: async () => client as never }, calls };
 }
 
-describe("tool-dispatch registry", () => {
+describe("repo-lint: tool-dispatch registry", () => {
   it("has one dispatch entry per library/tools descriptor, and no extras", () => {
     const slugs = new Set(listToolDispatches().map((entry) => entry.slug));
     const descriptorSlugs = new Set(

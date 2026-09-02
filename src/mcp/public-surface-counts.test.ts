@@ -55,7 +55,7 @@ const UNGUARDED_SURFACES = [
 
 const CLAIM_PATTERN = /\b(\d+)[ -](tools?|skills?)\b/g;
 
-describe("public surface counts derive from registry/generated/counts.json", () => {
+describe("repo-lint: public surface counts derive from registry/generated/counts.json", () => {
   it("counts.json is internally consistent", () => {
     const sum = Object.values(counts.byKind).reduce((a, b) => a + b, 0);
     expect(sum).toBe(counts.total);

@@ -42,10 +42,6 @@ export function getTrajectoryDir(): string | null {
   return typeof dir === "string" && dir.trim().length > 0 ? dir.trim() : null;
 }
 
-export function isTrajectoryCaptureEnabled(): boolean {
-  return getTrajectoryDir() !== null;
-}
-
 /**
  * Keep the SHAPE of a tool call's arguments, drop the bodies: any string over
  * REDACT_STRING_LIMIT chars (script sources, file contents, notes pasted in)

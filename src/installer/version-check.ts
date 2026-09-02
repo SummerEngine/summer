@@ -12,7 +12,7 @@
  * to false-alarm a user just because their wifi is flaky.
  */
 
-import { existsSync, readFileSync, writeFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir, platform } from "node:os";
 import { join } from "node:path";
 
@@ -464,15 +464,4 @@ export function buildBootDriftNotice(
     agent,
     text,
   };
-}
-
-// Re-export for tests / callers that want to know the install marker's mtime.
-export function markerMtime(dir: string): number | null {
-  const path = join(dir, SKILL_VERSION_MARKER_FILENAME);
-  if (!existsSync(path)) return null;
-  try {
-    return statSync(path).mtimeMs;
-  } catch {
-    return null;
-  }
 }

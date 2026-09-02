@@ -101,7 +101,7 @@ describe("json-schema mini validator: strictness", () => {
   });
 });
 
-describe("tool.schema.json: surfaces.mcp.remote", () => {
+describe("repo-lint: tool.schema.json: surfaces.mcp.remote", () => {
   function loadStore(): SchemaStore {
     const store: SchemaStore = new Map();
     for (const file of ["resource.schema.json", "tool.schema.json"]) {

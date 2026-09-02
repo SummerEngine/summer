@@ -70,7 +70,7 @@ function violations(edges: Edge[], predicate: (edge: Edge) => boolean): string[]
     .map((edge) => `src/${edge.file} imports "${edge.specifier}" (${edge.fromLayer} -> ${edge.toLayer})`);
 }
 
-describe("import direction (contract §2)", () => {
+describe("repo-lint: import direction (contract §2)", () => {
   const edges = collectEdges();
 
   it("scans a non-trivial import graph", () => {

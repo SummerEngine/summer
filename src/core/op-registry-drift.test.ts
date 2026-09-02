@@ -79,7 +79,7 @@ const skipNote = registryFound
   ? ""
   : ` (SKIPPED: no engine op registry at ${registryPath}; set SUMMER_ENGINE_REPO)`;
 
-describe("op registry drift", () => {
+describe("repo-lint: op registry drift", () => {
   check(`never sends an op the engine has no dispatch branch for${skipNote}`, () => {
     const known = loadKnownOps();
     expect(known.size).toBeGreaterThan(50);

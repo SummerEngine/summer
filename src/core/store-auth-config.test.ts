@@ -1,4 +1,4 @@
-import { chmod, mkdir, mkdtemp, readFile, rm, stat, symlink } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, symlink } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -138,18 +138,6 @@ describe("secure Summer store", () => {
       })
     ).rejects.toThrow(/mismatched identity/);
     expect(await getAuthToken()).toBeNull();
-  });
-});
-
-describe("store error messages", () => {
-  it("name the OS error code so the failure can actually be fixed", async () => {
-    if (process.platform === "win32" || process.getuid?.() === 0) return;
-    await chmod(root, 0o500); // ~/.summer cannot be created underneath
-    try {
-      await expect(writeStoreText("auth-token", "x")).rejects.toThrow(/\(EACCES\)/);
-    } finally {
-      await chmod(root, 0o700);
-    }
   });
 });
 

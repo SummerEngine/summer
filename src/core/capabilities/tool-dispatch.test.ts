@@ -233,8 +233,33 @@ describe("scene-scripting and perception dispatch entries", () => {
       failure_reason?: string;
     };
     expect(result.ok).toBe(false);
-    // Either the bundle is installed (class miss) or it is not (structured not-installed result).
-    expect(["api_docs_not_installed", undefined]).toContain(result.failure_reason);
+    // Deterministic: with the bundle installed a class miss carries no
+    // failure_reason; without it the structured not-installed result does.
+    expect(result.failure_reason).toBe(
+      isApiDocsBundleInstalled() ? undefined : "api_docs_not_installed"
+    );
+  });
+
+  it("start-game-task validates mode/target with the shared zod schema instead of casting", async () => {
+    await expect(
+      dispatchTool("start-game-task", { goal: "Ship it", mode: "shipp" })
+    ).rejects.toThrow(/Invalid arguments for start-game-task: mode:/);
+    await expect(
+      dispatchTool("start-game-task", { goal: "Ship it", target: "4d" })
+    ).rejects.toThrow(/target:/);
+    await expect(dispatchTool("start-game-task", { goal: "   " })).rejects.toThrow(/goal/);
+    const plan = (await dispatchTool("start-game-task", { goal: "Export the game", mode: "ship" })) as {
+      mode: string;
+    };
+    expect(plan.mode).toBe("ship");
+  });
+
+  it("import-hdri rejects an off-ladder resolution before touching the network", async () => {
+    const { ctx, calls } = fakeEngineContext();
+    await expect(
+      dispatchTool("import-hdri", { query: "sunset", resolution: "8k" }, ctx)
+    ).rejects.toThrow(/Invalid arguments for import-hdri: resolution:/);
+    expect(calls).toEqual([]);
   });
 
   it("import-hdri rejects a call with neither query nor assetId before touching the network", async () => {

@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { getSkillRegistry, type SkillRegistryEntry } from "../skills-registry.js";
 
 export const GAME_TASK_MODES = [
@@ -31,6 +32,19 @@ export const ASSET_POLICIES = [
 ] as const;
 
 export const VERIFICATION_LEVELS = ["none", "fast", "full"] as const;
+
+/**
+ * The one input contract for summer_start_game_task, shared by the MCP tool
+ * (pass `.shape` to server.tool) and the CLI dispatcher (`summer tool
+ * start-game-task`) so a typo like mode:"shipp" is rejected on both faces.
+ */
+export const gameTaskPlanInputSchema = z.object({
+  goal: z.string().trim().min(1, "goal is required"),
+  mode: z.enum(GAME_TASK_MODES).default("auto"),
+  target: z.enum(GAME_TASK_TARGETS).default("auto"),
+  assetPolicy: z.enum(ASSET_POLICIES).default("ask-before-paid-generation"),
+  verification: z.enum(VERIFICATION_LEVELS).default("full"),
+});
 
 export type GameTaskMode = (typeof GAME_TASK_MODES)[number];
 export type GameTaskTarget = (typeof GAME_TASK_TARGETS)[number];

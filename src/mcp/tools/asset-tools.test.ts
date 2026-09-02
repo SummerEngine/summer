@@ -270,7 +270,8 @@ describe("registerAssetTools", () => {
       importedTo: "res://sky/kloppenheim_02_2k.hdr",
     });
     expect(parsed.license).toContain("CC0");
-    expect(parsed.applyScript).toContain("ctx.ensure_environment");
+    expect(parsed.applyScript).toContain("WorldEnvironment");
+    expect(parsed.applyScript).not.toContain("ensure_environment");
     expect(parsed.applyScript).toContain("PanoramaSkyMaterial");
     expect(parsed.applyScript).toContain("res://sky/kloppenheim_02_2k.hdr");
   });

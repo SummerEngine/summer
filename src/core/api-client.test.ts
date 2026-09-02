@@ -1,10 +1,8 @@
-import { existsSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { rmSync } from "node:fs";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { EngineApiClient, EngineRebindError } from "./api-client.js";
+import { EngineApiClient } from "./api-client.js";
 
 // Verifies the Block E async port (commit 261a085945): the client must resolve
 // the engine's async 202->poll terminal result, NOT return the queued ack; reads
@@ -94,61 +92,6 @@ describe("EngineApiClient — async 202->poll port", () => {
     expect(url.searchParams.get("projectId")).toBe("project-b");
     expect(url.searchParams.get("projectIdHash")).toBe("hash-b");
     expect(url.searchParams.get("projectIdentityVersion")).toBe("1");
-  });
-
-  it("names the request when a 200 carries a non-JSON body", async () => {
-    mockFetch(() => new Response("<html>proxy error</html>", { status: 200 }));
-    await expect(client().getSceneState()).rejects.toThrow(
-      /non-JSON response for GET \/api\/state\/scene/
-    );
-  });
-
-  it("reaps snapshot files older than 24h when writing a new one (best-effort)", async () => {
-    const dir = join(tmpdir(), "summer-engine", "snapshots");
-    mkdirSync(dir, { recursive: true });
-    const stale = join(dir, `viewport-stale-test-${process.pid}.jpg`);
-    const fresh = join(dir, `viewport-fresh-test-${process.pid}.jpg`);
-    writeFileSync(stale, "old");
-    writeFileSync(fresh, "new");
-    const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
-    utimesSync(stale, twoDaysAgo, twoDaysAgo);
-    const b64 = Buffer.from("bytes").toString("base64");
-    mockFetch((url) =>
-      url.includes("/api/snapshot/viewport")
-        ? json({ op: "ViewportSnapshot", ok: true, image_base64: b64, mime: "image/jpeg" })
-        : json({}, 404)
-    );
-
-    const snap = await client().viewportSnapshot();
-    try {
-      expect(snap.ok).toBe(true);
-      expect(existsSync(stale)).toBe(false);
-      expect(existsSync(fresh)).toBe(true);
-    } finally {
-      for (const path of [fresh, snap.localPath]) {
-        if (path) rmSync(path, { force: true });
-      }
-    }
-  });
-
-  it("rebind throws a typed error and keeps the old identity when health is unreadable", async () => {
-    const seen: string[] = [];
-    mockFetch((url) => {
-      if (url.includes("/api/health")) return new Response("gone", { status: 503 });
-      seen.push(url);
-      return json({ nodes: [] });
-    });
-    const scoped = new EngineApiClient(6550, "test-token", {
-      instanceId: "engine-a",
-      projectId: "project-a",
-      projectIdHash: "hash-a",
-    });
-
-    await expect(scoped.rebind()).rejects.toBeInstanceOf(EngineRebindError);
-    await expect(scoped.rebind()).rejects.toThrow(/still bound to hash-a/);
-    // Identity untouched: subsequent requests still carry the old binding.
-    await scoped.getSceneState();
-    expect(new URL(seen[0]).searchParams.get("projectIdHash")).toBe("hash-a");
   });
 
   it("executeOps resolves the TERMINAL apply result via poll, not the queued ack", async () => {

@@ -9,15 +9,39 @@
  * must point back at Poly Haven over https.
  */
 
+import { z } from "zod";
+
 const POLYHAVEN_API_URL = "https://api.polyhaven.com";
 const POLYHAVEN_USER_AGENT = "summer-engine-cli";
 
-export type HdriResolution = "1k" | "2k" | "4k";
+export const HDRI_RESOLUTIONS = ["1k", "2k", "4k"] as const;
+export type HdriResolution = (typeof HDRI_RESOLUTIONS)[number];
+
+/** Refuse downloads above this unless the caller opts in: a 16k .exr is
+ *  hundreds of MB pulled through the engine on a user's machine. */
+export const HDRI_MAX_DOWNLOAD_BYTES = 64 * 1024 * 1024;
+
+/**
+ * The one input contract for summer_import_hdri, shared by the MCP tool (pass
+ * `.shape` to server.tool) and the CLI dispatcher (`summer tool import-hdri`)
+ * so an off-ladder resolution is rejected on both faces.
+ */
+export const importHdriArgsSchema = z.object({
+  query: z.string().optional(),
+  assetId: z.string().optional(),
+  resolution: z.enum(HDRI_RESOLUTIONS).default("2k"),
+  allow_large: z
+    .boolean()
+    .default(false)
+    .describe(`Allow files above ${HDRI_MAX_DOWNLOAD_BYTES / (1024 * 1024)} MB.`),
+});
 
 export interface ImportHdriArgs {
   query?: string;
   assetId?: string;
   resolution?: HdriResolution;
+  /** Opt in to files above HDRI_MAX_DOWNLOAD_BYTES. */
+  allow_large?: boolean;
 }
 
 /** The engine surface this capability needs: one ImportFromUrl op. */
@@ -43,6 +67,7 @@ export type ImportHdriErrorCode =
   | "bad_args"
   | "no_results"
   | "no_hdri_file"
+  | "file_too_large"
   | "import_failed"
   | "hdri_import_failed";
 
@@ -75,12 +100,16 @@ export function isSafePolyHavenId(id: string): boolean {
   return /^[a-z0-9_-]{1,100}$/.test(id);
 }
 
-/** Only accept download URLs that point back at Poly Haven over https. */
+/** Only accept download URLs that point back at Poly Haven over https, with
+ *  no embedded credentials (https://user:pw@polyhaven.com/... parses to the
+ *  right hostname but is not a URL we should ever hand to the engine). */
 export function isPolyHavenDownloadUrl(rawUrl: string): boolean {
   try {
     const parsed = new URL(rawUrl);
     return (
       parsed.protocol === "https:" &&
+      parsed.username === "" &&
+      parsed.password === "" &&
       (parsed.hostname === "polyhaven.com" ||
         parsed.hostname.endsWith(".polyhaven.com") ||
         parsed.hostname === "polyhaven.org" ||
@@ -160,12 +189,29 @@ function pickHdriFile(
   return null;
 }
 
-/** The summer_run_script body that wires an imported HDRI as the sky. */
+/**
+ * The summer_run_script body that wires an imported HDRI as the sky. Plain
+ * GDScript against WorldEnvironment using only the baseline ctx helpers
+ * (get_scene_root / set_owner_recursive / report) — `ctx.ensure_environment`
+ * is not part of any shipped engine's ctx API and must not be relied on.
+ */
 export function hdriApplySnippet(importedPath: string): string {
   return [
     "func run(ctx):",
-    "    var env := ctx.ensure_environment({})",
+    "    var root = ctx.get_scene_root()",
+    "    var env: WorldEnvironment = null",
+    '    var found = root.find_children("*", "WorldEnvironment", true, false)',
+    "    if found.size() > 0:",
+    "        env = found[0]",
+    "    else:",
+    "        env = WorldEnvironment.new()",
+    '        env.name = "WorldEnvironment"',
+    "        root.add_child(env)",
+    "        ctx.set_owner_recursive(env)",
     "    var e: Environment = env.environment",
+    "    if e == null:",
+    "        e = Environment.new()",
+    "        env.environment = e",
     "    var mat := PanoramaSkyMaterial.new()",
     `    mat.panorama = load("${importedPath}")`,
     "    var sky := Sky.new()",
@@ -251,6 +297,20 @@ export async function importPolyHavenHdri(
     );
   }
 
+  if (
+    typeof file.size === "number" &&
+    file.size > HDRI_MAX_DOWNLOAD_BYTES &&
+    args.allow_large !== true
+  ) {
+    const mb = (bytes: number) => (bytes / (1024 * 1024)).toFixed(1);
+    throw new ImportHdriError(
+      "file_too_large",
+      `Poly Haven "${chosenId}" at ${file.resolution} is ${mb(file.size)} MB, above the ` +
+        `${mb(HDRI_MAX_DOWNLOAD_BYTES)} MB ceiling for an engine-side download.`,
+      "Pick a lower resolution, or pass allow_large:true to download it anyway."
+    );
+  }
+
   const importedPath = `res://sky/${chosenId}_${file.resolution}.${file.format}`;
   const client = await engine();
   const importResult = await client.executeOps([
@@ -281,8 +341,10 @@ export async function importPolyHavenHdri(
     license: "CC0 (Poly Haven) — free for any use, no attribution required.",
     alternates: alternates.length > 0 ? alternates : undefined,
     nextStep:
-      "Wire it into the environment with summer_run_script using this exact script, " +
-      "then verify with summer_screenshot framing:\"camera\" (preset framings substitute the environment):",
+      "Wire it into the environment with summer_run_script using this exact script " +
+      "(needs an engine with RunSceneScript; on an older engine run the same body through " +
+      "summer_run_editor_script), then verify with summer_screenshot framing:\"camera\" " +
+      "(preset framings substitute the environment):",
     applyScript: hdriApplySnippet(importedPath),
   };
 }

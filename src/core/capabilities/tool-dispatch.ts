@@ -12,7 +12,7 @@
  * // v3-followup: src/mcp (server.ts + tools/*) should adopt this registry as
  * // the single per-tool dispatch table — moving the handler bodies that still
  * // live only in the MCP tool closures (Kenney import pairing, scene-mutation
- * // chunking, guarded file writes, agent playbook content) in here so both
+ * // chunking, guarded file writes) in here so both
  * // surfaces share one implementation per tool instead of two mirrors. The
  * // mcp layer is owned by another workstream right now, so this file does not
  * // touch it; the small mirrored helpers below are marked and must fold into
@@ -24,6 +24,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { EngineApiClient, EngineRebindError, type EngineSnapshot } from "../api-client.js";
 import { missingEngineOpResult, resolveSingleOnlyOps } from "../capability-skew.js";
+import { buildAgentPlaybook } from "./agent-playbook.js";
 import { lookupApiDocs } from "./api-docs.js";
 import { z, type ZodTypeAny } from "zod";
 import { ImportHdriError, importHdriArgsSchema, importPolyHavenHdri } from "./hdri-import.js";
@@ -1146,16 +1147,11 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   entry("summer_start_game_task", "Plan the right Summer workflow for a game-building task", false, async (args) =>
     buildGameTaskPlan(parseToolArgs(gameTaskPlanInputSchema, args, "start-game-task"))
   ),
-  entry("summer_get_agent_playbook", "AI-first operating guide for Summer MCP", false, async () => {
-    // v3-followup: the playbook content lives inside src/mcp/tools/project-tools.ts
-    // today; when mcp adopts this registry the content moves here and this
-    // becomes the single source for both surfaces.
-    throw new ToolDispatchError(
-      "The agent playbook is served by the MCP surface today. Connect via 'summer mcp' " +
-        "and call summer_get_agent_playbook, or start from 'summer tool start-game-task' " +
-        "and the library's skills instead."
-    );
-  }),
+  entry("summer_get_agent_playbook", "AI-first operating guide for Summer MCP", false, async () =>
+    // Same content the MCP tool/prompt serve (core/capabilities/agent-playbook.ts);
+    // the boot drift notice is an MCP-surface extra and is null here.
+    buildAgentPlaybook()
+  ),
   entry("summer_get_project_context", "Engine health, project/scene state, and session rebind", true, async (args, ctx) => {
     const client = await ctx.engine();
     const settingsPrefix = optStr(args, "settingsPrefix");
@@ -1167,13 +1163,23 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
         error: err instanceof Error ? err.message : String(err),
       })),
     ]);
-    const boundProjectIdHash = await client.rebind();
+    // A failed rebind keeps the previous identity; report that honestly
+    // instead of echoing the stale hash as if the switch had been followed.
+    let boundProjectIdHash: string | undefined;
+    let rebindError: string | undefined;
+    try {
+      boundProjectIdHash = await client.rebind();
+    } catch (error) {
+      if (!(error instanceof EngineRebindError)) throw error;
+      rebindError = error.message;
+    }
     return {
       health,
       project,
       scene,
       mainScene: projectSettingValue(project, ["application/run/main_scene", "run/main_scene"]),
       boundProjectIdHash,
+      ...(rebindError ? { rebindError } : {}),
     };
   }),
   entry("summer_open_main_scene", "Open the project's configured main scene", true, async (_args, ctx) => {

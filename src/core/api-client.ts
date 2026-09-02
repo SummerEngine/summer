@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "fs/promises";
+import { mkdir, readdir, rm, stat, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 import { randomUUID } from "node:crypto";
@@ -166,6 +166,38 @@ function withoutImageData(payload: SnapshotPayload): Record<string, unknown> {
   return metadata;
 }
 
+/** rebind() could not re-read engine health; the session identity is unchanged. */
+export class EngineRebindError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "EngineRebindError";
+  }
+}
+
+const SNAPSHOT_TTL_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Snapshot files otherwise accumulate in tmpdir for the life of the machine.
+ * Remove those older than 24h on each write. Best-effort by contract: a
+ * failed reap must never fail (or slow down) the capture that triggered it.
+ */
+async function reapStaleSnapshots(dir: string): Promise<void> {
+  try {
+    const cutoff = Date.now() - SNAPSHOT_TTL_MS;
+    for (const name of await readdir(dir)) {
+      const full = join(dir, name);
+      try {
+        const info = await stat(full);
+        if (info.isFile() && info.mtimeMs < cutoff) await rm(full, { force: true });
+      } catch {
+        // per-file failure (raced by another process, permissions): skip it
+      }
+    }
+  } catch {
+    // unreadable directory: nothing to reap
+  }
+}
+
 export class EngineApiClient {
   private port: number;
   private token: string;
@@ -268,17 +300,26 @@ export class EngineApiClient {
    * switch (the deliberate escape hatch after an identity_mismatch). Returns the
    * new bound hash. The direct health probe is intentionally unscoped, so it can
    * reach the current engine even when bound requests would be rejected.
+   *
+   * Throws EngineRebindError when the health probe fails: the previous identity
+   * is kept, and reporting it as "the rebound hash" would tell the agent a
+   * switch it never followed had succeeded.
    */
   async rebind(): Promise<string | undefined> {
     const health = await checkEngineHealth(this.port);
-    if (health) {
-      this.lastHealth = health;
-      this.targetIdentity = {
-        instanceId: health.instanceId,
-        projectId: health.projectId,
-        projectIdHash: health.projectIdHash,
-      };
+    if (!health) {
+      throw new EngineRebindError(
+        `Summer Engine did not answer the health probe on port ${this.port}; this session is still bound to ${
+          this.targetIdentity.projectIdHash ?? "no project"
+        }. Recovery: confirm the engine is running with the project open, then call summer_get_project_context again.`
+      );
     }
+    this.lastHealth = health;
+    this.targetIdentity = {
+      instanceId: health.instanceId,
+      projectId: health.projectId,
+      projectIdHash: health.projectIdHash,
+    };
     return this.targetIdentity.projectIdHash;
   }
 
@@ -336,7 +377,15 @@ export class EngineApiClient {
       throw new Error(`Engine API error ${res.status}: ${text.slice(0, 200)}`);
     }
 
-    return res.json();
+    try {
+      return await res.json();
+    } catch {
+      // A bare SyntaxError names nothing; say which request answered with a
+      // non-JSON body (a proxy page, an HTML error, a half-written stream).
+      throw new Error(
+        `Engine API returned a non-JSON response for ${method} ${path} (HTTP ${res.status}).`
+      );
+    }
   }
 
   /** Raw fetch with auth + timeout — returns the Response so callers can inspect
@@ -641,6 +690,7 @@ export class EngineApiClient {
   ): Promise<string> {
     const dir = join(tmpdir(), "summer-engine", "snapshots");
     await mkdir(dir, { recursive: true });
+    await reapStaleSnapshots(dir);
     const filename = `${kind}-${Date.now()}-${Math.random()
       .toString(36)
       .slice(2, 8)}.${ext}`;

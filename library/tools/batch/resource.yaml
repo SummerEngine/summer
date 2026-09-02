@@ -1,11 +1,14 @@
 id: tool/batch
 kind: tool
-version: 1.0.0
-summary: Run multiple engine ops as one undo group, forwarded verbatim; also the path to raw ops
-  with no dedicated tool.
+version: 1.0.1
+summary: Run multiple engine ops in one call, forwarded verbatim; one undo step unless single-only ops
+  force a split (then one per chunk). Also reaches raw ops with no tool.
 use_when:
-  - multi-node builds that should undo as one step
+  - multi-node builds that should undo as one step (no single-only ops in the list)
   - reaching engine ops that have no dedicated tool
+do_not_use_when:
+  - you need the whole list to be exactly one undo step but it contains a single-only op (the engine
+    splits it; expect one undo step per chunk)
 facets:
   lifecycle:
     - build

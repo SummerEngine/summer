@@ -513,9 +513,9 @@ Use when you need the sub-properties of a resource attached to a node. For examp
 
   server.tool(
     "summer_batch",
-    `Execute multiple operations in a single call, grouped into one undo step. Each op is forwarded to the engine VERBATIM, so this is also how you reach engine ops that have no dedicated tool.
+    `Execute multiple operations in a single call. Each op is forwarded to the engine VERBATIM, so this is also how you reach engine ops that have no dedicated tool.
 
-The user can undo everything with a single Ctrl+Z. Use this when building something that involves multiple nodes and properties — e.g., creating a player character with collision, camera, and properties.
+UNDO: when nothing in the list forces a split (see the single-op contract below), the whole batch is ONE undo step — the user undoes everything with a single Ctrl+Z. When single-only ops are present the list is split into sequential requests and EACH chunk is its own undo step (one Ctrl+Z per chunk; the receipt shows the chunks). Use this when building something that involves multiple nodes and properties — e.g., creating a player character with collision, camera, and properties.
 
 Each op in the array uses the same format as the individual tools:
 - {"op": "AddNode", "parent": "/", "type": "MeshInstance3D", "name": "Floor"}
@@ -535,8 +535,8 @@ SaveScene, InstantiateScene, ReplaceNode, SimulateInput, the runtime reads
 (GetRuntimeSceneTree/GetRuntimeNode), and the Run*/Import*
 ops to travel as their own request, so this tool automatically splits your op
 list into sequential requests around them — each split chunk is its own undo
-step, and if a later chunk fails the receipt reports exactly which earlier ops
-already applied.`,
+step (NOT one step for the whole batch), and if a later chunk fails the receipt
+reports exactly which earlier ops already applied.`,
     {
       scenePath: z.string().optional().describe(
         "Required when ops contains scene mutations; exact res:// target scene path",

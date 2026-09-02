@@ -550,3 +550,19 @@ describe("summer_batch spatial ops", () => {
     expect(result.content?.[0]?.text).toContain("requires scenePath when ops targets a scene");
   });
 });
+
+describe("summer_batch description tells the truth about undo", () => {
+  it("promises one undo step only when nothing forces a split, and one per chunk otherwise", () => {
+    let description = "";
+    registerSceneTools({
+      tool(name: string, desc: string) {
+        if (name === "summer_batch") description = desc;
+        return { name };
+      },
+    } as never);
+    expect(description).not.toContain("grouped into one undo step");
+    expect(description).not.toContain("undo everything with a single Ctrl+Z.");
+    expect(description).toContain("ONE undo step");
+    expect(description).toContain("EACH chunk is its own undo step");
+  });
+});

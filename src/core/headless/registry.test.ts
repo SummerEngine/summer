@@ -213,3 +213,15 @@ describe("headless process registry", () => {
     );
   });
 });
+
+describe("Godot ConfigFile section-name escapes", () => {
+  it("unescapes \\] in section names so a project path containing ] matches", () => {
+    const sections = parseRegistryText(
+      ["[/Users/dev/Game [v2\\]/proj]", "pid=1", "[\"/Users/dev/Quoted\\]\"]", "pid=2"].join("\n")
+    );
+    expect(sections.map((section) => section.section)).toEqual([
+      "/Users/dev/Game [v2]/proj",
+      "/Users/dev/Quoted]",
+    ]);
+  });
+});

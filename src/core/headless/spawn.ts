@@ -113,18 +113,17 @@ function defaultLaunch(binary: string, args: string[]): LaunchHandle {
   const fd = openSync(logPath, "a", 0o600);
   let exit: { code: number | null; signal: NodeJS.Signals | null } | null = null;
   let launchError = "";
-  // SUMMER_CACHE_DIR pairing: when the CLI reads the registry from an
-  // overridden cache dir, the spawned worker MUST write its entry to the
-  // same dir — pass the override through to the child env explicitly.
-  // (Engine support for honoring it is landing worker-side; without the
-  // pairing the poll would watch a different file than the worker writes.)
-  const env = process.env.SUMMER_CACHE_DIR
-    ? { ...process.env, SUMMER_CACHE_DIR: process.env.SUMMER_CACHE_DIR }
-    : process.env;
+  // The child inherits process.env wholesale, which already carries
+  // SUMMER_CACHE_DIR when set — so the spawned worker writes its registry
+  // entry to the same overridden cache dir this CLI polls. (An earlier
+  // explicit re-assignment of the same value was a no-op.)
   const child = nodeSpawn(binary, args, {
     detached: true,
+    // detached on Windows opens a new console window for the child unless
+    // hidden; a no-op elsewhere.
+    windowsHide: true,
     stdio: ["ignore", "ignore", fd],
-    env,
+    env: process.env,
   });
   closeSync(fd);
   child.once("exit", (code, signal) => {

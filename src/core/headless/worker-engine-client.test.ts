@@ -220,3 +220,50 @@ describe("WorkerEngineClient", () => {
     await expect(client.credentialsChanged()).resolves.toBe(true);
   });
 });
+
+describe("WorkerEngineClient capability getters (EngineApiClient parity)", () => {
+  let worker: FakeWorker | null = null;
+  let cleanup: (() => void) | null = null;
+
+  afterEach(async () => {
+    cleanup?.();
+    cleanup = null;
+    await worker?.close();
+    worker = null;
+  });
+
+  it("returns undefined before any status read, then the worker's advert after health()", async () => {
+    worker = await startFakeWorker({
+      token: "secret",
+      handler: (op, params, emit) =>
+        op === "status"
+          ? emit.ok({ version: "0.5.71", capabilities: { protocolVersion: 1, opKinds: ["WriteFile", "GetConsoleOutput"] } })
+          : emit.ok({ echoed: true, op, params }),
+    });
+    const { client, connection } = await connectedClient(worker);
+    cleanup = () => connection.close();
+
+    expect(client.getEngineCapabilities()).toBeUndefined();
+    expect(client.getEngineVersion()).toBeUndefined();
+    await client.health();
+    expect(client.getEngineCapabilities()).toEqual({ protocolVersion: 1, opKinds: ["WriteFile", "GetConsoleOutput"] });
+    expect(client.getEngineVersion()).toBe("0.5.71");
+  });
+
+  it("a status without an advert leaves the getters undefined (absence proves nothing)", async () => {
+    worker = await startFakeWorker({ token: "secret" });
+    const { client, connection } = await connectedClient(worker);
+    cleanup = () => connection.close();
+    await client.health();
+    expect(client.getEngineCapabilities()).toBeUndefined();
+    expect(client.getEngineVersion()).toBeUndefined();
+  });
+
+  it("unsupported() throws are tagged for withEngine's 'unsupported' class", async () => {
+    worker = await startFakeWorker({ token: "secret" });
+    const { client, connection } = await connectedClient(worker);
+    cleanup = () => connection.close();
+    const thrown = await client.inspectNode("/root").catch((error: unknown) => error);
+    expect((thrown as Record<PropertyKey, unknown>)[Symbol.for("summer.thrownErrorClass")]).toBe("unsupported");
+  });
+});

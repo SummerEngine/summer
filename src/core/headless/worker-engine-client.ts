@@ -1,5 +1,9 @@
 import type { EngineSnapshot } from "../api-client.js";
 import type { WorkerConnection } from "./worker-connection.js";
+import {
+  parseEngineCapabilities,
+  type EngineCapabilities,
+} from "../capability-skew.js";
 import { UnsupportedOperationError } from "../tool-errors.js";
 
 /**
@@ -38,6 +42,9 @@ function stripRes(path: string): string {
 
 export class WorkerEngineClient {
   private connection: WorkerConnection;
+  /** Last `status` answer, for the capability/version getters withEngine's
+   *  pre-flight (missingEngineOpResult) and skew warning read synchronously. */
+  private lastStatus: JsonRecord | undefined;
 
   constructor(connection: WorkerConnection) {
     this.connection = connection;
@@ -58,7 +65,26 @@ export class WorkerEngineClient {
   // ---- supported surface -------------------------------------------------
 
   async health(): Promise<unknown> {
-    return this.connection.call("status");
+    const status = await this.connection.call("status");
+    this.lastStatus =
+      status && typeof status === "object" && !Array.isArray(status)
+        ? (status as JsonRecord)
+        : undefined;
+    return status;
+  }
+
+  /** The worker's capability advert from the last `status` read (health()),
+   *  or undefined before the first read / when the worker advertises none.
+   *  Same contract as EngineApiClient.getEngineCapabilities: an absent
+   *  advert proves nothing, so the pre-flight lets the call through. */
+  getEngineCapabilities(): EngineCapabilities | undefined {
+    return parseEngineCapabilities(this.lastStatus?.capabilities);
+  }
+
+  /** Engine version string from the last `status` read, for skew messages. */
+  getEngineVersion(): string | undefined {
+    const version = this.lastStatus?.version;
+    return typeof version === "string" && version.length > 0 ? version : undefined;
   }
 
   async readFile(path: string, maxBytes?: number): Promise<unknown> {

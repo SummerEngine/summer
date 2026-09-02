@@ -179,7 +179,10 @@ export function parseRegistryText(
     const line = rawLine.trim();
     if (!line || line.startsWith(";") || line.startsWith("#")) continue;
     if (line.startsWith("[") && line.endsWith("]")) {
-      const name = unquote(line.slice(1, -1));
+      // Godot's ConfigFile writes a section name as "[" + name.replace("]",
+      // "\\]") + "]", so a project path containing "]" arrives escaped and
+      // would otherwise never match the caller's normalized path.
+      const name = unquote(line.slice(1, -1).replace(/\\\]/g, "]"));
       current = { section: name, values: {} };
       sections.push(current);
       continue;

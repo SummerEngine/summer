@@ -40,6 +40,14 @@ Waves; each gated by tsc + vitest + validate-library:
 - **Decisions surfaced for Mathias:** (a) `summer-compatibility.ts` still declares engine 4.6.1 while the scripting branch bumped to 4.7.2 — engine-version floor is a product call; (b) `summer_record_feedback` (per-change user verdict accept/reject/correction) was dropped in favor of `summer_library_feedback` — if the Librarian wants a user-verdict signal it becomes a FIELD on library_feedback, never a second tool; (c) routing eval now indexes tools alongside skills — several skill queries surface tool entries in top-5; kind-aware ranking is the next index-quality fix.
 - NOT ported (ownership unconfirmed): three Codex spatial branches (6 tools: align/distribute, snap-to-surface, camera framing/visibility, navigation probe, placement test; global text-result cap; exact-SaveScene local-API fix).
 
+
+### Wave 3 2026-09-02 (Mathias "go") ✅
+- **Codex spatial tools ported** (6: snap-to-surface, align-distribute-3d, frame-camera, test-placement, camera-visibility, navigation-probe) + `world-building-3d` skill; all `status: preview` until the engine ops merge — flip to stable then. Blanket 5 KB result cap deliberately NOT ported (contradicts v3's documented no-silent-truncation policy); per-tool compact caps kept. Starcast `spatial-placement` skipped (superseded). Codex `canary-gateway` blind A/B harness NOT ported into src — candidate for `evals/` (roadmap: eval runner).
+- **Engine halves prepared for owners** (git-only, nothing built): SummerEngine/SummerEngine PR #155 (headless worker, 13 commits rebased onto 4.7.2 main) and PR #156 (scene scripting, 34 commits, clean rebase). Both carry "NOT BUILT — owner must build + smoke". The unpushed engine local-main 2.8.2 CLI commit is redundant with public main — abandon; private→public sync is retired.
+- **Kind-aware registry search** (`src/core/registry-search.ts`, shared by the eval runner and future runtime search): BM25 + light stemming + compound fallback + kind prior rules + related boost. Routing recall@5 0.838 → 0.934 (ranking) → **1.0** after 9 library metadata fixes (user-phrased use_when, related links). 12 tool-intent queries added (tool routing 1.0). This closed the eval → content-fix → eval loop end to end for the first time.
+- Registry after wave: **180 resources — 70 tools / 83 skills / 19 templates / 8 references.** Suite 640 green, parity clean.
+- Engine floor kept at 4.6.1 (conservative; revisit when 4.7.x engine is the shipped minimum).
+
 ## 3. Next (ordered fast-follows, design already locked)
 
 1. **Remote stateless MCP (MCP v2, spec 2026-07-28).** Serve every `mcp.remote: true` tool (library search, generation, templates, feedback — engine-free) at `summerengine.com/mcp` as stateless Streamable HTTP on Vercel. Zero-install funnel. Depends on: registry compiler. Bonus: makes the already-published blog config (`"url": "https://www.summerengine.com/mcp"`) true instead of wrong.

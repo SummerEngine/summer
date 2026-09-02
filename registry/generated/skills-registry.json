@@ -642,6 +642,14 @@
       "path": "library/skills/voice-line/"
     },
     {
+      "id": "skill/world-building-3d",
+      "name": "world-building-3d",
+      "description": "Use when composing, placing, grounding, spacing, framing, or validating 3D objects in Summer Engine scenes. Trigger on \"world building\", \"place props\", \"snap to floor\", \"align objects\", \"distribute objects\", \"frame camera\", \"camera visibility\", \"occlusion\", \"navigation reachability\", or requests to make a 3D scene look deliberately arranged rather than roughly positioned.",
+      "clients": "all",
+      "recommended": true,
+      "path": "library/skills/world-building-3d/"
+    },
+    {
       "id": "skill/writing-plans",
       "name": "writing-plans",
       "description": "Use when you have a spec or requirements for a multi-step task, before touching code",

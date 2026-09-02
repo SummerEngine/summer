@@ -149,7 +149,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.0.0",
-      "content_hash": "70880be8ccd2dba2143818a642bdcbc802a345d07c5b53fcfa614ffebd52d59a",
+      "content_hash": "bb6027177bb6f8d49b936ad76cb26775762218d65b06f642d74bb6073a6f46b3",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -382,11 +382,13 @@
     {
       "id": "skill/art-direction",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "c971feb9c62174082f9e6ef60966f486f65ea72d410f1831c01bfa34f12d60c9",
+      "version": "1.0.1",
+      "content_hash": "69078fbf6d0cf0c724a4284ab056699ff5cc906e31ced8b008a687888e14bbdf",
       "summary": "Define the game's visual style — references, palette, mood, lighting plan, post-processing, do/don't list — output as an art bible at .summer/art-bible.md.",
       "use_when": [
-        "defining the visual style of the game — references, palette, mood, lighting plan, post-processing"
+        "defining the visual style of the game — references, palette, mood, lighting plan, post-processing",
+        "make it look like PS1, retro, low-poly, pixel art, cel-shaded, or a horror aesthetic",
+        "define the visual style before making any assets"
       ],
       "facets": {
         "lifecycle": [
@@ -855,11 +857,14 @@
     {
       "id": "skill/debug",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "8dc75e40821db48e9f9cffe92f1b879e3fcef9b1ef75ed4a4c02b89fe2242163",
+      "version": "1.0.1",
+      "content_hash": "dcf79fe56c052767251d827d3eeaea08bfdd85e4ad4847a60f8408ea13f753b3",
       "summary": "Disciplined bug/crash/error loop for Summer projects — script errors, console, debugger, hypothesis, fix, verify — before making code or scene changes.",
       "use_when": [
-        "the user reports a bug, crash, error, or unexpected behavior in a Summer project, before making code or scene changes"
+        "the user reports a bug, crash, error, or unexpected behavior in a Summer project, before making code or scene changes",
+        "the player falls through the floor or clips through walls",
+        "the game freezes or nothing happens when I press a key",
+        "it crashes when I open the inventory or load a scene"
       ],
       "facets": {
         "lifecycle": [
@@ -949,11 +954,12 @@
     {
       "id": "skill/design-mechanic",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "07febbb022c26ec845774b56f0276f159f7f1aeda3df2d2709a922274b969799",
+      "version": "1.0.1",
+      "content_hash": "1c59976853b7ed3051ed9d0b2e3a87418814ab136eefcea2580811a29e14372b",
       "summary": "Design one game mechanic in detail — input, response, feedback, failure modes, depth, tunables — outputs a design doc, node-graph sketch, GDScript stub.",
       "use_when": [
-        "designing one specific game mechanic in detail — input, response, feedback, failure modes, depth, tunables"
+        "designing one specific game mechanic in detail — input, response, feedback, failure modes, depth, tunables",
+        "add a grappling hook, dash, double jump, wall run, or parry"
       ],
       "facets": {
         "lifecycle": [
@@ -985,11 +991,12 @@
     {
       "id": "skill/design-npc",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "cb5b1d117b9454dc7c3bfcd3e4ecb5031f3584476d7f4c6efa7fe6f7d3cd51c7",
+      "version": "1.0.1",
+      "content_hash": "fe567138592e5edf506aaadaf8e6216cb39bba3fe822aa54b1b55459c8dc2b00",
       "summary": "Design enemy/NPC/boss/companion behavior — perception, personality, intent, action state machine, telegraphs — outputs a GDScript stub plus node tree.",
       "use_when": [
-        "designing an enemy, NPC, boss, companion, civilian, or wave-spawned mob's behavior — perception, intent, state machine, telegraphs, defeat handling"
+        "designing an enemy, NPC, boss, companion, civilian, or wave-spawned mob's behavior — perception, intent, state machine, telegraphs, defeat handling",
+        "enemies that patrol, chase, attack, or flee when they see the player (line of sight)"
       ],
       "facets": {
         "lifecycle": [
@@ -1103,11 +1110,12 @@
     {
       "id": "skill/export-and-ship",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "ee60c540f2c3a66ed9db6ad8b72ac33c34dcefcf03bc712db563fa91c92eed0d",
+      "version": "1.0.1",
+      "content_hash": "6626058540cf1bc2cba56489dfb53e6948d4174896641f01b0d8016b3120370e",
       "summary": "Assess and prepare a game export: inventory installed templates and targets, validate release assets and config, produce supported builds after approval.",
       "use_when": [
-        "the user wants to assess or prepare a Summer game export — Steam, itch, HTML5, iOS, Android targets as available in the installed build"
+        "the user wants to assess or prepare a Summer game export — Steam, itch, HTML5, iOS, Android targets as available in the installed build",
+        "the user says 'publish my game', 'release it', or 'ship a build to players' — produce the build they will upload"
       ],
       "facets": {
         "lifecycle": [
@@ -1418,11 +1426,13 @@
     {
       "id": "skill/investigating-bugs",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "0f8abbe716d3d8d452087d98465647941a130c41b0738bb6c41405c975f5961a",
+      "version": "1.0.1",
+      "content_hash": "1eabf83677257727b049da4b309f8d72e84936383bc63165e8ff67dcf3455834",
       "summary": "Systematic investigation of any bug, test failure, or unexpected behavior before proposing fixes.",
       "use_when": [
-        "encountering any bug, test failure, or unexpected behavior, before proposing fixes"
+        "encountering any bug, test failure, or unexpected behavior, before proposing fixes",
+        "the character falls through the floor and nobody knows why — find the root cause before patching",
+        "a test fails or the game misbehaves and the first guess at the cause is unproven"
       ],
       "facets": {
         "lifecycle": [
@@ -1609,11 +1619,12 @@
     {
       "id": "skill/peer-to-peer-multiplayer",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "49358a5bbcee8e8acd8d593b632bfcdee096bb7ad874389822ea180a53039f8b",
+      "version": "1.0.1",
+      "content_hash": "e49b1683de14be3379117a0aabb2e2603bc627a2d318577fd650f86ad2017e7d",
       "summary": "Start a multiplayer game from scratch with peer-to-peer host authority — network architecture built top-down, before writing game logic.",
       "use_when": [
-        "starting a multiplayer Summer game from scratch with peer-to-peer host authority, before writing game logic"
+        "starting a multiplayer Summer game from scratch with peer-to-peer host authority, before writing game logic",
+        "I want to play co-op or online with friends and the game doesn't exist yet"
       ],
       "facets": {
         "lifecycle": [
@@ -1733,11 +1744,12 @@
     {
       "id": "skill/procedural-animation",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "4de47370fab881acce604c4f96128a69071f903546b74bc7045e1c0b662f50c7",
+      "version": "1.0.1",
+      "content_hash": "d7ed486a470627f24399ec64a873c5e8f40d9dcb3c1289c72367c31198e91775",
       "summary": "Runtime bone modification on top of clips — head look-at, foot IK, hand-grabs-prop, additive lean, recoil. Code-and-modifier patterns, not generation.",
       "use_when": [
-        "the user needs runtime-driven bone modification on top of clips — head look-at, foot IK on uneven ground, additive lean, hit recoil, ragdoll"
+        "the user needs runtime-driven bone modification on top of clips — head look-at, foot IK on uneven ground, additive lean, hit recoil, ragdoll",
+        "the character's feet float above or sink into stairs and slopes (foot placement)"
       ],
       "facets": {
         "lifecycle": [
@@ -2018,8 +2030,8 @@
     {
       "id": "skill/setup-multiplayer",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "a814e1acfe5ed46d2a008842e455615714dfb869169e359f35a7088404b7fe6a",
+      "version": "1.0.1",
+      "content_hash": "6b900b936bef4c6fd12821b369bac38e059469302470a29110389c3aaadefb5e",
       "summary": "Add multiplayer to an existing game — LAN/online co-op, PvP, lobbies — via MultiplayerAPI, MultiplayerSpawner, and MultiplayerSynchronizer.",
       "use_when": [
         "adding multiplayer to an existing Summer game: co-op LAN, co-op online, competitive PvP, or a lobby"
@@ -2039,6 +2051,12 @@
       },
       "compatibility": {
         "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/peer-to-peer-multiplayer",
+          "skill/host-authoritative-state"
+        ]
       },
       "status": "stable"
     },
@@ -2888,6 +2906,56 @@
       "status": "stable"
     },
     {
+      "id": "skill/world-building-3d",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "9ad8d15339329934510f41f46203badeac49a6d7b4f1baeace31bbfeb7a2a773",
+      "summary": "Compose, ground, space, frame, and validate 3D scenes with Summer's six bounded spatial tools — exact paths, one geometric decision at a time, verified.",
+      "use_when": [
+        "placing or grounding props on floors, shelves, ramps, or tables without hand-tuning transforms",
+        "aligning or evenly spacing a group of 3D objects along one world axis",
+        "framing a perspective camera on its subjects and checking framing and coarse occlusion",
+        "verifying an NPC, pickup, or portal position is reachable on the navigation map"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "3d",
+          "world-building",
+          "level-design",
+          "verification"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/test-placement",
+          "tool/snap-to-surface",
+          "tool/align-distribute-3d",
+          "tool/frame-camera",
+          "tool/camera-visibility",
+          "tool/navigation-probe",
+          "tool/get-scene-tree",
+          "tool/inspect-node",
+          "tool/screenshot"
+        ],
+        "skills": [
+          "skill/scene-composition",
+          "skill/verifying-scenes",
+          "skill/scene-scripting"
+        ]
+      },
+      "status": "preview"
+    },
+    {
       "id": "skill/writing-plans",
       "kind": "skill",
       "version": "1.0.0",
@@ -3412,6 +3480,44 @@
       "status": "stable"
     },
     {
+      "id": "tool/align-distribute-3d",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "9323fc85f7fc846bef217f369f417d048a408767bbe2173613f09b0120d3bb02",
+      "summary": "Align (min/center/max) or equal-space (centers/gaps) 2-16 ordered 3D subjects along one world axis from their visible AABBs, then save the scene.",
+      "use_when": [
+        "lining up props, stalls, pillars, or lights along one axis",
+        "spacing a row of objects evenly by center or by visible edge gap"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "3d",
+          "world-building"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/snap-to-surface",
+          "tool/test-placement",
+          "tool/world-snapshot"
+        ],
+        "skills": [
+          "skill/world-building-3d"
+        ]
+      },
+      "status": "preview"
+    },
+    {
       "id": "tool/api-docs",
       "kind": "tool",
       "version": "1.0.0",
@@ -3468,6 +3574,46 @@
         "engine": ">=4.6"
       },
       "status": "stable"
+    },
+    {
+      "id": "tool/camera-visibility",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "2eaf07f1f566b4c127eb21015650ada6ef3568f3e4da36cc7800c4d3ef54863c",
+      "summary": "Read-only check of how up to 5 subjects are framed by one Camera3D at an explicit aspect — frustum, screen rect, coverage, and sampled occlusion rays.",
+      "use_when": [
+        "verifying a framing after summer_frame_camera or a manual camera move",
+        "checking whether a prop, NPC, or landmark is hidden behind geometry from the player camera"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "3d",
+          "world-building",
+          "camera",
+          "verification"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/frame-camera",
+          "tool/screenshot",
+          "tool/world-snapshot"
+        ],
+        "skills": [
+          "skill/world-building-3d"
+        ]
+      },
+      "status": "preview"
     },
     {
       "id": "tool/check-job",
@@ -3667,6 +3813,45 @@
         "engine": ">=4.6"
       },
       "status": "stable"
+    },
+    {
+      "id": "tool/frame-camera",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "51a080548f640f37e6883a734449f4a0b366ea988cf1f7fa3c834b6bf3113620",
+      "summary": "Move one perspective Camera3D just far enough to frame 1-8 subjects at an explicit aspect and screen padding, then save the scene.",
+      "use_when": [
+        "framing a diorama, hero prop, or encounter for a fixed camera, cutscene, or screenshot",
+        "re-framing after props moved so the camera still shows every subject"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "3d",
+          "world-building",
+          "camera"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/camera-visibility",
+          "tool/screenshot",
+          "tool/world-snapshot"
+        ],
+        "skills": [
+          "skill/world-building-3d"
+        ]
+      },
+      "status": "preview"
     },
     {
       "id": "tool/generate-3d",
@@ -4382,6 +4567,46 @@
       "status": "stable"
     },
     {
+      "id": "tool/navigation-probe",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "19a82a58187922eb9307e65d2d81fabd7c98487e1939af14b2a4cdf3985d6d9b",
+      "summary": "Read-only reachability between two world points on the scene's Godot navigation map — readiness, snapped endpoints, route length, up to 16 route points.",
+      "use_when": [
+        "placing an NPC, pickup, portal, or encounter anchor whose route from spawn matters",
+        "checking that a moved prop did not cut the navigation mesh between two areas"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "3d",
+          "world-building",
+          "navigation",
+          "verification"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/test-placement",
+          "tool/world-snapshot",
+          "tool/play"
+        ],
+        "skills": [
+          "skill/world-building-3d"
+        ]
+      },
+      "status": "preview"
+    },
+    {
       "id": "tool/open-main-scene",
       "kind": "tool",
       "version": "1.0.0",
@@ -4790,6 +5015,45 @@
       "status": "stable"
     },
     {
+      "id": "tool/snap-to-surface",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "9d31db26e206789c059beb1df2e17dbb47adf7fc8bb01a1b10ede534faa17709",
+      "summary": "Move one 3D subject along a world ray until it sits at the requested gap from the first surface (floor, ramp, shelf, table), then save the scene.",
+      "use_when": [
+        "seating a prop on a floor, ramp, table, or shelf instead of hand-tuning its Y position",
+        "grounding an imported or instantiated model that floats or sinks into its support"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "3d",
+          "world-building"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/test-placement",
+          "tool/align-distribute-3d",
+          "tool/world-snapshot",
+          "tool/set-prop"
+        ],
+        "skills": [
+          "skill/world-building-3d"
+        ]
+      },
+      "status": "preview"
+    },
+    {
       "id": "tool/snapshot-diff",
       "kind": "tool",
       "version": "1.0.0",
@@ -4868,6 +5132,46 @@
         "engine": ">=4.6"
       },
       "status": "stable"
+    },
+    {
+      "id": "tool/test-placement",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "4c1ad515f5ae70d1f256b86fb44f3c81984e3f59b8e482c55967c54c58d0e2af",
+      "summary": "Ghost-test one 3D node at a candidate global pose without moving it — overlap evidence, grounded state, signed floor gap. Read-only.",
+      "use_when": [
+        "deciding whether a prop fits in a shelf, cubby, doorway, platform, or dense set before committing the transform",
+        "re-checking a saved pose after snap or align to confirm it still clears its neighbours"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "3d",
+          "world-building",
+          "verification"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/snap-to-surface",
+          "tool/align-distribute-3d",
+          "tool/world-snapshot",
+          "tool/inspect-node"
+        ],
+        "skills": [
+          "skill/world-building-3d"
+        ]
+      },
+      "status": "preview"
     },
     {
       "id": "tool/world-snapshot",

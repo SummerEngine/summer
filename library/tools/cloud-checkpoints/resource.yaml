@@ -1,8 +1,8 @@
 id: tool/cloud-checkpoints
 kind: tool
 version: 1.0.0
-summary: List local pre-sync checkpoints taken before destructive applies, with stamps usable by
-  cloud restore.
+summary: List local pre-sync checkpoints taken before destructive applies, with
+  stamps usable by cloud restore.
 use_when:
   - finding a checkpoint stamp to recover unpushed local work
 facets:
@@ -14,7 +14,7 @@ compatibility:
   engine: ">=4.6"
 source: official
 license: MIT
-status: stable
+status: preview
 aliases:
   - summer_cloud_checkpoints
 implementation:
@@ -39,3 +39,6 @@ authority:
   network: false
   credentials: false
   publish: false
+do_not_use_when:
+  - Summer Cloud sync is not operational yet — do not rely on it; Summer
+    Platform (publish/releases/creator tools) is the wired path

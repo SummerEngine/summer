@@ -1,8 +1,8 @@
 id: tool/cloud-restore
 kind: tool
 version: 1.0.0
-summary: Roll a project back to a retained cloud version or a local pre-sync checkpoint; returns an
-  extraneous-file list to review.
+summary: Roll a project back to a retained cloud version or a local pre-sync
+  checkpoint; returns an extraneous-file list to review.
 use_when:
   - recovering an earlier project state after a bad sync or bulk edit
 facets:
@@ -14,7 +14,7 @@ compatibility:
   engine: ">=4.6"
 source: official
 license: MIT
-status: stable
+status: preview
 aliases:
   - summer_cloud_restore
 implementation:
@@ -38,7 +38,8 @@ input_schema:
       description: Cloud version to restore (see summer_cloud_status / version history).
     checkpointStamp:
       type: string
-      description: Local checkpoint stamp (see summer_cloud_checkpoints). Use for unpushed local-only work.
+      description: Local checkpoint stamp (see summer_cloud_checkpoints). Use for
+        unpushed local-only work.
   additionalProperties: false
 authority:
   filesystem: true
@@ -48,3 +49,6 @@ authority:
   publish: false
 evidence_checks:
   - sync-receipt
+do_not_use_when:
+  - Summer Cloud sync is not operational yet — do not rely on it; Summer
+    Platform (publish/releases/creator tools) is the wired path

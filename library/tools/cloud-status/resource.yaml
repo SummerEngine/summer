@@ -1,10 +1,11 @@
 id: tool/cloud-status
 kind: tool
 version: 1.0.0
-summary: "Show what a cloud sync would move: file counts, queued push and pull paths, and waiting
-  conflict sets."
+summary: "Show what a cloud sync would move: file counts, queued push and pull
+  paths, and waiting conflict sets."
 use_when:
-  - before every cloud push or pull, to report delete and change counts to the user
+  - before every cloud push or pull, to report delete and change counts to the
+    user
 facets:
   lifecycle:
     - build
@@ -14,7 +15,7 @@ compatibility:
   engine: ">=4.6"
 source: official
 license: MIT
-status: stable
+status: preview
 aliases:
   - summer_cloud_status
 implementation:
@@ -39,3 +40,6 @@ authority:
   network: true
   credentials: false
   publish: false
+do_not_use_when:
+  - Summer Cloud sync is not operational yet — do not rely on it; Summer
+    Platform (publish/releases/creator tools) is the wired path

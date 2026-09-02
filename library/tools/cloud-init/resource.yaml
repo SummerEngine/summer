@@ -1,8 +1,8 @@
 id: tool/cloud-init
 kind: tool
 version: 1.0.0
-summary: Enable Summer Cloud whole-project sync for a project by writing its git-tracked
-  summer-cloud.json binding.
+summary: Enable Summer Cloud whole-project sync for a project by writing its
+  git-tracked summer-cloud.json binding.
 use_when:
   - once per project before the first cloud push
   - forking a project into a new cloud line after deleting the binding
@@ -15,7 +15,7 @@ compatibility:
   engine: ">=4.6"
 source: official
 license: MIT
-status: stable
+status: preview
 aliases:
   - summer_cloud_init
 implementation:
@@ -40,3 +40,6 @@ authority:
   network: true
   credentials: false
   publish: false
+do_not_use_when:
+  - Summer Cloud sync is not operational yet — do not rely on it; Summer
+    Platform (publish/releases/creator tools) is the wired path

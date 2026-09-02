@@ -99,6 +99,114 @@ function walkMarkdownFiles(dir: string): string[] {
   return out.sort();
 }
 
+/** Where MCP tools are registered; scanned for `server.tool("summer_*")` calls. */
+export const MCP_SOURCE_DIR = "src/mcp";
+
+const MCP_REGISTRATION_RE = /\.(?:tool|registerTool)\(\s*["'](summer_[a-z0-9_]+)["']/g;
+
+/**
+ * Parse `server.tool("summer_x", ...)` / `registerTool("summer_x", ...)`
+ * registrations out of src/mcp/server.ts and src/mcp/tools/*.ts (tests
+ * excluded). Returns null when src/mcp does not exist (fail closed upstream).
+ */
+export function collectMcpRegistrations(rootDir: string): Map<string, string[]> | null {
+  const mcpDir = path.join(rootDir, MCP_SOURCE_DIR);
+  if (!fs.existsSync(mcpDir) || !fs.statSync(mcpDir).isDirectory()) return null;
+  const files: string[] = [];
+  const serverTs = path.join(mcpDir, "server.ts");
+  if (fs.existsSync(serverTs)) files.push(serverTs);
+  const toolsDir = path.join(mcpDir, "tools");
+  if (fs.existsSync(toolsDir)) {
+    for (const entry of fs.readdirSync(toolsDir).sort()) {
+      if (entry.endsWith(".ts") && !entry.endsWith(".test.ts")) files.push(path.join(toolsDir, entry));
+    }
+  }
+  const out = new Map<string, string[]>();
+  for (const abs of files) {
+    const rel = path.relative(rootDir, abs).split(path.sep).join("/");
+    const text = fs.readFileSync(abs, "utf8");
+    for (const match of text.matchAll(MCP_REGISTRATION_RE)) {
+      out.set(match[1], [...(out.get(match[1]) ?? []), rel]);
+    }
+  }
+  return out;
+}
+
+/** (a) implementation.module must be a file under src/ (".ts" may be omitted). */
+function moduleProblem(rootDir: string, mod: string): string | null {
+  if (!mod.startsWith("src/")) return `"${mod}" must be a repo-relative path under src/`;
+  if (mod.includes("..")) return `"${mod}" may not contain ".."`;
+  const candidates = mod.endsWith(".ts") ? [mod] : [mod, `${mod}.ts`];
+  for (const rel of candidates) {
+    const abs = path.join(rootDir, rel);
+    if (fs.existsSync(abs) && fs.statSync(abs).isFile()) return null;
+  }
+  return `"${mod}" does not resolve to a file under ${rootDir}/src/`;
+}
+
+const JSON_SCHEMA_TYPES = new Set(["object", "array", "string", "number", "integer", "boolean", "null"]);
+const PROPERTY_TYPE_KEYWORDS = ["type", "$ref", "anyOf", "oneOf", "allOf", "enum", "const"];
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+
+/** (c) input_schema must be a structurally valid JSON Schema object (the zod/commander source). */
+export function inputSchemaProblems(schema: unknown): string[] {
+  const problems: string[] = [];
+  if (!isPlainObject(schema)) return ['must be a JSON Schema object with type "object"'];
+  if (schema.type !== "object") {
+    problems.push(`type must be "object", got ${JSON.stringify(schema.type)}`);
+  }
+  if (!isPlainObject(schema.properties)) {
+    problems.push(`properties must be an object mapping names to schemas, got ${JSON.stringify(schema.properties)}`);
+    return problems;
+  }
+  for (const [name, prop] of Object.entries(schema.properties)) {
+    if (!isPlainObject(prop)) {
+      problems.push(`properties.${name} must be a schema object, got ${JSON.stringify(prop)}`);
+      continue;
+    }
+    if (!PROPERTY_TYPE_KEYWORDS.some((k) => k in prop)) {
+      problems.push(`properties.${name} has no type (needs one of ${PROPERTY_TYPE_KEYWORDS.join("/")})`);
+      continue;
+    }
+    if ("type" in prop) {
+      const types = Array.isArray(prop.type) ? prop.type : [prop.type];
+      for (const t of types) {
+        if (typeof t !== "string" || !JSON_SCHEMA_TYPES.has(t)) {
+          problems.push(`properties.${name}.type ${JSON.stringify(t)} is not a JSON Schema type`);
+        }
+      }
+    }
+  }
+  if ("required" in schema) {
+    if (!Array.isArray(schema.required) || schema.required.some((r) => typeof r !== "string")) {
+      problems.push(`required must be an array of property names, got ${JSON.stringify(schema.required)}`);
+    } else {
+      for (const r of schema.required as string[]) {
+        if (!(r in schema.properties)) problems.push(`required names "${r}" which is not in properties`);
+      }
+    }
+  }
+  if ("additionalProperties" in schema && typeof schema.additionalProperties !== "boolean" && !isPlainObject(schema.additionalProperties)) {
+    problems.push(`additionalProperties must be a boolean or a schema, got ${JSON.stringify(schema.additionalProperties)}`);
+  }
+  return problems;
+}
+
+/** SKILL.md frontmatter (--- yaml ---); {} when absent or unparsable. */
+function parseFrontmatter(text: string): Record<string, unknown> {
+  const match = /^---\r?\n([\s\S]*?)\r?\n---(\r?\n|$)/.exec(text);
+  if (!match) return {};
+  try {
+    const parsed = parseYaml(match[1]);
+    return isPlainObject(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 export function runValidation(rootDir: string, options?: { schemasDir?: string }): ValidationResult {
   const libraryDir = path.join(rootDir, "library");
   const schemasDir = options?.schemasDir ?? path.join(rootDir, "registry", "schemas");
@@ -264,6 +372,91 @@ export function runValidation(rootDir: string, options?: { schemasDir?: string }
           }
         }
       });
+    }
+  }
+
+  // --- Cross-checks against the host code: a descriptor may not describe fiction ---
+  // (a) tool.implementation.module resolves to a real file under src/
+  // (b) surfaces.mcp.tool_name set == server.tool("summer_*") registrations in src/mcp
+  // (c) input_schema is a structurally valid JSON Schema object
+  // (d) evidence.verified_at parses and is not in the future
+  // (e) SKILL.md frontmatter name equals the slug (or is a declared alias)
+  const toolResources = resources.filter((res) => res.data.kind === "tool");
+  for (const res of toolResources) {
+    const prefix = `library/${res.relDir}/resource.yaml`;
+    const implementation = res.data.implementation;
+    if (implementation !== null && typeof implementation === "object" && !Array.isArray(implementation)) {
+      const mod = (implementation as Record<string, unknown>).module;
+      if (typeof mod === "string") {
+        const problem = moduleProblem(rootDir, mod);
+        if (problem) errors.push(`${prefix}: implementation.module: ${problem}`);
+      }
+    }
+    for (const problem of inputSchemaProblems(res.data.input_schema)) {
+      errors.push(`${prefix}: input_schema: ${problem}`);
+    }
+  }
+
+  const descriptorToolNames = new Map<string, string[]>();
+  for (const res of toolResources) {
+    const surfaces = res.data.surfaces;
+    if (surfaces === null || typeof surfaces !== "object" || Array.isArray(surfaces)) continue;
+    const mcp = (surfaces as Record<string, unknown>).mcp;
+    if (mcp === null || typeof mcp !== "object" || Array.isArray(mcp)) continue;
+    const name = (mcp as Record<string, unknown>).tool_name;
+    if (typeof name === "string") {
+      descriptorToolNames.set(name, [...(descriptorToolNames.get(name) ?? []), res.relDir]);
+    }
+  }
+  if (descriptorToolNames.size > 0) {
+    const registrations = collectMcpRegistrations(rootDir);
+    if (registrations === null) {
+      errors.push(
+        `cannot cross-check surfaces.mcp.tool_name: ${MCP_SOURCE_DIR} not found under ${rootDir} — ${descriptorToolNames.size} tool descriptor(s) declare an MCP surface that nothing registers`,
+      );
+    } else {
+      for (const [name, dirs] of descriptorToolNames) {
+        if (dirs.length > 1) {
+          errors.push(`duplicate surfaces.mcp.tool_name "${name}" declared by: ${dirs.map((d) => `library/${d}`).join(", ")}`);
+        }
+        if (!registrations.has(name)) {
+          errors.push(`library/${dirs[0]}/resource.yaml: surfaces.mcp.tool_name "${name}" is not registered by any server.tool() call in ${MCP_SOURCE_DIR}`);
+        }
+      }
+      for (const [name, files] of registrations) {
+        if (!descriptorToolNames.has(name)) {
+          errors.push(`${files.join(", ")}: MCP tool "${name}" is registered but has no library/tools/<slug>/resource.yaml descriptor (surfaces.mcp.tool_name)`);
+        }
+      }
+    }
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  for (const res of resources) {
+    const evidence = res.data.evidence;
+    if (evidence === null || typeof evidence !== "object" || Array.isArray(evidence)) continue;
+    const verifiedAt = (evidence as Record<string, unknown>).verified_at;
+    if (typeof verifiedAt !== "string") continue; // schema-flagged
+    const prefix = `library/${res.relDir}/resource.yaml: evidence.verified_at`;
+    const parsed = Date.parse(`${verifiedAt}T00:00:00Z`);
+    if (Number.isNaN(parsed) || new Date(parsed).toISOString().slice(0, 10) !== verifiedAt) {
+      errors.push(`${prefix}: "${verifiedAt}" is not a real calendar date`);
+    } else if (verifiedAt > today) {
+      errors.push(`${prefix}: "${verifiedAt}" is in the future (today is ${today})`);
+    }
+  }
+
+  for (const res of resources) {
+    if (res.data.kind !== "skill") continue;
+    const skillMd = path.join(res.absDir, "SKILL.md");
+    if (!fs.existsSync(skillMd)) continue; // reported below
+    const fm = parseFrontmatter(fs.readFileSync(skillMd, "utf8"));
+    const name = fm.name;
+    const aliases = Array.isArray(res.data.aliases) ? (res.data.aliases as unknown[]).filter((a): a is string => typeof a === "string") : [];
+    if (typeof name !== "string" || name.length === 0) {
+      errors.push(`library/${res.relDir}/SKILL.md: frontmatter is missing "name" (hosts load skills by this name; it must be "${res.slug}")`);
+    } else if (name !== res.slug && !aliases.includes(name)) {
+      errors.push(`library/${res.relDir}/SKILL.md: frontmatter name "${name}" does not match the slug "${res.slug}" and is not listed in aliases`);
     }
   }
 

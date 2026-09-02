@@ -140,57 +140,49 @@ describe("validate-library: id namespacing (CONTRACT.md §4)", () => {
   });
 });
 
-describe("validate-library: id namespacing (CONTRACT.md §4)", () => {
-  function writeSkill(root: string, dir: string, id: string): void {
-    const abs = path.join(root, "library", "skills", dir);
-    fs.mkdirSync(abs, { recursive: true });
-    fs.writeFileSync(path.join(abs, "SKILL.md"), `---\nname: ${dir}\ndescription: Fixture.\n---\n\n# ${dir}\n`);
-    fs.writeFileSync(
-      path.join(abs, "resource.yaml"),
-      [
-        `id: ${id}`,
-        "kind: skill",
-        "version: 1.0.0",
-        "summary: Namespacing fixture.",
-        "use_when:",
-        "  - testing id namespacing",
-        "facets:",
-        "  lifecycle: [build]",
-        "source: official",
-        "license: MIT",
-        "status: stable",
-        "",
-      ].join("\n"),
-    );
-  }
+describe("validate-library: cross-checks against host code (descriptors may not describe fiction)", () => {
+  const result = run("invalid-crosscheck");
 
-  it("the schema accepts a <publisher>/<kind>/<slug> id; the library rejects it as side-load-only (not a pattern violation)", () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "vl-namespaced-"));
-    try {
-      writeSkill(tmp, "forest-kit", "acme/skill/forest-kit");
-      const result = runValidation(tmp, { schemasDir });
-      expect(result.ok).toBe(false);
-      expect(result.errors.some((e) => /id: must match pattern/.test(e))).toBe(false);
-      expect(
-        result.errors.some((e) =>
-          /id "acme\/skill\/forest-kit" is publisher-namespaced — namespaced ids are only valid for side-loaded resources outside library\/; official resources use "skill\/forest-kit"/.test(e),
-        ),
-      ).toBe(true);
-    } finally {
-      fs.rmSync(tmp, { recursive: true, force: true });
-    }
+  it("fails overall", () => {
+    expect(result.ok).toBe(false);
   });
 
-  it("still rejects malformed publisher prefixes at the schema level", () => {
-    for (const bad of ["Acme/skill/forest-kit", "acme//skill/forest-kit", "-acme/skill/forest-kit", "acme/acme/skill/forest-kit"]) {
-      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "vl-namespaced-bad-"));
-      try {
-        writeSkill(tmp, "forest-kit", bad);
-        const result = runValidation(tmp, { schemasDir });
-        expect(result.errors.some((e) => /id: must match pattern/.test(e)), bad).toBe(true);
-      } finally {
-        fs.rmSync(tmp, { recursive: true, force: true });
-      }
+  it.each([
+    ["(a) implementation.module that does not resolve under src/", /tools\/ghost-module.*implementation\.module: "src\/core\/capabilities\/does-not-exist\.ts" does not resolve to a file under .*\/src\//],
+    ["(b) descriptor tool_name with no server.tool() registration", /tools\/unregistered.*surfaces\.mcp\.tool_name "summer_unregistered" is not registered by any server\.tool\(\) call in src\/mcp/],
+    ["(b) server.tool() registration with no descriptor", /src\/mcp\/tools\/fixture-tools\.ts: MCP tool "summer_orphan_registration" is registered but has no library\/tools\/<slug>\/resource\.yaml descriptor/],
+    ["(c) input_schema with a non-object type", /tools\/bad-input-schema.*input_schema: type must be "object", got "banana"/],
+    ["(c) input_schema with non-object properties", /tools\/bad-input-schema.*input_schema: properties must be an object mapping names to schemas, got 5/],
+    ["(c) property without any type keyword", /tools\/untyped-prop.*input_schema: properties\.foo has no type/],
+    ["(c) property with a made-up type", /tools\/untyped-prop.*input_schema: properties\.bar\.type "strang" is not a JSON Schema type/],
+    ["(c) required naming an unknown property", /tools\/untyped-prop.*input_schema: required names "baz" which is not in properties/],
+    ["(d) evidence.verified_at in the future", /examples\/future-evidence.*evidence\.verified_at: "2999-01-01" is in the future \(today is \d{4}-\d{2}-\d{2}\)/],
+    ["(d) evidence.verified_at that is not a real date", /examples\/impossible-date.*evidence\.verified_at: "2026-13-45" is not a real calendar date/],
+    ["(e) SKILL.md frontmatter name != slug", /skills\/wrong-name\/SKILL\.md: frontmatter name "something-else" does not match the slug "wrong-name" and is not listed in aliases/],
+    ["(e) SKILL.md without a frontmatter name", /skills\/nameless\/SKILL\.md: frontmatter is missing "name"/],
+  ])("reports %s", (_name, pattern) => {
+    expect(result.errors.some((e) => pattern.test(e))).toBe(true);
+  });
+
+  it("(e) accepts a frontmatter name that is a declared alias", () => {
+    expect(result.errors.some((e) => /skills\/aliased-name/.test(e))).toBe(false);
+  });
+
+  it("(a)/(b) do not fire on descriptors whose module exists and whose tool is registered", () => {
+    expect(result.errors.some((e) => /summer_ghost"/.test(e) && /not registered/.test(e))).toBe(false);
+    expect(result.errors.some((e) => /tools\/unregistered.*implementation\.module/.test(e))).toBe(false);
+  });
+
+  it("(b) fails closed when src/mcp is absent but descriptors declare MCP surfaces", () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "vl-no-mcp-"));
+    try {
+      fs.cpSync(path.join(fixtures, "valid"), tmp, { recursive: true });
+      fs.rmSync(path.join(tmp, "src", "mcp"), { recursive: true, force: true });
+      const r = runValidation(tmp, { schemasDir });
+      expect(r.ok).toBe(false);
+      expect(r.errors.some((e) => /cannot cross-check surfaces\.mcp\.tool_name: src\/mcp not found/.test(e))).toBe(true);
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
     }
   });
 });

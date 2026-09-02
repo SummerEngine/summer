@@ -1,0 +1,15 @@
+id: example/impossible-date
+kind: example
+version: 1.0.0
+summary: Evidence date fixture impossible-date.
+use_when:
+  - testing evidence dates
+facets:
+  lifecycle: [build]
+source: official
+license: MIT
+status: stable
+evidence:
+  engine_version: "4.6.1"
+  verified_at: 2026-13-45
+  checks: [runs]

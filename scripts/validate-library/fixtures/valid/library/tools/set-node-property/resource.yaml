@@ -18,7 +18,7 @@ source: official
 license: MIT
 status: stable
 implementation:
-  module: core/capabilities/set-node-property
+  module: src/core/capabilities/set-node-property.ts
   export: setNodeProperty
 surfaces:
   cli:

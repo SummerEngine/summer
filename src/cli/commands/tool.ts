@@ -14,6 +14,7 @@ import { PACKAGE_ROOT } from "../../core/package-root.js";
 import { Command, Option } from "commander";
 import {
   ToolDispatchError,
+  ToolResultError,
   dispatchTool,
   listToolDispatches,
   resolveToolDispatch,
@@ -135,6 +136,18 @@ export const toolCommand = new Command("tool")
       console.error("Note: 'summer tool --json <args>' is deprecated; use --args <json>.");
     }
     const args = parseJsonArgs(options.args ?? options.json);
-    const result = await dispatchTool(entry.slug, args);
+    let result: unknown;
+    try {
+      result = await dispatchTool(entry.slug, args);
+    } catch (err) {
+      // A structured failure (engine_lacks_op) is printed whole so callers
+      // read failure_reason + the fallback instead of scraping a sentence.
+      if (err instanceof ToolResultError) {
+        console.log(JSON.stringify(err.result, null, 2));
+        process.exitCode = 1;
+        return;
+      }
+      throw err;
+    }
     console.log(JSON.stringify(result, null, 2));
   });

@@ -40,7 +40,7 @@ const SHARED: Record<string, string[]> = {
     "buildImportEntriesForAsset",
     "importResolvedAsset",
   ],
-  "core/capabilities/engine-receipt.ts": ["extractOpError"],
+  "core/capabilities/engine-receipt.ts": ["extractOpError", "withOldEngineHint"],
 };
 
 /** Both faces, and the owning core module each must import from. */
@@ -94,5 +94,6 @@ describe("repo-lint: tool-dispatch <-> mcp/tools share one helper copy", () => {
   it("the MCP re-exports are the very same function objects as core", () => {
     expect(sceneTools.executeSceneMutation).toBe(engineOps.executeSceneMutation);
     expect(withEngine.extractOpError).toBe(engineReceipt.extractOpError);
+    expect(withEngine.withOldEngineHint).toBe(engineReceipt.withOldEngineHint);
   });
 });

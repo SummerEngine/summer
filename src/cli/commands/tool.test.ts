@@ -1,7 +1,7 @@
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   formatToolList,
   parseJsonArgs,
@@ -10,6 +10,14 @@ import {
   toolCommand,
 } from "./tool.js";
 import { listToolDispatches } from "../../core/capabilities/tool-dispatch.js";
+import { EngineApiClient } from "../../core/api-client.js";
+
+// The default dispatch context connects through EngineApiClient.connect();
+// stub that one seam so `summer tool` runs against a scripted engine.
+vi.mock("../../core/api-client.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../core/api-client.js")>();
+  return { ...actual, EngineApiClient: { connect: vi.fn() } };
+});
 
 describe("summer tool command", () => {
   it("is registered as 'tool' with --list and --args; --json is a hidden deprecated alias", () => {
@@ -63,5 +71,31 @@ describe("summer tool command", () => {
     expect(resolveViaRegistryIndex("nope", root)).toBeNull();
     // Missing index: falls back cleanly.
     expect(resolveViaRegistryIndex("tool/add-node", join(root, "missing"))).toBeNull();
+  });
+
+  it("prints an old engine's unknown-op answer as the structured engine_lacks_op result and exits 1", async () => {
+    // Engine 0.5.65: advertises singleOnlyOps but no opKinds, so the capability
+    // pre-flight cannot refuse and the engine itself answers "unknown op".
+    vi.mocked(EngineApiClient.connect).mockResolvedValue({
+      getEngineCapabilities: () => ({ singleOnlyOps: ["SaveScene"] }),
+      executeOps: async () => ({ ok: false, error: "unknown op: GetWorldSnapshot" }),
+    } as never);
+    const lines: string[] = [];
+    const log = vi.spyOn(console, "log").mockImplementation((line: unknown) => {
+      lines.push(String(line));
+    });
+    const previousExitCode = process.exitCode;
+    try {
+      await toolCommand.parseAsync(["world-snapshot"], { from: "user" });
+      expect(process.exitCode).toBe(1);
+    } finally {
+      process.exitCode = previousExitCode;
+      log.mockRestore();
+    }
+    const printed = JSON.parse(lines.join("\n")) as Record<string, unknown>;
+    expect(printed).toMatchObject({ ok: false, op: "GetWorldSnapshot", failure_reason: "engine_lacks_op" });
+    expect(String(printed.error)).toContain("summer_get_scene_tree");
+    expect(String(printed.error)).toContain("update Summer Engine");
+    expect(String(printed.error)).toContain("Engine said: unknown op: GetWorldSnapshot");
   });
 });

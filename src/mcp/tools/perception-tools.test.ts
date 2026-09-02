@@ -87,6 +87,8 @@ describe("summer_world_snapshot", () => {
     expect(result.isError).toBe(true);
     expect(text(result)).toContain("doesn't support GetWorldSnapshot yet");
     expect(text(result)).toContain("summer_get_scene_tree");
+    // Same marker as the pre-flight, so the model keys off one field either way.
+    expect(text(result)).toContain("engine_lacks_op");
   });
 
   it("refuses before sending when the engine advertises ops without GetWorldSnapshot", async () => {

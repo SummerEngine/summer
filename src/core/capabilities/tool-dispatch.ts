@@ -20,7 +20,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
 import { EngineApiClient, EngineRebindError, type EngineSnapshot } from "../api-client.js";
-import { missingEngineOpResult, resolveSingleOnlyOps } from "../capability-skew.js";
+import { missingEngineOpResult, resolveSingleOnlyOps, type MissingOpResult } from "../capability-skew.js";
 import { buildAgentPlaybook } from "./agent-playbook.js";
 import { importResolvedAsset, type GatewayAsset } from "./asset-import.js";
 import {
@@ -31,7 +31,7 @@ import {
   safeProjectPath,
   validSha256,
 } from "./engine-ops.js";
-import { extractOpError } from "./engine-receipt.js";
+import { extractOpError, withOldEngineHint } from "./engine-receipt.js";
 import { lookupApiDocs } from "./api-docs.js";
 import { z, type ZodTypeAny } from "zod";
 import { ImportHdriError, importHdriArgsSchema, importPolyHavenHdri } from "./hdri-import.js";
@@ -91,6 +91,19 @@ export class ToolDispatchError extends Error {}
 /** The local engine is not reachable — a clean state, not a crash. */
 export class EngineUnavailableError extends ToolDispatchError {}
 
+/** A tool failed with a structured receipt that `summer tool` prints whole
+ *  (JSON on stdout, exit 1) instead of flattening to `message`. Today: the
+ *  engine_lacks_op result, from the capability pre-flight (nothing sent) and
+ *  from the post-hoc unknown-op rewrite (requireSupportedOp). */
+export class ToolResultError extends ToolDispatchError {
+  constructor(
+    readonly result: Record<string, unknown>,
+    message: string
+  ) {
+    super(message);
+  }
+}
+
 export function createDefaultDispatchContext(): ToolDispatchContext {
   let cached: EngineApiClient | null = null;
   return {
@@ -117,6 +130,29 @@ function requireEngineSuccess<T>(result: T): T {
   const failure = extractOpError(result);
   if (failure) throw new ToolDispatchError(failure);
   return result;
+}
+
+/** Post-hoc twin of the missingEngineOpResult pre-flight, for engines that
+ *  advertise no opKinds (0.5.65 ships `singleOnlyOps` only, so the pre-flight
+ *  cannot refuse): such an engine answers with a per-op "unknown op: <Kind>".
+ *  withOldEngineHint — the same helper the MCP face applies — rewrites that
+ *  into the upgrade path + fallback and stamps failure_reason engine_lacks_op;
+ *  it is thrown as a ToolResultError so `summer tool` prints the structured
+ *  result rather than the bare engine string. */
+function requireSupportedOp<T>(result: T, op: string, fallback: string): T {
+  const hinted = withOldEngineHint(result, op, fallback) as
+    | { failure_reason?: unknown; error?: unknown }
+    | null
+    | undefined;
+  if (hinted?.failure_reason === "engine_lacks_op") {
+    throw new ToolResultError(hinted as Record<string, unknown>, String(hinted.error));
+  }
+  return requireEngineSuccess(result);
+}
+
+/** Pre-flight refusal as a structured result (nothing was sent). */
+function refuseMissingOp(missing: MissingOpResult): never {
+  throw new ToolResultError({ ...missing }, missing.error);
 }
 
 // ---------------------------------------------------------------------------
@@ -441,9 +477,30 @@ async function requireSpatialOp(
 ): Promise<EngineApiClient> {
   const client = await ctx.engine();
   const missing = missingEngineOpResult(client, op, fallback);
-  if (missing) throw new ToolDispatchError(missing.error);
+  if (missing) refuseMissingOp(missing);
   return client;
 }
+
+// Fallbacks named by the engine_lacks_op result — the same string whether the
+// pre-flight refused (nothing sent) or the engine answered "unknown op".
+// Scripting fallbacks come from ./scene-script.ts; the MCP face words its own
+// in perception-tools.ts / spatial-tools.ts.
+const WORLD_SNAPSHOT_FALLBACK =
+  "read structure with summer_get_scene_tree and verify visually with summer_screenshot";
+const SNAPSHOT_DIFF_FALLBACK = "compare two summer_world_snapshot results yourself";
+const RUNTIME_TREE_FALLBACK = "probe runtime state with a RunVerification probe";
+const RUNTIME_NODE_FALLBACK = "probe the node from a RunVerification probe";
+const TEST_PLACEMENT_FALLBACK =
+  "judge clearance from summer_world_snapshot AABBs and verify with summer_screenshot";
+const SNAP_TO_SURFACE_FALLBACK =
+  "set the subject's position with summer_set_prop from summer_world_snapshot AABBs";
+const ALIGN_DISTRIBUTE_FALLBACK =
+  "compute anchors from summer_world_snapshot AABBs and set positions with summer_set_prop";
+const FRAME_CAMERA_FALLBACK =
+  "position the camera with summer_set_prop and check with summer_screenshot target 'scene'";
+const CAMERA_VISIBILITY_FALLBACK = "check framing visually with summer_screenshot target 'scene'";
+const NAVIGATION_PROBE_FALLBACK =
+  "probe reachability from a RunVerification probe (NavigationServer3D.map_get_path)";
 
 export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   // --- asset ---
@@ -1095,7 +1152,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   entry("summer_run_script", "Run a GDScript func run(ctx) inside the live editor against the open scene", true, async (args, ctx) => {
     const client = await ctx.engine();
     const missing = missingEngineOpResult(client, "RunSceneScript", RUN_SCRIPT_FALLBACK);
-    if (missing) throw new ToolDispatchError(missing.error);
+    if (missing) refuseMissingOp(missing);
     const undo = optStr(args, "undo");
     const { op, timeoutMs } = buildRunSceneScriptOp({
       source: str(args, "source"),
@@ -1103,18 +1160,26 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       checkpoint: typeof args.checkpoint === "boolean" ? args.checkpoint : undefined,
       undo: undo === "action" || undo === "none" ? undo : undefined,
     });
-    return requireEngineSuccess(await client.executeIdentityBoundOps([op], undefined, timeoutMs));
+    return requireSupportedOp(
+      await client.executeIdentityBoundOps([op], undefined, timeoutMs),
+      "RunSceneScript",
+      RUN_SCRIPT_FALLBACK
+    );
   }),
   entry("summer_run_editor_script", "Run an EditorScript in a fresh headless child editor against the on-disk project", true, async (args, ctx) => {
     const client = await ctx.engine();
     const missing = missingEngineOpResult(client, "RunEditorScript", RUN_EDITOR_SCRIPT_FALLBACK);
-    if (missing) throw new ToolDispatchError(missing.error);
+    if (missing) refuseMissingOp(missing);
     const { op, timeoutMs } = buildRunEditorScriptOp({
       source: str(args, "source"),
       max_seconds: typeof args.max_seconds === "number" ? args.max_seconds : undefined,
       checkpoint: typeof args.checkpoint === "boolean" ? args.checkpoint : undefined,
     });
-    return requireEngineSuccess(await client.executeIdentityBoundOps([op], undefined, timeoutMs));
+    return requireSupportedOp(
+      await client.executeIdentityBoundOps([op], undefined, timeoutMs),
+      "RunEditorScript",
+      RUN_EDITOR_SCRIPT_FALLBACK
+    );
   }),
   entry("summer_api_docs", "Offline engine class-reference lookup (properties, methods, signals, constants)", false, async (args) =>
     lookupApiDocs(str(args, "class_name"), optStr(args, "member"))
@@ -1123,47 +1188,49 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   // --- perception ---
   entry("summer_world_snapshot", "Structured snapshot of the edited scene (transforms, AABBs, fingerprints, counts)", true, async (args, ctx) => {
     const client = await ctx.engine();
-    const missing = missingEngineOpResult(client, "GetWorldSnapshot", "read structure with summer_get_scene_tree and verify visually with summer_screenshot");
-    if (missing) throw new ToolDispatchError(missing.error);
+    const missing = missingEngineOpResult(client, "GetWorldSnapshot", WORLD_SNAPSHOT_FALLBACK);
+    if (missing) refuseMissingOp(missing);
     const op: DispatchArgs = { op: "GetWorldSnapshot" };
     if (optStr(args, "scene_path")) op.scene_path = args.scene_path;
     if (typeof args.max_nodes === "number") op.max_nodes = args.max_nodes;
-    return requireEngineSuccess(await client.executeOps([op]));
+    return requireSupportedOp(await client.executeOps([op]), "GetWorldSnapshot", WORLD_SNAPSHOT_FALLBACK);
   }),
   entry("summer_snapshot_diff", "Diff two world snapshots into added/removed/changed nodes and count deltas", true, async (args, ctx) => {
     const client = await ctx.engine();
-    const missing = missingEngineOpResult(client, "DiffWorldSnapshot", "compare two summer_world_snapshot results yourself");
-    if (missing) throw new ToolDispatchError(missing.error);
+    const missing = missingEngineOpResult(client, "DiffWorldSnapshot", SNAPSHOT_DIFF_FALLBACK);
+    if (missing) refuseMissingOp(missing);
     const op: DispatchArgs = { op: "DiffWorldSnapshot", from_id: str(args, "from_id") };
     if (optStr(args, "to_id")) op.to_id = args.to_id;
-    return requireEngineSuccess(await client.executeOps([op]));
+    return requireSupportedOp(await client.executeOps([op]), "DiffWorldSnapshot", SNAPSHOT_DIFF_FALLBACK);
   }),
   entry("summer_get_runtime_tree", "Scene tree of the RUNNING game (live runtime state)", true, async (args, ctx) => {
     const client = await ctx.engine();
-    const missing = missingEngineOpResult(client, "GetRuntimeSceneTree", "probe runtime state with a RunVerification probe");
-    if (missing) throw new ToolDispatchError(missing.error);
+    const missing = missingEngineOpResult(client, "GetRuntimeSceneTree", RUNTIME_TREE_FALLBACK);
+    if (missing) refuseMissingOp(missing);
     const op: DispatchArgs = { op: "GetRuntimeSceneTree" };
     if (optStr(args, "path")) op.path = args.path;
     if (typeof args.depth === "number") op.depth = args.depth;
     if (typeof args.limit === "number") op.limit = args.limit;
-    return requireEngineSuccess(await client.executeOps([op]));
+    return requireSupportedOp(await client.executeOps([op]), "GetRuntimeSceneTree", RUNTIME_TREE_FALLBACK);
   }),
   entry("summer_inspect_runtime_node", "Live properties of one node in the RUNNING game", true, async (args, ctx) => {
     const client = await ctx.engine();
-    const missing = missingEngineOpResult(client, "GetRuntimeNode", "probe the node from a RunVerification probe");
-    if (missing) throw new ToolDispatchError(missing.error);
-    return requireEngineSuccess(
-      await client.executeOps([{ op: "GetRuntimeNode", path: str(args, "path") }])
+    const missing = missingEngineOpResult(client, "GetRuntimeNode", RUNTIME_NODE_FALLBACK);
+    if (missing) refuseMissingOp(missing);
+    return requireSupportedOp(
+      await client.executeOps([{ op: "GetRuntimeNode", path: str(args, "path") }]),
+      "GetRuntimeNode",
+      RUNTIME_NODE_FALLBACK
     );
   }),
 
   // --- spatial / world building ---
   entry("summer_test_placement", "Ghost-test one node at a candidate global pose (read-only, never saves)", true, async (args, ctx) => {
-    const client = await requireSpatialOp(ctx, "TestPlacement3D", "judge clearance from summer_world_snapshot AABBs and verify with summer_screenshot");
+    const client = await requireSpatialOp(ctx, "TestPlacement3D", TEST_PLACEMENT_FALLBACK);
     const scenePath = exactPath(args, "scenePath", SPATIAL_SCENE_PATH_LIMIT_BYTES);
     const maxFloorDistance = optNumber(args, "maxFloorDistance", 5);
     if (maxFloorDistance < 0.001) throw new ToolDispatchError("maxFloorDistance must be at least 0.001.");
-    return requireEngineSuccess(
+    return requireSupportedOp(
       await client.executeIdentityBoundOps(
         [
           {
@@ -1179,11 +1246,13 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
           },
         ],
         { scenePath }
-      )
+      ),
+      "TestPlacement3D",
+      TEST_PLACEMENT_FALLBACK
     );
   }),
   entry("summer_snap_to_surface", "Seat one subject on the first surface along a world ray (mutation + save)", true, async (args, ctx) => {
-    const client = await requireSpatialOp(ctx, "SnapToSurface", "set the subject's position with summer_set_prop from summer_world_snapshot AABBs");
+    const client = await requireSpatialOp(ctx, "SnapToSurface", SNAP_TO_SURFACE_FALLBACK);
     const scenePath = exactPath(args, "scenePath", SPATIAL_SCENE_PATH_LIMIT_BYTES);
     const direction = finiteVector3(args, "direction", [0, -1, 0]);
     if (direction.reduce((sum, n) => sum + n * n, 0) <= 0.00001) {
@@ -1193,7 +1262,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     const gap = optNumber(args, "gap", 0);
     if (maxDistance <= 0) throw new ToolDispatchError("maxDistance must be positive.");
     if (gap < 0 || gap > maxDistance) throw new ToolDispatchError("gap must be >= 0 and must not exceed maxDistance.");
-    return requireEngineSuccess(
+    return requireSupportedOp(
       await executeSceneMutation(client, scenePath, [
         {
           op: "SnapToSurface",
@@ -1203,11 +1272,13 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
           gap,
           align_up: optBoolean(args, "alignUp", false),
         },
-      ])
+      ]),
+      "SnapToSurface",
+      SNAP_TO_SURFACE_FALLBACK
     );
   }),
   entry("summer_align_distribute_3d", "Align or equal-space 2-16 ordered subjects along one world axis (mutation + save)", true, async (args, ctx) => {
-    const client = await requireSpatialOp(ctx, "AlignDistribute3D", "compute anchors from summer_world_snapshot AABBs and set positions with summer_set_prop");
+    const client = await requireSpatialOp(ctx, "AlignDistribute3D", ALIGN_DISTRIBUTE_FALLBACK);
     const scenePath = exactPath(args, "scenePath", SPATIAL_SCENE_PATH_LIMIT_BYTES);
     const axis = finiteVector3(args, "axis");
     if (Math.hypot(...axis) <= 1e-6) throw new ToolDispatchError("axis must be non-zero.");
@@ -1215,14 +1286,16 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     if (!["align_min", "align_center", "align_max", "distribute_centers", "distribute_gaps"].includes(mode)) {
       throw new ToolDispatchError("mode must be one of align_min, align_center, align_max, distribute_centers, distribute_gaps.");
     }
-    return requireEngineSuccess(
+    return requireSupportedOp(
       await executeSceneMutation(client, scenePath, [
         { op: "AlignDistribute3D", subject_paths: exactSubjectPaths(args, 2, 16), axis, mode },
-      ])
+      ]),
+      "AlignDistribute3D",
+      ALIGN_DISTRIBUTE_FALLBACK
     );
   }),
   entry("summer_frame_camera", "Move one perspective Camera3D to frame 1-8 subjects at an explicit aspect (mutation + save)", true, async (args, ctx) => {
-    const client = await requireSpatialOp(ctx, "FrameCamera3D", "position the camera with summer_set_prop and check with summer_screenshot target 'scene'");
+    const client = await requireSpatialOp(ctx, "FrameCamera3D", FRAME_CAMERA_FALLBACK);
     const scenePath = exactPath(args, "scenePath", SPATIAL_SCENE_PATH_LIMIT_BYTES);
     const aspect = optNumber(args, "aspect", Number.NaN);
     if (!(aspect > 0)) throw new ToolDispatchError("aspect is required and must be a positive finite number.");
@@ -1242,10 +1315,14 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       }
       op.view_direction = viewDirection;
     }
-    return requireEngineSuccess(await executeSceneMutation(client, scenePath, [op]));
+    return requireSupportedOp(
+      await executeSceneMutation(client, scenePath, [op]),
+      "FrameCamera3D",
+      FRAME_CAMERA_FALLBACK
+    );
   }),
   entry("summer_camera_visibility", "Read-only framing + sampled occlusion check for up to 5 subjects from one camera", true, async (args, ctx) => {
-    const client = await requireSpatialOp(ctx, "CameraVisibility3D", "check framing visually with summer_screenshot target 'scene'");
+    const client = await requireSpatialOp(ctx, "CameraVisibility3D", CAMERA_VISIBILITY_FALLBACK);
     const scenePath = exactPath(args, "scenePath", SPATIAL_SCENE_PATH_LIMIT_BYTES);
     const aspect = optNumber(args, "aspect", Number.NaN);
     if (!(aspect > 0)) throw new ToolDispatchError("aspect is required and must be a positive finite number.");
@@ -1253,7 +1330,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     if (!Number.isInteger(occlusionSamples) || occlusionSamples < 1 || occlusionSamples > 5) {
       throw new ToolDispatchError("occlusionSamples must be an integer from 1 through 5.");
     }
-    return requireEngineSuccess(
+    return requireSupportedOp(
       await client.executeIdentityBoundOps(
         [
           {
@@ -1267,17 +1344,19 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
           },
         ],
         { scenePath }
-      )
+      ),
+      "CameraVisibility3D",
+      CAMERA_VISIBILITY_FALLBACK
     );
   }),
   entry("summer_navigation_probe", "Read-only navigation reachability between two world points on the scene's nav map", true, async (args, ctx) => {
-    const client = await requireSpatialOp(ctx, "NavigationProbe3D", "probe reachability from a RunVerification probe (NavigationServer3D.map_get_path)");
+    const client = await requireSpatialOp(ctx, "NavigationProbe3D", NAVIGATION_PROBE_FALLBACK);
     const scenePath = exactPath(args, "scenePath", SPATIAL_SCENE_PATH_LIMIT_BYTES);
     const navigationLayers = optNumber(args, "navigationLayers", 1);
     if (!Number.isInteger(navigationLayers) || navigationLayers < 1 || navigationLayers > 0xffffffff) {
       throw new ToolDispatchError("navigationLayers must be an integer from 1 through 4294967295.");
     }
-    return requireEngineSuccess(
+    return requireSupportedOp(
       await client.executeIdentityBoundOps(
         [
           {
@@ -1289,7 +1368,9 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
           },
         ],
         { scenePath }
-      )
+      ),
+      "NavigationProbe3D",
+      NAVIGATION_PROBE_FALLBACK
     );
   }),
 

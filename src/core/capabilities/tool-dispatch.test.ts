@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   EngineUnavailableError,
   ToolDispatchError,
+  ToolResultError,
   dispatchTool,
   listToolDispatches,
   resolveToolDispatch,
@@ -208,6 +209,39 @@ describe("scene-scripting and perception dispatch entries", () => {
     const [ops, , timeoutMs] = calls[0]!.args as [Array<Record<string, unknown>>, unknown, number];
     expect(ops[0]).toMatchObject({ op: "RunSceneScript", max_seconds: 120, checkpoint: true });
     expect(timeoutMs).toBeGreaterThan(120_000);
+  });
+
+  it("rewrites an old engine's per-op unknown-op answer into the structured engine_lacks_op result (advert without opKinds, so the pre-flight cannot refuse)", async () => {
+    const { ctx } = fakeEngineContext({
+      getEngineCapabilities: () => ({ singleOnlyOps: ["SaveScene"] }),
+      executeOps: async () => ({
+        ok: false,
+        results: [{ ok: false, op: "GetWorldSnapshot", error: "unknown op: GetWorldSnapshot" }],
+      }),
+    });
+    const failure = await dispatchTool("world-snapshot", {}, ctx).catch((err: unknown) => err);
+    expect(failure).toBeInstanceOf(ToolResultError);
+    const { result, message } = failure as ToolResultError;
+    expect(result).toMatchObject({ ok: false, op: "GetWorldSnapshot", failure_reason: "engine_lacks_op" });
+    expect(message).toContain("doesn't support GetWorldSnapshot yet");
+    expect(message).toContain("summer_get_scene_tree");
+    expect(message).toContain("Engine said: unknown op: GetWorldSnapshot");
+    expect(message).not.toContain("nothing was sent");
+  });
+
+  it("pre-flight refusals carry the same structured result", async () => {
+    const { ctx } = fakeEngineContext({
+      getEngineCapabilities: () => ({ opKinds: ["AddNode"] }),
+      getEngineVersion: () => "0.5.61",
+    });
+    const failure = await dispatchTool("world-snapshot", {}, ctx).catch((err: unknown) => err);
+    expect(failure).toBeInstanceOf(ToolResultError);
+    expect((failure as ToolResultError).result).toMatchObject({
+      ok: false,
+      op: "GetWorldSnapshot",
+      failure_reason: "engine_lacks_op",
+      engine_version: "0.5.61",
+    });
   });
 
   it("world-snapshot and snapshot-diff dispatch single ops and surface failures", async () => {

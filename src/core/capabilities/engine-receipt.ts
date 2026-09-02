@@ -133,3 +133,43 @@ export function extractOpError(result: unknown): string | null {
   }
   return null;
 }
+
+/** The per-op text an older engine answers for a Kind its dispatch ladder does
+ *  not know (ops_executor.cpp fallthrough: `unknown op: <Kind>`). */
+const UNKNOWN_OP_PATTERN = /unknown op/i;
+
+/**
+ * An older engine answers an unknown op with a per-op "unknown op: <Kind>"
+ * (ops_executor.cpp fallthrough). Amend the envelope's error so the model gets
+ * the upgrade path instead of retrying, and stamp `failure_reason:
+ * "engine_lacks_op"` (+ `op`) so the result is detectable the same way as the
+ * capability pre-flight's MissingOpResult: programmatic callers read the
+ * field (the CLI prints the whole receipt), and extractOpError renders the
+ * classified failure as JSON. Engines WITH a capability advert never reach
+ * this — the pre-flight in missingEngineOpResult refuses before sending.
+ * A chunked mutation (executeSceneMutation) rewrites the envelope error into
+ * the "N earlier op(s) already applied" receipt, so the raw per-op text lives
+ * only inside results[] — both are read before deciding this is an old engine.
+ * Returns the input untouched when there is nothing to rewrite.
+ */
+export function withOldEngineHint(result: unknown, opName: string, fallback: string): unknown {
+  const opError = extractOpError(result);
+  if (!opError) return result;
+  const envelope = (result ?? {}) as Record<string, unknown> & {
+    results?: Array<{ ok?: boolean; error?: unknown }>;
+  };
+  const failedOpError = envelope.results?.find((entry) => entry.ok === false && typeof entry.error === "string")
+    ?.error as string | undefined;
+  const engineSaid =
+    (typeof envelope.error === "string" && envelope.error) || failedOpError || opError;
+  if (!UNKNOWN_OP_PATTERN.test(opError) && !UNKNOWN_OP_PATTERN.test(failedOpError ?? "")) return result;
+  return {
+    ...envelope,
+    op: opName,
+    failure_reason: "engine_lacks_op",
+    error:
+      `This Summer Engine build doesn't support ${opName} yet — ` +
+      `${fallback}, or update Summer Engine (restart it after updating). ` +
+      `Engine said: ${failedOpError ?? engineSaid}`,
+  };
+}

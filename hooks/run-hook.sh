@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Cross-platform hook dispatcher.
-# Usage: run-hook.cmd <hook-name>
+# Cross-platform hook dispatcher (bash side).
+# Usage: run-hook.sh <hook-name>
 # Reads stdin, forwards to <plugin-root>/hooks/<hook-name>.sh
-# On Windows, Claude Code / Cursor / Codex invoke this via Git-Bash.
+# Hosts reference run-hook.cmd, a bash/cmd.exe polyglot that lands here on
+# every platform that has bash (macOS, Linux, Git Bash / WSL on Windows).
 
 HOOK_NAME="$1"
 shift || true
@@ -15,9 +16,5 @@ if [ ! -f "$HOOK_SCRIPT" ]; then
   exit 0
 fi
 
-if [ ! -x "$HOOK_SCRIPT" ]; then
-  # Not executable yet (likely fresh checkout). Fall back to bash invocation.
-  exec bash "$HOOK_SCRIPT" "$@"
-fi
-
-exec "$HOOK_SCRIPT" "$@"
+# Always go through bash: fresh checkouts / npm tarballs may drop the exec bit.
+exec bash "$HOOK_SCRIPT" "$@"

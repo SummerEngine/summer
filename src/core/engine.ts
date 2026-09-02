@@ -1,6 +1,10 @@
 import { lstat, readFile, readdir, realpath, stat } from "fs/promises";
 import { dirname, join, resolve } from "path";
 import { getSummerDir } from "./auth.js";
+import {
+  parseEngineCapabilities,
+  type EngineCapabilities,
+} from "./capability-skew.js";
 
 const DEFAULT_PORT = 6550;
 const INSTANCE_SCHEMA_VERSION = 1;
@@ -363,6 +367,9 @@ export interface EngineHealth {
   projectIdHash?: string;
   mainAliveMs?: number;
   queueDepth?: number;
+  /** Advertised by newer engines only: dispatchable op kinds, single-only ops,
+   *  protocol version. Absent on older builds — absence proves nothing. */
+  capabilities?: EngineCapabilities;
 
   // NEVER POPULATED as of engine 4.6.1 / 0.5.55. `/api/health` returns exactly 18
   // keys (ToolNetThread::_health, modules/1summer_engine/api/tool_net_thread.cpp:808-836)
@@ -424,6 +431,7 @@ export async function checkEngineHealth(
       projectIdHash: stringFrom(data.projectIdHash),
       mainAliveMs: numberFrom(data.mainAliveMs),
       queueDepth: numberFrom(data.queueDepth),
+      capabilities: parseEngineCapabilities(data.capabilities),
       project_name: stringFrom(data.project_name),
       project_path: stringFrom(data.project_path),
       scene: stringFrom(data.scene),

@@ -7,8 +7,10 @@ import {
   getApiPort,
   checkEngineHealth,
   resolveEngineConnection,
+  type EngineHealth,
   type EngineSelection,
 } from "./engine.js";
+import type { EngineCapabilities } from "./capability-skew.js";
 import {
   classifyOpsResponse,
   pollOpToTerminal,
@@ -174,6 +176,10 @@ export class EngineApiClient {
   // supplied a projectIdHash.
   private targetIdentity: EngineTargetIdentity;
   private selection: EngineSelection | null;
+  // The most recent /api/health seen at connect/rebind. Carries the engine's
+  // capability advert (opKinds, singleOnlyOps) so tools can fail closed on a
+  // provably missing op without a second health round trip per call.
+  private lastHealth: EngineHealth | null = null;
 
   constructor(
     port: number,
@@ -195,7 +201,7 @@ export class EngineApiClient {
   ): Promise<EngineApiClient> {
     if (selection) {
       const connection = await resolveEngineConnection(selection);
-      return new EngineApiClient(
+      const client = new EngineApiClient(
         connection.port,
         connection.token,
         {
@@ -205,6 +211,8 @@ export class EngineApiClient {
         },
         { ...selection }
       );
+      client.lastHealth = connection.health;
+      return client;
     }
 
     const port = await getApiPort();
@@ -228,11 +236,24 @@ export class EngineApiClient {
     // rebinds to the current project. An in-place project switch keeps the same
     // token, so the cached client retains its original binding and the engine
     // rejects mismatched mutations until the agent explicitly rebinds.
-    return new EngineApiClient(port, token, {
+    const client = new EngineApiClient(port, token, {
       instanceId: health.instanceId,
       projectId: health.projectId,
       projectIdHash: health.projectIdHash,
     });
+    client.lastHealth = health;
+    return client;
+  }
+
+  /** The engine's capability advert from the last health read (connect or
+   *  rebind), or undefined when the engine predates the advert. */
+  getEngineCapabilities(): EngineCapabilities | undefined {
+    return this.lastHealth?.capabilities;
+  }
+
+  /** Engine version string from the last health read, for skew messages. */
+  getEngineVersion(): string | undefined {
+    return this.lastHealth?.version;
   }
 
   /** The projectIdHash this session is bound to (undefined if none was reported
@@ -251,6 +272,7 @@ export class EngineApiClient {
   async rebind(): Promise<string | undefined> {
     const health = await checkEngineHealth(this.port);
     if (health) {
+      this.lastHealth = health;
       this.targetIdentity = {
         instanceId: health.instanceId,
         projectId: health.projectId,
@@ -465,16 +487,19 @@ export class EngineApiClient {
 
   async executeOps(
     ops: Record<string, unknown>[],
-    options?: Record<string, unknown>
+    options?: Record<string, unknown>,
+    timeoutMs = 120_000
   ): Promise<unknown> {
     // Ops may include long-running work (ImportFromUrlBatch, GitCommit); the
-    // engine keeps it "running" and we poll. 120s budget. Resolves legacy-200 or
-    // async-202 (Block E).
+    // engine keeps it "running" and we poll. 120s budget by default; ops that
+    // declare a longer server-side max_seconds (RunEditorScript) pass a larger
+    // timeoutMs so the client never gives up before the engine can finish.
+    // Resolves legacy-200 or async-202 (Block E).
     // Attach the bound project identity so the engine rejects a write aimed at a
     // different project (identity_mismatch, atomic — before any op applies).
     const merged = { ...(options ?? {}), ...this.identityOptions() };
     const body = Object.keys(merged).length ? { ops, options: merged } : { ops };
-    return this._requestQueued("POST", "/api/ops", body, 120_000);
+    return this._requestQueued("POST", "/api/ops", body, timeoutMs);
   }
 
   /**
@@ -484,10 +509,11 @@ export class EngineApiClient {
    */
   async executeIdentityBoundOps(
     ops: Record<string, unknown>[],
-    options?: Record<string, unknown>
+    options?: Record<string, unknown>,
+    timeoutMs?: number
   ): Promise<unknown> {
     const identity = this.requireBoundIdentity();
-    return this.executeOps(ops, { ...(options ?? {}), ...identity });
+    return this.executeOps(ops, { ...(options ?? {}), ...identity }, timeoutMs);
   }
 
   async readProjectFile(path: string, maxBytes = 200_000): Promise<unknown> {
@@ -759,22 +785,28 @@ export class EngineApiClient {
    * name `node_path`); an unresolvable node fails with failure_reason
    * "node_not_found". framing "auto" is an alias of "iso"; the engine also
    * accepts "top"/"front"/"back"/"left"/"right" and echoes the resolved framing.
-   * The result carries image_base64 + mime (+ width/height) plus the P4.3
-   * confession fields (scene_has_camera / scene_had_light /
+   * framing "camera" renders through the scene's current/first Camera3D — or
+   * the Camera3D named by `cameraPath` — with the scene's REAL WorldEnvironment
+   * instead of the flat preview substitute; the engine echoes the resolved
+   * framing, so an older build that ignores the value is detectable by the
+   * caller. The result carries image_base64 + mime (+ width/height) plus the
+   * P4.3 confession fields (scene_has_camera / scene_had_light /
    * used_synthetic_camera) and framing / framed_node / render_retries.
    */
   async scenePreview(input?: {
     scenePath?: string;
-    framing?: "auto" | "iso" | "top" | "front" | "back" | "left" | "right";
+    framing?: "auto" | "iso" | "top" | "front" | "back" | "left" | "right" | "camera";
     size?: [number, number];
     nodePath?: string;
+    cameraPath?: string;
   }): Promise<EngineSnapshot> {
     const opInput: Record<string, unknown> = { op: "ScenePreview" };
     const trimmed = input?.scenePath?.trim();
-    if (trimmed && trimmed !== "." && trimmed !== "../lib") opInput.scene_path = trimmed;
+    if (trimmed && trimmed !== "." && trimmed !== "./") opInput.scene_path = trimmed;
     if (input?.framing) opInput.framing = input.framing;
     if (input?.size) opInput.size = input.size;
     if (input?.nodePath) opInput.node = input.nodePath;
+    if (input?.cameraPath) opInput.camera_path = input.cameraPath;
 
     let response: unknown;
     try {

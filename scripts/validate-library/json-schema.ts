@@ -133,19 +133,26 @@ function validateNode(data: unknown, schema: JsonSchema, path: string, ctx: Ctx)
   if (Array.isArray(schema.oneOf)) {
     const branches = schema.oneOf as JsonSchema[];
     const passing: Result[] = [];
+    const failing: { branch: JsonSchema; result: Result }[] = [];
     for (const branch of branches) {
       const sub = validateNode(data, branch, path, ctx);
       if (sub.errors.length === 0) passing.push(sub);
+      else failing.push({ branch, result: sub });
     }
     if (passing.length === 1) {
       for (const p of passing[0].evaluated) evaluated.add(p);
+    } else if (passing.length === 0) {
+      errors.push({ path, message: `matches none of the ${branches.length} allowed shapes (oneOf)` });
+      // Surface why each shape failed, so a bad pin reports "commit: must match
+      // pattern" instead of only the summary line.
+      failing.forEach(({ branch, result }, i) => {
+        const title = typeof branch.title === "string" ? branch.title : `shape ${i + 1}`;
+        for (const e of result.errors) errors.push({ path: e.path, message: `${e.message} (oneOf: ${title})` });
+      });
     } else {
       errors.push({
         path,
-        message:
-          passing.length === 0
-            ? `matches none of the ${branches.length} allowed shapes (oneOf)`
-            : `matches ${passing.length} of the allowed shapes (oneOf) — must match exactly one`,
+        message: `matches ${passing.length} of the allowed shapes (oneOf) — must match exactly one`,
       });
     }
   }

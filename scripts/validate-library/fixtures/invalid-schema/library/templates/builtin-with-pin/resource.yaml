@@ -1,0 +1,15 @@
+id: template/builtin-with-pin
+kind: template
+version: 1.0.0
+summary: A template that claims to be builtin and also carries a pin.
+use_when:
+  - testing schema violations
+facets:
+  lifecycle: [build]
+source: official
+license: MIT
+status: stable
+builtin: true
+repo: https://github.com/SummerEngine/template-builtin-with-pin
+commit: 0123456789abcdef0123456789abcdef01234567
+tree_digest: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

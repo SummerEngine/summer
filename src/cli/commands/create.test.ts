@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -12,7 +12,14 @@ vi.mock("../../core/engine.js", async (importOriginal) => ({
 
 import { checkEngineHealth } from "../../core/engine.js";
 import { PACKAGE_ROOT } from "../../core/package-root.js";
-import { BUILTIN_GENERATORS, createCommand, escapeGodotString, renderProjectSettings } from "./create.js";
+import {
+  AUTOPILOT_NEXT_STEP_HINT,
+  BUILTIN_GENERATORS,
+  createCommand,
+  escapeGodotString,
+  renderProjectSettings,
+  scaffoldAutopilot,
+} from "./create.js";
 
 const require = createRequire(import.meta.url);
 const { version: pkgVersion } = require("../../../package.json") as { version: string };
@@ -89,6 +96,10 @@ describe("summer create <builtin>", () => {
     const out = log.mock.calls.map((c) => String(c[0])).join("\n");
     expect(out).toContain("brainstorm-game skill");
     expect(out).not.toContain("summer:brainstorm-game");
+    // The printed next step must say what the first run really does: the one-off
+    // asset import comes before any verify (TEMPLATES-PRISTINE-BOOT-2026-09-03 T-01).
+    expect(out).toContain(`tests/autopilot/run.sh   (${AUTOPILOT_NEXT_STEP_HINT})`);
+    expect(out).not.toContain("verify the game without opening it");
   });
 
   it("records engine_version when Summer Engine is reachable at create time", async () => {
@@ -128,5 +139,36 @@ describe("summer create <builtin>", () => {
     await expect(createCommand.parseAsync(["3d-basic", scratch], { from: "user" })).rejects.toThrow("process.exit(1)");
     const err = error.mock.calls.map((c) => String(c[0])).join("\n");
     expect(err).toContain("Directory already exists");
+  });
+});
+
+describe("scaffoldAutopilot (the copy step behind summer create)", () => {
+  let scratch = "";
+  beforeEach(() => {
+    scratch = mkdtempSync(join(tmpdir(), "summer-scaffold-"));
+  });
+  afterEach(() => {
+    rmSync(scratch, { recursive: true, force: true });
+  });
+
+  it("copies every scaffold file byte-for-byte into tests/autopilot/", () => {
+    expect(scaffoldAutopilot(scratch)).toBe(true);
+    const source = join(PACKAGE_ROOT, "assets", "autopilot");
+    const names = readdirSync(source).sort();
+    expect(names).toEqual(["README.md", "autopilot.gd", "probe_base.gd", "run.sh"]);
+    for (const name of names) {
+      expect(readFileSync(join(scratch, "tests", "autopilot", name), "utf8"), name).toBe(
+        readFileSync(join(source, name), "utf8")
+      );
+    }
+  });
+
+  it("never overwrites an existing tests/autopilot/ — that one is the user's", () => {
+    const target = join(scratch, "tests", "autopilot");
+    mkdirSync(target, { recursive: true });
+    writeFileSync(join(target, "autopilot.gd"), "# mine\n");
+    expect(scaffoldAutopilot(scratch)).toBe(false);
+    expect(readFileSync(join(target, "autopilot.gd"), "utf8")).toBe("# mine\n");
+    expect(existsSync(join(target, "run.sh"))).toBe(false);
   });
 });

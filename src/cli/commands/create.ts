@@ -53,7 +53,7 @@ export const BUILTIN_GENERATORS: Readonly<Record<string, BuiltinGenerator>> = {
  *
  * Never overwrites — an existing tests/autopilot/ is the user's, not ours.
  */
-function scaffoldAutopilot(projectDir: string): boolean {
+export function scaffoldAutopilot(projectDir: string): boolean {
   const source = join(PACKAGE_ROOT, "assets", "autopilot");
   const target = join(projectDir, "tests", "autopilot");
 
@@ -63,6 +63,11 @@ function scaffoldAutopilot(projectDir: string): boolean {
   return true;
 }
 
+/** What the scaffold's first run actually does — the "Next steps" line must not
+ *  promise a verify when the first thing run.sh does is the one-off asset import. */
+export const AUTOPILOT_NEXT_STEP_HINT =
+  "first run imports assets once, then verifies the game boots; no editor needed";
+
 function printNextSteps(fullPath: string, dirName: string, scaffolded: boolean): void {
   console.log(`\nProject created at ${fullPath}`);
   console.log(`Recorded template pin in ${join(dirName, PROJECT_MANIFEST_RELPATH)}`);
@@ -71,7 +76,7 @@ function printNextSteps(fullPath: string, dirName: string, scaffolded: boolean):
   if (scaffolded) {
     const script = join(dirName, "tests", "autopilot", "run.sh");
     const hint = process.platform === "win32" ? `bash ${script}   (Git Bash or WSL;` : `bash ${script}   (`;
-    console.log(`  ${hint}verify the game without opening it)`);
+    console.log(`  ${hint}${AUTOPILOT_NEXT_STEP_HINT})`);
   }
   console.log("  Ask your agent to use the brainstorm-game skill to create .summer/GameSoul.md");
 }

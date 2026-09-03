@@ -1,0 +1,40 @@
+# T1.4 — Layout from a spec, scored against a gold snapshot (per-name AABB IoU).
+id: T1.4-layout-from-spec
+tier: T1
+title: layout-from-spec
+prompt: >-
+  Place five 1 m cubes at x = -4,-2,0,2,4 on the ground, name them Cube_A..E,
+  add a sun light.
+fixture: empty3d
+scene: res://main.tscn
+budget: { wall_clock_s: 480, max_tool_calls: 25 }
+skills_expected: [skill/scene-scripting, skill/spatial-placement]
+capture: [iso]
+gold:
+  - { name: Cube_A, aabb: { pos: "Vector3(-4.5, 0.0, -0.5)", size: "Vector3(1.0, 1.0, 1.0)" } }
+  - { name: Cube_B, aabb: { pos: "Vector3(-2.5, 0.0, -0.5)", size: "Vector3(1.0, 1.0, 1.0)" } }
+  - { name: Cube_C, aabb: { pos: "Vector3(-0.5, 0.0, -0.5)", size: "Vector3(1.0, 1.0, 1.0)" } }
+  - { name: Cube_D, aabb: { pos: "Vector3(1.5, 0.0, -0.5)", size: "Vector3(1.0, 1.0, 1.0)" } }
+  - { name: Cube_E, aabb: { pos: "Vector3(3.5, 0.0, -0.5)", size: "Vector3(1.0, 1.0, 1.0)" } }
+assertions:
+  - id: gold-layout
+    predicate: gold_iou
+    args: { min: 0.9 }
+    required: true
+    note: mean per-name world-AABB IoU against the gold list above
+  - id: sun-present
+    predicate: count
+    args: { class: DirectionalLight3D, op: ">=", value: 1 }
+    required: true
+  - id: cubes-on-ground
+    predicate: on_ground
+    args: { selector: "Cube_*", ground_y: 0, eps: 0.01 }
+    required: true
+  - id: cubes-saved
+    predicate: exists
+    args: { selector: "Cube_*" }
+    required: false
+  - id: no-truncation
+    predicate: no_truncation
+    args: {}
+    required: false

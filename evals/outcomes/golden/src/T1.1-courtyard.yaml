@@ -1,0 +1,24 @@
+# Golden for T1.1 — a known-good agent's calls, replayed through the toolkit's
+# own tool table. One ctx-stdlib script: floor, four walls (the south one split
+# for the gate), a fountain, a light rig, an environment, a current camera, save.
+task: T1.1-courtyard
+recorded_at: "2026-09-03T00:00:00.000Z"
+description: floor + 4 walls with a south gate + cylinder fountain + light rig + camera, saved
+steps:
+  - tool: summer_run_script
+    args:
+      source: |
+        func run(ctx):
+            ctx.add_mesh("box", "Floor", null, {"size": Vector3(20, 0.2, 20), "position": Vector3(0, 0.1, 0)})
+            ctx.add_mesh("box", "Wall_North", null, {"size": Vector3(20, 3, 0.5), "position": Vector3(0, 1.5, -9.75)})
+            ctx.add_mesh("box", "Wall_East", null, {"size": Vector3(0.5, 3, 20), "position": Vector3(9.75, 1.5, 0)})
+            ctx.add_mesh("box", "Wall_West", null, {"size": Vector3(0.5, 3, 20), "position": Vector3(-9.75, 1.5, 0)})
+            # The south wall is two segments with a 4 m gate opening in the middle.
+            ctx.add_mesh("box", "Wall_South_Left", null, {"size": Vector3(8, 3, 0.5), "position": Vector3(-6, 1.5, 9.75)})
+            ctx.add_mesh("box", "Wall_South_Right", null, {"size": Vector3(8, 3, 0.5), "position": Vector3(6, 1.5, 9.75)})
+            ctx.add_mesh("cylinder", "Fountain", null, {"top_radius": 1.5, "bottom_radius": 1.5, "height": 1.0, "position": Vector3(0, 0.5, 0)})
+            ctx.add_light_rig()
+            ctx.ensure_environment()
+            ctx.add_camera(Vector3(0, 22, 26), Vector3(0, 0, 0), true)
+            var saved = ctx.save_scene()
+            return {"saved": saved, "summary": ctx.summary()}

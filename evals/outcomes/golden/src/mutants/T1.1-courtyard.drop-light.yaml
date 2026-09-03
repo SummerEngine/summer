@@ -1,0 +1,23 @@
+# Mutant of T1.1: the light rig is dropped. Must fail EXACTLY `light-present`
+# (the environment sky still renders, so the camera preview is not blank).
+task: T1.1-courtyard
+mutation: drop-light
+expect_fail: [light-present]
+recorded_at: "2026-09-03T00:00:00.000Z"
+description: T1.1 golden without ctx.add_light_rig()
+steps:
+  - tool: summer_run_script
+    args:
+      source: |
+        func run(ctx):
+            ctx.add_mesh("box", "Floor", null, {"size": Vector3(20, 0.2, 20), "position": Vector3(0, 0.1, 0)})
+            ctx.add_mesh("box", "Wall_North", null, {"size": Vector3(20, 3, 0.5), "position": Vector3(0, 1.5, -9.75)})
+            ctx.add_mesh("box", "Wall_East", null, {"size": Vector3(0.5, 3, 20), "position": Vector3(9.75, 1.5, 0)})
+            ctx.add_mesh("box", "Wall_West", null, {"size": Vector3(0.5, 3, 20), "position": Vector3(-9.75, 1.5, 0)})
+            ctx.add_mesh("box", "Wall_South_Left", null, {"size": Vector3(8, 3, 0.5), "position": Vector3(-6, 1.5, 9.75)})
+            ctx.add_mesh("box", "Wall_South_Right", null, {"size": Vector3(8, 3, 0.5), "position": Vector3(6, 1.5, 9.75)})
+            ctx.add_mesh("cylinder", "Fountain", null, {"top_radius": 1.5, "bottom_radius": 1.5, "height": 1.0, "position": Vector3(0, 0.5, 0)})
+            ctx.ensure_environment()
+            ctx.add_camera(Vector3(0, 22, 26), Vector3(0, 0, 0), true)
+            var saved = ctx.save_scene()
+            return {"saved": saved}

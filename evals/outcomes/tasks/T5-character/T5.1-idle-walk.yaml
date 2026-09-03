@@ -1,0 +1,46 @@
+# T5.1 — Animation state machine over the rigged fixture, read live in the
+# running game (AnimationTree.active + parameters/playback current node).
+id: T5.1-idle-walk
+tier: T5
+title: idle-walk
+prompt: >-
+  Wire the rig in rig.tscn with a state machine: idle by default, walk while
+  move_forward is held.
+fixture: rigged
+scene: res://rig.tscn
+budget: { wall_clock_s: 900, max_tool_calls: 40 }
+skills_expected: [skill/scene-scripting, skill/animation-tree, skill/character-animation-wiring]
+capture: [probe-strip]
+assertions:
+  - id: one-tree
+    predicate: count
+    args: { class: AnimationTree, op: "==", value: 1 }
+    required: true
+  - id: idle-at-rest
+    predicate: state_machine
+    args: { selector: "class:AnimationTree|*AnimationTree*", expected_state: Idle }
+    required: true
+  - id: walk-while-held
+    predicate: state_machine
+    args:
+      selector: "class:AnimationTree|*AnimationTree*"
+      expected_state: Walk
+      after: { press: move_forward, hold_ms: 600 }
+    required: true
+    note: read while the action is still held, before release
+  - id: input-forward
+    predicate: input_action
+    args: { name: move_forward, min_events: 1 }
+    required: true
+  - id: runs-clean
+    predicate: runs_clean
+    args: { seconds: 3 }
+    required: true
+  - id: tree-saved
+    predicate: exists
+    args: { selector: "class:AnimationTree" }
+    required: false
+  - id: machine-saved
+    predicate: tscn_resource
+    args: { type: AnimationNodeStateMachine }
+    required: false

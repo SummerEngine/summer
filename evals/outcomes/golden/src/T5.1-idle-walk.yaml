@@ -1,0 +1,32 @@
+# Golden for T5.1 — an AnimationTree state machine (Idle <-> Walk) over the
+# fixture's idle/walk clips, a driver script that travels on move_forward, the
+# input action, save.
+task: T5.1-idle-walk
+recorded_at: "2026-09-03T00:00:00.000Z"
+description: anim_state_machine Idle/Walk on Rig, AnimationTree script travels while move_forward is held, move_forward bound to W, saved
+steps:
+  - tool: summer_run_script
+    args:
+      source: |
+        func run(ctx):
+            var skel = ctx.find("Rig")
+            var spec = {
+                "states": {"Idle": "idle", "Walk": "walk"},
+                "transitions": [["Idle", "Walk", {"blend_s": 0.1}], ["Walk", "Idle", {"blend_s": 0.1}]],
+                "start": "Idle",
+            }
+            var tree = ctx.anim_state_machine(skel, spec)
+            ctx.attach_script(tree, """extends AnimationTree
+
+        func _process(_delta: float) -> void:
+            var machine := tree_root as AnimationNodeStateMachine
+            var playback: AnimationNodeStateMachinePlayback = get("parameters/playback")
+            if machine == null or playback == null:
+                return
+            var want := "Walk" if Input.is_action_pressed("move_forward") else "Idle"
+            if machine.has_node(want) and playback.get_current_node() != want:
+                playback.travel(want)
+        """)
+            ctx.add_input_action("move_forward", [{"type": "key", "keycode": "W"}])
+            var saved = ctx.save_scene()
+            return {"saved": saved, "tree": tree != null}

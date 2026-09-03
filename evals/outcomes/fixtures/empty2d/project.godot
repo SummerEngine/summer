@@ -1,0 +1,28 @@
+; Outcome-eval fixture `empty2d`: one Node2D root and a fixed 1152x648 viewport
+; (the design's T3/T4 fixture). The runner copies this directory to a throwaway
+; project before it boots the editor, so nothing in here is ever mutated in
+; place. No .godot/ cache is committed; the editor regenerates it on boot. The
+; [audio]/[rendering] pins keep the game child free of Vulkan/ALSA probing
+; noise under Xvfb (they are environment pins, not part of the task).
+
+config_version=5
+
+[application]
+
+config/name="Outcome Eval empty2d"
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.7")
+
+[display]
+
+window/size/viewport_width=1152
+window/size/viewport_height=648
+
+[audio]
+
+driver/driver="Dummy"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"

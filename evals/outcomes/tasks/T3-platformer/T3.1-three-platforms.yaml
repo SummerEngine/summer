@@ -1,0 +1,70 @@
+# T3.1 — 2D platformer level: bodies, input map, a script, a clean run, a jump
+# measured in the running game.
+id: T3.1-three-platforms
+tier: T3
+title: three-platforms
+prompt: >-
+  Make a 2D level: ground, three floating platforms the player can jump
+  between, a player that moves left/right and jumps with the arrow keys and
+  space.
+fixture: empty2d
+scene: res://main.tscn
+budget: { wall_clock_s: 900, max_tool_calls: 40 }
+skills_expected: [skill/scene-scripting, skill/design-level, skill/gdscript-patterns]
+capture: [probe-strip]
+probe_snippet: |
+  var player := get_tree().root.find_child("Player", true, false)
+  report("player_found", player != null)
+  await settle_physics(40)
+  var y0: float = player.global_position.y if player else 0.0
+  await press("jump", 120)
+  await get_tree().create_timer(0.35).timeout
+  var y1: float = player.global_position.y if player else 0.0
+  report("y_delta_after_jump", snappedf(y0 - y1, 0.01))
+assertions:
+  - id: one-player
+    predicate: count
+    args: { class: CharacterBody2D, op: "==", value: 1 }
+    required: true
+  - id: player-collision
+    predicate: collision_under
+    args: { selector: "Player*" }
+    required: true
+  - id: platform-count
+    predicate: count
+    args: { class: StaticBody2D, op: ">=", value: 4 }
+    required: true
+    note: ground + three platforms
+  - id: platforms-collision
+    predicate: collision_under
+    args: { selector: "class:StaticBody2D" }
+    required: true
+  - id: input-left
+    predicate: input_action
+    args: { name: move_left, min_events: 1 }
+    required: true
+  - id: input-right
+    predicate: input_action
+    args: { name: move_right, min_events: 1 }
+    required: true
+  - id: input-jump
+    predicate: input_action
+    args: { name: jump, min_events: 1 }
+    required: true
+  - id: player-script
+    predicate: script_attached
+    args: { selector: "Player*" }
+    required: true
+  - id: runs-clean
+    predicate: runs_clean
+    args: { seconds: 4 }
+    required: true
+  - id: jump-works
+    predicate: probe_report
+    args: { key: y_delta_after_jump, op: ">", value: 20 }
+    required: true
+    note: the probe presses `jump` and reads the player's y (up is -y in 2D)
+  - id: all-saved
+    predicate: exists
+    args: { selector: "*" }
+    required: false

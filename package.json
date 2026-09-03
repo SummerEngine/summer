@@ -71,6 +71,7 @@
     "eval:routing": "node evals/routing/runner.ts",
     "eval:routing:heldout": "node evals/routing/runner.ts --heldout",
     "eval:canary": "node evals/canary/canary-gateway.ts",
+    "eval:outcomes": "node evals/outcomes/runner.ts",
     "test:watch": "vitest",
     "prepublishOnly": "npm run build && npm test",
     "generate:registry": "node scripts/generate-registry/cli.ts"

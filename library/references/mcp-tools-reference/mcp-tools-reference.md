@@ -17,7 +17,7 @@
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (74 tools)
+## Tool surface (75 tools)
 
 ### Project files (3)
 
@@ -106,7 +106,7 @@ Bounded spatial evidence for deliberate 3D arrangement. All five take exact `sce
 
 | Tool | Use |
 |---|---|
-| `summer_play` | Run the game. |
+| `summer_play` | Run the game. Optional `seed` / `fixed_fps` / `time_scale` pin THIS launch (newer engines); the result's `determinism.applied` + `seed_scope` say what was pinned — a missing block means the engine ignored the pins. |
 | `summer_stop` | Stop the running game. |
 | `summer_is_running` | Check play state before deciding to call `summer_stop`. |
 
@@ -117,11 +117,12 @@ Bounded spatial evidence for deliberate 3D arrangement. All five take exact `sce
 | `summer_wait_for_event` | Block until a matching engine event arrives — `play.started` after `summer_play`, `op.applied` / `op.failed` for one `requestId` after a long op, `script.error` during a playtest, `scene.saved`, `import.completed` — or the timeout elapses (default 30 s, max 120). Returns the events, `next_seq`, and an honest `timed_out`; never claim an event you did not receive. Take a cursor with `summer_recent_events` first so a moment that arrives immediately is not missed. Preview: engines without the events channel return `engine_lacks_events`. |
 | `summer_recent_events` | The newest engine events (or everything after `since`) in one zero-wait read; its `next_seq` is the `since` cursor to hand `summer_wait_for_event` before triggering the action you will wait on. Shell twin: `summer events [--follow]`. |
 
-### Visual capture (1)
+### Visual capture (2)
 
 | Tool | Use |
 |---|---|
-| `summer_screenshot` | Capture a frame and return it as an image the agent sees directly — editor viewport (`target:"viewport"`, default; no play needed), offscreen scene render (`target:"scene"`, presets or `framing:"camera"` which renders through the scene's OWN camera with its REAL WorldEnvironment — the trustworthy edit-time lighting check), or running game (`target:"game"`). Use to visually verify scene layout, asset placement, scale, framing, lighting, or runtime state. On macOS the running game is a floating window that can't be captured; prefer `viewport`. |
+| `summer_screenshot` | Capture a frame and return it as an image the agent sees directly — editor viewport (`target:"viewport"`, default; no play needed), offscreen scene render (`target:"scene"`, presets or `framing:"camera"` which renders through the scene's OWN camera with its REAL WorldEnvironment — the trustworthy edit-time lighting check), or running game (`target:"game"`). Newer engines add fixed poses — `framing:"bookmark"` + `bookmark_name` (saved with `summer_camera_bookmark`) or `framing:"free"` + `camera_position`/`camera_look_at` — for before/after frames that line up, and `marks:true` for numbered labels the caption maps to node paths. Use to visually verify scene layout, asset placement, scale, framing, lighting, or runtime state. On macOS the running game is a floating window that can't be captured; prefer `viewport`. |
+| `summer_camera_bookmark` | Save (`action:"save"`, from the editor viewport camera or an explicit pose), list, or delete named camera viewpoints persisted in the project (`res://.summer/camera_bookmarks.json`). Save once, then screenshot from it with `framing:"bookmark"` every time. Returns `engine_lacks_op` on engines that predate the bookmark ops. |
 
 ### Diagnostics (7)
 

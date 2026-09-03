@@ -222,6 +222,12 @@ queries:
     expected: [tool/wait-for-event]
   - query: "what just happened in the engine, show me the recent events"
     expected: [tool/recent-events]
+  - query: "save this camera angle so I can compare screenshots before and after"
+    expected: [tool/camera-bookmark]
+  - query: "screenshot the scene with numbered labels so I can tell which node is which"
+    expected: [tool/screenshot]
+  - query: "run the game with a fixed random seed so the playtest is reproducible"
+    expected: [skill/playtesting-a-feature, tool/play]
 
   # ── Known gaps (expected_gap: true — the authoring backlog) ────────────
   - query: "add enemy pathfinding"

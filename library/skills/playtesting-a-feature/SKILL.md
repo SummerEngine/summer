@@ -96,7 +96,7 @@ Four rules the probe API will punish you for breaking:
 - **`press()` and `key()` are coroutines.** `await press("jump", 50)` — calling them bare starts the press and never releases it. You also cannot store one in a variable and await it later; it returns void.
 - **Assert on physics-frame-derived state.** `await get_tree().physics_frame` N times, then read positions. That is reproducible run to run.
 - **Assert inequalities, never exact values.** `press(hold_ms)` waits on the wall clock, so the number of physics frames a key is held drifts between runs — the same walk lands on x=245 one run and x=250 the next. `position.x > start.x + 50` is a real assertion; `position.x == 250.0` is a flaky test you wrote yourself.
-- **The global RNG is not seeded.** Anything downstream of `randf()` differs every run. Assert ranges, or seed it yourself in the probe.
+- **The global RNG is not seeded by default.** Anything downstream of `randf()` differs every run. Assert ranges, seed it yourself in the probe, or pin the launch — see [Deterministic runs](#deterministic-runs).
 
 If the probe cannot express the check — no `SummerProbeBase` in this build, or a genuinely out-of-process feature — fall back to `summer_play` + diagnostics reads:
 
@@ -167,6 +167,15 @@ Or:
 
 > "Played the chest-open feature: golden path works, but pressing E twice in 100ms duplicates the pickup. Not done — going to debug."
 
+## Deterministic runs
+
+When a bug only shows on some runs, or two runs must be compared, pin the launch (newer engines): `summer_play seed:42 fixed_fps:60` (optionally `time_scale`). The pins ride on THIS launch's command line only — nothing is persisted, and omitting them is exactly the plain launch.
+
+- **`seed` pins the GLOBAL RNG only** — `randi`/`randf`/`randi_range`/`randf_range`/`randfn`, `Array.shuffle`, `Array.pick_random`, re-seeded after the scene tree initializes and before autoloads and the main scene. It does **not** pin `RandomNumberGenerator` instances (self-randomized on construction), scripts that call `randomize()` (re-randomizes the global RNG from the wall clock), `rand_from_seed` (caller-seeded), wall-clock reads, thread/IO timing, or audio-device timing. The result restates this as `determinism.seed_scope`; a feature that still diverges with a seed is using one of those.
+- **`fixed_fps` decouples scene time from the wall clock** — the game runs as fast as it renders, and frame-count-derived state lands on the same frame run to run. Assertions can become exact where they were ranges.
+- **Read `determinism.applied`.** `applied:false` carries a `reason`: `already_running` (stop first, the pins cannot reach a live process), `editor_run_args_override` (a user-configured run argument re-sets the same flag and wins — `conflicting_flag` names it), `launch_not_started`. A result with NO `determinism` block after you sent a pin means the engine predates the params — the tool says "not applied"; the run is NOT reproducible and you may not claim it is.
+- A `RunVerification` probe pins the same two flags on its own instance; `summer_play` pins are for the embedded game you then read through `summer_get_runtime_tree` / `summer_inspect_runtime_node`.
+
 ## "Looks right" vs "is right"
 
 A common failure mode: the feature visually looks correct on first try, you stop there, ship it, and a deeper bug surfaces later.
@@ -209,6 +218,7 @@ Don't ask reflexively. A saved frame sequence answers most "did it visually work
 | Probe returned `finished: false`, you called it a pass | It hit `max_seconds` before `finish()`. That is a failure. |
 | Asserting `position.x == 250.0` in a probe | Hold time is wall-clock. Assert `> start.x + 50`. |
 | `press("jump", 50)` without `await` | It is a coroutine. The key is never released. |
+| "I sent seed:42, so the run is reproducible" | Only if `determinism.applied` is true. An older engine ignores the pin and the tool says "not applied"; `seed` never pins `RandomNumberGenerator` instances or `randomize()` calls. |
 
 ## Rationalization Prevention
 

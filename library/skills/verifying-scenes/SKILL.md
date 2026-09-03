@@ -42,10 +42,20 @@ Snapshot ids: the engine retains the last 8 per session; `unknown_snapshot` mean
 | How does the open tab look right now? | `target:"viewport"` (default) |
 | Is the composition/scale of a scene file right? | `target:"scene"` (+ `scenePath`, preset framing) |
 | Is the **lighting / mood / environment** right? | `target:"scene" framing:"camera"` — renders through the scene's OWN camera with its REAL WorldEnvironment. Preset framings substitute a flat environment and CANNOT answer this. |
+| Did **this change** move/add/break something — before vs after from the SAME viewpoint? | `target:"scene" framing:"bookmark" bookmark_name:"<name>"` (+ `marks:true` for numbered labels mapped to node paths) — see Stable viewpoints below |
 | What does the running game show? | `target:"game"` (`summer_play` first; needs the desktop bridge) |
 | Is a **2D scene or UI layout** right? | `target:"scene"` on a 2D scene synthesizes a `Camera2D` and auto-fits the `CanvasItem` bounds (3D presets and `framing:"camera"` do not apply); `nodePath` frames one node, `size` sets the resolution anchors resolve against. A `CanvasLayer` HUD or anything input-driven: `summer_play` + `target:"game"`. |
 
 Read the confession warnings in every capture (no camera, no light, synthetic camera, project mismatch, "engine predates camera framing"). They are part of the result.
+
+### Stable viewpoints (newer engines)
+
+A preset framing re-fits the scene bounds on every capture, so a before/after pair drifts whenever anything moves. For comparisons that line up, fix the pose:
+
+- **Bookmark once, reuse forever.** `summer_camera_bookmark action:"save" name:"hero"` (omit `position`/`look_at` to capture the current editor 3D viewport camera, or pass both as `"Vector3(x, y, z)"` literals). Then every capture is `summer_screenshot target:"scene" framing:"bookmark" bookmark_name:"hero"` — same pose, real WorldEnvironment, project-persisted (`res://.summer/camera_bookmarks.json`), so it survives sessions and machines. `action:"list"` / `"delete"` manage them.
+- **One-off pose:** `framing:"free"` with `camera_position` + `camera_look_at` (+ `fov`).
+- **Name what you see:** add `marks:true` (cap with `max_marks`) and the caption lists `label -> node path` for the numbered tags drawn over the largest visible 3D nodes. Cite the label AND the path in your claim: "label 3 (`Props/Crate_02`) floats above the floor" — then fix it by that exact path. 2D scenes come back `marks_unsupported`, not annotated.
+- **Read the confession.** An engine that predates these framings echoes the preset it fell back to, and the caption says the frame is NOT pose-stable; `marks:true` on such a build draws nothing. Do not compare, and do not read labels, across that warning.
 
 ## Runtime reads during playtests
 

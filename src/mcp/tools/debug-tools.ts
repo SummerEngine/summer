@@ -4,6 +4,7 @@ import { withEngine } from "./with-engine.js";
 import { shapeEngineLogResponse } from "../../core/log-filters.js";
 import { createDebugReportArtifact } from "../../core/capabilities/debug-report.js";
 import { withConsoleScope } from "../../core/capabilities/console-read.js";
+import { describePlayDeterminism, pickPlayDeterminism } from "../../core/capabilities/play-determinism.js";
 
 // summer_get_diagnostics view shaping. The engine serves /api/state/diagnostics
 // from a pre-published snapshot (empty args — query params are NOT forwarded on
@@ -228,11 +229,45 @@ Use this when summer_get_diagnostics shows a non-zero \`debugger.warnings\` coun
 
 After starting, use summer_get_diagnostics to check for runtime errors.
 
-You can run a specific scene instead of the main scene — useful for testing individual levels or UI screens.`,
+You can run a specific scene instead of the main scene — useful for testing individual levels or UI screens.
+
+DETERMINISTIC RUNS (newer engines): seed / fixed_fps / time_scale pin THIS launch only (nothing is persisted). seed pins the game's GLOBAL RNG (randi/randf/randi_range/randf_range/randfn, Array.shuffle/pick_random) — it does NOT pin RandomNumberGenerator instances, scripts that call randomize(), rand_from_seed, wall-clock reads, or thread/IO/audio timing. fixed_fps decouples scene time from the wall clock so frame-count-derived state lands on the same frame run to run. The result's \`determinism\` block says whether the pins were applied (applied:false carries a reason: already_running, editor_run_args_override, launch_not_started) and restates seed_scope. If the result has NO determinism block although you sent a pin, the engine predates the params and the run is NOT reproducible — the tool says so; do not claim otherwise. Omitting all three is exactly the v1 launch.`,
     {
       scene: z.string().optional().describe("Scene to run instead of main scene, e.g. 'res://levels/test_level.tscn'"),
+      seed: z
+        .number()
+        .int()
+        .optional()
+        .describe(
+          "Pin the game's GLOBAL RNG for this launch (child gets --summer-seed <seed>). Pins randi/randf/randi_range/randf_range/randfn, Array.shuffle/pick_random. Does NOT pin RandomNumberGenerator instances, scripts calling randomize(), or wall-clock reads. Omitted = randomized, as always."
+        ),
+      fixed_fps: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe(
+          "Fixed timestep for this launch (child gets --fixed-fps <n>): scene time decouples from the wall clock, the game runs as fast as it renders, frame-count-derived state repeats run to run. Opt-in per launch, never the default."
+        ),
+      time_scale: z
+        .number()
+        .positive()
+        .optional()
+        .describe("Engine time scale for this launch (child gets --time-scale <f>). Not a determinism pin on its own."),
     },
-    async ({ scene }) => withEngine(async (client) => client.play(scene))
+    async ({ scene, seed, fixed_fps, time_scale }) => {
+      const requested = pickPlayDeterminism({ seed, fixed_fps, time_scale });
+      return withEngine(async (client) => client.play(scene, requested), {
+        toContent: (result) => {
+          const json = JSON.stringify(result, null, 2);
+          // Surface applied / reason / seed_scope in prose so the model does not
+          // have to dig; and call out the old-engine case (pins sent, no
+          // determinism block back) as "not applied" instead of staying silent.
+          const summary = describePlayDeterminism(result, requested);
+          return [{ type: "text" as const, text: summary ? `${json}\n\n${summary}` : json }];
+        },
+      });
+    }
   );
 
   server.tool(

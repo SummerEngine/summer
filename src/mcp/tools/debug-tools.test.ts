@@ -279,3 +279,83 @@ describe("summer_get_console scope (E2E 2026-09-03 F-07)", () => {
     expect(body.messages).toHaveLength(2);
   });
 });
+
+describe("summer_play — determinism params", () => {
+  it("without pins calls play(scene, undefined) and returns the plain receipt (v1 launch)", async () => {
+    const play = vi.fn().mockResolvedValue({ status: "ok", results: [{ ok: true, op: "PlayGame", playing: true, scene: "res://main.tscn" }] });
+    vi.mocked(getClient).mockResolvedValue({ play } as never);
+
+    const result = await tool(tools(), "summer_play").handler({ scene: "res://main.tscn" });
+    expect(play).toHaveBeenCalledWith("res://main.tscn", undefined);
+    expect(text(result)).not.toContain("Determinism");
+    expect(JSON.parse(text(result)).results[0].playing).toBe(true);
+  });
+
+  it("passes seed/fixed_fps/time_scale through and narrates applied + seed_scope", async () => {
+    const play = vi.fn().mockResolvedValue({
+      status: "ok",
+      results: [
+        {
+          ok: true,
+          op: "PlayGame",
+          playing: true,
+          determinism: {
+            seed: 42,
+            fixed_fps: 60,
+            args: ["--summer-seed", "42", "--fixed-fps", "60"],
+            applied: true,
+            seed_scope: "Pins the GLOBAL RNG only (randi/randf/...). NOT pinned: RandomNumberGenerator instances, scripts that call randomize(), wall-clock reads, thread timing.",
+          },
+        },
+      ],
+    });
+    vi.mocked(getClient).mockResolvedValue({ play } as never);
+
+    const result = await tool(tools(), "summer_play").handler({ seed: 42, fixed_fps: 60 });
+    expect(play).toHaveBeenCalledWith(undefined, { seed: 42, fixed_fps: 60 });
+    const body = text(result);
+    expect(body).toContain("Determinism (seed=42, fixed_fps=60): applied — flags on the child command line: --summer-seed 42 --fixed-fps 60.");
+    expect(body).toContain("seed_scope: Pins the GLOBAL RNG only");
+  });
+
+  it("narrates applied:false with the engine's reason and hint", async () => {
+    const play = vi.fn().mockResolvedValue({
+      status: "ok",
+      results: [
+        {
+          ok: true,
+          op: "PlayGame",
+          playing: true,
+          note: "Game was already running",
+          determinism: { seed: 7, args: ["--summer-seed", "7"], applied: false, reason: "already_running", hint: "StopGame first, then PlayGame again with seed/fixed_fps." },
+        },
+      ],
+    });
+    vi.mocked(getClient).mockResolvedValue({ play } as never);
+
+    const body = text(await tool(tools(), "summer_play").handler({ seed: 7 }));
+    expect(body).toContain("Determinism (seed=7): NOT applied — reason: already_running.");
+    expect(body).toContain("StopGame first");
+  });
+
+  it("says 'not applied (engine predates determinism params)' when pins were sent but no determinism block came back", async () => {
+    const play = vi.fn().mockResolvedValue({ status: "ok", results: [{ ok: true, op: "PlayGame", playing: true, scene: "res://main.tscn" }] });
+    vi.mocked(getClient).mockResolvedValue({ play } as never);
+
+    const body = text(await tool(tools(), "summer_play").handler({ seed: 1, time_scale: 2 }));
+    expect(body).toContain("Determinism (seed=1, time_scale=2): not applied (engine predates determinism params)");
+    expect(body).toContain("NOT pinned");
+  });
+
+  it("surfaces the engine's bad_args refusal as a classified failure", async () => {
+    const play = vi.fn().mockResolvedValue({
+      ok: false,
+      results: [{ ok: false, op: "PlayGame", failure_reason: "bad_args", error: "PlayGame `fixed_fps` must be an integer > 0" }],
+    });
+    vi.mocked(getClient).mockResolvedValue({ play } as never);
+
+    const result = (await tool(tools(), "summer_play").handler({ fixed_fps: 30 })) as { isError?: boolean };
+    expect(result.isError).toBe(true);
+    expect(text(result)).toContain("bad_args");
+  });
+});

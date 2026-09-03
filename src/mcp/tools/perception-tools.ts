@@ -25,8 +25,9 @@ import {
 
 /** Amend a classified failure_reason with prescriptive recovery text. The
  *  structured failure_reason stays intact for programmatic callers; only the
- *  human/model-facing error string is taught. */
-function withFailureReasonHint(
+ *  human/model-facing error string is taught. Shared with visual-tools.ts
+ *  (camera bookmarks). */
+export function withFailureReasonHint(
   result: unknown,
   hints: Record<string, string>
 ): unknown {

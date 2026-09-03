@@ -1,7 +1,7 @@
 import { readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   EngineUnavailableError,
   ToolDispatchError,
@@ -786,5 +786,104 @@ describe("events dispatch entries (wait-for-event, recent-events)", () => {
       { wait: 0, limit: 1 },
       { since: 95, kinds: undefined, wait: 0, limit: 5 },
     ]);
+  });
+});
+
+describe("wave I perception dispatch entries (camera bookmarks, fixed-pose screenshots, play determinism)", () => {
+  it("camera-bookmark sends the op kind of the requested action", async () => {
+    const { ctx, calls } = fakeEngineContext();
+    await dispatchTool("camera-bookmark", { action: "save", name: "hero" }, ctx);
+    await dispatchTool("camera-bookmark", { action: "save", name: "top", position: "Vector3(0, 20, 0)", look_at: "Vector3(0, 0, 0)", fov: 45 }, ctx);
+    await dispatchTool("camera-bookmark", { action: "list" }, ctx);
+    await dispatchTool("camera-bookmark", { action: "delete", name: "hero" }, ctx);
+    expect(calls.map((call) => call.args[0])).toEqual([
+      [{ op: "SaveCameraBookmark", name: "hero" }],
+      [{ op: "SaveCameraBookmark", name: "top", position: "Vector3(0, 20, 0)", look_at: "Vector3(0, 0, 0)", fov: 45 }],
+      [{ op: "ListCameraBookmarks" }],
+      [{ op: "DeleteCameraBookmark", name: "hero" }],
+    ]);
+    expect(calls.every((call) => call.method === "executeOps")).toBe(true);
+  });
+
+  it("camera-bookmark validates before touching the engine and refuses per-action when the advert lacks that op", async () => {
+    const { ctx, calls } = fakeEngineContext({
+      getEngineCapabilities: () => ({ opKinds: ["ListCameraBookmarks"] }),
+      getEngineVersion: () => "0.5.66",
+    });
+    await expect(dispatchTool("camera-bookmark", { action: "save" }, ctx)).rejects.toThrow(/needs a bookmark name/);
+    await expect(dispatchTool("camera-bookmark", { action: "delete", name: "bad name" }, ctx)).rejects.toThrow(/is invalid/);
+    await expect(dispatchTool("camera-bookmark", { action: "save", name: "x", position: "Vector3(0, 0, 0)" }, ctx)).rejects.toThrow(/go together/);
+    await expect(dispatchTool("camera-bookmark", { action: "rename", name: "x" }, ctx)).rejects.toThrow(/action must be one of/);
+    expect(calls).toEqual([]);
+
+    await dispatchTool("camera-bookmark", { action: "list" }, ctx);
+    expect(calls).toHaveLength(1);
+
+    const failure = await dispatchTool("camera-bookmark", { action: "save", name: "hero" }, ctx).catch((err: unknown) => err);
+    expect(failure).toBeInstanceOf(ToolResultError);
+    expect((failure as ToolResultError).result).toMatchObject({
+      ok: false,
+      op: "SaveCameraBookmark",
+      failure_reason: "engine_lacks_op",
+      engine_version: "0.5.66",
+    });
+    expect(calls).toHaveLength(1);
+  });
+
+  it("screenshot target:scene resolves framing bookmark + bookmark_name to the wire form and forwards pose/marks params", async () => {
+    const scenePreview = vi.fn(async () => ({ ok: true, base64: Buffer.from("x").toString("base64"), mime: "image/jpeg", localPath: "/tmp/x.jpg" }));
+    const { ctx } = fakeEngineContext({ scenePreview });
+    await dispatchTool(
+      "screenshot",
+      { target: "scene", framing: "bookmark", bookmark_name: "hero", marks: true, max_marks: 16, fov: 50, camera_path: "Cam" },
+      ctx
+    );
+    expect(scenePreview).toHaveBeenCalledWith({ framing: "bookmark:hero", cameraPath: "Cam", fov: 50, marks: true, maxMarks: 16 });
+
+    await dispatchTool("screenshot", { target: "scene", camera_position: "Vector3(1, 2, 3)", camera_look_at: "Vector3(0, 0, 0)" }, ctx);
+    expect(scenePreview).toHaveBeenLastCalledWith({
+      framing: "free",
+      cameraPosition: "Vector3(1, 2, 3)",
+      cameraLookAt: "Vector3(0, 0, 0)",
+    });
+  });
+
+  it("screenshot refuses contradictory or unknown framings with a readable error before capturing", async () => {
+    const scenePreview = vi.fn();
+    const { ctx } = fakeEngineContext({ scenePreview });
+    await expect(dispatchTool("screenshot", { target: "scene", framing: "bookmark" }, ctx)).rejects.toThrow(/needs bookmark_name/);
+    await expect(dispatchTool("screenshot", { target: "scene", framing: "free", camera_position: "Vector3(0, 0, 0)" }, ctx)).rejects.toThrow(/BOTH camera_position/);
+    await expect(dispatchTool("screenshot", { target: "scene", framing: "bookmark:hero" }, ctx)).rejects.toThrow(/framing must be one of/);
+    await expect(dispatchTool("screenshot", { target: "scene", marks: true, max_marks: 500 }, ctx)).rejects.toThrow(/max_marks/);
+    expect(scenePreview).not.toHaveBeenCalled();
+  });
+
+  it("play forwards seed/fixed_fps/time_scale and flags an engine that returned no determinism block", async () => {
+    const play = vi.fn(async () => ({ status: "ok", results: [{ ok: true, op: "PlayGame", playing: true }] }));
+    const { ctx } = fakeEngineContext({ play });
+
+    const plain = (await dispatchTool("play", { scene: "res://a.tscn" }, ctx)) as Record<string, unknown>;
+    expect(play).toHaveBeenLastCalledWith("res://a.tscn", undefined);
+    expect(plain).not.toHaveProperty("determinism_note");
+
+    const pinned = (await dispatchTool("play", { seed: 42, fixed_fps: 60 }, ctx)) as Record<string, unknown>;
+    expect(play).toHaveBeenLastCalledWith(undefined, { seed: 42, fixed_fps: 60 });
+    expect(String(pinned.determinism_note)).toContain("engine predates determinism params");
+
+    const engineSaid = vi.fn(async () => ({
+      status: "ok",
+      results: [{ ok: true, op: "PlayGame", playing: true, determinism: { seed: 42, applied: true, args: ["--summer-seed", "42"] } }],
+    }));
+    const modern = fakeEngineContext({ play: engineSaid });
+    const applied = (await dispatchTool("play", { seed: 42 }, modern.ctx)) as Record<string, unknown>;
+    expect(applied).not.toHaveProperty("determinism_note");
+  });
+
+  it("play validates the pins before touching the engine", async () => {
+    const { ctx, calls } = fakeEngineContext();
+    await expect(dispatchTool("play", { seed: 1.5 }, ctx)).rejects.toThrow(/seed must be an integer/);
+    await expect(dispatchTool("play", { fixed_fps: 0 }, ctx)).rejects.toThrow(/fixed_fps must be an integer > 0/);
+    await expect(dispatchTool("play", { time_scale: -1 }, ctx)).rejects.toThrow(/time_scale must be > 0/);
+    expect(calls).toEqual([]);
   });
 });

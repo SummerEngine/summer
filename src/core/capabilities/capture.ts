@@ -22,6 +22,7 @@ import type { EngineSnapshot } from "../api-client.js";
 import { analyzeFrameBase64, type FrameQuality } from "./frame-quality.js";
 import { classifySceneKindFromTree, type SceneKindResult } from "./scene-kind.js";
 import { sleep } from "../util/sleep.js";
+import type { ScenePreviewInput } from "./camera-view.js";
 
 /** Settle delay before the single automatic viewport recapture. */
 export const VIEWPORT_RECAPTURE_DELAY_MS = 700;
@@ -45,13 +46,10 @@ export type CaptureResult = EngineSnapshot & {
   sceneKind?: SceneKindResult;
 };
 
-export interface ScenePreviewInput {
-  scenePath?: string;
-  framing?: "auto" | "iso" | "top" | "front" | "back" | "left" | "right" | "camera";
-  size?: [number, number];
-  nodePath?: string;
-  cameraPath?: string;
-}
+/** The ScenePreview input in its wire form (framing resolved to a preset,
+ *  "free", or "bookmark:<name>"; camera pose / marks fields) is owned by
+ *  ./camera-view.ts, where both faces build it from their arguments. */
+export type { ScenePreviewInput } from "./camera-view.js";
 
 /** The engine reads capture needs — a structural subset of EngineApiClient. */
 export interface CaptureClient {

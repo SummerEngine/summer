@@ -67,6 +67,10 @@ The engine must be running for MCP tools that touch scenes or diagnostics. If it
 
 **OpenCode:** Skills are auto-discovered from the registered directory; load via OpenCode's native skill mechanism.
 
+## Finding the Right Entry
+
+Not sure which skill, tool, template, or reference covers the task? Ask the library before guessing: call `summer_search_library` with the task in plain words ("make stylized water", "the player falls through the floor"), then `summer_read_library` with the id you pick — it returns the entry itself (a skill's body and metadata, a tool's call recipe, a template's pin) and ends with the `entry_id` line to report through `summer_library_feedback` once the outcome is verified. From a shell the same two are `summer tool search-library --args '{"query":"…"}'` and `summer tool read-library --args '{"id":"…"}'`; neither needs the engine. When search names a skill, invoke it by its bare slug through your host's skill mechanism (`vfx-water-ripple`, `fps-controller`, `design-mechanic`) rather than paraphrasing the body from the read.
+
 ## The Rule
 
 **Invoke the relevant skill BEFORE any response or action.** Even a 1% chance a skill might apply means you check. If the loaded skill turns out not to fit, you don't have to follow it — but you do have to load it first to know.

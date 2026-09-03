@@ -1,0 +1,67 @@
+id: tool/read-library
+kind: tool
+version: 1.0.0
+summary: Load one library entry by id — a skill's body and metadata, a tool's call recipe, a template's pin, a reference's text — ending in the feedback footer.
+use_when:
+  - summer_search_library returned an id and you need the entry itself before acting
+  - re-reading a skill or reference the current version of (entries evolve — never rely on memory of one)
+  - checking how to call a tool or how a template is pinned without walking the library folders
+do_not_use_when:
+  - you do not know the id yet — summer_search_library first
+  - the skill is installed in your host — invoking it there (Claude Code /<slug>) loads the same body
+facets:
+  lifecycle:
+    - build
+    - launch
+    - grow
+    - support
+  domains:
+    - agent-workflow
+    - meta
+    - mcp
+  modalities:
+    - docs
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/search-library
+    - tool/library-feedback
+  skills:
+    - skill/using-summer
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_read_library
+implementation:
+  module: src/mcp/tools/library-tools.ts
+  export: registerLibraryTools
+surfaces:
+  mcp:
+    tool_name: summer_read_library
+    remote: true
+input_schema:
+  type: object
+  properties:
+    id:
+      type: string
+      minLength: 1
+      maxLength: 200
+      description: The entry id as returned by summer_search_library, <kind>/<slug>, e.g. skill/vfx-water-ripple or tool/screenshot.
+    part:
+      type: string
+      enum:
+        - skill
+        - resource
+        - all
+      description: skill = the body only (SKILL.md for skills, markdown body for references, how-to-call for tools, pin for templates); resource = the resource.yaml descriptor only; all (default) = both.
+  required:
+    - id
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

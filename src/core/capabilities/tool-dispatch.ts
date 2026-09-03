@@ -64,6 +64,8 @@ import {
   sendLibraryFeedback,
   type LibraryFeedbackReport,
 } from "../feedback/client.js";
+import { readLibraryEntry, readLibraryInputSchema } from "../library-read.js";
+import { runSearchLibrary, searchLibraryInputSchema } from "../library-search.js";
 
 import { TOOLKIT_VERSION as CLI_VERSION } from "../version.js";
 
@@ -1409,6 +1411,19 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       snap = await client.viewportSnapshot();
     }
     return snapshotResult(snap, target);
+  }),
+
+  // --- library (the runtime librarian; engine-free) ---
+  entry("summer_search_library", "Search the Summer library by describing the task in plain words", false, async (args) =>
+    runSearchLibrary(parseToolArgs(searchLibraryInputSchema, args, "search-library"))
+  ),
+  entry("summer_read_library", "Load one library entry by id — body, metadata, how to call or install it", false, async (args) => {
+    const parsed = parseToolArgs(readLibraryInputSchema, args, "read-library");
+    const result = await readLibraryEntry(parsed.id, parsed.part ?? "all");
+    // Same shape on both faces: the MCP face returns the not_found result as
+    // an error payload; here it prints whole (JSON, exit 1) via ToolResultError.
+    if (!result.ok) throw new ToolResultError(result as unknown as Record<string, unknown>, result.hint);
+    return result;
   }),
 
   // --- feedback ---

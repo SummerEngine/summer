@@ -24,6 +24,7 @@ import { registerGenerateTools } from "./tools/generate-tools.js";
 import { registerCreatorTools } from "./tools/creator-tools.js";
 import { registerFeedbackTools } from "./tools/feedback-tools.js";
 import { registerNavigationTools } from "./tools/navigation-tools.js";
+import { registerLibraryTools } from "./tools/library-tools.js";
 import {
   getCachedBootDriftNotice as getCachedNotice,
   setCachedBootDriftNotice,
@@ -346,6 +347,7 @@ export function createMcpServer(): {
   registerPerceptionTools(server);
   registerSpatialTools(server);
   registerNavigationTools(server);
+  registerLibraryTools(server);
   // The playbook is also an MCP prompt so prompt-surfacing hosts get it
   // natively (same content as the summer_get_agent_playbook tool).
   registerPlaybookPrompt(server);

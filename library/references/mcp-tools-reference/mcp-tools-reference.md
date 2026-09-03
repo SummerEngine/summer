@@ -17,7 +17,7 @@
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (69 tools)
+## Tool surface (71 tools)
 
 ### Project files (3)
 
@@ -168,6 +168,13 @@ Bounded spatial evidence for deliberate 3D arrangement. All five take exact `sce
 | `summer_creator_publish` | Compute the exact `.pck` digest and size, require user confirmation, then run versioned prepare → write-once upload → finalize. The server independently verifies `publish` scope, ownership, bytes, and review state. |
 | `summer_creator_releases` | List real creator-owned releases from `summer.creator.v1`, with opaque cursor pagination. |
 | `summer_creator_config` | Read or confirm updates to the shared non-secret `~/.summer/config.json`. It never accepts or returns tokens. |
+
+### Library search (2)
+
+| Tool | Use |
+|---|---|
+| `summer_search_library` | Search the library (skills, tools, templates, references, examples, collections) by describing the task in plain words; ranked ids with `matched_by` (lexical / semantic). The first move for any task; works without the engine. |
+| `summer_read_library` | Load one entry by id: a skill's SKILL.md plus metadata, a tool's call recipe, a template's pin, a reference's body. The last line is the `entry_id` footer to report through `summer_library_feedback`. |
 
 ### Library feedback (1)
 

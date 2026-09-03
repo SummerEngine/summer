@@ -56,7 +56,7 @@ scripts/
 └── validate-library/   # schema validation + capability lint
 ```
 
-The import direction is a tested invariant (`src/import-direction.test.ts`): `cli/` never imports `mcp/`; `bin/` composes the two. The *layering* is not yet the ideal the contract describes: 64 of the 69 tools are implemented in `src/mcp/tools/*.ts` with hand-written zod, and `core/capabilities/tool-dispatch.ts` mirrors them so `summer tool <slug>` reaches the same functions. What keeps the two faces honest is `src/mcp/tools/descriptor-parity.test.ts` (zod shape ↔ `library/tools/*/resource.yaml` `input_schema`) plus the validator's cross-checks; folding the mirror into one registration is the scheduled consolidation pass (CONTRACT §3, DECISIONS D13).
+The import direction is a tested invariant (`src/import-direction.test.ts`): `cli/` never imports `mcp/`; `bin/` composes the two. The *layering* is not yet the ideal the contract describes: 66 of the 71 tools are implemented in `src/mcp/tools/*.ts` with hand-written zod, and `core/capabilities/tool-dispatch.ts` mirrors them so `summer tool <slug>` reaches the same functions. What keeps the two faces honest is `src/mcp/tools/descriptor-parity.test.ts` (zod shape ↔ `library/tools/*/resource.yaml` `input_schema`) plus the validator's cross-checks; folding the mirror into one registration is the scheduled consolidation pass (CONTRACT §3, DECISIONS D13).
 
 ---
 
@@ -72,6 +72,7 @@ npm run eval:routing       # routing eval: real asks vs the index, gated on base
 npm run eval:routing:heldout   # blind held-out set, report-only (the honest index-quality number)
 npm run generate:registry  # = node scripts/generate-registry/cli.ts — regenerate registry/generated/ + root manifests
 node scripts/generate-registry/cli.ts --check  # CI parity gate: fails on any drift, writes nothing
+node scripts/generate-registry/cli.ts --embed  # optional: also write registry/generated/embeddings.json for semantic library search (needs a Summer login; CI never embeds)
 ```
 
 The registry and validation scripts run TypeScript natively and need **Node >= 22.18**; the published package requires Node 20+ (`engines.node`).
@@ -191,7 +192,7 @@ Summer Engine app (LocalApiServer -> OpsExecutor)
 - **Shared `~/.summer/` store** (`src/core/store.ts`): `0700` dir, `0600` files, atomic replacement, symlink refusal. Filenames (`api-token`, `auth-token`, `creator-token`, `user.json`, `config.json`, `credential-metadata.json`, `creator-audit.jsonl`) are shared with the desktop engine — do not rename them.
 - **Ops values are engine variant strings** (`"Vector3(0, 10, 0)"`, `"Color(1, 0.9, 0.8)"`), never JSON objects. This crosses both repos; coordinate changes.
 
-No environment variables are required for normal use. Optional: `SUMMER_GATEWAY_URL` (gateway override; `gateway.url` in `~/.summer/config.json` does the same for every gateway caller), `SUMMER_TOKEN` (auth token override for CI/cloud sessions), `SUMMER_ENGINE_BINARY` (engine binary override), `SUMMER_MCP_DEBUG=1` (structured stderr line per tool call), `SUMMER_NO_TELEMETRY=1` / `DO_NOT_TRACK=1` (disable the feedback mailbox), `SUMMER_CAPABILITY_PREFLIGHT=off` (send every call even when the engine lacks the op), `SUMMER_HEADLESS_ROUTING=1` (headless worker routing — needs an engine build with worker mode), `SUMMER_TRAJECTORY_DIR` (opt-in per-tool-call JSONL capture), `SUMMER_PRE_COMMIT_DOCTOR=1` (the opt-in pre-commit hook), `SUMMER_ENGINE_REPO` (tests only, above).
+No environment variables are required for normal use. Optional: `SUMMER_GATEWAY_URL` (gateway override; `gateway.url` in `~/.summer/config.json` does the same for every gateway caller), `SUMMER_TOKEN` (auth token override for CI/cloud sessions), `SUMMER_ENGINE_BINARY` (engine binary override), `SUMMER_MCP_DEBUG=1` (structured stderr line per tool call), `SUMMER_NO_TELEMETRY=1` / `DO_NOT_TRACK=1` (disable the feedback mailbox), `SUMMER_CAPABILITY_PREFLIGHT=off` (send every call even when the engine lacks the op), `SUMMER_HEADLESS_ROUTING=1` (headless worker routing — needs an engine build with worker mode), `SUMMER_TRAJECTORY_DIR` (opt-in per-tool-call JSONL capture), `SUMMER_PRE_COMMIT_DOCTOR=1` (the opt-in pre-commit hook), `SUMMER_EMBED_URL` (embedding endpoint for semantic library search and `generate-registry --embed`, default `<gateway>/api/mcp/embed`; `off` forces lexical-only search), `SUMMER_ENGINE_REPO` (tests only, above).
 
 ---
 

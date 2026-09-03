@@ -64,6 +64,7 @@ import {
 } from "../feedback/client.js";
 
 import { TOOLKIT_VERSION as CLI_VERSION } from "../version.js";
+import { isTrajectoryEvalMode } from "../trajectory.js";
 
 export type DispatchArgs = Record<string, unknown>;
 
@@ -916,6 +917,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       mainScene: projectSettingValue(project, ["application/run/main_scene", "run/main_scene"]),
       boundProjectIdHash,
       ...(rebindError ? { rebindError } : {}),
+      ...(isTrajectoryEvalMode() ? { trajectory_eval_mode: true } : {}),
     };
   }),
   entry("summer_open_main_scene", "Open the project's configured main scene", true, async (_args, ctx) => {

@@ -47,8 +47,10 @@ const RUNTIME_TRANSPORT_HINT =
 
 const SNAPSHOT_FALLBACK =
   "read structure with summer_get_scene_tree (pass depth) and verify visually with summer_screenshot";
+// summer_world_snapshot is engine_lacks_op on the same builds that lack the
+// diff op, so this fallback must not route through it (E2E 2026-09-03 F-16).
 const DIFF_FALLBACK =
-  "compare two summer_world_snapshot results yourself, or re-read with summer_get_scene_tree";
+  "re-read with summer_get_scene_tree (pass depth) and summer_inspect_node and compare against your earlier read yourself";
 const RUNTIME_TREE_FALLBACK =
   "probe runtime state with a RunVerification probe (dump_tree/report — see the playbook's rawOpsViaBatch)";
 const RUNTIME_NODE_FALLBACK =

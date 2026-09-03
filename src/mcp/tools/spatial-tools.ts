@@ -43,16 +43,21 @@ const MIN_PLACEMENT_FLOOR_DISTANCE = 0.001;
 /** Mirrors the engine's SnapToSurface direction guard (length² > 1e-5). */
 const MIN_SNAP_DIRECTION_LENGTH_SQUARED = 0.00001;
 
+// Fallbacks name ONLY tools every shipped engine has (get_scene_tree,
+// inspect_node, inspect_resource, set_prop, screenshot, RunVerification).
+// summer_world_snapshot is itself engine_lacks_op on every shipped build
+// (E2E 2026-09-03 F-16), so routing an engine_lacks_op failure through it sent
+// the agent from one dead end to the next.
 const PLACEMENT_FALLBACK =
-  "read the subject and its neighbours with summer_inspect_node / summer_world_snapshot and judge clearance from their world AABBs, then verify with summer_screenshot";
+  "list the subject and its neighbours with summer_get_scene_tree, read their positions and mesh/shape sizes with summer_inspect_node (summer_inspect_resource for mesh/shape extents), judge clearance from those, then verify with summer_screenshot";
 const SNAP_FALLBACK =
-  "read the support's world AABB with summer_world_snapshot, set the subject's position with summer_set_prop so its bottom sits on the support's top, and verify with summer_screenshot";
+  "read the support's position and mesh/shape size with summer_inspect_node / summer_inspect_resource, set the subject's position with summer_set_prop so its bottom sits on the support's top, and verify with summer_screenshot";
 const ALIGN_FALLBACK =
-  "compute the shared anchor or spacing from summer_world_snapshot AABBs and set each subject's position with summer_set_prop (or one summer_run_script)";
+  "compute the shared anchor or spacing from the subjects' positions and sizes (summer_inspect_node / summer_inspect_resource) and set each subject's position with summer_set_prop (or one summer_run_script)";
 const NAVIGATION_FALLBACK =
   "probe reachability from a RunVerification probe (NavigationServer3D.map_get_path — see the playbook's rawOpsViaBatch)";
 const STARCAST_FALLBACK =
-  "read the subject and its neighbours with summer_inspect_node (or summer_world_snapshot) and judge support, contact, and clearance from their world AABBs, then verify with summer_screenshot";
+  "read the subject and its neighbours with summer_get_scene_tree + summer_inspect_node and judge support, contact, and clearance from their positions and sizes, then verify with summer_screenshot";
 /** Starcast's own ceilings (engine spatial_ops.cpp starcast_3d): the engine
  *  measures the compact receipt as UTF-8 JSON, downgrades full -> summary
  *  above 12 KiB, and strips secondary paths above 5 KiB, so a receipt past the

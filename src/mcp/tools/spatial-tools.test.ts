@@ -144,7 +144,7 @@ const ARGS = {
 } as const;
 
 const OPS: Record<keyof typeof ARGS, { op: string; mutation: boolean; failure: string; fallback: string }> = {
-  summer_test_placement: { op: "TestPlacement3D", mutation: false, failure: "placement_result_exceeded_byte_limit", fallback: "summer_world_snapshot" },
+  summer_test_placement: { op: "TestPlacement3D", mutation: false, failure: "placement_result_exceeded_byte_limit", fallback: "summer_inspect_node" },
   summer_snap_to_surface: { op: "SnapToSurface", mutation: true, failure: "snap_to_surface_result_exceeded_byte_limit", fallback: "summer_set_prop" },
   summer_align_distribute_3d: { op: "AlignDistribute3D", mutation: true, failure: "align_result_exceeded_byte_limit", fallback: "summer_set_prop" },
   summer_navigation_probe: { op: "NavigationProbe3D", mutation: false, failure: "navigation_probe_result_exceeded_byte_limit", fallback: "RunVerification" },
@@ -205,7 +205,10 @@ describe("old engine with no capability advert (per-op unknown op)", () => {
     const result = (await tool("summer_test_placement").handler({ ...ARGS.summer_test_placement })) as Response;
     expect(result.isError).toBe(true);
     expect(text(result)).toContain("doesn't support TestPlacement3D yet");
-    expect(text(result)).toContain("summer_world_snapshot");
+    expect(text(result)).toContain("summer_get_scene_tree");
+    // E2E 2026-09-03 F-16: never send an engine_lacks_op agent to another op
+    // that is engine_lacks_op on the same build.
+    expect(text(result)).not.toContain("summer_world_snapshot");
   });
 
   it("rewrites starcast's unknown-op failure into the upgrade path and stamps engine_lacks_op", async () => {

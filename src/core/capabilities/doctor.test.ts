@@ -4,8 +4,9 @@ import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { saveAuthToken, saveUserInfo } from "../auth.js";
 import { setSummerDirForTests } from "../store.js";
-import { checkEngineInstall, checkLogin } from "./doctor.js";
+import { checkEngineInstall, checkLogin, describeProjectMemory } from "./doctor.js";
 import type { DoctorCheck } from "./doctor.js";
+import type { ProjectMemorySummary } from "../../project-memory/project-memory.js";
 
 vi.mock("../engine-install.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../engine-install.js")>();
@@ -125,5 +126,40 @@ describe("doctor engine check", () => {
     expect(check.message).toContain("summer install");
     expect(check.message).toContain(ENGINE_BINARY_ENV);
     expect(ENGINE_BINARY_ENV).toBe("SUMMER_ENGINE_BINARY");
+  });
+});
+
+describe("doctor project-memory line", () => {
+  const base: ProjectMemorySummary = {
+    present: true,
+    root: ".summer",
+    pin: null,
+    canonical: { gameSoul: null, artBible: null, audioBible: null, buildPlan: null, legacyVoiceCast: null },
+    structured: { present: false, indexPresent: false, fileCount: 0, lockedCount: 0, files: [], truncated: false },
+    files: [],
+    guidance: "",
+  };
+
+  it("counts the template pin as memory next to the Markdown files (E2E F-17)", () => {
+    expect(describeProjectMemory(base)).toBe("0 files, 0 memory, 0 locked, no pin");
+    expect(
+      describeProjectMemory({
+        ...base,
+        pin: {
+          path: ".summer/project.json",
+          template: {
+            id: "template/2d-platformer",
+            version: "1.0.0",
+            repo: "https://github.com/SummerEngine/template-2d-platformer",
+            commit: "66fc71b8edcd1c7023b890c7c0ef7cc55d80748e",
+            tree_digest: "76ac4aee9a8a9d4d9ced0a3bc7b0cab76a4fc6eefd04403df967890c05a34c6c",
+          },
+          toolkit_version: "2.8.2",
+          engine_version: null,
+          created_at: "2026-09-03T16:45:18.505Z",
+        },
+      })
+    ).toBe("0 files, 0 memory, 0 locked, pin template/2d-platformer@1.0.0 (66fc71b8edcd)");
+    expect(describeProjectMemory({ ...base, pinError: "bad json" })).toBe("0 files, 0 memory, 0 locked, pin unreadable (bad json)");
   });
 });

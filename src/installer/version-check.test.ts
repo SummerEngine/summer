@@ -9,10 +9,15 @@ import {
   classifyDrift,
   compareSemver,
   fetchLatestRegistryVersion,
+  isLocalDevServerConfig,
   parseSemver,
+  readRecordedMcpServer,
   readSkillMarker,
+  runningCliIsCheckout,
   SKILL_VERSION_MARKER_FILENAME,
+  skillsRefreshCommand,
   writeSkillMarker,
+  type RecordedInstall,
 } from "./version-check.js";
 
 describe("parseSemver", () => {
@@ -241,68 +246,185 @@ describe("buildSkillsVersionCheck", () => {
     return { agent, dir };
   }
 
-  it("returns ok with no-marker reason when nothing exists", () => {
-    const result = buildSkillsVersionCheck({
+  // Tests never read the machine's real agent configs.
+  const npxInstall: RecordedInstall = { localDev: false, cliPath: null, source: "agent-config" };
+  const localDevInstall: RecordedInstall = {
+    localDev: true,
+    cliPath: "/work/summer-engine-agent/dist/bin/summer.js",
+    source: "agent-config",
+  };
+
+  it("returns ok with no-marker reason when nothing exists", async () => {
+    const result = await buildSkillsVersionCheck({
       installedCliVersion: "2.4.0",
       candidates: [{ agent: "claude-code", dir: join(tmp, "missing") }],
+      recordedInstall: () => npxInstall,
     });
     expect(result.status).toBe("ok");
     expect(result.details.reason).toBe("no-marker");
   });
 
-  it("returns ok when marker matches the CLI version", () => {
+  it("returns ok when marker matches the CLI version", async () => {
     const candidate = makeCandidate("claude-code", "claude", "2.4.0");
-    const result = buildSkillsVersionCheck({
+    const result = await buildSkillsVersionCheck({
       installedCliVersion: "2.4.0",
       candidates: [candidate],
+      recordedInstall: () => npxInstall,
     });
     expect(result.status).toBe("ok");
     expect(result.details.markerVersion).toBe("2.4.0");
   });
 
-  it("returns ok when marker is ahead of the CLI", () => {
+  it("returns ok when marker is ahead of the CLI", async () => {
     const candidate = makeCandidate("claude-code", "claude", "2.5.0");
-    const result = buildSkillsVersionCheck({
+    const result = await buildSkillsVersionCheck({
       installedCliVersion: "2.4.0",
       candidates: [candidate],
+      recordedInstall: () => npxInstall,
     });
     expect(result.status).toBe("ok");
   });
 
-  it("flags a 1-minor stale marker as warning", () => {
+  it("flags a 1-minor stale marker as warning with the npx refresh for an npx install", async () => {
     const candidate = makeCandidate("claude-code", "claude", "2.3.0");
-    const result = buildSkillsVersionCheck({
+    const result = await buildSkillsVersionCheck({
       installedCliVersion: "2.4.0",
       candidates: [candidate],
+      recordedInstall: () => npxInstall,
     });
     expect(result.status).toBe("warning");
-    expect(result.details.recommendedAction).toMatch(
-      /setup claude-code --yes --force/
+    expect(result.details.drift).toBe("minor-drift");
+    expect(result.details.recommendedAction).toBe(
+      "npx clear-npx-cache && npx -y summer-engine@latest setup claude-code --yes --force"
     );
   });
 
-  it("flags a 2-minor stale marker as fail", () => {
+  it("grades a 2-minor stale marker as a WARNING (skills still work; doctor exits 0), keeping the 'significantly behind' wording", async () => {
     const candidate = makeCandidate("cursor", "cursor", "2.3.0");
-    const result = buildSkillsVersionCheck({
+    const result = await buildSkillsVersionCheck({
       installedCliVersion: "2.5.0",
       candidates: [candidate],
+      recordedInstall: () => npxInstall,
     });
-    expect(result.status).toBe("fail");
+    expect(result.status).toBe("warning");
+    expect(result.message).toContain("significantly behind");
     expect(result.details.agent).toBe("cursor");
   });
 
-  it("surfaces the worst marker when multiple agents have stale ones", () => {
+  it("recommends the local-dev refresh when the agent's MCP entry is a --local-dev link (E2E F-09)", async () => {
+    const candidate = makeCandidate("claude-code", "claude", "2.5.0");
+    const seen: string[] = [];
+    const result = await buildSkillsVersionCheck({
+      installedCliVersion: "2.8.2",
+      candidates: [candidate],
+      recordedInstall: async (agent) => {
+        seen.push(agent);
+        return localDevInstall;
+      },
+    });
+    expect(seen).toEqual(["claude-code"]);
+    expect(result.status).toBe("warning");
+    expect(result.details.install).toEqual(localDevInstall);
+    expect(result.details.recommendedAction).toBe(
+      "node /work/summer-engine-agent/dist/bin/summer.js setup claude-code --local-dev --yes --force"
+    );
+    expect(String(result.details.recommendedAction)).not.toContain("npx");
+  });
+
+  it("falls back to the npx form when detection fails or says nothing", async () => {
+    const candidate = makeCandidate("codex", "codex", "2.2.0");
+    const failing = await buildSkillsVersionCheck({
+      installedCliVersion: "2.4.0",
+      candidates: [candidate],
+      recordedInstall: () => {
+        throw new Error("config unreadable");
+      },
+    });
+    expect(failing.status).toBe("warning");
+    expect(failing.details.recommendedAction).toContain("npx -y summer-engine@latest setup codex --yes --force");
+    const unknown = await buildSkillsVersionCheck({
+      installedCliVersion: "2.4.0",
+      candidates: [candidate],
+      recordedInstall: () => null,
+    });
+    expect(unknown.details.recommendedAction).toContain("npx -y summer-engine@latest setup codex");
+  });
+
+  it("surfaces the worst marker when multiple agents have stale ones", async () => {
     const fresh = makeCandidate("claude-code", "claude", "2.4.0");
     const oneBehind = makeCandidate("cursor", "cursor", "2.3.0");
     const twoBehind = makeCandidate("codex", "codex", "2.2.0");
 
-    const result = buildSkillsVersionCheck({
+    const result = await buildSkillsVersionCheck({
       installedCliVersion: "2.4.0",
       candidates: [fresh, oneBehind, twoBehind],
+      recordedInstall: () => npxInstall,
     });
 
-    expect(result.status).toBe("fail");
+    expect(result.status).toBe("warning");
+    expect(result.message).toContain("significantly behind");
     expect(result.details.agent).toBe("codex");
+  });
+});
+
+describe("recorded install detection (the shape `summer setup` writes)", () => {
+  it("recognises the --local-dev entry and nothing else", () => {
+    expect(isLocalDevServerConfig({ command: "node", args: ["/work/agent/dist/bin/summer.js", "mcp"] })).toBe(true);
+    expect(isLocalDevServerConfig({ command: "node", args: ["C:\\work\\agent\\dist\\bin\\summer.js", "mcp"] })).toBe(true);
+    expect(isLocalDevServerConfig({ command: "npx", args: ["-y", "summer-engine@latest", "mcp"] })).toBe(false);
+    expect(isLocalDevServerConfig({ command: "cmd.exe", args: ["/c", "npx", "-y", "summer-engine@latest", "mcp"] })).toBe(false);
+    expect(isLocalDevServerConfig({ command: "node", args: ["/somewhere/else.js", "mcp"] })).toBe(false);
+  });
+
+  it("reads the Summer entry from every config format agent-config writes", () => {
+    const local = { command: "node", args: ["/work/agent/dist/bin/summer.js", "mcp"] };
+    expect(
+      readRecordedMcpServer(JSON.stringify({ mcpServers: { other: {}, "summer-engine": local } }), "json")
+    ).toEqual(local);
+    expect(
+      readRecordedMcpServer(JSON.stringify({ servers: { "summer-engine": { type: "stdio", ...local } } }), "json-vscode")
+    ).toEqual(local);
+    expect(
+      readRecordedMcpServer(JSON.stringify({ mcpServers: { "summer-engine": { type: "local", ...local, tools: ["*"] } } }), "json-copilot")
+    ).toEqual(local);
+    expect(
+      readRecordedMcpServer(
+        JSON.stringify({ mcp: { "summer-engine": { type: "local", command: [local.command, ...local.args] } } }),
+        "json-opencode"
+      )
+    ).toEqual(local);
+    const toml = [
+      "[model]",
+      'name = "x"',
+      "",
+      "[mcp_servers.summer-engine]",
+      'command = "node"',
+      'args = ["/work/agent/dist/bin/summer.js", "mcp"]',
+      "",
+      "[mcp_servers.other]",
+      'command = "npx"',
+      'args = ["-y", "other", "mcp"]',
+    ].join("\n");
+    expect(readRecordedMcpServer(toml, "toml")).toEqual(local);
+    expect(readRecordedMcpServer(JSON.stringify({ mcpServers: {} }), "json")).toBeNull();
+    expect(readRecordedMcpServer("not json", "json")).toBeNull();
+    expect(readRecordedMcpServer("", "toml")).toBeNull();
+  });
+
+  it("tells a source checkout from an installed package by the node_modules segment", () => {
+    expect(runningCliIsCheckout("/Users/dev/summer-engine-agent")).toBe(true);
+    expect(runningCliIsCheckout("/Users/dev/.npm/_npx/abc/node_modules/summer-engine")).toBe(false);
+    expect(runningCliIsCheckout("C:\\Users\\dev\\AppData\\Roaming\\npm\\node_modules\\summer-engine")).toBe(false);
+  });
+
+  it("skillsRefreshCommand keeps the recorded shape", () => {
+    expect(skillsRefreshCommand("cursor", { localDev: true, cliPath: "/w/dist/bin/summer.js", source: "agent-config" })).toBe(
+      "node /w/dist/bin/summer.js setup cursor --local-dev --yes --force"
+    );
+    expect(skillsRefreshCommand("cursor", { localDev: false, cliPath: null, source: "agent-config" })).toBe(
+      "npx clear-npx-cache && npx -y summer-engine@latest setup cursor --yes --force"
+    );
+    expect(skillsRefreshCommand("cursor", null)).toContain("npx -y summer-engine@latest setup cursor");
   });
 });
 

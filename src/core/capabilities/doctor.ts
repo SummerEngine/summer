@@ -6,11 +6,16 @@ import { ENGINE_BINARY_ENV, findEngineBinary } from "../engine-install.js";
 import { checkEngineHealth, getApiPort, getApiToken } from "../engine.js";
 import { brandLine, c, pad, sym, tildeify } from "../format.js";
 import { getMcpLogPath } from "../mcp-log.js";
-import { getProjectMemorySummary } from "../../project-memory/project-memory.js";
+import {
+  formatProjectPin,
+  getProjectMemorySummary,
+  type ProjectMemorySummary,
+} from "../../project-memory/project-memory.js";
 import {
   buildCliVersionCheck,
   buildSkillsVersionCheck,
   defaultSkillMarkerCandidates,
+  detectRecordedInstall,
   fetchLatestRegistryVersion,
 } from "../../installer/version-check.js";
 
@@ -59,7 +64,7 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   });
 
   checks.push(await checkCliVersionCurrent());
-  checks.push(checkSkillsVersion());
+  checks.push(await checkSkillsVersion());
 
   checks.push(await checkLogin());
   checks.push(checkEngineInstall());
@@ -115,10 +120,15 @@ async function checkCliVersionCurrent(): Promise<DoctorCheck> {
   };
 }
 
-function checkSkillsVersion(): DoctorCheck {
-  const result = buildSkillsVersionCheck({
+/** Stale skills are a warning, never a failure (TESTING.md §d: only failures
+ *  exit 1). The recommended refresh follows how the agent's MCP entry was
+ *  recorded by `summer setup`: a `--local-dev` link gets the local-dev form
+ *  so the fix does not replace the checkout with the published package. */
+async function checkSkillsVersion(): Promise<DoctorCheck> {
+  const result = await buildSkillsVersionCheck({
     installedCliVersion: version,
     candidates: defaultSkillMarkerCandidates(),
+    recordedInstall: detectRecordedInstall,
   });
   return {
     id: "skills-version-stale",
@@ -253,14 +263,29 @@ async function checkProjectMemory(): Promise<DoctorCheck> {
     id: "project-memory",
     label: "Project Memory",
     status: "ok",
-    message: `${summary.files.length} files, ${summary.structured.fileCount} memory, ${summary.structured.lockedCount} locked`,
+    message: describeProjectMemory(summary),
     details: {
       projectPath: health.project_path,
       files: summary.files.length,
       memoryFiles: summary.structured.fileCount,
       locked: summary.structured.lockedCount,
+      pin: summary.pin,
+      ...(summary.pinError ? { pinError: summary.pinError } : {}),
     },
   };
+}
+
+/** The one-line Project Memory verdict: Markdown counts plus the template pin
+ *  (`.summer/project.json` is memory too — the first fact a fresh agent
+ *  needs). Exported for tests. */
+export function describeProjectMemory(summary: ProjectMemorySummary): string {
+  const pin = formatProjectPin(summary.pin);
+  const pinPart = summary.pinError
+    ? `pin unreadable (${summary.pinError})`
+    : pin
+      ? `pin ${pin}`
+      : "no pin";
+  return `${summary.files.length} files, ${summary.structured.fileCount} memory, ${summary.structured.lockedCount} locked, ${pinPart}`;
 }
 
 async function checkMcpBoot(): Promise<DoctorCheck> {

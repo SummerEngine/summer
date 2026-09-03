@@ -14,7 +14,14 @@
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir, platform } from "node:os";
-import { join } from "node:path";
+import { join, sep } from "node:path";
+import { PACKAGE_ROOT } from "../core/package-root.js";
+import {
+  configureAgentMcp,
+  parseAgent,
+  SUMMER_MCP_SERVER_NAME,
+  type StdioMcpServerConfig,
+} from "./agent-config.js";
 
 export interface SemverParts {
   major: number;
@@ -323,12 +330,33 @@ export function defaultSkillMarkerCandidates(): SkillMarkerCandidate[] {
   return candidates;
 }
 
+/**
+ * How the agent's Summer MCP entry was recorded by `summer setup`
+ * (agent-config.ts createSummerMcpServerConfig): a `--local-dev` link runs
+ * `node <checkout>/dist/bin/summer.js mcp`; a normal install runs
+ * `npx -y summer-engine@latest mcp`. The refresh command doctor recommends
+ * must keep that shape — the npx form on a local-dev machine would replace
+ * the checkout link with the published package (E2E 2026-09-03 F-09).
+ */
+export interface RecordedInstall {
+  localDev: boolean;
+  /** The CLI entry point the agent runs, when local-dev. */
+  cliPath: string | null;
+  /** Where the answer came from: the agent's config file, or — when it has
+   *  no readable Summer entry — the nature of the CLI running this check. */
+  source: "agent-config" | "running-cli";
+}
+
 export interface SkillsVersionCheckInput {
   installedCliVersion: string;
   candidates: SkillMarkerCandidate[];
+  /** Resolves how the stale agent's MCP entry was recorded; defaults to
+   *  detectRecordedInstall. Seam for tests. */
+  recordedInstall?: (agent: string) => Promise<RecordedInstall | null> | RecordedInstall | null;
 }
 
 export interface SkillsVersionCheckOutput {
+  /** "ok" or "warning" — stale skills never fail doctor (TESTING.md §d). */
   status: DriftSeverity;
   message: string;
   details: Record<string, unknown>;
@@ -342,9 +370,9 @@ interface MarkerResolution {
   installedAtMs: number;
 }
 
-export function buildSkillsVersionCheck(
+export async function buildSkillsVersionCheck(
   input: SkillsVersionCheckInput
-): SkillsVersionCheckOutput {
+): Promise<SkillsVersionCheckOutput> {
   const cliParsed = parseSemver(input.installedCliVersion);
   if (!cliParsed) {
     return {
@@ -396,36 +424,161 @@ export function buildSkillsVersionCheck(
     cliVersion: input.installedCliVersion,
   };
 
-  switch (worst.drift.severity) {
-    case "ok":
-      return {
-        status: "ok",
-        message: `skills v${worst.marker.version} match CLI`,
-        details: baseDetails,
-      };
-    case "warning":
-      return {
-        status: "warning",
-        message: `skills v${worst.marker.version} are one minor version behind v${input.installedCliVersion}`,
-        details: {
-          ...baseDetails,
-          recommendedAction: skillsRefreshCommand(worst.agent),
-        },
-      };
-    case "fail":
-      return {
-        status: "fail",
-        message: `skills v${worst.marker.version} are significantly behind v${input.installedCliVersion}`,
-        details: {
-          ...baseDetails,
-          recommendedAction: skillsRefreshCommand(worst.agent),
-        },
-      };
+  if (worst.drift.severity === "ok") {
+    return {
+      status: "ok",
+      message: `skills v${worst.marker.version} match CLI`,
+      details: baseDetails,
+    };
+  }
+
+  // Skills that lag the CLI still work — the toolkit is not broken, the
+  // library it installed is older than the one it ships. That is a warning
+  // with a refresh command, never an exit-1 failure; a "fail"-grade drift
+  // (two minors or a major behind) only changes the wording.
+  const install = await resolveRecordedInstall(input.recordedInstall, worst.agent);
+  return {
+    status: "warning",
+    message:
+      worst.drift.severity === "fail"
+        ? `skills v${worst.marker.version} are significantly behind v${input.installedCliVersion}`
+        : `skills v${worst.marker.version} are one minor version behind v${input.installedCliVersion}`,
+    details: {
+      ...baseDetails,
+      drift: worst.drift.reason,
+      ...(install ? { install } : {}),
+      recommendedAction: skillsRefreshCommand(worst.agent, install),
+    },
+  };
+}
+
+async function resolveRecordedInstall(
+  resolver: SkillsVersionCheckInput["recordedInstall"],
+  agent: string
+): Promise<RecordedInstall | null> {
+  try {
+    return (await (resolver ?? detectRecordedInstall)(agent)) ?? null;
+  } catch {
+    // A detection failure must not break doctor; the npx form is the
+    // conservative default only when nothing says local-dev.
+    return null;
   }
 }
 
-function skillsRefreshCommand(agent: string): string {
+/**
+ * The command that refreshes an agent's skills without changing how its MCP
+ * entry was recorded: the local-dev form re-links the same checkout
+ * (`setup --local-dev --force` re-copies the checkout's skills); the npx form
+ * is for installs that already run the published package.
+ */
+export function skillsRefreshCommand(agent: string, install: RecordedInstall | null): string {
+  if (install?.localDev && install.cliPath) {
+    return `node ${install.cliPath} setup ${agent} --local-dev --yes --force`;
+  }
   return `npx clear-npx-cache && npx -y summer-engine@latest setup ${agent} --yes --force`;
+}
+
+/** The shape `summer setup --local-dev` writes: `node <…>/dist/bin/summer.js mcp`
+ *  (createSummerMcpServerConfig(true)). */
+export function isLocalDevServerConfig(server: StdioMcpServerConfig): boolean {
+  const entry = server.args[0] ?? "";
+  return (
+    server.command === "node" &&
+    /(^|[\\/])bin[\\/]summer\.js$/.test(entry) &&
+    server.args[1] === "mcp"
+  );
+}
+
+/**
+ * Read the Summer MCP entry an agent's config records, shape-tolerantly
+ * (this is the read side of agent-config.ts's per-format writers):
+ *   json           {"mcpServers": {"summer-engine": {command, args}}}     Claude Code, Cursor, …
+ *   json-copilot   {"mcpServers": {"summer-engine": {type, command, args}}}
+ *   json-vscode    {"servers":    {"summer-engine": {type, command, args}}}
+ *   json-opencode  {"mcp":        {"summer-engine": {type, command: [cmd, ...args]}}}
+ *   toml (codex)   [mcp_servers.summer-engine]\ncommand = "…"\nargs = ["…", …]
+ * Returns null when the file is missing, unparsable, or has no Summer entry.
+ */
+export function readRecordedMcpServer(
+  text: string,
+  format: "json" | "toml" | "json-opencode" | "json-copilot" | "json-vscode"
+): StdioMcpServerConfig | null {
+  if (!text.trim()) return null;
+  if (format === "toml") {
+    const table = text.match(
+      new RegExp(`^\\[mcp_servers\\.${SUMMER_MCP_SERVER_NAME.replace(/[-.]/g, "\\$&")}\\]\\s*$([\\s\\S]*?)(?=^\\[|(?![\\s\\S]))`, "m")
+    );
+    if (!table) return null;
+    const command = table[1].match(/^command\s*=\s*"((?:[^"\\]|\\.)*)"/m)?.[1];
+    const argsText = table[1].match(/^args\s*=\s*\[([^\]]*)\]/m)?.[1] ?? "";
+    if (!command) return null;
+    const args = [...argsText.matchAll(/"((?:[^"\\]|\\.)*)"/g)].map((m) => m[1].replace(/\\(.)/g, "$1"));
+    return { command: command.replace(/\\(.)/g, "$1"), args };
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== "object") return null;
+  const root = parsed as Record<string, unknown>;
+  for (const container of ["mcpServers", "servers", "mcp"]) {
+    const servers = root[container];
+    if (!servers || typeof servers !== "object") continue;
+    const entry = (servers as Record<string, unknown>)[SUMMER_MCP_SERVER_NAME];
+    if (!entry || typeof entry !== "object") continue;
+    const record = entry as Record<string, unknown>;
+    if (Array.isArray(record.command)) {
+      const [command, ...args] = record.command.filter((part): part is string => typeof part === "string");
+      return command ? { command, args } : null;
+    }
+    if (typeof record.command === "string") {
+      const args = Array.isArray(record.args)
+        ? record.args.filter((part): part is string => typeof part === "string")
+        : [];
+      return { command: record.command, args };
+    }
+  }
+  return null;
+}
+
+/** Is the CLI running this check a source checkout rather than an installed
+ *  package? npm/npx/global installs all live under a node_modules directory. */
+export function runningCliIsCheckout(packageRoot: string = PACKAGE_ROOT): boolean {
+  return !packageRoot.split(/[\\/]/).includes("node_modules");
+}
+
+/**
+ * How `summer setup` recorded the agent's Summer MCP entry. Resolves the
+ * agent's user-scope config path through agent-config's own target
+ * resolution (print mode: no file is written or read there), then reads the
+ * entry. Marker agents without an agent config ("summer") and agents whose
+ * config has no readable Summer entry fall back to the nature of the running
+ * CLI: a checkout recommends re-linking itself, an installed package the npx form.
+ */
+export async function detectRecordedInstall(agent: string): Promise<RecordedInstall | null> {
+  const supported = parseAgent(agent);
+  if (supported) {
+    try {
+      const target = await configureAgentMcp({ agent: supported, scope: "user", print: true });
+      if (existsSync(target.path)) {
+        const recorded = readRecordedMcpServer(readFileSync(target.path, "utf-8"), target.format);
+        if (recorded) {
+          const localDev = isLocalDevServerConfig(recorded);
+          return { localDev, cliPath: localDev ? recorded.args[0] ?? null : null, source: "agent-config" };
+        }
+      }
+    } catch {
+      // Unreadable config: fall through to the running-CLI answer.
+    }
+  }
+  const checkout = runningCliIsCheckout();
+  return {
+    localDev: checkout,
+    cliPath: checkout ? [PACKAGE_ROOT, "dist", "bin", "summer.js"].join(sep) : null,
+    source: "running-cli",
+  };
 }
 
 /**

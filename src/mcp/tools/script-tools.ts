@@ -79,7 +79,7 @@ Returns {ok, ran, result, reports, output, errors, duration_ms, checkpoint} — 
 
   server.tool(
     "summer_run_editor_script",
-    `Run a GDScript EditorScript in a FRESH HEADLESS editor spawned against the ON-DISK project. Heavyweight, cold path: a whole child editor boots (tens of seconds on large projects), runs your script once, and exits.
+    `Run a GDScript EditorScript in a FRESH HEADLESS editor spawned against the ON-DISK project. Cold path: a whole child editor boots, runs your script once, and exits — seconds to tens of seconds depending on the project and the script (about 2 s end to end on a small template project; large projects can spend 30 s+ just booting).
 
 USE FOR batch/project-wide jobs that should not block the live editor: re-saving many scenes, sweeping resources, mass import fixes, generating .tres assets, long bakes. It sees ONLY what is saved on disk — unsaved live edits in the open editor are INVISIBLE to it, and the live editor won't show its output until files reload. For work on the OPEN scene, use summer_run_script instead.
 

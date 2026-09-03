@@ -1,6 +1,6 @@
 id: tool/generate-3d
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Generate a 3D model from text or images via Summer Studio, with optional auto-rig and animation pipeline; waits or returns a job id.
 use_when:
   - creating a 3D asset or character from a prompt or reference image
@@ -14,6 +14,7 @@ facets:
     - build
   domains:
     - generate
+    - 3d
 compatibility:
   engine: ">=4.6"
 source: official

@@ -1,6 +1,6 @@
 id: tool/check-job
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Check the status of an async generation job by id.
 use_when:
   - a generation ran without waiting, or timed out, and needs re-checking
@@ -13,6 +13,7 @@ facets:
     - build
   domains:
     - generate
+    - pipeline
 compatibility:
   engine: ">=4.6"
 source: official

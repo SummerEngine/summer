@@ -77,6 +77,13 @@ What it checks:
    unknown token fails with
    `unknown domain "retro-vibes"; allowed: … (add it to registry/schemas/domains.json by PR)`.
    `facets.lifecycle` stays a fixed inline enum (build|launch|grow|support).
+8. Minimum routing metadata (routing searches summary + use_when +
+   facets.domains, so thin metadata is unfindable metadata): `summary` is
+   40..160 chars and every `use_when` item is >= 12 chars (both in
+   `resource.schema.json`); skills, tools, examples, and references carry
+   >= 2 `use_when` items and >= 2 `facets.domains` (templates and
+   collections may carry one `use_when`); no `use_when` item may repeat the
+   summary verbatim. Messages say which kind, what it has, and what it needs.
 
 Exit codes: 0 clean (including when `library/` does not exist yet), 1 on any
 violation. Requires Node >= 22.18 (native TypeScript type stripping); use

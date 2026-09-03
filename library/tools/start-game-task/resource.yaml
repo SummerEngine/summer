@@ -1,6 +1,6 @@
 id: tool/start-game-task
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: "Plan the right Summer workflow for a game-building task: skill routes, tool groups, confirmation gates, and verification steps."
 use_when:
   - starting any substantial AI game-building task, before mutating the project
@@ -13,6 +13,7 @@ facets:
     - build
   domains:
     - project
+    - agent-workflow
 compatibility:
   engine: ">=4.6"
 source: official

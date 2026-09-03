@@ -1,6 +1,6 @@
 id: tool/get-studio-workflow
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: "Discover Summer Studio's guided workflow recipes: starter prompts, ordered steps, required tools, and honest support levels."
 use_when:
   - planning a multi-step asset workflow like sprite sheets or character packs
@@ -13,6 +13,7 @@ facets:
     - build
   domains:
     - generate
+    - pipeline
 compatibility:
   engine: ">=4.6"
 source: official

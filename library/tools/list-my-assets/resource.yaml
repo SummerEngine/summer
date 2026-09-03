@@ -1,6 +1,6 @@
 id: tool/list-my-assets
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: List or search the signed-in user's generated and uploaded assets, returning exact asset ids plus file and import URLs.
 use_when:
   - retrieving an asset the user just generated before importing it
@@ -10,6 +10,7 @@ facets:
     - build
   domains:
     - assets
+    - pipeline
 compatibility:
   engine: ">=4.6"
 source: official

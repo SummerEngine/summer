@@ -1,9 +1,10 @@
 id: skill/vehicle-model
 kind: skill
-version: 1.0.2
+version: 1.0.3
 summary: Generate a hard-surface vehicle — car, spaceship, mech, boat, tank — static mesh with optional detail-texture pass, wired as Vehicle3D or MeshInstance3D.
 use_when:
   - generating a hard-surface vehicle — car, motorcycle, spaceship, hover bike, boat, mech, tank, helicopter
+  - a racing, flying, or combat game needs a hard-surface vehicle mesh as a Vehicle3D or MeshInstance3D
 facets:
   lifecycle:
     - build

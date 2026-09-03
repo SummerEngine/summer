@@ -16,13 +16,15 @@
       "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
     },
     "summary": {
+      "description": "One plain-language sentence an agent can route on: 40..160 characters.",
       "type": "string",
-      "minLength": 1,
+      "minLength": 40,
       "maxLength": 160
     },
     "use_when": {
+      "description": "Distinct situations that should trigger this resource; each item is a real phrase (>=12 chars). Per-kind minimum counts (2 for skill/tool/example/reference, 1 for template/collection) are enforced by validate-library.",
       "type": "array",
-      "items": { "type": "string", "minLength": 1 },
+      "items": { "type": "string", "minLength": 12 },
       "minItems": 1
     },
     "do_not_use_when": {

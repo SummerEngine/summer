@@ -1,6 +1,6 @@
 id: tool/add-node
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Add a node of any Godot type to an exact scene, which does not need to be the active editor tab.
 use_when:
   - building out scene structure node by node
@@ -14,6 +14,7 @@ facets:
     - build
   domains:
     - scenes
+    - editor
 compatibility:
   engine: ">=4.6"
 source: official

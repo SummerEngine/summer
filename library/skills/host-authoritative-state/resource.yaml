@@ -1,14 +1,16 @@
 id: skill/host-authoritative-state
 kind: skill
-version: 1.0.1
+version: 1.0.2
 summary: Design the state layer of a multiplayer game — what the host owns, how clients request changes, and how the host validates and broadcasts.
 use_when:
   - "designing the state layer of a multiplayer Summer game: host ownership, client change requests, host validation and broadcast"
+  - clients desync, cheat, or fight over the same object in a multiplayer game and the state ownership model needs defining
 facets:
   lifecycle:
     - build
   domains:
     - multiplayer
+    - game-design
   modalities:
     - scripts
     - scenes

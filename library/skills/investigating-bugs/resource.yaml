@@ -1,6 +1,6 @@
 id: skill/investigating-bugs
 kind: skill
-version: 1.0.2
+version: 1.0.3
 summary: Systematic investigation of any bug, test failure, or unexpected behavior before proposing fixes.
 use_when:
   - encountering any bug, test failure, or unexpected behavior, before proposing fixes
@@ -11,6 +11,7 @@ facets:
     - build
   domains:
     - agent-workflow
+    - debug
   modalities:
     - project
 compatibility:

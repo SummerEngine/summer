@@ -1,6 +1,6 @@
 id: tool/get-project-context
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Bind to the open project and return engine health, project name and path, current and main scene, trimmed settings, and memory summary.
 use_when:
   - first call in every fresh session, to avoid guessing scene filenames
@@ -10,6 +10,7 @@ facets:
     - build
   domains:
     - project
+    - engine
 compatibility:
   engine: ">=4.6"
 source: official

@@ -1,14 +1,16 @@
 id: skill/tune-performance
 kind: skill
-version: 1.0.1
+version: 1.0.2
 summary: Profile a slow game via summer_get_diagnostics, identify rendering/physics/scripting hotspots, propose fixes with before/after metric expectations.
 use_when:
   - the game is slow, drops framerate, stutters, takes forever to start, or runs poorly on specific hardware
+  - profiling a project with summer_get_diagnostics to find rendering, physics, or scripting hotspots and set before/after targets
 facets:
   lifecycle:
     - build
   domains:
     - performance
+    - debug
   modalities:
     - scripts
     - scenes

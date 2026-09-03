@@ -1,6 +1,6 @@
 id: tool/slice-asset-sheet
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Detect and crop every distinct game asset from a generated sheet image, uploading named slices with bounding boxes.
 use_when:
   - splitting a generated asset or UI sheet into individually usable assets
@@ -13,6 +13,7 @@ facets:
     - build
   domains:
     - generate
+    - 2d
 compatibility:
   engine: ">=4.6"
 source: official

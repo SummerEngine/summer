@@ -4,8 +4,9 @@
  * Validates every library/<kind-plural>/<slug>/resource.yaml against its kind schema in
  * registry/schemas/, runs cross-resource integrity checks (duplicate IDs,
  * duplicate aliases, alias/ID collisions, related targets, required body
- * files, evidence media), and runs the capability lint over resource.yaml
- * strings and markdown bodies.
+ * files, evidence media), enforces minimum routing metadata (per-kind
+ * use_when / facets.domains counts), and runs the capability lint over
+ * resource.yaml strings and markdown bodies.
  *
  * Pure library: `runValidation(rootDir)` — the CLI lives in cli.ts.
  */
@@ -37,6 +38,24 @@ const KIND_DIRS: Record<string, string> = {
 const DIR_KINDS: Record<string, string> = Object.fromEntries(
   Object.entries(KIND_DIRS).map(([kind, dir]) => [dir, kind]),
 );
+
+/**
+ * Minimum routing metadata (CONTRACT.md §5). Routing searches summary +
+ * use_when + facets.domains; one-line use_when and single-domain entries are
+ * what the 2026-09-02 audit found unfindable. Character minimums (summary
+ * 40..160, use_when item >= 12) live in resource.schema.json; the per-kind
+ * counts live here so the message can say why.
+ */
+const MIN_USE_WHEN_ITEMS: Record<string, number> = {
+  skill: 2,
+  tool: 2,
+  example: 2,
+  reference: 2,
+  template: 1,
+  collection: 1,
+};
+const MIN_DOMAINS_KINDS = new Set(["skill", "tool", "example", "reference"]);
+export const MIN_DOMAINS = 2;
 
 export interface ValidationResult {
   ok: boolean;
@@ -375,6 +394,38 @@ export function runValidation(rootDir: string, options?: { schemasDir?: string }
           }
         }
       });
+    }
+  }
+
+  // --- Minimum routing metadata: enough use_when situations and domains to be findable ---
+  for (const res of resources) {
+    const prefix = `library/${res.relDir}/resource.yaml`;
+    const kind = res.data.kind;
+    if (typeof kind !== "string" || !(kind in KIND_DIRS)) continue; // schema already flagged
+    const summary = typeof res.data.summary === "string" ? res.data.summary.trim() : null;
+    const useWhen = Array.isArray(res.data.use_when) ? (res.data.use_when as unknown[]) : null;
+    const minItems = MIN_USE_WHEN_ITEMS[kind] ?? 2;
+    if (useWhen !== null && useWhen.length < minItems) {
+      errors.push(
+        `${prefix}: use_when has ${useWhen.length} item(s) — a ${kind} needs at least ${minItems} (each item is a distinct situation that should trigger this resource; routing searches them)`,
+      );
+    }
+    if (useWhen !== null && summary !== null) {
+      useWhen.forEach((item, i) => {
+        if (typeof item === "string" && item.trim() === summary) {
+          errors.push(`${prefix}: use_when[${i}] repeats the summary verbatim — describe a situation that calls for this resource, not the resource itself`);
+        }
+      });
+    }
+    if (MIN_DOMAINS_KINDS.has(kind)) {
+      const facets = res.data.facets;
+      const domains = isPlainObject(facets) && Array.isArray(facets.domains) ? (facets.domains as unknown[]) : [];
+      if (domains.length < MIN_DOMAINS) {
+        const listed = domains.length > 0 ? ` [${domains.map(String).join(", ")}]` : "";
+        errors.push(
+          `${prefix}: facets.domains has ${domains.length} item(s)${listed} — a ${kind} needs at least ${MIN_DOMAINS} domains from registry/schemas/domains.json (facet filters and routing rely on them)`,
+        );
+      }
     }
   }
 

@@ -1,6 +1,6 @@
 id: tool/inspect-resource
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Get all properties of a resource such as a material, mesh, shape, or environment.
 use_when:
   - reading sub-properties that the node inspector only names
@@ -13,6 +13,7 @@ facets:
     - build
   domains:
     - scenes
+    - editor
 compatibility:
   engine: ">=4.6"
 source: official

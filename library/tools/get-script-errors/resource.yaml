@@ -1,6 +1,6 @@
 id: tool/get-script-errors
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Check one GDScript file for parse and compile errors without running the game.
 use_when:
   - after writing or editing a .gd file, to verify it compiles
@@ -13,6 +13,7 @@ facets:
     - build
   domains:
     - debug
+    - scripting
 compatibility:
   engine: ">=4.6"
 source: official

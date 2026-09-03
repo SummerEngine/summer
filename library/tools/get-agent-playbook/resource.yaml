@@ -1,6 +1,6 @@
 id: tool/get-agent-playbook
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: "AI-first operating guide for Summer MCP: safe workflow, verification ladder, honesty rules, anti-patterns, and recovery steps."
 use_when:
   - at the start of a fresh session, before touching scenes
@@ -13,6 +13,7 @@ facets:
     - build
   domains:
     - project
+    - agent-workflow
 compatibility:
   engine: ">=4.6"
 source: official

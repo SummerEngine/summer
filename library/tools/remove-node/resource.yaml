@@ -1,6 +1,6 @@
 id: tool/remove-node
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Remove a node and all its children from a scene; undoable, but destructive.
 use_when:
   - deleting scene content the user asked to remove
@@ -13,6 +13,7 @@ facets:
     - build
   domains:
     - scenes
+    - editor
 compatibility:
   engine: ">=4.6"
 source: official

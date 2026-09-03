@@ -1,6 +1,6 @@
 id: tool/input-map-bind
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Create an input action if needed and bind keyboard or mouse events to it.
 use_when:
   - setting up player controls like jump, move, or interact
@@ -13,6 +13,7 @@ facets:
     - build
   domains:
     - project
+    - gameplay
 compatibility:
   engine: ">=4.6"
 source: official

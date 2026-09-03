@@ -1,6 +1,6 @@
 id: tool/inspect-node
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Get every editable property of a node with current values, types, and resource info.
 use_when:
   - before modifying a node, to understand its current state
@@ -14,6 +14,7 @@ facets:
     - build
   domains:
     - scenes
+    - editor
 compatibility:
   engine: ">=4.6"
 source: official

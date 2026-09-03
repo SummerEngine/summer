@@ -1,6 +1,6 @@
 id: tool/generate-motion
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Generate a curated mocap animation clip for a Summer-rigged humanoid; costs credits, so confirm with the user first.
 use_when:
   - adding idle, walk, run, or combat clips to a rigged character
@@ -14,6 +14,7 @@ facets:
     - build
   domains:
     - generate
+    - animation
 compatibility:
   engine: ">=4.6"
 source: official

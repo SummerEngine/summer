@@ -1,9 +1,10 @@
 id: skill/ui-graphics
 kind: skill
-version: 1.0.1
+version: 1.0.2
 summary: Generate game-UI elements — icons, buttons, panels, frames, HUD widgets, badges — flat design, transparent background, wired via TextureRect/NinePatchRect.
 use_when:
   - generating UI elements — icons, buttons, panels, frames, HUD widgets, badges — in flat-design, transparent-background game-UI style
+  - a HUD or menu still uses placeholder icons, buttons, or panels and needs consistent flat-design UI art
 facets:
   lifecycle:
     - build

@@ -1,6 +1,6 @@
 id: tool/batch
 kind: tool
-version: 1.0.2
+version: 1.0.3
 summary: Run multiple engine ops in one call, forwarded verbatim; one undo step unless single-only ops force a split (then one per chunk). Also reaches raw ops.
 use_when:
   - multi-node builds that should undo as one step (no single-only ops in the list)
@@ -12,6 +12,7 @@ facets:
     - build
   domains:
     - scenes
+    - editor
 compatibility:
   engine: ">=4.6"
 source: official

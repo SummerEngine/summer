@@ -1,6 +1,6 @@
 id: tool/generate-audio
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: "Generate audio via Summer Studio: text-to-speech, sound effects, music, or multi-voice dialogue."
 use_when:
   - creating sound effects, music beds, or spoken lines for the game
@@ -13,6 +13,7 @@ facets:
     - build
   domains:
     - generate
+    - audio
 compatibility:
   engine: ">=4.6"
 source: official

@@ -1,0 +1,13 @@
+id: template/lone
+kind: template
+version: 1.0.0
+summary: A builtin template that legitimately carries one use_when and one domain.
+use_when:
+  - starting from an intentionally minimal builtin template
+facets:
+  lifecycle: [build]
+  domains: [builtin]
+source: official
+license: MIT
+status: stable
+builtin: true

@@ -1,6 +1,6 @@
 id: tool/open-main-scene
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Open the project's configured main scene from project settings instead of guessing scene filenames.
 use_when:
   - any tool reports that no scene is open
@@ -13,6 +13,7 @@ facets:
     - build
   domains:
     - project
+    - scenes
 compatibility:
   engine: ">=4.6"
 source: official

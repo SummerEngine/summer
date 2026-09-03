@@ -1,9 +1,10 @@
 id: skill/3d-lighting
 kind: skill
-version: 1.0.1
+version: 1.0.2
 summary: Set up 3D scene lighting — DirectionalLight3D vs Omni vs Spot, WorldEnvironment, sky, shadow tuning, ambient — per current Summer conventions.
 use_when:
   - setting up lighting in a Summer Engine 3D scene — adding lights, configuring WorldEnvironment, sky, or shadows
+  - a 3D scene looks flat, too dark, washed out, or has harsh or missing shadows and needs its lighting fixed
 facets:
   lifecycle:
     - build

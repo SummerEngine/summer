@@ -1,6 +1,6 @@
 id: tool/get-asset
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Fetch one asset by exact Summer asset id, including stable file URL, metadata, license, visibility, and provider details.
 use_when:
   - a generation job returned an asset id and you need its file URL or metadata
@@ -10,6 +10,7 @@ facets:
     - build
   domains:
     - assets
+    - pipeline
 compatibility:
   engine: ">=4.6"
 source: official

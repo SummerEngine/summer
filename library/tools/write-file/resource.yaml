@@ -1,6 +1,6 @@
 id: tool/write-file
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Create or safely overwrite one complete text file through the identity-bound engine; exactly one guard is required, so writes fail closed.
 use_when:
   - creating a new project file with the create-only guard
@@ -10,6 +10,7 @@ facets:
     - build
   domains:
     - file
+    - project
 compatibility:
   engine: ">=4.6"
 source: official

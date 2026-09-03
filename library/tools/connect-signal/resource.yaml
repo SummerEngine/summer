@@ -1,6 +1,6 @@
 id: tool/connect-signal
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Connect a signal between two nodes; the receiver's script must define the target method.
 use_when:
   - wiring events like body_entered, pressed, or timeout
@@ -13,6 +13,7 @@ facets:
     - build
   domains:
     - scenes
+    - editor
 compatibility:
   engine: ">=4.6"
 source: official

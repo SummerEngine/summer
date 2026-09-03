@@ -1,6 +1,6 @@
 id: reference/godot-version
 kind: reference
-version: 1.0.1
+version: 1.0.2
 summary: Summer Engine compatibility facts — current upstream technical base, version-sensitive APIs, and what to check before version-sensitive code.
 use_when:
   - writing shaders, rendering code, extensions, or export configuration
@@ -9,6 +9,7 @@ facets:
   lifecycle: [ build ]
   domains:
     - engine
+    - scripting
 compatibility:
   engine: ">=4.6"
 related:

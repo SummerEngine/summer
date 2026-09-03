@@ -1,6 +1,6 @@
 id: tool/open-scene
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Open a scene file in the editor to switch tabs.
 use_when:
   - switching the editor to an explicitly known scene path
@@ -14,6 +14,7 @@ facets:
     - build
   domains:
     - scenes
+    - editor
 compatibility:
   engine: ">=4.6"
 source: official

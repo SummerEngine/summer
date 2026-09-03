@@ -1,6 +1,6 @@
 id: tool/get-debugger-warnings
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Read runtime warnings from the debugger panel as structured entries with file, line, and callstack.
 use_when:
   - diagnostics show a non-zero debugger warning count
@@ -13,6 +13,7 @@ facets:
     - build
   domains:
     - debug
+    - runtime
 compatibility:
   engine: ">=4.6"
 source: official

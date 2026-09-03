@@ -1,6 +1,6 @@
 id: tool/import-from-url-batch
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Download multiple files by URL in one operation with a single filesystem scan afterwards.
 use_when:
   - importing several related files, like a model plus its textures
@@ -13,6 +13,7 @@ facets:
     - build
   domains:
     - project
+    - assets
 compatibility:
   engine: ">=4.6"
 source: official

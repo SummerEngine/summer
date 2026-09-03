@@ -1,6 +1,6 @@
 id: tool/save-scene
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Save an explicit scene to disk, for standalone saves or save-as.
 use_when:
   - a standalone save or save-as is needed
@@ -13,6 +13,7 @@ facets:
     - build
   domains:
     - scenes
+    - editor
 compatibility:
   engine: ">=4.6"
 source: official

@@ -1,9 +1,10 @@
 id: skill/skill-create
 kind: skill
-version: 1.0.1
+version: 1.0.2
 summary: Bootstrap a new Summer library skill — canonical folder structure, frontmatter, and stub sections.
 use_when:
   - a contributor wants to add a new skill to the Summer library
+  - scaffolding a new library skill folder with the canonical structure, frontmatter, and stub sections before writing its content
 facets:
   lifecycle:
     - build

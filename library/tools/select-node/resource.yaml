@@ -1,6 +1,6 @@
 id: tool/select-node
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Select a node in the editor scene tree and show it in the inspector.
 use_when:
   - focusing the user's editor on a specific node
@@ -13,6 +13,7 @@ facets:
     - build
   domains:
     - scenes
+    - editor
 compatibility:
   engine: ">=4.6"
 source: official

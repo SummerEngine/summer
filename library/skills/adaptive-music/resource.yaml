@@ -1,6 +1,6 @@
 id: skill/adaptive-music
 kind: skill
-version: 1.0.1
+version: 1.0.2
 summary: Wire music stems to game state — combat/explore/boss/tension crossfades on a shared bus, paired with a state machine and AudioBus structure.
 use_when:
   - wiring music stems to game state — combat / explore / boss / tension crossfades on a shared bus
@@ -10,6 +10,7 @@ facets:
     - build
   domains:
     - audio
+    - gameplay
   modalities:
     - audio
     - scenes

@@ -1,9 +1,10 @@
 id: skill/prop-model
 kind: skill
-version: 1.0.1
+version: 1.0.2
 summary: Generate a single static 3D prop — sword, barrel, chest, lantern, throne, statue — one isolated object, no rigging, wired as a MeshInstance3D.
 use_when:
   - generating a single static 3D prop — sword, barrel, chest, lantern, throne, statue, crate, key, potion, banner
+  - a scene needs a single static object — furniture, weapon, container, decoration — as a MeshInstance3D with no rigging
 do_not_use_when:
   - the object needs rigging or animation — that is character-model territory
 facets:

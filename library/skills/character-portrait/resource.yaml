@@ -1,9 +1,10 @@
 id: skill/character-portrait
 kind: skill
-version: 1.0.2
+version: 1.0.3
 summary: Generate a single polished character bust for dialogue UI, character select, lore cards, or codex entries. One character, locked composition, VN-style.
 use_when:
   - generating a single polished bust/portrait of a character for dialogue UI, character-select screens, lore cards, or codex entries
+  - a dialogue system, character-select screen, or codex needs a consistent face for a named character
 facets:
   lifecycle:
     - build

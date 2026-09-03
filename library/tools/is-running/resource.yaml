@@ -1,6 +1,6 @@
 id: tool/is-running
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Check whether the game is running; returns the active scene path when it is.
 use_when:
   - deciding whether to boot, restart, or capture the running game
@@ -13,6 +13,7 @@ facets:
     - build
   domains:
     - debug
+    - runtime
 compatibility:
   engine: ">=4.6"
 source: official

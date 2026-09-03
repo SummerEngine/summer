@@ -1,14 +1,16 @@
 id: skill/writing-skills
 kind: skill
-version: 1.0.1
+version: 1.0.2
 summary: Create, edit, and verify agent skills — format, structure, testing with subagents, and best practices.
 use_when:
   - creating new skills, editing existing skills, or verifying skills work before deployment
+  - reviewing a SKILL.md for format, structure, and trigger quality, or testing whether a skill fires correctly with a subagent
 facets:
   lifecycle:
     - build
   domains:
     - agent-workflow
+    - meta
   modalities:
     - docs
 compatibility:

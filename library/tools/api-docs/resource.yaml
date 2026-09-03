@@ -1,6 +1,6 @@
 id: tool/api-docs
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Offline engine class-reference lookup — verify a property, method, signal, or constant before writing script code instead of guessing names.
 use_when:
   - checking an exact property/method/signal/constant name or default before summer_run_script or a .gd edit
@@ -14,6 +14,7 @@ facets:
     - build
   domains:
     - scripting
+    - engine
   modalities:
     - scripts
 compatibility:

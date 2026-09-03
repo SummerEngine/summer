@@ -1,6 +1,6 @@
 id: tool/clear-console
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Clear the editor's Output panel for a clean slate before running the game.
 use_when:
   - before a play session whose console output you want isolated
@@ -13,6 +13,7 @@ facets:
     - build
   domains:
     - debug
+    - editor
 compatibility:
   engine: ">=4.6"
 source: official

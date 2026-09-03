@@ -1,0 +1,13 @@
+id: reference/echo
+kind: reference
+version: 1.0.0
+summary: A reference whose first use_when line just repeats this summary.
+use_when:
+  - A reference whose first use_when line just repeats this summary.
+  - checking that use_when items describe situations rather than the resource
+facets:
+  lifecycle: [build]
+  domains: [meta, verification]
+source: official
+license: MIT
+status: stable

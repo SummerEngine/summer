@@ -1,6 +1,6 @@
 id: tool/generate-video
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Generate a video from text or an image with allowlisted models via Summer Studio.
 use_when:
   - creating cutscene, trailer, or reference footage from a prompt
@@ -13,6 +13,7 @@ facets:
     - build
   domains:
     - generate
+    - video
 compatibility:
   engine: ">=4.6"
 source: official

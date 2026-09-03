@@ -1,6 +1,6 @@
 id: tool/creator-config
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Read or update the shared non-secret Summer configuration; mutations require confirm, and tokens are never returned or accepted.
 use_when:
   - inspecting or changing shared CLI and MCP configuration values
@@ -13,6 +13,7 @@ facets:
     - launch
   domains:
     - creator
+    - deployment
 compatibility:
   engine: ">=4.6"
 source: official

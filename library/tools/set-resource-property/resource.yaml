@@ -1,6 +1,6 @@
 id: tool/set-resource-property
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Set a nested property on a resource attached to a node, like a collision shape size or material color.
 use_when:
   - modifying sub-properties of meshes, materials, or shapes
@@ -13,6 +13,7 @@ facets:
     - build
   domains:
     - scenes
+    - editor
 compatibility:
   engine: ">=4.6"
 source: official

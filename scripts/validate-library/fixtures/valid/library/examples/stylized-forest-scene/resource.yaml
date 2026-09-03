@@ -4,6 +4,7 @@ version: 1.1.0
 summary: A verified stylized forest scene with layered lighting.
 use_when:
   - studying a working stylized outdoor scene
+  - checking how a finished outdoor scene layers sun, sky, and ambient light
 facets:
   lifecycle: [build]
   domains: [world-building, lighting]

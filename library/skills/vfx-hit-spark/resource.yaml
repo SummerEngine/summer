@@ -1,14 +1,16 @@
 id: skill/vfx-hit-spark
 kind: skill
-version: 1.0.1
+version: 1.0.2
 summary: Hit-spark effect — a one-shot burst of additive billboard particles oriented to a surface normal, fired on impact.
 use_when:
   - authoring a hit-spark effect — impact spark, bullet hit, sword clash, ricochet, sparks at a hit point
+  - melee hits, bullet impacts, or ricochets have no visual feedback at the contact point
 facets:
   lifecycle:
     - build
   domains:
     - vfx
+    - rendering
   modalities:
     - scenes
     - shaders

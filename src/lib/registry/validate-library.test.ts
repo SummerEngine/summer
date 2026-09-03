@@ -113,11 +113,13 @@ describe("validate-library: id namespacing (CONTRACT.md §4)", () => {
         `id: ${id}`,
         "kind: skill",
         "version: 1.0.0",
-        "summary: Namespacing fixture.",
+        "summary: Fixture skill used to exercise publisher-namespaced ids.",
         "use_when:",
         "  - testing id namespacing",
+        "  - checking how the validator treats a publisher prefix on an id",
         "facets:",
         "  lifecycle: [build]",
+        "  domains: [meta, verification]",
         "source: official",
         "license: MIT",
         "status: stable",
@@ -204,6 +206,32 @@ describe("validate-library: cross-checks against host code (descriptors may not 
   });
 });
 
+describe("validate-library: minimum routing metadata", () => {
+  const result = run("invalid-metadata");
+
+  it("fails overall", () => {
+    expect(result.ok).toBe(false);
+  });
+
+  it.each([
+    ["summary under 40 chars (schema)", /skills\/thin.*summary: must be at least 40 character\(s\), got 10/],
+    ["use_when item under 12 chars (schema)", /skills\/thin.*use_when\[0\]: must be at least 12 character\(s\), got 5/],
+    ["skill with one use_when item", /skills\/thin.*use_when has 1 item\(s\) — a skill needs at least 2 \(each item is a distinct situation/],
+    ["skill with one domain", /skills\/thin.*facets\.domains has 1 item\(s\) \[scenes\] — a skill needs at least 2 domains from registry\/schemas\/domains\.json/],
+    ["use_when item identical to the summary", /references\/echo.*use_when\[0\] repeats the summary verbatim/],
+  ])("reports %s", (_name, pattern) => {
+    expect(result.errors.some((e) => pattern.test(e))).toBe(true);
+  });
+
+  it("lets a template carry one use_when and one domain", () => {
+    expect(result.errors.filter((e) => /templates\/lone/.test(e))).toEqual([]);
+  });
+
+  it("does not flag the second, situation-style use_when item of the echo reference", () => {
+    expect(result.errors.some((e) => /references\/echo.*use_when\[1\]/.test(e))).toBe(false);
+  });
+});
+
 describe("validate-library: file requirements", () => {
   const result = run("invalid-files");
 
@@ -230,8 +258,10 @@ describe("validate-library: file requirements", () => {
           "summary: Example with an oversized in-repo screenshot.",
           "use_when:",
           "  - testing media size limits",
+          "  - checking that oversized evidence media is pushed to URL + sha256",
           "facets:",
           "  lifecycle: [build]",
+          "  domains: [meta, verification]",
           "source: official",
           "license: MIT",
           "status: stable",

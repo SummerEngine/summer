@@ -10,10 +10,12 @@ import {
   _resetLibrarySearchForTests,
   embedQueryWithConfiguredProvider,
   loadLibraryIndex,
+  PREVIEW_SCORE_FACTOR,
   runSearchLibrary,
   searchLibrary,
   searchLibraryDetailed,
   searchLibraryInputSchema,
+  statusScoreFactor,
   type LibraryIndexEntry,
 } from "./library-search.js";
 
@@ -280,5 +282,86 @@ describe("tool payload and input schema", () => {
     expect(searchLibraryInputSchema.safeParse({ query: "x", limit: 2.5 }).success).toBe(false);
     expect(searchLibraryInputSchema.safeParse({ query: "x", include_preview: false }).success).toBe(true);
     expect(searchLibraryInputSchema.safeParse({ query: "x", extra: 1 }).success).toBe(false);
+  });
+});
+
+describe("status penalty: preview never outranks stable on comparable evidence (E2E F-18)", () => {
+  const twins: LibraryIndexEntry[] = [
+    {
+      id: "skill/aaa-preview-jump",
+      kind: "skill",
+      status: "preview",
+      summary: "Tune the platformer jump so it feels better.",
+      use_when: ["make the platformer jump feel better"],
+    },
+    {
+      id: "skill/zzz-stable-jump",
+      kind: "skill",
+      status: "stable",
+      summary: "Tune the platformer jump so it feels better.",
+      use_when: ["make the platformer jump feel better"],
+    },
+    {
+      id: "skill/unrelated",
+      kind: "skill",
+      status: "stable",
+      summary: "Bake lightmaps for a 3D level.",
+      use_when: ["lightmaps look wrong"],
+    },
+  ];
+
+  it("multiplies preview scores by PREVIEW_SCORE_FACTOR so an equal-text stable twin leads (ids alone would put preview first)", async () => {
+    const hits = await searchLibrary("make the platformer jump feel better", {}, { entries: twins, ...lexicalOnly });
+    expect(hits.map((hit) => hit.id)).toEqual(["skill/zzz-stable-jump", "skill/aaa-preview-jump"]);
+    const [stable, preview] = hits;
+    expect(preview!.score).toBeCloseTo(stable!.score * PREVIEW_SCORE_FACTOR, 3);
+    expect(statusScoreFactor("preview")).toBe(PREVIEW_SCORE_FACTOR);
+    expect(statusScoreFactor("stable")).toBe(1);
+    expect(statusScoreFactor(undefined)).toBe(1);
+  });
+
+  it("is a factor, not a gate: a preview entry with a clear lexical margin still wins, and include_preview:false still removes it", async () => {
+    const margin: LibraryIndexEntry[] = [
+      {
+        id: "skill/preview-dash",
+        kind: "skill",
+        status: "preview",
+        summary: "Dash mechanic with dash cooldown and dash trail.",
+        use_when: ["add a dash", "dash cooldown", "dash trail"],
+      },
+      { id: "skill/stable-move", kind: "skill", status: "stable", summary: "Basic movement.", use_when: ["move the player"] },
+    ];
+    const hits = await searchLibrary("dash cooldown", {}, { entries: margin, ...lexicalOnly });
+    expect(hits[0]!.id).toBe("skill/preview-dash");
+    const stableOnly = await searchLibrary("dash cooldown", { includePreview: false }, { entries: margin, ...lexicalOnly });
+    expect(stableOnly.map((hit) => hit.id)).not.toContain("skill/preview-dash");
+  });
+
+  it("applies the same factor on the semantic side", async () => {
+    const embeddings: EmbeddingsFile = {
+      version: 1,
+      model: "test-model",
+      dims: 2,
+      encoding: EMBEDDINGS_ENCODING,
+      entries: {
+        // preview cosine 0.95 vs stable 0.90: preview leads raw, stable leads after x0.8.
+        "skill/aaa-preview-jump": { content_hash: "a".repeat(64), vector: encodeVector([0.95, 0.312]) },
+        "skill/zzz-stable-jump": { content_hash: "b".repeat(64), vector: encodeVector([0.9, 0.436]) },
+      },
+    };
+    const result = await searchLibraryDetailed(
+      "words that match nothing lexically",
+      {},
+      { entries: twins, embeddings, embedQuery: async () => [1, 0] }
+    );
+    expect(result.semantic).toBe(true);
+    expect(result.hits.map((hit) => hit.id)).toEqual(["skill/zzz-stable-jump", "skill/aaa-preview-jump"]);
+  });
+
+  it("against the shipped index, 'make the platformer jump feel better' leads with the stable debugging-game-feel", async () => {
+    const hits = await searchLibrary("make the platformer jump feel better", {}, lexicalOnly);
+    const ids = hits.map((hit) => hit.id);
+    expect(ids[0]).toBe("skill/debugging-game-feel");
+    expect(ids.indexOf("skill/celeste-momentum-platforming")).toBeGreaterThan(0);
   });
 });

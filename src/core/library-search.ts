@@ -60,6 +60,27 @@ export const LIBRARY_ID_PATTERN = /^(tool|skill|example|template|collection|refe
 export const DEFAULT_SEARCH_LIMIT = 8;
 export const MAX_SEARCH_LIMIT = 20;
 export const MAX_QUERY_LENGTH = 300;
+/**
+ * Status factor applied to every candidate's score before ordering — the
+ * lexical score and the semantic cosine alike, so both sides of the fusion
+ * see the same order. A `preview` entry has not been exercised in-engine by
+ * the Summer team, so with comparable evidence the stable entry must win: a
+ * preview hit needs a lexical margin of more than 1/PREVIEW_SCORE_FACTOR
+ * (25%) over a stable one to outrank it. include_preview:false still removes
+ * preview entries entirely; this only orders them. Applied here, not in the
+ * index ranker (registry-search.ts), because status is a catalog attribute the
+ * routing eval corpus does not carry.
+ *
+ * Calibration (E2E 2026-09-03 F-18): "make the platformer jump feel better"
+ * ranked preview skill/celeste-momentum-platforming (44.6) above stable
+ * skill/debugging-game-feel (38.6); at 0.8 the stable entry leads (35.7 vs 38.6)
+ * while every preview entry the routing queries expect keeps its top-5 slot.
+ */
+export const PREVIEW_SCORE_FACTOR = 0.8;
+
+export function statusScoreFactor(status: string | undefined): number {
+  return (status ?? "stable") === "preview" ? PREVIEW_SCORE_FACTOR : 1;
+}
 /** Hard cap on the query-embedding round trip: search must never feel slow. */
 export const QUERY_EMBED_TIMEOUT_MS = 1500;
 /** How deep each ranking is read before fusion. */
@@ -290,10 +311,15 @@ export async function searchLibraryDetailed(
     return true;
   };
 
+  const factorFor = (id: string): number => statusScoreFactor(byId.get(id)?.status);
+  const byScoreThenId = (a: { id: string; score: number }, b: { id: string; score: number }) =>
+    b.score - a.score || a.id.localeCompare(b.id);
+
   const index = searchIndexFor(entries);
-  const lexical = rankEntries(index, query, { limit: index.docs.length }).filter(
-    (hit) => hit.score > 0 && eligible(byId.get(hit.id))
-  );
+  const lexical = rankEntries(index, query, { limit: index.docs.length })
+    .filter((hit) => hit.score > 0 && eligible(byId.get(hit.id)))
+    .map((hit) => ({ id: hit.id, score: hit.score * factorFor(hit.id) }))
+    .sort(byScoreThenId);
 
   // Semantic side — every failure mode collapses to "not available".
   let semanticRanked: Array<{ id: string; score: number }> = [];
@@ -309,7 +335,7 @@ export async function searchLibraryDetailed(
         vector = null;
       }
       if (vector && vector.length === embeddings.dims) {
-        semanticRanked = scoreSemantic(embeddings, vector, (id) => eligible(byId.get(id)));
+        semanticRanked = scoreSemantic(embeddings, vector, (id) => eligible(byId.get(id)), factorFor);
         semantic = true;
       }
     }
@@ -333,12 +359,13 @@ export async function searchLibraryDetailed(
   return { hits, semantic };
 }
 
-/** Cosine over every stored vector for eligible ids; positive scores only,
- *  sorted desc then by id. */
+/** Cosine over every stored vector for eligible ids, times the status
+ *  factor; positive scores only, sorted desc then by id. */
 function scoreSemantic(
   embeddings: EmbeddingsFile,
   queryVector: number[],
-  eligible: (id: string) => boolean
+  eligible: (id: string) => boolean,
+  factorFor: (id: string) => number
 ): Array<{ id: string; score: number }> {
   const scored: Array<{ id: string; score: number }> = [];
   for (const [id, entry] of Object.entries(embeddings.entries)) {
@@ -351,7 +378,7 @@ function scoreSemantic(
     }
     if (vector.length !== queryVector.length) continue;
     const score = cosineSimilarity(queryVector, vector);
-    if (score > 0) scored.push({ id, score });
+    if (score > 0) scored.push({ id, score: score * factorFor(id) });
   }
   return scored.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
 }

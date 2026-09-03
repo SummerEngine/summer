@@ -2388,11 +2388,12 @@
     {
       "id": "skill/scene-scripting",
       "kind": "skill",
-      "version": "1.0.3",
-      "content_hash": "447ef134dd2d5439bf6e6c971ec22503cd3344aafb6b9a79955c8ba9339c299a",
-      "summary": "Build or modify scenes with one GDScript run inside the live editor (summer_run_script) instead of long CRUD chains; verify with snapshot diff + screenshot.",
+      "version": "1.1.1",
+      "content_hash": "54e66f1d48a5a9dc8fd452e70a7691bf6ff42c231adac6f1974ce28e5b7c75c4",
+      "summary": "One GDScript in the live editor (summer_run_script) builds scenes, 2D levels, HUDs and gameplay wiring instead of CRUD chains; verify with diff + screenshot.",
       "use_when": [
         "a scene change needs 3+ related ops or any computed placement — scattering, grids, rings, procedural meshes, geometry helpers, terrain, lighting rigs, keyframe animation, shader FX",
+        "a 2D level (tilemap paint, bodies, camera limits, parallax), an animated sprite, a HUD or Control tree, a persisted signal connection, an attached script, a prefab, input actions, an autoload, or the main scene should be built in one script",
         "an API property/method name must be verified with summer_api_docs before scripting",
         "a cold project-wide batch job belongs in summer_run_editor_script"
       ],
@@ -2403,6 +2404,8 @@
         "domains": [
           "scenes",
           "scripting",
+          "2d",
+          "ui",
           "agent-workflow"
         ],
         "modalities": [
@@ -2420,14 +2423,25 @@
           "tool/api-docs",
           "tool/world-snapshot",
           "tool/snapshot-diff",
-          "tool/screenshot"
+          "tool/screenshot",
+          "tool/connect-signal",
+          "tool/input-map-bind",
+          "tool/project-setting",
+          "tool/write-file",
+          "tool/get-script-errors"
         ],
         "skills": [
           "skill/verifying-scenes",
           "skill/headless-scripting",
           "skill/scene-composition",
           "skill/character-animation-wiring",
+          "skill/ui-basics",
+          "skill/gdscript-patterns",
+          "skill/sprite-sheet",
           "skill/verification-before-completion"
+        ],
+        "templates": [
+          "template/2d-platformer"
         ]
       },
       "status": "preview",
@@ -3133,8 +3147,8 @@
     {
       "id": "skill/verifying-scenes",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "888e2ec6a81474df304c21a57f7ce51a76ad4505b745dbc63e1985172d478615",
+      "version": "1.0.3",
+      "content_hash": "92f51037266280104f88f9deb4a405dbcdcb91b6c0a38cddf3e45010d98686d0",
       "summary": "Prove scene work landed — snapshot before, diff + screenshot after, live runtime reads during playtests — before claiming any visual or structural result.",
       "use_when": [
         "after any mutation batch, asset import, or lighting change, before claiming it worked",

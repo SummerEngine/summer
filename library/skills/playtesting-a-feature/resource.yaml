@@ -1,10 +1,10 @@
 id: skill/playtesting-a-feature
 kind: skill
-version: 1.0.2
+version: 1.0.3
 summary: "Before claiming a gameplay feature done: actually run the game and walk through the feature. Static diagnostics and type checks do not count."
 use_when:
   - about to claim a gameplay feature is done, shipped, or working — requires actually running the game and walking through the feature first
-  - a feature passes static diagnostics and type checks but nobody has actually run the game and exercised it yet
+  - a feature passes static diagnostics but nobody has actually run the game and exercised it yet
 facets:
   lifecycle:
     - build

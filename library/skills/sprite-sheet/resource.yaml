@@ -1,10 +1,10 @@
 id: skill/sprite-sheet
 kind: skill
-version: 1.0.3
+version: 1.0.4
 summary: Generate animated 2D character sprites laid out as a sprite sheet — walk cycle, attack, idle, death — wired into AnimatedSprite2D / SpriteFrames.
 use_when:
   - generating animated 2D character sprites laid out as a grid of frames — walk cycle, attack frames, idle bob, death sequence
-  - a 2D character needs animation frames — walk cycle, attack, idle, death — as one sheet for AnimatedSprite2D
+  - a 2D sprite needs its frames laid out as one grid image for AnimatedSprite2D or SpriteFrames
 facets:
   lifecycle:
     - build

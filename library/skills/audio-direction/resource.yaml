@@ -1,10 +1,10 @@
 id: skill/audio-direction
 kind: skill
-version: 1.0.3
+version: 1.0.4
 summary: Define the game's sonic identity — music style, instruments, SFX vocabulary, dynamic music plan — output as an audio bible at .summer/audio-bible.md.
 use_when:
   - defining the sonic identity — music style, instruments, SFX vocabulary, dynamic music plan
-  - starting audio work on a project with no audio bible yet, or music and SFX requests keep coming back inconsistent in style
+  - starting audio work with no audio bible, or soundtrack and SFX requests keep drifting in style
 facets:
   lifecycle:
     - build

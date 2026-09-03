@@ -1,10 +1,10 @@
 id: skill/gameskill
 kind: skill
-version: 1.0.1
+version: 1.0.2
 summary: Capture what a game-dev session just learned into Summer's canonical skill library so the next session and every Summer user start smarter.
 use_when:
   - finishing a game-development session with learnings worth capturing into Summer's canonical skill library
-  - a session discovered a technique, workaround, or convention that future sessions and other Summer users should reuse
+  - a session found a technique, workaround, or convention worth reusing across Summer sessions
 facets:
   lifecycle:
     - build

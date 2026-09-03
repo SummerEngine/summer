@@ -1,10 +1,10 @@
 id: skill/design-level
 kind: skill
-version: 1.0.2
+version: 1.0.3
 summary: Design a single level — layout, pacing, encounters, secrets, reward gating — outputs a level design doc and a node-tree skeleton for summer_create_scene.
 use_when:
   - designing a single level — layout, pacing, encounters, secrets, reward gating
-  - turning a level idea into a layout with a critical path, encounters, secrets, and pacing beats before building the scene
+  - turning a level idea into a layout with a critical path, encounters, secrets, and pacing beats
 facets:
   lifecycle:
     - build

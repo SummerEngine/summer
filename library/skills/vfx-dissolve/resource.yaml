@@ -1,10 +1,10 @@
 id: skill/vfx-dissolve
 kind: skill
-version: 1.0.2
+version: 1.0.3
 summary: Dissolve effect — a mesh disintegrating with a glowing burning edge, driven by a noise-threshold ShaderMaterial overriding the target's material.
 use_when:
   - authoring a dissolve effect — an object disintegrating with a glowing burning edge (disintegrate, burn away, vanish into ash)
-  - an enemy death, teleport, or despawn should burn the mesh away with a glowing edge instead of vanishing instantly
+  - a defeated unit, teleport exit, or removed object should burn away with a glowing edge instead of vanishing
 facets:
   lifecycle:
     - build

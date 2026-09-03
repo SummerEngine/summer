@@ -1,10 +1,10 @@
 id: skill/fps-controller
 kind: skill
-version: 1.0.1
+version: 1.0.2
 summary: Production-quality first-person controller — WASD, mouse look, jump, coyote time, jump buffering, air control, and external-velocity handling.
 use_when:
   - building an FPS, first-person movement, or a 3D character that walks, jumps, and reacts to external forces
-  - a first-person prototype needs solid movement feel — coyote time, jump buffering, air control — before weapons or enemies are added
+  - a first-person prototype needs solid movement feel — coyote time, jump buffering, air control
 facets:
   lifecycle:
     - build

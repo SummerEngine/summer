@@ -1,10 +1,10 @@
 id: skill/new-project
 kind: skill
-version: 1.0.3
+version: 1.0.4
 summary: Create a fresh blank Summer Engine project — asks one question (project name) and runs summer create empty.
 use_when:
   - the user wants a fresh blank Summer Engine project — from scratch, blank canvas
-  - starting a Summer Engine project with no template — only a name — ready for an empty main scene
+  - starting a Summer Engine project with no template, only a name, ready for an empty main scene
 do_not_use_when:
   - starting from an existing template — use browse-templates
 facets:

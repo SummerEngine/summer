@@ -1,10 +1,10 @@
 id: skill/make-game
 kind: skill
-version: 1.0.2
+version: 1.0.3
 summary: "Orchestration spine for 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship — delegates to specialist skills."
 use_when:
   - the user says 'make me a game', 'build me a game', 'I want to make a [genre] game', or 'let's build something' — running the full game-dev pipeline
-  - the user wants a complete playable game end to end and needs brainstorm, scaffold, mechanics, art, audio, and ship run in order
+  - the user wants a complete playable game end to end, from brainstorm through shipping
 facets:
   lifecycle:
     - build

@@ -1,6 +1,6 @@
 id: tool/screenshot
 kind: tool
-version: 1.0.3
+version: 1.0.4
 summary: Capture a frame from the editor viewport, an offscreen scene render, or the running game, returned as an actual image.
 use_when:
   - visually verifying layout, scale, framing, or runtime state
@@ -9,6 +9,7 @@ use_when:
 do_not_use_when:
   - verifying lighting, mood, or environment-dependent materials with a preset framing (iso/top/front/...) of the scene target - those replace the WorldEnvironment with a flat preview; use framing "camera" (the scene's own Camera3D + real environment) or the game target instead
   - capturing motion or a sequence of frames (use a RunVerification probe's save_frame)
+  - 'treating a uniformly black or grey "viewport" frame as evidence about lights, cameras, or content - the editor had not redrawn its viewport texture yet; the tool recaptures once and says so in the caption, otherwise recapture yourself'
 facets:
   lifecycle:
     - build

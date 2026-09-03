@@ -17,7 +17,7 @@
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (68 tools)
+## Tool surface (69 tools)
 
 ### Project files (3)
 
@@ -34,6 +34,7 @@
 | `summer_get_scene_tree` | Read current scene graph. Always do this before mutating. |
 | `summer_open_main_scene` | Open the project's main scene. |
 | `summer_open_scene` | Open a specific `.tscn`. |
+| `summer_open` | Navigate for the user: open a summerengine.com page (billing, my games, pricing, an MCP guide) or an editor surface (scene, node, script, file, a dock) by intent name, or `print` the URL / op. Destinations: the `product-map` reference; when to use it: the `navigate-summer` skill. |
 | `summer_create_scene` | Create a new scene. |
 | `summer_instantiate_scene` | Add an existing scene or 3D model as a child node. |
 | `summer_inspect_node` | Read a single node's properties. |

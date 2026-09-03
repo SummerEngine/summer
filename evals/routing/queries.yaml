@@ -272,3 +272,15 @@ queries:
     expected_gap: true
     closest: skill/fps-controller
     note: "No third-person controller/camera skill (fps-controller spec Case 3 already anticipates the handoff)."
+
+  # ── Navigation (summer open / product map / navigate-summer) ───────────
+  - query: "open my billing page"
+    expected: [tool/open]
+  - query: "show me my published games"
+    expected: [tool/open]
+  - query: "where do I change my plan?"
+    expected: [reference/product-map, tool/open]
+  - query: "open the scene I'm editing in the editor so I can look at it"
+    expected: [tool/open]
+  - query: "should I open the website for the user or just do it through the API"
+    expected: [skill/navigate-summer]

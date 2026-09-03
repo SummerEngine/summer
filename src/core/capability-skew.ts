@@ -39,6 +39,8 @@ export const CLI_KNOWN_OP_NEEDS: readonly string[] = [
   // Scene graph + properties
   "AddNode", "RemoveNode", "ReplaceNode", "SetProp", "SetResourceProperty",
   "ConnectSignal", "SelectNode", "OpenScene", "SaveScene", "InstantiateScene",
+  // Navigation (summer_open: core/capabilities/navigation/targets.ts)
+  "OpenResource", "FocusDock", "RevealInFileSystem",
   // Project + input
   "ProjectSetting", "InputMapAddAction", "InputMapBind",
   // Files (summer_write_file / summer_replace_text / summer_create_scene)

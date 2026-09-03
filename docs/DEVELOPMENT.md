@@ -56,7 +56,7 @@ scripts/
 └── validate-library/   # schema validation + capability lint
 ```
 
-The import direction is a tested invariant (`src/import-direction.test.ts`): `cli/` never imports `mcp/`; `bin/` composes the two. The *layering* is not yet the ideal the contract describes: 63 of the 68 tools are implemented in `src/mcp/tools/*.ts` with hand-written zod, and `core/capabilities/tool-dispatch.ts` mirrors them so `summer tool <slug>` reaches the same functions. What keeps the two faces honest is `src/mcp/tools/descriptor-parity.test.ts` (zod shape ↔ `library/tools/*/resource.yaml` `input_schema`) plus the validator's cross-checks; folding the mirror into one registration is the scheduled consolidation pass (CONTRACT §3, DECISIONS D13).
+The import direction is a tested invariant (`src/import-direction.test.ts`): `cli/` never imports `mcp/`; `bin/` composes the two. The *layering* is not yet the ideal the contract describes: 64 of the 69 tools are implemented in `src/mcp/tools/*.ts` with hand-written zod, and `core/capabilities/tool-dispatch.ts` mirrors them so `summer tool <slug>` reaches the same functions. What keeps the two faces honest is `src/mcp/tools/descriptor-parity.test.ts` (zod shape ↔ `library/tools/*/resource.yaml` `input_schema`) plus the validator's cross-checks; folding the mirror into one registration is the scheduled consolidation pass (CONTRACT §3, DECISIONS D13).
 
 ---
 
@@ -89,7 +89,7 @@ Two tests need a sibling checkout to do real work and **skip loudly** otherwise:
 | `summer logout` | Clear stored tokens (says so when `SUMMER_TOKEN` is in effect instead). |
 | `summer status` | Engine state, port, auth. |
 | `summer run [path] [--no-project]` | Launch the engine with a project; bare editor needs `--no-project`. |
-| `summer open <path>` | Open a project in a running engine. |
+| `summer open <path \| target> [--print] [--list] [--web \| --editor] [--json] [--path <res>] [--node <p>] [--scene <res>] [--param k=v]` | A project directory (contains `project.godot`) opens in the engine as before. Anything else is a navigation target — a product-map id (`billing`, `my-games`, `mcp-guide`, `scene`, `inspector`), an intent phrase, a `res://` path, or a summerengine.com path — opened in the browser (through `/login?returnUrl=` when needed) or sent to the running editor; `--print` resolves without opening. Same behavior as the `summer_open` MCP tool and `summer tool open` (`docs/design/NAVIGATION-DESIGN.md`). |
 | `summer create <template> [name] [--keep-git]` | Scaffold from a pinned (or built-in) template; writes `.summer/project.json`. |
 | `summer list templates \| projects` | Browse the template registry / local projects. |
 | `summer memory [show <file>]` | Inspect `.summer/` project memory. |

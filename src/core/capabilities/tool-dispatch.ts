@@ -42,6 +42,8 @@ import {
   buildRunSceneScriptOp,
 } from "./scene-script.js";
 import { getAuthToken } from "../auth.js";
+import open from "open";
+import { openArgsSchema, runOpen } from "./navigation/open.js";
 import { shapeEngineLogResponse } from "../log-filters.js";
 import {
   listCreatorReleases,
@@ -917,6 +919,26 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       boundProjectIdHash,
       ...(rebindError ? { rebindError } : {}),
     };
+  }),
+  entry("summer_open", "Open a summerengine.com page or an editor surface by intent name, or print the URL/op", false, async (args, ctx) => {
+    // Same behavior as the MCP face (navigation-tools.ts) and the dedicated
+    // `summer open <target>` command: core/capabilities/navigation/open.ts.
+    const parsed = openArgsSchema.safeParse(args);
+    if (!parsed.success) {
+      throw new ToolDispatchError(
+        `Invalid arguments for summer_open: ${parsed.error.issues.map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`).join("; ")}`
+      );
+    }
+    const result = await runOpen(parsed.data, {
+      engine: () => ctx.engine(),
+      openUrl: (url) => open(url),
+      isLoggedIn: async () => (await getAuthToken()) !== null,
+      gatewayUrl: resolveGatewayUrl,
+    });
+    if (!result.ok) {
+      throw new ToolResultError(result as unknown as Record<string, unknown>, result.hint ?? result.action);
+    }
+    return result;
   }),
   entry("summer_open_main_scene", "Open the project's configured main scene", true, async (_args, ctx) => {
     const client = await ctx.engine();

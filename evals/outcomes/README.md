@@ -227,29 +227,33 @@ evidence source and every predicate family exercised at least once.
 ### Scoreboard on the baseline build (engine 0.5.65, toolkit 2.8.2, xvfb + llvmpipe, 4 vCPU)
 
 ```
-| run                                         | kind   | verdict | failed required      | expected to fail     | exact | divergence |    s |
-| T1.1-courtyard                              | golden | PASS    | —                    | —                    | —     | 0          | 12.6 |
-| T1.1-courtyard.drop-light                   | mutant | FAIL    | light-present        | light-present        | yes   | 0          | 10.9 |
-| T1.3-edit-in-place                          | golden | PASS    | —                    | —                    | —     | 0          |  9.6 |
-| T1.3-edit-in-place.skip-save                | mutant | FAIL    | wall-saved           | wall-saved           | yes   | 0          |  8.8 |
-| T1.4-layout-from-spec                       | golden | PASS    | —                    | —                    | —     | 0          |  7.9 |
-| T1.4-layout-from-spec.misplace-cube         | mutant | FAIL    | gold-layout          | gold-layout          | yes   | 0          |  8.4 |
-| T3.1-three-platforms                        | golden | PASS    | —                    | —                    | —     | 0          | 12.5 |
-| T3.1-three-platforms.platform-no-collision  | mutant | FAIL    | platforms-collision  | platforms-collision  | yes   | 0          | 12.9 |
-| T4.1-health-bar                             | golden | PASS    | —                    | —                    | —     | 0          | 10.2 |
-| T4.1-health-bar.label-unanchored            | mutant | FAIL    | score-anchored-right | score-anchored-right | yes   | 0          | 10.8 |
-| T5.1-idle-walk                              | golden | PASS    | —                    | —                    | —     | 0          | 13.7 |
-| T5.1-idle-walk.wrong-clip                   | mutant | FAIL    | walk-while-held      | walk-while-held      | yes   | 0          | 13.4 |
-| T6.1-hills                                  | golden | PASS    | —                    | —                    | —     | 0          | 18.2 |
-| T7.1-flyover                                | golden | PASS    | —                    | —                    | —     | 0          | 40.6 |
+| run                                         | kind   | verdict | failed required      | expected to fail     | exact | divergence | retried |    s |
+| T1.1-courtyard                              | golden | PASS    | —                    | —                    | —     | 0          | —       | 10.5 |
+| T1.1-courtyard.drop-light                   | mutant | FAIL    | light-present        | light-present        | yes   | 0          | —       |  9.8 |
+| T1.3-edit-in-place                          | golden | PASS    | —                    | —                    | —     | 0          | —       |  9.1 |
+| T1.3-edit-in-place.skip-save                | mutant | FAIL    | wall-saved           | wall-saved           | yes   | 0          | —       |  9.6 |
+| T1.4-layout-from-spec                       | golden | PASS    | —                    | —                    | —     | 0          | —       |  9.1 |
+| T1.4-layout-from-spec.misplace-cube         | mutant | FAIL    | gold-layout          | gold-layout          | yes   | 0          | —       |  9.1 |
+| T3.1-three-platforms                        | golden | PASS    | —                    | —                    | —     | 0          | —       | 13.5 |
+| T3.1-three-platforms.platform-no-collision  | mutant | FAIL    | platforms-collision  | platforms-collision  | yes   | 0          | —       | 13.4 |
+| T4.1-health-bar                             | golden | PASS    | —                    | —                    | —     | 0          | —       | 11.4 |
+| T4.1-health-bar.label-unanchored            | mutant | FAIL    | score-anchored-right | score-anchored-right | yes   | 0          | —       | 11.0 |
+| T5.1-idle-walk                              | golden | PASS    | —                    | —                    | —     | 0          | —       | 14.0 |
+| T5.1-idle-walk.wrong-clip                   | mutant | FAIL    | walk-while-held      | walk-while-held      | yes   | 0          | —       | 15.1 |
+| T6.1-hills                                  | golden | PASS    | —                    | —                    | —     | 0          | —       | 11.5 |
+| T7.1-flyover                                | golden | PASS    | —                    | —                    | —     | 0          | —       | 31.6 |
 
-goldens 8/8 pass · mutants 6/6 fail exactly their intended predicate · refused 0 · wall clock 190.5 s
+goldens 8/8 pass · mutants 6/6 fail exactly their intended predicate · refused 0 · wall clock 178.7 s
 ```
 
-Two consecutive full runs produce byte-identical `assertions.json` for all 14
-runs. `--simulate-missing-ops GetWorldSnapshot` against the same build refuses
-T1.1 in 2.7 s with `evidence_missing:engine_lacks_op — missing
-GetWorldSnapshot` and exits 1, replaying nothing.
+The `--update-baseline` run above and the `--check` run that followed it
+(172.8 s, `PASS — no regression vs committed baseline`) produced byte-identical
+`assertions.json` for all 14 runs, with no retry needed in either. T7.1 is the
+slow one on purpose: its probe waits 6.2 scene seconds at a fixed 60 fps, about
+370 llvmpipe frames (~15 s wall). `--simulate-missing-ops GetWorldSnapshot`
+against the same build refuses T1.1 in 2.7 s with
+`evidence_missing:engine_lacks_op — missing GetWorldSnapshot`, replays nothing
+and exits 1.
 
 ## Adding a task
 

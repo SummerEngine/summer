@@ -43,6 +43,7 @@ Snapshot ids: the engine retains the last 8 per session; `unknown_snapshot` mean
 | Is the composition/scale of a scene file right? | `target:"scene"` (+ `scenePath`, preset framing) |
 | Is the **lighting / mood / environment** right? | `target:"scene" framing:"camera"` — renders through the scene's OWN camera with its REAL WorldEnvironment. Preset framings substitute a flat environment and CANNOT answer this. |
 | What does the running game show? | `target:"game"` (`summer_play` first; needs the desktop bridge) |
+| Is a **2D scene or UI layout** right? | `target:"scene"` on a 2D scene synthesizes a `Camera2D` and auto-fits the `CanvasItem` bounds (3D presets and `framing:"camera"` do not apply); `nodePath` frames one node, `size` sets the resolution anchors resolve against. A `CanvasLayer` HUD or anything input-driven: `summer_play` + `target:"game"`. |
 
 Read the confession warnings in every capture (no camera, no light, synthetic camera, project mismatch, "engine predates camera framing"). They are part of the result.
 

@@ -1,6 +1,6 @@
 id: tool/run-editor-script
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Run an EditorScript `func _run():` in a fresh headless child editor against the on-disk project — the cold path for batch and project-wide jobs.
 use_when:
   - re-saving many scenes, sweeping resources, mass import fixes, generating .tres assets, long bakes that should not block the live editor
@@ -9,7 +9,7 @@ use_when:
 do_not_use_when:
   - work on the currently OPEN scene or anything relying on unsaved live edits — summer_run_script
   - anything needing pixels — the headless child has no renderer
-  - "requires an engine build with RunEditorScript (engine PR #156); on current shipped engines this returns engine_lacks_op"
+  - "you need checkpoint/rollback or the scene-scripting ctx helpers — that is summer_run_script (RunSceneScript, engine PR #156, preview); RunEditorScript itself ships in current engines"
 facets:
   lifecycle:
     - build
@@ -28,7 +28,7 @@ related:
     - skill/headless-scripting
 source: official
 license: MIT
-status: preview
+status: stable
 aliases:
   - summer_run_editor_script
 implementation:

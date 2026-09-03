@@ -5661,8 +5661,8 @@
     {
       "id": "tool/run-editor-script",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "7643256a4b951638d9ab69e684afa7ce9365f486e4d0a8d8ec36d67f65c7d3a2",
+      "version": "1.0.2",
+      "content_hash": "ae134b069cc820ee17f1393c35d4e295174ad3c3b154be89c3eb9a793a69b377",
       "summary": "Run an EditorScript `func _run():` in a fresh headless child editor against the on-disk project — the cold path for batch and project-wide jobs.",
       "use_when": [
         "re-saving many scenes, sweeping resources, mass import fixes, generating .tres assets, long bakes that should not block the live editor",
@@ -5693,7 +5693,7 @@
           "skill/headless-scripting"
         ]
       },
-      "status": "preview",
+      "status": "stable",
       "mcp_tool_name": "summer_run_editor_script",
       "remote": false,
       "authority": {

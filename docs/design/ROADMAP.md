@@ -57,6 +57,12 @@ Waves; each gated by tsc + vitest + validate-library:
 - Process rules adopted (DECISIONS D14): single writer per surface, `git commit --only -- <paths>` in shared worktrees, review agents read-only and never run side-effecting product commands.
 - NEXT for the index: close the tuning/held-out gap with content (use_when phrasing) — held-out is the number that counts. NEXT for tools: merge engine PRs #155/#156, then flip the 14 preview resources to stable and run the live-engine e2e step.
 
+
+### Scripting & headless — honest state (2026-09-03)
+- **Shipped today (engine 0.5.65):** `RunEditorScript` (editor-side GDScript via `summer_run_editor_script` — was mislabelled preview, now stable), `RunVerification` (runtime probe scripts: report/save_frame/press/key/finish), `RunCommand`. Agents CAN script the editor today; the toolkit exposes it on both faces.
+- **Not shipped:** `RunSceneScript` (compile-first, checkpoint/rollback, ctx helpers — the Blender-`bpy`-class door) + world snapshot/diff + runtime tree reads = engine PR #156; headless worker (`--summer-worker`, loopback protocol, per-project routing) = PR #155; spatial ops = #147/#158. Toolkit halves are wired and gated; the engine halves are unbuilt. This is the single largest gap between "what the branch contains" and "what a user can do".
+- **Python:** there is no Python scripting of the engine. The "python script" in the headless work is `tests/1summer_engine/headless_worker_smoke.py` — the acceptance test for the worker, engine-side. DECISION for Mathias: if Python control matters (CI, evals, data scientists), add a thin Python client over the local HTTP API / MCP (`pip install summer-engine` shape) — a small toolkit addition, no engine change. Agents themselves use MCP/CLI; Python is for scripts and pipelines.
+
 ## 3. Next (ordered fast-follows, design already locked)
 
 1. **Remote stateless MCP (MCP v2, spec 2026-07-28).** Serve every `mcp.remote: true` tool (library search, generation, templates, feedback — engine-free) at `summerengine.com/mcp` as stateless Streamable HTTP on Vercel. Zero-install funnel. Depends on: registry compiler. Bonus: makes the already-published blog config (`"url": "https://www.summerengine.com/mcp"`) true instead of wrong.

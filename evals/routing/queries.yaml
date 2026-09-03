@@ -214,6 +214,10 @@ queries:
     expected: [tool/import-from-url]
   - query: "change the main scene in project settings"
     expected: [tool/project-setting]
+  - query: "open project settings in the editor"
+    expected: [tool/ui-actions]
+  - query: "dismiss the dialog that's blocking the editor"
+    expected: [tool/ui-activate, skill/driving-the-editor-ui]
 
   # ── Known gaps (expected_gap: true — the authoring backlog) ────────────
   - query: "add enemy pathfinding"

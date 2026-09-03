@@ -36,6 +36,21 @@ import { lookupApiDocs } from "./api-docs.js";
 import { z, type ZodTypeAny } from "zod";
 import { ImportHdriError, importHdriArgsSchema, importPolyHavenHdri } from "./hdri-import.js";
 import {
+  buildUiActionsOp,
+  buildUiActivateOp,
+  buildUiScreenshotOp,
+  buildUiTreeOp,
+  executeUiOp,
+  uiActionsArgsSchema,
+  uiActivateArgsSchema,
+  uiScreenshotArgsSchema,
+  uiScreenshotCaption,
+  uiScreenshotImage,
+  uiTreeArgsSchema,
+  withUiFailureDetails,
+  type BuiltUiOp,
+} from "./ui-control.js";
+import {
   RUN_EDITOR_SCRIPT_FALLBACK,
   RUN_SCRIPT_FALLBACK,
   buildRunEditorScriptOp,
@@ -153,6 +168,21 @@ function requireSupportedOp<T>(result: T, op: string, fallback: string): T {
 /** Pre-flight refusal as a structured result (nothing was sent). */
 function refuseMissingOp(missing: MissingOpResult): never {
   throw new ToolResultError({ ...missing }, missing.error);
+}
+
+/** Editor UI control (wave L): pre-flight the op kind the arguments resolved
+ *  to (summer_ui_actions is UiListActions OR UiInvoke, summer_ui_tree is
+ *  UiTree OR UiDialogs, ...), send it — mutating kinds identity-bound — and
+ *  render the engine's failure details the same way the MCP face does. */
+async function dispatchUiOp(ctx: ToolDispatchContext, built: BuiltUiOp): Promise<unknown> {
+  const client = await ctx.engine();
+  const missing = missingEngineOpResult(client, built.kind, built.fallback);
+  if (missing) refuseMissingOp(missing);
+  return requireSupportedOp(
+    withUiFailureDetails(await executeUiOp(client, built)),
+    built.kind,
+    built.fallback
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -1182,6 +1212,43 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   entry("summer_api_docs", "Offline engine class-reference lookup (properties, methods, signals, constants)", false, async (args) =>
     lookupApiDocs(str(args, "class_name"), optStr(args, "member"))
   ),
+
+  // --- editor UI control (wave L) ---
+  entry("summer_ui_actions", "List the editor's named actions (mode list) or invoke one by name exactly as its shortcut would (mode invoke)", true, async (args, ctx) => {
+    // Validate with the SAME zod contract the MCP face registers, before any
+    // engine connection — a malformed mode/action_name never needs an editor.
+    const parsed = parseToolArgs(uiActionsArgsSchema, args, "ui-actions");
+    return dispatchUiOp(ctx, buildUiActionsOp(parsed));
+  }),
+  entry("summer_ui_tree", "Structured Control tree of the live editor UI, or every visible dialog with its blocking flag (root dialogs)", true, async (args, ctx) => {
+    const parsed = parseToolArgs(uiTreeArgsSchema, args, "ui-tree");
+    return dispatchUiOp(ctx, buildUiTreeOp(parsed));
+  }),
+  entry("summer_ui_activate", "Activate one editor control by tree path (press/toggle/focus/select_tab/set_text/set_value) or dismiss a dialog", true, async (args, ctx) => {
+    const parsed = parseToolArgs(uiActivateArgsSchema, args, "ui-activate");
+    return dispatchUiOp(ctx, buildUiActivateOp(parsed));
+  }),
+  entry("summer_ui_screenshot", "PNG of the editor window or one dock/dialog/control, saved to a temp file (pixels-last fallback)", true, async (args, ctx) => {
+    const parsed = parseToolArgs(uiScreenshotArgsSchema, args, "ui-screenshot");
+    const result = await dispatchUiOp(ctx, buildUiScreenshotOp(parsed));
+    const image = uiScreenshotImage(result);
+    if (!image) {
+      // A "success" with no bytes: hand the receipt back rather than a broken
+      // image; the caller reads the UI structurally with ui-tree instead.
+      return {
+        ...(result as DispatchArgs),
+        note: "UiScreenshot succeeded but returned no image data. Retry once; if it persists, read the UI structurally with ui-tree.",
+      };
+    }
+    // Same temp-file convention as `summer tool screenshot`: the shell face
+    // cannot show an image, so the PNG lands next to the other captures and
+    // the receipt names the path. Never under the project or ~/.summer.
+    const dir = join(tmpdir(), "summer-cli");
+    await mkdir(dir, { recursive: true });
+    const localPath = join(dir, `ui-screenshot-${Date.now()}.png`);
+    await writeFile(localPath, Buffer.from(image.base64, "base64"));
+    return { ...image.receipt, local_path: localPath, caption: uiScreenshotCaption(image) };
+  }),
 
   // --- perception ---
   entry("summer_world_snapshot", "Structured snapshot of the edited scene (transforms, AABBs, fingerprints, counts)", true, async (args, ctx) => {

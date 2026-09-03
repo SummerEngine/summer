@@ -1,0 +1,77 @@
+id: tool/ui-actions
+kind: tool
+version: 1.0.0
+summary: List the editor's named actions or invoke one by name exactly as its menu item / shortcut would — open Project Settings, switch screens, toggle panels.
+use_when:
+  - '"open project settings in the editor" / "open the Import dock" / "toggle the animation bottom panel" — an editor-workflow step a human would do with the mouse, driven by its stable action name'
+  - finding the exact action name (mode list, filter) before invoking it, and reading which names are denied
+  - a step has no dedicated tool (summer_open_scene, summer_select_node, summer_save_scene) but the editor has a menu item or shortcut for it
+do_not_use_when:
+  - scene work — adding, moving, retuning, or reading nodes goes through summer_run_script, the scene tools, summer_world_snapshot and summer_screenshot, never through editor clicks
+  - quitting the editor, quitting to the project list, reloading the project, or deleting without confirmation — denied by the engine (denied_action); they end the session
+  - a control has no named action — read summer_ui_tree and activate it by path with summer_ui_activate
+  - "requires an engine build with UiListActions / UiInvoke (engine PR #156 follow-up, wave L); on current shipped engines this returns engine_lacks_op"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - editor
+    - agent-workflow
+  modalities:
+    - project
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/ui-tree
+    - tool/ui-activate
+    - tool/ui-screenshot
+    - tool/project-setting
+    - tool/open-scene
+    - tool/select-node
+    - tool/get-project-context
+  skills:
+    - skill/driving-the-editor-ui
+    - skill/verification-before-completion
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_ui_actions
+implementation:
+  module: src/mcp/tools/ui-tools.ts
+  export: registerUiTools
+surfaces:
+  mcp:
+    tool_name: summer_ui_actions
+    remote: false
+input_schema:
+  type: object
+  properties:
+    mode:
+      type: string
+      enum:
+        - list
+        - invoke
+      description: "'list' enumerates the editor's named actions (UiListActions, a read). 'invoke' runs ONE named action exactly as its menu item / shortcut would (UiInvoke, mutates editor state)."
+    filter:
+      type: string
+      description: mode 'list' only. Case-insensitive substring over action name and label, e.g. 'project_settings', 'save', 'spatial_editor', 'bottom_panel'.
+    limit:
+      type: integer
+      minimum: 1
+      description: mode 'list' only. Maximum actions returned (engine default 200, max 2000). The result carries total + truncated — never assume a capped list is complete.
+    action_name:
+      type: string
+      description: mode 'invoke' only (required there). The exact action name from a 'list' result — the stable shortcut path such as 'editor/project_settings', 'editor/save_scene', 'spatial_editor/focus_selection'. Palette-only commands are accepted too.
+  required:
+    - mode
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - read-back

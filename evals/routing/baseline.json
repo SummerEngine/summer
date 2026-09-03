@@ -1,21 +1,21 @@
 {
   "generated_at": "2026-09-03",
   "corpus_source": "registry/generated/index.json",
-  "corpus_size": 186,
-  "query_count": 83,
+  "corpus_size": 191,
+  "query_count": 85,
   "gap_count": 13,
   "mean_recall_at_5": 1,
-  "mean_recall_at_1": 0.8313,
-  "mrr_at_5": 0.9074,
+  "mean_recall_at_1": 0.8294,
+  "mrr_at_5": 0.909,
   "per_kind": {
     "skill": {
-      "expected": 75,
-      "hit": 75,
+      "expected": 76,
+      "hit": 76,
       "recall_at_5": 1
     },
     "tool": {
-      "expected": 12,
-      "hit": 12,
+      "expected": 14,
+      "hit": 14,
       "recall_at_5": 1
     }
   },
@@ -103,6 +103,8 @@
     "show me the errors in the console": 1,
     "does this script have any compile errors": 1,
     "import this glb from a url into my project": 1,
-    "change the main scene in project settings": 1
+    "change the main scene in project settings": 1,
+    "open project settings in the editor": 1,
+    "dismiss the dialog that's blocking the editor": 1
   }
 }

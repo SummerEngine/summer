@@ -1,10 +1,10 @@
 id: tool/set-prop
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Set a node property using Godot string syntax for vectors, colors, transforms, and resource class names.
 use_when:
   - configuring nodes after adding them
-  - '"move the light up" / "make the sprite red" / "rotate the camera 45 degrees"'
+  - '"move the light up" / "put the player at the spawn point" / "make the sprite red" / "rotate the camera 45 degrees"'
   - setting one node's position, rotation, scale, colour, speed, collision layer, or visible flag
 do_not_use_when:
   - a property that lives on a mesh, material, or shape resource — summer_set_resource_property

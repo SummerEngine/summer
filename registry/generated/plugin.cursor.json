@@ -4,7 +4,7 @@
   "name": "summer",
   "displayName": "Summer",
   "version": "2.8.2",
-  "description": "Agent tooling for Summer Engine: game-dev skills, lifecycle hooks, and a 68-tool MCP bridge to the local desktop app.",
+  "description": "Agent tooling for Summer Engine: game-dev skills, lifecycle hooks, and a 72-tool MCP bridge to the local desktop app.",
   "author": {
     "name": "Summer Engine",
     "email": "founders@summerengine.com"
@@ -60,6 +60,7 @@
     "./library/skills/design-npc/",
     "./library/skills/diagnosing-perf-regressions/",
     "./library/skills/dispatching-parallel-agents/",
+    "./library/skills/driving-the-editor-ui/",
     "./library/skills/environment-kit/",
     "./library/skills/export-and-ship/",
     "./library/skills/facial-and-lipsync/",

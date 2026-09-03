@@ -56,6 +56,11 @@ export const CLI_KNOWN_OP_NEEDS: readonly string[] = [
   // Spatial / world building
   "TestPlacement3D", "SnapToSurface", "AlignDistribute3D", "NavigationProbe3D",
   "Starcast3D",
+  // Editor UI control (wave L: summer_ui_actions / summer_ui_tree /
+  // summer_ui_activate / summer_ui_screenshot). All synchronous and
+  // batchable — none joins the single-only set.
+  "UiListActions", "UiInvoke", "UiTree", "UiActivate", "UiScreenshot",
+  "UiDialogs", "UiDismissDialog",
 ];
 
 /** The `capabilities` block of /api/health, shape-checked. Every field is

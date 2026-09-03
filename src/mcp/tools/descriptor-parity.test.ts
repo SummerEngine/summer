@@ -47,6 +47,7 @@ import { registerFeedbackTools } from "./feedback-tools.js";
 import { registerScriptTools } from "./script-tools.js";
 import { registerPerceptionTools } from "./perception-tools.js";
 import { registerSpatialTools } from "./spatial-tools.js";
+import { registerFabricateTools } from "./fabricate-tools.js";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const toolsDir = join(packageRoot, "library", "tools");
@@ -268,6 +269,7 @@ function collectRegisteredTools(): RegisteredTool[] {
     registerScriptTools,
     registerPerceptionTools,
     registerSpatialTools,
+    registerFabricateTools,
   ]) {
     register(fakeServer);
   }

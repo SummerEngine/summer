@@ -35,6 +35,7 @@ import { extractOpError, withOldEngineHint } from "./engine-receipt.js";
 import { lookupApiDocs } from "./api-docs.js";
 import { z, type ZodTypeAny } from "zod";
 import { ImportHdriError, importHdriArgsSchema, importPolyHavenHdri } from "./hdri-import.js";
+import { FABRICATE_FALLBACK, buildFabricateMeshOp, fabricateArgsSchema } from "./fabricate-mesh.js";
 import {
   RUN_EDITOR_SCRIPT_FALLBACK,
   RUN_SCRIPT_FALLBACK,
@@ -1182,6 +1183,22 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   entry("summer_api_docs", "Offline engine class-reference lookup (properties, methods, signals, constants)", false, async (args) =>
     lookupApiDocs(str(args, "class_name"), optStr(args, "member"))
   ),
+
+  // --- mesh fabrication ---
+  entry("summer_fabricate_3d", "Fabricate a mesh with a bpy script in the user's own Blender (headless, supervised), import the .glb, optionally instantiate it", true, async (args, ctx) => {
+    // Validate with the SAME zod contract the MCP face registers, before any
+    // engine connection — a bad destination never needs a running editor.
+    const parsed = parseToolArgs(fabricateArgsSchema, args, "fabricate-3d");
+    const client = await ctx.engine();
+    const missing = missingEngineOpResult(client, "FabricateMesh", FABRICATE_FALLBACK);
+    if (missing) refuseMissingOp(missing);
+    const { op, timeoutMs } = buildFabricateMeshOp(parsed);
+    return requireSupportedOp(
+      await client.executeIdentityBoundOps([op], undefined, timeoutMs),
+      "FabricateMesh",
+      FABRICATE_FALLBACK
+    );
+  }),
 
   // --- perception ---
   entry("summer_world_snapshot", "Structured snapshot of the edited scene (transforms, AABBs, fingerprints, counts)", true, async (args, ctx) => {

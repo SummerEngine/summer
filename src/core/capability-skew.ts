@@ -56,6 +56,8 @@ export const CLI_KNOWN_OP_NEEDS: readonly string[] = [
   // Spatial / world building
   "TestPlacement3D", "SnapToSurface", "AlignDistribute3D", "NavigationProbe3D",
   "Starcast3D",
+  // Mesh fabrication (summer_fabricate_3d — the user's own Blender, engine-supervised)
+  "FabricateMesh",
 ];
 
 /** The `capabilities` block of /api/health, shape-checked. Every field is
@@ -231,6 +233,9 @@ export const FALLBACK_SINGLE_ONLY_OPS: ReadonlySet<string> = new Set([
   "GetRuntimeSceneTree", "GetRuntimeNode",
   "RunCommand", "RunVerification", "RunEditorScript", "RunSceneScript",
   "ImportFromUrl", "ImportFromUrlBatch", "ExtractZipFromUrl",
+  // Wave K: a headless Blender child on the same async single-op lane as
+  // RunEditorScript (local_api_server.cpp SUMMER_SINGLE_ASYNC_OPS).
+  "FabricateMesh",
 ]);
 
 /** The subset of EngineApiClient the capability readers use. Structural so

@@ -1,25 +1,25 @@
 {
   "generated_at": "2026-09-03",
   "corpus_source": "registry/generated/index.json",
-  "corpus_size": 186,
-  "query_count": 83,
+  "corpus_size": 188,
+  "query_count": 85,
   "gap_count": 13,
   "mean_recall_at_5": 1,
-  "mean_recall_at_1": 0.8313,
-  "mrr_at_5": 0.9074,
+  "mean_recall_at_1": 0.8235,
+  "mrr_at_5": 0.9047,
   "per_kind": {
     "skill": {
-      "expected": 75,
-      "hit": 75,
+      "expected": 76,
+      "hit": 76,
       "recall_at_5": 1
     },
     "tool": {
-      "expected": 12,
-      "hit": 12,
+      "expected": 13,
+      "hit": 13,
       "recall_at_5": 1
     }
   },
-  "hijacked_queries": 12,
+  "hijacked_queries": 13,
   "per_query": {
     "draw a portrait of my wizard for the dialogue box": 1,
     "show me a few different art styles for the main character before we commit": 1,
@@ -37,6 +37,7 @@
     "build a modular dungeon kit with walls and corridors that snap together": 1,
     "make a drivable car": 1,
     "what's the right pipeline for all the assets my game needs": 1,
+    "write a Blender script that fabricates a set of pipe pieces with exact dimensions and bevels": 1,
     "put a walk animation on my character": 1,
     "blend idle walk and run based on movement speed": 1,
     "make the NPC's mouth move when the voice line plays": 1,
@@ -103,6 +104,7 @@
     "show me the errors in the console": 1,
     "does this script have any compile errors": 1,
     "import this glb from a url into my project": 1,
+    "fabricate this mesh from my bpy script and import the fabricated glb into the scene": 1,
     "change the main scene in project settings": 1
   }
 }

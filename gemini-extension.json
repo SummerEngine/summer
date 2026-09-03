@@ -51,6 +51,7 @@
     "./library/skills/dispatching-parallel-agents/",
     "./library/skills/environment-kit/",
     "./library/skills/export-and-ship/",
+    "./library/skills/fabricating-assets/",
     "./library/skills/facial-and-lipsync/",
     "./library/skills/fps-controller/",
     "./library/skills/game-feel/",

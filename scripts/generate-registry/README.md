@@ -18,6 +18,10 @@ node scripts/generate-registry/cli.ts --check
 
 # Generate without touching the root manifests
 node scripts/generate-registry/cli.ts --no-apply
+
+# ALSO write the optional embeddings sidecar for semantic library search
+# (needs a Summer login or SUMMER_EMBED_URL; never run in CI — see below)
+node scripts/generate-registry/cli.ts --embed
 ```
 
 The CLI refuses to generate from an empty or missing `library/` unless
@@ -42,6 +46,7 @@ Requires Node >= 22.18 (native TypeScript type stripping), same as
 | `plugin.cursor.json` | -> `.cursor-plugin/plugin.json` |
 | `plugin.factory.json` | -> `.factory-plugin/plugin.json` |
 | `gemini-extension.json` | -> `gemini-extension.json` |
+| `embeddings.json` | OPTIONAL sidecar written only by `--embed`: one vector per resource for semantic library search (`summer_search_library`). Not part of parity; see below |
 
 Apply targets live in `targets.ts` (source of truth, one key per supported
 client) and are mirrored by the committed
@@ -85,6 +90,43 @@ and evidence attribute to `id@content_hash` (CONTRACT.md §4):
 
 Reference implementation: `computeContentHash()` in `index.ts`.
 
+## Embeddings sidecar (optional, `--embed`)
+
+`summer_search_library` is lexical by default (BM25, `src/core/registry-search.ts`).
+When `registry/generated/embeddings.json` ships with the package, the runtime also
+embeds the query and fuses the two rankings (reciprocal rank fusion, k = 60;
+`src/core/library-search.ts`). `--embed` is the step that writes that file
+(`embed.ts`):
+
+- **Text per resource:** `summary` + `use_when` lines + facet tokens
+  (`buildEmbeddingText` in `src/core/embeddings.ts` — the same function at
+  compile time and runtime). Bodies are never embedded.
+- **Provider:** the same protocol runtime search uses — `POST { text }` ->
+  `{ vector, model? }` at `SUMMER_EMBED_URL`, else `<gateway>/api/mcp/embed`
+  (gateway = `SUMMER_GATEWAY_URL`, else `~/.summer/config.json` `gateway.url`,
+  else production). The gateway endpoint needs the Summer account token from
+  the existing auth store (`SUMMER_TOKEN`, else `~/.summer/auth-token`); a
+  custom `SUMMER_EMBED_URL` may not. 15 s per request, 4 in flight.
+- **Cache by `content_hash`:** only resources whose hash changed since the
+  committed sidecar are re-embedded; unchanged vectors are kept byte-for-byte;
+  ids that left the index are pruned. A provider reporting a different `model`
+  than the sidecar recomputes everything; a different vector length aborts with
+  the fix (delete the file, re-run).
+- **File:** `{ _generated, model, dims, encoding: "base64-float32", entries: { "<id>": { content_hash, vector } } }`,
+  entries sorted by id. Vectors are little-endian float32, base64-encoded:
+  about 2.1 KB per 384-dim entry — 0.43 MB for 200 entries, ~21 MB for 10 000
+  (measured; a rounded JSON number array is 3.3x larger, full precision 5.3x).
+  Int8 quantization (~0.6 KB per entry) is the lever if the library reaches
+  thousands of entries.
+- **`--check` never fails on it.** Vectors are nondeterministic across
+  providers and the file is optional, so parity ignores its contents. `--check`
+  only WARNs (exit 0) when an entry's `content_hash` no longer matches the
+  index, when an index entry has no vector, or when a vector's id left the
+  index (`checkEmbeddings`). A missing file is fine. CI does not embed.
+- **Runtime degradation:** no file, no network, provider error, or
+  `SUMMER_EMBED_URL=off` -> lexical only, `matched_by: ["lexical"]`, never an
+  error. Stale vectors are still used.
+
 ## Count-claims guard (part of `--check`)
 
 Scans the docs that actually carry numeric claims — `README.md`, `AGENTS.md`,
@@ -109,4 +151,7 @@ Limitations (simple, honest regex — by design):
 `fixtures/` — they never depend on the real `library/`):
 determinism, alias-collision failure, empty-library refusal, check-mode drift
 detection (all three drift classes), count-claims guard, manifest golden
-shapes, targets/manifest-target.json parity.
+shapes, targets/manifest-target.json parity. `embeddings.test.ts` covers the
+sidecar with a mocked provider: incremental recompute by `content_hash`,
+pruning, model change, dims mismatch, the `--check` warnings, and endpoint /
+token resolution.

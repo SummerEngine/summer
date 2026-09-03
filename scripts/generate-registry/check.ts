@@ -8,6 +8,10 @@
  *  3. numeric "N tools"/"N skills" claims in the scanned docs (see
  *     count-claims.ts for the exact scope) vs counts.json.
  *
+ * The optional embeddings sidecar (registry/generated/embeddings.json) is
+ * NOT parity-checked — vectors are nondeterministic across providers and CI
+ * never embeds. It only yields warnings (stale/missing/orphan vectors).
+ *
  * Returns a precise drift summary; the CLI exits 1 on any drift.
  */
 
@@ -16,10 +20,14 @@ import path from "node:path";
 import { generateRegistry, type GenerateOptions } from "./index.ts";
 import { allTargets } from "./targets.ts";
 import { checkCountClaims } from "./count-claims.ts";
+import { EMBEDDINGS_FILE } from "../../src/core/embeddings.ts";
+import { checkEmbeddings } from "./embed.ts";
 
 export interface CheckResult {
   ok: boolean;
   drift: string[];
+  /** Non-failing notes — today only the optional embeddings sidecar (embed.ts). */
+  warnings: string[];
 }
 
 function listFiles(dir: string): string[] {
@@ -62,6 +70,7 @@ export function checkRegistry(rootDir: string, options?: GenerateOptions): Check
     }
   }
   for (const name of committed) {
+    if (name === EMBEDDINGS_FILE) continue; // optional sidecar, checked below as warnings
     if (!result.files.has(name)) {
       drift.push(`registry/generated/${name}: extra file not produced by the compiler — delete it`);
     }
@@ -89,5 +98,5 @@ export function checkRegistry(rootDir: string, options?: GenerateOptions): Check
     );
   }
 
-  return { ok: drift.length === 0, drift };
+  return { ok: drift.length === 0, drift, warnings: checkEmbeddings(rootDir, result.resources) };
 }

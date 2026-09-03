@@ -13,6 +13,10 @@
  *   --allow-empty  permit generation from an empty/missing library/ (default:
  *                  refuse, so a half-migrated tree can't clobber the real
  *                  root manifests with empty skill lists).
+ *   --embed        ALSO write the optional registry/generated/embeddings.json
+ *                  sidecar (one vector per resource, cached by content_hash).
+ *                  Needs a Summer login (or SUMMER_EMBED_URL). Never run in
+ *                  CI; --check only warns about a stale sidecar. See embed.ts.
  *
  * Requires Node >= 22.18 (native TypeScript type stripping), same as
  * scripts/validate-library/cli.ts.
@@ -26,6 +30,7 @@ import { fileURLToPath } from "node:url";
 import { generateRegistry, writeGenerated, GenerateError } from "./index.ts";
 import { applyManifests } from "./apply.ts";
 import { checkRegistry } from "./check.ts";
+import { createProviderFromEnvironment, embedRegistry } from "./embed.ts";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const defaultRoot = path.resolve(scriptDir, "..", "..");
@@ -41,7 +46,12 @@ const options = { schemasDir: path.join(defaultRoot, "registry", "schemas") };
 
 try {
   if (flags.has("--check")) {
+    if (flags.has("--embed")) {
+      console.error("generate-registry: --check writes nothing; run --embed without --check.");
+      process.exit(1);
+    }
     const result = checkRegistry(rootDir, options);
+    for (const line of result.warnings) console.warn(`  WARN ${line}`);
     if (result.ok) {
       console.log("generate-registry --check: no drift.");
       process.exit(0);
@@ -51,6 +61,10 @@ try {
     console.error("Fix: run `npm run generate:registry` and commit the output (or correct the doc claim).");
     process.exit(1);
   }
+
+  // Resolve the embedding provider BEFORE generating so a misconfigured
+  // --embed (no login, no endpoint) fails fast and writes nothing.
+  const embed = flags.has("--embed") ? createProviderFromEnvironment() : null;
 
   const result = generateRegistry(rootDir, options);
 
@@ -76,6 +90,15 @@ try {
   if (!flags.has("--no-apply")) {
     const applied = applyManifests(rootDir, outDir);
     for (const { to } of applied.copied) console.log(`generate-registry: applied ${to}`);
+  }
+
+  if (embed) {
+    const { provider, endpoint } = embed;
+    console.log(`generate-registry --embed: embedding via ${endpoint.source} (${endpoint.url}) ...`);
+    const summary = await embedRegistry(rootDir, result.resources, provider, { log: console.log });
+    console.log(
+      `generate-registry --embed: wrote ${summary.file} — ${summary.total} vector(s) (${summary.computed} computed, ${summary.reused} reused, ${summary.pruned} pruned), model ${summary.model}, ${summary.dims} dims, ${Math.round(summary.bytes / 1024)} KB.`,
+    );
   }
   process.exit(0);
 } catch (err) {

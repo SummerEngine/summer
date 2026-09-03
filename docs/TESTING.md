@@ -77,9 +77,9 @@ Run these from any directory with the engine open on a project.
 
 | Command | Expect |
 |---|---|
-| `summer doctor` | 10 checks. `Local API` and `MCP Tools the registered tool count matches `registry/generated/counts.json`` OK when the engine is up. Exit 0 with warnings; only failures make it exit 1. Not signed in is a warning — engine tools do not need login. |
-| `summer tool --list` | `Summer tools (69)`, one line each; `[engine]` marks the ones that need the editor. |
-| `summer tool get-project-context` | JSON: project, open scene, engine version, capabilities. Read `capabilitySkewWarning` if present — it names ops this CLI can send that the engine build does not advertise. |
+| `summer doctor` | 10 checks. `Local API` and `MCP Tools the registered tool count matches `registry/generated/counts.json`` OK when the engine is up. Exit 0 with warnings; only failures make it exit 1. Not signed in is a warning — engine tools do not need login. Stale skills (`Skills up to date`) are a warning too, and on a `--local-dev` link the recommended refresh is `node <checkout>/dist/bin/summer.js setup <agent> --local-dev --yes --force`, which keeps the link — the `npx … --force` form is recommended only when the agent's MCP entry already points at the published package. `Project Memory` counts the template pin (`pin template/<id>@<version>`) next to the Markdown files. |
+| `summer tool --list` | `Summer tools (<N>)` where N is `byKind.tool` in `registry/generated/counts.json` (71 at the time of writing), one line each; `[engine]` marks the ones that need the editor. |
+| `summer tool get-project-context` | JSON: project, open scene, engine version, capabilities, `projectMemory` (with `pin` = `.summer/project.json`), `guidance` — byte-identical to the MCP face (both call `buildProjectContext`). Settings are trimmed to the curated default groups and the trim is declared (`settingsTruncated`, `totalSettings`, `settingsPrefixesIncluded`, `settingsPrefixesExcluded`); `--args '{"settingsPrefixes":["audio/","layer_names/"]}'` reads other groups. Read `capabilitySkewWarning` if present — it names ops this CLI can send that the engine build does not advertise. |
 | `summer tool get-scene-tree --args '{"depth":1}'` | JSON tree of the open scene, one level deep. |
 | `summer tool screenshot` | Captures the editor viewport and prints the receipt JSON with `localPath` (`<tmpdir>/summer-cli/screenshot-<timestamp>.png`). Open the file. |
 | `summer skills list` | One line per library skill (`recommended`/`optional`, `[preview]` tag on preview skills), footer naming `--stable-only`. |
@@ -106,13 +106,17 @@ Open Claude Code in a directory (any), confirm `/mcp` lists `summer-engine`, the
 
 ## f. Expected to fail on the shipped engine
 
-The 11 `status: preview` tools depend on engine ops no shipped build has:
-`run-script`, `run-editor-script`, `world-snapshot`, `snapshot-diff`,
+The `status: preview` tools depend on engine ops no shipped build has
+(`grep -l 'status: preview' library/tools/*/resource.yaml` is the current list; at
+the time of writing: `run-script`, `world-snapshot`, `snapshot-diff`,
 `get-runtime-tree`, `inspect-runtime-node`, `test-placement`, `snap-to-surface`,
-`align-distribute-3d`, `navigation-probe`, `starcast`
-(`grep -l 'status: preview' library/tools/*/resource.yaml`). Calling one returns a
-structured `engine_lacks_op` result and exits 1 — the same on the MCP face
-(`isError`) and the CLI face. Two shapes, depending on what the engine advertises:
+`align-distribute-3d`, `navigation-probe`, `starcast` — `run-editor-script` ships
+on 0.5.65 and is stable). Calling one returns a structured `engine_lacks_op`
+result and exits 1 — the same on the MCP face (`isError`) and the CLI face.
+Every other engine failure follows the same rule: whatever the MCP face marks
+`isError`, `summer tool` prints as JSON (`ok: false`, `error`, any
+`failure_reason`) and exits 1 — `summer tool inspect-node --args '{"path":"Nope"}'`
+is the smoke test. Two shapes, depending on what the engine advertises:
 
 - Engine advertises `capabilities.opKinds` without the op — refused **before** sending:
 
@@ -147,7 +151,7 @@ summer tool library-feedback --args "$ARGS"                         # second cal
 ```
 
 - The first-run notice is the disclosure (what each report contains, opt-out); it is shown exactly once per machine, gated by `~/.summer/feedback-first-run`. Delete that file to see it again.
-- To exercise the send path without posting to the real mailbox: `SUMMER_GATEWAY_URL=http://127.0.0.1:9 summer tool library-feedback --args "$ARGS"` → `{"recorded": false, "dropped": true}` (no retry, no queue; the batch is gone).
+- To exercise the send path without posting to the real mailbox: `SUMMER_GATEWAY_URL=http://127.0.0.1:9 summer tool library-feedback --args "$ARGS"` → `{"recorded": false, "dropped": true, "reason": "network"}` (no retry, no queue; the batch is gone). A gateway that answers is reported with its `status` and a `reason`: `endpoint_missing` (404 — the route is not deployed), `rejected` (other 4xx), `server_error` (5xx). Nothing about the failure is sent anywhere; the report schema is unchanged.
 - Logged in, the report carries the account bearer token; logged out, a random `install_id` from `~/.summer/`. Nothing about the project, files, or chat is in the schema.
 
 ## h. Gates

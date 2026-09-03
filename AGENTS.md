@@ -108,7 +108,7 @@ Record what you built and verified as you go — today that means keeping `build
 
 ### Reporting outcomes
 
-After you have **verified** an entry's result in-engine — not before — you may report it through `summer_library_feedback`: worked, worked with fixes, wrong, outdated, incomplete. Verified outcomes are the only signal that improves the library; guesses and unverified impressions poison it. Fire-and-forget, never blocks, fully optional (see section 1 for what is and isn't sent).
+After you have **verified** an entry's result in-engine — not before — you may report it through `summer_library_feedback` with one outcome word from the schema: `worked`, `worked_with_fixes` (say what in `deviation`), `wrong`, `outdated`, `incomplete`, `did_not_apply`, `misrouted`. Verified outcomes are the only signal that improves the library; guesses and unverified impressions poison it. Fire-and-forget, never blocks, fully optional (see section 1 for what is and isn't sent).
 
 ## 5. When something is off
 

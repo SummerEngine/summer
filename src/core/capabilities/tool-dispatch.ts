@@ -63,6 +63,34 @@ import {
   type BuiltUiOp,
 } from "./ui-control.js";
 import {
+  PLAY_INSTANCE_FALLBACK,
+  RUNTIME_FALLBACKS,
+  buildGameControlOp,
+  buildGameInputOp,
+  buildGameProbeOp,
+  buildPlayGameOp,
+  buildRuntimeAnimateOp,
+  buildRuntimeCallOp,
+  buildRuntimeSetOp,
+  buildRuntimeSpawnOp,
+  buildStopGameOp,
+  findProbePayload,
+  gameControlArgsSchema,
+  gameInputArgsSchema,
+  gameProbeArgsSchema,
+  playNeedsOp,
+  playTargetsInstance,
+  probeFrameStamp,
+  runtimeAnimateArgsSchema,
+  runtimeCallArgsSchema,
+  runtimeSetArgsSchema,
+  runtimeSpawnArgsSchema,
+  stripProbeImage,
+  withPlayInstanceEcho,
+  withRuntimeFailureHints,
+  type BuiltRuntimeOp,
+} from "./runtime-control.js";
+import {
   RUN_EDITOR_SCRIPT_FALLBACK,
   RUN_SCRIPT_FALLBACK,
   buildRunEditorScriptOp,
@@ -620,6 +648,20 @@ function optBoolean(args: DispatchArgs, key: string, fallback: boolean): boolean
   return value;
 }
 
+/** Wave I runtime op: pre-flight on the resolved kind, send it alone with the
+ *  op's own budget, and teach both failure classes (engine_lacks_op via the
+ *  post-hoc rewrite; the runtime gates via the shared hints). */
+async function runRuntimeOp(ctx: ToolDispatchContext, built: BuiltRuntimeOp): Promise<unknown> {
+  const fallback = RUNTIME_FALLBACKS[built.kind] ?? "use a RunVerification probe";
+  const client = await ctx.engine();
+  const missing = missingEngineOpResult(client, built.kind, fallback);
+  if (missing) refuseMissingOp(missing);
+  const result = withRuntimeFailureHints(
+    withOldEngineHint(await client.executeOps([built.op], undefined, built.timeoutMs), built.kind, fallback)
+  );
+  return requireSupportedOp(result, built.kind, fallback);
+}
+
 /** Capability pre-flight shared by the six spatial tools: refuse before
  *  sending when the engine advert PROVES the op is missing. */
 async function requireSpatialOp(
@@ -837,28 +879,66 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     if (args.raw === true) return engineResult;
     return shapeEngineLogResponse(engineResult, { maxEntries: maxWarnings }).result;
   }),
-  entry("summer_play", "Start the game (main scene or a specific scene; optional seed/fixed_fps/time_scale pins)", true, async (args, ctx) => {
+  entry("summer_play", "Start the game (main scene or a specific scene; seed/fixed_fps/time_scale pins, instance/mode for playtests)", true, async (args, ctx) => {
     const seed = optNumberOrUndefined(args, "seed");
     const fixedFps = optNumberOrUndefined(args, "fixed_fps");
     const timeScale = optNumberOrUndefined(args, "time_scale");
+    const speed = optNumberOrUndefined(args, "speed");
     if (seed !== undefined && !Number.isInteger(seed)) throw new ToolDispatchError("seed must be an integer");
     if (fixedFps !== undefined && (!Number.isInteger(fixedFps) || fixedFps <= 0)) {
       throw new ToolDispatchError("fixed_fps must be an integer > 0");
     }
     if (timeScale !== undefined && timeScale <= 0) throw new ToolDispatchError("time_scale must be > 0");
+    const playArgs = {
+      scene: optStr(args, "scene"),
+      instance: optStr(args, "instance"),
+      mode: optStr(args, "mode") as "embedded" | "offscreen" | undefined,
+      deterministic: typeof args.deterministic === "boolean" ? args.deterministic : undefined,
+      seed,
+      fixed_fps: fixedFps,
+      time_scale: timeScale,
+      speed,
+    };
     const requested = pickPlayDeterminism({ seed, fixed_fps: fixedFps, time_scale: timeScale });
-    const result = requireEngineSuccess(await (await ctx.engine()).play(optStr(args, "scene"), requested));
+    const client = await ctx.engine();
+    // Legacy route, byte-for-byte: /api/play forwards only `scene`.
+    if (!playNeedsOp(playArgs)) return requireEngineSuccess(await client.play(playArgs.scene));
+    // Any pin or instance parameter travels as the explicit PlayGame op (the
+    // /api/play rung copies only `scene`). Validate the combination first
+    // (nothing sent), then pre-flight the wave when an instance is addressed —
+    // an older engine would silently start the MAIN game instead.
+    const { op, timeoutMs } = buildOrRefuse(() => buildPlayGameOp(playArgs));
+    if (playTargetsInstance(playArgs)) {
+      const missing = missingEngineOpResult(client, "ListGameInstances", PLAY_INSTANCE_FALLBACK);
+      if (missing) refuseMissingOp(missing);
+    }
+    const result = withRuntimeFailureHints(
+      withOldEngineHint(await client.executeOps([op], undefined, timeoutMs), "PlayGame", PLAY_INSTANCE_FALLBACK)
+    );
+    const echoed = withPlayInstanceEcho(requireSupportedOp(result, "PlayGame", PLAY_INSTANCE_FALLBACK), playArgs);
     // Pins sent, no determinism block back: the engine predates the params and
     // ignored them. Say so in the receipt instead of letting the v1 result pass
     // as a pinned run (the engine's own block, when present, is authoritative).
-    if (requested && readPlayDeterminism(result) === null && result && typeof result === "object") {
-      return { ...(result as DispatchArgs), determinism_note: PLAY_DETERMINISM_NOT_SUPPORTED };
+    if (requested && readPlayDeterminism(echoed) === null && echoed && typeof echoed === "object") {
+      return { ...(echoed as DispatchArgs), determinism_note: PLAY_DETERMINISM_NOT_SUPPORTED };
     }
-    return result;
+    return echoed;
   }),
-  entry("summer_stop", "Stop the running game", true, async (_args, ctx) =>
-    requireEngineSuccess(await (await ctx.engine()).stop())
-  ),
+  entry("summer_stop", "Stop the running game (or one offscreen instance)", true, async (args, ctx) => {
+    const client = await ctx.engine();
+    const instance = optStr(args, "instance");
+    if (!instance || instance.trim() === "main") return requireEngineSuccess(await client.stop());
+    const missing = missingEngineOpResult(client, "ListGameInstances", RUNTIME_FALLBACKS.ListGameInstances!);
+    if (missing) refuseMissingOp(missing);
+    const { op, timeoutMs } = buildStopGameOp(instance);
+    return requireSupportedOp(
+      withRuntimeFailureHints(
+        withOldEngineHint(await client.executeOps([op], undefined, timeoutMs), "StopGame", RUNTIME_FALLBACKS.ListGameInstances!)
+      ),
+      "StopGame",
+      RUNTIME_FALLBACKS.ListGameInstances!
+    );
+  }),
   entry("summer_is_running", "Check whether the game is running", true, async (_args, ctx) =>
     requireEngineSuccess(await (await ctx.engine()).executeOps([{ op: "IsGameRunning" }]))
   ),
@@ -1437,6 +1517,41 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       "GetRuntimeNode",
       RUNTIME_NODE_FALLBACK
     );
+  }),
+
+  // --- runtime control & playtest (engine Wave I) ---
+  entry("summer_runtime_set", "Set one property on a node in the RUNNING game (never the scene file)", true, async (args, ctx) =>
+    runRuntimeOp(ctx, buildRuntimeSetOp(parseToolArgs(runtimeSetArgsSchema, args, "runtime-set")))
+  ),
+  entry("summer_runtime_call", "Call one method on a node in the RUNNING game and return its result", true, async (args, ctx) =>
+    runRuntimeOp(ctx, buildRuntimeCallOp(parseToolArgs(runtimeCallArgsSchema, args, "runtime-call")))
+  ),
+  entry("summer_runtime_spawn", "Spawn a PackedScene into, or free a node from, the RUNNING game", true, async (args, ctx) =>
+    runRuntimeOp(ctx, buildRuntimeSpawnOp(parseToolArgs(runtimeSpawnArgsSchema, args, "runtime-spawn")))
+  ),
+  entry("summer_runtime_animate", "Drive/read an AnimationPlayer, AnimationTree state machine, or Skeleton3D bones in the RUNNING game", true, async (args, ctx) =>
+    runRuntimeOp(ctx, buildRuntimeAnimateOp(parseToolArgs(runtimeAnimateArgsSchema, args, "runtime-animate")))
+  ),
+  entry("summer_game_control", "Pause, resume, step exact frames, set speed, or list instances of the RUNNING game", true, async (args, ctx) =>
+    runRuntimeOp(ctx, buildGameControlOp(parseToolArgs(gameControlArgsSchema, args, "game-control")))
+  ),
+  entry("summer_game_input", "Script timed synthetic input, or record/replay real input, in the RUNNING game", true, async (args, ctx) =>
+    runRuntimeOp(ctx, buildGameInputOp(parseToolArgs(gameInputArgsSchema, args, "game-input")))
+  ),
+  entry("summer_game_probe", "State + screenshot of ONE frame of the RUNNING game, frame-stamped (image saved to a file)", true, async (args, ctx) => {
+    const result = await runRuntimeOp(ctx, buildGameProbeOp(parseToolArgs(gameProbeArgsSchema, args, "game-probe")));
+    // The CLI face cannot return an image block: write the JPEG beside the
+    // screenshot tool's files and hand back the path instead of the base64.
+    const payload = findProbePayload(result);
+    const image = payload && typeof payload.image_base64 === "string" ? payload.image_base64 : null;
+    const stripped = stripProbeImage(result) as DispatchArgs;
+    if (!payload || !image) return stripped;
+    const dir = join(tmpdir(), "summer-cli");
+    await mkdir(dir, { recursive: true });
+    const ext = typeof payload.mime === "string" && payload.mime.includes("png") ? "png" : "jpg";
+    const imagePath = join(dir, `game-probe-${Date.now()}.${ext}`);
+    await writeFile(imagePath, Buffer.from(image, "base64"));
+    return { ...stripped, image_path: imagePath, frame_stamp: probeFrameStamp(payload) };
   }),
 
   // --- spatial / world building ---

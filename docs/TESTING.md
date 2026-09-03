@@ -106,17 +106,23 @@ Open Claude Code in a directory (any), confirm `/mcp` lists `summer-engine`, the
 
 ## f. Expected to fail on the shipped engine
 
-The `status: preview` tools depend on engine ops no shipped build has
-(`grep -l 'status: preview' library/tools/*/resource.yaml` is the current list; at
-the time of writing: `run-script`, `world-snapshot`, `snapshot-diff`,
-`get-runtime-tree`, `inspect-runtime-node`, `test-placement`, `snap-to-surface`,
-`align-distribute-3d`, `navigation-probe`, `starcast` — `run-editor-script` ships
-on 0.5.65 and is stable). Calling one returns a structured `engine_lacks_op`
-result and exits 1 — the same on the MCP face (`isError`) and the CLI face.
-Every other engine failure follows the same rule: whatever the MCP face marks
-`isError`, `summer tool` prints as JSON (`ok: false`, `error`, any
-`failure_reason`) and exits 1 — `summer tool inspect-node --args '{"path":"Nope"}'`
-is the smoke test. Two shapes, depending on what the engine advertises:
+The `status: preview` tools depend on engine features no shipped build has
+(`grep -l 'status: preview' library/tools/*/resource.yaml` is the live list; 25 at
+the time of writing). Twenty-three need an engine op: `run-script`,
+`world-snapshot`, `snapshot-diff`, `get-runtime-tree`, `inspect-runtime-node`,
+`test-placement`, `snap-to-surface`, `align-distribute-3d`, `navigation-probe`,
+`starcast`, `fabricate-3d`, `camera-bookmark`, the editor UI control four
+`ui-actions`, `ui-tree`, `ui-activate`, `ui-screenshot`, and the runtime-control
+group `runtime-set`, `runtime-call`, `runtime-spawn`, `runtime-animate`,
+`game-control`, `game-input`, `game-probe` (plus the `instance` / `mode` /
+`deterministic` parameters of `play` and `stop`; plain play and stop ship today).
+`run-editor-script` ships on 0.5.65 and is stable. Calling a preview tool returns a
+structured `engine_lacks_op` result and exits 1 — the same on the MCP face
+(`isError`) and the CLI face. Every other engine failure follows the same rule:
+whatever the MCP face marks `isError`, `summer tool` prints as JSON (`ok: false`,
+`error`, any `failure_reason`) and exits 1 — `summer tool inspect-node --args
+'{"path":"Nope"}'` is the smoke test. Two shapes, depending on what the engine
+advertises:
 
 - Engine advertises `capabilities.opKinds` without the op — refused **before** sending:
 

@@ -1,0 +1,140 @@
+id: tool/runtime-animate
+kind: tool
+version: 1.0.0
+summary: Drive and read animation in the RUNNING game — AnimationPlayer clips, AnimationTree state machines, and live Skeleton3D bone poses.
+use_when:
+  - checking which clip or state-machine state is actually playing in the running game, then driving it (play, seek, travel, set a blend parameter)
+  - '"which animation is the player in right now?" / "travel the state machine to Attack and see if it blends"'
+  - reading live bone poses to prove a rig moves or an IK target lands
+do_not_use_when:
+  - wiring or authoring animation in the scene — character-animation-wiring / animation-tree skills
+  - no game is running (failure_reason game_not_running) — summer_play first
+  - "requires an engine build with RuntimeAnimation / RuntimeAnimationTree / GetRuntimeBones (engine PR #156 follow-up, wave I); on current shipped engines this returns engine_lacks_op"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - runtime
+    - playtest
+    - animation
+  modalities:
+    - scenes
+    - animation
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/game-probe
+    - tool/game-control
+    - tool/runtime-call
+    - tool/play
+  skills:
+    - skill/agent-playtesting
+    - skill/character-animation-wiring
+    - skill/animation-tree
+    - skill/procedural-animation
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_runtime_animate
+implementation:
+  module: src/mcp/tools/runtime-tools.ts
+  export: registerRuntimeTools
+surfaces:
+  mcp:
+    tool_name: summer_runtime_animate
+    remote: false
+input_schema:
+  type: object
+  properties:
+    target:
+      type: string
+      enum:
+        - player
+        - tree
+        - bones
+      description: "'player' = AnimationPlayer (RuntimeAnimation), 'tree' = AnimationTree state machine (RuntimeAnimationTree), 'bones' = Skeleton3D poses (GetRuntimeBones)."
+    path:
+      type: string
+      description: ABSOLUTE runtime path of the AnimationPlayer / AnimationTree / Skeleton3D.
+    cmd:
+      type: string
+      enum:
+        - state
+        - play
+        - pause
+        - stop
+        - seek
+        - speed
+        - travel
+        - start
+        - set_param
+        - get_param
+      description: "Default 'state' (read-only). target player: state|play|pause|stop|seek|speed. target tree: state|travel|start|stop|set_param|get_param. Ignored for target bones."
+    name:
+      type: string
+      description: target player play — clip name (unknown_animation lists the clips).
+    position:
+      type: number
+      description: target player seek — position in seconds.
+    speed:
+      type: number
+      description: target player speed — speed_scale (1.0 = normal, negative plays backwards).
+    from_end:
+      type: boolean
+      description: target player play — start from the end (backwards).
+    blend:
+      type: number
+      description: target player play — custom blend time in seconds.
+    update:
+      type: boolean
+      description: target player seek — apply the pose immediately (default true).
+    state:
+      type: string
+      description: target tree travel/start — state machine node name (unknown_state lists them).
+    reset:
+      type: boolean
+      description: target tree travel/start — reset the destination clip (default true).
+    param:
+      type: string
+      description: target tree set_param/get_param — parameter path, e.g. 'parameters/Blend/blend_amount'.
+    value:
+      type:
+        - string
+        - number
+        - boolean
+      description: target tree set_param — new value (JSON scalar or Godot literal string).
+    playback_path:
+      type: string
+      description: target tree — state machine playback parameter (default 'parameters/playback'; nested machines use 'parameters/<Node>/playback').
+    bones:
+      type: array
+      items:
+        type: string
+      description: target bones — bone names to read (omit for the first 256; page larger rigs with this filter).
+    space:
+      type: string
+      enum:
+        - global
+        - local
+        - both
+      description: target bones — 'global' (default, skeleton-space global_pose), 'local' (pose), or 'both'.
+    include_rest:
+      type: boolean
+      description: target bones — also return each bone's rest Transform3D.
+    instance:
+      type: string
+      description: Game instance to address (default 'main'). Offscreen instances are named by summer_play with instance + mode offscreen; summer_game_control action 'instances' lists them.
+  required:
+    - target
+    - path
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - game-probe

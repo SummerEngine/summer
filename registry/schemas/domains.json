@@ -38,6 +38,7 @@
     "performance",
     "pipeline",
     "platformer",
+    "playtest",
     "procedural",
     "product-language",
     "project",
@@ -88,6 +89,7 @@
     "generate": "Summer Studio generation — image, 3D, audio, video, motion — and the job plumbing around it.",
     "headless": "Running the engine without the editor UI (shell, CI).",
     "meta": "Resources about Summer itself — skills about skills, library feedback, the CLI/MCP surface.",
+    "playtest": "Driving and observing the running game as a tester — deterministic launches, frame stepping, synthetic or recorded input, frame-stamped probes. Distinct from runtime (the running game as a target) and verification (proving work landed).",
     "runtime": "The running game as opposed to the editor scene: play/stop, runtime tree, debugger output.",
     "verification": "Checking that work actually landed — screenshots, snapshots, probes, run-and-inspect."
   }

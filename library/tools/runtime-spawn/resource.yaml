@@ -1,0 +1,95 @@
+id: tool/runtime-spawn
+kind: tool
+version: 1.0.0
+summary: Spawn a PackedScene into the RUNNING game (action spawn) or free a live node (action free) — stage a test in seconds without touching the scene file.
+use_when:
+  - staging a runtime test — place three goblins under the spawner, add a pickup next to the player, remove the boss to test the empty-arena path
+  - '"spawn a goblin at (4, 0, -2) in the running game" / "delete that projectile while the game runs"'
+  - the spawned or freed node must exist only for this run
+do_not_use_when:
+  - the node should be part of the scene permanently — summer_instantiate_scene / summer_remove_node in the EDITED scene, then restart
+  - no game is running (failure_reason game_not_running) — summer_play first
+  - "requires an engine build with SpawnRuntimeScene / FreeRuntimeNode (engine PR #156 follow-up, wave I); on current shipped engines this returns engine_lacks_op"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - runtime
+    - playtest
+    - scenes
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/game-probe
+    - tool/runtime-set
+    - tool/game-control
+    - tool/instantiate-scene
+    - tool/remove-node
+    - tool/play
+  skills:
+    - skill/agent-playtesting
+    - skill/playtesting-a-feature
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_runtime_spawn
+implementation:
+  module: src/mcp/tools/runtime-tools.ts
+  export: registerRuntimeTools
+surfaces:
+  mcp:
+    tool_name: summer_runtime_spawn
+    remote: false
+input_schema:
+  type: object
+  properties:
+    action:
+      type: string
+      enum:
+        - spawn
+        - free
+      description: "'spawn' instantiates a PackedScene under parent (SpawnRuntimeScene); 'free' removes a node (FreeRuntimeNode)."
+    parent:
+      type: string
+      description: action spawn — ABSOLUTE runtime path of the parent, e.g. '/root/Main/Enemies'.
+    scene:
+      type: string
+      description: action spawn — PackedScene to instantiate, e.g. 'res://enemies/goblin.tscn'.
+    name:
+      type: string
+      description: action spawn — node name; the engine renames on collision and reports renamed_to.
+    props:
+      type: object
+      additionalProperties:
+        type:
+          - string
+          - number
+          - boolean
+      description: action spawn — properties set on the new node before it enters the tree ({position 'Vector3(0, 1, 0)', health 50}). Unknown ones land in prop_warnings, never fail the spawn.
+    path:
+      type: string
+      description: action free — ABSOLUTE runtime path of the node to free.
+    mode:
+      type: string
+      enum:
+        - queue_free
+        - free
+      description: action free — 'queue_free' (default, frees at the end of the frame) or 'free' (immediate).
+    instance:
+      type: string
+      description: Game instance to address (default 'main'). Offscreen instances are named by summer_play with instance + mode offscreen; summer_game_control action 'instances' lists them.
+  required:
+    - action
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - game-probe

@@ -49,12 +49,20 @@ export const CLI_KNOWN_OP_NEEDS: readonly string[] = [
   "ImportFromUrl", "ImportFromUrlBatch",
   // Diagnostics + runtime control
   "GetConsoleOutput", "ClearConsoleOutput", "GetDebuggerErrors", "IsGameRunning",
+  // summer_play / summer_stop send these as ops for the instance-aware and
+  // determinism variants (seed / fixed_fps / time_scale, instance / mode) —
+  // the legacy /api/play route forwards only `scene`, so the plain launch
+  // stays there.
+  "PlayGame", "StopGame",
+  // Wave I runtime control & playtest ops (summer_runtime_* / summer_game_*)
+  "SetRuntimeProp", "CallRuntimeMethod", "SpawnRuntimeScene", "FreeRuntimeNode",
+  "RuntimeAnimation", "RuntimeAnimationTree", "GetRuntimeBones",
+  "GamePause", "GameStep", "GameSpeed",
+  "SimulateInputScript", "InputRecordStart", "InputRecordStop", "InputReplay",
+  "GameProbe", "ListGameInstances",
   // Capture (+ camera bookmarks: summer_camera_bookmark, wave I perception)
   "ViewportSnapshot", "GameSnapshot", "ScenePreview",
   "SaveCameraBookmark", "ListCameraBookmarks", "DeleteCameraBookmark",
-  // Runtime control (summer_play sends PlayGame as an op only when a
-  // determinism param travels — the plain launch stays on /api/play)
-  "PlayGame",
   // Scripting + verification
   "RunSceneScript", "RunEditorScript", "RunVerification", "SimulateInput",
   // Perception
@@ -119,6 +127,16 @@ export interface EngineCapabilities {
   /** Events channel advert. Absent = the build has no events channel (the
    *  channel and its advert ship together, so absence IS proof here). */
   events?: EngineEventsCapability;
+  /** Wave I runtime control advert: the runtime op kinds, whether the game-side
+   *  `summer` capture ships, and the offscreen instance cap. Absent = engine
+   *  predates runtime control (or advertises the kinds only in opKinds). */
+  runtimeControl?: EngineRuntimeControlCapabilities;
+}
+
+export interface EngineRuntimeControlCapabilities {
+  ops?: string[];
+  summerCapture?: boolean;
+  maxOffscreenInstances?: number;
 }
 
 function stringList(value: unknown): string[] | undefined {
@@ -148,6 +166,27 @@ function parseEventsCapability(raw: unknown): EngineEventsCapability | undefined
   return out;
 }
 
+function parseRuntimeControl(raw: unknown): EngineRuntimeControlCapabilities | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const record = raw as Record<string, unknown>;
+  const out: EngineRuntimeControlCapabilities = {};
+  const ops = stringList(record.ops);
+  if (ops) out.ops = ops;
+  if (typeof record.summerCapture === "boolean") out.summerCapture = record.summerCapture;
+  if (typeof record.maxOffscreenInstances === "number" && Number.isFinite(record.maxOffscreenInstances)) {
+    out.maxOffscreenInstances = record.maxOffscreenInstances;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/** Every op kind the engine advertises: `opKinds` plus the Wave I
+ *  `runtimeControl.ops` block (an engine may list the runtime kinds only
+ *  there). Undefined when the engine advertises no op list at all. */
+export function advertisedOpKinds(capabilities: EngineCapabilities | undefined | null): Set<string> | undefined {
+  if (!capabilities?.opKinds) return undefined;
+  return new Set([...capabilities.opKinds, ...(capabilities.runtimeControl?.ops ?? [])]);
+}
+
 /** Parse a raw /api/health `capabilities` value. Tolerates any shape; returns
  *  undefined when nothing usable is advertised. Never throws. */
 export function parseEngineCapabilities(raw: unknown): EngineCapabilities | undefined {
@@ -170,6 +209,8 @@ export function parseEngineCapabilities(raw: unknown): EngineCapabilities | unde
   if (singleOnlyOps) out.singleOnlyOps = singleOnlyOps;
   const events = parseEventsCapability(record.events);
   if (events) out.events = events;
+  const runtimeControl = parseRuntimeControl(record.runtimeControl);
+  if (runtimeControl) out.runtimeControl = runtimeControl;
 
   return Object.keys(out).length > 0 ? out : undefined;
 }
@@ -183,9 +224,9 @@ export function engineLacksOp(
   capabilities: EngineCapabilities | undefined | null,
   op: string
 ): boolean {
-  const advertised = capabilities?.opKinds;
+  const advertised = advertisedOpKinds(capabilities);
   if (!advertised) return false;
-  return !advertised.includes(op);
+  return !advertised.has(op);
 }
 
 export interface MissingOpResult {
@@ -326,8 +367,8 @@ export function buildCapabilitySkewWarning(health: unknown): string | null {
     );
   }
 
-  if (capabilities.opKinds) {
-    const advertised = new Set(capabilities.opKinds);
+  const advertised = advertisedOpKinds(capabilities);
+  if (advertised) {
     const missing = CLI_KNOWN_OP_NEEDS.filter((op) => !advertised.has(op));
     if (missing.length > 0) {
       parts.push(
@@ -373,6 +414,15 @@ export const FALLBACK_SINGLE_ONLY_OPS: ReadonlySet<string> = new Set([
   // Wave K: a headless Blender child on the same async single-op lane as
   // RunEditorScript (local_api_server.cpp SUMMER_SINGLE_ASYNC_OPS).
   "FabricateMesh",
+  // Wave I runtime control (RuntimeOps::async_op_kinds): every op below rides
+  // the `summer` debugger capture, so like GameSnapshot each needs the async
+  // single-op reply channel. ListGameInstances is deliberately NOT here — it
+  // is a cheap synchronous editor read that batches fine (runtime_ops.h).
+  "SetRuntimeProp", "CallRuntimeMethod", "SpawnRuntimeScene", "FreeRuntimeNode",
+  "RuntimeAnimation", "RuntimeAnimationTree", "GetRuntimeBones",
+  "GamePause", "GameSpeed", "GameStep",
+  "SimulateInputScript", "InputRecordStart", "InputRecordStop", "InputReplay",
+  "GameProbe",
 ]);
 
 /** The subset of EngineApiClient the capability readers use. Structural so

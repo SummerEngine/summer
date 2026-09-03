@@ -1,10 +1,21 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { withEngine } from "./with-engine.js";
+import { withEngine, missingEngineOpResult, withOldEngineHint } from "./with-engine.js";
 import { shapeEngineLogResponse } from "../../core/log-filters.js";
 import { createDebugReportArtifact } from "../../core/capabilities/debug-report.js";
 import { withConsoleScope } from "../../core/capabilities/console-read.js";
 import { describePlayDeterminism, pickPlayDeterminism } from "../../core/capabilities/play-determinism.js";
+import {
+  PLAY_INSTANCE_FALLBACK,
+  RUNTIME_FALLBACKS,
+  buildPlayGameOp,
+  buildStopGameOp,
+  playGameExtensionSchema,
+  playNeedsOp,
+  playTargetsInstance,
+  withPlayInstanceEcho,
+  withRuntimeFailureHints,
+} from "../../core/capabilities/runtime-control.js";
 
 // summer_get_diagnostics view shaping. The engine serves /api/state/diagnostics
 // from a pre-published snapshot (empty args — query params are NOT forwarded on
@@ -225,56 +236,73 @@ Use this when summer_get_diagnostics shows a non-zero \`debugger.warnings\` coun
 
   server.tool(
     "summer_play",
-    `Start running the game in the engine. The game runs inside Summer Engine's viewport.
+    `Start running the game in the engine. With no extra parameters the game runs inside Summer Engine's viewport (the 'main' instance).
 
-After starting, use summer_get_diagnostics to check for runtime errors.
+After starting, confirm boot with summer_is_running (boot time varies — never sleep a guessed delay), then summer_get_diagnostics for runtime errors. You can run a specific scene instead of the main scene — useful for testing individual levels or UI screens.
 
-You can run a specific scene instead of the main scene — useful for testing individual levels or UI screens.
+DETERMINISTIC RUNS (newer engines): seed / fixed_fps / time_scale pin THIS launch only (nothing is persisted). seed pins the game's GLOBAL RNG (randi/randf/randi_range/randf_range/randfn, Array.shuffle/pick_random) — it does NOT pin RandomNumberGenerator instances, scripts that call randomize(), rand_from_seed, wall-clock reads, or thread/IO/audio timing. fixed_fps decouples scene time from the wall clock so frame-count-derived state lands on the same frame run to run. The result's \`determinism\` block says whether the pins were applied (applied:false carries a reason: already_running, editor_run_args_override, launch_not_started) and restates seed_scope. If the result has NO determinism block although you sent a pin, the engine predates the params and the run is NOT reproducible — the tool says so; do not claim otherwise. Omitting every pin and instance parameter is exactly the v1 launch.
 
-DETERMINISTIC RUNS (newer engines): seed / fixed_fps / time_scale pin THIS launch only (nothing is persisted). seed pins the game's GLOBAL RNG (randi/randf/randi_range/randf_range/randfn, Array.shuffle/pick_random) — it does NOT pin RandomNumberGenerator instances, scripts that call randomize(), rand_from_seed, wall-clock reads, or thread/IO/audio timing. fixed_fps decouples scene time from the wall clock so frame-count-derived state lands on the same frame run to run. The result's \`determinism\` block says whether the pins were applied (applied:false carries a reason: already_running, editor_run_args_override, launch_not_started) and restates seed_scope. If the result has NO determinism block although you sent a pin, the engine predates the params and the run is NOT reproducible — the tool says so; do not claim otherwise. Omitting all three is exactly the v1 launch.`,
+PLAYTEST LAUNCH (engine runtime-control build): instance + mode:'offscreen' spawn a disposable hidden instance (at most 3) that summer_game_probe / summer_game_input / summer_game_control / summer_runtime_* address by name — run two variants side by side for an A/B. deterministic:true (offscreen only) launches with --fixed-fps 60 --summer-seed --audio-driver Dummy and is what lets summer_game_input action:'replay' accept a seed; speed sets the user time scale on session start. The instance result reports session_attached; poll summer_game_control action:'instances' until attached:true before addressing it. Then: probe -> act -> step/probe -> assert (the agent-playtesting skill). Failure reasons: too_many_instances, instance_exists, session_timeout (child never attached — check summer_get_console), unsupported_mode, main_scene_not_configured. A game already running answers playing:true with determinism.applied:false — summer_stop first to apply seed/fixed_fps.`,
     {
       scene: z.string().optional().describe("Scene to run instead of main scene, e.g. 'res://levels/test_level.tscn'"),
-      seed: z
-        .number()
-        .int()
-        .optional()
-        .describe(
-          "Pin the game's GLOBAL RNG for this launch (child gets --summer-seed <seed>). Pins randi/randf/randi_range/randf_range/randfn, Array.shuffle/pick_random. Does NOT pin RandomNumberGenerator instances, scripts calling randomize(), or wall-clock reads. Omitted = randomized, as always."
-        ),
-      fixed_fps: z
-        .number()
-        .int()
-        .positive()
-        .optional()
-        .describe(
-          "Fixed timestep for this launch (child gets --fixed-fps <n>): scene time decouples from the wall clock, the game runs as fast as it renders, frame-count-derived state repeats run to run. Opt-in per launch, never the default."
-        ),
-      time_scale: z
-        .number()
-        .positive()
-        .optional()
-        .describe("Engine time scale for this launch (child gets --time-scale <f>). Not a determinism pin on its own."),
+      ...playGameExtensionSchema,
     },
-    async ({ scene, seed, fixed_fps, time_scale }) => {
-      const requested = pickPlayDeterminism({ seed, fixed_fps, time_scale });
-      return withEngine(async (client) => client.play(scene, requested), {
-        toContent: (result) => {
-          const json = JSON.stringify(result, null, 2);
-          // Surface applied / reason / seed_scope in prose so the model does not
-          // have to dig; and call out the old-engine case (pins sent, no
-          // determinism block back) as "not applied" instead of staying silent.
-          const summary = describePlayDeterminism(result, requested);
-          return [{ type: "text" as const, text: summary ? `${json}\n\n${summary}` : json }];
+    async (args) => {
+      const requested = pickPlayDeterminism({ seed: args.seed, fixed_fps: args.fixed_fps, time_scale: args.time_scale });
+      return withEngine(
+        async (client) => {
+          // Legacy route, byte-for-byte: /api/play forwards only `scene`.
+          if (!playNeedsOp(args)) return client.play(args.scene);
+          // Any pin (seed / fixed_fps / time_scale) or instance parameter travels
+          // as the explicit PlayGame OP — the /api/play rung copies only `scene`.
+          // The combination is validated first (nothing sent); then, because an
+          // engine without the runtime-control wave would start the MAIN game and
+          // silently ignore instance/mode, the pre-flight keys on a Wave I kind.
+          const { op, timeoutMs } = buildPlayGameOp(args);
+          if (playTargetsInstance(args)) {
+            const missing = missingEngineOpResult(client, "ListGameInstances", PLAY_INSTANCE_FALLBACK);
+            if (missing) return missing;
+          }
+          const result = await client.executeOps([op], undefined, timeoutMs);
+          return withPlayInstanceEcho(
+            withRuntimeFailureHints(withOldEngineHint(result, "PlayGame", PLAY_INSTANCE_FALLBACK)),
+            args
+          );
         },
-      });
+        {
+          toContent: (result) => {
+            const json = JSON.stringify(result, null, 2);
+            // Surface applied / reason / seed_scope in prose so the model does not
+            // have to dig; and call out the old-engine case (pins sent, no
+            // determinism block back) as "not applied" instead of staying silent.
+            const summary = describePlayDeterminism(result, requested);
+            return [{ type: "text" as const, text: summary ? `${json}\n\n${summary}` : json }];
+          },
+        }
+      );
     }
   );
 
   server.tool(
     "summer_stop",
-    "Stop the running game. Use after runtime verification or when you intentionally need to restart the running instance; ordinary editor scene mutations do not require a blanket stop.",
-    {},
-    async () => withEngine(async (client) => client.stop())
+    "Stop the running game. Use after runtime verification or when you intentionally need to restart the running instance; ordinary editor scene mutations do not require a blanket stop. Pass instance to stop ONE offscreen instance started with summer_play {instance, mode:'offscreen'} (the result reports was_playing and killed); omit it for the editor's main game.",
+    {
+      instance: z
+        .string()
+        .optional()
+        .describe("Offscreen instance name to stop (from summer_play {instance}); omit for the main embedded game."),
+    },
+    async ({ instance }) =>
+      withEngine(async (client) => {
+        if (typeof instance !== "string" || instance.trim().length === 0 || instance.trim() === "main") {
+          return client.stop();
+        }
+        const missing = missingEngineOpResult(client, "ListGameInstances", RUNTIME_FALLBACKS.ListGameInstances!);
+        if (missing) return missing;
+        const { op, timeoutMs } = buildStopGameOp(instance);
+        const result = await client.executeOps([op], undefined, timeoutMs);
+        return withRuntimeFailureHints(withOldEngineHint(result, "StopGame", RUNTIME_FALLBACKS.ListGameInstances!));
+      })
   );
 
   server.tool(

@@ -1021,23 +1021,27 @@ describe("wave I perception dispatch entries (camera bookmarks, fixed-pose scree
     expect(scenePreview).not.toHaveBeenCalled();
   });
 
-  it("play forwards seed/fixed_fps/time_scale and flags an engine that returned no determinism block", async () => {
+  it("play forwards seed/fixed_fps/time_scale as the PlayGame op and flags an engine that returned no determinism block", async () => {
     const play = vi.fn(async () => ({ status: "ok", results: [{ ok: true, op: "PlayGame", playing: true }] }));
-    const { ctx } = fakeEngineContext({ play });
+    const executeOps = vi.fn(async () => ({ status: "ok", results: [{ ok: true, op: "PlayGame", playing: true }] }));
+    const { ctx } = fakeEngineContext({ play, executeOps });
 
+    // Plain launch: the legacy /api/play route, byte-for-byte.
     const plain = (await dispatchTool("play", { scene: "res://a.tscn" }, ctx)) as Record<string, unknown>;
-    expect(play).toHaveBeenLastCalledWith("res://a.tscn", undefined);
+    expect(play).toHaveBeenLastCalledWith("res://a.tscn");
+    expect(executeOps).not.toHaveBeenCalled();
     expect(plain).not.toHaveProperty("determinism_note");
 
-    const pinned = (await dispatchTool("play", { seed: 42, fixed_fps: 60 }, ctx)) as Record<string, unknown>;
-    expect(play).toHaveBeenLastCalledWith(undefined, { seed: 42, fixed_fps: 60 });
+    // Pins travel as the explicit op (the /api/play rung copies only `scene`).
+    const pinned = (await dispatchTool("play", { seed: 42, fixed_fps: 60, time_scale: 2 }, ctx)) as Record<string, unknown>;
+    expect(executeOps).toHaveBeenLastCalledWith([{ op: "PlayGame", seed: 42, fixed_fps: 60, time_scale: 2 }], undefined, 60_000);
     expect(String(pinned.determinism_note)).toContain("engine predates determinism params");
 
     const engineSaid = vi.fn(async () => ({
       status: "ok",
       results: [{ ok: true, op: "PlayGame", playing: true, determinism: { seed: 42, applied: true, args: ["--summer-seed", "42"] } }],
     }));
-    const modern = fakeEngineContext({ play: engineSaid });
+    const modern = fakeEngineContext({ executeOps: engineSaid });
     const applied = (await dispatchTool("play", { seed: 42 }, modern.ctx)) as Record<string, unknown>;
     expect(applied).not.toHaveProperty("determinism_note");
   });
@@ -1048,5 +1052,164 @@ describe("wave I perception dispatch entries (camera bookmarks, fixed-pose scree
     await expect(dispatchTool("play", { fixed_fps: 0 }, ctx)).rejects.toThrow(/fixed_fps must be an integer > 0/);
     await expect(dispatchTool("play", { time_scale: -1 }, ctx)).rejects.toThrow(/time_scale must be > 0/);
     expect(calls).toEqual([]);
+  });
+});
+
+describe("runtime control dispatch entries (engine Wave I)", () => {
+  const runtimeSlugs = [
+    "runtime-set",
+    "runtime-call",
+    "runtime-spawn",
+    "runtime-animate",
+    "game-control",
+    "game-input",
+    "game-probe",
+  ];
+
+  it("registers all seven runtime tools as engine-required", () => {
+    for (const slug of runtimeSlugs) {
+      expect(resolveToolDispatch(slug)?.engineRequired, slug).toBe(true);
+    }
+  });
+
+  it("refuses before sending when the engine advert lacks the RESOLVED kind, as the structured engine_lacks_op receipt", async () => {
+    const { ctx, calls } = fakeEngineContext({
+      getEngineCapabilities: () => ({ opKinds: ["AddNode", "SpawnRuntimeScene"] }),
+      getEngineVersion: () => "0.5.66",
+    });
+    const failure = await dispatchTool("runtime-spawn", { action: "free", path: "/root/Main/G" }, ctx).catch((err: unknown) => err);
+    expect(failure).toBeInstanceOf(ToolResultError);
+    expect((failure as ToolResultError).result).toMatchObject({
+      ok: false,
+      op: "FreeRuntimeNode",
+      failure_reason: "engine_lacks_op",
+      engine_version: "0.5.66",
+    });
+    await expect(dispatchTool("game-control", { action: "pause" }, ctx)).rejects.toThrow(/does not support the GamePause op/);
+    expect(calls).toEqual([]);
+  });
+
+  it("sends each op alone with instance passthrough and the op's own budget", async () => {
+    const { ctx, calls } = fakeEngineContext();
+    await dispatchTool("runtime-set", { path: "/root/Main/Player", property: "health", value: 1, instance: "b" }, ctx);
+    await dispatchTool("runtime-call", { path: "/root/Main/Boss", method: "take_damage", args: [25] }, ctx);
+    await dispatchTool("runtime-animate", { target: "tree", path: "/root/P/Tree", cmd: "travel", state: "Attack" }, ctx);
+    await dispatchTool("game-control", { action: "step", frames: 600 }, ctx);
+    await dispatchTool(
+      "game-input",
+      { action: "script", events: [{ at_frame: 0, type: "action", action: "jump", hold_ms: 50 }], wait: false, instance: "a" },
+      ctx
+    );
+    expect(calls.map((call) => call.method)).toEqual(["executeOps", "executeOps", "executeOps", "executeOps", "executeOps"]);
+    expect(calls.map((call) => call.args[0])).toEqual([
+      [{ op: "SetRuntimeProp", path: "/root/Main/Player", property: "health", value: 1, instance: "b" }],
+      [{ op: "CallRuntimeMethod", path: "/root/Main/Boss", method: "take_damage", args: [25] }],
+      [{ op: "RuntimeAnimationTree", path: "/root/P/Tree", cmd: "travel", state: "Attack" }],
+      [{ op: "GameStep", frames: 600, kind: "physics" }],
+      [{ op: "SimulateInputScript", events: [{ at_frame: 0, type: "action", action: "jump", hold_ms: 50 }], clock: "frame", wait: false, instance: "a" }],
+    ]);
+    expect(calls.map((call) => call.args[2])).toEqual([25_000, 25_000, 25_000, 35_000, 25_000]);
+  });
+
+  it("validates with the shared zod contract and the builders before touching the engine", async () => {
+    const { ctx, calls } = fakeEngineContext();
+    await expect(dispatchTool("game-control", { action: "rewind" }, ctx)).rejects.toThrow(/Invalid arguments for game-control: action/);
+    await expect(dispatchTool("game-input", { action: "script" }, ctx)).rejects.toThrow(/non-empty events/);
+    await expect(dispatchTool("runtime-animate", { target: "player", path: "/root/A", cmd: "travel" }, ctx)).rejects.toThrow(
+      /not an AnimationPlayer command/
+    );
+    await expect(dispatchTool("game-probe", { max_dim: 8 }, ctx)).rejects.toThrow(/16\.\.4096/);
+    expect(calls).toEqual([]);
+  });
+
+  it("surfaces runtime gates with the prescriptive text", async () => {
+    const { ctx } = fakeEngineContext({
+      executeOps: async () => ({
+        ok: false,
+        results: [{ ok: false, op: "GameStep", failure_reason: "game_breaked", error: "stopped at breakpoint" }],
+      }),
+    });
+    await expect(dispatchTool("game-control", { action: "step" }, ctx)).rejects.toThrow(/breakpoint.*Engine said: stopped at breakpoint/);
+
+    const busy = fakeEngineContext({
+      executeOps: async () => ({ ok: false, results: [{ ok: false, op: "SimulateInputScript", failure_reason: "busy", error: "in flight" }] }),
+    });
+    await expect(
+      dispatchTool("game-input", { action: "script", events: [{ type: "action", action: "jump" }] }, busy.ctx)
+    ).rejects.toThrow(/one per instance/);
+  });
+
+  it("rewrites an old engine's unknown-op answer into engine_lacks_op (no advert, so the pre-flight cannot refuse)", async () => {
+    const { ctx } = fakeEngineContext({
+      executeOps: async () => ({ ok: false, results: [{ ok: false, op: "GameProbe", error: "unknown op: GameProbe" }] }),
+    });
+    const failure = await dispatchTool("game-probe", {}, ctx).catch((err: unknown) => err);
+    expect(failure).toBeInstanceOf(ToolResultError);
+    expect((failure as ToolResultError).result).toMatchObject({ op: "GameProbe", failure_reason: "engine_lacks_op" });
+    expect((failure as ToolResultError).message).toContain("summer_get_runtime_tree");
+  });
+
+  it("game-probe writes the frame to a file and returns image_path + frame_stamp instead of base64", async () => {
+    const { ctx, calls } = fakeEngineContext({
+      executeOps: async () => ({
+        ok: true,
+        results: [
+          {
+            ok: true,
+            op: "GameProbe",
+            frame: { process_frames: 42, physics_frames: 40, frames_drawn: 41 },
+            image_frame: 42,
+            image_base64: Buffer.from("jpegbytes").toString("base64"),
+            mime: "image/jpeg",
+            width: 16,
+            height: 9,
+            values: {},
+            missing: [],
+          },
+        ],
+      }),
+    });
+    const result = (await dispatchTool("game-probe", { props: ["/root/Main/Player:position"], instance: "a" }, ctx)) as {
+      image_path?: string;
+      frame_stamp?: string;
+      results: Array<Record<string, unknown>>;
+    };
+    // The executeOps override above replaces the recorder, so only the shaped result is asserted here;
+    // the payload shape is covered by "sends each op alone ..." above.
+    expect(calls).toEqual([]);
+    expect(result.image_path).toMatch(/game-probe-\d+\.jpg$/);
+    expect(result.frame_stamp).toBe("frame 42, physics 40, drawn 41, image_frame 42");
+    expect(result.results[0]!.image_base64).toBeUndefined();
+  });
+
+  it("play: plain uses /api/play; seed/fixed_fps and instances travel as the PlayGame op; stop {instance} sends StopGame", async () => {
+    const { ctx, calls } = fakeEngineContext();
+    await dispatchTool("play", { scene: "res://a.tscn" }, ctx);
+    expect(calls).toEqual([{ method: "play", args: ["res://a.tscn"] }]);
+
+    await dispatchTool("play", { seed: 7, fixed_fps: 60 }, ctx);
+    expect(calls[1]).toEqual({ method: "executeOps", args: [[{ op: "PlayGame", seed: 7, fixed_fps: 60 }], undefined, 60_000] });
+
+    await dispatchTool("play", { instance: "a", mode: "offscreen", deterministic: true }, ctx);
+    expect(calls[2]!.args[0]).toEqual([{ op: "PlayGame", instance: "a", mode: "offscreen", deterministic: true }]);
+
+    await dispatchTool("stop", {}, ctx);
+    expect(calls[3]!.method).toBe("stop");
+    await dispatchTool("stop", { instance: "a" }, ctx);
+    expect(calls[4]).toEqual({ method: "executeOps", args: [[{ op: "StopGame", instance: "a" }], undefined, 15_000] });
+  });
+
+  it("play refuses an offscreen instance before sending on an engine that provably lacks the runtime-control wave", async () => {
+    const { ctx, calls } = fakeEngineContext({
+      getEngineCapabilities: () => ({ opKinds: ["PlayGame", "StopGame"] }),
+      getEngineVersion: () => "0.5.66",
+    });
+    const failure = await dispatchTool("play", { instance: "a", mode: "offscreen" }, ctx).catch((err: unknown) => err);
+    expect(failure).toBeInstanceOf(ToolResultError);
+    expect((failure as ToolResultError).result).toMatchObject({ op: "ListGameInstances", failure_reason: "engine_lacks_op" });
+    // seed alone is fine on such an engine: PlayGame itself is advertised.
+    await dispatchTool("play", { seed: 7 }, ctx);
+    expect(calls).toHaveLength(1);
+    await expect(dispatchTool("play", { mode: "offscreen" }, ctx)).rejects.toThrow(/other than 'main'/);
   });
 });

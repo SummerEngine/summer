@@ -17,7 +17,7 @@
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (73 tools)
+## Tool surface (74 tools)
 
 ### Project files (3)
 
@@ -74,6 +74,12 @@
 | `summer_run_script` | Run a GDScript (`func run(ctx):`) inside the live editor against the OPEN scene. Prefer it over 3+ CRUD ops or any computed placement (scatter, procedural meshes, bulk edits). Created nodes need `ctx.set_owner_recursive(node)` after `add_child`. |
 | `summer_run_editor_script` | Run an EditorScript (`func _run():`) in a fresh headless child editor against the ON-DISK project. Cold path for batch/project-wide jobs; unsaved live edits are invisible to it. |
 | `summer_api_docs` | Offline class-reference lookup (properties, methods, signals, constants). Verify names before scripting instead of guessing; works without the engine. |
+
+### Mesh fabrication (1)
+
+| Tool | Use |
+|---|---|
+| `summer_fabricate_3d` | Run a Blender Python (bpy) script in the user's OWN installed Blender — headless, engine-supervised — then import the exported `.glb` into `res://` and optionally instantiate it with `target_size`. For modular kits with exact dimensions, VFX meshes (shatter, sweeps, LOD chains), and post-processing generated models (decimate/UV/bake); generic props go to the library and characters to generation. Requires Blender on the machine (never bundled); `blender_not_found` carries the fix. The `fabricating-assets` skill has the bpy rules that survive glTF export. |
 
 ### Perception (4)
 

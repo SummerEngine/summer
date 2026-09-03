@@ -55,6 +55,8 @@ queries:
     expected: [skill/vehicle-model]
   - query: "what's the right pipeline for all the assets my game needs"
     expected: [skill/asset-strategy]
+  - query: "write a Blender script that fabricates a set of pipe pieces with exact dimensions and bevels"
+    expected: [skill/fabricating-assets]
 
   # ── Animation ──────────────────────────────────────────────────────────
   - query: "put a walk animation on my character"
@@ -212,6 +214,8 @@ queries:
     expected: [tool/get-script-errors]
   - query: "import this glb from a url into my project"
     expected: [tool/import-from-url]
+  - query: "fabricate this mesh from my bpy script and import the fabricated glb into the scene"
+    expected: [tool/fabricate-3d]
   - query: "change the main scene in project settings"
     expected: [tool/project-setting]
   - query: "wait for the game to start before checking for errors"

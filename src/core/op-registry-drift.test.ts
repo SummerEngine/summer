@@ -48,6 +48,7 @@ const KNOWN_UNIMPLEMENTED: Record<string, string> = {
   Starcast3D: "engine PR #147 (codex/starcast-spatial-probe: read-only 26-direction placement rundown)",
   CustomBake: "engine PR #155/#156 (bake helpers) — not on engine main",
   Probe: "engine PR #155/#156 (verify probe op) — not on engine main",
+  FabricateMesh: "engine PR #156 follow-up (FabricateMesh, wave K)",
 };
 
 function sourceFiles(dir: string, out: string[] = []): string[] {

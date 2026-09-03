@@ -2251,8 +2251,8 @@
     {
       "id": "skill/scene-scripting",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "3b892ce6d92626b3149982d4906989165b93770101a2dc6a60931c509339addc",
+      "version": "1.0.3",
+      "content_hash": "447ef134dd2d5439bf6e6c971ec22503cd3344aafb6b9a79955c8ba9339c299a",
       "summary": "Build or modify scenes with one GDScript run inside the live editor (summer_run_script) instead of long CRUD chains; verify with snapshot diff + screenshot.",
       "use_when": [
         "a scene change needs 3+ related ops or any computed placement — scattering, grids, rings, procedural meshes, geometry helpers, terrain, lighting rigs, keyframe animation, shader FX",

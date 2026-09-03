@@ -1,6 +1,6 @@
 id: skill/scene-scripting
 kind: skill
-version: 1.0.2
+version: 1.0.3
 summary: Build or modify scenes with one GDScript run inside the live editor (summer_run_script) instead of long CRUD chains; verify with snapshot diff + screenshot.
 use_when:
   - a scene change needs 3+ related ops or any computed placement — scattering, grids, rings, procedural meshes, geometry helpers, terrain, lighting rigs, keyframe animation, shader FX
@@ -8,7 +8,7 @@ use_when:
   - a cold project-wide batch job belongs in summer_run_editor_script
 do_not_use_when:
   - a single property tweak — summer_set_prop is cheaper
-  - "the engine build lacks RunSceneScript/RunEditorScript (engine PR #156; current shipped engines return engine_lacks_op) — fall back to the scene tools"
+  - "the engine build lacks RunSceneScript (engine PR #156; current shipped engines return engine_lacks_op) — RunEditorScript and RunVerification DO ship today, so fall back to summer_run_editor_script or the scene tools"
 facets:
   lifecycle:
     - build

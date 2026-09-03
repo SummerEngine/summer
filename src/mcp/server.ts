@@ -239,6 +239,9 @@ function installResultSizeLogger(server: {
             errorClass: callMeta?.errorClass,
             failureReason: callMeta?.failureReason,
             durationMs,
+            // Read only under SUMMER_TRAJECTORY_EVAL=1 (bounded summary); the
+            // default redacted stream ignores it.
+            result,
           });
         }
         if (

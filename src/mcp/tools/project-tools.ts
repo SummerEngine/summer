@@ -10,6 +10,7 @@ import {
 import { EngineRebindError } from "../../core/api-client.js";
 import { buildAgentPlaybook as buildCoreAgentPlaybook } from "../../core/capabilities/agent-playbook.js";
 import { buildCapabilitySkewWarning } from "../../core/capability-skew.js";
+import { isTrajectoryEvalMode } from "../../core/trajectory.js";
 import { getCachedBootDriftNotice } from "../boot-notice.js";
 import { appendMcpLogEvent } from "../../core/mcp-log.js";
 import { getProjectMemorySummary } from "../../project-memory/project-memory.js";
@@ -382,6 +383,9 @@ settingsPrefix to read a specific settings group (e.g. 'audio/') instead.`,
           ...(rebindError ? { rebindError } : {}),
           projectMemory: getProjectMemorySummary(projectPath),
           summerUpdateNotice: getCachedBootDriftNotice()?.text ?? null,
+          // Eval-mode trajectory capture (unredacted trajectory.full.jsonl) is
+          // visible to the agent and to a human reading the transcript.
+          ...(isTrajectoryEvalMode() ? { trajectory_eval_mode: true } : {}),
           guidance: mainScene
             ? "Use `summer_open_scene` with `mainScene` if no scene is open."
             : "Main scene not found in project state. Open a known scene path explicitly.",

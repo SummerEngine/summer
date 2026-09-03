@@ -1,0 +1,42 @@
+# T4.1 — HUD: CanvasLayer + anchored controls, judged in the running game.
+id: T4.1-health-bar
+tier: T4
+title: health-bar
+prompt: >-
+  Add a HUD with a health bar top-left and a score label top-right; both must
+  stay put when the window is resized.
+fixture: empty2d
+scene: res://main.tscn
+budget: { wall_clock_s: 480, max_tool_calls: 25 }
+skills_expected: [skill/scene-scripting, skill/ui-basics]
+capture: [probe-hud]
+assertions:
+  - id: hud-layer
+    predicate: count
+    args: { class: CanvasLayer, op: ">=", value: 1 }
+    required: true
+  - id: health-bar-exists
+    predicate: exists
+    args: { selector: "class:ProgressBar" }
+    required: true
+  - id: score-label-exists
+    predicate: exists
+    args: { selector: "class:Label" }
+    required: true
+  - id: score-anchored-right
+    predicate: tscn_prop
+    args: { selector: "class:Label", key: anchor_right, op: "==", value: 1.0, quantifier: any }
+    required: true
+    note: a top-right anchor preset lands as anchor_right = 1.0 in the saved scene; the default (0) is not written
+  - id: runs-clean
+    predicate: runs_clean
+    args: { seconds: 2 }
+    required: true
+  - id: hud-frame-not-blank
+    predicate: frame_not_blank
+    args: { name: hud }
+    required: true
+  - id: all-saved
+    predicate: exists
+    args: { selector: "*" }
+    required: false

@@ -134,6 +134,7 @@ import { readLibraryEntry, readLibraryInputSchema } from "../library-read.js";
 import { runSearchLibrary, searchLibraryInputSchema } from "../library-search.js";
 
 import { TOOLKIT_VERSION as CLI_VERSION } from "../version.js";
+import { isTrajectoryEvalMode } from "../trajectory.js";
 
 export type DispatchArgs = Record<string, unknown>;
 
@@ -1111,6 +1112,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       mainScene: projectSettingValue(project, ["application/run/main_scene", "run/main_scene"]),
       boundProjectIdHash,
       ...(rebindError ? { rebindError } : {}),
+      ...(isTrajectoryEvalMode() ? { trajectory_eval_mode: true } : {}),
     };
   }),
   entry("summer_open", "Open a summerengine.com page or an editor surface by intent name, or print the URL/op", false, async (args, ctx) => {

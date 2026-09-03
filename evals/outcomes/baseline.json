@@ -1,0 +1,107 @@
+{
+  "generated_at": "2026-09-03",
+  "engine_version": "0.5.65",
+  "opkinds_sha256": "b15dbb6231598affef87ed3bac272ab86b8f7e386202c36116ac036dee57415e",
+  "toolkit_version": "2.8.2",
+  "render": "xvfb",
+  "task_count": 8,
+  "mutant_count": 6,
+  "tasks": {
+    "T1.1-courtyard": {
+      "pass": true,
+      "severity": null,
+      "failed_required": []
+    },
+    "T1.3-edit-in-place": {
+      "pass": true,
+      "severity": null,
+      "failed_required": []
+    },
+    "T1.4-layout-from-spec": {
+      "pass": true,
+      "severity": null,
+      "failed_required": []
+    },
+    "T3.1-three-platforms": {
+      "pass": true,
+      "severity": null,
+      "failed_required": []
+    },
+    "T4.1-health-bar": {
+      "pass": true,
+      "severity": null,
+      "failed_required": []
+    },
+    "T5.1-idle-walk": {
+      "pass": true,
+      "severity": null,
+      "failed_required": []
+    },
+    "T6.1-hills": {
+      "pass": true,
+      "severity": null,
+      "failed_required": []
+    },
+    "T7.1-flyover": {
+      "pass": true,
+      "severity": null,
+      "failed_required": []
+    }
+  },
+  "mutants": {
+    "T1.1-courtyard.drop-light": {
+      "expect_fail": [
+        "light-present"
+      ],
+      "failed_required": [
+        "light-present"
+      ],
+      "exact": true
+    },
+    "T1.3-edit-in-place.skip-save": {
+      "expect_fail": [
+        "wall-saved"
+      ],
+      "failed_required": [
+        "wall-saved"
+      ],
+      "exact": true
+    },
+    "T1.4-layout-from-spec.misplace-cube": {
+      "expect_fail": [
+        "gold-layout"
+      ],
+      "failed_required": [
+        "gold-layout"
+      ],
+      "exact": true
+    },
+    "T3.1-three-platforms.platform-no-collision": {
+      "expect_fail": [
+        "platforms-collision"
+      ],
+      "failed_required": [
+        "platforms-collision"
+      ],
+      "exact": true
+    },
+    "T4.1-health-bar.label-unanchored": {
+      "expect_fail": [
+        "score-anchored-right"
+      ],
+      "failed_required": [
+        "score-anchored-right"
+      ],
+      "exact": true
+    },
+    "T5.1-idle-walk.wrong-clip": {
+      "expect_fail": [
+        "walk-while-held"
+      ],
+      "failed_required": [
+        "walk-while-held"
+      ],
+      "exact": true
+    }
+  }
+}

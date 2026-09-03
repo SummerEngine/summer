@@ -1,0 +1,22 @@
+# Golden for T1.3 — remove the nine blue GridBox_* meshes, add one low wall
+# where they stood, re-aim the fixture camera at it, save.
+task: T1.3-edit-in-place
+recorded_at: "2026-09-03T00:00:00.000Z"
+description: GridBox_0..8 removed, LowWall added at their centre, camera re-aimed, saved
+steps:
+  - tool: summer_run_script
+    args:
+      source: |
+        func run(ctx):
+            var removed = 0
+            for i in range(9):
+                var box = ctx.find("GridBox_%d" % i)
+                if box:
+                    box.get_parent().remove_child(box)
+                    box.free()
+                    removed += 1
+            ctx.add_mesh("box", "LowWall", null, {"size": Vector3(6, 1, 0.5), "position": Vector3(2, 0.5, 2)})
+            var cam = ctx.find("Camera3D")
+            cam.look_at_from_position(Vector3(2, 4, 9), Vector3(2, 0.5, 2), Vector3.UP)
+            var saved = ctx.save_scene()
+            return {"removed": removed, "saved": saved}

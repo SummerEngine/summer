@@ -1,0 +1,25 @@
+# Mutant of T1.3: identical edit, but the agent never saves. Must fail EXACTLY
+# `wall-saved` — the wall is in the edited scene (diff/snapshot agree) but not
+# in the main.tscn the agent left behind. The runner's own freeze save happens
+# AFTER the tscn evidence is read, so this stays detectable.
+task: T1.3-edit-in-place
+mutation: skip-save
+expect_fail: [wall-saved]
+recorded_at: "2026-09-03T00:00:00.000Z"
+description: T1.3 golden without ctx.save_scene()
+steps:
+  - tool: summer_run_script
+    args:
+      source: |
+        func run(ctx):
+            var removed = 0
+            for i in range(9):
+                var box = ctx.find("GridBox_%d" % i)
+                if box:
+                    box.get_parent().remove_child(box)
+                    box.free()
+                    removed += 1
+            ctx.add_mesh("box", "LowWall", null, {"size": Vector3(6, 1, 0.5), "position": Vector3(2, 0.5, 2)})
+            var cam = ctx.find("Camera3D")
+            cam.look_at_from_position(Vector3(2, 4, 9), Vector3(2, 0.5, 2), Vector3.UP)
+            return {"removed": removed}

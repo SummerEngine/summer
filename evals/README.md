@@ -13,6 +13,7 @@ this file is the map.
 | [`tools/`](tools/) | Conformance: input_schema round-trips to zod + commander with zero drift | lands with the registry compiler (shares its derivation code) | vitest, once compiler lands |
 | [`end-to-end/`](end-to-end/) | The make-a-game ladder E0–E5: whole-system builds of real games | definition binding; runner future | nightly/weekly, never per-PR |
 | [`canary/`](canary/) | Blind A/B gateway: a stdio MCP proxy that hides or reveals one canary tool per arm, enforces a call budget, records evidence | **LIVE** (`npm run eval:canary`; needs `npm run build` + a fixture project) | none — manual trials; its policy core is unit-tested in `npm test` |
+| [`outcomes/`](outcomes/) | Agent OUTCOMES, not op correctness: replayed trajectories against a fresh engine on pristine fixtures, judged by assertions over snapshots, the saved `.tscn`, a clean play and probe reads from the running game | **LIVE, MVP-0** (`npm run eval:outcomes`; needs `npm run build` + `SUMMER_EDITOR_BIN`; replay only, assertions only) | per PR `--dry-run` (schema + golden drift); the engine-backed replay is nightly, gated on committed `baseline.json` via `--check` |
 
 ## Routing eval (the one that runs today)
 
@@ -44,12 +45,27 @@ npm run eval:routing -- --verbose          # includes the gap report
 3. `vitest run`
 4. `npm run validate:library` (schemas + capability lint)
 5. `npm run eval:routing -- --check` (regression gate)
-6. registry parity (`generate:registry -- --check`) — soft-skips with a warning
+6. `npm run eval:outcomes -- --dry-run` (task/assertion schema + golden drift; no engine)
+7. registry parity (`generate:registry -- --check`) — soft-skips with a warning
    until the compiler lands, then becomes the CONTRACT §6 drift gate.
+
+## Outcome eval (replay, assertions only — MVP-0)
+
+```
+npm run build
+SUMMER_EDITOR_BIN=/path/to/summer-editor npm run eval:outcomes            # goldens + mutants, compared to baseline.json
+SUMMER_EDITOR_BIN=… npm run eval:outcomes -- --check                       # also fails on a missing/stale baseline
+SUMMER_EDITOR_BIN=… npm run eval:outcomes -- --update-baseline             # accept (commit the diff + engine.lock)
+npm run eval:outcomes -- --dry-run                                         # per PR: no engine
+```
+
+The assertion vocabulary, how to add a task or a mutant, and the honesty
+rules: [`outcomes/README.md`](outcomes/README.md).
 
 ## Changing the baseline
 
 Baseline changes are code-reviewed like code. A PR may update
-`routing/baseline.json` only when the diff is explained by the same PR
-(new entries, better metadata, new queries). A PR that lowers recall to get
-green is a rejected PR.
+`routing/baseline.json` or `outcomes/baseline.json` only when the diff is
+explained by the same PR (new entries, better metadata, new queries; a new
+task, a new mutant, an engine change that is the intended fix). A PR that
+lowers recall — or drops a passing golden — to get green is a rejected PR.

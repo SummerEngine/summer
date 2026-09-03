@@ -1,0 +1,265 @@
+[gd_scene format=3 uid="uid://c0hs77it3xecs"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_7dm0k"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_ig7tw"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_0xm2m"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_h2yge"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_1bvp3"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_lquwl"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_7mycd"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_272bh"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_5vw27"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_kek77"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_4c57u"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_efxa6"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_dg77c"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_ycdy4"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_w48qg"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_vivmo"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_2cqfq"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_yaehf"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_074og"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_cegan"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_82xsv"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_getpj"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_ryguw"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_d13ii"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_1u8w0"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_0odxb"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_lswn8"]
+albedo_color = Color(0.26666668, 0.53333336, 1, 1)
+roughness = 0.3
+
+[sub_resource type="BoxMesh" id="BoxMesh_a6jrf"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_xuqvo"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_qsp4k"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_kq58d"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_seu75"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_htxhm"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_jq2sk"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_4k2k6"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_0rl1p"]
+radius = 0.75
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_ok6jj"]
+radius = 0.7491505
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_facbu"]
+
+[sub_resource type="Sky" id="Sky_b1qrp"]
+sky_material = SubResource("ProceduralSkyMaterial_facbu")
+
+[sub_resource type="Environment" id="Environment_come4"]
+background_mode = 2
+sky = SubResource("Sky_b1qrp")
+
+[node name="Main" type="Node3D" unique_id=651767802]
+
+[node name="Grid" type="Node3D" parent="." unique_id=997905554]
+
+[node name="Box_0_0" type="MeshInstance3D" parent="Grid" unique_id=1421062339]
+mesh = SubResource("BoxMesh_7dm0k")
+
+[node name="Box_0_1" type="MeshInstance3D" parent="Grid" unique_id=971038984]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2)
+mesh = SubResource("BoxMesh_ig7tw")
+
+[node name="Box_0_2" type="MeshInstance3D" parent="Grid" unique_id=846358141]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 4)
+mesh = SubResource("BoxMesh_0xm2m")
+
+[node name="Box_0_3" type="MeshInstance3D" parent="Grid" unique_id=1777181113]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 6)
+mesh = SubResource("BoxMesh_h2yge")
+
+[node name="Box_0_4" type="MeshInstance3D" parent="Grid" unique_id=2001119757]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 8)
+mesh = SubResource("BoxMesh_1bvp3")
+
+[node name="Box_1_0" type="MeshInstance3D" parent="Grid" unique_id=2039794272]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 0)
+mesh = SubResource("BoxMesh_lquwl")
+
+[node name="Box_1_1" type="MeshInstance3D" parent="Grid" unique_id=1680785203]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 2)
+mesh = SubResource("BoxMesh_7mycd")
+
+[node name="Box_1_2" type="MeshInstance3D" parent="Grid" unique_id=1569404519]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 4)
+mesh = SubResource("BoxMesh_272bh")
+
+[node name="Box_1_3" type="MeshInstance3D" parent="Grid" unique_id=1678611595]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 6)
+mesh = SubResource("BoxMesh_5vw27")
+
+[node name="Box_1_4" type="MeshInstance3D" parent="Grid" unique_id=1282981514]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 8)
+mesh = SubResource("BoxMesh_kek77")
+
+[node name="Box_2_0" type="MeshInstance3D" parent="Grid" unique_id=1000723187]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, 0)
+mesh = SubResource("BoxMesh_4c57u")
+
+[node name="Box_2_1" type="MeshInstance3D" parent="Grid" unique_id=1572990091]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, 2)
+mesh = SubResource("BoxMesh_efxa6")
+
+[node name="Box_2_2" type="MeshInstance3D" parent="Grid" unique_id=677450271]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, 4)
+mesh = SubResource("BoxMesh_dg77c")
+
+[node name="Box_2_3" type="MeshInstance3D" parent="Grid" unique_id=788071735]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, 6)
+mesh = SubResource("BoxMesh_ycdy4")
+
+[node name="Box_2_4" type="MeshInstance3D" parent="Grid" unique_id=1852859596]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, 8)
+mesh = SubResource("BoxMesh_w48qg")
+
+[node name="Box_3_0" type="MeshInstance3D" parent="Grid" unique_id=771960943]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, 0)
+mesh = SubResource("BoxMesh_vivmo")
+
+[node name="Box_3_1" type="MeshInstance3D" parent="Grid" unique_id=1406213556]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, 2)
+mesh = SubResource("BoxMesh_2cqfq")
+
+[node name="Box_3_2" type="MeshInstance3D" parent="Grid" unique_id=1057588275]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, 4)
+mesh = SubResource("BoxMesh_yaehf")
+
+[node name="Box_3_3" type="MeshInstance3D" parent="Grid" unique_id=148451189]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, 6)
+mesh = SubResource("BoxMesh_074og")
+
+[node name="Box_3_4" type="MeshInstance3D" parent="Grid" unique_id=1714830129]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, 8)
+mesh = SubResource("BoxMesh_cegan")
+
+[node name="Box_4_0" type="MeshInstance3D" parent="Grid" unique_id=984304077]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 0)
+mesh = SubResource("BoxMesh_82xsv")
+
+[node name="Box_4_1" type="MeshInstance3D" parent="Grid" unique_id=913793201]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 2)
+mesh = SubResource("BoxMesh_getpj")
+
+[node name="Box_4_2" type="MeshInstance3D" parent="Grid" unique_id=292385945]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 4)
+mesh = SubResource("BoxMesh_ryguw")
+
+[node name="Box_4_3" type="MeshInstance3D" parent="Grid" unique_id=1432958938]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 6)
+mesh = SubResource("BoxMesh_d13ii")
+
+[node name="Box_4_4" type="MeshInstance3D" parent="Grid" unique_id=211474727]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 8)
+mesh = SubResource("BoxMesh_1u8w0")
+
+[node name="GridBox_0" type="MeshInstance3D" parent="." unique_id=761942255]
+mesh = SubResource("BoxMesh_0odxb")
+surface_material_override/0 = SubResource("StandardMaterial3D_lswn8")
+
+[node name="GridBox_1" type="MeshInstance3D" parent="." unique_id=650994526]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2)
+mesh = SubResource("BoxMesh_a6jrf")
+surface_material_override/0 = SubResource("StandardMaterial3D_lswn8")
+
+[node name="GridBox_2" type="MeshInstance3D" parent="." unique_id=1014853056]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 4)
+mesh = SubResource("BoxMesh_xuqvo")
+surface_material_override/0 = SubResource("StandardMaterial3D_lswn8")
+
+[node name="GridBox_3" type="MeshInstance3D" parent="." unique_id=700197869]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 0)
+mesh = SubResource("BoxMesh_qsp4k")
+surface_material_override/0 = SubResource("StandardMaterial3D_lswn8")
+
+[node name="GridBox_4" type="MeshInstance3D" parent="." unique_id=1436451822]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 2)
+mesh = SubResource("BoxMesh_kq58d")
+surface_material_override/0 = SubResource("StandardMaterial3D_lswn8")
+
+[node name="GridBox_5" type="MeshInstance3D" parent="." unique_id=374638721]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 4)
+mesh = SubResource("BoxMesh_seu75")
+surface_material_override/0 = SubResource("StandardMaterial3D_lswn8")
+
+[node name="GridBox_6" type="MeshInstance3D" parent="." unique_id=239897720]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, 0)
+mesh = SubResource("BoxMesh_htxhm")
+surface_material_override/0 = SubResource("StandardMaterial3D_lswn8")
+
+[node name="GridBox_7" type="MeshInstance3D" parent="." unique_id=275272978]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, 2)
+mesh = SubResource("BoxMesh_jq2sk")
+surface_material_override/0 = SubResource("StandardMaterial3D_lswn8")
+
+[node name="GridBox_8" type="MeshInstance3D" parent="." unique_id=1587257924]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, 4)
+mesh = SubResource("BoxMesh_4k2k6")
+surface_material_override/0 = SubResource("StandardMaterial3D_lswn8")
+
+[node name="CollidableSphere" type="MeshInstance3D" parent="." unique_id=1008676484]
+mesh = SubResource("SphereMesh_0rl1p")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="CollidableSphere" unique_id=1257241393]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CollidableSphere/StaticBody3D" unique_id=1676939597]
+shape = SubResource("SphereShape3D_ok6jj")
+
+[node name="LightRig" type="Node3D" parent="." unique_id=826431905]
+
+[node name="KeyLight" type="DirectionalLight3D" parent="LightRig" unique_id=932937432]
+transform = Transform3D(0.8660254, 0.35355338, -0.35355338, 0, 0.70710677, 0.70710677, 0.5, -0.6123724, 0.6123724, 0, 0, 0)
+light_energy = 1.2
+shadow_enabled = true
+
+[node name="FillLight" type="DirectionalLight3D" parent="LightRig" unique_id=1277155588]
+transform = Transform3D(0.49999997, -0.29619813, 0.8137977, 0, 0.9396926, 0.34202012, -0.86602545, -0.17101005, 0.46984628, 0, 0, 0)
+light_energy = 0.4
+
+[node name="RimLight" type="DirectionalLight3D" parent="LightRig" unique_id=49240733]
+transform = Transform3D(-0.9396926, -0.1710101, 0.2961982, 0, 0.8660254, 0.5, -0.3420202, 0.4698463, -0.81379765, 0, 0, 0)
+light_energy = 0.6
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=910072814]
+environment = SubResource("Environment_come4")
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=1484901063]
+transform = Transform3D(0.70710677, -0.40824828, 0.57735026, 0, 0.8164966, 0.57735026, -0.70710677, -0.40824828, 0.57735026, 8, 6, 8)
+current = true

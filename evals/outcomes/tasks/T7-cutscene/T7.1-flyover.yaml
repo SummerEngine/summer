@@ -1,0 +1,51 @@
+# T7.1 — Cutscene camera: an autoplaying AnimationPlayer flyover whose final
+# frame is checked in the running game.
+id: T7.1-flyover
+tier: T7
+title: flyover
+prompt: >-
+  Make a 6-second camera flyover of the fixture grid that ends framing the blue
+  boxes, auto-plays.
+fixture: grid
+scene: res://main.tscn
+budget: { wall_clock_s: 900, max_tool_calls: 40 }
+skills_expected: [skill/scene-scripting, skill/cinematic-cutscene]
+capture: [probe-frames]
+assertions:
+  - id: player-exists
+    predicate: count
+    args: { class: AnimationPlayer, op: ">=", value: 1 }
+    required: true
+  - id: clip-length
+    predicate: tscn_resource
+    args: { type: Animation, key: length, op: ">=", value: 5.5 }
+    required: true
+  - id: autoplay-set
+    predicate: tscn_prop
+    args: { selector: "class:AnimationPlayer", key: autoplay, op: exists, quantifier: any }
+    required: true
+  - id: camera-position-track
+    predicate: tscn_resource
+    args: { type: Animation, key: "tracks/*/type", op: "==", value: position_3d }
+    required: true
+  - id: camera-track-target
+    predicate: tscn_resource
+    args: { type: Animation, key: "tracks/*/path", op: contains, value: Camera3D }
+    required: true
+  - id: ends-on-boxes
+    predicate: camera_sees
+    args: { selector: "GridBox_*", fraction: 0.9, at_seconds: 6.2 }
+    required: true
+    note: sampled after the 6 s clip has finished
+  - id: runs-clean
+    predicate: runs_clean
+    args: { seconds: 7 }
+    required: true
+  - id: camera-current
+    predicate: camera_current
+    args: {}
+    required: false
+  - id: no-truncation
+    predicate: no_truncation
+    args: {}
+    required: false

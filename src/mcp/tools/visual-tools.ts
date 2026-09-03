@@ -1,15 +1,21 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { withEngine } from "./with-engine.js";
-import type { getClient } from "../server.js";
-import type { EngineSnapshot } from "../../core/api-client.js";
 import {
-  analyzeFrameBase64,
-  describeFlatFrame,
-  type FrameQuality,
-} from "../../core/capabilities/frame-quality.js";
-import { classifySceneKindFromTree, type SceneKindResult } from "../../core/capabilities/scene-kind.js";
-import { sleep } from "../../core/util/sleep.js";
+  analyzedSnapshot,
+  captureGame,
+  captureScene,
+  captureViewport,
+  VIEWPORT_RECAPTURE_DELAY_MS,
+  type CaptureResult,
+  type RecaptureInfo,
+} from "../../core/capabilities/capture.js";
+import { describeFlatFrame } from "../../core/capabilities/frame-quality.js";
+
+// The capture path (content check, single viewport recapture, scene-kind read
+// for the no-camera confession) is ONE copy in core/capabilities/capture.ts,
+// shared with the CLI face; re-exported so tests and callers keep this door.
+export { analyzedSnapshot, captureScene, captureViewport, VIEWPORT_RECAPTURE_DELAY_MS, type CaptureResult, type RecaptureInfo };
 
 /**
  * Visual capture tools. Unlike the in-product chat agent (a text-only "brain"
@@ -18,105 +24,11 @@ import { sleep } from "../../core/util/sleep.js";
  * as an MCP image content block — no vision-model prepass, no paraphrase. The
  * model reviews the actual pixels.
  *
- * Frame honesty (E2E 2026-09-03, F-01 / F-05):
- *  - Every frame goes through a zero-dependency content check
- *    (core/capabilities/frame-quality.ts). A "viewport" frame that comes back
- *    flat (uniformly black/grey) is recaptured ONCE after a settle delay, and
- *    the caption never presents a blank frame as evidence about the scene.
- *    Root-cause status is written in frame-quality.ts: the engine reads the
- *    editor SubViewport texture as-is (no forced draw, no blank retry), which
- *    is consistent with — but not proven to be — a not-yet-redrawn 2D
- *    subviewport right after the editor switched tabs.
- *  - The "scene" target's no-camera confession is phrased for the scene's
- *    kind: a 3D scene without a Camera3D plays grey/black; a 2D scene without a
- *    Camera2D simply plays from the origin and is NOT an error. The engine
- *    receipt reports scene_has_camera for both kinds without saying which, so
- *    the kind comes from a scene-tree read (core/capabilities/scene-kind.ts).
+ * Frame honesty (E2E 2026-09-03, F-01 / F-05) is decided in
+ * core/capabilities/capture.ts (frame content check + one automatic viewport
+ * recapture; scene kind for the no-camera confession). This module only
+ * renders the caption from those fields; the CLI face prints them as JSON.
  */
-
-/** Settle delay before the single automatic viewport recapture. */
-export const VIEWPORT_RECAPTURE_DELAY_MS = 700;
-/** Bounds for the scene-kind tree read (the engine honours depth/limit only on
- *  scene-targeted reads; an untargeted read is the depth-2 snapshot). */
-const SCENE_KIND_TREE_DEPTH = 8;
-const SCENE_KIND_TREE_LIMIT = 600;
-
-export interface RecaptureInfo {
-  delayMs: number;
-  /** Analysis of the flat frame that triggered the recapture. */
-  firstFrame: FrameQuality;
-  /** Set when the second capture itself failed — the FIRST frame is returned. */
-  error?: string;
-}
-
-/** EngineSnapshot plus the toolkit-side honesty fields the caption reads. */
-export type CaptureResult = EngineSnapshot & {
-  frameQuality?: FrameQuality;
-  recapture?: RecaptureInfo;
-  sceneKind?: SceneKindResult;
-};
-
-type CaptureClient = Awaited<ReturnType<typeof getClient>>;
-type ScenePreviewInput = NonNullable<Parameters<CaptureClient["scenePreview"]>[0]>;
-
-function analyzed(snap: EngineSnapshot): CaptureResult {
-  if (!snap.ok || !snap.base64) return snap;
-  return { ...snap, frameQuality: analyzeFrameBase64(snap.base64, snap.mime) };
-}
-
-function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
-
-/**
- * Viewport capture with ONE automatic recapture when the first frame is flat.
- * Exported for tests.
- */
-export async function captureViewport(client: CaptureClient): Promise<CaptureResult> {
-  const first = analyzed(await client.viewportSnapshot());
-  const quality = first.frameQuality;
-  if (!quality?.analyzable || !quality.flat) return first;
-
-  await sleep(VIEWPORT_RECAPTURE_DELAY_MS);
-  const recapture: RecaptureInfo = { delayMs: VIEWPORT_RECAPTURE_DELAY_MS, firstFrame: quality };
-  let second: EngineSnapshot;
-  try {
-    second = await client.viewportSnapshot();
-  } catch (err) {
-    return { ...first, recapture: { ...recapture, error: errorMessage(err) } };
-  }
-  if (!second.ok || !second.base64) {
-    return {
-      ...first,
-      recapture: { ...recapture, error: second.error ?? "recapture returned no image data" },
-    };
-  }
-  return { ...analyzed(second), recapture };
-}
-
-/**
- * Offscreen scene render; when the engine confesses the scene has no camera of
- * its own, read the tree to learn whether that is a 3D or a 2D scene.
- * Exported for tests.
- */
-export async function captureScene(client: CaptureClient, input: ScenePreviewInput): Promise<CaptureResult> {
-  const snap = analyzed(await client.scenePreview(input));
-  if (!snap.ok || !snap.base64 || snap.sceneHasCamera !== false) return snap;
-  return { ...snap, sceneKind: await readSceneKind(client, input.scenePath) };
-}
-
-async function readSceneKind(client: CaptureClient, scenePath?: string): Promise<SceneKindResult> {
-  try {
-    const trimmed = scenePath?.trim();
-    const targeted = trimmed && trimmed !== "." && trimmed !== "./" ? trimmed : undefined;
-    const state = targeted
-      ? await client.getSceneState(targeted, { depth: SCENE_KIND_TREE_DEPTH, limit: SCENE_KIND_TREE_LIMIT })
-      : await client.getSceneState();
-    return classifySceneKindFromTree(state);
-  } catch (err) {
-    return { kind: "unknown", reason: errorMessage(err) };
-  }
-}
 
 function viewportLabel(snap: CaptureResult): string {
   const meta = snap.metadata as Record<string, unknown> | undefined;
@@ -196,7 +108,7 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
     async ({ target, scenePath, framing, size, nodePath, camera_path }) =>
       withEngine(
         async (client): Promise<CaptureResult> => {
-          if (target === "game") return analyzed(await client.gameSnapshot());
+          if (target === "game") return captureGame(client);
           if (target === "scene")
             return captureScene(client, {
               scenePath,

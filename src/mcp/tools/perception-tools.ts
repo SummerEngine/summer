@@ -1,6 +1,13 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { withEngine, missingEngineOpResult, withOldEngineHint } from "./with-engine.js";
+// engine_lacks_op fallbacks: ONE copy for every face (E2E 2026-09-03 F-16).
+import {
+  RUNTIME_NODE_FALLBACK,
+  RUNTIME_TREE_FALLBACK,
+  SNAPSHOT_DIFF_FALLBACK,
+  WORLD_SNAPSHOT_FALLBACK,
+} from "../../core/capabilities/engine-fallbacks.js";
 
 /**
  * Perception tools. Two signals, two jobs: these ops return STRUCTURED state —
@@ -45,17 +52,6 @@ const GAME_NOT_RUNNING_HINT =
 const RUNTIME_TRANSPORT_HINT =
   "This connection cannot carry runtime debugger reads (no async reply channel), or the op was batched with others. Retry it as the ONLY op in the request; if it persists on this transport, probe the running game with a RunVerification probe instead (see the playbook's rawOpsViaBatch).";
 
-const SNAPSHOT_FALLBACK =
-  "read structure with summer_get_scene_tree (pass depth) and verify visually with summer_screenshot";
-// summer_world_snapshot is engine_lacks_op on the same builds that lack the
-// diff op, so this fallback must not route through it (E2E 2026-09-03 F-16).
-const DIFF_FALLBACK =
-  "re-read with summer_get_scene_tree (pass depth) and summer_inspect_node and compare against your earlier read yourself";
-const RUNTIME_TREE_FALLBACK =
-  "probe runtime state with a RunVerification probe (dump_tree/report — see the playbook's rawOpsViaBatch)";
-const RUNTIME_NODE_FALLBACK =
-  "probe the node from a RunVerification probe (report(key, value) — see the playbook's rawOpsViaBatch)";
-
 export function registerPerceptionTools(server: McpServer): void {
   server.tool(
     "summer_world_snapshot",
@@ -78,14 +74,14 @@ Node lists are path-sorted and truncated DETERMINISTICALLY (result carries total
     },
     async ({ scene_path, max_nodes }) =>
       withEngine(async (client) => {
-        const missing = missingEngineOpResult(client, "GetWorldSnapshot", SNAPSHOT_FALLBACK);
+        const missing = missingEngineOpResult(client, "GetWorldSnapshot", WORLD_SNAPSHOT_FALLBACK);
         if (missing) return missing;
         const op: Record<string, unknown> = { op: "GetWorldSnapshot" };
         if (scene_path) op.scene_path = scene_path;
         if (max_nodes !== undefined) op.max_nodes = max_nodes;
         const result = await client.executeOps([op]);
         return withFailureReasonHint(
-          withOldEngineHint(result, "GetWorldSnapshot", SNAPSHOT_FALLBACK),
+          withOldEngineHint(result, "GetWorldSnapshot", WORLD_SNAPSHOT_FALLBACK),
           {
             no_scene:
               "No scene is open to snapshot. Call summer_get_project_context, then summer_open_main_scene (or summer_open_scene with a known .tscn path), then retry.",
@@ -112,13 +108,13 @@ The engine retains the last 8 snapshot ids per session; an expired/unknown id fa
     },
     async ({ from_id, to_id }) =>
       withEngine(async (client) => {
-        const missing = missingEngineOpResult(client, "DiffWorldSnapshot", DIFF_FALLBACK);
+        const missing = missingEngineOpResult(client, "DiffWorldSnapshot", SNAPSHOT_DIFF_FALLBACK);
         if (missing) return missing;
         const op: Record<string, unknown> = { op: "DiffWorldSnapshot", from_id };
         if (to_id) op.to_id = to_id;
         const result = await client.executeOps([op]);
         return withFailureReasonHint(
-          withOldEngineHint(result, "DiffWorldSnapshot", DIFF_FALLBACK),
+          withOldEngineHint(result, "DiffWorldSnapshot", SNAPSHOT_DIFF_FALLBACK),
           {
             unknown_snapshot:
               "That snapshot_id is gone (the engine retains only the last 8 per session, and ids do not survive an engine restart). Take a fresh summer_world_snapshot baseline and redo the before/after pair.",

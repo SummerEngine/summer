@@ -8,7 +8,10 @@ vi.mock("./core/telemetry.js", () => ({ recordMcpSession: vi.fn() }));
 
 import * as engineOps from "./core/capabilities/engine-ops.js";
 import * as engineReceipt from "./core/capabilities/engine-receipt.js";
+import * as capture from "./core/capabilities/capture.js";
+import * as engineFallbacks from "./core/capabilities/engine-fallbacks.js";
 import * as sceneTools from "./mcp/tools/scene-tools.js";
+import * as visualTools from "./mcp/tools/visual-tools.js";
 import * as withEngine from "./mcp/tools/with-engine.js";
 
 /**
@@ -41,7 +44,23 @@ const SHARED: Record<string, string[]> = {
     "importResolvedAsset",
   ],
   "core/capabilities/engine-receipt.ts": ["extractOpError", "withOldEngineHint"],
+  "core/capabilities/capture.ts": ["captureViewport", "captureScene", "captureGame", "analyzedSnapshot"],
 };
+
+/** Constants both faces must import rather than restate: the engine_lacks_op
+ *  fallback sentences (E2E 2026-09-03 F-16). Pinned by name pattern — a
+ *  `const *_FALLBACK =` in a face file is a second copy. */
+const SHARED_CONSTANT_PATTERNS: Record<string, RegExp> = {
+  "core/capabilities/engine-fallbacks.ts": /^(?:export )?const [A-Z_]+_FALLBACK\b/m,
+  // The scripting fallbacks live with their op builders.
+  "core/capabilities/scene-script.ts": /^(?:export )?const RUN_(?:EDITOR_)?SCRIPT_FALLBACK\b/m,
+};
+const FALLBACK_FACES = [
+  "core/capabilities/tool-dispatch.ts",
+  "mcp/tools/spatial-tools.ts",
+  "mcp/tools/perception-tools.ts",
+  "mcp/tools/script-tools.ts",
+];
 
 /** Both faces, and the owning core module each must import from. */
 const FACES: Array<[face: string, owner: string]> = [
@@ -52,6 +71,11 @@ const FACES: Array<[face: string, owner: string]> = [
   ["mcp/tools/file-tools.ts", "core/capabilities/engine-ops.ts"],
   ["mcp/tools/asset-tools.ts", "core/capabilities/asset-import.ts"],
   ["mcp/tools/with-engine.ts", "core/capabilities/engine-receipt.ts"],
+  ["core/capabilities/tool-dispatch.ts", "core/capabilities/capture.ts"],
+  ["mcp/tools/visual-tools.ts", "core/capabilities/capture.ts"],
+  ["core/capabilities/tool-dispatch.ts", "core/capabilities/engine-fallbacks.ts"],
+  ["mcp/tools/spatial-tools.ts", "core/capabilities/engine-fallbacks.ts"],
+  ["mcp/tools/perception-tools.ts", "core/capabilities/engine-fallbacks.ts"],
 ];
 
 function walk(dir: string): string[] {
@@ -95,5 +119,22 @@ describe("repo-lint: tool-dispatch <-> mcp/tools share one helper copy", () => {
     expect(sceneTools.executeSceneMutation).toBe(engineOps.executeSceneMutation);
     expect(withEngine.extractOpError).toBe(engineReceipt.extractOpError);
     expect(withEngine.withOldEngineHint).toBe(engineReceipt.withOldEngineHint);
+    expect(visualTools.captureViewport).toBe(capture.captureViewport);
+    expect(visualTools.captureScene).toBe(capture.captureScene);
+  });
+
+  it("defines every engine_lacks_op fallback sentence once, in core, and no face restates one", () => {
+    const faceFiles = FALLBACK_FACES.map((face) => join(srcRoot, face));
+    for (const [owner, pattern] of Object.entries(SHARED_CONSTANT_PATTERNS)) {
+      expect(pattern.test(readFileSync(join(srcRoot, owner), "utf8")), owner).toBe(true);
+      for (const face of faceFiles) {
+        expect(pattern.test(readFileSync(face, "utf8")), `${relative(srcRoot, face)} restates a fallback owned by ${owner}`).toBe(false);
+      }
+    }
+    // F-16: no fallback may route through an op no shipped engine has.
+    for (const [op, sentence] of Object.entries(engineFallbacks.ENGINE_OP_FALLBACKS)) {
+      expect(sentence, op).not.toContain("summer_world_snapshot");
+      expect(sentence, op).toMatch(/summer_get_scene_tree|summer_inspect_node|summer_set_prop|RunVerification/);
+    }
   });
 });

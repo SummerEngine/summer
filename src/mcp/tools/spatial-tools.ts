@@ -2,6 +2,14 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { withEngine, missingEngineOpResult, ToolInputError, withOldEngineHint } from "./with-engine.js";
 import { executeSceneMutation } from "./scene-tools.js";
+// engine_lacks_op fallbacks: ONE copy for every face (E2E 2026-09-03 F-16).
+import {
+  ALIGN_DISTRIBUTE_FALLBACK,
+  NAVIGATION_PROBE_FALLBACK,
+  SNAP_TO_SURFACE_FALLBACK,
+  STARCAST_FALLBACK,
+  TEST_PLACEMENT_FALLBACK,
+} from "../../core/capabilities/engine-fallbacks.js";
 
 /**
  * Spatial / world-building tools. Five bounded engine ops that turn "roughly
@@ -43,21 +51,6 @@ const MIN_PLACEMENT_FLOOR_DISTANCE = 0.001;
 /** Mirrors the engine's SnapToSurface direction guard (length² > 1e-5). */
 const MIN_SNAP_DIRECTION_LENGTH_SQUARED = 0.00001;
 
-// Fallbacks name ONLY tools every shipped engine has (get_scene_tree,
-// inspect_node, inspect_resource, set_prop, screenshot, RunVerification).
-// summer_world_snapshot is itself engine_lacks_op on every shipped build
-// (E2E 2026-09-03 F-16), so routing an engine_lacks_op failure through it sent
-// the agent from one dead end to the next.
-const PLACEMENT_FALLBACK =
-  "list the subject and its neighbours with summer_get_scene_tree, read their positions and mesh/shape sizes with summer_inspect_node (summer_inspect_resource for mesh/shape extents), judge clearance from those, then verify with summer_screenshot";
-const SNAP_FALLBACK =
-  "read the support's position and mesh/shape size with summer_inspect_node / summer_inspect_resource, set the subject's position with summer_set_prop so its bottom sits on the support's top, and verify with summer_screenshot";
-const ALIGN_FALLBACK =
-  "compute the shared anchor or spacing from the subjects' positions and sizes (summer_inspect_node / summer_inspect_resource) and set each subject's position with summer_set_prop (or one summer_run_script)";
-const NAVIGATION_FALLBACK =
-  "probe reachability from a RunVerification probe (NavigationServer3D.map_get_path — see the playbook's rawOpsViaBatch)";
-const STARCAST_FALLBACK =
-  "read the subject and its neighbours with summer_get_scene_tree + summer_inspect_node and judge support, contact, and clearance from their positions and sizes, then verify with summer_screenshot";
 /** Starcast's own ceilings (engine spatial_ops.cpp starcast_3d): the engine
  *  measures the compact receipt as UTF-8 JSON, downgrades full -> summary
  *  above 12 KiB, and strips secondary paths above 5 KiB, so a receipt past the
@@ -302,7 +295,7 @@ The pose is always global/world-space: position and Euler rotation in degrees ar
       margin,
     }) =>
       withEngine(async (client) => {
-        const missing = missingEngineOpResult(client, "TestPlacement3D", PLACEMENT_FALLBACK);
+        const missing = missingEngineOpResult(client, "TestPlacement3D", TEST_PLACEMENT_FALLBACK);
         if (missing) return missing;
         const exactScene = requireBoundedExactPath(scenePath, "scenePath", SCENE_PATH_LIMIT_BYTES);
         const exactSubject = requireBoundedExactPath(subjectPath, "subjectPath", NODE_PATH_LIMIT_BYTES);
@@ -323,7 +316,7 @@ The pose is always global/world-space: position and Euler rotation in degrees ar
           }],
           { scenePath: exactScene },
         );
-        return withOldEngineHint(receipt, "TestPlacement3D", PLACEMENT_FALLBACK);
+        return withOldEngineHint(receipt, "TestPlacement3D", TEST_PLACEMENT_FALLBACK);
       }, compactResult({
         op: "TestPlacement3D",
         failureReason: "placement_result_exceeded_byte_limit",
@@ -373,7 +366,7 @@ The normal result is bounded below 5 KB and returns before/after transforms, sup
     },
     async ({ scenePath, subjectPath, direction, maxDistance, gap, alignUp }) =>
       withEngine(async (client) => {
-        const missing = missingEngineOpResult(client, "SnapToSurface", SNAP_FALLBACK);
+        const missing = missingEngineOpResult(client, "SnapToSurface", SNAP_TO_SURFACE_FALLBACK);
         if (missing) return missing;
         const exactScene = requireBoundedExactPath(scenePath, "scenePath", SCENE_PATH_LIMIT_BYTES);
         const exactSubject = requireBoundedExactPath(
@@ -395,7 +388,7 @@ The normal result is bounded below 5 KB and returns before/after transforms, sup
           gap,
           align_up: alignUp,
         }]);
-        return withOldEngineHint(receipt, "SnapToSurface", SNAP_FALLBACK);
+        return withOldEngineHint(receipt, "SnapToSurface", SNAP_TO_SURFACE_FALLBACK);
       }, compactResult({
         op: "SnapToSurface",
         failureReason: "snap_to_surface_result_exceeded_byte_limit",
@@ -423,7 +416,7 @@ Alignment modes use the first ordered subject's minimum, center, or maximum proj
     },
     async ({ scenePath, subjectPaths, axis, mode }) =>
       withEngine(async (client) => {
-        const missing = missingEngineOpResult(client, "AlignDistribute3D", ALIGN_FALLBACK);
+        const missing = missingEngineOpResult(client, "AlignDistribute3D", ALIGN_DISTRIBUTE_FALLBACK);
         if (missing) return missing;
         const exactScene = requireBoundedExactPath(scenePath, "scenePath", SCENE_PATH_LIMIT_BYTES);
         const paths = requireBoundedSubjects(subjectPaths, 2, 16, 1536);
@@ -436,7 +429,7 @@ Alignment modes use the first ordered subject's minimum, center, or maximum proj
           axis,
           mode,
         }]);
-        return withOldEngineHint(receipt, "AlignDistribute3D", ALIGN_FALLBACK);
+        return withOldEngineHint(receipt, "AlignDistribute3D", ALIGN_DISTRIBUTE_FALLBACK);
       }, compactResult({
         op: "AlignDistribute3D",
         failureReason: "align_result_exceeded_byte_limit",
@@ -473,7 +466,7 @@ Always pass an exact scenePath and finite world-space start/end points. This rea
     },
     async ({ scenePath, start, end, navigationLayers, optimize }) =>
       withEngine(async (client) => {
-        const missing = missingEngineOpResult(client, "NavigationProbe3D", NAVIGATION_FALLBACK);
+        const missing = missingEngineOpResult(client, "NavigationProbe3D", NAVIGATION_PROBE_FALLBACK);
         if (missing) return missing;
         const exactScene = requireBoundedExactPath(scenePath, "scenePath", SCENE_PATH_LIMIT_BYTES);
         if (start.length !== 3 || end.length !== 3 ||
@@ -493,7 +486,7 @@ Always pass an exact scenePath and finite world-space start/end points. This rea
           }],
           { scenePath: exactScene },
         );
-        return withOldEngineHint(receipt, "NavigationProbe3D", NAVIGATION_FALLBACK);
+        return withOldEngineHint(receipt, "NavigationProbe3D", NAVIGATION_PROBE_FALLBACK);
       }, compactResult({
         op: "NavigationProbe3D",
         failureReason: "navigation_probe_result_exceeded_byte_limit",

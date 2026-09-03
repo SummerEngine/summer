@@ -33,7 +33,7 @@ export const SNAP_TO_SURFACE_FALLBACK =
   "read the support's position and mesh/shape size with summer_inspect_node / summer_inspect_resource, set the subject's position with summer_set_prop so its bottom sits on the support's top, and verify with summer_screenshot";
 
 export const ALIGN_DISTRIBUTE_FALLBACK =
-  "compute the shared anchor or spacing from the subjects' positions and sizes (summer_inspect_node / summer_inspect_resource) and set each subject's position with summer_set_prop (or one summer_run_script)";
+  "compute the shared anchor or spacing from the subjects' positions and sizes (summer_inspect_node / summer_inspect_resource) and set each subject's position with summer_set_prop (or one summer_run_editor_script)";
 
 export const NAVIGATION_PROBE_FALLBACK =
   "probe reachability from a RunVerification probe (NavigationServer3D.map_get_path — see the playbook's rawOpsViaBatch)";

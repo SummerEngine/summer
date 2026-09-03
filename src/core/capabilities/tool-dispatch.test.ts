@@ -1146,7 +1146,7 @@ describe("runtime control dispatch entries (engine Wave I)", () => {
     const failure = await dispatchTool("game-probe", {}, ctx).catch((err: unknown) => err);
     expect(failure).toBeInstanceOf(ToolResultError);
     expect((failure as ToolResultError).result).toMatchObject({ op: "GameProbe", failure_reason: "engine_lacks_op" });
-    expect((failure as ToolResultError).message).toContain("summer_get_runtime_tree");
+    expect((failure as ToolResultError).message).toContain("RunVerification probe");
   });
 
   it("game-probe writes the frame to a file and returns image_path + frame_stamp instead of base64", async () => {

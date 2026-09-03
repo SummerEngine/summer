@@ -291,7 +291,7 @@ export interface MissingEventsResult {
 
 /** What the events tools tell the model to do when the channel is missing. */
 export const EVENTS_FALLBACK =
-  "poll the state you are waiting for instead (summer_is_running after summer_play; summer_get_debugger_errors / summer_get_console for script errors; summer_get_scene_tree or summer_world_snapshot after a long op)";
+  "poll the state you are waiting for instead (summer_is_running after summer_play; summer_get_debugger_errors / summer_get_console for script errors; summer_get_scene_tree after a long op)";
 
 const EVENTS_PREFLIGHT_OFF_HINT =
   `If your engine build serves GET /api/events/poll but does not advertise capabilities.events yet, set ${CAPABILITY_PREFLIGHT_ENV}=off in the MCP server's environment to skip this pre-flight and let the engine answer.`;

@@ -140,7 +140,7 @@ export const RUNTIME_FALLBACKS: Readonly<Record<string, string>> = {
   InputReplay:
     "replay the sequence as SimulateInput ops or a RunVerification probe — this engine cannot replay a recording",
   GameProbe:
-    "read live state with summer_get_runtime_tree / summer_inspect_runtime_node and capture pixels with summer_screenshot target:'game' (two calls, two frames — not one atomic frame)",
+    "read live state from a RunVerification probe (dump_tree/report — see the playbook's rawOpsViaBatch) and capture pixels with summer_screenshot target:'game' (two calls, two frames — not one atomic frame)",
   ListGameInstances:
     "use summer_is_running for the main game — this engine has no parallel offscreen instances",
 };
@@ -149,7 +149,7 @@ export const RUNTIME_FALLBACKS: Readonly<Record<string, string>> = {
  *  an engine that lacks the latter would start the MAIN game and silently
  *  ignore instance/mode, so the pre-flight keys on this kind. */
 export const PLAY_INSTANCE_FALLBACK =
-  "start the main game with summer_play without instance/mode (seed and fixed_fps still apply there) and drive it with the runtime tools one instance at a time";
+  "start the main game with summer_play without instance/mode (seed and fixed_fps still apply there) and observe it with summer_screenshot target:'game' or a RunVerification probe — this engine has no parallel offscreen instances";
 
 // ---------------------------------------------------------------------------
 // Failure hints — prescriptive recovery text keyed by failure_reason.

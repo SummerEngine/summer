@@ -10,6 +10,12 @@ import * as engineOps from "./core/capabilities/engine-ops.js";
 import * as engineReceipt from "./core/capabilities/engine-receipt.js";
 import * as capture from "./core/capabilities/capture.js";
 import * as engineFallbacks from "./core/capabilities/engine-fallbacks.js";
+import * as sceneScript from "./core/capabilities/scene-script.js";
+import * as fabricateMesh from "./core/capabilities/fabricate-mesh.js";
+import * as cameraView from "./core/capabilities/camera-view.js";
+import * as runtimeControl from "./core/capabilities/runtime-control.js";
+import * as uiControl from "./core/capabilities/ui-control.js";
+import { EVENTS_FALLBACK } from "./core/capability-skew.js";
 import * as sceneTools from "./mcp/tools/scene-tools.js";
 import * as visualTools from "./mcp/tools/visual-tools.js";
 import * as withEngine from "./mcp/tools/with-engine.js";
@@ -135,6 +141,38 @@ describe("repo-lint: tool-dispatch <-> mcp/tools share one helper copy", () => {
     for (const [op, sentence] of Object.entries(engineFallbacks.ENGINE_OP_FALLBACKS)) {
       expect(sentence, op).not.toContain("summer_world_snapshot");
       expect(sentence, op).toMatch(/summer_get_scene_tree|summer_inspect_node|summer_set_prop|RunVerification/);
+    }
+  });
+
+  it("no fallback sentence of any wave routes to a status:preview tool (F-16 — a preview tool is engine_lacks_op on every shipped build)", () => {
+    const index = JSON.parse(readFileSync(join(srcRoot, "..", "registry", "generated", "index.json"), "utf8")) as {
+      resources: Array<{ kind: string; status?: string; mcp_tool_name?: string }>;
+    };
+    const previewTools = index.resources
+      .filter((r) => r.kind === "tool" && r.status === "preview" && typeof r.mcp_tool_name === "string")
+      .map((r) => r.mcp_tool_name as string);
+    expect(previewTools.length).toBeGreaterThan(0);
+    // Every engine_lacks_op / engine_lacks_events sentence the toolkit can emit, wherever its op builder lives.
+    const sentences: Record<string, string> = {
+      ...engineFallbacks.ENGINE_OP_FALLBACKS,
+      ...runtimeControl.RUNTIME_FALLBACKS,
+      PLAY_INSTANCE_FALLBACK: runtimeControl.PLAY_INSTANCE_FALLBACK,
+      CAMERA_BOOKMARK_FALLBACK: cameraView.CAMERA_BOOKMARK_FALLBACK,
+      FABRICATE_FALLBACK: fabricateMesh.FABRICATE_FALLBACK,
+      UI_ACTIONS_FALLBACK: uiControl.UI_ACTIONS_FALLBACK,
+      UI_TREE_FALLBACK: uiControl.UI_TREE_FALLBACK,
+      UI_ACTIVATE_FALLBACK: uiControl.UI_ACTIVATE_FALLBACK,
+      UI_SCREENSHOT_FALLBACK: uiControl.UI_SCREENSHOT_FALLBACK,
+      EVENTS_FALLBACK,
+      RUN_SCRIPT_FALLBACK: sceneScript.RUN_SCRIPT_FALLBACK,
+      RUN_EDITOR_SCRIPT_FALLBACK: sceneScript.RUN_EDITOR_SCRIPT_FALLBACK,
+    };
+    expect(Object.keys(sentences).length).toBeGreaterThan(30);
+    for (const [name, sentence] of Object.entries(sentences)) {
+      expect(typeof sentence, name).toBe("string");
+      for (const tool of previewTools) {
+        expect(sentence, `${name} routes the agent to ${tool}, which is engine_lacks_op on every shipped build`).not.toContain(tool);
+      }
     }
   });
 });

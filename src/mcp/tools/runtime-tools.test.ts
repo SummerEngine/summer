@@ -265,7 +265,7 @@ describe("failure passthrough", () => {
     expect(result.isError).toBe(true);
     expect(text(result)).toContain("doesn't support GameProbe yet");
     expect(text(result)).toContain("engine_lacks_op");
-    expect(text(result)).toContain("summer_get_runtime_tree");
+    expect(text(result)).toContain("RunVerification probe");
   });
 });
 

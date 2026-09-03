@@ -95,7 +95,7 @@ describe("buildUiActivateOp", () => {
     expect(buildUiActivateOp({ path: "@Panel@12/Button" })).toEqual({
       op: { op: "UiActivate", path: "@Panel@12/Button", action: "press" },
       kind: "UiActivate",
-      fallback: expect.stringContaining("summer_run_script"),
+      fallback: expect.stringContaining("summer_run_editor_script"),
       mutates: true,
     });
   });

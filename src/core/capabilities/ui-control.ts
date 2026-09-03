@@ -77,9 +77,9 @@ export const UI_DENIED_ACTIONS: readonly string[] = [
 export const UI_ACTIONS_FALLBACK =
   "use the dedicated tools for the same outcome (summer_project_setting for settings, summer_open_scene / summer_save_scene for scenes, summer_select_node for selection) or ask the user to click the menu item";
 export const UI_TREE_FALLBACK =
-  "ask the user what the editor shows, or read scene state with summer_get_scene_tree / summer_world_snapshot instead";
+  "ask the user what the editor shows, or read scene state with summer_get_scene_tree / summer_inspect_node instead";
 export const UI_ACTIVATE_FALLBACK =
-  "ask the user to click, switch, or dismiss it in the editor; scene changes still go through the scene tools and summer_run_script";
+  "ask the user to click, switch, or dismiss it in the editor; scene changes still go through the scene tools and summer_run_editor_script";
 export const UI_SCREENSHOT_FALLBACK =
   "use summer_screenshot for the viewport/scene/game frame, or ask the user for a screenshot of the editor window";
 

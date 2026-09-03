@@ -94,7 +94,7 @@ describe("buildFabricateMeshOp", () => {
   });
 
   it("names every fallback tool an engine without the op should route to", () => {
-    for (const tool of ["summer_generate_3d", "summer_search_assets", "summer_import_hdri", "summer_run_script"]) {
+    for (const tool of ["summer_generate_3d", "summer_search_assets", "summer_import_hdri", "summer_run_editor_script"]) {
       expect(FABRICATE_FALLBACK).toContain(tool);
     }
   });

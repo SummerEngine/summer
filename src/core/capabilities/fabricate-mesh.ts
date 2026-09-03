@@ -33,7 +33,7 @@ export const FABRICATE_DEFAULT_OUT_DIR = "res://assets/fabricated/";
 
 /** What the tool tells the model to do when the engine lacks FabricateMesh. */
 export const FABRICATE_FALLBACK =
-  "generate the asset with summer_generate_3d, import one from the free library with summer_search_assets / summer_import_asset, use summer_import_hdri for environment lighting, or build blockout geometry in-scene with summer_run_script";
+  "generate the asset with summer_generate_3d, import one from the free library with summer_search_assets / summer_import_asset, use summer_import_hdri for environment lighting, or build blockout geometry in-scene with summer_add_node / summer_set_prop or a summer_run_editor_script";
 
 const VECTOR3_VARIANT_RE =
   /^Vector3\(\s*[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?\s*,\s*[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?\s*,\s*[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?\s*\)$/;

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { withEngine } from "./with-engine.js";
 import { shapeEngineLogResponse } from "../../core/log-filters.js";
 import { createDebugReportArtifact } from "../../core/capabilities/debug-report.js";
+import { withConsoleScope } from "../../core/capabilities/console-read.js";
 
 // summer_get_diagnostics view shaping. The engine serves /api/state/diagnostics
 // from a pre-published snapshot (empty args — query params are NOT forwarded on
@@ -95,15 +96,15 @@ export function prioritizeDiagnostics(payload: unknown): unknown {
 export function registerDebugTools(server: McpServer): void {
   server.tool(
     "summer_get_diagnostics",
-    `Quick overview of all errors and warnings from both the editor console and the runtime debugger. Returns error counts and a guidance message.
+    `Quick overview of all errors and warnings from the editor console, the runtime debugger, and script errors together. Returns error counts and a guidance message.
 
-ALWAYS call this FIRST before diving into summer_get_console or summer_get_debugger_errors. It tells you where to look.
+ALWAYS call this FIRST before diving into summer_get_console or summer_get_debugger_errors. It tells you where to look. It is also THE post-play read: a played game's runtime errors land in the debugger section here (and in summer_get_debugger_errors), never in the editor console — summer_get_console alone can honestly report errors 0 right after a play session that produced several.
 
 By default the response is a prioritized view: errors first, then warnings, then a small capped tail of recent info/std noise. Counts (console totals, debugger totals) are always complete — only low-severity message bodies are trimmed, and a "_view" block reports exactly what was suppressed. Pass includeAll: true for the full untrimmed engine payload.
 
-Typical workflow after making changes:
-1. summer_get_diagnostics — are there issues?
-2. If errors: summer_get_console or summer_get_debugger_errors for details
+Typical workflow after making changes or playing:
+1. summer_get_diagnostics — are there issues? (after a play session: check debugger.errors)
+2. If errors: summer_get_debugger_errors (runtime, with stacks) or summer_get_console (editor output) for details
 3. Fix the issues
 4. summer_get_diagnostics again to verify`,
     {
@@ -124,11 +125,13 @@ Typical workflow after making changes:
 
   server.tool(
     "summer_get_console",
-    `Read recent messages from the editor's Output panel.
+    `Read recent messages from the editor's Output panel (print() output, editor-side warnings and errors).
 
-Output is post-processed for token economy: consecutive identical messages collapse into one entry with a "(×N)" count suffix, and the response carries a "_filter" summary so you can see what was hidden. Use errors_only=true (default) to drop info/std noise; use raw=true to bypass all shaping.
+SCOPE: the editor console ONLY. Runtime errors from a played game are collected by the debugger, not the console — right after summer_play this tool can honestly report errors 0 while summer_get_debugger_errors holds several. Never treat this tool alone as the post-play verdict: read summer_get_diagnostics (console + debugger + script errors together) first, then come here for message bodies. Every result carries a "_scope" note restating this.
 
-Use after summer_get_diagnostics indicates console issues.`,
+Output is post-processed for token economy: consecutive identical messages collapse into one entry with a "(×N)" count suffix, and the response carries a "_filter" summary so you can see what was hidden. Message types come straight from the editor log (error / warning / std / editor); errors_only=true (default) drops the std/editor lines — startup banners and print() output — and keeps errors and warnings. Use errors_only=false to read print() output, raw=true to bypass all shaping.
+
+Use after summer_get_diagnostics indicates console issues, or to check what your print() statements said.`,
     {
       max_lines: z.number().optional().default(100).describe("Max lines to return after dedupe (default 100)"),
       filter: z.string().optional().describe("Only return lines containing this string"),
@@ -149,7 +152,9 @@ Use after summer_get_diagnostics indicates console issues.`,
           errorsOnlyStrict: strict_errors,
           maxEntries: max_lines,
         });
-        return result;
+        // E2E 2026-09-03 F-07: the console is not where a played game's runtime
+        // errors go. Say so on every shaped result, not only in the description.
+        return withConsoleScope(result);
       })
   );
 

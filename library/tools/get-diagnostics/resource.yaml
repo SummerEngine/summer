@@ -1,10 +1,11 @@
 id: tool/get-diagnostics
 kind: tool
-version: 1.0.2
-summary: Prioritized overview of editor console and runtime debugger errors and warnings, with complete counts and a trimmed noise tail.
+version: 1.0.3
+summary: Prioritized overview of editor console, runtime debugger, and script errors and warnings, with complete counts and a trimmed noise tail.
 use_when:
   - first stop after any change, before targeted console or debugger reads
   - verifying a fix removed the errors it targeted
+  - 'the post-play read after summer_play or a RunVerification probe: runtime errors land in the debugger section here, never in the console'
 facets:
   lifecycle:
     - build

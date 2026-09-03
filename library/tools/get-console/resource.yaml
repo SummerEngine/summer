@@ -1,7 +1,7 @@
 id: tool/get-console
 kind: tool
-version: 1.0.2
-summary: Read recent editor Output panel messages, deduplicated and filterable by level, type, or substring.
+version: 1.0.3
+summary: Read recent editor Output panel messages, deduplicated and filterable by level, type, or substring. Editor console only - never the post-play verdict.
 use_when:
   - diagnostics report console issues and you need the message bodies
   - '"what did the game print?" / "show me the log output"'
@@ -9,6 +9,7 @@ use_when:
 do_not_use_when:
   - runtime errors with stack traces — summer_get_debugger_errors
   - compile errors in a script you just edited — summer_get_script_errors
+  - the post-play verdict — a played game's runtime errors live in the debugger, so this can report 0 errors after a failing run; read summer_get_diagnostics first
 facets:
   lifecycle:
     - build

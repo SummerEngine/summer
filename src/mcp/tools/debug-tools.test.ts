@@ -235,3 +235,47 @@ describe("summer_get_diagnostics tool", () => {
     expect(body.data.debugger.warnings_data).toHaveLength(50);
   });
 });
+
+describe("summer_get_console scope (E2E 2026-09-03 F-07)", () => {
+  const engineConsole = {
+    ok: true,
+    op: "GetConsoleOutput",
+    messages: [
+      consoleMessage("std", "Welcome to Summer Engine"),
+      consoleMessage("warning", "This control can't grab focus"),
+    ],
+    summary: { errors: 0, warnings: 1, std: 1, editor: 0, total: 2 },
+  };
+
+  it("stamps _scope on the shaped result so a clean console is never read as the post-play verdict", async () => {
+    const executeOps = vi.fn().mockResolvedValue(engineConsole);
+    vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
+    const result = await tool(tools(), "summer_get_console").handler({
+      max_lines: 100,
+      errors_only: true,
+      strict_errors: false,
+      raw: false,
+    });
+    const body = JSON.parse(text(result));
+    expect(body._scope).toContain("Runtime errors from a played game are collected by the debugger");
+    expect(body._scope).toContain("summer_get_diagnostics");
+    // The default filter still drops std noise by TYPE, not by content, and says so.
+    expect(body._filter.droppedByLevel).toBe(1);
+    expect(body.messages).toHaveLength(1);
+    expect(body.summary.errors).toBe(0);
+  });
+
+  it("returns raw engine output verbatim (no _scope, no filtering)", async () => {
+    const executeOps = vi.fn().mockResolvedValue(engineConsole);
+    vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
+    const result = await tool(tools(), "summer_get_console").handler({
+      max_lines: 100,
+      errors_only: true,
+      strict_errors: false,
+      raw: true,
+    });
+    const body = JSON.parse(text(result));
+    expect(body._scope).toBeUndefined();
+    expect(body.messages).toHaveLength(2);
+  });
+});

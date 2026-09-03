@@ -98,7 +98,7 @@ Four rules the probe API will punish you for breaking:
 - **Assert inequalities, never exact values.** `press(hold_ms)` waits on the wall clock, so the number of physics frames a key is held drifts between runs — the same walk lands on x=245 one run and x=250 the next. `position.x > start.x + 50` is a real assertion; `position.x == 250.0` is a flaky test you wrote yourself.
 - **The global RNG is not seeded.** Anything downstream of `randf()` differs every run. Assert ranges, or seed it yourself in the probe.
 
-If the probe cannot express the check — no `SummerProbeBase` in this build, or a genuinely out-of-process feature — fall back to `summer_play` + console reads:
+If the probe cannot express the check — no `SummerProbeBase` in this build, or a genuinely out-of-process feature — fall back to `summer_play` + diagnostics reads:
 
 ```
   summer_clear_console
@@ -110,13 +110,15 @@ If the probe cannot express the check — no `SummerProbeBase` in this build, or
 
 ### 3. Read back what actually happened
 
-The probe's `results.json` is your primary evidence. Then check the editor's own view:
+The probe's `results.json` is your primary evidence. Then read the editor's own view — in this order, because a played game's runtime errors are collected by the debugger and never reach the editor console:
 
 ```
-  summer_get_console            (look for unexpected prints, warnings)
-  summer_get_debugger_errors    (runtime errors caught mid-play)
-  summer_get_diagnostics        (overall counts)
+  summer_get_diagnostics        (the verdict: console + debugger + script errors, complete counts)
+  summer_get_debugger_errors    (the runtime errors themselves, with stacks)
+  summer_get_console            (print() output and editor-side warnings — after the two above, never instead of them)
 ```
+
+`summer_get_console` alone is never the verdict. Right after a play session that raised four runtime errors it honestly reports `errors 0`, because those errors live in the debugger; its result says so in `_scope`. A clean console proves only that nothing was printed to the editor log.
 
 A probe also collects engine errors itself — `results.json` carries `errors_seen`. Read it. An empty `reports` block with `finished: false` means the probe hit its `max_seconds` ceiling before calling `finish()`, which is a failure, not a pass.
 
@@ -150,8 +152,9 @@ You do not need to probe every edge for every feature. Pick the 2-3 that are mos
 After the walkthrough and edge probes, capture one final snapshot:
 
 ```
-  summer_get_diagnostics
-  summer_get_console  (if anything looked off)
+  summer_get_diagnostics        (debugger.errors and console errors must both be 0)
+  summer_get_debugger_errors    (if diagnostics shows any)
+  summer_get_console            (if the printed output looked off)
 ```
 
 State the result in plain language:
@@ -170,7 +173,7 @@ A common failure mode: the feature visually looks correct on first try, you stop
 
 **Is right** means the rendered frame matches expectations AND the underlying state is consistent AND it survives repetition AND no errors are silently logged.
 
-The console catches "looks right but isn't right" cases — silent errors, deprecation warnings, signal misfires that don't crash but indicate a real bug. **Always read `summer_get_console` after a playthrough, even when the visuals looked fine.**
+The debugger and the console catch "looks right but isn't right" cases — runtime errors that did not crash the game (debugger), deprecation warnings and signal misfires (console). **Always read `summer_get_diagnostics` after a playthrough, even when the visuals looked fine — and never let a clean `summer_get_console` stand in for it: the console does not receive a played game's runtime errors.**
 
 ## When to record video vs when console+diagnostics is enough
 
@@ -197,6 +200,7 @@ Don't ask reflexively. A saved frame sequence answers most "did it visually work
 | "I'll let the user catch any issues" | That is the user's job description for a non-AI engineer. Yours is to ship working features. |
 | Skipping `summer_clear_console` before `summer_play` | You will chase last session's errors. |
 | Skipping `summer_get_console` because diagnostics looked fine | Silent warnings and signal misfires hide there. |
+| Calling `summer_get_console` alone as the post-play check | It never receives a played game's runtime errors; `errors 0` there proves nothing. Read `summer_get_diagnostics` / `summer_get_debugger_errors`. |
 | "The MCP can't simulate input, so the user has to test it" | False. `RunVerification` presses actions and keys. Write the probe. |
 | "I'll ask the user to press jump and tell me what happened" | You can press jump. They should not have to QA your work. |
 | Probe returned `finished: false`, you called it a pass | It hit `max_seconds` before `finish()`. That is a failure. |
@@ -237,7 +241,7 @@ So if `summer_play` returns "Summer Engine is not running":
 
 A game feature is a promise to the player. Verifying it means seeing the promise kept on screen, not seeing the code that would, in theory, keep it.
 
-Press play. Walk the path. Probe the edges. Read the console. Then claim done.
+Press play. Walk the path. Probe the edges. Read the diagnostics. Then claim done.
 
 **Related skills:**
 - `verification-before-completion` — the code-layer verification this skill builds on.

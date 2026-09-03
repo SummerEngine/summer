@@ -1,15 +1,17 @@
 id: tool/play
 kind: tool
-version: 1.1.1
-summary: Start the game (main scene or a specific scene) inside Summer Engine's viewport, optionally pinned with a seed / fixed_fps for a reproducible playtest.
+version: 1.1.2
+summary: Start the game (main scene or a specific scene) — embedded, or as a named offscreen instance — optionally pinned with seed / fixed_fps for a reproducible run.
 use_when:
   - runtime verification after edits
   - the user wants to try the game or one level after a change
   - reproducing a bug that only shows at runtime
   - a deterministic, repeatable playtest run — pin the global RNG with seed and the timestep with fixed_fps
+  - launching a deterministic or parallel offscreen playtest instance (seed, fixed frame rate, named offscreen instance) for the runtime tools to drive
 do_not_use_when:
-  - the game is already running and needs a restart — summer_stop first (a pin cannot reach a process that is already up)
+  - the game is already running and needs a restart — summer_stop first (seed/fixed_fps cannot reach a game that is already up)
   - only checking whether it is running — summer_is_running
+  - "instance/mode/deterministic need an engine build with the runtime-control ops (engine PR #156 follow-up, wave I); on current shipped engines those parameters return engine_lacks_op (plain play still works)"
 facets:
   lifecycle:
     - build
@@ -19,9 +21,6 @@ facets:
     - verification
 compatibility:
   engine: ">=4.6"
-related:
-  skills:
-    - skill/playtesting-a-feature
 source: official
 license: MIT
 status: stable
@@ -34,23 +33,48 @@ surfaces:
   mcp:
     tool_name: summer_play
     remote: false
+related:
+  tools:
+    - tool/stop
+    - tool/is-running
+    - tool/game-probe
+    - tool/game-control
+    - tool/game-input
+  skills:
+    - skill/agent-playtesting
+    - skill/playtesting-a-feature
 input_schema:
   type: object
   properties:
     scene:
       type: string
       description: Scene to run instead of main scene, e.g. 'res://levels/test_level.tscn'
+    instance:
+      type: string
+      description: Name a game instance. 'main' (default) = the editor's embedded game. Any other name with mode 'offscreen' spawns a disposable parallel instance (at most 3) that the runtime tools address by this name.
+    mode:
+      type: string
+      enum:
+        - embedded
+        - offscreen
+      description: "'embedded' (default) plays in the editor; 'offscreen' spawns a hidden child process (requires instance != 'main')."
+    deterministic:
+      type: boolean
+      description: Offscreen only — launch with --fixed-fps 60 --summer-seed <seed> --audio-driver Dummy so the run is reproducible and input replays with seed are accepted.
     seed:
       type: integer
-      description: Pin the game's GLOBAL RNG for this launch (child gets --summer-seed <seed>). Pins randi/randf/randi_range/randf_range/randfn, Array.shuffle/pick_random. Does NOT pin RandomNumberGenerator instances, scripts calling randomize(), or wall-clock reads. Omitted = randomized, as always.
+      description: "Pin the game's GLOBAL RNG for this launch (child gets --summer-seed <seed>; default 20260725 when deterministic:true and seed is omitted). Pins randi/randf/randi_range/randf_range/randfn, Array.shuffle/pick_random. Does NOT pin RandomNumberGenerator instances, scripts calling randomize(), or wall-clock reads. Omitted = randomized, as always."
     fixed_fps:
       type: integer
       exclusiveMinimum: 0
-      description: Fixed timestep for this launch (child gets --fixed-fps <n>) - scene time decouples from the wall clock, the game runs as fast as it renders, frame-count-derived state repeats run to run. Opt-in per launch, never the default.
+      description: "Fixed timestep for this launch (child gets --fixed-fps <n>): scene time decouples from the wall clock, the game runs as fast as it renders, frame-count-derived state repeats run to run, and at_ms input timing / GameStep frames map exactly. Opt-in per launch, never the default."
     time_scale:
       type: number
       exclusiveMinimum: 0
       description: Engine time scale for this launch (child gets --time-scale <f>). Not a determinism pin on its own.
+    speed:
+      type: number
+      description: User time scale applied on session start, (0, 100] — e.g. 0.5 for half speed.
   additionalProperties: false
 authority:
   filesystem: false

@@ -176,6 +176,8 @@ queries:
     note: Summer Cloud sync was removed (unmaintained research preview); no project-transfer skill exists. Use git or copy the project folder.
   - query: "run it and tell me if it works"
     expected: [skill/play]
+  - query: "playtest the feature yourself by driving the live game frame by frame"
+    expected: [skill/agent-playtesting]
   - query: "everything is in one giant scene file, how should I organize this"
     expected: [skill/scene-composition]
   - query: "clean up this script to use proper GDScript style"
@@ -232,6 +234,10 @@ queries:
     expected: [tool/ui-actions]
   - query: "dismiss the dialog that's blocking the editor"
     expected: [tool/ui-activate, skill/driving-the-editor-ui]
+  - query: "pause the running game and step one physics frame"
+    expected: [tool/game-control]
+  - query: "record my inputs and replay them deterministically"
+    expected: [tool/game-input]
 
   # ── Known gaps (expected_gap: true — the authoring backlog) ────────────
   - query: "add enemy pathfinding"

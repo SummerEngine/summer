@@ -1,0 +1,52 @@
+id: skill/agent-playtesting
+kind: skill
+version: 1.0.0
+summary: Playtest by driving the LIVE game — deterministic launch, frame-stamped probes before/after each action, exact frame steps, scripted or recorded input.
+use_when:
+  - proving a gameplay feature works by driving the running game frame by frame with the runtime tools (summer_game_probe, summer_game_input, summer_game_control, summer_runtime_set/call/spawn/animate)
+  - a bug repro or an A/B needs a deterministic launch (seed, fixed frame rate, offscreen instance), a recorded input replay, or two instances side by side
+  - deciding what counts as evidence for "it moved / it fired / the node appeared" — the probe-before, probe-after, frame-stamped discipline
+  - asserting exact positions or timings by advancing the live game a physics frame at a time
+do_not_use_when:
+  - static or code-layer checks — verification-before-completion (compile, diagnostics) comes first
+  - a hidden disposable probe run is enough or the engine build lacks the runtime-control ops (engine PR #156 follow-up, wave I) — playtesting-a-feature's RunVerification loop still applies there
+  - the feature works but feels wrong — debugging-game-feel
+facets:
+  lifecycle:
+    - build
+  domains:
+    - runtime
+    - playtest
+    - verification
+    - agent-workflow
+  modalities:
+    - project
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/play
+    - tool/stop
+    - tool/is-running
+    - tool/game-probe
+    - tool/game-control
+    - tool/game-input
+    - tool/runtime-set
+    - tool/runtime-call
+    - tool/runtime-spawn
+    - tool/runtime-animate
+    - tool/get-runtime-tree
+    - tool/inspect-runtime-node
+    - tool/get-debugger-errors
+    - tool/screenshot
+  skills:
+    - skill/playtesting-a-feature
+    - skill/verifying-scenes
+    - skill/verification-before-completion
+    - skill/debugging-game-feel
+    - skill/investigating-bugs
+source: official
+license: MIT
+status: preview
+recommended: true

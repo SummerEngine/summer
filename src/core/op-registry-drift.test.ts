@@ -59,6 +59,22 @@ const KNOWN_UNIMPLEMENTED: Record<string, string> = {
   UiScreenshot: "engine PR #156 follow-up (editor UI control, wave L)",
   UiDialogs: "engine PR #156 follow-up (editor UI control, wave L)",
   UiDismissDialog: "engine PR #156 follow-up (editor UI control, wave L)",
+  SetRuntimeProp: "engine PR #156 follow-up (runtime control, wave I)",
+  CallRuntimeMethod: "engine PR #156 follow-up (runtime control, wave I)",
+  SpawnRuntimeScene: "engine PR #156 follow-up (runtime control, wave I)",
+  FreeRuntimeNode: "engine PR #156 follow-up (runtime control, wave I)",
+  RuntimeAnimation: "engine PR #156 follow-up (runtime control, wave I)",
+  RuntimeAnimationTree: "engine PR #156 follow-up (runtime control, wave I)",
+  GetRuntimeBones: "engine PR #156 follow-up (runtime control, wave I)",
+  GamePause: "engine PR #156 follow-up (runtime control, wave I)",
+  GameStep: "engine PR #156 follow-up (runtime control, wave I)",
+  GameSpeed: "engine PR #156 follow-up (runtime control, wave I)",
+  SimulateInputScript: "engine PR #156 follow-up (runtime control, wave I)",
+  InputRecordStart: "engine PR #156 follow-up (runtime control, wave I)",
+  InputRecordStop: "engine PR #156 follow-up (runtime control, wave I)",
+  InputReplay: "engine PR #156 follow-up (runtime control, wave I)",
+  GameProbe: "engine PR #156 follow-up (runtime control, wave I)",
+  ListGameInstances: "engine PR #156 follow-up (runtime control, wave I)",
 };
 
 function sourceFiles(dir: string, out: string[] = []): string[] {

@@ -20,6 +20,15 @@
       "path": "library/skills/adaptive-music/"
     },
     {
+      "id": "skill/agent-playtesting",
+      "name": "agent-playtesting",
+      "description": "Use when proving a gameplay feature, reproducing a bug, or comparing two variants by driving the LIVE running game yourself — deterministic launch (seed, fixed_fps, offscreen instances), frame-stamped probes before and after every action, exact frame stepping, scripted or recorded input. The doctrine behind summer_game_probe, summer_game_input, summer_game_control and the summer_runtime_* tools.",
+      "clients": "all",
+      "recommended": true,
+      "status": "preview",
+      "path": "library/skills/agent-playtesting/"
+    },
+    {
       "id": "skill/ambient-bed",
       "name": "ambient-bed",
       "description": "Use when generating a long looping location ambience — forest at dawn, dungeon air, city street, spaceship hum, cave drip. Non-melodic, low-energy, never draws attention. Wires as a looping AudioStreamPlayer on the Ambient bus with a marked seamless loop. Trigger on \"ambient bed\", \"room tone\", \"background ambience\", \"forest ambience\", \"dungeon air\", \"make it sound like a cave\".",

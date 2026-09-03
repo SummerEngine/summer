@@ -21,6 +21,8 @@ related:
     - tool/play
     - tool/get-runtime-tree
     - tool/inspect-runtime-node
+  skills:
+    - skill/agent-playtesting
 source: official
 license: MIT
 status: stable

@@ -33,6 +33,8 @@ If you have not, in this session, driven the feature and read back what happened
 
 **You walk the feature. Not the user.** A `RunVerification` probe presses your game's real inputs, reads state back across frames, and saves real rendered frames. Handing the walkthrough to the user is a last resort for things a probe genuinely cannot judge — see [What only a human can answer](#what-only-a-human-can-answer) — not the default.
 
+On an engine build with the runtime-control ops (`summer_game_probe`, `summer_game_input`, `summer_game_control`, `summer_runtime_*`), drive the LIVE game instead of a hidden probe: deterministic launch, frame-stamped probe before and after every action, exact frame steps. That doctrine is the `agent-playtesting` skill; this skill's probe loop below is the path when those tools answer `engine_lacks_op`.
+
 ## The Loop
 
 ```

@@ -46,6 +46,14 @@ jobs:
       - name: Example evals (SKIP until runner lands)
         run: node evals/examples/runner-stub.ts
 
+      # Outcome evals, static half only: task YAML + assertion DSL validate,
+      # every golden JSONL matches its readable source, fixtures and
+      # skills_expected resolve. No engine, no model — the replay itself is
+      # nightly work (evals/outcomes/README.md). Needs dist/ (the runner
+      # imports the built toolkit like evals/canary does).
+      - name: Outcome evals (dry run — schema + golden drift)
+        run: npm run build && npm run eval:outcomes -- --dry-run
+
       # CONTRACT.md §6 parity gate: regenerated registry output must equal the
       # committed registry/generated/ AND the applied root manifests, and every
       # numeric tool/skill claim in the scanned docs must equal counts.json.

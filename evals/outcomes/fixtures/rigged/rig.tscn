@@ -1,0 +1,76 @@
+[gd_scene format=3 uid="uid://6rai4yd6rowv"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_jt3de"]
+size = Vector3(0.4, 1.6, 0.4)
+
+[sub_resource type="Animation" id="Animation_dqaan"]
+loop_mode = 1
+tracks/0/type = "rotation_3d"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Rig:arm")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = PackedFloat32Array(0, 1, 0, 0, 0, 1, 0.5, 1, 0, 0, 0.04997917, 0.99875027, 1, 1, 0, 0, 0, 1)
+
+[sub_resource type="Animation" id="Animation_a6h3t"]
+length = 0.8
+loop_mode = 1
+tracks/0/type = "rotation_3d"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Rig:arm")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = PackedFloat32Array(0, 1, 0.29552022, 0, 0, 0.9553365, 0.4, 1, -0.29552022, 0, 0, 0.9553365, 0.8, 1, 0.29552022, 0, 0, 0.9553365)
+tracks/1/type = "rotation_3d"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("Rig:hand")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = PackedFloat32Array(0, 1, 0.14943814, 0, 0, 0.9887711, 0.4, 1, -0.14943814, 0, 0, 0.9887711, 0.8, 1, 0.14943814, 0, 0, 0.9887711)
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_lp8k7"]
+_data = {
+&"idle": SubResource("Animation_dqaan"),
+&"walk": SubResource("Animation_a6h3t")
+}
+
+[node name="Main" type="Node3D" unique_id=1087542909]
+
+[node name="Rig" type="Skeleton3D" parent="." unique_id=1993968048]
+bones/0/name = "root"
+bones/0/parent = -1
+bones/0/rest = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+bones/0/enabled = true
+bones/0/position = Vector3(0, 0, 0)
+bones/0/rotation = Quaternion(0, 0, 0, 1)
+bones/0/scale = Vector3(1, 1, 1)
+bones/1/name = "arm"
+bones/1/parent = 0
+bones/1/rest = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+bones/1/enabled = true
+bones/1/position = Vector3(0, 0, 0)
+bones/1/rotation = Quaternion(0, 0, 0, 1)
+bones/1/scale = Vector3(1, 1, 1)
+bones/2/name = "hand"
+bones/2/parent = 1
+bones/2/rest = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+bones/2/enabled = true
+bones/2/position = Vector3(0, 0, 0)
+bones/2/rotation = Quaternion(0, 0, 0, 1)
+bones/2/scale = Vector3(1, 1, 1)
+
+[node name="RigMesh" type="MeshInstance3D" parent="Rig" unique_id=889481774]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+mesh = SubResource("BoxMesh_jt3de")
+
+[node name="@PhysicalBoneSimulator3D@19927" type="PhysicalBoneSimulator3D" parent="Rig" unique_id=1650026965]
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=89342380]
+libraries/ = SubResource("AnimationLibrary_lp8k7")
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=169867824]
+transform = Transform3D(0.8, -0.11766969, 0.58834845, 0, 0.9805807, 0.19611613, -0.6, -0.15689291, 0.78446454, 3, 2, 4)
+current = true

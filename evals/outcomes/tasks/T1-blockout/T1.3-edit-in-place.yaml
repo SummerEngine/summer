@@ -1,0 +1,44 @@
+# T1.3 — Edit an existing scene without disturbing the fixture.
+id: T1.3-edit-in-place
+tier: T1
+title: edit-in-place
+prompt: >-
+  In this scene, replace the blue GridBox row with a low wall and move the
+  camera so the wall is centred.
+fixture: grid
+scene: res://main.tscn
+budget: { wall_clock_s: 480, max_tool_calls: 25 }
+skills_expected: [skill/scene-scripting]
+capture: [camera, iso]
+assertions:
+  - id: added-only-wall
+    predicate: added_only
+    args: { added: ["*Wall*|*wall*"], removed_allowed: ["GridBox_*"] }
+    required: true
+    note: the agent added only a wall and removed only GridBox_* — the fixture survives
+  - id: fixture-lights-intact
+    predicate: count
+    args: { class: DirectionalLight3D, op: "==", value: 3 }
+    required: true
+  - id: camera-current
+    predicate: camera_current
+    args: {}
+    required: true
+  - id: wall-saved
+    predicate: exists
+    args: { selector: "*Wall*|*wall*" }
+    required: true
+    note: the wall exists in the edited scene AND in the saved main.tscn
+  - id: camera-sees-wall
+    predicate: camera_sees
+    args: { selector: "*Wall*|*wall*", fraction: 1.0 }
+    required: true
+  - id: no-truncation
+    predicate: no_truncation
+    args: {}
+    required: false
+  - id: grid-boxes-kept
+    predicate: count
+    args: { class: MeshInstance3D, op: ">=", value: 26 }
+    required: false
+    note: the 25 Grid/Box_* fixture meshes plus the wall

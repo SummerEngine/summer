@@ -1,0 +1,22 @@
+# Mutant of T4.1: the score label is placed by absolute position with default
+# (top-left) anchors — it will not stay put on resize. Must fail EXACTLY
+# `score-anchored-right`; the layer, both controls, the clean run and the
+# non-blank HUD frame are unchanged.
+task: T4.1-health-bar
+mutation: label-unanchored
+expect_fail: [score-anchored-right]
+recorded_at: "2026-09-03T00:00:00.000Z"
+description: T4.1 golden with ScoreLabel positioned absolutely, no anchor preset
+steps:
+  - tool: summer_run_script
+    args:
+      source: |
+        func run(ctx):
+            var hud = ctx.add_canvas_layer("HUD", 1)
+            var bar = ctx.add_ui("progress_bar", "HealthBar", hud, {"anchor": "top_left", "custom_minimum_size": Vector2(240, 24), "value": 75.0, "show_percentage": false})
+            bar.position = Vector2(16, 16)
+            var label = ctx.add_ui("label", "ScoreLabel", hud, {"text": "Score: 0"})
+            label.position = Vector2(1016, 16)
+            ctx.set_theme_overrides(label, {"font_size": 24})
+            var saved = ctx.save_scene()
+            return {"saved": saved, "anchor_right": label.anchor_right}

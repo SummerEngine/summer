@@ -1,0 +1,20 @@
+# Mutant of T1.4: Cube_C sits at x=1 instead of x=0 (still on the ground). Must
+# fail EXACTLY `gold-layout` — its IoU drops to 0, the mean to 0.8.
+task: T1.4-layout-from-spec
+mutation: misplace-cube
+expect_fail: [gold-layout]
+recorded_at: "2026-09-03T00:00:00.000Z"
+description: T1.4 golden with Cube_C shifted 1 m along x
+steps:
+  - tool: summer_run_script
+    args:
+      source: |
+        func run(ctx):
+            var names = ["Cube_A", "Cube_B", "Cube_C", "Cube_D", "Cube_E"]
+            var xs = [-4.0, -2.0, 1.0, 2.0, 4.0]
+            for i in range(5):
+                ctx.add_mesh("box", names[i], null, {"size": Vector3(1, 1, 1), "position": Vector3(xs[i], 0.5, 0)})
+            ctx.add_node("DirectionalLight3D", "Sun", null, {"rotation_degrees": Vector3(-50, 30, 0), "shadow_enabled": true})
+            ctx.add_camera(Vector3(0, 6, 12), Vector3(0, 0.5, 0), true)
+            var saved = ctx.save_scene()
+            return {"saved": saved}

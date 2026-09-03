@@ -1,12 +1,12 @@
 {
   "generated_at": "2026-09-03",
   "corpus_source": "registry/generated/index.json",
-  "corpus_size": 189,
+  "corpus_size": 191,
   "query_count": 91,
   "gap_count": 13,
   "mean_recall_at_5": 1,
-  "mean_recall_at_1": 0.7802,
-  "mrr_at_5": 0.8784,
+  "mean_recall_at_1": 0.8132,
+  "mrr_at_5": 0.9037,
   "per_kind": {
     "reference": {
       "expected": 1,
@@ -24,7 +24,7 @@
       "recall_at_5": 1
     }
   },
-  "hijacked_queries": 18,
+  "hijacked_queries": 15,
   "per_query": {
     "draw a portrait of my wizard for the dialogue box": 1,
     "show me a few different art styles for the main character before we commit": 1,

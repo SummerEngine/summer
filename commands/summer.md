@@ -51,7 +51,7 @@ Skills are flat slugs under the `summer:` namespace (`summer:<slug>`); there are
 | cutscene for [X] | `summer:cinematic-cutscene` |
 | let me play it | `summer:play` |
 
-If nothing fits, activate `summer:using-summer` and use its index to find the closest skill. Never invent a skill name; verify it exists first.
+If nothing fits, activate `summer:using-summer` and call `summer_search_library` (then `summer_read_library`) to find the closest skill. Never invent a skill name; verify it exists first.
 
 ## Tone rules
 

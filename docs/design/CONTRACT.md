@@ -72,7 +72,7 @@ Disambiguation rule: a **skill explains the process**; an **example is a finishe
 
 **Tool rule — one behavior, two faces, parity-tested.** Every tool has exactly one behavior and is reachable two ways: as an MCP tool (`surfaces.mcp.tool_name`) and from the CLI as `summer tool <slug> --args '<json>'` (plus a dedicated command for the five that declare `surfaces.cli.command`). How that is implemented today:
 
-- 64 of the 69 tools are registered in `src/mcp/tools/*.ts` with hand-written zod shapes; 4 live in `src/core/capabilities/` and 1 in `src/core/feedback/`.
+- most tools are registered in `src/mcp/tools/*.ts` with hand-written zod shapes; a handful live in `src/core/capabilities/` and `src/core/feedback/` (exact split: `docs/DEVELOPMENT.md`).
 - `src/core/capabilities/tool-dispatch.ts` is the CLI face: a dispatch table that validates `--args` with the same zod schemas and calls into the same functions. It is a mirror, not a second implementation of behavior, but it is a second registration.
 - The descriptor's `input_schema` is **not** the source the zod is derived from. Instead `src/mcp/tools/descriptor-parity.test.ts` converts each registered zod shape to a structural JSON-Schema form and fails the build when it disagrees with `input_schema` (types, required, property names, enums). `scripts/validate-library` additionally checks that `implementation.module` exists, that `surfaces.mcp.tool_name` is a real registration, and that `input_schema` is a legal schema.
 
@@ -100,7 +100,7 @@ do_not_use_when:                     # optional but strongly encouraged
   - importing one finished prop
 facets:
   lifecycle: [build]                 # build|launch|grow|support
-  domains: [world, level-design, 3d] # open vocabulary, curated list in schemas
+  domains: [world, level-design, 3d] # closed vocabulary: registry/schemas/domains.json (60 tokens); unknown token = validation error
   modalities: [scenes, assets]
 compatibility:
   engine: ">=4.6"

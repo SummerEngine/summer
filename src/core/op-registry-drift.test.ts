@@ -36,7 +36,7 @@ const registryFound = existsSync(registryPath);
  * below fails and the waiver is deleted with the workaround it excused.
  */
 const KNOWN_UNIMPLEMENTED: Record<string, string> = {
-  RunSceneScript: "engine PR #155 (scene scripting: run_script ctx API)",
+  RunSceneScript: "engine PR #156 (scene scripting: run_script ctx API)",
   GetWorldSnapshot: "engine PR #156 (runtime inspection / world snapshots)",
   DiffWorldSnapshot: "engine PR #156 (runtime inspection / world snapshots)",
   GetRuntimeSceneTree: "engine PR #156 (runtime inspection)",

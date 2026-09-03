@@ -599,12 +599,13 @@
     {
       "id": "skill/audio-direction",
       "kind": "skill",
-      "version": "1.0.5",
-      "content_hash": "239802894659ba58796eda896fd3fcfe6feac7a22aafb0d1028ba771c663f043",
+      "version": "1.0.6",
+      "content_hash": "413c575f6b5cada586b117ad42bb792754fb9058c86d355c4f5aca927674f550",
       "summary": "Define the game's sonic identity — music style, instruments, SFX vocabulary, dynamic music plan — output as an audio bible at .summer/audio-bible.md.",
       "use_when": [
         "defining the sonic identity — music style, instruments, SFX vocabulary, dynamic music plan",
-        "starting audio work with no audio bible, or soundtrack and SFX requests keep drifting in style"
+        "starting audio work with no audio bible, or soundtrack and SFX requests keep drifting in style",
+        "\"what should my game sound like overall?\" / \"what is the audio vibe of this game?\" — the whole-game sound question, before any single track or effect is made"
       ],
       "facets": {
         "lifecycle": [
@@ -6082,12 +6083,13 @@
     {
       "id": "tool/open",
       "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "87bebb6f044d6e755e26d930543805334f0b9a1c25f2dd84744dddc4017de977",
+      "version": "1.0.1",
+      "content_hash": "ac96a6fc213bfef8c650f138de713eecfaa58141e749193f212194e7022d0188",
       "summary": "Open the exact summerengine.com page or editor surface by intent name — billing, my games, an MCP guide, a scene, a node, a dock — or print the URL/op.",
       "use_when": [
         "the user wants to SEE or DECIDE something on the website — \"open my billing page\", \"show me my published games\", \"take me to pricing\", \"open the MCP setup guide for Cursor\"",
         "the user wants to LOOK at something in the running editor — \"show me the scene\", \"select the Player node\", \"open player.gd\", \"reveal that texture in the file dock\"",
+        "\"open the main scene in the editor\" / \"open the scene I am editing so I can look at it\" — an editor surface the USER should see, navigated for them (the scene tools open a tab for the agent, not for the user)",
         "handing the user a link instead of opening a browser (open: false), or checking which destination an intent maps to",
         "resolving where a user intent lives (\"where do I change my plan?\") before acting"
       ],

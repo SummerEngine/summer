@@ -144,8 +144,8 @@
     {
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
-      "version": "1.0.1",
-      "content_hash": "7a08489724046eb8cb153d21c0a836cc999ad71c3c8f8f0e0aff5fd84d21bc8d",
+      "version": "1.0.2",
+      "content_hash": "530a4e7a7e01f9f20738e4e50983acb8c51d83596f5cb492bbf40e114b8f83ca",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -2574,8 +2574,8 @@
     {
       "id": "skill/spatial-placement",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "7e65467f5aaaa5513c1b3cbf313e96d46a92c3fac1458d31c131c3262151e5b6",
+      "version": "1.0.1",
+      "content_hash": "8c8415523e04f22e7b1d44444681258639237919dacadeda56a1e2e08eca3eed",
       "summary": "Place and verify 3D objects with Starcast evidence — inspect, place, starcast, correct, verify; floor, shelf, wall, alcove recipes and overlap repair.",
       "use_when": [
         "positioning a prop, character, collider, or platform so it sits flush, avoids overlap, or keeps clearance",
@@ -3343,13 +3343,12 @@
     {
       "id": "skill/world-building-3d",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "e5fa8ede11dd8d0bd08b59868caee20d113feac412227152fff40cd549f43a1f",
-      "summary": "Compose, ground, space, frame, and validate 3D scenes with Summer's six bounded spatial tools — exact paths, one geometric decision at a time, verified.",
+      "version": "1.1.0",
+      "content_hash": "08691f0ba4aa28daa799c16c38fb70459ab83fb671241724aeb9ec9c927cb906",
+      "summary": "Compose, ground, space, and validate 3D scenes with Summer's four bounded spatial tools — exact paths, one geometric decision at a time, verified.",
       "use_when": [
         "placing or grounding props on floors, shelves, ramps, or tables without hand-tuning transforms",
         "aligning or evenly spacing a group of 3D objects along one world axis",
-        "framing a perspective camera on its subjects and checking framing and coarse occlusion",
         "verifying an NPC, pickup, or portal position is reachable on the navigation map"
       ],
       "facets": {
@@ -3375,8 +3374,6 @@
           "tool/test-placement",
           "tool/snap-to-surface",
           "tool/align-distribute-3d",
-          "tool/frame-camera",
-          "tool/camera-visibility",
           "tool/navigation-probe",
           "tool/get-scene-tree",
           "tool/inspect-node",
@@ -4054,55 +4051,6 @@
       }
     },
     {
-      "id": "tool/camera-visibility",
-      "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "2eaf07f1f566b4c127eb21015650ada6ef3568f3e4da36cc7800c4d3ef54863c",
-      "summary": "Read-only check of how up to 5 subjects are framed by one Camera3D at an explicit aspect — frustum, screen rect, coverage, and sampled occlusion rays.",
-      "use_when": [
-        "verifying a framing after summer_frame_camera or a manual camera move",
-        "checking whether a prop, NPC, or landmark is hidden behind geometry from the player camera"
-      ],
-      "facets": {
-        "lifecycle": [
-          "build"
-        ],
-        "domains": [
-          "scenes",
-          "3d",
-          "world-building",
-          "camera",
-          "verification"
-        ],
-        "modalities": [
-          "scenes"
-        ]
-      },
-      "compatibility": {
-        "engine": ">=4.6"
-      },
-      "related": {
-        "tools": [
-          "tool/frame-camera",
-          "tool/screenshot",
-          "tool/world-snapshot"
-        ],
-        "skills": [
-          "skill/world-building-3d"
-        ]
-      },
-      "status": "preview",
-      "mcp_tool_name": "summer_camera_visibility",
-      "remote": false,
-      "authority": {
-        "filesystem": false,
-        "editor_mutation": false,
-        "network": false,
-        "credentials": false,
-        "publish": false
-      }
-    },
-    {
       "id": "tool/check-job",
       "kind": "tool",
       "version": "1.0.1",
@@ -4365,54 +4313,6 @@
         "filesystem": false,
         "editor_mutation": false,
         "network": true,
-        "credentials": false,
-        "publish": false
-      }
-    },
-    {
-      "id": "tool/frame-camera",
-      "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "51a080548f640f37e6883a734449f4a0b366ea988cf1f7fa3c834b6bf3113620",
-      "summary": "Move one perspective Camera3D just far enough to frame 1-8 subjects at an explicit aspect and screen padding, then save the scene.",
-      "use_when": [
-        "framing a diorama, hero prop, or encounter for a fixed camera, cutscene, or screenshot",
-        "re-framing after props moved so the camera still shows every subject"
-      ],
-      "facets": {
-        "lifecycle": [
-          "build"
-        ],
-        "domains": [
-          "scenes",
-          "3d",
-          "world-building",
-          "camera"
-        ],
-        "modalities": [
-          "scenes"
-        ]
-      },
-      "compatibility": {
-        "engine": ">=4.6"
-      },
-      "related": {
-        "tools": [
-          "tool/camera-visibility",
-          "tool/screenshot",
-          "tool/world-snapshot"
-        ],
-        "skills": [
-          "skill/world-building-3d"
-        ]
-      },
-      "status": "preview",
-      "mcp_tool_name": "summer_frame_camera",
-      "remote": false,
-      "authority": {
-        "filesystem": true,
-        "editor_mutation": true,
-        "network": false,
         "credentials": false,
         "publish": false
       }
@@ -6349,8 +6249,8 @@
     {
       "id": "tool/world-snapshot",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "6837ccd1ecfe0816860bdd6bc4101b8888b0ae694f84d737c4d657af7c910789",
+      "version": "1.0.2",
+      "content_hash": "7988cf9571d9f768e9d3c139a9dd90dc377e015758ef6d608c03a25397f43c10",
       "summary": "Compact structured snapshot of the edited scene (paths, transforms, world AABBs, fingerprints, counts) — the cheap read before and after every mutation batch.",
       "use_when": [
         "taking a diffable baseline before a mutation batch, or verifying transforms/AABBs/fingerprints after one",
@@ -6378,8 +6278,7 @@
           "tool/get-scene-tree",
           "tool/screenshot",
           "tool/navigation-probe",
-          "tool/test-placement",
-          "tool/camera-visibility"
+          "tool/test-placement"
         ],
         "skills": [
           "skill/verifying-scenes",

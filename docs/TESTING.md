@@ -105,10 +105,10 @@ Open Claude Code in a directory (any), confirm `/mcp` lists `summer-engine`, the
 
 ## f. Expected to fail on the shipped engine
 
-The 12 `status: preview` tools depend on engine ops no shipped build has:
+The 11 `status: preview` tools depend on engine ops no shipped build has:
 `run-script`, `run-editor-script`, `world-snapshot`, `snapshot-diff`,
 `get-runtime-tree`, `inspect-runtime-node`, `test-placement`, `snap-to-surface`,
-`align-distribute-3d`, `frame-camera`, `camera-visibility`, `navigation-probe`
+`align-distribute-3d`, `navigation-probe`, `starcast`
 (`grep -l 'status: preview' library/tools/*/resource.yaml`). Calling one returns a
 structured `engine_lacks_op` result and exits 1 — the same on the MCP face
 (`isError`) and the CLI face. Two shapes, depending on what the engine advertises:
@@ -131,7 +131,7 @@ structured `engine_lacks_op` result and exits 1 — the same on the MCP face
 
 `SUMMER_CAPABILITY_PREFLIGHT=off` (in the shell for the CLI, in the MCP server's env for an agent) skips the pre-flight and lets the engine answer — for an engine build that implements an op it does not advertise yet. With it set, the first shape turns into the second.
 
-Unblocked by engine PRs **SummerEngine/SummerEngine #155** (headless worker) and **#156** (scene scripting); the six spatial tools additionally need the world-tool engine half (`docs/design/ROADMAP.md`). Until those merge, a `worked` outcome for any of these is impossible — record `engine_lacks_op` as the expected result, not a failure.
+Unblocked by engine PRs **SummerEngine/SummerEngine #155** (headless worker) and **#156** (scene scripting); the four spatial tools additionally need the world-tool engine half (`docs/design/ROADMAP.md`) and `starcast` needs **#147**. Until those merge, a `worked` outcome for any of these is impossible — record `engine_lacks_op` as the expected result, not a failure.
 
 `SUMMER_HEADLESS_ROUTING=1` (route tool calls to a headless worker when no editor has the project open) needs the worker build from #155. Without it the flag does nothing. With a worker binary: `SUMMER_ENGINE_BIN=/path/to/Summer npx vitest run src/core/headless/worker-integration.test.ts` (`docs/HEADLESS_ROUTING.md`).
 

@@ -2388,8 +2388,8 @@
     {
       "id": "skill/scene-scripting",
       "kind": "skill",
-      "version": "1.1.0",
-      "content_hash": "dda38a25849c74bd735c1d4d5509ca80b3fc6357b7559145159a64bfe0ba7744",
+      "version": "1.1.1",
+      "content_hash": "54e66f1d48a5a9dc8fd452e70a7691bf6ff42c231adac6f1974ce28e5b7c75c4",
       "summary": "One GDScript in the live editor (summer_run_script) builds scenes, 2D levels, HUDs and gameplay wiring instead of CRUD chains; verify with diff + screenshot.",
       "use_when": [
         "a scene change needs 3+ related ops or any computed placement — scattering, grids, rings, procedural meshes, geometry helpers, terrain, lighting rigs, keyframe animation, shader FX",

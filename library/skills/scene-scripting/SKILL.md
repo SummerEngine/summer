@@ -153,42 +153,74 @@ paint_rect(layer: TileMapLayer, rect: Rect2i, source_id: int,
 add_body_2d(kind: String, name: String, parent: Node = null,
             shape: Dictionary = {}, props: Dictionary = {}) -> Node
     # kind: static|rigid|character|area ; shape: {type: rect|circle|capsule, size|radius|height}
-    # -> body + owned CollisionShape2D child
+    # -> body + owned CollisionShape2D child. Empty shape = a 32x32 rect (confessed in
+    #    prop_warnings); size may be a float (square); props try the body, then the shape
 add_camera_2d(position: Vector2, zoom: Vector2 = Vector2.ONE, make_current: bool = true,
               limits: Rect2i = Rect2i()) -> Camera2D          # empty limits = unlimited
+    # Camera2D has no saved "current" flag: make_current persists as `enabled` (+ a live
+    # make_current()); make_current: false saves the camera disabled
 add_parallax(layers: Array, name: String, parent: Node = null) -> Node
-    # layers: [{texture: path, motion_scale: Vector2, repeat: Vector2i}] -> Parallax2D per layer
-    #   under one Node2D group (Parallax2D is 4.3+; verify in-tree, fall back to ParallaxBackground)
+    # layers: [{texture: path, motion_scale: Vector2, repeat: Vector2i}] -> one Parallax2D per
+    #   layer under one Node2D group; repeat -> repeat_size. Parallax2D is in the engine tree
+    #   (no ParallaxBackground fallback); a layer whose texture fails to load is skipped + reported
 
 # UI (Control)
 add_ui(kind: String, name: String, parent: Node = null, props: Dictionary = {}) -> Control
     # kind: label|button|panel|vbox|hbox|grid|margin|texture_rect|progress_bar|line_edit|
-    #       rich_text|color_rect|center ; props.anchor: full_rect|center|top_left|top_right|
-    #       bottom_left|bottom_right|top_wide|bottom_wide (set_anchors_and_offsets_preset);
-    #       props.text/min_size/etc via set()
+    #       rich_text|color_rect|center ; panel -> PanelContainer (container semantics for HUD
+    #       layouts; a plain Panel is add_node("Panel", ...)). props.anchor: full_rect|center|
+    #       top_left|top_right|bottom_left|bottom_right|top_wide|bottom_wide (+ the other
+    #       Control::PRESET_* names) -> set_anchors_and_offsets_preset, applied BEFORE the other
+    #       props so an explicit size/position wins; props.text/custom_minimum_size/etc via set();
+    #       props.texture as a "res://" path is loaded for you. A Control parented under a Node2D
+    #       gets a prop_warning (it scrolls with the camera — HUDs go under add_canvas_layer)
 add_canvas_layer(name: String, layer: int = 1, parent: Node = null) -> CanvasLayer
 set_theme_overrides(control: Control, overrides: Dictionary) -> int
     # {font_size: int, font_color: Color, <theme_item>: value} -> add_theme_*_override; count applied
-connect(emitter: Node, signal_name: String, target: Node, method: String,
-        binds: Array = []) -> bool                      # PERSIST flag so it saves in .tscn;
+    # dispatch by value: Color or "#hex" -> color; int/float -> font_size when the key is/ends with
+    #   font_size, else constant; StyleBox/Font/Texture2D (or a "res://" path) -> style/font/icon.
+    #   An item the control's theme type does not define is stored but confessed in prop_warnings
+connect_signal(emitter: Node, signal_name: String, target: Node, method: String,
+               binds: Array = []) -> bool               # PERSIST flag so it saves in .tscn;
                                                         # unknown signal/method -> report, false
+    # NOT `connect` — a ctx method of that name would shadow Object.connect on the ctx object,
+    #   so nothing named `connect` is bound. Method gate: target.has_method, else its script
+    #   has_method, else the script SOURCE declares `func <method>(` (attached this run, not yet
+    #   compiled). Already connected -> true (+ already_connected in the report). Both ends must
+    #   be owned by the edited root for the .tscn to carry the connection (prop_warning otherwise)
 
 # Gameplay-code lane
 attach_script(node: Node, source: String, path: String = "") -> Script
-    # compile-validate first (GDScriptLanguage::validate; parse errors -> report entry, null);
-    # path empty -> res://scripts/<SceneName>/<NodeName>.gd (dirs created); writes the file,
-    # FS rescan, set_script. An existing file at path IS overwritten; its previous sha is
-    # recorded in the report (the pre-run checkpoint covers rollback).
+    # compile-validate first (GDScriptLanguage::validate; parse errors -> `attach_script_errors`
+    # report entry {node, path, errors: [{line, column, message}]}, null, nothing written);
+    # path empty -> res://scripts/<SceneName>/<NodeName>.gd (dirs created; the root node's name
+    # when the scene was never saved, prop_warning); writes the file, FS rescan, set_script.
+    # An existing file at path IS overwritten; its previous sha is recorded in the report (the
+    # pre-run checkpoint covers rollback). Gate: the script's native base (`extends`) must be an
+    # ancestor of the node's class — else the file is written but NOT attached (report, null)
 make_prefab(node: Node, path: String, replace_with_instance: bool = true) -> Node
     # pack the subtree to res:// path as a PackedScene (owner fix-up first), save; when
     # replace_with_instance the node is swapped for an instance of the new file (same
-    # name/transform/parent) and the instance is returned; else returns node
+    # name/transform/parent; outgoing persisted connections re-established) and the instance
+    # is returned; else returns node. REFUSES the scene root and a path open in an editor tab.
+    # The node's own position is zeroed for the pack (prefab authored at its origin, like the
+    # editor's Save Branch) and restored / copied onto the instance; rotation and scale stay in
+    # the prefab. A failure AFTER the file was written keeps + returns the original node (report)
 add_autoload(name: String, path: String) -> bool       # ProjectSettings autoload/<name>="*res://…"
+    # same gates as the editor's autoload dock: valid identifier, no engine/global-class
+    # collision, existing res:// path to a Script or PackedScene
 add_input_action(action: String, events: Array) -> bool
     # events: [{type: key, keycode: String|int} | {type: mouse_button, button_index: int} |
     #          {type: joypad_button, button_index: int} | {type: joypad_axis, axis:int, value:float}]
-    # writes input/<action> in ProjectSettings + saves; unknown shape -> report, false
+    # writes input/<action> = {deadzone, events} in ProjectSettings + saves; every event is
+    # built BEFORE anything is written — unknown shape -> report, false, nothing half-written.
+    # New action: deadzone = the engine default 0.2. Existing action: keeps its deadzone and
+    # gains only the events it does not already match. Keycode strings go through
+    # find_keycode ("Space", "Left", "Ctrl+S" — modifiers become the event's modifier flags)
 set_main_scene(path: String) -> bool                   # application/run/main_scene + save
+    # path must exist and be a PackedScene
+# Project settings are written in the res:// PATH form ("*res://…", "res://…"); the editor UI
+# writes uid:// forms — both resolve. Do not "fix" one into the other.
 ```
 
 **Engine posture — read before relying on any of this.** Wave H is a frozen contract, not a shipped engine: the helpers land as follow-up commits on engine PR #156, and no shipped engine has them today — the same preview posture as `summer_run_script` itself (which returns `engine_lacks_op` on engines without RunSceneScript). On an engine that has RunSceneScript but predates Wave H, a missing helper is a plain GDScript error (`Invalid call to method 'add_ui'…`) and, under the default `undo: "action"`, the whole run rolls back. Fall back to what works everywhere:
@@ -198,7 +230,7 @@ set_main_scene(path: String) -> bool                   # application/run/main_sc
 | `add_tilemap` / `paint_tiles` / `paint_rect` | `TileMapLayer.new()` + `layer.tile_set = load(path)`, then `layer.set_cell(coords, source_id, atlas_coords)` in a loop — the GridMap recipe, in 2D |
 | `add_sprite` / `add_animated_sprite` / `add_body_2d` / `add_camera_2d` / `add_parallax` | manual `.new()` + `add_child` + `ctx.set_owner_recursive` |
 | `add_ui` / `add_canvas_layer` / `set_theme_overrides` | `.new()` + `set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)` + `add_theme_constant_override(...)`, owned as above — or the `ui-basics` skill's `summer_add_node` / `summer_set_prop` path |
-| `connect` | `summer_connect_signal` (persists in the `.tscn`); a raw `emitter.pressed.connect(...)` inside the run script does NOT persist |
+| `connect_signal` | `summer_connect_signal` (persists in the `.tscn`); a raw `emitter.pressed.connect(...)` inside the run script does NOT persist |
 | `attach_script` | `summer_write_file` the source, `summer_get_script_errors` on it, then `node.set_script(load(path))` in a script |
 | `make_prefab` | `PackedScene.new().pack(node)` + `ResourceSaver.save(...)` (pack includes only OWNED descendants — owner rules again), then `summer_instantiate_scene` |
 | `add_input_action` / `add_autoload` / `set_main_scene` | `summer_input_map_bind`; `summer_project_setting` (`autoload/<Name>`, `application/run/main_scene`) |
@@ -581,11 +613,11 @@ func run(ctx):
     ctx.report("hud", ctx.summary())
 ```
 
-`props.anchor` runs `set_anchors_and_offsets_preset` — the right way to pin a Control; hand-set `anchor_*`/`offset_*` values drift the moment the window resizes. `set_theme_overrides` returns how many overrides it applied — compare with what you passed. Unknown `props` keys land in `prop_warnings` as always (use real property names: `custom_minimum_size`, not a guess). For the layout and theme *design* — which container for which job, theme vs inline styling — use `ui-basics`; this is its one-script form.
+`props.anchor` runs `set_anchors_and_offsets_preset` — the right way to pin a Control; hand-set `anchor_*`/`offset_*` values drift the moment the window resizes. The preset is applied before the other props, so an explicit `size`/`position` in the same dict wins. `add_ui("panel", …)` is a **PanelContainer** (it sizes to its child — a backdrop for a vbox/hbox); a plain `Panel` is `add_node("Panel", …)`. `set_theme_overrides` returns how many overrides it applied — compare with what you passed (an `int` on a key that is not `font_size` becomes a *constant* override, as with the margins above). Unknown `props` keys land in `prop_warnings` as always (use real property names: `custom_minimum_size`, not `min_size` or a guess). HUD Controls belong under a `CanvasLayer` — a Control parented under a `Node2D` scrolls with the camera and gets a `prop_warning`. For the layout and theme *design* — which container for which job, theme vs inline styling — use `ui-basics`; this is its one-script form.
 
-### Wire a button with connect() (Wave H)
+### Wire a button with connect_signal() (Wave H)
 
-`ctx.connect` makes a **persisted** connection (`CONNECT_PERSIST`) — it survives in the `.tscn`. The target needs a script that defines the method, so attach it first:
+`ctx.connect_signal` makes a **persisted** connection (`CONNECT_PERSIST`) — it survives in the `.tscn`, exactly what the editor's ConnectionsDock writes. The target needs a method to call, so attach the script first; a script attached in the same run has not compiled yet, and `connect_signal` accepts it because the source declares `func _on_pause_pressed(` (the method gate):
 
 ```gdscript
 func run(ctx):
@@ -598,12 +630,12 @@ func _on_pause_pressed() -> void:
     get_tree().paused = not get_tree().paused
 """) == null:
         return                                   # parse errors are in the report — fix, re-run
-    if not ctx.connect(button, "pressed", hud, "_on_pause_pressed"):
+    if not ctx.connect_signal(button, "pressed", hud, "_on_pause_pressed"):
         return                                   # the report names the unknown signal or method
     ctx.report("wired", "PauseButton.pressed -> HUD._on_pause_pressed")
 ```
 
-Never wire with a bare `button.pressed.connect(...)` inside the run script: that connection lives only in the editor process and is not saved. `true` from `ctx.connect` says the connection was made and flagged persistent; the proof is `summer_play`, click, `summer_screenshot target:"game"`.
+Never wire with a bare `button.pressed.connect(...)` inside the run script: that connection lives only in the editor process and is not saved. And the helper is `connect_signal`, not `connect` — `ctx.connect(...)` is `Object.connect` on the ctx object itself and fails with a wrong-signature error. `true` from `ctx.connect_signal` says the connection was made and flagged persistent (an already-connected pair also returns `true`, with `already_connected` in the report); both ends must be owned by the edited root or the `.tscn` cannot carry it. The proof is `summer_play`, click, `summer_screenshot target:"game"`.
 
 ### attach_script — behavior with the parse-error loop (Wave H)
 
@@ -655,7 +687,7 @@ func run(ctx):
     ctx.report("prefab", first.scene_file_path)
 ```
 
-The owner fix-up runs before packing, so a child you forgot to own is included instead of silently dropped. The receipt: `res://prefabs/torch.tscn` in the result's `files_written`, `Torch` now reporting a `scene_file_path`, and the copies in the diff's `added`. From here on, edit the prefab file, not the instances.
+The owner fix-up runs before packing, so a child you forgot to own is included instead of silently dropped. The prefab is authored at its origin — the node's position is zeroed for the pack (the editor's Save Branch default) and copied back onto the instance, so `first.position` above is still where the torch stood; rotation and scale stay in the prefab. `make_prefab` refuses the scene root (pack a child subtree, never `ctx.get_scene_root()`) and a path that is open in an editor tab. The receipt: `res://prefabs/torch.tscn` in the result's `files_written`, `Torch` now reporting a `scene_file_path`, and the copies in the diff's `added`. From here on, edit the prefab file, not the instances.
 
 ### Input actions, autoload, main scene (Wave H)
 
@@ -673,7 +705,7 @@ func run(ctx):
         ctx.set_main_scene("res://levels/level_01.tscn")
 ```
 
-An unknown event shape → report + `false`, never a half-written action. Write the autoload's script before registering it (`summer_write_file`, or `attach_script` on a node you then `make_prefab`). These write `project.godot`, not the scene: the result's `undo_action` note lists them under `project_settings_changed`, outside the scene undo — checkpoint territory. Proof: `summer_play` → `summer_get_runtime_tree` shows `/root/GameState`; the keys move the body in a `target:"game"` capture.
+An unknown event shape → report + `false`, never a half-written action (every event is built before anything is written). A new action gets the engine's default deadzone, 0.2; re-running on an existing action keeps its deadzone and appends only the events it does not already match, so the recipe is safe to re-run. Keycode strings are `find_keycode` names (`"Space"`, `"Left"`, `"Ctrl+S"` — modifiers become the event's modifier flags). Write the autoload's script before registering it (`summer_write_file`, or `attach_script` on a node you then `make_prefab`) — `add_autoload` applies the editor dock's gates (valid identifier, no class-name collision, an existing `res://` Script or PackedScene). These helpers write the `res://` path form (`"*res://…"`, `"res://…"`); the editor UI writes `uid://` forms and both resolve — leave them be. They write `project.godot`, not the scene: the result's `undo_action` note lists them under `project_settings_changed`, outside the scene undo — checkpoint territory. Proof: `summer_play` → `summer_get_runtime_tree` shows `/root/GameState`; the keys move the body in a `target:"game"` capture.
 
 ### Verifying 2D and UI work
 
@@ -713,7 +745,10 @@ If `summer_run_script` fails with "doesn't support RunSceneScript yet", the engi
 | Hand-writing AnimationPlayer/library/track plumbing | `ctx.animate` is one call per property and dodges the quaternion trap. |
 | Painting tiles with `summer_set_prop`, or hand-editing `tile_map_data` | `ctx.paint_rect` / `paint_tiles` (or `set_cell` in a loop) — cells are packed data. |
 | Building a HUD with a dozen `summer_add_node`/`summer_set_prop` calls | One script: `add_canvas_layer` → `add_ui` → `set_theme_overrides`. |
-| `button.pressed.connect(...)` inside the run script | Not persisted — gone when the script ends. `ctx.connect` (or `summer_connect_signal`) saves it in the `.tscn`. |
+| `button.pressed.connect(...)` inside the run script | Not persisted — gone when the script ends. `ctx.connect_signal` (or `summer_connect_signal`) saves it in the `.tscn`. |
+| `ctx.connect(button, "pressed", hud, "_on_pressed")` | That is `Object.connect` on the ctx object, not the helper — wrong-signature error. The helper is `ctx.connect_signal(...)`. |
+| `{"min_size": ...}` in `add_ui` props | Not a Control property — lands in `prop_warnings` and does nothing. The property is `custom_minimum_size`. |
+| `ctx.make_prefab(ctx.get_scene_root(), ...)` | Refused. Pack a child subtree; the scene itself is `save_scene`. |
 | Re-running a failed `attach_script` with a guessed fix | The parse error is in the report with the line. Read it, fix that line. |
 | Judging a HUD from an edit-time scene preview | Anchors resolve against the real viewport. `summer_play` + `target:"game"`. |
 | Calling Wave H helpers on an engine that predates them | `Invalid call to method` — the run rolls back. Use the fallback table above. |

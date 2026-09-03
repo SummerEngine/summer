@@ -4,8 +4,8 @@
     {
       "id": "reference/collaborative-protocol",
       "kind": "reference",
-      "version": "1.0.1",
-      "content_hash": "69234414f677e3c1770cdfe00db87468f42256732dbbc8ce9b568995cd61c494",
+      "version": "1.0.2",
+      "content_hash": "841542259ed230389a4c0fe4de3f1a546a483c4a64d2ab9503f69155061e471f",
       "summary": "The \"May I write?\" protocol — before any user-visible write step, the agent states what it is about to do and asks permission.",
       "use_when": [
         "authoring a skill that creates or modifies project files",
@@ -16,7 +16,8 @@
           "build"
         ],
         "domains": [
-          "agent-workflow"
+          "agent-workflow",
+          "conventions"
         ]
       },
       "compatibility": {
@@ -32,8 +33,8 @@
     {
       "id": "reference/gd-style",
       "kind": "reference",
-      "version": "1.0.1",
-      "content_hash": "18ae217f1725fe32bace8926bd4bda31e6a05717bf6d0c06eaa6cd45076a7569",
+      "version": "1.0.2",
+      "content_hash": "6ea3b26d7f8f6a91509ac7e629e00c0f085da4a542a5e7982551a8e4d8dd72c0",
       "summary": "GDScript style conventions for Summer — the tiebreaker where Godot's official style guide is silent; skills should produce code matching this.",
       "use_when": [
         "writing or reviewing GDScript in a Summer project",
@@ -44,7 +45,8 @@
           "build"
         ],
         "domains": [
-          "scripting"
+          "scripting",
+          "conventions"
         ]
       },
       "compatibility": {
@@ -55,8 +57,8 @@
     {
       "id": "reference/godot-version",
       "kind": "reference",
-      "version": "1.0.1",
-      "content_hash": "af66f86222b7e78fccd2bcb4500a5b516cfb7ef0b11e9a15d9ad194e47cfcffd",
+      "version": "1.0.2",
+      "content_hash": "6a9b32905b6d69d64f9418783ceb38cad5ea1a6f3602244b729bb84f91f633b9",
       "summary": "Summer Engine compatibility facts — current upstream technical base, version-sensitive APIs, and what to check before version-sensitive code.",
       "use_when": [
         "writing shaders, rendering code, extensions, or export configuration",
@@ -67,7 +69,8 @@
           "build"
         ],
         "domains": [
-          "engine"
+          "engine",
+          "scripting"
         ]
       },
       "compatibility": {
@@ -145,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.0.3",
-      "content_hash": "812669e6f0831a4853b74ca306bc76f514336be8a295179ee9ec8392ac0482b2",
+      "content_hash": "87b915dd174b875c5b9b42cfbf22400b4d6f0a37c3a24c78b860ef87a2699da6",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -162,6 +165,47 @@
       },
       "compatibility": {
         "engine": ">=4.6"
+      },
+      "status": "stable"
+    },
+    {
+      "id": "reference/product-map",
+      "kind": "reference",
+      "version": "1.0.0",
+      "content_hash": "39331687109e70e576dd0d00bce25db9d27c08b8306281953ad19633b939777e",
+      "summary": "The product map — every summerengine.com page and editor surface an agent can open for the user, with intent phrases, URL or op, required context, and status.",
+      "use_when": [
+        "resolving where a user intent lives — \"where do I change my plan\", \"where are my published games\", \"how do I get to the MCP guide for Codex\"",
+        "deciding whether a destination needs login, a running engine, or a parameter (gameId, path, node) before calling summer_open",
+        "checking whether an editor surface (assistant dock, project settings, 2D/3D switch) can be opened on this engine build or is still planned"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build",
+          "launch",
+          "support"
+        ],
+        "domains": [
+          "navigation",
+          "agent-workflow"
+        ],
+        "modalities": [
+          "docs"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/open"
+        ],
+        "skills": [
+          "skill/navigate-summer"
+        ],
+        "references": [
+          "reference/mcp-tools-reference"
+        ]
       },
       "status": "stable"
     },
@@ -221,11 +265,12 @@
     {
       "id": "skill/3d-lighting",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "43b3da47ce7009b3e642ac97333d608883c35e593c60b82109c835970e42f54b",
+      "version": "1.0.3",
+      "content_hash": "223fb8cdaa0aa0dccc7077294dbd1eef66bc27ed331bed3c0a9f3afb9849136a",
       "summary": "Set up 3D scene lighting — DirectionalLight3D vs Omni vs Spot, WorldEnvironment, sky, shadow tuning, ambient — per current Summer conventions.",
       "use_when": [
-        "setting up lighting in a Summer Engine 3D scene — adding lights, configuring WorldEnvironment, sky, or shadows"
+        "setting up lighting in a Summer Engine 3D scene — adding lights, configuring WorldEnvironment, sky, or shadows",
+        "a 3D scene looks flat, too dark, or washed out, or has harsh or missing shadows"
       ],
       "facets": {
         "lifecycle": [
@@ -254,8 +299,8 @@
     {
       "id": "skill/adaptive-music",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "31525997ccc1a464ca8ae3782ca03c4e58f3c0a6f88e0c264bbc8336df26dbb5",
+      "version": "1.0.2",
+      "content_hash": "8125d91c6da3da24735f93f99ca02ba095e61067f7133a5ee2fc73a214b2833e",
       "summary": "Wire music stems to game state — combat/explore/boss/tension crossfades on a shared bus, paired with a state machine and AudioBus structure.",
       "use_when": [
         "wiring music stems to game state — combat / explore / boss / tension crossfades on a shared bus",
@@ -266,7 +311,8 @@
           "build"
         ],
         "domains": [
-          "audio"
+          "audio",
+          "gameplay"
         ],
         "modalities": [
           "audio",
@@ -288,18 +334,20 @@
     {
       "id": "skill/ambient-bed",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "13007323a6275a572d092863d942a407490c00e8c5b2f41d23aec5d9dde61033",
+      "version": "1.0.2",
+      "content_hash": "854df617a4d475dacfbc0cdb13ca51ac48eeb7021d55b1e648872dc1aaba1218",
       "summary": "Generate a long looping location ambience — forest, dungeon, city, spaceship, cave — a looping AudioStreamPlayer on the Ambient bus with a seamless loop.",
       "use_when": [
-        "generating a long looping location ambience — forest at dawn, dungeon air, city street, spaceship hum, cave drip — non-melodic and low-energy"
+        "generating a long looping location ambience — forest at dawn, dungeon air, city street, spaceship hum, cave drip — non-melodic and low-energy",
+        "a location feels silent and needs a continuous soundscape beneath the score and effects"
       ],
       "facets": {
         "lifecycle": [
           "build"
         ],
         "domains": [
-          "audio"
+          "audio",
+          "assets"
         ],
         "modalities": [
           "audio",
@@ -315,11 +363,12 @@
     {
       "id": "skill/animated-loop",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "51625af7c669de287c36b1db4b97787f5ef67f25be59e86c4347e35f55a15b78",
+      "version": "1.0.4",
+      "content_hash": "e425dd0e920ed5e7d040c2d91f6ba2ae9c187419362af93131bd50f8b6ca2cc0",
       "summary": "Generate a short seamlessly-looping video clip — splash background, animated logo backdrop, idle title-screen footage — wired as a looping VideoStreamPlayer.",
       "use_when": [
-        "generating a short looping video clip — splash screen background, animated logo backdrop, idle title-screen footage, looping environment ambience"
+        "generating a short looping video clip — splash screen background, animated logo backdrop, idle title-screen footage, looping environment ambience",
+        "an idle backdrop behind the UI needs subtle motion without a real-time animated scene"
       ],
       "facets": {
         "lifecycle": [
@@ -492,18 +541,20 @@
     {
       "id": "skill/audio-direction",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "68446e1550683df87af0045358da272113450c77a90e159a148686b37a069f10",
+      "version": "1.0.5",
+      "content_hash": "239802894659ba58796eda896fd3fcfe6feac7a22aafb0d1028ba771c663f043",
       "summary": "Define the game's sonic identity — music style, instruments, SFX vocabulary, dynamic music plan — output as an audio bible at .summer/audio-bible.md.",
       "use_when": [
-        "defining the sonic identity — music style, instruments, SFX vocabulary, dynamic music plan"
+        "defining the sonic identity — music style, instruments, SFX vocabulary, dynamic music plan",
+        "starting audio work with no audio bible, or soundtrack and SFX requests keep drifting in style"
       ],
       "facets": {
         "lifecycle": [
           "build"
         ],
         "domains": [
-          "audio"
+          "audio",
+          "game-design"
         ],
         "modalities": [
           "audio",
@@ -556,11 +607,12 @@
     {
       "id": "skill/brainstorm-game",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "94bed5fa4ede1b101e61739e793e751d4ad026924f7cc0182a50ce63efbfc4ce",
+      "version": "1.0.3",
+      "content_hash": "09ca45cc04fa7ee39c9a99037f1d073752b1855fdfbfa2b3845721d092ab1c1b",
       "summary": "Turn a vague idea into a buildable plan — genre, scope, core loop, mechanics, art direction — written as a 1-page brief to .summer/GameSoul.md.",
       "use_when": [
-        "the user wants help deciding what game to make, scoping a new project, or turning a vague idea into a buildable plan"
+        "the user wants help deciding what game to make, scoping a new project, or turning a vague idea into a buildable plan",
+        "the user has a genre, theme, or one-line pitch but no core loop, scope, or brief yet"
       ],
       "facets": {
         "lifecycle": [
@@ -592,18 +644,20 @@
     {
       "id": "skill/brainstorming",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "c1288ff10270aa228b67ef056a0dda31e5ad93c471c27b04a80f893371bbb817",
+      "version": "1.0.3",
+      "content_hash": "c843b94b99fc318dda965a6b838dd5acc284d62cdc058629d802728b0a715d1d",
       "summary": "Explore user intent, requirements, and design before implementation — must run before any creative work: features, components, mechanics, behavior.",
       "use_when": [
-        "starting creative work — designing a game, picking a mechanic, building features or components, modifying behavior"
+        "starting creative work — designing a game, picking a mechanic, building features or components, modifying behavior",
+        "a request is ambiguous about goals or constraints and work would otherwise start on guesses"
       ],
       "facets": {
         "lifecycle": [
           "build"
         ],
         "domains": [
-          "agent-workflow"
+          "agent-workflow",
+          "game-design"
         ],
         "modalities": [
           "docs"
@@ -618,11 +672,12 @@
     {
       "id": "skill/browse-templates",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "fbf39537e47a7a6168428b11e73ca93d440c3e1618d1279300d884c2d97eb8d0",
+      "version": "1.0.4",
+      "content_hash": "87c6d4438f91dd7d403e131ffb40be44da6201d97545b80f02782f43d903843a",
       "summary": "List available Summer Engine project templates, present the choices, and create a project from the chosen one via summer create.",
       "use_when": [
-        "the user wants to see available Summer Engine project templates, start from an existing template, or asks what templates exist"
+        "the user wants to see available Summer Engine project templates, start from an existing template, or asks what templates exist",
+        "picking a starting point and unsure which starter templates already exist"
       ],
       "facets": {
         "lifecycle": [
@@ -774,11 +829,12 @@
     {
       "id": "skill/character-portrait",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "8c50a5189aede32d9200cadf0517d34fcee6cc44c8746b67dfc9be19cd9b2ff5",
+      "version": "1.0.4",
+      "content_hash": "2f12ac66db6ded3a846507c3ef5c2f0cc0a177818767ca8b8d690dca591f9bf3",
       "summary": "Generate a single polished character bust for dialogue UI, character select, lore cards, or codex entries. One character, locked composition, VN-style.",
       "use_when": [
-        "generating a single polished bust/portrait of a character for dialogue UI, character-select screens, lore cards, or codex entries"
+        "generating a single polished bust/portrait of a character for dialogue UI, character-select screens, lore cards, or codex entries",
+        "a dialogue box, party roster, or codex entry needs one consistent face for a named character"
       ],
       "facets": {
         "lifecycle": [
@@ -810,11 +866,12 @@
     {
       "id": "skill/cinematic-cutscene",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "993b4b1981216a3acc3a03ba62881a2874e0c08215fa1e5386ea29be9896fa14",
+      "version": "1.0.4",
+      "content_hash": "112b6c644cfe21047a2371732765a17740fda1f2a3c412206d4a5dbcbb834ef4",
       "summary": "Generate a non-interactive cutscene — reference-locked look, a 5-10s image-to-video shot, optional TTS dialogue — wired as a fading VideoStreamPlayer.",
       "use_when": [
-        "generating a non-interactive cutscene clip — opening scene, story beat, character intro, ending"
+        "generating a non-interactive cutscene clip — opening scene, story beat, character intro, ending",
+        "a story beat needs a short pre-rendered clip between gameplay sections — intro, transition, ending"
       ],
       "facets": {
         "lifecycle": [
@@ -884,11 +941,12 @@
     {
       "id": "skill/create-asset-sheet",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "099730f765ca9ee13c80461645cb49544028b726b5b27bf005198d5508a56df6",
+      "version": "1.0.3",
+      "content_hash": "33d5a62e1cebab94ab8b8cbc35777aa4707939f3d58e2bad103bf76edbd5dd60",
       "summary": "Generate a pack of 2D game assets from one prompt — tile sheet, UI kit, character pack, or biome set — sliced, classified, and saved as one pack ArtAsset.",
       "use_when": [
-        "generating a pack of 2D game assets from a single prompt — a tile sheet, UI kit, menu screen, character pack, or biome set"
+        "generating a pack of 2D game assets from a single prompt — a tile sheet, UI kit, menu screen, character pack, or biome set",
+        "many matching sprites, tiles, or UI pieces are needed in one consistent style at once"
       ],
       "facets": {
         "lifecycle": [
@@ -923,8 +981,8 @@
     {
       "id": "skill/debug",
       "kind": "skill",
-      "version": "1.0.3",
-      "content_hash": "880211f8ee966708edec858713b616d03776f16151fd9f759166db1ff752f7c7",
+      "version": "1.0.4",
+      "content_hash": "44ef98a70b371098f3b50e4bde4f243e46ef43dfd922dabc71df0ea881567ec9",
       "summary": "Disciplined bug/crash/error loop for Summer projects — script errors, console, debugger, hypothesis, fix, verify — before making code or scene changes.",
       "use_when": [
         "the user reports a bug, crash, error, or unexpected behavior in a Summer project, before making code or scene changes",
@@ -937,7 +995,8 @@
           "build"
         ],
         "domains": [
-          "debug"
+          "debug",
+          "verification"
         ],
         "modalities": [
           "scripts",
@@ -960,18 +1019,20 @@
     {
       "id": "skill/debugging-game-feel",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "f6d0fbca4773c18b37198d5a2b7f1f5b62e2db0e55637720658465b85069a1f5",
+      "version": "1.0.3",
+      "content_hash": "392863d32a6ab76e17ac9ea8271d7e0a6e127804cecac21fae105b951ec55bf1",
       "summary": "Debug features that work but feel wrong — floaty jumps, mushy combat, sluggish camera — subjective bugs living in tuning, timing, and feedback layers.",
       "use_when": [
-        "a gameplay feature works correctly but feels wrong — floaty jumps, mushy combat, sluggish camera, weightless impacts"
+        "a gameplay feature works correctly but feels wrong — floaty jumps, mushy combat, sluggish camera, weightless impacts",
+        "tuning jump height, gravity, camera lag, hit-stop, or impact feedback until controls feel right"
       ],
       "facets": {
         "lifecycle": [
           "build"
         ],
         "domains": [
-          "agent-workflow"
+          "agent-workflow",
+          "gameplay"
         ],
         "modalities": [
           "project"
@@ -986,11 +1047,12 @@
     {
       "id": "skill/design-level",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "5db724d7683ee06d5f8f5d3fe83de1b6fd1925bdbee884b4e18613061de5e10c",
+      "version": "1.0.3",
+      "content_hash": "a54d525dca55b1eb48e4daa055d39014e088cd84f3445510d5702b6657fe54e5",
       "summary": "Design a single level — layout, pacing, encounters, secrets, reward gating — outputs a level design doc and a node-tree skeleton for summer_create_scene.",
       "use_when": [
-        "designing a single level — layout, pacing, encounters, secrets, reward gating"
+        "designing a single level — layout, pacing, encounters, secrets, reward gating",
+        "turning a level idea into a layout with a critical path, encounters, secrets, and pacing beats"
       ],
       "facets": {
         "lifecycle": [
@@ -1061,8 +1123,8 @@
     {
       "id": "skill/design-npc",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "fe567138592e5edf506aaadaf8e6216cb39bba3fe822aa54b1b55459c8dc2b00",
+      "version": "1.0.2",
+      "content_hash": "3a487ee1b3078ae519acac9abdcd07bef28a886d7f54c311e5d698fec3e904e2",
       "summary": "Design enemy/NPC/boss/companion behavior — perception, personality, intent, action state machine, telegraphs — outputs a GDScript stub plus node tree.",
       "use_when": [
         "designing an enemy, NPC, boss, companion, civilian, or wave-spawned mob's behavior — perception, intent, state machine, telegraphs, defeat handling",
@@ -1097,18 +1159,20 @@
     {
       "id": "skill/diagnosing-perf-regressions",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "057e9514b4891d76e1530c2e292380f0d150c4f83f6d41f6c2a086d31cadab2e",
+      "version": "1.0.3",
+      "content_hash": "c20064e3bc7cc5a6638c1260733c1e849b1df611912e5f9ec1318fc21c0e3d4e",
       "summary": "Find why frame rate, frame time, or load time got worse since a known-good state — regression hunting, not general performance tuning.",
       "use_when": [
-        "frame rate, frame time, or load time has gotten worse since a known-good state — 'it used to run at 60, now it's at 30'"
+        "frame rate, frame time, or load time has gotten worse since a known-good state — 'it used to run at 60, now it's at 30'",
+        "bisecting recent scene, script, or asset changes to find which one slowed frame time or loading"
       ],
       "facets": {
         "lifecycle": [
           "build"
         ],
         "domains": [
-          "agent-workflow"
+          "agent-workflow",
+          "performance"
         ],
         "modalities": [
           "project"
@@ -1123,18 +1187,20 @@
     {
       "id": "skill/dispatching-parallel-agents",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "95ec86b8a310ce4f5ba48bdc64cebbf00ed2eb3d4ef0832782106d1cb29aac89",
+      "version": "1.0.3",
+      "content_hash": "870e3da857685a0e7fdb37b2742b5cbefade5a703f23ede2f2f8754812d7030e",
       "summary": "Work 2+ independent tasks in parallel when they share no state and have no sequential dependencies.",
       "use_when": [
-        "facing 2+ independent tasks that can be worked on without shared state or sequential dependencies"
+        "facing 2+ independent tasks that can be worked on without shared state or sequential dependencies",
+        "a plan has several independent workstreams that can run at the same time"
       ],
       "facets": {
         "lifecycle": [
           "build"
         ],
         "domains": [
-          "agent-workflow"
+          "agent-workflow",
+          "meta"
         ],
         "modalities": [
           "docs"
@@ -1149,11 +1215,12 @@
     {
       "id": "skill/environment-kit",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "a4196e0f7ac35ec1d185dc19cef12bc6a760b2f95b902f5250097ec1af7327a6",
+      "version": "1.0.3",
+      "content_hash": "e018a7b48507e3798d17463cfd42029a336a4c5e5fc646fc7ddfc5ddbde34145",
       "summary": "Generate a modular environment kit — wall pieces, floor tiles, pillars, doors, arches, corners — snap-together meshes sharing one visual style.",
       "use_when": [
-        "generating a modular environment kit of snap-together pieces that form a level — dungeon kit, modular walls, interior pieces"
+        "generating a modular environment kit of snap-together pieces that form a level — dungeon kit, modular walls, interior pieces",
+        "building a dungeon, interior, or town kit from repeatable pieces that snap together in one style"
       ],
       "facets": {
         "lifecycle": [
@@ -1184,8 +1251,8 @@
     {
       "id": "skill/export-and-ship",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "b3dc70b0d3b3ef613d96e469484cde91dae76c3f8be6c80950735e9233549dcd",
+      "version": "1.0.3",
+      "content_hash": "a9ae4f8fa24d7128f7fcc4782481bb1277c5b1c12edd699ddbca804a2606513b",
       "summary": "Assess and prepare a game export: inventory installed templates and targets, validate release assets and config, produce supported builds after approval.",
       "use_when": [
         "the user wants to assess or prepare a Summer game export — Steam, itch, HTML5, iOS, Android targets as available in the installed build",
@@ -1196,7 +1263,8 @@
           "launch"
         ],
         "domains": [
-          "deployment"
+          "deployment",
+          "project"
         ],
         "modalities": [
           "project"
@@ -1256,11 +1324,12 @@
     {
       "id": "skill/fps-controller",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "282b347790883aa83d64522e216b32a829e2a3e27c7b3cf09b4a8bdf71722f31",
+      "version": "1.0.3",
+      "content_hash": "e4037e293bd5a7b97385af4515860b0c9bd2ef0b958d341593bd558cb8bd528f",
       "summary": "Production-quality first-person controller — WASD, mouse look, jump, coyote time, jump buffering, air control, and external-velocity handling.",
       "use_when": [
-        "building an FPS, first-person movement, or a 3D character that walks, jumps, and reacts to external forces"
+        "building an FPS, first-person movement, or a 3D character that walks, jumps, and reacts to external forces",
+        "a first-person prototype needs solid movement feel — coyote time, jump buffering, air control"
       ],
       "facets": {
         "lifecycle": [
@@ -1289,8 +1358,8 @@
     {
       "id": "skill/game-feel",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "790976a313ea0916aef15a97fdbe4316a541922447822247482423982efb17d9",
+      "version": "1.0.2",
+      "content_hash": "a452838790c314e9ede4352a6ec0abb9da56ae779a3d0b9c86d06db18bdd39e7",
       "summary": "Add juice: hit-flash, trauma-based camera shake, and audio ducking wired so one hit fires all three — for games that feel flat or lack impact.",
       "use_when": [
         "a Summer game feels flat, lacks impact, needs juice or punch",
@@ -1301,7 +1370,8 @@
           "build"
         ],
         "domains": [
-          "vfx"
+          "vfx",
+          "gameplay"
         ],
         "modalities": [
           "scenes",
@@ -1322,11 +1392,12 @@
     {
       "id": "skill/gameskill",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "ae2b00e610b49dd18b9946f658acdf1b165a29f4ca4ac45e2e64472460cc94d1",
+      "version": "1.0.2",
+      "content_hash": "37ffdcabaabafca0fb3ffa8a56a8a1b838bba5b64fd39d7cfe860142ff95b479",
       "summary": "Capture what a game-dev session just learned into Summer's canonical skill library so the next session and every Summer user start smarter.",
       "use_when": [
-        "finishing a game-development session with learnings worth capturing into Summer's canonical skill library"
+        "finishing a game-development session with learnings worth capturing into Summer's canonical skill library",
+        "a session found a technique, workaround, or convention worth reusing across Summer sessions"
       ],
       "facets": {
         "lifecycle": [
@@ -1349,18 +1420,20 @@
     {
       "id": "skill/gdscript-patterns",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "5c88b6b48340b79b28cb6c18f2e699bf8ac1bace1b2b45bfaf8c11792d152294",
+      "version": "1.0.3",
+      "content_hash": "68c825a7569152bf24740cf97dc2583deb6d1bd9f70136bbd5f8a6d1bd9f5b14",
       "summary": "GDScript conventions — type hints, signals, exports, onready, lifecycle methods, get_node vs $NodePath, naming.",
       "use_when": [
-        "writing or refactoring GDScript — type hints, signals, exports, onready, lifecycle methods, naming conventions"
+        "writing or refactoring GDScript — type hints, signals, exports, onready, lifecycle methods, naming conventions",
+        "reviewing GDScript for idiomatic signals, exports, @onready usage, node references, and naming"
       ],
       "facets": {
         "lifecycle": [
           "build"
         ],
         "domains": [
-          "scripting"
+          "scripting",
+          "conventions"
         ],
         "modalities": [
           "scripts"
@@ -1375,11 +1448,12 @@
     {
       "id": "skill/generate-motion",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "d56f7cf7c3a23c1df0a36ffd4260821cc0974776d8c6017ad96cf00114986488",
+      "version": "1.0.3",
+      "content_hash": "6fc9255a6aa860c84529df090878e81440ebfacc638da4f1213de719df6d5fc7",
       "summary": "Attach an animation clip to a rigged character from the curated Meshy motion library — idle, walk, run, attack — wired via AnimationPlayer.",
       "use_when": [
-        "the user needs an animation clip on a rigged character — idle/walk/run/attack from the curated Meshy library"
+        "the user needs an animation clip on a rigged character — idle/walk/run/attack from the curated Meshy library",
+        "a rigged character has no idle, walk, run, or attack animation yet"
       ],
       "facets": {
         "lifecycle": [
@@ -1454,8 +1528,8 @@
     {
       "id": "skill/headless-scripting",
       "kind": "skill",
-      "version": "1.1.2",
-      "content_hash": "baace7383e8a3273f8eee8c8d87a8da1868f2ef7fcb52c33649321eedb5c5186",
+      "version": "1.1.3",
+      "content_hash": "4adde9502ea9c00ddc3e2fe4f4aa572da6f2db733b278cf0175927c715b4b767",
       "summary": "Run a GDScript file against Summer Engine from the shell for operations no MCP tool exposes — navmesh baking, collision shapes, TileSets, re-imports.",
       "use_when": [
         "a Summer project needs an operation no MCP tool exposes — baking a navmesh, generating collision shapes, authoring an Animation, building a TileSet, re-importing assets",
@@ -1466,7 +1540,8 @@
           "build"
         ],
         "domains": [
-          "agent-workflow"
+          "agent-workflow",
+          "headless"
         ],
         "modalities": [
           "scripts"
@@ -1486,18 +1561,20 @@
     {
       "id": "skill/host-authoritative-state",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "6d64de37e7fce20b576a4388a06d4996fed744bf1f6291091fc799c6c35bb90b",
+      "version": "1.0.3",
+      "content_hash": "011696300f869e7c046f1a210a1b1156ed4f5fe19c4057561709aaeb09bc946a",
       "summary": "Design the state layer of a multiplayer game — what the host owns, how clients request changes, and how the host validates and broadcasts.",
       "use_when": [
-        "designing the state layer of a multiplayer Summer game: host ownership, client change requests, host validation and broadcast"
+        "designing the state layer of a multiplayer Summer game: host ownership, client change requests, host validation and broadcast",
+        "clients desync, cheat, or fight over one object and the state ownership model is undefined"
       ],
       "facets": {
         "lifecycle": [
           "build"
         ],
         "domains": [
-          "multiplayer"
+          "multiplayer",
+          "game-design"
         ],
         "modalities": [
           "scripts",
@@ -1519,11 +1596,12 @@
     {
       "id": "skill/instantiate-asset-pack",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "46f1c1c421d1045cd3576954fb8b85fc3fd1eb934a79d955a4239cff6a5620eb",
+      "version": "1.0.3",
+      "content_hash": "63219a2004e0e9f624522d9838cd6a2a8d05bc282aa01d7029ebbda3d67ca879",
       "summary": "Import a whole create-asset-sheet pack into the scene: groups composites, sorts paint order, emits Sprite2D/Node2D/NinePatchRect ops to lay it out.",
       "use_when": [
-        "importing or spawning an entire asset pack (multi-slice ArtAsset from create-asset-sheet) into the current scene"
+        "importing or spawning an entire asset pack (multi-slice ArtAsset from create-asset-sheet) into the current scene",
+        "laying out a generated tile sheet, UI kit, or biome pack as placed Sprite2D and NinePatchRect nodes in one pass"
       ],
       "facets": {
         "lifecycle": [
@@ -1553,8 +1631,8 @@
     {
       "id": "skill/investigating-bugs",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "72e3b2df586a443bc46a453511500065e6401fe22159069479a47d92ee6b729f",
+      "version": "1.0.3",
+      "content_hash": "0f575304f0e96047bea40d23eaa95de138dfdbd4749bb04a89959791674b23dc",
       "summary": "Systematic investigation of any bug, test failure, or unexpected behavior before proposing fixes.",
       "use_when": [
         "encountering any bug, test failure, or unexpected behavior, before proposing fixes",
@@ -1566,7 +1644,8 @@
           "build"
         ],
         "domains": [
-          "agent-workflow"
+          "agent-workflow",
+          "debug"
         ],
         "modalities": [
           "project"
@@ -1621,11 +1700,12 @@
     {
       "id": "skill/make-game",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "90d1a28d8bdc31d2ce80ec0a18bc2d23d6743e4ad63824ab598344a18a6b464b",
+      "version": "1.0.3",
+      "content_hash": "706c4d387220b26f253a5a003db1cc99eac1f038aa74f97380e08a48b0461302",
       "summary": "Orchestration spine for 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship — delegates to specialist skills.",
       "use_when": [
-        "the user says 'make me a game', 'build me a game', 'I want to make a [genre] game', or 'let's build something' — running the full game-dev pipeline"
+        "the user says 'make me a game', 'build me a game', 'I want to make a [genre] game', or 'let's build something' — running the full game-dev pipeline",
+        "the user wants a complete playable game end to end, from brainstorm through shipping"
       ],
       "facets": {
         "lifecycle": [
@@ -1662,11 +1742,12 @@
     {
       "id": "skill/mcpupdate",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "d2c1b8f52277dcd36e25af10ce2dfdb8af9bf9d524b1f340282cd6e64105f053",
+      "version": "1.0.3",
+      "content_hash": "83798f7489a57ff185bffadca8b90aa5cc2370b8e020f0792f244edf83ec734b",
       "summary": "Improve the Summer CLI, its MCP tools, or its skills from a real working session — capture what worked, fix prompts where an agent went down a bad path.",
       "use_when": [
-        "improving or maintaining the Summer Engine CLI, its MCP tools (summer_*), or its prompt-engineering skills based on a real working session"
+        "improving or maintaining the Summer Engine CLI, its MCP tools (summer_*), or its prompt-engineering skills based on a real working session",
+        "an agent went down a bad path with a summer_* tool or skill and the prompt should be fixed from that evidence"
       ],
       "facets": {
         "lifecycle": [
@@ -1694,18 +1775,20 @@
     {
       "id": "skill/music-track",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "694e7294f7c8644eef006b0d57a52d1d61255d9eca6885d62cf2dd6b868f350c",
+      "version": "1.0.2",
+      "content_hash": "b8fa95d1a31a634a216b6a19a78313d9e7df0d2726b4e1fb443edd9dc705069e",
       "summary": "Generate a looped or cinematic music track — loops authored at >=30s with a marked loop point, cinematic tracks at >=60s linear.",
       "use_when": [
-        "generating a looped or cinematic music track — main theme, boss music, title screen, exploration loop, combat track"
+        "generating a looped or cinematic music track — main theme, boss music, title screen, exploration loop, combat track",
+        "a game has no music yet or needs a new track for a level, a cutscene, or the credits"
       ],
       "facets": {
         "lifecycle": [
           "build"
         ],
         "domains": [
-          "audio"
+          "audio",
+          "assets"
         ],
         "modalities": [
           "audio",
@@ -1725,13 +1808,57 @@
       "recommended": true
     },
     {
+      "id": "skill/navigate-summer",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "e7fcfd0726919c28cf217ffd150fd5ba2d75444a3d1234241b2cd224744d5bad",
+      "summary": "When to open a Summer web page or editor surface FOR the user (billing, their games, the scene just built) versus acting through the API, using summer_open.",
+      "use_when": [
+        "the user asks to see, check, or decide something — \"show me my billing\", \"where do I change my plan\", \"open my games\", \"let me look at the scene\", \"take me to the MCP guide for Cursor\"",
+        "deciding whether to open a surface for the user or to do the work through Summer tools",
+        "handing the user a link (headless, remote, or the user prefers a link) instead of launching a browser"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build",
+          "launch",
+          "support"
+        ],
+        "domains": [
+          "navigation",
+          "agent-workflow",
+          "meta"
+        ],
+        "modalities": [
+          "docs"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/open"
+        ],
+        "references": [
+          "reference/product-map"
+        ],
+        "skills": [
+          "skill/using-summer"
+        ]
+      },
+      "status": "stable",
+      "recommended": true
+    },
+    {
       "id": "skill/new-project",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "ea39cd9d8d952e9410b8224f4a3a47d8f695f896db17ba39d79d43ddd495689b",
+      "version": "1.0.4",
+      "content_hash": "af50f59e2539f6e22f9cf59c300dbf2becd2ca838e5372f0ac464741a5a66dc5",
       "summary": "Create a fresh blank Summer Engine project — asks one question (project name) and runs summer create empty.",
       "use_when": [
-        "the user wants a fresh blank Summer Engine project — from scratch, blank canvas"
+        "the user wants a fresh blank Summer Engine project — from scratch, blank canvas",
+        "starting a Summer Engine project with no template, only a name, ready for an empty main scene"
       ],
       "facets": {
         "lifecycle": [
@@ -1759,11 +1886,12 @@
     {
       "id": "skill/organic-model",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "c8383c7db9a1610a547cf68271c05341a366de7230fd00bde5a3421970e027a7",
+      "version": "1.0.3",
+      "content_hash": "b59b9dda6c8243d4cafa442956ddb354919cffe44f5b6f78e5cbe07ef1c6948d",
       "summary": "Generate organic 3D shapes — trees, rocks, mushrooms, coral, plants, vines, crystals — where AI artifacts read as natural irregularity.",
       "use_when": [
-        "generating organic shapes — trees, rocks, mushrooms, coral, bushes, alien plants, vines, crystals, fruit, bones"
+        "generating organic shapes — trees, rocks, mushrooms, coral, bushes, alien plants, vines, crystals, fruit, bones",
+        "a level needs vegetation, rocks, or other natural shapes where irregularity reads as realism"
       ],
       "facets": {
         "lifecycle": [
@@ -1797,8 +1925,8 @@
     {
       "id": "skill/peer-to-peer-multiplayer",
       "kind": "skill",
-      "version": "1.0.3",
-      "content_hash": "fcfe6dbf64fe334d7d2f6c1bd997ecb0d822692bc8632252331209261f16794a",
+      "version": "1.0.4",
+      "content_hash": "304c50dab86545c86aba4cda12036a73651392e1a0f7dbfb785ddd5c8e4cd494",
       "summary": "Start a multiplayer game from scratch with peer-to-peer host authority — network architecture built top-down, before writing game logic.",
       "use_when": [
         "starting a multiplayer Summer game from scratch with peer-to-peer host authority, before writing game logic",
@@ -1809,7 +1937,8 @@
           "build"
         ],
         "domains": [
-          "multiplayer"
+          "multiplayer",
+          "project"
         ],
         "modalities": [
           "scripts",
@@ -1831,11 +1960,12 @@
     {
       "id": "skill/pixel-art",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "f4e4d06cfd359a2bbff92bf88201326ab9d8574065a814c6a266406d81fc034d",
+      "version": "1.0.4",
+      "content_hash": "0068c3c4d4efa1353204be249a67eb16bd7a4f9d778182c525eab710092731d6",
       "summary": "Generate pixel-art assets — sprites, items, tiles, portraits — at a specific resolution with pixel-perfect grid, limited palette, retro feel.",
       "use_when": [
-        "generating pixel-art assets — sprites, items, tiles, portraits — in a pixel style at a specific resolution (32x32, 64x64, 128x128)"
+        "generating pixel-art assets — sprites, items, tiles, portraits — in a pixel style at a specific resolution (32x32, 64x64, 128x128)",
+        "a retro or low-resolution 2D game needs sprites, tiles, or portraits on a fixed grid with a limited palette"
       ],
       "facets": {
         "lifecycle": [
@@ -1868,11 +1998,12 @@
     {
       "id": "skill/play",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "91e9ac1ed0785c0508b03a449a815f80b2f25aa25e353810c113a1f70e771326",
+      "version": "1.0.2",
+      "content_hash": "c6ddfe5e7bb8c31232cff0c634ae3d07f36a7a4a6ff6ceaf6d6fc1ac34e5932d",
       "summary": "Run the project in Summer Engine, wait briefly, then report what's happening — clean run, errors, or warnings.",
       "use_when": [
-        "the user says 'play', 'run it', 'test it', 'let me see it', or 'start the game'"
+        "the user says 'play', 'run it', 'test it', 'let me see it', or 'start the game'",
+        "checking that the project still starts and runs cleanly right after a change"
       ],
       "facets": {
         "lifecycle": [
@@ -1900,18 +2031,20 @@
     {
       "id": "skill/playtesting-a-feature",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "05b68ba9324a9227ada7dbcfe9e6872334d194faf2deb1347a46f5b9e12b8258",
+      "version": "1.0.4",
+      "content_hash": "2ef33e930e4c32d5b4f1345eeb36693be9c5304d642de87903b16524d44a22c3",
       "summary": "Before claiming a gameplay feature done: actually run the game and walk through the feature. Static diagnostics and type checks do not count.",
       "use_when": [
-        "about to claim a gameplay feature is done, shipped, or working — requires actually running the game and walking through the feature first"
+        "about to claim a gameplay feature is done, shipped, or working — requires actually running the game and walking through the feature first",
+        "a feature passes static diagnostics but nobody has actually run the game and exercised it yet"
       ],
       "facets": {
         "lifecycle": [
           "build"
         ],
         "domains": [
-          "agent-workflow"
+          "agent-workflow",
+          "verification"
         ],
         "modalities": [
           "project"
@@ -1966,11 +2099,12 @@
     {
       "id": "skill/prop-model",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "93eb30f14b3cadc2af4bc1f4af2374d5c47fd7fd2b323390968d54247181fe23",
+      "version": "1.0.3",
+      "content_hash": "ee07ccce0e1480d0a605af37cd26960e86d6a8c9c5404be3d5b12b9071cb756f",
       "summary": "Generate a single static 3D prop — sword, barrel, chest, lantern, throne, statue — one isolated object, no rigging, wired as a MeshInstance3D.",
       "use_when": [
-        "generating a single static 3D prop — sword, barrel, chest, lantern, throne, statue, crate, key, potion, banner"
+        "generating a single static 3D prop — sword, barrel, chest, lantern, throne, statue, crate, key, potion, banner",
+        "a scene needs one static object — furniture, weapon, container, decoration — as a MeshInstance3D without rigging"
       ],
       "facets": {
         "lifecycle": [
@@ -2078,8 +2212,8 @@
     {
       "id": "skill/remote-deploy",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "0a9f4c74755a5a3567293d8533748ad343872f34b2d654e591c90fb1c286988b",
+      "version": "1.0.2",
+      "content_hash": "a4af05564a06c7f129e87ff50b60e4fb6b29ee13882ded5ba96cde7104d37d5e",
       "summary": "Run or test the game on a real device — phone, tablet, another computer — via the Remote Deploy button, runnable export presets, and on-device debugging.",
       "use_when": [
         "the user wants to run or test the game on a real target instead of the editor — a phone, tablet, or another computer",
@@ -2090,7 +2224,8 @@
           "launch"
         ],
         "domains": [
-          "deployment"
+          "deployment",
+          "project"
         ],
         "modalities": [
           "project"
@@ -2105,11 +2240,12 @@
     {
       "id": "skill/retarget",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "4ee5701a0ab2cd6a92edfedfc854f2497121f671dfaba6c61ec4fe6ec99a7c31",
+      "version": "1.0.3",
+      "content_hash": "4cd5eaa1efd568e4a708a20e2dcdfd3fad2278c8fa94378a9b9bbbfbaf7a28fc",
       "summary": "Apply existing animation clips from one rigged character to a different rigged character — same library, multiple models, no regeneration.",
       "use_when": [
-        "applying existing animation clips from one rigged character to a different rigged character — sharing one animation library across models"
+        "applying existing animation clips from one rigged character to a different rigged character — sharing one animation library across models",
+        "the same clips must play on several differently proportioned rigs without regenerating them"
       ],
       "facets": {
         "lifecycle": [
@@ -2181,11 +2317,12 @@
     {
       "id": "skill/scene-composition",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "672feeacd0114ee8d61031132f0f8321e569b01a806cb045e53dd4124aa0e60d",
+      "version": "1.0.3",
+      "content_hash": "8c57487cf853a4700ea4001c6bf6bc707d7ede65d9f2d8a7a24cdb724d7d5329",
       "summary": "Scene structure conventions — node hierarchy, when to extract sub-scenes, reusable prefab patterns, and instance-versus-add-node decisions.",
       "use_when": [
-        "building or organizing Summer Engine scenes: node hierarchy conventions, sub-scene extraction, prefab patterns, PackedScene decisions"
+        "building or organizing Summer Engine scenes: node hierarchy conventions, sub-scene extraction, prefab patterns, PackedScene decisions",
+        "deciding whether to extract a sub-scene, instance a prefab, or add nodes inline as a scene grows"
       ],
       "facets": {
         "lifecycle": [
@@ -2251,11 +2388,12 @@
     {
       "id": "skill/scene-scripting",
       "kind": "skill",
-      "version": "1.0.3",
-      "content_hash": "447ef134dd2d5439bf6e6c971ec22503cd3344aafb6b9a79955c8ba9339c299a",
-      "summary": "Build or modify scenes with one GDScript run inside the live editor (summer_run_script) instead of long CRUD chains; verify with snapshot diff + screenshot.",
+      "version": "1.1.1",
+      "content_hash": "54e66f1d48a5a9dc8fd452e70a7691bf6ff42c231adac6f1974ce28e5b7c75c4",
+      "summary": "One GDScript in the live editor (summer_run_script) builds scenes, 2D levels, HUDs and gameplay wiring instead of CRUD chains; verify with diff + screenshot.",
       "use_when": [
         "a scene change needs 3+ related ops or any computed placement — scattering, grids, rings, procedural meshes, geometry helpers, terrain, lighting rigs, keyframe animation, shader FX",
+        "a 2D level (tilemap paint, bodies, camera limits, parallax), an animated sprite, a HUD or Control tree, a persisted signal connection, an attached script, a prefab, input actions, an autoload, or the main scene should be built in one script",
         "an API property/method name must be verified with summer_api_docs before scripting",
         "a cold project-wide batch job belongs in summer_run_editor_script"
       ],
@@ -2266,6 +2404,8 @@
         "domains": [
           "scenes",
           "scripting",
+          "2d",
+          "ui",
           "agent-workflow"
         ],
         "modalities": [
@@ -2283,14 +2423,25 @@
           "tool/api-docs",
           "tool/world-snapshot",
           "tool/snapshot-diff",
-          "tool/screenshot"
+          "tool/screenshot",
+          "tool/connect-signal",
+          "tool/input-map-bind",
+          "tool/project-setting",
+          "tool/write-file",
+          "tool/get-script-errors"
         ],
         "skills": [
           "skill/verifying-scenes",
           "skill/headless-scripting",
           "skill/scene-composition",
           "skill/character-animation-wiring",
+          "skill/ui-basics",
+          "skill/gdscript-patterns",
+          "skill/sprite-sheet",
           "skill/verification-before-completion"
+        ],
+        "templates": [
+          "template/2d-platformer"
         ]
       },
       "status": "preview",
@@ -2299,11 +2450,12 @@
     {
       "id": "skill/scene-to-level",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "c91621ac620a2333da395e20875f99c700ddcaa17cf68e2380035f8189c1850d",
+      "version": "1.0.3",
+      "content_hash": "c81368de8bf2c6dd9ff0cf5cf68267fde7af28c72ed8977a2e292cd0ce83f607",
       "summary": "Go from a scene reference image or concept art to a playable scene — orchestrates concept, asset pack, terrain, composition, and scene assembly.",
       "use_when": [
-        "going from a scene reference image or concept art to a playable Summer Engine scene populated with the right assets and terrain"
+        "going from a scene reference image or concept art to a playable Summer Engine scene populated with the right assets and terrain",
+        "the user shares concept art or a reference screenshot and wants that location built as a playable scene"
       ],
       "facets": {
         "lifecycle": [
@@ -2339,18 +2491,20 @@
     {
       "id": "skill/setup-multiplayer",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "746df404b37a394fc226439f30cf8542fba1a27b57c732802927eff075a8cc11",
+      "version": "1.0.4",
+      "content_hash": "62b81e162eb243983a01cee68ecdb171a7db884a5ab18e1e6ba504714b708102",
       "summary": "Add multiplayer to an existing game — LAN/online co-op, PvP, lobbies — via MultiplayerAPI, MultiplayerSpawner, and MultiplayerSynchronizer.",
       "use_when": [
-        "adding multiplayer to an existing Summer game: co-op LAN, co-op online, competitive PvP, or a lobby"
+        "adding multiplayer to an existing Summer game: co-op LAN, co-op online, competitive PvP, or a lobby",
+        "a solo game needs LAN co-op, online co-op, versus play, or a lobby added"
       ],
       "facets": {
         "lifecycle": [
           "build"
         ],
         "domains": [
-          "multiplayer"
+          "multiplayer",
+          "scripting"
         ],
         "modalities": [
           "scripts",
@@ -2372,11 +2526,12 @@
     {
       "id": "skill/skill-create",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "d7dee99566622509c4f702825d4ddd7ed5d6013c85d306fbdde487392760901f",
+      "version": "1.0.3",
+      "content_hash": "9fdb6092bf6a6d54dfb9f5887078a5313c37434da9946cfd92c89c2c7100986f",
       "summary": "Bootstrap a new Summer library skill — canonical folder structure, frontmatter, and stub sections.",
       "use_when": [
-        "a contributor wants to add a new skill to the Summer library"
+        "a contributor wants to add a new skill to the Summer library",
+        "scaffolding a new library skill folder with canonical structure, frontmatter, and stub sections"
       ],
       "facets": {
         "lifecycle": [
@@ -2404,11 +2559,12 @@
     {
       "id": "skill/skill-improve",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "05e17aea4fcbc5c970b63902022f17c875d18223348bdeb1c12053a1c433ebd0",
+      "version": "1.0.3",
+      "content_hash": "dba278dbd72eb9bd474638204dd93a3e82dd9fe61095d7659f0ee8c98a7ce1fa",
       "summary": "Upgrade an underperforming Summer skill — run it against a behavioral spec with and without changes via a parallel-eval harness; ship the winner.",
       "use_when": [
-        "a contributor wants to upgrade a Summer skill that is underperforming or to fix a regression"
+        "a contributor wants to upgrade a Summer skill that is underperforming or to fix a regression",
+        "comparing a skill with and without a change against a behavioral spec before shipping the winner"
       ],
       "facets": {
         "lifecycle": [
@@ -2436,11 +2592,12 @@
     {
       "id": "skill/skill-test",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "c5151d50603b4b8eeddec84350435577092f602220f4b5883c173f35db297b51",
+      "version": "1.0.4",
+      "content_hash": "30a334c52ce34ea9a4bde45145d49765e7321c063214b17ba48affcf3ee8fc6f",
       "summary": "Lint a Summer skill before commit, audit the whole library, or check a behavioral spec assertion — static structural rules plus behavioral specs.",
       "use_when": [
-        "a contributor wants to lint a Summer skill before commit, audit the whole library, or check a behavioral spec assertion"
+        "a contributor wants to lint a Summer skill before commit, audit the whole library, or check a behavioral spec assertion",
+        "running the structural lint and behavioral spec assertions for one skill or the whole library"
       ],
       "facets": {
         "lifecycle": [
@@ -2508,11 +2665,12 @@
     {
       "id": "skill/skybox-panorama",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "f3e967bfc352bd0aba623246414d8a2cb9bfa1d5d555befaba7337f8e34b9483",
+      "version": "1.0.3",
+      "content_hash": "75d46821120099748d97e832822e0a7bcc5bbe29bb38048c2407dfc80bc31b02",
       "summary": "Generate a 360-degree equirectangular sky panorama and wire it as a PanoramaSkyMaterial Sky resource on WorldEnvironment in a 3D scene.",
       "use_when": [
-        "generating a 360-degree panoramic sky image for use as a Sky resource (PanoramaSkyMaterial) in a 3D scene"
+        "generating a 360-degree panoramic sky image for use as a Sky resource (PanoramaSkyMaterial) in a 3D scene",
+        "a 3D scene has a flat or default sky and needs a 360-degree backdrop matching the art direction"
       ],
       "facets": {
         "lifecycle": [
@@ -2542,18 +2700,20 @@
     {
       "id": "skill/sound-effect",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "36481629a754910693cebe1b90d81519c68c1e38efcfc43e370041c072f617a1",
+      "version": "1.0.3",
+      "content_hash": "dde6e832f64b8c0fe6c3de454013fcc28ab8f18a46cb86715383b897f08dc898",
       "summary": "Generate short SFX one-shots — footsteps, weapon swings, UI clicks, hit impacts — wired as AudioStreamPlayer/2D/3D that auto-frees on finished.",
       "use_when": [
-        "generating short SFX one-shots — footsteps, weapon swings, UI clicks, hit impacts, environmental cues"
+        "generating short SFX one-shots — footsteps, weapon swings, UI clicks, hit impacts, environmental cues",
+        "an action, impact, or UI interaction is silent and needs a short one-shot sound wired to it"
       ],
       "facets": {
         "lifecycle": [
           "build"
         ],
         "domains": [
-          "audio"
+          "audio",
+          "assets"
         ],
         "modalities": [
           "audio",
@@ -2620,11 +2780,12 @@
     {
       "id": "skill/sprite-sheet",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "ac6ea95a4d76aeb87387bfeb58c8ea25a5aae1f864d086b993af14ec78ee0f2f",
+      "version": "1.0.4",
+      "content_hash": "22ad9dca6be71d4569c8b6f962613814e79bd464d956a6dacc13ab869c96029d",
       "summary": "Generate animated 2D character sprites laid out as a sprite sheet — walk cycle, attack, idle, death — wired into AnimatedSprite2D / SpriteFrames.",
       "use_when": [
-        "generating animated 2D character sprites laid out as a grid of frames — walk cycle, attack frames, idle bob, death sequence"
+        "generating animated 2D character sprites laid out as a grid of frames — walk cycle, attack frames, idle bob, death sequence",
+        "a 2D sprite needs its frames laid out as one grid image for AnimatedSprite2D or SpriteFrames"
       ],
       "facets": {
         "lifecycle": [
@@ -2658,11 +2819,12 @@
     {
       "id": "skill/tileable-texture",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "98ecd3d2de76f18eb8efa6a1b077e22a38dea1023bd1daf433ef6c5c3197d353",
+      "version": "1.0.4",
+      "content_hash": "2ac0dfba6a1a77ffaf36dd2c99ea4b8d30bdfc7a19ef1622b924059a0d76cffb",
       "summary": "Generate a seamless tileable texture for walls, floors, or terrain — repeats cleanly on all four edges, wired as a StandardMaterial3D albedo.",
       "use_when": [
-        "generating a seamless tileable texture for walls, floors, terrain, or ceilings — a square tile that repeats cleanly on all four edges"
+        "generating a seamless tileable texture for walls, floors, terrain, or ceilings — a square tile that repeats cleanly on all four edges",
+        "a wall, floor, or terrain material shows visible seams or repetition and needs a texture that tiles cleanly"
       ],
       "facets": {
         "lifecycle": [
@@ -2695,11 +2857,12 @@
     {
       "id": "skill/trailer-shot",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "b3cdf8db0fb1202bff7fd1467205d3f95b4eb3c6365632e544b1050dd33490ce",
+      "version": "1.0.4",
+      "content_hash": "6df010050e8dfd9e3e89bc077d01886aa3d018a9d0fec5034bc06e2daf41d635",
       "summary": "Generate marketing or trailer footage — slow-mo combat, establishing shots, hero beats, splash screens, pitch-deck B-roll — max punch in 5-10 seconds.",
       "use_when": [
-        "generating marketing or trailer footage — slow-mo combat, dramatic establishing shots, hero beats, splash screens, pitch-deck B-roll"
+        "generating marketing or trailer footage — slow-mo combat, dramatic establishing shots, hero beats, splash screens, pitch-deck B-roll",
+        "producing a store page, pitch deck, or social clip that shows the game at its most dramatic in seconds"
       ],
       "facets": {
         "lifecycle": [
@@ -2728,18 +2891,20 @@
     {
       "id": "skill/tune-performance",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "e9241fdd2e7d7483ce4f6ef01d954667625ac2065a562d9805bf4705a0150253",
+      "version": "1.0.3",
+      "content_hash": "8643f50be720eee7babd9b763ca99728bdae4342bfe4d06dd65a8e4a17aff5fc",
       "summary": "Profile a slow game via summer_get_diagnostics, identify rendering/physics/scripting hotspots, propose fixes with before/after metric expectations.",
       "use_when": [
-        "the game is slow, drops framerate, stutters, takes forever to start, or runs poorly on specific hardware"
+        "the game is slow, drops framerate, stutters, takes forever to start, or runs poorly on specific hardware",
+        "fps drops or stutter when many units, projectiles, or particles spawn at once and the hotspot is unknown"
       ],
       "facets": {
         "lifecycle": [
           "build"
         ],
         "domains": [
-          "performance"
+          "performance",
+          "debug"
         ],
         "modalities": [
           "scripts",
@@ -2764,11 +2929,12 @@
     {
       "id": "skill/ui-basics",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "680dd291e69591599a54cb5f5c95e031d5577d63426faf9ad3dd9b0e58fdc661",
+      "version": "1.0.2",
+      "content_hash": "caca7f36edc3254e81c53bf5331755b9bcfb360a2c9092a86423365db5bdc13a",
       "summary": "Build Summer Engine UI — HUDs, menus, health bars, dialogue boxes, Control trees — anchors, containers, responsive layout, theme vs inline styling.",
       "use_when": [
-        "building Summer Engine UI: HUDs, main menus, pause menus, health bars, progress bars, dialogue boxes, or any Control-node tree"
+        "building Summer Engine UI: HUDs, main menus, pause menus, health bars, progress bars, dialogue boxes, or any Control-node tree",
+        "laying out a pause menu, settings screen, or inventory panel with anchors and containers so it stays responsive"
       ],
       "facets": {
         "lifecycle": [
@@ -2792,11 +2958,12 @@
     {
       "id": "skill/ui-graphics",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "230ec24bfe67aa824b473d1047f94b5f213f74826bb632a85c8de629de0600ac",
+      "version": "1.0.3",
+      "content_hash": "c725b021554169ffbccd98dc054958bb2652b7971187dbcca0ea42c049272ac6",
       "summary": "Generate game-UI elements — icons, buttons, panels, frames, HUD widgets, badges — flat design, transparent background, wired via TextureRect/NinePatchRect.",
       "use_when": [
-        "generating UI elements — icons, buttons, panels, frames, HUD widgets, badges — in flat-design, transparent-background game-UI style"
+        "generating UI elements — icons, buttons, panels, frames, HUD widgets, badges — in flat-design, transparent-background game-UI style",
+        "a HUD still uses placeholder icons, buttons, or panels and needs consistent flat-design art"
       ],
       "facets": {
         "lifecycle": [
@@ -2827,11 +2994,12 @@
     {
       "id": "skill/use-widget-asset",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "52034101298ec2ff9c82a84f8afb6674b430c40a96c462e1e528f7bab47304e3",
+      "version": "1.0.3",
+      "content_hash": "c39555f760f630b203e0fd08864c3678edd6a79e4077831db43771a91c92520f",
       "summary": "Wire a widget slice from a create-asset-sheet pack (panel, button, slider, bar, toggle) into NinePatchRect, TextureProgressBar, or TextureRect via sliceMeta.",
       "use_when": [
-        "consuming a widget slice (panel, button, slider, progress bar, toggle pair) from a create-asset-sheet pack so it behaves like a real UI control"
+        "consuming a widget slice (panel, button, slider, progress bar, toggle pair) from a create-asset-sheet pack so it behaves like a real UI control",
+        "turning a panel, button, slider, or bar slice from a generated UI kit into a working NinePatchRect or TextureProgressBar"
       ],
       "facets": {
         "lifecycle": [
@@ -2863,11 +3031,12 @@
     {
       "id": "skill/using-summer",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "89e2eaa2c143dd64082b6c1235d955714a848dec28a6c0a62ca46585fe3c08e1",
+      "version": "1.0.4",
+      "content_hash": "e2a8c8a61cec0d6808d45aadd8a13c33684765c576da22fb738335d7263e00ea",
       "summary": "Session bootstrap for Summer projects — establishes how to find and use Summer skills and the summer-engine MCP before any response.",
       "use_when": [
-        "starting any conversation in a Summer Engine project"
+        "starting any conversation in a Summer Engine project",
+        "deciding which Summer skill or summer_* tool applies before answering a game-development request"
       ],
       "facets": {
         "lifecycle": [
@@ -2885,6 +3054,10 @@
         "engine": ">=4.6"
       },
       "related": {
+        "tools": [
+          "tool/search-library",
+          "tool/read-library"
+        ],
         "skills": [
           "skill/audio-direction",
           "skill/fps-controller",
@@ -2905,11 +3078,12 @@
     {
       "id": "skill/vehicle-model",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "c3eb6b12ed122e5594d6f305d5f7e1bc8e4c91a004e98d2035432a7618b36654",
+      "version": "1.0.3",
+      "content_hash": "1d9bf06f59aae76fae475a9c77fa81a7e6fd7a56dc46bf599871cbf7d6c43910",
       "summary": "Generate a hard-surface vehicle — car, spaceship, mech, boat, tank — static mesh with optional detail-texture pass, wired as Vehicle3D or MeshInstance3D.",
       "use_when": [
-        "generating a hard-surface vehicle — car, motorcycle, spaceship, hover bike, boat, mech, tank, helicopter"
+        "generating a hard-surface vehicle — car, motorcycle, spaceship, hover bike, boat, mech, tank, helicopter",
+        "a racing, flying, or combat game needs a hard-surface vehicle mesh as a Vehicle3D or MeshInstance3D"
       ],
       "facets": {
         "lifecycle": [
@@ -2945,18 +3119,20 @@
     {
       "id": "skill/verification-before-completion",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "b01ecc8174b27078a7a9959c72176e32a1487cab83f6e0fd7bd8252cd13429fa",
+      "version": "1.0.3",
+      "content_hash": "17592ad7af210c15b717b3256a5adc22041e0d41731277dc8b1fe26e784f7d73",
       "summary": "Run verification commands and confirm output before claiming work complete, fixed, or passing — evidence before assertions, always.",
       "use_when": [
-        "about to claim work is complete, fixed, or passing, before committing or creating PRs"
+        "about to claim work is complete, fixed, or passing, before committing or creating PRs",
+        "about to report a test, build, or fix as passing without having run the command and read its output"
       ],
       "facets": {
         "lifecycle": [
           "build"
         ],
         "domains": [
-          "agent-workflow"
+          "agent-workflow",
+          "verification"
         ],
         "modalities": [
           "project"
@@ -2972,7 +3148,7 @@
       "id": "skill/verifying-scenes",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "8fe17225ad067e8fe3b782756e11bb227d321bdfa47a48f594e94ca3ff982a16",
+      "content_hash": "0a116d91b6250a34973c0175a316a657703a43ee90c4a1de7f3efdfb6bbc5133",
       "summary": "Prove scene work landed — snapshot before, diff + screenshot after, live runtime reads during playtests — before claiming any visual or structural result.",
       "use_when": [
         "after any mutation batch, asset import, or lighting change, before claiming it worked",
@@ -3017,18 +3193,20 @@
     {
       "id": "skill/vfx-dissolve",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "0ab1a699df214634db02b73a2c366a718313870488b2b3c9453cfa74c24ef404",
+      "version": "1.0.3",
+      "content_hash": "e7a58845fa7823e63343858af18e7e89e4e86730a7a3d37f93d6956ff0ae988d",
       "summary": "Dissolve effect — a mesh disintegrating with a glowing burning edge, driven by a noise-threshold ShaderMaterial overriding the target's material.",
       "use_when": [
-        "authoring a dissolve effect — an object disintegrating with a glowing burning edge (disintegrate, burn away, vanish into ash)"
+        "authoring a dissolve effect — an object disintegrating with a glowing burning edge (disintegrate, burn away, vanish into ash)",
+        "a defeated unit, teleport exit, or removed object should burn away with a glowing edge instead of vanishing"
       ],
       "facets": {
         "lifecycle": [
           "build"
         ],
         "domains": [
-          "vfx"
+          "vfx",
+          "rendering"
         ],
         "modalities": [
           "scenes",
@@ -3054,18 +3232,20 @@
     {
       "id": "skill/vfx-fire",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "2f0ba364cf469c8e4103025827770a9d7cb18e78cbd705e5da7ac1850a9bfdf9",
+      "version": "1.0.3",
+      "content_hash": "7ddc1800d3c84d09562a897785de76391959340f6bdbbb2ace2e194230b30477",
       "summary": "Fire effect — animated flames built with a particle shader, GPUParticles3D, and a noise-based color ramp — torches, campfires, candles.",
       "use_when": [
-        "authoring a fire visual effect — torch, campfire, bonfire, flame, burning object, candle"
+        "authoring a fire visual effect — torch, campfire, bonfire, flame, burning object, candle",
+        "adding fire to props, hazards, or projectiles — torches, braziers, burning wreckage, a fireball or flame jet"
       ],
       "facets": {
         "lifecycle": [
           "build"
         ],
         "domains": [
-          "vfx"
+          "vfx",
+          "rendering"
         ],
         "modalities": [
           "scenes",
@@ -3093,18 +3273,20 @@
     {
       "id": "skill/vfx-hit-spark",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "23845124d8bf40df25914b1d9518a2fffcb1320edf014bad8292f9113b697f47",
+      "version": "1.0.2",
+      "content_hash": "ebf5763e08b8899582be98763f2272e55246002009754cd275ac0c4eff4b3934",
       "summary": "Hit-spark effect — a one-shot burst of additive billboard particles oriented to a surface normal, fired on impact.",
       "use_when": [
-        "authoring a hit-spark effect — impact spark, bullet hit, sword clash, ricochet, sparks at a hit point"
+        "authoring a hit-spark effect — impact spark, bullet hit, sword clash, ricochet, sparks at a hit point",
+        "melee hits, bullet impacts, or ricochets have no visual feedback at the contact point"
       ],
       "facets": {
         "lifecycle": [
           "build"
         ],
         "domains": [
-          "vfx"
+          "vfx",
+          "rendering"
         ],
         "modalities": [
           "scenes",
@@ -3131,18 +3313,20 @@
     {
       "id": "skill/vfx-lightning",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "5ffa291b7091b37490b163226560615c014e016cdc0c4335661eb9fccf1635b0",
+      "version": "1.0.3",
+      "content_hash": "9d1ef7c22e34dc3e9873650cc20e1fef104d409d61835aa391ded42d788125b7",
       "summary": "Lightning bolt effect — procedural jagged path drawn via ImmediateMesh, glow shader, sparks at endpoints, screen shake.",
       "use_when": [
-        "authoring a lightning bolt effect — chain lightning, electric attack, tesla coil, shock spell, energy beam"
+        "authoring a lightning bolt effect — chain lightning, electric attack, tesla coil, shock spell, energy beam",
+        "a spell, weapon, or hazard needs a jagged electric arc with glow, endpoint sparks, and camera shake"
       ],
       "facets": {
         "lifecycle": [
           "build"
         ],
         "domains": [
-          "vfx"
+          "vfx",
+          "rendering"
         ],
         "modalities": [
           "scenes",
@@ -3168,18 +3352,20 @@
     {
       "id": "skill/vfx-magic-glow",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "94d8ae9391161675b0159a346f0df76b67e471d7e79d512d881ae63892337806",
+      "version": "1.0.2",
+      "content_hash": "2c0e8f1738f4ef2a9212a67b8003747878e0c89d94a06aaeddd61bb0a2397edd",
       "summary": "Magic-glow effect — a pulsing OmniLight3D plus drifting additive motes plus optional emission shader on the source mesh.",
       "use_when": [
-        "authoring a magic-glow effect — enchanted item, soul gem, pulsing aura, rune glow, magical orb, wisp"
+        "authoring a magic-glow effect — enchanted item, soul gem, pulsing aura, rune glow, magical orb, wisp",
+        "an item, altar, or portal should read as magical or important with a pulsing light and drifting motes"
       ],
       "facets": {
         "lifecycle": [
           "build"
         ],
         "domains": [
-          "vfx"
+          "vfx",
+          "rendering"
         ],
         "modalities": [
           "scenes",
@@ -3206,18 +3392,20 @@
     {
       "id": "skill/vfx-muzzle-flash",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "eb02786c2c3ef07535451ab607fed91369dd90965d83fe82526e7b14717d79c3",
+      "version": "1.0.3",
+      "content_hash": "8664282b7442be7bc0a38727d53ad1b9f37d7cf5dfcc7aea75e4c3f1e64ace37",
       "summary": "Muzzle-flash effect — a one-shot ~80 ms burst at a gun barrel built with a particle one-shot or a flashing quad with a star-burst shader.",
       "use_when": [
-        "authoring a muzzle-flash effect — gun fire, weapon flash, barrel flash, spell-cast burst at a hand"
+        "authoring a muzzle-flash effect — gun fire, weapon flash, barrel flash, spell-cast burst at a hand",
+        "a gun or spell-casting hand shoots with no visible flash at the barrel or palm"
       ],
       "facets": {
         "lifecycle": [
           "build"
         ],
         "domains": [
-          "vfx"
+          "vfx",
+          "rendering"
         ],
         "modalities": [
           "scenes",
@@ -3245,18 +3433,20 @@
     {
       "id": "skill/vfx-smoke",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "7169ba6c7fa1d384ef673ae99fb8d98ea248d7dc47232643fba330bf215ea3b8",
+      "version": "1.0.2",
+      "content_hash": "a9a9bcf4bdb72570f462313fab26981b317f66bb1d07faebfd1867ab4cff6515",
       "summary": "Smoke effect — a slow-rising column or puff of soft particles built with a noise + density falloff shader on a quad mesh, GPUParticles3D.",
       "use_when": [
-        "authoring a smoke effect — smoke trail, puff, chimney smoke, steam, fog cloud, explosion smoke"
+        "authoring a smoke effect — smoke trail, puff, chimney smoke, steam, fog cloud, explosion smoke",
+        "a chimney, campfire, explosion, or vent needs a rising smoke column or puff in a 3D scene"
       ],
       "facets": {
         "lifecycle": [
           "build"
         ],
         "domains": [
-          "vfx"
+          "vfx",
+          "rendering"
         ],
         "modalities": [
           "scenes",
@@ -3281,18 +3471,20 @@
     {
       "id": "skill/vfx-water-ripple",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "cf34b261ce4bcf96960dad557e6711ad52d4706f76e3351079c48b9a68b55c19",
+      "version": "1.0.2",
+      "content_hash": "7bf9688174f343d4c9f6d702a0a2db638f6d516b05233572008c73539788369f",
       "summary": "Water-ripple effect — animated normal-distortion ripples on a water plane (or as a Decal) triggered by impacts.",
       "use_when": [
-        "authoring a water-ripple effect — raindrop ripples, splash ripples, footstep in a puddle, fish jumps"
+        "authoring a water-ripple effect — raindrop ripples, splash ripples, footstep in a puddle, fish jumps",
+        "rain, footsteps, or falling objects should disturb a water surface with spreading ripples"
       ],
       "facets": {
         "lifecycle": [
           "build"
         ],
         "domains": [
-          "vfx"
+          "vfx",
+          "rendering"
         ],
         "modalities": [
           "scenes",
@@ -3316,8 +3508,8 @@
     {
       "id": "skill/voice-line",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "a049631b942a8cf2916535ec1c5ba94670f33c59c0567e28200d9dc19354c763",
+      "version": "1.0.2",
+      "content_hash": "04dbded5f94d669bad4c6f6eb6a2dd460c1dc3712b649da9836b4b1568b7b7ea",
       "summary": "Generate TTS voice lines — NPC barks, narrator, dialogue — with voice-id sourcing, a character-to-voice decision tree, and multi-line dialogue support.",
       "use_when": [
         "\"the NPC needs a greeting / a bark / a narrator intro read aloud\"",
@@ -3329,7 +3521,8 @@
           "build"
         ],
         "domains": [
-          "audio"
+          "audio",
+          "assets"
         ],
         "modalities": [
           "audio",
@@ -3394,18 +3587,20 @@
     {
       "id": "skill/writing-plans",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "a4ef9712f1a2407e306d20afad6e61bd7e71c00e22dae27db1ccacf9b73e22a5",
+      "version": "1.0.3",
+      "content_hash": "700ddace6fabf943943fcba5d5f481ba81b5f30178be916cad27b7dc6185f6b5",
       "summary": "Turn a spec or requirements for a multi-step task into a written implementation plan before touching code.",
       "use_when": [
-        "you have a spec or requirements for a multi-step task, before touching code"
+        "you have a spec or requirements for a multi-step task, before touching code",
+        "a task spans several files or steps and needs an ordered, reviewable plan before implementation starts"
       ],
       "facets": {
         "lifecycle": [
           "build"
         ],
         "domains": [
-          "agent-workflow"
+          "agent-workflow",
+          "meta"
         ],
         "modalities": [
           "docs"
@@ -3420,18 +3615,20 @@
     {
       "id": "skill/writing-skills",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "c2bbe4cc3b90d85909c78fe4854daecc7141853acd7ecc9ac87c280cd192fdae",
+      "version": "1.0.3",
+      "content_hash": "a24e66d9af8d2f9c72a03a954558d5cfee607a11296bd4997e798dade66179a3",
       "summary": "Create, edit, and verify agent skills — format, structure, testing with subagents, and best practices.",
       "use_when": [
-        "creating new skills, editing existing skills, or verifying skills work before deployment"
+        "creating new skills, editing existing skills, or verifying skills work before deployment",
+        "reviewing a SKILL.md for format, structure, and trigger quality, or testing whether it fires with a subagent"
       ],
       "facets": {
         "lifecycle": [
           "build"
         ],
         "domains": [
-          "agent-workflow"
+          "agent-workflow",
+          "meta"
         ],
         "modalities": [
           "docs"
@@ -3898,8 +4095,8 @@
     {
       "id": "tool/add-node",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "2162104646a10ae81330b00fd62b15d41b27edc91a78cfb4f332fcf8720a51b2",
+      "version": "1.0.2",
+      "content_hash": "7e0cfd6870d89b063d76ae5231852430dbf958f64a658d3fb6d13db2d95c8d50",
       "summary": "Add a node of any Godot type to an exact scene, which does not need to be the active editor tab.",
       "use_when": [
         "building out scene structure node by node",
@@ -3911,7 +4108,8 @@
           "build"
         ],
         "domains": [
-          "scenes"
+          "scenes",
+          "editor"
         ]
       },
       "compatibility": {
@@ -3978,8 +4176,8 @@
     {
       "id": "tool/api-docs",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "8e56735af42cb1b66895734e69e609d9bc3c026091ab0b8fc5fb5bc71d20b74c",
+      "version": "1.0.2",
+      "content_hash": "aeefb495155148a1e449154175715138cf0f5c00804edb33f93fbed2c348dcca",
       "summary": "Offline engine class-reference lookup — verify a property, method, signal, or constant before writing script code instead of guessing names.",
       "use_when": [
         "checking an exact property/method/signal/constant name or default before summer_run_script or a .gd edit",
@@ -3991,7 +4189,8 @@
           "build"
         ],
         "domains": [
-          "scripting"
+          "scripting",
+          "engine"
         ],
         "modalities": [
           "scripts"
@@ -4023,8 +4222,8 @@
     {
       "id": "tool/batch",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "4fb80fb39e3e64326bd19929528bfa0297450c0ec7c355560cd2928c84829e12",
+      "version": "1.0.3",
+      "content_hash": "7542d9351dd1a04341338444731dff558f440a565d3e323278d70a97407ad568",
       "summary": "Run multiple engine ops in one call, forwarded verbatim; one undo step unless single-only ops force a split (then one per chunk). Also reaches raw ops.",
       "use_when": [
         "multi-node builds that should undo as one step (no single-only ops in the list)",
@@ -4035,7 +4234,8 @@
           "build"
         ],
         "domains": [
-          "scenes"
+          "scenes",
+          "editor"
         ]
       },
       "compatibility": {
@@ -4055,8 +4255,8 @@
     {
       "id": "tool/check-job",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "aeb79de4fac4c845dcf6ca37c97a96a2082564b8a75e86d2ecd3629f40168590",
+      "version": "1.0.2",
+      "content_hash": "a17e889099781c54902facf3abcbbdd8c10c0018333fdceb40d48f24dc01f183",
       "summary": "Check the status of an async generation job by id.",
       "use_when": [
         "a generation ran without waiting, or timed out, and needs re-checking",
@@ -4068,7 +4268,8 @@
           "build"
         ],
         "domains": [
-          "generate"
+          "generate",
+          "pipeline"
         ]
       },
       "compatibility": {
@@ -4088,8 +4289,8 @@
     {
       "id": "tool/clear-console",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "42c1434f4dfdfdc2eff1b22133707d88c51f44c1634cb3dbd200c902dd0eef13",
+      "version": "1.0.2",
+      "content_hash": "5d96c1b758bcb0521a2ba2f291fc5b3929487df9222b735238eb97d7a645077c",
       "summary": "Clear the editor's Output panel for a clean slate before running the game.",
       "use_when": [
         "before a play session whose console output you want isolated",
@@ -4101,7 +4302,8 @@
           "build"
         ],
         "domains": [
-          "debug"
+          "debug",
+          "editor"
         ]
       },
       "compatibility": {
@@ -4121,8 +4323,8 @@
     {
       "id": "tool/connect-signal",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "2e34fad54cbc519a6444662a257807b666387cec7fc1f84ccde61160bb0f3ffa",
+      "version": "1.0.2",
+      "content_hash": "7859bd208995ccb9cf3a6a8220ad97462d90c99a29e2d685854f0374691d0f2f",
       "summary": "Connect a signal between two nodes; the receiver's script must define the target method.",
       "use_when": [
         "wiring events like body_entered, pressed, or timeout",
@@ -4134,7 +4336,8 @@
           "build"
         ],
         "domains": [
-          "scenes"
+          "scenes",
+          "editor"
         ]
       },
       "compatibility": {
@@ -4154,8 +4357,8 @@
     {
       "id": "tool/create-debug-report",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "95a59e32461831918e07ab53aa68fec8673a7c6a524140e6846856814880f7a0",
+      "version": "1.0.2",
+      "content_hash": "b950bca3f72f732d102142d9e233a4b27ffac33dd8a75515f0e71648742405a8",
       "summary": "Create a support-ready Markdown debug report: doctor checks, engine health, diagnostics, console, and debugger output.",
       "use_when": [
         "the user wants to send Summer a bug report",
@@ -4166,7 +4369,8 @@
           "build"
         ],
         "domains": [
-          "debug"
+          "debug",
+          "feedback"
         ]
       },
       "compatibility": {
@@ -4187,8 +4391,8 @@
     {
       "id": "tool/create-scene",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "8be4225abe96ec9e57a636dac8a924250f02ea1678266d444ca3efde4d7b8198",
+      "version": "1.0.2",
+      "content_hash": "cfb55fc92129fca8a2c50819242e2961f69542773822118aa04c0aa599f13dae",
       "summary": "Create a new minimal .tscn on disk with a create-only guard and read-back verification; never touches the open scene.",
       "use_when": [
         "starting a new level, prefab, or UI scene file",
@@ -4200,7 +4404,8 @@
           "build"
         ],
         "domains": [
-          "scenes"
+          "scenes",
+          "project"
         ]
       },
       "compatibility": {
@@ -4220,8 +4425,8 @@
     {
       "id": "tool/creator-config",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "c0a5014017b428ad2183db0a361c06c24eeb546f76ab7edd2bc3d2db5c3c4c23",
+      "version": "1.0.2",
+      "content_hash": "1449083d5fef74d8bdb5fcfe88d5a8dc0ab80824c4fec51fa4dcb24c5c5bfef6",
       "summary": "Read or update the shared non-secret Summer configuration; mutations require confirm, and tokens are never returned or accepted.",
       "use_when": [
         "inspecting or changing shared CLI and MCP configuration values",
@@ -4233,7 +4438,8 @@
           "launch"
         ],
         "domains": [
-          "creator"
+          "creator",
+          "deployment"
         ]
       },
       "compatibility": {
@@ -4254,8 +4460,8 @@
     {
       "id": "tool/creator-publish",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "1c85b7a1bdf74418261320ff54798d3214c3039e745fcb5eaf91c7adee452854",
+      "version": "1.0.2",
+      "content_hash": "5ced82fe5442354df55ef381c4284029142441fd462bc7a695c2e5853c3817f3",
       "summary": "Publish an exported Summer .pck through the versioned Summercraft creator API, with an explicit confirm step before upload.",
       "use_when": [
         "releasing a user-approved build to a Summercraft channel",
@@ -4267,7 +4473,8 @@
           "launch"
         ],
         "domains": [
-          "creator"
+          "creator",
+          "deployment"
         ]
       },
       "compatibility": {
@@ -4288,8 +4495,8 @@
     {
       "id": "tool/creator-releases",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "6d9d7dc7ef01401b2a61eec025fea6d1bc7a47f8f7e9a88fe404ecf35a3dad5b",
+      "version": "1.0.2",
+      "content_hash": "75e19a8b5e872d42d9b52ae255cf55b24f7d455323d028cfa0856abf955cb0b5",
       "summary": "List creator-owned releases from the Summercraft creator API with server-verified scope and ownership.",
       "use_when": [
         "reviewing which versions of a project are live per channel",
@@ -4301,7 +4508,8 @@
           "launch"
         ],
         "domains": [
-          "creator"
+          "creator",
+          "deployment"
         ]
       },
       "compatibility": {
@@ -4322,8 +4530,8 @@
     {
       "id": "tool/generate-3d",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "54a7676a55bf6811c752d839db0950f03bda85743ba561e2d655d23073163031",
+      "version": "1.0.2",
+      "content_hash": "62fccc4762a54c16d1c64da056ee21188a6a4be311fa43cc8fbe3e9be7977c85",
       "summary": "Generate a 3D model from text or images via Summer Studio, with optional auto-rig and animation pipeline; waits or returns a job id.",
       "use_when": [
         "creating a 3D asset or character from a prompt or reference image",
@@ -4335,7 +4543,8 @@
           "build"
         ],
         "domains": [
-          "generate"
+          "generate",
+          "3d"
         ]
       },
       "compatibility": {
@@ -4355,8 +4564,8 @@
     {
       "id": "tool/generate-audio",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "060e4277b0da9c2c8ec3aca2b0889ca0a3cb98bc8c2010a13e49893217f8325b",
+      "version": "1.0.2",
+      "content_hash": "4f9503dfe7384cb4894fb623a6c1cfd16584b512347ef682e93ecec5da4e54f8",
       "summary": "Generate audio via Summer Studio: text-to-speech, sound effects, music, or multi-voice dialogue.",
       "use_when": [
         "creating sound effects, music beds, or spoken lines for the game",
@@ -4368,7 +4577,8 @@
           "build"
         ],
         "domains": [
-          "generate"
+          "generate",
+          "audio"
         ]
       },
       "compatibility": {
@@ -4388,8 +4598,8 @@
     {
       "id": "tool/generate-image",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "a4b9a737072b6f206832571d1fcd961e474e67b9b4cf24270fb4191c696f1022",
+      "version": "1.0.2",
+      "content_hash": "cbcba0d0d3d6add864a9c07b8e95c02189d37b16af44eb07e3050d646849dafd",
       "summary": "Generate or edit an image with allowlisted AI models via Summer Studio; supports text-to-image and image-to-image with style presets.",
       "use_when": [
         "creating concept art, textures, or sprites from a prompt",
@@ -4400,7 +4610,8 @@
           "build"
         ],
         "domains": [
-          "generate"
+          "generate",
+          "2d"
         ]
       },
       "compatibility": {
@@ -4420,8 +4631,8 @@
     {
       "id": "tool/generate-motion",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "f03c824e1686ed410d99576ccdbdfcafd40e6a034356f571b174bd70441cd6ea",
+      "version": "1.0.2",
+      "content_hash": "02041369d9420811e66d2cca78c2b0ea5d517c8f9263b50a041f7fb0797137ba",
       "summary": "Generate a curated mocap animation clip for a Summer-rigged humanoid; costs credits, so confirm with the user first.",
       "use_when": [
         "adding idle, walk, run, or combat clips to a rigged character",
@@ -4433,7 +4644,8 @@
           "build"
         ],
         "domains": [
-          "generate"
+          "generate",
+          "animation"
         ]
       },
       "compatibility": {
@@ -4453,8 +4665,8 @@
     {
       "id": "tool/generate-video",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "40e87f22084f742f1240db82554b454f205d4ceb999dd721c7c221ab9f0fa4e6",
+      "version": "1.0.2",
+      "content_hash": "98ae8a3b9181f452cf78040fc9dfe5ccd81ca6ce13f55d9bfea895f21efe90c2",
       "summary": "Generate a video from text or an image with allowlisted models via Summer Studio.",
       "use_when": [
         "creating cutscene, trailer, or reference footage from a prompt",
@@ -4466,7 +4678,8 @@
           "build"
         ],
         "domains": [
-          "generate"
+          "generate",
+          "video"
         ]
       },
       "compatibility": {
@@ -4486,8 +4699,8 @@
     {
       "id": "tool/get-agent-playbook",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "72c91b1adfdca96ca8e7d2ac169b6d799db12d2fe2e929791d6e6eb2ccec3d70",
+      "version": "1.0.2",
+      "content_hash": "47049339fca7e4469ff4f5f9b08a857eb666f910fd694d5226988d29b1bb3ea6",
       "summary": "AI-first operating guide for Summer MCP: safe workflow, verification ladder, honesty rules, anti-patterns, and recovery steps.",
       "use_when": [
         "at the start of a fresh session, before touching scenes",
@@ -4499,7 +4712,8 @@
           "build"
         ],
         "domains": [
-          "project"
+          "project",
+          "agent-workflow"
         ]
       },
       "compatibility": {
@@ -4519,8 +4733,8 @@
     {
       "id": "tool/get-asset",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "82187408ba36aad06aa57577ec4aa43811afcbb531fbdd205f5f6d9fcb199395",
+      "version": "1.0.2",
+      "content_hash": "e9f2731bcfe69acfe9e5f5e43d780d8f9d954c447d39bad5dadc06d0c94aeb8a",
       "summary": "Fetch one asset by exact Summer asset id, including stable file URL, metadata, license, visibility, and provider details.",
       "use_when": [
         "a generation job returned an asset id and you need its file URL or metadata",
@@ -4531,7 +4745,8 @@
           "build"
         ],
         "domains": [
-          "assets"
+          "assets",
+          "pipeline"
         ]
       },
       "compatibility": {
@@ -4551,8 +4766,8 @@
     {
       "id": "tool/get-asset-download-url",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "2258b2b14ccb7e8c776c19739c8684855c45b5a22267dbb0b4587b1580195693",
+      "version": "1.0.2",
+      "content_hash": "4633da5a26a99d6269258470ea219e729e9a2ee71ff7061af19be817da7a477c",
       "summary": "Get a download URL for a specific asset file (primary or thumbnail), future-proofed for signed URLs.",
       "use_when": [
         "the user explicitly asks to download an asset file",
@@ -4564,7 +4779,8 @@
           "build"
         ],
         "domains": [
-          "assets"
+          "assets",
+          "pipeline"
         ]
       },
       "compatibility": {
@@ -4584,8 +4800,8 @@
     {
       "id": "tool/get-console",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "b596154d118397fcb06df5d1131a6aa2ad561955f4d1871ca7bf618af97a827f",
+      "version": "1.0.2",
+      "content_hash": "f3664d979a91df124bb831f9f735a4ca0c556d6300dfc4411d6666a66885efcf",
       "summary": "Read recent editor Output panel messages, deduplicated and filterable by level, type, or substring.",
       "use_when": [
         "diagnostics report console issues and you need the message bodies",
@@ -4597,7 +4813,8 @@
           "build"
         ],
         "domains": [
-          "debug"
+          "debug",
+          "editor"
         ]
       },
       "compatibility": {
@@ -4617,8 +4834,8 @@
     {
       "id": "tool/get-debugger-errors",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "eb0da3fca945480bafcd63f70d663ba794672c234d0a7b9dc541127f03b7af05",
+      "version": "1.0.2",
+      "content_hash": "86fa42010ffb8e2291a7b71ac2e33eb00cc08124da7b943b4ad4c7a4421b423b",
       "summary": "Read deduplicated runtime errors from the debugger, distinct from console prints; optional stack traces.",
       "use_when": [
         "the running game hit failures like null references or missing nodes",
@@ -4630,7 +4847,8 @@
           "build"
         ],
         "domains": [
-          "debug"
+          "debug",
+          "runtime"
         ]
       },
       "compatibility": {
@@ -4650,8 +4868,8 @@
     {
       "id": "tool/get-debugger-warnings",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "e46351dc762eda7f3c5bdae74ffd4855ca6531e21fdd1474ed8afc62149ae927",
+      "version": "1.0.2",
+      "content_hash": "dc4de3ffbd4b58ea0abe2461d3787b7914f978e22073369923c8c27ceba07bf3",
       "summary": "Read runtime warnings from the debugger panel as structured entries with file, line, and callstack.",
       "use_when": [
         "diagnostics show a non-zero debugger warning count",
@@ -4663,7 +4881,8 @@
           "build"
         ],
         "domains": [
-          "debug"
+          "debug",
+          "runtime"
         ]
       },
       "compatibility": {
@@ -4683,8 +4902,8 @@
     {
       "id": "tool/get-diagnostics",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "98e0a901295cdc05aff723044d77aa0efbce640ecac98baeadf52a74586cdc14",
+      "version": "1.0.2",
+      "content_hash": "7d615471a78cf81aa54b072bee232337bf138f60d42b28f1517d7403a3496eeb",
       "summary": "Prioritized overview of editor console and runtime debugger errors and warnings, with complete counts and a trimmed noise tail.",
       "use_when": [
         "first stop after any change, before targeted console or debugger reads",
@@ -4695,7 +4914,8 @@
           "build"
         ],
         "domains": [
-          "debug"
+          "debug",
+          "verification"
         ]
       },
       "compatibility": {
@@ -4715,8 +4935,8 @@
     {
       "id": "tool/get-project-context",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "a6ffd5c12839212dcdfe822a183770f00732a7e63d6a0beda4cd26cec43dca68",
+      "version": "1.0.2",
+      "content_hash": "875e3dfd4497ccce126259387cd3512650a7cb62d114f20557512c06136b5f5e",
       "summary": "Bind to the open project and return engine health, project name and path, current and main scene, trimmed settings, and memory summary.",
       "use_when": [
         "first call in every fresh session, to avoid guessing scene filenames",
@@ -4727,7 +4947,8 @@
           "build"
         ],
         "domains": [
-          "project"
+          "project",
+          "engine"
         ]
       },
       "compatibility": {
@@ -4795,8 +5016,8 @@
     {
       "id": "tool/get-scene-tree",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "e2d06ad55796f8f6e0beb1983bc8c940e7543730c1c571a8a11a254611a81d24",
+      "version": "1.0.2",
+      "content_hash": "51749172f527c332e49c070c202f2d19afd3ce1e9dc49ef10c4cb332d7c687b6",
       "summary": "Read a scene's node tree, with explicit depth and limit to avoid the engine's silent default truncation.",
       "use_when": [
         "inspecting scene structure before or after mutations",
@@ -4808,7 +5029,8 @@
           "build"
         ],
         "domains": [
-          "project"
+          "project",
+          "scenes"
         ]
       },
       "compatibility": {
@@ -4828,8 +5050,8 @@
     {
       "id": "tool/get-script-errors",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "2b0e46fafcb159257704787d1a673cb765110d40e91d3b92fba46c4c82609d87",
+      "version": "1.0.2",
+      "content_hash": "e61ba4e1e1033d821073f96be0fbdc959ccb57739465d8f581b2f2d186531ae5",
       "summary": "Check one GDScript file for parse and compile errors without running the game.",
       "use_when": [
         "after writing or editing a .gd file, to verify it compiles",
@@ -4841,7 +5063,8 @@
           "build"
         ],
         "domains": [
-          "debug"
+          "debug",
+          "scripting"
         ]
       },
       "compatibility": {
@@ -4861,8 +5084,8 @@
     {
       "id": "tool/get-studio-workflow",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "8393c41dc4a215f8eccda9fd47e7ea3b01fb66c2308d94467bc2764a82884173",
+      "version": "1.0.2",
+      "content_hash": "c4030fe92673b73157b5231a8b65ebac3f859439737c45806cc1cd32f951e7ef",
       "summary": "Discover Summer Studio's guided workflow recipes: starter prompts, ordered steps, required tools, and honest support levels.",
       "use_when": [
         "planning a multi-step asset workflow like sprite sheets or character packs",
@@ -4874,7 +5097,8 @@
           "build"
         ],
         "domains": [
-          "generate"
+          "generate",
+          "pipeline"
         ]
       },
       "compatibility": {
@@ -4894,8 +5118,8 @@
     {
       "id": "tool/import-asset",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "1343b7fe275756c64d3f5fa26c9d5eae4c56f7978a3de6ab0685419788ca160a",
+      "version": "1.0.2",
+      "content_hash": "9cec560d2c7951bbe699a917ecb6865be50e718bee67b81b06801a0ac0eae9c2",
       "summary": "Search the asset library and import the best match into the project in one step, optionally adding 3D models to a scene.",
       "use_when": [
         "the user asks to add a kind of asset, like 'add a tree to the scene'",
@@ -4907,7 +5131,8 @@
           "build"
         ],
         "domains": [
-          "assets"
+          "assets",
+          "project"
         ]
       },
       "compatibility": {
@@ -4927,8 +5152,8 @@
     {
       "id": "tool/import-asset-by-id",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "f0af345caa45f97e0e9dab02e46375bcdc56bd3f345536b0e32bd2adf96cafe2",
+      "version": "1.0.2",
+      "content_hash": "b38644fa3c91e9f0eb31864d7e092c3210a7cd2dd2bbe3a692bf4a5685a57d35",
       "summary": "Import an exact Summer asset id into the open project via the engine's import pipeline; optionally instantiate 3D models into a scene.",
       "use_when": [
         "importing a just-generated or searched asset without guessing",
@@ -4939,7 +5164,8 @@
           "build"
         ],
         "domains": [
-          "assets"
+          "assets",
+          "project"
         ]
       },
       "compatibility": {
@@ -4959,8 +5185,8 @@
     {
       "id": "tool/import-from-url",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "65f52b978309d36b6bab0e9452e6bcc0d4557b22a8291fa87688f574ab581e70",
+      "version": "1.0.2",
+      "content_hash": "627132fc78ac795d7298f52e5b4abe5447bcfacb1f38b2fe4f1d0ef3c1e0be9a",
       "summary": "Download one file from a URL and run Godot's full import pipeline so the asset is immediately usable.",
       "use_when": [
         "importing a model, texture, or audio file from an external URL",
@@ -4972,7 +5198,8 @@
           "build"
         ],
         "domains": [
-          "project"
+          "project",
+          "assets"
         ]
       },
       "compatibility": {
@@ -4992,8 +5219,8 @@
     {
       "id": "tool/import-from-url-batch",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "e99af20fbceaa1db40cf106f54d02f9d73195bb41f9972bdc7bb9066e81c12db",
+      "version": "1.0.2",
+      "content_hash": "cbf45604d03606c044a13831156581f54f210ab0c5fe5955f5cc044f234aa805",
       "summary": "Download multiple files by URL in one operation with a single filesystem scan afterwards.",
       "use_when": [
         "importing several related files, like a model plus its textures",
@@ -5005,7 +5232,8 @@
           "build"
         ],
         "domains": [
-          "project"
+          "project",
+          "assets"
         ]
       },
       "compatibility": {
@@ -5075,8 +5303,8 @@
     {
       "id": "tool/input-map-bind",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "c0f4ae13cffead6b92294f295f1c36299f26868eef695de92586132ff0b4038c",
+      "version": "1.0.2",
+      "content_hash": "b8bd70a01434e41d6108d05f2e0d31b2cc442d0fccd1c494b368ace40b7c6283",
       "summary": "Create an input action if needed and bind keyboard or mouse events to it.",
       "use_when": [
         "setting up player controls like jump, move, or interact",
@@ -5088,7 +5316,8 @@
           "build"
         ],
         "domains": [
-          "project"
+          "project",
+          "gameplay"
         ]
       },
       "compatibility": {
@@ -5108,8 +5337,8 @@
     {
       "id": "tool/inspect-node",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "ed4659a7f473dcc7b3bd21594e28dfa8b811cce7cda4157cc796730311613742",
+      "version": "1.0.2",
+      "content_hash": "90b5d7a7cbce2b14e28d35402f85bb61c56d253334576d383a1ab0675fcfb345",
       "summary": "Get every editable property of a node with current values, types, and resource info.",
       "use_when": [
         "before modifying a node, to understand its current state",
@@ -5121,7 +5350,8 @@
           "build"
         ],
         "domains": [
-          "scenes"
+          "scenes",
+          "editor"
         ]
       },
       "compatibility": {
@@ -5141,8 +5371,8 @@
     {
       "id": "tool/inspect-resource",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "935f405d31ebad016fe7a0c8b31090010f0ddb0ffaa9bb8bd78f85dbc5c96877",
+      "version": "1.0.2",
+      "content_hash": "7bd86bff26997dfe472c2b34506822091bdc76cb4aafe1cc532dd3686db286c8",
       "summary": "Get all properties of a resource such as a material, mesh, shape, or environment.",
       "use_when": [
         "reading sub-properties that the node inspector only names",
@@ -5154,7 +5384,8 @@
           "build"
         ],
         "domains": [
-          "scenes"
+          "scenes",
+          "editor"
         ]
       },
       "compatibility": {
@@ -5220,8 +5451,8 @@
     {
       "id": "tool/instantiate-scene",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "72dcbdbbb4c0e30a365d32572ac7d8e30f05f41bdd8db64b022240203951a351",
+      "version": "1.0.3",
+      "content_hash": "7f3856ca5224aedb59a4fa8d29f46e5fdd82dd874c5dc94aee8590fc95f1d6ff",
       "summary": "Add an existing scene or 3D model file as a child node, composing scenes from prefabs.",
       "use_when": [
         "placing a .tscn prefab or imported 3D model into a scene",
@@ -5233,7 +5464,8 @@
           "build"
         ],
         "domains": [
-          "scenes"
+          "scenes",
+          "editor"
         ]
       },
       "compatibility": {
@@ -5253,8 +5485,8 @@
     {
       "id": "tool/is-running",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "2e64c1272784279e4b600d9f583543b99b76d32c5eb5edf8b05dedd67d0474e3",
+      "version": "1.0.2",
+      "content_hash": "d159960b358cb01ecdde97f2fa23cd5cab3e50a4aa77b9a5183d2a92e774046d",
       "summary": "Check whether the game is running; returns the active scene path when it is.",
       "use_when": [
         "deciding whether to boot, restart, or capture the running game",
@@ -5266,7 +5498,8 @@
           "build"
         ],
         "domains": [
-          "debug"
+          "debug",
+          "runtime"
         ]
       },
       "compatibility": {
@@ -5319,8 +5552,8 @@
     {
       "id": "tool/list-my-assets",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "40ade356a11e890035fe006e6fc77b0c9a09fbf387b04d6a72979c046d1c3b81",
+      "version": "1.0.2",
+      "content_hash": "315b4d7586c0f24edbadfb52249756149f5cca29ec64e5b0e43cf15cb9951a66",
       "summary": "List or search the signed-in user's generated and uploaded assets, returning exact asset ids plus file and import URLs.",
       "use_when": [
         "retrieving an asset the user just generated before importing it",
@@ -5331,7 +5564,8 @@
           "build"
         ],
         "domains": [
-          "assets"
+          "assets",
+          "pipeline"
         ]
       },
       "compatibility": {
@@ -5398,10 +5632,65 @@
       }
     },
     {
+      "id": "tool/open",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "87bebb6f044d6e755e26d930543805334f0b9a1c25f2dd84744dddc4017de977",
+      "summary": "Open the exact summerengine.com page or editor surface by intent name — billing, my games, an MCP guide, a scene, a node, a dock — or print the URL/op.",
+      "use_when": [
+        "the user wants to SEE or DECIDE something on the website — \"open my billing page\", \"show me my published games\", \"take me to pricing\", \"open the MCP setup guide for Cursor\"",
+        "the user wants to LOOK at something in the running editor — \"show me the scene\", \"select the Player node\", \"open player.gd\", \"reveal that texture in the file dock\"",
+        "handing the user a link instead of opening a browser (open: false), or checking which destination an intent maps to",
+        "resolving where a user intent lives (\"where do I change my plan?\") before acting"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build",
+          "launch",
+          "support"
+        ],
+        "domains": [
+          "navigation",
+          "agent-workflow",
+          "project"
+        ],
+        "modalities": [
+          "docs"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "references": [
+          "reference/product-map"
+        ],
+        "skills": [
+          "skill/navigate-summer"
+        ],
+        "tools": [
+          "tool/open-scene",
+          "tool/select-node",
+          "tool/open-main-scene"
+        ]
+      },
+      "status": "stable",
+      "mcp_tool_name": "summer_open",
+      "remote": false,
+      "cli_command": "summer open",
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
       "id": "tool/open-main-scene",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "aef61908fd5fbe2d7f97cc2e819a209ba51baac3339b8a687adc9410bfd04f5d",
+      "version": "1.0.2",
+      "content_hash": "ee8c6ba7f7e0fac6bdfb4a5aa3f4afb2930840c9204c88cb956e2d8080e55900",
       "summary": "Open the project's configured main scene from project settings instead of guessing scene filenames.",
       "use_when": [
         "any tool reports that no scene is open",
@@ -5413,7 +5702,8 @@
           "build"
         ],
         "domains": [
-          "project"
+          "project",
+          "scenes"
         ]
       },
       "compatibility": {
@@ -5433,8 +5723,8 @@
     {
       "id": "tool/open-scene",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "4b3bcd4151ed940871f1ff054691dd20ef51c01c8ff81c395a2dc7476e6fcb4a",
+      "version": "1.0.2",
+      "content_hash": "1e0bebc35369eae6c894b02603963829bc75a5b4e2db42ae5c1b1bd92827d363",
       "summary": "Open a scene file in the editor to switch tabs.",
       "use_when": [
         "switching the editor to an explicitly known scene path",
@@ -5446,7 +5736,8 @@
           "build"
         ],
         "domains": [
-          "scenes"
+          "scenes",
+          "editor"
         ]
       },
       "compatibility": {
@@ -5466,8 +5757,8 @@
     {
       "id": "tool/play",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "44650c4ae252e4bfd129f07f29b7270e50413f0ca531fc122d57b5cd47787751",
+      "version": "1.0.2",
+      "content_hash": "a7525bae15b96ab4ed02b1b11943a5bb929cd4c34ba682f62eccd76a78696de2",
       "summary": "Start the game (main scene or a specific scene) inside Summer Engine's viewport.",
       "use_when": [
         "runtime verification after edits",
@@ -5479,7 +5770,8 @@
           "build"
         ],
         "domains": [
-          "debug"
+          "debug",
+          "runtime"
         ]
       },
       "compatibility": {
@@ -5499,8 +5791,8 @@
     {
       "id": "tool/project-setting",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "96fc0c384544592147d6a401f1ecbe94ffd2cf155f15f0059ab8364cbe8cef2f",
+      "version": "1.0.2",
+      "content_hash": "d5942df90e058a5536fc524629c6e34b572c4b36617aaf5246c32732dafa34f6",
       "summary": "Set one project.godot setting, like main scene, window size, renderer, or gravity.",
       "use_when": [
         "configuring project-level behavior",
@@ -5512,7 +5804,8 @@
           "build"
         ],
         "domains": [
-          "project"
+          "project",
+          "engine"
         ]
       },
       "compatibility": {
@@ -5532,8 +5825,8 @@
     {
       "id": "tool/read-file",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "7475bbf6d9d2754714c52afa82143854cef00fe9a9a25ba793b2e95afa55d83b",
+      "version": "1.0.2",
+      "content_hash": "ad9bc70c4e5a8d7df0551e5ecb8804a1cf2540d68792de12f63005cb041c5b36",
       "summary": "Read a text file from the engine-bound project and return its full-file sha256 receipt for guarded overwrites.",
       "use_when": [
         "reading project files through the engine",
@@ -5544,7 +5837,8 @@
           "build"
         ],
         "domains": [
-          "file"
+          "file",
+          "project"
         ]
       },
       "compatibility": {
@@ -5553,6 +5847,56 @@
       "status": "stable",
       "mcp_tool_name": "summer_read_file",
       "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/read-library",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "2dc4c993dd7575b6672777c75ab38e16627717b2a9569e6fa1c80181bc871147",
+      "summary": "Load one library entry by id — a skill's body and metadata, a tool's call recipe, a template's pin, a reference's text — ending in the feedback footer.",
+      "use_when": [
+        "summer_search_library returned an id and you need the entry itself before acting",
+        "re-reading a skill or reference the current version of (entries evolve — never rely on memory of one)",
+        "checking how to call a tool or how a template is pinned without walking the library folders"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build",
+          "launch",
+          "grow",
+          "support"
+        ],
+        "domains": [
+          "agent-workflow",
+          "meta",
+          "mcp"
+        ],
+        "modalities": [
+          "docs"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/search-library",
+          "tool/library-feedback"
+        ],
+        "skills": [
+          "skill/using-summer"
+        ]
+      },
+      "status": "stable",
+      "mcp_tool_name": "summer_read_library",
+      "remote": true,
       "authority": {
         "filesystem": false,
         "editor_mutation": false,
@@ -5615,8 +5959,8 @@
     {
       "id": "tool/remove-node",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "032e20b0432801106e93495cdc9dd0cbd2caafca18f637b93ee3ae089b1fe5ac",
+      "version": "1.0.2",
+      "content_hash": "5089297f1c5f4f63acba875e158f4e48ee2c84264a2ec43e9aba665bcc0c5fbf",
       "summary": "Remove a node and all its children from a scene; undoable, but destructive.",
       "use_when": [
         "deleting scene content the user asked to remove",
@@ -5628,7 +5972,8 @@
           "build"
         ],
         "domains": [
-          "scenes"
+          "scenes",
+          "editor"
         ]
       },
       "compatibility": {
@@ -5648,8 +5993,8 @@
     {
       "id": "tool/replace-node",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "aa84771a1a9295cffdaf2d106a612faf02aecda5ae0eb2106c0e9099f1618222",
+      "version": "1.0.2",
+      "content_hash": "ce00f50ea84d1170be405694a2129b88028ee990522e088155a32e5dd89b0b20",
       "summary": "Replace a node with a different type or scene, preserving its tree position and children.",
       "use_when": [
         "swapping a placeholder for a prefab or changing a body type",
@@ -5661,7 +6006,8 @@
           "build"
         ],
         "domains": [
-          "scenes"
+          "scenes",
+          "editor"
         ]
       },
       "compatibility": {
@@ -5681,8 +6027,8 @@
     {
       "id": "tool/replace-text",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "1daed804fa52afbed08582c7bc6cb00c821eb44cc7746be978fea146a853216b",
+      "version": "1.0.2",
+      "content_hash": "f003a37d04d610539c822a9ad7ad22e70452683f29872545e9f29eb2bbefbdf3",
       "summary": "Safely replace text in an existing project file: unique match required by default, then a sha256-guarded write.",
       "use_when": [
         "targeted edits to scripts, scenes, or config without resending the whole file",
@@ -5694,7 +6040,8 @@
           "build"
         ],
         "domains": [
-          "file"
+          "file",
+          "project"
         ]
       },
       "compatibility": {
@@ -5809,8 +6156,8 @@
     {
       "id": "tool/save-scene",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "24d7e5feb0df4181f1964bf8e802b999a3735bc78d7e6c17c799accdd0ef2b71",
+      "version": "1.0.2",
+      "content_hash": "fefc2489e16634edd4ed29780930e9daad8e002e6fb0d61e48913620a29bc585",
       "summary": "Save an explicit scene to disk, for standalone saves or save-as.",
       "use_when": [
         "a standalone save or save-as is needed",
@@ -5822,7 +6169,8 @@
           "build"
         ],
         "domains": [
-          "scenes"
+          "scenes",
+          "editor"
         ]
       },
       "compatibility": {
@@ -5842,20 +6190,22 @@
     {
       "id": "tool/screenshot",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "12a1e434628f8ce6ea505c6eccb8ad4cc0bb121559aa94055ed5058f1868664e",
+      "version": "1.0.4",
+      "content_hash": "8af0022a2944d9f22e9757fecc956ea303ed4bfbb7a03e808df5a16c8fa91bb2",
       "summary": "Capture a frame from the editor viewport, an offscreen scene render, or the running game, returned as an actual image.",
       "use_when": [
         "visually verifying layout, scale, framing, or runtime state",
         "\"show me what the scene looks like right now\"",
-        "\"did the model land where I put it?\" / \"does the UI overlap?\""
+        "\"did the model land where I put it?\" / \"does the UI overlap?\"",
+        "\"take a screenshot of the game\" / \"screenshot the running game\" — target \"game\" grabs the live frame"
       ],
       "facets": {
         "lifecycle": [
           "build"
         ],
         "domains": [
-          "verification"
+          "verification",
+          "scenes"
         ]
       },
       "compatibility": {
@@ -5875,8 +6225,8 @@
     {
       "id": "tool/search-assets",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "5e594893d0e120cb11f384b1b32356d8e6682a773c4443214b4779f5e1f2cdd9",
+      "version": "1.0.2",
+      "content_hash": "636f0ad4be720e41d175295801d358ca19f5ba1f9d95e82b5ba9cd4976bfbd24",
       "summary": "Search the Summer asset library and your own assets by keyword and meaning; returns names, types, preview and import-ready URLs.",
       "use_when": [
         "finding an existing asset in the public library before generating a new one",
@@ -5887,7 +6237,8 @@
           "build"
         ],
         "domains": [
-          "assets"
+          "assets",
+          "pipeline"
         ]
       },
       "compatibility": {
@@ -5905,10 +6256,60 @@
       }
     },
     {
+      "id": "tool/search-library",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "8e6f893d1ea04cd93800258a8688c7f24a1b0db28c47b2e4bec313b1c8c29003",
+      "summary": "Search the Summer library by describing the task in plain words — ranked entries of every kind, with the id to load next via summer_read_library.",
+      "use_when": [
+        "the first move for any task, before building anything — find the entry that covers what the user asked",
+        "not sure which entry (skill, tool, template, reference) applies to the task at hand",
+        "narrowing the library to one kind with the kinds filter, or hiding preview entries"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build",
+          "launch",
+          "grow",
+          "support"
+        ],
+        "domains": [
+          "agent-workflow",
+          "meta",
+          "mcp"
+        ],
+        "modalities": [
+          "docs"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/read-library",
+          "tool/library-feedback"
+        ],
+        "skills": [
+          "skill/using-summer"
+        ]
+      },
+      "status": "stable",
+      "mcp_tool_name": "summer_search_library",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
       "id": "tool/select-node",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "b0503d848dec78e9f19183d4d82a43468bccc3ad7fa95959cbc188f090304d55",
+      "version": "1.0.2",
+      "content_hash": "2ef5adab532c432601cf4ed7a318f3af1123edcbc9ff6298d65f0779d77857f7",
       "summary": "Select a node in the editor scene tree and show it in the inspector.",
       "use_when": [
         "focusing the user's editor on a specific node",
@@ -5920,7 +6321,8 @@
           "build"
         ],
         "domains": [
-          "scenes"
+          "scenes",
+          "editor"
         ]
       },
       "compatibility": {
@@ -5940,8 +6342,8 @@
     {
       "id": "tool/set-prop",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "c4279b6a60789640c8119e3bc5c96cee5f3cd8a4e8f98fef00472ac7b5c15220",
+      "version": "1.0.2",
+      "content_hash": "f779e2efcd2d3acbb10c644101b849bbca515f8ea5b4103dacaa26821c7e4646",
       "summary": "Set a node property using Godot string syntax for vectors, colors, transforms, and resource class names.",
       "use_when": [
         "configuring nodes after adding them",
@@ -5953,7 +6355,8 @@
           "build"
         ],
         "domains": [
-          "scenes"
+          "scenes",
+          "editor"
         ]
       },
       "compatibility": {
@@ -5973,8 +6376,8 @@
     {
       "id": "tool/set-resource-property",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "9e50f8ec0004618db9fb0eec3ebc5e61a3a7f1f4a3b5e66845e46d5a7ed5aab8",
+      "version": "1.0.2",
+      "content_hash": "1d34d2a35dd857909754857b1a5de8696ab88aacfc4a034b5e52a021b282e155",
       "summary": "Set a nested property on a resource attached to a node, like a collision shape size or material color.",
       "use_when": [
         "modifying sub-properties of meshes, materials, or shapes",
@@ -5986,7 +6389,8 @@
           "build"
         ],
         "domains": [
-          "scenes"
+          "scenes",
+          "editor"
         ]
       },
       "compatibility": {
@@ -6006,8 +6410,8 @@
     {
       "id": "tool/slice-asset-sheet",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "963820e9dda321810579b861cf29855f64153280008e0adfc2dc52f11ea0284d",
+      "version": "1.0.2",
+      "content_hash": "a1915aeb136fdd78bc9f899f2adb6fa908e56311f3cf2aec4ba945965a80949a",
       "summary": "Detect and crop every distinct game asset from a generated sheet image, uploading named slices with bounding boxes.",
       "use_when": [
         "splitting a generated asset or UI sheet into individually usable assets",
@@ -6019,7 +6423,8 @@
           "build"
         ],
         "domains": [
-          "generate"
+          "generate",
+          "2d"
         ]
       },
       "compatibility": {
@@ -6186,8 +6591,8 @@
     {
       "id": "tool/start-game-task",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "c430daa69ea60364052d88316dca090f66b1e6d87d51d368e3c22d57596166e8",
+      "version": "1.0.2",
+      "content_hash": "2316f283eec968e56223636e0803cf0c56b4f1efd95e1ecf1259a84e7f1abc04",
       "summary": "Plan the right Summer workflow for a game-building task: skill routes, tool groups, confirmation gates, and verification steps.",
       "use_when": [
         "starting any substantial AI game-building task, before mutating the project",
@@ -6199,7 +6604,8 @@
           "build"
         ],
         "domains": [
-          "project"
+          "project",
+          "agent-workflow"
         ]
       },
       "compatibility": {
@@ -6220,8 +6626,8 @@
     {
       "id": "tool/stop",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "e0d980085f12a2699fd09145e06649f924006b3c37a3c375458be776dc70de0d",
+      "version": "1.0.2",
+      "content_hash": "e7bc253061815834408564a43cc76808b1ead6a84affea4c5ff82a0591e5de5a",
       "summary": "Stop the running game. Does not revert scene edits, undo anything, or save — the editor state is left exactly as it is.",
       "use_when": [
         "runtime verification is finished",
@@ -6233,7 +6639,8 @@
           "build"
         ],
         "domains": [
-          "debug"
+          "debug",
+          "runtime"
         ]
       },
       "compatibility": {
@@ -6405,8 +6812,8 @@
     {
       "id": "tool/write-file",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "ffc56fcde9c97a547feee7515a73e031c7c2e279dd336286c9bb74790da0b0fe",
+      "version": "1.0.2",
+      "content_hash": "0b2f2d341b256697ac8375e8fe501af6984c9fdf521ea431d5de34b30839ea32",
       "summary": "Create or safely overwrite one complete text file through the identity-bound engine; exactly one guard is required, so writes fail closed.",
       "use_when": [
         "creating a new project file with the create-only guard",
@@ -6417,7 +6824,8 @@
           "build"
         ],
         "domains": [
-          "file"
+          "file",
+          "project"
         ]
       },
       "compatibility": {

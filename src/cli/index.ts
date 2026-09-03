@@ -16,6 +16,7 @@ import { debugCommand } from "./commands/debug.js";
 import { configCommand } from "./commands/config.js";
 import { publishCommand } from "./commands/publish.js";
 import { releasesCommand } from "./commands/releases.js";
+import { eventsCommand } from "./commands/events.js";
 import { toolCommand } from "./commands/tool.js";
 import { getBanner } from "./banner.js";
 import { runRootAction } from "./root-action.js";
@@ -56,6 +57,7 @@ export function runCli(mcpCommand: Command): void {
   program.addCommand(configCommand);
   program.addCommand(publishCommand);
   program.addCommand(releasesCommand);
+  program.addCommand(eventsCommand);
   program.addCommand(toolCommand);
 
   program.parseAsync().catch((err) => {

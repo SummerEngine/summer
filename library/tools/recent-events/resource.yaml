@@ -1,0 +1,71 @@
+id: tool/recent-events
+kind: tool
+version: 1.0.0
+summary: Read the newest engine events (saves, plays, op receipts, script errors, imports) in one zero-wait poll — and the next_seq cursor to wait from.
+use_when:
+  - '"what just happened in the engine?" / "show me the recent events" — the last saves, plays, op receipts, script errors, imports'
+  - taking a cursor BEFORE triggering an action you will wait on — pass its next_seq as `since` to summer_wait_for_event
+  - after a summer_wait_for_event timeout, reading everything that arrived since its next_seq
+do_not_use_when:
+  - blocking until something happens — summer_wait_for_event
+  - full console or debugger bodies — summer_get_console / summer_get_debugger_errors (events carry compact payloads, clamped at 4 KB)
+  - "requires an engine build with the events channel (capabilities.events, /api/events — engine PR #156 follow-up commits); on current shipped engines this returns engine_lacks_events"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - runtime
+    - verification
+    - debug
+  modalities:
+    - project
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/wait-for-event
+    - tool/play
+    - tool/run-script
+    - tool/get-console
+  skills:
+    - skill/verifying-scenes
+    - skill/playtesting-a-feature
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_recent_events
+implementation:
+  module: src/mcp/tools/event-tools.ts
+  export: registerEventTools
+surfaces:
+  mcp:
+    tool_name: summer_recent_events
+    remote: false
+  cli:
+    command: summer events
+input_schema:
+  type: object
+  properties:
+    since:
+      type: integer
+      minimum: 0
+      description: "Deliver events with seq > since. Omit = the newest `limit` sequence numbers. 0 = the whole retained ring from the oldest (paged: pass next_seq back while truncated is true)."
+    kinds:
+      type: array
+      items:
+        type: string
+      description: "Event kinds to deliver (default: all). v1 kinds: op.applied, op.failed, script.error, play.started, play.stopped, scene.saved, scene.opened, import.completed, selection.changed, snapshot.published."
+    limit:
+      type: integer
+      minimum: 1
+      maximum: 200
+      default: 50
+      description: Maximum events to return (default 50, cap 200).
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

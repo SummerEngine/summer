@@ -13,6 +13,7 @@ import {
 import { registerPerceptionTools } from "./tools/perception-tools.js";
 import { registerSpatialTools } from "./tools/spatial-tools.js";
 import { registerScriptTools } from "./tools/script-tools.js";
+import { registerEventTools } from "./tools/event-tools.js";
 import {
   recordToolCall,
   registrationHasInputSchema,
@@ -348,6 +349,7 @@ export function createMcpServer(): {
   registerSpatialTools(server);
   registerNavigationTools(server);
   registerLibraryTools(server);
+  registerEventTools(server);
   // The playbook is also an MCP prompt so prompt-surfacing hosts get it
   // natively (same content as the summer_get_agent_playbook tool).
   registerPlaybookPrompt(server);

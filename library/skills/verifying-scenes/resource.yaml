@@ -26,6 +26,8 @@ related:
     - tool/get-runtime-tree
     - tool/inspect-runtime-node
     - tool/screenshot
+    - tool/wait-for-event
+    - tool/recent-events
   skills:
     - skill/scene-scripting
     - skill/playtesting-a-feature

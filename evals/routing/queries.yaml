@@ -214,6 +214,10 @@ queries:
     expected: [tool/import-from-url]
   - query: "change the main scene in project settings"
     expected: [tool/project-setting]
+  - query: "wait for the game to start before checking for errors"
+    expected: [tool/wait-for-event]
+  - query: "what just happened in the engine, show me the recent events"
+    expected: [tool/recent-events]
 
   # ── Known gaps (expected_gap: true — the authoring backlog) ────────────
   - query: "add enemy pathfinding"

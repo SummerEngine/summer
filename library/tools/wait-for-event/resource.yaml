@@ -1,0 +1,84 @@
+id: tool/wait-for-event
+kind: tool
+version: 1.0.0
+summary: Wait for an engine event — the game starting, an op finishing, a script error, a save — instead of sleeping and re-polling; honest timeout.
+use_when:
+  - '"wait for the game to start" — right after summer_play, wait for play.started instead of guessing how long boot takes'
+  - '"wait for an event" / "tell me when the import finishes" — block on op.applied / op.failed for one requestId, import.completed, or scene.saved after a long op'
+  - during a playtest, catching script.error the moment it fires instead of reading the console afterwards
+  - any time you would otherwise sleep and re-check state — take a cursor with summer_recent_events first, then wait from it
+do_not_use_when:
+  - reading what already happened — summer_recent_events (events fired before `since` are never delivered here)
+  - checking a fact right now (is the game running, what is in the tree) — summer_is_running / summer_get_scene_tree are immediate
+  - "requires an engine build with the events channel (capabilities.events, /api/events — engine PR #156 follow-up commits); on current shipped engines this returns engine_lacks_events"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - runtime
+    - verification
+    - debug
+  modalities:
+    - project
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/recent-events
+    - tool/play
+    - tool/is-running
+    - tool/run-script
+    - tool/get-debugger-errors
+  skills:
+    - skill/verifying-scenes
+    - skill/playtesting-a-feature
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_wait_for_event
+implementation:
+  module: src/mcp/tools/event-tools.ts
+  export: registerEventTools
+surfaces:
+  mcp:
+    tool_name: summer_wait_for_event
+    remote: false
+  cli:
+    command: summer events --follow
+input_schema:
+  type: object
+  properties:
+    kinds:
+      type: array
+      items:
+        type: string
+      description: "Event kinds to deliver (default: all). v1 kinds: op.applied, op.failed, script.error, play.started, play.stopped, scene.saved, scene.opened, import.completed, selection.changed, snapshot.published. Unknown kinds are refused before waiting when the engine advertises its list."
+    since:
+      type: integer
+      minimum: 0
+      description: Deliver events with seq > since. Omit = live from now (an event that already fired is NOT delivered — take a cursor with summer_recent_events first and pass its next_seq here). 0 = replay the retained ring.
+    timeout_seconds:
+      type: number
+      default: 30
+      description: How long to wait for a match (default 30, clamped 1-120). The call long-polls in slices of at most 25 s.
+    match:
+      type: object
+      description: Extra client-side filters applied after the kinds filter.
+      properties:
+        requestId:
+          type: string
+          description: Only op.applied / op.failed events for this requestId match; every other kind passes through.
+      additionalProperties: false
+    max_events:
+      type: integer
+      minimum: 1
+      default: 20
+      description: Maximum matched events to return (default 20, cap 500).
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

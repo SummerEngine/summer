@@ -80,6 +80,24 @@ export function isCapabilityPreflightDisabled(env: NodeJS.ProcessEnv = process.e
 const PREFLIGHT_OFF_HINT =
   `If your engine build implements this op but does not advertise it yet, set ${CAPABILITY_PREFLIGHT_ENV}=off in the MCP server's environment to skip this pre-flight and let the engine answer.`;
 
+/**
+ * The `events` block of /api/health `capabilities` — the engine's events
+ * channel advert (GET /api/events SSE + GET /api/events/poll long-poll).
+ * Present only on builds that ship the channel; every field is optional so a
+ * partial advert still counts as "the channel exists".
+ */
+export interface EngineEventsCapability {
+  /** Event kinds this build emits (op.applied, play.started, ...). */
+  kinds?: string[];
+  ring?: number;
+  retainMs?: number;
+  maxPayloadBytes?: number;
+  sse?: boolean;
+  poll?: boolean;
+  maxStreams?: number;
+  heartbeatMs?: number;
+}
+
 export interface EngineCapabilities {
   protocolVersion?: number;
   /** Full dispatch-ladder op set. Absent = engine predates the advert. */
@@ -87,11 +105,36 @@ export interface EngineCapabilities {
   /** Ops that must travel as their own single-op request. Absent = use the
    *  CLI's hardcoded list. */
   singleOnlyOps?: string[];
+  /** Events channel advert. Absent = the build has no events channel (the
+   *  channel and its advert ship together, so absence IS proof here). */
+  events?: EngineEventsCapability;
 }
 
 function stringList(value: unknown): string[] | undefined {
   if (!Array.isArray(value)) return undefined;
   return value.filter((entry): entry is string => typeof entry === "string");
+}
+
+function finiteNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+/** Parse a raw `capabilities.events` value. Any plain object counts as an
+ *  advert (an engine may advertise `events: {}`); anything else is "absent". */
+function parseEventsCapability(raw: unknown): EngineEventsCapability | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const record = raw as Record<string, unknown>;
+  const out: EngineEventsCapability = {};
+  const kinds = stringList(record.kinds);
+  if (kinds) out.kinds = kinds;
+  for (const key of ["ring", "retainMs", "maxPayloadBytes", "maxStreams", "heartbeatMs"] as const) {
+    const value = finiteNumber(record[key]);
+    if (value !== undefined) out[key] = value;
+  }
+  for (const key of ["sse", "poll"] as const) {
+    if (typeof record[key] === "boolean") out[key] = record[key] as boolean;
+  }
+  return out;
 }
 
 /** Parse a raw /api/health `capabilities` value. Tolerates any shape; returns
@@ -114,6 +157,8 @@ export function parseEngineCapabilities(raw: unknown): EngineCapabilities | unde
   if (opKinds) out.opKinds = opKinds;
   const singleOnlyOps = stringList(record.singleOnlyOps);
   if (singleOnlyOps) out.singleOnlyOps = singleOnlyOps;
+  const events = parseEventsCapability(record.events);
+  if (events) out.events = events;
 
   return Object.keys(out).length > 0 ? out : undefined;
 }
@@ -164,6 +209,87 @@ export function buildMissingOpResult(
       `Until then: ${fallback}. ${PREFLIGHT_OFF_HINT}`,
     hint: `${fallback}. ${PREFLIGHT_OFF_HINT}`,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Events channel pre-flight (a capability, not an op — deliberately NOT folded
+// into CLI_KNOWN_OP_NEEDS / engineLacksOp)
+// ---------------------------------------------------------------------------
+
+/**
+ * True when the engine does NOT advertise the events channel. Unlike ops,
+ * where an absent `opKinds` list proves nothing (ops predate the advert), the
+ * events channel and its `capabilities.events` advert ship together: a build
+ * with the channel always advertises it, so absence — including an engine that
+ * advertises no capabilities at all — is proof.
+ */
+export function engineLacksEvents(
+  capabilities: EngineCapabilities | undefined | null
+): boolean {
+  return !capabilities?.events;
+}
+
+export interface MissingEventsResult {
+  ok: false;
+  failure_reason: "engine_lacks_events";
+  engine_version: string | null;
+  error: string;
+  hint: string;
+}
+
+/** What the events tools tell the model to do when the channel is missing. */
+export const EVENTS_FALLBACK =
+  "poll the state you are waiting for instead (summer_is_running after summer_play; summer_get_debugger_errors / summer_get_console for script errors; summer_get_scene_tree or summer_world_snapshot after a long op)";
+
+const EVENTS_PREFLIGHT_OFF_HINT =
+  `If your engine build serves GET /api/events/poll but does not advertise capabilities.events yet, set ${CAPABILITY_PREFLIGHT_ENV}=off in the MCP server's environment to skip this pre-flight and let the engine answer.`;
+
+/**
+ * The structured result an events tool returns when the engine provably lacks
+ * the channel. Shaped like buildMissingOpResult ({ok:false, failure_reason,
+ * engine_version, error, hint}) so withEngine/extractOpError classify it the
+ * same way and `summer tool` prints it whole — but under its own
+ * failure_reason, because no op was ever involved.
+ */
+export function buildMissingEventsResult(
+  engineVersion: string | null | undefined,
+  fallback: string = EVENTS_FALLBACK
+): MissingEventsResult {
+  const version = engineVersion ?? null;
+  return {
+    ok: false,
+    failure_reason: "engine_lacks_events",
+    engine_version: version,
+    error:
+      `This Summer Engine build${version ? ` (engine version ${version})` : ""} does not expose the events channel ` +
+      "(no capabilities.events in /api/health) — nothing was sent. Update Summer Engine to a build with the events channel " +
+      `(restart it after updating). Until then: ${fallback}. ${EVENTS_PREFLIGHT_OFF_HINT}`,
+    hint: `${fallback}. ${EVENTS_PREFLIGHT_OFF_HINT}`,
+  };
+}
+
+/**
+ * Capability pre-flight for the events tools (summer_wait_for_event,
+ * summer_recent_events, `summer events`). Returns a structured
+ * engine_lacks_events result (nothing is sent) when the engine's /api/health
+ * advert lacks `capabilities.events`; null when the channel is advertised or
+ * the SUMMER_CAPABILITY_PREFLIGHT=off escape hatch is set. Sibling of
+ * missingEngineOpResult — kept separate because events are a capability, not
+ * an op kind.
+ */
+export function missingEngineEventsResult(
+  client: CapabilityAdvertisingClient,
+  fallback: string = EVENTS_FALLBACK
+): MissingEventsResult | null {
+  if (isCapabilityPreflightDisabled()) return null;
+  const capabilities =
+    typeof client.getEngineCapabilities === "function"
+      ? client.getEngineCapabilities()
+      : undefined;
+  if (!engineLacksEvents(capabilities)) return null;
+  const version =
+    typeof client.getEngineVersion === "function" ? client.getEngineVersion() : undefined;
+  return buildMissingEventsResult(version ?? null, fallback);
 }
 
 /**

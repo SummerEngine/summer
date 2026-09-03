@@ -106,11 +106,11 @@ Open Claude Code in a directory (any), confirm `/mcp` lists `summer-engine`, the
 
 ## f. Expected to fail on the shipped engine
 
-The 11 `status: preview` tools depend on engine ops no shipped build has:
-`run-script`, `run-editor-script`, `world-snapshot`, `snapshot-diff`,
-`get-runtime-tree`, `inspect-runtime-node`, `test-placement`, `snap-to-surface`,
-`align-distribute-3d`, `navigation-probe`, `starcast`
-(`grep -l 'status: preview' library/tools/*/resource.yaml`). Calling one returns a
+The 12 `status: preview` tools depend on engine features no shipped build has
+(`grep -l 'status: preview' library/tools/*/resource.yaml`). Ten need an engine op:
+`run-script`, `world-snapshot`, `snapshot-diff`, `get-runtime-tree`,
+`inspect-runtime-node`, `test-placement`, `snap-to-surface`,
+`align-distribute-3d`, `navigation-probe`, `starcast`. Calling one returns a
 structured `engine_lacks_op` result and exits 1 — the same on the MCP face
 (`isError`) and the CLI face. Two shapes, depending on what the engine advertises:
 
@@ -131,6 +131,8 @@ structured `engine_lacks_op` result and exits 1 — the same on the MCP face
   ```
 
 `SUMMER_CAPABILITY_PREFLIGHT=off` (in the shell for the CLI, in the MCP server's env for an agent) skips the pre-flight and lets the engine answer — for an engine build that implements an op it does not advertise yet. With it set, the first shape turns into the second.
+
+The other two — `wait-for-event` and `recent-events` (and the `summer events` command) — need the engine **events channel** (`capabilities.events` in `/api/health`, `GET /api/events/poll`; engine PR #156 follow-up commits) rather than an op. Without it they return `failure_reason: "engine_lacks_events"` before sending anything, on both faces; with the same escape hatch set, the poll is sent and the engine's 404 is rewritten into the same shape.
 
 Unblocked by engine PRs **SummerEngine/SummerEngine #155** (headless worker) and **#156** (scene scripting); the four spatial tools additionally need the world-tool engine half (`docs/design/ROADMAP.md`) and `starcast` needs **#147**. Until those merge, a `worked` outcome for any of these is impossible — record `engine_lacks_op` as the expected result, not a failure.
 

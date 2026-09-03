@@ -108,6 +108,8 @@ If the probe cannot express the check — no `SummerProbeBase` in this build, or
 
 `summer_clear_console` first so the buffer is not polluted by a previous session's errors. If you skip this, you will chase ghost errors that have nothing to do with the current feature.
 
+Boot time varies, so do not sleep a guessed delay after `summer_play`. On engines with the events channel: `summer_recent_events` (note `next_seq`) → `summer_play` → `summer_wait_for_event since:<next_seq> kinds:["play.started"]`, then wait on `script.error` during the walkthrough to catch runtime script errors the moment they fire. `engine_lacks_events` means the build predates the channel — confirm with `summer_is_running` and read the console as above. A `timed_out` wait is not proof the game failed to start; check, do not assume.
+
 ### 3. Read back what actually happened
 
 The probe's `results.json` is your primary evidence. Then check the editor's own view:
@@ -196,6 +198,7 @@ Don't ask reflexively. A saved frame sequence answers most "did it visually work
 | "I already played it in a previous session" | State changed. Verify in this session. |
 | "I'll let the user catch any issues" | That is the user's job description for a non-AI engineer. Yours is to ship working features. |
 | Skipping `summer_clear_console` before `summer_play` | You will chase last session's errors. |
+| Sleeping a fixed delay after `summer_play` | Boot time varies. Wait for `play.started` with `summer_wait_for_event`, or confirm with `summer_is_running`. |
 | Skipping `summer_get_console` because diagnostics looked fine | Silent warnings and signal misfires hide there. |
 | "The MCP can't simulate input, so the user has to test it" | False. `RunVerification` presses actions and keys. Write the probe. |
 | "I'll ask the user to press jump and tell me what happened" | You can press jump. They should not have to QA your work. |

@@ -1,6 +1,6 @@
 id: tool/world-snapshot
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: Compact structured snapshot of the edited scene (paths, transforms, world AABBs, fingerprints, counts) — the cheap read before and after every mutation batch.
 use_when:
   - taking a diffable baseline before a mutation batch, or verifying transforms/AABBs/fingerprints after one
@@ -26,7 +26,6 @@ related:
     - tool/screenshot
     - tool/navigation-probe
     - tool/test-placement
-    - tool/camera-visibility
   skills:
     - skill/verifying-scenes
     - skill/scene-scripting

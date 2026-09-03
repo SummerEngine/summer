@@ -17,7 +17,7 @@
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (70 tools)
+## Tool surface (68 tools)
 
 ### Project files (3)
 
@@ -83,17 +83,15 @@
 | `summer_get_runtime_tree` | Scene tree of the RUNNING game (spawned enemies, autoloads, pooled nodes) — live state the editor reads can't show. Needs `summer_play` first. |
 | `summer_inspect_runtime_node` | One running-game node's live properties (actual stats/position/flags) without stopping the game. Get paths from `summer_get_runtime_tree`. |
 
-### Spatial / world building (7)
+### Spatial / world building (5)
 
-Bounded spatial evidence for deliberate 3D arrangement. All seven take exact `scenePath` + scene-root-relative node paths (editor selection is never consulted) and return a compact receipt under 5 KB (`summer_starcast` full detail: at most 12 KB). Read `skill/world-building-3d` for each tool's evidence boundary before the first call, and `skill/spatial-placement` for the inspect -> place -> starcast -> correct -> verify loop.
+Bounded spatial evidence for deliberate 3D arrangement. All five take exact `scenePath` + scene-root-relative node paths (editor selection is never consulted) and return a compact receipt under 5 KB (`summer_starcast` full detail: at most 12 KB). Read `skill/world-building-3d` for each tool's evidence boundary before the first call, and `skill/spatial-placement` for the inspect -> place -> starcast -> correct -> verify loop.
 
 | Tool | Use |
 |---|---|
 | `summer_test_placement` | Ghost-test one node at a candidate global pose (read-only, never saves): overlap evidence, grounded state, signed floor gap. `fits: null` means physics could not prove clearance — never coerce it to success. |
 | `summer_snap_to_surface` | Seat one subject on the first surface along a world ray (default downward); mutation + save. `evidence: physics` = collider sweep; `visual_aabb` = mesh-only broad-phase fallback. |
 | `summer_align_distribute_3d` | Align (min/center/max) or equal-space (centers/gaps) 2–16 ordered subjects along one world axis from visible AABBs; mutation + save. One-axis evidence only. |
-| `summer_frame_camera` | Move one perspective Camera3D just far enough to frame 1–8 subjects at an explicit aspect + padding; mutation + save. Orthographic cameras are rejected without mutation. |
-| `summer_camera_visibility` | Read-only framing check for up to 5 subjects from one camera at an explicit aspect: frustum, screen rect, coverage, plus 1–5 sampled occlusion rays. Not pixel-accurate visibility. |
 | `summer_navigation_probe` | Read-only reachability between two world points on the scene's navigation map: readiness, snapped endpoints + snap distances, route length, ≤16 route points. `ready: false` = unknown, not unreachable. |
 | `summer_starcast` | Read-only 26-direction placement rundown around one exact node: per-direction `open`/`blocked` with nearest object, distance and evidence, contact-or-overlap paths, `grounded`, coverage, warnings. `detail: summary` ≤ 5 KB; `full` adds hit geometry, an objects table and nearby lists ≤ 12 KB and downgrades to summary rather than exceed it. `visual_aabb` evidence is broad-phase, never exact contact. |
 

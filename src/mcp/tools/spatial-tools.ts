@@ -4,21 +4,19 @@ import { withEngine, missingEngineOpResult, ToolInputError, withOldEngineHint } 
 import { executeSceneMutation } from "./scene-tools.js";
 
 /**
- * Spatial / world-building tools. Seven bounded engine ops that turn "roughly
+ * Spatial / world-building tools. Five bounded engine ops that turn "roughly
  * positioned" into "deliberately arranged": ghost-test a pose, seat a prop on
- * a surface, align or space a group along one axis, frame a camera on its
- * subjects, check framing + coarse occlusion, probe navigation reachability,
- * and starcast a placed subject (26 directional clearance casts plus contact
- * and grounding evidence). Every op is evidence with a stated boundary
- * (physics sweep vs visual-AABB broad phase, sampled rays vs renderer
- * visibility) and every result is COMPACT by construction — the engine
- * returns a receipt, never a scene dump.
+ * a surface, align or space a group along one axis, probe navigation
+ * reachability, and starcast a placed subject (26 directional clearance casts
+ * plus contact and grounding evidence). Every op is evidence with a stated
+ * boundary (physics sweep vs visual-AABB broad phase) and every result is
+ * COMPACT by construction — the engine returns a receipt, never a scene dump.
  *
- * Three mutate the scene (snap, align/distribute, frame camera) and go through
- * the scene-mutation contract (one undoable action + one final SaveScene);
- * four are read-only and never save (placement test, camera visibility,
- * navigation probe, starcast). All seven take exact scenePath + node paths —
- * editor selection is never consulted.
+ * Two mutate the scene (snap, align/distribute) and go through the
+ * scene-mutation contract (one undoable action + one final SaveScene); three
+ * are read-only and never save (placement test, navigation probe, starcast).
+ * All five take exact scenePath + node paths — editor selection is never
+ * consulted.
  *
  * Every op here is newer than the perception ops and an engine in the field
  * may lack it. Same two layers as perception-tools: a capability pre-flight
@@ -51,10 +49,6 @@ const SNAP_FALLBACK =
   "read the support's world AABB with summer_world_snapshot, set the subject's position with summer_set_prop so its bottom sits on the support's top, and verify with summer_screenshot";
 const ALIGN_FALLBACK =
   "compute the shared anchor or spacing from summer_world_snapshot AABBs and set each subject's position with summer_set_prop (or one summer_run_script)";
-const FRAME_CAMERA_FALLBACK =
-  "position the camera by hand with summer_set_prop and check the framing with summer_screenshot target 'scene'";
-const VISIBILITY_FALLBACK =
-  "check framing visually with summer_screenshot target 'scene' from that camera";
 const NAVIGATION_FALLBACK =
   "probe reachability from a RunVerification probe (NavigationServer3D.map_get_path — see the playbook's rawOpsViaBatch)";
 const STARCAST_FALLBACK =
@@ -236,10 +230,6 @@ const subjectPathList = (min: number, max: number, combinedLimitBytes: number) =
     .refine(noDuplicates, "subjectPaths must not contain duplicates")
     .refine(combinedUtf8Within(combinedLimitBytes), `Combined subject paths exceed the ${combinedLimitBytes}-byte UTF-8 limit`);
 const finiteVector3 = z.tuple([z.number().finite(), z.number().finite(), z.number().finite()]);
-const nonzeroVector3 = finiteVector3.refine(
-  (vector) => vector.reduce((sum, component) => sum + component * component, 0) > 1e-12,
-  "vector must be finite and nonzero",
-);
 
 // ---------------------------------------------------------------------------
 // Registration
@@ -446,136 +436,6 @@ Alignment modes use the first ordered subject's minimum, center, or maximum proj
         op: "AlignDistribute3D",
         failureReason: "align_result_exceeded_byte_limit",
         extra: MUTATION_LANDED,
-      })),
-  );
-
-  server.tool(
-    "summer_frame_camera",
-    `Move one exact perspective Camera3D just far enough to frame one to eight explicit 3D subjects, then save the scene.
-
-Visible descendant GeometryInstance3D world bounds are merged after hidden and camera-culled visuals are excluded. The solver preserves camera FOV, scale, near/far planes, projection offsets, and a stable current-up orientation. Pass viewDirection to choose an explicit world-space viewing direction; omit it to retain the camera's current forward direction.
-
-The result reports the before/after pose, merged bounds, predicted normalized screen rectangle, per-edge margins, screenCoveragePct, near/far clearance, and solver residual. Evidence is analytic Camera3D projection plus visual AABBs; shader displacement and renderer-only occlusion are not evaluated. Orthographic and frustum cameras are rejected without mutation. The compact result is capped below 5 KB.
-
-Always pass exact scenePath, cameraPath, and subjectPaths. Editor selection is never consulted. This is a mutation with one undo action and one final SaveScene. On an engine build that predates FrameCamera3D the result is a structured engine_lacks_op failure naming the fallback.`,
-    {
-      scenePath: exactScenePath.describe("Exact scene to mutate and save, e.g. 'res://levels/diorama.tscn'."),
-      cameraPath: exactNodePath.describe("Exact perspective Camera3D path relative to the scene root, e.g. './Cameras/Main'."),
-      subjectPaths: subjectPathList(1, 8, 2048)
-        .describe("One to eight exact nonduplicate subject paths; visible descendants contribute framing bounds."),
-      aspect: z
-        .number()
-        .finite()
-        .positive()
-        .describe("Target viewport width divided by height, e.g. 1.7777778 for 16:9."),
-      padding: z
-        .number()
-        .finite()
-        .min(0)
-        .max(0.45)
-        .describe("Required normalized empty margin on every screen edge, from 0 through 0.45."),
-      viewDirection: nonzeroVector3
-        .optional()
-        .describe("Optional finite nonzero world-space camera forward vector [x, y, z]."),
-    },
-    async ({ scenePath, cameraPath, subjectPaths, aspect, padding, viewDirection }) =>
-      withEngine(async (client) => {
-        const missing = missingEngineOpResult(client, "FrameCamera3D", FRAME_CAMERA_FALLBACK);
-        if (missing) return missing;
-        const exactScene = requireBoundedExactPath(scenePath, "scenePath", SCENE_PATH_LIMIT_BYTES);
-        const exactCamera = requireBoundedExactPath(cameraPath, "cameraPath", NODE_PATH_LIMIT_BYTES);
-        const subjects = requireBoundedSubjects(subjectPaths, 1, 8, 2048);
-        if (viewDirection) {
-          const lengthSquared = viewDirection.reduce((sum, component) => sum + component * component, 0);
-          if (!Number.isFinite(lengthSquared) || lengthSquared <= 1e-12) {
-            throw new ToolInputError("viewDirection must be finite and nonzero.");
-          }
-        }
-        const op: Record<string, unknown> = {
-          op: "FrameCamera3D",
-          camera_path: exactCamera,
-          subject_paths: subjects,
-          aspect,
-          padding,
-        };
-        if (viewDirection) op.view_direction = viewDirection;
-        const receipt = await executeSceneMutation(client, exactScene, [op]);
-        return withOldEngineHint(receipt, "FrameCamera3D", FRAME_CAMERA_FALLBACK);
-      }, compactResult({
-        op: "FrameCamera3D",
-        failureReason: "frame_camera_result_exceeded_byte_limit",
-        extra: MUTATION_LANDED,
-      })),
-  );
-
-  server.tool(
-    "summer_camera_visibility",
-    `Inspect how up to five explicit 3D subjects are framed by one exact Camera3D without changing or saving the scene.
-
-Returns per subject:
-- inFrustum, fullyFramed, normalized screenRect, and screenCoveragePct from Camera3D projection plus visible world-AABB bounds;
-- at most five coarse physics occlusion rays, occlusionFraction, and up to five blocker paths;
-- explicit evidence/readiness fields, including mesh-only subjects and unavailable physics.
-
-screenCoveragePct is only the clipped projected rectangle area at the explicit requested aspect; it is not pixel-accurate visible coverage. The edited-scene placeholder viewport is never used as the game aspect. Occlusion is sampled physics evidence, not a renderer visibility query. Hidden/camera-culled visuals do not contribute bounds. The compact read-only result is capped below 5 KB.
-
-Always pass exact scenePath, cameraPath, and subjectPaths. Editor selection is never consulted. On an engine build that predates CameraVisibility3D the result is a structured engine_lacks_op failure naming the fallback.`,
-    {
-      scenePath: exactScenePath.describe("Exact scene containing the camera and subjects, e.g. 'res://levels/courtyard.tscn'"),
-      cameraPath: exactNodePath.describe("Exact Camera3D path relative to the scene root, e.g. './Cameras/MainCamera'"),
-      subjectPaths: subjectPathList(1, 5, 1024)
-        .describe("One to five exact nonduplicate subject paths; descendants contribute visible visual bounds and colliders."),
-      aspect: z
-        .number()
-        .finite()
-        .positive()
-        .describe("Evaluation viewport width divided by height, e.g. 1.7777778 for 16:9."),
-      occlusionSamples: z
-        .number()
-        .int()
-        .min(1)
-        .max(5)
-        .optional()
-        .default(5)
-        .describe("Physics rays per subject: center plus up to four world-AABB corners."),
-      collisionMask: z
-        .number()
-        .int()
-        .nonnegative()
-        .max(0xffffffff)
-        .optional()
-        .default(0xffffffff)
-        .describe("Godot 3D physics layers treated as possible occluders."),
-      collideWithAreas: z
-        .boolean()
-        .optional()
-        .default(false)
-        .describe("Whether Area3D nodes can count as occlusion blockers."),
-    },
-    async ({ scenePath, cameraPath, subjectPaths, aspect, occlusionSamples, collisionMask, collideWithAreas }) =>
-      withEngine(async (client) => {
-        const missing = missingEngineOpResult(client, "CameraVisibility3D", VISIBILITY_FALLBACK);
-        if (missing) return missing;
-        const exactScene = requireBoundedExactPath(scenePath, "scenePath", SCENE_PATH_LIMIT_BYTES);
-        const exactCamera = requireBoundedExactPath(cameraPath, "cameraPath", NODE_PATH_LIMIT_BYTES);
-        const subjects = requireBoundedSubjects(subjectPaths, 1, 5, 1024);
-        const receipt = await client.executeIdentityBoundOps(
-          [{
-            op: "CameraVisibility3D",
-            camera_path: exactCamera,
-            subject_paths: subjects,
-            aspect,
-            occlusion_samples: occlusionSamples,
-            collision_mask: collisionMask,
-            collide_with_areas: collideWithAreas,
-          }],
-          { scenePath: exactScene },
-        );
-        return withOldEngineHint(receipt, "CameraVisibility3D", VISIBILITY_FALLBACK);
-      }, compactResult({
-        op: "CameraVisibility3D",
-        failureReason: "camera_visibility_result_exceeded_byte_limit",
-        extra: READ_ONLY,
       })),
   );
 

@@ -1,10 +1,10 @@
 ---
 name: world-building-3d
-description: Use when composing, placing, grounding, spacing, framing, or validating 3D objects in Summer Engine scenes. Trigger on "world building", "place props", "snap to floor", "align objects", "distribute objects", "frame camera", "camera visibility", "occlusion", "navigation reachability", or requests to make a 3D scene look deliberately arranged rather than roughly positioned.
+description: Use when composing, placing, grounding, spacing, or validating 3D objects in Summer Engine scenes. Trigger on "world building", "place props", "snap to floor", "align objects", "distribute objects", "navigation reachability", or requests to make a 3D scene look deliberately arranged rather than roughly positioned.
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: scene-and-project
-allowed-tools: Read Grep summer_open_scene summer_get_scene_tree summer_inspect_node summer_set_prop summer_test_placement summer_snap_to_surface summer_align_distribute_3d summer_frame_camera summer_camera_visibility summer_navigation_probe summer_screenshot summer_play
+allowed-tools: Read Grep summer_open_scene summer_get_scene_tree summer_inspect_node summer_set_prop summer_test_placement summer_snap_to_surface summer_align_distribute_3d summer_navigation_probe summer_screenshot summer_play
 ---
 
 # Build 3D Worlds with Spatial Evidence
@@ -20,8 +20,6 @@ Read [references/spatial-tools.md](references/spatial-tools.md) before the first
 | Evaluate a proposed prop pose | `summer_test_placement` | Read-only ghost pose |
 | Seat one object on a floor, shelf, table, or ramp | `summer_snap_to_surface` | Moves subject and saves |
 | Align or evenly space 2–16 objects | `summer_align_distribute_3d` | Moves subjects and saves |
-| Fit 1–8 subjects in a perspective camera | `summer_frame_camera` | Moves camera and saves |
-| Check framing and coarse occlusion | `summer_camera_visibility` | Read-only |
 | Check whether two positions share a navigation route | `summer_navigation_probe` | Read-only |
 
 Use ordinary `summer_get_scene_tree` and `summer_inspect_node` first when paths, hierarchy, authored transforms, collision layers, or camera settings are unknown.
@@ -30,8 +28,8 @@ Use ordinary `summer_get_scene_tree` and `summer_inspect_node` first when paths,
 
 1. Open the exact target scene and resolve exact `./`-relative paths.
 2. Inspect the subject, its visual/collider descendants, intended support or neighbors, and the camera.
-3. State the intended invariant: contact gap, clearance, spacing axis, screen padding, or reachable destination.
-   If the support, ordering, camera, or destination is genuinely ambiguous, ask
+3. State the intended invariant: contact gap, clearance, spacing axis, or reachable destination.
+   If the support, ordering, or destination is genuinely ambiguous, ask
    `Proceed?` with the concrete choice before making a user-visible mutation.
 4. Query before mutation when a read-only tool exists.
 5. Apply the smallest mutation. Prefer the dedicated solver over hand-tuned transform loops.
@@ -80,12 +78,6 @@ Pass subjects to `summer_align_distribute_3d` in intentional order. Choose a wor
 Inspect the result's residuals and `changedCount`; infer unchanged subjects only
 as `subjectCount - changedCount`. Rerun placement checks for dense groups because
 alignment solves one axis and does not prove full 3D clearance.
-
-## Frame and verify cameras
-
-Call `summer_frame_camera` with the real target aspect and explicit screen padding. Keep `viewDirection` omitted to preserve the current viewing direction, or pass it when art direction fixes the angle.
-
-Then call `summer_camera_visibility` at the same aspect. Require all critical subjects to be framed and inspect coarse occlusion separately. A projected rectangle is not pixel-visible coverage, and five physics rays cannot prove renderer visibility.
 
 ## Validate navigation placement
 

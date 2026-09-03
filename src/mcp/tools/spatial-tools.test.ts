@@ -121,22 +121,6 @@ const ARGS = {
     axis: [1, 0, 0],
     mode: "distribute_gaps",
   },
-  summer_frame_camera: {
-    scenePath: "res://levels/diorama.tscn",
-    cameraPath: "./Cameras/Main",
-    subjectPaths: ["./Hero", "./Merchant"],
-    aspect: 16 / 9,
-    padding: 0.1,
-  },
-  summer_camera_visibility: {
-    scenePath: "res://levels/courtyard.tscn",
-    cameraPath: "./Cameras/MainCamera",
-    subjectPaths: ["./Hero"],
-    aspect: 16 / 9,
-    occlusionSamples: 5,
-    collisionMask: 0xffffffff,
-    collideWithAreas: false,
-  },
   summer_navigation_probe: {
     scenePath: "res://levels/courtyard.tscn",
     start: [0, 0, 0],
@@ -163,25 +147,21 @@ const OPS: Record<keyof typeof ARGS, { op: string; mutation: boolean; failure: s
   summer_test_placement: { op: "TestPlacement3D", mutation: false, failure: "placement_result_exceeded_byte_limit", fallback: "summer_world_snapshot" },
   summer_snap_to_surface: { op: "SnapToSurface", mutation: true, failure: "snap_to_surface_result_exceeded_byte_limit", fallback: "summer_set_prop" },
   summer_align_distribute_3d: { op: "AlignDistribute3D", mutation: true, failure: "align_result_exceeded_byte_limit", fallback: "summer_set_prop" },
-  summer_frame_camera: { op: "FrameCamera3D", mutation: true, failure: "frame_camera_result_exceeded_byte_limit", fallback: "summer_screenshot" },
-  summer_camera_visibility: { op: "CameraVisibility3D", mutation: false, failure: "camera_visibility_result_exceeded_byte_limit", fallback: "summer_screenshot" },
   summer_navigation_probe: { op: "NavigationProbe3D", mutation: false, failure: "navigation_probe_result_exceeded_byte_limit", fallback: "RunVerification" },
   summer_starcast: { op: "Starcast3D", mutation: false, failure: "starcast_result_exceeded_byte_limit", fallback: "summer_inspect_node" },
 };
 
 const TOOL_NAMES = Object.keys(ARGS) as Array<keyof typeof ARGS>;
-/** The six tools sharing the exclusive 5 KiB compactResult cap. Starcast has
+/** The four tools sharing the exclusive 5 KiB compactResult cap. Starcast has
  *  its own inclusive ceilings (5 KiB summary / 12 KiB full), tested below. */
 const COMPACT_TOOL_NAMES = TOOL_NAMES.filter((name) => name !== "summer_starcast");
 
 describe("registration", () => {
-  it("registers the seven spatial tools", () => {
+  it("registers the five spatial tools", () => {
     expect(tools().map((t) => t.name)).toEqual([
       "summer_test_placement",
       "summer_snap_to_surface",
       "summer_align_distribute_3d",
-      "summer_frame_camera",
-      "summer_camera_visibility",
       "summer_navigation_probe",
       "summer_starcast",
     ]);
@@ -388,68 +368,6 @@ describe("summer_align_distribute_3d", () => {
   });
 });
 
-describe("summer_frame_camera", () => {
-  it("dispatches the frame op (view_direction only when given) then SaveScene", async () => {
-    const { calls } = mockClient();
-    await tool("summer_frame_camera").handler({ ...ARGS.summer_frame_camera });
-    expect(calls[0]).toEqual([{
-      op: "FrameCamera3D",
-      camera_path: "./Cameras/Main",
-      subject_paths: ["./Hero", "./Merchant"],
-      aspect: 16 / 9,
-      padding: 0.1,
-    }]);
-    expect(calls[1]).toEqual([{ op: "SaveScene" }]);
-
-    await tool("summer_frame_camera").handler({ ...ARGS.summer_frame_camera, viewDirection: [0, -0.5, -1] });
-    expect(calls[2]![0]).toMatchObject({ view_direction: [0, -0.5, -1] });
-  });
-
-  it("rejects a zero viewDirection and more than eight subjects before dispatch", async () => {
-    const { executeIdentityBoundOps } = mockClient();
-    const registered = tool("summer_frame_camera");
-    const zero = (await registered.handler({ ...ARGS.summer_frame_camera, viewDirection: [0, 0, 0] })) as Response;
-    expect(zero.isError).toBe(true);
-    expect(text(zero)).toContain("viewDirection must be finite and nonzero");
-    const nine = (await registered.handler({
-      ...ARGS.summer_frame_camera,
-      subjectPaths: Array.from({ length: 9 }, (_, i) => `./S${i}`),
-    })) as Response;
-    expect(nine.isError).toBe(true);
-    expect(text(nine)).toContain("1..8");
-    expect(executeIdentityBoundOps).not.toHaveBeenCalled();
-  });
-});
-
-describe("summer_camera_visibility", () => {
-  it("sends one identity-bound op and never saves", async () => {
-    const { calls, optionsSeen } = mockClient();
-    const result = (await tool("summer_camera_visibility").handler({ ...ARGS.summer_camera_visibility })) as Response;
-    expect(result.isError).toBeUndefined();
-    expect(calls).toEqual([[{
-      op: "CameraVisibility3D",
-      camera_path: "./Cameras/MainCamera",
-      subject_paths: ["./Hero"],
-      aspect: 16 / 9,
-      occlusion_samples: 5,
-      collision_mask: 0xffffffff,
-      collide_with_areas: false,
-    }]]);
-    expect(optionsSeen).toEqual([{ scenePath: "res://levels/courtyard.tscn" }]);
-  });
-
-  it("rejects duplicate subjects without dispatching", async () => {
-    const { executeIdentityBoundOps } = mockClient();
-    const result = (await tool("summer_camera_visibility").handler({
-      ...ARGS.summer_camera_visibility,
-      subjectPaths: ["./Hero", "./Hero"],
-    })) as Response;
-    expect(result.isError).toBe(true);
-    expect(text(result)).toContain("must not contain duplicates");
-    expect(executeIdentityBoundOps).not.toHaveBeenCalled();
-  });
-});
-
 describe("summer_navigation_probe", () => {
   it("sends exactly one identity-bound op and never saves", async () => {
     const { calls } = mockClient();
@@ -635,10 +553,6 @@ describe("schema-level validation (rejected by the host before the handler runs)
     // 16 paths x 255 bytes passes the per-path cap but blows the 1536-byte combined cap.
     const wide = Array.from({ length: 16 }, (_, index) => `./${"x".repeat(250)}${index.toString(36).padStart(3, "0")}`);
     expect(align.safeParse(wide).success).toBe(false);
-    const frame = input(tool("summer_frame_camera"), "subjectPaths");
-    expect(frame.safeParse(["./A", "./A"]).success).toBe(false);
-    const visibility = input(tool("summer_camera_visibility"), "subjectPaths");
-    expect(visibility.safeParse(["./A", "./A"]).success).toBe(false);
   });
 
   it("paths are capped in UTF-8 bytes, not UTF-16 code units", () => {
@@ -647,13 +561,6 @@ describe("schema-level validation (rejected by the host before the handler runs)
     expect(input(tool("summer_test_placement"), "subjectPath").safeParse(multiByte).success).toBe(false);
     expect(input(tool("summer_test_placement"), "scenePath").safeParse("res://" + "€".repeat(300)).success).toBe(false);
     expect(input(tool("summer_test_placement"), "subjectPath").safeParse("./Props/Crate").success).toBe(true);
-  });
-
-  it("viewDirection must be nonzero in the schema", () => {
-    const viewDirection = input(tool("summer_frame_camera"), "viewDirection");
-    expect(viewDirection.safeParse([0, 0, 0]).success).toBe(false);
-    expect(viewDirection.safeParse([0, 0, -1]).success).toBe(true);
-    expect(viewDirection.safeParse(undefined).success).toBe(true);
   });
 
   it("handler-level argument rejections are classified input (nothing sent), never transport", async () => {

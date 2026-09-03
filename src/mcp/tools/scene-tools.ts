@@ -9,7 +9,7 @@ import {
 
 // Re-exported for tests and for callers that reason about dispatch classes.
 // executeSceneMutation is the ONE copy in core/capabilities/engine-ops.ts,
-// re-exported here for the spatial tools (snap / align / frame camera).
+// re-exported here for the spatial tools (snap / align).
 export { FALLBACK_SINGLE_ONLY_OPS, resolveSingleOnlyOps, executeSceneMutation };
 
 function requireSuccessfulOps(result: unknown, context: string): Record<string, unknown> {
@@ -453,13 +453,12 @@ reports exactly which earlier ops already applied.`,
         const sceneMutations = new Set([
           "AddNode", "RemoveNode", "MoveNode", "ReparentNode", "ReplaceNode",
           "SetProp", "SetResourceProperty", "ConnectSignal", "DisconnectSignal",
-          "InstantiateScene", "SaveScene", "SnapToSurface", "AlignDistribute3D",
-          "FrameCamera3D", "Undo",
+          "InstantiateScene", "SaveScene", "SnapToSurface", "AlignDistribute3D", "Undo",
         ]);
         // Read-only spatial queries target an exact scene (identity-bound) but
         // never save — no SaveScene is appended for them.
         const sceneQueries = new Set([
-          "TestPlacement3D", "CameraVisibility3D", "NavigationProbe3D", "Starcast3D",
+          "TestPlacement3D", "NavigationProbe3D", "Starcast3D",
         ]);
         const containsMutation = ops.some((op) => sceneMutations.has(String(op.op ?? "")));
         const needsScenePath = containsMutation ||

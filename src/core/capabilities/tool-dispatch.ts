@@ -387,12 +387,11 @@ function entry(
 const SCENE_MUTATION_OPS = new Set([
   "AddNode", "RemoveNode", "MoveNode", "ReparentNode", "ReplaceNode",
   "SetProp", "SetResourceProperty", "ConnectSignal", "DisconnectSignal",
-  "InstantiateScene", "SaveScene", "SnapToSurface", "AlignDistribute3D",
-  "FrameCamera3D", "Undo",
+  "InstantiateScene", "SaveScene", "SnapToSurface", "AlignDistribute3D", "Undo",
 ]);
 
 /** Read-only spatial queries: identity-bound to an exact scene, never saved. */
-const SCENE_QUERY_OPS = new Set(["TestPlacement3D", "CameraVisibility3D", "NavigationProbe3D", "Starcast3D"]);
+const SCENE_QUERY_OPS = new Set(["TestPlacement3D", "NavigationProbe3D", "Starcast3D"]);
 
 // ---------------------------------------------------------------------------
 // Spatial tool argument helpers. Mirror of the bounds in
@@ -496,9 +495,6 @@ const SNAP_TO_SURFACE_FALLBACK =
   "set the subject's position with summer_set_prop from summer_world_snapshot AABBs";
 const ALIGN_DISTRIBUTE_FALLBACK =
   "compute anchors from summer_world_snapshot AABBs and set positions with summer_set_prop";
-const FRAME_CAMERA_FALLBACK =
-  "position the camera with summer_set_prop and check with summer_screenshot target 'scene'";
-const CAMERA_VISIBILITY_FALLBACK = "check framing visually with summer_screenshot target 'scene'";
 const NAVIGATION_PROBE_FALLBACK =
   "probe reachability from a RunVerification probe (NavigationServer3D.map_get_path)";
 const STARCAST_FALLBACK =
@@ -1294,61 +1290,6 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       ]),
       "AlignDistribute3D",
       ALIGN_DISTRIBUTE_FALLBACK
-    );
-  }),
-  entry("summer_frame_camera", "Move one perspective Camera3D to frame 1-8 subjects at an explicit aspect (mutation + save)", true, async (args, ctx) => {
-    const client = await requireSpatialOp(ctx, "FrameCamera3D", FRAME_CAMERA_FALLBACK);
-    const scenePath = exactPath(args, "scenePath", SPATIAL_SCENE_PATH_LIMIT_BYTES);
-    const aspect = optNumber(args, "aspect", Number.NaN);
-    if (!(aspect > 0)) throw new ToolDispatchError("aspect is required and must be a positive finite number.");
-    const padding = optNumber(args, "padding", Number.NaN);
-    if (!(padding >= 0 && padding <= 0.45)) throw new ToolDispatchError("padding is required and must be from 0 through 0.45.");
-    const op: DispatchArgs = {
-      op: "FrameCamera3D",
-      camera_path: exactPath(args, "cameraPath", SPATIAL_NODE_PATH_LIMIT_BYTES),
-      subject_paths: exactSubjectPaths(args, 1, 8),
-      aspect,
-      padding,
-    };
-    if (args.viewDirection !== undefined) {
-      const viewDirection = finiteVector3(args, "viewDirection");
-      if (viewDirection.reduce((sum, n) => sum + n * n, 0) <= 1e-12) {
-        throw new ToolDispatchError("viewDirection must be finite and nonzero.");
-      }
-      op.view_direction = viewDirection;
-    }
-    return requireSupportedOp(
-      await executeSceneMutation(client, scenePath, [op]),
-      "FrameCamera3D",
-      FRAME_CAMERA_FALLBACK
-    );
-  }),
-  entry("summer_camera_visibility", "Read-only framing + sampled occlusion check for up to 5 subjects from one camera", true, async (args, ctx) => {
-    const client = await requireSpatialOp(ctx, "CameraVisibility3D", CAMERA_VISIBILITY_FALLBACK);
-    const scenePath = exactPath(args, "scenePath", SPATIAL_SCENE_PATH_LIMIT_BYTES);
-    const aspect = optNumber(args, "aspect", Number.NaN);
-    if (!(aspect > 0)) throw new ToolDispatchError("aspect is required and must be a positive finite number.");
-    const occlusionSamples = optNumber(args, "occlusionSamples", 5);
-    if (!Number.isInteger(occlusionSamples) || occlusionSamples < 1 || occlusionSamples > 5) {
-      throw new ToolDispatchError("occlusionSamples must be an integer from 1 through 5.");
-    }
-    return requireSupportedOp(
-      await client.executeIdentityBoundOps(
-        [
-          {
-            op: "CameraVisibility3D",
-            camera_path: exactPath(args, "cameraPath", SPATIAL_NODE_PATH_LIMIT_BYTES),
-            subject_paths: exactSubjectPaths(args, 1, 5),
-            aspect,
-            occlusion_samples: occlusionSamples,
-            collision_mask: optNumber(args, "collisionMask", 0xffffffff),
-            collide_with_areas: optBoolean(args, "collideWithAreas", false),
-          },
-        ],
-        { scenePath }
-      ),
-      "CameraVisibility3D",
-      CAMERA_VISIBILITY_FALLBACK
     );
   }),
   entry("summer_navigation_probe", "Read-only navigation reachability between two world points on the scene's nav map", true, async (args, ctx) => {

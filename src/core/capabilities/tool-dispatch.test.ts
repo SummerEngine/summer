@@ -308,13 +308,11 @@ describe("spatial dispatch entries", () => {
     "test-placement",
     "snap-to-surface",
     "align-distribute-3d",
-    "frame-camera",
-    "camera-visibility",
     "navigation-probe",
     "starcast",
   ];
 
-  it("registers all seven spatial tools as engine-required", () => {
+  it("registers all five spatial tools as engine-required", () => {
     for (const slug of spatialSlugs) {
       expect(resolveToolDispatch(slug)?.engineRequired, slug).toBe(true);
     }
@@ -359,21 +357,28 @@ describe("spatial dispatch entries", () => {
   it("read-only spatial queries send exactly one identity-bound op and never save", async () => {
     const { ctx, calls } = fakeEngineContext();
     await dispatchTool(
-      "camera-visibility",
-      { scenePath: "res://a.tscn", cameraPath: "./Cam", subjectPaths: ["./Hero"], aspect: 16 / 9 },
+      "test-placement",
+      {
+        scenePath: "res://a.tscn",
+        subjectPath: "./Hero",
+        candidateGlobalPosition: [0, 0, 0],
+        candidateGlobalRotationDegrees: [0, 0, 0],
+      },
       ctx
     );
     await dispatchTool("navigation-probe", { scenePath: "res://a.tscn", start: [0, 0, 0], end: [1, 0, 0] }, ctx);
     expect(calls.map((call) => call.method)).toEqual(["executeIdentityBoundOps", "executeIdentityBoundOps"]);
     expect(calls[0]!.args[0]).toEqual([
       {
-        op: "CameraVisibility3D",
-        camera_path: "./Cam",
-        subject_paths: ["./Hero"],
-        aspect: 16 / 9,
-        occlusion_samples: 5,
+        op: "TestPlacement3D",
+        subject_path: "./Hero",
+        candidate_global_position: [0, 0, 0],
+        candidate_global_rotation_degrees: [0, 0, 0],
         collision_mask: 0xffffffff,
-        collide_with_areas: false,
+        collide_with_areas: true,
+        max_floor_distance: 5,
+        ground_tolerance: 0.05,
+        margin: 0.001,
       },
     ]);
     expect(calls[1]!.args[0]).toEqual([
@@ -389,9 +394,6 @@ describe("spatial dispatch entries", () => {
     await expect(
       dispatchTool("align-distribute-3d", { scenePath: "res://a.tscn", subjectPaths: ["./A", "./B"], axis: [0, 0, 0], mode: "align_min" }, ctx)
     ).rejects.toThrow(/axis must be non-zero/);
-    await expect(
-      dispatchTool("frame-camera", { scenePath: "res://a.tscn", cameraPath: "./Cam", subjectPaths: ["./A"], aspect: 16 / 9, padding: 0.5 }, ctx)
-    ).rejects.toThrow(/padding/);
     await expect(
       dispatchTool("snap-to-surface", { scenePath: "res://a.tscn", subjectPath: "./A", gap: 30, maxDistance: 20 }, ctx)
     ).rejects.toThrow(/gap/);

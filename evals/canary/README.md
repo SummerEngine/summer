@@ -8,11 +8,10 @@ measured.
 
 ## What it does
 
-- **Catalog policy.** Seven tools are "canaries" (`CANARY_TOOL_NAMES` in
+- **Catalog policy.** Five tools are "canaries" (`CANARY_TOOL_NAMES` in
   `canary-gateway-core.ts`): `summer_starcast`, `summer_test_placement`,
-  `summer_camera_visibility`, `summer_snap_to_surface`,
-  `summer_align_distribute_3d`, `summer_frame_camera`,
-  `summer_navigation_probe`. The **control** arm hides all seven; the
+  `summer_snap_to_surface`, `summer_align_distribute_3d`,
+  `summer_navigation_probe`. The **control** arm hides all five; the
   **treatment** arm reveals exactly one (`--canary <tool>`). Everything else in
   the real catalog is passed through unchanged, so the two arms differ by one
   tool and nothing else (pinned by the unit test).

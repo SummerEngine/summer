@@ -4,7 +4,7 @@
 
 - A 3D scene contains props, flat and sloped supports, a perspective camera,
   colliders, and a synchronized navigation map.
-- All six Summer spatial tools and ordinary inspection/screenshot tools are
+- All four Summer spatial tools and ordinary inspection/screenshot tools are
   available.
 
 ## Case 1: Ground mixed props
@@ -29,23 +29,20 @@
   or rendered check.
 - [ ] Ambiguous support choices are confirmed before mutation.
 
-## Case 2: Arrange and frame a navigable encounter
+## Case 2: Arrange a navigable encounter
 
-**Input:** "Evenly space these stalls, frame the hero and merchants at 16:9,
-and make sure each merchant is reachable from spawn."
+**Input:** "Evenly space these stalls and make sure each merchant is reachable
+from spawn."
 
 **Expected MCP tool sequence (in order):**
 
 1. `summer_align_distribute_3d`
 2. `summer_test_placement` for dense-spacing clearance
-3. `summer_frame_camera` with aspect `1.7777778`
-4. `summer_camera_visibility` with the same aspect
-5. `summer_navigation_probe` for each final merchant position
-6. `summer_screenshot` or `summer_play`
+3. `summer_navigation_probe` for each final merchant position
+4. `summer_screenshot` or `summer_play`
 
 **Assertions:**
 
 - [ ] Subject ordering and world axis are explicit.
-- [ ] Framing and sampled occlusion are evaluated separately.
 - [ ] Reachability requires `ready: true` and an acceptable snap distance.
 - [ ] Every mutation is followed by a saved-pose query or rendered check.

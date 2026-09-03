@@ -5,17 +5,17 @@
  * tools/summer-cli/src/dev/canary-gateway-core.ts (Marcus / frozaken). Ported
  * into evals/canary/ 2026-09-03. The only edits: the two constructors, whose
  * TypeScript parameter properties Node's strip-only mode rejects, now assign
- * explicit fields; and this header. See README.md in this directory.
+ * explicit fields; this header; and the canary lists below, trimmed
+ * 2026-09-03 when summer_frame_camera / summer_camera_visibility were dropped
+ * by their author after benchmarks. See README.md in this directory.
  */
 import { createHash } from "node:crypto";
 
 export const CANARY_TOOL_NAMES = [
   "summer_starcast",
   "summer_test_placement",
-  "summer_camera_visibility",
   "summer_snap_to_surface",
   "summer_align_distribute_3d",
-  "summer_frame_camera",
   "summer_navigation_probe",
 ] as const;
 
@@ -25,10 +25,8 @@ export const CANARY_TOOL_NAMES = [
 export const CANARY_RAW_OP_NAMES = [
   "Starcast3D",
   "TestPlacement3D",
-  "CameraVisibility3D",
   "SnapToSurface",
   "AlignDistribute3D",
-  "FrameCamera3D",
   "NavigationProbe3D",
 ] as const;
 

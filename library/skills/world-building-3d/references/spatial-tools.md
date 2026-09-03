@@ -6,10 +6,10 @@ Load this reference before using Summer's 3D world-building tools.
 
 - Pass exact `scenePath` and exact scene-root-relative node paths. Do not rely on editor selection.
 - Use one `World3D`. The tools fail closed across SubViewport-owned worlds.
-- Keep subjects bounded: placement/snap one subject, visibility five, framing eight, alignment sixteen.
+- Keep subjects bounded: placement/snap one subject, alignment sixteen.
 - Normal model-visible results stay below 5 KiB. Prefer targeted calls over collecting an entire scene.
-- Read-only tools never save: placement test, camera visibility, navigation probe.
-- Mutation tools register undo and save the exact target scene: snap, align/distribute, frame camera.
+- Read-only tools never save: placement test, navigation probe.
+- Mutation tools register undo and save the exact target scene: snap, align/distribute.
 
 ## `summer_test_placement`
 
@@ -39,18 +39,6 @@ fails, do not teleport manually through the obstruction.
 Anchors and extents come from visible descendant world AABBs. The solver translates only along the requested axis and preserves basis/scale. Distribution preserves caller order and fixed endpoints.
 
 This is one-dimensional arrangement evidence. It does not prove clearance on the other two axes.
-
-## `summer_frame_camera`
-
-The analytic solver supports perspective cameras and visible world AABBs. It preserves FOV, near/far, projection offsets, scale, and stable roll while moving the camera.
-
-Pass the delivery aspect, not the editor placeholder viewport. Shader displacement, transparent silhouettes, and renderer occlusion are outside the solver.
-
-## `summer_camera_visibility`
-
-Pass the same explicit aspect used for framing. Frustum and screen rectangles come from Camera3D projection of visible world AABBs. Occlusion uses one to five physics rays per subject.
-
-Treat `occlusionFraction` as sampled evidence. Transparent materials, shader-only displacement, concave silhouettes, and pixel visibility are not represented.
 
 ## `summer_navigation_probe`
 

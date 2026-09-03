@@ -41,8 +41,6 @@ const KNOWN_UNIMPLEMENTED: Record<string, string> = {
   DiffWorldSnapshot: "engine PR #156 (runtime inspection / world snapshots)",
   GetRuntimeSceneTree: "engine PR #156 (runtime inspection)",
   GetRuntimeNode: "engine PR #156 (runtime inspection)",
-  FrameCamera3D: "codex spatial branch (6 spatial ops)",
-  CameraVisibility3D: "codex spatial branch (6 spatial ops)",
   AlignDistribute3D: "codex spatial branch (6 spatial ops)",
   NavigationProbe3D: "codex spatial branch (6 spatial ops)",
   SnapToSurface: "codex spatial branch (6 spatial ops)",

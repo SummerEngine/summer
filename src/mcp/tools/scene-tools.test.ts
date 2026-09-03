@@ -520,7 +520,7 @@ describe("summer_batch spatial ops", () => {
     return { identityCalls, plainCalls };
   }
 
-  it.each(["SnapToSurface", "AlignDistribute3D", "FrameCamera3D"])(
+  it.each(["SnapToSurface", "AlignDistribute3D"])(
     "treats %s as a scene mutation and appends one SaveScene",
     async (kind) => {
       const { identityCalls, plainCalls } = spatialMockClient();
@@ -530,7 +530,7 @@ describe("summer_batch spatial ops", () => {
     },
   );
 
-  it.each(["TestPlacement3D", "CameraVisibility3D", "NavigationProbe3D", "Starcast3D"])(
+  it.each(["TestPlacement3D", "NavigationProbe3D", "Starcast3D"])(
     "identity-binds read-only scene query %s to the exact scene without saving",
     async (kind) => {
       const { identityCalls, plainCalls } = spatialMockClient();

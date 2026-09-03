@@ -1,6 +1,6 @@
 id: skill/debug
 kind: skill
-version: 1.0.3
+version: 1.0.4
 summary: Disciplined bug/crash/error loop for Summer projects — script errors, console, debugger, hypothesis, fix, verify — before making code or scene changes.
 use_when:
   - the user reports a bug, crash, error, or unexpected behavior in a Summer project, before making code or scene changes

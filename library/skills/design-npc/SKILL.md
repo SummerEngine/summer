@@ -209,9 +209,13 @@ summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/Enem
 `summer_set_resource_property` works against scene-embedded (`[sub_resource]`)
 resources exactly as it does against external `.tres` files — it reads the
 property off the node and writes the sub-property onto whatever Resource is
-there. Its only failures are explicit errors (`node not found`, `property is not
-a resource`, `resource is null`). The order that matters is: assign the resource
-first, then set sub-properties.
+there. Structural failures are explicit errors (`node not found`, `property is
+not a resource`, `resource is null`); a bad value shape is not — a JSON object
+instead of a Godot literal string, a misspelled `subProperty`, or a wrong-typed
+value returns `ok:true` yet silently no-ops or coerces destructively on current
+engines. Pass class names and literal strings (`"12.0"`, `"Color(r, g, b, a)"`)
+and confirm the result in the saved `.tscn`, never from `ok` alone. The order
+that matters is: assign the resource first, then set sub-properties.
 
 Connect signals:
 

@@ -239,7 +239,7 @@ End with:
 | Pure sine "ding" for pickup | Reads as cheap mobile game. Use a major-third interval with character. |
 | Same footstep sample for all surfaces | Material-aware footsteps are 80% of the perceived audio quality. |
 | No master ceiling / true peak | Audio clips on console builds without `-1 dBTP` ceiling. Always set it. |
-| Assuming SetResourceProperty fails silently on inline sub_resources | It does not — inline targets work and failures are explicit errors. See `../../references/mcp-tools-reference/mcp-tools-reference.md`. |
+| Assuming SetResourceProperty fails silently on inline sub_resources | It does not — inline targets work, and the structural failures (`node not found`, `property is not a resource`, `resource is null`) are explicit errors. What *is* silent on current engines is a bad value shape: a JSON object instead of a Godot literal string, a misspelled `subProperty`, or a wrong-typed value returns `ok:true` yet no-ops or coerces destructively. Pass class names and literal strings, and confirm in the saved `.tres`/`.tscn`, never from `ok` alone. See `../../references/mcp-tools-reference/mcp-tools-reference.md`. |
 
 ## Collaborative protocol
 

@@ -52,6 +52,13 @@ const KNOWN_UNIMPLEMENTED: Record<string, string> = {
   CustomBake: "engine PR #155/#156 (bake helpers) — not on engine main",
   Probe: "engine PR #155/#156 (verify probe op) — not on engine main",
   FabricateMesh: "engine PR #156 follow-up (FabricateMesh, wave K)",
+  UiListActions: "engine PR #156 follow-up (editor UI control, wave L)",
+  UiInvoke: "engine PR #156 follow-up (editor UI control, wave L)",
+  UiTree: "engine PR #156 follow-up (editor UI control, wave L)",
+  UiActivate: "engine PR #156 follow-up (editor UI control, wave L)",
+  UiScreenshot: "engine PR #156 follow-up (editor UI control, wave L)",
+  UiDialogs: "engine PR #156 follow-up (editor UI control, wave L)",
+  UiDismissDialog: "engine PR #156 follow-up (editor UI control, wave L)",
 };
 
 function sourceFiles(dir: string, out: string[] = []): string[] {

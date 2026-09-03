@@ -228,6 +228,10 @@ queries:
     expected: [tool/screenshot]
   - query: "run the game with a fixed random seed so the playtest is reproducible"
     expected: [skill/playtesting-a-feature, tool/play]
+  - query: "open project settings in the editor"
+    expected: [tool/ui-actions]
+  - query: "dismiss the dialog that's blocking the editor"
+    expected: [tool/ui-activate, skill/driving-the-editor-ui]
 
   # ── Known gaps (expected_gap: true — the authoring backlog) ────────────
   - query: "add enemy pathfinding"

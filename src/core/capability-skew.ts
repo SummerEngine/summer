@@ -64,6 +64,11 @@ export const CLI_KNOWN_OP_NEEDS: readonly string[] = [
   "Starcast3D",
   // Mesh fabrication (summer_fabricate_3d — the user's own Blender, engine-supervised)
   "FabricateMesh",
+  // Editor UI control (wave L: summer_ui_actions / summer_ui_tree /
+  // summer_ui_activate / summer_ui_screenshot). All synchronous and
+  // batchable — none joins the single-only set.
+  "UiListActions", "UiInvoke", "UiTree", "UiActivate", "UiScreenshot",
+  "UiDialogs", "UiDismissDialog",
 ];
 
 /** The `capabilities` block of /api/health, shape-checked. Every field is

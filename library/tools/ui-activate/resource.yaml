@@ -1,0 +1,88 @@
+id: tool/ui-activate
+kind: tool
+version: 1.0.0
+summary: Activate one editor control by tree path — press, toggle, focus, select a tab, type text, dial a value — or dismiss a blocking dialog; state is read back.
+use_when:
+  - '"dismiss the dialog that is blocking the editor" / "close that popup" — action dismiss_dialog with the path or title from summer_ui_tree root dialogs'
+  - '"switch the editor to the 3D view" / "go to the Script screen" — path main_screen, action select_tab, value 3D'
+  - pressing a button, selecting a tab, typing into a search field, or dialling a slider that no named action covers, using a path from summer_ui_tree
+do_not_use_when:
+  - a named action exists — summer_ui_actions mode invoke is the first choice; the tree walk is for the long tail
+  - scene work — nodes, properties, and placement go through summer_run_script and the scene tools, never through editor clicks
+  - confirming a quit, reload, or delete-without-confirmation button — denied by the engine (denied_action) because it ends the session or bypasses the human's confirmation
+  - "requires an engine build with UiActivate / UiDismissDialog (engine PR #156 follow-up, wave L); on current shipped engines this returns engine_lacks_op"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - editor
+    - agent-workflow
+  modalities:
+    - project
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/ui-tree
+    - tool/ui-actions
+    - tool/ui-screenshot
+    - tool/run-script
+  skills:
+    - skill/driving-the-editor-ui
+    - skill/verification-before-completion
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_ui_activate
+implementation:
+  module: src/mcp/tools/ui-tools.ts
+  export: registerUiTools
+surfaces:
+  mcp:
+    tool_name: summer_ui_activate
+    remote: false
+input_schema:
+  type: object
+  properties:
+    action:
+      type: string
+      enum:
+        - press
+        - toggle
+        - focus
+        - select_tab
+        - set_text
+        - set_value
+        - dismiss_dialog
+      description: "Default 'press'. press = synthetic left click on a button / ItemList item / PopupMenu item (index); toggle = flip a toggle-mode button; focus = grab_focus on any control; select_tab = TabContainer/TabBar by value (title) or index — and the synthetic path 'main_screen' switches the 2D/3D/Script/Game/AssetLib editor; set_text = LineEdit/TextEdit text (submit true also emits text_submitted); set_value = Range (SpinBox/Slider) number; dismiss_dialog = close a visible dialog by path or title (UiDismissDialog)."
+    path:
+      type: string
+      description: A control path from summer_ui_tree (required for every action except dismiss_dialog, which may use title instead), or 'main_screen' with action select_tab. Auto-named paths are stable within a session only — re-read the tree rather than persist them.
+    value:
+      type:
+        - string
+        - number
+      description: "select_tab: tab title (or the main-screen editor name '2D', '3D', 'Script', 'Game', 'AssetLib'); set_text: the text; set_value: the number."
+    index:
+      type: integer
+      minimum: 0
+      description: "select_tab: tab index; press on an ItemList / PopupMenu: item index."
+    submit:
+      type: boolean
+      description: set_text on a LineEdit only — also emit text_submitted (the Enter key), e.g. to run a search box.
+    title:
+      type: string
+      description: dismiss_dialog only — a visible window title (case-insensitive; exact wins, one substring match accepted, otherwise ambiguous_dialog) from summer_ui_tree root dialogs.
+    button:
+      type: string
+      description: dismiss_dialog only. 'cancel' (default — the safe close), 'ok', or the exact text of a button in the dialog's row. Buttons whose label quits or reloads the editor are denied by the engine.
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - read-back

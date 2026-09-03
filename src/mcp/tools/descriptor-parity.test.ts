@@ -51,6 +51,7 @@ import { registerNavigationTools } from "./navigation-tools.js";
 import { registerLibraryTools } from "./library-tools.js";
 import { registerEventTools } from "./event-tools.js";
 import { registerFabricateTools } from "./fabricate-tools.js";
+import { registerUiTools } from "./ui-tools.js";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const toolsDir = join(packageRoot, "library", "tools");
@@ -276,6 +277,7 @@ function collectRegisteredTools(): RegisteredTool[] {
     registerLibraryTools,
     registerEventTools,
     registerFabricateTools,
+    registerUiTools,
   ]) {
     register(fakeServer);
   }

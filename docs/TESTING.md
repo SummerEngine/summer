@@ -106,12 +106,13 @@ Open Claude Code in a directory (any), confirm `/mcp` lists `summer-engine`, the
 
 ## f. Expected to fail on the shipped engine
 
-The 14 `status: preview` tools depend on engine features no shipped build has
-(`grep -l 'status: preview' library/tools/*/resource.yaml`). Twelve need an engine op:
+The 18 `status: preview` tools depend on engine features no shipped build has
+(`grep -l 'status: preview' library/tools/*/resource.yaml` is the live list). Sixteen need an engine op:
 `run-script`, `world-snapshot`, `snapshot-diff`, `get-runtime-tree`,
 `inspect-runtime-node`, `test-placement`, `snap-to-surface`,
 `align-distribute-3d`, `navigation-probe`, `starcast`, `fabricate-3d`,
-`camera-bookmark`. Calling one returns a
+`camera-bookmark`, and the editor UI control four `ui-actions`, `ui-tree`,
+`ui-activate`, `ui-screenshot`. Calling one returns a
 structured `engine_lacks_op` result and exits 1 — the same on the MCP face
 (`isError`) and the CLI face. Two shapes, depending on what the engine advertises:
 

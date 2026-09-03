@@ -1,4 +1,4 @@
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
@@ -413,6 +413,169 @@ describe("mesh fabrication dispatch entry", () => {
     await expect(dispatchTool("fabricate-3d", { source: SCRIPT, name: "crate" }, ctx)).rejects.toThrow(
       /blender_not_found/
     );
+  });
+});
+
+describe("editor UI control dispatch entries (wave L)", () => {
+  const uiSlugs = ["ui-actions", "ui-tree", "ui-activate", "ui-screenshot"];
+
+  it("are engine-required and resolve by slug and summer_ name", () => {
+    for (const slug of uiSlugs) {
+      const entry = resolveToolDispatch(slug);
+      expect(entry?.engineRequired, slug).toBe(true);
+      expect(resolveToolDispatch(`summer_${slug.replace(/-/g, "_")}`)).toBe(entry);
+    }
+  });
+
+  it("validates with the shared zod contract before touching the engine (same rejections as the MCP face)", async () => {
+    const engine = async () => {
+      throw new EngineUnavailableError("engine must not be needed for argument validation");
+    };
+    await expect(dispatchTool("ui-actions", {}, { engine })).rejects.toThrow(/Invalid arguments for ui-actions: mode/);
+    await expect(dispatchTool("ui-actions", { mode: "invoke" }, { engine })).rejects.toThrow(/requires action_name/);
+    await expect(dispatchTool("ui-activate", { action: "dismiss_dialog" }, { engine })).rejects.toThrow(/needs a target/);
+    await expect(dispatchTool("ui-activate", { path: "main_screen", action: "select_tab" }, { engine })).rejects.toThrow(
+      /needs value/
+    );
+    await expect(dispatchTool("ui-activate", { path: "x", action: "click" }, { engine })).rejects.toThrow(
+      /Invalid arguments for ui-activate: action/
+    );
+    await expect(dispatchTool("ui-tree", { depth: 0 }, { engine })).rejects.toThrow(/Invalid arguments for ui-tree: depth/);
+  });
+
+  it("refuses before sending when the advert lacks the op kind the arguments resolved to", async () => {
+    const { ctx, calls } = fakeEngineContext({
+      getEngineCapabilities: () => ({ opKinds: ["AddNode", "UiListActions", "UiTree", "UiActivate"] }),
+      getEngineVersion: () => "0.5.65",
+    });
+    const cases: Array<[string, Record<string, unknown>, string]> = [
+      ["ui-actions", { mode: "invoke", action_name: "editor/save_scene" }, "UiInvoke"],
+      ["ui-tree", { root: "dialogs" }, "UiDialogs"],
+      ["ui-activate", { action: "dismiss_dialog", title: "Save" }, "UiDismissDialog"],
+      ["ui-screenshot", {}, "UiScreenshot"],
+    ];
+    for (const [slug, args, op] of cases) {
+      const failure = await dispatchTool(slug, args, ctx).catch((error: unknown) => error);
+      expect(failure, slug).toBeInstanceOf(ToolResultError);
+      const { result, message } = failure as ToolResultError;
+      expect(result).toMatchObject({ ok: false, op, failure_reason: "engine_lacks_op", engine_version: "0.5.65" });
+      expect(message).toContain(`does not support the ${op} op`);
+    }
+    expect(calls).toEqual([]);
+    // The kinds the advert DOES carry go through.
+    await dispatchTool("ui-actions", { mode: "list", filter: "save" }, ctx);
+    await dispatchTool("ui-tree", { root: "dock:inspector" }, ctx);
+    await dispatchTool("ui-activate", { path: "main_screen", action: "select_tab", value: "3D" }, ctx);
+    expect(calls.map((call) => call.method)).toEqual(["executeOps", "executeOps", "executeIdentityBoundOps"]);
+  });
+
+  it("sends reads plain and mutations identity-bound, with the exact op payloads", async () => {
+    const { ctx, calls } = fakeEngineContext();
+    await dispatchTool("ui-actions", { mode: "list", filter: "project", limit: 9999 }, ctx);
+    await dispatchTool("ui-actions", { mode: "invoke", action_name: "editor/project_settings" }, ctx);
+    await dispatchTool("ui-tree", { root: "dialogs" }, ctx);
+    await dispatchTool("ui-tree", { depth: 2, limit: 50, visible_only: false }, ctx);
+    await dispatchTool("ui-activate", { action: "dismiss_dialog", path: "@ProjectSettingsEditor@77", button: "cancel" }, ctx);
+    await dispatchTool("ui-activate", { path: "@Spin@1", action: "set_value", value: "0.25" }, ctx);
+    expect(calls).toEqual([
+      { method: "executeOps", args: [[{ op: "UiListActions", filter: "project", limit: 2000 }]] },
+      { method: "executeIdentityBoundOps", args: [[{ op: "UiInvoke", action: "editor/project_settings" }]] },
+      { method: "executeOps", args: [[{ op: "UiDialogs" }]] },
+      { method: "executeOps", args: [[{ op: "UiTree", depth: 2, limit: 50, visible_only: false }]] },
+      {
+        method: "executeIdentityBoundOps",
+        args: [[{ op: "UiDismissDialog", path: "@ProjectSettingsEditor@77", button: "cancel" }]],
+      },
+      { method: "executeIdentityBoundOps", args: [[{ op: "UiActivate", path: "@Spin@1", action: "set_value", value: 0.25 }]] },
+    ]);
+  });
+
+  it("surfaces the engine's UI failure taxonomy with its detail fields (denied_action, modal_open) instead of masking it", async () => {
+    const { ctx } = fakeEngineContext({
+      executeIdentityBoundOps: async (ops: Array<Record<string, unknown>>) =>
+        ops[0]!.action === "editor/file_quit"
+          ? {
+              ok: false,
+              results: [{ ok: false, op: "UiInvoke", failure_reason: "denied_action", error: "denied", reason: "editor/file_quit ends the editor session" }],
+            }
+          : {
+              ok: false,
+              results: [
+                {
+                  ok: false,
+                  op: "UiInvoke",
+                  failure_reason: "modal_open",
+                  error: "blocked",
+                  blocking_dialog: { title: "Project Settings", path: "@ProjectSettingsEditor@77", class: "ProjectSettingsEditor" },
+                },
+              ],
+            },
+    });
+    const denied = await dispatchTool("ui-actions", { mode: "invoke", action_name: "editor/file_quit" }, ctx).catch(
+      (error: unknown) => error
+    );
+    expect(denied).toBeInstanceOf(ToolDispatchError);
+    expect((denied as Error).message).toContain('"failure_reason": "denied_action"');
+    expect((denied as Error).message).toContain("ends the editor session");
+    expect((denied as Error).message).toContain("Do not retry it");
+
+    const modal = await dispatchTool("ui-actions", { mode: "invoke", action_name: "editor/save_scene" }, ctx).catch(
+      (error: unknown) => error
+    );
+    expect((modal as Error).message).toContain('"failure_reason": "modal_open"');
+    expect((modal as Error).message).toContain("path @ProjectSettingsEditor@77");
+    expect((modal as Error).message).toContain("action:'dismiss_dialog'");
+  });
+
+  it("rewrites an old engine's unknown-op answer into the structured engine_lacks_op receipt", async () => {
+    const { ctx } = fakeEngineContext({
+      executeOps: async () => ({ ok: false, results: [{ ok: false, op: "UiTree", error: "unknown op: UiTree" }] }),
+    });
+    const failure = await dispatchTool("ui-tree", {}, ctx).catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(ToolResultError);
+    const { result, message } = failure as ToolResultError;
+    expect(result).toMatchObject({ op: "UiTree", failure_reason: "engine_lacks_op" });
+    expect(message).toContain("doesn't support UiTree yet");
+    expect(message).toContain("Engine said: unknown op: UiTree");
+  });
+
+  it("ui-screenshot writes the PNG to a temp file and returns the receipt without the payload", async () => {
+    const bytes = Buffer.from("png-bytes");
+    const { ctx } = fakeEngineContext({
+      executeOps: async () => ({
+        ok: true,
+        results: [
+          { ok: true, op: "UiScreenshot", image_base64: bytes.toString("base64"), mime: "image/png", width: 64, height: 32, root: "window", root_path: ".", scale: 1 },
+        ],
+      }),
+    });
+    const receipt = (await dispatchTool("ui-screenshot", { max_size: 64 }, ctx)) as Record<string, unknown>;
+    expect(receipt).not.toHaveProperty("image_base64");
+    expect(receipt).toMatchObject({ width: 64, height: 32, root: "window" });
+    expect(String(receipt.caption)).toContain("64x32 px");
+    const localPath = String(receipt.local_path);
+    try {
+      expect(existsSync(localPath)).toBe(true);
+      expect(readFileSync(localPath)).toEqual(bytes);
+    } finally {
+      rmSync(localPath, { force: true });
+    }
+  });
+
+  it("ui-screenshot is honest under a headless editor: no_renderer surfaces with the structured alternative", async () => {
+    const { ctx } = fakeEngineContext({
+      executeOps: async () => ({
+        ok: false,
+        results: [{ ok: false, op: "UiScreenshot", failure_reason: "no_renderer", error: "no renderer: dummy RenderingServer" }],
+      }),
+    });
+    const failure = await dispatchTool("ui-screenshot", {}, ctx).catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(ToolDispatchError);
+    const message = (failure as Error).message;
+    expect(message).toContain('"failure_reason": "no_renderer"');
+    expect(message).toContain("no pixels exist");
+    expect(message).toContain("summer_ui_tree");
+    expect(message).toContain("Engine said: no renderer: dummy RenderingServer");
   });
 });
 

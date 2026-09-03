@@ -89,7 +89,8 @@ export const FEEDBACK_TOOL_DESCRIPTION =
   `What is sent: ${FEEDBACK_FIELDS_SENT} The schema has no field for project files, chat content, or code. ` +
   "The very first call on a machine sends nothing and returns {recorded:false, first_run:true, notice} — " +
   "call again to send. Otherwise recorded:true means the gateway accepted the batch; {recorded:false, " +
-  "dropped:true} means the 1s POST failed and the batch is gone (no retry). The user can opt out entirely " +
+  "dropped:true, status, reason} means the 1s POST failed and the batch is gone (no retry) — reason is " +
+  "endpoint_missing (404), rejected (other 4xx), server_error (5xx) or network. The user can opt out entirely " +
   "with SUMMER_NO_TELEMETRY=1 or DO_NOT_TRACK=1 — then nothing is sent and this tool returns " +
   "{recorded:false, disabled:true}.";
 

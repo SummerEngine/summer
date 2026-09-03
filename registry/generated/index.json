@@ -147,8 +147,8 @@
     {
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
-      "version": "1.0.2",
-      "content_hash": "df30adab749a92dcff22bfa50e3416446cbff73509ede4869a4db5d5d3f359fb",
+      "version": "1.0.3",
+      "content_hash": "fe624fb533a5728a562dd8b8bdde620e6aa67d00443d82e4442eb8a52f3930a0",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -541,8 +541,8 @@
     {
       "id": "skill/audio-direction",
       "kind": "skill",
-      "version": "1.0.4",
-      "content_hash": "30f33ebd1ecb03c87dd2cc8a95f4e66d6ee3df92dc44dd879c4c818b0f4edbbe",
+      "version": "1.0.5",
+      "content_hash": "239802894659ba58796eda896fd3fcfe6feac7a22aafb0d1028ba771c663f043",
       "summary": "Define the game's sonic identity — music style, instruments, SFX vocabulary, dynamic music plan — output as an audio bible at .summer/audio-bible.md.",
       "use_when": [
         "defining the sonic identity — music style, instruments, SFX vocabulary, dynamic music plan",
@@ -982,7 +982,7 @@
       "id": "skill/debug",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "61779d67c7bfed2058b6993eb06509ec8b3ab56ebc27281acf74b38fe8f7da17",
+      "content_hash": "44ef98a70b371098f3b50e4bde4f243e46ef43dfd922dabc71df0ea881567ec9",
       "summary": "Disciplined bug/crash/error loop for Summer projects — script errors, console, debugger, hypothesis, fix, verify — before making code or scene changes.",
       "use_when": [
         "the user reports a bug, crash, error, or unexpected behavior in a Summer project, before making code or scene changes",
@@ -1123,8 +1123,8 @@
     {
       "id": "skill/design-npc",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "fe567138592e5edf506aaadaf8e6216cb39bba3fe822aa54b1b55459c8dc2b00",
+      "version": "1.0.2",
+      "content_hash": "3a487ee1b3078ae519acac9abdcd07bef28a886d7f54c311e5d698fec3e904e2",
       "summary": "Design enemy/NPC/boss/companion behavior — perception, personality, intent, action state machine, telegraphs — outputs a GDScript stub plus node tree.",
       "use_when": [
         "designing an enemy, NPC, boss, companion, civilian, or wave-spawned mob's behavior — perception, intent, state machine, telegraphs, defeat handling",
@@ -1324,8 +1324,8 @@
     {
       "id": "skill/fps-controller",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "9da2c4c080f196e80735fc280d2c54b4abdae27319df6836f20f1162117b619c",
+      "version": "1.0.3",
+      "content_hash": "e4037e293bd5a7b97385af4515860b0c9bd2ef0b958d341593bd558cb8bd528f",
       "summary": "Production-quality first-person controller — WASD, mouse look, jump, coyote time, jump buffering, air control, and external-velocity handling.",
       "use_when": [
         "building an FPS, first-person movement, or a 3D character that walks, jumps, and reacts to external forces",
@@ -1359,7 +1359,7 @@
       "id": "skill/game-feel",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "209dc20d650c3add15734edb0b440a4d851690399e02f9aada7ee2d099a0afe3",
+      "content_hash": "a452838790c314e9ede4352a6ec0abb9da56ae779a3d0b9c86d06db18bdd39e7",
       "summary": "Add juice: hit-flash, trauma-based camera shake, and audio ducking wired so one hit fires all three — for games that feel flat or lack impact.",
       "use_when": [
         "a Summer game feels flat, lacks impact, needs juice or punch",

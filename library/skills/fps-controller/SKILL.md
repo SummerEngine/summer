@@ -58,10 +58,14 @@ Two things the older version of this skill got wrong:
   `summer_set_prop` with a class-name string instantiates a scene-embedded
   (`[sub_resource]`) resource, and `summer_set_resource_property` then reads that
   property off the node and writes the sub-property straight onto it. Embedded
-  and external `.tres` resources take the same path. The op has no silent-drop
-  branch: the only failures are explicit — `node not found`, `property is not a
-  resource`, or `resource is null` when the property was never assigned. Assign
-  the resource first, then set its sub-properties.
+  and external `.tres` resources take the same path. Structural failures are
+  explicit — `node not found`, `property is not a resource`, or `resource is
+  null` when the property was never assigned — but a bad value shape is silent
+  on current engines: a JSON object instead of a Godot literal string, a
+  misspelled `key`/`subProperty`, or a wrong-typed value returns `ok:true` yet
+  no-ops or coerces destructively. Assign the resource first, pass class names
+  and `Vector3(...)`/`Color(...)` strings, and confirm in the saved `.tscn`,
+  never from `ok` alone.
 
 ### 4. Add the Head pivot + Camera
 

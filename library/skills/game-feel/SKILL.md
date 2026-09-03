@@ -117,7 +117,7 @@ func flash() -> void:
 
 **Tunable knobs:** `duration` 0.06–0.12s — under 0.06 reads as a flicker, over 0.12 looks slow. `emission_energy_multiplier` 1.5–3.0.
 
-> Note: an inline `StandardMaterial3D` `sub_resource` set via `summer_set_prop` is fine — `summer_set_resource_property` drills into inline sub-resources and fails loudly, never silently. Building the material in script (as above) or saving it to `materials/flash.tres` are equally valid — see `../../references/mcp-tools-reference/mcp-tools-reference.md`.
+> Note: `summer_set_prop(key="material_override", value="StandardMaterial3D")` creates an inline `StandardMaterial3D` sub_resource that `summer_set_resource_property(resourceProperty="material_override", subProperty="albedo_color", value="Color(r, g, b, a)")` then edits and `summer_save_scene` persists — so the inline route, the script above, and a saved `materials/flash.tres` are all valid. What breaks is the value *shape*: a JSON object instead of a Godot literal string, a misspelled `key`/`subProperty`, or a wrong-typed value returns `ok:true` yet silently no-ops or destructively coerces on current engines (dict → material cleared; dict → `Color(0,0,0,1)`; newer engines reject these with `unknown_property` / `bad_value_shape` / `type_mismatch`). Always pass class names and `Color(...)`/`Vector3(...)` strings, and confirm the result in the saved `.tscn` or a snapshot diff — never from `ok` alone. See `../../references/mcp-tools-reference/mcp-tools-reference.md`.
 
 ## Step 5 — Install Section 2 (Trauma Camera Shake)
 
@@ -369,7 +369,7 @@ Tune one knob at a time:
 | Duck for 1.5+ seconds | 0.4–0.6 second total duck-and-restore | Long ducks make the music feel broken, not punchy |
 | Equal pitch/yaw shake | `yaw_factor ≤ 0.5` | Eyes are sensitive to vertical motion; equal axes feel mechanical |
 | `Engine.time_scale` for every hit | Reserve hit-stop for big events only (boss hits, deaths) | Time-scale dips on every hit feel laggy, not impactful |
-| Inline `StandardMaterial3D` sub_resource via `summer_set_prop` | Build in script or save standalone `.tres` | Inline sub_resources silently break `summer_set_resource_property` |
+| A JSON object (or a misspelled key) as the `summer_set_prop` / `summer_set_resource_property` value — e.g. `value={"type": "StandardMaterial3D", ...}` through `summer_batch`, which forwards ops verbatim | `value="StandardMaterial3D"` to create the inline material, then `summer_set_resource_property(... value="Color(r, g, b, a)")` per field; confirm in the saved `.tscn` | Current engines return `ok:true` and silently no-op or coerce destructively — dict → material cleared, dict → `Color(0,0,0,1)`. The inline sub_resource itself is fine |
 | `summer_set_prop(key="groups", value='["player_camera"]')` | `add_to_group(&"player_camera")` in `_ready()`, or a `groups = [...]` line in the `.tscn` | `Node` has no `groups` property, and `summer_set_prop` takes only string/number/boolean — never an array |
 | `BaseMaterial3D.new()` | `StandardMaterial3D.new()` | `BaseMaterial3D` is abstract; constructing it is a parse error that kills the whole script |
 
@@ -386,7 +386,7 @@ This skill writes 3 GDScript files and adds 1 node + 1 autoload entry. Always as
 
 ## See also
 
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — full MCP tool list, especially the inline-sub_resource trap
+- `../../references/mcp-tools-reference/mcp-tools-reference.md` — full MCP tool list, especially `summer_set_resource_property` on inline sub_resources and which failures are loud vs. silent
 - `../../references/godot-version/godot-version.md` — Summer compatibility and
   version-sensitive API notes
 - `../../references/collaborative-protocol/collaborative-protocol.md` — "May I write" pattern

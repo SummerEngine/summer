@@ -220,7 +220,7 @@ summer_set_resource_property(
 
 **Inline `sub_resource` targets work.** An earlier revision of this file claimed the op silently fails on an inline sub-resource and told you to save the resource as a standalone `.tres` first. That was wrong, and it propagated into nine skills. The implementation reads `node->get(resourceProperty)` and sets the sub-property on whatever comes back (`modules/1summer_engine/editor/ops/scene_ops.cpp:1273-1400`) — there is no inline-versus-external branch anywhere in it. The canonical example in the shipped `summer_batch` description does exactly this against an inline mesh.
 
-Failures are explicit, never silent:
+Structural failures are explicit:
 
 | Error | Meaning |
 |---|---|
@@ -229,4 +229,4 @@ Failures are explicit, never silent:
 | `property is not a resource` | `resourceProperty` names a plain value, not a resource. |
 | `resource is null` | The node has the property but nothing is assigned yet. Assign it first. |
 
-If you get none of those and the value still did not change, that is a bug worth reporting — not expected behaviour to design around.
+What is *not* explicit on current engines is a bad value shape. `summer_set_prop` and `summer_set_resource_property` convert only string values (`res://` path → load, Resource class name → instantiate, anything else → `str_to_var`); a JSON object (reachable through `summer_batch`, which forwards ops verbatim, or raw `/api/ops`), a misspelled `key`/`subProperty`, or a wrong-typed value passes straight to `set()` and returns `ok:true` while silently no-op'ing or coercing destructively — a dict assigned to `material_override` clears the material, a dict assigned to a `Color` becomes `Color(0,0,0,1)`. Newer engines reject these with `unknown_property` / `bad_value_shape` / `type_mismatch`. Always pass class names and `Color(...)`/`Vector3(...)` strings, and confirm the result in the saved `.tscn` or a snapshot diff, never from `ok` alone.

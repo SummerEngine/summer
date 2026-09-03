@@ -13,6 +13,8 @@ import { TOOLKIT_VERSION } from "../version.js";
 import {
   _resetFeedbackSessionForTests,
   consumeFirstRunNotice,
+  dropReasonForStatus,
+  FEEDBACK_FIELDS_SENT,
   FIRST_RUN_NOTICE,
   getFeedbackSessionId,
   getInstallId,
@@ -209,10 +211,10 @@ describe("failure silence", () => {
     await consumeFirstRunNotice();
   });
 
-  it("network failure returns recorded:false, dropped:true and never throws", async () => {
+  it("network failure returns recorded:false, dropped:true, reason network and never throws", async () => {
     fetchMock.mockRejectedValue(new Error("ECONNREFUSED"));
     const result = await sendLibraryFeedback(input());
-    expect(result).toEqual({ recorded: false, dropped: true });
+    expect(result).toEqual({ recorded: false, dropped: true, reason: "network" });
   });
 
   it("abort (timeout) is swallowed the same way", async () => {
@@ -227,7 +229,7 @@ describe("failure silence", () => {
     const started = Date.now();
     const result = await sendLibraryFeedback(input());
     expect(Date.now() - started).toBeLessThan(5000);
-    expect(result).toEqual({ recorded: false, dropped: true });
+    expect(result).toEqual({ recorded: false, dropped: true, reason: "network" });
   });
 
   it("passes a 1s abort signal to fetch", async () => {
@@ -236,11 +238,38 @@ describe("failure silence", () => {
     expect(init.signal).toBeInstanceOf(AbortSignal);
   });
 
-  it("non-2xx response is honest: recorded:false, dropped:true (no queue, no retry)", async () => {
+  it("non-2xx response is honest: recorded:false, dropped:true with status + reason (no queue, no retry)", async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 429 }));
     const result = await sendLibraryFeedback(input());
-    expect(result).toEqual({ recorded: false, dropped: true });
+    expect(result).toEqual({ recorded: false, dropped: true, status: 429, reason: "rejected" });
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("a 404 says the endpoint is missing — distinguishable from a blip (E2E F-03)", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ error: "not_found", message: "No API endpoint exists at POST /api/mcp/library-feedback." }), {
+        status: 404,
+      })
+    );
+    const result = await sendLibraryFeedback(input());
+    expect(result).toEqual({ recorded: false, dropped: true, status: 404, reason: "endpoint_missing" });
+  });
+
+  it("classifies statuses: 404 endpoint_missing, other 4xx rejected, 5xx server_error", () => {
+    expect(dropReasonForStatus(404)).toBe("endpoint_missing");
+    expect(dropReasonForStatus(401)).toBe("rejected");
+    expect(dropReasonForStatus(422)).toBe("rejected");
+    expect(dropReasonForStatus(500)).toBe("server_error");
+    expect(dropReasonForStatus(503)).toBe("server_error");
+  });
+
+  it("the drop reason changes nothing about what is SENT", async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 404 }));
+    await sendLibraryFeedback(input());
+    expect(Object.keys(sentBody()).sort()).toEqual(
+      ["agent_model", "engine_version", "install_id", "reports", "session_id", "toolkit_version"]
+    );
+    expect(FEEDBACK_FIELDS_SENT).not.toMatch(/reason|status|dropped/);
   });
 
   it("2xx response returns exactly { recorded: true }", async () => {

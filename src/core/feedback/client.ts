@@ -136,6 +136,22 @@ export interface SendLibraryFeedbackInput {
   client?: string;
 }
 
+/**
+ * Why a batch was dropped — so an agent can tell a missing endpoint from a
+ * network blip (E2E 2026-09-03 F-03: production answered 404 and the tool
+ * said only `dropped: true`). Describes the RESPONSE only; nothing about it
+ * is sent anywhere.
+ */
+export type FeedbackDropReason =
+  /** HTTP 404 — the gateway has no library-feedback route (deploy order). */
+  | "endpoint_missing"
+  /** Any other 4xx — the gateway refused this batch (auth, schema, rate). */
+  | "rejected"
+  /** 5xx — the gateway failed; the route exists. */
+  | "server_error"
+  /** fetch threw: offline, DNS, TLS, or the 1s timeout. No response at all. */
+  | "network";
+
 export interface SendLibraryFeedbackResult {
   /** true ONLY when the gateway accepted the report (2xx) within the timeout. */
   recorded: boolean;
@@ -147,8 +163,20 @@ export interface SendLibraryFeedbackResult {
   /** present (true) when the POST failed / timed out / was refused. There is
    *  no queue and no retry: the batch is gone. Honest, non-fatal. */
   dropped?: boolean;
+  /** present alongside dropped — the HTTP status the gateway answered with;
+   *  absent when the request never got a response (reason "network"). */
+  status?: number;
+  /** present alongside dropped — see FeedbackDropReason. */
+  reason?: FeedbackDropReason;
   /** present only alongside first_run. */
   notice?: string;
+}
+
+/** Classify a non-2xx response. Exported for tests. */
+export function dropReasonForStatus(status: number): FeedbackDropReason {
+  if (status === 404) return "endpoint_missing";
+  if (status >= 500) return "server_error";
+  return "rejected";
 }
 
 /**
@@ -158,7 +186,8 @@ export interface SendLibraryFeedbackResult {
  * - env kill switch          → { recorded: false, disabled: true }     (nothing sent)
  * - first call on machine    → { recorded: false, first_run: true, notice } (nothing sent)
  * - gateway accepted (2xx)   → { recorded: true }
- * - any failure / timeout    → { recorded: false, dropped: true }      (no retry exists)
+ * - non-2xx                  → { recorded: false, dropped: true, status, reason } (no retry exists)
+ * - fetch threw / timed out  → { recorded: false, dropped: true, reason: "network" }
  */
 export async function sendLibraryFeedback(
   input: SendLibraryFeedbackInput
@@ -207,13 +236,21 @@ export async function sendLibraryFeedback(
         headers,
         body: JSON.stringify(body),
       });
-      if (!res.ok) return { recorded: false, dropped: true };
+      if (!res.ok) {
+        return {
+          recorded: false,
+          dropped: true,
+          status: res.status,
+          reason: dropReasonForStatus(res.status),
+        };
+      }
     } finally {
       clearTimeout(timer);
     }
   } catch {
-    // Silent failure is the contract: no retry, no log, no throw.
-    return { recorded: false, dropped: true };
+    // Silent failure is the contract: no retry, no log, no throw. The reason
+    // is for the caller's result only — nothing is sent about it.
+    return { recorded: false, dropped: true, reason: "network" };
   }
 
   return { recorded: true };

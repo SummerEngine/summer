@@ -389,6 +389,15 @@
       "path": "library/skills/music-track/"
     },
     {
+      "id": "skill/navigate-summer",
+      "name": "navigate-summer",
+      "description": "Use when the user wants to SEE, CHECK, or DECIDE something — \"show me my billing\", \"where do I change my plan\", \"open my games\", \"let me look at the scene\", \"open the MCP guide for Cursor\". Decides whether to open a Summer web page or editor surface for the user or to act through the API, and lands exactly there with summer_open.",
+      "clients": "all",
+      "recommended": true,
+      "status": "stable",
+      "path": "library/skills/navigate-summer/"
+    },
+    {
       "id": "skill/new-project",
       "name": "new-project",
       "description": "Use when the user wants a fresh blank Summer Engine project — not from a template. Asks one question (project name) and runs `summer create empty <name>`. Trigger on \"new project\", \"blank project\", \"empty project\", \"from scratch\", \"start fresh\", \"create new game\", \"blank canvas\", \"scaffold a project\".",

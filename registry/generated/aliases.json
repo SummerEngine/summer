@@ -143,6 +143,7 @@
     "summer_library_feedback": "tool/library-feedback",
     "summer_list_my_assets": "tool/list-my-assets",
     "summer_navigation_probe": "tool/navigation-probe",
+    "summer_open": "tool/open",
     "summer_open_main_scene": "tool/open-main-scene",
     "summer_open_scene": "tool/open-scene",
     "summer_play": "tool/play",

@@ -145,7 +145,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.0.2",
-      "content_hash": "530a4e7a7e01f9f20738e4e50983acb8c51d83596f5cb492bbf40e114b8f83ca",
+      "content_hash": "1c6e36e67f6fb699da4954c58828c56c82cb2b48c1853143a6276c3eb055e100",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -162,6 +162,47 @@
       },
       "compatibility": {
         "engine": ">=4.6"
+      },
+      "status": "stable"
+    },
+    {
+      "id": "reference/product-map",
+      "kind": "reference",
+      "version": "1.0.0",
+      "content_hash": "22300c9a22867a60e55affe69b9464089beffb131e77c477ee4a2aad97606ecc",
+      "summary": "The product map — every summerengine.com page and editor surface an agent can open for the user, with intent phrases, URL or op, required context, and status.",
+      "use_when": [
+        "resolving where a user intent lives — \"where do I change my plan\", \"where are my published games\", \"how do I get to the MCP guide for Codex\"",
+        "deciding whether a destination needs login, a running engine, or a parameter (gameId, path, node) before calling summer_open",
+        "checking whether an editor surface (assistant dock, project settings, 2D/3D switch) can be opened on this engine build or is still planned"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build",
+          "launch",
+          "support"
+        ],
+        "domains": [
+          "navigation",
+          "agent-workflow"
+        ],
+        "modalities": [
+          "docs"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/open"
+        ],
+        "skills": [
+          "skill/navigate-summer"
+        ],
+        "references": [
+          "reference/mcp-tools-reference"
+        ]
       },
       "status": "stable"
     },
@@ -1719,6 +1760,49 @@
         "skills": [
           "skill/adaptive-music",
           "skill/audio-direction"
+        ]
+      },
+      "status": "stable",
+      "recommended": true
+    },
+    {
+      "id": "skill/navigate-summer",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "b590720a55efd016ca8061d16826ab171973e7bf0c689a3b1e37ef97c3ad715d",
+      "summary": "When to open a Summer web page or editor surface FOR the user (billing, their games, the scene just built) versus acting through the API, using summer_open.",
+      "use_when": [
+        "the user asks to see, check, or decide something — \"show me my billing\", \"where do I change my plan\", \"open my games\", \"let me look at the scene\", \"take me to the MCP guide for Cursor\"",
+        "deciding whether to open a surface for the user or to do the work through Summer tools",
+        "handing the user a link (headless, remote, or the user prefers a link) instead of launching a browser"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build",
+          "launch",
+          "support"
+        ],
+        "domains": [
+          "navigation",
+          "agent-workflow",
+          "meta"
+        ],
+        "modalities": [
+          "docs"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/open"
+        ],
+        "references": [
+          "reference/product-map"
+        ],
+        "skills": [
+          "skill/using-summer"
         ]
       },
       "status": "stable",
@@ -5387,6 +5471,61 @@
       "status": "preview",
       "mcp_tool_name": "summer_navigation_probe",
       "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/open",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "c13e4753303556d66ceee5e9273d96deaedc319dd4fcab12629c012f2eb4016c",
+      "summary": "Open the exact summerengine.com page or editor surface by intent name — billing, my games, an MCP guide, a scene, a node, a dock — or print the URL/op.",
+      "use_when": [
+        "the user wants to SEE or DECIDE something on the website — \"open my billing page\", \"show me my published games\", \"take me to pricing\", \"open the MCP setup guide for Cursor\"",
+        "the user wants to LOOK at something in the running editor — \"show me the scene\", \"select the Player node\", \"open player.gd\", \"reveal that texture in the file dock\"",
+        "handing the user a link instead of opening a browser (print), or checking which destination an intent maps to",
+        "resolving where a user intent lives (\"where do I change my plan?\") before acting"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build",
+          "launch",
+          "support"
+        ],
+        "domains": [
+          "navigation",
+          "agent-workflow",
+          "project"
+        ],
+        "modalities": [
+          "docs"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "references": [
+          "reference/product-map"
+        ],
+        "skills": [
+          "skill/navigate-summer"
+        ],
+        "tools": [
+          "tool/open-scene",
+          "tool/select-node",
+          "tool/open-main-scene"
+        ]
+      },
+      "status": "stable",
+      "mcp_tool_name": "summer_open",
+      "remote": false,
+      "cli_command": "summer open",
       "authority": {
         "filesystem": false,
         "editor_mutation": false,

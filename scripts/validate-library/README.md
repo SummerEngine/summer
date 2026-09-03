@@ -84,9 +84,14 @@ What it checks:
    >= 2 `use_when` items and >= 2 `facets.domains` (templates and
    collections may carry one `use_when`); no `use_when` item may repeat the
    summary verbatim. Messages say which kind, what it has, and what it needs.
+9. Reciprocity hint (WARN, never an error): when skill A lists skill B in
+   `related.skills` and B does not list A back, one `WARN` line is printed per
+   one-way link. One-way links are legitimate (hub skills fan out), so the
+   exit code is unaffected; the line exists so authors decide deliberately.
+   Only skill<->skill pairs are checked.
 
 Exit codes: 0 clean (including when `library/` does not exist yet), 1 on any
-violation. Requires Node >= 22.18 (native TypeScript type stripping); use
+violation; `WARN` lines never change the exit code. Requires Node >= 22.18 (native TypeScript type stripping); use
 `/opt/homebrew/bin/node` locally.
 
 Tests: `src/lib/registry/*.test.ts` (vitest), fixtures under `fixtures/`.

@@ -62,6 +62,8 @@ export interface ValidationResult {
   errors: string[];
   /** Loudly-reported lint exceptions (allowed, but always printed). */
   exceptions: string[];
+  /** Non-blocking hints, printed but never part of `ok` — e.g. one-way skill<->skill related links. */
+  warnings: string[];
   resourceCount: number;
   note?: string;
 }
@@ -234,9 +236,10 @@ export function runValidation(rootDir: string, options?: { schemasDir?: string }
   const schemasDir = options?.schemasDir ?? path.join(rootDir, "registry", "schemas");
   const errors: string[] = [];
   const exceptions: string[] = [];
+  const warnings: string[] = [];
 
   if (!fs.existsSync(libraryDir)) {
-    return { ok: true, errors, exceptions, resourceCount: 0, note: `library/ does not exist at ${libraryDir} — nothing to validate (ok)` };
+    return { ok: true, errors, exceptions, warnings, resourceCount: 0, note: `library/ does not exist at ${libraryDir} — nothing to validate (ok)` };
   }
 
   const { store, allowedHosts } = loadSchemas(schemasDir);
@@ -272,7 +275,7 @@ export function runValidation(rootDir: string, options?: { schemasDir?: string }
   }
 
   if (resources.length === 0 && errors.length === 0) {
-    return { ok: true, errors, exceptions, resourceCount: 0, note: "library/ contains no resources — nothing to validate (ok)" };
+    return { ok: true, errors, exceptions, warnings, resourceCount: 0, note: "library/ contains no resources — nothing to validate (ok)" };
   }
 
   // --- Per-resource schema validation ---
@@ -367,6 +370,30 @@ export function runValidation(rootDir: string, options?: { schemasDir?: string }
     for (const t of targets) {
       if (typeof t.id === "string" && !idOwners.has(t.id)) {
         errors.push(`${prefix}: ${t.where}: target "${t.id}" does not exist in the library`);
+      }
+    }
+  }
+
+  // --- Reciprocity hint (warning, never an error): skill A lists skill B in
+  //     related.skills but B does not list A. One-way links are legitimate
+  //     (hub skills fan out); the hint keeps them visible so authors decide.
+  const skillById = new Map<string, LoadedResource>();
+  for (const res of resources) {
+    if (res.data.kind === "skill" && typeof res.data.id === "string") skillById.set(res.data.id, res);
+  }
+  const relatedSkills = (res: LoadedResource): string[] => {
+    const related = res.data.related;
+    if (!isPlainObject(related) || !Array.isArray(related.skills)) return [];
+    return (related.skills as unknown[]).filter((s): s is string => typeof s === "string");
+  };
+  for (const [id, res] of skillById) {
+    for (const target of relatedSkills(res)) {
+      const other = skillById.get(target);
+      if (!other || other === res) continue; // not a skill, or a missing target (reported above)
+      if (!relatedSkills(other).includes(id)) {
+        warnings.push(
+          `library/${res.relDir}/resource.yaml: related.skills lists ${target}, but library/${other.relDir}/resource.yaml does not list ${id} back (reciprocity hint)`,
+        );
       }
     }
   }
@@ -590,5 +617,5 @@ export function runValidation(rootDir: string, options?: { schemasDir?: string }
     }
   }
 
-  return { ok: errors.length === 0, errors, exceptions, resourceCount: resources.length };
+  return { ok: errors.length === 0, errors, exceptions, warnings, resourceCount: resources.length };
 }

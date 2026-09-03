@@ -21,6 +21,7 @@ describe("validate-library: clean states", () => {
     expect(result.ok).toBe(true);
     expect(result.resourceCount).toBe(6);
     expect(result.exceptions).toEqual([]);
+    expect(result.warnings).toEqual([]);
   });
 
   it("exits ok with a note when library/ does not exist", () => {
@@ -229,6 +230,21 @@ describe("validate-library: minimum routing metadata", () => {
 
   it("does not flag the second, situation-style use_when item of the echo reference", () => {
     expect(result.errors.some((e) => /references\/echo.*use_when\[1\]/.test(e))).toBe(false);
+  });
+});
+
+describe("validate-library: reciprocity hint (warning, never an error)", () => {
+  const result = run("reciprocity");
+
+  it("stays ok with no errors", () => {
+    expect(result.ok).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
+
+  it("warns once per one-way skill->skill link; reciprocated pairs and non-skill sources stay silent", () => {
+    expect(result.warnings).toEqual([
+      "library/skills/alpha/resource.yaml: related.skills lists skill/beta, but library/skills/beta/resource.yaml does not list skill/alpha back (reciprocity hint)",
+    ]);
   });
 });
 

@@ -4,7 +4,9 @@
  *
  * Validates library/** against registry/schemas/ and the capability lint.
  * Exits 0 when clean (including when library/ does not exist yet), 1 on any
- * violation. Requires Node >= 22.18 (native TypeScript type stripping).
+ * violation. Warnings (WARN lines, e.g. one-way skill<->skill related links)
+ * are printed but never change the exit code. Requires Node >= 22.18 (native
+ * TypeScript type stripping).
  *
  * Usage: node scripts/validate-library/cli.ts [rootDir]
  */
@@ -34,13 +36,23 @@ if (result.exceptions.length > 0) {
   console.log("");
 }
 
+if (result.warnings.length > 0) {
+  for (const line of result.warnings) console.log(`WARN ${line}`);
+  console.log(`validate-library: ${result.warnings.length} warning(s) — hints only, exit code unaffected.`);
+  console.log("");
+}
+
 for (const error of result.errors) {
   console.error(`ERROR ${error}`);
 }
 
 if (result.ok) {
   if (result.resourceCount > 0) {
-    console.log(`validate-library: ${result.resourceCount} resource(s) valid, 0 errors${result.exceptions.length > 0 ? `, ${result.exceptions.length} loud lint exception(s)` : ""}.`);
+    const extras = [
+      result.exceptions.length > 0 ? `${result.exceptions.length} loud lint exception(s)` : "",
+      result.warnings.length > 0 ? `${result.warnings.length} warning(s)` : "",
+    ].filter(Boolean);
+    console.log(`validate-library: ${result.resourceCount} resource(s) valid, 0 errors${extras.length > 0 ? `, ${extras.join(", ")}` : ""}.`);
   }
   process.exit(0);
 } else {

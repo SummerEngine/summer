@@ -1,0 +1,15 @@
+id: skill/delta
+kind: skill
+version: 1.0.0
+summary: Fixture skill in a reciprocated pair with gamma.
+use_when:
+  - exercising the reciprocity hint between related skills
+  - checking that one-way related links warn without failing validation
+facets:
+  lifecycle: [build]
+  domains: [meta, verification]
+related:
+  skills: [skill/gamma]
+source: official
+license: MIT
+status: stable

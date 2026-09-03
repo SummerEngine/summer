@@ -98,4 +98,58 @@ describe("summer tool command", () => {
     expect(String(printed.error)).toContain("update Summer Engine");
     expect(String(printed.error)).toContain("Engine said: unknown op: GetWorldSnapshot");
   });
+
+  async function runToolCommand(argv: string[]): Promise<{ exitCode: number | string | undefined; printed: Record<string, unknown> }> {
+    const lines: string[] = [];
+    const log = vi.spyOn(console, "log").mockImplementation((line: unknown) => {
+      lines.push(String(line));
+    });
+    const previousExitCode = process.exitCode;
+    process.exitCode = undefined;
+    try {
+      await toolCommand.parseAsync(argv, { from: "user" });
+      return { exitCode: process.exitCode, printed: JSON.parse(lines.join("\n")) as Record<string, unknown> };
+    } finally {
+      process.exitCode = previousExitCode;
+      log.mockRestore();
+    }
+  }
+
+  it("exits 1 and prints the engine's failure envelope when a read fails — the CLI twin of the MCP face's isError (E2E F-06)", async () => {
+    // Engine 0.5.65 answers a missing node with HTTP 200 + {ok:false, error}
+    // (state_provider.cpp inspector_state); the MCP face marks that isError.
+    vi.mocked(EngineApiClient.connect).mockResolvedValue({
+      inspectNode: async () => ({ ok: false, error: "node not found: DoesNotExist", appliedThroughSeq: 12 }),
+    } as never);
+    const { exitCode, printed } = await runToolCommand(["inspect-node", "--args", '{"path":"DoesNotExist"}']);
+    expect(exitCode).toBe(1);
+    expect(printed).toMatchObject({ ok: false, error: "node not found: DoesNotExist" });
+  });
+
+  it("exits 1 on a failed scene-mutation receipt, which the handler returns rather than throws", async () => {
+    vi.mocked(EngineApiClient.connect).mockResolvedValue({
+      executeIdentityBoundOps: async () => ({
+        ok: false,
+        results: [{ ok: false, op: "AddNode", error: "parent not found: Nope" }],
+      }),
+    } as never);
+    const { exitCode, printed } = await runToolCommand([
+      "add-node",
+      "--args",
+      '{"scenePath":"res://main.tscn","parent":"Nope","type":"Label","name":"E2ELabel"}',
+    ]);
+    expect(exitCode).toBe(1);
+    expect(printed.ok).toBe(false);
+    expect(printed.error).toBe("Engine request failed (AddNode).");
+    expect((printed.results as Array<{ error?: string }>)[0]?.error).toBe("parent not found: Nope");
+  });
+
+  it("exits 0 and prints the payload on success (control)", async () => {
+    vi.mocked(EngineApiClient.connect).mockResolvedValue({
+      inspectNode: async () => ({ ok: true, node_name: "Player", props: [] }),
+    } as never);
+    const { exitCode, printed } = await runToolCommand(["inspect-node", "--args", '{"path":"Player"}']);
+    expect(exitCode).toBeUndefined();
+    expect(printed).toEqual({ ok: true, node_name: "Player", props: [] });
+  });
 });

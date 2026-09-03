@@ -140,8 +140,11 @@ export const toolCommand = new Command("tool")
     try {
       result = await dispatchTool(entry.slug, args);
     } catch (err) {
-      // A structured failure (engine_lacks_op) is printed whole so callers
-      // read failure_reason + the fallback instead of scraping a sentence.
+      // A structured failure — any engine receipt the MCP face would mark
+      // isError, engine_lacks_op, a library/navigation miss — is printed whole
+      // (stdout, exit 1) so callers read ok/error/failure_reason instead of
+      // scraping a sentence. Argument and connection errors stay plain text on
+      // stderr (thrown; the program's catch exits 1).
       if (err instanceof ToolResultError) {
         console.log(JSON.stringify(err.result, null, 2));
         process.exitCode = 1;

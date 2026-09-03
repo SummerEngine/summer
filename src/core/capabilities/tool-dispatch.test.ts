@@ -258,20 +258,29 @@ describe("scene-scripting and perception dispatch entries", () => {
     await expect(dispatchTool("get-runtime-tree", {}, failing.ctx)).rejects.toThrow("no running game");
   });
 
-  it("api-docs is engine-free and returns the lookup result as data (misses included)", async () => {
+  it("api-docs is engine-free; a miss is the structured lookup result, surfaced as a failure like the MCP face's isError", async () => {
     const engine = async () => {
       throw new EngineUnavailableError("engine must not be needed");
     };
-    const result = (await dispatchTool("api-docs", { class_name: "NoSuchClassAnywhere" }, { engine })) as {
-      ok: boolean;
-      failure_reason?: string;
-    };
+    // summer_api_docs sets isError when the lookup says ok:false (script-tools.ts),
+    // so the CLI face prints the same structured result and exits 1.
+    const failure = await dispatchTool("api-docs", { class_name: "NoSuchClassAnywhere" }, { engine }).catch(
+      (err) => err
+    );
+    expect(failure).toBeInstanceOf(ToolResultError);
+    const result = (failure as ToolResultError).result as { ok: boolean; error?: string; failure_reason?: string };
     expect(result.ok).toBe(false);
+    expect(typeof result.error).toBe("string");
     // Deterministic: with the bundle installed a class miss carries no
     // failure_reason; without it the structured not-installed result does.
     expect(result.failure_reason).toBe(
       isApiDocsBundleInstalled() ? undefined : "api_docs_not_installed"
     );
+    if (isApiDocsBundleInstalled()) {
+      // A hit is data.
+      const hit = (await dispatchTool("api-docs", { class_name: "Node3D" }, { engine })) as { ok: boolean };
+      expect(hit.ok).toBe(true);
+    }
   });
 
   it("start-game-task validates mode/target with the shared zod schema instead of casting", async () => {
@@ -497,5 +506,67 @@ describe("spatial dispatch entries", () => {
     expect(second.calls.map((call) => call.args[0])).toEqual([[{ op: "AlignDistribute3D" }], [{ op: "SaveScene" }]]);
 
     await expect(dispatchTool("batch", { ops: [{ op: "NavigationProbe3D" }] }, ctx)).rejects.toThrow(/requires scenePath/);
+  });
+});
+
+describe("engine failures exit 1 on the CLI face exactly when the MCP face sets isError (E2E F-06)", () => {
+  it("a read that the engine answers ok:false (inspect-node on a missing node) is a ToolResultError carrying the envelope", async () => {
+    const { ctx } = fakeEngineContext({
+      inspectNode: async () => ({ ok: false, error: "node not found: DoesNotExist", appliedThroughSeq: 12 }),
+    });
+    const failure = await dispatchTool("inspect-node", { path: "DoesNotExist" }, ctx).catch((err) => err);
+    expect(failure).toBeInstanceOf(ToolResultError);
+    expect((failure as ToolResultError).result).toMatchObject({
+      ok: false,
+      error: "node not found: DoesNotExist",
+      appliedThroughSeq: 12,
+    });
+  });
+
+  it("a failed scene-mutation receipt returned by the handler (no per-handler check) is a failure too", async () => {
+    const { ctx } = fakeEngineContext({
+      executeIdentityBoundOps: async () => ({
+        ok: false,
+        results: [{ ok: false, op: "AddNode", error: "parent not found: Nope" }],
+        terminalState: "failed",
+      }),
+    });
+    const failure = await dispatchTool(
+      "add-node",
+      { scenePath: "res://main.tscn", parent: "Nope", type: "Node3D", name: "X" },
+      ctx
+    ).catch((err) => err);
+    expect(failure).toBeInstanceOf(ToolResultError);
+    const result = (failure as ToolResultError).result;
+    expect(result.ok).toBe(false);
+    // The chunked-mutation envelope (engine-ops, shared by both faces) states
+    // which op failed at the top level and keeps the engine's own text per op.
+    expect(result.error).toBe("Engine request failed (AddNode).");
+    expect((result.results as Array<{ error?: string }>)[0]?.error).toBe("parent not found: Nope");
+  });
+
+  it("a failure terminalState without an error string gets a plain top-level error and keeps the classifiers", async () => {
+    const { ctx } = fakeEngineContext({
+      executeOps: async () => ({ terminalState: "timed_out", errorClass: "transient", failure_reason: "no_progress" }),
+    });
+    const failure = await dispatchTool("is-running", {}, ctx).catch((err) => err);
+    expect(failure).toBeInstanceOf(ToolResultError);
+    const result = (failure as ToolResultError).result;
+    expect(result).toMatchObject({ ok: false, terminalState: "timed_out", errorClass: "transient", failure_reason: "no_progress" });
+    expect(typeof result.error).toBe("string");
+    expect(String(result.error).startsWith("{")).toBe(false);
+    expect(String(result.error)).toContain("timed out");
+  });
+
+  it("a genuine success passes through untouched", async () => {
+    const { ctx } = fakeEngineContext({
+      inspectNode: async () => ({ ok: true, node_name: "Player", node_type: "CharacterBody2D", props: [] }),
+    });
+    await expect(dispatchTool("inspect-node", { path: "Player" }, ctx)).resolves.toEqual({
+      ok: true,
+      node_name: "Player",
+      node_type: "CharacterBody2D",
+      props: [],
+    });
   });
 });

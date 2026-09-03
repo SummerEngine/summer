@@ -19,7 +19,7 @@
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
-import { EngineApiClient, EngineRebindError, type EngineSnapshot } from "../api-client.js";
+import { EngineApiClient } from "../api-client.js";
 import { missingEngineOpResult, resolveSingleOnlyOps, type MissingOpResult } from "../capability-skew.js";
 import { buildAgentPlaybook } from "./agent-playbook.js";
 import { importResolvedAsset, type GatewayAsset } from "./asset-import.js";
@@ -61,6 +61,27 @@ import {
 import { createDebugReportArtifact } from "./debug-report.js";
 import { buildGameTaskPlan, gameTaskPlanInputSchema } from "./game-task-plan.js";
 import {
+  buildProjectContext,
+  projectContextInputSchema,
+  projectSettingValue,
+} from "./project-context.js";
+import { annotateVariantTypes } from "./variant-types.js";
+import { withConsoleScope } from "./console-read.js";
+import { captureGame, captureScene, captureViewport, type CaptureResult } from "./capture.js";
+// engine_lacks_op fallbacks: ONE copy for every face (E2E 2026-09-03 F-16);
+// the scripting ones come with their op builders from ./scene-script.js.
+import {
+  ALIGN_DISTRIBUTE_FALLBACK,
+  NAVIGATION_PROBE_FALLBACK,
+  RUNTIME_NODE_FALLBACK,
+  RUNTIME_TREE_FALLBACK,
+  SNAP_TO_SURFACE_FALLBACK,
+  SNAPSHOT_DIFF_FALLBACK,
+  STARCAST_FALLBACK,
+  TEST_PLACEMENT_FALLBACK,
+  WORLD_SNAPSHOT_FALLBACK,
+} from "./engine-fallbacks.js";
+import {
   sendLibraryFeedback,
   type LibraryFeedbackReport,
 } from "../feedback/client.js";
@@ -96,9 +117,12 @@ export class ToolDispatchError extends Error {}
 export class EngineUnavailableError extends ToolDispatchError {}
 
 /** A tool failed with a structured receipt that `summer tool` prints whole
- *  (JSON on stdout, exit 1) instead of flattening to `message`. Today: the
- *  engine_lacks_op result, from the capability pre-flight (nothing sent) and
- *  from the post-hoc unknown-op rewrite (requireSupportedOp). */
+ *  (JSON on stdout, exit 1) instead of flattening to `message`: every engine
+ *  envelope extractOpError reads as a failure (the same gate the MCP face
+ *  applies in withEngine before setting isError), the engine_lacks_op result
+ *  from the capability pre-flight (nothing sent) and from the post-hoc
+ *  unknown-op rewrite (requireSupportedOp), and the not-found/ambiguous
+ *  results of the library and navigation tools. */
 export class ToolResultError extends ToolDispatchError {
   constructor(
     readonly result: Record<string, unknown>,
@@ -130,10 +154,54 @@ export function createDefaultDispatchContext(): ToolDispatchContext {
   };
 }
 
+/**
+ * Engine receipt → the receipt, or a ToolResultError carrying the failing
+ * envelope. Exactly the decision the MCP face makes in withEngine
+ * (extractOpError → isError); `summer tool` prints the envelope as JSON and
+ * exits 1, so scripts read `ok`/`error`/`failure_reason` instead of scraping
+ * a sentence. dispatchTool applies it to EVERY handler result, so a handler
+ * that returns receipts directly (scene mutations, batches, snapshots) cannot
+ * exit 0 on a failed op (E2E 2026-09-03 F-06).
+ */
 function requireEngineSuccess<T>(result: T): T {
   const failure = extractOpError(result);
-  if (failure) throw new ToolDispatchError(failure);
+  if (failure) throw new ToolResultError(failedEnvelope(result, failure), failure);
   return result;
+}
+
+/**
+ * The envelope `summer tool` prints for a failed engine result: the engine's
+ * own fields, `ok: false` stamped (a failure terminalState can arrive with
+ * ok absent), and a plain-text top-level `error` when the engine put its
+ * message only inside results[] or only a terminalState. extractOpError
+ * renders CLASSIFIED failures as a JSON string; that rendering is for the MCP
+ * text face — here the fields are already structured, so only its plain
+ * message is reused.
+ */
+function failedEnvelope(result: unknown, failure: string): Record<string, unknown> {
+  const envelope: Record<string, unknown> =
+    result && typeof result === "object" && !Array.isArray(result)
+      ? { ...(result as Record<string, unknown>) }
+      : { result };
+  if (typeof envelope.error !== "string" || envelope.error.length === 0) {
+    envelope.error = plainFailureMessage(envelope, failure);
+  }
+  return { ...envelope, ok: false };
+}
+
+function plainFailureMessage(envelope: Record<string, unknown>, failure: string): string {
+  const results = Array.isArray(envelope.results) ? (envelope.results as Array<Record<string, unknown>>) : [];
+  const failed = results.find((entry) => entry && entry.ok === false && typeof entry.error === "string" && entry.error.length > 0);
+  if (failed) return failed.error as string;
+  if (failure.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(failure) as { error?: unknown };
+      if (typeof parsed.error === "string" && parsed.error.length > 0) return parsed.error;
+    } catch {
+      // Not the classified JSON rendering after all; fall through to the text.
+    }
+  }
+  return failure;
 }
 
 /** Post-hoc twin of the missingEngineOpResult pre-flight, for engines that
@@ -312,19 +380,6 @@ async function searchAssetsGateway(params: {
 // ---------------------------------------------------------------------------
 // Small engine helpers
 // ---------------------------------------------------------------------------
-function projectSettingValue(projectState: unknown, keys: string[]): string | null {
-  const data = ((projectState ?? {}) as DispatchArgs).data as DispatchArgs | undefined;
-  const entries = data?.entries;
-  if (!Array.isArray(entries)) return null;
-  for (const entry of entries) {
-    const item = (entry ?? {}) as DispatchArgs;
-    if (typeof item.key === "string" && keys.includes(item.key)) {
-      return typeof item.value === "string" && item.value.length > 0 ? item.value : null;
-    }
-  }
-  return null;
-}
-
 function str(args: DispatchArgs, key: string): string {
   const value = args[key];
   if (typeof value !== "string" || value.length === 0) {
@@ -349,9 +404,8 @@ function parseToolArgs<T extends ZodTypeAny>(schema: T, args: DispatchArgs, tool
   throw new ToolDispatchError(`Invalid arguments for ${tool}: ${issues}`);
 }
 
-async function snapshotResult(snap: EngineSnapshot, target: string): Promise<DispatchArgs> {
-  const failure = extractOpError(snap);
-  if (failure) throw new ToolDispatchError(failure);
+async function snapshotResult(snap: CaptureResult, target: string): Promise<DispatchArgs> {
+  requireEngineSuccess(snap);
   if (target === "game" && snap.failureReason === "bridge_required") {
     throw new ToolDispatchError(
       "Game capture is not available over this connection (requires the Summer desktop app bridge). " +
@@ -483,26 +537,6 @@ async function requireSpatialOp(
   if (missing) refuseMissingOp(missing);
   return client;
 }
-
-// Fallbacks named by the engine_lacks_op result — the same string whether the
-// pre-flight refused (nothing sent) or the engine answered "unknown op".
-// Scripting fallbacks come from ./scene-script.ts; the MCP face words its own
-// in perception-tools.ts / spatial-tools.ts.
-const WORLD_SNAPSHOT_FALLBACK =
-  "read structure with summer_get_scene_tree and verify visually with summer_screenshot";
-const SNAPSHOT_DIFF_FALLBACK = "compare two summer_world_snapshot results yourself";
-const RUNTIME_TREE_FALLBACK = "probe runtime state with a RunVerification probe";
-const RUNTIME_NODE_FALLBACK = "probe the node from a RunVerification probe";
-const TEST_PLACEMENT_FALLBACK =
-  "judge clearance from summer_world_snapshot AABBs and verify with summer_screenshot";
-const SNAP_TO_SURFACE_FALLBACK =
-  "set the subject's position with summer_set_prop from summer_world_snapshot AABBs";
-const ALIGN_DISTRIBUTE_FALLBACK =
-  "compute anchors from summer_world_snapshot AABBs and set positions with summer_set_prop";
-const NAVIGATION_PROBE_FALLBACK =
-  "probe reachability from a RunVerification probe (NavigationServer3D.map_get_path)";
-const STARCAST_FALLBACK =
-  "judge support, contact, and clearance from summer_inspect_node / summer_world_snapshot AABBs and verify with summer_screenshot";
 
 export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   // --- asset ---
@@ -680,7 +714,9 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       errorsOnlyStrict: args.strict_errors === true,
       maxEntries: typeof args.max_lines === "number" ? args.max_lines : 100,
     });
-    return result;
+    // E2E 2026-09-03 F-07: the console is not where a played game's runtime
+    // errors go — the same _scope note the MCP face stamps.
+    return withConsoleScope(result);
   }),
   entry("summer_clear_console", "Clear the editor's Output panel", true, async (args, ctx) =>
     requireEngineSuccess(await (await ctx.engine()).executeOps([{ op: "ClearConsoleOutput" }]))
@@ -892,35 +928,14 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     // the boot drift notice is an MCP-surface extra and is null here.
     buildAgentPlaybook()
   ),
-  entry("summer_get_project_context", "Engine health, project/scene state, and session rebind", true, async (args, ctx) => {
-    const client = await ctx.engine();
-    const settingsPrefix = optStr(args, "settingsPrefix");
-    const [health, project, scene] = await Promise.all([
-      client.health(),
-      client.getProjectState(settingsPrefix),
-      client.getSceneState().catch((err) => ({
-        ok: false,
-        error: err instanceof Error ? err.message : String(err),
-      })),
-    ]);
-    // A failed rebind keeps the previous identity; report that honestly
-    // instead of echoing the stale hash as if the switch had been followed.
-    let boundProjectIdHash: string | undefined;
-    let rebindError: string | undefined;
-    try {
-      boundProjectIdHash = await client.rebind();
-    } catch (error) {
-      if (!(error instanceof EngineRebindError)) throw error;
-      rebindError = error.message;
-    }
-    return {
-      health,
-      project,
-      scene,
-      mainScene: projectSettingValue(project, ["application/run/main_scene", "run/main_scene"]),
-      boundProjectIdHash,
-      ...(rebindError ? { rebindError } : {}),
-    };
+  entry("summer_get_project_context", "Engine health, project/scene state, template pin, memory summary, and session rebind", true, async (args, ctx) => {
+    // Validate before connecting, as the MCP SDK does — a bad argument is a
+    // bad argument even with no engine running.
+    const parsed = parseToolArgs(projectContextInputSchema, args, "get-project-context");
+    // ONE builder for both faces (core/capabilities/project-context.ts) so the
+    // payload is byte-identical; the boot drift notice is an MCP-surface extra
+    // and is null here.
+    return buildProjectContext(await ctx.engine(), parsed);
   }),
   entry("summer_open", "Open a summerengine.com page or an editor surface by intent name, or print the URL/op", false, async (args, ctx) => {
     // Same behavior as the MCP face (navigation-tools.ts) and the dedicated
@@ -1130,7 +1145,9 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     return executeSceneMutation(await ctx.engine(), str(args, "scenePath"), [op]);
   }),
   entry("summer_inspect_node", "Get all editable properties of a node", true, async (args, ctx) =>
-    requireEngineSuccess(await (await ctx.engine()).inspectNode(str(args, "path")))
+    // E2E 2026-09-03 F-14: the engine returns Variant.Type as a bare int; both
+    // faces add type_name (core/capabilities/variant-types.ts).
+    annotateVariantTypes(requireEngineSuccess(await (await ctx.engine()).inspectNode(str(args, "path"))))
   ),
   entry("summer_inspect_resource", "Get all properties of a resource", true, async (args, ctx) =>
     requireEngineSuccess(await (await ctx.engine()).inspectResource(str(args, "path")))
@@ -1397,18 +1414,23 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   entry("summer_screenshot", "Capture an editor viewport, scene render, or game frame to a file", true, async (args, ctx) => {
     const client = await ctx.engine();
     const target = optStr(args, "target") ?? "viewport";
-    let snap: EngineSnapshot;
+    // Same capture path as the MCP face (core/capabilities/capture.ts): every
+    // frame is content-checked, a flat viewport frame is recaptured once, and a
+    // camera-less scene render learns its 2D/3D kind — the receipt carries
+    // frameQuality / recapture / sceneKind identically (E2E 2026-09-03 F-01, F-05).
+    let snap: CaptureResult;
     if (target === "game") {
-      snap = await client.gameSnapshot();
+      snap = await captureGame(client);
     } else if (target === "scene") {
-      snap = await client.scenePreview({
+      snap = await captureScene(client, {
         scenePath: optStr(args, "scenePath"),
         framing: optStr(args, "framing") as never,
         size: Array.isArray(args.size) ? (args.size as [number, number]) : undefined,
         nodePath: optStr(args, "nodePath"),
+        cameraPath: optStr(args, "camera_path"),
       });
     } else {
-      snap = await client.viewportSnapshot();
+      snap = await captureViewport(client);
     }
     return snapshotResult(snap, target);
   }),
@@ -1488,5 +1510,8 @@ export async function dispatchTool(
       `Unknown tool "${nameOrSlug}". Run 'summer tool --list' to see all ${TOOL_DISPATCH.length} tools.`
     );
   }
-  return dispatchEntry.handler(args, ctx);
+  // The one gate every result passes, mirroring withEngine on the MCP face:
+  // whatever the MCP face would mark isError is a ToolResultError here, so the
+  // CLI exit code says what the receipt says — for every tool, not per handler.
+  return requireEngineSuccess(await dispatchEntry.handler(args, ctx));
 }

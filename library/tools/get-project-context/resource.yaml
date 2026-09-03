@@ -1,7 +1,7 @@
 id: tool/get-project-context
 kind: tool
-version: 1.0.2
-summary: Bind to the open project and return engine health, project name and path, current and main scene, trimmed settings, and memory summary.
+version: 1.1.0
+summary: Bind to the open project and return engine health, project name and path, current and main scene, trimmed settings, the template pin, and memory summary.
 use_when:
   - first call in every fresh session, to avoid guessing scene filenames
   - deliberately rebinding after the engine switched projects
@@ -31,6 +31,11 @@ input_schema:
     settingsPrefix:
       type: string
       description: Only return project settings whose key starts with this prefix, e.g. 'audio/' or 'application/config/'. Omit for the curated default set.
+    settingsPrefixes:
+      type: array
+      items:
+        type: string
+      description: Several settings groups at once, e.g. ['audio/', 'layer_names/2d_physics/', 'input/ui_']. Merged with settingsPrefix. Omit for the curated default set.
   additionalProperties: false
 authority:
   filesystem: false

@@ -288,4 +288,10 @@ export class WorkerEngineClient {
   async scenePreview(_input?: unknown): Promise<EngineSnapshot> {
     unsupported("scenePreview");
   }
+  /** The worker has no events channel (no /api/events); the events tools'
+   *  pre-flight already refuses on a status without capabilities.events, so
+   *  this is reached only with SUMMER_CAPABILITY_PREFLIGHT=off. */
+  async pollEvents(_params?: unknown, _timeoutMs?: number): Promise<unknown> {
+    unsupported("pollEvents");
+  }
 }

@@ -90,6 +90,23 @@ type EngineTargetIdentity = {
   projectIdHash?: string;
 };
 
+/** Query parameters of GET /api/events/poll (the engine's events channel). */
+export type EventsPollParams = {
+  /** Deliver events with seq > since. Omitted = live only (from the newest
+   *  seq at request time); 0 = replay the whole retained ring. A value beyond
+   *  the newest seq is clamped by the engine so the caller resyncs. */
+  since?: number;
+  /** Allow-list of event kinds (op.applied, play.started, ...); omitted or
+   *  empty = every kind. */
+  kinds?: string[];
+  /** Max ms the engine holds the request before answering with zero events
+   *  (engine default 25000, cap 60000; 0 = answer immediately). */
+  wait?: number;
+  /** Max events per answer (engine default 100, cap 500); the answer says
+   *  truncated:true when the page was full. */
+  limit?: number;
+};
+
 function findSnapshotPayload(value: unknown): SnapshotPayload | null {
   const record = asRecord(value);
   if (!record) return null;
@@ -530,6 +547,60 @@ export class EngineApiClient {
 
   async health(): Promise<unknown> {
     return this.request("GET", "/api/health");
+  }
+
+  /**
+   * One long-poll of GET /api/events/poll (the engine's events channel). The
+   * engine answers on the first event matching `kinds` with seq > `since`, or
+   * after `wait` ms with `timed_out:true`; a 2xx is the poll envelope
+   * {ok, events:[{seq, kind, ts, data}], next_seq, last_seq, since, truncated,
+   * timed_out}. Identity-gated like every other route: the bound project rides
+   * in the query, so a wrong project answers 409 identity_mismatch.
+   *
+   * The three answers this route documents — 404 (no channel on this build),
+   * 409 (identity mismatch), 503 (bus not started) — come back as a STRUCTURED
+   * failure {ok:false, http_status, ...body} so both faces classify them (a
+   * terminalState keeps its standard message and rebind hint; the events
+   * capability rewrites a 404 into engine_lacks_events). Anything else throws
+   * like every other request, so a stale-token 401/403 still triggers
+   * withEngine's reconnect-and-retry.
+   */
+  async pollEvents(params: EventsPollParams = {}, timeoutMs?: number): Promise<unknown> {
+    const query = new URLSearchParams();
+    if (params.since !== undefined) query.set("since", String(params.since));
+    if (params.kinds && params.kinds.length > 0) query.set("kinds", params.kinds.join(","));
+    if (params.wait !== undefined) query.set("wait", String(params.wait));
+    if (params.limit !== undefined) query.set("limit", String(params.limit));
+    // URLSearchParams.size is undefined on Node < 18.16; stringify instead.
+    const suffix = query.toString();
+    const path = `/api/events/poll${suffix ? `?${suffix}` : ""}`;
+    // The engine holds the request up to `wait` ms; give the socket headroom.
+    const wait = params.wait ?? 25_000;
+    const res = await this._fetchRaw("GET", path, undefined, timeoutMs ?? wait + 5_000);
+    if (res.ok) {
+      try {
+        return await res.json();
+      } catch {
+        throw new Error(
+          `Engine API returned a non-JSON response for GET /api/events/poll (HTTP ${res.status}).`
+        );
+      }
+    }
+    const text = await res.text().catch(() => "");
+    if (res.status === 404 || res.status === 409 || res.status === 503) {
+      let body: Record<string, unknown> = {};
+      try {
+        body = asRecord(JSON.parse(text)) ?? {};
+      } catch {
+        // non-JSON body (an HTML 404 page): keep the raw text below
+      }
+      const failure: Record<string, unknown> = { ok: false, ...body, http_status: res.status };
+      if (typeof failure.error !== "string" && typeof failure.terminalState !== "string") {
+        failure.error = `Engine API error ${res.status}: ${text.slice(0, 200)}`;
+      }
+      return failure;
+    }
+    throw new Error(`Engine API error ${res.status}: ${text.slice(0, 200)}`);
   }
 
   async executeOps(

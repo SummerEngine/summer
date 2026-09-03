@@ -56,7 +56,7 @@ scripts/
 └── validate-library/   # schema validation + capability lint
 ```
 
-The import direction is a tested invariant (`src/import-direction.test.ts`): `cli/` never imports `mcp/`; `bin/` composes the two. The *layering* is not yet the ideal the contract describes: 63 of the 68 tools are implemented in `src/mcp/tools/*.ts` with hand-written zod, and `core/capabilities/tool-dispatch.ts` mirrors them so `summer tool <slug>` reaches the same functions. What keeps the two faces honest is `src/mcp/tools/descriptor-parity.test.ts` (zod shape ↔ `library/tools/*/resource.yaml` `input_schema`) plus the validator's cross-checks; folding the mirror into one registration is the scheduled consolidation pass (CONTRACT §3, DECISIONS D13).
+The import direction is a tested invariant (`src/import-direction.test.ts`): `cli/` never imports `mcp/`; `bin/` composes the two. The *layering* is not yet the ideal the contract describes: 65 of the 70 tools are implemented in `src/mcp/tools/*.ts` with hand-written zod, and `core/capabilities/tool-dispatch.ts` mirrors them so `summer tool <slug>` reaches the same functions. What keeps the two faces honest is `src/mcp/tools/descriptor-parity.test.ts` (zod shape ↔ `library/tools/*/resource.yaml` `input_schema`) plus the validator's cross-checks; folding the mirror into one registration is the scheduled consolidation pass (CONTRACT §3, DECISIONS D13).
 
 ---
 
@@ -80,7 +80,7 @@ Two tests need a sibling checkout to do real work and **skip loudly** otherwise:
 
 ### CLI command reference
 
-`summer --help` is the source of truth; this is its current shape (19 commands plus `help`).
+`summer --help` is the source of truth; this is its current shape (20 commands plus `help`).
 
 | Command | Does |
 |---|---|
@@ -102,6 +102,7 @@ Two tests need a sibling checkout to do real work and **skip loudly** otherwise:
 | `summer config [get \| set \| unset \| path]` | Shared non-secret `~/.summer/config.json` (`gateway.url`, …). |
 | `summer publish [project] --artifact <pck> --version <v> [--confirm]` | Confirmed creator release. |
 | `summer releases [--cursor <c>]` | Creator release history. |
+| `summer events [--follow] [--kinds <csv>] [--since <seq>] [--limit <n>] [--json]` | Engine events channel: the newest events, or `--follow` to stream them live (long-poll over `/api/events/poll`, one line per event, JSON when piped). Builds without the channel print a structured `engine_lacks_events` receipt and exit 1. |
 | `summer tool [name] [--args '<json>'] [--list]` | Run any tool with the MCP implementation; `--list` prints every slug. |
 | `summer help [command]` | Commander's built-in help. |
 

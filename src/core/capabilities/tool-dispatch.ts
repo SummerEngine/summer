@@ -20,8 +20,19 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
 import { EngineApiClient, EngineRebindError, type EngineSnapshot } from "../api-client.js";
-import { missingEngineOpResult, resolveSingleOnlyOps, type MissingOpResult } from "../capability-skew.js";
+import {
+  missingEngineEventsResult,
+  missingEngineOpResult,
+  resolveSingleOnlyOps,
+  type MissingOpResult,
+} from "../capability-skew.js";
 import { buildAgentPlaybook } from "./agent-playbook.js";
+import {
+  recentEvents,
+  recentEventsArgsSchema,
+  waitForEvent,
+  waitForEventArgsSchema,
+} from "./events.js";
 import { importResolvedAsset, type GatewayAsset } from "./asset-import.js";
 import {
   executeOpsChunked,
@@ -153,6 +164,28 @@ function requireSupportedOp<T>(result: T, op: string, fallback: string): T {
 /** Pre-flight refusal as a structured result (nothing was sent). */
 function refuseMissingOp(missing: MissingOpResult): never {
   throw new ToolResultError({ ...missing }, missing.error);
+}
+
+/** Events-channel pre-flight (a capability, not an op): refuse before sending
+ *  when /api/health lacks capabilities.events — the engine_lacks_events twin
+ *  of refuseMissingOp, printed whole by `summer tool`. */
+async function requireEventsChannel(ctx: ToolDispatchContext): Promise<EngineApiClient> {
+  const client = await ctx.engine();
+  const missing = missingEngineEventsResult(client);
+  if (missing) throw new ToolResultError({ ...missing }, missing.error);
+  return client;
+}
+
+/** A structured events failure (engine_lacks_events post-hoc, unknown_event_kind,
+ *  an identity_mismatch terminalState, a 503) is thrown as a ToolResultError so
+ *  `summer tool` prints the receipt rather than a flattened sentence. */
+function requireEventsSuccess<T extends { ok: boolean }>(result: T): T {
+  if (result.ok !== false) return result;
+  const record = result as unknown as Record<string, unknown>;
+  const message =
+    extractOpError(record) ??
+    (typeof record.error === "string" ? record.error : "Engine events request failed.");
+  throw new ToolResultError(record, message);
 }
 
 // ---------------------------------------------------------------------------
@@ -1182,6 +1215,18 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   entry("summer_api_docs", "Offline engine class-reference lookup (properties, methods, signals, constants)", false, async (args) =>
     lookupApiDocs(str(args, "class_name"), optStr(args, "member"))
   ),
+
+  // --- events (engine events channel; a capability, not an op) ---
+  entry("summer_wait_for_event", "Block until a matching engine event (play.started, op.applied by requestId, script.error, ...) arrives or the timeout elapses", true, async (args, ctx) => {
+    const parsed = parseToolArgs(waitForEventArgsSchema, args, "wait-for-event");
+    const client = await requireEventsChannel(ctx);
+    return requireEventsSuccess(await waitForEvent(client, parsed));
+  }),
+  entry("summer_recent_events", "Read the newest engine events in one zero-wait poll (and the next_seq cursor to wait from)", true, async (args, ctx) => {
+    const parsed = parseToolArgs(recentEventsArgsSchema, args, "recent-events");
+    const client = await requireEventsChannel(ctx);
+    return requireEventsSuccess(await recentEvents(client, parsed));
+  }),
 
   // --- perception ---
   entry("summer_world_snapshot", "Structured snapshot of the edited scene (transforms, AABBs, fingerprints, counts)", true, async (args, ctx) => {

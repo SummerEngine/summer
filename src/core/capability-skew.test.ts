@@ -3,9 +3,12 @@ import {
   CLI_KNOWN_OP_NEEDS,
   CLI_PROTOCOL_VERSION,
   buildCapabilitySkewWarning,
+  buildMissingEventsResult,
   buildMissingOpResult,
+  engineLacksEvents,
   engineLacksOp,
   isCapabilityPreflightDisabled,
+  missingEngineEventsResult,
   missingEngineOpResult,
   parseEngineCapabilities,
 } from "./capability-skew.js";
@@ -177,5 +180,84 @@ describe("SUMMER_CAPABILITY_PREFLIGHT=off escape hatch", () => {
     expect(buildCapabilitySkewWarning({ capabilities: { opKinds: ["AddNode"] } })).toContain("is set");
     process.env.SUMMER_CAPABILITY_PREFLIGHT = "on";
     expect(isCapabilityPreflightDisabled()).toBe(false);
+  });
+});
+
+describe("events channel capability (capabilities.events)", () => {
+  afterEach(() => {
+    delete process.env.SUMMER_CAPABILITY_PREFLIGHT;
+  });
+
+  it("parseEngineCapabilities keeps the events advert, typed, and treats an empty block as present", () => {
+    expect(
+      parseEngineCapabilities({
+        events: {
+          kinds: ["op.applied", 7, "play.started"],
+          ring: 512,
+          retainMs: 600000,
+          maxPayloadBytes: 4096,
+          sse: true,
+          poll: true,
+          maxStreams: 8,
+          heartbeatMs: 15000,
+          extra: "ignored",
+        },
+      })
+    ).toEqual({
+      events: {
+        kinds: ["op.applied", "play.started"],
+        ring: 512,
+        retainMs: 600000,
+        maxPayloadBytes: 4096,
+        sse: true,
+        poll: true,
+        maxStreams: 8,
+        heartbeatMs: 15000,
+      },
+    });
+    expect(parseEngineCapabilities({ events: {} })).toEqual({ events: {} });
+    expect(parseEngineCapabilities({ events: "yes" })).toBeUndefined();
+    expect(parseEngineCapabilities({ opKinds: ["AddNode"], events: null })).toEqual({ opKinds: ["AddNode"] });
+  });
+
+  it("engineLacksEvents: absence IS proof — no advert, or an advert without events", () => {
+    expect(engineLacksEvents(undefined)).toBe(true);
+    expect(engineLacksEvents(null)).toBe(true);
+    expect(engineLacksEvents({ opKinds: ["AddNode"], singleOnlyOps: ["SaveScene"] })).toBe(true);
+    expect(engineLacksEvents({ events: {} })).toBe(false);
+    expect(engineLacksEvents({ events: { kinds: ["play.started"] } })).toBe(false);
+  });
+
+  it("buildMissingEventsResult is the op-shaped refusal under its own failure_reason", () => {
+    const result = buildMissingEventsResult("0.5.70");
+    expect(result).toMatchObject({ ok: false, failure_reason: "engine_lacks_events", engine_version: "0.5.70" });
+    expect(result).not.toHaveProperty("op");
+    expect(result.error).toContain("engine version 0.5.70");
+    expect(result.error).toContain("capabilities.events");
+    expect(result.error).toContain("nothing was sent");
+    expect(result.error).toContain("Update Summer Engine");
+    expect(result.error).toContain("summer_is_running");
+    expect(result.error).toContain("SUMMER_CAPABILITY_PREFLIGHT=off");
+    expect(buildMissingEventsResult(null, "read the console").error).not.toContain("engine version");
+    expect(buildMissingEventsResult(null, "read the console").hint).toContain("read the console");
+  });
+
+  it("missingEngineEventsResult refuses without the advert, passes with it, and honours the escape hatch", () => {
+    const without = { getEngineCapabilities: () => ({ opKinds: ["AddNode"] }), getEngineVersion: () => "0.5.70" };
+    const withChannel = { getEngineCapabilities: () => ({ events: { kinds: ["play.started"] } }) };
+    expect(missingEngineEventsResult(without)?.failure_reason).toBe("engine_lacks_events");
+    expect(missingEngineEventsResult({})?.engine_version).toBeNull();
+    expect(missingEngineEventsResult(withChannel)).toBeNull();
+    process.env.SUMMER_CAPABILITY_PREFLIGHT = "off";
+    expect(missingEngineEventsResult(without)).toBeNull();
+  });
+
+  it("does not turn a missing events advert into an op-skew warning (events are a capability, not an op)", () => {
+    expect(
+      buildCapabilitySkewWarning({
+        capabilities: { protocolVersion: CLI_PROTOCOL_VERSION, opKinds: [...CLI_KNOWN_OP_NEEDS] },
+      })
+    ).toBeNull();
+    expect(buildCapabilitySkewWarning({ capabilities: { events: { kinds: ["play.started"] } } })).toBeNull();
   });
 });

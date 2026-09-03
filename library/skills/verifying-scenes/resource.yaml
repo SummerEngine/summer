@@ -1,6 +1,6 @@
 id: skill/verifying-scenes
 kind: skill
-version: 1.0.2
+version: 1.0.3
 summary: Prove scene work landed — snapshot before, diff + screenshot after, live runtime reads during playtests — before claiming any visual or structural result.
 use_when:
   - after any mutation batch, asset import, or lighting change, before claiming it worked
@@ -26,6 +26,8 @@ related:
     - tool/get-runtime-tree
     - tool/inspect-runtime-node
     - tool/screenshot
+    - tool/wait-for-event
+    - tool/recent-events
   skills:
     - skill/scene-scripting
     - skill/playtesting-a-feature

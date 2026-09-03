@@ -144,8 +144,8 @@
     {
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
-      "version": "1.0.2",
-      "content_hash": "530a4e7a7e01f9f20738e4e50983acb8c51d83596f5cb492bbf40e114b8f83ca",
+      "version": "1.0.3",
+      "content_hash": "812669e6f0831a4853b74ca306bc76f514336be8a295179ee9ec8392ac0482b2",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -1900,8 +1900,8 @@
     {
       "id": "skill/playtesting-a-feature",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "180a3d4dcd684293e7f1beb7ab1a5e3510b2d4c97465da03d2fc2700541b42ad",
+      "version": "1.0.2",
+      "content_hash": "05b68ba9324a9227ada7dbcfe9e6872334d194faf2deb1347a46f5b9e12b8258",
       "summary": "Before claiming a gameplay feature done: actually run the game and walk through the feature. Static diagnostics and type checks do not count.",
       "use_when": [
         "about to claim a gameplay feature is done, shipped, or working — requires actually running the game and walking through the feature first"
@@ -2971,8 +2971,8 @@
     {
       "id": "skill/verifying-scenes",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "888e2ec6a81474df304c21a57f7ce51a76ad4505b745dbc63e1985172d478615",
+      "version": "1.0.3",
+      "content_hash": "8fe17225ad067e8fe3b782756e11bb227d321bdfa47a48f594e94ca3ff982a16",
       "summary": "Prove scene work landed — snapshot before, diff + screenshot after, live runtime reads during playtests — before claiming any visual or structural result.",
       "use_when": [
         "after any mutation batch, asset import, or lighting change, before claiming it worked",
@@ -3001,7 +3001,9 @@
           "tool/snapshot-diff",
           "tool/get-runtime-tree",
           "tool/inspect-runtime-node",
-          "tool/screenshot"
+          "tool/screenshot",
+          "tool/wait-for-event",
+          "tool/recent-events"
         ],
         "skills": [
           "skill/scene-scripting",
@@ -5560,6 +5562,57 @@
       }
     },
     {
+      "id": "tool/recent-events",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "586be855460cfe4baabf79f4c086998a34853cfeb4ace2887e6bebb0f4dc1c57",
+      "summary": "Read the newest engine events (saves, plays, op receipts, script errors, imports) in one zero-wait poll — and the next_seq cursor to wait from.",
+      "use_when": [
+        "\"what just happened in the engine?\" / \"show me the recent events\" — the last saves, plays, op receipts, script errors, imports",
+        "taking a cursor BEFORE triggering an action you will wait on — pass its next_seq as `since` to summer_wait_for_event",
+        "after a summer_wait_for_event timeout, reading everything that arrived since its next_seq"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "runtime",
+          "verification",
+          "debug"
+        ],
+        "modalities": [
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/wait-for-event",
+          "tool/play",
+          "tool/run-script",
+          "tool/get-console"
+        ],
+        "skills": [
+          "skill/verifying-scenes",
+          "skill/playtesting-a-feature"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_recent_events",
+      "remote": false,
+      "cli_command": "summer events",
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
       "id": "tool/remove-node",
       "kind": "tool",
       "version": "1.0.1",
@@ -6238,6 +6291,59 @@
       "status": "preview",
       "mcp_tool_name": "summer_test_placement",
       "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/wait-for-event",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "88b2574f2876314344fab92a28ceecbacf554eaa7287af95f63e50a4ff7be482",
+      "summary": "Wait for an engine event — the game starting, an op finishing, a script error, a save — instead of sleeping and re-polling; honest timeout.",
+      "use_when": [
+        "\"wait for the game to start\" — right after summer_play, wait for play.started instead of guessing how long boot takes",
+        "\"wait for an event\" / \"tell me when the import finishes\" — block on op.applied / op.failed for one requestId, import.completed, or scene.saved after a long op",
+        "during a playtest, catching script.error the moment it fires instead of reading the console afterwards",
+        "any time you would otherwise sleep and re-check state — take a cursor with summer_recent_events first, then wait from it"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "runtime",
+          "verification",
+          "debug"
+        ],
+        "modalities": [
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/recent-events",
+          "tool/play",
+          "tool/is-running",
+          "tool/run-script",
+          "tool/get-debugger-errors"
+        ],
+        "skills": [
+          "skill/verifying-scenes",
+          "skill/playtesting-a-feature"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_wait_for_event",
+      "remote": false,
+      "cli_command": "summer events --follow",
       "authority": {
         "filesystem": false,
         "editor_mutation": false,

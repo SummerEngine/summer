@@ -133,7 +133,7 @@ Per-kind extensions (defined in the per-kind schemas):
   - `surfaces` — `mcp: {tool_name, remote}` (both **required**; `remote: true` = needs no local engine, eligible for the hosted stateless endpoint below) and/or `cli: {command}` (only the five tools with a dedicated command declare it; every tool is also reachable as `summer tool <slug>`).
   - `input_schema` — JSON Schema, what agents and the index read. Kept in agreement with the registered zod by the parity test (§3), not derived from it.
   - `authority` — the five booleans `filesystem`, `editor_mutation`, `network`, `credentials`, `publish`, all required. `filesystem: true` whenever the tool writes anything under the project or `~/.summer/` (screenshots, generated assets, publish audit rows included).
-  - `evidence_checks` — **optional** list of check names (31 of 69 tools carry it today).
+  - `evidence_checks` — **optional** list of check names (42 of 86 tools carry it today).
 
 MCP protocol posture: the local server stays stdio (unchanged in MCP v2, spec 2026-07-28); the SDK is kept on the v2-supporting major (`@modelcontextprotocol/sdk` ^1.30); no elicitation patterns. Engine-free tools (`mcp.remote: true`) may additionally be served by a hosted stateless Streamable-HTTP endpoint (`summerengine.com/mcp`) — a fast-follow, not built (ROADMAP §3.1).
 - **skill** (`skill.schema.json`): `recommended` (boolean, omitted = false) — the subset installed by `summer skills install --recommended` / `summer setup --recommended`. Plain `summer setup <agent>` installs **all** skills regardless of this flag.

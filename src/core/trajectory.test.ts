@@ -9,14 +9,18 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  isTrajectoryEvalMode,
   recordToolCall,
   redactTrajectoryArgs,
   registrationHasInputSchema,
+  summarizeToolResult,
+  TRAJECTORY_RESULT_FIELD_ALLOWLIST,
   trajectoryArgsFor,
 } from "./trajectory.js";
 
 let tempDirs: string[] = [];
 const originalEnv = process.env.SUMMER_TRAJECTORY_DIR;
+const originalEvalEnv = process.env.SUMMER_TRAJECTORY_EVAL;
 
 function makeDir(): string {
   const dir = mkdtempSync(join(tmpdir(), "summer-trajectory-"));
@@ -31,9 +35,18 @@ function readLines(dir: string): Array<Record<string, unknown>> {
     .map((line) => JSON.parse(line) as Record<string, unknown>);
 }
 
+function readFullLines(dir: string): Array<Record<string, unknown>> {
+  return readFileSync(join(dir, "trajectory.full.jsonl"), "utf-8")
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line) as Record<string, unknown>);
+}
+
 afterEach(() => {
   if (originalEnv === undefined) delete process.env.SUMMER_TRAJECTORY_DIR;
   else process.env.SUMMER_TRAJECTORY_DIR = originalEnv;
+  if (originalEvalEnv === undefined) delete process.env.SUMMER_TRAJECTORY_EVAL;
+  else process.env.SUMMER_TRAJECTORY_EVAL = originalEvalEnv;
   for (const dir of tempDirs) rmSync(dir, { recursive: true, force: true });
   tempDirs = [];
 });
@@ -131,6 +144,134 @@ describe("trajectory capture", () => {
     const lines = readLines(dir);
     expect(lines).toHaveLength(1);
     expect(lines[0]!.tool).toBe("summer_play");
+  });
+});
+
+describe("eval-mode full capture (SUMMER_TRAJECTORY_EVAL=1)", () => {
+  const bigSource = "func run(ctx):\n\tpass\n" + "#".repeat(600);
+  const mcpResult = {
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({
+          status: "ok",
+          results: [{ ok: true, op: "ScenePreview", framing: "camera", used_scene_camera: true, environment_used: "scene_world_environment", used_synthetic_camera: false, image_base64: "AAAA", secret_body: "never" }],
+          terminalState: "applied",
+        }),
+      },
+      { type: "image", data: Buffer.from("jpegbytes").toString("base64"), mimeType: "image/jpeg" },
+    ],
+  };
+
+  it("is off unless BOTH the directory and the flag are set", () => {
+    delete process.env.SUMMER_TRAJECTORY_DIR;
+    process.env.SUMMER_TRAJECTORY_EVAL = "1";
+    expect(isTrajectoryEvalMode()).toBe(false);
+    // The flag alone records nothing at all (capture itself is off).
+    expect(recordToolCall({ tool: "summer_run_script", args: { source: bigSource }, result: mcpResult })).toBe(false);
+
+    const dir = makeDir();
+    process.env.SUMMER_TRAJECTORY_DIR = dir;
+    delete process.env.SUMMER_TRAJECTORY_EVAL;
+    expect(isTrajectoryEvalMode()).toBe(false);
+    expect(recordToolCall({ tool: "summer_run_script", args: { source: bigSource }, result: mcpResult })).toBe(true);
+    // Default behavior unchanged: the redacted stream exists, the full one does not.
+    expect(readdirSync(dir)).toEqual(["trajectory.jsonl"]);
+    expect((readLines(dir)[0]!.argsRedacted as Record<string, unknown>).source).toBe(`[redacted ${bigSource.length} chars]`);
+  });
+
+  it("writes an unredacted sibling stream with a bounded result summary, leaving the redacted stream unchanged", () => {
+    const dir = makeDir();
+    process.env.SUMMER_TRAJECTORY_DIR = dir;
+    process.env.SUMMER_TRAJECTORY_EVAL = "1";
+    expect(isTrajectoryEvalMode()).toBe(true);
+
+    expect(
+      recordToolCall({
+        tool: "summer_screenshot",
+        args: { target: "scene", framing: "camera", note: bigSource },
+        terminalState: "applied",
+        durationMs: 42,
+        result: mcpResult,
+      })
+    ).toBe(true);
+
+    expect(readdirSync(dir).sort()).toEqual(["trajectory.full.jsonl", "trajectory.jsonl"]);
+    // Redacted stream: same record as without the flag.
+    const [redacted] = readLines(dir);
+    expect((redacted!.argsRedacted as Record<string, unknown>).note).toBe(`[redacted ${bigSource.length} chars]`);
+    expect(redacted!.result).toBeUndefined();
+
+    // Full stream: full args, summary only for the result.
+    const [full] = readFullLines(dir);
+    expect(full!.kind).toBe("tool_call");
+    expect(full!.tool).toBe("summer_screenshot");
+    expect((full!.args as Record<string, unknown>).note).toBe(bigSource);
+    const result = full!.result as Record<string, unknown>;
+    expect(result.ok).toBe(true);
+    expect(result.terminalState).toBe("applied");
+    expect(result.keys).toEqual(["status", "results", "terminalState"]);
+    expect(result.fields).toEqual({
+      framing: "camera",
+      used_scene_camera: true,
+      environment_used: "scene_world_environment",
+      used_synthetic_camera: false,
+    });
+    // Media by hash, never inline; no result bodies leak.
+    const media = result.media as Array<Record<string, unknown>>;
+    expect(media).toHaveLength(1);
+    expect(media[0]!.mime).toBe("image/jpeg");
+    expect(media[0]!.bytes).toBe(Buffer.byteLength("jpegbytes"));
+    expect(typeof media[0]!.sha256).toBe("string");
+    const line = readFileSync(join(dir, "trajectory.full.jsonl"), "utf-8");
+    expect(line).not.toContain("AAAA");
+    expect(line).not.toContain("secret_body");
+    expect(line).not.toContain("jpegbytes");
+    expect(full!.durationMs).toBe(42);
+  });
+
+  it("summarizes plain CLI-face results, counts errors/frame_warnings, and stays inside the allowlist", () => {
+    const summary = summarizeToolResult(
+      {
+        status: "ok",
+        results: [
+          {
+            ok: false,
+            op: "RunSceneScript",
+            rolled_back: true,
+            budget_exceeded: false,
+            errors: ["a", "b"],
+            results: { frame_warnings: ["w"] },
+            script_output_body: "x".repeat(1000),
+          },
+        ],
+      },
+      { ok: false, failureReason: "script_runtime_error" }
+    );
+    expect(summary.ok).toBe(false);
+    expect(summary.failureReason).toBe("script_runtime_error");
+    expect(summary.keys).toEqual(["status", "results"]);
+    expect(summary.fields).toEqual({ rolled_back: true, budget_exceeded: false, errors_count: 2, frame_warnings_count: 1 });
+    for (const key of Object.keys(summary.fields)) {
+      expect([...TRAJECTORY_RESULT_FIELD_ALLOWLIST, "errors_count", "frame_warnings_count"]).toContain(key);
+    }
+    expect(summary.media).toEqual([]);
+    // Non-JSON text and undefined results summarize to an empty shape, never throw.
+    expect(summarizeToolResult({ content: [{ type: "text", text: "plain prose" }] }, { ok: true })).toEqual({ ok: true, keys: [], fields: {}, media: [] });
+    expect(summarizeToolResult(undefined, { ok: true })).toEqual({ ok: true, keys: [], fields: {}, media: [] });
+  });
+
+  it("records a handler throw in the full stream with the unredacted message", () => {
+    const dir = makeDir();
+    process.env.SUMMER_TRAJECTORY_DIR = dir;
+    process.env.SUMMER_TRAJECTORY_EVAL = "1";
+    const message = "No main scene configured. " + "x".repeat(400);
+    expect(recordToolCall({ tool: "summer_open_main_scene", args: {}, exception: message })).toBe(true);
+    const [full] = readFullLines(dir);
+    expect((full!.result as Record<string, unknown>).ok).toBe(false);
+    expect((full!.result as Record<string, unknown>).errorClass).toBe("exception");
+    expect(full!.exception).toBe(message);
+    expect(readLines(dir)[0]!.exception).toBe(`[redacted ${message.length} chars]`);
   });
 });
 

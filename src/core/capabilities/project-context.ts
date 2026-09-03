@@ -19,6 +19,7 @@
 import { z } from "zod";
 import { EngineRebindError } from "../api-client.js";
 import { buildCapabilitySkewWarning } from "../capability-skew.js";
+import { isTrajectoryEvalMode } from "../trajectory.js";
 import {
   getProjectMemorySummary,
   type ProjectMemorySummary,
@@ -105,6 +106,9 @@ export interface ProjectContextPayload extends JsonRecord {
   rebindError?: string;
   projectMemory: ProjectMemorySummary;
   summerUpdateNotice: string | null;
+  /** Present (true) only while SUMMER_TRAJECTORY_DIR + SUMMER_TRAJECTORY_EVAL=1
+   *  make every tool call also land unredacted in trajectory.full.jsonl. */
+  trajectory_eval_mode?: true;
   guidance: string;
   fileEditingGuidance: string;
 }
@@ -312,6 +316,10 @@ export async function buildProjectContext(
     ...(rebindError ? { rebindError } : {}),
     projectMemory: getProjectMemorySummary(projectPath),
     summerUpdateNotice: extras.summerUpdateNotice ?? null,
+    // Eval-mode trajectory capture (unredacted trajectory.full.jsonl) is
+    // visible to the agent and to a human reading the transcript — on both
+    // faces, since both call this builder.
+    ...(isTrajectoryEvalMode() ? { trajectory_eval_mode: true as const } : {}),
     guidance: mainScene
       ? "Use `summer_open_scene` with `mainScene` if no scene is open."
       : "Main scene not found in project state. Open a known scene path explicitly.",

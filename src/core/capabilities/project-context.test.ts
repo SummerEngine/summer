@@ -192,6 +192,22 @@ describe("buildProjectContext", () => {
     expect(warnings).toEqual([payload.capabilitySkewWarning]);
   });
 
+  it("reports trajectory_eval_mode only while SUMMER_TRAJECTORY_DIR + SUMMER_TRAJECTORY_EVAL=1 are set (one flag, both faces)", async () => {
+    const saved = { dir: process.env.SUMMER_TRAJECTORY_DIR, eval: process.env.SUMMER_TRAJECTORY_EVAL };
+    try {
+      delete process.env.SUMMER_TRAJECTORY_DIR;
+      delete process.env.SUMMER_TRAJECTORY_EVAL;
+      expect(await buildProjectContext(fakeClient())).not.toHaveProperty("trajectory_eval_mode");
+      process.env.SUMMER_TRAJECTORY_DIR = makeProject();
+      expect(await buildProjectContext(fakeClient())).not.toHaveProperty("trajectory_eval_mode");
+      process.env.SUMMER_TRAJECTORY_EVAL = "1";
+      expect((await buildProjectContext(fakeClient())).trajectory_eval_mode).toBe(true);
+    } finally {
+      if (saved.dir === undefined) delete process.env.SUMMER_TRAJECTORY_DIR; else process.env.SUMMER_TRAJECTORY_DIR = saved.dir;
+      if (saved.eval === undefined) delete process.env.SUMMER_TRAJECTORY_EVAL; else process.env.SUMMER_TRAJECTORY_EVAL = saved.eval;
+    }
+  });
+
   it("the CLI face returns exactly the builder's payload (one behavior, two faces)", async () => {
     const client = fakeClient();
     const viaBuilder = await buildProjectContext(client, {}, { summerUpdateNotice: null });

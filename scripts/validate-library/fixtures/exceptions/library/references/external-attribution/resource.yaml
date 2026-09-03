@@ -6,7 +6,7 @@ use_when:
   - checking where a bundled asset came from
 facets:
   lifecycle: [build]
-  domains: [assets, licensing]
+  domains: [assets, meta]
   modalities: [docs]
 source: official
 license: MIT

@@ -6,7 +6,7 @@ use_when:
   - studying a working stylized outdoor scene
 facets:
   lifecycle: [build]
-  domains: [world, lighting]
+  domains: [world-building, lighting]
   modalities: [scenes]
 related:
   skills: [skill/create-environment-kit]

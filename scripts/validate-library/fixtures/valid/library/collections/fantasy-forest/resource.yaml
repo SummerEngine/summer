@@ -6,7 +6,7 @@ use_when:
   - dressing a fantasy forest scene
 facets:
   lifecycle: [build]
-  domains: [world, assets]
+  domains: [world-building, assets]
   modalities: [assets]
 source: official
 license: MIT

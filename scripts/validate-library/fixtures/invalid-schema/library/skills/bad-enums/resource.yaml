@@ -6,6 +6,8 @@ use_when:
   - testing schema violations
 facets:
   lifecycle: [shipit]
+  domains: [retro-vibes, scenes]
+  modalities: [hologram, scenes]
 source: official
 license: MIT
 status: beta

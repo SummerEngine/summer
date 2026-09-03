@@ -6,8 +6,8 @@ use_when:
   - wiring input actions
 facets:
   lifecycle: [build]
-  domains: [input]
-  modalities: [config]
+  domains: [gameplay, project]
+  modalities: [project]
 source: official
 license: MIT
 status: stable

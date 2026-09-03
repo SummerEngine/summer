@@ -66,6 +66,9 @@ function loadSchemas(schemasDir: string): { store: SchemaStore; allowedHosts: Al
     "template.schema.json",
     "collection.schema.json",
     "reference.schema.json",
+    // Controlled facet vocabularies (facets.domains / facets.modalities),
+    // reached from resource.schema.json via $ref "domains.json#/…".
+    "domains.json",
   ];
   for (const file of files) {
     const abs = path.join(schemasDir, file);

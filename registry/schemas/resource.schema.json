@@ -39,13 +39,15 @@
           "uniqueItems": true
         },
         "domains": {
+          "description": "Controlled vocabulary: every item must be listed in registry/schemas/domains.json (domains); grown only by PR to that file.",
           "type": "array",
-          "items": { "type": "string", "minLength": 1 },
+          "items": { "$ref": "domains.json#/domains" },
           "uniqueItems": true
         },
         "modalities": {
+          "description": "Controlled vocabulary: every item must be listed in registry/schemas/domains.json (modalities); grown only by PR to that file.",
           "type": "array",
-          "items": { "type": "string", "minLength": 1 },
+          "items": { "$ref": "domains.json#/modalities" },
           "uniqueItems": true
         }
       },

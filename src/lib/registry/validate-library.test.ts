@@ -58,12 +58,29 @@ describe("validate-library: schema violations", () => {
     ["example without evidence", /examples\/no-evidence.*missing required field "evidence"/],
     ["invalid lifecycle facet", /skills\/bad-enums.*lifecycle\[0\]: must be one of \["build","launch","grow","support"\]/],
     ["invalid status enum", /skills\/bad-enums.*status: must be one of \["stable","preview","deprecated"\]/],
+    ["domain token outside registry/schemas/domains.json", /skills\/bad-enums.*facets\.domains\[0\]: unknown domain "retro-vibes"; allowed: 2d, 3d, agent-workflow, .* \(add it to registry\/schemas\/domains\.json by PR\)/],
+    ["modality token outside registry/schemas/domains.json", /skills\/bad-enums.*facets\.modalities\[0\]: unknown modality "hologram"; allowed: 3d-models, animation, .* \(add it to registry\/schemas\/domains\.json by PR\)/],
     ["template commit not 40-hex", /templates\/bad-pin.*commit: must match pattern \^\[0-9a-f\]\{40\}\$/],
     ["template tree_digest not sha256", /templates\/bad-pin.*tree_digest: must match pattern/],
     ["template that is builtin AND pinned", /templates\/builtin-with-pin.*matches 2 of the allowed shapes \(oneOf\)/],
     ["stable collection item without sha256", /collections\/stable-no-sha.*items\[0\]: sha256 is required when status is "stable"/],
   ])("reports %s", (_name, pattern) => {
     expect(result.errors.some((e) => pattern.test(e))).toBe(true);
+  });
+
+  it("does not flag vocabulary tokens that are listed (bad-enums also carries \"scenes\" at index 1)", () => {
+    expect(result.errors.some((e) => /facets\.(domains|modalities)\[1\]/.test(e))).toBe(false);
+  });
+});
+
+describe("validate-library: controlled vocabularies (registry/schemas/domains.json)", () => {
+  const vocab = JSON.parse(fs.readFileSync(path.join(schemasDir, "domains.json"), "utf8")) as Record<string, unknown>;
+
+  it.each(["domains", "modalities"])("%s is a sorted, duplicate-free list of kebab-case tokens", (key) => {
+    const list = vocab[key] as string[];
+    expect(Array.isArray(list) && list.length > 0).toBe(true);
+    expect(list).toEqual([...new Set(list)].sort());
+    for (const token of list) expect(token).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
   });
 });
 

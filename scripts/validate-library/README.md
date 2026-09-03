@@ -67,6 +67,16 @@ What it checks:
    A resource may allowlist a rule with `lint_exceptions: [rule-id]` plus a
    mandatory `lint_exception_reason`; granted exceptions are printed loudly
    on every run.
+7. Controlled facet vocabularies: every `facets.domains` and
+   `facets.modalities` item must appear in `registry/schemas/domains.json`
+   (`domains` / `modalities` lists; per-token meaning in `notes`).
+   `resource.schema.json` reaches the lists via `$ref: "domains.json#/domains"`
+   — the strict validator treats a `$ref` that resolves to a JSON *array* as
+   "the value must be one of these members", so the vocabulary lives in one
+   plain, PR-reviewable file and is never duplicated into the schema. An
+   unknown token fails with
+   `unknown domain "retro-vibes"; allowed: … (add it to registry/schemas/domains.json by PR)`.
+   `facets.lifecycle` stays a fixed inline enum (build|launch|grow|support).
 
 Exit codes: 0 clean (including when `library/` does not exist yet), 1 on any
 violation. Requires Node >= 22.18 (native TypeScript type stripping); use

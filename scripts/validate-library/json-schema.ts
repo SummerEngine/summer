@@ -10,6 +10,12 @@
  * schema), unevaluatedProperties (false), dependentRequired, items, minItems,
  * maxItems, uniqueItems, pattern, minLength, maxLength, minProperties.
  * Ignored metadata: $id, $schema, title, description, comment, $defs.
+ *
+ * One deliberate extension: a $ref that resolves to a JSON *array* (not a
+ * schema object) is a controlled vocabulary — the value must equal one of its
+ * members. registry/schemas/domains.json holds these lists so the vocabulary
+ * stays a plain, PR-reviewable file rather than an enum duplicated into the
+ * schema; the error names the file to grow.
  */
 
 export interface SchemaError {
@@ -51,6 +57,24 @@ interface Ctx {
   doc: JsonSchema; // document root for "#/..." fragment refs
 }
 
+interface Vocabulary {
+  /** schema document the list lives in, e.g. "domains.json" */
+  file: string;
+  /** singular noun for messages, from the fragment's last segment: domains -> domain */
+  term: string;
+  values: string[];
+}
+
+type RefTarget =
+  | { kind: "schema"; schema: JsonSchema; doc: JsonSchema }
+  | { kind: "vocabulary"; vocabulary: Vocabulary };
+
+function singular(word: string): string {
+  if (word.endsWith("ies")) return `${word.slice(0, -3)}y`;
+  if (word.endsWith("s")) return word.slice(0, -1);
+  return word;
+}
+
 interface Result {
   errors: SchemaError[];
   /** Property names of `data` matched by properties/additionalProperties in
@@ -64,7 +88,7 @@ function typeOf(data: unknown): string {
   return typeof data; // object, string, number, boolean
 }
 
-function resolveRef(ref: string, ctx: Ctx): { schema: JsonSchema; doc: JsonSchema } {
+function resolveRef(ref: string, ctx: Ctx): RefTarget {
   let doc = ctx.doc;
   let fragment = "";
   let file = ref;
@@ -79,14 +103,27 @@ function resolveRef(ref: string, ctx: Ctx): { schema: JsonSchema; doc: JsonSchem
     doc = found;
   }
   let node: unknown = doc;
-  if (fragment !== "" && fragment !== "/") {
-    for (const part of fragment.replace(/^\//, "").split("/")) {
-      if (typeOf(node) !== "object") throw new Error(`schema $ref fragment not found: ${ref}`);
-      node = (node as Record<string, unknown>)[part];
+  const parts = fragment !== "" && fragment !== "/" ? fragment.replace(/^\//, "").split("/") : [];
+  for (const part of parts) {
+    if (typeOf(node) !== "object") throw new Error(`schema $ref fragment not found: ${ref}`);
+    node = (node as Record<string, unknown>)[part];
+  }
+  if (Array.isArray(node)) {
+    // Controlled vocabulary (see header): the list itself is the schema.
+    if (!node.every((v) => typeof v === "string")) {
+      throw new Error(`schema $ref vocabulary must be an array of strings: ${ref}`);
     }
+    return {
+      kind: "vocabulary",
+      vocabulary: {
+        file: file !== "" ? file : String(doc.$id ?? "schema"),
+        term: singular(parts[parts.length - 1] ?? "value"),
+        values: node as string[],
+      },
+    };
   }
   if (typeOf(node) !== "object") throw new Error(`schema $ref fragment not found: ${ref}`);
-  return { schema: node as JsonSchema, doc };
+  return { kind: "schema", schema: node as JsonSchema, doc };
 }
 
 function stableStringify(value: unknown): string {
@@ -116,10 +153,20 @@ function validateNode(data: unknown, schema: JsonSchema, path: string, ctx: Ctx)
   }
 
   if (typeof schema.$ref === "string") {
-    const { schema: target, doc } = resolveRef(schema.$ref, ctx);
-    const sub = validateNode(data, target, path, { store: ctx.store, doc });
-    errors.push(...sub.errors);
-    for (const p of sub.evaluated) evaluated.add(p);
+    const target = resolveRef(schema.$ref, ctx);
+    if (target.kind === "vocabulary") {
+      const { file, term, values } = target.vocabulary;
+      if (typeof data !== "string" || !values.includes(data)) {
+        errors.push({
+          path,
+          message: `unknown ${term} ${JSON.stringify(data)}; allowed: ${values.join(", ")} (add it to registry/schemas/${file} by PR)`,
+        });
+      }
+    } else {
+      const sub = validateNode(data, target.schema, path, { store: ctx.store, doc: target.doc });
+      errors.push(...sub.errors);
+      for (const p of sub.evaluated) evaluated.add(p);
+    }
   }
 
   if (Array.isArray(schema.allOf)) {

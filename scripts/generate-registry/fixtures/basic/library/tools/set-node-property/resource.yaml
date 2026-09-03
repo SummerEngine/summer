@@ -8,7 +8,7 @@ do_not_use_when:
   - creating new nodes
 facets:
   lifecycle: [build]
-  domains: [scene, editor]
+  domains: [scenes, editor]
   modalities: [scenes]
 compatibility:
   engine: ">=4.6"

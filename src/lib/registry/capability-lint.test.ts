@@ -104,7 +104,8 @@ describe("json-schema mini validator: strictness", () => {
 describe("repo-lint: tool.schema.json: surfaces.mcp.remote", () => {
   function loadStore(): SchemaStore {
     const store: SchemaStore = new Map();
-    for (const file of ["resource.schema.json", "tool.schema.json"]) {
+    // domains.json carries the facet vocabularies that resource.schema.json $refs.
+    for (const file of ["resource.schema.json", "tool.schema.json", "domains.json"]) {
       store.set(file, JSON.parse(fs.readFileSync(path.join(schemasDir, file), "utf8")) as JsonSchema);
     }
     return store;

@@ -6,7 +6,7 @@ use_when:
   - testing the registry compiler
 facets:
   lifecycle: [build]
-  domains: [testing]
+  domains: [meta, verification]
 compatibility:
   engine: ">=4.6"
 related:

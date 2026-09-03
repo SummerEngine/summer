@@ -136,6 +136,8 @@ is the smoke test. Two shapes, depending on what the engine advertises:
 
 `SUMMER_CAPABILITY_PREFLIGHT=off` (in the shell for the CLI, in the MCP server's env for an agent) skips the pre-flight and lets the engine answer — for an engine build that implements an op it does not advertise yet. With it set, the first shape turns into the second.
 
+The other two — `wait-for-event` and `recent-events` (and the `summer events` command) — need the engine **events channel** (`capabilities.events` in `/api/health`, `GET /api/events/poll`; engine PR #156 follow-up commits) rather than an op. Without it they return `failure_reason: "engine_lacks_events"` before sending anything, on both faces; with the same escape hatch set, the poll is sent and the engine's 404 is rewritten into the same shape.
+
 Unblocked by engine PRs **SummerEngine/SummerEngine #155** (headless worker) and **#156** (scene scripting); the four spatial tools additionally need the world-tool engine half (`docs/design/ROADMAP.md`) and `starcast` needs **#147**. Until those merge, a `worked` outcome for any of these is impossible — record `engine_lacks_op` as the expected result, not a failure.
 
 `SUMMER_HEADLESS_ROUTING=1` (route tool calls to a headless worker when no editor has the project open) needs the worker build from #155. Without it the flag does nothing. With a worker binary: `SUMMER_ENGINE_BIN=/path/to/Summer npx vitest run src/core/headless/worker-integration.test.ts` (`docs/HEADLESS_ROUTING.md`).

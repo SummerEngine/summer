@@ -266,4 +266,13 @@ describe("WorkerEngineClient capability getters (EngineApiClient parity)", () =>
     const thrown = await client.inspectNode("/root").catch((error: unknown) => error);
     expect((thrown as Record<PropertyKey, unknown>)[Symbol.for("summer.thrownErrorClass")]).toBe("unsupported");
   });
+
+  it("pollEvents (the editor's events channel) is unsupported headless — tagged, never faked", async () => {
+    worker = await startFakeWorker({ token: "secret" });
+    const { client, connection } = await connectedClient(worker);
+    cleanup = () => connection.close();
+    const thrown = await client.pollEvents({ wait: 0 }).catch((error: unknown) => error);
+    expect((thrown as Error).message).toContain("pollEvents");
+    expect((thrown as Record<PropertyKey, unknown>)[Symbol.for("summer.thrownErrorClass")]).toBe("unsupported");
+  });
 });

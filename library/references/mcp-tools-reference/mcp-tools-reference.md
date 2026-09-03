@@ -17,7 +17,7 @@
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (71 tools)
+## Tool surface (73 tools)
 
 ### Project files (3)
 
@@ -103,6 +103,13 @@ Bounded spatial evidence for deliberate 3D arrangement. All five take exact `sce
 | `summer_play` | Run the game. |
 | `summer_stop` | Stop the running game. |
 | `summer_is_running` | Check play state before deciding to call `summer_stop`. |
+
+### Events (2)
+
+| Tool | Use |
+|---|---|
+| `summer_wait_for_event` | Block until a matching engine event arrives — `play.started` after `summer_play`, `op.applied` / `op.failed` for one `requestId` after a long op, `script.error` during a playtest, `scene.saved`, `import.completed` — or the timeout elapses (default 30 s, max 120). Returns the events, `next_seq`, and an honest `timed_out`; never claim an event you did not receive. Take a cursor with `summer_recent_events` first so a moment that arrives immediately is not missed. Preview: engines without the events channel return `engine_lacks_events`. |
+| `summer_recent_events` | The newest engine events (or everything after `since`) in one zero-wait read; its `next_seq` is the `since` cursor to hand `summer_wait_for_event` before triggering the action you will wait on. Shell twin: `summer events [--follow]`. |
 
 ### Visual capture (1)
 

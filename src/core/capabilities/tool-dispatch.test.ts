@@ -570,3 +570,108 @@ describe("engine failures exit 1 on the CLI face exactly when the MCP face sets 
     });
   });
 });
+
+describe("events dispatch entries (wait-for-event, recent-events)", () => {
+  const withChannel = {
+    getEngineCapabilities: () => ({
+      events: { kinds: ["op.applied", "op.failed", "script.error", "play.started", "scene.saved"] },
+    }),
+    getEngineVersion: () => "0.6.0",
+  };
+
+  it("registers both as engine-required with the canonical slugs", () => {
+    expect(resolveToolDispatch("wait-for-event")?.name).toBe("summer_wait_for_event");
+    expect(resolveToolDispatch("summer_recent_events")?.slug).toBe("recent-events");
+    expect(resolveToolDispatch("wait-for-event")?.engineRequired).toBe(true);
+    expect(resolveToolDispatch("recent-events")?.engineRequired).toBe(true);
+  });
+
+  it("refuses BEFORE sending with the structured engine_lacks_events receipt when the advert lacks events", async () => {
+    const { ctx, calls } = fakeEngineContext({
+      getEngineCapabilities: () => ({ opKinds: ["AddNode"], singleOnlyOps: ["SaveScene"] }),
+      getEngineVersion: () => "0.5.70",
+      pollEvents: async () => {
+        throw new Error("must not be called");
+      },
+    });
+    for (const slug of ["wait-for-event", "recent-events"]) {
+      const failure = await dispatchTool(slug, {}, ctx).catch((error: unknown) => error);
+      expect(failure, slug).toBeInstanceOf(ToolResultError);
+      const { result, message } = failure as ToolResultError;
+      expect(result).toMatchObject({ ok: false, failure_reason: "engine_lacks_events", engine_version: "0.5.70" });
+      expect(result).not.toHaveProperty("op");
+      expect(message).toContain("does not expose the events channel");
+      expect(message).toContain("nothing was sent");
+    }
+    // A client with no capability getter at all (very old engine) is refused too.
+    const bare = fakeEngineContext();
+    await expect(dispatchTool("wait-for-event", {}, bare.ctx)).rejects.toBeInstanceOf(ToolResultError);
+    expect(calls).toEqual([]);
+  });
+
+  it("wait-for-event long-polls through pollEvents, chains next_seq, and returns the matched event", async () => {
+    const pages = [
+      { ok: true, events: [], next_seq: 9, since: 9, timed_out: true },
+      { ok: true, events: [{ seq: 10, kind: "play.started", ts: 1, data: { scene: "res://main.tscn" } }], next_seq: 10, timed_out: false },
+    ];
+    let index = 0;
+    const { ctx, calls } = fakeEngineContext({
+      ...withChannel,
+      pollEvents: async (...args: unknown[]) => {
+        calls.push({ method: "pollEvents", args });
+        return pages[Math.min(index++, pages.length - 1)];
+      },
+    });
+    const result = (await dispatchTool("wait-for-event", { kinds: ["play.started"], timeout_seconds: 30 }, ctx)) as Record<string, unknown>;
+    expect(result).toMatchObject({ ok: true, matched: true, next_seq: 10, since: 9, timed_out: false, polls: 2 });
+    expect(calls.map((call) => call.method)).toEqual(["pollEvents", "pollEvents"]);
+    expect(calls[0]!.args[0]).toMatchObject({ kinds: ["play.started"], limit: 20 });
+    expect((calls[0]!.args[0] as { wait: number }).wait).toBeLessThanOrEqual(25_000);
+    expect(calls[1]!.args[0]).toMatchObject({ since: 9 });
+  });
+
+  it("validates events arguments with the shared zod schema before touching the engine", async () => {
+    const { ctx, calls } = fakeEngineContext(withChannel);
+    await expect(dispatchTool("wait-for-event", { since: -1 }, ctx)).rejects.toThrow(/Invalid arguments for wait-for-event: since/);
+    await expect(dispatchTool("wait-for-event", { kinds: "play.started" }, ctx)).rejects.toThrow(/Invalid arguments for wait-for-event: kinds/);
+    await expect(dispatchTool("recent-events", { limit: 1.5 }, ctx)).rejects.toThrow(/Invalid arguments for recent-events: limit/);
+    expect(calls).toEqual([]);
+  });
+
+  it("structured failures from the shared implementation are thrown as ToolResultError receipts", async () => {
+    const unknownKind = fakeEngineContext({ ...withChannel, pollEvents: async () => ({ ok: true, events: [] }) });
+    const failure = await dispatchTool("wait-for-event", { kinds: ["game.booted"] }, unknownKind.ctx).catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(ToolResultError);
+    expect((failure as ToolResultError).result).toMatchObject({ failure_reason: "unknown_event_kind", unknown_kinds: ["game.booted"] });
+
+    const mismatch = fakeEngineContext({
+      ...withChannel,
+      pollEvents: async () => ({ ok: false, http_status: 409, terminalState: "identity_mismatch", errorClass: "rejected_identity" }),
+    });
+    const rejected = await dispatchTool("recent-events", { since: 3 }, mismatch.ctx).catch((error: unknown) => error);
+    expect(rejected).toBeInstanceOf(ToolResultError);
+    expect((rejected as ToolResultError).result).toMatchObject({ terminalState: "identity_mismatch" });
+    expect((rejected as ToolResultError).message).toContain("identity_mismatch");
+  });
+
+  it("recent-events reads the newest window with two zero-wait polls when since is omitted", async () => {
+    const pages = [
+      { ok: true, events: [], next_seq: 100, last_seq: 100, since: 100 },
+      { ok: true, events: [{ seq: 100, kind: "scene.saved", data: { path: "res://a.tscn", by: "human" } }], next_seq: 100, last_seq: 100, since: 95 },
+    ];
+    let index = 0;
+    const { ctx, calls } = fakeEngineContext({
+      ...withChannel,
+      pollEvents: async (...args: unknown[]) => {
+        calls.push({ method: "pollEvents", args });
+        return pages[Math.min(index++, pages.length - 1)];
+      },
+    });
+    const result = (await dispatchTool("recent-events", { limit: 5 }, ctx)) as Record<string, unknown>;
+    expect(result).toMatchObject({ ok: true, count: 1, next_seq: 100, since: 95, window: "newest" });
+    expect(calls.map((call) => call.args[0])).toEqual([
+      { wait: 0, limit: 1 },
+      { since: 95, kinds: undefined, wait: 0, limit: 5 },
+    ]);
+  });
+});

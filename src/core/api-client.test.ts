@@ -661,3 +661,82 @@ describe("EngineApiClient — See-Work Loop P5 capture additions", () => {
     }
   });
 });
+
+describe("EngineApiClient — events channel (GET /api/events/poll)", () => {
+  const scoped = () =>
+    new EngineApiClient(6550, "test-token", {
+      instanceId: "engine-a",
+      projectId: "project-a",
+      projectIdHash: "hash-a",
+    });
+
+  it("sends since/kinds/wait/limit as query params alongside the bound identity and returns the envelope", async () => {
+    const seen: string[] = [];
+    let method = "";
+    vi.stubGlobal("fetch", (input: unknown, init?: { method?: string }) => {
+      seen.push(String(input));
+      method = init?.method ?? "GET";
+      return Promise.resolve(
+        json({ ok: true, events: [{ seq: 42, kind: "play.started", ts: 1, data: {} }], next_seq: 42, last_seq: 42, since: 41, truncated: false, timed_out: false })
+      );
+    });
+
+    const page = (await scoped().pollEvents({ since: 41, kinds: ["play.started", "script.error"], wait: 25_000, limit: 20 })) as Record<string, unknown>;
+    expect(method).toBe("GET");
+    const url = new URL(seen[0]!);
+    expect(url.pathname).toBe("/api/events/poll");
+    expect(url.searchParams.get("since")).toBe("41");
+    expect(url.searchParams.get("kinds")).toBe("play.started,script.error");
+    expect(url.searchParams.get("wait")).toBe("25000");
+    expect(url.searchParams.get("limit")).toBe("20");
+    expect(url.searchParams.get("instanceId")).toBe("engine-a");
+    expect(url.searchParams.get("projectId")).toBe("project-a");
+    expect(url.searchParams.get("projectIdHash")).toBe("hash-a");
+    expect(url.searchParams.get("projectIdentityVersion")).toBe("1");
+    expect(page.next_seq).toBe(42);
+    expect((page.events as unknown[]).length).toBe(1);
+  });
+
+  it("omits absent parameters (live-only poll with engine defaults)", async () => {
+    const seen: string[] = [];
+    mockFetch((url) => {
+      seen.push(url);
+      return json({ ok: true, events: [], next_seq: 7, timed_out: true });
+    });
+    await client().pollEvents();
+    const url = new URL(seen[0]!);
+    expect(url.pathname).toBe("/api/events/poll");
+    for (const key of ["since", "kinds", "wait", "limit"]) expect(url.searchParams.has(key), key).toBe(false);
+  });
+
+  it("returns a 404 (no channel on this build) as a structured failure instead of throwing", async () => {
+    mockFetch(() => new Response("not found", { status: 404 }));
+    const failure = (await client().pollEvents({ wait: 0 })) as Record<string, unknown>;
+    expect(failure).toMatchObject({ ok: false, http_status: 404 });
+    expect(String(failure.error)).toContain("Engine API error 404");
+  });
+
+  it("returns a 409 identity_mismatch body structured, keeping the engine's terminalState for classification", async () => {
+    mockFetch(() => json({ terminalState: "identity_mismatch", errorClass: "rejected_identity" }, 409));
+    const failure = (await client().pollEvents({ since: 1 })) as Record<string, unknown>;
+    expect(failure).toEqual({
+      ok: false,
+      terminalState: "identity_mismatch",
+      errorClass: "rejected_identity",
+      http_status: 409,
+    });
+  });
+
+  it("returns a 503 (bus not started) structured and throws on anything else, so a stale token still reconnects", async () => {
+    mockFetch(() => json({ error: "event bus not started" }, 503));
+    expect(await client().pollEvents()).toMatchObject({ ok: false, http_status: 503, error: "event bus not started" });
+
+    mockFetch(() => new Response("unauthorized", { status: 401 }));
+    await expect(client().pollEvents()).rejects.toThrow(/Engine API error 401/);
+  });
+
+  it("names the request when a 200 carries a non-JSON body", async () => {
+    mockFetch(() => new Response("<html>proxy</html>", { status: 200 }));
+    await expect(client().pollEvents()).rejects.toThrow(/non-JSON response for GET \/api\/events\/poll/);
+  });
+});

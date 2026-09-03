@@ -56,6 +56,16 @@ The edited scene is not the running game. While the game runs:
 
 Inspect live instead of stopping the game — stopping usually resets the bug you are chasing. `game_not_running` means exactly that: `summer_play`, then re-run. For input-driven proof, climb to a RunVerification probe (see the playbook's `rawOpsViaBatch`).
 
+### Waiting for engine moments
+
+When the next step depends on the engine reaching a moment — the game booting after `summer_play`, a long import finishing, a save landing — wait for the event instead of sleeping and re-polling:
+
+1. `summer_recent_events` first: note its `next_seq`. Events are delivered live from a cursor, so one taken BEFORE the trigger is the only way not to miss a moment that arrives immediately.
+2. Trigger (`summer_play`, the import, the save).
+3. `summer_wait_for_event since:<next_seq> kinds:["play.started"]` — or `["import.completed"]`, `["scene.saved"]`, `["op.applied","op.failed"]` with `match:{requestId}`. During a playtest, wait on `script.error` to catch runtime script errors as they fire.
+
+`timed_out: true` means no matching event arrived — not that the thing did not happen. Verify with `summer_is_running` / diagnostics, and never claim an event you did not receive. Engines without the events channel return `engine_lacks_events`; fall back to the reads above.
+
 ## Honest-claim rules
 
 - Claim only what a diff, frame, or diagnostics call **proved**, and cite it: "the diff shows 40 trees added; the camera-framing screenshot shows them lit on the terrain."
@@ -72,6 +82,7 @@ Inspect live instead of stopping the game — stopping usually resets the bug yo
 | "The diff is probably fine, the script said ok" | `ok:true` scripts still drop unowned nodes on save. Read the diff. |
 | Judging lighting from an iso/top framing | Flat substitute environment. Use `framing:"camera"`, boot the game, or a probe. |
 | Stopping the game to inspect a runtime bug | The stop resets the state. Use the runtime reads first. |
+| Sleeping a guessed delay after `summer_play` or a long op | Boot and import times vary. Wait for `play.started` / `op.applied` with `summer_wait_for_event`, or confirm with `summer_is_running`. |
 | "Looks great!" with no capture in the transcript | Fabrication. Capture, look, then claim. |
 
 **Related skills:** `scene-scripting` carries the mutation loop and ctx API this discipline wraps; `playtesting-a-feature` and `verification-before-completion` carry the broader done-claiming rules.

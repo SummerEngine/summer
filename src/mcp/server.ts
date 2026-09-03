@@ -42,6 +42,22 @@ let processDiagnosticsInstalled = false;
 export const getCachedBootDriftNotice = getCachedNotice;
 
 /**
+ * Server `instructions` in the MCP initialize response (SDK ServerOptions,
+ * @modelcontextprotocol/sdk >= 1.x). Hosts hand this to the model once per
+ * session, before any tool call — the place for the five habits the E2E run
+ * (docs/design/E2E-2026-09-03.md, F-17) showed an agent needs on the first
+ * turn and would otherwise learn the hard way. Kept under 600 characters so
+ * it costs a few hundred tokens once; the full operating guide stays in the
+ * summer_agent_playbook prompt / summer_get_agent_playbook tool.
+ */
+export const SUMMER_MCP_INSTRUCTIONS =
+  "Summer Engine MCP. Call summer_get_project_context first: it binds this session to the open project and returns mainScene, projectMemory (GameSoul, template pin) and any capabilitySkewWarning. " +
+  "Before building or fixing, summer_search_library then summer_read_library the hit — skills, examples and templates live there. " +
+  "After a playthrough read summer_get_diagnostics, not summer_get_console alone (runtime errors live in the debugger). " +
+  "A uniformly black screenshot means the viewport had not redrawn — recapture before concluding. " +
+  "Report entries you verified in-engine via summer_library_feedback.";
+
+/**
  * Fire-and-forget probe of the npm registry on MCP boot. Caches the result for
  * the session. We never await this in startup so a slow / offline registry
  * never blocks tool registration. Tools that surface the notice should call
@@ -323,10 +339,13 @@ export function createMcpServer(): {
   server: McpServer;
   getRegisteredToolCount: () => number;
 } {
-  const server = new McpServer({
-    name: "summer-engine",
-    version,
-  });
+  const server = new McpServer(
+    {
+      name: "summer-engine",
+      version,
+    },
+    { instructions: SUMMER_MCP_INSTRUCTIONS }
+  );
 
   // Passive observability: log result-size to stderr but do not modify
   // results. See installResultSizeLogger above.

@@ -526,7 +526,7 @@
     {
       "id": "skill/scene-scripting",
       "name": "scene-scripting",
-      "description": "Use when building or modifying a scene takes more than a couple of node/property calls — scattering instances, procedural meshes, booleans/lathe/sweep geometry, terrain, GridMap fills, lighting rigs, keyframe animation, shader FX, or anything with computed placement. Runs one GDScript inside the live editor via summer_run_script instead of long CRUD chains, verifies with summer_snapshot_diff + summer_screenshot, and checks API names with summer_api_docs instead of guessing.",
+      "description": "Use when building or modifying a scene takes more than a couple of node/property calls — scattering instances, procedural meshes, booleans/lathe/sweep geometry, terrain, GridMap fills, lighting rigs, keyframe animation, shader FX, 2D levels (tilemaps, sprites, bodies, cameras, parallax), HUDs and Control trees, persisted signal wiring, attached scripts, prefabs, input actions/autoloads/main scene, or anything with computed placement. Runs one GDScript inside the live editor via summer_run_script instead of long CRUD chains, verifies with summer_snapshot_diff + summer_screenshot, and checks API names with summer_api_docs instead of guessing.",
       "clients": "all",
       "recommended": true,
       "status": "preview",

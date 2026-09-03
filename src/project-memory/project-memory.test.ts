@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { getProjectMemorySummary } from "./project-memory.js";
+import { formatProjectPin, getProjectMemorySummary } from "./project-memory.js";
 
 let tempDirs: string[] = [];
 
@@ -99,5 +99,73 @@ stable: true
     expect(paths).toContain(".summer/GameSoul.md");
     expect(paths).not.toContain(".summer/skills/fps-controller/SKILL.md");
     expect(paths).not.toContain(".summer/local/notes.md");
+  });
+});
+
+describe("the template pin as project memory (.summer/project.json)", () => {
+  it("is null without a manifest and absent-summary safe", () => {
+    const project = makeProject();
+    write(project, ".summer/GameSoul.md", "# Soul\n");
+    const summary = getProjectMemorySummary(project);
+    expect(summary.present).toBe(true);
+    expect(summary.pin).toBeNull();
+    expect(summary).not.toHaveProperty("pinError");
+    expect(getProjectMemorySummary(null).pin).toBeNull();
+    expect(formatProjectPin(null)).toBeNull();
+  });
+
+  it("surfaces template id/version/commit/digest, toolkit and engine versions, and created_at", () => {
+    const project = makeProject();
+    write(
+      project,
+      ".summer/project.json",
+      JSON.stringify({
+        template: {
+          id: "template/2d-platformer",
+          version: "1.0.0",
+          repo: "https://github.com/SummerEngine/template-2d-platformer",
+          commit: "66fc71b8edcd1c7023b890c7c0ef7cc55d80748e",
+          tree_digest: "76ac4aee9a8a9d4d9ced0a3bc7b0cab76a4fc6eefd04403df967890c05a34c6c",
+        },
+        toolkit_version: "2.8.2",
+        created_at: "2026-09-03T16:45:18.505Z",
+      })
+    );
+    const summary = getProjectMemorySummary(project);
+    expect(summary.present).toBe(true);
+    expect(summary.files).toEqual([]);
+    expect(summary.pin).toEqual({
+      path: ".summer/project.json",
+      template: {
+        id: "template/2d-platformer",
+        version: "1.0.0",
+        repo: "https://github.com/SummerEngine/template-2d-platformer",
+        commit: "66fc71b8edcd1c7023b890c7c0ef7cc55d80748e",
+        tree_digest: "76ac4aee9a8a9d4d9ced0a3bc7b0cab76a4fc6eefd04403df967890c05a34c6c",
+      },
+      toolkit_version: "2.8.2",
+      engine_version: null,
+      created_at: "2026-09-03T16:45:18.505Z",
+    });
+    expect(formatProjectPin(summary.pin)).toBe("template/2d-platformer@1.0.0 (66fc71b8edcd)");
+  });
+
+  it("formats a builtin pin and reports an unreadable manifest instead of throwing", () => {
+    expect(
+      formatProjectPin({
+        path: ".summer/project.json",
+        template: { id: "template/blank-3d", version: "1.2.0", builtin: true },
+        toolkit_version: "2.8.2",
+        engine_version: "0.5.65",
+        created_at: null,
+      })
+    ).toBe("template/blank-3d@1.2.0 (builtin)");
+
+    const project = makeProject();
+    write(project, ".summer/project.json", "{ not json");
+    const summary = getProjectMemorySummary(project);
+    expect(summary.present).toBe(true);
+    expect(summary.pin).toBeNull();
+    expect(summary.pinError).toMatch(/not valid JSON/);
   });
 });

@@ -7,6 +7,11 @@ import {
   statSync,
 } from "node:fs";
 import { join, relative, sep } from "node:path";
+import {
+  PROJECT_MANIFEST_RELPATH,
+  readProjectManifest,
+  type ProjectTemplateRecord,
+} from "./project-manifest.js";
 
 export interface ProjectMemoryFileSummary {
   path: string;
@@ -17,10 +22,31 @@ export interface ProjectMemoryFileSummary {
   locked: boolean;
 }
 
+/**
+ * The template pin `summer create` records in `.summer/project.json`
+ * (CONTRACT.md §8): which template, at which commit, started this project,
+ * plus the toolkit (and, when known, engine) version that created it. It is
+ * project memory — the first fact a fresh agent needs — so it is surfaced
+ * next to GameSoul/build-plan instead of being a file nobody reads.
+ */
+export interface ProjectPinSummary {
+  /** Project-relative path of the manifest. */
+  path: string;
+  template: ProjectTemplateRecord | null;
+  toolkit_version: string | null;
+  engine_version: string | null;
+  created_at: string | null;
+}
+
 export interface ProjectMemorySummary {
   present: boolean;
   root: ".summer";
   reason?: string;
+  /** `.summer/project.json`, or null when the project has no pin (created
+   *  outside `summer create`). */
+  pin: ProjectPinSummary | null;
+  /** Set when project.json exists but could not be read as a JSON object. */
+  pinError?: string;
   canonical: {
     gameSoul: ProjectMemoryFileSummary | null;
     artBible: ProjectMemoryFileSummary | null;
@@ -87,10 +113,13 @@ export function getProjectMemorySummary(
     ? scanMarkdownFiles(projectPath, memoryDir, maxFiles)
     : [];
   const indexPath = join(projectPath, ".summer", "memory", "index.json");
+  const { pin, pinError } = readProjectPin(projectPath);
 
   return {
     present: true,
     root: ".summer",
+    pin,
+    ...(pinError ? { pinError } : {}),
     canonical,
     structured: {
       present: existsSync(memoryDir),
@@ -106,10 +135,56 @@ export function getProjectMemorySummary(
   };
 }
 
+/** The manifest as memory. A missing file is a null pin (not an error); an
+ *  unreadable one is reported, never thrown — a summary must not fail
+ *  because one file is corrupt. */
+function readProjectPin(projectPath: string): {
+  pin: ProjectPinSummary | null;
+  pinError?: string;
+} {
+  let manifest;
+  try {
+    manifest = readProjectManifest(projectPath);
+  } catch (error) {
+    return {
+      pin: null,
+      pinError: error instanceof Error ? error.message : String(error),
+    };
+  }
+  if (!manifest) return { pin: null };
+  const template = manifest.template;
+  const templateRecord =
+    template && typeof template === "object" && typeof template.id === "string"
+      ? (template as ProjectTemplateRecord)
+      : null;
+  return {
+    pin: {
+      path: PROJECT_MANIFEST_RELPATH,
+      template: templateRecord,
+      toolkit_version:
+        typeof manifest.toolkit_version === "string" ? manifest.toolkit_version : null,
+      engine_version:
+        typeof manifest.engine_version === "string" ? manifest.engine_version : null,
+      created_at: typeof manifest.created_at === "string" ? manifest.created_at : null,
+    },
+  };
+}
+
+/** One line for status/doctor output: `template/<id>@<version>` (+ `builtin`
+ *  or the short commit), or null when the project has no pin. */
+export function formatProjectPin(pin: ProjectPinSummary | null): string | null {
+  if (!pin) return null;
+  if (!pin.template) return `pin without template (${pin.path})`;
+  const template = pin.template;
+  const origin = "builtin" in template ? "builtin" : template.commit.slice(0, 12);
+  return `${template.id}@${template.version} (${origin})`;
+}
+
 function createEmptySummary(): ProjectMemorySummary {
   return {
     present: false,
     root: ".summer",
+    pin: null,
     canonical: {
       gameSoul: null,
       artBible: null,

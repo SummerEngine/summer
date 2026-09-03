@@ -28,7 +28,9 @@ Waves; each gated by tsc + vitest + validate-library:
 10. ✅ Feedback mailbox v1 (+ agent_model/client attribution): `summer_library_feedback` MCP tool (agent repo) + `/api/mcp/library-feedback` route + append-only table (web repo; table via Supabase direct SQL — Drizzle migrator history is unreliable; API-writes only, no anon insert policy, capped fields) + first-run telemetry notice + `SUMMER_NO_TELEMETRY` / `DO_NOT_TRACK`.
 11. ✅ Full verify (tsc clean, 560/560, parity no-drift, npm pack verified) + branch pushed. PR open for Mathias sign-off.
 
-**Human-gated actions (Mathias only):** merge the PR; npm publish 3.0.0; GitHub repo rename → `summer` + org casing → `summerengine` (do both together when the new README lands); web-repo rename copy pass (one constant `src/lib/data/agent-guides.ts` + ~25 hard-coded spots: 6× i18n `home.json` L119, 3 blog MDX + 15 translations, `source-status/page.tsx` L7, Docs/plans).
+**Ship posture for the hackathon (Sat 2026-09-06), recommended 2026-09-03:** do NOT flip `latest` before the event. Publish v3 as `npm publish --tag next` so `npx -y summer-engine@next` exists for team dogfooding Thu/Fri while participants stay on stable 2.8.2 (`@latest`). The 57 engine tools work on the shipped engine 0.5.65 (live-verified); the 11 gated tools need engine PRs #147/#155/#156/#158 built + merged + a new engine release — none built yet. Flip `latest` after a real end-to-end dogfood session (Claude Code + a game build) and ideally one Windows check; the flip is one `npm dist-tag add` away.
+
+**Human-gated actions (Mathias only):** merge the PR; npm publish 3.0.0 (`next` first, then `latest`); GitHub repo rename → `summer` + org casing → `summerengine` (do both together when the new README lands); web-repo rename copy pass (one constant `src/lib/data/agent-guides.ts` + ~25 hard-coded spots: 6× i18n `home.json` L119, 3 blog MDX + 15 translations, `source-status/page.tsx` L7, Docs/plans).
 
 
 ### Port wave 2026-09-02 (other sessions' MCP work → v3-foundation) ✅

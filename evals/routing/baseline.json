@@ -2,11 +2,11 @@
   "generated_at": "2026-09-03",
   "corpus_source": "registry/generated/index.json",
   "corpus_size": 189,
-  "query_count": 88,
+  "query_count": 91,
   "gap_count": 13,
   "mean_recall_at_5": 1,
-  "mean_recall_at_1": 0.8068,
-  "mrr_at_5": 0.8932,
+  "mean_recall_at_1": 0.7802,
+  "mrr_at_5": 0.8784,
   "per_kind": {
     "reference": {
       "expected": 1,
@@ -19,12 +19,12 @@
       "recall_at_5": 1
     },
     "tool": {
-      "expected": 16,
-      "hit": 16,
+      "expected": 19,
+      "hit": 19,
       "recall_at_5": 1
     }
   },
-  "hijacked_queries": 15,
+  "hijacked_queries": 18,
   "per_query": {
     "draw a portrait of my wizard for the dialogue box": 1,
     "show me a few different art styles for the main character before we commit": 1,
@@ -113,6 +113,9 @@
     "show me my published games": 1,
     "where do I change my plan?": 1,
     "open the scene I'm editing in the editor so I can look at it": 1,
-    "should I open the website for the user or just do it through the API": 1
+    "should I open the website for the user or just do it through the API": 1,
+    "show me the mcp setup guide for cursor": 1,
+    "open the main scene in the editor": 1,
+    "select the Player node in the editor so I can see it": 1
   }
 }

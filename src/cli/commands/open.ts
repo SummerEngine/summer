@@ -140,7 +140,7 @@ export async function runOpenNavigation(
       target: options.list ? undefined : target,
       params: parseParamOptions(options),
       surface: surfaceFromOptions(options),
-      print: options.print === true,
+      open: options.print !== true,
     },
     deps
   );

@@ -210,7 +210,7 @@ describe("runOpen (web)", () => {
 
   it("--print returns url + login_url without opening (not logged in)", async () => {
     const { d, openUrl } = deps({ loggedIn: false });
-    const res = await runOpen({ target: "open my billing page", print: true }, d);
+    const res = await runOpen({ target: "open my billing page", open: false }, d);
     expect(res).toMatchObject({
       ok: true,
       action: "printed",
@@ -247,18 +247,18 @@ describe("runOpen (web)", () => {
     expect(pricing.opened_url).toBe(`${GATEWAY}/pricing`);
     expect(pricing.logged_in).toBeUndefined();
     expect(isLoggedIn).not.toHaveBeenCalled();
-    const docs = await runOpen({ target: "mcp docs", print: true }, d);
+    const docs = await runOpen({ target: "mcp docs", open: false }, d);
     expect(docs.url).toBe("https://docs.summerengine.com/mcp/overview");
     expect(openUrl).toHaveBeenCalledTimes(1);
   });
 
   it("fills slots from params and rejects bad ones", async () => {
     const { d } = deps();
-    const guide = await runOpen({ target: "mcp-guide", params: { guide: "claude-code" }, print: true }, d);
+    const guide = await runOpen({ target: "mcp-guide", params: { guide: "claude-code" }, open: false }, d);
     expect(guide.url).toBe(`${GATEWAY}/mcp/how-to-make-games-in-claude-code`);
-    const game = await runOpen({ target: "game", params: { gameId: "g1", section: "releases" }, print: true }, d);
+    const game = await runOpen({ target: "game", params: { gameId: "g1", section: "releases" }, open: false }, d);
     expect(game.url).toBe(`${GATEWAY}/studio/games/g1/releases`);
-    const missing = await runOpen({ target: "game", print: true }, d);
+    const missing = await runOpen({ target: "game", open: false }, d);
     expect(missing).toMatchObject({ ok: false, action: "invalid_params" });
     expect(missing.hint).toMatch(/gameId/);
   });
@@ -275,7 +275,7 @@ describe("runOpen (web)", () => {
     const { d, openUrl } = deps();
     const unmapped = await runOpen({ target: "/brand-new-page" }, d);
     expect(unmapped).toMatchObject({ ok: true, action: "opened", unmapped: true, url: `${GATEWAY}/brand-new-page` });
-    const full = await runOpen({ target: `${GATEWAY}/pricing`, print: true }, d);
+    const full = await runOpen({ target: `${GATEWAY}/pricing`, open: false }, d);
     expect(full).toMatchObject({ ok: true, target: { id: "pricing" } });
     const foreign = await runOpen({ target: "https://evil.example/phish" }, d);
     expect(foreign).toMatchObject({ ok: false, action: "not_found" });
@@ -290,7 +290,7 @@ describe("runOpen (web)", () => {
 describe("runOpen (editor)", () => {
   it("--print returns the op without touching the engine", async () => {
     const { d, engine } = deps({ engineClient: null });
-    const res = await runOpen({ target: "node", params: { node: "Player/Camera3D" }, print: true }, d);
+    const res = await runOpen({ target: "node", params: { node: "Player/Camera3D" }, open: false }, d);
     expect(res).toMatchObject({ ok: true, action: "printed", op: { op: "SelectNode", nodePath: "Player/Camera3D" } });
     expect(engine).not.toHaveBeenCalled();
   });
@@ -310,7 +310,7 @@ describe("runOpen (editor)", () => {
 
   it("engine off with --print on a main-scene default still prints, marking the unresolved path", async () => {
     const { d } = deps({ engineClient: null });
-    const res = await runOpen({ target: "scene", print: true }, d);
+    const res = await runOpen({ target: "scene", open: false }, d);
     expect(res).toMatchObject({ ok: true, action: "printed", op: { op: "OpenScene", path: "<application/run/main_scene>" }, engine: { running: false } });
   });
 
@@ -349,7 +349,7 @@ describe("runOpen (editor)", () => {
     const res = await runOpen({ target: "project settings" }, d);
     expect(res).toMatchObject({ ok: false, action: "planned", target: { id: "project-settings", status: "planned" } });
     expect(res.target?.engine_change).toMatch(/OpenProjectSettings/);
-    const withFallback = await runOpen({ target: "screen-script", print: true }, d);
+    const withFallback = await runOpen({ target: "screen-script", open: false }, d);
     expect(withFallback.target?.fallback).toBe("script");
     expect(engine).not.toHaveBeenCalled();
     expect(openUrl).not.toHaveBeenCalled();
@@ -360,5 +360,29 @@ describe("runOpen (editor)", () => {
     const res = await runOpen({ target: "node" }, d);
     expect(res).toMatchObject({ ok: false, action: "invalid_params" });
     expect(res.hint).toMatch(/node/);
+  });
+});
+
+describe("ambiguity the product map must surface", () => {
+  it('"open settings" lists Studio settings and the editor settings dialogs instead of guessing', () => {
+    const res = resolveTarget("open settings", {}, "auto");
+    expect(res.kind).toBe("ambiguous");
+    if (res.kind === "ambiguous") {
+      const ids = res.matches.map((m) => m.id);
+      expect(ids).toContain("settings");
+      expect(ids).toContain("project-settings");
+      expect(ids).toContain("editor-settings");
+    }
+    // The exact id still resolves directly — ambiguity is for phrases, not ids.
+    const exact = resolveTarget("settings", {}, "auto");
+    expect(exact.kind === "target" && exact.target.id).toBe("settings");
+  });
+
+  it("the MCP result carries the resolved url/op even after opening", async () => {
+    const { d } = deps();
+    const web = await runOpen({ target: "pricing" }, d);
+    expect(web.url).toBe(`${GATEWAY}/pricing`);
+    const ed = await runOpen({ target: "inspector" }, d);
+    expect(ed.op).toEqual({ op: "FocusDock", dock: "inspector" });
   });
 });

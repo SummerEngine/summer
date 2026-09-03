@@ -284,3 +284,9 @@ queries:
     expected: [tool/open]
   - query: "should I open the website for the user or just do it through the API"
     expected: [skill/navigate-summer]
+  - query: "show me the mcp setup guide for cursor"
+    expected: [tool/open]
+  - query: "open the main scene in the editor"
+    expected: [tool/open]
+  - query: "select the Player node in the editor so I can see it"
+    expected: [tool/open]

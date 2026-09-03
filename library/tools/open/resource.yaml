@@ -5,7 +5,7 @@ summary: Open the exact summerengine.com page or editor surface by intent name �
 use_when:
   - the user wants to SEE or DECIDE something on the website — "open my billing page", "show me my published games", "take me to pricing", "open the MCP setup guide for Cursor"
   - the user wants to LOOK at something in the running editor — "show me the scene", "select the Player node", "open player.gd", "reveal that texture in the file dock"
-  - handing the user a link instead of opening a browser (print), or checking which destination an intent maps to
+  - 'handing the user a link instead of opening a browser (open: false), or checking which destination an intent maps to'
   - resolving where a user intent lives ("where do I change my plan?") before acting
 do_not_use_when:
   - the user wants a result, not a view — add the node, set the property, publish; use the mutation tools (summer_add_node, summer_set_prop, summer_creator_publish)
@@ -65,9 +65,9 @@ input_schema:
         - web
         - editor
       description: Restrict matching to the website or the editor. "auto" (default) considers both.
-    print:
+    open:
       type: boolean
-      description: Resolve only — return the URL or engine op and open nothing. Works without the engine and without a browser.
+      description: Default true. false = resolve only — return the URL or engine op and open nothing (works without the engine and without a browser); the CLI's --print.
   additionalProperties: false
 authority:
   filesystem: false

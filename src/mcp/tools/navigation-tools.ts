@@ -13,13 +13,13 @@ import { openArgsShape, runOpen } from "../../core/capabilities/navigation/open.
 export function registerNavigationTools(server: McpServer): void {
   server.tool(
     "summer_open",
-    `Open the exact summerengine.com page or Summer Engine editor surface the user wants to LOOK at, by intent name — or print the URL / engine op without opening anything.
+    `Open the exact summerengine.com page or Summer Engine editor surface the user wants to LOOK at, by intent name — or, with open:false, return the URL / engine op without opening anything. The result ALWAYS carries the resolved url or op, also after opening, so you can tell the user where they landed.
 
 WHEN: the user wants to see, check, or decide something: "open my billing page", "show me my published games", "take me to pricing", "open the MCP setup guide for Cursor", "show me the scene", "select the Player node", "open player.gd". NOT for getting a result (add a node, set a property, publish) — use the mutation tools; opening a UI is a user-visible action, do it because the user asked to look, and say what will open.
 
 target: an id (billing, usage, account, settings, team, my-games, game, pricing, download, mcp-guide, templates, asset-store, docs, scene, main-scene, node, script, file, files, scene-tree, inspector, …), an intent phrase ("change my plan"), a res:// path (routed by extension: .tscn -> scene, .gd -> script, else file), or a summerengine.com path ("/pricing"). Omit target to LIST every destination with surface/status/requires.
 params: slot values — gameId + section (builds, releases, store-page, analytics, …) for game; guide (agent name: cursor, claude-code, codex, gemini, …) for mcp-guide; username; version; path / node / scene for editor targets.
-print: true resolves only and returns url (+ login_url when the page needs login) or op; nothing opens, no engine needed.
+open: false resolves only and returns url (+ login_url when the page needs login) or op; nothing opens, no engine needed.
 
 Result: { ok, action: opened | printed | listed | ambiguous | planned | engine_not_running | engine_error | not_found | invalid_params, target, url, login_url, logged_in, opened_url, op, engine, matches, hint }.
 - Web targets that require login open through /login?returnUrl=<path> when this machine holds no Summer login token (logged_in:false) — the destination loads after sign-in.

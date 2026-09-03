@@ -169,7 +169,7 @@
       "id": "reference/product-map",
       "kind": "reference",
       "version": "1.0.0",
-      "content_hash": "22300c9a22867a60e55affe69b9464089beffb131e77c477ee4a2aad97606ecc",
+      "content_hash": "39331687109e70e576dd0d00bce25db9d27c08b8306281953ad19633b939777e",
       "summary": "The product map — every summerengine.com page and editor surface an agent can open for the user, with intent phrases, URL or op, required context, and status.",
       "use_when": [
         "resolving where a user intent lives — \"where do I change my plan\", \"where are my published games\", \"how do I get to the MCP guide for Codex\"",
@@ -1769,7 +1769,7 @@
       "id": "skill/navigate-summer",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "b590720a55efd016ca8061d16826ab171973e7bf0c689a3b1e37ef97c3ad715d",
+      "content_hash": "e7fcfd0726919c28cf217ffd150fd5ba2d75444a3d1234241b2cd224744d5bad",
       "summary": "When to open a Summer web page or editor surface FOR the user (billing, their games, the scene just built) versus acting through the API, using summer_open.",
       "use_when": [
         "the user asks to see, check, or decide something — \"show me my billing\", \"where do I change my plan\", \"open my games\", \"let me look at the scene\", \"take me to the MCP guide for Cursor\"",
@@ -5483,12 +5483,12 @@
       "id": "tool/open",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "c13e4753303556d66ceee5e9273d96deaedc319dd4fcab12629c012f2eb4016c",
+      "content_hash": "87bebb6f044d6e755e26d930543805334f0b9a1c25f2dd84744dddc4017de977",
       "summary": "Open the exact summerengine.com page or editor surface by intent name — billing, my games, an MCP guide, a scene, a node, a dock — or print the URL/op.",
       "use_when": [
         "the user wants to SEE or DECIDE something on the website — \"open my billing page\", \"show me my published games\", \"take me to pricing\", \"open the MCP setup guide for Cursor\"",
         "the user wants to LOOK at something in the running editor — \"show me the scene\", \"select the Player node\", \"open player.gd\", \"reveal that texture in the file dock\"",
-        "handing the user a link instead of opening a browser (print), or checking which destination an intent maps to",
+        "handing the user a link instead of opening a browser (open: false), or checking which destination an intent maps to",
         "resolving where a user intent lives (\"where do I change my plan?\") before acting"
       ],
       "facets": {

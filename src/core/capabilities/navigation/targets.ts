@@ -576,7 +576,7 @@ export const NAV_TARGETS: readonly NavTarget[] = [
     "project-settings",
     "Project Settings",
     "The Project Settings dialog opens.",
-    ["project settings", "open project settings", "input map settings", "autoload settings", "rendering settings"],
+    ["project settings", "settings", "open project settings", "input map settings", "autoload settings", "rendering settings"],
     "OpenProjectSettings",
     "new op OpenProjectSettings{tab?} over ProjectSettingsEditor::popup_project_settings (needs an EditorNode accessor)"
   ),
@@ -584,7 +584,7 @@ export const NAV_TARGETS: readonly NavTarget[] = [
     "editor-settings",
     "Editor Settings",
     "The Editor Settings dialog opens.",
-    ["editor settings", "open editor settings", "editor preferences", "change the editor theme"],
+    ["editor settings", "settings", "open editor settings", "editor preferences", "change the editor theme"],
     "OpenEditorSettings",
     "new op OpenEditorSettings over EditorSettingsDialog::popup_edit_settings"
   ),

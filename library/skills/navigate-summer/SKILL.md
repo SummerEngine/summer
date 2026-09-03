@@ -29,7 +29,7 @@ Never open a browser or switch the editor's tab as a side effect of building. Op
 
 ## How to call it
 
-1. **Resolve first when unsure.** `summer_open({ target: "change my plan", print: true })` returns the matched target, the URL (and `login_url` if login is required), or the engine op — nothing opens. If `action` is `ambiguous`, pick from `matches` and call again with the `id`.
+1. **Resolve first when unsure.** `summer_open({ target: "change my plan", open: false })` returns the matched target, the URL (and `login_url` if login is required), or the engine op — nothing opens. If `action` is `ambiguous`, pick from `matches` and call again with the `id`.
 2. **Open.** `summer_open({ target: "billing" })` opens the browser at Studio → Billing. `summer_open({ target: "scene", params: { path: "res://levels/level_1.tscn" } })` opens the scene in the running editor. `summer_open({ target: "node", params: { node: "Player/Camera3D" } })` selects the node. `summer_open({ target: "res://player.gd" })` routes by extension.
 3. **Fill the slots the target declares.** `game` needs `params.gameId` (and an optional `section` such as `builds`, `releases`, `store-page`, `analytics`); `mcp-guide` takes `params.guide` as an agent name (`cursor`, `claude-code`, `codex`, `gemini`, …); `profile` takes `username`; `changelog` takes `version`.
 4. **List when you do not know the id.** `summer_open({})` returns every target with `surface`, `status`, and `requires`. In a shell: `summer open --list`.
@@ -45,7 +45,7 @@ Never open a browser or switch the editor's tab as a side effect of building. Op
 
 ## When to hand over a link instead
 
-Use `print: true` and paste the `url` (or `login_url`) when the session has no browser (headless, remote, CI), when the user asked for a link, or when opening would interrupt what the user is doing. A link the user clicks is always acceptable; a browser window that appears unasked is not.
+Use `open: false` (CLI: `--print`) and paste the `url` (or `login_url`) when the session has no browser (headless, remote, CI), when the user asked for a link, or when opening would interrupt what the user is doing. A link the user clicks is always acceptable; a browser window that appears unasked is not.
 
 ## Editor targets today
 

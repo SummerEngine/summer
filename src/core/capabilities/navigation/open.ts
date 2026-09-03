@@ -5,7 +5,7 @@
  * against the product map (./targets.ts), then either open it — the browser
  * for web targets (through /login?returnUrl= when login is required and the
  * CLI is not logged in), the running Summer Engine via the local API for
- * editor targets — or, with `print`, return what would open without opening.
+ * editor targets — or, with `open: false`, return what would open without opening.
  *
  * Both faces call runOpen(); the CLI (tool-dispatch + `summer open`) and the
  * MCP tool (src/mcp/tools/navigation-tools.ts) only differ in how the engine
@@ -44,10 +44,10 @@ export const openArgsShape = {
     .enum(["auto", "web", "editor"])
     .optional()
     .describe('Restrict matching to the website or the editor. "auto" (default) considers both.'),
-  print: z
+  open: z
     .boolean()
     .optional()
-    .describe("Resolve only — return the URL or engine op and open nothing. Works without the engine and without a browser."),
+    .describe("Default true: open it. false = resolve only — return the URL or engine op and open nothing (works without the engine and without a browser). The CLI's --print."),
 };
 
 export const openArgsSchema = z.object(openArgsShape).strict();
@@ -344,7 +344,7 @@ export function listTargets(surface: OpenSurface = "auto"): OpenTargetSummary[] 
 export async function runOpen(args: OpenArgs, deps: OpenDeps): Promise<OpenResult> {
   const surface: OpenSurface = args.surface ?? "auto";
   const params = args.params ?? {};
-  const print = args.print === true;
+  const print = args.open === false;
   const docsOrigin = deps.docsOrigin ?? DOCS_ORIGIN;
 
   if (!args.target || args.target.trim() === "") {

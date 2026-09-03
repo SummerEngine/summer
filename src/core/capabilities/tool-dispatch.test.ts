@@ -312,6 +312,119 @@ describe("scene-scripting and perception dispatch entries", () => {
   });
 });
 
+describe("mesh fabrication dispatch entry", () => {
+  const SCRIPT = "bpy.ops.mesh.primitive_cube_add(size=1)";
+
+  it("is engine-required and refuses before sending when the advert lacks FabricateMesh", async () => {
+    expect(resolveToolDispatch("fabricate-3d")?.engineRequired).toBe(true);
+    const { ctx, calls } = fakeEngineContext({
+      getEngineCapabilities: () => ({ opKinds: ["AddNode", "RunEditorScript"] }),
+      getEngineVersion: () => "0.5.65",
+    });
+    const failure = await dispatchTool("fabricate-3d", { source: SCRIPT, name: "crate" }, ctx).catch(
+      (error: unknown) => error
+    );
+    expect(failure).toBeInstanceOf(ToolResultError);
+    const { result, message } = failure as ToolResultError;
+    expect(result).toMatchObject({
+      ok: false,
+      op: "FabricateMesh",
+      failure_reason: "engine_lacks_op",
+      engine_version: "0.5.65",
+    });
+    expect(message).toContain("does not support the FabricateMesh op");
+    expect(message).toContain("summer_generate_3d");
+    expect(message).toContain("summer_search_assets");
+    expect(calls).toEqual([]);
+  });
+
+  it("sends one identity-bound FabricateMesh op with the clamped budget and a 60 s client headroom", async () => {
+    const { ctx, calls } = fakeEngineContext();
+    await dispatchTool(
+      "fabricate-3d",
+      {
+        source: SCRIPT,
+        name: "crate",
+        max_seconds: 5,
+        import_to_scene: { parent: "./Props" },
+        target_size: 1.5,
+        checkpoint: true,
+      },
+      ctx
+    );
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.method).toBe("executeIdentityBoundOps");
+    const [ops, options, timeoutMs] = calls[0]!.args as [Array<Record<string, unknown>>, unknown, number];
+    expect(options).toBeUndefined();
+    expect(ops).toEqual([
+      {
+        op: "FabricateMesh",
+        script_source: SCRIPT,
+        name: "crate",
+        max_seconds: 15, // clamped up from 5
+        import_to_scene: { parent: "./Props" },
+        target_size: 1.5,
+        checkpoint: true,
+      },
+    ]);
+    expect(timeoutMs).toBe(15_000 + 60_000);
+  });
+
+  it("validates with the shared zod contract before touching the engine (same rejections as the MCP face)", async () => {
+    const engine = async () => {
+      throw new EngineUnavailableError("engine must not be needed for argument validation");
+    };
+    await expect(dispatchTool("fabricate-3d", { source: SCRIPT }, { engine })).rejects.toThrow(
+      /Invalid arguments for fabricate-3d: name/
+    );
+    await expect(
+      dispatchTool("fabricate-3d", { source: SCRIPT, name: "a", out_path: "res://../x.glb" }, { engine })
+    ).rejects.toThrow(/out_path may not contain '\.\.'/);
+    await expect(
+      dispatchTool("fabricate-3d", { source: SCRIPT, name: "a", target_size: -1 }, { engine })
+    ).rejects.toThrow(/target_size/);
+    await expect(
+      dispatchTool("fabricate-3d", { source: SCRIPT, name: "a", import_to_scene: { position: "Vector3(0,0,0)" } }, { engine })
+    ).rejects.toThrow(/import_to_scene\.parent/);
+  });
+
+  it("rewrites an old engine's unknown-op answer into the structured engine_lacks_op receipt", async () => {
+    const { ctx } = fakeEngineContext({
+      executeIdentityBoundOps: async () => ({
+        ok: false,
+        results: [{ ok: false, op: "FabricateMesh", error: "unknown op: FabricateMesh" }],
+      }),
+    });
+    const failure = await dispatchTool("fabricate-3d", { source: SCRIPT, name: "crate" }, ctx).catch(
+      (error: unknown) => error
+    );
+    expect(failure).toBeInstanceOf(ToolResultError);
+    const { result, message } = failure as ToolResultError;
+    expect(result).toMatchObject({ op: "FabricateMesh", failure_reason: "engine_lacks_op" });
+    expect(message).toContain("doesn't support FabricateMesh yet");
+    expect(message).toContain("Engine said: unknown op: FabricateMesh");
+  });
+
+  it("surfaces the engine's fabrication failure taxonomy as the error instead of masking it", async () => {
+    const { ctx } = fakeEngineContext({
+      executeIdentityBoundOps: async () => ({
+        ok: false,
+        results: [
+          {
+            ok: false,
+            op: "FabricateMesh",
+            failure_reason: "blender_not_found",
+            error: "No Blender executable was found on this machine (checked: /usr/bin/blender).",
+          },
+        ],
+      }),
+    });
+    await expect(dispatchTool("fabricate-3d", { source: SCRIPT, name: "crate" }, ctx)).rejects.toThrow(
+      /blender_not_found/
+    );
+  });
+});
+
 describe("spatial dispatch entries", () => {
   const spatialSlugs = [
     "test-placement",

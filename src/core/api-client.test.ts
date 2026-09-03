@@ -381,6 +381,56 @@ describe("EngineApiClient — async 202->poll port", () => {
     });
   });
 
+  it("play() with determinism pins sends an explicit PlayGame op through /api/ops (the /api/play rung forwards only `scene`)", async () => {
+    const sink: { lastBody?: unknown } = {};
+    const urls: string[] = [];
+    mockFetchCapturing((url, method) => {
+      urls.push(`${method} ${new URL(url).pathname}`);
+      if (method === "POST" && url.includes("/api/ops") && !url.includes("/api/ops/result")) {
+        return json({ accepted: true, status: "queued", requestId: "p3" }, 202);
+      }
+      if (url.includes("/api/ops/result")) {
+        return json({
+          requestId: "p3",
+          status: "done",
+          result: { status: "ok", results: [{ ok: true, op: "PlayGame", playing: true, determinism: { seed: 42, applied: true } }] },
+          terminalState: "applied",
+        });
+      }
+      return json({}, 404);
+    }, sink);
+
+    const result = (await client().play("res://levels/boss.tscn", { seed: 42, fixed_fps: 60, time_scale: undefined })) as {
+      results?: Array<{ determinism?: { applied?: boolean } }>;
+    };
+    expect(urls[0]).toBe("POST /api/ops");
+    expect(urls.some((u) => u.endsWith("/api/play"))).toBe(false);
+    expect(sink.lastBody).toEqual({
+      ops: [{ op: "PlayGame", scene: "res://levels/boss.tscn", seed: 42, fixed_fps: 60 }],
+      options: { requestId: expect.stringMatching(/^mcp-/) },
+    });
+    expect(result.results?.[0]?.determinism?.applied).toBe(true);
+  });
+
+  it("play() with an all-undefined determinism object stays on /api/play (byte-for-byte v1)", async () => {
+    const sink: { lastBody?: unknown } = {};
+    const urls: string[] = [];
+    mockFetchCapturing((url, method) => {
+      urls.push(`${method} ${new URL(url).pathname}`);
+      if (method === "POST" && url.includes("/api/play")) {
+        return json({ accepted: true, status: "queued", requestId: "p4" }, 202);
+      }
+      if (url.includes("/api/ops/result")) {
+        return json({ requestId: "p4", status: "done", result: { status: "ok" }, terminalState: "applied" });
+      }
+      return json({}, 404);
+    }, sink);
+
+    await client().play(undefined, { seed: undefined, fixed_fps: undefined, time_scale: undefined });
+    expect(urls[0]).toBe("POST /api/play");
+    expect(sink.lastBody).toEqual({ options: { requestId: expect.stringMatching(/^mcp-/) } });
+  });
+
   it("surfaces a hard transport error (non-2xx, non-202/429) as a throw", async () => {
     mockFetch(() => new Response("boom", { status: 500 }));
     await expect(client().executeOps([{ op: "X" }])).rejects.toThrow(/Engine API error 500/);
@@ -571,6 +621,82 @@ describe("EngineApiClient — See-Work Loop P5 capture additions", () => {
       const body = sink.lastBody as { ops?: Array<Record<string, unknown>> };
       expect(body.ops?.[0]).toEqual({ op: "ScenePreview" });
       expect(body.ops?.[0]).not.toHaveProperty("scene_path");
+    } finally {
+      if (snap.localPath) {
+        try {
+          rmSync(snap.localPath);
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+  });
+
+  it("scenePreview sends the wave I fixed-pose and Set-of-Mark params under their wire names and keeps the echoes in metadata", async () => {
+    const b64 = Buffer.from("y").toString("base64");
+    const sink: { lastBody?: unknown } = {};
+    mockFetchCapturing((url, method) => {
+      if (method === "POST" && url.includes("/api/ops") && !url.includes("/api/ops/result")) {
+        return json({ accepted: true, status: "queued", requestId: "sc3" }, 202);
+      }
+      if (url.includes("/api/ops/result")) {
+        return json({
+          requestId: "sc3",
+          status: "done",
+          result: {
+            status: "ok",
+            results: [
+              {
+                op: "ScenePreview",
+                ok: true,
+                image_base64: b64,
+                mime: "image/jpeg",
+                framing: "bookmark:hero",
+                framing_source: "bookmark",
+                bookmark: "hero",
+                camera_pose: { position: "Vector3(0, 5, 12)", look_at: "Vector3(0, 1, 0)", fov: 55 },
+                marks: [{ id: 1, path: "Ground", class: "MeshInstance3D", screen_rect: { x: 0, y: 0, w: 10, h: 10 } }],
+                marks_candidates: 1,
+                marks_skipped: 0,
+                marks_truncated: false,
+                max_marks: 8,
+              },
+            ],
+          },
+          terminalState: "applied",
+        });
+      }
+      return json({}, 404);
+    }, sink);
+
+    const snap = await client().scenePreview({
+      framing: "bookmark:hero",
+      fov: 55,
+      marks: true,
+      maxMarks: 8,
+      cameraPosition: "Vector3(0, 5, 12)",
+      cameraLookAt: "Vector3(0, 1, 0)",
+    });
+    try {
+      const body = sink.lastBody as { ops?: Array<Record<string, unknown>> };
+      expect(body.ops?.[0]).toEqual({
+        op: "ScenePreview",
+        framing: "bookmark:hero",
+        fov: 55,
+        marks: true,
+        max_marks: 8,
+        camera_position: "Vector3(0, 5, 12)",
+        camera_look_at: "Vector3(0, 1, 0)",
+      });
+      expect(snap.framing).toBe("bookmark:hero");
+      expect(snap.metadata).toMatchObject({
+        framing_source: "bookmark",
+        bookmark: "hero",
+        camera_pose: { position: "Vector3(0, 5, 12)", look_at: "Vector3(0, 1, 0)", fov: 55 },
+        marks: [{ id: 1, path: "Ground" }],
+        max_marks: 8,
+      });
+      expect(snap.metadata).not.toHaveProperty("image_base64");
     } finally {
       if (snap.localPath) {
         try {

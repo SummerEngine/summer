@@ -47,8 +47,12 @@ export const CLI_KNOWN_OP_NEEDS: readonly string[] = [
   "ImportFromUrl", "ImportFromUrlBatch",
   // Diagnostics + runtime control
   "GetConsoleOutput", "ClearConsoleOutput", "GetDebuggerErrors", "IsGameRunning",
-  // Capture
+  // Capture (+ camera bookmarks: summer_camera_bookmark, wave I perception)
   "ViewportSnapshot", "GameSnapshot", "ScenePreview",
+  "SaveCameraBookmark", "ListCameraBookmarks", "DeleteCameraBookmark",
+  // Runtime control (summer_play sends PlayGame as an op only when a
+  // determinism param travels — the plain launch stays on /api/play)
+  "PlayGame",
   // Scripting + verification
   "RunSceneScript", "RunEditorScript", "RunVerification", "SimulateInput",
   // Perception

@@ -104,6 +104,7 @@
     "summer_align_distribute_3d": "tool/align-distribute-3d",
     "summer_api_docs": "tool/api-docs",
     "summer_batch": "tool/batch",
+    "summer_camera_bookmark": "tool/camera-bookmark",
     "summer_check_job": "tool/check-job",
     "summer_clear_console": "tool/clear-console",
     "summer_connect_signal": "tool/connect-signal",

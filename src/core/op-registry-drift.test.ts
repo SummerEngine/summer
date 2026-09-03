@@ -46,6 +46,9 @@ const KNOWN_UNIMPLEMENTED: Record<string, string> = {
   SnapToSurface: "codex spatial branch (6 spatial ops)",
   TestPlacement3D: "codex spatial branch (6 spatial ops)",
   Starcast3D: "engine PR #147 (codex/starcast-spatial-probe: read-only 26-direction placement rundown)",
+  SaveCameraBookmark: "engine PR #156 follow-up (camera bookmarks, wave I)",
+  ListCameraBookmarks: "engine PR #156 follow-up (camera bookmarks, wave I)",
+  DeleteCameraBookmark: "engine PR #156 follow-up (camera bookmarks, wave I)",
   CustomBake: "engine PR #155/#156 (bake helpers) — not on engine main",
   Probe: "engine PR #155/#156 (verify probe op) — not on engine main",
 };

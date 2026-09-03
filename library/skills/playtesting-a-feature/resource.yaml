@@ -1,9 +1,10 @@
 id: skill/playtesting-a-feature
 kind: skill
-version: 1.0.1
+version: 1.1.0
 summary: "Before claiming a gameplay feature done: actually run the game and walk through the feature. Static diagnostics and type checks do not count."
 use_when:
   - about to claim a gameplay feature is done, shipped, or working — requires actually running the game and walking through the feature first
+  - a playtest must be reproducible run to run (pin the launch with seed / fixed_fps and read what the pin does and does not cover)
 facets:
   lifecycle:
     - build
@@ -13,6 +14,11 @@ facets:
     - project
 compatibility:
   engine: ">=4.6"
+related:
+  tools:
+    - tool/play
+    - tool/get-runtime-tree
+    - tool/inspect-runtime-node
 source: official
 license: MIT
 status: stable

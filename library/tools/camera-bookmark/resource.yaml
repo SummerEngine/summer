@@ -1,0 +1,73 @@
+id: tool/camera-bookmark
+kind: tool
+version: 1.0.0
+summary: Save, list, or delete named camera viewpoints stored in the project, so before/after screenshots are taken from exactly the same pose.
+use_when:
+  - '"save this camera angle" / "remember this viewpoint" so later screenshots line up with it'
+  - comparing a scene before and after a change from one fixed, repeatable camera pose
+  - listing or removing the saved viewpoints of a project
+do_not_use_when:
+  - taking the screenshot itself — summer_screenshot target "scene" with framing "bookmark" and bookmark_name reuses a saved pose
+  - a one-off pose you will not reuse — summer_screenshot framing "free" with camera_position/camera_look_at
+  - "requires an engine build with the camera bookmark ops (engine PR #156 follow-up, wave I); on current shipped engines this returns engine_lacks_op"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - verification
+    - scenes
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/screenshot
+    - tool/world-snapshot
+    - tool/snapshot-diff
+  skills:
+    - skill/verifying-scenes
+    - skill/scene-scripting
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_camera_bookmark
+implementation:
+  module: src/mcp/tools/visual-tools.ts
+  export: registerVisualTools
+surfaces:
+  mcp:
+    tool_name: summer_camera_bookmark
+    remote: false
+input_schema:
+  type: object
+  properties:
+    action:
+      type: string
+      enum:
+        - save
+        - list
+        - delete
+      description: '"save" a viewpoint, "list" the saved ones, or "delete" one by name.'
+    name:
+      type: string
+      description: 'Bookmark name for save/delete: 1-64 characters from A-Z a-z 0-9 _ - (e.g. "hero_closeup").'
+    position:
+      type: string
+      description: 'save only. Camera position as a Godot literal, e.g. "Vector3(0, 5, 12)". Goes together with look_at; omit BOTH to capture the current editor 3D viewport camera.'
+    look_at:
+      type: string
+      description: 'save only. Point the camera looks at, e.g. "Vector3(0, 1, 0)". Must differ from position.'
+    fov:
+      type: number
+      description: save only. Vertical field of view in degrees (1..179, default 60). With a captured viewport pose the viewport camera's fov wins.
+  required:
+    - action
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

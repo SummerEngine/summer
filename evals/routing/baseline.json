@@ -1,21 +1,21 @@
 {
   "generated_at": "2026-09-03",
   "corpus_source": "registry/generated/index.json",
-  "corpus_size": 186,
-  "query_count": 83,
+  "corpus_size": 187,
+  "query_count": 86,
   "gap_count": 13,
   "mean_recall_at_5": 1,
-  "mean_recall_at_1": 0.8313,
-  "mrr_at_5": 0.9074,
+  "mean_recall_at_1": 0.8314,
+  "mrr_at_5": 0.9116,
   "per_kind": {
     "skill": {
-      "expected": 75,
-      "hit": 75,
+      "expected": 76,
+      "hit": 76,
       "recall_at_5": 1
     },
     "tool": {
-      "expected": 12,
-      "hit": 12,
+      "expected": 15,
+      "hit": 15,
       "recall_at_5": 1
     }
   },
@@ -103,6 +103,9 @@
     "show me the errors in the console": 1,
     "does this script have any compile errors": 1,
     "import this glb from a url into my project": 1,
-    "change the main scene in project settings": 1
+    "change the main scene in project settings": 1,
+    "save this camera angle so I can compare screenshots before and after": 1,
+    "screenshot the scene with numbered labels so I can tell which node is which": 1,
+    "run the game with a fixed random seed so the playtest is reproducible": 1
   }
 }

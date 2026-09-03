@@ -41,6 +41,17 @@ import {
   buildRunEditorScriptOp,
   buildRunSceneScriptOp,
 } from "./scene-script.js";
+import {
+  CAMERA_BOOKMARK_ACTIONS,
+  CAMERA_BOOKMARK_FALLBACK,
+  SCREENSHOT_FRAMINGS,
+  buildCameraBookmarkOp,
+  buildScenePreviewInput,
+  type CameraBookmarkAction,
+  type ScreenshotFraming,
+} from "./camera-view.js";
+import { PLAY_DETERMINISM_NOT_SUPPORTED, pickPlayDeterminism, readPlayDeterminism } from "./play-determinism.js";
+import { ToolInputError } from "../tool-errors.js";
 import { getAuthToken } from "../auth.js";
 import { shapeEngineLogResponse } from "../log-filters.js";
 import {
@@ -153,6 +164,26 @@ function requireSupportedOp<T>(result: T, op: string, fallback: string): T {
 /** Pre-flight refusal as a structured result (nothing was sent). */
 function refuseMissingOp(missing: MissingOpResult): never {
   throw new ToolResultError({ ...missing }, missing.error);
+}
+
+/** Run a shared core op builder; its ToolInputError (nothing sent) becomes the
+ *  CLI's readable ToolDispatchError instead of a stack trace. */
+function buildOrRefuse<T>(build: () => T): T {
+  try {
+    return build();
+  } catch (err) {
+    if (err instanceof ToolInputError) throw new ToolDispatchError(err.message);
+    throw err;
+  }
+}
+
+function optNumberOrUndefined(args: DispatchArgs, key: string): number | undefined {
+  const value = args[key];
+  if (value === undefined) return undefined;
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new ToolDispatchError(`${key} must be a finite number`);
+  }
+  return value;
 }
 
 // ---------------------------------------------------------------------------
@@ -702,9 +733,25 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     if (args.raw === true) return engineResult;
     return shapeEngineLogResponse(engineResult, { maxEntries: maxWarnings }).result;
   }),
-  entry("summer_play", "Start the game (main scene or a specific scene)", true, async (args, ctx) =>
-    requireEngineSuccess(await (await ctx.engine()).play(optStr(args, "scene")))
-  ),
+  entry("summer_play", "Start the game (main scene or a specific scene; optional seed/fixed_fps/time_scale pins)", true, async (args, ctx) => {
+    const seed = optNumberOrUndefined(args, "seed");
+    const fixedFps = optNumberOrUndefined(args, "fixed_fps");
+    const timeScale = optNumberOrUndefined(args, "time_scale");
+    if (seed !== undefined && !Number.isInteger(seed)) throw new ToolDispatchError("seed must be an integer");
+    if (fixedFps !== undefined && (!Number.isInteger(fixedFps) || fixedFps <= 0)) {
+      throw new ToolDispatchError("fixed_fps must be an integer > 0");
+    }
+    if (timeScale !== undefined && timeScale <= 0) throw new ToolDispatchError("time_scale must be > 0");
+    const requested = pickPlayDeterminism({ seed, fixed_fps: fixedFps, time_scale: timeScale });
+    const result = requireEngineSuccess(await (await ctx.engine()).play(optStr(args, "scene"), requested));
+    // Pins sent, no determinism block back: the engine predates the params and
+    // ignored them. Say so in the receipt instead of letting the v1 result pass
+    // as a pinned run (the engine's own block, when present, is authoritative).
+    if (requested && readPlayDeterminism(result) === null && result && typeof result === "object") {
+      return { ...(result as DispatchArgs), determinism_note: PLAY_DETERMINISM_NOT_SUPPORTED };
+    }
+    return result;
+  }),
   entry("summer_stop", "Stop the running game", true, async (_args, ctx) =>
     requireEngineSuccess(await (await ctx.engine()).stop())
   ),
@@ -1377,16 +1424,50 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     if (target === "game") {
       snap = await client.gameSnapshot();
     } else if (target === "scene") {
-      snap = await client.scenePreview({
-        scenePath: optStr(args, "scenePath"),
-        framing: optStr(args, "framing") as never,
-        size: Array.isArray(args.size) ? (args.size as [number, number]) : undefined,
-        nodePath: optStr(args, "nodePath"),
-      });
+      const framing = optStr(args, "framing");
+      if (framing !== undefined && !(SCREENSHOT_FRAMINGS as readonly string[]).includes(framing)) {
+        throw new ToolDispatchError(`framing must be one of ${SCREENSHOT_FRAMINGS.join(", ")}`);
+      }
+      const preview = buildOrRefuse(() =>
+        buildScenePreviewInput({
+          scenePath: optStr(args, "scenePath"),
+          framing: framing as ScreenshotFraming | undefined,
+          bookmark_name: optStr(args, "bookmark_name"),
+          size: Array.isArray(args.size) ? (args.size as [number, number]) : undefined,
+          nodePath: optStr(args, "nodePath"),
+          camera_path: optStr(args, "camera_path"),
+          camera_position: optStr(args, "camera_position"),
+          camera_look_at: optStr(args, "camera_look_at"),
+          fov: optNumberOrUndefined(args, "fov"),
+          marks: args.marks === undefined ? undefined : optBoolean(args, "marks", false),
+          max_marks: optNumberOrUndefined(args, "max_marks"),
+        })
+      );
+      snap = await client.scenePreview(preview);
     } else {
       snap = await client.viewportSnapshot();
     }
     return snapshotResult(snap, target);
+  }),
+  entry("summer_camera_bookmark", "Save, list, or delete named camera viewpoints (res://.summer/camera_bookmarks.json) for pose-stable screenshots", true, async (args, ctx) => {
+    const action = str(args, "action");
+    if (!(CAMERA_BOOKMARK_ACTIONS as readonly string[]).includes(action)) {
+      throw new ToolDispatchError(`action must be one of ${CAMERA_BOOKMARK_ACTIONS.join(", ")}`);
+    }
+    const op = buildOrRefuse(() =>
+      buildCameraBookmarkOp({
+        action: action as CameraBookmarkAction,
+        name: optStr(args, "name"),
+        position: optStr(args, "position"),
+        look_at: optStr(args, "look_at"),
+        fov: optNumberOrUndefined(args, "fov"),
+      })
+    );
+    const kind = String(op.op);
+    const client = await ctx.engine();
+    const missing = missingEngineOpResult(client, kind, CAMERA_BOOKMARK_FALLBACK);
+    if (missing) refuseMissingOp(missing);
+    return requireSupportedOp(await client.executeOps([op]), kind, CAMERA_BOOKMARK_FALLBACK);
   }),
 
   // --- feedback ---

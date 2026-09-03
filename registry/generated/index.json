@@ -144,8 +144,8 @@
     {
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
-      "version": "1.0.2",
-      "content_hash": "530a4e7a7e01f9f20738e4e50983acb8c51d83596f5cb492bbf40e114b8f83ca",
+      "version": "1.0.3",
+      "content_hash": "3cd658ee24b8e90495c7be77d2b5d9fb6d59ac11361607d12b7db2f20b2d691c",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -1900,11 +1900,12 @@
     {
       "id": "skill/playtesting-a-feature",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "180a3d4dcd684293e7f1beb7ab1a5e3510b2d4c97465da03d2fc2700541b42ad",
+      "version": "1.1.0",
+      "content_hash": "034442b054e94bdfac848e4e54395123440a826d9a45f8aea7f83ec01cceb205",
       "summary": "Before claiming a gameplay feature done: actually run the game and walk through the feature. Static diagnostics and type checks do not count.",
       "use_when": [
-        "about to claim a gameplay feature is done, shipped, or working — requires actually running the game and walking through the feature first"
+        "about to claim a gameplay feature is done, shipped, or working — requires actually running the game and walking through the feature first",
+        "a playtest must be reproducible run to run (pin the launch with seed / fixed_fps and read what the pin does and does not cover)"
       ],
       "facets": {
         "lifecycle": [
@@ -1919,6 +1920,13 @@
       },
       "compatibility": {
         "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/play",
+          "tool/get-runtime-tree",
+          "tool/inspect-runtime-node"
+        ]
       },
       "status": "stable",
       "recommended": true
@@ -2971,13 +2979,14 @@
     {
       "id": "skill/verifying-scenes",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "888e2ec6a81474df304c21a57f7ce51a76ad4505b745dbc63e1985172d478615",
-      "summary": "Prove scene work landed — snapshot before, diff + screenshot after, live runtime reads during playtests — before claiming any visual or structural result.",
+      "version": "1.1.0",
+      "content_hash": "c4baf6a883c97fbd8586b159e74436067c9ac808ed5b87ed6870a308719ae436",
+      "summary": "Prove scene work landed — snapshot before, diff + screenshot after (bookmarked viewpoint, labels), live runtime reads during playtests — then claim.",
       "use_when": [
         "after any mutation batch, asset import, or lighting change, before claiming it worked",
         "during a playtest, to read live runtime state (spawned nodes, actual stats) without stopping the game",
-        "deciding what counts as evidence for a visual or structural claim"
+        "deciding what counts as evidence for a visual or structural claim",
+        "taking before/after screenshots from the same saved camera viewpoint, or an annotated screenshot whose numbered labels map to node paths"
       ],
       "facets": {
         "lifecycle": [
@@ -3001,7 +3010,8 @@
           "tool/snapshot-diff",
           "tool/get-runtime-tree",
           "tool/inspect-runtime-node",
-          "tool/screenshot"
+          "tool/screenshot",
+          "tool/camera-bookmark"
         ],
         "skills": [
           "skill/scene-scripting",
@@ -4045,6 +4055,54 @@
       "authority": {
         "filesystem": true,
         "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/camera-bookmark",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "9cfc04c919a54ae742d1149b7d364824c87b363693da8ca7c1ebc9fc09bc2ce0",
+      "summary": "Save, list, or delete named camera viewpoints stored in the project, so before/after screenshots are taken from exactly the same pose.",
+      "use_when": [
+        "\"save this camera angle\" / \"remember this viewpoint\" so later screenshots line up with it",
+        "comparing a scene before and after a change from one fixed, repeatable camera pose",
+        "listing or removing the saved viewpoints of a project"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "verification",
+          "scenes"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/screenshot",
+          "tool/world-snapshot",
+          "tool/snapshot-diff"
+        ],
+        "skills": [
+          "skill/verifying-scenes",
+          "skill/scene-scripting"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_camera_bookmark",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
         "network": false,
         "credentials": false,
         "publish": false
@@ -5464,24 +5522,31 @@
     {
       "id": "tool/play",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "44650c4ae252e4bfd129f07f29b7270e50413f0ca531fc122d57b5cd47787751",
-      "summary": "Start the game (main scene or a specific scene) inside Summer Engine's viewport.",
+      "version": "1.1.0",
+      "content_hash": "4e0fe410c73d449937a29a06d16fae82e1b4662bfcf0161179b5310c6e8af28a",
+      "summary": "Start the game (main scene or a specific scene) inside Summer Engine's viewport, optionally pinned with a seed / fixed_fps for a reproducible playtest.",
       "use_when": [
         "runtime verification after edits",
         "the user wants to try the game or one level after a change",
-        "reproducing a bug that only shows at runtime"
+        "reproducing a bug that only shows at runtime",
+        "a deterministic, repeatable playtest run — pin the global RNG with seed and the timestep with fixed_fps"
       ],
       "facets": {
         "lifecycle": [
           "build"
         ],
         "domains": [
-          "debug"
+          "debug",
+          "verification"
         ]
       },
       "compatibility": {
         "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/playtesting-a-feature"
+        ]
       },
       "status": "stable",
       "mcp_tool_name": "summer_play",
@@ -5789,13 +5854,14 @@
     {
       "id": "tool/screenshot",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "12a1e434628f8ce6ea505c6eccb8ad4cc0bb121559aa94055ed5058f1868664e",
-      "summary": "Capture a frame from the editor viewport, an offscreen scene render, or the running game, returned as an actual image.",
+      "version": "1.1.0",
+      "content_hash": "b71e1687f3572e437b418a4a59e431cccc434dd0271a56ec121bd8f9b56be557",
+      "summary": "Capture a frame from the editor viewport, an offscreen scene render (fixed or bookmarked pose, numbered labels), or the running game, as an actual image.",
       "use_when": [
         "visually verifying layout, scale, framing, or runtime state",
         "\"show me what the scene looks like right now\"",
-        "\"did the model land where I put it?\" / \"does the UI overlap?\""
+        "\"did the model land where I put it?\" / \"does the UI overlap?\"",
+        "before/after frames from the SAME viewpoint (framing \"bookmark\" / \"free\"), or an annotated screenshot with numbered labels mapped to node paths (marks)"
       ],
       "facets": {
         "lifecycle": [
@@ -5807,6 +5873,15 @@
       },
       "compatibility": {
         "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/camera-bookmark",
+          "tool/world-snapshot"
+        ],
+        "skills": [
+          "skill/verifying-scenes"
+        ]
       },
       "status": "stable",
       "mcp_tool_name": "summer_screenshot",

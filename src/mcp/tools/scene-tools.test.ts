@@ -566,3 +566,45 @@ describe("summer_batch description tells the truth about undo", () => {
     expect(description).toContain("EACH chunk is its own undo step");
   });
 });
+
+describe("summer_inspect_node (E2E 2026-09-03 F-14)", () => {
+  it("adds Variant.Type names next to the engine's raw type integers and keeps the integers", async () => {
+    const inspectNode = vi.fn().mockResolvedValue({
+      ok: true,
+      data: {
+        node_name: "Ground",
+        node_type: "StaticBody2D",
+        node_path: "Geometry/Ground",
+        props: [
+          { name: "position", type: 5, value: "(0, 0)" },
+          { name: "collision_layer", type: 2, value: 1 },
+          { name: "modulate", type: 20, value: "(1, 1, 1, 1)" },
+        ],
+        warnings: [],
+      },
+    });
+    vi.mocked(getClient).mockResolvedValue({ inspectNode } as never);
+    const result = (await sceneTool("summer_inspect_node").handler({ path: "Geometry/Ground" })) as {
+      isError?: boolean;
+      content: Array<{ text: string }>;
+    };
+    expect(inspectNode).toHaveBeenCalledWith("Geometry/Ground");
+    expect(result.isError).toBeFalsy();
+    const body = JSON.parse(result.content[0].text);
+    expect(body.data.props[0]).toEqual({ name: "position", type: 5, type_name: "TYPE_VECTOR2", value: "(0, 0)" });
+    expect(body.data.props[1]).toMatchObject({ type: 2, type_name: "TYPE_INT" });
+    expect(body.data.props[2]).toMatchObject({ type: 20, type_name: "TYPE_COLOR" });
+    expect(body.data.node_type).toBe("StaticBody2D");
+  });
+
+  it("passes a not-found read through as an error result", async () => {
+    const inspectNode = vi.fn().mockResolvedValue({ ok: false, error: "node not found: DoesNotExist" });
+    vi.mocked(getClient).mockResolvedValue({ inspectNode } as never);
+    const result = (await sceneTool("summer_inspect_node").handler({ path: "DoesNotExist" })) as {
+      isError?: boolean;
+      content: Array<{ text: string }>;
+    };
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("node not found: DoesNotExist");
+  });
+});

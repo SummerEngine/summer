@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { withEngine, ToolInputError } from "./with-engine.js";
 import { executeOpsChunked, executeSceneMutation } from "../../core/capabilities/engine-ops.js";
+import { annotateVariantTypes } from "../../core/capabilities/variant-types.js";
 import {
   FALLBACK_SINGLE_ONLY_OPS,
   resolveSingleOnlyOps,
@@ -384,14 +385,17 @@ The receiver node must have a script with the specified method.`,
     "summer_inspect_node",
     `Get all editable properties of a node with their current values, types, and resource info.
 
-Call this before modifying a node to understand its current state. Returns every property the Godot inspector would show.
+Call this before modifying a node to understand its current state. Returns every property the Godot inspector would show. Each prop carries the engine's raw Variant.Type integer as "type" plus its name as "type_name" (e.g. type 5 = TYPE_VECTOR2, 20 = TYPE_COLOR, 24 = TYPE_OBJECT); resource-valued props also carry resource_type / resource_path.
+
+Reads the currently OPEN scene — "path" is relative to its root (there is no scenePath argument; open the scene first if needed).
 
 Example: inspect a light to see its energy, color, shadow settings before changing them.`,
     {
       path: z.string().describe("Node path from scene tree, e.g. 'Player', 'World/Enemies/Boss', 'DirectionalLight3D'"),
     },
     async ({ path }) =>
-      withEngine(async (client) => client.inspectNode(path))
+      // E2E 2026-09-03 F-14: the engine returns Variant.Type as a bare int.
+      withEngine(async (client) => annotateVariantTypes(await client.inspectNode(path)))
   );
 
   server.tool(

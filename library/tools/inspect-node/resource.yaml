@@ -1,7 +1,7 @@
 id: tool/inspect-node
 kind: tool
-version: 1.0.2
-summary: Get every editable property of a node with current values, types, and resource info.
+version: 1.0.3
+summary: Get every editable property of a node with current values, Variant types (raw int plus type_name), and resource info.
 use_when:
   - before modifying a node, to understand its current state
   - "\"what is the player's speed / position / collision layer?\""

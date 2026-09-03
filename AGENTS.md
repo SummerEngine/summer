@@ -37,24 +37,28 @@ The loop for all work:
 
 Search before building — even a 1% chance the library covers your task means you check. Load only the entries the task needs; do not bulk-load.
 
-## 3. Navigate: the registry index, never the folders
+## 3. Navigate: search the library, never the folders
 
-Search `registry/generated/index.json`. It is the compiled catalog of every entry — the registry index lists every tool and skill Summer ships. Each record carries:
+The first move for any task is **`summer_search_library`** — describe the task in plain words ("make stylized water", "the player falls through the floor", "which tool reads script errors"); it ranks every entry of every kind and returns ids. Then **`summer_read_library`** with the id you pick loads the entry itself: a skill's `SKILL.md` and metadata, a tool's call recipe, a template's pin, a reference's body. Read before you act — never build from a search summary alone. Both work without a running engine; from a shell they are `summer tool search-library --args '{"query":"…"}'` and `summer tool read-library --args '{"id":"…"}'`.
+
+Search runs over `registry/generated/index.json`, the compiled catalog of every entry; hits and reads carry the same fields:
 
 - `id` — permanent identity, `<kind>/<slug>` (e.g. `skill/fps-controller`, `template/3d-basic`). IDs never change; renames leave an `aliases` entry on the new resource (compiled into `registry/generated/aliases.json` — a lookup table for you to read; no command resolves legacy names automatically yet, except `summer create`, which accepts old `template-<slug>` names).
-- `summary` and `use_when` — match your task against these.
-- `facets` — lifecycle / domains / modalities, for narrowing.
-- `related` — links to companion entries (the skill for a template, the example for a skill). Follow them instead of guessing.
-- Tool records also carry `mcp_tool_name`, `remote` (`true` = works without a running engine), `authority` (what the tool may touch: `filesystem`, `editor_mutation`, `network`, `credentials`, `publish`), and `cli_command` when a dedicated CLI command exists.
+- `summary` and `use_when` — what the ranking matched your task against — and `status` (`stable` / `preview`).
+- `related` — companion entries (the skill for a template, the example for a skill). Follow them instead of guessing.
+- Tool hits also carry `mcp_tool_name`; a tool read adds `remote` (`true` = works without a running engine), `authority` (what the tool may touch: `filesystem`, `editor_mutation`, `network`, `credentials`, `publish`), `cli_command` when a dedicated CLI command exists, and the `input_schema`.
+- `matched_by` on a hit says whether the lexical ranker, the semantic ranker, or both found it. Semantic ranking is active only when the install ships embeddings and the embedding endpoint answers; otherwise search is lexical and the response says so (`semantic: false`).
 
-**Never walk `library/` folders to find things.** Folders are flat storage; the index is the navigation. Directory layout can change; IDs cannot.
+**Never walk `library/` folders to find things.** Folders are flat storage; search is the navigation. Directory layout can change; IDs cannot. Narrow with `kinds` when you know what you need ("templates for a platformer"); pass `include_preview: false` to hide entries not yet exercised in-engine.
 
-Once you have an id, loading depends on the kind:
+Once you have read an entry, acting depends on the kind:
 
-- **skill** → read its `SKILL.md` (in this repo: `library/skills/<slug>/SKILL.md`). In a user session your host has the skill installed under its bare slug — invoke it by that name ("use the `fps-controller` skill"; Claude Code `/fps-controller`). There is no `summer:` prefix on installed skills; only the plugin-marketplace install exposes `/summer:<slug>`.
+- **skill** → in a user session your host has the skill installed under its bare slug — invoke it by that name ("use the `fps-controller` skill"; Claude Code `/fps-controller`) so the host loads it as a skill; the read shows you the same body. There is no `summer:` prefix on installed skills; only the plugin-marketplace install exposes `/summer:<slug>`.
 - **template** → `summer create <slug> [name]` — resolves the pinned commit and records the pin into the project. Details: `library/templates/README.md`.
-- **reference** → read its markdown body.
-- **tool** → from an index hit: call `mcp_tool_name` over MCP with arguments matching the entry's `input_schema`; or from a shell, `summer tool <slug> --args '<json>'` (`summer tool --list` prints every slug). If `remote` is `false` the engine must be running. Check `authority` before calling anything that mutates or publishes.
+- **reference** → the read is the body; nothing else to load.
+- **tool** → call `mcp_tool_name` over MCP with arguments matching its `input_schema`; or from a shell, `summer tool <slug> --args '<json>'` (`summer tool --list` prints every slug). If `remote` is `false` the engine must be running. Check `authority` before calling anything that mutates or publishes.
+
+Every read ends with one footer line — `— entry_id: <id>@<content-hash>. If this entry is wrong, stale, or you deviate from it, report via summer_library_feedback.` — and that `entry_id` is the exact value to report with (section 4, "Reporting outcomes").
 
 ## 4. Work: rules, verification, memory
 
@@ -62,7 +66,7 @@ You are building a **Summer game** in **Summer Engine** — the editor, scene gr
 
 ### Critical rules
 
-1. **Check the library before responding.** Even a 1% chance an entry applies = search the index and load it. Start Summer Engine sessions with the `using-summer` skill.
+1. **Check the library before responding.** Even a 1% chance an entry applies = `summer_search_library`, then `summer_read_library` the hit. Start Summer Engine sessions with the `using-summer` skill.
 2. **The user owns fix decisions.** Diagnose first, propose, ask, then edit.
 3. **Read the actual error before grepping the project.** `summer_get_script_errors` first.
 4. **Don't edit `.tscn` files directly while the engine is running.** Use the `summer_*` MCP tools — direct edits get overwritten when the editor saves.

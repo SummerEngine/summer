@@ -234,7 +234,7 @@ Six kinds of entry, all searchable through the same generated index:
 - **References** — facts: engine version compatibility, GDScript style, tool references.
 - **Tools** — the executable capabilities themselves, described in the same registry so agents can discover what they can do.
 
-Agents don't browse folders; they search the compiled index (`registry/generated/index.json`) by summary, use-cases, and facets. IDs are permanent, so feedback and evidence follow an entry across any reorganization.
+Agents don't browse folders; they search the compiled index (`registry/generated/index.json`) through `summer_search_library` (or `summer tool search-library`) by summary, use-cases, and facets, then load the hit with `summer_read_library`. IDs are permanent, so feedback and evidence follow an entry across any reorganization.
 
 ## The ecosystem
 

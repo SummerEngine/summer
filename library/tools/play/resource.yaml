@@ -1,14 +1,16 @@
 id: tool/play
 kind: tool
-version: 1.0.1
-summary: Start the game (main scene or a specific scene) inside Summer Engine's viewport.
+version: 1.1.0
+summary: Start the game (main scene or a specific scene) — embedded in the editor, or as a named offscreen instance with seed / fixed_fps for deterministic playtests.
 use_when:
   - runtime verification after edits
   - the user wants to try the game or one level after a change
   - reproducing a bug that only shows at runtime
+  - launching a deterministic or parallel offscreen playtest instance (seed, fixed frame rate, named offscreen instance) for the runtime tools to drive
 do_not_use_when:
-  - the game is already running and needs a restart — summer_stop first
+  - the game is already running and needs a restart — summer_stop first (seed/fixed_fps cannot reach a game that is already up)
   - only checking whether it is running — summer_is_running
+  - "instance/mode/deterministic need an engine build with the runtime-control ops (engine PR #156 follow-up, wave I); on current shipped engines those parameters return engine_lacks_op (plain play still works)"
 facets:
   lifecycle:
     - build
@@ -28,12 +30,43 @@ surfaces:
   mcp:
     tool_name: summer_play
     remote: false
+related:
+  tools:
+    - tool/stop
+    - tool/is-running
+    - tool/game-probe
+    - tool/game-control
+    - tool/game-input
+  skills:
+    - skill/agent-playtesting
+    - skill/playtesting-a-feature
 input_schema:
   type: object
   properties:
     scene:
       type: string
       description: Scene to run instead of main scene, e.g. 'res://levels/test_level.tscn'
+    instance:
+      type: string
+      description: Name a game instance. 'main' (default) = the editor's embedded game. Any other name with mode 'offscreen' spawns a disposable parallel instance (at most 3) that the runtime tools address by this name.
+    mode:
+      type: string
+      enum:
+        - embedded
+        - offscreen
+      description: "'embedded' (default) plays in the editor; 'offscreen' spawns a hidden child process (requires instance != 'main')."
+    deterministic:
+      type: boolean
+      description: Offscreen only — launch with --fixed-fps 60 --summer-seed <seed> --audio-driver Dummy so the run is reproducible and input replays with seed are accepted.
+    seed:
+      type: integer
+      description: Global RNG seed passed as --summer-seed (default 20260725 when deterministic). Pins randi/randf/shuffle/pick_random only — the result's determinism.seed_scope says what it does NOT pin.
+    fixed_fps:
+      type: integer
+      description: Run the game at a fixed frame rate (--fixed-fps N) so at_ms input timing maps exactly and GameStep frames are stable.
+    speed:
+      type: number
+      description: User time scale applied on session start, (0, 100] — e.g. 0.5 for half speed.
   additionalProperties: false
 authority:
   filesystem: false

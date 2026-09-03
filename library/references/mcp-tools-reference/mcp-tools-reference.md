@@ -17,7 +17,7 @@
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (68 tools)
+## Tool surface (75 tools)
 
 ### Project files (3)
 
@@ -99,9 +99,23 @@ Bounded spatial evidence for deliberate 3D arrangement. All five take exact `sce
 
 | Tool | Use |
 |---|---|
-| `summer_play` | Run the game. |
-| `summer_stop` | Stop the running game. |
-| `summer_is_running` | Check play state before deciding to call `summer_stop`. |
+| `summer_play` | Run the game. Plain = the editor's embedded main game; `seed` / `fixed_fps` pin the run; `instance` + `mode:"offscreen"` (+ `deterministic:true`) spawn a hidden parallel instance (at most 3) that the runtime-control tools address by name. |
+| `summer_stop` | Stop the running game, or `instance` to stop one offscreen instance. |
+| `summer_is_running` | Check play state before deciding to call `summer_stop`; the boot check after `summer_play` (never sleep a guessed delay). |
+
+### Runtime control & playtest (7)
+
+Drive and observe the RUNNING game (engine runtime-control ops, preview — `engine_lacks_op` on older builds names the fallback). Every tool needs a running game (`game_not_running` otherwise), takes `instance`, and is sent alone. The `agent-playtesting` skill is the doctrine: launch deterministically → probe → act → step/probe → assert; never claim motion, spawning or a state change without a probe of the frame after.
+
+| Tool | Use |
+|---|---|
+| `summer_game_probe` | State AND pixels of ONE frame, atomically: live tree, up to 64 `path:property` reads, screenshot (returned as an image), all stamped with the same frame counters. The evidence read of the loop. |
+| `summer_game_control` | `pause` / `resume` / `step` exactly N physics or process frames (leaves the game suspended) / `speed` / `instances` (live instances with `attached`). |
+| `summer_game_input` | `script` timed synthetic input (action / key / mouse_click / axis / raw), `record_start` / `record_stop` real input to `res://.summer/replays/`, `replay` a recording (`seed` only on a deterministic offscreen instance). One script in flight per instance (`busy`). |
+| `summer_runtime_set` | Set one property on a live node; `applied:false` means the read-back disagreed. Never touches the scene file. |
+| `summer_runtime_call` | Call one method on a live node and get its return value. |
+| `summer_runtime_spawn` | `spawn` a PackedScene into the live game, or `free` a live node. |
+| `summer_runtime_animate` | AnimationPlayer (`player`), AnimationTree state machine (`tree`), Skeleton3D bone poses (`bones`) — read (`cmd:"state"`, default) or drive. |
 
 ### Visual capture (1)
 

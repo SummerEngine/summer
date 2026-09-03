@@ -106,10 +106,13 @@ Open Claude Code in a directory (any), confirm `/mcp` lists `summer-engine`, the
 
 ## f. Expected to fail on the shipped engine
 
-The 11 `status: preview` tools depend on engine ops no shipped build has:
+The 18 `status: preview` tools depend on engine ops no shipped build has:
 `run-script`, `run-editor-script`, `world-snapshot`, `snapshot-diff`,
 `get-runtime-tree`, `inspect-runtime-node`, `test-placement`, `snap-to-surface`,
-`align-distribute-3d`, `navigation-probe`, `starcast`
+`align-distribute-3d`, `navigation-probe`, `starcast`, and the runtime-control
+group `runtime-set`, `runtime-call`, `runtime-spawn`, `runtime-animate`,
+`game-control`, `game-input`, `game-probe` (plus the `instance` / `mode` /
+`deterministic` parameters of `play` and `stop`; plain play and stop ship today)
 (`grep -l 'status: preview' library/tools/*/resource.yaml`). Calling one returns a
 structured `engine_lacks_op` result and exits 1 — the same on the MCP face
 (`isError`) and the CLI face. Two shapes, depending on what the engine advertises:

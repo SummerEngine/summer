@@ -121,6 +121,55 @@ describe("engineLacksOp / buildMissingOpResult", () => {
   });
 });
 
+describe("runtimeControl advert (engine Wave I)", () => {
+  it("parses capabilities.runtimeControl and keeps only well-typed fields", () => {
+    expect(
+      parseEngineCapabilities({
+        opKinds: ["AddNode"],
+        runtimeControl: { ops: ["GameProbe", 3], summerCapture: true, maxOffscreenInstances: 3, extra: "ignored" },
+      })
+    ).toEqual({
+      opKinds: ["AddNode"],
+      runtimeControl: { ops: ["GameProbe"], summerCapture: true, maxOffscreenInstances: 3 },
+    });
+    expect(parseEngineCapabilities({ opKinds: ["AddNode"], runtimeControl: "nope" })).toEqual({ opKinds: ["AddNode"] });
+  });
+
+  it("counts kinds listed only under runtimeControl.ops as advertised — for the pre-flight and the skew warning", () => {
+    const caps = { opKinds: ["AddNode"], runtimeControl: { ops: ["GameProbe", "GameStep"] } };
+    expect(engineLacksOp(caps, "GameProbe")).toBe(false);
+    expect(engineLacksOp(caps, "GameStep")).toBe(false);
+    expect(engineLacksOp(caps, "SetRuntimeProp")).toBe(true);
+    // Without any opKinds the block alone proves nothing (no advert at all).
+    expect(engineLacksOp({ runtimeControl: { ops: ["GameProbe"] } }, "SetRuntimeProp")).toBe(false);
+
+    const runtimeKinds = new Set([
+      "SetRuntimeProp", "CallRuntimeMethod", "SpawnRuntimeScene", "FreeRuntimeNode", "RuntimeAnimation",
+      "RuntimeAnimationTree", "GetRuntimeBones", "GamePause", "GameStep", "GameSpeed", "SimulateInputScript",
+      "InputRecordStart", "InputRecordStop", "InputReplay", "GameProbe", "ListGameInstances",
+    ]);
+    const warning = buildCapabilitySkewWarning({
+      capabilities: {
+        protocolVersion: CLI_PROTOCOL_VERSION,
+        opKinds: CLI_KNOWN_OP_NEEDS.filter((op) => !runtimeKinds.has(op)),
+        runtimeControl: { ops: [...runtimeKinds] },
+      },
+    });
+    expect(warning).toBeNull();
+  });
+
+  it("lists every Wave I kind in CLI_KNOWN_OP_NEEDS (the skew warning names them on an older engine)", () => {
+    for (const kind of ["SetRuntimeProp", "GameProbe", "InputReplay", "ListGameInstances", "PlayGame", "StopGame"]) {
+      expect(CLI_KNOWN_OP_NEEDS, kind).toContain(kind);
+    }
+    const warning = buildCapabilitySkewWarning({
+      capabilities: { opKinds: CLI_KNOWN_OP_NEEDS.filter((op) => op !== "GameProbe" && op !== "GameStep") },
+    });
+    expect(warning).toContain("GameProbe");
+    expect(warning).toContain("GameStep");
+  });
+});
+
 describe("CLI_KNOWN_OP_NEEDS completeness", () => {
   it("lists every op literal this package constructs (src/, non-test)", async () => {
     const { readdirSync, readFileSync, statSync } = await import("node:fs");

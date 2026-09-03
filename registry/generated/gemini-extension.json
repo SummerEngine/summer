@@ -25,6 +25,7 @@
   "skills": [
     "./library/skills/3d-lighting/",
     "./library/skills/adaptive-music/",
+    "./library/skills/agent-playtesting/",
     "./library/skills/ambient-bed/",
     "./library/skills/animated-loop/",
     "./library/skills/animation-tree/",

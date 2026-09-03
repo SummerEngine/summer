@@ -2,7 +2,7 @@
   "_generated": "GENERATED from integrations/codex — do not edit; npm run generate:registry",
   "name": "summer",
   "version": "2.8.2",
-  "description": "Agent tooling for Summer Engine: game-dev skills, lifecycle hooks, and a 68-tool MCP bridge. Build games by talking.",
+  "description": "Agent tooling for Summer Engine: game-dev skills, lifecycle hooks, and a 75-tool MCP bridge. Build games by talking.",
   "author": {
     "name": "Summer Engine",
     "email": "founders@summerengine.com",
@@ -24,6 +24,7 @@
   "skills": [
     "./library/skills/3d-lighting/",
     "./library/skills/adaptive-music/",
+    "./library/skills/agent-playtesting/",
     "./library/skills/ambient-bed/",
     "./library/skills/animated-loop/",
     "./library/skills/animation-tree/",
@@ -119,7 +120,7 @@
   "interface": {
     "displayName": "Summer",
     "shortDescription": "Superpowers for AI game dev. Build games by talking.",
-    "longDescription": "Summer turns Codex into a game-dev studio for Summer Engine. Users make Summer games with the Summer SDK and GDScript. The plugin adds game-dev skills, lifecycle hooks, and a 68-tool MCP bridge for guarded project files, scene editing, asset import, play mode, diagnostics, generation, and creator workflows. Git, shell, and grep stay with the host agent. Summer follows its upstream technical base continuously; version-sensitive work uses the bundled compatibility reference instead of a fixed onboarding version. Session-start orients the session. Pre-commit doctor (opt-in) blocks bad commits.",
+    "longDescription": "Summer turns Codex into a game-dev studio for Summer Engine. Users make Summer games with the Summer SDK and GDScript. The plugin adds game-dev skills, lifecycle hooks, and a 75-tool MCP bridge for guarded project files, scene editing, asset import, play mode, diagnostics, generation, and creator workflows. Git, shell, and grep stay with the host agent. Summer follows its upstream technical base continuously; version-sensitive work uses the bundled compatibility reference instead of a fixed onboarding version. Session-start orients the session. Pre-commit doctor (opt-in) blocks bad commits.",
     "developerName": "Summer Engine",
     "category": "Coding",
     "capabilities": [

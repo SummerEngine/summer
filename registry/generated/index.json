@@ -144,8 +144,8 @@
     {
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
-      "version": "1.0.2",
-      "content_hash": "530a4e7a7e01f9f20738e4e50983acb8c51d83596f5cb492bbf40e114b8f83ca",
+      "version": "1.0.3",
+      "content_hash": "72f1aa97f6a4523ec94ba68b955a719cc40b16280b75e3db723304597df19025",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -284,6 +284,64 @@
       },
       "status": "stable",
       "recommended": false
+    },
+    {
+      "id": "skill/agent-playtesting",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "b831729b42fb46608d963f7d7b065e766d8f4a60bea2b5b3c0349c704f43d6c9",
+      "summary": "Playtest by driving the LIVE game — deterministic launch, frame-stamped probes before/after each action, exact frame steps, scripted or recorded input.",
+      "use_when": [
+        "proving a gameplay feature works by driving the running game frame by frame with the runtime tools (summer_game_probe, summer_game_input, summer_game_control, summer_runtime_set/call/spawn/animate)",
+        "a bug repro or an A/B needs a deterministic launch (seed, fixed frame rate, offscreen instance), a recorded input replay, or two instances side by side",
+        "deciding what counts as evidence for \"it moved / it fired / the node appeared\" — the probe-before, probe-after, frame-stamped discipline",
+        "asserting exact positions or timings by advancing the live game a physics frame at a time"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "runtime",
+          "playtest",
+          "verification",
+          "agent-workflow"
+        ],
+        "modalities": [
+          "project",
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/play",
+          "tool/stop",
+          "tool/is-running",
+          "tool/game-probe",
+          "tool/game-control",
+          "tool/game-input",
+          "tool/runtime-set",
+          "tool/runtime-call",
+          "tool/runtime-spawn",
+          "tool/runtime-animate",
+          "tool/get-runtime-tree",
+          "tool/inspect-runtime-node",
+          "tool/get-debugger-errors",
+          "tool/screenshot"
+        ],
+        "skills": [
+          "skill/playtesting-a-feature",
+          "skill/verifying-scenes",
+          "skill/verification-before-completion",
+          "skill/debugging-game-feel",
+          "skill/investigating-bugs"
+        ]
+      },
+      "status": "preview",
+      "recommended": true
     },
     {
       "id": "skill/ambient-bed",
@@ -1900,8 +1958,8 @@
     {
       "id": "skill/playtesting-a-feature",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "180a3d4dcd684293e7f1beb7ab1a5e3510b2d4c97465da03d2fc2700541b42ad",
+      "version": "1.0.2",
+      "content_hash": "b8fc6dbe39d786ab14e68fd2e23f56b4ecffa08e1320e72bc1f219b210594194",
       "summary": "Before claiming a gameplay feature done: actually run the game and walk through the feature. Static diagnostics and type checks do not count.",
       "use_when": [
         "about to claim a gameplay feature is done, shipped, or working — requires actually running the game and walking through the feature first"
@@ -1919,6 +1977,11 @@
       },
       "compatibility": {
         "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/agent-playtesting"
+        ]
       },
       "status": "stable",
       "recommended": true
@@ -2764,11 +2827,12 @@
     {
       "id": "skill/ui-basics",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "680dd291e69591599a54cb5f5c95e031d5577d63426faf9ad3dd9b0e58fdc661",
+      "version": "1.0.1",
+      "content_hash": "e77fbaa41450b4e967f46ddddb18f6dbc5b3ebbdef083f328ac61e5cb90aebaa",
       "summary": "Build Summer Engine UI — HUDs, menus, health bars, dialogue boxes, Control trees — anchors, containers, responsive layout, theme vs inline styling.",
       "use_when": [
-        "building Summer Engine UI: HUDs, main menus, pause menus, health bars, progress bars, dialogue boxes, or any Control-node tree"
+        "building Summer Engine UI: HUDs, main menus, pause menus, health bars, progress bars, dialogue boxes, or any Control-node tree",
+        "\"add a pause menu\" / \"add a settings screen\" / \"add an options menu\" / \"add a main menu\""
       ],
       "facets": {
         "lifecycle": [
@@ -4318,6 +4382,165 @@
       }
     },
     {
+      "id": "tool/game-control",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "b5c6c2f1a00f65b9de67760ae85a8cb4c18861507189653f94fc0631ec972c05",
+      "summary": "Pause the running game, resume it, step exactly N physics or process frames, set the time scale, or list the live game instances.",
+      "use_when": [
+        "pausing the running game and stepping one physics frame at a time to make exact frame-by-frame assertions",
+        "\"pause the game and advance a single physics frame\" / \"run the game at quarter speed\" / \"which game instances are up?\"",
+        "checking that an offscreen playtest instance has attached before addressing it"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "runtime",
+          "playtest",
+          "verification"
+        ],
+        "modalities": [
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/game-probe",
+          "tool/game-input",
+          "tool/play",
+          "tool/stop",
+          "tool/is-running"
+        ],
+        "skills": [
+          "skill/agent-playtesting",
+          "skill/playtesting-a-feature",
+          "skill/debugging-game-feel"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_game_control",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/game-input",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "a907688d743dca3b16dc18d3e89ecb763f9a255a5e89bc8e679e57d7f56d15bb",
+      "summary": "Drive the running game's input — script timed synthetic events, or record the real inputs and replay them deterministically on a seeded instance.",
+      "use_when": [
+        "scripting a timed input sequence against the running game (walk right for 500 ms, jump at frame 30, click a button)",
+        "recording my inputs while the game runs and replaying them deterministically for a repro or an A/B",
+        "\"record what I do and replay it\" / \"press jump 10 times in a row in the running game\""
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "runtime",
+          "playtest",
+          "input"
+        ],
+        "modalities": [
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/game-probe",
+          "tool/game-control",
+          "tool/play",
+          "tool/input-map-bind"
+        ],
+        "skills": [
+          "skill/agent-playtesting",
+          "skill/playtesting-a-feature",
+          "skill/investigating-bugs"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_game_input",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/game-probe",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "5125163d2a22fef48191b52852d9cb49f202f3afad6acbe96f09c0f89595619f",
+      "summary": "State AND pixels of one frame of the RUNNING game, atomically — live tree, property reads, and a screenshot stamped with the same frame counters.",
+      "use_when": [
+        "proving what the running game is actually doing before and after an action — the evidence read of every playtest loop",
+        "\"show me the game right now with the player position\" / \"screenshot the offscreen instance and read the HUD values\"",
+        "a claim about motion, spawning, or a state change needs a frame-stamped before/after pair"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "runtime",
+          "playtest",
+          "verification"
+        ],
+        "modalities": [
+          "scenes",
+          "images"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/game-control",
+          "tool/game-input",
+          "tool/runtime-set",
+          "tool/runtime-call",
+          "tool/get-runtime-tree",
+          "tool/inspect-runtime-node",
+          "tool/screenshot",
+          "tool/play"
+        ],
+        "skills": [
+          "skill/agent-playtesting",
+          "skill/playtesting-a-feature",
+          "skill/verifying-scenes"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_game_probe",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
       "id": "tool/generate-3d",
       "kind": "tool",
       "version": "1.0.1",
@@ -5464,13 +5687,14 @@
     {
       "id": "tool/play",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "44650c4ae252e4bfd129f07f29b7270e50413f0ca531fc122d57b5cd47787751",
-      "summary": "Start the game (main scene or a specific scene) inside Summer Engine's viewport.",
+      "version": "1.1.0",
+      "content_hash": "bec436344514bbb6bbf0ec3cfe2b1ddf694010fbb1c4266e0a45e39faa2bafce",
+      "summary": "Start the game (main scene or a specific scene) — embedded in the editor, or as a named offscreen instance with seed / fixed_fps for deterministic playtests.",
       "use_when": [
         "runtime verification after edits",
         "the user wants to try the game or one level after a change",
-        "reproducing a bug that only shows at runtime"
+        "reproducing a bug that only shows at runtime",
+        "launching a deterministic or parallel offscreen playtest instance (seed, fixed frame rate, named offscreen instance) for the runtime tools to drive"
       ],
       "facets": {
         "lifecycle": [
@@ -5482,6 +5706,19 @@
       },
       "compatibility": {
         "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/stop",
+          "tool/is-running",
+          "tool/game-probe",
+          "tool/game-control",
+          "tool/game-input"
+        ],
+        "skills": [
+          "skill/agent-playtesting",
+          "skill/playtesting-a-feature"
+        ]
       },
       "status": "stable",
       "mcp_tool_name": "summer_play",
@@ -5747,6 +5984,215 @@
       "remote": false,
       "authority": {
         "filesystem": true,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/runtime-animate",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "c13f36e4c25bb591fd30832d64cf830d207fe87c49747836ffd947934b4ca729",
+      "summary": "Drive and read animation in the RUNNING game — AnimationPlayer clips, AnimationTree state machines, and live Skeleton3D bone poses.",
+      "use_when": [
+        "checking which clip or state-machine state is actually playing in the running game, then driving it (play, seek, travel, set a blend parameter)",
+        "\"which animation is the player in right now?\" / \"travel the state machine to Attack and see if it blends\"",
+        "reading live bone poses to prove a rig moves or an IK target lands"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "runtime",
+          "playtest",
+          "animation"
+        ],
+        "modalities": [
+          "scenes",
+          "animation"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/game-probe",
+          "tool/game-control",
+          "tool/runtime-call",
+          "tool/play"
+        ],
+        "skills": [
+          "skill/agent-playtesting",
+          "skill/character-animation-wiring",
+          "skill/animation-tree",
+          "skill/procedural-animation"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_runtime_animate",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/runtime-call",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "8792c0115a75fc1dec0c6bfbb5a6649571f3e78bf2577e802c14c5e2cf17d041",
+      "summary": "Call one method on a node in the RUNNING game and get its return value — trigger gameplay code directly instead of waiting for input or timers.",
+      "use_when": [
+        "triggering gameplay code in the running game and reading its answer — take_damage, start_wave, get_velocity",
+        "\"call take_damage(25) on the boss in the running game\" / \"what does get_velocity return right now?\"",
+        "a method's result is the fact you need and no property exposes it"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "runtime",
+          "playtest",
+          "verification"
+        ],
+        "modalities": [
+          "scenes",
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/game-probe",
+          "tool/runtime-set",
+          "tool/api-docs",
+          "tool/play",
+          "tool/inspect-runtime-node"
+        ],
+        "skills": [
+          "skill/agent-playtesting",
+          "skill/playtesting-a-feature"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_runtime_call",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/runtime-set",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "d332c31feabbd63b97b63a08f17c94dd97576971936f45c173394cb9f0481fa3",
+      "summary": "Set one property on a node in the RUNNING game — the live object, never the scene file — and read back whether it applied.",
+      "use_when": [
+        "putting the running game into a test state without playing there by hand — teleport the player, set health to 1, flip a flag, toggle visibility",
+        "\"move the player to (0, 2, 0) in the running game\" / \"set the boss health to 1 while it is running\"",
+        "a runtime experiment whose change should die with the run instead of landing in the scene file"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "runtime",
+          "playtest",
+          "verification"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/game-probe",
+          "tool/runtime-call",
+          "tool/game-control",
+          "tool/play",
+          "tool/set-prop",
+          "tool/inspect-runtime-node"
+        ],
+        "skills": [
+          "skill/agent-playtesting",
+          "skill/playtesting-a-feature"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_runtime_set",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/runtime-spawn",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "77cb20ae765d90ea4003bb5b9c32be18be4e33b7ba7970386d04e375173d1c39",
+      "summary": "Spawn a PackedScene into the RUNNING game (action spawn) or free a live node (action free) — stage a test in seconds without touching the scene file.",
+      "use_when": [
+        "staging a runtime test — place three goblins under the spawner, add a pickup next to the player, remove the boss to test the empty-arena path",
+        "\"spawn a goblin at (4, 0, -2) in the running game\" / \"delete that projectile while the game runs\"",
+        "the spawned or freed node must exist only for this run"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "runtime",
+          "playtest",
+          "scenes"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/game-probe",
+          "tool/runtime-set",
+          "tool/game-control",
+          "tool/instantiate-scene",
+          "tool/remove-node",
+          "tool/play"
+        ],
+        "skills": [
+          "skill/agent-playtesting",
+          "skill/playtesting-a-feature"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_runtime_spawn",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
         "editor_mutation": true,
         "network": false,
         "credentials": false,
@@ -6167,13 +6613,14 @@
     {
       "id": "tool/stop",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "e0d980085f12a2699fd09145e06649f924006b3c37a3c375458be776dc70de0d",
-      "summary": "Stop the running game. Does not revert scene edits, undo anything, or save — the editor state is left exactly as it is.",
+      "version": "1.1.0",
+      "content_hash": "3e90faad52aaa19793ded31ba97208c24f4ce22bec22212c163dad3fe39c3557",
+      "summary": "Stop the running game (or one named offscreen instance). Does not revert scene edits, undo anything, or save — the editor state is left exactly as it is.",
       "use_when": [
         "runtime verification is finished",
         "the game must restart to pick up scene or script changes",
-        "a runaway or frozen playtest needs killing"
+        "a runaway or frozen playtest needs killing",
+        "an offscreen playtest instance (summer_play with instance + mode offscreen) is no longer needed — pass instance"
       ],
       "facets": {
         "lifecycle": [
@@ -6185,6 +6632,12 @@
       },
       "compatibility": {
         "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/play",
+          "tool/game-control"
+        ]
       },
       "status": "stable",
       "mcp_tool_name": "summer_stop",

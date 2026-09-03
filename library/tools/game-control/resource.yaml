@@ -1,0 +1,84 @@
+id: tool/game-control
+kind: tool
+version: 1.0.0
+summary: Pause the running game, resume it, step exactly N physics or process frames, set the time scale, or list the live game instances.
+use_when:
+  - pausing the running game and stepping one physics frame at a time to make exact frame-by-frame assertions
+  - '"pause the game and advance a single physics frame" / "run the game at quarter speed" / "which game instances are up?"'
+  - checking that an offscreen playtest instance has attached before addressing it
+do_not_use_when:
+  - starting or stopping the game — summer_play / summer_stop
+  - a probe-based check inside a hidden disposable instance — a RunVerification probe awaiting physics_frame
+  - "requires an engine build with GamePause / GameStep / GameSpeed / ListGameInstances (engine PR #156 follow-up, wave I); on current shipped engines this returns engine_lacks_op"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - runtime
+    - playtest
+    - verification
+  modalities:
+    - project
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/game-probe
+    - tool/game-input
+    - tool/play
+    - tool/stop
+    - tool/is-running
+  skills:
+    - skill/agent-playtesting
+    - skill/playtesting-a-feature
+    - skill/debugging-game-feel
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_game_control
+implementation:
+  module: src/mcp/tools/runtime-tools.ts
+  export: registerRuntimeTools
+surfaces:
+  mcp:
+    tool_name: summer_game_control
+    remote: false
+input_schema:
+  type: object
+  properties:
+    action:
+      type: string
+      enum:
+        - pause
+        - resume
+        - step
+        - speed
+        - instances
+      description: "'pause' suspends the game (Engine time frozen, physics inactive); 'resume' lifts the suspension; 'step' advances exactly N frames and leaves the game suspended; 'speed' sets the user time scale; 'instances' lists the live game instances (main + offscreen)."
+    frames:
+      type: integer
+      description: action step — frames to advance, 1..600 (default 1).
+    kind:
+      type: string
+      enum:
+        - physics
+        - process
+      description: action step — 'physics' (default, exact physics ticks) or 'process' (rendered frames).
+    speed:
+      type: number
+      description: action speed — user time scale in (0, 100]. 0.25 = quarter speed, 2 = double.
+    instance:
+      type: string
+      description: Game instance to address (default 'main'). Offscreen instances are named by summer_play with instance + mode offscreen; ignored by action instances.
+  required:
+    - action
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - game-probe

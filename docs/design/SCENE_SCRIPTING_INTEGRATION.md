@@ -89,3 +89,17 @@ Routing regressions surfaced by the merges were fixed with metadata, not by acce
 - **Commit identity.** Every wave branch and every commit on this branch carries the environment's configured git identity (`/root/.gitconfig`); the messages carry no tool attribution. If the repository wants a human author on the merge commits, rewrite authorship before merging to `main`.
 - **Held-out routing.** The tuning set is back at recall@5 1.0 after the two metadata fixes; the held-out set (`eval:routing:heldout`) was not re-run here and remains the honest index-quality number.
 - **`evals/outcomes` replay** still needs `SUMMER_EDITOR_BIN` and an engine build with the runtime ops; only the `--dry-run` half is gated in CI.
+
+## Rebase onto the E2E fix wave (2026-09-03, later)
+
+`v3-foundation` moved 17 commits (`9a8b96e` → `27d82bb`, the `E2E-2026-09-03.md` fix wave) while this
+integration was built, so the branch was replayed onto it as `scene-scripting/v3-integration-rebased`:
+a linear series of the 16 wave commits (the eight per-wave merge commits are gone; their conflict
+resolutions were replayed 1:1). Cross-side resolutions kept both intents: every new CLI dispatch entry
+runs through `requireEngineSuccess`; `summer_screenshot` on both faces builds its input with
+`camera-view.ts` and captures through the shared `capture.ts` (blank-frame recapture + scene-kind
+confession now apply to fixed-pose/bookmark renders too); `trajectory_eval_mode` is emitted by the one
+`buildProjectContext` builder instead of once per face; the runtime-tools merge (`cfed2d1`) had edited
+files outside its conflict hunks (PlayGame `time_scale`, the `playtest` domain, `game-input` 1.0.1, the
+`summer_play` tests) — those edits ride in the runtime-tools commit. `tool/screenshot` and
+`skill/playtesting-a-feature` carry content from both sides and were bumped to 1.1.2.

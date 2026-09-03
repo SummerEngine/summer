@@ -1,6 +1,6 @@
 id: tool/screenshot
 kind: tool
-version: 1.1.0
+version: 1.1.2
 summary: Capture a frame from the editor viewport, an offscreen scene render (fixed or bookmarked pose, numbered labels), or the running game, as an actual image.
 use_when:
   - visually verifying layout, scale, framing, or runtime state

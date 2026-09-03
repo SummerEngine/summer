@@ -2198,8 +2198,8 @@
     {
       "id": "skill/playtesting-a-feature",
       "kind": "skill",
-      "version": "1.1.1",
-      "content_hash": "55c4e230ad2eabef8cf90645b30958c25e2b52f8d6d67f573f20d40f2781c2aa",
+      "version": "1.1.2",
+      "content_hash": "8ce5b8d526c8bdf2e4219a5ecc327465ece580ec7daae8b2d4a6f1039e9c5de9",
       "summary": "Before claiming a gameplay feature done: actually run the game and walk through the feature. Static diagnostics and type checks do not count.",
       "use_when": [
         "about to claim a gameplay feature is done, shipped, or working — requires actually running the game and walking through the feature first",
@@ -3922,12 +3922,12 @@
     {
       "id": "template/2d-platformer",
       "kind": "template",
-      "version": "1.0.0",
-      "content_hash": "3254a86f842c980eecac61b51ce895a030e177b1aac806bcb10d8793218b67cd",
-      "summary": "2D platformer starter with TileMap levels, a CharacterBody2D controller, and parallax backgrounds.",
+      "version": "1.0.2",
+      "content_hash": "1d0c6cc31f461fbd994b8866e93d6c8f4551a6f7ad538e5967956afd5942b19c",
+      "summary": "Hollow Knight-style 2D Metroidvania starter with CharacterBody2D combat platforming across 7 door-linked rooms, ability pickups, NPCs, quests and a boss.",
       "use_when": [
-        "starting a 2D side-scrolling platformer",
-        "needing a working TileMap + CharacterBody2D baseline"
+        "starting a 2D side-scrolling Metroidvania or action platformer with interconnected rooms",
+        "needing a working room-transition, ability-pickup, NPC-dialogue, quest and JSON-save baseline"
       ],
       "facets": {
         "lifecycle": [
@@ -3935,7 +3935,9 @@
         ],
         "domains": [
           "2d",
-          "platformer"
+          "platformer",
+          "character-controller",
+          "npc"
         ]
       },
       "compatibility": {
@@ -5249,9 +5251,9 @@
     {
       "id": "tool/get-console",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "f3664d979a91df124bb831f9f735a4ca0c556d6300dfc4411d6666a66885efcf",
-      "summary": "Read recent editor Output panel messages, deduplicated and filterable by level, type, or substring.",
+      "version": "1.0.3",
+      "content_hash": "99bdf65dbbef0a834967d7149567addddcb8a1ffb35ca0c77786ec038b1cfbe2",
+      "summary": "Read recent editor Output panel messages, deduplicated and filterable by level, type, or substring. Editor console only - never the post-play verdict.",
       "use_when": [
         "diagnostics report console issues and you need the message bodies",
         "\"what did the game print?\" / \"show me the log output\"",
@@ -5351,12 +5353,13 @@
     {
       "id": "tool/get-diagnostics",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "7d615471a78cf81aa54b072bee232337bf138f60d42b28f1517d7403a3496eeb",
-      "summary": "Prioritized overview of editor console and runtime debugger errors and warnings, with complete counts and a trimmed noise tail.",
+      "version": "1.0.3",
+      "content_hash": "0e5a87fcb41bf8116a1fb33e5f3ba56a057854d873e04b0ec4e4709b6a68618a",
+      "summary": "Prioritized overview of editor console, runtime debugger, and script errors and warnings, with complete counts and a trimmed noise tail.",
       "use_when": [
         "first stop after any change, before targeted console or debugger reads",
-        "verifying a fix removed the errors it targeted"
+        "verifying a fix removed the errors it targeted",
+        "the post-play read after summer_play or a RunVerification probe: runtime errors land in the debugger section here, never in the console"
       ],
       "facets": {
         "lifecycle": [
@@ -5384,9 +5387,9 @@
     {
       "id": "tool/get-project-context",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "875e3dfd4497ccce126259387cd3512650a7cb62d114f20557512c06136b5f5e",
-      "summary": "Bind to the open project and return engine health, project name and path, current and main scene, trimmed settings, and memory summary.",
+      "version": "1.1.0",
+      "content_hash": "45b70760d0f94e807f565f5bef5394d4784a21d945d09bc49863ec4a1129978a",
+      "summary": "Bind to the open project and return engine health, project name and path, current and main scene, trimmed settings, the template pin, and memory summary.",
       "use_when": [
         "first call in every fresh session, to avoid guessing scene filenames",
         "deliberately rebinding after the engine switched projects"
@@ -5786,9 +5789,9 @@
     {
       "id": "tool/inspect-node",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "90b5d7a7cbce2b14e28d35402f85bb61c56d253334576d383a1ab0675fcfb345",
-      "summary": "Get every editable property of a node with current values, types, and resource info.",
+      "version": "1.0.3",
+      "content_hash": "3110cdfd3503e30c208e8627b6ed71a952ad03392971d6ebe45fa6b61d2a281b",
+      "summary": "Get every editable property of a node with current values, Variant types (raw int plus type_name), and resource info.",
       "use_when": [
         "before modifying a node, to understand its current state",
         "\"what is the player's speed / position / collision layer?\"",
@@ -6865,8 +6868,8 @@
     {
       "id": "tool/screenshot",
       "kind": "tool",
-      "version": "1.1.1",
-      "content_hash": "9cbe840d1f4e5f38943ffe56eb865e6af4de1b0e56a07d12c490833bce595ebe",
+      "version": "1.1.2",
+      "content_hash": "21a24371419f53fb37aa79a8f1e270d34ac595e43a776d95963d20985be4929e",
       "summary": "Capture a frame from the editor viewport, an offscreen scene render (fixed or bookmarked pose, numbered labels), or the running game, as an actual image.",
       "use_when": [
         "visually verifying layout, scale, framing, or runtime state",

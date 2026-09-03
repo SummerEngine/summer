@@ -1,0 +1,46 @@
+id: skill/driving-the-editor-ui
+kind: skill
+version: 1.0.0
+summary: "Drive the editor UI by name: invoke actions, clear blocking dialogs, switch the main screen, read a dock — and route scene work to the scene tools instead."
+use_when:
+  - an editor-workflow step a human would do with the mouse — open the Import dock, switch the 2D/3D/Script main screen, toggle a bottom panel, open an editor dialog by name
+  - a dialog or popup is blocking the editor and tool calls come back modal_open — see it (summer_ui_tree root dialogs) and clear it (summer_ui_activate action dismiss_dialog)
+  - reading what a dock or dialog currently shows as structure (summer_ui_tree) instead of guessing from a screenshot
+  - deciding whether a request is UI work (summer_ui_*) or scene work (summer_run_script, scene tools, perception tools)
+do_not_use_when:
+  - building or changing the scene — nodes, properties, placement, lighting go through scene-scripting and the scene tools; the editor's docks are views of that data
+  - verifying a visual result in the viewport or the running game — verifying-scenes (summer_screenshot, snapshot diff)
+  - quitting or reloading the editor, or deleting without confirmation — denied by the engine; ask the user
+  - "the engine build lacks the UI ops (engine PR #156 follow-up, wave L); current shipped engines return engine_lacks_op — use the dedicated tools or ask the user to click"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - editor
+    - agent-workflow
+    - verification
+  modalities:
+    - project
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/ui-actions
+    - tool/ui-tree
+    - tool/ui-activate
+    - tool/ui-screenshot
+    - tool/screenshot
+    - tool/project-setting
+    - tool/open-scene
+    - tool/select-node
+    - tool/run-script
+    - tool/get-project-context
+  skills:
+    - skill/scene-scripting
+    - skill/verifying-scenes
+    - skill/verification-before-completion
+    - skill/headless-scripting
+source: official
+license: MIT
+status: preview
+recommended: false

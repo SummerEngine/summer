@@ -236,6 +236,15 @@
       "path": "library/skills/dispatching-parallel-agents/"
     },
     {
+      "id": "skill/driving-the-editor-ui",
+      "name": "driving-the-editor-ui",
+      "description": "Use when a task is an editor-workflow step a human would do with the mouse — open Project Settings or a dock, switch the 2D/3D/Script main screen, toggle a panel, clear a dialog that is blocking the editor, read what a dock shows — and when deciding whether a request is UI work or scene work. Drives the editor by NAME through summer_ui_actions, reads it as structure through summer_ui_tree, activates the long tail by path through summer_ui_activate, and treats summer_ui_screenshot as the pixels-last fallback. Preview — the ops ship with a follow-up engine build.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/driving-the-editor-ui/"
+    },
+    {
       "id": "skill/environment-kit",
       "name": "environment-kit",
       "description": "Use when generating a modular environment kit — wall pieces, floor tiles, pillars, doors, arches, corner blocks that snap together to form a level. Multiple meshes that share a visual style. Trigger on \"build a dungeon kit\", \"modular walls\", \"level kit\", \"tileset\", \"interior pieces\", \"snap-together pieces\", \"make a kit for the temple\".",

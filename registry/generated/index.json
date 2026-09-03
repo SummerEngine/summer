@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.0.3",
-      "content_hash": "f53d880a5179e4051d8e29784a7c693f07c7f371896096d0d5c231646af0a16d",
+      "content_hash": "990aaadbdb006d39054f64332d9fa1218f1612cb00c3de83f2ce08cd7bccf223",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -1210,6 +1210,57 @@
         "engine": ">=4.6"
       },
       "status": "stable",
+      "recommended": false
+    },
+    {
+      "id": "skill/driving-the-editor-ui",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "060d17d807ad1c08ccfbf72022277a9c1d918c980bc24c49719ed84ab4c9ae5f",
+      "summary": "Drive the editor UI by name: invoke actions, clear blocking dialogs, switch the main screen, read a dock — and route scene work to the scene tools instead.",
+      "use_when": [
+        "an editor-workflow step a human would do with the mouse — open the Import dock, switch the 2D/3D/Script main screen, toggle a bottom panel, open an editor dialog by name",
+        "a dialog or popup is blocking the editor and tool calls come back modal_open — see it (summer_ui_tree root dialogs) and clear it (summer_ui_activate action dismiss_dialog)",
+        "reading what a dock or dialog currently shows as structure (summer_ui_tree) instead of guessing from a screenshot",
+        "deciding whether a request is UI work (summer_ui_*) or scene work (summer_run_script, scene tools, perception tools)"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "editor",
+          "agent-workflow",
+          "verification"
+        ],
+        "modalities": [
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/ui-actions",
+          "tool/ui-tree",
+          "tool/ui-activate",
+          "tool/ui-screenshot",
+          "tool/screenshot",
+          "tool/project-setting",
+          "tool/open-scene",
+          "tool/select-node",
+          "tool/run-script",
+          "tool/get-project-context"
+        ],
+        "skills": [
+          "skill/scene-scripting",
+          "skill/verifying-scenes",
+          "skill/verification-before-completion",
+          "skill/headless-scripting"
+        ]
+      },
+      "status": "preview",
       "recommended": false
     },
     {
@@ -6536,11 +6587,11 @@
       "id": "tool/set-prop",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "f779e2efcd2d3acbb10c644101b849bbca515f8ea5b4103dacaa26821c7e4646",
+      "content_hash": "8cede86cfad08b52b99b72a14f6118af168f5ca05856599f0053bff9af8f5d76",
       "summary": "Set a node property using Godot string syntax for vectors, colors, transforms, and resource class names.",
       "use_when": [
         "configuring nodes after adding them",
-        "\"move the light up\" / \"make the sprite red\" / \"rotate the camera 45 degrees\"",
+        "\"move the light up\" / \"put the player at the spawn point\" / \"make the sprite red\" / \"rotate the camera 45 degrees\"",
         "setting one node's position, rotation, scale, colour, speed, collision layer, or visible flag"
       ],
       "facets": {
@@ -6890,6 +6941,206 @@
       },
       "status": "preview",
       "mcp_tool_name": "summer_test_placement",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/ui-actions",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "ef5e5a06ede75ed1069f97c809b2396d8e779c0336434f4230bced9a695fa032",
+      "summary": "List the editor's named actions or invoke one by name exactly as its menu item / shortcut would — open Project Settings, switch screens, toggle panels.",
+      "use_when": [
+        "\"open project settings in the editor\" / \"open the Import dock\" / \"toggle the animation bottom panel\" — an editor-workflow step a human would do with the mouse, driven by its stable action name",
+        "finding the exact action name (mode list, filter) before invoking it, and reading which names are denied",
+        "a step has no dedicated tool (summer_open_scene, summer_select_node, summer_save_scene) but the editor has a menu item or shortcut for it"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "editor",
+          "agent-workflow"
+        ],
+        "modalities": [
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/ui-tree",
+          "tool/ui-activate",
+          "tool/ui-screenshot",
+          "tool/project-setting",
+          "tool/open-scene",
+          "tool/select-node",
+          "tool/get-project-context"
+        ],
+        "skills": [
+          "skill/driving-the-editor-ui",
+          "skill/verification-before-completion"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_ui_actions",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/ui-activate",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "c038f160588679447726e779fb338ab2d17b0e33fe82c4a7380d3f5a06174c8b",
+      "summary": "Activate one editor control by tree path — press, toggle, focus, select a tab, type text, dial a value — or dismiss a blocking dialog; state is read back.",
+      "use_when": [
+        "\"dismiss the dialog that is blocking the editor\" / \"close that popup\" — action dismiss_dialog with the path or title from summer_ui_tree root dialogs",
+        "\"switch the editor to the 3D view\" / \"go to the Script screen\" — path main_screen, action select_tab, value 3D",
+        "pressing a button, selecting a tab, typing into a search field, or dialling a slider that no named action covers, using a path from summer_ui_tree"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "editor",
+          "agent-workflow"
+        ],
+        "modalities": [
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/ui-tree",
+          "tool/ui-actions",
+          "tool/ui-screenshot",
+          "tool/run-script"
+        ],
+        "skills": [
+          "skill/driving-the-editor-ui",
+          "skill/verification-before-completion"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_ui_activate",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/ui-screenshot",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "0676cb3569499516a7f80bb8987b30902e3d6010946e8a7c56a1f86efc2b9372",
+      "summary": "PNG of the editor window or one dock/dialog/control as an image — the pixels-last fallback for looking at the editor UI, never for picking click coordinates.",
+      "use_when": [
+        "\"show me what the editor looks like right now\" / \"screenshot the Inspector dock\" — seeing layout or an unfamiliar panel after summer_ui_tree has described it",
+        "sanity-checking an editor-UI step visually when the structured read-back is not enough"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "editor",
+          "agent-workflow",
+          "verification"
+        ],
+        "modalities": [
+          "images"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/ui-tree",
+          "tool/ui-actions",
+          "tool/ui-activate",
+          "tool/screenshot"
+        ],
+        "skills": [
+          "skill/driving-the-editor-ui",
+          "skill/verifying-scenes"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_ui_screenshot",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/ui-tree",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "9f892b3a82ee16dd1364387d508e556ec9754efffd50eecaad0cd6526b2d4c53",
+      "summary": "Structured tree of the live editor UI (controls, paths, text, state) or every visible dialog with its blocking flag — the cheap alternative to a screenshot.",
+      "use_when": [
+        "\"is a dialog blocking the editor\" / \"what does the Inspector dock show\" / \"which main screen is active\" — read editor UI state as structure instead of pixels",
+        "finding a control's path before summer_ui_activate, and reading its state back afterwards",
+        "listing visible dialogs and popups (root dialogs) before dismissing one with summer_ui_activate action dismiss_dialog"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "editor",
+          "agent-workflow",
+          "verification"
+        ],
+        "modalities": [
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/ui-actions",
+          "tool/ui-activate",
+          "tool/ui-screenshot",
+          "tool/get-scene-tree",
+          "tool/world-snapshot"
+        ],
+        "skills": [
+          "skill/driving-the-editor-ui"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_ui_tree",
       "remote": false,
       "authority": {
         "filesystem": false,

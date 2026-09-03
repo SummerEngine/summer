@@ -49,6 +49,7 @@
     "./library/skills/design-npc/",
     "./library/skills/diagnosing-perf-regressions/",
     "./library/skills/dispatching-parallel-agents/",
+    "./library/skills/driving-the-editor-ui/",
     "./library/skills/environment-kit/",
     "./library/skills/export-and-ship/",
     "./library/skills/fabricating-assets/",

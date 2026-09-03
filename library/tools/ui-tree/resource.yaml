@@ -1,0 +1,69 @@
+id: tool/ui-tree
+kind: tool
+version: 1.0.0
+summary: Structured tree of the live editor UI (controls, paths, text, state) or every visible dialog with its blocking flag — the cheap alternative to a screenshot.
+use_when:
+  - '"is a dialog blocking the editor" / "what does the Inspector dock show" / "which main screen is active" — read editor UI state as structure instead of pixels'
+  - finding a control's path before summer_ui_activate, and reading its state back afterwards
+  - listing visible dialogs and popups (root dialogs) before dismissing one with summer_ui_activate action dismiss_dialog
+do_not_use_when:
+  - reading the scene — summer_get_scene_tree / summer_world_snapshot read the data the Scene dock merely displays
+  - a named action already covers the step — summer_ui_actions mode invoke needs no tree walk
+  - judging appearance (layout, colours, an unfamiliar panel) — summer_ui_screenshot, pixels last
+  - "requires an engine build with UiTree / UiDialogs (engine PR #156 follow-up, wave L); on current shipped engines this returns engine_lacks_op"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - editor
+    - agent-workflow
+    - verification
+  modalities:
+    - project
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/ui-actions
+    - tool/ui-activate
+    - tool/ui-screenshot
+    - tool/get-scene-tree
+    - tool/world-snapshot
+  skills:
+    - skill/driving-the-editor-ui
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_ui_tree
+implementation:
+  module: src/mcp/tools/ui-tools.ts
+  export: registerUiTools
+surfaces:
+  mcp:
+    tool_name: summer_ui_tree
+    remote: false
+input_schema:
+  type: object
+  properties:
+    root:
+      type: string
+      description: "Where to start. 'main' (default) = the whole editor chrome; 'window' = the SceneTree root incl. every sub-window; 'dock:<title|id>' = one dock (ids file_system | scene_tree | inspector, or any dock title, case-insensitive); 'dialog:<title>' = one visible window; 'path:<node path>' = a path from an earlier result. 'dialogs' = list every visible dialog/popup with its blocking flag and buttons instead of a tree (UiDialogs)."
+    depth:
+      type: integer
+      minimum: 1
+      description: Tree depth (engine default 4, max 32). Plain Nodes between Controls do not consume depth.
+    limit:
+      type: integer
+      minimum: 1
+      description: Maximum Control nodes emitted (engine default 500, max 5000). The result carries truncated + child_count so a cut is visible.
+    visible_only:
+      type: boolean
+      description: Default true. false also emits hidden controls — readable, but summer_ui_activate refuses them with not_visible.
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

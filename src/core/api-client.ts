@@ -17,6 +17,7 @@ import {
   pollOpToTerminal,
   type OpResultEnvelope,
 } from "./async-op-lifecycle.js";
+import { pickPlayDeterminism, type PlayDeterminism } from "./capabilities/play-determinism.js";
 
 export type EngineSnapshot = {
   ok: boolean;
@@ -688,8 +689,18 @@ export class EngineApiClient {
     return this.request("GET", `/api/state/script-errors?path=${encodeURIComponent(path)}`);
   }
 
-  async play(scene?: string): Promise<unknown> {
+  async play(scene?: string, determinism?: PlayDeterminism): Promise<unknown> {
     // Cold-load on large projects can take 25-40s. 60s budget.
+    const pins = pickPlayDeterminism(determinism);
+    if (pins) {
+      // Determinism params (seed / fixed_fps / time_scale) — the /api/play rung
+      // copies ONLY `scene` from options into the PlayGame op
+      // (local_api_server.cpp play branch), so a pinned launch travels as an
+      // explicit PlayGame op through /api/ops. executeOps stamps the bound
+      // identity like every other op. An engine that predates the params
+      // ignores the extra keys and answers the v1 result (no `determinism`).
+      return this.executeOps([{ op: "PlayGame", ...(scene ? { scene } : {}), ...pins }], undefined, 60_000);
+    }
     // The engine reads play params from body.options (tool_net_thread.cpp:503),
     // and the play handler reads options["scene"] — a top-level { scene } is
     // dropped, so the scene MUST be nested inside options. The bound identity
@@ -903,13 +914,31 @@ export class EngineApiClient {
    * caller. The result carries image_base64 + mime (+ width/height) plus the
    * P4.3 confession fields (scene_has_camera / scene_had_light /
    * used_synthetic_camera) and framing / framed_node / render_retries.
+   *
+   * Wave I (contracts "Perception additions"): framing "free" takes
+   * `cameraPosition` / `cameraLookAt` (Godot "Vector3(x, y, z)" literals) and
+   * `fov`; framing "bookmark:<name>" resolves the pose from the project's
+   * camera bookmarks (fov overrides the bookmark's). `marks` draws the
+   * Set-of-Mark overlay (numbered tags + boxes over the largest visible
+   * VisualInstance3D nodes), capped by `maxMarks`. The result adds
+   * framing_source / camera_pose / bookmark and marks / marks_skipped /
+   * marks_candidates / marks_truncated / max_marks (all kept in `metadata`).
+   * Older engines resolve the new framings to a preset and echo THAT — the
+   * caller compares the echo against what it asked for.
    */
   async scenePreview(input?: {
     scenePath?: string;
-    framing?: "auto" | "iso" | "top" | "front" | "back" | "left" | "right" | "camera";
+    /** A preset ("auto" | "iso" | "top" | "front" | "back" | "left" | "right" |
+     *  "camera"), "free", or "bookmark:<name>". */
+    framing?: string;
     size?: [number, number];
     nodePath?: string;
     cameraPath?: string;
+    cameraPosition?: string;
+    cameraLookAt?: string;
+    fov?: number;
+    marks?: boolean;
+    maxMarks?: number;
   }): Promise<EngineSnapshot> {
     const opInput: Record<string, unknown> = { op: "ScenePreview" };
     const trimmed = input?.scenePath?.trim();
@@ -918,6 +947,11 @@ export class EngineApiClient {
     if (input?.size) opInput.size = input.size;
     if (input?.nodePath) opInput.node = input.nodePath;
     if (input?.cameraPath) opInput.camera_path = input.cameraPath;
+    if (input?.cameraPosition) opInput.camera_position = input.cameraPosition;
+    if (input?.cameraLookAt) opInput.camera_look_at = input.cameraLookAt;
+    if (input?.fov !== undefined) opInput.fov = input.fov;
+    if (input?.marks !== undefined) opInput.marks = input.marks;
+    if (input?.maxMarks !== undefined) opInput.max_marks = input.maxMarks;
 
     let response: unknown;
     try {

@@ -1,7 +1,21 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { withEngine } from "./with-engine.js";
+import { withEngine, missingEngineOpResult, withOldEngineHint } from "./with-engine.js";
+import { withFailureReasonHint } from "./perception-tools.js";
 import type { EngineSnapshot } from "../../core/api-client.js";
+import {
+  CAMERA_BOOKMARK_ACTIONS,
+  CAMERA_BOOKMARK_FALLBACK,
+  SCREENSHOT_FRAMINGS,
+  MAX_MARKS_CAP,
+  buildCameraBookmarkOp,
+  buildScenePreviewInput,
+  formatSceneMarks,
+  isFixedPoseFraming,
+  readCameraPose,
+  readSceneMarks,
+  type ScenePreviewInput,
+} from "../../core/capabilities/camera-view.js";
 
 /**
  * Visual capture tools. Unlike the in-product chat agent (a text-only "brain"
@@ -9,7 +23,86 @@ import type { EngineSnapshot } from "../../core/api-client.js";
  * like Claude Code can SEE images directly. So we hand the raw engine frame back
  * as an MCP image content block — no vision-model prepass, no paraphrase. The
  * model reviews the actual pixels.
+ *
+ * Wave I perception adds stable viewpoints: camera bookmarks
+ * (summer_camera_bookmark, persisted in the project) and the fixed-pose
+ * framings "free" / "bookmark" plus the Set-of-Mark overlay on
+ * summer_screenshot target:"scene". Older engines resolve the new framings to
+ * a preset and echo it — the caption confesses that instead of letting a
+ * preset render pass as a pose-stable comparison.
  */
+
+/** The first per-op result inside an envelope (or the envelope itself). */
+function firstOpResult(result: unknown): Record<string, unknown> {
+  if (!result || typeof result !== "object") return {};
+  const envelope = result as Record<string, unknown> & { results?: unknown[] };
+  const first = Array.isArray(envelope.results) ? envelope.results[0] : undefined;
+  return first && typeof first === "object" ? (first as Record<string, unknown>) : envelope;
+}
+
+/** Teach the engine's bookmark failure_reasons; `available` names ride along
+ *  on not_found so the model can pick a real one without a second call. */
+function teachBookmarkFailure(result: unknown): unknown {
+  const failed = firstOpResult(result);
+  const available = Array.isArray(failed.available)
+    ? failed.available.filter((n): n is string => typeof n === "string")
+    : [];
+  const availableText = available.length
+    ? ` Saved bookmarks: ${available.join(", ")}.`
+    : " No bookmarks are saved yet — save one with action:\"save\".";
+  return withFailureReasonHint(result, {
+    not_found: `No bookmark by that name.${availableText}`,
+    no_editor_camera:
+      "No pose was given and the editor has no 3D viewport camera to capture (2D scene, or the 3D editor is not open). Pass position and look_at explicitly (\"Vector3(x, y, z)\" literals), or open the 3D viewport on the scene first.",
+    bad_args:
+      "Check the arguments: name is 1-64 of A-Z a-z 0-9 _ -; position and look_at are \"Vector3(x, y, z)\" literals given together and must differ; fov is 1..179.",
+    io_failed:
+      "res://.summer/camera_bookmarks.json could not be read or written (or exists but is not a JSON object — it was NOT overwritten). Inspect it with summer_read_file path:\"res://.summer/camera_bookmarks.json\".",
+  });
+}
+
+/** Success prose for the bookmark tool: what happened and how to reuse it. */
+function describeBookmarkResult(action: string, result: unknown): string {
+  const data = firstOpResult(result);
+  if (action === "save") {
+    const name = typeof data.name === "string" ? data.name : "?";
+    const source = typeof data.pose_source === "string" ? data.pose_source : "unknown";
+    const overwritten = data.overwritten === true ? " (replaced an existing bookmark of the same name)" : "";
+    return (
+      `Saved camera bookmark "${name}" from ${source === "editor_viewport" ? "the current editor 3D viewport camera" : "the explicit pose"}${overwritten}. ` +
+      `Reuse it for a pose-stable frame: summer_screenshot target:"scene" framing:"bookmark" bookmark_name:"${name}" — every capture from it lines up with the last, so before/after comparisons are real.`
+    );
+  }
+  if (action === "delete") {
+    const name = typeof data.name === "string" ? data.name : "?";
+    const remaining = Array.isArray(data.remaining) ? data.remaining.filter((n): n is string => typeof n === "string") : null;
+    return `Deleted camera bookmark "${name}".${remaining ? (remaining.length ? ` Remaining: ${remaining.join(", ")}.` : " No bookmarks remain.") : ""}`;
+  }
+  const names = Array.isArray(data.names) ? data.names.filter((n): n is string => typeof n === "string") : [];
+  if (!names.length) {
+    return 'No camera bookmarks saved in this project. Save one with action:"save" (omit position/look_at to capture the current editor viewport camera).';
+  }
+  return `${names.length} camera bookmark(s): ${names.join(", ")}. Use one with summer_screenshot target:"scene" framing:"bookmark" bookmark_name:"<name>".`;
+}
+
+/** Amend ScenePreview failures specific to the fixed-pose framings. The
+ *  structured failureReason stays; only the error text is taught. */
+function teachPreviewFailure(snap: EngineSnapshot): EngineSnapshot {
+  const hints: Record<string, string> = {
+    unknown_bookmark:
+      'That bookmark does not exist in this project. List the saved names with summer_camera_bookmark action:"list", or save one with action:"save".',
+    bad_camera_pose:
+      'framing:"free" / "bookmark" needs a valid 3D pose: camera_position and camera_look_at as "Vector3(x, y, z)" literals that differ, fov 1..179, and a 3D scene (2D scenes have nowhere to place a Camera3D — use the default framing).',
+    node_focus_unsupported:
+      "A fixed camera pose cannot be re-aimed at a node. Drop nodePath, or use a directional framing (iso/top/...) with nodePath.",
+  };
+  const reason = snap.failureReason;
+  if (!snap.ok && reason && reason in hints) {
+    return { ...snap, error: `${hints[reason]} Engine said: ${snap.error ?? reason}` };
+  }
+  return snap;
+}
+
 export function registerVisualTools(server: McpServer): void {
   server.tool(
     "summer_screenshot",
@@ -22,6 +115,7 @@ target:
   "scene" — an OFFSCREEN render of a scene file (no game boot; physics/particles/animations are static at t=0). Optionally pass scenePath/framing/size/nodePath. Use for COMPOSITION, SCALE and FRAMING without touching the editor's open tab.
     With the preset framings (iso/top/...), it does NOT use the scene's environment/sky, and it injects a synthetic camera and light when the scene has none. The scene's WorldEnvironment — sky, fog, tonemap, glow, SSAO, ambient — is replaced by a flat preview environment. So those framings CANNOT verify lighting, mood, or any material property that depends on the environment: change them and the frame comes back identical.
     framing:"camera" is the exception and the trustworthy way to check lighting edit-time: it renders through the scene's OWN current/first Camera3D (or the one named by camera_path) with the scene's REAL WorldEnvironment — sky, fog, tonemap, glow, ambient all live. Use it before/after any lighting, environment, or emissive-material change, and to see the scene the way the played game will actually frame it.
+    STABLE VIEWPOINTS (newer engines): framing:"bookmark" + bookmark_name renders from a pose saved with summer_camera_bookmark, and framing:"free" from an explicit camera_position / camera_look_at (+ fov). Both are fixed synthetic poses rendered with the scene's REAL WorldEnvironment, and the same pose every time — the way to take before/after frames that actually line up. marks:true draws a Set-of-Mark overlay (numbered tags + boxes over the largest visible 3D nodes, up to max_marks) and the caption lists label -> node path, so you can say "label 3 (Props/Crate_02) is floating" instead of guessing. The scene file is never touched. 2D scenes render normally with marks_unsupported. Older engines resolve the new framings to a preset and ignore marks — the caption says so; a frame from such a build is NOT pose-stable.
   "game" — a frame from the RUNNING game (real runtime state). Start the game first (summer_play). Not available over a plain local connection — needs the Summer desktop app bridge.
 
 Static frame only — one moment, not motion. For a SEQUENCE of frames over time, or for anything lighting-dependent on an engine build without framing:"camera", use a RunVerification probe's save_frame(name) — its instance has a real renderer.`,
@@ -40,7 +134,7 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
           'target:"scene" only. Full scene path, e.g. "res://main.tscn". Omit to render the currently-open scene.'
         ),
       framing: z
-        .enum(["auto", "iso", "top", "front", "back", "left", "right", "camera"])
+        .enum(SCREENSHOT_FRAMINGS)
         .optional()
         .describe(
           'target:"scene" only, 3D scenes. Camera direction preset: "iso" = 3/4 diagonal view, ' +
@@ -48,7 +142,15 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
             '"left" = camera at -X, "right" = camera at +X. "auto" (default) is an alias of "iso". ' +
             '"camera" = render through the scene\'s OWN Camera3D with its REAL WorldEnvironment — ' +
             "the only edit-time framing that truthfully shows lighting/mood. " +
-            "The result reports the resolved framing."
+            '"bookmark" (+ bookmark_name) = the fixed pose saved with summer_camera_bookmark; "free" (+ camera_position, camera_look_at, fov) = an explicit fixed pose. ' +
+            "Both keep the REAL WorldEnvironment and repeat exactly, so before/after frames line up. " +
+            "The result reports the resolved framing — an older engine echoes a preset instead, and the caption warns."
+        ),
+      bookmark_name: z
+        .string()
+        .optional()
+        .describe(
+          'framing:"bookmark" only (implies it when framing is omitted). Name of a bookmark saved with summer_camera_bookmark (list them with action:"list"). Fails with failure_reason "unknown_bookmark" (+ the available names) when it does not exist.'
         ),
       size: z
         .array(z.number().int().positive())
@@ -62,7 +164,8 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
           'target:"scene" only. Node path relative to the scene root (e.g. "Player/Mesh") to frame ' +
             "INSTEAD of the whole scene — the camera fits that node's combined bounds (3D visual AABBs " +
             "or 2D rects, children included). A bare unique name is also found recursively. " +
-            'Fails with failure_reason "node_not_found" when the path does not resolve (no silent whole-scene fallback).'
+            'Fails with failure_reason "node_not_found" when the path does not resolve (no silent whole-scene fallback). ' +
+            'Cannot combine with a fixed pose (framing "camera"/"free"/"bookmark").'
         ),
       camera_path: z
         .string()
@@ -71,19 +174,74 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
           'framing:"camera" only. Path of the Camera3D to render through (relative to the scene root) when ' +
             "the scene has several cameras or none marked current. Omit to use the scene's current/first Camera3D."
         ),
+      camera_position: z
+        .string()
+        .optional()
+        .describe(
+          'framing:"free" only (implies it when framing is omitted). Camera position as a Godot literal, e.g. "Vector3(0, 5, 12)". Goes together with camera_look_at.'
+        ),
+      camera_look_at: z
+        .string()
+        .optional()
+        .describe(
+          'framing:"free" only. Point the camera looks at, e.g. "Vector3(0, 1, 0)". Must differ from camera_position.'
+        ),
+      fov: z
+        .number()
+        .optional()
+        .describe(
+          'framing:"free" / "bookmark" only. Vertical field of view in degrees (1..179; default 60 for "free", the bookmark\'s own for "bookmark").'
+        ),
+      marks: z
+        .boolean()
+        .optional()
+        .describe(
+          'target:"scene" only, 3D scenes. Draw a Set-of-Mark overlay: numbered tags + box outlines over the largest visible VisualInstance3D nodes (lights excluded), ranked by projected screen area. The caption lists label -> node path (scene-root-relative) so you can name what you see. Works with every framing. 2D scenes return marks_unsupported. Default false.'
+        ),
+      max_marks: z
+        .number()
+        .int()
+        .min(1)
+        .max(MAX_MARKS_CAP)
+        .optional()
+        .describe(`marks:true only. Cap on numbered labels (engine default 32, at most ${MAX_MARKS_CAP}). The caption says when the cap truncated the list.`),
     },
-    async ({ target, scenePath, framing, size, nodePath, camera_path }) =>
-      withEngine(
+    async ({
+      target,
+      scenePath,
+      framing,
+      bookmark_name,
+      size,
+      nodePath,
+      camera_path,
+      camera_position,
+      camera_look_at,
+      fov,
+      marks,
+      max_marks,
+    }) => {
+      // Resolved inside the engine closure so a contradictory framing is a
+      // classified invalid_input (nothing sent), never a transport failure.
+      let preview: ScenePreviewInput | undefined;
+      return withEngine(
         async (client) => {
           if (target === "game") return client.gameSnapshot();
-          if (target === "scene")
-            return client.scenePreview({
+          if (target === "scene") {
+            preview = buildScenePreviewInput({
               scenePath,
               framing,
+              bookmark_name,
               size: size as [number, number] | undefined,
               nodePath,
-              cameraPath: camera_path,
+              camera_path,
+              camera_position,
+              camera_look_at,
+              fov,
+              marks,
+              max_marks,
             });
+            return teachPreviewFailure(await client.scenePreview(preview));
+          }
           return client.viewportSnapshot();
         },
         {
@@ -144,6 +302,8 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
                 "WARNING: the engine is now on a DIFFERENT project than this session is bound to — this frame may be from the wrong project. Call summer_get_project_context to rebind before trusting it."
               );
             }
+            const meta = snap.metadata as Record<string, unknown> | undefined;
+            const requestedFraming = preview?.framing;
             // Scene-preview confession fields (P4.3): a scene with no camera plays
             // grey/black.
             if (target === "scene") {
@@ -169,9 +329,23 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
               // Old engines that predate framing:"camera" resolve unknown
               // framings to a preset and echo the result. Confess it rather
               // than let a flat-environment frame pass as a lighting check.
-              if (framing === "camera" && snap.framing && snap.framing !== "camera") {
+              if (requestedFraming === "camera" && snap.framing && snap.framing !== "camera") {
                 warnings.push(
                   `WARNING: you asked for framing:"camera" but this Summer Engine build resolved it to "${snap.framing}" — it predates camera framing. This frame uses the synthetic preview camera and FLAT environment, so it does NOT verify lighting/mood. Update Summer Engine, or verify lighting by booting the game / a RunVerification probe.`
+                );
+              }
+              // Same confession for the wave I fixed poses: an older engine
+              // echoes the preset it fell back to, so the frame is NOT the
+              // requested viewpoint and cannot anchor a before/after comparison.
+              if (isFixedPoseFraming(requestedFraming) && snap.framing && snap.framing !== requestedFraming) {
+                warnings.push(
+                  `WARNING: you asked for framing:"${requestedFraming}" but this Summer Engine build resolved it to "${snap.framing}" — it predates the free/bookmark framings (engine PR #156 follow-up). This is the "${snap.framing}" preset render from a synthetic camera with a FLAT environment, NOT your viewpoint, so it is not pose-stable and cannot anchor a before/after comparison. Update Summer Engine, or place a Camera3D at the pose and use framing:"camera".`
+                );
+              }
+              // marks:true on an engine without Set-of-Mark: no marks key at all.
+              if (preview?.marks && readSceneMarks(meta) === null) {
+                warnings.push(
+                  "WARNING: you asked for marks:true but this Summer Engine build ignored it (no Set-of-Mark overlay exists — it predates the wave I perception ops). There are NO numbered labels in this image; do not read any into it. Update Summer Engine to get label -> node path mapping."
                 );
               }
             }
@@ -180,24 +354,42 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
             // which node was framed (confirms nodePath resolved), and how many
             // blank-readback retries the engine needed (0 = omitted).
             const details: string[] = [];
+            let marksBlock: string[] = [];
             if (target === "scene") {
               if (snap.framing) details.push(`framing: ${snap.framing}`);
               if (snap.framedNode) details.push(`framed node: ${snap.framedNode}`);
               if (snap.renderRetries) details.push(`render retries: ${snap.renderRetries}`);
               // Camera-framing provenance (contracts Wave B): which camera the
               // engine rendered through and which environment was live.
-              const meta = snap.metadata as Record<string, unknown> | undefined;
               if (typeof meta?.camera_path === "string" && meta.camera_path) {
                 details.push(`scene camera: ${meta.camera_path}`);
               }
               if (typeof meta?.environment_used === "string" && meta.environment_used) {
                 details.push(`environment: ${meta.environment_used}`);
               }
+              // Wave I fixed-pose provenance: where the pose came from and the
+              // exact pose rendered (3dp literals) — quote it when comparing.
+              if (typeof meta?.framing_source === "string" && meta.framing_source) {
+                details.push(
+                  `framing source: ${meta.framing_source}${typeof meta.bookmark === "string" && meta.bookmark ? ` "${meta.bookmark}"` : ""}`
+                );
+              }
+              const pose = readCameraPose(meta);
+              if (pose) {
+                const parts: string[] = [];
+                if (pose.position) parts.push(`position ${pose.position}`);
+                if (pose.look_at) parts.push(`look_at ${pose.look_at}`);
+                if (pose.fov !== undefined) parts.push(`fov ${pose.fov}`);
+                if (parts.length) details.push(`camera pose: ${parts.join(", ")}`);
+              }
+              const marksSummary = readSceneMarks(meta);
+              if (marksSummary) marksBlock = formatSceneMarks(marksSummary);
             }
             const detailNote = details.length ? `; ${details.join(", ")}` : "";
 
             const caption =
               `${label} (${dims}${detailNote}). Saved to ${snap.localPath ?? "n/a"}. Review the image above and describe what you actually see.` +
+              (marksBlock.length ? `\n\n${marksBlock.join("\n")}` : "") +
               (warnings.length ? `\n\n${warnings.join("\n")}` : "");
 
             return [
@@ -205,6 +397,65 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
               { type: "text", text: caption },
             ];
           },
+        }
+      );
+    }
+  );
+
+  server.tool(
+    "summer_camera_bookmark",
+    `Save, list, or delete named camera viewpoints for the edited 3D scene. A bookmark is a fixed pose (position, look_at, fov) stored IN THE PROJECT at res://.summer/camera_bookmarks.json, so it survives sessions and machines — the scene file is never touched.
+
+WHY: screenshots taken from a preset framing re-fit the scene bounds every time, so a before/after pair shifts whenever anything moves; a bookmark is the same pose every time, which makes before/after comparison real. Save once, then reuse on every capture: summer_screenshot target:"scene" framing:"bookmark" bookmark_name:"<name>" (add marks:true for numbered labels mapped to node paths).
+
+action:
+  "save"   — name (1-64 of A-Z a-z 0-9 _ -) plus EITHER position + look_at as Godot literals ("Vector3(x, y, z)", optional fov, default 60) OR neither: omit both to capture the CURRENT editor 3D viewport camera (result pose_source: "editor_viewport" vs "explicit"; overwritten says whether a same-named bookmark was replaced).
+  "list"   — every saved bookmark (names sorted, poses, created timestamps, file path).
+  "delete" — remove one by name (result lists the remaining names).
+
+Failures are structured: bad_args (name grammar, half-given pose, fov outside 1..179, position == look_at), no_editor_camera (no pose given and no 3D viewport camera to capture), not_found (+ available names), io_failed (file unreadable/unwritable; a malformed file is reported, never overwritten). Edit-time only — no running game needed. If this engine build predates the bookmark ops, the result is a structured engine_lacks_op failure (nothing is sent) naming the fallback.`,
+    {
+      action: z
+        .enum(CAMERA_BOOKMARK_ACTIONS)
+        .describe('"save" a viewpoint, "list" the saved ones, or "delete" one by name.'),
+      name: z
+        .string()
+        .optional()
+        .describe("Bookmark name for save/delete: 1-64 characters from A-Z a-z 0-9 _ - (e.g. \"hero_closeup\")."),
+      position: z
+        .string()
+        .optional()
+        .describe(
+          'save only. Camera position as a Godot literal, e.g. "Vector3(0, 5, 12)". Goes together with look_at; omit BOTH to capture the current editor 3D viewport camera.'
+        ),
+      look_at: z
+        .string()
+        .optional()
+        .describe('save only. Point the camera looks at, e.g. "Vector3(0, 1, 0)". Must differ from position.'),
+      fov: z
+        .number()
+        .optional()
+        .describe("save only. Vertical field of view in degrees (1..179, default 60). With a captured viewport pose the viewport camera's fov wins."),
+    },
+    async ({ action, name, position, look_at, fov }) =>
+      withEngine(
+        async (client) => {
+          // Argument validation first (a bad name never needs an engine), then
+          // the capability pre-flight on THIS action's op kind.
+          const op = buildCameraBookmarkOp({ action, name, position, look_at, fov });
+          const kind = String(op.op);
+          const missing = missingEngineOpResult(client, kind, CAMERA_BOOKMARK_FALLBACK);
+          if (missing) return missing;
+          const result = await client.executeOps([op]);
+          return teachBookmarkFailure(withOldEngineHint(result, kind, CAMERA_BOOKMARK_FALLBACK));
+        },
+        {
+          toContent: (result) => [
+            {
+              type: "text",
+              text: `${JSON.stringify(result, null, 2)}\n\n${describeBookmarkResult(action, result)}`,
+            },
+          ],
         }
       )
   );

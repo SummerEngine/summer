@@ -89,11 +89,11 @@ describe("launch posture: engine version gating", () => {
     expect(focus).toEqual({ posture: "focus", extraArgs: [], background: false, note: null });
   });
 
-  it("withholds the flag on an old engine and says in one line that it cannot launch without focus", () => {
+  it("withholds the flag when the version fallback says old, and says the probe could not run", () => {
     const old = planLaunch("background", backgroundLaunchSupport("0.5.65"));
     expect(old.extraArgs).toEqual([]);
     expect(old.background).toBe(false);
-    expect(old.note).toContain("Summer Engine 0.5.65 cannot launch without taking focus");
+    expect(old.note).toContain("Summer Engine 0.5.65 could not be probed (--help) and its version predates");
     expect(old.note).toContain(BACKGROUND_LAUNCH_MIN_ENGINE_VERSION);
     expect(old.note?.split("\n")).toHaveLength(1);
   });
@@ -103,6 +103,9 @@ describe("launch posture: engine version gating", () => {
     expect(unknown.extraArgs).toEqual([]);
     expect(unknown.note).toContain("could not be probed (--help) and its version could not be read");
     expect(unknown.note).toContain(BACKGROUND_LAUNCH_FLAG);
+    // The main negative message: the binary itself answered no.
+    const probedOld = planLaunch("background", backgroundLaunchSupport("0.5.65", false));
+    expect(probedOld.note).toContain("Summer Engine 0.5.65 cannot launch without taking focus (its --help does not list --summer-background)");
 
     const probedNo = planLaunch("background", backgroundLaunchSupport(null, false));
     expect(probedNo.extraArgs).toEqual([]);
@@ -185,11 +188,11 @@ describe("detectBackgroundLaunchSupport — probe first, cached per binary, vers
     await rm(root, { recursive: true, force: true });
   });
 
-  it("a version known too old skips the probe entirely", async () => {
+  it("no version pre-check: a dev build stamped 0.5.65 whose --help lists the flag is supported", async () => {
     const probe = vi.fn(async () => true);
     const support = await detectBackgroundLaunchSupport(binary, { installedVersion: "0.5.65", summerDir: root, probe });
-    expect(probe).not.toHaveBeenCalled();
-    expect(support).toEqual({ supported: false, source: "version", reason: "engine_too_old", version: "0.5.65" });
+    expect(probe).toHaveBeenCalledTimes(1);
+    expect(support).toEqual({ supported: true, source: "help_probe", version: "0.5.65" });
   });
 
   it("the probe decides for an unknown or new-enough version, and its answer is cached by path + mtime + size", async () => {
@@ -214,12 +217,18 @@ describe("detectBackgroundLaunchSupport — probe first, cached per binary, vers
     expect(third).toEqual({ supported: false, source: "help_probe", reason: "engine_too_old", version: "0.5.66" });
   });
 
-  it("falls back to the version when the probe cannot answer, and caches nothing", async () => {
+  it("falls back to the version only when the probe cannot answer, and caches nothing", async () => {
     const probe = vi.fn(async () => null);
     expect(await detectBackgroundLaunchSupport(binary, { installedVersion: "0.5.66", summerDir: root, probe })).toEqual({
       supported: true,
       source: "version",
       version: "0.5.66",
+    });
+    expect(await detectBackgroundLaunchSupport(binary, { installedVersion: "0.5.65", summerDir: root, probe })).toEqual({
+      supported: false,
+      source: "version",
+      reason: "engine_too_old",
+      version: "0.5.65",
     });
     expect(await detectBackgroundLaunchSupport(binary, { installedVersion: null, summerDir: root, probe })).toEqual({
       supported: false,

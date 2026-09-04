@@ -263,17 +263,17 @@ describe("summer run launch posture (focus vs background)", () => {
     expect(errors.join("\n")).toContain("either --focus or --background");
   });
 
-  it("an engine at or below 0.5.65 gets no flag and one line saying it cannot launch without focus", async () => {
+  it("an engine whose --help lacks the flag gets no flag and one line saying it cannot launch without focus", async () => {
     setStdoutTTY(false);
     findEngineBinaryMock.mockReturnValue(binary);
-    engineSupport("0.5.65");
+    engineSupport("0.5.65", false);
     checkEngineHealthMock.mockResolvedValueOnce(null).mockResolvedValue({ version: "0.5.65" } as never);
 
     await runCommand.parseAsync(["--no-project"], { from: "user" });
 
     expect(spawnMock).toHaveBeenCalledWith(binary, ["--editor"], { detached: true, stdio: "ignore" });
     const out = logs.join("\n");
-    expect(out).toContain("Summer Engine 0.5.65 cannot launch without taking focus");
+    expect(out).toContain("Summer Engine 0.5.65 cannot launch without taking focus (its --help does not list --summer-background)");
     expect(out).toContain("Launching Summer Engine...");
     expect(out).not.toContain("in the background");
   });

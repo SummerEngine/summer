@@ -43,9 +43,11 @@
  *      cached per binary path + mtime + size in ~/.summer, so it runs once per
  *      install.
  *   2. The installed version (macOS Info.plist, Windows Velopack sq.version)
- *      is only a cheap pre-check — a version known to be too old skips the
- *      probe — and the fallback when `--help` cannot run (spawn error,
- *      timeout). Linux exposes no version file, so there it reads unknown.
+ *      is ONLY the fallback when `--help` cannot run (spawn error, timeout).
+ *      It is never a pre-check: pre-release and dev builds carry the flag
+ *      while still stamped with the previous version (the first such build
+ *      says 0.5.65), so a version gate would refuse exactly the builds being
+ *      verified. Linux exposes no version file, so there it reads unknown.
  *
  * Once the engine is up, /api/health `capabilities.launchPostures`
  * (["focus","background","offscreen"] on macOS builds, ["focus"] elsewhere,
@@ -68,9 +70,9 @@ export type LaunchPosture = "focus" | "background";
 /** Engine flag for the background posture (main/main.cpp). */
 export const BACKGROUND_LAUNCH_FLAG = "--summer-background";
 
-/** First engine version that honours BACKGROUND_LAUNCH_FLAG. Engines at or
- *  below 0.5.65 predate it. Confirm against the engine release notes when the
- *  flag ships; until then this is the contract agreed with the engine side. */
+/** First RELEASED engine version expected to honour BACKGROUND_LAUNCH_FLAG.
+ *  Used only when the --help probe cannot run; dev/pre-release builds carry
+ *  the flag while still stamped 0.5.65, which is why the probe is the gate. */
 export const BACKGROUND_LAUNCH_MIN_ENGINE_VERSION = "0.5.66";
 
 export interface LaunchPostureFlags {
@@ -264,9 +266,10 @@ export interface DetectBackgroundSupportOptions {
 
 /**
  * The pre-launch decision for one binary, in the order the module header
- * describes: version pre-check (known too old = skip the probe), cached
- * `--help` answer, fresh `--help` probe (cached when it answers), and the
- * version gate as the fallback when the probe cannot run.
+ * describes: cached `--help` answer, fresh `--help` probe (cached when it
+ * answers), and the version gate ONLY as the fallback when the probe cannot
+ * run. The probe is the sole positive gate — no version pre-check, so a dev
+ * build stamped 0.5.65 that lists the flag launches in the background.
  */
 export async function detectBackgroundLaunchSupport(
   binary: string,
@@ -274,10 +277,6 @@ export async function detectBackgroundLaunchSupport(
 ): Promise<BackgroundLaunchSupport> {
   const version =
     options.installedVersion !== undefined ? options.installedVersion : readInstalledEngineVersion(binary);
-  const parsed = version ? parseVersion(version) : null;
-  if (parsed && compareVersions(parsed, parseVersion(BACKGROUND_LAUNCH_MIN_ENGINE_VERSION)!) < 0) {
-    return backgroundLaunchSupport(version, null);
-  }
   const summerDir = options.summerDir ?? getSummerDir();
   const stamp = binaryStamp(binary);
   if (stamp) {
@@ -329,8 +328,10 @@ export function planLaunch(posture: LaunchPosture, support: BackgroundLaunchSupp
   const which = support.version ? `Summer Engine ${support.version}` : "this Summer Engine build";
   const note =
     support.reason === "engine_too_old"
-      ? `Background launch requested, but ${which} cannot launch without taking focus (${support.source === "help_probe" ? `its --help does not list ${BACKGROUND_LAUNCH_FLAG}` : `needs ${BACKGROUND_LAUNCH_MIN_ENGINE_VERSION}+`}); launching with focus. Update Summer Engine (summer install) for background launches.`
-      : `Background launch requested, but the installed Summer Engine could not be probed (--help) and its version could not be read before launch, so the toolkit cannot tell whether it supports ${BACKGROUND_LAUNCH_FLAG} (needs ${BACKGROUND_LAUNCH_MIN_ENGINE_VERSION}+); launching with focus.`;
+      ? support.source === "help_probe"
+        ? `Background launch requested, but ${which} cannot launch without taking focus (its --help does not list ${BACKGROUND_LAUNCH_FLAG}); launching with focus. Update Summer Engine (summer install) for background launches.`
+        : `Background launch requested, but ${which} could not be probed (--help) and its version predates ${BACKGROUND_LAUNCH_MIN_ENGINE_VERSION}, so it most likely cannot launch without taking focus; launching with focus. Update Summer Engine (summer install) for background launches.`
+      : `Background launch requested, but the installed Summer Engine could not be probed (--help) and its version could not be read before launch, so the toolkit cannot tell whether it supports ${BACKGROUND_LAUNCH_FLAG}; launching with focus.`;
   return { posture, extraArgs: [], background: false, note };
 }
 

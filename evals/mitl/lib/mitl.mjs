@@ -4,10 +4,10 @@
  *
  *   node mitl.mjs list [task-id|all]                       -> task ids, one per line
  *   node mitl.mjs task <id>                                -> the task as JSON
- *   node mitl.mjs wait-instance <project> <pid> <realHome> <fakeHome> [timeoutS]
- *                                                          -> waits for the editor's ~/.summer/instances entry
- *                                                             (real HOME), health-checks it, copies it into the
- *                                                             fake HOME, prints {file, port, instanceId}
+ *   node mitl.mjs wait-instance <project> <pid> <summerHome> [timeoutS]
+ *                                                          -> waits for the editor's <summerHome>/.summer/instances
+ *                                                             entry (the editor runs with HOME=<fake HOME>),
+ *                                                             health-checks it, prints {file, port, instanceId}
  *   node mitl.mjs smoke-result <results.json> <rc> <log>  -> normalises a tests/autopilot run into JSON
  *   node mitl.mjs agent <id> <project> <fakeHome> <outDir> <mcpConfig>
  *                                                          -> runs `claude -p`, writes transcript.jsonl + agent.json
@@ -99,9 +99,11 @@ async function health(port) {
   }
 }
 
-async function waitInstance(project, pid, realHome, fakeHome, timeoutS = 240) {
+/** The editor runs with HOME=<fake HOME>, so its registry entry lands in <fake HOME>/.summer/instances —
+ *  the same directory the toolkit (also under the fake HOME) reads. Wait for it and health-check it. */
+async function waitInstance(project, pid, summerHome, timeoutS = 240) {
   const root = canonical(project);
-  const dir = join(realHome, ".summer", "instances");
+  const dir = join(summerHome, ".summer", "instances");
   const deadline = Date.now() + timeoutS * 1000;
   while (Date.now() < deadline) {
     if (existsSync(dir)) {
@@ -113,9 +115,6 @@ async function waitInstance(project, pid, realHome, fakeHome, timeoutS = 240) {
         if (canonical(rec.resourceRoot ?? "") !== root) continue;
         const h = await health(rec.port);
         if (!h || h.ok !== true) break;
-        const dest = join(fakeHome, ".summer", "instances");
-        mkdirSync(dest, { recursive: true, mode: 0o700 });
-        copyFileSync(file, join(dest, name));
         process.stdout.write(
           JSON.stringify({ file, port: rec.port, instanceId: rec.instanceId, engineVersion: rec.engineVersion ?? h.version ?? null, health: h }) + "\n"
         );
@@ -607,7 +606,7 @@ switch (cmd) {
     process.stdout.write(JSON.stringify(getTask(rest[0]), null, 2) + "\n");
     break;
   case "wait-instance":
-    await waitInstance(rest[0], Number(rest[1]), rest[2], rest[3], rest[4] ? Number(rest[4]) : undefined);
+    await waitInstance(rest[0], Number(rest[1]), rest[2], rest[3] ? Number(rest[3]) : undefined);
     break;
   case "smoke-result":
     smokeResult(rest[0], rest[1], rest[2]);

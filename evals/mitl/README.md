@@ -25,11 +25,12 @@ runner (parent-chain walk), then exits.
 
 1. `summer create <template> <scratch>/projects/<task> --keep-git` — pristine, pinned, digest-verified.
    The checkout's `assets/autopilot/*` is copied over the scaffold so the probe is this build's.
-2. **Baseline smoke**: `bash tests/autopilot/run.sh` (import pre-pass + offscreen verify run). Must
-   PASS; otherwise the task is recorded as `baseline_failed` and skipped — a broken template is a
-   template finding, not a model finding.
-3. Editor launched **by the runner**, `--editor --path <project> --summer-offscreen --summer-no-publish
-   --disable-crash-handler`; wait for its `~/.summer/instances/<id>.json` + `/api/health`. Five
+2. **Baseline smoke**: `HOME=<fake> bash tests/autopilot/run.sh` (import pre-pass + offscreen verify
+   run). Must PASS; otherwise the task is recorded as `baseline_failed` and skipped — a broken template
+   is a template finding, not a model finding.
+3. Editor launched **by the runner** with `HOME=<fake>`, `--editor --path <project> --summer-offscreen
+   --summer-no-publish --disable-crash-handler`; wait for its `<fake>/.summer/instances/<id>.json` +
+   `/api/health`. Five
    seconds later the project state is committed (`mitl: state after editor open`) so the engine's
    first-open rewrite (features bump, `uid=`/`unique_id=` on every node, `.bak`) is not scored as the
    model's work; `changed_files` additionally drops `.tscn` diffs that are pure uid bookkeeping.
@@ -84,13 +85,21 @@ Scores per task: `playable`, `checks_passed n/m`, `tool_calls` (total / MCP / bu
   `MITL_GATE_MAX_S` and **never kills a process it did not start**. It kills only its own editor pid,
   then confirms it is gone; a stale `~/.summer/instances` entry is removed only if it names our dead pid.
   Note: the scaffold's `run.sh` performs two launches (import, verify) behind one gate.
-- **HOME isolation**: `claude`, the MCP server and `summer tool` run with `HOME=<scratch>/mitl-home`,
-  set up once by `summer setup claude-code --local-dev --yes` under that HOME (skills, `~/.claude.json`
-  MCP entry → this checkout). Mathias's real `~/.claude`, `~/.claude.json` and `~/.summer` are never
-  written by the runner. The engine writes its instance file into the **real** `~/.summer/instances/`
-  (no env var relocates it, and `--summer-no-publish` keeps it from writing the global `api-token`/
-  `api-port`); the runner **reads** that one file and copies it into the fake HOME every 5 s (the
-  toolkit rejects symlinked `instances/` and drops entries whose `heartbeatAt` is older than 180 s).
+- **HOME isolation — everything, engine included**: `claude`, the MCP server, `summer tool`, the
+  editor, the import pre-pass and the verify run all run with `HOME=<scratch>/mitl-home`, set up once
+  by `summer setup claude-code --local-dev --yes` under that HOME (skills, `~/.claude.json` MCP entry →
+  this checkout). Why the engine too: on boot the editor restores the machine-wide desktop sign-in
+  (native session JWT in the user's data dir + the shared WKWebView cookie store) and plants the real
+  `se_session` cookie into its Studio webview — an editor launched with the real HOME would run
+  production Studio as Mathias. `NSHomeDirectory` honours `$HOME`, so Application Support, WebKit,
+  HTTPStorages and `~/.summer` all land under the fake HOME: a cold machine. The instance file the
+  toolkit needs therefore appears in the fake `~/.summer/instances/` directly (no copy step);
+  `--summer-no-publish` additionally stops the global `api-token`/`api-port` from being written.
+  Mathias's real `~/.claude`, `~/.claude.json` and `~/.summer` are never written by the runner.
+- **Isolation audit** (`<task>/isolation.txt`, also in the task notes): `editor.log` must not mention
+  `se_session`; the fake HOME must contain no `se_session` / JWT-looking material (verified engine-free
+  right after setup: none); the real `~/.summer` must have gained no files since the task started
+  (files other processes touched there are listed, not judged).
 - **Auth**: the fake HOME has no Claude login (keychain credentials are keyed to the real config dir).
   `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token` is the supported hand-off; without it the model
   step records `auth_missing` and the rest of the pipeline still runs, so the harness is testable.

@@ -6,6 +6,13 @@ import { join, resolve } from "path";
 import { getSummerDir } from "../../core/auth.js";
 import { getApiPort, checkEngineHealth } from "../../core/engine.js";
 import { findEngineBinary } from "../../core/engine-install.js";
+import {
+  backgroundLaunchSupport,
+  planLaunch,
+  readInstalledEngineVersion,
+  resolveLaunchPosture,
+  BACKGROUND_LAUNCH_MIN_ENGINE_VERSION,
+} from "../../core/launch-posture.js";
 import { sleep } from "../../core/util/sleep.js";
 
 const LAUNCH_LOCK_STALE_MS = 60_000;
@@ -84,6 +91,12 @@ async function withLaunchLock<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
+interface RunOptions {
+  project: boolean;
+  background?: boolean;
+  focus?: boolean;
+}
+
 export const runCommand = new Command("run")
   .description(
     "Launch Summer Engine with a project. Without a path it launches a bare " +
@@ -94,7 +107,32 @@ export const runCommand = new Command("run")
     "--no-project",
     "Launch a bare detached editor (project manager) without opening a project"
   )
-  .action(async (projectPath: string | undefined, opts: { project: boolean }) => {
+  .option(
+    "--background",
+    "Launch without taking focus: the window exists but stays behind until clicked " +
+      "(default when stdout is not a terminal, i.e. an agent is driving)"
+  )
+  .option(
+    "--focus",
+    "Launch and bring the editor to the front (default when a human runs this in a terminal)"
+  )
+  .action(async (projectPath: string | undefined, opts: RunOptions) => {
+    // Posture is decided up front so a bad flag combination fails before any
+    // filesystem or engine work. Why the TTY heuristic: a human at a terminal
+    // typed `summer run` to SEE the editor; an agent (no TTY on stdout) is
+    // launching it as a means to an end while the user works on something else
+    // and must not be interrupted. See src/core/launch-posture.ts.
+    let posture: ReturnType<typeof resolveLaunchPosture>;
+    try {
+      posture = resolveLaunchPosture(
+        { focus: opts.focus, background: opts.background },
+        { stdoutIsTTY: process.stdout.isTTY === true }
+      );
+    } catch (error) {
+      console.error((error as Error).message);
+      process.exitCode = 1;
+      return;
+    }
     const fullProjectPath = projectPath ? resolve(projectPath) : null;
     if (!fullProjectPath && opts.project !== false) {
       console.error(
@@ -160,12 +198,23 @@ export const runCommand = new Command("run")
         return;
       }
 
-      const args: string[] = ["--editor"];
+      // The engine is not running yet, so /api/health cannot tell us whether
+      // it honours --summer-background; read the installed version instead
+      // and pass the flag only when the engine is known to support it.
+      const installedVersion = readInstalledEngineVersion(binary);
+      const plan = planLaunch(posture, backgroundLaunchSupport(installedVersion));
+
+      const args: string[] = ["--editor", ...plan.extraArgs];
       if (fullProjectPath) {
         args.unshift("--path", fullProjectPath);
       }
 
-      console.log("Launching Summer Engine...");
+      if (plan.note) console.log(plan.note);
+      console.log(
+        plan.background
+          ? "Launching Summer Engine in the background (the window will not take focus until you click it)..."
+          : "Launching Summer Engine..."
+      );
 
       const child = spawn(binary, args, { detached: true, stdio: "ignore" });
       // A stale or non-executable binary surfaces as an async "error" event
@@ -193,6 +242,19 @@ export const runCommand = new Command("run")
           console.log(`Summer Engine running (v${h.version}) on port ${newPort}`);
           if (h.project_name) {
             console.log(`  Project: ${h.project_name}`);
+          }
+          // Background was wanted, the flag was withheld because the version
+          // was unreadable, and the running engine now reports one that would
+          // have honoured it: say so, so the next launch can be fixed.
+          if (
+            posture === "background" &&
+            !plan.background &&
+            installedVersion === null &&
+            backgroundLaunchSupport(h.version).supported
+          ) {
+            console.log(
+              `  Note: this engine (v${h.version}) supports background launches (${BACKGROUND_LAUNCH_MIN_ENGINE_VERSION}+), but its version was not readable before launch on this platform.`
+            );
           }
           return;
         }

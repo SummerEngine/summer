@@ -8,7 +8,6 @@ import {
   existsSync,
   mkdirSync,
   readdirSync,
-  readFileSync,
   renameSync,
   rmSync,
   symlinkSync,
@@ -64,22 +63,11 @@ export function verifyChecksum(actual: string, expected: string | undefined, lab
   }
 }
 
-/** Version string of an installed macOS bundle (CFBundleShortVersionString in
- *  Contents/Info.plist), or null when unreadable. */
-export function readMacBundleVersion(appPath: string): string | null {
-  try {
-    return parseMacBundleVersion(readFileSync(join(appPath, "Contents", "Info.plist"), "utf-8"));
-  } catch {
-    return null;
-  }
-}
-
-export function parseMacBundleVersion(plistText: string): string | null {
-  const match = plistText.match(
-    /<key>CFBundleShortVersionString<\/key>\s*<string>([^<]+)<\/string>/
-  );
-  return match ? match[1].trim() : null;
-}
+// The bundle-version readers live in core (src/core/launch-posture.ts) because
+// `summer run` needs the installed version BEFORE the engine is up to decide
+// whether it may pass --summer-background; re-exported here for install.test.ts.
+import { parseMacBundleVersion, readMacBundleVersion } from "../../core/launch-posture.js";
+export { parseMacBundleVersion, readMacBundleVersion };
 
 export function isSameVersion(installed: string | null, latest: string): boolean {
   if (!installed) return false;

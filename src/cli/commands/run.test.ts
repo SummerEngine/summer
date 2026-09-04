@@ -19,6 +19,11 @@ vi.mock("../../core/engine.js", async (importOriginal) => {
   };
 });
 
+vi.mock("../../core/launch-posture.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../core/launch-posture.js")>();
+  return { ...actual, readInstalledEngineVersion: vi.fn(() => null) };
+});
+
 vi.mock("child_process", async (importOriginal) => {
   const actual = await importOriginal<typeof import("child_process")>();
   return { ...actual, spawn: vi.fn(() => fakeChild()) };
@@ -40,9 +45,21 @@ function fakeChild() {
 import { spawn } from "child_process";
 import { checkEngineHealth } from "../../core/engine.js";
 import { findEngineBinary } from "../../core/engine-install.js";
+import { readInstalledEngineVersion } from "../../core/launch-posture.js";
 import { runCommand } from "./run.js";
 
 const findEngineBinaryMock = vi.mocked(findEngineBinary);
+const readInstalledEngineVersionMock = vi.mocked(readInstalledEngineVersion);
+
+/** `summer run` reads process.stdout.isTTY to tell a human from an agent. */
+const originalIsTTY = Object.getOwnPropertyDescriptor(process.stdout, "isTTY");
+function setStdoutTTY(value: boolean): void {
+  Object.defineProperty(process.stdout, "isTTY", { value, configurable: true, writable: true });
+}
+function restoreStdoutTTY(): void {
+  if (originalIsTTY) Object.defineProperty(process.stdout, "isTTY", originalIsTTY);
+  else delete (process.stdout as { isTTY?: boolean }).isTTY;
+}
 const checkEngineHealthMock = vi.mocked(checkEngineHealth);
 const spawnMock = vi.mocked(spawn);
 
@@ -68,10 +85,19 @@ beforeEach(async () => {
   checkEngineHealthMock.mockResolvedValue(null);
   spawnMock.mockClear();
   nextSpawnError = null;
+  readInstalledEngineVersionMock.mockReset();
+  readInstalledEngineVersionMock.mockReturnValue(null);
+  // Existing tests assume a human at a terminal (focus, no posture flags).
+  setStdoutTTY(true);
+  // Commander keeps parsed option values on the Command instance between
+  // parseAsync calls; a --background from one test must not leak into the next.
+  runCommand.setOptionValue("focus", undefined);
+  runCommand.setOptionValue("background", undefined);
   process.exitCode = undefined;
 });
 
 afterEach(async () => {
+  restoreStdoutTTY();
   vi.restoreAllMocks();
   process.exitCode = originalExitCode;
   setSummerDirForTests(null);
@@ -130,5 +156,104 @@ describe("summer run engine resolution", () => {
       "Summer Engine binary failed to start: ENOENT (/opt/stale/summer-linux-x86_64)"
     );
     expect(logs.join("\n")).not.toContain("Summer Engine running");
+  });
+});
+
+describe("summer run launch posture (focus vs background)", () => {
+  const binary = "/Applications/Summer.app/Contents/MacOS/Summer";
+  const up = { version: "0.5.66", project_name: "Demo" } as never;
+
+  it("an agent (no TTY) on a supporting engine launches in the background with --summer-background", async () => {
+    setStdoutTTY(false);
+    findEngineBinaryMock.mockReturnValue(binary);
+    readInstalledEngineVersionMock.mockReturnValue("0.5.66");
+    checkEngineHealthMock.mockResolvedValueOnce(null).mockResolvedValue(up);
+
+    await runCommand.parseAsync(["--no-project"], { from: "user" });
+
+    expect(spawnMock).toHaveBeenCalledWith(binary, ["--editor", "--summer-background"], { detached: true, stdio: "ignore" });
+    expect(logs.join("\n")).toContain("Launching Summer Engine in the background");
+    expect(logs.join("\n")).not.toContain("cannot launch without taking focus");
+  });
+
+  it("a human at a terminal launches with focus and no posture flag", async () => {
+    setStdoutTTY(true);
+    findEngineBinaryMock.mockReturnValue(binary);
+    readInstalledEngineVersionMock.mockReturnValue("0.5.66");
+    checkEngineHealthMock.mockResolvedValueOnce(null).mockResolvedValue(up);
+
+    await runCommand.parseAsync(["--no-project"], { from: "user" });
+
+    expect(spawnMock).toHaveBeenCalledWith(binary, ["--editor"], { detached: true, stdio: "ignore" });
+    expect(logs.join("\n")).toContain("Launching Summer Engine...");
+  });
+
+  it("--background from a terminal and --focus from an agent both override the heuristic", async () => {
+    findEngineBinaryMock.mockReturnValue(binary);
+    readInstalledEngineVersionMock.mockReturnValue("0.5.66");
+    checkEngineHealthMock.mockResolvedValue(up);
+
+    setStdoutTTY(true);
+    checkEngineHealthMock.mockResolvedValueOnce(null);
+    await runCommand.parseAsync(["--no-project", "--background"], { from: "user" });
+    expect(spawnMock).toHaveBeenLastCalledWith(binary, ["--editor", "--summer-background"], expect.anything());
+
+    runCommand.setOptionValue("background", undefined);
+    setStdoutTTY(false);
+    checkEngineHealthMock.mockResolvedValueOnce(null);
+    await runCommand.parseAsync(["--no-project", "--focus"], { from: "user" });
+    expect(spawnMock).toHaveBeenLastCalledWith(binary, ["--editor"], expect.anything());
+  });
+
+  it("refuses --focus together with --background before touching anything", async () => {
+    findEngineBinaryMock.mockReturnValue(binary);
+    await runCommand.parseAsync(["--no-project", "--focus", "--background"], { from: "user" });
+    expect(spawnMock).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
+    expect(errors.join("\n")).toContain("either --focus or --background");
+  });
+
+  it("an engine at or below 0.5.65 gets no flag and one line saying it cannot launch without focus", async () => {
+    setStdoutTTY(false);
+    findEngineBinaryMock.mockReturnValue(binary);
+    readInstalledEngineVersionMock.mockReturnValue("0.5.65");
+    checkEngineHealthMock.mockResolvedValueOnce(null).mockResolvedValue({ version: "0.5.65" } as never);
+
+    await runCommand.parseAsync(["--no-project"], { from: "user" });
+
+    expect(spawnMock).toHaveBeenCalledWith(binary, ["--editor"], { detached: true, stdio: "ignore" });
+    const out = logs.join("\n");
+    expect(out).toContain("Summer Engine 0.5.65 cannot launch without taking focus");
+    expect(out).toContain("Launching Summer Engine...");
+    expect(out).not.toContain("in the background");
+  });
+
+  it("an unreadable version gets no flag, an honest note, and a hint when the running engine turns out to support it", async () => {
+    setStdoutTTY(false);
+    findEngineBinaryMock.mockReturnValue("/home/u/.summer/engine/summer");
+    readInstalledEngineVersionMock.mockReturnValue(null);
+    checkEngineHealthMock.mockResolvedValueOnce(null).mockResolvedValue({ version: "0.5.70" } as never);
+
+    await runCommand.parseAsync(["--no-project"], { from: "user" });
+
+    expect(spawnMock).toHaveBeenCalledWith("/home/u/.summer/engine/summer", ["--editor"], expect.anything());
+    const out = logs.join("\n");
+    expect(out).toContain("could not be read before launch");
+    expect(out).toContain("supports background launches");
+  });
+
+  it("the project path still comes first and the posture flag last", async () => {
+    setStdoutTTY(false);
+    const { mkdir: mk, writeFile: wf } = await import("node:fs/promises");
+    const project = join(root, "proj");
+    await mk(project, { recursive: true });
+    await wf(join(project, "project.godot"), "");
+    findEngineBinaryMock.mockReturnValue(binary);
+    readInstalledEngineVersionMock.mockReturnValue("0.5.66");
+    checkEngineHealthMock.mockResolvedValueOnce(null).mockResolvedValue(up);
+
+    await runCommand.parseAsync([project], { from: "user" });
+
+    expect(spawnMock).toHaveBeenCalledWith(binary, ["--path", project, "--editor", "--summer-background"], expect.anything());
   });
 });

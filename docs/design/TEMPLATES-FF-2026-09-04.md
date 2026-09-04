@@ -12,7 +12,7 @@ Each command is a fast-forward only (fails if not ff):
 gh api -X PATCH repos/SummerEngine/template-2d-brario-platformer/git/refs/heads/main -f sha=cf7426cdd48f243e501396530ccaf8549c4951ad
 gh api -X PATCH repos/SummerEngine/template-2d-grid-puzzle/git/refs/heads/main -f sha=f8433fddeb63f2e62db05fd84cf0516cea49431d
 gh api -X PATCH repos/SummerEngine/template-2d-plants-and-zombies-tower-defense/git/refs/heads/main -f sha=83e79fa573986973aef590cebed290f097de339e
-gh api -X PATCH repos/SummerEngine/template-2d-rpg/git/refs/heads/main -f sha=<2d-rpg tip after the Dialogic fix>
+gh api -X PATCH repos/SummerEngine/template-2d-rpg/git/refs/heads/main -f sha=4de2331a0495ae90e60b3f7fa933d8cc2b027a7c
 gh api -X PATCH repos/SummerEngine/template-2d-vampire-survivor-roguelike/git/refs/heads/main -f sha=53197b89710d2212a3b9e117e59cfe897db1e2af
 gh api -X PATCH repos/SummerEngine/template-3d-city-kit/git/refs/heads/codex%2Fimportable-template -f sha=2635fc8372435940e6b7415934fe0c2896c8c967
 gh api -X PATCH repos/SummerEngine/template-3d-fps-old-school/git/refs/heads/bror-templates -f sha=5a1ef4b86a900f72607cfa755fb38afc3163bcc6

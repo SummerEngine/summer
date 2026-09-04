@@ -31,15 +31,19 @@
  * caller gets a one-line note. The engine is not running before `summer run`,
  * so /api/health cannot be consulted. Two pre-launch sources, in order:
  *
- *   1. `<binary> --help` and look for the flag in the help text. `--help` is
- *      handled in Main::setup() before any display server exists
- *      (main.cpp `arg == "--help"` -> ERR_HELP), and on macOS it is in
- *      OS_MacOS::headless_args (os_macos.h), so the bundle runs as
- *      OS_MacOS_Headless: no NSApp, no window, no activation, no Dock bounce.
- *      Definitive on every engine version; the only probe that never lies.
- *   2. If the probe cannot run (spawn error, timeout), the installed version
- *      (macOS Info.plist, Windows Velopack sq.version) against the minimum.
- *      Linux exposes no version file, so it reads unknown = unsupported.
+ *   1. `<binary> --help` and look for the flag in the help text — the PRIMARY
+ *      gate. `--help` is handled in Main::setup() before any display server
+ *      exists (main.cpp `arg == "--help"` -> ERR_HELP), and on macOS it is in
+ *      OS_MacOS::headless_args (os_macos.h; godot_main_macos.mm sets
+ *      is_headless and instantiates OS_MacOS_Headless), so the bundle runs
+ *      with no NSApp, no window, no activation, no Dock bounce. Definitive on
+ *      every engine version; the only probe that never lies. The answer is
+ *      cached per binary path + mtime + size in ~/.summer, so it runs once per
+ *      install.
+ *   2. The installed version (macOS Info.plist, Windows Velopack sq.version)
+ *      is only a cheap pre-check — a version known to be too old skips the
+ *      probe — and the fallback when `--help` cannot run (spawn error,
+ *      timeout). Linux exposes no version file, so there it reads unknown.
  *
  * Once the engine is up, /api/health `capabilities.launchPostures` (newer
  * engines) is the authoritative advert and is used for the post-launch note.
@@ -49,9 +53,10 @@
  * defeat the posture whatever flags were passed.
  */
 import { spawn } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { platform } from "node:os";
+import { getSummerDir } from "./auth.js";
 import type { EngineCapabilities } from "./capability-skew.js";
 
 export type LaunchPosture = "focus" | "background";
@@ -141,6 +146,13 @@ export function helpTextListsBackgroundFlag(helpText: string): boolean {
 
 export const HELP_PROBE_TIMEOUT_MS = 5_000;
 
+/** The bit of child_process.spawn the probe uses; injectable for tests. */
+export type HelpProbeSpawn = (
+  command: string,
+  args: string[],
+  options: { stdio: ["ignore", "pipe", "pipe"] }
+) => ReturnType<typeof spawn>;
+
 /**
  * Run `<binary> --help` and report whether the flag is listed: true / false,
  * or null when the probe could not answer (spawn error, timeout). Safe on
@@ -150,7 +162,8 @@ export const HELP_PROBE_TIMEOUT_MS = 5_000;
  */
 export function probeBackgroundLaunchSupport(
   binary: string,
-  timeoutMs: number = HELP_PROBE_TIMEOUT_MS
+  timeoutMs: number = HELP_PROBE_TIMEOUT_MS,
+  spawnImpl: HelpProbeSpawn = spawn
 ): Promise<boolean | null> {
   return new Promise((resolve) => {
     let output = "";
@@ -163,7 +176,7 @@ export function probeBackgroundLaunchSupport(
     };
     let child: ReturnType<typeof spawn>;
     try {
-      child = spawn(binary, ["--help"], { stdio: ["ignore", "pipe", "pipe"] });
+      child = spawnImpl(binary, ["--help"], { stdio: ["ignore", "pipe", "pipe"] });
     } catch {
       resolve(null);
       return;
@@ -185,6 +198,96 @@ export function probeBackgroundLaunchSupport(
     child.on("error", () => finish(null));
     child.on("close", () => finish(output.length > 0 ? helpTextListsBackgroundFlag(output) : null));
   });
+}
+
+// ---------------------------------------------------------------------------
+// Probe cache: one --help per install (binary path + mtime + size)
+// ---------------------------------------------------------------------------
+
+export const HELP_PROBE_CACHE_FILE = "launch-probe-cache.json";
+
+interface ProbeCacheEntry {
+  mtimeMs: number;
+  size: number;
+  listsBackgroundFlag: boolean;
+  probedAt: number;
+}
+
+interface ProbeCache {
+  version: 1;
+  binaries: Record<string, ProbeCacheEntry>;
+}
+
+function binaryStamp(binary: string): { mtimeMs: number; size: number } | null {
+  try {
+    const info = statSync(binary);
+    return { mtimeMs: info.mtimeMs, size: info.size };
+  } catch {
+    return null;
+  }
+}
+
+function readProbeCache(summerDir: string): ProbeCache {
+  try {
+    const parsed = JSON.parse(readFileSync(join(summerDir, HELP_PROBE_CACHE_FILE), "utf-8")) as Partial<ProbeCache>;
+    if (parsed && parsed.version === 1 && parsed.binaries && typeof parsed.binaries === "object") {
+      return { version: 1, binaries: parsed.binaries };
+    }
+  } catch {
+    // missing or corrupt cache: probe again
+  }
+  return { version: 1, binaries: {} };
+}
+
+function writeProbeCache(summerDir: string, binary: string, entry: ProbeCacheEntry): void {
+  try {
+    mkdirSync(summerDir, { recursive: true, mode: 0o700 });
+    const cache = readProbeCache(summerDir);
+    cache.binaries[binary] = entry;
+    writeFileSync(join(summerDir, HELP_PROBE_CACHE_FILE), JSON.stringify(cache, null, 2), { encoding: "utf-8", mode: 0o600 });
+  } catch {
+    // best effort: a failed cache write only costs one more probe next time
+  }
+}
+
+export interface DetectBackgroundSupportOptions {
+  /** Installed version if already read; undefined = read it from the binary. */
+  installedVersion?: string | null;
+  summerDir?: string;
+  probe?: (binary: string) => Promise<boolean | null>;
+  now?: number;
+}
+
+/**
+ * The pre-launch decision for one binary, in the order the module header
+ * describes: version pre-check (known too old = skip the probe), cached
+ * `--help` answer, fresh `--help` probe (cached when it answers), and the
+ * version gate as the fallback when the probe cannot run.
+ */
+export async function detectBackgroundLaunchSupport(
+  binary: string,
+  options: DetectBackgroundSupportOptions = {}
+): Promise<BackgroundLaunchSupport> {
+  const version =
+    options.installedVersion !== undefined ? options.installedVersion : readInstalledEngineVersion(binary);
+  const parsed = version ? parseVersion(version) : null;
+  if (parsed && compareVersions(parsed, parseVersion(BACKGROUND_LAUNCH_MIN_ENGINE_VERSION)!) < 0) {
+    return backgroundLaunchSupport(version, null);
+  }
+  const summerDir = options.summerDir ?? getSummerDir();
+  const stamp = binaryStamp(binary);
+  if (stamp) {
+    const cached = readProbeCache(summerDir).binaries[binary];
+    if (cached && cached.mtimeMs === stamp.mtimeMs && cached.size === stamp.size) {
+      return backgroundLaunchSupport(version, cached.listsBackgroundFlag);
+    }
+  }
+  const probe = options.probe ?? ((path: string) => probeBackgroundLaunchSupport(path));
+  const answer = await probe(binary);
+  if (answer !== null && stamp) {
+    writeProbeCache(summerDir, binary, { ...stamp, listsBackgroundFlag: answer, probedAt: options.now ?? Date.now() });
+  }
+  return backgroundLaunchSupport(version, answer);
 }
 
 /**

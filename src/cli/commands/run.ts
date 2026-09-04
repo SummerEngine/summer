@@ -9,9 +9,8 @@ import { findEngineBinary } from "../../core/engine-install.js";
 import {
   advertisedBackgroundPosture,
   backgroundLaunchSupport,
+  detectBackgroundLaunchSupport,
   planLaunch,
-  probeBackgroundLaunchSupport,
-  readInstalledEngineVersion,
   resolveLaunchPosture,
   BACKGROUND_LAUNCH_FLAG,
   BACKGROUND_LAUNCH_MIN_ENGINE_VERSION,
@@ -203,12 +202,12 @@ export const runCommand = new Command("run")
 
       // The engine is not running yet, so /api/health cannot tell us whether
       // it honours --summer-background. Ask the binary itself (`--help`, which
-      // exits headless before any window exists) and fall back to the installed
-      // version; pass the flag only when the engine is known to support it.
-      // Focus launches skip the probe — nothing to decide.
-      const installedVersion = readInstalledEngineVersion(binary);
-      const helpProbe = posture === "background" ? await probeBackgroundLaunchSupport(binary) : null;
-      const plan = planLaunch(posture, backgroundLaunchSupport(installedVersion, helpProbe));
+      // exits headless before any window exists; cached per install) with the
+      // installed version as pre-check and fallback; pass the flag only when
+      // the engine is known to support it. Focus launches have nothing to decide.
+      const support =
+        posture === "background" ? await detectBackgroundLaunchSupport(binary) : backgroundLaunchSupport(null);
+      const plan = planLaunch(posture, support);
 
       const args: string[] = ["--editor", ...plan.extraArgs];
       if (fullProjectPath) {

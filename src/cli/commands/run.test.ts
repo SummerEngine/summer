@@ -23,9 +23,9 @@ vi.mock("../../core/launch-posture.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../core/launch-posture.js")>();
   return {
     ...actual,
-    readInstalledEngineVersion: vi.fn(() => null),
-    // Never run the real binary's --help in tests; null = "probe could not answer".
-    probeBackgroundLaunchSupport: vi.fn(async () => null),
+    // Never touch a real binary in tests: the pre-launch decision is mocked to
+    // the structured support answers the real detector produces.
+    detectBackgroundLaunchSupport: vi.fn(async () => actual.backgroundLaunchSupport(null)),
   };
 });
 
@@ -50,12 +50,15 @@ function fakeChild() {
 import { spawn } from "child_process";
 import { checkEngineHealth } from "../../core/engine.js";
 import { findEngineBinary } from "../../core/engine-install.js";
-import { probeBackgroundLaunchSupport, readInstalledEngineVersion } from "../../core/launch-posture.js";
+import { backgroundLaunchSupport, detectBackgroundLaunchSupport } from "../../core/launch-posture.js";
 import { runCommand } from "./run.js";
 
 const findEngineBinaryMock = vi.mocked(findEngineBinary);
-const readInstalledEngineVersionMock = vi.mocked(readInstalledEngineVersion);
-const probeMock = vi.mocked(probeBackgroundLaunchSupport);
+const detectMock = vi.mocked(detectBackgroundLaunchSupport);
+/** Shorthand: what the detector says about the installed engine. */
+function engineSupport(version: string | null, helpProbe: boolean | null = null): void {
+  detectMock.mockResolvedValue(backgroundLaunchSupport(version, helpProbe));
+}
 
 /** `summer run` reads process.stdout.isTTY to tell a human from an agent. */
 const originalIsTTY = Object.getOwnPropertyDescriptor(process.stdout, "isTTY");
@@ -91,10 +94,8 @@ beforeEach(async () => {
   checkEngineHealthMock.mockResolvedValue(null);
   spawnMock.mockClear();
   nextSpawnError = null;
-  readInstalledEngineVersionMock.mockReset();
-  readInstalledEngineVersionMock.mockReturnValue(null);
-  probeMock.mockReset();
-  probeMock.mockResolvedValue(null);
+  detectMock.mockReset();
+  engineSupport(null);
   // Existing tests assume a human at a terminal (focus, no posture flags).
   setStdoutTTY(true);
   // Commander keeps parsed option values on the Command instance between
@@ -174,11 +175,12 @@ describe("summer run launch posture (focus vs background)", () => {
   it("an agent (no TTY) on a supporting engine launches in the background with --summer-background", async () => {
     setStdoutTTY(false);
     findEngineBinaryMock.mockReturnValue(binary);
-    readInstalledEngineVersionMock.mockReturnValue("0.5.66");
+    engineSupport("0.5.66", true);
     checkEngineHealthMock.mockResolvedValueOnce(null).mockResolvedValue(up);
 
     await runCommand.parseAsync(["--no-project"], { from: "user" });
 
+    expect(detectMock).toHaveBeenCalledWith(binary);
     expect(spawnMock).toHaveBeenCalledWith(binary, ["--editor", "--summer-background"], { detached: true, stdio: "ignore" });
     expect(logs.join("\n")).toContain("Launching Summer Engine in the background");
     expect(logs.join("\n")).not.toContain("cannot launch without taking focus");
@@ -187,26 +189,25 @@ describe("summer run launch posture (focus vs background)", () => {
   it("a human at a terminal launches with focus, no posture flag, and no --help probe", async () => {
     setStdoutTTY(true);
     findEngineBinaryMock.mockReturnValue(binary);
-    readInstalledEngineVersionMock.mockReturnValue("0.5.66");
+    engineSupport("0.5.66", true);
     checkEngineHealthMock.mockResolvedValueOnce(null).mockResolvedValue(up);
 
     await runCommand.parseAsync(["--no-project"], { from: "user" });
 
     expect(spawnMock).toHaveBeenCalledWith(binary, ["--editor"], { detached: true, stdio: "ignore" });
-    expect(probeMock).not.toHaveBeenCalled();
+    expect(detectMock).not.toHaveBeenCalled();
     expect(logs.join("\n")).toContain("Launching Summer Engine...");
   });
 
   it("the --help probe decides before the version does: an unreadable version with a listed flag launches in the background", async () => {
     setStdoutTTY(false);
     findEngineBinaryMock.mockReturnValue("/home/u/.summer/engine/summer");
-    readInstalledEngineVersionMock.mockReturnValue(null);
-    probeMock.mockResolvedValue(true);
+    engineSupport(null, true);
     checkEngineHealthMock.mockResolvedValueOnce(null).mockResolvedValue(up);
 
     await runCommand.parseAsync(["--no-project"], { from: "user" });
 
-    expect(probeMock).toHaveBeenCalledWith("/home/u/.summer/engine/summer");
+    expect(detectMock).toHaveBeenCalledWith("/home/u/.summer/engine/summer");
     expect(spawnMock).toHaveBeenCalledWith("/home/u/.summer/engine/summer", ["--editor", "--summer-background"], expect.anything());
     expect(logs.join("\n")).not.toContain("could not be probed");
   });
@@ -214,8 +215,7 @@ describe("summer run launch posture (focus vs background)", () => {
   it("a probe that says no wins over a new-looking version and explains itself", async () => {
     setStdoutTTY(false);
     findEngineBinaryMock.mockReturnValue(binary);
-    readInstalledEngineVersionMock.mockReturnValue("0.5.66");
-    probeMock.mockResolvedValue(false);
+    engineSupport("0.5.66", false);
     checkEngineHealthMock.mockResolvedValueOnce(null).mockResolvedValue({ version: "0.5.66" } as never);
 
     await runCommand.parseAsync(["--no-project"], { from: "user" });
@@ -227,8 +227,7 @@ describe("summer run launch posture (focus vs background)", () => {
   it("uses the running engine's launchPostures advert for the post-launch note", async () => {
     setStdoutTTY(false);
     findEngineBinaryMock.mockReturnValue("/home/u/.summer/engine/summer");
-    readInstalledEngineVersionMock.mockReturnValue(null);
-    probeMock.mockResolvedValue(null);
+    engineSupport(null);
     checkEngineHealthMock
       .mockResolvedValueOnce(null)
       .mockResolvedValue({ version: "0.5.70", capabilities: { launchPostures: ["background", "invisible"] } } as never);
@@ -241,7 +240,7 @@ describe("summer run launch posture (focus vs background)", () => {
 
   it("--background from a terminal and --focus from an agent both override the heuristic", async () => {
     findEngineBinaryMock.mockReturnValue(binary);
-    readInstalledEngineVersionMock.mockReturnValue("0.5.66");
+    engineSupport("0.5.66", true);
     checkEngineHealthMock.mockResolvedValue(up);
 
     setStdoutTTY(true);
@@ -267,7 +266,7 @@ describe("summer run launch posture (focus vs background)", () => {
   it("an engine at or below 0.5.65 gets no flag and one line saying it cannot launch without focus", async () => {
     setStdoutTTY(false);
     findEngineBinaryMock.mockReturnValue(binary);
-    readInstalledEngineVersionMock.mockReturnValue("0.5.65");
+    engineSupport("0.5.65");
     checkEngineHealthMock.mockResolvedValueOnce(null).mockResolvedValue({ version: "0.5.65" } as never);
 
     await runCommand.parseAsync(["--no-project"], { from: "user" });
@@ -282,7 +281,7 @@ describe("summer run launch posture (focus vs background)", () => {
   it("an unreadable version gets no flag, an honest note, and a hint when the running engine turns out to support it", async () => {
     setStdoutTTY(false);
     findEngineBinaryMock.mockReturnValue("/home/u/.summer/engine/summer");
-    readInstalledEngineVersionMock.mockReturnValue(null);
+    engineSupport(null);
     checkEngineHealthMock.mockResolvedValueOnce(null).mockResolvedValue({ version: "0.5.70" } as never);
 
     await runCommand.parseAsync(["--no-project"], { from: "user" });
@@ -300,7 +299,7 @@ describe("summer run launch posture (focus vs background)", () => {
     await mk(project, { recursive: true });
     await wf(join(project, "project.godot"), "");
     findEngineBinaryMock.mockReturnValue(binary);
-    readInstalledEngineVersionMock.mockReturnValue("0.5.66");
+    engineSupport("0.5.66", true);
     checkEngineHealthMock.mockResolvedValueOnce(null).mockResolvedValue(up);
 
     await runCommand.parseAsync([project], { from: "user" });

@@ -1,10 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { EventEmitter } from "node:events";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   BACKGROUND_LAUNCH_FLAG,
   BACKGROUND_LAUNCH_MIN_ENGINE_VERSION,
+  HELP_PROBE_CACHE_FILE,
   advertisedBackgroundPosture,
   backgroundLaunchSupport,
   defaultLaunchPosture,
+  detectBackgroundLaunchSupport,
+  type HelpProbeSpawn,
   helpTextListsBackgroundFlag,
   parseMacBundleVersion,
   parseVelopackVersion,
@@ -123,5 +130,102 @@ describe("installed engine version readers", () => {
     expect(readInstalledEngineVersion("/nonexistent/Summer.app/Contents/MacOS/Summer", "darwin")).toBeNull();
     expect(readInstalledEngineVersion("C:\\nowhere\\Summer.exe", "win32")).toBeNull();
     expect(readInstalledEngineVersion("/home/u/.summer/engine/summer", "linux")).toBeNull();
+  });
+});
+
+/** A spawn double that plays back help text (or an error / a hang) for `--help`. */
+function fakeHelpSpawn(behaviour: { stdout?: string; stderr?: string; error?: boolean; hang?: boolean }): HelpProbeSpawn {
+  return (() => {
+    const child = new EventEmitter() as EventEmitter & {
+      stdout: EventEmitter;
+      stderr: EventEmitter;
+      kill: () => void;
+    };
+    child.stdout = new EventEmitter();
+    child.stderr = new EventEmitter();
+    child.kill = vi.fn();
+    setTimeout(() => {
+      if (behaviour.error) return child.emit("error", new Error("spawn ENOENT"));
+      if (behaviour.hang) return;
+      if (behaviour.stdout) child.stdout.emit("data", behaviour.stdout);
+      if (behaviour.stderr) child.stderr.emit("data", behaviour.stderr);
+      child.emit("close", 0);
+    }, 0);
+    return child as unknown as ReturnType<HelpProbeSpawn>;
+  }) as HelpProbeSpawn;
+}
+
+const HELP_WITH_FLAG = "Usage: Summer [options]\n  --summer-offscreen  Run offscreen.\n  --summer-background  Run with a normal window but never activate.\n";
+const HELP_WITHOUT_FLAG = "Usage: Summer [options]\n  --summer-offscreen  Run offscreen.\n";
+
+describe("--help probe (mocked help output)", () => {
+  it("answers true when the help text lists the flag, false when it does not (stderr counts too)", async () => {
+    await expect(probeBackgroundLaunchSupport("/x/Summer", 1000, fakeHelpSpawn({ stdout: HELP_WITH_FLAG }))).resolves.toBe(true);
+    await expect(probeBackgroundLaunchSupport("/x/Summer", 1000, fakeHelpSpawn({ stderr: HELP_WITH_FLAG }))).resolves.toBe(true);
+    await expect(probeBackgroundLaunchSupport("/x/Summer", 1000, fakeHelpSpawn({ stdout: HELP_WITHOUT_FLAG }))).resolves.toBe(false);
+  });
+
+  it("answers null (unknown) on a spawn error, a hang past the timeout, or no output at all", async () => {
+    await expect(probeBackgroundLaunchSupport("/x/Summer", 1000, fakeHelpSpawn({ error: true }))).resolves.toBeNull();
+    await expect(probeBackgroundLaunchSupport("/x/Summer", 20, fakeHelpSpawn({ hang: true }))).resolves.toBeNull();
+    await expect(probeBackgroundLaunchSupport("/x/Summer", 1000, fakeHelpSpawn({}))).resolves.toBeNull();
+  });
+});
+
+describe("detectBackgroundLaunchSupport — probe first, cached per binary, version as pre-check and fallback", () => {
+  let root = "";
+  let binary = "";
+  beforeEach(async () => {
+    root = await mkdtemp(join(tmpdir(), "summer-launch-probe-"));
+    binary = join(root, "Summer");
+    await writeFile(binary, "#!/bin/sh\nexit 0\n");
+  });
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it("a version known too old skips the probe entirely", async () => {
+    const probe = vi.fn(async () => true);
+    const support = await detectBackgroundLaunchSupport(binary, { installedVersion: "0.5.65", summerDir: root, probe });
+    expect(probe).not.toHaveBeenCalled();
+    expect(support).toEqual({ supported: false, source: "version", reason: "engine_too_old", version: "0.5.65" });
+  });
+
+  it("the probe decides for an unknown or new-enough version, and its answer is cached by path + mtime + size", async () => {
+    const probe = vi.fn(async () => true);
+    const first = await detectBackgroundLaunchSupport(binary, { installedVersion: null, summerDir: root, probe, now: 1 });
+    expect(first).toEqual({ supported: true, source: "help_probe", version: null });
+    expect(probe).toHaveBeenCalledTimes(1);
+
+    const cache = JSON.parse(await readFile(join(root, HELP_PROBE_CACHE_FILE), "utf-8")) as { binaries: Record<string, { listsBackgroundFlag: boolean; probedAt: number }> };
+    expect(cache.binaries[binary]).toMatchObject({ listsBackgroundFlag: true, probedAt: 1 });
+
+    // Same install: no second --help.
+    const second = await detectBackgroundLaunchSupport(binary, { installedVersion: "0.5.66", summerDir: root, probe });
+    expect(probe).toHaveBeenCalledTimes(1);
+    expect(second).toMatchObject({ supported: true, source: "help_probe", version: "0.5.66" });
+
+    // Reinstalled binary (different size): probed again, and a "no" wins over the version.
+    await writeFile(binary, "#!/bin/sh\nexit 0\n# rebuilt without the flag\n");
+    probe.mockResolvedValue(false);
+    const third = await detectBackgroundLaunchSupport(binary, { installedVersion: "0.5.66", summerDir: root, probe });
+    expect(probe).toHaveBeenCalledTimes(2);
+    expect(third).toEqual({ supported: false, source: "help_probe", reason: "engine_too_old", version: "0.5.66" });
+  });
+
+  it("falls back to the version when the probe cannot answer, and caches nothing", async () => {
+    const probe = vi.fn(async () => null);
+    expect(await detectBackgroundLaunchSupport(binary, { installedVersion: "0.5.66", summerDir: root, probe })).toEqual({
+      supported: true,
+      source: "version",
+      version: "0.5.66",
+    });
+    expect(await detectBackgroundLaunchSupport(binary, { installedVersion: null, summerDir: root, probe })).toEqual({
+      supported: false,
+      source: "version",
+      reason: "version_unknown",
+      version: null,
+    });
+    await expect(readFile(join(root, HELP_PROBE_CACHE_FILE), "utf-8")).rejects.toThrow();
   });
 });

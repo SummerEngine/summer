@@ -90,7 +90,7 @@ Two tests need a sibling checkout to do real work and **skip loudly** otherwise:
 | `summer login [--creator] [--force]` | Browser sign-in; `--creator` connects a separately scoped publish token. |
 | `summer logout` | Clear stored tokens (says so when `SUMMER_TOKEN` is in effect instead). |
 | `summer status` | Engine state, port, auth. |
-| `summer run [path] [--no-project]` | Launch the engine with a project; bare editor needs `--no-project`. |
+| `summer run [path] [--no-project] [--background\|--focus]` | Launch the engine with a project; bare editor needs `--no-project`. Background (no focus steal) is the default when stdout is not a TTY, i.e. an agent; a human in a terminal gets focus. See `TESTING.md` "Working in the background". |
 | `summer open <path \| target> [--print] [--list] [--web \| --editor] [--json] [--path <res>] [--node <p>] [--scene <res>] [--param k=v]` | A project directory (contains `project.godot`) opens in the engine as before. Anything else is a navigation target — a product-map id (`billing`, `my-games`, `mcp-guide`, `scene`, `inspector`), an intent phrase, a `res://` path, or a summerengine.com path — opened in the browser (through `/login?returnUrl=` when needed) or sent to the running editor; `--print` resolves without opening. Same behavior as the `summer_open` MCP tool and `summer tool open` (`docs/design/NAVIGATION-DESIGN.md`). |
 | `summer create <template> [name] [--keep-git]` | Scaffold from a pinned (or built-in) template; writes `.summer/project.json`. |
 | `summer list templates \| projects` | Browse the template registry / local projects. |

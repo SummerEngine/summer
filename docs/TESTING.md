@@ -162,6 +162,20 @@ summer tool library-feedback --args "$ARGS"                         # second cal
 - To exercise the send path without posting to the real mailbox: `SUMMER_GATEWAY_URL=http://127.0.0.1:9 summer tool library-feedback --args "$ARGS"` → `{"recorded": false, "dropped": true, "reason": "network"}` (no retry, no queue; the batch is gone). A gateway that answers is reported with its `status` and a `reason`: `endpoint_missing` (404 — the route is not deployed), `rejected` (other 4xx), `server_error` (5xx). Nothing about the failure is sent anywhere; the report schema is unchanged.
 - Logged in, the report carries the account bearer token; logged out, a random `install_id` from `~/.summer/`. Nothing about the project, files, or chat is in the schema.
 
+## g2. Working in the background
+
+An agent driving Summer must not take over the user's screen. Three launch postures exist on the engine side: **focus** (window appears and takes focus — what a human clicking Play or typing `summer run` expects), **background** (`--summer-background`, engine 0.5.66+: the window exists but never activates or takes focus until the user clicks it), and **offscreen** (`--summer-offscreen`: an unfocusable window pushed off-screen — a sliver may stay visible, it is *not* invisible; `main/main.cpp` says so). What each toolkit command does when an agent drives it:
+
+| Command | Default when an agent drives | Opt in to focus |
+|---|---|---|
+| `summer run <path>` | **background** when stdout is not a TTY (Claude Code's Bash tool, MCP hosts, CI). Passes `--summer-background` only when the installed engine is known to honour it (macOS Info.plist / Windows `sq.version` version ≥ 0.5.66); otherwise launches with focus and prints one line saying this engine version cannot launch without focus (or that its version could not be read — Linux has no version file). A human in a terminal gets **focus** by default. | `--focus` (and `--background` to force the other way) |
+| `summer_play` / `summer tool play` | **quiet**: `PlayGame agent:true` — the editor does not switch to the Game tab, grab focus for the embedded game, or run the render-health self-check. The game still runs embedded and is visible to `summer_is_running`, `summer_screenshot target:'game'`, diagnostics. The result echoes `agent_quiet:true`; an engine that predates quiet play (< 0.5.45) gets a `posture_note`. | `focus: true` |
+| `summer_screenshot` | never launches or focuses anything: `viewport` reads the editor viewport back, `scene` renders offscreen in a SubViewport, `game` reads the running game's frame. | n/a |
+| RunVerification probes (`summer_batch` / playbook `rawOpsViaBatch`) | the engine runs the probe child with the **offscreen** posture (`--summer-verify` implies it). | n/a |
+| `summer_play {instance, mode:'offscreen'}` | a hidden child (offscreen posture) on runtime-control engine builds; `engine_lacks_op` on shipped engines. | n/a |
+
+Ask to the engine side, so the toolkit can stop guessing by version: advertise `capabilities.launchPostures: ["focus","background","offscreen"]` in `/api/health`, and ship a pre-launch version source on Linux (a `version` file next to the binary, or the version in `--version` output) so `summer run --background` can decide honestly before the engine is up.
+
 ## h. Gates
 
 ```bash

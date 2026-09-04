@@ -1,15 +1,17 @@
 id: tool/play
 kind: tool
-version: 1.1.2
-summary: Start the game (main scene or a specific scene) — embedded, or as a named offscreen instance — optionally pinned with seed / fixed_fps for a reproducible run.
+version: 1.2.0
+summary: Start the game quietly by default (editor keeps tab and focus; focus true for a toolbar-style launch) — main or a given scene, embedded or offscreen, with pins.
 use_when:
   - runtime verification after edits
   - the user wants to try the game or one level after a change
   - reproducing a bug that only shows at runtime
   - a deterministic, repeatable playtest run — pin the global RNG with seed and the timestep with fixed_fps
   - launching a deterministic or parallel offscreen playtest instance (seed, fixed frame rate, named offscreen instance) for the runtime tools to drive
+  - launching while the user works on the same machine — the default (focus omitted or false) sends PlayGame agent:true, so the editor does not switch to the Game tab or grab focus; the game still runs embedded and is visible to the runtime tools
 do_not_use_when:
   - the game is already running and needs a restart — summer_stop first (seed/fixed_fps cannot reach a game that is already up)
+  - "focus: true unless the user is watching and asked to see the game come up — it launches like the toolbar Play button (Game tab + focus). Quiet play only governs the editor: it does not hide the game, does not affect a user whose Embed Game on Play is off (own OS window as always), and cannot stop the spawned game process from activating on macOS (engine-side)"
   - only checking whether it is running — summer_is_running
   - "instance/mode/deterministic need an engine build with the runtime-control ops (engine PR #156 follow-up, wave I); on current shipped engines those parameters return engine_lacks_op (plain play still works)"
 facets:
@@ -75,6 +77,9 @@ input_schema:
     speed:
       type: number
       description: User time scale applied on session start, (0, 100] — e.g. 0.5 for half speed.
+    focus:
+      type: boolean
+      description: "Default false = QUIET play (PlayGame agent:true): the editor does not switch to the Game tab or grab focus for the embedded game, so the user keeps working. Pass true to launch the way the toolbar Play button does (Game tab + focus) — only when the user is watching and asked to see it. The result echoes agent_quiet:true when honoured; a launch result without it (posture_note) means the engine predates quiet play and most likely took focus."
   additionalProperties: false
 authority:
   filesystem: false

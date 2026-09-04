@@ -68,7 +68,6 @@ import {
   buildGameControlOp,
   buildGameInputOp,
   buildGameProbeOp,
-  buildPlayGameOp,
   buildRuntimeAnimateOp,
   buildRuntimeCallOp,
   buildRuntimeSetOp,
@@ -78,15 +77,13 @@ import {
   gameControlArgsSchema,
   gameInputArgsSchema,
   gameProbeArgsSchema,
-  playNeedsOp,
-  playTargetsInstance,
+  playGame,
   probeFrameStamp,
   runtimeAnimateArgsSchema,
   runtimeCallArgsSchema,
   runtimeSetArgsSchema,
   runtimeSpawnArgsSchema,
   stripProbeImage,
-  withPlayInstanceEcho,
   withRuntimeFailureHints,
   type BuiltRuntimeOp,
 } from "./runtime-control.js";
@@ -324,6 +321,27 @@ function buildOrRefuse<T>(build: () => T): T {
     if (err instanceof ToolInputError) throw new ToolDispatchError(err.message);
     throw err;
   }
+}
+
+/** buildOrRefuse for a shared async implementation that validates inline. */
+async function buildOrRefuseAsync<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (err) {
+    if (err instanceof ToolInputError) throw new ToolDispatchError(err.message);
+    throw err;
+  }
+}
+
+/** A capability pre-flight refusal returned (not thrown) by a shared implementation. */
+function isMissingOpResult(value: unknown): value is MissingOpResult {
+  return (
+    !!value &&
+    typeof value === "object" &&
+    (value as { failure_reason?: unknown }).failure_reason === "engine_lacks_op" &&
+    (value as { ok?: unknown }).ok === false &&
+    typeof (value as { hint?: unknown }).hint === "string"
+  );
 }
 
 function optNumberOrUndefined(args: DispatchArgs, key: string): number | undefined {
@@ -879,7 +897,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     if (args.raw === true) return engineResult;
     return shapeEngineLogResponse(engineResult, { maxEntries: maxWarnings }).result;
   }),
-  entry("summer_play", "Start the game (main scene or a specific scene; seed/fixed_fps/time_scale pins, instance/mode for playtests)", true, async (args, ctx) => {
+  entry("summer_play", "Start the game quietly (no Game-tab switch or focus grab; focus:true for the toolbar-style launch) — main scene or a specific scene; seed/fixed_fps/time_scale pins, instance/mode for playtests", true, async (args, ctx) => {
     const seed = optNumberOrUndefined(args, "seed");
     const fixedFps = optNumberOrUndefined(args, "fixed_fps");
     const timeScale = optNumberOrUndefined(args, "time_scale");
@@ -898,24 +916,16 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       fixed_fps: fixedFps,
       time_scale: timeScale,
       speed,
+      focus: typeof args.focus === "boolean" ? args.focus : undefined,
     };
+    if (args.focus !== undefined && typeof args.focus !== "boolean") throw new ToolDispatchError("focus must be a boolean");
     const requested = pickPlayDeterminism({ seed, fixed_fps: fixedFps, time_scale: timeScale });
     const client = await ctx.engine();
-    // Legacy route, byte-for-byte: /api/play forwards only `scene`.
-    if (!playNeedsOp(playArgs)) return requireEngineSuccess(await client.play(playArgs.scene));
-    // Any pin or instance parameter travels as the explicit PlayGame op (the
-    // /api/play rung copies only `scene`). Validate the combination first
-    // (nothing sent), then pre-flight the wave when an instance is addressed —
-    // an older engine would silently start the MAIN game instead.
-    const { op, timeoutMs } = buildOrRefuse(() => buildPlayGameOp(playArgs));
-    if (playTargetsInstance(playArgs)) {
-      const missing = missingEngineOpResult(client, "ListGameInstances", PLAY_INSTANCE_FALLBACK);
-      if (missing) refuseMissingOp(missing);
-    }
-    const result = withRuntimeFailureHints(
-      withOldEngineHint(await client.executeOps([op], undefined, timeoutMs), "PlayGame", PLAY_INSTANCE_FALLBACK)
-    );
-    const echoed = withPlayInstanceEcho(requireSupportedOp(result, "PlayGame", PLAY_INSTANCE_FALLBACK), playArgs);
+    // ONE implementation with the MCP face (runtime-control.ts playGame); this
+    // face only turns its outcomes into the CLI's thrown, structured failures.
+    const result = await buildOrRefuseAsync(() => playGame(client, playArgs));
+    if (isMissingOpResult(result)) refuseMissingOp(result);
+    const echoed = requireSupportedOp(result, "PlayGame", PLAY_INSTANCE_FALLBACK);
     // Pins sent, no determinism block back: the engine predates the params and
     // ignored them. Say so in the receipt instead of letting the v1 result pass
     // as a pinned run (the engine's own block, when present, is authoritative).

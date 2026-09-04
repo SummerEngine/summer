@@ -19,14 +19,19 @@ import {
   buildRuntimeSpawnOp,
   buildStopGameOp,
   findProbePayload,
+  playGame,
+  playIsQuiet,
   playNeedsOp,
   playTargetsInstance,
   probeFrameStamp,
   runtimeBudgetMs,
   stripProbeImage,
   withPlayInstanceEcho,
+  withPlayPostureEcho,
   withRuntimeFailureHints,
+  PLAY_QUIET_NOT_SUPPORTED,
 } from "./runtime-control.js";
+import { vi } from "vitest";
 
 describe("op kind tables", () => {
   it("names the fifteen async kinds plus ListGameInstances, each with a fallback", () => {
@@ -272,8 +277,9 @@ describe("withRuntimeFailureHints", () => {
 });
 
 describe("PlayGame / StopGame variants", () => {
-  it("plain play (scene only) does not need the op; determinism and instances do", () => {
-    expect(playNeedsOp({ scene: "res://a.tscn" })).toBe(false);
+  it("plain focus play (scene only) does not need the op; quiet, determinism and instances do", () => {
+    expect(playNeedsOp({ scene: "res://a.tscn", focus: true })).toBe(false);
+    expect(playNeedsOp({ scene: "res://a.tscn" })).toBe(true);
     expect(playNeedsOp({ seed: 7 })).toBe(true);
     expect(playNeedsOp({ instance: "a", mode: "offscreen" })).toBe(true);
     expect(playTargetsInstance({ seed: 7 })).toBe(false);
@@ -282,11 +288,13 @@ describe("PlayGame / StopGame variants", () => {
   });
 
   it("builds the op with exactly the given params and the attach budget", () => {
-    const built = buildPlayGameOp({ scene: "res://a.tscn", instance: "a", mode: "offscreen", deterministic: true, seed: 42, fixed_fps: 60, speed: 0.5 });
+    const built = buildPlayGameOp({ scene: "res://a.tscn", instance: "a", mode: "offscreen", deterministic: true, seed: 42, fixed_fps: 60, speed: 0.5, focus: true });
     expect(built.kind).toBe("PlayGame");
     expect(built.op).toEqual({ op: "PlayGame", scene: "res://a.tscn", instance: "a", mode: "offscreen", deterministic: true, seed: 42, fixed_fps: 60, speed: 0.5 });
     expect(built.timeoutMs).toBe(PLAY_INSTANCE_TIMEOUT_MS);
-    expect(buildPlayGameOp({ seed: 7, fixed_fps: 60 }).op).toEqual({ op: "PlayGame", seed: 7, fixed_fps: 60 });
+    expect(buildPlayGameOp({ seed: 7, fixed_fps: 60, focus: true }).op).toEqual({ op: "PlayGame", seed: 7, fixed_fps: 60 });
+    // The quiet default adds exactly one key.
+    expect(buildPlayGameOp({ seed: 7, fixed_fps: 60 }).op).toEqual({ op: "PlayGame", agent: true, seed: 7, fixed_fps: 60 });
   });
 
   it("refuses the combinations the engine would reject, before sending", () => {
@@ -309,5 +317,59 @@ describe("PlayGame / StopGame variants", () => {
     expect(withPlayInstanceEcho({ ok: true, results: [{ ok: true, op: "PlayGame" }] }, { seed: 1 })).toEqual({
       ok: true, results: [{ ok: true, op: "PlayGame" }],
     });
+  });
+});
+
+describe("summer_play posture — quiet by default, focus:true opts in", () => {
+  it("quiet unless focus:true, and quiet rides the PlayGame op as agent:true", () => {
+    expect(playIsQuiet({})).toBe(true);
+    expect(playIsQuiet({ focus: false })).toBe(true);
+    expect(playIsQuiet({ focus: true })).toBe(false);
+    // The /api/play rung copies only `scene`, so the quiet default needs the op.
+    expect(playNeedsOp({})).toBe(true);
+    expect(playNeedsOp({ scene: "res://a.tscn", focus: true })).toBe(false);
+    expect(buildPlayGameOp({ scene: "res://a.tscn" }).op).toEqual({ op: "PlayGame", scene: "res://a.tscn", agent: true });
+    expect(buildPlayGameOp({ focus: true, seed: 3 }).op).toEqual({ op: "PlayGame", seed: 3 });
+    // An offscreen instance is a hidden child: quiet is moot, no agent key, no posture note.
+    expect(buildPlayGameOp({ instance: "a", mode: "offscreen" }).op).toEqual({ op: "PlayGame", instance: "a", mode: "offscreen" });
+    const attached = { ok: true, results: [{ ok: true, op: "PlayGame", instance: "a", session_attached: true }] };
+    expect(withPlayPostureEcho(attached, { instance: "a", mode: "offscreen" })).toBe(attached);
+  });
+
+  it("withPlayPostureEcho trusts an engine that echoes agent_quiet and flags one that does not", () => {
+    const honoured = { status: "ok", results: [{ ok: true, op: "PlayGame", playing: true, agent_quiet: true }] };
+    expect(withPlayPostureEcho(honoured, {})).toBe(honoured);
+    const old = { status: "ok", results: [{ ok: true, op: "PlayGame", playing: true, scene: "main_scene" }] };
+    expect(withPlayPostureEcho(old, {})).toMatchObject({ posture_note: PLAY_QUIET_NOT_SUPPORTED });
+    // Already running: nothing launched, so no claim about the engine's age.
+    const running = { status: "ok", results: [{ ok: true, op: "PlayGame", playing: true, note: "Game was already running" }] };
+    expect(String((withPlayPostureEcho(running, {}) as { posture_note: string }).posture_note)).toContain("already running");
+    // focus:true or a failure: untouched.
+    expect(withPlayPostureEcho(old, { focus: true })).toBe(old);
+    const failed = { ok: false, results: [{ ok: false, op: "PlayGame", error: "boom" }] };
+    expect(withPlayPostureEcho(failed, {})).toBe(failed);
+  });
+
+  it("playGame: focus:true with nothing else is the legacy /api/play call; the quiet default is the op", async () => {
+    const play = vi.fn(async () => ({ status: "ok", results: [{ ok: true, op: "PlayGame", playing: true }] }));
+    const executeOps = vi.fn(async () => ({ status: "ok", results: [{ ok: true, op: "PlayGame", playing: true, agent_quiet: true }] }));
+    const client = { play, executeOps };
+
+    await playGame(client, { scene: "res://a.tscn", focus: true });
+    expect(play).toHaveBeenCalledWith("res://a.tscn");
+    expect(executeOps).not.toHaveBeenCalled();
+
+    const quiet = (await playGame(client, { scene: "res://a.tscn" })) as Record<string, unknown>;
+    expect(executeOps).toHaveBeenCalledWith([{ op: "PlayGame", scene: "res://a.tscn", agent: true }], undefined, PLAY_INSTANCE_TIMEOUT_MS);
+    expect(quiet).not.toHaveProperty("posture_note");
+  });
+
+  it("playGame validates before sending and pre-flights the Wave I advert for instances", async () => {
+    const executeOps = vi.fn();
+    const client = { play: vi.fn(), executeOps, getEngineCapabilities: () => ({ opKinds: ["PlayGame"] }), getEngineVersion: () => "0.5.65" };
+    await expect(playGame(client, { mode: "offscreen" })).rejects.toThrow(ToolInputError);
+    const missing = (await playGame(client, { instance: "a", mode: "offscreen" })) as Record<string, unknown>;
+    expect(missing).toMatchObject({ ok: false, failure_reason: "engine_lacks_op", op: "ListGameInstances" });
+    expect(executeOps).not.toHaveBeenCalled();
   });
 });

@@ -30,7 +30,8 @@
 
 import { z } from "zod";
 import { ToolInputError } from "../tool-errors.js";
-import { extractOpError, getFailureReason } from "./engine-receipt.js";
+import { missingEngineOpResult, type CapabilityAdvertisingClient } from "../capability-skew.js";
+import { extractOpError, getFailureReason, withOldEngineHint } from "./engine-receipt.js";
 
 // ---------------------------------------------------------------------------
 // Op kinds
@@ -986,6 +987,12 @@ export const playGameExtensionSchema = {
     .number()
     .optional()
     .describe("User time scale applied on session start, (0, 100] — e.g. 0.5 for half speed."),
+  focus: z
+    .boolean()
+    .optional()
+    .describe(
+      "Default false = QUIET play (PlayGame agent:true): the editor does not switch to the Game tab or grab focus for the embedded game, so the user keeps working. Pass true to launch the way the toolbar Play button does (Game tab + focus) — only when the user is watching and asked to see it."
+    ),
 };
 
 export interface PlayGameArgs {
@@ -997,12 +1004,28 @@ export interface PlayGameArgs {
   fixed_fps?: number;
   time_scale?: number;
   speed?: number;
+  /** true = today's toolbar-style launch (Game tab + focus). Absent/false = quiet. */
+  focus?: boolean;
+}
+
+/**
+ * Quiet is the default whenever an agent drives play — both faces of this tool
+ * (MCP and `summer tool`) ARE agent faces, so the only way to a focus-stealing
+ * launch is an explicit focus:true. Quiet travels as PlayGame `agent:true`
+ * (debug_ops.cpp play_game -> GameView::set_agent_quiet_play), which the engine
+ * has honoured since 0.5.45 (c7c490d84f3, 2026-07-02).
+ */
+export function playIsQuiet(args: PlayGameArgs): boolean {
+  return args.focus !== true;
 }
 
 /** True when the call needs the PlayGame OP (instance-aware / determinism
  *  params) rather than the legacy /api/play route, which forwards only `scene`. */
 export function playNeedsOp(args: PlayGameArgs): boolean {
   return (
+    // The /api/play rung builds a PlayGame op with ONLY `scene`
+    // (local_api_server.cpp play branch), so `agent:true` has to ride the op.
+    playIsQuiet(args) ||
     (typeof args.instance === "string" && args.instance.trim().length > 0) ||
     args.mode !== undefined ||
     args.deterministic !== undefined ||
@@ -1052,6 +1075,9 @@ export function buildPlayGameOp(args: PlayGameArgs): BuiltRuntimeOp {
   }
   const op: Record<string, unknown> = { op: "PlayGame" };
   if (typeof args.scene === "string" && args.scene.trim().length > 0) op.scene = args.scene.trim();
+  // Quiet concerns the editor's embedded Game view only; an offscreen
+  // instance is a hidden child and never touches the editor's tab or focus.
+  if (playIsQuiet(args) && !playTargetsInstance(args)) op.agent = true;
   if (instance.length > 0) op.instance = instance;
   if (args.mode !== undefined) op.mode = args.mode;
   if (args.deterministic !== undefined) op.deterministic = args.deterministic;
@@ -1085,4 +1111,66 @@ export function withPlayInstanceEcho(result: unknown, args: PlayGameArgs): unkno
     warning:
       `This Summer Engine build did not echo \`instance\` in its PlayGame result — it predates instance-aware play and has most likely started the MAIN embedded game, ignoring instance:'${args.instance ?? ""}' / mode:'${args.mode ?? "embedded"}'. Verify with summer_is_running or summer_game_control action:'instances' before addressing that instance, and update Summer Engine for parallel instances.`,
   };
+}
+
+export const PLAY_QUIET_NOT_SUPPORTED =
+  "This Summer Engine build did not echo `agent_quiet` in its PlayGame result — it predates quiet play and has most likely switched the editor to the Game tab and taken focus. Update Summer Engine (restart it after updating) for launches that leave the user's screen alone.";
+
+/**
+ * Quiet was requested: the engine echoes `agent_quiet:true` when it honoured it
+ * (debug_ops.cpp play_game). No echo on a launch means an engine that predates
+ * the flag ignored it — say so instead of letting the model believe the user
+ * was left alone. The already-running branch echoes nothing either but also
+ * launched nothing, so it gets its own honest line.
+ */
+export function withPlayPostureEcho(result: unknown, args: PlayGameArgs): unknown {
+  if (!playIsQuiet(args) || playTargetsInstance(args) || !result || typeof result !== "object") return result;
+  if (extractOpError(result)) return result;
+  const envelope = result as Record<string, unknown> & { results?: Array<Record<string, unknown>> };
+  const payload = envelope.results?.[0] ?? envelope;
+  if (typeof payload.agent_quiet === "boolean") return result;
+  if (typeof payload.note === "string" && /already running/i.test(payload.note)) {
+    return {
+      ...envelope,
+      posture_note:
+        "The game was already running, so nothing was launched; quiet play applies only to a launch (summer_stop first to relaunch quietly).",
+    };
+  }
+  return { ...envelope, posture_note: PLAY_QUIET_NOT_SUPPORTED };
+}
+
+/** The subset of EngineApiClient summer_play drives. Structural so tests can
+ *  pass bare fakes; the capability getters come from CapabilityAdvertisingClient. */
+export interface PlayGameClient extends CapabilityAdvertisingClient {
+  play(scene?: string): Promise<unknown>;
+  executeOps(ops: Array<Record<string, unknown>>, options?: undefined, timeoutMs?: number): Promise<unknown>;
+}
+
+/**
+ * summer_play, ONE implementation for both faces (MCP debug-tools.ts and the
+ * CLI dispatcher). Throws ToolInputError for a bad parameter combination
+ * (nothing sent); returns the engine envelope, a structured engine_lacks_op
+ * pre-flight result, or the envelope with the old-engine / posture / instance
+ * annotations. Each face only decides how to RENDER failures.
+ *
+ * Routing: focus:true with no other parameter is the legacy /api/play route,
+ * byte-for-byte the v1 call. Everything else — including the quiet default —
+ * travels as the explicit PlayGame op, because the /api/play rung copies only
+ * `scene` into the op and would drop agent/seed/instance.
+ */
+export async function playGame(client: PlayGameClient, args: PlayGameArgs): Promise<unknown> {
+  if (!playNeedsOp(args)) return client.play(args.scene);
+  // Validate the combination first (nothing sent); then, because an engine
+  // without the runtime-control wave would start the MAIN game and silently
+  // ignore instance/mode, the pre-flight keys on a Wave I kind.
+  const { op, timeoutMs } = buildPlayGameOp(args);
+  if (playTargetsInstance(args)) {
+    const missing = missingEngineOpResult(client, "ListGameInstances", PLAY_INSTANCE_FALLBACK);
+    if (missing) return missing;
+  }
+  const result = await client.executeOps([op], undefined, timeoutMs);
+  return withPlayPostureEcho(
+    withPlayInstanceEcho(withRuntimeFailureHints(withOldEngineHint(result, "PlayGame", PLAY_INSTANCE_FALLBACK)), args),
+    args
+  );
 }

@@ -1026,16 +1026,23 @@ describe("wave I perception dispatch entries (camera bookmarks, fixed-pose scree
     const executeOps = vi.fn(async () => ({ status: "ok", results: [{ ok: true, op: "PlayGame", playing: true }] }));
     const { ctx } = fakeEngineContext({ play, executeOps });
 
-    // Plain launch: the legacy /api/play route, byte-for-byte.
-    const plain = (await dispatchTool("play", { scene: "res://a.tscn" }, ctx)) as Record<string, unknown>;
+    // focus:true without pins: the legacy /api/play route, byte-for-byte.
+    const plain = (await dispatchTool("play", { scene: "res://a.tscn", focus: true }, ctx)) as Record<string, unknown>;
     expect(play).toHaveBeenLastCalledWith("res://a.tscn");
     expect(executeOps).not.toHaveBeenCalled();
     expect(plain).not.toHaveProperty("determinism_note");
 
-    // Pins travel as the explicit op (the /api/play rung copies only `scene`).
-    const pinned = (await dispatchTool("play", { seed: 42, fixed_fps: 60, time_scale: 2 }, ctx)) as Record<string, unknown>;
+    // The quiet default (and any pin) travels as the explicit op (the /api/play
+    // rung copies only `scene`); quiet = agent:true. The fake echoes no
+    // agent_quiet, so the posture note says the engine predates quiet play.
+    const quiet = (await dispatchTool("play", { scene: "res://a.tscn" }, ctx)) as Record<string, unknown>;
+    expect(executeOps).toHaveBeenLastCalledWith([{ op: "PlayGame", scene: "res://a.tscn", agent: true }], undefined, 60_000);
+    expect(String(quiet.posture_note)).toContain("predates quiet play");
+
+    const pinned = (await dispatchTool("play", { seed: 42, fixed_fps: 60, time_scale: 2, focus: true }, ctx)) as Record<string, unknown>;
     expect(executeOps).toHaveBeenLastCalledWith([{ op: "PlayGame", seed: 42, fixed_fps: 60, time_scale: 2 }], undefined, 60_000);
     expect(String(pinned.determinism_note)).toContain("engine predates determinism params");
+    expect(pinned).not.toHaveProperty("posture_note");
 
     const engineSaid = vi.fn(async () => ({
       status: "ok",
@@ -1051,6 +1058,7 @@ describe("wave I perception dispatch entries (camera bookmarks, fixed-pose scree
     await expect(dispatchTool("play", { seed: 1.5 }, ctx)).rejects.toThrow(/seed must be an integer/);
     await expect(dispatchTool("play", { fixed_fps: 0 }, ctx)).rejects.toThrow(/fixed_fps must be an integer > 0/);
     await expect(dispatchTool("play", { time_scale: -1 }, ctx)).rejects.toThrow(/time_scale must be > 0/);
+    await expect(dispatchTool("play", { focus: "yes" }, ctx)).rejects.toThrow(/focus must be a boolean/);
     expect(calls).toEqual([]);
   });
 });
@@ -1182,13 +1190,13 @@ describe("runtime control dispatch entries (engine Wave I)", () => {
     expect(result.results[0]!.image_base64).toBeUndefined();
   });
 
-  it("play: plain uses /api/play; seed/fixed_fps and instances travel as the PlayGame op; stop {instance} sends StopGame", async () => {
+  it("play: plain focus uses /api/play; quiet, seed/fixed_fps and instances travel as the PlayGame op; stop {instance} sends StopGame", async () => {
     const { ctx, calls } = fakeEngineContext();
-    await dispatchTool("play", { scene: "res://a.tscn" }, ctx);
+    await dispatchTool("play", { scene: "res://a.tscn", focus: true }, ctx);
     expect(calls).toEqual([{ method: "play", args: ["res://a.tscn"] }]);
 
     await dispatchTool("play", { seed: 7, fixed_fps: 60 }, ctx);
-    expect(calls[1]).toEqual({ method: "executeOps", args: [[{ op: "PlayGame", seed: 7, fixed_fps: 60 }], undefined, 60_000] });
+    expect(calls[1]).toEqual({ method: "executeOps", args: [[{ op: "PlayGame", agent: true, seed: 7, fixed_fps: 60 }], undefined, 60_000] });
 
     await dispatchTool("play", { instance: "a", mode: "offscreen", deterministic: true }, ctx);
     expect(calls[2]!.args[0]).toEqual([{ op: "PlayGame", instance: "a", mode: "offscreen", deterministic: true }]);

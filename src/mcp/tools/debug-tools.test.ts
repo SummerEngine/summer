@@ -281,16 +281,37 @@ describe("summer_get_console scope (E2E 2026-09-03 F-07)", () => {
 });
 
 describe("summer_play — determinism params", () => {
-  it("without pins calls play(scene) and returns the plain receipt (v1 launch)", async () => {
+  it("focus:true without pins calls play(scene) and returns the plain receipt (v1 launch)", async () => {
     const play = vi.fn().mockResolvedValue({ status: "ok", results: [{ ok: true, op: "PlayGame", playing: true, scene: "res://main.tscn" }] });
     const executeOps = vi.fn();
     vi.mocked(getClient).mockResolvedValue({ play, executeOps } as never);
 
-    const result = await tool(tools(), "summer_play").handler({ scene: "res://main.tscn" });
+    const result = await tool(tools(), "summer_play").handler({ scene: "res://main.tscn", focus: true });
     expect(play).toHaveBeenCalledWith("res://main.tscn");
     expect(executeOps).not.toHaveBeenCalled();
     expect(text(result)).not.toContain("Determinism");
     expect(JSON.parse(text(result)).results[0].playing).toBe(true);
+  });
+
+  it("defaults to QUIET play: the PlayGame op with agent:true, and trusts the engine's agent_quiet echo", async () => {
+    const play = vi.fn();
+    const executeOps = vi.fn().mockResolvedValue({ status: "ok", results: [{ ok: true, op: "PlayGame", playing: true, agent_quiet: true }] });
+    vi.mocked(getClient).mockResolvedValue({ play, executeOps } as never);
+
+    const result = await tool(tools(), "summer_play").handler({ scene: "res://main.tscn" });
+    expect(play).not.toHaveBeenCalled();
+    expect(executeOps).toHaveBeenCalledWith([{ op: "PlayGame", scene: "res://main.tscn", agent: true }], undefined, 60_000);
+    const body = JSON.parse(text(result));
+    expect(body.results[0].agent_quiet).toBe(true);
+    expect(body).not.toHaveProperty("posture_note");
+  });
+
+  it("flags an engine that predates quiet play (no agent_quiet echo on a launch)", async () => {
+    const executeOps = vi.fn().mockResolvedValue({ status: "ok", results: [{ ok: true, op: "PlayGame", playing: true, scene: "main_scene" }] });
+    vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
+
+    const body = JSON.parse(text(await tool(tools(), "summer_play").handler({})));
+    expect(body.posture_note).toContain("predates quiet play");
   });
 
   it("passes seed/fixed_fps/time_scale through as the PlayGame op and narrates applied + seed_scope", async () => {
@@ -317,7 +338,7 @@ describe("summer_play — determinism params", () => {
     const result = await tool(tools(), "summer_play").handler({ seed: 42, fixed_fps: 60 });
     // The /api/play rung copies only `scene`, so a pinned launch is the explicit op.
     expect(play).not.toHaveBeenCalled();
-    expect(executeOps).toHaveBeenCalledWith([{ op: "PlayGame", seed: 42, fixed_fps: 60 }], undefined, 60_000);
+    expect(executeOps).toHaveBeenCalledWith([{ op: "PlayGame", agent: true, seed: 42, fixed_fps: 60 }], undefined, 60_000);
     const body = text(result);
     expect(body).toContain("Determinism (seed=42, fixed_fps=60): applied — flags on the child command line: --summer-seed 42 --fixed-fps 60.");
     expect(body).toContain("seed_scope: Pins the GLOBAL RNG only");
@@ -348,7 +369,7 @@ describe("summer_play — determinism params", () => {
     vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
 
     const body = text(await tool(tools(), "summer_play").handler({ seed: 1, time_scale: 2 }));
-    expect(executeOps).toHaveBeenCalledWith([{ op: "PlayGame", seed: 1, time_scale: 2 }], undefined, 60_000);
+    expect(executeOps).toHaveBeenCalledWith([{ op: "PlayGame", agent: true, seed: 1, time_scale: 2 }], undefined, 60_000);
     expect(body).toContain("Determinism (seed=1, time_scale=2): not applied (engine predates determinism params)");
     expect(body).toContain("NOT pinned");
   });

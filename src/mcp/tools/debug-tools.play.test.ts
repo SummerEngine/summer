@@ -49,18 +49,18 @@ afterEach(() => {
 describe("summer_play — instance-aware / deterministic variants", () => {
   it("exposes the playtest launch parameters and teaches the loop", () => {
     const play = tool("summer_play");
-    expect(Object.keys(play.shape).sort()).toEqual(["deterministic", "fixed_fps", "instance", "mode", "scene", "seed", "speed", "time_scale"]);
-    for (const phrase of ["summer_is_running", "seed_scope", "summer_game_control", "agent-playtesting", "too_many_instances"]) {
+    expect(Object.keys(play.shape).sort()).toEqual(["deterministic", "fixed_fps", "focus", "instance", "mode", "scene", "seed", "speed", "time_scale"]);
+    for (const phrase of ["summer_is_running", "seed_scope", "summer_game_control", "agent-playtesting", "too_many_instances", "QUIET BY DEFAULT", "agent_quiet", "focus:true"]) {
       expect(play.description).toContain(phrase);
     }
   });
 
-  it("plain play still takes the legacy /api/play route byte-for-byte", async () => {
+  it("plain focus:true play still takes the legacy /api/play route byte-for-byte", async () => {
     const play = vi.fn().mockResolvedValue({ ok: true, playing: true });
     const executeOps = vi.fn();
     vi.mocked(getClient).mockResolvedValue({ play, executeOps } as never);
 
-    const result = (await tool("summer_play").handler({ scene: "res://a.tscn" })) as { isError?: boolean };
+    const result = (await tool("summer_play").handler({ scene: "res://a.tscn", focus: true })) as { isError?: boolean };
     expect(result.isError).toBeUndefined();
     expect(play).toHaveBeenCalledWith("res://a.tscn");
     expect(executeOps).not.toHaveBeenCalled();
@@ -82,7 +82,8 @@ describe("summer_play — instance-aware / deterministic variants", () => {
     const result = (await tool("summer_play").handler({ scene: "res://a.tscn", seed: 7, fixed_fps: 60 })) as { isError?: boolean };
     expect(result.isError).toBeUndefined();
     expect(play).not.toHaveBeenCalled();
-    expect(executeOps).toHaveBeenCalledWith([{ op: "PlayGame", scene: "res://a.tscn", seed: 7, fixed_fps: 60 }], undefined, 60_000);
+    // Quiet default: agent:true rides the same op.
+    expect(executeOps).toHaveBeenCalledWith([{ op: "PlayGame", scene: "res://a.tscn", agent: true, seed: 7, fixed_fps: 60 }], undefined, 60_000);
     expect(text(result)).toContain("seed_scope");
   });
 

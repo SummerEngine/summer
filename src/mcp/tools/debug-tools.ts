@@ -6,14 +6,10 @@ import { createDebugReportArtifact } from "../../core/capabilities/debug-report.
 import { withConsoleScope } from "../../core/capabilities/console-read.js";
 import { describePlayDeterminism, pickPlayDeterminism } from "../../core/capabilities/play-determinism.js";
 import {
-  PLAY_INSTANCE_FALLBACK,
   RUNTIME_FALLBACKS,
-  buildPlayGameOp,
   buildStopGameOp,
+  playGame,
   playGameExtensionSchema,
-  playNeedsOp,
-  playTargetsInstance,
-  withPlayInstanceEcho,
   withRuntimeFailureHints,
 } from "../../core/capabilities/runtime-control.js";
 
@@ -236,7 +232,9 @@ Use this when summer_get_diagnostics shows a non-zero \`debugger.warnings\` coun
 
   server.tool(
     "summer_play",
-    `Start running the game in the engine. With no extra parameters the game runs inside Summer Engine's viewport (the 'main' instance).
+    `Start running the game in the engine. With no extra parameters the game runs inside Summer Engine's viewport (the 'main' instance) QUIETLY — see below.
+
+QUIET BY DEFAULT (focus:false, PlayGame agent:true): the user is usually working on the same machine while you build, so a play must not take over their screen. Quiet play makes the EDITOR stay put: it does not switch the main screen to the Game tab, does not grab keyboard focus for the embedded game, ignores the game's later focus report, and skips the render-health self-check that would otherwise misread the untouched Game view as a GPU failure and flip the user's embed setting. Quiet play does NOT hide the game: it still runs embedded in the Game view (visible if the user already has that tab open), it is the running game for summer_is_running / summer_screenshot target:'game' / summer_get_diagnostics, and it does not change a user who has "Embed Game on Play" turned off — their game opens in its own OS window as always. Quiet play only governs the editor's own behaviour; whether the spawned game process may still activate on macOS is an engine-side matter. The result echoes agent_quiet:true when honoured; a launch result WITHOUT agent_quiet means the engine predates quiet play and most likely took focus — the tool adds posture_note saying so. focus:true launches like the toolbar Play button (Game tab + focus): use it ONLY when the user is watching and asked to see the game come up.
 
 After starting, confirm boot with summer_is_running (boot time varies — never sleep a guessed delay), then summer_get_diagnostics for runtime errors. You can run a specific scene instead of the main scene — useful for testing individual levels or UI screens.
 
@@ -250,25 +248,10 @@ PLAYTEST LAUNCH (engine runtime-control build): instance + mode:'offscreen' spaw
     async (args) => {
       const requested = pickPlayDeterminism({ seed: args.seed, fixed_fps: args.fixed_fps, time_scale: args.time_scale });
       return withEngine(
-        async (client) => {
-          // Legacy route, byte-for-byte: /api/play forwards only `scene`.
-          if (!playNeedsOp(args)) return client.play(args.scene);
-          // Any pin (seed / fixed_fps / time_scale) or instance parameter travels
-          // as the explicit PlayGame OP — the /api/play rung copies only `scene`.
-          // The combination is validated first (nothing sent); then, because an
-          // engine without the runtime-control wave would start the MAIN game and
-          // silently ignore instance/mode, the pre-flight keys on a Wave I kind.
-          const { op, timeoutMs } = buildPlayGameOp(args);
-          if (playTargetsInstance(args)) {
-            const missing = missingEngineOpResult(client, "ListGameInstances", PLAY_INSTANCE_FALLBACK);
-            if (missing) return missing;
-          }
-          const result = await client.executeOps([op], undefined, timeoutMs);
-          return withPlayInstanceEcho(
-            withRuntimeFailureHints(withOldEngineHint(result, "PlayGame", PLAY_INSTANCE_FALLBACK)),
-            args
-          );
-        },
+        // ONE implementation with the CLI face (runtime-control.ts playGame):
+        // route choice, validation, Wave I pre-flight, old-engine / instance /
+        // posture annotations. A ToolInputError propagates to withEngine.
+        async (client) => playGame(client, args),
         {
           toContent: (result) => {
             const json = JSON.stringify(result, null, 2);

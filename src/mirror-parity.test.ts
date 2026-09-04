@@ -51,6 +51,10 @@ const SHARED: Record<string, string[]> = {
   ],
   "core/capabilities/engine-receipt.ts": ["extractOpError", "withOldEngineHint"],
   "core/capabilities/capture.ts": ["captureViewport", "captureScene", "captureGame", "analyzedSnapshot"],
+  // summer_play is one function: route choice, quiet-by-default posture,
+  // validation, Wave I pre-flight and the result annotations. Neither face may
+  // grow its own copy again.
+  "core/capabilities/runtime-control.ts": ["playGame", "withPlayPostureEcho", "buildPlayGameOp"],
 };
 
 /** Constants both faces must import rather than restate: the engine_lacks_op
@@ -82,6 +86,8 @@ const FACES: Array<[face: string, owner: string]> = [
   ["core/capabilities/tool-dispatch.ts", "core/capabilities/engine-fallbacks.ts"],
   ["mcp/tools/spatial-tools.ts", "core/capabilities/engine-fallbacks.ts"],
   ["mcp/tools/perception-tools.ts", "core/capabilities/engine-fallbacks.ts"],
+  ["core/capabilities/tool-dispatch.ts", "core/capabilities/runtime-control.ts"],
+  ["mcp/tools/debug-tools.ts", "core/capabilities/runtime-control.ts"],
 ];
 
 function walk(dir: string): string[] {

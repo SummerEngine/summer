@@ -376,7 +376,7 @@
         },
         {
           "name": "section",
-          "description": "Section under the game.",
+          "description": "Section under the game. Omit for the overview.",
           "values": [
             "overview",
             "builds",

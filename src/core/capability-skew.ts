@@ -137,11 +137,12 @@ export interface EngineCapabilities {
    *  destination ids this build can open. Absent = engine predates the op;
    *  summer_open then falls back to the legacy per-surface ops it can map. */
   navigation?: EngineNavigationCapabilities;
-  /** Launch postures this build honours on its command line
-   *  (`--summer-background` -> "background", `--summer-offscreen` /
-   *  `--summer-verify` -> "invisible"). Absent = engine predates the advert;
-   *  `summer run` then falls back to the --help probe / version gate
-   *  (core/launch-posture.ts). Accepts the snake_case spelling too. */
+  /** Launch postures this build ENFORCES: "focus" (always), "background"
+   *  (`--summer-background`), "offscreen" (`--summer-offscreen` /
+   *  `--summer-verify`). Non-macOS builds advertise ["focus"] only. Absent =
+   *  engine predates the advert, read as ["focus"]; `summer run` then relies on
+   *  the --help probe / version gate (core/launch-posture.ts). Accepts the
+   *  snake_case spelling too. */
   launchPostures?: string[];
 }
 

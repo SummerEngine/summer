@@ -74,8 +74,9 @@ describe("launch posture: engine version gating", () => {
   });
 
   it("reads the running engine's launchPostures advert, camelCase or snake_case, null when absent", () => {
-    expect(advertisedBackgroundPosture(parseEngineCapabilities({ launchPostures: ["background", "invisible"] }))).toBe(true);
-    expect(advertisedBackgroundPosture(parseEngineCapabilities({ launch_postures: ["invisible"] }))).toBe(false);
+    expect(advertisedBackgroundPosture(parseEngineCapabilities({ launchPostures: ["focus", "background", "offscreen"] }))).toBe(true);
+    // Non-macOS builds parse the quiet flags but do not enforce them: ["focus"] only.
+    expect(advertisedBackgroundPosture(parseEngineCapabilities({ launch_postures: ["focus"] }))).toBe(false);
     expect(advertisedBackgroundPosture(parseEngineCapabilities({ opKinds: ["PlayGame"] }))).toBeNull();
     expect(advertisedBackgroundPosture(undefined)).toBeNull();
   });

@@ -94,7 +94,7 @@ describe("parseEngineCapabilities", () => {
 
 describe("launchPostures advert (engine launch postures)", () => {
   it("parses the string list under either spelling and drops non-strings; absent stays absent", () => {
-    expect(parseEngineCapabilities({ launchPostures: ["background", "invisible", 3] })?.launchPostures).toEqual(["background", "invisible"]);
+    expect(parseEngineCapabilities({ launchPostures: ["focus", "background", "offscreen", 3] })?.launchPostures).toEqual(["focus", "background", "offscreen"]);
     expect(parseEngineCapabilities({ launch_postures: ["background"] })?.launchPostures).toEqual(["background"]);
     expect(parseEngineCapabilities({ opKinds: ["PlayGame"] })?.launchPostures).toBeUndefined();
   });

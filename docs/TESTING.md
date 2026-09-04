@@ -164,7 +164,7 @@ summer tool library-feedback --args "$ARGS"                         # second cal
 
 ## g2. Working in the background
 
-An agent driving Summer must not take over the user's screen. Three launch postures exist on the engine side: **focus** (window appears and takes focus — what a human clicking Play or typing `summer run` expects), **background** (`--summer-background`, engine 0.5.66+: the window exists but never activates or takes focus until the user clicks it), and **offscreen / invisible** (`--summer-offscreen`, also implied by `--summer-verify`: on shipped engines an unfocusable window pushed off-screen where a sliver may stay visible — `main/main.cpp` says so; the background-posture engine change makes it a genuinely invisible accessory process). What each toolkit command does when an agent drives it:
+An agent driving Summer must not take over the user's screen. Three launch postures exist on the engine side: **focus** (window appears and takes focus — what a human clicking Play or typing `summer run` expects), **background** (`--summer-background`, engine 0.5.66+: the window exists but never activates or takes focus until the user clicks it), and **offscreen** (`--summer-offscreen`, also implied by `--summer-verify`: never activates, never frontmost; on shipped engines an unfocusable window pushed off-screen where a sliver may stay visible — `main/main.cpp` says so; the background-posture engine change makes it a no-Dock-icon accessory process). What each toolkit command does when an agent drives it:
 
 | Command | Default when an agent drives | Opt in to focus |
 |---|---|---|
@@ -174,7 +174,7 @@ An agent driving Summer must not take over the user's screen. Three launch postu
 | RunVerification probes (`summer_batch` / playbook `rawOpsViaBatch`) | the engine runs the probe child with the **offscreen** posture (`--summer-verify` implies it). | n/a |
 | `summer_play {instance, mode:'offscreen'}` | a hidden child (offscreen posture) on runtime-control engine builds; `engine_lacks_op` on shipped engines. | n/a |
 
-Engine side (branch `fix/macos-no-focus-launch-fold`): `/api/health` advertises `capabilities.launchPostures: ["background","invisible"]`; the toolkit reads it (camelCase or snake_case) for the post-launch note and `summer_get_project_context`. The pre-launch decision cannot use health (nothing is running yet), hence the `--help` probe.
+Engine side (branch `fix/macos-no-focus-launch-fold`): `/api/health` advertises `capabilities.launchPostures: ["focus","background","offscreen"]` ("focus" always; the other two only where the build enforces them, so non-macOS builds say `["focus"]`; a missing key on older engines reads as `["focus"]`). The toolkit reads it (camelCase or snake_case) for the post-launch note and `summer_get_project_context`. The pre-launch decision cannot use health (nothing is running yet), hence the `--help` probe.
 
 ## h. Gates
 

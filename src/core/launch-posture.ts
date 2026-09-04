@@ -9,10 +9,12 @@
  *   focus       today's launch — the window appears and takes focus.
  *   background  `--summer-background` — the window exists but never activates
  *               or takes focus until the user clicks it.
- *   offscreen   `--summer-offscreen` — unfocusable window pushed off-screen
- *               (a sliver may stay visible; NOT invisible — main.cpp says so).
- *               Used by RunVerification / offscreen play instances, never by
- *               `summer run`.
+ *   offscreen   `--summer-offscreen` (also `--summer-verify`) — never
+ *               activates, never frontmost; on shipped engines an unfocusable
+ *               window pushed off-screen where a sliver may stay visible
+ *               (main.cpp says so), on the background-posture engine a
+ *               no-Dock-icon accessory process. Used by RunVerification /
+ *               offscreen play instances, never by `summer run`.
  *
  * Default posture: BACKGROUND when stdout is not a TTY, FOCUS when it is. A
  * human typing `summer run` in a terminal wants to see the editor come up —
@@ -45,8 +47,10 @@
  *      probe — and the fallback when `--help` cannot run (spawn error,
  *      timeout). Linux exposes no version file, so there it reads unknown.
  *
- * Once the engine is up, /api/health `capabilities.launchPostures` (newer
- * engines) is the authoritative advert and is used for the post-launch note.
+ * Once the engine is up, /api/health `capabilities.launchPostures`
+ * (["focus","background","offscreen"] on macOS builds, ["focus"] elsewhere,
+ * absent on older engines = ["focus"]) is the authoritative advert and is
+ * used for the post-launch note.
  *
  * `summer run` spawns the executable directly (Summer.app/Contents/MacOS/Summer
  * on macOS), never through `open` — LaunchServices would activate the app and
@@ -292,8 +296,9 @@ export async function detectBackgroundLaunchSupport(
 
 /**
  * The running engine's own word, once it is up: /api/health
- * `capabilities.launchPostures` (engine tool_net_thread.cpp, newer builds).
- * true / false when advertised, null when the engine predates the advert.
+ * `capabilities.launchPostures` (engine tool_net_thread.cpp, newer builds;
+ * "focus" always, "background" / "offscreen" only where enforced). true /
+ * false when advertised, null when the engine predates the advert.
  */
 export function advertisedBackgroundPosture(capabilities: EngineCapabilities | undefined | null): boolean | null {
   const postures = capabilities?.launchPostures;

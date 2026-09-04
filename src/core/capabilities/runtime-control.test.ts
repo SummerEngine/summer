@@ -341,9 +341,9 @@ describe("summer_play posture — quiet by default, focus:true opts in", () => {
     expect(withPlayPostureEcho(honoured, {})).toBe(honoured);
     const old = { status: "ok", results: [{ ok: true, op: "PlayGame", playing: true, scene: "main_scene" }] };
     expect(withPlayPostureEcho(old, {})).toMatchObject({ posture_note: PLAY_QUIET_NOT_SUPPORTED });
-    // Already running: nothing launched, so no claim about the engine's age.
-    const running = { status: "ok", results: [{ ok: true, op: "PlayGame", playing: true, note: "Game was already running" }] };
-    expect(String((withPlayPostureEcho(running, {}) as { posture_note: string }).posture_note)).toContain("already running");
+    // Already running on a current engine: agent_quiet is echoed there too, so nothing is added.
+    const running = { status: "ok", results: [{ ok: true, op: "PlayGame", playing: true, note: "Game was already running", agent_quiet: true }] };
+    expect(withPlayPostureEcho(running, {})).toBe(running);
     // focus:true or a failure: untouched.
     expect(withPlayPostureEcho(old, { focus: true })).toBe(old);
     const failed = { ok: false, results: [{ ok: false, op: "PlayGame", error: "boom" }] };

@@ -1117,11 +1117,11 @@ export const PLAY_QUIET_NOT_SUPPORTED =
   "This Summer Engine build did not echo `agent_quiet` in its PlayGame result — it predates quiet play and has most likely switched the editor to the Game tab and taken focus. Update Summer Engine (restart it after updating) for launches that leave the user's screen alone.";
 
 /**
- * Quiet was requested: the engine echoes `agent_quiet:true` when it honoured it
- * (debug_ops.cpp play_game). No echo on a launch means an engine that predates
+ * Quiet was requested: the engine echoes `agent_quiet` when it understood the
+ * flag (debug_ops.cpp play_game — in the launch branch AND the already-running
+ * branch on current engines). No echo at all means an engine that predates
  * the flag ignored it — say so instead of letting the model believe the user
- * was left alone. The already-running branch echoes nothing either but also
- * launched nothing, so it gets its own honest line.
+ * was left alone. The field is the contract; the `note` text is never matched.
  */
 export function withPlayPostureEcho(result: unknown, args: PlayGameArgs): unknown {
   if (!playIsQuiet(args) || playTargetsInstance(args) || !result || typeof result !== "object") return result;
@@ -1129,13 +1129,6 @@ export function withPlayPostureEcho(result: unknown, args: PlayGameArgs): unknow
   const envelope = result as Record<string, unknown> & { results?: Array<Record<string, unknown>> };
   const payload = envelope.results?.[0] ?? envelope;
   if (typeof payload.agent_quiet === "boolean") return result;
-  if (typeof payload.note === "string" && /already running/i.test(payload.note)) {
-    return {
-      ...envelope,
-      posture_note:
-        "The game was already running, so nothing was launched; quiet play applies only to a launch (summer_stop first to relaunch quietly).",
-    };
-  }
   return { ...envelope, posture_note: PLAY_QUIET_NOT_SUPPORTED };
 }
 

@@ -230,7 +230,7 @@ describe("summer run launch posture (focus vs background)", () => {
     engineSupport(null);
     checkEngineHealthMock
       .mockResolvedValueOnce(null)
-      .mockResolvedValue({ version: "0.5.70", capabilities: { launchPostures: ["background", "invisible"] } } as never);
+      .mockResolvedValue({ version: "0.5.70", capabilities: { launchPostures: ["focus", "background", "offscreen"] } } as never);
 
     await runCommand.parseAsync(["--no-project"], { from: "user" });
 

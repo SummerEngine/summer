@@ -3948,8 +3948,8 @@
     {
       "id": "template/2d-rpg",
       "kind": "template",
-      "version": "1.0.2",
-      "content_hash": "eb70a564ad134b311e4cb995c209ef226c7f310ead406afdbfc3fa9a691916fd",
+      "version": "1.0.3",
+      "content_hash": "a1a8d9c237b2080aaa2ec747203b9faea03ee32aa8b2bc9e4a66017e57cca2ee",
       "summary": "2D top-down RPG starter built on GDQuest's open-source work — movement, interactions, and world structure.",
       "use_when": [
         "starting a top-down 2D RPG or adventure game"
@@ -4185,7 +4185,7 @@
       "id": "template/3d-royale-clash-type",
       "kind": "template",
       "version": "1.0.3",
-      "content_hash": "44190a185ed2ceae9bcc282bc8a58197ada06dc5aab2a3c6a2a0b2868bc000cd",
+      "content_hash": "3dc7038c1f3bf01ce47dcfbbf2089c35c2ec690eaa19bd4f07c5d5bff6447a39",
       "summary": "Card-deployment lane battle starter in the Clash Royale style: drag-and-drop units, buildings and spells, elixir economy, towers, an AI rival deck.",
       "use_when": [
         "starting an auto-battler or lane-pushing strategy game"

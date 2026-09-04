@@ -134,7 +134,7 @@
     {
       "id": "template/2d-rpg",
       "slug": "2d-rpg",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "summary": "2D top-down RPG starter built on GDQuest's open-source work — movement, interactions, and world structure.",
       "status": "stable",
       "aliases": [
@@ -150,8 +150,8 @@
       "builtin": false,
       "pin": {
         "repo": "https://github.com/SummerEngine/template-2d-rpg",
-        "commit": "4de2331a0495ae90e60b3f7fa933d8cc2b027a7c",
-        "tree_digest": "b258b94d3b33f529826f601c91d934f4a2d5898aec460a69def8349dd995dc3e",
+        "commit": "7253cf527fc260824c1b10854f7e68e36995396c",
+        "tree_digest": "eb0acd5aa30aceebe8de2f7f0cb14a72877b8f47e5cc6993d5f0a208ae8f1493",
         "default_branch": "main"
       }
     },
@@ -382,8 +382,8 @@
       "builtin": false,
       "pin": {
         "repo": "https://github.com/SummerEngine/template-3d-royale-clash-type",
-        "commit": "251185d4b5d79e183336792b4f021349a2954128",
-        "tree_digest": "127581f61cca0f2056e1cc9edcd007e36e3b60a95b059474b551475dc9f9507b",
+        "commit": "31f08ad07ac24f578b01c957e2219efbbfe655cf",
+        "tree_digest": "3892bb0fb80b17187a9eca23c64c5a07d397a159c48a152411cbc3e12f8eec7e",
         "default_branch": "main"
       }
     },

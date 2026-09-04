@@ -29,14 +29,30 @@
  * background launch. That is the lie we refuse to tell: the flag is passed
  * only when the installed engine is known to honour it, and otherwise the
  * caller gets a one-line note. The engine is not running before `summer run`,
- * so /api/health cannot be consulted; the version is read from the installed
- * bundle (macOS Info.plist, Windows Velopack sq.version). Linux exposes no
- * version file, so it reads as unknown = unsupported until the engine ships a
- * pre-launch version source (see the ask in docs/TESTING.md).
+ * so /api/health cannot be consulted. Two pre-launch sources, in order:
+ *
+ *   1. `<binary> --help` and look for the flag in the help text. `--help` is
+ *      handled in Main::setup() before any display server exists
+ *      (main.cpp `arg == "--help"` -> ERR_HELP), and on macOS it is in
+ *      OS_MacOS::headless_args (os_macos.h), so the bundle runs as
+ *      OS_MacOS_Headless: no NSApp, no window, no activation, no Dock bounce.
+ *      Definitive on every engine version; the only probe that never lies.
+ *   2. If the probe cannot run (spawn error, timeout), the installed version
+ *      (macOS Info.plist, Windows Velopack sq.version) against the minimum.
+ *      Linux exposes no version file, so it reads unknown = unsupported.
+ *
+ * Once the engine is up, /api/health `capabilities.launchPostures` (newer
+ * engines) is the authoritative advert and is used for the post-launch note.
+ *
+ * `summer run` spawns the executable directly (Summer.app/Contents/MacOS/Summer
+ * on macOS), never through `open` — LaunchServices would activate the app and
+ * defeat the posture whatever flags were passed.
  */
+import { spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { platform } from "node:os";
+import type { EngineCapabilities } from "./capability-skew.js";
 
 export type LaunchPosture = "focus" | "background";
 
@@ -74,9 +90,9 @@ export function resolveLaunchPosture(flags: LaunchPostureFlags, io: LaunchIo): L
 }
 
 export type BackgroundLaunchSupport =
-  | { supported: true; version: string }
-  | { supported: false; reason: "engine_too_old"; version: string }
-  | { supported: false; reason: "version_unknown"; version: null };
+  | { supported: true; source: "help_probe" | "version"; version: string | null }
+  | { supported: false; source: "help_probe" | "version"; reason: "engine_too_old"; version: string | null }
+  | { supported: false; source: "version"; reason: "version_unknown"; version: null };
 
 interface SemverParts {
   major: number;
@@ -97,15 +113,89 @@ function compareVersions(a: SemverParts, b: SemverParts): number {
   return a.patch - b.patch;
 }
 
-/** Whether an installed engine version honours the background flag. An
- *  unreadable or unparseable version is "unknown", never "supported". */
-export function backgroundLaunchSupport(installedVersion: string | null | undefined): BackgroundLaunchSupport {
-  const parsed = installedVersion ? parseVersion(installedVersion) : null;
-  if (!parsed || !installedVersion) return { supported: false, reason: "version_unknown", version: null };
+/**
+ * Whether the installed engine honours the background flag. The `--help`
+ * probe answer (true/false) is definitive when it ran; a probe that could not
+ * run (null) falls back to the version gate, where an unreadable or
+ * unparseable version is "unknown", never "supported".
+ */
+export function backgroundLaunchSupport(
+  installedVersion: string | null | undefined,
+  helpProbe: boolean | null = null
+): BackgroundLaunchSupport {
+  const version = installedVersion?.trim() || null;
+  if (helpProbe === true) return { supported: true, source: "help_probe", version };
+  if (helpProbe === false) return { supported: false, source: "help_probe", reason: "engine_too_old", version };
+  const parsed = version ? parseVersion(version) : null;
+  if (!parsed || !version) return { supported: false, source: "version", reason: "version_unknown", version: null };
   const min = parseVersion(BACKGROUND_LAUNCH_MIN_ENGINE_VERSION)!;
   return compareVersions(parsed, min) >= 0
-    ? { supported: true, version: installedVersion.trim() }
-    : { supported: false, reason: "engine_too_old", version: installedVersion.trim() };
+    ? { supported: true, source: "version", version }
+    : { supported: false, source: "version", reason: "engine_too_old", version };
+}
+
+/** True when the help text of an engine binary lists the background flag. */
+export function helpTextListsBackgroundFlag(helpText: string): boolean {
+  return helpText.includes(BACKGROUND_LAUNCH_FLAG);
+}
+
+export const HELP_PROBE_TIMEOUT_MS = 5_000;
+
+/**
+ * Run `<binary> --help` and report whether the flag is listed: true / false,
+ * or null when the probe could not answer (spawn error, timeout). Safe on
+ * every version: --help exits in Main::setup() before a display server exists,
+ * and the macOS bundle runs it headless (OS_MacOS::headless_args), so nothing
+ * appears on screen and nothing is activated.
+ */
+export function probeBackgroundLaunchSupport(
+  binary: string,
+  timeoutMs: number = HELP_PROBE_TIMEOUT_MS
+): Promise<boolean | null> {
+  return new Promise((resolve) => {
+    let output = "";
+    let settled = false;
+    const finish = (value: boolean | null): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(value);
+    };
+    let child: ReturnType<typeof spawn>;
+    try {
+      child = spawn(binary, ["--help"], { stdio: ["ignore", "pipe", "pipe"] });
+    } catch {
+      resolve(null);
+      return;
+    }
+    const timer = setTimeout(() => {
+      try {
+        child.kill();
+      } catch {
+        // already gone
+      }
+      finish(null);
+    }, timeoutMs);
+    child.stdout?.on("data", (chunk: Buffer | string) => {
+      output += String(chunk);
+    });
+    child.stderr?.on("data", (chunk: Buffer | string) => {
+      output += String(chunk);
+    });
+    child.on("error", () => finish(null));
+    child.on("close", () => finish(output.length > 0 ? helpTextListsBackgroundFlag(output) : null));
+  });
+}
+
+/**
+ * The running engine's own word, once it is up: /api/health
+ * `capabilities.launchPostures` (engine tool_net_thread.cpp, newer builds).
+ * true / false when advertised, null when the engine predates the advert.
+ */
+export function advertisedBackgroundPosture(capabilities: EngineCapabilities | undefined | null): boolean | null {
+  const postures = capabilities?.launchPostures;
+  if (!postures) return null;
+  return postures.includes("background");
 }
 
 export interface LaunchPlan {
@@ -128,10 +218,11 @@ export function planLaunch(posture: LaunchPosture, support: BackgroundLaunchSupp
   if (support.supported) {
     return { posture, extraArgs: [BACKGROUND_LAUNCH_FLAG], background: true, note: null };
   }
+  const which = support.version ? `Summer Engine ${support.version}` : "this Summer Engine build";
   const note =
     support.reason === "engine_too_old"
-      ? `Background launch requested, but Summer Engine ${support.version} cannot launch without taking focus (needs ${BACKGROUND_LAUNCH_MIN_ENGINE_VERSION}+); launching with focus. Update Summer Engine (summer install) for background launches.`
-      : `Background launch requested, but the installed Summer Engine version could not be read before launch, so the toolkit cannot tell whether it supports ${BACKGROUND_LAUNCH_FLAG} (needs ${BACKGROUND_LAUNCH_MIN_ENGINE_VERSION}+); launching with focus.`;
+      ? `Background launch requested, but ${which} cannot launch without taking focus (${support.source === "help_probe" ? `its --help does not list ${BACKGROUND_LAUNCH_FLAG}` : `needs ${BACKGROUND_LAUNCH_MIN_ENGINE_VERSION}+`}); launching with focus. Update Summer Engine (summer install) for background launches.`
+      : `Background launch requested, but the installed Summer Engine could not be probed (--help) and its version could not be read before launch, so the toolkit cannot tell whether it supports ${BACKGROUND_LAUNCH_FLAG} (needs ${BACKGROUND_LAUNCH_MIN_ENGINE_VERSION}+); launching with focus.`;
   return { posture, extraArgs: [], background: false, note };
 }
 

@@ -92,6 +92,14 @@ describe("parseEngineCapabilities", () => {
   });
 });
 
+describe("launchPostures advert (engine launch postures)", () => {
+  it("parses the string list under either spelling and drops non-strings; absent stays absent", () => {
+    expect(parseEngineCapabilities({ launchPostures: ["background", "invisible", 3] })?.launchPostures).toEqual(["background", "invisible"]);
+    expect(parseEngineCapabilities({ launch_postures: ["background"] })?.launchPostures).toEqual(["background"]);
+    expect(parseEngineCapabilities({ opKinds: ["PlayGame"] })?.launchPostures).toBeUndefined();
+  });
+});
+
 describe("engineLacksOp / buildMissingOpResult", () => {
   it("cannot prove absence without an advert — lets the call through", () => {
     expect(engineLacksOp(undefined, "RunSceneScript")).toBe(false);

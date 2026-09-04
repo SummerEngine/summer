@@ -137,6 +137,12 @@ export interface EngineCapabilities {
    *  destination ids this build can open. Absent = engine predates the op;
    *  summer_open then falls back to the legacy per-surface ops it can map. */
   navigation?: EngineNavigationCapabilities;
+  /** Launch postures this build honours on its command line
+   *  (`--summer-background` -> "background", `--summer-offscreen` /
+   *  `--summer-verify` -> "invisible"). Absent = engine predates the advert;
+   *  `summer run` then falls back to the --help probe / version gate
+   *  (core/launch-posture.ts). Accepts the snake_case spelling too. */
+  launchPostures?: string[];
 }
 
 export interface EngineNavigationCapabilities {
@@ -230,6 +236,8 @@ export function parseEngineCapabilities(raw: unknown): EngineCapabilities | unde
   if (runtimeControl) out.runtimeControl = runtimeControl;
   const navigation = parseNavigation(record.navigation);
   if (navigation) out.navigation = navigation;
+  const launchPostures = stringList(record.launchPostures) ?? stringList(record.launch_postures);
+  if (launchPostures) out.launchPostures = launchPostures;
 
   return Object.keys(out).length > 0 ? out : undefined;
 }

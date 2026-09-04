@@ -7,10 +7,13 @@ import { getSummerDir } from "../../core/auth.js";
 import { getApiPort, checkEngineHealth } from "../../core/engine.js";
 import { findEngineBinary } from "../../core/engine-install.js";
 import {
+  advertisedBackgroundPosture,
   backgroundLaunchSupport,
   planLaunch,
+  probeBackgroundLaunchSupport,
   readInstalledEngineVersion,
   resolveLaunchPosture,
+  BACKGROUND_LAUNCH_FLAG,
   BACKGROUND_LAUNCH_MIN_ENGINE_VERSION,
 } from "../../core/launch-posture.js";
 import { sleep } from "../../core/util/sleep.js";
@@ -199,10 +202,13 @@ export const runCommand = new Command("run")
       }
 
       // The engine is not running yet, so /api/health cannot tell us whether
-      // it honours --summer-background; read the installed version instead
-      // and pass the flag only when the engine is known to support it.
+      // it honours --summer-background. Ask the binary itself (`--help`, which
+      // exits headless before any window exists) and fall back to the installed
+      // version; pass the flag only when the engine is known to support it.
+      // Focus launches skip the probe — nothing to decide.
       const installedVersion = readInstalledEngineVersion(binary);
-      const plan = planLaunch(posture, backgroundLaunchSupport(installedVersion));
+      const helpProbe = posture === "background" ? await probeBackgroundLaunchSupport(binary) : null;
+      const plan = planLaunch(posture, backgroundLaunchSupport(installedVersion, helpProbe));
 
       const args: string[] = ["--editor", ...plan.extraArgs];
       if (fullProjectPath) {
@@ -216,6 +222,8 @@ export const runCommand = new Command("run")
           : "Launching Summer Engine..."
       );
 
+      // Direct executable, never `open -a`: LaunchServices activates whatever
+      // it opens and would defeat --summer-background regardless of flags.
       const child = spawn(binary, args, { detached: true, stdio: "ignore" });
       // A stale or non-executable binary surfaces as an async "error" event
       // (ENOENT/EACCES). Without a listener Node raises it as an uncaught
@@ -243,18 +251,18 @@ export const runCommand = new Command("run")
           if (h.project_name) {
             console.log(`  Project: ${h.project_name}`);
           }
-          // Background was wanted, the flag was withheld because the version
-          // was unreadable, and the running engine now reports one that would
-          // have honoured it: say so, so the next launch can be fixed.
-          if (
-            posture === "background" &&
-            !plan.background &&
-            installedVersion === null &&
-            backgroundLaunchSupport(h.version).supported
-          ) {
-            console.log(
-              `  Note: this engine (v${h.version}) supports background launches (${BACKGROUND_LAUNCH_MIN_ENGINE_VERSION}+), but its version was not readable before launch on this platform.`
-            );
+          // Background was wanted but the flag was withheld, and the running
+          // engine now says (capabilities.launchPostures, else its version)
+          // that it would have honoured it: say so, so the next launch can be
+          // fixed rather than silently repeating a focus launch.
+          if (posture === "background" && !plan.background) {
+            const advert = advertisedBackgroundPosture(h.capabilities);
+            const wouldHonour = advert ?? backgroundLaunchSupport(h.version).supported;
+            if (wouldHonour) {
+              console.log(
+                `  Note: this engine (v${h.version}) ${advert ? "advertises" : "should support"} background launches (${BACKGROUND_LAUNCH_FLAG}, ${BACKGROUND_LAUNCH_MIN_ENGINE_VERSION}+), but that could not be confirmed before launch on this platform.`
+              );
+            }
           }
           return;
         }

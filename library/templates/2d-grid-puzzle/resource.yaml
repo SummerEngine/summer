@@ -1,12 +1,12 @@
 id: template/2d-grid-puzzle
 kind: template
-version: 1.0.0
-summary: Grid-based 2D puzzle starter with tile logic and move handling.
+version: 1.0.4
+summary: "Grid-based top-down puzzle starter (GridKit), a 3D scene of unshaded textured quads: ASCII-map levels, crates, plates, keys, doors, a chasing enemy."
 use_when:
   - starting a match/slide/sokoban-style grid puzzle game
 facets:
   lifecycle: [build]
-  domains: [2d, puzzle]
+  domains: [3d, puzzle]
 compatibility:
   engine: ">=4.6"
 source: official
@@ -15,7 +15,7 @@ status: stable
 aliases:
   - template-2d-grid-puzzle
 repo: https://github.com/SummerEngine/template-2d-grid-puzzle
-commit: 14409a7dbbabe08bf7ba3397b9c2ee29f6a15420
-tree_digest: 76257b6e3c71c25e23b634036864ce9ab6b7e51e340df61f9fa02a6587d51165
+commit: f8433fddeb63f2e62db05fd84cf0516cea49431d
+tree_digest: 2871da30fcadd242ddf98713571fce602379688856cce296bc232fadefc1a261
 default_branch: main
 systems: [grid-logic, input]

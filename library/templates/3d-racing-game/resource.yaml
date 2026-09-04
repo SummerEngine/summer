@@ -1,6 +1,6 @@
 id: template/3d-racing-game
 kind: template
-version: 1.0.0
+version: 1.0.4
 summary: Racing starter — drivable vehicle, track, and lap structure to build a racing game on.
 use_when:
   - starting a racing or driving game
@@ -15,7 +15,7 @@ status: stable
 aliases:
   - template-3d-racing-game
 repo: https://github.com/SummerEngine/template-3d-racing-game
-commit: 1c115a283a3fcc272ea186cfa17a12afc141b663
-tree_digest: 6514e33ec0ff0f815178191979a746e4ea5c20e03d02d1051172c2539ef96877
+commit: 8305f5e68a5888e0f6053ca8ef5d7a0bd041aa79
+tree_digest: a6d31140518b7253da5527eafdc8bf8abc7e4253298d262f84194632e48a733c
 default_branch: main
 systems: [vehicle, track, laps]

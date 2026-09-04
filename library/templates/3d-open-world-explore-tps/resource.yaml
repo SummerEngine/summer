@@ -1,6 +1,6 @@
 id: template/3d-open-world-explore-tps
 kind: template
-version: 1.0.0
+version: 1.0.2
 summary: Third-person open-world exploration starter — camera rig, traversal, and a large explorable space.
 use_when:
   - starting a third-person open-world or exploration game
@@ -15,7 +15,7 @@ status: stable
 aliases:
   - template-3d-open-world-explore-tps
 repo: https://github.com/SummerEngine/template-3d-open-world-explore-tps
-commit: 03dfd7d90399a7ce4badc39d880c895b82944529
-tree_digest: 48cb2567f5a5128de128371b74a8c9ecd3c70a4f0e0cd8211e579df8967beb19
+commit: d832fa0b5574d154ac85020ab8b7646174915b11
+tree_digest: 5e3fd26e891820123ace7424f7f4cb91e996f34d3d2fa646cae838c2bca3e9ae
 default_branch: main
 systems: [third-person-controller, camera-rig, world]

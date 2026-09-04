@@ -1,6 +1,6 @@
 id: template/2d-rpg
 kind: template
-version: 1.0.0
+version: 1.0.1
 summary: 2D top-down RPG starter built on GDQuest's open-source work — movement, interactions, and world structure.
 use_when:
   - starting a top-down 2D RPG or adventure game
@@ -15,7 +15,7 @@ status: stable
 aliases:
   - template-2d-rpg
 repo: https://github.com/SummerEngine/template-2d-rpg
-commit: e779c972a63fb70a2eace25014d4e1d97a8e97da
-tree_digest: a3a3e646bae7bf8ed4d1fb3daa50d6fd7a841c3d3e7a5cd03a51f3144a66e27f
+commit: 8887cc5e7e172a8a2be0b0b77d1b872c5a1c9fd5
+tree_digest: f2e28a0683a9f237f88e355311ded916164dcbedbf6affcd577b227da6e8cb2a
 default_branch: main
 systems: [top-down-movement, interactions, world]

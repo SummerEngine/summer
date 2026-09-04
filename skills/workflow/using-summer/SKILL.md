@@ -38,6 +38,24 @@ Two layers:
 - **Skills** — discipline guides that fire on specific situations: brainstorming a game, designing a mechanic, building an FPS controller, debugging a crash, shipping a build. Each one is a SKILL.md you load via the Skill tool.
 - **MCP tools** — `summer_*` tools that talk to the running Summer Engine on `localhost:6550`. Scene mutation (`summer_add_node`, `summer_set_prop`), inspection (`summer_get_scene_tree`, `summer_inspect_node`), play/diagnostics (`summer_play`, `summer_get_diagnostics`), asset import/generation (`summer_import_from_url`, `summer_generate_3d`), whole-project sync to Summer Cloud (`summer_cloud_push`, `summer_cloud_pull`; see `summer:summer-cloud`), and 30+ more.
 
+## Media Generation Boundary
+
+For project deliverables such as images, sprites, textures, 3D meshes, music,
+sound effects, voice, video, and motion, create the media only through Summer
+Engine Studio generation tools (`summer_generate_*` or their Summer chat
+equivalents). Never substitute Python, GDScript, shell scripts, SVG/canvas,
+oscillators or MIDI, an agent-native image generator, a chat document/artifact,
+or an external generation service. A temporary chat preview is not a project
+asset.
+
+Code may import, wire, play, or deterministically post-process media returned by
+Studio. It may also implement an explicitly requested procedural engine effect;
+it must not synthesize authored media as a fallback. Preserve the returned
+Summer asset id and import through Summer tools, preferring
+`summer_import_asset_by_id` when the tool supports the asset type. If the Summer
+generation route is unavailable, give the exact Summer Studio dashboard handoff
+and stop instead of silently switching generators.
+
 **Scripting language:** The user is making a Summer game with the Summer SDK.
 GDScript is the default creator language. Summer currently uses the 4.6.1
 upstream technical base, plans to adopt 4.7.1 next, and follows upstream

@@ -337,4 +337,18 @@ priority: locked
     expect(JSON.stringify(body)).toContain("projectMemory");
     expect(JSON.stringify(body)).toContain("priority: locked");
   });
+
+  it("routes project media generation exclusively through Summer Studio", async () => {
+    const { server, tools } = createFakeServer();
+    registerProjectTools(server as never);
+
+    const playbookTool = getTool(tools, "summer_get_agent_playbook");
+    const body = parseToolResult(await playbookTool.handler({}));
+    const playbook = JSON.stringify(body);
+
+    expect(playbook).toContain("only through Summer Engine Studio generation tools");
+    expect(playbook).toContain("Never substitute Python/GDScript/shell synthesis");
+    expect(playbook).toContain("A chat preview is not a project asset");
+    expect(playbook).toContain("dashboard handoff and stop");
+  });
 });

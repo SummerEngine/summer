@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0",
-  "source": "Seeded from the toolkit map verified against publicsummerengine route files on 2026-09-03. Refresh from the live catalog with: npm run sync:web-routes",
+  "source": "Matches publicsummerengine src/lib/navigation/routes.ts on branch feat/agent-routes-catalog (2026-09-04). Refresh from the live catalog with: npm run sync:web-routes",
   "base": "https://www.summerengine.com",
   "docsBase": "https://docs.summerengine.com",
   "login": {
@@ -173,7 +173,7 @@
       "id": "changelog",
       "path": "/changelog[/{version}]",
       "title": "Changelog",
-      "description": "Release notes — the index, or one engine version.",
+      "description": "Release notes: the index, or one engine version.",
       "intents": [
         "changelog",
         "what's new",
@@ -230,7 +230,7 @@
       "id": "docs",
       "path": "/",
       "title": "Documentation",
-      "description": "docs.summerengine.com — the Summer documentation.",
+      "description": "docs.summerengine.com, the Summer documentation.",
       "intents": [
         "documentation",
         "the docs",
@@ -429,7 +429,7 @@
       "id": "usage",
       "path": "/studio?tab=billing&section=usage",
       "title": "Usage",
-      "description": "Account usage and spending — how many credits were used and on what.",
+      "description": "Account usage and spending: how many credits were used and on what.",
       "intents": [
         "usage",
         "how many credits do i have left",

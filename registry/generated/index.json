@@ -172,7 +172,7 @@
       "id": "reference/product-map",
       "kind": "reference",
       "version": "1.0.0",
-      "content_hash": "f8f676ec25c319bf6a5998ef220871d57421128c77329bb3b2bf9fc0c36ca787",
+      "content_hash": "9444ec996ce8f2cb3bb56ad4f5f127f2b00720abb5eef4ebcf101c415ec6c987",
       "summary": "The product map — every summerengine.com page and editor surface an agent can open for the user, with intent phrases, URL or op, required context, and status.",
       "use_when": [
         "resolving where a user intent lives — \"where do I change my plan\", \"where are my published games\", \"how do I get to the MCP guide for Codex\"",
@@ -3948,8 +3948,8 @@
     {
       "id": "template/2d-rpg",
       "kind": "template",
-      "version": "1.0.1",
-      "content_hash": "3e8dc6e5c7bb7b330157c93e4731fcf6b6ff391c3a36be11e3aa6a2d3338492d",
+      "version": "1.0.2",
+      "content_hash": "eb70a564ad134b311e4cb995c209ef226c7f310ead406afdbfc3fa9a691916fd",
       "summary": "2D top-down RPG starter built on GDQuest's open-source work — movement, interactions, and world structure.",
       "use_when": [
         "starting a top-down 2D RPG or adventure game"

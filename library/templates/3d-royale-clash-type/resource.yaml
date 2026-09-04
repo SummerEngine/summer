@@ -15,7 +15,7 @@ status: stable
 aliases:
   - template-3d-royale-clash-type
 repo: https://github.com/SummerEngine/template-3d-royale-clash-type
-commit: 251185d4b5d79e183336792b4f021349a2954128
-tree_digest: 127581f61cca0f2056e1cc9edcd007e36e3b60a95b059474b551475dc9f9507b
+commit: 31f08ad07ac24f578b01c957e2219efbbfe655cf
+tree_digest: 3892bb0fb80b17187a9eca23c64c5a07d397a159c48a152411cbc3e12f8eec7e
 default_branch: main
 systems: [lanes, unit-spawning, auto-battle]

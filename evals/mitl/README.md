@@ -17,7 +17,10 @@ MITL_ALLOW_ENGINE=1 bash evals/mitl/run.sh fps-sprint-stamina
 `MITL_ALLOW_ENGINE=1` is the explicit go-ahead for engine processes on this machine; without it
 every task stops at `gate_refused` before the first launch (create still runs). `run.sh --help` lists
 the other knobs (`MITL_SCRATCH`, `MITL_RESULTS`, `MITL_MODEL`, `MITL_MCP_ONLY`, `MITL_AGENT_TIMEOUT_S`,
-`MITL_KEEP_PROJECT`, `MITL_GATE_MAX_S`, `SUMMER_BIN`). Run it as a background job you can `kill -TERM`:
+`MITL_KEEP_PROJECT`, `MITL_GATE_MAX_S`, `MITL_ENGINE_BIN` — path to the editor executable inside a bundle,
+e.g. a posture-fixed dev build; each task json records the binary, its `/api/health` version and
+`capabilities.launchPostures`, with a note saying "silent launch" when `offscreen` is advertised and
+"this engine will take focus on launch" when it is not). Run it as a background job you can `kill -TERM`:
 the INT/TERM trap stops our editor, an in-flight smoke and every engine process descending from the
 runner (parent-chain walk), then exits.
 

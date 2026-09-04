@@ -21,7 +21,10 @@
 #   MITL_ALLOW_ENGINE=1       REQUIRED for any engine launch. Without it every task stops before the
 #                             baseline smoke (stage gate_refused) — the machine owner decides when
 #                             engine processes may start (they can steal focus on macOS).
-#   SUMMER_BIN                engine binary (default /Applications/Summer.app/Contents/MacOS/Summer)
+#   MITL_ENGINE_BIN           editor executable inside a bundle (default /Applications/Summer.app/Contents/MacOS/Summer;
+#                             e.g. a posture-fixed dev build). Recorded per task with its /api/health version and
+#                             capabilities.launchPostures — "offscreen" advertised = silent launch, absent = the
+#                             engine WILL take focus on launch. SUMMER_BIN is honoured as a fallback name.
 #
 # Screen + HOME rules this script enforces (see README.md):
 #   * the editor is launched by THIS script with --summer-offscreen --summer-no-publish; `summer run` is never used
@@ -36,7 +39,7 @@ MITL="$REPO/evals/mitl"
 LIB="$MITL/lib/mitl.mjs"
 SUMMER_JS="$REPO/dist/bin/summer.js"
 NODE="$(command -v node)"
-SUMMER_BIN="${SUMMER_BIN:-/Applications/Summer.app/Contents/MacOS/Summer}"
+SUMMER_BIN="${MITL_ENGINE_BIN:-${SUMMER_BIN:-/Applications/Summer.app/Contents/MacOS/Summer}}"
 REAL_HOME="$HOME"
 SCRATCH="${MITL_SCRATCH:-${TMPDIR:-/tmp}/summer-mitl}"
 FAKE_HOME="$SCRATCH/mitl-home"
@@ -144,7 +147,7 @@ run_smoke() { # $1 project  $2 log  -> rc
   gate "smoke" || return 99
   # HOME=$FAKE_HOME for the same reason as the editor: the import pre-pass and the verify
   # instance are the same binary and must not see the machine's desktop session.
-  ( cd "$1" && HOME="$FAKE_HOME" bash tests/autopilot/run.sh ) >"$2" 2>&1 &
+  ( cd "$1" && SUMMER_BIN="$SUMMER_BIN" HOME="$FAKE_HOME" bash tests/autopilot/run.sh ) >"$2" 2>&1 &
   SMOKE_PID=$!
   wait "$SMOKE_PID" || rc=$?
   SMOKE_PID=""
@@ -305,7 +308,7 @@ write_meta() { # out stage size engine boot notes...
   local notes_json="[]"
   if (( $# > 0 )) && [[ -n "${1:-}" ]]; then notes_json="$(printf '%s\n' "$@" | "$NODE" -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.stringify(s.split("\n").filter(Boolean))))')"; fi
   cat >"$out/meta.json" <<EOF
-{"date":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","stage":"$stage","project_size":"$size","engine_version":"$engine","editor_boot_s":"$boot","toolkit_commit":"$TOOLKIT_COMMIT","toolkit_dirty":$TOOLKIT_DIRTY,"claude_version":"$CLAUDE_VERSION","notes":$notes_json}
+{"date":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","stage":"$stage","project_size":"$size","engine_version":"$engine","editor_boot_s":"$boot","engine_binary":"$SUMMER_BIN","toolkit_commit":"$TOOLKIT_COMMIT","toolkit_dirty":$TOOLKIT_DIRTY,"claude_version":"$CLAUDE_VERSION","notes":$notes_json}
 EOF
 }
 
@@ -314,7 +317,7 @@ cleanup_project() {
   rm -rf "$1"
 }
 
-log "MITL run: toolkit $TOOLKIT_COMMIT (dirty files: $TOOLKIT_DIRTY), claude $CLAUDE_VERSION, node $("$NODE" --version), results $RESULTS, scratch $SCRATCH"
+log "MITL run: engine $SUMMER_BIN, toolkit $TOOLKIT_COMMIT (dirty files: $TOOLKIT_DIRTY), claude $CLAUDE_VERSION, node $("$NODE" --version), results $RESULTS, scratch $SCRATCH"
 for id in $("$NODE" "$LIB" list "$SEL"); do
   run_task "$id"
 done

@@ -539,6 +539,22 @@ function finalize(id, outDir, resultsDir) {
   const checks = readJson(join(outDir, "checks.json"));
   const smokeAfter = readJson(join(outDir, "smoke_after.json"));
   const stage = meta.stage ?? "unknown";
+  // Engine identity + launch posture: binary path from meta, version/capabilities from the
+  // /api/health captured by wait-instance. An engine that advertises "offscreen" in
+  // capabilities.launchPostures launches silently; one that does not WILL take focus.
+  const inst = readJson(join(outDir, "instance.json"));
+  const caps = inst?.health?.capabilities ?? null;
+  const postures = Array.isArray(caps?.launchPostures) ? caps.launchPostures : null;
+  const engine = {
+    binary: meta.engine_binary ?? null,
+    health_version: inst?.health?.version ?? null,
+    launch_postures: postures,
+    posture_note: !inst
+      ? "not launched"
+      : postures?.includes("offscreen")
+        ? "silent launch (engine advertises launchPostures incl. offscreen)"
+        : "this engine will take focus on launch (no offscreen in capabilities.launchPostures)",
+  };
   const record = {
     task: id,
     template: task.template,
@@ -548,6 +564,7 @@ function finalize(id, outDir, resultsDir) {
     toolkit_commit: meta.toolkit_commit ?? null,
     toolkit_dirty: meta.toolkit_dirty ?? null,
     engine_version: meta.engine_version ?? null,
+    engine,
     claude_version: meta.claude_version ?? null,
     stage,
     baseline,

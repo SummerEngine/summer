@@ -39,8 +39,10 @@ export const CLI_KNOWN_OP_NEEDS: readonly string[] = [
   // Scene graph + properties
   "AddNode", "RemoveNode", "ReplaceNode", "SetProp", "SetResourceProperty",
   "ConnectSignal", "SelectNode", "OpenScene", "SaveScene", "InstantiateScene",
-  // Navigation (summer_open: core/capabilities/navigation/targets.ts)
-  "OpenResource", "FocusDock", "RevealInFileSystem",
+  // Navigation (summer_open: core/capabilities/navigation/) — Navigate is the
+  // one-table op (engine navigate_ops.cpp); the other three are the legacy
+  // fallbacks on engines that predate it.
+  "Navigate", "OpenResource", "FocusDock", "RevealInFileSystem",
   // Project + input
   "ProjectSetting", "InputMapAddAction", "InputMapBind",
   // Files (summer_write_file / summer_replace_text / summer_create_scene)
@@ -131,6 +133,21 @@ export interface EngineCapabilities {
    *  `summer` capture ships, and the offscreen instance cap. Absent = engine
    *  predates runtime control (or advertises the kinds only in opKinds). */
   runtimeControl?: EngineRuntimeControlCapabilities;
+  /** Editor navigation advert (engine `Navigate` op, navigate_ops.cpp): the
+   *  destination ids this build can open. Absent = engine predates the op;
+   *  summer_open then falls back to the legacy per-surface ops it can map. */
+  navigation?: EngineNavigationCapabilities;
+}
+
+export interface EngineNavigationCapabilities {
+  version?: number;
+  targets: EngineNavigationTarget[];
+}
+
+export interface EngineNavigationTarget {
+  id: string;
+  title?: string;
+  args?: string[];
 }
 
 export interface EngineRuntimeControlCapabilities {
@@ -211,8 +228,30 @@ export function parseEngineCapabilities(raw: unknown): EngineCapabilities | unde
   if (events) out.events = events;
   const runtimeControl = parseRuntimeControl(record.runtimeControl);
   if (runtimeControl) out.runtimeControl = runtimeControl;
+  const navigation = parseNavigation(record.navigation);
+  if (navigation) out.navigation = navigation;
 
   return Object.keys(out).length > 0 ? out : undefined;
+}
+
+function parseNavigation(raw: unknown): EngineNavigationCapabilities | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const record = raw as Record<string, unknown>;
+  if (!Array.isArray(record.targets)) return undefined;
+  const targets: EngineNavigationTarget[] = [];
+  for (const entry of record.targets) {
+    if (!entry || typeof entry !== "object") continue;
+    const item = entry as Record<string, unknown>;
+    if (typeof item.id !== "string" || item.id.length === 0) continue;
+    const args = stringList(item.args);
+    targets.push({
+      id: item.id,
+      ...(typeof item.title === "string" ? { title: item.title } : {}),
+      ...(args ? { args } : {}),
+    });
+  }
+  const version = typeof record.version === "number" ? record.version : undefined;
+  return { ...(version !== undefined ? { version } : {}), targets };
 }
 
 /**

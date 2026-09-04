@@ -1,6 +1,8 @@
 # Summer navigation — design
 
-Decisions for `summer open` / `summer_open`, the product map, and the `navigate-summer` skill. Follows `NAVIGATION-RESEARCH.md` (why) and obeys `CONTRACT.md` (one behavior, two faces; descriptors; capability lint). Written 2026-09-03. Status of each part is marked **implemented** or **planned**; every web route was checked against `publicsummerengine` route files and every editor target against the engine's `op_registry.json` that day.
+Decisions for `summer open` / `summer_open`, the product map, and the `navigate-summer` skill. Follows `NAVIGATION-RESEARCH.md` (why) and obeys `CONTRACT.md` (one behavior, two faces; descriptors; capability lint). Written 2026-09-03.
+
+**Revised 2026-09-04 — see `NAVIGATION-PLAN.md`.** §2.1 and §2.2 below described a hand-written map with a hardcoded `planned` flag. That was replaced: web rows are generated from summerengine.com's `/agent-routes.json` (vendored at `assets/navigation/web-routes.json`), editor rows are ids of the engine's one navigation table (`Navigate` op) whose availability the running engine advertises, and the three legacy scene tools stay as build-workflow tools. The tool contract in §3 (targets, params, `open: false`, ambiguity, login deep-link, result shape) still holds, with `planned` replaced by `unsupported` / `failure_reason: engine_lacks_op`. Status of each part is marked **implemented** or **planned**; every web route was checked against `publicsummerengine` route files and every editor target against the engine's `op_registry.json` that day.
 
 ## 1. What it is
 

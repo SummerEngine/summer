@@ -1,26 +1,26 @@
 /**
- * The product map — every destination `summer open` / `summer_open` can land
- * on, web (summerengine.com, docs.summerengine.com) and editor (Summer Engine
- * over the local API). ONE table, two surfaces (docs/design/NAVIGATION-DESIGN.md §2).
+ * The product map as the toolkit sees it (docs/design/NAVIGATION-PLAN.md).
  *
- * This file is the source of truth: the tool loads it, and
- * library/references/product-map/product-map.md is the same table rendered for
- * agents — navigation.test.ts fails when the two disagree on target ids.
+ * The toolkit does NOT own where things are. Each product does:
  *
- * Verification (2026-09-03): every web path was checked against the route files
- * of the web repo (Studio `?tab=` list and AUTHENTICATED_STUDIO_TABS in
- * app/(app)/(studio)/studio/…, selected-game sections in
- * selected-game-navigation.ts, MCP guide slugs in src/lib/data/agent-guides.ts,
- * the `/login?returnUrl=` redirect in src/lib/auth/return-url.ts); every editor
- * op against the engine's op_registry.json (OpenScene, SelectNode, OpenResource,
- * FocusDock with exactly the dock ids file_system | scene_tree | inspector,
- * RevealInFileSystem). Anything the engine cannot do yet is `status: "planned"`
- * with the engine change named — the tool never pretends to open those.
+ * - summerengine.com publishes /agent-routes.json (web repo
+ *   src/lib/navigation/routes.ts). A vendored snapshot lives at
+ *   assets/navigation/web-routes.json (refresh: `npm run sync:web-routes`) and
+ *   every web row below is built from it — nothing hand-written.
+ * - Summer Engine owns one table of editor destinations (navigate_ops.cpp) and
+ *   advertises the ids it can open in /api/health capabilities.navigation.
+ *   The rows below are METADATA for those ids (titles, intents, argument
+ *   names) plus, for the few ids an older engine can serve through its
+ *   original ops, a `legacy` mapping. Availability is decided at connect time
+ *   from the advert, never hardcoded here.
+ *
+ * `summer_open` / `summer open` forward ids; they never know the layout.
  */
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { PACKAGE_ROOT } from "../../package-root.js";
 
 export type NavSurface = "web" | "editor";
-export type NavStatus = "implemented" | "planned";
-export type WebOrigin = "gateway" | "docs";
 
 export interface NavParam {
   name: string;
@@ -32,595 +32,307 @@ export interface NavParam {
   valueAliases?: Readonly<Record<string, string>>;
 }
 
-export interface NavWeb {
-  origin: WebOrigin;
-  /** Path template. `{slot}` is a required param; `[/{slot}]` is an optional
-   *  segment dropped when the param is absent. Query strings are literal. */
+// ---------------------------------------------------------------------------
+// Web: the vendored /agent-routes.json snapshot
+// ---------------------------------------------------------------------------
+
+export interface WebRoute {
+  id: string;
+  /** Path template. `{slot}` required; `[/{slot}]` optional segment. */
   path: string;
+  title: string;
+  description: string;
+  intents: readonly string[];
+  auth: "public" | "signed-in";
+  aliases?: readonly string[];
+  params?: readonly NavParam[];
+  /** "docs" = docs.summerengine.com; default = the gateway origin. */
+  origin?: "web" | "docs";
 }
 
-export interface NavEditor {
-  /** Engine op kind, e.g. "OpenScene". */
-  op: string;
-  /** Fixed op fields, e.g. { dock: "inspector" }. */
+export interface WebRoutesCatalog {
+  schemaVersion: string;
+  source?: string;
+  base: string;
+  docsBase: string;
+  login: { path: string; returnParam: string };
+  routes: WebRoute[];
+}
+
+export const WEB_ROUTES_SNAPSHOT_PATH = resolve(PACKAGE_ROOT, "assets/navigation/web-routes.json");
+
+export function parseWebRoutesCatalog(raw: unknown, where = "web-routes"): WebRoutesCatalog {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error(`${where}: not an object`);
+  const doc = raw as Record<string, unknown>;
+  if (!Array.isArray(doc.routes)) throw new Error(`${where}: missing routes[]`);
+  const login = (doc.login ?? {}) as Record<string, unknown>;
+  const routes: WebRoute[] = [];
+  const seen = new Set<string>();
+  for (const entry of doc.routes) {
+    const r = (entry ?? {}) as Record<string, unknown>;
+    for (const key of ["id", "path", "title", "description"]) {
+      if (typeof r[key] !== "string" || (r[key] as string).length === 0) {
+        throw new Error(`${where}: route ${JSON.stringify(r.id ?? "?")} missing string ${key}`);
+      }
+    }
+    if (seen.has(r.id as string)) throw new Error(`${where}: duplicate route id ${r.id as string}`);
+    seen.add(r.id as string);
+    routes.push({
+      id: r.id as string,
+      path: r.path as string,
+      title: r.title as string,
+      description: r.description as string,
+      intents: Array.isArray(r.intents) ? (r.intents as unknown[]).filter((x): x is string => typeof x === "string") : [],
+      auth: r.auth === "signed-in" ? "signed-in" : "public",
+      ...(Array.isArray(r.aliases) ? { aliases: (r.aliases as unknown[]).filter((x): x is string => typeof x === "string") } : {}),
+      ...(Array.isArray(r.params) ? { params: r.params as NavParam[] } : {}),
+      ...(r.origin === "docs" ? { origin: "docs" as const } : {}),
+    });
+  }
+  return {
+    schemaVersion: typeof doc.schemaVersion === "string" ? doc.schemaVersion : "1.0",
+    ...(typeof doc.source === "string" ? { source: doc.source } : {}),
+    base: typeof doc.base === "string" ? doc.base : "https://www.summerengine.com",
+    docsBase: typeof doc.docsBase === "string" ? doc.docsBase : "https://docs.summerengine.com",
+    login: {
+      path: typeof login.path === "string" ? login.path : "/login",
+      returnParam: typeof login.returnParam === "string" ? login.returnParam : "returnUrl",
+    },
+    routes,
+  };
+}
+
+export function loadWebRoutesCatalog(path = WEB_ROUTES_SNAPSHOT_PATH): WebRoutesCatalog {
+  return parseWebRoutesCatalog(JSON.parse(readFileSync(path, "utf8")), path);
+}
+
+export const WEB_CATALOG: WebRoutesCatalog = loadWebRoutesCatalog();
+
+// ---------------------------------------------------------------------------
+// Editor: metadata for the engine's navigation ids
+// ---------------------------------------------------------------------------
+
+/** How to express a row as the engine's one-table op: Navigate { target, ...args }. */
+export interface NavigateSpec {
+  target: string;
   fixed?: Readonly<Record<string, string>>;
-  /** Param name -> op field, e.g. { node: "nodePath", scene: "scenePath" }. */
+  /** param name -> Navigate arg name */
   map?: Readonly<Record<string, string>>;
-  /** When the `path` param is omitted, read application/run/main_scene. */
+}
+
+/** The pre-Navigate op an older engine can serve this row with. */
+export interface LegacyOpSpec {
+  op: string;
+  fixed?: Readonly<Record<string, string>>;
+  /** param name -> op field */
+  map?: Readonly<Record<string, string>>;
+}
+
+export interface EditorTargetMeta {
+  id: string;
+  title: string;
+  description: string;
+  intents: readonly string[];
+  aliases?: readonly string[];
+  navigate: NavigateSpec;
+  legacy?: LegacyOpSpec;
+  params?: readonly NavParam[];
+  /** When `path` is omitted, read application/run/main_scene first. */
   mainSceneDefault?: boolean;
 }
+
+const PATH_PARAM: NavParam = { name: "path", description: "Project resource path, e.g. res://levels/level_1.tscn", required: true };
+
+function dock(id: string, name: string, title: string, intents: string[], legacyDock?: string, aliases?: string[]): EditorTargetMeta {
+  return {
+    id,
+    title,
+    description: `The ${title} comes to the front.`,
+    intents,
+    ...(aliases ? { aliases } : {}),
+    navigate: { target: "dock", fixed: { name } },
+    ...(legacyDock ? { legacy: { op: "FocusDock", fixed: { dock: legacyDock } } } : {}),
+  };
+}
+
+function screen(id: string, name: string, intents: string[]): EditorTargetMeta {
+  return {
+    id,
+    title: `${name} main screen`,
+    description: `The main editor switches to the ${name} view.`,
+    intents,
+    navigate: { target: id },
+  };
+}
+
+function panel(id: string, title: string, intents: string[]): EditorTargetMeta {
+  return {
+    id,
+    title,
+    description: `The ${title} opens at the bottom of the editor.`,
+    intents,
+    navigate: { target: "panel", fixed: { name: id } },
+  };
+}
+
+export const EDITOR_TARGETS: readonly EditorTargetMeta[] = [
+  {
+    id: "scene",
+    title: "Open a scene",
+    description: "The scene becomes the current tab in Summer Engine.",
+    intents: ["open the scene", "open this scene", "show the scene", "switch to the scene", "the scene i'm editing", "open my level"],
+    navigate: { target: "scene", map: { path: "path" } },
+    legacy: { op: "OpenScene", map: { path: "path" } },
+    params: [{ name: "path", description: "Scene path, e.g. res://main.tscn. Omit for the project's main scene." }],
+    mainSceneDefault: true,
+  },
+  {
+    id: "main-scene",
+    title: "Open the main scene",
+    description: "The project's configured main scene becomes the current tab.",
+    intents: ["open the main scene", "main scene", "go to the main scene", "the starting scene"],
+    navigate: { target: "scene" },
+    legacy: { op: "OpenScene" },
+    mainSceneDefault: true,
+  },
+  {
+    id: "node",
+    title: "Select a node",
+    description: "The node is highlighted in the Scene tree and its properties show in the Inspector.",
+    intents: ["select the node", "show me the node", "focus the player node", "highlight the node", "go to the node", "inspect the node in the editor"],
+    navigate: { target: "node", map: { node: "path", scene: "scene" } },
+    legacy: { op: "SelectNode", map: { node: "nodePath", scene: "scenePath" } },
+    params: [
+      { name: "node", description: "Node path relative to the scene root, e.g. Player/Camera3D.", required: true },
+      { name: "scene", description: "Scene to open first, e.g. res://main.tscn (optional)." },
+    ],
+  },
+  {
+    id: "script",
+    title: "Open a script",
+    description: "The script opens in the Script editor and takes focus (at a line, when given). On engines without the Navigate op it opens without taking focus.",
+    intents: ["open the script", "show me the script", "open the gdscript file", "go to the script", "open player.gd", "jump to line"],
+    navigate: { target: "script", map: { path: "path", line: "line", col: "col" } },
+    legacy: { op: "OpenResource", map: { path: "path" } },
+    params: [PATH_PARAM, { name: "line", description: "1-based line to jump to (Navigate engines only)." }, { name: "col", description: "Column (Navigate engines only)." }],
+  },
+  {
+    id: "file",
+    title: "Reveal a file",
+    description: "The FileSystem dock comes to the front, scrolled to the file.",
+    intents: ["show the file in the filesystem", "reveal the file", "find the file in the editor", "where is this asset", "show me the texture in the file dock"],
+    navigate: { target: "file", map: { path: "path" } },
+    legacy: { op: "RevealInFileSystem", map: { path: "path" } },
+    params: [PATH_PARAM],
+  },
+  dock("files", "file_system", "FileSystem dock", ["filesystem dock", "file dock", "show the files", "project files panel"], "file_system", ["filesystem", "file-system"]),
+  dock("scene-tree", "scene_tree", "Scene tree dock", ["scene tree", "scene dock", "show the scene tree", "node tree panel"], "scene_tree"),
+  dock("inspector", "inspector", "Inspector dock", ["inspector", "show the inspector", "properties panel", "inspector dock"], "inspector"),
+  dock("import-dock", "import", "Import dock", ["import dock", "import settings panel", "show import options"]),
+  dock("signals-dock", "node", "Node dock (signals and groups)", ["signals dock", "node dock", "show the signals", "connect signals panel"]),
+  dock("changes-dock", "changes", "Changes dock", ["changes dock", "show the changes", "what did the agent change", "diff panel"]),
+  screen("screen-2d", "2D", ["switch to 2d", "2d view", "show the 2d editor"]),
+  screen("screen-3d", "3D", ["switch to 3d", "3d view", "show the 3d editor", "show me the viewport"]),
+  screen("screen-script", "Script", ["switch to the script editor", "script view", "show the code editor"]),
+  screen("screen-game", "Game", ["switch to the game view", "game tab", "show the running game view"]),
+  screen("screen-assetlib", "AssetLib", ["asset library tab", "open the asset lib", "godot asset library"]),
+  {
+    id: "viewport-show",
+    title: "Show the viewport column",
+    description: "The agent layout's viewport column becomes visible.",
+    intents: ["show the viewport column", "bring back the viewport", "unhide the editor viewport"],
+    navigate: { target: "viewport-show" },
+  },
+  {
+    id: "viewport-hide",
+    title: "Hide the viewport column",
+    description: "The agent layout's viewport column is hidden.",
+    intents: ["hide the viewport column", "hide the editor viewport", "chat only layout"],
+    navigate: { target: "viewport-hide" },
+  },
+  {
+    id: "assistant",
+    title: "Summer assistant",
+    description: "The Summer assistant (chat) dock opens.",
+    intents: ["open the assistant", "show the chat dock", "summer assistant", "ai chat in the editor", "open the agent panel"],
+    navigate: { target: "assistant", map: { path: "path" } },
+    params: [{ name: "path", description: "Chat path to open (optional)." }],
+  },
+  {
+    id: "project-settings",
+    title: "Project Settings",
+    description: "The Project Settings dialog opens.",
+    intents: ["project settings", "settings", "open project settings", "input map settings", "autoload settings", "rendering settings"],
+    navigate: { target: "project-settings", map: { tab: "tab" } },
+    params: [{ name: "tab", description: "Settings tab to show (best effort)." }],
+  },
+  {
+    id: "editor-settings",
+    title: "Editor Settings",
+    description: "The Editor Settings dialog opens.",
+    intents: ["editor settings", "settings", "open editor settings", "editor preferences", "change the editor theme"],
+    navigate: { target: "editor-settings" },
+  },
+  panel("output", "Output panel", ["output panel", "show the output", "editor console", "show the log"]),
+  panel("debugger", "Debugger panel", ["debugger panel", "show the debugger", "open the debugger", "errors panel"]),
+  {
+    id: "editor-window",
+    title: "Summer Engine window",
+    description: "The Summer Engine window comes to the front.",
+    intents: ["bring the editor to the front", "focus summer engine", "show the editor window", "switch to the editor"],
+    navigate: { target: "editor-window" },
+  },
+];
+
+/** Legacy ops the toolkit may still send on engines that predate `Navigate`. */
+export const LEGACY_NAVIGATION_OPS = new Set(["OpenScene", "SelectNode", "OpenResource", "FocusDock", "RevealInFileSystem"]);
+
+// ---------------------------------------------------------------------------
+// Unified view for matching
+// ---------------------------------------------------------------------------
 
 export interface NavTarget {
   id: string;
   surface: NavSurface;
   title: string;
-  /** What the user sees when it opens. */
   description: string;
-  /** Intent phrases, written the way users say them. */
   intents: readonly string[];
-  /** Extra ids that resolve to this target. */
   aliases?: readonly string[];
-  status: NavStatus;
-  requires: { login?: boolean; engine?: boolean };
-  web?: NavWeb;
-  editor?: NavEditor;
   params?: readonly NavParam[];
-  /** planned targets only: the engine change that would implement it. */
-  engineChange?: string;
-  /** planned targets only: the nearest implemented target, if any. */
-  fallback?: string;
+  requires: { login?: boolean; engine?: boolean };
+  web?: { origin: "gateway" | "docs"; path: string };
+  editor?: EditorTargetMeta;
 }
 
-export const DOCS_ORIGIN = "https://docs.summerengine.com";
-
-/** Slugs of the per-agent MCP setup guides (`/mcp/<guide>`), as published by the
- *  web repo (src/lib/data/agent-guides.ts). */
-export const MCP_GUIDE_SLUGS = [
-  "how-to-make-games-in-claude-code",
-  "how-to-make-games-in-cursor",
-  "how-to-make-games-in-codex",
-  "how-to-make-games-in-devin-desktop",
-  "how-to-make-games-in-gemini-cli",
-  "how-to-make-games-in-cline",
-  "how-to-make-games-in-kilo-code",
-  "how-to-make-games-in-opencode",
-  "how-to-make-games-for-free-with-local-llms",
-  "how-to-make-games-with-ollama",
-  "how-to-make-games-in-lm-studio",
-  "how-to-make-games-in-goose",
-] as const;
-
-const MCP_GUIDE_ALIASES: Readonly<Record<string, string>> = {
-  "claude-code": "how-to-make-games-in-claude-code",
-  claude: "how-to-make-games-in-claude-code",
-  cursor: "how-to-make-games-in-cursor",
-  codex: "how-to-make-games-in-codex",
-  "devin-desktop": "how-to-make-games-in-devin-desktop",
-  devin: "how-to-make-games-in-devin-desktop",
-  windsurf: "how-to-make-games-in-devin-desktop",
-  "gemini-cli": "how-to-make-games-in-gemini-cli",
-  gemini: "how-to-make-games-in-gemini-cli",
-  cline: "how-to-make-games-in-cline",
-  "kilo-code": "how-to-make-games-in-kilo-code",
-  kilo: "how-to-make-games-in-kilo-code",
-  opencode: "how-to-make-games-in-opencode",
-  "local-llms": "how-to-make-games-for-free-with-local-llms",
-  local: "how-to-make-games-for-free-with-local-llms",
-  ollama: "how-to-make-games-with-ollama",
-  "lm-studio": "how-to-make-games-in-lm-studio",
-  goose: "how-to-make-games-in-goose",
-};
-
-/** Real URL segments under /studio/games/<gameId>/ (selected-game-navigation.ts). */
-export const GAME_SECTIONS = [
-  "overview",
-  "builds",
-  "releases",
-  "store-page",
-  "passport",
-  "products",
-  "achievements",
-  "players",
-  "community",
-  "liveops",
-  "safety",
-  "analytics",
-  "economy",
-  "developers",
-  "access",
-  "audit",
-  "danger-zone",
-  "settings",
-] as const;
-
-const PATH_PARAM: NavParam = {
-  name: "path",
-  description: "Project resource path, e.g. res://levels/level_1.tscn",
-  required: true,
-};
-
-function web(
-  id: string,
-  path: string,
-  title: string,
-  description: string,
-  intents: string[],
-  extra: Partial<NavTarget> = {}
-): NavTarget {
+function fromWeb(route: WebRoute): NavTarget {
   return {
-    id,
+    id: route.id,
     surface: "web",
-    title,
-    description,
-    intents,
-    status: "implemented",
-    requires: {},
-    web: { origin: "gateway", path },
-    ...extra,
+    title: route.title,
+    description: route.description,
+    intents: route.intents,
+    ...(route.aliases ? { aliases: route.aliases } : {}),
+    ...(route.params ? { params: route.params } : {}),
+    requires: route.auth === "signed-in" ? { login: true } : {},
+    web: { origin: route.origin === "docs" ? "docs" : "gateway", path: route.path },
   };
 }
 
-function docs(id: string, path: string, title: string, description: string, intents: string[]): NavTarget {
+function fromEditor(meta: EditorTargetMeta): NavTarget {
   return {
-    id,
-    surface: "web",
-    title,
-    description,
-    intents,
-    status: "implemented",
-    requires: {},
-    web: { origin: "docs", path },
-  };
-}
-
-function studioTab(
-  id: string,
-  tab: string,
-  title: string,
-  description: string,
-  intents: string[],
-  login: boolean,
-  extra: Partial<NavTarget> = {}
-): NavTarget {
-  return web(id, `/studio?tab=${tab}`, title, description, intents, {
-    requires: login ? { login: true } : {},
-    ...extra,
-  });
-}
-
-function editor(
-  id: string,
-  title: string,
-  description: string,
-  intents: string[],
-  spec: NavEditor,
-  extra: Partial<NavTarget> = {}
-): NavTarget {
-  return {
-    id,
+    id: meta.id,
     surface: "editor",
-    title,
-    description,
-    intents,
-    status: "implemented",
+    title: meta.title,
+    description: meta.description,
+    intents: meta.intents,
+    ...(meta.aliases ? { aliases: meta.aliases } : {}),
+    ...(meta.params ? { params: meta.params } : {}),
     requires: { engine: true },
-    editor: spec,
-    ...extra,
+    editor: meta,
   };
 }
 
-function plannedEditor(
-  id: string,
-  title: string,
-  description: string,
-  intents: string[],
-  op: string,
-  engineChange: string,
-  extra: Partial<NavTarget> = {}
-): NavTarget {
-  return {
-    id,
-    surface: "editor",
-    title,
-    description,
-    intents,
-    status: "planned",
-    requires: { engine: true },
-    editor: { op },
-    engineChange,
-    ...extra,
-  };
-}
-
-export const NAV_TARGETS: readonly NavTarget[] = [
-  // ---------------------------------------------------------------- web: public
-  web("home", "/", "summerengine.com", "The Summer homepage.", [
-    "summer website",
-    "homepage",
-    "the website",
-    "summerengine.com",
-  ]),
-  web("pricing", "/pricing", "Pricing", "Free tier and paid AI-usage tiers; upgrade buttons start Stripe checkout.", [
-    "pricing",
-    "how much does it cost",
-    "plans and prices",
-    "what does summer cost",
-    "compare plans",
-  ]),
-  web("download", "/download", "Download Summer Engine", "Desktop installers for macOS and Windows.", [
-    "download the app",
-    "download summer engine",
-    "install summer engine",
-    "get the desktop app",
-    "installer",
-  ]),
-  web("cli-guide", "/cli", "CLI guide", "How to install the summer-engine CLI and the one-paste agent prompt.", [
-    "cli page",
-    "how do i install the cli",
-    "cli setup",
-    "command line install",
-  ]),
-  web(
-    "mcp-guide",
-    "/mcp[/{guide}]",
-    "MCP setup guide",
-    "The MCP + CLI hub, or the step-by-step guide for one agent (Claude Code, Cursor, Codex, Gemini CLI, Cline, Kilo Code, OpenCode, Devin, local LLMs, Ollama, LM Studio, Goose).",
-    [
-      "mcp setup",
-      "set up the mcp",
-      "connect my agent",
-      "how do i set up cursor",
-      "how do i set up claude code",
-      "how do i set up codex",
-      "mcp guide for my agent",
-      "agent setup guide",
-    ],
-    {
-      params: [
-        {
-          name: "guide",
-          description: "Guide slug or agent name (claude-code, cursor, codex, gemini, cline, kilo-code, opencode, devin, windsurf, ollama, lm-studio, goose, local-llms). Omit for the hub.",
-          values: MCP_GUIDE_SLUGS,
-          valueAliases: MCP_GUIDE_ALIASES,
-        },
-      ],
-    }
-  ),
-  web("templates", "/templates", "Templates", "Browse every game template by category and use case.", [
-    "browse templates",
-    "template gallery",
-    "game templates",
-    "starter projects",
-  ]),
-  web("templates-start", "/templates/start", "Start a game on the web", "The web onboarding flow that turns a template pick into a plan.", [
-    "start a new game on the web",
-    "web onboarding",
-    "plan builder",
-  ]),
-  web("asset-store", "/asset-store", "Asset Store", "Browse 2D art, 3D models, sprites, animations, music and sound effects.", [
-    "asset store",
-    "find assets",
-    "browse assets",
-    "free game assets",
-  ]),
-  web("plugins", "/plugins", "Plugins", "The public plugin and skill catalog.", ["plugins", "plugin catalog", "skills catalog"]),
-  web(
-    "changelog",
-    "/changelog[/{version}]",
-    "Changelog",
-    "Release notes — the index, or one engine version.",
-    ["changelog", "what's new", "release notes", "what changed in the last update"],
-    { params: [{ name: "version", description: "Engine version, e.g. 0.5.65. Omit for the index." }] }
-  ),
-  web("blog", "/blog", "Blog", "The Summer blog.", ["blog", "blog posts", "articles"]),
-  web("roadmap", "/roadmap", "Roadmap", "The public product roadmap.", ["roadmap", "what's coming", "planned features"]),
-  web("games", "/games", "Games & jams", "The public gallery of featured games, jams and events.", [
-    "games gallery",
-    "featured games",
-    "game jams",
-    "jam",
-    "community games",
-  ]),
-  docs("docs", "/", "Documentation", "docs.summerengine.com — the Summer documentation.", [
-    "documentation",
-    "the docs",
-    "read the docs",
-    "manual",
-  ]),
-  docs("docs-mcp", "/mcp/overview", "MCP docs", "The MCP overview in the documentation.", [
-    "mcp docs",
-    "mcp documentation",
-    "how the mcp works",
-  ]),
-  docs("docs-install", "/essentials/installation", "Installation docs", "Installing Summer Engine, step by step.", [
-    "installation docs",
-    "install instructions",
-    "how to install",
-  ]),
-  docs("docs-quickstart", "/quickstarts/fresh-project", "Quickstart", "Fresh-project quickstart in the documentation.", [
-    "quickstart",
-    "getting started guide",
-    "first project tutorial",
-  ]),
-  docs("docs-sdk", "/api-reference/summer-sdk", "Summer SDK reference", "The Summer SDK API reference.", [
-    "sdk reference",
-    "sdk docs",
-    "api reference",
-    "summer sdk",
-  ]),
-  web("login", "/login", "Sign in", "The sign-in page (email/password or Google).", ["sign in", "log in", "login page"]),
-  web("signup", "/signup", "Create an account", "The sign-up page.", ["sign up", "create an account", "register"]),
-
-  // ---------------------------------------------------------------- web: studio
-  web("studio", "/studio", "Summer Studio", "The Studio workspace (home tab).", ["studio", "summer studio", "open studio", "the studio"]),
-  web(
-    "my-games",
-    "/studio/games",
-    "My games",
-    "Your games (projects) in Studio: overview, builds, releases, store pages.",
-    [
-      "my games",
-      "my projects",
-      "my published games",
-      "published games",
-      "my releases",
-      "games i published",
-      "project list",
-      "list of my games",
-    ],
-    { requires: { login: true }, aliases: ["projects", "my-projects", "published-games"] }
-  ),
-  web(
-    "game",
-    "/studio/games/{gameId}[/{section}]",
-    "A game in Studio",
-    "One game's Studio pages: overview, builds, releases, store page, passport, players, analytics, economy, settings, danger zone and more.",
-    [
-      "open this game in studio",
-      "builds for my game",
-      "releases of my game",
-      "store page for my game",
-      "analytics for my game",
-      "game settings in studio",
-      "danger zone",
-      "players of my game",
-    ],
-    {
-      requires: { login: true },
-      params: [
-        { name: "gameId", description: "The game's Studio id (from the my-games list URL).", required: true },
-        { name: "section", description: "Section under the game.", values: GAME_SECTIONS },
-      ],
-    }
-  ),
-  studioTab(
-    "billing",
-    "billing",
-    "Billing & plan",
-    "Current plan, upgrade, Stripe billing portal (payment method, invoices), top-ups.",
-    [
-      "billing",
-      "change my plan",
-      "upgrade my plan",
-      "upgrade",
-      "downgrade",
-      "cancel my subscription",
-      "invoices",
-      "payment method",
-      "subscription",
-      "buy credits",
-      "top up",
-    ],
-    true,
-    { aliases: ["plan", "subscription", "payments"] }
-  ),
-  studioTab(
-    "usage",
-    "billing&section=usage",
-    "Usage",
-    "Account usage and spending — how many credits were used and on what.",
-    ["usage", "how many credits do i have left", "spending", "credit usage", "what have i spent"],
-    true,
-    { aliases: ["spending", "credits"] }
-  ),
-  studioTab("account", "account", "Account overview", "Your account overview in Studio.", ["my account", "account overview", "account page", "profile settings"], true),
-  studioTab(
-    "settings",
-    "settings",
-    "Account settings",
-    "Account settings in Studio (email, password, preferences, delete account).",
-    ["account settings", "settings page", "change my email", "change my password", "delete my account"],
-    true
-  ),
-  studioTab("team", "team", "Team", "Workspace members and invites.", ["team", "members", "invite a teammate", "workspace members", "add someone to my team"], true, {
-    aliases: ["members", "workspace"],
-  }),
-  studioTab("cloud", "cloud", "Project Cloud", "Project Cloud storage and synced projects.", ["project cloud", "cloud storage", "cloud projects", "synced projects"], true),
-  studioTab("my-assets", "assets", "My assets", "Assets you generated or saved, ready to import.", ["my assets", "generated assets", "my library", "saved assets", "assets i made"], false, {
-    aliases: ["assets", "library"],
-  }),
-  studioTab("workflows", "workflows", "Guided workflows", "Guided Studio workflows (recipes).", ["guided workflows", "workflows", "studio recipes"], false),
-  studioTab("story-builder", "storyBuilder", "Story Builder", "The Story Builder tool.", ["story builder", "write my story", "narrative tool"], true),
-  studioTab("board", "board", "Board", "The project board.", ["board", "task board", "kanban"], true),
-  studioTab("studio-plugins", "plugins", "Plugins in Studio", "Plugins tab inside Studio.", ["plugins in studio", "manage my plugins", "installed plugins"], false),
-  studioTab("studio-store", "store", "Asset Store in Studio", "The Asset Store as a Studio tab.", ["asset store in studio", "store tab"], false),
-  studioTab("generate-image", "image", "2D generation", "Generate or edit images (the 2D tab).", ["image generator", "generate an image on the web", "2d tab", "make a picture in studio"], false, {
-    aliases: ["2d", "image"],
-  }),
-  studioTab("generate-3d", "3d", "3D generation", "Generate 3D models (the 3D tab).", ["3d generator", "generate a 3d model on the web", "3d tab"], false, { aliases: ["3d"] }),
-  studioTab("generate-audio", "audio", "Audio generation", "Generate speech, music and sound effects.", ["audio generator", "generate audio on the web", "audio tab", "music generator", "voice generator"], false, {
-    aliases: ["audio"],
-  }),
-  studioTab("generate-video", "video", "Video generation", "Generate video (the Video tab).", ["video generator", "generate a video on the web", "video tab"], false, { aliases: ["video"] }),
-  studioTab("generate-animation", "animation", "Animation", "Animation tools (retargeting, mocap uploads).", ["animation tab", "animation tools", "retarget on the web", "upload a mocap clip"], false, {
-    aliases: ["animation"],
-  }),
-  web("chat", "/chat", "Web chat", "A new agent chat on the web.", ["web chat", "chat on the website", "summer chat"], { requires: { login: true } }),
-  web("skills", "/skills", "My skills", "The agent-skills editor on the web.", ["my skills page", "edit my skills on the web", "skills editor"], { requires: { login: true } }),
-  web(
-    "profile",
-    "/{username}",
-    "Public profile",
-    "A creator's public profile page.",
-    ["my public profile", "public profile of", "creator page", "see my profile"],
-    { params: [{ name: "username", description: "The creator's username.", required: true }] }
-  ),
-  web("edit-profile", "/profile/edit", "Edit profile", "Edit your public profile.", ["edit my profile", "change my avatar", "update my bio", "profile editor"], {
-    requires: { login: true },
-  }),
-  web("submit-game", "/games/create", "Submit a game", "Submit a game to the public gallery or a jam.", ["submit my game", "add my game to the gallery", "enter the jam", "submit to the jam"], {
-    requires: { login: true },
-  }),
-
-  // ---------------------------------------------------------------- editor: implemented
-  editor(
-    "scene",
-    "Open a scene",
-    "The scene becomes the current tab in Summer Engine.",
-    ["open the scene", "open this scene", "show the scene", "switch to the scene", "the scene i'm editing", "open my level"],
-    { op: "OpenScene", map: { path: "path" }, mainSceneDefault: true },
-    { params: [{ name: "path", description: "Scene path, e.g. res://main.tscn. Omit for the project's main scene." }] }
-  ),
-  editor(
-    "main-scene",
-    "Open the main scene",
-    "The project's configured main scene becomes the current tab.",
-    ["open the main scene", "main scene", "go to the main scene", "the starting scene"],
-    { op: "OpenScene", mainSceneDefault: true }
-  ),
-  editor(
-    "node",
-    "Select a node",
-    "The node is highlighted in the Scene tree and its properties show in the Inspector.",
-    ["select the node", "show me the node", "focus the player node", "highlight the node", "go to the node", "inspect the node in the editor"],
-    { op: "SelectNode", map: { node: "nodePath", scene: "scenePath" } },
-    {
-      params: [
-        { name: "node", description: "Node path relative to the scene root, e.g. Player/Camera3D.", required: true },
-        { name: "scene", description: "Scene to open first, e.g. res://main.tscn (optional)." },
-      ],
-    }
-  ),
-  editor(
-    "script",
-    "Open a script",
-    "The script opens in the Script editor (the engine does not steal focus from where the user is typing).",
-    ["open the script", "show me the script", "open the gdscript file", "go to the script", "open player.gd"],
-    { op: "OpenResource", map: { path: "path" } },
-    { params: [PATH_PARAM] }
-  ),
-  editor(
-    "file",
-    "Reveal a file",
-    "The FileSystem dock comes to the front, scrolled to the file.",
-    ["show the file in the filesystem", "reveal the file", "find the file in the editor", "where is this asset", "show me the texture in the file dock"],
-    { op: "RevealInFileSystem", map: { path: "path" } },
-    { params: [PATH_PARAM] }
-  ),
-  editor("files", "FileSystem dock", "The FileSystem dock comes to the front.", ["filesystem dock", "file dock", "show the files", "project files panel"], {
-    op: "FocusDock",
-    fixed: { dock: "file_system" },
-  }, { aliases: ["filesystem", "file-system"] }),
-  editor("scene-tree", "Scene tree dock", "The Scene tree dock comes to the front.", ["scene tree", "scene dock", "show the scene tree", "node tree panel"], {
-    op: "FocusDock",
-    fixed: { dock: "scene_tree" },
-  }),
-  editor("inspector", "Inspector dock", "The Inspector dock comes to the front.", ["inspector", "show the inspector", "properties panel", "inspector dock"], {
-    op: "FocusDock",
-    fixed: { dock: "inspector" },
-  }),
-
-  // ---------------------------------------------------------------- editor: planned
-  plannedEditor(
-    "screen-2d",
-    "2D main screen",
-    "The main editor switches to the 2D view.",
-    ["switch to 2d", "2d view", "show the 2d editor"],
-    "SetMainScreen",
-    "new op SetMainScreen{screen} calling EditorInterface::set_main_screen_editor (exists only behind the chat webview bridge editor:show-viewport)"
-  ),
-  plannedEditor(
-    "screen-3d",
-    "3D main screen",
-    "The main editor switches to the 3D view.",
-    ["switch to 3d", "3d view", "show the 3d editor", "show me the viewport"],
-    "SetMainScreen",
-    "new op SetMainScreen{screen} calling EditorInterface::set_main_screen_editor"
-  ),
-  plannedEditor(
-    "screen-script",
-    "Script main screen",
-    "The main editor switches to the Script editor.",
-    ["switch to the script editor", "script view", "show the code editor"],
-    "SetMainScreen",
-    "new op SetMainScreen{screen} calling EditorInterface::set_main_screen_editor",
-    { fallback: "script" }
-  ),
-  plannedEditor(
-    "screen-game",
-    "Game main screen",
-    "The main editor switches to the Game view.",
-    ["switch to the game view", "game tab", "show the running game view"],
-    "SetMainScreen",
-    "new op SetMainScreen{screen} calling EditorInterface::set_main_screen_editor"
-  ),
-  plannedEditor(
-    "assistant",
-    "Summer assistant",
-    "The Summer assistant (chat) dock opens.",
-    ["open the assistant", "show the chat dock", "summer assistant", "ai chat in the editor", "open the agent panel"],
-    "FocusChat",
-    "new op FocusChat{path?} over ChatDock::open_chat_path (today only the chat:open webview bridge message)"
-  ),
-  plannedEditor(
-    "project-settings",
-    "Project Settings",
-    "The Project Settings dialog opens.",
-    ["project settings", "settings", "open project settings", "input map settings", "autoload settings", "rendering settings"],
-    "OpenProjectSettings",
-    "new op OpenProjectSettings{tab?} over ProjectSettingsEditor::popup_project_settings (needs an EditorNode accessor)"
-  ),
-  plannedEditor(
-    "editor-settings",
-    "Editor Settings",
-    "The Editor Settings dialog opens.",
-    ["editor settings", "settings", "open editor settings", "editor preferences", "change the editor theme"],
-    "OpenEditorSettings",
-    "new op OpenEditorSettings over EditorSettingsDialog::popup_edit_settings"
-  ),
-  plannedEditor(
-    "output",
-    "Output panel",
-    "The Output bottom panel opens.",
-    ["output panel", "show the output", "editor console", "show the log"],
-    "ShowBottomPanel",
-    "new op ShowBottomPanel{panel} over EditorBottomPanel::make_item_visible plus a name resolver"
-  ),
-  plannedEditor(
-    "debugger",
-    "Debugger panel",
-    "The Debugger bottom panel opens.",
-    ["debugger panel", "show the debugger", "open the debugger", "errors panel"],
-    "ShowBottomPanel",
-    "new op ShowBottomPanel{panel} over EditorBottomPanel::make_item_visible plus a name resolver"
-  ),
-  plannedEditor(
-    "editor-window",
-    "Summer Engine window",
-    "The Summer Engine window comes to the front.",
-    ["bring the editor to the front", "focus summer engine", "show the editor window", "switch to the editor"],
-    "FocusEditorWindow",
-    "new op FocusEditorWindow over DisplayServer::window_move_to_foreground(MAIN_WINDOW_ID); the fork never calls it today"
-  ),
-  plannedEditor(
-    "import-dock",
-    "Import dock",
-    "The Import dock comes to the front.",
-    ["import dock", "import settings panel", "show import options"],
-    "FocusDock",
-    "extend _se_resolve_dock (ops_executor.cpp) with import, signals, groups, changes and chat dock ids"
-  ),
-];
+export const NAV_TARGETS: readonly NavTarget[] = [...WEB_CATALOG.routes.map(fromWeb), ...EDITOR_TARGETS.map(fromEditor)];
 
 const BY_ID = new Map<string, NavTarget>();
 for (const target of NAV_TARGETS) {

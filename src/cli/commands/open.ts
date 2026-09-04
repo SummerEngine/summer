@@ -75,12 +75,21 @@ export function formatOpenResult(result: OpenResult): string {
       const width = Math.max(...targets.map((t) => t.id.length), 2);
       lines.push(c.bold(`Summer destinations (${targets.length})`));
       for (const t of targets) {
-        const req = [t.requires.login ? "login" : "", t.requires.engine ? "engine" : ""].filter(Boolean).join(",");
-        lines.push(
-          `  ${t.id.padEnd(width)}  ${t.surface.padEnd(6)} ${t.status === "planned" ? c.yellow("planned    ") : c.dim("implemented")} ${t.title}${req ? c.dim(` [${req}]`) : ""}`
-        );
+        const req = t.requires.login ? c.dim(" [login]") : "";
+        const avail =
+          t.availability === "available"
+            ? c.green("available  ")
+            : t.availability === "legacy"
+              ? c.dim("legacy op  ")
+              : t.availability === "unavailable"
+                ? c.yellow("unavailable")
+                : t.availability === "unknown"
+                  ? c.dim("unknown    ")
+                  : c.dim("web        ");
+        lines.push(`  ${t.id.padEnd(width)}  ${avail} ${t.title}${req}`);
       }
       lines.push("");
+      lines.push(c.dim("Editor availability comes from the connected engine (unknown = engine not running; unavailable = update Summer Engine)."));
       lines.push(c.dim("Open one: summer open <id>   Print instead: summer open <id> --print   Phrases work too: summer open \"change my plan\""));
       break;
     }
@@ -99,12 +108,12 @@ export function formatOpenResult(result: OpenResult): string {
       break;
     case "ambiguous":
       lines.push(`${sym.warn()} ${result.hint ?? "Several destinations match."}`);
-      for (const m of result.matches ?? []) lines.push(`  ${m.id.padEnd(18)} ${m.surface.padEnd(6)} ${m.title}${m.status === "planned" ? c.yellow(" (planned)") : ""}`);
+      for (const m of result.matches ?? []) lines.push(`  ${m.id.padEnd(18)} ${m.surface.padEnd(6)} ${m.title}`);
       break;
-    case "planned":
-      lines.push(`${sym.warn()} ${result.target?.title ?? result.target?.id} is planned — not available on this engine build.`);
-      if (result.target?.engine_change) lines.push(`  engine change: ${result.target.engine_change}`);
-      if (result.target?.fallback) lines.push(`  nearest implemented target: ${result.target.fallback}`);
+    case "unsupported":
+      lines.push(`${sym.warn()} ${result.target?.title ?? result.target?.id} is not available on this Summer Engine build.`);
+      if (result.hint) lines.push(`  ${result.hint}`);
+      if (result.op) lines.push(`  would send: ${JSON.stringify(result.op)}`);
       break;
     case "engine_not_running":
       lines.push(c.red("Summer Engine is not running (or no project is open) — nothing was opened."));

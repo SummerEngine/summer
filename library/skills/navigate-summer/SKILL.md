@@ -39,7 +39,7 @@ Never open a browser or switch the editor's tab as a side effect of building. Op
 - `action: "opened"` — say what opened, in one line ("Opened Studio → Billing in your browser.").
 - `logged_in: false` with `login_url` — the login page opened with `returnUrl` set; tell the user the destination loads after sign-in.
 - `action: "engine_not_running"` — nothing opened. Tell the user to start Summer Engine (`summer run <project>`) or open the project in the desktop app, then offer to retry. Do not fall back to editing files.
-- `action: "planned"` — this engine build has no op for that surface yet (`engine_change` says which). Say so plainly and use `fallback` when one is named (for example `screen-script` → `script` opens the file without switching the main screen). Never claim it opened.
+- `action: "unsupported"` (`failure_reason: engine_lacks_op`) — this Summer Engine build cannot open that surface (it predates the `Navigate` op, or does not advertise that id). Say so plainly, tell the user to update Summer Engine, and describe what to open by hand. Never claim it opened.
 - `action: "ambiguous"` — show the top matches by title and ask, or pick the obvious one and say which you picked.
 - `action: "not_found"` — the intent is not a Summer destination. Do not invent a URL; the tool only opens summerengine.com and docs.summerengine.com.
 
@@ -47,9 +47,9 @@ Never open a browser or switch the editor's tab as a side effect of building. Op
 
 Use `open: false` (CLI: `--print`) and paste the `url` (or `login_url`) when the session has no browser (headless, remote, CI), when the user asked for a link, or when opening would interrupt what the user is doing. A link the user clicks is always acceptable; a browser window that appears unasked is not.
 
-## Editor targets today
+## Editor targets
 
-Implemented: `scene` (default = the project's main scene), `main-scene`, `node`, `script`, `file`, `files`, `scene-tree`, `inspector`. Planned until the engine ships the op: `screen-2d/3d/script/game`, `assistant`, `project-settings`, `editor-settings`, `output`, `debugger`, `editor-window`, `import-dock`. `script` opens the file in the Script editor without stealing focus from where the user is typing — that is the engine's choice, mention it if the user does not see it.
+The editor owns its own table of destinations (the `Navigate` op) and tells the tool which ids it can open. `summer_open({})` lists every editor id with `availability`: `available` (Navigate op), `legacy` (an older engine serving it through its original op), `unavailable` (update Summer Engine), `unknown` (engine not running). Ids: `scene` (default = the project's main scene), `main-scene`, `node`, `script` (with `line`), `file`, `files`, `scene-tree`, `inspector`, `import-dock`, `signals-dock`, `changes-dock`, `screen-2d/3d/script/game/assetlib`, `viewport-show/hide`, `assistant`, `project-settings`, `editor-settings`, `output`, `debugger`, `editor-window`. On a legacy engine, `script` opens without taking focus — mention it if the user does not see it.
 
 ## Anti-patterns
 

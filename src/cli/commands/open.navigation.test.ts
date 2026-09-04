@@ -98,7 +98,7 @@ describe("summer open — navigation results", () => {
     expect(res.action).toBe("listed");
     expect(lines.join("\n")).toMatch(/Summer destinations \(\d+\)/);
     expect(lines.join("\n")).toContain("billing");
-    expect(lines.join("\n")).toContain("planned");
+    expect(lines.join("\n")).toMatch(/unknown|legacy op|available|unavailable/);
   });
 
   it("opens the browser for a web target when not printing", async () => {
@@ -136,21 +136,22 @@ describe("summer open — navigation results", () => {
     expect(parsed.url).toBe("https://www.summerengine.com/pricing");
   });
 
-  it("formats planned targets honestly", () => {
+  it("formats unsupported targets honestly", () => {
     const text = formatOpenResult({
       ok: false,
-      action: "planned",
+      action: "unsupported",
+      failure_reason: "engine_lacks_op",
       target: {
         id: "assistant",
         surface: "editor",
         title: "Summer assistant",
         description: "…",
-        status: "planned",
         requires: { engine: true },
-        engine_change: "new op FocusChat",
+        availability: "unavailable",
       },
+      hint: "This Summer Engine build predates the Navigate op. Update Summer Engine.",
     });
-    expect(text).toMatch(/planned/);
-    expect(text).toMatch(/FocusChat/);
+    expect(text).toMatch(/not available/);
+    expect(text).toMatch(/Update Summer Engine/);
   });
 });

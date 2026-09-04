@@ -3829,9 +3829,9 @@
     {
       "id": "template/2d-brario-platformer",
       "kind": "template",
-      "version": "1.0.0",
-      "content_hash": "dfc9f2c739b509a0c87f7a7d1df6dfce2d2fffadcbe67b1e04360038a580ec9d",
-      "summary": "Classic Mario-style 2D platformer starter with enemies, blocks, and level progression.",
+      "version": "1.1.3",
+      "content_hash": "4bf2cc4506b98ff8b6591f07af60daf3228496b61a71ef02951fa0be06339ff9",
+      "summary": "Classic side-scrolling 2D platformer starter (Platform Quest) — stomp combat, hazards, a boss, and levels authored as ASCII text files.",
       "use_when": [
         "starting a classic run-and-jump platformer with enemies and pickups"
       ],
@@ -3876,9 +3876,9 @@
     {
       "id": "template/2d-grid-puzzle",
       "kind": "template",
-      "version": "1.0.0",
-      "content_hash": "86448e3c9d7afa6213a4a994c85e6d1afd449d76bae181be6764d3b0ba4d76be",
-      "summary": "Grid-based 2D puzzle starter with tile logic and move handling.",
+      "version": "1.0.4",
+      "content_hash": "5b5ff885bfd4d0182d50512119a7699b0cc8cb721027a7c58c3d69e94662992a",
+      "summary": "Grid-based top-down puzzle starter (GridKit), a 3D scene of unshaded textured quads: ASCII-map levels, crates, plates, keys, doors, a chasing enemy.",
       "use_when": [
         "starting a match/slide/sokoban-style grid puzzle game"
       ],
@@ -3887,7 +3887,7 @@
           "build"
         ],
         "domains": [
-          "2d",
+          "3d",
           "puzzle"
         ]
       },
@@ -3899,8 +3899,8 @@
     {
       "id": "template/2d-plants-and-zombies-tower-defense",
       "kind": "template",
-      "version": "1.0.0",
-      "content_hash": "740c31ffc5b191161961b0fafd2ee0294611b7367d70e74dd6cf09a3047525b7",
+      "version": "1.0.5",
+      "content_hash": "950bac71e0350c45320abea6003a1cdc911f739ddff7d0e42b075c1272931449",
       "summary": "Lane tower-defense starter in the Plants vs. Zombies style — placeable defenders, waves of lane attackers.",
       "use_when": [
         "starting a lane-based tower defense game"
@@ -3948,8 +3948,8 @@
     {
       "id": "template/2d-rpg",
       "kind": "template",
-      "version": "1.0.0",
-      "content_hash": "26a2001bff60594f5c13d31b77a0a643414713a5b0790db9613cf7474d207cfd",
+      "version": "1.0.1",
+      "content_hash": "3e8dc6e5c7bb7b330157c93e4731fcf6b6ff391c3a36be11e3aa6a2d3338492d",
       "summary": "2D top-down RPG starter built on GDQuest's open-source work — movement, interactions, and world structure.",
       "use_when": [
         "starting a top-down 2D RPG or adventure game"
@@ -3971,8 +3971,8 @@
     {
       "id": "template/2d-vampire-survivor-roguelike",
       "kind": "template",
-      "version": "1.0.0",
-      "content_hash": "636d778a70589fd79443bf511f7f0ef11fabba6e76ca6a459dddedae8387e247",
+      "version": "1.0.5",
+      "content_hash": "c75d2fa80d59d857845d57a3189bab527f17a6d88c6daa2d7d1e6a3415f46ce1",
       "summary": "Survivors-like roguelike starter — auto-attacking hero, swarming enemies, run-based upgrades.",
       "use_when": [
         "starting a Vampire Survivors-style horde roguelike"
@@ -4018,8 +4018,8 @@
     {
       "id": "template/3d-city-kit",
       "kind": "template",
-      "version": "1.0.1",
-      "content_hash": "da64c9147adb9ff8e48c157b7726f737d64368f1392b952c2dc9bf140a71ba11",
+      "version": "1.0.2",
+      "content_hash": "d02bcca976929f58c85e3e4877480f43d5443bac8db5ff801e346aa9e2452671",
       "summary": "Construction starter for importing and navigating large 3D city kits in Summer Engine.",
       "use_when": [
         "building a game on a large imported 3D city kit"
@@ -4042,8 +4042,8 @@
     {
       "id": "template/3d-fps-old-school",
       "kind": "template",
-      "version": "1.0.0",
-      "content_hash": "8d1d21bda6c8f396dbe53b9543a1be5ff6a808643b91fe371455d4b57c22db40",
+      "version": "1.0.2",
+      "content_hash": "55b29f6889ec4ee93a09d92c4e70c2a1b7e6fa49bd43ea46ecb2c62909eaa23c",
       "summary": "Retro first-person shooter starter in the old-school boomer-shooter style.",
       "use_when": [
         "starting a retro/old-school FPS"
@@ -4065,8 +4065,8 @@
     {
       "id": "template/3d-fps-simple-animated-npc",
       "kind": "template",
-      "version": "1.0.0",
-      "content_hash": "8ddfa3efad045bd13c10680ef4d26844ebaf0ff30b0bae81c63bba99d19f2e38",
+      "version": "1.1.4",
+      "content_hash": "045539596421038d799d698f684e3d65d03df144bb139317b9e334b6a05f5295",
       "summary": "FPS starter with an animated NPC — first-person controller plus a rigged, animated character to build on.",
       "use_when": [
         "starting an FPS that needs animated NPCs from day one"
@@ -4089,8 +4089,8 @@
     {
       "id": "template/3d-lan-multiplayer-starter",
       "kind": "template",
-      "version": "1.0.0",
-      "content_hash": "98838801f4c6956ef2d277ae8e464c14e221ce3673d4f03b58d1ac63516252d5",
+      "version": "1.0.1",
+      "content_hash": "8f42570dce914bdc5420a27aaace5331183b8c837c4a0dbac4e81a04f8aa9ebc",
       "summary": "3D LAN multiplayer starter built on GDQuest's open-source work — host/join flow and synced players.",
       "use_when": [
         "starting a LAN or local multiplayer 3D game",
@@ -4113,8 +4113,8 @@
     {
       "id": "template/3d-open-world-explore-tps",
       "kind": "template",
-      "version": "1.0.0",
-      "content_hash": "0b41bd32859541c8b6f10b0d368ea7a521f51fe919ff14d9ff3130a6bf7400d7",
+      "version": "1.0.2",
+      "content_hash": "6f3a4d5de129836369aed5d5717140339e06cbd09379306eeeea0e89d8dff54e",
       "summary": "Third-person open-world exploration starter — camera rig, traversal, and a large explorable space.",
       "use_when": [
         "starting a third-person open-world or exploration game"
@@ -4161,8 +4161,8 @@
     {
       "id": "template/3d-racing-game",
       "kind": "template",
-      "version": "1.0.0",
-      "content_hash": "37d382d1b8173090bc1c02c25f89c0e027840b6bb617ec4a0886c5b9c3d84602",
+      "version": "1.0.4",
+      "content_hash": "3c8903f94378c30423ccecfaf4e603ed65bf1930182c4c03160f87173e2e8d80",
       "summary": "Racing starter — drivable vehicle, track, and lap structure to build a racing game on.",
       "use_when": [
         "starting a racing or driving game"
@@ -4184,9 +4184,9 @@
     {
       "id": "template/3d-royale-clash-type",
       "kind": "template",
-      "version": "1.0.0",
-      "content_hash": "3709543dd494fed6fe8b16aa4426985df897999e59f8068b153587b4ffad3dbc",
-      "summary": "Auto-battler / lane-pusher starter inspired by Clash Royale-style games — make your own spin on it.",
+      "version": "1.0.3",
+      "content_hash": "44190a185ed2ceae9bcc282bc8a58197ada06dc5aab2a3c6a2a0b2868bc000cd",
+      "summary": "Card-deployment lane battle starter in the Clash Royale style: drag-and-drop units, buildings and spells, elixir economy, towers, an AI rival deck.",
       "use_when": [
         "starting an auto-battler or lane-pushing strategy game"
       ],
@@ -4208,8 +4208,8 @@
     {
       "id": "template/3d-third-person-controller",
       "kind": "template",
-      "version": "1.0.0",
-      "content_hash": "daa48be7ba8f82398e2a8f9fdcf111c773f9f3ee75c4f7e839ef9fca66d1d1a3",
+      "version": "1.0.4",
+      "content_hash": "03f41638bff189e833b5d6ae5827aaf680ba526a4491b98828303cf0658ae606",
       "summary": "3D third-person character controller built on GDQuest's open-source work, inspired by Ratchet and Clank-style movement.",
       "use_when": [
         "starting a 3D game around a polished third-person character controller"
@@ -4231,8 +4231,8 @@
     {
       "id": "template/3d-voxel-sandbox",
       "kind": "template",
-      "version": "1.0.1",
-      "content_hash": "ca75dca84d2a6b33a058de9eeb163c6ae5e88cac35470000b6f7ba17edc9e67f",
+      "version": "1.2.8",
+      "content_hash": "c17931f49cfa903cd6fdd5cc363d5091f0f6b59d24921d92f3a530a7c43db74c",
       "summary": "Voxel sandbox starter — chunked world, face culling, mining and building, seeded generation.",
       "use_when": [
         "starting a Minecraft-like voxel sandbox"
@@ -6210,15 +6210,16 @@
     {
       "id": "tool/play",
       "kind": "tool",
-      "version": "1.1.2",
-      "content_hash": "572573e7670a7e86fba8c23c68fe2c02b1ca597c2631c508d9af65548dae2134",
-      "summary": "Start the game (main scene or a specific scene) — embedded, or as a named offscreen instance — optionally pinned with seed / fixed_fps for a reproducible run.",
+      "version": "1.2.0",
+      "content_hash": "e4fbecc0cc92fa969f272a8889c5aab9ac22de29aa39e77f3dc7692d139000ea",
+      "summary": "Start the game quietly by default (editor keeps tab and focus; focus true for a toolbar-style launch) — main or a given scene, embedded or offscreen, with pins.",
       "use_when": [
         "runtime verification after edits",
         "the user wants to try the game or one level after a change",
         "reproducing a bug that only shows at runtime",
         "a deterministic, repeatable playtest run — pin the global RNG with seed and the timestep with fixed_fps",
-        "launching a deterministic or parallel offscreen playtest instance (seed, fixed frame rate, named offscreen instance) for the runtime tools to drive"
+        "launching a deterministic or parallel offscreen playtest instance (seed, fixed frame rate, named offscreen instance) for the runtime tools to drive",
+        "launching while the user works on the same machine — the default (focus omitted or false) sends PlayGame agent:true, so the editor does not switch to the Game tab or grab focus; the game still runs embedded and is visible to the runtime tools"
       ],
       "facets": {
         "lifecycle": [

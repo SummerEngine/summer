@@ -378,3 +378,51 @@ describe("registerGenerateTools — provider validation errors", () => {
     expect((init.headers as any)["X-Summer-Client-Version"]).toMatch(/\d+\.\d+\.\d+/);
   });
 });
+
+describe("registerGenerateTools — summer_generate_image removeBackground", () => {
+  it("exposes the flag in the schema and warns about fake checkerboards", () => {
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+
+    const image = getTool(tools, "summer_generate_image");
+    expect(image.schema.removeBackground).toBeDefined();
+    expect(image.description).toContain("removeBackground: true");
+    expect(image.description).toContain("checkerboard");
+  });
+
+  it("forwards removeBackground: true in the request body", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ success: true, asset: { id: "a1" } }),
+    }));
+    globalThis.fetch = fetchMock as any;
+
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const image = getTool(tools, "summer_generate_image");
+
+    await image.handler({ prompt: "hooded figure sprite", removeBackground: true });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string).removeBackground).toBe(true);
+  });
+
+  it("omits the key entirely when the flag is not passed", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ success: true, asset: { id: "a2" } }),
+    }));
+    globalThis.fetch = fetchMock as any;
+
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const image = getTool(tools, "summer_generate_image");
+
+    await image.handler({ prompt: "forest floor texture" });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).not.toHaveProperty("removeBackground");
+  });
+});

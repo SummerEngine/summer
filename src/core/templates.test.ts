@@ -7,13 +7,18 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PACKAGE_ROOT } from "./package-root.js";
 import {
   computeTreeDigest,
+  DEFAULT_FETCH_TIMEOUT_S,
+  FETCH_TIMEOUT_ENV,
+  fetchTimeoutSeconds,
   getTemplateRegistry,
+  GitTimeoutError,
   materializePinnedTemplate,
   normalizeTemplateEntry,
   resolveTemplate,
   TemplateDigestMismatchError,
   type TemplateEntry,
 } from "./templates.js";
+import { processIsAlive } from "./util/process.js";
 
 const ZERO_DIGEST = "0".repeat(64);
 const ZERO_SHA = "0".repeat(40);
@@ -252,4 +257,85 @@ describe.skipIf(!process.env.SUMMER_E2E)("pinned template e2e (network, SUMMER_E
       rmSync(scratch, { recursive: true, force: true });
     }
   }, 120_000);
+});
+
+// ---------- network timeout (fake git that hangs) ----------
+
+describe.skipIf(process.platform === "win32")("materializePinnedTemplate fetch timeout (fake git on PATH)", () => {
+  let scratch = "";
+  let fakeBin = "";
+  let pidFile = "";
+  let envFile = "";
+  const savedPath = process.env.PATH;
+  const savedTimeout = process.env[FETCH_TIMEOUT_ENV];
+
+  beforeAll(() => {
+    scratch = mkdtempSync(join(tmpdir(), "summer-templates-timeout-"));
+    fakeBin = join(scratch, "bin");
+    mkdirSync(fakeBin);
+    pidFile = join(scratch, "fetch.pid");
+    envFile = join(scratch, "fetch.env");
+    const realGit = execFileSync("which", ["git"], { encoding: "utf8" }).trim();
+    // Every subcommand but `fetch` is the real git; `fetch` records its pid and
+    // the prompt setting, then hangs like a stalled network transfer would.
+    writeFileSync(
+      join(fakeBin, "git"),
+      "#!/bin/sh\n" +
+        'for a in "$@"; do\n' +
+        '  if [ "$a" = "fetch" ]; then\n' +
+        `    echo $$ > "${pidFile}"\n` +
+        `    echo "GIT_TERMINAL_PROMPT=$GIT_TERMINAL_PROMPT" > "${envFile}"\n` +
+        "    exec sleep 60\n" +
+        "  fi\n" +
+        "done\n" +
+        `exec "${realGit}" "$@"\n`,
+      { mode: 0o755 }
+    );
+    process.env.PATH = `${fakeBin}:${savedPath ?? ""}`;
+    process.env[FETCH_TIMEOUT_ENV] = "1";
+  });
+
+  afterAll(() => {
+    process.env.PATH = savedPath;
+    if (savedTimeout === undefined) delete process.env[FETCH_TIMEOUT_ENV];
+    else process.env[FETCH_TIMEOUT_ENV] = savedTimeout;
+    rmSync(scratch, { recursive: true, force: true });
+  });
+
+  it("reads SUMMER_FETCH_TIMEOUT_S, defaulting to 120s and ignoring junk", () => {
+    expect(fetchTimeoutSeconds({})).toBe(DEFAULT_FETCH_TIMEOUT_S);
+    expect(fetchTimeoutSeconds({ [FETCH_TIMEOUT_ENV]: "7" })).toBe(7);
+    expect(fetchTimeoutSeconds({ [FETCH_TIMEOUT_ENV]: "0" })).toBe(DEFAULT_FETCH_TIMEOUT_S);
+    expect(fetchTimeoutSeconds({ [FETCH_TIMEOUT_ENV]: "soon" })).toBe(DEFAULT_FETCH_TIMEOUT_S);
+  });
+
+  it("kills a hanging fetch at the bound, names the repo, says the pin is unchanged, and leaves nothing behind", async () => {
+    const target = join(scratch, "proj-hang");
+    const repoUrl = "https://github.com/SummerEngine/private-template.git";
+    const pinned = entry({ slug: "hang", pin: { repo: repoUrl, commit: "a".repeat(40), tree_digest: ZERO_DIGEST } });
+    const started = Date.now();
+
+    let caught: unknown;
+    try {
+      materializePinnedTemplate(pinned, { targetDir: target });
+    } catch (err) {
+      caught = err;
+    }
+
+    expect(caught).toBeInstanceOf(GitTimeoutError);
+    const message = (caught as Error).message;
+    expect(message).toContain("Timed out after 1s fetching " + repoUrl);
+    expect(message).toContain("pin is unchanged");
+    expect(message).toContain("retry `summer create`");
+    expect(message).toContain(FETCH_TIMEOUT_ENV);
+    expect(Date.now() - started).toBeLessThan(10_000);
+    expect(existsSync(target)).toBe(false);
+
+    // The hung child is gone, and it saw the no-prompt setting.
+    const pid = Number(readFileSync(pidFile, "utf8").trim());
+    const deadline = Date.now() + 3_000;
+    while (processIsAlive(pid) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 50));
+    expect(processIsAlive(pid)).toBe(false);
+    expect(readFileSync(envFile, "utf8")).toContain("GIT_TERMINAL_PROMPT=0");
+  });
 });

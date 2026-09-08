@@ -151,10 +151,66 @@ export function resolveTemplate(query: string, entries: readonly TemplateEntry[]
 
 // ---------- git ----------
 
-const GIT_ENV = { ...process.env, GIT_TERMINAL_PROMPT: "0", GIT_ASKPASS: "" };
+/** Seconds a network git call (`fetch`) may take before it is killed.
+ *  `summer create` once hung 42 minutes inside a fetch
+ *  (docs/design/TK-VS-FOLD-2026-09-07.md, gap 4). */
+export const FETCH_TIMEOUT_ENV = "SUMMER_FETCH_TIMEOUT_S";
+export const DEFAULT_FETCH_TIMEOUT_S = 120;
+
+/** The bound in force: FETCH_TIMEOUT_ENV when it is a positive number of
+ *  seconds, else the default. */
+export function fetchTimeoutSeconds(env: NodeJS.ProcessEnv = process.env): number {
+  const raw = env[FETCH_TIMEOUT_ENV]?.trim();
+  if (!raw) return DEFAULT_FETCH_TIMEOUT_S;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_FETCH_TIMEOUT_S;
+}
+
+/** Never prompt: a private repo (one template's is) fails at once instead of
+ *  waiting on a credential prompt nobody can see. Built per call so a test can
+ *  put a fake `git` on PATH. */
+function gitEnv(): NodeJS.ProcessEnv {
+  return { ...process.env, GIT_TERMINAL_PROMPT: "0", GIT_ASKPASS: "" };
+}
 
 function git(cwd: string, args: string[]): Buffer {
-  return execFileSync("git", args, { cwd, env: GIT_ENV, stdio: ["ignore", "pipe", "pipe"] });
+  return execFileSync("git", args, { cwd, env: gitEnv(), stdio: ["ignore", "pipe", "pipe"] });
+}
+
+/** A git call that talks to the network: bounded by fetchTimeoutSeconds(); on
+ *  expiry the child is killed (SIGTERM) and a GitTimeoutError is thrown. */
+function gitNetwork(cwd: string, args: string[], repo: string): Buffer {
+  const seconds = fetchTimeoutSeconds();
+  try {
+    return execFileSync("git", args, {
+      cwd,
+      env: gitEnv(),
+      stdio: ["ignore", "pipe", "pipe"],
+      timeout: seconds * 1000,
+      killSignal: "SIGTERM",
+    });
+  } catch (err) {
+    const e = err as { code?: string; killed?: boolean; signal?: string };
+    if (e.code === "ETIMEDOUT" || (e.killed && e.signal === "SIGTERM")) {
+      throw new GitTimeoutError(repo, seconds);
+    }
+    throw err;
+  }
+}
+
+export class GitTimeoutError extends Error {
+  constructor(
+    public readonly repo: string,
+    public readonly seconds: number
+  ) {
+    super(
+      `Timed out after ${seconds}s fetching ${repo}; the git process was killed.\n` +
+        "Nothing was written and the template pin is unchanged. Check that this machine can reach the repository " +
+        "(network, VPN, and access — credential prompts are disabled, so a private repository fails here too), " +
+        `then retry \`summer create\`. A slow network can raise the limit with ${FETCH_TIMEOUT_ENV}=<seconds>.`
+    );
+    this.name = "GitTimeoutError";
+  }
 }
 
 function gitErrorText(err: unknown): string {
@@ -227,8 +283,9 @@ export function materializePinnedTemplate(
     git(opts.targetDir, ["remote", "add", "origin", pin.repo]);
     log(`Fetching ${pin.repo} at ${pin.commit.slice(0, 12)} ...`);
     try {
-      git(opts.targetDir, ["fetch", "-q", "--depth", "1", "origin", pin.commit]);
+      gitNetwork(opts.targetDir, ["fetch", "-q", "--depth", "1", "origin", pin.commit], pin.repo);
     } catch (err) {
+      if (err instanceof GitTimeoutError) throw err;
       throw new Error(
         `Could not fetch ${pin.repo} at ${pin.commit}.\n  ${gitErrorText(err)}\n` +
           "Either the repository is unreachable/private from this machine, git is missing, " +

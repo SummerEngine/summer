@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -864,5 +864,63 @@ describe("EngineApiClient — events channel (GET /api/events/poll)", () => {
   it("names the request when a 200 carries a non-JSON body", async () => {
     mockFetch(() => new Response("<html>proxy</html>", { status: 200 }));
     await expect(client().pollEvents()).rejects.toThrow(/non-JSON response for GET \/api\/events\/poll/);
+  });
+});
+
+describe("EngineApiClient.connect() without a selection (CLI face)", () => {
+  function fakeSummerDir(): string {
+    const dir = mkdtempSync(join(tmpdir(), "summer-api-client-connect-"));
+    mkdirSync(join(dir, "instances"), { recursive: true });
+    return dir;
+  }
+  const health = (instanceId: string, port: number) =>
+    json({ ok: true, engine: "summer", version: "0.5.66", port, instanceId, projectIdHash: `hash-${instanceId}` });
+
+  it("finds an editor that only registered itself (no api-token pointer) and binds to its identity", async () => {
+    const summerDir = fakeSummerDir();
+    writeFileSync(
+      join(summerDir, "instances", "unpublished.json"),
+      JSON.stringify({
+        schemaVersion: 1, instanceId: "unpublished", pid: process.pid, port: 6561, token: "registry-token",
+        resourceRoot: summerDir, heartbeatAt: Math.floor(Date.now() / 1000),
+      })
+    );
+    const seen: string[] = [];
+    mockFetch((url) => {
+      seen.push(url);
+      if (url.includes(":6561/api/health")) return health("unpublished", 6561);
+      return url.includes(":6561/") ? json({ nodes: [] }) : new Response("", { status: 404 });
+    });
+
+    const client = await EngineApiClient.connect(undefined, { summerDir, cwd: summerDir, env: {} });
+
+    expect(client.getBoundProjectIdHash()).toBe("hash-unpublished");
+    expect(client.getEngineVersion()).toBe("0.5.66");
+    await client.getSceneState();
+    expect(seen.at(-1)).toContain(":6561/");
+    expect(seen.at(-1)).toContain("instanceId=unpublished");
+    rmSync(summerDir, { recursive: true, force: true });
+  });
+
+  it("still prefers a live api-token pointer over the registry", async () => {
+    const summerDir = fakeSummerDir();
+    writeFileSync(join(summerDir, "api-port"), "6550\n");
+    writeFileSync(join(summerDir, "api-token"), "pointer-token\n");
+    writeFileSync(
+      join(summerDir, "instances", "other.json"),
+      JSON.stringify({
+        schemaVersion: 1, instanceId: "other", pid: process.pid, port: 6561, token: "registry-token",
+        resourceRoot: summerDir, heartbeatAt: Math.floor(Date.now() / 1000),
+      })
+    );
+    mockFetch((url) =>
+      url.includes(":6550/api/health") ? health("pointer", 6550) : health("other", 6561)
+    );
+
+    const client = await EngineApiClient.connect(undefined, { summerDir, cwd: summerDir, env: {} });
+
+    expect(client.getBoundProjectIdHash()).toBe("hash-pointer");
+    expect(await client.credentialsChanged()).toBe(false);
+    rmSync(summerDir, { recursive: true, force: true });
   });
 });

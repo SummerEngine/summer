@@ -24,6 +24,32 @@ export interface EngineDiscoveryOptions {
   nowMs?: number;
 }
 
+export interface DiscoverEngineOptions extends EngineDiscoveryOptions {
+  /** Working directory whose enclosing project (walk up to project.godot)
+   *  breaks a tie between several live editors. Default: process.cwd(). */
+  cwd?: string;
+  /** Environment to read SUMMER_ENGINE_PROJECT / SUMMER_ENGINE_INSTANCE_ID
+   *  from. Default: process.env. */
+  env?: NodeJS.ProcessEnv;
+}
+
+/** Env names the MCP server already honours for an explicit selection
+ *  (src/mcp/server.ts startMcpServer). The CLI face reads the same two so a
+ *  script can pin the editor without a per-command flag. */
+export const ENGINE_PROJECT_ENV = "SUMMER_ENGINE_PROJECT";
+export const ENGINE_INSTANCE_ENV = "SUMMER_ENGINE_INSTANCE_ID";
+
+/** An explicit editor selection from the environment, or null when neither
+ *  variable is set. */
+export function engineSelectionFromEnv(
+  env: NodeJS.ProcessEnv = process.env
+): EngineSelection | null {
+  const instanceId = stringFromUnknown(env[ENGINE_INSTANCE_ENV]);
+  const projectPath = stringFromUnknown(env[ENGINE_PROJECT_ENV]);
+  if (!instanceId && !projectPath) return null;
+  return { instanceId, projectPath };
+}
+
 export interface EngineInstance {
   schemaVersion: 1;
   instanceId: string;
@@ -340,6 +366,87 @@ export async function resolveEngineConnection(
     selection: null,
     source: "legacy",
   };
+}
+
+/**
+ * Discovery for callers with NO selection — the CLI face (`summer tool`,
+ * `summer open`, debug reports). Order:
+ *
+ *   1. The global pointer (~/.summer/api-token + api-port), when it names an
+ *      engine that answers /api/health. Today's behaviour, unchanged.
+ *   2. The instance registry (~/.summer/instances/*.json) when the pointer is
+ *      absent or dead — an editor launched `--summer-no-publish`, or a second
+ *      editor that never owned the pointer. "Live" = pid alive + heartbeat
+ *      fresh (listEngineInstances) + /api/health answers with the registered
+ *      instanceId. Exactly one live editor is used as-is; several are broken
+ *      by the project enclosing `cwd`; otherwise the caller is told which
+ *      editors are live and how to pick one.
+ *
+ * SUMMER_ENGINE_PROJECT / SUMMER_ENGINE_INSTANCE_ID, when set, turn this into
+ * the explicit resolveEngineConnection path instead (same names the MCP server
+ * reads), so the CLI and MCP faces pin an editor the same way.
+ */
+export async function discoverEngineConnection(
+  options: DiscoverEngineOptions = {}
+): Promise<EngineConnection> {
+  const summerDir = options.summerDir ?? getSummerDir();
+  const nowMs = options.nowMs ?? Date.now();
+
+  const envSelection = engineSelectionFromEnv(options.env ?? process.env);
+  if (envSelection) {
+    return resolveEngineConnection(envSelection, { summerDir, nowMs });
+  }
+
+  const [port, token] = await Promise.all([
+    getApiPort(summerDir),
+    getApiToken(summerDir),
+  ]);
+  if (token) {
+    const health = await checkEngineHealth(port);
+    if (health) {
+      return { port, token, health, selection: null, source: "legacy" };
+    }
+  }
+
+  const registered = await listEngineInstances(nowMs, summerDir);
+  const live: EngineConnection[] = [];
+  for (const instance of registered) {
+    try {
+      live.push(await connectionForInstance(instance, {}));
+    } catch {
+      // Not answering, or a different editor now owns that port: not live.
+    }
+  }
+
+  if (live.length === 1) return live[0];
+
+  if (live.length > 1) {
+    const projectRoot = await findProjectRoot(options.cwd ?? process.cwd());
+    if (projectRoot) {
+      const canonicalRoot = await canonicalPath(projectRoot);
+      const matching = live.filter(
+        (connection) => connection.instance?.resourceRoot === canonicalRoot
+      );
+      if (matching.length === 1) return matching[0];
+    }
+    const instances = live.map((connection) => connection.instance!);
+    throw new Error(
+      "Multiple Summer editors are running and none of them has the project for the current directory open. " +
+        "Run this from inside the project directory, or pick one: " +
+        `set ${ENGINE_PROJECT_ENV}=<project path> (or ${ENGINE_INSTANCE_ENV}=<id>); ` +
+        "for the MCP server pass `summer mcp --project <path>` (or `--instance <id>`).\n" +
+        formatInstances(instances)
+    );
+  }
+
+  if (token) {
+    throw new Error(
+      `Summer Engine is not responding on port ${port} (stale api-token pointer) and no live editor is registered in ${join(summerDir, "instances")}. Make sure it's open.`
+    );
+  }
+  throw new Error(
+    `Summer Engine is not running (no api-token found, no live editor registered in ${join(summerDir, "instances")}). Open Summer Engine first.`
+  );
 }
 
 export interface EngineHealth {

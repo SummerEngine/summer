@@ -89,7 +89,7 @@ Engine not running, each `[engine]` command prints exactly this and exits 1:
 
 ```
 Summer Engine is not running (or no project is open).
-Summer Engine is not running (no api-token found). Open Summer Engine first.
+Summer Engine is not running (no api-token found, no live editor registered in ~/.summer/instances). Open Summer Engine first.
 Start it with 'summer run' or open the project in the Summer desktop app, then retry.
 Engine-free tools (generate-*, asset search/list/get, creator, plan) work without it.
 ```

@@ -61,6 +61,7 @@ v3 rebuilds the package around one idea: every resource is described once (`libr
 - `summer_batch` no longer promises an undo step it cannot keep; the playbook's step 0 no longer leads with an op most shipped engines lack; login/run hints use `npx -y summer-engine@latest`.
 - Capability lint: closed the false negatives found by a 58-probe smuggling audit; count-claims guard scans the docs that actually carry counts (`README.md`, `AGENTS.md`, `GEMINI.md`, `CLAUDE.md`, `library/references/**`, `integrations/**`, `.opencode/**`) and derives expectations from `counts.json`, never literals.
 - Routing eval refuses to pass on a stale baseline or a fallback corpus; the op-drift tripwire runs when an engine checkout is available (`SUMMER_ENGINE_REPO`) instead of silently passing.
+- CLI engine discovery (`summer tool`, `summer open`, debug reports) read only the global `~/.summer/api-token` pointer and reported "not running" for an editor launched `--summer-no-publish` or a second editor. It now falls back to the instance registry (`~/.summer/instances/`, live = pid alive + `/api/health` answers): one live editor is used, several are broken by the project enclosing the working directory, otherwise the error lists them. `SUMMER_ENGINE_PROJECT` / `SUMMER_ENGINE_INSTANCE_ID` pin the editor for the CLI the way `summer mcp --project` / `--instance` do.
 
 ## [2.8.2] — 2026-09-01 — "Windows setup works out of the box"
 

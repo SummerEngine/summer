@@ -3,10 +3,10 @@ import { tmpdir } from "os";
 import { join } from "path";
 import { randomUUID } from "node:crypto";
 import {
-  getApiToken,
-  getApiPort,
   checkEngineHealth,
+  discoverEngineConnection,
   resolveEngineConnection,
+  type DiscoverEngineOptions,
   type EngineHealth,
   type EngineSelection,
 } from "./engine.js";
@@ -209,6 +209,9 @@ export class EngineApiClient {
   // supplied a projectIdHash.
   private targetIdentity: EngineTargetIdentity;
   private selection: EngineSelection | null;
+  // Discovery options the no-selection connect used (fake ~/.summer, cwd, env
+  // in tests); credentialsChanged re-runs the same discovery with them.
+  private discovery: DiscoverEngineOptions | null = null;
   // The most recent /api/health seen at connect/rebind. Carries the engine's
   // capability advert (opKinds, singleOnlyOps) so tools can fail closed on a
   // provably missing op without a second health round trip per call.
@@ -229,8 +232,17 @@ export class EngineApiClient {
     this.selection = selection ? { ...selection } : null;
   }
 
+  /**
+   * With a selection (the MCP server: --project / --instance / its cwd) the
+   * registry decides — resolveEngineConnection. Without one (the CLI face)
+   * discovery is the global pointer first, then the instance registry, so an
+   * editor launched `--summer-no-publish` or a second editor is still found;
+   * see discoverEngineConnection. `discovery` is a test seam (fake ~/.summer,
+   * cwd, env).
+   */
   static async connect(
-    selection?: EngineSelection
+    selection?: EngineSelection,
+    discovery: DiscoverEngineOptions = {}
   ): Promise<EngineApiClient> {
     if (selection) {
       const connection = await resolveEngineConnection(selection);
@@ -248,33 +260,20 @@ export class EngineApiClient {
       return client;
     }
 
-    const port = await getApiPort();
-    const token = await getApiToken();
-
-    if (!token) {
-      throw new Error(
-        "Summer Engine is not running (no api-token found). Open Summer Engine first."
-      );
-    }
-
-    const health = await checkEngineHealth(port);
-    if (!health) {
-      throw new Error(
-        `Summer Engine is not responding on port ${port}. Make sure it's open.`
-      );
-    }
+    const connection = await discoverEngineConnection(discovery);
 
     // Bind to whatever project is open right now. On a genuine engine restart the
     // token rotates and getClient() rebuilds this client, so a restart naturally
     // rebinds to the current project. An in-place project switch keeps the same
     // token, so the cached client retains its original binding and the engine
     // rejects mismatched mutations until the agent explicitly rebinds.
-    const client = new EngineApiClient(port, token, {
-      instanceId: health.instanceId,
-      projectId: health.projectId,
-      projectIdHash: health.projectIdHash,
+    const client = new EngineApiClient(connection.port, connection.token, {
+      instanceId: connection.health.instanceId,
+      projectId: connection.health.projectId,
+      projectIdHash: connection.health.projectIdHash,
     });
-    client.lastHealth = health;
+    client.lastHealth = connection.health;
+    client.discovery = { ...discovery };
     return client;
   }
 
@@ -999,9 +998,10 @@ export class EngineApiClient {
     }
 
     try {
-      const [port, token] = await Promise.all([getApiPort(), getApiToken()]);
-      if (!token) return false;
-      return port !== this.port || token !== this.token;
+      // Same pointer-then-registry discovery connect used, so a client found
+      // through the registry (no pointer) notices its editor's restart too.
+      const connection = await discoverEngineConnection(this.discovery ?? {});
+      return connection.port !== this.port || connection.token !== this.token;
     } catch {
       return false;
     }

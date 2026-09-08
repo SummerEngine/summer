@@ -1,0 +1,38 @@
+{
+  "results": [
+    {
+      "effective_time_scale": 1,
+      "frame": {
+        "frames_drawn": 564,
+        "physics_frames": 285,
+        "process_frames": 563
+      },
+      "instance": "main",
+      "missing": [],
+      "ok": true,
+      "op": "GameProbe",
+      "paused": false,
+      "provenance": {
+        "source": "runtime",
+        "target": {
+          "instance": "main",
+          "kind": "game"
+        }
+      },
+      "requestId": "mcp-fe50857d-04a6-42f1-95de-6b62547aa04a",
+      "suspended": false,
+      "time_scale": 1,
+      "transport": "summer",
+      "values": {
+        "/root/Main/MitlProbe:text": "MITL_ALIVE 285"
+      }
+    }
+  ],
+  "skippedCount": 0,
+  "status": "ok",
+  "stopOnError": true,
+  "undoGroup": false,
+  "requestId": "mcp-fe50857d-04a6-42f1-95de-6b62547aa04a",
+  "terminalState": "applied",
+  "appliedSeq": 9
+}

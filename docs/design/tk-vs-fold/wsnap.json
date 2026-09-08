@@ -1,0 +1,57 @@
+{
+  "elapsed_ms": 0,
+  "results": [
+    {
+      "cameras": [],
+      "counts": {
+        "Label": 1,
+        "Node2D": 1
+      },
+      "include_2d": false,
+      "include_2d_effective": true,
+      "lights": [],
+      "max_lights": 20,
+      "max_nodes": 4000,
+      "nodes": [
+        {
+          "class": "Node2D",
+          "name": "Main",
+          "path": ".",
+          "pos": "Vector2(0.0, 0.0)",
+          "rot_deg": 0,
+          "scale": "Vector2(1.0, 1.0)",
+          "visible": true,
+          "z_index": 0
+        },
+        {
+          "class": "Label",
+          "name": "MitlProbe",
+          "path": "MitlProbe",
+          "pos": "Vector2(40.0, 40.0)",
+          "rect": {
+            "pos": "Vector2(40.0, 40.0)",
+            "size": "Vector2(76.0, 23.0)"
+          },
+          "rot_deg": 0,
+          "scale": "Vector2(1.0, 1.0)",
+          "script_fp": "ee7df384",
+          "visible": true,
+          "z_index": 0
+        }
+      ],
+      "ok": true,
+      "op": "GetWorldSnapshot",
+      "scene_path": "res://main.tscn",
+      "snapshot_id": "ws-1",
+      "total_nodes": 2,
+      "truncated": false
+    }
+  ],
+  "skippedCount": 0,
+  "status": "ok",
+  "stopOnError": true,
+  "undoGroup": false,
+  "requestId": "mcp-72647e38-a35f-418b-a75a-5f9862b6e33b",
+  "terminalState": "applied",
+  "appliedSeq": 8
+}

@@ -289,7 +289,7 @@ We tell you before we touch your disk.
 
 | What | Size | When | Source |
 |---|---|---|---|
-| `summer-engine` npm package (CLI + MCP + library) | ~3 MB | first `npx -y summer-engine@latest ...` call | [npmjs.com/package/summer-engine](https://www.npmjs.com/package/summer-engine) |
+| `summer-engine` npm package (CLI + MCP + library) | ~2 MB download, ~4 MB unpacked | first `npx -y summer-engine@latest ...` call | [npmjs.com/package/summer-engine](https://www.npmjs.com/package/summer-engine) |
 | Summer Engine app | ~1 GB (engine + bundled Git/runtime tools) | `npx -y summer-engine@latest install` | Summer's signed releases |
 | Auth token | ~1 KB | `npx -y summer-engine@latest login` | Browser to `~/.summer/auth-token` |
 | Creator token | ~50 bytes | only when you run `summer login --creator` and mint one | One-time browser value to `~/.summer/creator-token`; never replaces the auth token |
@@ -331,9 +331,11 @@ matchmaking are not promised by this package.
 | `summer memory` | Inspect project memory in `.summer`. |
 | `summer memory show <file>` | Print a project memory Markdown file. |
 | `summer run [path] [--background\|--focus] [--bin <executable>]` | Launch the engine. Agents (no TTY) launch in the background by default so the window never steals focus; `--focus` brings it to the front. `--bin` (env `SUMMER_BIN`) launches a build that is not installed. |
-| `summer open <path>` | Open a project in a running engine. |
+| `summer open <path \| target> [--print] [--list]` | A project directory opens in the running engine. Anything else is a navigation target — `billing`, `my-games`, `mcp-guide`, `scene`, `inspector`, an intent phrase, a `res://` path — opened in the browser or sent to the editor; `--print` resolves without opening. |
 | `summer create <template> [name]` | Scaffold a project from a pinned template. |
 | `summer list templates` / `projects` | Browse. |
+| `summer events [--follow] [--kinds <csv>] [--since <seq>] [--json]` | The engine events channel (engine 0.5.66+): newest events, or stream them live. |
+| `summer debug [issue…]` | Support-ready Markdown debug report. |
 | `summer skills list` | Show all skills. |
 | `summer skills install <name>` | Install one. |
 | `summer skills install --all --agent <agent>` / `--recommended` [`--stable-only`] | Install every skill (preview included and labelled), or only the recommended subset; `--stable-only` skips preview skills. |

@@ -50,7 +50,7 @@ MITL_DRIVER_HOME="${MITL_DRIVER_HOME:-$FAKE_HOME}"
 DATE_UTC="$(date -u +%Y-%m-%d)"
 RESULTS="${MITL_RESULTS:-$MITL/results/$DATE_UTC}"
 GATE_MAX_S="${MITL_GATE_MAX_S:-5400}"
-PGREP_PATTERN='Summer.app/Contents/MacOS/Summer'
+PGREP_PATTERN="$(printf '%s' "$SUMMER_BIN" | sed 's/[][\.*^$]/\&/g')"  # only OUR engine binary (editor, import pass, verify child); another agent's editor from a different bundle must not block us
 
 SEL="${1:-}"
 if [[ -z "$SEL" || "$SEL" == "-h" || "$SEL" == "--help" ]]; then
@@ -73,7 +73,7 @@ if [[ ! -f "$FAKE_HOME/.claude.json" ]]; then
 fi
 mkdir -p "$FAKE_HOME/.summer/instances"; chmod 700 "$FAKE_HOME/.summer"
 if [[ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]]; then
-  log "WARNING: CLAUDE_CODE_OAUTH_TOKEN is not set — the model step will record auth_missing (run 'claude setup-token' and export it)"
+  if [[ "$MITL_DRIVER_HOME" == "$FAKE_HOME" ]]; then log "WARNING: CLAUDE_CODE_OAUTH_TOKEN is not set and the driver HOME is the fake HOME — the model step will record auth_missing (run 'claude setup-token' and export it, or set MITL_DRIVER_HOME=\$HOME)"; else log "driver HOME=$MITL_DRIVER_HOME (machine login); engine HOME=$FAKE_HOME"; fi
 fi
 
 # ── engine gate: nothing of ours or anyone else's may be running ─────────────────

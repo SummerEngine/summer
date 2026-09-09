@@ -1,0 +1,20 @@
+### 03:53:11 summer run --bin (toolkit launches the engine itself, background posture)
+summer run exit=0 :: Using engine from --bin: /Users/MathiasWork/development/summerengine-scripting/bin/Summer.app/Contents/MacOS/Summer Launching Summer Engine in the background (the window will not take focus until you click it)... Summer Engine running (v0.5.66) on port 6550   Project: TkRunBin 
+engine reachable after ~1s; api-token=yes; UIElement(no-focus)=not-checked
+doctor: exit=1 NON-JSON stderr='Unknown tool "doctor". Run \'summer tool --list\' to see all 86 tools.'
+ctx: exit=0 status=None terminal=None failure_reason=None bytes=22782
+  engine=0.5.66 opKinds=125 launchPostures=['focus', 'background', 'offscreen'] skew=None
+open: exit=0 status=ok terminal=applied failure_reason=None bytes=473
+runscript: exit=0 status=ok terminal=applied failure_reason=None bytes=1463
+play: exit=0 status=ok terminal=applied failure_reason=None bytes=515
+probe: exit=0 status=ok terminal=applied failure_reason=None bytes=854
+  >>> placed code running: YES RUNBIN 176
+wsnap: exit=0 status=ok terminal=applied failure_reason=None bytes=1330
+tplace: exit=1 NON-JSON stderr='Missing required string argument: scenePath'
+starcast: exit=1 NON-JSON stderr='Missing required string argument: scenePath'
+navprobe: exit=1 NON-JSON stderr='Missing required string argument: scenePath'
+stop: exit=0 status=ok terminal=applied failure_reason=None bytes=430
+### summer stop / teardown via toolkit
+error: unknown command 'stop' Run 'summer --help' to see the available commands. 
+engines left: 0 ; real ~/.summer touched: 1 ; session adopted/planted: 0
+### DONE 03:53:24

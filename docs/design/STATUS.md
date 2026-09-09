@@ -5,6 +5,11 @@ Single page. If it isn't here, it isn't real. Updated 2026-09-03 (late night) �
 ## The one place
 **`SummerEngine/summer-engine-agent` branch `v3-foundation`** (PR #18 open, NOT for merging yet). Everything toolkit-side lives here. Nothing has shipped: origin `main` and npm `summer-engine@2.8.2` are untouched. The scene-scripting waves (events, fabrication, perception, editor UI, runtime control, outcome evals, skill syncs) sit on top of it as `scene-scripting/v3-integration`, one merge commit per wave branch, pending review.
 
+## 2026-09-09 — where the combined version is
+- **Engine, complete:** `core/all-engine-work` @ `436d0879ad8` (0.5.66, 125 ops) = scene scripting + launch posture + deterministic clock + UTF-8 + Starcast (#147) + spatial suite (#158) + headless worker (#155) + Navigate. Built, harness **1115/0/4 + 1175/0/1**, toolkit skew warning **empty**. Local engine `main` points at it; `origin/main` untouched (clean fast-forward, +147). Worktree `summerengine-scripting`.
+- **Toolkit, complete:** `v3-foundation` (local `main` = it), pushed. Proven against the complete engine through its OWN launch path (`summer run --bin --background`): discovery, context, scene-script-placed code running in the game, play/probe, world snapshot, all spatial + starcast + navigate ops, set-of-mark screenshots, doctor. Details: `TK-VS-FOLD-2026-09-07.md` (+ 09-09 addendum).
+- **Not yet:** cold-model eval (needs `claude setup-token`), a human session, Windows launch posture, release build/Sparkle path, web PRs merge, engine UI polish branch `core/agent-view-polish` (AssetLib hidden in agent view, skippable intro video) in progress.
+
 ## What is verified working (how)
 All rows re-verified after the 2026-09-02 fix wave; agent self-reports were NOT trusted — an HEAD presence audit + full gate run confirmed each.
 | Thing | Verified by |

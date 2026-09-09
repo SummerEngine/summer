@@ -72,6 +72,7 @@ function restoreStdoutTTY(): void {
 const checkEngineHealthMock = vi.mocked(checkEngineHealth);
 const spawnMock = vi.mocked(spawn);
 
+const savedSummerBin = process.env.SUMMER_BIN;
 let root = "";
 let logs: string[] = [];
 let errors: string[] = [];
@@ -102,10 +103,14 @@ beforeEach(async () => {
   // parseAsync calls; a --background from one test must not leak into the next.
   runCommand.setOptionValue("focus", undefined);
   runCommand.setOptionValue("background", undefined);
+  runCommand.setOptionValue("bin", undefined);
+  delete process.env.SUMMER_BIN;
   process.exitCode = undefined;
 });
 
 afterEach(async () => {
+  if (savedSummerBin === undefined) delete process.env.SUMMER_BIN;
+  else process.env.SUMMER_BIN = savedSummerBin;
   restoreStdoutTTY();
   vi.restoreAllMocks();
   process.exitCode = originalExitCode;
@@ -305,5 +310,93 @@ describe("summer run launch posture (focus vs background)", () => {
     await runCommand.parseAsync([project], { from: "user" });
 
     expect(spawnMock).toHaveBeenCalledWith(binary, ["--path", project, "--editor", "--summer-background"], expect.anything());
+  });
+});
+
+describe("summer run engine binary override (--bin / SUMMER_BIN)", () => {
+  const up = { version: "0.5.66", project_name: "Demo" } as never;
+
+  /** A fake build laid out like a real bundle: <root>/Dev.app/Contents/MacOS/Summer. */
+  async function fakeBundle(): Promise<{ app: string; executable: string }> {
+    const { mkdir: mk, writeFile: wf } = await import("node:fs/promises");
+    const app = join(root, "Dev.app");
+    const executable = join(app, "Contents", "MacOS", "Summer");
+    await mk(join(app, "Contents", "MacOS"), { recursive: true });
+    await wf(executable, "#!/bin/sh\n", { mode: 0o755 });
+    return { app, executable };
+  }
+
+  it("--bin launches that executable, probes THAT binary, and never consults the installed engine", async () => {
+    setStdoutTTY(false);
+    const { executable } = await fakeBundle();
+    findEngineBinaryMock.mockReturnValue("/Applications/Summer.app/Contents/MacOS/Summer");
+    engineSupport("0.5.65", true);
+    checkEngineHealthMock.mockResolvedValueOnce(null).mockResolvedValue(up);
+
+    await runCommand.parseAsync(["--no-project", "--bin", executable], { from: "user" });
+
+    expect(findEngineBinaryMock).not.toHaveBeenCalled();
+    expect(detectMock).toHaveBeenCalledWith(executable);
+    expect(spawnMock).toHaveBeenCalledWith(executable, ["--editor", "--summer-background"], { detached: true, stdio: "ignore" });
+    expect(logs.join("\n")).toContain(`Using engine from --bin: ${executable}`);
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it("SUMMER_BIN is the env form of --bin (the name the autopilot scaffold already uses)", async () => {
+    setStdoutTTY(true);
+    const { executable } = await fakeBundle();
+    process.env.SUMMER_BIN = executable;
+    findEngineBinaryMock.mockReturnValue("/Applications/Summer.app/Contents/MacOS/Summer");
+    checkEngineHealthMock.mockResolvedValueOnce(null).mockResolvedValue(up);
+
+    await runCommand.parseAsync(["--no-project"], { from: "user" });
+
+    expect(findEngineBinaryMock).not.toHaveBeenCalled();
+    expect(spawnMock).toHaveBeenCalledWith(executable, ["--editor"], expect.anything());
+    expect(logs.join("\n")).toContain(`Using engine from SUMMER_BIN: ${executable}`);
+  });
+
+  it("--bin beats SUMMER_BIN when both are set", async () => {
+    const { executable } = await fakeBundle();
+    process.env.SUMMER_BIN = "/nowhere/Summer";
+    checkEngineHealthMock.mockResolvedValueOnce(null).mockResolvedValue(up);
+
+    await runCommand.parseAsync(["--no-project", "--bin", executable], { from: "user" });
+
+    expect(spawnMock).toHaveBeenCalledWith(executable, ["--editor"], expect.anything());
+  });
+
+  it("refuses a bare .app bundle and says which executable to pass and why", async () => {
+    const { app, executable } = await fakeBundle();
+    findEngineBinaryMock.mockReturnValue("/Applications/Summer.app/Contents/MacOS/Summer");
+
+    await runCommand.parseAsync(["--no-project", "--bin", app], { from: "user" });
+
+    expect(spawnMock).not.toHaveBeenCalled();
+    expect(detectMock).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
+    const err = errors.join("\n");
+    expect(err).toContain(`--bin names the bundle ${app}`);
+    expect(err).toContain(executable);
+    expect(err).toContain("`open`");
+    expect(err).toContain("Sparkle @rpath");
+  });
+
+  it("an override that points nowhere is an error, never a silent launch of the installed engine", async () => {
+    findEngineBinaryMock.mockReturnValue("/Applications/Summer.app/Contents/MacOS/Summer");
+    process.env.SUMMER_BIN = join(root, "missing", "Summer");
+
+    await runCommand.parseAsync(["--no-project"], { from: "user" });
+
+    expect(spawnMock).not.toHaveBeenCalled();
+    expect(findEngineBinaryMock).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
+    expect(errors.join("\n")).toContain("SUMMER_BIN names");
+    expect(errors.join("\n")).toContain("nothing exists there");
+  });
+
+  it("the not-installed message now says how to launch a build that is not installed", async () => {
+    await runCommand.parseAsync(["--no-project"], { from: "user" });
+    expect(errors.join("\n")).toContain("--bin <executable> or set SUMMER_BIN");
   });
 });

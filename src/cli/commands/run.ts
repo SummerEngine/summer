@@ -5,7 +5,12 @@ import { mkdir, readFile, rm, writeFile } from "fs/promises";
 import { join, resolve } from "path";
 import { getSummerDir } from "../../core/auth.js";
 import { getApiPort, checkEngineHealth } from "../../core/engine.js";
-import { findEngineBinary } from "../../core/engine-install.js";
+import {
+  describeEngineExecutableProblem,
+  ENGINE_BIN_ENV,
+  engineBinaryOverride,
+  findEngineBinary,
+} from "../../core/engine-install.js";
 import {
   advertisedBackgroundPosture,
   backgroundLaunchSupport,
@@ -97,6 +102,48 @@ interface RunOptions {
   project: boolean;
   background?: boolean;
   focus?: boolean;
+  bin?: string;
+}
+
+export type RunBinaryResolution =
+  | { binary: string; source: "--bin" | typeof ENGINE_BIN_ENV | "installed" }
+  | { binary: null; error: string };
+
+/**
+ * Which engine executable `summer run` launches (and probes with --help):
+ * `--bin <path>`, else SUMMER_BIN, else the installed engine
+ * (findEngineBinary, which also honours the older SUMMER_ENGINE_BINARY).
+ * An explicit override is never silently swapped for the installed engine:
+ * a missing path or a bare `.app` bundle is an error, because the caller
+ * asked for THAT build (docs/design/TK-VS-FOLD-2026-09-07.md, gap 5).
+ */
+export function resolveRunBinary(
+  binFlag: string | undefined,
+  env: NodeJS.ProcessEnv = process.env
+): RunBinaryResolution {
+  const fromEnv = engineBinaryOverride(env);
+  const explicit = binFlag?.trim()
+    ? { source: "--bin" as const, path: binFlag.trim() }
+    : fromEnv?.name === ENGINE_BIN_ENV
+      ? { source: ENGINE_BIN_ENV as typeof ENGINE_BIN_ENV, path: fromEnv.path }
+      : null;
+  if (explicit) {
+    const path = resolve(explicit.path);
+    const problem = describeEngineExecutableProblem(path, explicit.source);
+    return problem ? { binary: null, error: problem } : { binary: path, source: explicit.source };
+  }
+  const installed = findEngineBinary();
+  if (!installed) {
+    return {
+      binary: null,
+      error:
+        "Summer Engine not found. Install it first:\n" +
+        "  summer install\n" +
+        "  or download from https://summerengine.com/download\n" +
+        `To launch a build that is not installed, pass --bin <executable> or set ${ENGINE_BIN_ENV}.`,
+    };
+  }
+  return { binary: installed, source: "installed" };
 }
 
 export const runCommand = new Command("run")
@@ -117,6 +164,11 @@ export const runCommand = new Command("run")
   .option(
     "--focus",
     "Launch and bring the editor to the front (default when a human runs this in a terminal)"
+  )
+  .option(
+    "--bin <path>",
+    `Engine executable to launch instead of the installed one (env: ${ENGINE_BIN_ENV}). ` +
+      "On macOS this is the executable inside the bundle, e.g. /path/Summer.app/Contents/MacOS/Summer, never the .app itself"
   )
   .action(async (projectPath: string | undefined, opts: RunOptions) => {
     // Posture is decided up front so a bad flag combination fails before any
@@ -189,19 +241,19 @@ export const runCommand = new Command("run")
         return;
       }
 
-      const binary = findEngineBinary();
-      if (!binary) {
-        console.error(
-          "Summer Engine not found. Install it first:\n" +
-          "  summer install\n" +
-          "  or download from https://summerengine.com/download"
-        );
+      const resolved = resolveRunBinary(opts.bin);
+      if (resolved.binary === null) {
+        console.error(resolved.error);
         process.exitCode = 1;
         return;
       }
+      const binary = resolved.binary;
+      if (resolved.source !== "installed") {
+        console.log(`Using engine from ${resolved.source}: ${binary}`);
+      }
 
       // The engine is not running yet, so /api/health cannot tell us whether
-      // it honours --summer-background. Ask the binary itself (`--help`, which
+      // it honours --summer-background. Ask THAT binary itself (`--help`, which
       // exits headless before any window exists; cached per install) with the
       // installed version as pre-check and fallback; pass the flag only when
       // the engine is known to support it. Focus launches have nothing to decide.

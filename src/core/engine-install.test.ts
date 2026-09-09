@@ -1,9 +1,12 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  describeEngineExecutableProblem,
+  ENGINE_BIN_ENV,
   ENGINE_BINARY_ENV,
+  engineBinaryOverride,
   ENGINE_URL_ENV,
   LINUX_ASSET_PATTERN,
   LINUX_ENGINE_BINARY_NAME,
@@ -191,5 +194,35 @@ describe("findExtractedEngineBinary", () => {
 
   it("returns null rather than guessing among unrelated files", () => {
     expect(findExtractedEngineBinary(["/tmp/x/a.txt", "/tmp/x/b.txt"])).toBeNull();
+  });
+});
+
+describe("engineBinaryOverride + describeEngineExecutableProblem (summer run --bin / SUMMER_BIN)", () => {
+  it("SUMMER_BIN wins over SUMMER_ENGINE_BINARY; blank counts as unset", () => {
+    expect(engineBinaryOverride({})).toBeNull();
+    expect(engineBinaryOverride({ [ENGINE_BINARY_ENV]: "/a" })).toEqual({ name: ENGINE_BINARY_ENV, path: "/a" });
+    expect(engineBinaryOverride({ [ENGINE_BIN_ENV]: " /b ", [ENGINE_BINARY_ENV]: "/a" })).toEqual({ name: ENGINE_BIN_ENV, path: "/b" });
+    expect(engineBinaryOverride({ [ENGINE_BIN_ENV]: "  ", [ENGINE_BINARY_ENV]: "/a" })).toEqual({ name: ENGINE_BINARY_ENV, path: "/a" });
+    expect(engineBinaryCandidates("linux", { [ENGINE_BIN_ENV]: "/b" })[0]).toBe("/b");
+  });
+
+  it("refuses a .app bundle (even with a trailing slash), a missing path, and a directory; accepts the in-bundle executable", () => {
+    const dir = mkdtempSync(join(tmpdir(), "summer-engine-exec-"));
+    try {
+      const app = join(dir, "Summer.app");
+      const executable = join(app, "Contents", "MacOS", "Summer");
+      mkdirSync(join(app, "Contents", "MacOS"), { recursive: true });
+      writeFileSync(executable, "");
+
+      const bundle = describeEngineExecutableProblem(app + "/", "--bin");
+      expect(bundle).toContain(`--bin names the bundle ${app}`);
+      expect(bundle).toContain(executable);
+      expect(bundle).toContain("Sparkle @rpath");
+      expect(describeEngineExecutableProblem(join(dir, "nope"), ENGINE_BIN_ENV)).toContain("nothing exists there");
+      expect(describeEngineExecutableProblem(join(app, "Contents"), "--bin")).toContain("is a directory");
+      expect(describeEngineExecutableProblem(executable, "--bin")).toBeNull();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

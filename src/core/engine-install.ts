@@ -1,4 +1,4 @@
-import { existsSync } from "fs";
+import { existsSync, statSync } from "fs";
 import { homedir, platform } from "os";
 import { basename, join } from "path";
 
@@ -17,10 +17,55 @@ import { basename, join } from "path";
  * stays commander wiring + process I/O only.
  */
 
-/** Env var naming an existing engine binary to use directly (absolute path).
- *  Checked first on every platform; primarily for cloud/CI containers that
- *  carry a prebuilt binary and for local source builds. */
+/** Env var naming the engine executable to launch and probe (absolute path).
+ *  The ONE name shared with the autopilot scaffold (assets/autopilot/run.sh)
+ *  and evals/mitl; `summer run --bin <path>` is its flag form. On macOS it is
+ *  the executable inside the bundle (.../Summer.app/Contents/MacOS/Summer). */
+export const ENGINE_BIN_ENV = "SUMMER_BIN";
+
+/** Older name for the same override, documented for Linux cloud containers
+ *  (`running-in-the-cloud`, CHANGELOG 3.0.0) and still honoured after
+ *  ENGINE_BIN_ENV. `summer install` on Linux registers the binary it names. */
 export const ENGINE_BINARY_ENV = "SUMMER_ENGINE_BINARY";
+
+/** The explicit engine override in force — ENGINE_BIN_ENV first, then
+ *  ENGINE_BINARY_ENV — or null when neither is set (blank counts as unset). */
+export function engineBinaryOverride(
+  env: NodeJS.ProcessEnv = process.env
+): { name: string; path: string } | null {
+  for (const name of [ENGINE_BIN_ENV, ENGINE_BINARY_ENV]) {
+    const path = env[name]?.trim();
+    if (path) return { name, path };
+  }
+  return null;
+}
+
+/**
+ * Why an explicitly named engine path cannot be launched, or null when it can.
+ * A `.app` bundle is refused even when it exists: `summer run` spawns the
+ * executable directly, because `open` (the only way to launch a bundle)
+ * activates the app and defeats background launches, and a binary copied OUT
+ * of the bundle dies on its Sparkle @rpath — so the value has to be the
+ * executable inside the bundle.
+ */
+export function describeEngineExecutableProblem(path: string, source: string): string | null {
+  const trimmed = path.replace(/[\\/]+$/, "");
+  if (/\.app$/i.test(basename(trimmed))) {
+    return (
+      `${source} names the bundle ${trimmed}, not the engine executable. Pass the executable inside it: ` +
+      `${join(trimmed, "Contents", "MacOS", "Summer")}\n` +
+      "summer run spawns that executable directly: launching the .app would go through `open`, which activates " +
+      "the app and defeats background launches, and a binary copied out of the bundle dies on its Sparkle @rpath."
+    );
+  }
+  if (!existsSync(trimmed)) {
+    return `${source} names ${trimmed}, but nothing exists there.`;
+  }
+  if (statSync(trimmed).isDirectory()) {
+    return `${source} names ${trimmed}, which is a directory, not the engine executable.`;
+  }
+  return null;
+}
 
 /** Env var naming a direct artifact URL (tar.gz, zip, or raw binary) to install
  *  on Linux instead of the published release. */
@@ -72,7 +117,7 @@ export function engineBinaryCandidates(
   os: NodeJS.Platform = platform(),
   env: NodeJS.ProcessEnv = process.env
 ): string[] {
-  const override = env[ENGINE_BINARY_ENV]?.trim();
+  const override = engineBinaryOverride(env)?.path;
   const platformPaths =
     os === "darwin"
       ? macEnginePaths(env)
@@ -82,9 +127,10 @@ export function engineBinaryCandidates(
   return override ? [override, ...platformPaths] : platformPaths;
 }
 
-/** First existing engine binary for this machine, or null. SUMMER_ENGINE_BINARY
- *  wins when set and present; a set-but-missing override falls through to the
- *  platform locations rather than reporting a phantom install. */
+/** First existing engine binary for this machine, or null. SUMMER_BIN /
+ *  SUMMER_ENGINE_BINARY wins when set and present; a set-but-missing override
+ *  falls through to the platform locations rather than reporting a phantom
+ *  install (`summer run` is stricter: see resolveRunBinary). */
 export function findEngineBinary(
   os: NodeJS.Platform = platform(),
   env: NodeJS.ProcessEnv = process.env

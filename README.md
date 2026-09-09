@@ -330,7 +330,7 @@ matchmaking are not promised by this package.
 | `summer plan <goal>` | Route a game-building goal into skills, MCP tools, gates, and verification. |
 | `summer memory` | Inspect project memory in `.summer`. |
 | `summer memory show <file>` | Print a project memory Markdown file. |
-| `summer run [path] [--background\|--focus]` | Launch the engine. Agents (no TTY) launch in the background by default so the window never steals focus; `--focus` brings it to the front. |
+| `summer run [path] [--background\|--focus] [--bin <executable>]` | Launch the engine. Agents (no TTY) launch in the background by default so the window never steals focus; `--focus` brings it to the front. `--bin` (env `SUMMER_BIN`) launches a build that is not installed. |
 | `summer open <path>` | Open a project in a running engine. |
 | `summer create <template> [name]` | Scaffold a project from a pinned template. |
 | `summer list templates` / `projects` | Browse. |

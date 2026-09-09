@@ -56,7 +56,9 @@
  *
  * `summer run` spawns the executable directly (Summer.app/Contents/MacOS/Summer
  * on macOS), never through `open` — LaunchServices would activate the app and
- * defeat the posture whatever flags were passed.
+ * defeat the posture whatever flags were passed. The same holds for a
+ * `--bin` / SUMMER_BIN override: it must be the in-bundle executable, and the
+ * --help probe below runs against THAT binary (cache key: path + mtime + size).
  */
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";

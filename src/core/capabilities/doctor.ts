@@ -2,7 +2,7 @@ import { spawn } from "child_process";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { getAuthToken, getUserInfo } from "../auth.js";
-import { ENGINE_BINARY_ENV, findEngineBinary } from "../engine-install.js";
+import { ENGINE_BIN_ENV, ENGINE_BINARY_ENV, findEngineBinary } from "../engine-install.js";
 import { checkEngineHealth, getApiPort, getApiToken } from "../engine.js";
 import { brandLine, c, pad, sym, tildeify } from "../format.js";
 import { getMcpLogPath } from "../mcp-log.js";
@@ -188,7 +188,7 @@ export function checkEngineInstall(): DoctorCheck {
     id: "engine-install",
     label: "Engine",
     status: "warning",
-    message: `not installed (run: summer install, or set ${ENGINE_BINARY_ENV} to an existing binary)`,
+    message: `not installed (run: summer install, or set ${ENGINE_BIN_ENV} / ${ENGINE_BINARY_ENV} to an existing binary)`,
   };
 }
 

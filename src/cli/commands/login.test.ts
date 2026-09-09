@@ -14,6 +14,9 @@ import { runCreatorLogin, runLogin } from "./login.js";
 let root = "";
 const originalGateway = process.env.SUMMER_GATEWAY_URL;
 
+/** A fresh JWT whose exp embeds the current second — so build it ONCE per test
+ *  and share it between the poll mock and the assertion, or the two calls can
+ *  straddle a second boundary under full-suite load and the strings differ. */
 function cliToken(): string {
   const header = Buffer.from(JSON.stringify({ alg: "HS256" })).toString("base64url");
   const payload = Buffer.from(
@@ -43,12 +46,13 @@ afterEach(async () => {
 describe("runLogin", () => {
   it("uses the current browser/poll contract and persists one validated session", async () => {
     const logs: string[] = [];
+    const token = cliToken();
     const openUrl = vi.fn(async () => undefined);
     const fetchMock = vi.fn(async () =>
       new Response(
         JSON.stringify({
           status: "complete",
-          token: cliToken(),
+          token,
           user: {
             id: "user-1",
             email: "maker@example.com",
@@ -74,7 +78,7 @@ describe("runLogin", () => {
       "https://gateway.example/api/auth/cli-login?session=session-123",
       expect.any(Object)
     );
-    expect(await getAuthToken()).toBe(cliToken());
+    expect(await getAuthToken()).toBe(token);
     expect(await getUserInfo()).toMatchObject({
       id: "user-1",
       email: "maker@example.com",
@@ -136,6 +140,7 @@ describe("runLogin failure handling", () => {
 
   it("retries a 503 and reports the last error in the heartbeat", async () => {
     const logs: string[] = [];
+    const token = cliToken();
     let calls = 0;
     const fetchMock = vi.fn(async () => {
       calls += 1;
@@ -143,7 +148,7 @@ describe("runLogin failure handling", () => {
       return new Response(
         JSON.stringify({
           status: "complete",
-          token: cliToken(),
+          token,
           user: { id: "user-1", email: "maker@example.com" },
         }),
         { status: 200, headers: { "content-type": "application/json" } }
@@ -161,7 +166,7 @@ describe("runLogin failure handling", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(await getAuthToken()).toBe(cliToken());
+    expect(await getAuthToken()).toBe(token);
     const heartbeats = logs.filter((line) => line.startsWith("Still waiting"));
     expect(heartbeats.length).toBeGreaterThan(0);
     expect(heartbeats.at(-1)).toContain("last error: The login service is unavailable");

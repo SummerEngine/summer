@@ -78,6 +78,8 @@ node scripts/generate-registry/cli.ts --embed  # optional: also write registry/g
 
 The registry and validation scripts run TypeScript natively and need **Node >= 22.18**; the published package requires Node 20+ (`engines.node`).
 
+Every test file runs under a throwaway `HOME` (`vitest.config.ts` → `src/test-helpers/fake-home.ts`), so `os.homedir()`, `getSummerDir()` and every default store path land in a temp dir; `setSummerDirForTests(null)` restores that fake home, never the real one. A global guard (`src/test-helpers/real-summer-dir-guard.ts`) snapshots the real `~/.summer` before the suite and fails the run if any test created, deleted or changed something in it (files a live engine/MCP process rewrites are reported, not failed). No test may touch the real `~/.summer`.
+
 Two tests need a sibling checkout to do real work and **skip loudly** otherwise: `src/core/op-registry-drift.test.ts` compares the CLI's known engine ops against the engine's op registry — set `SUMMER_ENGINE_REPO=/path/to/summerengine` (default: a `summerengine` sibling directory); the headless real-binary test needs an engine build with worker mode. A skip is printed by name; do not read a skip as a pass.
 
 ### CLI command reference

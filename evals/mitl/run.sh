@@ -43,6 +43,10 @@ SUMMER_BIN="${MITL_ENGINE_BIN:-${SUMMER_BIN:-/Applications/Summer.app/Contents/M
 REAL_HOME="$HOME"
 SCRATCH="${MITL_SCRATCH:-${TMPDIR:-/tmp}/summer-mitl}"
 FAKE_HOME="$SCRATCH/mitl-home"
+# MITL_DRIVER_HOME: HOME for the `claude` DRIVER only (its login). Default = the fake HOME (needs
+# CLAUDE_CODE_OAUTH_TOKEN). Set MITL_DRIVER_HOME="$HOME" to reuse the machine's Claude login; the
+# engine, import pass, verify run and the MCP server still run under the fake HOME.
+MITL_DRIVER_HOME="${MITL_DRIVER_HOME:-$FAKE_HOME}"
 DATE_UTC="$(date -u +%Y-%m-%d)"
 RESULTS="${MITL_RESULTS:-$MITL/results/$DATE_UTC}"
 GATE_MAX_S="${MITL_GATE_MAX_S:-5400}"
@@ -238,7 +242,7 @@ run_task() {
   # cookie into its Studio webview. NSHomeDirectory honours $HOME, so Application Support, WebKit,
   # HTTPStorages and ~/.summer all move under the fake HOME — a cold machine — and the toolkit
   # finds the instance file in the fake ~/.summer/instances directly (no copy step).
-  HOME="$FAKE_HOME" "$SUMMER_BIN" --editor --path "$project" --summer-offscreen --summer-no-publish --disable-crash-handler >"$out/editor.log" 2>&1 &
+  HOME="$FAKE_HOME" SUMMER_WEBVIEW_EPHEMERAL=1 "$SUMMER_BIN" --editor --path "$project" --summer-offscreen --summer-no-publish --disable-crash-handler >"$out/editor.log" 2>&1 &
   EDITOR_PID=$!
   log "editor pid $EDITOR_PID launched (offscreen, HOME=$FAKE_HOME)"
   local inst
@@ -262,13 +266,13 @@ run_task() {
   # 4. MCP config for this build, bound to this project
   local mcp="$out/mcp.json"
   cat >"$mcp" <<EOF
-{"mcpServers":{"summer-engine":{"command":"$NODE","args":["$SUMMER_JS","mcp","--project","$project"]}}}
+{"mcpServers":{"summer-engine":{"command":"$NODE","args":["$SUMMER_JS","mcp","--project","$project"],"env":{"HOME":"$FAKE_HOME","PATH":"$PATH"}}}}
 EOF
 
   # 5. the model
   stage="agent"
   local agent_line
-  agent_line="$("$NODE" "$LIB" agent "$id" "$project" "$FAKE_HOME" "$out" "$mcp" 2>>"$out/run.err")" || notes+=("agent step exited non-zero")
+  agent_line="$("$NODE" "$LIB" agent "$id" "$project" "$FAKE_HOME" "$out" "$mcp" "$MITL_DRIVER_HOME" 2>>"$out/run.err")" || notes+=("agent step exited non-zero")
   log "agent: ${agent_line:-<no summary>}"
 
   # 6. task checks while the editor is still up

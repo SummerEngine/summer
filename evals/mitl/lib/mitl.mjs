@@ -295,19 +295,20 @@ function claimedStatus(finalMessage) {
   return "unclear";
 }
 
-async function runAgent(id, project, fakeHome, outDir, mcpConfig) {
+async function runAgent(id, project, fakeHome, outDir, mcpConfig, driverHome = fakeHome) {
   const task = getTask(id);
   mkdirSync(outDir, { recursive: true });
   const transcriptPath = join(outDir, "transcript.jsonl");
   const stderrPath = join(outDir, "claude.stderr.log");
   const args = claudeArgs(task, mcpConfig);
-  writeFileSync(join(outDir, "claude.args.json"), JSON.stringify({ argv: ["claude", ...args], cwd: project, HOME: fakeHome }, null, 2));
+  writeFileSync(join(outDir, "claude.args.json"), JSON.stringify({ argv: ["claude", ...args], cwd: project, HOME: driverHome, engineHome: fakeHome }, null, 2));
 
   const timeoutS = Number(process.env.MITL_AGENT_TIMEOUT_S ?? 1500);
   const env = {
     ...process.env,
-    HOME: fakeHome,
-    // The fake HOME has no login; the runner passes CLAUDE_CODE_OAUTH_TOKEN through when set.
+    // driverHome = where `claude` finds its login (MITL_DRIVER_HOME; default = the fake HOME, which has
+    // no login unless CLAUDE_CODE_OAUTH_TOKEN is set). The ENGINE always runs under the fake HOME.
+    HOME: driverHome,
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
     DISABLE_AUTOUPDATER: "1",
     DISABLE_TELEMETRY: "1",
@@ -629,7 +630,7 @@ switch (cmd) {
     smokeResult(rest[0], rest[1], rest[2]);
     break;
   case "agent":
-    await runAgent(rest[0], rest[1], rest[2], rest[3], rest[4]);
+    await runAgent(rest[0], rest[1], rest[2], rest[3], rest[4], rest[5]);
     break;
   case "checks":
     runChecks(rest[0], rest[1], rest[2], rest[3]);

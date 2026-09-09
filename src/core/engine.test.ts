@@ -1,11 +1,13 @@
-import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
-  discoverEngineConnection,
+  discoverRegistryConnection,
+  engineNotRunningError,
+  engineSelectionFromEnv,
   listEngineInstances,
   resolveEngineConnection,
   type EngineInstance,
@@ -212,60 +214,26 @@ describe("per-instance Summer editor discovery", () => {
 // selection used to read only the global api-token/api-port pointer, so an
 // editor launched --summer-no-publish (registry entry, no pointer) read as
 // "not running" on every call (docs/design/TK-VS-FOLD-2026-09-07.md, gap 3).
-describe("no-selection discovery (CLI face): pointer first, then the instance registry", () => {
+// connect() still reads the pointer first (api-client.test.ts covers that);
+// this is the registry half it falls back to.
+describe("registry fallback for no-selection discovery (CLI face)", () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  async function writePointer(port: number, token: string): Promise<void> {
-    await writeFile(join(testRoot!, ".summer", "api-port"), `${port}\n`);
-    await writeFile(join(testRoot!, ".summer", "api-token"), `${token}\n`);
-  }
-
-  it("uses the global pointer when it names a live engine, even with registry entries present", async () => {
-    const root = await setupRoot();
-    const projectA = await createProject("game-a");
-    const projectB = await createProject("game-b");
-    const a = await registerInstance(projectA, { port: 6551 });
-    const b = await registerInstance(projectB, { port: 6552 });
-    await writePointer(6550, "pointer-token");
-    const pointerEngine: EngineInstance = { ...a, instanceId: "pointer-editor", port: 6550, token: "pointer-token" };
-    mockHealth([pointerEngine, a, b]);
-
-    const connection = await discoverEngineConnection({ ...discoveryOptions(), cwd: root, env: {} });
-
-    expect(connection.source).toBe("legacy");
-    expect(connection.port).toBe(6550);
-    expect(connection.token).toBe("pointer-token");
-    expect(connection.health.instanceId).toBe("pointer-editor");
-  });
-
-  it("falls back to the registry when there is no pointer and exactly one editor is live", async () => {
+  it("returns the one live editor when exactly one is registered", async () => {
     const root = await setupRoot();
     const project = await createProject("unpublished-game");
     const only = await registerInstance(project, { port: 6553 });
     mockHealth([only]);
 
-    const connection = await discoverEngineConnection({ ...discoveryOptions(), cwd: root, env: {} });
+    const connection = await discoverRegistryConnection({ ...discoveryOptions(), cwd: root });
 
-    expect(connection.source).toBe("registry");
-    expect(connection.instance?.instanceId).toBe(only.instanceId);
-    expect(connection.port).toBe(6553);
-    expect(connection.token).toBe(only.token);
+    expect(connection?.source).toBe("registry");
+    expect(connection?.instance?.instanceId).toBe(only.instanceId);
+    expect(connection?.port).toBe(6553);
+    expect(connection?.token).toBe(only.token);
   });
 
-  it("falls back to the registry when the pointer is stale (engine gone) and one editor is live", async () => {
-    const root = await setupRoot();
-    const project = await createProject("second-game");
-    const live = await registerInstance(project, { port: 6553 });
-    await writePointer(6550, "dead-token");
-    mockHealth([live]); // nothing answers on 6550
-
-    const connection = await discoverEngineConnection({ ...discoveryOptions(), cwd: root, env: {} });
-
-    expect(connection.source).toBe("registry");
-    expect(connection.instance?.instanceId).toBe(live.instanceId);
-  });
-
-  it("with several live editors and no pointer, prefers the one whose project encloses cwd", async () => {
+  it("with several live editors, prefers the one whose project encloses cwd", async () => {
     await setupRoot();
     const projectA = await createProject("game-a");
     const projectB = await createProject("game-b");
@@ -273,15 +241,13 @@ describe("no-selection discovery (CLI face): pointer first, then the instance re
     const b = await registerInstance(projectB, { port: 6552 });
     mockHealth([a, b]);
 
-    const connection = await discoverEngineConnection({
+    const connection = await discoverRegistryConnection({
       ...discoveryOptions(),
       cwd: join(projectB, "scripts"),
-      env: {},
     });
 
-    expect(connection.source).toBe("registry");
-    expect(connection.instance?.instanceId).toBe(b.instanceId);
-    expect(connection.port).toBe(6552);
+    expect(connection?.instance?.instanceId).toBe(b.instanceId);
+    expect(connection?.port).toBe(6552);
   });
 
   it("with several live editors and no match for cwd, fails naming every live editor and how to pick one", async () => {
@@ -292,7 +258,7 @@ describe("no-selection discovery (CLI face): pointer first, then the instance re
     const b = await registerInstance(projectB, { port: 6552 });
     mockHealth([a, b]);
 
-    const attempt = discoverEngineConnection({ ...discoveryOptions(), cwd: root, env: {} });
+    const attempt = discoverRegistryConnection({ ...discoveryOptions(), cwd: root });
 
     await expect(attempt).rejects.toThrow(/Multiple Summer editors are running/);
     const message = await attempt.catch((error: Error) => error.message);
@@ -312,38 +278,29 @@ describe("no-selection discovery (CLI face): pointer first, then the instance re
     await registerInstance(projectB, { port: 6552 }); // pid alive, heartbeat fresh, socket gone
     mockHealth([a]);
 
-    const connection = await discoverEngineConnection({ ...discoveryOptions(), cwd: root, env: {} });
+    const connection = await discoverRegistryConnection({ ...discoveryOptions(), cwd: root });
 
-    expect(connection.instance?.instanceId).toBe(a.instanceId);
+    expect(connection?.instance?.instanceId).toBe(a.instanceId);
   });
 
-  it("reports not running, still mentioning the api-token, when neither pointer nor registry has a live editor", async () => {
+  it("returns null when no registered editor is live, and the not-running error still says no api-token", async () => {
     const root = await setupRoot();
     const project = await createProject("closed-game");
     await registerInstance(project, { port: 6551 });
     mockHealth([]);
 
-    await expect(
-      discoverEngineConnection({ ...discoveryOptions(), cwd: root, env: {} })
-    ).rejects.toThrow(/not running \(no api-token found/);
+    await expect(discoverRegistryConnection({ ...discoveryOptions(), cwd: root })).resolves.toBeNull();
+    expect(engineNotRunningError({ port: 6550, token: null }, discoveryOptions().summerDir).message).toMatch(
+      /not running \(no api-token found/
+    );
+    expect(engineNotRunningError({ port: 6550, token: "stale" }, discoveryOptions().summerDir).message).toMatch(
+      /not responding on port 6550 \(stale api-token pointer\)/
+    );
   });
 
-  it("SUMMER_ENGINE_PROJECT pins the editor the way `summer mcp --project` does", async () => {
-    const root = await setupRoot();
-    const projectA = await createProject("game-a");
-    const projectB = await createProject("game-b");
-    const a = await registerInstance(projectA, { port: 6551 });
-    const b = await registerInstance(projectB, { port: 6552 });
-    mockHealth([a, b]);
-
-    const connection = await discoverEngineConnection({
-      ...discoveryOptions(),
-      cwd: root,
-      env: { SUMMER_ENGINE_PROJECT: projectA },
-    });
-
-    expect(connection.instance?.instanceId).toBe(a.instanceId);
-    expect(connection.source).toBe("registry");
-    expect(connection.selection?.projectPath).toBe(await realpath(projectA));
+  it("engineSelectionFromEnv reads the same two names the MCP server does", () => {
+    expect(engineSelectionFromEnv({})).toBeNull();
+    expect(engineSelectionFromEnv({ SUMMER_ENGINE_PROJECT: " /p " })).toEqual({ instanceId: undefined, projectPath: "/p" });
+    expect(engineSelectionFromEnv({ SUMMER_ENGINE_INSTANCE_ID: "abc" })).toEqual({ instanceId: "abc", projectPath: undefined });
   });
 });

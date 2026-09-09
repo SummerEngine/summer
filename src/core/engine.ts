@@ -369,46 +369,28 @@ export async function resolveEngineConnection(
 }
 
 /**
- * Discovery for callers with NO selection — the CLI face (`summer tool`,
- * `summer open`, debug reports). Order:
+ * The registry half of no-selection discovery (the CLI face; see
+ * EngineApiClient.connect, which reads the global pointer first). Editors
+ * launched `--summer-no-publish`, or a second editor that never owned the
+ * pointer, exist only here. "Live" = pid alive + heartbeat fresh
+ * (listEngineInstances) + /api/health answers with the registered instanceId.
  *
- *   1. The global pointer (~/.summer/api-token + api-port), when it names an
- *      engine that answers /api/health. Today's behaviour, unchanged.
- *   2. The instance registry (~/.summer/instances/*.json) when the pointer is
- *      absent or dead — an editor launched `--summer-no-publish`, or a second
- *      editor that never owned the pointer. "Live" = pid alive + heartbeat
- *      fresh (listEngineInstances) + /api/health answers with the registered
- *      instanceId. Exactly one live editor is used as-is; several are broken
- *      by the project enclosing `cwd`; otherwise the caller is told which
- *      editors are live and how to pick one.
+ *   exactly one live editor  -> that connection
+ *   several                  -> the one whose project encloses `cwd`, else an
+ *                               error listing them and how to pick one
+ *   none                     -> null (the caller words the "not running" error,
+ *                               since only it knows whether a pointer existed)
  *
- * SUMMER_ENGINE_PROJECT / SUMMER_ENGINE_INSTANCE_ID, when set, turn this into
- * the explicit resolveEngineConnection path instead (same names the MCP server
- * reads), so the CLI and MCP faces pin an editor the same way.
+ * Reads only `summerDir` (default ~/.summer); never the pointer files.
  */
-export async function discoverEngineConnection(
+export async function discoverRegistryConnection(
   options: DiscoverEngineOptions = {}
-): Promise<EngineConnection> {
+): Promise<EngineConnection | null> {
   const summerDir = options.summerDir ?? getSummerDir();
-  const nowMs = options.nowMs ?? Date.now();
-
-  const envSelection = engineSelectionFromEnv(options.env ?? process.env);
-  if (envSelection) {
-    return resolveEngineConnection(envSelection, { summerDir, nowMs });
-  }
-
-  const [port, token] = await Promise.all([
-    getApiPort(summerDir),
-    getApiToken(summerDir),
-  ]);
-  if (token) {
-    const health = await checkEngineHealth(port);
-    if (health) {
-      return { port, token, health, selection: null, source: "legacy" };
-    }
-  }
-
-  const registered = await listEngineInstances(nowMs, summerDir);
+  const registered = await listEngineInstances(
+    options.nowMs ?? Date.now(),
+    summerDir
+  );
   const live: EngineConnection[] = [];
   for (const instance of registered) {
     try {
@@ -418,34 +400,42 @@ export async function discoverEngineConnection(
     }
   }
 
+  if (live.length === 0) return null;
   if (live.length === 1) return live[0];
 
-  if (live.length > 1) {
-    const projectRoot = await findProjectRoot(options.cwd ?? process.cwd());
-    if (projectRoot) {
-      const canonicalRoot = await canonicalPath(projectRoot);
-      const matching = live.filter(
-        (connection) => connection.instance?.resourceRoot === canonicalRoot
-      );
-      if (matching.length === 1) return matching[0];
-    }
-    const instances = live.map((connection) => connection.instance!);
-    throw new Error(
-      "Multiple Summer editors are running and none of them has the project for the current directory open. " +
-        "Run this from inside the project directory, or pick one: " +
-        `set ${ENGINE_PROJECT_ENV}=<project path> (or ${ENGINE_INSTANCE_ENV}=<id>); ` +
-        "for the MCP server pass `summer mcp --project <path>` (or `--instance <id>`).\n" +
-        formatInstances(instances)
+  const projectRoot = await findProjectRoot(options.cwd ?? process.cwd());
+  if (projectRoot) {
+    const canonicalRoot = await canonicalPath(projectRoot);
+    const matching = live.filter(
+      (connection) => connection.instance?.resourceRoot === canonicalRoot
     );
+    if (matching.length === 1) return matching[0];
   }
-
-  if (token) {
-    throw new Error(
-      `Summer Engine is not responding on port ${port} (stale api-token pointer) and no live editor is registered in ${join(summerDir, "instances")}. Make sure it's open.`
-    );
-  }
+  const instances = live.map((connection) => connection.instance!);
   throw new Error(
-    `Summer Engine is not running (no api-token found, no live editor registered in ${join(summerDir, "instances")}). Open Summer Engine first.`
+    "Multiple Summer editors are running and none of them has the project for the current directory open. " +
+      "Run this from inside the project directory, or pick one: " +
+      `set ${ENGINE_PROJECT_ENV}=<project path> (or ${ENGINE_INSTANCE_ENV}=<id>); ` +
+      "for the MCP server pass `summer mcp --project <path>` (or `--instance <id>`).\n" +
+      formatInstances(instances)
+  );
+}
+
+/** The no-selection "nothing reachable" error, worded by whether a pointer
+ *  existed. Kept here so the CLI face and its tests share one text; the
+ *  "no api-token found" phrase is what headless/resolve.ts keys on. */
+export function engineNotRunningError(
+  pointer: { port: number; token: string | null },
+  summerDir = getSummerDir()
+): Error {
+  const instancesDir = join(summerDir, "instances");
+  if (pointer.token) {
+    return new Error(
+      `Summer Engine is not responding on port ${pointer.port} (stale api-token pointer) and no live editor is registered in ${instancesDir}. Make sure it's open.`
+    );
+  }
+  return new Error(
+    `Summer Engine is not running (no api-token found, no live editor registered in ${instancesDir}). Open Summer Engine first.`
   );
 }
 

@@ -4,7 +4,11 @@ import { join } from "path";
 import { randomUUID } from "node:crypto";
 import {
   checkEngineHealth,
-  discoverEngineConnection,
+  discoverRegistryConnection,
+  engineNotRunningError,
+  engineSelectionFromEnv,
+  getApiPort,
+  getApiToken,
   resolveEngineConnection,
   type DiscoverEngineOptions,
   type EngineHealth,
@@ -209,9 +213,10 @@ export class EngineApiClient {
   // supplied a projectIdHash.
   private targetIdentity: EngineTargetIdentity;
   private selection: EngineSelection | null;
-  // Discovery options the no-selection connect used (fake ~/.summer, cwd, env
-  // in tests); credentialsChanged re-runs the same discovery with them.
-  private discovery: DiscoverEngineOptions | null = null;
+  // Set only when the no-selection connect found its editor through the
+  // instance registry (no live pointer): credentialsChanged then re-runs the
+  // registry lookup with the same options instead of reading the pointer.
+  private registryDiscovery: DiscoverEngineOptions | null = null;
   // The most recent /api/health seen at connect/rebind. Carries the engine's
   // capability advert (opKinds, singleOnlyOps) so tools can fail closed on a
   // provably missing op without a second health round trip per call.
@@ -234,18 +239,27 @@ export class EngineApiClient {
 
   /**
    * With a selection (the MCP server: --project / --instance / its cwd) the
-   * registry decides — resolveEngineConnection. Without one (the CLI face)
-   * discovery is the global pointer first, then the instance registry, so an
-   * editor launched `--summer-no-publish` or a second editor is still found;
-   * see discoverEngineConnection. `discovery` is a test seam (fake ~/.summer,
-   * cwd, env).
+   * registry decides — resolveEngineConnection. Without one (the CLI face):
+   * SUMMER_ENGINE_PROJECT / SUMMER_ENGINE_INSTANCE_ID when set (same names the
+   * MCP server reads), else the global pointer (~/.summer/api-token + api-port)
+   * when it names an engine that answers /api/health — today's behaviour,
+   * unchanged — else the instance registry (discoverRegistryConnection), so an
+   * editor launched `--summer-no-publish` or a second editor is still found.
+   * The pointer is read through getApiPort/getApiToken/checkEngineHealth so
+   * tests that stub those readers never touch the real ~/.summer. `discovery`
+   * is a test seam (fake ~/.summer, cwd, env).
    */
   static async connect(
     selection?: EngineSelection,
     discovery: DiscoverEngineOptions = {}
   ): Promise<EngineApiClient> {
-    if (selection) {
-      const connection = await resolveEngineConnection(selection);
+    const envSelection = selection ? null : engineSelectionFromEnv(discovery.env);
+    const effective = selection ?? envSelection;
+    if (effective) {
+      const connection = await resolveEngineConnection(effective, {
+        summerDir: discovery.summerDir,
+        nowMs: discovery.nowMs,
+      });
       const client = new EngineApiClient(
         connection.port,
         connection.token,
@@ -254,26 +268,41 @@ export class EngineApiClient {
           projectId: connection.health.projectId,
           projectIdHash: connection.health.projectIdHash,
         },
-        { ...selection }
+        { ...effective }
       );
       client.lastHealth = connection.health;
       return client;
     }
-
-    const connection = await discoverEngineConnection(discovery);
 
     // Bind to whatever project is open right now. On a genuine engine restart the
     // token rotates and getClient() rebuilds this client, so a restart naturally
     // rebinds to the current project. An in-place project switch keeps the same
     // token, so the cached client retains its original binding and the engine
     // rejects mismatched mutations until the agent explicitly rebinds.
+    const port = await getApiPort(discovery.summerDir);
+    const token = await getApiToken(discovery.summerDir);
+    if (token) {
+      const health = await checkEngineHealth(port);
+      if (health) {
+        const client = new EngineApiClient(port, token, {
+          instanceId: health.instanceId,
+          projectId: health.projectId,
+          projectIdHash: health.projectIdHash,
+        });
+        client.lastHealth = health;
+        return client;
+      }
+    }
+
+    const connection = await discoverRegistryConnection(discovery);
+    if (!connection) throw engineNotRunningError({ port, token }, discovery.summerDir);
     const client = new EngineApiClient(connection.port, connection.token, {
       instanceId: connection.health.instanceId,
       projectId: connection.health.projectId,
       projectIdHash: connection.health.projectIdHash,
     });
     client.lastHealth = connection.health;
-    client.discovery = { ...discovery };
+    client.registryDiscovery = { ...discovery };
     return client;
   }
 
@@ -997,11 +1026,27 @@ export class EngineApiClient {
       }
     }
 
+    if (this.registryDiscovery) {
+      // Found through the registry (no pointer): ask the registry again. An
+      // editor that vanished or became ambiguous is real drift, like the
+      // selected-editor case above.
+      try {
+        const connection = await discoverRegistryConnection(this.registryDiscovery);
+        if (!connection) return true;
+        return (
+          connection.port !== this.port ||
+          connection.token !== this.token ||
+          connection.health.instanceId !== this.targetIdentity.instanceId
+        );
+      } catch {
+        return true;
+      }
+    }
+
     try {
-      // Same pointer-then-registry discovery connect used, so a client found
-      // through the registry (no pointer) notices its editor's restart too.
-      const connection = await discoverEngineConnection(this.discovery ?? {});
-      return connection.port !== this.port || connection.token !== this.token;
+      const [port, token] = await Promise.all([getApiPort(), getApiToken()]);
+      if (!token) return false;
+      return port !== this.port || token !== this.token;
     } catch {
       return false;
     }

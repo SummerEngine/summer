@@ -19,6 +19,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const state = { port: 6550, token: "tokenA" };
 
 vi.mock("../core/engine.js", () => ({
+  // Pointer-only engine: no env selection, and the registry fallback is
+  // never reached while the pointer names a live engine.
+  engineSelectionFromEnv: vi.fn(() => null),
+  discoverRegistryConnection: vi.fn(async () => null),
+  engineNotRunningError: vi.fn(() => new Error("not running")),
   getApiPort: vi.fn(async () => state.port),
   getApiToken: vi.fn(async () => state.token),
   checkEngineHealth: vi.fn(async () => ({

@@ -923,4 +923,50 @@ describe("EngineApiClient.connect() without a selection (CLI face)", () => {
     expect(await client.credentialsChanged()).toBe(false);
     rmSync(summerDir, { recursive: true, force: true });
   });
+
+  it("SUMMER_ENGINE_PROJECT pins the editor the way `summer mcp --project` does, over a live pointer", async () => {
+    const summerDir = fakeSummerDir();
+    const project = join(summerDir, "game-b");
+    mkdirSync(project, { recursive: true });
+    writeFileSync(join(project, "project.godot"), "");
+    writeFileSync(join(summerDir, "api-port"), "6550\n");
+    writeFileSync(join(summerDir, "api-token"), "pointer-token\n");
+    writeFileSync(
+      join(summerDir, "instances", "b.json"),
+      JSON.stringify({
+        schemaVersion: 1, instanceId: "editor-b", pid: process.pid, port: 6562, token: "b-token",
+        resourceRoot: project, heartbeatAt: Math.floor(Date.now() / 1000),
+      })
+    );
+    mockFetch((url) =>
+      url.includes(":6550/api/health") ? health("pointer", 6550) : health("editor-b", 6562)
+    );
+
+    const client = await EngineApiClient.connect(undefined, {
+      summerDir,
+      cwd: summerDir,
+      env: { SUMMER_ENGINE_PROJECT: project },
+    });
+
+    expect(client.getBoundProjectIdHash()).toBe("hash-editor-b");
+    expect(client.getPort()).toBe(6562);
+    rmSync(summerDir, { recursive: true, force: true });
+  });
+
+  it("a registry-found client notices its editor restarting (new token in the registry)", async () => {
+    const summerDir = fakeSummerDir();
+    const entry = {
+      schemaVersion: 1, instanceId: "unpublished", pid: process.pid, port: 6561, token: "registry-token",
+      resourceRoot: summerDir, heartbeatAt: Math.floor(Date.now() / 1000),
+    };
+    writeFileSync(join(summerDir, "instances", "unpublished.json"), JSON.stringify(entry));
+    mockFetch((url) => (url.includes(":6561/api/health") ? health("unpublished", 6561) : new Response("", { status: 404 })));
+
+    const client = await EngineApiClient.connect(undefined, { summerDir, cwd: summerDir, env: {} });
+    expect(await client.credentialsChanged()).toBe(false);
+
+    writeFileSync(join(summerDir, "instances", "unpublished.json"), JSON.stringify({ ...entry, token: "rotated" }));
+    expect(await client.credentialsChanged()).toBe(true);
+    rmSync(summerDir, { recursive: true, force: true });
+  });
 });

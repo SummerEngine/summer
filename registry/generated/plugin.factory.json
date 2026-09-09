@@ -2,7 +2,7 @@
   "_generated": "GENERATED from integrations/factory — do not edit; npm run generate:registry",
   "name": "summer",
   "description": "Agent tooling for Summer Engine: game-dev skills, lifecycle hooks, and a 86-tool MCP bridge to the local desktop app.",
-  "version": "2.8.2",
+  "version": "3.0.0",
   "author": {
     "name": "Summer Engine",
     "email": "founders@summerengine.com",

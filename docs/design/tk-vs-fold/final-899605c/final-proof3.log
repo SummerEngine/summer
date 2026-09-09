@@ -1,0 +1,11 @@
+### 05:44:37 tip 899605c3110
+### 05:44:37 harness A
+A exit 0 05:46:14: 1115 PASS / 0 FAIL / 4 SKIP
+### 05:46:19 harness B
+B exit 0 05:48:59: 1175 PASS / 0 FAIL / 1 SKIP
+### 05:49:04 toolkit drive
+  engine=0.5.66 opKinds=125 runtimeControl.ops=16 launchPostures=['focus', 'background', 'offscreen']
+  capabilitySkewWarning=None
+  >>> PLACED CODE RAN IN GAME: YES ticks=264 failure_reason=None snippet={
+engines left: 1 ; REAL ~/.summer touched: 7 ; session adopted/planted: 0 ; engine ERRORs: 4
+### DONE 05:49:20 my editors left 0; real ~/.summer touched: 0

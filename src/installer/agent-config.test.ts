@@ -6,6 +6,7 @@ import {
   GEMINI_EXTENSION_DIR_NAME,
   configureAgentMcp,
   createSummerMcpServerConfig,
+  normalizeChannel,
   parseAgent,
   resolvePackageRoot,
 } from "./agent-config.js";
@@ -67,6 +68,20 @@ describe("createSummerMcpServerConfig", () => {
 
   it("keeps node (a real executable) for localDev on every platform", () => {
     expect(createSummerMcpServerConfig(true, "win32").command).toBe("node");
+  });
+
+  it("--channel next writes summer-engine@next on every platform", () => {
+    expect(createSummerMcpServerConfig(false, "darwin", "next").args).toEqual(["-y", "summer-engine@next", "mcp"]);
+    expect(createSummerMcpServerConfig(false, "win32", "next").args).toEqual(["/c", "npx", "-y", "summer-engine@next", "mcp"]);
+  });
+
+  it("blank channel means latest; versions, paths and shouting are refused", () => {
+    expect(normalizeChannel(undefined)).toBe("latest");
+    expect(normalizeChannel("  ")).toBe("latest");
+    expect(normalizeChannel("beta")).toBe("beta");
+    for (const bad of ["3.0.0", "v3", "Next", "../x", "next mcp", "@next"]) {
+      expect(() => normalizeChannel(bad)).toThrow(/Invalid channel/);
+    }
   });
 });
 

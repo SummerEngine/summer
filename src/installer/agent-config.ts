@@ -37,6 +37,9 @@ export interface AgentConfigOptions {
   dryRun?: boolean;
   print?: boolean;
   localDev?: boolean;
+  /** npm dist-tag the generated MCP entry runs (`npx -y summer-engine@<channel> mcp`).
+   *  Default "latest"; "next" while a release soaks on the next tag. Ignored with localDev. */
+  channel?: string;
   cwd?: string;
   env?: NodeJS.ProcessEnv;
 }
@@ -54,6 +57,8 @@ export interface AgentConfigResult {
   dryRun: boolean;
   print: boolean;
   localDev: boolean;
+  /** The dist-tag the written entry runs ("latest" unless --channel / SUMMER_CHANNEL). */
+  channel: string;
   warnings: string[];
   nextSteps: string[];
 }
@@ -138,7 +143,8 @@ export async function configureAgentMcp(
 ): Promise<AgentConfigResult> {
   const env = options.env ?? process.env;
   const cwd = resolve(options.cwd ?? process.cwd());
-  const server = createSummerMcpServerConfig(Boolean(options.localDev));
+  const channel = normalizeChannel(options.channel);
+  const server = createSummerMcpServerConfig(Boolean(options.localDev), process.platform, channel);
   const target = resolveConfigTarget(options.agent, options.scope, cwd, env);
   const snippet = renderConfigSnippet(options.agent, server);
   const dryRun = Boolean(options.dryRun);
@@ -172,15 +178,34 @@ export async function configureAgentMcp(
     dryRun,
     print,
     localDev: Boolean(options.localDev),
+    channel,
     warnings: target.warnings,
     nextSteps: createNextSteps(options.agent, options.scope, target.path),
   };
 }
 
+export const DEFAULT_CHANNEL = "latest";
+
+/** npm dist-tags are lowercase words like `latest`, `next`, `beta`, `v3-preview`;
+ *  anything that could be read as a version or a path is refused (a bare
+ *  version belongs in a version bump, not a channel). */
+export function normalizeChannel(channel: string | undefined): string {
+  const value = (channel ?? "").trim();
+  if (value === "") return DEFAULT_CHANNEL;
+  if (!/^[a-z][a-z0-9-]*$/.test(value) || /^v?\d/.test(value)) {
+    throw new Error(
+      `Invalid channel "${channel}": use an npm dist-tag such as latest or next (lowercase letters, digits, hyphens).`
+    );
+  }
+  return value;
+}
+
 export function createSummerMcpServerConfig(
   localDev: boolean,
-  platform: NodeJS.Platform = process.platform
+  platform: NodeJS.Platform = process.platform,
+  channel: string = DEFAULT_CHANNEL
 ): StdioMcpServerConfig {
+  const spec = `summer-engine@${normalizeChannel(channel)}`;
   if (localDev) {
     // node is a real executable on every platform; spawn("node") resolves fine.
     return {
@@ -196,13 +221,13 @@ export function createSummerMcpServerConfig(
   if (platform === "win32") {
     return {
       command: "cmd.exe",
-      args: ["/c", "npx", "-y", "summer-engine@latest", "mcp"],
+      args: ["/c", "npx", "-y", spec, "mcp"],
     };
   }
 
   return {
     command: "npx",
-    args: ["-y", "summer-engine@latest", "mcp"],
+    args: ["-y", spec, "mcp"],
   };
 }
 

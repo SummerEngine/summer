@@ -33,6 +33,7 @@ interface SetupCommandOptions {
   dryRun?: boolean;
   print?: boolean;
   localDev?: boolean;
+  channel?: string;
   yes?: boolean;
   json?: boolean;
   force?: boolean;
@@ -52,6 +53,10 @@ export const setupCommand = new Command("setup")
   .option(
     "--local-dev",
     "Point the agent at this checkout's built CLI (node <repo>/dist/bin/summer.js mcp) instead of npx summer-engine@latest — for testing unpublished builds. SUMMER_DEV=1 does the same."
+  )
+  .option(
+    "--channel <dist-tag>",
+    "npm dist-tag the agent's MCP entry runs: npx -y summer-engine@<dist-tag> mcp (default latest; use next while a release soaks on the next tag). SUMMER_CHANNEL does the same."
   )
   .option("--yes", "Apply practical setup steps without prompting")
   .option("--json", "Print setup result as JSON")
@@ -79,6 +84,7 @@ export const setupCommand = new Command("setup")
       dryRun: opts.dryRun,
       print: opts.print,
       localDev: Boolean(opts.localDev) || process.env.SUMMER_DEV === "1",
+      channel: opts.channel ?? process.env.SUMMER_CHANNEL,
     });
 
     const skills = setupSkills(agent, {
@@ -140,6 +146,10 @@ function printSetupResult(
   if (config.localDev) {
     console.log(
       `  ${c.dim("(local dev)")}  MCP server command: ${c.dim(`${config.server.command} ${config.server.args.join(" ")}`)}`
+    );
+  } else if (config.channel !== "latest") {
+    console.log(
+      `  ${c.dim(`(channel ${config.channel})`)}  MCP server command: ${c.dim(`${config.server.command} ${config.server.args.join(" ")}`)}`
     );
   }
 

@@ -9,12 +9,16 @@ vi.mock("../server.js", () => ({
   resetClient: vi.fn(),
 }));
 
-vi.mock("../../lib/telemetry.js", () => ({
+vi.mock("../../core/telemetry.js", () => ({
   recordMcpSession: vi.fn(),
 }));
 
 import { getClient } from "../server.js";
-import { registerProjectTools } from "./project-tools.js";
+import {
+  buildAgentPlaybook,
+  registerPlaybookPrompt,
+  registerProjectTools,
+} from "./project-tools.js";
 
 type RegisteredTool = {
   name: string;
@@ -336,5 +340,120 @@ priority: locked
 
     expect(JSON.stringify(body)).toContain("projectMemory");
     expect(JSON.stringify(body)).toContain("priority: locked");
+  });
+
+  it("structures the playbook on the observe-first / routing / invariants skeleton", () => {
+    const playbook = buildAgentPlaybook();
+    const text = JSON.stringify(playbook);
+
+    // Observe-first step 0 + before/after screenshots.
+    expect(playbook.step0_observeFirst).toBeDefined();
+    expect(JSON.stringify(playbook.step0_observeFirst)).toContain("summer_world_snapshot");
+    expect(JSON.stringify(playbook.visualVerification)).toContain("BEFORE");
+    expect(JSON.stringify(playbook.visualVerification)).toContain("AFTER");
+
+    // Priority-ordered content routing with scripting as the explicit last resort.
+    const routing = playbook.contentRouting as Record<string, unknown>;
+    expect(routing.priorityOrder).toEqual([
+      "1_reuseProjectAssets",
+      "2_assetLibraryImport",
+      "3_generation",
+      "4_scripting_LAST_RESORT",
+    ]);
+    // Per-route anti-patterns.
+    expect(text).toContain("Never generate the whole scene in one script");
+    expect(text).toContain("Never generate the whole scene in one shot");
+    expect(text).toContain("Don't hand-model organic shapes");
+
+    // Physical invariants, cost rules, closing ritual, trajectory feedback.
+    expect(JSON.stringify(playbook.physicalInvariants)).toContain("AABB");
+    expect(JSON.stringify(playbook.costRules)).toContain("Duplicate is cheaper than regenerate");
+    expect(JSON.stringify(playbook.verificationRitual)).toContain("summer_snapshot_diff");
+    expect(JSON.stringify(playbook.libraryFeedback)).toContain("summer_library_feedback");
+    expect(text).not.toContain("summer_record_feedback");
+
+    // The kept sections survived the restructure.
+    for (const kept of ["honestyRules", "projectBinding", "recovery", "verificationLadder", "rawOpsViaBatch", "scripting", "safeDefaults"]) {
+      expect(playbook[kept], kept).toBeDefined();
+    }
+    expect(text).toContain("target_size");
+  });
+
+  it("registers the playbook as an MCP prompt with the same content", async () => {
+    const prompts: Array<{
+      name: string;
+      config: { title?: string; description?: string };
+      handler: () => Promise<{ messages: Array<{ role: string; content: { type: string; text: string } }> }>;
+    }> = [];
+    registerPlaybookPrompt({
+      registerPrompt(name: string, config: never, handler: never) {
+        prompts.push({ name, config, handler });
+        return { name };
+      },
+    } as never);
+
+    expect(prompts).toHaveLength(1);
+    expect(prompts[0]!.name).toBe("summer_agent_playbook");
+    expect(prompts[0]!.config.description).toContain("observe-first");
+
+    const result = await prompts[0]!.handler();
+    expect(result.messages).toHaveLength(1);
+    expect(result.messages[0]!.content.type).toBe("text");
+    expect(result.messages[0]!.content.text).toContain("step0_observeFirst");
+    expect(result.messages[0]!.content.text).toContain("4_scripting_LAST_RESORT");
+  });
+
+  it("surfaces a one-line capability skew warning in project context when the engine advertises fewer ops", async () => {
+    vi.mocked(getClient).mockResolvedValue({
+      health: vi.fn(async () => ({
+        ok: true,
+        capabilities: { protocolVersion: 1, opKinds: ["AddNode", "SetProp"] },
+      })),
+      getProjectState: vi.fn(async () => ({ ok: true, data: { entries: [] } })),
+      getSceneState: vi.fn(async () => ({ ok: true, data: {} })),
+      rebind: vi.fn(async () => "test-project-hash"),
+    } as never);
+
+    const { server, tools } = createFakeServer();
+    registerProjectTools(server as never);
+    const contextTool = getTool(tools, "summer_get_project_context");
+    const body = parseToolResult(await contextTool.handler({}));
+
+    expect(body.capabilitySkewWarning).toBeDefined();
+    expect(String(body.capabilitySkewWarning)).toContain("GetWorldSnapshot");
+    expect(String(body.capabilitySkewWarning)).toContain("Non-fatal");
+  });
+
+  it("stays silent about capabilities on engines that do not advertise them", async () => {
+    vi.mocked(getClient).mockResolvedValue({
+      health: vi.fn(async () => ({ ok: true })),
+      getProjectState: vi.fn(async () => ({ ok: true, data: { entries: [] } })),
+      getSceneState: vi.fn(async () => ({ ok: true, data: {} })),
+      rebind: vi.fn(async () => "test-project-hash"),
+    } as never);
+
+    const { server, tools } = createFakeServer();
+    registerProjectTools(server as never);
+    const contextTool = getTool(tools, "summer_get_project_context");
+    const body = parseToolResult(await contextTool.handler({}));
+
+    expect(body.capabilitySkewWarning).toBeUndefined();
+  });
+});
+
+describe("playbook step 0 survives engines without the perception ops", () => {
+  it("makes summer_world_snapshot conditional on the GetWorldSnapshot advert and names the fallback", () => {
+    const step0 = JSON.stringify(buildAgentPlaybook().step0_observeFirst);
+    expect(step0).toContain("GetWorldSnapshot");
+    expect(step0).toContain("summer_get_scene_tree");
+    expect(step0).toContain("engine_lacks_op");
+    // Not an unconditional "call it before and after every batch".
+    expect(step0).not.toMatch(/Then call summer_world_snapshot/);
+  });
+
+  it("names only real summer_search_assets sources (library | my_assets | all)", () => {
+    const text = JSON.stringify(buildAgentPlaybook());
+    expect(text).not.toContain("community");
+    expect(text).toContain("library | my_assets | all");
   });
 });

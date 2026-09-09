@@ -1,0 +1,73 @@
+id: tool/creator-publish
+kind: tool
+version: 1.0.2
+summary: Publish an exported Summer .pck through the versioned Summercraft creator API, with an explicit confirm step before upload.
+use_when:
+  - releasing a user-approved build to a Summercraft channel
+  - '"ship this exported build to the live channel"'
+  - '"release version 1.2.0 of my game"'
+do_not_use_when:
+  - the user has not approved the exact version, digest, and channel
+  - the game is not exported yet — export the .pck first (skill/export-and-ship)
+facets:
+  lifecycle:
+    - launch
+  domains:
+    - creator
+    - deployment
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_creator_publish
+implementation:
+  module: src/core/capabilities/creator.ts
+  export: publishCreator
+surfaces:
+  mcp:
+    tool_name: summer_creator_publish
+    remote: false
+  cli:
+    command: summer publish
+input_schema:
+  type: object
+  properties:
+    project:
+      type: string
+      description: Project root. Defaults to the current working directory.
+    artifact:
+      type: string
+      description: Exact path to the exported Summer .pck artifact.
+    version:
+      type: string
+      description: Immutable release version.
+    manifest:
+      type: string
+      description: Optional path to a JSON release manifest.
+    projectId:
+      type: string
+      description: Creator project ID. Defaults to ~/.summer/config.json.
+    channel:
+      type: string
+      description: Release channel. Defaults to the configured channel or production.
+    notes:
+      type: string
+      description: Release notes shown during confirmation and recorded in the local audit.
+    confirm:
+      type: boolean
+      default: false
+      description: Set true only after the user approves the exact release target.
+  required:
+    - artifact
+    - version
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: true
+evidence_checks:
+  - release-recorded

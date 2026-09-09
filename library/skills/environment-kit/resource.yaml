@@ -1,0 +1,29 @@
+id: skill/environment-kit
+kind: skill
+version: 1.0.3
+summary: Generate a modular environment kit — wall pieces, floor tiles, pillars, doors, arches, corners — snap-together meshes sharing one visual style.
+use_when:
+  - generating a modular environment kit of snap-together pieces that form a level — dungeon kit, modular walls, interior pieces
+  - building a dungeon, interior, or town kit from repeatable pieces that snap together in one style
+facets:
+  lifecycle:
+    - build
+  domains:
+    - 3d
+    - assets
+  modalities:
+    - 3d-models
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/organic-model
+    - skill/prop-model
+    - skill/asset-strategy
+source: official
+license: MIT
+status: stable
+recommended: false
+aliases:
+  - skills/3d-assets/environment-kit

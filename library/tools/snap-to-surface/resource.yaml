@@ -1,0 +1,90 @@
+id: tool/snap-to-surface
+kind: tool
+version: 1.0.0
+summary: Move one 3D subject along a world ray until it sits at the requested gap from the first surface (floor, ramp, shelf, table), then save the scene.
+use_when:
+  - seating a prop on a floor, ramp, table, or shelf instead of hand-tuning its Y position
+  - grounding an imported or instantiated model that floats or sinks into its support
+do_not_use_when:
+  - you only want to know whether a pose fits — summer_test_placement is read-only
+  - arranging several objects relative to each other — summer_align_distribute_3d
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - 3d
+    - world-building
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/test-placement
+    - tool/align-distribute-3d
+    - tool/world-snapshot
+    - tool/set-prop
+  skills:
+    - skill/world-building-3d
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_snap_to_surface
+implementation:
+  module: src/mcp/tools/spatial-tools.ts
+  export: registerSpatialTools
+surfaces:
+  mcp:
+    tool_name: summer_snap_to_surface
+    remote: false
+input_schema:
+  type: object
+  properties:
+    scenePath:
+      type: string
+      minLength: 1
+      maxLength: 512
+      description: Exact scene containing the subject, e.g. 'res://levels/market.tscn'.
+    subjectPath:
+      type: string
+      minLength: 1
+      maxLength: 256
+      description: Exact Node3D path relative to the scene root, e.g. './Props/Crate'.
+    direction:
+      type: array
+      items:
+        type: number
+      minItems: 3
+      maxItems: 3
+      default: [0, -1, 0]
+      description: Finite world-space cast direction [x,y,z] whose squared length exceeds 0.00001. Defaults downward.
+    maxDistance:
+      type: number
+      exclusiveMinimum: 0
+      maximum: 10000
+      default: 20
+      description: Maximum cast and overlap-recovery distance in scene units.
+    gap:
+      type: number
+      minimum: 0
+      maximum: 10000
+      default: 0
+      description: Requested separation from the support surface; must not exceed maxDistance.
+    alignUp:
+      type: boolean
+      default: false
+      description: Rotate the subject's current world up toward an exact physics contact normal before seating it.
+  required:
+    - scenePath
+    - subjectPath
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - scene-valid

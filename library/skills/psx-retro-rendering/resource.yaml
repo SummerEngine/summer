@@ -1,0 +1,36 @@
+id: skill/psx-retro-rendering
+kind: skill
+version: 0.1.1
+summary: "Hardware-informed PlayStation 1 rendering in Godot 4 — low-res output, RGB5 and exact dither, affine textures, vertex snapping, blend modes, fog; limits named."
+use_when:
+  - "make my game render like a PlayStation 1 game, with texture warping, vertex wobble, and dithering"
+  - "add a PSX retro shader to the 3D scene"
+  - "check an existing PS1-style shader against what the real hardware did"
+  - "my retro shader looks merely pixelated, not like a real PS1 game"
+do_not_use_when:
+  - "an ordinary low-resolution or pixel-art presentation that does not need PS1-specific rendering behavior"
+  - "defining the overall visual style, palette, or mood — use art-direction first"
+  - "intake from the gamedev-knowledge pipeline (source-cited, pipeline-validated, not yet exercised in-engine by the Summer team) — verify results in the engine as you would any technique"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - rendering
+    - 3d
+  modalities:
+    - shaders
+    - scenes
+    - project
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/art-direction
+    - skill/3d-lighting
+source: official
+license: MIT
+status: preview
+recommended: false
+lint_exceptions:
+  - url-allowlist
+lint_exception_reason: "Source citation for knowledge extracted by the gamedev-knowledge pipeline: the body links the MIT-licensed godot-psxlike reference addon on GitHub (wyvernbw) that the extracted article names as its implementation evidence. Read-only provenance link; the skill never fetches or installs it."

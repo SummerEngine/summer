@@ -1,34 +1,65 @@
-import { createRequire } from "node:module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { EngineApiClient } from "../lib/api-client.js";
-import type { EngineSelection } from "../lib/engine.js";
+import { EngineApiClient } from "../core/api-client.js";
+import type { EngineSelection } from "../core/engine.js";
 import { registerSceneTools } from "./tools/scene-tools.js";
 import { registerDebugTools } from "./tools/debug-tools.js";
 import { registerVisualTools } from "./tools/visual-tools.js";
 import { WITH_ENGINE_META, type WithEngineMeta } from "./tools/with-engine.js";
-import { registerProjectTools } from "./tools/project-tools.js";
+import {
+  registerPlaybookPrompt,
+  registerProjectTools,
+} from "./tools/project-tools.js";
+import { registerPerceptionTools } from "./tools/perception-tools.js";
+import { registerSpatialTools } from "./tools/spatial-tools.js";
+import { registerScriptTools } from "./tools/script-tools.js";
+import { registerEventTools } from "./tools/event-tools.js";
+import { registerFabricateTools } from "./tools/fabricate-tools.js";
+import { registerUiTools } from "./tools/ui-tools.js";
+import { registerRuntimeTools } from "./tools/runtime-tools.js";
+import {
+  recordToolCall,
+  registrationHasInputSchema,
+  trajectoryArgsFor,
+} from "../core/trajectory.js";
 import { registerFileTools } from "./tools/file-tools.js";
 import { registerAssetTools } from "./tools/asset-tools.js";
 import { registerGenerateTools } from "./tools/generate-tools.js";
-import { registerCloudTools } from "./tools/cloud-tools.js";
 import { registerCreatorTools } from "./tools/creator-tools.js";
+import { registerFeedbackTools } from "./tools/feedback-tools.js";
+import { registerNavigationTools } from "./tools/navigation-tools.js";
+import { registerLibraryTools } from "./tools/library-tools.js";
 import {
   getCachedBootDriftNotice as getCachedNotice,
   setCachedBootDriftNotice,
-} from "../lib/mcp-boot-notice.js";
-import { appendMcpLogEvent } from "../lib/mcp-log.js";
+} from "./boot-notice.js";
+import { appendMcpLogEvent } from "../core/mcp-log.js";
 import {
   buildBootDriftNotice,
   fetchLatestRegistryVersion,
-} from "../lib/version-check.js";
+} from "../installer/version-check.js";
 
-const require = createRequire(import.meta.url);
-const { version } = require("../../package.json");
+import { TOOLKIT_VERSION as version } from "../core/version.js";
 
 let processDiagnosticsInstalled = false;
 
 export const getCachedBootDriftNotice = getCachedNotice;
+
+/**
+ * Server `instructions` in the MCP initialize response (SDK ServerOptions,
+ * @modelcontextprotocol/sdk >= 1.x). Hosts hand this to the model once per
+ * session, before any tool call — the place for the five habits the E2E run
+ * (docs/design/E2E-2026-09-03.md, F-17) showed an agent needs on the first
+ * turn and would otherwise learn the hard way. Kept under 600 characters so
+ * it costs a few hundred tokens once; the full operating guide stays in the
+ * summer_agent_playbook prompt / summer_get_agent_playbook tool.
+ */
+export const SUMMER_MCP_INSTRUCTIONS =
+  "Summer Engine MCP. Call summer_get_project_context first: it binds this session to the open project and returns mainScene, projectMemory (GameSoul, template pin) and any capabilitySkewWarning. " +
+  "Before building or fixing, summer_search_library then summer_read_library the hit — skills, examples and templates live there. " +
+  "After a playthrough read summer_get_diagnostics, not summer_get_console alone (runtime errors live in the debugger). " +
+  "A uniformly black screenshot means the viewport had not redrawn — recapture before concluding. " +
+  "Report entries you verified in-engine via summer_library_feedback.";
 
 /**
  * Fire-and-forget probe of the npm registry on MCP boot. Caches the result for
@@ -54,6 +85,20 @@ export function configureMcpEngineSelection(
 }
 
 export async function getClient(): Promise<EngineApiClient> {
+  // Opt-in per-project routing (editor -> live worker -> spawned worker).
+  // OFF by default: with the flag unset this block is skipped entirely and
+  // src/core/headless/ is never even loaded (dynamic import). With the flag
+  // set, the router returns null whenever the existing path should serve the
+  // call (no project context, or a live editor has the project open), so
+  // editor behavior stays identical. See docs/HEADLESS_ROUTING.md.
+  if (process.env.SUMMER_HEADLESS_ROUTING === "1") {
+    const { getHeadlessRoutedClient } = await import(
+      "../core/headless/mcp-routing.js"
+    );
+    const routed = await getHeadlessRoutedClient(engineSelection);
+    if (routed) return routed;
+  }
+
   if (cachedClient) {
     // The engine rotates its api-token (and can change ports) on every launch, so
     // a cached client can outlive the engine instance it was built for. If the
@@ -78,10 +123,10 @@ export async function getClient(): Promise<EngineApiClient> {
         : "Summer Engine is not running.";
     throw new Error(
       reason + "\n" +
-        "Open the intended project in Summer Engine, or run: npx summer-engine run\n" +
+        "Open the intended project in Summer Engine, or run: npx -y summer-engine@latest run\n" +
         "Note: only tools that touch the local project need the engine. Cloud tools " +
         "(summer_generate_*, summer_search_assets, summer_list_my_assets, summer_get_asset, " +
-        "summer_check_job) work right now without it — they only need 'npx summer-engine login'."
+        "summer_check_job) work right now without it — they only need 'npx -y summer-engine@latest login'."
     );
   }
 }
@@ -168,14 +213,53 @@ function installResultSizeLogger(server: {
     const handler = args[lastIdx];
     if (typeof handler !== "function") return original(...args);
     registeredToolCount += 1;
+    // Schema-less tools receive only the SDK's `extra` — never record that as
+    // the tool's arguments (see registrationHasInputSchema).
+    const hasInputSchema = registrationHasInputSchema(args);
 
     const wrapped = async (...handlerArgs: unknown[]) => {
       const startedAt = Date.now();
-      const result = await (handler as (...a: unknown[]) => unknown)(
-        ...handlerArgs
-      );
+      let result: unknown;
+      try {
+        result = await (handler as (...a: unknown[]) => unknown)(...handlerArgs);
+      } catch (error) {
+        // A handler THROW never produced a result to classify; record it as
+        // ok:false / exception so the stream does not silently skip failures,
+        // then let the SDK turn it into the protocol error it always did.
+        recordToolCall({
+          tool: name,
+          args: trajectoryArgsFor(hasInputSchema, handlerArgs),
+          exception: error instanceof Error ? error.message : String(error),
+          durationMs: Date.now() - startedAt,
+        });
+        throw error;
+      }
       const durationMs = Date.now() - startedAt;
       try {
+        // Opt-in local trajectory capture: one JSONL line per tool call when
+        // SUMMER_TRAJECTORY_DIR is set. recordToolCall never throws and is a
+        // no-op when the env var is unset.
+        {
+          const record = result as
+            | (Record<PropertyKey, unknown> & { isError?: boolean })
+            | null;
+          const callMeta =
+            record && typeof record === "object"
+              ? (record[WITH_ENGINE_META] as WithEngineMeta | undefined)
+              : undefined;
+          recordToolCall({
+            tool: name,
+            args: trajectoryArgsFor(hasInputSchema, handlerArgs),
+            isError: record?.isError === true,
+            terminalState: callMeta?.terminalState,
+            errorClass: callMeta?.errorClass,
+            failureReason: callMeta?.failureReason,
+            durationMs,
+            // Read only under SUMMER_TRAJECTORY_EVAL=1 (bounded summary); the
+            // default redacted stream ignores it.
+            result,
+          });
+        }
         if (
           result &&
           typeof result === "object" &&
@@ -253,6 +337,54 @@ function installResultSizeLogger(server: {
   return () => registeredToolCount;
 }
 
+/**
+ * Build the MCP server with every Summer tool registered, without connecting
+ * a transport. startMcpServer() uses this; tests use it to count the live
+ * tool surface against registry/generated/counts.json.
+ */
+export function createMcpServer(): {
+  server: McpServer;
+  getRegisteredToolCount: () => number;
+} {
+  const server = new McpServer(
+    {
+      name: "summer-engine",
+      version,
+    },
+    { instructions: SUMMER_MCP_INSTRUCTIONS }
+  );
+
+  // Passive observability: log result-size to stderr but do not modify
+  // results. See installResultSizeLogger above.
+  const getRegisteredToolCount = installResultSizeLogger(
+    server as unknown as { tool: (...args: unknown[]) => unknown }
+  );
+
+  registerSceneTools(server);
+  registerDebugTools(server);
+  registerVisualTools(server);
+  registerProjectTools(server);
+  registerFileTools(server);
+  registerAssetTools(server);
+  registerGenerateTools(server);
+  registerCreatorTools(server);
+  registerFeedbackTools(server);
+  registerScriptTools(server);
+  registerPerceptionTools(server);
+  registerSpatialTools(server);
+  registerNavigationTools(server);
+  registerLibraryTools(server);
+  registerEventTools(server);
+  registerFabricateTools(server);
+  registerUiTools(server);
+  registerRuntimeTools(server);
+  // The playbook is also an MCP prompt so prompt-surfacing hosts get it
+  // natively (same content as the summer_get_agent_playbook tool).
+  registerPlaybookPrompt(server);
+
+  return { server, getRegisteredToolCount };
+}
+
 export interface StartMcpServerOptions {
   projectPath?: string;
   instanceId?: string;
@@ -282,26 +414,7 @@ export async function startMcpServer(
     },
   });
 
-  const server = new McpServer({
-    name: "summer-engine",
-    version,
-  });
-
-  // Passive observability: log result-size to stderr but do not modify
-  // results. See installResultSizeLogger above.
-  const getRegisteredToolCount = installResultSizeLogger(
-    server as unknown as { tool: (...args: unknown[]) => unknown }
-  );
-
-  registerSceneTools(server);
-  registerDebugTools(server);
-  registerVisualTools(server);
-  registerProjectTools(server);
-  registerFileTools(server);
-  registerAssetTools(server);
-  registerGenerateTools(server);
-  registerCloudTools(server);
-  registerCreatorTools(server);
+  const { server, getRegisteredToolCount } = createMcpServer();
 
   // Fire-and-forget — never block tool registration on the npm registry.
   void probeBootDrift().catch((error) => {

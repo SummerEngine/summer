@@ -1,0 +1,28 @@
+id: tool/bad-input-schema
+kind: tool
+version: 1.0.0
+summary: Cross-check fixture bad-input-schema.
+use_when:
+  - testing validator cross-checks
+facets:
+  lifecycle: [build]
+source: official
+license: MIT
+status: stable
+implementation:
+  module: src/core/capabilities/ok.ts
+  export: register
+surfaces:
+  mcp:
+    tool_name: summer_bad_schema
+    remote: false
+input_schema:
+  type: banana
+  properties: 5
+
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

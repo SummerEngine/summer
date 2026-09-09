@@ -1,0 +1,11 @@
+Summer Engine running (v0.5.66) on port 6550
+open: exit=0 status=ok terminal=applied failure_reason=None keys=['elapsed_ms', 'results', 'skippedCount', 'status', 'stopOnError', 'undoGroup', 'terminalState', 'appliedSeq'] bytes=473
+tplace: exit=0 status=ok terminal=applied failure_reason=None keys=['elapsed_ms', 'results', 'scenePath', 'scenePersistence', 'skippedCount', 'status', 'stopOnError', 'undoGroup', 'terminalState'] bytes=2640
+snap: exit=1 status=error terminal=failed failure_reason=gap_exceeds_hit_travel keys=['elapsed_ms', 'error', 'failure_reason', 'results', 'scenePath', 'scenePersistence', 'skippedCount', 'status', 'stopOnError'] bytes=2098
+starcast: exit=0 status=ok terminal=applied failure_reason=None keys=['elapsed_ms', 'results', 'scenePath', 'scenePersistence', 'skippedCount', 'status', 'stopOnError', 'undoGroup', 'terminalState'] bytes=4068
+navprobe: exit=0 status=ok terminal=applied failure_reason=None keys=['elapsed_ms', 'results', 'scenePath', 'scenePersistence', 'skippedCount', 'status', 'stopOnError', 'undoGroup', 'terminalState'] bytes=1194
+align: exit=0 status=ok terminal=applied failure_reason=None keys=['elapsed_ms', 'results', 'scenePath', 'scenePersistence', 'skippedCount', 'status', 'stopOnError', 'undoGroup', 'terminalState'] bytes=4371
+wsnap: exit=0 status=ok terminal=applied failure_reason=None keys=['elapsed_ms', 'results', 'skippedCount', 'status', 'stopOnError', 'undoGroup', 'terminalState', 'appliedSeq'] bytes=4304
+shot: exit=0 status=None terminal=None failure_reason=None keys=['localPath', 'path', 'width', 'height', 'format', 'mime', 'bytes', 'sceneHasCamera', 'sceneHadLight'] bytes=1905
+stop: exit=0 status=ok terminal=applied failure_reason=None keys=['elapsed_ms', 'results', 'skippedCount', 'status', 'stopOnError', 'undoGroup', 'terminalState', 'appliedSeq'] bytes=431
+engines left: 0

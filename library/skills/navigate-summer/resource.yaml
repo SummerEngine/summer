@@ -1,0 +1,35 @@
+id: skill/navigate-summer
+kind: skill
+version: 1.0.0
+summary: When to open a Summer web page or editor surface FOR the user (billing, their games, the scene just built) versus acting through the API, using summer_open.
+use_when:
+  - the user asks to see, check, or decide something — "show me my billing", "where do I change my plan", "open my games", "let me look at the scene", "take me to the MCP guide for Cursor"
+  - deciding whether to open a surface for the user or to do the work through Summer tools
+  - handing the user a link (headless, remote, or the user prefers a link) instead of launching a browser
+do_not_use_when:
+  - the user wants a change made — add/set/remove nodes, publish, generate; use the build skills and mutation tools
+  - opening a project directory in the engine — `summer run <path>`
+facets:
+  lifecycle:
+    - build
+    - launch
+    - support
+  domains:
+    - navigation
+    - agent-workflow
+    - meta
+  modalities:
+    - docs
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/open
+  references:
+    - reference/product-map
+  skills:
+    - skill/using-summer
+source: official
+license: MIT
+status: stable
+recommended: true

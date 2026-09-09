@@ -1,0 +1,15 @@
+id: skill/first-skill
+kind: skill
+version: 1.0.0
+summary: First fixture skill claiming the shared alias.
+use_when:
+  - testing duplicate alias detection
+  - checking that two resources cannot claim the same legacy alias
+facets:
+  lifecycle: [build]
+  domains: [meta, verification]
+source: official
+license: MIT
+status: stable
+aliases:
+  - skills/legacy/shared-name

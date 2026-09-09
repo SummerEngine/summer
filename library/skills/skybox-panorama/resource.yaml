@@ -1,0 +1,28 @@
+id: skill/skybox-panorama
+kind: skill
+version: 1.0.3
+summary: Generate a 360-degree equirectangular sky panorama and wire it as a PanoramaSkyMaterial Sky resource on WorldEnvironment in a 3D scene.
+use_when:
+  - generating a 360-degree panoramic sky image for use as a Sky resource (PanoramaSkyMaterial) in a 3D scene
+  - a 3D scene has a flat or default sky and needs a 360-degree backdrop matching the art direction
+facets:
+  lifecycle:
+    - build
+  domains:
+    - 2d
+    - assets
+  modalities:
+    - images
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/tileable-texture
+    - skill/asset-strategy
+source: official
+license: MIT
+status: stable
+recommended: false
+aliases:
+  - skills/2d-assets/skybox-panorama

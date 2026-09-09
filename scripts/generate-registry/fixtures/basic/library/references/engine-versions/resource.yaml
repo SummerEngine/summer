@@ -1,0 +1,15 @@
+id: reference/engine-versions
+kind: reference
+version: 1.0.0
+summary: Which engine versions Summer tracks and what each one changes for scripts.
+use_when:
+  - checking version compatibility facts
+  - deciding whether a snippet needs a version guard before shipping it
+facets:
+  lifecycle: [build, support]
+  domains: [engine, scripting]
+source: official
+license: MIT
+status: stable
+aliases:
+  - references/ENGINE_VERSIONS.md

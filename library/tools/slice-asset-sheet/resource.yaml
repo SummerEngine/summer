@@ -1,0 +1,47 @@
+id: tool/slice-asset-sheet
+kind: tool
+version: 1.0.2
+summary: Detect and crop every distinct game asset from a generated sheet image, uploading named slices with bounding boxes.
+use_when:
+  - splitting a generated asset or UI sheet into individually usable assets
+  - '"cut the generated icon sheet into separate PNGs"'
+  - '"I have one image with 12 props on it, make them individual assets"'
+do_not_use_when:
+  - a regular animation grid — set hframes/vframes on the Sprite2D instead
+facets:
+  lifecycle:
+    - build
+  domains:
+    - generate
+    - 2d
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_slice_asset_sheet
+implementation:
+  module: src/mcp/tools/generate-tools.ts
+  export: registerGenerateTools
+surfaces:
+  mcp:
+    tool_name: summer_slice_asset_sheet
+    remote: true
+input_schema:
+  type: object
+  properties:
+    assetId:
+      type: string
+      description: Summer image asset ID to slice, usually returned by summer_generate_image
+  required:
+    - assetId
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false
+evidence_checks:
+  - asset-created

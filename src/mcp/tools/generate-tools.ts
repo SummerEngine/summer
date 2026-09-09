@@ -1,16 +1,13 @@
-import { createRequire } from "node:module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { writeFile, mkdir } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
-import { getAuthToken } from "../../lib/auth.js";
-
-const require = createRequire(import.meta.url);
-const { version: CLI_VERSION } = require("../../../package.json");
-
-const GATEWAY_URL =
-  process.env.SUMMER_GATEWAY_URL || "https://www.summerengine.com";
+import { getAuthToken } from "../../core/auth.js";
+import { resolveGatewayUrl } from "../../core/config.js";
+import { readJsonResponse } from "../../core/util/http.js";
+import { asRecord, stringFrom } from "../../core/util/json.js";
+import { TOOLKIT_VERSION as CLI_VERSION } from "../../core/version.js";
 
 const TOOL_BY_ENDPOINT: Record<string, string> = {
   "/api/mcp/generate/image": "summer_generate_image",
@@ -25,16 +22,6 @@ const TOOL_BY_ENDPOINT: Record<string, string> = {
 // ---------------------------------------------------------------------------
 // Shared helpers
 // ---------------------------------------------------------------------------
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
-}
-
-function stringFrom(value: unknown): string | undefined {
-  return typeof value === "string" && value.length > 0 ? value : undefined;
-}
 
 function formatValidationDetailEntry(entry: unknown): string | null {
   const record = asRecord(entry);
@@ -88,21 +75,12 @@ function formattedApiErrorMessage(status: number, data: unknown): string {
   );
 }
 
-async function readJsonResponse(res: Response): Promise<any> {
-  if (typeof res.text !== "function") {
-    if (typeof res.json === "function") {
-      return res.json().catch(() => ({}));
-    }
-    return {};
-  }
-
-  const text = await res.text().catch(() => "");
-  if (!text) return {};
-  try {
-    return JSON.parse(text);
-  } catch {
-    return { message: text.slice(0, 1000) };
-  }
+/** Lenient body read for Studio generation endpoints: {} for an empty body,
+ *  {message} for a non-JSON one, so callers can always index the result. */
+async function readLenientJson(res: Response): Promise<any> {
+  const { text, json, parsed } = await readJsonResponse(res);
+  if (parsed) return json;
+  return text ? { message: text.slice(0, 1000) } : {};
 }
 
 async function mcpGenerate(
@@ -114,14 +92,15 @@ async function mcpGenerate(
   if (!token) {
     return {
       error:
-        "Not signed in. Run in your terminal:\n  npx summer-engine login\nOr open: https://www.summerengine.com/login",
+        "Not signed in. Run in your terminal:\n  npx -y summer-engine@latest login\nOr open: https://www.summerengine.com/login",
       status: 401,
     };
   }
 
+  const gatewayUrl = await resolveGatewayUrl();
   let res: Response;
   try {
-    res = await fetch(`${GATEWAY_URL}${endpoint}`, {
+    res = await fetch(`${gatewayUrl}${endpoint}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -140,7 +119,7 @@ async function mcpGenerate(
     return { error: `Generation request failed: ${msg}`, status: 0 };
   }
 
-  const data = await readJsonResponse(res);
+  const data = await readLenientJson(res);
   if (!res.ok) {
     let message = formattedApiErrorMessage(res.status, data);
 
@@ -152,7 +131,7 @@ async function mcpGenerate(
     if (res.status === 401) {
       message =
         (data.message || "Auth token expired.") +
-        "\nRe-authenticate:\n  npx summer-engine login";
+        "\nRe-authenticate:\n  npx -y summer-engine@latest login";
     }
 
     return { error: message, data: { ...data, status: res.status }, status: res.status };
@@ -167,9 +146,10 @@ async function mcpGet(
 ): Promise<{ data?: any; error?: string; status: number }> {
   const token = await getAuthToken();
   const suffix = searchParams?.size ? `?${searchParams.toString()}` : "";
+  const gatewayUrl = await resolveGatewayUrl();
   let res: Response;
   try {
-    res = await fetch(`${GATEWAY_URL}${endpoint}${suffix}`, {
+    res = await fetch(`${gatewayUrl}${endpoint}${suffix}`, {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         "X-Summer-Client": "summer-cli",
@@ -185,7 +165,7 @@ async function mcpGet(
     return { error: `Request failed: ${msg}`, status: 0 };
   }
 
-  const data = await readJsonResponse(res);
+  const data = await readLenientJson(res);
   if (!res.ok) {
     return {
       error: formattedApiErrorMessage(res.status, data),
@@ -233,12 +213,13 @@ async function pollJob(
   const token = await getAuthToken();
   if (!token) return { error: "Not signed in" };
 
+  const gatewayUrl = await resolveGatewayUrl();
   const deadline = Date.now() + maxWaitMs;
 
   while (Date.now() < deadline) {
     try {
       const res = await fetch(
-        `${GATEWAY_URL}/api/mcp/jobs/${encodeURIComponent(jobId)}`,
+        `${gatewayUrl}/api/mcp/jobs/${encodeURIComponent(jobId)}`,
         {
           headers: { Authorization: `Bearer ${token}` },
           signal: AbortSignal.timeout(15_000),
@@ -348,7 +329,7 @@ Returns the asset with fileUrl (hosted) and localPath (temp file on disk).
 Use the Read tool on localPath to show the image to the user for approval.
 
 Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
-Requires authentication: run 'npx summer-engine login' first.`,
+Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     {
       prompt: z.string().describe("Description of the image to generate"),
       model: z
@@ -414,7 +395,7 @@ Returns source dimensions plus the generated slice URLs, names, categories, boun
 boxes, and widget metadata when the sheet contains UI controls.
 
 Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
-Requires authentication: run 'npx summer-engine login' first.`,
+Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     {
       assetId: z
         .string()
@@ -464,7 +445,7 @@ return a normal 200 with the setting ignored.
 
 Returns the generated audio URL and asset metadata.
 Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
-Requires authentication: run 'npx summer-engine login' first.`,
+Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     {
       capability: z
         .string()
@@ -570,7 +551,7 @@ By default, waits for completion (up to 10 min) and returns the result directly.
 Set wait=false to get the jobId immediately and poll manually with summer_check_job.
 
 Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
-Requires authentication: run 'npx summer-engine login' first.`,
+Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     {
       prompt: z
         .string()
@@ -715,7 +696,7 @@ Pass provider-specific params in 'options' (negative_prompt, num_frames, etc.).
 
 Returns the generated video URL and asset metadata.
 Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
-Requires authentication: run 'npx summer-engine login' first.`,
+Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     {
       prompt: z
         .string()
@@ -773,7 +754,7 @@ waits automatically.
 Status values: waiting, active, completed, failed, delayed, unknown.
 
 Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
-Requires authentication: run 'npx summer-engine login' first.`,
+Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     {
       jobId: z.string().describe("The job ID returned by an async generation tool"),
     },
@@ -781,12 +762,13 @@ Requires authentication: run 'npx summer-engine login' first.`,
       const token = await getAuthToken();
       if (!token) {
         return errorResult(
-          "Not signed in. Run: npx summer-engine login"
+          "Not signed in. Run: npx -y summer-engine@latest login"
         );
       }
 
       try {
-        const res = await fetch(`${GATEWAY_URL}/api/mcp/jobs/${encodeURIComponent(jobId)}`, {
+        const gatewayUrl = await resolveGatewayUrl();
+        const res = await fetch(`${gatewayUrl}/api/mcp/jobs/${encodeURIComponent(jobId)}`, {
           headers: { Authorization: `Bearer ${token}` },
           signal: AbortSignal.timeout(15_000),
         });
@@ -845,7 +827,7 @@ signature moves not on the curated list, fall back to hand-authoring in the
 Summer Engine or importing from Mixamo.
 
 Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
-Requires authentication: run 'npx summer-engine login' first.`,
+Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     {
       rigAssetId: z
         .string()

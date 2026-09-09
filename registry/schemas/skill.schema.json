@@ -1,0 +1,14 @@
+{
+  "$id": "skill.schema.json",
+  "title": "Summer resource.yaml — kind: skill (requires sibling SKILL.md, checked by validate-library)",
+  "type": "object",
+  "allOf": [{ "$ref": "resource.schema.json" }],
+  "properties": {
+    "kind": { "const": "skill" },
+    "recommended": {
+      "type": "boolean",
+      "description": "Installed by `summer skills install --recommended` (and `summer setup`). Omitted means false."
+    }
+  },
+  "unevaluatedProperties": false
+}

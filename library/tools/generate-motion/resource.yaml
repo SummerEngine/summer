@@ -1,0 +1,66 @@
+id: tool/generate-motion
+kind: tool
+version: 1.0.2
+summary: Generate a curated mocap animation clip for a Summer-rigged humanoid; costs credits, so confirm with the user first.
+use_when:
+  - adding idle, walk, run, or combat clips to a rigged character
+  - '"make my character walk / run / swing a sword"'
+  - '"I need an idle animation for the rigged NPC"'
+do_not_use_when:
+  - the target model was not rigged by the Summer pipeline
+  - the motion is not humanoid (doors, vehicles, cameras) — animate with a script or AnimationPlayer
+facets:
+  lifecycle:
+    - build
+  domains:
+    - generate
+    - animation
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_generate_motion
+implementation:
+  module: src/mcp/tools/generate-tools.ts
+  export: registerGenerateTools
+surfaces:
+  mcp:
+    tool_name: summer_generate_motion
+    remote: true
+input_schema:
+  type: object
+  properties:
+    rigAssetId:
+      type: string
+      description: Asset ID of a rigged character (from summer_generate_3d with options.rig=true)
+    backend:
+      type: string
+      enum:
+        - meshy-library
+      default: meshy-library
+      description: "Backend: meshy-library (only option today)"
+    motionName:
+      type: string
+      description: "Curated motion name: walk, run, attack_sword, idle, jump, etc."
+    wait:
+      type: boolean
+      default: true
+      description: Wait for completion (default true, up to 5 min). Set false to get jobId immediately.
+    options:
+      type: object
+      additionalProperties: {}
+      description: Backend-specific passthrough
+  required:
+    - rigAssetId
+    - motionName
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false
+evidence_checks:
+  - job-completed

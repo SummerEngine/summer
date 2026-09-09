@@ -1,0 +1,62 @@
+id: tool/get-runtime-tree
+kind: tool
+version: 1.0.1
+summary: Scene tree of the RUNNING game — spawned enemies, autoloads, pooled nodes — live state the editor reads can never show.
+use_when:
+  - inspecting what actually spawned during a playtest without stopping the game
+  - '"which enemies are actually alive right now?"'
+  - '"what did the spawner create?" / "is the autoload there?"'
+do_not_use_when:
+  - no game is running (failure_reason game_not_running) — summer_play first, or read the edited scene with summer_get_scene_tree
+  - "requires an engine build with GetRuntimeSceneTree (engine PR #156); on current shipped engines this returns engine_lacks_op"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - runtime
+    - verification
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/inspect-runtime-node
+    - tool/play
+    - tool/get-scene-tree
+  skills:
+    - skill/verifying-scenes
+    - skill/playtesting-a-feature
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_get_runtime_tree
+implementation:
+  module: src/mcp/tools/perception-tools.ts
+  export: registerPerceptionTools
+surfaces:
+  mcp:
+    tool_name: summer_get_runtime_tree
+    remote: false
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: Subtree root to read, e.g. '/root/Main/Enemies'. Omit for the scene tree root.
+    depth:
+      type: integer
+      exclusiveMinimum: 0
+      description: Maximum depth to walk (engine default 3).
+    limit:
+      type: integer
+      exclusiveMinimum: 0
+      description: Maximum nodes to return (engine default 500).
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

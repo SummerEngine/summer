@@ -1,0 +1,108 @@
+id: tool/fabricate-3d
+kind: tool
+version: 1.0.0
+summary: Fabricate a mesh with a bpy script in the user's own Blender (headless, engine-supervised), import the .glb into res://, optionally instantiate it.
+use_when:
+  - a modular kit with exact dimensions and snapping — walls, pipes, fences, rails — where generation cannot hold size and style across many pieces
+  - VFX meshes — shatter pieces, curve sweeps, trails, LOD chains — that are one-liners in bpy and absent from the engine
+  - post-processing a generated model (decimate, UV unwrap, bake) before it goes into the scene
+  - '"write a Blender script that builds ..." / "fabricate a parametric ... with booleans and bevels"'
+do_not_use_when:
+  - a generic prop (barrel, crate, chair) — summer_search_assets / summer_import_asset first, then summer_generate_3d
+  - a character or any organic shape — summer_generate_3d (scripted organic modelling is the documented failure mode)
+  - a blockout or placeholder — summer_run_script primitives/CSG are instant and in-scene
+  - the user has no Blender install and does not want one — this tool never installs, downloads, or bundles Blender
+  - "requires an engine build with FabricateMesh (engine PR #156 follow-up, wave K); on current shipped engines this returns engine_lacks_op"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - 3d
+    - assets
+    - scripting
+  modalities:
+    - 3d-models
+    - scripts
+    - assets
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/run-script
+    - tool/generate-3d
+    - tool/search-assets
+    - tool/import-asset
+    - tool/import-hdri
+    - tool/instantiate-scene
+    - tool/world-snapshot
+    - tool/snapshot-diff
+    - tool/screenshot
+  skills:
+    - skill/fabricating-assets
+    - skill/asset-strategy
+    - skill/environment-kit
+    - skill/scene-scripting
+    - skill/verifying-scenes
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_fabricate_3d
+implementation:
+  module: src/mcp/tools/fabricate-tools.ts
+  export: registerFabricateTools
+surfaces:
+  mcp:
+    tool_name: summer_fabricate_3d
+    remote: false
+input_schema:
+  type: object
+  properties:
+    source:
+      type: string
+      description: Blender Python (bpy) code that creates mesh objects and leaves them linked in the scene. No export call — the engine exports the .glb. Pre-bound names bpy, bmesh, mathutils, math, Vector, Matrix, Euler.
+    name:
+      type: string
+      description: Asset name — used for the default out_path (res://assets/fabricated/<name>.glb) and the instantiated node. Sanitized by the engine to [A-Za-z0-9_-].
+    out_path:
+      type: string
+      description: Destination res:// path ending in .glb (default res://assets/fabricated/<name>.glb). An existing file is overwritten; '..' and hidden directories are refused.
+    target_size:
+      type: number
+      exclusiveMinimum: 0
+      description: Largest world-AABB dimension after instantiation — uniform scale, same rule as summer_instantiate_scene target_size. Only used together with import_to_scene.
+    import_to_scene:
+      type: object
+      description: Instantiate the imported .glb into the currently open scene after import. Omit to only write and import the file.
+      properties:
+        parent:
+          type: string
+          description: Parent node path in the open scene, e.g. '/' (scene root) or './World'.
+        position:
+          type: string
+          description: Optional local position as the engine variant string 'Vector3(x, y, z)'.
+      required:
+        - parent
+      additionalProperties: false
+    max_seconds:
+      type: number
+      description: Child budget in seconds (default 120, clamped 15-600) — Blender boot + script + procedural-colour bakes + export. The client waits max_seconds + 60 s.
+    checkpoint:
+      type: boolean
+      description: Take a SummerGit checkpoint before the child runs (default false). The result confesses (no_rewind_point) when none could be taken.
+    blender_path:
+      type: string
+      description: Explicit Blender executable. Only when the user named one; otherwise the engine resolves SUMMER_BLENDER_BIN, the editor setting filesystem/import/blender/blender_path, then PATH and well-known install locations.
+  required:
+    - source
+    - name
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - snapshot-diff
+  - screenshot

@@ -1,0 +1,23 @@
+id: skill/brainstorming
+kind: skill
+version: 1.0.3
+summary: "Explore user intent, requirements, and design before implementation — must run before any creative work: features, components, mechanics, behavior."
+use_when:
+  - starting creative work — designing a game, picking a mechanic, building features or components, modifying behavior
+  - a request is ambiguous about goals or constraints and work would otherwise start on guesses
+facets:
+  lifecycle:
+    - build
+  domains:
+    - agent-workflow
+    - game-design
+  modalities:
+    - docs
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/workflow/brainstorming

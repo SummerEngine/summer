@@ -1,0 +1,24 @@
+id: reference/headless-routing
+kind: reference
+version: 1.0.0
+summary: How MCP tool calls reach a project with no editor open — editor, then live headless worker, then spawned worker — behind SUMMER_HEADLESS_ROUTING=1.
+use_when:
+  - a Summer MCP tool call must run against a project that no editor has open (CI, servers, scripting loops)
+  - deciding whether SUMMER_HEADLESS_ROUTING should be enabled for a session and what changes when it is
+  - a tool result mentions a headless worker, a [headless:<stage>] error, or an outcome-unknown quarantine
+do_not_use_when:
+  - the project is already open in the Summer editor — routing is inert and the editor path serves the call unchanged
+  - looking up which MCP tool to call — that is the mcp-tools-reference
+facets:
+  lifecycle: [build]
+  domains: [mcp, engine, headless]
+compatibility:
+  engine: ">=4.7"
+related:
+  references:
+    - reference/mcp-tools-reference
+source: official
+license: MIT
+status: preview
+aliases:
+  - docs/HEADLESS_ROUTING.md

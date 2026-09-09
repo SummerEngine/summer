@@ -1,0 +1,33 @@
+id: skill/vfx-lightning
+kind: skill
+version: 1.0.3
+summary: Lightning bolt effect — procedural jagged path drawn via ImmediateMesh, glow shader, sparks at endpoints, screen shake.
+use_when:
+  - authoring a lightning bolt effect — chain lightning, electric attack, tesla coil, shock spell, energy beam
+  - a spell, weapon, or hazard needs a jagged electric arc with glow, endpoint sparks, and camera shake
+facets:
+  lifecycle:
+    - build
+  domains:
+    - vfx
+    - rendering
+  modalities:
+    - scenes
+    - shaders
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/scene-scripting
+    - skill/sound-effect
+    - skill/game-feel
+    - skill/vfx-hit-spark
+    - skill/vfx-magic-glow
+    - skill/vfx-muzzle-flash
+source: official
+license: MIT
+status: stable
+recommended: false
+aliases:
+  - skills/visual-effects/recipes/lightning
+  - lightning

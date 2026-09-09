@@ -1,0 +1,16 @@
+id: template/empty
+kind: template
+version: 1.1.0
+summary: "Built-in: empty 3D project with just a root node — generated locally by summer create, no download."
+use_when:
+  - starting from a completely blank project
+facets:
+  lifecycle: [build]
+  domains: [3d, builtin]
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+builtin: true
+systems: [project-scaffold]

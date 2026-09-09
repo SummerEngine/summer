@@ -1,0 +1,694 @@
+{
+  "health": {
+    "bridgeRecoveryVersion": 1,
+    "capabilities": {
+      "events": {
+        "heartbeatMs": 15000,
+        "kinds": [
+          "op.applied",
+          "op.failed",
+          "script.error",
+          "play.started",
+          "play.stopped",
+          "scene.saved",
+          "scene.opened",
+          "import.completed",
+          "selection.changed",
+          "snapshot.published"
+        ],
+        "maxPayloadBytes": 4096,
+        "maxStreams": 8,
+        "maxTail": 500,
+        "poll": true,
+        "pollGap": true,
+        "receiptEventSeq": true,
+        "retainMs": 600000,
+        "ring": 512,
+        "sse": true,
+        "tail": true
+      },
+      "launchPostures": [
+        "focus",
+        "background",
+        "offscreen"
+      ],
+      "opKinds": [
+        "AddNode",
+        "SetProp",
+        "ConnectSignal",
+        "OpenScene",
+        "SaveScene",
+        "RemoveNode",
+        "MoveNode",
+        "ReparentNode",
+        "DisconnectSignal",
+        "ProjectSetting",
+        "ProjectRecoveryRebuildMetadata",
+        "InputMapAddAction",
+        "InputMapBind",
+        "EnableEditorPlugin",
+        "IsEditorPluginEnabled",
+        "RenameFile",
+        "DeleteFile",
+        "MoveFile",
+        "WriteFile",
+        "ImportFromUrl",
+        "ImportFromUrlBatch",
+        "ExtractZipFromUrl",
+        "MakeDirectory",
+        "InstantiateScene",
+        "SetResourceProperty",
+        "OpenResource",
+        "SelectNode",
+        "FocusDock",
+        "RevealInFileSystem",
+        "ReplaceNode",
+        "Undo",
+        "ReplaceText",
+        "GitDetect",
+        "GitStatus",
+        "GitOverview",
+        "GitGraph",
+        "GitBranches",
+        "GitCommitDetails",
+        "GitDiff",
+        "GitRestoreFiles",
+        "GitAddPaths",
+        "GitStagePaths",
+        "GitStageAll",
+        "GitUnstagePaths",
+        "GitDiscardPaths",
+        "GitCommit",
+        "SummerGitCreateCheckpoint",
+        "GitCommitWorkingTree",
+        "GitRevert",
+        "GitInit",
+        "GitInitRepo",
+        "GitPull",
+        "GitFetch",
+        "GitPush",
+        "GitCheckoutBranch",
+        "GitRestoreWorkingTree",
+        "GitEnsureBranch",
+        "SaveDirtyScenes",
+        "SaveDirtyScripts",
+        "GetConsoleOutput",
+        "GetDebuggerErrors",
+        "GetDiagnosticsSummary",
+        "ClearConsoleOutput",
+        "SearchInFiles",
+        "Grep",
+        "PlayGame",
+        "StopGame",
+        "IsGameRunning",
+        "ViewportSnapshot",
+        "EditorWindowSnapshot",
+        "GameSnapshot",
+        "SimulateInput",
+        "ScenePreview",
+        "SummerGitListCheckpoints",
+        "SummerGitSafeRestore",
+        "SummerGitRestore",
+        "SummerGitRecoverRestore",
+        "SummerGitDiffCheckpoint",
+        "AcceptAIDiff",
+        "RejectAIDiff",
+        "RunCommand",
+        "KillCommand",
+        "RunVerification",
+        "GetWorldSnapshot",
+        "DiffWorldSnapshot",
+        "SaveCameraBookmark",
+        "ListCameraBookmarks",
+        "DeleteCameraBookmark",
+        "GetRuntimeSceneTree",
+        "GetRuntimeNode",
+        "RunEditorScript",
+        "RunSceneScript",
+        "FabricateMesh",
+        "SetRuntimeProp",
+        "CallRuntimeMethod",
+        "SpawnRuntimeScene",
+        "FreeRuntimeNode",
+        "RuntimeAnimation",
+        "RuntimeAnimationTree",
+        "GetRuntimeBones",
+        "GamePause",
+        "GameSpeed",
+        "GameStep",
+        "SimulateInputScript",
+        "InputRecordStart",
+        "InputRecordStop",
+        "InputReplay",
+        "GameProbe",
+        "ListGameInstances",
+        "UiListActions",
+        "UiInvoke",
+        "UiTree",
+        "UiActivate",
+        "UiScreenshot",
+        "UiDialogs",
+        "UiDismissDialog",
+        "BlockMain"
+      ],
+      "preview": {
+        "framings": [
+          "auto",
+          "iso",
+          "top",
+          "front",
+          "back",
+          "left",
+          "right",
+          "camera",
+          "free",
+          "bookmark:<name>"
+        ],
+        "marks": true,
+        "maxMarks": 128
+      },
+      "projectRead": {
+        "prefixHonored": false
+      },
+      "protocolVersion": 1,
+      "runtimeControl": {
+        "maxOffscreenInstances": 3,
+        "ops": [
+          "SetRuntimeProp",
+          "CallRuntimeMethod",
+          "SpawnRuntimeScene",
+          "FreeRuntimeNode",
+          "RuntimeAnimation",
+          "RuntimeAnimationTree",
+          "GetRuntimeBones",
+          "GamePause",
+          "GameSpeed",
+          "GameStep",
+          "SimulateInputScript",
+          "InputRecordStart",
+          "InputRecordStop",
+          "InputReplay",
+          "GameProbe",
+          "ListGameInstances"
+        ],
+        "summerCapture": true
+      },
+      "sceneRead": {
+        "defaultDepth": 2,
+        "defaultLimit": 200,
+        "targetedReadsHonorArgs": true
+      },
+      "singleOnlyOps": [
+        "RunCommand",
+        "RunVerification",
+        "RunEditorScript",
+        "FabricateMesh",
+        "RunSceneScript",
+        "ImportFromUrl",
+        "ImportFromUrlBatch",
+        "ExtractZipFromUrl",
+        "GameSnapshot",
+        "SimulateInput",
+        "GetRuntimeSceneTree",
+        "GetRuntimeNode",
+        "SetRuntimeProp",
+        "CallRuntimeMethod",
+        "SpawnRuntimeScene",
+        "FreeRuntimeNode",
+        "RuntimeAnimation",
+        "RuntimeAnimationTree",
+        "GetRuntimeBones",
+        "GamePause",
+        "GameSpeed",
+        "GameStep",
+        "SimulateInputScript",
+        "InputRecordStart",
+        "InputRecordStop",
+        "InputReplay",
+        "GameProbe",
+        "ViewportSnapshot",
+        "SaveScene",
+        "InstantiateScene",
+        "ReplaceNode",
+        "GitDetect",
+        "GitStatus",
+        "GitOverview",
+        "GitGraph",
+        "GitBranches",
+        "GitCommitDetails",
+        "GitDiff",
+        "GitAddPaths",
+        "GitStagePaths",
+        "GitStageAll",
+        "GitUnstagePaths",
+        "GitCommit",
+        "GitCommitWorkingTree",
+        "SummerGitCreateCheckpoint",
+        "GitInit",
+        "GitInitRepo",
+        "GitPull",
+        "GitFetch",
+        "GitPush",
+        "GitEnsureBranch",
+        "SummerGitListCheckpoints",
+        "SummerGitDiffCheckpoint",
+        "SummerGitSafeRestore",
+        "SummerGitRestore"
+      ]
+    },
+    "connectionGeneration": "9bff51d76be3d17fb2a8af18221a77b1",
+    "editorMainPulseAgeMs": 3,
+    "engine": "summer",
+    "instanceId": "6c2584b8c42d1df756a032c6ef07ba1e",
+    "liveInstances": 1,
+    "mainAliveMs": 3,
+    "ok": true,
+    "pid": 45112,
+    "port": 6550,
+    "projectId": "cbbb5b99122740cf975735b339410239",
+    "projectIdHash": "6e028781f6a77fe5a716f5c8d55b7507fe61bcaecc7ea6c7b79931f0d1b111a5",
+    "projectIdentityVersion": 1,
+    "project_name": "TkFold",
+    "project_path": "/private/tmp/claude-501/-Users-MathiasWork-development-publicsummerengine/9b218d40-25b2-4cde-ada3-1b8ec4883be6/scratchpad/tk-vs-fold/proj",
+    "queueDepth": 0,
+    "resourceRoot": "/private/tmp/claude-501/-Users-MathiasWork-development-publicsummerengine/9b218d40-25b2-4cde-ada3-1b8ec4883be6/scratchpad/tk-vs-fold/proj",
+    "snapshotSeq": 63,
+    "summerCloudEnabled": false,
+    "summerCloudHydrating": false,
+    "transportAlive": true,
+    "version": "0.5.65"
+  },
+  "capabilitySkewWarning": "Engine/CLI version skew detected: engine does not advertise 6 op(s) this CLI can send (Navigate, TestPlacement3D, SnapToSurface, AlignDistribute3D, NavigationProbe3D, Starcast3D). Non-fatal — affected tools return a structured engine_lacks_op result instead of running (set SUMMER_CAPABILITY_PREFLIGHT=off to send them anyway if your engine implements an op it does not advertise). Update Summer Engine (or the summer-engine CLI) so both sides match.",
+  "project": {
+    "appliedThroughSeq": 0,
+    "data": {
+      "engineBinaryPath": "/Users/MathiasWork/development/summerengine-scripting/bin/Summer.app/Contents/MacOS/Summer",
+      "entries": [
+        {
+          "key": "application/config/name",
+          "value": "TkFold"
+        },
+        {
+          "key": "application/config/name_localized",
+          "value": {}
+        },
+        {
+          "key": "application/config/description",
+          "value": ""
+        },
+        {
+          "key": "application/config/version",
+          "value": ""
+        },
+        {
+          "key": "application/config/tags",
+          "value": []
+        },
+        {
+          "key": "application/run/main_scene",
+          "value": "res://main.tscn"
+        },
+        {
+          "key": "application/run/disable_stdout",
+          "value": false
+        },
+        {
+          "key": "application/run/disable_stderr",
+          "value": false
+        },
+        {
+          "key": "application/run/print_header",
+          "value": true
+        },
+        {
+          "key": "application/run/enable_alt_space_menu",
+          "value": false
+        },
+        {
+          "key": "application/config/use_hidden_project_data_directory",
+          "value": true
+        },
+        {
+          "key": "application/config/use_custom_user_dir",
+          "value": false
+        },
+        {
+          "key": "application/config/custom_user_dir_name",
+          "value": ""
+        },
+        {
+          "key": "application/config/project_settings_override",
+          "value": ""
+        },
+        {
+          "key": "application/config/disable_project_settings_override",
+          "value": false
+        },
+        {
+          "key": "application/run/main_loop_type",
+          "value": "SceneTree"
+        },
+        {
+          "key": "application/config/auto_accept_quit",
+          "value": true
+        },
+        {
+          "key": "application/config/quit_on_go_back",
+          "value": true
+        },
+        {
+          "key": "display/window/size/viewport_width",
+          "value": 1152
+        },
+        {
+          "key": "display/window/size/viewport_height",
+          "value": 648
+        },
+        {
+          "key": "display/window/size/mode",
+          "value": 0
+        },
+        {
+          "key": "display/window/size/initial_position_type",
+          "value": 1
+        },
+        {
+          "key": "display/window/size/initial_position",
+          "value": "(0, 0)"
+        },
+        {
+          "key": "display/window/size/initial_screen",
+          "value": 0
+        },
+        {
+          "key": "display/window/size/resizable",
+          "value": true
+        },
+        {
+          "key": "display/window/size/borderless",
+          "value": false
+        },
+        {
+          "key": "display/window/size/always_on_top",
+          "value": false
+        },
+        {
+          "key": "display/window/size/transparent",
+          "value": false
+        },
+        {
+          "key": "display/window/size/extend_to_title",
+          "value": false
+        },
+        {
+          "key": "display/window/size/no_focus",
+          "value": false
+        },
+        {
+          "key": "display/window/size/sharp_corners",
+          "value": false
+        },
+        {
+          "key": "display/window/size/minimize_disabled",
+          "value": false
+        },
+        {
+          "key": "display/window/size/maximize_disabled",
+          "value": false
+        },
+        {
+          "key": "display/window/size/window_width_override",
+          "value": 0
+        },
+        {
+          "key": "display/window/size/window_height_override",
+          "value": 0
+        },
+        {
+          "key": "display/window/hdr/request_hdr_output",
+          "value": false
+        },
+        {
+          "key": "display/window/energy_saving/keep_screen_on",
+          "value": true
+        },
+        {
+          "key": "display/window/subwindows/embed_subwindows",
+          "value": true
+        },
+        {
+          "key": "display/window/frame_pacing/android/enable_frame_pacing",
+          "value": true
+        },
+        {
+          "key": "display/window/frame_pacing/android/swappy_mode",
+          "value": 2
+        },
+        {
+          "key": "display/window/stretch/mode",
+          "value": "disabled"
+        },
+        {
+          "key": "display/window/stretch/aspect",
+          "value": "keep"
+        },
+        {
+          "key": "display/window/stretch/scale",
+          "value": 1
+        },
+        {
+          "key": "display/window/stretch/scale_mode",
+          "value": "fractional"
+        },
+        {
+          "key": "rendering/textures/canvas_textures/default_texture_filter",
+          "value": 1
+        },
+        {
+          "key": "rendering/textures/canvas_textures/default_texture_repeat",
+          "value": 0
+        },
+        {
+          "key": "application/config/features",
+          "value": [
+            "4.7"
+          ]
+        },
+        {
+          "key": "application/run/flush_stdout_on_print",
+          "value": false
+        },
+        {
+          "key": "application/run/flush_stdout_on_print.debug",
+          "value": true
+        },
+        {
+          "key": "application/run/max_fps",
+          "value": 0
+        },
+        {
+          "key": "application/run/low_processor_mode",
+          "value": false
+        },
+        {
+          "key": "application/run/low_processor_mode_sleep_usec",
+          "value": 6900
+        },
+        {
+          "key": "application/run/delta_smoothing",
+          "value": true
+        },
+        {
+          "key": "rendering/renderer/rendering_method",
+          "value": "forward_plus"
+        },
+        {
+          "key": "rendering/renderer/rendering_method.web",
+          "value": "gl_compatibility"
+        },
+        {
+          "key": "rendering/renderer/rendering_method.mobile",
+          "value": "mobile"
+        },
+        {
+          "key": "display/window/dpi/allow_hidpi",
+          "value": true
+        },
+        {
+          "key": "display/window/per_pixel_transparency/allowed",
+          "value": false
+        },
+        {
+          "key": "application/run/load_shell_environment",
+          "value": false
+        },
+        {
+          "key": "display/window/handheld/orientation",
+          "value": 0
+        },
+        {
+          "key": "display/window/vsync/vsync_mode",
+          "value": 1
+        },
+        {
+          "key": "application/run/frame_delay_msec",
+          "value": 0
+        },
+        {
+          "key": "display/window/ios/allow_high_refresh_rate",
+          "value": true
+        },
+        {
+          "key": "display/window/ios/hide_home_indicator",
+          "value": true
+        },
+        {
+          "key": "display/window/ios/hide_status_bar",
+          "value": true
+        },
+        {
+          "key": "display/window/ios/suppress_ui_gesture",
+          "value": true
+        },
+        {
+          "key": "application/boot_splash/bg_color",
+          "value": "(0.14, 0.14, 0.14, 1.0)"
+        },
+        {
+          "key": "application/boot_splash/show_image",
+          "value": true
+        },
+        {
+          "key": "application/boot_splash/stretch_mode",
+          "value": 1
+        },
+        {
+          "key": "application/boot_splash/use_filter",
+          "value": true
+        },
+        {
+          "key": "application/boot_splash/image",
+          "value": ""
+        },
+        {
+          "key": "application/config/icon",
+          "value": ""
+        },
+        {
+          "key": "application/config/macos_native_icon",
+          "value": ""
+        },
+        {
+          "key": "application/config/windows_native_icon",
+          "value": ""
+        },
+        {
+          "key": "physics/3d/default_gravity",
+          "value": 9.8
+        },
+        {
+          "key": "physics/3d/default_gravity_vector",
+          "value": "(0.0, -1.0, 0.0)"
+        },
+        {
+          "key": "physics/2d/default_gravity",
+          "value": 980
+        },
+        {
+          "key": "physics/2d/default_gravity_vector",
+          "value": "(0.0, 1.0)"
+        },
+        {
+          "key": "application/boot_splash/minimum_display_time",
+          "value": 0
+        }
+      ],
+      "headlessScriptCommand": "'/Users/MathiasWork/development/summerengine-scripting/bin/Summer.app/Contents/MacOS/Summer' --headless --path '/private/tmp/claude-501/-Users-MathiasWork-development-publicsummerengine/9b218d40-25b2-4cde-ada3-1b8ec4883be6/scratchpad/tk-vs-fold/proj' -s {script}",
+      "projectPath": "/private/tmp/claude-501/-Users-MathiasWork-development-publicsummerengine/9b218d40-25b2-4cde-ada3-1b8ec4883be6/scratchpad/tk-vs-fold/proj",
+      "settingsTruncated": true,
+      "totalSettings": 949,
+      "returnedSettings": 79,
+      "settingsPrefixesIncluded": [
+        "application/",
+        "display/window/",
+        "input/",
+        "physics/2d/default_gravity",
+        "physics/3d/default_gravity",
+        "rendering/renderer/",
+        "rendering/textures/canvas_textures/"
+      ],
+      "settingsPrefixesExcluded": [
+        "input/ui_"
+      ],
+      "settingsHint": "Settings were trimmed to the curated default groups in settingsPrefixesIncluded (minus settingsPrefixesExcluded) to bound payload size; the engine holds 949 in total. Pass settingsPrefixes — e.g. [\"audio/\"], [\"layer_names/\"], [\"input/ui_\"], [\"rendering/\"] — to read another group."
+    },
+    "ok": true,
+    "provenance": {
+      "source": "project_settings",
+      "target": {
+        "kind": "project"
+      }
+    },
+    "snapshotAt": 6822,
+    "snapshotSeq": 60
+  },
+  "scene": {
+    "appliedThroughSeq": 0,
+    "data": {
+      "activeTab": "3D",
+      "children": [],
+      "class": "Node2D",
+      "gameRunning": false,
+      "limit": 200,
+      "name": "Main",
+      "path": ".",
+      "total_nodes": 1,
+      "truncated": false,
+      "visited": 0
+    },
+    "ok": true,
+    "provenance": {
+      "dirty": false,
+      "rootName": "Main",
+      "rootType": "Node2D",
+      "scenePath": "res://main.tscn",
+      "source": "editor_scene",
+      "target": {
+        "kind": "scene",
+        "path": "."
+      }
+    },
+    "snapshotAt": 6817,
+    "snapshotSeq": 59
+  },
+  "projectName": "TkFold",
+  "projectPath": "/private/tmp/claude-501/-Users-MathiasWork-development-publicsummerengine/9b218d40-25b2-4cde-ada3-1b8ec4883be6/scratchpad/tk-vs-fold/proj",
+  "currentScene": "res://main.tscn",
+  "mainScene": "res://main.tscn",
+  "boundProjectIdHash": "6e028781f6a77fe5a716f5c8d55b7507fe61bcaecc7ea6c7b79931f0d1b111a5",
+  "projectMemory": {
+    "present": true,
+    "root": ".summer",
+    "pin": null,
+    "canonical": {
+      "gameSoul": null,
+      "artBible": null,
+      "audioBible": null,
+      "buildPlan": null,
+      "legacyVoiceCast": null
+    },
+    "structured": {
+      "present": false,
+      "indexPresent": false,
+      "fileCount": 0,
+      "lockedCount": 0,
+      "files": [],
+      "truncated": false
+    },
+    "files": [],
+    "guidance": "Read relevant .summer Markdown before creative, audio, dialogue, level, or character work. Ask before writing .summer files. Changing priority: locked memory requires explicit user confirmation."
+  },
+  "summerUpdateNotice": null,
+  "guidance": "Use `summer_open_scene` with `mainScene` if no scene is open.",
+  "fileEditingGuidance": "Use summer_read_file plus summer_replace_text or guarded summer_write_file for project files, including .gd/.cs/.tscn/.tres/.json/docs. New files require create_only:true; overwrites require the sha256 receipt from summer_read_file. Prefer scene tools for live hierarchy/inspector changes."
+}

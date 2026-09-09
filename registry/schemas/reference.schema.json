@@ -1,0 +1,10 @@
+{
+  "$id": "reference.schema.json",
+  "title": "Summer resource.yaml — kind: reference (requires a body .md file, checked by validate-library)",
+  "type": "object",
+  "allOf": [{ "$ref": "resource.schema.json" }],
+  "properties": {
+    "kind": { "const": "reference" }
+  },
+  "unevaluatedProperties": false
+}

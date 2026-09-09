@@ -1,0 +1,109 @@
+id: tool/test-placement
+kind: tool
+version: 1.0.0
+summary: Ghost-test one 3D node at a candidate global pose without moving it — overlap evidence, grounded state, signed floor gap. Read-only.
+use_when:
+  - deciding whether a prop fits in a shelf, cubby, doorway, platform, or dense set before committing the transform
+  - re-checking a saved pose after snap or align to confirm it still clears its neighbours
+do_not_use_when:
+  - you want the engine to move the prop for you — summer_snap_to_surface
+  - the prop is 2D or has no visual/collider geometry to test
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - 3d
+    - world-building
+    - verification
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/snap-to-surface
+    - tool/align-distribute-3d
+    - tool/world-snapshot
+    - tool/inspect-node
+  skills:
+    - skill/world-building-3d
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_test_placement
+implementation:
+  module: src/mcp/tools/spatial-tools.ts
+  export: registerSpatialTools
+surfaces:
+  mcp:
+    tool_name: summer_test_placement
+    remote: false
+input_schema:
+  type: object
+  properties:
+    scenePath:
+      type: string
+      minLength: 1
+      maxLength: 512
+      description: Exact scene path containing the subject, e.g. 'res://levels/workshop.tscn'.
+    subjectPath:
+      type: string
+      minLength: 1
+      maxLength: 256
+      description: Exact node path relative to the scene root, e.g. './World/Crate'.
+    candidateGlobalPosition:
+      type: array
+      items:
+        type: number
+      minItems: 3
+      maxItems: 3
+      description: Candidate global/world position as [x, y, z].
+    candidateGlobalRotationDegrees:
+      type: array
+      items:
+        type: number
+      minItems: 3
+      maxItems: 3
+      description: Candidate global/world Euler rotation in degrees as [x, y, z]; current global scale is preserved.
+    collisionMask:
+      type: integer
+      minimum: 0
+      maximum: 4294967295
+      default: 4294967295
+      description: Godot 3D physics layers included in overlap and floor queries.
+    collideWithAreas:
+      type: boolean
+      default: true
+      description: Include Area3D objects as placement obstacles/support candidates.
+    maxFloorDistance:
+      type: number
+      minimum: 0.001
+      maximum: 1000
+      default: 5
+      description: Maximum world-space distance searched below the candidate footprint; range 0.001..1000.
+    groundTolerance:
+      type: number
+      minimum: 0
+      maximum: 1
+      default: 0.05
+      description: Absolute floor-gap tolerance used to classify grounded support.
+    margin:
+      type: number
+      minimum: 0
+      maximum: 1
+      default: 0.001
+      description: Physics shape-intersection margin; only an exact physics support collider+shape contact is excluded from overlaps.
+  required:
+    - scenePath
+    - subjectPath
+    - candidateGlobalPosition
+    - candidateGlobalRotationDegrees
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

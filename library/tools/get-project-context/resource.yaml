@@ -1,0 +1,45 @@
+id: tool/get-project-context
+kind: tool
+version: 1.1.0
+summary: Bind to the open project and return engine health, project name and path, current and main scene, trimmed settings, the template pin, and memory summary.
+use_when:
+  - first call in every fresh session, to avoid guessing scene filenames
+  - deliberately rebinding after the engine switched projects
+facets:
+  lifecycle:
+    - build
+  domains:
+    - project
+    - engine
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_get_project_context
+implementation:
+  module: src/mcp/tools/project-tools.ts
+  export: registerProjectTools
+surfaces:
+  mcp:
+    tool_name: summer_get_project_context
+    remote: false
+input_schema:
+  type: object
+  properties:
+    settingsPrefix:
+      type: string
+      description: Only return project settings whose key starts with this prefix, e.g. 'audio/' or 'application/config/'. Omit for the curated default set.
+    settingsPrefixes:
+      type: array
+      items:
+        type: string
+      description: Several settings groups at once, e.g. ['audio/', 'layer_names/2d_physics/', 'input/ui_']. Merged with settingsPrefix. Omit for the curated default set.
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

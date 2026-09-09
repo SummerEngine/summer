@@ -1,0 +1,66 @@
+id: tool/set-resource-property
+kind: tool
+version: 1.0.2
+summary: Set a nested property on a resource attached to a node, like a collision shape size or material color.
+use_when:
+  - modifying sub-properties of meshes, materials, or shapes
+  - '"make the box mesh 2 metres wide" / "change the capsule radius"'
+  - setting the material albedo colour or roughness on a mesh
+do_not_use_when:
+  - the property is on the node itself (position, visible, scale) — summer_set_prop
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - editor
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_set_resource_property
+implementation:
+  module: src/mcp/tools/scene-tools.ts
+  export: registerSceneTools
+surfaces:
+  mcp:
+    tool_name: summer_set_resource_property
+    remote: false
+input_schema:
+  type: object
+  properties:
+    scenePath:
+      type: string
+      description: Target scene path, e.g. 'res://main.tscn'
+    nodePath:
+      type: string
+      description: Node path, e.g. './Player/CollisionShape3D'
+    resourceProperty:
+      type: string
+      description: Resource property on the node, e.g. 'shape', 'mesh', 'material_override'
+    subProperty:
+      type: string
+      description: Property on the resource, e.g. 'size', 'radius', 'albedo_color'
+    value:
+      type:
+        - string
+        - number
+        - boolean
+      description: Value in Summer Engine variant-string format
+  required:
+    - scenePath
+    - nodePath
+    - resourceProperty
+    - subProperty
+    - value
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - scene-valid

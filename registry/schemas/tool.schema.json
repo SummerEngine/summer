@@ -1,0 +1,61 @@
+{
+  "$id": "tool.schema.json",
+  "title": "Summer resource.yaml — kind: tool",
+  "type": "object",
+  "allOf": [{ "$ref": "resource.schema.json" }],
+  "properties": {
+    "kind": { "const": "tool" },
+    "implementation": {
+      "type": "object",
+      "properties": {
+        "module": { "type": "string", "minLength": 1 },
+        "export": { "type": "string", "minLength": 1 }
+      },
+      "required": ["module", "export"],
+      "additionalProperties": false
+    },
+    "surfaces": {
+      "type": "object",
+      "properties": {
+        "cli": {
+          "type": "object",
+          "properties": {
+            "command": { "type": "string", "minLength": 1 }
+          },
+          "required": ["command"],
+          "additionalProperties": false
+        },
+        "mcp": {
+          "type": "object",
+          "properties": {
+            "tool_name": { "type": "string", "minLength": 1 },
+            "remote": { "type": "boolean" }
+          },
+          "required": ["tool_name", "remote"],
+          "additionalProperties": false
+        }
+      },
+      "minProperties": 1,
+      "additionalProperties": false
+    },
+    "input_schema": { "type": "object" },
+    "authority": {
+      "type": "object",
+      "properties": {
+        "filesystem": { "type": "boolean" },
+        "editor_mutation": { "type": "boolean" },
+        "network": { "type": "boolean" },
+        "credentials": { "type": "boolean" },
+        "publish": { "type": "boolean" }
+      },
+      "required": ["filesystem", "editor_mutation", "network", "credentials", "publish"],
+      "additionalProperties": false
+    },
+    "evidence_checks": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  },
+  "required": ["implementation", "surfaces", "input_schema", "authority"],
+  "unevaluatedProperties": false
+}

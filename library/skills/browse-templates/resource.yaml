@@ -1,0 +1,23 @@
+id: skill/browse-templates
+kind: skill
+version: 1.0.4
+summary: List available Summer Engine project templates, present the choices, and create a project from the chosen one via summer create.
+use_when:
+  - the user wants to see available Summer Engine project templates, start from an existing template, or asks what templates exist
+  - picking a starting point and unsure which starter templates already exist
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - project
+  modalities:
+    - project
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/scene-and-project/browse-templates

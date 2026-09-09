@@ -73,6 +73,8 @@ test "$(npm whoami)" = "summer-engine"
 npm publish
 ```
 
+For a release that should soak before `latest` moves (every major), publish to the `next` dist-tag instead — `npm publish --tag next` — and promote later with `npm dist-tag add summer-engine@<version> latest`. Step 5's `dist-tags.latest` check then applies at promotion time, not at publish time; until then verify `dist-tags.next`. The 3.0.0 walkthrough is [`RELEASE-3.0.0.md`](./RELEASE-3.0.0.md).
+
 The browser flow must authenticate the `summer-engine` npm account with its configured security key. npm may prompt for the security key again when publishing. If the account name is different, authentication fails, or npm requests a factor you do not have, stop. Do not disable 2FA and do not create a bypass token for a one-off manual release.
 
 Success ends with `+ summer-engine@<version>`.

@@ -1,0 +1,52 @@
+id: tool/get-debugger-warnings
+kind: tool
+version: 1.0.2
+summary: Read runtime warnings from the debugger panel as structured entries with file, line, and callstack.
+use_when:
+  - diagnostics show a non-zero debugger warning count
+  - '"the debugger shows yellow warnings, what are they?"'
+  - checking for deprecated calls or node configuration warnings after a run
+do_not_use_when:
+  - errors, not warnings — summer_get_debugger_errors
+facets:
+  lifecycle:
+    - build
+  domains:
+    - debug
+    - runtime
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_get_debugger_warnings
+implementation:
+  module: src/mcp/tools/debug-tools.ts
+  export: registerDebugTools
+surfaces:
+  mcp:
+    tool_name: summer_get_debugger_warnings
+    remote: false
+input_schema:
+  type: object
+  properties:
+    max_warnings:
+      type: number
+      default: 50
+      description: Max warnings to return after dedupe
+    include_stack:
+      type: boolean
+      default: true
+      description: Include stack traces
+    raw:
+      type: boolean
+      default: false
+      description: Bypass dedupe
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

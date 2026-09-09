@@ -1,0 +1,22 @@
+id: reference/godot-version
+kind: reference
+version: 1.0.2
+summary: Summer Engine compatibility facts — current upstream technical base, version-sensitive APIs, and what to check before version-sensitive code.
+use_when:
+  - writing shaders, rendering code, extensions, or export configuration
+  - deciding which engine APIs or features are safe to target
+facets:
+  lifecycle: [ build ]
+  domains:
+    - engine
+    - scripting
+compatibility:
+  engine: ">=4.6"
+related:
+  references:
+    - reference/mcp-tools-reference
+source: official
+license: MIT
+status: stable
+aliases:
+  - references/godot-version.md

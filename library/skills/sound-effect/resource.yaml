@@ -1,0 +1,27 @@
+id: skill/sound-effect
+kind: skill
+version: 1.0.3
+summary: Generate short SFX one-shots — footsteps, weapon swings, UI clicks, hit impacts — wired as AudioStreamPlayer/2D/3D that auto-frees on finished.
+use_when:
+  - generating short SFX one-shots — footsteps, weapon swings, UI clicks, hit impacts, environmental cues
+  - an action, impact, or UI interaction is silent and needs a short one-shot sound wired to it
+facets:
+  lifecycle:
+    - build
+  domains:
+    - audio
+    - assets
+  modalities:
+    - audio
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/audio-direction
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/audio/sound-effect

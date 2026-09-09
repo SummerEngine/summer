@@ -1,0 +1,56 @@
+id: tool/list-my-assets
+kind: tool
+version: 1.0.2
+summary: List or search the signed-in user's generated and uploaded assets, returning exact asset ids plus file and import URLs.
+use_when:
+  - retrieving an asset the user just generated before importing it
+  - resolving phrases like 'the model I made' to an exact asset id
+facets:
+  lifecycle:
+    - build
+  domains:
+    - assets
+    - pipeline
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_list_my_assets
+implementation:
+  module: src/mcp/tools/asset-tools.ts
+  export: registerAssetTools
+surfaces:
+  mcp:
+    tool_name: summer_list_my_assets
+    remote: true
+input_schema:
+  type: object
+  properties:
+    query:
+      type: string
+      default: ""
+      description: Optional search term. Empty string lists recent assets.
+    assetType:
+      type: string
+      enum:
+        - 2d_image
+        - animation
+        - 3d_model
+        - audio
+        - music
+        - all
+      default: all
+      description: Filter by asset type
+    limit:
+      type: number
+      default: 10
+      description: Max results (1-20)
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false

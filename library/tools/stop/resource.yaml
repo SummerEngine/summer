@@ -1,0 +1,51 @@
+id: tool/stop
+kind: tool
+version: 1.1.1
+summary: Stop the running game (or one named offscreen instance). Does not revert scene edits, undo anything, or save — the editor state is left exactly as it is.
+use_when:
+  - runtime verification is finished
+  - the game must restart to pick up scene or script changes
+  - a runaway or frozen playtest needs killing
+  - an offscreen playtest instance (summer_play with instance + mode offscreen) is no longer needed — pass instance
+do_not_use_when:
+  - you want to undo scene edits — stopping reverts nothing; use editor undo / summer_batch Undo
+  - saving — stopping does not save; summer_save_scene
+facets:
+  lifecycle:
+    - build
+  domains:
+    - debug
+    - runtime
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_stop
+implementation:
+  module: src/mcp/tools/debug-tools.ts
+  export: registerDebugTools
+surfaces:
+  mcp:
+    tool_name: summer_stop
+    remote: false
+related:
+  tools:
+    - tool/play
+    - tool/game-control
+input_schema:
+  type: object
+  properties:
+    instance:
+      type: string
+      description: Offscreen instance name to stop (from summer_play instance); omit for the main embedded game.
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - game-stopped

@@ -1,0 +1,52 @@
+id: tool/get-asset-download-url
+kind: tool
+version: 1.0.2
+summary: Get a download URL for a specific asset file (primary or thumbnail), future-proofed for signed URLs.
+use_when:
+  - the user explicitly asks to download an asset file
+  - '"give me a link to the model file / the thumbnail"'
+  - handing a file to something outside the engine (a viewer, a Blender import)
+do_not_use_when:
+  - importing into the project (import by asset id instead)
+facets:
+  lifecycle:
+    - build
+  domains:
+    - assets
+    - pipeline
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_get_asset_download_url
+implementation:
+  module: src/mcp/tools/asset-tools.ts
+  export: registerAssetTools
+surfaces:
+  mcp:
+    tool_name: summer_get_asset_download_url
+    remote: true
+input_schema:
+  type: object
+  properties:
+    assetId:
+      type: string
+      description: Summer ArtAssets id
+    role:
+      type: string
+      enum:
+        - primary
+        - thumbnail
+      default: primary
+      description: Which file to download
+  required:
+    - assetId
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false

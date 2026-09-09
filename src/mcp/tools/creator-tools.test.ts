@@ -3,9 +3,9 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { saveCreatorToken } from "../../lib/auth.js";
-import { setConfigValue } from "../../lib/config.js";
-import { setSummerDirForTests } from "../../lib/store.js";
+import { saveCreatorToken } from "../../core/auth.js";
+import { setConfigValue } from "../../core/config.js";
+import { setSummerDirForTests } from "../../core/store.js";
 import { registerCreatorTools } from "./creator-tools.js";
 
 type Registered = {
@@ -68,13 +68,12 @@ afterEach(async () => {
 });
 
 describe("registerCreatorTools", () => {
-  it("extends the existing MCP with four creator tools", () => {
+  it("extends the existing MCP with three creator tools", () => {
     const { server, tools } = createFakeServer();
     registerCreatorTools(server as any);
     expect(tools.map((tool) => tool.name)).toEqual([
       "summer_creator_publish",
       "summer_creator_releases",
-      "summer_creator_logs",
       "summer_creator_config",
     ]);
   });

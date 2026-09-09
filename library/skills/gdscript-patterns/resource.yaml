@@ -1,0 +1,23 @@
+id: skill/gdscript-patterns
+kind: skill
+version: 1.0.3
+summary: GDScript conventions — type hints, signals, exports, onready, lifecycle methods, get_node vs $NodePath, naming.
+use_when:
+  - writing or refactoring GDScript — type hints, signals, exports, onready, lifecycle methods, naming conventions
+  - reviewing GDScript for idiomatic signals, exports, @onready usage, node references, and naming
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scripting
+    - conventions
+  modalities:
+    - scripts
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/scripting-patterns/gdscript-patterns

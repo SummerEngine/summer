@@ -1,6 +1,7 @@
 # summer-cli scripts
 
 - `smoke-test.sh` — CLI-level smoke tests (unit tests, command basics, template creation). Engine optional; engine-dependent checks are skipped when no editor is running.
+- `build-api-docs.mjs` — compiles the engine's class-reference XML into `assets/api-docs.json.gz` (served offline by the `summer_api_docs` MCP tool). Needs an engine checkout: `node scripts/build-api-docs.mjs /path/to/summerengine` (or `SUMMER_ENGINE_ROOT`). The asset is committed; rerun after engine API changes.
 - `compat-smoke.sh` (+ `compat-smoke.mjs` helper) — latest-MCP x candidate-engine compatibility gate. Engine REQUIRED. See below.
 
 ## Release gate: compat-smoke

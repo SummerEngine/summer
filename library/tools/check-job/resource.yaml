@@ -1,0 +1,45 @@
+id: tool/check-job
+kind: tool
+version: 1.0.2
+summary: Check the status of an async generation job by id.
+use_when:
+  - a generation ran without waiting, or timed out, and needs re-checking
+  - '"is my 3D model / video done yet?"'
+  - a generate_* call returned a job id instead of a finished asset
+do_not_use_when:
+  - the generation returned the asset directly — there is nothing to poll
+facets:
+  lifecycle:
+    - build
+  domains:
+    - generate
+    - pipeline
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_check_job
+implementation:
+  module: src/mcp/tools/generate-tools.ts
+  export: registerGenerateTools
+surfaces:
+  mcp:
+    tool_name: summer_check_job
+    remote: true
+input_schema:
+  type: object
+  properties:
+    jobId:
+      type: string
+      description: The job ID returned by an async generation tool
+  required:
+    - jobId
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false

@@ -1,0 +1,154 @@
+{
+  "$id": "resource.schema.json",
+  "title": "Summer resource.yaml — universal descriptor (CONTRACT.md §5)",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^([a-z0-9][a-z0-9-]*/)?(tool|skill|example|template|collection|reference)/[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["tool", "skill", "example", "template", "collection", "reference"]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
+    },
+    "summary": {
+      "description": "One plain-language sentence an agent can route on: 40..160 characters.",
+      "type": "string",
+      "minLength": 40,
+      "maxLength": 160
+    },
+    "use_when": {
+      "description": "Distinct situations that should trigger this resource; each item is a real phrase (>=12 chars). Per-kind minimum counts (2 for skill/tool/example/reference, 1 for template/collection) are enforced by validate-library.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 12 },
+      "minItems": 1
+    },
+    "do_not_use_when": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "facets": {
+      "type": "object",
+      "properties": {
+        "lifecycle": {
+          "type": "array",
+          "items": { "enum": ["build", "launch", "grow", "support"] },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "domains": {
+          "description": "Controlled vocabulary: every item must be listed in registry/schemas/domains.json (domains); grown only by PR to that file.",
+          "type": "array",
+          "items": { "$ref": "domains.json#/domains" },
+          "uniqueItems": true
+        },
+        "modalities": {
+          "description": "Controlled vocabulary: every item must be listed in registry/schemas/domains.json (modalities); grown only by PR to that file.",
+          "type": "array",
+          "items": { "$ref": "domains.json#/modalities" },
+          "uniqueItems": true
+        }
+      },
+      "required": ["lifecycle"],
+      "additionalProperties": false
+    },
+    "compatibility": {
+      "type": "object",
+      "properties": {
+        "engine": { "type": "string", "minLength": 1 },
+        "toolkit": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "related": {
+      "type": "object",
+      "properties": {
+        "tools": { "$ref": "#/$defs/id-list" },
+        "skills": { "$ref": "#/$defs/id-list" },
+        "examples": { "$ref": "#/$defs/id-list" },
+        "templates": { "$ref": "#/$defs/id-list" },
+        "collections": { "$ref": "#/$defs/id-list" },
+        "references": { "$ref": "#/$defs/id-list" }
+      },
+      "additionalProperties": false
+    },
+    "source": { "type": "string", "minLength": 1 },
+    "license": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["stable", "preview", "deprecated"] },
+    "aliases": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "evidence": { "$ref": "#/$defs/evidence" },
+    "lint_exceptions": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "lint_exception_reason": { "type": "string", "minLength": 1 }
+  },
+  "required": ["id", "kind", "version", "summary", "use_when", "facets", "source", "license", "status"],
+  "dependentRequired": {
+    "lint_exceptions": ["lint_exception_reason"]
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "id-list": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^([a-z0-9][a-z0-9-]*/)?(tool|skill|example|template|collection|reference)/[a-z0-9]+(-[a-z0-9]+)*$"
+      },
+      "uniqueItems": true
+    },
+    "evidence": {
+      "type": "object",
+      "properties": {
+        "engine_version": { "type": "string", "minLength": 1 },
+        "verified_at": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "checks": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
+        },
+        "media": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/media-item" }
+        }
+      },
+      "required": ["engine_version", "verified_at", "checks"],
+      "additionalProperties": false
+    },
+    "media-item": {
+      "type": "object",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string", "minLength": 1 },
+            "sha256": { "$ref": "#/$defs/sha256" }
+          },
+          "required": ["path"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string", "minLength": 1 },
+            "sha256": { "$ref": "#/$defs/sha256" }
+          },
+          "required": ["url", "sha256"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

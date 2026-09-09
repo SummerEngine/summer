@@ -1,0 +1,5 @@
+{
+  "targets": [
+    { "generated": "plugin.cursor.json", "destination": ".cursor-plugin/plugin.json" }
+  ]
+}

@@ -1,0 +1,58 @@
+id: skill/scene-scripting
+kind: skill
+version: 1.1.1
+summary: One GDScript in the live editor (summer_run_script) builds scenes, 2D levels, HUDs and gameplay wiring instead of CRUD chains; verify with diff + screenshot.
+use_when:
+  - a scene change needs 3+ related ops or any computed placement — scattering, grids, rings, procedural meshes, geometry helpers, terrain, lighting rigs, keyframe animation, shader FX
+  - a 2D level (tilemap paint, bodies, camera limits, parallax), an animated sprite, a HUD or Control tree, a persisted signal connection, an attached script, a prefab, input actions, an autoload, or the main scene should be built in one script
+  - an API property/method name must be verified with summer_api_docs before scripting
+  - a cold project-wide batch job belongs in summer_run_editor_script
+do_not_use_when:
+  - a single property tweak — summer_set_prop is cheaper
+  - one signal, one input binding, or one project setting — summer_connect_signal, summer_input_map_bind, summer_project_setting are one call each and ship today
+  - "the engine build lacks RunSceneScript (engine PR #156; current shipped engines return engine_lacks_op) — RunEditorScript and RunVerification DO ship today, so fall back to summer_run_editor_script or the scene tools"
+  - "the Wave H 2D/UI/gameplay-code ctx helpers (engine PR #156 follow-up commits) are missing on the engine — the skill's fallback table names what works everywhere"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - scripting
+    - 2d
+    - ui
+    - agent-workflow
+  modalities:
+    - scripts
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/run-script
+    - tool/run-editor-script
+    - tool/api-docs
+    - tool/world-snapshot
+    - tool/snapshot-diff
+    - tool/screenshot
+    - tool/connect-signal
+    - tool/input-map-bind
+    - tool/project-setting
+    - tool/write-file
+    - tool/get-script-errors
+  skills:
+    - skill/verifying-scenes
+    - skill/headless-scripting
+    - skill/scene-composition
+    - skill/character-animation-wiring
+    - skill/ui-basics
+    - skill/gdscript-patterns
+    - skill/sprite-sheet
+    - skill/verification-before-completion
+  templates:
+    - template/2d-platformer
+source: official
+license: MIT
+status: preview
+recommended: true
+aliases:
+  - skills/workflow/scene-scripting

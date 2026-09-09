@@ -1,0 +1,35 @@
+id: skill/lumera-single-image-scene-reconstruction
+kind: skill
+version: 0.1.1
+summary: "Lumera-style single image to editable 3D scene — VLM-parsed object boxes and parametric lights, per-object meshes, HDR probe, .tscn assembly, refinement loop."
+use_when:
+  - "turn this concept art or screenshot into an editable 3D scene with separate objects and lights"
+  - "block out a level from a single reference image"
+  - "reconstruct a room from one photo as movable meshes and tunable lights, not a point cloud or splat"
+  - "build a bounded agent loop that refines a generated scene against a reference image"
+do_not_use_when:
+  - "you only need a visual backdrop (a splat or depth-mesh bake is cheaper), large unbounded outdoor scenes, or exact light positions and intensities"
+  - "Lumera itself has no public code; the VLM box/light parsers, per-object mesh generator, and HDR estimator are external components you must supply"
+  - "intake from the gamedev-knowledge pipeline (source-cited, pipeline-validated, not yet exercised in-engine by the Summer team) — verify results in the engine as you would any technique"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - assets
+    - pipeline
+    - 3d
+    - scenes
+  modalities:
+    - scenes
+    - 3d-models
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/environment-kit
+    - skill/3d-lighting
+    - skill/scene-composition
+source: official
+license: MIT
+status: preview
+recommended: false

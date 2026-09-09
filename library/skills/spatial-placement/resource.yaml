@@ -1,0 +1,42 @@
+id: skill/spatial-placement
+kind: skill
+version: 1.0.1
+summary: Place and verify 3D objects with Starcast evidence — inspect, place, starcast, correct, verify; floor, shelf, wall, alcove recipes and overlap repair.
+use_when:
+  - positioning a prop, character, collider, or platform so it sits flush, avoids overlap, or keeps clearance
+  - placing something against a wall, inside an alcove, or on a shelf and needing to know which side is blocked and by how much
+  - repairing an overlap or a floating object after a placement
+  - post-placement checks on a rotated prop using its own local axes
+do_not_use_when:
+  - the scene is 2D — Starcast reads Node3D bounds, 3D physics, and visual AABBs
+  - you want the engine to seat or align for you — skill/world-building-3d (summer_snap_to_surface, summer_align_distribute_3d)
+  - "the engine build predates Starcast3D (engine PR #147): summer_starcast returns engine_lacks_op; judge placement from summer_test_placement and summer_inspect_node instead"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - 3d
+    - world-building
+    - level-design
+    - verification
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/starcast
+    - tool/get-scene-tree
+    - tool/inspect-node
+    - tool/set-prop
+    - tool/batch
+  skills:
+    - skill/world-building-3d
+    - skill/scene-composition
+source: official
+license: MIT
+status: preview
+recommended: true
+aliases:
+  - skills/scene-and-project/spatial-placement

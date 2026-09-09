@@ -1,0 +1,11 @@
+id: reference/no-body
+kind: reference
+version: 1.0.0
+summary: A reference directory without a body markdown file.
+use_when:
+  - testing file requirements
+facets:
+  lifecycle: [build]
+source: official
+license: MIT
+status: stable

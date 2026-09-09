@@ -1,0 +1,24 @@
+id: skill/create-environment-kit
+kind: skill
+version: 2.0.0
+summary: Build a coherent, reusable environment kit for a scene.
+use_when:
+  - building a coherent reusable environment set
+  - dressing a level with modular walls, floors, and props that share one style
+do_not_use_when:
+  - importing one finished prop
+facets:
+  lifecycle: [build]
+  domains: [world-building, level-design, 3d]
+  modalities: [scenes, assets]
+compatibility:
+  engine: ">=4.6"
+  toolkit: ">=3.0.0"
+related:
+  examples: [example/stylized-forest-scene]
+  collections: [collection/fantasy-forest]
+source: official
+license: MIT
+status: stable
+aliases:
+  - skills/level-design/create-environment-kit

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const executeOpsMock = vi.hoisted(() => vi.fn());
 const executeIdentityBoundOpsMock = vi.hoisted(() => vi.fn());
 
-vi.mock("../../lib/auth.js", () => ({
+vi.mock("../../core/auth.js", () => ({
   getAuthToken: vi.fn(async () => "test-token"),
 }));
 
@@ -81,6 +81,17 @@ describe("registerAssetTools", () => {
 
     expect(getTool(tools, "summer_import_asset_by_id").schema.assetId).toBeDefined();
     expect(getTool(tools, "summer_import_asset").schema.source).toBeDefined();
+  });
+
+  it("registers summer_import_hdri with query/assetId/resolution inputs", () => {
+    const { server, tools } = createFakeServer();
+    registerAssetTools(server as any);
+
+    const tool = getTool(tools, "summer_import_hdri");
+    expect(tool.schema.query).toBeDefined();
+    expect(tool.schema.assetId).toBeDefined();
+    expect(tool.schema.resolution).toBeDefined();
+    expect(tool.description).toContain("CC0");
   });
 
   it("lists my assets through the MCP search endpoint", async () => {
@@ -190,5 +201,148 @@ describe("registerAssetTools", () => {
       importedTo: "res://assets/models/iron_sword.glb",
       addedToScene: true,
     });
+  });
+
+  function polyHavenFetchMock(overrides?: {
+    catalog?: Record<string, unknown>;
+    files?: Record<string, unknown>;
+  }) {
+    const catalog = overrides?.catalog ?? {
+      kloppenheim_02: {
+        name: "Kloppenheim 02",
+        tags: ["sky", "clouds", "field"],
+        categories: ["outdoor", "sunset"],
+      },
+      studio_small_08: {
+        name: "Studio Small 08",
+        tags: ["studio", "artificial light"],
+        categories: ["indoor", "studio"],
+      },
+    };
+    const files = overrides?.files ?? {
+      hdri: {
+        "1k": { hdr: { url: "https://dl.polyhaven.org/hdris/kloppenheim_02_1k.hdr", size: 1 } },
+        "2k": { hdr: { url: "https://dl.polyhaven.org/hdris/kloppenheim_02_2k.hdr", size: 2 } },
+        "4k": { hdr: { url: "https://dl.polyhaven.org/hdris/kloppenheim_02_4k.hdr", size: 4 } },
+      },
+    };
+    return vi.fn(async (url: string) => ({
+      ok: true,
+      status: 200,
+      json: async () => (String(url).includes("/assets") ? catalog : files),
+    }));
+  }
+
+  it("imports a Poly Haven HDRI by search query, directly and unauthenticated", async () => {
+    const fetchMock = polyHavenFetchMock();
+    globalThis.fetch = fetchMock as any;
+    executeOpsMock.mockResolvedValue({ results: [{ ok: true }] });
+
+    const { server, tools } = createFakeServer();
+    registerAssetTools(server as any);
+
+    const result = await getTool(tools, "summer_import_hdri").handler({
+      query: "sunset field",
+      resolution: "2k",
+    });
+
+    const [assetsUrl, assetsInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(assetsUrl).toBe("https://api.polyhaven.com/assets?type=hdris");
+    expect((assetsInit.headers as any)["User-Agent"]).toBe("summer-engine-cli");
+    expect((assetsInit.headers as any).Authorization).toBeUndefined();
+
+    const [filesUrl] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(filesUrl).toBe("https://api.polyhaven.com/files/kloppenheim_02");
+
+    expect(executeOpsMock).toHaveBeenCalledWith([
+      {
+        op: "ImportFromUrl",
+        url: "https://dl.polyhaven.org/hdris/kloppenheim_02_2k.hdr",
+        path: "res://sky/kloppenheim_02_2k.hdr",
+      },
+    ]);
+
+    const parsed = parseResult(result);
+    expect(parsed).toMatchObject({
+      success: true,
+      assetId: "kloppenheim_02",
+      resolution: "2k",
+      importedTo: "res://sky/kloppenheim_02_2k.hdr",
+    });
+    expect(parsed.license).toContain("CC0");
+    expect(parsed.applyScript).toContain("WorldEnvironment");
+    expect(parsed.applyScript).not.toContain("ensure_environment");
+    expect(parsed.applyScript).toContain("PanoramaSkyMaterial");
+    expect(parsed.applyScript).toContain("res://sky/kloppenheim_02_2k.hdr");
+  });
+
+  it("imports by exact assetId and falls back to a lower available resolution", async () => {
+    const fetchMock = polyHavenFetchMock({
+      files: {
+        hdri: {
+          "1k": { hdr: { url: "https://dl.polyhaven.org/hdris/night_city_1k.hdr" } },
+          "2k": { exr: { url: "https://dl.polyhaven.org/hdris/night_city_2k.exr" } },
+        },
+      },
+    });
+    globalThis.fetch = fetchMock as any;
+    executeOpsMock.mockResolvedValue({ results: [{ ok: true }] });
+
+    const { server, tools } = createFakeServer();
+    registerAssetTools(server as any);
+
+    const result = await getTool(tools, "summer_import_hdri").handler({
+      assetId: "night_city",
+      resolution: "4k",
+    });
+
+    // No catalog fetch on the exact-id path.
+    const [firstUrl] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(firstUrl).toBe("https://api.polyhaven.com/files/night_city");
+
+    const parsed = parseResult(result);
+    expect(parsed).toMatchObject({
+      success: true,
+      assetId: "night_city",
+      resolution: "2k",
+      format: "exr",
+      importedTo: "res://sky/night_city_2k.exr",
+    });
+    expect(parsed.resolutionNote).toContain("4k");
+  });
+
+  it("rejects a call with neither query nor assetId", async () => {
+    const { server, tools } = createFakeServer();
+    registerAssetTools(server as any);
+
+    const result = await getTool(tools, "summer_import_hdri").handler({
+      resolution: "2k",
+    });
+
+    expect(result.isError).toBe(true);
+    expect(parseResult(result).error).toBe("bad_args");
+    expect(executeOpsMock).not.toHaveBeenCalled();
+  });
+
+  it("treats API responses as data: unsafe ids and foreign download hosts never reach the engine", async () => {
+    const { server, tools } = createFakeServer();
+    registerAssetTools(server as any);
+    const tool = getTool(tools, "summer_import_hdri");
+
+    // An assetId that could break out of the URL/res:// path is refused up front.
+    const badId = await tool.handler({ assetId: "../etc/passwd", resolution: "2k" });
+    expect(badId.isError).toBe(true);
+    expect(parseResult(badId).error).toBe("bad_args");
+
+    // A files response pointing at a non-Poly-Haven host is ignored.
+    globalThis.fetch = polyHavenFetchMock({
+      files: {
+        hdri: { "2k": { hdr: { url: "https://evil.example/payload.hdr" } } },
+      },
+    }) as any;
+    const badHost = await tool.handler({ assetId: "kloppenheim_02", resolution: "2k" });
+    expect(badHost.isError).toBe(true);
+    expect(parseResult(badHost).error).toBe("no_hdri_file");
+    expect(executeOpsMock).not.toHaveBeenCalled();
   });
 });

@@ -1,0 +1,28 @@
+id: skill/music-track
+kind: skill
+version: 1.0.2
+summary: Generate a looped or cinematic music track — loops authored at >=30s with a marked loop point, cinematic tracks at >=60s linear.
+use_when:
+  - generating a looped or cinematic music track — main theme, boss music, title screen, exploration loop, combat track
+  - a game has no music yet or needs a new track for a level, a cutscene, or the credits
+facets:
+  lifecycle:
+    - build
+  domains:
+    - audio
+    - assets
+  modalities:
+    - audio
+    - assets
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/adaptive-music
+    - skill/audio-direction
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/audio/music-track

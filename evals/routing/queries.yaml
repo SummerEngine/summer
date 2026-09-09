@@ -1,0 +1,316 @@
+# Routing eval corpus — real user/agent asks mapped to the library entries that
+# SHOULD surface for them.
+#
+# Rules:
+# - `query` is written the way a real user (or a fresh agent relaying a user)
+#   actually phrases it. No keyword-stuffed synthetic filler.
+# - `expected` are permanent IDs (`skill/<slug>`, `tool/<slug>`, ..., CONTRACT.md
+#   §4). Every ID must exist on disk; the runner errors on unknown IDs.
+# - Mix kinds deliberately. The runner reports recall@5 per kind, so tool-intent
+#   queries (below) keep the kind prior honest: skill routing must not improve
+#   by burying tools.
+# - Order within `expected` does not matter; recall@5 counts how many expected
+#   IDs land in the top 5.
+# - `expected_gap: true` marks queries the library genuinely cannot serve today.
+#   Those are DATA — the authoring backlog. They are excluded from recall and
+#   reported separately. `closest` (optional) names the best partial match so a
+#   future entry can be checked against it.
+#
+# When a gap gets filled: remove `expected_gap`, add the new ID to `expected`,
+# and update the baseline (`npm run eval:routing -- --update-baseline`).
+
+queries:
+  # ── 2D assets ──────────────────────────────────────────────────────────
+  - query: "draw a portrait of my wizard for the dialogue box"
+    expected: [skill/character-portrait]
+  - query: "show me a few different art styles for the main character before we commit"
+    expected: [skill/concept-art]
+  - query: "make me a 32x32 pixel art sword icon"
+    expected: [skill/pixel-art]
+  - query: "I need a seamless stone floor texture"
+    expected: [skill/tileable-texture]
+  - query: "make a sprite sheet with a walk cycle for my knight"
+    expected: [skill/sprite-sheet]
+  - query: "generate a whole pack of forest themed 2D assets in one go"
+    expected: [skill/create-asset-sheet]
+  - query: "import the asset pack we just generated into my scene"
+    expected: [skill/instantiate-asset-pack]
+  - query: "generate icons and buttons for my menus"
+    expected: [skill/ui-graphics]
+  - query: "use the progress bar from the widget pack in my HUD"
+    expected: [skill/use-widget-asset]
+  - query: "give my 3d scene a nice sunset sky"
+    expected: [skill/skybox-panorama]
+
+  # ── 3D assets ──────────────────────────────────────────────────────────
+  - query: "make a rigged goblin enemy I can animate"
+    expected: [skill/character-model]
+  - query: "I need a sword model for the player to hold"
+    expected: [skill/prop-model]
+  - query: "generate some trees and rocks for my forest"
+    expected: [skill/organic-model]
+  - query: "build a modular dungeon kit with walls and corridors that snap together"
+    expected: [skill/environment-kit]
+  - query: "make a drivable car"
+    expected: [skill/vehicle-model]
+  - query: "what's the right pipeline for all the assets my game needs"
+    expected: [skill/asset-strategy]
+  - query: "write a Blender script that fabricates a set of pipe pieces with exact dimensions and bevels"
+    expected: [skill/fabricating-assets]
+
+  # ── Animation ──────────────────────────────────────────────────────────
+  - query: "put a walk animation on my character"
+    expected: [skill/generate-motion]
+  - query: "blend idle walk and run based on movement speed"
+    expected: [skill/animation-tree]
+  - query: "make the NPC's mouth move when the voice line plays"
+    expected: [skill/facial-and-lipsync]
+  - query: "the character's feet float above the stairs"
+    expected: [skill/procedural-animation]
+  - query: "reuse the zombie animations on my new skeleton model"
+    expected: [skill/retarget]
+
+  # ── Audio ──────────────────────────────────────────────────────────────
+  - query: "make a satisfying click sound for the UI"
+    expected: [skill/sound-effect]
+  - query: "I need looping background music for the title screen"
+    expected: [skill/music-track]
+  - query: "the music should get intense when combat starts"
+    expected: [skill/adaptive-music]
+  - query: "add creepy dungeon ambience"
+    expected: [skill/ambient-bed]
+  - query: "give the shopkeeper a voice"
+    expected: [skill/voice-line]
+  - query: "what should my game sound like overall"
+    expected: [skill/audio-direction]
+
+  # ── Gameplay & design ──────────────────────────────────────────────────
+  - query: "add a grappling hook"
+    expected: [skill/design-mechanic]
+  - query: "design a boss arena for level 3"
+    expected: [skill/design-level]
+  - query: "make an enemy that patrols and attacks when it sees the player"
+    expected: [skill/design-npc]
+  - query: "my auto-fire weapon keeps overkilling enemies that are already dead"
+    expected: [skill/auto-fire-targeting]
+  - query: "turn this concept art into a playable level"
+    expected: [skill/scene-to-level]
+
+  # ── Character controllers ──────────────────────────────────────────────
+  - query: "make an FPS"
+    expected: [skill/make-game, skill/fps-controller]
+  - query: "add WASD movement and mouse look"
+    expected: [skill/fps-controller]
+
+  # ── Multiplayer ────────────────────────────────────────────────────────
+  - query: "add a multiplayer lobby"
+    expected: [skill/setup-multiplayer]
+  - query: "I want to play my game co-op with a friend online"
+    expected: [skill/setup-multiplayer, skill/peer-to-peer-multiplayer]
+  - query: "how do I stop clients from cheating their own health"
+    expected: [skill/host-authoritative-state]
+  - query: "starting a multiplayer game from scratch, how should I architect the networking"
+    expected: [skill/peer-to-peer-multiplayer, skill/host-authoritative-state]
+
+  # ── Rendering & look ───────────────────────────────────────────────────
+  - query: "my grass lighting looks flat"
+    expected: [skill/3d-lighting]
+  - query: "the scene is too dark and the shadows are blocky"
+    expected: [skill/3d-lighting]
+  - query: "make it look like PS1 horror"
+    expected: [skill/art-direction]
+  - query: "pick a color palette and visual style for my cozy farming game"
+    expected: [skill/art-direction]
+
+  # ── VFX ────────────────────────────────────────────────────────────────
+  - query: "make a fireball"
+    expected: [skill/vfx-fire]
+  - query: "add sparks when the sword hits metal"
+    expected: [skill/vfx-hit-spark]
+  - query: "the boss should disintegrate when it dies"
+    expected: [skill/vfx-dissolve]
+  - query: "smoke coming out of the chimney"
+    expected: [skill/vfx-smoke]
+  - query: "chain lightning spell effect"
+    expected: [skill/vfx-lightning]
+  - query: "muzzle flash on the shotgun"
+    expected: [skill/vfx-muzzle-flash]
+  - query: "make the pond ripple when raindrops hit it"
+    expected: [skill/vfx-water-ripple]
+  - query: "make stylized water"
+    expected: [skill/vfx-water-ripple]
+  - query: "the amulet should glow like it's enchanted"
+    expected: [skill/vfx-magic-glow]
+  - query: "combat feels flat, it needs more punch"
+    expected: [skill/game-feel]
+
+  # ── Debugging & performance ────────────────────────────────────────────
+  - query: "the character falls through the floor"
+    expected: [skill/debug, skill/investigating-bugs]
+  - query: "game crashes when I open the inventory"
+    expected: [skill/debug]
+  - query: "fps drops when lots of enemies spawn"
+    expected: [skill/tune-performance]
+  - query: "it used to run at 60fps, now it's 30 after my last change"
+    expected: [skill/diagnosing-perf-regressions]
+  - query: "the jump works but it feels floaty and mushy"
+    expected: [skill/debugging-game-feel]
+
+  # ── Project lifecycle ──────────────────────────────────────────────────
+  - query: "publish my game"
+    expected: [skill/export-and-ship]
+  - query: "export a windows build I can send to my friend"
+    expected: [skill/export-and-ship]
+  - query: "test the game on my phone"
+    expected: [skill/remote-deploy]
+  - query: "I want to make a game but I'm not sure what yet"
+    expected: [skill/brainstorm-game]
+  - query: "start a new empty project called dungeon-crawler"
+    expected: [skill/new-project]
+  - query: "what templates can I start from"
+    expected: [skill/browse-templates]
+  - query: "move my project over to my laptop"
+    expected: []
+    expected_gap: true
+    closest: skill/using-summer
+    note: Summer Cloud sync was removed (unmaintained research preview); no project-transfer skill exists. Use git or copy the project folder.
+  - query: "run it and tell me if it works"
+    expected: [skill/play]
+  - query: "playtest the feature yourself by driving the live game frame by frame"
+    expected: [skill/agent-playtesting]
+  - query: "everything is in one giant scene file, how should I organize this"
+    expected: [skill/scene-composition]
+  - query: "clean up this script to use proper GDScript style"
+    expected: [skill/gdscript-patterns]
+  - query: "add a pause menu with a settings screen"
+    expected: [skill/ui-basics]
+  - query: "bake a navmesh for this level"
+    expected: [skill/headless-scripting]
+  - query: "generate a cutscene for the game intro"
+    expected: [skill/cinematic-cutscene]
+  - query: "I need trailer footage for my Steam page"
+    expected: [skill/trailer-shot]
+  - query: "animated looping background for the splash screen"
+    expected: [skill/animated-loop]
+
+  # ── Tool intent (engine/editor actions a single tool performs) ─────────
+  - query: "take a screenshot of the running game"
+    expected: [tool/screenshot]
+  - query: "stop the game"
+    expected: [tool/stop]
+  - query: "is the game currently running"
+    expected: [tool/is-running]
+  - query: "add a Camera3D node under the Player"
+    expected: [tool/add-node]
+  - query: "set the player's position to 0, 10, 0"
+    expected: [tool/set-prop]
+  - query: "connect the button's pressed signal to my script"
+    expected: [tool/connect-signal]
+  - query: "what's in the scene tree right now"
+    expected: [tool/get-scene-tree]
+  - query: "bind the space key to a jump action"
+    expected: [tool/input-map-bind]
+  - query: "show me the errors in the console"
+    expected: [tool/get-console]
+  - query: "does this script have any compile errors"
+    expected: [tool/get-script-errors]
+  - query: "import this glb from a url into my project"
+    expected: [tool/import-from-url]
+  - query: "fabricate this mesh from my bpy script and import the fabricated glb into the scene"
+    expected: [tool/fabricate-3d]
+  - query: "change the main scene in project settings"
+    expected: [tool/project-setting]
+  - query: "wait for the game to start before checking for errors"
+    expected: [tool/wait-for-event]
+  - query: "what just happened in the engine, show me the recent events"
+    expected: [tool/recent-events]
+  - query: "save this camera angle so I can compare screenshots before and after"
+    expected: [tool/camera-bookmark]
+  - query: "screenshot the scene with numbered labels so I can tell which node is which"
+    expected: [tool/screenshot]
+  - query: "run the game with a fixed random seed so the playtest is reproducible"
+    expected: [skill/playtesting-a-feature, tool/play]
+  - query: "open project settings in the editor"
+    expected: [tool/ui-actions]
+  - query: "dismiss the dialog that's blocking the editor"
+    expected: [tool/ui-activate, skill/driving-the-editor-ui]
+  - query: "pause the running game and step one physics frame"
+    expected: [tool/game-control]
+  - query: "record my inputs and replay them deterministically"
+    expected: [tool/game-input]
+
+  # ── Known gaps (expected_gap: true — the authoring backlog) ────────────
+  - query: "add enemy pathfinding"
+    expected: []
+    expected_gap: true
+    closest: skill/design-npc
+    note: "No navigation/NavMesh/pathfinding skill exists. design-npc covers behavior, not navigation."
+  - query: "add a save and load system"
+    expected: []
+    expected_gap: true
+    note: "No save/serialization skill. High-frequency ask for any game past a prototype."
+  - query: "add an inventory system"
+    expected: []
+    expected_gap: true
+    closest: skill/design-mechanic
+    note: "No inventory skill; design-mechanic is generic."
+  - query: "add dialogue trees so the NPC can give quests"
+    expected: []
+    expected_gap: true
+    closest: skill/design-npc
+    note: "design-npc is combat/behavior. No dialogue-system or quest skill."
+  - query: "hook up Steam achievements"
+    expected: []
+    expected_gap: true
+    note: "No platform-integration skill (Steamworks, achievements, leaderboards)."
+  - query: "make the terrain destructible"
+    expected: []
+    expected_gap: true
+    note: "No destruction/terrain-modification skill."
+  - query: "add a minimap"
+    expected: []
+    expected_gap: true
+    closest: skill/ui-basics
+    note: "ui-basics covers Control trees; a minimap needs viewport/camera capture patterns it doesn't teach."
+  - query: "translate my game into Japanese"
+    expected: []
+    expected_gap: true
+    note: "No localization skill."
+  - query: "add controller support with rebindable inputs"
+    expected: []
+    expected_gap: true
+    closest: skill/fps-controller
+    note: "fps-controller binds default keys; no gamepad/rebinding skill."
+  - query: "add a day night cycle"
+    expected: []
+    expected_gap: true
+    closest: skill/3d-lighting
+    note: "3d-lighting is static setup; no animated time-of-day skill."
+  - query: "procedurally generate the dungeon layout"
+    expected: []
+    expected_gap: true
+    closest: skill/design-level
+    note: "design-level authors one level by hand; no procgen skill."
+  - query: "third person camera that doesn't clip through walls"
+    expected: []
+    expected_gap: true
+    closest: skill/fps-controller
+    note: "No third-person controller/camera skill (fps-controller spec Case 3 already anticipates the handoff)."
+
+  # ── Navigation (summer open / product map / navigate-summer) ───────────
+  - query: "open my billing page"
+    expected: [tool/open]
+  - query: "show me my published games"
+    expected: [tool/open]
+  - query: "where do I change my plan?"
+    expected: [reference/product-map, tool/open]
+  - query: "open the scene I'm editing in the editor so I can look at it"
+    expected: [tool/open]
+  - query: "should I open the website for the user or just do it through the API"
+    expected: [skill/navigate-summer]
+  - query: "show me the mcp setup guide for cursor"
+    expected: [tool/open]
+  - query: "open the main scene in the editor"
+    expected: [tool/open]
+  - query: "select the Player node in the editor so I can see it"
+    expected: [tool/open]

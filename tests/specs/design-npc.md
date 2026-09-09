@@ -45,7 +45,7 @@
 - [ ] Script has an `attack_telegraph` parameter in 0.3–0.7 sec range, scaled by aggression at attack time.
 - [ ] Script emits a `died` signal AND an `ally_defeated` signal.
 - [ ] Script uses `distance_squared_to` (NOT `distance_to`) for range comparisons.
-- [ ] Script uses typed GDScript per `references/gd-style.md`.
+- [ ] Script uses typed GDScript per `library/references/gd-style/gd-style.md`.
 - [ ] Skill asks "May I create / write …" before each user-visible mutation.
 - [ ] Final step is `summer_save_scene` then `summer_get_script_errors`.
 

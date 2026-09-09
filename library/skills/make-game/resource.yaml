@@ -1,0 +1,35 @@
+id: skill/make-game
+kind: skill
+version: 1.0.3
+summary: "Orchestration spine for 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship — delegates to specialist skills."
+use_when:
+  - the user says 'make me a game', 'build me a game', 'I want to make a [genre] game', or 'let's build something' — running the full game-dev pipeline
+  - the user wants a complete playable game end to end, from brainstorm through shipping
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - project
+  modalities:
+    - project
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/audio-direction
+    - skill/export-and-ship
+    - skill/design-mechanic
+    - skill/tune-performance
+    - skill/art-direction
+    - skill/brainstorm-game
+    - skill/new-project
+    - skill/play
+    - skill/scene-composition
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/scene-and-project/make-game

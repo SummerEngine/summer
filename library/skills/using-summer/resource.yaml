@@ -1,0 +1,41 @@
+id: skill/using-summer
+kind: skill
+version: 1.0.4
+summary: Session bootstrap for Summer projects — establishes how to find and use Summer skills and the summer-engine MCP before any response.
+use_when:
+  - starting any conversation in a Summer Engine project
+  - deciding which Summer skill or summer_* tool applies before answering a game-development request
+facets:
+  lifecycle:
+    - build
+  domains:
+    - agent-workflow
+    - meta
+  modalities:
+    - docs
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/search-library
+    - tool/read-library
+  skills:
+    - skill/audio-direction
+    - skill/fps-controller
+    - skill/debug
+    - skill/design-mechanic
+    - skill/design-level
+    - skill/setup-multiplayer
+    - skill/art-direction
+    - skill/brainstorm-game
+    - skill/play
+    - skill/scene-composition
+    - skill/gdscript-patterns
+source: official
+license: MIT
+status: stable
+aliases:
+  - skills/workflow/using-summer
+lint_exceptions:
+  - install-command
+lint_exception_reason: The body documents `npx clear-npx-cache`, Summer's own documented fix for machines whose stale npx cache keeps serving an old summer-engine CLI; it is a user-run recovery step in the body, not agent-autonomous package installation.

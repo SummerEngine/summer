@@ -1,0 +1,24 @@
+id: template/3d-voxel-sandbox
+kind: template
+version: 1.2.8
+summary: Voxel sandbox starter — chunked world, face culling, mining and building, seeded generation.
+use_when:
+  - starting a Minecraft-like voxel sandbox
+facets:
+  lifecycle: [ build ]
+  domains:
+    - 3d
+    - world-building
+    - open-world
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - template-3d-voxel-sandbox
+repo: https://github.com/SummerEngine/template-3d-voxel-sandbox
+commit: 2b31cf12761b2d00d5268c2056d0c0706f6ad54e
+tree_digest: 97a2288c64c89b6920dffd8f0ace1584833ae9cb0ddd51af6ff8b64b4484d351
+default_branch: main
+systems: [ chunked-world, face-culling, mining-building, seeded-generation ]

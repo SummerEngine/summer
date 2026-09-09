@@ -39,9 +39,9 @@
 - [ ] A `Head` Node3D pivots at `y ≈ 1.6` and contains the Camera3D as a child (yaw on body, pitch on head — never both on the body).
 - [ ] All 6 input actions bound: `move_forward`, `move_back`, `move_left`, `move_right`, `jump`, `sprint`.
 - [ ] Skill asks "May I create / attach …" before the script write.
-- [ ] Skill never calls `summer_set_resource_property` on an inline `sub_resource` (the silent-fail trap from `references/mcp-tools-reference.md`).
+- [ ] Skill never calls `summer_set_resource_property` on an inline `sub_resource` (the silent-fail trap from `library/references/mcp-tools-reference/mcp-tools-reference.md`).
 - [ ] Final step is `summer_save_scene` followed by `summer_get_script_errors`.
-- [ ] Script uses typed GDScript per `references/gd-style.md` (`@export`, `:=`, `class_name`).
+- [ ] Script uses typed GDScript per `library/references/gd-style/gd-style.md` (`@export`, `:=`, `class_name`).
 - [ ] Script defines `coyote_time` and `jump_buffer_time` as `@export` floats with sensible defaults (0.05–0.2).
 - [ ] Script defines separate `ground_accel`, `ground_friction`, `air_accel`, `air_friction` exports — NOT a single `move_speed` snap-to-target.
 - [ ] Script implements `air_accel < ground_accel` (reduced air control, not zero, not full).

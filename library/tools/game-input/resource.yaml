@@ -1,0 +1,159 @@
+id: tool/game-input
+kind: tool
+version: 1.0.1
+summary: Drive the running game's input — script timed synthetic events, or record the real inputs and replay them deterministically on a seeded instance.
+use_when:
+  - scripting a timed input sequence against the running game (walk right for 500 ms, jump at frame 30, click a button)
+  - recording my inputs while the game runs and replaying them deterministically for a repro or an A/B
+  - '"record what I do and replay it" / "press jump 10 times in a row in the running game"'
+do_not_use_when:
+  - binding or renaming input actions — summer_input_map_bind
+  - a hidden disposable probe run — a RunVerification probe with press()/key()
+  - no game is running (failure_reason game_not_running) — summer_play first
+  - "requires an engine build with SimulateInputScript / InputRecordStart / InputRecordStop / InputReplay (engine PR #156 follow-up, wave I); on current shipped engines this returns engine_lacks_op"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - runtime
+    - playtest
+    - verification
+  modalities:
+    - project
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/game-probe
+    - tool/game-control
+    - tool/play
+    - tool/input-map-bind
+  skills:
+    - skill/agent-playtesting
+    - skill/playtesting-a-feature
+    - skill/investigating-bugs
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_game_input
+implementation:
+  module: src/mcp/tools/runtime-tools.ts
+  export: registerRuntimeTools
+surfaces:
+  mcp:
+    tool_name: summer_game_input
+    remote: false
+input_schema:
+  type: object
+  properties:
+    action:
+      type: string
+      enum:
+        - script
+        - record_start
+        - record_stop
+        - replay
+      description: "'script' schedules a timed sequence of synthetic inputs (SimulateInputScript); 'record_start'/'record_stop' capture the game's real input into res://.summer/replays/<id>.json; 'replay' plays a recording (or inline events) back."
+    events:
+      type: array
+      description: action script (required) or replay (instead of recording) — up to 1000 timed events; last event within 36000 frames / 600 s.
+      items:
+        type: object
+        properties:
+          at_frame:
+            type: integer
+            description: When to fire, in frames after scheduling (clock frame). Default 0 = the next frame.
+          at_ms:
+            type: integer
+            description: When to fire, in milliseconds after scheduling (clock ms); exact only on an instance with fixed_fps.
+          type:
+            type: string
+            enum:
+              - action
+              - key
+              - mouse_click
+              - axis
+              - raw
+            description: "'action' = InputMap action press/release; 'key' = keycode; 'mouse_click' = click at a position; 'axis' = analog strength between two actions; 'raw' = a recorded InputEvent replayed as {class, props}."
+          action:
+            type: string
+            description: type action — InputMap action name (unknown_action if not bound).
+          pressed:
+            type: boolean
+            description: type action|key — press (default true) or release.
+          strength:
+            type: number
+            description: type action — press strength 0..1 (default 1). type axis — signed strength; negative selects action_negative.
+          hold_ms:
+            type: integer
+            description: type action|key — auto-release after this many ms (0 = stays pressed until a release event).
+          keycode:
+            type: integer
+            description: type key — Godot Key enum value (e.g. 32 = Space).
+          physical_keycode:
+            type: integer
+            description: type key — physical Key enum value (alternative to keycode).
+          position:
+            type: array
+            items:
+              type: number
+            minItems: 2
+            maxItems: 2
+            description: type mouse_click — [x, y] in window pixels.
+          button:
+            type: integer
+            description: type mouse_click — MouseButton (1 = left, 2 = right, 3 = middle).
+          action_negative:
+            type: string
+            description: type axis — action for negative strength (e.g. 'move_left').
+          action_positive:
+            type: string
+            description: type axis — action for positive strength (e.g. 'move_right').
+          duration_ms:
+            type: integer
+            description: type axis — auto-release after this many ms.
+          class:
+            type: string
+            description: type raw — InputEvent class to instantiate (e.g. 'InputEventKey').
+          props:
+            type: object
+            description: type raw — properties set on the instantiated event.
+        required:
+          - type
+        additionalProperties: false
+    clock:
+      type: string
+      enum:
+        - frame
+        - ms
+      description: action script — whether at_frame ('frame', default, exact) or at_ms ('ms') schedules the events.
+    wait:
+      type: boolean
+      description: action script|replay — wait for the last event to fire (default true; the engine caps a waited script at 20 s). Longer scripts use wait false and observe with summer_game_probe.
+    include_motion:
+      type: boolean
+      description: action record_start — also record mouse/joypad motion events (default false; large).
+    save_as:
+      type: string
+      description: action record_stop — res://.summer/replays/<name>.json to write instead of a generated id.
+    recording:
+      type: string
+      description: action replay — the res://.summer/replays/<id>.json path returned by record_stop.
+    seed:
+      type: integer
+      description: action replay — assert the replay is reproducible; only accepted on an instance started with summer_play mode offscreen + deterministic true (else nondeterministic_instance).
+    instance:
+      type: string
+      description: Game instance to address (default 'main'). Offscreen instances are named by summer_play with instance + mode offscreen; summer_game_control action 'instances' lists them.
+  required:
+    - action
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - game-probe

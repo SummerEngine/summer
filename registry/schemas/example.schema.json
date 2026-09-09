@@ -1,0 +1,11 @@
+{
+  "$id": "example.schema.json",
+  "title": "Summer resource.yaml — kind: example (evidence is REQUIRED)",
+  "type": "object",
+  "allOf": [{ "$ref": "resource.schema.json" }],
+  "properties": {
+    "kind": { "const": "example" }
+  },
+  "required": ["evidence"],
+  "unevaluatedProperties": false
+}

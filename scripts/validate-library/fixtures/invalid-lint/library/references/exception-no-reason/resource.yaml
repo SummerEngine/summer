@@ -1,0 +1,12 @@
+id: reference/exception-no-reason
+kind: reference
+version: 1.0.0
+summary: Declares a lint exception without giving a reason.
+use_when:
+  - testing the exception mechanism
+facets:
+  lifecycle: [build]
+source: official
+license: MIT
+status: stable
+lint_exceptions: [url-allowlist]

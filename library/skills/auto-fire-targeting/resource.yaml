@@ -1,0 +1,22 @@
+id: skill/auto-fire-targeting
+kind: skill
+version: 1.0.0
+summary: Design or fix auto-fire weapon targeting (survivors, top-down ARPG, tower defense) — the pending-damage pattern that prevents over-commit and overkill.
+use_when:
+  - designing or fixing the targeting system for an auto-fire weapon (survivors-genre, top-down ARPG, tower-defense)
+  - bullet flight time longer than fire rate causes wasted bullets or overkill
+facets:
+  lifecycle:
+    - build
+  domains:
+    - gameplay
+    - game-design
+  modalities:
+    - scripts
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - skills/gameplay-mechanics/auto-fire-targeting

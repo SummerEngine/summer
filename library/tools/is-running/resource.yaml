@@ -1,0 +1,40 @@
+id: tool/is-running
+kind: tool
+version: 1.0.2
+summary: Check whether the game is running; returns the active scene path when it is.
+use_when:
+  - deciding whether to boot, restart, or capture the running game
+  - '"is the game already open / still playing?"'
+  - before summer_play or a game-target screenshot, to avoid a double launch
+do_not_use_when:
+  - you need the live scene contents — summer_get_runtime_tree
+facets:
+  lifecycle:
+    - build
+  domains:
+    - debug
+    - runtime
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_is_running
+implementation:
+  module: src/mcp/tools/debug-tools.ts
+  export: registerDebugTools
+surfaces:
+  mcp:
+    tool_name: summer_is_running
+    remote: false
+input_schema:
+  type: object
+  properties: {}
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

@@ -1,0 +1,54 @@
+id: tool/inspect-runtime-node
+kind: tool
+version: 1.0.1
+summary: Live properties of one node in the RUNNING game — actual stats, position, flags — without stopping the game and losing the state.
+use_when:
+  - answering "where IS the player" or "what are this enemy's stats right now" during a playtest
+  - '"how much health does the boss have right now?"'
+  - "\"what is the player's actual velocity mid-jump?\""
+do_not_use_when:
+  - no game is running — summer_play first; for the edited scene use summer_inspect_node
+  - "requires an engine build with GetRuntimeNode (engine PR #156); on current shipped engines this returns engine_lacks_op"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - runtime
+    - verification
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/get-runtime-tree
+    - tool/inspect-node
+  skills:
+    - skill/verifying-scenes
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_inspect_runtime_node
+implementation:
+  module: src/mcp/tools/perception-tools.ts
+  export: registerPerceptionTools
+surfaces:
+  mcp:
+    tool_name: summer_inspect_runtime_node
+    remote: false
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: Runtime node path, e.g. '/root/Main/Player'. Get it from summer_get_runtime_tree.
+  required:
+    - path
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

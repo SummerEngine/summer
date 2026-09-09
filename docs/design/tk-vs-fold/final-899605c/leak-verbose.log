@@ -1,0 +1,37 @@
+### 436d0879ad8 build exit=0
+  run1: ERROR lines=4 leaked instances=80
+     TextLine x64
+     Object x2
+     Image x2
+     WebViewControl x1
+     StyleBoxFlat x1
+     StyleBoxEmpty x1
+     StateProvider x1
+     OpsExecutor x1
+  run2: ERROR lines=1 leaked instances=6
+     WebViewControl x1
+     StateProvider x1
+     OpsExecutor x1
+     Object x1
+     Hint: x1
+     AuthManager x1
+### 25a55b91c73 build exit=0
+  run1: ERROR lines=4 leaked instances=80
+     TextLine x64
+     Object x2
+     Image x2
+     WebViewControl x1
+     StyleBoxFlat x1
+     StyleBoxEmpty x1
+     StateProvider x1
+     OpsExecutor x1
+  run2: ERROR lines=4 leaked instances=80
+     TextLine x64
+     Object x2
+     Image x2
+     WebViewControl x1
+     StyleBoxFlat x1
+     StyleBoxEmpty x1
+     StateProvider x1
+     OpsExecutor x1
+restored core/all-engine-work @ 899605c3110

@@ -12,9 +12,9 @@ Three things, plus glue.
 
 **MCP server.** A focused tool registry that talks to a running Summer Engine on `localhost:6550`. Scene mutation, asset import, runtime control, diagnostics, generation. Your agent calls them; the engine moves.
 
-**CLI.** Install the engine, log in, scaffold projects, run them, run doctor. The terminal side.
+**CLI.** Install the engine, log in, scaffold projects, run them, run doctor — and `summer tool <name>` runs any MCP tool from the terminal. The complete command reference is in [`DEVELOPMENT.md`](DEVELOPMENT.md#cli-command-reference); `summer --help` is the source of truth.
 
-The glue: **lifecycle hooks** (session-start orientation, optional pre-commit doctor), plugin manifests for plugin-capable harnesses, and `summer setup` targets for Claude Code, Cursor, Codex, Gemini, OpenCode, GitHub Copilot CLI, GitHub Copilot in VS Code, Cline, Roo Code, and Devin Desktop (formerly Windsurf).
+The glue: **lifecycle hooks** (session-start orientation, opt-in pre-commit doctor), plugin manifests for plugin-capable harnesses, and `summer setup` targets for Claude Code, Cursor, Codex, Gemini, OpenCode, GitHub Copilot CLI, GitHub Copilot in VS Code, Cline, Roo Code, Kilo Code, LM Studio, and Devin Desktop (formerly Windsurf). The per-client map is [`../integrations/README.md`](../integrations/README.md).
 
 ## Quick start
 
@@ -24,7 +24,7 @@ Paste this into your AI environment:
 Install Summer Engine and let's make a game.
 ```
 
-That is the preferred setup wizard. The agent reads the install playbook, runs `npx -y summer-engine@latest doctor --json`, installs only what is missing, writes the MCP config, installs the recommended skills, and opens the engine.
+That is the preferred setup wizard. The agent reads the install playbook, runs `npx -y summer-engine@latest doctor --json`, downloads and logs in only if those checks need it, always runs `setup` (idempotent: MCP config + every skill in the library), and opens the engine.
 
 Manual fallback:
 
@@ -81,8 +81,8 @@ For live scene hierarchy/inspector work, prefer scene tools. Guarded `.tscn` tex
 Summer games use the Summer SDK. GDScript is the default creator language. Pick
 one:
 
-- **GDScript** (`.gd`) — default. Best supported by Summer skills (see `summer:gdscript-patterns`).
-- **C#** (`.cs`) — supported by the engine. No `summer:csharp-patterns` skill
+- **GDScript** (`.gd`) — default. Best supported by Summer skills (see the `gdscript-patterns` skill).
+- **C#** (`.cs`) — supported by the engine. No `csharp-patterns` skill
   exists yet. Use the upstream C# API reference matching the current Summer
   technical base. C# has a different lifecycle, signal API, and export
   attributes, so do not blindly translate GDScript idioms.
@@ -123,7 +123,3 @@ The agent layer is open so you can audit, fork, and extend. The engine is the mo
 ```
 
 The left column — skills + MCP + CLI — is what this repo ships. The bottom box is Summer Engine, which you download and run separately.
-
-## Research previews
-
-`summer cloud` and the matching `summer_cloud_*` MCP tools are an experimental R&D preview. They are optional and are not part of the core local CLI, engine, skills, or MCP workflow shown above. Expect the preview surface and behavior to change, and keep an independent backup for important projects.

@@ -1,0 +1,91 @@
+id: tool/start-game-task
+kind: tool
+version: 1.0.2
+summary: "Plan the right Summer workflow for a game-building task: skill routes, tool groups, confirmation gates, and verification steps."
+use_when:
+  - starting any substantial AI game-building task, before mutating the project
+  - the user asks for a whole feature (inventory, boss fight, day-night cycle) and the path is not obvious
+  - choosing which skills and confirmation gates apply before touching the project
+do_not_use_when:
+  - a one-step edit (one property, one node) — call the tool directly
+facets:
+  lifecycle:
+    - build
+  domains:
+    - project
+    - agent-workflow
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_start_game_task
+implementation:
+  module: src/core/capabilities/game-task-plan.ts
+  export: buildGameTaskPlan
+surfaces:
+  mcp:
+    tool_name: summer_start_game_task
+    remote: true
+  cli:
+    command: summer plan
+input_schema:
+  type: object
+  properties:
+    goal:
+      type: string
+      description: The user's game-building goal or task.
+    mode:
+      type: string
+      enum:
+        - auto
+        - new-game
+        - feature
+        - asset
+        - debug
+        - playtest
+        - polish
+        - ship
+      default: auto
+      description: Optional task mode override.
+    target:
+      type: string
+      enum:
+        - auto
+        - 2d
+        - 3d
+        - ui
+        - audio
+        - animation
+        - level
+        - npc
+        - multiplayer
+      default: auto
+      description: Optional content/system target override.
+    assetPolicy:
+      type: string
+      enum:
+        - reuse-first
+        - ask-before-paid-generation
+        - no-paid-generation
+        - generate-when-clearly-needed
+      default: ask-before-paid-generation
+      description: How aggressively to use paid asset generation.
+    verification:
+      type: string
+      enum:
+        - none
+        - fast
+        - full
+      default: full
+      description: How much engine verification the agent should plan for.
+  required:
+    - goal
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

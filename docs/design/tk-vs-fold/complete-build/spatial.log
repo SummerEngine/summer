@@ -1,0 +1,14 @@
+Using engine from --bin: /Users/MathiasWork/development/summerengine-scripting/bin/Summer.app/Contents/MacOS/Summer
+Launching Summer Engine in the background (the window will not take focus until you click it)...
+Summer Engine running (v0.5.66) on port 6550
+  Project: TkRunBin
+doctor ok= True summary= {'ok': 9, 'warnings': 1, 'failures': 0}
+open2: exit=0 status=ok terminal=applied failure_reason=None op=None ok=None keys=[] bytes=473
+tplace2: exit=1 status=error terminal=failed failure_reason=subject_not_node3d op=None ok=None keys=[] bytes=759
+snap2: exit=1 status=error terminal=failed failure_reason=subject_not_3d op=None ok=None keys=[] bytes=1802
+starcast2: exit=1 NON-JSON stderr='Missing required string argument: path'
+navprobe2: exit=1 NON-JSON stderr='start must be an array of exactly three finite numbers'
+align2: exit=1 NON-JSON stderr='axis must be an array of exactly three finite numbers'
+nav2: exit=0 status=None terminal=None failure_reason=None op=None ok=None keys=[] bytes=834
+stop2: exit=0 status=ok terminal=applied failure_reason=None op=None ok=None keys=[] bytes=431
+engines left: 0

@@ -1,0 +1,34 @@
+id: skill/concept-art
+kind: skill
+version: 1.0.2
+summary: Explore art direction with 3-4 rough concept variants of a character, environment, or prop to pick a vibe before committing to a final asset.
+use_when:
+  - exploring art direction with rough variants before committing to a final asset
+  - the user wants a mood board, rough sketches, or 'what could this look like'
+do_not_use_when:
+  - generating a final polished asset — concepts are evocative drafts, not finals
+facets:
+  lifecycle:
+    - build
+  domains:
+    - 2d
+    - assets
+  modalities:
+    - images
+    - assets
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/character-portrait
+    - skill/pixel-art
+    - skill/tileable-texture
+    - skill/ui-graphics
+    - skill/asset-strategy
+    - skill/create-asset-sheet
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/2d-assets/concept-art

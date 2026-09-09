@@ -1,0 +1,33 @@
+id: skill/retarget
+kind: skill
+version: 1.0.3
+summary: Apply existing animation clips from one rigged character to a different rigged character — same library, multiple models, no regeneration.
+use_when:
+  - applying existing animation clips from one rigged character to a different rigged character — sharing one animation library across models
+  - the same clips must play on several differently proportioned rigs without regenerating them
+facets:
+  lifecycle:
+    - build
+  domains:
+    - animation
+    - 3d
+  modalities:
+    - animation
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/character-animation-wiring
+    - skill/design-npc
+    - skill/animation-tree
+    - skill/facial-and-lipsync
+    - skill/generate-motion
+    - skill/procedural-animation
+    - skill/asset-strategy
+source: official
+license: MIT
+status: stable
+recommended: false
+aliases:
+  - skills/animation/retarget

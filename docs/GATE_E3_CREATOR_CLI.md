@@ -30,7 +30,7 @@ All local surfaces use `~/.summer/`. The store contract is:
 | File | Secret | Owner / purpose |
 |---|---:|---|
 | `auth-token` | yes | Canonical Summer CLI JWT. Filename preserved because Summer Engine already reads it. |
-| `cloud-token` | yes | Existing Summer Cloud credential with a separate issuer/audience. |
+| `cloud-token` | yes | Legacy: written by v2 logins for the since-removed Summer Cloud sync. v3 never writes or reads it; `summer logout` still deletes it. |
 | `creator-token` | yes | Separately scoped Summercraft `sc_` API token. Never copied into `auth-token`. |
 | `api-token`, `api-port` | yes / no | Ephemeral local-engine discovery written by the running engine. Creator commands do not rewrite them. |
 | `user.json` | personal | Identity matched against the Summer CLI JWT subject before persistence. |
@@ -129,9 +129,11 @@ approval, and only then call it with `confirm=true`.
 `summer releases` and `summer_creator_releases` query real server history. Use
 the returned opaque `nextCursor` unchanged for the next page.
 
-`summer logs` and `summer_creator_logs` remain fail-closed. They return the
-durable-log ownership requirement, never mock rows, provider-console scraping,
-or placeholder output.
+`summer logs` and `summer_creator_logs` were **removed in 3.0.0** (see
+CHANGELOG). At audit time they were fail-closed stubs that could only ever
+throw `creator_backend_unavailable`; a command that fails by design on every
+call was not worth shipping. They return when a durable runtime-log source
+exists (residual below).
 
 ## Residuals and owners
 

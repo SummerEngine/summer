@@ -1,0 +1,38 @@
+id: skill/skintokens-auto-rigging
+kind: skill
+version: 0.1.1
+summary: "Offline auto-rigging with skin-tokens.cpp (GGML SkinTokens/TokenRig port) — skeleton and skin weights from a static GLB mesh on CPU/Vulkan, into Godot 4."
+use_when:
+  - "auto-rig this static GLB mesh so I can animate it"
+  - "generate skin weights for a mesh that already has a skeleton"
+  - "batch-rig many creature or character meshes without hand-painting weights"
+  - "I have an unrigged AI-generated character and need a first-pass rig"
+do_not_use_when:
+  - "hero characters needing art-directed deformation, non-triangle meshes, shapes far from the humanoid training data, or runtime in-engine rigging"
+  - "skin-tokens.cpp is a user-built, user-run offline CLI (minutes per mesh); the agent does not install or run it on the user's behalf"
+  - "intake from the gamedev-knowledge pipeline (source-cited, pipeline-validated, not yet exercised in-engine by the Summer team) — verify results in the engine as you would any technique"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - assets
+    - pipeline
+    - 3d
+    - animation
+  modalities:
+    - 3d-models
+    - assets
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/character-model
+    - skill/retarget
+source: official
+license: MIT
+status: preview
+recommended: false
+lint_exceptions:
+  - url-allowlist
+  - credential-pattern
+lint_exception_reason: "Source citation for knowledge extracted by the gamedev-knowledge pipeline: the Setup section quotes the upstream GitHub clone URL of the skin-tokens.cpp tool (localai-org) as a user-run, user-consented build step — a read-only provenance link, not agent-autonomous installation. credential-pattern is a false positive on the CMake option SKINTOKENS_ENABLE_VULKAN, where TOKENS is part of the project name, not a secret or token assignment."

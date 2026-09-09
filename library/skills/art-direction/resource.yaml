@@ -1,0 +1,29 @@
+id: skill/art-direction
+kind: skill
+version: 1.0.2
+summary: Define the game's visual style — references, palette, mood, lighting plan, post-processing, do/don't list — output as an art bible at .summer/art-bible.md.
+use_when:
+  - defining the visual style of the game — references, palette, mood, lighting plan, post-processing
+  - make it look like PS1, retro, low-poly, pixel art, cel-shaded, or a horror aesthetic
+  - define the visual style before making any assets
+facets:
+  lifecycle:
+    - build
+  domains:
+    - rendering
+    - lighting
+  modalities:
+    - docs
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/audio-direction
+    - skill/3d-lighting
+    - skill/brainstorm-game
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/rendering-and-lighting/art-direction

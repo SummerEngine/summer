@@ -1,0 +1,33 @@
+id: skill/create-asset-sheet
+kind: skill
+version: 1.0.3
+summary: Generate a pack of 2D game assets from one prompt — tile sheet, UI kit, character pack, or biome set — sliced, classified, and saved as one pack ArtAsset.
+use_when:
+  - generating a pack of 2D game assets from a single prompt — a tile sheet, UI kit, menu screen, character pack, or biome set
+  - many matching sprites, tiles, or UI pieces are needed in one consistent style at once
+facets:
+  lifecycle:
+    - build
+  domains:
+    - 2d
+    - assets
+  modalities:
+    - images
+    - assets
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/character-portrait
+    - skill/concept-art
+    - skill/pixel-art
+    - skill/sprite-sheet
+    - skill/tileable-texture
+    - skill/asset-strategy
+    - skill/design-level
+source: official
+license: MIT
+status: stable
+recommended: false
+aliases:
+  - skills/2d-assets/create-asset-sheet

@@ -1,8 +1,17 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { withEngine } from "./with-engine.js";
-import { shapeEngineLogResponse } from "../../lib/log-filters.js";
-import { createDebugReportArtifact } from "../../lib/debug-report.js";
+import { withEngine, missingEngineOpResult, withOldEngineHint } from "./with-engine.js";
+import { shapeEngineLogResponse } from "../../core/log-filters.js";
+import { createDebugReportArtifact } from "../../core/capabilities/debug-report.js";
+import { withConsoleScope } from "../../core/capabilities/console-read.js";
+import { describePlayDeterminism, pickPlayDeterminism } from "../../core/capabilities/play-determinism.js";
+import {
+  RUNTIME_FALLBACKS,
+  buildStopGameOp,
+  playGame,
+  playGameExtensionSchema,
+  withRuntimeFailureHints,
+} from "../../core/capabilities/runtime-control.js";
 
 // summer_get_diagnostics view shaping. The engine serves /api/state/diagnostics
 // from a pre-published snapshot (empty args — query params are NOT forwarded on
@@ -95,15 +104,15 @@ export function prioritizeDiagnostics(payload: unknown): unknown {
 export function registerDebugTools(server: McpServer): void {
   server.tool(
     "summer_get_diagnostics",
-    `Quick overview of all errors and warnings from both the editor console and the runtime debugger. Returns error counts and a guidance message.
+    `Quick overview of all errors and warnings from the editor console, the runtime debugger, and script errors together. Returns error counts and a guidance message.
 
-ALWAYS call this FIRST before diving into summer_get_console or summer_get_debugger_errors. It tells you where to look.
+ALWAYS call this FIRST before diving into summer_get_console or summer_get_debugger_errors. It tells you where to look. It is also THE post-play read: a played game's runtime errors land in the debugger section here (and in summer_get_debugger_errors), never in the editor console — summer_get_console alone can honestly report errors 0 right after a play session that produced several.
 
 By default the response is a prioritized view: errors first, then warnings, then a small capped tail of recent info/std noise. Counts (console totals, debugger totals) are always complete — only low-severity message bodies are trimmed, and a "_view" block reports exactly what was suppressed. Pass includeAll: true for the full untrimmed engine payload.
 
-Typical workflow after making changes:
-1. summer_get_diagnostics — are there issues?
-2. If errors: summer_get_console or summer_get_debugger_errors for details
+Typical workflow after making changes or playing:
+1. summer_get_diagnostics — are there issues? (after a play session: check debugger.errors)
+2. If errors: summer_get_debugger_errors (runtime, with stacks) or summer_get_console (editor output) for details
 3. Fix the issues
 4. summer_get_diagnostics again to verify`,
     {
@@ -124,11 +133,13 @@ Typical workflow after making changes:
 
   server.tool(
     "summer_get_console",
-    `Read recent messages from the editor's Output panel.
+    `Read recent messages from the editor's Output panel (print() output, editor-side warnings and errors).
 
-Output is post-processed for token economy: consecutive identical messages collapse into one entry with a "(×N)" count suffix, and the response carries a "_filter" summary so you can see what was hidden. Use errors_only=true (default) to drop info/std noise; use raw=true to bypass all shaping.
+SCOPE: the editor console ONLY. Runtime errors from a played game are collected by the debugger, not the console — right after summer_play this tool can honestly report errors 0 while summer_get_debugger_errors holds several. Never treat this tool alone as the post-play verdict: read summer_get_diagnostics (console + debugger + script errors together) first, then come here for message bodies. Every result carries a "_scope" note restating this.
 
-Use after summer_get_diagnostics indicates console issues.`,
+Output is post-processed for token economy: consecutive identical messages collapse into one entry with a "(×N)" count suffix, and the response carries a "_filter" summary so you can see what was hidden. Message types come straight from the editor log (error / warning / std / editor); errors_only=true (default) drops the std/editor lines — startup banners and print() output — and keeps errors and warnings. Use errors_only=false to read print() output, raw=true to bypass all shaping.
+
+Use after summer_get_diagnostics indicates console issues, or to check what your print() statements said.`,
     {
       max_lines: z.number().optional().default(100).describe("Max lines to return after dedupe (default 100)"),
       filter: z.string().optional().describe("Only return lines containing this string"),
@@ -149,7 +160,9 @@ Use after summer_get_diagnostics indicates console issues.`,
           errorsOnlyStrict: strict_errors,
           maxEntries: max_lines,
         });
-        return result;
+        // E2E 2026-09-03 F-07: the console is not where a played game's runtime
+        // errors go. Say so on every shaped result, not only in the description.
+        return withConsoleScope(result);
       })
   );
 
@@ -219,22 +232,60 @@ Use this when summer_get_diagnostics shows a non-zero \`debugger.warnings\` coun
 
   server.tool(
     "summer_play",
-    `Start running the game in the engine. The game runs inside Summer Engine's viewport.
+    `Start running the game in the engine. With no extra parameters the game runs inside Summer Engine's viewport (the 'main' instance) QUIETLY — see below.
 
-After starting, use summer_get_diagnostics to check for runtime errors.
+QUIET BY DEFAULT (focus:false, PlayGame agent:true): the user is usually working on the same machine while you build, so a play must not take over their screen. Quiet play makes the EDITOR stay put: it does not switch the main screen to the Game tab, does not grab keyboard focus for the embedded game, ignores the game's later focus report, and skips the render-health self-check that would otherwise misread the untouched Game view as a GPU failure and flip the user's embed setting. Quiet play does NOT hide the game: it still runs embedded in the Game view (visible if the user already has that tab open), it is the running game for summer_is_running / summer_screenshot target:'game' / summer_get_diagnostics, and on engines without the background launch posture it does not change a user who has "Embed Game on Play" turned off — their game opens in its own OS window as always. Engines with the background posture (--summer-background, 0.5.66+) also launch the play child with that flag, so a separate-window game appears without activating or taking focus either. The result echoes agent_quiet:true when honoured; a launch result WITHOUT agent_quiet means the engine predates quiet play and most likely took focus — the tool adds posture_note saying so. focus:true launches like the toolbar Play button (Game tab + focus): use it ONLY when the user is watching and asked to see the game come up.
 
-You can run a specific scene instead of the main scene — useful for testing individual levels or UI screens.`,
+After starting, confirm boot with summer_is_running (boot time varies — never sleep a guessed delay), then summer_get_diagnostics for runtime errors. You can run a specific scene instead of the main scene — useful for testing individual levels or UI screens.
+
+DETERMINISTIC RUNS (newer engines): seed / fixed_fps / time_scale pin THIS launch only (nothing is persisted). seed pins the game's GLOBAL RNG (randi/randf/randi_range/randf_range/randfn, Array.shuffle/pick_random) — it does NOT pin RandomNumberGenerator instances, scripts that call randomize(), rand_from_seed, wall-clock reads, or thread/IO/audio timing. fixed_fps decouples scene time from the wall clock so frame-count-derived state lands on the same frame run to run. The result's \`determinism\` block says whether the pins were applied (applied:false carries a reason: already_running, editor_run_args_override, launch_not_started) and restates seed_scope. If the result has NO determinism block although you sent a pin, the engine predates the params and the run is NOT reproducible — the tool says so; do not claim otherwise. Omitting every pin and instance parameter is exactly the v1 launch.
+
+PLAYTEST LAUNCH (engine runtime-control build): instance + mode:'offscreen' spawn a disposable hidden instance (at most 3) that summer_game_probe / summer_game_input / summer_game_control / summer_runtime_* address by name — run two variants side by side for an A/B. deterministic:true (offscreen only) launches with --fixed-fps 60 --summer-seed --audio-driver Dummy and is what lets summer_game_input action:'replay' accept a seed; speed sets the user time scale on session start. The instance result reports session_attached; poll summer_game_control action:'instances' until attached:true before addressing it. Then: probe -> act -> step/probe -> assert (the agent-playtesting skill). Failure reasons: too_many_instances, instance_exists, session_timeout (child never attached — check summer_get_console), unsupported_mode, main_scene_not_configured. A game already running answers playing:true with determinism.applied:false — summer_stop first to apply seed/fixed_fps.`,
     {
       scene: z.string().optional().describe("Scene to run instead of main scene, e.g. 'res://levels/test_level.tscn'"),
+      ...playGameExtensionSchema,
     },
-    async ({ scene }) => withEngine(async (client) => client.play(scene))
+    async (args) => {
+      const requested = pickPlayDeterminism({ seed: args.seed, fixed_fps: args.fixed_fps, time_scale: args.time_scale });
+      return withEngine(
+        // ONE implementation with the CLI face (runtime-control.ts playGame):
+        // route choice, validation, Wave I pre-flight, old-engine / instance /
+        // posture annotations. A ToolInputError propagates to withEngine.
+        async (client) => playGame(client, args),
+        {
+          toContent: (result) => {
+            const json = JSON.stringify(result, null, 2);
+            // Surface applied / reason / seed_scope in prose so the model does not
+            // have to dig; and call out the old-engine case (pins sent, no
+            // determinism block back) as "not applied" instead of staying silent.
+            const summary = describePlayDeterminism(result, requested);
+            return [{ type: "text" as const, text: summary ? `${json}\n\n${summary}` : json }];
+          },
+        }
+      );
+    }
   );
 
   server.tool(
     "summer_stop",
-    "Stop the running game. Use after runtime verification or when you intentionally need to restart the running instance; ordinary editor scene mutations do not require a blanket stop.",
-    {},
-    async () => withEngine(async (client) => client.stop())
+    "Stop the running game. Use after runtime verification or when you intentionally need to restart the running instance; ordinary editor scene mutations do not require a blanket stop. Pass instance to stop ONE offscreen instance started with summer_play {instance, mode:'offscreen'} (the result reports was_playing and killed); omit it for the editor's main game.",
+    {
+      instance: z
+        .string()
+        .optional()
+        .describe("Offscreen instance name to stop (from summer_play {instance}); omit for the main embedded game."),
+    },
+    async ({ instance }) =>
+      withEngine(async (client) => {
+        if (typeof instance !== "string" || instance.trim().length === 0 || instance.trim() === "main") {
+          return client.stop();
+        }
+        const missing = missingEngineOpResult(client, "ListGameInstances", RUNTIME_FALLBACKS.ListGameInstances!);
+        if (missing) return missing;
+        const { op, timeoutMs } = buildStopGameOp(instance);
+        const result = await client.executeOps([op], undefined, timeoutMs);
+        return withRuntimeFailureHints(withOldEngineHint(result, "StopGame", RUNTIME_FALLBACKS.ListGameInstances!));
+      })
   );
 
   server.tool(

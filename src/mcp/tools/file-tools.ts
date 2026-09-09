@@ -1,8 +1,13 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { withEngine } from "./with-engine.js";
-
-type JsonRecord = Record<string, unknown>;
+import { withEngine, ToolInputError } from "./with-engine.js";
+import {
+  occurrenceCount,
+  readTextPayload,
+  safeProjectPath,
+  validSha256,
+} from "../../core/capabilities/engine-ops.js";
+import type { JsonRecord } from "../../core/util/json.js";
 
 // MCP clients may issue tool calls concurrently. Keep the complete read->write
 // transaction ordered for one project file while allowing unrelated files to
@@ -35,62 +40,6 @@ async function withFileMutationTurn<T>(
     if (fileMutationTails.get(key) === current) {
       fileMutationTails.delete(key);
     }
-  }
-}
-
-function asRecord(value: unknown): JsonRecord | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as JsonRecord)
-    : null;
-}
-
-function safeProjectPath(path: string): string {
-  const normalized = path.trim().replace(/\\/g, "/");
-  if (!normalized.startsWith("res://") || normalized.includes("..")) {
-    throw new Error("File path must be a traversal-free res:// project path.");
-  }
-  return normalized;
-}
-
-function validSha256(value: string | undefined): value is string {
-  return typeof value === "string" && /^[0-9a-f]{64}$/i.test(value);
-}
-
-function readTextPayload(result: unknown): {
-  content: string;
-  sha256: string;
-  size?: number;
-} {
-  const root = asRecord(result);
-  const data = asRecord(root?.data);
-  if (root?.ok === false) {
-    throw new Error(String(root.error ?? "Engine could not read the file."));
-  }
-  if (data?.encoding === "binary" || typeof data?.content !== "string") {
-    throw new Error("Safe text mutation refused: the engine did not return text content.");
-  }
-  if (data.truncated === true) {
-    throw new Error("Safe text mutation refused: the file exceeds the 1 MB read limit.");
-  }
-  const sha256 = typeof data.sha256 === "string" ? data.sha256 : undefined;
-  if (!validSha256(sha256)) {
-    throw new Error("Safe text mutation refused: the engine did not return a full-file sha256 receipt.");
-  }
-  return {
-    content: data.content,
-    sha256,
-    size: typeof data.size === "number" ? data.size : undefined,
-  };
-}
-
-function occurrenceCount(content: string, needle: string): number {
-  let count = 0;
-  let offset = 0;
-  while (true) {
-    const index = content.indexOf(needle, offset);
-    if (index < 0) return count;
-    count++;
-    offset = index + needle.length;
   }
 }
 
@@ -127,12 +76,12 @@ For a new file, set create_only:true. For an existing file, first call summer_re
         const guardedCreate = create_only === true;
         const guardedOverwrite = validSha256(expected_sha256);
         if (expected_sha256 !== undefined && !guardedOverwrite) {
-          throw new Error(
+          throw new ToolInputError(
             "Safe write refused: expected_sha256 must be a 64-character hexadecimal sha256 from summer_read_file. Nothing was written."
           );
         }
         if (guardedCreate === guardedOverwrite) {
-          throw new Error(
+          throw new ToolInputError(
             "Safe write requires exactly one guard: create_only:true for a new file, or a 64-character expected_sha256 from summer_read_file for an existing file. Nothing was written."
           );
         }
@@ -174,10 +123,10 @@ The MCP server reads the complete file, requires a unique match by default, comp
             );
             const matches = occurrenceCount(current.content, old_text);
             if (matches === 0) {
-              throw new Error("Safe replace refused: old_text was not found. Nothing was written.");
+              throw new ToolInputError("Safe replace refused: old_text was not found. Nothing was written.");
             }
             if (!replace_all && matches !== 1) {
-              throw new Error(
+              throw new ToolInputError(
                 `Safe replace refused: old_text matched ${matches} times. Provide a unique span or set replace_all:true. Nothing was written.`
               );
             }

@@ -1,0 +1,24 @@
+id: template/2d-platformer
+kind: template
+version: 1.0.2
+summary: Hollow Knight-style 2D Metroidvania starter with CharacterBody2D combat platforming across 7 door-linked rooms, ability pickups, NPCs, quests and a boss.
+use_when:
+  - starting a 2D side-scrolling Metroidvania or action platformer with interconnected rooms
+  - needing a working room-transition, ability-pickup, NPC-dialogue, quest and JSON-save baseline
+do_not_use_when:
+  - you want a minimal run-and-jump platformer with a few linear levels; this ships 9 autoloads, 7 rooms, quests, saves and a boss (see 2d-brario-platformer)
+facets:
+  lifecycle: [build]
+  domains: [2d, platformer, character-controller, npc]
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - template-2d-platformer
+repo: https://github.com/SummerEngine/template-2d-platformer
+commit: ad9d630499c9ec79bff73eec41d24d108b4ce2be
+tree_digest: 23814259bb7ae9ee260d5cf66b4cc903369219888bd511ce3f21a5a5864c1fac
+default_branch: main
+systems: [room-transitions, character-controller, melee-combat, ability-pickups, npc-dialogue, quests, boss-fight, save-system, parallax]

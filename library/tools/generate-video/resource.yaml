@@ -1,0 +1,66 @@
+id: tool/generate-video
+kind: tool
+version: 1.0.2
+summary: Generate a video from text or an image with allowlisted models via Summer Studio.
+use_when:
+  - creating cutscene, trailer, or reference footage from a prompt
+  - '"make a short intro cinematic from this concept art"'
+  - '"a 5-second clip of the castle at sunset for the trailer"'
+do_not_use_when:
+  - a looping in-game animation or sprite frames — summer_generate_image / skill/sprite-sheet
+facets:
+  lifecycle:
+    - build
+  domains:
+    - generate
+    - video
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_generate_video
+implementation:
+  module: src/mcp/tools/generate-tools.ts
+  export: registerGenerateTools
+surfaces:
+  mcp:
+    tool_name: summer_generate_video
+    remote: true
+input_schema:
+  type: object
+  properties:
+    prompt:
+      type: string
+      description: Description of the video content
+    model:
+      type: string
+      default: ltx
+      description: "Model name: ltx, kling, kling-turbo, minimax, veo3 (or any new model)"
+    imageUrl:
+      type: string
+      description: Source image URL — if provided, uses image-to-video mode
+    duration:
+      type: number
+      default: 5
+      description: Duration in seconds (5 or 10)
+    aspectRatio:
+      type: string
+      default: 16:9
+      description: "Aspect ratio: 16:9, 9:16, 1:1, 4:3"
+    options:
+      type: object
+      additionalProperties: {}
+      description: Provider-specific params (negative_prompt, num_frames, guidance_scale, etc.)
+  required:
+    - prompt
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false
+evidence_checks:
+  - asset-created

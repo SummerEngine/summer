@@ -5,7 +5,7 @@ vi.mock("../server.js", () => ({
   resetClient: vi.fn(),
 }));
 
-vi.mock("../../lib/telemetry.js", () => ({
+vi.mock("../../core/telemetry.js", () => ({
   recordMcpSession: vi.fn(),
 }));
 
@@ -222,5 +222,43 @@ describe("identity-bound MCP file tools", () => {
       replace_all: false,
     });
     expect(text(result)).toContain("matched 2 times");
+  });
+});
+
+describe("file tool input errors classify as invalid_input, not transport", () => {
+  function body(result: unknown): { failure_reason?: string; error?: string } {
+    return JSON.parse(text(result).split("\nHint:")[0]!.trim().replace(/\n\n[\s\S]*$/, ""));
+  }
+
+  it("a traversal path is refused as input before anything is sent", async () => {
+    const readProjectFile = vi.fn();
+    vi.mocked(getClient).mockResolvedValue({ readProjectFile } as never);
+
+    const result = await tool(tools(), "summer_read_file").handler({
+      path: "res://../secrets.gd",
+      max_bytes: 1000,
+    });
+
+    expect(body(result).failure_reason).toBe("invalid_input");
+    expect(text(result)).not.toContain("partially applied");
+    expect(readProjectFile).not.toHaveBeenCalled();
+  });
+
+  it("an unguarded write is refused as input, keeping the client", async () => {
+    const executeIdentityBoundOps = vi.fn();
+    vi.mocked(getClient).mockResolvedValue({
+      getBoundProjectIdHash: () => "hash-a",
+      executeIdentityBoundOps,
+    } as never);
+
+    const result = await tool(tools(), "summer_write_file").handler({
+      path: "res://main.tscn",
+      content: "x",
+      expected_sha256: "not-a-sha",
+    });
+
+    expect(body(result).failure_reason).toBe("invalid_input");
+    expect(body(result).error).toContain("64-character");
+    expect(executeIdentityBoundOps).not.toHaveBeenCalled();
   });
 });

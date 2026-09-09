@@ -4,8 +4,7 @@ import {
   CreatorOperationError,
   listCreatorReleases,
   publishCreator,
-  readCreatorLogs,
-} from "../../lib/creator.js";
+} from "../../core/capabilities/creator.js";
 import {
   CONFIG_KEYS,
   getConfigValue,
@@ -13,19 +12,8 @@ import {
   readSummerConfig,
   setConfigValue,
   unsetConfigValue,
-} from "../../lib/config.js";
-
-function textJson(value: unknown, isError = false) {
-  return {
-    content: [
-      {
-        type: "text" as const,
-        text: JSON.stringify(value, null, 2),
-      },
-    ],
-    ...(isError ? { isError: true } : {}),
-  };
-}
+} from "../../core/config.js";
+import { textJson } from "./text-json.js";
 
 async function creatorResult<T>(operation: () => Promise<T>) {
   try {
@@ -57,7 +45,7 @@ async function creatorResult<T>(operation: () => Promise<T>) {
 export function registerCreatorTools(server: McpServer): void {
   server.tool(
     "summer_creator_publish",
-    "Publish an exact exported Summer .pck through the versioned Summercraft creator API. First call with confirm=false and present the returned project, version, digest, size, artifact path, channel, and notes; set confirm only after the user approves that exact target. The server independently verifies token scope, ownership, bytes, and review state.",
+    "Publish an exact exported Summer .pck through the versioned Summer Platform creator API. First call with confirm=false and present the returned project, version, digest, size, artifact path, channel, and notes; set confirm only after the user approves that exact target. The server independently verifies token scope, ownership, bytes, and review state.",
     {
       project: z.string().optional().describe("Project root. Defaults to the current working directory."),
       artifact: z.string().describe("Exact path to the exported Summer .pck artifact."),
@@ -79,7 +67,7 @@ export function registerCreatorTools(server: McpServer): void {
 
   server.tool(
     "summer_creator_releases",
-    "List real creator-owned releases from the versioned Summercraft creator API. The server independently verifies the exact publish scope and project ownership.",
+    "List real creator-owned releases from the versioned Summer Platform creator API. The server independently verifies the exact publish scope and project ownership.",
     {
       projectId: z.string().optional().describe("Creator project ID. Defaults to ~/.summer/config.json."),
       limit: z.number().int().min(1).max(100).default(20),
@@ -88,23 +76,6 @@ export function registerCreatorTools(server: McpServer): void {
     async (args) =>
       creatorResult(() =>
         listCreatorReleases({
-          ...args,
-          face: "mcp",
-        })
-      )
-  );
-
-  server.tool(
-    "summer_creator_logs",
-    "Read creator runtime logs for a project or release. If the required platform route or token scope is unavailable, returns the exact recovery action instead of placeholder logs.",
-    {
-      projectId: z.string().optional().describe("Creator project ID. Defaults to ~/.summer/config.json."),
-      releaseId: z.string().optional().describe("Optional release ID."),
-      limit: z.number().int().min(1).max(1000).default(100),
-    },
-    async (args) =>
-      creatorResult(() =>
-        readCreatorLogs({
           ...args,
           face: "mcp",
         })

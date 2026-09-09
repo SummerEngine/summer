@@ -1,0 +1,17 @@
+id: reference/mcp-tools-reference
+kind: reference
+version: 1.0.3
+summary: Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.
+use_when:
+  - choosing between Summer MCP tools and host tools for an operation
+  - authoring a skill that names Summer MCP tools
+facets:
+  lifecycle: [build]
+  domains: [mcp, tools]
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - references/mcp-tools-reference.md

@@ -1,0 +1,24 @@
+id: reference/collaborative-protocol
+kind: reference
+version: 1.0.2
+summary: The "May I write?" protocol — before any user-visible write step, the agent states what it is about to do and asks permission.
+use_when:
+  - authoring a skill that creates or modifies project files
+  - deciding whether to ask the user before a write, deletion, or overwrite
+do_not_use_when:
+  - purely read-only inspection work with no user-visible writes
+facets:
+  lifecycle: [ build ]
+  domains:
+    - agent-workflow
+    - conventions
+compatibility:
+  engine: ">=4.6"
+related:
+  references:
+    - reference/summer-folder
+source: official
+license: MIT
+status: stable
+aliases:
+  - references/collaborative-protocol.md

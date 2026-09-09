@@ -1,0 +1,16 @@
+engine 0.5.66 up: yes
+driver exit=0 stderr=
+  initialize: {"ms": 221, "serverInfo": {"name": "summer-engine", "version": "2.8.2"}, "serverCaps": {"tools": {"listChanged": true}},
+  tools/list: {"ms": 10, "count": 62}
+  summer_get_project_context: isError=False ms=32 err=None text=''
+  summer_get_scene_tree: isError=False ms=25 err=None text=''
+  summer_add_node: isError=False ms=77 err=None text=''
+  summer_set_prop: isError=False ms=95 err=None text=''
+  summer_save_scene: isError=False ms=64 err=None text=''
+  summer_play: isError=False ms=115 err=None text=''
+  summer_is_running: isError=False ms=21 err=None text=''
+  summer_screenshot: isError=False ms=257 err=None text=''
+  summer_get_diagnostics: isError=False ms=22 err=None text=''
+  summer_stop: isError=False ms=30 err=None text=''
+  on-disk OldMcp node: 1 ; text set: 1
+### DONE 04:08:58 engines left 0; real ~/.summer touched: 0

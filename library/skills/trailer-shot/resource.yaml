@@ -1,0 +1,27 @@
+id: skill/trailer-shot
+kind: skill
+version: 1.0.4
+summary: Generate marketing or trailer footage — slow-mo combat, establishing shots, hero beats, splash screens, pitch-deck B-roll — max punch in 5-10 seconds.
+use_when:
+  - generating marketing or trailer footage — slow-mo combat, dramatic establishing shots, hero beats, splash screens, pitch-deck B-roll
+  - producing a store page, pitch deck, or social clip that shows the game at its most dramatic in seconds
+facets:
+  lifecycle:
+    - launch
+  domains:
+    - video
+    - assets
+  modalities:
+    - video
+    - assets
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/asset-strategy
+source: official
+license: MIT
+status: stable
+recommended: false
+aliases:
+  - skills/video/trailer-shot

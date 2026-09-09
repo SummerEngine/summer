@@ -1,0 +1,56 @@
+id: tool/import-asset-by-id
+kind: tool
+version: 1.0.2
+summary: Import an exact Summer asset id into the open project via the engine's import pipeline; optionally instantiate 3D models into a scene.
+use_when:
+  - importing a just-generated or searched asset without guessing
+  - placing a 3D model into an exact scene by parent path
+facets:
+  lifecycle:
+    - build
+  domains:
+    - assets
+    - project
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_import_asset_by_id
+implementation:
+  module: src/mcp/tools/asset-tools.ts
+  export: registerAssetTools
+surfaces:
+  mcp:
+    tool_name: summer_import_asset_by_id
+    remote: false
+input_schema:
+  type: object
+  properties:
+    assetId:
+      type: string
+      description: Summer ArtAssets id
+    path:
+      type: string
+      description: Optional target res:// path. If omitted, a path is inferred from asset type and filename.
+    parent:
+      type: string
+      description: Optional parent node path. For 3D models only; imports and instantiates under this node.
+    scenePath:
+      type: string
+      description: Required with parent. Exact res:// scene that receives the 3D model.
+    name:
+      type: string
+      description: Optional scene node name when parent is provided.
+  required:
+    - assetId
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: true
+  network: true
+  credentials: false
+  publish: false
+evidence_checks:
+  - asset-imported

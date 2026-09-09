@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main, v3-foundation]
+  pull_request:
+    branches: [main, v3-foundation]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npx vitest run
+
+      # Schemas, identity/link integrity, host cross-checks (module exists,
+      # MCP registrations == descriptors, input_schema shape, evidence dates,
+      # SKILL.md names), capability lint. Explicit so a red library is a
+      # named failure, not something buried in `npm test`.
+      - name: Validate library (schemas + cross-checks + capability lint)
+        run: npm run validate:library
+
+      # Gate: recall@5 non-regression vs the committed baseline; fails on a
+      # stale baseline (corpus_size / query_count / corpus_source mismatch).
+      - name: Routing eval (no regression vs baseline)
+        run: npm run eval:routing -- --check
+
+      # Held-out set: REPORT ONLY (exit 0). Numbers are for humans reading the
+      # log; never a tuning target.
+      - name: Routing eval — held-out (report only)
+        run: npm run eval:routing:heldout
+
+      - name: Example evals (SKIP until runner lands)
+        run: node evals/examples/runner-stub.ts
+
+      # Outcome evals, static half only: task YAML + assertion DSL validate,
+      # every golden JSONL matches its readable source, fixtures and
+      # skills_expected resolve. No engine, no model — the replay itself is
+      # nightly work (evals/outcomes/README.md). Needs dist/ (the runner
+      # imports the built toolkit like evals/canary does).
+      - name: Outcome evals (dry run — schema + golden drift)
+        run: npm run build && npm run eval:outcomes -- --dry-run
+
+      # CONTRACT.md §6 parity gate: regenerated registry output must equal the
+      # committed registry/generated/ AND the applied root manifests, and every
+      # numeric tool/skill claim in the scanned docs must equal counts.json.
+      # Unconditional: the compiler exists; a missing script is a failure.
+      - name: Registry parity (regenerate == committed, count claims == counts.json)
+        run: npm run generate:registry -- --check

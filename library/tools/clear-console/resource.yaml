@@ -1,0 +1,40 @@
+id: tool/clear-console
+kind: tool
+version: 1.0.2
+summary: Clear the editor's Output panel for a clean slate before running the game.
+use_when:
+  - before a play session whose console output you want isolated
+  - '"the Output panel is full of old noise, wipe it"'
+  - resetting before reproducing a bug so only the new messages show
+do_not_use_when:
+  - you still need to read the messages — summer_get_console first; clearing destroys them
+facets:
+  lifecycle:
+    - build
+  domains:
+    - debug
+    - editor
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_clear_console
+implementation:
+  module: src/mcp/tools/debug-tools.ts
+  export: registerDebugTools
+surfaces:
+  mcp:
+    tool_name: summer_clear_console
+    remote: false
+input_schema:
+  type: object
+  properties: {}
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false

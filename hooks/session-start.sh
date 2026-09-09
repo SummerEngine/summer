@@ -25,10 +25,17 @@ PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 LINES=()
 
 # Line 1: Summer ready + skill count
+# The count is the number of Summer skills actually loaded by THIS host — the
+# plugin's bundled library when running as a plugin. Outside a plugin root we
+# cannot tell Summer skills from the user's own, so the number is dropped
+# rather than reporting the whole library as if it were installed.
 SKILL_COUNT=""
-if command -v summer >/dev/null 2>&1; then
-    # `summer skills count` is best-effort; ignore failure
-    SKILL_COUNT=$(summer skills count 2>/dev/null | grep -oE '[0-9]+' | head -1)
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-${CURSOR_PLUGIN_ROOT:-}}"
+if [ -n "$PLUGIN_ROOT" ] && [ -d "${PLUGIN_ROOT}/library/skills" ]; then
+    SKILL_COUNT=$(find "${PLUGIN_ROOT}/library/skills" -mindepth 2 -maxdepth 2 -name SKILL.md 2>/dev/null | grep -c .)
+    case "$SKILL_COUNT" in
+        ''|0|*[!0-9]*) SKILL_COUNT="" ;;
+    esac
 fi
 if [ -n "$SKILL_COUNT" ]; then
     LINES+=("Summer ready. ${SKILL_COUNT} skills.")
@@ -57,18 +64,22 @@ if [ -f "${PROJECT_DIR}/project.godot" ]; then
     fi
 fi
 
-# Line 3: doctor FAIL one-liner (only on FAIL — silent on PASS/WARN)
+# Line 3: doctor fail one-liner (only on status "fail" — silent on ok/warning).
+# Doctor JSON (src/core/capabilities/doctor.ts): checks[].status is lowercase
+# "ok" | "warning" | "fail". Only runs when a `summer` CLI is on PATH: the
+# documented npx install never puts one there, and a cold `npx summer-engine`
+# fetch would exceed the 10s SessionStart budget, so we degrade silently.
 if command -v summer >/dev/null 2>&1; then
     DOCTOR_OUT=$(summer doctor --json 2>/dev/null)
     if [ -n "$DOCTOR_OUT" ]; then
         FAIL_REASON=""
         if command -v jq >/dev/null 2>&1; then
             FAIL_REASON=$(printf '%s' "$DOCTOR_OUT" \
-                | jq -r 'first(.checks[]? | select(.status == "FAIL") | .message) // empty' 2>/dev/null)
+                | jq -r 'first(.checks[]? | select((.status // "" | ascii_downcase) == "fail") | .message) // empty' 2>/dev/null)
         else
-            # Crude fallback: first "message" near a "FAIL"
+            # Crude fallback: first "message" near a "fail"
             FAIL_REASON=$(printf '%s' "$DOCTOR_OUT" \
-                | grep -oE '"status"[[:space:]]*:[[:space:]]*"FAIL"[^}]*"message"[[:space:]]*:[[:space:]]*"[^"]*"' \
+                | grep -oE '"status"[[:space:]]*:[[:space:]]*"(FAIL|fail)"[^}]*"message"[[:space:]]*:[[:space:]]*"[^"]*"' \
                 | head -1 \
                 | grep -oE '"message"[[:space:]]*:[[:space:]]*"[^"]*"' \
                 | sed 's/.*"message"[[:space:]]*:[[:space:]]*"//;s/"$//')

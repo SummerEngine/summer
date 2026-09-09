@@ -1,0 +1,29 @@
+id: skill/writing-skills
+kind: skill
+version: 1.0.3
+summary: Create, edit, and verify agent skills — format, structure, testing with subagents, and best practices.
+use_when:
+  - creating new skills, editing existing skills, or verifying skills work before deployment
+  - reviewing a SKILL.md for format, structure, and trigger quality, or testing whether it fires with a subagent
+facets:
+  lifecycle:
+    - build
+  domains:
+    - agent-workflow
+    - meta
+  modalities:
+    - docs
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/debug
+source: official
+license: MIT
+status: stable
+recommended: false
+aliases:
+  - skills/workflow/writing-skills
+lint_exceptions:
+  - url-allowlist
+lint_exception_reason: Links to platform.claude.com — Anthropic's canonical, read-only skill-authoring best-practices documentation, replacing a previously vendored copy of the same doc.

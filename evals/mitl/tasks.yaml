@@ -1,0 +1,170 @@
+# MITL — model-in-the-loop tasks.
+#
+# Each task: a pinned library template, the prompt a hackathon user would type,
+# a turn budget for `claude -p`, and the checks the scorer runs AFTER the model
+# says it is done. Every task also gets the implicit check "the autopilot smoke
+# (tests/autopilot/run.sh) still PASSES after the change" — that is `playable`.
+#
+# Check types (evals/mitl/lib/mitl.mjs `runChecks`):
+#   file_regex   { globs: [..], regex, min? }      regex over project files on disk (default min 1 match)
+#   scene_node   { name, type_regex?, scene? }     a node whose name matches `name` (regex, case-insensitive)
+#                                                  and whose class matches `type_regex`. With `scene`
+#                                                  (res:// path) it reads the LIVE tree through
+#                                                  `summer tool get-scene-tree` (depth 12); without it, it
+#                                                  scans every .tscn on disk for a `[node name=… type=…` line.
+#   editor_script { source, expect? }              runs `summer tool run-editor-script`; passes when the
+#                                                  script's output contains `expect` (default MITL_OK)
+#   changed_files { min }                          `git status --porcelain` in the project (created with
+#                                                  --keep-git) minus engine noise (.godot/, *.import,
+#                                                  project.godot, project.godot.bak, .gitignore, tests/autopilot/)
+#
+# Prompt provenance: the brief named five template prompts. Three of them asked for
+# features the pinned templates already ship (2d-platformer has double jump +
+# coin HUD; 3d-third-person-controller has a SpringArm3D camera + StepSound;
+# 2d-brario-platformer has MovingPlatformH/V) — those were replaced with deltas
+# that are not in the template, so a passing check means the model built
+# something. The other two (fps sprint/stamina, city-kit day-night) are as given.
+
+tasks:
+  - id: platformer-coin-combo
+    template: 2d-platformer
+    prompt: >-
+      Add a coin combo: collecting coins quickly in a row multiplies their value
+      (x2, x3, up to x5). Show the current multiplier in the HUD next to the coin
+      counter. The multiplier resets after 2 seconds without a pickup.
+    max_turns: 60
+    checks:
+      - id: combo-logic-in-script
+        type: file_regex
+        globs: ["scripts/**/*.gd"]
+        regex: "combo|multiplier"
+      - id: multiplier-label-in-hud
+        type: scene_node
+        scene: res://scenes/ui/hud.tscn
+        name: "combo|multiplier|mult"
+        type_regex: "Label|RichTextLabel"
+
+  - id: fps-sprint-stamina
+    template: 3d-fps-old-school
+    prompt: >-
+      Add a sprint on shift with a stamina bar.
+    max_turns: 50
+    checks:
+      - id: stamina-in-script
+        type: file_regex
+        globs: ["**/*.gd"]
+        regex: "stamina"
+      - id: stamina-bar-node
+        type: scene_node
+        name: "stamina"
+        type_regex: "ProgressBar|TextureProgressBar|ColorRect|Range|Control|Panel"
+
+  - id: tps-health-hearts
+    template: 3d-third-person-controller
+    prompt: >-
+      Add a health system: the player has 3 hearts shown in the top-left corner,
+      loses one when a bee bot or beetle bot touches them, and respawns at the
+      start with full hearts when all are gone.
+    max_turns: 60
+    checks:
+      - id: health-in-script
+        type: file_regex
+        globs: ["**/*.gd"]
+        regex: "health|hearts"
+      - id: hearts-ui-node
+        type: scene_node
+        name: "heart|health"
+
+  - id: brario-checkpoint
+    template: 2d-brario-platformer
+    prompt: >-
+      Add a checkpoint flag about halfway through the first level. When the player
+      dies after touching it, they respawn at the checkpoint instead of the start
+      of the level.
+    max_turns: 60
+    checks:
+      - id: checkpoint-in-script
+        type: file_regex
+        globs: ["scripts/**/*.gd"]
+        regex: "checkpoint"
+      - id: checkpoint-node-or-tile
+        type: file_regex
+        globs: ["scenes/**/*.tscn", "levels/**/*", "data/**/*", "scripts/**/*.gd"]
+        regex: "[Cc]heckpoint"
+
+  - id: citykit-day-night
+    template: 3d-city-kit
+    prompt: >-
+      Add a day-night cycle: the sun slowly rotates across the sky and the
+      lighting gets darker at night. One full cycle every 60 seconds.
+    max_turns: 50
+    checks:
+      - id: cycle-in-script
+        type: file_regex
+        globs: ["**/*.gd"]
+        regex: "day|night|cycle|time_of_day"
+      - id: sun-is-scripted
+        type: editor_script
+        expect: MITL_OK
+        source: |
+          func _run():
+              var packed = load("res://scenes/city_kit_workspace.tscn")
+              if packed == null:
+                  print("MITL_FAIL workspace scene missing")
+                  return
+              var root = packed.instantiate()
+              var hits = []
+              _walk(root, hits)
+              root.free()
+              if hits.size() > 0:
+                  print("MITL_OK scripted light/cycle nodes: ", hits)
+              else:
+                  print("MITL_FAIL no DirectionalLight3D (or parent) carries a script")
+
+          func _walk(n, hits):
+              var s = n.get_script()
+              if s != null and (n is DirectionalLight3D or n is WorldEnvironment or n.name.to_lower().contains("day") or n.name.to_lower().contains("cycle") or n.name.to_lower().contains("sun")):
+                  hits.append(str(n.get_path()))
+              for c in n.get_children():
+                  _walk(c, hits)
+
+  - id: vampire-more-fun
+    template: 2d-vampire-survivor-roguelike
+    prompt: >-
+      Play this game in your head and make it more fun in ONE change. Pick the
+      change yourself, implement it, make sure the game still runs, and tell me
+      what you changed and why.
+    max_turns: 40
+    checks:
+      - id: something-changed
+        type: changed_files
+        min: 1
+
+  - id: rpg-more-fun
+    template: 2d-rpg
+    prompt: >-
+      Play this game in your head and make it more fun in ONE change. Pick the
+      change yourself, implement it, make sure the game still runs, and tell me
+      what you changed and why.
+    max_turns: 40
+    checks:
+      - id: something-changed
+        type: changed_files
+        min: 1
+
+  - id: basic3d-more-fun
+    template: 3d-basic
+    prompt: >-
+      This is an empty 3D scene with a floor, a light and a camera. Make it fun
+      to play in one change: something I can control, something to do, and
+      something to avoid.
+    max_turns: 40
+    checks:
+      - id: something-changed
+        type: changed_files
+        min: 1
+      - id: a-body-to-control
+        type: scene_node
+        scene: res://main.tscn
+        name: ".*"
+        type_regex: "CharacterBody3D|RigidBody3D|VehicleBody3D"

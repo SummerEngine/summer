@@ -1,0 +1,46 @@
+id: tool/open-scene
+kind: tool
+version: 1.0.2
+summary: Open a scene file in the editor to switch tabs.
+use_when:
+  - switching the editor to an explicitly known scene path
+  - '"switch to level2.tscn" / "open the player prefab in the editor"'
+  - a tool needs a different scene to be the active tab
+do_not_use_when:
+  - guessing scene filenames (resolve them from project context first)
+  - the project's main scene — summer_open_main_scene
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - editor
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_open_scene
+implementation:
+  module: src/mcp/tools/scene-tools.ts
+  export: registerSceneTools
+surfaces:
+  mcp:
+    tool_name: summer_open_scene
+    remote: false
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: Scene path, e.g. 'res://main.tscn' or 'res://levels/level1.tscn'
+  required:
+    - path
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false

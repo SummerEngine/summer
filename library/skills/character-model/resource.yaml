@@ -1,0 +1,36 @@
+id: skill/character-model
+kind: skill
+version: 1.0.2
+summary: Generate a rigged humanoid — player, NPC, enemy, boss — via T-pose reference, user-gated preview, and Meshy auto-rig, wired as CharacterBody3D or Node3D.
+use_when:
+  - generating a humanoid character ready for animation — player avatar, NPC, enemy, boss, companion
+  - the user asks for a rigged humanoid or a model with a skeleton
+facets:
+  lifecycle:
+    - build
+  domains:
+    - 3d
+    - assets
+  modalities:
+    - 3d-models
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/prop-model
+    - skill/vehicle-model
+    - skill/design-npc
+    - skill/animation-tree
+    - skill/facial-and-lipsync
+    - skill/generate-motion
+    - skill/procedural-animation
+    - skill/asset-strategy
+    - skill/fps-controller
+    - skill/organic-model
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/3d-assets/character-model

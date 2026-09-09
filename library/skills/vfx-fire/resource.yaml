@@ -1,0 +1,35 @@
+id: skill/vfx-fire
+kind: skill
+version: 1.0.3
+summary: Fire effect — animated flames built with a particle shader, GPUParticles3D, and a noise-based color ramp — torches, campfires, candles.
+use_when:
+  - authoring a fire visual effect — torch, campfire, bonfire, flame, burning object, candle
+  - adding fire to props, hazards, or projectiles — torches, braziers, burning wreckage, a fireball or flame jet
+facets:
+  lifecycle:
+    - build
+  domains:
+    - vfx
+    - rendering
+  modalities:
+    - scenes
+    - shaders
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/scene-scripting
+    - skill/sound-effect
+    - skill/game-feel
+    - skill/vfx-dissolve
+    - skill/vfx-hit-spark
+    - skill/vfx-magic-glow
+    - skill/vfx-muzzle-flash
+    - skill/vfx-smoke
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/visual-effects/recipes/fire
+  - fire

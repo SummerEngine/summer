@@ -5,7 +5,7 @@ vi.mock("../server.js", () => ({
   resetClient: vi.fn(),
 }));
 
-vi.mock("../../lib/telemetry.js", () => ({
+vi.mock("../../core/telemetry.js", () => ({
   recordMcpSession: vi.fn(),
 }));
 
@@ -233,5 +233,156 @@ describe("summer_get_diagnostics tool", () => {
     expect(body._view).toBeUndefined();
     expect(body.data.console.messages).toHaveLength(43);
     expect(body.data.debugger.warnings_data).toHaveLength(50);
+  });
+});
+
+describe("summer_get_console scope (E2E 2026-09-03 F-07)", () => {
+  const engineConsole = {
+    ok: true,
+    op: "GetConsoleOutput",
+    messages: [
+      consoleMessage("std", "Welcome to Summer Engine"),
+      consoleMessage("warning", "This control can't grab focus"),
+    ],
+    summary: { errors: 0, warnings: 1, std: 1, editor: 0, total: 2 },
+  };
+
+  it("stamps _scope on the shaped result so a clean console is never read as the post-play verdict", async () => {
+    const executeOps = vi.fn().mockResolvedValue(engineConsole);
+    vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
+    const result = await tool(tools(), "summer_get_console").handler({
+      max_lines: 100,
+      errors_only: true,
+      strict_errors: false,
+      raw: false,
+    });
+    const body = JSON.parse(text(result));
+    expect(body._scope).toContain("Runtime errors from a played game are collected by the debugger");
+    expect(body._scope).toContain("summer_get_diagnostics");
+    // The default filter still drops std noise by TYPE, not by content, and says so.
+    expect(body._filter.droppedByLevel).toBe(1);
+    expect(body.messages).toHaveLength(1);
+    expect(body.summary.errors).toBe(0);
+  });
+
+  it("returns raw engine output verbatim (no _scope, no filtering)", async () => {
+    const executeOps = vi.fn().mockResolvedValue(engineConsole);
+    vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
+    const result = await tool(tools(), "summer_get_console").handler({
+      max_lines: 100,
+      errors_only: true,
+      strict_errors: false,
+      raw: true,
+    });
+    const body = JSON.parse(text(result));
+    expect(body._scope).toBeUndefined();
+    expect(body.messages).toHaveLength(2);
+  });
+});
+
+describe("summer_play — determinism params", () => {
+  it("focus:true without pins calls play(scene) and returns the plain receipt (v1 launch)", async () => {
+    const play = vi.fn().mockResolvedValue({ status: "ok", results: [{ ok: true, op: "PlayGame", playing: true, scene: "res://main.tscn" }] });
+    const executeOps = vi.fn();
+    vi.mocked(getClient).mockResolvedValue({ play, executeOps } as never);
+
+    const result = await tool(tools(), "summer_play").handler({ scene: "res://main.tscn", focus: true });
+    expect(play).toHaveBeenCalledWith("res://main.tscn");
+    expect(executeOps).not.toHaveBeenCalled();
+    expect(text(result)).not.toContain("Determinism");
+    expect(JSON.parse(text(result)).results[0].playing).toBe(true);
+  });
+
+  it("defaults to QUIET play: the PlayGame op with agent:true, and trusts the engine's agent_quiet echo", async () => {
+    const play = vi.fn();
+    const executeOps = vi.fn().mockResolvedValue({ status: "ok", results: [{ ok: true, op: "PlayGame", playing: true, agent_quiet: true }] });
+    vi.mocked(getClient).mockResolvedValue({ play, executeOps } as never);
+
+    const result = await tool(tools(), "summer_play").handler({ scene: "res://main.tscn" });
+    expect(play).not.toHaveBeenCalled();
+    expect(executeOps).toHaveBeenCalledWith([{ op: "PlayGame", scene: "res://main.tscn", agent: true }], undefined, 60_000);
+    const body = JSON.parse(text(result));
+    expect(body.results[0].agent_quiet).toBe(true);
+    expect(body).not.toHaveProperty("posture_note");
+  });
+
+  it("flags an engine that predates quiet play (no agent_quiet echo on a launch)", async () => {
+    const executeOps = vi.fn().mockResolvedValue({ status: "ok", results: [{ ok: true, op: "PlayGame", playing: true, scene: "main_scene" }] });
+    vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
+
+    const body = JSON.parse(text(await tool(tools(), "summer_play").handler({})));
+    expect(body.posture_note).toContain("predates quiet play");
+  });
+
+  it("passes seed/fixed_fps/time_scale through as the PlayGame op and narrates applied + seed_scope", async () => {
+    const play = vi.fn();
+    const executeOps = vi.fn().mockResolvedValue({
+      status: "ok",
+      results: [
+        {
+          ok: true,
+          op: "PlayGame",
+          playing: true,
+          determinism: {
+            seed: 42,
+            fixed_fps: 60,
+            args: ["--summer-seed", "42", "--fixed-fps", "60"],
+            applied: true,
+            seed_scope: "Pins the GLOBAL RNG only (randi/randf/...). NOT pinned: RandomNumberGenerator instances, scripts that call randomize(), wall-clock reads, thread timing.",
+          },
+        },
+      ],
+    });
+    vi.mocked(getClient).mockResolvedValue({ play, executeOps } as never);
+
+    const result = await tool(tools(), "summer_play").handler({ seed: 42, fixed_fps: 60 });
+    // The /api/play rung copies only `scene`, so a pinned launch is the explicit op.
+    expect(play).not.toHaveBeenCalled();
+    expect(executeOps).toHaveBeenCalledWith([{ op: "PlayGame", agent: true, seed: 42, fixed_fps: 60 }], undefined, 60_000);
+    const body = text(result);
+    expect(body).toContain("Determinism (seed=42, fixed_fps=60): applied — flags on the child command line: --summer-seed 42 --fixed-fps 60.");
+    expect(body).toContain("seed_scope: Pins the GLOBAL RNG only");
+  });
+
+  it("narrates applied:false with the engine's reason and hint", async () => {
+    const executeOps = vi.fn().mockResolvedValue({
+      status: "ok",
+      results: [
+        {
+          ok: true,
+          op: "PlayGame",
+          playing: true,
+          note: "Game was already running",
+          determinism: { seed: 7, args: ["--summer-seed", "7"], applied: false, reason: "already_running", hint: "StopGame first, then PlayGame again with seed/fixed_fps." },
+        },
+      ],
+    });
+    vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
+
+    const body = text(await tool(tools(), "summer_play").handler({ seed: 7 }));
+    expect(body).toContain("Determinism (seed=7): NOT applied — reason: already_running.");
+    expect(body).toContain("StopGame first");
+  });
+
+  it("says 'not applied (engine predates determinism params)' when pins were sent but no determinism block came back", async () => {
+    const executeOps = vi.fn().mockResolvedValue({ status: "ok", results: [{ ok: true, op: "PlayGame", playing: true, scene: "res://main.tscn" }] });
+    vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
+
+    const body = text(await tool(tools(), "summer_play").handler({ seed: 1, time_scale: 2 }));
+    expect(executeOps).toHaveBeenCalledWith([{ op: "PlayGame", agent: true, seed: 1, time_scale: 2 }], undefined, 60_000);
+    expect(body).toContain("Determinism (seed=1, time_scale=2): not applied (engine predates determinism params)");
+    expect(body).toContain("NOT pinned");
+  });
+
+  it("surfaces the engine's bad_args refusal as a classified failure", async () => {
+    const executeOps = vi.fn().mockResolvedValue({
+      ok: false,
+      results: [{ ok: false, op: "PlayGame", failure_reason: "bad_args", error: "PlayGame `fixed_fps` must be an integer > 0" }],
+    });
+    vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
+
+    const result = (await tool(tools(), "summer_play").handler({ fixed_fps: 30 })) as { isError?: boolean };
+    expect(result.isError).toBe(true);
+    expect(text(result)).toContain("bad_args");
   });
 });

@@ -1,0 +1,31 @@
+id: skill/tune-performance
+kind: skill
+version: 1.0.3
+summary: Profile a slow game via summer_get_diagnostics, identify rendering/physics/scripting hotspots, propose fixes with before/after metric expectations.
+use_when:
+  - the game is slow, drops framerate, stutters, takes forever to start, or runs poorly on specific hardware
+  - fps drops or stutter when many units, projectiles, or particles spawn at once and the hotspot is unknown
+facets:
+  lifecycle:
+    - build
+  domains:
+    - performance
+    - debug
+  modalities:
+    - scripts
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/running-in-the-cloud
+    - skill/scene-scripting
+    - skill/debug
+    - skill/3d-lighting
+    - skill/diagnosing-perf-regressions
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/performance/tune-performance

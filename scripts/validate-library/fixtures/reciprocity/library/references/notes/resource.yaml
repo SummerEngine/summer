@@ -1,0 +1,15 @@
+id: reference/notes
+kind: reference
+version: 1.0.0
+summary: Fixture reference linking to a skill; the hint applies to skill pairs only.
+use_when:
+  - exercising the reciprocity hint from a non-skill resource
+  - checking that reference-to-skill links never produce a warning
+facets:
+  lifecycle: [build]
+  domains: [meta, verification]
+related:
+  skills: [skill/alpha]
+source: official
+license: MIT
+status: stable

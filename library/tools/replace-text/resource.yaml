@@ -1,0 +1,61 @@
+id: tool/replace-text
+kind: tool
+version: 1.0.2
+summary: "Safely replace text in an existing project file: unique match required by default, then a sha256-guarded write."
+use_when:
+  - targeted edits to scripts, scenes, or config without resending the whole file
+  - '"change speed = 5 to speed = 8 in player.gd"'
+  - renaming one function call in a script without rewriting the file
+do_not_use_when:
+  - writing a new file or rewriting most of it — summer_write_file
+  - the same text appears more than once and you have not narrowed the match
+facets:
+  lifecycle:
+    - build
+  domains:
+    - file
+    - project
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_replace_text
+implementation:
+  module: src/mcp/tools/file-tools.ts
+  export: registerFileTools
+surfaces:
+  mcp:
+    tool_name: summer_replace_text
+    remote: false
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: Project path, e.g. res://scripts/player.gd
+    old_text:
+      type: string
+      minLength: 1
+      description: Exact text to replace.
+    new_text:
+      type: string
+      description: Replacement text; may be empty.
+    replace_all:
+      type: boolean
+      default: false
+      description: Replace every exact occurrence instead of requiring one unique match.
+  required:
+    - path
+    - old_text
+    - new_text
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - sha256-receipt

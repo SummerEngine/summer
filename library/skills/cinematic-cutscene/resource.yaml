@@ -1,0 +1,29 @@
+id: skill/cinematic-cutscene
+kind: skill
+version: 1.0.4
+summary: Generate a non-interactive cutscene — reference-locked look, a 5-10s image-to-video shot, optional TTS dialogue — wired as a fading VideoStreamPlayer.
+use_when:
+  - generating a non-interactive cutscene clip — opening scene, story beat, character intro, ending
+  - a story beat needs a short pre-rendered clip between gameplay sections — intro, transition, ending
+facets:
+  lifecycle:
+    - build
+  domains:
+    - video
+    - assets
+  modalities:
+    - video
+    - assets
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/character-portrait
+    - skill/concept-art
+    - skill/asset-strategy
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/video/cinematic-cutscene

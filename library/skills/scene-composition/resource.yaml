@@ -1,0 +1,27 @@
+id: skill/scene-composition
+kind: skill
+version: 1.0.3
+summary: Scene structure conventions — node hierarchy, when to extract sub-scenes, reusable prefab patterns, and instance-versus-add-node decisions.
+use_when:
+  - "building or organizing Summer Engine scenes: node hierarchy conventions, sub-scene extraction, prefab patterns, PackedScene decisions"
+  - deciding whether to extract a sub-scene, instance a prefab, or add nodes inline as a scene grows
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - project
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/scene-scripting
+    - skill/spatial-placement
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/scene-and-project/scene-composition

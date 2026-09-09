@@ -15,13 +15,13 @@ The agent should read the Summer README/install playbook, detect the current mac
 
 Expected agent behavior:
 
-1. Check Node.js 18+.
-2. Run `npx -y summer-engine@latest doctor --json`.
-3. Run `npx -y summer-engine@latest setup <agent> --yes --force` if skills or MCP config are missing or stale.
-4. Run `npx -y summer-engine@latest install` if the engine app is missing.
-5. Run `npx -y summer-engine@latest login` if the user is not signed in.
+1. Check Node.js 20+.
+2. Run `npx -y summer-engine@latest doctor --json` (its top-level `ok` means "no check failed", not "installed").
+3. Always run `npx -y summer-engine@latest setup <agent> --yes --force` — idempotent; installs every skill and the MCP config.
+4. Run `npx -y summer-engine@latest install` if the `engine-install` check needs attention.
+5. Run `npx -y summer-engine@latest login` if the `login` check needs attention.
 6. Create and run a starter project only after choosing a stable parent directory.
-7. Use `summer:brainstorm-game` before building from a vague prompt.
+7. Use the `brainstorm-game` skill before building from a vague prompt.
 
 First-class setup targets: `claude-code`, `codex`, `cursor`, `windsurf`, `cline`, `roo-code`, `kilo-code`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, `lm-studio`.
 

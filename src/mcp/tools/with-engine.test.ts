@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { extractOpError } from "./with-engine.js";
+import { extractOpError, missingEngineOpResult, withTransportRecovery } from "./with-engine.js";
 
 /**
  * 0.5.34 Block E follow-up — the CLI/MCP must NOT repeat the web's
@@ -214,5 +214,59 @@ describe("extractOpError — classified failures preserve failure_reason (E-hotf
     });
     const parsed = JSON.parse(text ?? "");
     expect(parsed.failure_reason).toBe("skipped");
+  });
+});
+
+describe("withTransportRecovery — every transport failure teaches recovery", () => {
+  it("appends the recovery recipe to a bare transport error", () => {
+    const taught = withTransportRecovery("fetch failed");
+    expect(taught.startsWith("fetch failed")).toBe(true);
+    expect(taught).toContain("summer_get_project_context");
+    expect(taught).toContain("do NOT blind-retry");
+    expect(taught).toContain("smaller scripts/batches");
+  });
+
+  it("does not stack a second recipe on the connect-path failure (already prescriptive)", () => {
+    const connect = "Summer Engine is not running.\nOpen the intended project in Summer Engine, or run: npx summer-engine run";
+    expect(withTransportRecovery(connect)).toBe(connect);
+  });
+});
+
+describe("missingEngineOpResult — capability pre-flight", () => {
+  it("lets the call through when the client has no capability getters (older mocks / no advert)", () => {
+    expect(missingEngineOpResult({}, "RunSceneScript", "use X")).toBeNull();
+    expect(
+      missingEngineOpResult({ getEngineCapabilities: () => undefined }, "RunSceneScript", "use X")
+    ).toBeNull();
+  });
+
+  it("returns a structured engine_lacks_op result naming op, engine version and fallback when the advert lacks the op", () => {
+    const result = missingEngineOpResult(
+      {
+        getEngineCapabilities: () => ({ opKinds: ["AddNode"] }),
+        getEngineVersion: () => "0.5.61",
+      },
+      "GetWorldSnapshot",
+      "use summer_get_scene_tree"
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      op: "GetWorldSnapshot",
+      failure_reason: "engine_lacks_op",
+      engine_version: "0.5.61",
+    });
+    expect(result!.error).toContain("summer_get_scene_tree");
+    // extractOpError classifies it like any engine op failure.
+    expect(extractOpError(result)).toContain("GetWorldSnapshot");
+  });
+
+  it("stays null when the advertised op list includes the op", () => {
+    expect(
+      missingEngineOpResult(
+        { getEngineCapabilities: () => ({ opKinds: ["GetWorldSnapshot"] }) },
+        "GetWorldSnapshot",
+        "use X"
+      )
+    ).toBeNull();
   });
 });

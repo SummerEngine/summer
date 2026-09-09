@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock auth so handlers don't need a real token on disk.
-vi.mock("../../lib/auth.js", () => ({
+vi.mock("../../core/auth.js", () => ({
   getAuthToken: vi.fn(async () => "test-token"),
 }));
 

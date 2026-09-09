@@ -1,0 +1,14 @@
+id: collection/stable-no-sha
+kind: collection
+version: 1.0.0
+summary: A stable collection whose items are missing hashes.
+use_when:
+  - testing schema violations
+facets:
+  lifecycle: [build]
+source: official
+license: MIT
+status: stable
+items:
+  - slug: mystery-prop
+    license: CC0

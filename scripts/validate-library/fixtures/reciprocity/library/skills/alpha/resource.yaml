@@ -1,0 +1,15 @@
+id: skill/alpha
+kind: skill
+version: 1.0.0
+summary: Fixture skill that links to beta without beta linking back.
+use_when:
+  - exercising the reciprocity hint between related skills
+  - checking that one-way related links warn without failing validation
+facets:
+  lifecycle: [build]
+  domains: [meta, verification]
+related:
+  skills: [skill/beta]
+source: official
+license: MIT
+status: stable

@@ -1,5 +1,18 @@
 import { getClient, resetClient } from "../server.js";
-import { recordMcpSession } from "../../lib/telemetry.js";
+import { recordMcpSession } from "../../core/telemetry.js";
+import { thrownErrorClass } from "../../core/tool-errors.js";
+import {
+  extractOpError,
+  getFailureReason,
+  withOldEngineHint,
+  type OpResult,
+} from "../../core/capabilities/engine-receipt.js";
+export { extractOpError, withOldEngineHint };
+export {
+  missingEngineOpResult,
+  type CapabilityAdvertisingClient,
+} from "../../core/capability-skew.js";
+export { ToolInputError, UnsupportedOperationError } from "../../core/tool-errors.js";
 
 type ToolResultContent =
   | { type: "text"; text: string }
@@ -43,62 +56,6 @@ export interface WithEngineOptions<T> {
   onResult?: (result: T) => ToolResult | null;
 }
 
-type OpResult = {
-  ok?: boolean;
-  status?: string;
-  error?: string;
-  terminalState?: string;
-  errorClass?: string;
-  failureReason?: string;
-  failure_reason?: string;
-  results?: Array<{
-    ok?: boolean;
-    op?: string;
-    error?: string;
-    failureReason?: string;
-    failure_reason?: string;
-  }>;
-};
-
-function getFailureReason(value: {
-  failureReason?: string;
-  failure_reason?: string;
-}): string | undefined {
-  return typeof value.failureReason === "string"
-    ? value.failureReason
-    : typeof value.failure_reason === "string"
-      ? value.failure_reason
-      : undefined;
-}
-
-// 0.5.34 Block E contract (publicsummerengine src/lib/tools/contract.ts §0.1).
-// The async lifecycle (async-op-lifecycle.ts pollOpToTerminal) merges
-// terminalState/errorClass onto the apply dict it returns. ONLY these two are
-// "applied something / applied nothing-on-purpose" — every other terminal state
-// means the op did NOT land and must be surfaced as a failure, not masked.
-const SUCCESS_TERMINAL_STATES: ReadonlySet<string> = new Set(["applied", "no_op"]);
-
-// Human-readable fallback when the engine reports a failure terminalState but no
-// `error` string (queue-full / lease-reject / identity-mismatch / no-progress
-// timeout frequently arrive with terminalState set and results[] absent).
-const TERMINAL_STATE_MESSAGES: Record<string, string> = {
-  timed_out:
-    "Engine operation timed out. Its final state is unknown; inspect the target before retrying.",
-  still_queued:
-    "Summer Engine accepted the operation, but it was still queued when the client stopped waiting. It may still run; do not retry blindly.",
-  still_running:
-    "Summer Engine accepted and started the operation, but no final receipt arrived. It may still be running or may already have applied; inspect the target before retrying.",
-  uncertain:
-    "Summer Engine did not provide a final operation receipt. The current state is uncertain; inspect the target before retrying.",
-  not_connected: "Summer Engine is not connected (terminalState: not_connected). Nothing was applied.",
-  identity_mismatch:
-    "Operation rejected — wrong project/instance (terminalState: identity_mismatch). Nothing was mutated.",
-  content_mismatch:
-    "Operation rejected — content changed since last read (terminalState: content_mismatch). Nothing was applied.",
-  denied: "Operation denied (terminalState: denied). Nothing was applied.",
-  canceled: "Operation canceled (terminalState: canceled). Nothing was applied.",
-};
-
 /** Pull the failure classifiers off an engine envelope for logging (best-effort,
  *  shape-tolerant). Does not decide success/failure — that stays in
  *  extractOpError. */
@@ -111,81 +68,6 @@ function readClassifiers(result: unknown): Pick<WithEngineMeta, "terminalState" 
     errorClass: typeof op.errorClass === "string" ? op.errorClass : undefined,
     failureReason: getFailureReason(op) ?? (failed ? getFailureReason(failed) : undefined),
   };
-}
-
-/**
- * Decide whether an engine result envelope represents a FAILURE, and if so
- * return a model-visible message. Returns null only for genuine success.
- *
- * Guards the two web bug classes (publicsummerengine cf17134f + contract.ts
- * `isFailureSignal`):
- *   - a failure `terminalState` (anything other than applied/no_op) is a failure
- *     even when results[] is absent — the cf17134f "no-results envelope looked
- *     applied" masking. The poll loop surfaces timed_out/etc. here.
- *   - an explicit ok:false / status:"error" / failed op inside results[].
- *
- * Exported for unit tests.
- */
-export function extractOpError(result: unknown): string | null {
-  if (!result || typeof result !== "object") return null;
-  const op = result as OpResult;
-  const firstFailed = op.results?.find((r) => r.ok === false);
-  // The engine stamps failure classifiers on the envelope OR per-op inside
-  // results[] (the batch gate does the latter) — read both.
-  const failureReason = getFailureReason(op) ?? (firstFailed ? getFailureReason(firstFailed) : undefined);
-
-  // Classified failures are rendered as JSON so callers can reliably read
-  // failure_reason instead of scraping a sentence. A plain-text "Hint:" line may
-  // follow the JSON in the final tool text. Unclassified failures stay plain.
-  const classify = (message: string): string => {
-    if (!failureReason) return message;
-    return JSON.stringify(
-      {
-        error: message,
-        failure_reason: failureReason,
-        ...(typeof firstFailed?.error === "string" && firstFailed.error.length > 0 && firstFailed.error !== message
-          ? { op_error: firstFailed.error }
-          : {}),
-        ...(typeof firstFailed?.op === "string" ? { op: firstFailed.op } : {}),
-        ...(typeof op.terminalState === "string" ? { terminalState: op.terminalState } : {}),
-        ...(typeof op.errorClass === "string" ? { errorClass: op.errorClass } : {}),
-      },
-      null,
-      2
-    );
-  };
-
-  // Failure terminalState takes precedence — it is set by the async lifecycle
-  // exactly when the op did not land (timeout, backpressure, lease/identity
-  // rejection, cancellation), sometimes with NO results[] to inspect. Prefer the
-  // precise engine rejection (envelope error, then the failed op's error) over
-  // the generic terminal-state sentence.
-  const ts = op.terminalState;
-  if (typeof ts === "string" && ts.length > 0 && !SUCCESS_TERMINAL_STATES.has(ts)) {
-    const message =
-      (typeof op.error === "string" && op.error.length > 0 && op.error) ||
-      (typeof firstFailed?.error === "string" && firstFailed.error.length > 0 && firstFailed.error) ||
-      TERMINAL_STATE_MESSAGES[ts] ||
-      `Engine operation failed (terminalState: ${ts}).`;
-    return classify(message);
-  }
-
-  // An explicit ok:false / status:"error" / failed op inside results[] is a
-  // failure even when the engine omitted an error string — surface it rather
-  // than mask it (matches the web contract `isFailureSignal`). The envelope
-  // error is kept when present; the failed op's own error backs it up.
-  if (op.ok === false || op.status === "error" || firstFailed) {
-    const message =
-      (typeof op.error === "string" && op.error.length > 0 && op.error) ||
-      (typeof firstFailed?.error === "string" && firstFailed.error.length > 0 && firstFailed.error) ||
-      (firstFailed
-        ? `Engine op failed${firstFailed.op ? ` (${firstFailed.op})` : ""}.`
-        : op.ok === false
-          ? "Engine operation failed (ok: false)."
-          : "Engine operation failed (status: error).");
-    return classify(message);
-  }
-  return null;
 }
 
 /**
@@ -299,6 +181,18 @@ export async function withEngine<T>(
         meta
       );
     } catch (err) {
+      // A tagged pre-apply throw (argument validation, or a client that cannot
+      // perform the op at all) never reached the engine: keep the cached
+      // client, skip the transport recovery recipe, and say so.
+      const preApply = thrownErrorClass(err);
+      if (preApply) {
+        return attachMeta(preApplyFailureResult(preApply, err), {
+          errorClass: preApply,
+          failureReason: PRE_APPLY_FAILURE_REASON[preApply],
+          retried,
+          boundProjectIdHash,
+        });
+      }
       // Drop the cached client (it may point at a dead/rotated engine). Retry
       // once only for a provably pre-apply auth failure; anything else surfaces.
       resetClient();
@@ -310,7 +204,60 @@ export async function withEngine<T>(
 
   const msg = lastError instanceof Error ? lastError.message : String(lastError);
   return attachMeta(
-    { content: [{ type: "text", text: msg }], isError: true },
+    { content: [{ type: "text", text: withTransportRecovery(msg) }], isError: true },
     { errorClass: "transport", retried, boundProjectIdHash }
+  );
+}
+
+const PRE_APPLY_FAILURE_REASON = {
+  input: "invalid_input",
+  unsupported: "unsupported_operation",
+} as const;
+
+/** Model-visible result for a throw that is provably pre-apply. Rendered as
+ *  JSON like every other classified failure (callers read failure_reason
+ *  instead of scraping a sentence); `sent:false` is the load-bearing bit —
+ *  no mutation could have landed, so the model may fix the call and retry. */
+function preApplyFailureResult(
+  errorClass: keyof typeof PRE_APPLY_FAILURE_REASON,
+  err: unknown
+): ToolResult {
+  const message = err instanceof Error ? err.message : String(err);
+  return {
+    isError: true,
+    content: [{
+      type: "text",
+      text: JSON.stringify(
+        {
+          error: message,
+          failure_reason: PRE_APPLY_FAILURE_REASON[errorClass],
+          errorClass,
+          sent: false,
+          hint:
+            errorClass === "input"
+              ? "Nothing was sent to the engine. Fix the argument named in the error and call again — no inspection needed."
+              : "Nothing was sent or applied. This client cannot perform the operation; use the alternative named in the error.",
+        },
+        null,
+        2
+      ),
+    }],
+  };
+}
+
+/** Every transport-level failure must TEACH recovery, not just name the error.
+ *  getClient()'s connect failure already carries its own instructions; anything
+ *  else (fetch failed / abort / HTTP status thrown mid-call) gets the generic
+ *  recovery recipe appended. Exported for unit tests. */
+export function withTransportRecovery(message: string): string {
+  // Connect-path failures already prescribe (server.ts getClient appends the
+  // "Open the intended project…" instructions). Don't stack a second recipe.
+  if (message.includes("summer-engine run") || message.includes("summer-engine@latest run")) return message;
+  return (
+    message +
+    "\n\nRecovery: (1) check the engine is running and responsive — summer_get_project_context here, or `summer doctor` in a shell; " +
+    "(2) if this was a MUTATION, do NOT blind-retry — it may have partially applied; inspect the target first (summer_get_scene_tree / summer_world_snapshot / summer_read_file); " +
+    "(3) if the call was large or long-running, break it into smaller scripts/batches and re-run piece by piece; " +
+    "(4) if the engine restarted, the next tool call reconnects automatically — just retry a READ to confirm."
   );
 }

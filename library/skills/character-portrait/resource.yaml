@@ -1,0 +1,30 @@
+id: skill/character-portrait
+kind: skill
+version: 1.0.4
+summary: Generate a single polished character bust for dialogue UI, character select, lore cards, or codex entries. One character, locked composition, VN-style.
+use_when:
+  - generating a single polished bust/portrait of a character for dialogue UI, character-select screens, lore cards, or codex entries
+  - a dialogue box, party roster, or codex entry needs one consistent face for a named character
+facets:
+  lifecycle:
+    - build
+  domains:
+    - 2d
+    - assets
+  modalities:
+    - images
+    - assets
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/concept-art
+    - skill/pixel-art
+    - skill/asset-strategy
+    - skill/create-asset-sheet
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/2d-assets/character-portrait

@@ -1,0 +1,20 @@
+id: skill/alpha-skill
+kind: skill
+version: 1.2.0
+summary: Fixture skill with SKILL.md frontmatter.
+use_when:
+  - testing the registry compiler
+  - exercising the registry compiler against a skill that carries frontmatter
+facets:
+  lifecycle: [build]
+  domains: [meta, verification]
+compatibility:
+  engine: ">=4.6"
+related:
+  tools: [tool/set-node-property]
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/workflow/alpha-skill

@@ -1,0 +1,62 @@
+id: tool/instantiate-scene
+kind: tool
+version: 1.0.3
+summary: Add an existing scene or 3D model file as a child node, composing scenes from prefabs.
+use_when:
+  - placing a .tscn prefab or imported 3D model into a scene
+  - '"put three copies of the enemy prefab in the level"'
+  - '"add the imported car.glb to the scene"'
+do_not_use_when:
+  - a bare built-in node type like Camera3D or Timer — summer_add_node
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - editor
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_instantiate_scene
+implementation:
+  module: src/mcp/tools/scene-tools.ts
+  export: registerSceneTools
+surfaces:
+  mcp:
+    tool_name: summer_instantiate_scene
+    remote: false
+input_schema:
+  type: object
+  properties:
+    scenePath:
+      type: string
+      description: Target scene to receive the instance, e.g. 'res://main.tscn'
+    parent:
+      type: string
+      description: Parent node path, e.g. './World'
+    scene:
+      type: string
+      description: Scene/model path, e.g. 'res://player.tscn' or 'res://models/tree.glb'
+    name:
+      type: string
+      description: Override the instance name
+    target_size:
+      type: number
+      exclusiveMinimum: 0
+      description: Normalize the instance's physical size - uniformly scale it so its largest world-AABB dimension equals this many units (chair 1.0, car 4.5, person 1.7). Strongly recommended for imported .glb/.gltf models. Older engine builds ignore it; the result then lacks scale_applied and carries a target_size_note.
+  required:
+    - scenePath
+    - parent
+    - scene
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - scene-valid

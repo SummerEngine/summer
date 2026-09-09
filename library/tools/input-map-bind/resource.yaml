@@ -1,0 +1,52 @@
+id: tool/input-map-bind
+kind: tool
+version: 1.0.2
+summary: Create an input action if needed and bind keyboard or mouse events to it.
+use_when:
+  - setting up player controls like jump, move, or interact
+  - '"make E interact" / "bind shoot to left mouse"'
+  - adding a gamepad button for an existing action
+do_not_use_when:
+  - reading which keys are already bound — summer_get_project_context / project.godot
+facets:
+  lifecycle:
+    - build
+  domains:
+    - project
+    - gameplay
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_input_map_bind
+implementation:
+  module: src/mcp/tools/project-tools.ts
+  export: registerProjectTools
+surfaces:
+  mcp:
+    tool_name: summer_input_map_bind
+    remote: false
+input_schema:
+  type: object
+  properties:
+    name:
+      type: string
+      description: Action name, e.g. 'jump', 'move_forward', 'interact'
+    events:
+      type: array
+      items:
+        type: object
+        additionalProperties: {}
+      description: Array of input event objects
+  required:
+    - name
+    - events
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false

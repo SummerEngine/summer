@@ -1,0 +1,80 @@
+id: tool/runtime-set
+kind: tool
+version: 1.0.0
+summary: Set one property on a node in the RUNNING game — the live object, never the scene file — and read back whether it applied.
+use_when:
+  - putting the running game into a test state without playing there by hand — teleport the player, set health to 1, flip a flag, toggle visibility
+  - '"move the player to (0, 2, 0) in the running game" / "set the boss health to 1 while it is running"'
+  - a runtime experiment whose change should die with the run instead of landing in the scene file
+do_not_use_when:
+  - the change must persist — edit the scene with summer_set_prop and restart the game
+  - no game is running (failure_reason game_not_running) — summer_play first
+  - "requires an engine build with SetRuntimeProp (engine PR #156 follow-up, wave I); on current shipped engines this returns engine_lacks_op"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - runtime
+    - playtest
+    - verification
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/game-probe
+    - tool/runtime-call
+    - tool/game-control
+    - tool/play
+    - tool/set-prop
+    - tool/inspect-runtime-node
+  skills:
+    - skill/agent-playtesting
+    - skill/playtesting-a-feature
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_runtime_set
+implementation:
+  module: src/mcp/tools/runtime-tools.ts
+  export: registerRuntimeTools
+surfaces:
+  mcp:
+    tool_name: summer_runtime_set
+    remote: false
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: ABSOLUTE runtime node path, e.g. '/root/Main/Player' (from summer_game_probe tree).
+    property:
+      type: string
+      description: Property name, e.g. 'position', 'health', 'visible'. 'script' and 'owner' are refused.
+    value:
+      type:
+        - string
+        - number
+        - boolean
+      description: New value. JSON scalars for primitives; Godot literal strings for math types ('Vector3(1, 2, 3)', 'Color(1, 0, 0, 1)'). Compared with Variant equality, so 1 and 1.0 both count as applied.
+    field:
+      type: string
+      description: Optional sub-field to set instead of the whole value, e.g. 'x' on a Vector3 property.
+    instance:
+      type: string
+      description: Game instance to address (default 'main'). Offscreen instances are named by summer_play with instance + mode offscreen; summer_game_control action 'instances' lists them.
+  required:
+    - path
+    - property
+    - value
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - game-probe

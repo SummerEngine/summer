@@ -1,0 +1,31 @@
+id: skill/tileable-texture
+kind: skill
+version: 1.0.4
+summary: Generate a seamless tileable texture for walls, floors, or terrain — repeats cleanly on all four edges, wired as a StandardMaterial3D albedo.
+use_when:
+  - generating a seamless tileable texture for walls, floors, terrain, or ceilings — a square tile that repeats cleanly on all four edges
+  - a wall, floor, or terrain material shows visible seams or repetition and needs a texture that tiles cleanly
+facets:
+  lifecycle:
+    - build
+  domains:
+    - 2d
+    - assets
+  modalities:
+    - images
+    - assets
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/character-portrait
+    - skill/concept-art
+    - skill/skybox-panorama
+    - skill/asset-strategy
+    - skill/create-asset-sheet
+source: official
+license: MIT
+status: stable
+recommended: false
+aliases:
+  - skills/2d-assets/tileable-texture

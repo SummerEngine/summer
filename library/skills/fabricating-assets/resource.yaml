@@ -1,0 +1,52 @@
+id: skill/fabricating-assets
+kind: skill
+version: 1.0.0
+summary: Fabricate meshes with a bpy script in the user's own Blender (summer_fabricate_3d) — kits with exact dimensions, VFX meshes, post-processing generated models.
+use_when:
+  - writing a Blender Python (bpy) script for summer_fabricate_3d and deciding whether fabrication, generation, or the free library is the right route for an asset
+  - a parametric hard-surface set with exact dimensions, booleans, bevels, and shared materials that must stay consistent across many pieces
+  - VFX meshes — shatter fragments, curve sweeps, trails, LOD chains — or decimating, UV-unwrapping, and baking a generated model before it goes into the scene
+  - a fabrication failed (blender_not_found, script_error, export_empty, import_failed, busy, timeout) and the result needs to be read correctly
+do_not_use_when:
+  - a generic prop — search the free library first (summer_search_assets, prop-model), then generate (summer_generate_3d)
+  - a character or any organic shape — character-model / organic-model; scripted organic modelling is the documented failure mode
+  - a blockout or placeholder — scene-scripting primitives/CSG are instant and in-scene
+  - "the engine build lacks FabricateMesh (engine PR #156 follow-up, wave K); current shipped engines return engine_lacks_op — route to summer_generate_3d / summer_search_assets / summer_run_script instead"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - 3d
+    - assets
+    - scripting
+    - agent-workflow
+  modalities:
+    - 3d-models
+    - scripts
+    - assets
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/fabricate-3d
+    - tool/generate-3d
+    - tool/search-assets
+    - tool/import-asset
+    - tool/instantiate-scene
+    - tool/get-project-context
+    - tool/world-snapshot
+    - tool/snapshot-diff
+    - tool/screenshot
+    - tool/get-console
+  skills:
+    - skill/asset-strategy
+    - skill/environment-kit
+    - skill/prop-model
+    - skill/character-model
+    - skill/scene-scripting
+    - skill/verifying-scenes
+    - skill/verification-before-completion
+source: official
+license: MIT
+status: preview
+recommended: false

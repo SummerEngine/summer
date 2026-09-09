@@ -1,0 +1,17 @@
+id: example/missing-media
+kind: example
+version: 1.0.0
+summary: An example whose evidence media path does not exist.
+use_when:
+  - testing file requirements
+facets:
+  lifecycle: [build]
+source: official
+license: MIT
+status: stable
+evidence:
+  engine_version: "4.6.1"
+  verified_at: 2026-09-01
+  checks: [runs]
+  media:
+    - path: evidence/missing.png

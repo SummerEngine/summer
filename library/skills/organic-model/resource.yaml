@@ -1,0 +1,32 @@
+id: skill/organic-model
+kind: skill
+version: 1.0.3
+summary: Generate organic 3D shapes — trees, rocks, mushrooms, coral, plants, vines, crystals — where AI artifacts read as natural irregularity.
+use_when:
+  - generating organic shapes — trees, rocks, mushrooms, coral, bushes, alien plants, vines, crystals, fruit, bones
+  - a level needs vegetation, rocks, or other natural shapes where irregularity reads as realism
+facets:
+  lifecycle:
+    - build
+  domains:
+    - 3d
+    - assets
+  modalities:
+    - 3d-models
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/character-model
+    - skill/environment-kit
+    - skill/prop-model
+    - skill/vehicle-model
+    - skill/asset-strategy
+    - skill/ambient-bed
+source: official
+license: MIT
+status: stable
+recommended: false
+aliases:
+  - skills/3d-assets/organic-model

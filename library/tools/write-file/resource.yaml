@@ -1,0 +1,54 @@
+id: tool/write-file
+kind: tool
+version: 1.0.2
+summary: Create or safely overwrite one complete text file through the identity-bound engine; exactly one guard is required, so writes fail closed.
+use_when:
+  - creating a new project file with the create-only guard
+  - overwriting an existing file with its sha256 receipt
+facets:
+  lifecycle:
+    - build
+  domains:
+    - file
+    - project
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_write_file
+implementation:
+  module: src/mcp/tools/file-tools.ts
+  export: registerFileTools
+surfaces:
+  mcp:
+    tool_name: summer_write_file
+    remote: false
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: Project path, e.g. res://scenes/player.tscn
+    content:
+      type: string
+      description: Complete new UTF-8 file content.
+    create_only:
+      type: boolean
+      description: Required for a new file; refuses if the path already exists.
+    expected_sha256:
+      type: string
+      description: Required for overwriting an existing file; obtain from summer_read_file.
+  required:
+    - path
+    - content
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - sha256-receipt

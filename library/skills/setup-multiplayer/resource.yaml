@@ -1,0 +1,28 @@
+id: skill/setup-multiplayer
+kind: skill
+version: 1.0.4
+summary: Add multiplayer to an existing game — LAN/online co-op, PvP, lobbies — via MultiplayerAPI, MultiplayerSpawner, and MultiplayerSynchronizer.
+use_when:
+  - "adding multiplayer to an existing Summer game: co-op LAN, co-op online, competitive PvP, or a lobby"
+  - a solo game needs LAN co-op, online co-op, versus play, or a lobby added
+facets:
+  lifecycle:
+    - build
+  domains:
+    - multiplayer
+    - scripting
+  modalities:
+    - scripts
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/peer-to-peer-multiplayer
+    - skill/host-authoritative-state
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/multiplayer-and-networking/setup-multiplayer

@@ -27,8 +27,8 @@ const engine = {
   lastReadHadIdentity: false,
 };
 
-vi.mock("../lib/engine.js", async (importActual) => {
-  const actual = await importActual<typeof import("../lib/engine.js")>();
+vi.mock("../core/engine.js", async (importActual) => {
+  const actual = await importActual<typeof import("../core/engine.js")>();
   return {
     ...actual,
     getApiPort: vi.fn(async () => engine.port),

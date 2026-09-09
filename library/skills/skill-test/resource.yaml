@@ -1,0 +1,26 @@
+id: skill/skill-test
+kind: skill
+version: 1.0.4
+summary: Lint a Summer skill before commit, audit the whole library, or check a behavioral spec assertion — static structural rules plus behavioral specs.
+use_when:
+  - a contributor wants to lint a Summer skill before commit, audit the whole library, or check a behavioral spec assertion
+  - running the structural lint and behavioral spec assertions for one skill or the whole library
+facets:
+  lifecycle:
+    - build
+  domains:
+    - agent-workflow
+    - meta
+  modalities:
+    - docs
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/skill-create
+    - skill/skill-improve
+source: official
+license: MIT
+status: stable
+aliases:
+  - skills/workflow/skill-test

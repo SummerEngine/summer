@@ -1,0 +1,44 @@
+### 03:47:21 1/3 toolkit drive vs complete build 436d0879ad8
+### 03:47:21 launch FOLD engine offscreen on local project (isolated HOME, pointer published, ephemeral webview)
+api-token published: yes after ~4s ; engine alive=yes
+### A. context / capability skew
+ctx: exit=0 ok=None status=None terminal=None failure_reason=None err=None bytes=22918
+  engine=0.5.66 opKinds=125 runtimeControl.ops=16 launchPostures=['focus', 'background', 'offscreen']
+  capabilitySkewWarning=None
+### B. open scene + tree
+open: exit=0 ok=None status=ok terminal=applied failure_reason=None err=None bytes=473
+tree: exit=0 ok=True status=None terminal=None failure_reason=None err=None bytes=593
+### C. RUN-SCRIPT: author GDScript, attach to NEW node, save
+runscript: exit=0 ok=None status=ok terminal=applied failure_reason=None err=None bytes=1528
+  ran=None ok=None exit_code=None reports=None errors=None failure_reason=None
+  on-disk main.tscn: MitlProbe=1 embedded-script=4
+### D. PLAY (quiet) then read the PLACED node from the RUNNING game
+play: exit=0 ok=None status=ok terminal=applied failure_reason=None err=None bytes=516
+isrun: exit=0 ok=None status=ok terminal=applied failure_reason=None err=None bytes=504
+rtree: exit=0 ok=None status=ok terminal=applied failure_reason=None err=None bytes=965
+  runtime tree mentions MitlProbe: True failure_reason=None
+rnode: exit=0 ok=None status=ok terminal=applied failure_reason=None err=None bytes=871
+  >>> PLACED CODE RAN IN GAME: YES ticks=262 failure_reason=None snippet={
+  "results": [
+    {
+      "node": {
+        "children_names": [],
+        "class": "Label",
+        "path": "/root/Main/MitlProbe",
+        "properties": {
+ 
+### E. preview tools against a capable engine
+wsnap: exit=0 ok=None status=ok terminal=applied failure_reason=None err=None bytes=1750
+probe: exit=0 ok=None status=ok terminal=applied failure_reason=None err=None bytes=856
+  probe same-frame read: YES MITL_ALIVE 289 failure_reason=None
+diag: exit=0 ok=True status=None terminal=None failure_reason=None err=None bytes=1713
+shot: exit=0 ok=True status=None terminal=None failure_reason=None err=None bytes=1427
+stop: exit=0 ok=None status=ok terminal=applied failure_reason=None err=None bytes=430
+### F. teardown
+engines left: 0 ; REAL ~/.summer touched: 1 ; session adopted/planted: 0 ; engine ERRORs: 0
+### DONE 03:47:39
+### 03:47:39 2/3 harness run A
+A exit 0 03:49:10: 1115 PASS / 0 FAIL / 4 SKIP
+### 03:49:10 3/3 harness run B (trust-boot + Blender)
+B exit 0 03:52:00: 1175 PASS / 0 FAIL / 1 SKIP
+### DONE 03:52:00 engines left: 0 real ~/.summer touched: 0 frontmost: Google Chrome

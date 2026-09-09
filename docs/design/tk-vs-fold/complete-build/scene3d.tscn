@@ -1,0 +1,37 @@
+[gd_scene format=3 uid="uid://cxay8ns3trwd4"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_1"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_1"]
+
+[node name="World" type="Node3D" unique_id=1251826997]
+
+[node name="Ground" type="StaticBody3D" parent="." unique_id=73018733]
+transform = Transform3D(10, 0, 0, 0, 0.1, 0, 0, 0, 10, 0, -0.05, 0)
+
+[node name="GroundMesh" type="MeshInstance3D" parent="Ground" unique_id=1745011184]
+mesh = SubResource("BoxMesh_1")
+
+[node name="GroundCol" type="CollisionShape3D" parent="Ground" unique_id=1054858564]
+shape = SubResource("BoxShape3D_1")
+
+[node name="Crate" type="StaticBody3D" parent="." unique_id=2101134185]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+
+[node name="CrateMesh" type="MeshInstance3D" parent="Crate" unique_id=1751507911]
+mesh = SubResource("BoxMesh_1")
+
+[node name="CrateCol" type="CollisionShape3D" parent="Crate" unique_id=673071273]
+shape = SubResource("BoxShape3D_1")
+
+[node name="Crate2" type="StaticBody3D" parent="." unique_id=890004359]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0.5, 0)
+
+[node name="Crate2Mesh" type="MeshInstance3D" parent="Crate2" unique_id=2040569570]
+mesh = SubResource("BoxMesh_1")
+
+[node name="Crate2Col" type="CollisionShape3D" parent="Crate2" unique_id=235591989]
+shape = SubResource("BoxShape3D_1")
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=51339018]
+transform = Transform3D(1, 0, 0, 0, 0.8, 0.6, 0, -0.6, 0.8, 0, 4, 8)

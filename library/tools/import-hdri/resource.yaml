@@ -1,0 +1,69 @@
+id: tool/import-hdri
+kind: tool
+version: 1.0.1
+summary: Search Poly Haven's CC0 HDRI library and import one into res://sky/ as environment lighting, with the exact run-script snippet that wires the sky.
+use_when:
+  - a 3D scene needs real environment lighting and reflections — the cheapest whole-scene visual upgrade
+  - '"give this scene realistic sky lighting" / "add a sunset sky"'
+  - '"the 3D scene looks flat and grey"'
+do_not_use_when:
+  - the project already has a sky/HDRI to reuse
+  - a 2D project — HDRIs are 3D environment lighting
+facets:
+  lifecycle:
+    - build
+  domains:
+    - assets
+    - lighting
+    - 3d
+  modalities:
+    - assets
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/run-script
+    - tool/import-from-url
+    - tool/screenshot
+  skills:
+    - skill/3d-lighting
+    - skill/skybox-panorama
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_import_hdri
+implementation:
+  module: src/mcp/tools/asset-tools.ts
+  export: registerAssetTools
+surfaces:
+  mcp:
+    tool_name: summer_import_hdri
+    remote: false
+input_schema:
+  type: object
+  properties:
+    query:
+      type: string
+      description: What kind of sky/environment, e.g. 'sunset beach', 'overcast field', 'studio'. Omit when assetId is given.
+    assetId:
+      type: string
+      description: Exact Poly Haven asset id (lowercase slug, e.g. 'kloppenheim_02'). Skips the search.
+    resolution:
+      type: string
+      enum:
+        - 1k
+        - 2k
+        - 4k
+      default: 2k
+      description: HDRI resolution. 2k (default) is right for most games; 4k for hero skies; 1k for quick blockouts.
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false
+evidence_checks:
+  - asset-imported

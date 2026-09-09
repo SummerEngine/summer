@@ -1,0 +1,732 @@
+{
+  "schemaVersion": "1.0",
+  "source": "Matches publicsummerengine src/lib/navigation/routes.ts on branch feat/agent-routes-catalog (2026-09-04). Refresh from the live catalog with: npm run sync:web-routes",
+  "base": "https://www.summerengine.com",
+  "docsBase": "https://docs.summerengine.com",
+  "login": {
+    "path": "/login",
+    "returnParam": "returnUrl"
+  },
+  "routes": [
+    {
+      "id": "home",
+      "path": "/",
+      "title": "summerengine.com",
+      "description": "The Summer homepage.",
+      "intents": [
+        "summer website",
+        "homepage",
+        "the website",
+        "summerengine.com"
+      ],
+      "auth": "public"
+    },
+    {
+      "id": "pricing",
+      "path": "/pricing",
+      "title": "Pricing",
+      "description": "Free tier and paid AI-usage tiers; upgrade buttons start Stripe checkout.",
+      "intents": [
+        "pricing",
+        "how much does it cost",
+        "plans and prices",
+        "what does summer cost",
+        "compare plans"
+      ],
+      "auth": "public"
+    },
+    {
+      "id": "download",
+      "path": "/download",
+      "title": "Download Summer Engine",
+      "description": "Desktop installers for macOS and Windows.",
+      "intents": [
+        "download the app",
+        "download summer engine",
+        "install summer engine",
+        "get the desktop app",
+        "installer"
+      ],
+      "auth": "public"
+    },
+    {
+      "id": "cli-guide",
+      "path": "/cli",
+      "title": "CLI guide",
+      "description": "How to install the summer-engine CLI and the one-paste agent prompt.",
+      "intents": [
+        "cli page",
+        "how do i install the cli",
+        "cli setup",
+        "command line install"
+      ],
+      "auth": "public"
+    },
+    {
+      "id": "mcp-guide",
+      "path": "/mcp[/{guide}]",
+      "title": "MCP setup guide",
+      "description": "The MCP + CLI hub, or the step-by-step guide for one agent (Claude Code, Cursor, Codex, Gemini CLI, Cline, Kilo Code, OpenCode, Devin, local LLMs, Ollama, LM Studio, Goose).",
+      "intents": [
+        "mcp setup",
+        "set up the mcp",
+        "connect my agent",
+        "how do i set up cursor",
+        "how do i set up claude code",
+        "how do i set up codex",
+        "mcp guide for my agent",
+        "agent setup guide"
+      ],
+      "auth": "public",
+      "params": [
+        {
+          "name": "guide",
+          "description": "Guide slug or agent name (claude-code, cursor, codex, gemini, cline, kilo-code, opencode, devin, windsurf, ollama, lm-studio, goose, local-llms). Omit for the hub.",
+          "values": [
+            "how-to-make-games-in-claude-code",
+            "how-to-make-games-in-cursor",
+            "how-to-make-games-in-codex",
+            "how-to-make-games-in-devin-desktop",
+            "how-to-make-games-in-gemini-cli",
+            "how-to-make-games-in-cline",
+            "how-to-make-games-in-kilo-code",
+            "how-to-make-games-in-opencode",
+            "how-to-make-games-for-free-with-local-llms",
+            "how-to-make-games-with-ollama",
+            "how-to-make-games-in-lm-studio",
+            "how-to-make-games-in-goose"
+          ],
+          "valueAliases": {
+            "claude-code": "how-to-make-games-in-claude-code",
+            "claude": "how-to-make-games-in-claude-code",
+            "cursor": "how-to-make-games-in-cursor",
+            "codex": "how-to-make-games-in-codex",
+            "devin-desktop": "how-to-make-games-in-devin-desktop",
+            "devin": "how-to-make-games-in-devin-desktop",
+            "windsurf": "how-to-make-games-in-devin-desktop",
+            "gemini-cli": "how-to-make-games-in-gemini-cli",
+            "gemini": "how-to-make-games-in-gemini-cli",
+            "cline": "how-to-make-games-in-cline",
+            "kilo-code": "how-to-make-games-in-kilo-code",
+            "kilo": "how-to-make-games-in-kilo-code",
+            "opencode": "how-to-make-games-in-opencode",
+            "local-llms": "how-to-make-games-for-free-with-local-llms",
+            "local": "how-to-make-games-for-free-with-local-llms",
+            "ollama": "how-to-make-games-with-ollama",
+            "lm-studio": "how-to-make-games-in-lm-studio",
+            "goose": "how-to-make-games-in-goose"
+          }
+        }
+      ]
+    },
+    {
+      "id": "templates",
+      "path": "/templates",
+      "title": "Templates",
+      "description": "Browse every game template by category and use case.",
+      "intents": [
+        "browse templates",
+        "template gallery",
+        "game templates",
+        "starter projects"
+      ],
+      "auth": "public"
+    },
+    {
+      "id": "templates-start",
+      "path": "/templates/start",
+      "title": "Start a game on the web",
+      "description": "The web onboarding flow that turns a template pick into a plan.",
+      "intents": [
+        "start a new game on the web",
+        "web onboarding",
+        "plan builder"
+      ],
+      "auth": "public"
+    },
+    {
+      "id": "asset-store",
+      "path": "/asset-store",
+      "title": "Asset Store",
+      "description": "Browse 2D art, 3D models, sprites, animations, music and sound effects.",
+      "intents": [
+        "asset store",
+        "find assets",
+        "browse assets",
+        "free game assets"
+      ],
+      "auth": "public"
+    },
+    {
+      "id": "plugins",
+      "path": "/plugins",
+      "title": "Plugins",
+      "description": "The public plugin and skill catalog.",
+      "intents": [
+        "plugins",
+        "plugin catalog",
+        "skills catalog"
+      ],
+      "auth": "public"
+    },
+    {
+      "id": "changelog",
+      "path": "/changelog[/{version}]",
+      "title": "Changelog",
+      "description": "Release notes: the index, or one engine version.",
+      "intents": [
+        "changelog",
+        "what's new",
+        "release notes",
+        "what changed in the last update"
+      ],
+      "auth": "public",
+      "params": [
+        {
+          "name": "version",
+          "description": "Engine version, e.g. 0.5.65. Omit for the index."
+        }
+      ]
+    },
+    {
+      "id": "blog",
+      "path": "/blog",
+      "title": "Blog",
+      "description": "The Summer blog.",
+      "intents": [
+        "blog",
+        "blog posts",
+        "articles"
+      ],
+      "auth": "public"
+    },
+    {
+      "id": "roadmap",
+      "path": "/roadmap",
+      "title": "Roadmap",
+      "description": "The public product roadmap.",
+      "intents": [
+        "roadmap",
+        "what's coming",
+        "planned features"
+      ],
+      "auth": "public"
+    },
+    {
+      "id": "games",
+      "path": "/games",
+      "title": "Games & jams",
+      "description": "The public gallery of featured games, jams and events.",
+      "intents": [
+        "games gallery",
+        "featured games",
+        "game jams",
+        "jam",
+        "community games"
+      ],
+      "auth": "public"
+    },
+    {
+      "id": "docs",
+      "path": "/",
+      "title": "Documentation",
+      "description": "docs.summerengine.com, the Summer documentation.",
+      "intents": [
+        "documentation",
+        "the docs",
+        "read the docs",
+        "manual"
+      ],
+      "auth": "public",
+      "origin": "docs"
+    },
+    {
+      "id": "docs-mcp",
+      "path": "/mcp/overview",
+      "title": "MCP docs",
+      "description": "The MCP overview in the documentation.",
+      "intents": [
+        "mcp docs",
+        "mcp documentation",
+        "how the mcp works"
+      ],
+      "auth": "public",
+      "origin": "docs"
+    },
+    {
+      "id": "docs-install",
+      "path": "/essentials/installation",
+      "title": "Installation docs",
+      "description": "Installing Summer Engine, step by step.",
+      "intents": [
+        "installation docs",
+        "install instructions",
+        "how to install"
+      ],
+      "auth": "public",
+      "origin": "docs"
+    },
+    {
+      "id": "docs-quickstart",
+      "path": "/quickstarts/fresh-project",
+      "title": "Quickstart",
+      "description": "Fresh-project quickstart in the documentation.",
+      "intents": [
+        "quickstart",
+        "getting started guide",
+        "first project tutorial"
+      ],
+      "auth": "public",
+      "origin": "docs"
+    },
+    {
+      "id": "docs-sdk",
+      "path": "/api-reference/summer-sdk",
+      "title": "Summer SDK reference",
+      "description": "The Summer SDK API reference.",
+      "intents": [
+        "sdk reference",
+        "sdk docs",
+        "api reference",
+        "summer sdk"
+      ],
+      "auth": "public",
+      "origin": "docs"
+    },
+    {
+      "id": "login",
+      "path": "/login",
+      "title": "Sign in",
+      "description": "The sign-in page (email/password or Google).",
+      "intents": [
+        "sign in",
+        "log in",
+        "login page"
+      ],
+      "auth": "public"
+    },
+    {
+      "id": "signup",
+      "path": "/signup",
+      "title": "Create an account",
+      "description": "The sign-up page.",
+      "intents": [
+        "sign up",
+        "create an account",
+        "register"
+      ],
+      "auth": "public"
+    },
+    {
+      "id": "studio",
+      "path": "/studio",
+      "title": "Summer Studio",
+      "description": "The Studio workspace (home tab).",
+      "intents": [
+        "studio",
+        "summer studio",
+        "open studio",
+        "the studio"
+      ],
+      "auth": "public"
+    },
+    {
+      "id": "my-games",
+      "path": "/studio/games",
+      "title": "My games",
+      "description": "Your games (projects) in Studio: overview, builds, releases, store pages.",
+      "intents": [
+        "my games",
+        "my projects",
+        "my published games",
+        "published games",
+        "my releases",
+        "games i published",
+        "project list",
+        "list of my games"
+      ],
+      "auth": "signed-in",
+      "aliases": [
+        "projects",
+        "my-projects",
+        "published-games"
+      ]
+    },
+    {
+      "id": "game",
+      "path": "/studio/games/{gameId}[/{section}]",
+      "title": "A game in Studio",
+      "description": "One game's Studio pages: overview, builds, releases, store page, passport, players, analytics, economy, settings, danger zone and more.",
+      "intents": [
+        "open this game in studio",
+        "builds for my game",
+        "releases of my game",
+        "store page for my game",
+        "analytics for my game",
+        "game settings in studio",
+        "danger zone",
+        "players of my game"
+      ],
+      "auth": "signed-in",
+      "params": [
+        {
+          "name": "gameId",
+          "description": "The game's Studio id (from the my-games list URL).",
+          "required": true
+        },
+        {
+          "name": "section",
+          "description": "Section under the game. Omit for the overview.",
+          "values": [
+            "overview",
+            "builds",
+            "releases",
+            "store-page",
+            "passport",
+            "products",
+            "achievements",
+            "players",
+            "community",
+            "liveops",
+            "safety",
+            "analytics",
+            "economy",
+            "developers",
+            "access",
+            "audit",
+            "danger-zone",
+            "settings"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "billing",
+      "path": "/studio?tab=billing",
+      "title": "Billing & plan",
+      "description": "Current plan, upgrade, Stripe billing portal (payment method, invoices), top-ups.",
+      "intents": [
+        "billing",
+        "change my plan",
+        "upgrade my plan",
+        "upgrade",
+        "downgrade",
+        "cancel my subscription",
+        "invoices",
+        "payment method",
+        "subscription",
+        "buy credits",
+        "top up"
+      ],
+      "auth": "signed-in",
+      "aliases": [
+        "plan",
+        "subscription",
+        "payments"
+      ]
+    },
+    {
+      "id": "usage",
+      "path": "/studio?tab=billing&section=usage",
+      "title": "Usage",
+      "description": "Account usage and spending: how many credits were used and on what.",
+      "intents": [
+        "usage",
+        "how many credits do i have left",
+        "spending",
+        "credit usage",
+        "what have i spent"
+      ],
+      "auth": "signed-in",
+      "aliases": [
+        "spending",
+        "credits"
+      ]
+    },
+    {
+      "id": "account",
+      "path": "/studio?tab=account",
+      "title": "Account overview",
+      "description": "Your account overview in Studio.",
+      "intents": [
+        "my account",
+        "account overview",
+        "account page",
+        "profile settings"
+      ],
+      "auth": "signed-in"
+    },
+    {
+      "id": "settings",
+      "path": "/studio?tab=settings",
+      "title": "Account settings",
+      "description": "Account settings in Studio (email, password, preferences, delete account).",
+      "intents": [
+        "account settings",
+        "settings page",
+        "change my email",
+        "change my password",
+        "delete my account"
+      ],
+      "auth": "signed-in"
+    },
+    {
+      "id": "team",
+      "path": "/studio?tab=team",
+      "title": "Team",
+      "description": "Workspace members and invites.",
+      "intents": [
+        "team",
+        "members",
+        "invite a teammate",
+        "workspace members",
+        "add someone to my team"
+      ],
+      "auth": "signed-in",
+      "aliases": [
+        "members",
+        "workspace"
+      ]
+    },
+    {
+      "id": "cloud",
+      "path": "/studio?tab=cloud",
+      "title": "Project Cloud",
+      "description": "Project Cloud storage and synced projects.",
+      "intents": [
+        "project cloud",
+        "cloud storage",
+        "cloud projects",
+        "synced projects"
+      ],
+      "auth": "signed-in"
+    },
+    {
+      "id": "my-assets",
+      "path": "/studio?tab=assets",
+      "title": "My assets",
+      "description": "Assets you generated or saved, ready to import.",
+      "intents": [
+        "my assets",
+        "generated assets",
+        "my library",
+        "saved assets",
+        "assets i made"
+      ],
+      "auth": "public",
+      "aliases": [
+        "assets",
+        "library"
+      ]
+    },
+    {
+      "id": "workflows",
+      "path": "/studio?tab=workflows",
+      "title": "Guided workflows",
+      "description": "Guided Studio workflows (recipes).",
+      "intents": [
+        "guided workflows",
+        "workflows",
+        "studio recipes"
+      ],
+      "auth": "public"
+    },
+    {
+      "id": "story-builder",
+      "path": "/studio?tab=storyBuilder",
+      "title": "Story Builder",
+      "description": "The Story Builder tool.",
+      "intents": [
+        "story builder",
+        "write my story",
+        "narrative tool"
+      ],
+      "auth": "signed-in"
+    },
+    {
+      "id": "board",
+      "path": "/studio?tab=board",
+      "title": "Board",
+      "description": "The project board.",
+      "intents": [
+        "board",
+        "task board",
+        "kanban"
+      ],
+      "auth": "signed-in"
+    },
+    {
+      "id": "studio-plugins",
+      "path": "/studio?tab=plugins",
+      "title": "Plugins in Studio",
+      "description": "Plugins tab inside Studio.",
+      "intents": [
+        "plugins in studio",
+        "manage my plugins",
+        "installed plugins"
+      ],
+      "auth": "public"
+    },
+    {
+      "id": "studio-store",
+      "path": "/studio?tab=store",
+      "title": "Asset Store in Studio",
+      "description": "The Asset Store as a Studio tab.",
+      "intents": [
+        "asset store in studio",
+        "store tab"
+      ],
+      "auth": "public"
+    },
+    {
+      "id": "generate-image",
+      "path": "/studio?tab=image",
+      "title": "2D generation",
+      "description": "Generate or edit images (the 2D tab).",
+      "intents": [
+        "image generator",
+        "generate an image on the web",
+        "2d tab",
+        "make a picture in studio"
+      ],
+      "auth": "public",
+      "aliases": [
+        "2d",
+        "image"
+      ]
+    },
+    {
+      "id": "generate-3d",
+      "path": "/studio?tab=3d",
+      "title": "3D generation",
+      "description": "Generate 3D models (the 3D tab).",
+      "intents": [
+        "3d generator",
+        "generate a 3d model on the web",
+        "3d tab"
+      ],
+      "auth": "public",
+      "aliases": [
+        "3d"
+      ]
+    },
+    {
+      "id": "generate-audio",
+      "path": "/studio?tab=audio",
+      "title": "Audio generation",
+      "description": "Generate speech, music and sound effects.",
+      "intents": [
+        "audio generator",
+        "generate audio on the web",
+        "audio tab",
+        "music generator",
+        "voice generator"
+      ],
+      "auth": "public",
+      "aliases": [
+        "audio"
+      ]
+    },
+    {
+      "id": "generate-video",
+      "path": "/studio?tab=video",
+      "title": "Video generation",
+      "description": "Generate video (the Video tab).",
+      "intents": [
+        "video generator",
+        "generate a video on the web",
+        "video tab"
+      ],
+      "auth": "public",
+      "aliases": [
+        "video"
+      ]
+    },
+    {
+      "id": "generate-animation",
+      "path": "/studio?tab=animation",
+      "title": "Animation",
+      "description": "Animation tools (retargeting, mocap uploads).",
+      "intents": [
+        "animation tab",
+        "animation tools",
+        "retarget on the web",
+        "upload a mocap clip"
+      ],
+      "auth": "public",
+      "aliases": [
+        "animation"
+      ]
+    },
+    {
+      "id": "chat",
+      "path": "/chat",
+      "title": "Web chat",
+      "description": "A new agent chat on the web.",
+      "intents": [
+        "web chat",
+        "chat on the website",
+        "summer chat"
+      ],
+      "auth": "signed-in"
+    },
+    {
+      "id": "skills",
+      "path": "/skills",
+      "title": "My skills",
+      "description": "The agent-skills editor on the web.",
+      "intents": [
+        "my skills page",
+        "edit my skills on the web",
+        "skills editor"
+      ],
+      "auth": "signed-in"
+    },
+    {
+      "id": "profile",
+      "path": "/{username}",
+      "title": "Public profile",
+      "description": "A creator's public profile page.",
+      "intents": [
+        "my public profile",
+        "public profile of",
+        "creator page",
+        "see my profile"
+      ],
+      "auth": "public",
+      "params": [
+        {
+          "name": "username",
+          "description": "The creator's username.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "edit-profile",
+      "path": "/profile/edit",
+      "title": "Edit profile",
+      "description": "Edit your public profile.",
+      "intents": [
+        "edit my profile",
+        "change my avatar",
+        "update my bio",
+        "profile editor"
+      ],
+      "auth": "signed-in"
+    },
+    {
+      "id": "submit-game",
+      "path": "/games/create",
+      "title": "Submit a game",
+      "description": "Submit a game to the public gallery or a jam.",
+      "intents": [
+        "submit my game",
+        "add my game to the gallery",
+        "enter the jam",
+        "submit to the jam"
+      ],
+      "auth": "signed-in"
+    }
+  ]
+}

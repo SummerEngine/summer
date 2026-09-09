@@ -1,0 +1,54 @@
+# T6.1 — Terrain with a HeightMapShape3D collider, a shadowed sun, a camera
+# that frames it, and an honest camera-framing render.
+id: T6.1-hills
+tier: T6
+title: hills
+prompt: >-
+  Generate a 100×100 m rolling-hills terrain with collision, a sun with
+  shadows, and a camera looking across it.
+fixture: empty3d
+scene: res://main.tscn
+budget: { wall_clock_s: 900, max_tool_calls: 40 }
+skills_expected: [skill/scene-scripting, skill/world-building-3d, skill/3d-lighting]
+capture: [camera, iso]
+assertions:
+  - id: terrain-exists
+    predicate: exists
+    args: { selector: "*Terrain*|*terrain*" }
+    required: true
+  - id: terrain-collision
+    predicate: collision_under
+    args: { selector: "*Terrain*|*terrain*" }
+    required: true
+  - id: heightmap-shape
+    predicate: tscn_resource
+    args: { type: HeightMapShape3D }
+    required: true
+  - id: sun-present
+    predicate: lights
+    args: { min: 1 }
+    required: true
+  - id: sun-shadows
+    predicate: tscn_prop
+    args: { selector: "class:DirectionalLight3D", key: shadow_enabled, op: "==", value: true, quantifier: any }
+    required: true
+  - id: camera-current
+    predicate: camera_current
+    args: {}
+    required: true
+  - id: camera-sees-terrain
+    predicate: camera_sees
+    args: { selector: "*Terrain*|*terrain*", fraction: 0.5 }
+    required: true
+  - id: preview-camera-ok
+    predicate: preview_camera_ok
+    args: {}
+    required: true
+  - id: all-saved
+    predicate: exists
+    args: { selector: "*" }
+    required: false
+  - id: no-truncation
+    predicate: no_truncation
+    args: {}
+    required: false

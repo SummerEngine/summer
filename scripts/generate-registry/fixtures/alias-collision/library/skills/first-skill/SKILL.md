@@ -1,0 +1,3 @@
+# First skill
+
+Fixture body.

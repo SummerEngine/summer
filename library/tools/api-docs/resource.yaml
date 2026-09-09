@@ -1,0 +1,57 @@
+id: tool/api-docs
+kind: tool
+version: 1.0.2
+summary: Offline engine class-reference lookup — verify a property, method, signal, or constant before writing script code instead of guessing names.
+use_when:
+  - checking an exact property/method/signal/constant name or default before summer_run_script or a .gd edit
+  - '"does Node3D have look_at?" / "what is the CharacterBody3D velocity property called?"'
+  - '"which signal fires when a body enters an Area3D?"'
+do_not_use_when:
+  - the bundled reference is missing from this install (the tool says api_docs_not_installed) — verify against the engine with summer_inspect_node instead
+  - you need the live value of a property on a node in the scene — summer_inspect_node
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scripting
+    - engine
+  modalities:
+    - scripts
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/run-script
+  skills:
+    - skill/scene-scripting
+    - skill/gdscript-patterns
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_api_docs
+implementation:
+  module: src/mcp/tools/script-tools.ts
+  export: registerScriptTools
+surfaces:
+  mcp:
+    tool_name: summer_api_docs
+    remote: true
+input_schema:
+  type: object
+  properties:
+    class_name:
+      type: string
+      description: Engine class name, e.g. 'BoxShape3D', 'CharacterBody3D', 'SurfaceTool'. Case-insensitive.
+    member:
+      type: string
+      description: Optional property/method/signal/constant name to fetch just that member, e.g. 'size' or 'move_and_slide'.
+  required:
+    - class_name
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

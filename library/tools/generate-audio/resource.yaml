@@ -1,0 +1,80 @@
+id: tool/generate-audio
+kind: tool
+version: 1.0.2
+summary: "Generate audio via Summer Studio: text-to-speech, sound effects, music, or multi-voice dialogue."
+use_when:
+  - creating sound effects, music beds, or spoken lines for the game
+  - '"I need a jump sound / a sword swing / a coin pickup"'
+  - '"read this dialogue line in a gruff voice" or "background music for the menu"'
+do_not_use_when:
+  - a .wav/.ogg already exists online — summer_import_from_url
+facets:
+  lifecycle:
+    - build
+  domains:
+    - generate
+    - audio
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_generate_audio
+implementation:
+  module: src/mcp/tools/generate-tools.ts
+  export: registerGenerateTools
+surfaces:
+  mcp:
+    tool_name: summer_generate_audio
+    remote: true
+input_schema:
+  type: object
+  properties:
+    capability:
+      type: string
+      description: "Type of audio: text_to_speech, sound_effects, music, text_to_dialogue"
+    text:
+      type: string
+      description: Text for TTS, or description for sound effects
+    prompt:
+      type: string
+      description: Music description (for 'music' capability)
+    voiceId:
+      type: string
+      description: ElevenLabs voice ID for TTS
+    modelId:
+      type: string
+      description: ElevenLabs model ID (e.g. 'eleven_multilingual_v2')
+    durationSeconds:
+      type: number
+      description: Duration in seconds for SFX or music
+    inputs:
+      type: array
+      items:
+        type: object
+        properties:
+          text:
+            type: string
+          voiceId:
+            type: string
+        required:
+          - text
+          - voiceId
+        additionalProperties: false
+      description: Dialogue lines for text_to_dialogue
+    options:
+      type: object
+      additionalProperties: {}
+      description: Provider params, spread at the SDK's top level. Voice tuning goes in options.voiceSettings with camelCase keys (stability, similarityBoost, style, speed, useSpeakerBoost); flat snake_case is silently ignored.
+  required:
+    - capability
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false
+evidence_checks:
+  - asset-created

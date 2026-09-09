@@ -38,7 +38,8 @@ summer skills list                                     # List all
 summer skills info <name>                              # Detail on one
 summer skills install <name>                           # Install one
 summer skills install --recommended --agent codex      # Install recommended set
-summer skills install --all --agent claude-code        # All public skills
+summer skills install --all --agent claude-code        # All skills (preview included)
+summer skills install --all --stable-only --agent claude-code   # Stable skills only (skip preview)
 summer skills install --recommended --agent cursor --scope project   # Per-project
 ```
 
@@ -53,32 +54,38 @@ Supported agents: `summer`, `codex`, `claude-code`, `cursor`, `windsurf`, `cline
 
 ## Registry
 
-Two source-of-truth files:
+One source of truth: `library/skills/<slug>/` (`resource.yaml` + `SKILL.md`).
+Everything else is compiled from it by `npm run generate:registry`:
 
-- `.claude-plugin/plugin.json` `skills:`: what Claude Code auto-discovers when the plugin is installed. Sibling manifests such as `.codex-plugin/plugin.json` can differ when a host supports a smaller surface.
-- `src/lib/skills-registry.ts` `SKILL_REGISTRY`: what `summer skills install` writes to non-plugin agents (Devin Desktop (formerly Windsurf), Cline, Roo, Gemini, Copilot, OpenCode).
+- `registry/generated/skills-registry.json`: what `summer skills list/install`
+  and `summer setup` read (all agents, plugin and non-plugin).
+- `.claude-plugin/plugin.json` `skills:` (plus the `.codex-plugin/`,
+  `.cursor-plugin/`, `.factory-plugin/`, and Gemini manifests): what plugin
+  hosts auto-discover. All GENERATED — never hand-edit.
 
-These surfaces must stay intentionally synced, but they are not always the same raw count. Do not publish a single skill total unless the sentence says whether it means disk files, plugin paths, registry entries, or recommended installs. `plugin-manifests.test.ts` catches accidental manifest drift.
+`generate:registry --check` fails on drift between library/ and the generated
+files; `plugin-manifests.test.ts` guards the applied root manifests directly.
+Do not publish a single skill total unless the sentence says whether it means
+disk files, plugin paths, registry entries, or recommended installs.
 
-Per-skill metadata:
-
-- `name`
-- `category` (one of 20)
-- `public`
-- `recommended`
-- `user-invocable` (true = slash command, false = auto-trigger only)
-- `requiresMcpTools`
-- `testScenario`
+Per-skill metadata lives in `resource.yaml` (schema:
+`registry/schemas/skill.schema.json`): `id`, `summary`, `use_when`, `facets`,
+`recommended` (drives `summer skills install --recommended` / `summer setup`),
+`aliases` (old `skills/<category>/<name>` paths keep resolving), `status`
+(`stable` and `preview` both install in bulk — `preview` is a label for work
+not yet exercised in-engine by the Summer team, carried in the skill's own
+guidance, and `--stable-only` skips it; `deprecated` installs only by name),
+`version`.
 
 ## Authoring rules
 
 1. **Specialist skills:** narrow technical knowledge, auto-trigger via rich `description:`. Set `user-invocable: false`.
 2. **Workflow skills:** action-verb names (`/debug`, `/play`), open with one clarifying question, orchestrate specialists. Set `user-invocable: true`.
-3. SKILL.md <= 500 lines. Push detail into `references/`.
+3. SKILL.md <= 500 lines. Push shared detail into `library/references/`.
 4. Show Summer MCP-preferred + explicit offline/manual fallback in every code-touching skill.
 5. Teach identity-bound file mutation for `.tscn`/`.tres`: use `summer_read_file` plus guarded `summer_replace_text`/`summer_write_file`, and use scene tools for live hierarchy/inspector work.
-6. "May I write this change?" before any user-visible mutation. See `references/collaborative-protocol.md`.
-7. Every skill ships `tests/spec.md` with at least one Test Case. See `workflow/skill-test/SKILL.md`.
+6. "May I write this change?" before any user-visible mutation. See `library/references/collaborative-protocol/collaborative-protocol.md`.
+7. Every skill ships `tests/spec.md` with at least one Test Case. See `library/skills/skill-test/SKILL.md`.
 
 ## Standard
 

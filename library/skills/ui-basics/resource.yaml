@@ -1,0 +1,25 @@
+id: skill/ui-basics
+kind: skill
+version: 1.0.3
+summary: Build Summer Engine UI — HUDs, menus, health bars, dialogue boxes, Control trees — anchors, containers, responsive layout, theme vs inline styling.
+use_when:
+  - "building Summer Engine UI: HUDs, main menus, pause menus, health bars, progress bars, dialogue boxes, or any Control-node tree"
+  - laying out a pause menu, settings screen, or inventory panel with anchors and containers so it stays responsive
+  - '"add a pause menu" / "add a settings screen" / "add an options menu" / "add a main menu"'
+facets:
+  lifecycle:
+    - build
+  domains:
+    - ui
+    - ux
+  modalities:
+    - ui
+    - scenes
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/ui-and-ux/ui-basics

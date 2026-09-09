@@ -1,0 +1,46 @@
+{
+  "$id": "template.schema.json",
+  "title": "Summer resource.yaml — kind: template (pin manifest; CONTRACT.md §7)",
+  "description": "Exactly one shape: a PINNED template (repo + commit + tree_digest; summer create fetches that commit and verifies the digest) or a BUILTIN template (builtin: true; summer create generates it in-process and it carries no pin). Declaring both, or neither, is a schema error.",
+  "type": "object",
+  "allOf": [{ "$ref": "resource.schema.json" }],
+  "properties": {
+    "kind": { "const": "template" },
+    "systems": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "smoke_test": { "type": "string", "minLength": 1 }
+  },
+  "oneOf": [
+    {
+      "title": "builtin template — generated locally by summer create, no pin",
+      "type": "object",
+      "properties": {
+        "builtin": { "const": true }
+      },
+      "required": ["builtin"]
+    },
+    {
+      "title": "pinned template — satellite repo at an exact commit with a verified tree digest",
+      "type": "object",
+      "properties": {
+        "repo": { "type": "string", "minLength": 1 },
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "tree_digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "default_branch": { "type": "string", "minLength": 1 },
+        "zip": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string", "minLength": 1 },
+            "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+          },
+          "required": ["url", "sha256"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["repo", "commit", "tree_digest"]
+    }
+  ],
+  "unevaluatedProperties": false
+}

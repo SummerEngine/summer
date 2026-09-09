@@ -1,0 +1,14 @@
+id: reference/input-map-basics
+kind: reference
+version: 1.0.0
+summary: How the engine input map binds actions to keys and buttons.
+use_when:
+  - wiring input actions
+  - adding a keyboard, mouse, or gamepad binding for a new player action
+facets:
+  lifecycle: [build]
+  domains: [gameplay, project]
+  modalities: [project]
+source: official
+license: MIT
+status: stable

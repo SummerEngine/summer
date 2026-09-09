@@ -1,0 +1,42 @@
+id: tool/get-diagnostics
+kind: tool
+version: 1.0.3
+summary: Prioritized overview of editor console, runtime debugger, and script errors and warnings, with complete counts and a trimmed noise tail.
+use_when:
+  - first stop after any change, before targeted console or debugger reads
+  - verifying a fix removed the errors it targeted
+  - 'the post-play read after summer_play or a RunVerification probe: runtime errors land in the debugger section here, never in the console'
+facets:
+  lifecycle:
+    - build
+  domains:
+    - debug
+    - verification
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_get_diagnostics
+implementation:
+  module: src/mcp/tools/debug-tools.ts
+  export: registerDebugTools
+surfaces:
+  mcp:
+    tool_name: summer_get_diagnostics
+    remote: false
+input_schema:
+  type: object
+  properties:
+    includeAll:
+      type: boolean
+      default: false
+      description: Return the full engine diagnostics payload untrimmed (no severity reordering, no info-noise cap).
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

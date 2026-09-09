@@ -1,0 +1,67 @@
+id: tool/search-assets
+kind: tool
+version: 1.0.2
+summary: Search the Summer asset library and your own assets by keyword and meaning; returns names, types, preview and import-ready URLs.
+use_when:
+  - finding an existing asset in the public library before generating a new one
+  - locating a user's generated or uploaded asset by description
+do_not_use_when:
+  - you already have the exact asset id (fetch it directly instead)
+facets:
+  lifecycle:
+    - build
+  domains:
+    - assets
+    - pipeline
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_search_assets
+implementation:
+  module: src/mcp/tools/asset-tools.ts
+  export: registerAssetTools
+surfaces:
+  mcp:
+    tool_name: summer_search_assets
+    remote: true
+input_schema:
+  type: object
+  properties:
+    query:
+      type: string
+      description: Natural language search, e.g. 'low-poly tree', 'sci-fi weapon'. For my_assets, can be empty to list recent.
+    assetType:
+      type: string
+      enum:
+        - 2d_image
+        - animation
+        - 3d_model
+        - audio
+        - music
+        - all
+      default: all
+      description: Filter by asset type
+    limit:
+      type: number
+      default: 10
+      description: Max results (1-20)
+    source:
+      type: string
+      enum:
+        - library
+        - my_assets
+        - all
+      default: library
+      description: "Where to search: library (public 25k+), my_assets (your generated assets), all"
+  required:
+    - query
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false

@@ -1,0 +1,32 @@
+id: skill/vfx-smoke
+kind: skill
+version: 1.0.2
+summary: Smoke effect — a slow-rising column or puff of soft particles built with a noise + density falloff shader on a quad mesh, GPUParticles3D.
+use_when:
+  - authoring a smoke effect — smoke trail, puff, chimney smoke, steam, fog cloud, explosion smoke
+  - a chimney, campfire, explosion, or vent needs a rising smoke column or puff in a 3D scene
+facets:
+  lifecycle:
+    - build
+  domains:
+    - vfx
+    - rendering
+  modalities:
+    - scenes
+    - shaders
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/scene-scripting
+    - skill/sound-effect
+    - skill/vfx-dissolve
+    - skill/vfx-fire
+    - skill/vfx-lightning
+source: official
+license: MIT
+status: stable
+recommended: false
+aliases:
+  - skills/visual-effects/recipes/smoke
+  - smoke

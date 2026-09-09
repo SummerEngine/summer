@@ -1,0 +1,32 @@
+id: skill/audio-direction
+kind: skill
+version: 1.0.6
+summary: Define the game's sonic identity — music style, instruments, SFX vocabulary, dynamic music plan — output as an audio bible at .summer/audio-bible.md.
+use_when:
+  - defining the sonic identity — music style, instruments, SFX vocabulary, dynamic music plan
+  - starting audio work with no audio bible, or soundtrack and SFX requests keep drifting in style
+  - '"what should my game sound like overall?" / "what is the audio vibe of this game?" — the whole-game sound question, before any single track or effect is made'
+facets:
+  lifecycle:
+    - build
+  domains:
+    - audio
+    - game-design
+  modalities:
+    - audio
+    - docs
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/art-direction
+    - skill/brainstorm-game
+    - skill/adaptive-music
+    - skill/music-track
+    - skill/sound-effect
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/audio/audio-direction

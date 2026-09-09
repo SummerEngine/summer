@@ -1,0 +1,29 @@
+id: skill/design-npc
+kind: skill
+version: 1.0.2
+summary: Design enemy/NPC/boss/companion behavior — perception, personality, intent, action state machine, telegraphs — outputs a GDScript stub plus node tree.
+use_when:
+  - designing an enemy, NPC, boss, companion, civilian, or wave-spawned mob's behavior — perception, intent, state machine, telegraphs, defeat handling
+  - enemies that patrol, chase, attack, or flee when they see the player (line of sight)
+facets:
+  lifecycle:
+    - build
+  domains:
+    - ai
+    - npc
+  modalities:
+    - scripts
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/game-feel
+    - skill/vfx-dissolve
+    - skill/vfx-hit-spark
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/ai-and-npcs/design-npc

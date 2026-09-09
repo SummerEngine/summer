@@ -1,0 +1,34 @@
+id: skill/vfx-magic-glow
+kind: skill
+version: 1.0.2
+summary: Magic-glow effect — a pulsing OmniLight3D plus drifting additive motes plus optional emission shader on the source mesh.
+use_when:
+  - authoring a magic-glow effect — enchanted item, soul gem, pulsing aura, rune glow, magical orb, wisp
+  - an item, altar, or portal should read as magical or important with a pulsing light and drifting motes
+facets:
+  lifecycle:
+    - build
+  domains:
+    - vfx
+    - rendering
+  modalities:
+    - scenes
+    - shaders
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/scene-scripting
+    - skill/sound-effect
+    - skill/game-feel
+    - skill/vfx-dissolve
+    - skill/vfx-fire
+    - skill/vfx-lightning
+    - skill/vfx-muzzle-flash
+source: official
+license: MIT
+status: stable
+recommended: false
+aliases:
+  - skills/visual-effects/recipes/magic-glow
+  - magic-glow

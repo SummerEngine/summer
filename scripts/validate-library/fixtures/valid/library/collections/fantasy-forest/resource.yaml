@@ -1,0 +1,34 @@
+id: collection/fantasy-forest
+kind: collection
+version: 1.0.0
+summary: Curated fantasy forest assets that fit one coherent style.
+use_when:
+  - dressing a fantasy forest scene
+facets:
+  lifecycle: [build]
+  domains: [world-building, assets]
+  modalities: [assets]
+source: official
+license: MIT
+status: stable
+items:
+  - slug: pine-tree-large
+    file: assets/pine-tree-large.glb
+    license: CC0
+    source: official
+    scene: true
+    placement_hint: cluster on hills and along paths
+    tags: [tree, forest]
+    sha256: cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+  - slug: forest-rock
+    license: CC0
+    sha256: dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
+style:
+  rules: Soft stylized shapes, warm greens, no photoreal textures.
+presets:
+  starter: [pine-tree-large]
+  full: [pine-tree-large, forest-rock]
+recommended:
+  skills: [skill/create-environment-kit]
+  templates: [template/third-person-3d]
+main_scene: scenes/forest-demo.tscn

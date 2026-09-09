@@ -5,12 +5,12 @@ vi.mock("../server.js", () => ({
   resetClient: vi.fn(),
 }));
 
-vi.mock("../../lib/telemetry.js", () => ({
+vi.mock("../../core/telemetry.js", () => ({
   recordMcpSession: vi.fn(),
 }));
 
 import { getClient } from "../server.js";
-import { registerSceneTools } from "./scene-tools.js";
+import { FALLBACK_SINGLE_ONLY_OPS, registerSceneTools, resolveSingleOnlyOps } from "./scene-tools.js";
 
 type RegisteredTool = {
   name: string;
@@ -355,5 +355,256 @@ describe("single-op dispatch contract (engine 0.5.60+)", () => {
     expect(executeOps.mock.calls[0]?.[0]).toEqual([
       { op: "SimulateInput", type: "action", action: "jump", pressed: true },
     ]);
+  });
+});
+
+describe("summer_instantiate_scene target_size", () => {
+  function mockInstantiateClient(instanceReceipt: Record<string, unknown>) {
+    const executeIdentityBoundOps = vi.fn(async (ops: Record<string, unknown>[]) => ({
+      status: "ok",
+      terminalState: "applied",
+      results: ops.map((op) =>
+        op.op === "InstantiateScene"
+          ? { ok: true, op: "InstantiateScene", ...instanceReceipt }
+          : { ok: true, op: String(op.op ?? "") }
+      ),
+    }));
+    vi.mocked(getClient).mockResolvedValue({
+      getBoundProjectIdHash: () => "hash-a",
+      executeIdentityBoundOps,
+    } as never);
+    return executeIdentityBoundOps;
+  }
+
+  const args = {
+    scenePath: "res://main.tscn",
+    parent: "./World",
+    scene: "res://models/chair.glb",
+    target_size: 1.0,
+  };
+
+  it("passes target_size through to the InstantiateScene op", async () => {
+    const executeIdentityBoundOps = mockInstantiateClient({
+      scale_applied: 0.025,
+      dimensions: [0.4, 1.0, 0.4],
+    });
+
+    const result = (await sceneTool("summer_instantiate_scene").handler(args)) as {
+      isError?: boolean;
+      content?: Array<{ text?: string }>;
+    };
+
+    expect(result.isError).toBeUndefined();
+    const sent = executeIdentityBoundOps.mock.calls
+      .flatMap((call) => call[0] as Array<Record<string, unknown>>)
+      .find((op) => op.op === "InstantiateScene");
+    expect(sent).toMatchObject({ target_size: 1.0 });
+    // Engine honored it — no old-engine note.
+    expect(result.content?.[0]?.text).not.toContain("IGNORED target_size");
+  });
+
+  it("appends an honest note when an older engine drops target_size (no scale_applied)", async () => {
+    mockInstantiateClient({});
+
+    const result = (await sceneTool("summer_instantiate_scene").handler(args)) as {
+      isError?: boolean;
+      content?: Array<{ text?: string }>;
+    };
+
+    expect(result.isError).toBeUndefined();
+    const body = JSON.parse(result.content?.[0]?.text ?? "{}");
+    expect(String(body.target_size_note)).toContain("IGNORED target_size");
+    expect(String(body.target_size_note)).toContain("summer_set_prop");
+  });
+
+  it("adds no note when target_size was not requested", async () => {
+    mockInstantiateClient({});
+    const result = (await sceneTool("summer_instantiate_scene").handler({
+      scenePath: "res://main.tscn",
+      parent: "./World",
+      scene: "res://player.tscn",
+    })) as { content?: Array<{ text?: string }> };
+    expect(result.content?.[0]?.text).not.toContain("target_size_note");
+  });
+});
+
+describe("single-only ops from the engine capability advert", () => {
+  function mockAdvertisingClient(singleOnlyOps?: string[]) {
+    const calls: Array<Record<string, unknown>[]> = [];
+    const executeIdentityBoundOps = vi.fn(async (ops: Record<string, unknown>[]) => {
+      calls.push(ops);
+      return okReceipt(ops);
+    });
+    vi.mocked(getClient).mockResolvedValue({
+      getBoundProjectIdHash: () => "hash-a",
+      executeIdentityBoundOps,
+      executeOps: vi.fn(async (ops: Record<string, unknown>[]) => okReceipt(ops)),
+      ...(singleOnlyOps
+        ? { getEngineCapabilities: () => ({ singleOnlyOps }) }
+        : { getEngineCapabilities: () => undefined }),
+    } as never);
+    return calls;
+  }
+
+  it("falls back to the hardcoded list when the engine predates the advert", async () => {
+    const calls = mockAdvertisingClient(undefined);
+    await batchTool().handler({
+      scenePath: "res://main.tscn",
+      ops: [
+        { op: "AddNode", parent: "/", type: "Node3D", name: "A" },
+        { op: "ReplaceNode", path: "A", type: "MeshInstance3D" },
+        { op: "SetProp", path: "A", key: "visible", value: true },
+      ],
+    });
+    // ReplaceNode is single-only in the fallback list -> travels alone.
+    expect(calls).toEqual([
+      [{ op: "AddNode", parent: "/", type: "Node3D", name: "A" }],
+      [{ op: "ReplaceNode", path: "A", type: "MeshInstance3D" }],
+      [{ op: "SetProp", path: "A", key: "visible", value: true }],
+      [{ op: "SaveScene" }],
+    ]);
+    expect(resolveSingleOnlyOps({})).toBe(FALLBACK_SINGLE_ONLY_OPS);
+    expect(FALLBACK_SINGLE_ONLY_OPS.has("RunSceneScript")).toBe(true);
+    expect(FALLBACK_SINGLE_ONLY_OPS.has("GetRuntimeSceneTree")).toBe(true);
+  });
+
+  it("uses the engine's advertised singleOnlyOps when present (authoritative over the fallback)", async () => {
+    // This engine says ReplaceNode batches fine but a new CustomBake op must travel alone.
+    const calls = mockAdvertisingClient(["SaveScene", "CustomBake"]);
+    await batchTool().handler({
+      scenePath: "res://main.tscn",
+      ops: [
+        { op: "AddNode", parent: "/", type: "Node3D", name: "A" },
+        { op: "ReplaceNode", path: "A", type: "MeshInstance3D" },
+        { op: "CustomBake", path: "A" },
+        { op: "SetProp", path: "A", key: "visible", value: true },
+      ],
+    });
+    expect(calls).toEqual([
+      [
+        { op: "AddNode", parent: "/", type: "Node3D", name: "A" },
+        { op: "ReplaceNode", path: "A", type: "MeshInstance3D" },
+      ],
+      [{ op: "CustomBake", path: "A" }],
+      [{ op: "SetProp", path: "A", key: "visible", value: true }],
+      [{ op: "SaveScene" }],
+    ]);
+    const resolved = resolveSingleOnlyOps({
+      getEngineCapabilities: () => ({ singleOnlyOps: ["SaveScene", "CustomBake"] }),
+    });
+    expect([...resolved]).toEqual(["SaveScene", "CustomBake"]);
+  });
+
+  it("treats an empty advertised list as no advert (fallback), never as 'everything batches'", () => {
+    expect(resolveSingleOnlyOps({ getEngineCapabilities: () => ({ singleOnlyOps: [] }) })).toBe(
+      FALLBACK_SINGLE_ONLY_OPS
+    );
+  });
+});
+
+describe("summer_batch spatial ops", () => {
+  function spatialMockClient() {
+    const identityCalls: Array<Record<string, unknown>[]> = [];
+    const plainCalls: Array<Record<string, unknown>[]> = [];
+    vi.mocked(getClient).mockResolvedValue({
+      getBoundProjectIdHash: () => "hash-a",
+      executeIdentityBoundOps: vi.fn(async (ops: Record<string, unknown>[]) => {
+        identityCalls.push(ops);
+        return okReceipt(ops);
+      }),
+      executeOps: vi.fn(async (ops: Record<string, unknown>[]) => {
+        plainCalls.push(ops);
+        return okReceipt(ops);
+      }),
+    } as never);
+    return { identityCalls, plainCalls };
+  }
+
+  it.each(["SnapToSurface", "AlignDistribute3D"])(
+    "treats %s as a scene mutation and appends one SaveScene",
+    async (kind) => {
+      const { identityCalls, plainCalls } = spatialMockClient();
+      await batchTool().handler({ scenePath: "res://main.tscn", ops: [{ op: kind }] });
+      expect(identityCalls).toEqual([[{ op: kind }], [{ op: "SaveScene" }]]);
+      expect(plainCalls).toEqual([]);
+    },
+  );
+
+  it.each(["TestPlacement3D", "NavigationProbe3D", "Starcast3D"])(
+    "identity-binds read-only scene query %s to the exact scene without saving",
+    async (kind) => {
+      const { identityCalls, plainCalls } = spatialMockClient();
+      await batchTool().handler({ scenePath: "res://main.tscn", ops: [{ op: kind }] });
+      expect(identityCalls).toEqual([[{ op: kind }]]);
+      expect(plainCalls).toEqual([]);
+    },
+  );
+
+  it("requires scenePath for a read-only scene query", async () => {
+    spatialMockClient();
+    const result = (await batchTool().handler({ ops: [{ op: "TestPlacement3D" }] })) as {
+      isError?: boolean;
+      content?: Array<{ text?: string }>;
+    };
+    expect(result.isError).toBe(true);
+    expect(result.content?.[0]?.text).toContain("requires scenePath when ops targets a scene");
+  });
+});
+
+describe("summer_batch description tells the truth about undo", () => {
+  it("promises one undo step only when nothing forces a split, and one per chunk otherwise", () => {
+    let description = "";
+    registerSceneTools({
+      tool(name: string, desc: string) {
+        if (name === "summer_batch") description = desc;
+        return { name };
+      },
+    } as never);
+    expect(description).not.toContain("grouped into one undo step");
+    expect(description).not.toContain("undo everything with a single Ctrl+Z.");
+    expect(description).toContain("ONE undo step");
+    expect(description).toContain("EACH chunk is its own undo step");
+  });
+});
+
+describe("summer_inspect_node (E2E 2026-09-03 F-14)", () => {
+  it("adds Variant.Type names next to the engine's raw type integers and keeps the integers", async () => {
+    const inspectNode = vi.fn().mockResolvedValue({
+      ok: true,
+      data: {
+        node_name: "Ground",
+        node_type: "StaticBody2D",
+        node_path: "Geometry/Ground",
+        props: [
+          { name: "position", type: 5, value: "(0, 0)" },
+          { name: "collision_layer", type: 2, value: 1 },
+          { name: "modulate", type: 20, value: "(1, 1, 1, 1)" },
+        ],
+        warnings: [],
+      },
+    });
+    vi.mocked(getClient).mockResolvedValue({ inspectNode } as never);
+    const result = (await sceneTool("summer_inspect_node").handler({ path: "Geometry/Ground" })) as {
+      isError?: boolean;
+      content: Array<{ text: string }>;
+    };
+    expect(inspectNode).toHaveBeenCalledWith("Geometry/Ground");
+    expect(result.isError).toBeFalsy();
+    const body = JSON.parse(result.content[0].text);
+    expect(body.data.props[0]).toEqual({ name: "position", type: 5, type_name: "TYPE_VECTOR2", value: "(0, 0)" });
+    expect(body.data.props[1]).toMatchObject({ type: 2, type_name: "TYPE_INT" });
+    expect(body.data.props[2]).toMatchObject({ type: 20, type_name: "TYPE_COLOR" });
+    expect(body.data.node_type).toBe("StaticBody2D");
+  });
+
+  it("passes a not-found read through as an error result", async () => {
+    const inspectNode = vi.fn().mockResolvedValue({ ok: false, error: "node not found: DoesNotExist" });
+    vi.mocked(getClient).mockResolvedValue({ inspectNode } as never);
+    const result = (await sceneTool("summer_inspect_node").handler({ path: "DoesNotExist" })) as {
+      isError?: boolean;
+      content: Array<{ text: string }>;
+    };
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("node not found: DoesNotExist");
   });
 });

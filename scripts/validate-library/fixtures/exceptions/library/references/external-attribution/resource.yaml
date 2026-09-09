@@ -1,0 +1,16 @@
+id: reference/external-attribution
+kind: reference
+version: 1.0.0
+summary: Attribution notes for third-party assets used in official examples.
+use_when:
+  - checking where a bundled asset came from
+  - writing the credits screen or license file for a shipped game
+facets:
+  lifecycle: [build]
+  domains: [assets, meta]
+  modalities: [docs]
+source: official
+license: MIT
+status: stable
+lint_exceptions: [url-allowlist]
+lint_exception_reason: Asset licenses require linking the original author pages.

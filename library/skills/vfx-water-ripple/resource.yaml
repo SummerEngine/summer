@@ -1,0 +1,31 @@
+id: skill/vfx-water-ripple
+kind: skill
+version: 1.0.2
+summary: Water-ripple effect — animated normal-distortion ripples on a water plane (or as a Decal) triggered by impacts.
+use_when:
+  - authoring a water-ripple effect — raindrop ripples, splash ripples, footstep in a puddle, fish jumps
+  - rain, footsteps, or falling objects should disturb a water surface with spreading ripples
+facets:
+  lifecycle:
+    - build
+  domains:
+    - vfx
+    - rendering
+  modalities:
+    - scenes
+    - shaders
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/scene-scripting
+    - skill/sound-effect
+    - skill/vfx-hit-spark
+    - skill/vfx-smoke
+source: official
+license: MIT
+status: stable
+recommended: false
+aliases:
+  - skills/visual-effects/recipes/water-ripple
+  - water-ripple

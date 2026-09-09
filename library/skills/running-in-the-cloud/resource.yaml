@@ -1,0 +1,33 @@
+id: skill/running-in-the-cloud
+kind: skill
+version: 1.0.3
+summary: Run Summer Engine on a Linux box with no display — install it, launch headless, know when xvfb + software GL are needed, authenticate without a browser.
+use_when:
+  - Summer Engine runs in a cloud container, CI job, remote agent sandbox, or any Linux machine with no desktop
+  - installing the engine on Linux, or a tool reports "engine not running" in an environment that has no display
+  - deciding whether a render path (screenshots, previews, verification frames) needs xvfb-run and software GL
+  - SUMMER_ENGINE_BINARY, SUMMER_ENGINE_URL, or SUMMER_TOKEN come up
+facets:
+  lifecycle:
+    - build
+  domains:
+    - agent-workflow
+    - project
+  modalities:
+    - scripts
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/headless-scripting
+    - skill/playtesting-a-feature
+    - skill/verification-before-completion
+source: official
+license: MIT
+status: stable
+aliases:
+  - skills/workflow/running-in-the-cloud
+lint_exceptions:
+  - install-command
+  - credential-pattern
+lint_exception_reason: "Linux CI prerequisites: `apt-get install xvfb` is a documented, user-run setup step for headless engines (not agent-autonomous), and `export SUMMER_TOKEN=...` documents Summer's own auth env var — no third-party credential is referenced."

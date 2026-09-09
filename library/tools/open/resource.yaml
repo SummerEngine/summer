@@ -1,0 +1,80 @@
+id: tool/open
+kind: tool
+version: 1.0.1
+summary: Open the exact summerengine.com page or editor surface by intent name — billing, my games, an MCP guide, a scene, a node, a dock — or print the URL/op.
+use_when:
+  - the user wants to SEE or DECIDE something on the website — "open my billing page", "show me my published games", "take me to pricing", "open the MCP setup guide for Cursor"
+  - the user wants to LOOK at something in the running editor — "show me the scene", "select the Player node", "open player.gd", "reveal that texture in the file dock"
+  - '"open the main scene in the editor" / "open the scene I am editing so I can look at it" — an editor surface the USER should see, navigated for them (the scene tools open a tab for the agent, not for the user)'
+  - 'handing the user a link instead of opening a browser (open: false), or checking which destination an intent maps to'
+  - resolving where a user intent lives ("where do I change my plan?") before acting
+do_not_use_when:
+  - the user wants a result, not a view — add the node, set the property, publish; use the mutation tools (summer_add_node, summer_set_prop, summer_creator_publish)
+  - opening a project directory in the engine — that is the CLI's `summer open <path>` / `summer run <path>` project launcher, not a navigation target
+  - the destination is not on summerengine.com or docs.summerengine.com — the tool refuses other origins
+facets:
+  lifecycle:
+    - build
+    - launch
+    - support
+  domains:
+    - navigation
+    - agent-workflow
+    - project
+  modalities:
+    - docs
+compatibility:
+  engine: ">=4.6"
+related:
+  references:
+    - reference/product-map
+  skills:
+    - skill/navigate-summer
+  tools:
+    - tool/open-scene
+    - tool/select-node
+    - tool/open-main-scene
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_open
+implementation:
+  module: src/mcp/tools/navigation-tools.ts
+  export: registerNavigationTools
+surfaces:
+  mcp:
+    tool_name: summer_open
+    remote: false
+  cli:
+    command: summer open
+input_schema:
+  type: object
+  properties:
+    target:
+      type: string
+      description: 'Where to go: a target id (billing, my-games, mcp-guide, scene, node, inspector, …), an intent phrase ("change my plan", "show me my published games"), a res:// path (routed by extension to scene / script / file), or a summerengine.com path ("/pricing"). Omit to list every target.'
+    params:
+      type: object
+      additionalProperties:
+        type: string
+      description: 'Slot values for the target: gameId, section (builds, releases, store-page, …), username, version, guide (agent name or guide slug), path (res://…), node (Player/Camera3D), scene (res://…tscn to open before selecting a node), line and col (script), tab (project-settings).'
+    surface:
+      type: string
+      enum:
+        - auto
+        - web
+        - editor
+      description: Restrict matching to the website or the editor. "auto" (default) considers both.
+    open:
+      type: boolean
+      description: Default true. false = resolve only — return the URL or engine op and open nothing (works without the engine and without a browser); the CLI's --print.
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - target-resolved

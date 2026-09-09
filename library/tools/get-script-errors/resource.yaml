@@ -1,0 +1,45 @@
+id: tool/get-script-errors
+kind: tool
+version: 1.0.2
+summary: Check one GDScript file for parse and compile errors without running the game.
+use_when:
+  - after writing or editing a .gd file, to verify it compiles
+  - '"does this script compile?" / "is there a syntax error in player.gd?"'
+  - the editor shows a red error marker on a .gd file
+do_not_use_when:
+  - runtime failures while playing — summer_get_debugger_errors
+facets:
+  lifecycle:
+    - build
+  domains:
+    - debug
+    - scripting
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_get_script_errors
+implementation:
+  module: src/mcp/tools/debug-tools.ts
+  export: registerDebugTools
+surfaces:
+  mcp:
+    tool_name: summer_get_script_errors
+    remote: false
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: Script path, e.g. 'res://scripts/player.gd' or 'res://player_controller.gd'
+  required:
+    - path
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

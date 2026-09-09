@@ -1,0 +1,31 @@
+id: skill/design-mechanic
+kind: skill
+version: 1.0.2
+summary: Design one game mechanic in detail — input, response, feedback, failure modes, depth, tunables — outputs a design doc, node-graph sketch, GDScript stub.
+use_when:
+  - designing one specific game mechanic in detail — input, response, feedback, failure modes, depth, tunables
+  - add a grappling hook, dash, double jump, wall run, or parry
+facets:
+  lifecycle:
+    - build
+  domains:
+    - gameplay
+    - game-design
+  modalities:
+    - docs
+    - scripts
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/audio-direction
+    - skill/fps-controller
+    - skill/design-level
+    - skill/brainstorm-game
+    - skill/gdscript-patterns
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/gameplay-mechanics/design-mechanic

@@ -1,0 +1,5 @@
+{
+  "targets": [
+    { "generated": "plugin.codex.json", "destination": ".codex-plugin/plugin.json" }
+  ]
+}

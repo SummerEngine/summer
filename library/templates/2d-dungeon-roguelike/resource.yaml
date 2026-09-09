@@ -1,0 +1,23 @@
+id: template/2d-dungeon-roguelike
+kind: template
+version: 1.0.1
+summary: Room-based dungeon-crawl roguelike starter — ASCII room tables, melee combat, procedural floors.
+use_when:
+  - starting a room-based dungeon crawler with procedural floors
+facets:
+  lifecycle: [build]
+  domains: [2d, roguelike, dungeon-crawler]
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: preview
+do_not_use_when:
+  - the repository is private; not installable from the public CLI until it is published
+aliases:
+  - template-2d-dungeon-roguelike
+repo: https://github.com/SummerEngine/template-2d-dungeon-roguelike
+commit: 6d88c704c4ed77c4c67bc16f8ec887133418ee7a
+tree_digest: ce0bcea0cb4b7196a7a248b1522cd5b8d724cddd8a9cb2296228af2e9557f14a
+default_branch: master
+systems: [procedural-floors, melee-combat, rooms]

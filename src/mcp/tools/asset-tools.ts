@@ -1,56 +1,14 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getAuthToken } from "../../lib/auth.js";
+import { getAuthToken } from "../../core/auth.js";
+import { resolveGatewayUrl } from "../../core/config.js";
 import { getClient } from "../server.js";
-
-const GATEWAY_URL =
-  process.env.SUMMER_GATEWAY_URL || "https://www.summerengine.com";
-
-/** Kenney Cloudinary URL pattern: .../summer_art/kenney/3d/{pack-slug}/{filename}.glb */
-const KENNEY_URL_PATTERN = /\/kenney\/3d\/([^/]+)\//;
-
-function getPackSlugFromUrl(fileUrl: string): string | null {
-  return fileUrl.match(KENNEY_URL_PATTERN)?.[1] ?? null;
-}
-
-function buildKenneyTextureUrl(fileUrl: string): string {
-  const lastSlash = fileUrl.lastIndexOf("/");
-  const base = lastSlash >= 0 ? fileUrl.slice(0, lastSlash) : fileUrl;
-  return `${base}/Textures/colormap.png`;
-}
-
-async function textureExists(url: string): Promise<boolean> {
-  try {
-    const res = await fetch(url, { method: "HEAD", signal: AbortSignal.timeout(5000) });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Build import entries for Kenney 3D assets: texture first, then GLB.
- * Pack-scoped paths prevent texture collision (each pack has its own Textures/colormap.png).
- * See: publicsummerengine/Docs/ASSET_IMPORT_END_TO_END.md
- */
-async function buildKenneyImportEntries(
-  fileUrl: string,
-  packSlug: string,
-  fileName: string
-): Promise<{ url: string; path: string }[]> {
-  const textureUrl = buildKenneyTextureUrl(fileUrl);
-  const hasTexture = await textureExists(textureUrl);
-  if (!hasTexture) {
-    return [{ url: fileUrl, path: `res://assets/models/kenney/${packSlug}/${fileName}` }];
-  }
-  const glbPath = `res://assets/models/kenney/${packSlug}/${fileName}`;
-  const glbDir = glbPath.replace(/\/[^/]+$/, "");
-  const texturePath = `${glbDir}/Textures/colormap.png`;
-  return [
-    { url: textureUrl, path: texturePath },
-    { url: fileUrl, path: glbPath },
-  ];
-}
+import {
+  ImportHdriError,
+  importPolyHavenHdri,
+  type HdriResolution,
+} from "../../core/capabilities/hdri-import.js";
+import { importResolvedAsset, type GatewayAsset } from "../../core/capabilities/asset-import.js";
 
 async function searchAssetsApi(params: {
   query: string;
@@ -69,7 +27,7 @@ async function searchAssetsApi(params: {
     return {
       error: "Not logged in",
       message:
-        "Not signed in. The user needs to run this in their terminal:\n  npx summer-engine login\nOr open: https://www.summerengine.com/login\nAsset search requires a Summer Engine account (free to create).",
+        "Not signed in. The user needs to run this in their terminal:\n  npx -y summer-engine@latest login\nOr open: https://www.summerengine.com/login\nAsset search requires a Summer Engine account (free to create).",
     };
   }
 
@@ -85,7 +43,8 @@ async function searchAssetsApi(params: {
     searchParams.set("source", params.source);
   }
 
-  const res = await fetch(`${GATEWAY_URL}/api/mcp/assets?${searchParams}`, {
+  const gatewayUrl = await resolveGatewayUrl();
+  const res = await fetch(`${gatewayUrl}/api/mcp/assets?${searchParams}`, {
     headers: { Authorization: `Bearer ${token}` },
     signal: AbortSignal.timeout(15000),
   });
@@ -104,7 +63,7 @@ async function searchAssetsApi(params: {
         error: "unauthorized",
         message:
           (data.message || "Auth token expired.") +
-          " The user needs to re-authenticate:\n  npx summer-engine login --force",
+          " The user needs to re-authenticate:\n  npx -y summer-engine@latest login --force",
       };
     }
     if (res.status === 429) {
@@ -124,22 +83,7 @@ async function searchAssetsApi(params: {
   return data;
 }
 
-type McpAsset = {
-  id: string;
-  title: string;
-  type: string;
-  fileUrl: string;
-  thumbnailUrl?: string | null;
-  pack?: string | null;
-  packSlug?: string | null;
-  importUrl?: string;
-  downloadUrl?: string;
-  fileName?: string | null;
-  mimeType?: string | null;
-  visibility?: string;
-  licenseType?: string | null;
-  metadata?: Record<string, unknown>;
-};
+type McpAsset = GatewayAsset;
 
 type ApiErrorBody = {
   error?: string;
@@ -166,11 +110,12 @@ async function authedGetJson<T>(
       status: 401,
       error: "not_logged_in",
       message:
-        "Not signed in. Run in your terminal:\n  npx summer-engine login",
+        "Not signed in. Run in your terminal:\n  npx -y summer-engine@latest login",
     };
   }
 
-  const res = await fetch(`${GATEWAY_URL}${endpoint}`, {
+  const gatewayUrl = await resolveGatewayUrl();
+  const res = await fetch(`${gatewayUrl}${endpoint}`, {
     headers: { Authorization: `Bearer ${token}` },
     signal: AbortSignal.timeout(timeoutMs),
   });
@@ -213,126 +158,6 @@ async function getAssetDownloadUrlApi(
   return { data: result.data };
 }
 
-function fileNameFromUrl(fileUrl: string): string {
-  return fileUrl.split("/").pop()?.split("?")[0] || "asset";
-}
-
-function sanitizeNodeName(name: string): string {
-  return (
-    (name || "Asset")
-      .replace(/[^\p{L}\p{N}_]+/gu, "_")
-      .replace(/^_+|_+$/g, "") || "Asset"
-  );
-}
-
-async function buildImportEntriesForAsset(
-  asset: McpAsset,
-  targetPath?: string
-): Promise<{ imports: { url: string; path: string }[]; importPath: string }> {
-  const fileUrl = asset.importUrl || asset.fileUrl;
-  if (!fileUrl) throw new Error("Asset has no import URL.");
-
-  const fileName =
-    targetPath?.split("/").pop() || asset.fileName || fileNameFromUrl(fileUrl);
-  const packSlug = asset.packSlug ?? getPackSlugFromUrl(fileUrl) ?? "misc";
-
-  if (targetPath) {
-    if (asset.type === "3d_model" && fileUrl.includes("kenney/3d/")) {
-      const textureUrl = buildKenneyTextureUrl(fileUrl);
-      const hasTexture = await textureExists(textureUrl);
-      if (hasTexture) {
-        const glbDir = targetPath.replace(/\/[^/]+$/, "");
-        return {
-          importPath: targetPath,
-          imports: [
-            { url: textureUrl, path: `${glbDir}/Textures/colormap.png` },
-            { url: fileUrl, path: targetPath },
-          ],
-        };
-      }
-    }
-    return {
-      importPath: targetPath,
-      imports: [{ url: fileUrl, path: targetPath }],
-    };
-  }
-
-  if (asset.type === "3d_model" && fileUrl.includes("kenney/3d/")) {
-    const imports = await buildKenneyImportEntries(fileUrl, packSlug, fileName);
-    return { imports, importPath: imports[imports.length - 1]!.path };
-  }
-
-  const path =
-    asset.type === "3d_model"
-      ? `res://assets/models/${fileName}`
-      : `res://assets/${fileName}`;
-  return { imports: [{ url: fileUrl, path }], importPath: path };
-}
-
-async function importResolvedAsset(args: {
-  asset: McpAsset;
-  parent?: string;
-  scenePath?: string;
-  path?: string;
-  name?: string;
-}) {
-  const { asset, parent, scenePath, path, name } = args;
-  if (parent && !scenePath) {
-    throw new Error("scenePath is required when importing an asset into a scene");
-  }
-  const { imports, importPath } = await buildImportEntriesForAsset(asset, path);
-  const client = await getClient();
-  const importResult =
-    imports.length === 1
-      ? await client.executeOps([
-          { op: "ImportFromUrl", url: imports[0]!.url, path: imports[0]!.path },
-        ])
-      : await client.executeOps([{ op: "ImportFromUrlBatch", imports }]);
-
-  const importReceipts = (importResult as { results?: Array<{ ok?: boolean; error?: string }> })?.results ?? [];
-  const importFailure = importReceipts.find((receipt) => receipt?.ok === false);
-  if ((importResult as { status?: string })?.status === "error" || importFailure) {
-    throw new Error(importFailure?.error || "Could not import asset. Check engine logs.");
-  }
-
-  let addedToScene = false;
-  let sceneReceipt: unknown = null;
-  if (parent && asset.type === "3d_model") {
-    sceneReceipt = await client.executeIdentityBoundOps([
-      {
-        op: "InstantiateScene",
-        parent,
-        scene: importPath,
-        name: sanitizeNodeName(name || asset.title),
-      },
-      { op: "SaveScene" },
-    ], { scenePath });
-    const placementReceipts =
-      (sceneReceipt as { results?: Array<{ ok?: boolean; error?: string }> })?.results ?? [];
-    const placementFailure = placementReceipts.find((receipt) => receipt?.ok !== true);
-    if (
-      (sceneReceipt as { status?: string })?.status === "error" ||
-      placementReceipts.length !== 2 ||
-      placementFailure
-    ) {
-      throw new Error(placementFailure?.error || `Could not add asset to ${scenePath}`);
-    }
-    addedToScene = true;
-  }
-
-  return {
-    success: true,
-    assetId: asset.id,
-    asset: asset.title,
-    type: asset.type,
-    importedTo: importPath,
-    addedToScene,
-    parent: parent || null,
-    scenePath: scenePath || null,
-    sceneReceipt,
-  };
-}
-
 function jsonSuccess(data: unknown) {
   return {
     content: [
@@ -370,7 +195,7 @@ Uses hybrid search: keywords + semantic similarity. Finds assets by name AND by 
 Returns asset names, types, preview URLs, and import-ready file URLs.
 
 Cloud tool — works WITHOUT the Summer Engine app open.
-Requires authentication (so we can attribute usage and apply per-user rate limits): run 'npx summer-engine login' first.`,
+Requires authentication (so we can attribute usage and apply per-user rate limits): run 'npx -y summer-engine@latest login' first.`,
     {
       query: z.string().describe("Natural language search, e.g. 'low-poly tree', 'sci-fi weapon'. For my_assets, can be empty to list recent."),
       assetType: z.enum(["2d_image", "animation", "3d_model", "audio", "music", "all"]).default("all").describe("Filter by asset type"),
@@ -548,7 +373,7 @@ itself does not — only this import step does).`,
       }
 
       try {
-        const imported = await importResolvedAsset({
+        const imported = await importResolvedAsset(await getClient(), {
           asset: fetched.asset,
           parent,
           scenePath,
@@ -579,7 +404,7 @@ itself does not — only this import step does).`,
 Use when the user wants a specific type of asset added: "Add a tree to the scene", "Import a wooden barrel".
 Searches, picks the top result, downloads and imports it, then optionally adds it to the scene.
 
-Requires authentication. If the user gets an auth error, they need to run 'npx summer-engine login' in their terminal first. Summer Engine must be running.`,
+Requires authentication. If the user gets an auth error, they need to run 'npx -y summer-engine@latest login' in their terminal first. Summer Engine must be running.`,
     {
       query: z.string().describe("What to find, e.g. 'low-poly tree', 'wooden crate'"),
       parent: z.string().optional().describe("Parent node path to add the asset under, e.g. './World'. If omitted, only imports (no scene placement)"),
@@ -642,7 +467,7 @@ Requires authentication. If the user gets an auth error, they need to run 'npx s
       }
 
       try {
-        const imported = await importResolvedAsset({ asset: best, parent, scenePath });
+        const imported = await importResolvedAsset(await getClient(), { asset: best, parent, scenePath });
         // 2D sprites and audio: import only; user adds to scene manually
 
         return {
@@ -687,6 +512,61 @@ Requires authentication. If the user gets an auth error, they need to run 'npx s
           ],
           isError: true,
         };
+      }
+    }
+  );
+
+  server.tool(
+    "summer_import_hdri",
+    `Search Poly Haven's CC0 HDRI library and import one as environment lighting.
+
+The single cheapest visual-quality upgrade for a 3D scene: a real HDRI sky lights
+and reflects the whole world. Searches ~1,000 CC0 HDRIs on Poly Haven's public API
+(no account, no key), downloads the .hdr/.exr through the engine's import pipeline
+into res://sky/, and returns a ready-to-run summer_run_script snippet that wires it
+into the WorldEnvironment (PanoramaSkyMaterial + sky ambient/reflections).
+
+Pass query ("sunset beach", "night city", "studio") to search, or assetId for an
+exact Poly Haven id. resolution 2k is right for most games; 4k for hero skies.
+All results are CC0 — no attribution required.
+
+Requires the Summer Engine app to be open with the project loaded (the download
+runs through the engine). No Summer login needed.`,
+    {
+      query: z
+        .string()
+        .optional()
+        .describe("What kind of sky/environment, e.g. 'sunset beach', 'overcast field', 'studio'. Omit when assetId is given."),
+      assetId: z
+        .string()
+        .optional()
+        .describe("Exact Poly Haven asset id (lowercase slug, e.g. 'kloppenheim_02'). Skips the search."),
+      resolution: z
+        .enum(["1k", "2k", "4k"])
+        .default("2k")
+        .describe("HDRI resolution. 2k (default) is right for most games; 4k for hero skies; 1k for quick blockouts."),
+    },
+    async ({ query, assetId, resolution }) => {
+      try {
+        const result = await importPolyHavenHdri(
+          { query, assetId, resolution: resolution as HdriResolution },
+          () => getClient()
+        );
+        return jsonSuccess(result);
+      } catch (err) {
+        if (err instanceof ImportHdriError) {
+          return jsonError({
+            error: err.code,
+            message: err.message,
+            ...(err.hint ? { hint: err.hint } : {}),
+          });
+        }
+        const msg = err instanceof Error ? err.message : String(err);
+        return jsonError({
+          error: "hdri_import_failed",
+          message: msg,
+          hint: "Poly Haven may be unreachable, or Summer Engine is not running.",
+        });
       }
     }
   );

@@ -1,0 +1,87 @@
+id: tool/align-distribute-3d
+kind: tool
+version: 1.0.0
+summary: Align (min/center/max) or equal-space (centers/gaps) 2-16 ordered 3D subjects along one world axis from their visible AABBs, then save the scene.
+use_when:
+  - lining up props, stalls, pillars, or lights along one axis
+  - spacing a row of objects evenly by center or by visible edge gap
+do_not_use_when:
+  - seating objects on a surface — summer_snap_to_surface (alignment solves one axis only)
+  - the subjects have no visible GeometryInstance3D descendants (the tool fails instead of fabricating bounds)
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - 3d
+    - world-building
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/snap-to-surface
+    - tool/test-placement
+    - tool/world-snapshot
+  skills:
+    - skill/world-building-3d
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_align_distribute_3d
+implementation:
+  module: src/mcp/tools/spatial-tools.ts
+  export: registerSpatialTools
+surfaces:
+  mcp:
+    tool_name: summer_align_distribute_3d
+    remote: false
+input_schema:
+  type: object
+  properties:
+    scenePath:
+      type: string
+      minLength: 1
+      maxLength: 512
+      description: Exact target scene, e.g. 'res://levels/market.tscn'.
+    subjectPaths:
+      type: array
+      items:
+        type: string
+        minLength: 1
+        maxLength: 256
+      minItems: 2
+      maxItems: 16
+      description: Two to sixteen exact Node3D paths in the order to align or distribute.
+    axis:
+      type: array
+      items:
+        type: number
+      minItems: 3
+      maxItems: 3
+      description: Finite, non-zero world axis [x,y,z]; normalization is automatic.
+    mode:
+      type: string
+      enum:
+        - align_min
+        - align_center
+        - align_max
+        - distribute_centers
+        - distribute_gaps
+      description: Alignment anchor or equal-spacing policy.
+  required:
+    - scenePath
+    - subjectPaths
+    - axis
+    - mode
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - scene-valid

@@ -1,0 +1,67 @@
+id: tool/create-debug-report
+kind: tool
+version: 1.0.2
+summary: "Create a support-ready Markdown debug report: doctor checks, engine health, diagnostics, console, and debugger output."
+use_when:
+  - the user wants to send Summer a bug report
+  - handing a failing session to another agent as a portable artifact
+do_not_use_when:
+  - running against a hosted/remote MCP endpoint — it probes the local disk (~/.summer, MCP log, project files) and must run where the CLI is installed
+facets:
+  lifecycle:
+    - build
+  domains:
+    - debug
+    - feedback
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_create_debug_report
+implementation:
+  module: src/core/capabilities/debug-report.ts
+  export: createDebugReportArtifact
+surfaces:
+  mcp:
+    tool_name: summer_create_debug_report
+    remote: false
+  cli:
+    command: summer debug
+input_schema:
+  type: object
+  properties:
+    issue:
+      type: string
+      description: User-visible issue or repro summary.
+    output_path:
+      type: string
+      description: Where to write the Markdown report. Defaults to the open project root, or the current working directory if no project is open.
+    include_play_session:
+      type: boolean
+      default: false
+      description: Launch the game briefly and collect post-play diagnostics.
+    play_wait_ms:
+      type: number
+      default: 2500
+      description: Milliseconds to wait after launching the game when include_play_session is true.
+    max_console_lines:
+      type: number
+      default: 200
+      description: Console lines to include after filtering/deduping.
+    max_debugger_entries:
+      type: number
+      default: 100
+      description: Debugger error/warning entries to include after filtering/deduping.
+    include_doctor:
+      type: boolean
+      default: true
+      description: Include summer doctor checks in the report.
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: true
+  network: true
+  credentials: false
+  publish: false

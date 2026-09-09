@@ -1,9 +1,10 @@
-# Autopilot — drives the player through a list of waypoints, saves a frame at each,
-# asserts what it saw, and exits.
+# Autopilot — boots your game offscreen, finds the player, optionally drives it through
+# a list of waypoints, saves a frame at each step, asserts what it saw, and exits.
 #
 # This is a starting point, not a finished test. Edit CONFIG below to match your game,
-# then add your own assertions in _check_at_waypoint(). Everything here is ordinary
-# GDScript against your real running game — there is no test framework to learn.
+# then add your own assertions in _check_at_waypoint() / _check_at_end(). Everything
+# here is ordinary GDScript against your real running game — there is no test
+# framework to learn.
 #
 # Run it:
 #   bash tests/autopilot/run.sh
@@ -13,7 +14,10 @@ extends "res://tests/autopilot/probe_base.gd"
 
 # ── CONFIG — edit this ────────────────────────────────────────────────────────────
 
-# Node path to the player, from the current scene root.
+# Node path to the player, from the current scene root. If nothing is at this path the
+# probe looks for the first CharacterBody2D/3D, then the first RigidBody2D/3D, then any
+# Node2D/Node3D whose name contains "player", and reports what it picked and how in
+# reports.player_found_by / reports.player_path. Paste that path here once you know it.
 const PLAYER_PATH := "Player"
 
 # Input action names from your project's Input Map. Leave an entry empty to skip it.
@@ -25,10 +29,13 @@ const ACT_JUMP  := "jump"
 
 # Where to walk. 2D games use x/y in pixels; 3D games use x/z in metres (y ignored).
 # Positions are WORLD positions, not offsets.
-const WAYPOINTS := [
-    Vector3(300, 0, 0),
-    Vector3(600, 0, 0),
-]
+#
+# EMPTY means a smoke test: boot the game, let it run, save frames, and pass when the
+# engine logged no errors. Add waypoints once you know your level — they are what
+# turns "it boots" into "the player can get from here to there":
+#   const WAYPOINTS: Array = [Vector3(300, 0, 0), Vector3(600, 0, 0)]   # 2D, pixels
+#   const WAYPOINTS: Array = [Vector3(5, 0, 0), Vector3(5, 0, -8)]      # 3D, metres
+const WAYPOINTS: Array = []
 
 # How close counts as arrived, and how long to allow per leg before giving up.
 const ARRIVE_EPSILON := 40.0
@@ -48,16 +55,39 @@ func _ready() -> void:
     for _i in 30:
         await get_tree().physics_frame
 
-    if not _bind_player():
+    var scene := get_tree().current_scene
+    if scene == null:
+        report("error", "no current scene — is run/main_scene set in project.godot?")
         finish()
         return
 
-    report("player_path", PLAYER_PATH)
-    report("player_class", _player.get_class())
-    report("mode", "3D" if _is_3d else "2D")
-    report("start_pos", str(_pos()))
+    var bound := _bind_player(scene)
+    if bound:
+        report("player_path", str(scene.get_path_to(_player)))
+        report("player_class", _player.get_class())
+        report("mode", "3D" if _is_3d else "2D")
+        report("start_pos", str(_pos()))
+    else:
+        report("mode", "3D" if scene is Node3D else ("2D" if scene is Node2D else "unknown"))
     dump_tree()
+    await settle()
     save_frame("00_start")
+
+    if WAYPOINTS.is_empty():
+        # Smoke test: nothing configured to walk to. Let the game run for a second and
+        # take a second frame so the flipbook shows it running, not just booted.
+        report("smoke", true)
+        for _i in 60:
+            await get_tree().physics_frame
+        save_frame("01_running")
+        _check_at_end()
+        finish()
+        return
+
+    if not bound:
+        report("error", "waypoints are configured but no player was found at '%s' (or by auto-detect)" % PLAYER_PATH)
+        finish()
+        return
 
     for i in WAYPOINTS.size():
         var target: Vector3 = WAYPOINTS[i]
@@ -87,30 +117,54 @@ func _check_at_waypoint(index: int) -> void:
     pass
 
 
-# Called once after the last waypoint.
+# Called once at the end of the run (after the last waypoint, or after the smoke run).
 func _check_at_end() -> void:
-    #   report("player_alive", _player.has_method("is_alive") and _player.is_alive())
+    #   report("player_alive", _player != null and _player.has_method("is_alive") and _player.is_alive())
     pass
 
 
 # ── Machinery — you should not need to edit below this line ───────────────────────
 
-func _bind_player() -> bool:
-    var scene := get_tree().current_scene
-    if scene == null:
-        report("error", "no current scene — is run/main_scene set in project.godot?")
-        return false
+# Resolve the player: CONFIG path first, then auto-detect. Records how it was found
+# (reports.player_found_by) so the next edit to CONFIG is a paste, not a guess.
+func _bind_player(scene: Node) -> bool:
+    var found_by := "config PLAYER_PATH"
     _player = scene.get_node_or_null(PLAYER_PATH)
+    if _player != null and not _is_spatial(_player):
+        report("player_config_note", "'%s' is a %s, not a Node2D/Node3D — ignored" % [PLAYER_PATH, _player.get_class()])
+        _player = null
     if _player == null:
-        report("error", "player not found at '%s'" % PLAYER_PATH)
+        _player = _find_first(scene, func(n: Node) -> bool: return n is CharacterBody2D or n is CharacterBody3D)
+        found_by = "first CharacterBody2D/3D"
+    if _player == null:
+        _player = _find_first(scene, func(n: Node) -> bool: return n is RigidBody2D or n is RigidBody3D)
+        found_by = "first RigidBody2D/3D"
+    if _player == null:
+        _player = _find_first(scene, func(n: Node) -> bool: return _is_spatial(n) and n.name.to_lower().contains("player"))
+        found_by = "name contains 'player'"
+    if _player == null:
+        report("player_found_by", "none")
         report("scene_children", _child_names(scene))
-        dump_tree()
         return false
+    report("player_found_by", found_by)
     _is_3d = _player is Node3D
-    if not (_is_3d or _player is Node2D):
-        report("error", "player at '%s' is neither Node2D nor Node3D" % PLAYER_PATH)
-        return false
     return true
+
+
+func _is_spatial(n: Node) -> bool:
+    return n is Node2D or n is Node3D
+
+
+# Depth-first search below `root` (root itself excluded) for the first node `pred`
+# accepts. Returns null when nothing matches.
+func _find_first(root: Node, pred: Callable) -> Node:
+    for c in root.get_children():
+        if pred.call(c):
+            return c
+        var deeper := _find_first(c, pred)
+        if deeper != null:
+            return deeper
+    return null
 
 
 func _child_names(n: Node) -> Array:

@@ -1,0 +1,23 @@
+id: reference/mcp-fresh-chat-playbook
+kind: reference
+version: 1.0.1
+summary: The minimum safe workflow for an AI agent building in a Summer Engine project — get context first, edit through Summer tools, play and iterate.
+use_when:
+  - starting work in a Summer Engine project from a fresh conversation
+  - deciding the safe default order of MCP calls for a build task
+facets:
+  lifecycle: [ build ]
+  domains:
+    - mcp
+    - agent-workflow
+compatibility:
+  engine: ">=4.6"
+related:
+  references:
+    - reference/mcp-tools-reference
+    - reference/summer-folder
+source: official
+license: MIT
+status: stable
+aliases:
+  - docs/MCP_FRESH_CHAT_PLAYBOOK.md

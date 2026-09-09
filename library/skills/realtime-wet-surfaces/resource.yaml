@@ -1,0 +1,31 @@
+id: skill/realtime-wet-surfaces
+kind: skill
+version: 0.1.1
+summary: "Real-time wetness on existing Godot 4 materials without losing their values — value-copying wet shader, geometry-driven wet mask, instance-uniform wet amount."
+use_when:
+  - "make surfaces look wet when it rains and dry off afterwards"
+  - "add rain wetness to the level without redoing every material"
+  - "darken and gloss up the ground after rain, driven by a weather system"
+  - "wet cave, shoreline, or post-rain look on existing PBR materials"
+do_not_use_when:
+  - "transparent or unshaded materials, water bodies, or puddle simulation — this targets opaque PBR surfaces"
+  - "intake from the gamedev-knowledge pipeline (source-cited, pipeline-validated, not yet exercised in-engine by the Summer team) — verify results in the engine as you would any technique"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - rendering
+    - vfx
+  modalities:
+    - shaders
+    - scripts
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/vfx-water-ripple
+    - skill/3d-lighting
+source: official
+license: MIT
+status: preview
+recommended: false

@@ -1,0 +1,112 @@
+id: tool/generate-3d
+kind: tool
+version: 1.0.2
+summary: Generate a 3D model from text or images via Summer Studio, with optional auto-rig and animation pipeline; waits or returns a job id.
+use_when:
+  - creating a 3D asset or character from a prompt or reference image
+  - '"make me a low-poly tree / a sci-fi crate / a goblin for my game"'
+  - turning a concept image into a 3D model
+do_not_use_when:
+  - a 2D sprite, icon, or texture — summer_generate_image
+  - the model file already exists at a URL — summer_import_from_url
+facets:
+  lifecycle:
+    - build
+  domains:
+    - generate
+    - 3d
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_generate_3d
+implementation:
+  module: src/mcp/tools/generate-tools.ts
+  export: registerGenerateTools
+surfaces:
+  mcp:
+    tool_name: summer_generate_3d
+    remote: true
+input_schema:
+  type: object
+  properties:
+    prompt:
+      type: string
+      description: Description of the 3D model, e.g. 'a low-poly treasure chest'
+    kind:
+      type: string
+      default: text-to-3d
+      description: "Generation type: text-to-3d, image-to-3d, texture"
+    model:
+      type: string
+      default: hunyuan
+      description: "Model: hunyuan (default), trellis, meshy, or any fal-ai model ID"
+    imageUrl:
+      type: string
+      description: Source image URL for image-to-3d or texture
+    imageUrls:
+      type: array
+      items:
+        type: string
+      maxItems: 4
+      description: Up to four views for multi-image-to-3d
+    title:
+      type: string
+      description: Asset or character title
+    idempotencyKey:
+      type: string
+      description: Stable retry key so the same logical request is not billed or queued twice
+    assetIntent:
+      type: string
+      enum:
+        - character
+        - object
+      description: Controls whether hidden reference preparation targets a rig-safe character pose or isolated object view
+    referencePreparation:
+      type: string
+      enum:
+        - auto
+        - always
+        - never
+      default: auto
+      description: Shared Studio reference-preparation policy; auto is recommended
+    rig:
+      type: boolean
+      default: false
+      description: Auto-rig the generated model
+    animationNames:
+      type: array
+      items:
+        type: string
+      description: Animation names for the shared animated-character pipeline, e.g. Idle, Walk, Run, Jump
+    actionIds:
+      type: array
+      items:
+        type: integer
+        minimum: 0
+        maximum: 696
+      description: Exact Meshy action ids for the shared animated-character pipeline
+    riggingHeightMeters:
+      type: number
+      exclusiveMinimum: 0
+      maximum: 10
+      description: Character height used by auto-rigging
+    wait:
+      type: boolean
+      default: true
+      description: Wait for completion (default true, up to 10 min). Set false to get jobId immediately.
+    options:
+      type: object
+      additionalProperties: {}
+      description: Provider-specific params (target_polycount, topology, art_style, etc.)
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false
+evidence_checks:
+  - job-completed

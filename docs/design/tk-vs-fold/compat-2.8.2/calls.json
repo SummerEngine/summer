@@ -1,0 +1,11 @@
+[{"name":"summer_get_project_context","args":{}},
+ {"name":"summer_get_scene_tree","args":{"scenePath":"res://main.tscn","depth":1}},
+ {"name":"summer_add_node","args":{"scenePath":"res://main.tscn","parent":".","type":"Label","name":"OldMcp"}},
+ {"name":"summer_set_prop","args":{"scenePath":"res://main.tscn","path":"OldMcp","key":"text","value":"hello from 2.8.2 mcp"}},
+ {"name":"summer_save_scene","args":{"scenePath":"res://main.tscn"}},
+ {"name":"summer_play","args":{}},
+ {"sleep_ms":3000},
+ {"name":"summer_is_running","args":{}},
+ {"name":"summer_screenshot","args":{"target":"game"}},
+ {"name":"summer_get_diagnostics","args":{}},
+ {"name":"summer_stop","args":{}}]

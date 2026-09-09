@@ -1,0 +1,44 @@
+id: tool/set-node-property
+kind: tool
+version: 1.0.0
+summary: Set a property on a scene node through the engine bridge.
+use_when:
+  - changing a node property from chat or CLI
+  - adjusting position, rotation, scale, or visibility of an existing node
+do_not_use_when:
+  - creating new nodes
+facets:
+  lifecycle: [build]
+  domains: [scenes, editor]
+  modalities: [scenes]
+compatibility:
+  engine: ">=4.6"
+related:
+  skills: [skill/alpha-skill]
+source: official
+license: MIT
+status: stable
+implementation:
+  module: src/core/capabilities/set-node-property.ts
+  export: setNodeProperty
+surfaces:
+  cli:
+    command: summer node set-property
+  mcp:
+    tool_name: summer_set_prop
+    remote: false
+input_schema:
+  type: object
+  properties:
+    node_path:
+      type: string
+    value:
+      type: string
+  required: [node_path, value]
+authority:
+  filesystem: false
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false
+evidence_checks: [roundtrip]

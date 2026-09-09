@@ -1,0 +1,35 @@
+{
+  "results": [
+    {
+      "node": {
+        "children_names": [],
+        "class": "Label",
+        "path": "/root/Main/MitlProbe",
+        "properties": {
+          "modulate": "(1.0, 1.0, 1.0, 1.0)",
+          "name": "MitlProbe",
+          "position": "(40.0, 40.0)",
+          "process_mode": 0,
+          "rotation": 0,
+          "scale": "(1.0, 1.0)",
+          "script": "res://main.tscn::GDScript_7dm0k",
+          "text": "MITL_ALIVE 263",
+          "visible": true
+        }
+      },
+      "ok": true,
+      "op": "GetRuntimeNode",
+      "provenance": {
+        "source": "runtime"
+      },
+      "requestId": "mcp-0e54e80d-a774-4b13-8e0d-ede81f79c6fb"
+    }
+  ],
+  "skippedCount": 0,
+  "status": "ok",
+  "stopOnError": true,
+  "undoGroup": false,
+  "requestId": "mcp-0e54e80d-a774-4b13-8e0d-ede81f79c6fb",
+  "terminalState": "applied",
+  "appliedSeq": 7
+}

@@ -1,0 +1,21 @@
+id: template/3d-fps-old-school
+kind: template
+version: 1.0.2
+summary: Retro first-person shooter starter in the old-school boomer-shooter style.
+use_when:
+  - starting a retro/old-school FPS
+facets:
+  lifecycle: [build]
+  domains: [3d, fps]
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - template-3d-fps-old-school
+repo: https://github.com/SummerEngine/template-3d-fps-old-school
+commit: 5a1ef4b86a900f72607cfa755fb38afc3163bcc6
+tree_digest: ff370b858c0a0c6ee7305d422f240ca9cec9f7e8a34218b0f23a1c38be9abab7
+default_branch: bror-templates
+systems: [fps-controller, weapons, enemies]

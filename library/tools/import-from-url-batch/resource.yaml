@@ -1,0 +1,60 @@
+id: tool/import-from-url-batch
+kind: tool
+version: 1.0.2
+summary: Download multiple files by URL in one operation with a single filesystem scan afterwards.
+use_when:
+  - importing several related files, like a model plus its textures
+  - '"download the model plus its three textures together"'
+  - '"pull all these sound files into the project"'
+do_not_use_when:
+  - one file — summer_import_from_url
+facets:
+  lifecycle:
+    - build
+  domains:
+    - project
+    - assets
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_import_from_url_batch
+implementation:
+  module: src/mcp/tools/project-tools.ts
+  export: registerProjectTools
+surfaces:
+  mcp:
+    tool_name: summer_import_from_url_batch
+    remote: false
+input_schema:
+  type: object
+  properties:
+    imports:
+      type: array
+      items:
+        type: object
+        properties:
+          url:
+            type: string
+            description: URL to download
+          path:
+            type: string
+            description: Target path in project
+        required:
+          - url
+          - path
+        additionalProperties: false
+      description: Array of {url, path} objects
+  required:
+    - imports
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false
+evidence_checks:
+  - asset-imported

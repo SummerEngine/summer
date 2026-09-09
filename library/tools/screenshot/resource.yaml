@@ -1,0 +1,112 @@
+id: tool/screenshot
+kind: tool
+version: 1.1.2
+summary: Capture a frame from the editor viewport, an offscreen scene render (fixed or bookmarked pose, numbered labels), or the running game, as an actual image.
+use_when:
+  - visually verifying layout, scale, framing, or runtime state
+  - '"show me what the scene looks like right now"'
+  - '"did the model land where I put it?" / "does the UI overlap?"'
+  - '"take a screenshot of the game" / "screenshot the running game" — target "game" grabs the live frame'
+  - before/after frames from the SAME viewpoint (framing "bookmark" / "free"), or an annotated screenshot with numbered labels mapped to node paths (marks)
+do_not_use_when:
+  - verifying lighting, mood, or environment-dependent materials with a preset framing (iso/top/front/...) of the scene target - those replace the WorldEnvironment with a flat preview; use framing "camera" (the scene's own Camera3D + real environment), a fixed pose ("free" / "bookmark", real environment too), or the game target instead
+  - capturing motion or a sequence of frames (use a RunVerification probe's save_frame)
+  - 'treating a uniformly black or grey "viewport" frame as evidence about lights, cameras, or content - the editor had not redrawn its viewport texture yet; the tool recaptures once and says so in the caption, otherwise recapture yourself'
+  - saving or listing the viewpoints themselves — summer_camera_bookmark
+facets:
+  lifecycle:
+    - build
+  domains:
+    - verification
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/camera-bookmark
+    - tool/world-snapshot
+  skills:
+    - skill/verifying-scenes
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_screenshot
+implementation:
+  module: src/mcp/tools/visual-tools.ts
+  export: registerVisualTools
+surfaces:
+  mcp:
+    tool_name: summer_screenshot
+    remote: false
+input_schema:
+  type: object
+  properties:
+    target:
+      type: string
+      enum:
+        - viewport
+        - scene
+        - game
+      default: viewport
+      description: '"viewport" = editor current view (default), "scene" = offscreen render of a scene file, "game" = running game frame'
+    scenePath:
+      type: string
+      description: target:"scene" only. Full scene path, e.g. "res://main.tscn". Omit to render the currently-open scene.
+    framing:
+      type: string
+      enum:
+        - auto
+        - iso
+        - top
+        - front
+        - back
+        - left
+        - right
+        - camera
+        - free
+        - bookmark
+      description: 'target:"scene" only, 3D scenes. Camera direction preset: "iso" = 3/4 diagonal view, "top" = straight down, "front" = camera at +Z, "back" = camera at -Z, "left" = camera at -X, "right" = camera at +X. "auto" (default) is an alias of "iso". "camera" = render through the scene''s OWN Camera3D with its REAL WorldEnvironment - the only edit-time framing that truthfully shows lighting/mood. "bookmark" (+ bookmark_name) = the fixed pose saved with summer_camera_bookmark; "free" (+ camera_position, camera_look_at, fov) = an explicit fixed pose. Both keep the REAL WorldEnvironment and repeat exactly, so before/after frames line up. The result reports the resolved framing - an older engine echoes a preset instead, and the caption warns.'
+    bookmark_name:
+      type: string
+      description: 'framing:"bookmark" only (implies it when framing is omitted). Name of a bookmark saved with summer_camera_bookmark (list them with action:"list"). Fails with failure_reason "unknown_bookmark" (+ the available names) when it does not exist.'
+    size:
+      type: array
+      items:
+        type: integer
+        exclusiveMinimum: 0
+      minItems: 2
+      maxItems: 2
+      description: target:"scene" only. Output image [width, height] in pixels.
+    nodePath:
+      type: string
+      description: target:"scene" only. Node path relative to the scene root (e.g. "Player/Mesh") to frame INSTEAD of the whole scene — the camera fits that node's combined bounds (3D visual AABBs or 2D rects, children included). A bare unique name is also found recursively. Fails with failure_reason "node_not_found" when the path does not resolve (no silent whole-scene fallback). Cannot combine with a fixed pose (framing "camera"/"free"/"bookmark").
+    camera_path:
+      type: string
+      description: framing:"camera" only. Path of the Camera3D to render through (relative to the scene root) when the scene has several cameras or none marked current. Omit to use the scene's current/first Camera3D.
+    camera_position:
+      type: string
+      description: 'framing:"free" only (implies it when framing is omitted). Camera position as a Godot literal, e.g. "Vector3(0, 5, 12)". Goes together with camera_look_at.'
+    camera_look_at:
+      type: string
+      description: 'framing:"free" only. Point the camera looks at, e.g. "Vector3(0, 1, 0)". Must differ from camera_position.'
+    fov:
+      type: number
+      description: framing:"free" / "bookmark" only. Vertical field of view in degrees (1..179; default 60 for "free", the bookmark's own for "bookmark").
+    marks:
+      type: boolean
+      description: target:"scene" only, 3D scenes. Draw a Set-of-Mark overlay - numbered tags + box outlines over the largest visible VisualInstance3D nodes (lights excluded), ranked by projected screen area. The caption lists label -> node path (scene-root-relative) so you can name what you see. Works with every framing. 2D scenes return marks_unsupported. Default false.
+    max_marks:
+      type: integer
+      minimum: 1
+      maximum: 128
+      description: marks:true only. Cap on numbered labels (engine default 32, at most 128). The caption says when the cap truncated the list.
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - frame-captured

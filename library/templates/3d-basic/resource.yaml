@@ -1,0 +1,16 @@
+id: template/3d-basic
+kind: template
+version: 1.1.0
+summary: "Built-in: 3D scene with camera, light, and floor — generated locally by summer create, no download."
+use_when:
+  - starting a minimal 3D scene with camera, light, and floor already wired
+facets:
+  lifecycle: [build]
+  domains: [3d, builtin]
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+builtin: true
+systems: [project-scaffold, basic-scene]

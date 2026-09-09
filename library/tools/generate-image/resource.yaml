@@ -1,0 +1,59 @@
+id: tool/generate-image
+kind: tool
+version: 1.0.2
+summary: Generate or edit an image with allowlisted AI models via Summer Studio; supports text-to-image and image-to-image with style presets.
+use_when:
+  - creating concept art, textures, or sprites from a prompt
+  - transforming an existing image given a reference URL
+facets:
+  lifecycle:
+    - build
+  domains:
+    - generate
+    - 2d
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_generate_image
+implementation:
+  module: src/mcp/tools/generate-tools.ts
+  export: registerGenerateTools
+surfaces:
+  mcp:
+    tool_name: summer_generate_image
+    remote: true
+input_schema:
+  type: object
+  properties:
+    prompt:
+      type: string
+      description: Description of the image to generate
+    model:
+      type: string
+      default: nano-banana-2
+      description: Model name or full provider ID
+    style:
+      type: string
+      default: realistic
+      description: "Style preset: realistic, cartoon, anime, or 'none' to skip"
+    referenceImageUrl:
+      type: string
+      description: Source image URL for img2img / edit mode. The prompt describes how to transform this image.
+    options:
+      type: object
+      additionalProperties: {}
+      description: Provider-specific params (guidance_scale, seed, image_size, negative_prompt, etc.)
+  required:
+    - prompt
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false
+evidence_checks:
+  - asset-created

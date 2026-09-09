@@ -1,0 +1,64 @@
+id: tool/set-prop
+kind: tool
+version: 1.0.2
+summary: Set a node property using Godot string syntax for vectors, colors, transforms, and resource class names.
+use_when:
+  - configuring nodes after adding them
+  - '"move the light up" / "put the player at the spawn point" / "make the sprite red" / "rotate the camera 45 degrees"'
+  - setting one node's position, rotation, scale, colour, speed, collision layer, or visible flag
+do_not_use_when:
+  - a property that lives on a mesh, material, or shape resource — summer_set_resource_property
+  - project-wide settings — summer_project_setting
+  - many nodes or computed values — summer_run_script
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - editor
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_set_prop
+implementation:
+  module: src/mcp/tools/scene-tools.ts
+  export: registerSceneTools
+surfaces:
+  mcp:
+    tool_name: summer_set_prop
+    remote: false
+input_schema:
+  type: object
+  properties:
+    scenePath:
+      type: string
+      description: Target scene path, e.g. 'res://main.tscn'
+    path:
+      type: string
+      description: Node path, e.g. './World/Player'
+    key:
+      type: string
+      description: Property name, e.g. 'position', 'mesh', 'visible'
+    value:
+      type:
+        - string
+        - number
+        - boolean
+      description: Value in Summer Engine variant-string format for complex types, native JSON for primitives
+  required:
+    - scenePath
+    - path
+    - key
+    - value
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - scene-valid

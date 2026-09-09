@@ -1,0 +1,68 @@
+{
+  "$id": "collection.schema.json",
+  "title": "Summer resource.yaml — kind: collection (item shape aligned with PublicSummerEngine PR #274; per-item sha256 required for status: stable, enforced by validate-library)",
+  "type": "object",
+  "allOf": [{ "$ref": "resource.schema.json" }],
+  "properties": {
+    "kind": { "const": "collection" },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "slug": { "type": "string", "minLength": 1 },
+          "file": { "type": "string", "minLength": 1 },
+          "license": { "type": "string", "minLength": 1 },
+          "source": { "type": "string", "minLength": 1 },
+          "attribution": { "type": "string", "minLength": 1 },
+          "scene": { "type": "boolean" },
+          "placement_hint": { "type": "string", "minLength": 1 },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "uniqueItems": true
+          },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+        },
+        "required": ["slug", "license"],
+        "additionalProperties": false
+      }
+    },
+    "style": {
+      "type": "object",
+      "properties": {
+        "rules": { "type": "string", "minLength": 1 }
+      },
+      "required": ["rules"],
+      "additionalProperties": false
+    },
+    "presets": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string", "minLength": 1 },
+        "minItems": 1
+      }
+    },
+    "recommended": {
+      "type": "object",
+      "properties": {
+        "skills": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^skill/[a-z0-9]+(-[a-z0-9]+)*$" },
+          "uniqueItems": true
+        },
+        "templates": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^template/[a-z0-9]+(-[a-z0-9]+)*$" },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "main_scene": { "type": "string", "minLength": 1 }
+  },
+  "required": ["items"],
+  "unevaluatedProperties": false
+}

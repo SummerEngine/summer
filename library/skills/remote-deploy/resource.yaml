@@ -1,0 +1,23 @@
+id: skill/remote-deploy
+kind: skill
+version: 1.0.2
+summary: Run or test the game on a real device — phone, tablet, another computer — via the Remote Deploy button, runnable export presets, and on-device debugging.
+use_when:
+  - the user wants to run or test the game on a real target instead of the editor — a phone, tablet, or another computer
+  - the Remote Deploy button is greyed out and the user wants to know why
+facets:
+  lifecycle:
+    - launch
+  domains:
+    - deployment
+    - project
+  modalities:
+    - project
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/deployment/remote-deploy

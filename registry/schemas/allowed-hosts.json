@@ -1,0 +1,19 @@
+{
+  "comment": "Capability-lint URL allowlist. An entry is either a bare host (matches that exact host) or host/path-prefix (matches URLs on that host whose path starts with /path-prefix/). Grown only by PR to this file. Per-entry rationale for non-obvious entries lives in entry_notes below (the validator reads only `allowed`).",
+  "allowed": [
+    "summerengine.com",
+    "docs.summerengine.com",
+    "github.com/SummerEngine",
+    "raw.githubusercontent.com/SummerEngine",
+    "github.com/orgs/SummerEngine",
+    "agentskills.io",
+    "polyhaven.com",
+    "elevenlabs.io"
+  ],
+  "entry_notes": {
+    "github.com/orgs/SummerEngine": "Org-listing URL form (github.com/orgs/SummerEngine/...) of the already-allowed SummerEngine GitHub org.",
+    "agentskills.io": "The open Agent Skills specification, which Summer adopts as its skill format; read-only spec documentation.",
+    "polyhaven.com": "First-party HDRI/asset integration target (summer_import_hdri allowlists it); documentation links are legitimate.",
+    "elevenlabs.io": "Summer's voice provider (summer_generate_audio); documentation links are legitimate."
+  }
+}

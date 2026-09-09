@@ -1,0 +1,56 @@
+id: tool/get-debugger-errors
+kind: tool
+version: 1.0.2
+summary: Read deduplicated runtime errors from the debugger, distinct from console prints; optional stack traces.
+use_when:
+  - the running game hit failures like null references or missing nodes
+  - '"the game crashed while I was playing, what was it?"'
+  - '"why did my scene fail at runtime?"'
+do_not_use_when:
+  - the script will not even compile — summer_get_script_errors
+  - plain print output — summer_get_console
+facets:
+  lifecycle:
+    - build
+  domains:
+    - debug
+    - runtime
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_get_debugger_errors
+implementation:
+  module: src/mcp/tools/debug-tools.ts
+  export: registerDebugTools
+surfaces:
+  mcp:
+    tool_name: summer_get_debugger_errors
+    remote: false
+input_schema:
+  type: object
+  properties:
+    max_errors:
+      type: number
+      default: 50
+      description: Max errors to return after dedupe
+    include_stack:
+      type: boolean
+      description: Include stack traces for each error
+    include_warnings:
+      type: boolean
+      default: false
+      description: Forward-compat flag — when engine supports it, returns warning bodies in the same call. Today the engine ignores it; use summer_get_debugger_warnings instead.
+    raw:
+      type: boolean
+      default: false
+      description: Bypass dedupe — return engine output verbatim
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

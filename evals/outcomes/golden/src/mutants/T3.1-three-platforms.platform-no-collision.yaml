@@ -1,0 +1,38 @@
+# Mutant of T3.1: Platform_3 is a bare StaticBody2D with no CollisionShape2D.
+# Must fail EXACTLY `platforms-collision` — the count is still 4, the player
+# still jumps off the ground, and a shapeless body is not a runtime error.
+task: T3.1-three-platforms
+mutation: platform-no-collision
+expect_fail: [platforms-collision]
+recorded_at: "2026-09-03T00:00:00.000Z"
+description: T3.1 golden with Platform_3 added as a shapeless StaticBody2D
+steps:
+  - tool: summer_run_script
+    args:
+      source: |
+        func run(ctx):
+            ctx.add_body_2d("static", "Ground", null, {"type": "rect", "size": Vector2(1152, 40)}, {"position": Vector2(576, 628)})
+            ctx.add_body_2d("static", "Platform_1", null, {"type": "rect", "size": Vector2(200, 24)}, {"position": Vector2(250, 480)})
+            ctx.add_body_2d("static", "Platform_2", null, {"type": "rect", "size": Vector2(200, 24)}, {"position": Vector2(576, 380)})
+            ctx.add_node("StaticBody2D", "Platform_3", null, {"position": Vector2(900, 280)})
+            var player = ctx.add_body_2d("character", "Player", null, {"type": "rect", "size": Vector2(32, 48)}, {"position": Vector2(120, 560)})
+            ctx.attach_script(player, """extends CharacterBody2D
+
+        const SPEED := 220.0
+        const JUMP_VELOCITY := -420.0
+        const GRAVITY := 980.0
+
+        func _physics_process(delta: float) -> void:
+            if not is_on_floor():
+                velocity.y += GRAVITY * delta
+            if Input.is_action_just_pressed("jump") and is_on_floor():
+                velocity.y = JUMP_VELOCITY
+            var direction := Input.get_axis("move_left", "move_right")
+            velocity.x = direction * SPEED
+            move_and_slide()
+        """)
+            ctx.add_input_action("move_left", [{"type": "key", "keycode": "Left"}])
+            ctx.add_input_action("move_right", [{"type": "key", "keycode": "Right"}])
+            ctx.add_input_action("jump", [{"type": "key", "keycode": "Space"}])
+            var saved = ctx.save_scene()
+            return {"saved": saved}

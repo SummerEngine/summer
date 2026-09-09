@@ -1,0 +1,63 @@
+id: tool/creator-config
+kind: tool
+version: 1.0.2
+summary: Read or update the shared non-secret Summer configuration; mutations require confirm, and tokens are never returned or accepted.
+use_when:
+  - inspecting or changing shared CLI and MCP configuration values
+  - '"which creator project id / channel is this CLI pointed at?"'
+  - switching the default publish channel
+do_not_use_when:
+  - reading or setting auth tokens — they never pass through this tool; use summer login / logout
+facets:
+  lifecycle:
+    - launch
+  domains:
+    - creator
+    - deployment
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_creator_config
+implementation:
+  module: src/mcp/tools/creator-tools.ts
+  export: registerCreatorTools
+surfaces:
+  mcp:
+    tool_name: summer_creator_config
+    remote: false
+  cli:
+    command: summer config
+input_schema:
+  type: object
+  properties:
+    action:
+      type: string
+      enum:
+        - list
+        - get
+        - set
+        - unset
+    key:
+      type: string
+      enum:
+        - gateway.url
+        - creator.apiUrl
+        - creator.projectId
+        - creator.channel
+    value:
+      type: string
+    confirm:
+      type: boolean
+      default: false
+  required:
+    - action
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

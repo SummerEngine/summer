@@ -1,0 +1,73 @@
+id: tool/run-script
+kind: tool
+version: 1.0.1
+summary: Run a GDScript `func run(ctx):` inside the live editor against the open scene — one script instead of a chain of add-node/set-prop calls.
+use_when:
+  - a change needs 3+ related ops or any computed placement (scatter, grids, procedural meshes, bulk edits)
+  - the ctx helpers (add_node, add_mesh, grid, scatter, light rig, environment) fit the job
+do_not_use_when:
+  - a single property tweak — summer_set_prop is cheaper
+  - a cold project-wide batch job that should not block the live editor — summer_run_editor_script
+  - "requires an engine build with RunSceneScript (engine PR #156); on current shipped engines this returns engine_lacks_op"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - scripting
+  modalities:
+    - scripts
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/run-editor-script
+    - tool/api-docs
+    - tool/world-snapshot
+    - tool/snapshot-diff
+  skills:
+    - skill/scene-scripting
+    - skill/verifying-scenes
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_run_script
+implementation:
+  module: src/mcp/tools/script-tools.ts
+  export: registerScriptTools
+surfaces:
+  mcp:
+    tool_name: summer_run_script
+    remote: false
+input_schema:
+  type: object
+  properties:
+    source:
+      type: string
+      description: GDScript source containing `func run(ctx):`. No extends/@tool line — just the function (plus any helpers).
+    max_seconds:
+      type: number
+      description: Time budget in seconds (default 20, clamped 5-120). The script blocks the editor while it runs — keep it short.
+    checkpoint:
+      type: boolean
+      description: Take a SummerGit checkpoint before running (default true). The result confesses (no_rewind_point) when no checkpoint could be taken.
+    undo:
+      type: string
+      enum:
+        - action
+        - none
+      description: Transaction mode (newer engines). 'action' (engine default) makes the run one undo action and rolls back on a runtime error; 'none' is checkpoint only. Older engines ignore this.
+  required:
+    - source
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - snapshot-diff
+  - screenshot

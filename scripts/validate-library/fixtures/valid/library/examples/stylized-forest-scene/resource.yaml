@@ -1,0 +1,24 @@
+id: example/stylized-forest-scene
+kind: example
+version: 1.1.0
+summary: A verified stylized forest scene with layered lighting.
+use_when:
+  - studying a working stylized outdoor scene
+  - checking how a finished outdoor scene layers sun, sky, and ambient light
+facets:
+  lifecycle: [build]
+  domains: [world-building, lighting]
+  modalities: [scenes]
+related:
+  skills: [skill/create-environment-kit]
+source: official
+license: MIT
+status: stable
+evidence:
+  engine_version: "4.6.1"
+  verified_at: 2026-09-01
+  checks: [runs, screenshot]
+  media:
+    - path: evidence/final.png
+    - url: https://summerengine.com/media/stylized-forest.mp4
+      sha256: 1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b

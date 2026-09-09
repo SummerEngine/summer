@@ -1,0 +1,56 @@
+# T1.1 — Blockout scene: the canonical success loop start (ctx stdlib lane).
+id: T1.1-courtyard
+tier: T1
+title: courtyard
+prompt: >-
+  Block out a walled courtyard about 20×20 m: four walls, a floor, a fountain in
+  the middle, a gate opening in the south wall. Add a light and a camera that
+  shows the whole courtyard.
+fixture: empty3d
+scene: res://main.tscn
+budget: { wall_clock_s: 480, max_tool_calls: 25 }
+skills_expected: [skill/scene-scripting, skill/scene-composition]
+capture: [camera, iso]
+assertions:
+  - id: mesh-count
+    predicate: count
+    args: { class: MeshInstance3D, op: ">=", value: 6 }
+    required: true
+  - id: camera-current
+    predicate: camera_current
+    args: {}
+    required: true
+  - id: light-present
+    predicate: lights
+    args: { min: 1 }
+    required: true
+  - id: walls-on-ground
+    predicate: on_ground
+    args: { selector: "Wall*|Floor*", ground_y: 0, eps: 0.05 }
+    required: true
+  - id: fountain-clear-of-walls
+    predicate: no_overlap
+    args: { a: "Fountain*", b: "Wall*", tol: 0.01 }
+    required: true
+  - id: camera-sees-courtyard
+    predicate: camera_sees
+    args: { selector: "Wall*|Fountain*", fraction: 0.75 }
+    required: true
+  - id: all-saved
+    predicate: exists
+    args: { selector: "*" }
+    required: true
+    note: every node in the edited scene is in the saved main.tscn (ownership trap)
+  - id: preview-camera-ok
+    predicate: preview_camera_ok
+    args: {}
+    required: true
+  - id: no-truncation
+    predicate: no_truncation
+    args: {}
+    required: false
+  - id: gate-halves
+    predicate: count
+    args: { class: MeshInstance3D, op: ">=", value: 7 }
+    required: false
+    note: a gate opening implies the south wall is split — bonus, not gated

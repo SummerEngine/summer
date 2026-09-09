@@ -1,0 +1,63 @@
+id: skill/asset-strategy
+kind: skill
+version: 1.0.2
+summary: Route any 'I need a [thing]' asset request to the right specialist skill — disambiguates 2D / 3D / audio / video / VFX / animation pipelines.
+use_when:
+  - planning asset creation, picking an asset pipeline, or routing an 'I need a [thing]' request to the right specialist skill
+  - '"I need a sword / a forest / a boss theme / an explosion" and it is unclear which pipeline (2D, 3D, audio, video, VFX, animation) fits'
+  - deciding what to generate versus import from the library before a big content pass
+do_not_use_when:
+  - the pipeline is already obvious — go straight to the specialist skill (pixel-art, character-model, sound-effect, ...)
+facets:
+  lifecycle:
+    - build
+  domains:
+    - assets
+    - pipeline
+  modalities:
+    - assets
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/character-portrait
+    - skill/concept-art
+    - skill/pixel-art
+    - skill/skybox-panorama
+    - skill/sprite-sheet
+    - skill/tileable-texture
+    - skill/ui-graphics
+    - skill/character-model
+    - skill/environment-kit
+    - skill/organic-model
+    - skill/prop-model
+    - skill/vehicle-model
+    - skill/animation-tree
+    - skill/facial-and-lipsync
+    - skill/generate-motion
+    - skill/procedural-animation
+    - skill/retarget
+    - skill/adaptive-music
+    - skill/ambient-bed
+    - skill/audio-direction
+    - skill/music-track
+    - skill/sound-effect
+    - skill/voice-line
+    - skill/animated-loop
+    - skill/cinematic-cutscene
+    - skill/trailer-shot
+    - skill/game-feel
+    - skill/vfx-dissolve
+    - skill/vfx-fire
+    - skill/vfx-hit-spark
+    - skill/vfx-lightning
+    - skill/vfx-magic-glow
+    - skill/vfx-muzzle-flash
+    - skill/vfx-smoke
+    - skill/vfx-water-ripple
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/asset-pipeline/asset-strategy

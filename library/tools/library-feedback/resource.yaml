@@ -1,0 +1,89 @@
+id: tool/library-feedback
+kind: tool
+version: 1.0.2
+summary: Report how library entries worked out (worked, wrong, outdated, ...) so Summer can fix and re-rank them; fire-and-forget, opt-out honored.
+use_when:
+  - a natural checkpoint after using library entries, batching all outcomes in one call
+  - an entry was wrong, outdated, incomplete, or misrouted and Summer should know
+do_not_use_when:
+  - reporting outcome worked without in-engine verification
+  - the note would describe the user's project, files, or code instead of the entry
+facets:
+  lifecycle:
+    - support
+  domains:
+    - feedback
+    - meta
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_library_feedback
+implementation:
+  module: src/core/feedback/client.ts
+  export: sendLibraryFeedback
+surfaces:
+  mcp:
+    tool_name: summer_library_feedback
+    remote: true
+input_schema:
+  type: object
+  properties:
+    reports:
+      type: array
+      items:
+        type: object
+        properties:
+          entry_id:
+            type: string
+            pattern: ^(tool|skill|example|template|collection|reference)\/[a-z0-9-]+(@[a-f0-9]{8,64})?$
+            description: The library entry ID exactly as the loader printed it (kind/slug, optionally @content-hash). Never guess or reconstruct it.
+          outcome:
+            type: string
+            enum:
+              - worked
+              - worked_with_fixes
+              - wrong
+              - outdated
+              - incomplete
+              - did_not_apply
+              - misrouted
+            description: worked = verified in-engine (playtest/screenshot passed). worked_with_fixes = worked after your changes (say what in deviation). wrong = incorrect content. outdated = no longer matches this engine version. incomplete = missing a needed case. did_not_apply = loaded but irrelevant to the task. misrouted = the description/metadata led you here wrongly.
+          note:
+            type: string
+            maxLength: 280
+            description: Optional, max 280 chars. About the ENTRY only — never the user's project, files, or code.
+          deviation:
+            type: string
+            maxLength: 280
+            description: Optional, max 280 chars. What you did instead of / on top of the entry's instructions.
+        required:
+          - entry_id
+          - outcome
+        additionalProperties: false
+      minItems: 1
+      maxItems: 10
+      description: 1-10 outcome reports, batched at a natural checkpoint (one call, not one per entry).
+    engine_version:
+      type: string
+      minLength: 1
+      maxLength: 32
+      description: The Summer Engine version in use, e.g. "4.6.1".
+    agent_model:
+      type: string
+      minLength: 1
+      maxLength: 64
+      description: The model you are, e.g. claude-fable-5, gpt-5.5-codex; use "unknown" if unsure.
+  required:
+    - reports
+    - engine_version
+    - agent_model
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false

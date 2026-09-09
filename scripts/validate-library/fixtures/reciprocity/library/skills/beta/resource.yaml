@@ -1,0 +1,13 @@
+id: skill/beta
+kind: skill
+version: 1.0.0
+summary: Fixture skill that alpha links to but that links to nobody.
+use_when:
+  - exercising the reciprocity hint between related skills
+  - checking that one-way related links warn without failing validation
+facets:
+  lifecycle: [build]
+  domains: [meta, verification]
+source: official
+license: MIT
+status: stable

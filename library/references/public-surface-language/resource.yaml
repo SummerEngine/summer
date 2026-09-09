@@ -1,0 +1,17 @@
+id: reference/public-surface-language
+kind: reference
+version: 1.0.0
+summary: The Summer public-surface language boundary — when to say Summer game / Summer SDK and when Godot terminology remains correct.
+use_when:
+  - writing user-facing copy, CLI errors, skill descriptions, or generated prompts
+  - deciding whether a technical or legal context calls for Godot terminology
+facets:
+  lifecycle: [build]
+  domains: [naming, product-language]
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - references/public-surface-language.md

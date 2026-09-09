@@ -1,0 +1,47 @@
+id: tool/read-file
+kind: tool
+version: 1.0.2
+summary: Read a text file from the engine-bound project and return its full-file sha256 receipt for guarded overwrites.
+use_when:
+  - reading project files through the engine
+  - getting the sha256 required before overwriting a file
+facets:
+  lifecycle:
+    - build
+  domains:
+    - file
+    - project
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_read_file
+implementation:
+  module: src/mcp/tools/file-tools.ts
+  export: registerFileTools
+surfaces:
+  mcp:
+    tool_name: summer_read_file
+    remote: false
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: Project path, e.g. res://scripts/player.gd
+    max_bytes:
+      type: integer
+      exclusiveMinimum: 0
+      maximum: 1000000
+      default: 200000
+  required:
+    - path
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

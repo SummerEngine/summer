@@ -1,0 +1,16 @@
+# Golden for T7.1 — a 6 s position + rotation flyover on the fixture camera,
+# ending aimed at the GridBox_* block, autoplay, save.
+task: T7.1-flyover
+recorded_at: "2026-09-03T00:00:00.000Z"
+description: animate() position_3d + rotation_3d tracks (6 s, no loop) on Camera3D, autoplay "flyover", saved
+steps:
+  - tool: summer_run_script
+    args:
+      source: |
+        func run(ctx):
+            var cam = ctx.find("Camera3D")
+            var player = ctx.animate(cam, "position", [[0.0, Vector3(-10, 12, 18)], [3.0, Vector3(14, 10, 14)], [6.0, Vector3(2, 7, 11)]], "flyover", false)
+            ctx.animate(cam, "rotation", [[0.0, Vector3(deg_to_rad(-30), deg_to_rad(-30), 0)], [3.0, Vector3(deg_to_rad(-35), deg_to_rad(40), 0)], [6.0, Vector3(deg_to_rad(-35), 0, 0)]], "flyover", false, player)
+            player.autoplay = "flyover"
+            var saved = ctx.save_scene()
+            return {"saved": saved, "length": player.get_animation("flyover").length}

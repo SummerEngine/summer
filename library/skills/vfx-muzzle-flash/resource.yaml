@@ -1,0 +1,35 @@
+id: skill/vfx-muzzle-flash
+kind: skill
+version: 1.0.3
+summary: Muzzle-flash effect — a one-shot ~80 ms burst at a gun barrel built with a particle one-shot or a flashing quad with a star-burst shader.
+use_when:
+  - authoring a muzzle-flash effect — gun fire, weapon flash, barrel flash, spell-cast burst at a hand
+  - a gun or spell-casting hand shoots with no visible flash at the barrel or palm
+facets:
+  lifecycle:
+    - build
+  domains:
+    - vfx
+    - rendering
+  modalities:
+    - scenes
+    - shaders
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/scene-scripting
+    - skill/sound-effect
+    - skill/game-feel
+    - skill/vfx-fire
+    - skill/vfx-hit-spark
+    - skill/vfx-lightning
+    - skill/vfx-magic-glow
+    - skill/vfx-smoke
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/visual-effects/recipes/muzzle-flash
+  - muzzle-flash

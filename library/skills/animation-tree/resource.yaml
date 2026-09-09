@@ -1,0 +1,33 @@
+id: skill/animation-tree
+kind: skill
+version: 1.0.1
+summary: Design and wire AnimationTree state machines and blend trees so clips respond to gameplay — locomotion blends, attack interrupts, hit reactions.
+use_when:
+  - the character has clips that must play in response to gameplay — idle/walk/run blends, attacks that interrupt locomotion, hit reactions
+  - a character keeps T-posing
+facets:
+  lifecycle:
+    - build
+  domains:
+    - animation
+    - 3d
+  modalities:
+    - animation
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/character-animation-wiring
+    - skill/design-npc
+    - skill/facial-and-lipsync
+    - skill/generate-motion
+    - skill/procedural-animation
+    - skill/retarget
+    - skill/fps-controller
+source: official
+license: MIT
+status: stable
+recommended: false
+aliases:
+  - skills/animation/animation-tree

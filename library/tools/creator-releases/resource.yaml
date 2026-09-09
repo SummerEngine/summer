@@ -1,0 +1,53 @@
+id: tool/creator-releases
+kind: tool
+version: 1.0.2
+summary: List creator-owned releases from the Summercraft creator API with server-verified scope and ownership.
+use_when:
+  - reviewing which versions of a project are live per channel
+  - '"what version is live right now?"'
+  - '"did the publish go through?" — confirming a release landed'
+do_not_use_when:
+  - publishing a new release — summer_creator_publish
+facets:
+  lifecycle:
+    - launch
+  domains:
+    - creator
+    - deployment
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_creator_releases
+implementation:
+  module: src/core/capabilities/creator.ts
+  export: listCreatorReleases
+surfaces:
+  mcp:
+    tool_name: summer_creator_releases
+    remote: true
+  cli:
+    command: summer releases
+input_schema:
+  type: object
+  properties:
+    projectId:
+      type: string
+      description: Creator project ID. Defaults to ~/.summer/config.json.
+    limit:
+      type: integer
+      minimum: 1
+      maximum: 100
+      default: 20
+    cursor:
+      type: string
+      description: Opaque nextCursor from the previous page.
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false

@@ -1,0 +1,25 @@
+id: skill/skill-improve
+kind: skill
+version: 1.0.3
+summary: Upgrade an underperforming Summer skill — run it against a behavioral spec with and without changes via a parallel-eval harness; ship the winner.
+use_when:
+  - a contributor wants to upgrade a Summer skill that is underperforming or to fix a regression
+  - comparing a skill with and without a change against a behavioral spec before shipping the winner
+facets:
+  lifecycle:
+    - build
+  domains:
+    - agent-workflow
+    - meta
+  modalities:
+    - docs
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/skill-test
+source: official
+license: MIT
+status: stable
+aliases:
+  - skills/workflow/skill-improve

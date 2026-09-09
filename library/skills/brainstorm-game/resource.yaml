@@ -1,0 +1,30 @@
+id: skill/brainstorm-game
+kind: skill
+version: 1.0.3
+summary: Turn a vague idea into a buildable plan — genre, scope, core loop, mechanics, art direction — written as a 1-page brief to .summer/GameSoul.md.
+use_when:
+  - the user wants help deciding what game to make, scoping a new project, or turning a vague idea into a buildable plan
+  - the user has a genre, theme, or one-line pitch but no core loop, scope, or brief yet
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - project
+  modalities:
+    - docs
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/audio-direction
+    - skill/design-mechanic
+    - skill/design-level
+    - skill/art-direction
+    - skill/make-game
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/scene-and-project/brainstorm-game

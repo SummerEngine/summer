@@ -1,0 +1,21 @@
+id: template/3d-royale-clash-type
+kind: template
+version: 1.0.3
+summary: "Card-deployment lane battle starter in the Clash Royale style: drag-and-drop units, buildings and spells, elixir economy, towers, an AI rival deck."
+use_when:
+  - starting an auto-battler or lane-pushing strategy game
+facets:
+  lifecycle: [build]
+  domains: [3d, auto-battler, strategy]
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - template-3d-royale-clash-type
+repo: https://github.com/SummerEngine/template-3d-royale-clash-type
+commit: 31f08ad07ac24f578b01c957e2219efbbfe655cf
+tree_digest: 3892bb0fb80b17187a9eca23c64c5a07d397a159c48a152411cbc3e12f8eec7e
+default_branch: main
+systems: [lanes, unit-spawning, auto-battle]

@@ -1,0 +1,25 @@
+id: skill/mcpupdate
+kind: skill
+version: 1.0.3
+summary: Improve the Summer CLI, its MCP tools, or its skills from a real working session — capture what worked, fix prompts where an agent went down a bad path.
+use_when:
+  - improving or maintaining the Summer Engine CLI, its MCP tools (summer_*), or its prompt-engineering skills based on a real working session
+  - an agent went down a bad path with a summer_* tool or skill and the prompt should be fixed from that evidence
+facets:
+  lifecycle:
+    - build
+  domains:
+    - agent-workflow
+    - meta
+  modalities:
+    - docs
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/skill-create
+source: official
+license: MIT
+status: stable
+aliases:
+  - skills/workflow/mcpupdate

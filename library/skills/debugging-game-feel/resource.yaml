@@ -1,0 +1,25 @@
+id: skill/debugging-game-feel
+kind: skill
+version: 1.0.3
+summary: Debug features that work but feel wrong — floaty jumps, mushy combat, sluggish camera — subjective bugs living in tuning, timing, and feedback layers.
+use_when:
+  - a gameplay feature works correctly but feels wrong — floaty jumps, mushy combat, sluggish camera, weightless impacts
+  - tuning jump height, gravity, camera lag, hit-stop, or impact feedback until controls feel right
+do_not_use_when:
+  - the bug is a logic error rather than subjective feel — use logical bug debugging
+facets:
+  lifecycle:
+    - build
+  domains:
+    - agent-workflow
+    - gameplay
+  modalities:
+    - project
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+recommended: false
+aliases:
+  - skills/workflow/debugging-game-feel

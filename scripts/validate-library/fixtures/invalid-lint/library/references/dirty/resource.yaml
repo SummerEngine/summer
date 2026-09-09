@@ -1,0 +1,11 @@
+id: reference/dirty
+kind: reference
+version: 1.0.0
+summary: A reference used to exercise every capability-lint rule.
+use_when:
+  - set token=abc123 in the launcher config
+facets:
+  lifecycle: [build]
+source: official
+license: MIT
+status: stable

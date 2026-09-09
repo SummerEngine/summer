@@ -1,0 +1,24 @@
+id: skill/ambient-bed
+kind: skill
+version: 1.0.2
+summary: Generate a long looping location ambience — forest, dungeon, city, spaceship, cave — a looping AudioStreamPlayer on the Ambient bus with a seamless loop.
+use_when:
+  - generating a long looping location ambience — forest at dawn, dungeon air, city street, spaceship hum, cave drip — non-melodic and low-energy
+  - a location feels silent and needs a continuous soundscape beneath the score and effects
+facets:
+  lifecycle:
+    - build
+  domains:
+    - audio
+    - assets
+  modalities:
+    - audio
+    - scenes
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+recommended: false
+aliases:
+  - skills/audio/ambient-bed

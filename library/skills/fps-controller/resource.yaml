@@ -1,0 +1,29 @@
+id: skill/fps-controller
+kind: skill
+version: 1.0.3
+summary: Production-quality first-person controller — WASD, mouse look, jump, coyote time, jump buffering, air control, and external-velocity handling.
+use_when:
+  - building an FPS, first-person movement, or a 3D character that walks, jumps, and reacts to external forces
+  - a first-person prototype needs solid movement feel — coyote time, jump buffering, air control
+facets:
+  lifecycle:
+    - build
+  domains:
+    - character-controller
+    - gameplay
+  modalities:
+    - scripts
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  # Legacy frontmatter declared template-id: template-3d-fps (no such repo exists);
+  # mapped to the real repo template-3d-fps-old-school.
+  templates:
+    - template/3d-fps-old-school
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/character-controllers/fps-controller

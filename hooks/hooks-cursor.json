@@ -9,9 +9,9 @@
         "timeout": 10
       }
     ],
-    "preToolUse": [
+    "beforeShellExecution": [
       {
-        "matcher": "Bash(git commit*)",
+        "matcher": "git\\s+commit",
         "command": "./hooks/run-hook.cmd pre-commit-doctor",
         "async": false,
         "timeout": 30

@@ -1,0 +1,42 @@
+id: tool/get-asset
+kind: tool
+version: 1.0.2
+summary: Fetch one asset by exact Summer asset id, including stable file URL, metadata, license, visibility, and provider details.
+use_when:
+  - a generation job returned an asset id and you need its file URL or metadata
+  - confirming license or visibility before reuse
+facets:
+  lifecycle:
+    - build
+  domains:
+    - assets
+    - pipeline
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_get_asset
+implementation:
+  module: src/mcp/tools/asset-tools.ts
+  export: registerAssetTools
+surfaces:
+  mcp:
+    tool_name: summer_get_asset
+    remote: true
+input_schema:
+  type: object
+  properties:
+    assetId:
+      type: string
+      description: Summer ArtAssets id
+  required:
+    - assetId
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false

@@ -1,0 +1,15 @@
+id: skill/aliased-name
+kind: skill
+version: 1.0.0
+summary: Frontmatter fixture whose SKILL.md name is a declared alias of the slug.
+use_when:
+  - testing frontmatter names
+  - checking that an aliased frontmatter name is accepted by the validator
+facets:
+  lifecycle: [build]
+  domains: [meta, verification]
+source: official
+license: MIT
+status: stable
+aliases:
+  - old-name

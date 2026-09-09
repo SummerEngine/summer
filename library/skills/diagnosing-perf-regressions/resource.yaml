@@ -1,0 +1,25 @@
+id: skill/diagnosing-perf-regressions
+kind: skill
+version: 1.0.3
+summary: Find why frame rate, frame time, or load time got worse since a known-good state — regression hunting, not general performance tuning.
+use_when:
+  - frame rate, frame time, or load time has gotten worse since a known-good state — 'it used to run at 60, now it's at 30'
+  - bisecting recent scene, script, or asset changes to find which one slowed frame time or loading
+do_not_use_when:
+  - general performance tuning with no known-good baseline
+facets:
+  lifecycle:
+    - build
+  domains:
+    - agent-workflow
+    - performance
+  modalities:
+    - project
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+recommended: false
+aliases:
+  - skills/workflow/diagnosing-perf-regressions

@@ -1,0 +1,22 @@
+# Golden for T4.1 — a CanvasLayer HUD with a top-left ProgressBar and a
+# top-right anchored Label, save.
+task: T4.1-health-bar
+recorded_at: "2026-09-03T00:00:00.000Z"
+description: HUD CanvasLayer, HealthBar progress bar (top_left), ScoreLabel (top_right anchors), saved
+steps:
+  - tool: summer_run_script
+    args:
+      source: |
+        func run(ctx):
+            var hud = ctx.add_canvas_layer("HUD", 1)
+            var bar = ctx.add_ui("progress_bar", "HealthBar", hud, {"anchor": "top_left", "custom_minimum_size": Vector2(240, 24), "value": 75.0, "show_percentage": false})
+            bar.position = Vector2(16, 16)
+            var label = ctx.add_ui("label", "ScoreLabel", hud, {"anchor": "top_right", "text": "Score: 0"})
+            # Keep the top-right anchors; place it 16 px in from the corner.
+            label.offset_left = -136.0
+            label.offset_right = -16.0
+            label.offset_top = 16.0
+            label.offset_bottom = 40.0
+            ctx.set_theme_overrides(label, {"font_size": 24})
+            var saved = ctx.save_scene()
+            return {"saved": saved, "anchor_right": label.anchor_right}

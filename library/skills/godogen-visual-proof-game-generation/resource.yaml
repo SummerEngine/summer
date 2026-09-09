@@ -1,0 +1,33 @@
+id: skill/godogen-visual-proof-game-generation
+kind: skill
+version: 0.1.1
+summary: "Godogen-style game generation with a visual QC loop — capture frames from the running game, self-verify against the brief, bounded fix rounds, proof clip."
+use_when:
+  - "generate a whole small game from a short brief and prove it actually runs"
+  - "the agent says the game works but never looked at it running — make it verify from captured frames"
+  - "add a visual QC loop with a capped number of fix rounds and a proof recording at the end"
+  - "set up headless capture so an unattended generation run ends with a 15-20 second proof clip"
+do_not_use_when:
+  - "large hand-authored production work, purely logical code fixes with no visual component, or hosts with no GPU or headless capture path"
+  - "intake from the gamedev-knowledge pipeline (source-cited, pipeline-validated, not yet exercised in-engine by the Summer team) — verify results in the engine as you would any technique"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - agent-workflow
+    - verification
+  modalities:
+    - project
+    - scripts
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/verification-before-completion
+    - skill/playtesting-a-feature
+    - skill/verifying-scenes
+    - skill/make-game
+source: official
+license: MIT
+status: preview
+recommended: false

@@ -1,0 +1,21 @@
+id: template/3d-fps-simple-animated-npc
+kind: template
+version: 1.1.4
+summary: FPS starter with an animated NPC — first-person controller plus a rigged, animated character to build on.
+use_when:
+  - starting an FPS that needs animated NPCs from day one
+facets:
+  lifecycle: [build]
+  domains: [3d, fps, npc]
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - template-3d-fps-simple-animated-npc
+repo: https://github.com/SummerEngine/template-3d-fps-simple-animated-npc
+commit: b987a48aa7331a44189d9103040fc37a328b81ee
+tree_digest: 8b7c06dc42c441c47547c71d85c5cb64d5ce61c2373f88324e97b1c44c424927
+default_branch: main
+systems: [fps-controller, npc, animation]

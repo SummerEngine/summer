@@ -1,0 +1,27 @@
+id: skill/game-feel
+kind: skill
+version: 1.0.2
+summary: "Add juice: hit-flash, trauma-based camera shake, and audio ducking wired so one hit fires all three — for games that feel flat or lack impact."
+use_when:
+  - a Summer game feels flat, lacks impact, needs juice or punch
+  - the user asks for hit feedback, screen shake, camera shake, or audio ducking
+facets:
+  lifecycle:
+    - build
+  domains:
+    - vfx
+    - gameplay
+  modalities:
+    - scenes
+    - scripts
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/audio-direction
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/visual-effects/game-feel

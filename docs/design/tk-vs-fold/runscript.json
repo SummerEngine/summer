@@ -1,0 +1,45 @@
+{
+  "elapsed_ms": 43,
+  "results": [
+    {
+      "budget_enforced": true,
+      "budget_exceeded": false,
+      "checkpoint": {
+        "error": "No SummerGit checkpoint was taken because project rewind is disabled. This run is NOT rewindable.",
+        "ok": false,
+        "reason": "checkpoint_capability_disabled"
+      },
+      "duration_ms": 40,
+      "errors": [],
+      "had_edited_scene": true,
+      "line_offset": 2,
+      "lines_truncated": 0,
+      "no_rewind_point": true,
+      "no_rewind_reason": "No SummerGit checkpoint was taken because project rewind is disabled. This run is NOT rewindable. (checkpoint_capability_disabled) The scene script still ran — these changes cannot be rewound with SummerGit, so verify the result and consider a manual checkpoint before continuing.",
+      "normalizations": [
+        "prepended `extends RefCounted` (the source had no extends line)",
+        "prepended `@tool` (a non-tool script only gets a placeholder instance in the editor and never runs)"
+      ],
+      "ok": true,
+      "op": "RunSceneScript",
+      "output": [],
+      "ran": true,
+      "reports": {
+        "placed": true,
+        "script_attached": true,
+        "script_reload_err": 0
+      },
+      "result": null,
+      "rolled_back": false,
+      "stderr": [],
+      "undo_action": "registered"
+    }
+  ],
+  "skippedCount": 0,
+  "status": "ok",
+  "stopOnError": true,
+  "undoGroup": false,
+  "requestId": "mcp-e10d414c-3559-40f6-8a57-33cb94fecd2f",
+  "terminalState": "applied",
+  "appliedSeq": 3
+}

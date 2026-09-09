@@ -1,0 +1,43 @@
+id: tool/get-studio-workflow
+kind: tool
+version: 1.0.2
+summary: "Discover Summer Studio's guided workflow recipes: starter prompts, ordered steps, required tools, and honest support levels."
+use_when:
+  - planning a multi-step asset workflow like sprite sheets or character packs
+  - '"what is the recommended sequence for a full character with animations?"'
+  - '"which tools do I need for a tileset pack?"'
+do_not_use_when:
+  - you already know the exact tool to call — call it
+facets:
+  lifecycle:
+    - build
+  domains:
+    - generate
+    - pipeline
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_get_studio_workflow
+implementation:
+  module: src/mcp/tools/generate-tools.ts
+  export: registerGenerateTools
+surfaces:
+  mcp:
+    tool_name: summer_get_studio_workflow
+    remote: true
+input_schema:
+  type: object
+  properties:
+    workflowId:
+      type: string
+      description: Guided workflow id, e.g. sprite-sheet, character-pack, asset-pack, or component-compiler
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false

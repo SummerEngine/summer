@@ -1,0 +1,50 @@
+id: tool/save-scene
+kind: tool
+version: 1.0.2
+summary: Save an explicit scene to disk, for standalone saves or save-as.
+use_when:
+  - a standalone save or save-as is needed
+  - '"save a copy of this scene as level1_backup.tscn"'
+  - the user explicitly asks to save
+do_not_use_when:
+  - after ordinary mutation tools, which already append one save
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - editor
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_save_scene
+implementation:
+  module: src/mcp/tools/scene-tools.ts
+  export: registerSceneTools
+surfaces:
+  mcp:
+    tool_name: summer_save_scene
+    remote: false
+input_schema:
+  type: object
+  properties:
+    scenePath:
+      type: string
+      description: Scene to save, e.g. 'res://main.tscn'
+    path:
+      type: string
+      description: Optional save-as path, e.g. 'res://levels/level2.tscn'
+  required:
+    - scenePath
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - scene-valid

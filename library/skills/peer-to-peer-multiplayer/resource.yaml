@@ -1,0 +1,28 @@
+id: skill/peer-to-peer-multiplayer
+kind: skill
+version: 1.0.4
+summary: Start a multiplayer game from scratch with peer-to-peer host authority — network architecture built top-down, before writing game logic.
+use_when:
+  - starting a multiplayer Summer game from scratch with peer-to-peer host authority, before writing game logic
+  - I want to play co-op or online with friends and the game doesn't exist yet
+facets:
+  lifecycle:
+    - build
+  domains:
+    - multiplayer
+    - project
+  modalities:
+    - scripts
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/host-authoritative-state
+    - skill/setup-multiplayer
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/multiplayer-and-networking/peer-to-peer-multiplayer

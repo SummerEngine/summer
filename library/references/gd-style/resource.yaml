@@ -1,0 +1,24 @@
+id: reference/gd-style
+kind: reference
+version: 1.0.2
+summary: GDScript style conventions for Summer — the tiebreaker where Godot's official style guide is silent; skills should produce code matching this.
+use_when:
+  - writing or reviewing GDScript in a Summer project
+  - authoring a skill that emits GDScript code
+do_not_use_when:
+  - writing C# (this covers GDScript conventions only)
+facets:
+  lifecycle: [ build ]
+  domains:
+    - scripting
+    - conventions
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - references/gd-style.md
+lint_exceptions:
+  - url-allowlist
+lint_exception_reason: Body is migrated byte-identical from references/gd-style.md and cites the official Godot GDScript style guide on docs.godotengine.org (read-only documentation link).

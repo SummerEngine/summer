@@ -1,0 +1,33 @@
+id: skill/scene-to-level
+kind: skill
+version: 1.0.3
+summary: Go from a scene reference image or concept art to a playable scene — orchestrates concept, asset pack, terrain, composition, and scene assembly.
+use_when:
+  - going from a scene reference image or concept art to a playable Summer Engine scene populated with the right assets and terrain
+  - the user shares concept art or a reference screenshot and wants that location built as a playable scene
+facets:
+  lifecycle:
+    - build
+  domains:
+    - level-design
+    - game-design
+  modalities:
+    - scenes
+    - assets
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/character-portrait
+    - skill/create-asset-sheet
+    - skill/pixel-art
+    - skill/sprite-sheet
+    - skill/tileable-texture
+    - skill/use-widget-asset
+    - skill/design-mechanic
+    - skill/design-level
+source: official
+license: MIT
+status: stable
+aliases:
+  - skills/level-design/scene-to-level

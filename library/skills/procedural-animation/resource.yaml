@@ -1,0 +1,33 @@
+id: skill/procedural-animation
+kind: skill
+version: 1.0.3
+summary: Runtime bone modification on top of clips — head look-at, foot IK, hand-grabs-prop, additive lean, recoil. Code-and-modifier patterns, not generation.
+use_when:
+  - the user needs runtime-driven bone modification on top of clips — head look-at, foot IK on uneven ground, additive lean, hit recoil, ragdoll
+  - the character's feet float above or sink into stairs and slopes (foot placement)
+facets:
+  lifecycle:
+    - build
+  domains:
+    - animation
+    - 3d
+  modalities:
+    - animation
+    - scripts
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/character-animation-wiring
+    - skill/design-npc
+    - skill/animation-tree
+    - skill/facial-and-lipsync
+    - skill/generate-motion
+    - skill/fps-controller
+    - skill/retarget
+source: official
+license: MIT
+status: stable
+recommended: false
+aliases:
+  - skills/animation/procedural-animation

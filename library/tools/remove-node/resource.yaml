@@ -1,0 +1,51 @@
+id: tool/remove-node
+kind: tool
+version: 1.0.2
+summary: Remove a node and all its children from a scene; undoable, but destructive.
+use_when:
+  - deleting scene content the user asked to remove
+  - '"delete the old camera" / "get rid of the debug label"'
+  - removing the placeholder cube now that the real model is in
+do_not_use_when:
+  - bulk-deleting top-level nodes without an explicit user request
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - editor
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_remove_node
+implementation:
+  module: src/mcp/tools/scene-tools.ts
+  export: registerSceneTools
+surfaces:
+  mcp:
+    tool_name: summer_remove_node
+    remote: false
+input_schema:
+  type: object
+  properties:
+    scenePath:
+      type: string
+      description: Target scene path, e.g. 'res://main.tscn'
+    path:
+      type: string
+      description: Node path to remove, e.g. './World/OldEnemy'
+  required:
+    - scenePath
+    - path
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - scene-valid

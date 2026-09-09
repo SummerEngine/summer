@@ -1,0 +1,36 @@
+id: skill/facial-and-lipsync
+kind: skill
+version: 1.0.2
+summary: Make a character's mouth move with a voice-over — phoneme extraction from audio, viseme blendshape mapping, and emotional facial expressions.
+use_when:
+  - the user has (or wants) a voice-over and needs the character's mouth to move with the words
+  - adding emotional facial expressions (smile, frown, surprise)
+facets:
+  lifecycle:
+    - build
+  domains:
+    - animation
+    - 3d
+  modalities:
+    - animation
+    - audio
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/character-animation-wiring
+    - skill/design-npc
+    - skill/animation-tree
+    - skill/generate-motion
+    - skill/procedural-animation
+    - skill/retarget
+source: official
+license: MIT
+status: stable
+recommended: false
+aliases:
+  - skills/animation/facial-and-lipsync
+lint_exceptions:
+  - url-allowlist
+  - install-command
+lint_exception_reason: Official skill with a documented dependency on the specific pinned OSS tool rhubarb-lip-sync (its GitHub repo URLs and `brew install rhubarb-lip-sync`) plus the ElevenLabs voice library it pairs with; the install is a user-consented step spelled out in the body, not an agent-autonomous action.

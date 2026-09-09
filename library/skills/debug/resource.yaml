@@ -1,0 +1,31 @@
+id: skill/debug
+kind: skill
+version: 1.0.4
+summary: Disciplined bug/crash/error loop for Summer projects — script errors, console, debugger, hypothesis, fix, verify — before making code or scene changes.
+use_when:
+  - the user reports a bug, crash, error, or unexpected behavior in a Summer project, before making code or scene changes
+  - the player falls through the floor or clips through walls
+  - the game freezes or nothing happens when I press a key
+  - it crashes when I open the inventory or load a scene
+facets:
+  lifecycle:
+    - build
+  domains:
+    - debug
+    - verification
+  modalities:
+    - scripts
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/make-game
+    - skill/scene-composition
+    - skill/gdscript-patterns
+source: official
+license: MIT
+status: stable
+recommended: true
+aliases:
+  - skills/debugging/debug

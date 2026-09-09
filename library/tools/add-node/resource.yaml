@@ -1,0 +1,60 @@
+id: tool/add-node
+kind: tool
+version: 1.0.2
+summary: Add a node of any Godot type to an exact scene, which does not need to be the active editor tab.
+use_when:
+  - building out scene structure node by node
+  - '"add a Camera3D / DirectionalLight3D / Area2D / Timer to this scene"'
+  - giving the player a child node for a hitbox, sprite, or audio player
+do_not_use_when:
+  - placing an existing .tscn prefab or imported model — summer_instantiate_scene
+  - 3+ related nodes or any computed placement — summer_run_script
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - editor
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_add_node
+implementation:
+  module: src/mcp/tools/scene-tools.ts
+  export: registerSceneTools
+surfaces:
+  mcp:
+    tool_name: summer_add_node
+    remote: false
+input_schema:
+  type: object
+  properties:
+    scenePath:
+      type: string
+      description: Target scene path, e.g. 'res://main.tscn'
+    parent:
+      type: string
+      description: Parent node path, e.g. './World' or './World/Enemies'
+    type:
+      type: string
+      description: Summer Engine node type, e.g. 'MeshInstance3D', 'CharacterBody3D'
+    name:
+      type: string
+      description: Name for the new node, e.g. 'Player', 'MainCamera'
+  required:
+    - scenePath
+    - parent
+    - type
+    - name
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - scene-valid

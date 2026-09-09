@@ -1,0 +1,52 @@
+id: tool/batch
+kind: tool
+version: 1.0.3
+summary: Run multiple engine ops in one call, forwarded verbatim; one undo step unless single-only ops force a split (then one per chunk). Also reaches raw ops.
+use_when:
+  - multi-node builds that should undo as one step (no single-only ops in the list)
+  - reaching engine ops that have no dedicated tool
+do_not_use_when:
+  - you need the whole list to be exactly one undo step but it contains a single-only op (the engine splits it; expect one undo step per chunk)
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - editor
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_batch
+implementation:
+  module: src/mcp/tools/scene-tools.ts
+  export: registerSceneTools
+surfaces:
+  mcp:
+    tool_name: summer_batch
+    remote: false
+input_schema:
+  type: object
+  properties:
+    scenePath:
+      type: string
+      description: Required when ops contains scene mutations; exact res:// target scene path
+    ops:
+      type: array
+      items:
+        type: object
+        additionalProperties: {}
+      description: Array of operation objects, each with 'op' plus its parameters
+  required:
+    - ops
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - scene-valid

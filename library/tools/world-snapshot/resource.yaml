@@ -1,0 +1,60 @@
+id: tool/world-snapshot
+kind: tool
+version: 1.0.2
+summary: Compact structured snapshot of the edited scene (paths, transforms, world AABBs, fingerprints, counts) — the cheap read before and after every mutation batch.
+use_when:
+  - taking a diffable baseline before a mutation batch, or verifying transforms/AABBs/fingerprints after one
+  - '"where exactly is everything in this scene?" — positions, sizes, bounds'
+  - '"are these two props overlapping?" / "is anything floating?"'
+do_not_use_when:
+  - you only need the hierarchy shape — summer_get_scene_tree
+  - "requires an engine build with GetWorldSnapshot (engine PR #156); on current shipped engines this returns engine_lacks_op"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - verification
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/snapshot-diff
+    - tool/get-scene-tree
+    - tool/screenshot
+    - tool/navigation-probe
+    - tool/test-placement
+  skills:
+    - skill/verifying-scenes
+    - skill/scene-scripting
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_world_snapshot
+implementation:
+  module: src/mcp/tools/perception-tools.ts
+  export: registerPerceptionTools
+surfaces:
+  mcp:
+    tool_name: summer_world_snapshot
+    remote: false
+input_schema:
+  type: object
+  properties:
+    scene_path:
+      type: string
+      description: Scene to snapshot, e.g. 'res://main.tscn'. Omit for the currently edited scene.
+    max_nodes:
+      type: integer
+      exclusiveMinimum: 0
+      description: Node cap (engine default 4000). The result declares truncation — never assume a capped list is complete.
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

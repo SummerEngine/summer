@@ -1,0 +1,69 @@
+id: tool/get-console
+kind: tool
+version: 1.0.3
+summary: Read recent editor Output panel messages, deduplicated and filterable by level, type, or substring. Editor console only - never the post-play verdict.
+use_when:
+  - diagnostics report console issues and you need the message bodies
+  - '"what did the game print?" / "show me the log output"'
+  - checking whether your print() statements fired
+do_not_use_when:
+  - runtime errors with stack traces — summer_get_debugger_errors
+  - compile errors in a script you just edited — summer_get_script_errors
+  - the post-play verdict — a played game's runtime errors live in the debugger, so this can report 0 errors after a failing run; read summer_get_diagnostics first
+facets:
+  lifecycle:
+    - build
+  domains:
+    - debug
+    - editor
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_get_console
+implementation:
+  module: src/mcp/tools/debug-tools.ts
+  export: registerDebugTools
+surfaces:
+  mcp:
+    tool_name: summer_get_console
+    remote: false
+input_schema:
+  type: object
+  properties:
+    max_lines:
+      type: number
+      default: 100
+      description: Max lines to return after dedupe (default 100)
+    filter:
+      type: string
+      description: Only return lines containing this string
+    type:
+      type: string
+      enum:
+        - error
+        - warning
+        - std
+        - editor
+      description: Filter by message type at the engine level
+    errors_only:
+      type: boolean
+      default: true
+      description: Drop info/std noise, keep errors and warnings (default true)
+    strict_errors:
+      type: boolean
+      default: false
+      description: Drop warnings too — return errors only
+    raw:
+      type: boolean
+      default: false
+      description: Bypass dedupe and level filtering — return engine output verbatim
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

@@ -1,0 +1,39 @@
+### 15:42:20 launch FOLD engine offscreen on local project (isolated HOME, pointer published, ephemeral webview)
+api-token published: yes after ~3s ; engine alive=yes
+### A. context / capability skew
+ctx: exit=0 ok=None status=None terminal=None failure_reason=None err=None bytes=19476
+  engine=0.5.65 opKinds=117 runtimeControl.ops=16 launchPostures=['focus', 'background', 'offscreen']
+  capabilitySkewWarning=Engine/CLI version skew detected: engine does not advertise 6 op(s) this CLI can send (Navigate, TestPlacement3D, SnapToSurface, AlignDistribute3D, NavigationProbe3D, Starcast3D). Non-fatal — affected tools return a structured engine_lacks_
+### B. open scene + tree
+open: exit=0 ok=None status=ok terminal=applied failure_reason=None err=None bytes=473
+tree: exit=0 ok=True status=None terminal=None failure_reason=None err=None bytes=465
+### C. RUN-SCRIPT: author GDScript, attach to NEW node, save
+runscript: exit=0 ok=None status=ok terminal=applied failure_reason=None err=None bytes=1528
+  ran=None ok=None exit_code=None reports=None errors=None failure_reason=None
+  on-disk main.tscn: MitlProbe=1 embedded-script=2
+### D. PLAY (quiet) then read the PLACED node from the RUNNING game
+play: exit=0 ok=None status=ok terminal=applied failure_reason=None err=None bytes=515
+isrun: exit=0 ok=None status=ok terminal=applied failure_reason=None err=None bytes=503
+rtree: exit=0 ok=None status=ok terminal=applied failure_reason=None err=None bytes=773
+  runtime tree mentions MitlProbe: True failure_reason=None
+rnode: exit=0 ok=None status=ok terminal=applied failure_reason=None err=None bytes=870
+  >>> PLACED CODE RAN IN GAME: YES ticks=263 failure_reason=None snippet={
+  "results": [
+    {
+      "node": {
+        "children_names": [],
+        "class": "Label",
+        "path": "/root/Main/MitlProbe",
+        "properties": {
+ 
+### E. preview tools against a capable engine
+wsnap: exit=0 ok=None status=ok terminal=applied failure_reason=None err=None bytes=1326
+probe: exit=0 ok=None status=ok terminal=applied failure_reason=None err=None bytes=855
+  probe same-frame read: YES MITL_ALIVE 285 failure_reason=None
+diag: exit=0 ok=True status=None terminal=None failure_reason=None err=None bytes=1712
+shot: exit=0 ok=True status=None terminal=None failure_reason=None err=None bytes=1427
+stop: exit=0 ok=None status=ok terminal=applied failure_reason=None err=None bytes=430
+### F. teardown
+engines left: 0 ; REAL ~/.summer touched: 0 ; session adopted/planted: 0 ; engine ERRORs: 1
+ERROR: HTTPRequest is processing a request. Wait for completion or cancel it before attempting a new one.
+### DONE 15:42:37

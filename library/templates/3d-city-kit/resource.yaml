@@ -1,0 +1,24 @@
+id: template/3d-city-kit
+kind: template
+version: 1.0.2
+summary: Construction starter for importing and navigating large 3D city kits in Summer Engine.
+use_when:
+  - building a game on a large imported 3D city kit
+facets:
+  lifecycle: [ build ]
+  domains:
+    - 3d
+    - world-building
+    - asset-import
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - template-3d-city-kit
+repo: https://github.com/SummerEngine/template-3d-city-kit
+commit: 2635fc8372435940e6b7415934fe0c2896c8c967
+tree_digest: 24f7f044e86a8d5505898584125c3046fa15e665f5b60965d4776152b6f0cc2c
+default_branch: codex/importable-template
+systems: [ kit-import, navigation, world ]

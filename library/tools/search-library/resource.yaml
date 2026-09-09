@@ -1,0 +1,81 @@
+id: tool/search-library
+kind: tool
+version: 1.0.0
+summary: Search the Summer library by describing the task in plain words — ranked entries of every kind, with the id to load next via summer_read_library.
+use_when:
+  - the first move for any task, before building anything — find the entry that covers what the user asked
+  - not sure which entry (skill, tool, template, reference) applies to the task at hand
+  - narrowing the library to one kind with the kinds filter, or hiding preview entries
+do_not_use_when:
+  - you already hold an exact id — load it with summer_read_library
+  - looking for assets (models, textures, sounds) — summer_search_assets searches the asset library, not the knowledge library
+  - looking up an engine class, property, or method name — summer_api_docs
+facets:
+  lifecycle:
+    - build
+    - launch
+    - grow
+    - support
+  domains:
+    - agent-workflow
+    - meta
+    - mcp
+  modalities:
+    - docs
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/read-library
+    - tool/library-feedback
+  skills:
+    - skill/using-summer
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_search_library
+implementation:
+  module: src/mcp/tools/library-tools.ts
+  export: registerLibraryTools
+surfaces:
+  mcp:
+    tool_name: summer_search_library
+    remote: true
+input_schema:
+  type: object
+  properties:
+    query:
+      type: string
+      minLength: 1
+      maxLength: 300
+      description: The task in plain words — what you are building, fixing, or looking for.
+    kinds:
+      type: array
+      items:
+        type: string
+        enum:
+          - tool
+          - skill
+          - example
+          - template
+          - collection
+          - reference
+      description: Restrict to these kinds. Omit for all kinds.
+    limit:
+      type: integer
+      minimum: 1
+      maximum: 20
+      description: Maximum results, 1-20 (default 8).
+    include_preview:
+      type: boolean
+      description: Include status preview entries — not yet exercised in-engine by the Summer team (default true). false = stable only.
+  required:
+    - query
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false

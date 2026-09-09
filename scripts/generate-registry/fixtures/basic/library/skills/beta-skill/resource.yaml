@@ -1,0 +1,13 @@
+id: skill/beta-skill
+kind: skill
+version: 0.1.0
+summary: Fixture skill without frontmatter, exercising fallbacks.
+use_when:
+  - testing fallback naming
+  - exercising slug and summary fallbacks when SKILL.md has no frontmatter
+facets:
+  lifecycle: [build]
+  domains: [meta, verification]
+source: official
+license: MIT
+status: preview

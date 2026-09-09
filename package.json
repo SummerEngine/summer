@@ -1,6 +1,6 @@
 {
   "name": "summer-engine",
-  "version": "2.8.2",
+  "version": "3.0.0",
   "description": "Local Summer CLI and MCP server for Summer Engine. Install and run the engine, connect Claude Code, Cursor, Codex, Gemini, and other agents, and build real games with bundled skills, hooks, and plugins.",
   "keywords": [
     "summer-engine",
@@ -40,12 +40,13 @@
   },
   "files": [
     "dist/",
-    "skills/",
-    "references/",
+    "library/",
+    "registry/generated/",
+    "registry/schemas/",
+    "integrations/",
     "commands/",
     "hooks/",
     "assets/",
-    "_persona/",
     ".claude-plugin/",
     ".cursor-plugin/",
     ".codex-plugin/",
@@ -65,27 +66,31 @@
     "build": "npm run clean && tsc",
     "dev": "tsc --watch",
     "summer": "node dist/bin/summer.js",
-    "test": "vitest run",
-    "test:public-language": "vitest run src/lib/public-surface-language.test.ts",
+    "test": "vitest run && npm run validate:library",
+    "validate:library": "node scripts/validate-library/cli.ts",
+    "eval:routing": "node evals/routing/runner.ts",
+    "eval:routing:heldout": "node evals/routing/runner.ts --heldout",
+    "eval:canary": "node evals/canary/canary-gateway.ts",
+    "eval:outcomes": "node evals/outcomes/runner.ts",
     "test:watch": "vitest",
-    "prepublishOnly": "npm run build && npm test"
+    "prepublishOnly": "npm run build && npm test",
+    "generate:registry": "node scripts/generate-registry/cli.ts",
+    "generate:product-map": "npm run build && node scripts/navigation/render-product-map.ts",
+    "sync:web-routes": "npm run build && node scripts/navigation/sync-web-routes.ts"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.0",
-    "@modelcontextprotocol/sdk": "^1.0.0",
-    "ai": "^6.0.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "commander": "^12.0.0",
-    "diff": "^7.0.0",
     "open": "^10.0.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
-    "@types/diff": "^7.0.0",
     "@types/node": "^20.0.0",
     "typescript": "^5.5.0",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "yaml": "^2.9.0"
   }
 }

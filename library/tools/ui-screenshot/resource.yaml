@@ -1,0 +1,63 @@
+id: tool/ui-screenshot
+kind: tool
+version: 1.0.0
+summary: PNG of the editor window or one dock/dialog/control as an image — the pixels-last fallback for looking at the editor UI, never for picking click coordinates.
+use_when:
+  - '"show me what the editor looks like right now" / "screenshot the Inspector dock" — seeing layout or an unfamiliar panel after summer_ui_tree has described it'
+  - sanity-checking an editor-UI step visually when the structured read-back is not enough
+do_not_use_when:
+  - verifying scene work — summer_screenshot (viewport, scene render with framing camera, or the running game) is the visual-verification tool for scenes
+  - reading a control's state (checked, current_tab, text) — summer_ui_tree is exact and far cheaper
+  - picking coordinates to click — there is no coordinate click; summer_ui_activate takes tree paths
+  - a headless editor — no renderer, no pixels (no_renderer); use summer_ui_tree
+  - "requires an engine build with UiScreenshot (engine PR #156 follow-up, wave L); on current shipped engines this returns engine_lacks_op"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - editor
+    - agent-workflow
+    - verification
+  modalities:
+    - images
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/ui-tree
+    - tool/ui-actions
+    - tool/ui-activate
+    - tool/screenshot
+  skills:
+    - skill/driving-the-editor-ui
+    - skill/verifying-scenes
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_ui_screenshot
+implementation:
+  module: src/mcp/tools/ui-tools.ts
+  export: registerUiTools
+surfaces:
+  mcp:
+    tool_name: summer_ui_screenshot
+    remote: false
+input_schema:
+  type: object
+  properties:
+    root:
+      type: string
+      description: Same grammar as summer_ui_tree root — 'window' (default; the whole editor window), 'main', 'dock:<title|id>', 'dialog:<title>', 'path:<node path>'. A Control or embedded dialog is cropped out of the root viewport texture; a native OS sub-window is not in it (native_subwindow).
+    max_size:
+      type: integer
+      description: Longest edge in pixels after downscale (engine default 1024, clamped 16-4096). Smaller is cheaper to look at; the result reports scale.
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - screenshot

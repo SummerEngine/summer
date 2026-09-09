@@ -69,7 +69,7 @@ node dist/bin/summer.js setup cursor --local-dev --yes    # ~/.cursor/mcp.json  
 npx -y summer-engine@latest setup claude-code --yes --force
 ```
 
-That rewrites the MCP entry to `npx -y summer-engine@latest mcp` and re-copies the published skills (`--force` wipes the checkout's copies first).
+That rewrites the MCP entry to `npx -y summer-engine@latest mcp` and re-copies the published skills (`--force` wipes the checkout's copies first). While a release soaks on the `next` dist-tag, `npx -y summer-engine@next setup claude-code --yes --force --channel next` — without `--channel next` the entry would run `@latest`, i.e. the previous release.
 
 ## d. Quick verification, no agent involved
 

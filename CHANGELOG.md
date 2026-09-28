@@ -2,11 +2,6 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
-
-### Added
-- `summer_play` takes `players`, `spectators` and `queue` for Local Play on Summer multiplayer games. The engine starts the game's authority headless plus that many clients on this machine, each joining through the game's own `Summer.client.join`, with scenes and queue taken from the project's `summer.build.json`. The result's `local_play` block lists every process. An engine without Local Play ignores the keys and runs one client; the tool adds `local_play_note` saying so.
-
 ## [3.1.1] - 2026-09-11
 
 ### Fixed

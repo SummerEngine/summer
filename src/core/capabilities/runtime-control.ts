@@ -994,7 +994,7 @@ export const playGameExtensionSchema = {
     .max(64)
     .optional()
     .describe(
-      "Local Play for a Summer multiplayer game (engine with Local Play): start the game's authority headless plus this many clients on this machine, each joining through the game's own Summer.client.join. The scenes and queue come from the project's summer.build.json WorldDefinition; no account, Docker or game flags are needed. 0 forces one ordinary run. The result's local_play block lists every process and persona."
+      "Local Play for a Summer multiplayer game (engine with Local Play): start the game's authority headless plus this many clients on this machine, each joining through the game's own Summer.client.join. The scenes and queue come from the project's summer.build.json WorldDefinition; no account, Docker or game flags are needed. Omit it and pass queue to start the queue's minPlayers from summer.build.json; 0 forces one ordinary run. The result's local_play block lists every process and persona, plus warnings when the roster is outside the queue's minPlayers..maxPlayers."
     ),
   spectators: z
     .number()

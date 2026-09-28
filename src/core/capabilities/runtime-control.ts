@@ -987,25 +987,6 @@ export const playGameExtensionSchema = {
     .number()
     .optional()
     .describe("User time scale applied on session start, (0, 100] — e.g. 0.5 for half speed."),
-  players: z
-    .number()
-    .int()
-    .min(0)
-    .max(64)
-    .optional()
-    .describe(
-      "Local Play for a Summer multiplayer game (engine with Local Play): start the game's authority headless plus this many clients on this machine, each joining through the game's own Summer.client.join. The scenes and queue come from the project's summer.build.json WorldDefinition; no account, Docker or game flags are needed. Omit it and pass queue to start the queue's minPlayers from summer.build.json; 0 forces one ordinary run. The result's local_play block lists every process and persona, plus warnings when the roster is outside the queue's minPlayers..maxPlayers."
-    ),
-  spectators: z
-    .number()
-    .int()
-    .min(0)
-    .optional()
-    .describe("Local Play: also start this many spectator clients (only with players)."),
-  queue: z
-    .string()
-    .optional()
-    .describe("Local Play: the summer.build.json queue the local World stands in for (default: the first declared queue)."),
   focus: z
     .boolean()
     .optional()
@@ -1025,15 +1006,6 @@ export interface PlayGameArgs {
   speed?: number;
   /** true = today's toolbar-style launch (Game tab + focus). Absent/false = quiet. */
   focus?: boolean;
-  /** Local Play: headless authority + this many clients (0 = one ordinary run). */
-  players?: number;
-  spectators?: number;
-  queue?: string;
-}
-
-/** True when the caller asked for Local Play parameters at all. */
-export function playRequestsLocalPlay(args: PlayGameArgs): boolean {
-  return args.players !== undefined || args.spectators !== undefined || args.queue !== undefined;
 }
 
 /**
@@ -1060,8 +1032,7 @@ export function playNeedsOp(args: PlayGameArgs): boolean {
     args.seed !== undefined ||
     args.fixed_fps !== undefined ||
     args.time_scale !== undefined ||
-    args.speed !== undefined ||
-    playRequestsLocalPlay(args)
+    args.speed !== undefined
   );
 }
 
@@ -1102,28 +1073,6 @@ export function buildPlayGameOp(args: PlayGameArgs): BuiltRuntimeOp {
   if (args.speed !== undefined && (typeof args.speed !== "number" || !Number.isFinite(args.speed) || args.speed <= 0 || args.speed > 100)) {
     throw new ToolInputError("speed must be a number in (0, 100].");
   }
-  if (playRequestsLocalPlay(args)) {
-    if (args.players !== undefined && (!isInt(args.players) || args.players < 0 || args.players > 64)) {
-      throw new ToolInputError("players must be an integer 0..64 (0 forces one ordinary run).");
-    }
-    if (args.spectators !== undefined && (!isInt(args.spectators) || args.spectators < 0)) {
-      throw new ToolInputError("spectators must be an integer >= 0.");
-    }
-    if ((args.players ?? 0) + (args.spectators ?? 0) > 64) {
-      throw new ToolInputError("players + spectators must be at most 64.");
-    }
-    if (args.spectators !== undefined && args.spectators > 0 && args.players === 0) {
-      throw new ToolInputError("spectators need players > 0.");
-    }
-    if (args.queue !== undefined && (typeof args.queue !== "string" || args.queue.trim().length === 0)) {
-      throw new ToolInputError("queue must be a queue name declared in summer.build.json.");
-    }
-    if (instance.length > 0 && instance !== "main") {
-      throw new ToolInputError(
-        "Local Play (players/spectators/queue) runs the editor's main game; it does not combine with an offscreen instance."
-      );
-    }
-  }
   const op: Record<string, unknown> = { op: "PlayGame" };
   if (typeof args.scene === "string" && args.scene.trim().length > 0) op.scene = args.scene.trim();
   // Quiet concerns the editor's embedded Game view only; an offscreen
@@ -1136,9 +1085,6 @@ export function buildPlayGameOp(args: PlayGameArgs): BuiltRuntimeOp {
   if (args.fixed_fps !== undefined) op.fixed_fps = args.fixed_fps;
   if (args.time_scale !== undefined) op.time_scale = args.time_scale;
   if (args.speed !== undefined) op.speed = args.speed;
-  if (args.players !== undefined) op.players = args.players;
-  if (args.spectators !== undefined) op.spectators = args.spectators;
-  if (args.queue !== undefined) op.queue = args.queue.trim();
   return { kind: "PlayGame", op, timeoutMs: PLAY_INSTANCE_TIMEOUT_MS };
 }
 
@@ -1165,23 +1111,6 @@ export function withPlayInstanceEcho(result: unknown, args: PlayGameArgs): unkno
     warning:
       `This Summer Engine build did not echo \`instance\` in its PlayGame result — it predates instance-aware play and has most likely started the MAIN embedded game, ignoring instance:'${args.instance ?? ""}' / mode:'${args.mode ?? "embedded"}'. Verify with summer_is_running or summer_game_control action:'instances' before addressing that instance, and update Summer Engine for parallel instances.`,
   };
-}
-
-export const PLAY_LOCAL_PLAY_NOT_SUPPORTED =
-  "This Summer Engine build did not echo `local_play` in its PlayGame result — it predates Local Play and started ONE ordinary client, not a local authority plus the requested players. Update to an engine with Local Play (SummerEngine main after PR #415; restart it after updating).";
-
-/**
- * Local Play was requested with players > 0: an engine with Local Play echoes
- * `local_play` (applied, or applied:false with a reason). No echo means an
- * engine that ignored the keys and ran one client — say so.
- */
-export function withLocalPlayEcho(result: unknown, args: PlayGameArgs): unknown {
-  if (!playRequestsLocalPlay(args) || args.players === 0 || !result || typeof result !== "object") return result;
-  if (extractOpError(result)) return result;
-  const envelope = result as Record<string, unknown> & { results?: Array<Record<string, unknown>> };
-  const payload = envelope.results?.[0] ?? envelope;
-  if (payload.local_play && typeof payload.local_play === "object") return result;
-  return { ...envelope, local_play_note: PLAY_LOCAL_PLAY_NOT_SUPPORTED };
 }
 
 export const PLAY_QUIET_NOT_SUPPORTED =
@@ -1233,11 +1162,8 @@ export async function playGame(client: PlayGameClient, args: PlayGameArgs): Prom
     if (missing) return missing;
   }
   const result = await client.executeOps([op], undefined, timeoutMs);
-  return withLocalPlayEcho(
-    withPlayPostureEcho(
-      withPlayInstanceEcho(withRuntimeFailureHints(withOldEngineHint(result, "PlayGame", PLAY_INSTANCE_FALLBACK)), args),
-      args
-    ),
+  return withPlayPostureEcho(
+    withPlayInstanceEcho(withRuntimeFailureHints(withOldEngineHint(result, "PlayGame", PLAY_INSTANCE_FALLBACK)), args),
     args
   );
 }

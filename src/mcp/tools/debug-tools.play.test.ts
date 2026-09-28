@@ -49,10 +49,28 @@ afterEach(() => {
 describe("summer_play — instance-aware / deterministic variants", () => {
   it("exposes the playtest launch parameters and teaches the loop", () => {
     const play = tool("summer_play");
-    expect(Object.keys(play.shape).sort()).toEqual(["deterministic", "fixed_fps", "focus", "instance", "mode", "scene", "seed", "speed", "time_scale"]);
-    for (const phrase of ["summer_is_running", "seed_scope", "summer_game_control", "agent-playtesting", "too_many_instances", "QUIET BY DEFAULT", "agent_quiet", "focus:true"]) {
+    expect(Object.keys(play.shape).sort()).toEqual(["deterministic", "fixed_fps", "focus", "instance", "mode", "players", "queue", "scene", "seed", "spectators", "speed", "time_scale"]);
+    for (const phrase of ["summer_is_running", "seed_scope", "summer_game_control", "agent-playtesting", "too_many_instances", "QUIET BY DEFAULT", "agent_quiet", "focus:true", "LOCAL PLAY", "local_play", "summer.build.json"]) {
       expect(play.description).toContain(phrase);
     }
+  });
+
+  it("players starts a Local Play session through the PlayGame op and flags an engine without it", async () => {
+    const play = vi.fn();
+    const executeOps = vi.fn().mockResolvedValue({
+      ok: true,
+      results: [{ ok: true, op: "PlayGame", playing: true, agent_quiet: true, local_play: { applied: true, port: 7787, players: 2 } }],
+    });
+    vi.mocked(getClient).mockResolvedValue({ play, executeOps } as never);
+    const result = (await tool("summer_play").handler({ players: 2 })) as { isError?: boolean; content: Array<{ text: string }> };
+    expect(result.isError).toBeUndefined();
+    expect(play).not.toHaveBeenCalled();
+    expect(executeOps.mock.calls[0]![0]).toEqual([{ op: "PlayGame", agent: true, players: 2 }]);
+    expect(result.content[0]!.text).not.toContain("local_play_note");
+
+    executeOps.mockResolvedValueOnce({ ok: true, results: [{ ok: true, op: "PlayGame", playing: true, agent_quiet: true }] });
+    const old = (await tool("summer_play").handler({ players: 2 })) as { content: Array<{ text: string }> };
+    expect(old.content[0]!.text).toContain("local_play_note");
   });
 
   it("plain focus:true play still takes the legacy /api/play route byte-for-byte", async () => {

@@ -898,7 +898,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     if (args.raw === true) return engineResult;
     return shapeEngineLogResponse(engineResult, { maxEntries: maxWarnings }).result;
   }),
-  entry("summer_play", "Start the game quietly (no Game-tab switch or focus grab; focus:true for the toolbar-style launch) — main scene or a specific scene; seed/fixed_fps/time_scale pins, instance/mode for playtests", true, async (args, ctx) => {
+  entry("summer_play", "Start the game quietly (no Game-tab switch or focus grab; focus:true for the toolbar-style launch) — main scene or a specific scene; seed/fixed_fps/time_scale pins, instance/mode for playtests, players for a Local Play multiplayer session", true, async (args, ctx) => {
     const seed = optNumberOrUndefined(args, "seed");
     const fixedFps = optNumberOrUndefined(args, "fixed_fps");
     const timeScale = optNumberOrUndefined(args, "time_scale");
@@ -918,6 +918,9 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       time_scale: timeScale,
       speed,
       focus: typeof args.focus === "boolean" ? args.focus : undefined,
+      players: optNumberOrUndefined(args, "players"),
+      spectators: optNumberOrUndefined(args, "spectators"),
+      queue: optStr(args, "queue"),
     };
     if (args.focus !== undefined && typeof args.focus !== "boolean") throw new ToolDispatchError("focus must be a boolean");
     const requested = pickPlayDeterminism({ seed, fixed_fps: fixedFps, time_scale: timeScale });

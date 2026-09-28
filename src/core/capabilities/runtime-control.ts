@@ -1168,7 +1168,7 @@ export function withPlayInstanceEcho(result: unknown, args: PlayGameArgs): unkno
 }
 
 export const PLAY_LOCAL_PLAY_NOT_SUPPORTED =
-  "This Summer Engine build did not echo `local_play` in its PlayGame result — it predates Local Play and started ONE ordinary client, not a local authority plus the requested players. Update to an engine with Local Play (feature/summermultiplayer after PR #410; restart it after updating).";
+  "This Summer Engine build did not echo `local_play` in its PlayGame result — it predates Local Play and started ONE ordinary client, not a local authority plus the requested players. Update to an engine with Local Play (SummerEngine main after PR #415; restart it after updating).";
 
 /**
  * Local Play was requested with players > 0: an engine with Local Play echoes

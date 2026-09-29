@@ -923,6 +923,45 @@
       "recommended": true
     },
     {
+      "id": "skill/choose-where-players-play",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "cd8040f85117817f421dd56eaeb4187c3250b63f323544296a09681cfce36afa",
+      "summary": "Ask where people will play a new game (Summer Games app, desktop/Steam, consoles) before coding; it decides language, renderer, controls and testing.",
+      "use_when": [
+        "starting a new game, before scaffolding or writing code",
+        "the user asks which platforms the game can run on, or whether to use GDScript or C++",
+        "the user wants the game on phones, web, Steam or consoles and the stack is not chosen yet"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "deployment",
+          "project",
+          "game-design"
+        ],
+        "modalities": [
+          "docs",
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/make-game",
+          "skill/export-and-ship",
+          "skill/host-authoritative-state",
+          "skill/tune-performance"
+        ]
+      },
+      "status": "preview",
+      "recommended": true
+    },
+    {
       "id": "skill/cinematic-cutscene",
       "kind": "skill",
       "version": "1.0.4",
@@ -1362,7 +1401,7 @@
       "id": "skill/export-and-ship",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "459ad769af5e734676659117ce4fbb3226668b5e41211afc3373b45a52ed8bba",
+      "content_hash": "eaed218b3935e0c82cedc5d061d24fc2c60f0181febfaa6d6d0458516817e7fe",
       "summary": "Assess and prepare a game export: inventory installed templates and targets, validate release assets and config, produce supported builds after approval.",
       "use_when": [
         "the user wants to assess or prepare a Summer game export — Steam, itch, HTML5, iOS, Android targets as available in the installed build",
@@ -1385,6 +1424,7 @@
       },
       "related": {
         "skills": [
+          "skill/choose-where-players-play",
           "skill/debug",
           "skill/tune-performance"
         ]
@@ -1729,7 +1769,7 @@
       "id": "skill/host-authoritative-state",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "8a1a930a2146a57f69454dac4b4dcf18e58e3b3bb80a4a17db1863034b56f070",
+      "content_hash": "727c7edbab3cc0f6f1cf12af5d09255356afecfab3e5cd1e951f90fa1ad0d2b4",
       "summary": "Design the state layer of a multiplayer game — what the host owns, how clients request changes, and how the host validates and broadcasts.",
       "use_when": [
         "designing the state layer of a multiplayer Summer game: host ownership, client change requests, host validation and broadcast",
@@ -1753,6 +1793,7 @@
       },
       "related": {
         "skills": [
+          "skill/choose-where-players-play",
           "skill/peer-to-peer-multiplayer",
           "skill/setup-multiplayer"
         ]
@@ -1868,7 +1909,7 @@
       "id": "skill/make-game",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "03a6d9893371b1fd8f6b27cb7e7da2aab59c210b86fc8675cae68b982493c300",
+      "content_hash": "cdc70e5e1e4490025d9c39550f83265278bbd17c6aa6ecd6a6c77beb568bc575",
       "summary": "Orchestration spine for 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship — delegates to specialist skills.",
       "use_when": [
         "the user says 'make me a game', 'build me a game', 'I want to make a [genre] game', or 'let's build something' — running the full game-dev pipeline",
@@ -1892,6 +1933,7 @@
       },
       "related": {
         "skills": [
+          "skill/choose-where-players-play",
           "skill/audio-direction",
           "skill/export-and-ship",
           "skill/design-mechanic",
@@ -3037,7 +3079,7 @@
       "id": "skill/tune-performance",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "09e4496efe1f63f83803ed53cf96ff8eefab179e706a2288809e345fbde6b26f",
+      "content_hash": "7d853fb12bb8e09a0765dba2f3c4a048cee6f37faa32e0f615a56ca119cb4347",
       "summary": "Profile a slow game via summer_get_diagnostics, identify rendering/physics/scripting hotspots, propose fixes with before/after metric expectations.",
       "use_when": [
         "the game is slow, drops framerate, stutters, takes forever to start, or runs poorly on specific hardware",
@@ -3061,6 +3103,7 @@
       },
       "related": {
         "skills": [
+          "skill/choose-where-players-play",
           "skill/running-in-the-cloud",
           "skill/scene-scripting",
           "skill/debug",

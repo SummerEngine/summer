@@ -1,6 +1,6 @@
 # Summer skills
 
-> 94 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
+> 95 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
 
 The folder is flat on purpose (`docs/design/DECISIONS.md`, D3): a skill usually belongs to several domains, so categories live in each skill's `facets.domains` and this index is rendered from them. The first domain listed is the primary one. `summer skills list --by-domain` prints the same grouping; `summer skills info <slug>` shows one skill.
 
@@ -17,7 +17,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 - [audio](#audio) (6)
 - [character-controller](#character-controller) (1)
 - [debug](#debug) (1)
-- [deployment](#deployment) (2)
+- [deployment](#deployment) (3)
 - [editor](#editor) (1)
 - [gameplay](#gameplay) (3)
 - [level-design](#level-design) (2)
@@ -132,6 +132,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 
 | skill | when to use | also |
 |---|---|---|
+| [*choose-where-players-play*](./choose-where-players-play/SKILL.md) ★ (preview) | Ask where people will play a new game (Summer Games app, desktop/Steam, consoles) before coding; it decides language, renderer, controls and testing. | project, game-design |
 | [export-and-ship](./export-and-ship/SKILL.md) ★ | Assess and prepare a game export: inventory installed templates and targets, validate release assets and config, produce supported builds after approval. | project |
 | [remote-deploy](./remote-deploy/SKILL.md) ★ | Run or test the game on a real device — phone, tablet, another computer — via the Remote Deploy button, runnable export presets, and on-device debugging. | project |
 

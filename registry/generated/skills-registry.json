@@ -226,6 +226,20 @@
       ]
     },
     {
+      "id": "skill/choose-where-players-play",
+      "name": "choose-where-players-play",
+      "description": "Ask where people will play a new game (Summer Games app, desktop/Steam, consoles) before coding; it decides language, renderer, controls and testing.",
+      "clients": "all",
+      "recommended": true,
+      "status": "preview",
+      "path": "library/skills/choose-where-players-play/",
+      "domains": [
+        "deployment",
+        "project",
+        "game-design"
+      ]
+    },
+    {
       "id": "skill/cinematic-cutscene",
       "name": "cinematic-cutscene",
       "description": "Generate a non-interactive cutscene — reference-locked look, a 5-10s image-to-video shot, optional TTS dialogue — wired as a fading VideoStreamPlayer.",

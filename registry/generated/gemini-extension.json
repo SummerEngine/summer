@@ -41,6 +41,7 @@
     "./library/skills/character-animation-wiring/",
     "./library/skills/character-model/",
     "./library/skills/character-portrait/",
+    "./library/skills/choose-where-players-play/",
     "./library/skills/cinematic-cutscene/",
     "./library/skills/concept-art/",
     "./library/skills/create-asset-sheet/",

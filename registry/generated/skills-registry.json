@@ -970,6 +970,19 @@
       ]
     },
     {
+      "id": "skill/summer-multiplayer",
+      "name": "summer-multiplayer",
+      "description": "Build a GDScript multiplayer game on Summer: dedicated authority, typed state groups, validated Commands, player-data saves, Local Play bot tests.",
+      "clients": "all",
+      "recommended": true,
+      "status": "preview",
+      "path": "library/skills/summer-multiplayer/",
+      "domains": [
+        "multiplayer",
+        "scripting"
+      ]
+    },
+    {
       "id": "skill/tileable-texture",
       "name": "tileable-texture",
       "description": "Generate a seamless tileable texture for walls, floors, or terrain — repeats cleanly on all four edges, wired as a StandardMaterial3D albedo.",

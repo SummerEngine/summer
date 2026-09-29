@@ -1,6 +1,6 @@
 # Summer skills
 
-> 95 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
+> 96 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
 
 The folder is flat on purpose (`docs/design/DECISIONS.md`, D3): a skill usually belongs to several domains, so categories live in each skill's `facets.domains` and this index is rendered from them. The first domain listed is the primary one. `summer skills list --by-domain` prints the same grouping; `summer skills info <slug>` shows one skill.
 
@@ -21,7 +21,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 - [editor](#editor) (1)
 - [gameplay](#gameplay) (3)
 - [level-design](#level-design) (2)
-- [multiplayer](#multiplayer) (3)
+- [multiplayer](#multiplayer) (4)
 - [navigation](#navigation) (1)
 - [performance](#performance) (1)
 - [rendering](#rendering) (4)
@@ -164,6 +164,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [host-authoritative-state](./host-authoritative-state/SKILL.md) ★ | Design the state layer of a multiplayer game — what the host owns, how clients request changes, and how the host validates and broadcasts. | game-design |
 | [peer-to-peer-multiplayer](./peer-to-peer-multiplayer/SKILL.md) ★ | Start a multiplayer game from scratch with peer-to-peer host authority — network architecture built top-down, before writing game logic. | project |
 | [setup-multiplayer](./setup-multiplayer/SKILL.md) ★ | Add multiplayer to an existing game — LAN/online co-op, PvP, lobbies — via MultiplayerAPI, MultiplayerSpawner, and MultiplayerSynchronizer. | scripting |
+| [*summer-multiplayer*](./summer-multiplayer/SKILL.md) ★ (preview) | Build a GDScript multiplayer game on Summer: dedicated authority, typed state groups, validated Commands, player-data saves, Local Play bot tests. | scripting |
 
 ## navigation
 

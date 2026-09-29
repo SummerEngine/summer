@@ -18,6 +18,7 @@ compatibility:
   engine: ">=4.6"
 related:
   skills:
+    - skill/summer-multiplayer
     - skill/host-authoritative-state
     - skill/setup-multiplayer
 source: official

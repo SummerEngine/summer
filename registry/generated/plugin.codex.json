@@ -95,6 +95,7 @@
     "./library/skills/sound-effect/",
     "./library/skills/spatial-placement/",
     "./library/skills/sprite-sheet/",
+    "./library/skills/summer-multiplayer/",
     "./library/skills/tileable-texture/",
     "./library/skills/trailer-shot/",
     "./library/skills/tune-performance/",

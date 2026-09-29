@@ -926,7 +926,7 @@
       "id": "skill/choose-where-players-play",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "cd8040f85117817f421dd56eaeb4187c3250b63f323544296a09681cfce36afa",
+      "content_hash": "c9fddb21f7a9922b3751c9f8e87315e8dd6c6bd0650f953571f18bee3f05207a",
       "summary": "Ask where people will play a new game (Summer Games app, desktop/Steam, consoles) before coding; it decides language, renderer, controls and testing.",
       "use_when": [
         "starting a new game, before scaffolding or writing code",
@@ -952,6 +952,7 @@
       },
       "related": {
         "skills": [
+          "skill/summer-multiplayer",
           "skill/make-game",
           "skill/export-and-ship",
           "skill/host-authoritative-state",
@@ -1769,7 +1770,7 @@
       "id": "skill/host-authoritative-state",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "727c7edbab3cc0f6f1cf12af5d09255356afecfab3e5cd1e951f90fa1ad0d2b4",
+      "content_hash": "73483b1b5db2b93528f246a1c4a3e6a51ebede20657da9a465ad37e2700ed2a5",
       "summary": "Design the state layer of a multiplayer game — what the host owns, how clients request changes, and how the host validates and broadcasts.",
       "use_when": [
         "designing the state layer of a multiplayer Summer game: host ownership, client change requests, host validation and broadcast",
@@ -1793,6 +1794,7 @@
       },
       "related": {
         "skills": [
+          "skill/summer-multiplayer",
           "skill/choose-where-players-play",
           "skill/peer-to-peer-multiplayer",
           "skill/setup-multiplayer"
@@ -2102,7 +2104,7 @@
       "id": "skill/peer-to-peer-multiplayer",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "f2d1e457a4d3bb3614513f164eac64f3b80b955c1a4d4383a85ed32102b0b593",
+      "content_hash": "586eb45adb233aadf443f91cd20216345a6904f4b520d2c13b2a6ee321bb4fd4",
       "summary": "Start a multiplayer game from scratch with peer-to-peer host authority — network architecture built top-down, before writing game logic.",
       "use_when": [
         "starting a multiplayer Summer game from scratch with peer-to-peer host authority, before writing game logic",
@@ -2126,6 +2128,7 @@
       },
       "related": {
         "skills": [
+          "skill/summer-multiplayer",
           "skill/host-authoritative-state",
           "skill/setup-multiplayer"
         ]
@@ -2679,7 +2682,7 @@
       "id": "skill/setup-multiplayer",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "ee3d07414b86884052f9bfa231158579401a0bfdbe33758bc673d265c3028ba1",
+      "content_hash": "3277efd7d0e240a8b52f0ebba0b9b87399aa4d5150c1b4dc171912aeb70a55f3",
       "summary": "Add multiplayer to an existing game — LAN/online co-op, PvP, lobbies — via MultiplayerAPI, MultiplayerSpawner, and MultiplayerSynchronizer.",
       "use_when": [
         "adding multiplayer to an existing Summer game: co-op LAN, co-op online, competitive PvP, or a lobby",
@@ -2703,6 +2706,7 @@
       },
       "related": {
         "skills": [
+          "skill/summer-multiplayer",
           "skill/peer-to-peer-multiplayer",
           "skill/host-authoritative-state"
         ]
@@ -3002,6 +3006,43 @@
       },
       "status": "stable",
       "recommended": false
+    },
+    {
+      "id": "skill/summer-multiplayer",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "3a153ea82f98364478a602cd8e2e0f20b8aa49c4e07ea0e3e95e8287caff63f2",
+      "summary": "Build a GDScript multiplayer game on Summer: dedicated authority, typed state groups, validated Commands, player-data saves, Local Play bot tests.",
+      "use_when": [
+        "making a multiplayer or co-op game that players join through Summer (Summer Games app, web, desktop)",
+        "wiring client/authority networking, replicated state, player actions or cross-server saves in Summer",
+        "testing multiplayer locally with two clients"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "scripting"
+        ],
+        "modalities": [
+          "scripts",
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.7"
+      },
+      "related": {
+        "skills": [
+          "skill/choose-where-players-play",
+          "skill/host-authoritative-state",
+          "skill/setup-multiplayer"
+        ]
+      },
+      "status": "preview",
+      "recommended": true
     },
     {
       "id": "skill/tileable-texture",

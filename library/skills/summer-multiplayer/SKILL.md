@@ -25,6 +25,10 @@ Two files at the project root:
   `client_entry_point` scene, and one `headless_engine` component whose `entry_point` is the authority scene.
 - `summer.build.json`: a queue that names the World definition, with `minPlayers`/`maxPlayers`.
 
+Each entry point is an ordinary scene whose root is a plain `Node` with the script attached (for example
+`res://main.tscn` with `client.gd`, `res://net/authority.tscn` with `authority.gd`). Put the shared network
+script in `res://net/net.gd` with a `class_name` so both roles can reference it.
+
 Why: Local Play and hosting both start the authority from these; nothing is inferred from scenes.
 
 ## 2. One composition, built by both roles
@@ -58,13 +62,18 @@ In `command_received(request)`: identity is `request.get_session().player.user_i
 field. Apply the action, then `request.accept({}, {"b": <result bytes>})` or
 `request.refuse(&"reason")`. Refusal reasons are stable ids the client maps to friendly text.
 
+Private per-player state: `spawner.create_state_group(stream, key, initial, null, null, session)`. The
+positional arguments are writer session, entity and target session; a private authority-written group
+passes `null` writer and entity and the player's Session as target.
+
 Put a request id in every Command and keep the last results per player. A retry with the same id returns
 the stored result instead of applying twice. Why: a timed-out Command may already have been applied; a
 blind resend would double-spend.
 
 ## 4. Save players, not servers
 
-For drop-in servers, keep progress in **player data** so it follows the player to any server:
+Shared World state (the "match") ends with the World: a new World starts from scratch. Only player data
+carries over. For drop-in servers, keep progress in **player data** so it follows the player to any server:
 `Summer.authority.player_data.load(session)` when the Session joins, `commit_secret(session, save_id, data)`
 (one JSON object, 64 KiB, authority-only) while playing and when it leaves.
 
@@ -72,8 +81,12 @@ For drop-in servers, keep progress in **player data** so it follows the player t
   client retries **with the same request id**.
 - A failed load is not an empty profile. Refuse the join; never start a fresh save over data you
   couldn't read.
-- One commit in flight per player. Retry a failed commit with the **same** `save_id`. Stop on
-  `player_data_superseded`: a newer Session owns that player now.
+- Commit while playing, not only on leave: mark a player dirty when their data changes and, every few
+  seconds, commit dirty players. Give each new save a new `save_id`; one commit in flight per player.
+  Retry a failed commit with the **same** `save_id`. Stop on `player_data_superseded`: a newer Session owns
+  that player now.
+- A client that quits right after its last action can outrun the save: flush (commit and wait) on
+  `session_left`, and in tests let bots wait a second before quitting.
 - Measure a maximal save against 64 KiB in a test. Refuse to save over the limit; never truncate.
 
 ## 5. Client
@@ -94,9 +107,11 @@ documents change it.
 <summer> --path . --summer-local-play 2 --summer-local-play-headless -- --bot={client}
 ```
 
-Local Play starts the authority and the clients; arguments after `--` reach every process, with
-`{client}` replaced per process. Give the game a bot mode that plays the real loop, prints one
-`RESULT {...}` line and quits. Drop `--summer-local-play-headless` to watch the windows side by side.
+Run one import pass first (`<summer> --headless --path . --import`) so new `class_name` scripts are
+registered. Local Play starts the authority and the clients; arguments after `--` reach every process,
+with `{client}` replaced by 1, 2, ... (0 for the authority). Read them with
+`OS.get_cmdline_user_args()`. Give the game a bot mode that plays the real loop, prints one
+`RESULT {...}` line and quits. Run the test twice to prove player data persisted. Drop `--summer-local-play-headless` to watch the windows side by side.
 `--summer-local-play-smoke` only proves that clients joined.
 
 Headless clients have no real display: guard `DisplayServer` keyboard/window calls, or they log an error

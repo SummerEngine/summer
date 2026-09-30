@@ -174,6 +174,22 @@ ID in its world save before applying, and ignores an ID it already recorded.
 *Why:* the platform inventory is the only proof the purchase happened, and the
 recorded ID makes a retry or a replayed message grant once.
 
+```gdscript
+# On the dedicated authority. `redeemed` is saved with the world.
+func redeem(session: SummerSession, owned_item_id: String) -> void:
+	if redeemed.has(owned_item_id):
+		return # a retried or replayed message grants once
+	var op := Summer.authority.items.inventory_for_session(session)
+	var result: SummerResult = await op.get_result_or_completed_signal()
+	if not result.ok:
+		return # refuse for now; the client may ask again later
+	for item in op.items:
+		if item.item_id == owned_item_id and item.state == &"owned":
+			redeemed[owned_item_id] = true # record before applying, then save
+			apply_grow_now(session)
+			return
+```
+
 Not yet available: consuming the item from the authority, so the same item
 could be redeemed again in a different world. Until the authority consume
 operation ships, keep such effects scoped to one persistent world, or refuse

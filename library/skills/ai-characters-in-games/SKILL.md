@@ -17,7 +17,7 @@ A talking flower, a shopkeeper who answers questions, a companion who reacts to 
 
 **Core principle:** the game never talks to an AI provider. It asks Summer, as the signed-in player, for a reply from a persona the developer declared. Summer holds the keys (you never bring your own), moderates both directions, charges the cost to the developer's Summer credits and can switch the feature off per game. The game treats every AI answer as optional flavour on top of an offline brain that always works.
 
-**Status: preview.** `Summer.client.ai` ships with an upcoming Summer Engine release. The example checks for it at runtime and reads `status().details.capabilities` before using a call, and uses the offline brain whenever either is missing, so a game written this way ships today and gains AI replies when the platform turns them on.
+**Status: preview.** `Summer.client.ai` ships with an upcoming Summer Engine release. The example checks for it at runtime and reads the `capabilities` of `status()` before using a call, and uses the offline brain whenever either is missing, so a game written this way ships today and gains AI replies when the platform turns them on.
 
 ## When to use
 
@@ -63,28 +63,30 @@ When credits or a limit run out, players get `credits_exhausted` or `limit_excee
 `Summer.client.ai` exists only on engines that include it; everywhere else it is `null`. Every method returns a `SummerOperation`. Await it race-free:
 
 ```gdscript
+var op: Object = ai.reply(persona_id, text)
 var r: SummerResult = await op.get_result_or_completed_signal()
 ```
 
-Then use `r.ok`, `r.code`, `r.retryable` and `r.details` (a Dictionary). The engine creates request ids itself.
+`r.ok`, `r.code` and `r.retryable` say how it went; the answer itself is on the operation, a `SummerAIOperation` (`op.text`, `op.audio`, ...), because replies and voice clips are larger than a result's `details`. Type it as `Object` so the script still parses on engines without that class. The engine creates request ids itself.
 
-| Call | `details` on success |
+| Call | Set on the operation on success |
 | --- | --- |
-| `status()` | `available: bool`, `reason: String` (`""` or one of the failure codes below: `ai_disabled`, `age_policy`, `credits_exhausted`, `limit_exceeded`, `unavailable`, `unsupported`), `personas: Array` of `{id, name, has_voice}`, `capabilities: Array` (`"reply"`, `"transcribe"`, `"speak"`, `"report"`), `version: String`. `status` never fails for policy reasons. |
+| `status()` | `available: bool`, `reason: String` (`""` or one of the failure codes below: `ai_disabled`, `age_policy`, `credits_exhausted`, `limit_exceeded`, `unavailable`, `unsupported`), `personas: Array` of `{id, name, has_voice}`, `capabilities: PackedStringArray` (`"reply"`, `"transcribe"`, `"speak"`, `"report"`), `version: String`. `status` never fails for policy reasons. |
 | `reply(persona_id, text, conversation_id = "")` | `exchange_id`, `persona_id`, `text`, `moderated: bool`. `text` is 1 to 500 characters. |
-| `transcribe(audio: PackedByteArray, mime_type, language = "")` | `text`. At most 15 seconds and 1 MiB, as `audio/wav`, `audio/ogg`, `audio/mpeg`, `audio/webm` or `audio/mp4`. Audio is not stored. |
+| `transcribe(audio: PackedByteArray, mime_type, language = "")` | `text`. At most 240 KiB and 15 seconds (compressed `audio/ogg` or `audio/webm` fits more speech than WAV), as `audio/wav`, `audio/ogg`, `audio/mpeg`, `audio/webm` or `audio/mp4`. Audio is not stored. |
 | `speak(exchange_id)` | `exchange_id`, `mime_type` (`audio/mpeg`), `audio: PackedByteArray`. Only the player's own reply, within an hour of it. Voice is the largest cost: speak only for personas with `has_voice`, and consider voicing on tap. |
 | `report(exchange_id, reason, details = "")` | `report_id`, `status`. The player's own reply, within 30 days. |
 
-`moderated: true` is not an error: the persona's safe line replaced the answer. Show it like any reply. Field names are snake_case in GDScript (`exchange_id`, `has_voice`).
+`moderated: true` is not an error: the persona's safe line replaced the answer. Show it like any reply. Names are snake_case in GDScript (`op.exchange_id`, `persona.has_voice`). After `limit_exceeded` or `rate_limited`, `op.retry_after_seconds` says when asking again can succeed.
 
 In multiplayer, never broadcast text a client sent you. The dedicated authority verifies the exchange and broadcasts the text Summer returns:
 
 ```gdscript
 var ai: Object = Summer.authority.get("ai")
-var r: SummerResult = await ai.verify_exchange(session, exchange_id).get_result_or_completed_signal()
+var check: Object = ai.verify_exchange(session, exchange_id)
+var r: SummerResult = await check.get_result_or_completed_signal()
 if r.ok:
-	broadcast_line(r.details.persona_id, r.details.text)  # exactly what that player was shown
+	broadcast_line(check.persona_id, check.text)  # exactly what that player was shown; check.player_id said it
 # not_found: forged, another player's, or older than an hour. Drop it.
 ```
 
@@ -140,9 +142,10 @@ func say(player_text: String) -> void:
 		return
 	var ai := _gateway()
 	if _ai_ready and ai != null:
-		var r: SummerResult = await ai.reply(persona_id, text, _conversation_id).get_result_or_completed_signal()
+		var op: Object = ai.reply(persona_id, text, _conversation_id)
+		var r: SummerResult = await op.get_result_or_completed_signal()
 		if r.ok:
-			replied.emit(str(r.details.text), str(r.details.exchange_id), true)
+			replied.emit(op.text, op.exchange_id, true)
 			return
 		# Transient codes (provider_error, unavailable, rate_limited) fall through
 		# for this line only.
@@ -155,10 +158,11 @@ func speak(exchange_id: String, player: AudioStreamPlayer) -> void:
 	var ai := _gateway()
 	if not _can_speak or ai == null or exchange_id == "":
 		return
-	var r: SummerResult = await ai.speak(exchange_id).get_result_or_completed_signal()
+	var op: Object = ai.speak(exchange_id)
+	var r: SummerResult = await op.get_result_or_completed_signal()
 	if r.ok:
 		var stream := AudioStreamMP3.new()
-		stream.data = r.details.audio
+		stream.data = op.audio
 		player.stream = stream
 		player.play()
 
@@ -171,12 +175,13 @@ func _gateway_available() -> bool:
 	var ai := _gateway()
 	if ai == null:
 		return false
-	var r: SummerResult = await ai.status().get_result_or_completed_signal()
-	if not r.ok or not r.details.get("available", false) or not "reply" in r.details.get("capabilities", []):
+	var op: Object = ai.status()
+	var r: SummerResult = await op.get_result_or_completed_signal()
+	if not r.ok or not op.available or not "reply" in op.capabilities:
 		return false
-	for p in r.details.get("personas", []):
+	for p in op.personas:
 		if p.id == persona_id:
-			_can_speak = p.has_voice and "speak" in r.details.capabilities
+			_can_speak = p.has_voice and "speak" in op.capabilities
 	return true
 
 ## The only place that knows how the engine exposes the gateway. Engines

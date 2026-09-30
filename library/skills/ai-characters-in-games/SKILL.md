@@ -48,11 +48,11 @@ Not for scripted dialogue trees (design-npc) or for enemy behaviour.
 
 ## Top up and set limits
 
-AI characters are paid from the Summer credits of the developer who turned them on: usage is billed from your Summer credits, and spend is visible in your dashboard. Players never pay. There is nothing to configure in the game project.
+AI characters are paid from the Summer credits of the developer who turned them on: usage is billed from your Summer credits. Cost depends on the models and voices you choose. Your dashboard shows spend as it happens, and your limits cap it. Players never pay. There is nothing to configure in the game project.
 
 1. In Summer Studio, open the game and its **AI characters** section.
 2. Add a persona per character: name, a plain-words description, an optional voice, reply length, a safe line in character, and the model (from the models the game allows; each shows its price).
-3. Set the limits: per player per day, per game per day (Summer caps this too), per game per month, and optional per-model daily caps. Set the refill amount.
+3. Set the limits: per player per day (up to $5), per game per rolling 24 hours (up to $500), per game per month, and optional per-model daily caps. Set the refill amount ($1 to $100; $5 by default).
 4. Turn **Enable** on. Saving makes you the funding developer: Summer moves your credits into the game's AI balance in refill-sized chunks as it runs low.
 5. Top up credits from the billing page when the balance is low. **Withdraw unused AI credits** returns what no call has reserved.
 

@@ -393,7 +393,7 @@
       "id": "skill/ai-characters-in-games",
       "kind": "skill",
       "version": "0.3.0",
-      "content_hash": "ed54b9355ca967ca530edc3ea1bc91d09b889ba31e9531dbbf24ce2ef65709bc",
+      "content_hash": "343e8afdbc0daf012fe3bc0dd55b0289605ff3b8e0ed11e33660972f618db7e5",
       "summary": "Safe AI characters in published games: no keys in the build, replies via Summer's player AI gateway, moderation, spend caps, offline brain and a report button.",
       "use_when": [
         "a character, creature or object should answer free-form player text or speech in a published game (talking flowers, shopkeepers, companions)",

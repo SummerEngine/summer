@@ -69,6 +69,8 @@ queries:
     expected: [skill/procedural-animation]
   - query: "reuse the zombie animations on my new skeleton model"
     expected: [skill/retarget]
+  - query: "make my rigged flower nod and wave one of its leaves"
+    expected: [skill/text-to-motion]
 
   # ── Audio ──────────────────────────────────────────────────────────────
   - query: "make a satisfying click sound for the UI"

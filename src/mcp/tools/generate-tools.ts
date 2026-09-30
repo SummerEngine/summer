@@ -1,6 +1,12 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { imageGenerationArgsSchema } from "../../core/capabilities/image-generation.js";
+import {
+  buildMotionRequestBody,
+  motionErrorHint,
+  motionGenerationArgsSchema,
+  motionJobFailureHint,
+} from "../../core/capabilities/motion-generation.js";
 import { writeFile, mkdir } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
@@ -777,103 +783,86 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
   // ========================================================================
   // summer_generate_motion
   //
-  // NOTE (2026-05-10): only the "meshy-library" backend is exposed today.
-  // The "hunyuan-custom" path exists in the Studio route but has not been
-  // tested end-to-end on a user's rig (Hunyuan returns a generic skeleton
-  // FBX that isn't retargeted onto the caller's character). The schema and
-  // call are kept commented-out below — re-enable by restoring the wider
-  // zod enum, the prompt/durationSeconds params, the validation branch, and
-  // the relevant description lines once the path is verified.
+  // Backends exposed: "meshy-library" (curated humanoid mocap by name) and
+  // "text-to-motion" (Summer-hosted model, any of the caller's own rigs, from
+  // text prompts; default-off on the server until enabled, which answers 400
+  // backend_unavailable). The Studio route's "hunyuan-custom" stays hidden: it
+  // returns a generic skeleton FBX that is not retargeted onto the caller's
+  // rig. The shared zod shape + body builder live in
+  // core/capabilities/motion-generation.ts so `summer tool generate-motion`
+  // validates identically.
   // ========================================================================
   server.tool(
     "summer_generate_motion",
-    `Generate an animation clip for a Meshy-rigged humanoid character via Summer Engine Studio.
+    `Generate animation clips for a rigged 3D model via Summer Engine Studio.
 
-Backend:
-  - "meshy-library" — picks a clip from a curated mocap set by name (idle, walk,
-    run, attack_sword, jump, ~70 standard names). Fast (~30s), cheap (~$0.10),
-    real mocap quality.
+Backends (pick one):
+  - "meshy-library" (default) — a curated mocap clip by motionName on a
+    Summer-rigged humanoid (rigAssetId from summer_generate_3d with
+    options.rig=true). Fast (~30s), cheap (~$0.10), real mocap quality.
+    Names that always work: idle, walk, run, jump, attack; anything else must
+    be an exact library name.
+  - "text-to-motion" — custom 2-second clips (60 frames) from text prompts on
+    ANY of your own rigged models: humanoid, animal, creature, cartoon plant,
+    prop (GLB/FBX 3d_model, one skinned armature, 5-70 bones). Use it for
+    actions the library lacks (nod, bow, shrug, wave with the right arm) and
+    for non-humanoid rigs. Pass prompt or prompts (1-8), optional takes (1-4),
+    cfgScale (1.5-8, default 3; 5 for clearer gestures), and lockJoints for
+    rooted characters (e.g. ["Hips","Spine"] on a plant; never on characters
+    that walk). Human-style bone names (Hips, Spine, LeftArm...) animate far
+    better, even on non-humans. Jobs take ~1-2 min; result.assets lists one
+    animation asset per prompt x take.
 
-Requires a Meshy-rigged humanoid as the target. The 'rigAssetId' must come from
-a prior summer_generate_3d call with options.rig=true.
+Each clip (meshy: each motion; text-to-motion: each prompt x take) is billed.
+State the clip list and estimated cost and confirm with the user before
+spending.
 
-By default, waits for completion (up to 5 min) and returns the result directly.
-Set wait=false to get the jobId immediately and poll manually with summer_check_job.
+By default, waits for completion (up to 10 min) and returns the result directly.
+Set wait=false to get the jobId immediately and poll with summer_check_job.
+Import finished clips with summer_import_asset_by_id.
 
-Common motion names:
-  Locomotion: idle, idle_alert, idle_combat, walk, walk_back, run, sprint,
-              crouch_idle, crouch_walk, jump, jump_loop, jump_land
-  Combat: attack_sword, attack_punch, attack_kick, attack_bow, attack_cast,
-          block, dodge_left, dodge_right, hit_react, death
-  Social: wave, dance, sit_idle
-
-Cost: ~$0.10 per clip. Confirm with user before spending.
-
-Custom prompt-driven motion is on the roadmap; not yet shipped. For one-off
-signature moves not on the curated list, fall back to hand-authoring in the
-Summer Engine or importing from Mixamo.
+Errors: backend_unavailable means text-to-motion is not enabled on this server
+yet — use meshy-library for humanoids and do not retry. Job failures starting
+"text_motion:" (no skinned armature, too many/few joints, unknown joint) are
+input problems and are refunded; fix the rig or request instead of retrying.
 
 Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
 Requires authentication: run 'npx -y summer-engine@latest login' first.`,
-    {
-      rigAssetId: z
-        .string()
-        .describe("Asset ID of a rigged character (from summer_generate_3d with options.rig=true)"),
-      backend: z
-        .enum(["meshy-library"])
-        .default("meshy-library")
-        .describe("Backend: meshy-library (only option today)"),
-      motionName: z
-        .string()
-        .describe("Curated motion name: walk, run, attack_sword, idle, jump, etc."),
-      // prompt + durationSeconds reserved for the hunyuan-custom backend (not
-      // shipped yet — see header comment).
-      wait: z
-        .boolean()
-        .default(true)
-        .describe("Wait for completion (default true, up to 5 min). Set false to get jobId immediately."),
-      options: z
-        .record(z.any())
-        .optional()
-        .describe("Backend-specific passthrough"),
-    },
-    async ({ rigAssetId, backend, motionName, wait, options }) => {
-      // Client-side validation
-      if (!motionName) {
-        return errorResult(
-          "motionName is required (e.g. 'walk', 'run', 'attack_sword'). See the tool description for the curated list."
-        );
+    motionGenerationArgsSchema.shape,
+    async (args) => {
+      // Client-side validation of the backend-specific rules.
+      const built = buildMotionRequestBody(args);
+      if ("error" in built) {
+        return errorResult(built.error);
       }
 
-      const body = {
-        rigAssetId,
-        backend,
-        motionName,
-        options,
-      };
-
-      const result = await mcpGenerate("/api/mcp/generate/motion", body);
+      const result = await mcpGenerate("/api/mcp/generate/motion", built.body);
 
       if (result.error) {
-        return errorResult(result.error, result.data);
+        const hint = motionErrorHint(result.data?.error);
+        return errorResult(result.error, hint ? { ...result.data, hint } : result.data);
       }
 
       const jobId = result.data?.jobId;
 
-      if (!wait || !jobId) {
+      if (!args.wait || !jobId) {
         return successResult(result.data);
       }
 
       const pollResult = await pollJob(jobId);
 
       if (pollResult.error) {
-        return errorResult(pollResult.error, { ...pollResult.data, jobId });
+        const hint = motionJobFailureHint(pollResult.error);
+        return errorResult(pollResult.error, { ...pollResult.data, jobId, ...(hint ? { hint } : {}) });
       }
 
       return successResult({
         ...pollResult.data,
         jobId,
-        message: "Motion generation complete. animationAssetId is in result.",
+        message:
+          args.backend === "text-to-motion"
+            ? "Motion generation complete. result.assets lists one animation asset per prompt x take; import with summer_import_asset_by_id."
+            : "Motion generation complete. animationAssetId is in result.",
       });
     }
   );

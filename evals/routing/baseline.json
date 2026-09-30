@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-11",
+  "generated_at": "2026-09-30",
   "corpus_source": "registry/generated/index.json",
-  "corpus_size": 208,
-  "query_count": 103,
+  "corpus_size": 209,
+  "query_count": 104,
   "gap_count": 13,
   "mean_recall_at_5": 1,
-  "mean_recall_at_1": 0.8641,
-  "mrr_at_5": 0.9385,
+  "mean_recall_at_1": 0.8654,
+  "mrr_at_5": 0.9391,
   "per_kind": {
     "reference": {
       "expected": 1,
@@ -14,8 +14,8 @@
       "recall_at_5": 1
     },
     "skill": {
-      "expected": 80,
-      "hit": 80,
+      "expected": 81,
+      "hit": 81,
       "recall_at_5": 1
     },
     "tool": {
@@ -48,6 +48,7 @@
     "make the NPC's mouth move when the voice line plays": 1,
     "the character's feet float above the stairs": 1,
     "reuse the zombie animations on my new skeleton model": 1,
+    "make my rigged flower nod and wave one of its leaves": 1,
     "make a satisfying click sound for the UI": 1,
     "I need looping background music for the title screen": 1,
     "the music should get intense when combat starts": 1,

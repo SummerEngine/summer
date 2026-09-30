@@ -1,0 +1,41 @@
+id: skill/text-to-motion
+kind: skill
+version: 1.0.0
+summary: "Custom 2-second animation clips from text prompts on any of the user's own rigged models — humanoids, animals, creatures, cartoon plants, props."
+use_when:
+  - a custom action the curated motion library lacks — nod, bow, shrug, wave with a specific arm, an emotional gesture
+  - animating a non-humanoid rig — a talking flower, animal, creature, turret or prop
+  - adding clips to an uploaded or custom-rigged GLB/FBX model
+  - '"make the flower nod" / "animate my creature from a text description"'
+do_not_use_when:
+  - a Summer-rigged humanoid needs standard idle/walk/run/jump/attack clips — generate-motion (meshy-library)
+  - the model is not rigged yet — rig it first
+  - facial animation, finger detail or lip sync — facial-and-lipsync
+facets:
+  lifecycle:
+    - build
+  domains:
+    - animation
+    - generate
+    - 3d
+  modalities:
+    - animation
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/generate-motion
+    - tool/check-job
+    - tool/import-asset-by-id
+  skills:
+    - skill/generate-motion
+    - skill/character-model
+    - skill/retarget
+    - skill/asset-strategy
+source: official
+license: MIT
+status: preview
+recommended: false
+aliases:
+  - text-motion
+  - animate-from-text

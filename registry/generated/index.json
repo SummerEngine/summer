@@ -531,8 +531,8 @@
     {
       "id": "skill/asset-strategy",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "f7a5adea3d1a289b2ea2cd7e1ba947dae295ea54b95f77f081693fff945eb3c7",
+      "version": "1.0.3",
+      "content_hash": "50b3d701471143a483b216dde6be22c0351932e6cec9c8409375caffc339a0d6",
       "summary": "Route any 'I need a [thing]' asset request to the right specialist skill — disambiguates 2D / 3D / audio / video / VFX / animation pipelines.",
       "use_when": [
         "planning asset creation, picking an asset pipeline, or routing an 'I need a [thing]' request to the right specialist skill",
@@ -571,6 +571,7 @@
           "skill/animation-tree",
           "skill/facial-and-lipsync",
           "skill/generate-motion",
+          "skill/text-to-motion",
           "skill/procedural-animation",
           "skill/retarget",
           "skill/adaptive-music",
@@ -1615,8 +1616,8 @@
     {
       "id": "skill/generate-motion",
       "kind": "skill",
-      "version": "1.0.3",
-      "content_hash": "9a1235bce123e94142a34d6acb6eb32f59cc1787b2ff1c520cd58a50eb6506d6",
+      "version": "1.0.4",
+      "content_hash": "40ecdc0ec0d9b3ed46de82d823d49a6767f4157d92cf730ca5959f14b0efe85b",
       "summary": "Attach an animation clip to a rigged character from the curated Meshy motion library — idle, walk, run, attack — wired via AnimationPlayer.",
       "use_when": [
         "the user needs an animation clip on a rigged character — idle/walk/run/attack from the curated Meshy library",
@@ -1646,6 +1647,7 @@
           "skill/facial-and-lipsync",
           "skill/procedural-animation",
           "skill/retarget",
+          "skill/text-to-motion",
           "skill/asset-strategy",
           "skill/fps-controller"
         ]
@@ -2959,6 +2961,50 @@
         ]
       },
       "status": "stable",
+      "recommended": false
+    },
+    {
+      "id": "skill/text-to-motion",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "fe0882161733d5708056d9ef5934848bef2f8bc8d0f2588950183c4150477303",
+      "summary": "Custom 2-second animation clips from text prompts on any of the user's own rigged models — humanoids, animals, creatures, cartoon plants, props.",
+      "use_when": [
+        "a custom action the curated motion library lacks — nod, bow, shrug, wave with a specific arm, an emotional gesture",
+        "animating a non-humanoid rig — a talking flower, animal, creature, turret or prop",
+        "adding clips to an uploaded or custom-rigged GLB/FBX model",
+        "\"make the flower nod\" / \"animate my creature from a text description\""
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "animation",
+          "generate",
+          "3d"
+        ],
+        "modalities": [
+          "animation"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/generate-motion",
+          "tool/check-job",
+          "tool/import-asset-by-id"
+        ],
+        "skills": [
+          "skill/generate-motion",
+          "skill/character-model",
+          "skill/retarget",
+          "skill/asset-strategy"
+        ]
+      },
+      "status": "preview",
       "recommended": false
     },
     {
@@ -5049,13 +5095,15 @@
     {
       "id": "tool/generate-motion",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "02041369d9420811e66d2cca78c2b0ea5d517c8f9263b50a041f7fb0797137ba",
-      "summary": "Generate a curated mocap animation clip for a Summer-rigged humanoid; costs credits, so confirm with the user first.",
+      "version": "1.1.0",
+      "content_hash": "717ddb290afa9515ba84e041371c78eb5e26a875bda5c9914235fb4751f5b6ef",
+      "summary": "Generate animation clips for a rigged model — curated humanoid mocap by name, or text-to-motion on any of your own rigs; costs credits, so confirm first.",
       "use_when": [
         "adding idle, walk, run, or combat clips to a rigged character",
         "\"make my character walk / run / swing a sword\"",
-        "\"I need an idle animation for the rigged NPC\""
+        "\"I need an idle animation for the rigged NPC\"",
+        "a custom action the curated library lacks — nod, bow, shrug, wave with the right arm",
+        "animating a non-humanoid rig — a talking flower, animal, creature, turret or prop"
       ],
       "facets": {
         "lifecycle": [

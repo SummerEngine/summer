@@ -38,6 +38,9 @@ day of several agents sharing one project on one Mac.
 
 - New `class_name` scripts are unknown to `-s` scripts until an import pass registers them:
   `<summer> --headless --audio-driver Dummy --path . --import`.
+- The first import may rewrite `project.godot` (reorder keys, add a `[summer]` section; one trial saw a
+  hand-written `[rendering]` section dropped). Check `git diff project.godot` after it, and pass renderer
+  choices on the command line (`--rendering-method ...`) when a run depends on them.
 - One broken `class_name` script cascades into "Could not parse global class" and dozens of unrelated
   "cannot infer type" errors. Get the real line with:
   `<summer> --headless --path . --check-only -s res://path/to/file.gd`
@@ -70,7 +73,8 @@ day of several agents sharing one project on one Mac.
 ## 5. Captures you can trust
 
 - Read every PNG you produce. If several files are identical (`md5 -r *.png`), the run froze; rerun alone.
-- Keep evidence outside the project (logs, PNGs) so imports never pick it up.
+- Keep evidence outside the project (logs, PNGs) so imports never pick it up. If it must live inside, put an
+  empty `.gdignore` file in that folder so the editor and imports skip it.
 
 ## See also
 

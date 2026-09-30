@@ -31,12 +31,20 @@ that cost real renders in a shipped-quality game, each with the fix and the reas
 |---|---|---|
 | Objects past roughly the 250th stop growing, lose color or read as default | GLES3 reserves 16 `instance uniform` slots per instance out of 4096, so only about 256 instances in the whole scene can use them. Beyond that, values silently read 0. | Don't use `instance uniform` for anything numerous. Put per-instance state in a one-instance MultiMesh's `INSTANCE_CUSTOM` (a vec4), or bake it into mesh vertex colors. |
 | Fruit/flowers render solid black | GLES3 multiplies `COLOR` by the MultiMesh instance color, which is 0 when `use_colors` is off. | Enable `use_colors` and set every instance color to white, or don't read `COLOR` in that path. |
-| Everything looks pastel on Forward+ after baking colors into vertices | Forward+ treats vertex `COLOR` as linear; baked palettes are usually sRGB. | Convert once in the shader: `if (!OUTPUT_IS_SRGB) COLOR.rgb = srgb_to_linear(COLOR.rgb);` (the same thing StandardMaterial3D does). |
+| Everything looks pastel on Forward+ (saturated on Compatibility) | Forward+ shades in linear space, Compatibility in sRGB. Colors you bake into vertex `COLOR` or hard-code into `ALBEDO` are usually sRGB. | Convert once, only where needed: `if (!OUTPUT_IS_SRGB) col = to_linear(col);` with the helper below (there is no built-in `srgb_to_linear` in 4.7 shaders). Or pass colors as `uniform vec3 c : source_color`, which converts for you. |
 | Whole scene pale/lime on Compatibility while Forward+ looks right | Tonemap, glow and ambient respond differently. | Keep a Compatibility branch of your lighting profile (lower ambient and exposure) and check both. |
 | Foliage glows white | Glow threshold too low for bright leaves. | Raise the glow HDR threshold (~1.5) and keep bloom near 0. |
 
 Everything the player must see (ripe crop, enemy, pickup) must stay readable without glow, SSR,
 volumetric fog or other Forward+-only effects: use shape, color and icons too.
+
+The helper (standard sRGB curve):
+
+```glsl
+vec3 to_linear(vec3 c) {
+	return mix(pow((c + vec3(0.055)) * (1.0 / 1.055), vec3(2.4)), c * (1.0 / 12.92), lessThan(c, vec3(0.04045)));
+}
+```
 
 ## 3. Keep one shader path
 
@@ -50,7 +58,8 @@ you test it on both renderers. One path for both renderers means one set of bugs
    (add `--rendering-method gl_compatibility` for the second run).
 2. Read both images side by side, and include a stress shot with many instances (the 256 limit only shows
    at scale).
-3. Grep the log for `SCRIPT ERROR`, `ERROR:` and shader compile errors; exit 0 is not proof.
+3. Grep the log for `SCRIPT ERROR`, `SHADER ERROR` and `ERROR:`. A shader that fails to compile still lets
+   the capture exit 0 and draws the object untextured, so a missing grep hides the failure.
 4. If later captures repeat the same frame, the offscreen run froze (it happens when another engine
    renders at the same time). Check with `md5 -r *.png` and rerun alone.
 
@@ -60,6 +69,7 @@ you test it on both renderers. One path for both renderers means one set of bugs
 - Using `instance uniform` for per-plant or per-tile state.
 - Reading `COLOR` from a MultiMesh without instance colors.
 - Testing Compatibility with ten objects when the game shows five hundred.
+- Budgeting one run per fix: every look change needs two captures (one per renderer). Plan runs in pairs.
 
 ## See also
 

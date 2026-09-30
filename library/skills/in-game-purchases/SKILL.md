@@ -67,8 +67,14 @@ Both signals deliver a status with `state`:
 | `purchased` | done; Sparks debited (checkout) or credited (Sparks) | checkout: refresh items and unlock from inventory. Sparks: say "Sparks added", let the player buy again |
 | `declined` | the player closed the sheet | return to the shop quietly |
 | `expired` | the sheet or payment timed out | same as declined |
-| `rejected` | refused; read `error_code` | checkout with `insufficient_funds`: offer "Get Sparks" |
+| `rejected` | refused; read `error_code` | checkout with `insufficient_funds`: offer "Get Sparks". Sparks: `provider_rejected`, say the payment did not go through |
 | `manual_review` | platform is checking it | "We are confirming this purchase" |
+| `refunded` | Sparks only: a credited purchase was refunded or charged back (`full_refund`, `dispute_lost`) | nothing to undo; Summer already took the Sparks back. Refresh any balance display |
+
+A Sparks request can also fail to start with `purchase_limit` (the player
+reached the daily in-game Sparks limit) or `age_required` / `adult_required`
+(only adults with a saved age can buy Sparks). Show a short message and no
+retry button. *Why:* both limits are platform policy; retrying changes nothing.
 
 The operation returned by each call also completes (`completed` signal) on
 `purchased` (ok) or a terminal failure with codes such as `checkout_declined`
@@ -149,6 +155,29 @@ func _sync_owned() -> void:
 
 After Sparks are added the player presses Buy again. That is a new checkout
 and Summer shows it again. *Why:* the player confirms each spend separately.
+
+## Multiplayer: granting an effect on a dedicated authority
+
+Buying Sparks only adds Sparks to the wallet. Anything the Sparks buy
+("Grow now", "Summon rain") is a separate checkout, and on a server the
+authority must never grant it because a client says it paid. *Why:* a client
+message is the one thing a cheater controls.
+
+Model the effect as a consumable catalog item (the offer grants one
+instance). The client checks out; the receipt's `owned_item_ids` are item
+instances in the player's Summer inventory. The client sends the authority
+only the request ID and that owned item ID. The authority reads the player's
+Session inventory through the Summer items authority
+(`inventory_for_session`) and applies the effect only if that item exists,
+belongs to that player and has the right definition. It records the owned item
+ID in its world save before applying, and ignores an ID it already recorded.
+*Why:* the platform inventory is the only proof the purchase happened, and the
+recorded ID makes a retry or a replayed message grant once.
+
+Not yet available: consuming the item from the authority, so the same item
+could be redeemed again in a different world. Until the authority consume
+operation ships, keep such effects scoped to one persistent world, or refuse
+them on a dedicated authority, as Grow Your Garden does.
 
 ## Idempotency
 

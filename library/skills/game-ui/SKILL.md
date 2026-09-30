@@ -135,7 +135,7 @@ presets (buttons, chips, bars, wood frame, banner, glass disc) in one theme scri
    - Repeat the same style sentence in every prompt: glossy cartoon mobile-game icon, thick dark
      brown outline, top highlight, no text, plain white background.
    - A 3x3 or 4x3 grid at about 900 px gives 200-250 px per icon, which is enough for a 40-120 px
-     UI. That covers about 100 icons for 13 generations (about $1.20).
+     UI. That covers about 100 icons for 13 generations.
 3. Slice locally: take the connected components of the alpha, group them by the grid cell of
    each centroid (so glows and sparkles stay with their icon), trim, and pad to a square. Name
    each file by its content id.

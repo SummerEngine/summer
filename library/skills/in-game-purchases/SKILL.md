@@ -163,8 +163,10 @@ Buying Sparks only adds Sparks to the wallet. Anything the Sparks buy
 authority must never grant it because a client says it paid. *Why:* a client
 message is the one thing a cheater controls.
 
-Model the effect as a consumable catalog item (the offer grants one
-instance). The client checks out; the receipt's `owned_item_ids` are item
+Model the effect as a consumable catalog item with instance ownership (each
+purchase is a separate item, not a stack). *Why:* a stackable (quantity) item
+shares one owned item ID across purchases, so the ID could not tell two
+purchases apart. The client checks out; the receipt's `owned_item_ids` are item
 instances in the player's Summer inventory. The client sends the authority
 only the request ID and that owned item ID. The authority reads the player's
 Session inventory through the Summer items authority

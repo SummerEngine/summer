@@ -956,6 +956,20 @@
       ]
     },
     {
+      "id": "skill/text-to-motion",
+      "name": "text-to-motion",
+      "description": "Custom 2-second animation clips from text prompts on any of the user's own rigged models — humanoids, animals, creatures, cartoon plants, props.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/text-to-motion/",
+      "domains": [
+        "animation",
+        "generate",
+        "3d"
+      ]
+    },
+    {
       "id": "skill/tileable-texture",
       "name": "tileable-texture",
       "description": "Generate a seamless tileable texture for walls, floors, or terrain — repeats cleanly on all four edges, wired as a StandardMaterial3D albedo.",

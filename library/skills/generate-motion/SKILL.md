@@ -15,10 +15,10 @@ Picks a clip from a **curated mocap library** by name and wires it onto a Meshy-
 
 The target must be a **Meshy-rigged humanoid** — a `rigAssetId` from a prior `summer_generate_3d({ kind: "image-to-3d", imageUrl: "...", options: { rig: true } })` call. The result job includes `rigAssetId`. If the user points at a non-rigged mesh, stop and route to `asset-strategy` (or directly call `summer_generate_3d` with `options.rig: true`) before generating motion.
 
-> **Custom prompt-driven motion** (e.g. "drops to one knee, draws bow") is on
-> the roadmap but not shipped yet. For one-off signature moves not on the
-> curated list, fall back to hand-authoring in Summer Engine or importing from
-> Mixamo. See the Edge cases section.
+> **Custom or non-humanoid motion** (e.g. "drops to one knee, draws bow", a
+> nodding flower, a creature) goes to the `text-to-motion` skill
+> (`backend: "text-to-motion"`) when the server has it enabled; otherwise fall
+> back to hand-authoring in Summer Engine or importing from Mixamo.
 
 ## Web Chat / Public Orchestrator Equivalent
 
@@ -50,7 +50,7 @@ After animation jobs complete, import the rig plus child animation assets togeth
 - The user wants facial / lipsync animation — that's `facial-and-lipsync`.
 - The mesh isn't rigged. Rig first; never call `summer_generate_motion` on a static `.glb`.
 - The user wants procedural look-at, IK, foot placement — that's `procedural-animation`.
-- The user described a **custom signature move** that isn't on the curated list. Today, route to the manual-authoring fallback below.
+- The user described a **custom signature move** that isn't on the curated list — use `text-to-motion`; if the server answers `backend_unavailable`, use the manual-authoring fallback below.
 
 ## Steps
 
@@ -71,7 +71,7 @@ The result must include `rigAssetId: <id>` on a Meshy rig. If it shows `rigAsset
 ```
 summer_generate_motion(
   rigAssetId: "<id>",
-  backend: "meshy-library",   // only option today
+  backend: "meshy-library",   // curated library (default)
   motionName: "run"           // exact name from the curated list — see Reference card
 )
 ```
@@ -154,11 +154,11 @@ have actually seen, or route to the manual-authoring fallback.
 ## Edge cases
 
 - **Custom signature move** (e.g. "drops to one knee, draws bow"). The custom
-  prompt-driven backend is on the roadmap but not shipped today. Workarounds:
+  prompt-driven route is `text-to-motion`. If it is unavailable, workarounds:
   hand-author the clip in Summer Engine's animation panel, import a licensed
   clip as an `AnimationLibrary`, or compose curated clips in an
   `AnimationTree` OneShot blend.
-- **Quadruped rig.** Meshy library is humanoid-only. For quadrupeds, hand-author or import a Mixamo-style external library (out of scope for this skill).
+- **Quadruped rig.** Meshy library is humanoid-only. For quadrupeds and other non-humanoid rigs use `text-to-motion`, or hand-author / import an external library.
 - **Character is < 1m tall (child / dwarf).** Library clips assume a ~1.8m humanoid. Apply the clip; the proportions retarget but stride length looks long. Either accept it or tune `playback_speed` on the AnimationPlayer track.
 - **Character has wings / tail.** The library ignores the extra bones — they sag. Hand-author additive overlays for the extra bones, or accept the visual hit.
 

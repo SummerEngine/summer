@@ -1,6 +1,7 @@
 {
   "_generated": "GENERATED — do not edit; run npm run generate:registry",
   "aliases": {
+    "animate-from-text": "skill/text-to-motion",
     "dissolve": "skill/vfx-dissolve",
     "docs/HEADLESS_ROUTING.md": "reference/headless-routing",
     "docs/MCP_FRESH_CHAT_PLAYBOOK.md": "reference/mcp-fresh-chat-playbook",
@@ -202,6 +203,7 @@
     "template-3d-royale-clash-type": "template/3d-royale-clash-type",
     "template-3d-third-person-controller": "template/3d-third-person-controller",
     "template-3d-voxel-sandbox": "template/3d-voxel-sandbox",
+    "text-motion": "skill/text-to-motion",
     "water-ripple": "skill/vfx-water-ripple"
   }
 }

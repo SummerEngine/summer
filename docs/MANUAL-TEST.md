@@ -20,9 +20,9 @@ Do NOT use `/Applications/Summer.app` (0.5.65) or `npx summer-engine@latest` (2.
 cd ~/development/summer-engine-agent-v3 && npm run build
 node dist/bin/summer.js setup claude-code --local-dev --yes
 ```
-This rewrites the `summer-engine` MCP entry in `~/.claude.json` to this checkout's build and installs the 94 skills into `~/.claude/skills`. Restart Claude Code afterwards. **Revert** at any time: `npx -y summer-engine@2.8.2 setup claude-code --yes --force`.
+This rewrites the `summer-engine` MCP entry in `~/.claude.json` to this checkout's build and installs every library skill into `~/.claude/skills`. Restart Claude Code afterwards. **Revert** at any time: `npx -y summer-engine@2.8.2 setup claude-code --yes --force`.
 
-Sanity: `node dist/bin/summer.js doctor` → exit 0, "86 tools registered", "94 skills".
+Sanity: `node dist/bin/summer.js doctor` → exit 0, "86 tools registered", and a skill count equal to `skill` in `registry/generated/counts.json`.
 
 ## 2. Launch the engine WITHOUT it taking over your machine
 

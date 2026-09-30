@@ -106,6 +106,7 @@
     "./library/skills/sound-effect/",
     "./library/skills/spatial-placement/",
     "./library/skills/sprite-sheet/",
+    "./library/skills/text-to-motion/",
     "./library/skills/tileable-texture/",
     "./library/skills/trailer-shot/",
     "./library/skills/tune-performance/",

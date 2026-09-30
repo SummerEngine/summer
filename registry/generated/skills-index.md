@@ -1,6 +1,6 @@
 # Summer skills
 
-> 94 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
+> 95 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
 
 The folder is flat on purpose (`docs/design/DECISIONS.md`, D3): a skill usually belongs to several domains, so categories live in each skill's `facets.domains` and this index is rendered from them. The first domain listed is the primary one. `summer skills list --by-domain` prints the same grouping; `summer skills info <slug>` shows one skill.
 
@@ -12,7 +12,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 - [3d](#3d) (6)
 - [agent-workflow](#agent-workflow) (17)
 - [ai](#ai) (1)
-- [animation](#animation) (6)
+- [animation](#animation) (7)
 - [assets](#assets) (3)
 - [audio](#audio) (6)
 - [character-controller](#character-controller) (1)
@@ -96,6 +96,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [generate-motion](./generate-motion/SKILL.md) ★ | Attach an animation clip to a rigged character from the curated Meshy motion library — idle, walk, run, attack — wired via AnimationPlayer. | 3d |
 | [procedural-animation](./procedural-animation/SKILL.md) | Runtime bone modification on top of clips — head look-at, foot IK, hand-grabs-prop, additive lean, recoil. Code-and-modifier patterns, not generation. | 3d |
 | [retarget](./retarget/SKILL.md) | Apply existing animation clips from one rigged character to a different rigged character — same library, multiple models, no regeneration. | 3d |
+| [*text-to-motion*](./text-to-motion/SKILL.md) (preview) | Custom 2-second animation clips from text prompts on any of the user's own rigged models — humanoids, animals, creatures, cartoon plants, props. | generate, 3d |
 
 ## assets
 

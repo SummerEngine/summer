@@ -84,6 +84,7 @@ Polycount targets (hero 8k–15k, grunt 3k–6k, mobile 1k–3k, cinematic 20k�
 | Request | Skill |
 |---|---|
 | Idle / walk / run / attack — new clip | `generate-motion` |
+| Custom action or non-humanoid rig (flower, creature, prop) — clip from text | `text-to-motion` |
 | Apply library to a different character | `retarget` |
 | Blend tree / state machine | `animation-tree` |
 | Look-at / IK / foot placement | `procedural-animation` |

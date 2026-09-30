@@ -2,6 +2,15 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- `summer_generate_motion` gains `backend: "text-to-motion"`: custom 2-second clips from text prompts on any of your own rigged models (humanoid, animal, creature, cartoon plant, prop; 5-70 bones). New fields `prompt` / `prompts` (1-8), `takes` (1-4), `lockJoints`, `cfgScale` (1.5-8) and `idempotencyKey`; one billed clip per prompt x take; poll `summer_check_job`, import with `summer_import_asset_by_id`. The server keeps the backend off until it is enabled and answers `backend_unavailable`; the tool then points back to `meshy-library`. `summer tool generate-motion` validates with the same schema.
+- `text-to-motion` skill (preview): route, rigging for non-humanoids (human bone names, the talking-flower recipe), prompts and controls, failure codes. `asset-strategy` and `generate-motion` route custom and non-humanoid motion to it.
+
+### Changed
+- `summer_generate_motion`: `motionName` is optional in the schema and still required for `meshy-library` (checked before any request); text-to-motion fields sent with `meshy-library` are rejected instead of silently ignored. The description lists the five motion aliases that always resolve instead of names that do not. `summer tool generate-motion` waits up to 10 minutes, like the MCP tool.
+
 ## [3.1.1] - 2026-09-11
 
 ### Fixed

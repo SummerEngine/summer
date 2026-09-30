@@ -46,6 +46,7 @@ import { extractOpError, withOldEngineHint } from "./engine-receipt.js";
 import { lookupApiDocs } from "./api-docs.js";
 import { z, type ZodTypeAny } from "zod";
 import { imageGenerationArgsSchema } from "./image-generation.js";
+import { buildMotionRequestBody, motionGenerationArgsSchema } from "./motion-generation.js";
 import { ImportHdriError, importHdriArgsSchema, importPolyHavenHdri } from "./hdri-import.js";
 import { FABRICATE_FALLBACK, buildFabricateMeshOp, fabricateArgsSchema } from "./fabricate-mesh.js";
 import {
@@ -1102,16 +1103,14 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   entry("summer_check_job", "Check the status of an async generation job", false, (args) =>
     gatewayGet(`/api/mcp/jobs/${encodeURIComponent(str(args, "jobId"))}`, undefined, 15_000)
   ),
-  entry("summer_generate_motion", "Generate a curated mocap clip for a rigged humanoid", false, async (args) => {
-    const result = await gatewayPost("/api/mcp/generate/motion", {
-      rigAssetId: str(args, "rigAssetId"),
-      backend: optStr(args, "backend") ?? "meshy-library",
-      motionName: str(args, "motionName"),
-      options: args.options,
-    });
+  entry("summer_generate_motion", "Generate animation clips: curated humanoid mocap, or text-to-motion on any rig", false, async (args) => {
+    const parsed = parseToolArgs(motionGenerationArgsSchema, args, "generate-motion");
+    const built = buildMotionRequestBody(parsed);
+    if ("error" in built) throw new ToolDispatchError(built.error);
+    const result = await gatewayPost("/api/mcp/generate/motion", built.body);
     const jobId = typeof result.jobId === "string" ? result.jobId : undefined;
-    if (args.wait === false || !jobId) return result;
-    const final = await pollGenerationJob(jobId, 300_000);
+    if (!parsed.wait || !jobId) return result;
+    const final = await pollGenerationJob(jobId, 600_000);
     return { ...final, jobId };
   }),
 

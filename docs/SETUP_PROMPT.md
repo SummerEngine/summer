@@ -15,7 +15,7 @@ The agent should read the Summer README/install playbook, detect the current mac
 
 Expected agent behavior:
 
-1. Check Node.js 20+.
+1. Check Node.js 20+. On Windows, install Node LTS with winget if it is missing (after asking), and type `npx.cmd` instead of `npx` in PowerShell.
 2. Run `npx -y summer-engine@latest doctor --json` (its top-level `ok` means "no check failed", not "installed").
 3. Always run `npx -y summer-engine@latest setup <agent> --yes --force` — idempotent; installs every skill and the MCP config.
 4. Run `npx -y summer-engine@latest install` if the `engine-install` check needs attention.

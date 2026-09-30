@@ -50,7 +50,9 @@ At that point the agent has the skills, the MCP server, and your engine running.
 
 ## AGENTS READING THIS: install playbook
 
-You are an AI coding agent. The user told you to install Summer Engine. **Run this playbook via your shell**: Bash on macOS/Linux or PowerShell on Windows. `npx -y` is shell-agnostic and works identically in both. Detection first, then only install what's missing. (Once installed, your working guide is [`AGENTS.md`](AGENTS.md).)
+You are an AI coding agent. The user told you to install Summer Engine. **Run this playbook via your shell**: Bash on macOS/Linux or PowerShell on Windows. Detection first, then only install what's missing. (Once installed, your working guide is [`AGENTS.md`](AGENTS.md).)
+
+**Windows PowerShell: type `npx.cmd` wherever this playbook says `npx`.** Plain `npx` in PowerShell runs `npx.ps1`, which Windows blocks by default ("running scripts is disabled on this system"). `npx.cmd` is the same command without that block. Never change the execution policy or turn off Windows Defender to work around it. Bash (including Git Bash on Windows) can use plain `npx`.
 
 ### Step -1: Verify Node.js is on PATH
 
@@ -58,7 +60,19 @@ You are an AI coding agent. The user told you to install Summer Engine. **Run th
 node --version
 ```
 
-If this command does not print Node.js 20 or newer, **stop**. Tell the user: "Summer needs Node.js 20+. Install from https://nodejs.org and re-run the prompt." Do NOT try to install Node yourself.
+If this prints Node.js 20 or newer, continue to Step 0.
+
+**Windows, Node missing or older than 20:** a clean Windows machine has no Node, and the whole CLI and MCP server run through it. Ask the user once: "Summer needs Node.js. OK if I install the LTS version with winget?" On yes, run:
+
+```powershell
+winget install -e --id OpenJS.NodeJS.LTS --accept-source-agreements --accept-package-agreements
+$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')
+node --version
+```
+
+The second line makes the new Node visible to this shell without a restart. Windows may show an administrator prompt; tell the user to accept it. Then continue the playbook in the same shell. When setup finishes, tell the user: "Restart <your agent app> once so it sees Node, then the Summer MCP connects." An app that was already open when Node was installed cannot start the MCP server until it restarts. If `winget` itself is not available, tell the user: "Install Node.js LTS from https://nodejs.org, then restart this app and re-run the prompt," and stop.
+
+**macOS/Linux, Node missing or older than 20:** stop and tell the user: "Summer needs Node.js 20+. Install from https://nodejs.org and re-run the prompt."
 
 ### Step 0: Pre-detection (no commits to disk, just check state)
 
@@ -173,7 +187,8 @@ Only skip brainstorm if the user explicitly said "skip brainstorm" or "just buil
 ### Anti-patterns (do NOT do these)
 
 - **Don't run `npm install -g summer-engine`.** Use `npx -y summer-engine@latest ...` instead. `-g` requires `sudo` on most Mac/Linux setups, so the user will get permission errors and you'll get stuck. `npx` works without root and the MCP config we ship already points at `npx summer-engine mcp`.
-- **Don't try to install Node.js for the user.** If `node --version` is unavailable, point them at https://nodejs.org and stop.
+- **Don't install Node.js without asking, and don't use anything but winget for it.** On Windows, Step -1 installs Node LTS with winget after the user says yes. On macOS/Linux, point them at https://nodejs.org and stop.
+- **Don't run plain `npx` in Windows PowerShell, and don't change the execution policy or Defender to make it work.** Use `npx.cmd`.
 - **Don't ask the user "do you want the engine too?" or "do you also want the CLI?"** There is one product, three pieces, all installed by this playbook.
 - **Don't double-download.** Always run `npx -y summer-engine@latest doctor --json` first and skip the engine download and the browser login when their checks are `status: "ok"`. Step 1 (`setup`) is the exception: run it every time — it is idempotent, and doctor's top-level `ok` cannot tell you whether skills or the MCP config are installed.
 - **Don't tell the user to type `/plugin marketplace add` or `/plugin install`.** The CLI path is the canonical install. Those slash commands are an alternative for the marketplace TUI, not the primary flow.

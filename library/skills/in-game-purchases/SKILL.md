@@ -166,36 +166,39 @@ message is the one thing a cheater controls.
 Model the effect as a consumable catalog item with instance ownership (each
 purchase is a separate item, not a stack). *Why:* a stackable (quantity) item
 shares one owned item ID across purchases, so the ID could not tell two
-purchases apart. The client checks out; the receipt's `owned_item_ids` are item
-instances in the player's Summer inventory. The client sends the authority
-only the request ID and that owned item ID. The authority reads the player's
-Session inventory through the Summer items authority
-(`inventory_for_session`) and applies the effect only if that item exists,
-belongs to that player and has the right definition. It records the owned item
-ID in its world save before applying, and ignores an ID it already recorded.
-*Why:* the platform inventory is the only proof the purchase happened, and the
-recorded ID makes a retry or a replayed message grant once.
+purchases apart. The client checks out; the receipt's `owned_item_ids` are item instances in
+the player's Summer inventory. The client sends the authority only that owned
+item ID. The authority consumes it with
+`Summer.authority.items.consume(session, owned_item_id, idempotency_key)` and
+applies the effect only after a successful receipt. *Why:* the platform ledger
+consumes an instance item once, so the same item cannot be redeemed twice, in
+this world or any other.
 
 ```gdscript
 # On the dedicated authority. `redeemed` is saved with the world.
 func redeem(session: SummerSession, owned_item_id: String) -> void:
 	if redeemed.has(owned_item_id):
-		return # a retried or replayed message grants once
-	var op := Summer.authority.items.inventory_for_session(session)
+		return # a repeated message grants once
+	var key := "redeem_" + owned_item_id.sha256_text().substr(0, 40)
+	var op := Summer.authority.items.consume(session, owned_item_id, key)
 	var result: SummerResult = await op.get_result_or_completed_signal()
 	if not result.ok:
-		return # refuse for now; the client may ask again later
-	for item in op.items:
-		if item.item_id == owned_item_id and item.state == &"owned":
-			redeemed[owned_item_id] = true # record before applying, then save
-			apply_grow_now(session)
-			return
+		# item_not_found: not owned or already used, never grant.
+		# unavailable: retry later with the same key.
+		return
+	redeemed[owned_item_id] = op.command_id # record, apply, then save the world
+	apply_grow_now(session)
 ```
 
-Not yet available: consuming the item from the authority, so the same item
-could be redeemed again in a different world. Until the authority consume
-operation ships, keep such effects scoped to one persistent world, or refuse
-them on a dedicated authority, as Grow Your Garden does.
+- Derive the key from the owned item ID. *Why:* the same key returns the same
+  receipt (`op.replayed` is true), so a retry after a timeout never consumes
+  twice, and a different item with that key fails with `idempotency_conflict`.
+- Apply the effect when the receipt arrives even if `op.replayed` is true, as
+  long as `redeemed` does not have the item. *Why:* a replay means the item was
+  consumed earlier but your world may have crashed before saving the effect.
+- Save the world right after applying. *Why:* the receipt replay is tied to
+  the authority process; after a restart as a different process the same key
+  is a new consumption and the already-consumed item returns `item_not_found`.
 
 ## Idempotency
 

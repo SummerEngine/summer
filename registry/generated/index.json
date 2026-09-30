@@ -1764,7 +1764,7 @@
       "id": "skill/in-game-purchases",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "587a545a021d87f015be42402d06a2c30ac371c646b8a73e229ae24facf5194e",
+      "content_hash": "7a18680e5a8464ce015d30d0af5338c978a4edb09866327b62aae506966a198d",
       "summary": "Sell items for Sparks and let short players buy Sparks in game via the Summer purchase sheet: checkout, Sparks purchase, results, testing, store policy.",
       "use_when": [
         "adding a shop, buy button or paid item to a Summer game and wiring request_checkout",

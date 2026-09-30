@@ -528,6 +528,20 @@
       ]
     },
     {
+      "id": "skill/in-game-purchases",
+      "name": "in-game-purchases",
+      "description": "Sell items for Sparks and let short players buy Sparks in game via the Summer purchase sheet: checkout, Sparks purchase, results, testing, store policy.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/in-game-purchases/",
+      "domains": [
+        "gameplay",
+        "scripting",
+        "game-design"
+      ]
+    },
+    {
       "id": "skill/instantiate-asset-pack",
       "name": "instantiate-asset-pack",
       "description": "Import a whole create-asset-sheet pack into the scene: groups composites, sorts paint order, emits Sprite2D/Node2D/NinePatchRect ops to lay it out.",

@@ -1,6 +1,6 @@
 # Summer skills
 
-> 94 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
+> 95 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
 
 The folder is flat on purpose (`docs/design/DECISIONS.md`, D3): a skill usually belongs to several domains, so categories live in each skill's `facets.domains` and this index is rendered from them. The first domain listed is the primary one. `summer skills list --by-domain` prints the same grouping; `summer skills info <slug>` shows one skill.
 
@@ -19,7 +19,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 - [debug](#debug) (1)
 - [deployment](#deployment) (2)
 - [editor](#editor) (1)
-- [gameplay](#gameplay) (3)
+- [gameplay](#gameplay) (4)
 - [level-design](#level-design) (2)
 - [multiplayer](#multiplayer) (3)
 - [navigation](#navigation) (1)
@@ -148,6 +148,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [auto-fire-targeting](./auto-fire-targeting/SKILL.md) | Design or fix auto-fire weapon targeting (survivors, top-down ARPG, tower defense) — the pending-damage pattern that prevents over-commit and overkill. | game-design |
 | [*celeste-momentum-platforming*](./celeste-momentum-platforming/SKILL.md) (preview) | Celeste-style 2D precision platformer movement — momentum running, coyote time, variable jumps, dash, wall jump/slide, climb stamina, pixel corner correction. | character-controller, game-design |
 | [design-mechanic](./design-mechanic/SKILL.md) ★ | Design one game mechanic in detail — input, response, feedback, failure modes, depth, tunables — outputs a design doc, node-graph sketch, GDScript stub. | game-design |
+| [*in-game-purchases*](./in-game-purchases/SKILL.md) (preview) | Sell items for Sparks and let short players buy Sparks in game via the Summer purchase sheet: checkout, Sparks purchase, results, testing, store policy. | scripting, game-design |
 
 ## level-design
 

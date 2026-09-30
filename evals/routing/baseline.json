@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-11",
+  "generated_at": "2026-09-30",
   "corpus_source": "registry/generated/index.json",
-  "corpus_size": 208,
-  "query_count": 103,
+  "corpus_size": 209,
+  "query_count": 105,
   "gap_count": 13,
   "mean_recall_at_5": 1,
-  "mean_recall_at_1": 0.8641,
-  "mrr_at_5": 0.9385,
+  "mean_recall_at_1": 0.8667,
+  "mrr_at_5": 0.9397,
   "per_kind": {
     "reference": {
       "expected": 1,
@@ -14,8 +14,8 @@
       "recall_at_5": 1
     },
     "skill": {
-      "expected": 80,
-      "hit": 80,
+      "expected": 82,
+      "hit": 82,
       "recall_at_5": 1
     },
     "tool": {
@@ -59,6 +59,8 @@
     "make an enemy that patrols and attacks when it sees the player": 1,
     "my auto-fire weapon keeps overkilling enemies that are already dead": 1,
     "turn this concept art into a playable level": 1,
+    "add a shop where players can buy a skin for Sparks": 1,
+    "player does not have enough sparks, let them buy more without leaving the game": 1,
     "make an FPS": 1,
     "add WASD movement and mouse look": 1,
     "add a multiplayer lobby": 1,

@@ -1,0 +1,28 @@
+id: skill/game-ui
+kind: skill
+version: 1.0.0
+summary: "Build layered, shipped-quality game UI in Summer: shadow, outline, lip, gradient face, gloss; states, motion, generated icons, Compatibility-safe."
+use_when:
+  - building or restyling HUD, shops, inventories, reward popups or touch controls so they look like a shipped mobile game
+  - the UI looks flat, default or programmer-art
+facets:
+  lifecycle:
+    - build
+  domains:
+    - ui
+    - assets
+  modalities:
+    - ui
+    - scripts
+    - images
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/ui-basics
+    - skill/ui-graphics
+    - skill/cozy-stylized-look
+source: official
+license: MIT
+status: preview
+recommended: true

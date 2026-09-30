@@ -1,6 +1,6 @@
 # Summer skills
 
-> 96 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
+> 101 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
 
 The folder is flat on purpose (`docs/design/DECISIONS.md`, D3): a skill usually belongs to several domains, so categories live in each skill's `facets.domains` and this index is rendered from them. The first domain listed is the primary one. `summer skills list --by-domain` prints the same grouping; `summer skills info <slug>` shows one skill.
 
@@ -10,11 +10,11 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 
 - [2d](#2d) (10)
 - [3d](#3d) (6)
-- [agent-workflow](#agent-workflow) (17)
+- [agent-workflow](#agent-workflow) (18)
 - [ai](#ai) (1)
 - [animation](#animation) (6)
 - [assets](#assets) (3)
-- [audio](#audio) (6)
+- [audio](#audio) (7)
 - [character-controller](#character-controller) (1)
 - [debug](#debug) (1)
 - [deployment](#deployment) (3)
@@ -24,11 +24,11 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 - [multiplayer](#multiplayer) (4)
 - [navigation](#navigation) (1)
 - [performance](#performance) (1)
-- [rendering](#rendering) (4)
+- [rendering](#rendering) (6)
 - [runtime](#runtime) (1)
 - [scenes](#scenes) (11)
 - [scripting](#scripting) (1)
-- [ui](#ui) (1)
+- [ui](#ui) (2)
 - [vfx](#vfx) (9)
 - [video](#video) (3)
 
@@ -62,6 +62,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 
 | skill | when to use | also |
 |---|---|---|
+| [*bounded-engine-runs*](./bounded-engine-runs/SKILL.md) ★ (preview) | Run Summer headless or offscreen safely from an agent: time limits, one engine per project, muted runs, import passes, tests that fail on crashes. | headless, verification |
 | [brainstorming](./brainstorming/SKILL.md) ★ | Explore user intent, requirements, and design before implementation — must run before any creative work: features, components, mechanics, behavior. | game-design |
 | [debugging-game-feel](./debugging-game-feel/SKILL.md) | Debug features that work but feel wrong — floaty jumps, mushy combat, sluggish camera — subjective bugs living in tuning, timing, and feedback layers. | gameplay |
 | [diagnosing-perf-regressions](./diagnosing-perf-regressions/SKILL.md) | Find why frame rate, frame time, or load time got worse since a known-good state — regression hunting, not general performance tuning. | performance |
@@ -112,6 +113,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [adaptive-music](./adaptive-music/SKILL.md) | Wire music stems to game state — combat/explore/boss/tension crossfades on a shared bus, paired with a state machine and AudioBus structure. | gameplay |
 | [ambient-bed](./ambient-bed/SKILL.md) | Generate a long looping location ambience — forest, dungeon, city, spaceship, cave — a looping AudioStreamPlayer on the Ambient bus with a seamless loop. | assets |
 | [audio-direction](./audio-direction/SKILL.md) ★ | Define the game's sonic identity — music style, instruments, SFX vocabulary, dynamic music plan — output as an audio bible at .summer/audio-bible.md. | game-design |
+| [*game-audio*](./game-audio/SKILL.md) ★ (preview) | Add cozy game audio in Summer: a cue for every player action, loudness and length rules, a pooled bus-aware player, generated vs synthesized sounds. | game-design |
 | [music-track](./music-track/SKILL.md) ★ | Generate a looped or cinematic music track — loops authored at >=30s with a marked loop point, cinematic tracks at >=60s linear. | assets |
 | [sound-effect](./sound-effect/SKILL.md) ★ | Generate short SFX one-shots — footsteps, weapon swings, UI clicks, hit impacts — wired as AudioStreamPlayer/2D/3D that auto-frees on finished. | assets |
 | [voice-line](./voice-line/SKILL.md) ★ | Generate TTS voice lines — NPC barks, narrator, dialogue — with voice-id sourcing, a character-to-voice decision tree, and multi-line dialogue support. | assets |
@@ -184,6 +186,8 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 |---|---|---|
 | [3d-lighting](./3d-lighting/SKILL.md) ★ | Set up 3D scene lighting — DirectionalLight3D vs Omni vs Spot, WorldEnvironment, sky, shadow tuning, ambient — per current Summer conventions. | lighting |
 | [art-direction](./art-direction/SKILL.md) ★ | Define the game's visual style — references, palette, mood, lighting plan, post-processing, do/don't list — output as an art bible at .summer/art-bible.md. | lighting |
+| [*compatibility-renderer-traps*](./compatibility-renderer-traps/SKILL.md) ★ (preview) | Make a Forward+ Summer game also look right on the Compatibility renderer: instance-uniform budget, black MultiMesh colors, sRGB vertex colors. | performance |
+| [*cozy-stylized-look*](./cozy-stylized-look/SKILL.md) ★ (preview) | Take a Summer 3D scene from realistic to cozy and vibrant: painted ground, chunky foliage, cartoon sky, warm key with blue fill, Compatibility-safe. | lighting, 3d |
 | [*psx-retro-rendering*](./psx-retro-rendering/SKILL.md) (preview) | Hardware-informed PlayStation 1 rendering in Godot 4 — low-res output, RGB5 and exact dither, affine textures, vertex snapping, blend modes, fog; limits named. | 3d |
 | [*realtime-wet-surfaces*](./realtime-wet-surfaces/SKILL.md) (preview) | Real-time wetness on existing Godot 4 materials without losing their values — value-copying wet shader, geometry-driven wet mask, instance-uniform wet amount. | vfx |
 
@@ -219,6 +223,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 
 | skill | when to use | also |
 |---|---|---|
+| [*game-ui*](./game-ui/SKILL.md) ★ (preview) | Build layered, shipped-quality game UI in Summer: shadow, outline, lip, gradient face, gloss; states, motion, generated icons, Compatibility-safe. | assets |
 | [ui-basics](./ui-basics/SKILL.md) ★ | Build Summer Engine UI — HUDs, menus, health bars, dialogue boxes, Control trees — anchors, containers, responsive layout, theme vs inline styling. | ux |
 
 ## vfx

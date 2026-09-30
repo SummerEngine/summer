@@ -664,6 +664,44 @@
       "recommended": false
     },
     {
+      "id": "skill/bounded-engine-runs",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "de54903b479603670f55143c2558dadd41e59ff7969f9913a964f1a77c6d8470",
+      "summary": "Run Summer headless or offscreen safely from an agent: time limits, one engine per project, muted runs, import passes, tests that fail on crashes.",
+      "use_when": [
+        "running the engine from a shell or agent for tests, imports, captures or bots",
+        "several agents or processes share one project",
+        "a run hangs, a capture freezes, or errors cascade across unrelated scripts"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "agent-workflow",
+          "headless",
+          "verification"
+        ],
+        "modalities": [
+          "project",
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/headless-scripting",
+          "skill/summer-multiplayer",
+          "skill/compatibility-renderer-traps"
+        ]
+      },
+      "status": "preview",
+      "recommended": true
+    },
+    {
       "id": "skill/brainstorm-game",
       "kind": "skill",
       "version": "1.0.3",
@@ -999,6 +1037,42 @@
       "recommended": true
     },
     {
+      "id": "skill/compatibility-renderer-traps",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "880515be89b4b6a8eea41dd9ae5b58ca12e0136d1d7018e1c12748dd0a6a6072",
+      "summary": "Make a Forward+ Summer game also look right on the Compatibility renderer: instance-uniform budget, black MultiMesh colors, sRGB vertex colors.",
+      "use_when": [
+        "a game must run on phones or weak GPUs that may use the Compatibility or Mobile renderer",
+        "objects render black, pale or stop animating on one renderer but not another",
+        "writing shaders for many instances (crops, foliage, tiles) that must work everywhere"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "rendering",
+          "performance"
+        ],
+        "modalities": [
+          "shaders",
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/choose-where-players-play",
+          "skill/cozy-stylized-look"
+        ]
+      },
+      "status": "preview",
+      "recommended": true
+    },
+    {
       "id": "skill/concept-art",
       "kind": "skill",
       "version": "1.0.2",
@@ -1035,6 +1109,43 @@
         ]
       },
       "status": "stable",
+      "recommended": true
+    },
+    {
+      "id": "skill/cozy-stylized-look",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "c69f983d188aaf4ef7da407e41469d54594310f41daf104e74bd4301367117e9",
+      "summary": "Take a Summer 3D scene from realistic to cozy and vibrant: painted ground, chunky foliage, cartoon sky, warm key with blue fill, Compatibility-safe.",
+      "use_when": [
+        "a 3D scene looks realistic, muddy or dim and should feel cozy, bright and friendly",
+        "building a farming, village or life-sim look"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "rendering",
+          "lighting",
+          "3d"
+        ],
+        "modalities": [
+          "shaders",
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/3d-lighting",
+          "skill/world-building-3d",
+          "skill/compatibility-renderer-traps"
+        ]
+      },
+      "status": "preview",
       "recommended": true
     },
     {
@@ -1564,6 +1675,42 @@
       "recommended": true
     },
     {
+      "id": "skill/game-audio",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "1e82b7e11f9db8bdf2dc05aa6dd40617cb6a2aed1b9cf10040eb16000d37f277",
+      "summary": "Add cozy game audio in Summer: a cue for every player action, loudness and length rules, a pooled bus-aware player, generated vs synthesized sounds.",
+      "use_when": [
+        "adding sound effects, UI sounds, ambience or music to a game",
+        "actions feel silent or unsatisfying"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "audio",
+          "game-design"
+        ],
+        "modalities": [
+          "audio",
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/sound-effect",
+          "skill/music-track",
+          "skill/audio-direction"
+        ]
+      },
+      "status": "preview",
+      "recommended": true
+    },
+    {
       "id": "skill/game-feel",
       "kind": "skill",
       "version": "1.0.2",
@@ -1595,6 +1742,43 @@
         ]
       },
       "status": "stable",
+      "recommended": true
+    },
+    {
+      "id": "skill/game-ui",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "0e15953c407e106d32e6d8cf72f047bbbc68d66abb2455ed20bdbf758c123ffe",
+      "summary": "Build layered, shipped-quality game UI in Summer: shadow, outline, lip, gradient face, gloss; states, motion, generated icons, Compatibility-safe.",
+      "use_when": [
+        "building or restyling HUD, shops, inventories, reward popups or touch controls so they look like a shipped mobile game",
+        "the UI looks flat, default or programmer-art"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "ui",
+          "assets"
+        ],
+        "modalities": [
+          "ui",
+          "scripts",
+          "images"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/ui-basics",
+          "skill/ui-graphics",
+          "skill/cozy-stylized-look"
+        ]
+      },
+      "status": "preview",
       "recommended": true
     },
     {
@@ -3011,7 +3195,7 @@
       "id": "skill/summer-multiplayer",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "3a153ea82f98364478a602cd8e2e0f20b8aa49c4e07ea0e3e95e8287caff63f2",
+      "content_hash": "3eddce8b368ec014d863623838be652782ca756f39153232951a7cd47056d758",
       "summary": "Build a GDScript multiplayer game on Summer: dedicated authority, typed state groups, validated Commands, player-data saves, Local Play bot tests.",
       "use_when": [
         "making a multiplayer or co-op game that players join through Summer (Summer Games app, web, desktop)",

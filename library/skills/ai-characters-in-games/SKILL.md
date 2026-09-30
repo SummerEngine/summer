@@ -17,7 +17,7 @@ A talking flower, a shopkeeper who answers questions, a companion who reacts to 
 
 **Core principle:** the game never talks to an AI provider. It asks Summer, as the signed-in player, for a reply from a persona the developer declared. Summer holds the keys (you never bring your own), moderates both directions, charges the cost to the developer's Summer credits and can switch the feature off per game. The game treats every AI answer as optional flavour on top of an offline brain that always works.
 
-**Status: preview.** `Summer.client.ai` ships with an upcoming Summer Engine release and the gateway is not live yet. The example checks for it at runtime and uses the offline brain when it is missing, so a game written this way ships today and gains AI replies when the platform turns them on.
+**Status: preview.** `Summer.client.ai` ships with an upcoming Summer Engine release. The example checks for it at runtime and reads `status().details.capabilities` before using a call, and uses the offline brain whenever either is missing, so a game written this way ships today and gains AI replies when the platform turns them on.
 
 ## When to use
 
@@ -41,14 +41,18 @@ Not for scripted dialogue trees (design-npc) or for enemy behaviour.
 | AI replies never change game state directly | A model can be talked into anything. If a reply should matter (a mood, a gift), derive a small bounded effect from the player's words on the authority, the same way the offline brain does. |
 | A report button on every AI reply | App store rules for user-facing generated content. The report names the exchange id, so the stored text is the evidence, not a screenshot. |
 | Never ask for or keep personal details | Summer strips contact details before the model sees them; do not store transcripts in saves either. |
+| Label AI characters as AI | Players must know they are talking to generated replies (EU AI Act transparency duties apply from August 2026). A small "AI" tag on the bubble is enough; store listings such as Steam also ask you to disclose live-generated content. |
+| Ask before using the microphone, and say audio is not stored | Consent is expected, and it is true: Summer transcribes and discards the clip. |
+| No voice cloning or speaker identification on player audio | Biometric laws (for example Illinois BIPA) treat voiceprints as protected data. Characters speak only in voices you chose. |
+| Keep characters off mental health, self-harm and romance | Companion-chatbot rules (for example California SB 243) target exactly these. Write it into the persona description and rely on the safe line. |
 
 ## Top up and set limits
 
-AI characters are paid from the Summer credits of the developer who turned them on. There is nothing to configure in the game project.
+AI characters are paid from the Summer credits of the developer who turned them on: usage is billed from your Summer credits, and spend is visible in your dashboard. Players never pay. There is nothing to configure in the game project.
 
 1. In Summer Studio, open the game and its **AI characters** section.
 2. Add a persona per character: name, a plain-words description, an optional voice, reply length, a safe line in character, and the model (from the models the game allows; each shows its price).
-3. Set the limits: per player per day, per game per day (at most $500), per game per month, and optional per-model daily caps. Set the refill amount.
+3. Set the limits: per player per day, per game per day (Summer caps this too), per game per month, and optional per-model daily caps. Set the refill amount.
 4. Turn **Enable** on. Saving makes you the funding developer: Summer moves your credits into the game's AI balance in refill-sized chunks as it runs low.
 5. Top up credits from the billing page when the balance is low. **Withdraw unused AI credits** returns what no call has reserved.
 
@@ -66,13 +70,23 @@ Then use `r.ok`, `r.code`, `r.retryable` and `r.details` (a Dictionary). The eng
 
 | Call | `details` on success |
 | --- | --- |
-| `status()` | `available: bool`, `reason: String` (`""`, `disabled`, `age_policy`, `credits_exhausted`, `limit_exceeded`, `unavailable`, `unsupported`), `personas: Array` of `{id, name, has_voice}`. `status` never fails for policy reasons. |
+| `status()` | `available: bool`, `reason: String` (`""` or one of the failure codes below: `ai_disabled`, `age_policy`, `credits_exhausted`, `limit_exceeded`, `unavailable`, `unsupported`), `personas: Array` of `{id, name, has_voice}`, `capabilities: Array` (`"reply"`, `"transcribe"`, `"speak"`, `"report"`), `version: String`. `status` never fails for policy reasons. |
 | `reply(persona_id, text, conversation_id = "")` | `exchange_id`, `persona_id`, `text`, `moderated: bool`. `text` is 1 to 500 characters. |
 | `transcribe(audio: PackedByteArray, mime_type, language = "")` | `text`. At most 15 seconds and 1 MiB, as `audio/wav`, `audio/ogg`, `audio/mpeg`, `audio/webm` or `audio/mp4`. Audio is not stored. |
-| `speak(exchange_id)` | `exchange_id`, `mime_type` (`audio/mpeg`), `audio: PackedByteArray`. Only the player's own reply, within an hour of it. |
+| `speak(exchange_id)` | `exchange_id`, `mime_type` (`audio/mpeg`), `audio: PackedByteArray`. Only the player's own reply, within an hour of it. Voice is the largest cost: speak only for personas with `has_voice`, and consider voicing on tap. |
 | `report(exchange_id, reason, details = "")` | `report_id`, `status`. The player's own reply, within 30 days. |
 
-`moderated: true` is not an error: the persona's safe line replaced the answer. Show it like any reply.
+`moderated: true` is not an error: the persona's safe line replaced the answer. Show it like any reply. Field names are snake_case in GDScript (`exchange_id`, `has_voice`).
+
+In multiplayer, never broadcast text a client sent you. The dedicated authority verifies the exchange and broadcasts the text Summer returns:
+
+```gdscript
+var ai: Object = Summer.authority.get("ai")
+var r: SummerResult = await ai.verify_exchange(session, exchange_id).get_result_or_completed_signal()
+if r.ok:
+	broadcast_line(r.details.persona_id, r.details.text)  # exactly what that player was shown
+# not_found: forged, another player's, or older than an hour. Drop it.
+```
 
 Failure codes (`r.ok == false`):
 
@@ -82,7 +96,7 @@ Failure codes (`r.ok == false`):
 | `age_policy` | Child or undeclared age | Offline brain for the session |
 | `credits_exhausted` | The developer's AI credits ran out | Offline brain for the session |
 | `limit_exceeded` | A player, game or model limit is used up | Offline brain for the session |
-| `provider_error`, `unavailable` | Transient (`retryable` is true) | Offline brain for this line |
+| `provider_error`, `unavailable`, `rate_limited` | Transient (`retryable` is true) | Offline brain for this line |
 | `not_signed_in`, `unsupported` | No player session, or no AI in this build | Offline brain |
 | `persona_unknown`, `invalid_request` | Bug: the persona id or the input | Fix the game or the settings |
 | `not_found` | `report` or `speak` named an exchange that is not the player's own, or is too old | Hide the button |
@@ -114,6 +128,7 @@ const STOP_CODES := [&"ai_disabled", &"age_policy", &"credits_exhausted", &"limi
 
 var _conversation_id := ""
 var _ai_ready := false
+var _can_speak := false
 
 func _ready() -> void:
 	_conversation_id = "c%d" % (Time.get_ticks_usec() % 1000000000)
@@ -129,9 +144,23 @@ func say(player_text: String) -> void:
 		if r.ok:
 			replied.emit(str(r.details.text), str(r.details.exchange_id), true)
 			return
+		# Transient codes (provider_error, unavailable, rate_limited) fall through
+		# for this line only.
 		if r.code in STOP_CODES:
 			_ai_ready = false
 	replied.emit(OfflineBrain.answer(personality, text), "", false)
+
+## Voice a reply, for example when the player taps the bubble.
+func speak(exchange_id: String, player: AudioStreamPlayer) -> void:
+	var ai := _gateway()
+	if not _can_speak or ai == null or exchange_id == "":
+		return
+	var r: SummerResult = await ai.speak(exchange_id).get_result_or_completed_signal()
+	if r.ok:
+		var stream := AudioStreamMP3.new()
+		stream.data = r.details.audio
+		player.stream = stream
+		player.play()
 
 func report(exchange_id: String) -> void:
 	var ai := _gateway()
@@ -143,7 +172,12 @@ func _gateway_available() -> bool:
 	if ai == null:
 		return false
 	var r: SummerResult = await ai.status().get_result_or_completed_signal()
-	return r.ok and r.details.get("available", false)
+	if not r.ok or not r.details.get("available", false) or not "reply" in r.details.get("capabilities", []):
+		return false
+	for p in r.details.get("personas", []):
+		if p.id == persona_id:
+			_can_speak = p.has_voice and "speak" in r.details.capabilities
+	return true
 
 ## The only place that knows how the engine exposes the gateway. Engines
 ## without it return null and the character stays offline.
@@ -165,6 +199,10 @@ func _gateway() -> Object:
 - Typed input works with the microphone denied.
 - Each failure code in the table leads to an offline answer, and the session-level codes stop further gateway calls.
 - With Enable off, or the game's AI credits withdrawn, the game still plays and every character answers offline.
+- `credits_exhausted` leads to an offline answer with no error shown.
+- A reply marked `moderated` shows the safe line.
+- AI replies carry an "AI" label, and the microphone is only used after the player agreed.
+- In multiplayer, the authority broadcasts only text returned by `verify_exchange`.
 - A reply never grants items, currency or progress by itself; the authority applies any effect.
 - Every AI reply shows a report button that sends its exchange id.
 

@@ -43,6 +43,19 @@
       ]
     },
     {
+      "id": "skill/ai-characters-in-games",
+      "name": "ai-characters-in-games",
+      "description": "Safe AI characters in published games: no keys in the build, replies via Summer's player AI gateway, moderation, spend caps, offline brain and a report button.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/ai-characters-in-games/",
+      "domains": [
+        "ai",
+        "npc"
+      ]
+    },
+    {
       "id": "skill/ambient-bed",
       "name": "ambient-bed",
       "description": "Generate a long looping location ambience — forest, dungeon, city, spaceship, cave — a looping AudioStreamPlayer on the Ambient bus with a seamless loop.",

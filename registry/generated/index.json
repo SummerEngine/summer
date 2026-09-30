@@ -392,13 +392,14 @@
     {
       "id": "skill/ai-characters-in-games",
       "kind": "skill",
-      "version": "0.1.0",
-      "content_hash": "bf5a267ac0f3dd74789443af46a82f55cc2aee6dd2ecac98c98d5c0bd8011a50",
+      "version": "0.2.0",
+      "content_hash": "6ebda7b79be5437200082ca9ac192fac96e4a9d59330320d03aaf28f8b932bed",
       "summary": "Safe AI characters in published games: no keys in the build, replies via Summer's player AI gateway, moderation, spend caps, offline brain and a report button.",
       "use_when": [
         "a character, creature or object should answer free-form player text or speech in a published game (talking flowers, shopkeepers, companions)",
         "about to put a model name, a provider SDK or a provider key into a game project",
-        "handling AI refusals (ai_disabled, age_policy, limit_exceeded) or adding the report button for AI replies"
+        "handling AI refusals (ai_disabled, age_policy, credits_exhausted, limit_exceeded) or adding the report button for AI replies",
+        "topping up Summer credits, setting AI limits or the kill switch for a game's AI characters"
       ],
       "facets": {
         "lifecycle": [

@@ -67,6 +67,7 @@
     "./library/skills/godogen-visual-proof-game-generation/",
     "./library/skills/headless-scripting/",
     "./library/skills/host-authoritative-state/",
+    "./library/skills/in-game-purchases/",
     "./library/skills/instantiate-asset-pack/",
     "./library/skills/investigating-bugs/",
     "./library/skills/lumera-single-image-scene-reconstruction/",

@@ -664,6 +664,44 @@
       "recommended": false
     },
     {
+      "id": "skill/bounded-engine-runs",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "de54903b479603670f55143c2558dadd41e59ff7969f9913a964f1a77c6d8470",
+      "summary": "Run Summer headless or offscreen safely from an agent: time limits, one engine per project, muted runs, import passes, tests that fail on crashes.",
+      "use_when": [
+        "running the engine from a shell or agent for tests, imports, captures or bots",
+        "several agents or processes share one project",
+        "a run hangs, a capture freezes, or errors cascade across unrelated scripts"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "agent-workflow",
+          "headless",
+          "verification"
+        ],
+        "modalities": [
+          "project",
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/headless-scripting",
+          "skill/summer-multiplayer",
+          "skill/compatibility-renderer-traps"
+        ]
+      },
+      "status": "preview",
+      "recommended": true
+    },
+    {
       "id": "skill/brainstorm-game",
       "kind": "skill",
       "version": "1.0.3",
@@ -923,6 +961,46 @@
       "recommended": true
     },
     {
+      "id": "skill/choose-where-players-play",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "c9fddb21f7a9922b3751c9f8e87315e8dd6c6bd0650f953571f18bee3f05207a",
+      "summary": "Ask where people will play a new game (Summer Games app, desktop/Steam, consoles) before coding; it decides language, renderer, controls and testing.",
+      "use_when": [
+        "starting a new game, before scaffolding or writing code",
+        "the user asks which platforms the game can run on, or whether to use GDScript or C++",
+        "the user wants the game on phones, web, Steam or consoles and the stack is not chosen yet"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "deployment",
+          "project",
+          "game-design"
+        ],
+        "modalities": [
+          "docs",
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-multiplayer",
+          "skill/make-game",
+          "skill/export-and-ship",
+          "skill/host-authoritative-state",
+          "skill/tune-performance"
+        ]
+      },
+      "status": "preview",
+      "recommended": true
+    },
+    {
       "id": "skill/cinematic-cutscene",
       "kind": "skill",
       "version": "1.0.4",
@@ -956,6 +1034,42 @@
         ]
       },
       "status": "stable",
+      "recommended": true
+    },
+    {
+      "id": "skill/compatibility-renderer-traps",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "880515be89b4b6a8eea41dd9ae5b58ca12e0136d1d7018e1c12748dd0a6a6072",
+      "summary": "Make a Forward+ Summer game also look right on the Compatibility renderer: instance-uniform budget, black MultiMesh colors, sRGB vertex colors.",
+      "use_when": [
+        "a game must run on phones or weak GPUs that may use the Compatibility or Mobile renderer",
+        "objects render black, pale or stop animating on one renderer but not another",
+        "writing shaders for many instances (crops, foliage, tiles) that must work everywhere"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "rendering",
+          "performance"
+        ],
+        "modalities": [
+          "shaders",
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/choose-where-players-play",
+          "skill/cozy-stylized-look"
+        ]
+      },
+      "status": "preview",
       "recommended": true
     },
     {
@@ -995,6 +1109,43 @@
         ]
       },
       "status": "stable",
+      "recommended": true
+    },
+    {
+      "id": "skill/cozy-stylized-look",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "c69f983d188aaf4ef7da407e41469d54594310f41daf104e74bd4301367117e9",
+      "summary": "Take a Summer 3D scene from realistic to cozy and vibrant: painted ground, chunky foliage, cartoon sky, warm key with blue fill, Compatibility-safe.",
+      "use_when": [
+        "a 3D scene looks realistic, muddy or dim and should feel cozy, bright and friendly",
+        "building a farming, village or life-sim look"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "rendering",
+          "lighting",
+          "3d"
+        ],
+        "modalities": [
+          "shaders",
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/3d-lighting",
+          "skill/world-building-3d",
+          "skill/compatibility-renderer-traps"
+        ]
+      },
+      "status": "preview",
       "recommended": true
     },
     {
@@ -1362,7 +1513,7 @@
       "id": "skill/export-and-ship",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "459ad769af5e734676659117ce4fbb3226668b5e41211afc3373b45a52ed8bba",
+      "content_hash": "eaed218b3935e0c82cedc5d061d24fc2c60f0181febfaa6d6d0458516817e7fe",
       "summary": "Assess and prepare a game export: inventory installed templates and targets, validate release assets and config, produce supported builds after approval.",
       "use_when": [
         "the user wants to assess or prepare a Summer game export — Steam, itch, HTML5, iOS, Android targets as available in the installed build",
@@ -1385,6 +1536,7 @@
       },
       "related": {
         "skills": [
+          "skill/choose-where-players-play",
           "skill/debug",
           "skill/tune-performance"
         ]
@@ -1523,6 +1675,42 @@
       "recommended": true
     },
     {
+      "id": "skill/game-audio",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "1e82b7e11f9db8bdf2dc05aa6dd40617cb6a2aed1b9cf10040eb16000d37f277",
+      "summary": "Add cozy game audio in Summer: a cue for every player action, loudness and length rules, a pooled bus-aware player, generated vs synthesized sounds.",
+      "use_when": [
+        "adding sound effects, UI sounds, ambience or music to a game",
+        "actions feel silent or unsatisfying"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "audio",
+          "game-design"
+        ],
+        "modalities": [
+          "audio",
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/sound-effect",
+          "skill/music-track",
+          "skill/audio-direction"
+        ]
+      },
+      "status": "preview",
+      "recommended": true
+    },
+    {
       "id": "skill/game-feel",
       "kind": "skill",
       "version": "1.0.2",
@@ -1554,6 +1742,43 @@
         ]
       },
       "status": "stable",
+      "recommended": true
+    },
+    {
+      "id": "skill/game-ui",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "0e15953c407e106d32e6d8cf72f047bbbc68d66abb2455ed20bdbf758c123ffe",
+      "summary": "Build layered, shipped-quality game UI in Summer: shadow, outline, lip, gradient face, gloss; states, motion, generated icons, Compatibility-safe.",
+      "use_when": [
+        "building or restyling HUD, shops, inventories, reward popups or touch controls so they look like a shipped mobile game",
+        "the UI looks flat, default or programmer-art"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "ui",
+          "assets"
+        ],
+        "modalities": [
+          "ui",
+          "scripts",
+          "images"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/ui-basics",
+          "skill/ui-graphics",
+          "skill/cozy-stylized-look"
+        ]
+      },
+      "status": "preview",
       "recommended": true
     },
     {
@@ -1729,7 +1954,7 @@
       "id": "skill/host-authoritative-state",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "8a1a930a2146a57f69454dac4b4dcf18e58e3b3bb80a4a17db1863034b56f070",
+      "content_hash": "73483b1b5db2b93528f246a1c4a3e6a51ebede20657da9a465ad37e2700ed2a5",
       "summary": "Design the state layer of a multiplayer game — what the host owns, how clients request changes, and how the host validates and broadcasts.",
       "use_when": [
         "designing the state layer of a multiplayer Summer game: host ownership, client change requests, host validation and broadcast",
@@ -1753,6 +1978,8 @@
       },
       "related": {
         "skills": [
+          "skill/summer-multiplayer",
+          "skill/choose-where-players-play",
           "skill/peer-to-peer-multiplayer",
           "skill/setup-multiplayer"
         ]
@@ -1868,7 +2095,7 @@
       "id": "skill/make-game",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "03a6d9893371b1fd8f6b27cb7e7da2aab59c210b86fc8675cae68b982493c300",
+      "content_hash": "cdc70e5e1e4490025d9c39550f83265278bbd17c6aa6ecd6a6c77beb568bc575",
       "summary": "Orchestration spine for 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship — delegates to specialist skills.",
       "use_when": [
         "the user says 'make me a game', 'build me a game', 'I want to make a [genre] game', or 'let's build something' — running the full game-dev pipeline",
@@ -1892,6 +2119,7 @@
       },
       "related": {
         "skills": [
+          "skill/choose-where-players-play",
           "skill/audio-direction",
           "skill/export-and-ship",
           "skill/design-mechanic",
@@ -2060,7 +2288,7 @@
       "id": "skill/peer-to-peer-multiplayer",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "f2d1e457a4d3bb3614513f164eac64f3b80b955c1a4d4383a85ed32102b0b593",
+      "content_hash": "586eb45adb233aadf443f91cd20216345a6904f4b520d2c13b2a6ee321bb4fd4",
       "summary": "Start a multiplayer game from scratch with peer-to-peer host authority — network architecture built top-down, before writing game logic.",
       "use_when": [
         "starting a multiplayer Summer game from scratch with peer-to-peer host authority, before writing game logic",
@@ -2084,6 +2312,7 @@
       },
       "related": {
         "skills": [
+          "skill/summer-multiplayer",
           "skill/host-authoritative-state",
           "skill/setup-multiplayer"
         ]
@@ -2637,7 +2866,7 @@
       "id": "skill/setup-multiplayer",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "ee3d07414b86884052f9bfa231158579401a0bfdbe33758bc673d265c3028ba1",
+      "content_hash": "3277efd7d0e240a8b52f0ebba0b9b87399aa4d5150c1b4dc171912aeb70a55f3",
       "summary": "Add multiplayer to an existing game — LAN/online co-op, PvP, lobbies — via MultiplayerAPI, MultiplayerSpawner, and MultiplayerSynchronizer.",
       "use_when": [
         "adding multiplayer to an existing Summer game: co-op LAN, co-op online, competitive PvP, or a lobby",
@@ -2661,6 +2890,7 @@
       },
       "related": {
         "skills": [
+          "skill/summer-multiplayer",
           "skill/peer-to-peer-multiplayer",
           "skill/host-authoritative-state"
         ]
@@ -2962,6 +3192,43 @@
       "recommended": false
     },
     {
+      "id": "skill/summer-multiplayer",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "3eddce8b368ec014d863623838be652782ca756f39153232951a7cd47056d758",
+      "summary": "Build a GDScript multiplayer game on Summer: dedicated authority, typed state groups, validated Commands, player-data saves, Local Play bot tests.",
+      "use_when": [
+        "making a multiplayer or co-op game that players join through Summer (Summer Games app, web, desktop)",
+        "wiring client/authority networking, replicated state, player actions or cross-server saves in Summer",
+        "testing multiplayer locally with two clients"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "scripting"
+        ],
+        "modalities": [
+          "scripts",
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.7"
+      },
+      "related": {
+        "skills": [
+          "skill/choose-where-players-play",
+          "skill/host-authoritative-state",
+          "skill/setup-multiplayer"
+        ]
+      },
+      "status": "preview",
+      "recommended": true
+    },
+    {
       "id": "skill/tileable-texture",
       "kind": "skill",
       "version": "1.0.4",
@@ -3037,7 +3304,7 @@
       "id": "skill/tune-performance",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "09e4496efe1f63f83803ed53cf96ff8eefab179e706a2288809e345fbde6b26f",
+      "content_hash": "7d853fb12bb8e09a0765dba2f3c4a048cee6f37faa32e0f615a56ca119cb4347",
       "summary": "Profile a slow game via summer_get_diagnostics, identify rendering/physics/scripting hotspots, propose fixes with before/after metric expectations.",
       "use_when": [
         "the game is slow, drops framerate, stutters, takes forever to start, or runs poorly on specific hardware",
@@ -3061,6 +3328,7 @@
       },
       "related": {
         "skills": [
+          "skill/choose-where-players-play",
           "skill/running-in-the-cloud",
           "skill/scene-scripting",
           "skill/debug",

@@ -1,0 +1,27 @@
+id: skill/game-audio
+kind: skill
+version: 1.0.0
+summary: "Add cozy game audio in Summer: a cue for every player action, loudness and length rules, a pooled bus-aware player, generated vs synthesized sounds."
+use_when:
+  - adding sound effects, UI sounds, ambience or music to a game
+  - actions feel silent or unsatisfying
+facets:
+  lifecycle:
+    - build
+  domains:
+    - audio
+    - game-design
+  modalities:
+    - audio
+    - scripts
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/sound-effect
+    - skill/music-track
+    - skill/audio-direction
+source: official
+license: MIT
+status: preview
+recommended: true

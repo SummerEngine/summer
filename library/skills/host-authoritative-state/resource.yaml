@@ -18,6 +18,8 @@ compatibility:
   engine: ">=4.6"
 related:
   skills:
+    - skill/summer-multiplayer
+    - skill/choose-where-players-play
     - skill/peer-to-peer-multiplayer
     - skill/setup-multiplayer
 source: official

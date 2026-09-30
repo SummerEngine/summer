@@ -134,6 +134,20 @@
       ]
     },
     {
+      "id": "skill/bounded-engine-runs",
+      "name": "bounded-engine-runs",
+      "description": "Run Summer headless or offscreen safely from an agent: time limits, one engine per project, muted runs, import passes, tests that fail on crashes.",
+      "clients": "all",
+      "recommended": true,
+      "status": "preview",
+      "path": "library/skills/bounded-engine-runs/",
+      "domains": [
+        "agent-workflow",
+        "headless",
+        "verification"
+      ]
+    },
+    {
       "id": "skill/brainstorm-game",
       "name": "brainstorm-game",
       "description": "Turn a vague idea into a buildable plan — genre, scope, core loop, mechanics, art direction — written as a 1-page brief to .summer/GameSoul.md.",
@@ -226,6 +240,20 @@
       ]
     },
     {
+      "id": "skill/choose-where-players-play",
+      "name": "choose-where-players-play",
+      "description": "Ask where people will play a new game (Summer Games app, desktop/Steam, consoles) before coding; it decides language, renderer, controls and testing.",
+      "clients": "all",
+      "recommended": true,
+      "status": "preview",
+      "path": "library/skills/choose-where-players-play/",
+      "domains": [
+        "deployment",
+        "project",
+        "game-design"
+      ]
+    },
+    {
       "id": "skill/cinematic-cutscene",
       "name": "cinematic-cutscene",
       "description": "Generate a non-interactive cutscene — reference-locked look, a 5-10s image-to-video shot, optional TTS dialogue — wired as a fading VideoStreamPlayer.",
@@ -239,6 +267,19 @@
       ]
     },
     {
+      "id": "skill/compatibility-renderer-traps",
+      "name": "compatibility-renderer-traps",
+      "description": "Make a Forward+ Summer game also look right on the Compatibility renderer: instance-uniform budget, black MultiMesh colors, sRGB vertex colors.",
+      "clients": "all",
+      "recommended": true,
+      "status": "preview",
+      "path": "library/skills/compatibility-renderer-traps/",
+      "domains": [
+        "rendering",
+        "performance"
+      ]
+    },
+    {
       "id": "skill/concept-art",
       "name": "concept-art",
       "description": "Explore art direction with 3-4 rough concept variants of a character, environment, or prop to pick a vibe before committing to a final asset.",
@@ -249,6 +290,20 @@
       "domains": [
         "2d",
         "assets"
+      ]
+    },
+    {
+      "id": "skill/cozy-stylized-look",
+      "name": "cozy-stylized-look",
+      "description": "Take a Summer 3D scene from realistic to cozy and vibrant: painted ground, chunky foliage, cartoon sky, warm key with blue fill, Compatibility-safe.",
+      "clients": "all",
+      "recommended": true,
+      "status": "preview",
+      "path": "library/skills/cozy-stylized-look/",
+      "domains": [
+        "rendering",
+        "lighting",
+        "3d"
       ]
     },
     {
@@ -437,6 +492,19 @@
       ]
     },
     {
+      "id": "skill/game-audio",
+      "name": "game-audio",
+      "description": "Add cozy game audio in Summer: a cue for every player action, loudness and length rules, a pooled bus-aware player, generated vs synthesized sounds.",
+      "clients": "all",
+      "recommended": true,
+      "status": "preview",
+      "path": "library/skills/game-audio/",
+      "domains": [
+        "audio",
+        "game-design"
+      ]
+    },
+    {
       "id": "skill/game-feel",
       "name": "game-feel",
       "description": "Add juice: hit-flash, trauma-based camera shake, and audio ducking wired so one hit fires all three — for games that feel flat or lack impact.",
@@ -447,6 +515,19 @@
       "domains": [
         "vfx",
         "gameplay"
+      ]
+    },
+    {
+      "id": "skill/game-ui",
+      "name": "game-ui",
+      "description": "Build layered, shipped-quality game UI in Summer: shadow, outline, lip, gradient face, gloss; states, motion, generated icons, Compatibility-safe.",
+      "clients": "all",
+      "recommended": true,
+      "status": "preview",
+      "path": "library/skills/game-ui/",
+      "domains": [
+        "ui",
+        "assets"
       ]
     },
     {
@@ -953,6 +1034,19 @@
       "domains": [
         "2d",
         "assets"
+      ]
+    },
+    {
+      "id": "skill/summer-multiplayer",
+      "name": "summer-multiplayer",
+      "description": "Build a GDScript multiplayer game on Summer: dedicated authority, typed state groups, validated Commands, player-data saves, Local Play bot tests.",
+      "clients": "all",
+      "recommended": true,
+      "status": "preview",
+      "path": "library/skills/summer-multiplayer/",
+      "domains": [
+        "multiplayer",
+        "scripting"
       ]
     },
     {

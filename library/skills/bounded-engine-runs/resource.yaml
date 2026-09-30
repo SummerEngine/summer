@@ -1,0 +1,29 @@
+id: skill/bounded-engine-runs
+kind: skill
+version: 1.0.0
+summary: "Run Summer headless or offscreen safely from an agent: time limits, one engine per project, muted runs, import passes, tests that fail on crashes."
+use_when:
+  - running the engine from a shell or agent for tests, imports, captures or bots
+  - several agents or processes share one project
+  - a run hangs, a capture freezes, or errors cascade across unrelated scripts
+facets:
+  lifecycle:
+    - build
+  domains:
+    - agent-workflow
+    - headless
+    - verification
+  modalities:
+    - project
+    - scripts
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/headless-scripting
+    - skill/summer-multiplayer
+    - skill/compatibility-renderer-traps
+source: official
+license: MIT
+status: preview
+recommended: true

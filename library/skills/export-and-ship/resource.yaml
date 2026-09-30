@@ -19,6 +19,7 @@ compatibility:
   engine: ">=4.6"
 related:
   skills:
+    - skill/choose-where-players-play
     - skill/debug
     - skill/tune-performance
 source: official

@@ -11,6 +11,8 @@ paths: ["**/*.gd", "**/*.tscn", "**/project.godot"]
 
 # /peer-to-peer-multiplayer — Build a P2P Game From the Ground Up
 
+> **For games players join through Summer (Summer Games app, web, desktop), use `summer-multiplayer` instead.** The raw ENet-by-IP setup below only works on a local network and cannot use Summer hosting, cross-play or verified identity.
+
 ## Overview
 
 **Multiplayer is architecture, not a feature.** Bolting it onto a single-player game is 5× harder than starting multiplayer-first. This skill walks the four layers in order. Skip any of them and you'll spend the rest of development paying for it in cheat-vulnerable state, desync bugs, and "why is the other player teleporting" reports.

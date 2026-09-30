@@ -1,0 +1,28 @@
+id: skill/cozy-stylized-look
+kind: skill
+version: 1.0.0
+summary: "Take a Summer 3D scene from realistic to cozy and vibrant: painted ground, chunky foliage, cartoon sky, warm key with blue fill, Compatibility-safe."
+use_when:
+  - a 3D scene looks realistic, muddy or dim and should feel cozy, bright and friendly
+  - building a farming, village or life-sim look
+facets:
+  lifecycle:
+    - build
+  domains:
+    - rendering
+    - lighting
+    - 3d
+  modalities:
+    - shaders
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/3d-lighting
+    - skill/world-building-3d
+    - skill/compatibility-renderer-traps
+source: official
+license: MIT
+status: preview
+recommended: true

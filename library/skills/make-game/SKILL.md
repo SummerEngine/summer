@@ -55,6 +55,8 @@ Skill: brainstorm-game
 
 That skill asks one question, scopes mechanics, picks an art direction, and writes `.summer/GameSoul.md`. Don't skip this. **The brief is what every later phase reads.**
 
+In the same conversation, ask **where people will play the game** (`choose-where-players-play`) and record the answer in the brief. It decides the code language, renderer and controls, so it must be settled before Phase 3.
+
 If the user already has `.summer/GameSoul.md` (check via Read), skip the brainstorm and confirm:
 
 > "Found `.summer/GameSoul.md` — should I build from this brief, or do you want to start over?"

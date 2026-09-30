@@ -1,0 +1,30 @@
+id: skill/summer-multiplayer
+kind: skill
+version: 1.0.0
+summary: "Build a GDScript multiplayer game on Summer: dedicated authority, typed state groups, validated Commands, player-data saves, Local Play bot tests."
+use_when:
+  - making a multiplayer or co-op game that players join through Summer (Summer Games app, web, desktop)
+  - wiring client/authority networking, replicated state, player actions or cross-server saves in Summer
+  - testing multiplayer locally with two clients
+do_not_use_when:
+  - a single-player game with no shared world
+facets:
+  lifecycle:
+    - build
+  domains:
+    - multiplayer
+    - scripting
+  modalities:
+    - scripts
+    - project
+compatibility:
+  engine: ">=4.7"
+related:
+  skills:
+    - skill/choose-where-players-play
+    - skill/host-authoritative-state
+    - skill/setup-multiplayer
+source: official
+license: MIT
+status: preview
+recommended: true

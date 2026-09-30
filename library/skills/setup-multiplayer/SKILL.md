@@ -11,6 +11,8 @@ paths: ["**/*.gd", "**/*.tscn", "**/*.tres", "project.godot"]
 
 # /setup-multiplayer — Add Multiplayer Without Repainting the Project
 
+> **For games players join through Summer (Summer Games app, web, desktop), use `summer-multiplayer` instead.** The raw ENet-by-IP setup below only works on a local network and cannot use Summer hosting, cross-play or verified identity.
+
 ## Overview
 
 Multiplayer is a one-way door. Pick the wrong authority model and refactoring

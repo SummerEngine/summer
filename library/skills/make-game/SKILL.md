@@ -27,6 +27,26 @@ This is the skill that runs end-to-end when a user says "make me a game." It doe
 - User already has a working scaffold and wants to iterate → start at the relevant phase below, don't re-run the whole pipeline.
 - User says "I want to use a template" → run `browse-templates` first; come back here only if they decide they want a custom build instead.
 
+## Genre playbooks (`references/`)
+
+Distilled blueprints for common genres live in this skill's `references/` folder: architecture, scene tree, collision layers, core-loop code, build order, traps. Each genre is two files — a core file and a systems/polish file. Read the core file during Phase 2 (Plan) so the build plan follows its architecture and build order; read the systems file only when Phase 4 reaches those mechanics. Never load more than the one genre you are building.
+
+| Game | Core | Systems | Root / player / camera |
+|---|---|---|---|
+| Side-scrolling platformer | `references/2d-platformer.md` | `references/2d-platformer-polish.md` | Node2D / CharacterBody2D / Camera2D follow |
+| Horde survivors / bullet heaven | `references/2d-survivors.md` | `references/2d-survivors-progression.md` | Node2D / CharacterBody2D / Camera2D on player |
+| Top-down action RPG (also the base for puzzle, grid, tower defense) | `references/2d-rpg.md` | `references/2d-rpg-content.md` | Node2D / CharacterBody2D / Camera2D |
+| First-person shooter | `references/3d-fps.md` | `references/3d-fps-systems.md` | Node3D / CharacterBody3D / Camera3D on Head |
+| Third-person action / 3D platformer | `references/3d-third-person.md` | `references/3d-third-person-systems.md` | Node3D / CharacterBody3D / SpringArm3D |
+| First-person horror | `references/3d-horror.md` | `references/3d-horror-systems.md` | Node3D / CharacterBody3D / Camera3D on Head |
+
+No playbook (racing, sandbox, sim): build fresh through the phases below. The playbooks lean on these system skills — load one when its mechanic comes up: `character-movement`, `camera-rigs`, `combat-basics`, `save-load`, `ui-basics`, `setup-multiplayer`.
+
+Two rules from the playbooks apply to every genre:
+
+- **2D scales to the viewport.** Set `display/window/stretch/mode = canvas_items` and `stretch/aspect = expand`; UI uses Control anchors; code-positioned nodes compute from `get_viewport_rect().size`. Never hardcode 1920x1080.
+- **Playable slice, not tech demo.** Name the core loop in one sentence; every input gets feedback (tween, sound, particle, flash, shake); progression is visible; a restart exists. The bar is "feels good for 30 seconds".
+
 ## The Pipeline
 
 ```
@@ -153,7 +173,7 @@ For each mechanic in the plan, **in order**:
 
 2. **Implement**:
    - Add the nodes via `summer_add_node` / `summer_set_prop`. Use `scene-composition` if the structure is non-trivial.
-   - For movement-class mechanics, prefer the matching pre-built skill: `fps-controller`, `peer-to-peer-multiplayer`, etc.
+   - For movement-class mechanics, prefer the matching pre-built skill: `character-movement`, `fps-controller`, `peer-to-peer-multiplayer`, etc. Follow the genre playbook's build order when one applies.
    - Write GDScript with `gdscript-patterns` open.
 
 3. **Verify**:

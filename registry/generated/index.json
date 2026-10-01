@@ -1617,7 +1617,7 @@
       "id": "skill/fps-controller",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "2be4e55c5110c8cf10b0e8aa9743a157adc415028be586adc867c3b7b7f8b536",
+      "content_hash": "f3171758b793099c8ab6f0b46abb304e4973bb4aa03df4200ab30bd0379a21da",
       "summary": "Production-quality first-person controller — WASD, mouse look, jump, coyote time, jump buffering, air control, and external-velocity handling.",
       "use_when": [
         "building an FPS, first-person movement, or a 3D character that walks, jumps, and reacts to external forces",
@@ -1640,6 +1640,10 @@
         "engine": ">=4.6"
       },
       "related": {
+        "skills": [
+          "skill/character-movement",
+          "skill/camera-rigs"
+        ],
         "templates": [
           "template/3d-fps-old-school"
         ]
@@ -1993,12 +1997,13 @@
     {
       "id": "skill/make-game",
       "kind": "skill",
-      "version": "1.0.3",
-      "content_hash": "03a6d9893371b1fd8f6b27cb7e7da2aab59c210b86fc8675cae68b982493c300",
+      "version": "1.1.0",
+      "content_hash": "16d1964493d069e13b1a4e18d3e82cfb104326383354de89d499cc0310fede38",
       "summary": "Orchestration spine for 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship — delegates to specialist skills.",
       "use_when": [
         "the user says 'make me a game', 'build me a game', 'I want to make a [genre] game', or 'let's build something' — running the full game-dev pipeline",
-        "the user wants a complete playable game end to end, from brainstorm through shipping"
+        "the user wants a complete playable game end to end, from brainstorm through shipping",
+        "the user names a genre — platformer, survivors, top-down RPG, FPS, third-person, horror — and the build needs its architecture and build order"
       ],
       "facets": {
         "lifecycle": [
@@ -2026,7 +2031,11 @@
           "skill/brainstorm-game",
           "skill/new-project",
           "skill/play",
-          "skill/scene-composition"
+          "skill/scene-composition",
+          "skill/character-movement",
+          "skill/camera-rigs",
+          "skill/combat-basics",
+          "skill/save-load"
         ]
       },
       "status": "stable",

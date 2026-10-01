@@ -1,0 +1,29 @@
+id: skill/camera-rigs
+kind: skill
+version: 1.0.0
+summary: "Camera rigs for 2D and 3D: Camera2D follow with limits, first-person head camera, SpringArm3D third-person, orthographic top-down, FOV guidance."
+use_when:
+  - black screen on play, or the camera shows past the level edge
+  - jerky camera follow, wrong FOV, or the third-person camera clips into walls
+  - need a top-down, isometric, orthographic, orbit, or spring-arm camera
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - 3d
+    - 2d
+  modalities:
+    - scenes
+    - scripts
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/make-game
+    - skill/character-movement
+    - skill/fps-controller
+source: official
+license: MIT
+status: preview
+recommended: false

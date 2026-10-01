@@ -173,6 +173,20 @@
       ]
     },
     {
+      "id": "skill/camera-rigs",
+      "name": "camera-rigs",
+      "description": "Camera rigs for 2D and 3D: Camera2D follow with limits, first-person head camera, SpringArm3D third-person, orthographic top-down, FOV guidance.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/camera-rigs/",
+      "domains": [
+        "scenes",
+        "3d",
+        "2d"
+      ]
+    },
+    {
       "id": "skill/celeste-momentum-platforming",
       "name": "celeste-momentum-platforming",
       "description": "Celeste-style 2D precision platformer movement — momentum running, coyote time, variable jumps, dash, wall jump/slide, climb stamina, pixel corner correction.",
@@ -213,6 +227,21 @@
       ]
     },
     {
+      "id": "skill/character-movement",
+      "name": "character-movement",
+      "description": "Player controllers for 2D and 3D, plus the canonical third-person controller for Summer humanoid packages: movement owns translation, clips follow state.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/character-movement/",
+      "domains": [
+        "character-controller",
+        "gameplay",
+        "2d",
+        "3d"
+      ]
+    },
+    {
       "id": "skill/character-portrait",
       "name": "character-portrait",
       "description": "Generate a single polished character bust for dialogue UI, character select, lore cards, or codex entries. One character, locked composition, VN-style.",
@@ -236,6 +265,20 @@
       "domains": [
         "video",
         "assets"
+      ]
+    },
+    {
+      "id": "skill/combat-basics",
+      "name": "combat-basics",
+      "description": "Damage in Summer Engine: hitbox and hurtbox Areas on opposing layers, a reusable Health component, damage signals, knockback, hit feedback, projectiles.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/combat-basics/",
+      "domains": [
+        "gameplay",
+        "scripting",
+        "game-design"
       ]
     },
     {
@@ -775,6 +818,19 @@
       "domains": [
         "agent-workflow",
         "project"
+      ]
+    },
+    {
+      "id": "skill/save-load",
+      "name": "save-load",
+      "description": "Persist game state in Summer Engine: user:// paths, JSON progress vs ConfigFile settings, a versioned save schema with migration, autosave hooks.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/save-load/",
+      "domains": [
+        "scripting",
+        "gameplay"
       ]
     },
     {

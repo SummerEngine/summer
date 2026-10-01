@@ -758,6 +758,44 @@
       "recommended": true
     },
     {
+      "id": "skill/camera-rigs",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "2c04ec8e7634e0375b128d04dc956400b1c5a51769dc66b0f00a6452e3f6e7d8",
+      "summary": "Camera rigs for 2D and 3D: Camera2D follow with limits, first-person head camera, SpringArm3D third-person, orthographic top-down, FOV guidance.",
+      "use_when": [
+        "black screen on play, or the camera shows past the level edge",
+        "jerky camera follow, wrong FOV, or the third-person camera clips into walls",
+        "need a top-down, isometric, orthographic, orbit, or spring-arm camera"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "3d",
+          "2d"
+        ],
+        "modalities": [
+          "scenes",
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/make-game",
+          "skill/character-movement",
+          "skill/fps-controller"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
       "id": "skill/celeste-momentum-platforming",
       "kind": "skill",
       "version": "0.1.1",
@@ -887,6 +925,52 @@
       "recommended": true
     },
     {
+      "id": "skill/character-movement",
+      "kind": "skill",
+      "version": "1.2.1",
+      "content_hash": "8ea68420f37775dfc076a3c5f9534a73b88536240e2443ee39927de8891e7cb9",
+      "summary": "Player controllers for 2D and 3D, plus the canonical third-person controller for Summer humanoid packages: movement owns translation, clips follow state.",
+      "use_when": [
+        "building or fixing player movement — gravity, collision, side-scroller, top-down, or 3D walk",
+        "wiring an imported Summer character package (character.tscn) as the playable third-person player",
+        "walk, run, and jump animation states, facing, or mouse look for a player controller",
+        "the jump feels bad — coyote time, jump buffering, variable jump height, one-way platforms"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "character-controller",
+          "gameplay",
+          "2d",
+          "3d"
+        ],
+        "modalities": [
+          "scripts",
+          "scenes",
+          "animation"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/make-game",
+          "skill/camera-rigs",
+          "skill/combat-basics",
+          "skill/fps-controller",
+          "skill/celeste-momentum-platforming",
+          "skill/character-animation-wiring",
+          "skill/character-model",
+          "skill/playtesting-a-feature"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
       "id": "skill/character-portrait",
       "kind": "skill",
       "version": "1.0.4",
@@ -958,6 +1042,46 @@
       },
       "status": "stable",
       "recommended": true
+    },
+    {
+      "id": "skill/combat-basics",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "a69f4470d1c0babc3855334ebfd7e5d53aee02b85bc0dbd5ad1fc9c8b3c8bdbb",
+      "summary": "Damage in Summer Engine: hitbox and hurtbox Areas on opposing layers, a reusable Health component, damage signals, knockback, hit feedback, projectiles.",
+      "use_when": [
+        "adding attacks, health and damage, or enemies that can be hit and hit back",
+        "adding projectiles or bullets — homing, piercing, area-of-effect, or pooling hundreds of them",
+        "wiring death and respawn, or debugging hits that never land or friendly fire"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "gameplay",
+          "scripting",
+          "game-design"
+        ],
+        "modalities": [
+          "scripts",
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/make-game",
+          "skill/character-movement",
+          "skill/game-feel",
+          "skill/auto-fire-targeting",
+          "skill/design-npc"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
     },
     {
       "id": "skill/concept-art",
@@ -2459,6 +2583,42 @@
         ]
       },
       "status": "stable",
+      "recommended": false
+    },
+    {
+      "id": "skill/save-load",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "2435b5bfa043c8615accb4eec56c674f57857eec7948a5249e7c51c964d2497f",
+      "summary": "Persist game state in Summer Engine: user:// paths, JSON progress vs ConfigFile settings, a versioned save schema with migration, autosave hooks.",
+      "use_when": [
+        "persisting progress, settings, high scores, checkpoints, or save slots",
+        "deciding between JSON and ConfigFile for a save or settings file",
+        "making saves survive game updates with a schema version and migration"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scripting",
+          "gameplay"
+        ],
+        "modalities": [
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/make-game",
+          "skill/gdscript-patterns",
+          "skill/ui-basics"
+        ]
+      },
+      "status": "preview",
       "recommended": false
     },
     {

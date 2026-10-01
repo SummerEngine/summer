@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-30",
+  "generated_at": "2026-10-01",
   "corpus_source": "registry/generated/index.json",
-  "corpus_size": 209,
-  "query_count": 104,
-  "gap_count": 13,
+  "corpus_size": 213,
+  "query_count": 108,
+  "gap_count": 11,
   "mean_recall_at_5": 1,
-  "mean_recall_at_1": 0.8654,
-  "mrr_at_5": 0.9391,
+  "mean_recall_at_1": 0.8704,
+  "mrr_at_5": 0.9414,
   "per_kind": {
     "reference": {
       "expected": 1,
@@ -14,8 +14,8 @@
       "recall_at_5": 1
     },
     "skill": {
-      "expected": 81,
-      "hit": 81,
+      "expected": 85,
+      "hit": 85,
       "recall_at_5": 1
     },
     "tool": {
@@ -62,6 +62,10 @@
     "turn this concept art into a playable level": 1,
     "make an FPS": 1,
     "add WASD movement and mouse look": 1,
+    "third person camera that doesn't clip through walls": 1,
+    "make my imported character walk, run and jump as the player": 1,
+    "add a save and load system": 1,
+    "add health and damage so my sword can hit enemies": 1,
     "add a multiplayer lobby": 1,
     "I want to play my game co-op with a friend online": 1,
     "how do I stop clients from cheating their own health": 1,

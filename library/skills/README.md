@@ -1,6 +1,6 @@
 # Summer skills
 
-> 95 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
+> 99 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
 
 The folder is flat on purpose (`docs/design/DECISIONS.md`, D3): a skill usually belongs to several domains, so categories live in each skill's `facets.domains` and this index is rendered from them. The first domain listed is the primary one. `summer skills list --by-domain` prints the same grouping; `summer skills info <slug>` shows one skill.
 
@@ -15,19 +15,19 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 - [animation](#animation) (7)
 - [assets](#assets) (3)
 - [audio](#audio) (6)
-- [character-controller](#character-controller) (1)
+- [character-controller](#character-controller) (2)
 - [debug](#debug) (1)
 - [deployment](#deployment) (2)
 - [editor](#editor) (1)
-- [gameplay](#gameplay) (3)
+- [gameplay](#gameplay) (4)
 - [level-design](#level-design) (2)
 - [multiplayer](#multiplayer) (3)
 - [navigation](#navigation) (1)
 - [performance](#performance) (1)
 - [rendering](#rendering) (4)
 - [runtime](#runtime) (1)
-- [scenes](#scenes) (11)
-- [scripting](#scripting) (1)
+- [scenes](#scenes) (12)
+- [scripting](#scripting) (2)
 - [ui](#ui) (1)
 - [vfx](#vfx) (9)
 - [video](#video) (3)
@@ -121,6 +121,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 
 | skill | when to use | also |
 |---|---|---|
+| [*character-movement*](./character-movement/SKILL.md) (preview) | Player controllers for 2D and 3D, plus the canonical third-person controller for Summer humanoid packages: movement owns translation, clips follow state. | gameplay, 2d, 3d |
 | [fps-controller](./fps-controller/SKILL.md) ★ | Production-quality first-person controller — WASD, mouse look, jump, coyote time, jump buffering, air control, and external-velocity handling. | gameplay |
 
 ## debug
@@ -148,6 +149,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 |---|---|---|
 | [auto-fire-targeting](./auto-fire-targeting/SKILL.md) | Design or fix auto-fire weapon targeting (survivors, top-down ARPG, tower defense) — the pending-damage pattern that prevents over-commit and overkill. | game-design |
 | [*celeste-momentum-platforming*](./celeste-momentum-platforming/SKILL.md) (preview) | Celeste-style 2D precision platformer movement — momentum running, coyote time, variable jumps, dash, wall jump/slide, climb stamina, pixel corner correction. | character-controller, game-design |
+| [*combat-basics*](./combat-basics/SKILL.md) (preview) | Damage in Summer Engine: hitbox and hurtbox Areas on opposing layers, a reusable Health component, damage signals, knockback, hit feedback, projectiles. | scripting, game-design |
 | [design-mechanic](./design-mechanic/SKILL.md) ★ | Design one game mechanic in detail — input, response, feedback, failure modes, depth, tunables — outputs a design doc, node-graph sketch, GDScript stub. | game-design |
 
 ## level-design
@@ -198,6 +200,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 |---|---|---|
 | [brainstorm-game](./brainstorm-game/SKILL.md) ★ | Turn a vague idea into a buildable plan — genre, scope, core loop, mechanics, art direction — written as a 1-page brief to .summer/GameSoul.md. | project |
 | [browse-templates](./browse-templates/SKILL.md) ★ | List available Summer Engine project templates, present the choices, and create a project from the chosen one via summer create. | project |
+| [*camera-rigs*](./camera-rigs/SKILL.md) (preview) | Camera rigs for 2D and 3D: Camera2D follow with limits, first-person head camera, SpringArm3D third-person, orthographic top-down, FOV guidance. | 3d, 2d |
 | [make-game](./make-game/SKILL.md) ★ | Orchestration spine for 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship — delegates to specialist skills. | project |
 | [new-project](./new-project/SKILL.md) ★ | Create a fresh blank Summer Engine project — asks one question (project name) and runs summer create empty. | project |
 | [play](./play/SKILL.md) ★ | Run the project in Summer Engine, wait briefly, then report what's happening — clean run, errors, or warnings. | project |
@@ -213,6 +216,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | skill | when to use | also |
 |---|---|---|
 | [gdscript-patterns](./gdscript-patterns/SKILL.md) ★ | GDScript conventions — type hints, signals, exports, onready, lifecycle methods, get_node vs $NodePath, naming. | conventions |
+| [*save-load*](./save-load/SKILL.md) (preview) | Persist game state in Summer Engine: user:// paths, JSON progress vs ConfigFile settings, a versioned save schema with migration, autosave hooks. | gameplay |
 
 ## ui
 

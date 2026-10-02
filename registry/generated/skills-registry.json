@@ -1274,6 +1274,33 @@
       ]
     },
     {
+      "id": "skill/web-and-touch-input",
+      "name": "web-and-touch-input",
+      "description": "Input for the browser and phones: the first-click rule for sound and mouse capture, focus, and touch buttons or a virtual stick on the same actions.",
+      "clients": "all",
+      "recommended": true,
+      "status": "preview",
+      "path": "library/skills/web-and-touch-input/",
+      "domains": [
+        "gameplay",
+        "ui"
+      ]
+    },
+    {
+      "id": "skill/web-compatibility-look",
+      "name": "web-compatibility-look",
+      "description": "Make a web or browser game look high-end in the Compatibility renderer (WebGL 2): what works, what to avoid, 2D and 3D recipes, web performance.",
+      "clients": "all",
+      "recommended": true,
+      "status": "preview",
+      "path": "library/skills/web-compatibility-look/",
+      "domains": [
+        "rendering",
+        "2d",
+        "3d"
+      ]
+    },
+    {
       "id": "skill/world-building-3d",
       "name": "world-building-3d",
       "description": "Compose, ground, space, and validate 3D scenes with Summer's four bounded spatial tools — exact paths, one geometric decision at a time, verified.",

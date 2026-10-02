@@ -108,6 +108,10 @@ queries:
     note: "Former gap, filled by camera-rigs (SpringArm3D rig) and character-movement."
   - query: "make my imported character walk, run and jump as the player"
     expected: [skill/character-movement]
+  - query: "add touch controls so the game works on a phone"
+    expected: [skill/web-and-touch-input]
+  - query: "the game looks flat and grey in the browser preview"
+    expected: [skill/web-compatibility-look]
 
   # ── Gameplay systems ───────────────────────────────────────────────────
   - query: "add a save and load system"

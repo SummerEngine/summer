@@ -46,6 +46,8 @@ Two rules from the playbooks apply to every genre:
 
 - **2D scales to the viewport.** Set `display/window/stretch/mode = canvas_items` and `stretch/aspect = expand`; UI uses Control anchors; code-positioned nodes compute from `get_viewport_rect().size`. Never hardcode 1920x1080.
 - **Playable slice, not tech demo.** Name the core loop in one sentence; every input gets feedback (tween, sound, particle, flash, shake); progression is visible; a restart exists. The bar is "feels good for 30 seconds".
+- **Fast first draft when someone is waiting.** The first playable version uses shapes, the palette and any template art, plus at most one or two generated assets the person specifically asked for; generation takes minutes, so it never blocks the first play. Say plainly that it is a first draft to get a feel for the game, that the art is not final, and ask if this is the direction they want. Generate the rest of the art in later passes.
+- **Text the default font can show.** No emoji or symbols (▲ ◀ ★ ♥ ✓) in UI text: they render as boxes with hex codes. Use words or icons; see `ui-basics`.
 
 ## The Pipeline
 
@@ -196,7 +198,7 @@ Repeat until every mechanic in the plan is implemented OR the user calls cut.
 Skill: art-direction
 ```
 
-That writes `.summer/art-bible.md` if it doesn't exist, then guides the lighting / material / palette pass. Use `3d-lighting` for the actual scene work.
+That writes `.summer/art-bible.md` if it doesn't exist, then guides the lighting / material / palette pass. Use `3d-lighting` for the actual scene work. If the game plays in the browser or is exported for the web, it runs the Compatibility renderer only: follow `web-compatibility-look` instead of Forward+-only features (SDFGI, SSAO, SSR, volumetric fog), and keep `rendering/renderer/rendering_method` on `gl_compatibility`.
 
 ```
 Skill: audio-direction

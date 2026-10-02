@@ -1998,7 +1998,7 @@
       "id": "skill/make-game",
       "kind": "skill",
       "version": "1.1.0",
-      "content_hash": "16d1964493d069e13b1a4e18d3e82cfb104326383354de89d499cc0310fede38",
+      "content_hash": "9b535501da590e5574433e5a85bb198c4726220718d682fb5312327bf738d910",
       "summary": "Orchestration spine for 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship — delegates to specialist skills.",
       "use_when": [
         "the user says 'make me a game', 'build me a game', 'I want to make a [genre] game', or 'let's build something' — running the full game-dev pipeline",
@@ -3290,7 +3290,7 @@
       "id": "skill/ui-basics",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "bf47fc665ffdeed28b82b7fe82a066e27a811bcdadea433c72ceba200b6243f9",
+      "content_hash": "c725af703d014a7c6db43889db82077834231fbd3e4549f91b6b74af7ceaa20b",
       "summary": "Build Summer Engine UI — HUDs, menus, health bars, dialogue boxes, Control trees — anchors, containers, responsive layout, theme vs inline styling.",
       "use_when": [
         "building Summer Engine UI: HUDs, main menus, pause menus, health bars, progress bars, dialogue boxes, or any Control-node tree",
@@ -3896,6 +3896,82 @@
         "engine": ">=4.6"
       },
       "status": "stable",
+      "recommended": true
+    },
+    {
+      "id": "skill/web-and-touch-input",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "5a67ec23a03e1162725652d09af7458f47070e66e80040ef671eb22da334cbe8",
+      "summary": "Input for the browser and phones: the first-click rule for sound and mouse capture, focus, and touch buttons or a virtual stick on the same actions.",
+      "use_when": [
+        "the game plays in the browser and sound, mouse capture or keys do not work until something is clicked",
+        "the game should be playable on a phone or tablet with touch controls",
+        "adding a virtual joystick, on-screen buttons or touch camera controls"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "gameplay",
+          "ui"
+        ],
+        "modalities": [
+          "scenes",
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/make-game",
+          "skill/character-movement",
+          "skill/ui-basics"
+        ]
+      },
+      "status": "preview",
+      "recommended": true
+    },
+    {
+      "id": "skill/web-compatibility-look",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "f8649a98317c623e77f7b3d390d03b2317d1a455cecba707ea940467be8567a3",
+      "summary": "Make a web or browser game look high-end in the Compatibility renderer (WebGL 2): what works, what to avoid, 2D and 3D recipes, web performance.",
+      "use_when": [
+        "the game plays in the browser or is exported for the web and must look finished",
+        "the look is flat, grey or default in the web preview, or a Forward+ feature does nothing there",
+        "choosing lighting, fog, glow, shaders or post effects for a web or Compatibility project"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "rendering",
+          "2d",
+          "3d"
+        ],
+        "modalities": [
+          "scenes",
+          "shaders"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/3d-lighting",
+          "skill/art-direction",
+          "skill/tune-performance",
+          "skill/ui-basics"
+        ]
+      },
+      "status": "preview",
       "recommended": true
     },
     {

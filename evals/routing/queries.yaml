@@ -103,6 +103,22 @@ queries:
     expected: [skill/make-game, skill/fps-controller]
   - query: "add WASD movement and mouse look"
     expected: [skill/fps-controller]
+  - query: "third person camera that doesn't clip through walls"
+    expected: [skill/camera-rigs]
+    note: "Former gap, filled by camera-rigs (SpringArm3D rig) and character-movement."
+  - query: "make my imported character walk, run and jump as the player"
+    expected: [skill/character-movement]
+  - query: "add touch controls so the game works on a phone"
+    expected: [skill/web-and-touch-input]
+  - query: "the game looks flat and grey in the browser preview"
+    expected: [skill/web-compatibility-look]
+
+  # ── Gameplay systems ───────────────────────────────────────────────────
+  - query: "add a save and load system"
+    expected: [skill/save-load]
+    note: "Former gap, filled by save-load."
+  - query: "add health and damage so my sword can hit enemies"
+    expected: [skill/combat-basics]
 
   # ── Multiplayer ────────────────────────────────────────────────────────
   - query: "add a multiplayer lobby"
@@ -247,10 +263,6 @@ queries:
     expected_gap: true
     closest: skill/design-npc
     note: "No navigation/NavMesh/pathfinding skill exists. design-npc covers behavior, not navigation."
-  - query: "add a save and load system"
-    expected: []
-    expected_gap: true
-    note: "No save/serialization skill. High-frequency ask for any game past a prototype."
   - query: "add an inventory system"
     expected: []
     expected_gap: true
@@ -293,11 +305,6 @@ queries:
     expected_gap: true
     closest: skill/design-level
     note: "design-level authors one level by hand; no procgen skill."
-  - query: "third person camera that doesn't clip through walls"
-    expected: []
-    expected_gap: true
-    closest: skill/fps-controller
-    note: "No third-person controller/camera skill (fps-controller spec Case 3 already anticipates the handoff)."
 
   # ── Navigation (summer open / product map / navigate-summer) ───────────
   - query: "open my billing page"

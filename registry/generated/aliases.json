@@ -125,6 +125,7 @@
     "summer_get_agent_playbook": "tool/get-agent-playbook",
     "summer_get_asset": "tool/get-asset",
     "summer_get_asset_download_url": "tool/get-asset-download-url",
+    "summer_get_board": "tool/get-board",
     "summer_get_console": "tool/get-console",
     "summer_get_debugger_errors": "tool/get-debugger-errors",
     "summer_get_debugger_warnings": "tool/get-debugger-warnings",

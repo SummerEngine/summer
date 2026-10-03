@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.0.3",
-      "content_hash": "cf0339df0f5b315b84610f778dd71e87ac50c4c62ca06533c8b13b293c6eed31",
+      "content_hash": "b0139ec64121ca7321c38fa5434f7310779881d24d0f904c3dda984d58daba28",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -5254,6 +5254,40 @@
       },
       "status": "stable",
       "mcp_tool_name": "summer_get_asset_download_url",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/get-board",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "9cf6a23419cc4b1764dd816801aa791b0500d4fc1eeaf4ba7f490f97011cc574",
+      "summary": "Read the person's approved planning board (look, characters, place, storyboard, picks) with the look and picked cards as images to compare screenshots against.",
+      "use_when": [
+        "starting a build step for a game made from a planning board",
+        "\"does the game look like the board?\"",
+        "comparing a screenshot with the chosen look and picked cards"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "game-design",
+          "verification"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "stable",
+      "mcp_tool_name": "summer_get_board",
       "remote": true,
       "authority": {
         "filesystem": false,

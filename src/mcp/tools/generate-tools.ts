@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { BOARD_ENDPOINT, boardArgsSchema, boardContent, boardQuery } from "../../core/capabilities/board.js";
 import { imageGenerationArgsSchema } from "../../core/capabilities/image-generation.js";
 import {
   buildMotionRequestBody,
@@ -24,6 +25,7 @@ const TOOL_BY_ENDPOINT: Record<string, string> = {
   "/api/mcp/generate/motion": "summer_generate_motion",
   "/api/mcp/generate/slice-asset-sheet": "summer_slice_asset_sheet",
   "/api/mcp/workflows": "summer_get_studio_workflow",
+  [BOARD_ENDPOINT]: "summer_get_board",
 };
 
 // ---------------------------------------------------------------------------
@@ -306,6 +308,31 @@ handoff that MCP cannot perform automatically; do not pretend that stage ran.`,
       const result = await mcpGet("/api/mcp/workflows", params);
       if (result.error) return errorResult(result.error, result.data);
       return successResult(result.data);
+    }
+  );
+
+  // ========================================================================
+  // summer_get_board
+  // ========================================================================
+  server.tool(
+    "summer_get_board",
+    `Read the person's approved planning board for this game: the look (palette,
+description, picture), the characters, the place, the first-minute storyboard
+and the cards they picked, with a version that changes when the board does.
+
+The look and the picked cards come back as images you can see. Read the board at
+the start of each build step and compare your screenshot against its images
+(palette, shapes and proportions, camera angle, composition); fix the biggest
+difference. Use the picked card pictures as referenceImageUrl for
+summer_generate_image to make sprites and backgrounds in the same look.
+
+Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
+Requires authentication: run 'npx -y summer-engine@latest login' first.`,
+    boardArgsSchema.shape,
+    async (args) => {
+      const result = await mcpGet(BOARD_ENDPOINT, boardQuery(args), 45_000);
+      if (result.error) return errorResult(result.error, result.data);
+      return { content: boardContent(result.data ?? {}) };
     }
   );
 

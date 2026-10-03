@@ -40,6 +40,7 @@ export function buildAgentPlaybook(
       "For lighting, mood, environment, or emissive materials, use summer_screenshot target:'scene' framing:'camera' — it renders through the scene's OWN camera with its REAL WorldEnvironment. The preset framings (iso/top/...) substitute a flat preview environment and CANNOT verify lighting.",
       "When executing multiple batches, screenshot between them — catch the wrong turn at batch 2, not batch 7.",
       "If something looks wrong in the screenshot or the diff, investigate and fix before proceeding. Do not stack more work on a broken base.",
+      "A game made from a planning board (the brief gives its project id): read the board with summer_get_board at the start of each build step and compare your screenshot against its images (palette, shapes and proportions, camera angle, composition); fix the biggest difference.",
     ],
     // ------------------------------------------------------------------
     // LIBRARY FEEDBACK — report how the library entries you used worked out.

@@ -17,7 +17,7 @@
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (86 tools)
+## Tool surface (87 tools)
 
 ### Project files (3)
 
@@ -190,6 +190,12 @@ Drive and observe the RUNNING game (engine runtime-control ops, preview — `eng
 |---|---|
 | `summer_check_job` | Poll a generation job. |
 | `summer_batch` | Run multiple ops as a transaction. |
+
+### Planning board (1)
+
+| Tool | Use |
+|---|---|
+| `summer_get_board` | Read the person's approved planning board (look, characters, place, storyboard, picks) with the look and picked cards as images; read it at the start of each build step and compare your screenshot against its images (works without the engine). |
 
 ### Meta (4)
 

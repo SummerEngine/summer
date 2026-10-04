@@ -681,19 +681,23 @@ export class EngineApiClient {
 
   async getSceneState(
     scenePath?: string,
-    options?: { depth?: number; limit?: number }
+    options?: { depth?: number; limit?: number; root?: string }
   ): Promise<unknown> {
-    // depth/limit only take effect on targeted (scene=) reads: the engine
+    // depth/limit/root only take effect on targeted (scene=) reads: the engine
     // routes those through the live command queue and forwards every query
     // param into StateProvider::scene_state (tool_net_thread.cpp
     // _parse_state_args). An UNtargeted read is answered from a pre-published
     // snapshot built with the defaults (depth 2, limit 200) and its query
     // params are ignored — callers who need depth/limit must pass scenePath
     // (summer_get_scene_tree resolves the current scene path for this).
+    // `root` starts the walk at a scene-relative node path; a path the engine
+    // cannot resolve falls back to the scene root, so callers compare the
+    // returned data.path before trusting a rooted read.
     const parts: string[] = [];
     if (scenePath) parts.push(`scene=${encodeURIComponent(scenePath)}`);
     if (options?.depth !== undefined) parts.push(`depth=${options.depth}`);
     if (options?.limit !== undefined) parts.push(`limit=${options.limit}`);
+    if (options?.root !== undefined) parts.push(`root=${encodeURIComponent(options.root)}`);
     const query = parts.length ? `?${parts.join("&")}` : "";
     return this.request("GET", `/api/state/scene${query}`);
   }

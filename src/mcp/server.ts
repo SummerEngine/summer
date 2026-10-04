@@ -58,10 +58,10 @@ export const getCachedBootDriftNotice = getCachedNotice;
  * summer_agent_playbook prompt / summer_get_agent_playbook tool.
  */
 export const SUMMER_MCP_INSTRUCTIONS =
-  "Summer Engine MCP. Call summer_get_project_context first: it binds this session to the open project and returns mainScene, projectMemory (GameSoul, template pin) and any capabilitySkewWarning. " +
-  "Before building or fixing, summer_search_library then summer_read_library the hit — skills, examples and templates live there. " +
+  "Summer Engine MCP. Call summer_get_project_context first: it binds this session to the open project and returns mainScene, projectMemory (GameSoul, template pin) and any capabilitySkewWarning, compactly. " +
+  "Before building or fixing, summer_search_library then summer_read_library the hit: skills, examples, templates live there. " +
   "After a playthrough read summer_get_diagnostics, not summer_get_console alone (runtime errors live in the debugger). " +
-  "A uniformly black screenshot means the viewport had not redrawn — recapture before concluding. " +
+  "An all-black screenshot means the viewport had not redrawn — recapture before concluding. " +
   "Report entries you verified in-engine via summer_library_feedback.";
 
 /**

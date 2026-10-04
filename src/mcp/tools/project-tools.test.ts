@@ -198,7 +198,13 @@ priority: locked
     registerProjectTools(server as never);
 
     const contextTool = getTool(tools, "summer_get_project_context");
-    const body = parseToolResult(await contextTool.handler({}));
+    // Settings are opt-in: the compact default leaves them out and says how to ask.
+    const compact = parseToolResult(await contextTool.handler({}));
+    expect(compact).not.toHaveProperty("project");
+    expect(String((compact.omitted as Record<string, string>).settings)).toContain("include:['settings']");
+    expect(compact.mainScene).toBe("res://main.tscn");
+
+    const body = parseToolResult(await contextTool.handler({ include: ["settings"] }));
     const data = (body.project as { data: Record<string, unknown> }).data;
     const keys = (data.entries as Array<{ key: string }>).map((entry) => entry.key);
 

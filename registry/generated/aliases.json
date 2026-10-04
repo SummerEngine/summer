@@ -139,6 +139,7 @@
     "summer_get_scene_tree": "tool/get-scene-tree",
     "summer_get_script_errors": "tool/get-script-errors",
     "summer_get_studio_workflow": "tool/get-studio-workflow",
+    "summer_grep": "tool/grep",
     "summer_import_asset": "tool/import-asset",
     "summer_import_asset_by_id": "tool/import-asset-by-id",
     "summer_import_from_url": "tool/import-from-url",

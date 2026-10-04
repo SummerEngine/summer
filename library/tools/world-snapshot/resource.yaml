@@ -1,11 +1,13 @@
 id: tool/world-snapshot
 kind: tool
-version: 1.0.2
-summary: Compact structured snapshot of the edited scene (paths, transforms, world AABBs, fingerprints, counts) — the cheap read before and after every mutation batch.
+version: 1.1.0
+summary: Structured scene snapshot (paths, transforms, world AABBs, fingerprints, counts), filterable by subtree, class and field; the read around every mutation.
 use_when:
   - taking a diffable baseline before a mutation batch, or verifying transforms/AABBs/fingerprints after one
   - '"where exactly is everything in this scene?" — positions, sizes, bounds'
   - '"are these two props overlapping?" / "is anything floating?"'
+  - '"where did the pieces of House3 land?" — path_prefix + fields:[pos, aabb] reads one subtree cheaply'
+  - counting instances per class in one subtree (matched_counts)
 do_not_use_when:
   - you only need the hierarchy shape — summer_get_scene_tree
   - "requires an engine build with GetWorldSnapshot (Summer Engine 0.5.66 or newer); older engines return engine_lacks_op"
@@ -50,7 +52,26 @@ input_schema:
     max_nodes:
       type: integer
       exclusiveMinimum: 0
-      description: Node cap (engine default 4000). The result declares truncation — never assume a capped list is complete.
+      description: Most node entries to return (default 200). The engine still snapshots the whole scene for the diff baseline; the result says when the list is cut (truncated, next_offset).
+    offset:
+      type: integer
+      minimum: 0
+      description: Skip this many matching nodes (path-sorted) before listing — page with the result's next_offset.
+    path_prefix:
+      type: string
+      description: Only this subtree, the node at this scene-relative path and everything below it, e.g. 'House3' or 'Alley2/Props'.
+    classes:
+      type: array
+      items:
+        type: string
+      maxItems: 32
+      description: Only nodes of these classes, e.g. ['MeshInstance3D', 'OmniLight3D'] (* wildcards allowed).
+    fields:
+      type: array
+      items:
+        type: string
+      maxItems: 16
+      description: "Only these per-node fields (path is always kept): class, name, pos, rot_deg, scale, visible, aabb, scene_file, script_fp, material_fps, z_index, rect, view_rect, limit_rect."
   additionalProperties: false
 authority:
   filesystem: false

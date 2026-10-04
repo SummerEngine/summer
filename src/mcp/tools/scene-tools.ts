@@ -4,7 +4,12 @@ import { withEngine, ToolInputError } from "./with-engine.js";
 import { executeSceneMutation } from "../../core/capabilities/engine-ops.js";
 import { instantiateScene, runBatch } from "../../core/capabilities/placement-batch.js";
 import { renderPlacementResult } from "./placement-tools.js";
-import { annotateVariantTypes } from "../../core/capabilities/variant-types.js";
+import { inspectNodeFields, inspectNodeInputShape } from "../../core/capabilities/inspect-node.js";
+import {
+  rawSceneReplaceRefusal,
+  replaceNodeInputShape,
+  replaceNodePersisted,
+} from "../../core/capabilities/replace-node.js";
 import {
   FALLBACK_SINGLE_ONLY_OPS,
   resolveSingleOnlyOps,
@@ -356,20 +361,15 @@ The receiver node must have a script with the specified method.`,
 
   server.tool(
     "summer_replace_node",
-    "Replace a node with a different type or scene, preserving its position in the tree and its children. Useful for changing a StaticBody3D to a RigidBody3D, or swapping a placeholder with a proper prefab.",
-    {
-      scenePath: z.string().describe("Target scene path, e.g. 'res://main.tscn'"),
-      path: z.string().describe("Node path to replace"),
-      type: z.string().optional().describe("New node type, e.g. 'RigidBody3D'"),
-      scene: z.string().optional().describe("Scene to replace with, e.g. 'res://enemies/boss.tscn'"),
-    },
-    async ({ scenePath, path, type, scene }) =>
-      withEngine(async (client) => {
-        const op: Record<string, unknown> = { op: "ReplaceNode", path };
-        if (type) op.type = type;
-        if (scene) op.scene = scene;
-        return executeSceneMutation(client, scenePath, [op]);
-      })
+    `Replace a node with a different scene/model or node type, keeping its parent, sibling index, name, transform and property overrides, and the children the scene added under it. Use it to swap a kit piece for another (a wall host for a door host), a placeholder for a prefab, or a StaticBody3D for a RigidBody3D.
+
+Give exactly one of scene or type. The scenePath must be a .tscn.
+
+PERSISTENCE IS VERIFIED: the tool saves, reads the saved .tscn back and checks that the node at path now instances the new scene (or has the new type), under the same parent, with every child present. persisted:true is proven from the file; a mismatch is an error with failure_reason not_persisted — never report that as done.
+
+How: a scene swap runs as InstantiateScene (temporary name) -> SetProp each property override -> ReparentNode the children -> MoveNode to the old index -> RemoveNode the old node -> rename -> SaveScene, because the engine's own ReplaceNode keeps the OLD scene reference in the saved file. A type change of a plain node uses the engine's ReplaceNode. State that cannot travel (groups, signal connections, scene-local sub_resource values, overrides of nodes inside the old scene) is listed in not_carried_over. Undo takes one Ctrl+Z per step.`,
+    replaceNodeInputShape,
+    async (args) => withEngine(async (client) => replaceNodePersisted(client, args))
   );
 
   server.tool(
@@ -380,13 +380,13 @@ Call this before modifying a node to understand its current state. Returns every
 
 Reads the currently OPEN scene — "path" is relative to its root (there is no scenePath argument; open the scene first if needed).
 
-Example: inspect a light to see its energy, color, shadow settings before changing them.`,
-    {
-      path: z.string().describe("Node path from scene tree, e.g. 'Player', 'World/Enemies/Boss', 'DirectionalLight3D'"),
-    },
-    async ({ path }) =>
+Example: inspect a light to see its energy, color, shadow settings before changing them.
+
+The full read is about 5 KB. To read only what you need, pass fields: property names or globs ('position', 'surface_material_override/*'), plus derived fields: transform (local position / rotation_degrees / scale, and a Transform3D literal for 3D nodes), global_transform (world origin + Transform3D, composed from the world snapshot), scene_file_path (the scene this node instances), aabb (world bounds), warnings. Example: fields:['transform','global_transform','scene_file_path'] is a few hundred bytes. missing_fields and unavailable say what could not be read.`,
+    inspectNodeInputShape,
+    async (args) =>
       // E2E 2026-09-03 F-14: the engine returns Variant.Type as a bare int.
-      withEngine(async (client) => annotateVariantTypes(await client.inspectNode(path)))
+      withEngine(async (client) => inspectNodeFields(client, args))
   );
 
   server.tool(
@@ -416,6 +416,8 @@ Each op in the array uses the same format as the individual tools:
 RAW RUNTIME OPS (interactive verification — structured failure_reason passes through verbatim):
 - RunVerification — spawn a hidden, disposable game instance that runs a GDScript probe and dies (never touches the editor): {"op": "RunVerification", "probe_source": "...", "max_seconds": 20}. Returns {ok, results, frames, out_dir}. Probe API: report(name, value) / save_frame(name) / press(action) / key(keycode) / finish(). save_frame REQUIRES a name argument — save_frame() with no args is a script error. Mount scenes deferred: get_tree().root.add_child.call_deferred(instance); await get_tree().process_frame; await settle() — a direct add_child in _ready can hit the parent-busy guard and capture a black frame.
 - SimulateInput — inject an action/key/mouse/axis into the RUNNING game (summer_play first): {"op": "SimulateInput", "type": "action", "action": "jump", "pressed": true}. It MUST be sent alone (single-op batch). failure_reason "not_running" = start the game first; "unsupported" = the running game build predates the handler — fall back to RunVerification or ask the user.
+
+A raw ReplaceNode with scene is refused (it saves the old scene reference); use summer_replace_node.
 
 Do not mix OpenScene with scene mutations in one batch. OpenScene is a UI action;
 send it separately. scenePath selects every mutation target. The tool appends one
@@ -453,6 +455,8 @@ RECEIPTS: receipt "summary" returns only counts, failures [{index, op, error}] (
             "Use summer_write_file or summer_replace_text so project identity, content guards, and same-file ordering are enforced."
           );
         }
+        const replaceRefusal = rawSceneReplaceRefusal(ops);
+        if (replaceRefusal) throw new ToolInputError(replaceRefusal);
         // Scene mutations get one final SaveScene; read-only spatial queries
         // (TestPlacement3D, NavigationProbe3D, Starcast3D) are identity-bound
         // to the scene but never saved (core/capabilities/placement-batch.ts).

@@ -1,10 +1,12 @@
 id: tool/read-file
 kind: tool
-version: 1.0.2
-summary: Read a text file from the engine-bound project and return its full-file sha256 receipt for guarded overwrites.
+version: 1.1.0
+summary: Read a project text file, a line or byte window of it, or the entries of a .json picked by json_path/keys, with the full-file sha256 receipt.
 use_when:
   - reading project files through the engine
   - getting the sha256 required before overwriting a file
+  - reading a file too big for one result in pages (offset/limit)
+  - '"read the wall_tripple_door_02 entry of pieces.json" — json_path / keys instead of the whole file'
 facets:
   lifecycle:
     - build
@@ -18,6 +20,11 @@ license: MIT
 status: stable
 aliases:
   - summer_read_file
+related:
+  tools:
+    - tool/grep
+    - tool/write-file
+    - tool/replace-text
 implementation:
   module: src/mcp/tools/file-tools.ts
   export: registerFileTools
@@ -36,6 +43,33 @@ input_schema:
       exclusiveMinimum: 0
       maximum: 1000000
       default: 200000
+      description: Most bytes of content to return (UTF-8). Default 200000. A window or JSON selection is cut at this size too.
+    offset:
+      type: integer
+      minimum: 0
+      description: Skip this many units (lines by default, see unit) before returning content. 0 = from the start.
+    limit:
+      type: integer
+      exclusiveMinimum: 0
+      description: Return at most this many units (lines by default). The result's window.next_offset continues the read.
+    unit:
+      type: string
+      enum:
+        - lines
+        - bytes
+      description: "What offset/limit count: 'lines' (default) or 'bytes' (cut on UTF-8 character boundaries)."
+    json_path:
+      type: string
+      description: "For a JSON file: return only this value, e.g. 'pieces.wall_tripple_standard_01', 'pieces[\"a b\"]', 'items[3].size_m'."
+    keys:
+      type: array
+      items:
+        type: string
+      maxItems: 64
+      description: "For a JSON object (the file root or the json_path value): keep only these keys; * and ? wildcards, e.g. ['wall_tripple_*']."
+    keys_only:
+      type: boolean
+      description: "For a JSON object: return only its key names (after the keys filter), not the values — a cheap table of contents."
   required:
     - path
   additionalProperties: false

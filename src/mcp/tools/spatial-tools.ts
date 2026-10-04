@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { withEngine, missingEngineOpResult, ToolInputError, withOldEngineHint } from "./with-engine.js";
 import { executeSceneMutation } from "./scene-tools.js";
+import { SNAP_LIFT_MARGIN, SNAP_MAX_AUTO_LIFT, snapToSurface } from "../../core/capabilities/surface-snap.js";
 // engine_lacks_op fallbacks: ONE copy for every face (E2E 2026-09-03 F-16).
 import {
   ALIGN_DISTRIBUTE_FALLBACK,
@@ -335,6 +336,10 @@ EVIDENCE BOUNDARY:
 - visual_aabb is an explicit broad-phase fallback for mesh-only geometry; it does not prove triangle contact, and alignUp is not applied from that approximate normal.
 - initiallyOverlapping and backoffDistance expose bounded pre-sweep recovery. The tool fails instead of teleporting when the subject cannot be cleared within maxDistance.
 
+SUNK PROPS: when the subject starts inside its support (gap_exceeds_hit_travel with a start overlap), the tool lifts it against the cast direction by the overlap depth plus ${SNAP_LIFT_MARGIN} m (at most ${SNAP_MAX_AUTO_LIFT} m and the subject's own extent), snaps again from there, and keeps that only if it settles on a node it was sunk into; the receipt then carries recovery (lifted_by, original_local_position) and 'before' is the lifted pose. Otherwise the original position is restored.
+
+FAILURES EXPLAIN THEMSELVES: after gap_exceeds_hit_travel or overlap_recovery_exceeded a read-only starcast at the current pose adds start_overlap, blocking (the nodes it touches or sits inside), below, and a concrete next_step.
+
 The normal result is bounded below 5 KB and returns before/after transforms, supportPath, finalGap with an error bound, slopeDeg, evidence, and warnings. scenePath and subjectPath are always required; there is no editor-selection fallback. On an engine build that predates SnapToSurface the result is a structured engine_lacks_op failure naming the fallback.`,
     {
       scenePath: exactScenePath.describe("Exact scene containing the subject, e.g. 'res://levels/market.tscn'"),
@@ -380,14 +385,16 @@ The normal result is bounded below 5 KB and returns before/after transforms, sup
         }
         // Cross-field: a raw zod shape cannot express it, so it stays here.
         if (gap > maxDistance) throw new ToolInputError("gap must not exceed maxDistance.");
-        const receipt = await executeSceneMutation(client, exactScene, [{
-          op: "SnapToSurface",
-          subject_path: exactSubject,
-          direction,
-          max_distance: maxDistance,
+        // ONE implementation for both faces (core/capabilities/surface-snap.ts):
+        // the snap, a starcast diagnosis on failure, and the sunk-prop lift.
+        const receipt = await snapToSurface(client, {
+          scenePath: exactScene,
+          subjectPath: exactSubject,
+          direction: direction as [number, number, number],
+          maxDistance,
           gap,
-          align_up: alignUp,
-        }]);
+          alignUp,
+        });
         return withOldEngineHint(receipt, "SnapToSurface", SNAP_TO_SURFACE_FALLBACK);
       }, compactResult({
         op: "SnapToSurface",

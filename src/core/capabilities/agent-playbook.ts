@@ -146,6 +146,15 @@ export function buildAgentPlaybook(
       "Engine calls are cheap; YOUR context is not: prefer summer_world_snapshot + summer_snapshot_diff (compact, capped, fingerprinted) over repeated full-tree dumps.",
     ],
     // ------------------------------------------------------------------
+    // READ IN PARTS — a result too big for the host is a result you never see.
+    // ------------------------------------------------------------------
+    readingInParts: [
+      "summer_get_project_context is compact by default (project, scene path + sceneSummary, health summary, projectMemory, warnings). Add include:['scene_tree'] / ['capabilities'] / ['settings'] only when you need that block; `omitted` names what was left out.",
+      "summer_world_snapshot lists at most 200 nodes by default. Read one subtree with path_prefix ('House3', 'Alley2/Props'), narrow with classes and fields (['pos','aabb']), page with offset/next_offset; matched_counts counts the subtree's classes. counts and the snapshot_id diff baseline always cover the whole scene.",
+      "summer_inspect_node fields:['transform','global_transform','scene_file_path'] reads where a node is (locally and in the world) and which scene it instances in a few hundred bytes instead of about 5 KB.",
+      "Search, then read the part: summer_grep (regex over project files; context_lines, path, glob, max_results) finds the lines; summer_read_file then reads just that part — offset/limit for text (data.window.next_offset continues), json_path / keys / keys_only for JSON (e.g. json_path:'pieces', keys:['wall_tripple_*'] on a kit's pieces.json).",
+    ],
+    // ------------------------------------------------------------------
     // Verification ladder (climb only as high as the change demands).
     // ------------------------------------------------------------------
     verificationLadder: {
@@ -206,6 +215,8 @@ export function buildAgentPlaybook(
       "For live scene hierarchy and inspector changes, prefer scene tools. Guarded text writes support .tscn/.tres, and the engine schedules editor reloads after they land.",
       "Write GDScript by default; use C# only if the project already uses it.",
       "Never remove multiple top-level nodes unless the user explicitly requests destructive edits.",
+      "summer_snap_to_surface lifts a prop that is sunk into its support and settles it (receipt.recovery); when it still fails, read blocking and next_step in the failure instead of guessing a new position.",
+      "To swap one piece for another use summer_replace_node: it keeps parent, index, name, transform and added children, and proves the swap from the saved file. Trust persisted:true only; failure_reason not_persisted means the editor shows a change the file does not hold.",
       "Never change priority: locked .summer memory, voice IDs, canon, or provider bindings without explicit user confirmation.",
     ],
     liveEngineFlow: [
@@ -225,6 +236,8 @@ export function buildAgentPlaybook(
       "SimulateInput (drive the RUNNING game — summer_play first): summer_batch ops:[{op:'SimulateInput', type:'action', action:'jump', pressed:true}], sent ALONE as the only op. failure_reason 'not_running' = start the game first; 'unsupported' = the running game build predates the handler — use RunVerification instead.",
       "SINGLE-OP CONTRACT: the engine rejects any multi-op batch containing SaveScene, InstantiateScene, ReplaceNode, SimulateInput, ViewportSnapshot, GameSnapshot, GetRuntimeSceneTree, GetRuntimeNode, the runtime-control ops (SetRuntimeProp, CallRuntimeMethod, SpawnRuntimeScene, FreeRuntimeNode, RuntimeAnimation, RuntimeAnimationTree, GetRuntimeBones, GamePause, GameStep, GameSpeed, SimulateInputScript, InputRecordStart, InputRecordStop, InputReplay, GameProbe), Run*/Import* or Git* ops (failure_reason 'unsupported_transport', nothing executes). summer_batch splits these into sequential requests for you; when composing raw batches keep them as their own call anyway.",
       "WriteFile and ReplaceText are rejected here by design — use summer_write_file / summer_replace_text so project identity, content guards and same-file ordering are enforced.",
+      "A raw ReplaceNode with scene is rejected here too: the engine op shows the new scene but saves the OLD scene reference. summer_replace_node does the swap with ops that persist and verifies the saved file (persisted:true, or failure_reason not_persisted).",
+      "Searching project files needs no raw op: summer_grep wraps the engine's Grep op and adds context lines and a result cap.",
       "You do not need an engine op to run a shell command: your own host already has a shell. The engine binary that runs project scripts is at OS.get_executable_path() (on macOS, /Applications/Summer.app/Contents/MacOS/Summer); see the summer-cli headless-scripting skill.",
       "These are runtime ops, not scene mutations — the batch undo group is a harmless no-op for them.",
     ],

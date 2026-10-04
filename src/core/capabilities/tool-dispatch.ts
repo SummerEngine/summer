@@ -18,7 +18,7 @@
  */
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { EngineApiClient } from "../api-client.js";
 import {
   missingEngineEventsResult,
@@ -617,10 +617,11 @@ async function seeingResult(result: SeeingResult, name: string): Promise<Dispatc
   }
   let localPath: string | undefined;
   if (result.image) {
-    const dir = join(tmpdir(), "summer-cli");
-    await mkdir(dir, { recursive: true });
-    localPath = join(dir, `${name}-${Date.now()}.jpg`);
-    await writeFile(localPath, Buffer.from(result.image.base64, "base64"));
+    // A private mkdtemp directly in the OS temp dir, never a shared fixed
+    // parent another local user could pre-create or symlink.
+    const dir = await mkdtemp(join(tmpdir(), `summer-seeing-cli-${name}-`));
+    localPath = join(dir, `${name}.jpg`);
+    await writeFile(localPath, Buffer.from(result.image.base64, "base64"), { mode: 0o600 });
   }
   return {
     ok: true,

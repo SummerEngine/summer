@@ -16,7 +16,7 @@
  * unsaved after every run, even a read-only one; RunEditorScript boots a
  * headless child editor that has no renderer at all.
  */
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -111,15 +111,41 @@ function firstResult(response: unknown): Record<string, unknown> {
   return envelope;
 }
 
-/** Make a per-call temp directory for wrapper/config/captures. */
+export const PROBE_DIR_PREFIX = "summer-seeing-";
+
+/**
+ * Per-call run directory for the wrapper scene, its config and captures:
+ * mkdtemp DIRECTLY in the OS temp directory (random name, mode 0700). There is
+ * deliberately no shared fixed parent such as <tmp>/summer-engine/seeing: on
+ * a multi-user machine (Linux /tmp) another user could pre-create or symlink
+ * that parent and swap the wrapper scene the engine then loads and runs as
+ * code. The directory is re-checked before anything is written into it.
+ */
 export async function makeProbeDir(): Promise<string> {
-  const root = join(tmpdir(), "summer-engine", "seeing");
-  await mkdir(root, { recursive: true });
-  return mkdtemp(join(root, "run-"));
+  const dir = await mkdtemp(join(tmpdir(), PROBE_DIR_PREFIX));
+  await assertPrivateDir(dir);
+  return dir;
+}
+
+/** Refuse a run directory that is not a real directory owned by this user
+ *  with no group/other permissions (symlink, shared, or foreign). */
+export async function assertPrivateDir(dir: string): Promise<void> {
+  const info = await lstat(dir);
+  if (info.isSymbolicLink() || !info.isDirectory()) {
+    throw new Error(`Refusing seeing run directory ${dir}: not a real directory.`);
+  }
+  if (process.platform === "win32") return;
+  if (typeof process.getuid === "function" && info.uid !== process.getuid()) {
+    throw new Error(`Refusing seeing run directory ${dir}: owned by another user.`);
+  }
+  if ((info.mode & 0o077) !== 0) {
+    throw new Error(`Refusing seeing run directory ${dir}: group/other can access it (mode ${(info.mode & 0o777).toString(8)}).`);
+  }
 }
 
 export async function runProbe(client: ProbeClient, options: RunProbeOptions, dirOverride?: string): Promise<ProbeRun> {
   const dir = dirOverride ?? (await makeProbeDir());
+  await assertPrivateDir(dir);
   const dispose = async () => {
     await rm(dir, { recursive: true, force: true }).catch(() => undefined);
   };

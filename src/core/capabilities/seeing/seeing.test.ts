@@ -174,7 +174,7 @@ describe("summer_shot_sheet", () => {
     const tiles = config.tiles as Array<Record<string, unknown>>;
     expect(tiles.map((t) => t.kind)).toEqual(["shot", "shot", "shot"]);
     expect(tiles[0]!.pose).toMatchObject({ position: [0, 5, 20], look_at: [0, 2, 0], fov: 55 });
-    expect(String(tiles[0]!.capture_path)).toContain("/seeing/run-");
+    expect(String(tiles[0]!.capture_path)).toContain("/summer-seeing-");
     expect(tiles[2]!.capture_path).toBeUndefined();
     expect(existsSync(join(project, ".summer", "shots", "hero.jpg"))).toBe(true);
     expect(existsSync(join(project, ".summer", "shots", "alley.jpg"))).toBe(true);

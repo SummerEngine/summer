@@ -836,7 +836,7 @@
     {
       "id": "skill/setup-multiplayer",
       "name": "setup-multiplayer",
-      "description": "Add multiplayer to an existing game — LAN/online co-op, PvP, lobbies — via MultiplayerAPI, MultiplayerSpawner, and MultiplayerSynchronizer.",
+      "description": "Add multiplayer with Summer's netcode: a predicted SummerNetworkBehavior per player, a Spawner and Local Play tests. No Godot RPCs or MultiplayerSynchronizer.",
       "clients": "all",
       "recommended": true,
       "status": "stable",

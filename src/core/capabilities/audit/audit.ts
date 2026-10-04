@@ -26,7 +26,18 @@ import { ToolInputError } from "../../tool-errors.js";
 import { resolveCurrentScene } from "../project-context.js";
 import { layoutGrid, validateNodePath, validateScenePath, type SeeingImage } from "../seeing/seeing.js";
 import { runProbe, type ProbeClient } from "../seeing/probe.js";
-import { AUDIT_CHECKS, AUDIT_DEFAULT_LIMIT, AUDIT_MAX_LIMIT, AUDIT_MAX_MANIFESTS, type AuditCheck, type SceneAuditArgs, type Severity } from "./args.js";
+import {
+  AUDIT_CHECKS,
+  AUDIT_DEFAULT_BUDGET_MS,
+  AUDIT_DEFAULT_LIMIT,
+  AUDIT_MAX_BUDGET_MS,
+  AUDIT_MAX_LIMIT,
+  AUDIT_MAX_MANIFESTS,
+  AUDIT_MIN_BUDGET_MS,
+  type AuditCheck,
+  type SceneAuditArgs,
+  type Severity,
+} from "./args.js";
 import {
   groupRepeats,
   judgeDuplicates,
@@ -47,7 +58,7 @@ import {
   type InstRow,
   type KernelResult,
 } from "./judge.js";
-import { buildPage, countIssues, filterIssues, sortIssues, timingPerCheck } from "./summary.js";
+import { buildPage, countIssues, filterIssues, partialChecks, sortIssues, timingPerCheck } from "./summary.js";
 import { choosePose, SHEET_TILES } from "./frame.js";
 
 export const AUDIT_KERNEL_PATH = join(PACKAGE_ROOT, "assets", "audit", "scene_audit.gd");
@@ -106,6 +117,7 @@ export interface ValidatedAuditArgs {
   limit: number;
   manifests: string[];
   render: "sheet" | "none";
+  budgetMs: number;
 }
 
 /** Strict validation; throws ToolInputError (nothing is sent). */
@@ -120,6 +132,10 @@ export function validateAuditArgs(args: SceneAuditArgs): ValidatedAuditArgs {
   if (!Number.isInteger(limit) || limit < 1 || limit > AUDIT_MAX_LIMIT) throw new ToolInputError(`limit must be 1-${AUDIT_MAX_LIMIT}. Nothing was sent.`);
   const manifests = (args.manifests ?? []).map(validateManifestPath);
   if (manifests.length > AUDIT_MAX_MANIFESTS) throw new ToolInputError(`manifests: at most ${AUDIT_MAX_MANIFESTS}. Nothing was sent.`);
+  const budgetMs = args.budget_ms ?? AUDIT_DEFAULT_BUDGET_MS;
+  if (!Number.isInteger(budgetMs) || budgetMs < AUDIT_MIN_BUDGET_MS || budgetMs > AUDIT_MAX_BUDGET_MS) {
+    throw new ToolInputError(`budget_ms must be an integer ${AUDIT_MIN_BUDGET_MS}-${AUDIT_MAX_BUDGET_MS}. Nothing was sent.`);
+  }
   const root = args.root !== undefined && args.root.trim() !== "" && args.root.trim() !== "." ? validateNodePath(args.root.trim(), "root") : undefined;
   return {
     ...(args.scenePath !== undefined ? { scenePath: validateScenePath(args.scenePath) } : {}),
@@ -130,6 +146,7 @@ export function validateAuditArgs(args: SceneAuditArgs): ValidatedAuditArgs {
     limit,
     manifests,
     render: args.render ?? "none",
+    budgetMs,
   };
 }
 
@@ -198,6 +215,7 @@ export async function sceneAudit(client: AuditClient, rawArgs: SceneAuditArgs): 
     ...(args.root ? { root: args.root } : {}),
     manifests: args.manifests,
     poses: args.render === "sheet",
+    budget_ms: args.budgetMs,
   };
   const started = Date.now();
   const run = await runProbe(client, { scenePath, config, size: [16, 16], kernel: loadAuditKernel(), timeoutMs: 120_000 });
@@ -213,12 +231,16 @@ export async function sceneAudit(client: AuditClient, rawArgs: SceneAuditArgs): 
     const judgeStarted = Date.now();
     const all = judgeAll(result, args.checks);
     const judgeMs = Date.now() - judgeStarted;
-    const { counts, clean } = countIssues(all, args.checks);
+    const partial = partialChecks(result.partial, args.checks);
+    const { counts, clean } = countIssues(all, args.checks, partial.checks);
     const matching = filterIssues(all, args.minSeverity);
     const notes: string[] = ["Read-only: audited the SAVED file in a private copy (open tab, undo and file untouched); save first."];
     if (args.minSeverity !== "look") notes.push(`min_severity ${args.minSeverity}: ${all.length - matching.length} lower-severity issue(s) hidden.`);
     const lights = lightStats(result);
     if (lights && args.checks.includes("lights") && lights.renderer === "forward_plus") notes.push("lights: forward_plus has no per-object light limit; only spot rims were checked.");
+    const stopped = Object.entries(partial.checks).map(([c, share]) => `${c} ${Math.round(share * 100)}%`);
+    if (stopped.length) notes.push(`budget_ms ${args.budgetMs}: stopped early (editor time): ${stopped.join(", ")} covered; rerun those with checks:[...] or a larger budget_ms.`);
+    if (partial.other.poses !== undefined) notes.push(`framing: views measured for ${Math.round(partial.other.poses * 100)}% of the pieces (budget); the rest have no sheet tile.`);
     for (const w of Array.isArray(result.warnings) ? (result.warnings as unknown[]).slice(0, 3) : []) notes.push(String(w).slice(0, 160));
 
     const base: Record<string, unknown> = {
@@ -226,6 +248,7 @@ export async function sceneAudit(client: AuditClient, rawArgs: SceneAuditArgs): 
       tool: "summer_scene_audit",
       scenePath,
       ...(args.root ? { root: args.root } : {}),
+      budget_ms: args.budgetMs,
       scene: sceneStats(result),
       counts,
       clean,

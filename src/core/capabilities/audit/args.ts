@@ -33,6 +33,10 @@ export type Severity = (typeof SEVERITIES)[number];
 export const AUDIT_DEFAULT_LIMIT = 15;
 export const AUDIT_MAX_LIMIT = 50;
 export const AUDIT_MAX_MANIFESTS = 8;
+/** Editor time the checks may take before the slow ones stop early (partial). */
+export const AUDIT_DEFAULT_BUDGET_MS = 3000;
+export const AUDIT_MIN_BUDGET_MS = 250;
+export const AUDIT_MAX_BUDGET_MS = 60000;
 
 export const sceneAuditShape = {
   scenePath: z
@@ -69,6 +73,15 @@ export const sceneAuditShape = {
     .optional()
     .describe(
       "Extra pack manifests (res:// .json in the pieces.json format: {pieces:{name:{scene, fits_into, wall_side, front_faces_plus_z, category}}}). pieces.json next to (or up to two folders above) every instanced scene is always read."
+    ),
+  budget_ms: z
+    .number()
+    .int()
+    .min(AUDIT_MIN_BUDGET_MS)
+    .max(AUDIT_MAX_BUDGET_MS)
+    .optional()
+    .describe(
+      `Editor time for the whole audit (default ${AUDIT_DEFAULT_BUDGET_MS} ms, ${AUDIT_MIN_BUDGET_MS}-${AUDIT_MAX_BUDGET_MS}). Each check gets a share weighted by its usual cost (unused time passes on); a check past its share stops and counts.<check>.partial gives the share it covered. Under load, rerun the partial checks with checks:[...] or a larger budget.`
     ),
   render: z
     .enum(["sheet", "none"])

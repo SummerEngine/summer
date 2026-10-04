@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AuditIssue } from "./judge.js";
-import { buildPage, bytes, countIssues, filterIssues, SUMMARY_CAP_BYTES, sortIssues, timingPerCheck } from "./summary.js";
+import { buildPage, bytes, countIssues, filterIssues, partialChecks, SUMMARY_CAP_BYTES, sortIssues, timingPerCheck } from "./summary.js";
 
 function issue(over: Partial<AuditIssue> = {}): AuditIssue {
   return {
@@ -40,6 +40,25 @@ describe("ordering and filters", () => {
     expect(counts).toEqual({ through_hole: { error: 1 }, floating: { error: 1, warn: 1 } });
     expect(Object.keys(counts)).toEqual(["through_hole", "floating"]);
     expect(clean).toEqual(["lights"]);
+  });
+});
+
+describe("budget: checks stopped early are partial in the counts", () => {
+  it("a partial check carries the share it covered and is never 'clean', even with nothing found", () => {
+    const { counts, clean } = countIssues([issue({ check: "through_hole", severity: "error" })], ["through_hole", "floor_gap", "lights"], { through_hole: 0.62, floor_gap: 0.4 });
+    expect(counts).toEqual({ through_hole: { error: 1, partial: 0.62 }, floor_gap: { partial: 0.4 } });
+    expect(clean).toEqual(["lights"]);
+  });
+
+  it("kernel stages map to the checks they measure for; the lowest share wins; never rounded up to whole", () => {
+    const ran = ["through_hole", "floor_gap", "z_fight", "floating", "sunken", "orientation"] as const;
+    const p = partialChecks({ through_hole: [620, 1000], floor_gap: [1, 2], floating_sunken: [9999, 10000], mount_gap: [0, 40], poses: [10, 20], resource: [5, 5] }, [...ran]);
+    expect(p.checks).toEqual({ through_hole: 0.62, floor_gap: 0.5, z_fight: 0.5, floating: 0.99, sunken: 0.99, orientation: 0 });
+    expect(p.other).toEqual({ poses: 0.5 });
+    // A stage for a check that was not asked for adds nothing.
+    expect(partialChecks({ through_hole: [1, 2] }, ["floor_gap"]).checks).toEqual({});
+    expect(partialChecks(undefined, ["floor_gap"])).toEqual({ checks: {}, other: {} });
+    expect(partialChecks({ x: "bad", through_hole: [5, 0] }, ["through_hole"]).checks).toEqual({});
   });
 });
 

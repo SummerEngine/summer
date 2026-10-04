@@ -7404,7 +7404,7 @@
       "id": "tool/scene-audit",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "8d1c174145fdcf75a38158b65bb148bc8601e1175e38eb9c7f9a04de4d2f2104",
+      "content_hash": "668e47282eb78f615b1b37508612f60cd6fe2958c1649066d53cd78af35e5fda",
       "summary": "One read-only pass over a 3D scene: see-through holes, floor gaps, floating or clipping props, wrong insert hosts, mount gaps, facing, UV stretch, lights.",
       "use_when": [
         "after each build stage of a 3D level or kit-built street: \"what is wrong with this scene and where exactly?\"",

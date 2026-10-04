@@ -73,10 +73,13 @@ describe("input validation: caller text never reaches a scene file or GDScript u
     expect(() => validateAuditArgs({ limit: 0 })).toThrow(ToolInputError);
     expect(() => validateAuditArgs({ limit: 51 })).toThrow(ToolInputError);
     expect(() => validateAuditArgs({ manifests: Array(9).fill("res://a/pieces.json") })).toThrow(ToolInputError);
+    expect(() => validateAuditArgs({ budget_ms: 100 })).toThrow(ToolInputError);
+    expect(() => validateAuditArgs({ budget_ms: 60001 })).toThrow(ToolInputError);
+    expect(() => validateAuditArgs({ budget_ms: 1500.5 })).toThrow(ToolInputError);
   });
   it("accepts ordinary values and defaults to all 14 checks", () => {
     const v = validateAuditArgs({ scenePath: "res://three_houses_v2.tscn", root: "Alley3/Props", manifests: ["res://starter/real-city-alley-kit/pieces.json"] });
-    expect(v).toMatchObject({ scenePath: "res://three_houses_v2.tscn", root: "Alley3/Props", minSeverity: "look", offset: 0, limit: 15, render: "none" });
+    expect(v).toMatchObject({ scenePath: "res://three_houses_v2.tscn", root: "Alley3/Props", minSeverity: "look", offset: 0, limit: 15, render: "none", budgetMs: 3000 });
     expect(v.checks).toEqual([...AUDIT_CHECKS]);
   });
 
@@ -100,7 +103,7 @@ describe("the private-copy path: arguments travel as data, the kernel is read-on
     expect(wrapper).not.toContain("Alley 3");
     expect(wrapper).not.toContain("res://kit/pieces.json");
     expect(wrapper).toContain(escapeTscnString(loadAuditKernel()));
-    expect(engine.configs[0]).toMatchObject({ mode: "audit", root: "Alley 3", checks: ["through_hole"], manifests: ["res://kit/pieces.json"], poses: false, scene_path: "res://levels/town.tscn" });
+    expect(engine.configs[0]).toMatchObject({ mode: "audit", root: "Alley 3", checks: ["through_hole"], manifests: ["res://kit/pieces.json"], poses: false, budget_ms: 3000, scene_path: "res://levels/town.tscn" });
   });
 
   it("the kernel reads its config from its own wrapper and never writes project files or shells out", () => {
@@ -198,6 +201,41 @@ describe("sceneAudit", () => {
     const [issue] = r.summary.issues as Array<{ why: string; next: string; ev: Record<string, unknown> }>;
     expect(issue!.why).toMatch(/^bare strip 2 x 0.1 m \(0.2 m2\) between Ground\/B0's edge and Alley1\/Backdrop/);
     expect(issue!.next).toContain("alley_ground.tres on a PlaneMesh");
+  });
+
+  it("budget_ms: a check past its share stops and is reported partial in the counts, never clean", async () => {
+    // A kernel under load (one run took 14 s): with the default budget the
+    // facade scan covers 62% and the floor scan 40%; with 20 s, everything.
+    const slow = (config: Record<string, unknown>) => ({
+      ...kernelResult(),
+      floors: { cell: 0.3, gaps: [], per_owner: [] },
+      partial: Number(config.budget_ms) >= 20000 ? {} : { through_hole: [620, 1000], floor_gap: [400, 1000] },
+    });
+    const engine = fakeEngine({ projectRoot: project, audit: slow });
+    const r = (await sceneAudit(engine, { scenePath: "res://a.tscn", checks: ["through_hole", "floor_gap", "insert_host"] })) as AuditSuccess;
+    expect(engine.configs[0]!.budget_ms).toBe(3000);
+    expect(r.summary.counts).toEqual({ through_hole: { error: 1, partial: 0.62 }, floor_gap: { partial: 0.4 }, insert_host: { error: 1 } });
+    expect(r.summary.clean).toEqual([]);
+    expect(r.summary.budget_ms).toBe(3000);
+    expect((r.summary.notes as string[]).some((n) => n.startsWith("budget_ms 3000: stopped early (editor time): through_hole 62%, floor_gap 40% covered"))).toBe(true);
+    expect(bytes(r.summary)).toBeLessThanOrEqual(SUMMARY_CAP_BYTES);
+    const full = (await sceneAudit(engine, { scenePath: "res://a.tscn", checks: ["through_hole", "floor_gap"], budget_ms: 20000 })) as AuditSuccess;
+    expect(engine.configs[1]!.budget_ms).toBe(20000);
+    expect(full.summary.counts).toEqual({ through_hole: { error: 1 } });
+    expect(full.summary.clean).toEqual(["floor_gap"]);
+  });
+
+  it("the kernel polls the budget in every check loop and reports what it covered", () => {
+    const kernel = loadAuditKernel();
+    const fns = new Map(kernel.split("\nfunc ").slice(1).map((body) => [body.slice(0, body.indexOf("(")), body] as const));
+    for (const name of ["_scan_line", "_scan_floors", "_scan_strips", "_scan_support", "_scan_overlaps", "_scan_mounts", "_scan_long_props", "_scan_uv", "_scan_inserts", "_scan_lights", "_scan_resources", "_scan_clearances"]) {
+      const body = fns.get(name);
+      expect(body, name).toBeDefined();
+      expect(body, name).toContain("_over()");
+      expect(body, name).toContain("_count(");
+    }
+    expect(kernel).toContain('_budget_us = int(float(_cfg.get("budget_ms", 0)) * 1000.0)');
+    expect(kernel).toContain('_result["partial"] = partial');
   });
 
   it("without scenePath it audits the open scene", async () => {

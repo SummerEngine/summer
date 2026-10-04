@@ -102,6 +102,11 @@ input_schema:
         type: string
       maxItems: 8
       description: 'Extra pack manifests (res:// .json in the pieces.json format). pieces.json next to (or up to two folders above) every instanced scene is always read.'
+    budget_ms:
+      type: integer
+      minimum: 250
+      maximum: 60000
+      description: 'Editor time for the whole audit (default 3000 ms). Each check gets a share weighted by its usual cost (unused time passes on); a check past its share stops and counts.<check>.partial gives the share it covered. Under load, rerun the partial checks with checks or a larger budget.'
     render:
       type: string
       enum:

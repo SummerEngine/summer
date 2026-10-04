@@ -33,22 +33,74 @@ export function filterIssues(issues: readonly AuditIssue[], minSeverity: Severit
   return issues.filter((i) => SEVERITY_RANK[i.severity] <= limit);
 }
 
-/** Per check: { error: n, warn: n, look: n } without zeros; checks that ran
- *  and found nothing are listed in `clean`. */
-export function countIssues(issues: readonly AuditIssue[], ran: readonly AuditCheck[]): { counts: Record<string, Partial<Record<Severity, number>>>; clean: AuditCheck[] } {
-  const counts: Record<string, Partial<Record<Severity, number>>> = {};
+export type CheckCounts = Partial<Record<Severity, number>> & { partial?: number };
+
+/** Per check: { error: n, warn: n, look: n } without zeros, plus `partial`
+ *  (the share of the check's samples it covered) when the editor-time budget
+ *  stopped it early. Checks that ran in full and found nothing are listed
+ *  in `clean`; a partial check never is. */
+export function countIssues(
+  issues: readonly AuditIssue[],
+  ran: readonly AuditCheck[],
+  partial: Partial<Record<AuditCheck, number>> = {}
+): { counts: Record<string, CheckCounts>; clean: AuditCheck[] } {
+  const counts: Record<string, CheckCounts> = {};
   for (const i of issues) {
     const c = (counts[i.check] ??= {});
     c[i.severity] = (c[i.severity] ?? 0) + 1;
   }
-  const ordered: Record<string, Partial<Record<Severity, number>>> = {};
+  const ordered: Record<string, CheckCounts> = {};
   for (const check of AUDIT_CHECKS) {
-    if (!counts[check]) continue;
-    const c: Partial<Record<Severity, number>> = {};
-    for (const s of SEVERITIES) if (counts[check]![s]) c[s] = counts[check]![s];
+    const share = ran.includes(check) ? partial[check] : undefined;
+    if (!counts[check] && share === undefined) continue;
+    const c: CheckCounts = {};
+    for (const s of SEVERITIES) if (counts[check]?.[s]) c[s] = counts[check]![s];
+    if (share !== undefined) c.partial = share;
     ordered[check] = c;
   }
-  return { counts: ordered, clean: ran.filter((c) => !counts[c]) };
+  return { counts: ordered, clean: ran.filter((c) => !counts[c] && partial[c] === undefined) };
+}
+
+/** Kernel stages and the checks each one measures for. */
+export const STAGE_CHECKS: Readonly<Record<string, readonly AuditCheck[]>> = {
+  through_hole: ["through_hole", "z_fight"],
+  floor_gap: ["floor_gap", "z_fight"],
+  floating_sunken: ["floating", "sunken"],
+  interpenetration: ["interpenetration"],
+  mount_gap: ["mount_gap", "orientation"],
+  orientation: ["orientation"],
+  uv_stretch: ["uv_stretch"],
+  insert_host: ["insert_host"],
+  lights: ["lights"],
+  resource: ["resource"],
+};
+
+/**
+ * The kernel's partial stages ({stage: [done, planned]}) -> the share each
+ * requested check covered (the lowest of its stages, 2 decimals, never
+ * rounded up to 1), and the stages that are not checks (framing).
+ */
+export function partialChecks(raw: unknown, ran: readonly AuditCheck[]): { checks: Partial<Record<AuditCheck, number>>; other: Record<string, number> } {
+  const checks: Partial<Record<AuditCheck, number>> = {};
+  const other: Record<string, number> = {};
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { checks, other };
+  for (const [stage, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!Array.isArray(value)) continue;
+    const done = Number(value[0]);
+    const total = Number(value[1]);
+    if (!Number.isFinite(done) || !Number.isFinite(total) || total <= 0 || done >= total) continue;
+    const share = Math.min(0.99, Math.floor((Math.max(0, done) / total) * 100) / 100);
+    const mapped = STAGE_CHECKS[stage];
+    if (!mapped) {
+      other[stage] = share;
+      continue;
+    }
+    for (const check of mapped) {
+      if (!ran.includes(check)) continue;
+      checks[check] = Math.min(checks[check] ?? 1, share);
+    }
+  }
+  return { checks, other };
 }
 
 export interface CompactIssue {

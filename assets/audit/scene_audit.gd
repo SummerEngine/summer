@@ -50,6 +50,8 @@ const HANGING_RE := "(ivy|vine|hanging|creeper)"
 # the strip between that edge and the wall (walkable area enclosed by walls).
 const STRIP_STEP := 0.25
 const STRIP_REACH := 1.0
+# Usual share of a check's editor time (the budget's weights).
+const STAGE_WEIGHT := {"through_hole": 4.0, "floor_gap": 2.0, "floating_sunken": 1.0, "interpenetration": 2.0, "mount_gap": 1.0, "orientation": 1.0, "uv_stretch": 1.0, "insert_host": 0.3, "lights": 0.3, "resource": 0.5, "poses": 1.0}
 
 var _cfg: Dictionary = {}
 var _out_dir := ""
@@ -92,6 +94,15 @@ var _floor_recs: Array = []
 var _pack_docs: Array = []
 # Wall standoffs ASSEMBLY.md gives per section: pack dir -> [[heading, metres]].
 var _pack_standoff: Dictionary = {}
+
+# Editor-time budget (budget_ms): each check gets a share of what is left,
+# weighted by its usual cost; time a fast check leaves unused passes on to
+# the next ones. A check past its share stops and is reported partial:
+# _tally[stage] = [units done, units planned].
+var _budget_us := 0
+var _check_end := 0
+var _pending: Array = []
+var _tally: Dictionary = {}
 
 var _re_struct: RegEx = null
 var _re_floor: RegEx = null
@@ -163,6 +174,33 @@ func _lap(stage: String, since: int) -> int:
 	return now
 
 
+# Start a check: its deadline is its weighted share of the budget left.
+func _begin(stage: String) -> void:
+	var w_all := 0.0
+	for s in _pending:
+		w_all += float(STAGE_WEIGHT.get(s, 1.0))
+	var w := float(STAGE_WEIGHT.get(stage, 1.0))
+	_pending.erase(stage)
+	if _budget_us <= 0:
+		_check_end = 0
+		return
+	var now := Time.get_ticks_usec()
+	var left := maxi(0, _budget_us - (now - _t0))
+	var share := int(float(left) * w / maxf(w_all, w))
+	# Every check gets a little time, even when setup used up the budget.
+	_check_end = now + maxi(share, int(float(_budget_us) / 30.0))
+
+
+# The running check is past its share of the budget.
+func _over() -> bool:
+	return _check_end > 0 and Time.get_ticks_usec() > _check_end
+
+
+func _count(stage: String, done: int, total: int) -> void:
+	var tl: Array = _tally.get(stage, [0, 0])
+	_tally[stage] = [int(tl[0]) + done, int(tl[1]) + total]
+
+
 static func _a3(v: Vector3, step := 0.001) -> Array:
 	return [snappedf(v.x, step), snappedf(v.y, step), snappedf(v.z, step)]
 
@@ -203,6 +241,7 @@ func _run() -> void:
 	for c in (_cfg.get("checks", []) as Array):
 		_checks[String(c)] = true
 	_want_poses = bool(_cfg.get("poses", false))
+	_budget_us = int(float(_cfg.get("budget_ms", 0)) * 1000.0)
 	var root_path := String(_cfg.get("root", ""))
 	if root_path != "" and root_path != ".":
 		_report_root = _resolve(root_path)
@@ -244,39 +283,65 @@ func _run() -> void:
 		_q.collide_with_bodies = true
 
 	_result["stage"] = "checks"
-	if _checks.has("through_hole") or _checks.has("z_fight"):
+	var run_th := _checks.has("through_hole") or _checks.has("z_fight")
+	var run_fl := _checks.has("floor_gap") or _checks.has("z_fight")
+	var run_su := _checks.has("floating") or _checks.has("sunken")
+	var run_mo := _checks.has("mount_gap") or _checks.has("orientation")
+	var run_po := _want_poses and _state != null
+	for stage_on in [["through_hole", run_th], ["floor_gap", run_fl], ["floating_sunken", run_su], ["interpenetration", _checks.has("interpenetration")], ["mount_gap", run_mo], ["orientation", _checks.has("orientation")], ["uv_stretch", _checks.has("uv_stretch")], ["insert_host", _checks.has("insert_host")], ["lights", _checks.has("lights")], ["resource", _checks.has("resource")], ["poses", run_po]]:
+		if bool(stage_on[1]):
+			_pending.append(String(stage_on[0]))
+	if run_th:
+		_begin("through_hole")
 		_result["lines"] = _scan_facades()
 		t = _lap("through_hole", t)
-	if _checks.has("floor_gap") or _checks.has("z_fight"):
+	if run_fl:
+		_begin("floor_gap")
 		_result["floors"] = _scan_floors()
 		t = _lap("floor_gap", t)
-	if _checks.has("floating") or _checks.has("sunken"):
+	if run_su:
+		_begin("floating_sunken")
 		_result["support"] = _scan_support()
 		t = _lap("floating_sunken", t)
 	if _checks.has("interpenetration"):
+		_begin("interpenetration")
 		_result["overlaps"] = _scan_overlaps()
 		t = _lap("interpenetration", t)
-	if _checks.has("mount_gap") or _checks.has("orientation"):
+	if run_mo:
+		_begin("mount_gap")
 		_result["mounts"] = _scan_mounts()
 		t = _lap("mount_gap", t)
 	if _checks.has("orientation"):
+		_begin("orientation")
 		_result["long_props"] = _scan_long_props()
 		t = _lap("orientation", t)
 	if _checks.has("uv_stretch"):
+		_begin("uv_stretch")
 		_result["uv"] = _scan_uv()
 		t = _lap("uv_stretch", t)
 	if _checks.has("insert_host"):
+		_begin("insert_host")
 		_result["inserts"] = _scan_inserts()
 		t = _lap("insert_host", t)
 	if _checks.has("lights"):
+		_begin("lights")
 		_result["lights"] = _scan_lights()
 		t = _lap("lights", t)
 	if _checks.has("resource"):
+		_begin("resource")
 		_result["resources"] = _scan_resources()
 		t = _lap("resource", t)
-	if _want_poses and _state != null:
+	if run_po:
+		_begin("poses")
 		_scan_clearances()
 		t = _lap("poses", t)
+	# Checks a budget stopped early: [units done, units planned].
+	var partial: Dictionary = {}
+	for stage in _tally:
+		var tl: Array = _tally[stage]
+		if int(tl[0]) < int(tl[1]):
+			partial[stage] = [int(tl[0]), int(tl[1])]
+	_result["partial"] = partial
 	_result["instances"] = _instance_rows()
 	t = _lap("emit", t)
 	_ms["total"] = snappedf(float(Time.get_ticks_usec() - _t0) / 1000.0, 0.1)
@@ -1181,7 +1246,13 @@ func _scan_line(line: Dictionary, lines: Array, s: float) -> Dictionary:
 	var backed := 0
 	var want_zf := _checks.has("z_fight")
 	var want_holes := _checks.has("through_hole")
+	var done := 0
+	var stopped := false
 	for smp in samples:
+		if _over():
+			stopped = true
+			break
+		done += 1
 		var t := float(smp[0])
 		var y := float(smp[1])
 		var p := tax * t + n * d + Vector3(0, y, 0)
@@ -1215,6 +1286,7 @@ func _scan_line(line: Dictionary, lines: Array, s: float) -> Dictionary:
 		if through.size() >= 4000:
 			_warn("A facade line had more than 4000 see-through rays; the rest were not recorded.")
 			break
+	_count("through_hole", done if stopped else samples.size(), samples.size())
 	var rect_rows: Array = []
 	for r in rects:
 		rect_rows.append([r[0], snappedf(r[1], 0.001), snappedf(r[2], 0.001), snappedf(r[3], 0.001), snappedf(r[4], 0.001)])
@@ -1336,7 +1408,13 @@ func _scan_floors() -> Dictionary:
 	var want_zf := _checks.has("z_fight")
 	var interior := 0
 	var per_owner: Dictionary = {}
+	var keys_done := 0
+	var stopped := false
 	for key in occ:
+		if _over():
+			stopped = true
+			break
+		keys_done += 1
 		var owner_i := int(occ[key])
 		if not bool((_inst[owner_i] as Dictionary)["in"]):
 			continue
@@ -1362,10 +1440,15 @@ func _scan_floors() -> Dictionary:
 				po[2] = int(po[2]) + 1
 				if _floor_gap_void:
 					po[3] = int(po[3]) + 1
+	_count("floor_gap", keys_done if stopped else occ.size(), occ.size())
 	# Seams between neighbouring tiles (world AABB gaps of 2 mm .. 1 m).
 	var seams := 0
 	if want_gaps:
+		var seam_done := 0
 		for a in floors:
+			if _over():
+				break
+			seam_done += 1
 			for b in floors:
 				if a == b or not (bool(a["in"]) or bool(b["in"])):
 					continue
@@ -1392,6 +1475,7 @@ func _scan_floors() -> Dictionary:
 						_floor_sample(x, z, maxf(wa.end.y, wb.end.y), int(a["i"]), gaps, zf, true, false, 1, ssx, ssz)
 						seams += 1
 						u += 0.1
+		_count("floor_gap", seam_done, floors.size())
 	var strips := 0
 	if want_gaps:
 		strips = _scan_strips(floors, gaps, zf)
@@ -1407,7 +1491,11 @@ func _scan_floors() -> Dictionary:
 # reach is an open edge, not walkable area enclosed by walls: left alone.
 func _scan_strips(floors: Array, gaps: Array, zf: Dictionary) -> int:
 	var rays := 0
+	var done := 0
 	for rec in floors:
+		if _over():
+			break
+		done += 1
 		if not bool(rec["in"]):
 			continue
 		var la: AABB = rec["laabb"]
@@ -1462,6 +1550,7 @@ func _scan_strips(floors: Array, gaps: Array, zf: Dictionary) -> int:
 					rays += 1
 					if _floor_sample(q.x, q.z, top, owner_i, gaps, zf, true, false, 2, ssx, ssz, wi, ds * step) == 0:
 						break
+	_count("floor_gap", done, floors.size())
 	return rays
 
 
@@ -1523,6 +1612,8 @@ func _scan_support() -> Array:
 	for f in _inst:
 		if f["role"] == "floor":
 			_floor_recs.append(f)
+	var done := 0
+	var total := 0
 	for rec in _inst:
 		if not bool(rec["in"]):
 			continue
@@ -1531,6 +1622,10 @@ func _scan_support() -> Array:
 			continue
 		if role == "dressing" and _re_hanging.search(String(rec["piece"]) + " " + String(rec["name"])) != null:
 			continue
+		total += 1
+		if _over():
+			continue
+		done += 1
 		var la: AABB = rec["laabb"]
 		var wa: AABB = rec["waabb"]
 		var xf: Transform3D = rec["xf"]
@@ -1589,6 +1684,7 @@ func _scan_support() -> Array:
 			if wcen.x >= fa.position.x and wcen.x <= fa.end.x and wcen.z >= fa.position.z and wcen.z <= fa.end.z:
 				floor_top = fa.end.y if floor_top == null else maxf(float(floor_top), fa.end.y)
 		out.append([int(rec["i"]), snappedf(ymin, 0.0001), snappedf(oy, 0.001), hits, touch, (snappedf(float(floor_top), 0.001) if floor_top != null else null), above])
+	_count("floating_sunken", done, total)
 	return out
 
 
@@ -1614,9 +1710,15 @@ func _scan_overlaps() -> Array:
 	q.margin = 0.0
 	var mask := L_PROP | L_WALL | L_STRUCT | L_INSERT | L_MOUNT
 	q.collision_mask = mask
+	var done := 0
+	var total := 0
 	for rec in _inst:
 		if rec["role"] != "prop" or not bool(rec["in"]):
 			continue
+		total += 1
+		if _over():
+			continue
+		done += 1
 		var own: Array = rec["bodies"]
 		var depth_by: Dictionary = {}
 		var point_by: Dictionary = {}
@@ -1678,6 +1780,7 @@ func _scan_overlaps() -> Array:
 				continue
 			seen[key] = out.size()
 			out.append([a, int(bi), snappedf(depth, 0.001), _a3(point_by[bi])])
+	_count("interpenetration", done, total)
 	return out
 
 
@@ -1687,9 +1790,15 @@ func _scan_overlaps() -> Array:
 
 func _scan_mounts() -> Array:
 	var out: Array = []
+	var done := 0
+	var total := 0
 	for rec in _inst:
 		if (rec["mount"] as Vector3) == Vector3.ZERO or not bool(rec["in"]):
 			continue
+		total += 1
+		if _over():
+			continue
+		done += 1
 		var ax: Vector3 = rec["mount"]
 		var la: AABB = rec["laabb"]
 		var xf: Transform3D = rec["xf"]
@@ -1761,6 +1870,7 @@ func _scan_mounts() -> Array:
 		if typeof(sym_raw) == TYPE_BOOL:
 			sym_meta = sym_raw
 		out.append([int(rec["i"]), _a3(wax, 0.0001), gaps, hit_inst, around, String((rec["man"] as Dictionary).get("category", "")), String(rec.get("mount_src", "")), _a3(ax, 1.0), chain, ground, so[0], so[1], _mount_planes(rec, ax), sym_meta, hit_at])
+	_count("mount_gap", done, total)
 	return out
 
 
@@ -1813,9 +1923,15 @@ func _mount_planes(rec: Dictionary, ax: Vector3) -> Variant:
 
 func _scan_long_props() -> Array:
 	var out: Array = []
+	var done := 0
+	var total := 0
 	for rec in _inst:
 		if rec["role"] != "prop" or not bool(rec["in"]):
 			continue
+		total += 1
+		if _over():
+			continue
+		done += 1
 		var la: AABB = rec["laabb"]
 		var xf: Transform3D = rec["xf"]
 		var sx := la.size.x
@@ -1857,6 +1973,7 @@ func _scan_long_props() -> Array:
 		if best.is_empty():
 			continue
 		out.append([int(rec["i"]), _a3(wl, 0.0001), snappedf(length, 0.001), snappedf(depth, 0.001), best])
+	_count("orientation", done, total)
 	return out
 
 
@@ -1882,7 +1999,11 @@ func _scan_uv() -> Array:
 			if (users[key] as Array).size() < 64:
 				(users[key] as Array).append([rec, m[2]])
 	var out: Array = []
+	var done := 0
 	for key in users:
+		if _over():
+			break
+		done += 1
 		var info: Dictionary = _mesh_info[key]
 		var cands: Array = info["uv"]
 		var tris: Array = []
@@ -1928,6 +2049,7 @@ func _scan_uv() -> Array:
 			if mask_bits != 0 or covered_bits != 0:
 				shown.append([int(rec["i"]), mask_bits, viewer_out, center_out, covered_bits])
 		out.append({"mesh": String(info["name"]), "tris": tris, "users": (users[key] as Array).size(), "shown": shown})
+	_count("uv_stretch", done, users.size())
 	return out
 
 
@@ -1937,9 +2059,15 @@ func _scan_uv() -> Array:
 
 func _scan_inserts() -> Array:
 	var out: Array = []
+	var done := 0
+	var total := 0
 	for rec in _inst:
 		if rec["role"] != "insert" or not bool(rec["in"]):
 			continue
+		total += 1
+		if _over():
+			continue
+		done += 1
 		var fit: Dictionary = (rec["man"] as Dictionary)["fits_into"]
 		var xf: Transform3D = rec["xf"]
 		var near: Array = []
@@ -1963,6 +2091,7 @@ func _scan_inserts() -> Array:
 					break
 		var off: Variant = fit.get("local_offset_m", [0, 0, 0])
 		out.append([int(rec["i"]), String(fit.get("piece", "")), off, _a3(xf.origin, 0.0001), _b9(xf.basis), near, containing])
+	_count("insert_host", done, total)
 	return out
 
 
@@ -2018,9 +2147,15 @@ func _scan_lights() -> Dictionary:
 		if l.shadow_enabled:
 			shadowed[kind] = int(shadowed[kind]) + 1
 	var over: Array = []
+	var done := 0
+	var total := 0
 	for rec in _inst:
 		if not bool(rec["in"]):
 			continue
+		total += 1
+		if _over():
+			continue
+		done += 1
 		var worst: Array = []
 		for m in (rec["meshes"] as Array):
 			var node: Node = m[0]
@@ -2045,6 +2180,7 @@ func _scan_lights() -> Dictionary:
 				worst = [int(rec["i"]), _rel(node), no, ns, names]
 		if not worst.is_empty():
 			over.append(worst)
+	_count("lights", done, total)
 	var renderer := RenderingServer.get_current_rendering_method()
 	return {"renderer": renderer, "limit": limit, "counts": counts, "shadowed": shadowed, "over": over, "hard_rim": hard_rim}
 
@@ -2069,6 +2205,8 @@ func _scan_resources() -> Dictionary:
 	for sc in scenes:
 		queue.append([sc, sc, int(scenes[sc]), 0])
 	while not queue.is_empty() and budget > 0:
+		if _over():
+			break
 		var item: Array = queue.pop_front()
 		var path := String(item[0])
 		if checked.has(path):
@@ -2090,6 +2228,7 @@ func _scan_resources() -> Dictionary:
 			var ext := dp.get_extension().to_lower()
 			if int(item[3]) < 2 and (ext == "tres" or ext == "res" or ext == "material" or ext == "tscn"):
 				queue.append([dp, String(item[1]), int(item[2]), int(item[3]) + 1])
+	_count("resource", checked.size(), checked.size() + (queue.size() if budget > 0 else 0))
 	var no_mat: Array = []
 	for rec in _inst:
 		if not bool(rec["in"]):
@@ -2126,9 +2265,15 @@ func _scan_resources() -> Dictionary:
 # ---------------------------------------------------------------------------
 
 func _scan_clearances() -> void:
+	var done := 0
+	var total := 0
 	for rec in _inst:
 		if not bool(rec["in"]):
 			continue
+		total += 1
+		if _over():
+			continue
+		done += 1
 		var wa: AABB = rec["waabb"]
 		var c := wa.get_center()
 		var ex: Array = rec["bodies"]
@@ -2141,6 +2286,7 @@ func _scan_clearances() -> void:
 				var dir := Vector3(sin(ang) * ce, se, cos(ang) * ce)
 				rows.append(snappedf(_clear(c, dir, 10.0, ex), 0.01))
 		rec["clear"] = rows
+	_count("poses", done, total)
 
 
 # ---------------------------------------------------------------------------

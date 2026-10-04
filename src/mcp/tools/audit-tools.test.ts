@@ -68,6 +68,9 @@ describe("summer_scene_audit — MCP face", () => {
     expect(schema.limit!.safeParse(51).success).toBe(false);
     expect(schema.render!.safeParse("gif").success).toBe(false);
     expect(schema.offset!.safeParse(-1).success).toBe(false);
+    expect(schema.budget_ms!.safeParse(3000).success).toBe(true);
+    expect(schema.budget_ms!.safeParse(100).success).toBe(false);
+    expect(schema.budget_ms!.safeParse(60001).success).toBe(false);
   });
 
   it("returns ONE text block of at most 5 KB (no image unless asked)", async () => {

@@ -824,12 +824,15 @@ describe("summer_repeat_along", () => {
         rotationDegrees: [0, 90, 0],
       })
     );
+    // N copies cost N + 2 requests: the transforms travel together.
     expect(mutations.map((chunk) => chunk.map((op) => op.op))).toEqual([
-      ["InstantiateScene"], ["SetProp", "SetProp"],
-      ["InstantiateScene"], ["SetProp", "SetProp"],
-      ["InstantiateScene"], ["SetProp", "SetProp"],
+      ["InstantiateScene"],
+      ["InstantiateScene"],
+      ["InstantiateScene"],
+      ["SetProp", "SetProp", "SetProp", "SetProp", "SetProp", "SetProp"],
       ["SaveScene"],
     ]);
+    expect(result.requests).toBe(5);
     expect(mutations[0]![0]).toMatchObject({ name: "wall_clamp_01_1", parent: "./Pipe", scene: "res://kit/pipes/wall_clamp_01.tscn" });
     expect(result).toMatchObject({
       ok: true,

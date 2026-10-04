@@ -77,7 +77,7 @@ describe("splitInstantiatePlacement", () => {
 });
 
 describe("executePlacementBatch", () => {
-  it("sets each piece's transform on the receipt's node path right after it is created", async () => {
+  it("sets each piece's transform on the receipt's node path before any later op", async () => {
     const { send, requests } = fakeEngine({ renames: { "Facade/Wall": "Facade/Wall_1" } });
     const ops = sceneMutationOps([
       piece("Wall", { position: [1, 0, 0], rotation_degrees: [0, 180, 0] }),
@@ -86,18 +86,19 @@ describe("executePlacementBatch", () => {
     ]);
     const trace = await executePlacementBatch(send, ops, FALLBACK_SINGLE_ONLY_OPS, 3);
     expect(trace.failed).toBe(false);
+    // The held-back transforms ride along with the next batchable op.
     expect(requests.map((chunk) => chunk.map((op) => op.op))).toEqual([
       ["InstantiateScene"],
-      ["SetProp", "SetProp"],
       ["InstantiateScene"],
-      ["SetProp"],
-      ["SetProp"],
+      ["SetProp", "SetProp", "SetProp", "SetProp"],
       ["SaveScene"],
     ]);
     // The rename is followed, and placement fields never reach the engine op.
-    expect(requests[1]).toEqual([
+    expect(requests[2]).toEqual([
       { op: "SetProp", path: "Facade/Wall_1", key: "rotation_degrees", value: "Vector3(0, 180, 0)" },
       { op: "SetProp", path: "Facade/Wall_1", key: "position", value: "Vector3(1, 0, 0)" },
+      { op: "SetProp", path: "Facade/Window", key: "position", value: "Vector3(2, 0, 0)" },
+      { op: "SetProp", path: "Facade", key: "visible", value: true },
     ]);
     expect(requests[0]![0]).not.toHaveProperty("position");
     expect(trace.entries.map((entry) => [entry.index, entry.op, entry.derived ?? null])).toEqual([
@@ -119,12 +120,39 @@ describe("executePlacementBatch", () => {
     expect(send).not.toHaveBeenCalled();
   });
 
+  // Field evidence (proof run, 2026-10-04): a 28-piece batch took 57 engine
+  // requests (2N + 1).
+  it("costs N + 2 requests for N placed pieces, at most 200 transforms per request", async () => {
+    const { send, requests } = fakeEngine();
+    const ops = Array.from({ length: 250 }, (_, i) => piece(`P${i}`, { position: [i, 0, 0] }));
+    const trace = await executePlacementBatch(send, sceneMutationOps(ops), FALLBACK_SINGLE_ONLY_OPS, ops.length);
+    expect(trace.failed).toBe(false);
+    // 250 instances, then 200 + 50 transforms, then the save.
+    expect(requests).toHaveLength(253);
+    expect(requests.slice(0, 250).every((chunk) => chunk.length === 1 && chunk[0]!.op === "InstantiateScene")).toBe(true);
+    expect(requests[250]!.map((op) => op.op)).toEqual(Array(200).fill("SetProp"));
+    expect(requests[251]).toHaveLength(50);
+    expect(requests[252]).toEqual([{ op: "SaveScene" }]);
+    expect(summarizeTrace(trace, ops)).toMatchObject({ ok: true, requests: 253, applied: 250, saved: true });
+  });
+
+  it("lands a piece's transform before a later op that reads it", async () => {
+    const { send, requests } = fakeEngine();
+    const ops = sceneMutationOps([
+      piece("Crate", { position: [0, 2, 0] }),
+      { op: "SnapToSurface", subject_path: "Facade/Crate", direction: [0, -1, 0] },
+    ]);
+    await executePlacementBatch(send, ops, FALLBACK_SINGLE_ONLY_OPS, 2);
+    expect(requests.map((chunk) => chunk.map((op) => op.op))).toEqual([["InstantiateScene"], ["SetProp", "SnapToSurface"], ["SaveScene"]]);
+  });
+
   it("stops at a failure, reports what applied, and never saves", async () => {
     const { send, requests } = fakeEngine({ failOn: (op) => (op.name === "B" ? "parent not found: ./Facade" : null) });
     const ops = [piece("A", { position: [0, 0, 0] }), piece("B", { position: [1, 0, 0] }), piece("C")];
     const trace = await executePlacementBatch(send, sceneMutationOps(ops), FALLBACK_SINGLE_ONLY_OPS, ops.length);
     expect(trace.failed).toBe(true);
-    expect(requests).toHaveLength(3);
+    // A, the failing B, then A's transform: the created piece is not left at the origin.
+    expect(requests.map((chunk) => chunk.map((op) => String(op.name ?? op.path)))).toEqual([["A"], ["B"], ["Facade/A"]]);
     expect(trace.error).toContain("parent not found");
     expect(trace.error).toContain("NOT saved");
     const summary = summarizeTrace(trace, ops);

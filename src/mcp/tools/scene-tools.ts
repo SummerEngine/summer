@@ -428,7 +428,7 @@ list into sequential requests around them — each split chunk is its own undo
 step (NOT one step for the whole batch), and if a later chunk fails the receipt
 reports exactly which earlier ops already applied.
 
-PLACED INSTANCES: an InstantiateScene op may also carry position, rotation_degrees, scale ([x, y, z] or "Vector3(...)") or transform ("Transform3D(...)"); the tool sets them on the created node right after it exists. One op per piece. Other ops are forwarded verbatim.
+PLACED INSTANCES: an InstantiateScene op may also carry position, rotation_degrees, scale ([x, y, z] or "Vector3(...)") or transform ("Transform3D(...)"); the tool sets them on the created node. One op per piece. Other ops are forwarded verbatim. Cost: each InstantiateScene is its own engine request (the engine requires it); the transforms of a run of InstantiateScene ops are then sent together (up to 200 per request) before the next other op, so N placed pieces plus the save cost about N + 2 requests and N + 2 undo steps. Every later op (a SetProp, SnapToSurface, the save) sees the pieces already placed; if an InstantiateScene fails, the pieces created before it still get their transforms.
 
 RECEIPTS: receipt "summary" returns only counts, failures [{index, op, error}] (index = position in your ops list), created node paths and renames, under 5 KB with any cut declared. Use it for any batch over a few ops; the full receipt of a large batch overflows the tool-output limit.`,
     {

@@ -5,12 +5,20 @@
  *
  * The engine's InstantiateScene accepts only parent / scene / name /
  * target_size (scene_ops.cpp instantiate_scene) and must travel as its own
- * request (single-only). A placed piece therefore takes two engine requests:
- * the InstantiateScene, then one SetProp request on the node path the
- * receipt reports (meta.nodePath, which already carries any collision rename).
- * The caller writes ONE op; this module expands it. Order is preserved and the
- * SetProps for a piece are sent immediately after its InstantiateScene, so a
- * later failure never leaves an earlier piece sitting at the origin.
+ * request (single-only). A placed piece is therefore an InstantiateScene plus
+ * SetProps on the node path its receipt reports (meta.nodePath, which already
+ * carries any collision rename). The caller writes ONE op; this module expands
+ * it.
+ *
+ * Request cost: the SetProps of consecutive InstantiateScene ops are held back
+ * and sent together (up to TRANSFORM_OPS_PER_REQUEST per request) just before
+ * the next op that is not an InstantiateScene, riding along with it when it is
+ * batchable. N placed pieces followed by the SaveScene therefore cost N + 2
+ * requests, not 2N + 1. Every op that could depend on a piece's transform
+ * (SetProp, SnapToSurface, AlignDistribute3D, a raw query, the SaveScene) runs
+ * after the transforms land, and when an InstantiateScene fails the transforms
+ * of the pieces already created are still sent, so a failure never leaves an
+ * earlier piece sitting at the origin.
  *
  * With no placement fields and receipt "full", callers keep using the old
  * executeSceneMutation path unchanged.
@@ -41,6 +49,9 @@ export type PlacementField = (typeof PLACEMENT_FIELDS)[number];
 
 /** Model-visible budget for compact receipts (the 5 KB tool-result contract). */
 export const COMPACT_LIMIT_BYTES = 5 * 1024;
+/** Held-back transform SetProps sent per request; the engine refuses requests
+ *  over 256 ops (local_api_server.cpp). */
+export const TRANSFORM_OPS_PER_REQUEST = 200;
 const SUMMARY_TARGET_BYTES = 4600;
 const ERROR_TEXT_LIMIT = 240;
 
@@ -162,7 +173,9 @@ export function receiptNodePath(result: JsonRecord | undefined): string | undefi
 /**
  * Run an op list (SaveScene already appended by the caller when it mutates a
  * scene) honoring the single-op contract, expanding InstantiateScene placement
- * fields into a SetProp request right after the instance exists.
+ * fields into SetProps on the created node. The SetProps of a run of
+ * InstantiateScene ops are sent together before the next other op (see the
+ * module comment).
  */
 export async function executePlacementBatch(
   send: (chunk: JsonRecord[]) => Promise<unknown>,
@@ -239,13 +252,43 @@ export async function executePlacementBatch(
     return true;
   };
 
+  // Transform SetProps held back from InstantiateScene ops, sent together.
+  const pending: Array<{ op: JsonRecord; entry: TraceEntry }> = [];
+  const flushPending = async (): Promise<boolean> => {
+    while (pending.length > 0) {
+      const part = pending.splice(0, TRANSFORM_OPS_PER_REQUEST);
+      const ok = await sendChunk(part.map((item) => item.op), part.map((item) => item.entry));
+      if (!ok) return false;
+    }
+    return true;
+  };
+
   for (let c = 0; c < chunks.length; c++) {
     const chunk = chunks[c]!;
     const entries = allEntries[c]!;
-    const ok = await sendChunk(chunk.map((item) => item.op), entries);
-    if (!ok) break;
     const head = chunk[0]!;
-    if (chunk.length === 1 && head.props.length > 0) {
+    const instantiate = chunk.length === 1 && String(head.op.op ?? "") === "InstantiateScene";
+    if (!instantiate && pending.length > 0) {
+      const batchable = !isSingleOnlyOp(String(head.op.op ?? ""), singleOnly);
+      if (batchable && pending.length + chunk.length <= TRANSFORM_OPS_PER_REQUEST) {
+        // The held-back transforms ride along, ahead of the ops that may read them.
+        const part = pending.splice(0);
+        const ok = await sendChunk(
+          [...part.map((item) => item.op), ...chunk.map((item) => item.op)],
+          [...part.map((item) => item.entry), ...entries]
+        );
+        if (!ok) break;
+        continue;
+      }
+      if (!(await flushPending())) break;
+    }
+    const ok = await sendChunk(chunk.map((item) => item.op), entries);
+    if (!ok) {
+      // The pieces created before the failure still get their transforms.
+      if (instantiate) await flushPending();
+      break;
+    }
+    if (instantiate && head.props.length > 0) {
       const nodePath = receiptNodePath(entries[0]!.result);
       if (!nodePath) {
         trace.failed = true;
@@ -253,19 +296,20 @@ export async function executePlacementBatch(
         entries[0]!.failureReason = "instantiate_receipt_missing_node_path";
         entries[0]!.error =
           "InstantiateScene applied but its receipt carried no meta.nodePath, so the requested transform was NOT applied; the instance sits at its scene default. Set it with summer_set_prop.";
+        await flushPending();
         break;
       }
-      const propEntries = head.props.map((prop) => entryFor(head, "transform", "SetProp"));
+      const propEntries = head.props.map(() => entryFor(head, "transform", "SetProp"));
       // Keep trace order: the derived SetProps right after their InstantiateScene.
       const at = trace.entries.indexOf(entries[0]!);
       trace.entries.splice(at + 1, 0, ...propEntries);
-      const propOk = await sendChunk(
-        head.props.map((prop) => ({ op: "SetProp", path: nodePath, key: prop.key, value: prop.value })),
-        propEntries
-      );
-      if (!propOk) break;
+      head.props.forEach((prop, i) => {
+        pending.push({ op: { op: "SetProp", path: nodePath, key: prop.key, value: prop.value }, entry: propEntries[i]! });
+      });
     }
   }
+  // An op list without a trailing op (no SaveScene) still sends its transforms.
+  if (!trace.failed) await flushPending();
 
   if (trace.failed) trace.error = honestError(trace);
   return trace;

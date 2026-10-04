@@ -149,7 +149,7 @@ describe("summer_instantiate_scene and summer_batch placement through MCP", () =
   });
 
   it("returns a summary receipt for a batch of placed pieces", async () => {
-    engine();
+    const requests = engine();
     const scene = collect(registerSceneTools);
     const ops = Array.from({ length: 40 }, (_, i) => ({
       op: "InstantiateScene",
@@ -161,6 +161,9 @@ describe("summer_instantiate_scene and summer_batch placement through MCP", () =
     const result = (await tool("summer_batch", scene).handler({ scenePath: "res://a.tscn", ops, receipt: "summary" })) as Response;
     expect(result.isError).toBeUndefined();
     expect(Buffer.byteLength(result.content[0]!.text)).toBeLessThan(5 * 1024);
-    expect(body(result)).toMatchObject({ receipt: "summary", ops: 40, applied: 40, failed: 0, saved: true, created_total: 40 });
+    expect(body(result)).toMatchObject({ receipt: "summary", ops: 40, applied: 40, failed: 0, saved: true, created_total: 40, requests: 42 });
+    // 40 instances, one request with every transform, the save.
+    expect(requests).toHaveLength(42);
+    expect(requests[40]).toHaveLength(40);
   });
 });

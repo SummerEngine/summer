@@ -39,7 +39,7 @@ input_schema:
       items:
         type: object
         additionalProperties: {}
-      description: Array of operation objects, each with 'op' plus its parameters. InstantiateScene ops may also carry position, rotation_degrees, scale or transform; the tool sets them on the created node.
+      description: Array of operation objects, each with 'op' plus its parameters. InstantiateScene ops may also carry position, rotation_degrees, scale or transform; the tool sets them on the created node. Each InstantiateScene is its own engine request; the transforms of a run of them travel together before the next other op, so N placed pieces plus the save cost about N + 2 requests.
     receipt:
       type: string
       enum: [full, summary]

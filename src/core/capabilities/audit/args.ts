@@ -49,7 +49,7 @@ export const sceneAuditShape = {
     .max(AUDIT_CHECKS.length)
     .optional()
     .describe(
-      "Only these checks (default: all 14). through_hole, floor_gap, floating, sunken, interpenetration, insert_host, mount_gap, orientation, uv_stretch, duplicate, z_fight, lights, transform, resource. Fewer checks run faster (insert_host, duplicate, lights, transform and resource need no physics)."
+      "Only these checks (default: all 14). through_hole, floor_gap, floating, sunken, interpenetration, insert_host, mount_gap, orientation, uv_stretch, duplicate, z_fight, lights, transform, resource. Fewer checks run faster (insert_host, duplicate, lights, transform and resource need no physics); rerun a check budget_ms left partial on its own."
     ),
   root: z
     .string()
@@ -72,7 +72,7 @@ export const sceneAuditShape = {
     .max(AUDIT_MAX_MANIFESTS)
     .optional()
     .describe(
-      "Extra pack manifests (res:// .json in the pieces.json format: {pieces:{name:{scene, fits_into, wall_side, front_faces_plus_z, category}}}). pieces.json next to (or up to two folders above) every instanced scene is always read."
+      "Extra pack manifests (res:// .json in the pieces.json format: {pieces:{name:{scene, fits_into, wall_side, front_faces_plus_z, category, standoff_m, symmetric}}}; standoff_m = how far off its wall a mounted piece stands by design, symmetric = looks the same turned 180 deg). pieces.json next to (or up to two folders above) every instanced scene is always read, and the pack's PACK.json and ASSEMBLY.md for ground alternatives and wall standoffs."
     ),
   budget_ms: z
     .number()

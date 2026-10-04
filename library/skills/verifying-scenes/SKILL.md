@@ -41,10 +41,31 @@ A screenshot only shows what its camera points at. Problems behind a wall, under
 
 1. **After each build stage** (a facade, a street, a dressing pass): save, then `summer_scene_audit scenePath:"res://..."`. It reads the SAVED file in a private offscreen copy, so the open tab never becomes unsaved and nothing is saved. Use `root:"Alley3"` to audit only what you just built (the rest still counts as surroundings) and `checks:[...]` to rerun one check after a fix.
 2. **Read the page, not just the counts.** Issues come sorted `error`, `warn`, `look`, each with a node path, a world position, a reason, the evidence numbers (sizes, gaps, angles, the ray that reproduces it) and the next tool. The result is at most 5 KB; follow `next_offset` with `offset` for the next page, or narrow with `min_severity:"warn"`.
+   - A check with `partial` in its counts ran out of editor time (`budget_ms`, default 3000) and covered only that share. It is not clean: rerun it alone (`checks:["floor_gap"]`) or with a larger `budget_ms` before you call that check clean.
 3. **Frame every error and look item up close before calling the scene done.** `render:"sheet"` returns one image of the page's first 6 issues framed from their open side (tiles labelled `#n`); otherwise `summer_frame_nodes` on the path and `summer_zoom` into it. A look item (`orientation`, a facing or mounting question) is never an answer: decide the facing yourself from the asset (`summer_inspect_asset`) and the pack's metadata.
 4. **Classify each item as real or a false positive** in your notes. Fix the real ones with the placement tools, then audit again: the same check must come back clean (or the remaining items must be ones you have looked at and accepted).
 
-What the checks mean: `through_hole` (rays pass the wall and reach the far side of the building), `floor_gap` (down rays fall to an underlay or the void), `floating` / `sunken` (props 2 cm above or 3 cm into their support), `interpenetration` (over 3 cm), `insert_host` (a pieces.json `fits_into` insert in the wrong host or off its offset), `mount_gap` (a `wall_side` piece over 5 cm off its wall), `orientation`, `uv_stretch` (stretched or collapsed texture an instance shows; a face inserts normally cover is a warning where it shows), `duplicate` / `z_fight`, `lights` (more lights on a mesh than the renderer's per-object limit, hard spot rims), `transform`, `resource`.
+What the checks mean:
+- `through_hole`: rays pass the wall and reach the far side of the building.
+- `floor_gap`: what a down ray hits FIRST.
+  - "falls to the void" or "holes in its own mesh": the floor really is open.
+  - "covers the floor": an underlay plane sits above the floor's own drain or dip. Lower the underlay; the tile is not holed.
+  - "bare strip ... between <tile> and <wall>": the tile row stops short of the wall.
+  - Areas are measured (a 4 cm seam is a fraction of a square metre). When the pack documents a ground material (PACK.json or ASSEMBLY.md), `next` names it.
+- `floating` / `sunken`: props 2 cm above or 3 cm into their support. Sunken names the surface the prop is buried in, seen from above.
+- `interpenetration`: over 3 cm, with every piece it cuts (up to 3). Clear all of them, not only the first.
+- `insert_host`: a pieces.json `fits_into` insert in the wrong host, or off its offset.
+- `mount_gap`: a `wall_side` piece off its wall, measured at its centre and sides.
+  - Over 5 cm is reported, or over the pack's documented standoff + 5 cm (pieces.json `standoff_m`, or ASSEMBLY.md "0.1 m off the wall").
+  - A pipe that a wall-touching bracket or clamp holds is not reported, and neither is the rest of its run.
+- `orientation`: front-back symmetric pieces (duct runs, strap braces) are never flagged for pointing away.
+- `uv_stretch`: stretched or collapsed texture an instance shows. A face that inserts normally cover is a warning where it shows.
+- `duplicate`: the same scene at the same transform.
+- `z_fight`: coplanar overlapping faces anywhere, including two surfaces of one mesh.
+  - "Coplanar" means closer than twice the 24-bit depth step at the view distance, for the main camera's near and far. `ev` shows the gap, the tolerance and the viewpoint.
+  - Decals, overlays, `render_priority` and depth offsets come back as look items with the reason. Check that they actually render on top.
+- `lights`: more lights on a mesh than the renderer's per-object limit, and hard spot rims.
+- `transform`, `resource`.
 
 ## Choosing the right screenshot
 

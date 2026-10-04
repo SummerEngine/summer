@@ -50,17 +50,20 @@ export function registerAuditTools(server: McpServer): void {
 
 Checks (each can be picked with checks):
 - through_hole: capped ray grids through every facade line (coplanar wall fronts); clusters of rays that pass the wall AND reach the far side of the building (a door insert narrower than its frame, a missing module, a seam). Inserts, shutters and boards close an opening; props do not.
-- floor_gap: down rays over the floor tiles; rays that miss the floor and fall to an underlay or the void (a tile whose own mesh has holes is one issue for the piece).
-- floating / sunken: support under each prop's footprint; gap over 2 cm, embed over 3 cm (structure, wall-mounted and wall-held pieces excluded).
-- interpenetration: each prop's convex hulls against props, walls and mounted pieces; overlaps over 3 cm.
+- floor_gap: down rays over the floor tiles, along their seams, and from each tile edge to a wall within 1 m (bare strips at wall bases), classified by the FIRST surface hit: the void (error); an underlay over the floor's own lower surface such as a drain channel ("covers the floor", warn, not a hole); an underlay through a hole or strip. Areas are the missed rays' own footprints with the strip's size; a tile whose own mesh has holes is one issue for the piece; next names the pack's documented ground alternative (PACK.json / ASSEMBLY.md).
+- floating / sunken: support under each prop's footprint; gap over 2 cm, embed over 3 cm, measured against the first surface from above (the tile it is buried in, not the underlay under it); structure, wall-mounted and wall-held pieces excluded.
+- interpenetration: each prop's convex hulls against props, walls and mounted pieces; a deepest overlap over 3 cm, then every partner it cuts (up to 3).
 - insert_host: pieces.json fits_into; the named host must sit at the insert's transform minus local_offset_m (2 cm, 1 deg); reports the host actually found.
-- mount_gap: pieces with wall_side metadata; no surface within 5 cm behind the mount side.
-- orientation (look): long props within 1.2 m of a wall more than 15 deg off parallel; mounted pieces whose mount side points away from the nearest wall. It never says which way a piece should face.
+- mount_gap: pieces with wall_side metadata; the largest gap of the centre and the 4 side samples over 5 cm, or over the pack's documented standoff + 5 cm (pieces.json standoff_m, or ASSEMBLY.md "0.1 m off the wall"); pieces a wall-touching bracket or clamp holds (and their run) are fine; repeats group per piece.
+- orientation (look): long props within 1.2 m of a wall more than 15 deg off parallel; mounted pieces whose mount side points away from the nearest wall, except front-back symmetric pieces (duct runs, strap braces; or pieces.json symmetric). It never says which way a piece should face.
 - uv_stretch: per mesh resource, large triangles whose UV-to-world mapping is stretched over 8:1 or collapsed to a line, where an instance shows them (a reveal that inserts normally cover = warn).
-- duplicate / z_fight: same scene at the same transform; coplanar overlapping faces of different pieces (a second visible surface within 3 mm).
+- duplicate: the same scene at the same transform.
+- z_fight: coplanar overlapping faces anywhere, from each mesh's planar face groups: between any two pieces (props, roofs, ledges, side walls, inserts against hosts, decals; opposite-facing only when both are double-sided) and between two surfaces of one mesh (once per mesh), plus the ray samples. Coplanar = a gap under twice the 24-bit depth step at the view distance (the nearest walkable eye point, camera or bookmark; 30 m without one) for the main camera's near/far; ev carries the overlap, gap, tolerance and surfaces. Warn over 0.05 m2 seen from a viewpoint; render_priority, depth or normal offsets, and decal or overlay names are demoted to look with the reason.
 - lights: meshes paired with more than the per-object limit of omni or spot lights (Compatibility: 8 each; light cuts off at seams), spot lights with spot_angle_attenuation under 3; shadowed light counts.
 - transform: NaN, negative or non-uniform scale, a piece left at the origin, a piece far out of bounds.
 - resource: missing dependency files, MeshInstance3D without a mesh, surfaces without a material.
+
+budget_ms (default 3000) bounds the editor time: each check gets a weighted share of it, and a check past its share stops and is marked counts.<check>.partial (the share it covered), never clean.
 
 Returns at most 5 KB of JSON: counts per check, time per check (editor ms), the scene size, and ONE page of issues {n, check, sev (error|warn|look), path, pos (world), why, ev (evidence numbers: sizes, distances, angles, the ray to reproduce), next (the tool to use next)}. Page with offset/limit (next_offset names the next page); filter with checks, root (a subtree) and min_severity. render:"sheet" adds ONE inline image of the page's first 6 issues framed up close from their open side (a camera never behind a wall), each tile labelled #n.
 

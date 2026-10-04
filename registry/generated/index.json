@@ -147,8 +147,8 @@
     {
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
-      "version": "1.2.0",
-      "content_hash": "fd6aa398597e13f8a51d35dab4c32f348d807f41809da727ff73d8680c13201e",
+      "version": "1.3.0",
+      "content_hash": "f584a21e39d24548a8c39012605c3460ddb2800c846d33980d80a93bdbfe87a5",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -3353,8 +3353,8 @@
     {
       "id": "skill/verifying-scenes",
       "kind": "skill",
-      "version": "1.3.0",
-      "content_hash": "5646339c5ac2e4f880a0d40da4ba7856f6d84a6d15193c97fbb04da7a92662a3",
+      "version": "1.4.0",
+      "content_hash": "f09ac41af91fcddfd886ca8322b01a9d5942917403c927df9ff872c8deb53949",
       "summary": "Prove scene work landed (snapshot, diff, screenshots, runtime reads), audit 3D scenes for holes and misplacement, review them with shot sheets and zooms.",
       "use_when": [
         "after any mutation batch, asset import, or lighting change, before claiming it worked",
@@ -7403,14 +7403,16 @@
     {
       "id": "tool/scene-audit",
       "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "668e47282eb78f615b1b37508612f60cd6fe2958c1649066d53cd78af35e5fda",
+      "version": "1.1.0",
+      "content_hash": "ab05241fcd989576deb305237f3dc3466a1cd14cb2a58af89a0e5a4d77a53d5a",
       "summary": "One read-only pass over a 3D scene: see-through holes, floor gaps, floating or clipping props, wrong insert hosts, mount gaps, facing, UV stretch, lights.",
       "use_when": [
         "after each build stage of a 3D level or kit-built street: \"what is wrong with this scene and where exactly?\"",
         "before calling a scene done: find see-through walls (an insert narrower than its frame), floor tiles with holes, props floating, sunk or poking into walls",
         "checking kit pieces against their pack metadata: a door or window in the wrong host (pieces.json fits_into), pipes and ducts off their wall (wall_side)",
-        "finding props turned the wrong way against a wall (a bench standing perpendicular to it), stretched texture strips, z-fighting, duplicated pieces",
+        "finding props turned the wrong way against a wall (a bench standing perpendicular to it), stretched texture strips, duplicated pieces",
+        "flickering faces: coplanar overlaps anywhere (props, roofs, ledges, inserts against hosts, decals, two surfaces of one mesh), judged by the 24-bit depth precision at the view distance",
+        "bare ground at wall bases, an underlay plane covering drain channels, buried props: floor_gap and sunken say which surface a ray hits first",
         "a lit city scene in the Compatibility renderer: meshes lit by more than the per-object light limit, hard spot rims"
       ],
       "facets": {

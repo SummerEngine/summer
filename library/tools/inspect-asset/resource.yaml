@@ -1,0 +1,66 @@
+id: tool/inspect-asset
+kind: tool
+version: 1.0.0
+summary: Measure a 3D asset file without adding it to a scene — AABB, origin, meshes, largest planar faces, open pipe ends, Marker3D anchors, collision shapes.
+use_when:
+  - learning a kit piece's real size, origin and which way it faces before placing it
+  - finding a piece's front and back planes (largest planar faces with their normals) or its pipe and duct ends (open boundary loops)
+  - reading the Marker3D anchors or collision shapes a pack ships
+do_not_use_when:
+  - the piece is already in the scene and you need what surrounds it — summer_starcast
+  - you need the measurement between two placed nodes — summer_measure
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - 3d
+    - world-building
+    - assets
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/instantiate-scene
+    - tool/attach-to-surface
+    - tool/connect-ports
+    - tool/starcast
+  skills:
+    - skill/spatial-placement
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_inspect_asset
+implementation:
+  module: src/mcp/tools/placement-tools.ts
+  export: registerPlacementTools
+surfaces:
+  mcp:
+    tool_name: summer_inspect_asset
+    remote: false
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      minLength: 1
+      maxLength: 512
+      description: Asset to measure, e.g. 'res://kit/facade/wall_single_01.tscn' (.tscn, .scn, .glb, .gltf, .res, .tres, .mesh or .obj). Loaded and instanced off-scene, never added to an open scene.
+    maxTriangles:
+      type: integer
+      minimum: 1000
+      maximum: 300000
+      default: 60000
+      description: Triangle budget for the face and open-loop analysis (AABBs and counts are always complete). The result says when the budget cut the analysis.
+  required:
+    - path
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

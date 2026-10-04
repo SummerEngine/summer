@@ -47,6 +47,7 @@ import { registerFeedbackTools } from "./feedback-tools.js";
 import { registerScriptTools } from "./script-tools.js";
 import { registerPerceptionTools } from "./perception-tools.js";
 import { registerSpatialTools } from "./spatial-tools.js";
+import { registerPlacementTools } from "./placement-tools.js";
 import { registerNavigationTools } from "./navigation-tools.js";
 import { registerLibraryTools } from "./library-tools.js";
 import { registerEventTools } from "./event-tools.js";
@@ -274,6 +275,7 @@ function collectRegisteredTools(): RegisteredTool[] {
     registerScriptTools,
     registerPerceptionTools,
     registerSpatialTools,
+    registerPlacementTools,
     registerNavigationTools,
     registerLibraryTools,
     registerEventTools,

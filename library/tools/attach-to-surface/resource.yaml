@@ -1,0 +1,131 @@
+id: tool/attach-to-surface
+kind: tool
+version: 1.0.0
+summary: Mount a piece on a wall, ceiling or floor — turn its measured back into the surface found by a ray, keep it upright, seat it at a standoff. Saves the scene.
+use_when:
+  - mounting a downpipe, gutter, lamp, AC unit, sign or fire escape on a facade
+  - turning a piece so its back faces a wall instead of guessing its rotation
+  - seating a piece against a surface at an exact standoff
+do_not_use_when:
+  - seating a prop on a floor without turning it — summer_snap_to_surface
+  - joining a pipe to another pipe's end — summer_connect_ports
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - 3d
+    - world-building
+    - level-design
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/raycast
+    - tool/snap-to-surface
+    - tool/inspect-asset
+    - tool/starcast
+  skills:
+    - skill/spatial-placement
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_attach_to_surface
+implementation:
+  module: src/mcp/tools/placement-tools.ts
+  export: registerPlacementTools
+surfaces:
+  mcp:
+    tool_name: summer_attach_to_surface
+    remote: false
+input_schema:
+  type: object
+  properties:
+    scenePath:
+      type: string
+      minLength: 1
+      maxLength: 512
+      description: Exact scene, e.g. 'res://levels/alley.tscn'. It must be open; physics rays need it to be the active tab.
+    subject:
+      type: string
+      minLength: 1
+      maxLength: 256
+      description: Piece to mount (exact path from the scene root).
+    surface:
+      type: string
+      minLength: 1
+      maxLength: 256
+      description: Surface node. Without ray, the ray runs from the subject's origin to the nearest point of this node's bounds; with ray, hits on other nodes are skipped.
+    ray:
+      type: object
+      properties:
+        origin:
+          type: array
+          minItems: 3
+          maxItems: 3
+          items:
+            type: number
+          description: Ray start [x, y, z] in scene space.
+        direction:
+          type: array
+          minItems: 3
+          maxItems: 3
+          items:
+            type: number
+          description: Ray direction [x, y, z].
+      required:
+        - origin
+        - direction
+      additionalProperties: false
+      description: Explicit ray that finds the mounting point. Pass this or surface (or both).
+    backAxis:
+      type: string
+      enum: ["+x", "-x", "+y", "-y", "+z", "-z"]
+      default: "-z"
+      description: The subject's LOCAL axis that faces into the surface. Measure it with summer_inspect_asset.
+    upAxis:
+      type: string
+      enum: ["+x", "-x", "+y", "-y", "+z", "-z"]
+      default: "+y"
+      description: The subject's LOCAL axis kept toward worldUp; not on the same line as backAxis.
+    worldUp:
+      type: array
+      minItems: 3
+      maxItems: 3
+      items:
+        type: number
+      default: [0, 1, 0]
+      description: World direction the upAxis follows (projected onto the surface).
+    standoff:
+      type: number
+      minimum: 0
+      maximum: 10
+      default: 0
+      description: Gap between the subject's back and the surface.
+    maxDistance:
+      type: number
+      exclusiveMinimum: 0
+      maximum: 1000
+      default: 20
+      description: Maximum ray length when looking for the surface.
+    collisionMask:
+      type: integer
+      minimum: 0
+      maximum: 4294967295
+      default: 4294967295
+      description: Godot 3D physics layer mask for the ray.
+  required:
+    - scenePath
+    - subject
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - scene-valid

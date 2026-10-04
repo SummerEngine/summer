@@ -1,7 +1,9 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { withEngine, ToolInputError } from "./with-engine.js";
-import { executeOpsChunked, executeSceneMutation } from "../../core/capabilities/engine-ops.js";
+import { executeSceneMutation } from "../../core/capabilities/engine-ops.js";
+import { instantiateScene, runBatch } from "../../core/capabilities/placement-batch.js";
+import { renderPlacementResult } from "./placement-tools.js";
 import { annotateVariantTypes } from "../../core/capabilities/variant-types.js";
 import {
   FALLBACK_SINGLE_ONLY_OPS,
@@ -36,6 +38,9 @@ function requireSuccessfulOps(result: unknown, context: string): Record<string, 
 function minimalSceneText(rootName: string, rootType: string): string {
   return `[gd_scene format=3]\n\n[node name="${rootName}" type="${rootType}"]\n`;
 }
+
+const finiteNumber = z.number().finite();
+const finiteVector3 = z.tuple([finiteNumber, finiteNumber, finiteNumber]);
 
 // Node names reject . : @ / " %; the type must be a plain class name.
 // Both are interpolated into quoted .tscn fields, so validate before composing.
@@ -278,7 +283,9 @@ Do not guess paths. Prefer:
 
 The scene must already exist in the project. Use summer_import_from_url first if importing from external sources.
 
-PASS target_size FOR IMPORTED MODELS. Downloaded/generated .glb assets arrive at arbitrary scale (a "chair" can be 40 units tall). target_size uniformly scales the instanced subtree so its largest world-AABB dimension equals that many units — commit to real-world size: chair 1.0, door 2.0, car 4.5, person 1.7, tree 6-10. The result then reports dimensions + scale_applied; verify placement afterwards (summer_world_snapshot AABBs, summer_screenshot). Older engine builds ignore target_size — when the result lacks scale_applied, this tool appends a note and you must scale the node yourself (summer_set_prop scale) and re-check.`,
+PASS target_size FOR IMPORTED MODELS. Downloaded/generated .glb assets arrive at arbitrary scale (a "chair" can be 40 units tall). target_size uniformly scales the instanced subtree so its largest world-AABB dimension equals that many units — commit to real-world size: chair 1.0, door 2.0, car 4.5, person 1.7, tree 6-10. The result then reports dimensions + scale_applied; verify placement afterwards (summer_world_snapshot AABBs, summer_screenshot). Older engine builds ignore target_size — when the result lacks scale_applied, this tool appends a note and you must scale the node yourself (summer_set_prop scale) and re-check.
+
+PLACE IT IN THE SAME CALL: position, rotation_degrees and scale ([x, y, z], parent-local, like summer_set_prop), or transform (a "Transform3D(...)" string). The instance is created, then those properties are set on the exact node path the receipt reports (a name collision rename is followed), then the scene is saved: one call per piece, no window at the origin. The result adds placement {nodePath, applied, fields}. Do not combine transform with the others, or scale/transform with target_size. Measure a kit piece first with summer_inspect_asset.`,
     {
       scenePath: z.string().describe("Target scene to receive the instance, e.g. 'res://main.tscn'"),
       parent: z.string().describe("Parent node path, e.g. './World'"),
@@ -291,34 +298,18 @@ PASS target_size FOR IMPORTED MODELS. Downloaded/generated .glb assets arrive at
         .describe(
           "Normalize the instance's physical size: uniformly scale it so its largest world-AABB dimension equals this many units (chair 1.0, car 4.5, person 1.7). Strongly recommended for imported .glb/.gltf models."
         ),
+      position: finiteVector3.optional().describe("Parent-local position [x, y, z] set right after the instance is created."),
+      rotation_degrees: finiteVector3.optional().describe("Parent-local rotation in degrees [x, y, z] (Godot rotation_degrees)."),
+      scale: finiteVector3.optional().describe("Local scale [x, y, z]. Not with target_size."),
+      transform: z
+        .string()
+        .optional()
+        .describe('Full local transform as "Transform3D(xx, xy, xz, yx, yy, yz, zx, zy, zz, ox, oy, oz)" (Godot row-major basis, then origin). Not with position/rotation_degrees/scale/target_size.'),
     },
-    async ({ scenePath, parent, scene, name, target_size }) =>
-      withEngine(async (client) => {
-        const op: Record<string, unknown> = { op: "InstantiateScene", parent, scene };
-        if (name) op.name = name;
-        if (target_size !== undefined) op.target_size = target_size;
-        const result = await executeSceneMutation(client, scenePath, [op]);
-        // An older engine applies the op but silently drops target_size — its
-        // receipt then lacks scale_applied. Confess that instead of letting a
-        // 40-unit "chair" pass as normalized.
-        if (target_size !== undefined && result && typeof result === "object") {
-          const envelope = result as Record<string, unknown> & {
-            results?: Array<Record<string, unknown>>;
-          };
-          const instanced = envelope.results?.find(
-            (entry) => entry.op === "InstantiateScene" && entry.ok === true
-          );
-          if (instanced && !("scale_applied" in instanced)) {
-            return {
-              ...envelope,
-              target_size_note:
-                `This Summer Engine build IGNORED target_size (no scale_applied in the receipt) — the instance is at the asset's raw scale, NOT normalized to ${target_size}. ` +
-                "Scale it yourself (summer_set_prop scale, or ctx code in summer_run_script), verify with summer_world_snapshot/summer_screenshot, or update Summer Engine.",
-            };
-          }
-        }
-        return result;
-      })
+    async (args) =>
+      // E2E: an older engine applies the op but silently drops target_size —
+      // instantiateScene appends target_size_note when scale_applied is absent.
+      withEngine(async (client) => instantiateScene(client, args))
   );
 
   server.tool(
@@ -435,14 +426,22 @@ SaveScene, InstantiateScene, ReplaceNode, SimulateInput, the runtime reads
 ops to travel as their own request, so this tool automatically splits your op
 list into sequential requests around them — each split chunk is its own undo
 step (NOT one step for the whole batch), and if a later chunk fails the receipt
-reports exactly which earlier ops already applied.`,
+reports exactly which earlier ops already applied.
+
+PLACED INSTANCES: an InstantiateScene op may also carry position, rotation_degrees, scale ([x, y, z] or "Vector3(...)") or transform ("Transform3D(...)"); the tool sets them on the created node right after it exists. One op per piece. Other ops are forwarded verbatim.
+
+RECEIPTS: receipt "summary" returns only counts, failures [{index, op, error}] (index = position in your ops list), created node paths and renames, under 5 KB with any cut declared. Use it for any batch over a few ops; the full receipt of a large batch overflows the tool-output limit.`,
     {
       scenePath: z.string().optional().describe(
         "Required when ops contains scene mutations; exact res:// target scene path",
       ),
       ops: z.array(z.record(z.unknown())).describe("Array of operation objects, each with 'op' plus its parameters"),
+      receipt: z
+        .enum(["full", "summary"])
+        .optional()
+        .describe("full (default): every engine receipt. summary: counts, failures with op index, created node paths only (under 5 KB)."),
     },
-    async ({ scenePath, ops }) =>
+    async ({ scenePath, ops, receipt }) =>
       withEngine(async (client) => {
         const rawFileMutation = ops.find((op) => {
           const kind = String(op.op ?? "");
@@ -454,33 +453,13 @@ reports exactly which earlier ops already applied.`,
             "Use summer_write_file or summer_replace_text so project identity, content guards, and same-file ordering are enforced."
           );
         }
-        const sceneMutations = new Set([
-          "AddNode", "RemoveNode", "MoveNode", "ReparentNode", "ReplaceNode",
-          "SetProp", "SetResourceProperty", "ConnectSignal", "DisconnectSignal",
-          "InstantiateScene", "SaveScene", "SnapToSurface", "AlignDistribute3D", "Undo",
-        ]);
-        // Read-only spatial queries target an exact scene (identity-bound) but
-        // never save — no SaveScene is appended for them.
-        const sceneQueries = new Set([
-          "TestPlacement3D", "NavigationProbe3D", "Starcast3D",
-        ]);
-        const containsMutation = ops.some((op) => sceneMutations.has(String(op.op ?? "")));
-        const needsScenePath = containsMutation ||
-          ops.some((op) => sceneQueries.has(String(op.op ?? "")));
-        if (needsScenePath && !scenePath) {
-          throw new ToolInputError("summer_batch requires scenePath when ops targets a scene");
-        }
-        const options = { groupUndo: true, ...(scenePath ? { scenePath } : {}) };
-        if (containsMutation) {
-          return executeSceneMutation(client, scenePath!, ops as Record<string, unknown>[], options);
-        }
-        return executeOpsChunked(
-          (chunk) => needsScenePath
-            ? client.executeIdentityBoundOps(chunk, options)
-            : client.executeOps(chunk, options),
-          ops as Record<string, unknown>[],
-          resolveSingleOnlyOps(client),
-        );
-      })
+        // Scene mutations get one final SaveScene; read-only spatial queries
+        // (TestPlacement3D, NavigationProbe3D, Starcast3D) are identity-bound
+        // to the scene but never saved (core/capabilities/placement-batch.ts).
+        const result = await runBatch(client, { scenePath, ops: ops as Record<string, unknown>[], receipt });
+        return receipt === "summary" ? { summaryReceipt: result as Record<string, unknown> } : result;
+      }, receipt === "summary"
+        ? { onResult: (wrapped) => renderPlacementResult((wrapped as { summaryReceipt: Record<string, unknown> }).summaryReceipt) }
+        : undefined)
   );
 }

@@ -1,0 +1,96 @@
+id: tool/measure
+kind: tool
+version: 1.0.0
+summary: Gap or overlap per axis between two placed nodes, or whether one face of many nodes is coplanar — catches facade gaps and modules standing proud. Read-only.
+use_when:
+  - checking that two facade modules meet edge to edge, or how far apart or overlapping two pieces are on each axis
+  - checking that every module of a facade line has its front on one plane (plane mode) and which ones stand proud or sit recessed
+  - verifying a placement numerically before the screenshot
+do_not_use_when:
+  - you want clearance around one node in every direction — summer_starcast
+  - you want to test a pose before moving anything — summer_test_placement
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - 3d
+    - world-building
+    - verification
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/starcast
+    - tool/place-adjacent
+    - tool/screenshot
+  skills:
+    - skill/spatial-placement
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_measure
+implementation:
+  module: src/mcp/tools/placement-tools.ts
+  export: registerPlacementTools
+surfaces:
+  mcp:
+    tool_name: summer_measure
+    remote: false
+input_schema:
+  type: object
+  properties:
+    scenePath:
+      type: string
+      minLength: 1
+      maxLength: 512
+      description: Exact scene, e.g. 'res://levels/alley.tscn'. It must be open in the editor (any tab).
+    mode:
+      type: string
+      enum: [pair, plane]
+      default: pair
+      description: "pair: gap or overlap per axis between nodes a and b. plane: whether one face of every node in nodes lies on one plane."
+    a:
+      type: string
+      description: pair mode, first node (exact path from the scene root).
+    b:
+      type: string
+      description: pair mode, second node.
+    axis:
+      type: string
+      enum: [x, y, z]
+      description: pair mode, report only this axis.
+    nodes:
+      type: array
+      minItems: 2
+      maxItems: 32
+      items:
+        type: string
+      description: plane mode, 2-32 nodes whose face is checked.
+    face:
+      type: string
+      enum: ["+x", "-x", "+y", "-y", "+z", "-z"]
+      description: plane mode, which face, e.g. '+z' for the face pointing along +z.
+    space:
+      type: string
+      enum: [world, local]
+      default: world
+      description: "world axes, or the axes of a (pair) / nodes[0] (plane) for rotated facades."
+    tolerance:
+      type: number
+      minimum: 0
+      maximum: 1
+      default: 0.005
+      description: Distance treated as touching (pair) or coplanar (plane). Default 5 mm.
+  required:
+    - scenePath
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

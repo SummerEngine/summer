@@ -929,7 +929,7 @@
     {
       "id": "skill/spatial-placement",
       "name": "spatial-placement",
-      "description": "Place and verify 3D objects with Starcast evidence — inspect, place, starcast, correct, verify; floor, shelf, wall, alcove recipes and overlap repair.",
+      "description": "Place 3D objects and modular kit pieces from measured geometry — inspect, place, starcast, measure, correct; wall, facade, pipe, shelf and alcove recipes.",
       "clients": "all",
       "recommended": true,
       "status": "preview",

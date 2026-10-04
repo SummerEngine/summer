@@ -5,6 +5,17 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 ## [Unreleased]
 
 ### Added
+- Kit-placement tools (preview), built only on existing engine ops (a read-only `RunSceneScript` probe, then `SetProp` / `SnapToSurface` / `InstantiateScene` with the usual scene target, undo and final save). Every result is under 5 KB, names its evidence (`visual_aabb`, `physics`, `mesh_triangles`, `markers`) and declares any cut list:
+  - `summer_inspect_asset`: measure a `.tscn`/`.glb`/`.gltf` (or Mesh) without adding it to a scene: AABB and origin position, per-mesh AABBs and triangle counts, the 6 largest planar faces, open boundary loops (pipe and duct ends), Marker3D anchors, collision shapes.
+  - `summer_place_adjacent`: put one node's bounds face against another's along an axis, lining up the other axes per axis; verified by a fresh read.
+  - `summer_attach_to_surface`: turn a piece's measured local back axis into a surface found by a ray (up kept), then seat it with `SnapToSurface` at a standoff.
+  - `summer_repeat_along`: instance up to 64 copies of a scene along a line by spacing or count, with a compact receipt of the created paths.
+  - `summer_connect_ports`: move and turn a piece so its port (Marker3D name or open-loop index) meets another piece's port; verified distance and angle.
+  - `summer_raycast`: one ray from any point; physics first, visual-AABB fallback declared.
+  - `summer_measure`: gap or overlap per axis between two nodes, or face coplanarity across 2-32 nodes (proud / recessed).
+- `summer_instantiate_scene` takes `position`, `rotation_degrees`, `scale` or `transform`, set on the node path the receipt reports right after the instance exists: one call per placed piece. The same fields work on `InstantiateScene` ops in `summer_batch`.
+- `summer_batch` gains `receipt: "summary"`: counts, failures with their op index, created node paths and renames, under 5 KB.
+- `spatial-placement` skill: a question-to-tool table for every placement tool, a modular-kit workflow and a worked two-storey facade example with a downpipe, clamps and a lamp; `references/kit-placement-tools.md` documents each tool's arguments, results, limits and engine ops. `world-building-3d` routes kit placement to it.
 - `summer_generate_motion` gains `backend: "text-to-motion"`: custom 2-second clips from text prompts on any of your own rigged models (humanoid, animal, creature, cartoon plant, prop; 5-70 bones). New fields `prompt` / `prompts` (1-8), `takes` (1-4), `lockJoints`, `cfgScale` (1.5-8) and `idempotencyKey`; one billed clip per prompt x take; poll `summer_check_job`, import with `summer_import_asset_by_id`. The server keeps the backend off until it is enabled and answers `backend_unavailable`; the tool then points back to `meshy-library`. `summer tool generate-motion` validates with the same schema.
 - `text-to-motion` skill (preview): route, rigging for non-humanoids (human bone names, the talking-flower recipe), prompts and controls, failure codes. `asset-strategy` and `generate-motion` route custom and non-humanoid motion to it.
 

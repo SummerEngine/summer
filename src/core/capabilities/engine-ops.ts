@@ -110,8 +110,13 @@ export async function executeOpsChunked(
 /** Scene mutation entry point: appends the transaction-boundary SaveScene, then
  *  dispatches with the single-op contract (mutations batch together, SaveScene
  *  and other single-only ops travel alone). */
+/** The slice of EngineApiClient a scene mutation needs (structural, so the
+ *  placement tools and tests can pass narrower clients). */
+export type SceneMutationClient = Pick<EngineApiClient, "executeIdentityBoundOps"> &
+  Parameters<typeof resolveSingleOnlyOps>[0];
+
 export function executeSceneMutation(
-  client: EngineApiClient,
+  client: SceneMutationClient,
   scenePath: string,
   ops: JsonRecord[],
   options?: JsonRecord

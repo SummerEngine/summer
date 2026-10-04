@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-30",
+  "generated_at": "2026-10-04",
   "corpus_source": "registry/generated/index.json",
-  "corpus_size": 209,
-  "query_count": 104,
+  "corpus_size": 216,
+  "query_count": 111,
   "gap_count": 13,
   "mean_recall_at_5": 1,
-  "mean_recall_at_1": 0.8654,
-  "mrr_at_5": 0.9391,
+  "mean_recall_at_1": 0.8514,
+  "mrr_at_5": 0.9429,
   "per_kind": {
     "reference": {
       "expected": 1,
@@ -14,13 +14,13 @@
       "recall_at_5": 1
     },
     "skill": {
-      "expected": 81,
-      "hit": 81,
+      "expected": 87,
+      "hit": 87,
       "recall_at_5": 1
     },
     "tool": {
-      "expected": 29,
-      "hit": 29,
+      "expected": 35,
+      "hit": 35,
       "recall_at_5": 1
     }
   },
@@ -70,6 +70,12 @@
     "the scene is too dark and the shadows are blocky": 1,
     "make it look like PS1 horror": 1,
     "pick a color palette and visual style for my cozy farming game": 1,
+    "place the facade wall modules edge to edge along the street": 1,
+    "how do I place modular kit pieces so the walls line up": 1,
+    "put a downpipe and a lamp on the wall": 1,
+    "the building facade has gaps between the wall pieces": 1,
+    "how big is this kit piece and which way does it face before I place it": 1,
+    "add a wall clamp every 45 cm up the pipe": 1,
     "make a fireball": 1,
     "add sparks when the sword hits metal": 1,
     "the boss should disintegrate when it dies": 1,
@@ -122,6 +128,7 @@
     "dismiss the dialog that's blocking the editor": 1,
     "pause the running game and step one physics frame": 1,
     "record my inputs and replay them deterministically": 1,
+    "connect this pipe section to the end of the previous one": 1,
     "open my billing page": 1,
     "show me my published games": 1,
     "where do I change my plan?": 1,

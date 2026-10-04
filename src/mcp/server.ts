@@ -12,6 +12,7 @@ import {
 } from "./tools/project-tools.js";
 import { registerPerceptionTools } from "./tools/perception-tools.js";
 import { registerSpatialTools } from "./tools/spatial-tools.js";
+import { registerPlacementTools } from "./tools/placement-tools.js";
 import { registerScriptTools } from "./tools/script-tools.js";
 import { registerEventTools } from "./tools/event-tools.js";
 import { registerFabricateTools } from "./tools/fabricate-tools.js";
@@ -372,6 +373,7 @@ export function createMcpServer(): {
   registerScriptTools(server);
   registerPerceptionTools(server);
   registerSpatialTools(server);
+  registerPlacementTools(server);
   registerNavigationTools(server);
   registerLibraryTools(server);
   registerEventTools(server);

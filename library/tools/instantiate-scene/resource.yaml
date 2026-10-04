@@ -1,11 +1,12 @@
 id: tool/instantiate-scene
 kind: tool
-version: 1.0.3
-summary: Add an existing scene or 3D model file as a child node, composing scenes from prefabs.
+version: 1.1.0
+summary: Add an existing scene or 3D model file as a child node, optionally placed in the same call (position, rotation_degrees, scale or transform).
 use_when:
   - placing a .tscn prefab or imported 3D model into a scene
   - '"put three copies of the enemy prefab in the level"'
   - '"add the imported car.glb to the scene"'
+  - placing a kit piece at an exact position and rotation in one call per piece
 do_not_use_when:
   - a bare built-in node type like Camera3D or Timer — summer_add_node
 facets:
@@ -47,6 +48,30 @@ input_schema:
       type: number
       exclusiveMinimum: 0
       description: Normalize the instance's physical size - uniformly scale it so its largest world-AABB dimension equals this many units (chair 1.0, car 4.5, person 1.7). Strongly recommended for imported .glb/.gltf models. Older engine builds ignore it; the result then lacks scale_applied and carries a target_size_note.
+    position:
+      type: array
+      minItems: 3
+      maxItems: 3
+      items:
+        type: number
+      description: Parent-local position [x, y, z], set right after the instance is created (on the node path its receipt reports).
+    rotation_degrees:
+      type: array
+      minItems: 3
+      maxItems: 3
+      items:
+        type: number
+      description: Parent-local rotation in degrees [x, y, z].
+    scale:
+      type: array
+      minItems: 3
+      maxItems: 3
+      items:
+        type: number
+      description: Local scale [x, y, z]. Not with target_size.
+    transform:
+      type: string
+      description: Full local transform as "Transform3D(xx, xy, xz, yx, yy, yz, zx, zy, zz, ox, oy, oz)". Not with position, rotation_degrees, scale or target_size.
   required:
     - scenePath
     - parent

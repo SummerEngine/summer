@@ -124,6 +124,20 @@ queries:
   - query: "pick a color palette and visual style for my cozy farming game"
     expected: [skill/art-direction]
 
+  # ── 3D placement ───────────────────────────────────────────────────────
+  - query: "place the facade wall modules edge to edge along the street"
+    expected: [skill/spatial-placement, tool/place-adjacent]
+  - query: "how do I place modular kit pieces so the walls line up"
+    expected: [skill/spatial-placement]
+  - query: "put a downpipe and a lamp on the wall"
+    expected: [skill/spatial-placement, tool/attach-to-surface]
+  - query: "the building facade has gaps between the wall pieces"
+    expected: [skill/spatial-placement, tool/measure]
+  - query: "how big is this kit piece and which way does it face before I place it"
+    expected: [skill/spatial-placement, tool/inspect-asset]
+  - query: "add a wall clamp every 45 cm up the pipe"
+    expected: [skill/spatial-placement, tool/repeat-along]
+
   # ── VFX ────────────────────────────────────────────────────────────────
   - query: "make a fireball"
     expected: [skill/vfx-fire]
@@ -240,6 +254,8 @@ queries:
     expected: [tool/game-control]
   - query: "record my inputs and replay them deterministically"
     expected: [tool/game-input]
+  - query: "connect this pipe section to the end of the previous one"
+    expected: [tool/connect-ports]
 
   # ── Known gaps (expected_gap: true — the authoring backlog) ────────────
   - query: "add enemy pathfinding"

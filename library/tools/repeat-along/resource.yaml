@@ -1,0 +1,129 @@
+id: tool/repeat-along
+kind: tool
+version: 1.0.0
+summary: Instance copies of one scene along a line in one call — clamps every 0.45 m, braces, fence posts, window rows — and get the created node paths back.
+use_when:
+  - placing wall clamps, gutter braces or duct braces at a fixed spacing along a run
+  - a row of fence posts, bollards, lamps or window modules
+  - filling a line with as many copies as fit at a spacing
+do_not_use_when:
+  - scattering copies over an area or a grid — summer_run_script with ctx.scatter / ctx.grid
+  - spacing nodes that already exist — summer_align_distribute_3d
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - 3d
+    - world-building
+    - level-design
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/instantiate-scene
+    - tool/batch
+    - tool/attach-to-surface
+  skills:
+    - skill/spatial-placement
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_repeat_along
+implementation:
+  module: src/mcp/tools/placement-tools.ts
+  export: registerPlacementTools
+surfaces:
+  mcp:
+    tool_name: summer_repeat_along
+    remote: false
+input_schema:
+  type: object
+  properties:
+    scenePath:
+      type: string
+      minLength: 1
+      maxLength: 512
+      description: Exact scene, e.g. 'res://levels/alley.tscn'.
+    template:
+      type: string
+      minLength: 1
+      maxLength: 512
+      description: Scene to instance for every copy (.tscn, .scn, .glb, .gltf).
+    parent:
+      type: string
+      minLength: 1
+      maxLength: 256
+      description: Parent for the copies; start/end/direction are in this parent's local space.
+    start:
+      type: array
+      minItems: 3
+      maxItems: 3
+      items:
+        type: number
+      description: First copy's position [x, y, z].
+    end:
+      type: array
+      minItems: 3
+      maxItems: 3
+      items:
+        type: number
+      description: Line end. With spacing as many copies as fit; with count, count copies from start to end.
+    direction:
+      type: array
+      minItems: 3
+      maxItems: 3
+      items:
+        type: number
+      description: Instead of end, the row direction; needs count and spacing.
+    count:
+      type: integer
+      minimum: 1
+      maximum: 64
+      description: Number of copies.
+    spacing:
+      type: number
+      exclusiveMinimum: 0
+      maximum: 1000
+      description: Distance between neighbouring copies' origins.
+    align:
+      type: string
+      enum: [start, center, end]
+      default: start
+      description: With end + spacing, where the leftover length goes.
+    rotationDegrees:
+      type: array
+      minItems: 3
+      maxItems: 3
+      items:
+        type: number
+      description: rotation_degrees for every copy.
+    scale:
+      type: array
+      minItems: 3
+      maxItems: 3
+      items:
+        type: number
+      description: scale for every copy.
+    namePrefix:
+      type: string
+      minLength: 1
+      maxLength: 64
+      description: Copies are named <namePrefix>_<n> (default the template file name).
+  required:
+    - scenePath
+    - template
+    - parent
+    - start
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - scene-valid

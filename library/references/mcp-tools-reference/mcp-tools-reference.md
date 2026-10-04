@@ -17,7 +17,7 @@
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (86 tools)
+## Tool surface (93 tools)
 
 ### Project files (3)
 
@@ -36,7 +36,7 @@
 | `summer_open_scene` | Open a specific `.tscn`. |
 | `summer_open` | Navigate for the user: open a summerengine.com page (billing, my games, pricing, an MCP guide) or an editor surface (scene, node, script, file, a dock) by intent name, or `print` the URL / op. Destinations: the `product-map` reference; when to use it: the `navigate-summer` skill. |
 | `summer_create_scene` | Create a new scene. |
-| `summer_instantiate_scene` | Add an existing scene or 3D model as a child node. |
+| `summer_instantiate_scene` | Add an existing scene or 3D model as a child node; `position` / `rotation_degrees` / `scale` (or `transform`) place it in the same call. |
 | `summer_inspect_node` | Read a single node's properties. |
 | `summer_add_node` | Add a node to the explicit `scenePath`; the tab need not be open. |
 | `summer_remove_node` | Remove a node from the explicit `scenePath`. |
@@ -112,6 +112,20 @@ Bounded spatial evidence for deliberate 3D arrangement. All five take exact `sce
 | `summer_align_distribute_3d` | Align (min/center/max) or equal-space (centers/gaps) 2–16 ordered subjects along one world axis from visible AABBs; mutation + save. One-axis evidence only. |
 | `summer_navigation_probe` | Read-only reachability between two world points on the scene's navigation map: readiness, snapped endpoints + snap distances, route length, ≤16 route points. `ready: false` = unknown, not unreachable. |
 | `summer_starcast` | Read-only 26-direction placement rundown around one exact node: per-direction `open`/`blocked` with nearest object, distance and evidence, contact-or-overlap paths, `grounded`, coverage, warnings. `detail: summary` ≤ 5 KB; `full` adds hit geometry, an objects table and nearby lists ≤ 12 KB and downgrades to summary rather than exceed it. `visual_aabb` evidence is broad-phase, never exact contact. |
+
+### Kit placement (7)
+
+Placement of modular kit pieces from measured geometry, built on the existing ops (a read-only `RunSceneScript` probe, then `SetProp` / `SnapToSurface` / `InstantiateScene` with the usual scene target, undo and final save). Each takes exact paths, needs the scene open in the editor (any tab; physics rays need the active tab) and returns a receipt under 5 KB that names its evidence. Arguments, result shapes, limits and the ops each one uses: `skill/spatial-placement` (`references/kit-placement-tools.md`).
+
+| Tool | Use |
+|---|---|
+| `summer_inspect_asset` | Measure a `.tscn`/`.glb`/`.gltf` (or Mesh) WITHOUT adding it to a scene: AABB + origin position, per-mesh AABBs and triangle counts, the 6 largest planar faces (normal, offset, area), open boundary loops (pipe/duct ends), Marker3D anchors, collision shapes. Read-only. |
+| `summer_place_adjacent` | Put one node's bounds face against another's along an axis (gap, side), lining up the other axes (min/center/max, per axis); facade modules edge to edge, storeys stacked. One SetProp + save, verified. |
+| `summer_attach_to_surface` | Turn a piece so its measured local back axis faces into a surface hit by a ray (up kept), then seat it with `SnapToSurface` at a standoff. Pipes, lamps, AC units, signs. |
+| `summer_repeat_along` | Instance copies of a scene along a line (spacing or count, leftover aligned start/center/end), each placed in the same call; compact receipt with created paths. At most 64. |
+| `summer_connect_ports` | Move and turn a piece so its port (Marker3D name or open-loop index) meets another piece's port, facing it; verified distance and angle. |
+| `summer_raycast` | One ray from any point, before anything is placed: hit path, point, normal. Physics first; visual-AABB fallback declared as such. Read-only. |
+| `summer_measure` | Gap/overlap per axis between two nodes, or face coplanarity across 2-32 nodes (proud/recessed). Read-only. |
 
 ### Play / runtime (3)
 
@@ -189,7 +203,7 @@ Drive and observe the RUNNING game (engine runtime-control ops, preview — `eng
 | Tool | Use |
 |---|---|
 | `summer_check_job` | Poll a generation job. |
-| `summer_batch` | Run multiple ops as a transaction. |
+| `summer_batch` | Run multiple ops as a transaction. `InstantiateScene` ops may carry `position` / `rotation_degrees` / `scale` / `transform`; `receipt: "summary"` returns counts, failures with op index and created paths under 5 KB. |
 
 ### Meta (4)
 

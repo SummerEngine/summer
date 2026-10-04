@@ -147,8 +147,8 @@
     {
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
-      "version": "1.0.3",
-      "content_hash": "cf0339df0f5b315b84610f778dd71e87ac50c4c62ca06533c8b13b293c6eed31",
+      "version": "1.1.0",
+      "content_hash": "26af20346bf1d0a3d04a2e27a26b957df0c4af1a6537809fce9816fb6269c0c6",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -2881,14 +2881,17 @@
     {
       "id": "skill/spatial-placement",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "e3732df29c8e090b287e25e00aaf0085af43e54e197e60cbb8bdf2dbb695d552",
-      "summary": "Place and verify 3D objects with Starcast evidence — inspect, place, starcast, correct, verify; floor, shelf, wall, alcove recipes and overlap repair.",
+      "version": "1.1.0",
+      "content_hash": "9ed556cb00530c8c936b17ca2df36d14f6e3c997099395f4771e49f5fbcecae5",
+      "summary": "Place 3D objects and modular kit pieces from measured geometry — inspect, place, starcast, measure, correct; wall, facade, pipe, shelf and alcove recipes.",
       "use_when": [
         "positioning a prop, character, collider, or platform so it sits flush, avoids overlap, or keeps clearance",
         "placing something against a wall, inside an alcove, or on a shelf and needing to know which side is blocked and by how much",
         "repairing an overlap or a floating object after a placement",
-        "post-placement checks on a rotated prop using its own local axes"
+        "post-placement checks on a rotated prop using its own local axes",
+        "placing modular kit pieces — facade or wall modules edge to edge, storeys stacked, pipes, gutters and lamps on a wall, clamps along a pipe",
+        "measuring a kit piece's size, origin and which way it faces before placing it",
+        "checking that a facade line is flush, with no gaps and no module standing proud"
       ],
       "facets": {
         "lifecycle": [
@@ -2911,6 +2914,17 @@
       "related": {
         "tools": [
           "tool/starcast",
+          "tool/inspect-asset",
+          "tool/place-adjacent",
+          "tool/attach-to-surface",
+          "tool/repeat-along",
+          "tool/connect-ports",
+          "tool/raycast",
+          "tool/measure",
+          "tool/instantiate-scene",
+          "tool/test-placement",
+          "tool/snap-to-surface",
+          "tool/align-distribute-3d",
           "tool/get-scene-tree",
           "tool/inspect-node",
           "tool/set-prop",
@@ -3732,8 +3746,8 @@
     {
       "id": "skill/world-building-3d",
       "kind": "skill",
-      "version": "1.1.0",
-      "content_hash": "06ad6af0062e89cd4e1ec28560b758091761400fdee708f0005ae534ad766b2a",
+      "version": "1.1.1",
+      "content_hash": "fb7f2c08ac7656c315305bed6adda0c9d3a5dc410dd75c7abe3bea9211e85e79",
       "summary": "Compose, ground, space, and validate 3D scenes with Summer's four bounded spatial tools — exact paths, one geometric decision at a time, verified.",
       "use_when": [
         "placing or grounding props on floors, shelves, ramps, or tables without hand-tuning transforms",
@@ -4416,14 +4430,65 @@
       }
     },
     {
+      "id": "tool/attach-to-surface",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "1585328adfc35ce1304bf879eee556a360df1f72782447f1024d5791b14819e0",
+      "summary": "Mount a piece on a wall, ceiling or floor — turn its measured back into the surface found by a ray, keep it upright, seat it at a standoff. Saves the scene.",
+      "use_when": [
+        "mounting a downpipe, gutter, lamp, AC unit, sign or fire escape on a facade",
+        "turning a piece so its back faces a wall instead of guessing its rotation",
+        "seating a piece against a surface at an exact standoff"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "3d",
+          "world-building",
+          "level-design"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/raycast",
+          "tool/snap-to-surface",
+          "tool/inspect-asset",
+          "tool/starcast"
+        ],
+        "skills": [
+          "skill/spatial-placement"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_attach_to_surface",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
       "id": "tool/batch",
       "kind": "tool",
-      "version": "1.0.3",
-      "content_hash": "7542d9351dd1a04341338444731dff558f440a565d3e323278d70a97407ad568",
+      "version": "1.1.0",
+      "content_hash": "4e2ad19bd054b41ffebd3c4b5b66ac2aec164472745d9ca684893ab1156df012",
       "summary": "Run multiple engine ops in one call, forwarded verbatim; one undo step unless single-only ops force a split (then one per chunk). Also reaches raw ops.",
       "use_when": [
         "multi-node builds that should undo as one step (no single-only ops in the list)",
-        "reaching engine ops that have no dedicated tool"
+        "reaching engine ops that have no dedicated tool",
+        "placing many kit pieces, one InstantiateScene op per piece with its position and rotation, read back with receipt summary"
       ],
       "facets": {
         "lifecycle": [
@@ -4558,6 +4623,54 @@
       "remote": false,
       "authority": {
         "filesystem": false,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/connect-ports",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "5c9eea1ac1e7ed2e7f90c135c4849d2967246a5e9240f9b26dad16c46cb4fb25",
+      "summary": "Move and turn one piece so its port (a Marker3D or a measured open pipe end) meets another piece's port, facing it — pipes, ducts, gutters. Saves the scene.",
+      "use_when": [
+        "joining a pipe, duct or gutter section end to end with the previous one",
+        "fitting a bend, funnel or outlet onto a run",
+        "snapping any two pieces together by named Marker3D anchors"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "3d",
+          "world-building"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/inspect-asset",
+          "tool/attach-to-surface",
+          "tool/measure"
+        ],
+        "skills": [
+          "skill/spatial-placement"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_connect_ports",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
         "editor_mutation": true,
         "network": false,
         "credentials": false,
@@ -5802,6 +5915,56 @@
       }
     },
     {
+      "id": "tool/inspect-asset",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "f6fc61eb2a4091e32fbb89ab53883d29a7fffa6d793722ce07f52ee9bd1c1f20",
+      "summary": "Measure a 3D asset file without adding it to a scene — AABB, origin, meshes, largest planar faces, open pipe ends, Marker3D anchors, collision shapes.",
+      "use_when": [
+        "learning a kit piece's real size, origin and which way it faces before placing it",
+        "finding a piece's front and back planes (largest planar faces with their normals) or its pipe and duct ends (open boundary loops)",
+        "reading the Marker3D anchors or collision shapes a pack ships"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "3d",
+          "world-building",
+          "assets"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/instantiate-scene",
+          "tool/attach-to-surface",
+          "tool/connect-ports",
+          "tool/starcast"
+        ],
+        "skills": [
+          "skill/spatial-placement"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_inspect_asset",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
       "id": "tool/inspect-node",
       "kind": "tool",
       "version": "1.0.3",
@@ -5918,13 +6081,14 @@
     {
       "id": "tool/instantiate-scene",
       "kind": "tool",
-      "version": "1.0.3",
-      "content_hash": "7f3856ca5224aedb59a4fa8d29f46e5fdd82dd874c5dc94aee8590fc95f1d6ff",
-      "summary": "Add an existing scene or 3D model file as a child node, composing scenes from prefabs.",
+      "version": "1.1.0",
+      "content_hash": "f53c8c4d2df1ae52eb8d47518f780c16c910b17e9b9b443e33bc4030b7a8b039",
+      "summary": "Add an existing scene or 3D model file as a child node, optionally placed in the same call (position, rotation_degrees, scale or transform).",
       "use_when": [
         "placing a .tscn prefab or imported 3D model into a scene",
         "\"put three copies of the enemy prefab in the level\"",
-        "\"add the imported car.glb to the scene\""
+        "\"add the imported car.glb to the scene\"",
+        "placing a kit piece at an exact position and rotation in one call per piece"
       ],
       "facets": {
         "lifecycle": [
@@ -6045,6 +6209,55 @@
         "filesystem": false,
         "editor_mutation": false,
         "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/measure",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "53f31b54e4745d55c8824d12c5cf2665493a486763a959a05e8eada0b5c6dfdc",
+      "summary": "Gap or overlap per axis between two placed nodes, or whether one face of many nodes is coplanar — catches facade gaps and modules standing proud. Read-only.",
+      "use_when": [
+        "checking that two facade modules meet edge to edge, or how far apart or overlapping two pieces are on each axis",
+        "checking that every module of a facade line has its front on one plane (plane mode) and which ones stand proud or sit recessed",
+        "verifying a placement numerically before the screenshot"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "3d",
+          "world-building",
+          "verification"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/starcast",
+          "tool/place-adjacent",
+          "tool/screenshot"
+        ],
+        "skills": [
+          "skill/spatial-placement"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_measure",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
         "credentials": false,
         "publish": false
       }
@@ -6223,6 +6436,56 @@
       }
     },
     {
+      "id": "tool/place-adjacent",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "ff6de3e3a18cccf65849add3e382f55cf0d6f72d940eb2b294e6bad313a77fc7",
+      "summary": "Move one node so its bounds face sits against another's along an axis, lining up the other axes — facade modules edge to edge, storeys stacked. Saves the scene.",
+      "use_when": [
+        "laying facade or wall modules edge to edge along a street line",
+        "stacking a storey, cornice or crown on the piece below",
+        "putting a piece flush beside another with the same base height and front plane"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "3d",
+          "world-building",
+          "level-design"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/measure",
+          "tool/align-distribute-3d",
+          "tool/repeat-along",
+          "tool/inspect-asset"
+        ],
+        "skills": [
+          "skill/spatial-placement"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_place_adjacent",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
       "id": "tool/play",
       "kind": "tool",
       "version": "1.2.0",
@@ -6302,6 +6565,54 @@
       "authority": {
         "filesystem": true,
         "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/raycast",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "90b11bb7c433bf2ec4d1f8c8dcac768887ff4f3abe446ce972e6d492a510744f",
+      "summary": "Cast one ray from any point in an open scene — hit node, point and normal; physics first, visual AABB fallback declared. Read-only.",
+      "use_when": [
+        "finding the wall, floor or ceiling in front of a point and its normal before anything is placed there",
+        "choosing where a lamp, pipe or sign mounts on a facade",
+        "checking what a line of sight or a drop line hits"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "3d",
+          "world-building"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/attach-to-surface",
+          "tool/starcast",
+          "tool/snap-to-surface"
+        ],
+        "skills": [
+          "skill/spatial-placement"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_raycast",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
         "network": false,
         "credentials": false,
         "publish": false
@@ -6466,6 +6777,55 @@
       },
       "status": "stable",
       "mcp_tool_name": "summer_remove_node",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/repeat-along",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "0c64803852507adf94b9b494eb25b5fe854e76337a129fd1237c90be1a41f3e3",
+      "summary": "Instance copies of one scene along a line in one call — clamps every 0.45 m, braces, fence posts, window rows — and get the created node paths back.",
+      "use_when": [
+        "placing wall clamps, gutter braces or duct braces at a fixed spacing along a run",
+        "a row of fence posts, bollards, lamps or window modules",
+        "filling a line with as many copies as fit at a spacing"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "3d",
+          "world-building",
+          "level-design"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/instantiate-scene",
+          "tool/batch",
+          "tool/attach-to-surface"
+        ],
+        "skills": [
+          "skill/spatial-placement"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_repeat_along",
       "remote": false,
       "authority": {
         "filesystem": true,

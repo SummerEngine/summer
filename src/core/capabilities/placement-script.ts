@@ -887,7 +887,7 @@ func _describe(inst, args):
 
 # ---------------------------------------------------------------- ports
 
-func _resolve_port(root, node, port, budget):
+func _resolve_port(root, node, port, budget, want_others):
 	var nt = _xf(node, root)
 	if typeof(port) == TYPE_STRING:
 		var mk = node.get_node_or_null(NodePath(String(port)))
@@ -898,7 +898,21 @@ func _resolve_port(root, node, port, budget):
 		if not (mk is Node3D):
 			return {"fail": _fail("port_not_node3d", "port '" + String(port) + "' is not a Node3D")}
 		var mt = _xf(mk, root)
-		return {"kind": "marker", "name": String(port), "path": _rel(root, mk), "position": mt.origin, "direction": (-mt.basis.z).normalized()}
+		var mrec = {"kind": "marker", "name": String(port), "path": _rel(root, mk), "position": mt.origin, "direction": (-mt.basis.z).normalized()}
+		if want_others:
+			var mothers = []
+			var mtotal = 0
+			for item in _collect(node)["markers"]:
+				if item[0] == mk:
+					continue
+				mtotal += 1
+				if mothers.size() >= 16:
+					continue
+				var it = _xf(item[0], root)
+				mothers.append({"kind": "marker", "name": String(item[0].name), "path": _rel(root, item[0]), "position": _raw3(it.origin), "direction": _raw3((-it.basis.z).normalized())})
+			mrec["others"] = mothers
+			mrec["others_total"] = mtotal
+		return mrec
 	var index = int(port)
 	var col = _collect(node)
 	var an = _analyze(_visible_meshes(col), budget, false, true)
@@ -910,6 +924,20 @@ func _resolve_port(root, node, port, budget):
 		out["direction_ambiguous"] = true
 	if an["truncated"]:
 		out["analysis_truncated"] = true
+	if want_others:
+		var others = []
+		for i in range(an["loops"].size()):
+			if i == index:
+				continue
+			if others.size() >= 16:
+				break
+			var ol = an["loops"][i]
+			var orec = {"kind": "open_loop", "index": i, "position": _raw3(nt * ol["center"]), "direction": _raw3((nt.basis * ol["direction"]).normalized()), "radius": ol["radius"]}
+			if ol["ambiguous"]:
+				orec["direction_ambiguous"] = true
+			others.append(orec)
+		out["others"] = others
+		out["others_total"] = an["loops"].size() - 1
 	return out
 
 
@@ -925,10 +953,10 @@ func _cmd_ports(root, args):
 		return _fail("not_node3d", "subject and target must be Node3D")
 	if sub == tgt or sub.is_ancestor_of(tgt):
 		return _fail("target_inside_subject", "the target must not be the subject or inside it")
-	var sp = _resolve_port(root, sub, args.get("subject_port"), budget)
+	var sp = _resolve_port(root, sub, args.get("subject_port"), budget, bool(args.get("other_ports", false)))
 	if sp.has("fail"):
 		return sp["fail"]
-	var tp = _resolve_port(root, tgt, args.get("target_port"), budget)
+	var tp = _resolve_port(root, tgt, args.get("target_port"), budget, false)
 	if tp.has("fail"):
 		return tp["fail"]
 	for p in [sp, tp]:

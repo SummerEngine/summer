@@ -734,5 +734,82 @@ describe("summer_connect_ports", () => {
     expect(connectPortsArgsSchema.safeParse({ ...base, subjectPort: "Port_A" }).success).toBe(true);
     expect(connectPortsArgsSchema.safeParse({ ...base, subjectPort: -1 }).success).toBe(false);
     expect(connectPortsArgsSchema.safeParse({ ...base, subjectPort: 1.5 }).success).toBe(false);
+    expect(connectPortsArgsSchema.safeParse({ ...base, subjectPort: 0, maxTriangles: 100 }).success).toBe(true);
+  });
+
+  it("documents roll precisely: axis, sign and zero reference", () => {
+    const text = String(connectPortsArgsSchema.shape.rollDegrees.description);
+    expect(text).toContain("target port's direction reversed");
+    expect(text).toContain("right-hand rule");
+    expect(text).toContain("CURRENT orientation");
+  });
+
+  // A bend whose port A already faces the target: the shortest turn is none,
+  // so rollDegrees alone turns it about roll_axis = -(target direction).
+  const bendBefore = {
+    ok: true,
+    subject_port: {
+      kind: "marker",
+      name: "End_A",
+      position: [0, 0, 0],
+      direction: [0, 0, -1],
+      others: [{ kind: "marker", name: "End_B", position: [1, 0, -1], direction: [1, 0, 0] }],
+      others_total: 1,
+    },
+    target_port: { kind: "marker", name: "End", position: [5, 0, 0], direction: [0, 0, 1] },
+    xform: IDENTITY12,
+    parent_xform: IDENTITY12,
+  };
+
+  it("turns by the right-hand rule about roll_axis", () => {
+    const subject = { basis: [[1, 0, 0], [0, 1, 0], [0, 0, 1]] as [Vec3, Vec3, Vec3], origin: [0, 0, 0] as Vec3 };
+    const sp = bendBefore.subject_port as unknown as Parameters<typeof connectTransform>[1];
+    const tp = bendBefore.target_port as unknown as Parameters<typeof connectTransform>[2];
+    const { rotation, rollAxis, joint } = connectTransform(subject, sp, tp, 0, 90);
+    rollAxis.forEach((v, k) => expect(v).toBeCloseTo([0, 0, -1][k]!));
+    expect(joint).toEqual([5, 0, 0]);
+    // +90 about -z: the free end turns from +x to -y.
+    basisMulVec(rotation, [1, 0, 0]).forEach((v, k) => expect(v).toBeCloseTo([0, -1, 0][k]!));
+  });
+
+  // Field evidence (proof run): each duct bend needed a measure call and a
+  // second connect because the receipt did not say where the other end went.
+  it("reports where every other port of the subject ends up, measured by the verify read", async () => {
+    const after = {
+      ...bendBefore,
+      subject_port: {
+        ...bendBefore.subject_port,
+        position: [5, 0, 0],
+        others: [{ kind: "marker", name: "End_B", position: [5, -1, -1], direction: [0, -1, 0] }],
+      },
+    };
+    const { client, probeCalls } = mockClient([() => bendBefore, () => after]);
+    const result = await connectPorts(
+      client,
+      connectPortsArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Duct/Bend_1", subjectPort: "End_A", target: "Duct/Run_2", targetPort: "End", rollDegrees: 90 })
+    );
+    expect(probeArgs(probeCalls[0]!)).toMatchObject({ cmd: "ports", other_ports: true });
+    expect(result).toMatchObject({
+      ok: true,
+      roll_axis: [0, 0, -1],
+      roll_degrees: 90,
+      other_ports: [{ kind: "marker", name: "End_B", position: [5, -1, -1], direction: [0, -1, 0] }],
+      verify: { distance: 0, angle_degrees: 0 },
+    });
+    expect(result).not.toHaveProperty("other_ports_predicted");
+  });
+
+  it("predicts the other ports from the move when the verify read fails", async () => {
+    const { client } = mockClient([() => bendBefore, () => ({ ok: false, failure_reason: "scene_not_open", error: "closed" })]);
+    const result = await connectPorts(
+      client,
+      connectPortsArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Duct/Bend_1", subjectPort: "End_A", target: "Duct/Run_2", targetPort: "End", rollDegrees: 90 })
+    );
+    expect(result).toMatchObject({
+      ok: true,
+      other_ports_predicted: true,
+      other_ports: [{ name: "End_B", position: [5, -1, -1], direction: [0, -1, 0] }],
+      verify: { ok: false },
+    });
   });
 });

@@ -86,13 +86,13 @@ input_schema:
       minimum: -360
       maximum: 360
       default: 0
-      description: Extra turn of the subject about the joined port axis.
+      description: "Extra turn of the subject, in degrees, about the joined port axis, applied after the ports are lined up. Axis: the target port's direction reversed, pointing from the joint into the target (receipt roll_axis). Sign: right-hand rule about that axis; positive turns counter-clockwise when you look back along the axis from inside the target toward the subject. Zero: the shortest turn that makes the subject's port face the target's from the subject's CURRENT orientation, so the same value gives different results from different start poses. Read other_ports in the receipt; once the ports are joined, a second call turns by exactly rollDegrees about the joint (180 flips a bend's free end to the other side)."
     maxTriangles:
       type: integer
-      minimum: 1000
+      minimum: 100
       maximum: 300000
       default: 60000
-      description: Triangle budget per node when ports are open-loop indices.
+      description: Triangle budget (100-300000) per node when ports are open-loop indices.
   required:
     - scenePath
     - subject

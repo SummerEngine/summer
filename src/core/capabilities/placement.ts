@@ -1369,10 +1369,21 @@ export const connectPortsArgsSchema = z.object({
   target: nodePathSchema("Piece that stays put"),
   targetPort: portSchema("Port on the target"),
   gap: z.number().min(-1).max(10).optional().default(0).describe("Distance between the two ports along the target port's direction. 0 = touching."),
-  rollDegrees: z.number().min(-360).max(360).optional().default(0).describe("Extra turn of the subject about the joined port axis."),
-  maxTriangles: z.number().int().min(1000).max(300000).optional().default(60000).describe("Triangle budget per node when ports are open-loop indices."),
+  rollDegrees: z
+    .number()
+    .min(-360)
+    .max(360)
+    .optional()
+    .default(0)
+    .describe(
+      "Extra turn of the subject, in degrees, about the joined port axis, applied after the ports are lined up. Axis: the target port's direction reversed, i.e. pointing from the joint into the target (receipt roll_axis). Sign: right-hand rule about that axis; positive turns counter-clockwise when you look back along the axis from inside the target toward the subject. Zero: the shortest turn that makes the subject's port face the target's from the subject's CURRENT orientation, so the same value gives different results from different start poses. Read other_ports in the receipt; once the ports are joined, a second call turns by exactly rollDegrees about the joint (e.g. 180 flips a bend's free end to the other side)."
+    ),
+  maxTriangles: z.number().int().min(100).max(300000).optional().default(60000).describe("Triangle budget (100-300000) per node when ports are open-loop indices."),
 });
 export type ConnectPortsArgs = z.output<typeof connectPortsArgsSchema>;
+
+/** At most this many of the subject's other ports go in the receipt. */
+const OTHER_PORTS_SHOWN = 8;
 
 interface PortRead {
   kind: string;
@@ -1383,6 +1394,9 @@ interface PortRead {
   index?: number;
   direction_ambiguous?: boolean;
   analysis_truncated?: boolean;
+  /** The subject's other ports (ports read with other_ports). */
+  others?: PortRead[];
+  others_total?: number;
 }
 
 function portOut(port: PortRead): JsonRecord {
@@ -1393,20 +1407,44 @@ function portOut(port: PortRead): JsonRecord {
     position: roundVec(port.position),
     direction: roundVec(port.direction, 4),
     ...(port.radius !== undefined ? { radius: round(port.radius) } : {}),
+    ...(port.direction_ambiguous ? { direction_ambiguous: true } : {}),
   };
 }
 
-/** New scene-space transform that joins the subject port to the target port. */
-export function connectTransform(subject: Xform, sp: PortRead, tp: PortRead, gap: number, rollDegrees: number): { xform: Xform; rotation: Basis3 } {
+/** New scene-space transform that joins the subject port to the target port.
+ *  `joint` is where the subject port lands; a subject point p moves to
+ *  rotation * (p - subject port) + joint. */
+export function connectTransform(subject: Xform, sp: PortRead, tp: PortRead, gap: number, rollDegrees: number): { xform: Xform; rotation: Basis3; joint: Vec3; rollAxis: Vec3 } {
   const ds = normalize(sp.direction);
   const dt = normalize(tp.direction);
   const want = scale(dt, -1);
   const fallback = normalize(basisMulVec(subject.basis, [0, 1, 0]));
   let rotation = rotationBetween(ds, want, fallback);
   if (Math.abs(rollDegrees) > 1e-9) rotation = basisMul(rotationAbout(want, (rollDegrees * Math.PI) / 180), rotation);
-  const target = add(tp.position, scale(dt, gap));
-  const origin = add(basisMulVec(rotation, sub(subject.origin, sp.position)), target);
-  return { xform: { basis: basisMul(rotation, subject.basis), origin }, rotation };
+  const joint = add(tp.position, scale(dt, gap));
+  const origin = add(basisMulVec(rotation, sub(subject.origin, sp.position)), joint);
+  return { xform: { basis: basisMul(rotation, subject.basis), origin }, rotation, joint, rollAxis: want };
+}
+
+/** Where the subject's other ports end up: measured after the move when the
+ *  verify read has them, else predicted from the move itself. */
+function otherPortsOut(
+  before: PortRead,
+  after: PortRead | undefined,
+  move: { rotation: Basis3; joint: Vec3 }
+): { ports: JsonRecord[]; total: number; predicted: boolean } {
+  const measured = after?.others;
+  const source = measured ?? before.others ?? [];
+  const ports = source.slice(0, OTHER_PORTS_SHOWN).map((port) => {
+    if (measured) return portOut(port);
+    return portOut({
+      ...port,
+      position: add(basisMulVec(move.rotation, sub(port.position, before.position)), move.joint),
+      direction: basisMulVec(move.rotation, port.direction),
+    });
+  });
+  const total = (measured ? after?.others_total : before.others_total) ?? source.length;
+  return { ports, total, predicted: !measured };
 }
 
 function rotationAngleDegrees(r: Basis3): number {
@@ -1425,6 +1463,7 @@ export async function connectPorts(client: PlacementClient, args: ConnectPortsAr
     target: args.target,
     target_port: args.targetPort,
     max_triangles: args.maxTriangles,
+    other_ports: true,
   };
   const read = await runPlacementProbe(client, tool, readArgs);
   if (!read.ok) return read;
@@ -1432,7 +1471,7 @@ export async function connectPorts(client: PlacementClient, args: ConnectPortsAr
   const tp = read.target_port as PortRead;
   const subjectXf = xformFromArray(read.xform);
   const parentXf = xformFromArray(read.parent_xform);
-  const { xform, rotation } = connectTransform(subjectXf, sp, tp, args.gap, args.rollDegrees);
+  const { xform, rotation, joint, rollAxis } = connectTransform(subjectXf, sp, tp, args.gap, args.rollDegrees);
   const local = xformCompose(xformInverse(parentXf), xform);
   const warnings: string[] = [];
   for (const [label, port] of [["subject", sp], ["target", tp]] as const) {
@@ -1450,23 +1489,31 @@ export async function connectPorts(client: PlacementClient, args: ConnectPortsAr
     evidence: sp.kind === "marker" && tp.kind === "marker" ? "markers" : "mesh_triangles",
     subject_port: portOut(sp),
     target_port: portOut(tp),
+    roll_axis: roundVec(rollAxis, 4),
+    roll_degrees: args.rollDegrees,
     rotated_degrees: round(rotationAngleDegrees(rotation), 2),
     moved_by: roundVec(sub(xform.origin, subjectXf.origin)),
     saved: true,
     warnings,
   };
   const after = await runPlacementProbe(client, tool, readArgs);
-  if (!after.ok) {
+  const sp2 = after.ok ? (after.subject_port as PortRead) : undefined;
+  const others = otherPortsOut(sp, sp2, { rotation, joint });
+  // Every other end of the subject, where it is now: a bend's free end tells
+  // you at once whether it points where the run continues.
+  result.other_ports = others.ports;
+  if (others.total > others.ports.length) result.other_ports_total = others.total;
+  if (others.predicted && others.ports.length > 0) result.other_ports_predicted = true;
+  if (!after.ok || !sp2) {
     result.verify = { ok: false, error: after.error };
-    return result as PlacementResult;
+    return fitToBudget(result, ["other_ports", "warnings"]) as PlacementResult;
   }
-  const sp2 = after.subject_port as PortRead;
   const tp2 = after.target_port as PortRead;
   const meet = add(tp2.position, scale(normalize(tp2.direction), args.gap));
   result.verify = {
     distance: round(length(sub(sp2.position, meet)), 4),
     angle_degrees: round(angleDegrees(sp2.direction, scale(tp2.direction, -1)), 2),
   };
-  return result as PlacementResult;
+  return fitToBudget(result, ["other_ports", "warnings"]) as PlacementResult;
 }
 

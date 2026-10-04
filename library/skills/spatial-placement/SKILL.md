@@ -87,9 +87,11 @@ defined relative to a rotated subject; then use `directionSpace="local"`.
    braces with `summer_repeat_along`.
 5. Check: `summer_measure` plane mode on each facade line (every front on one
    plane), pair mode on joints you doubt, `summer_starcast` with
-   `directionSpace: "local"` on mounted pieces (back blocked at about the
-   standoff, front open), `summer_test_placement` before committing a piece in
-   a tight spot.
+   `directionSpace: "local"` on mounted pieces, `summer_test_placement` before
+   committing a piece in a tight spot. Starcast's local names follow Godot:
+   `forward` is -Z, `back` is +Z. A piece with a -Z back should read
+   `forward` blocked by the wall at about the standoff (or the wall in
+   `contacts` when flush) and `back` open.
 6. `summer_snapshot_diff` against the id from step 2, then `summer_screenshot`
    and look at it. Fix facing from the measurement, not by eye.
 
@@ -136,7 +138,7 @@ summer_instantiate_scene {..., scene:"res://kit/wall_lamp.tscn", name:"Lamp", po
 summer_attach_to_surface {scenePath:"res://facade_test.tscn", subject:"./Facade/Lamp",
   surface:"./Facade/G1", backAxis:"-z", standoff:0}
 summer_starcast {scenePath:"res://facade_test.tscn", path:"./Facade/Lamp", directionSpace:"local"}
-    -> back blocked at about 0 by Facade/G1, front open
+    -> contacts ["Facade/G1"], forward (-Z, the lamp's back) blocked at 0, back (+Z) open
 summer_snapshot_diff {from_id:"<id>"}  then  summer_screenshot
 ```
 
@@ -166,8 +168,8 @@ Marker3D anchors, pass their names instead.
   `recessed` is moved along the face axis by its `deviation`.
 - **Pipes and gutters:** back on the wall's front plane (`summer_attach_to_surface`
   with the measured back axis), runs joined with `summer_connect_ports`, clamps
-  with `summer_repeat_along`. Starcast in local space: back blocked at about the
-  standoff.
+  with `summer_repeat_along`. Starcast in local space: the back-axis direction
+  (`forward` for a -Z back) blocked at about the standoff.
 - **Wall fixtures (lamps, AC units, signs):** `summer_raycast` to find the
   wall point, `summer_test_placement` if the spot is crowded, then
   `summer_attach_to_surface`.
@@ -189,3 +191,6 @@ Marker3D anchors, pass their names instead.
 - Batch receipts over a few ops: always `receipt: "summary"`.
 - `visual_aabb` measurements (measure, place_adjacent) are box bounds: an
   overhang or a lip sets the face. Say so when it matters.
+- A piece seated flush against a single-sided wall can read `open` in the
+  wall's direction while `contacts` lists the wall: Starcast's one ray per
+  direction starts at the touching face. Read `contacts` too.

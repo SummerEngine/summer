@@ -458,6 +458,9 @@ export async function instantiateScene(client: SceneMutationClient, args: Instan
     1
   );
   const envelope = traceEnvelope(trace);
+  // results[] already holds every op's receipt; the per-request copies are
+  // only kept when something failed (they carry the failing envelope).
+  if (!trace.failed) delete envelope.receipts;
   const head = trace.entries[0];
   const nodePath = receiptNodePath(head?.result);
   const derived = trace.entries.filter((entry) => entry.derived === "transform");

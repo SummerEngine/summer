@@ -379,10 +379,10 @@ describe("summer_attach_to_surface", () => {
     });
     const result = await attachToSurface(
       client,
-      attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Lamp", surface: "Wall", standoff: 0.02 })
+      attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Lamp", surface: "./Wall", standoff: 0.02 })
     );
     const steps = probeArgs(probeCalls[0]!).steps as Op[];
-    expect(steps[1]).toMatchObject({ cmd: "raycast", from_subject: "Lamp", surface: "Wall", exclude: ["Lamp"] });
+    expect(steps[1]).toMatchObject({ cmd: "raycast", from_subject: "Lamp", surface: "./Wall", exclude: ["Lamp"] });
     const [setProp, snap] = mutations[0]!;
     expect(setProp).toMatchObject({ op: "SetProp", path: "Lamp", key: "transform" });
     const t = parseGodotTransform(String(setProp!.value))!;
@@ -392,6 +392,8 @@ describe("summer_attach_to_surface", () => {
     expect(snap).toMatchObject({ op: "SnapToSurface", subject_path: "Lamp", direction: [1, 0, 0], gap: 0.02, align_up: false });
     expect(mutations[1]).toEqual([{ op: "SaveScene" }]);
     expect(result).toMatchObject({ ok: true, saved: true, surface_hit: { evidence: "physics", path: "Wall" }, seat: { supportPath: "Wall", finalGap: 0.02 } });
+    // "./Wall" and the engine's "Wall" are the same node: no false warning.
+    expect(result.warnings).toEqual([]);
   });
 
   it("reports an unseated, unsaved piece honestly when SnapToSurface fails", async () => {

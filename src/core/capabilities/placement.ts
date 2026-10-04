@@ -297,6 +297,11 @@ function dirsOf(read: JsonRecord): Vec3[] {
   return (Array.isArray(read.dirs) ? read.dirs : []) as Vec3[];
 }
 
+/** "./Facade/Wall" and "Facade/Wall" name the same node. */
+function stripDotSlash(path: string): string {
+  return path.startsWith("./") ? path.slice(2) || "." : path;
+}
+
 /** Path b is inside path a (scene-root-relative, "." = root). */
 function isInside(inner: string, outer: string): boolean {
   if (outer === ".") return inner !== ".";
@@ -903,8 +908,8 @@ export async function attachToSurface(client: PlacementClient, args: AttachToSur
       : {}),
   });
   if (failed) return failed;
-  const supportPath = typeof snap.supportPath === "string" ? snap.supportPath : undefined;
-  const expected = args.surface ?? hit.path;
+  const supportPath = typeof snap.supportPath === "string" ? stripDotSlash(snap.supportPath) : undefined;
+  const expected = stripDotSlash(args.surface ?? hit.path);
   if (supportPath && expected && supportPath !== expected && !isInside(supportPath, expected) && !isInside(expected, supportPath)) {
     warnings.push(`seated_against_${supportPath}_not_${expected}`);
   }

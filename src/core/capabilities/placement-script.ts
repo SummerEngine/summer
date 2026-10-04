@@ -830,7 +830,7 @@ func _describe(inst, args):
 	for p in an["planes"]:
 		if planes_out.size() >= 6:
 			break
-		planes_out.append({"normal": _d3(p["normal"]), "offset": _r(p["offset"]), "area": _r(p["area"]), "tris": p["tris"]})
+		planes_out.append({"normal": _d3(p["normal"]), "offset": _r(p["offset"]), "area": snappedf(p["area"], 0.000001), "tris": p["tris"]})
 	out["planes"] = planes_out
 	var loops_out = []
 	for i in range(an["loops"].size()):

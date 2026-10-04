@@ -102,8 +102,9 @@ instances it off the scene tree, measures, and frees it.
   then one `SetProp` request on the node path the receipt reports (a name
   collision rename is followed), then `SaveScene`. Without the new fields it is
   unchanged.
-- **Result:** the usual receipt plus `placement {nodePath, applied, fields,
-  space: "parent_local"}`.
+- **Result:** the merged receipt (`results` holds every op; the per-request
+  `receipts` copies are kept only when something failed) plus
+  `placement {nodePath, applied, fields, space: "parent_local"}`.
 - **Ops:** `InstantiateScene`, `SetProp`, `SaveScene`.
 
 ## `summer_batch` additions
@@ -164,6 +165,10 @@ instances it off the scene tree, measures, and frees it.
   backoffDistance, hitTravel, origin, warnings}, standoff, saved, warnings}`.
   A seat failure answers `ok: false` with `mutationApplied: true, saved: false`:
   the piece was turned and moved but not seated.
+- **Check after:** `summer_starcast` with `directionSpace: "local"`. Its local
+  names follow Godot (`forward` = -Z, `back` = +Z), so a -Z back reads
+  `forward` blocked (or the surface in `contacts` when seated flush) and `back`
+  open.
 - **Limits:** the seat stops at the first thing in the way along -normal, and
   `warnings` names it when that is not the surface. A mesh-only wall gives an
   AABB face normal (axis-aligned), and SnapToSurface's own evidence is then

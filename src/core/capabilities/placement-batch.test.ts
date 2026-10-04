@@ -216,6 +216,7 @@ describe("instantiateScene", () => {
       ["SetProp:World/Lamp_2", "SetProp:World/Lamp_2"],
       ["SaveScene:"],
     ]);
+    expect(result).not.toHaveProperty("receipts");
     expect(result.placement).toEqual({
       nodePath: "World/Lamp_2",
       applied: true,

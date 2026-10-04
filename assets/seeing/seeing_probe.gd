@@ -1065,14 +1065,26 @@ const DIFF_SHADER := """
 shader_type canvas_item;
 uniform sampler2D prev_tex : filter_linear;
 uniform sampler2D now_tex : filter_linear;
-uniform float gain = 4.0;
+uniform float gain = 3.0;
 void fragment() {
-	vec3 a = texture(prev_tex, UV).rgb;
-	vec3 b = texture(now_tex, UV).rgb;
+	// Compare 3x3-averaged neighbourhoods: JPEG blocks and fine texture
+	// (bricks, gravel) must not light up as change, real shifts still do.
+	vec2 px = TEXTURE_PIXEL_SIZE * 1.5;
+	vec3 a = vec3(0.0);
+	vec3 b = vec3(0.0);
+	for (int x = -1; x <= 1; x++) {
+		for (int y = -1; y <= 1; y++) {
+			vec2 o = vec2(float(x), float(y)) * px;
+			a += texture(prev_tex, UV + o).rgb;
+			b += texture(now_tex, UV + o).rgb;
+		}
+	}
+	a /= 9.0;
+	b /= 9.0;
 	float d = clamp(length(a - b) * gain, 0.0, 1.0);
 	vec3 base = vec3(dot(b, vec3(0.299, 0.587, 0.114))) * 0.3;
 	vec3 heat = mix(vec3(0.95, 0.12, 0.05), vec3(1.0, 0.95, 0.25), clamp(d * 2.0 - 1.0, 0.0, 1.0));
-	COLOR = vec4(mix(base, heat, smoothstep(0.06, 0.3, d)), 1.0);
+	COLOR = vec4(mix(base, heat, smoothstep(0.12, 0.4, d)), 1.0);
 }
 """
 

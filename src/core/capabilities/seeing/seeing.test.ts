@@ -196,7 +196,7 @@ describe("summer_shot_sheet", () => {
     expect(tiles[0]!.image_path).toBe(join(shots, "hero.jpg").replace(/\\/g, "/"));
     expect(tiles[2]!.now_tile).toBe(1);
     expect(r.caption).toMatch(/difference 1: 4\.2% of pixels changed visibly/);
-    expect(r.caption).toContain("previous image predates the bookmark's current pose");
+    expect(r.caption).toContain("previous image may predate the bookmark's current pose");
     expect(existsSync(join(shots, "alley.jpg"))).toBe(true);
   });
 

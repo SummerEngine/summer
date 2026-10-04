@@ -702,7 +702,9 @@ export async function shotSheet(client: SeeingClient, args: ShotSheetArgs): Prom
     if (args.compare_previous && p.bookmark) {
       const prev = store instanceof ShotStoreError ? null : await store.readSlot(p.bookmark);
       if (prev) {
-        if (p.created && Date.parse(p.created) > prev.mtimeMs) compareNotes.push(`"${p.bookmark}": the previous image predates the bookmark's current pose (saved ${p.created}); the difference map compares two different viewpoints.`);
+        // Bookmark timestamps have one-second resolution: a pose saved in the
+        // same second as the previous render counts as possibly newer.
+        if (p.created && Date.parse(p.created) >= Math.floor(prev.mtimeMs / 1000) * 1000) compareNotes.push(`"${p.bookmark}": the previous image may predate the bookmark's current pose (saved ${p.created}); the difference map may compare two different viewpoints.`);
         cells.push({ kind: "prev", shot: i, label: `${i + 1} ${labels[i]} · previous`, prevPath: prev.path });
         cells.push({ kind: "shot", shot: i, label: `${i + 1} ${labels[i]} · now` });
         cells.push({ kind: "diff", shot: i, label: `${i + 1} difference`, prevPath: prev.path });

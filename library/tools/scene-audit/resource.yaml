@@ -1,0 +1,117 @@
+id: tool/scene-audit
+kind: tool
+version: 1.0.0
+summary: 'One read-only pass over a 3D scene: see-through holes, floor gaps, floating or clipping props, wrong insert hosts, mount gaps, facing, UV stretch, lights.'
+use_when:
+  - 'after each build stage of a 3D level or kit-built street: "what is wrong with this scene and where exactly?"'
+  - 'before calling a scene done: find see-through walls (an insert narrower than its frame), floor tiles with holes, props floating, sunk or poking into walls'
+  - 'checking kit pieces against their pack metadata: a door or window in the wrong host (pieces.json fits_into), pipes and ducts off their wall (wall_side)'
+  - 'finding props turned the wrong way against a wall (a bench standing perpendicular to it), stretched texture strips, z-fighting, duplicated pieces'
+  - 'a lit city scene in the Compatibility renderer: meshes lit by more than the per-object light limit, hard spot rims'
+do_not_use_when:
+  - 'you already know the spot: look at it with summer_frame_nodes or summer_zoom, measure it with summer_raycast or summer_measure'
+  - 'the question is gameplay or reachability: summer_navigation_probe, summer_play'
+  - 'the scene has unsaved edits you want audited: it reads the SAVED file, so save first'
+  - 'requires ScenePreview (any current Summer Engine); an engine without it answers engine_lacks_op'
+facets:
+  lifecycle:
+    - build
+  domains:
+    - verification
+    - scenes
+    - 3d
+    - level-design
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/frame-nodes
+    - tool/zoom
+    - tool/shot-sheet
+    - tool/raycast
+    - tool/measure
+    - tool/inspect-asset
+  skills:
+    - skill/verifying-scenes
+    - skill/spatial-placement
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_scene_audit
+implementation:
+  module: src/mcp/tools/audit-tools.ts
+  export: registerAuditTools
+surfaces:
+  mcp:
+    tool_name: summer_scene_audit
+    remote: false
+input_schema:
+  type: object
+  properties:
+    scenePath:
+      type: string
+      description: Scene to audit, e.g. "res://levels/town.tscn" (the SAVED file). Omit for the scene open in the editor.
+    checks:
+      type: array
+      items:
+        type: string
+        enum:
+          - through_hole
+          - floor_gap
+          - floating
+          - sunken
+          - interpenetration
+          - insert_host
+          - mount_gap
+          - orientation
+          - uv_stretch
+          - duplicate
+          - z_fight
+          - lights
+          - transform
+          - resource
+      minItems: 1
+      maxItems: 14
+      description: Only these checks (default all 14). Fewer checks run faster (insert_host, duplicate, lights, transform and resource need no physics).
+    root:
+      type: string
+      description: Report only issues under this node (subtree), e.g. "Alley3". The whole scene is still loaded, so walls and floors outside it count as surroundings.
+    min_severity:
+      type: string
+      enum:
+        - error
+        - warn
+        - look
+      description: '"error" (only errors), "warn" (errors and warnings) or "look" (default: everything, including look items that only ask you to look).'
+    offset:
+      type: integer
+      minimum: 0
+      maximum: 100000
+      description: Skip this many issues of the sorted, filtered list (paging; the result names the next offset).
+    limit:
+      type: integer
+      minimum: 1
+      maximum: 50
+      description: Issues per page (default 15, max 50). The result is capped at 5 KB; a page that does not fit is cut and says so.
+    manifests:
+      type: array
+      items:
+        type: string
+      maxItems: 8
+      description: 'Extra pack manifests (res:// .json in the pieces.json format). pieces.json next to (or up to two folders above) every instanced scene is always read.'
+    render:
+      type: string
+      enum:
+        - sheet
+        - none
+      description: '"sheet": also return ONE inline image of the first 6 issues of this page framed up close from their open side, each tile labelled with its issue number. Default "none".'
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

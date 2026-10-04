@@ -17,7 +17,7 @@
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (98 tools)
+## Tool surface (99 tools)
 
 ### Project files (3)
 
@@ -176,6 +176,14 @@ Preview. Judge a 3D environment the way a player and an artist would. Every imag
 | `summer_debug_views` | One pose as beauty, lighting, unshaded (albedo), world normals, overdraw and wireframe in one grid; the caption names the method per view. |
 | `summer_zoom` | An exact sub-frustum of a `region` (honoured exactly: no pad by default, never widened to an aspect ratio; the image takes the region's aspect) or of `mark` N (pad 0.15; warns when the node is hidden) rendered at full resolution: seams, gaps, floating pieces, texture quality. The caption reports the real zoom and `widened_because`. |
 | `summer_frame_shot` | Smart framing for `establishing`, `eye_level`, `low_angle`, `detail` or `corridor`: candidates measured in-engine (thick sweep visibility, near-lens check, low-angle rule, frame ray grid, a small beauty render per pose for featureless areas and near/far value contrast; walls reject, and so does a camera behind or inside a one-sided surface; props frame; transparent foliage and glass are see-through cover), scored (including the key light's direction and the world edge below the horizon), top 3 returned with breakdowns as three different views, best saved as a bookmark, top 3 rendered as one sheet. |
+
+### Scene audit (1)
+
+Preview. One fast, read-only call that walks every node of a 3D scene and lists likely visual and placement problems, so you know exactly where to look; every issue is a flag to look at, never an auto-fix. Like the seeing tools it works on an offscreen private copy of the SAVED scene (ScenePreview): the open tab never becomes unsaved, undo is untouched, nothing is saved. Save first. The `verifying-scenes` skill carries the loop: audit after each build stage, then frame every error and look item up close before calling the scene done.
+
+| Tool | Use |
+|---|---|
+| `summer_scene_audit` | Checks `through_hole` (ray grids through each facade line: rays that pass the wall and reach the far side of the building), `floor_gap`, `floating` / `sunken` (2 cm / 3 cm), `interpenetration` (3 cm), `insert_host` (pieces.json `fits_into`: the named host at the insert's transform minus `local_offset_m`, 2 cm / 1 deg), `mount_gap` (`wall_side`: no surface within 5 cm), `orientation` (look: long props more than 15 deg off a wall within 1.2 m, mount sides pointing away from the wall; never which way to face), `uv_stretch` (over 8:1 or collapsed UVs that an instance shows), `duplicate` / `z_fight`, `lights` (per-object light limit, spot rims, shadowed count), `transform`, `resource`. Returns at most 5 KB: counts and time per check, and one page of issues sorted by severity (`error` / `warn` / `look`) with node path, world position, reason, evidence numbers and the next tool. `offset`/`limit` page, `checks`, `root` (subtree) and `min_severity` filter; `render:"sheet"` adds one inline image of the page's first 6 issues framed from their open side, tiles labelled `#n`. |
 
 ### Diagnostics (7)
 

@@ -121,6 +121,8 @@ import {
   shotSheetArgsSchema,
   zoomArgsSchema,
 } from "./seeing/args.js";
+import { sceneAudit, type AuditClient, type AuditResult } from "./audit/audit.js";
+import { sceneAuditArgsSchema } from "./audit/args.js";
 import { ToolInputError } from "../tool-errors.js";
 import { getAuthToken } from "../auth.js";
 import open from "open";
@@ -630,6 +632,19 @@ async function seeingResult(result: SeeingResult, name: string): Promise<Dispatc
     caption: result.caption,
     ...(result.image ? { image: { localPath, width: result.image.width, height: result.image.height, mime: result.image.mime } } : {}),
   };
+}
+
+/** The shell face of summer_scene_audit: the same page as the MCP face; a
+ *  sheet image (inline over MCP) goes to a private temp file here. */
+async function auditResult(result: AuditResult): Promise<DispatchArgs> {
+  if (!result.ok) {
+    throw new ToolResultError({ ok: false, failure_reason: result.failure_reason, error: result.error, ...(result.hint ? { hint: result.hint } : {}), ...(result.detail ? { detail: result.detail } : {}) }, result.error);
+  }
+  if (!result.image) return result.summary;
+  const dir = await mkdtemp(join(tmpdir(), "summer-audit-cli-"));
+  const localPath = join(dir, "scene-audit-sheet.jpg");
+  await writeFile(localPath, Buffer.from(result.image.base64, "base64"), { mode: 0o600 });
+  return { ...result.summary, image: { localPath, width: result.image.width, height: result.image.height, mime: result.image.mime } };
 }
 
 // ---------------------------------------------------------------------------
@@ -1912,6 +1927,13 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     const parsed = parseToolArgs(frameShotArgsSchema, args, "frame-shot");
     const client = (await ctx.engine()) as unknown as SeeingClient;
     return seeingResult(await buildOrRefuseAsync(() => frameShot(client, parsed)), "frame-shot");
+  }),
+
+  // --- scene audit (shared implementation: core/capabilities/audit/) ---
+  entry("summer_scene_audit", "Read-only audit of a 3D scene: see-through holes, floor gaps, floating/sunken/overlapping props, wrong insert hosts, mount gaps, orientation, UV stretch, z-fighting, lights, transforms, resources (<= 5 KB page)", true, async (args, ctx) => {
+    const parsed = parseToolArgs(sceneAuditArgsSchema, args, "scene-audit");
+    const client = (await ctx.engine()) as unknown as AuditClient;
+    return auditResult(await buildOrRefuseAsync(() => sceneAudit(client, parsed)));
   }),
 
   // --- library (the runtime librarian; engine-free) ---

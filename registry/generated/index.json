@@ -147,8 +147,8 @@
     {
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
-      "version": "1.1.0",
-      "content_hash": "a36120de86b87c8e3b46eb432d6d53365a15833b5d2db28490bef25205fb6102",
+      "version": "1.2.0",
+      "content_hash": "fd6aa398597e13f8a51d35dab4c32f348d807f41809da727ff73d8680c13201e",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -7393,6 +7393,61 @@
       "authority": {
         "filesystem": true,
         "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/scene-audit",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "8d1c174145fdcf75a38158b65bb148bc8601e1175e38eb9c7f9a04de4d2f2104",
+      "summary": "One read-only pass over a 3D scene: see-through holes, floor gaps, floating or clipping props, wrong insert hosts, mount gaps, facing, UV stretch, lights.",
+      "use_when": [
+        "after each build stage of a 3D level or kit-built street: \"what is wrong with this scene and where exactly?\"",
+        "before calling a scene done: find see-through walls (an insert narrower than its frame), floor tiles with holes, props floating, sunk or poking into walls",
+        "checking kit pieces against their pack metadata: a door or window in the wrong host (pieces.json fits_into), pipes and ducts off their wall (wall_side)",
+        "finding props turned the wrong way against a wall (a bench standing perpendicular to it), stretched texture strips, z-fighting, duplicated pieces",
+        "a lit city scene in the Compatibility renderer: meshes lit by more than the per-object light limit, hard spot rims"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "verification",
+          "scenes",
+          "3d",
+          "level-design"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/frame-nodes",
+          "tool/zoom",
+          "tool/shot-sheet",
+          "tool/raycast",
+          "tool/measure",
+          "tool/inspect-asset"
+        ],
+        "skills": [
+          "skill/verifying-scenes",
+          "skill/spatial-placement"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_scene_audit",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
         "network": false,
         "credentials": false,
         "publish": false

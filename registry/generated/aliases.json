@@ -176,6 +176,7 @@
     "summer_runtime_set": "tool/runtime-set",
     "summer_runtime_spawn": "tool/runtime-spawn",
     "summer_save_scene": "tool/save-scene",
+    "summer_scene_audit": "tool/scene-audit",
     "summer_screenshot": "tool/screenshot",
     "summer_search_assets": "tool/search-assets",
     "summer_search_library": "tool/search-library",

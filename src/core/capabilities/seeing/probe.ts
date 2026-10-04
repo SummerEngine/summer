@@ -98,6 +98,9 @@ export interface ProbeRun {
 export interface RunProbeOptions {
   scenePath: string;
   config: Record<string, unknown>;
+  /** Another kernel to run the same private-copy way (default: the seeing
+   *  kernel). summer_scene_audit passes assets/audit/scene_audit.gd. */
+  kernel?: string;
   /** ScenePreview output size; the canvas for render mode, tiny for analyze. */
   size: [number, number];
   timeoutMs?: number;
@@ -153,7 +156,7 @@ export async function runProbe(client: ProbeClient, options: RunProbeOptions, di
   const wrapperPath = join(dir, "wrapper.tscn");
   const config = { ...options.config, scene_path: options.scenePath };
   await writeFile(configPath, JSON.stringify(config));
-  await writeFile(wrapperPath, buildWrapperScene(options.scenePath, loadKernelSource()));
+  await writeFile(wrapperPath, buildWrapperScene(options.scenePath, options.kernel ?? loadKernelSource()));
 
   let response: unknown;
   try {

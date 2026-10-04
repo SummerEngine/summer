@@ -14,6 +14,8 @@ export const OK_JPEG = readFileSync(join(PACKAGE_ROOT, "src", "core", "capabilit
 export interface FakeEngineOptions {
   projectRoot?: string;
   analyze?: (config: Record<string, unknown>) => Record<string, unknown>;
+  /** The scene-audit kernel's result for config.mode "audit". */
+  audit?: (config: Record<string, unknown>) => Record<string, unknown>;
   render?: (config: Record<string, unknown>) => Record<string, unknown>;
   native?: (op: Record<string, unknown>) => Record<string, unknown>;
   bookmarks?: Record<string, { position: string; look_at: string; fov: number; created?: string }>;
@@ -75,7 +77,12 @@ export function fakeEngine(options: FakeEngineOptions = {}): FakeEngine {
         const config = JSON.parse(readFileSync(join(dir, "config.json"), "utf-8")) as Record<string, unknown>;
         configs.push(config);
         if (!options.silentKernel) {
-          const result = config.mode === "analyze" ? (options.analyze?.(config) ?? { ok: true, subjects: [] }) : (options.render ?? defaultRender)(config);
+          const result =
+            config.mode === "analyze"
+              ? (options.analyze?.(config) ?? { ok: true, subjects: [] })
+              : config.mode === "audit"
+                ? (options.audit?.(config) ?? { ok: true, stage: "done", instances: [] })
+                : (options.render ?? defaultRender)(config);
           writeFileSync(join(dir, "result.json"), JSON.stringify(result));
         }
         const size = op.size as [number, number];

@@ -46,6 +46,10 @@ const UNDERLAY_RE := "(underlay|backing|catch|void)"
 const SCATTER_RE := "(leaves|leaf|pebble|gravel|grass|weed|moss|litter|decal|puddle|ivy|vine|tree|bush|shrub|plant|flower|foliage)"
 const ROOF_RE := "(roof|ceiling|canopy|awning|overhang)"
 const HANGING_RE := "(ivy|vine|hanging|creeper)"
+# floor_gap strips: edge step along a tile edge, and how far out a wall bounds
+# the strip between that edge and the wall (walkable area enclosed by walls).
+const STRIP_STEP := 0.25
+const STRIP_REACH := 1.0
 
 var _cfg: Dictionary = {}
 var _out_dir := ""
@@ -82,7 +86,10 @@ var _ex: Array[RID] = []
 var _rays := 0
 var _floor_gap_count := 0
 var _floor_gap_void := false
+var _floor_gap_covered := false
 var _floor_recs: Array = []
+# Ground alternatives packs document: [pack dir, source file, material, clause].
+var _pack_docs: Array = []
 
 var _re_struct: RegEx = null
 var _re_floor: RegEx = null
@@ -278,6 +285,7 @@ func _run() -> void:
 		"multimesh_skipped": _multimesh, "rays": _rays,
 	}
 	_result["manifests"] = _manifest_loaded
+	_result["packs"] = _pack_docs
 	_result["ok"] = true
 	_result["stage"] = "done"
 	_write_result()
@@ -478,6 +486,13 @@ func _read_pack(path: String) -> void:
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return
 	var how := String((parsed as Dictionary).get("how_to_use", ""))
+	var pack_dir := path.get_base_dir()
+	var assembly := pack_dir.path_join("ASSEMBLY.md")
+	var md := ""
+	if FileAccess.file_exists(assembly):
+		md = FileAccess.get_file_as_string(assembly)
+	if not _pack_ground(pack_dir, "PACK.json", how):
+		_pack_ground(pack_dir, "ASSEMBLY.md", md)
 	var re := RegEx.create_from_string("(?i)wall[- ]mounted[^(]{0,40}\\(([^)]{1,600})\\)([^.]{0,120})")
 	var m := re.search(how)
 	if m == null:
@@ -498,6 +513,32 @@ func _read_pack(path: String) -> void:
 			n += 1
 	if n > 0 and _manifest_loaded.size() < 16:
 		_manifest_loaded.append([path, n])
+
+
+# A pack that documents a ground alternative ("for any other ground use
+# material res://.../alley_ground.tres on a PlaneMesh"): the first clause that
+# names a ground or floor AND an existing material. floor_gap names it in its
+# next step. Returns whether one was found.
+func _pack_ground(dir: String, source: String, text: String) -> bool:
+	if text == "" or _pack_docs.size() >= 8:
+		return false
+	var re_path := RegEx.create_from_string("(res://[A-Za-z0-9_\\-./]+|[A-Za-z0-9_\\-]+/[A-Za-z0-9_\\-./]+)\\.(tres|material)")
+	var re_ground := RegEx.create_from_string("(?i)\\b(ground|floor|terrain|planemesh)")
+	for clause in text.replace("; ", "\n").replace(". ", "\n").split("\n"):
+		var c := String(clause).strip_edges()
+		if c.length() < 8 or re_ground.search(c) == null:
+			continue
+		var m := re_path.search(c)
+		if m == null:
+			continue
+		var material := m.get_string(0)
+		if not material.begins_with("res://"):
+			material = dir.path_join(material)
+		if not ResourceLoader.exists(material):
+			continue
+		_pack_docs.append([dir, source, material, c.substr(0, 200)])
+		return true
+	return false
 
 
 static func _axis_of(text: String) -> Vector3:
@@ -1224,16 +1265,21 @@ func _scan_floors() -> Dictionary:
 		var x := (c.x + 0.5) * cell
 		var z := (c.y + 0.5) * cell
 		var before := _floor_gap_count
-		_floor_sample(x, z, float(top_of[key]), owner_i, gaps, zf, want_gaps, want_zf)
+		_floor_sample(x, z, float(top_of[key]), owner_i, gaps, zf, want_gaps, want_zf, 0, cell, cell)
 		rays += 1
+		# Per tile: cells, holes (the ray fell past the tile), of which void,
+		# and cells where an underlay plane covers the tile's own low surface.
 		if not per_owner.has(owner_i):
-			per_owner[owner_i] = [owner_i, 0, 0, 0]
+			per_owner[owner_i] = [owner_i, 0, 0, 0, 0]
 		var po: Array = per_owner[owner_i]
 		po[1] = int(po[1]) + 1
 		if _floor_gap_count > before:
-			po[2] = int(po[2]) + 1
-			if _floor_gap_void:
-				po[3] = int(po[3]) + 1
+			if _floor_gap_covered:
+				po[4] = int(po[4]) + 1
+			else:
+				po[2] = int(po[2]) + 1
+				if _floor_gap_void:
+					po[3] = int(po[3]) + 1
 	# Seams between neighbouring tiles (world AABB gaps of 2 mm .. 1 m).
 	var seams := 0
 	if want_gaps:
@@ -1254,17 +1300,97 @@ func _scan_floors() -> Dictionary:
 					if hi - lo < 0.3:
 						continue
 					var mid: float = (wa.end[axis] + wb.position[axis]) * 0.5
+					# Each seam ray stands for 10 cm of the seam, the seam's width across.
+					var ssx: float = gap if axis == 0 else 0.1
+					var ssz: float = 0.1 if axis == 0 else gap
 					var u: float = lo + 0.05
 					while u < hi - 0.04:
 						var x: float = mid if axis == 0 else u
 						var z: float = u if axis == 0 else mid
-						_floor_sample(x, z, maxf(wa.end.y, wb.end.y), int(a["i"]), gaps, zf, true, false)
+						_floor_sample(x, z, maxf(wa.end.y, wb.end.y), int(a["i"]), gaps, zf, true, false, 1, ssx, ssz)
 						seams += 1
 						u += 0.1
-	return {"floors": floors.size(), "underlays": underlays, "cell": snappedf(cell, 0.001), "rays": rays + seams, "interior_cells": interior, "seam_rays": seams, "gaps": gaps, "gap_rays": _floor_gap_count, "per_owner": per_owner.values(), "zfight": zf.values()}
+	var strips := 0
+	if want_gaps:
+		strips = _scan_strips(floors, gaps, zf)
+	return {"floors": floors.size(), "underlays": underlays, "cell": snappedf(cell, 0.001), "rays": rays + seams + strips, "interior_cells": interior, "seam_rays": seams, "strip_rays": strips, "gaps": gaps, "gap_rays": _floor_gap_count, "per_owner": per_owner.values(), "zfight": zf.values()}
 
 
-func _floor_sample(x: float, z: float, top: float, owner_i: int, gaps: Array, zf: Dictionary, want_gaps: bool, want_zf: bool) -> void:
+# Bare strips OUTSIDE the tile footprints: a tile row that stops short of a
+# wall (an alley's back wall 23-75 cm past the last tile) leaves the underlay
+# showing at the wall base, where no grid cell or seam ray looks. Walk each
+# in-scope tile's footprint edges; where a horizontal ray finds a wall within
+# STRIP_REACH outside the edge, step down rays out from the edge to the wall
+# base, stopping at the first floor (the next tile). An edge with no wall in
+# reach is an open edge, not walkable area enclosed by walls: left alone.
+func _scan_strips(floors: Array, gaps: Array, zf: Dictionary) -> int:
+	var rays := 0
+	for rec in floors:
+		if not bool(rec["in"]):
+			continue
+		var la: AABB = rec["laabb"]
+		var xf: Transform3D = rec["xf"]
+		var top := (rec["waabb"] as AABB).end.y
+		var owner_i := int(rec["i"])
+		var x0 := la.position.x
+		var x1 := la.end.x
+		var z0 := la.position.z
+		var z1 := la.end.z
+		var ly := la.get_center().y
+		# The four footprint edges in local XZ: [start, end, outward direction].
+		var edges := [
+			[Vector3(x0, ly, z0), Vector3(x0, ly, z1), Vector3(-1, 0, 0)],
+			[Vector3(x1, ly, z0), Vector3(x1, ly, z1), Vector3(1, 0, 0)],
+			[Vector3(x0, ly, z0), Vector3(x1, ly, z0), Vector3(0, 0, -1)],
+			[Vector3(x0, ly, z1), Vector3(x1, ly, z1), Vector3(0, 0, 1)],
+		]
+		for edge in edges:
+			var a: Vector3 = xf * (edge[0] as Vector3)
+			var b: Vector3 = xf * (edge[1] as Vector3)
+			var out: Vector3 = xf.basis * (edge[2] as Vector3)
+			out.y = 0
+			if out.length() < 0.2:
+				continue
+			out = out.normalized()
+			var along := Vector3(b.x - a.x, 0, b.z - a.z)
+			var edge_len := along.length()
+			if edge_len < STRIP_STEP:
+				continue
+			along = along / edge_len
+			var n := int(floor(edge_len / STRIP_STEP))
+			var step := edge_len / float(n)
+			for k in n:
+				var p := Vector3(a.x, top, a.z) + along * (step * (float(k) + 0.5))
+				var h := p + Vector3(0, 0.3, 0)
+				rays += 1
+				var wall := _ray(h, h + out * STRIP_REACH, MASK_FACADE, [], true)
+				if wall.is_empty():
+					continue
+				var wp: Vector3 = wall["position"]
+				var span := Vector3(wp.x - p.x, 0, wp.z - p.z).length() - 0.02
+				if span < 0.03:
+					continue
+				var wi := _hit_inst(wall)
+				var m := maxi(1, int(ceil(span / 0.1)))
+				var ds := span / float(m)
+				var ssx := absf(out.x) * ds + absf(along.x) * step
+				var ssz := absf(out.z) * ds + absf(along.z) * step
+				for j in m:
+					var q := p + out * (ds * (float(j) + 0.5))
+					rays += 1
+					if _floor_sample(q.x, q.z, top, owner_i, gaps, zf, true, false, 2, ssx, ssz, wi, ds * step) == 0:
+						break
+	return rays
+
+
+# One down ray at (x, z). Returns 0 when the floor (or a wall base over it)
+# is there, 1 when a gap row was recorded.
+# kind: 0 grid cell, 1 seam between tiles, 2 bare strip between a tile edge
+# and a wall. sx / sz: the footprint the sample stands for (axis-aligned
+# bounds); area: its area (default sx * sz). Gap row:
+# [x, z, top, owner, first hit, first hit y, clearance, kind, sx, sz, area,
+#  floor y under an underlay, that floor, the wall a strip runs along].
+func _floor_sample(x: float, z: float, top: float, owner_i: int, gaps: Array, zf: Dictionary, want_gaps: bool, want_zf: bool, kind := 0, sx := 0.0, sz := 0.0, wall_i := -1, area := -1.0) -> int:
 	var o := Vector3(x, top + 0.6, z)
 	var e := Vector3(x, top - 1.5, z)
 	var hit := _ray(o, e, L_FLOOR | L_UNDERLAY | MASK_FACADE)
@@ -1273,21 +1399,35 @@ func _floor_sample(x: float, z: float, top: float, owner_i: int, gaps: Array, zf
 	if not hit.is_empty() and role != "underlay":
 		if want_zf and role == "floor":
 			_zfight_probe(o, e, hit, L_FLOOR, zf)
-		return
+		return 0
 	if not want_gaps:
-		return
+		return 0
 	# Missed the floor: under a wall or kerb (inside it) does not show.
 	var cover := _ray(o, Vector3(x, top - 0.02, z), MASK_FACADE, [], true)
 	if not cover.is_empty():
-		return
+		return 0
+	# The first surface is an underlay. A floor surface right under it means
+	# the underlay plane sits ABOVE the floor's own low surface (a drain
+	# channel, a dip in the slab) and paints over it: not a hole in the tile.
+	var below: Variant = null
+	var below_i := -1
+	if not hit.is_empty():
+		var hy := (hit["position"] as Vector3).y
+		var under := _ray(Vector3(x, hy - 0.001, z), Vector3(x, hy - 0.5, z), L_FLOOR)
+		if not under.is_empty():
+			below = snappedf((under["position"] as Vector3).y, 0.001)
+			below_i = _hit_inst(under)
 	_floor_gap_count += 1
 	_floor_gap_void = hit.is_empty()
+	_floor_gap_covered = below != null
 	if gaps.size() >= 6000:
-		return
-	var row := [snappedf(x, 0.001), snappedf(z, 0.001), snappedf(top, 0.001), owner_i, hi, (snappedf((hit["position"] as Vector3).y, 0.001) if not hit.is_empty() else null)]
+		return 1
+	var clear: Variant = null
 	if _want_poses:
-		row.append(snappedf(_clear(Vector3(x, top + 0.05, z), Vector3(0.3, 1.0, 0.25).normalized(), 8.0), 0.01))
-	gaps.append(row)
+		clear = snappedf(_clear(Vector3(x, top + 0.05, z), Vector3(0.3, 1.0, 0.25).normalized(), 8.0), 0.01)
+	var a := area if area >= 0.0 else sx * sz
+	gaps.append([snappedf(x, 0.001), snappedf(z, 0.001), snappedf(top, 0.001), owner_i, hi, (snappedf((hit["position"] as Vector3).y, 0.001) if not hit.is_empty() else null), clear, kind, snappedf(sx, 0.001), snappedf(sz, 0.001), snappedf(a, 0.0001), below, below_i, wall_i])
+	return 1
 
 
 # ---------------------------------------------------------------------------

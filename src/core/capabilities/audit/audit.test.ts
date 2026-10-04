@@ -179,6 +179,27 @@ describe("sceneAudit", () => {
     expect(engine.calls).toEqual([]);
   });
 
+  it("floor_gap: the kernel's strips and the pack's documented ground reach the page", async () => {
+    const engine = fakeEngine({
+      projectRoot: project,
+      audit: () => ({
+        ok: true,
+        stage: "done",
+        instances: [
+          inst("Ground/B0", { k: "alley_floor_b", s: "res://starter/real-city-alley-kit/ground/alley_floor_b.tscn", r: "floor", c: [0, 0, -11], e: [8.4, 0.1, 7.5] }),
+          inst("Ground/Underlay", { k: "underlay", s: "", r: "underlay" }),
+          inst("Alley1/Backdrop", { k: "backdrop", r: "wall" }),
+        ],
+        floors: { cell: 0.32, per_owner: [[0, 300, 0, 0, 0]], gaps: Array.from({ length: 8 }, (_, k) => [k * 0.25, -15.13, 0.02, 0, 1, -0.055, 4, 2, 0.25, 0.1, 0.025, null, -1, 2]) },
+        packs: [["res://starter/real-city-alley-kit", "PACK.json", "res://starter/real-city-alley-kit/materials/alley_ground.tres", "for any other ground use material res://starter/real-city-alley-kit/materials/alley_ground.tres on a PlaneMesh"]],
+      }),
+    });
+    const r = (await sceneAudit(engine, { scenePath: "res://a.tscn", checks: ["floor_gap"] })) as AuditSuccess;
+    const [issue] = r.summary.issues as Array<{ why: string; next: string; ev: Record<string, unknown> }>;
+    expect(issue!.why).toMatch(/^bare strip 2 x 0.1 m \(0.2 m2\) between Ground\/B0's edge and Alley1\/Backdrop/);
+    expect(issue!.next).toContain("alley_ground.tres on a PlaneMesh");
+  });
+
   it("without scenePath it audits the open scene", async () => {
     const engine = fakeEngine({ projectRoot: project, audit: () => kernelResult() });
     const r = (await sceneAudit(engine, {})) as AuditSuccess;

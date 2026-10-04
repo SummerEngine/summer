@@ -14,6 +14,7 @@ import {
   judgeTransforms,
   judgeUv,
   judgeZFight,
+  parsePackGrounds,
   type InstRow,
 } from "./judge.js";
 
@@ -112,6 +113,81 @@ describe("floor_gap", () => {
     expect(issues.map((i) => i.severity).sort()).toEqual(["error", "warn"]);
     expect(issues.find((i) => i.severity === "error")!.why).toMatch(/fall to the void/);
     expect(issues.find((i) => i.severity === "warn")!.why).toMatch(/Ground\/Underlay/);
+  });
+});
+
+describe("floor_gap: what the first hit says (audit fix run, three_houses_v2)", () => {
+  // Kernel rows: [x, z, top, owner, first hit, first hit y, clearance, kind,
+  // sx, sz, area, floor y under the underlay, that floor, strip wall].
+  const tiles = Array.from({ length: 4 }, (_, i) => row(`Ground/B${i}`, { k: "alley_floor_b", s: "res://starter/real-city-alley-kit/ground/alley_floor_b.tscn", r: "floor", c: [i * 8.4, 0, 0], e: [8.4, 0.1, 7.5] }));
+  const inst = [
+    ...tiles,
+    row("Ground/Underlay", { k: "Underlay", s: "", r: "underlay" }),
+    row("Ground/Al_3", { k: "alley_floor_c", s: "res://starter/real-city-alley-kit/ground/alley_floor_c.tscn", r: "floor", c: [21, 0, -11], e: [8.4, 0.08, 7.46] }),
+    row("Ground/Mid_3", { k: "alley_floor_b", s: "res://starter/real-city-alley-kit/ground/alley_floor_b.tscn", r: "floor", c: [21, 0, -3.8], e: [8.4, 0.1, 7.54] }),
+    row("Alley1/Backdrop", { k: "wall_backdrop", r: "wall" }),
+  ];
+  const UNDERLAY = 4;
+  const AL3 = 5;
+  const MID3 = 6;
+  const WALL = 7;
+  const PACKS = [["res://starter/real-city-alley-kit", "PACK.json", "res://starter/real-city-alley-kit/materials/alley_ground.tres", "for any other ground use material res://starter/real-city-alley-kit/materials/alley_ground.tres on a PlaneMesh"]];
+
+  it("an underlay ABOVE the floor's own low surface (a drain channel) covers the floor: warn, not a hole", () => {
+    // Al_3's drainage channel: bottom at y -0.049; the underlay sat at -0.005.
+    const channel = Array.from({ length: 9 }, (_, k) => [20 + (k % 3) * 0.3, -9 - Math.floor(k / 3) * 0.3, 0.02, AL3, UNDERLAY, -0.005, null, 0, 0.3, 0.3, 0.09, -0.049, AL3, -1]);
+    const issues = judgeFloorGaps({ cell: 0.3, per_owner: [[AL3, 400, 0, 0, 9]], gaps: channel }, inst);
+    expect(issues).toHaveLength(1);
+    const [i] = issues;
+    expect(i).toMatchObject({ check: "floor_gap", severity: "warn", path: "Ground/Al_3", ev: { underlay: "Ground/Underlay", floor_low_y: -0.049, above_m: 0.044 } });
+    expect(i!.why).toMatch(/Ground\/Underlay covers the floor over 0.81 m2/);
+    expect(i!.why).toMatch(/not a hole/);
+    expect(i!.why).not.toMatch(/miss the floor/);
+    expect(i!.next).toMatch(/lower Ground\/Underlay under y -0.054/);
+  });
+
+  it("a tile whose low surfaces the underlay covers in every tile is one 'covers' issue; its real voids stay holes", () => {
+    // floor_b: 19% real voids, a further 14% of low surfaces under the old underlay.
+    const per_owner = tiles.map((_, i) => [i, 500, 95, 0, 70]);
+    const gaps = [[1, 1, 0.026, 0, UNDERLAY, -0.005, null, 0, 0.3, 0.3, 0.09, -0.02, 0, -1]];
+    const issues = judgeFloorGaps({ cell: 0.3, per_owner, gaps }, inst, parsePackGrounds(PACKS));
+    expect(issues).toHaveLength(2);
+    const holes = issues.find((i) => i.why.includes("holes in its own mesh"))!;
+    expect(holes.why).toMatch(/19% of each tile shows the underlay \(4\/4 tiles\)/);
+    const covers = issues.find((i) => i.why.includes("covers alley_floor_b's own low surfaces"))!;
+    expect(covers).toMatchObject({ severity: "warn", ev: { fraction: 0.14, underlay: "Ground/Underlay", floor_low_y: -0.02 } });
+    // The pack's documented ground option is in the next step.
+    expect(holes.next).toContain("the pack documents a ground alternative (PACK.json): res://starter/real-city-alley-kit/materials/alley_ground.tres on a PlaneMesh");
+    expect(holes.ev.pack_ground).toBe("res://starter/real-city-alley-kit/materials/alley_ground.tres");
+  });
+
+  it("a 4 cm x 8.4 m seam is 0.34 m2 with its dimensions, not 84 grid cells (8.66 m2)", () => {
+    // Seam rays every 10 cm along x between Al_3 (z -7.578) and Mid_3 (z -7.538).
+    const seam = Array.from({ length: 84 }, (_, k) => [16.85 + k * 0.1, -7.558, 0.02, AL3, UNDERLAY, -0.055, null, 1, 0.1, 0.04, 0.004, null, -1, -1]);
+    const [i] = judgeFloorGaps({ cell: 0.321, per_owner: [], gaps: seam }, inst);
+    expect(i!.ev).toMatchObject({ rays: 84, area_m2: 0.336, w: 8.4, d: 0.04 });
+    expect(i!.why).toMatch(/^floor gap 0.34 m2 \(8.4 x 0.04 m\): 84 down rays/);
+    expect(i!.score).toBeCloseTo(0.336, 3);
+  });
+
+  it("a bare strip between the last tile and the alley's back wall is reported with the wall, its size and the pack's ground", () => {
+    // The tile row ends at z -15.08; the backdrop is at -15.305: 34 edge steps x 2 rays.
+    const strip = Array.from({ length: 68 }, (_, k) => [-4.075 + Math.floor(k / 2) * 0.25, -15.13 - (k % 2) * 0.1025, 0.02, 0, UNDERLAY, -0.055, null, 2, 0.25, 0.1025, 0.025625, null, -1, WALL]);
+    const issues = judgeFloorGaps({ cell: 0.32, per_owner: [], gaps: strip }, inst, parsePackGrounds(PACKS));
+    expect(issues).toHaveLength(1);
+    const [i] = issues;
+    expect(i).toMatchObject({ check: "floor_gap", severity: "warn", path: "Ground/B0", ev: { wall: "Alley1/Backdrop", rays: 68 } });
+    expect(i!.why).toMatch(/^bare strip 8.5 x 0.2 m \(1.74 m2\) between Ground\/B0's edge and Alley1\/Backdrop: the floor stops short of the wall and Ground\/Underlay shows/);
+    expect(i!.next).toMatch(/^summer_measure Ground\/B0 vs Alley1\/Backdrop; extend the floor to the wall; the pack documents a ground alternative/);
+  });
+
+  it("strips are never folded into a holed piece's per-piece issue; old kernel rows still count one grid cell each", () => {
+    const per_owner = tiles.map((_, i) => [i, 500, 250, 0]);
+    const strip = [[0, -15.13, 0.02, 0, UNDERLAY, -0.055, null, 2, 0.25, 0.1, 0.025, null, -1, WALL], [0.25, -15.13, 0.02, 0, UNDERLAY, -0.055, null, 2, 0.25, 0.1, 0.025, null, -1, WALL]];
+    const issues = judgeFloorGaps({ cell: 0.3, per_owner, gaps: [[2, 2, 0.02, 0, UNDERLAY, -0.005], ...strip] }, inst);
+    expect(issues.map((i) => i.why.split(":")[0])).toEqual(["alley_floor_b has holes in its own mesh", "bare strip 0.5 x 0.1 m (0.05 m2) between Ground/B0's edge and Alley1/Backdrop"]);
+    const old = judgeFloorGaps({ cell: 0.3, per_owner: [], gaps: [[30, 5, 0.02, MID3, UNDERLAY, -0.005], [30.3, 5, 0.02, MID3, UNDERLAY, -0.005], [30.6, 5, 0.02, MID3, UNDERLAY, -0.005]] }, inst);
+    expect(old[0]!.ev).toMatchObject({ rays: 3, area_m2: 0.27, w: 0.9, d: 0.3 });
   });
 });
 

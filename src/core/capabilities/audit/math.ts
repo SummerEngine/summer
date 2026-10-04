@@ -215,6 +215,72 @@ export function clusterSamples(samples: readonly Sample2[], reach: number): numb
 }
 
 // ---------------------------------------------------------------------------
+// floor_gap: what a cluster of missed down rays covers
+// ---------------------------------------------------------------------------
+
+/** One down-ray sample and the ground it stands for: a grid cell, 10 cm of a
+ *  seam across its width, or one step of a strip along a wall base. */
+export interface Footprint {
+  x: number;
+  z: number;
+  sx: number;
+  sz: number;
+  area: number;
+}
+
+export interface FootprintExtent {
+  x0: number;
+  x1: number;
+  z0: number;
+  z1: number;
+  w: number;
+  d: number;
+  /** The longer and the shorter side (a seam is 8.4 x 0.04 m). */
+  long: number;
+  short: number;
+  area: number;
+}
+
+/**
+ * Bounds and area of a cluster of missed rays. The area is the sum of the
+ * samples' own footprints, never more than their bounding box: a 4 cm seam
+ * walked by 84 rays is 0.34 m2, not 84 grid cells.
+ */
+export function footprintExtent(cells: readonly Footprint[]): FootprintExtent {
+  if (!cells.length) return { x0: 0, x1: 0, z0: 0, z1: 0, w: 0, d: 0, long: 0, short: 0, area: 0 };
+  let x0 = Infinity;
+  let x1 = -Infinity;
+  let z0 = Infinity;
+  let z1 = -Infinity;
+  let sum = 0;
+  for (const c of cells) {
+    x0 = Math.min(x0, c.x - c.sx / 2);
+    x1 = Math.max(x1, c.x + c.sx / 2);
+    z0 = Math.min(z0, c.z - c.sz / 2);
+    z1 = Math.max(z1, c.z + c.sz / 2);
+    sum += Math.max(0, c.area);
+  }
+  const w = x1 - x0;
+  const d = z1 - z0;
+  return { x0, x1, z0, z1, w, d, long: Math.max(w, d), short: Math.min(w, d), area: Math.min(sum, w * d) };
+}
+
+/** The most frequent value (ties: the first seen); `fallback` when empty. */
+export function mostCommon(values: readonly number[], fallback = -1): number {
+  const counts = new Map<number, number>();
+  for (const v of values) counts.set(v, (counts.get(v) ?? 0) + 1);
+  let best = fallback;
+  let n = 0;
+  for (const [v, c] of counts) {
+    if (c > n) {
+      best = v;
+      n = c;
+    }
+  }
+  return best;
+}
+
+// ---------------------------------------------------------------------------
 // Robust bounds for "far out of bounds"
 // ---------------------------------------------------------------------------
 

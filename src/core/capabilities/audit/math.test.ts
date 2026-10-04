@@ -5,8 +5,10 @@ import {
   directionAngleDegrees,
   expectedHostOrigin,
   fitCameraDistance,
+  footprintExtent,
   lineAngleDegrees,
   matchInsertHost,
+  mostCommon,
   robustBounds,
   triangleArea,
   uvStretchRatio,
@@ -157,6 +159,26 @@ describe("insert host matching (pieces.json fits_into)", () => {
     expect(basisAngleDegrees(IDENTITY, yaw(90))).toBeCloseTo(90, 6);
     expect(basisAngleDegrees(IDENTITY, YAW_180)).toBeCloseTo(180, 4);
     expect(basisAngleDegrees(yaw(30), yaw(30))).toBeCloseTo(0, 4);
+  });
+});
+
+describe("floor gap footprints", () => {
+  it("area is the sum of the samples' own footprints, bounded by their box; sides long first", () => {
+    const seam = Array.from({ length: 84 }, (_, k) => ({ x: 16.85 + k * 0.1, z: -7.558, sx: 0.1, sz: 0.04, area: 0.004 }));
+    const e = footprintExtent(seam);
+    expect(e.area).toBeCloseTo(0.336, 6);
+    expect(e.long).toBeCloseTo(8.4, 6);
+    expect(e.short).toBeCloseTo(0.04, 6);
+    // Overlapping samples never count more than the ground they cover.
+    const twice = footprintExtent([{ x: 0, z: 0, sx: 0.3, sz: 0.3, area: 0.09 }, { x: 0, z: 0, sx: 0.3, sz: 0.3, area: 0.09 }]);
+    expect(twice.area).toBeCloseTo(0.09, 9);
+    expect(footprintExtent([])).toMatchObject({ area: 0, long: 0 });
+  });
+
+  it("mostCommon picks the majority, the first seen on a tie, and a fallback when empty", () => {
+    expect(mostCommon([4, 2, 4, 2, 4])).toBe(4);
+    expect(mostCommon([7, 3])).toBe(7);
+    expect(mostCommon([])).toBe(-1);
   });
 });
 

@@ -16,9 +16,11 @@ import {
   basisColumns,
   clusterSamples,
   directionAngleDegrees,
+  footprintExtent,
   lineAngleDegrees,
   matchInsertHost,
   median,
+  mostCommon,
   robustBounds,
   triangleArea,
   uvStretchRatio,
@@ -94,6 +96,8 @@ export interface KernelResult {
   long_props?: unknown[];
   uv?: unknown[];
   inserts?: unknown[];
+  /** Ground alternatives packs document: [pack dir, source file, material, clause]. */
+  packs?: unknown[];
   lights?: Record<string, unknown>;
   resources?: Record<string, unknown>;
   [key: string]: unknown;
@@ -297,84 +301,230 @@ export function judgeThroughHoles(lines: unknown[], inst: InstRow[]): AuditIssue
 // floor_gap
 // ---------------------------------------------------------------------------
 
-export function judgeFloorGaps(floors: Record<string, unknown> | undefined, inst: InstRow[]): AuditIssue[] {
+/** A ground alternative a pack documents (PACK.json how_to_use or
+ *  ASSEMBLY.md): "for any other ground use material ... on a PlaneMesh". */
+export interface PackGround {
+  dir: string;
+  source: string;
+  material: string;
+  plane: boolean;
+}
+
+export function parsePackGrounds(raw: unknown): PackGround[] {
+  return (arr(raw).filter(Array.isArray) as unknown[][])
+    .map((p) => ({ dir: String(p[0] ?? ""), source: String(p[1] ?? ""), material: String(p[2] ?? ""), plane: /plane ?mesh/i.test(String(p[3] ?? "")) }))
+    .filter((p) => p.dir.startsWith("res://") && p.material.startsWith("res://"));
+}
+
+/** The ground alternative of the pack a piece's scene lives in (deepest pack folder wins). */
+export function packGroundFor(scene: string | undefined, packs: readonly PackGround[]): PackGround | undefined {
+  if (!scene) return undefined;
+  return packs.filter((p) => scene.startsWith(p.dir.endsWith("/") ? p.dir : `${p.dir}/`)).sort((a, b) => b.dir.length - a.dir.length)[0];
+}
+
+function groundNext(pack: PackGround | undefined): string {
+  return pack ? `; the pack documents a ground alternative (${pack.source}): ${pack.material}${pack.plane ? " on a PlaneMesh" : ""}` : "";
+}
+
+/** One gap row as the kernel writes it (older kernels: the first 6-7 fields). */
+interface GapRow {
+  x: number;
+  z: number;
+  top: number;
+  owner: number;
+  hit: number;
+  hitY: number | null;
+  clear: number;
+  /** 0 grid cell, 1 seam between tiles, 2 bare strip between a tile edge and a wall. */
+  kind: number;
+  sx: number;
+  sz: number;
+  area: number;
+  /** The floor's own surface under the underlay the ray hit first, if any. */
+  below: number | null;
+  belowInst: number;
+  wall: number;
+}
+
+function parseGapRow(g: unknown[], cell: number): GapRow {
+  const sx = num(g[8], cell);
+  const sz = num(g[9], cell);
+  return {
+    x: num(g[0]),
+    z: num(g[1]),
+    top: num(g[2]),
+    owner: num(g[3], -1),
+    hit: num(g[4], -1),
+    hitY: typeof g[5] === "number" ? g[5] : null,
+    clear: num(g[6], NaN),
+    kind: num(g[7], 0),
+    sx,
+    sz,
+    area: num(g[10], sx * sz),
+    below: typeof g[11] === "number" ? g[11] : null,
+    belowInst: num(g[12], -1),
+    wall: num(g[13], -1),
+  };
+}
+
+/** "8.4 x 0.04 m": the long side first; centimetre precision below 10 cm. */
+function dims(long: number, short: number): string {
+  const f = (n: number) => (n < 0.1 ? r3(n) : r2(n));
+  return `${f(long)} x ${f(short)} m`;
+}
+
+const TOP_DOWN = normalize([0.3, 1, 0.25]);
+
+/**
+ * floor_gap. Down rays over the tile footprints (a grid, plus rays along the
+ * seams between tiles) and along each tile edge that a wall bounds within
+ * 1 m (the strip between the last tile and the wall base). Each row says
+ * which surface the ray hit FIRST:
+ * - nothing: the void shows (error);
+ * - an underlay with the floor's own surface right under it: the underlay
+ *   plane sits above a drain channel or dip and paints over it ("covers the
+ *   floor", warn), not a hole;
+ * - an underlay with nothing under it: a hole in the tile, or a bare strip
+ *   outside the tiles.
+ * A piece whose own mesh has holes (or whose low surfaces the underlay
+ * covers) in every tile is ONE issue for the piece. Areas are the sum of the
+ * missed rays' own footprints, with the strip's dimensions.
+ */
+export function judgeFloorGaps(floors: Record<string, unknown> | undefined, inst: InstRow[], packs: readonly PackGround[] = []): AuditIssue[] {
   if (!floors) return [];
   const out: AuditIssue[] = [];
   const cell = num(floors.cell, 0.3);
+  const rows = (arr(floors.gaps).filter(Array.isArray) as unknown[][]).map((g) => parseGapRow(g, cell));
+  const pieceOf = (g: GapRow) => inst[g.owner]?.k ?? "";
   const perOwner = arr(floors.per_owner).filter(Array.isArray) as number[][];
   // A piece whose OWN mesh has holes shows them in every instance: one issue
   // per piece, not one per hole.
-  const byPiece = new Map<string, Array<{ i: number; frac: number; void: number }>>();
+  const byPiece = new Map<string, Array<{ i: number; holes: number; void: number; covered: number }>>();
   for (const row of perOwner) {
     const i = num(row[0], -1);
     const cells = num(row[1]);
     const r = inst[i];
     if (!r || cells < 10) continue;
     const list = byPiece.get(r.k) ?? [];
-    list.push({ i, frac: num(row[2]) / cells, void: num(row[3]) / cells });
+    list.push({ i, holes: num(row[2]) / cells, void: num(row[3]) / cells, covered: num(row[4]) / cells });
     byPiece.set(r.k, list);
   }
   const holed = new Set<string>();
+  const coveredPieces = new Set<string>();
   for (const [piece, list] of byPiece) {
-    const showing = list.filter((x) => x.frac >= 0.05);
-    if (showing.length < 2) continue;
-    holed.add(piece);
-    const worst = showing.reduce((a, b) => (b.frac > a.frac ? b : a));
-    const r = inst[worst.i]!;
-    const meanFrac = showing.reduce((sum, x) => sum + x.frac, 0) / showing.length;
-    const voidShare = showing.reduce((sum, x) => sum + x.void, 0) / showing.length;
-    const shows = voidShare > meanFrac / 2 ? "the void" : "the underlay";
-    const focus: Vec3 = [r.c[0], r.c[1] + r.e[1] / 2, r.c[2]];
-    out.push({
-      check: "floor_gap",
-      severity: shows === "the void" ? "error" : "warn",
-      path: r.p,
-      pos: v2(focus),
-      why: `${piece} has holes in its own mesh: ${Math.round(meanFrac * 100)}% of each tile shows ${shows} (${showing.length}/${list.length} tiles)`,
-      ev: { piece, tiles: showing.length, fraction: r2(meanFrac), worst: r2(worst.frac), also: showing.filter((x) => x !== worst).slice(0, 2).map((x) => inst[x.i]!.p) },
-      next: `summer_frame_nodes nodes=[${r.p}] direction=top`,
-      score: meanFrac * showing.length,
-      frame: { focus, size: Math.max(r.e[0], r.e[2]) * 0.6, dirs: [{ dir: normalize([0.3, 1, 0.25]), clear: 8, pref: 1 }] },
-    });
+    const showing = list.filter((x) => x.holes >= 0.05);
+    if (showing.length >= 2) {
+      holed.add(piece);
+      const worst = showing.reduce((a, b) => (b.holes > a.holes ? b : a));
+      const r = inst[worst.i]!;
+      const meanFrac = showing.reduce((sum, x) => sum + x.holes, 0) / showing.length;
+      const voidShare = showing.reduce((sum, x) => sum + x.void, 0) / showing.length;
+      const shows = voidShare > meanFrac / 2 ? "the void" : "the underlay";
+      const focus: Vec3 = [r.c[0], r.c[1] + r.e[1] / 2, r.c[2]];
+      const pack = packGroundFor(r.s, packs);
+      out.push({
+        check: "floor_gap",
+        severity: shows === "the void" ? "error" : "warn",
+        path: r.p,
+        pos: v2(focus),
+        why: `${piece} has holes in its own mesh: ${Math.round(meanFrac * 100)}% of each tile shows ${shows} (${showing.length}/${list.length} tiles)`,
+        ev: { piece, tiles: showing.length, fraction: r2(meanFrac), worst: r2(worst.holes), also: showing.filter((x) => x !== worst).slice(0, 2).map((x) => inst[x.i]!.p), ...(pack ? { pack_ground: pack.material } : {}) },
+        next: `summer_frame_nodes nodes=[${r.p}] direction=top${groundNext(pack)}`,
+        score: meanFrac * showing.length,
+        frame: { focus, size: Math.max(r.e[0], r.e[2]) * 0.6, dirs: [{ dir: TOP_DOWN, clear: 8, pref: 1 }] },
+      });
+    }
+    const covering = list.filter((x) => x.covered >= 0.05);
+    if (covering.length >= 2) {
+      coveredPieces.add(piece);
+      const worst = covering.reduce((a, b) => (b.covered > a.covered ? b : a));
+      const r = inst[worst.i]!;
+      const meanFrac = covering.reduce((sum, x) => sum + x.covered, 0) / covering.length;
+      const mine = rows.filter((g) => g.below !== null && g.kind !== 2 && pieceOf(g) === piece);
+      const underlay = inst[mostCommon(mine.map((g) => g.hit))];
+      const lowest = mine.length ? Math.min(...mine.map((g) => g.below!)) : null;
+      const focus: Vec3 = [r.c[0], r.c[1] + r.e[1] / 2, r.c[2]];
+      out.push({
+        check: "floor_gap",
+        severity: "warn",
+        path: r.p,
+        pos: v2(focus),
+        why: `${underlay?.p ?? "the underlay"} covers ${piece}'s own low surfaces: ${Math.round(meanFrac * 100)}% of each tile (${covering.length}/${list.length} tiles); the underlay plane sits above the floor there and paints over it, not a hole`,
+        ev: { piece, tiles: covering.length, fraction: r2(meanFrac), ...(underlay ? { underlay: underlay.p } : {}), ...(lowest !== null ? { floor_low_y: r3(lowest) } : {}) },
+        next: `summer_set_prop ${underlay?.p ?? "<underlay>"} position: lower it${lowest !== null ? ` under y ${r3(lowest - 0.005)}` : ""} (the floor's lowest surface), then re-seat props`,
+        score: meanFrac * covering.length,
+        frame: { focus, size: Math.max(r.e[0], r.e[2]) * 0.6, dirs: [{ dir: TOP_DOWN, clear: 8, pref: 1 }] },
+      });
+    }
   }
-  const gaps = (arr(floors.gaps).filter(Array.isArray) as unknown[][]).filter((g) => !holed.has(inst[num(g[3], -1)]?.k ?? ""));
-  const groups = clusterSamples(
-    gaps.map((g) => ({ u: num(g[0]), v: num(g[1]) })),
-    cell * 1.5
-  );
-  for (const group of groups) {
-    const rows = group.map((i) => gaps[i]!);
-    const xs = rows.map((g) => num(g[0]));
-    const zs = rows.map((g) => num(g[1]));
-    const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
-    const cz = (Math.min(...zs) + Math.max(...zs)) / 2;
-    const top = Math.max(...rows.map((g) => num(g[2])));
-    const owners = new Map<number, number>();
-    for (const g of rows) owners.set(num(g[3], -1), (owners.get(num(g[3], -1)) ?? 0) + 1);
-    const ownerIdx = [...owners.entries()].sort((a, b) => b[1] - a[1])[0]![0];
-    const owner = inst[ownerIdx];
-    const voidRows = rows.filter((g) => num(g[4], -1) < 0).length;
-    const fellTo = voidRows > rows.length / 2 ? "void" : (inst[num(rows.find((g) => num(g[4], -1) >= 0)?.[4], -1)]?.p ?? "void");
-    const area = rows.length * cell * cell;
-    const severity: Severity = fellTo === "void" ? "error" : rows.length >= 3 ? "warn" : "look";
-    const pos: Vec3 = [cx, top, cz];
-    const beside = [...owners.keys()].filter((k) => k !== ownerIdx).map((k) => inst[k]?.p).filter((p): p is string => !!p).slice(0, 2);
-    const clears = rows.map((g) => num(g[6], NaN)).filter((c) => Number.isFinite(c));
+  // The rest cluster by location, one class at a time.
+  const covered = rows.filter((g) => g.below !== null && !(g.kind !== 2 && coveredPieces.has(pieceOf(g))));
+  const strips = rows.filter((g) => g.below === null && g.kind === 2);
+  const holes = rows.filter((g) => g.below === null && g.kind !== 2 && !holed.has(pieceOf(g)));
+  const clusters = (list: GapRow[]) => clusterSamples(list.map((g) => ({ u: g.x, v: g.z })), cell * 1.5).map((group) => group.map((i) => list[i]!));
+  const place = (group: GapRow[]) => {
+    const ext = footprintExtent(group);
+    const top = Math.max(...group.map((g) => g.top));
+    const ownerIdx = mostCommon(group.map((g) => g.owner));
+    const pos: Vec3 = [(ext.x0 + ext.x1) / 2, top, (ext.z0 + ext.z1) / 2];
+    const clears = group.map((g) => g.clear).filter((c) => Number.isFinite(c));
+    const frame: FrameHint = { focus: pos, size: Math.max(1.2, Math.sqrt(ext.area) * 2, Math.min(ext.long, 6) * 0.6), dirs: [{ dir: TOP_DOWN, clear: clears.length ? median(clears) : 4, pref: 1 }] };
+    const ray = `summer_raycast origin=${fmt([group[0]!.x, top + 0.6, group[0]!.z])} direction=(0,-1,0)`;
+    return { ext, top, ownerIdx, owner: inst[ownerIdx], pos, frame, ray, size: { rays: group.length, w: r3(ext.w), d: r3(ext.d), area_m2: r3(ext.area) } };
+  };
+  for (const group of clusters(holes)) {
+    const { ext, ownerIdx, owner, pos, frame, ray, size } = place(group);
+    const voidRows = group.filter((g) => g.hit < 0).length;
+    const fellTo = voidRows > group.length / 2 ? "void" : (inst[group.find((g) => g.hit >= 0)?.hit ?? -1]?.p ?? "void");
+    const severity: Severity = fellTo === "void" ? "error" : group.length >= 3 ? "warn" : "look";
+    const beside = [...new Set(group.map((g) => g.owner))].filter((k) => k !== ownerIdx).map((k) => inst[k]?.p).filter((p): p is string => !!p).slice(0, 2);
+    const pack = packGroundFor(owner?.s, packs);
     out.push({
       check: "floor_gap",
       severity,
       path: owner?.p ?? "?",
       pos: v2(pos),
-      why: `floor gap ~${r2(area)} m2: ${rows.length} down rays miss the floor and fall to ${fellTo === "void" ? "the void" : fellTo}`,
-      ev: {
-        rays: rows.length,
-        w: r2(Math.max(...xs) - Math.min(...xs) + cell),
-        d: r2(Math.max(...zs) - Math.min(...zs) + cell),
-        ...(beside.length ? { beside } : {}),
-      },
-      next: `summer_raycast origin=${fmt([num(rows[0]![0]), top + 0.6, num(rows[0]![1])])} direction=(0,-1,0)`,
-      score: area,
-      frame: { focus: pos, size: Math.max(1.2, Math.sqrt(area) * 2), dirs: [{ dir: normalize([0.3, 1, 0.25]), clear: clears.length ? median(clears) : 4, pref: 1 }] },
+      why: `floor gap ${r2(ext.area)} m2 (${dims(ext.long, ext.short)}): ${group.length} down rays miss the floor and fall to ${fellTo === "void" ? "the void" : fellTo}`,
+      ev: { ...size, ...(beside.length ? { beside } : {}), ...(pack ? { pack_ground: pack.material } : {}) },
+      next: `${ray}${groundNext(pack)}`,
+      score: ext.area,
+      frame,
+    });
+  }
+  for (const group of clusters(covered)) {
+    const { ext, owner, pos, frame, ray, size } = place(group);
+    const underlay = inst[mostCommon(group.map((g) => g.hit))];
+    const floor = inst[mostCommon(group.map((g) => g.belowInst).filter((i) => i >= 0))] ?? owner;
+    const lowest = Math.min(...group.map((g) => g.below!));
+    const above = Math.max(...group.map((g) => (g.hitY ?? g.top) - g.below!));
+    out.push({
+      check: "floor_gap",
+      severity: "warn",
+      path: floor?.p ?? owner?.p ?? "?",
+      pos: v2(pos),
+      why: `${underlay?.p ?? "the underlay"} covers the floor over ${r2(ext.area)} m2 (${dims(ext.long, ext.short)}): it sits up to ${cm(above)} above the floor's own surface (a drain channel or dip) and paints over it; not a hole`,
+      ev: { ...size, ...(underlay ? { underlay: underlay.p } : {}), floor_low_y: r3(lowest), above_m: r3(above) },
+      next: `${ray}; lower ${underlay?.p ?? "the underlay"} under y ${r3(lowest - 0.005)} with summer_set_prop`,
+      score: ext.area,
+      frame,
+    });
+  }
+  for (const group of clusters(strips)) {
+    const { ext, owner, pos, frame, size } = place(group);
+    const wall = inst[mostCommon(group.map((g) => g.wall).filter((i) => i >= 0))];
+    const voidRows = group.filter((g) => g.hit < 0).length;
+    const shows = voidRows > group.length / 2 ? "the void" : (inst[mostCommon(group.map((g) => g.hit).filter((i) => i >= 0))]?.p ?? "the underlay");
+    const pack = packGroundFor(owner?.s, packs);
+    out.push({
+      check: "floor_gap",
+      severity: shows === "the void" ? "error" : ext.area >= 0.05 ? "warn" : "look",
+      path: owner?.p ?? "?",
+      pos: v2(pos),
+      why: `bare strip ${dims(ext.long, ext.short)} (${r2(ext.area)} m2) between ${owner?.p ?? "the floor"}'s edge and ${wall?.p ?? "a wall"}: the floor stops short of the wall and ${shows} shows`,
+      ev: { ...size, ...(wall ? { wall: wall.p } : {}), ...(pack ? { pack_ground: pack.material } : {}) },
+      next: `summer_measure ${owner?.p ?? "<floor>"} vs ${wall?.p ?? "<wall>"}; extend the floor to the wall${groundNext(pack)}`,
+      score: ext.area,
+      frame,
     });
   }
   return out;

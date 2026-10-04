@@ -42,6 +42,7 @@ import {
   judgeTransforms,
   judgeUv,
   judgeZFight,
+  parsePackGrounds,
   type AuditIssue,
   type InstRow,
   type KernelResult,
@@ -139,7 +140,7 @@ export function judgeAll(result: KernelResult, checks: readonly AuditCheck[]): A
   const lines = Array.isArray(result.lines) ? result.lines : [];
   const issues: AuditIssue[] = [];
   if (want.has("through_hole")) issues.push(...judgeThroughHoles(lines, inst));
-  if (want.has("floor_gap")) issues.push(...judgeFloorGaps(result.floors, inst));
+  if (want.has("floor_gap")) issues.push(...judgeFloorGaps(result.floors, inst, parsePackGrounds(result.packs)));
   const mounts = judgeMounts(Array.isArray(result.mounts) ? result.mounts : [], inst, want);
   issues.push(...mounts.issues);
   if (want.has("floating") || want.has("sunken")) {

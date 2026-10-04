@@ -663,7 +663,10 @@ func _setup_image_checks() -> void:
 	for cand in (_cfg.get("candidates", []) as Array):
 		var sv := SubViewport.new()
 		sv.size = size
-		sv.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		# One render is enough: the deferred measure pass places the camera at
+		# the final pose before the first draw (ScenePreview iterates the main
+		# loop, which flushes deferred calls before it draws).
+		sv.render_target_update_mode = SubViewport.UPDATE_ONCE
 		sv.world_3d = world
 		var cam := Camera3D.new()
 		sv.add_child(cam)
@@ -675,9 +678,20 @@ func _setup_image_checks() -> void:
 		cam.near = 0.05
 		cam.far = 1000.0
 		cam.current = true
-		_checks.append({"vp": sv, "cam": cam, "i": i})
+		_checks.append({"vp": sv, "cam": cam, "i": i, "done": false})
 		i += 1
 	RenderingServer.frame_post_draw.connect(_on_post_draw)
+
+
+static func _image_blank(img: Image) -> bool:
+	var probe := img.duplicate() as Image
+	probe.resize(4, 4, Image.INTERPOLATE_BILINEAR)
+	for y in 4:
+		for x in 4:
+			var c := probe.get_pixel(x, y)
+			if c.r + c.g + c.b > 0.01:
+				return false
+	return true
 
 
 # Per cell of the cols x rows grid: luminance decile ("0".."9") and texture
@@ -1178,14 +1192,15 @@ func _on_post_draw() -> void:
 			if idx >= _measurements.size():
 				continue
 			var rec: Dictionary = _measurements[idx]
-			if rec.has("rejected"):
+			if rec.has("rejected") or bool(chk["done"]):
 				continue
 			var img: Image = (chk["vp"] as SubViewport).get_texture().get_image()
-			if img == null or img.is_empty():
+			if img == null or img.is_empty() or _image_blank(img):
 				continue
 			var codes := _image_codes(img, cols, rows)
 			rec["lum"] = codes["lum"]
 			rec["tex"] = codes["tex"]
+			chk["done"] = true
 		_result["image_checked"] = _draws
 	var captured: Array = []
 	for c in _captures:

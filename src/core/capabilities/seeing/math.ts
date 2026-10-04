@@ -296,35 +296,47 @@ export function applyLowAngleRule(
 }
 
 /**
- * Crop rectangle (normalized u0,v0,u1,v1 of a reference frame) padded and
- * grown to `aspect` (width/height in pixels of that frame), clamped to the
- * frame. Used by zoom to turn a mark box or region into a render window.
+ * The zoom window for a region of a reference frame, honoured EXACTLY: the
+ * region plus `pad` of its size on each side, clipped to the frame — never
+ * grown to an aspect ratio. `widenedBecause` names anything that made the
+ * window larger than the region asked for (only the pad can).
  */
-export function cropForAspect(
+export function exactCrop(
   rect: { u0: number; v0: number; u1: number; v1: number },
-  refAspect: number,
-  outAspect: number,
-  pad = 0.15
-): [number, number, number, number] {
-  let w = Math.max(1e-4, rect.u1 - rect.u0);
-  let h = Math.max(1e-4, rect.v1 - rect.v0);
-  const cu = (rect.u0 + rect.u1) / 2;
-  const cv = (rect.v0 + rect.v1) / 2;
-  w *= 1 + pad * 2;
-  h *= 1 + pad * 2;
-  // In pixels of the reference frame the crop's aspect is (w*refAspect)/h.
-  const current = (w * refAspect) / h;
-  if (current < outAspect) w = (h * outAspect) / refAspect;
-  else h = (w * refAspect) / outAspect;
-  if (w > 1) {
-    h /= w;
-    w = 1;
+  pad = 0
+): { crop: [number, number, number, number]; widenedBecause: string[]; clipped: boolean } {
+  const w = Math.max(1e-4, rect.u1 - rect.u0);
+  const h = Math.max(1e-4, rect.v1 - rect.v0);
+  const raw: [number, number, number, number] = [rect.u0 - w * pad, rect.v0 - h * pad, rect.u1 + w * pad, rect.v1 + h * pad];
+  const crop: [number, number, number, number] = [clamp(raw[0], 0, 1), clamp(raw[1], 0, 1), clamp(raw[2], 0, 1), clamp(raw[3], 0, 1)];
+  const clipped = crop.some((v, i) => Math.abs(v - raw[i]!) > 1e-9);
+  return { crop, widenedBecause: pad > 0 ? [`pad ${pad} of the region's size added on each side`] : [], clipped };
+}
+
+/**
+ * Lay a window of pixel aspect `regionAspect` into an output image whose
+ * longest edge is `maxEdge`. The image takes the window's own aspect, clamped
+ * to minAspect..maxAspect; past the clamp the window is centred with dark bars
+ * (letterbox / pillarbox) instead of being stretched or widened.
+ */
+export function letterbox(
+  regionAspect: number,
+  maxEdge: number,
+  minAspect = 0.5,
+  maxAspect = 3.2
+): { canvas: [number, number]; rect: [number, number, number, number]; letterboxed: boolean } {
+  const even = (n: number) => Math.max(16, Math.round(n / 2) * 2);
+  const canvasAspect = clamp(regionAspect, minAspect, maxAspect);
+  const canvas: [number, number] = canvasAspect >= 1 ? [even(maxEdge), even(maxEdge / canvasAspect)] : [even(maxEdge * canvasAspect), even(maxEdge)];
+  let w = canvas[0];
+  let h = Math.round(w / regionAspect);
+  if (h > canvas[1]) {
+    h = canvas[1];
+    w = Math.round(h * regionAspect);
   }
-  if (h > 1) {
-    w /= h;
-    h = 1;
-  }
-  const u0 = clamp(cu - w / 2, 0, 1 - w);
-  const v0 = clamp(cv - h / 2, 0, 1 - h);
-  return [u0, v0, u0 + w, v0 + h];
+  w = Math.max(16, Math.min(canvas[0], w));
+  h = Math.max(16, Math.min(canvas[1], h));
+  const x = Math.floor((canvas[0] - w) / 2);
+  const y = Math.floor((canvas[1] - h) / 2);
+  return { canvas, rect: [x, y, w, h], letterboxed: w < canvas[0] - 1 || h < canvas[1] - 1 };
 }

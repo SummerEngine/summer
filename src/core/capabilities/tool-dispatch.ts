@@ -109,6 +109,7 @@ import {
   frameShot,
   rememberBookmarkRender,
   shotSheet,
+  slotPolicy,
   zoom,
   type SeeingClient,
   type SeeingResult,
@@ -1851,7 +1852,13 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       snap = await captureScene(client, preview);
       const bookmark = preview.framing?.startsWith("bookmark:") ? preview.framing.slice("bookmark:".length) : undefined;
       if (snap.ok && snap.base64 && bookmark && snap.framing === preview.framing) {
-        const slotNotes = await rememberBookmarkRender(typeof client.getProjectRoot === "function" ? client.getProjectRoot() : undefined, bookmark, { base64: snap.base64, width: snap.width, height: snap.height }, preview.marks === true);
+        const slotNotes = await rememberBookmarkRender(
+          typeof client.getProjectRoot === "function" ? client.getProjectRoot() : undefined,
+          bookmark,
+          { base64: snap.base64, width: snap.width, height: snap.height },
+          preview.marks === true,
+          slotPolicy({ updatePrevious: optBoolean(args, "update_previous", false) })
+        );
         return { ...(await snapshotResult(snap, target)), slot_notes: slotNotes };
       }
     } else {

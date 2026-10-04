@@ -49,12 +49,22 @@ export const frameNodesShape = {
     .enum(DIRECTION_PRESET_NAMES)
     .optional()
     .describe('Side the camera sits on: "front" (+Z), "back" (-Z), "left" (-X), "right" (+X), "top", "iso" (default, 3/4 from -X,+Y,-Z like summer_screenshot). Use from for anything else.'),
-  from: z.string().optional().describe('Explicit direction FROM the nodes TOWARD the camera, "Vector3(1, 0.4, 2)". Replaces direction.'),
+  from: z
+    .string()
+    .optional()
+    .describe(
+      'Explicit direction FROM the nodes TOWARD the camera, "Vector3(1, 0.4, 2)". Replaces direction. The fitted pose is checked in-engine: when walls block it, or it puts the camera behind or inside a one-sided surface (whose back is not drawn, so the image would look THROUGH it), the caption opens with a WARNING and offers the nearest valid from (+ fov); the requested view is still rendered.'
+    ),
   fill: z.number().optional().describe("Share of the frame the nodes span along their limiting dimension (0.1..1.5, default 0.8)."),
   fov: z.number().optional().describe("Vertical field of view in degrees (default 50)."),
   max_size: maxSize(1024),
   aspect,
-  marks: z.boolean().optional().describe("Numbered Set-of-Mark labels over the largest visible nodes; the caption maps label -> node path (feed a label to summer_zoom mark)."),
+  marks: z
+    .boolean()
+    .optional()
+    .describe(
+      "Numbered Set-of-Mark labels over the largest visible nodes; the caption maps label -> node path (feed a label to summer_zoom mark). Each labelled node gets an occlusion test (centre + 4 bounds points); a node hidden behind other geometry is noted \"(hidden behind <path>)\" — ignore its label."
+    ),
   max_marks: z.number().int().min(1).max(128).optional().describe("marks only: cap on labels (engine default 32)."),
   bookmark_name: z
     .string()
@@ -81,7 +91,11 @@ export const shotSheetShape = {
   compare_previous: z
     .boolean()
     .optional()
-    .describe("For bookmark shots: one row per bookmark of [previous render | now | difference map], with the share of changed pixels in the caption. The previous render is the bookmark's slot in res://.summer/shots/, replaced by this render."),
+    .describe("For bookmark shots: one row per bookmark of [previous render | now | difference map], with the share of changed pixels in the caption. The previous render is the bookmark's slot in res://.summer/shots/; this render replaces it (it is the next baseline)."),
+  update_previous: z
+    .boolean()
+    .optional()
+    .describe("Replace each bookmark's previous image (its compare baseline) with this render without comparing. Default false: a sheet without compare_previous only creates a missing slot and never overwrites an existing baseline."),
   max_size: maxSize(1536),
   aspect,
   save_to: saveTo,
@@ -98,6 +112,10 @@ export const debugViewsShape = {
     .max(8)
     .optional()
     .describe("Which views, in grid order (default all six: beauty, lighting, unshaded, normals, overdraw, wireframe)."),
+  update_previous: z
+    .boolean()
+    .optional()
+    .describe("bookmark_name only: replace the bookmark's previous image (compare baseline) with this beauty tile. Default false: only a missing slot is created."),
   max_size: maxSize(1536),
   aspect,
   save_to: saveTo,
@@ -113,18 +131,21 @@ export const zoomShape = {
     .array(z.number())
     .length(4)
     .optional()
-    .describe("[x, y, w, h] as fractions (0..1) of the frame from the same pose, x/y from the TOP-LEFT. Use this OR mark."),
+    .describe("[x, y, w, h] as fractions (0..1) of the frame from the same pose, x/y from the TOP-LEFT. Use this OR mark. Rendered EXACTLY (no padding by default, never widened to an aspect ratio): the image takes the region's own aspect, with dark bars only for extreme shapes."),
   mark: z
     .number()
     .int()
     .optional()
-    .describe("A label number from a marks:true render of the SAME pose and reference_size (summer_frame_nodes, or summer_screenshot framing free/bookmark at that size)."),
+    .describe("A label number from a marks:true render of the SAME pose and reference_size (summer_frame_nodes, or summer_screenshot framing free/bookmark at that size). The caption warns when that node is hidden behind other geometry at this pose."),
   reference_size: z
     .array(z.number().int())
     .length(2)
     .optional()
     .describe("[width, height] of the frame region/mark refer to (default [1024, 576]). Sets the zoom's aspect."),
-  pad: z.number().optional().describe("Margin added around the region on each side, as a fraction of its size (0..1, default 0.15)."),
+  pad: z
+    .number()
+    .optional()
+    .describe("Margin added around the region on each side, as a fraction of its size (0..1; default 0 for region, 0.15 for mark). The caption's widened_because says when the rendered window is larger than asked."),
   view,
   max_size: maxSize(1024),
   save_to: saveTo,

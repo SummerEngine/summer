@@ -100,7 +100,7 @@ input_schema:
       description: framing:"free" / "bookmark" only. Vertical field of view in degrees (1..179; default 60 for "free", the bookmark's own for "bookmark").
     marks:
       type: boolean
-      description: target:"scene" only, 3D scenes. Draw a Set-of-Mark overlay - numbered tags + box outlines over the largest visible VisualInstance3D nodes (lights excluded), ranked by projected screen area. The caption lists label -> node path (scene-root-relative) so you can name what you see. Works with every framing. 2D scenes return marks_unsupported. Default false.
+      description: 'target:"scene" only, 3D scenes. Draw a Set-of-Mark overlay - numbered tags + box outlines over the largest visible VisualInstance3D nodes (lights excluded), ranked by projected screen area. The caption lists label -> node path (scene-root-relative) so you can name what you see, and an occlusion test (centre + 4 bounds points from the rendered camera) notes "(hidden behind <path>)" on labels whose node is hidden - ignore those. Works with every framing. 2D scenes return marks_unsupported. Default false.'
     max_marks:
       type: integer
       minimum: 1
@@ -108,7 +108,10 @@ input_schema:
       description: marks:true only. Cap on numbered labels (engine default 32, at most 128). The caption says when the cap truncated the list.
     compare_previous:
       type: boolean
-      description: 'framing:"bookmark" only. Return ONE image of [previous render | now | difference map] for the bookmark, with the share of changed pixels (summer_shot_sheet compare_previous with this one bookmark). Every clean bookmark render (no marks, at most 1024 px) is kept as that bookmark''s single previous image in res://.summer/shots/<bookmark>.jpg and replaced by the next render.'
+      description: 'framing:"bookmark" only. Return ONE image of [previous render | now | difference map] for the bookmark, with the share of changed pixels (summer_shot_sheet compare_previous with this one bookmark); this render then replaces the bookmark''s previous image in res://.summer/shots/<bookmark>.jpg. A plain bookmark render (no marks, at most 1024 px) only creates that image when it is missing and never overwrites the compare baseline.'
+    update_previous:
+      type: boolean
+      description: 'framing:"bookmark" only. Replace the bookmark''s previous image (its compare baseline) with this clean render. Default false: an existing baseline is kept.'
   additionalProperties: false
 authority:
   filesystem: true

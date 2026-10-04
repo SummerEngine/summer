@@ -5,7 +5,8 @@ summary: 'Smart framing: find, score and bookmark camera poses for a shot type (
 use_when:
   - '"find a good view of X" / "frame an establishing shot" / "show it from the player''s eye" / "look down the alley"'
   - 'choosing hero views to bookmark for an environment review loop'
-  - 'checking whether walls or terrain block the view of a subject, and which props frame it'
+  - 'checking whether walls or terrain block the view of a subject, and which props frame it (a camera behind or inside a one-sided wall is rejected; transparent foliage and glass are see-through cover)'
+  - 'three different establishing views at once (one per side while the score allows), scored on the key light''s direction and the world edge below the horizon'
 do_not_use_when:
   - 'you already have the pose — summer_shot_sheet, summer_frame_nodes or summer_screenshot'
   - 'gameplay camera collision in the running game — that is the camera rig''s job (camera-collision-avoidance knowledge)'

@@ -71,6 +71,9 @@ input_schema:
           - wireframe
       maxItems: 8
       description: "Which views, in grid order (default all six: beauty, lighting, unshaded, normals, overdraw, wireframe)."
+    update_previous:
+      type: boolean
+      description: 'bookmark_name only: replace the bookmark''s previous image (compare baseline) with this beauty tile. Default false: only a missing slot is created.'
     max_size:
       type: integer
       minimum: 64

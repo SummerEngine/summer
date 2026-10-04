@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.1.0",
-      "content_hash": "72dbbe554e05dc82e4bd6627712f6d0697e92c53215de249e817b6a6ac7c36bd",
+      "content_hash": "a36120de86b87c8e3b46eb432d6d53365a15833b5d2db28490bef25205fb6102",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -3354,7 +3354,7 @@
       "id": "skill/verifying-scenes",
       "kind": "skill",
       "version": "1.2.0",
-      "content_hash": "8931313b0c24e7ed53fff782ab2c85d222a894364aa171048c6fd7625a91c66e",
+      "content_hash": "4f1a643987618eccf7fe15b2bb96415cea11ffd7e103cc715e075fb837c97647",
       "summary": "Prove scene work landed (snapshot, diff, bookmarked screenshots, runtime reads) and review 3D environments: shot sheets, debug views, zooms, smart framing.",
       "use_when": [
         "after any mutation batch, asset import, or lighting change, before claiming it worked",
@@ -4895,7 +4895,7 @@
       "id": "tool/debug-views",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "cfdbff47668e7814531563de4efa15e013b93ba268064c7c87b351acbdd071b8",
+      "content_hash": "deb767453ff63dcacf4b92208baa69b49b1b15b7d3d557b1c23f839a3d45c9f8",
       "summary": "One pose as a grid of beauty, lighting-only, unshaded/albedo, world normals, overdraw and wireframe views.",
       "use_when": [
         "understanding WHY a shot reads badly: light direction and pools, texture/value balance, normal seams, overdraw hot spots, triangle density",
@@ -5005,11 +5005,11 @@
       "id": "tool/frame-nodes",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "666c36ea5c697edf51503b2ad53039adfd738e693be44f5d603cc67b0f850921",
+      "content_hash": "4a6c94a6ad6dc741d4283434dbdd6d46a8c356793694007623ed0556024eba1b",
       "summary": "Frame nodes by their world bounds and render with the scene's REAL environment and lights (optionally save the pose as a bookmark).",
       "use_when": [
         "\"show me the houses/props with the real lighting\" — fit a camera to one or more nodes and render it with the scene's WorldEnvironment",
-        "framing a node from a chosen side (front/back/left/right/top/iso or an explicit direction) for a lighting or mood check",
+        "framing a node from a chosen side (front/back/left/right/top/iso or an explicit direction) for a lighting or mood check; an explicit direction is checked for walls and back faces between the camera and the nodes",
         "creating a hero-view bookmark that fits a group of nodes, so later shot sheets and compares line up"
       ],
       "facets": {
@@ -5055,12 +5055,13 @@
       "id": "tool/frame-shot",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "f1d83342525f84f418dcfe243710393a79ec3e0c72b34d6cf45256dddb97ce6a",
+      "content_hash": "6fb6ae94259ee6f670379d99279491580b8675ecc1fe2832e003821a8ecbb5c1",
       "summary": "Smart framing: find, score and bookmark camera poses for a shot type (establishing, eye level, low-angle, detail, corridor) with in-engine visibility tests.",
       "use_when": [
         "\"find a good view of X\" / \"frame an establishing shot\" / \"show it from the player's eye\" / \"look down the alley\"",
         "choosing hero views to bookmark for an environment review loop",
-        "checking whether walls or terrain block the view of a subject, and which props frame it"
+        "checking whether walls or terrain block the view of a subject, and which props frame it (a camera behind or inside a one-sided wall is rejected; transparent foliage and glass are see-through cover)",
+        "three different establishing views at once (one per side while the score allows), scored on the key light's direction and the world edge below the horizon"
       ],
       "facets": {
         "lifecycle": [
@@ -7401,7 +7402,7 @@
       "id": "tool/screenshot",
       "kind": "tool",
       "version": "1.2.0",
-      "content_hash": "087bd7bcc83dfb7b7a4d806e341bfb72b13f12616ff20132a8d2597e662d43f3",
+      "content_hash": "1b3955c9e46ce009b49de86f00418b60d10f55fff0f9804cea7586bcdfc1b551",
       "summary": "Capture a frame from the editor viewport, an offscreen scene render (fixed or bookmarked pose, numbered labels), or the running game, as an actual image.",
       "use_when": [
         "visually verifying layout, scale, framing, or runtime state",
@@ -7635,11 +7636,11 @@
       "id": "tool/shot-sheet",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "18261dc18a79128a9a2f06779d3b17a1045656a154c66deadfddfd970e27edcc",
+      "content_hash": "45db27ac2ad936e72212fc8172bc6facaddc4e8ee7eee723b9decf88f3629dbf",
       "summary": "Render N bookmarks and/or poses into one labelled grid image with real lighting; compare each bookmark with its previous render (difference map).",
       "use_when": [
         "seeing every hero view of an environment at once after a change, in one image",
-        "\"did this change make it better?\" — compare_previous puts previous, now and a difference map side by side per bookmark",
+        "\"did this change make it better?\" — compare_previous puts previous, now and a difference map side by side per bookmark; plain sheets in between never reset that baseline",
         "rendering several poses in one debug view (lighting, unshaded, normals, overdraw, wireframe) for a quick sweep"
       ],
       "facets": {
@@ -8327,8 +8328,8 @@
       "id": "tool/zoom",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "26c3ab341f7c959ca0d80ede76939f2a102f6a912f5f318548de520d8b8d82de",
-      "summary": "High-resolution close-up of a frame region or of mark N, rendered as the exact sub-frustum at full resolution (real detail, not upscaled pixels).",
+      "content_hash": "89aa4303b4c395883ffbc34ca9aa9896fd7bbc75ed23f9d3993550c17ab725ea",
+      "summary": "High-resolution close-up of exactly a frame region or of mark N, rendered as the exact sub-frustum at full resolution (real detail, not upscaled pixels).",
       "use_when": [
         "checking seams, gaps, floating pieces, texture resolution or tiling up close",
         "looking closer at a numbered mark from a marks render (summer_frame_nodes marks:true, or summer_screenshot marks at the same size)",

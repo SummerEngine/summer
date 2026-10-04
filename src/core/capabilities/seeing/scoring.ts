@@ -5,13 +5,18 @@
  * the frame with a class and a distance per cell).
  *
  * Terms (each 0..1): visibility, fill, thirds, horizon, sky, void, depth,
- * foreground. Weights depend on the shot type. Hard rejections (blocked by
- * walls/terrain, camera in geometry, subject out of frame, too much clutter)
- * never rank, but are counted by reason.
+ * foreground, clear, balance, detail, contrast, entry, solid (no surfaces
+ * seen from behind), light (key-light direction) and edge (no world edge
+ * below the horizon). Weights depend on the shot type. Hard rejections
+ * (blocked by walls/terrain, camera behind or inside a surface, camera in
+ * geometry, subject out of frame, too much clutter) never rank, but are
+ * counted by reason.
  */
 import { SHOT_DEFAULTS, type Candidate, type ShotType } from "./candidates.js";
 import {
   aabbCenter,
+  clamp,
+  deg,
   distance,
   frameFill,
   horizonV,
@@ -19,12 +24,14 @@ import {
   project,
   rayDirection,
   screenBox,
+  normalize,
+  sub,
   type Aabb,
   type CameraPose,
   type Vec3,
 } from "./math.js";
 
-export const SCORE_TERMS = ["visibility", "fill", "thirds", "horizon", "sky", "void", "depth", "foreground", "clear", "balance", "detail", "contrast", "entry"] as const;
+export const SCORE_TERMS = ["visibility", "fill", "thirds", "horizon", "sky", "void", "depth", "foreground", "clear", "balance", "detail", "contrast", "entry", "solid", "light", "edge"] as const;
 export type ScoreTerm = (typeof SCORE_TERMS)[number];
 
 export interface ShotProfile {
@@ -43,7 +50,7 @@ export const SHOT_PROFILES: Record<ShotType, ShotProfile> = {
     sky: [0.12, 0.38],
     foregroundTarget: 0.08,
     foregroundMax: 0.3,
-    weights: { visibility: 3, fill: 2, thirds: 1, horizon: 1, sky: 1, void: 1.5, depth: 1.5, foreground: 0.5, clear: 1, balance: 0, detail: 1.5, contrast: 0.75, entry: 0 },
+    weights: { visibility: 3, fill: 2, thirds: 1, horizon: 1, sky: 1, void: 1.5, depth: 1.5, foreground: 0.5, clear: 1, balance: 0, detail: 1.5, contrast: 0.75, entry: 0, solid: 2, light: 1.25, edge: 2 },
   },
   eye_level: {
     fillTarget: SHOT_DEFAULTS.eye_level.fill,
@@ -51,7 +58,7 @@ export const SHOT_PROFILES: Record<ShotType, ShotProfile> = {
     sky: [0.08, 0.35],
     foregroundTarget: 0.1,
     foregroundMax: 0.35,
-    weights: { visibility: 2, fill: 1, thirds: 1, horizon: 1, sky: 1, void: 1.5, depth: 2, foreground: 0.5, clear: 1.5, balance: 0.5, detail: 1.5, contrast: 0.75, entry: 0 },
+    weights: { visibility: 2, fill: 1, thirds: 1, horizon: 1, sky: 1, void: 1.5, depth: 2, foreground: 0.5, clear: 1.5, balance: 0.5, detail: 1.5, contrast: 0.75, entry: 0, solid: 2, light: 0.5, edge: 1 },
   },
   low_angle: {
     fillTarget: SHOT_DEFAULTS.low_angle.fill,
@@ -59,7 +66,7 @@ export const SHOT_PROFILES: Record<ShotType, ShotProfile> = {
     sky: [0.2, 0.6],
     foregroundTarget: 0.08,
     foregroundMax: 0.3,
-    weights: { visibility: 3, fill: 2, thirds: 1, horizon: 0.5, sky: 1.5, void: 1, depth: 0.5, foreground: 0.5, clear: 1, balance: 0, detail: 1.5, contrast: 0.75, entry: 0 },
+    weights: { visibility: 3, fill: 2, thirds: 1, horizon: 0.5, sky: 1.5, void: 1, depth: 0.5, foreground: 0.5, clear: 1, balance: 0, detail: 1.5, contrast: 0.75, entry: 0, solid: 2, light: 0.75, edge: 1 },
   },
   detail: {
     fillTarget: SHOT_DEFAULTS.detail.fill,
@@ -67,7 +74,7 @@ export const SHOT_PROFILES: Record<ShotType, ShotProfile> = {
     sky: [0, 0.12],
     foregroundTarget: 0.05,
     foregroundMax: 0.25,
-    weights: { visibility: 3, fill: 2.5, thirds: 1, horizon: 0.5, sky: 0.5, void: 1, depth: 1, foreground: 0.3, clear: 1, balance: 0, detail: 1.5, contrast: 0.75, entry: 0 },
+    weights: { visibility: 3, fill: 2.5, thirds: 1, horizon: 0.5, sky: 0.5, void: 1, depth: 1, foreground: 0.3, clear: 1, balance: 0, detail: 1.5, contrast: 0.75, entry: 0, solid: 2, light: 0.75, edge: 1 },
   },
   corridor: {
     fillTarget: 0,
@@ -75,7 +82,7 @@ export const SHOT_PROFILES: Record<ShotType, ShotProfile> = {
     sky: [0.03, 0.3],
     foregroundTarget: 0.08,
     foregroundMax: 0.3,
-    weights: { visibility: 3, fill: 0, thirds: 0, horizon: 1, sky: 1, void: 1, depth: 3, foreground: 0.5, clear: 2, balance: 1.5, detail: 1.5, contrast: 0.75, entry: 1.5 },
+    weights: { visibility: 3, fill: 0, thirds: 0, horizon: 1, sky: 1, void: 1, depth: 3, foreground: 0.5, clear: 2, balance: 1.5, detail: 1.5, contrast: 0.75, entry: 1.5, solid: 3, light: 0, edge: 0.5 },
   },
 };
 
@@ -88,11 +95,20 @@ export interface Measurement {
   rejected?: string;
   near_lens_hit?: string;
   adjustments?: Array<Record<string, unknown>>;
-  /** One code per sample: V visible, F soft-occluded, H hard-blocked. */
+  /** One code per sample: V visible, T seen through transparent surfaces
+   *  (partial weight), F soft-occluded, H hard-blocked, B behind a surface
+   *  (the line crosses a hard or subject surface from its BACK side: culled,
+   *  so the image would look through it). */
   vis?: string;
   blockers_hard?: string[];
   blockers_soft?: string[];
-  /** Row-major ray grid codes: "." nothing (sky/void), S subject, H hard, F soft. */
+  /** Surfaces the sight lines crossed from behind ("B" samples). */
+  blockers_back?: string[];
+  /** Transparent surfaces the sight lines passed through ("T" samples). */
+  seen_through?: string[];
+  /** Row-major ray grid codes: "." nothing (sky/void), S subject, H hard,
+   *  F soft, T transparent (seen through), B a hard/subject surface met from
+   *  behind (not drawn). */
   grid?: string;
   /** Distance per grid cell, -1 for no hit. */
   dist?: number[];
@@ -111,7 +127,14 @@ export interface ScoringOptions {
   subject?: Aabb;
   maxHardFraction: number;
   maxSoftFraction: number;
+  /** Direction the key light TRAVELS (a DirectionalLight3D's -Z); absent =
+   *  no light term. */
+  keyLight?: Vec3;
 }
+
+/** A frame showing more than this share of surfaces from behind is a camera
+ *  behind (or inside) a wall: the image would look through it. */
+export const MAX_BACK_SHARE = 0.25;
 
 export interface FrameStats {
   sky: number;
@@ -123,6 +146,11 @@ export interface FrameStats {
   /** Fraction of non-subject, non-foreground cells hitting hard geometry no
    *  more than 40% beyond the subject: a flat wall right behind it. */
   wallBehind: number;
+  /** Cells whose first surface is a hard/subject surface seen from behind
+   *  (not drawn: the image looks through it). */
+  back: number;
+  /** Cells whose first surface is transparent (seen through). */
+  translucent: number;
   /** Fraction of the frame covered by hard geometry right at the lens
    *  (closer than max(2.5 m, 15% of the subject distance)). */
   nearHard: number;
@@ -149,7 +177,7 @@ export interface ScoredCandidate {
   fill?: number;
   inFrame?: number;
   adjustments?: Array<Record<string, unknown>>;
-  blockers?: { hard?: string[]; soft?: string[]; lens?: string };
+  blockers?: { hard?: string[]; soft?: string[]; back?: string[]; through?: string[]; lens?: string };
   note?: string;
 }
 
@@ -208,6 +236,8 @@ export function frameStats(m: Measurement, pose: CameraPose, opts: ScoringOption
   let soft = 0;
   let foreground = 0;
   let wallBehind = 0;
+  let back = 0;
+  let translucent = 0;
   let nearHard = 0;
   let nearLeft = 0;
   let nearRight = 0;
@@ -237,11 +267,19 @@ export function frameStats(m: Measurement, pose: CameraPose, opts: ScoringOption
       subject += 1;
       continue;
     }
+    if (code === "B") {
+      // Not drawn: the image shows whatever lies beyond it.
+      back += 1;
+      continue;
+    }
     const isFront = subjectDist !== undefined ? d >= 0 && d < subjectDist * 0.75 : d >= 0 && d < 6;
-    if (code === "F") {
-      soft += 1;
+    if (code === "F" || code === "T") {
+      // A transparent surface is see-through cover: half a soft cell.
+      const weight = code === "T" ? 0.5 : 1;
+      soft += weight;
+      if (code === "T") translucent += 1;
       if (isFront) {
-        foreground += 1;
+        foreground += weight;
         continue;
       }
     } else {
@@ -281,6 +319,7 @@ export function frameStats(m: Measurement, pose: CameraPose, opts: ScoringOption
       const isSky = code === "." && rayDirection(pose, opts.aspect, (col + 0.5) / opts.gridCols, (row + 0.5) / opts.gridRows)[1] >= 0;
       if (!isSky && m.tex[k] === "0") flatCount += 1;
       const lum = Number(m.lum[k]);
+      if (code === "B") continue;
       if (code !== "." && d >= 0 && d < nearRef) {
         nearSum += lum;
         nearN += 1;
@@ -305,6 +344,8 @@ export function frameStats(m: Measurement, pose: CameraPose, opts: ScoringOption
       soft: soft / total,
       foreground: foreground / total,
       wallBehind: wallBehind / total,
+      back: back / total,
+      translucent: translucent / total,
       nearHard: nearHard / total,
       nearLeft: nearLeft / total,
       nearRight: nearRight / total,
@@ -340,6 +381,95 @@ export function edgeSymmetry(m: Measurement, opts: ScoringOptions): number {
   return Math.min(l, r) / Math.max(l, r, 1e-6);
 }
 
+export interface ViewProblem {
+  /** behind_surface | hard_blocked | inside_volume | near_lens_blocked | below_ground */
+  reason: string;
+  /** One line for a caption. */
+  detail: string;
+  blockers?: string[];
+}
+
+/**
+ * Is this pose a view a player could have of the subject? The one rule both
+ * smart framing (rejection) and frame_nodes (a warning for an explicit pose)
+ * use. A sight line that crosses a hard or subject surface from BEHIND is as
+ * blocked as one that hits a wall's front: back faces are not drawn, so the
+ * image would look through the wall the camera stands behind. A frame that
+ * shows more than MAX_BACK_SHARE of surfaces from behind is the same failure
+ * seen through the lens; the engine's own lens checks (inside a closed shell,
+ * just behind a surface, touching geometry) come through as rejections.
+ */
+export function viewProblem(m: Measurement, maxHardFraction = 0.34): ViewProblem | null {
+  if (m.rejected) {
+    const lens = m.near_lens_hit ? ` (${m.near_lens_hit})` : "";
+    const detail =
+      m.rejected === "inside_volume"
+        ? "the camera is inside a closed shell of one-sided surfaces: most directions meet a surface from behind, so the image looks out through the walls"
+        : m.rejected === "behind_surface"
+          ? `the camera is right behind a one-sided surface${lens}: its back is not drawn, so the image looks through it`
+          : m.rejected === "near_lens_blocked"
+            ? `geometry touches the lens${lens}`
+            : m.rejected === "below_ground"
+              ? "the camera is below the ground"
+              : m.rejected;
+    return { reason: m.rejected, detail, ...(m.near_lens_hit ? { blockers: [m.near_lens_hit] } : {}) };
+  }
+  const vis = m.vis ?? "";
+  const n = vis.length;
+  const hard = [...vis].filter((c) => c === "H").length;
+  const back = [...vis].filter((c) => c === "B").length;
+  const grid = m.grid ?? "";
+  const backShare = grid.length ? [...grid].filter((c) => c === "B").length / grid.length : 0;
+  if (n && (vis[0] === "H" || vis[0] === "B" || (hard + back) / n > maxHardFraction)) {
+    if (vis[0] === "B" || back > hard) {
+      return {
+        reason: "behind_surface",
+        detail: `${back} of ${n} sight lines to the subject cross a surface from behind${m.blockers_back?.length ? ` (${m.blockers_back.slice(0, 2).join(", ")})` : ""}: the camera stands behind it and the image would look through it`,
+        ...(m.blockers_back?.length ? { blockers: m.blockers_back } : {}),
+      };
+    }
+    return {
+      reason: "hard_blocked",
+      detail: `${hard + back} of ${n} sight lines to the subject are blocked${m.blockers_hard?.length ? ` by ${m.blockers_hard.slice(0, 2).join(", ")}` : ""}`,
+      ...(m.blockers_hard?.length ? { blockers: m.blockers_hard } : {}),
+    };
+  }
+  if (backShare > MAX_BACK_SHARE) {
+    return {
+      reason: "behind_surface",
+      detail: `${Math.round(backShare * 100)}% of the frame is surfaces seen from behind (not drawn): the camera stands behind or inside them and the image looks through them`,
+    };
+  }
+  return null;
+}
+
+/**
+ * Key-light direction relative to the view (0..1). `light` is the direction
+ * the light travels. Best: side or front-side light (the faces the camera
+ * sees get form and shadow); worst: light from straight behind the camera
+ * (a flat-lit face); backlight is in between. A sun near the zenith lights
+ * every side alike, so the term flattens toward neutral.
+ */
+export function lightScore(pose: CameraPose, light: Vec3): number {
+  const view = normalize(sub(pose.look_at, pose.position));
+  const dir = normalize(light);
+  const horizontal = Math.hypot(dir[0], dir[2]);
+  const viewH = Math.hypot(view[0], view[2]);
+  if (horizontal < 1e-3 || viewH < 1e-3) return 0.7;
+  const cos = (dir[0] * view[0] + dir[2] * view[2]) / (horizontal * viewH);
+  // 0 = the light travels along the view (from behind the camera), 180 = into the lens.
+  const angle = deg(Math.acos(clamp(cos, -1, 1)));
+  let s: number;
+  if (angle < 35) s = 0.25 + 0.75 * (angle / 35);
+  else if (angle <= 115) s = 1;
+  else s = 1 - 0.5 * ((angle - 115) / 65);
+  return 0.7 + (s - 0.7) * Math.min(1, horizontal / 0.5);
+}
+
+/** Share of the frame below the horizon that shows sky or void: the world's
+ *  edge (the ground ends in view). The grid's "." cells with a downward ray. */
+export const WORLD_EDGE_LIMIT = 0.04;
+
 export function scoreMeasurement(m: Measurement, candidate: Candidate, opts: ScoringOptions): ScoredCandidate {
   const profile = SHOT_PROFILES[opts.shot];
   const pose: CameraPose = { position: m.position, look_at: m.look_at, fov: m.fov };
@@ -357,18 +487,22 @@ export function scoreMeasurement(m: Measurement, candidate: Candidate, opts: Sco
   }
   const vis = m.vis ?? "";
   const n = vis.length;
-  const hardCount = [...vis].filter((c) => c === "H").length;
+  const hardCount = [...vis].filter((c) => c === "H" || c === "B").length;
   const softCount = [...vis].filter((c) => c === "F").length;
+  const seeCount = [...vis].filter((c) => c === "T").length;
   const hardFraction = n ? hardCount / n : 0;
   const softFraction = n ? softCount / n : 0;
   const blockers = {
     ...(m.blockers_hard?.length ? { hard: m.blockers_hard } : {}),
     ...(m.blockers_soft?.length ? { soft: m.blockers_soft } : {}),
+    ...(m.blockers_back?.length ? { back: m.blockers_back } : {}),
+    ...(m.seen_through?.length ? { through: m.seen_through } : {}),
   };
   const withBlockers = Object.keys(blockers).length ? { blockers } : {};
   const { stats, depth } = frameStats(m, pose, opts);
   const terms: Partial<Record<ScoreTerm, number>> = {};
-  if (n) terms.visibility = (n - hardCount - softCount + 0.6 * softCount) / n;
+  // Soft cover counts 0.6 of a clear line, see-through (transparent) cover 0.8.
+  if (n) terms.visibility = (n - hardCount - softCount - seeCount + 0.6 * softCount + 0.8 * seeCount) / n;
   let fill: number | undefined;
   let inFrame: number | undefined;
   if (opts.subject && opts.shot !== "corridor") {
@@ -406,11 +540,17 @@ export function scoreMeasurement(m: Measurement, candidate: Candidate, opts: Sco
   // (featureless) frame areas, and values that separate near from far.
   if (stats.flat !== undefined) terms.detail = 1 - Math.min(1, stats.flat / 0.3);
   if (stats.nearLum !== undefined && stats.farLum !== undefined) terms.contrast = Math.min(1, Math.abs(stats.nearLum - stats.farLum) / 2);
+  // Surfaces seen from behind are holes in the image (the renderer culls
+  // them): a few are open boxes or see-through gaps, many mean the camera
+  // is behind a wall (rejected below).
+  terms.solid = 1 - Math.min(1, stats.back / MAX_BACK_SHARE);
+  if (opts.keyLight) terms.light = lightScore(pose, opts.keyLight);
+  // The world edge below the horizon: a much steeper penalty than void.
+  terms.edge = 1 - Math.min(1, stats.void / WORLD_EDGE_LIMIT);
 
   let rejected: string | undefined;
-  if (n && hardFraction > opts.maxHardFraction) rejected = "hard_blocked";
-  else if (n && opts.shot !== "corridor" && vis[0] === "H") rejected = "hard_blocked";
-  else if (n && opts.shot === "corridor" && vis[0] === "H") rejected = "hard_blocked";
+  const problem = viewProblem(m, opts.maxHardFraction);
+  if (problem) rejected = problem.reason;
   else if (inFrame !== undefined && inFrame < 0.5) rejected = "subject_out_of_frame";
   else if (n && softFraction > opts.maxSoftFraction) rejected = "soft_overload";
   else if (stats.foreground > 0.5) rejected = "soft_overload";
@@ -442,6 +582,8 @@ export function scoreMeasurement(m: Measurement, candidate: Candidate, opts: Sco
       soft: r2(stats.soft),
       foreground: r2(stats.foreground),
       wallBehind: r2(stats.wallBehind),
+      back: r2(stats.back),
+      translucent: r2(stats.translucent),
       nearHard: r2(stats.nearHard),
       nearLeft: r2(stats.nearLeft),
       nearRight: r2(stats.nearRight),
@@ -455,23 +597,74 @@ export function scoreMeasurement(m: Measurement, candidate: Candidate, opts: Sco
   };
 }
 
-/** Top `count` non-rejected candidates, skipping near-duplicates (camera
- *  within `minSeparation` m AND looking within 12 degrees of a better pick). */
-export function pickTop(scored: readonly ScoredCandidate[], count: number, minSeparation: number): ScoredCandidate[] {
+export interface PickDiversity {
+  /** Ring shots: the yaw of each pick is the camera's azimuth around this
+   *  point; without it, the yaw of the view direction. */
+  around?: Vec3;
+  /** Minimum yaw between any two picks, degrees (default 25). */
+  minYaw?: number;
+  /** Prefer picks from distinct sides (front +Z, right +X, back -Z, left -X)
+   *  while they score within `sideMargin` of the best (default 0.15). */
+  sides?: boolean;
+  sideMargin?: number;
+}
+
+/** Yaw (degrees, 0 = +Z, 90 = +X) of a pose: around `around`, else of its view. */
+export function poseYaw(pose: CameraPose, around?: Vec3): number {
+  const v: Vec3 = around ? [pose.position[0] - around[0], 0, pose.position[2] - around[2]] : directionOf(pose);
+  return ((deg(Math.atan2(v[0], v[2])) % 360) + 360) % 360;
+}
+
+function yawGap(a: number, b: number): number {
+  const d = Math.abs(a - b) % 360;
+  return d > 180 ? 360 - d : d;
+}
+
+/** Side quadrant of a yaw: 0 front (+Z), 1 right (+X), 2 back (-Z), 3 left (-X). */
+export function sideOf(yaw: number): number {
+  return Math.floor((((yaw + 45) % 360) + 360) % 360 / 90);
+}
+
+/**
+ * Top `count` non-rejected candidates in score order, skipping near-duplicates
+ * (camera within `minSeparation` m AND looking within 12 degrees of a better
+ * pick). With `diversity`, the picks also spread out: first one per side
+ * (within the score margin), then any pose at least `minYaw` from every pick,
+ * and only then the plain near-duplicate rule fills what is left — so the top
+ * 3 of an establishing shot are three different views, not one front view
+ * three times.
+ */
+export function pickTop(scored: readonly ScoredCandidate[], count: number, minSeparation: number, diversity?: PickDiversity): ScoredCandidate[] {
   const ranked = scored.filter((s) => !s.rejected).sort((a, b) => b.total - a.total);
   const picks: ScoredCandidate[] = [];
-  for (const s of ranked) {
-    const dup = picks.some((p) => {
+  const dup = (s: ScoredCandidate) =>
+    picks.some((p) => {
       const sep = distance(p.pose.position, s.pose.position);
       const fa = directionOf(p.pose);
       const fb = directionOf(s.pose);
       const cos = fa[0] * fb[0] + fa[1] * fb[1] + fa[2] * fb[2];
       return sep < minSeparation && cos > Math.cos((12 * Math.PI) / 180);
     });
-    if (!dup) picks.push(s);
-    if (picks.length >= count) break;
+  const take = (accept: (s: ScoredCandidate) => boolean, stopBelow?: number) => {
+    for (const s of ranked) {
+      if (picks.length >= count) return;
+      if (stopBelow !== undefined && s.total < stopBelow) return;
+      if (picks.includes(s) || dup(s) || !accept(s)) continue;
+      picks.push(s);
+    }
+  };
+  if (diversity && ranked.length) {
+    const minYaw = diversity.minYaw ?? 25;
+    const yawOf = (s: ScoredCandidate) => poseYaw(s.pose, diversity.around);
+    const spread = (s: ScoredCandidate) => picks.every((p) => yawGap(yawOf(p), yawOf(s)) >= minYaw);
+    if (diversity.sides) {
+      const floor = ranked[0]!.total - (diversity.sideMargin ?? 0.15);
+      take((s) => spread(s) && !picks.some((p) => sideOf(yawOf(p)) === sideOf(yawOf(s))), floor);
+    }
+    take(spread);
   }
-  return picks;
+  take(() => true);
+  return picks.sort((a, b) => b.total - a.total);
 }
 
 function directionOf(pose: CameraPose): Vec3 {

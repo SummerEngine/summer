@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -122,6 +122,60 @@ describe("summer_screenshot keeps one previous image per bookmark and can compar
     expect(result.content.filter((c) => c.type === "image")).toHaveLength(1);
     expect((client.configs[0]!.tiles as Array<{ kind: string }>).map((t) => t.kind)).toEqual(["prev", "shot", "diff"]);
     expect(result.content.at(-1)!.text).toContain("of pixels changed visibly");
+  });
+
+  it("a plain bookmark render keeps an existing compare baseline; update_previous:true replaces it", async () => {
+    const slot = join(project, ".summer", "shots", "hero.jpg");
+    mkdirSync(join(project, ".summer", "shots"), { recursive: true });
+    writeFileSync(slot, Buffer.from("baseline"));
+    vi.mocked(getClient).mockResolvedValue(screenshotClient() as never);
+    const kept = (await tool("summer_screenshot", registerVisualTools).handler({ target: "scene", framing: "bookmark", bookmark_name: "hero" })) as Result;
+    expect(readFileSync(slot).toString()).toBe("baseline");
+    expect(kept.content.at(-1)!.text).toContain("it was kept as the compare baseline");
+    vi.mocked(getClient).mockResolvedValue(screenshotClient() as never);
+    await tool("summer_screenshot", registerVisualTools).handler({ target: "scene", framing: "bookmark", bookmark_name: "hero", update_previous: true });
+    expect(readFileSync(slot)).toEqual(OK_JPEG);
+  });
+
+  it("marks:true tests each labelled node from the rendered camera and notes the hidden ones", async () => {
+    const engine = fakeEngine({
+      projectRoot: project,
+      bookmarks,
+      analyze: (config) => ({
+        ok: true,
+        subjects: [],
+        occlusion: { marks: [{ id: 1, path: "Alley1/backwall1/Model/wall", visible: 0, samples: 5, blocker: "House1/Back/s0_door_wall/Model/wall" }, { id: 2, path: "Ground/Floor", visible: 4, samples: 5 }] },
+        echo: config.occlusion,
+      }),
+    });
+    const client = Object.assign(engine, {
+      scenePreview: vi.fn().mockResolvedValue({
+        ok: true,
+        base64: OK_JPEG.toString("base64"),
+        mime: "image/jpeg",
+        width: 1024,
+        height: 576,
+        framing: "bookmark:hero",
+        metadata: {
+          marks: [
+            { id: 1, path: "Alley1/backwall1/Model/wall", class: "MeshInstance3D", screen_rect: { x: 436, y: 78, w: 229, h: 131 } },
+            { id: 2, path: "Ground/Floor", class: "MeshInstance3D", screen_rect: { x: 0, y: 386, w: 1024, h: 190 } },
+          ],
+          marks_candidates: 2,
+          camera_pose: { position: "Vector3(-23.719, 2.305, 1.604)", look_at: "Vector3(-23.38, 1.745, -14.726)", fov: 60 },
+        },
+      }),
+      getSceneState: vi.fn().mockResolvedValue({ provenance: { scenePath: "res://three_houses.tscn" } }),
+    });
+    vi.mocked(getClient).mockResolvedValue(client as never);
+    const result = (await tool("summer_screenshot", registerVisualTools).handler({ target: "scene", scenePath: "res://three_houses.tscn", framing: "bookmark", bookmark_name: "hero", marks: true })) as Result;
+    expect(result.isError).toBeFalsy();
+    const config = client.configs[0]!;
+    expect(config).toMatchObject({ mode: "analyze", tasks: ["occlusion"], occlusion: { position: [-23.719, 2.305, 1.604] } });
+    const text = result.content.at(-1)!.text!;
+    expect(text).toMatch(/1 -> Alley1\/backwall1\/Model\/wall .*\(hidden behind House1\/Back\/s0_door_wall\/Model\/wall\)/);
+    expect(text).not.toMatch(/2 -> Ground\/Floor .*hidden/);
+    expect(text).toContain("1 of 2 labelled node(s) are HIDDEN");
   });
 
   it("compare_previous without a bookmark framing is refused before anything is sent", async () => {

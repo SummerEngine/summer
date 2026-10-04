@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   applyLowAngleRule,
-  cropForAspect,
   directionFromAngles,
+  exactCrop,
   fitDistance,
   formatVector3,
   frameFill,
   horizonV,
+  letterbox,
   lookAtBasis,
   parseVector3,
   project,
@@ -85,11 +86,29 @@ describe("seeing math — engine conventions", () => {
     expect(applyLowAngleRule([0, 0.1, 0], toCam, 30, 60, 0.35, 100).impossible).toBe(true);
   });
 
-  it("cropForAspect pads, matches the output aspect and stays inside the frame", () => {
-    const crop = cropForAspect({ u0: 0.9, v0: 0.4, u1: 1, v1: 0.5 }, 16 / 9, 16 / 9, 0.15);
-    expect(crop[0]).toBeGreaterThanOrEqual(0);
-    expect(crop[2]).toBeLessThanOrEqual(1 + 1e-9);
-    close(((crop[2] - crop[0]) * 16) / 9 / (crop[3] - crop[1]), 16 / 9, 1e-9);
+  it("exactCrop honours the region (regression: a 0.3 x 0.6 region came back x1.3, grown to 16:9 and padded)", () => {
+    const exact = exactCrop({ u0: 0.5, v0: 0.15, u1: 0.8, v1: 0.75 });
+    expect(exact.crop).toEqual([0.5, 0.15, 0.8, 0.75]);
+    expect(exact.widenedBecause).toEqual([]);
+    // A pad is the only thing that widens it, and it is named; the frame edge clips it.
+    const padded = exactCrop({ u0: 0.9, v0: 0.4, u1: 1, v1: 0.5 }, 0.15);
+    close(padded.crop[0], 0.885, 1e-9);
+    expect(padded.crop[2]).toBe(1);
+    expect(padded.clipped).toBe(true);
+    expect(padded.widenedBecause[0]).toMatch(/pad 0\.15/);
+  });
+
+  it("letterbox keeps the region's aspect: the image takes it, bars only past the clamp", () => {
+    // 0.3 x 0.6 of a 16:9 frame is 0.889:1 in pixels.
+    const tall = letterbox((0.3 / 0.6) * (16 / 9), 1024);
+    expect(tall.letterboxed).toBe(false);
+    close(tall.rect[2] / tall.rect[3], 0.889, 0.01);
+    expect(Math.max(...tall.canvas)).toBe(1024);
+    // A thin strip keeps its aspect inside a clamped canvas with bars.
+    const strip = letterbox(10, 1024);
+    expect(strip.letterboxed).toBe(true);
+    close(strip.rect[2] / strip.rect[3], 10, 0.3);
+    expect(strip.rect[2]).toBeLessThanOrEqual(strip.canvas[0]);
   });
 
   it("horizon, thirds and rotation helpers", () => {

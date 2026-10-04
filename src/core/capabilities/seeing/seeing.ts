@@ -15,14 +15,18 @@
 import { analyzeFrameBase64 } from "../frame-quality.js";
 import { missingEngineOpResult, type CapabilityAdvertisingClient } from "../../capability-skew.js";
 import { ToolInputError } from "../../tool-errors.js";
-import { BOOKMARK_NAME_PATTERN, formatSceneMarks, readSceneMarks } from "../camera-view.js";
+import { BOOKMARK_NAME_PATTERN, formatSceneMarks, readSceneMarks, type SceneMark, type SceneMarksSummary } from "../camera-view.js";
 import { resolveCurrentScene } from "../project-context.js";
 import {
   aabbCenter,
   add,
+  clamp,
+  deg,
+  directionFromAngles,
   DIRECTION_PRESETS,
-  cropForAspect,
+  exactCrop,
   fitDistance,
+  letterbox,
   formatVector3,
   mergeAabbs,
   normalize,
@@ -39,12 +43,13 @@ import {
   corridorBox,
   generateCandidates,
   SHOT_DEFAULTS,
+  subjectSamples,
   type Candidate,
   type CorridorRun,
   type ShotType,
   type SpawnInfo,
 } from "./candidates.js";
-import { pickTop, rejectionCounts, scoreMeasurement, type Measurement, type ScoredCandidate } from "./scoring.js";
+import { pickTop, rejectionCounts, scoreMeasurement, viewProblem, type Measurement, type ScoredCandidate, type ViewProblem } from "./scoring.js";
 import { makeProbeDir, runProbe, type ProbeClient, type ProbeRun } from "./probe.js";
 import { SHOT_MAX_EDGE, ShotStore, ShotStoreError, type ShotWrite } from "./shot-store.js";
 import { readFile } from "node:fs/promises";
@@ -519,19 +524,41 @@ async function nativeRender(
   };
 }
 
+/**
+ * The compare baseline rule, ONE copy for every renderer of a bookmark: a
+ * bookmark's previous-image slot is replaced only by a compare_previous render
+ * (the comparison is done, this render is the next baseline), by an explicit
+ * update_previous:true, or by a call that (re)defines the bookmark's pose
+ * (summer_frame_nodes / summer_frame_shot saving it: the old image is of a
+ * different viewpoint). Any other render of the bookmark creates the slot only
+ * when it does not exist yet and otherwise leaves the baseline alone, so a
+ * plain sheet, debug view or screenshot never silently resets a comparison.
+ */
+export type SlotPolicy = "replace" | "create_if_missing";
+
+export function slotPolicy(options: { comparePrevious?: boolean; updatePrevious?: boolean; definesPose?: boolean }): SlotPolicy {
+  return options.comparePrevious || options.updatePrevious || options.definesPose ? "replace" : "create_if_missing";
+}
+
+const BASELINE_KEPT = (bookmark: string) =>
+  `NOTE: "${bookmark}" already has a previous image; it was kept as the compare baseline (pass update_previous:true, or compare_previous:true, to replace it).`;
+
 /** Keep the native render of a bookmark as its before/after slot when it is
- *  clean (no marks) and within the stored-shot edge. Returns caption notes. */
+ *  clean (no marks), within the stored-shot edge and allowed by the policy.
+ *  Returns caption notes. */
 export async function rememberBookmarkRender(
   projectRoot: string | undefined,
   bookmark: string,
   image: { base64: string; width?: number; height?: number },
-  marks: boolean
+  marks: boolean,
+  policy: SlotPolicy = "create_if_missing"
 ): Promise<string[]> {
   if (marks) return [`NOTE: this render carries numbered marks, so it was not kept as "${bookmark}"'s previous image.`];
   const edge = Math.max(image.width ?? 0, image.height ?? 0);
   if (edge > SHOT_MAX_EDGE) return [`NOTE: renders larger than ${SHOT_MAX_EDGE} px are not kept as "${bookmark}"'s previous image (size it at most ${SHOT_MAX_EDGE} px to keep one).`];
   try {
     const store = ShotStore.forProject(projectRoot);
+    if (policy === "create_if_missing" && (await store.readSlot(bookmark))) return [BASELINE_KEPT(bookmark)];
     const w = await store.writeSlot(bookmark, Buffer.from(image.base64, "base64"));
     return slotLines([w], []);
   } catch (err) {
@@ -598,18 +625,58 @@ export async function frameNodes(client: SeeingClient, args: FrameNodesArgs): Pr
   }
   const render = await nativeRender(client, { scenePath, framing, pose: bookmark ? undefined : pose, size, marks: args.marks, maxMarks: args.max_marks });
   if (!render.ok) return fail(render.failureReason ?? "preview_failed", render.error ?? "render failed");
-  if (bookmark) lines.push(...(await rememberBookmarkRender(client.getProjectRoot?.(), bookmark, render.image!, args.marks === true)));
+  if (bookmark) lines.push(...(await rememberBookmarkRender(client.getProjectRoot?.(), bookmark, render.image!, args.marks === true, slotPolicy({ definesPose: true }))));
   const marks = readSceneMarks(render.meta);
+
+  // One physics pass for both checks: an explicit `from` is measured exactly
+  // as given (plus the nearby alternatives), and marks get an occlusion test.
+  const options = args.from ? viewOptions(box, center, toCamera, fov, aspect, fill) : [];
+  const markList = marks?.marks.map((m) => ({ id: m.id, path: m.path })) ?? [];
+  let viewCheck: ViewCheck | undefined;
+  let occlusion = new Map<number, MarkVisibility>();
+  let occlusionNote = "";
+  if (options.length || markList.length) {
+    const samples = subjectSamples(box);
+    const check = await runProbe(client, {
+      scenePath,
+      size: [16, 16],
+      config: {
+        mode: "analyze",
+        subjects: nodes,
+        tasks: [...(options.length ? ["measure"] : []), ...(markList.length ? ["occlusion"] : [])],
+        ...(options.length
+          ? {
+              candidates: options.map((o) => ({ position: [...o.pose.position], look_at: [...o.pose.look_at], fov: o.pose.fov, samples: samples.map((p) => [...p]), min_clearance: 0, low_angle_rule: false, adjust: false })),
+              measure: { aspect, grid_cols: FRAME_CHECK_COLS, grid_rows: Math.max(4, Math.round(FRAME_CHECK_COLS / aspect)), near_lens_radius: 0.3, sweep_radius: 0.15 },
+            }
+          : {}),
+        ...(markList.length ? { occlusion: { position: [...pose.position], marks: markList } } : {}),
+      },
+    });
+    await check.dispose();
+    if (!check.ok) {
+      const why = check.error ?? check.failureReason ?? "the visibility pass failed";
+      if (options.length) lines.push(`NOTE: the view check for this explicit from could not run (${why}); the pose was NOT checked for walls between the camera and the nodes.`);
+      if (markList.length) occlusionNote = `NOTE: the mark occlusion check could not run (${why}); a label may sit over a node hidden behind something else.`;
+    } else {
+      if (options.length) viewCheck = judgeViewOptions(options, (check.result!.measurements ?? []) as Measurement[]);
+      occlusion = readOcclusion(check.result);
+    }
+  }
   const env = String(render.meta.environment_used ?? "unknown");
   const header =
     `Framed ${nodes.join(", ")} in ${scenePath} with the REAL environment (${env}); ${render.image!.width ?? size[0]}x${render.image!.height ?? size[1]}. ` +
     `Pose: ${poseLiteral(pose)} (from ${args.from ? formatVector3(fromDir) : (args.direction ?? "iso")}, fill ${fill}).`;
+  const marksBlock = marks ? formatMarksWithOcclusion(marks, occlusion) : [];
+  if (occlusionNote) marksBlock.push(occlusionNote);
   const caption = capCaption([
+    ...(viewCheck?.problem ? viewCheckLines(viewCheck) : []),
     header,
+    viewCheck && !viewCheck.problem ? `view check: clear — ${viewCheck.requestedSummary}.` : "",
     `bounds: ${aabbLine(box)}`,
     empty.length ? `WARNING: no visible geometry under ${empty.join(", ")} — framed a 1 m box at its origin.` : "",
     ...lines,
-    ...(marks ? formatSceneMarks(marks) : []),
+    ...marksBlock,
     flatWarning(render.image!) ?? "",
     "Describe only what is visibly in the image.",
   ]);
@@ -617,8 +684,224 @@ export async function frameNodes(client: SeeingClient, args: FrameNodesArgs): Pr
     ok: true,
     image: render.image!,
     caption,
-    receipt: { scenePath, nodes, pose: poseRecord(pose), bounds: { center: formatVector3(center), size: formatVector3(box.size) }, environment_used: env, ...(bookmark ? { bookmark } : {}), ...(marks ? { marks: marks.marks } : {}) },
+    receipt: {
+      scenePath,
+      nodes,
+      pose: poseRecord(pose),
+      bounds: { center: formatVector3(center), size: formatVector3(box.size) },
+      environment_used: env,
+      ...(bookmark ? { bookmark } : {}),
+      ...(marks ? { marks: marks.marks.map((m) => ({ ...m, ...(occlusion.get(m.id) ? { visibility: occlusion.get(m.id) } : {}) })) } : {}),
+      ...(viewCheck ? { view_check: viewCheckReceipt(viewCheck) } : {}),
+    },
   };
+}
+
+// ---------------------------------------------------------------------------
+// frameNodes: the view check for an explicit `from`
+// ---------------------------------------------------------------------------
+
+// A coarser grid than smart framing's: enough to see a frame that is mostly back faces.
+const FRAME_CHECK_COLS = 16;
+
+export interface ViewOption {
+  /** How the option differs from the request ("as requested", "fov 65", "turned 30 deg left"...). */
+  tag: string;
+  from: Vec3;
+  fov: number;
+  /** Closeness to the request: degrees turned + half the fov added. */
+  cost: number;
+  pose: CameraPose;
+}
+
+/**
+ * The requested view first, then the nearby alternatives a caller can pass
+ * straight back to summer_frame_nodes (`from` + `fov`): the same direction
+ * with a wider lens (the camera fits closer, in front of what it stood
+ * behind), the direction turned around the nodes, and raised or lowered.
+ */
+export function viewOptions(box: Aabb, center: Vec3, toCamera: Vec3, fov: number, aspect: number, fill: number): ViewOption[] {
+  const base = normalize(toCamera);
+  const azimuth = deg(Math.atan2(base[0], base[2]));
+  const elevation = deg(Math.asin(clamp(base[1], -1, 1)));
+  const raw: Array<{ tag: string; dir: Vec3; fov: number; cost: number }> = [{ tag: "as requested", dir: base, fov, cost: 0 }];
+  for (const extra of [15, 30, 45]) {
+    const f = Math.min(100, fov + extra);
+    if (f > fov + 1) raw.push({ tag: `same direction, fov ${Math.round(f)}`, dir: base, fov: f, cost: (f - fov) * 0.5 });
+  }
+  for (const turn of [15, 30, 45, 60, 90, 120, 150, 180]) {
+    for (const sign of turn === 180 ? [1] : [1, -1]) {
+      const d = directionFromAngles(azimuth + sign * turn, elevation);
+      raw.push({ tag: turn === 180 ? "from the opposite side" : `turned ${turn} deg ${sign > 0 ? "counter-clockwise" : "clockwise"} (seen from above)`, dir: d, fov, cost: turn });
+    }
+  }
+  for (const lift of [15, 30, -15, -30]) {
+    const e = clamp(elevation + lift, -60, 85);
+    if (Math.abs(e - elevation) < 1) continue;
+    raw.push({ tag: `${lift > 0 ? "raised" : "lowered"} ${Math.abs(Math.round(e - elevation))} deg`, dir: directionFromAngles(azimuth, e), fov, cost: Math.abs(e - elevation) });
+  }
+  const out: ViewOption[] = [];
+  for (const r of raw) {
+    if (out.some((o) => Math.abs(o.fov - r.fov) < 0.01 && Math.hypot(o.from[0] - r.dir[0], o.from[1] - r.dir[1], o.from[2] - r.dir[2]) < 1e-3)) continue;
+    const d = fitDistance(box, center, r.dir, r.fov, aspect, fill);
+    out.push({ tag: r.tag, from: roundVec(r.dir, 4), fov: Math.round(r.fov * 100) / 100, cost: r.cost, pose: { position: roundVec(add(center, scale(r.dir, d))), look_at: roundVec(center), fov: Math.round(r.fov * 100) / 100 } });
+  }
+  return out;
+}
+
+export interface ViewCheck {
+  problem: ViewProblem | null;
+  requestedSummary: string;
+  requestedFov: number;
+  alternative?: ViewOption;
+  checked: number;
+}
+
+function sightSummary(m: Measurement | undefined): string {
+  const vis = m?.vis ?? "";
+  if (!vis.length) return "no sight lines measured";
+  const count = (c: string) => [...vis].filter((x) => x === c).length;
+  const parts = [`${count("V") + count("T")} of ${vis.length} sight lines to the nodes clear`];
+  if (count("T")) parts.push(`${count("T")} through transparent surfaces`);
+  if (count("F")) parts.push(`${count("F")} past soft cover`);
+  return parts.join(", ");
+}
+
+export function judgeViewOptions(options: ViewOption[], measurements: Measurement[]): ViewCheck {
+  const byIndex = new Map(measurements.map((m) => [m.i, m]));
+  const requested = byIndex.get(0);
+  const problem = requested ? viewProblem(requested) : { reason: "not_measured", detail: "the engine returned no measurement for the requested pose" };
+  let alternative: ViewOption | undefined;
+  if (problem) {
+    const valid = options
+      .map((o, i) => ({ o, m: byIndex.get(i) }))
+      .filter((x, i) => i > 0 && x.m && !viewProblem(x.m))
+      .sort((a, b) => a.o.cost - b.o.cost);
+    alternative = valid[0]?.o;
+  }
+  return { problem, requestedSummary: sightSummary(requested), requestedFov: options[0]?.fov ?? 0, checked: measurements.length, ...(alternative ? { alternative } : {}) };
+}
+
+function viewCheckLines(check: ViewCheck): string[] {
+  const p = check.problem!;
+  const lines = [
+    `WARNING: this explicit from gives a view no player could have (${p.reason}): ${p.detail}.${p.reason === "behind_surface" || p.reason === "inside_volume" ? " The renderer does not draw the back of a one-sided surface, so this image looks THROUGH it — do not judge the scene from it." : ""}`,
+  ];
+  const a = check.alternative;
+  lines.push(
+    a
+      ? `nearest valid pose (${a.tag}): summer_frame_nodes from:"${formatVector3(a.from)}"${a.fov !== check.requestedFov ? ` fov:${a.fov}` : ""} -> ${poseLiteral(a.pose)}.`
+      : `no valid pose found among ${check.checked - 1} nearby alternatives (wider lens, turned around the nodes, raised/lowered): try summer_frame_shot shot:"detail" for a measured view.`
+  );
+  return lines;
+}
+
+function viewCheckReceipt(check: ViewCheck): Record<string, unknown> {
+  return {
+    ok: !check.problem,
+    ...(check.problem ? { reason: check.problem.reason, detail: check.problem.detail, ...(check.problem.blockers ? { blockers: check.problem.blockers } : {}) } : {}),
+    sight_lines: check.requestedSummary,
+    ...(check.alternative ? { nearest_valid: { tag: check.alternative.tag, from: formatVector3(check.alternative.from), fov: check.alternative.fov, ...poseRecord(check.alternative.pose) } } : {}),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Mark occlusion (frame_nodes marks, summer_zoom mark, summer_screenshot marks)
+// ---------------------------------------------------------------------------
+
+export interface MarkVisibility {
+  id: number;
+  path: string;
+  /** Points of the node's 5 (centre + 4 across the face it shows) the camera sees. */
+  visible?: number;
+  samples?: number;
+  /** First opaque surface in front of a hidden point. */
+  blocker?: string;
+  /** Points met only on the node's own back faces (not drawn). */
+  own_back?: number;
+  missing?: boolean;
+}
+
+export function readOcclusion(result: Record<string, unknown> | null | undefined): Map<number, MarkVisibility> {
+  const out = new Map<number, MarkVisibility>();
+  const raw = (result?.occlusion as { marks?: unknown } | undefined)?.marks;
+  if (!Array.isArray(raw)) return out;
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object") continue;
+    const e = entry as Record<string, unknown>;
+    if (typeof e.id !== "number") continue;
+    out.set(e.id, {
+      id: e.id,
+      path: String(e.path ?? ""),
+      ...(typeof e.visible === "number" ? { visible: e.visible } : {}),
+      ...(typeof e.samples === "number" ? { samples: e.samples } : {}),
+      ...(typeof e.blocker === "string" && e.blocker ? { blocker: e.blocker } : {}),
+      ...(typeof e.own_back === "number" && e.own_back ? { own_back: e.own_back } : {}),
+      ...(e.missing === true ? { missing: true } : {}),
+    });
+  }
+  return out;
+}
+
+/** "" when the node is mostly visible; else a short phrase for its label. */
+export function markOcclusionNote(v: MarkVisibility): string {
+  if (v.missing) return "not found in the saved scene";
+  const samples = v.samples ?? 5;
+  const visible = v.visible ?? samples;
+  if (visible === 0) {
+    if (v.blocker) return `hidden behind ${v.blocker}`;
+    if (v.own_back) return "hidden: only its back faces face the camera, and they are not drawn";
+    return "hidden";
+  }
+  if (visible * 2 < samples) return `partly hidden: ${visible} of ${samples} points visible`;
+  return "";
+}
+
+export function isHiddenMark(v: MarkVisibility | undefined): boolean {
+  return !!v && (v.missing === true || (v.visible ?? 1) === 0);
+}
+
+/** formatSceneMarks plus a "(hidden ...)" note per hidden label and one line
+ *  saying what the occlusion test found. */
+export function formatMarksWithOcclusion(summary: SceneMarksSummary, occlusion: Map<number, MarkVisibility>): string[] {
+  const notes = new Map<number, string>();
+  for (const [id, v] of occlusion) {
+    const note = markOcclusionNote(v);
+    if (note) notes.set(id, note);
+  }
+  const lines = formatSceneMarks(summary, notes);
+  if (occlusion.size) {
+    const hidden = summary.marks.filter((m) => isHiddenMark(occlusion.get(m.id))).length;
+    lines.push(
+      hidden
+        ? `occlusion: ${hidden} of ${summary.marks.length} labelled node(s) are HIDDEN from this camera (5 points each: centre + 4 across the box face it shows; another opaque surface is in front, or only undrawn back faces face the camera). Their labels sit over whatever is in front — do not attribute what you see there to them.`
+        : `occlusion: every labelled node is at least partly visible from this camera (5 points each: centre + 4 across the box face it shows).`
+    );
+  }
+  return lines;
+}
+
+/**
+ * The occlusion test on its own (summer_screenshot marks): one analyze pass.
+ * Never throws; a failure becomes a caption note, the screenshot stands.
+ */
+export async function checkMarkOcclusion(
+  client: SeeingClient,
+  scenePath: string | undefined,
+  position: Vec3,
+  marks: SceneMark[]
+): Promise<{ occlusion: Map<number, MarkVisibility>; note?: string }> {
+  const list = marks.map((m) => ({ id: m.id, path: m.path }));
+  if (!list.length) return { occlusion: new Map() };
+  try {
+    const scene = await resolveScene(client, scenePath);
+    const run = await runProbe(client, { scenePath: scene, size: [16, 16], config: { mode: "analyze", subjects: [], tasks: ["occlusion"], occlusion: { position: [...position], marks: list } } });
+    await run.dispose();
+    if (!run.ok) return { occlusion: new Map(), note: `NOTE: the mark occlusion check could not run (${run.error ?? run.failureReason ?? "unknown"}); a label may sit over a node hidden behind something else.` };
+    return { occlusion: readOcclusion(run.result) };
+  } catch (err) {
+    return { occlusion: new Map(), note: `NOTE: the mark occlusion check could not run (${err instanceof Error ? err.message : String(err)}); a label may sit over a node hidden behind something else.` };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -670,6 +953,9 @@ export interface ShotSheetArgs {
   shots: ShotSheetShot[];
   view?: ViewMode;
   compare_previous?: boolean;
+  /** Replace each bookmark's previous image with this render even without
+   *  compare_previous (default: only a missing slot is created). */
+  update_previous?: boolean;
   max_size?: number;
   aspect?: number;
   save_to?: string;
@@ -718,17 +1004,26 @@ export async function shotSheet(client: SeeingClient, args: ShotSheetArgs): Prom
     }
   }
   const comparing = args.compare_previous === true;
+  const policy = slotPolicy({ comparePrevious: comparing, updatePrevious: args.update_previous === true });
+  // Bookmarks whose baseline this render must NOT replace (they have one and
+  // neither compare_previous nor update_previous asked for a new one).
+  const keepBaseline = new Set<string>();
+  if (policy === "create_if_missing" && !(store instanceof ShotStoreError)) {
+    for (const p of poses) if (p.bookmark && !keepBaseline.has(p.bookmark) && (await store.readSlot(p.bookmark))) keepBaseline.add(p.bookmark);
+  }
   const layout = layoutGrid(cells.length, aspect, edge, comparing ? 3 : undefined);
   const run0Dir = await makeProbeDir();
   const tiles: TileSpec[] = [];
   const slots: SlotPlan[] = [];
   const nowTileOf = new Map<number, number>();
+  const slotted = new Set<string>();
   cells.forEach((cell, index) => {
     const rect = layout.rects[index]!;
     const pose = poses[cell.shot]!;
     if (cell.kind === "shot") {
       const spec: TileSpec = { kind: "shot", rect, label: cell.label, view, pose: kernelPose(pose.pose) };
-      if (pose.bookmark && view === "beauty" && !(store instanceof ShotStoreError)) {
+      if (pose.bookmark && view === "beauty" && !(store instanceof ShotStoreError) && !keepBaseline.has(pose.bookmark) && !slotted.has(pose.bookmark)) {
+        slotted.add(pose.bookmark);
         spec.render_size = slotRenderSize(aspect, layout.tile);
         spec.capture_path = join(run0Dir, `slot-${index}.jpg`).replace(/\\/g, "/");
         spec.capture_max_edge = SHOT_MAX_EDGE;
@@ -764,6 +1059,7 @@ export async function shotSheet(client: SeeingClient, args: ShotSheetArgs): Prom
       }),
       ...compareNotes.map((n) => `NOTE: ${n}`),
       ...slotLines(written, notes, saved, note),
+      ...(keepBaseline.size ? [`NOTE: kept the existing previous image (compare baseline) of ${[...keepBaseline].sort().join(", ")}; pass update_previous:true or compare_previous:true to replace it.`] : []),
       flatWarning(image) ?? "",
       "Describe only what is visibly in the image.",
     ];
@@ -794,6 +1090,9 @@ export async function shotSheet(client: SeeingClient, args: ShotSheetArgs): Prom
 export interface DebugViewsArgs extends PoseArgs {
   scenePath?: string;
   views?: ViewMode[];
+  /** Replace the bookmark's previous image with this beauty tile (default:
+   *  only a missing slot is created). */
+  update_previous?: boolean;
   max_size?: number;
   aspect?: number;
   save_to?: string;
@@ -821,12 +1120,14 @@ export async function debugViews(client: SeeingClient, args: DebugViewsArgs): Pr
   if (!Array.isArray(poses)) return poses;
   const pose = poses[0]!;
   const store = shotStore(client);
+  const keepBaseline =
+    !!pose.bookmark && slotPolicy({ updatePrevious: args.update_previous === true }) === "create_if_missing" && !(store instanceof ShotStoreError) && !!(await store.readSlot(pose.bookmark));
   const layout = layoutGrid(views.length, aspect, edge);
   const dir = await makeProbeDir();
   const slots: SlotPlan[] = [];
   const tiles: TileSpec[] = views.map((view, i) => {
     const spec: TileSpec = { kind: "shot", rect: layout.rects[i]!, label: `${i + 1} ${view}`, view, pose: kernelPose(pose.pose) };
-    if (view === "beauty" && pose.bookmark && !(store instanceof ShotStoreError)) {
+    if (view === "beauty" && pose.bookmark && !(store instanceof ShotStoreError) && !keepBaseline && !slots.length) {
       spec.render_size = slotRenderSize(aspect, layout.tile);
       spec.capture_path = join(dir, `slot-${i}.jpg`).replace(/\\/g, "/");
       spec.capture_max_edge = SHOT_MAX_EDGE;
@@ -846,6 +1147,7 @@ export async function debugViews(client: SeeingClient, args: DebugViewsArgs): Pr
       ...views.map((v, i) => `  ${i + 1} ${v}: ${VIEW_NOTES[v]}`),
       `methods: ${tileMethods(run).join(", ")}`,
       ...slotLines(written, notes, saved, note),
+      ...(keepBaseline && pose.bookmark ? [BASELINE_KEPT(pose.bookmark)] : []),
       flatWarning(image) ?? "",
       "Describe only what is visibly in the image.",
     ];
@@ -884,7 +1186,8 @@ export async function zoom(client: SeeingClient, args: ZoomArgs): Promise<Seeing
   const reference = (args.reference_size ?? [1024, 576]) as [number, number];
   if (reference.length !== 2 || !reference.every((n) => Number.isInteger(n) && n >= 16 && n <= MAX_IMAGE_EDGE)) throw new ToolInputError("reference_size must be [width, height] in pixels (16..4096). Nothing was sent.");
   const refAspect = reference[0] / reference[1];
-  const pad = args.pad ?? 0.15;
+  // A region is honoured as given; a mark's box is tight, so it gets a margin.
+  const pad = args.pad ?? (args.mark !== undefined ? 0.15 : 0);
   if (!(pad >= 0 && pad <= 1)) throw new ToolInputError("pad must be 0..1 (fraction of the region added on each side). Nothing was sent.");
   const edge = validateEdge(args.max_size, DEFAULT_SINGLE_EDGE);
   const saveTo = checkSaveTo(args.save_to, edge);
@@ -904,6 +1207,7 @@ export async function zoom(client: SeeingClient, args: ZoomArgs): Promise<Seeing
   const pose = poses[0]!;
   let rect: { u0: number; v0: number; u1: number; v1: number };
   let markInfo = "";
+  let markPath = "";
   if (args.mark !== undefined) {
     const marked = await nativeRender(client, { scenePath, framing: "free", pose: pose.pose, size: reference, marks: true, maxMarks: 128 });
     if (!marked.ok) return fail(marked.failureReason ?? "preview_failed", marked.error ?? "marks render failed");
@@ -916,28 +1220,54 @@ export async function zoom(client: SeeingClient, args: ZoomArgs): Promise<Seeing
     const r = hit.screen_rect;
     rect = { u0: r.x / reference[0], v0: r.y / reference[1], u1: (r.x + r.w) / reference[0], v1: (r.y + r.h) / reference[1] };
     markInfo = `mark ${hit.id} -> ${hit.path} (${hit.class})`;
+    markPath = hit.path;
   } else {
     const [x, y, w, h] = args.region as [number, number, number, number];
     rect = { u0: x, v0: y, u1: x + w, v1: y + h };
   }
-  const crop = cropForAspect(rect, refAspect, refAspect, pad);
-  const zoomFactor = 1 / (crop[2] - crop[0]);
-  const size = sizeFor(edge, refAspect);
+  const { crop, widenedBecause, clipped } = exactCrop(rect, pad);
+  const cw = crop[2] - crop[0];
+  const ch = crop[3] - crop[1];
+  // The window's own pixel aspect: the render covers exactly this window.
+  const regionAspect = (cw / ch) * refAspect;
+  const fit = letterbox(regionAspect, edge);
+  const zoomX = 1 / cw;
+  const zoomY = 1 / ch;
+  const zoomText = Math.abs(zoomX - zoomY) / Math.max(zoomX, zoomY) < 0.05 ? `x${zoomX.toFixed(1)}` : `x${zoomX.toFixed(1)} across, x${zoomY.toFixed(1)} down`;
   const view = args.view ?? "beauty";
+  const markEntry = args.mark !== undefined && markPath ? [{ id: args.mark, path: markPath }] : [];
   const tiles: TileSpec[] = [
-    { kind: "shot", rect: [0, 0, size[0], size[1]], view, pose: kernelPose(pose.pose, { crop, ref_aspect: refAspect }), label: `zoom x${zoomFactor.toFixed(1)}${markInfo ? ` · mark ${args.mark}` : ""}` },
+    {
+      kind: "shot",
+      rect: fit.rect,
+      render_size: [fit.rect[2], fit.rect[3]],
+      view,
+      pose: kernelPose(pose.pose, { crop, ref_aspect: refAspect }),
+      label: `zoom ${zoomText}${markInfo ? ` · mark ${args.mark}` : ""}`,
+    },
   ];
-  const run = await renderTiles(client, scenePath, size, tiles);
+  const run = await runProbe(client, {
+    scenePath,
+    size: fit.canvas,
+    config: { mode: "render", canvas: fit.canvas, tiles, ...(markEntry.length ? { occlusion: { position: [...pose.pose.position], marks: markEntry } } : {}) },
+  });
   try {
     if (!run.ok) return probeFailure(run);
     const image = imageFrom(run);
     const store = saveTo ? shotStore(client) : null;
     const { saved, note } = store ? await saveCopy(store, saveTo, image) : {};
     const r3 = (n: number) => Math.round(n * 1000) / 1000;
+    const occlusion = readOcclusion(run.result);
+    const hidden = markEntry.length ? occlusion.get(args.mark!) : undefined;
+    const hiddenNote = hidden ? markOcclusionNote(hidden) : "";
+    const requested = `u ${r3(rect.u0)}-${r3(rect.u1)}, v ${r3(rect.v0)}-${r3(rect.v1)}`;
+    const rendered = `u ${r3(crop[0])}-${r3(crop[2])}, v ${r3(crop[1])}-${r3(crop[3])}`;
     const lines = [
-      `Zoom x${zoomFactor.toFixed(1)} of ${scenePath} (${view}): an exact sub-frustum rendered at ${size[0]}x${size[1]} — real detail, not upscaled pixels.`,
+      `Zoom ${zoomText} of ${scenePath} (${view}): exactly the region ${rendered} of the ${reference[0]}x${reference[1]} frame, rendered as an exact sub-frustum at ${fit.rect[2]}x${fit.rect[3]}${fit.letterboxed ? ` inside a ${fit.canvas[0]}x${fit.canvas[1]} image (dark bars: the region's aspect is kept, never stretched or widened)` : ""} — real detail, not upscaled pixels.`,
+      widenedBecause.length ? `widened_because: ${widenedBecause.join("; ")} (asked ${requested}${clipped ? "; clipped at the frame edge" : ""}); pass pad:0 for the exact region.` : `region as asked (${requested})${markInfo ? ` from ${markInfo}` : ""}.`,
+      markInfo && widenedBecause.length ? `mark: ${markInfo}` : "",
+      hiddenNote && isHiddenMark(hidden) ? `WARNING: mark ${args.mark}'s node is ${hiddenNote} at this pose — the zoom shows what is in front of it, not the node.` : hiddenNote ? `NOTE: mark ${args.mark}'s node is ${hiddenNote}.` : "",
       `from ${pose.bookmark ? `bookmark "${pose.bookmark}"` : "pose"}: ${poseLiteral(pose.pose)}`,
-      `region of the ${reference[0]}x${reference[1]} frame: u ${r3(crop[0])}-${r3(crop[2])}, v ${r3(crop[1])}-${r3(crop[3])}${markInfo ? ` (${markInfo}, padded ${pad})` : ""}`,
       ...slotLines([], [], saved, note),
       flatWarning(image) ?? "",
       "Describe only what is visibly in the image.",
@@ -946,7 +1276,22 @@ export async function zoom(client: SeeingClient, args: ZoomArgs): Promise<Seeing
       ok: true,
       image,
       caption: capCaption(lines),
-      receipt: { scenePath, view, pose: poseRecord(pose.pose), crop: crop.map(r3), zoom: Math.round(zoomFactor * 100) / 100, ...(markInfo ? { mark: markInfo } : {}), ...(saved ? { saved: saved.resPath } : {}) },
+      receipt: {
+        scenePath,
+        view,
+        pose: poseRecord(pose.pose),
+        region: [rect.u0, rect.v0, rect.u1, rect.v1].map(r3),
+        crop: crop.map(r3),
+        zoom: Math.round(Math.min(zoomX, zoomY) * 100) / 100,
+        zoom_xy: [Math.round(zoomX * 100) / 100, Math.round(zoomY * 100) / 100],
+        widened_because: widenedBecause,
+        image_size: fit.canvas,
+        region_px: [fit.rect[2], fit.rect[3]],
+        ...(fit.letterboxed ? { letterboxed: true } : {}),
+        ...(markInfo ? { mark: markInfo } : {}),
+        ...(hidden ? { mark_visibility: hidden } : {}),
+        ...(saved ? { saved: saved.resPath } : {}),
+      },
     };
   } finally {
     await run.dispose();
@@ -974,6 +1319,14 @@ export interface FrameShotArgs {
 }
 
 const GRID_COLS = 24;
+
+function readKeyLight(result: Record<string, unknown>): { path: string; direction: Vec3 } | undefined {
+  const raw = result.key_light as { path?: unknown; direction?: unknown } | undefined;
+  if (!raw || !Array.isArray(raw.direction) || raw.direction.length < 3) return undefined;
+  const d = raw.direction.map(Number);
+  if (!d.every(Number.isFinite) || Math.hypot(d[0]!, d[1]!, d[2]!) < 1e-6) return undefined;
+  return { path: String(raw.path ?? "?"), direction: [d[0]!, d[1]!, d[2]!] };
+}
 
 function defaultBookmarkName(shot: ShotType, subject: string[] | undefined, spawn: string | undefined): string {
   const leaf = (subject?.[0] ?? spawn ?? "scene").split("/").pop() ?? "scene";
@@ -1031,6 +1384,7 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
   const bounds = readSubjects(pass1.result!);
   const subjectBox = bounds.length ? mergeAabbs(bounds.map((b) => b.aabb)) : undefined;
   const spawnInfo = pass1.result!.spawn as SpawnInfo | undefined;
+  const keyLight = readKeyLight(pass1.result!);
   let corridorAxes: ReturnType<typeof chooseCorridorAxis> = [];
   if (shot === "corridor") {
     const scan = pass1.result!.corridor_scan as { runs?: CorridorRun[] } | undefined;
@@ -1080,10 +1434,15 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
       ...(scoringSubject ? { subject: scoringSubject } : {}),
       maxHardFraction: 0.34,
       maxSoftFraction: maxSoft,
+      ...(keyLight ? { keyLight: keyLight.direction } : {}),
     })
   );
   const separation = subjectBox ? Math.max(1, Math.hypot(...subjectBox.size) * 0.12) : 1;
-  const top = pickTop(scored, 3, separation);
+  // Three different views, not one view three times: ring shots spread
+  // around the subject (one per side while the score allows, then >= 25 deg
+  // apart); eye-level looks spread in yaw; corridors keep their two ends.
+  const ring = shot === "establishing" || shot === "low_angle" || shot === "detail";
+  const top = pickTop(scored, 3, separation, ring && subjectBox ? { around: aabbCenter(subjectBox), minYaw: 25, sides: true } : shot === "eye_level" ? { minYaw: 25 } : undefined);
   const rejected = rejectionCounts(scored);
   const occSummary = (pass2.result!.occluders ?? {}) as Record<string, unknown>;
   if (!top.length) {
@@ -1143,15 +1502,21 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
     subjectBox ? `subject bounds: ${aabbLine(subjectBox)}` : "",
     shot === "corridor" ? `corridor axis: dir ${formatVector3(corridorAxes[0]!.dir)}, free ${(corridorAxes[0]!.usableFwd + corridorAxes[0]!.usableBack).toFixed(1)} m, width ${corridorAxes[0]!.width.toFixed(1)} m` : "",
     spawnInfo ? `eye: ${spawnInfo.camera && args.eye_height === undefined ? `${spawnInfo.camera.path} at ${formatVector3(spawnInfo.camera.position)}` : `${spawnInfo.path} origin + ${args.eye_height ?? 1.6} m`}` : "",
-    `occluders: hard ${counts.hard ?? 0}, soft ${counts.soft ?? 0}, subject ${counts.subject ?? 0}, ignored ${counts.ignored ?? 0} (by rule: ${Object.entries(byRule).map(([k, v]) => `${k} ${v}`).join(", ")})`,
+    `occluders: hard ${counts.hard ?? 0}, soft ${counts.soft ?? 0}, subject ${counts.subject ?? 0}, ignored ${counts.ignored ?? 0}, of which transparent (see-through cover) ${counts.translucent ?? 0} (by rule: ${Object.entries(byRule).map(([k, v]) => `${k} ${v}`).join(", ")})`,
+    keyLight
+      ? `key light: ${keyLight.path} travelling ${formatVector3(keyLight.direction)} (light term: side or front-side light scores best, light from straight behind the camera — a flat-lit face — worst)`
+      : "key light: no visible DirectionalLight3D, so no light-direction term",
   ];
   const topLines = top.map((s, i) => {
     const t = s.terms;
     const termText = Object.entries(t).map(([k, v]) => `${k} ${v}`).join(" ");
     const adj = s.adjustments?.length ? ` adjusted: ${s.adjustments.map((a) => String(a.kind)).join("+")}` : "";
     const occl = s.blockers?.soft?.length ? ` framed by ${s.blockers.soft.slice(0, 2).join(", ")}` : "";
+    const through = s.blockers?.through?.length ? ` seen through ${s.blockers.through.slice(0, 2).join(", ")}` : "";
     const img = s.stats?.flat !== undefined ? ` flat ${s.stats.flat}` : "";
-    return `${i + 1}. score ${s.total.toFixed(2)} [${s.id}] ${poseLiteral(s.pose)}\n   ${termText}; sky ${s.stats?.sky} fg ${s.stats?.foreground} wall-behind ${s.stats?.wallBehind}${img}${s.fill !== undefined ? ` fill ${s.fill}` : ""}${adj}${occl}`;
+    const backFaces = s.stats?.back ? ` back-faces ${s.stats.back}` : "";
+    const worldEdge = s.stats?.void ? ` world-edge ${s.stats.void}` : "";
+    return `${i + 1}. score ${s.total.toFixed(2)} [${s.id}] ${poseLiteral(s.pose)}\n   ${termText}; sky ${s.stats?.sky} fg ${s.stats?.foreground} wall-behind ${s.stats?.wallBehind}${img}${backFaces}${worldEdge}${s.fill !== undefined ? ` fill ${s.fill}` : ""}${adj}${occl}${through}`;
   });
   const ranked = scored.filter((x) => !x.rejected).sort((a, b) => b.total - a.total);
   const spawnForward = scored.find((x) => x.id === "eye_spawn_forward");
@@ -1180,6 +1545,7 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
       occluders: { counts, by_rule: byRule, examples: occSummary.examples },
       top: top.map((s) => ({ id: s.id, score: s.total, terms: s.terms, stats: s.stats, ...poseRecord(s.pose), ...(s.adjustments ? { adjustments: s.adjustments } : {}), ...(s.blockers ? { blockers: s.blockers } : {}) })),
       ...(bookmark ? { bookmark } : {}),
+      ...(keyLight ? { key_light: { path: keyLight.path, direction: formatVector3(keyLight.direction) } } : {}),
       ...(shot === "corridor" ? { corridor: corridorAxes[0] } : {}),
       timings,
       table: scored.map((s) => ({ id: s.id, total: s.total, ...(s.rejected ? { rejected: s.rejected } : {}), terms: s.terms })),

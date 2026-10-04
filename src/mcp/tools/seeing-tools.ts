@@ -86,7 +86,9 @@ export function registerSeeingTools(server: McpServer): void {
 
 Pick the side with direction (front/back/left/right/top/iso) or an explicit from vector; fill sets how much of the frame they span. bookmark_name also saves the fitted pose so every later render (summer_shot_sheet, summer_debug_views, summer_screenshot framing:"bookmark") lines up with it. marks:true adds numbered labels mapped to node paths.
 
-Returns the image + caption: the pose as Vector3 literals, the bounds, the environment used, and the mark list. ${COMMON}`,
+An explicit from is checked in-engine before you trust the image: if walls block the nodes, or the camera stands behind or inside a one-sided surface (its back is not drawn, so the image would look THROUGH the wall), the caption opens with a WARNING and the nearest valid from (+ fov) to pass back. With marks:true every labelled node gets an occlusion test (centre + 4 bounds points); hidden ones are noted "(hidden behind <path>)".
+
+Returns the image + caption: the pose as Vector3 literals, the bounds, the environment used, the view check, and the mark list. ${COMMON}`,
     frameNodesShape,
     run<FrameNodesArgs>(frameNodes)
   );
@@ -95,7 +97,7 @@ Returns the image + caption: the pose as Vector3 literals, the bounds, the envir
     "summer_shot_sheet",
     `Render several bookmarks and/or explicit poses into ONE labelled grid image in a single call: same tile size, same view, real lighting. Use it after every change to see all hero views at once instead of N screenshots.
 
-compare_previous:true turns each bookmark into a row of [previous | now | difference map] and reports the share of pixels that changed and where. Each bookmark keeps exactly one previous render at res://.summer/shots/<bookmark>.jpg (JPEG, <= 1024 px; the folder is capped at 20 MB, oldest first); this render replaces it. view renders every tile as lighting/unshaded/normals/overdraw/wireframe instead of beauty.
+compare_previous:true turns each bookmark into a row of [previous | now | difference map] and reports the share of pixels that changed and where. Each bookmark keeps exactly one previous render (its compare baseline) at res://.summer/shots/<bookmark>.jpg (JPEG, <= 1024 px; the folder is capped at 20 MB, oldest first). Only compare_previous:true or update_previous:true replaces it; a plain sheet creates a missing baseline and never overwrites one. view renders every tile as lighting/unshaded/normals/overdraw/wireframe instead of beauty.
 
 Returns the grid + caption (tile number -> label and pose, difference stats). ${COMMON}`,
     shotSheetShape,
@@ -115,9 +117,9 @@ Returns the grid + caption. ${COMMON}`,
 
   server.tool(
     "summer_zoom",
-    `High-resolution close look at part of a frame: region [x, y, w, h] (fractions of the frame) or mark N from a marks render of the same pose. The camera renders the EXACT sub-frustum of that region at full output resolution, so you see real texture detail, seams, gaps and floating pieces, not upscaled pixels.
+    `High-resolution close look at part of a frame: region [x, y, w, h] (fractions of the frame) or mark N from a marks render of the same pose. The camera renders the EXACT sub-frustum of that region at full output resolution, so you see real texture detail, seams, gaps and floating pieces, not upscaled pixels. A region is honoured exactly (no pad by default, never widened to an aspect ratio: the image takes the region's own aspect, with dark bars only for extreme shapes); a mark gets pad 0.15.
 
-Use after a sheet or debug view shows something suspicious. view picks beauty or a debug view. Returns the zoomed image + caption (zoom factor, region, mark -> node path). ${COMMON}`,
+Use after a sheet or debug view shows something suspicious. view picks beauty or a debug view. Returns the zoomed image + caption (the real zoom factor, the rendered region, widened_because when it is larger than asked, mark -> node path and a warning when that node is hidden). ${COMMON}`,
     zoomShape,
     run<ZoomArgs>(zoom)
   );
@@ -128,9 +130,9 @@ Use after a sheet or debug view shows something suspicious. view picks beauty or
 
 shot: establishing (wide), eye_level (from a spawn node at player eye height), low_angle (hero, near the ground looking up: the camera moves closer and widens its FOV instead of sinking into the ground), detail (close-up), corridor (down an alley or corridor found inside the subject by a free-space scan, preferring the view in from its open end, walls on both sides).
 
-How: candidate poses on a ring/hemisphere (or along the corridor line) at the distance where the subject fills the shot's target share of the frame; each is checked with a THICK sphere sweep to points on the subject (thin rays miss corners), a near-lens sphere (camera inside or touching geometry is nudged forward or rejected), a ray grid through the frame, and a small beauty render per pose. Walls/terrain blocking the subject reject a pose; foliage, fences, props and pipes in front are allowed (wanted, up to a limit) as framing. Scored on rule-of-thirds placement, frame fill, level horizon, sky share, depth behind the subject (no flat wall right behind it), empty or featureless areas, near-wall clearance, near/far value contrast and foreground framing.
+How: candidate poses on a ring/hemisphere (or along the corridor line) at the distance where the subject fills the shot's target share of the frame; each is checked with a THICK sphere sweep to points on the subject (thin rays miss corners), a near-lens sphere (camera inside or touching geometry is nudged forward or rejected), a ray grid through the frame, and a small beauty render per pose. Walls/terrain blocking the subject reject a pose, and so does a camera behind or inside a one-sided surface (a sight line or a quarter of the frame meeting a wall from behind: its back is not drawn, so the image would look through it). Foliage, fences, props and pipes in front are allowed (wanted, up to a limit) as framing; transparent materials (alpha, scissor, glass, foliage cards) are see-through cover at partial weight. Scored on rule-of-thirds placement, frame fill, level horizon, sky share, depth behind the subject (no flat wall right behind it), empty or featureless areas, near-wall clearance, near/far value contrast, foreground framing, surfaces seen from behind, the key light's direction (side or front-side beats a flat front-lit face) and the world edge (sky or void below the horizon).
 
-Returns the top 3 with score breakdowns and poses, saves the best as a bookmark (default <shot>_<subject>), and renders the 3 as one sheet with real lighting (render:"best" or "none" to save context). ${COMMON} Saving the bookmark writes res://.summer/camera_bookmarks.json.`,
+Returns the top 3 with score breakdowns and poses — three different views (one per side of the subject while the score allows, at least 25 degrees apart) — saves the best as a bookmark (default <shot>_<subject>), and renders the 3 as one sheet with real lighting (render:"best" or "none" to save context). ${COMMON} Saving the bookmark writes res://.summer/camera_bookmarks.json.`,
     frameShotShape,
     run<FrameShotArgs>(frameShot)
   );

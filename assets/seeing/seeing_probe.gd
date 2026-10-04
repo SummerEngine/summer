@@ -18,11 +18,17 @@ extends Node
 ## caller text is ever spliced into this source.
 ##
 ## Modes (config "mode"):
-##   "analyze": world bounds of subject nodes, spawn poses, and (when asked) a
-##     physics pass built from the VISIBLE geometry: corridor scans and
-##     per-candidate measurements (thick sweep visibility, near-lens check,
-##     low-angle correction, a ray grid through the frame). The preview's own 3D
-##     render is disabled; only result.json matters.
+##   "analyze": world bounds of subject nodes, spawn poses, the key light, and
+##     (when asked) a physics pass built from the VISIBLE geometry: corridor
+##     scans, per-candidate measurements (thick sweep visibility, back-face and
+##     closed-shell lens checks, low-angle correction, a ray grid through the
+##     frame) and a mark occlusion test. The preview's own 3D render is
+##     disabled; only result.json matters.
+##   Back faces: every physics face collides on both sides, and a short
+##     front-faces-only ray at each hit tells which side the ray met. A back
+##     face of a surface without cull_disabled is NOT drawn, so it never hides
+##     anything in the image, but a camera on that side is behind or inside the
+##     surface and would look through it.
 ##   "render": a labelled grid of tiles. Each "shot" tile is a SubViewport with
 ##     its own Camera3D at an explicit pose sharing the preview world, so the
 ##     scene's REAL WorldEnvironment and lights apply. Views are native
@@ -39,7 +45,20 @@ const CLASS_SUBJECT := 2
 const LAYER_HARD := 1
 const LAYER_SOFT := 2
 const LAYER_SUBJECT := 4
+# Transparent surfaces (alpha blend, alpha scissor, alpha hash, depth
+# pre-pass, or a GeometryInstance3D fade): their own layer, whatever their
+# class, so the solid sweeps never treat a foliage card or a glass pane as a
+# wall. They count as see-through cover at partial weight.
+const LAYER_SEE := 8
 const CLASS_NAMES := ["hard", "soft", "subject"]
+# Per-surface material flags. A surface without FLAG_DOUBLE is drawn from its
+# front side only: seen from behind, the renderer culls it and the image shows
+# whatever lies beyond, so a camera behind a one-sided wall looks THROUGH it.
+const FLAG_DOUBLE := 1
+const FLAG_SEE := 2
+# A pose whose lens sits inside a closed shell: at least this many of the six
+# axis rays meet a back face first.
+const INSIDE_BACK_RAYS := 4
 
 const DEFAULT_SOFT_PATTERN := "(tree|bush|shrub|grass|weed|moss|foliage|leaf|leaves|plant|flower|vine|ivy|hedge|pebble|gravel|rubble|litter|puddle|decal|fence|rail|lamp|lantern|light|pole|post|sign|wire|cable|pipe|crate|barrel|bench|prop|clutter|debris|trash|bin|bollard|hydrant|planter|pot|chair|table|awning|banner|flag)"
 const DEFAULT_HARD_PATTERN := "(wall|building|house|facade|terrain|ground|floor|road|street|pavement|sidewalk|cliff|rock|mountain|roof|tower|bridge|stair|pier|corner|crown|cornice|base|dado|block)"
@@ -70,6 +89,9 @@ var _measurements: Array = []
 
 var _soft_re: RegEx = null
 var _hard_re: RegEx = null
+var _alpha_re: RegEx = null
+var _render_mode_re: RegEx = null
+var _material_flag_cache: Dictionary = {}
 
 # Render mode state.
 var _normals_world: World3D = null
@@ -103,6 +125,10 @@ func _ready() -> void:
 	var mode := String(_cfg.get("mode", ""))
 	if mode == "render":
 		_setup_render()
+		if _cfg.has("occlusion"):
+			# Deferred like the analyze pass; ScenePreview flushes it before the
+			# first draw, so result.json carries it when the image is read.
+			call_deferred("_render_occlusion")
 	elif mode == "analyze":
 		get_viewport().disable_3d = true
 		_setup_image_checks()
@@ -312,8 +338,11 @@ func _analyze() -> void:
 			var cam := cams[0] as Camera3D
 			info["camera"] = {"path": _rel(cam), "position": _arr(cam.global_position), "forward": _arr(-cam.global_transform.basis.z.normalized()), "fov": cam.fov}
 		_result["spawn"] = info
+	var key := _key_light()
+	if not key.is_empty():
+		_result["key_light"] = key
 	var tasks: Array = _cfg.get("tasks", [])
-	if tasks.has("corridor_scan") or tasks.has("measure"):
+	if tasks.has("corridor_scan") or tasks.has("measure") or tasks.has("occlusion"):
 		_build_physics(subject_nodes)
 		if _state == null:
 			_fail("physics_unavailable", "Could not create a physics space for the visibility pass.")
@@ -325,6 +354,8 @@ func _analyze() -> void:
 			_result["corridor_scan"] = _corridor_scan(spec)
 		if tasks.has("measure"):
 			_result["measurements"] = _measure_all(_cfg.get("candidates", []))
+		if tasks.has("occlusion"):
+			_result["occlusion"] = _occlusion(_cfg.get("occlusion", {}))
 	_result["duration_ms"] = Time.get_ticks_msec() - started
 	_result["ok"] = true
 	_result["stage"] = "done"
@@ -408,10 +439,12 @@ func _build_physics(subject_nodes: Array) -> void:
 	var occ: Dictionary = _cfg.get("occluders", {})
 	_soft_re = RegEx.create_from_string("(?i)" + String(occ.get("soft_pattern", DEFAULT_SOFT_PATTERN)))
 	_hard_re = RegEx.create_from_string("(?i)" + String(occ.get("hard_pattern", DEFAULT_HARD_PATTERN)))
+	_alpha_re = RegEx.create_from_string("\\bALPHA(_SCISSOR_THRESHOLD|_HASH_SCALE)?\\s*=[^=]")
+	_render_mode_re = RegEx.create_from_string("render_mode[^;]*;")
 	var shape_cache: Dictionary = {}
-	var counts := {"hard": 0, "soft": 0, "subject": 0, "ignored": 0}
+	var counts := {"hard": 0, "soft": 0, "subject": 0, "ignored": 0, "translucent": 0, "double_sided": 0}
 	var why_counts := {}
-	var examples := {"hard": [], "soft": [], "subject": []}
+	var examples := {"hard": [], "soft": [], "subject": [], "translucent": []}
 	var faces_total := 0
 	var face_cap := int(_cfg.get("face_cap", 4000000))
 	var capped := false
@@ -425,57 +458,164 @@ func _build_physics(subject_nodes: Array) -> void:
 		if cls < 0:
 			counts["ignored"] += 1
 			continue
-		# Physics bodies do not take scale reliably: a scaled (or sheared)
-		# instance gets its own shape with the transform baked into the faces;
-		# unscaled instances share one shape per mesh.
-		var body_xform := xform
-		var scaled := not _is_rigid(xform.basis)
-		var key := mesh.get_instance_id()
-		var shape := RID()
-		if not scaled and shape_cache.has(key):
-			shape = shape_cache[key]
-		else:
-			var faces: PackedVector3Array = mesh.get_faces()
-			if faces.is_empty():
-				if not scaled:
-					shape_cache[key] = RID()
-				continue
-			if faces_total + faces.size() / 3 > face_cap:
-				capped = true
-				continue
-			faces_total += faces.size() / 3
-			if scaled:
-				for k in faces.size():
-					faces[k] = xform * faces[k]
-				body_xform = Transform3D.IDENTITY
-			shape = PhysicsServer3D.concave_polygon_shape_create()
-			PhysicsServer3D.shape_set_data(shape, {"faces": faces, "backface_collision": true})
-			_shapes.append(shape)
-			if not scaled:
-				shape_cache[key] = shape
-		if not shape.is_valid():
-			continue
-		var body := PhysicsServer3D.body_create()
-		PhysicsServer3D.body_set_mode(body, PhysicsServer3D.BODY_MODE_STATIC)
-		PhysicsServer3D.body_add_shape(body, shape)
-		PhysicsServer3D.body_set_collision_layer(body, [LAYER_HARD, LAYER_SOFT, LAYER_SUBJECT][cls])
-		PhysicsServer3D.body_set_collision_mask(body, 0)
-		PhysicsServer3D.body_set_space(body, _space)
-		PhysicsServer3D.body_set_state(body, PhysicsServer3D.BODY_STATE_TRANSFORM, body_xform)
-		_bodies.append(body)
-		var cls_name: String = CLASS_NAMES[cls]
-		counts[cls_name] += 1
-		var why_key := cls_name + ":" + String(c["why"])
-		why_counts[why_key] = int(why_counts.get(why_key, 0)) + 1
 		var path := _rel(node)
-		_body_geom[body.get_id()] = {"path": path, "cls": cls}
-		var ex: Array = examples[cls_name]
-		if ex.size() < 6 and not ex.has(path):
-			ex.append(path)
+		# One body per material behaviour: a mesh whose surfaces mix opaque,
+		# double-sided and transparent materials (bark + leaf cards) is split,
+		# so the leaves are see-through cover and the trunk stays solid.
+		for part in _mesh_parts(node, mesh):
+			var flags := int(part["flags"])
+			# Physics bodies do not take scale reliably: a scaled (or sheared)
+			# instance gets its own shape with the transform baked into the
+			# faces; unscaled instances share one shape per mesh part.
+			var body_xform := xform
+			var scaled := not _is_rigid(xform.basis)
+			var key := "%d:%s" % [mesh.get_instance_id(), String(part["key"])]
+			var shape := RID()
+			if not scaled and shape_cache.has(key):
+				shape = shape_cache[key]
+			else:
+				var faces := _part_faces(mesh, part)
+				if faces.is_empty():
+					if not scaled:
+						shape_cache[key] = RID()
+					continue
+				if faces_total + faces.size() / 3 > face_cap:
+					capped = true
+					continue
+				faces_total += faces.size() / 3
+				if scaled:
+					for k in faces.size():
+						faces[k] = xform * faces[k]
+					body_xform = Transform3D.IDENTITY
+				shape = PhysicsServer3D.concave_polygon_shape_create()
+				PhysicsServer3D.shape_set_data(shape, {"faces": faces, "backface_collision": true})
+				_shapes.append(shape)
+				if not scaled:
+					shape_cache[key] = shape
+			if not shape.is_valid():
+				continue
+			var body := PhysicsServer3D.body_create()
+			PhysicsServer3D.body_set_mode(body, PhysicsServer3D.BODY_MODE_STATIC)
+			PhysicsServer3D.body_add_shape(body, shape)
+			var layer: int = [LAYER_HARD, LAYER_SOFT, LAYER_SUBJECT][cls]
+			if flags & FLAG_SEE:
+				layer = LAYER_SEE
+			PhysicsServer3D.body_set_collision_layer(body, layer)
+			PhysicsServer3D.body_set_collision_mask(body, 0)
+			PhysicsServer3D.body_set_space(body, _space)
+			PhysicsServer3D.body_set_state(body, PhysicsServer3D.BODY_STATE_TRANSFORM, body_xform)
+			_bodies.append(body)
+			var cls_name: String = CLASS_NAMES[cls]
+			counts[cls_name] += 1
+			if flags & FLAG_SEE:
+				counts["translucent"] += 1
+				var tex: Array = examples["translucent"]
+				if tex.size() < 6 and not tex.has(path):
+					tex.append(path)
+			if flags & FLAG_DOUBLE:
+				counts["double_sided"] += 1
+			var why_key := cls_name + ":" + String(c["why"])
+			why_counts[why_key] = int(why_counts.get(why_key, 0)) + 1
+			_body_geom[body.get_id()] = {"path": path, "cls": cls, "flags": flags}
+			var ex: Array = examples[cls_name]
+			if ex.size() < 6 and not ex.has(path):
+				ex.append(path)
 	if capped:
 		_warn("The visibility pass hit its face budget; some large meshes were skipped.")
 	_state = PhysicsServer3D.space_get_direct_state(_space)
 	_result["occluders"] = {"counts": counts, "by_rule": why_counts, "examples": examples, "faces": faces_total, "build_ms": Time.get_ticks_msec() - t0}
+
+
+# The mesh as one or more {flags, key, surfaces} parts, one per distinct
+# material behaviour (FLAG_DOUBLE / FLAG_SEE). Only flags are read here (cheap,
+# per instance); faces are built in _part_faces on a shape-cache miss. The
+# common single-behaviour mesh is one part covering every surface.
+func _mesh_parts(node: Node, mesh: Mesh) -> Array:
+	var count := mesh.get_surface_count()
+	var per_surface: Array = []
+	var distinct := {}
+	for s in count:
+		var f := _surface_flags(node, mesh, s)
+		per_surface.append(f)
+		distinct[f] = true
+	if distinct.size() <= 1:
+		var only := 0 if per_surface.is_empty() else int(per_surface[0])
+		return [{"flags": only, "key": "all", "surfaces": []}]
+	var parts: Array = []
+	for f in distinct.keys():
+		var used: Array = []
+		for s in count:
+			if int(per_surface[s]) == int(f):
+				used.append(s)
+		parts.append({"flags": int(f), "key": "s" + "_".join(PackedStringArray(used.map(func(v): return str(v)))), "surfaces": used})
+	return parts
+
+
+func _part_faces(mesh: Mesh, part: Dictionary) -> PackedVector3Array:
+	var surfaces: Array = part.get("surfaces", [])
+	if surfaces.is_empty():
+		return mesh.get_faces()
+	var tmp := ArrayMesh.new()
+	for raw in surfaces:
+		var s := int(raw)
+		var prim := Mesh.PRIMITIVE_TRIANGLES
+		if mesh is ArrayMesh:
+			prim = (mesh as ArrayMesh).surface_get_primitive_type(s)
+		if prim != Mesh.PRIMITIVE_TRIANGLES and prim != Mesh.PRIMITIVE_TRIANGLE_STRIP:
+			continue
+		tmp.add_surface_from_arrays(prim, mesh.surface_get_arrays(s))
+	if tmp.get_surface_count() == 0:
+		return PackedVector3Array()
+	return tmp.get_faces()
+
+
+# FLAG_DOUBLE when the surface is drawn from both sides (cull_disabled),
+# FLAG_SEE when it is transparent in any way (alpha blend, scissor, hash,
+# depth pre-pass, a shader that writes ALPHA, or the instance's fade).
+func _surface_flags(node: Node, mesh: Mesh, surface: int) -> int:
+	var mat: Material = null
+	var geo := node as GeometryInstance3D
+	if geo != null and geo.material_override != null:
+		mat = geo.material_override
+	elif node is MeshInstance3D:
+		mat = (node as MeshInstance3D).get_active_material(surface)
+	else:
+		mat = mesh.surface_get_material(surface)
+	var flags := _material_flags(mat)
+	if geo != null and geo.transparency > 0.001:
+		flags |= FLAG_SEE
+	return flags
+
+
+func _material_flags(mat: Material) -> int:
+	if mat == null:
+		return 0
+	var id := mat.get_instance_id()
+	if _material_flag_cache.has(id):
+		return int(_material_flag_cache[id])
+	var flags := 0
+	if mat is BaseMaterial3D:
+		var b := mat as BaseMaterial3D
+		if b.cull_mode == BaseMaterial3D.CULL_DISABLED:
+			flags |= FLAG_DOUBLE
+		if b.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED:
+			flags |= FLAG_SEE
+	elif mat is ShaderMaterial:
+		var shader: Shader = (mat as ShaderMaterial).shader
+		if shader != null:
+			var code := shader.code
+			var rm: RegExMatch = _render_mode_re.search(code)
+			if rm != null:
+				var modes := rm.get_string()
+				if modes.contains("cull_disabled"):
+					flags |= FLAG_DOUBLE
+				for m in ["blend_add", "blend_sub", "blend_mul", "depth_prepass_alpha"]:
+					if modes.contains(String(m)):
+						flags |= FLAG_SEE
+			if _alpha_re.search(code) != null:
+				flags |= FLAG_SEE
+	_material_flag_cache[id] = flags
+	return flags
 
 
 static func _is_rigid(b: Basis) -> bool:
@@ -513,6 +653,94 @@ func _ray(from: Vector3, to: Vector3, mask: int) -> Dictionary:
 	var q := PhysicsRayQueryParameters3D.create(from, to, mask)
 	q.hit_back_faces = true
 	return _state.intersect_ray(q)
+
+
+func _geom(hit: Dictionary) -> Dictionary:
+	return _body_geom.get((hit["rid"] as RID).get_id(), {})
+
+
+# Did a ray travelling along `dir` meet the surface at `point` from BEHIND?
+# Both physics servers report hit normals turned toward the ray, so the side
+# is read with a short FRONT-faces-only ray across the hit point instead: a
+# front face there means the side facing the camera is drawn. A double-sided
+# material is drawn from both sides and never counts as a back face.
+func _is_back(point: Vector3, dir: Vector3, flags: int) -> bool:
+	if flags & FLAG_DOUBLE:
+		return false
+	# Only the hit's own kind of surface: a glass pane 1 cm in front of a
+	# wall's back must not count as that wall's front.
+	var mask: int = LAYER_HARD | LAYER_SOFT | LAYER_SUBJECT
+	if (flags & FLAG_SEE) != 0:
+		mask = LAYER_SEE
+	var q := PhysicsRayQueryParameters3D.create(point - dir * 0.02, point + dir * 0.02, mask)
+	q.hit_back_faces = false
+	return _state.intersect_ray(q).is_empty()
+
+
+# What a line from `from` to `to` really crosses, in order, up to the first
+# opaque surface met on its drawn (front or double-sided) side:
+#   "back": path of a hard or subject surface crossed from BEHIND first (its
+#     back face is culled, so the image looks through it): the camera is
+#     behind or inside that surface;
+#   "see": path of a transparent surface crossed (seen through, partial cover);
+#   "stop": class of the first opaque drawn surface (-1 = none), its path and
+#     distance.
+# Soft surfaces crossed from behind are skipped here; the soft sweep, which
+# collides on both sides, still counts them as framing.
+func _walk(from: Vector3, to: Vector3, mask: int) -> Dictionary:
+	var out := {"back": "", "back_dist": -1.0, "see": "", "stop": -1, "stop_path": "", "stop_dist": -1.0}
+	var total := from.distance_to(to)
+	if total < 0.001:
+		return out
+	var dir := (to - from) / total
+	var start := from
+	for _step in 8:
+		var hit := _ray(start, to, mask | LAYER_SEE)
+		if hit.is_empty():
+			break
+		var point: Vector3 = hit["position"]
+		var g := _geom(hit)
+		var flags := int(g.get("flags", 0))
+		var cls := int(g.get("cls", CLASS_HARD))
+		var back := _is_back(point, dir, flags)
+		if flags & FLAG_SEE:
+			if not back and String(out["see"]) == "":
+				out["see"] = String(g.get("path", ""))
+		elif back:
+			if cls != CLASS_SOFT and String(out["back"]) == "":
+				out["back"] = String(g.get("path", ""))
+				out["back_dist"] = snappedf(from.distance_to(point), 0.01)
+		else:
+			out["stop"] = cls
+			out["stop_path"] = String(g.get("path", ""))
+			out["stop_dist"] = snappedf(from.distance_to(point), 0.01)
+			return out
+		start = point + dir * 0.01
+		if from.distance_to(start) >= total:
+			break
+	return out
+
+
+# Six axis rays from the lens: how many meet a hard or subject surface from
+# behind first. A lens inside a closed shell of one-sided walls (a hollow
+# building, a prop's interior) sees back faces in (nearly) every direction.
+func _inside_back_rays(pos: Vector3) -> int:
+	var count := 0
+	for d in [Vector3.RIGHT, Vector3.LEFT, Vector3.UP, Vector3.DOWN, Vector3.FORWARD, Vector3.BACK]:
+		var w := _walk(pos, pos + (d as Vector3) * 200.0, LAYER_HARD | LAYER_SOFT | LAYER_SUBJECT)
+		if String(w["back"]) != "":
+			count += 1
+	return count
+
+
+# A hard or subject back face within `reach` of the lens (axis rays plus the
+# view direction): the lens sits just behind a one-sided surface.
+func _near_back_face(pos: Vector3, fwd: Vector3, reach: float) -> String:
+	for d in [fwd, -fwd, Vector3.RIGHT, Vector3.LEFT, Vector3.UP, Vector3.DOWN, Vector3.FORWARD, Vector3.BACK]:
+		var w := _walk(pos, pos + (d as Vector3) * reach, LAYER_HARD | LAYER_SOFT | LAYER_SUBJECT)
+		if String(w["back"]) != "":
+			return String(w["back"])
+	return ""
 
 
 func _overlaps(pos: Vector3, radius: float, mask: int) -> Array:
@@ -586,7 +814,8 @@ func _corridor_scan(spec: Dictionary) -> Dictionary:
 	var box := AABB(_vec((spec.get("aabb", {}) as Dictionary).get("position")), _vec((spec.get("aabb", {}) as Dictionary).get("size")))
 	var height := float(spec.get("height", 1.6))
 	var floor_y := float(spec.get("floor_y", box.position.y))
-	var mask := LAYER_HARD | LAYER_SOFT | LAYER_SUBJECT
+	# Free space is physical: glass and leaf cards (LAYER_SEE) still end a run.
+	var mask := LAYER_HARD | LAYER_SOFT | LAYER_SUBJECT | LAYER_SEE
 	var radius := float(spec.get("radius", 0.25))
 	# Runs only matter inside the subject (+ a margin): the caller clips them
 	# to its bounds + 2 m, so sweeping further is wasted engine time.
@@ -601,7 +830,7 @@ func _corridor_scan(spec: Dictionary) -> Dictionary:
 			var fx := (gx + 0.5) / grid
 			var fz := (gz + 0.5) / grid
 			var seed := Vector3(box.position.x + box.size.x * fx, floor_y + height, box.position.z + box.size.z * fz)
-			var g: Variant = _ground_below(seed, LAYER_HARD | LAYER_SUBJECT)
+			var g: Variant = _ground_below(seed, LAYER_HARD | LAYER_SUBJECT | LAYER_SEE)
 			if g != null and float(g) > floor_y - 1.0 and float(g) < seed.y:
 				seed.y = float(g) + height
 			if not _overlaps(seed, 0.3, mask).is_empty():
@@ -726,7 +955,12 @@ func _measure_one(index: int, cand: Dictionary, spec: Dictionary) -> Dictionary:
 	var fov := float(cand.get("fov", 60.0))
 	var aspect := float(spec.get("aspect", 16.0 / 9.0))
 	var all_mask := LAYER_HARD | LAYER_SOFT | LAYER_SUBJECT
-	var solid_mask := LAYER_HARD | LAYER_SUBJECT
+	# Ground under the camera: water and glass floors count (LAYER_SEE).
+	var solid_mask := LAYER_HARD | LAYER_SUBJECT | LAYER_SEE
+	# adjust:false (an explicit pose the caller asked for, e.g. frame_nodes
+	# with from): measure it exactly as given and report what is wrong instead
+	# of raising or nudging it.
+	var adjust := bool(cand.get("adjust", true))
 	var adjustments: Array = []
 	var rec := {"i": index}
 	# 1. Ground clearance and the low-angle rule: a camera that would end up in
@@ -734,7 +968,7 @@ func _measure_one(index: int, cand: Dictionary, spec: Dictionary) -> Dictionary:
 	# the framing, instead of being pushed up or buried.
 	var clearance := float(cand.get("min_clearance", spec.get("min_clearance", 0.3)))
 	var max_fov := float(spec.get("max_fov", 100.0))
-	for _attempt in 2:
+	for _attempt in (2 if adjust else 0):
 		var ground: Variant = _ground_below(pos, solid_mask)
 		if ground == null or pos.y >= float(ground) + clearance:
 			break
@@ -756,38 +990,56 @@ func _measure_one(index: int, cand: Dictionary, spec: Dictionary) -> Dictionary:
 			pos.y = target_y
 	if rec.has("rejected"):
 		return _finish_measure(rec, pos, look, fov, adjustments)
-	# 2. Near-lens safeguard: a small sphere at the lens must be clear of every
-	# kind of geometry; if not, nudge forward along the view line a little.
+	# 2. Lens safeguards: a small sphere at the lens must be clear of every
+	# kind of geometry, and the lens must not sit inside a closed shell or just
+	# behind a one-sided surface (back faces are culled: the image would look
+	# through the wall it stands behind). If not, nudge forward along the view
+	# line a little (never for adjust:false).
 	var t_lens := Time.get_ticks_usec()
 	var lens_r := float(spec.get("near_lens_radius", 0.3))
 	var fwd := (look - pos).normalized()
-	if not _overlaps(pos, lens_r, all_mask).is_empty() or _enclosed(pos, fwd):
+	if _lens_problem(pos, fwd, lens_r) != "":
 		var nudged := false
 		var step := float(spec.get("nudge_step", 0.25))
 		var max_nudge := minf(float(spec.get("max_nudge", 1.5)), pos.distance_to(look) * 0.25)
 		var k := 1
-		while step * k <= max_nudge + 0.0001:
+		while adjust and step * k <= max_nudge + 0.0001:
 			var p2 := pos + fwd * step * k
-			if _overlaps(p2, lens_r, all_mask).is_empty() and not _enclosed(p2, fwd):
+			if _lens_problem(p2, fwd, lens_r) == "":
 				adjustments.append({"kind": "near_lens_nudge", "by": snappedf(step * k, 0.01)})
 				pos = p2
 				nudged = true
 				break
 			k += 1
 		if not nudged:
-			var blockers := _overlaps(pos, lens_r, all_mask)
-			if not blockers.is_empty():
-				rec["near_lens_hit"] = String((_body_geom.get((blockers[0]["rid"] as RID).get_id(), {}) as Dictionary).get("path", ""))
-			rec["rejected"] = "near_lens_blocked"
+			var problem := _lens_problem(pos, fwd, lens_r)
+			rec["rejected"] = problem
+			var hit_path := ""
+			if problem == "behind_surface":
+				hit_path = _near_back_face(pos, fwd, lens_r + 0.05)
+			else:
+				var blockers := _overlaps(pos, lens_r, all_mask | LAYER_SEE)
+				if not blockers.is_empty():
+					hit_path = String((_body_geom.get((blockers[0]["rid"] as RID).get_id(), {}) as Dictionary).get("path", ""))
+			if hit_path != "":
+				rec["near_lens_hit"] = hit_path
+			_t_lens += Time.get_ticks_usec() - t_lens
 			return _finish_measure(rec, pos, look, fov, adjustments)
 	_t_lens += Time.get_ticks_usec() - t_lens
-	# 3. Thick swept visibility to sample points on the subject: hard geometry
-	# rejects, soft geometry (props, foliage, fences) only counts as framing.
+	# 3. Visibility to sample points on the subject. Per line: a hard or
+	# subject surface crossed from BEHIND first is "B" (the camera is behind a
+	# wall it would look through); then the thick sweep: hard geometry blocks
+	# ("H"), soft geometry (props, foliage, fences) only counts as framing
+	# ("F"); a clear line through transparent surfaces is "T" (see-through
+	# cover, partial weight); else "V". Transparent bodies sit on LAYER_SEE,
+	# outside every sweep mask, so a foliage card never blocks like a wall.
 	var t_sweep := Time.get_ticks_usec()
 	var sweep_r := float(spec.get("sweep_radius", 0.15))
 	var vis := ""
 	var blockers_hard: Array = []
 	var blockers_soft: Array = []
+	var blockers_back: Array = []
+	var seen_through: Array = []
 	var sweep_hard_mask := LAYER_HARD
 	var sweep_soft_mask := LAYER_SOFT
 	if bool(spec.get("subject_occludes", false)):
@@ -800,13 +1052,20 @@ func _measure_one(index: int, cand: Dictionary, spec: Dictionary) -> Dictionary:
 			vis += "V"
 			continue
 		var motion := v.normalized() * (length - sweep_r - 0.05)
+		var line := _walk(pos, pos + motion, all_mask)
+		var back_path := String(line["back"])
+		if back_path != "":
+			vis += "B"
+			if not blockers_back.has(back_path) and blockers_back.size() < 4:
+				blockers_back.append(back_path)
+			continue
 		# A thin ray that is already blocked settles it (the thick sweep would
 		# be blocked too); only clear lines pay for the thick sweep, which is
 		# what catches the corners a thin ray slips past.
 		var thin := _ray(pos, pos + motion, sweep_hard_mask)
 		if not thin.is_empty():
 			vis += "H"
-			var thin_path := String((_body_geom.get((thin["rid"] as RID).get_id(), {}) as Dictionary).get("path", ""))
+			var thin_path := String(_geom(thin).get("path", ""))
 			if thin_path != "" and not blockers_hard.has(thin_path) and blockers_hard.size() < 4:
 				blockers_hard.append(thin_path)
 			continue
@@ -822,15 +1081,28 @@ func _measure_one(index: int, cand: Dictionary, spec: Dictionary) -> Dictionary:
 			if s["hit"] != "" and not blockers_soft.has(s["hit"]) and blockers_soft.size() < 4:
 				blockers_soft.append(s["hit"])
 			continue
+		var see_path := String(line["see"])
+		if see_path != "":
+			vis += "T"
+			if not seen_through.has(see_path) and seen_through.size() < 4:
+				seen_through.append(see_path)
+			continue
 		vis += "V"
 	rec["vis"] = vis
 	if not blockers_hard.is_empty():
 		rec["blockers_hard"] = blockers_hard
 	if not blockers_soft.is_empty():
 		rec["blockers_soft"] = blockers_soft
+	if not blockers_back.is_empty():
+		rec["blockers_back"] = blockers_back
+	if not seen_through.is_empty():
+		rec["seen_through"] = seen_through
 	_t_sweep += Time.get_ticks_usec() - t_sweep
 	# 4. A ray grid through the frame: what each part of the image would show
-	# (sky, subject, hard or soft geometry) and how far away it is.
+	# and how far away it is. "." nothing (sky/void), "S" subject, "H" hard,
+	# "F" soft, "T" a transparent surface (seen through), "B" a hard or subject
+	# surface met from BEHIND (culled: the image looks through it). Back faces
+	# of soft surfaces and transparent back faces are not drawn: the ray goes on.
 	var t_grid := Time.get_ticks_usec()
 	var cols := int(spec.get("grid_cols", 16))
 	var rows := int(spec.get("grid_rows", 9))
@@ -845,19 +1117,52 @@ func _measure_one(index: int, cand: Dictionary, spec: Dictionary) -> Dictionary:
 			var x := ((i + 0.5) / cols * 2.0 - 1.0) * tan_h
 			var y := (1.0 - (j + 0.5) / rows * 2.0) * tan_v
 			var dir := (basis * Vector3(x, y, -1.0)).normalized()
-			var hit := _ray(pos, pos + dir * max_dist, all_mask)
-			if hit.is_empty():
-				codes += "."
-				dists.append(-1)
-				continue
-			var g: Dictionary = _body_geom.get((hit["rid"] as RID).get_id(), {})
-			var cls := int(g.get("cls", CLASS_HARD))
-			codes += ["H", "F", "S"][cls]
-			dists.append(snappedf(pos.distance_to(hit["position"]), 0.1))
+			var cell := _grid_cell(pos, dir, max_dist, all_mask)
+			codes += String(cell[0])
+			dists.append(cell[1])
 	rec["grid"] = codes
 	rec["dist"] = dists
 	_t_grid += Time.get_ticks_usec() - t_grid
 	return _finish_measure(rec, pos, look, fov, adjustments)
+
+
+# "" when the lens is fine, else why not: "near_lens_blocked" (geometry
+# inside the lens sphere, or boxed in at arm's reach), "inside_volume" (inside
+# a closed shell of one-sided surfaces) or "behind_surface" (a hard or subject
+# back face within the lens radius).
+func _lens_problem(pos: Vector3, fwd: Vector3, lens_r: float) -> String:
+	if _inside_back_rays(pos) >= INSIDE_BACK_RAYS:
+		return "inside_volume"
+	if _near_back_face(pos, fwd, lens_r + 0.05) != "":
+		return "behind_surface"
+	if not _overlaps(pos, lens_r, LAYER_HARD | LAYER_SOFT | LAYER_SUBJECT | LAYER_SEE).is_empty() or _enclosed(pos, fwd):
+		return "near_lens_blocked"
+	return ""
+
+
+func _grid_cell(pos: Vector3, dir: Vector3, max_dist: float, mask: int) -> Array:
+	var start := pos
+	var end := pos + dir * max_dist
+	for _step in 6:
+		var hit := _ray(start, end, mask | LAYER_SEE)
+		if hit.is_empty():
+			return [".", -1]
+		var point: Vector3 = hit["position"]
+		var g := _geom(hit)
+		var flags := int(g.get("flags", 0))
+		var cls := int(g.get("cls", CLASS_HARD))
+		var back := _is_back(point, dir, flags)
+		var d := snappedf(pos.distance_to(point), 0.1)
+		if flags & FLAG_SEE:
+			if not back:
+				return ["S" if cls == CLASS_SUBJECT else "T", d]
+		elif back:
+			if cls != CLASS_SOFT:
+				return ["B", d]
+		else:
+			return [["H", "F", "S"][cls], d]
+		start = point + dir * 0.01
+	return [".", -1]
 
 
 func _finish_measure(rec: Dictionary, pos: Vector3, look: Vector3, fov: float, adjustments: Array) -> Dictionary:
@@ -872,7 +1177,7 @@ func _finish_measure(rec: Dictionary, pos: Vector3, look: Vector3, fov: float, a
 # Boxed in: geometry within arm's reach on all four horizontal sides AND
 # overhead. A camera there is inside a wall cavity, a prop or a solid block,
 # never a place to shoot from. (Ray normals cannot tell inside from outside:
-# the physics server reports normals facing the ray.)
+# the physics server reports normals facing the ray; _is_back reads the side.)
 func _enclosed(pos: Vector3, fwd: Vector3) -> bool:
 	return _enclosure_sides(pos, fwd) >= 5
 
@@ -885,11 +1190,128 @@ func _enclosure_sides(pos: Vector3, fwd: Vector3) -> int:
 	var reach := float((_cfg.get("measure", {}) as Dictionary).get("enclosure_reach", 1.2))
 	var sides := 0
 	for d in [flat, -flat, side, -side]:
-		if not _ray(pos, pos + (d as Vector3) * reach, LAYER_HARD | LAYER_SOFT | LAYER_SUBJECT).is_empty():
+		if not _ray(pos, pos + (d as Vector3) * reach, LAYER_HARD | LAYER_SOFT | LAYER_SUBJECT | LAYER_SEE).is_empty():
 			sides += 1
-	if not _ray(pos, pos + Vector3.UP * reach * 2.0, LAYER_HARD | LAYER_SOFT | LAYER_SUBJECT).is_empty():
+	if not _ray(pos, pos + Vector3.UP * reach * 2.0, LAYER_HARD | LAYER_SOFT | LAYER_SUBJECT | LAYER_SEE).is_empty():
 		sides += 1
 	return sides
+
+
+# The strongest visible DirectionalLight3D (the key light): the direction its
+# light TRAVELS (the node's -Z), for the light-direction score.
+func _key_light() -> Dictionary:
+	var best: DirectionalLight3D = null
+	for n in _subject.find_children("*", "DirectionalLight3D", true, false):
+		var light := n as DirectionalLight3D
+		if light == null or not light.is_visible_in_tree() or light.light_energy <= 0.0:
+			continue
+		if best == null or light.light_energy > best.light_energy:
+			best = light
+	if best == null:
+		return {}
+	return {
+		"path": _rel(best),
+		"direction": _arr(-best.global_transform.basis.z.normalized(), 4),
+		"energy": snappedf(best.light_energy, 0.01),
+		"shadow": best.shadow_enabled,
+	}
+
+
+# Mark occlusion: is each marked node really visible from the camera? Five
+# points per node (its visible-bounds centre plus four points across the box
+# face that faces the camera); a point is seen when the line to it reaches the
+# node itself, or nothing, before any OTHER opaque surface drawn from that
+# side. Back faces of one-sided surfaces and transparent surfaces are not
+# drawn, so they hide nothing; a node met only from behind is not drawn either.
+func _occlusion(spec: Dictionary) -> Dictionary:
+	var cam := _vec(spec.get("position"))
+	var mask := LAYER_HARD | LAYER_SOFT | LAYER_SUBJECT | LAYER_SEE
+	var out: Array = []
+	for raw in (spec.get("marks", []) as Array):
+		var m: Dictionary = raw
+		var path := String(m.get("path", ""))
+		var entry := {"id": int(m.get("id", 0)), "path": path}
+		var node := _resolve(path)
+		if node == null:
+			entry["missing"] = true
+			out.append(entry)
+			continue
+		var b := _bounds(node)
+		var own := _rel(node)
+		var samples := _box_samples(b["aabb"], cam)
+		var seen := 0
+		var own_back := 0
+		var blocker := ""
+		for p in samples:
+			var r := _sees_node(cam, p, own, mask)
+			if bool(r["seen"]):
+				seen += 1
+			elif bool(r["own_back"]):
+				own_back += 1
+			elif blocker == "":
+				blocker = String(r["blocker"])
+		entry["visible"] = seen
+		entry["samples"] = samples.size()
+		if own_back > 0:
+			entry["own_back"] = own_back
+		if blocker != "":
+			entry["blocker"] = blocker
+		out.append(entry)
+	return {"position": _arr(cam), "marks": out}
+
+
+func _render_occlusion() -> void:
+	_build_physics([])
+	if _state == null:
+		_warn("occlusion check skipped: no physics space")
+	else:
+		_result["occlusion"] = _occlusion(_cfg.get("occlusion", {}))
+	_free_physics()
+	_write_result()
+
+
+func _box_samples(box: AABB, cam: Vector3) -> Array:
+	var c := box.get_center()
+	var view := c - cam
+	# The two box axes least aligned with the view span the face it sees.
+	var order := [0, 1, 2]
+	order.sort_custom(func(a, b): return absf(view[a]) < absf(view[b]))
+	var pts: Array = [c]
+	for k in 2:
+		var axis := int(order[k])
+		for sgn in [-0.35, 0.35]:
+			var off := Vector3.ZERO
+			off[axis] = box.size[axis] * float(sgn)
+			pts.append(c + off)
+	return pts
+
+
+func _sees_node(cam: Vector3, target: Vector3, own: String, mask: int) -> Dictionary:
+	var total := cam.distance_to(target)
+	if total < 0.01:
+		return {"seen": true, "own_back": false, "blocker": ""}
+	var dir := (target - cam) / total
+	var end := target + dir * 0.05
+	var start := cam
+	var met_own_back := false
+	for _step in 8:
+		var hit := _ray(start, end, mask)
+		if hit.is_empty():
+			break
+		var point: Vector3 = hit["position"]
+		var g := _geom(hit)
+		var flags := int(g.get("flags", 0))
+		var path := String(g.get("path", ""))
+		var back := _is_back(point, dir, flags)
+		var is_own := own == "." or path == own or path.begins_with(own + "/")
+		if is_own:
+			if not back:
+				return {"seen": true, "own_back": false, "blocker": ""}
+			met_own_back = true
+		elif (flags & FLAG_SEE) == 0 and not back:
+			return {"seen": false, "own_back": false, "blocker": path}
+		start = point + dir * 0.01
+	return {"seen": not met_own_back, "own_back": met_own_back, "blocker": ""}
 
 
 # ---------------------------------------------------------------------------

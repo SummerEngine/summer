@@ -8,11 +8,13 @@ import {
   debugViews,
   frameNodes,
   frameShot,
+  judgeViewOptions,
   layoutGrid,
   shotSheet,
   validateLabel,
   validateNodePath,
   validateScenePath,
+  viewOptions,
   zoom,
   type SeeingSuccess,
 } from "./seeing.js";
@@ -345,5 +347,298 @@ describe("summer_frame_shot", () => {
     });
     const r = await frameShot(blocked, { scenePath: "res://three.tscn", shot: "establishing", subject: ["House1"] });
     expect(r).toMatchObject({ ok: false, failure_reason: "no_usable_pose", detail: { rejected: { hard_blocked: 36 } } });
+  });
+});
+
+describe("summer_frame_nodes checks an explicit from (proof run: the camera sat behind Backdrop/BD_A)", () => {
+  const FIRE_ESCAPE = { position: [5, 2, -9], size: [5, 8, 1.5] };
+  const COLS = 24;
+  const ROWS = 14;
+
+  function engineFor(requestedBehindWall: boolean, extra: (config: Record<string, unknown>) => Record<string, unknown> = () => ({})) {
+    return fakeEngine({
+      projectRoot: project,
+      analyze: (config) => {
+        const candidates = config.candidates as Array<Record<string, unknown>> | undefined;
+        const base = {
+          ok: true,
+          stage: "done",
+          subjects: ((config.subjects ?? []) as string[]).map((p) => ({ path: p, resolved: p, has_geometry: true, visuals: 4, aabb: FIRE_ESCAPE })),
+          ...extra(config),
+        };
+        if (!candidates) return base;
+        return {
+          ...base,
+          measurements: candidates.map((c, i) => {
+            // The request (0) and every pose up to option 5 stand behind the wall.
+            const behind = requestedBehindWall && i < 5;
+            const grid = (behind ? "B" : "H").repeat(COLS * ROWS);
+            return { i, position: c.position, look_at: c.look_at, fov: c.fov, vis: behind ? "BBBBBBBBB" : "VVVVVVVVV", grid, dist: new Array(COLS * ROWS).fill(3), ...(behind ? { blockers_back: ["Backdrop/BD_A"] } : {}) };
+          }),
+        };
+      },
+    });
+  }
+
+  it("measures the requested pose exactly (adjust:false) with nearby alternatives, warns and offers the nearest valid from", async () => {
+    const engine = engineFor(true);
+    const r = (await frameNodes(engine, { scenePath: "res://three_houses_v2.tscn", nodes: ["Alley1/FireEscape"], from: "Vector3(0.24, 0.15, -0.96)", fov: 50 })) as SeeingSuccess;
+    expect(r.ok).toBe(true);
+    expect(engine.configs.map((c) => c.mode)).toEqual(["analyze", "analyze"]);
+    const check = engine.configs[1]!;
+    expect(check.tasks).toEqual(["measure"]);
+    const candidates = check.candidates as Array<Record<string, unknown>>;
+    expect(candidates.length).toBeGreaterThan(10);
+    expect(candidates.every((c) => c.adjust === false)).toBe(true);
+    // Candidate 0 is exactly the pose that was rendered.
+    const native = engine.calls.find((c) => c.op === "ScenePreview" && c.scene_path === "res://three_houses_v2.tscn")!;
+    expect(`Vector3(${(candidates[0]!.position as number[]).join(", ")})`).toBe(String(native.camera_position));
+    expect(r.caption.split("\n")[0]).toMatch(/^WARNING: this explicit from gives a view no player could have \(behind_surface\)/);
+    expect(r.caption).toContain("Backdrop/BD_A");
+    expect(r.caption).toContain("looks THROUGH it");
+    expect(r.caption).toMatch(/nearest valid pose \(.+\): summer_frame_nodes from:"Vector3\(/);
+    const receipt = r.receipt as { view_check: { ok: boolean; reason: string; nearest_valid: { from: string; position: string } } };
+    expect(receipt.view_check.ok).toBe(false);
+    expect(receipt.view_check.reason).toBe("behind_surface");
+    expect(receipt.view_check.nearest_valid.from).toMatch(/^Vector3\(/);
+  });
+
+  it("says the view is clear when it is, and a direction preset skips the extra pass", async () => {
+    const clear = engineFor(false);
+    const r = (await frameNodes(clear, { scenePath: "res://a.tscn", nodes: ["Crate"], from: "Vector3(0, 0.3, 1)" })) as SeeingSuccess;
+    expect(r.caption).not.toContain("WARNING");
+    expect(r.caption).toContain("view check: clear — 9 of 9 sight lines to the nodes clear");
+    expect((r.receipt as { view_check: { ok: boolean } }).view_check.ok).toBe(true);
+    const preset = engineFor(true);
+    await frameNodes(preset, { scenePath: "res://a.tscn", nodes: ["Crate"], direction: "front" });
+    expect(preset.configs.map((c) => c.mode)).toEqual(["analyze"]);
+  });
+
+  it("viewOptions: the request first, then wider lenses and turns a caller can pass back as from + fov", () => {
+    const box = { position: [-1, 0, -1] as const, size: [2, 2, 2] as const };
+    const options = viewOptions(box, [0, 1, 0], [0, 0, 1], 50, 16 / 9, 0.8);
+    expect(options[0]!.tag).toBe("as requested");
+    expect(options[0]!.cost).toBe(0);
+    expect(options.some((o) => o.tag === "same direction, fov 65")).toBe(true);
+    expect(options.some((o) => o.tag === "from the opposite side")).toBe(true);
+    expect(new Set(options.map((o) => `${o.from.join(",")}|${o.fov}`)).size).toBe(options.length);
+  });
+
+  it("judgeViewOptions picks the cheapest valid alternative", () => {
+    const box = { position: [-1, 0, -1] as const, size: [2, 2, 2] as const };
+    const options = viewOptions(box, [0, 1, 0], [0, 0, 1], 50, 16 / 9, 0.8);
+    const ms = options.map((o, i) => ({ i, position: o.pose.position, look_at: o.pose.look_at, fov: o.pose.fov, vis: i === 0 || o.tag.startsWith("same direction") ? "HHHHHHHHH" : "VVVVVVVVV" }));
+    const check = judgeViewOptions(options, ms);
+    expect(check.problem?.reason).toBe("hard_blocked");
+    expect(check.alternative?.tag).toMatch(/^turned 15 deg/);
+  });
+});
+
+describe("marks get an occlusion test (trial: labels on nodes hidden behind walls)", () => {
+  const marksNative = (op: Record<string, unknown>) =>
+    op.marks
+      ? {
+          ok: true,
+          image_base64: OK_JPEG.toString("base64"),
+          width: 1024,
+          height: 576,
+          framing: op.framing,
+          environment_used: "scene_world_environment",
+          marks: [
+            { id: 1, path: "House2/SideL/row0/Model/wall", class: "MeshInstance3D", screen_rect: { x: 10, y: 10, w: 300, h: 200 } },
+            { id: 2, path: "House3/SideL/row2/Model/wall", class: "MeshInstance3D", screen_rect: { x: 700, y: 40, w: 200, h: 260 } },
+          ],
+          marks_candidates: 2,
+        }
+      : undefined;
+  const occlusionAnalyze = (config: Record<string, unknown>) => ({
+    ...analyzeBounds(config),
+    ...(config.occlusion
+      ? {
+          occlusion: {
+            position: (config.occlusion as { position: number[] }).position,
+            marks: [
+              { id: 1, path: "House2/SideL/row0/Model/wall", visible: 5, samples: 5 },
+              { id: 2, path: "House3/SideL/row2/Model/wall", visible: 0, samples: 5, blocker: "House1/SideR/row1/Model/wall" },
+            ],
+          },
+        }
+      : {}),
+  });
+
+  it("frame_nodes marks:true tests every label from the rendered camera and notes the hidden ones", async () => {
+    const engine = fakeEngine({ projectRoot: project, analyze: occlusionAnalyze, native: marksNative });
+    const r = (await frameNodes(engine, { scenePath: "res://three.tscn", nodes: ["House2"], direction: "front", marks: true })) as SeeingSuccess;
+    expect(r.ok).toBe(true);
+    const check = engine.configs[1]!;
+    expect(check.tasks).toEqual(["occlusion"]);
+    const native = engine.calls.find((c) => c.op === "ScenePreview" && c.scene_path === "res://three.tscn")!;
+    expect(`Vector3(${((check.occlusion as { position: number[] }).position).join(", ")})`).toBe(String(native.camera_position));
+    expect((check.occlusion as { marks: unknown[] }).marks).toEqual([
+      { id: 1, path: "House2/SideL/row0/Model/wall" },
+      { id: 2, path: "House3/SideL/row2/Model/wall" },
+    ]);
+    expect(r.caption).toMatch(/ 2 -> House3\/SideL\/row2\/Model\/wall .*\(hidden behind House1\/SideR\/row1\/Model\/wall\)/);
+    expect(r.caption).not.toMatch(/ 1 -> .*hidden/);
+    expect(r.caption).toContain("1 of 2 labelled node(s) are HIDDEN");
+    const marks = (r.receipt as { marks: Array<{ id: number; visibility?: { visible: number } }> }).marks;
+    expect(marks.find((m) => m.id === 2)!.visibility!.visible).toBe(0);
+  });
+
+  it("zoom by mark warns when that node is hidden at the pose", async () => {
+    const engine = fakeEngine({
+      projectRoot: project,
+      native: marksNative,
+      render: (config) => ({
+        ok: true,
+        stage: "render_setup",
+        tiles: [],
+        ...(config.occlusion ? { occlusion: { marks: [{ id: 2, path: "House3/SideL/row2/Model/wall", visible: 0, samples: 5, blocker: "House1/SideR/row1/Model/wall" }] } } : {}),
+      }),
+    });
+    const r = (await zoom(engine, { scenePath: "res://three.tscn", camera_position: "Vector3(0, 5, 20)", camera_look_at: "Vector3(0, 2, 0)", mark: 2 })) as SeeingSuccess;
+    expect(r.ok).toBe(true);
+    expect((engine.configs[0]!.occlusion as { marks: unknown[] }).marks).toEqual([{ id: 2, path: "House3/SideL/row2/Model/wall" }]);
+    expect(r.caption).toContain("WARNING: mark 2's node is hidden behind House1/SideR/row1/Model/wall");
+  });
+});
+
+describe("summer_zoom honours the region (proof run: a requested 2.6x came out as 1.3x)", () => {
+  const pose = { camera_position: "Vector3(0, 5, 20)", camera_look_at: "Vector3(0, 2, 0)", fov: 50 };
+
+  it("renders exactly the region at its own aspect and reports the real zoom", async () => {
+    const engine = fakeEngine({ projectRoot: project });
+    const r = (await zoom(engine, { scenePath: "res://three.tscn", ...pose, region: [0.5, 0.15, 0.3, 0.6] })) as SeeingSuccess;
+    expect(r.ok).toBe(true);
+    const config = engine.configs[0]!;
+    const tile = (config.tiles as Array<Record<string, unknown>>)[0]!;
+    const crop = (tile.pose as { crop: number[] }).crop;
+    expect(crop[0]).toBeCloseTo(0.5, 9);
+    expect(crop[1]).toBeCloseTo(0.15, 9);
+    expect(crop[2]).toBeCloseTo(0.8, 9);
+    expect(crop[3]).toBeCloseTo(0.75, 9);
+    // The tile has the region's pixel aspect (0.3 x 0.6 of 16:9 = 0.889), so the sub-frustum is not widened.
+    const rect = tile.rect as number[];
+    expect(rect[2]! / rect[3]!).toBeCloseTo((0.3 / 0.6) * (16 / 9), 2);
+    expect(tile.render_size).toEqual([rect[2], rect[3]]);
+    expect(r.caption).toMatch(/^Zoom x3\.3 across, x1\.7 down/);
+    expect(r.caption).toContain("region as asked (u 0.5-0.8, v 0.15-0.75)");
+    expect(r.caption).not.toContain("widened_because");
+    expect((r.receipt as { widened_because: string[] }).widened_because).toEqual([]);
+  });
+
+  it("names the pad in widened_because, and a mark gets its default 0.15", async () => {
+    const engine = fakeEngine({ projectRoot: project });
+    const r = (await zoom(engine, { scenePath: "res://three.tscn", ...pose, region: [0.4, 0.4, 0.2, 0.2], pad: 0.25 })) as SeeingSuccess;
+    expect(r.caption).toMatch(/widened_because: pad 0\.25/);
+    expect((r.receipt as { widened_because: string[] }).widened_because).toHaveLength(1);
+    const marks = fakeEngine({
+      projectRoot: project,
+      native: (op) => ({ ok: true, image_base64: OK_JPEG.toString("base64"), width: 1024, height: 576, framing: op.framing, marks: [{ id: 3, path: "Props/Crate", class: "MeshInstance3D", screen_rect: { x: 512, y: 288, w: 100, h: 60 } }], marks_candidates: 1 }),
+    });
+    const m = (await zoom(marks, { scenePath: "res://three.tscn", ...pose, mark: 3 })) as SeeingSuccess;
+    expect(m.caption).toMatch(/widened_because: pad 0\.15/);
+  });
+});
+
+describe("previous-image slots are the compare baseline (coordinator: a plain sheet reset it)", () => {
+  const bookmarks = { hero: { position: "Vector3(0, 5, 20)", look_at: "Vector3(0, 2, 0)", fov: 55, created: "2026-01-01T00:00:00Z" } };
+  const BASELINE = Buffer.from("baseline-bytes");
+
+  function seedSlot(): string {
+    const dir = join(project, ".summer", "shots");
+    mkdirSync(dir, { recursive: true });
+    const path = join(dir, "hero.jpg");
+    writeFileSync(path, BASELINE);
+    return path;
+  }
+
+  it("a sheet without compare_previous keeps an existing baseline and says so", async () => {
+    const slot = seedSlot();
+    const engine = fakeEngine({ projectRoot: project, bookmarks });
+    const r = (await shotSheet(engine, { scenePath: "res://three.tscn", shots: [{ bookmark_name: "hero" }] })) as SeeingSuccess;
+    expect(readFileSync(slot)).toEqual(BASELINE);
+    expect((engine.configs[0]!.tiles as Array<Record<string, unknown>>)[0]!.capture_path).toBeUndefined();
+    expect(r.caption).toContain("kept the existing previous image (compare baseline) of hero");
+  });
+
+  it("update_previous:true or compare_previous:true replaces it; a missing slot is created", async () => {
+    const slot = seedSlot();
+    const engine = fakeEngine({ projectRoot: project, bookmarks });
+    await shotSheet(engine, { scenePath: "res://three.tscn", shots: [{ bookmark_name: "hero" }], update_previous: true });
+    expect(readFileSync(slot)).toEqual(OK_JPEG);
+    writeFileSync(slot, BASELINE);
+    await shotSheet(engine, { scenePath: "res://three.tscn", shots: [{ bookmark_name: "hero" }], compare_previous: true });
+    expect(readFileSync(slot)).toEqual(OK_JPEG);
+    rmSync(slot);
+    await shotSheet(engine, { scenePath: "res://three.tscn", shots: [{ bookmark_name: "hero" }] });
+    expect(readFileSync(slot)).toEqual(OK_JPEG);
+  });
+
+  it("debug views keep the baseline too unless update_previous:true", async () => {
+    const slot = seedSlot();
+    const engine = fakeEngine({ projectRoot: project, bookmarks });
+    const r = (await debugViews(engine, { scenePath: "res://three.tscn", bookmark_name: "hero" })) as SeeingSuccess;
+    expect(readFileSync(slot)).toEqual(BASELINE);
+    expect(r.caption).toContain("it was kept as the compare baseline");
+    await debugViews(engine, { scenePath: "res://three.tscn", bookmark_name: "hero", update_previous: true });
+    expect(readFileSync(slot)).toEqual(OK_JPEG);
+  });
+
+  it("frame_nodes saving the bookmark redefines its pose, so it replaces the slot", async () => {
+    const slot = seedSlot();
+    const engine = fakeEngine({ projectRoot: project, analyze: analyzeBounds, bookmarks });
+    await frameNodes(engine, { scenePath: "res://three.tscn", nodes: ["House1"], bookmark_name: "hero" });
+    expect(readFileSync(slot)).toEqual(OK_JPEG);
+  });
+});
+
+describe("summer_frame_shot reads the key light", () => {
+  it("passes the scene's DirectionalLight3D to the light term and names it in the caption", async () => {
+    const COLS = 24;
+    const ROWS = 14;
+    const engine = fakeEngine({
+      projectRoot: project,
+      analyze: (config) => {
+        const candidates = config.candidates as Array<Record<string, unknown>> | undefined;
+        const base = { ...analyzeBounds(config), key_light: { path: "Sun", direction: [0.6, -0.6, -0.5], energy: 1 } };
+        if (!candidates) return base;
+        return {
+          ...base,
+          measurements: candidates.map((c, i) => {
+            let grid = "";
+            for (let r = 0; r < ROWS; r++) for (let col = 0; col < COLS; col++) grid += r < 4 ? "." : r < 10 && col > 5 && col < 18 ? "S" : "H";
+            return { i, position: c.position, look_at: c.look_at, fov: c.fov, vis: "VVVVVVVVV", grid, dist: [...grid].map((g) => (g === "." ? -1 : 30)) };
+          }),
+        };
+      },
+    });
+    const r = (await frameShot(engine, { scenePath: "res://three.tscn", shot: "establishing", subject: ["House1"], render: "none", save_bookmark: false })) as SeeingSuccess;
+    expect(r.caption).toContain("key light: Sun travelling Vector3(0.6, -0.6, -0.5)");
+    const top = (r.receipt as { top: Array<{ terms: Record<string, number> }> }).top;
+    expect(top[0]!.terms.light).toBeDefined();
+    expect(top).toHaveLength(3);
+  });
+});
+
+describe("the kernel's back-face, lens and transparency rules (source contract)", () => {
+  const kernel = loadKernelSource();
+
+  it("reads the side of each hit with a front-faces-only ray and keeps transparent bodies out of the sweeps", () => {
+    expect(kernel).toMatch(/func _is_back\([\s\S]*?q\.hit_back_faces = false/);
+    expect(kernel).toContain("const LAYER_SEE := 8");
+    // The thick sweeps use class masks only, never LAYER_SEE.
+    expect(kernel).toMatch(/var sweep_hard_mask := LAYER_HARD\n/);
+    expect(kernel).toMatch(/var sweep_soft_mask := LAYER_SOFT\n/);
+    expect(kernel).toContain("BaseMaterial3D.TRANSPARENCY_DISABLED");
+    expect(kernel).toContain("BaseMaterial3D.CULL_DISABLED");
+  });
+
+  it("rejects a lens inside a closed shell or just behind a one-sided surface, and measures adjust:false poses as given", () => {
+    expect(kernel).toContain('return "inside_volume"');
+    expect(kernel).toContain('return "behind_surface"');
+    expect(kernel).toContain('bool(cand.get("adjust", true))');
+    expect(kernel).toContain('tasks.has("occlusion")');
+    expect(kernel).toContain('_result["key_light"] = key');
   });
 });

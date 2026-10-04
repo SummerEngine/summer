@@ -4,7 +4,7 @@ version: 1.0.0
 summary: 'Frame nodes by their world bounds and render with the scene''s REAL environment and lights (optionally save the pose as a bookmark).'
 use_when:
   - '"show me the houses/props with the real lighting" — fit a camera to one or more nodes and render it with the scene''s WorldEnvironment'
-  - 'framing a node from a chosen side (front/back/left/right/top/iso or an explicit direction) for a lighting or mood check'
+  - 'framing a node from a chosen side (front/back/left/right/top/iso or an explicit direction) for a lighting or mood check; an explicit direction is checked for walls and back faces between the camera and the nodes'
   - 'creating a hero-view bookmark that fits a group of nodes, so later shot sheets and compares line up'
 do_not_use_when:
   - 'the editor viewport or a game frame is what you need — summer_screenshot'
@@ -67,7 +67,7 @@ input_schema:
       description: 'Side the camera sits on: "front" (+Z), "back" (-Z), "left" (-X), "right" (+X), "top", "iso" (default, 3/4 from -X,+Y,-Z like summer_screenshot). Use from for anything else.'
     from:
       type: string
-      description: Explicit direction FROM the nodes TOWARD the camera, "Vector3(1, 0.4, 2)". Replaces direction.
+      description: 'Explicit direction FROM the nodes TOWARD the camera, "Vector3(1, 0.4, 2)". Replaces direction. The fitted pose is checked in-engine: when walls block it, or it puts the camera behind or inside a one-sided surface (whose back is not drawn, so the image would look THROUGH it), the caption opens with a WARNING and offers the nearest valid from (+ fov); the requested view is still rendered.'
     fill:
       type: number
       description: Share of the frame the nodes span along their limiting dimension (0.1..1.5, default 0.8).
@@ -84,7 +84,7 @@ input_schema:
       description: Frame width/height (default 1.7778 = 16:9). Every tile uses it.
     marks:
       type: boolean
-      description: Numbered Set-of-Mark labels over the largest visible nodes; the caption maps label -> node path (feed a label to summer_zoom mark).
+      description: 'Numbered Set-of-Mark labels over the largest visible nodes; the caption maps label -> node path (feed a label to summer_zoom mark). Each labelled node gets an occlusion test (centre + 4 bounds points); a node hidden behind other geometry is noted "(hidden behind <path>)" — ignore its label.'
     max_marks:
       type: integer
       minimum: 1

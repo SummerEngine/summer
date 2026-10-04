@@ -54,7 +54,7 @@ A preset framing re-fits the scene bounds on every capture, so a before/after pa
 
 - **Bookmark once, reuse forever.** `summer_camera_bookmark action:"save" name:"hero"` (omit `position`/`look_at` to capture the current editor 3D viewport camera, or pass both as `"Vector3(x, y, z)"` literals). Then every capture is `summer_screenshot target:"scene" framing:"bookmark" bookmark_name:"hero"` — same pose, real WorldEnvironment, project-persisted (`res://.summer/camera_bookmarks.json`), so it survives sessions and machines. `action:"list"` / `"delete"` manage them.
 - **One-off pose:** `framing:"free"` with `camera_position` + `camera_look_at` (+ `fov`).
-- **Name what you see:** add `marks:true` (cap with `max_marks`) and the caption lists `label -> node path` for the numbered tags drawn over the largest visible 3D nodes. Cite the label AND the path in your claim: "label 3 (`Props/Crate_02`) floats above the floor" — then fix it by that exact path. 2D scenes come back `marks_unsupported`, not annotated.
+- **Name what you see:** add `marks:true` (cap with `max_marks`) and the caption lists `label -> node path` for the numbered tags drawn over the largest visible 3D nodes. Cite the label AND the path in your claim: "label 3 (`Props/Crate_02`) floats above the floor" — then fix it by that exact path. Every labelled node gets an occlusion test from the rendered camera; a label noted `(hidden behind <path>)` sits over whatever is in front of its node, so never cite it. 2D scenes come back `marks_unsupported`, not annotated.
 - **Read the confession.** An engine that predates these framings echoes the preset it fell back to, and the caption says the frame is NOT pose-stable; `marks:true` on such a build draws nothing. Do not compare, and do not read labels, across that warning.
 
 ## Environment review: see it like a player and an artist
@@ -64,16 +64,17 @@ For "make this place beautiful", one screenshot is not enough evidence. Preview 
 | Need | Call |
 |---|---|
 | Good views you do not have yet | `summer_frame_shot` with `shot` = `establishing`, `eye_level`, `low_angle`, `detail` or `corridor` (+ `subject`, or `spawn` for eye level). Returns the top 3 with score breakdowns, saves the best as a bookmark, renders the 3 as one sheet. |
-| One node group, lit for real | `summer_frame_nodes nodes:[...] direction:"front"` (+ `bookmark_name` to keep the pose, `marks:true` for labels). |
+| One node group, lit for real | `summer_frame_nodes nodes:[...] direction:"front"` (+ `bookmark_name` to keep the pose, `marks:true` for labels). An explicit `from` is checked: a caption that opens with WARNING means walls block the view or the camera stands behind a one-sided wall and looks THROUGH it; use the nearest valid `from` it offers. |
 | All hero views at once | `summer_shot_sheet shots:[{bookmark_name:"..."}, ...]`. |
 | What changed since last time | `summer_shot_sheet ... compare_previous:true` (or `summer_screenshot framing:"bookmark" compare_previous:true`): previous / now / difference map per bookmark, with the changed-pixel share and where. |
+| Keep or reset the baseline | Plain sheets, debug views and bookmark screenshots never overwrite a bookmark's previous image (they create it when missing). Only `compare_previous:true` (the compared render becomes the next baseline), `update_previous:true`, or re-saving the bookmark's pose with `summer_frame_nodes` / `summer_frame_shot` replaces it. |
 | Why a view reads badly | `summer_debug_views bookmark_name:"..."`: beauty, lighting only, unshaded (albedo), normals, overdraw, wireframe. |
-| A suspicious spot up close | `summer_zoom` with `region:[x, y, w, h]` or `mark:N` (from a `marks:true` render of the same pose): the exact sub-frustum at full resolution. |
+| A suspicious spot up close | `summer_zoom` with `region:[x, y, w, h]` (rendered exactly, at the region's own aspect) or `mark:N` (from a `marks:true` render of the same pose; pad 0.15, and a warning when that node is hidden): the exact sub-frustum at full resolution. Read the real zoom and any `widened_because` in the caption. |
 
 ### The review loop
 
-1. **Bookmark the hero views** once: `summer_frame_shot` for each shot type that matters (an establishing wide, the player's eye at spawn, a corridor per alley or street, a low-angle hero of the landmark, a detail of the best prop). Read the score breakdown and the rejection counts; a pose a wall blocks never ranks.
-2. **After each change** (save first): one `summer_shot_sheet` of all hero bookmarks, `compare_previous:true` when judging a change. Each bookmark keeps exactly ONE previous render in `res://.summer/shots/<bookmark>.jpg`; the next render replaces it.
+1. **Bookmark the hero views** once: `summer_frame_shot` for each shot type that matters (an establishing wide, the player's eye at spawn, a corridor per alley or street, a low-angle hero of the landmark, a detail of the best prop). Read the score breakdown and the rejection counts; a pose a wall blocks never ranks, and neither does a camera behind or inside a one-sided wall (`behind_surface`, `inside_volume`: the renderer does not draw a wall's back, so that image would look through it). The top 3 are three different views (one per side while the score allows); the light term prefers side or front-side key light, the edge term penalises sky or void below the horizon.
+2. **After each change** (save first): one `summer_shot_sheet` of all hero bookmarks, `compare_previous:true` when judging a change. Each bookmark keeps exactly ONE previous render in `res://.summer/shots/<bookmark>.jpg`: the compare baseline. A `compare_previous:true` render replaces it after comparing; plain sheets, debug views and screenshots in between leave it alone (pass `update_previous:true` to reset it on purpose).
 3. **Take the weakest shot** to `summer_debug_views`: lighting shows dead-dark areas and missing pools, unshaded shows flat texture and value clashes, wireframe shows floating or duplicated pieces.
 4. **Zoom into each problem** with `summer_zoom` before fixing it, and again after. Cite the mark or region in the claim.
 5. **Find new views** with `summer_frame_shot` whenever the layout changes; bookmark the winners so the sheet stays pose-stable.
@@ -88,7 +89,7 @@ For "make this place beautiful", one screenshot is not enough evidence. Preview 
 - **A level horizon**: no accidental roll; the horizon off the dead center for wide shots.
 - **Foreground framing**: something soft in front (foliage, a fence, a pipe, a doorframe) for depth, never covering the subject.
 
-Disk stays bounded: nothing is written except one previous-image slot per rendered bookmark and explicit `save_to` copies; JPEG at most 1024 px, at most 20 MB under `res://.summer/shots/` (oldest evicted first); every file there is safe to delete.
+Disk stays bounded: nothing is written except one previous-image slot per bookmark (created on its first clean render, replaced only as above) and explicit `save_to` copies; JPEG at most 1024 px, at most 20 MB under `res://.summer/shots/` (oldest evicted first); every file there is safe to delete.
 
 ## Runtime reads during playtests
 

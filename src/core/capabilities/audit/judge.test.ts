@@ -272,8 +272,25 @@ describe("interpenetration", () => {
     const inst = [row("Alley3/Props/Bench2"), row("Alley3/Sep_W", { r: "wall" }), row("Alley2/Sep_E", { r: "wall" })];
     const issues = judgeOverlaps([[0, 2, 0.103, [29.9, 0, -9.8]], [0, 1, 0.123, [30, 0, -9.9]]], inst);
     expect(issues).toHaveLength(1);
-    expect(issues[0]!.ev).toMatchObject({ other: "Alley3/Sep_W", more: 1 });
-    expect(issues[0]!.why).toContain("also Alley2/Sep_E 10.3 cm");
+    expect(issues[0]!.ev).toMatchObject({ other: "Alley3/Sep_W", partners: [["Alley3/Sep_W", 0.123], ["Alley2/Sep_E", 0.103]] });
+    expect(issues[0]!.why).toContain("also Alley2/Sep_E (the structure) 10.3 cm");
+  });
+
+  it("every partner a prop cuts is named, up to 3, shallow ones included (Lamp1: the duct AND the door band)", () => {
+    const inst = [
+      row("Alley2/Props/Lamp1", { k: "street_lamp_02" }),
+      row("Alley2/Duct/Run_2", { r: "mount" }),
+      row("House2/Back/B0_band2", { r: "struct" }),
+      row("Alley2/Props/AC2", { k: "aircon_unit_rusted" }),
+      row("House2/Back/B0_w2", { r: "wall" }),
+    ];
+    const [i, ...rest] = judgeOverlaps([[0, 2, 0.024, [18.0, 3.2, -7.9]], [0, 1, 0.187, [17.9, 3.4, -7.8]], [0, 3, 0.012, [17.77, 2.6, -7.8]], [0, 4, 0.011, [17.9, 2.5, -8]]], inst);
+    expect(rest).toEqual([]);
+    expect(i!.why).toBe("overlaps Alley2/Duct/Run_2 (a mounted piece) by 18.7 cm; also House2/Back/B0_band2 (the structure) 2.4 cm, Alley2/Props/AC2 (another prop) 1.2 cm");
+    expect(i!.ev).toMatchObject({ depth_m: 0.187, partners: [["Alley2/Duct/Run_2", 0.187], ["House2/Back/B0_band2", 0.024], ["Alley2/Props/AC2", 0.012]], more: 1 });
+    expect(i!.next).toContain("summer_test_placement Alley2/Props/Lamp1");
+    // Only shallow contacts (under 3 cm): no issue at all.
+    expect(judgeOverlaps([[0, 2, 0.024, [0, 0, 0]], [0, 3, 0.012, [0, 0, 0]]], inst)).toEqual([]);
   });
 });
 

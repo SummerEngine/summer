@@ -652,35 +652,50 @@ export function judgeSupport(support: unknown[], inst: InstRow[], wallMounted: S
 // interpenetration
 // ---------------------------------------------------------------------------
 
+/** Overlaps the kernel reports start at 1 cm; a prop is an issue when its
+ *  deepest overlap is over 3 cm, and then every partner it cuts is named. */
+export const OVERLAP_MIN = 0.03;
+export const OVERLAP_PARTNERS = 3;
+
 export function judgeOverlaps(overlaps: unknown[], inst: InstRow[]): AuditIssue[] {
-  // One issue per prop: its deepest overlap, the others listed (a bench that
-  // pokes through a wall into the wall behind it is one problem).
+  // One issue per prop: its deepest overlap first, then every other piece it
+  // cuts (up to 3 in all), shallower ones included: a lamp 18.7 cm into a
+  // duct that also clips the door band beside it is one problem with two
+  // partners, and moving it out of the duct alone does not fix it.
   const byProp = new Map<number, Array<{ b: InstRow; depth: number; point: Vec3 }>>();
   for (const raw of overlaps) {
     if (!Array.isArray(raw)) continue;
     const ai = num(raw[0], -1);
     const b = inst[num(raw[1], -1)];
     const depth = num(raw[2]);
-    if (!inst[ai] || !b || depth <= 0.03) continue;
+    if (!inst[ai] || !b || depth < 0.01) continue;
     const list = byProp.get(ai) ?? [];
     list.push({ b, depth, point: vec(raw[3]) });
     byProp.set(ai, list);
   }
+  const kindOf = (b: InstRow) => (b.r === "prop" ? "another prop" : b.r === "mount" ? "a mounted piece" : "the structure");
   const out: AuditIssue[] = [];
   for (const [ai, list] of byProp) {
     const a = inst[ai]!;
     list.sort((x, y) => y.depth - x.depth);
     const { b, depth, point } = list[0]!;
-    const kind = b.r === "prop" ? "another prop" : b.r === "mount" ? "a mounted piece" : "the structure";
-    const also = list.slice(1, 3).map((o) => `${o.b.p} ${cm(o.depth)}`);
+    if (depth <= OVERLAP_MIN) continue;
+    const partners = list.slice(0, OVERLAP_PARTNERS);
+    const also = partners.slice(1).map((o) => `${o.b.p} (${kindOf(o.b)}) ${cm(o.depth)}`);
     out.push({
       check: "interpenetration",
       severity: depth >= 0.1 ? "warn" : "look",
       path: a.p,
       pos: v2(point),
-      why: `overlaps ${b.p} (${kind}) by ${cm(depth)}${also.length ? `; also ${also.join(", ")}` : ""}`,
-      ev: { depth_m: r3(depth), other: b.p, other_role: b.r, ...(list.length > 1 ? { more: list.length - 1 } : {}) },
-      next: `summer_measure ${a.p} vs ${b.p}`,
+      why: `overlaps ${b.p} (${kindOf(b)}) by ${cm(depth)}${also.length ? `; also ${also.join(", ")}` : ""}`,
+      ev: {
+        depth_m: r3(depth),
+        other: b.p,
+        other_role: b.r,
+        partners: partners.map((o) => [o.b.p, r3(o.depth)]),
+        ...(list.length > OVERLAP_PARTNERS ? { more: list.length - OVERLAP_PARTNERS } : {}),
+      },
+      next: `summer_test_placement ${a.p} (lists every overlap), then summer_measure ${a.p} vs ${b.p}`,
       score: depth,
       ...(instFrame(a) ? { frame: instFrame(a)! } : {}),
     });

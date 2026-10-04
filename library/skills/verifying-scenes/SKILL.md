@@ -1,6 +1,6 @@
 ---
 name: verifying-scenes
-description: "Prove scene work landed (snapshot, diff, bookmarked screenshots, runtime reads) and review 3D environments: shot sheets, debug views, zooms, smart framing."
+description: "Prove scene work landed (snapshot, diff, screenshots, runtime reads), audit 3D scenes for holes and misplacement, review them with shot sheets and zooms."
 ---
 
 # Verifying Scenes
@@ -34,6 +34,17 @@ Snapshot ids: the engine retains the last 8 per session; `unknown_snapshot` mean
 - Nothing clips that shouldn't (compare AABBs of neighbors).
 - Nothing floats above or sinks into its support.
 - Sizes are real-world plausible: door ≈ 2 units, person ≈ 1.7, car ≈ 4.5. An AABB of 40 on a "chair" is an import-scale bug — pass `target_size` to `summer_instantiate_scene` and re-check.
+
+## Audit the scene after each build stage
+
+A screenshot only shows what its camera points at. Problems behind a wall, under a prop or across the street slip past it: a door insert narrower than its frame (you see the street through the gap), a bench turned 90 degrees against the wall, a floor tile with holes over an underlay. `summer_scene_audit` walks every node in one read-only call and lists where to look.
+
+1. **After each build stage** (a facade, a street, a dressing pass): save, then `summer_scene_audit scenePath:"res://..."`. It reads the SAVED file in a private offscreen copy, so the open tab never becomes unsaved and nothing is saved. Use `root:"Alley3"` to audit only what you just built (the rest still counts as surroundings) and `checks:[...]` to rerun one check after a fix.
+2. **Read the page, not just the counts.** Issues come sorted `error`, `warn`, `look`, each with a node path, a world position, a reason, the evidence numbers (sizes, gaps, angles, the ray that reproduces it) and the next tool. The result is at most 5 KB; follow `next_offset` with `offset` for the next page, or narrow with `min_severity:"warn"`.
+3. **Frame every error and look item up close before calling the scene done.** `render:"sheet"` returns one image of the page's first 6 issues framed from their open side (tiles labelled `#n`); otherwise `summer_frame_nodes` on the path and `summer_zoom` into it. A look item (`orientation`, a facing or mounting question) is never an answer: decide the facing yourself from the asset (`summer_inspect_asset`) and the pack's metadata.
+4. **Classify each item as real or a false positive** in your notes. Fix the real ones with the placement tools, then audit again: the same check must come back clean (or the remaining items must be ones you have looked at and accepted).
+
+What the checks mean: `through_hole` (rays pass the wall and reach the far side of the building), `floor_gap` (down rays fall to an underlay or the void), `floating` / `sunken` (props 2 cm above or 3 cm into their support), `interpenetration` (over 3 cm), `insert_host` (a pieces.json `fits_into` insert in the wrong host or off its offset), `mount_gap` (a `wall_side` piece over 5 cm off its wall), `orientation`, `uv_stretch` (stretched or collapsed texture an instance shows; a face inserts normally cover is a warning where it shows), `duplicate` / `z_fight`, `lights` (more lights on a mesh than the renderer's per-object limit, hard spot rims), `transform`, `resource`.
 
 ## Choosing the right screenshot
 
@@ -123,6 +134,8 @@ When the next step depends on the engine reaching a moment — the game booting 
 | Red flag | Reality |
 |---|---|
 | "The environment looks good" from one screenshot | Judge a shot sheet of the hero bookmarks against the beauty rubric, then debug-view the weakest. |
+| "The scene is done" without a scene audit | Run `summer_scene_audit`, frame every error and look item up close, fix or accept each one, audit again. |
+| Rotating a piece because an orientation look item said so | The audit never says which way to face. Measure the asset (`summer_inspect_asset`), read the pack's metadata, then decide. |
 | Mutating twice in a row without a diff or screenshot between | You are compounding on an unverified base. Verify, then continue. |
 | "The diff is probably fine, the script said ok" | `ok:true` scripts still drop unowned nodes on save. Read the diff. |
 | Judging lighting from an iso/top framing | Flat substitute environment. Use `framing:"camera"`, boot the game, or a probe. |

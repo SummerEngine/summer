@@ -1089,7 +1089,7 @@
     {
       "id": "skill/verifying-scenes",
       "name": "verifying-scenes",
-      "description": "Prove scene work landed (snapshot, diff, bookmarked screenshots, runtime reads) and review 3D environments: shot sheets, debug views, zooms, smart framing.",
+      "description": "Prove scene work landed (snapshot, diff, screenshots, runtime reads), audit 3D scenes for holes and misplacement, review them with shot sheets and zooms.",
       "clients": "all",
       "recommended": true,
       "status": "preview",

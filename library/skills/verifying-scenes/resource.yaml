@@ -1,7 +1,7 @@
 id: skill/verifying-scenes
 kind: skill
-version: 1.2.0
-summary: 'Prove scene work landed (snapshot, diff, bookmarked screenshots, runtime reads) and review 3D environments: shot sheets, debug views, zooms, smart framing.'
+version: 1.3.0
+summary: 'Prove scene work landed (snapshot, diff, screenshots, runtime reads), audit 3D scenes for holes and misplacement, review them with shot sheets and zooms.'
 use_when:
   - after any mutation batch, asset import, or lighting change, before claiming it worked
   - during a playtest, to read live runtime state (spawned nodes, actual stats) without stopping the game
@@ -9,6 +9,7 @@ use_when:
   - taking before/after screenshots from the same saved camera viewpoint, or an annotated screenshot whose numbered labels map to node paths
   - '"make this environment beautiful" / reviewing a level like an artist: hero views, a shot sheet after each change, debug views of the weakest shot, zooms into problems'
   - finding good camera views automatically (establishing, player eye level, low-angle hero, detail, down an alley)
+  - after each build stage of a 3D scene and before calling it done - run the scene audit, then frame every error and look item up close
 do_not_use_when:
   - "the engine build lacks GetWorldSnapshot/DiffWorldSnapshot/GetRuntimeSceneTree/GetRuntimeNode (Summer Engine 0.5.66 or newer); older engines return engine_lacks_op — fall back to summer_get_scene_tree + summer_screenshot"
 facets:
@@ -37,6 +38,7 @@ related:
     - tool/debug-views
     - tool/zoom
     - tool/frame-shot
+    - tool/scene-audit
   skills:
     - skill/scene-scripting
     - skill/playtesting-a-feature

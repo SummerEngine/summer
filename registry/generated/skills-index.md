@@ -205,7 +205,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [*scene-hierarchy-design*](./scene-hierarchy-design/SKILL.md) (preview) | Structure Summer Engine scenes by access pattern — asset vs live hierarchies, wrapper nodes per operation, sub-scenes for reuse, path-agnostic logic. | project, agent-workflow |
 | [*scene-scripting*](./scene-scripting/SKILL.md) ★ (preview) | One GDScript in the live editor (summer_run_script) builds scenes, 2D levels, HUDs and gameplay wiring instead of CRUD chains; verify with diff + screenshot. | scripting, 2d, ui, agent-workflow |
 | [*spatial-placement*](./spatial-placement/SKILL.md) ★ (preview) | Place 3D objects and modular kit pieces from measured geometry — inspect, place, starcast, measure, correct; wall, facade, pipe, shelf and alcove recipes. | 3d, world-building, level-design, verification |
-| [*verifying-scenes*](./verifying-scenes/SKILL.md) ★ (preview) | Prove scene work landed (snapshot, diff, bookmarked screenshots, runtime reads) and review 3D environments: shot sheets, debug views, zooms, smart framing. | verification, agent-workflow |
+| [*verifying-scenes*](./verifying-scenes/SKILL.md) ★ (preview) | Prove scene work landed (snapshot, diff, screenshots, runtime reads), audit 3D scenes for holes and misplacement, review them with shot sheets and zooms. | verification, agent-workflow |
 | [*world-building-3d*](./world-building-3d/SKILL.md) ★ (preview) | Compose, ground, space, and validate 3D scenes with Summer's four bounded spatial tools — exact paths, one geometric decision at a time, verified. | 3d, world-building, level-design, verification |
 
 ## scripting

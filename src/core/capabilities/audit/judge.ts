@@ -17,10 +17,12 @@ import {
   clusterSamples,
   directionAngleDegrees,
   footprintExtent,
+  isFrontBackSymmetric,
   lineAngleDegrees,
   matchInsertHost,
   median,
   mostCommon,
+  mountGap,
   robustBounds,
   triangleArea,
   uvStretchRatio,
@@ -747,19 +749,23 @@ export function judgeInserts(inserts: unknown[], inst: InstRow[]): AuditIssue[] 
 // mount_gap + orientation of mounted pieces
 // ---------------------------------------------------------------------------
 
+/** World bounds of two pieces touch (within `slack`) on all three axes. */
+export function boundsTouch(a: InstRow, b: InstRow, slack = 0.02): boolean {
+  for (let k = 0; k < 3; k++) {
+    if (Math.abs(a.c[k]! - b.c[k]!) > (a.e[k]! + b.e[k]!) / 2 + slack) return false;
+  }
+  return true;
+}
+
 /** Another mounted piece's world bounds touch this one's (2 cm slack). */
 export function touchesMount(i: number, inst: InstRow[]): boolean {
   const a = inst[i];
   if (!a) return false;
-  const slack = 0.02;
-  return inst.some((b, j) => {
-    if (j === i || (b.r !== "mount" && b.mh === undefined)) return false;
-    for (let k = 0; k < 3; k++) {
-      if (Math.abs(a.c[k]! - b.c[k]!) > (a.e[k]! + b.e[k]!) / 2 + slack) return false;
-    }
-    return true;
-  });
+  return inst.some((b, j) => j !== i && (b.r === "mount" || b.mh !== undefined) && boundsTouch(a, b));
 }
+
+/** A bracket, clamp, strap or hanger: what holds a pipe off its wall. */
+const HOLDER_RE = /(brac|clamp|clip|hanger|strap|holder|support)/i;
 
 export interface MountJudgement {
   issues: AuditIssue[];
@@ -767,31 +773,127 @@ export interface MountJudgement {
   wallMounted: Set<number>;
 }
 
+interface MountRow {
+  i: number;
+  r: InstRow;
+  wax: Vec3;
+  gaps: Array<number | null>;
+  hitAt: number[];
+  hit?: InstRow;
+  nearest: { dir: Vec3; dist: number; at: number } | null;
+  src: string;
+  local: Vec3;
+  chain: number | null;
+  ground: number | null;
+  standoff: number | null;
+  standoffSrc: string;
+  symmetric: boolean;
+  /** Closest wall contact behind the mount side (any of the 9 samples). */
+  min: number | null;
+  /** The gap the check judges: the largest of the centre and side samples. */
+  gap: number | null;
+  at: number;
+  /** A symmetric piece turned 180 degrees: measured on the side facing the wall. */
+  flipped: boolean;
+}
+
+function parseMountRow(raw: unknown[], inst: InstRow[]): MountRow | null {
+  const i = num(raw[0], -1);
+  const r = inst[i];
+  if (!r) return null;
+  const wax = vec(raw[1]);
+  const gaps = arr(raw[2]).map((g) => (typeof g === "number" && Number.isFinite(g) ? g : null));
+  const around = (arr(raw[4]).filter(Array.isArray) as unknown[][]).map((a) => ({ dir: vec(a[0]), dist: num(a[1]), at: num(a[2], -1) }));
+  const nearest = around.length ? around.reduce((a, b) => (b.dist < a.dist ? b : a)) : null;
+  const meta = raw[13];
+  const planes = Array.isArray(raw[12]) ? (raw[12] as unknown[]).map((x) => num(x, NaN)) : null;
+  const symmetric = meta === true || (meta !== false && isFrontBackSymmetric(planes));
+  const measured = mountGap(gaps);
+  let { min, gap, at } = measured;
+  // Turned 180 degrees, a symmetric piece's mount side faces away and finds
+  // no wall; its real gap is on the side that faces the wall.
+  const flipped = symmetric && nearest !== null && directionAngleDegrees(wax, nearest.dir) > 135 && (min === null || nearest.dist < min);
+  if (flipped) {
+    min = nearest!.dist;
+    gap = nearest!.dist;
+    at = -1;
+  }
+  return {
+    i,
+    r,
+    wax,
+    gaps,
+    hitAt: arr(raw[14]).map((x) => num(x, -1)),
+    ...(inst[num(raw[3], -1)] ? { hit: inst[num(raw[3], -1)]! } : {}),
+    nearest,
+    src: String(raw[6] ?? ""),
+    local: raw[7] ? vec(raw[7]) : ([0, 0, -1] as Vec3),
+    chain: typeof raw[8] === "number" ? raw[8] : null,
+    ground: typeof raw[9] === "number" ? raw[9] : null,
+    standoff: typeof raw[10] === "number" && Number.isFinite(raw[10]) ? raw[10] : null,
+    standoffSrc: String(raw[11] ?? ""),
+    symmetric,
+    min,
+    gap,
+    at,
+    flipped,
+  };
+}
+
+/** Which side of the mount face sample k sits on (the kernel's u / v axes). */
+function sampleSide(local: Vec3, k: number): string {
+  if (k === 0) return "centre";
+  const u: Vec3 = [local[1], local[2], local[0]];
+  const v: Vec3 = [local[1] * u[2] - local[2] * u[1], local[2] * u[0] - local[0] * u[2], local[0] * u[1] - local[1] * u[0]];
+  const dir = k === 5 ? u : k === 6 ? scale(u, -1) : k === 7 ? v : k === 8 ? scale(v, -1) : null;
+  return dir ? `${axisLabel(dir)} side` : "corner";
+}
+
+/**
+ * Pieces held off the wall by design: a mounted sibling touching it that
+ * touches the wall itself (a bracket, clamp or strap by name, or a piece
+ * clearly smaller than it) holds it; along a run, a piece touching a held
+ * piece at about the same standoff (within 3 cm) is held too (the outlet
+ * at the foot of a braced gutter). Returns held index -> the holder's path.
+ */
+function heldByBrackets(rows: readonly MountRow[]): Map<number, string> {
+  const onWall = (m: MountRow) => m.min !== null && m.min <= 0.05;
+  const size = (r: InstRow) => Math.max(r.e[0], r.e[1], r.e[2]);
+  const held = new Map<number, string>();
+  const anchors = rows.filter(onWall);
+  for (const m of rows) {
+    if (onWall(m)) continue;
+    const holder = anchors.find((a) => a.i !== m.i && boundsTouch(m.r, a.r) && (HOLDER_RE.test(a.r.k) || HOLDER_RE.test(a.r.p.split("/").pop() ?? "") || size(a.r) <= 0.6 * size(m.r)));
+    if (holder) held.set(m.i, holder.r.p);
+  }
+  const queue = [...held.keys()];
+  const byIndex = new Map(rows.map((m) => [m.i, m] as const));
+  while (queue.length) {
+    const h = byIndex.get(queue.shift()!)!;
+    for (const n of rows) {
+      if (held.has(n.i) || n.i === h.i || onWall(n) || n.gap === null || h.gap === null) continue;
+      if (n.gap > h.gap + 0.03 || !boundsTouch(n.r, h.r)) continue;
+      held.set(n.i, held.get(h.i)!);
+      queue.push(n.i);
+    }
+  }
+  return held;
+}
+
 export function judgeMounts(mounts: unknown[], inst: InstRow[], checks: Set<AuditCheck>): MountJudgement {
   const issues: AuditIssue[] = [];
   const wallMounted = new Set<number>();
-  for (const raw of mounts) {
-    if (!Array.isArray(raw)) continue;
-    const i = num(raw[0], -1);
-    const r = inst[i];
-    if (!r) continue;
-    const wax = vec(raw[1]);
-    const gaps = arr(raw[2]).filter((g): g is number => typeof g === "number");
-    const hit = inst[num(raw[3], -1)];
-    const around = (arr(raw[4]).filter(Array.isArray) as unknown[][]).map((a) => ({ dir: vec(a[0]), dist: num(a[1]), at: num(a[2], -1) }));
-    const src = String(raw[6] ?? "");
-    const local = raw[7] ? vec(raw[7]) : ([0, 0, -1] as Vec3);
-    const chain = typeof raw[8] === "number" ? (raw[8] as number) : null;
-    const ground = typeof raw[9] === "number" ? (raw[9] as number) : null;
+  const rows = (mounts.filter(Array.isArray) as unknown[][]).map((raw) => parseMountRow(raw, inst)).filter((m): m is MountRow => m !== null);
+  const held = heldByBrackets(rows);
+  for (const m of rows) {
+    const { i, r, wax, nearest } = m;
     // Held by another mounted piece: a ray contact, or bounds that touch
     // (open duct and pipe ends have no face at the joint for a ray to hit).
-    const chained = (chain !== null && chain <= 0.05) || touchesMount(i, inst);
-    const standing = ground !== null && Math.abs(ground) <= 0.05;
-    const side = axisLabel(local);
-    const minGap = gaps.length ? Math.min(...gaps) : null;
-    if (minGap !== null && minGap <= 0.1) wallMounted.add(i);
-    const nearest = around.length ? around.reduce((a, b) => (b.dist < a.dist ? b : a)) : null;
-    const textOnly = src === "pack_text";
+    const chained = (m.chain !== null && m.chain <= 0.05) || touchesMount(i, inst);
+    const standing = m.ground !== null && Math.abs(m.ground) <= 0.05;
+    const side = axisLabel(m.local);
+    if (m.min !== null && m.min <= 0.1) wallMounted.add(i);
+    const textOnly = m.src === "pack_text";
     // A hint read from a pack's prose is weak: if the piece touches a wall on
     // ANY side, the geometry says it is mounted (a lantern whose bracket runs
     // along X) and the prose is what is wrong. Only structured metadata
@@ -803,7 +905,7 @@ export function judgeMounts(mounts: unknown[], inst: InstRow[], checks: Set<Audi
     const metadata = textOnly ? "PACK.json text" : "pieces.json";
     const frame = instFrame(r, r.c, (dir) => 1 - Math.abs(dir[0] * wax[0] + dir[2] * wax[2]) * 0.7);
     if (checks.has("mount_gap")) {
-      if (minGap === null && !nearest) {
+      if (m.min === null && !nearest) {
         // Free-standing. pieces.json says it mounts on a wall: flag it, unless
         // it stands on the ground (a fence post) or hangs from another mounted
         // piece. A hint read from a pack's prose is not enough either.
@@ -820,25 +922,41 @@ export function judgeMounts(mounts: unknown[], inst: InstRow[], checks: Set<Audi
             ...(frame ? { frame } : {}),
           });
         }
-      } else if (minGap !== null && minGap > 0.05 && !(chained && minGap > 0.3)) {
-        // A wall IS behind the mount side, just too far. (A wall only beside
-        // or in front of it is the orientation check's finding.)
-        issues.push({
-          check: "mount_gap",
-          severity: textOnly || minGap <= 0.1 ? "look" : "warn",
-          path: r.p,
-          pos: v2(r.c),
-          why: `stands ${cm(minGap)} off ${hit?.p ?? "the wall"} on its mount side (${side})`,
-          ev: { gap_m: r3(minGap), mount_side: side, metadata, ...(hit ? { wall: hit.p } : {}) },
-          next: `summer_attach_to_surface ${r.p} backAxis=${side}`,
-          score: minGap,
-          ...(frame ? { frame } : {}),
-        });
+      } else if (m.gap !== null && m.min !== null) {
+        // A wall IS behind the mount side, too far at the centre or a side.
+        // (A wall only beside or in front of it is the orientation check's
+        // finding.) The pack may document a standoff (ducts "about 0.1 m off
+        // the wall"); a bracket that touches the wall may hold it off by design.
+        const limit = m.standoff !== null ? Math.max(0.05, m.standoff + 0.05) : 0.05;
+        if (m.gap > limit && !(chained && m.gap > 0.3) && !held.has(i)) {
+          const wall = (m.at >= 0 ? inst[m.hitAt[m.at] ?? -1] : undefined) ?? (m.flipped && nearest ? inst[nearest.at] : undefined) ?? m.hit;
+          const atSide = m.at > 0 && m.gap - m.min > 0.01 ? sampleSide(m.local, m.at) : null;
+          issues.push({
+            check: "mount_gap",
+            severity: textOnly || m.gap <= limit + 0.05 ? "look" : "warn",
+            path: r.p,
+            pos: v2(r.c),
+            why: `stands ${cm(m.gap)} off ${wall?.p ?? "the wall"} on its mount side (${side})${atSide ? ` at its ${atSide} (closest ${cm(m.min)})` : ""}${m.flipped ? ", measured on the side facing the wall (front-back symmetric)" : ""}${m.standoff !== null ? `; the pack allows ${cm(m.standoff)} (${m.standoffSrc})` : ""}`,
+            ev: {
+              gap_m: r3(m.gap),
+              mount_side: side,
+              metadata,
+              ...(wall ? { wall: wall.p } : {}),
+              ...(atSide ? { at: atSide, min_m: r3(m.min) } : {}),
+              ...(m.standoff !== null ? { standoff_m: r3(m.standoff) } : {}),
+            },
+            next: `summer_attach_to_surface ${r.p} backAxis=${side}`,
+            score: m.gap,
+            ...(frame ? { frame } : {}),
+          });
+        }
       }
     }
-    if (checks.has("orientation") && nearest && nearest.dist <= 0.5) {
+    // A front-back symmetric piece looks the same either way round: which
+    // way its mount side points says nothing.
+    if (checks.has("orientation") && nearest && nearest.dist <= 0.5 && !m.symmetric) {
       const angle = directionAngleDegrees(wax, nearest.dir);
-      const behindOk = minGap !== null && minGap <= 0.1;
+      const behindOk = m.min !== null && m.min <= 0.1;
       if (angle > 45 && !behindOk) {
         issues.push({
           check: "orientation",

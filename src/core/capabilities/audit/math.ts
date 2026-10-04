@@ -117,6 +117,53 @@ export function directionAngleDegrees(a: Vec3, b: Vec3): number {
 }
 
 // ---------------------------------------------------------------------------
+// mount_gap: centre and sides; front-back symmetry about the mount axis
+// ---------------------------------------------------------------------------
+
+/** The kernel's 9 mount-side samples: 0 centre, 1-4 corners, 5-8 side midpoints. */
+export const MOUNT_GAP_SAMPLES = [0, 5, 6, 7, 8] as const;
+
+/**
+ * A mounted piece's gap to its wall, measured at the centre AND the sides:
+ * the largest of the centre and the 4 side-midpoint samples (a shutter
+ * resting on a sill 10 cm out stands 15 cm off the wall at its sides).
+ * Samples more than `reach` beyond the closest one are ignored: that ray
+ * passed the wall's edge into a recess. `min` is the closest of all 9
+ * samples (what holds the piece); `at` the sample `gap` came from.
+ */
+export function mountGap(gaps: readonly (number | null | undefined)[], reach = 0.25): { min: number | null; gap: number | null; at: number } {
+  const valid = gaps.map((g, k) => ({ g, k })).filter((x): x is { g: number; k: number } => typeof x.g === "number" && Number.isFinite(x.g));
+  if (!valid.length) return { min: null, gap: null, at: -1 };
+  const closest = valid.reduce((a, b) => (b.g < a.g ? b : a));
+  let best: { g: number; k: number } | null = null;
+  for (const x of valid) {
+    if (!(MOUNT_GAP_SAMPLES as readonly number[]).includes(x.k) || x.g > closest.g + reach) continue;
+    if (!best || x.g > best.g) best = x;
+  }
+  const pick = best ?? closest;
+  return { min: closest.g, gap: pick.g, at: pick.k };
+}
+
+/**
+ * Front-back symmetric about the mount axis, from the kernel's
+ * [pos+, area+, pos-, area-, lo, hi] along that axis: the bounds are centred
+ * on the origin, and the largest plane facing each way has about the same
+ * area (within `tolerance`) at the mirrored position. Such a piece (a duct
+ * run, a strap brace) looks the same turned 180 degrees, so which way its
+ * mount side points says nothing.
+ */
+export function isFrontBackSymmetric(planes: readonly number[] | null | undefined, tolerance = 0.15): boolean {
+  if (!planes || planes.length < 6 || !planes.every((n) => typeof n === "number" && Number.isFinite(n))) return false;
+  const [pp, ap, pm, am, lo, hi] = planes as [number, number, number, number, number, number];
+  const extent = hi - lo;
+  if (!(extent > 0) || !(ap > 0) || !(am > 0)) return false;
+  const slack = Math.max(0.01, 0.05 * extent);
+  if (Math.abs(lo + hi) > 2 * slack) return false;
+  if (Math.min(ap, am) / Math.max(ap, am) < 1 - tolerance) return false;
+  return Math.abs(pp + pm) <= 2 * slack;
+}
+
+// ---------------------------------------------------------------------------
 // uv_stretch: anisotropy of the UV -> world mapping of one triangle
 // ---------------------------------------------------------------------------
 

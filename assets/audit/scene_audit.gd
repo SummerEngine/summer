@@ -90,6 +90,8 @@ var _floor_gap_covered := false
 var _floor_recs: Array = []
 # Ground alternatives packs document: [pack dir, source file, material, clause].
 var _pack_docs: Array = []
+# Wall standoffs ASSEMBLY.md gives per section: pack dir -> [[heading, metres]].
+var _pack_standoff: Dictionary = {}
 
 var _re_struct: RegEx = null
 var _re_floor: RegEx = null
@@ -493,6 +495,7 @@ func _read_pack(path: String) -> void:
 		md = FileAccess.get_file_as_string(assembly)
 	if not _pack_ground(pack_dir, "PACK.json", how):
 		_pack_ground(pack_dir, "ASSEMBLY.md", md)
+	_pack_standoffs(pack_dir, md)
 	var re := RegEx.create_from_string("(?i)wall[- ]mounted[^(]{0,40}\\(([^)]{1,600})\\)([^.]{0,120})")
 	var m := re.search(how)
 	if m == null:
@@ -539,6 +542,60 @@ func _pack_ground(dir: String, source: String, text: String) -> bool:
 		_pack_docs.append([dir, source, material, c.substr(0, 200)])
 		return true
 	return false
+
+
+# ASSEMBLY.md sections that give a wall standoff ("Ducts: ... standing about
+# 0.1 m off the wall", "flush to the wall (0-10 cm)"): the largest distance
+# per section heading. A mounted piece whose pieces.json category the heading
+# names may stand that far off its wall (mount_gap).
+func _pack_standoffs(dir: String, md: String) -> void:
+	if md == "":
+		return
+	var re_off := RegEx.create_from_string("(?i)(\\d+(?:\\.\\d+)?)(?:\\s*-\\s*(\\d+(?:\\.\\d+)?))?\\s*(cm|m)\\s+off\\s+(?:the|a|its)\\s+wall")
+	var re_flush := RegEx.create_from_string("(?i)flush\\s+(?:to|against|on)\\s+(?:the|a|its)\\s+wall\\s*\\(\\s*(\\d+(?:\\.\\d+)?)(?:\\s*-\\s*(\\d+(?:\\.\\d+)?))?\\s*(cm|m)\\s*\\)")
+	var rows: Array = []
+	for section in md.split("\n## "):
+		var heading := String(section).get_slice("\n", 0).strip_edges().to_lower()
+		var hi := -1.0
+		for pattern in [re_off, re_flush]:
+			for found in (pattern as RegEx).search_all(String(section)):
+				var rm := found as RegExMatch
+				var v := float(rm.get_string(2) if rm.get_string(2) != "" else rm.get_string(1))
+				if rm.get_string(3).to_lower() == "cm":
+					v /= 100.0
+				hi = maxf(hi, v)
+		if hi >= 0.0 and hi <= 1.0 and heading != "" and rows.size() < 24:
+			rows.append([heading, hi])
+	if not rows.is_empty():
+		_pack_standoff[dir] = rows
+
+
+# How far off its wall a mounted piece may stand: pieces.json standoff_m (a
+# number, or [min, max]), else its pack's ASSEMBLY.md section whose heading
+# names its category. [metres or null, source].
+func _standoff_of(rec: Dictionary) -> Array:
+	var man: Dictionary = rec["man"]
+	var raw: Variant = man.get("standoff_m", null)
+	if typeof(raw) == TYPE_FLOAT or typeof(raw) == TYPE_INT:
+		return [snappedf(float(raw), 0.001), "pieces.json"]
+	if typeof(raw) == TYPE_ARRAY:
+		var top := -1.0
+		for v in (raw as Array):
+			if typeof(v) == TYPE_FLOAT or typeof(v) == TYPE_INT:
+				top = maxf(top, float(v))
+		if top >= 0.0:
+			return [snappedf(top, 0.001), "pieces.json"]
+	var cat := String(man.get("category", "")).to_lower().replace("_", " ")
+	var scene := String(rec["scene"])
+	if cat == "" or scene == "":
+		return [null, ""]
+	for pack in _pack_standoff:
+		if not scene.begins_with(String(pack) + "/"):
+			continue
+		for row in (_pack_standoff[pack] as Array):
+			if String(row[0]).contains(cat):
+				return [snappedf(float(row[1]), 0.001), "ASSEMBLY.md"]
+	return [null, ""]
 
 
 static func _axis_of(text: String) -> Vector3:
@@ -665,6 +722,14 @@ func _resolve_underlays() -> void:
 
 func _mesh_pass() -> void:
 	var want_uv := _checks.has("uv_stretch")
+	# Meshes of mounted pieces also get their largest plane per axis and side
+	# (front-back symmetry about the mount axis: mount_gap, orientation).
+	var mount_meshes: Dictionary = {}
+	if _checks.has("mount_gap") or _checks.has("orientation"):
+		for rec in _inst:
+			if (rec["mount"] as Vector3) != Vector3.ZERO:
+				for m in (rec["meshes"] as Array):
+					mount_meshes[(m[1] as Mesh).get_instance_id()] = true
 	for rec in _inst:
 		var role := String(rec["role"])
 		if role == "dressing":
@@ -673,7 +738,7 @@ func _mesh_pass() -> void:
 			var mesh: Mesh = m[1]
 			var key := mesh.get_instance_id()
 			if not _mesh_info.has(key):
-				_mesh_info[key] = _analyze_mesh(mesh, want_uv and role != "underlay")
+				_mesh_info[key] = _analyze_mesh(mesh, want_uv and role != "underlay", mount_meshes.has(key))
 	# Walls without a declared front: the thin local axis, signed by which side
 	# carries more outward-facing area.
 	for rec in _inst:
@@ -704,9 +769,11 @@ func _double_sided(mat: Material) -> bool:
 	return false
 
 
-func _analyze_mesh(mesh: Mesh, want_uv: bool) -> Dictionary:
+func _analyze_mesh(mesh: Mesh, want_uv: bool, want_planes := false) -> Dictionary:
 	var faces := PackedVector3Array()
 	var axis_area := PackedFloat32Array([0, 0, 0, 0, 0, 0])
+	# Axis-facing area in 1 cm slabs: Vector3i(axis, 0 for + / 1 for -, cm) -> m2.
+	var planes: Dictionary = {}
 	var uv_cands: Array = []
 	var tris := 0
 	var no_material := 0
@@ -767,6 +834,11 @@ func _analyze_mesh(mesh: Mesh, want_uv: bool) -> Dictionary:
 					axis_area[2 if nn.y > 0 else 3] += area
 				if absf(nn.z) > 0.7:
 					axis_area[4 if nn.z > 0 else 5] += area
+				if want_planes:
+					for pa in 3:
+						if absf(nn[pa]) > 0.95:
+							var pk := Vector3i(pa, 0 if nn[pa] > 0.0 else 1, int(round((p0[pa] + p1[pa] + p2[pa]) * 100.0 / 3.0)))
+							planes[pk] = float(planes.get(pk, 0.0)) + area
 				if has_uv and area >= 0.015:
 					var t0: Vector2 = uvs[i0]
 					var u1: Vector2 = uvs[i1] - t0
@@ -793,7 +865,17 @@ func _analyze_mesh(mesh: Mesh, want_uv: bool) -> Dictionary:
 	uv_cands.sort_custom(func(a, b): return float(a[0]) > float(b[0]))
 	if uv_cands.size() > 6:
 		uv_cands.resize(6)
-	return {"faces": faces, "axis_area": axis_area, "uv": uv_cands, "tris": tris, "no_material": no_material, "shape": RID(), "name": _mesh_name(mesh)}
+	# The largest plane per (axis, side): [position (m), area (m2)] x 6, a plane
+	# split across neighbouring 1 cm slabs counted whole.
+	var plane_rows := PackedFloat32Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+	for key in planes:
+		var pk: Vector3i = key
+		var sum := float(planes[key]) + float(planes.get(Vector3i(pk.x, pk.y, pk.z - 1), 0.0)) + float(planes.get(Vector3i(pk.x, pk.y, pk.z + 1), 0.0))
+		var slot := (pk.x * 2 + pk.y) * 2
+		if sum > plane_rows[slot + 1]:
+			plane_rows[slot] = float(pk.z) / 100.0
+			plane_rows[slot + 1] = sum
+	return {"faces": faces, "axis_area": axis_area, "planes": plane_rows, "uv": uv_cands, "tris": tris, "no_material": no_material, "shape": RID(), "name": _mesh_name(mesh)}
 
 
 func _mesh_name(mesh: Mesh) -> String:
@@ -1621,15 +1703,19 @@ func _scan_mounts() -> Array:
 		var wax: Vector3 = (xf.basis * ax).normalized()
 		var ex: Array = rec["bodies"]
 		var gaps: Array = []
+		var hit_at: Array = []
 		var hit_inst := -1
+		# 9 samples on the mount-side face: centre, 4 corners, 4 side midpoints.
 		for off in [Vector3.ZERO, u * su + v * sv, u * su - v * sv, -u * su + v * sv, -u * su - v * sv, u * su, -u * su, v * sv, -v * sv]:
 			var wp: Vector3 = xf * (back + off)
 			var o := wp - wax * 0.15
 			var hit := _ray(o, wp + wax * 1.0, MASK_FACADE | L_MOUNT, ex)
 			if hit.is_empty():
 				gaps.append(null)
+				hit_at.append(-1)
 			else:
 				gaps.append(snappedf((hit["position"] as Vector3).distance_to(o) - 0.15, 0.001))
+				hit_at.append(_hit_inst(hit))
 				if hit_inst < 0:
 					hit_inst = _hit_inst(hit)
 		# Nearest wall around the piece (horizontal +-local X, +-local Z).
@@ -1667,8 +1753,58 @@ func _scan_mounts() -> Array:
 		var ground: Variant = null
 		if not down.is_empty():
 			ground = snappedf(wa.position.y - (down["position"] as Vector3).y, 0.001)
-		out.append([int(rec["i"]), _a3(wax, 0.0001), gaps, hit_inst, around, String((rec["man"] as Dictionary).get("category", "")), String(rec.get("mount_src", "")), _a3(ax, 1.0), chain, ground])
+		# How far off the wall the pack lets it stand, and its front-back
+		# symmetry (planes, or pieces.json "symmetric").
+		var so := _standoff_of(rec)
+		var sym_meta: Variant = null
+		var sym_raw: Variant = (rec["man"] as Dictionary).get("symmetric", null)
+		if typeof(sym_raw) == TYPE_BOOL:
+			sym_meta = sym_raw
+		out.append([int(rec["i"]), _a3(wax, 0.0001), gaps, hit_inst, around, String((rec["man"] as Dictionary).get("category", "")), String(rec.get("mount_src", "")), _a3(ax, 1.0), chain, ground, so[0], so[1], _mount_planes(rec, ax), sym_meta, hit_at])
 	return out
+
+
+# Front-back symmetry about a mount axis: the largest plane facing +axis and
+# the largest facing -axis (instance-local position along the axis, area),
+# and the piece's bounds along it: [pos+, area+, pos-, area-, lo, hi], or
+# null without plane data. A duct run or a strap brace looks the same turned
+# 180 degrees; the judge decides.
+func _mount_planes(rec: Dictionary, ax: Vector3) -> Variant:
+	var ai := 0 if absf(ax.x) > 0.5 else (1 if absf(ax.y) > 0.5 else 2)
+	var e := Vector3.ZERO
+	e[ai] = 1.0
+	var inv := (rec["xf"] as Transform3D).affine_inverse()
+	var best := [0.0, 0.0, 0.0, 0.0]
+	var found := false
+	for m in (rec["meshes"] as Array):
+		var info: Dictionary = _mesh_info.get((m[1] as Mesh).get_instance_id(), {})
+		var rows: PackedFloat32Array = info.get("planes", PackedFloat32Array())
+		if rows.size() < 12:
+			continue
+		var rel: Transform3D = inv * (m[2] as Transform3D)
+		for j in 3:
+			var ej := Vector3.ZERO
+			ej[j] = 1.0
+			var d: Vector3 = rel.basis * ej
+			var along := d.dot(e)
+			if absf(along) < 0.99 * d.length():
+				continue
+			for s in 2:
+				var slot := (j * 2 + s) * 2
+				var area := rows[slot + 1]
+				if area <= 0.0:
+					continue
+				var pos := rel.origin[ai] + along * rows[slot]
+				# Mesh side s (0 = +e_j) faces +axis when e_j maps onto +axis.
+				var k := 0 if ((s == 0) == (along > 0.0)) else 2
+				if area > float(best[k + 1]):
+					best[k] = pos
+					best[k + 1] = area
+					found = true
+	if not found:
+		return null
+	var la: AABB = rec["laabb"]
+	return [snappedf(float(best[0]), 0.001), snappedf(float(best[1]), 0.0001), snappedf(float(best[2]), 0.001), snappedf(float(best[3]), 0.0001), snappedf(la.position[ai], 0.001), snappedf(la.end[ai], 0.001)]
 
 
 # ---------------------------------------------------------------------------

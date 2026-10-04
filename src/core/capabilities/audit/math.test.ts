@@ -6,9 +6,11 @@ import {
   expectedHostOrigin,
   fitCameraDistance,
   footprintExtent,
+  isFrontBackSymmetric,
   lineAngleDegrees,
   matchInsertHost,
   mostCommon,
+  mountGap,
   robustBounds,
   triangleArea,
   uvStretchRatio,
@@ -179,6 +181,34 @@ describe("floor gap footprints", () => {
     expect(mostCommon([4, 2, 4, 2, 4])).toBe(4);
     expect(mostCommon([7, 3])).toBe(7);
     expect(mostCommon([])).toBe(-1);
+  });
+});
+
+describe("mount gap samples and front-back symmetry", () => {
+  it("the gap is the largest of the centre and the 4 side midpoints; corners only count for the closest contact", () => {
+    // 0 centre, 1-4 corners, 5-8 sides.
+    expect(mountGap([0.102, 0.152, 0.152, 0.152, 0.152, 0.102, 0.152, 0.152, 0.152])).toEqual({ min: 0.102, gap: 0.152, at: 6 });
+    expect(mountGap([0.06, 0.01, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06])).toMatchObject({ min: 0.01, gap: 0.06 });
+    // A side ray past the wall's edge (80 cm into a recess) and missing rays are ignored.
+    expect(mountGap([0.0, 0, 0, 0, 0, 0, null, 0.8, 0])).toEqual({ min: 0, gap: 0, at: 0 });
+    expect(mountGap([null, null])).toEqual({ min: null, gap: null, at: -1 });
+    // Older rows with only the centre (or a corner) still give a gap.
+    expect(mountGap([0.059, 0.06])).toMatchObject({ gap: 0.059, at: 0 });
+    expect(mountGap([null, 0.04])).toMatchObject({ gap: 0.04, at: 1 });
+  });
+
+  it("symmetric: bounds centred on the origin, equal largest planes at mirrored positions", () => {
+    // A duct run (front/back planes at +-0.3, equal area) and a strap brace (+-0.345).
+    expect(isFrontBackSymmetric([0.3, 0.5, -0.3, 0.5, -0.3, 0.3])).toBe(true);
+    expect(isFrontBackSymmetric([0.345, 0.0018, -0.345, 0.0017, -0.345, 0.345])).toBe(true);
+    // A wall lantern: the back plate is three times the front plane.
+    expect(isFrontBackSymmetric([0.15, 0.01, -0.2, 0.03, -0.2, 0.15])).toBe(false);
+    // Equal planes, but the bounds sit behind the origin (origin on the back face).
+    expect(isFrontBackSymmetric([0.6, 0.5, 0, 0.5, 0, 0.6])).toBe(false);
+    // Planes not mirrored.
+    expect(isFrontBackSymmetric([0.3, 0.5, -0.1, 0.5, -0.3, 0.3])).toBe(false);
+    expect(isFrontBackSymmetric(null)).toBe(false);
+    expect(isFrontBackSymmetric([0.3, 0, -0.3, 0.5, -0.3, 0.3])).toBe(false);
   });
 });
 

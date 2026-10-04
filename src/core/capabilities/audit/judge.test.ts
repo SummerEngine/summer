@@ -351,6 +351,73 @@ describe("mount_gap and mount orientation", () => {
   });
 });
 
+describe("mount_gap and orientation: kit-held pieces, documented standoffs, side gaps, symmetric pieces (fix run)", () => {
+  // Kernel mount row: [i, wall axis, 9 gaps, first hit, around, category, src,
+  // local axis, chain, ground, standoff, standoff source, planes, symmetric, hit per sample].
+  const all = new Set(["mount_gap", "orientation"] as const);
+  const WALL = 0;
+  const gutterInst = [
+    row("Alley2/WallR_0", { r: "wall", c: [0, 3, -0.1], e: [20, 6, 0.2] }),
+    row("Alley2/Gutter/Brace_1", { k: "modular_metal_gutter_bracing", r: "mount", c: [0, 1.2, 0.1445], e: [0.2, 0.1, 0.289] }),
+    row("Alley2/Gutter/Sec_1", { k: "modular_metal_gutter_section", r: "mount", c: [0, 1, 0.14], e: [0.17, 1, 0.16] }),
+    row("Alley2/Gutter/Sec_2", { k: "modular_metal_gutter_section", r: "mount", c: [0, 2, 0.1375], e: [0.17, 1, 0.16] }),
+    row("Alley2/Gutter/Outlet", { k: "modular_metal_gutter_outlet", r: "mount", c: [0, 0.3, 0.206], e: [0.15, 0.4, 0.26] }),
+    row("Alley2/Gutter/Sec_3", { k: "modular_metal_gutter_section", r: "mount", c: [0, 3, 0.23], e: [0.17, 1, 0.16] }),
+  ];
+  const mount = (i: number, gap: number | null, extra: unknown[] = []) => [i, [0, 0, -1], Array(9).fill(gap), WALL, gap === null ? [] : [[[0, 0, -1], gap, WALL]], "pipes", "pieces", [0, 0, -1], 0.0, null, ...extra];
+
+  it("gutters held off the wall by their own bracing are fine; the run's outlet too; a kinked section is not", () => {
+    const rows = [mount(1, -0.001), mount(2, 0.06), mount(3, 0.055), mount(4, 0.076), mount(5, 0.15)];
+    const r = judgeMounts(rows, gutterInst, all);
+    expect(r.issues).toHaveLength(1);
+    expect(r.issues[0]).toMatchObject({ check: "mount_gap", severity: "warn", path: "Alley2/Gutter/Sec_3", ev: { gap_m: 0.15, wall: "Alley2/WallR_0" } });
+    // Without the bracing, the sections are off their wall (and group as one).
+    const unbraced = judgeMounts(rows.slice(1), gutterInst, all).issues;
+    expect(unbraced.map((i) => i.path).sort()).toEqual(["Alley2/Gutter/Outlet", "Alley2/Gutter/Sec_1", "Alley2/Gutter/Sec_2", "Alley2/Gutter/Sec_3"]);
+    const many = Array.from({ length: 27 }, (_, k) => row(`Alley2/Gutter/S${k}`, { k: "modular_metal_gutter_section", r: "mount", c: [k * 5, 1, 0.14], e: [0.17, 1, 0.16] }));
+    const grouped = groupRepeats(judgeMounts(many.map((_, k) => mount(k, 0.054 + (k % 6) * 0.001)), many, all).issues, many);
+    expect(grouped).toHaveLength(1);
+    expect(grouped[0]!.why).toMatch(/^27 x modular_metal_gutter_section \(0.054..0.059\)/);
+  });
+
+  it("a standoff the pack documents (ducts about 0.1 m off the wall) is not a gap; beyond it, it is", () => {
+    const duct = [row("Alley2/Duct/Run_2", { k: "modular_airduct_rectangular_01_straight_01", r: "mount", c: [5, 3.6, 0.41], e: [2, 0.6, 0.6] }), row("Alley2/WallR_0", { r: "wall" })];
+    const at = (gap: number) => [0, [0, 0, -1], Array(9).fill(gap), 1, [[[0, 0, -1], gap, 1]], "ducts", "pieces", [0, 0, -1], null, 3.6, 0.1, "ASSEMBLY.md", null, null, Array(9).fill(1)];
+    expect(judgeMounts([at(0.112)], duct, all).issues).toEqual([]);
+    const [i] = judgeMounts([at(0.18)], duct, all).issues;
+    expect(i).toMatchObject({ severity: "look", ev: { gap_m: 0.18, standoff_m: 0.1 } });
+    expect(i!.why).toContain("the pack allows 10 cm (ASSEMBLY.md)");
+  });
+
+  it("the gap is measured at the sides as well as the centre (ShutterWin: 10.2 cm on the sill, 15.2 cm at its sides)", () => {
+    const inst = [row("Alley2/ShutterWin", { k: "rollershutter_window_graffiti", r: "mount", c: [20, 1.5, -7.85] }), row("House2/Back/B0_w3_win", { r: "insert" }), row("House2/Back/B0_w3", { r: "wall" })];
+    const gaps = [0.102, 0.152, 0.152, 0.152, 0.152, 0.102, 0.152, 0.152, 0.152];
+    const hitAt = [1, 2, 2, 2, 2, 1, 2, 2, 2];
+    const [i] = judgeMounts([[0, [0, 0, -1], gaps, 1, [[[0, 0, -1], 0.102, 1]], "shutters", "pieces", [0, 0, -1], null, null, null, "", null, null, hitAt]], inst, all).issues;
+    expect(i).toMatchObject({ check: "mount_gap", severity: "warn", ev: { gap_m: 0.152, wall: "House2/Back/B0_w3", at: "+Y side", min_m: 0.102 } });
+    expect(i!.why).toBe("stands 15.2 cm off House2/Back/B0_w3 on its mount side (-Z) at its +Y side (closest 10.2 cm)");
+    // A side ray that passes the wall's edge into a recess 80 cm back is not the gap.
+    const edge = [0, 0, 0, 0, 0, 0, 0, 0.8, 0];
+    expect(judgeMounts([[0, [0, 0, -1], edge, 2, [[[0, 0, -1], 0, 2]], "shutters", "pieces", [0, 0, -1], null, null, null, "", null, null, hitAt]], inst, all).issues).toEqual([]);
+  });
+
+  it("a front-back symmetric piece turned 180 deg is not an orientation item; its gap is measured on the side facing the wall", () => {
+    const inst = [row("Alley2/Duct/Run_3", { k: "duct_run", r: "mount", c: [8, 3.6, 0.41], e: [2, 0.6, 0.6] }), row("Alley2/WallR_0", { r: "wall" })];
+    const sym = [0.3, 0.5, -0.3, 0.5, -0.3, 0.3];
+    const flipped = (planes: unknown, meta: unknown, standoff: number | null, gapToWall = 0.11) => [0, [0, 0, 1], Array(9).fill(null), -1, [[[0, 0, -1], gapToWall, 1]], "ducts", "pieces", [0, 0, -1], null, 3.6, standoff, standoff === null ? "" : "ASSEMBLY.md", planes, meta, Array(9).fill(-1)];
+    expect(judgeMounts([flipped(sym, null, 0.1)], inst, all).issues).toEqual([]);
+    const off = judgeMounts([flipped(sym, null, null)], inst, all).issues;
+    expect(off).toMatchObject([{ check: "mount_gap", severity: "warn", ev: { gap_m: 0.11 } }]);
+    expect(off[0]!.why).toContain("measured on the side facing the wall (front-back symmetric)");
+    // A wall lantern is not symmetric: its back plate is the larger plane.
+    const lantern = judgeMounts([flipped([0.15, 0.01, -0.2, 0.03, -0.2, 0.15], null, null)], inst, all).issues;
+    expect(lantern.map((i) => i.check)).toEqual(["orientation"]);
+    // pieces.json "symmetric" wins over the planes either way.
+    expect(judgeMounts([flipped(sym, false, null)], inst, all).issues.map((i) => i.check)).toEqual(["orientation"]);
+    expect(judgeMounts([flipped(null, true, 0.1)], inst, all).issues).toEqual([]);
+  });
+});
+
 describe("orientation of long props", () => {
   const inst = [row("Alley3/Props/Bench", { k: "park_bench" }), row("Alley3/WallR_0", { r: "wall" })];
 

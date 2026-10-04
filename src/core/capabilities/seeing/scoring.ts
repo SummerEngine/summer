@@ -24,7 +24,7 @@ import {
   type Vec3,
 } from "./math.js";
 
-export const SCORE_TERMS = ["visibility", "fill", "thirds", "horizon", "sky", "void", "depth", "foreground", "clear", "balance", "detail", "contrast"] as const;
+export const SCORE_TERMS = ["visibility", "fill", "thirds", "horizon", "sky", "void", "depth", "foreground", "clear", "balance", "detail", "contrast", "entry"] as const;
 export type ScoreTerm = (typeof SCORE_TERMS)[number];
 
 export interface ShotProfile {
@@ -43,7 +43,7 @@ export const SHOT_PROFILES: Record<ShotType, ShotProfile> = {
     sky: [0.12, 0.38],
     foregroundTarget: 0.08,
     foregroundMax: 0.3,
-    weights: { visibility: 3, fill: 2, thirds: 1, horizon: 1, sky: 1, void: 1.5, depth: 1.5, foreground: 0.5, clear: 1, balance: 0, detail: 1.5, contrast: 0.75 },
+    weights: { visibility: 3, fill: 2, thirds: 1, horizon: 1, sky: 1, void: 1.5, depth: 1.5, foreground: 0.5, clear: 1, balance: 0, detail: 1.5, contrast: 0.75, entry: 0 },
   },
   eye_level: {
     fillTarget: SHOT_DEFAULTS.eye_level.fill,
@@ -51,7 +51,7 @@ export const SHOT_PROFILES: Record<ShotType, ShotProfile> = {
     sky: [0.08, 0.35],
     foregroundTarget: 0.1,
     foregroundMax: 0.35,
-    weights: { visibility: 2, fill: 1, thirds: 1, horizon: 1, sky: 1, void: 1.5, depth: 2, foreground: 0.5, clear: 1.5, balance: 0.5, detail: 1.5, contrast: 0.75 },
+    weights: { visibility: 2, fill: 1, thirds: 1, horizon: 1, sky: 1, void: 1.5, depth: 2, foreground: 0.5, clear: 1.5, balance: 0.5, detail: 1.5, contrast: 0.75, entry: 0 },
   },
   low_angle: {
     fillTarget: SHOT_DEFAULTS.low_angle.fill,
@@ -59,7 +59,7 @@ export const SHOT_PROFILES: Record<ShotType, ShotProfile> = {
     sky: [0.2, 0.6],
     foregroundTarget: 0.08,
     foregroundMax: 0.3,
-    weights: { visibility: 3, fill: 2, thirds: 1, horizon: 0.5, sky: 1.5, void: 1, depth: 0.5, foreground: 0.5, clear: 1, balance: 0, detail: 1.5, contrast: 0.75 },
+    weights: { visibility: 3, fill: 2, thirds: 1, horizon: 0.5, sky: 1.5, void: 1, depth: 0.5, foreground: 0.5, clear: 1, balance: 0, detail: 1.5, contrast: 0.75, entry: 0 },
   },
   detail: {
     fillTarget: SHOT_DEFAULTS.detail.fill,
@@ -67,7 +67,7 @@ export const SHOT_PROFILES: Record<ShotType, ShotProfile> = {
     sky: [0, 0.12],
     foregroundTarget: 0.05,
     foregroundMax: 0.25,
-    weights: { visibility: 3, fill: 2.5, thirds: 1, horizon: 0.5, sky: 0.5, void: 1, depth: 1, foreground: 0.3, clear: 1, balance: 0, detail: 1.5, contrast: 0.75 },
+    weights: { visibility: 3, fill: 2.5, thirds: 1, horizon: 0.5, sky: 0.5, void: 1, depth: 1, foreground: 0.3, clear: 1, balance: 0, detail: 1.5, contrast: 0.75, entry: 0 },
   },
   corridor: {
     fillTarget: 0,
@@ -75,7 +75,7 @@ export const SHOT_PROFILES: Record<ShotType, ShotProfile> = {
     sky: [0.03, 0.3],
     foregroundTarget: 0.08,
     foregroundMax: 0.3,
-    weights: { visibility: 3, fill: 0, thirds: 0, horizon: 1, sky: 1, void: 1, depth: 3, foreground: 0.5, clear: 2, balance: 1.5, detail: 1.5, contrast: 0.75 },
+    weights: { visibility: 3, fill: 0, thirds: 0, horizon: 1, sky: 1, void: 1, depth: 3, foreground: 0.5, clear: 2, balance: 1.5, detail: 1.5, contrast: 0.75, entry: 1.5 },
   },
 };
 
@@ -211,7 +211,9 @@ export function frameStats(m: Measurement, pose: CameraPose, opts: ScoringOption
   let nearHard = 0;
   let nearLeft = 0;
   let nearRight = 0;
-  const nearLimit = Math.max(2.5, (subjectDist ?? 0) * 0.15);
+  // Walls a metre or two away are what a corridor IS; only at the lens are
+  // they a blocked view.
+  const nearLimit = opts.shot === "corridor" ? 1.0 : Math.max(2.5, (subjectDist ?? 0) * 0.15);
   const sideLimit = Math.max(4, (subjectDist ?? 0) * 0.3);
   let depthSum = 0;
   let depthCount = 0;
@@ -311,6 +313,33 @@ export function frameStats(m: Measurement, pose: CameraPose, opts: ScoringOption
   };
 }
 
+function median(values: number[]): number | undefined {
+  if (!values.length) return undefined;
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.floor(sorted.length / 2)];
+}
+
+/** Ratio (0..1) of the median wall distance in the frame's left and right
+ *  quarters; 0 when one side shows no wall at all. */
+export function edgeSymmetry(m: Measurement, opts: ScoringOptions): number {
+  const grid = m.grid ?? "";
+  const dists = m.dist ?? [];
+  const quarter = Math.max(1, Math.round(opts.gridCols / 4));
+  const left: number[] = [];
+  const right: number[] = [];
+  for (let k = 0; k < grid.length; k++) {
+    const d = dists[k] ?? -1;
+    if (grid[k] === "." || d < 0) continue;
+    const col = k % opts.gridCols;
+    if (col < quarter) left.push(d);
+    else if (col >= opts.gridCols - quarter) right.push(d);
+  }
+  const l = median(left);
+  const r = median(right);
+  if (l === undefined || r === undefined) return 0;
+  return Math.min(l, r) / Math.max(l, r, 1e-6);
+}
+
 export function scoreMeasurement(m: Measurement, candidate: Candidate, opts: ScoringOptions): ScoredCandidate {
   const profile = SHOT_PROFILES[opts.shot];
   const pose: CameraPose = { position: m.position, look_at: m.look_at, fov: m.fov };
@@ -363,9 +392,16 @@ export function scoreMeasurement(m: Measurement, candidate: Candidate, opts: Sco
   // A wall at the lens is not framing; it is a blocked view.
   terms.clear = 1 - Math.min(1, stats.nearHard / 0.3);
   // Corridors and street views read best with walls on both sides as leading
-  // lines rather than one wall eating half the frame.
-  const sides = stats.nearLeft + stats.nearRight;
-  terms.balance = sides < 0.02 ? 1 : 1 - Math.abs(stats.nearLeft - stats.nearRight) / sides;
+  // lines rather than one wall eating half the frame. For a corridor: the
+  // frame's left and right quarters should both be walls at a similar
+  // distance (symmetric recession); elsewhere: near walls evenly split.
+  if (opts.shot === "corridor") {
+    terms.balance = edgeSymmetry(m, opts);
+    if (candidate.into !== undefined) terms.entry = candidate.into;
+  } else {
+    const sides = stats.nearLeft + stats.nearRight;
+    terms.balance = sides < 0.02 ? 1 : 1 - Math.abs(stats.nearLeft - stats.nearRight) / sides;
+  }
   // From the image check, when the engine rendered one: no empty
   // (featureless) frame areas, and values that separate near from far.
   if (stats.flat !== undefined) terms.detail = 1 - Math.min(1, stats.flat / 0.3);

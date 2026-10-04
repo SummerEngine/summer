@@ -121,4 +121,17 @@ describe("smart framing scores", () => {
     expect(contrasted.terms.contrast).toBe(1);
     expect(scoreMeasurement(base, CAND, OPTS).terms.detail).toBeUndefined();
   });
+
+  it("corridor shots prefer looking in from the open end and walls on both sides", () => {
+    const corridorOpts: ScoringOptions = { ...OPTS, shot: "corridor" };
+    // Walls on both frame edges at similar distances, the far end in the middle.
+    const both = grid((r, c) => (c < 6 || c >= 18 ? ["H", 4] : r < 4 ? [".", -1] : ["H", 20]));
+    const oneSided = grid((r, c) => (c >= 18 ? ["H", 4] : c < 6 ? ["H", 30] : r < 4 ? [".", -1] : ["H", 20]));
+    const inward = scoreMeasurement({ ...measurement(both), vis: "VVVVVV" }, { ...CAND, into: 1 }, corridorOpts);
+    const outward = scoreMeasurement({ ...measurement(both), vis: "VVVVVV" }, { ...CAND, into: 0 }, corridorOpts);
+    expect(inward.terms.entry).toBe(1);
+    expect(inward.total).toBeGreaterThan(outward.total);
+    const lopsided = scoreMeasurement({ ...measurement(oneSided), vis: "VVVVVV" }, { ...CAND, into: 1 }, corridorOpts);
+    expect(inward.terms.balance!).toBeGreaterThan(lopsided.terms.balance!);
+  });
 });

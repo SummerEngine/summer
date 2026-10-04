@@ -41,6 +41,9 @@ export interface Candidate {
   min_clearance: number;
   low_angle_rule: boolean;
   note?: string;
+  /** Corridor only: 1 = from an open end looking in, 0 = looking out of a
+   *  dead end, 0.5 = a through passage (both ends alike). */
+  into?: number;
 }
 
 export interface SpawnInfo {
@@ -65,6 +68,10 @@ export interface CorridorAxis extends CorridorRun {
   usableBack: number;
   width: number;
   score: number;
+  /** The free run continues past the subject bounds on that end: an
+   *  entrance. A closed end is a dead end (or the far wall). */
+  openFwd: boolean;
+  openBack: boolean;
 }
 
 export interface CandidateContext {
@@ -233,14 +240,16 @@ export function exitDistance(box: Aabb, origin: Vec3, dir: Vec3): number {
 export function chooseCorridorAxis(runs: readonly CorridorRun[], box: Aabb): CorridorAxis[] {
   const scored: CorridorAxis[] = [];
   for (const run of runs) {
-    const usableFwd = Math.min(run.fwd, exitDistance(box, run.seed, run.dir) + 2);
-    const usableBack = Math.min(run.back, exitDistance(box, run.seed, scale(run.dir, -1)) + 2);
+    const exitFwd = exitDistance(box, run.seed, run.dir);
+    const exitBack = exitDistance(box, run.seed, scale(run.dir, -1));
+    const usableFwd = Math.min(run.fwd, exitFwd + 2);
+    const usableBack = Math.min(run.back, exitBack + 2);
     const total = usableFwd + usableBack;
     const width = run.left + run.right;
     if (total < 4 || width < 1) continue;
     const slenderness = total / Math.max(width, 0.5);
     const score = total * Math.min(1, slenderness / 3);
-    scored.push({ ...run, usableFwd, usableBack, width, score });
+    scored.push({ ...run, usableFwd, usableBack, width, score, openFwd: run.fwd > exitFwd + 0.5, openBack: run.back > exitBack + 0.5 });
   }
   scored.sort((a, b) => b.score - a.score);
   // Distinct axes only: drop near-duplicates (same direction, nearby seed).
@@ -263,7 +272,11 @@ function corridorCandidates(ctx: CandidateContext, fovDefault: number): Candidat
   const halfWidth = Math.min(axis.left, axis.right, axis.width / 2);
   const fovs = ctx.fov !== undefined ? [ctx.fov] : [fovDefault - 5, fovDefault + 10];
   const out: Candidate[] = [];
+  // "ab" starts at the back end and looks toward the forward end.
+  const intoOf = (fromOpen: boolean, toOpen: boolean) => (fromOpen === toOpen ? 0.5 : fromOpen ? 1 : 0);
+  const intoAb = intoOf(axis.openBack, axis.openFwd);
   for (const [tag, from, to] of [["ab", endA, endB], ["ba", endB, endA]] as const) {
+    const into = tag === "ab" ? intoAb : 1 - intoAb;
     // Eye level up to a raised eye; a corridor shot is about walking it.
     for (const height of [1.6, 2.4, 3.5]) {
       for (const lateral of [-0.3, 0, 0.3]) {
@@ -288,6 +301,8 @@ function corridorCandidates(ctx: CandidateContext, fovDefault: number): Candidat
             samples,
             min_clearance: DEFAULT_CLEARANCE,
             low_angle_rule: false,
+            into,
+            ...(into === 1 ? { note: "looks in from the open end" } : into === 0 ? { note: "looks out from the dead end" } : {}),
           });
         }
       }

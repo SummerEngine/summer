@@ -126,7 +126,7 @@ Use after a sheet or debug view shows something suspicious. view picks beauty or
     "summer_frame_shot",
     `Smart framing: find good camera poses for a shot type automatically, measured in-engine against the real geometry.
 
-shot: establishing (wide), eye_level (from a spawn node at player eye height), low_angle (hero, near the ground looking up: the camera moves closer and widens its FOV instead of sinking into the ground), detail (close-up), corridor (down an alley or corridor found inside the subject by a free-space scan).
+shot: establishing (wide), eye_level (from a spawn node at player eye height), low_angle (hero, near the ground looking up: the camera moves closer and widens its FOV instead of sinking into the ground), detail (close-up), corridor (down an alley or corridor found inside the subject by a free-space scan, preferring the view in from its open end, walls on both sides).
 
 How: candidate poses on a ring/hemisphere (or along the corridor line) at the distance where the subject fills the shot's target share of the frame; each is checked with a THICK sphere sweep to points on the subject (thin rays miss corners), a near-lens sphere (camera inside or touching geometry is nudged forward or rejected), a ray grid through the frame, and a small beauty render per pose. Walls/terrain blocking the subject reject a pose; foliage, fences, props and pipes in front are allowed (wanted, up to a limit) as framing. Scored on rule-of-thirds placement, frame fill, level horizon, sky share, depth behind the subject (no flat wall right behind it), empty or featureless areas, near-wall clearance, near/far value contrast and foreground framing.
 

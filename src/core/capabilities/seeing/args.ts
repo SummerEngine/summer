@@ -134,7 +134,7 @@ export const frameShotShape = {
   scenePath,
   shot: z
     .enum(SHOT_TYPES)
-    .describe('"establishing" (wide, whole subject, 12-40 deg up), "eye_level" (player eye at spawn: its Camera3D, or origin + eye_height), "low_angle" (hero, camera near the ground looking up), "detail" (close-up), "corridor" (down an alley/corridor inside the subject, found by a free-space scan).'),
+    .describe('"establishing" (wide, whole subject, 12-40 deg up), "eye_level" (player eye at spawn: its Camera3D, or origin + eye_height), "low_angle" (hero, camera near the ground looking up), "detail" (close-up), "corridor" (down an alley/corridor inside the subject, found by a free-space scan; prefers looking in from its open end).'),
   subject: z
     .array(z.string())
     .max(8)

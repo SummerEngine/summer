@@ -85,6 +85,14 @@ describe("corridor axis choice", () => {
     expect(best!.dir).toEqual([0, 0, 1]);
     expect(best!.usableFwd).toBeCloseTo(12, 6);
     expect(best!.usableBack).toBeCloseTo(9, 6);
+    // The run leaves the bounds forward (the street) and stops inside behind (a dead end).
+    expect([best!.openFwd, best!.openBack]).toEqual([true, false]);
+    const shots = generateCandidates({ shot: "corridor", corridor: best!, aspect: 16 / 9, groundY: 0 });
+    const inward = shots.filter((c) => c.into === 1);
+    expect(inward.length).toBe(18);
+    // Looking in = from the open (forward) end toward the dead end.
+    for (const c of inward) expect(c.look_at[2]).toBeLessThan(c.position[2]);
+    expect(shots.filter((c) => c.into === 0).every((c) => c.note === "looks out from the dead end")).toBe(true);
   });
 
   it("returns nothing when no run is long and walkable", () => {

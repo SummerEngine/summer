@@ -5055,7 +5055,7 @@
       "id": "tool/frame-shot",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "744cda3af3fc87be2e8784aad7749ed8a348dd6d0853fdaeaf847163b0b6de06",
+      "content_hash": "f1d83342525f84f418dcfe243710393a79ec3e0c72b34d6cf45256dddb97ce6a",
       "summary": "Smart framing: find, score and bookmark camera poses for a shot type (establishing, eye level, low-angle, detail, corridor) with in-engine visibility tests.",
       "use_when": [
         "\"find a good view of X\" / \"frame an establishing shot\" / \"show it from the player's eye\" / \"look down the alley\"",

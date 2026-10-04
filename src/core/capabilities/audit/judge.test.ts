@@ -226,6 +226,40 @@ describe("floating / sunken", () => {
   });
 });
 
+describe("sunken: the surface it is buried in, seen from above (Alley1/Props/Bottle)", () => {
+  // Stood upright with its origin on the floor: half of its 0.29 m below
+  // floor_b's top (y 0.021); the support ray from y 0 only sees the underlay.
+  const inst = [
+    row("Alley1/Props/Bottle", { c: [3, 0, 2], e: [0.08, 0.29, 0.08] }),
+    row("Ground/B5", { k: "alley_floor_b", r: "floor" }),
+    row("Ground/Underlay", { k: "Underlay", r: "underlay" }),
+    row("Alley1/Props/Grass4", { r: "dressing", c: [5, 0, 2], e: [0.4, 0.2, 0.4] }),
+    row("Alley1/Props/Crate", { c: [7, 0.3, 2], e: [0.6, 0.6, 0.6] }),
+  ];
+  const n5 = (y: number, at: number) => Array.from({ length: 5 }, () => [y, at]);
+
+  it("names the floor tile from above and the embed relative to its top, not the underlay under it", () => {
+    const [i] = judgeSupport([[0, -0.145, 0.0, n5(-0.005, 2), null, 0.021, n5(0.021, 1)]], inst, new Set());
+    expect(i).toMatchObject({ check: "sunken", severity: "error", path: "Alley1/Props/Bottle", ev: { embed_m: 0.166, support: "Ground/B5", support_y: 0.021, under_it: "Ground/Underlay" } });
+    expect(i!.why).toBe("sunk 16.6 cm into Ground/B5 (the first surface from above, at y 0.021): 57% of its height");
+  });
+
+  it("the majority surface wins; surfaces above the prop's top (an awning) are not support", () => {
+    const mixed = [[0.021, 1], [0.021, 1], [0.021, 1], [-0.005, 2], [-0.005, 2]];
+    expect(judgeSupport([[0, -0.145, 0.0, n5(-0.005, 2), null, 0.021, mixed]], inst, new Set())[0]!.ev.support).toBe("Ground/B5");
+    // Only an awning above it: the support rays below decide (the old path).
+    const awning = judgeSupport([[0, -0.145, 0.0, n5(-0.005, 2), null, 0.021, n5(0.5, 4)]], inst, new Set());
+    expect(awning[0]).toMatchObject({ check: "sunken", ev: { support: "Ground/Underlay" } });
+  });
+
+  it("a crate standing on the floor is not sunken, and buried dressing (grass) is never reported", () => {
+    expect(judgeSupport([[4, 0.0, 0.3, n5(0.0, 1), null, 0.021, n5(0.0, 1)]], inst, new Set())).toEqual([]);
+    expect(judgeSupport([[3, -0.1, 0.0, n5(-0.005, 2), null, 0.021, n5(0.021, 1)]], inst, new Set())).toEqual([]);
+    // Floating is unchanged: 5 cm above the floor seen from above and below.
+    expect(judgeSupport([[4, 0.05, 0.35, n5(0.0, 1), null, 0.021, n5(0.0, 1)]], inst, new Set())).toMatchObject([{ check: "floating", severity: "warn" }]);
+  });
+});
+
 describe("interpenetration", () => {
   it("reports overlaps over 3 cm with the other node and its role", () => {
     const inst = [row("Alley3/Props/Bench"), row("Alley3/WallR_0", { r: "wall" })];

@@ -1436,6 +1436,7 @@ func _floor_sample(x: float, z: float, top: float, owner_i: int, gaps: Array, zf
 
 func _scan_support() -> Array:
 	var out: Array = []
+	var want_above := _checks.has("sunken")
 	_floor_recs.clear()
 	for f in _inst:
 		if f["role"] == "floor":
@@ -1458,6 +1459,7 @@ func _scan_support() -> Array:
 		var hz := la.size.z * 0.35
 		var pts := [c, c + Vector3(hx, 0, hz), c + Vector3(-hx, 0, hz), c + Vector3(hx, 0, -hz), c + Vector3(-hx, 0, -hz)]
 		var hits: Array = []
+		var above: Array = []
 		var ex: Array = rec["bodies"]
 		var top := -INF
 		for lp in pts:
@@ -1470,6 +1472,16 @@ func _scan_support() -> Array:
 				var hy := (hit["position"] as Vector3).y
 				top = maxf(top, hy)
 				hits.append([snappedf(hy, 0.0001), hi])
+			# The first surface from ABOVE, down through the footprint: what the
+			# prop stands in. A prop buried deeper than the support ray's start
+			# (a bottle stood upright with its origin on the floor) has the
+			# floor's top above that start, where the ray from oy never looks.
+			if want_above:
+				var ah := _ray(Vector3(w.x, wa.end.y + 0.02, w.z), Vector3(w.x, ymin - 0.5, w.z), MASK_SOLID, ex)
+				if ah.is_empty():
+					above.append(null)
+				else:
+					above.append([snappedf((ah["position"] as Vector3).y, 0.0001), _hit_inst(ah)])
 		# Held by a wall? Only asked when it would otherwise float clearly.
 		var touch: Variant = null
 		if top == -INF or ymin - top > 0.3 or ((rec["mount"] as Vector3) != Vector3.ZERO and ymin - top > 0.02):
@@ -1494,7 +1506,7 @@ func _scan_support() -> Array:
 			var fa: AABB = f["waabb"]
 			if wcen.x >= fa.position.x and wcen.x <= fa.end.x and wcen.z >= fa.position.z and wcen.z <= fa.end.z:
 				floor_top = fa.end.y if floor_top == null else maxf(float(floor_top), fa.end.y)
-		out.append([int(rec["i"]), snappedf(ymin, 0.0001), snappedf(oy, 0.001), hits, touch, (snappedf(float(floor_top), 0.001) if floor_top != null else null)])
+		out.append([int(rec["i"]), snappedf(ymin, 0.0001), snappedf(oy, 0.001), hits, touch, (snappedf(float(floor_top), 0.001) if floor_top != null else null), above])
 	return out
 
 

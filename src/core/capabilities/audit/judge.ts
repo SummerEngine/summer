@@ -557,6 +557,39 @@ export function judgeSupport(support: unknown[], inst: InstRow[], wallMounted: S
     // still floats).
     const topY = found.length ? Math.max(...found.map((h) => h.y)) : -Infinity;
     if (touch !== null && (r.mh !== undefined ? touch <= 0.15 : touch <= 0.05 && ymin - topY > 0.3)) continue;
+    // Sunken, from ABOVE: the first surface a ray down through the footprint
+    // meets (below the prop's own top) is what the prop stands in. The
+    // support ray from mid-height never sees a floor top above its start, so
+    // a bottle buried 16.7 cm in a floor tile read as "sunk into the
+    // underlay" under it. Older kernels send no rows here: the support rays
+    // below decide.
+    const above = arr(raw[6])
+      .map((h) => (Array.isArray(h) ? { y: num(h[0]), at: num(h[1], -1) } : null))
+      .filter((h): h is { y: number; at: number } => h !== null && h.y <= ymin + r.e[1] - 0.005);
+    if (above.length) {
+      const embed = median(above.map((h) => h.y)) - ymin;
+      if (embed > 0.03) {
+        if (r.r === "dressing") continue;
+        const buried = above.filter((h) => h.y - ymin > 0.03);
+        const at = mostCommon(buried.map((h) => h.at));
+        const support = inst[at];
+        const surfaceY = median(buried.filter((h) => h.at === at).map((h) => h.y));
+        const height = Math.max(0.01, r.e[1]);
+        const below = found.length ? inst[found.reduce((a, b) => (b.y > a.y ? b : a)).at] : undefined;
+        out.push({
+          check: "sunken",
+          severity: embed >= height * 0.5 ? "error" : embed > 0.1 ? "warn" : "look",
+          path: r.p,
+          pos: v2(focus),
+          why: `sunk ${cm(embed)} into ${support?.p ?? "the surface"} (the first surface from above, at y ${r3(surfaceY)})${embed >= height * 0.5 ? `: ${Math.round((embed / height) * 100)}% of its height` : ""}`,
+          ev: { embed_m: r3(embed), height_m: r3(height), support: support?.p ?? null, support_y: r3(surfaceY), ...(below && below !== support ? { under_it: below.p } : {}) },
+          next: `summer_snap_to_surface ${r.p}`,
+          score: embed,
+          ...(frame ? { frame } : {}),
+        });
+        continue;
+      }
+    }
     if (!found.length) {
       out.push({
         check: "floating",
@@ -591,7 +624,7 @@ export function judgeSupport(support: unknown[], inst: InstRow[], wallMounted: S
       });
       continue;
     }
-    if (r.r === "dressing") continue;
+    if (r.r === "dressing" || above.length) continue;
     const ys = found.map((h) => h.y);
     const embed = median(ys) - ymin;
     if (embed > 0.03) {

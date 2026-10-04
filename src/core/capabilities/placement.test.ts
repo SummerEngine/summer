@@ -19,8 +19,10 @@ import {
   repeatAlong,
   repeatAlongArgsSchema,
   repeatPositions,
+  isSafeNodePath,
+  isSafeResPath,
 } from "./placement.js";
-import { buildPlacementScript, encodeScriptArgs } from "./placement-script.js";
+import { PLACEMENT_ARGS_TOKEN, buildPlacementScript, encodeScriptArgs, placementProbeTemplate } from "./placement-script.js";
 import { basisMulVec, parseGodotTransform, parseGodotVector3, type Vec3 } from "./placement-math.js";
 
 type Op = Record<string, unknown>;
@@ -28,11 +30,12 @@ type Probe = (args: Op) => Op;
 
 const IDENTITY12 = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0];
 
-/** The argument block the probe script carries. */
+/** The argument block the probe script carries (base64 JSON). */
 function probeArgs(op: Op): Op {
   const source = String(op.script_source);
-  const line = source.split("\n").find((l) => l.startsWith("const ARGS_JSON = "))!;
-  return JSON.parse(JSON.parse(line.slice("const ARGS_JSON = ".length))) as Op;
+  const line = source.split("\n").find((l) => l.startsWith("const ARGS_B64 = "))!;
+  const literal = JSON.parse(line.slice("const ARGS_B64 = ".length)) as string;
+  return JSON.parse(Buffer.from(literal, "base64").toString("utf8")) as Op;
 }
 
 /** A client whose RunSceneScript answers come from `probe` (one per call, or
@@ -80,9 +83,9 @@ const WORLD_DIRS = [
 ];
 
 describe("the placement probe", () => {
-  it("embeds its arguments as a GDScript string literal and runs read-only", async () => {
+  it("embeds its arguments as base64 data and runs read-only", async () => {
     const tricky = { cmd: "bounds", note: 'quote " backslash \\ newline \n tab \t' };
-    expect(JSON.parse(JSON.parse(encodeScriptArgs(tricky)))).toEqual(tricky);
+    expect(JSON.parse(Buffer.from(encodeScriptArgs(tricky), "base64").toString("utf8"))).toEqual(tricky);
     const source = buildPlacementScript(tricky);
     expect(source.startsWith("@tool\nextends RefCounted\n")).toBe(true);
     expect(source).toContain("func run(_ctx):");
@@ -123,6 +126,61 @@ describe("the placement probe", () => {
       engine_failure_reason: "script_runtime_error",
       script_error: "line 12: Invalid get index",
     });
+  });
+});
+
+describe("hostile inputs never become GDScript", () => {
+  const PAYLOADS = [
+    "$&",
+    "$`",
+    "$'",
+    "$1",
+    'Wall"); OS.execute("rm", ["-rf", "/"]); #',
+    "Wall\n\tOS.execute('sh')",
+    "Wall\\\"",
+    "../../etc",
+    "Wall:prop",
+    "Wall%unique",
+    "Wall\u0000",
+  ];
+
+  it("keeps the generated script identical apart from one inert base64 literal", () => {
+    const template = placementProbeTemplate();
+    expect(template.split(PLACEMENT_ARGS_TOKEN)).toHaveLength(2);
+    for (const payload of PAYLOADS) {
+      const args = { cmd: "bounds", scene_path: "res://a.tscn", nodes: [{ path: payload }], subject_port: payload };
+      const source = buildPlacementScript(args);
+      const [before, after] = template.split(PLACEMENT_ARGS_TOKEN) as [string, string];
+      expect(source.startsWith(before)).toBe(true);
+      expect(source.endsWith(after)).toBe(true);
+      const literal = source.slice(before.length, source.length - after.length);
+      expect(literal).toMatch(/^"[A-Za-z0-9+/]*={0,2}"$/);
+      expect(JSON.parse(Buffer.from(literal.slice(1, -1), "base64").toString("utf8"))).toEqual(args);
+    }
+  });
+
+  it("rejects hostile node paths, port names and res:// paths at the schema", () => {
+    for (const payload of PAYLOADS) {
+      expect(measureArgsSchema.safeParse({ scenePath: "res://a.tscn", a: payload, b: "B" }).success, payload).toBe(false);
+      expect(
+        connectPortsArgsSchema.safeParse({ scenePath: "res://a.tscn", subject: "A", subjectPort: payload, target: "B", targetPort: 0 }).success,
+        payload
+      ).toBe(false);
+      expect(raycastArgsSchema.safeParse({ scenePath: "res://a.tscn", origin: [0, 0, 0], direction: [0, -1, 0], exclude: [payload] }).success, payload).toBe(false);
+      expect(inspectAssetArgsSchema.safeParse({ path: `res://kit/${payload}.glb` }).success, payload).toBe(false);
+      expect(
+        repeatAlongArgsSchema.safeParse({ scenePath: `res://${payload}.tscn`, template: "res://kit/a.tscn", parent: ".", start: [0, 0, 0], count: 1 }).success,
+        payload
+      ).toBe(false);
+    }
+  });
+
+  it("still accepts ordinary kit paths and names", () => {
+    expect(isSafeNodePath("./Facade/Wall_01")).toBe(true);
+    expect(isSafeNodePath("Building A/Storey 2/Window-03")).toBe(true);
+    expect(isSafeNodePath("Fassade/Fenster_Ä")).toBe(true);
+    expect(isSafeResPath("res://starter/real-city-alley-kit/pipes/wall_clamp_01.tscn")).toBe(true);
+    expect(connectPortsArgsSchema.safeParse({ scenePath: "res://a.tscn", subject: "A", subjectPort: "Port_A", target: "B", targetPort: "Ports/Port B" }).success).toBe(true);
   });
 });
 

@@ -86,6 +86,24 @@ const NODE_PATH_LIMIT_BYTES = 256;
 const FIT_TARGET_BYTES = 4700;
 const utf8Within = (limit: number) => (value: string) => Buffer.byteLength(value, "utf8") <= limit;
 
+// Strict character sets for every string that names a node, port or file.
+// They travel to the editor only as base64 data (placement-script.ts), but a
+// name with quotes, $, backslashes or control characters is never a real kit
+// node, so it is refused at the boundary with a clear message.
+const NODE_PATH_CHARS = /^[\p{L}\p{N}_\- ./]+$/u;
+const PORT_NAME_CHARS = /^[\p{L}\p{N}_\- /]+$/u;
+const RES_PATH_CHARS = /^res:\/\/[\p{L}\p{N}_\- ./]+$/u;
+const SAFE_NODE_PATH_MESSAGE = "node paths may use letters, digits, _, -, spaces, '.' and '/' only";
+const SAFE_RES_PATH_MESSAGE = "res:// paths may use letters, digits, _, -, spaces, '.' and '/' only";
+
+export function isSafeNodePath(value: string): boolean {
+  return NODE_PATH_CHARS.test(value) && !value.includes("..");
+}
+
+export function isSafeResPath(value: string): boolean {
+  return RES_PATH_CHARS.test(value) && !value.includes("..");
+}
+
 const scenePathSchema = z
   .string()
   .trim()
@@ -93,6 +111,7 @@ const scenePathSchema = z
   .max(SCENE_PATH_LIMIT_BYTES)
   .refine(utf8Within(SCENE_PATH_LIMIT_BYTES), `scenePath must be at most ${SCENE_PATH_LIMIT_BYTES} UTF-8 bytes`)
   .refine((value) => /^res:\/\/.+\.(tscn|scn)$/i.test(value), "scenePath must be an exact res:// .tscn or .scn path")
+  .refine(isSafeResPath, SAFE_RES_PATH_MESSAGE)
   .describe("Exact scene to read or change, e.g. 'res://levels/alley.tscn'. It must be open in the editor (any tab).");
 
 const nodePathSchema = (what: string) =>
@@ -102,6 +121,7 @@ const nodePathSchema = (what: string) =>
     .min(1)
     .max(NODE_PATH_LIMIT_BYTES)
     .refine(utf8Within(NODE_PATH_LIMIT_BYTES), `node paths must be at most ${NODE_PATH_LIMIT_BYTES} UTF-8 bytes`)
+    .refine(isSafeNodePath, SAFE_NODE_PATH_MESSAGE)
     .describe(`${what}: exact node path relative to the scene root, e.g. './Facade/Wall_01'.`);
 
 const finite = z.number().finite();
@@ -300,6 +320,7 @@ export const inspectAssetArgsSchema = z.object({
     .min(1)
     .max(SCENE_PATH_LIMIT_BYTES)
     .refine((value) => ASSET_PATH.test(value), "path must be a res:// .tscn, .scn, .glb, .gltf, .res, .tres, .mesh or .obj file")
+    .refine(isSafeResPath, SAFE_RES_PATH_MESSAGE)
     .describe("Asset to measure, e.g. 'res://kit/facade/wall_single_01.tscn'. It is loaded and instanced off-scene, never added to an open scene."),
   maxTriangles: z
     .number()
@@ -917,6 +938,7 @@ export const repeatAlongArgsSchema = z.object({
     .min(1)
     .max(SCENE_PATH_LIMIT_BYTES)
     .refine((value) => SCENE_ASSET_PATH.test(value), "template must be a res:// .tscn, .scn, .glb or .gltf scene")
+    .refine(isSafeResPath, SAFE_RES_PATH_MESSAGE)
     .describe("Scene to instance for every copy, e.g. 'res://kit/pipes/wall_clamp_01.tscn'."),
   parent: nodePathSchema("Parent for the copies").describe("Parent for the copies; start/end/direction are in this parent's local space (same as position)."),
   start: vec3.describe("First copy's position [x, y, z] in the parent's space."),
@@ -1039,7 +1061,15 @@ export async function repeatAlong(client: PlacementClient, args: RepeatAlongArgs
 
 const portSchema = (what: string) =>
   z
-    .union([z.string().trim().min(1).max(128), z.number().int().min(0).max(255)])
+    .union([
+      z
+        .string()
+        .trim()
+        .min(1)
+        .max(128)
+        .refine((value) => PORT_NAME_CHARS.test(value) && !value.includes(".."), "port names may use letters, digits, _, -, spaces and '/' only"),
+      z.number().int().min(0).max(255),
+    ])
     .describe(`${what}: a Marker3D (or any Node3D) name under the node, whose -Z axis points out of the port; or an open-loop index from summer_inspect_asset on that node's scene.`);
 
 export const connectPortsArgsSchema = z.object({

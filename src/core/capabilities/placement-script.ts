@@ -25,14 +25,33 @@
 
 export const PLACEMENT_SCRIPT_BUDGET_SECONDS = 20;
 
-/** Encode the arguments as a GDScript string literal. A JSON string literal is
- *  valid GDScript (same escapes: \" \\ \n \uXXXX). */
+/** Placeholder for the argument literal; appears exactly once in the source. */
+export const PLACEMENT_ARGS_TOKEN = "__SUMMER_PLACEMENT_ARGS__";
+const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
+
+/**
+ * Encode the arguments as base64 of their UTF-8 JSON. No caller text is ever
+ * interpolated into the GDScript: node paths and port names can come from
+ * scene content, so they are data the script decodes (Marshalls.base64_to_utf8
+ * + JSON.parse_string), never source it compiles. The base64 alphabet cannot
+ * close the string literal or start a statement.
+ */
 export function encodeScriptArgs(args: Record<string, unknown>): string {
-  return JSON.stringify(JSON.stringify(args));
+  const encoded = Buffer.from(JSON.stringify(args), "utf8").toString("base64");
+  if (!BASE64.test(encoded)) throw new Error("placement probe arguments did not encode to base64");
+  return encoded;
 }
 
 export function buildPlacementScript(args: Record<string, unknown>): string {
-  return PLACEMENT_PROBE_SOURCE.replace("__SUMMER_PLACEMENT_ARGS__", encodeScriptArgs(args));
+  // split/join, not String.replace: a replacement string would interpret $&,
+  // $`, $' and $1 patterns. The literal here is base64 only, but the splice
+  // stays literal regardless of what it carries.
+  return PLACEMENT_PROBE_SOURCE.split(PLACEMENT_ARGS_TOKEN).join(`"${encodeScriptArgs(args)}"`);
+}
+
+/** The probe source with its placeholder, for tests. */
+export function placementProbeTemplate(): string {
+  return PLACEMENT_PROBE_SOURCE;
 }
 
 // Tabs are significant: GDScript indentation. String.raw keeps every backslash
@@ -40,12 +59,12 @@ export function buildPlacementScript(args: Record<string, unknown>): string {
 const PLACEMENT_PROBE_SOURCE = String.raw`@tool
 extends RefCounted
 
-const ARGS_JSON = __SUMMER_PLACEMENT_ARGS__
+const ARGS_B64 = __SUMMER_PLACEMENT_ARGS__
 const MAX_GEOMS = 20000
 
 
 func run(_ctx):
-	var args = JSON.parse_string(ARGS_JSON)
+	var args = JSON.parse_string(Marshalls.base64_to_utf8(ARGS_B64))
 	if typeof(args) != TYPE_DICTIONARY:
 		return _fail("bad_args", "placement probe arguments did not parse")
 	var cmd = String(args.get("cmd", ""))

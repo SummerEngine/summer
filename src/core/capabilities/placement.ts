@@ -339,13 +339,136 @@ export const inspectAssetArgsSchema = z.object({
   maxTriangles: z
     .number()
     .int()
-    .min(1000)
+    .min(100)
     .max(300000)
     .optional()
     .default(60000)
-    .describe("Triangle budget for the face and open-loop analysis (AABBs and counts are always complete). The result says when the budget cut the analysis."),
+    .describe("Triangle budget (100-300000) for the face and open-loop analysis (AABBs and counts are always complete). summary.warnings says when the budget cut the analysis and which budget covers the whole mesh."),
+  detail: z
+    .enum(["summary", "full"])
+    .optional()
+    .default("summary")
+    .describe("summary (default): open_loops lists only port-like loops (radius over 2 cm with a partner loop facing another way), or none. full: every open loop, including the outline of flat sheets."),
 });
 export type InspectAssetArgs = z.output<typeof inspectAssetArgsSchema>;
+
+/** Planes the probe reports, largest first. */
+interface PlaneRecord {
+  normal: Vec3;
+  offset: number;
+  area: number;
+  tris?: number;
+  cull_back?: number;
+}
+
+interface LoopRecord {
+  index: number;
+  direction: Vec3;
+  radius: number;
+  direction_ambiguous?: boolean;
+  [key: string]: unknown;
+}
+
+/** Normals closer than this (cosine) are one plane direction. */
+const PAIR_COS = 0.996;
+/** Pairs smaller than this share of the largest pair are left out. */
+const PAIR_MIN_AREA_FRACTION = 0.01;
+/** A normal this close (cosine) to a signed axis is labelled with it. */
+const AXIS_LABEL_COS = 0.9998;
+const PORT_MIN_RADIUS = 0.02;
+const PORT_RADIUS_RATIO = 0.7;
+/** Partner loops must face more than 60 degrees apart. */
+const PORT_PARTNER_COS = 0.5;
+const SUMMARY_PLANE_COUNT = 6;
+
+function axisLabel(normal: Vec3): SignedAxis | undefined {
+  for (const axis of AXIS_NAMES) {
+    if (dot(normal, signedAxisVector(axis)) >= AXIS_LABEL_COS) return axis;
+  }
+  return undefined;
+}
+
+function planeOut(plane: PlaneRecord): JsonRecord {
+  const label = axisLabel(plane.normal);
+  return {
+    ...(label ? { axis: label } : {}),
+    normal: roundVec(plane.normal, 4),
+    offset: round(plane.offset),
+    area: round(plane.area, 4),
+    ...(typeof plane.cull_back === "number" ? { one_sided: plane.cull_back >= 0.5 } : {}),
+  };
+}
+
+/**
+ * The two largest pairs of opposite planes, for reading facing at a glance:
+ * per plane direction the largest plane and the largest one facing the other
+ * way (null for a single sheet), ranked by their combined area; pairs under 1%
+ * of the largest pair's area are left out. Exported for tests.
+ */
+export function planePairs(planes: PlaneRecord[], limit = 2): JsonRecord[] {
+  const groups: Array<{ larger: PlaneRecord; opposite?: PlaneRecord }> = [];
+  for (const plane of [...planes].sort((a, b) => b.area - a.area)) {
+    const group = groups.find((g) => Math.abs(dot(g.larger.normal, plane.normal)) >= PAIR_COS);
+    if (!group) {
+      groups.push({ larger: plane });
+    } else if (!group.opposite && dot(group.larger.normal, plane.normal) < 0) {
+      group.opposite = plane;
+    }
+  }
+  const area = (g: { larger: PlaneRecord; opposite?: PlaneRecord }) => g.larger.area + (g.opposite?.area ?? 0);
+  const ranked = groups.sort((a, b) => area(b) - area(a));
+  const floor = ranked.length ? area(ranked[0]!) * PAIR_MIN_AREA_FRACTION : 0;
+  return ranked
+    .filter((g) => area(g) >= floor)
+    .slice(0, limit)
+    .map((g) => ({
+      larger: planeOut(g.larger),
+      opposite: g.opposite ? planeOut(g.opposite) : null,
+      ...(g.opposite ? { separation: round(g.larger.offset + g.opposite.offset) } : {}),
+    }));
+}
+
+/**
+ * Loops that look like pipe or duct ends: radius over 2 cm, a decided
+ * direction, and at least one partner loop of similar radius facing more than
+ * 60 degrees away (the other end of a straight run or a bend). The outline of
+ * a flat sheet and its holes all face one way and never qualify. Exported for
+ * tests.
+ */
+export function portLikeLoops<T extends LoopRecord>(loops: T[]): T[] {
+  const candidates = loops.filter((loop) => loop.radius > PORT_MIN_RADIUS && !loop.direction_ambiguous);
+  return candidates.filter((loop) =>
+    candidates.some(
+      (other) =>
+        other !== loop &&
+        Math.min(other.radius, loop.radius) / Math.max(other.radius, loop.radius) >= PORT_RADIUS_RATIO &&
+        dot(normalize(other.direction), normalize(loop.direction)) < PORT_PARTNER_COS
+    )
+  );
+}
+
+function inspectSummary(probe: JsonRecord, planes: PlaneRecord[], portLike: LoopRecord[]): JsonRecord {
+  const analysis = asRecord(probe.analysis) ?? {};
+  const triangles = typeof probe.triangles === "number" ? probe.triangles : 0;
+  const warnings: string[] = [];
+  if (analysis.truncated === true) {
+    const analyzed = typeof analysis.triangles_analyzed === "number" ? analysis.triangles_analyzed : 0;
+    warnings.push(
+      `the triangle budget cut the analysis (${analyzed} of ${triangles} triangles): planes and open loops are incomplete; pass maxTriangles ${Math.min(300000, Math.max(triangles, 100))} for the whole mesh`
+    );
+  }
+  return {
+    aabb: probe.aabb ?? null,
+    origin: probe.origin ?? null,
+    plane_pairs: planePairs(planes),
+    port_like_loops: portLike.map((loop) => loop.index),
+    triangles,
+    mesh_count: probe.mesh_count ?? 0,
+    anchor_count: probe.anchor_count ?? 0,
+    collision_count: probe.collision_count ?? 0,
+    ...(warnings.length ? { warnings } : {}),
+  };
+}
 
 export async function inspectAsset(client: PlacementClient, args: InspectAssetArgs): Promise<PlacementResult> {
   const tool = "summer_inspect_asset";
@@ -355,7 +478,22 @@ export async function inspectAsset(client: PlacementClient, args: InspectAssetAr
     max_triangles: args.maxTriangles,
   }, 30);
   if (!probe.ok) return probe;
-  const result: JsonRecord = { tool, ...probe, ok: true, evidence: "mesh_triangles" };
+  const planes = (Array.isArray(probe.planes) ? probe.planes : []) as PlaneRecord[];
+  const loops = (Array.isArray(probe.open_loops) ? probe.open_loops : []) as LoopRecord[];
+  const portLike = portLikeLoops(loops);
+  const { ok: _ok, planes: _planes, open_loops: _loops, ...rest } = probe;
+  const listed = args.detail === "full" ? loops : portLike;
+  const result: JsonRecord = {
+    ok: true,
+    tool,
+    detail: args.detail,
+    summary: inspectSummary(probe, planes, portLike),
+    ...rest,
+    planes: planes.slice(0, SUMMARY_PLANE_COUNT).map((plane) => ({ ...plane, ...(typeof plane.cull_back === "number" ? { one_sided: plane.cull_back >= 0.5 } : {}) })),
+    open_loops: listed,
+    ...(args.detail === "full" ? {} : { open_loops_listed: "port_like", open_loops_omitted: loops.length - listed.length }),
+    evidence: "mesh_triangles",
+  };
   return fitToBudget(result, ["meshes", "collision", "anchors", "open_loops", "planes"]) as PlacementResult;
 }
 

@@ -488,6 +488,7 @@ func _analyze(meshes, budget, want_planes, want_loops):
 				break
 			if mesh.surface_get_primitive_type(s) != Mesh.PRIMITIVE_TRIANGLES:
 				continue
+			var culls = _culls_back(m[0], s) if want_planes else true
 			var arr = mesh.surface_get_arrays(s)
 			var verts = arr[Mesh.ARRAY_VERTEX]
 			if verts == null or verts.size() == 0:
@@ -531,16 +532,18 @@ func _analyze(meshes, budget, want_planes, want_loops):
 					if l > 0.0000000001:
 						var nn = cr / l
 						var area = l * 0.5
+						var ca = area if culls else 0.0
 						var off = nn.dot(a)
 						var pk = Vector4i(roundi(nn.x * 40.0), roundi(nn.y * 40.0), roundi(nn.z * 40.0), roundi(off * 100.0))
 						var acc = planes.get(pk)
 						if acc == null:
-							planes[pk] = [area, nn * area, off * area, 1]
+							planes[pk] = [area, nn * area, off * area, 1, ca]
 						else:
 							acc[0] += area
 							acc[1] += nn * area
 							acc[2] += off * area
 							acc[3] += 1
+							acc[4] += ca
 				if want_loops:
 					_edge(edges, ids[i0], ids[i1])
 					_edge(edges, ids[i1], ids[i2])
@@ -556,10 +559,27 @@ func _analyze(meshes, budget, want_planes, want_loops):
 	var plist = []
 	for pk in planes:
 		var acc = planes[pk]
-		plist.append({"area": acc[0], "normal": (acc[1] / acc[0]).normalized(), "offset": acc[2] / acc[0], "tris": acc[3]})
+		plist.append({"area": acc[0], "normal": (acc[1] / acc[0]).normalized(), "offset": acc[2] / acc[0], "tris": acc[3], "cull_back": acc[4] / acc[0]})
 	plist.sort_custom(func(a, b): return a["area"] > b["area"])
 	loops.sort_custom(_loop_less)
 	return {"planes": plist, "loops": loops, "analyzed": analyzed, "truncated": truncated, "open_chains": open_chains}
+
+
+# Whether surface s of a MeshInstance3D is drawn with back-face culling, so its
+# faces are invisible from behind. No material means the default material,
+# which culls back faces.
+func _culls_back(mi, s):
+	var mat = mi.get_active_material(s)
+	if mat == null:
+		return true
+	if mat is BaseMaterial3D:
+		return mat.cull_mode == BaseMaterial3D.CULL_BACK
+	if mat is ShaderMaterial:
+		if mat.shader == null:
+			return true
+		var code = String(mat.shader.code)
+		return not (code.contains("cull_disabled") or code.contains("cull_front"))
+	return true
 
 
 func _edge(edges, a, b):
@@ -834,9 +854,9 @@ func _describe(inst, args):
 	var an = _analyze(_visible_meshes(col), budget, true, true)
 	var planes_out = []
 	for p in an["planes"]:
-		if planes_out.size() >= 6:
+		if planes_out.size() >= 16:
 			break
-		planes_out.append({"normal": _d3(p["normal"]), "offset": _r(p["offset"]), "area": snappedf(p["area"], 0.000001), "tris": p["tris"]})
+		planes_out.append({"normal": _d3(p["normal"]), "offset": _r(p["offset"]), "area": snappedf(p["area"], 0.000001), "tris": p["tris"], "cull_back": snappedf(p["cull_back"], 0.01)})
 	out["planes"] = planes_out
 	var loops_out = []
 	for i in range(an["loops"].size()):

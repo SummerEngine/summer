@@ -51,10 +51,15 @@ input_schema:
       description: Asset to measure, e.g. 'res://kit/facade/wall_single_01.tscn' (.tscn, .scn, .glb, .gltf, .res, .tres, .mesh or .obj). Loaded and instanced off-scene, never added to an open scene.
     maxTriangles:
       type: integer
-      minimum: 1000
+      minimum: 100
       maximum: 300000
       default: 60000
-      description: Triangle budget for the face and open-loop analysis (AABBs and counts are always complete). The result says when the budget cut the analysis.
+      description: Triangle budget (100-300000) for the face and open-loop analysis (AABBs and counts are always complete). summary.warnings says when the budget cut the analysis and which budget covers the whole mesh.
+    detail:
+      type: string
+      enum: [summary, full]
+      default: summary
+      description: "summary: open_loops lists only port-like loops (radius over 2 cm with a partner loop facing another way), or none. full: every open loop, including the outline of flat sheets. Both start with the summary block (AABB, origin, the two largest opposite plane pairs with one_sided flags, port-like loop indices)."
   required:
     - path
   additionalProperties: false

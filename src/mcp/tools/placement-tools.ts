@@ -67,16 +67,16 @@ export function registerPlacementTools(server: McpServer): void {
     "summer_inspect_asset",
     `Measure a 3D asset file (.tscn/.scn/.glb/.gltf, or a Mesh resource) WITHOUT adding it to any scene: it is loaded and instanced off-scene in the editor, measured, and freed. Call it once per kit piece before placing it, instead of guessing size, origin or facing.
 
-Returns (all in the asset root's own frame, the frame position/rotation apply in):
-- aabb {min, max, size} of the visible meshes, and origin {fraction [x,y,z] of the AABB, label e.g. "x:center y:min z:center"}
-- meshes [{path, tris, min, max}], triangles total
-- planes: the 6 largest planar face groups {normal, offset, area, tris}; normals follow the triangle winding (outward faces). The largest +/-axis planes are usually the front and back: you decide, the tool does not label facing
-- open_loops: open boundary loops {index, mesh, center, direction (outward), radius, vertices, max_dev}, sorted by radius; these are pipe and duct ends. Their index is the port index summer_connect_ports accepts
+Returns (all in the asset root's own frame, the frame position/rotation apply in), the facing evidence first:
+- summary {aabb, origin {fraction, label e.g. "x:center y:min z:min"}, plane_pairs, port_like_loops [loop indices], triangles, mesh_count, anchor_count, collision_count, warnings?}. plane_pairs: the 2 largest pairs of opposite planes (a pair under 1% of the largest one's area is left out), each {larger, opposite (null for a single sheet), separation}; every plane {axis (e.g. "+z", only when the normal is within about 1 degree of it), normal, offset, area, one_sided}. one_sided true = its material culls back faces, so the plane is invisible from behind its normal: a single sheet that is one_sided faces along its normal and its back is the opposite axis. An oblique normal (no axis) means a baked yaw or a 45-degree corner face. warnings says when the triangle budget cut the analysis and which maxTriangles covers the whole mesh
+- aabb, origin, meshes [{path, tris, min, max}], triangles total
+- planes: the 6 largest planar face groups {normal, offset, area, tris, cull_back, one_sided}; normals follow the triangle winding (outward faces). You decide the front; the tool does not label facing
+- open_loops: open boundary loops {index, mesh, center, direction (outward), radius, vertices, max_dev}, sorted by radius. Their index is the port index summer_connect_ports accepts. detail "summary" (default) lists only port-like loops (radius over 2 cm with a partner loop facing more than 60 degrees away: the ends of a pipe, duct or bend) and says how many it omitted; detail "full" lists every loop, including the outline of flat sheets
 - anchors: Marker3D nodes {name, path, position, forward (-Z), up}
 - collision: CollisionShape3D nodes {path, shape, size/radius/height/faces, center, min, max}
 - analysis {triangles_analyzed, triangle_budget, truncated}; a "truncated" object when a list was cut to fit 5 KB
 
-Evidence is mesh_triangles. Uses the existing RunSceneScript op (in the live editor, read-only); an engine without it answers engine_lacks_op.`,
+maxTriangles 100-300000 (default 60000). Evidence is mesh_triangles. Uses the existing RunSceneScript op (in the live editor, read-only); an engine without it answers engine_lacks_op.`,
     inspectAssetArgsSchema.shape,
     runPlacement(inspectAsset)
   );

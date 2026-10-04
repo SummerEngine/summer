@@ -15,6 +15,8 @@ import {
   mountingRotation,
   placeAdjacent,
   placeAdjacentArgsSchema,
+  planePairs,
+  portLikeLoops,
   raycast,
   raycastArgsSchema,
   repeatAlong,
@@ -162,6 +164,43 @@ describe("hostile inputs never become GDScript", () => {
     }
   });
 
+  // The probe is one GDScript: a syntax slip in any command breaks all seven
+  // tools, and no engine runs in this suite. Check what can be checked here.
+  it("keeps the GDScript probe structurally sound", () => {
+    const source = placementProbeTemplate();
+    const lines = source.split("\n");
+    const defined = new Set([...source.matchAll(/^func (_[a-z0-9_]+)\(/gm)].map((m) => m[1]!));
+    for (const [i, line] of lines.entries()) {
+      // Indentation is tabs only.
+      expect(/^\t* /.test(line), `line ${i + 1} indents with spaces`).toBe(false);
+      // Brackets balance on every line, outside string literals and comments.
+      let depth = 0;
+      let inString = false;
+      for (let c = 0; c < line.length; c++) {
+        const ch = line[c]!;
+        if (inString) {
+          if (ch === "\\") c++;
+          else if (ch === '"') inString = false;
+          continue;
+        }
+        if (ch === '"') inString = true;
+        else if (ch === "#") break;
+        else if ("([{".includes(ch)) depth++;
+        else if (")]}".includes(ch)) depth--;
+        expect(depth, `line ${i + 1} closes a bracket it did not open`).toBeGreaterThanOrEqual(0);
+      }
+      expect(inString, `line ${i + 1} leaves a string open`).toBe(false);
+      expect(depth, `line ${i + 1} leaves a bracket open`).toBe(0);
+      // Every helper it calls is defined.
+      for (const call of line.replace(/"(?:[^"\\]|\\.)*"/g, '""').matchAll(/(?<![\w.])(_[a-z0-9_]+)\(/g)) {
+        expect(defined.has(call[1]!), `line ${i + 1} calls undefined ${call[1]}`).toBe(true);
+      }
+    }
+    expect(source).toContain('if cmd == "blockers":');
+    expect(source).toContain('rec["transform_str"] = var_to_str(n.transform)');
+    expect(source).toContain('"cull_back": acc[4] / acc[0]');
+  });
+
   it("rejects hostile node paths, port names and res:// paths at the schema", () => {
     for (const payload of PAYLOADS) {
       expect(measureArgsSchema.safeParse({ scenePath: "res://a.tscn", a: payload, b: "B" }).success, payload).toBe(false);
@@ -204,6 +243,120 @@ describe("summer_inspect_asset", () => {
 
   it("fitToBudget leaves small results alone", () => {
     expect(fitToBudget({ ok: true, list: [1, 2, 3] }, ["list"])).toEqual({ ok: true, list: [1, 2, 3] });
+  });
+
+  it("accepts a triangle budget down to 100 and defaults to the summary detail", () => {
+    expect(inspectAssetArgsSchema.safeParse({ path: "res://kit/wall.glb", maxTriangles: 100 }).success).toBe(true);
+    expect(inspectAssetArgsSchema.safeParse({ path: "res://kit/wall.glb", maxTriangles: 99 }).success).toBe(false);
+    expect(inspectAssetArgsSchema.parse({ path: "res://kit/wall.glb" }).detail).toBe("summary");
+    expect(inspectAssetArgsSchema.safeParse({ path: "res://kit/wall.glb", detail: "everything" }).success).toBe(false);
+  });
+
+  // Field evidence (proof run, 2026-10-04): a one-sided facade plane's facing
+  // was buried under kilobytes of open-loop noise (its outline reported as a
+  // "pipe end"), and nothing said the plane was single-sided.
+  const wallProbe = {
+    ok: true,
+    frame: "asset_root",
+    path: "res://kit/wall_double_standard_01.glb",
+    aabb: { min: [-1, 0, 0], max: [1, 3, 0], size: [2, 3, 0] },
+    origin: { fraction: [0.5, 0, 0.5], label: "x:center y:min z:center" },
+    mesh_count: 1,
+    triangles: 2400,
+    meshes: [{ path: "Model", tris: 2400, min: [-1, 0, 0], max: [1, 3, 0] }],
+    planes: [
+      { normal: [0, 0, 1], offset: 0, area: 6, tris: 2400, cull_back: 1 },
+      { normal: [0, 1, 0], offset: 3, area: 0.0001, tris: 2, cull_back: 1 },
+    ],
+    open_loop_count: 40,
+    open_loops: [
+      // The outline of the sheet: direction undecided.
+      { index: 0, mesh: 0, center: [0, 1.5, 0], direction: [0, 0, 1], radius: 1.6, vertices: 120, max_dev: 0, direction_ambiguous: true },
+      // Window-like holes in the sheet: they all face the sheet's way.
+      ...Array.from({ length: 39 }, (_, i) => ({ index: i + 1, mesh: 0, center: [0, 1, 0], direction: [0, 0, 1], radius: 0.3, vertices: 24, max_dev: 0 })),
+    ],
+    open_chains: 0,
+    anchor_count: 0,
+    anchors: [],
+    collision_count: 0,
+    collision: [],
+    analysis: { triangles_analyzed: 2400, triangle_budget: 60000, truncated: false },
+  };
+
+  it("puts a compact facing summary first and drops open-loop noise by default", async () => {
+    const { client } = mockClient(() => wallProbe);
+    const result = await inspectAsset(client, inspectAssetArgsSchema.parse({ path: "res://kit/wall_double_standard_01.glb" }));
+    expect(Object.keys(result).slice(0, 4)).toEqual(["ok", "tool", "detail", "summary"]);
+    expect(result.summary).toMatchObject({
+      aabb: { size: [2, 3, 0] },
+      origin: { label: "x:center y:min z:center" },
+      port_like_loops: [],
+      plane_pairs: [{ larger: { axis: "+z", normal: [0, 0, 1], offset: 0, area: 6, one_sided: true }, opposite: null }],
+    });
+    expect(result.open_loops).toEqual([]);
+    expect(result).toMatchObject({ open_loop_count: 40, open_loops_listed: "port_like", open_loops_omitted: 40 });
+    expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThan(2 * 1024);
+
+    const full = await inspectAsset(client, inspectAssetArgsSchema.parse({ path: "res://kit/wall_double_standard_01.glb", detail: "full" }));
+    expect(full.detail).toBe("full");
+    expect((full.open_loops as unknown[]).length).toBeGreaterThan(0);
+    expect(full).not.toHaveProperty("open_loops_omitted");
+  });
+
+  it("keeps port-like loops (pipe ends, bend ends) in the summary with their port indices", async () => {
+    const bend = {
+      ...wallProbe,
+      open_loop_count: 3,
+      open_loops: [
+        { index: 0, mesh: 0, center: [0, 0, -0.3], direction: [0, 0, -1], radius: 0.15, vertices: 32, max_dev: 0 },
+        { index: 1, mesh: 0, center: [0.3, 0, 0], direction: [1, 0, 0], radius: 0.15, vertices: 32, max_dev: 0 },
+        { index: 2, mesh: 0, center: [0, 0.1, 0], direction: [0, 1, 0], radius: 0.004, vertices: 6, max_dev: 0 },
+      ],
+    };
+    const { client } = mockClient(() => bend);
+    const result = await inspectAsset(client, inspectAssetArgsSchema.parse({ path: "res://kit/duct_bend.glb" }));
+    expect((result.summary as Record<string, unknown>).port_like_loops).toEqual([0, 1]);
+    expect((result.open_loops as Array<{ index: number }>).map((loop) => loop.index)).toEqual([0, 1]);
+    expect(result.open_loops_omitted).toBe(1);
+  });
+
+  it("finds port-like loops only where a partner loop faces another way", () => {
+    const loop = (index: number, direction: Vec3, radius: number, extra: Record<string, unknown> = {}) => ({ index, direction, radius, ...extra });
+    // Straight duct: two ends facing opposite ways.
+    expect(portLikeLoops([loop(0, [0, 0, 1], 0.2), loop(1, [0, 0, -1], 0.2)]).map((l) => l.index)).toEqual([0, 1]);
+    // 90-degree bend.
+    expect(portLikeLoops([loop(0, [0, 0, -1], 0.2), loop(1, [1, 0, 0], 0.19)]).map((l) => l.index)).toEqual([0, 1]);
+    // A flat sheet's holes all face one way; its outline is undecided.
+    expect(portLikeLoops([loop(0, [0, 0, 1], 1.6, { direction_ambiguous: true }), loop(1, [0, 0, 1], 0.3), loop(2, [0, 0, 1], 0.3)])).toEqual([]);
+    // Under 2 cm, or no partner of similar size: not a port.
+    expect(portLikeLoops([loop(0, [0, 0, 1], 0.015), loop(1, [0, 0, -1], 0.015)])).toEqual([]);
+    expect(portLikeLoops([loop(0, [0, 0, 1], 0.5), loop(1, [0, 0, -1], 0.05)])).toEqual([]);
+  });
+
+  it("pairs opposite planes and measures their separation", () => {
+    const pairs = planePairs([
+      { normal: [0, 0, 1], offset: 0.1, area: 6, cull_back: 1 },
+      { normal: [0, 0, -1], offset: 0.1, area: 5.9, cull_back: 1 },
+      { normal: [1, 0, 0], offset: 1, area: 0.6, cull_back: 0 },
+      { normal: [-1, 0, 0], offset: 1, area: 0.6, cull_back: 0 },
+      { normal: [0, 1, 0], offset: 3, area: 0.4 },
+      // A 45-degree corner face is its own direction, never labelled with an axis.
+      { normal: [0.7071, 0, 0.7071], offset: 0.2, area: 0.3 },
+    ]);
+    expect(pairs).toHaveLength(2);
+    expect(pairs[0]).toMatchObject({ larger: { axis: "+z", one_sided: true }, opposite: { axis: "-z", one_sided: true }, separation: 0.2 });
+    expect(pairs[1]).toMatchObject({ larger: { axis: "+x", one_sided: false }, opposite: { axis: "-x" }, separation: 2 });
+    // A baked 5-degree yaw keeps its exact normal and gets no axis label.
+    const yawed = planePairs([{ normal: [-0.0879, 0, 0.9961], offset: 0, area: 40 }]);
+    expect(yawed[0]!.larger).not.toHaveProperty("axis");
+    expect(yawed[0]!.larger).toMatchObject({ normal: [-0.0879, 0, 0.9961] });
+  });
+
+  it("says which budget covers the whole mesh when the analysis was cut", async () => {
+    const { client } = mockClient(() => ({ ...wallProbe, triangles: 120000, planes: [], open_loops: [], analysis: { triangles_analyzed: 0, triangle_budget: 60000, truncated: true } }));
+    const result = await inspectAsset(client, inspectAssetArgsSchema.parse({ path: "res://kit/merged_wall.glb" }));
+    const warnings = (result.summary as Record<string, unknown>).warnings as string[];
+    expect(warnings[0]).toContain("maxTriangles 120000");
   });
 });
 

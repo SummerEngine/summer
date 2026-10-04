@@ -107,6 +107,10 @@ export function buildAgentPlaybook(
     placement3d: {
       first: "For any 3D placement (props, kit pieces, walls, shelves, alcoves), call summer_search_library and read skill/spatial-placement (and skill/world-building-3d) before placing. Observe first still applies: snapshot, then place, then verify.",
       questionToTool: [
+        "'How big is this kit piece, where is its origin, which side is its back, where are its pipe ends?' -> summer_inspect_asset (measures the file without adding it to a scene). Measure every piece type before placing it; never guess facing.",
+        "'Place it at this pose' -> summer_instantiate_scene with position / rotation_degrees (one call per piece). Many pieces -> one summer_batch of InstantiateScene ops carrying position / rotation_degrees, with receipt:'summary'.",
+        "'Next module edge to edge, next storey on top' -> summer_place_adjacent. 'Mount it on the wall' -> summer_attach_to_surface (backAxis from summer_inspect_asset). 'Clamps every 0.45 m' -> summer_repeat_along. 'Pipe to pipe' -> summer_connect_ports.",
+        "'What surface is in front of this point?' -> summer_raycast. 'Gap or overlap between these two, is the facade front flush?' -> summer_measure.",
         "'What is around it, which side is blocked, is it flush against the wall?' -> summer_starcast (read-only, 26 directional casts from one node's bounds: open|blocked per direction with distance and object, contact-or-overlap, grounded). Call it BEFORE and AFTER placing; pass directionSpace:'local' for rotated pieces, wall gaps and alcoves.",
         "'Will it fit here?' -> summer_test_placement: ghost-test a candidate global pose for overlap and floor gap without moving anything. Use it before committing a pose in a tight or dense spot.",
         "'Seat it on the floor, table or wall' -> summer_snap_to_surface: move along a ray to the first surface at a requested gap (default straight down).",
@@ -115,7 +119,7 @@ export function buildAgentPlaybook(
         "'Can the player get from A to B?' -> summer_navigation_probe (reachability on the scene's navigation map).",
       ],
       evidence: "physics evidence comes from colliders; visual_aabb is a broad-phase fallback for mesh-only geometry. Read the evidence field before trusting a contact or a gap.",
-      status: "skill/spatial-placement, skill/world-building-3d and summer_starcast / summer_test_placement / summer_snap_to_surface / summer_align_distribute_3d / summer_navigation_probe / summer_world_snapshot / summer_snapshot_diff are preview: verify their receipts with a screenshot. An engine build that predates an op answers engine_lacks_op naming the fallback.",
+      status: "skill/spatial-placement, skill/world-building-3d and summer_starcast / summer_test_placement / summer_snap_to_surface / summer_align_distribute_3d / summer_navigation_probe / summer_world_snapshot / summer_snapshot_diff / summer_inspect_asset / summer_place_adjacent / summer_attach_to_surface / summer_repeat_along / summer_connect_ports / summer_raycast / summer_measure are preview: verify their receipts with a screenshot. An engine build that predates an op answers engine_lacks_op naming the fallback.",
     },
     // ------------------------------------------------------------------
     // PHYSICAL INVARIANTS — hold after EVERY placement/import.

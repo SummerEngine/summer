@@ -466,11 +466,19 @@ describe("playbook step 0 survives engines without the perception ops", () => {
       "summer_align_distribute_3d",
       "summer_navigation_probe",
       "summer_snapshot_diff",
+      "summer_inspect_asset",
+      "summer_place_adjacent",
+      "summer_attach_to_surface",
+      "summer_repeat_along",
+      "summer_connect_ports",
+      "summer_raycast",
+      "summer_measure",
     ]) {
       expect(placement, tool).toContain(tool);
     }
     expect(placement).toContain("skill/spatial-placement");
     expect(placement).toContain("summer_search_library");
     expect(placement).toContain("directionSpace:'local'");
+    expect(placement).toContain("receipt:'summary'");
   });
 });

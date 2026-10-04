@@ -2882,7 +2882,7 @@
       "id": "skill/spatial-placement",
       "kind": "skill",
       "version": "1.1.0",
-      "content_hash": "368387c25b2838ecd2a32ca42cb3022595679aff04f68b83e7fc91803c28b976",
+      "content_hash": "ae40d417e66e26f25de7b322f7cc684f41ba2cd9f2f2a80e4fafcd8a15ec77d1",
       "summary": "Place 3D objects and modular kit pieces from measured geometry — inspect, place, starcast, measure, correct; wall, facade, pipe, shelf and alcove recipes.",
       "use_when": [
         "positioning a prop, character, collider, or platform so it sits flush, avoids overlap, or keeps clearance",

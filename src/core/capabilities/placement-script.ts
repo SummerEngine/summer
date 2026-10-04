@@ -14,7 +14,10 @@
  *   bounds         visible-geometry extents of nodes along three directions
  *                  (world axes or a node's local axes), plus transforms.
  *   raycast        physics ray (active scene only) and a visual-AABB ray.
- *   ports          resolve Marker3D ports or open-loop port indices.
+ *   ports          resolve Marker3D ports or open-loop port indices, and
+ *                  optionally the subject's other ports.
+ *   blockers       what a node overlaps where it stands and what it would
+ *                  touch first moving along a direction.
  *   multi          run several of the scene commands above in one call.
  *
  * "Scene space" = the scene root's frame, accumulated by hand from
@@ -92,6 +95,8 @@ func _dispatch(root, active, args):
 		return _cmd_raycast(root, active, args)
 	if cmd == "ports":
 		return _cmd_ports(root, args)
+	if cmd == "blockers":
+		return _cmd_blockers(root, active, args)
 	return _fail("bad_args", "unknown placement probe command: " + cmd)
 
 
@@ -288,6 +293,7 @@ func _cmd_bounds(root, active, args):
 		else:
 			rec["parent_xform"] = _xf12(Transform3D.IDENTITY)
 		rec["position"] = _raw3(n.position)
+		rec["transform_str"] = var_to_str(n.transform)
 		if geoms.size() > 0:
 			rec["intervals"] = _intervals(geoms, dirs)
 			var reach = 0.0
@@ -932,4 +938,122 @@ func _cmd_ports(root, args):
 	if sub != root and sub.get_parent() != null:
 		parent_xf = _xf(sub.get_parent(), root)
 	return {"ok": true, "subject_port": sp, "target_port": tp, "xform": _xf12(_xf(sub, root)), "parent_xform": _xf12(parent_xf)}
+
+
+# ---------------------------------------------------------------- blockers
+
+# What holds a node where it stands: the nodes it overlaps now, and the first
+# node it would touch moving along dir within dist. Physics (its enabled
+# collision shapes against bodies) when it has shapes and the scene is the
+# active tab, else visible-mesh AABBs (SnapToSurface's own fallback).
+func _cmd_blockers(root, active, args):
+	var path = String(args.get("path", ""))
+	var n = _node(root, path)
+	if n == null:
+		return _fail("node_not_found", "node not found in scene: " + path)
+	if not (n is Node3D):
+		return _fail("not_node3d", "node is not a Node3D: " + path)
+	var dir = _vec(args.get("direction", [0, -1, 0]))
+	if dir.length() < 0.000001:
+		return _fail("bad_args", "direction must be non-zero")
+	dir = dir.normalized()
+	var dist = float(args.get("max_distance", 1.0))
+	var mask = int(args.get("collision_mask", 4294967295))
+	var shapes = []
+	var ex: Array[RID] = []
+	var stack = [n]
+	while stack.size() > 0:
+		var cur = stack.pop_back()
+		if cur is CollisionObject3D:
+			ex.append(cur.get_rid())
+		if cur is CollisionShape3D and not cur.disabled and cur.shape != null:
+			shapes.append(cur)
+		for c in cur.get_children():
+			stack.append(c)
+	var space = null
+	if active and shapes.size() > 0 and n.is_inside_tree():
+		var vp = root.get_viewport()
+		var world = vp.find_world_3d() if vp != null else null
+		if world != null:
+			space = world.direct_space_state
+	var overlaps = []
+	var best = INF
+	var best_path = ""
+	if space != null:
+		for cs in shapes:
+			var q = PhysicsShapeQueryParameters3D.new()
+			q.shape = cs.shape
+			q.transform = cs.global_transform
+			q.collision_mask = mask
+			q.exclude = ex
+			for hit in space.intersect_shape(q, 8):
+				var col = hit.get("collider")
+				if col is Node:
+					var hp = _rel(root, col) if (col == root or root.is_ancestor_of(col)) else String(col.get_path())
+					if not overlaps.has(hp):
+						overlaps.append(hp)
+			q.motion = dir * dist
+			var frac = space.cast_motion(q)
+			if frac.size() == 2 and frac[1] < 1.0 and frac[0] * dist < best:
+				var q2 = PhysicsShapeQueryParameters3D.new()
+				q2.shape = cs.shape
+				q2.transform = cs.global_transform.translated(dir * (dist * frac[1]))
+				q2.collision_mask = mask
+				q2.exclude = ex
+				var info = space.get_rest_info(q2)
+				if not info.is_empty():
+					var obj = instance_from_id(int(info.get("collider_id", 0)))
+					if obj is Node:
+						best = frac[0] * dist
+						best_path = _rel(root, obj) if (obj == root or root.is_ancestor_of(obj)) else String(obj.get_path())
+		var pout = {"ok": true, "evidence": "physics", "overlaps": overlaps, "first_contact": null}
+		if best_path != "":
+			pout["first_contact"] = {"path": best_path, "distance": best}
+		return pout
+	var mine = _bounds_of(_geoms(n, root, []))
+	if mine == null:
+		return _fail("no_bounds", "the node has no enabled collision shape in the active scene and no visible geometry")
+	for g in _geoms(root, root, [n]):
+		var ob = _bounds_of([g])
+		if mine.intersects(ob):
+			var vp_path = _rel(root, g[0])
+			if overlaps.size() < 8 and not overlaps.has(vp_path):
+				overlaps.append(vp_path)
+			continue
+		var t = _box_sweep(mine, ob, dir, dist)
+		if t >= 0.0 and t < best:
+			best = t
+			best_path = _rel(root, g[0])
+	var vout = {"ok": true, "evidence": "visual_aabb", "overlaps": overlaps, "first_contact": null}
+	if shapes.size() > 0:
+		vout["physics_unavailable_reason"] = "scene_not_active" if not active else "no_space_state"
+	if best_path != "":
+		vout["first_contact"] = {"path": best_path, "distance": best}
+	return vout
+
+
+# Travel t in [0, dist] at which box a, moved along unit dir, first touches
+# box b; -1.0 when it does not within dist.
+func _box_sweep(a, b, dir, dist):
+	var lo = b.position - a.size
+	var hi = b.end
+	var o = a.position
+	var tmin = 0.0
+	var tmax = dist
+	for k in range(3):
+		if absf(dir[k]) < 0.000000001:
+			if o[k] <= lo[k] or o[k] >= hi[k]:
+				return -1.0
+		else:
+			var t1 = (lo[k] - o[k]) / dir[k]
+			var t2 = (hi[k] - o[k]) / dir[k]
+			if t1 > t2:
+				var tmp = t1
+				t1 = t2
+				t2 = tmp
+			tmin = maxf(tmin, t1)
+			tmax = minf(tmax, t2)
+			if tmin > tmax:
+				return -1.0
+	return tmin
 `;

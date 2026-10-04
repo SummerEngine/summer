@@ -15,8 +15,10 @@
  * No engine op is new. Reads run the placement probe (placement-script.ts)
  * through RunSceneScript with undo "none" and no checkpoint; mutations are the
  * ordinary SetProp / SnapToSurface / InstantiateScene ops with the usual scene
- * target, undo and final SaveScene. Every result is compact (< 5 KB) and names
- * its evidence: visual_aabb (visible GeometryInstance3D bounds, the definition
+ * target, undo and final SaveScene. attach_to_surface checks its seat before
+ * the SaveScene and, when it refuses, sets the piece's original transform back
+ * instead of saving. Every result is compact (< 5 KB) and names its evidence:
+ * visual_aabb (visible GeometryInstance3D bounds, the definition
  * AlignDistribute3D uses), physics (collider queries), or mesh_triangles.
  */
 import { z } from "zod";
@@ -38,10 +40,13 @@ import {
   basisInverse,
   basisMul,
   basisMulVec,
+  basisDeterminant,
   basisScale,
   dot,
+  isFiniteVec3,
   length,
   normalize,
+  parseGodotTransform,
   rotationAbout,
   rotationBetween,
   rotationFromFrames,
@@ -275,6 +280,9 @@ interface NodeBounds {
   xform: Xform;
   parent: Xform;
   position: Vec3;
+  /** The node's local transform as Godot writes it (var_to_str), for an
+   *  exact restore. */
+  transformStr?: string;
   intervals?: Array<[number, number]>;
   reach?: number;
 }
@@ -288,6 +296,7 @@ function parseBounds(record: unknown): NodeBounds {
     xform: xformFromArray(r.xform),
     parent: xformFromArray(r.parent_xform),
     position: (Array.isArray(r.position) ? r.position : [0, 0, 0]) as Vec3,
+    transformStr: typeof r.transform_str === "string" ? r.transform_str : undefined,
     intervals: Array.isArray(r.intervals) ? (r.intervals as Array<[number, number]>) : undefined,
     reach: typeof r.reach === "number" ? r.reach : undefined,
   };
@@ -764,14 +773,26 @@ export async function placeAdjacent(client: PlacementClient, args: PlaceAdjacent
 export const attachToSurfaceArgsSchema = z.object({
   scenePath: scenePathSchema,
   subject: nodePathSchema("Piece to mount"),
-  surface: nodePathSchema("Surface node (wall, ceiling, floor). Without ray, the ray runs from the subject's origin to the nearest point of this node's bounds; with ray, hits on other nodes are skipped").optional(),
+  surface: nodePathSchema("Surface node (wall, ceiling, floor). Without ray, the ray runs from the subject's origin to the nearest point of this node's bounds; with ray, hits on other nodes are skipped. The seat must land on this node: a seat on any other node is refused and the piece is put back").optional(),
   ray: z
     .object({
       origin: vec3.describe("Ray start [x, y, z] in scene space, e.g. a point in front of the wall."),
       direction: nonZeroVec3.describe("Ray direction [x, y, z], e.g. toward the wall."),
     })
     .optional()
-    .describe("Explicit ray that finds the mounting point. Pass this or surface (or both)."),
+    .describe("Explicit ray that finds the surface plane and its normal. Pass this or surface (or both)."),
+  placeAt: z
+    .enum(["current", "hit"])
+    .optional()
+    .default("current")
+    .describe("current (default): the piece keeps its height and its place along the surface and only moves along the surface normal, so its measured back face ends at standoff from the surface. hit: it also slides along the surface so the centre of its back face lands on the ray hit point (its height then follows the ray)."),
+  maxMove: z
+    .number()
+    .positive()
+    .max(100)
+    .optional()
+    .default(2)
+    .describe("Refuse, changing nothing, when the piece would end farther than this from where it starts (scene units). Place the piece near its mount first; raise this only for a deliberate long move."),
   backAxis: signedAxis
     .optional()
     .default("-z")
@@ -781,11 +802,85 @@ export const attachToSurfaceArgsSchema = z.object({
     .default("+y")
     .describe("The subject's LOCAL axis kept closest to worldUp. Must not be on the same line as backAxis."),
   worldUp: nonZeroVec3.optional().default([0, 1, 0]).describe("World direction the upAxis should follow (projected onto the surface)."),
-  standoff: z.number().min(0).max(10).optional().default(0).describe("Gap between the subject's back and the surface, in scene units."),
+  standoff: z.number().min(0).max(10).optional().default(0).describe("Gap between the subject's back face and the surface, in scene units."),
   maxDistance: z.number().positive().max(1000).optional().default(20).describe("Maximum ray length when looking for the surface."),
   collisionMask,
 });
 export type AttachToSurfaceArgs = z.output<typeof attachToSurfaceArgsSchema>;
+
+/** The piece is turned and put this far in front of its planned seat before
+ *  SnapToSurface sweeps it in. */
+export const ATTACH_PRESEAT_CLEARANCE = 0.05;
+/** How far past the planned seat the sweep may go (a collider set back from
+ *  the visible back face). */
+export const ATTACH_SEAT_REACH = 0.25;
+/** A seat this far in front of the planned plane stopped on something else. */
+export const ATTACH_PLAN_TOLERANCE = 0.03;
+
+/** Extents of a node's visible bounds along its own local axes, relative to
+ *  its origin: lo/hi per local x, y, z. Exported for tests. */
+export function localExtents(intervals: Array<[number, number]>, dirs: Vec3[], origin: Vec3): { lo: Vec3; hi: Vec3 } {
+  const lo: Vec3 = [0, 0, 0];
+  const hi: Vec3 = [0, 0, 0];
+  for (let k = 0; k < 3; k++) {
+    const at = dot(origin, dirs[k]!);
+    lo[k] = intervals[k]![0] - at;
+    hi[k] = intervals[k]![1] - at;
+  }
+  return { lo, hi };
+}
+
+/**
+ * Where the subject's origin must go so its back face (the extreme of its
+ * visible bounds along backAxis) sits standoff in front of the surface plane
+ * through hitPoint. `current` keeps the origin's place along the surface (and
+ * so its height on a wall); `hit` puts the centre of the back face on the hit
+ * point. `rotation` maps local unit axes to their new world directions.
+ * Exported for tests.
+ */
+export function seatOrigin(plan: {
+  origin: Vec3;
+  extents: { lo: Vec3; hi: Vec3 };
+  backAxis: SignedAxis;
+  rotation: Basis3;
+  hitPoint: Vec3;
+  normal: Vec3;
+  standoff: number;
+  placeAt: "current" | "hit";
+}): { origin: Vec3; backOffset: number; backCentre: Vec3 } {
+  const n = normalize(plan.normal);
+  const k = axisIndex(plan.backAxis[1] as WorldAxis);
+  const positive = plan.backAxis[0] === "+";
+  const { lo, hi } = plan.extents;
+  // Distance from the origin to the back face, measured along the back axis.
+  const backOffset = positive ? hi[k]! : -lo[k]!;
+  // The back face's centre relative to the origin, turned into the mount.
+  const centre: Vec3 = [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2];
+  centre[k] = positive ? hi[k]! : lo[k]!;
+  const offset = basisMulVec(plan.rotation, centre);
+  if (plan.placeAt === "current") {
+    const depth = plan.standoff + backOffset - dot(sub(plan.origin, plan.hitPoint), n);
+    const origin = add(plan.origin, scale(n, depth));
+    return { origin, backOffset, backCentre: add(origin, offset) };
+  }
+  const backCentre = add(plan.hitPoint, scale(n, plan.standoff));
+  return { origin: sub(backCentre, offset), backOffset, backCentre };
+}
+
+/** Same node, or one inside the other ("./" ignored; the engine cuts paths
+ *  over 160 characters to 157 + "..."). */
+function pathRelation(support: string, intended: string): "same" | "inside" | "ancestor" | "other" {
+  const a = stripDotSlash(support);
+  const b = stripDotSlash(intended);
+  if (a.endsWith("...")) {
+    const prefix = a.slice(0, -3);
+    return b.startsWith(prefix) || prefix.startsWith(b) ? "inside" : "other";
+  }
+  if (a === b) return "same";
+  if (isInside(a, b)) return "inside";
+  if (isInside(b, a)) return "ancestor";
+  return "other";
+}
 
 /** The mounting rotation: local back -> -normal, local up -> world up projected
  *  onto the surface plane. Exported for tests. */
@@ -826,6 +921,54 @@ function compactSnap(entry: JsonRecord | undefined): JsonRecord {
   return keep;
 }
 
+/** What blocks the subject where it stands (the placement probe's blockers
+ *  command), compacted; undefined when the probe itself failed. */
+async function readBlockers(
+  client: PlacementClient,
+  tool: string,
+  args: AttachToSurfaceArgs,
+  direction: Vec3,
+  distance: number
+): Promise<JsonRecord | undefined> {
+  const read = await runPlacementProbe(client, tool, {
+    cmd: "blockers",
+    scene_path: args.scenePath,
+    path: args.subject,
+    direction: roundVec(direction, 6),
+    max_distance: distance,
+    collision_mask: args.collisionMask,
+  });
+  if (!read.ok) return undefined;
+  const overlaps = (Array.isArray(read.overlaps) ? read.overlaps : []).map(String);
+  const contact = asRecord(read.first_contact);
+  return {
+    evidence: read.evidence,
+    overlapping: overlaps.length > 0,
+    overlaps: overlaps.slice(0, 8),
+    first_contact: contact ? { path: String(contact.path), distance: round(Number(contact.distance)) } : null,
+  };
+}
+
+/** One concrete next step for a failed seat, naming what blocked it. */
+export function seatNextStep(reason: string, blockers: JsonRecord | undefined, sweep: number): string {
+  const overlaps = Array.isArray(blockers?.overlaps) ? (blockers!.overlaps as string[]) : [];
+  const contact = asRecord(blockers?.first_contact);
+  const blocker = typeof contact?.path === "string" ? contact.path : overlaps[0];
+  switch (reason) {
+    case "overlap_recovery_exceeded":
+    case "aligned_overlap_recovery_exceeded":
+      return `In front of the surface the piece already overlaps ${overlaps.length ? overlaps.join(", ") : "something"}, and backing away from the surface does not clear it (it is probably sunk into the floor or a neighbour). Move it clear of ${blocker ?? "that node"} (for example lift it a few cm) and re-run.`;
+    case "gap_exceeds_hit_travel":
+      return `${blocker ?? "Something"} sits between the piece and the surface, closer than the standoff. Move the piece along the surface clear of it, lower standoff, or name ${blocker ?? "it"} as surface if that is the intended mount.`;
+    case "surface_not_found":
+      return `The seat sweep (${round(sweep)} along -normal from just in front of the planned seat) touched nothing: the surface has no collider there, or the piece's collider sits farther behind its visible back. Compare summer_inspect_asset collision with aabb, and check the spot with summer_raycast.`;
+    case "subject_not_ready":
+      return "Make the scene the active editor tab (summer_open_scene) and re-run: the seat needs the scene's physics.";
+    default:
+      return "Read seat.error and fix the cause, then re-run.";
+  }
+}
+
 export async function attachToSurface(client: PlacementClient, args: AttachToSurfaceArgs): Promise<PlacementResult> {
   const tool = "summer_attach_to_surface";
   if (!args.surface && !args.ray) throw new ToolInputError("Pass surface (a node path) or ray ({origin, direction}).");
@@ -840,7 +983,8 @@ export async function attachToSurface(client: PlacementClient, args: AttachToSur
     cmd: "multi",
     scene_path: args.scenePath,
     steps: [
-      { cmd: "bounds", nodes: [{ path: args.subject }] },
+      // The subject's bounds along its OWN axes: where its back face is.
+      { cmd: "bounds", space_node: args.subject, nodes: [{ path: args.subject }] },
       {
         cmd: "raycast",
         ...ray,
@@ -855,8 +999,11 @@ export async function attachToSurface(client: PlacementClient, args: AttachToSur
   if (!read.ok) return read;
   const [boundsStep, rayStep] = read.steps as [JsonRecord, JsonRecord];
   const subject = parseBounds((boundsStep.nodes as unknown[])[0]);
-  if (!subject.intervals || subject.reach === undefined) {
+  if (!subject.intervals) {
     return fail(tool, "subject_has_no_visual_bounds", `${args.subject} has no visible geometry to seat.`);
+  }
+  if (basisDeterminant(subject.xform.basis) < 0) {
+    return fail(tool, "mirrored_subject", `${args.subject} is mirrored (negative scale here or on a parent); turning it with a rotation would un-mirror it. Place it with summer_set_prop instead.`);
   }
   const chosen = chooseHit(rayStep, "auto");
   if (!chosen.hit) {
@@ -869,54 +1016,37 @@ export async function attachToSurface(client: PlacementClient, args: AttachToSur
   const warnings = [...chosen.warnings];
   if (chosen.fallback) warnings.push(`surface_found_by_visual_aabb (${chosen.fallback}): the normal is an AABB face normal`);
   if (chosen.nearerVisual) warnings.push(`mesh_only_geometry_nearer_than_hit: ${chosen.nearerVisual.path}`);
-  const n = normalize(hit.normal);
+  let n = normalize(hit.normal);
+  // The piece mounts on the side the ray came from, also when the ray hit a
+  // back face whose normal points away from it.
+  if (Array.isArray(rayStep.direction) && dot(n, rayStep.direction as Vec3) > 0) {
+    n = scale(n, -1);
+    warnings.push("hit_normal_pointed_away_from_the_ray_flipped");
+  }
   const currentUp = basisMulVec(subject.xform.basis, signedAxisVector(args.upAxis));
   const mount = mountingRotation(args.backAxis, args.upAxis, n, args.worldUp, currentUp);
   if (!mount) {
     return fail(tool, "up_axis_degenerate", "worldUp and the subject's current up are both parallel to the surface normal; pass a worldUp that lies along the surface.");
   }
   if (mount.usedCurrentUp) warnings.push("world_up_parallel_to_normal_kept_current_up");
-  const clearance = subject.reach + args.standoff + 0.05;
-  const global: Xform = {
-    basis: scaledBasis(mount.rotation, basisScale(subject.xform.basis)),
-    origin: add(hit.point, scale(n, clearance)),
-  };
-  const local = xformCompose(xformInverse(subject.parent), global);
-  const snapDistance = Math.min(10000, clearance + 1);
-  const receipt = await executeSceneMutation(client, args.scenePath, [
-    { op: "SetProp", path: args.subject, key: "transform", value: toGodotTransform(local) },
-    {
-      op: "SnapToSurface",
-      subject_path: args.subject,
-      direction: roundVec(scale(n, -1), 6),
-      max_distance: round(snapDistance, 4),
-      gap: args.standoff,
-      align_up: false,
-    },
-  ]);
-  const hinted = asRecord(withOldEngineHint(receipt, "SnapToSurface", SNAP_TO_SURFACE_FALLBACK));
-  const snap = compactSnap(opEntry(receipt, "SnapToSurface"));
-  const surfaceHit = { evidence: chosen.evidence, ...hitOut(hit) };
-  const setProp = opEntry(receipt, "SetProp");
-  const failed = mutationFailure(tool, hinted ?? receipt, {
-    surface_hit: surfaceHit,
-    seat: snap,
-    mutationApplied: setProp?.ok === true,
-    saved: false,
-    ...(setProp?.ok === true
-      ? { note: "The subject was turned and moved in front of the surface but NOT seated; the scene is not saved. Fix the cause (see seat) and re-run, or undo." }
-      : {}),
+
+  const start = subject.xform.origin;
+  const extents = localExtents(subject.intervals, dirsOf(boundsStep), start);
+  const plan = seatOrigin({
+    origin: start,
+    extents,
+    backAxis: args.backAxis,
+    rotation: mount.rotation,
+    hitPoint: hit.point,
+    normal: n,
+    standoff: args.standoff,
+    placeAt: args.placeAt,
   });
-  if (failed) return failed;
-  const supportPath = typeof snap.supportPath === "string" ? stripDotSlash(snap.supportPath) : undefined;
-  const expected = stripDotSlash(args.surface ?? hit.path);
-  if (supportPath && expected && supportPath !== expected && !isInside(supportPath, expected) && !isInside(expected, supportPath)) {
-    warnings.push(`seated_against_${supportPath}_not_${expected}`);
-  }
-  return fitToBudget({
-    ok: true,
+  const surfaceHit = { evidence: chosen.evidence, ...hitOut(hit) };
+  const base: JsonRecord = {
     tool,
     subject: subject.resolved,
+    placed_at: args.placeAt,
     surface_hit: surfaceHit,
     orientation: {
       backAxis: args.backAxis,
@@ -924,8 +1054,163 @@ export async function attachToSurface(client: PlacementClient, args: AttachToSur
       world_back: roundVec(scale(n, -1), 4),
       world_up: roundVec(mount.up, 4),
     },
-    seat: snap,
+    back_face_offset: round(plan.backOffset),
     standoff: args.standoff,
+  };
+  // How far along the surface the hit is from the piece's back face: in
+  // "current" mode the piece stays where it is along the surface, so a hit
+  // metres to the side means the ray found the surface somewhere else.
+  const toHit = sub(hit.point, plan.backCentre);
+  const alongSurface = length(sub(toHit, scale(n, dot(toHit, n))));
+  if (alongSurface > args.maxMove) {
+    return fail(tool, "hit_far_from_piece", `The ray hit ${hit.path} ${round(alongSurface)} along the surface from the piece, more than maxMove ${args.maxMove}. placeAt "current" keeps the piece where it is along the surface, so it would not go to the hit. Nothing was changed.`, {
+      ...base,
+      mutationApplied: false,
+      saved: false,
+      next_step: "Aim the ray at the piece, pass placeAt \"hit\" to move it to the hit point, or place it near the hit first (summer_set_prop position).",
+    });
+  }
+  const plannedMove = length(sub(plan.origin, start));
+  if (plannedMove > args.maxMove) {
+    return fail(tool, "move_exceeds_max_move", `The piece would move ${round(plannedMove)} from where it starts, more than maxMove ${args.maxMove}. Nothing was changed.`, {
+      ...base,
+      planned_origin: roundVec(plan.origin),
+      mutationApplied: false,
+      saved: false,
+      next_step:
+        args.placeAt === "hit"
+          ? "Aim the ray at the spot next to the piece, place the piece near its mount first (summer_set_prop position), or raise maxMove for a deliberate long move."
+          : "Place the piece near its mount first (summer_set_prop position, or summer_instantiate_scene with position), or raise maxMove for a deliberate long move.",
+    });
+  }
+
+  // Turn the piece and put its back face just in front of the planned seat,
+  // then let SnapToSurface sweep it in over a short, bounded distance.
+  const basis = scaledBasis(mount.rotation, basisScale(subject.xform.basis));
+  const preseat: Xform = { basis, origin: add(plan.origin, scale(n, ATTACH_PRESEAT_CLEARANCE)) };
+  const local = xformCompose(xformInverse(subject.parent), preseat);
+  const sweep = round(args.standoff + ATTACH_PRESEAT_CLEARANCE + ATTACH_SEAT_REACH, 4);
+  const options = { scenePath: args.scenePath };
+  const restore = async (): Promise<boolean> => {
+    const original = subject.transformStr && parseGodotTransform(subject.transformStr)
+      ? subject.transformStr
+      : toGodotTransform(xformCompose(xformInverse(subject.parent), subject.xform));
+    const receipt = await client.executeIdentityBoundOps(
+      [{ op: "SetProp", path: args.subject, key: "transform", value: original }],
+      options
+    );
+    return !extractOpError(receipt);
+  };
+  const refuse = async (reason: string, message: string, extra: JsonRecord): Promise<PlacementResult> => {
+    const restored = await restore();
+    return fail(tool, reason, message, {
+      ...base,
+      ...extra,
+      restored,
+      mutationApplied: !restored,
+      saved: false,
+      note: restored
+        ? "The piece was put back where it started; the scene was not saved."
+        : "Putting the piece back FAILED: it is turned and moved in the editor, the scene is not saved. Undo it (summer_batch [{op:\"Undo\"}]) or set its transform.",
+    });
+  };
+
+  const receipt = await client.executeIdentityBoundOps([
+    { op: "SetProp", path: args.subject, key: "transform", value: toGodotTransform(local) },
+    {
+      op: "SnapToSurface",
+      subject_path: args.subject,
+      direction: roundVec(scale(n, -1), 6),
+      max_distance: sweep,
+      gap: args.standoff,
+      align_up: false,
+    },
+  ], options);
+  const hinted = asRecord(withOldEngineHint(receipt, "SnapToSurface", SNAP_TO_SURFACE_FALLBACK));
+  const setProp = opEntry(receipt, "SetProp");
+  const snap = compactSnap(opEntry(receipt, "SnapToSurface"));
+  const seatError = extractOpError(hinted ?? receipt);
+  if (seatError) {
+    if (setProp?.ok !== true) {
+      return mutationFailure(tool, hinted ?? receipt, { ...base, seat: snap, mutationApplied: false, saved: false })!;
+    }
+    if (hinted?.failure_reason === "engine_lacks_op") {
+      return refuse("engine_lacks_op", String(hinted.error), { op: "SnapToSurface", seat: snap });
+    }
+    const reason = String(snap.failure_reason ?? snap.failureReason ?? "seat_failed");
+    // Name the obstacle while the piece still stands where the seat started.
+    const blockers = await readBlockers(client, tool, args, scale(n, -1), sweep);
+    return refuse(reason, `The seat failed: ${String(snap.error ?? seatError).slice(0, 300)}`, {
+      seat: snap,
+      ...(blockers ? { blockers } : {}),
+      next_step: seatNextStep(reason, blockers, sweep),
+    });
+  }
+
+  // The seat applied. Check WHERE before saving: on the intended surface, at
+  // the planned plane, within maxMove.
+  const supportPath = typeof snap.supportPath === "string" && snap.supportPath.length > 0 ? stripDotSlash(snap.supportPath) : undefined;
+  const intended = stripDotSlash(args.surface ?? hit.path);
+  const afterOrigin = isFiniteVec3(snap.origin) ? snap.origin : undefined;
+  // > 0: stopped in front of the planned seat; < 0: went deeper.
+  const deviation = afterOrigin ? dot(sub(afterOrigin, plan.origin), n) : undefined;
+  const relation = supportPath ? pathRelation(supportPath, intended) : undefined;
+  const inFront = deviation !== undefined && deviation > ATTACH_PLAN_TOLERANCE;
+  const seatFacts: JsonRecord = {
+    seat: snap,
+    seated_on: supportPath ?? null,
+    intended_surface: intended,
+    ...(deviation !== undefined ? { back_face_gap: round(args.standoff + deviation), in_front_of_plan: round(deviation) } : {}),
+  };
+  const otherNode = relation === "other" || (relation === "ancestor" && inFront);
+  if (otherNode && (args.surface || deviation === undefined || inFront)) {
+    return refuse("seated_on_other_node", `The seat stopped on ${supportPath}, not on ${intended}${deviation !== undefined ? `, ${round(deviation)} in front of the planned seat` : ""}.`, {
+      ...seatFacts,
+      next_step: `Move the piece along the surface clear of ${supportPath} (summer_measure pair with it shows the overlap), or name ${supportPath} as surface if it is the intended mount, then re-run.`,
+    });
+  }
+  if (!supportPath && inFront) {
+    return refuse("seated_in_front_of_surface", `The seat stopped ${round(deviation!)} in front of the planned seat and the engine did not name the support.`, {
+      ...seatFacts,
+      next_step: "Check what is between the piece and the surface with summer_starcast (directionSpace local) or summer_test_placement, move the piece clear, then re-run.",
+    });
+  }
+  const finalMove = afterOrigin ? length(sub(afterOrigin, start)) : undefined;
+  if (finalMove !== undefined && finalMove > args.maxMove + sweep) {
+    return refuse("move_exceeds_max_move", `The seat moved the piece ${round(finalMove)} from where it started, more than maxMove ${args.maxMove}.`, {
+      ...seatFacts,
+      next_step: "Place the piece near its mount first, or raise maxMove for a deliberate long move.",
+    });
+  }
+  if (otherNode) warnings.push(`seated_on_coplanar_${supportPath}`);
+  if (!supportPath) warnings.push("seat_support_not_named_by_engine");
+  if (inFront && relation !== undefined && relation !== "other") {
+    warnings.push(`surface_not_flat_under_piece: seated ${round(deviation!)} in front of the ray hit plane`);
+  }
+  if (deviation !== undefined && deviation < -ATTACH_PLAN_TOLERANCE) {
+    warnings.push(`visible_back_${round(-deviation)}_into_surface: the collider sits behind the visible back face; add that to standoff to keep the mesh flush`);
+  }
+  if (!afterOrigin) warnings.push("seat_origin_missing_plan_not_checked");
+
+  const saveReceipt = await client.executeIdentityBoundOps([{ op: "SaveScene" }], options);
+  const saveError = extractOpError(saveReceipt);
+  if (saveError) {
+    return fail(tool, "save_failed", `The piece is seated in the editor but SaveScene failed: ${saveError.slice(0, 300)}`, {
+      ...base,
+      ...seatFacts,
+      mutationApplied: true,
+      saved: false,
+      note: "Fix the cause, then call summer_save_scene.",
+    });
+  }
+  return fitToBudget({
+    ok: true,
+    ...base,
+    seated_on: supportPath ?? null,
+    final_gap: snap.finalGap ?? null,
+    ...(deviation !== undefined ? { back_face_gap: round(args.standoff + deviation) } : {}),
+    ...(afterOrigin ? { moved_by: roundVec(sub(afterOrigin, start)) } : {}),
+    seat: snap,
     saved: true,
     warnings,
   }, ["warnings"]) as PlacementResult;

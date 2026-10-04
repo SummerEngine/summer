@@ -9,6 +9,7 @@ import {
   fitToBudget,
   inspectAsset,
   inspectAssetArgsSchema,
+  localExtents,
   measure,
   measureArgsSchema,
   mountingRotation,
@@ -19,11 +20,13 @@ import {
   repeatAlong,
   repeatAlongArgsSchema,
   repeatPositions,
+  seatNextStep,
+  seatOrigin,
   isSafeNodePath,
   isSafeResPath,
 } from "./placement.js";
 import { PLACEMENT_ARGS_TOKEN, buildPlacementScript, encodeScriptArgs, placementProbeTemplate } from "./placement-script.js";
-import { basisMulVec, parseGodotTransform, parseGodotVector3, type Vec3 } from "./placement-math.js";
+import { add, basisMulVec, dot, parseGodotTransform, parseGodotVector3, type Vec3 } from "./placement-math.js";
 
 type Op = Record<string, unknown>;
 type Probe = (args: Op) => Op;
@@ -361,19 +364,25 @@ describe("summer_attach_to_surface", () => {
     expect(mountingRotation("-y", "+z", [0, 1, 0], [0, 1, 0], [0, 1, 0])).toBeNull();
   });
 
-  it("sends SetProp transform then SnapToSurface along -normal at the standoff", async () => {
+  it("seats the lamp's measured back face at the standoff, not its origin, with SnapToSurface along -normal", async () => {
+    // Lamp origin at (3.6, 2, 0), back plate 0.15 behind it along local -z.
     const read = {
       ok: true,
       steps: [
-        { ok: true, space: "world", dirs: WORLD_DIRS, nodes: [bounds("Lamp", [[-0.1, 0.1], [0, 0.4], [-0.15, 0]], { reach: 0.5 })] },
-        { ok: true, origin: [3, 2, 0], direction: [1, 0, 0], physics_available: true, physics: { path: "Wall", point: [4, 2, 0], normal: [-1, 0, 0], distance: 1 } },
+        {
+          ok: true,
+          space: "local",
+          dirs: WORLD_DIRS,
+          nodes: [bounds("Lamp", [[3.5, 3.7], [2, 2.4], [-0.15, 0]], { xform: [1, 0, 0, 0, 1, 0, 0, 0, 1, 3.6, 2, 0] })],
+        },
+        { ok: true, origin: [3.6, 2, 0], direction: [1, 0, 0], physics_available: true, physics: { path: "Wall", point: [4, 2, 0], normal: [-1, 0, 0], distance: 0.4 } },
       ],
     };
     const { client, mutations, probeCalls } = mockClient(() => read, {
       mutationResults: (ops) =>
         ops.map((op) =>
           op.op === "SnapToSurface"
-            ? { ok: true, op: op.op, evidence: "physics", supportPath: "Wall", finalGap: 0.02, after: { origin: [3.98, 2, 0] } }
+            ? { ok: true, op: op.op, evidence: "physics", supportPath: "Wall", finalGap: 0.02, after: { origin: [3.83, 2, 0] } }
             : { ok: true, op: op.op }
         ),
     });
@@ -382,36 +391,230 @@ describe("summer_attach_to_surface", () => {
       attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Lamp", surface: "./Wall", standoff: 0.02 })
     );
     const steps = probeArgs(probeCalls[0]!).steps as Op[];
+    expect(steps[0]).toMatchObject({ cmd: "bounds", space_node: "Lamp" });
     expect(steps[1]).toMatchObject({ cmd: "raycast", from_subject: "Lamp", surface: "./Wall", exclude: ["Lamp"] });
     const [setProp, snap] = mutations[0]!;
     expect(setProp).toMatchObject({ op: "SetProp", path: "Lamp", key: "transform" });
     const t = parseGodotTransform(String(setProp!.value))!;
-    // Back (-z) now faces +x, into the wall whose normal is -x; origin in front of the wall.
+    // Back (-z) now faces +x, into the wall whose normal is -x.
     expect(basisMulVec(t.basis, [0, 0, -1]).map((v) => Math.round(v * 1e6) / 1e6)).toEqual([1, 0, 0]);
-    expect(t.origin[0]).toBeCloseTo(4 - (0.5 + 0.02 + 0.05));
-    expect(snap).toMatchObject({ op: "SnapToSurface", subject_path: "Lamp", direction: [1, 0, 0], gap: 0.02, align_up: false });
+    // Planned seat: back plate at 4 - 0.02, so the origin at 3.83; the
+    // turn-and-place puts it 5 cm in front of that. Height unchanged.
+    expect(t.origin[0]).toBeCloseTo(3.78);
+    expect(t.origin[1]).toBeCloseTo(2);
+    expect(snap).toMatchObject({ op: "SnapToSurface", subject_path: "Lamp", direction: [1, 0, 0], max_distance: 0.32, gap: 0.02, align_up: false });
     expect(mutations[1]).toEqual([{ op: "SaveScene" }]);
-    expect(result).toMatchObject({ ok: true, saved: true, surface_hit: { evidence: "physics", path: "Wall" }, seat: { supportPath: "Wall", finalGap: 0.02 } });
+    expect(result).toMatchObject({
+      ok: true,
+      saved: true,
+      seated_on: "Wall",
+      final_gap: 0.02,
+      back_face_gap: 0.02,
+      back_face_offset: 0.15,
+      moved_by: [0.23, 0, 0],
+      surface_hit: { evidence: "physics", path: "Wall" },
+      seat: { supportPath: "Wall", finalGap: 0.02 },
+    });
     // "./Wall" and the engine's "Wall" are the same node: no false warning.
     expect(result.warnings).toEqual([]);
   });
 
-  it("reports an unseated, unsaved piece honestly when SnapToSurface fails", async () => {
+  // Field evidence (proof run, 2026-10-04): with a ray, the origin went to the
+  // ray height, so a street lamp and a power box landed 0.2 m too high.
+  const shutterBounds = (extra: Op = {}) =>
+    bounds("Alley2/ShutterWin", [[0.5, 3.5], [1.1, 3.7], [0.4, 0.6]], {
+      xform: [1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 1.1, 0.6],
+      transform_str: "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 1.1, 0.6)",
+      ...extra,
+    });
+  const shutterRead = (hit: Op = { path: "House2/Back/B0_w3", point: [2, 2.35, 0], normal: [0, 0, 1], distance: 3 }) => ({
+    ok: true,
+    steps: [
+      { ok: true, space: "local", dirs: WORLD_DIRS, nodes: [shutterBounds()] },
+      { ok: true, origin: [2, 2.35, 3], direction: [0, 0, -1], physics_available: true, physics: hit },
+    ],
+  });
+  const seatAt = (origin: Vec3, supportPath: string) => (ops: Op[]) =>
+    ops.map((op) =>
+      op.op === "SnapToSurface"
+        ? { ok: true, op: op.op, evidence: "physics", supportPath, finalGap: 0, gapErrorBound: 0.0001, after: { origin } }
+        : { ok: true, op: op.op }
+    );
+
+  it("keeps the piece's height with a ray and seats its back face, not its origin", async () => {
+    const { client, mutations } = mockClient(() => shutterRead(), { mutationResults: seatAt([2, 1.1, 0.2], "House2/Back/B0_w3") });
+    const result = await attachToSurface(
+      client,
+      attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Alley2/ShutterWin", ray: { origin: [2, 2.35, 3], direction: [0, 0, -1] } })
+    );
+    const t = parseGodotTransform(String(mutations[0]![0]!.value))!;
+    // The ray is at y 2.35; the shutter keeps y 1.1. Its back face (0.2 behind
+    // the origin) goes onto the wall at z 0: origin z 0.2, sent 5 cm in front.
+    expect(t.origin).toEqual([2, 1.1, expect.closeTo(0.25, 6)]);
+    expect(result).toMatchObject({ ok: true, placed_at: "current", seated_on: "House2/Back/B0_w3", back_face_gap: 0, moved_by: [0, 0, -0.4] });
+  });
+
+  it("puts the centre of the back face on the hit point with placeAt hit", () => {
+    const extents = localExtents([[0.5, 3.5], [1.1, 3.7], [0.4, 0.6]], WORLD_DIRS as Vec3[], [2, 1.1, 0.6]);
+    const identity: [Vec3, Vec3, Vec3] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+    const plan = seatOrigin({ origin: [2, 1.1, 0.6], extents, backAxis: "-z", rotation: identity, hitPoint: [2, 2.35, 0], normal: [0, 0, 1], standoff: 0.01, placeAt: "hit" });
+    // Back-face centre is (0, 1.3, -0.2) from the origin: origin = hit - that + standoff.
+    plan.origin.forEach((v, k) => expect(v).toBeCloseTo([2, 1.05, 0.21][k]!));
+    expect(plan.backOffset).toBeCloseTo(0.2);
+  });
+
+  it("lands the back face on the plane for a turned piece (wall facing +x, back -z)", () => {
+    const mount = mountingRotation("-z", "+y", [1, 0, 0], [0, 1, 0])!;
+    const lo: Vec3 = [-0.4, 0, -0.3];
+    const hi: Vec3 = [0.4, 0.9, 0.1];
+    for (const placeAt of ["current", "hit"] as const) {
+      const plan = seatOrigin({ origin: [1, 2, 3], extents: { lo, hi }, backAxis: "-z", rotation: mount.rotation, hitPoint: [5, 2.5, 3], normal: [1, 0, 0], standoff: 0.02, placeAt });
+      const corners: Vec3[] = [];
+      for (let i = 0; i < 8; i++) {
+        const local: Vec3 = [i & 1 ? hi[0] : lo[0], i & 2 ? hi[1] : lo[1], i & 4 ? hi[2] : lo[2]];
+        corners.push(add(plan.origin, basisMulVec(mount.rotation, local)));
+      }
+      // The face nearest the wall sits standoff in front of the plane x = 5.
+      expect(Math.min(...corners.map((c) => dot(c, [1, 0, 0])))).toBeCloseTo(5.02);
+      if (placeAt === "current") expect(plan.origin[1]).toBeCloseTo(2);
+    }
+  });
+
+  // Field evidence (audit fix run, 2026-10-04): the shutter was seated on a
+  // duct brace instead of the named wall and saved, with only a warning.
+  it("refuses a seat on another node than the named surface and puts the piece back unsaved", async () => {
     const read = {
       ok: true,
       steps: [
-        { ok: true, nodes: [bounds("Lamp", [[0, 1], [0, 1], [0, 1]])], dirs: WORLD_DIRS },
-        { ok: true, physics_available: true, physics: { path: "Wall", point: [0, 0, 0], normal: [0, 0, 1], distance: 1 } },
+        { ok: true, space: "local", dirs: WORLD_DIRS, nodes: [shutterBounds()] },
+        { ok: true, origin: [2, 1.1, 0.6], direction: [0, 0, -1], physics_available: true, physics: { path: "House2/Back/B0_w3", point: [2, 1.1, 0], normal: [0, 0, 1], distance: 0.6 } },
       ],
     };
-    const { client, mutations } = mockClient(() => read, {
-      mutationResults: (ops) =>
-        ops.map((op) => (op.op === "SnapToSurface" ? { ok: false, op: op.op, failure_reason: "no_support", error: "no support surface" } : { ok: true, op: op.op })),
+    const { client, mutations } = mockClient(() => read, { mutationResults: seatAt([2, 1.1, 0.33], "Alley2/Duct/Brace_3") });
+    const result = await attachToSurface(
+      client,
+      attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Alley2/ShutterWin", surface: "House2/Back/B0_w3" })
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      failure_reason: "seated_on_other_node",
+      seated_on: "Alley2/Duct/Brace_3",
+      intended_surface: "House2/Back/B0_w3",
+      in_front_of_plan: 0.13,
+      restored: true,
+      mutationApplied: false,
+      saved: false,
     });
+    expect(String(result.next_step)).toContain("Alley2/Duct/Brace_3");
+    // Turn + seat, then the exact original transform; never a SaveScene.
+    expect(mutations).toHaveLength(2);
+    expect(mutations[1]).toEqual([{ op: "SetProp", path: "Alley2/ShutterWin", key: "transform", value: "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 1.1, 0.6)" }]);
+    expect(mutations.flat().some((op) => op.op === "SaveScene")).toBe(false);
+  });
+
+  it("refuses before changing anything when the piece would move farther than maxMove", async () => {
+    const read = {
+      ok: true,
+      steps: [
+        { ok: true, space: "local", dirs: WORLD_DIRS, nodes: [bounds("Lamp", [[-0.1, 0.1], [0, 0.4], [-0.15, 0]])] },
+        { ok: true, origin: [0, 2, 1], direction: [0, 0, -1], physics_available: true, physics: { path: "Wall", point: [0, 2, -8], normal: [0, 0, 1], distance: 9 } },
+      ],
+    };
+    const { client, mutations } = mockClient(() => read);
+    const result = await attachToSurface(client, attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Lamp", ray: { origin: [0, 2, 1], direction: [0, 0, -1] } }));
+    expect(result).toMatchObject({ ok: false, failure_reason: "move_exceeds_max_move", mutationApplied: false, saved: false });
+    expect(String(result.error)).toContain("7.85");
+    expect(String(result.next_step)).toContain("summer_set_prop");
+    expect(mutations).toEqual([]);
+    // A deliberate long move is allowed when asked for.
+    const long = mockClient(() => read, { mutationResults: seatAt([0, 0, -7.85], "Wall") });
+    const moved = await attachToSurface(long.client, attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Lamp", ray: { origin: [0, 2, 1], direction: [0, 0, -1] }, maxMove: 10 }));
+    expect(moved).toMatchObject({ ok: true, saved: true });
+  });
+
+  it("refuses a ray that hits the surface far from the piece unless placeAt hit asks to move it there", async () => {
+    const farHit = { path: "House2/Back/B0_w7", point: [6, 2.35, 0], normal: [0, 0, 1], distance: 3 };
+    const ray = { origin: [6, 2.35, 3] as Vec3, direction: [0, 0, -1] as Vec3 };
+    const kept = mockClient(() => shutterRead(farHit));
+    const refused = await attachToSurface(kept.client, attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Alley2/ShutterWin", ray }));
+    expect(refused).toMatchObject({ ok: false, failure_reason: "hit_far_from_piece", mutationApplied: false });
+    expect(String(refused.next_step)).toContain("placeAt");
+    expect(kept.mutations).toEqual([]);
+
+    const moved = mockClient(() => shutterRead(farHit), { mutationResults: seatAt([6, 1.05, 0.2], "House2/Back/B0_w7") });
+    const result = await attachToSurface(moved.client, attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Alley2/ShutterWin", ray, placeAt: "hit", maxMove: 5 }));
+    expect(result).toMatchObject({ ok: true, placed_at: "hit", seated_on: "House2/Back/B0_w7", back_face_gap: 0 });
+    const t = parseGodotTransform(String(moved.mutations[0]![0]!.value))!;
+    t.origin.forEach((v, k) => expect(v).toBeCloseTo([6, 1.05, 0.25][k]!));
+  });
+
+  it("with a ray only, accepts a coplanar neighbour module (warned) but refuses a node in front of the wall", async () => {
+    const coplanar = mockClient(() => shutterRead({ path: "Facade/W1", point: [2, 2.35, 0], normal: [0, 0, 1], distance: 3 }), { mutationResults: seatAt([2, 1.1, 0.2], "Facade/W2") });
+    const accepted = await attachToSurface(coplanar.client, attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Alley2/ShutterWin", ray: { origin: [2, 2.35, 3], direction: [0, 0, -1] } }));
+    expect(accepted).toMatchObject({ ok: true, saved: true, seated_on: "Facade/W2" });
+    expect(accepted.warnings).toContain("seated_on_coplanar_Facade/W2");
+
+    const brace = mockClient(() => shutterRead(), { mutationResults: seatAt([2, 1.1, 0.32], "Duct/Brace") });
+    const refused = await attachToSurface(brace.client, attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Alley2/ShutterWin", ray: { origin: [2, 2.35, 3], direction: [0, 0, -1] } }));
+    expect(refused).toMatchObject({ ok: false, failure_reason: "seated_on_other_node", seated_on: "Duct/Brace", restored: true, saved: false });
+    expect(brace.mutations.flat().some((op) => op.op === "SaveScene")).toBe(false);
+  });
+
+  it("warns when the collider sits behind the visible back, so the mesh pokes into the wall", async () => {
+    const { client } = mockClient(() => shutterRead(), { mutationResults: seatAt([2, 1.1, 0.15], "House2/Back/B0_w3") });
+    const result = await attachToSurface(client, attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Alley2/ShutterWin", ray: { origin: [2, 2.35, 3], direction: [0, 0, -1] } }));
+    expect(result).toMatchObject({ ok: true, back_face_gap: -0.05 });
+    expect((result.warnings as string[]).some((w) => w.startsWith("visible_back_0.05_into_surface"))).toBe(true);
+  });
+
+  // Field evidence (proof run): snap failures said neither what blocked the
+  // piece nor that it started out overlapping.
+  it("names the blocker of a failed seat, says it started overlapping, gives a next step and puts the piece back", async () => {
+    const blockers = { ok: true, evidence: "physics", overlaps: ["Ground/Al_3"], first_contact: { path: "Ground/Al_3", distance: 0 } };
+    const { client, mutations, probeCalls } = mockClient([() => shutterRead(), () => blockers], {
+      mutationResults: (ops) =>
+        ops.map((op) =>
+          op.op === "SnapToSurface"
+            ? { ok: false, op: op.op, failure_reason: "overlap_recovery_exceeded", error: "Subject overlap could not be cleared opposite direction within max_distance", initiallyOverlapping: true, backoffDistance: 0.3 }
+            : { ok: true, op: op.op }
+        ),
+    });
+    const result = await attachToSurface(client, attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Alley2/ShutterWin", ray: { origin: [2, 2.35, 3], direction: [0, 0, -1] } }));
+    expect(probeArgs(probeCalls[1]!)).toMatchObject({ cmd: "blockers", path: "Alley2/ShutterWin", direction: [0, 0, -1], max_distance: 0.3 });
+    expect(result).toMatchObject({
+      ok: false,
+      failure_reason: "overlap_recovery_exceeded",
+      seat: { initiallyOverlapping: true },
+      blockers: { evidence: "physics", overlapping: true, overlaps: ["Ground/Al_3"], first_contact: { path: "Ground/Al_3", distance: 0 } },
+      restored: true,
+      saved: false,
+    });
+    expect(String(result.next_step)).toContain("Ground/Al_3");
+    expect(String(result.next_step)).toContain("lift");
+    expect(mutations).toHaveLength(2);
+    expect(mutations[1]![0]).toMatchObject({ op: "SetProp", key: "transform" });
+  });
+
+  it("gives a concrete next step for every seat failure the engine reports", () => {
+    const blockers = { overlaps: [], first_contact: { path: "Alley1/Props/Bin2", distance: 0.01 } };
+    expect(seatNextStep("gap_exceeds_hit_travel", blockers, 0.3)).toContain("Alley1/Props/Bin2");
+    expect(seatNextStep("surface_not_found", undefined, 0.3)).toContain("collider");
+    expect(seatNextStep("subject_not_ready", undefined, 0.3)).toContain("summer_open_scene");
+    expect(seatNextStep("something_new", undefined, 0.3)).toContain("seat.error");
+  });
+
+  it("refuses to un-mirror a mirrored piece", async () => {
+    const read = {
+      ok: true,
+      steps: [
+        { ok: true, space: "local", dirs: WORLD_DIRS, nodes: [bounds("Lamp", [[0, 1], [0, 1], [0, 1]], { xform: [-1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0] })] },
+        { ok: true, origin: [0, 0, 1], direction: [0, 0, -1], physics_available: true, physics: { path: "Wall", point: [0, 0, 0], normal: [0, 0, 1], distance: 1 } },
+      ],
+    };
+    const { client, mutations } = mockClient(() => read);
     const result = await attachToSurface(client, attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Lamp", ray: { origin: [0, 0, 1], direction: [0, 0, -1] } }));
-    expect(mutations).toHaveLength(1);
-    expect(result).toMatchObject({ ok: false, mutationApplied: true, saved: false, seat: { failure_reason: "no_support" } });
-    expect(String(result.note)).toContain("NOT seated");
+    expect(result).toMatchObject({ ok: false, failure_reason: "mirrored_subject" });
+    expect(mutations).toEqual([]);
   });
 
   it("validates axes and the surface source before sending", async () => {

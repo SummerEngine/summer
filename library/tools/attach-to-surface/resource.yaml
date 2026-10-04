@@ -58,7 +58,7 @@ input_schema:
       type: string
       minLength: 1
       maxLength: 256
-      description: Surface node. Without ray, the ray runs from the subject's origin to the nearest point of this node's bounds; with ray, hits on other nodes are skipped.
+      description: Surface node. Without ray, the ray runs from the subject's origin to the nearest point of this node's bounds; with ray, hits on other nodes are skipped. The seat must land on this node (or inside it); a seat on any other node is refused and the piece is put back.
     ray:
       type: object
       properties:
@@ -80,7 +80,7 @@ input_schema:
         - origin
         - direction
       additionalProperties: false
-      description: Explicit ray that finds the mounting point. Pass this or surface (or both).
+      description: Explicit ray that finds the surface plane and its normal. Pass this or surface (or both). With a ray only, a seat on another node is refused unless that node lies on the hit plane (a coplanar neighbour module, warned).
     backAxis:
       type: string
       enum: ["+x", "-x", "+y", "-y", "+z", "-z"]
@@ -104,7 +104,18 @@ input_schema:
       minimum: 0
       maximum: 10
       default: 0
-      description: Gap between the subject's back and the surface.
+      description: Gap between the subject's measured back face (the extreme of its visible bounds along backAxis) and the surface.
+    placeAt:
+      type: string
+      enum: [current, hit]
+      default: current
+      description: "current: the piece keeps its height and its place along the surface and only moves along the surface normal. hit: it also slides so the centre of its back face lands on the ray hit point (its height then follows the ray)."
+    maxMove:
+      type: number
+      exclusiveMinimum: 0
+      maximum: 100
+      default: 2
+      description: Refuse, changing nothing, when the piece would end farther than this from where it starts. Place the piece near its mount first; raise this only for a deliberate long move.
     maxDistance:
       type: number
       exclusiveMinimum: 0

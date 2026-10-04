@@ -1060,6 +1060,9 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
       occluders: occ,
       candidates: candidates.map((c) => ({ position: [...c.position], look_at: [...c.look_at], fov: c.fov, samples: c.samples.map((s) => [...s]), min_clearance: c.min_clearance, low_angle_rule: c.low_angle_rule })),
       measure: { aspect, grid_cols: GRID_COLS, grid_rows: gridRows, subject_occludes: shot === "corridor", near_lens_radius: 0.3, sweep_radius: 0.15 },
+      // A 4x4-pixel-per-cell beauty render per candidate, for the featureless
+      // area and near/far value checks.
+      image_check: { size: [GRID_COLS * 4, gridRows * 4] },
     },
   }));
   await pass2.dispose();
@@ -1145,7 +1148,8 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
     const termText = Object.entries(t).map(([k, v]) => `${k} ${v}`).join(" ");
     const adj = s.adjustments?.length ? ` adjusted: ${s.adjustments.map((a) => String(a.kind)).join("+")}` : "";
     const occl = s.blockers?.soft?.length ? ` framed by ${s.blockers.soft.slice(0, 2).join(", ")}` : "";
-    return `${i + 1}. score ${s.total.toFixed(2)} [${s.id}] ${poseLiteral(s.pose)}\n   ${termText}; sky ${s.stats?.sky} fg ${s.stats?.foreground} wall-behind ${s.stats?.wallBehind}${s.fill !== undefined ? ` fill ${s.fill}` : ""}${adj}${occl}`;
+    const img = s.stats?.flat !== undefined ? ` flat ${s.stats.flat}` : "";
+    return `${i + 1}. score ${s.total.toFixed(2)} [${s.id}] ${poseLiteral(s.pose)}\n   ${termText}; sky ${s.stats?.sky} fg ${s.stats?.foreground} wall-behind ${s.stats?.wallBehind}${img}${s.fill !== undefined ? ` fill ${s.fill}` : ""}${adj}${occl}`;
   });
   const ranked = scored.filter((x) => !x.rejected).sort((a, b) => b.total - a.total);
   const spawnForward = scored.find((x) => x.id === "eye_spawn_forward");

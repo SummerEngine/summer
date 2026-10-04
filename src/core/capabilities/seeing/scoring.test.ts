@@ -101,4 +101,24 @@ describe("smart framing scores", () => {
     expect(top.map((t) => t.id)).toEqual([a.id, "other"]);
     expect(rejectionCounts([a, r])).toEqual({ hard_blocked: 1 });
   });
+
+  it("the image check marks featureless frame areas (sky excluded) and near/far value contrast", () => {
+    const base = measurement();
+    const cells = base.grid!.length;
+    const textured = scoreMeasurement({ ...base, lum: "5".repeat(cells), tex: "4".repeat(cells) }, CAND, OPTS);
+    const flat = scoreMeasurement({ ...base, lum: "5".repeat(cells), tex: "0".repeat(cells) }, CAND, OPTS);
+    expect(textured.terms.detail).toBe(1);
+    expect(flat.terms.detail).toBe(0);
+    expect(flat.total).toBeLessThan(textured.total);
+    // Sky cells are smooth on purpose: they never count as featureless.
+    const skyOnlyFlat = scoreMeasurement({ ...base, lum: "5".repeat(cells), tex: [...base.grid!].map((c) => (c === "." ? "0" : "4")).join("") }, CAND, OPTS);
+    expect(skyOnlyFlat.stats!.flat).toBe(0);
+    // Near (ground, 20 m) dark vs far wall (90 m) light reads as contrast.
+    const D = distance(CAND.position, aabbCenter(BOX));
+    const g = grid((r) => (r < 7 ? ["H", D * 3] : ["H", D * 0.5]));
+    const lum = [...g.grid].map((_, k) => (Math.floor(k / COLS) < 7 ? "8" : "3")).join("");
+    const contrasted = scoreMeasurement({ ...base, ...g, lum, tex: "4".repeat(cells) }, CAND, OPTS);
+    expect(contrasted.terms.contrast).toBe(1);
+    expect(scoreMeasurement(base, CAND, OPTS).terms.detail).toBeUndefined();
+  });
 });

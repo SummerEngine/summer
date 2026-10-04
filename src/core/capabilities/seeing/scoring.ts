@@ -24,7 +24,7 @@ import {
   type Vec3,
 } from "./math.js";
 
-export const SCORE_TERMS = ["visibility", "fill", "thirds", "horizon", "sky", "void", "depth", "foreground", "clear", "balance"] as const;
+export const SCORE_TERMS = ["visibility", "fill", "thirds", "horizon", "sky", "void", "depth", "foreground", "clear", "balance", "detail", "contrast"] as const;
 export type ScoreTerm = (typeof SCORE_TERMS)[number];
 
 export interface ShotProfile {
@@ -43,7 +43,7 @@ export const SHOT_PROFILES: Record<ShotType, ShotProfile> = {
     sky: [0.12, 0.38],
     foregroundTarget: 0.08,
     foregroundMax: 0.3,
-    weights: { visibility: 3, fill: 2, thirds: 1, horizon: 1, sky: 1, void: 1.5, depth: 1.5, foreground: 0.5, clear: 1, balance: 0 },
+    weights: { visibility: 3, fill: 2, thirds: 1, horizon: 1, sky: 1, void: 1.5, depth: 1.5, foreground: 0.5, clear: 1, balance: 0, detail: 1.5, contrast: 0.75 },
   },
   eye_level: {
     fillTarget: SHOT_DEFAULTS.eye_level.fill,
@@ -51,7 +51,7 @@ export const SHOT_PROFILES: Record<ShotType, ShotProfile> = {
     sky: [0.08, 0.35],
     foregroundTarget: 0.1,
     foregroundMax: 0.35,
-    weights: { visibility: 2, fill: 1, thirds: 1, horizon: 1, sky: 1, void: 1.5, depth: 2, foreground: 0.5, clear: 1.5, balance: 0.5 },
+    weights: { visibility: 2, fill: 1, thirds: 1, horizon: 1, sky: 1, void: 1.5, depth: 2, foreground: 0.5, clear: 1.5, balance: 0.5, detail: 1.5, contrast: 0.75 },
   },
   low_angle: {
     fillTarget: SHOT_DEFAULTS.low_angle.fill,
@@ -59,7 +59,7 @@ export const SHOT_PROFILES: Record<ShotType, ShotProfile> = {
     sky: [0.2, 0.6],
     foregroundTarget: 0.08,
     foregroundMax: 0.3,
-    weights: { visibility: 3, fill: 2, thirds: 1, horizon: 0.5, sky: 1.5, void: 1, depth: 0.5, foreground: 0.5, clear: 1, balance: 0 },
+    weights: { visibility: 3, fill: 2, thirds: 1, horizon: 0.5, sky: 1.5, void: 1, depth: 0.5, foreground: 0.5, clear: 1, balance: 0, detail: 1.5, contrast: 0.75 },
   },
   detail: {
     fillTarget: SHOT_DEFAULTS.detail.fill,
@@ -67,7 +67,7 @@ export const SHOT_PROFILES: Record<ShotType, ShotProfile> = {
     sky: [0, 0.12],
     foregroundTarget: 0.05,
     foregroundMax: 0.25,
-    weights: { visibility: 3, fill: 2.5, thirds: 1, horizon: 0.5, sky: 0.5, void: 1, depth: 1, foreground: 0.3, clear: 1, balance: 0 },
+    weights: { visibility: 3, fill: 2.5, thirds: 1, horizon: 0.5, sky: 0.5, void: 1, depth: 1, foreground: 0.3, clear: 1, balance: 0, detail: 1.5, contrast: 0.75 },
   },
   corridor: {
     fillTarget: 0,
@@ -75,7 +75,7 @@ export const SHOT_PROFILES: Record<ShotType, ShotProfile> = {
     sky: [0.03, 0.3],
     foregroundTarget: 0.08,
     foregroundMax: 0.3,
-    weights: { visibility: 3, fill: 0, thirds: 0, horizon: 1, sky: 1, void: 1, depth: 3, foreground: 0.5, clear: 2, balance: 1.5 },
+    weights: { visibility: 3, fill: 0, thirds: 0, horizon: 1, sky: 1, void: 1, depth: 3, foreground: 0.5, clear: 2, balance: 1.5, detail: 1.5, contrast: 0.75 },
   },
 };
 
@@ -96,6 +96,10 @@ export interface Measurement {
   grid?: string;
   /** Distance per grid cell, -1 for no hit. */
   dist?: number[];
+  /** Image check (a small beauty render of the final pose), per grid cell:
+   *  luminance decile and texture spread, "0" = featureless. */
+  lum?: string;
+  tex?: string;
 }
 
 export interface ScoringOptions {
@@ -125,6 +129,11 @@ export interface FrameStats {
   /** Near-wall share in the left vs right half of the frame. */
   nearLeft: number;
   nearRight: number;
+  /** Image check: share of the frame that renders featureless (sky excluded),
+   *  and mean luminance decile of near vs far cells. */
+  flat?: number;
+  nearLum?: number;
+  farLum?: number;
 }
 
 export interface ScoredCandidate {
@@ -251,8 +260,42 @@ export function frameStats(m: Measurement, pose: CameraPose, opts: ScoringOption
     }
     depthCount += 1;
   }
+  // Image check: featureless cells (sky excluded) and value contrast near/far.
+  let flat: number | undefined;
+  let nearLum: number | undefined;
+  let farLum: number | undefined;
+  if (m.lum && m.tex && m.lum.length === grid.length && m.tex.length === grid.length) {
+    const nearRef = subjectDist ?? 12;
+    let flatCount = 0;
+    let nearSum = 0;
+    let nearN = 0;
+    let farSum = 0;
+    let farN = 0;
+    for (let k = 0; k < grid.length; k++) {
+      const code = grid[k];
+      const d = dists[k] ?? -1;
+      const col = k % opts.gridCols;
+      const row = Math.floor(k / opts.gridCols);
+      const isSky = code === "." && rayDirection(pose, opts.aspect, (col + 0.5) / opts.gridCols, (row + 0.5) / opts.gridRows)[1] >= 0;
+      if (!isSky && m.tex[k] === "0") flatCount += 1;
+      const lum = Number(m.lum[k]);
+      if (code !== "." && d >= 0 && d < nearRef) {
+        nearSum += lum;
+        nearN += 1;
+      } else if (code !== "." && d > nearRef * 2) {
+        farSum += lum;
+        farN += 1;
+      }
+    }
+    flat = flatCount / total;
+    if (nearN >= 3) nearLum = nearSum / nearN;
+    if (farN >= 3) farLum = farSum / farN;
+  }
   return {
     stats: {
+      ...(flat !== undefined ? { flat } : {}),
+      ...(nearLum !== undefined ? { nearLum } : {}),
+      ...(farLum !== undefined ? { farLum } : {}),
       sky: sky / total,
       void: voids / total,
       subject: subject / total,
@@ -323,6 +366,10 @@ export function scoreMeasurement(m: Measurement, candidate: Candidate, opts: Sco
   // lines rather than one wall eating half the frame.
   const sides = stats.nearLeft + stats.nearRight;
   terms.balance = sides < 0.02 ? 1 : 1 - Math.abs(stats.nearLeft - stats.nearRight) / sides;
+  // From the image check, when the engine rendered one: no empty
+  // (featureless) frame areas, and values that separate near from far.
+  if (stats.flat !== undefined) terms.detail = 1 - Math.min(1, stats.flat / 0.3);
+  if (stats.nearLum !== undefined && stats.farLum !== undefined) terms.contrast = Math.min(1, Math.abs(stats.nearLum - stats.farLum) / 2);
 
   let rejected: string | undefined;
   if (n && hardFraction > opts.maxHardFraction) rejected = "hard_blocked";
@@ -349,6 +396,9 @@ export function scoreMeasurement(m: Measurement, candidate: Candidate, opts: Sco
     total: r2(total),
     terms: rounded,
     stats: {
+      ...(stats.flat !== undefined ? { flat: r2(stats.flat) } : {}),
+      ...(stats.nearLum !== undefined ? { nearLum: r2(stats.nearLum) } : {}),
+      ...(stats.farLum !== undefined ? { farLum: r2(stats.farLum) } : {}),
       sky: r2(stats.sky),
       void: r2(stats.void),
       subject: r2(stats.subject),

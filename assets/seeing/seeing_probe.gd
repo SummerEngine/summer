@@ -62,6 +62,12 @@ var _body_geom: Dictionary = {}
 var _geoms: Array = []
 var _sphere_shapes: Dictionary = {}
 
+# Image check (analyze "measure" with config image_check): one small beauty
+# render per candidate, read back after the draw, reduced to a per-cell
+# luminance and texture code aligned with the ray grid.
+var _checks: Array = []
+var _measurements: Array = []
+
 var _soft_re: RegEx = null
 var _hard_re: RegEx = null
 
@@ -99,6 +105,7 @@ func _ready() -> void:
 		_setup_render()
 	elif mode == "analyze":
 		get_viewport().disable_3d = true
+		_setup_image_checks()
 		_write_result()
 		# Deferred so CSG roots and @tool scripts that settle with call_deferred
 		# have run before the geometry is read. ScenePreview iterates the main
@@ -631,9 +638,72 @@ func _measure_all(candidates: Array) -> Array:
 	var spec: Dictionary = _cfg.get("measure", {})
 	var out: Array = []
 	for i in candidates.size():
-		out.append(_measure_one(i, candidates[i], spec))
+		var rec := _measure_one(i, candidates[i], spec)
+		out.append(rec)
+		# The image check renders from the FINAL pose (after the low-angle rule
+		# and the near-lens nudge); the draw comes after this deferred pass.
+		if i < _checks.size() and not rec.has("rejected"):
+			var cam: Camera3D = _checks[i]["cam"]
+			var p := _vec(rec["position"])
+			var l := _vec(rec["look_at"])
+			cam.global_transform = Transform3D(_look_basis(p, l), p)
+			cam.fov = float(rec["fov"])
 	_result["measure_ms"] = {"lens": _t_lens / 1000, "sweeps": _t_sweep / 1000, "grid": _t_grid / 1000}
+	_measurements = out
 	return out
+
+
+func _setup_image_checks() -> void:
+	var check: Dictionary = _cfg.get("image_check", {})
+	if check.is_empty() or not (_cfg.get("tasks", []) as Array).has("measure"):
+		return
+	var size := _vec2i(check.get("size", [96, 56]))
+	var world: World3D = get_viewport().find_world_3d()
+	var i := 0
+	for cand in (_cfg.get("candidates", []) as Array):
+		var sv := SubViewport.new()
+		sv.size = size
+		sv.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		sv.world_3d = world
+		var cam := Camera3D.new()
+		sv.add_child(cam)
+		add_child(sv)
+		var p := _vec((cand as Dictionary).get("position"))
+		var l := _vec((cand as Dictionary).get("look_at"), p + Vector3(0, 0, -1))
+		cam.global_transform = Transform3D(_look_basis(p, l), p)
+		cam.fov = float((cand as Dictionary).get("fov", 60.0))
+		cam.near = 0.05
+		cam.far = 1000.0
+		cam.current = true
+		_checks.append({"vp": sv, "cam": cam, "i": i})
+		i += 1
+	RenderingServer.frame_post_draw.connect(_on_post_draw)
+
+
+# Per cell of the cols x rows grid: luminance decile ("0".."9") and texture
+# (luminance spread inside the cell, "0" = featureless).
+func _image_codes(img: Image, cols: int, rows: int) -> Dictionary:
+	var sub := 3
+	var work := img.duplicate() as Image
+	work.convert(Image.FORMAT_RGB8)
+	work.resize(cols * sub, rows * sub, Image.INTERPOLATE_BILINEAR)
+	var lum := ""
+	var tex := ""
+	for r in rows:
+		for c in cols:
+			var lo := 1.0
+			var hi := 0.0
+			var sum := 0.0
+			for y in sub:
+				for x in sub:
+					var px := work.get_pixel(c * sub + x, r * sub + y)
+					var v := px.r * 0.299 + px.g * 0.587 + px.b * 0.114
+					sum += v
+					lo = minf(lo, v)
+					hi = maxf(hi, v)
+			lum += str(clampi(int(sum / float(sub * sub) * 10.0), 0, 9))
+			tex += str(clampi(int((hi - lo) * 40.0), 0, 9))
+	return {"lum": lum, "tex": tex}
 
 
 func _measure_one(index: int, cand: Dictionary, spec: Dictionary) -> Dictionary:
@@ -1099,6 +1169,24 @@ void fragment() {
 func _on_post_draw() -> void:
 	_draws += 1
 	_result["draws"] = _draws
+	if not _checks.is_empty() and not _measurements.is_empty():
+		var spec: Dictionary = _cfg.get("measure", {})
+		var cols := int(spec.get("grid_cols", 16))
+		var rows := int(spec.get("grid_rows", 9))
+		for chk in _checks:
+			var idx := int(chk["i"])
+			if idx >= _measurements.size():
+				continue
+			var rec: Dictionary = _measurements[idx]
+			if rec.has("rejected"):
+				continue
+			var img: Image = (chk["vp"] as SubViewport).get_texture().get_image()
+			if img == null or img.is_empty():
+				continue
+			var codes := _image_codes(img, cols, rows)
+			rec["lum"] = codes["lum"]
+			rec["tex"] = codes["tex"]
+		_result["image_checked"] = _draws
 	var captured: Array = []
 	for c in _captures:
 		var img: Image = (c["vp"] as SubViewport).get_texture().get_image()

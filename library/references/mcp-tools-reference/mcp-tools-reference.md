@@ -175,7 +175,7 @@ Preview. Judge a 3D environment the way a player and an artist would. Every imag
 | `summer_shot_sheet` | 1-12 bookmarks/poses in one labelled grid, same tile size, one `view`; `compare_previous:true` gives previous / now / difference map per bookmark with the changed-pixel share. |
 | `summer_debug_views` | One pose as beauty, lighting, unshaded (albedo), world normals, overdraw and wireframe in one grid; the caption names the method per view. |
 | `summer_zoom` | An exact sub-frustum of a `region` or of `mark` N rendered at full resolution: seams, gaps, floating pieces, texture quality. |
-| `summer_frame_shot` | Smart framing for `establishing`, `eye_level`, `low_angle`, `detail` or `corridor`: candidates measured in-engine (thick sweep visibility, near-lens check, low-angle rule, frame ray grid; walls reject, props frame), scored, top 3 returned with breakdowns, best saved as a bookmark, top 3 rendered as one sheet. |
+| `summer_frame_shot` | Smart framing for `establishing`, `eye_level`, `low_angle`, `detail` or `corridor`: candidates measured in-engine (thick sweep visibility, near-lens check, low-angle rule, frame ray grid, a small beauty render per pose for featureless areas and near/far value contrast; walls reject, props frame), scored, top 3 returned with breakdowns, best saved as a bookmark, top 3 rendered as one sheet. |
 
 ### Diagnostics (7)
 

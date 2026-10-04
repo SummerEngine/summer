@@ -305,6 +305,7 @@ describe("summer_frame_shot", () => {
     expect(engine.configs.map((c) => c.mode)).toEqual(["analyze", "analyze", "render"]);
     expect((engine.configs[1]!.candidates as unknown[]).length).toBe(36);
     expect(engine.configs[1]!.measure).toMatchObject({ grid_cols: 24, grid_rows: 14, near_lens_radius: 0.3 });
+    expect(engine.configs[1]!.image_check).toEqual({ size: [96, 56] });
     const receipt = r.receipt as { top: unknown[]; rejected: Record<string, number>; bookmark: string };
     expect(receipt.top).toHaveLength(3);
     expect(receipt.rejected.hard_blocked).toBe(12);

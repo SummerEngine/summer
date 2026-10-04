@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.1.0",
-      "content_hash": "d00316644f22b7c030ce48a13b7d95fafb5f9c3fc052b899cf6399ea6a8eaa77",
+      "content_hash": "72dbbe554e05dc82e4bd6627712f6d0697e92c53215de249e817b6a6ac7c36bd",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",

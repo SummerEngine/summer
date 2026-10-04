@@ -164,6 +164,36 @@ export function isFrontBackSymmetric(planes: readonly number[] | null | undefine
 }
 
 // ---------------------------------------------------------------------------
+// z_fight: depth precision decides how close is "coplanar"
+// ---------------------------------------------------------------------------
+
+/** Camera defaults when the scene has no perspective camera (Godot's Camera3D). */
+export const DEFAULT_NEAR = 0.05;
+export const DEFAULT_FAR = 4000;
+/** Compatibility / WebGL2 depth buffer. */
+export const DEPTH_BITS = 24;
+/** The distance a surface is judged at when no viewpoint is known. */
+export const TYPICAL_VIEW_M = 30;
+/** Float noise in world transforms: never call a smaller gap resolvable. */
+export const MIN_ZFIGHT_TOLERANCE = 0.0001;
+
+/**
+ * World distance one depth-buffer step spans at `distance` from a perspective
+ * camera: z^2 (f - n) / (f n 2^bits). It grows with the square of the
+ * distance and shrinks with a larger near plane.
+ */
+export function depthResolution(distance: number, near = DEFAULT_NEAR, far = DEFAULT_FAR, bits = DEPTH_BITS): number {
+  const n = Math.max(1e-4, near);
+  const f = Math.max(n * 1.0001, far);
+  return (distance * distance * (f - n)) / (f * n * 2 ** bits);
+}
+
+/** Two faces closer than this flicker: twice the depth step at `distance`. */
+export function zFightTolerance(distance: number, near = DEFAULT_NEAR, far = DEFAULT_FAR, factor = 2, bits = DEPTH_BITS): number {
+  return Math.max(MIN_ZFIGHT_TOLERANCE, factor * depthResolution(distance, near, far, bits));
+}
+
+// ---------------------------------------------------------------------------
 // uv_stretch: anisotropy of the UV -> world mapping of one triangle
 // ---------------------------------------------------------------------------
 

@@ -228,7 +228,7 @@ describe("sceneAudit", () => {
   it("the kernel polls the budget in every check loop and reports what it covered", () => {
     const kernel = loadAuditKernel();
     const fns = new Map(kernel.split("\nfunc ").slice(1).map((body) => [body.slice(0, body.indexOf("(")), body] as const));
-    for (const name of ["_scan_line", "_scan_floors", "_scan_strips", "_scan_support", "_scan_overlaps", "_scan_mounts", "_scan_long_props", "_scan_uv", "_scan_inserts", "_scan_lights", "_scan_resources", "_scan_clearances"]) {
+    for (const name of ["_scan_line", "_scan_floors", "_scan_strips", "_scan_support", "_scan_overlaps", "_scan_mounts", "_scan_long_props", "_scan_uv", "_scan_zfight_geometry", "_scan_inserts", "_scan_lights", "_scan_resources", "_scan_clearances"]) {
       const body = fns.get(name);
       expect(body, name).toBeDefined();
       expect(body, name).toContain("_over()");
@@ -236,6 +236,19 @@ describe("sceneAudit", () => {
     }
     expect(kernel).toContain('_budget_us = int(float(_cfg.get("budget_ms", 0)) * 1000.0)');
     expect(kernel).toContain('_result["partial"] = partial');
+  });
+
+  it("z_fight geometry: its own time in ms, partial under the budget like any check, and the 5 KB cap holds", async () => {
+    const pairs = Array.from({ length: 60 }, (_, k) => [2 + 2 * k, 3 + 2 * k, 0.4, 0, [k, 3, -8], [0, 0, 1], 5, "walkable area", true, [], [], "brick", "brick", false, 0.4, 2, `Props/Crate_${2 * k}`, `Props/Crate_${3 + 2 * k}`]);
+    const engine = fakeEngine({
+      projectRoot: project,
+      audit: () => ({ ...kernelResult(), ms: { ...kernelResult().ms, z_fight_geometry: 210 }, zfight_geo: { near: 0.05, far: 4000, pairs, in_mesh: [] }, partial: { z_fight_geometry: [70, 100] } }),
+    });
+    const r = (await sceneAudit(engine, { scenePath: "res://a.tscn", checks: ["z_fight"] })) as AuditSuccess;
+    expect(r.summary.ms).toMatchObject({ z_fight_geometry: 210 });
+    expect(r.summary.counts).toEqual({ z_fight: { warn: 60, partial: 0.7 } });
+    expect(bytes(r.summary)).toBeLessThanOrEqual(SUMMARY_CAP_BYTES);
+    expect((r.summary.issues as unknown[]).length).toBeGreaterThan(2);
   });
 
   it("without scenePath it audits the open scene", async () => {

@@ -15,6 +15,8 @@ import {
   triangleArea,
   uvStretchRatio,
   wallDirection,
+  depthResolution,
+  zFightTolerance,
   type Basis9,
 } from "./math.js";
 
@@ -209,6 +211,21 @@ describe("mount gap samples and front-back symmetry", () => {
     expect(isFrontBackSymmetric([0.3, 0.5, -0.1, 0.5, -0.3, 0.3])).toBe(false);
     expect(isFrontBackSymmetric(null)).toBe(false);
     expect(isFrontBackSymmetric([0.3, 0, -0.3, 0.5, -0.3, 0.3])).toBe(false);
+  });
+});
+
+describe("z_fight tolerance from depth precision", () => {
+  it("one 24-bit depth step is about 1 mm at 30 m with Godot's default near 0.05 m, and grows with the square of the distance", () => {
+    expect(depthResolution(30)).toBeCloseTo(0.00107, 5);
+    expect(depthResolution(60) / depthResolution(30)).toBeCloseTo(4, 6);
+    // A smaller near plane is coarser everywhere.
+    expect(depthResolution(30, 0.01)).toBeCloseTo(5 * depthResolution(30, 0.05), 6);
+  });
+
+  it("the tolerance is twice the step, never under 0.1 mm", () => {
+    expect(zFightTolerance(40, 0.01, 4000)).toBeCloseTo(0.0191, 4);
+    expect(zFightTolerance(2, 0.01, 4000)).toBe(0.0001);
+    expect(zFightTolerance(30)).toBeCloseTo(0.00215, 5);
   });
 });
 

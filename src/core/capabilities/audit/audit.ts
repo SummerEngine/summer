@@ -53,6 +53,7 @@ import {
   judgeTransforms,
   judgeUv,
   judgeZFight,
+  judgeZFightGeometry,
   parsePackGrounds,
   type AuditIssue,
   type InstRow,
@@ -169,7 +170,10 @@ export function judgeAll(result: KernelResult, checks: readonly AuditCheck[]): A
   if (want.has("uv_stretch")) issues.push(...judgeUv(Array.isArray(result.uv) ? result.uv : [], inst));
   const dup = judgeDuplicates(inst);
   if (want.has("duplicate")) issues.push(...dup.issues);
-  if (want.has("z_fight")) issues.push(...judgeZFight(lines, result.floors, inst, dup.pairs));
+  if (want.has("z_fight")) {
+    const geo = judgeZFightGeometry(result.zfight_geo, inst, dup.pairs);
+    issues.push(...geo.issues, ...judgeZFight(lines, result.floors, inst, dup.pairs, geo.pairs));
+  }
   if (want.has("lights")) issues.push(...judgeLights(result.lights, inst));
   if (want.has("transform")) issues.push(...judgeTransforms(inst));
   if (want.has("resource")) issues.push(...judgeResources(result.resources, inst));

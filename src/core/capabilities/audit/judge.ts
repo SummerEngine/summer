@@ -15,6 +15,8 @@ import {
   basisAngleDegrees,
   basisColumns,
   clusterSamples,
+  DEFAULT_FAR,
+  DEFAULT_NEAR,
   directionAngleDegrees,
   footprintExtent,
   isFrontBackSymmetric,
@@ -23,10 +25,12 @@ import {
   median,
   mostCommon,
   mountGap,
+  TYPICAL_VIEW_M,
   robustBounds,
   triangleArea,
   uvStretchRatio,
   wallDirection,
+  zFightTolerance,
   type Basis9,
   type HostCandidate,
   type Vec2,
@@ -100,6 +104,8 @@ export interface KernelResult {
   inserts?: unknown[];
   /** Ground alternatives packs document: [pack dir, source file, material, clause]. */
   packs?: unknown[];
+  /** z_fight from planar face groups: {near, far, pairs, in_mesh}. */
+  zfight_geo?: Record<string, unknown>;
   lights?: Record<string, unknown>;
   resources?: Record<string, unknown>;
   [key: string]: unknown;
@@ -1176,7 +1182,7 @@ export function judgeDuplicates(inst: InstRow[]): { issues: AuditIssue[]; pairs:
   return { issues, pairs };
 }
 
-export function judgeZFight(lines: unknown[], floors: Record<string, unknown> | undefined, inst: InstRow[], duplicatePairs: Set<string>): AuditIssue[] {
+export function judgeZFight(lines: unknown[], floors: Record<string, unknown> | undefined, inst: InstRow[], duplicatePairs: Set<string>, alreadyReported: ReadonlySet<string> = new Set()): AuditIssue[] {
   const rows: unknown[][] = [];
   for (const raw of lines) rows.push(...(parseLine(raw)?.zfight.filter(Array.isArray) as unknown[][] ?? []));
   rows.push(...(arr(floors?.zfight).filter(Array.isArray) as unknown[][]));
@@ -1198,7 +1204,7 @@ export function judgeZFight(lines: unknown[], floors: Record<string, unknown> | 
   }
   const out: AuditIssue[] = [];
   for (const [key, z] of byPair) {
-    if (duplicatePairs.has(key)) continue;
+    if (duplicatePairs.has(key) || alreadyReported.has(key)) continue;
     const ra = inst[z.a];
     const rb = inst[z.b];
     if (!ra || !rb || (!ra.in && !rb.in)) continue;
@@ -1219,6 +1225,117 @@ export function judgeZFight(lines: unknown[], floors: Record<string, unknown> | 
     });
   }
   return out;
+}
+
+/** "on one plane" / "3.2 mm apart". */
+function gapText(gap: number): string {
+  return gap < 0.00005 ? "on the same plane" : `${Math.round(gap * 10000) / 10} mm apart`;
+}
+
+const mm = (m: number) => Math.round(m * 10000) / 10;
+
+/**
+ * z_fight from geometry: the kernel's planar face groups, compared between
+ * instances (any role: props, roofs, ledges, side walls, ceilings, inserts
+ * against hosts, decals and overlay cards) and within one mesh (two
+ * surfaces on one plane). A pair counts when its plane gap is under twice
+ * the 24-bit depth step at its view distance (the nearest walkable eye
+ * point, camera or bookmark; 30 m without one) for the main camera's near
+ * and far. Severity: warn over 0.05 m2 seen from a viewpoint; look
+ * otherwise, and look (never skipped) when render_priority, a depth or
+ * normal offset, or a decal or overlay name may make it intentional.
+ * Returns the issues and the instance pairs they cover (the ray samples do
+ * not report those again).
+ */
+export function judgeZFightGeometry(geo: Record<string, unknown> | undefined, inst: InstRow[], duplicatePairs: Set<string>): { issues: AuditIssue[]; pairs: Set<string> } {
+  const issues: AuditIssue[] = [];
+  const pairs = new Set<string>();
+  if (!geo) return { issues, pairs };
+  const near = num(geo.near, DEFAULT_NEAR);
+  const far = num(geo.far, DEFAULT_FAR);
+  const strings = (v: unknown) => arr(v).map((x) => String(x)).filter(Boolean);
+  const grade = (area: number, seen: boolean, demoted: string[]): Severity => (demoted.length ? "look" : area > 0.05 && seen ? "warn" : "look");
+  for (const raw of arr(geo.pairs)) {
+    if (!Array.isArray(raw)) continue;
+    const a = num(raw[0], -1);
+    const b = num(raw[1], -1);
+    const ra = inst[a];
+    const rb = inst[b];
+    if (!ra || !rb || (!ra.in && !rb.in)) continue;
+    const key = `${Math.min(a, b)}:${Math.max(a, b)}`;
+    if (duplicatePairs.has(key)) continue;
+    const area = num(raw[2]);
+    const gap = num(raw[3]);
+    const view = num(raw[6], TYPICAL_VIEW_M);
+    const tol = zFightTolerance(view, near, far);
+    if (gap > tol || area < 0.01) continue;
+    pairs.add(key);
+    const seen = raw[8] === true;
+    const demoted = [...new Set([...strings(raw[9]), ...strings(raw[10])])];
+    const subject = ra.in ? ra : rb;
+    const other = subject === ra ? rb : ra;
+    const centre = vec(raw[4]);
+    const normal = vec(raw[5]);
+    const opposite = raw[13] === true;
+    const total = num(raw[14], area);
+    const groups = num(raw[15], 1);
+    const viewer = String(raw[7] ?? "");
+    const sameNode = ra.p === rb.p;
+    const otherName = sameNode ? `its own mesh ${String(subject === ra ? raw[17] : raw[16])}` : other.p;
+    issues.push({
+      check: "z_fight",
+      severity: grade(total, seen, demoted),
+      path: subject.p,
+      pos: v2(centre),
+      why: `coplanar overlapping faces with ${otherName}${opposite ? " (facing opposite ways, both double-sided)" : ""}: ${r2(total)} m2 ${gapText(gap)}, under ${mm(tol)} mm (2 depth steps at ${Math.round(view)} m from the ${viewer || "typical view"}); they flicker${demoted.length ? `. Look only: ${demoted.join("; ")}` : seen ? "" : ". Not seen from a viewpoint"}`,
+      ev: {
+        other: other.p,
+        area_m2: r3(total),
+        gap_mm: mm(gap),
+        tol_mm: mm(tol),
+        view_m: r2(view),
+        viewer: viewer || "typical view distance",
+        near,
+        far,
+        surfaces: [String(raw[11] ?? ""), String(raw[12] ?? "")],
+        seen,
+        ...(groups > 1 ? { faces: groups } : {}),
+        ...(demoted.length ? { demoted } : {}),
+      },
+      next: `summer_zoom at ${fmt(centre)}; move one face more than ${mm(tol)} mm off the plane (summer_measure ${subject.p} vs ${other.p}) or remove the doubled face`,
+      score: total,
+      frame: { focus: centre, size: Math.max(1, Math.sqrt(total) * 2), dirs: [{ dir: normalize(normal), clear: Math.min(6, Math.max(1.5, view)), pref: 1 }] },
+    });
+  }
+  for (const raw of arr(geo.in_mesh)) {
+    if (!Array.isArray(raw)) continue;
+    const shows = arr(raw[7]).map((x) => inst[num(x, -1)]).filter((r): r is InstRow => !!r);
+    const first = shows[0];
+    if (!first) continue;
+    const area = num(raw[5]);
+    const gap = num(raw[6]);
+    const view = num(raw[11], TYPICAL_VIEW_M);
+    const tol = zFightTolerance(view, near, far);
+    if (gap > tol || area < 0.01) continue;
+    const mesh = String(raw[0] ?? "its mesh").split("::")[0]!;
+    const seen = raw[13] === true;
+    const demoted = [...new Set([...strings(raw[14]), ...strings(raw[15])])];
+    const surfaces = [String(raw[3] ?? `surface ${num(raw[1])}`), String(raw[4] ?? `surface ${num(raw[2])}`)];
+    const centre = vec(raw[9]);
+    const users = num(raw[8], shows.length);
+    issues.push({
+      check: "z_fight",
+      severity: grade(area, seen, demoted),
+      path: first.p,
+      pos: v2(centre),
+      why: `${mesh} has coplanar faces of two surfaces (${surfaces.join(" / ")})${raw[16] === true ? " facing opposite ways" : ""}: ${r2(area)} m2 ${gapText(gap)}, under ${mm(tol)} mm at ${Math.round(view)} m; in the asset itself, so every instance flickers (${shows.length} shown of ${users})${demoted.length ? `. Look only: ${demoted.join("; ")}` : ""}`,
+      ev: { mesh, surfaces, area_m2: r3(area), gap_mm: mm(gap), tol_mm: mm(tol), view_m: r2(view), instances: shows.slice(0, 3).map((r) => r.p), users, seen, ...(demoted.length ? { demoted } : {}) },
+      next: `summer_zoom at ${fmt(centre)}; summer_inspect_asset ${first.s || first.k} (the overlay surface needs an offset or render_priority)`,
+      score: area,
+      frame: { focus: centre, size: Math.max(1, Math.sqrt(area) * 2), dirs: [{ dir: normalize(vec(raw[10])), clear: Math.min(6, Math.max(1.5, view)), pref: 1 }] },
+    });
+  }
+  return { issues, pairs };
 }
 
 // ---------------------------------------------------------------------------

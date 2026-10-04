@@ -14,6 +14,7 @@ import {
   judgeTransforms,
   judgeUv,
   judgeZFight,
+  judgeZFightGeometry,
   parsePackGrounds,
   type InstRow,
 } from "./judge.js";
@@ -483,6 +484,82 @@ describe("duplicate / z_fight", () => {
     const z = judgeZFight([{ zfight: [[0, 1, 9, [1, 0.5, 1], [0, 0, 1], [1, 0, 1], [1, 1, 1]], [2, 3, 12, [5, 1, 0], [-1, 0, 0], [5, 0, -1], [5, 2, 0], 3]] }], undefined, inst, dup.pairs);
     expect(z).toHaveLength(1);
     expect(z[0]).toMatchObject({ check: "z_fight", severity: "warn", path: "Walls/W1", ev: { other: "Walls/W2", rays: 12 } });
+  });
+});
+
+describe("z_fight from geometry: coplanar faces anywhere, judged by depth precision", () => {
+  // Kernel pair row: [a, b, area, gap, centre, normal, view distance, viewer,
+  // seen, flags a, flags b, material a, material b, opposite, total area,
+  // face groups, node a, node b].
+  const inst = [
+    row("House1/Roof/Slab_1", { k: "roof_slab", r: "struct" }),
+    row("House1/Roof/Slab_2", { k: "roof_slab", r: "struct" }),
+    row("Street/Sign_1", { k: "shop_sign", s: "res://props/shop_sign.tscn" }),
+    row("Street/Sign_2", { k: "shop_sign", s: "res://props/shop_sign.tscn" }),
+    row("Alley1/Grime_decal", { k: "grime_card", r: "dressing" }),
+    row("Alley1/Wall_3", { k: "wall_tripple_standard_01", r: "wall" }),
+    row("Alley2/Fence_card", { k: "chainlink_card" }),
+    row("Alley2/Fence_card_b", { k: "chainlink_card" }),
+  ];
+  const pair = (a: number, b: number, over: Record<number, unknown> = {}) => {
+    const r: unknown[] = [a, b, 0.5, 0, [5, 6, -2], [0, 1, 0], 6, "walkable area", true, [], [], "roof_tiles", "roof_tiles", false, 0.5, 1, inst[a]!.p, inst[b]!.p];
+    for (const [k, v] of Object.entries(over)) r[Number(k)] = v;
+    return r;
+  };
+  const geo = (pairs: unknown[][], in_mesh: unknown[][] = [], near = 0.05, far = 4000) => ({ near, far, pairs, in_mesh });
+
+  it("two coplanar quads of different instances: area, gap, both paths and surfaces; warn when seen and over 0.05 m2", () => {
+    const { issues, pairs } = judgeZFightGeometry(geo([pair(0, 1)]), inst, new Set());
+    expect(pairs).toEqual(new Set(["0:1"]));
+    expect(issues).toHaveLength(1);
+    const [i] = issues;
+    expect(i).toMatchObject({ check: "z_fight", severity: "warn", path: "House1/Roof/Slab_1", ev: { other: "House1/Roof/Slab_2", area_m2: 0.5, gap_mm: 0, surfaces: ["roof_tiles", "roof_tiles"], viewer: "walkable area", seen: true, near: 0.05, far: 4000 } });
+    expect(i!.why).toMatch(/^coplanar overlapping faces with House1\/Roof\/Slab_2: 0.5 m2 on the same plane, under 0.1 mm \(2 depth steps at 6 m from the walkable area\); they flicker$/);
+    // Small, or not seen from any viewpoint: look.
+    expect(judgeZFightGeometry(geo([pair(0, 1, { 2: 0.03, 14: 0.03 })]), inst, new Set()).issues[0]!.severity).toBe("look");
+    const hidden = judgeZFightGeometry(geo([pair(0, 1, { 8: false })]), inst, new Set()).issues[0]!;
+    expect(hidden.severity).toBe("look");
+    expect(hidden.why).toMatch(/Not seen from a viewpoint$/);
+    // A duplicated piece is the duplicate check's finding, not a z-fight too.
+    expect(judgeZFightGeometry(geo([pair(0, 1)]), inst, new Set(["0:1"])).issues).toEqual([]);
+  });
+
+  it("within one mesh: two surfaces on one plane are ONE issue for the mesh, with the instances that show it", () => {
+    const inMesh = [["shop_sign.glb::ArrayMesh_4", 0, 1, "sign_base", "sign_letters", 0.12, 0, [2, 3], 6, [3, 3.2, 0.06], [0, 0, 1], 8, "bookmark street_hero", true, [], [], false]];
+    const [i, ...rest] = judgeZFightGeometry(geo([], inMesh), inst, new Set()).issues;
+    expect(rest).toEqual([]);
+    expect(i).toMatchObject({ check: "z_fight", severity: "warn", path: "Street/Sign_1", ev: { mesh: "shop_sign.glb", surfaces: ["sign_base", "sign_letters"], area_m2: 0.12, instances: ["Street/Sign_1", "Street/Sign_2"], users: 6 } });
+    expect(i!.why).toMatch(/^shop_sign.glb has coplanar faces of two surfaces \(sign_base \/ sign_letters\): 0.12 m2 on the same plane/);
+    expect(i!.why).toContain("every instance flickers (2 shown of 6)");
+  });
+
+  it("an opposite-facing pair counts when both materials are double-sided (the kernel only sends those)", () => {
+    const [i] = judgeZFightGeometry(geo([pair(6, 7, { 13: true, 11: "chainlink_2s", 12: "chainlink_2s" })]), inst, new Set()).issues;
+    expect(i!.why).toMatch(/with Alley2\/Fence_card_b \(facing opposite ways, both double-sided\)/);
+  });
+
+  it("near-coplanar: a 1 cm gap flags 40 m from a viewpoint and not 2 m from one (24-bit depth, near 0.01 m)", () => {
+    const far40 = judgeZFightGeometry(geo([pair(0, 1, { 3: 0.01, 6: 40, 7: "bookmark establishing" })], [], 0.01, 4000), inst, new Set()).issues;
+    expect(far40).toHaveLength(1);
+    expect(far40[0]!.ev).toMatchObject({ gap_mm: 10, tol_mm: 19.1, view_m: 40, viewer: "bookmark establishing" });
+    expect(far40[0]!.why).toContain("10 mm apart, under 19.1 mm (2 depth steps at 40 m from the bookmark establishing)");
+    expect(judgeZFightGeometry(geo([pair(0, 1, { 3: 0.01, 6: 2 })], [], 0.01, 4000), inst, new Set()).issues).toEqual([]);
+    // With the default near (0.05 m) the same 1 cm gap is resolvable at 40 m (3.8 mm tolerance).
+    expect(judgeZFightGeometry(geo([pair(0, 1, { 3: 0.01, 6: 40 })]), inst, new Set()).issues).toEqual([]);
+  });
+
+  it("decals, overlays, render_priority and depth offsets are demoted to look, never skipped, and say why", () => {
+    const [decal] = judgeZFightGeometry(geo([pair(4, 5, { 9: ["named as a decal or overlay"], 2: 0.8, 14: 0.8 })]), inst, new Set()).issues;
+    expect(decal).toMatchObject({ severity: "look", path: "Alley1/Grime_decal", ev: { demoted: ["named as a decal or overlay"] } });
+    expect(decal!.why).toMatch(/\. Look only: named as a decal or overlay$/);
+    const [prio] = judgeZFightGeometry(geo([pair(4, 5, { 9: ["render_priority 1"], 10: ["shader offsets depth or the vertex along the normal"] })]), inst, new Set()).issues;
+    expect(prio!.ev.demoted).toEqual(["render_priority 1", "shader offsets depth or the vertex along the normal"]);
+  });
+
+  it("the ray samples do not report a pair the geometry pass already covers", () => {
+    const covered = judgeZFightGeometry(geo([pair(0, 1)]), inst, new Set()).pairs;
+    const rays = [{ zfight: [[0, 1, 9, [5, 6, -2], [0, 1, 0], [5, 6, -2], [6, 6, -1]], [5, 6, 3, [1, 1, 1], [0, 0, 1], [1, 0, 1], [1, 2, 1]]] }];
+    expect(judgeZFight(rays, undefined, inst, new Set(), covered).map((i) => i.path)).toEqual(["Alley1/Wall_3"]);
   });
 });
 

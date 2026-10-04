@@ -51,7 +51,19 @@ const HANGING_RE := "(ivy|vine|hanging|creeper)"
 const STRIP_STEP := 0.25
 const STRIP_REACH := 1.0
 # Usual share of a check's editor time (the budget's weights).
-const STAGE_WEIGHT := {"through_hole": 4.0, "floor_gap": 2.0, "floating_sunken": 1.0, "interpenetration": 2.0, "mount_gap": 1.0, "orientation": 1.0, "uv_stretch": 1.0, "insert_host": 0.3, "lights": 0.3, "resource": 0.5, "poses": 1.0}
+const STAGE_WEIGHT := {"through_hole": 4.0, "floor_gap": 2.0, "floating_sunken": 1.0, "interpenetration": 2.0, "mount_gap": 1.0, "orientation": 1.0, "uv_stretch": 1.0, "z_fight_geometry": 3.0, "insert_host": 0.3, "lights": 0.3, "resource": 0.5, "poses": 1.0}
+# z_fight geometry pass: planar face groups per mesh resource.
+# Triangles under ZF_MIN_TRI m2 are not bucketed (relief, props); a group
+# needs ZF_MIN_AREA m2 (the smallest overlap reported); at most
+# ZF_MAX_GROUPS per mesh, largest first. Normals bin at 1/30 per component,
+# plane offsets at ZF_MAX_GAP (the widest gap a candidate may have).
+const ZF_MIN_TRI := 0.0005
+const ZF_MIN_AREA := 0.01
+const ZF_MAX_GROUPS := 96
+const ZF_MAX_GAP := 0.025
+const ZF_DEPTH_STEPS := 16777216.0
+const DECAL_RE := "(decal|overlay|grime|puddle|sticker|stain)"
+const DEPTH_OFFSET_RE := "(\\bDEPTH\\s*=|VERTEX\\s*[-+]?=[^;\\n]*NORMAL|NORMAL\\s*\\*[^;\\n]*VERTEX)"
 
 var _cfg: Dictionary = {}
 var _out_dir := ""
@@ -69,6 +81,7 @@ var _hidden := 0
 var _multimesh := 0
 var _inst: Array = []
 var _lights: Array = []
+var _cameras: Array = []
 var _empty_meshes: Array = []
 var _shader_no_code: Array = []
 
@@ -111,6 +124,16 @@ var _re_underlay: RegEx = null
 var _re_scatter: RegEx = null
 var _re_hanging: RegEx = null
 var _re_roof: RegEx = null
+var _re_decal: RegEx = null
+var _re_offset: RegEx = null
+
+# z_fight geometry: finalized face groups per mesh (instance id), viewpoints
+# [[position, kind]], the main camera's near / far, floors for eye points.
+var _zf_groups: Dictionary = {}
+var _views: Array = []
+var _near := 0.05
+var _far := 4000.0
+var _walk: Array = []
 
 
 func _ready() -> void:
@@ -255,6 +278,8 @@ func _run() -> void:
 	_re_scatter = RegEx.create_from_string("(?i)" + SCATTER_RE)
 	_re_hanging = RegEx.create_from_string("(?i)" + HANGING_RE)
 	_re_roof = RegEx.create_from_string("(?i)" + ROOF_RE)
+	_re_decal = RegEx.create_from_string("(?i)" + DECAL_RE)
+	_re_offset = RegEx.create_from_string(DEPTH_OFFSET_RE)
 
 	_collect()
 	t = _lap("collect", t)
@@ -288,7 +313,8 @@ func _run() -> void:
 	var run_su := _checks.has("floating") or _checks.has("sunken")
 	var run_mo := _checks.has("mount_gap") or _checks.has("orientation")
 	var run_po := _want_poses and _state != null
-	for stage_on in [["through_hole", run_th], ["floor_gap", run_fl], ["floating_sunken", run_su], ["interpenetration", _checks.has("interpenetration")], ["mount_gap", run_mo], ["orientation", _checks.has("orientation")], ["uv_stretch", _checks.has("uv_stretch")], ["insert_host", _checks.has("insert_host")], ["lights", _checks.has("lights")], ["resource", _checks.has("resource")], ["poses", run_po]]:
+	var run_zg := _checks.has("z_fight") and _state != null
+	for stage_on in [["through_hole", run_th], ["floor_gap", run_fl], ["floating_sunken", run_su], ["interpenetration", _checks.has("interpenetration")], ["mount_gap", run_mo], ["orientation", _checks.has("orientation")], ["uv_stretch", _checks.has("uv_stretch")], ["z_fight_geometry", run_zg], ["insert_host", _checks.has("insert_host")], ["lights", _checks.has("lights")], ["resource", _checks.has("resource")], ["poses", run_po]]:
 		if bool(stage_on[1]):
 			_pending.append(String(stage_on[0]))
 	if run_th:
@@ -319,6 +345,10 @@ func _run() -> void:
 		_begin("uv_stretch")
 		_result["uv"] = _scan_uv()
 		t = _lap("uv_stretch", t)
+	if run_zg:
+		_begin("z_fight_geometry")
+		_result["zfight_geo"] = _scan_zfight_geometry()
+		t = _lap("z_fight_geometry", t)
 	if _checks.has("insert_host"):
 		_begin("insert_host")
 		_result["inserts"] = _scan_inserts()
@@ -391,6 +421,8 @@ func _collect() -> void:
 			continue
 		if node != _subject and owner_i < 0 and node.scene_file_path != "":
 			owner_i = _new_inst(node, node.scene_file_path)
+		if node is Camera3D:
+			_cameras.append(node)
 		if node is Light3D:
 			_lights.append(node)
 		elif node is MeshInstance3D:
@@ -787,6 +819,7 @@ func _resolve_underlays() -> void:
 
 func _mesh_pass() -> void:
 	var want_uv := _checks.has("uv_stretch")
+	var want_groups := _checks.has("z_fight")
 	# Meshes of mounted pieces also get their largest plane per axis and side
 	# (front-back symmetry about the mount axis: mount_gap, orientation).
 	var mount_meshes: Dictionary = {}
@@ -803,7 +836,7 @@ func _mesh_pass() -> void:
 			var mesh: Mesh = m[1]
 			var key := mesh.get_instance_id()
 			if not _mesh_info.has(key):
-				_mesh_info[key] = _analyze_mesh(mesh, want_uv and role != "underlay", mount_meshes.has(key))
+				_mesh_info[key] = _analyze_mesh(mesh, want_uv and role != "underlay", mount_meshes.has(key), want_groups)
 	# Walls without a declared front: the thin local axis, signed by which side
 	# carries more outward-facing area.
 	for rec in _inst:
@@ -834,11 +867,14 @@ func _double_sided(mat: Material) -> bool:
 	return false
 
 
-func _analyze_mesh(mesh: Mesh, want_uv: bool, want_planes := false) -> Dictionary:
+func _analyze_mesh(mesh: Mesh, want_uv: bool, want_planes := false, want_groups := false) -> Dictionary:
 	var faces := PackedVector3Array()
 	var axis_area := PackedFloat32Array([0, 0, 0, 0, 0, 0])
 	# Axis-facing area in 1 cm slabs: Vector3i(axis, 0 for + / 1 for -, cm) -> m2.
 	var planes: Dictionary = {}
+	# z_fight: per surface, triangles bucketed by (normal, plane offset):
+	# [surface, material, double-sided, {Vector4i -> [area, normal * area, offset * area, [vertices]]}].
+	var zf_raw: Array = []
 	var uv_cands: Array = []
 	var tris := 0
 	var no_material := 0
@@ -854,6 +890,9 @@ func _analyze_mesh(mesh: Mesh, want_uv: bool, want_planes := false) -> Dictionar
 		if mat == null:
 			no_material += 1
 		var double := mat != null and _double_sided(mat)
+		var sbins: Dictionary = {}
+		if want_groups:
+			zf_raw.append([s, mat, double, sbins])
 		var idx: PackedInt32Array
 		if arrays[Mesh.ARRAY_INDEX] != null:
 			idx = arrays[Mesh.ARRAY_INDEX]
@@ -904,6 +943,17 @@ func _analyze_mesh(mesh: Mesh, want_uv: bool, want_planes := false) -> Dictionar
 						if absf(nn[pa]) > 0.95:
 							var pk := Vector3i(pa, 0 if nn[pa] > 0.0 else 1, int(round((p0[pa] + p1[pa] + p2[pa]) * 100.0 / 3.0)))
 							planes[pk] = float(planes.get(pk, 0.0)) + area
+				if want_groups and area >= ZF_MIN_TRI:
+					var dd := nn.dot(p0)
+					var bk := Vector4i(roundi(nn.x * 30.0), roundi(nn.y * 30.0), roundi(nn.z * 30.0), roundi(dd / 0.004))
+					var bg: Array = sbins.get(bk, [])
+					if bg.is_empty():
+						bg = [0.0, Vector3.ZERO, 0.0, []]
+						sbins[bk] = bg
+					bg[0] = float(bg[0]) + area
+					bg[1] = (bg[1] as Vector3) + nn * area
+					bg[2] = float(bg[2]) + dd * area
+					(bg[3] as Array).append_array([p0, p1, p2])
 				if has_uv and area >= 0.015:
 					var t0: Vector2 = uvs[i0]
 					var u1: Vector2 = uvs[i1] - t0
@@ -940,7 +990,7 @@ func _analyze_mesh(mesh: Mesh, want_uv: bool, want_planes := false) -> Dictionar
 		if sum > plane_rows[slot + 1]:
 			plane_rows[slot] = float(pk.z) / 100.0
 			plane_rows[slot + 1] = sum
-	return {"faces": faces, "axis_area": axis_area, "planes": plane_rows, "uv": uv_cands, "tris": tris, "no_material": no_material, "shape": RID(), "name": _mesh_name(mesh)}
+	return {"faces": faces, "axis_area": axis_area, "planes": plane_rows, "zf_raw": zf_raw, "uv": uv_cands, "tris": tris, "no_material": no_material, "shape": RID(), "name": _mesh_name(mesh)}
 
 
 func _mesh_name(mesh: Mesh) -> String:
@@ -2050,6 +2100,499 @@ func _scan_uv() -> Array:
 				shown.append([int(rec["i"]), mask_bits, viewer_out, center_out, covered_bits])
 		out.append({"mesh": String(info["name"]), "tris": tris, "users": (users[key] as Array).size(), "shown": shown})
 	_count("uv_stretch", done, users.size())
+	return out
+
+
+# ---------------------------------------------------------------------------
+# z_fight geometry: coplanar overlapping faces anywhere, not only where the
+# facade and floor ray grids sample. Per mesh resource (cached): planar face
+# groups (normal, offset, 2D hull, own triangles). Between instances: plane
+# bins (canonical normal + offset) as the broadphase, then parallel normals
+# (|dot| > 0.999; opposite only when both materials are double-sided), plane
+# gap under the depth-precision tolerance, hull overlap clipped in the plane
+# and verified with samples against both groups' OWN triangles. Within one
+# mesh: the same test between groups of different surfaces. Measures only;
+# the judge applies the tolerance and the severity.
+# ---------------------------------------------------------------------------
+
+func _scan_zfight_geometry() -> Dictionary:
+	_zf_setup_views()
+	var units_done := 0
+	var units_total := 0
+	# Face groups per mesh resource, and which instances use each mesh.
+	var users: Dictionary = {}
+	var mesh_of: Dictionary = {}
+	var meshes: Array = []
+	for rec in _inst:
+		for m in (rec["meshes"] as Array):
+			var mid := (m[1] as Mesh).get_instance_id()
+			if not users.has(mid):
+				users[mid] = []
+				mesh_of[mid] = m[1]
+				meshes.append([mid, m[1]])
+			(users[mid] as Array).append([int(rec["i"]), m[0], m[2]])
+	var stopped := false
+	for km in meshes:
+		units_total += 1
+		if stopped or _over():
+			stopped = true
+			continue
+		units_done += 1
+		var fid: int = km[0]
+		if not _mesh_info.has(fid):
+			# Dressing (decals, overlay cards) skips the mesh pass.
+			_mesh_info[fid] = _analyze_mesh(km[1] as Mesh, false, false, true)
+		_zf_groups[fid] = _finalize_groups(_mesh_info[fid] as Dictionary)
+	# Within one mesh: groups of different surfaces on one plane.
+	var in_mesh: Array = []
+	for km2 in meshes:
+		var wid: int = km2[0]
+		if not _zf_groups.has(wid):
+			continue
+		units_total += 1
+		if stopped or _over():
+			stopped = true
+			continue
+		units_done += 1
+		var row := _zf_within(wid, String((_mesh_info[wid] as Dictionary).get("name", "mesh")), users[wid] as Array)
+		if not row.is_empty() and in_mesh.size() < 64:
+			in_mesh.append(row)
+	# Between instances: world plane records in canonical bins.
+	var recs: Array = []
+	var bins: Dictionary = {}
+	for gid in _zf_groups:
+		for use in (users[gid] as Array):
+			var rec_i: int = use[0]
+			var node: Node = use[1]
+			var xf: Transform3D = use[2]
+			var nb := xf.basis.inverse().transposed()
+			var groups: Array = _zf_groups[gid]
+			for gi in groups.size():
+				var g: Dictionary = groups[gi]
+				var nw := (nb * (g["n"] as Vector3)).normalized()
+				var ow: Vector3 = xf * (g["o"] as Vector3)
+				var dw := nw.dot(ow)
+				var cn := nw
+				var cd := dw
+				if cn.x < -0.0001 or (absf(cn.x) <= 0.0001 and (cn.y < -0.0001 or (absf(cn.y) <= 0.0001 and cn.z < 0.0))):
+					cn = -cn
+					cd = -cd
+				var mat := _surface_mat(node, mesh_of[gid] as Mesh, int(g["s"]))
+				var r := {"i": rec_i, "node": node, "xf": xf, "g": g, "n": nw, "o": ow, "box": _group_box(g, xf), "mat": mat, "double": mat != null and _double_sided(mat)}
+				var pkey := Vector4i(roundi(cn.x * 30.0), roundi(cn.y * 30.0), roundi(cn.z * 30.0), roundi(cd / ZF_MAX_GAP))
+				if not bins.has(pkey):
+					bins[pkey] = []
+				(bins[pkey] as Array).append(recs.size())
+				recs.append(r)
+	var pairs: Dictionary = {}
+	for bin_key in bins:
+		units_total += 1
+		if stopped or _over():
+			stopped = true
+			continue
+		units_done += 1
+		var here: Array = bins[bin_key]
+		var k4: Vector4i = bin_key
+		for dq in [0, 1]:
+			var there: Array = bins.get(Vector4i(k4.x, k4.y, k4.z, k4.w + int(dq)), [])
+			for ia in here.size():
+				var jb0 := ia + 1 if int(dq) == 0 else 0
+				for jb in range(jb0, there.size()):
+					_zf_pair(recs[int(here[ia])] as Dictionary, recs[int(there[jb])] as Dictionary, pairs)
+	_count("z_fight_geometry", units_done, units_total)
+	var rows: Array = pairs.values()
+	rows.sort_custom(func(a, b): return float(a[2]) > float(b[2]))
+	if rows.size() > 300:
+		rows.resize(300)
+	return {"near": snappedf(_near, 0.0001), "far": snappedf(_far, 0.01), "views": _views.size(), "groups": recs.size(), "pairs": rows, "in_mesh": in_mesh}
+
+
+# The main camera's near / far (the current Camera3D, else the first; 0.05 /
+# 4000 without one), and the viewpoints: scene cameras, camera bookmarks
+# (res://.summer/camera_bookmarks.json, read-only) and the floors for eye
+# points.
+func _zf_setup_views() -> void:
+	var main: Camera3D = null
+	for c in _cameras:
+		var cam := c as Camera3D
+		if main == null or cam.current:
+			main = cam
+		_views.append([cam.global_position, "camera " + String(cam.name)])
+	if main != null and main.projection == Camera3D.PROJECTION_PERSPECTIVE:
+		_near = main.near
+		_far = main.far
+	var path := "res://.summer/camera_bookmarks.json"
+	if FileAccess.file_exists(path):
+		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+		if typeof(parsed) == TYPE_DICTIONARY:
+			var re := RegEx.create_from_string("Vector3\\(\\s*([-+0-9.eE]+)\\s*,\\s*([-+0-9.eE]+)\\s*,\\s*([-+0-9.eE]+)\\s*\\)")
+			for name in (parsed as Dictionary):
+				var bm: Variant = (parsed as Dictionary)[name]
+				if typeof(bm) != TYPE_DICTIONARY or _views.size() >= 64:
+					continue
+				var m := re.search(String((bm as Dictionary).get("position", "")))
+				if m != null:
+					_views.append([Vector3(float(m.get_string(1)), float(m.get_string(2)), float(m.get_string(3))), "bookmark " + String(name)])
+	for rec in _inst:
+		if rec["role"] == "floor":
+			_walk.append(rec)
+	if _walk.is_empty():
+		for rec in _inst:
+			if rec["role"] == "underlay":
+				_walk.append(rec)
+
+
+# The nearest viewpoint to p: a camera, a bookmark, or eye height (1.6 m)
+# over the nearest floor. [distance, position, kind], or [] without any.
+func _zf_view(p: Vector3) -> Array:
+	var best: Array = []
+	for vw in _views:
+		var vp: Vector3 = vw[0]
+		if best.is_empty() or vp.distance_to(p) < float(best[0]):
+			best = [vp.distance_to(p), vp, String(vw[1])]
+	for f in _walk:
+		var fa: AABB = f["waabb"]
+		var ep := Vector3(clampf(p.x, fa.position.x, fa.end.x), fa.end.y + 1.6, clampf(p.z, fa.position.z, fa.end.z))
+		if best.is_empty() or ep.distance_to(p) < float(best[0]):
+			best = [ep.distance_to(p), ep, "walkable area"]
+	return best
+
+
+# Twice the 24-bit depth step at `dist` for the main camera's near / far
+# (Compatibility / WebGL2), never under 0.1 mm (float noise in transforms).
+func _zf_tol(dist: float) -> float:
+	var n := maxf(0.0001, _near)
+	var f := maxf(n * 1.0001, _far)
+	return maxf(0.0001, 2.0 * dist * dist * (f - n) / (f * n * ZF_DEPTH_STEPS))
+
+
+# p is seen from vp: a one-sided ray (like the renderer) reaches it.
+func _zf_seen(vp: Vector3, p: Vector3) -> bool:
+	var dir := p - vp
+	var dist := dir.length()
+	if dist < 0.01:
+		return true
+	var hit := _ray(vp, p + dir / dist * 0.05, MASK_SOLID)
+	return hit.is_empty() or (hit["position"] as Vector3).distance_to(p) <= 0.15
+
+
+func _finalize_groups(info: Dictionary) -> Array:
+	var cands: Array = []
+	for sr in (info.get("zf_raw", []) as Array):
+		var sb: Dictionary = sr[3]
+		for bk in sb:
+			var bg: Array = sb[bk]
+			if float(bg[0]) >= ZF_MIN_AREA:
+				cands.append([float(bg[0]), int(sr[0]), sr[1], bool(sr[2]), bg])
+	cands.sort_custom(func(a, b): return float(a[0]) > float(b[0]))
+	if cands.size() > ZF_MAX_GROUPS:
+		cands.resize(ZF_MAX_GROUPS)
+	var out: Array = []
+	for cnd in cands:
+		var bg: Array = cnd[4]
+		var area := float(cnd[0])
+		var n := (bg[1] as Vector3).normalized()
+		var o := n * (float(bg[2]) / area)
+		var u := n.cross(Vector3.UP)
+		if u.length() < 0.1:
+			u = n.cross(Vector3.RIGHT)
+		u = u.normalized()
+		var v := n.cross(u).normalized()
+		var verts: Array = bg[3]
+		var tri := PackedVector2Array()
+		tri.resize(verts.size())
+		for k in verts.size():
+			var p: Vector3 = verts[k]
+			tri[k] = Vector2((p - o).dot(u), (p - o).dot(v))
+		var hull := Geometry2D.convex_hull(tri)
+		if hull.size() >= 2 and hull[0] == hull[hull.size() - 1]:
+			hull.remove_at(hull.size() - 1)
+		if hull.size() < 3:
+			continue
+		var lo := hull[0]
+		var hi := hull[0]
+		for q in hull:
+			lo = Vector2(minf(lo.x, q.x), minf(lo.y, q.y))
+			hi = Vector2(maxf(hi.x, q.x), maxf(hi.y, q.y))
+		# Triangles bucketed on a 2D grid for point-in-face tests.
+		var cell := maxf(0.05, sqrt(area / 64.0))
+		var grid: Dictionary = {}
+		var t := 0
+		while t + 2 < tri.size():
+			var a: Vector2 = tri[t]
+			var b: Vector2 = tri[t + 1]
+			var c: Vector2 = tri[t + 2]
+			for gx in range(floori(minf(a.x, minf(b.x, c.x)) / cell), floori(maxf(a.x, maxf(b.x, c.x)) / cell) + 1):
+				for gy in range(floori(minf(a.y, minf(b.y, c.y)) / cell), floori(maxf(a.y, maxf(b.y, c.y)) / cell) + 1):
+					var gk := Vector2i(gx, gy)
+					if not grid.has(gk):
+						grid[gk] = []
+					(grid[gk] as Array).append(t)
+			t += 3
+		out.append({"s": int(cnd[1]), "mat": cnd[2], "double": bool(cnd[3]), "area": area, "n": n, "o": o, "u": u, "v": v, "tri": tri, "hull": hull, "lo": lo, "hi": hi, "cell": cell, "grid": grid})
+	return out
+
+
+# World bounds of a face group (its 2D bounds' corners on its plane).
+func _group_box(g: Dictionary, xf: Transform3D) -> AABB:
+	var o: Vector3 = g["o"]
+	var u: Vector3 = g["u"]
+	var v: Vector3 = g["v"]
+	var lo: Vector2 = g["lo"]
+	var hi: Vector2 = g["hi"]
+	var box := AABB(xf * (o + u * lo.x + v * lo.y), Vector3.ZERO)
+	box = box.expand(xf * (o + u * hi.x + v * lo.y))
+	box = box.expand(xf * (o + u * lo.x + v * hi.y))
+	box = box.expand(xf * (o + u * hi.x + v * hi.y))
+	return box
+
+
+func _in_group(g: Dictionary, local: Vector3) -> bool:
+	var o: Vector3 = g["o"]
+	var q := Vector2((local - o).dot(g["u"] as Vector3), (local - o).dot(g["v"] as Vector3))
+	var cell := float(g["cell"])
+	var list: Variant = (g["grid"] as Dictionary).get(Vector2i(floori(q.x / cell), floori(q.y / cell)), null)
+	if list == null:
+		return false
+	var tri: PackedVector2Array = g["tri"]
+	for t in (list as Array):
+		var b := int(t)
+		if Geometry2D.point_is_inside_triangle(q, tri[b], tri[b + 1], tri[b + 2]):
+			return true
+	return false
+
+
+static func _poly_area(poly: PackedVector2Array) -> float:
+	var a := 0.0
+	for k in poly.size():
+		var p: Vector2 = poly[k]
+		var q: Vector2 = poly[(k + 1) % poly.size()]
+		a += p.x * q.y - q.x * p.y
+	return absf(a) * 0.5
+
+
+# Overlap of group ga (instance transform xa) and gb (xb) on about one
+# plane: both hulls clipped in ga's world plane, then a grid of up to ~120
+# samples inside the clip, each tested against BOTH groups' own triangles (a
+# wall face's window opening is not wall). [overlap m2, world centre] or [].
+func _group_overlap(ga: Dictionary, xa: Transform3D, gb: Dictionary, xb: Transform3D) -> Array:
+	var oa: Vector3 = xa * (ga["o"] as Vector3)
+	var na := (xa.basis.inverse().transposed() * (ga["n"] as Vector3)).normalized()
+	var ua: Vector3 = xa.basis * (ga["u"] as Vector3)
+	ua = (ua - na * ua.dot(na)).normalized()
+	var va := na.cross(ua)
+	var polys := Geometry2D.intersect_polygons(_hull_in(ga, xa, oa, ua, va), _hull_in(gb, xb, oa, ua, va))
+	var inv_a := xa.affine_inverse()
+	var inv_b := xb.affine_inverse()
+	var overlap := 0.0
+	var centre := Vector3.ZERO
+	var weight := 0.0
+	for poly in polys:
+		var pa := _poly_area(poly)
+		if pa < ZF_MIN_AREA * 0.25:
+			continue
+		var lo: Vector2 = poly[0]
+		var hi: Vector2 = poly[0]
+		for q in poly:
+			lo = Vector2(minf(lo.x, q.x), minf(lo.y, q.y))
+			hi = Vector2(maxf(hi.x, q.x), maxf(hi.y, q.y))
+		var step := maxf(0.01, sqrt(pa / 100.0))
+		var inside := 0
+		var both := 0
+		var cx := 0.0
+		var cy := 0.0
+		var y := lo.y + step * 0.5
+		while y < hi.y and inside < 160:
+			var x := lo.x + step * 0.5
+			while x < hi.x and inside < 160:
+				var q := Vector2(x, y)
+				if Geometry2D.is_point_in_polygon(q, poly):
+					inside += 1
+					var w := oa + ua * x + va * y
+					if _in_group(ga, inv_a * w) and _in_group(gb, inv_b * w):
+						both += 1
+						cx += x
+						cy += y
+				x += step
+			y += step
+		if inside == 0 or both == 0:
+			continue
+		var ov := pa * float(both) / float(inside)
+		overlap += ov
+		centre += (oa + ua * (cx / float(both)) + va * (cy / float(both))) * ov
+		weight += ov
+	if overlap < ZF_MIN_AREA or weight <= 0.0:
+		return []
+	return [overlap, centre / weight]
+
+
+func _hull_in(g: Dictionary, xf: Transform3D, o: Vector3, u: Vector3, v: Vector3) -> PackedVector2Array:
+	var go: Vector3 = g["o"]
+	var gu: Vector3 = g["u"]
+	var gv: Vector3 = g["v"]
+	var out := PackedVector2Array()
+	for q in (g["hull"] as PackedVector2Array):
+		var w: Vector3 = xf * (go + gu * q.x + gv * q.y)
+		out.append(Vector2((w - o).dot(u), (w - o).dot(v)))
+	return out
+
+
+# Parallel enough and close enough to be candidates (gap is the caller's).
+func _zf_parallel(na: Vector3, nb: Vector3, double_a: bool, double_b: bool) -> int:
+	var dot := na.dot(nb)
+	if dot > 0.999:
+		return 1
+	if dot < -0.999 and double_a and double_b:
+		return -1
+	return 0
+
+
+func _zf_pair(ra: Dictionary, rb: Dictionary, pairs: Dictionary) -> void:
+	var a: int = ra["i"]
+	var b: int = rb["i"]
+	if ra["node"] == rb["node"]:
+		return
+	if not (bool((_inst[a] as Dictionary)["in"]) or bool((_inst[b] as Dictionary)["in"])):
+		return
+	var box_a: AABB = ra["box"]
+	var box_b: AABB = rb["box"]
+	if not box_a.grow(0.03).intersects(box_b):
+		return
+	var na: Vector3 = ra["n"]
+	var facing := _zf_parallel(na, rb["n"] as Vector3, bool(ra["double"]), bool(rb["double"]))
+	if facing == 0:
+		return
+	var gap := absf(na.dot((rb["o"] as Vector3) - (ra["o"] as Vector3)))
+	if gap > ZF_MAX_GAP:
+		return
+	var mid := box_a.grow(0.03).intersection(box_b).get_center()
+	var view := _zf_view(mid)
+	var dist := 30.0 if view.is_empty() else float(view[0])
+	if gap > minf(ZF_MAX_GAP, 1.5 * _zf_tol(dist)):
+		return
+	var ov := _group_overlap(ra["g"] as Dictionary, ra["xf"] as Transform3D, rb["g"] as Dictionary, rb["xf"] as Transform3D)
+	if ov.is_empty():
+		return
+	var centre: Vector3 = ov[1]
+	view = _zf_view(centre)
+	var seen := false
+	if not view.is_empty():
+		seen = _zf_seen(view[1] as Vector3, centre)
+	var key := str(mini(a, b)) + ":" + str(maxi(a, b))
+	var prev: Variant = pairs.get(key, null)
+	var area := float(ov[0])
+	if prev != null:
+		var pr: Array = prev
+		pr[14] = snappedf(float(pr[14]) + area, 0.001)
+		pr[15] = int(pr[15]) + 1
+		if area <= float(pr[2]):
+			return
+	var ga: Dictionary = ra["g"]
+	var gb: Dictionary = rb["g"]
+	var row := [a, b, snappedf(area, 0.001), snappedf(gap, 0.00001), _a3(centre), _a3(na, 0.0001), snappedf(30.0 if view.is_empty() else float(view[0]), 0.01), ("typical view distance" if view.is_empty() else String(view[2])), seen, _zf_flags(ra["node"] as Node, ra["mat"], a), _zf_flags(rb["node"] as Node, rb["mat"], b), _mat_name(ra["mat"], int(ga["s"])), _mat_name(rb["mat"], int(gb["s"])), facing < 0, snappedf(area, 0.001), 1, _rel(ra["node"] as Node), _rel(rb["node"] as Node)]
+	if prev != null:
+		row[14] = (prev as Array)[14]
+		row[15] = (prev as Array)[15]
+	pairs[key] = row
+
+
+# Within one mesh: groups of DIFFERENT surfaces on one plane (an overlay
+# layer with no offset). Once per mesh resource, with up to 4 instances that
+# show it (the tolerance and visibility are theirs). [] when clean.
+func _zf_within(key: int, mesh_name: String, uses: Array) -> Array:
+	var groups: Array = _zf_groups[key]
+	var best: Array = []
+	for i in groups.size():
+		var ga: Dictionary = groups[i]
+		for j in range(i + 1, groups.size()):
+			var gb: Dictionary = groups[j]
+			if int(ga["s"]) == int(gb["s"]):
+				continue
+			var facing := _zf_parallel(ga["n"] as Vector3, gb["n"] as Vector3, bool(ga["double"]), bool(gb["double"]))
+			if facing == 0:
+				continue
+			var gap := absf((ga["n"] as Vector3).dot((gb["o"] as Vector3) - (ga["o"] as Vector3)))
+			if gap > ZF_MAX_GAP:
+				continue
+			var ov := _group_overlap(ga, Transform3D.IDENTITY, gb, Transform3D.IDENTITY)
+			if ov.is_empty() or (not best.is_empty() and float(ov[0]) <= float(best[0])):
+				continue
+			best = [float(ov[0]), gap, ov[1], ga, gb, facing]
+	if best.is_empty():
+		return []
+	var shows: Array = []
+	var view_d := -1.0
+	var view_k := "typical view distance"
+	var seen := false
+	var centre_w := Vector3.ZERO
+	var normal_w := Vector3.ZERO
+	var ga2: Dictionary = best[3]
+	var gb2: Dictionary = best[4]
+	for use in uses:
+		var rec_i: int = use[0]
+		if not bool((_inst[rec_i] as Dictionary)["in"]) or shows.size() >= 4:
+			continue
+		var xf: Transform3D = use[2]
+		var c: Vector3 = xf * (best[2] as Vector3)
+		var view := _zf_view(c)
+		var dist := 30.0 if view.is_empty() else float(view[0])
+		if float(best[1]) > minf(ZF_MAX_GAP, 1.5 * _zf_tol(dist)):
+			continue
+		shows.append(rec_i)
+		if shows.size() == 1:
+			centre_w = c
+			normal_w = (xf.basis.inverse().transposed() * (ga2["n"] as Vector3)).normalized()
+		if dist > view_d:
+			view_d = dist
+			view_k = "typical view distance" if view.is_empty() else String(view[2])
+		if not seen and not view.is_empty():
+			seen = _zf_seen(view[1] as Vector3, c)
+	if shows.is_empty():
+		return []
+	var first_node: Node = (uses[0] as Array)[1]
+	return [mesh_name, int(ga2["s"]), int(gb2["s"]), _mat_name(ga2["mat"], int(ga2["s"])), _mat_name(gb2["mat"], int(gb2["s"])), snappedf(float(best[0]), 0.001), snappedf(float(best[1]), 0.00001), shows, uses.size(), _a3(centre_w), _a3(normal_w, 0.0001), snappedf(view_d, 0.01), view_k, seen, _zf_flags(first_node, ga2["mat"], int(shows[0])), _zf_flags(first_node, gb2["mat"], int(shows[0])), int(best[5]) < 0]
+
+
+# The material a surface renders with on this node: override, surface
+# override, then the mesh's own.
+func _surface_mat(node: Node, mesh: Mesh, s: int) -> Material:
+	if node is GeometryInstance3D and (node as GeometryInstance3D).material_override != null:
+		return (node as GeometryInstance3D).material_override
+	if node is MeshInstance3D and s < (node as MeshInstance3D).get_surface_override_material_count():
+		var ov := (node as MeshInstance3D).get_surface_override_material(s)
+		if ov != null:
+			return ov
+	if mesh != null and s < mesh.get_surface_count():
+		return mesh.surface_get_material(s)
+	return null
+
+
+static func _mat_name(mat: Variant, s: int) -> String:
+	if mat is Material:
+		var m := mat as Material
+		if String(m.resource_name) != "":
+			return String(m.resource_name)
+		if String(m.resource_path) != "":
+			return String(m.resource_path).get_file()
+	return "surface %d" % s
+
+
+# Why a coplanar pair may be intentional (the judge demotes it to look):
+# render_priority, a shader or material that offsets depth or the vertex
+# along the normal, a decal or overlay by name.
+func _zf_flags(node: Node, mat: Variant, rec_i: int) -> Array:
+	var out: Array = []
+	if mat is Material:
+		var m := mat as Material
+		if m.render_priority != 0:
+			out.append("render_priority %d" % m.render_priority)
+		if m is BaseMaterial3D and (m as BaseMaterial3D).grow and absf((m as BaseMaterial3D).grow_amount) > 0.0:
+			out.append("material grows along the normal")
+		if m is ShaderMaterial and (m as ShaderMaterial).shader != null and _re_offset.search((m as ShaderMaterial).shader.code) != null:
+			out.append("shader offsets depth or the vertex along the normal")
+	var names := String(node.name) + " " + String((_inst[rec_i] as Dictionary)["piece"]) + " " + _mat_name(mat, 0)
+	if _re_decal.search(names.to_lower()) != null:
+		out.append("named as a decal or overlay")
 	return out
 
 

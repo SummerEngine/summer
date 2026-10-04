@@ -119,11 +119,11 @@ Placement of modular kit pieces from measured geometry, built on the existing op
 
 | Tool | Use |
 |---|---|
-| `summer_inspect_asset` | Measure a `.tscn`/`.glb`/`.gltf` (or Mesh) WITHOUT adding it to a scene: AABB + origin position, per-mesh AABBs and triangle counts, the 6 largest planar faces (normal, offset, area), open boundary loops (pipe/duct ends), Marker3D anchors, collision shapes. Read-only. |
+| `summer_inspect_asset` | Measure a `.tscn`/`.glb`/`.gltf` (or Mesh) WITHOUT adding it to a scene. A `summary` block first (AABB, origin label, the two largest opposite plane pairs with a `one_sided` flag per plane, port-like loop indices), then per-mesh AABBs and triangle counts, the 6 largest planar faces, open boundary loops (`detail: "summary"` lists only port-like ones), Marker3D anchors, collision shapes. Read-only. |
 | `summer_place_adjacent` | Put one node's bounds face against another's along an axis (gap, side), lining up the other axes (min/center/max, per axis); facade modules edge to edge, storeys stacked. One SetProp + save, verified. |
-| `summer_attach_to_surface` | Turn a piece so its measured local back axis faces into a surface hit by a ray (up kept), then seat it with `SnapToSurface` at a standoff. Pipes, lamps, AC units, signs. |
+| `summer_attach_to_surface` | Turn a piece so its measured local back axis faces into a surface hit by a ray (up kept), then seat its back face (not its origin) with `SnapToSurface` at a standoff, keeping its height. Refuses and puts the piece back when the seat lands on another node or the move exceeds `maxMove`. Pipes, lamps, AC units, signs. |
 | `summer_repeat_along` | Instance copies of a scene along a line (spacing or count, leftover aligned start/center/end), each placed in the same call; compact receipt with created paths. At most 64. |
-| `summer_connect_ports` | Move and turn a piece so its port (Marker3D name or open-loop index) meets another piece's port, facing it; verified distance and angle. |
+| `summer_connect_ports` | Move and turn a piece so its port (Marker3D name or open-loop index) meets another piece's port, facing it; verified distance and angle, and where the piece's other ports now point. |
 | `summer_raycast` | One ray from any point, before anything is placed: hit path, point, normal. Physics first; visual-AABB fallback declared as such. Read-only. |
 | `summer_measure` | Gap/overlap per axis between two nodes, or face coplanarity across 2-32 nodes (proud/recessed). Read-only. |
 

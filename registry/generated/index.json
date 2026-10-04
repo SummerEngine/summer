@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.1.0",
-      "content_hash": "26af20346bf1d0a3d04a2e27a26b957df0c4af1a6537809fce9816fb6269c0c6",
+      "content_hash": "c8ef9fe016350f32992f006d1e48ba4e8c81706c9df145dd133e345766f1a221",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -2882,7 +2882,7 @@
       "id": "skill/spatial-placement",
       "kind": "skill",
       "version": "1.1.0",
-      "content_hash": "ae40d417e66e26f25de7b322f7cc684f41ba2cd9f2f2a80e4fafcd8a15ec77d1",
+      "content_hash": "2964338c81353cae39b6adf8e4372a07d7ffaffdb40daa6dc5852576a6da8e43",
       "summary": "Place 3D objects and modular kit pieces from measured geometry — inspect, place, starcast, measure, correct; wall, facade, pipe, shelf and alcove recipes.",
       "use_when": [
         "positioning a prop, character, collider, or platform so it sits flush, avoids overlap, or keeps clearance",
@@ -4433,7 +4433,7 @@
       "id": "tool/attach-to-surface",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "1585328adfc35ce1304bf879eee556a360df1f72782447f1024d5791b14819e0",
+      "content_hash": "62ceefdcfd5e67a557d9738000b8b9cd4369dcb83439bb7a3b3a59fe5dc0bd02",
       "summary": "Mount a piece on a wall, ceiling or floor — turn its measured back into the surface found by a ray, keep it upright, seat it at a standoff. Saves the scene.",
       "use_when": [
         "mounting a downpipe, gutter, lamp, AC unit, sign or fire escape on a facade",
@@ -4483,7 +4483,7 @@
       "id": "tool/batch",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "4e2ad19bd054b41ffebd3c4b5b66ac2aec164472745d9ca684893ab1156df012",
+      "content_hash": "1fd6143d77e00cb984bd7e919155ff7451bc56d614f70fa3ebd2b0ef6f559198",
       "summary": "Run multiple engine ops in one call, forwarded verbatim; one undo step unless single-only ops force a split (then one per chunk). Also reaches raw ops.",
       "use_when": [
         "multi-node builds that should undo as one step (no single-only ops in the list)",
@@ -4633,7 +4633,7 @@
       "id": "tool/connect-ports",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "5c9eea1ac1e7ed2e7f90c135c4849d2967246a5e9240f9b26dad16c46cb4fb25",
+      "content_hash": "ca509afa46b32fd6647a844c25cf9a55149adba7eefb8f206aeef8a7454bdd3d",
       "summary": "Move and turn one piece so its port (a Marker3D or a measured open pipe end) meets another piece's port, facing it — pipes, ducts, gutters. Saves the scene.",
       "use_when": [
         "joining a pipe, duct or gutter section end to end with the previous one",
@@ -5918,7 +5918,7 @@
       "id": "tool/inspect-asset",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "f6fc61eb2a4091e32fbb89ab53883d29a7fffa6d793722ce07f52ee9bd1c1f20",
+      "content_hash": "9c9a64cc61525c605f6bba5052fc3fd14aa6bb16d088d0e2297fd9725028d05a",
       "summary": "Measure a 3D asset file without adding it to a scene — AABB, origin, meshes, largest planar faces, open pipe ends, Marker3D anchors, collision shapes.",
       "use_when": [
         "learning a kit piece's real size, origin and which way it faces before placing it",

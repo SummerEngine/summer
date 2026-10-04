@@ -65,18 +65,43 @@ instances it off the scene tree, measures, and frees it.
 
 - **Use when:** before placing any kit piece you have not measured.
 - **Arguments:** `path` (`res://` `.tscn` `.scn` `.glb` `.gltf` `.res`
-  `.tres` `.mesh` `.obj`), `maxTriangles` (1000-300000, default 60000) for the
-  face and loop analysis.
-- **Result:** `{frame: "asset_root", root_class, root_transform_identity,
+  `.tres` `.mesh` `.obj`), `maxTriangles` (100-300000, default 60000) for the
+  face and loop analysis, `detail` (`summary`, the default, or `full`).
+- **Result:** `{ok, tool, detail, summary {aabb, origin, plane_pairs,
+  port_like_loops, triangles, mesh_count, anchor_count, collision_count,
+  warnings?}, frame: "asset_root", root_class, root_transform_identity,
   aabb {min, max, size}, origin {fraction [x,y,z], label}, mesh_count,
   meshes [{path, tris, min, max, hidden?}], triangles,
-  planes [{normal, offset, area, tris}] (top 6 by area),
+  planes [{normal, offset, area, tris, cull_back, one_sided}] (top 6 by area),
   open_loop_count, open_loops [{index, mesh, center, direction, radius,
-  vertices, max_dev, direction_ambiguous?}], open_chains,
-  anchor_count, anchors [{name, path, position, forward, up}],
-  collision_count, collision [{path, shape, size|radius|height|faces|points,
-  center, min, max, disabled?}], analysis {triangles_analyzed, triangle_budget,
-  truncated, weld_m, plane_bin}, evidence: "mesh_triangles"}`.
+  vertices, max_dev, direction_ambiguous?}], open_loops_listed?,
+  open_loops_omitted?, open_chains, anchor_count, anchors [{name, path,
+  position, forward, up}], collision_count, collision [{path, shape,
+  size|radius|height|faces|points, center, min, max, disabled?}], analysis
+  {triangles_analyzed, triangle_budget, truncated, weld_m, plane_bin},
+  evidence: "mesh_triangles"}`.
+- **The summary block** comes first and holds the facing evidence:
+  - `plane_pairs`: the two largest pairs of opposite planes (a pair under 1% of
+    the largest one's area is left out), each `{larger, opposite, separation}`.
+    `opposite` is `null` for a single sheet. Every plane is `{axis?, normal,
+    offset, area, one_sided}`; `axis` (such as `+z`) is given only when the
+    normal is within about 1 degree of it, so a baked yaw or a 45-degree corner
+    face shows its exact normal with no label. `separation` is the distance
+    between the two planes (the thickness; 0 for a sheet modelled with both
+    faces).
+  - `one_sided: true` means the plane's material culls back faces: it is
+    invisible from behind its normal. A one-sided sheet with no opposite plane
+    faces along its normal, and its back is the opposite axis.
+  - `port_like_loops`: indices of the open loops that look like pipe or duct
+    ends (radius over 2 cm, a decided direction, and a partner loop of similar
+    radius facing more than 60 degrees away: the other end of a straight run or
+    a bend).
+  - `warnings`: says when the triangle budget cut the analysis and which
+    `maxTriangles` covers the whole mesh.
+- **`detail`:** `summary` lists in `open_loops` only the port-like loops (with
+  their original indices, which `summer_connect_ports` accepts) and says how
+  many it omitted. `full` lists every loop, including the outline and holes of
+  flat sheets.
 - **Reading it:** the asset frame is the root's own frame (its own transform
   excluded), the frame `position` and `rotation_degrees` apply in. `origin.label`
   such as `x:center y:min z:center` means bottom centre. Plane normals follow
@@ -89,7 +114,10 @@ instances it off the scene tree, measures, and frees it.
   flat.
 - **Limits:** planes are binned at about 1.4 degrees and 1 cm. Vertices are
   welded at 0.1 mm, so UV seams do not count as holes; double-sided or capped
-  ends have no loop. Hidden meshes are listed but not analysed.
+  ends have no loop. Hidden meshes are listed but not analysed. `one_sided`
+  reads `cull_mode` of a `BaseMaterial3D`, or `cull_disabled` / `cull_front`
+  in a shader's code; a mesh with no material counts as one-sided (the default
+  material culls back faces).
 - **Ops:** `RunSceneScript` (read-only probe).
 
 ## `summer_instantiate_scene` (placed)
@@ -118,9 +146,14 @@ instances it off the scene tree, measures, and frees it.
   actual}]}`. `index` is the position in your `ops` list. Use it for every batch
   over a few ops: a full receipt for about 30 or more ops overflows the tool
   output limit.
-- **Limits:** the engine still runs each `InstantiateScene` as its own
-  request, so a batch of N placed pieces is about 2N + 1 requests and 2N undo
-  steps.
+- **Cost:** the engine runs each `InstantiateScene` as its own request. The
+  transforms of a run of `InstantiateScene` ops are held back and sent
+  together (up to 200 `SetProp`s per request) just before the next op that is
+  not an `InstantiateScene`, riding along with it when it can. A batch of N
+  placed pieces is therefore about N + 2 requests and N + 2 undo steps (it was
+  2N + 1). Every later op in the list (a `SetProp`, `SnapToSurface`, a query,
+  the save) runs after the transforms land. If an `InstantiateScene` fails,
+  the pieces created before it still get their transforms; nothing is saved.
 
 ## `summer_place_adjacent`
 
@@ -151,30 +184,66 @@ instances it off the scene tree, measures, and frees it.
   direction}` (with both, hits on other nodes are skipped); `backAxis` (the
   subject's local axis that faces into the surface, default `-z`); `upAxis`
   (default `+y`); `worldUp` (default `[0,1,0]`); `standoff` (default 0);
+  `placeAt` (`current`, the default, or `hit`); `maxMove` (default 2);
   `maxDistance` (ray length, default 20); `collisionMask`.
-- **Behaviour:** the probe casts the ray (physics first, visual AABB fallback
-  declared). The piece is turned so `backAxis` points along -normal and
-  `upAxis` follows `worldUp` projected onto the surface (on a floor or ceiling,
-  where that is undefined, the current up is kept and a warning says so). Its
-  origin is put on the normal line through the hit point, in front of the
-  surface. `SnapToSurface` then sweeps it along -normal and seats it at
-  `standoff`.
-- **Result:** `{subject, surface_hit {evidence, path, point, normal,
-  distance}, orientation {backAxis, upAxis, world_back, world_up}, seat
-  {ok, evidence, supportPath, finalGap, gapErrorBound, initiallyOverlapping,
-  backoffDistance, hitTravel, origin, warnings}, standoff, saved, warnings}`.
-  A seat failure answers `ok: false` with `mutationApplied: true, saved: false`:
-  the piece was turned and moved but not seated.
+- **Place the piece near its mount first** (`summer_instantiate_scene` with
+  `position`): this tool turns it and pushes it onto the surface.
+- **Behaviour:** the probe reads the piece's visible bounds along its own axes
+  and casts the ray (physics first, visual AABB fallback declared). The piece is
+  turned so `backAxis` points along -normal and `upAxis` follows `worldUp`
+  projected onto the surface (on a floor or ceiling, where that is undefined,
+  the current up is kept and a warning says so). The planned seat puts its
+  **back face** (the extreme of its visible bounds along `backAxis`, not its
+  origin) at `standoff` in front of the plane through the hit point:
+  - `placeAt: "current"`: the piece keeps its height and its place along the
+    surface and moves only along the surface normal.
+  - `placeAt: "hit"`: it also slides so the centre of its back face lands on
+    the hit point (its height then follows the ray).
+  One `SetProp` turns it and puts its back face 5 cm in front of the planned
+  seat; `SnapToSurface` sweeps it along -normal (at most `standoff` + 0.3) and
+  seats it at `standoff` by its own evidence.
+- **Checked before saving:**
+  - a planned move longer than `maxMove` is refused before anything changes
+    (`move_exceeds_max_move`, `mutationApplied: false`), and so is, with
+    `placeAt: "current"`, a ray hit farther than `maxMove` along the surface
+    from the piece's back face (`hit_far_from_piece`: aim the ray at the piece,
+    or pass `placeAt: "hit"` to move it there);
+  - with `surface`, the seat must be on that node or inside it; with a ray
+    only, a seat on another node is accepted only when it lies on the hit plane
+    (a coplanar neighbour module, warned `seated_on_coplanar_<path>`). Anything
+    else is refused as `seated_on_other_node`;
+  - a failed seat (`overlap_recovery_exceeded`, `gap_exceeds_hit_travel`,
+    `surface_not_found`, `subject_not_ready`) is reported with `blockers
+    {evidence, overlapping, overlaps, first_contact {path, distance}}`, read
+    where the seat started, and a `next_step`.
+
+  A refusal or failure puts the piece back exactly where it started
+  (`restored: true`), saves nothing and answers `ok: false` with `seated_on`,
+  `intended_surface`, `in_front_of_plan` (how far in front of the planned seat
+  it stopped) and `next_step`.
+- **Result:** `{subject, placed_at, seated_on, final_gap (the collider gap
+  from SnapToSurface), back_face_gap (visible back face to the hit plane),
+  moved_by, surface_hit {evidence, path, point, normal, distance}, orientation
+  {backAxis, upAxis, world_back, world_up}, back_face_offset (origin to back
+  face along backAxis), seat {ok, evidence, supportPath, finalGap,
+  gapErrorBound, initiallyOverlapping, backoffDistance, hitTravel, origin,
+  warnings}, standoff, saved, warnings}`.
+- **Warnings worth acting on:** `visible_back_X_into_surface` (the collider
+  sits X behind the visible back face, so the mesh pokes into the wall: add X
+  to `standoff`); `surface_not_flat_under_piece` (it seated on the surface but
+  in front of the hit plane); `hit_normal_pointed_away_from_the_ray_flipped`
+  (the ray hit a back face; the piece still mounts on the ray's side).
 - **Check after:** `summer_starcast` with `directionSpace: "local"`. Its local
   names follow Godot (`forward` = -Z, `back` = +Z), so a -Z back reads
   `forward` blocked (or the surface in `contacts` when seated flush) and `back`
   open.
-- **Limits:** the seat stops at the first thing in the way along -normal, and
-  `warnings` names it when that is not the surface. A mesh-only wall gives an
-  AABB face normal (axis-aligned), and SnapToSurface's own evidence is then
-  `visual_aabb`. Pass `backAxis` from `summer_inspect_asset`, never a guess.
-- **Ops:** `RunSceneScript` (ray), `SetProp` (transform), `SnapToSurface`,
-  `SaveScene`.
+- **Limits:** the back face is the visible-mesh AABB in the piece's own axes;
+  the seat itself is collider-exact when the piece has colliders. A mesh-only
+  wall gives an AABB face normal (axis-aligned), and SnapToSurface's own
+  evidence is then `visual_aabb`. A mirrored (negative-scale) piece is refused.
+  Pass `backAxis` from `summer_inspect_asset`, never a guess.
+- **Ops:** `RunSceneScript` (bounds and ray; the blockers read after a failed
+  seat), `SetProp` (transform; the restore), `SnapToSurface`, `SaveScene`.
 
 ## `summer_repeat_along`
 
@@ -188,8 +257,8 @@ instances it off the scene tree, measures, and frees it.
   parent-local. At most 64 copies per call.
 - **Result:** the batch summary plus `{template, parent, count, spacing,
   direction, first, last}`.
-- **Ops:** `InstantiateScene`, `SetProp`, `SaveScene` (one request pair per
-  copy).
+- **Ops:** `InstantiateScene` (one request per copy), `SetProp` (every copy's
+  transform in one request), `SaveScene`: N copies cost N + 2 requests.
 
 ## `summer_connect_ports`
 
@@ -201,15 +270,33 @@ instances it off the scene tree, measures, and frees it.
   points out of the port, or an open-loop index from `summer_inspect_asset` on
   that node's scene.
 - **Behaviour:** the subject turns by the shortest rotation that makes its port
-  direction the opposite of the target's (plus `rollDegrees` about that axis),
-  then moves so the ports meet, `gap` apart along the target port direction.
+  direction the opposite of the target's, then by `rollDegrees` about the
+  joined axis, then moves so the ports meet, `gap` apart along the target port
+  direction.
+- **`rollDegrees` exactly:**
+  - axis: the target port's direction reversed, pointing from the joint into
+    the target (`roll_axis` in the receipt);
+  - sign: right-hand rule about that axis; positive turns counter-clockwise
+    when you look back along the axis from inside the target toward the
+    subject;
+  - zero: the shortest turn from the subject's current orientation, so the same
+    value gives different results from different start poses. Once the ports
+    are joined, a second call turns by exactly `rollDegrees` about the joint:
+    180 flips a bend's free end to the other side.
 - **Result:** `{evidence (markers|mesh_triangles), subject_port, target_port,
-  rotated_degrees, moved_by, saved, verify {distance, angle_degrees},
-  warnings}`.
+  roll_axis, roll_degrees, rotated_degrees, moved_by, other_ports [{kind,
+  name|index, position, direction, radius?, direction_ambiguous?}],
+  other_ports_total?, other_ports_predicted?, saved, verify {distance,
+  angle_degrees}, warnings}`.
+- **`other_ports`:** every other port of the subject (its other Marker3D
+  anchors for a marker port, its other open loops for an open-loop port, up to
+  8) with world position and outward direction after the move, measured by the
+  verify read (`other_ports_predicted: true` when that read failed and they
+  were computed from the move). Read where a bend's free end now points
+  instead of measuring it; if it points the wrong way, call again with the
+  `rollDegrees` that turns it about `roll_axis`.
 - **Limits:** open-loop ports are only as exact as the mesh; an end whose
-  direction cannot be decided is flagged `direction_ambiguous`. Roll about the
-  pipe axis is not measured: set `rollDegrees` for bends and check the
-  screenshot.
+  direction cannot be decided is flagged `direction_ambiguous`.
 - **Ops:** `RunSceneScript` (read, verify), `SetProp` (transform),
   `SaveScene`.
 

@@ -71,11 +71,13 @@ defined relative to a rotated subject; then use `directionSpace="local"`.
 
 ## Modular kit placement
 
-1. `summer_inspect_asset` every piece type once. Note its size, where the origin
-   sits (`origin.label`), the largest planes (a large `+z` plane at the max z
-   offset means the visible face looks along +z and the back is `-z`), open
-   loops (pipe ends), anchors and colliders. Read pieces.json or the pack notes
-   too, but trust the measurement.
+1. `summer_inspect_asset` every piece type once and read its `summary` first:
+   size, where the origin sits (`origin.label`), the two largest opposite plane
+   pairs (a large `+z` plane at the max z offset means the visible face looks
+   along +z and the back is `-z`; a `one_sided` sheet with no opposite plane
+   is invisible from behind), port-like loops (pipe and duct ends), anchors
+   and colliders. Read pieces.json or the pack notes too, but trust the
+   measurement.
 2. `summer_world_snapshot`; keep the `snapshot_id`.
 3. Place the first piece of a line with `summer_instantiate_scene` and its
    `position` / `rotation_degrees`. Place the rest relative to it:
@@ -83,8 +85,11 @@ defined relative to a rotated subject; then use `directionSpace="local"`.
    For many pieces at known poses use one `summer_batch` with
    `receipt: "summary"`.
 4. Mount wall pieces with `summer_attach_to_surface`, using the back axis from
-   step 1. Join pipe and duct runs with `summer_connect_ports`; add clamps and
-   braces with `summer_repeat_along`.
+   step 1. Instance each at its mount height first: the tool keeps the height
+   and pushes the piece's back face onto the wall, and refuses (putting the
+   piece back) when the seat lands on another node. Join pipe and duct runs
+   with `summer_connect_ports`; its `other_ports` says where a bend's free end
+   now points. Add clamps and braces with `summer_repeat_along`.
 5. Check: `summer_measure` plane mode on each facade line (every front on one
    plane), pair mode on joints you doubt, `summer_starcast` with
    `directionSpace: "local"` on mounted pieces, `summer_test_placement` before
@@ -125,11 +130,11 @@ summer_raycast {scenePath:"res://facade_test.tscn", origin:[2.15,0.5,1], directi
 summer_instantiate_scene {..., scene:"res://kit/gutter_section.tscn", name:"Pipe_1", position:[2.15,0.1,0.5]}
 summer_attach_to_surface {scenePath:"res://facade_test.tscn", subject:"./Facade/Pipe_1",
   ray:{origin:[2.15,0.5,1], direction:[0,0,-1]}, backAxis:"-z", upAxis:"+y", standoff:0.02}
-    -> seat {evidence:"physics", supportPath:"Facade/G2", finalGap:0.02}
+    -> seated_on "Facade/G2", final_gap 0.02, back_face_gap 0.02; the pipe keeps y 0.1
 summer_instantiate_scene {..., scene:"res://kit/gutter_section.tscn", name:"Pipe_2", position:[2.15,1.1,0.1]}
 summer_connect_ports {scenePath:"res://facade_test.tscn", subject:"./Facade/Pipe_2", subjectPort:0,
   target:"./Facade/Pipe_1", targetPort:1}
-    -> verify {distance:0, angle_degrees:0}
+    -> verify {distance:0, angle_degrees:0}, other_ports [{index:1, direction:[0,1,0]}]
 summer_repeat_along {scenePath:"res://facade_test.tscn", template:"res://kit/wall_clamp.tscn",
   parent:"./Facade", start:[2.15,0.3,0.02], end:[2.15,1.9,0.02], spacing:0.45}
     -> count 4, created ["Facade/wall_clamp_1", ...]
@@ -142,8 +147,9 @@ summer_starcast {scenePath:"res://facade_test.tscn", path:"./Facade/Lamp", direc
 summer_snapshot_diff {from_id:"<id>"}  then  summer_screenshot
 ```
 
-Open-loop indices come from the section's `open_loops` in step 1 (equal radii
-sort by centre x, then y, then z, so here 0 is the bottom end and 1 the top).
+Open-loop indices come from the section's `open_loops` in step 1 (its
+`summary.port_like_loops`; equal radii sort by centre x, then y, then z, so
+here 0 is the bottom end and 1 the top).
 On the target pick the loop whose `direction` points where the run continues;
 on the subject, the one that points back at the target. With packs that ship
 Marker3D anchors, pass their names instead.

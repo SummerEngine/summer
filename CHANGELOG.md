@@ -9,6 +9,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 - `text-to-motion` skill (preview): route, rigging for non-humanoids (human bone names, the talking-flower recipe), prompts and controls, failure codes. `asset-strategy` and `generate-motion` route custom and non-humanoid motion to it.
 
 ### Changed
+- `summer_get_agent_playbook` gains a `placement3d` section: read `spatial-placement` first, then a question-to-tool map for the spatial tools that already ship (`summer_starcast`, `summer_test_placement`, `summer_snap_to_surface`, `summer_align_distribute_3d`, `summer_navigation_probe`, world snapshot + diff + screenshot), with their preview status.
 - `summer_generate_motion`: `motionName` is optional in the schema and still required for `meshy-library` (checked before any request); text-to-motion fields sent with `meshy-library` are rejected instead of silently ignored. The description lists the five motion aliases that always resolve instead of names that do not. `summer tool generate-motion` waits up to 10 minutes, like the MCP tool.
 
 ## [3.1.1] - 2026-09-11

@@ -101,6 +101,23 @@ export function buildAgentPlaybook(
       },
     },
     // ------------------------------------------------------------------
+    // 3D PLACEMENT — question -> tool. These bounded spatial tools ship
+    // today; an agent that never hears of them falls back to hand math.
+    // ------------------------------------------------------------------
+    placement3d: {
+      first: "For any 3D placement (props, kit pieces, walls, shelves, alcoves), call summer_search_library and read skill/spatial-placement (and skill/world-building-3d) before placing. Observe first still applies: snapshot, then place, then verify.",
+      questionToTool: [
+        "'What is around it, which side is blocked, is it flush against the wall?' -> summer_starcast (read-only, 26 directional casts from one node's bounds: open|blocked per direction with distance and object, contact-or-overlap, grounded). Call it BEFORE and AFTER placing; pass directionSpace:'local' for rotated pieces, wall gaps and alcoves.",
+        "'Will it fit here?' -> summer_test_placement: ghost-test a candidate global pose for overlap and floor gap without moving anything. Use it before committing a pose in a tight or dense spot.",
+        "'Seat it on the floor, table or wall' -> summer_snap_to_surface: move along a ray to the first surface at a requested gap (default straight down).",
+        "'Line these up / space them evenly' -> summer_align_distribute_3d: align (min/center/max) or equal-space 2-16 pieces along one axis from their visible AABBs.",
+        "'Did exactly that change, and does it look right?' -> summer_world_snapshot before + summer_snapshot_diff after, then summer_screenshot.",
+        "'Can the player get from A to B?' -> summer_navigation_probe (reachability on the scene's navigation map).",
+      ],
+      evidence: "physics evidence comes from colliders; visual_aabb is a broad-phase fallback for mesh-only geometry. Read the evidence field before trusting a contact or a gap.",
+      status: "skill/spatial-placement, skill/world-building-3d and summer_starcast / summer_test_placement / summer_snap_to_surface / summer_align_distribute_3d / summer_navigation_probe / summer_world_snapshot / summer_snapshot_diff are preview: verify their receipts with a screenshot. An engine build that predates an op answers engine_lacks_op naming the fallback.",
+    },
+    // ------------------------------------------------------------------
     // PHYSICAL INVARIANTS — hold after EVERY placement/import.
     // ------------------------------------------------------------------
     physicalInvariants: [

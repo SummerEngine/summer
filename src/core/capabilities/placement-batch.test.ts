@@ -225,6 +225,19 @@ describe("runBatch", () => {
     const { client: c } = client();
     await expect(runBatch(c, { ops: [piece("A")] })).rejects.toThrow(/scenePath/);
   });
+
+  it("refuses a raw ConnectSignal, and ReparentNode next to placement fields or a summary receipt, before sending", async () => {
+    const { client: c, engine } = client();
+    const move = { op: "ReparentNode", path: "A", new_parent_path: "B" };
+    await expect(
+      runBatch(c, { scenePath: "res://a.tscn", ops: [{ op: "ConnectSignal", emitter: "A", signal: "ready", receiver: ".", method: "f" }] })
+    ).rejects.toThrow(/summer_connect_signal/);
+    await expect(runBatch(c, { scenePath: "res://a.tscn", ops: [piece("A", { position: [0, 1, 0] }), move] })).rejects.toThrow(
+      /own summer_batch/
+    );
+    await expect(runBatch(c, { scenePath: "res://a.tscn", ops: [move], receipt: "summary" })).rejects.toThrow(/own summer_batch/);
+    expect(engine.requests).toEqual([]);
+  });
 });
 
 describe("instantiateScene", () => {

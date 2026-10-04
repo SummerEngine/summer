@@ -43,6 +43,8 @@ import { asRecord, type JsonRecord } from "../util/json.js";
 import { executeOpsChunked, safeProjectPath, sceneMutationOps } from "./engine-ops.js";
 import { extractOpError } from "./engine-receipt.js";
 import { REPLACE_NODE_FALLBACK } from "./engine-fallbacks.js";
+import { reownInPlaceOps } from "./scene-batch.js";
+import { isReadbackFailure, readSavedScene as readSceneFile, readbackFailure, type ReadbackFailure } from "./scene-readback.js";
 import {
   decodeGodotString,
   extResourceId,
@@ -52,7 +54,6 @@ import {
   joinNodePath,
   normalizeNodePath,
   normalizeResPath,
-  parseTscn,
   quotedLiteral,
   type ParsedTscn,
   type TscnNode,
@@ -88,45 +89,14 @@ export interface ReplaceNodeClient extends CapabilityAdvertisingClient {
   ): Promise<unknown>;
 }
 
-const SCENE_READ_LIMIT = 1_000_000;
+type Failure = ReadbackFailure;
+const failure = readbackFailure;
+const isFailure = isReadbackFailure;
 
-interface SavedScene {
-  parsed: ParsedTscn;
-}
+const TOO_LARGE_HINT =
+  "Replace by hand: summer_remove_node, then summer_instantiate_scene with the same parent and name, then summer_set_prop for the transform.";
 
-type Failure = JsonRecord & { ok: false; error: string; failure_reason: string };
-
-function failure(failure_reason: string, error: string, extra: JsonRecord = {}): Failure {
-  return { ok: false, failure_reason, error, ...extra };
-}
-
-async function readSavedScene(client: ReplaceNodeClient, scenePath: string): Promise<SavedScene | Failure> {
-  let read: JsonRecord | null;
-  try {
-    read = asRecord(await client.readProjectFile(scenePath, SCENE_READ_LIMIT));
-  } catch (err) {
-    return failure("scene_unreadable", `Could not read ${scenePath} back: ${err instanceof Error ? err.message : String(err)}`);
-  }
-  if (!read || read.ok === false) {
-    return failure("scene_unreadable", `Could not read ${scenePath} back: ${String(read?.error ?? "no response")}`);
-  }
-  const data = asRecord(read.data);
-  if (typeof data?.content !== "string") {
-    return failure("scene_unreadable", `${scenePath} did not read back as text (binary .scn scenes cannot be verified).`);
-  }
-  if (data.truncated === true) {
-    return failure(
-      "scene_too_large",
-      `${scenePath} is larger than the 1 MB read window, so the replacement could not be planned and verified from the saved file. ` +
-        "Replace by hand: summer_remove_node, then summer_instantiate_scene with the same parent and name, then summer_set_prop for the transform."
-    );
-  }
-  return { parsed: parseTscn(data.content) };
-}
-
-function isFailure(value: unknown): value is Failure {
-  return !!value && typeof value === "object" && (value as JsonRecord).ok === false && typeof (value as JsonRecord).failure_reason === "string";
-}
+const readSavedScene = (client: ReplaceNodeClient, scenePath: string) => readSceneFile(client, scenePath, TOO_LARGE_HINT);
 
 /** Per-op results of a (possibly chunked) receipt. */
 function opResults(receipt: unknown): JsonRecord[] {
@@ -262,7 +232,7 @@ function notPersistedFailure(plan: Plan, verification: Verification, extra: Json
     `summer_replace_node did NOT persist (persisted:false): ${verification.problems.join("; ")}. ` +
       `The editor may show the change, but ${plan.scenePath} on disk does not, so it reverts on reload. Do not report it as done: ` +
       "inspect the saved file (summer_read_file), then redo it with summer_remove_node + summer_instantiate_scene (same parent and name) + summer_set_prop transform.",
-    { persisted: false, scenePath: plan.scenePath, path: plan.target, verification: { ...verification.saved, problems: verification.problems, warnings: verification.warnings }, ...extra }
+    { persisted: false, verified: false, scenePath: plan.scenePath, path: plan.target, verification: { ...verification.saved, problems: verification.problems, warnings: verification.warnings }, ...extra }
   );
 }
 
@@ -348,6 +318,7 @@ export async function replaceNodePersisted(client: ReplaceNodeClient, args: Repl
     return {
       ok: true,
       persisted: true,
+      verified: true,
       scenePath,
       path: target,
       ...extra,
@@ -384,7 +355,8 @@ export async function replaceNodePersisted(client: ReplaceNodeClient, args: Repl
   const directChildren = keptNodes.filter((n) => n.parent === target);
   const deeper = keptNodes
     .filter((n) => n.parent !== target)
-    .sort((a, b) => a.path.split("/").length - b.path.split("/").length || a.order - b.order);
+    .sort((a, b) => a.order - b.order)
+    .map((n) => n.path);
   // Overrides of nodes the OLD instance creates (no type/instance, nearest
   // scene-created ancestor is the old node) belong to the old scene and go.
   const droppedOverrides = before.parsed.nodes
@@ -469,7 +441,7 @@ export async function replaceNodePersisted(client: ReplaceNodeClient, args: Repl
   const rebase = (path: string) => (path === target ? newPath : `${newPath}${path.slice(target.length)}`);
   const structure: JsonRecord[] = [
     ...directChildren.map((c) => ({ op: "ReparentNode", path: c.path, new_parent_path: newPath, keep_global_transform: false })),
-    ...deeper.map((d) => ({ op: "ReparentNode", path: rebase(d.path), new_parent_path: rebase(d.parent!), keep_global_transform: false })),
+    ...reownInPlaceOps(deeper, rebase),
     { op: "MoveNode", path: newPath, new_index: oldIndex },
     { op: "RemoveNode", path: target },
     { op: "SetProp", path: newPath, key: "name", value: node.name },
@@ -521,6 +493,7 @@ export async function replaceNodePersisted(client: ReplaceNodeClient, args: Repl
   return {
     ok: true,
     persisted: true,
+    verified: true,
     scenePath,
     path: target,
     ...extra,

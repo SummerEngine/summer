@@ -134,6 +134,32 @@ export function extractOpError(result: unknown): string | null {
   return null;
 }
 
+/**
+ * The engine stamps `scenePersistence.persisted` on every scene-targeted batch
+ * (ops_executor.cpp: scene_persistence["persisted"] =
+ * explicit_scene_save_succeeded). It only means SaveScene returned OK, not
+ * that the file holds the change: a ReparentNode subtree whose owners the
+ * engine cleared, or a ConnectSignal made without CONNECT_PERSIST, is missing
+ * from a file whose save "persisted" (live check 2026-10-04). Rename it to
+ * what it says — `saved` — on every receipt the client hands out, including
+ * the per-request receipts of a chunked merge. Tools that read the saved file
+ * back add their own `verified` (scene-readback.ts).
+ */
+export function honestSceneReceipt<T>(result: T): T {
+  if (!result || typeof result !== "object" || Array.isArray(result)) return result;
+  const envelope = result as Record<string, unknown>;
+  let out: Record<string, unknown> | null = null;
+  const persistence = envelope.scenePersistence;
+  if (persistence && typeof persistence === "object" && !Array.isArray(persistence) && "persisted" in persistence) {
+    const { persisted, ...rest } = persistence as Record<string, unknown>;
+    out = { ...envelope, scenePersistence: { ...rest, saved: persisted === true } };
+  }
+  if (Array.isArray(envelope.receipts)) {
+    out = { ...(out ?? envelope), receipts: envelope.receipts.map((receipt) => honestSceneReceipt(receipt)) };
+  }
+  return (out ?? result) as T;
+}
+
 /** The per-op text an older engine answers for a Kind its dispatch ladder does
  *  not know (ops_executor.cpp fallthrough: `unknown op: <Kind>`). */
 const UNKNOWN_OP_PATTERN = /unknown op/i;

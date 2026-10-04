@@ -10,6 +10,7 @@ import {
   replaceNodeInputShape,
   replaceNodePersisted,
 } from "../../core/capabilities/replace-node.js";
+import { connectSignalInputShape, connectSignalPersisted } from "../../core/capabilities/connect-signal.js";
 import {
   FALLBACK_SINGLE_ONLY_OPS,
   resolveSingleOnlyOps,
@@ -319,7 +320,7 @@ PLACE IT IN THE SAME CALL: position, rotation_degrees and scale ([x, y, z], pare
 
   server.tool(
     "summer_connect_signal",
-    `Connect a signal between two nodes. Signals are Godot's event system — they notify when something happens.
+    `Connect a signal between two nodes so the connection is SAVED in the scene. Signals are Godot's event system — they notify when something happens.
 
 Common signals:
 - "body_entered" / "body_exited" — Area3D/Area2D detects physics bodies
@@ -328,20 +329,11 @@ Common signals:
 - "area_entered" — Area detects another area
 - "input_event" — CollisionObject received input
 
-The receiver node must have a script with the specified method.`,
-    {
-      scenePath: z.string().describe("Target scene path, e.g. 'res://main.tscn'"),
-      emitter: z.string().describe("Node that fires the signal, e.g. './Player/HitArea'"),
-      signal: z.string().describe("Signal name, e.g. 'body_entered'"),
-      receiver: z.string().describe("Node with the handler script, e.g. './Player'"),
-      method: z.string().describe("Method name in the receiver's script, e.g. '_on_hit_area_body_entered'"),
-    },
-    async ({ scenePath, emitter, signal, receiver, method }) =>
-      withEngine(async (client) =>
-        executeSceneMutation(client, scenePath, [
-          { op: "ConnectSignal", emitter, signal, receiver, method },
-        ])
-      )
+The receiver should have the method (a script method, or a built-in such as queue_free); a missing one is saved anyway and reported in warnings. scenePath must be a .tscn.
+
+PERSISTENCE IS VERIFIED: the engine's ConnectSignal op connects without CONNECT_PERSIST, so its connection never reached the file. This tool connects through a RunSceneScript probe with CONNECT_PERSIST (replacing a non-persistent connection of the same pair), saves, reads the saved .tscn back and returns persisted:true / verified:true only when the [connection] line is there; otherwise an error with failure_reason not_persisted. The probe runs in the active tab: a scene in a background tab is brought forward and the user's tab restored (tab_switched). One Ctrl+Z reverts it.`,
+    connectSignalInputShape,
+    async (args) => withEngine(async (client) => connectSignalPersisted(client, args))
   );
 
   server.tool(
@@ -418,6 +410,9 @@ RAW RUNTIME OPS (interactive verification — structured failure_reason passes t
 - SimulateInput — inject an action/key/mouse/axis into the RUNNING game (summer_play first): {"op": "SimulateInput", "type": "action", "action": "jump", "pressed": true}. It MUST be sent alone (single-op batch). failure_reason "not_running" = start the game first; "unsupported" = the running game build predates the handler — fall back to RunVerification or ask the user.
 
 A raw ReplaceNode with scene is refused (it saves the old scene reference); use summer_replace_node.
+A raw ConnectSignal is refused (the engine connects without CONNECT_PERSIST, so the file never holds it); use summer_connect_signal.
+
+REPARENTNODE KEEPS ITS SUBTREE AND IS VERIFIED: the engine's ReparentNode re-owns only the moved node, so its children and grandchildren were dropped from the saved file. A batch with ReparentNode saves first, reads the saved .tscn, sends each ReparentNode in its own request with an in-place ReparentNode (same parent, same index) per scene-owned descendant to give it back to the scene, then reads the saved file again: persisted:true / verified:true only when every moved node and descendant is at its new path; otherwise an error with failure_reason not_persisted. A move onto a parent that already has a child of that name is refused (failure_reason name_collision). The scenePath must be a .tscn, and Undo cannot share the batch.
 
 Do not mix OpenScene with scene mutations in one batch. OpenScene is a UI action;
 send it separately. scenePath selects every mutation target. The tool appends one
@@ -432,7 +427,10 @@ reports exactly which earlier ops already applied.
 
 PLACED INSTANCES: an InstantiateScene op may also carry position, rotation_degrees, scale ([x, y, z] or "Vector3(...)") or transform ("Transform3D(...)"); the tool sets them on the created node. One op per piece. Other ops are forwarded verbatim. Cost: each InstantiateScene is its own engine request (the engine requires it); the transforms of a run of InstantiateScene ops are then sent together (up to 200 per request) before the next other op, so N placed pieces plus the save cost about N + 2 requests and N + 2 undo steps. Every later op (a SetProp, SnapToSurface, the save) sees the pieces already placed; if an InstantiateScene fails, the pieces created before it still get their transforms.
 
-RECEIPTS: receipt "summary" returns only counts, failures [{index, op, error}] (index = position in your ops list), created node paths and renames, under 5 KB with any cut declared. Use it for any batch over a few ops; the full receipt of a large batch overflows the tool-output limit.`,
+RECEIPTS: receipt "summary" returns only counts, failures [{index, op, error}] (index = position in your ops list), created node paths and renames, under 5 KB with any cut declared. Use it for any batch over a few ops; the full receipt of a large batch overflows the tool-output limit.
+
+scenePersistence.saved means the SaveScene ran; it does not prove what the file
+holds. verified:true is set only where the tool read the saved file back.`,
     {
       scenePath: z.string().optional().describe(
         "Required when ops contains scene mutations; exact res:// target scene path",

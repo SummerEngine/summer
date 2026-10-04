@@ -2,7 +2,8 @@
  * A fake Summer Engine for scene-mutation tests: an in-memory node tree with
  * Godot's owner semantics, a "disk" that only SaveScene writes (packing only
  * scene-owned nodes, as SceneState::pack does), and the ops summer_replace_node
- * sends. It reproduces the two engine behaviours the tool works around:
+ * and the scene tools send. It reproduces the engine behaviours the tools
+ * work around:
  *
  *  - ReplaceNode {scene}: SceneTreeDock::replace_node -> Node::replace_by,
  *    which moves every child (the old instance's own nodes included) and ends
@@ -10,10 +11,19 @@
  *    keeps the OLD scene path, so SaveScene writes the old ExtResource.
  *  - ReparentNode: remove_child clears the owner of every node below the
  *    moved one whose owner is outside the removed subtree; the op re-owns
- *    only the node it moved.
+ *    only the node it moved (scene_ops.cpp SceneOps::reparent_node).
+ *  - ConnectSignal: connects without CONNECT_PERSIST, so SaveScene writes no
+ *    [connection] line (scene_ops.cpp SceneOps::connect_signal).
+ *
+ * RunSceneScript runs only the connect probe of core/capabilities/
+ * connect-signal.ts (read from its constants), in the ACTIVE tab, and marks
+ * that tab unsaved as the engine does after every run. Receipts come back
+ * the way EngineApiClient hands them to the tools: scenePersistence renamed
+ * by honestSceneReceipt.
  */
 import { createHash } from "node:crypto";
 import { parseTscn, type ParsedTscn } from "../core/capabilities/tscn.js";
+import { honestSceneReceipt } from "../core/capabilities/engine-receipt.js";
 
 export interface FakeSceneDef {
   /** Root class of the scene file. */
@@ -44,6 +54,12 @@ export interface FakeEngineOptions {
   unknownProps?: string[];
   /** Advertised op kinds (undefined = no advert). */
   opKinds?: string[];
+  /** The scene in the active editor tab (default: the fake's own scene). */
+  activeScene?: string;
+  /** Other scenes open as tabs (OpenScene can switch to them). */
+  openScenes?: string[];
+  /** Signals the emitters do not have (signal_not_found). */
+  unknownSignals?: string[];
 }
 
 type Op = Record<string, unknown>;
@@ -53,13 +69,19 @@ export class FakeSceneEngine {
   readonly disk = new Map<string, string>();
   readonly sent: Op[][] = [];
   root!: FakeNode;
-  /** Persistent signal connections live on the emitter object, as in Godot. */
-  private connections: Array<{ from: FakeNode; to: FakeNode; signal: string; method: string }> = [];
+  /** Signal connections live on the emitter object, as in Godot; only
+   *  persistent ones are packed. */
+  private connections: Array<{ from: FakeNode; to: FakeNode; signal: string; method: string; persist: boolean }> = [];
+  /** The scene in the active editor tab. */
+  activeScene: string;
+  /** Tabs marked unsaved (RunSceneScript marks the active one; SaveScene clears). */
+  readonly unsaved = new Set<string>();
   private nextId = 1000;
   private readonly scenePath: string;
 
   constructor(scenePath: string, tscn: string, readonly options: FakeEngineOptions) {
     this.scenePath = scenePath;
+    this.activeScene = options.activeScene ?? scenePath;
     this.disk.set(scenePath, tscn);
     this.load(parseTscn(tscn));
   }
@@ -100,7 +122,7 @@ export class FakeSceneEngine {
     for (const c of parsed.connections) {
       const from = this.resolve(c.from);
       const to = this.resolve(c.to);
-      if (from && to) this.connections.push({ from, to, signal: c.signal, method: c.method });
+      if (from && to) this.connections.push({ from, to, signal: c.signal, method: c.method, persist: true });
     }
   }
 
@@ -175,8 +197,27 @@ export class FakeSceneEngine {
     switch (kind) {
       case "SaveScene": {
         if (!this.options.saveDropsChanges) this.disk.set(this.scenePath, this.pack());
-        return { ok: true, op: kind, meta: { scenePath: this.scenePath } };
+        this.unsaved.delete(this.scenePath);
+        // The engine activates the target for the save: dirty is its tab flag after it.
+        return { ok: true, op: kind, meta: { scenePath: this.scenePath, dirty: this.unsaved.has(this.scenePath) } };
       }
+      case "OpenScene": {
+        const path = String(op.path ?? "");
+        if (path !== this.scenePath && !this.options.openScenes?.includes(path)) return fail(`failed to open scene ${path} (err 7)`);
+        this.activeScene = path;
+        return { ok: true, op: kind, meta: { path } };
+      }
+      case "ConnectSignal": {
+        const from = this.resolve(String(op.emitter ?? ""));
+        const to = this.resolve(String(op.receiver ?? ""));
+        if (!from) return fail(`emitter not found: ${op.emitter}`);
+        if (!to) return fail(`receiver not found: ${op.receiver}`);
+        // Callable(receiver, method) with no flags: never packed.
+        this.connections.push({ from, to, signal: String(op.signal), method: String(op.method), persist: false });
+        return { ok: true, op: kind, meta: { nodePath: String(op.emitter) } };
+      }
+      case "RunSceneScript":
+        return this.runSceneScript(String(op.script_source ?? ""));
       case "InstantiateScene": {
         const parent = this.resolve(String(op.parent ?? "."));
         if (!parent) return fail(`parent not found: ${op.parent}`);
@@ -272,6 +313,34 @@ export class FakeSceneEngine {
     }
   }
 
+  /** The connect probe of connect-signal.ts, run against the active tab. */
+  private runSceneScript(source: string): OpResult {
+    const consts: Record<string, string> = {};
+    for (const match of source.matchAll(/^const (\w+) := (".*")$/gm)) consts[match[1]!] = JSON.parse(match[2]!) as string;
+    this.unsaved.add(this.activeScene);
+    const done = (result: Record<string, unknown>): OpResult => ({ ok: true, op: "RunSceneScript", ran: true, result, undo_action: "registered" });
+    if (!source.includes("Object.CONNECT_PERSIST") || consts.EMITTER === undefined) {
+      return { ok: false, op: "RunSceneScript", failure_reason: "script_runtime_error", error: "the fake engine only runs the connect probe" };
+    }
+    if (consts.TARGET_SCENE !== this.activeScene) {
+      return done({ ok: false, failure_reason: "scene_not_active", active_scene: this.activeScene, error: `The active editor tab is ${this.activeScene}` });
+    }
+    const from = this.resolve(consts.EMITTER);
+    if (!from) return done({ ok: false, failure_reason: "emitter_not_found", error: `Emitter not found: ${consts.EMITTER}` });
+    const to = this.resolve(consts.RECEIVER!);
+    if (!to) return done({ ok: false, failure_reason: "receiver_not_found", error: `Receiver not found: ${consts.RECEIVER}` });
+    const signal = consts.SIGNAL_NAME!;
+    if (this.options.unknownSignals?.includes(signal)) {
+      return done({ ok: false, failure_reason: "signal_not_found", signals: ["ready", "tree_entered"], error: `${from.type} has no signal ${signal}` });
+    }
+    const method = consts.METHOD!;
+    const same = this.connections.find((c) => c.from === from && c.to === to && c.signal === signal && c.method === method);
+    const previous = !same ? "none" : same.persist ? "persistent" : "not_persistent";
+    if (same) same.persist = true;
+    else this.connections.push({ from, to, signal, method, persist: true });
+    return done({ ok: true, previous, flags: 2, from: this.pathOf(from), to: this.pathOf(to), method_exists: true });
+  }
+
   // -- pack (what SaveScene writes) ----------------------------------------
 
   pack(): string {
@@ -304,7 +373,7 @@ export class FakeSceneEngine {
     };
     walk(this.root);
     for (const c of this.connections) {
-      if (!this.inTree(c.from) || !this.inTree(c.to)) continue;
+      if (!c.persist || !this.inTree(c.from) || !this.inTree(c.to)) continue;
       blocks.push(`[connection signal="${c.signal}" from="${this.pathOf(c.from)}" to="${this.pathOf(c.to)}" method="${c.method}"]`);
     }
     const header = ["[gd_scene format=3]", ...[...ext].map(([path, id]) => `[ext_resource type="PackedScene" path="${path}" id="${id}"]`)];
@@ -326,7 +395,18 @@ export class FakeSceneEngine {
       if (result.ok === false && stopOnError) break;
     }
     const failed = results.some((r) => r.ok === false);
-    return { ok: !failed, status: failed ? "error" : "ok", terminalState: "applied", results };
+    const save = results.find((r) => r.op === "SaveScene");
+    const sceneTargeted = typeof options?.scenePath === "string";
+    // ops_executor.cpp: scenePersistence.persisted is "the SaveScene returned OK".
+    return honestSceneReceipt({
+      ok: !failed,
+      status: failed ? "error" : "ok",
+      terminalState: "applied",
+      results,
+      ...(sceneTargeted
+        ? { scenePersistence: { ok: !save || save.ok !== false, attempted: !!save, persisted: save?.ok === true, targetScenePath: options!.scenePath, scenePath: options!.scenePath } }
+        : {}),
+    });
   };
 
   executeOps = this.executeIdentityBoundOps;
@@ -346,16 +426,25 @@ export class FakeSceneEngine {
     };
   };
 
-  getSceneState = async (_scenePath?: string, options?: { root?: string }): Promise<unknown> => {
+  getSceneState = async (scenePath?: string, options?: { root?: string; depth?: number }): Promise<unknown> => {
+    if (scenePath !== undefined && scenePath !== this.scenePath) return { ok: false, error: `scene not loaded: ${scenePath}` };
+    // An unresolvable root falls back to the scene root, as the engine does.
     const start = (options?.root ? this.resolve(options.root) : null) ?? this.root;
+    let truncated = false;
+    const toJson = (node: FakeNode, depth: number): Record<string, unknown> => {
+      if (depth <= 0 && node.children.length > 0) truncated = true;
+      return {
+        name: node.name,
+        class: node.type,
+        path: this.pathOf(node),
+        children: depth > 0 ? node.children.map((c) => toJson(c, depth - 1)) : [],
+      };
+    };
+    const data = toJson(start, options?.depth ?? 1);
     return {
       ok: true,
-      data: {
-        name: start.name,
-        class: start.type,
-        path: this.pathOf(start),
-        children: start.children.map((c) => ({ name: c.name, class: c.type, path: this.pathOf(c), children: [] })),
-      },
+      data: { ...data, truncated },
+      provenance: { source: "edited_scene", scenePath: scenePath ?? this.activeScene },
     };
   };
 

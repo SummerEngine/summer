@@ -22,6 +22,7 @@ import {
   type OpResultEnvelope,
 } from "./async-op-lifecycle.js";
 import { pickPlayDeterminism, type PlayDeterminism } from "./capabilities/play-determinism.js";
+import { honestSceneReceipt } from "./capabilities/engine-receipt.js";
 
 export type EngineSnapshot = {
   ok: boolean;
@@ -654,7 +655,9 @@ export class EngineApiClient {
     // different project (identity_mismatch, atomic — before any op applies).
     const merged = { ...(options ?? {}), ...this.identityOptions() };
     const body = Object.keys(merged).length ? { ops, options: merged } : { ops };
-    return this._requestQueued("POST", "/api/ops", body, timeoutMs);
+    // scenePersistence.persisted only means SaveScene ran; hand it out as
+    // `saved` (engine-receipt.ts honestSceneReceipt).
+    return honestSceneReceipt(await this._requestQueued("POST", "/api/ops", body, timeoutMs));
   }
 
   /**

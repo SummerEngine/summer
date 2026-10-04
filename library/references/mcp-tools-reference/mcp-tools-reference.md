@@ -52,7 +52,7 @@
 | `summer_set_prop` | Set a typed property in an explicit `scenePath` using Godot's `str_to_var()`. |
 | `summer_set_resource_property` | Set a nested resource property in an explicit `scenePath`. |
 | `summer_inspect_resource` | Read a resource's properties. |
-| `summer_connect_signal` | Wire a signal between nodes. |
+| `summer_connect_signal` | Wire a signal between nodes in the explicit `scenePath` (a `.tscn`). Connects with `CONNECT_PERSIST` through a RunSceneScript probe (the engine's ConnectSignal op never saves the connection), saves, and returns `persisted:true` / `verified:true` only when the saved file holds the `[connection]` line; otherwise `failure_reason: not_persisted`. |
 
 ### Project & input (2)
 
@@ -226,7 +226,7 @@ Preview. One fast, read-only call that walks every node of a 3D scene and lists 
 | Tool | Use |
 |---|---|
 | `summer_check_job` | Poll a generation job. |
-| `summer_batch` | Run multiple ops as a transaction. `InstantiateScene` ops may carry `position` / `rotation_degrees` / `scale` / `transform`; `receipt: "summary"` returns counts, failures with op index and created paths under 5 KB. |
+| `summer_batch` | Run multiple ops as a transaction. `InstantiateScene` ops may carry `position` / `rotation_degrees` / `scale` / `transform`; `receipt: "summary"` returns counts, failures with op index and created paths under 5 KB. A `ReparentNode` keeps the moved node's scene-owned children and grandchildren (the engine op drops them from the saved file) and is verified from the saved `.tscn` (`persisted:true` / `verified:true`, else `failure_reason: not_persisted`); a raw `ConnectSignal` is refused — use `summer_connect_signal`. `scenePersistence.saved` only means the SaveScene ran. |
 
 ### Meta (4)
 

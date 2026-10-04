@@ -149,6 +149,7 @@ import {
   projectSettingValue,
 } from "./project-context.js";
 import { rawSceneReplaceRefusal, replaceNodeInputSchema, replaceNodePersisted } from "./replace-node.js";
+import { connectSignalInputSchema, connectSignalPersisted } from "./connect-signal.js";
 import { readFileInputSchema, readProjectFileWindow } from "./file-read.js";
 import { buildWorldSnapshotOp, shapeWorldSnapshot, worldSnapshotInputSchema } from "./world-snapshot.js";
 import { inspectNodeFields, inspectNodeInputSchema } from "./inspect-node.js";
@@ -1410,17 +1411,13 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     }
     return instantiateScene(await ctx.engine(), parsed);
   }),
-  entry("summer_connect_signal", "Connect a signal between two nodes", true, async (args, ctx) =>
-    executeSceneMutation(await ctx.engine(), str(args, "scenePath"), [
-      {
-        op: "ConnectSignal",
-        emitter: str(args, "emitter"),
-        signal: str(args, "signal"),
-        receiver: str(args, "receiver"),
-        method: str(args, "method"),
-      },
-    ])
-  ),
+  entry("summer_connect_signal", "Connect a signal between two nodes and verify it in the saved scene", true, async (args, ctx) => {
+    // ONE implementation for both faces (core/capabilities/connect-signal.ts):
+    // CONNECT_PERSIST through a RunSceneScript probe + read-back of the .tscn.
+    const parsed = parseToolArgs(connectSignalInputSchema, args, "connect-signal");
+    const client = await ctx.engine();
+    return buildOrRefuseAsync(() => connectSignalPersisted(client, parsed));
+  }),
   entry("summer_select_node", "Select a node in the editor scene tree", true, async (args, ctx) => {
     const op: DispatchArgs = { op: "SelectNode", nodePath: str(args, "nodePath") };
     if (optStr(args, "scenePath")) op.scenePath = args.scenePath;

@@ -37,9 +37,13 @@ export const CLI_PROTOCOL_VERSION = 1;
  */
 export const CLI_KNOWN_OP_NEEDS: readonly string[] = [
   // Scene graph + properties
+  // (No ConnectSignal: it never saves the connection, so summer_connect_signal
+  // connects through RunSceneScript and summer_batch refuses the raw op —
+  // core/capabilities/connect-signal.ts.)
   "AddNode", "RemoveNode", "ReplaceNode", "SetProp", "SetResourceProperty",
-  "ConnectSignal", "SelectNode", "OpenScene", "SaveScene", "InstantiateScene",
+  "SelectNode", "OpenScene", "SaveScene", "InstantiateScene",
   // summer_replace_node's instantiate/move/remove path (core/capabilities/replace-node.ts)
+  // and summer_batch's ReparentNode re-owning (core/capabilities/scene-batch.ts)
   "MoveNode", "ReparentNode",
   // summer_grep (core/capabilities/grep.ts)
   "Grep",

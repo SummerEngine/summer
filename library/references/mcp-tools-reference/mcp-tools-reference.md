@@ -17,7 +17,7 @@
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (93 tools)
+## Tool surface (98 tools)
 
 ### Project files (3)
 
@@ -162,6 +162,20 @@ Drive and observe the RUNNING game (engine runtime-control ops, preview — `eng
 |---|---|
 | `summer_screenshot` | Capture a frame and return it as an image the agent sees directly — editor viewport (`target:"viewport"`, default; no play needed), offscreen scene render (`target:"scene"`, presets or `framing:"camera"` which renders through the scene's OWN camera with its REAL WorldEnvironment — the trustworthy edit-time lighting check), or running game (`target:"game"`). Newer engines add fixed poses — `framing:"bookmark"` + `bookmark_name` (saved with `summer_camera_bookmark`) or `framing:"free"` + `camera_position`/`camera_look_at` — for before/after frames that line up, and `marks:true` for numbered labels the caption maps to node paths. Use to visually verify scene layout, asset placement, scale, framing, lighting, or runtime state. On macOS the running game is a floating window that can't be captured; prefer `viewport`. |
 | `summer_camera_bookmark` | Save (`action:"save"`, from the editor viewport camera or an explicit pose), list, or delete named camera viewpoints persisted in the project (`res://.summer/camera_bookmarks.json`). Save once, then screenshot from it with `framing:"bookmark"` every time. Returns `engine_lacks_op` on engines that predate the bookmark ops. |
+
+`summer_screenshot framing:"bookmark"` keeps each bookmark's last clean render (no marks, at most 1024 px) as its one previous image in `res://.summer/shots/<bookmark>.jpg`; `compare_previous:true` returns previous | now | difference map in one image.
+
+### Seeing (5)
+
+Preview. Judge a 3D environment the way a player and an artist would. Every image comes back inline (one grid image per call, never N images) with a compact caption; renders are offscreen copies of the SAVED scene with its REAL WorldEnvironment and lights; nothing in the scene, the open tab or the undo history changes. Disk is bounded: only one previous-image slot per rendered bookmark plus explicit `save_to` copies, JPEG at most 1024 px, at most 20 MB under `res://.summer/shots/` (oldest evicted first). The `verifying-scenes` skill carries the environment review loop.
+
+| Tool | Use |
+|---|---|
+| `summer_frame_nodes` | Fit a camera to the world bounds of 1-16 nodes (`direction` preset or `from` vector, `fill`) and render it with the real environment; `bookmark_name` saves the pose, `marks:true` maps labels to node paths. |
+| `summer_shot_sheet` | 1-12 bookmarks/poses in one labelled grid, same tile size, one `view`; `compare_previous:true` gives previous / now / difference map per bookmark with the changed-pixel share. |
+| `summer_debug_views` | One pose as beauty, lighting, unshaded (albedo), world normals, overdraw and wireframe in one grid; the caption names the method per view. |
+| `summer_zoom` | An exact sub-frustum of a `region` or of `mark` N rendered at full resolution: seams, gaps, floating pieces, texture quality. |
+| `summer_frame_shot` | Smart framing for `establishing`, `eye_level`, `low_angle`, `detail` or `corridor`: candidates measured in-engine (thick sweep visibility, near-lens check, low-angle rule, frame ray grid; walls reject, props frame), scored, top 3 returned with breakdowns, best saved as a bookmark, top 3 rendered as one sheet. |
 
 ### Diagnostics (7)
 

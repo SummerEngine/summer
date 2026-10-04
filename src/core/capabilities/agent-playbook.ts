@@ -42,6 +42,12 @@ export function buildAgentPlaybook(
       "If something looks wrong in the screenshot or the diff, investigate and fix before proceeding. Do not stack more work on a broken base.",
     ],
     // ------------------------------------------------------------------
+    // SEEING — judge a 3D environment the way a player and an artist do.
+    // ------------------------------------------------------------------
+    seeing: [
+      "Environment work ('make it beautiful', level dressing, lighting passes): bookmark hero views with summer_frame_shot (establishing / eye_level / low_angle / detail / corridor; walls reject a pose, props frame it), then after every change one summer_shot_sheet of those bookmarks (compare_previous:true for previous / now / difference), summer_debug_views on the weakest shot (lighting, unshaded, normals, overdraw, wireframe) and summer_zoom (region or mark N) into each problem. summer_frame_nodes fits nodes with the REAL environment. Images come back inline, one grid per call; the verifying-scenes skill carries the loop and the beauty rubric. Preview tools.",
+    ],
+    // ------------------------------------------------------------------
     // LIBRARY FEEDBACK — report how the library entries you used worked out.
     // ------------------------------------------------------------------
     libraryFeedback: [

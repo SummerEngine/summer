@@ -1,0 +1,104 @@
+id: tool/frame-nodes
+kind: tool
+version: 1.0.0
+summary: 'Frame nodes by their world bounds and render with the scene''s REAL environment and lights (optionally save the pose as a bookmark).'
+use_when:
+  - '"show me the houses/props with the real lighting" — fit a camera to one or more nodes and render it with the scene''s WorldEnvironment'
+  - 'framing a node from a chosen side (front/back/left/right/top/iso or an explicit direction) for a lighting or mood check'
+  - 'creating a hero-view bookmark that fits a group of nodes, so later shot sheets and compares line up'
+do_not_use_when:
+  - 'the editor viewport or a game frame is what you need — summer_screenshot'
+  - 'you do not know a good view — summer_frame_shot finds and scores poses for a shot type'
+  - 'requires an engine build with ScenePreview fixed-pose framings (Summer Engine 0.5.66 or newer); older engines return engine_lacks_op or framing_unsupported'
+facets:
+  lifecycle:
+    - build
+  domains:
+    - verification
+    - scenes
+    - 3d
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/screenshot
+    - tool/camera-bookmark
+    - tool/shot-sheet
+    - tool/frame-shot
+    - tool/zoom
+  skills:
+    - skill/verifying-scenes
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_frame_nodes
+implementation:
+  module: src/mcp/tools/seeing-tools.ts
+  export: registerSeeingTools
+surfaces:
+  mcp:
+    tool_name: summer_frame_nodes
+    remote: false
+input_schema:
+  type: object
+  properties:
+    scenePath:
+      type: string
+      description: Scene to look at, e.g. "res://levels/town.tscn" (the SAVED file). Omit for the scene open in the editor.
+    nodes:
+      type: array
+      items:
+        type: string
+      minItems: 1
+      maxItems: 16
+      description: Node paths relative to the scene root ("House1", "Props/Crate_02"). The camera fits their combined WORLD bounds (visible meshes, children included).
+    direction:
+      type: string
+      enum:
+        - front
+        - back
+        - left
+        - right
+        - top
+        - iso
+      description: 'Side the camera sits on: "front" (+Z), "back" (-Z), "left" (-X), "right" (+X), "top", "iso" (default, 3/4 from -X,+Y,-Z like summer_screenshot). Use from for anything else.'
+    from:
+      type: string
+      description: Explicit direction FROM the nodes TOWARD the camera, "Vector3(1, 0.4, 2)". Replaces direction.
+    fill:
+      type: number
+      description: Share of the frame the nodes span along their limiting dimension (0.1..1.5, default 0.8).
+    fov:
+      type: number
+      description: Vertical field of view in degrees (default 50).
+    max_size:
+      type: integer
+      minimum: 64
+      maximum: 4096
+      description: Longest edge of the returned JPEG in pixels (default 1024). Bigger costs more context; up to 4096 for detail work on a PC.
+    aspect:
+      type: number
+      description: Frame width/height (default 1.7778 = 16:9). Every tile uses it.
+    marks:
+      type: boolean
+      description: Numbered Set-of-Mark labels over the largest visible nodes; the caption maps label -> node path (feed a label to summer_zoom mark).
+    max_marks:
+      type: integer
+      minimum: 1
+      maximum: 128
+      description: "marks only: cap on labels (engine default 32)."
+    bookmark_name:
+      type: string
+      description: Also save the fitted pose as this camera bookmark (1-64 of A-Z a-z 0-9 _ -), so later renders line up with it.
+  required:
+    - nodes
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

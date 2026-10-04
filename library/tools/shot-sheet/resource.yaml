@@ -1,0 +1,107 @@
+id: tool/shot-sheet
+kind: tool
+version: 1.0.0
+summary: 'Render N bookmarks and/or poses into one labelled grid image with real lighting; compare each bookmark with its previous render (difference map).'
+use_when:
+  - 'seeing every hero view of an environment at once after a change, in one image'
+  - '"did this change make it better?" — compare_previous puts previous, now and a difference map side by side per bookmark'
+  - 'rendering several poses in one debug view (lighting, unshaded, normals, overdraw, wireframe) for a quick sweep'
+do_not_use_when:
+  - 'one pose in all debug views — summer_debug_views'
+  - 'motion or a frame sequence — a RunVerification probe''s save_frame'
+  - 'requires ScenePreview (any current Summer Engine); bookmarks require the camera bookmark ops (0.5.66 or newer)'
+facets:
+  lifecycle:
+    - build
+  domains:
+    - verification
+    - scenes
+    - 3d
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/camera-bookmark
+    - tool/frame-shot
+    - tool/debug-views
+    - tool/zoom
+    - tool/screenshot
+  skills:
+    - skill/verifying-scenes
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_shot_sheet
+implementation:
+  module: src/mcp/tools/seeing-tools.ts
+  export: registerSeeingTools
+surfaces:
+  mcp:
+    tool_name: summer_shot_sheet
+    remote: false
+input_schema:
+  type: object
+  properties:
+    scenePath:
+      type: string
+      description: Scene to look at, e.g. "res://levels/town.tscn" (the SAVED file). Omit for the scene open in the editor.
+    shots:
+      type: array
+      items:
+        type: object
+        properties:
+          bookmark_name:
+            type: string
+            description: Pose from a camera bookmark (summer_camera_bookmark). Use INSTEAD of camera_position/camera_look_at.
+          camera_position:
+            type: string
+            description: 'Explicit pose: camera position, "Vector3(x, y, z)". Goes with camera_look_at.'
+          camera_look_at:
+            type: string
+            description: 'Explicit pose: point the camera looks at, "Vector3(x, y, z)".'
+          fov:
+            type: number
+            description: "Vertical field of view in degrees (1..179). Default: the bookmark's own, or 60."
+          label:
+            type: string
+            description: "Tile label (1-64 printable characters, no quotes, backslashes or $). Default: the bookmark name or 'shot N'."
+        additionalProperties: false
+      minItems: 1
+      maxItems: 12
+      description: 1-12 shots, each a bookmark_name OR camera_position + camera_look_at (+ fov), with an optional label. Rendered in this order, left to right, top to bottom.
+    view:
+      type: string
+      enum:
+        - beauty
+        - lighting
+        - unshaded
+        - normals
+        - overdraw
+        - wireframe
+      description: '"beauty" (default: real environment, lights, fog, tonemap), "lighting" (light only), "unshaded" (albedo/texture only), "normals" (world normals, x red y green z blue), "overdraw", "wireframe".'
+    compare_previous:
+      type: boolean
+      description: "For bookmark shots: one row per bookmark of [previous render | now | difference map], with the share of changed pixels in the caption. The previous render is the bookmark's slot in res://.summer/shots/, replaced by this render."
+    max_size:
+      type: integer
+      minimum: 64
+      maximum: 4096
+      description: Longest edge of the returned JPEG in pixels (default 1536). Bigger costs more context; up to 4096 for detail work on a PC.
+    aspect:
+      type: number
+      description: Frame width/height (default 1.7778 = 16:9). Every tile uses it.
+    save_to:
+      type: string
+      description: Also write the returned image to res://.summer/shots/saved/<name>.jpg (1-64 of A-Z a-z 0-9 _ -; needs max_size <= 1024). Nothing is written without it, except one previous-image slot per rendered bookmark.
+  required:
+    - shots
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

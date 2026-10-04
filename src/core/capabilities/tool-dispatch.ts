@@ -103,6 +103,23 @@ import {
   type ScreenshotFraming,
 } from "./camera-view.js";
 import { PLAY_DETERMINISM_NOT_SUPPORTED, pickPlayDeterminism, readPlayDeterminism } from "./play-determinism.js";
+import {
+  debugViews,
+  frameNodes,
+  frameShot,
+  rememberBookmarkRender,
+  shotSheet,
+  zoom,
+  type SeeingClient,
+  type SeeingResult,
+} from "./seeing/seeing.js";
+import {
+  debugViewsArgsSchema,
+  frameNodesArgsSchema,
+  frameShotArgsSchema,
+  shotSheetArgsSchema,
+  zoomArgsSchema,
+} from "./seeing/args.js";
 import { ToolInputError } from "../tool-errors.js";
 import { getAuthToken } from "../auth.js";
 import open from "open";
@@ -589,6 +606,28 @@ async function snapshotResult(snap: CaptureResult, target: string): Promise<Disp
   }
   const { base64: _dropped, ...rest } = snap;
   return { ...rest, localPath };
+}
+
+/** The shell face of the seeing tools: the same implementation as the MCP
+ *  face; the image (inline over MCP) is written to the OS temp directory here
+ *  like `summer tool screenshot`, and the receipt + caption print as JSON. */
+async function seeingResult(result: SeeingResult, name: string): Promise<DispatchArgs> {
+  if (!result.ok) {
+    throw new ToolResultError({ ok: false, failure_reason: result.failure_reason, error: result.error, ...(result.hint ? { hint: result.hint } : {}), ...(result.detail ? { detail: result.detail } : {}) }, result.error);
+  }
+  let localPath: string | undefined;
+  if (result.image) {
+    const dir = join(tmpdir(), "summer-cli");
+    await mkdir(dir, { recursive: true });
+    localPath = join(dir, `${name}-${Date.now()}.jpg`);
+    await writeFile(localPath, Buffer.from(result.image.base64, "base64"));
+  }
+  return {
+    ok: true,
+    ...result.receipt,
+    caption: result.caption,
+    ...(result.image ? { image: { localPath, width: result.image.width, height: result.image.height, mime: result.image.mime } } : {}),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -1762,6 +1801,25 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   entry("summer_screenshot", "Capture an editor viewport, scene render, or game frame to a file", true, async (args, ctx) => {
     const client = await ctx.engine();
     const target = optStr(args, "target") ?? "viewport";
+    if (args.compare_previous === true) {
+      const bookmarkName = optStr(args, "bookmark_name");
+      const framingArg = optStr(args, "framing");
+      if (target !== "scene" || !bookmarkName || (framingArg !== undefined && framingArg !== "bookmark")) {
+        throw new ToolDispatchError('compare_previous needs target "scene" with framing "bookmark" and bookmark_name.');
+      }
+      const fovArg = optNumberOrUndefined(args, "fov");
+      return seeingResult(
+        await buildOrRefuseAsync(() =>
+          shotSheet(client as unknown as SeeingClient, {
+            scenePath: optStr(args, "scenePath"),
+            shots: [{ bookmark_name: bookmarkName, ...(fovArg !== undefined ? { fov: fovArg } : {}) }],
+            compare_previous: true,
+            max_size: 1536,
+          })
+        ),
+        "screenshot-compare"
+      );
+    }
     // Same capture path as the MCP face (core/capabilities/capture.ts): every
     // frame is content-checked, a flat viewport frame is recaptured once, and a
     // camera-less scene render learns its 2D/3D kind — the receipt carries
@@ -1790,6 +1848,11 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
         })
       );
       snap = await captureScene(client, preview);
+      const bookmark = preview.framing?.startsWith("bookmark:") ? preview.framing.slice("bookmark:".length) : undefined;
+      if (snap.ok && snap.base64 && bookmark && snap.framing === preview.framing) {
+        const slotNotes = await rememberBookmarkRender(typeof client.getProjectRoot === "function" ? client.getProjectRoot() : undefined, bookmark, { base64: snap.base64, width: snap.width, height: snap.height }, preview.marks === true);
+        return { ...(await snapshotResult(snap, target)), slot_notes: slotNotes };
+      }
     } else {
       snap = await captureViewport(client);
     }
@@ -1814,6 +1877,33 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     const missing = missingEngineOpResult(client, kind, CAMERA_BOOKMARK_FALLBACK);
     if (missing) refuseMissingOp(missing);
     return requireSupportedOp(await client.executeOps([op]), kind, CAMERA_BOOKMARK_FALLBACK);
+  }),
+
+  // --- seeing (shared implementation: core/capabilities/seeing/) ---
+  entry("summer_frame_nodes", "Frame nodes by their world bounds and render with the REAL environment (image to a temp file)", true, async (args, ctx) => {
+    const parsed = parseToolArgs(frameNodesArgsSchema, args, "frame-nodes");
+    const client = (await ctx.engine()) as unknown as SeeingClient;
+    return seeingResult(await buildOrRefuseAsync(() => frameNodes(client, parsed)), "frame-nodes");
+  }),
+  entry("summer_shot_sheet", "Render N bookmarks/poses into one labelled grid with real lighting; compare_previous adds a difference map", true, async (args, ctx) => {
+    const parsed = parseToolArgs(shotSheetArgsSchema, args, "shot-sheet");
+    const client = (await ctx.engine()) as unknown as SeeingClient;
+    return seeingResult(await buildOrRefuseAsync(() => shotSheet(client, parsed)), "shot-sheet");
+  }),
+  entry("summer_debug_views", "One pose as beauty/lighting/unshaded/normals/overdraw/wireframe in one grid", true, async (args, ctx) => {
+    const parsed = parseToolArgs(debugViewsArgsSchema, args, "debug-views");
+    const client = (await ctx.engine()) as unknown as SeeingClient;
+    return seeingResult(await buildOrRefuseAsync(() => debugViews(client, parsed)), "debug-views");
+  }),
+  entry("summer_zoom", "High-resolution sub-frustum render of a frame region or mark N", true, async (args, ctx) => {
+    const parsed = parseToolArgs(zoomArgsSchema, args, "zoom");
+    const client = (await ctx.engine()) as unknown as SeeingClient;
+    return seeingResult(await buildOrRefuseAsync(() => zoom(client, parsed)), "zoom");
+  }),
+  entry("summer_frame_shot", "Smart framing: score candidate poses for a shot type in-engine, bookmark the best, render the top 3", true, async (args, ctx) => {
+    const parsed = parseToolArgs(frameShotArgsSchema, args, "frame-shot");
+    const client = (await ctx.engine()) as unknown as SeeingClient;
+    return seeingResult(await buildOrRefuseAsync(() => frameShot(client, parsed)), "frame-shot");
   }),
 
   // --- library (the runtime librarian; engine-free) ---

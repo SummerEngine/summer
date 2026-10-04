@@ -5,6 +5,7 @@ import type { EngineSelection } from "../core/engine.js";
 import { registerSceneTools } from "./tools/scene-tools.js";
 import { registerDebugTools } from "./tools/debug-tools.js";
 import { registerVisualTools } from "./tools/visual-tools.js";
+import { registerSeeingTools } from "./tools/seeing-tools.js";
 import { WITH_ENGINE_META, type WithEngineMeta } from "./tools/with-engine.js";
 import {
   registerPlaybookPrompt,
@@ -364,6 +365,7 @@ export function createMcpServer(): {
   registerSceneTools(server);
   registerDebugTools(server);
   registerVisualTools(server);
+  registerSeeingTools(server);
   registerProjectTools(server);
   registerFileTools(server);
   registerAssetTools(server);

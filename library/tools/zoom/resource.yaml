@@ -1,0 +1,105 @@
+id: tool/zoom
+kind: tool
+version: 1.0.0
+summary: 'High-resolution close-up of a frame region or of mark N, rendered as the exact sub-frustum at full resolution (real detail, not upscaled pixels).'
+use_when:
+  - 'checking seams, gaps, floating pieces, texture resolution or tiling up close'
+  - 'looking closer at a numbered mark from a marks render (summer_frame_nodes marks:true, or summer_screenshot marks at the same size)'
+  - 'inspecting a region a difference map or debug view flagged'
+do_not_use_when:
+  - 'the whole view — summer_shot_sheet / summer_frame_nodes'
+  - 'you have no pose yet — get one from a bookmark or summer_frame_shot first'
+facets:
+  lifecycle:
+    - build
+  domains:
+    - verification
+    - scenes
+    - 3d
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/frame-nodes
+    - tool/screenshot
+    - tool/debug-views
+    - tool/shot-sheet
+  skills:
+    - skill/verifying-scenes
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_zoom
+implementation:
+  module: src/mcp/tools/seeing-tools.ts
+  export: registerSeeingTools
+surfaces:
+  mcp:
+    tool_name: summer_zoom
+    remote: false
+input_schema:
+  type: object
+  properties:
+    scenePath:
+      type: string
+      description: Scene to look at, e.g. "res://levels/town.tscn" (the SAVED file). Omit for the scene open in the editor.
+    bookmark_name:
+      type: string
+      description: Pose from a camera bookmark (summer_camera_bookmark). Use INSTEAD of camera_position/camera_look_at.
+    camera_position:
+      type: string
+      description: 'Explicit pose: camera position, "Vector3(x, y, z)". Goes with camera_look_at.'
+    camera_look_at:
+      type: string
+      description: 'Explicit pose: point the camera looks at, "Vector3(x, y, z)".'
+    fov:
+      type: number
+      description: "Vertical field of view in degrees (1..179). Default: the bookmark's own, or 60."
+    region:
+      type: array
+      items:
+        type: number
+      minItems: 4
+      maxItems: 4
+      description: "[x, y, w, h] as fractions (0..1) of the frame from the same pose, x/y from the TOP-LEFT. Use this OR mark."
+    mark:
+      type: integer
+      description: A label number from a marks:true render of the SAME pose and reference_size (summer_frame_nodes, or summer_screenshot framing free/bookmark at that size).
+    reference_size:
+      type: array
+      items:
+        type: integer
+      minItems: 2
+      maxItems: 2
+      description: "[width, height] of the frame region/mark refer to (default [1024, 576]). Sets the zoom's aspect."
+    pad:
+      type: number
+      description: Margin added around the region on each side, as a fraction of its size (0..1, default 0.15).
+    view:
+      type: string
+      enum:
+        - beauty
+        - lighting
+        - unshaded
+        - normals
+        - overdraw
+        - wireframe
+      description: '"beauty" (default: real environment, lights, fog, tonemap), "lighting" (light only), "unshaded" (albedo/texture only), "normals" (world normals, x red y green z blue), "overdraw", "wireframe".'
+    max_size:
+      type: integer
+      minimum: 64
+      maximum: 4096
+      description: Longest edge of the returned JPEG in pixels (default 1024). Bigger costs more context; up to 4096 for detail work on a PC.
+    save_to:
+      type: string
+      description: Also write the returned image to res://.summer/shots/saved/<name>.jpg (1-64 of A-Z a-z 0-9 _ -; needs max_size <= 1024). Nothing is written without it, except one previous-image slot per rendered bookmark.
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

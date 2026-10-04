@@ -38,6 +38,7 @@ vi.mock("../../core/telemetry.js", () => ({
 import { registerSceneTools } from "./scene-tools.js";
 import { registerDebugTools } from "./debug-tools.js";
 import { registerVisualTools } from "./visual-tools.js";
+import { registerSeeingTools } from "./seeing-tools.js";
 import { registerProjectTools } from "./project-tools.js";
 import { registerFileTools } from "./file-tools.js";
 import { registerAssetTools } from "./asset-tools.js";
@@ -266,6 +267,7 @@ function collectRegisteredTools(): RegisteredTool[] {
     registerSceneTools,
     registerDebugTools,
     registerVisualTools,
+    registerSeeingTools,
     registerProjectTools,
     registerFileTools,
     registerAssetTools,

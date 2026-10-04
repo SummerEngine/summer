@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { withEngine, missingEngineOpResult, withOldEngineHint } from "./with-engine.js";
+import { withEngine, missingEngineOpResult, withOldEngineHint, ToolInputError } from "./with-engine.js";
 import { withFailureReasonHint } from "./perception-tools.js";
 import {
   analyzedSnapshot,
@@ -25,6 +25,8 @@ import {
   readSceneMarks,
   type ScenePreviewInput,
 } from "../../core/capabilities/camera-view.js";
+import { rememberBookmarkRender, shotSheet, type SeeingClient } from "../../core/capabilities/seeing/seeing.js";
+import { seeingContent } from "./seeing-tools.js";
 
 // The capture path (content check, single viewport recapture, scene-kind read
 // for the no-camera confession) is ONE copy in core/capabilities/capture.ts,
@@ -237,6 +239,12 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
         .max(MAX_MARKS_CAP)
         .optional()
         .describe(`marks:true only. Cap on numbered labels (engine default 32, at most ${MAX_MARKS_CAP}). The caption says when the cap truncated the list.`),
+      compare_previous: z
+        .boolean()
+        .optional()
+        .describe(
+          'framing:"bookmark" only. Return ONE image of [previous render | now | difference map] for the bookmark, with the share of changed pixels (summer_shot_sheet compare_previous with this one bookmark). Every clean bookmark render (no marks, at most 1024 px) is kept as that bookmark\'s single previous image in res://.summer/shots/<bookmark>.jpg and replaced by the next render.'
+        ),
     },
     async ({
       target,
@@ -251,10 +259,31 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
       fov,
       marks,
       max_marks,
+      compare_previous,
     }) => {
+      if (compare_previous) {
+        // Same implementation as summer_shot_sheet: one bookmark row of
+        // [previous | now | difference].
+        return withEngine(
+          async (client) => {
+            if (target !== "scene" || !bookmark_name || (framing !== undefined && framing !== "bookmark")) {
+              throw new ToolInputError('compare_previous needs target:"scene" with framing:"bookmark" and bookmark_name. Nothing was sent.');
+            }
+            const result = await shotSheet(client as unknown as SeeingClient, {
+              scenePath,
+              shots: [{ bookmark_name, ...(fov !== undefined ? { fov } : {}) }],
+              compare_previous: true,
+              max_size: 1536,
+            });
+            return { seeing: result, ...(result.ok ? {} : { failure_reason: result.failure_reason }) };
+          },
+          { onResult: (wrapped) => seeingContent(wrapped.seeing) }
+        );
+      }
       // Resolved inside the engine closure so a contradictory framing is a
       // classified invalid_input (nothing sent), never a transport failure.
       let preview: ScenePreviewInput | undefined;
+      let slotNotes: string[] = [];
       return withEngine(
         async (client): Promise<CaptureResult> => {
           if (target === "game") return captureGame(client);
@@ -272,7 +301,18 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
               marks,
               max_marks,
             });
-            return teachPreviewFailure(await captureScene(client, preview));
+            const snap = teachPreviewFailure(await captureScene(client, preview));
+            // One before/after slot per bookmark: a clean render replaces it.
+            const bookmark = preview.framing?.startsWith("bookmark:") ? preview.framing.slice("bookmark:".length) : undefined;
+            if (snap.ok && snap.base64 && bookmark && snap.framing === preview.framing) {
+              slotNotes = await rememberBookmarkRender(
+                typeof client.getProjectRoot === "function" ? client.getProjectRoot() : undefined,
+                bookmark,
+                { base64: snap.base64, width: snap.width, height: snap.height },
+                preview.marks === true
+              );
+            }
+            return snap;
           }
           return captureViewport(client);
         },
@@ -474,7 +514,7 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
             }
             const detailNote = details.length ? `; ${details.join(", ")}` : "";
 
-            const trailer = [...warnings, ...notes];
+            const trailer = [...warnings, ...notes, ...slotNotes];
             const caption =
               `${label} (${dims}${detailNote}). Saved to ${snap.localPath ?? "n/a"}.${frameCheck} Describe only what is visibly in the image above.` +
               (marksBlock.length ? `\n\n${marksBlock.join("\n")}` : "") +

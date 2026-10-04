@@ -165,7 +165,7 @@ Drive and observe the RUNNING game (engine runtime-control ops, preview — `eng
 
 | Tool | Use |
 |---|---|
-| `summer_search_assets` | Free public asset search (community library + user's own). Sources: `library`, `community`, `my_assets`, `all`. |
+| `summer_search_assets` | Free public asset search (community library + user's own). Sources: `library`, `community`, `my_assets`, `all`. `style` keeps one art direction (realistic, stylized-lowpoly, toon, pixel, hand-painted, voxel); `preview` returns a numbered picture of the first 9 results; curated packs first unless `includeCommunity`. |
 | `summer_list_my_assets` | List/search the signed-in user's generated and uploaded assets. Empty query lists recent assets. |
 | `summer_get_asset` | Fetch one exact asset by ID with file URL, download URL, viewer URL, metadata, license, and visibility. |
 | `summer_get_asset_download_url` | Get the primary or thumbnail download URL for a specific asset. Stable shape for future signed URLs. |

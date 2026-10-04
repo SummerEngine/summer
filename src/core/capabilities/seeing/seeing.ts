@@ -1000,10 +1000,19 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
   if (blocked) return blocked;
   const gridRows = Math.max(4, Math.round(GRID_COLS / aspect));
 
+  const timings: Record<string, number> = {};
+  const timed = async <T,>(key: string, work: () => Promise<T>): Promise<T> => {
+    const t0 = Date.now();
+    try {
+      return await work();
+    } finally {
+      timings[key] = Date.now() - t0;
+    }
+  };
   // Pass 1: bounds, spawn, and for corridors the free-run scan.
   const ignore = [...((occluders.ignore as string[] | undefined) ?? []), ...(spawn ? [spawn] : [])];
   const occ = { ...occluders, ignore, subject_occludes: shot === "corridor" };
-  const pass1 = await runProbe(client, {
+  const pass1 = await timed("bounds_ms", () => runProbe(client, {
     scenePath,
     size: [16, 16],
     config: {
@@ -1014,7 +1023,7 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
       occluders: occ,
       corridor: { height: args.eye_height ?? 1.6 },
     },
-  });
+  }));
   await pass1.dispose();
   if (!pass1.ok) return probeFailure(pass1);
   const bounds = readSubjects(pass1.result!);
@@ -1041,7 +1050,7 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
   });
 
   // Pass 2: what each candidate would see.
-  const pass2 = await runProbe(client, {
+  const pass2 = await timed("measure_ms", () => runProbe(client, {
     scenePath,
     size: [16, 16],
     config: {
@@ -1052,7 +1061,7 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
       candidates: candidates.map((c) => ({ position: [...c.position], look_at: [...c.look_at], fov: c.fov, samples: c.samples.map((s) => [...s]), min_clearance: c.min_clearance, low_angle_rule: c.low_angle_rule })),
       measure: { aspect, grid_cols: GRID_COLS, grid_rows: gridRows, subject_occludes: shot === "corridor", near_lens_radius: 0.3, sweep_radius: 0.15 },
     },
-  });
+  }));
   await pass2.dispose();
   if (!pass2.ok) return probeFailure(pass2);
   const measurements = (pass2.result!.measurements ?? []) as Measurement[];
@@ -1109,7 +1118,7 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
       }
       return spec;
     });
-    const run = await renderTiles(client, scenePath, layout.canvas, tiles, dir);
+    const run = await timed("render_ms", () => renderTiles(client, scenePath, layout.canvas, tiles, dir));
     try {
       if (!run.ok) return probeFailure(run);
       image = imageFrom(run);
@@ -1138,6 +1147,13 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
     const occl = s.blockers?.soft?.length ? ` framed by ${s.blockers.soft.slice(0, 2).join(", ")}` : "";
     return `${i + 1}. score ${s.total.toFixed(2)} [${s.id}] ${poseLiteral(s.pose)}\n   ${termText}; sky ${s.stats?.sky} fg ${s.stats?.foreground} wall-behind ${s.stats?.wallBehind}${s.fill !== undefined ? ` fill ${s.fill}` : ""}${adj}${occl}`;
   });
+  const ranked = scored.filter((x) => !x.rejected).sort((a, b) => b.total - a.total);
+  const spawnForward = scored.find((x) => x.id === "eye_spawn_forward");
+  if (spawnForward) {
+    const rank = ranked.indexOf(spawnForward) + 1;
+    header.push(`the spawn's own forward view: ${spawnForward.rejected ? `rejected (${spawnForward.rejected})` : `score ${spawnForward.total.toFixed(2)}, rank ${rank} of ${ranked.length}`} — ${poseLiteral(spawnForward.pose)}`);
+  }
+  header.push(`engine time: ${Object.entries(timings).map(([k, v]) => `${k.replace(/_ms$/, "")} ${(v / 1000).toFixed(1)} s`).join(", ")}`);
   const caption = capCaption([
     ...header,
     "top poses (tile order in the image):",
@@ -1159,6 +1175,7 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
       top: top.map((s) => ({ id: s.id, score: s.total, terms: s.terms, stats: s.stats, ...poseRecord(s.pose), ...(s.adjustments ? { adjustments: s.adjustments } : {}), ...(s.blockers ? { blockers: s.blockers } : {}) })),
       ...(bookmark ? { bookmark } : {}),
       ...(shot === "corridor" ? { corridor: corridorAxes[0] } : {}),
+      timings,
       table: scored.map((s) => ({ id: s.id, total: s.total, ...(s.rejected ? { rejected: s.rejected } : {}), terms: s.terms })),
     },
   };

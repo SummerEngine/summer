@@ -516,28 +516,40 @@ func _overlaps(pos: Vector3, radius: float, mask: int) -> Array:
 	return _state.intersect_shape(q, 4)
 
 
+const SWEEP_SEGMENT := 4.0
+
+
 # Fraction [0..1] of the motion a sphere can travel before touching `mask`
-# geometry, plus the path of what it touched.
+# geometry, plus the path of what it touched. The motion is swept in short
+# segments: a cast's cost grows with every body inside its swept bounds, and
+# one 40 m diagonal sweep through a city block touches most of the scene.
 func _sweep(from: Vector3, motion: Vector3, radius: float, mask: int) -> Dictionary:
-	if motion.length() < 0.001:
+	var total := motion.length()
+	if total < 0.001:
 		return {"free": 1.0, "hit": ""}
+	var dir := motion / total
+	var steps := maxi(1, int(ceil(total / SWEEP_SEGMENT)))
+	var seg := total / steps
 	var q := PhysicsShapeQueryParameters3D.new()
 	q.shape_rid = _sphere(radius)
-	q.transform = Transform3D(Basis(), from)
-	q.motion = motion
 	q.collision_mask = mask
-	var res: PackedFloat32Array = _state.cast_motion(q)
-	if res.size() < 2 or res[1] >= 1.0:
-		return {"free": 1.0, "hit": ""}
-	var hit_path := ""
-	var q2 := PhysicsShapeQueryParameters3D.new()
-	q2.shape_rid = _sphere(radius * 1.05)
-	q2.transform = Transform3D(Basis(), from + motion * res[1])
-	q2.collision_mask = mask
-	var info := _state.get_rest_info(q2)
-	if info.has("rid"):
-		hit_path = String((_body_geom.get((info["rid"] as RID).get_id(), {}) as Dictionary).get("path", ""))
-	return {"free": float(res[0]), "hit": hit_path}
+	for k in steps:
+		var start := from + dir * (seg * k)
+		q.transform = Transform3D(Basis(), start)
+		q.motion = dir * seg
+		var res: PackedFloat32Array = _state.cast_motion(q)
+		if res.size() < 2 or res[1] >= 1.0:
+			continue
+		var hit_path := ""
+		var q2 := PhysicsShapeQueryParameters3D.new()
+		q2.shape_rid = _sphere(radius * 1.05)
+		q2.transform = Transform3D(Basis(), start + dir * seg * res[1])
+		q2.collision_mask = mask
+		var info := _state.get_rest_info(q2)
+		if info.has("rid"):
+			hit_path = String((_body_geom.get((info["rid"] as RID).get_id(), {}) as Dictionary).get("path", ""))
+		return {"free": (seg * k + seg * float(res[0])) / total, "hit": hit_path}
+	return {"free": 1.0, "hit": ""}
 
 
 # cast_motion resolves the free fraction in coarse steps of the motion, so a
@@ -569,8 +581,11 @@ func _corridor_scan(spec: Dictionary) -> Dictionary:
 	var floor_y := float(spec.get("floor_y", box.position.y))
 	var mask := LAYER_HARD | LAYER_SOFT | LAYER_SUBJECT
 	var radius := float(spec.get("radius", 0.25))
-	var max_len := float(spec.get("max_len", 120.0))
-	var grid := int(spec.get("grid", 4))
+	# Runs only matter inside the subject (+ a margin): the caller clips them
+	# to its bounds + 2 m, so sweeping further is wasted engine time.
+	var max_len := float(spec.get("max_len", clampf(maxf(box.size.x, box.size.z) + 4.0, 8.0, 120.0)))
+	var side_len := minf(20.0, max_len)
+	var grid := int(spec.get("grid", 3))
 	var dirs := int(spec.get("directions", 8))
 	var runs: Array = []
 	var blocked := 0
@@ -593,8 +608,8 @@ func _corridor_scan(spec: Dictionary) -> Dictionary:
 					"seed": _arr(seed, 2), "dir": _arr(d, 4),
 					"fwd": snappedf(_free_run(seed, d, max_len, radius, mask), 0.01),
 					"back": snappedf(_free_run(seed, -d, max_len, radius, mask), 0.01),
-					"left": snappedf(_free_run(seed, perp, 40.0, radius, mask), 0.01),
-					"right": snappedf(_free_run(seed, -perp, 40.0, radius, mask), 0.01),
+					"left": snappedf(_free_run(seed, perp, side_len, radius, mask), 0.01),
+					"right": snappedf(_free_run(seed, -perp, side_len, radius, mask), 0.01),
 				})
 	return {"runs": runs, "blocked_seeds": blocked}
 
@@ -607,11 +622,17 @@ func _look_basis(pos: Vector3, look: Vector3) -> Basis:
 	return Basis.looking_at(fwd, up)
 
 
+var _t_lens := 0
+var _t_sweep := 0
+var _t_grid := 0
+
+
 func _measure_all(candidates: Array) -> Array:
 	var spec: Dictionary = _cfg.get("measure", {})
 	var out: Array = []
 	for i in candidates.size():
 		out.append(_measure_one(i, candidates[i], spec))
+	_result["measure_ms"] = {"lens": _t_lens / 1000, "sweeps": _t_sweep / 1000, "grid": _t_grid / 1000}
 	return out
 
 
@@ -653,6 +674,7 @@ func _measure_one(index: int, cand: Dictionary, spec: Dictionary) -> Dictionary:
 		return _finish_measure(rec, pos, look, fov, adjustments)
 	# 2. Near-lens safeguard: a small sphere at the lens must be clear of every
 	# kind of geometry; if not, nudge forward along the view line a little.
+	var t_lens := Time.get_ticks_usec()
 	var lens_r := float(spec.get("near_lens_radius", 0.3))
 	var fwd := (look - pos).normalized()
 	if not _overlaps(pos, lens_r, all_mask).is_empty() or _enclosed(pos, fwd):
@@ -674,8 +696,10 @@ func _measure_one(index: int, cand: Dictionary, spec: Dictionary) -> Dictionary:
 				rec["near_lens_hit"] = String((_body_geom.get((blockers[0]["rid"] as RID).get_id(), {}) as Dictionary).get("path", ""))
 			rec["rejected"] = "near_lens_blocked"
 			return _finish_measure(rec, pos, look, fov, adjustments)
+	_t_lens += Time.get_ticks_usec() - t_lens
 	# 3. Thick swept visibility to sample points on the subject: hard geometry
 	# rejects, soft geometry (props, foliage, fences) only counts as framing.
+	var t_sweep := Time.get_ticks_usec()
 	var sweep_r := float(spec.get("sweep_radius", 0.15))
 	var vis := ""
 	var blockers_hard: Array = []
@@ -692,6 +716,16 @@ func _measure_one(index: int, cand: Dictionary, spec: Dictionary) -> Dictionary:
 			vis += "V"
 			continue
 		var motion := v.normalized() * (length - sweep_r - 0.05)
+		# A thin ray that is already blocked settles it (the thick sweep would
+		# be blocked too); only clear lines pay for the thick sweep, which is
+		# what catches the corners a thin ray slips past.
+		var thin := _ray(pos, pos + motion, sweep_hard_mask)
+		if not thin.is_empty():
+			vis += "H"
+			var thin_path := String((_body_geom.get((thin["rid"] as RID).get_id(), {}) as Dictionary).get("path", ""))
+			if thin_path != "" and not blockers_hard.has(thin_path) and blockers_hard.size() < 4:
+				blockers_hard.append(thin_path)
+			continue
 		var h := _sweep(pos, motion, sweep_r, sweep_hard_mask)
 		if float(h["free"]) < 1.0:
 			vis += "H"
@@ -710,8 +744,10 @@ func _measure_one(index: int, cand: Dictionary, spec: Dictionary) -> Dictionary:
 		rec["blockers_hard"] = blockers_hard
 	if not blockers_soft.is_empty():
 		rec["blockers_soft"] = blockers_soft
+	_t_sweep += Time.get_ticks_usec() - t_sweep
 	# 4. A ray grid through the frame: what each part of the image would show
 	# (sky, subject, hard or soft geometry) and how far away it is.
+	var t_grid := Time.get_ticks_usec()
 	var cols := int(spec.get("grid_cols", 16))
 	var rows := int(spec.get("grid_rows", 9))
 	var max_dist := float(spec.get("max_ray", 600.0))
@@ -736,6 +772,7 @@ func _measure_one(index: int, cand: Dictionary, spec: Dictionary) -> Dictionary:
 			dists.append(snappedf(pos.distance_to(hit["position"]), 0.1))
 	rec["grid"] = codes
 	rec["dist"] = dists
+	_t_grid += Time.get_ticks_usec() - t_grid
 	return _finish_measure(rec, pos, look, fov, adjustments)
 
 

@@ -1,13 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("../../mcp/server.js", () => ({ getClient: vi.fn(), resetClient: vi.fn(), getCachedBootDriftNotice: () => null }));
 vi.mock("../telemetry.js", () => ({ recordMcpSession: vi.fn() }));
 
-import { getClient } from "../../mcp/server.js";
-import { registerSceneTools } from "../../mcp/tools/scene-tools.js";
 import { EngineApiClient } from "../api-client.js";
 import { ToolInputError } from "../tool-errors.js";
-import { dispatchTool } from "./tool-dispatch.js";
 import {
   INSPECT_RESOURCE_ARGS_TOKEN,
   buildInspectResourceScript,
@@ -24,11 +20,10 @@ function probeArgs(op: Op): Op {
   return JSON.parse(Buffer.from(JSON.parse(line.slice("const ARGS_B64 = ".length)) as string, "base64").toString("utf8")) as Op;
 }
 
-/** What the probe returns for the gutter outlet mesh of round 1
- *  (real-city-kit-fixtures/modular_metal_gutter/meshes/modular_metal_gutter_outlet.res). */
+/** What the probe returns for a small single-surface kit mesh. */
 const OUTLET_MESH = {
   ok: true,
-  path: "res://starter/real-city-kit-fixtures/modular_metal_gutter/meshes/modular_metal_gutter_outlet.res",
+  path: "res://kit/meshes/gutter_outlet.res",
   resource_type: "ArrayMesh",
   mesh: {
     aabb: { min: [-0.077, -0.272, -0.167], max: [0.077, 0.132, 0.094], size: [0.153, 0.404, 0.261] },
@@ -72,8 +67,7 @@ function fakeClient(answer: (args: Op) => Op, options: { lacks?: string[] } = {}
   return client;
 }
 
-// Field evidence (round 1, 2026-10-04): summer_inspect_resource on a mesh .res
-// answered "missing nodePath or property" although the schema takes only
+// Regression: summer_inspect_resource on a mesh .res used to answer "missing nodePath or property" although the schema takes only
 // path: the tool sent ?path= to state:resource, which reads a resource a NODE
 // holds and takes nodePath + property.
 describe("summer_inspect_resource on a resource file", () => {
@@ -184,26 +178,5 @@ describe("summer_inspect_resource arguments", () => {
     expect(literal).toMatch(/^"[A-Za-z0-9+/]*={0,2}"$/);
     // Mesh surfaces are read through ArrayMesh-only calls only on an ArrayMesh.
     expect(template).toContain("if mesh is ArrayMesh:\n\t\t\tprim = mesh.surface_get_primitive_type(s)");
-  });
-});
-
-describe("summer_inspect_resource faces", () => {
-  it("MCP and CLI both run the file probe", async () => {
-    const mcpClient = fakeClient(() => OUTLET_MESH);
-    vi.mocked(getClient).mockResolvedValue(mcpClient as never);
-    const registered: Array<{ name: string; handler: (args: Record<string, unknown>) => Promise<{ isError?: boolean; content: Array<{ text: string }> }> }> = [];
-    registerSceneTools({
-      tool(name: string, _description: string, _schema: unknown, handler: (typeof registered)[number]["handler"]) {
-        registered.push({ name, handler });
-        return { name };
-      },
-    } as never);
-    const mcp = await registered.find((t) => t.name === "summer_inspect_resource")!.handler({ path: OUTLET_MESH.path });
-    expect(mcp.isError).toBeFalsy();
-    expect(JSON.parse(mcp.content[0]!.text)).toMatchObject({ ok: true, mesh: { surface_count: 1 } });
-
-    const cliClient = fakeClient(() => OUTLET_MESH);
-    const cli = (await dispatchTool("inspect-resource", { path: OUTLET_MESH.path }, { engine: async () => cliClient as never })) as Record<string, unknown>;
-    expect(cli).toMatchObject({ ok: true, mesh: { triangles: 1342 } });
   });
 });

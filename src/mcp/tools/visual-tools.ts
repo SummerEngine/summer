@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { withEngine, missingEngineOpResult, withOldEngineHint } from "./with-engine.js";
+import { withEngine, missingEngineOpResult, withOldEngineHint, ToolInputError } from "./with-engine.js";
 import { withFailureReasonHint } from "./perception-tools.js";
 import {
   analyzedSnapshot,
@@ -25,6 +25,17 @@ import {
   readSceneMarks,
   type ScenePreviewInput,
 } from "../../core/capabilities/camera-view.js";
+import {
+  checkMarkOcclusion,
+  formatMarksWithOcclusion,
+  rememberBookmarkRender,
+  shotSheet,
+  slotPolicy,
+  type MarkVisibility,
+  type SeeingClient,
+} from "../../core/capabilities/seeing/seeing.js";
+import { parseVector3 } from "../../core/capabilities/seeing/math.js";
+import { seeingContent } from "./seeing-tools.js";
 
 // The capture path (content check, single viewport recapture, scene-kind read
 // for the no-camera confession) is ONE copy in core/capabilities/capture.ts,
@@ -228,7 +239,7 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
         .boolean()
         .optional()
         .describe(
-          'target:"scene" only, 3D scenes. Draw a Set-of-Mark overlay: numbered tags + box outlines over the largest visible VisualInstance3D nodes (lights excluded), ranked by projected screen area. The caption lists label -> node path (scene-root-relative) so you can name what you see. Works with every framing. 2D scenes return marks_unsupported. Default false.'
+          'target:"scene" only, 3D scenes. Draw a Set-of-Mark overlay: numbered tags + box outlines over the largest visible VisualInstance3D nodes (lights excluded), ranked by projected screen area. The caption lists label -> node path (scene-root-relative) so you can name what you see, and an occlusion test (centre + 4 bounds points from the rendered camera) notes "(hidden behind <path>)" on labels whose node is hidden: ignore those. Works with every framing. 2D scenes return marks_unsupported. Default false.'
         ),
       max_marks: z
         .number()
@@ -237,6 +248,18 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
         .max(MAX_MARKS_CAP)
         .optional()
         .describe(`marks:true only. Cap on numbered labels (engine default 32, at most ${MAX_MARKS_CAP}). The caption says when the cap truncated the list.`),
+      compare_previous: z
+        .boolean()
+        .optional()
+        .describe(
+          'framing:"bookmark" only. Return ONE image of [previous render | now | difference map] for the bookmark, with the share of changed pixels (summer_shot_sheet compare_previous with this one bookmark); this render then replaces the bookmark\'s previous image in res://.summer/shots/<bookmark>.jpg. A plain bookmark render (no marks, at most 1024 px) only creates that image when it is missing and never overwrites the compare baseline.'
+        ),
+      update_previous: z
+        .boolean()
+        .optional()
+        .describe(
+          'framing:"bookmark" only. Replace the bookmark\'s previous image (its compare baseline) with this clean render. Default false: an existing baseline is kept.'
+        ),
     },
     async ({
       target,
@@ -251,10 +274,33 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
       fov,
       marks,
       max_marks,
+      compare_previous,
+      update_previous,
     }) => {
+      if (compare_previous) {
+        // Same implementation as summer_shot_sheet: one bookmark row of
+        // [previous | now | difference].
+        return withEngine(
+          async (client) => {
+            if (target !== "scene" || !bookmark_name || (framing !== undefined && framing !== "bookmark")) {
+              throw new ToolInputError('compare_previous needs target:"scene" with framing:"bookmark" and bookmark_name. Nothing was sent.');
+            }
+            const result = await shotSheet(client as unknown as SeeingClient, {
+              scenePath,
+              shots: [{ bookmark_name, ...(fov !== undefined ? { fov } : {}) }],
+              compare_previous: true,
+              max_size: 1536,
+            });
+            return { seeing: result, ...(result.ok ? {} : { failure_reason: result.failure_reason }) };
+          },
+          { onResult: (wrapped) => seeingContent(wrapped.seeing) }
+        );
+      }
       // Resolved inside the engine closure so a contradictory framing is a
       // classified invalid_input (nothing sent), never a transport failure.
       let preview: ScenePreviewInput | undefined;
+      let slotNotes: string[] = [];
+      let markOcclusion: { occlusion: Map<number, MarkVisibility>; note?: string } | undefined;
       return withEngine(
         async (client): Promise<CaptureResult> => {
           if (target === "game") return captureGame(client);
@@ -272,7 +318,32 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
               marks,
               max_marks,
             });
-            return teachPreviewFailure(await captureScene(client, preview));
+            const snap = teachPreviewFailure(await captureScene(client, preview));
+            // One before/after slot per bookmark: a clean render creates it
+            // when missing; only update_previous replaces an existing one.
+            const bookmark = preview.framing?.startsWith("bookmark:") ? preview.framing.slice("bookmark:".length) : undefined;
+            if (snap.ok && snap.base64 && bookmark && snap.framing === preview.framing) {
+              slotNotes = await rememberBookmarkRender(
+                typeof client.getProjectRoot === "function" ? client.getProjectRoot() : undefined,
+                bookmark,
+                { base64: snap.base64, width: snap.width, height: snap.height },
+                preview.marks === true,
+                slotPolicy({ updatePrevious: update_previous === true })
+              );
+            }
+            // Labels on hidden nodes: test each labelled node from the
+            // rendered camera (centre + 4 bounds points).
+            const meta = snap.metadata as Record<string, unknown> | undefined;
+            const marked = snap.ok && preview.marks ? readSceneMarks(meta) : null;
+            const camera = readCameraPose(meta)?.position;
+            if (marked?.marks.length && camera) {
+              try {
+                markOcclusion = await checkMarkOcclusion(client as unknown as SeeingClient, scenePath, parseVector3(camera, "camera_pose.position"), marked.marks);
+              } catch (err) {
+                markOcclusion = { occlusion: new Map(), note: `NOTE: the mark occlusion check could not run (${err instanceof Error ? err.message : String(err)}).` };
+              }
+            }
+            return snap;
           }
           return captureViewport(client);
         },
@@ -470,11 +541,14 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
                 if (parts.length) details.push(`camera pose: ${parts.join(", ")}`);
               }
               const marksSummary = readSceneMarks(meta);
-              if (marksSummary) marksBlock = formatSceneMarks(marksSummary);
+              if (marksSummary) {
+                marksBlock = markOcclusion ? formatMarksWithOcclusion(marksSummary, markOcclusion.occlusion) : formatSceneMarks(marksSummary);
+                if (markOcclusion?.note) marksBlock.push(markOcclusion.note);
+              }
             }
             const detailNote = details.length ? `; ${details.join(", ")}` : "";
 
-            const trailer = [...warnings, ...notes];
+            const trailer = [...warnings, ...notes, ...slotNotes];
             const caption =
               `${label} (${dims}${detailNote}). Saved to ${snap.localPath ?? "n/a"}.${frameCheck} Describe only what is visibly in the image above.` +
               (marksBlock.length ? `\n\n${marksBlock.join("\n")}` : "") +

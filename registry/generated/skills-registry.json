@@ -1089,7 +1089,7 @@
     {
       "id": "skill/verifying-scenes",
       "name": "verifying-scenes",
-      "description": "Prove scene work landed — snapshot before, diff + screenshot after (bookmarked viewpoint, labels), live runtime reads during playtests — then claim.",
+      "description": "Prove scene work landed (snapshot, diff, bookmarked screenshots, runtime reads) and review 3D environments: shot sheets, debug views, zooms, smart framing.",
       "clients": "all",
       "recommended": true,
       "status": "preview",

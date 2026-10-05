@@ -317,6 +317,14 @@ export class EngineApiClient {
     return this.lastHealth?.version;
   }
 
+  /** Absolute project directory: the engine's own report from the last health
+   *  read (newer engines publish project_path), else the explicit --project
+   *  selection. Undefined when neither is known. Used for the bounded
+   *  res://.summer/shots/ folder the seeing tools keep on the local disk. */
+  getProjectRoot(): string | undefined {
+    return this.lastHealth?.project_path ?? this.selection?.projectPath;
+  }
+
   /** The projectIdHash this session is bound to (undefined if none was reported
    *  at connect — e.g. no project open yet). */
   getBoundProjectIdHash(): string | undefined {

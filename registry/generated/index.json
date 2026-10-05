@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.1.0",
-      "content_hash": "c8ef9fe016350f32992f006d1e48ba4e8c81706c9df145dd133e345766f1a221",
+      "content_hash": "a36120de86b87c8e3b46eb432d6d53365a15833b5d2db28490bef25205fb6102",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -3354,14 +3354,16 @@
     {
       "id": "skill/verifying-scenes",
       "kind": "skill",
-      "version": "1.1.1",
-      "content_hash": "9753f7e9486dcb368969a8be4fd93187157a051349f020af2670705fedce4d57",
-      "summary": "Prove scene work landed — snapshot before, diff + screenshot after (bookmarked viewpoint, labels), live runtime reads during playtests — then claim.",
+      "version": "1.2.0",
+      "content_hash": "4f1a643987618eccf7fe15b2bb96415cea11ffd7e103cc715e075fb837c97647",
+      "summary": "Prove scene work landed (snapshot, diff, bookmarked screenshots, runtime reads) and review 3D environments: shot sheets, debug views, zooms, smart framing.",
       "use_when": [
         "after any mutation batch, asset import, or lighting change, before claiming it worked",
         "during a playtest, to read live runtime state (spawned nodes, actual stats) without stopping the game",
         "deciding what counts as evidence for a visual or structural claim",
-        "taking before/after screenshots from the same saved camera viewpoint, or an annotated screenshot whose numbered labels map to node paths"
+        "taking before/after screenshots from the same saved camera viewpoint, or an annotated screenshot whose numbered labels map to node paths",
+        "\"make this environment beautiful\" / reviewing a level like an artist: hero views, a shot sheet after each change, debug views of the weakest shot, zooms into problems",
+        "finding good camera views automatically (establishing, player eye level, low-angle hero, detail, down an alley)"
       ],
       "facets": {
         "lifecycle": [
@@ -3388,7 +3390,12 @@
           "tool/screenshot",
           "tool/wait-for-event",
           "tool/recent-events",
-          "tool/camera-bookmark"
+          "tool/camera-bookmark",
+          "tool/frame-nodes",
+          "tool/shot-sheet",
+          "tool/debug-views",
+          "tool/zoom",
+          "tool/frame-shot"
         ],
         "skills": [
           "skill/scene-scripting",
@@ -4886,6 +4893,55 @@
       }
     },
     {
+      "id": "tool/debug-views",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "deb767453ff63dcacf4b92208baa69b49b1b15b7d3d557b1c23f839a3d45c9f8",
+      "summary": "One pose as a grid of beauty, lighting-only, unshaded/albedo, world normals, overdraw and wireframe views.",
+      "use_when": [
+        "understanding WHY a shot reads badly: light direction and pools, texture/value balance, normal seams, overdraw hot spots, triangle density",
+        "checking floating or duplicated geometry, flipped normals or missing light in one framed view",
+        "judging an environment like an artist, on the weakest shot of a sheet"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "verification",
+          "scenes",
+          "3d"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/shot-sheet",
+          "tool/zoom",
+          "tool/frame-shot",
+          "tool/camera-bookmark"
+        ],
+        "skills": [
+          "skill/verifying-scenes"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_debug_views",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
       "id": "tool/fabricate-3d",
       "kind": "tool",
       "version": "1.0.0",
@@ -4941,6 +4997,107 @@
       "authority": {
         "filesystem": true,
         "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/frame-nodes",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "4a6c94a6ad6dc741d4283434dbdd6d46a8c356793694007623ed0556024eba1b",
+      "summary": "Frame nodes by their world bounds and render with the scene's REAL environment and lights (optionally save the pose as a bookmark).",
+      "use_when": [
+        "\"show me the houses/props with the real lighting\" — fit a camera to one or more nodes and render it with the scene's WorldEnvironment",
+        "framing a node from a chosen side (front/back/left/right/top/iso or an explicit direction) for a lighting or mood check; an explicit direction is checked for walls and back faces between the camera and the nodes",
+        "creating a hero-view bookmark that fits a group of nodes, so later shot sheets and compares line up"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "verification",
+          "scenes",
+          "3d"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/screenshot",
+          "tool/camera-bookmark",
+          "tool/shot-sheet",
+          "tool/frame-shot",
+          "tool/zoom"
+        ],
+        "skills": [
+          "skill/verifying-scenes"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_frame_nodes",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/frame-shot",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "6fb6ae94259ee6f670379d99279491580b8675ecc1fe2832e003821a8ecbb5c1",
+      "summary": "Smart framing: find, score and bookmark camera poses for a shot type (establishing, eye level, low-angle, detail, corridor) with in-engine visibility tests.",
+      "use_when": [
+        "\"find a good view of X\" / \"frame an establishing shot\" / \"show it from the player's eye\" / \"look down the alley\"",
+        "choosing hero views to bookmark for an environment review loop",
+        "checking whether walls or terrain block the view of a subject, and which props frame it (a camera behind or inside a one-sided wall is rejected; transparent foliage and glass are see-through cover)",
+        "three different establishing views at once (one per side while the score allows), scored on the key light's direction and the world edge below the horizon"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "verification",
+          "scenes",
+          "3d"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/shot-sheet",
+          "tool/camera-bookmark",
+          "tool/frame-nodes",
+          "tool/debug-views",
+          "tool/zoom"
+        ],
+        "skills": [
+          "skill/verifying-scenes"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_frame_shot",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
         "network": false,
         "credentials": false,
         "publish": false
@@ -7245,15 +7402,16 @@
     {
       "id": "tool/screenshot",
       "kind": "tool",
-      "version": "1.1.2",
-      "content_hash": "21a24371419f53fb37aa79a8f1e270d34ac595e43a776d95963d20985be4929e",
+      "version": "1.2.0",
+      "content_hash": "1b3955c9e46ce009b49de86f00418b60d10f55fff0f9804cea7586bcdfc1b551",
       "summary": "Capture a frame from the editor viewport, an offscreen scene render (fixed or bookmarked pose, numbered labels), or the running game, as an actual image.",
       "use_when": [
         "visually verifying layout, scale, framing, or runtime state",
         "\"show me what the scene looks like right now\"",
         "\"did the model land where I put it?\" / \"does the UI overlap?\"",
         "\"take a screenshot of the game\" / \"screenshot the running game\" — target \"game\" grabs the live frame",
-        "before/after frames from the SAME viewpoint (framing \"bookmark\" / \"free\"), or an annotated screenshot with numbered labels mapped to node paths (marks)"
+        "before/after frames from the SAME viewpoint (framing \"bookmark\" / \"free\"), or an annotated screenshot with numbered labels mapped to node paths (marks)",
+        "\"what changed since the last render of this view?\" — framing \"bookmark\" with compare_previous returns previous | now | difference map in one image"
       ],
       "facets": {
         "lifecycle": [
@@ -7270,7 +7428,10 @@
       "related": {
         "tools": [
           "tool/camera-bookmark",
-          "tool/world-snapshot"
+          "tool/world-snapshot",
+          "tool/frame-nodes",
+          "tool/shot-sheet",
+          "tool/frame-shot"
         ],
         "skills": [
           "skill/verifying-scenes"
@@ -7467,6 +7628,56 @@
       "authority": {
         "filesystem": true,
         "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/shot-sheet",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "45db27ac2ad936e72212fc8172bc6facaddc4e8ee7eee723b9decf88f3629dbf",
+      "summary": "Render N bookmarks and/or poses into one labelled grid image with real lighting; compare each bookmark with its previous render (difference map).",
+      "use_when": [
+        "seeing every hero view of an environment at once after a change, in one image",
+        "\"did this change make it better?\" — compare_previous puts previous, now and a difference map side by side per bookmark; plain sheets in between never reset that baseline",
+        "rendering several poses in one debug view (lighting, unshaded, normals, overdraw, wireframe) for a quick sweep"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "verification",
+          "scenes",
+          "3d"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/camera-bookmark",
+          "tool/frame-shot",
+          "tool/debug-views",
+          "tool/zoom",
+          "tool/screenshot"
+        ],
+        "skills": [
+          "skill/verifying-scenes"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_shot_sheet",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
         "network": false,
         "credentials": false,
         "publish": false
@@ -8105,6 +8316,55 @@
       },
       "status": "stable",
       "mcp_tool_name": "summer_write_file",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/zoom",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "89aa4303b4c395883ffbc34ca9aa9896fd7bbc75ed23f9d3993550c17ab725ea",
+      "summary": "High-resolution close-up of exactly a frame region or of mark N, rendered as the exact sub-frustum at full resolution (real detail, not upscaled pixels).",
+      "use_when": [
+        "checking seams, gaps, floating pieces, texture resolution or tiling up close",
+        "looking closer at a numbered mark from a marks render (summer_frame_nodes marks:true, or summer_screenshot marks at the same size)",
+        "inspecting a region a difference map or debug view flagged"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "verification",
+          "scenes",
+          "3d"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/frame-nodes",
+          "tool/screenshot",
+          "tool/debug-views",
+          "tool/shot-sheet"
+        ],
+        "skills": [
+          "skill/verifying-scenes"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_zoom",
       "remote": false,
       "authority": {
         "filesystem": true,

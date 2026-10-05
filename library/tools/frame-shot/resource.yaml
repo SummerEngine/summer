@@ -1,0 +1,134 @@
+id: tool/frame-shot
+kind: tool
+version: 1.0.0
+summary: 'Smart framing: find, score and bookmark camera poses for a shot type (establishing, eye level, low-angle, detail, corridor) with in-engine visibility tests.'
+use_when:
+  - '"find a good view of X" / "frame an establishing shot" / "show it from the player''s eye" / "look down the alley"'
+  - 'choosing hero views to bookmark for an environment review loop'
+  - 'checking whether walls or terrain block the view of a subject, and which props frame it (a camera behind or inside a one-sided wall is rejected; transparent foliage and glass are see-through cover)'
+  - 'three different establishing views at once (one per side while the score allows), scored on the key light''s direction and the world edge below the horizon'
+do_not_use_when:
+  - 'you already have the pose — summer_shot_sheet, summer_frame_nodes or summer_screenshot'
+  - 'gameplay camera collision in the running game — that is the camera rig''s job (camera-collision-avoidance knowledge)'
+  - 'a 2D scene'
+facets:
+  lifecycle:
+    - build
+  domains:
+    - verification
+    - scenes
+    - 3d
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/shot-sheet
+    - tool/camera-bookmark
+    - tool/frame-nodes
+    - tool/debug-views
+    - tool/zoom
+  skills:
+    - skill/verifying-scenes
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_frame_shot
+implementation:
+  module: src/mcp/tools/seeing-tools.ts
+  export: registerSeeingTools
+surfaces:
+  mcp:
+    tool_name: summer_frame_shot
+    remote: false
+input_schema:
+  type: object
+  properties:
+    scenePath:
+      type: string
+      description: Scene to look at, e.g. "res://levels/town.tscn" (the SAVED file). Omit for the scene open in the editor.
+    shot:
+      type: string
+      enum:
+        - establishing
+        - eye_level
+        - low_angle
+        - detail
+        - corridor
+      description: '"establishing" (wide, whole subject, 12-40 deg up), "eye_level" (player eye at spawn: its Camera3D, or origin + eye_height), "low_angle" (hero, camera near the ground looking up), "detail" (close-up), "corridor" (down an alley/corridor inside the subject, found by a free-space scan; prefers looking in from its open end).'
+    subject:
+      type: array
+      items:
+        type: string
+      maxItems: 8
+      description: Node paths to frame (required except for eye_level, where it is what the player looks at).
+    spawn:
+      type: string
+      description: "eye_level only: node the player stands at, e.g. the player or a spawn marker. Its own geometry never counts as an occluder."
+    eye_height:
+      type: number
+      description: "eye_level/corridor: eye height above the spawn origin / corridor floor in metres (default: the spawn's Camera3D, else 1.6)."
+    fov:
+      type: number
+      description: Override the shot type's field of view (establishing 55, eye_level 60/75, low_angle 60 then widened, detail 40, corridor 60/75).
+    aspect:
+      type: number
+      description: Frame width/height (default 1.7778 = 16:9). Every tile uses it.
+    occluders:
+      type: object
+      properties:
+        hard:
+          type: array
+          items:
+            type: string
+          description: "Path prefixes that must never block the view (walls, terrain): a pose they block is rejected."
+        soft:
+          type: array
+          items:
+            type: string
+          description: Path prefixes that may sit in front as framing (foliage, fences, props).
+        ignore:
+          type: array
+          items:
+            type: string
+          description: Path prefixes left out of the visibility pass entirely.
+        hard_layers:
+          type: integer
+          description: "Physics layer mask: geometry whose nearest CollisionObject3D is on these layers is hard."
+        soft_layers:
+          type: integer
+          description: Physics layer mask for soft geometry.
+      additionalProperties: false
+      description: "Override the occluder classification. Default: path names (wall/house/terrain... = hard; tree/fence/lamp/prop/pipe... = soft), MultiMesh = soft, else size (<= 2.5 m = soft). The caption reports the counts by rule."
+    max_soft_fraction:
+      type: number
+      description: Most of the subject that soft geometry may cover before a pose is rejected (0..1, default 0.67).
+    bookmark_name:
+      type: string
+      description: Name for the saved best pose (default <shot>_<subject leaf>).
+    save_bookmark:
+      type: boolean
+      description: Save the best pose as a camera bookmark (default true).
+    render:
+      type: string
+      enum:
+        - sheet
+        - best
+        - none
+      description: '"sheet" (default): the top 3 in one labelled grid with real lighting; "best": the winner only; "none": scores only.'
+    max_size:
+      type: integer
+      minimum: 64
+      maximum: 4096
+      description: Longest edge of the returned JPEG in pixels (default 1536). Bigger costs more context; up to 4096 for detail work on a PC.
+  required:
+    - shot
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

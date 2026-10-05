@@ -37,7 +37,7 @@ export function basisAngleDegrees(a: Basis9, b: Basis9): number {
 }
 
 // ---------------------------------------------------------------------------
-// insert_host: the host an insert expects, from pieces.json fits_into
+// insert_host: the host an insert expects, from the manifest's fits_into
 // ---------------------------------------------------------------------------
 
 /**

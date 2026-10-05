@@ -3,7 +3,7 @@ kind: tool
 version: 1.0.0
 summary: 'Smart framing: find, score and bookmark camera poses for a shot type (establishing, eye level, low-angle, detail, corridor) with in-engine visibility tests.'
 use_when:
-  - '"find a good view of X" / "frame an establishing shot" / "show it from the player''s eye" / "look down the alley"'
+  - '"find a good view of X" / "frame an establishing shot" / "show it from the player''s eye" / "look down the street"'
   - 'choosing hero views to bookmark for an environment review loop'
   - 'checking whether walls or terrain block the view of a subject, and which props frame it (a camera behind or inside a one-sided wall is rejected; transparent foliage and glass are see-through cover)'
   - 'three different establishing views at once (one per side while the score allows), scored on the key light''s direction and the world edge below the horizon'
@@ -57,7 +57,7 @@ input_schema:
         - low_angle
         - detail
         - corridor
-      description: '"establishing" (wide, whole subject, 12-40 deg up), "eye_level" (player eye at spawn: its Camera3D, or origin + eye_height), "low_angle" (hero, camera near the ground looking up), "detail" (close-up), "corridor" (down an alley/corridor inside the subject, found by a free-space scan; prefers looking in from its open end).'
+      description: '"establishing" (wide, whole subject, 12-40 deg up), "eye_level" (player eye at spawn: its Camera3D, or origin + eye_height), "low_angle" (hero, camera near the ground looking up), "detail" (close-up), "corridor" (down a lane/corridor inside the subject, found by a free-space scan; prefers looking in from its open end).'
     subject:
       type: array
       items:

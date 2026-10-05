@@ -242,13 +242,13 @@ describe("buildProjectContext", () => {
 
 // A realistic first-call engine: a 0.5.66-class capability advert (the 130-op
 // list, navigation targets, runtime control) and a 200-node scene tree — the
-// shape that made the default payload 61 KB in the 2026-10-04 proof run.
+// shape that made the default payload too large to hand to an agent.
 function heavyClient(): ProjectContextClient {
   const opKinds = Array.from({ length: 130 }, (_, i) => `SomeEngineOperationKind${i}`);
   const children = Array.from({ length: 200 }, (_, i) => ({
     name: `Piece_${i}`,
     class: "StaticBody3D",
-    path: `Alley1/Props/Piece_${i}`,
+    path: `Lane1/Props/Piece_${i}`,
     children: [],
   }));
   return fakeClient({
@@ -260,7 +260,7 @@ function heavyClient(): ProjectContextClient {
       pid: 95936,
       instanceId: "inst-1",
       projectIdHash: "a".repeat(64),
-      project_name: "Hidden Alley sample",
+      project_name: "Town sample",
       project_path: null,
       liveInstances: 1,
       mainAliveMs: 12,
@@ -278,27 +278,27 @@ function heavyClient(): ProjectContextClient {
     }),
     getSceneState: async () => ({
       ok: true,
-      provenance: { scenePath: "res://three_houses_v2.tscn" },
-      data: { name: "Root", class: "Node3D", path: ".", total_nodes: 2692, visited: 200, truncated: true, children },
+      provenance: { scenePath: "res://town.tscn" },
+      data: { name: "Root", class: "Node3D", path: ".", total_nodes: 2400, visited: 200, truncated: true, children },
     }),
   });
 }
 
-describe("compact default (proof run 2026-10-04: 61 KB first call)", () => {
+describe("compact default: a heavy first call stays small", () => {
   it("stays under 6 KB and keeps project, scene path, health summary, memory and warnings", async () => {
     const payload = await buildProjectContext(heavyClient(), {});
     const bytes = Buffer.byteLength(JSON.stringify(payload, null, 2), "utf8");
     expect(bytes).toBeLessThan(6 * 1024);
     expect(payload).not.toHaveProperty("scene");
     expect(payload).not.toHaveProperty("project");
-    expect(payload.currentScene).toBe("res://three_houses_v2.tscn");
+    expect(payload.currentScene).toBe("res://town.tscn");
     expect(payload.mainScene).toBe("res://main.tscn");
-    expect(payload.projectName).toBe("Hidden Alley sample");
+    expect(payload.projectName).toBe("Town sample");
     expect(payload.sceneSummary).toEqual({
-      scenePath: "res://three_houses_v2.tscn",
+      scenePath: "res://town.tscn",
       rootName: "Root",
       rootClass: "Node3D",
-      totalNodes: 2692,
+      totalNodes: 2400,
       topLevelChildren: 200,
     });
     const health = payload.health as Record<string, unknown>;

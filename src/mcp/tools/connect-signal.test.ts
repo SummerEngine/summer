@@ -10,8 +10,8 @@ import { connectScript, connectSignalPersisted } from "../../core/capabilities/c
 import { honestSceneReceipt } from "../../core/capabilities/engine-receipt.js";
 import { dispatchTool } from "../../core/capabilities/tool-dispatch.js";
 
-const SCENE = "res://_bugcheck2/check.tscn";
-const OTHER = "res://three_houses_v2.tscn";
+const SCENE = "res://levels/room.tscn";
+const OTHER = "res://town.tscn";
 const LINE = '[connection signal="timeout" from="Clock" to="Door" method="queue_free"]';
 
 const LEVEL = `[gd_scene format=3]
@@ -43,7 +43,7 @@ function sceneTool(name: string): RegisteredTool {
   return registered.find((candidate) => candidate.name === name)!;
 }
 
-describe("the fake engine reproduces the ConnectSignal field bug (regression guard)", () => {
+describe("the fake engine reproduces the ConnectSignal engine bug (regression guard)", () => {
   it("a raw ConnectSignal answers ok and the save 'ran', but the file has no [connection] line", async () => {
     const fake = engine();
     const receipt = (await fake.executeIdentityBoundOps(

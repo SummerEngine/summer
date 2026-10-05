@@ -39,10 +39,10 @@ Snapshot ids: the engine retains the last 8 per session; `unknown_snapshot` mean
 
 A screenshot only shows what its camera points at. Problems behind a wall, under a prop or across the street slip past it: a door insert narrower than its frame (you see the street through the gap), a bench turned 90 degrees against the wall, a floor tile with holes over an underlay. `summer_scene_audit` walks every node in one read-only call and lists where to look.
 
-1. **After each build stage** (a facade, a street, a dressing pass): save, then `summer_scene_audit scenePath:"res://..."`. It reads the SAVED file in a private offscreen copy, so the open tab never becomes unsaved and nothing is saved. Use `root:"Alley3"` to audit only what you just built (the rest still counts as surroundings) and `checks:[...]` to rerun one check after a fix.
+1. **After each build stage** (a facade, a street, a dressing pass): save, then `summer_scene_audit scenePath:"res://..."`. It reads the SAVED file in a private offscreen copy, so the open tab never becomes unsaved and nothing is saved. Use `root:"Block3"` to audit only what you just built (the rest still counts as surroundings) and `checks:[...]` to rerun one check after a fix.
 2. **Read the page, not just the counts.** Issues come sorted `error`, `warn`, `look`, each with a node path, a world position, a reason, the evidence numbers (sizes, gaps, angles, the ray that reproduces it) and the next tool. The result is at most 5 KB; follow `next_offset` with `offset` for the next page, or narrow with `min_severity:"warn"`.
    - A check with `partial` in its counts ran out of editor time (`budget_ms`, default 3000) and covered only that share. It is not clean: rerun it alone (`checks:["floor_gap"]`) or with a larger `budget_ms` before you call that check clean.
-3. **Frame every error and look item up close before calling the scene done.** `render:"sheet"` returns one image of the page's first 6 issues framed from their open side (tiles labelled `#n`); otherwise `summer_frame_nodes` on the path and `summer_zoom` into it. A look item (`orientation`, a facing or mounting question) is never an answer: decide the facing yourself from the asset (`summer_inspect_asset`) and the pack's metadata.
+3. **Frame every error and look item up close before calling the scene done.** `render:"sheet"` returns one image of the page's first 6 issues framed from their open side (tiles labelled `#n`); otherwise `summer_frame_nodes` on the path and `summer_zoom` into it. A look item (`orientation`, a facing or mounting question) is never an answer: decide the facing yourself from the asset (`summer_inspect_asset`) and the kit's own notes.
 4. **Classify each item as real or a false positive** in your notes. Fix the real ones with the placement tools, then audit again: the same check must come back clean (or the remaining items must be ones you have looked at and accepted).
 
 What the checks mean:
@@ -51,12 +51,12 @@ What the checks mean:
   - "falls to the void" or "holes in its own mesh": the floor really is open.
   - "covers the floor": an underlay plane sits above the floor's own drain or dip. Lower the underlay; the tile is not holed.
   - "bare strip ... between <tile> and <wall>": the tile row stops short of the wall.
-  - Areas are measured (a 4 cm seam is a fraction of a square metre). When the pack documents a ground material (PACK.json or ASSEMBLY.md), `next` names it.
+  - Areas are measured (a 4 cm seam is a fraction of a square metre).
 - `floating` / `sunken`: props 2 cm above or 3 cm into their support. Sunken names the surface the prop is buried in, seen from above.
 - `interpenetration`: over 3 cm, with every piece it cuts (up to 3). Clear all of them, not only the first.
-- `insert_host`: a pieces.json `fits_into` insert in the wrong host, or off its offset.
-- `mount_gap`: a `wall_side` piece off its wall, measured at its centre and sides.
-  - Over 5 cm is reported, or over the pack's documented standoff + 5 cm (pieces.json `standoff_m`, or ASSEMBLY.md "0.1 m off the wall").
+- `insert_host`: an insert a kit manifest `fits_into` a host, in the wrong host or off its offset.
+- `mount_gap`: a piece a kit manifest gives a `mount_side`, off its wall, measured at its centre and sides.
+  - Over 5 cm is reported, or over the manifest's `standoff_m` + 5 cm.
   - A pipe that a wall-touching bracket or clamp holds is not reported, and neither is the rest of its run.
 - `orientation`: front-back symmetric pieces (duct runs, strap braces) are never flagged for pointing away.
 - `uv_stretch`: stretched or collapsed texture an instance shows. A face that inserts normally cover is a warning where it shows.
@@ -66,6 +66,19 @@ What the checks mean:
   - Decals, overlays, `render_priority` and depth offsets come back as look items with the reason. Check that they actually render on top.
 - `lights`: more lights on a mesh than the renderer's per-object limit, and hard spot rims.
 - `transform`, `resource`.
+
+`insert_host`, `mount_gap` and the manifest side of `orientation` need a kit manifest: an optional res:// JSON file you pass with `manifests:["res://kit/kit_manifest.json"]` (nothing is read from disk by itself). Each entry names a scene, by res:// path or by name relative to the manifest's folder, and gives only what the geometry cannot say:
+
+```json
+{"pieces": {
+  "wall_door_a": {"category": "wall", "front_axis": "+Z"},
+  "door_a": {"fits_into": {"piece": "wall_door_a", "local_offset_m": [0, 0, -0.02]}, "front_axis": "+Z"},
+  "res://kit/props/wall_lamp.tscn": {"mount_side": "-Z", "standoff_m": [0, 0.05]},
+  "duct_straight": {"mount_side": "-Z", "standoff_m": 0.1, "symmetric": true}
+}}
+```
+
+`category`: `wall` or `facade` (a facade module), `floor`, `prop`, `dressing`, or any structural word (`band`, `corner`, `pier`, ...). `front_axis`: the local axis the visible front faces. `mount_side`: the local axis that faces the wall the piece hangs on. `standoff_m`: how far off that wall it stands by design (a number, or `[min, max]`). `symmetric`: looks the same turned 180 degrees. `fits_into`: an insert (window, door) and its host, with the insert's offset in the host's frame. Every field is optional; without a manifest the other checks still run from geometry and node names.
 
 ## Choosing the right screenshot
 
@@ -105,7 +118,7 @@ For "make this place beautiful", one screenshot is not enough evidence. Preview 
 
 ### The review loop
 
-1. **Bookmark the hero views** once: `summer_frame_shot` for each shot type that matters (an establishing wide, the player's eye at spawn, a corridor per alley or street, a low-angle hero of the landmark, a detail of the best prop). Read the score breakdown and the rejection counts; a pose a wall blocks never ranks, and neither does a camera behind or inside a one-sided wall (`behind_surface`, `inside_volume`: the renderer does not draw a wall's back, so that image would look through it). The top 3 are three different views (one per side while the score allows); the light term prefers side or front-side key light, the edge term penalises sky or void below the horizon.
+1. **Bookmark the hero views** once: `summer_frame_shot` for each shot type that matters (an establishing wide, the player's eye at spawn, a corridor per street or lane, a low-angle hero of the landmark, a detail of the best prop). Read the score breakdown and the rejection counts; a pose a wall blocks never ranks, and neither does a camera behind or inside a one-sided wall (`behind_surface`, `inside_volume`: the renderer does not draw a wall's back, so that image would look through it). The top 3 are three different views (one per side while the score allows); the light term prefers side or front-side key light, the edge term penalises sky or void below the horizon.
 2. **After each change** (save first): one `summer_shot_sheet` of all hero bookmarks, `compare_previous:true` when judging a change. Each bookmark keeps exactly ONE previous render in `res://.summer/shots/<bookmark>.jpg`: the compare baseline. A `compare_previous:true` render replaces it after comparing; plain sheets, debug views and screenshots in between leave it alone (pass `update_previous:true` to reset it on purpose).
 3. **Take the weakest shot** to `summer_debug_views`: lighting shows dead-dark areas and missing pools, unshaded shows flat texture and value clashes, wireframe shows floating or duplicated pieces.
 4. **Zoom into each problem** with `summer_zoom` before fixing it, and again after. Cite the mark or region in the claim.
@@ -156,7 +169,7 @@ When the next step depends on the engine reaching a moment — the game booting 
 |---|---|
 | "The environment looks good" from one screenshot | Judge a shot sheet of the hero bookmarks against the beauty rubric, then debug-view the weakest. |
 | "The scene is done" without a scene audit | Run `summer_scene_audit`, frame every error and look item up close, fix or accept each one, audit again. |
-| Rotating a piece because an orientation look item said so | The audit never says which way to face. Measure the asset (`summer_inspect_asset`), read the pack's metadata, then decide. |
+| Rotating a piece because an orientation look item said so | The audit never says which way to face. Measure the asset (`summer_inspect_asset`), read the kit's own notes, then decide. |
 | Mutating twice in a row without a diff or screenshot between | You are compounding on an unverified base. Verify, then continue. |
 | "The diff is probably fine, the script said ok" | `ok:true` scripts still drop unowned nodes on save. Read the diff. |
 | Judging lighting from an iso/top framing | Flat substitute environment. Use `framing:"camera"`, boot the game, or a probe. |

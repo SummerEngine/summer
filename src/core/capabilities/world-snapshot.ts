@@ -5,7 +5,8 @@
  *
  * The engine's GetWorldSnapshot (world_snapshot_ops.cpp) takes only
  * scene_path / max_nodes / max_lights / include_2d and returns every node it
- * walked, about 250 bytes each: a 2692-node scene is far too big to read.
+ * walked, about 250 bytes each: a scene of a few thousand nodes is far too
+ * big to read.
  * The engine snapshot is still taken whole — its snapshot_id is the baseline
  * summer_snapshot_diff compares against, and capping it would hide changes —
  * but the agent gets a filtered, capped view: a subtree (path_prefix), some
@@ -50,7 +51,7 @@ export const worldSnapshotInputShape = {
   path_prefix: z
     .string()
     .optional()
-    .describe("Only this subtree: the node at this scene-relative path and everything below it, e.g. 'House3' or 'Alley2/Props'."),
+    .describe("Only this subtree: the node at this scene-relative path and everything below it, e.g. 'House3' or 'Lane2/Props'."),
   classes: z
     .array(z.string())
     .max(32)

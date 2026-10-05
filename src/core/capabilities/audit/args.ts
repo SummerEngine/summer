@@ -54,7 +54,7 @@ export const sceneAuditShape = {
   root: z
     .string()
     .optional()
-    .describe('Report only issues under this node (subtree), e.g. "Alley3". The whole scene is still loaded so walls and floors outside it count as surroundings.'),
+    .describe('Report only issues under this node (subtree), e.g. "Block3". The whole scene is still loaded so walls and floors outside it count as surroundings.'),
   min_severity: z
     .enum(SEVERITIES)
     .optional()
@@ -72,7 +72,7 @@ export const sceneAuditShape = {
     .max(AUDIT_MAX_MANIFESTS)
     .optional()
     .describe(
-      "Extra pack manifests (res:// .json in the pieces.json format: {pieces:{name:{scene, fits_into, wall_side, front_faces_plus_z, category, standoff_m, symmetric}}}; standoff_m = how far off its wall a mounted piece stands by design, symmetric = looks the same turned 180 deg). pieces.json next to (or up to two folders above) every instanced scene is always read, and the pack's PACK.json and ASSEMBLY.md for ground alternatives and wall standoffs."
+      'Optional kit manifests (res:// .json), read only when passed here: {"pieces": {"<scene path, or a scene name relative to the manifest>": {category, front_axis, mount_side, standoff_m, symmetric, fits_into: {piece, local_offset_m}}}}. category: wall/facade, floor, prop, dressing, or any structural word (band, corner, pier, ...); front_axis / mount_side: a local axis such as "+Z" / "-Z" (mount_side = the side that faces the wall it hangs on); standoff_m: how far off that wall it stands by design (a number or [min, max]); symmetric: looks the same turned 180 deg; fits_into: an insert (window, door) and its host piece, with its offset in the host\'s frame. Every field is optional; without manifests the checks use geometry and node names.'
     ),
   budget_ms: z
     .number()

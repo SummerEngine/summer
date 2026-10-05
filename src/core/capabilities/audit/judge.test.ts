@@ -15,7 +15,6 @@ import {
   judgeUv,
   judgeZFight,
   judgeZFightGeometry,
-  parsePackGrounds,
   type InstRow,
 } from "./judge.js";
 
@@ -46,9 +45,9 @@ function row(p: string, over: Partial<InstRow> = {}): InstRow {
 describe("through_hole", () => {
   // A back facade facing -Z at z = -8 (d = 8 along n = -Z), tangent t = -X.
   const inst = [
-    row("House3/Back/B0_f1", { k: "high_rise_facade_frame_tripple", r: "wall" }),
-    row("House3/Back/B0_f1_door", { k: "door_tripple_standard_03", r: "insert" }),
-    row("House3/Back/B0_d2", { k: "high_rise_facade_wall_double", r: "wall" }),
+    row("House3/Back/B0_f1", { k: "facade_frame_a", r: "wall" }),
+    row("House3/Back/B0_f1_door", { k: "door_b", r: "insert" }),
+    row("House3/Back/B0_d2", { k: "facade_wall_b", r: "wall" }),
   ];
   const s = 0.286;
   const column = (t: number) => [0.143, 0.429, 0.715, 1.001, 1.287, 1.573, 1.859, 2.145].map((y) => [t, y, 0, 6.9, t - 0.17, t + 0.19, y - 0.143, y + 0.143]);
@@ -91,14 +90,14 @@ describe("through_hole", () => {
 });
 
 describe("floor_gap", () => {
-  const tiles = Array.from({ length: 4 }, (_, i) => row(`Ground/T${i}`, { k: "alley_floor_b", r: "floor", c: [i * 8, 0, 0], e: [8, 0.1, 7.5] }));
+  const tiles = Array.from({ length: 4 }, (_, i) => row(`Ground/T${i}`, { k: "floor_tile_b", r: "floor", c: [i * 8, 0, 0], e: [8, 0.1, 7.5] }));
   const inst = [...tiles, row("Ground/Underlay", { k: "Underlay", r: "underlay" }), row("Ground/Odd", { k: "odd_tile", r: "floor" })];
 
   it("a piece whose own mesh has holes in every tile is ONE issue for the piece", () => {
     const issues = judgeFloorGaps({ cell: 0.3, per_owner: tiles.map((_, i) => [i, 500, 250, 0]), gaps: [[0, 0, 0.02, 0, 4, -0.005]] }, inst);
     expect(issues).toHaveLength(1);
     expect(issues[0]).toMatchObject({ severity: "warn", check: "floor_gap" });
-    expect(issues[0]!.why).toMatch(/alley_floor_b has holes in its own mesh: 50%/);
+    expect(issues[0]!.why).toMatch(/floor_tile_b has holes in its own mesh: 50%/);
   });
 
   it("other gaps cluster by location; the void is an error, the underlay a warning", () => {
@@ -117,30 +116,29 @@ describe("floor_gap", () => {
   });
 });
 
-describe("floor_gap: what the first hit says (audit fix run, three_houses_v2)", () => {
+describe("floor_gap: what the first hit says", () => {
   // Kernel rows: [x, z, top, owner, first hit, first hit y, clearance, kind,
   // sx, sz, area, floor y under the underlay, that floor, strip wall].
-  const tiles = Array.from({ length: 4 }, (_, i) => row(`Ground/B${i}`, { k: "alley_floor_b", s: "res://starter/real-city-alley-kit/ground/alley_floor_b.tscn", r: "floor", c: [i * 8.4, 0, 0], e: [8.4, 0.1, 7.5] }));
+  const tiles = Array.from({ length: 4 }, (_, i) => row(`Ground/B${i}`, { k: "floor_tile_b", s: "res://kit/ground/floor_tile_b.tscn", r: "floor", c: [i * 8.4, 0, 0], e: [8.4, 0.1, 7.5] }));
   const inst = [
     ...tiles,
     row("Ground/Underlay", { k: "Underlay", s: "", r: "underlay" }),
-    row("Ground/Al_3", { k: "alley_floor_c", s: "res://starter/real-city-alley-kit/ground/alley_floor_c.tscn", r: "floor", c: [21, 0, -11], e: [8.4, 0.08, 7.46] }),
-    row("Ground/Mid_3", { k: "alley_floor_b", s: "res://starter/real-city-alley-kit/ground/alley_floor_b.tscn", r: "floor", c: [21, 0, -3.8], e: [8.4, 0.1, 7.54] }),
-    row("Alley1/Backdrop", { k: "wall_backdrop", r: "wall" }),
+    row("Ground/Tile_3", { k: "floor_tile_c", s: "res://kit/ground/floor_tile_c.tscn", r: "floor", c: [21, 0, -11], e: [8.4, 0.08, 7.46] }),
+    row("Ground/Mid_3", { k: "floor_tile_b", s: "res://kit/ground/floor_tile_b.tscn", r: "floor", c: [21, 0, -3.8], e: [8.4, 0.1, 7.54] }),
+    row("Lane1/Backdrop", { k: "wall_backdrop", r: "wall" }),
   ];
   const UNDERLAY = 4;
   const AL3 = 5;
   const MID3 = 6;
   const WALL = 7;
-  const PACKS = [["res://starter/real-city-alley-kit", "PACK.json", "res://starter/real-city-alley-kit/materials/alley_ground.tres", "for any other ground use material res://starter/real-city-alley-kit/materials/alley_ground.tres on a PlaneMesh"]];
 
   it("an underlay ABOVE the floor's own low surface (a drain channel) covers the floor: warn, not a hole", () => {
-    // Al_3's drainage channel: bottom at y -0.049; the underlay sat at -0.005.
+    // A drain channel in Tile_3: bottom at y -0.049; the underlay plane at -0.005.
     const channel = Array.from({ length: 9 }, (_, k) => [20 + (k % 3) * 0.3, -9 - Math.floor(k / 3) * 0.3, 0.02, AL3, UNDERLAY, -0.005, null, 0, 0.3, 0.3, 0.09, -0.049, AL3, -1]);
     const issues = judgeFloorGaps({ cell: 0.3, per_owner: [[AL3, 400, 0, 0, 9]], gaps: channel }, inst);
     expect(issues).toHaveLength(1);
     const [i] = issues;
-    expect(i).toMatchObject({ check: "floor_gap", severity: "warn", path: "Ground/Al_3", ev: { underlay: "Ground/Underlay", floor_low_y: -0.049, above_m: 0.044 } });
+    expect(i).toMatchObject({ check: "floor_gap", severity: "warn", path: "Ground/Tile_3", ev: { underlay: "Ground/Underlay", floor_low_y: -0.049, above_m: 0.044 } });
     expect(i!.why).toMatch(/Ground\/Underlay covers the floor over 0.81 m2/);
     expect(i!.why).toMatch(/not a hole/);
     expect(i!.why).not.toMatch(/miss the floor/);
@@ -148,22 +146,20 @@ describe("floor_gap: what the first hit says (audit fix run, three_houses_v2)", 
   });
 
   it("a tile whose low surfaces the underlay covers in every tile is one 'covers' issue; its real voids stay holes", () => {
-    // floor_b: 19% real voids, a further 14% of low surfaces under the old underlay.
+    // floor_tile_b: 19% real voids, a further 14% of low surfaces under the underlay.
     const per_owner = tiles.map((_, i) => [i, 500, 95, 0, 70]);
     const gaps = [[1, 1, 0.026, 0, UNDERLAY, -0.005, null, 0, 0.3, 0.3, 0.09, -0.02, 0, -1]];
-    const issues = judgeFloorGaps({ cell: 0.3, per_owner, gaps }, inst, parsePackGrounds(PACKS));
+    const issues = judgeFloorGaps({ cell: 0.3, per_owner, gaps }, inst);
     expect(issues).toHaveLength(2);
     const holes = issues.find((i) => i.why.includes("holes in its own mesh"))!;
     expect(holes.why).toMatch(/19% of each tile shows the underlay \(4\/4 tiles\)/);
-    const covers = issues.find((i) => i.why.includes("covers alley_floor_b's own low surfaces"))!;
+    const covers = issues.find((i) => i.why.includes("covers floor_tile_b's own low surfaces"))!;
     expect(covers).toMatchObject({ severity: "warn", ev: { fraction: 0.14, underlay: "Ground/Underlay", floor_low_y: -0.02 } });
-    // The pack's documented ground option is in the next step.
-    expect(holes.next).toContain("the pack documents a ground alternative (PACK.json): res://starter/real-city-alley-kit/materials/alley_ground.tres on a PlaneMesh");
-    expect(holes.ev.pack_ground).toBe("res://starter/real-city-alley-kit/materials/alley_ground.tres");
+    expect(holes.next).toBe("summer_frame_nodes nodes=[Ground/B0] direction=top");
   });
 
   it("a 4 cm x 8.4 m seam is 0.34 m2 with its dimensions, not 84 grid cells (8.66 m2)", () => {
-    // Seam rays every 10 cm along x between Al_3 (z -7.578) and Mid_3 (z -7.538).
+    // Seam rays every 10 cm along x between Tile_3 (z -7.578) and Mid_3 (z -7.538).
     const seam = Array.from({ length: 84 }, (_, k) => [16.85 + k * 0.1, -7.558, 0.02, AL3, UNDERLAY, -0.055, null, 1, 0.1, 0.04, 0.004, null, -1, -1]);
     const [i] = judgeFloorGaps({ cell: 0.321, per_owner: [], gaps: seam }, inst);
     expect(i!.ev).toMatchObject({ rays: 84, area_m2: 0.336, w: 8.4, d: 0.04 });
@@ -171,29 +167,29 @@ describe("floor_gap: what the first hit says (audit fix run, three_houses_v2)", 
     expect(i!.score).toBeCloseTo(0.336, 3);
   });
 
-  it("a bare strip between the last tile and the alley's back wall is reported with the wall, its size and the pack's ground", () => {
+  it("a bare strip between the last tile and the back wall is reported with the wall and its size", () => {
     // The tile row ends at z -15.08; the backdrop is at -15.305: 34 edge steps x 2 rays.
     const strip = Array.from({ length: 68 }, (_, k) => [-4.075 + Math.floor(k / 2) * 0.25, -15.13 - (k % 2) * 0.1025, 0.02, 0, UNDERLAY, -0.055, null, 2, 0.25, 0.1025, 0.025625, null, -1, WALL]);
-    const issues = judgeFloorGaps({ cell: 0.32, per_owner: [], gaps: strip }, inst, parsePackGrounds(PACKS));
+    const issues = judgeFloorGaps({ cell: 0.32, per_owner: [], gaps: strip }, inst);
     expect(issues).toHaveLength(1);
     const [i] = issues;
-    expect(i).toMatchObject({ check: "floor_gap", severity: "warn", path: "Ground/B0", ev: { wall: "Alley1/Backdrop", rays: 68 } });
-    expect(i!.why).toMatch(/^bare strip 8.5 x 0.2 m \(1.74 m2\) between Ground\/B0's edge and Alley1\/Backdrop: the floor stops short of the wall and Ground\/Underlay shows/);
-    expect(i!.next).toMatch(/^summer_measure Ground\/B0 vs Alley1\/Backdrop; extend the floor to the wall; the pack documents a ground alternative/);
+    expect(i).toMatchObject({ check: "floor_gap", severity: "warn", path: "Ground/B0", ev: { wall: "Lane1/Backdrop", rays: 68 } });
+    expect(i!.why).toMatch(/^bare strip 8.5 x 0.2 m \(1.74 m2\) between Ground\/B0's edge and Lane1\/Backdrop: the floor stops short of the wall and Ground\/Underlay shows/);
+    expect(i!.next).toBe("summer_measure Ground/B0 vs Lane1/Backdrop; extend the floor to the wall");
   });
 
   it("strips are never folded into a holed piece's per-piece issue; old kernel rows still count one grid cell each", () => {
     const per_owner = tiles.map((_, i) => [i, 500, 250, 0]);
     const strip = [[0, -15.13, 0.02, 0, UNDERLAY, -0.055, null, 2, 0.25, 0.1, 0.025, null, -1, WALL], [0.25, -15.13, 0.02, 0, UNDERLAY, -0.055, null, 2, 0.25, 0.1, 0.025, null, -1, WALL]];
     const issues = judgeFloorGaps({ cell: 0.3, per_owner, gaps: [[2, 2, 0.02, 0, UNDERLAY, -0.005], ...strip] }, inst);
-    expect(issues.map((i) => i.why.split(":")[0])).toEqual(["alley_floor_b has holes in its own mesh", "bare strip 0.5 x 0.1 m (0.05 m2) between Ground/B0's edge and Alley1/Backdrop"]);
+    expect(issues.map((i) => i.why.split(":")[0])).toEqual(["floor_tile_b has holes in its own mesh", "bare strip 0.5 x 0.1 m (0.05 m2) between Ground/B0's edge and Lane1/Backdrop"]);
     const old = judgeFloorGaps({ cell: 0.3, per_owner: [], gaps: [[30, 5, 0.02, MID3, UNDERLAY, -0.005], [30.3, 5, 0.02, MID3, UNDERLAY, -0.005], [30.6, 5, 0.02, MID3, UNDERLAY, -0.005]] }, inst);
     expect(old[0]!.ev).toMatchObject({ rays: 3, area_m2: 0.27, w: 0.9, d: 0.3 });
   });
 });
 
 describe("floating / sunken", () => {
-  const inst = [row("Props/Crate", { c: [0, 0.3, 0], e: [0.6, 0.6, 0.6] }), row("Ground/Tile", { r: "floor" }), row("Props/Lamp", { mh: [0, 0, -1], ms: "pack_text" }), row("Props/Bottle", { e: [0.2, 0.2, 0.3] })];
+  const inst = [row("Props/Crate", { c: [0, 0.3, 0], e: [0.6, 0.6, 0.6] }), row("Ground/Tile", { r: "floor" }), row("Props/Lamp", { mh: [0, 0, -1], ms: "manifest" }), row("Props/Bottle", { e: [0.2, 0.2, 0.3] })];
   const hits = (y: number) => Array.from({ length: 5 }, () => [y, 1]);
 
   it("reports a gap above 2 cm and an embed deeper than 3 cm, nothing in between", () => {
@@ -227,21 +223,21 @@ describe("floating / sunken", () => {
   });
 });
 
-describe("sunken: the surface it is buried in, seen from above (Alley1/Props/Bottle)", () => {
-  // Stood upright with its origin on the floor: half of its 0.29 m below
-  // floor_b's top (y 0.021); the support ray from y 0 only sees the underlay.
+describe("sunken: the surface it is buried in, seen from above", () => {
+  // A bottle stood upright with its origin on the floor: half of its 0.29 m
+  // below the tile's top (y 0.021); the support ray from y 0 only sees the underlay.
   const inst = [
-    row("Alley1/Props/Bottle", { c: [3, 0, 2], e: [0.08, 0.29, 0.08] }),
-    row("Ground/B5", { k: "alley_floor_b", r: "floor" }),
+    row("Lane1/Props/Bottle", { c: [3, 0, 2], e: [0.08, 0.29, 0.08] }),
+    row("Ground/B5", { k: "floor_tile_b", r: "floor" }),
     row("Ground/Underlay", { k: "Underlay", r: "underlay" }),
-    row("Alley1/Props/Grass4", { r: "dressing", c: [5, 0, 2], e: [0.4, 0.2, 0.4] }),
-    row("Alley1/Props/Crate", { c: [7, 0.3, 2], e: [0.6, 0.6, 0.6] }),
+    row("Lane1/Props/Grass4", { r: "dressing", c: [5, 0, 2], e: [0.4, 0.2, 0.4] }),
+    row("Lane1/Props/Crate", { c: [7, 0.3, 2], e: [0.6, 0.6, 0.6] }),
   ];
   const n5 = (y: number, at: number) => Array.from({ length: 5 }, () => [y, at]);
 
   it("names the floor tile from above and the embed relative to its top, not the underlay under it", () => {
     const [i] = judgeSupport([[0, -0.145, 0.0, n5(-0.005, 2), null, 0.021, n5(0.021, 1)]], inst, new Set());
-    expect(i).toMatchObject({ check: "sunken", severity: "error", path: "Alley1/Props/Bottle", ev: { embed_m: 0.166, support: "Ground/B5", support_y: 0.021, under_it: "Ground/Underlay" } });
+    expect(i).toMatchObject({ check: "sunken", severity: "error", path: "Lane1/Props/Bottle", ev: { embed_m: 0.166, support: "Ground/B5", support_y: 0.021, under_it: "Ground/Underlay" } });
     expect(i!.why).toBe("sunk 16.6 cm into Ground/B5 (the first surface from above, at y 0.021): 57% of its height");
   });
 
@@ -263,33 +259,33 @@ describe("sunken: the surface it is buried in, seen from above (Alley1/Props/Bot
 
 describe("interpenetration", () => {
   it("reports overlaps over 3 cm with the other node and its role", () => {
-    const inst = [row("Alley3/Props/Bench"), row("Alley3/WallR_0", { r: "wall" })];
+    const inst = [row("Lane3/Props/Bench"), row("Lane3/WallR_0", { r: "wall" })];
     expect(judgeOverlaps([[0, 1, 0.029, [0, 0, 0]]], inst)).toEqual([]);
     const [i] = judgeOverlaps([[0, 1, 0.157, [42, 0.44, -12.45]]], inst);
-    expect(i).toMatchObject({ severity: "warn", path: "Alley3/Props/Bench", ev: { other: "Alley3/WallR_0", other_role: "wall" } });
+    expect(i).toMatchObject({ severity: "warn", path: "Lane3/Props/Bench", ev: { other: "Lane3/WallR_0", other_role: "wall" } });
   });
 
   it("a bench through a wall into the wall behind it is ONE issue (deepest first, the rest listed)", () => {
-    const inst = [row("Alley3/Props/Bench2"), row("Alley3/Sep_W", { r: "wall" }), row("Alley2/Sep_E", { r: "wall" })];
+    const inst = [row("Lane3/Props/Bench2"), row("Lane3/Sep_W", { r: "wall" }), row("Lane2/Sep_E", { r: "wall" })];
     const issues = judgeOverlaps([[0, 2, 0.103, [29.9, 0, -9.8]], [0, 1, 0.123, [30, 0, -9.9]]], inst);
     expect(issues).toHaveLength(1);
-    expect(issues[0]!.ev).toMatchObject({ other: "Alley3/Sep_W", partners: [["Alley3/Sep_W", 0.123], ["Alley2/Sep_E", 0.103]] });
-    expect(issues[0]!.why).toContain("also Alley2/Sep_E (the structure) 10.3 cm");
+    expect(issues[0]!.ev).toMatchObject({ other: "Lane3/Sep_W", partners: [["Lane3/Sep_W", 0.123], ["Lane2/Sep_E", 0.103]] });
+    expect(issues[0]!.why).toContain("also Lane2/Sep_E (the structure) 10.3 cm");
   });
 
   it("every partner a prop cuts is named, up to 3, shallow ones included (Lamp1: the duct AND the door band)", () => {
     const inst = [
-      row("Alley2/Props/Lamp1", { k: "street_lamp_02" }),
-      row("Alley2/Duct/Run_2", { r: "mount" }),
+      row("Lane2/Props/Lamp1", { k: "street_lamp" }),
+      row("Lane2/Duct/Run_2", { r: "mount" }),
       row("House2/Back/B0_band2", { r: "struct" }),
-      row("Alley2/Props/AC2", { k: "aircon_unit_rusted" }),
+      row("Lane2/Props/AC2", { k: "aircon_unit" }),
       row("House2/Back/B0_w2", { r: "wall" }),
     ];
     const [i, ...rest] = judgeOverlaps([[0, 2, 0.024, [18.0, 3.2, -7.9]], [0, 1, 0.187, [17.9, 3.4, -7.8]], [0, 3, 0.012, [17.77, 2.6, -7.8]], [0, 4, 0.011, [17.9, 2.5, -8]]], inst);
     expect(rest).toEqual([]);
-    expect(i!.why).toBe("overlaps Alley2/Duct/Run_2 (a mounted piece) by 18.7 cm; also House2/Back/B0_band2 (the structure) 2.4 cm, Alley2/Props/AC2 (another prop) 1.2 cm");
-    expect(i!.ev).toMatchObject({ depth_m: 0.187, partners: [["Alley2/Duct/Run_2", 0.187], ["House2/Back/B0_band2", 0.024], ["Alley2/Props/AC2", 0.012]], more: 1 });
-    expect(i!.next).toContain("summer_test_placement Alley2/Props/Lamp1");
+    expect(i!.why).toBe("overlaps Lane2/Duct/Run_2 (a mounted piece) by 18.7 cm; also House2/Back/B0_band2 (the structure) 2.4 cm, Lane2/Props/AC2 (another prop) 1.2 cm");
+    expect(i!.ev).toMatchObject({ depth_m: 0.187, partners: [["Lane2/Duct/Run_2", 0.187], ["House2/Back/B0_band2", 0.024], ["Lane2/Props/AC2", 0.012]], more: 1 });
+    expect(i!.next).toContain("summer_test_placement Lane2/Props/Lamp1");
     // Only shallow contacts (under 3 cm): no issue at all.
     expect(judgeOverlaps([[0, 2, 0.024, [0, 0, 0]], [0, 3, 0.012, [0, 0, 0]]], inst)).toEqual([]);
   });
@@ -297,132 +293,127 @@ describe("interpenetration", () => {
 
 describe("insert_host", () => {
   const inst = [
-    row("House3/Back/B0_f1_door", { k: "door_tripple_standard_03", r: "insert", o: [31.5, 0, -7.9], b: YAW_180 }),
-    row("House3/Back/B0_f1", { k: "high_rise_facade_frame_tripple", r: "wall", o: [31.5, 0, -7.9], b: YAW_180 }),
-    row("House2/Back/B0_door", { k: "wall_tripple_standard_door_01", r: "wall", o: [21, 0, -8], b: YAW_180 }),
-    row("House2/Back/B0_door_ins", { k: "door_tripple_standard_01", r: "insert", o: [21, 0, -7.98], b: YAW_180 }),
+    row("House3/Back/B0_f1_door", { k: "door_b", r: "insert", o: [31.5, 0, -7.9], b: YAW_180 }),
+    row("House3/Back/B0_f1", { k: "facade_frame_a", r: "wall", o: [31.5, 0, -7.9], b: YAW_180 }),
+    row("House2/Back/B0_door", { k: "wall_door_a", r: "wall", o: [21, 0, -8], b: YAW_180 }),
+    row("House2/Back/B0_door_ins", { k: "door_a", r: "insert", o: [21, 0, -7.98], b: YAW_180 }),
   ];
 
   it("a door in the wrong host is an error that names the host it actually sits in", () => {
-    const [i] = judgeInserts([[0, "wall_tripple_standard_door_02", [0, 0, -0.105], [31.5, 0, -7.9], YAW_180, [[1, "high_rise_facade_frame_tripple", [31.5, 0, -7.9], YAW_180]], [1]]], inst);
+    const [i] = judgeInserts([[0, "wall_door_b", [0, 0, -0.1], [31.5, 0, -7.9], YAW_180, [[1, "facade_frame_a", [31.5, 0, -7.9], YAW_180]], [1]]], inst);
     expect(i).toMatchObject({ check: "insert_host", severity: "error", path: "House3/Back/B0_f1_door" });
-    expect(i!.why).toContain("high_rise_facade_frame_tripple House3/Back/B0_f1");
-    expect(i!.ev).toMatchObject({ found: "high_rise_facade_frame_tripple", off_m: 0.105 });
-    expect((i!.ev.host_at as number[])[2]).toBeCloseTo(-8.01, 2);
+    expect(i!.why).toContain("facade_frame_a House3/Back/B0_f1");
+    expect(i!.ev).toMatchObject({ found: "facade_frame_a", off_m: 0.1 });
+    expect((i!.ev.host_at as number[])[2]).toBeCloseTo(-8.0, 2);
   });
 
   it("a correctly hosted insert is not reported", () => {
-    expect(judgeInserts([[3, "wall_tripple_standard_door_01", [0, 0, -0.02], [21, 0, -7.98], YAW_180, [[2, "wall_tripple_standard_door_01", [21, 0, -8], YAW_180]], [2]]], inst)).toEqual([]);
+    expect(judgeInserts([[3, "wall_door_a", [0, 0, -0.02], [21, 0, -7.98], YAW_180, [[2, "wall_door_a", [21, 0, -8], YAW_180]], [2]]], inst)).toEqual([]);
   });
 });
 
 describe("mount_gap and mount orientation", () => {
   // Far apart: bounds that touch another mounted piece count as held by it.
   const inst = [
-    row("Alley1/GutterL/Sec_1", { r: "mount", k: "modular_metal_gutter_section", c: [0, 3, 0] }),
+    row("Lane1/GutterL/Sec_1", { r: "mount", k: "gutter_section", c: [0, 3, 0] }),
     row("House1/Back/B0_f1", { r: "wall", c: [0, 3, -1] }),
-    row("Street/LampH1", { mh: [0, 0, -1], ms: "pack_text", c: [20, 3, 0] }),
   ];
   const all = new Set(["mount_gap", "orientation"] as const);
 
   it("no surface within 5 cm behind the mount side", () => {
-    const close = judgeMounts([[0, [0, 0, 1], [0.03, 0.04, null], 1, [[[0, 0, 1], 0.03, 1]], "pipes", "pieces", [0, 0, -1]]], inst, all);
+    const close = judgeMounts([[0, [0, 0, 1], [0.03, 0.04, null], 1, [[[0, 0, 1], 0.03, 1]], "pipe", "manifest", [0, 0, -1]]], inst, all);
     expect(close.issues).toEqual([]);
     expect(close.wallMounted.has(0)).toBe(true);
-    const gap = judgeMounts([[0, [0, 0, 1], [0.059, 0.06], 1, [[[0, 0, 1], 0.059, 1]], "pipes", "pieces", [0, 0, -1]]], inst, all);
+    const gap = judgeMounts([[0, [0, 0, 1], [0.059, 0.06], 1, [[[0, 0, 1], 0.059, 1]], "pipe", "manifest", [0, 0, -1]]], inst, all);
     expect(gap.issues).toMatchObject([{ check: "mount_gap", severity: "look", ev: { gap_m: 0.059, mount_side: "-Z", wall: "House1/Back/B0_f1" } }]);
-    const far = judgeMounts([[0, [0, 0, 1], [0.4], 1, [], "pipes", "pieces", [0, 0, -1]]], inst, all);
+    const far = judgeMounts([[0, [0, 0, 1], [0.4], 1, [], "pipe", "manifest", [0, 0, -1]]], inst, all);
     expect(far.issues[0]!.severity).toBe("warn");
   });
 
-  it("a prose-only hint yields to the geometry: touching a wall on any side means mounted", () => {
-    const r = judgeMounts([[2, [1, 0, 0], [0.44], 1, [[[0, 0, -1], 0.0, 1]], "", "pack_text", [0, 0, -1]]], inst, all);
-    expect(r.issues).toEqual([]);
-    expect(r.wallMounted.has(2)).toBe(true);
-    // The same geometry with pieces.json metadata is held against the piece.
-    const strict = judgeMounts([[0, [1, 0, 0], [0.44], 1, [[[0, 0, -1], 0.0, 1]], "pipes", "pieces", [0, 0, -1]]], inst, all);
+  it("a manifest mount_side is held against the piece even when a wall touches it only beside the mount side", () => {
+    const strict = judgeMounts([[0, [1, 0, 0], [0.44], 1, [[[0, 0, -1], 0.0, 1]], "pipe", "manifest", [0, 0, -1]]], inst, all);
     expect(strict.issues.map((i) => i.check).sort()).toEqual(["mount_gap", "orientation"]);
+    expect(strict.issues[0]!.ev.metadata).toBe("manifest");
   });
 
   it("a piece standing on the ground, or hanging from another mounted piece, is not 'off its wall'", () => {
     // A fence post: nothing behind, standing on the ground.
-    expect(judgeMounts([[0, [0, 0, 1], [null], -1, [], "fences_gates", "pieces", [0, 0, -1], null, 0.0]], inst, all).issues).toEqual([]);
-    // A fire-escape ladder 95 cm off the wall, hanging from its platform.
-    expect(judgeMounts([[0, [0, 0, 1], [0.95], 1, [], "fire_escape", "pieces", [0, 0, -1], 0.0, 1.6]], inst, all).issues).toEqual([]);
+    expect(judgeMounts([[0, [0, 0, 1], [null], -1, [], "fence", "manifest", [0, 0, -1], null, 0.0]], inst, all).issues).toEqual([]);
+    // A ladder 95 cm off the wall, hanging from its platform.
+    expect(judgeMounts([[0, [0, 0, 1], [0.95], 1, [], "ladder", "manifest", [0, 0, -1], 0.0, 1.6]], inst, all).issues).toEqual([]);
     // An open duct elbow whose bounds touch its run (no face for a ray to hit).
     const duct = [row("Duct/Bend", { r: "mount", c: [0, 3, 0], e: [0.5, 0.5, 0.5] }), row("Duct/Run", { r: "mount", c: [0.75, 3, 0], e: [1, 0.5, 0.5] })];
-    expect(judgeMounts([[0, [0, 0, 1], [0.96], -1, [], "ducts", "pieces", [0, 0, -1], null, 3]], duct, all).issues).toEqual([]);
+    expect(judgeMounts([[0, [0, 0, 1], [0.96], -1, [], "duct", "manifest", [0, 0, -1], null, 3]], duct, all).issues).toEqual([]);
     // A gutter 6 cm off the wall is reported even though it touches the next section.
-    expect(judgeMounts([[0, [0, 0, 1], [0.06], 1, [[[0, 0, 1], 0.06, 1]], "pipes", "pieces", [0, 0, -1], 0.0, 2]], inst, all).issues).toHaveLength(1);
+    expect(judgeMounts([[0, [0, 0, 1], [0.06], 1, [[[0, 0, 1], 0.06, 1]], "pipe", "manifest", [0, 0, -1], 0.0, 2]], inst, all).issues).toHaveLength(1);
   });
 
-  it("free-standing pieces.json mounts are flagged; prose-only hints are not", () => {
-    expect(judgeMounts([[0, [0, 0, 1], [null], -1, [], "pipes", "pieces", [0, 0, -1]]], inst, all).issues[0]!.why).toMatch(/no wall within 1 m/);
-    expect(judgeMounts([[2, [0, 0, 1], [null], -1, [], "", "pack_text", [0, 0, -1]]], inst, all).issues).toEqual([]);
+  it("a free-standing piece the manifest mounts on a wall is flagged", () => {
+    expect(judgeMounts([[0, [0, 0, 1], [null], -1, [], "pipe", "manifest", [0, 0, -1]]], inst, all).issues[0]!.why).toMatch(/no wall within 1 m behind or beside it \(manifest mounts it on -Z\)/);
   });
 
   it("a mount side pointing away from the nearest wall is a look item, never a guess", () => {
-    const r = judgeMounts([[0, [0, 0, -1], [null], -1, [[[0, 0, 1], 0.1, 1]], "ducts", "pieces", [0, 0, -1]]], inst, all);
+    const r = judgeMounts([[0, [0, 0, -1], [null], -1, [[[0, 0, 1], 0.1, 1]], "duct", "manifest", [0, 0, -1]]], inst, all);
     const o = r.issues.find((i) => i.check === "orientation")!;
     expect(o).toMatchObject({ severity: "look", ev: { angle: 180, mount_side: "-Z" } });
     expect(r.issues.some((i) => i.check === "mount_gap")).toBe(false);
   });
 });
 
-describe("mount_gap and orientation: kit-held pieces, documented standoffs, side gaps, symmetric pieces (fix run)", () => {
+describe("mount_gap and orientation: kit-held pieces, manifest standoffs, side gaps, symmetric pieces", () => {
   // Kernel mount row: [i, wall axis, 9 gaps, first hit, around, category, src,
   // local axis, chain, ground, standoff, standoff source, planes, symmetric, hit per sample].
   const all = new Set(["mount_gap", "orientation"] as const);
   const WALL = 0;
   const gutterInst = [
-    row("Alley2/WallR_0", { r: "wall", c: [0, 3, -0.1], e: [20, 6, 0.2] }),
-    row("Alley2/Gutter/Brace_1", { k: "modular_metal_gutter_bracing", r: "mount", c: [0, 1.2, 0.1445], e: [0.2, 0.1, 0.289] }),
-    row("Alley2/Gutter/Sec_1", { k: "modular_metal_gutter_section", r: "mount", c: [0, 1, 0.14], e: [0.17, 1, 0.16] }),
-    row("Alley2/Gutter/Sec_2", { k: "modular_metal_gutter_section", r: "mount", c: [0, 2, 0.1375], e: [0.17, 1, 0.16] }),
-    row("Alley2/Gutter/Outlet", { k: "modular_metal_gutter_outlet", r: "mount", c: [0, 0.3, 0.206], e: [0.15, 0.4, 0.26] }),
-    row("Alley2/Gutter/Sec_3", { k: "modular_metal_gutter_section", r: "mount", c: [0, 3, 0.23], e: [0.17, 1, 0.16] }),
+    row("Lane2/WallR_0", { r: "wall", c: [0, 3, -0.1], e: [20, 6, 0.2] }),
+    row("Lane2/Gutter/Brace_1", { k: "gutter_bracket", r: "mount", c: [0, 1.2, 0.1445], e: [0.2, 0.1, 0.289] }),
+    row("Lane2/Gutter/Sec_1", { k: "gutter_section", r: "mount", c: [0, 1, 0.14], e: [0.17, 1, 0.16] }),
+    row("Lane2/Gutter/Sec_2", { k: "gutter_section", r: "mount", c: [0, 2, 0.1375], e: [0.17, 1, 0.16] }),
+    row("Lane2/Gutter/Outlet", { k: "gutter_outlet", r: "mount", c: [0, 0.3, 0.206], e: [0.15, 0.4, 0.26] }),
+    row("Lane2/Gutter/Sec_3", { k: "gutter_section", r: "mount", c: [0, 3, 0.23], e: [0.17, 1, 0.16] }),
   ];
-  const mount = (i: number, gap: number | null, extra: unknown[] = []) => [i, [0, 0, -1], Array(9).fill(gap), WALL, gap === null ? [] : [[[0, 0, -1], gap, WALL]], "pipes", "pieces", [0, 0, -1], 0.0, null, ...extra];
+  const mount = (i: number, gap: number | null, extra: unknown[] = []) => [i, [0, 0, -1], Array(9).fill(gap), WALL, gap === null ? [] : [[[0, 0, -1], gap, WALL]], "pipe", "manifest", [0, 0, -1], 0.0, null, ...extra];
 
   it("gutters held off the wall by their own bracing are fine; the run's outlet too; a kinked section is not", () => {
     const rows = [mount(1, -0.001), mount(2, 0.06), mount(3, 0.055), mount(4, 0.076), mount(5, 0.15)];
     const r = judgeMounts(rows, gutterInst, all);
     expect(r.issues).toHaveLength(1);
-    expect(r.issues[0]).toMatchObject({ check: "mount_gap", severity: "warn", path: "Alley2/Gutter/Sec_3", ev: { gap_m: 0.15, wall: "Alley2/WallR_0" } });
+    expect(r.issues[0]).toMatchObject({ check: "mount_gap", severity: "warn", path: "Lane2/Gutter/Sec_3", ev: { gap_m: 0.15, wall: "Lane2/WallR_0" } });
     // Without the bracing, the sections are off their wall (and group as one).
     const unbraced = judgeMounts(rows.slice(1), gutterInst, all).issues;
-    expect(unbraced.map((i) => i.path).sort()).toEqual(["Alley2/Gutter/Outlet", "Alley2/Gutter/Sec_1", "Alley2/Gutter/Sec_2", "Alley2/Gutter/Sec_3"]);
-    const many = Array.from({ length: 27 }, (_, k) => row(`Alley2/Gutter/S${k}`, { k: "modular_metal_gutter_section", r: "mount", c: [k * 5, 1, 0.14], e: [0.17, 1, 0.16] }));
+    expect(unbraced.map((i) => i.path).sort()).toEqual(["Lane2/Gutter/Outlet", "Lane2/Gutter/Sec_1", "Lane2/Gutter/Sec_2", "Lane2/Gutter/Sec_3"]);
+    const many = Array.from({ length: 27 }, (_, k) => row(`Lane2/Gutter/S${k}`, { k: "gutter_section", r: "mount", c: [k * 5, 1, 0.14], e: [0.17, 1, 0.16] }));
     const grouped = groupRepeats(judgeMounts(many.map((_, k) => mount(k, 0.054 + (k % 6) * 0.001)), many, all).issues, many);
     expect(grouped).toHaveLength(1);
-    expect(grouped[0]!.why).toMatch(/^27 x modular_metal_gutter_section \(0.054..0.059\)/);
+    expect(grouped[0]!.why).toMatch(/^27 x gutter_section \(0.054..0.059\)/);
   });
 
-  it("a standoff the pack documents (ducts about 0.1 m off the wall) is not a gap; beyond it, it is", () => {
-    const duct = [row("Alley2/Duct/Run_2", { k: "modular_airduct_rectangular_01_straight_01", r: "mount", c: [5, 3.6, 0.41], e: [2, 0.6, 0.6] }), row("Alley2/WallR_0", { r: "wall" })];
-    const at = (gap: number) => [0, [0, 0, -1], Array(9).fill(gap), 1, [[[0, 0, -1], gap, 1]], "ducts", "pieces", [0, 0, -1], null, 3.6, 0.1, "ASSEMBLY.md", null, null, Array(9).fill(1)];
+  it("a standoff the manifest gives (a duct standoff_m 0.1) is not a gap; beyond it, it is", () => {
+    const duct = [row("Lane2/Duct/Run_2", { k: "duct_straight_a", r: "mount", c: [5, 3.6, 0.41], e: [2, 0.6, 0.6] }), row("Lane2/WallR_0", { r: "wall" })];
+    const at = (gap: number) => [0, [0, 0, -1], Array(9).fill(gap), 1, [[[0, 0, -1], gap, 1]], "duct", "manifest", [0, 0, -1], null, 3.6, 0.1, "manifest", null, null, Array(9).fill(1)];
     expect(judgeMounts([at(0.112)], duct, all).issues).toEqual([]);
     const [i] = judgeMounts([at(0.18)], duct, all).issues;
     expect(i).toMatchObject({ severity: "look", ev: { gap_m: 0.18, standoff_m: 0.1 } });
-    expect(i!.why).toContain("the pack allows 10 cm (ASSEMBLY.md)");
+    expect(i!.why).toContain("the manifest allows 10 cm");
   });
 
-  it("the gap is measured at the sides as well as the centre (ShutterWin: 10.2 cm on the sill, 15.2 cm at its sides)", () => {
-    const inst = [row("Alley2/ShutterWin", { k: "rollershutter_window_graffiti", r: "mount", c: [20, 1.5, -7.85] }), row("House2/Back/B0_w3_win", { r: "insert" }), row("House2/Back/B0_w3", { r: "wall" })];
-    const gaps = [0.102, 0.152, 0.152, 0.152, 0.152, 0.102, 0.152, 0.152, 0.152];
+  it("the gap is measured at the sides as well as the centre (a shutter closer at its sill than at its sides)", () => {
+    const inst = [row("Lane2/ShutterWin", { k: "shutter_window", r: "mount", c: [20, 1.5, -7.85] }), row("House2/Back/B0_w3_win", { r: "insert" }), row("House2/Back/B0_w3", { r: "wall" })];
+    const gaps = [0.1, 0.15, 0.15, 0.15, 0.15, 0.1, 0.15, 0.15, 0.15];
     const hitAt = [1, 2, 2, 2, 2, 1, 2, 2, 2];
-    const [i] = judgeMounts([[0, [0, 0, -1], gaps, 1, [[[0, 0, -1], 0.102, 1]], "shutters", "pieces", [0, 0, -1], null, null, null, "", null, null, hitAt]], inst, all).issues;
-    expect(i).toMatchObject({ check: "mount_gap", severity: "warn", ev: { gap_m: 0.152, wall: "House2/Back/B0_w3", at: "+Y side", min_m: 0.102 } });
-    expect(i!.why).toBe("stands 15.2 cm off House2/Back/B0_w3 on its mount side (-Z) at its +Y side (closest 10.2 cm)");
+    const [i] = judgeMounts([[0, [0, 0, -1], gaps, 1, [[[0, 0, -1], 0.1, 1]], "shutter", "manifest", [0, 0, -1], null, null, null, "", null, null, hitAt]], inst, all).issues;
+    expect(i).toMatchObject({ check: "mount_gap", severity: "warn", ev: { gap_m: 0.15, wall: "House2/Back/B0_w3", at: "+Y side", min_m: 0.1 } });
+    expect(i!.why).toBe("stands 15 cm off House2/Back/B0_w3 on its mount side (-Z) at its +Y side (closest 10 cm)");
     // A side ray that passes the wall's edge into a recess 80 cm back is not the gap.
     const edge = [0, 0, 0, 0, 0, 0, 0, 0.8, 0];
-    expect(judgeMounts([[0, [0, 0, -1], edge, 2, [[[0, 0, -1], 0, 2]], "shutters", "pieces", [0, 0, -1], null, null, null, "", null, null, hitAt]], inst, all).issues).toEqual([]);
+    expect(judgeMounts([[0, [0, 0, -1], edge, 2, [[[0, 0, -1], 0, 2]], "shutter", "manifest", [0, 0, -1], null, null, null, "", null, null, hitAt]], inst, all).issues).toEqual([]);
   });
 
   it("a front-back symmetric piece turned 180 deg is not an orientation item; its gap is measured on the side facing the wall", () => {
-    const inst = [row("Alley2/Duct/Run_3", { k: "duct_run", r: "mount", c: [8, 3.6, 0.41], e: [2, 0.6, 0.6] }), row("Alley2/WallR_0", { r: "wall" })];
+    const inst = [row("Lane2/Duct/Run_3", { k: "duct_run", r: "mount", c: [8, 3.6, 0.41], e: [2, 0.6, 0.6] }), row("Lane2/WallR_0", { r: "wall" })];
     const sym = [0.3, 0.5, -0.3, 0.5, -0.3, 0.3];
-    const flipped = (planes: unknown, meta: unknown, standoff: number | null, gapToWall = 0.11) => [0, [0, 0, 1], Array(9).fill(null), -1, [[[0, 0, -1], gapToWall, 1]], "ducts", "pieces", [0, 0, -1], null, 3.6, standoff, standoff === null ? "" : "ASSEMBLY.md", planes, meta, Array(9).fill(-1)];
+    const flipped = (planes: unknown, meta: unknown, standoff: number | null, gapToWall = 0.11) => [0, [0, 0, 1], Array(9).fill(null), -1, [[[0, 0, -1], gapToWall, 1]], "duct", "manifest", [0, 0, -1], null, 3.6, standoff, standoff === null ? "" : "manifest", planes, meta, Array(9).fill(-1)];
     expect(judgeMounts([flipped(sym, null, 0.1)], inst, all).issues).toEqual([]);
     const off = judgeMounts([flipped(sym, null, null)], inst, all).issues;
     expect(off).toMatchObject([{ check: "mount_gap", severity: "warn", ev: { gap_m: 0.11 } }]);
@@ -430,18 +421,18 @@ describe("mount_gap and orientation: kit-held pieces, documented standoffs, side
     // A wall lantern is not symmetric: its back plate is the larger plane.
     const lantern = judgeMounts([flipped([0.15, 0.01, -0.2, 0.03, -0.2, 0.15], null, null)], inst, all).issues;
     expect(lantern.map((i) => i.check)).toEqual(["orientation"]);
-    // pieces.json "symmetric" wins over the planes either way.
+    // The manifest's "symmetric" wins over the planes either way.
     expect(judgeMounts([flipped(sym, false, null)], inst, all).issues.map((i) => i.check)).toEqual(["orientation"]);
     expect(judgeMounts([flipped(null, true, 0.1)], inst, all).issues).toEqual([]);
   });
 });
 
 describe("orientation of long props", () => {
-  const inst = [row("Alley3/Props/Bench", { k: "park_bench" }), row("Alley3/WallR_0", { r: "wall" })];
+  const inst = [row("Lane3/Props/Bench", { k: "bench_a" }), row("Lane3/WallR_0", { r: "wall" })];
 
   it("a long prop within 1.2 m of a wall and more than 15 deg off parallel is a look item", () => {
     const [i] = judgeLongProps([[0, [-1, 0, 0], 1.83, 0.7, [-0.163, 1, [-1, 0, 0], [1, 0, 0]]]], inst);
-    expect(i).toMatchObject({ check: "orientation", severity: "look", path: "Alley3/Props/Bench", ev: { angle: 90, wall: "Alley3/WallR_0" } });
+    expect(i).toMatchObject({ check: "orientation", severity: "look", path: "Lane3/Props/Bench", ev: { angle: 90, wall: "Lane3/WallR_0" } });
   });
 
   it("parallel within 15 deg, or farther than 1.2 m, is not reported", () => {
@@ -452,7 +443,7 @@ describe("orientation of long props", () => {
 });
 
 describe("uv_stretch", () => {
-  const frames = [0, 1, 2, 3].map((i) => row(`House3/F${i}`, { k: "high_rise_facade_frame_tripple", r: "wall" }));
+  const frames = [0, 1, 2, 3].map((i) => row(`House3/F${i}`, { k: "facade_frame_a", r: "wall" }));
   // Tri 0: a reveal mapped onto one texel column (stretched). Tri 1: a fine
   // square mapping. Tri 2: all three UVs on one texel (a flat colour).
   const tris = [
@@ -496,10 +487,10 @@ describe("z_fight from geometry: coplanar faces anywhere, judged by depth precis
     row("House1/Roof/Slab_2", { k: "roof_slab", r: "struct" }),
     row("Street/Sign_1", { k: "shop_sign", s: "res://props/shop_sign.tscn" }),
     row("Street/Sign_2", { k: "shop_sign", s: "res://props/shop_sign.tscn" }),
-    row("Alley1/Grime_decal", { k: "grime_card", r: "dressing" }),
-    row("Alley1/Wall_3", { k: "wall_tripple_standard_01", r: "wall" }),
-    row("Alley2/Fence_card", { k: "chainlink_card" }),
-    row("Alley2/Fence_card_b", { k: "chainlink_card" }),
+    row("Lane1/Grime_decal", { k: "grime_card", r: "dressing" }),
+    row("Lane1/Wall_3", { k: "wall_plain_a", r: "wall" }),
+    row("Lane2/Fence_card", { k: "chainlink_card" }),
+    row("Lane2/Fence_card_b", { k: "chainlink_card" }),
   ];
   const pair = (a: number, b: number, over: Record<number, unknown> = {}) => {
     const r: unknown[] = [a, b, 0.5, 0, [5, 6, -2], [0, 1, 0], 6, "walkable area", true, [], [], "roof_tiles", "roof_tiles", false, 0.5, 1, inst[a]!.p, inst[b]!.p];
@@ -535,7 +526,7 @@ describe("z_fight from geometry: coplanar faces anywhere, judged by depth precis
 
   it("an opposite-facing pair counts when both materials are double-sided (the kernel only sends those)", () => {
     const [i] = judgeZFightGeometry(geo([pair(6, 7, { 13: true, 11: "chainlink_2s", 12: "chainlink_2s" })]), inst, new Set()).issues;
-    expect(i!.why).toMatch(/with Alley2\/Fence_card_b \(facing opposite ways, both double-sided\)/);
+    expect(i!.why).toMatch(/with Lane2\/Fence_card_b \(facing opposite ways, both double-sided\)/);
   });
 
   it("near-coplanar: a 1 cm gap flags 40 m from a viewpoint and not 2 m from one (24-bit depth, near 0.01 m)", () => {
@@ -550,7 +541,7 @@ describe("z_fight from geometry: coplanar faces anywhere, judged by depth precis
 
   it("decals, overlays, render_priority and depth offsets are demoted to look, never skipped, and say why", () => {
     const [decal] = judgeZFightGeometry(geo([pair(4, 5, { 9: ["named as a decal or overlay"], 2: 0.8, 14: 0.8 })]), inst, new Set()).issues;
-    expect(decal).toMatchObject({ severity: "look", path: "Alley1/Grime_decal", ev: { demoted: ["named as a decal or overlay"] } });
+    expect(decal).toMatchObject({ severity: "look", path: "Lane1/Grime_decal", ev: { demoted: ["named as a decal or overlay"] } });
     expect(decal!.why).toMatch(/\. Look only: named as a decal or overlay$/);
     const [prio] = judgeZFightGeometry(geo([pair(4, 5, { 9: ["render_priority 1"], 10: ["shader offsets depth or the vertex along the normal"] })]), inst, new Set()).issues;
     expect(prio!.ev.demoted).toEqual(["render_priority 1", "shader offsets depth or the vertex along the normal"]);
@@ -559,7 +550,7 @@ describe("z_fight from geometry: coplanar faces anywhere, judged by depth precis
   it("the ray samples do not report a pair the geometry pass already covers", () => {
     const covered = judgeZFightGeometry(geo([pair(0, 1)]), inst, new Set()).pairs;
     const rays = [{ zfight: [[0, 1, 9, [5, 6, -2], [0, 1, 0], [5, 6, -2], [6, 6, -1]], [5, 6, 3, [1, 1, 1], [0, 0, 1], [1, 0, 1], [1, 2, 1]]] }];
-    expect(judgeZFight(rays, undefined, inst, new Set(), covered).map((i) => i.path)).toEqual(["Alley1/Wall_3"]);
+    expect(judgeZFight(rays, undefined, inst, new Set(), covered).map((i) => i.path)).toEqual(["Lane1/Wall_3"]);
   });
 });
 
@@ -594,7 +585,7 @@ describe("lights, transform", () => {
 
 describe("grouping repeats", () => {
   it("three or more of the same finding on the same piece become one issue with a count", () => {
-    const inst = [0, 1, 2, 3].map((i) => row(`Alley/Gutter/Sec_${i}`, { k: "gutter_section", r: "mount" }));
+    const inst = [0, 1, 2, 3].map((i) => row(`Lane/Gutter/Sec_${i}`, { k: "gutter_section", r: "mount" }));
     const issues = inst.map((r, i) => ({ check: "mount_gap" as const, severity: "look" as const, path: r.p, pos: [0, 0, 0] as const, why: "stands 5.9 cm off the wall", ev: { gap_m: 0.054 + i * 0.001 }, next: "x", score: 0.05 }));
     const grouped = groupRepeats(issues, inst);
     expect(grouped).toHaveLength(1);

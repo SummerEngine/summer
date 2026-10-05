@@ -10,17 +10,17 @@ import { propSetValue, replaceNodePersisted } from "../../core/capabilities/repl
 import { dispatchTool } from "../../core/capabilities/tool-dispatch.js";
 import { findTscnNode, parseTscn } from "../../core/capabilities/tscn.js";
 
-const SCENE = "res://three_houses_v2.tscn";
-const OLD = "res://kit/high_rise_facade_frame_tripple.tscn";
-const NEW = "res://kit/wall_tripple_standard_door_02.tscn";
+const SCENE = "res://town.tscn";
+const OLD = "res://kit/facade_frame_a.tscn";
+const NEW = "res://kit/wall_door_b.tscn";
 
 const SCENES = {
   [OLD]: { rootType: "StaticBody3D", children: [{ name: "Frame", type: "MeshInstance3D" }] },
   [NEW]: { rootType: "StaticBody3D", children: [{ name: "Wall", type: "MeshInstance3D" }, { name: "DoorSlot", type: "Marker3D" }] },
 };
 
-// The proof-run shape: a door host inside a facade row, with a sign (and its
-// bolt) the agent added under it, between two siblings.
+// A door host inside a facade row, with a sign (and its bolt) added under it,
+// between two siblings.
 const HOUSE = `[gd_scene format=3]
 
 [ext_resource type="PackedScene" path="${OLD}" id="1_frame"]
@@ -47,7 +47,7 @@ function engine(tscn = HOUSE, options: Partial<ConstructorParameters<typeof Fake
   return new FakeSceneEngine(SCENE, tscn, { scenes: SCENES, ...options });
 }
 
-describe("the fake engine reproduces the field bug (regression guard)", () => {
+describe("the fake engine reproduces the ReplaceNode engine bug (regression guard)", () => {
   it("a raw ReplaceNode {scene} shows the new scene live but saves the OLD scene reference", async () => {
     const fake = engine();
     await fake.executeIdentityBoundOps([{ op: "ReplaceNode", path: "./House3/G_f2_door", scene: NEW }]);

@@ -30,11 +30,11 @@ export const grepInputShape = {
   path: z
     .string()
     .optional()
-    .describe("Search scope: a res:// directory or file, e.g. 'res://starter/real-city-alley-kit/pieces.json'. Default: the whole project."),
+    .describe("Search scope: a res:// directory or file, e.g. 'res://kit/' or 'res://kit/kit_manifest.json'. Default: the whole project."),
   glob: z
     .string()
     .optional()
-    .describe("File filter passed to ripgrep --glob, e.g. '*.gd', '**/pieces.json', '!addons/**'. A glob also reaches files .gitignore would skip."),
+    .describe("File filter passed to ripgrep --glob, e.g. '*.gd', '**/*.json', '!addons/**'. A glob also reaches files .gitignore would skip."),
   case_sensitive: z.boolean().optional().describe("Match case exactly (default false: case-insensitive)."),
   context_lines: z
     .number()

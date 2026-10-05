@@ -59,7 +59,7 @@ Use the returned sha256 as expected_sha256 when overwriting an existing file. Pa
 
 READ BIG FILES IN PARTS instead of all at once:
 - offset + limit page the file: lines by default (unit:'bytes' for a byte range on UTF-8 boundaries). The result's data.window gives start_line/end_line, total_lines, next_offset (null at the end) and eof.
-- For JSON: json_path picks one value ('pieces.wall_tripple_standard_01', 'items[3]'); keys keeps matching object keys (['wall_tripple_*']); keys_only lists key names only. data.json says what matched. offset/limit then page the selection.
+- For JSON: json_path picks one value ('pieces.wall_a', 'items[3]'); keys keeps matching object keys (['wall_*']); keys_only lists key names only. data.json says what matched. offset/limit then page the selection.
 The sha256 always covers the WHOLE file, so a windowed read still guards a later overwrite. Files over 1 MB can be paged only within their first 1 MB.`,
     readFileInputShape,
     async (args) => withEngine(async (client) => readProjectFileWindow(client, args))
@@ -69,10 +69,10 @@ The sha256 always covers the WHOLE file, so a windowed read still guards a later
     "summer_grep",
     `Search project files with a regular expression (ripgrep, through the engine) and get file + line + text per match, optionally with context lines around each.
 
-Use it to find things in big files without reading them whole: every '"fits_into"' in a pieces.json, the scenes of a kit (glob '*.tscn'), where a signal handler is defined. Then read exactly the part you need with summer_read_file (offset/limit, or json_path for JSON).
+Use it to find things in big files without reading them whole: every '"fits_into"' in a kit manifest, the scenes of a kit (glob '*.tscn'), where a signal handler is defined. Then read exactly the part you need with summer_read_file (offset/limit, or json_path for JSON).
 
 - path: a res:// directory or file (default: the whole project; .godot/ and .import/ are never searched).
-- glob: ripgrep --glob filter ('*.gd', '**/pieces.json', '!addons/**'). Ripgrep skips files ignored by .gitignore unless a glob names them.
+- glob: ripgrep --glob filter ('*.gd', '**/*.json', '!addons/**'). Ripgrep skips files ignored by .gitignore unless a glob names them.
 - context_lines (0-10): lines before/after each match, as before[] / after[].
 - max_results (default ${GREP_DEFAULT_MAX_RESULTS}, max ${GREP_MAX_RESULTS}) caps the matches; truncated:true says there were more. Lines are clipped to max_line_chars.
 Case-insensitive unless case_sensitive:true. Read-only.`,

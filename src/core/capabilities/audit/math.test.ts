@@ -115,44 +115,44 @@ describe("uvStretchRatio", () => {
   });
 });
 
-describe("insert host matching (pieces.json fits_into)", () => {
-  // House3/Back/B0_f1_door: door_tripple_standard_03 at the frame's own
-  // transform; fits_into wall_tripple_standard_door_02 at local (0, 0, -0.105).
+describe("insert host matching (a manifest's fits_into)", () => {
+  // A door insert at its frame's own transform; the manifest fits it into
+  // wall_door_b at local (0, 0, -0.1).
   const insertOrigin = [31.5, 0, -7.9] as const;
-  const offset = [0, 0, -0.105] as const;
+  const offset = [0, 0, -0.1] as const;
 
   it("the host sits at the insert transform minus the offset, in the host's frame", () => {
     const e = expectedHostOrigin(insertOrigin, YAW_180, offset);
     expect(e[0]).toBeCloseTo(31.5, 6);
-    expect(e[2]).toBeCloseTo(-8.005, 6);
+    expect(e[2]).toBeCloseTo(-8.0, 6);
     const unrotated = expectedHostOrigin([1, 0, 0], IDENTITY, [0, 0.3, -0.045]);
     expect(unrotated).toEqual([1, -0.3, 0.045]);
   });
 
   it("ok within 2 cm and 1 deg", () => {
-    const m = matchInsertHost(insertOrigin, YAW_180, offset, "wall_tripple_standard_door_02", [
-      { index: 4, piece: "wall_tripple_standard_door_02", origin: [31.51, 0, -8.0], basis: YAW_180 },
+    const m = matchInsertHost(insertOrigin, YAW_180, offset, "wall_door_b", [
+      { index: 4, piece: "wall_door_b", origin: [31.51, 0, -8.0], basis: YAW_180 },
     ]);
     expect(m.status).toBe("ok");
   });
 
-  it("the named host 10.5 cm away is a wrong offset; 2 deg off is not ok either", () => {
-    const off = matchInsertHost(insertOrigin, YAW_180, offset, "wall_tripple_standard_door_02", [
-      { index: 4, piece: "wall_tripple_standard_door_02", origin: [31.5, 0, -7.9], basis: YAW_180 },
+  it("the named host 10 cm away is a wrong offset; 2 deg off is not ok either", () => {
+    const off = matchInsertHost(insertOrigin, YAW_180, offset, "wall_door_b", [
+      { index: 4, piece: "wall_door_b", origin: [31.5, 0, -7.9], basis: YAW_180 },
     ]);
     expect(off.status).toBe("wrong_offset");
-    expect(off.named!.distance).toBeCloseTo(0.105, 6);
+    expect(off.named!.distance).toBeCloseTo(0.1, 6);
     const turned = matchInsertHost([0, 0, 0], IDENTITY, [0, 0, 0], "host", [{ index: 1, piece: "host", origin: [0, 0, 0], basis: yaw(2) }]);
     expect(turned.status).toBe("wrong_offset");
     expect(turned.named!.angle).toBeCloseTo(2, 4);
   });
 
   it("another piece at the expected pose is reported as the actual host", () => {
-    const m = matchInsertHost([0, 0, 0], IDENTITY, [0, 0, -0.1], "wall_tripple_standard_door_02", [
-      { index: 9, piece: "high_rise_facade_frame_tripple", origin: [0, 0, 0.1], basis: IDENTITY },
+    const m = matchInsertHost([0, 0, 0], IDENTITY, [0, 0, -0.1], "wall_door_b", [
+      { index: 9, piece: "facade_frame_a", origin: [0, 0, 0.1], basis: IDENTITY },
     ]);
     expect(m.status).toBe("wrong_piece");
-    expect(m.other).toMatchObject({ index: 9, piece: "high_rise_facade_frame_tripple" });
+    expect(m.other).toMatchObject({ index: 9, piece: "facade_frame_a" });
   });
 
   it("nothing there is missing", () => {

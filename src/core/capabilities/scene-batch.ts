@@ -4,15 +4,14 @@
  * re-owning step every MCP path that sends ReparentNode shares.
  *
  * Two engine ops answer ok for changes SaveScene then leaves out of the file
- * (engine modules/1summer_engine/editor/ops/scene_ops.cpp; live check
- * 2026-10-04 on engine 0.6.0):
+ * (engine modules/1summer_engine/editor/ops/scene_ops.cpp, engine 0.6.0):
  *
  *  - ReparentNode (SceneOps::reparent_node) re-owns only the node it moves
  *    (`add_do_method(node, "set_owner", root)`). The remove_child before it
  *    runs Node::_propagate_validate_owner over the detached subtree and clears
  *    every owner that is not inside it — the scene root. PackedScene::pack
- *    skips unowned nodes, so Box/Toy/ToyPart moved under Shelf saved as
- *    Shelf/Box alone.
+ *    skips unowned nodes, so Box/Toy/ToyPart moved under Cabinet saved as
+ *    Cabinet/Box alone.
  *  - ConnectSignal (SceneOps::connect_signal) connects without
  *    CONNECT_PERSIST, so no [connection] line is written. A raw ConnectSignal
  *    is refused here before anything is sent; summer_connect_signal

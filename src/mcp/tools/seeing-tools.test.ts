@@ -144,7 +144,7 @@ describe("summer_screenshot keeps one previous image per bookmark and can compar
       analyze: (config) => ({
         ok: true,
         subjects: [],
-        occlusion: { marks: [{ id: 1, path: "Alley1/backwall1/Model/wall", visible: 0, samples: 5, blocker: "House1/Back/s0_door_wall/Model/wall" }, { id: 2, path: "Ground/Floor", visible: 4, samples: 5 }] },
+        occlusion: { marks: [{ id: 1, path: "Lane1/backwall1/Model/wall", visible: 0, samples: 5, blocker: "House1/Back/s0_door_wall/Model/wall" }, { id: 2, path: "Ground/Floor", visible: 4, samples: 5 }] },
         echo: config.occlusion,
       }),
     });
@@ -158,22 +158,22 @@ describe("summer_screenshot keeps one previous image per bookmark and can compar
         framing: "bookmark:hero",
         metadata: {
           marks: [
-            { id: 1, path: "Alley1/backwall1/Model/wall", class: "MeshInstance3D", screen_rect: { x: 436, y: 78, w: 229, h: 131 } },
+            { id: 1, path: "Lane1/backwall1/Model/wall", class: "MeshInstance3D", screen_rect: { x: 436, y: 78, w: 229, h: 131 } },
             { id: 2, path: "Ground/Floor", class: "MeshInstance3D", screen_rect: { x: 0, y: 386, w: 1024, h: 190 } },
           ],
           marks_candidates: 2,
           camera_pose: { position: "Vector3(-23.719, 2.305, 1.604)", look_at: "Vector3(-23.38, 1.745, -14.726)", fov: 60 },
         },
       }),
-      getSceneState: vi.fn().mockResolvedValue({ provenance: { scenePath: "res://three_houses.tscn" } }),
+      getSceneState: vi.fn().mockResolvedValue({ provenance: { scenePath: "res://town.tscn" } }),
     });
     vi.mocked(getClient).mockResolvedValue(client as never);
-    const result = (await tool("summer_screenshot", registerVisualTools).handler({ target: "scene", scenePath: "res://three_houses.tscn", framing: "bookmark", bookmark_name: "hero", marks: true })) as Result;
+    const result = (await tool("summer_screenshot", registerVisualTools).handler({ target: "scene", scenePath: "res://town.tscn", framing: "bookmark", bookmark_name: "hero", marks: true })) as Result;
     expect(result.isError).toBeFalsy();
     const config = client.configs[0]!;
     expect(config).toMatchObject({ mode: "analyze", tasks: ["occlusion"], occlusion: { position: [-23.719, 2.305, 1.604] } });
     const text = result.content.at(-1)!.text!;
-    expect(text).toMatch(/1 -> Alley1\/backwall1\/Model\/wall .*\(hidden behind House1\/Back\/s0_door_wall\/Model\/wall\)/);
+    expect(text).toMatch(/1 -> Lane1\/backwall1\/Model\/wall .*\(hidden behind House1\/Back\/s0_door_wall\/Model\/wall\)/);
     expect(text).not.toMatch(/2 -> Ground\/Floor .*hidden/);
     expect(text).toContain("1 of 2 labelled node(s) are HIDDEN");
   });

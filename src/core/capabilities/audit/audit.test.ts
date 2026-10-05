@@ -28,15 +28,15 @@ function inst(p: string, extra: Record<string, unknown> = {}) {
 function kernelResult() {
   const crates = Array.from({ length: 200 }, (_, i) => inst(`Props/Crate_${i}`, { o: [i, 0, 3], c: [i, 0.5, 3] }));
   const instances = [
-    inst("House/Back/Frame", { k: "high_rise_facade_frame_tripple", r: "wall", o: [31.5, 0, -7.9], c: [31.5, 1.5, -7.9] }),
-    inst("House/Back/Door", { k: "door_tripple_standard_03", r: "insert", o: [31.5, 0, -7.9], c: [31.5, 1.4, -7.9] }),
+    inst("House/Back/Frame", { k: "facade_frame_a", r: "wall", o: [31.5, 0, -7.9], c: [31.5, 1.5, -7.9] }),
+    inst("House/Back/Door", { k: "door_b", r: "insert", o: [31.5, 0, -7.9], c: [31.5, 1.4, -7.9] }),
     ...crates,
   ];
   return {
     ok: true,
     stage: "done",
     ms: { collect: 5, manifests_roles: 2, mesh_pass: 90, physics_build: 140, through_hole: 180, floor_gap: 90, floating_sunken: 4, insert_host: 10, total: 700 },
-    stats: { nodes: 2692, instances: 202, mesh_instances: 690, unique_meshes: 106, tris_unique: 336553, rays: 80000 },
+    stats: { nodes: 2400, instances: 202, mesh_instances: 640, unique_meshes: 100, tris_unique: 300000, rays: 80000 },
     instances,
     lines: [
       {
@@ -50,7 +50,7 @@ function kernelResult() {
         zfight: [],
       },
     ],
-    inserts: [[1, "wall_tripple_standard_door_02", [0, 0, -0.105], [31.5, 0, -7.9], [-1, 0, 0, 0, 1, 0, 0, 0, -1], [[0, "high_rise_facade_frame_tripple", [31.5, 0, -7.9], [-1, 0, 0, 0, 1, 0, 0, 0, -1]]], [0]]],
+    inserts: [[1, "wall_door_a", [0, 0, -0.1], [31.5, 0, -7.9], [-1, 0, 0, 0, 1, 0, 0, 0, -1], [[0, "facade_frame_a", [31.5, 0, -7.9], [-1, 0, 0, 0, 1, 0, 0, 0, -1]]], [0]]],
     support: crates.map((_, i) => [i + 2, 0.06, 0.4, Array.from({ length: 5 }, () => [0, -1])]),
     warnings: [],
     errors: [],
@@ -64,7 +64,7 @@ describe("input validation: caller text never reaches a scene file or GDScript u
   it.each([...HOSTILE, "res://a.gd", "user://x.tscn", "res://../x.tscn", 'res://a".tscn'])("refuses scenePath %j", (value) => {
     expect(() => validateAuditArgs({ scenePath: value })).toThrow(ToolInputError);
   });
-  it.each([...HOSTILE, "res://a.gd", "res://../pieces.json", "user://pieces.json", "res://x/pieces.json\n", 'res://"x.json', "res://a$b.json", "res:///etc/passwd.json"])("refuses manifest %j", (value) => {
+  it.each([...HOSTILE, "res://a.gd", "res://../kit.json", "user://kit.json", "res://x/kit.json\n", 'res://"x.json', "res://a$b.json", "res:///etc/passwd.json"])("refuses manifest %j", (value) => {
     expect(() => validateManifestPath(value)).toThrow(ToolInputError);
   });
   it("refuses unknown checks and bad paging", () => {
@@ -72,14 +72,14 @@ describe("input validation: caller text never reaches a scene file or GDScript u
     expect(() => validateAuditArgs({ offset: -1 })).toThrow(ToolInputError);
     expect(() => validateAuditArgs({ limit: 0 })).toThrow(ToolInputError);
     expect(() => validateAuditArgs({ limit: 51 })).toThrow(ToolInputError);
-    expect(() => validateAuditArgs({ manifests: Array(9).fill("res://a/pieces.json") })).toThrow(ToolInputError);
+    expect(() => validateAuditArgs({ manifests: Array(9).fill("res://a/kit.json") })).toThrow(ToolInputError);
     expect(() => validateAuditArgs({ budget_ms: 100 })).toThrow(ToolInputError);
     expect(() => validateAuditArgs({ budget_ms: 60001 })).toThrow(ToolInputError);
     expect(() => validateAuditArgs({ budget_ms: 1500.5 })).toThrow(ToolInputError);
   });
   it("accepts ordinary values and defaults to all 14 checks", () => {
-    const v = validateAuditArgs({ scenePath: "res://three_houses_v2.tscn", root: "Alley3/Props", manifests: ["res://starter/real-city-alley-kit/pieces.json"] });
-    expect(v).toMatchObject({ scenePath: "res://three_houses_v2.tscn", root: "Alley3/Props", minSeverity: "look", offset: 0, limit: 15, render: "none", budgetMs: 3000 });
+    const v = validateAuditArgs({ scenePath: "res://town.tscn", root: "Block3/Props", manifests: ["res://kit/kit_manifest.json"] });
+    expect(v).toMatchObject({ scenePath: "res://town.tscn", root: "Block3/Props", manifests: ["res://kit/kit_manifest.json"], minSeverity: "look", offset: 0, limit: 15, render: "none", budgetMs: 3000 });
     expect(v.checks).toEqual([...AUDIT_CHECKS]);
   });
 
@@ -95,15 +95,15 @@ describe("input validation: caller text never reaches a scene file or GDScript u
 describe("the private-copy path: arguments travel as data, the kernel is read-only", () => {
   it("embeds only the validated scene path and the kernel; root, checks and manifests go to config.json", async () => {
     const engine = fakeEngine({ projectRoot: project, audit: () => kernelResult() });
-    await sceneAudit(engine, { scenePath: "res://levels/town.tscn", root: "Alley 3", checks: ["through_hole"], manifests: ["res://kit/pieces.json"] });
+    await sceneAudit(engine, { scenePath: "res://levels/town.tscn", root: "Block 3", checks: ["through_hole"], manifests: ["res://kit/kit_manifest.json"] });
     expect(engine.calls).toHaveLength(1);
     expect(engine.calls[0]).toMatchObject({ op: "ScenePreview", framing: "free", size: [16, 16] });
     const wrapper = engine.wrappers[0]!;
     expect(wrapper).toContain('[ext_resource type="PackedScene" path="res://levels/town.tscn" id="1_subject"]');
-    expect(wrapper).not.toContain("Alley 3");
-    expect(wrapper).not.toContain("res://kit/pieces.json");
+    expect(wrapper).not.toContain("Block 3");
+    expect(wrapper).not.toContain("res://kit/kit_manifest.json");
     expect(wrapper).toContain(escapeTscnString(loadAuditKernel()));
-    expect(engine.configs[0]).toMatchObject({ mode: "audit", root: "Alley 3", checks: ["through_hole"], manifests: ["res://kit/pieces.json"], poses: false, budget_ms: 3000, scene_path: "res://levels/town.tscn" });
+    expect(engine.configs[0]).toMatchObject({ mode: "audit", root: "Block 3", checks: ["through_hole"], manifests: ["res://kit/kit_manifest.json"], poses: false, budget_ms: 3000, scene_path: "res://levels/town.tscn" });
   });
 
   it("the kernel reads its config from its own wrapper and never writes project files or shells out", () => {
@@ -117,12 +117,24 @@ describe("the private-copy path: arguments travel as data, the kernel is read-on
     expect(kernel.match(/FileAccess\.open\(/g)).toHaveLength(1);
     expect(kernel).toContain('FileAccess.open(_out_dir.path_join("result.json"), FileAccess.WRITE)');
   });
+
+  it("reads kit manifests only from the manifests argument: nothing is looked up next to the instanced scenes", () => {
+    const kernel = loadAuditKernel();
+    const fns = new Map(kernel.split("\nfunc ").slice(1).map((body) => [body.slice(0, body.indexOf("(")), body] as const));
+    const load = fns.get("_load_manifests")!;
+    expect(load).toContain('_cfg.get("manifests", [])');
+    expect(load).not.toContain("path_join");
+    // No file name is joined onto a scene's folder: besides its own config.json
+    // and result.json, the only files read are the ones passed.
+    expect(kernel).not.toMatch(/path_join\("(?!config\.json"|result\.json")[^"]*\.(json|md)"\)/);
+    expect(fns.get("_read_manifest")).toContain('_warn("manifest not found: " + path)');
+  });
 });
 
 describe("sceneAudit", () => {
   it("returns a page under 5 KB with counts, time per check and sorted issues", async () => {
     const engine = fakeEngine({ projectRoot: project, audit: () => kernelResult() });
-    const r = (await sceneAudit(engine, { scenePath: "res://three_houses_v2.tscn" })) as AuditSuccess;
+    const r = (await sceneAudit(engine, { scenePath: "res://town.tscn" })) as AuditSuccess;
     expect(r.ok).toBe(true);
     expect(bytes(r.summary)).toBeLessThanOrEqual(SUMMARY_CAP_BYTES);
     expect(r.image).toBeNull();
@@ -156,7 +168,7 @@ describe("sceneAudit", () => {
     expect(render.mode).toBe("render");
     const tiles = render.tiles as Array<{ label: string; pose: { position: number[]; look_at: number[] } }>;
     expect(tiles.map((t) => t.label)).toEqual(["#1 through_hole", "#2 insert_host", "#3 floating", "#4 floating"]);
-    // The hole is framed from its open side (the alley, -Z), never from behind the wall.
+    // The hole is framed from its open side (the street, -Z), never from behind the wall.
     expect(tiles[0]!.pose.position[2]).toBeLessThan(tiles[0]!.pose.look_at[2]!);
     expect(r.image).toMatchObject({ base64: OK_JPEG.toString("base64"), mime: "image/jpeg" });
     expect(r.summary.sheet).toMatchObject({ tiles: [1, 2, 3, 4] });
@@ -182,30 +194,29 @@ describe("sceneAudit", () => {
     expect(engine.calls).toEqual([]);
   });
 
-  it("floor_gap: the kernel's strips and the pack's documented ground reach the page", async () => {
+  it("floor_gap: the kernel's strips reach the page", async () => {
     const engine = fakeEngine({
       projectRoot: project,
       audit: () => ({
         ok: true,
         stage: "done",
         instances: [
-          inst("Ground/B0", { k: "alley_floor_b", s: "res://starter/real-city-alley-kit/ground/alley_floor_b.tscn", r: "floor", c: [0, 0, -11], e: [8.4, 0.1, 7.5] }),
+          inst("Ground/B0", { k: "floor_tile_b", s: "res://kit/ground/floor_tile_b.tscn", r: "floor", c: [0, 0, -11], e: [8.4, 0.1, 7.5] }),
           inst("Ground/Underlay", { k: "underlay", s: "", r: "underlay" }),
-          inst("Alley1/Backdrop", { k: "backdrop", r: "wall" }),
+          inst("Block1/Backdrop", { k: "backdrop", r: "wall" }),
         ],
         floors: { cell: 0.32, per_owner: [[0, 300, 0, 0, 0]], gaps: Array.from({ length: 8 }, (_, k) => [k * 0.25, -15.13, 0.02, 0, 1, -0.055, 4, 2, 0.25, 0.1, 0.025, null, -1, 2]) },
-        packs: [["res://starter/real-city-alley-kit", "PACK.json", "res://starter/real-city-alley-kit/materials/alley_ground.tres", "for any other ground use material res://starter/real-city-alley-kit/materials/alley_ground.tres on a PlaneMesh"]],
       }),
     });
     const r = (await sceneAudit(engine, { scenePath: "res://a.tscn", checks: ["floor_gap"] })) as AuditSuccess;
     const [issue] = r.summary.issues as Array<{ why: string; next: string; ev: Record<string, unknown> }>;
-    expect(issue!.why).toMatch(/^bare strip 2 x 0.1 m \(0.2 m2\) between Ground\/B0's edge and Alley1\/Backdrop/);
-    expect(issue!.next).toContain("alley_ground.tres on a PlaneMesh");
+    expect(issue!.why).toMatch(/^bare strip 2 x 0.1 m \(0.2 m2\) between Ground\/B0's edge and Block1\/Backdrop/);
+    expect(issue!.next).toBe("summer_measure Ground/B0 vs Block1/Backdrop; extend the floor to the wall");
   });
 
   it("budget_ms: a check past its share stops and is reported partial in the counts, never clean", async () => {
-    // A kernel under load (one run took 14 s): with the default budget the
-    // facade scan covers 62% and the floor scan 40%; with 20 s, everything.
+    // A kernel under load: with the default budget the facade scan covers
+    // 62% and the floor scan 40%; with 20 s, everything.
     const slow = (config: Record<string, unknown>) => ({
       ...kernelResult(),
       floors: { cell: 0.3, gaps: [], per_owner: [] },

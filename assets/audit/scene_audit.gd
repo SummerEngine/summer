@@ -40,7 +40,7 @@ const MASK_HOLE := MASK_FACADE | L_MOUNT
 const MASK_SOLID := L_WALL | L_STRUCT | L_INSERT | L_FLOOR | L_UNDERLAY | L_PROP | L_MOUNT
 
 const STRUCT_RE := "(wall|facade|building|house|floor|ground|road|street|pavement|sidewalk|terrain|roof|tower|bridge|stair|pier|corner|crown|cornice|base|dado|plinth|column|pillar|beam|ceiling|frame|trim|fence|gate|railing)"
-const FLOOR_RE := "(floor|ground|road|street|pavement|sidewalk|plaza|tile|terrain|asphalt|courtyard_floor|deck)"
+const FLOOR_RE := "(floor|ground|road|street|pavement|sidewalk|plaza|tile|terrain|asphalt|deck)"
 const WALL_RE := "(wall|facade|building|house)"
 const UNDERLAY_RE := "(underlay|backing|catch|void)"
 const SCATTER_RE := "(leaves|leaf|pebble|gravel|grass|weed|moss|litter|decal|puddle|ivy|vine|tree|bush|shrub|plant|flower|foliage)"
@@ -103,10 +103,6 @@ var _floor_gap_count := 0
 var _floor_gap_void := false
 var _floor_gap_covered := false
 var _floor_recs: Array = []
-# Ground alternatives packs document: [pack dir, source file, material, clause].
-var _pack_docs: Array = []
-# Wall standoffs ASSEMBLY.md gives per section: pack dir -> [[heading, metres]].
-var _pack_standoff: Dictionary = {}
 
 # Editor-time budget (budget_ms): each check gets a share of what is left,
 # weighted by its usual cost; time a fast check leaves unused passes on to
@@ -382,7 +378,6 @@ func _run() -> void:
 		"multimesh_skipped": _multimesh, "rays": _rays,
 	}
 	_result["manifests"] = _manifest_loaded
-	_result["packs"] = _pack_docs
 	_result["ok"] = true
 	_result["stage"] = "done"
 	_write_result()
@@ -514,184 +509,129 @@ func _bounds(rec: Dictionary) -> void:
 
 
 # ---------------------------------------------------------------------------
-# Manifests: pieces.json next to (or one or two folders above) each instanced
-# scene, plus config "manifests", plus PACK.json wall-mount lists.
+# Kit manifests: optional JSON files the caller passes in config "manifests"
+# (res:// paths). Nothing is looked up on disk by itself: without manifests a
+# scene is judged from its geometry and node names alone.
+#
+# {"pieces": {"<res:// scene path, or a scene name relative to the
+#   manifest's folder>": {
+#     "category": "wall", "facade", "floor", "prop", "dressing", "band", ...
+#     "front_axis": "+Z"       the local axis the piece's visible front faces
+#     "mount_side": "-Z"       the local axis that faces the wall it hangs on
+#     "standoff_m": 0.1        how far off that wall it stands by design
+#                              (a number, or [min, max])
+#     "symmetric": true        looks the same turned 180 deg about that axis
+#     "fits_into": {"piece": "<host scene path or name>",
+#                   "local_offset_m": [x, y, z]}  an insert (window, door)
+#                              and where it sits in its host's frame
+# }}}
+# Every field is optional; other fields are ignored. The first manifest that
+# names a scene wins.
 # ---------------------------------------------------------------------------
 
 func _load_manifests() -> void:
 	for p in (_cfg.get("manifests", []) as Array):
-		_read_manifest(String(p), true)
-	var dirs: Dictionary = {}
-	for rec in _inst:
-		var scene := String(rec["scene"])
-		if scene == "" or not scene.begins_with("res://"):
-			continue
-		var d := scene.get_base_dir()
-		for k in 3:
-			if dirs.has(d):
-				break
-			dirs[d] = true
-			_read_manifest(d.path_join("pieces.json"), false)
-			_read_pack(d.path_join("PACK.json"))
-			if d == "res://" or d.count("/") <= 2:
-				break
-			d = d.get_base_dir()
+		_read_manifest(String(p))
 	for rec in _inst:
 		var scene := String(rec["scene"])
 		if _manifest_by_scene.has(scene):
 			rec["man"] = _manifest_by_scene[scene]
 
 
-func _read_manifest(path: String, explicit: bool) -> void:
+func _read_manifest(path: String) -> void:
 	if _manifest_files.has(path):
 		return
 	_manifest_files[path] = true
 	if not FileAccess.file_exists(path):
-		if explicit:
-			_warn("manifest not found: " + path)
+		_warn("manifest not found: " + path)
 		return
 	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
 	if typeof(parsed) != TYPE_DICTIONARY or typeof((parsed as Dictionary).get("pieces")) != TYPE_DICTIONARY:
-		_warn("manifest has no pieces object: " + path)
+		_warn("manifest has no \"pieces\" object: " + path)
 		return
 	var pieces: Dictionary = (parsed as Dictionary)["pieces"]
 	var n := 0
-	for name in pieces:
-		var entry: Variant = pieces[name]
-		if typeof(entry) != TYPE_DICTIONARY:
+	var unread := 0
+	for key in pieces:
+		var raw: Variant = pieces[key]
+		var e: Dictionary = _manifest_entry(raw as Dictionary) if typeof(raw) == TYPE_DICTIONARY else {}
+		if e.is_empty():
+			unread += 1
 			continue
-		var e: Dictionary = (entry as Dictionary).duplicate()
-		e["piece"] = String(name)
+		var scene := String(key)
+		if not scene.begins_with("res://"):
+			scene = path.get_base_dir().path_join(scene)
+		if scene.get_extension() == "":
+			scene += ".tscn"
 		e["manifest"] = path
-		var scene := String(e.get("scene", ""))
-		if scene == "":
-			scene = path.get_base_dir().path_join(String(name) + ".tscn")
 		if not _manifest_by_scene.has(scene):
 			_manifest_by_scene[scene] = e
 			n += 1
+	if unread > 0:
+		_warn("manifest %s: %d piece(s) without a usable category, front_axis, mount_side, standoff_m, symmetric or fits_into" % [path, unread])
 	if _manifest_loaded.size() < 16:
 		_manifest_loaded.append([path, n])
 
 
-# A prop pack without pieces.json may still say which props mount on a wall:
-# PACK.json how_to_use "Wall-mounted props (a, b, c) have their back ... at -Z".
-func _read_pack(path: String) -> void:
-	if _manifest_files.has(path):
-		return
-	_manifest_files[path] = true
-	if not FileAccess.file_exists(path):
-		return
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if typeof(parsed) != TYPE_DICTIONARY:
-		return
-	var how := String((parsed as Dictionary).get("how_to_use", ""))
-	var pack_dir := path.get_base_dir()
-	var assembly := pack_dir.path_join("ASSEMBLY.md")
-	var md := ""
-	if FileAccess.file_exists(assembly):
-		md = FileAccess.get_file_as_string(assembly)
-	if not _pack_ground(pack_dir, "PACK.json", how):
-		_pack_ground(pack_dir, "ASSEMBLY.md", md)
-	_pack_standoffs(pack_dir, md)
-	var re := RegEx.create_from_string("(?i)wall[- ]mounted[^(]{0,40}\\(([^)]{1,600})\\)([^.]{0,120})")
-	var m := re.search(how)
-	if m == null:
-		return
-	var side := "-Z"
-	var tail := m.get_string(2)
-	var sm := RegEx.create_from_string("([+-][XYZ])").search(tail)
-	if sm != null:
-		side = sm.get_string(1)
-	var n := 0
-	for raw in m.get_string(1).split(","):
-		var word := String(raw).strip_edges().get_slice(" ", 0)
-		if word == "":
-			continue
-		var scene := path.get_base_dir().path_join(word + ".tscn")
-		if not _manifest_by_scene.has(scene):
-			_manifest_by_scene[scene] = {"piece": word, "wall_side": side, "manifest": path, "from": "PACK.json how_to_use"}
-			n += 1
-	if n > 0 and _manifest_loaded.size() < 16:
-		_manifest_loaded.append([path, n])
+# The fields of one manifest entry the checks read, type-checked: {} when
+# none is usable.
+func _manifest_entry(raw: Dictionary) -> Dictionary:
+	var e: Dictionary = {}
+	var cat: Variant = raw.get("category")
+	if typeof(cat) == TYPE_STRING and String(cat).strip_edges() != "":
+		e["category"] = String(cat).strip_edges().to_lower()
+	for k in ["front_axis", "mount_side"]:
+		var t := _axis_text(raw.get(k))
+		if t != "":
+			e[k] = t
+	var so: Variant = raw.get("standoff_m")
+	if typeof(so) == TYPE_FLOAT or typeof(so) == TYPE_INT or typeof(so) == TYPE_ARRAY:
+		e["standoff_m"] = so
+	if typeof(raw.get("symmetric")) == TYPE_BOOL:
+		e["symmetric"] = bool(raw["symmetric"])
+	var fit: Variant = raw.get("fits_into")
+	if typeof(fit) == TYPE_DICTIONARY and typeof((fit as Dictionary).get("piece")) == TYPE_STRING and String((fit as Dictionary)["piece"]) != "":
+		var host := String((fit as Dictionary)["piece"])
+		if host.contains("/") or host.ends_with(".tscn"):
+			host = host.get_file().get_basename()
+		var off: Variant = (fit as Dictionary).get("local_offset_m")
+		var offset: Array = [0, 0, 0]
+		if typeof(off) == TYPE_ARRAY and (off as Array).size() == 3:
+			offset = [_num(off[0]), _num(off[1]), _num(off[2])]
+		e["fits_into"] = {"piece": host, "local_offset_m": offset}
+	return e
 
 
-# A pack that documents a ground alternative ("for any other ground use
-# material res://.../alley_ground.tres on a PlaneMesh"): the first clause that
-# names a ground or floor AND an existing material. floor_gap names it in its
-# next step. Returns whether one was found.
-func _pack_ground(dir: String, source: String, text: String) -> bool:
-	if text == "" or _pack_docs.size() >= 8:
-		return false
-	var re_path := RegEx.create_from_string("(res://[A-Za-z0-9_\\-./]+|[A-Za-z0-9_\\-]+/[A-Za-z0-9_\\-./]+)\\.(tres|material)")
-	var re_ground := RegEx.create_from_string("(?i)\\b(ground|floor|terrain|planemesh)")
-	for clause in text.replace("; ", "\n").replace(". ", "\n").split("\n"):
-		var c := String(clause).strip_edges()
-		if c.length() < 8 or re_ground.search(c) == null:
-			continue
-		var m := re_path.search(c)
-		if m == null:
-			continue
-		var material := m.get_string(0)
-		if not material.begins_with("res://"):
-			material = dir.path_join(material)
-		if not ResourceLoader.exists(material):
-			continue
-		_pack_docs.append([dir, source, material, c.substr(0, 200)])
-		return true
-	return false
+static func _num(v: Variant, fallback := 0.0) -> float:
+	if typeof(v) == TYPE_FLOAT or typeof(v) == TYPE_INT:
+		return float(v)
+	return fallback
 
 
-# ASSEMBLY.md sections that give a wall standoff ("Ducts: ... standing about
-# 0.1 m off the wall", "flush to the wall (0-10 cm)"): the largest distance
-# per section heading. A mounted piece whose pieces.json category the heading
-# names may stand that far off its wall (mount_gap).
-func _pack_standoffs(dir: String, md: String) -> void:
-	if md == "":
-		return
-	var re_off := RegEx.create_from_string("(?i)(\\d+(?:\\.\\d+)?)(?:\\s*-\\s*(\\d+(?:\\.\\d+)?))?\\s*(cm|m)\\s+off\\s+(?:the|a|its)\\s+wall")
-	var re_flush := RegEx.create_from_string("(?i)flush\\s+(?:to|against|on)\\s+(?:the|a|its)\\s+wall\\s*\\(\\s*(\\d+(?:\\.\\d+)?)(?:\\s*-\\s*(\\d+(?:\\.\\d+)?))?\\s*(cm|m)\\s*\\)")
-	var rows: Array = []
-	for section in md.split("\n## "):
-		var heading := String(section).get_slice("\n", 0).strip_edges().to_lower()
-		var hi := -1.0
-		for pattern in [re_off, re_flush]:
-			for found in (pattern as RegEx).search_all(String(section)):
-				var rm := found as RegExMatch
-				var v := float(rm.get_string(2) if rm.get_string(2) != "" else rm.get_string(1))
-				if rm.get_string(3).to_lower() == "cm":
-					v /= 100.0
-				hi = maxf(hi, v)
-		if hi >= 0.0 and hi <= 1.0 and heading != "" and rows.size() < 24:
-			rows.append([heading, hi])
-	if not rows.is_empty():
-		_pack_standoff[dir] = rows
+# "+X", "-Z", ... from a manifest axis field; "" when it is not one of the six.
+static func _axis_text(v: Variant) -> String:
+	if typeof(v) != TYPE_STRING:
+		return ""
+	var t := String(v).strip_edges().to_upper()
+	if t.length() == 2 and (t[0] == "+" or t[0] == "-") and (t[1] == "X" or t[1] == "Y" or t[1] == "Z"):
+		return t
+	return ""
 
 
-# How far off its wall a mounted piece may stand: pieces.json standoff_m (a
-# number, or [min, max]), else its pack's ASSEMBLY.md section whose heading
-# names its category. [metres or null, source].
+# How far off its wall a mounted piece may stand by design: the manifest's
+# standoff_m (a number, or [min, max]: the largest counts).
+# [metres or null, source].
 func _standoff_of(rec: Dictionary) -> Array:
-	var man: Dictionary = rec["man"]
-	var raw: Variant = man.get("standoff_m", null)
+	var raw: Variant = (rec["man"] as Dictionary).get("standoff_m", null)
 	if typeof(raw) == TYPE_FLOAT or typeof(raw) == TYPE_INT:
-		return [snappedf(float(raw), 0.001), "pieces.json"]
+		return [snappedf(float(raw), 0.001), "manifest"]
 	if typeof(raw) == TYPE_ARRAY:
 		var top := -1.0
 		for v in (raw as Array):
 			if typeof(v) == TYPE_FLOAT or typeof(v) == TYPE_INT:
 				top = maxf(top, float(v))
 		if top >= 0.0:
-			return [snappedf(top, 0.001), "pieces.json"]
-	var cat := String(man.get("category", "")).to_lower().replace("_", " ")
-	var scene := String(rec["scene"])
-	if cat == "" or scene == "":
-		return [null, ""]
-	for pack in _pack_standoff:
-		if not scene.begins_with(String(pack) + "/"):
-			continue
-		for row in (_pack_standoff[pack] as Array):
-			if String(row[0]).contains(cat):
-				return [snappedf(float(row[1]), 0.001), "ASSEMBLY.md"]
+			return [snappedf(top, 0.001), "manifest"]
 	return [null, ""]
 
 
@@ -714,7 +654,8 @@ static func _axis_of(text: String) -> Vector3:
 
 # ---------------------------------------------------------------------------
 # Roles: wall (facade module), struct (other structural module), floor,
-# underlay, insert (fits_into), mount (wall_side), prop, dressing.
+# underlay, insert (manifest fits_into), mount (manifest mount_side), prop,
+# dressing. A manifest entry decides first, then names, then size.
 # ---------------------------------------------------------------------------
 
 func _classify(rec: Dictionary) -> void:
@@ -727,41 +668,42 @@ func _classify(rec: Dictionary) -> void:
 	var sz := la.size.z
 	rec["front"] = Vector3.ZERO
 	rec["mount"] = Vector3.ZERO
-	var side := String(man.get("wall_side", man.get("mount_side", man.get("mount_axis", ""))))
-	if man.has("fits_into") and typeof(man["fits_into"]) == TYPE_DICTIONARY:
+	var mfront := _axis_of(String(man.get("front_axis", "")))
+	if man.has("fits_into"):
 		rec["role"] = "insert"
-		rec["front"] = Vector3(0, 0, 1)
+		rec["front"] = mfront if mfront != Vector3.ZERO else Vector3(0, 0, 1)
 		return
-	if side != "":
-		var ax := _axis_of(side)
-		if ax != Vector3.ZERO:
-			rec["mount"] = ax
-			if String(man.get("from", "")) == "":
-				rec["role"] = "mount"
-				rec["mount_src"] = "pieces"
-				return
-			# Read from a pack's prose: a free-standing prop that MAY hang on a
-			# wall. It stays a prop (support, overlap) with a mount hint.
-			rec["role"] = "prop"
-			rec["mount_src"] = "pack_text"
-			return
-	var cat := String(man.get("category", "")).to_lower()
+	var side := _axis_of(String(man.get("mount_side", "")))
+	if side != Vector3.ZERO:
+		rec["mount"] = side
+		rec["role"] = "mount"
+		rec["mount_src"] = "manifest"
+		return
+	var cat := String(man.get("category", ""))
 	if cat != "":
-		if cat.contains("plant") or _re_scatter.search(name) != null:
+		# wall / facade: a facade module when wall-sized; floor / ground /
+		# terrain: a floor tile when flat; prop; dressing / plant / decal
+		# (not solid); any other category (band, corner, pier, roof, ...):
+		# structure.
+		if cat == "prop":
+			rec["role"] = "prop"
+			return
+		if cat == "dressing" or cat == "plant" or cat == "decal":
 			rec["role"] = "dressing"
 			return
-		if cat == "ground" or cat == "floor" or cat == "terrain":
-			rec["role"] = "floor" if (_re_floor.search(name) != null and sy <= 0.6) else "dressing"
+		if cat == "floor" or cat == "ground" or cat == "terrain":
+			rec["role"] = "floor" if sy <= 0.6 else "struct"
 			return
-		if cat.begins_with("facade") or cat == "courtyard" or cat == "walls" or cat == "wall":
-			var fz := bool(man.get("front_faces_plus_z", false))
+		if cat.begins_with("wall") or cat.begins_with("facade"):
 			if sy >= 1.0 and maxf(sx, sz) >= 0.8 and minf(sx, sz) <= 1.2:
 				rec["role"] = "wall"
-				rec["front"] = Vector3(0, 0, 1) if fz else Vector3.ZERO
+				rec["front"] = mfront
 				return
 			rec["role"] = "struct"
+			rec["front"] = mfront
 			return
 		rec["role"] = "struct"
+		rec["front"] = mfront
 		return
 	# No manifest: names, then size.
 	var horizontal := sx >= 1.5 and sz >= 1.5 and sy <= 0.6
@@ -1533,7 +1475,7 @@ func _scan_floors() -> Dictionary:
 
 
 # Bare strips OUTSIDE the tile footprints: a tile row that stops short of a
-# wall (an alley's back wall 23-75 cm past the last tile) leaves the underlay
+# wall (a back wall a few decimetres past the last tile) leaves the underlay
 # showing at the wall base, where no grid cell or seam ray looks. Walk each
 # in-scope tile's footprint edges; where a horizontal ray finds a wall within
 # STRIP_REACH outside the edge, step down rays out from the edge to the wall
@@ -1912,8 +1854,8 @@ func _scan_mounts() -> Array:
 		var ground: Variant = null
 		if not down.is_empty():
 			ground = snappedf(wa.position.y - (down["position"] as Vector3).y, 0.001)
-		# How far off the wall the pack lets it stand, and its front-back
-		# symmetry (planes, or pieces.json "symmetric").
+		# How far off the wall the manifest lets it stand, and its front-back
+		# symmetry (planes, or the manifest's "symmetric").
 		var so := _standoff_of(rec)
 		var sym_meta: Variant = null
 		var sym_raw: Variant = (rec["man"] as Dictionary).get("symmetric", null)

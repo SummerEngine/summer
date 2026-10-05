@@ -1,9 +1,9 @@
 /**
  * The compact audit result: counts per check, time per check, and ONE page of
  * issues sorted by severity, never more than SUMMARY_CAP_BYTES of JSON. Agents
- * could not read the 61 KB and 93 KB results older tools produced, so the cap
- * is enforced here by construction: issues are added while they fit, and the
- * result names the offset of the next page.
+ * cannot read results of tens of kilobytes, so the cap is enforced here by
+ * construction: issues are added while they fit, and the result names the
+ * offset of the next page.
  */
 import { AUDIT_CHECKS, SEVERITIES, type AuditCheck, type Severity } from "./args.js";
 import type { AuditIssue } from "./judge.js";

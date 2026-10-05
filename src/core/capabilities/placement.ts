@@ -117,7 +117,7 @@ const scenePathSchema = z
   .refine(utf8Within(SCENE_PATH_LIMIT_BYTES), `scenePath must be at most ${SCENE_PATH_LIMIT_BYTES} UTF-8 bytes`)
   .refine((value) => /^res:\/\/.+\.(tscn|scn)$/i.test(value), "scenePath must be an exact res:// .tscn or .scn path")
   .refine(isSafeResPath, SAFE_RES_PATH_MESSAGE)
-  .describe("Exact scene to read or change, e.g. 'res://levels/alley.tscn'. It must be open in the editor (any tab).");
+  .describe("Exact scene to read or change, e.g. 'res://levels/street.tscn'. It must be open in the editor (any tab).");
 
 const nodePathSchema = (what: string) =>
   z
@@ -1367,7 +1367,7 @@ export const repeatAlongArgsSchema = z.object({
     .max(SCENE_PATH_LIMIT_BYTES)
     .refine((value) => SCENE_ASSET_PATH.test(value), "template must be a res:// .tscn, .scn, .glb or .gltf scene")
     .refine(isSafeResPath, SAFE_RES_PATH_MESSAGE)
-    .describe("Scene to instance for every copy, e.g. 'res://kit/pipes/wall_clamp_01.tscn'."),
+    .describe("Scene to instance for every copy, e.g. 'res://kit/pipes/wall_clamp_a.tscn'."),
   parent: nodePathSchema("Parent for the copies").describe("Parent for the copies; start/end/direction are in this parent's local space (same as position)."),
   start: vec3.describe("First copy's position [x, y, z] in the parent's space."),
   end: vec3.optional().describe("Line end. With spacing: as many copies as fit; with count: count copies spread from start to end."),

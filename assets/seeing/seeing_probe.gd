@@ -396,7 +396,7 @@ func _class_for(node: Node, box: AABB, subject_nodes: Array, occ: Dictionary) ->
 		cur = cur.get_parent()
 	if node is MultiMeshInstance3D:
 		return {"cls": CLASS_SOFT, "why": "multimesh"}
-	# Deepest named segment wins: ".../House1/Front/lantern/Model/street_lamp_02"
+	# Deepest named segment wins: ".../House1/Front/lantern/Model/street_lamp"
 	# is a lamp (soft), ".../House1/Front/s0_c0/Model/wall_double_..." a wall.
 	var segments := path.split("/")
 	for i in range(segments.size() - 1, -1, -1):

@@ -7,7 +7,7 @@
  * Paging and JSON filtering therefore happen here: the engine reads up to its
  * 1 MB window once, and this module returns only the requested part — a line
  * or byte window, or the entries of a .json picked by json_path / keys — so an
- * agent can read one piece of a 93 KB pieces.json without the host refusing
+ * agent can read one entry of a large JSON file without the host refusing
  * the result. The sha256 stays the full-file receipt, so a guarded overwrite
  * still works after a windowed read.
  */
@@ -49,12 +49,12 @@ export const readFileInputShape = {
   json_path: z
     .string()
     .optional()
-    .describe("For a JSON file: return only this value, e.g. 'pieces.wall_tripple_standard_01', 'pieces[\"a b\"]', 'items[3].size_m'."),
+    .describe("For a JSON file: return only this value, e.g. 'pieces.wall_a', 'pieces[\"a b\"]', 'items[3].size_m'."),
   keys: z
     .array(z.string())
     .max(64)
     .optional()
-    .describe("For a JSON object (the file root or the json_path value): keep only these keys; * and ? wildcards, e.g. ['wall_tripple_*']."),
+    .describe("For a JSON object (the file root or the json_path value): keep only these keys; * and ? wildcards, e.g. ['wall_*']."),
   keys_only: z
     .boolean()
     .optional()

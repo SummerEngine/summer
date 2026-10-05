@@ -1,6 +1,6 @@
 ---
 name: spatial-placement
-description: "Place 3D objects and modular kit pieces from measured geometry — inspect, place, starcast, measure, correct; wall, facade, pipe, shelf and alcove recipes."
+description: "Place 3D objects and modular kit pieces from measured geometry — inspect, place, starcast, measure, correct; floor, wall, facade, pipe and alcove recipes."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: scene-and-project
@@ -34,7 +34,7 @@ engine ops behind them: [references/kit-placement-tools.md](references/kit-place
 | Gap or overlap between two pieces; fronts flush? | `summer_measure` |
 | What surrounds a placed piece, which side is blocked? | `summer_starcast` |
 | Will this pose fit in a tight spot? | `summer_test_placement` before committing |
-| Seat a prop on a floor, table or shelf | `summer_snap_to_surface` |
+| Seat a prop on a floor, table or ledge | `summer_snap_to_surface` |
 | Line up or space 2-16 placed pieces on one axis | `summer_align_distribute_3d` |
 | Did exactly that change, does it look right? | `summer_world_snapshot` + `summer_snapshot_diff`, `summer_screenshot` |
 
@@ -76,7 +76,7 @@ defined relative to a rotated subject; then use `directionSpace="local"`.
    pairs (a large `+z` plane at the max z offset means the visible face looks
    along +z and the back is `-z`; a `one_sided` sheet with no opposite plane
    is invisible from behind), port-like loops (pipe and duct ends), anchors
-   and colliders. Read pieces.json or the pack notes too, but trust the
+   and colliders. Read the kit's own notes too, but trust the
    measurement.
 2. `summer_world_snapshot`; keep the `snapshot_id`.
 3. Place the first piece of a line with `summer_instantiate_scene` and its
@@ -151,7 +151,7 @@ Open-loop indices come from the section's `open_loops` in step 1 (its
 `summary.port_like_loops`; equal radii sort by centre x, then y, then z, so
 here 0 is the bottom end and 1 the top).
 On the target pick the loop whose `direction` points where the run continues;
-on the subject, the one that points back at the target. With packs that ship
+on the subject, the one that points back at the target. With kits that ship
 Marker3D anchors, pass their names instead.
 
 ## Placement recipes

@@ -112,7 +112,7 @@ export function buildAgentPlaybook(
     // today; an agent that never hears of them falls back to hand math.
     // ------------------------------------------------------------------
     placement3d: {
-      first: "For any 3D placement (props, kit pieces, walls, shelves, alcoves), call summer_search_library and read skill/spatial-placement (and skill/world-building-3d) before placing. Observe first still applies: snapshot, then place, then verify.",
+      first: "For any 3D placement (props, kit pieces, walls, ledges, alcoves), call summer_search_library and read skill/spatial-placement (and skill/world-building-3d) before placing. Observe first still applies: snapshot, then place, then verify.",
       questionToTool: [
         "'How big is this kit piece, where is its origin, which side is its back, where are its pipe ends?' -> summer_inspect_asset (measures the file without adding it to a scene). Measure every piece type before placing it; never guess facing.",
         "'Place it at this pose' -> summer_instantiate_scene with position / rotation_degrees (one call per piece). Many pieces -> one summer_batch of InstantiateScene ops carrying position / rotation_degrees, with receipt:'summary'.",
@@ -123,7 +123,7 @@ export function buildAgentPlaybook(
         "'Seat it on the floor, table or wall' -> summer_snap_to_surface: move along a ray to the first surface at a requested gap (default straight down).",
         "'Line these up / space them evenly' -> summer_align_distribute_3d: align (min/center/max) or equal-space 2-16 pieces along one axis from their visible AABBs.",
         "'Did exactly that change, and does it look right?' -> summer_world_snapshot before + summer_snapshot_diff after, then summer_screenshot.",
-        "'What is wrong with this scene, and where?' -> summer_scene_audit after each build stage (save first; it reads the saved file in a private copy, so the tab stays clean): see-through holes in facades, floor gaps, floating/sunken/clipping props, inserts in the wrong host (pieces.json fits_into), mount gaps (wall_side), facing look items, UV stretch, z-fighting, lights. At most 5 KB, sorted error/warn/look; page with offset, narrow with checks/root/min_severity, render:'sheet' frames the first 6. Frame every error and look item before calling the scene done.",
+        "'What is wrong with this scene, and where?' -> summer_scene_audit after each build stage (save first; it reads the saved file in a private copy, so the tab stays clean): see-through holes in facades, floor gaps, floating/sunken/clipping props, inserts in the wrong host and mount gaps (from a kit manifest you pass in manifests: fits_into, mount_side), facing look items, UV stretch, z-fighting, lights. At most 5 KB, sorted error/warn/look; page with offset, narrow with checks/root/min_severity, render:'sheet' frames the first 6. Frame every error and look item before calling the scene done.",
         "'Can the player get from A to B?' -> summer_navigation_probe (reachability on the scene's navigation map).",
       ],
       evidence: "physics evidence comes from colliders; visual_aabb is a broad-phase fallback for mesh-only geometry. Read the evidence field before trusting a contact or a gap.",
@@ -150,9 +150,9 @@ export function buildAgentPlaybook(
     // ------------------------------------------------------------------
     readingInParts: [
       "summer_get_project_context is compact by default (project, scene path + sceneSummary, health summary, projectMemory, warnings). Add include:['scene_tree'] / ['capabilities'] / ['settings'] only when you need that block; `omitted` names what was left out.",
-      "summer_world_snapshot lists at most 200 nodes by default. Read one subtree with path_prefix ('House3', 'Alley2/Props'), narrow with classes and fields (['pos','aabb']), page with offset/next_offset; matched_counts counts the subtree's classes. counts and the snapshot_id diff baseline always cover the whole scene.",
+      "summer_world_snapshot lists at most 200 nodes by default. Read one subtree with path_prefix ('House3', 'Lane2/Props'), narrow with classes and fields (['pos','aabb']), page with offset/next_offset; matched_counts counts the subtree's classes. counts and the snapshot_id diff baseline always cover the whole scene.",
       "summer_inspect_node fields:['transform','global_transform','scene_file_path'] reads where a node is (locally and in the world) and which scene it instances in a few hundred bytes instead of about 5 KB.",
-      "Search, then read the part: summer_grep (regex over project files; context_lines, path, glob, max_results) finds the lines; summer_read_file then reads just that part — offset/limit for text (data.window.next_offset continues), json_path / keys / keys_only for JSON (e.g. json_path:'pieces', keys:['wall_tripple_*'] on a kit's pieces.json).",
+      "Search, then read the part: summer_grep (regex over project files; context_lines, path, glob, max_results) finds the lines; summer_read_file then reads just that part — offset/limit for text (data.window.next_offset continues), json_path / keys / keys_only for JSON (e.g. json_path:'pieces', keys:['wall_*'] on a kit manifest).",
     ],
     // ------------------------------------------------------------------
     // Verification ladder (climb only as high as the change demands).

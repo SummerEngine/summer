@@ -24,6 +24,13 @@ Read [references/spatial-tools.md](references/spatial-tools.md) before the first
 
 Use ordinary `summer_get_scene_tree` and `summer_inspect_node` first when paths, hierarchy, authored transforms, collision layers, or camera settings are unknown.
 
+For modular kit pieces (facade modules, storeys, pipes, gutters, wall lamps,
+clamp rows) use the `spatial-placement` skill: it adds `summer_inspect_asset`
+(measure a piece before placing it), placed `summer_instantiate_scene`,
+`summer_place_adjacent`, `summer_attach_to_surface`, `summer_repeat_along`,
+`summer_connect_ports`, `summer_raycast`, `summer_measure` and
+`summer_starcast` to the four tools here.
+
 ## Follow the composition loop
 
 1. Open the exact target scene and resolve exact `./`-relative paths.

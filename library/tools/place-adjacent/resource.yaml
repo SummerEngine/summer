@@ -1,0 +1,113 @@
+id: tool/place-adjacent
+kind: tool
+version: 1.0.0
+summary: Move one node so its bounds face sits against another's along an axis, lining up the other axes — facade modules edge to edge, storeys stacked. Saves the scene.
+use_when:
+  - laying facade or wall modules edge to edge along a street line
+  - stacking a storey, cornice or crown on the piece below
+  - putting a piece flush beside another with the same base height and front plane
+do_not_use_when:
+  - aligning or spacing a whole group along one axis — summer_align_distribute_3d
+  - seating a piece on a floor or a wall surface — summer_snap_to_surface or summer_attach_to_surface
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - 3d
+    - world-building
+    - level-design
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/measure
+    - tool/align-distribute-3d
+    - tool/repeat-along
+    - tool/inspect-asset
+  skills:
+    - skill/spatial-placement
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_place_adjacent
+implementation:
+  module: src/mcp/tools/placement-tools.ts
+  export: registerPlacementTools
+surfaces:
+  mcp:
+    tool_name: summer_place_adjacent
+    remote: false
+input_schema:
+  type: object
+  properties:
+    scenePath:
+      type: string
+      minLength: 1
+      maxLength: 512
+      description: Exact scene, e.g. 'res://levels/alley.tscn'. It must be open in the editor (any tab).
+    subject:
+      type: string
+      minLength: 1
+      maxLength: 256
+      description: Node to move (exact path from the scene root).
+    reference:
+      type: string
+      minLength: 1
+      maxLength: 256
+      description: Node that stays put.
+    axis:
+      type: string
+      enum: [x, y, z]
+      description: Axis along which the two pieces meet.
+    side:
+      type: string
+      enum: [min, max]
+      description: "max: subject on the reference's +axis side (its min face against the reference's max face). min: the -axis side."
+    gap:
+      type: number
+      minimum: -100
+      maximum: 1000
+      default: 0
+      description: Distance between the two faces along axis. 0 = flush; negative = overlap.
+    alignOtherAxes:
+      oneOf:
+        - type: string
+          enum: [min, center, max, none]
+        - type: object
+          properties:
+            x:
+              type: string
+              enum: [min, center, max, none]
+            y:
+              type: string
+              enum: [min, center, max, none]
+            z:
+              type: string
+              enum: [min, center, max, none]
+          additionalProperties: false
+      default: none
+      description: "How to line up the other two axes: one mode for both, or per axis, e.g. {y: min, z: max} for same base height and one front plane."
+    space:
+      type: string
+      enum: [world, local]
+      default: world
+      description: world axes, or the reference's own axes for a rotated facade.
+  required:
+    - scenePath
+    - subject
+    - reference
+    - axis
+    - side
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - scene-valid

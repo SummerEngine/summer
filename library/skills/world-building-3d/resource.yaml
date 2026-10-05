@@ -1,6 +1,6 @@
 id: skill/world-building-3d
 kind: skill
-version: 1.1.0
+version: 1.1.1
 summary: Compose, ground, space, and validate 3D scenes with Summer's four bounded spatial tools — exact paths, one geometric decision at a time, verified.
 use_when:
   - placing or grounding props on floors, shelves, ramps, or tables without hand-tuning transforms
@@ -9,6 +9,7 @@ use_when:
 do_not_use_when:
   - the scene is 2D — these tools read Node3D transforms, world AABBs, 3D physics, and World3D navigation
   - the change is a bulk procedural build with computed placement — skill/scene-scripting
+  - placing modular kit pieces (facades, pipes, wall fixtures) from measured geometry — skill/spatial-placement
 facets:
   lifecycle:
     - build

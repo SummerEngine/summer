@@ -23,7 +23,6 @@ import { EngineApiClient } from "../api-client.js";
 import {
   missingEngineEventsResult,
   missingEngineOpResult,
-  resolveSingleOnlyOps,
   type MissingOpResult,
 } from "../capability-skew.js";
 import { buildAgentPlaybook } from "./agent-playbook.js";
@@ -35,7 +34,6 @@ import {
 } from "./events.js";
 import { importResolvedAsset, type GatewayAsset } from "./asset-import.js";
 import {
-  executeOpsChunked,
   executeSceneMutation,
   occurrenceCount,
   readTextPayload,
@@ -150,6 +148,32 @@ import {
   sendLibraryFeedback,
   type LibraryFeedbackReport,
 } from "../feedback/client.js";
+// One copy of the batch op classification and the instantiate/batch engine
+// path, shared with the MCP face.
+import {
+  PLACEMENT_FIELDS,
+  SCENE_MUTATION_OPS,
+  SCENE_QUERY_OPS,
+  instantiateScene,
+  runBatch,
+  type InstantiateSceneArgs,
+} from "./placement-batch.js";
+import {
+  attachToSurface,
+  attachToSurfaceArgsSchema,
+  connectPorts,
+  connectPortsArgsSchema,
+  inspectAsset,
+  inspectAssetArgsSchema,
+  measure,
+  measureArgsSchema,
+  placeAdjacent,
+  placeAdjacentArgsSchema,
+  raycast,
+  raycastArgsSchema,
+  repeatAlong,
+  repeatAlongArgsSchema,
+} from "./placement.js";
 import { readLibraryEntry, readLibraryInputSchema } from "../library-read.js";
 import { runSearchLibrary, searchLibraryInputSchema } from "../library-search.js";
 
@@ -585,14 +609,6 @@ function entry(
   };
 }
 
-const SCENE_MUTATION_OPS = new Set([
-  "AddNode", "RemoveNode", "MoveNode", "ReparentNode", "ReplaceNode",
-  "SetProp", "SetResourceProperty", "ConnectSignal", "DisconnectSignal",
-  "InstantiateScene", "SaveScene", "SnapToSurface", "AlignDistribute3D", "Undo",
-]);
-
-/** Read-only spatial queries: identity-bound to an exact scene, never saved. */
-const SCENE_QUERY_OPS = new Set(["TestPlacement3D", "NavigationProbe3D", "Starcast3D"]);
 
 // ---------------------------------------------------------------------------
 // Spatial tool argument helpers. Mirror of the bounds in
@@ -1308,14 +1324,25 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       await (await ctx.engine()).executeOps([{ op: "OpenScene", path: str(args, "path") }])
     )
   ),
-  entry("summer_instantiate_scene", "Add an existing scene or 3D model as a child node", true, async (args, ctx) => {
-    const op: DispatchArgs = {
-      op: "InstantiateScene",
+  entry("summer_instantiate_scene", "Add an existing scene or 3D model as a child node, optionally placed (position/rotation_degrees/scale/transform)", true, async (args, ctx) => {
+    const parsed: InstantiateSceneArgs = {
+      scenePath: str(args, "scenePath"),
       parent: str(args, "parent"),
       scene: str(args, "scene"),
     };
-    if (optStr(args, "name")) op.name = args.name;
-    return executeSceneMutation(await ctx.engine(), str(args, "scenePath"), [op]);
+    if (optStr(args, "name")) parsed.name = String(args.name);
+    if (args.target_size !== undefined) {
+      if (typeof args.target_size !== "number" || !(args.target_size > 0)) {
+        throw new ToolDispatchError("target_size must be a positive number");
+      }
+      parsed.target_size = args.target_size;
+    }
+    // Shape-checked in placement-batch (arrays or Godot strings), same as MCP.
+    const placement = parsed as unknown as Record<string, unknown>;
+    for (const field of PLACEMENT_FIELDS) {
+      if (args[field] !== undefined) placement[field] = args[field];
+    }
+    return instantiateScene(await ctx.engine(), parsed);
   }),
   entry("summer_connect_signal", "Connect a signal between two nodes", true, async (args, ctx) =>
     executeSceneMutation(await ctx.engine(), str(args, "scenePath"), [
@@ -1369,17 +1396,13 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     if (needsScenePath && !scenePath) {
       throw new ToolDispatchError("batch requires scenePath when ops targets a scene");
     }
-    const client = await ctx.engine();
-    const options: DispatchArgs = { groupUndo: true, ...(scenePath ? { scenePath } : {}) };
-    if (containsMutation) return executeSceneMutation(client, scenePath!, ops, options);
-    return executeOpsChunked(
-      (chunk) =>
-        needsScenePath
-          ? client.executeIdentityBoundOps(chunk, options)
-          : client.executeOps(chunk, options),
-      ops,
-      resolveSingleOnlyOps(client)
-    );
+    const receipt = optStr(args, "receipt");
+    if (receipt !== undefined && receipt !== "full" && receipt !== "summary") {
+      throw new ToolDispatchError("receipt must be one of full, summary");
+    }
+    // Same engine path as the MCP face (core/capabilities/placement-batch.ts):
+    // InstantiateScene placement fields and the compact summary receipt.
+    return runBatch(await ctx.engine(), { scenePath, ops, receipt });
   }),
 
   // --- scene scripting ---
@@ -1703,6 +1726,36 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       "Starcast3D",
       STARCAST_FALLBACK
     );
+  }),
+
+  // --- kit placement (core/capabilities/placement.ts, shared with the MCP face) ---
+  entry("summer_inspect_asset", "Measure an asset file (AABB, origin, meshes, planar faces, open loops, anchors, collision) without adding it to a scene", true, async (args, ctx) => {
+    const parsed = parseToolArgs(inspectAssetArgsSchema, args, "inspect-asset");
+    return inspectAsset(await ctx.engine(), parsed);
+  }),
+  entry("summer_place_adjacent", "Put one node's bounds face against another's along an axis and line up the other axes (mutation + save)", true, async (args, ctx) => {
+    const parsed = parseToolArgs(placeAdjacentArgsSchema, args, "place-adjacent");
+    return placeAdjacent(await ctx.engine(), parsed);
+  }),
+  entry("summer_attach_to_surface", "Turn a piece's back onto a surface hit by a ray and seat it at a standoff (mutation + save)", true, async (args, ctx) => {
+    const parsed = parseToolArgs(attachToSurfaceArgsSchema, args, "attach-to-surface");
+    return attachToSurface(await ctx.engine(), parsed);
+  }),
+  entry("summer_repeat_along", "Instance copies of a scene along a line at a spacing or count (mutation + save)", true, async (args, ctx) => {
+    const parsed = parseToolArgs(repeatAlongArgsSchema, args, "repeat-along");
+    return repeatAlong(await ctx.engine(), parsed);
+  }),
+  entry("summer_connect_ports", "Move and turn a piece so its port meets another piece's port (mutation + save)", true, async (args, ctx) => {
+    const parsed = parseToolArgs(connectPortsArgsSchema, args, "connect-ports");
+    return connectPorts(await ctx.engine(), parsed);
+  }),
+  entry("summer_raycast", "Cast one ray from any point: hit path, point, normal (physics first, visual AABB fallback declared)", true, async (args, ctx) => {
+    const parsed = parseToolArgs(raycastArgsSchema, args, "raycast");
+    return raycast(await ctx.engine(), parsed);
+  }),
+  entry("summer_measure", "Gap or overlap per axis between two nodes, or face coplanarity across nodes (read-only)", true, async (args, ctx) => {
+    const parsed = parseToolArgs(measureArgsSchema, args, "measure");
+    return measure(await ctx.engine(), parsed);
   }),
 
   // --- visual ---

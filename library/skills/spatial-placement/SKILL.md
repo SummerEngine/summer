@@ -132,9 +132,9 @@ summer_attach_to_surface {scenePath:"res://facade_test.tscn", subject:"./Facade/
   ray:{origin:[2.15,0.5,1], direction:[0,0,-1]}, backAxis:"-z", upAxis:"+y", standoff:0.02}
     -> seated_on "Facade/G2", final_gap 0.02, back_face_gap 0.02; the pipe keeps y 0.1
 summer_instantiate_scene {..., scene:"res://kit/gutter_section.tscn", name:"Pipe_2", position:[2.15,1.1,0.1]}
-summer_connect_ports {scenePath:"res://facade_test.tscn", subject:"./Facade/Pipe_2", subjectPort:0,
-  target:"./Facade/Pipe_1", targetPort:1}
-    -> verify {distance:0, angle_degrees:0}, other_ports [{index:1, direction:[0,1,0]}]
+summer_connect_ports {scenePath:"res://facade_test.tscn", subject:"./Facade/Pipe_2", subjectPort:"-Y",
+  target:"./Facade/Pipe_1", targetPort:"+Y"}
+    -> tilt_degrees 0, verify {distance:0, angle_degrees:0}, other_ports [{id:"+Y", direction:[0,1,0]}]
 summer_repeat_along {scenePath:"res://facade_test.tscn", template:"res://kit/wall_clamp.tscn",
   parent:"./Facade", start:[2.15,0.3,0.02], end:[2.15,1.9,0.02], spacing:0.45}
     -> count 4, created ["Facade/wall_clamp_1", ...]
@@ -147,12 +147,15 @@ summer_starcast {scenePath:"res://facade_test.tscn", path:"./Facade/Lamp", direc
 summer_snapshot_diff {from_id:"<id>"}  then  summer_screenshot
 ```
 
-Open-loop indices come from the section's `open_loops` in step 1 (its
-`summary.port_like_loops`; equal radii sort by centre x, then y, then z, so
-here 0 is the bottom end and 1 the top).
+Loop ids come from the section's `open_loops` in step 1 (its
+`summary.port_like_loops`): `+Y` is the outermost loop facing +Y in the
+piece's own axes (here the top end), `-Y` the bottom; a second loop facing the
+same way is `+Y#2`. The ids do not depend on radius or pose.
 On the target pick the loop whose `direction` points where the run continues;
-on the subject, the one that points back at the target. With packs that ship
-Marker3D anchors, pass their names instead.
+on the subject, the one that points back at the target. A join that would tilt
+the piece more than 5 degrees is refused and lists the ports that fit; pass
+`allowTilt: true` only for an intended tilt. With packs that ship Marker3D
+anchors, pass their names instead.
 
 ## Placement recipes
 

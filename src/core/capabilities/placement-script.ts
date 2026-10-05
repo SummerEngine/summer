@@ -14,8 +14,9 @@
  *   bounds         visible-geometry extents of nodes along three directions
  *                  (world axes or a node's local axes), plus transforms.
  *   raycast        physics ray (active scene only) and a visual-AABB ray.
- *   ports          resolve Marker3D ports or open-loop port indices, and
- *                  optionally the subject's other ports.
+ *   ports          resolve Marker3D ports (optionally with the subject's
+ *                  other markers), or return every open loop of the node in
+ *                  its own frame for placement.ts to order and pick from.
  *   blockers       what a node overlaps where it stands and what it would
  *                  touch first moving along a direction.
  *   multi          run several of the scene commands above in one call.
@@ -561,7 +562,8 @@ func _analyze(meshes, budget, want_planes, want_loops):
 		var acc = planes[pk]
 		plist.append({"area": acc[0], "normal": (acc[1] / acc[0]).normalized(), "offset": acc[2] / acc[0], "tris": acc[3], "cull_back": acc[4] / acc[0]})
 	plist.sort_custom(func(a, b): return a["area"] > b["area"])
-	loops.sort_custom(_loop_less)
+	# Loops keep their discovery order; the caller (placement.ts orderLoops)
+	# gives them their stable order and ids from direction and position.
 	return {"planes": plist, "loops": loops, "analyzed": analyzed, "truncated": truncated, "open_chains": open_chains}
 
 
@@ -679,13 +681,13 @@ func _loop_record(loop, pos, mesh_center):
 	return {"center": c, "direction": n, "radius": r, "vertices": loop.size(), "max_dev": dev, "ambiguous": amb}
 
 
-func _loop_less(a, b):
-	if absf(a["radius"] - b["radius"]) > 0.0001:
-		return a["radius"] > b["radius"]
-	for k in range(3):
-		if absf(a["center"][k] - b["center"][k]) > 0.0001:
-			return a["center"][k] < b["center"][k]
-	return a["vertices"] > b["vertices"]
+# One loop as data for placement.ts: full precision, in the frame of the
+# meshes' top node (its own transform excluded).
+func _loop_raw(lp):
+	var rec = {"mesh": lp["mesh"], "center": _raw3(lp["center"]), "direction": _raw3(lp["direction"]), "radius": lp["radius"], "vertices": lp["vertices"], "max_dev": lp["max_dev"]}
+	if lp["ambiguous"]:
+		rec["direction_ambiguous"] = true
+	return rec
 
 
 # Meshes, markers and shapes under top, in top's own frame (top's transform excluded).
@@ -859,12 +861,8 @@ func _describe(inst, args):
 		planes_out.append({"normal": _d3(p["normal"]), "offset": _r(p["offset"]), "area": snappedf(p["area"], 0.000001), "tris": p["tris"], "cull_back": snappedf(p["cull_back"], 0.01)})
 	out["planes"] = planes_out
 	var loops_out = []
-	for i in range(an["loops"].size()):
-		var lp = an["loops"][i]
-		var rec = {"index": i, "mesh": lp["mesh"], "center": _v3(lp["center"]), "direction": _d3(lp["direction"]), "radius": _r(lp["radius"]), "vertices": lp["vertices"], "max_dev": _r(lp["max_dev"])}
-		if lp["ambiguous"]:
-			rec["direction_ambiguous"] = true
-		loops_out.append(rec)
+	for lp in an["loops"]:
+		loops_out.append(_loop_raw(lp))
 	out["open_loop_count"] = loops_out.size()
 	out["open_loops"] = loops_out
 	out["open_chains"] = an["open_chains"]
@@ -933,31 +931,17 @@ func _resolve_port(root, node, port, budget, want_others):
 			mrec["others"] = mothers
 			mrec["others_total"] = mtotal
 		return mrec
-	var index = int(port)
+	# An open-loop port: every loop of the node in its own frame, plus the
+	# node's scene transform. placement.ts orders them (stable ids from
+	# direction and position, never radius) and picks the one asked for.
 	var col = _collect(node)
 	var an = _analyze(_visible_meshes(col), budget, false, true)
-	if index < 0 or index >= an["loops"].size():
-		return {"fail": _fail("port_not_found", "open-loop port index " + str(index) + " not found on " + _rel(root, node) + " (" + str(an["loops"].size()) + " loop(s); see summer_inspect_asset open_loops)")}
-	var lp = an["loops"][index]
-	var out = {"kind": "open_loop", "index": index, "position": nt * lp["center"], "direction": (nt.basis * lp["direction"]).normalized(), "radius": lp["radius"], "loop_count": an["loops"].size()}
-	if lp["ambiguous"]:
-		out["direction_ambiguous"] = true
+	var loops = []
+	for lp in an["loops"]:
+		loops.append(_loop_raw(lp))
+	var out = {"kind": "open_loops", "loops": loops, "node_xform": _xf12(nt)}
 	if an["truncated"]:
 		out["analysis_truncated"] = true
-	if want_others:
-		var others = []
-		for i in range(an["loops"].size()):
-			if i == index:
-				continue
-			if others.size() >= 16:
-				break
-			var ol = an["loops"][i]
-			var orec = {"kind": "open_loop", "index": i, "position": _raw3(nt * ol["center"]), "direction": _raw3((nt.basis * ol["direction"]).normalized()), "radius": ol["radius"]}
-			if ol["ambiguous"]:
-				orec["direction_ambiguous"] = true
-			others.append(orec)
-		out["others"] = others
-		out["others_total"] = an["loops"].size() - 1
 	return out
 
 
@@ -980,8 +964,9 @@ func _cmd_ports(root, args):
 	if tp.has("fail"):
 		return tp["fail"]
 	for p in [sp, tp]:
-		p["position"] = _raw3(p["position"])
-		p["direction"] = _raw3(p["direction"])
+		if p.has("position"):
+			p["position"] = _raw3(p["position"])
+			p["direction"] = _raw3(p["direction"])
 	var parent_xf = Transform3D.IDENTITY
 	if sub != root and sub.get_parent() != null:
 		parent_xf = _xf(sub.get_parent(), root)

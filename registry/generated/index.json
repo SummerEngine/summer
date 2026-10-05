@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.3.0",
-      "content_hash": "64104a603f17592a9250def6648dc275871d256b759b564763b61be4d051adb8",
+      "content_hash": "8bc0d5d573ed5f36e58209c258ec3ce6f5fb81639056387858dfefd4cb6ded56",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -2883,7 +2883,7 @@
       "id": "skill/spatial-placement",
       "kind": "skill",
       "version": "1.1.0",
-      "content_hash": "2964338c81353cae39b6adf8e4372a07d7ffaffdb40daa6dc5852576a6da8e43",
+      "content_hash": "0405fd3ef0827c8a53b07be8546c9551ab161070f9c546cc8f5b9c063b141cab",
       "summary": "Place 3D objects and modular kit pieces from measured geometry — inspect, place, starcast, measure, correct; wall, facade, pipe, shelf and alcove recipes.",
       "use_when": [
         "positioning a prop, character, collider, or platform so it sits flush, avoids overlap, or keeps clearance",
@@ -4643,8 +4643,8 @@
       "id": "tool/connect-ports",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "ca509afa46b32fd6647a844c25cf9a55149adba7eefb8f206aeef8a7454bdd3d",
-      "summary": "Move and turn one piece so its port (a Marker3D or a measured open pipe end) meets another piece's port, facing it — pipes, ducts, gutters. Saves the scene.",
+      "content_hash": "c3bfda2b165ef241fc20b45b07471ac22cf056b79aac7e05db1a02397f3ac02b",
+      "summary": "Join one piece's port (a Marker3D, or an open pipe end id such as '+Y') to another's, facing it; refuses joins that tilt the piece. Saves the scene.",
       "use_when": [
         "joining a pipe, duct or gutter section end to end with the previous one",
         "fitting a bend, funnel or outlet onto a run",
@@ -6118,7 +6118,7 @@
       "id": "tool/inspect-asset",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "9c9a64cc61525c605f6bba5052fc3fd14aa6bb16d088d0e2297fd9725028d05a",
+      "content_hash": "67c8a11dc6dd13a606e80f38529d2fbab769663366fc4a9f74d7ed70d70b7d18",
       "summary": "Measure a 3D asset file without adding it to a scene — AABB, origin, meshes, largest planar faces, open pipe ends, Marker3D anchors, collision shapes.",
       "use_when": [
         "learning a kit piece's real size, origin and which way it faces before placing it",

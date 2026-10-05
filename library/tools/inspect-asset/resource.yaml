@@ -59,7 +59,7 @@ input_schema:
       type: string
       enum: [summary, full]
       default: summary
-      description: "summary: open_loops lists only port-like loops (radius over 2 cm with a partner loop facing another way), or none. full: every open loop, including the outline of flat sheets. Both start with the summary block (AABB, origin, the two largest opposite plane pairs with one_sided flags, port-like loop indices)."
+      description: "summary: open_loops lists only port-like loops (radius over 2 cm with a partner loop facing another way, or the one opening of an end piece on its bounding-box face), or none. full: every open loop, including the outline of flat sheets. Every loop has a stable id ('+Y', '+Y#2') that summer_connect_ports accepts. Both start with the summary block (AABB, origin, the two largest opposite plane pairs with one_sided flags, port-like loop ids)."
   required:
     - path
   additionalProperties: false

@@ -73,7 +73,7 @@ instances it off the scene tree, measures, and frees it.
   aabb {min, max, size}, origin {fraction [x,y,z], label}, mesh_count,
   meshes [{path, tris, min, max, hidden?}], triangles,
   planes [{normal, offset, area, tris, cull_back, one_sided}] (top 6 by area),
-  open_loop_count, open_loops [{index, mesh, center, direction, radius,
+  open_loop_count, open_loops [{id, index, mesh, center, direction, radius,
   vertices, max_dev, direction_ambiguous?}], open_loops_listed?,
   open_loops_omitted?, open_chains, anchor_count, anchors [{name, path,
   position, forward, up}], collision_count, collision [{path, shape,
@@ -92,16 +92,27 @@ instances it off the scene tree, measures, and frees it.
   - `one_sided: true` means the plane's material culls back faces: it is
     invisible from behind its normal. A one-sided sheet with no opposite plane
     faces along its normal, and its back is the opposite axis.
-  - `port_like_loops`: indices of the open loops that look like pipe or duct
-    ends (radius over 2 cm, a decided direction, and a partner loop of similar
-    radius facing more than 60 degrees away: the other end of a straight run or
-    a bend).
+  - `port_like_loops`: ids of the open loops that look like pipe or duct
+    ends: radius over 2 cm, a decided direction, and either a partner loop of
+    similar radius facing more than 60 degrees away (the other end of a
+    straight run or a bend) or, for an end piece with one opening (an outlet's
+    socket, a funnel's mouth), the only loop opening on the bounding-box face
+    it points through, with the piece reaching at least two radii behind it.
   - `warnings`: says when the triangle budget cut the analysis and which
     `maxTriangles` covers the whole mesh.
 - **`detail`:** `summary` lists in `open_loops` only the port-like loops (with
-  their original indices, which `summer_connect_ports` accepts) and says how
+  their ids and indices, which `summer_connect_ports` accepts) and says how
   many it omitted. `full` lists every loop, including the outline and holes of
   flat sheets.
+- **Loop ids and order:** loops are grouped by the piece axis their outward
+  direction is nearest (`+X`, `-X`, `+Y`, `-Y`, `+Z`, `-Z`, then `~X`, `~Y`,
+  `~Z` for loops whose direction is undecided), the outermost along that axis
+  first, then by centre x, y, z (in millimetres); the radius only breaks exact
+  ties. The `id` follows that order: `+Y` is the outermost loop facing +Y,
+  `+Y#2` the next one. `index` is the position in the same order. Both are
+  computed in the piece's own frame, so they name the same loop on the placed
+  node in `summer_connect_ports`, whatever its pose. A loop 30 degrees off +Y
+  still groups under `+Y`: read its `direction`.
 - **Reading it:** the asset frame is the root's own frame (its own transform
   excluded), the frame `position` and `rotation_degrees` apply in. `origin.label`
   such as `x:center y:min z:center` means bottom centre. Plane normals follow
@@ -265,10 +276,13 @@ instances it off the scene tree, measures, and frees it.
 - **Use when:** pipe to pipe, duct to duct, gutter section to funnel or outlet,
   any two pieces with named anchors.
 - **Arguments:** `subject` (moves), `subjectPort`, `target` (stays),
-  `targetPort`, `gap` (default 0), `rollDegrees` (default 0), `maxTriangles`.
-  A port is a Marker3D (or any Node3D) name under the node, whose -Z axis
-  points out of the port, or an open-loop index from `summer_inspect_asset` on
-  that node's scene.
+  `targetPort`, `gap` (default 0), `rollDegrees` (default 0),
+  `maxTiltDegrees` (0-180, default 5), `allowTilt` (default false),
+  `maxTriangles`. A port is an open-loop id from `summer_inspect_asset` on
+  that node's scene (`+Y`, `-Z#2`; case does not matter, `+Y#1` is `+Y`), a
+  Marker3D (or any Node3D) name under the node whose -Z axis points out of the
+  port, or an open-loop index in the same stable order. A string shaped like
+  an id is always read as an id.
 - **Behaviour:** the subject turns by the shortest rotation that makes its port
   direction the opposite of the target's, then by `rollDegrees` about the
   joined axis, then moves so the ports meet, `gap` apart along the target port
@@ -283,11 +297,22 @@ instances it off the scene tree, measures, and frees it.
     value gives different results from different start poses. Once the ports
     are joined, a second call turns by exactly `rollDegrees` about the joint:
     180 flips a bend's free end to the other side.
+- **Tilt guard:** the tilt is how far the join turns the subject's up axis
+  (its local +Y); a turn about the up axis is no tilt. Over `maxTiltDegrees`
+  the join is refused before anything changes: `failure_reason:
+  "tilt_exceeds_limit"`, `tilt_degrees` (predicted), `max_tilt_degrees`,
+  `subject_port`, `target_port`, `ports_within_limit [{id|name, index,
+  tilt_degrees, direction}]` (the subject's ports that would join within the
+  limit, least tilt first) and `saved: false`. Pass `allowTilt: true` when the
+  tilt is intended (a bend laid on its side, a sloped run); the receipt then
+  warns `tilt_allowed`.
 - **Result:** `{evidence (markers|mesh_triangles), subject_port, target_port,
-  roll_axis, roll_degrees, rotated_degrees, moved_by, other_ports [{kind,
-  name|index, position, direction, radius?, direction_ambiguous?}],
-  other_ports_total?, other_ports_predicted?, saved, verify {distance,
-  angle_degrees}, warnings}`.
+  roll_axis, roll_degrees, rotated_degrees, tilt_degrees, max_tilt_degrees,
+  moved_by, other_ports [{kind, id|name, index?, position, direction,
+  radius?, direction_ambiguous?}], other_ports_total?, other_ports_predicted?,
+  saved, verify {distance, angle_degrees, tilt_degrees}, warnings}`. A port
+  that is not found answers `port_not_found` with the node's loops by id
+  (`subject_ports` or `target_ports`).
 - **`other_ports`:** every other port of the subject (its other Marker3D
   anchors for a marker port, its other open loops for an open-loop port, up to
   8) with world position and outward direction after the move, measured by the

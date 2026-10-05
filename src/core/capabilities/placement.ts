@@ -61,6 +61,7 @@ import {
   xformCompose,
   xformFromArray,
   xformInverse,
+  xformMulPoint,
   type Basis3,
   type SignedAxis,
   type Vec3,
@@ -348,7 +349,7 @@ export const inspectAssetArgsSchema = z.object({
     .enum(["summary", "full"])
     .optional()
     .default("summary")
-    .describe("summary (default): open_loops lists only port-like loops (radius over 2 cm with a partner loop facing another way), or none. full: every open loop, including the outline of flat sheets."),
+    .describe("summary (default): open_loops lists only port-like loops (radius over 2 cm with a partner loop facing another way, or the one opening of an end piece on its bounding-box face), or none. full: every open loop, including the outline of flat sheets. Every loop has a stable id ('+Y', '+Y#2') that summer_connect_ports accepts."),
 });
 export type InspectAssetArgs = z.output<typeof inspectAssetArgsSchema>;
 
@@ -361,12 +362,34 @@ interface PlaneRecord {
   cull_back?: number;
 }
 
-interface LoopRecord {
-  index: number;
+/** One open boundary loop as the probe reports it: full precision, in the
+ *  piece's own frame (the frame of the asset root, or of the scene node with
+ *  its own transform excluded), in discovery order. */
+export interface RawLoop {
+  center: Vec3;
   direction: Vec3;
   radius: number;
+  vertices?: number;
+  mesh?: number;
+  max_dev?: number;
   direction_ambiguous?: boolean;
-  [key: string]: unknown;
+}
+
+/** A loop with its stable place: `index` in the stable order and `id`. */
+export interface OrderedLoop extends RawLoop {
+  index: number;
+  id: string;
+  /** The signed piece axis its outward direction is nearest, e.g. "+Y";
+   *  "~Y" when the probe could not decide which way it faces. */
+  facing: string;
+}
+
+/** What the port-like rules read from a loop. */
+interface LoopRecord {
+  direction: Vec3;
+  radius: number;
+  center?: Vec3;
+  direction_ambiguous?: boolean;
 }
 
 /** Normals closer than this (cosine) are one plane direction. */
@@ -380,6 +403,115 @@ const PORT_RADIUS_RATIO = 0.7;
 /** Partner loops must face more than 60 degrees apart. */
 const PORT_PARTNER_COS = 0.5;
 const SUMMARY_PLANE_COUNT = 6;
+
+// ---- Stable open-loop ids --------------------------------------------------
+//
+// Field evidence (round 1, 2026-10-04): loops were ordered by radius, so a
+// gutter outlet whose four loops measure 0.0776, 0.0773, 0.0728 and 0.0607 m
+// listed two internal seam loops tilted 30 degrees first; joining "index 0",
+// then "index 1", tilted the outlet 30 degrees both times. The +Y socket the
+// pack documents was index 2. Ids now come from where a loop faces and where
+// it sits, which a radius cannot reorder.
+
+/** Order of the facing groups in the stable order. */
+const LOOP_FACING_ORDER = ["+X", "-X", "+Y", "-Y", "+Z", "-Z", "~X", "~Y", "~Z"];
+/** Positions are compared in whole millimetres, radii in tenths of one. */
+const LOOP_POSITION_STEP = 0.001;
+const LOOP_RADIUS_STEP = 0.0001;
+/** A stable open-loop id: "+Y", "+Y#2" (the second loop facing +Y), "~Z". */
+export const LOOP_ID_PATTERN = /^([+\-~])([xyz])(?:#([1-9][0-9]{0,2}))?$/i;
+
+function loopFacing(loop: RawLoop): { facing: string; axis: 0 | 1 | 2; sign: 1 | -1 } {
+  const d = loop.direction;
+  let axis: 0 | 1 | 2 = 0;
+  if (Math.abs(d[1]) > Math.abs(d[axis])) axis = 1;
+  if (Math.abs(d[2]) > Math.abs(d[axis])) axis = 2;
+  const name = "XYZ"[axis]!;
+  if (loop.direction_ambiguous || !(Math.abs(d[axis]) > 0)) return { facing: `~${name}`, axis, sign: 1 };
+  const sign = d[axis] >= 0 ? 1 : -1;
+  return { facing: `${sign > 0 ? "+" : "-"}${name}`, axis, sign };
+}
+
+function quantized(value: number, step: number): number {
+  const q = Math.round(value / step);
+  return Object.is(q, -0) ? 0 : q;
+}
+
+/**
+ * The stable order and ids of a piece's open loops. Sort key: the signed piece
+ * axis the outward direction is nearest (+X, -X, +Y, -Y, +Z, -Z, then the
+ * undecided ~X, ~Y, ~Z); then the outermost along that axis first; then centre
+ * x, y, z; radius (largest first) and vertex count only break exact ties. All
+ * in the piece's own frame, so the ids are the same in summer_inspect_asset
+ * and summer_connect_ports and do not change with the piece's pose. The first
+ * loop facing +Y is "+Y", the next "+Y#2". Exported for tests.
+ */
+export function orderLoops(loops: RawLoop[]): OrderedLoop[] {
+  const keyed = loops.map((loop) => {
+    const { facing, axis, sign } = loopFacing(loop);
+    const c = loop.center;
+    const key = [
+      LOOP_FACING_ORDER.indexOf(facing),
+      -quantized(sign * c[axis], LOOP_POSITION_STEP),
+      quantized(c[0], LOOP_POSITION_STEP),
+      quantized(c[1], LOOP_POSITION_STEP),
+      quantized(c[2], LOOP_POSITION_STEP),
+      -quantized(loop.radius, LOOP_RADIUS_STEP),
+      -(loop.vertices ?? 0),
+      loop.mesh ?? 0,
+    ];
+    return { loop, facing, key };
+  });
+  keyed.sort((a, b) => {
+    for (let k = 0; k < a.key.length; k++) {
+      if (a.key[k] !== b.key[k]) return a.key[k]! - b.key[k]!;
+    }
+    return 0;
+  });
+  const seen = new Map<string, number>();
+  return keyed.map(({ loop, facing }, index) => {
+    const n = (seen.get(facing) ?? 0) + 1;
+    seen.set(facing, n);
+    return { ...loop, index, id: n === 1 ? facing : `${facing}#${n}`, facing };
+  });
+}
+
+export type PortSelector =
+  | { kind: "marker"; name: string }
+  | { kind: "loop_id"; id: string }
+  | { kind: "loop_index"; index: number };
+
+/** "+y", "+Y" and "+Y#1" all name the loop "+Y"; numbers are loop indices;
+ *  any other string is a Marker3D (or Node3D) name. */
+export function parsePortSelector(port: string | number): PortSelector {
+  if (typeof port === "number") return { kind: "loop_index", index: port };
+  const match = LOOP_ID_PATTERN.exec(port.trim());
+  if (!match) return { kind: "marker", name: port };
+  const facing = `${match[1]}${match[2]!.toUpperCase()}`;
+  const n = match[3] ? Number(match[3]) : 1;
+  return { kind: "loop_id", id: n === 1 ? facing : `${facing}#${n}` };
+}
+
+function findLoop(loops: OrderedLoop[], selector: PortSelector): OrderedLoop | undefined {
+  if (selector.kind === "loop_index") return loops[selector.index];
+  if (selector.kind === "loop_id") return loops.find((loop) => loop.id === selector.id);
+  return undefined;
+}
+
+/** A loop as the model reads it (rounded; id first). */
+function loopOut(loop: OrderedLoop): JsonRecord {
+  return {
+    id: loop.id,
+    index: loop.index,
+    ...(loop.mesh !== undefined ? { mesh: loop.mesh } : {}),
+    center: roundVec(loop.center),
+    direction: roundVec(loop.direction, 4),
+    radius: round(loop.radius),
+    ...(loop.vertices !== undefined ? { vertices: loop.vertices } : {}),
+    ...(loop.max_dev !== undefined ? { max_dev: round(loop.max_dev) } : {}),
+    ...(loop.direction_ambiguous ? { direction_ambiguous: true } : {}),
+  };
+}
 
 function axisLabel(normal: Vec3): SignedAxis | undefined {
   for (const axis of AXIS_NAMES) {
@@ -435,19 +567,63 @@ export function planePairs(planes: PlaneRecord[], limit = 2): JsonRecord[] {
  * a flat sheet and its holes all face one way and never qualify. Exported for
  * tests.
  */
-export function portLikeLoops<T extends LoopRecord>(loops: T[]): T[] {
+export function portLikeLoops<T extends LoopRecord>(loops: T[], aabb?: { min: Vec3; max: Vec3 }): T[] {
   const candidates = loops.filter((loop) => loop.radius > PORT_MIN_RADIUS && !loop.direction_ambiguous);
-  return candidates.filter((loop) =>
-    candidates.some(
-      (other) =>
-        other !== loop &&
-        Math.min(other.radius, loop.radius) / Math.max(other.radius, loop.radius) >= PORT_RADIUS_RATIO &&
-        dot(normalize(other.direction), normalize(loop.direction)) < PORT_PARTNER_COS
-    )
+  return candidates.filter(
+    (loop) =>
+      candidates.some(
+        (other) =>
+          other !== loop &&
+          Math.min(other.radius, loop.radius) / Math.max(other.radius, loop.radius) >= PORT_RADIUS_RATIO &&
+          dot(normalize(other.direction), normalize(loop.direction)) < PORT_PARTNER_COS
+      ) || (aabb !== undefined && isEndSocket(loop, candidates, aabb))
   );
 }
 
-function inspectSummary(probe: JsonRecord, planes: PlaneRecord[], portLike: LoopRecord[]): JsonRecord {
+/** Within about 10 degrees of a piece axis. */
+const PORT_END_COS = 0.985;
+
+/** Which bounding-box face a loop opens on, if any: its direction within about
+ *  10 degrees of a piece axis and its centre on the box face that way (1 cm,
+ *  or 2% of the depth). */
+function endFace(loop: LoopRecord, aabb: { min: Vec3; max: Vec3 }): { axis: number; sign: number; tolerance: number } | undefined {
+  const center = loop.center;
+  if (!isFiniteVec3(center)) return undefined;
+  const d = normalize(loop.direction);
+  let axis = 0;
+  if (Math.abs(d[1]) > Math.abs(d[axis])) axis = 1;
+  if (Math.abs(d[2]) > Math.abs(d[axis])) axis = 2;
+  if (Math.abs(d[axis]) < PORT_END_COS) return undefined;
+  const sign = d[axis] > 0 ? 1 : -1;
+  const depth = aabb.max[axis]! - aabb.min[axis]!;
+  const tolerance = Math.max(0.01, depth * 0.02);
+  const face = sign > 0 ? aabb.max[axis]! : aabb.min[axis]!;
+  return Math.abs(center[axis]! - face) <= tolerance ? { axis, sign, tolerance } : undefined;
+}
+
+/**
+ * The one opening of an end piece (a gutter outlet's socket, a funnel's
+ * mouth, a cap's collar) has no partner loop, so the partner rule misses it.
+ * It counts when it opens on the bounding-box face it points through, the
+ * piece reaches at least two radii behind it (a hole in a thin sheet does
+ * not), and no other loop opens on that face except ones concentric with it
+ * (the inner wall of the same opening).
+ */
+function isEndSocket(loop: LoopRecord, candidates: LoopRecord[], aabb: { min: Vec3; max: Vec3 }): boolean {
+  const face = endFace(loop, aabb);
+  if (!face) return false;
+  const depth = aabb.max[face.axis]! - aabb.min[face.axis]!;
+  if (depth < 2 * loop.radius) return false;
+  const center = loop.center as Vec3;
+  return !candidates.some((other) => {
+    if (other === loop) return false;
+    const otherFace = endFace(other, aabb);
+    if (!otherFace || otherFace.axis !== face.axis || otherFace.sign !== face.sign) return false;
+    return length(sub(other.center as Vec3, center)) > face.tolerance;
+  });
+}
+
+function inspectSummary(probe: JsonRecord, planes: PlaneRecord[], portLike: OrderedLoop[]): JsonRecord {
   const analysis = asRecord(probe.analysis) ?? {};
   const triangles = typeof probe.triangles === "number" ? probe.triangles : 0;
   const warnings: string[] = [];
@@ -461,7 +637,7 @@ function inspectSummary(probe: JsonRecord, planes: PlaneRecord[], portLike: Loop
     aabb: probe.aabb ?? null,
     origin: probe.origin ?? null,
     plane_pairs: planePairs(planes),
-    port_like_loops: portLike.map((loop) => loop.index),
+    port_like_loops: portLike.map((loop) => loop.id),
     triangles,
     mesh_count: probe.mesh_count ?? 0,
     anchor_count: probe.anchor_count ?? 0,
@@ -479,10 +655,12 @@ export async function inspectAsset(client: PlacementClient, args: InspectAssetAr
   }, 30);
   if (!probe.ok) return probe;
   const planes = (Array.isArray(probe.planes) ? probe.planes : []) as PlaneRecord[];
-  const loops = (Array.isArray(probe.open_loops) ? probe.open_loops : []) as LoopRecord[];
-  const portLike = portLikeLoops(loops);
+  const loops = orderLoops((Array.isArray(probe.open_loops) ? probe.open_loops : []) as RawLoop[]);
+  const box = asRecord(probe.aabb);
+  const aabb = box && isFiniteVec3(box.min) && isFiniteVec3(box.max) ? { min: box.min, max: box.max } : undefined;
+  const portLike = portLikeLoops(loops, aabb);
   const { ok: _ok, planes: _planes, open_loops: _loops, ...rest } = probe;
-  const listed = args.detail === "full" ? loops : portLike;
+  const listed = (args.detail === "full" ? loops : portLike).map(loopOut);
   const result: JsonRecord = {
     ok: true,
     tool,
@@ -1487,6 +1665,11 @@ export async function repeatAlong(client: PlacementClient, args: RepeatAlongArgs
 // summer_connect_ports
 // ---------------------------------------------------------------------------
 
+/** A join may tilt the subject's up axis this many degrees unless allowed. */
+export const DEFAULT_MAX_TILT_DEGREES = 5;
+/** Float noise in acos near 1, so maxTiltDegrees 0 still accepts a pure turn. */
+const TILT_EPSILON_DEGREES = 0.001;
+
 const portSchema = (what: string) =>
   z
     .union([
@@ -1495,10 +1678,15 @@ const portSchema = (what: string) =>
         .trim()
         .min(1)
         .max(128)
-        .refine((value) => PORT_NAME_CHARS.test(value) && !value.includes(".."), "port names may use letters, digits, _, -, spaces and '/' only"),
+        .refine(
+          (value) => LOOP_ID_PATTERN.test(value) || (PORT_NAME_CHARS.test(value) && !value.includes("..")),
+          "a port is a loop id such as '+Y' or '-Z#2', or a node name using letters, digits, _, -, spaces and '/' only"
+        ),
       z.number().int().min(0).max(255),
     ])
-    .describe(`${what}: a Marker3D (or any Node3D) name under the node, whose -Z axis points out of the port; or an open-loop index from summer_inspect_asset on that node's scene.`);
+    .describe(
+      `${what}: an open-loop id from summer_inspect_asset on that node's scene, e.g. '+Y' (the outermost open loop facing +Y in the piece's own axes) or '+Y#2' (the next one facing +Y); or a Marker3D (or any Node3D) name under the node, whose -Z axis points out of the port; or an open-loop index. Ids and indices follow the stable order (facing, then position), never the radius.`
+    );
 
 export const connectPortsArgsSchema = z.object({
   scenePath: scenePathSchema,
@@ -1516,12 +1704,28 @@ export const connectPortsArgsSchema = z.object({
     .describe(
       "Extra turn of the subject, in degrees, about the joined port axis, applied after the ports are lined up. Axis: the target port's direction reversed, i.e. pointing from the joint into the target (receipt roll_axis). Sign: right-hand rule about that axis; positive turns counter-clockwise when you look back along the axis from inside the target toward the subject. Zero: the shortest turn that makes the subject's port face the target's from the subject's CURRENT orientation, so the same value gives different results from different start poses. Read other_ports in the receipt; once the ports are joined, a second call turns by exactly rollDegrees about the joint (e.g. 180 flips a bend's free end to the other side)."
     ),
-  maxTriangles: z.number().int().min(100).max(300000).optional().default(60000).describe("Triangle budget (100-300000) per node when ports are open-loop indices."),
+  maxTiltDegrees: z
+    .number()
+    .min(0)
+    .max(180)
+    .optional()
+    .default(DEFAULT_MAX_TILT_DEGREES)
+    .describe(
+      "Refuse the join, changing nothing, when it would tilt the subject's up axis (its local +Y) more than this many degrees from where it points now (default 5). Turning about the up axis is never tilt. The refusal names the predicted tilt and the subject ports that would join within the limit."
+    ),
+  allowTilt: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe("true: join even when the subject tilts more than maxTiltDegrees (a bend laid on its side, a sloped run). The receipt still reports tilt_degrees."),
+  maxTriangles: z.number().int().min(100).max(300000).optional().default(60000).describe("Triangle budget (100-300000) per node when ports are open-loop ids or indices."),
 });
 export type ConnectPortsArgs = z.output<typeof connectPortsArgsSchema>;
 
 /** At most this many of the subject's other ports go in the receipt. */
 const OTHER_PORTS_SHOWN = 8;
+/** At most this many ports are listed when a port is not found or a join is refused. */
+const PORT_CHOICES_SHOWN = 8;
 
 interface PortRead {
   kind: string;
@@ -1529,6 +1733,7 @@ interface PortRead {
   direction: Vec3;
   radius?: number;
   name?: string;
+  id?: string;
   index?: number;
   direction_ambiguous?: boolean;
   analysis_truncated?: boolean;
@@ -1540,6 +1745,7 @@ interface PortRead {
 function portOut(port: PortRead): JsonRecord {
   return {
     kind: port.kind,
+    ...(port.id !== undefined ? { id: port.id } : {}),
     ...(port.name !== undefined ? { name: port.name } : {}),
     ...(port.index !== undefined ? { index: port.index } : {}),
     position: roundVec(port.position),
@@ -1547,6 +1753,67 @@ function portOut(port: PortRead): JsonRecord {
     ...(port.radius !== undefined ? { radius: round(port.radius) } : {}),
     ...(port.direction_ambiguous ? { direction_ambiguous: true } : {}),
   };
+}
+
+/** An ordered loop in scene space, through its node's scene transform. */
+function loopPort(loop: OrderedLoop, nodeXf: Xform): PortRead {
+  return {
+    kind: "open_loop",
+    id: loop.id,
+    index: loop.index,
+    position: xformMulPoint(nodeXf, loop.center),
+    direction: normalize(basisMulVec(nodeXf.basis, loop.direction)),
+    radius: loop.radius,
+    ...(loop.direction_ambiguous ? { direction_ambiguous: true } : {}),
+  };
+}
+
+/**
+ * The probe's answer for one port -> the port in scene space. A marker comes
+ * resolved; an open-loop port comes as every loop of the node in its own
+ * frame, which is ordered here (orderLoops) and picked by id or index, so the
+ * same id names the same loop in every pose. With withOthers, the node's other
+ * loops come along in scene space.
+ */
+export function resolveProbePort(
+  raw: unknown,
+  selector: PortSelector,
+  label: "subject" | "target",
+  node: string,
+  withOthers: boolean
+): { port: PortRead } | { failure: PlacementResult } {
+  const record = asRecord(raw) ?? {};
+  if (record.kind !== "open_loops") return { port: record as unknown as PortRead };
+  const tool = "summer_connect_ports";
+  const loops = orderLoops((Array.isArray(record.loops) ? record.loops : []) as RawLoop[]);
+  const loop = findLoop(loops, selector);
+  if (!loop) {
+    const asked = selector.kind === "loop_index" ? `open-loop index ${selector.index}` : selector.kind === "loop_id" ? `open loop ${selector.id}` : `port ${selector.name}`;
+    return {
+      failure: fail(
+        tool,
+        "port_not_found",
+        `${asked} not found on the ${label} ${node} (${loops.length} open loop(s)). Pass an id from ${label}_ports, e.g. '${loops[0]?.id ?? "+Y"}', or a Marker3D name.`,
+        {
+          [`${label}_ports`]: loops.slice(0, PORT_CHOICES_SHOWN).map((l) => ({ id: l.id, index: l.index, center: roundVec(l.center), direction: roundVec(l.direction, 4), radius: round(l.radius) })),
+          ...(loops.length > PORT_CHOICES_SHOWN ? { [`${label}_ports_total`]: loops.length } : {}),
+        }
+      ),
+    };
+  }
+  const nodeXf = xformFromArray(record.node_xform);
+  const port = loopPort(loop, nodeXf);
+  if (record.analysis_truncated === true) port.analysis_truncated = true;
+  if (withOthers) {
+    port.others = loops.filter((other) => other !== loop).map((other) => loopPort(other, nodeXf));
+    port.others_total = loops.length - 1;
+  }
+  return { port };
+}
+
+/** Value the probe gets for a port: a marker name, or a request for loops. */
+function probePortArg(selector: PortSelector): string | JsonRecord {
+  return selector.kind === "marker" ? selector.name : { loops: true };
 }
 
 /** New scene-space transform that joins the subject port to the target port.
@@ -1562,6 +1829,13 @@ export function connectTransform(subject: Xform, sp: PortRead, tp: PortRead, gap
   const joint = add(tp.position, scale(dt, gap));
   const origin = add(basisMulVec(rotation, sub(subject.origin, sp.position)), joint);
   return { xform: { basis: basisMul(rotation, subject.basis), origin }, rotation, joint, rollAxis: want };
+}
+
+/** How far a scene-space rotation turns the subject's up axis (its local +Y),
+ *  in degrees. A turn about the up axis is 0. Exported for tests. */
+export function tiltDegrees(subject: Xform, rotation: Basis3): number {
+  const up = normalize(basisMulVec(subject.basis, [0, 1, 0]));
+  return angleDegrees(up, basisMulVec(rotation, up));
 }
 
 /** Where the subject's other ports end up: measured after the move when the
@@ -1585,6 +1859,23 @@ function otherPortsOut(
   return { ports, total, predicted: !measured };
 }
 
+/** The subject's other ports that would join the target within the tilt
+ *  limit, least tilt first. */
+function portsWithinTilt(subjectXf: Xform, sp: PortRead, tp: PortRead, args: ConnectPortsArgs): JsonRecord[] {
+  return (sp.others ?? [])
+    .map((port) => ({ port, tilt: tiltDegrees(subjectXf, connectTransform(subjectXf, port, tp, args.gap, args.rollDegrees).rotation) }))
+    .filter((choice) => choice.tilt <= args.maxTiltDegrees + TILT_EPSILON_DEGREES)
+    .sort((a, b) => a.tilt - b.tilt || (a.port.index ?? 0) - (b.port.index ?? 0))
+    .slice(0, PORT_CHOICES_SHOWN)
+    .map(({ port, tilt }) => ({
+      ...(port.id !== undefined ? { id: port.id } : {}),
+      ...(port.name !== undefined ? { name: port.name } : {}),
+      ...(port.index !== undefined ? { index: port.index } : {}),
+      tilt_degrees: round(tilt, 2),
+      direction: roundVec(port.direction, 4),
+    }));
+}
+
 function rotationAngleDegrees(r: Basis3): number {
   const trace = r[0][0] + r[1][1] + r[2][2];
   return (Math.acos(Math.max(-1, Math.min(1, (trace - 1) / 2))) * 180) / Math.PI;
@@ -1593,29 +1884,57 @@ function rotationAngleDegrees(r: Basis3): number {
 export async function connectPorts(client: PlacementClient, args: ConnectPortsArgs): Promise<PlacementResult> {
   const tool = "summer_connect_ports";
   if (args.subject === args.target) throw new ToolInputError("subject and target must be different nodes.");
+  const subjectSel = parsePortSelector(args.subjectPort);
+  const targetSel = parsePortSelector(args.targetPort);
   const readArgs = {
     cmd: "ports",
     scene_path: args.scenePath,
     subject: args.subject,
-    subject_port: args.subjectPort,
+    subject_port: probePortArg(subjectSel),
     target: args.target,
-    target_port: args.targetPort,
+    target_port: probePortArg(targetSel),
     max_triangles: args.maxTriangles,
     other_ports: true,
   };
   const read = await runPlacementProbe(client, tool, readArgs);
   if (!read.ok) return read;
-  const sp = read.subject_port as PortRead;
-  const tp = read.target_port as PortRead;
+  const spRead = resolveProbePort(read.subject_port, subjectSel, "subject", args.subject, true);
+  if ("failure" in spRead) return spRead.failure;
+  const tpRead = resolveProbePort(read.target_port, targetSel, "target", args.target, false);
+  if ("failure" in tpRead) return tpRead.failure;
+  const sp = spRead.port;
+  const tp = tpRead.port;
   const subjectXf = xformFromArray(read.xform);
   const parentXf = xformFromArray(read.parent_xform);
   const { xform, rotation, joint, rollAxis } = connectTransform(subjectXf, sp, tp, args.gap, args.rollDegrees);
+  const tilt = tiltDegrees(subjectXf, rotation);
+  if (tilt > args.maxTiltDegrees + TILT_EPSILON_DEGREES && !args.allowTilt) {
+    const within = portsWithinTilt(subjectXf, sp, tp, args);
+    return fail(
+      tool,
+      "tilt_exceeds_limit",
+      `Joining these ports would tilt ${args.subject}'s up axis by ${round(tilt, 1)} degrees (limit ${args.maxTiltDegrees}); nothing was changed. ` +
+        (within.length > 0
+          ? `Subject ports that join within the limit: ${within.map((c) => String(c.id ?? c.name ?? c.index)).join(", ")}. `
+          : "No other subject port joins within the limit. ") +
+        "If the tilt is intended (a bend on its side, a sloped run), pass allowTilt true.",
+      {
+        tilt_degrees: round(tilt, 2),
+        max_tilt_degrees: args.maxTiltDegrees,
+        subject_port: portOut(sp),
+        target_port: portOut(tp),
+        ports_within_limit: within,
+        saved: false,
+      }
+    );
+  }
   const local = xformCompose(xformInverse(parentXf), xform);
   const warnings: string[] = [];
   for (const [label, port] of [["subject", sp], ["target", tp]] as const) {
     if (port.direction_ambiguous) warnings.push(`${label}_port_direction_ambiguous`);
     if (port.analysis_truncated) warnings.push(`${label}_port_analysis_truncated`);
   }
+  if (tilt > args.maxTiltDegrees + TILT_EPSILON_DEGREES) warnings.push("tilt_allowed");
   const receipt = await executeSceneMutation(client, args.scenePath, [
     { op: "SetProp", path: args.subject, key: "transform", value: toGodotTransform(local) },
   ]);
@@ -1630,28 +1949,39 @@ export async function connectPorts(client: PlacementClient, args: ConnectPortsAr
     roll_axis: roundVec(rollAxis, 4),
     roll_degrees: args.rollDegrees,
     rotated_degrees: round(rotationAngleDegrees(rotation), 2),
+    tilt_degrees: round(tilt, 2),
+    max_tilt_degrees: args.maxTiltDegrees,
     moved_by: roundVec(sub(xform.origin, subjectXf.origin)),
     saved: true,
     warnings,
   };
   const after = await runPlacementProbe(client, tool, readArgs);
-  const sp2 = after.ok ? (after.subject_port as PortRead) : undefined;
+  const sp2Read = after.ok ? resolveProbePort(after.subject_port, subjectSel, "subject", args.subject, true) : undefined;
+  const tp2Read = after.ok ? resolveProbePort(after.target_port, targetSel, "target", args.target, false) : undefined;
+  const sp2 = sp2Read && "port" in sp2Read ? sp2Read.port : undefined;
+  const tp2 = tp2Read && "port" in tp2Read ? tp2Read.port : undefined;
   const others = otherPortsOut(sp, sp2, { rotation, joint });
   // Every other end of the subject, where it is now: a bend's free end tells
   // you at once whether it points where the run continues.
   result.other_ports = others.ports;
   if (others.total > others.ports.length) result.other_ports_total = others.total;
   if (others.predicted && others.ports.length > 0) result.other_ports_predicted = true;
-  if (!after.ok || !sp2) {
-    result.verify = { ok: false, error: after.error };
+  if (!after.ok || !sp2 || !tp2) {
+    result.verify = { ok: false, error: after.ok ? "the verify read could not resolve the ports" : after.error };
     return fitToBudget(result, ["other_ports", "warnings"]) as PlacementResult;
   }
-  const tp2 = after.target_port as PortRead;
   const meet = add(tp2.position, scale(normalize(tp2.direction), args.gap));
+  let measuredTilt: number | undefined;
+  try {
+    const afterXf = xformFromArray(after.xform);
+    measuredTilt = angleDegrees(basisMulVec(subjectXf.basis, [0, 1, 0]), basisMulVec(afterXf.basis, [0, 1, 0]));
+  } catch {
+    measuredTilt = undefined;
+  }
   result.verify = {
     distance: round(length(sub(sp2.position, meet)), 4),
     angle_degrees: round(angleDegrees(sp2.direction, scale(tp2.direction, -1)), 2),
+    ...(measuredTilt !== undefined ? { tilt_degrees: round(measuredTilt, 2) } : {}),
   };
   return fitToBudget(result, ["other_ports", "warnings"]) as PlacementResult;
 }
-

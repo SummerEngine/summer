@@ -207,6 +207,12 @@ describe("hostile inputs never become GDScript", () => {
     // Open-loop ports travel as raw loops; placement.ts orders them (orderLoops).
     expect(source).toContain('var out = {"kind": "open_loops", "loops": loops, "node_xform": _xf12(nt)}');
     expect(source).not.toContain("sort_custom(_loop_less)");
+    // Only ArrayMesh binds surface_get_primitive_type (mesh.cpp): a PlaneMesh or
+    // BoxMesh in the piece must not stop the probe with a runtime error.
+    const primitiveCalls = lines.filter((line) => line.includes("surface_get_primitive_type("));
+    expect(primitiveCalls).toEqual(["\t\treturn mesh.surface_get_primitive_type(s) == Mesh.PRIMITIVE_TRIANGLES"]);
+    expect(source).toContain("\tif mesh is ArrayMesh:\n\t\treturn mesh.surface_get_primitive_type(s)");
+    expect(source).toContain("\treturn mesh is PrimitiveMesh");
   });
 
   it("rejects hostile node paths, port names and res:// paths at the schema", () => {

@@ -487,7 +487,7 @@ func _analyze(meshes, budget, want_planes, want_loops):
 		for s in range(mesh.get_surface_count()):
 			if truncated:
 				break
-			if mesh.surface_get_primitive_type(s) != Mesh.PRIMITIVE_TRIANGLES:
+			if not _is_tris(mesh, s):
 				continue
 			var culls = _culls_back(m[0], s) if want_planes else true
 			var arr = mesh.surface_get_arrays(s)
@@ -734,10 +734,19 @@ func _visible_meshes(col):
 	return out
 
 
+# Whether surface s is a triangle list. Only ArrayMesh binds
+# surface_get_primitive_type; the built-in primitive meshes (PlaneMesh,
+# BoxMesh, CylinderMesh, ...) are always triangles.
+func _is_tris(mesh, s):
+	if mesh is ArrayMesh:
+		return mesh.surface_get_primitive_type(s) == Mesh.PRIMITIVE_TRIANGLES
+	return mesh is PrimitiveMesh
+
+
 func _mesh_tris(mesh):
 	var n = 0
 	for s in range(mesh.get_surface_count()):
-		if mesh.surface_get_primitive_type(s) != Mesh.PRIMITIVE_TRIANGLES:
+		if not _is_tris(mesh, s):
 			continue
 		if mesh is ArrayMesh:
 			var il = mesh.surface_get_array_index_len(s)

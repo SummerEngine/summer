@@ -578,7 +578,7 @@ describe("lights, transform", () => {
       row("City/Nan", { nan: true }),
       row("City/Mirror", { det: -1, sc: [1, 1, 1], o: [25, 0, 10], c: [25, 0.5, 10] }),
       row("City/Stretched", { sc: [1, 2, 1], o: [26, 0, 10], c: [26, 0.5, 10] }),
-      row("City/Origin", { o: [0, 0, 0], c: [0, 0.5, 0] }),
+      row("Loose/Origin", { o: [0, 0, 0], c: [0, 0.5, 0], li: true, pi: true }),
       row("City/Far", { o: [3000, 0, 0], c: [3000, 0.5, 0] }),
     ];
     const issues = judgeTransforms(inst);
@@ -586,9 +586,57 @@ describe("lights, transform", () => {
     expect(by("City/Nan")).toEqual(["error"]);
     expect(by("City/Mirror")).toEqual(["warn"]);
     expect(by("City/Stretched")).toEqual(["look"]);
-    expect(by("City/Origin")).toEqual(["warn"]);
+    // One piece alone at the origin, away from the scene and touching nothing: a look item.
+    expect(by("Loose/Origin")).toEqual(["look"]);
     expect(by("City/Far")).toEqual(["warn"]);
     expect(by("City/P3")).toEqual([]);
+  });
+});
+
+describe("transform: left at the origin (round 1: a correctly placed bay whose corner is the world origin)", () => {
+  // The town around x 0..36; the West block's bays run from x -9 to 0.
+  const town = Array.from({ length: 20 }, (_, i) => row(`House${i}/F0`, { r: "wall", o: [10 + i * 1.5, 0, 0], c: [10.75 + i * 1.5, 1.5, 0], e: [1.5, 3, 0.2] }));
+  const bay = (p: string, x: number, over: Partial<InstRow> = {}) => row(p, { r: "wall", o: [x, 0, 0], c: [x - 1.5, 1.5, -0.1], e: [3, 3, 0.2], lo: [x, 0, 0], li: x === 0, pi: true, ...over });
+
+  it("a bay of a facade laid edge to edge from the origin is placed, not left there", () => {
+    const inst = [...town, bay("West/F_g0", -6), bay("West/F_g1", -3), bay("West/F_g2", 0)];
+    expect(judgeTransforms(inst).filter((i) => i.why.includes("origin"))).toEqual([]);
+  });
+
+  it("a piece placed by its parent (identity local transform under a moved parent) is not flagged", () => {
+    const inst = [...town, row("West/Bay", { r: "wall", o: [0, 0, 0], c: [-1.5, 1.5, 0], li: true, pi: false })];
+    expect(judgeTransforms(inst).filter((i) => i.why.includes("origin"))).toEqual([]);
+  });
+
+  it("a piece with a non-identity local transform is not 'left at the origin', even when its global origin is", () => {
+    const inst = [...town, row("West/Bay", { r: "wall", o: [0, 0, 0], c: [-1.5, 1.5, 0], li: false, pi: true })];
+    expect(judgeTransforms(inst).filter((i) => i.why.includes("origin"))).toEqual([]);
+  });
+
+  it("several pieces sharing the identity transform at the origin are a warning each", () => {
+    const dropped = ["Props/Crate", "Props/Bench", "Props/Lamp"].map((p) => row(p, { o: [0, 0, 0], c: [0, 0.5, 0], e: [0.5, 1, 0.5], li: true, pi: true }));
+    const issues = judgeTransforms([...town, ...dropped]).filter((i) => i.why.includes("origin"));
+    expect(issues.map((i) => [i.path, i.severity])).toEqual([
+      ["Props/Crate", "warn"],
+      ["Props/Bench", "warn"],
+      ["Props/Lamp", "warn"],
+    ]);
+    expect(issues[0]!.ev).toMatchObject({ shared: 3 });
+  });
+});
+
+describe("z_fight evidence: which way to nudge (round 1 nudged the wrong axis twice)", () => {
+  it("names the shared plane's normal and the axis to move along, world and the piece's own", () => {
+    // A window insert whose top face lies on its host's reveal soffit (normal -Y), the insert turned 90 deg.
+    const YAW_90 = [0, 0, -1, 0, 1, 0, 1, 0, 0];
+    const inst = [row("House2/F_w1_win", { r: "insert", b: YAW_90 }), row("House2/F_w1", { r: "wall" })];
+    const geo = { near: 0.05, far: 4000, pairs: [[0, 1, 0.12, 0, [1, 2.4, 0], [0, -1, 0], 6, "walkable area", true, [], [], "glass", "brick", false, 0.12, 1, "House2/F_w1_win", "House2/F_w1"]] };
+    const [i] = judgeZFightGeometry(geo, inst, new Set()).issues;
+    expect(i!.ev).toMatchObject({ normal: [0, -1, 0], nudge: { world: "-Y", local: "-Y" } });
+    expect(i!.next).toMatch(/along world Y \(the shared plane's normal \(0,-1,0\); its local Y\), not along the facade/);
+    // A jamb (normal +X in the world) on the turned insert is its local Z.
+    const jamb = { ...geo, pairs: [[0, 1, 0.12, 0, [1, 2.4, 0], [1, 0, 0], 6, "walkable area", true, [], [], "glass", "brick", false, 0.12, 1, "a", "b"]] };
+    expect(judgeZFightGeometry(jamb, inst, new Set()).issues[0]!.ev.nudge).toEqual({ world: "+X", local: "+Z" });
   });
 });
 

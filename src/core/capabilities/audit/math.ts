@@ -387,3 +387,24 @@ export function fitCameraDistance(size: number, fovDegrees: number, fill = 0.55)
   const half = Math.tan((fovDegrees * Math.PI) / 360);
   return size / (2 * half * fill);
 }
+
+// ---------------------------------------------------------------------------
+// Axis labels (z_fight: which way to nudge)
+// ---------------------------------------------------------------------------
+
+/** World axis label of a vector's dominant component ("+X", "-Y", ...). */
+export function axisName(v: Vec3): string {
+  const k = Math.abs(v[0]) >= Math.abs(v[1]) && Math.abs(v[0]) >= Math.abs(v[2]) ? 0 : Math.abs(v[1]) >= Math.abs(v[2]) ? 1 : 2;
+  return `${v[k]! >= 0 ? "+" : "-"}${"XYZ"[k]}`;
+}
+
+/** The local axis of a piece (basis columns) that a world direction runs along. */
+export function localAxisName(b: readonly number[], v: Vec3): string {
+  const cols = basisColumns(b);
+  const local: Vec3 = [0, 1, 2].map((k) => {
+    const c = cols[k]!;
+    const L = length(c) || 1;
+    return (c[0] * v[0] + c[1] * v[1] + c[2] * v[2]) / L;
+  }) as unknown as Vec3;
+  return axisName(local);
+}

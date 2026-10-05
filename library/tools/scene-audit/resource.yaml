@@ -113,6 +113,30 @@ input_schema:
       minimum: 250
       maximum: 60000
       description: 'Editor time for the whole audit (default 3000 ms). Each check gets a share weighted by its usual cost (unused time passes on); a check past its share stops and counts.<check>.partial gives the share it covered. Under load, rerun the partial checks with checks or a larger budget.'
+    accept:
+      type: array
+      maxItems: 50
+      items:
+        type: object
+        properties:
+          key:
+            type: string
+            minLength: 8
+            maxLength: 360
+            description: The issue's key from a previous result (issues[].key).
+          reason:
+            type: string
+            minLength: 3
+            maxLength: 200
+            description: Why it is fine, e.g. "inside-corner band overlap, hidden behind the corner piece".
+        required:
+          - key
+          - reason
+        additionalProperties: false
+      description: 'Accept look or warn items you judged fine (up to 50 per call): [{key, reason}] with keys from this scene''s issues. Written to res://.summer/audit-accept.json (the only file the audit writes), then counted (counts.<check>.accepted) but hidden on every later audit until their evidence changes materially (severity rises, or the measured size moves by over 25%): then they show again with accept_stale. Errors cannot be accepted.'
+    show_accepted:
+      type: boolean
+      description: 'List accepted items too (each with its accepted reason). Default false: hidden, only counted.'
     render:
       type: string
       enum:

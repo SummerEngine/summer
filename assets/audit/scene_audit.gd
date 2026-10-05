@@ -413,6 +413,12 @@ func _run() -> void:
 		"multimesh_skipped": _multimesh, "screen_space_skipped": _screen_space, "rays": _rays,
 	}
 	_result["manifests"] = _manifest_loaded
+	# Look items the agent accepted (written by the MCP side, read-only here).
+	var accept_path := "res://.summer/audit-accept.json"
+	if FileAccess.file_exists(accept_path):
+		var acc: Variant = JSON.parse_string(FileAccess.get_file_as_string(accept_path))
+		if typeof(acc) == TYPE_DICTIONARY:
+			_result["accept"] = acc
 	_result["ok"] = true
 	_result["stage"] = "done"
 	_write_result()

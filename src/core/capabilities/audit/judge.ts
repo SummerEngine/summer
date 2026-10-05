@@ -67,6 +67,10 @@ export interface AuditIssue {
   /** Magnitude for ordering within a severity (bigger first). */
   score: number;
   frame?: FrameHint;
+  /** Set by the accept filter: the reason it was accepted (show_accepted). */
+  accepted?: string;
+  /** Set by the accept filter: accepted once, but its evidence changed. */
+  acceptStale?: string;
 }
 
 export interface InstRow {

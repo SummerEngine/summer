@@ -829,9 +829,9 @@ func _surface_below(pos: Vector3, mask: int) -> Variant:
 
 # Eye mode (eye_level and corridor candidates): stand the camera at eye height
 # above the walkable surface under it, and never raise it. The surface is the
-# first solid one straight below the lens (cast from the lens, so a duct, a
-# balcony or a roof overhead never counts as ground), within EYE_STEP_UP /
-# EYE_STEP_DOWN of the floor under eye["stand"]. The height is eye["target"],
+# walkable one straight below the lens (_floor_at, cast from the lens, so a
+# duct, a balcony or a roof overhead never counts as ground), within
+# EYE_STEP_UP / EYE_STEP_DOWN of the walkable floor under eye["stand"]. The height is eye["target"],
 # or the camera's own height clamped into eye["min"]..eye["max"]. When that
 # spot does not work (no walkable surface, or the lens is blocked) the camera
 # moves HORIZONTALLY: along the view up to 1 m, then 0.3 / 0.6 m sideways.
@@ -845,7 +845,8 @@ func _eye_place(pos: Vector3, look: Vector3, eye: Dictionary, lens_r: float) -> 
 	var target := clampf(float(eye.get("target", 1.6)), lo, hi)
 	var ref: Variant = null
 	if eye.has("stand"):
-		ref = _surface_below(_vec(eye["stand"]) + Vector3.UP * 0.1, EYE_GROUND_MASK)
+		var stand := _vec(eye["stand"])
+		ref = _floor_at(stand.x, stand.z, stand.y + 0.1, stand.y - 6.0, lo)
 	var view := (look - pos).normalized()
 	var flat := Vector3(view.x, 0.0, view.z)
 	if flat.length() < 0.001:
@@ -861,7 +862,7 @@ func _eye_place(pos: Vector3, look: Vector3, eye: Dictionary, lens_r: float) -> 
 	var fallback := {}
 	for off in offsets:
 		var p: Vector3 = pos + off
-		var g: Variant = _surface_below(p, EYE_GROUND_MASK)
+		var g: Variant = _floor_at(p.x, p.z, p.y, p.y - 6.0, lo)
 		if g == null:
 			continue
 		if ref != null and (float(g) > float(ref) + EYE_STEP_UP or float(g) < float(ref) - EYE_STEP_DOWN):
@@ -879,10 +880,78 @@ func _eye_place(pos: Vector3, look: Vector3, eye: Dictionary, lens_r: float) -> 
 	return {"rejected": reason}
 
 
+# The walkable surface at (x, z): walking a ray down from `top` to `bottom`,
+# the first solid surface that is roughly horizontal, met on its drawn side
+# (from above), with headroom for a standing eye (`height`) above it. Back
+# faces on the way down (the underside of a closed box the ray starts in, a
+# one-sided ceiling) are passed. null when there is none.
+func _floor_at(x: float, z: float, top: float, bottom: float, height: float) -> Variant:
+	var from := Vector3(x, top, z)
+	var to := Vector3(x, bottom, z)
+	for _step in 8:
+		var hit := _ray(from, to, EYE_GROUND_MASK)
+		if hit.is_empty():
+			return null
+		var p: Vector3 = hit["position"]
+		var flags := int(_geom(hit).get("flags", 0))
+		# Hit normals are turned toward the ray, so this only says "horizontal";
+		# _is_back says which side was met.
+		if (hit["normal"] as Vector3).y > 0.7 and not _is_back(p, Vector3.DOWN, flags):
+			if _ray(p + Vector3.UP * 0.05, p + Vector3.UP * height, EYE_GROUND_MASK).is_empty():
+				return p.y
+		from = p + Vector3.DOWN * 0.01
+		if from.y <= bottom:
+			return null
+	return null
+
+
+# The walkable floor inside the subject's footprint, for seeding the corridor
+# scan. Walls sunk into the ground (round 1: party walls 0.4 m, a courtyard
+# wall 1.8 m) put the subject's lowest point under the floor, so seeds placed
+# from it started underground. A 7 x 7 grid of downward rays from the
+# subject's middle height finds the walkable surface under each point
+# (_floor_at); the floor is the most common height (0.1 m bins, ties to the
+# lower bin, the median of the winning bin), so a few wall tops, decks or car
+# roofs never outvote the floor that covers most of the footprint. No
+# walkable surface at all: the subject's lowest point, declared.
+func _walkable_floor(box: AABB, height: float) -> Dictionary:
+	var top := box.position.y + box.size.y * 0.5
+	var bottom := box.position.y - 0.5
+	var n := 7
+	var bins := {}
+	var hits := 0
+	for gx in n:
+		for gz in n:
+			var x := box.position.x + box.size.x * (float(gx) + 0.5) / float(n)
+			var z := box.position.z + box.size.z * (float(gz) + 0.5) / float(n)
+			var g: Variant = _floor_at(x, z, top, bottom, height)
+			if g == null:
+				continue
+			hits += 1
+			var key := roundi(float(g) * 10.0)
+			if not bins.has(key):
+				bins[key] = []
+			(bins[key] as Array).append(float(g))
+	var best := 0
+	var best_count := 0
+	for key in bins:
+		var count := (bins[key] as Array).size()
+		if count > best_count or (count == best_count and int(key) < best):
+			best = int(key)
+			best_count = count
+	if best_count == 0:
+		return {"y": box.position.y, "source": "lowest_point", "rays": n * n, "hits": 0}
+	var ys: Array = bins[best]
+	ys.sort()
+	return {"y": float(ys[floori(ys.size() / 2.0)]), "source": "walkable", "rays": n * n, "hits": hits, "votes": best_count}
+
+
 func _corridor_scan(spec: Dictionary) -> Dictionary:
 	var box := AABB(_vec((spec.get("aabb", {}) as Dictionary).get("position")), _vec((spec.get("aabb", {}) as Dictionary).get("size")))
 	var height := float(spec.get("height", 1.6))
-	var floor_y := float(spec.get("floor_y", box.position.y))
+	# Seeds stand on the walkable floor, never on the subject's lowest point.
+	var floor_info := {"y": float(spec.get("floor_y", 0.0)), "source": "caller"} if spec.has("floor_y") else _walkable_floor(box, height)
+	var floor_y := float(floor_info["y"])
 	# Free space is physical: glass and leaf cards (LAYER_SEE) still end a run.
 	var mask := LAYER_HARD | LAYER_SOFT | LAYER_SUBJECT | LAYER_SEE
 	var radius := float(spec.get("radius", 0.25))
@@ -899,8 +968,11 @@ func _corridor_scan(spec: Dictionary) -> Dictionary:
 			var fx := (gx + 0.5) / grid
 			var fz := (gz + 0.5) / grid
 			var seed := Vector3(box.position.x + box.size.x * fx, floor_y + height, box.position.z + box.size.z * fz)
-			var g: Variant = _ground_below(seed, LAYER_HARD | LAYER_SUBJECT | LAYER_SEE)
-			if g != null and float(g) > floor_y - 1.0 and float(g) < seed.y:
+			# The walkable surface right under this seed (a kerb, a slope), cast
+			# from eye height so nothing overhead counts; a car roof or a wall cap
+			# more than a step above the floor does not lift the seed.
+			var g: Variant = _floor_at(seed.x, seed.z, seed.y, floor_y - 1.0, height)
+			if g != null and float(g) <= floor_y + EYE_STEP_UP:
 				seed.y = float(g) + height
 			if not _overlaps(seed, 0.3, mask).is_empty():
 				blocked += 1
@@ -916,7 +988,11 @@ func _corridor_scan(spec: Dictionary) -> Dictionary:
 					"left": snappedf(_free_run(seed, perp, side_len, radius, mask), 0.01),
 					"right": snappedf(_free_run(seed, -perp, side_len, radius, mask), 0.01),
 				})
-	return {"runs": runs, "blocked_seeds": blocked}
+	var out := {"runs": runs, "blocked_seeds": blocked, "floor_y": snappedf(floor_y, 0.001), "floor_source": floor_info["source"]}
+	if floor_info.has("rays"):
+		out["floor_rays"] = floor_info["rays"]
+		out["floor_hits"] = floor_info["hits"]
+	return out
 
 
 func _look_basis(pos: Vector3, look: Vector3) -> Basis:
@@ -1042,6 +1118,8 @@ func _measure_one(index: int, cand: Dictionary, spec: Dictionary) -> Dictionary:
 		if placed.has("rejected"):
 			rec["rejected"] = placed["rejected"]
 			return _finish_measure(rec, pos, look, fov, adjustments)
+		# The surface the eye stands on is the one its height is measured from.
+		rec["ground_y"] = snappedf(float(placed["ground"]), 0.001)
 		var moved: Vector3 = (placed["pos"] as Vector3) - pos
 		pos += moved
 		look += moved
@@ -1258,9 +1336,11 @@ func _finish_measure(rec: Dictionary, pos: Vector3, look: Vector3, fov: float, a
 	rec["look_at"] = _arr(look)
 	rec["fov"] = snappedf(fov, 0.01)
 	# The real camera height: the first solid surface straight below the final
-	# pose (null: nothing below it, the world edge).
-	var g: Variant = _surface_below(pos, EYE_GROUND_MASK) if _state != null else null
-	rec["ground_y"] = null if g == null else snappedf(float(g), 0.001)
+	# pose (null: nothing below it, the world edge). Eye poses already carry the
+	# walkable surface they stand on.
+	if not rec.has("ground_y"):
+		var g: Variant = _surface_below(pos, EYE_GROUND_MASK) if _state != null else null
+		rec["ground_y"] = null if g == null else snappedf(float(g), 0.001)
 	if not adjustments.is_empty():
 		rec["adjustments"] = adjustments
 	return rec

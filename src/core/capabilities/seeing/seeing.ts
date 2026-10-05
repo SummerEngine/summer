@@ -1361,6 +1361,28 @@ export function cameraHeightText(pose: CameraPose, groundY: number | null | unde
   return `camera ${fmt2(h)} m above the surface below it (camera y ${fmt2(y)}, surface y ${fmt2(groundY as number)})`;
 }
 
+/** Where the corridor scan seeded: the walkable floor it found inside the
+ *  subject, or (declared) the subject's lowest point. */
+export interface CorridorScanFloor {
+  floor_y: number;
+  /** "walkable" (downward rays found it), "lowest_point" (none found), "caller". */
+  floor_source: string;
+  floor_hits?: number;
+  floor_rays?: number;
+}
+
+export function scanFloorText(floor: CorridorScanFloor, subject: Aabb): string {
+  if (floor.floor_source === "walkable") {
+    const votes = floor.floor_hits !== undefined && floor.floor_rays !== undefined ? ` (${floor.floor_hits} of ${floor.floor_rays} downward rays met a walkable surface)` : "";
+    const sunk = subject.position[1] < floor.floor_y - 0.05 ? `; the subject reaches ${fmt2(floor.floor_y - subject.position[1])} m below it (sunk walls or foundations), which is not floor` : "";
+    return `corridor scan seeded on the walkable floor at y ${fmt2(floor.floor_y)}${votes}${sunk}`;
+  }
+  if (floor.floor_source === "lowest_point") {
+    return `NOTE: the corridor scan found no walkable surface inside the subject and seeded from its lowest point (y ${fmt2(floor.floor_y)}); if that is under the floor, frame the corridor with summer_frame_nodes or pass a subject whose floor is walkable.`;
+  }
+  return `corridor scan seeded at y ${fmt2(floor.floor_y)} (${floor.floor_source})`;
+}
+
 function defaultBookmarkName(shot: ShotType, subject: string[] | undefined, spawn: string | undefined): string {
   const leaf = (subject?.[0] ?? spawn ?? "scene").split("/").pop() ?? "scene";
   return `${shot}_${leaf}`.replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 64);
@@ -1419,11 +1441,18 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
   const spawnInfo = pass1.result!.spawn as SpawnInfo | undefined;
   const keyLight = readKeyLight(pass1.result!);
   let corridorAxes: ReturnType<typeof chooseCorridorAxis> = [];
+  let scanFloor: CorridorScanFloor | undefined;
   if (shot === "corridor") {
-    const scan = pass1.result!.corridor_scan as { runs?: CorridorRun[] } | undefined;
+    const scan = pass1.result!.corridor_scan as ({ runs?: CorridorRun[] } & Partial<CorridorScanFloor>) | undefined;
+    if (scan && typeof scan.floor_y === "number") scanFloor = { floor_y: scan.floor_y, floor_source: String(scan.floor_source ?? "unknown"), ...(typeof scan.floor_hits === "number" ? { floor_hits: scan.floor_hits } : {}), ...(typeof scan.floor_rays === "number" ? { floor_rays: scan.floor_rays } : {}) };
     corridorAxes = chooseCorridorAxis(scan?.runs ?? [], subjectBox!);
     if (!corridorAxes.length) {
-      return fail("no_corridor_found", `No walkable corridor line was found inside ${subject!.join(", ")}: every free run from the scan seeds was shorter than 4 m or narrower than 1 m.`, "Check the subject is the corridor/alley node itself, or frame it with summer_frame_nodes instead.");
+      return fail(
+        "no_corridor_found",
+        `No walkable corridor line was found inside ${subject!.join(", ")}: every free run from the scan seeds was shorter than 4 m or narrower than 1 m.${scanFloor?.floor_source === "lowest_point" ? ` No walkable floor was found inside the subject either, so the seeds started from its lowest point (y ${fmt2(scanFloor.floor_y)}).` : ""}`,
+        "Check the subject is the corridor/alley node itself, or frame it with summer_frame_nodes instead.",
+        scanFloor ? { scan_floor: scanFloor } : undefined
+      );
     }
   }
   // Corridors stand on the floor the scan found under its seed; other shots
@@ -1552,6 +1581,7 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
       ? `eye: ${spawnInfo.camera && args.eye_height === undefined ? `${spawnInfo.camera.path} (its own height kept inside ${eyeBand(undefined).join("-")} m)` : `${args.eye_height ?? 1.6} m`} above the walkable surface under the camera at ${spawnInfo.path}; never raised`
       : "",
     shot === "corridor" ? `eye: ${args.eye_height ?? 1.6} m above the walkable surface under each camera (corridor floor y ${fmt2(groundY!)}); never raised` : "",
+    shot === "corridor" && scanFloor ? scanFloorText(scanFloor, subjectBox!) : "",
     shot === "establishing" ? `tier rule: a pose showing more than ${Math.round(EMPTY_LIMIT * 100)}% empty ground or world edge ranks below every pose showing less` : "",
     `occluders: hard ${counts.hard ?? 0}, soft ${counts.soft ?? 0}, subject ${counts.subject ?? 0}, ignored ${counts.ignored ?? 0}, of which transparent (see-through cover) ${counts.translucent ?? 0} (by rule: ${Object.entries(byRule).map(([k, v]) => `${k} ${v}`).join(", ")})`,
     keyLight
@@ -1614,7 +1644,7 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
       }),
       ...(bookmark ? { bookmark } : {}),
       ...(keyLight ? { key_light: { path: keyLight.path, direction: formatVector3(keyLight.direction) } } : {}),
-      ...(shot === "corridor" ? { corridor: corridorAxes[0] } : {}),
+      ...(shot === "corridor" ? { corridor: corridorAxes[0], ...(scanFloor ? { scan_floor: scanFloor } : {}) } : {}),
       timings,
       table: scored.map((s) => ({ id: s.id, total: s.total, ...(s.rejected ? { rejected: s.rejected } : {}), terms: s.terms })),
     },

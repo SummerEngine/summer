@@ -72,7 +72,7 @@ export const sceneAuditShape = {
     .max(AUDIT_MAX_MANIFESTS)
     .optional()
     .describe(
-      "Extra pack manifests (res:// .json in the pieces.json format: {pieces:{name:{scene, fits_into, wall_side, front_faces_plus_z, category, standoff_m, symmetric}}}; standoff_m = how far off its wall a mounted piece stands by design, symmetric = looks the same turned 180 deg). pieces.json next to (or up to two folders above) every instanced scene is always read, and the pack's PACK.json and ASSEMBLY.md for ground alternatives and wall standoffs."
+      "Extra pack manifests (res:// .json). Both pieces.json formats are read: v1.3 {parts:{\"asset/name\":{scene, fits_into{host, offset_from_host_origin}, facing{front_axis, wall_axis, wall_gap_m, placements}, scene_use}}} natively, and the older {pieces:{name:{scene, fits_into{piece, local_offset_m}, wall_side, front_faces_plus_z, category, standoff_m, symmetric}}} (standoff_m = how far off its wall a mounted piece stands by design, symmetric = looks the same turned 180 deg); an entry here wins over the pack's own. pieces.json next to (or up to two folders above) every instanced scene is always read, and the pack's PACK.json and ASSEMBLY.md for ground alternatives and wall standoffs."
     ),
   budget_ms: z
     .number()

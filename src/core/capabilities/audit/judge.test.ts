@@ -592,6 +592,41 @@ describe("lights, transform", () => {
   });
 });
 
+describe("mount_gap: v1.3 native mounts", () => {
+  const all = new Set(["mount_gap", "orientation"] as const);
+  it("a downpipe section inside its bracket's ring is held by the bracket, not 'on the wall' and 12 cm off it", () => {
+    const inst = [
+      row("West/E_2_0", { r: "wall", c: [-16.5, 7.5, -13], e: [0.2, 3, 3] }),
+      row("Alley1/PipeB/b07", { k: "modular_metal_gutter_bracing", r: "mount", c: [-16.36, 8.1, -13.6], e: [0.28, 0.1, 0.2] }),
+      row("Alley1/PipeB/s07", { k: "modular_metal_gutter_section", r: "mount", c: [-16.3, 7.9, -13.6], e: [0.16, 1, 0.16] }),
+    ];
+    // Bracing: two samples hit the section in its ring (-13 cm), the rest the wall (0).
+    const brace = [1, [-1, 0, 0], [-0.13, 0, 0, 0, 0, -0.13, -0.13, 0, 0], 0, [[[-1, 0, 0], 0, 0]], "", "pieces_auto", [0, 0, -1], -0.13, null, null, "", null, true, [2, 0, 0, 0, 0, 2, 2, 0, 0]];
+    // Section: its ring samples hit the bracing (-11 cm), the rest the wall 12.3 cm away.
+    const section = [2, [-1, 0, 0], [0.123, -0.112, -0.111, 0.123, 0.123, -0.005, 0.123, 0.123, 0.123], 0, [[[-1, 0, 0], 0.123, 0]], "", "pieces_auto", [0, 0, -1], null, null, null, "", null, true, [0, 1, 1, 0, 0, 1, 0, 0, 0]];
+    expect(judgeMounts([brace, section], inst, all).issues).toEqual([]);
+    // Without the bracing row the section stands off its wall.
+    const [i] = judgeMounts([section], inst, all).issues;
+    expect(i).toMatchObject({ check: "mount_gap", ev: { gap_m: 0.123, metadata: "pieces.json (mounted in the pack's scene; side measured: the nearest wall)" } });
+  });
+
+  it("a floor-standing piece the pack puts against a wall is a weak hint: look items only", () => {
+    const inst = [row("Alley2/UtilityBox2", { ms: "pieces_floor", mh: [0, 0, -1] }), row("PartyWall2/W1", { r: "wall" })];
+    const at = (gap: number | null) => [0, [0, 0, -1], Array(9).fill(gap), 1, gap === null ? [] : [[[0, 0, -1], gap, 1]], "", "pieces_floor", [0, 0, -1], null, 0, 0, "pieces.json", null, null, Array(9).fill(gap === null ? -1 : 1)];
+    expect(judgeMounts([at(0.12)], inst, all).issues).toMatchObject([{ severity: "look" }]);
+    expect(judgeMounts([at(null)], inst, all).issues).toEqual([]);
+  });
+
+  it("the largest gap opening onto a recessed window, with the wall itself within the allowance, is a look item", () => {
+    const inst = [row("Alley1/FireEscape/stairs_2", { r: "mount" }), row("House1/B_2_1_win", { r: "insert" }), row("House1/B_2_1", { r: "wall" })];
+    const gaps = [0.208, 0.04, 0.208, 0.04, 0.208, 0.04, 0.208, 0.04, 0.208];
+    const hitAt = [1, 2, 1, 2, 1, 2, 1, 2, 1];
+    const [i] = judgeMounts([[0, [0, 0, -1], gaps, 1, [[[0, 0, -1], 0.04, 2]], "", "pieces", [0, 0, -1], null, null, 0.105, "pieces.json", null, null, hitAt]], inst, all).issues;
+    expect(i).toMatchObject({ severity: "look" });
+    expect(i!.why).toMatch(/a recessed window or door; 4 cm from the wall itself/);
+  });
+});
+
 describe("grouping repeats", () => {
   it("three or more of the same finding on the same piece become one issue with a count", () => {
     const inst = [0, 1, 2, 3].map((i) => row(`Alley/Gutter/Sec_${i}`, { k: "gutter_section", r: "mount" }));

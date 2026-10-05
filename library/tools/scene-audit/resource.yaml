@@ -103,7 +103,7 @@ input_schema:
       items:
         type: string
       maxItems: 8
-      description: 'Extra pack manifests (res:// .json in the pieces.json format, including optional standoff_m and symmetric per piece). pieces.json next to (or up to two folders above) every instanced scene is always read, and the pack''s PACK.json and ASSEMBLY.md for ground alternatives and wall standoffs.'
+      description: 'Extra pack manifests (res:// .json): the v1.3 parts format (fits_into host, facing, scene_use) is read natively, the older pieces format too (fits_into piece, wall_side, front_faces_plus_z, standoff_m, symmetric); an entry here wins over the pack''s own. pieces.json next to (or up to two folders above) every instanced scene is always read, and the pack''s PACK.json and ASSEMBLY.md for ground alternatives and wall standoffs.'
     budget_ms:
       type: integer
       minimum: 250

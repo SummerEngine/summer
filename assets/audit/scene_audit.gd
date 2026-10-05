@@ -46,6 +46,9 @@ const UNDERLAY_RE := "(underlay|backing|catch|void)"
 const SCATTER_RE := "(leaves|leaf|pebble|gravel|grass|weed|moss|litter|decal|puddle|ivy|vine|tree|bush|shrub|plant|flower|foliage)"
 const ROOF_RE := "(roof|ceiling|canopy|awning|overhang)"
 const HANGING_RE := "(ivy|vine|hanging|creeper)"
+# v1.3 parts that stand on their own even where the artists put them against
+# a facade: never a wall mount without a measured wall axis.
+const FREESTAND_RE := "(^|_)(fence|gate|post|pole|bench|seat|barrier|bollard|crate|barrel|tyre|tire|bin|trash|car)(_|\\d|$)"
 # floor_gap strips: edge step along a tile edge, and how far out a wall bounds
 # the strip between that edge and the wall (walkable area enclosed by walls).
 const STRIP_STEP := 0.25
@@ -542,6 +545,16 @@ func _load_manifests() -> void:
 			rec["man"] = _manifest_by_scene[scene]
 
 
+# Three manifest formats, one internal entry (the old keys, so every check
+# reads one shape):
+# - pieces{name: {scene, fits_into {piece, local_offset_m}, wall_side,
+#   front_faces_plus_z, category, standoff_m, symmetric}}: the old format and
+#   the adapter files agents wrote for v1.3 packs (wall_side may carry prose
+#   after the axis: "-Z (mounted against a wall behind it)").
+# - parts{"asset/name": {scene, asset, fits_into {host, host_scene,
+#   offset_from_host_origin}, facing {front_axis, wall_axis, wall_gap_m,
+#   placements, omitted}, scene_use, size, corner}}: the v1.3 packs, read
+#   natively (_v13_entries).
 func _read_manifest(path: String, explicit: bool) -> void:
 	if _manifest_files.has(path):
 		return
@@ -551,26 +564,229 @@ func _read_manifest(path: String, explicit: bool) -> void:
 			_warn("manifest not found: " + path)
 		return
 	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if typeof(parsed) != TYPE_DICTIONARY or typeof((parsed as Dictionary).get("pieces")) != TYPE_DICTIONARY:
-		_warn("manifest has no pieces object: " + path)
+	if typeof(parsed) != TYPE_DICTIONARY:
+		_warn("manifest is not a JSON object: " + path)
 		return
-	var pieces: Dictionary = (parsed as Dictionary)["pieces"]
+	var doc: Dictionary = parsed
+	var entries: Array = []
+	var format := ""
+	if typeof(doc.get("pieces")) == TYPE_DICTIONARY:
+		format = "pieces"
+		var pieces: Dictionary = doc["pieces"]
+		for name in pieces:
+			var entry: Variant = pieces[name]
+			if typeof(entry) != TYPE_DICTIONARY:
+				continue
+			var e: Dictionary = (entry as Dictionary).duplicate()
+			e["piece"] = String(name).get_file()
+			var scene := _str(e.get("scene"))
+			if scene == "":
+				scene = path.get_base_dir().path_join(String(name) + ".tscn")
+			e["scene"] = scene
+			if bool(e.get("front_faces_plus_z", false)) and not e.has("front_axis"):
+				e["front_axis"] = "+Z"
+			entries.append(e)
+	elif typeof(doc.get("parts")) == TYPE_DICTIONARY:
+		format = "parts"
+		entries = _v13_entries(doc["parts"] as Dictionary)
+	else:
+		_warn("manifest has neither a pieces nor a parts object: " + path)
+		return
 	var n := 0
-	for name in pieces:
-		var entry: Variant = pieces[name]
-		if typeof(entry) != TYPE_DICTIONARY:
-			continue
-		var e: Dictionary = (entry as Dictionary).duplicate()
-		e["piece"] = String(name)
-		e["manifest"] = path
-		var scene := String(e.get("scene", ""))
-		if scene == "":
-			scene = path.get_base_dir().path_join(String(name) + ".tscn")
-		if not _manifest_by_scene.has(scene):
-			_manifest_by_scene[scene] = e
+	for e in entries:
+		var d: Dictionary = e
+		d["manifest"] = path
+		d["format"] = format
+		var scene := _str(d.get("scene"))
+		if scene != "" and not _manifest_by_scene.has(scene):
+			_manifest_by_scene[scene] = d
 			n += 1
 	if _manifest_loaded.size() < 16:
-		_manifest_loaded.append([path, n])
+		_manifest_loaded.append([path, n, format])
+
+
+static func _num(v: Variant, fallback := 0.0) -> float:
+	if typeof(v) == TYPE_FLOAT or typeof(v) == TYPE_INT:
+		return float(v)
+	return fallback
+
+
+# A JSON string, or the fallback (JSON null and other types: String(null) is
+# not a valid call).
+static func _str(v: Variant, fallback := "") -> String:
+	return String(v) if typeof(v) == TYPE_STRING or typeof(v) == TYPE_STRING_NAME else fallback
+
+
+static func _axis_text(v: Variant) -> String:
+	var t := String(v).strip_edges().to_upper() if typeof(v) == TYPE_STRING else ""
+	if t.length() >= 2 and (t[0] == "+" or t[0] == "-") and (t[1] == "X" or t[1] == "Y" or t[1] == "Z"):
+		return t.substr(0, 2)
+	return ""
+
+
+# v1.3 parts -> internal entries. Roles from the pack's own measurements:
+# - fits_into {host, offset_from_host_origin}: an insert (window, door).
+# - an asset named *facade*: a facade module (wall, band, pier, corner); its
+#   front is facing.front_axis.
+# - otherwise a wall MOUNT when the artists placed it on a facade
+#   (facing.placements mounted, or near with a measured wall_axis within
+#   1.2 m) and it hangs off the floor there (scene_use bottom above 0.25 m) or
+#   is a sheet against the wall (a roller shutter: depth along the wall axis
+#   under 0.35 x its face); wall_side = facing.wall_axis, or "auto" (the side
+#   that faces the nearest wall, measured per instance) when the placements
+#   do not agree on one axis; standoff_m = the largest facing.wall_gap_m.
+#   Mounted but standing on the floor (a utility cabinet against a wall): a
+#   prop with that mount hint. Parts that never appear in the artists' scene
+#   inherit a wall mount from their asset's placed parts (a triple duct run).
+# - everything else: no entry fields, the usual name and size rules.
+func _v13_entries(parts: Dictionary) -> Array:
+	var re_free := RegEx.create_from_string("(?i)" + FREESTAND_RE)
+	var out: Array = []
+	var asset_mount: Dictionary = {}
+	var unplaced: Array = []
+	for key in parts:
+		var raw: Variant = parts[key]
+		if typeof(raw) != TYPE_DICTIONARY:
+			continue
+		var p: Dictionary = raw
+		var e: Dictionary = {"piece": String(key).get_file(), "scene": _str(p.get("scene")), "v13_key": String(key)}
+		if e["scene"] == "":
+			continue
+		var asset := _str(p.get("asset"), String(key).get_slice("/", 0)).to_lower()
+		var facing: Dictionary = p.get("facing", {}) if typeof(p.get("facing")) == TYPE_DICTIONARY else {}
+		var front := _axis_text(facing.get("front_axis", ""))
+		if front != "":
+			e["front_axis"] = front
+			e["front_faces_plus_z"] = front == "+Z"
+		var corner: Variant = p.get("corner", null)
+		if typeof(corner) == TYPE_DICTIONARY and _str((corner as Dictionary).get("type")) != "":
+			e["corner"] = _str((corner as Dictionary)["type"])
+		if bool(p.get("heavy", false)):
+			e["heavy"] = true
+		# Open ends (planar open boundary loops on the part's bounds), for
+		# open_fixture_end: [centre, outward axis, opening].
+		if typeof(p.get("ports")) == TYPE_ARRAY:
+			var ports: Array = []
+			for pt in (p["ports"] as Array):
+				if typeof(pt) != TYPE_DICTIONARY:
+					continue
+				var pd: Dictionary = pt
+				var dax := _axis_of(_axis_text(pd.get("dir")))
+				var pc: Variant = pd.get("centre")
+				if dax == Vector3.ZERO or typeof(pc) != TYPE_ARRAY or (pc as Array).size() < 3:
+					continue
+				var op := 0.0
+				if typeof(pd.get("opening")) == TYPE_ARRAY:
+					for o in (pd["opening"] as Array):
+						op = maxf(op, _num(o))
+				ports.append([Vector3(_num(pc[0]), _num(pc[1]), _num(pc[2])), dax, op])
+			if not ports.is_empty():
+				e["ports"] = ports
+		var fit: Variant = p.get("fits_into", null)
+		if typeof(fit) == TYPE_DICTIONARY and _str((fit as Dictionary).get("host")) != "":
+			var f: Dictionary = fit
+			var off: Variant = f.get("offset_from_host_origin", [0, 0, 0])
+			e["fits_into"] = {"piece": _str(f["host"]).get_file(), "local_offset_m": off if typeof(off) == TYPE_ARRAY else [0, 0, 0], "host_scene": _str(f.get("host_scene"))}
+			e["category"] = "facade" if asset.contains("facade") else "insert"
+			out.append(e)
+			continue
+		if asset.contains("facade"):
+			e["category"] = "facade"
+			out.append(e)
+			continue
+		var pl: Dictionary = facing.get("placements", {}) if typeof(facing.get("placements")) == TYPE_DICTIONARY else {}
+		var mounted := int(_num(pl.get("mounted", 0)))
+		var near := int(_num(pl.get("near", 0)))
+		var free := int(_num(pl.get("free", 0)))
+		var wall_axis := _axis_text(facing.get("wall_axis", ""))
+		var gap_top := -1.0
+		if typeof(facing.get("wall_gap_m")) == TYPE_ARRAY:
+			for g in (facing["wall_gap_m"] as Array):
+				gap_top = maxf(gap_top, _num(g, -1.0))
+		var bottom := [INF, -INF]
+		var su: Variant = p.get("scene_use", null)
+		if typeof(su) == TYPE_DICTIONARY and typeof((su as Dictionary).get("bottom_above_floor_m")) == TYPE_ARRAY:
+			for b in ((su as Dictionary)["bottom_above_floor_m"] as Array):
+				bottom[0] = minf(bottom[0], _num(b, INF))
+				bottom[1] = maxf(bottom[1], _num(b, -INF))
+		var size: Array = p.get("size", []) if typeof(p.get("size")) == TYPE_ARRAY else []
+		var sheet := false
+		if wall_axis != "" and size.size() >= 3:
+			var ai := "XYZ".find(wall_axis[1])
+			var depth := _num(size[ai])
+			var face := INF
+			for k in 3:
+				if k != ai:
+					face = minf(face, _num(size[k]))
+			sheet = face < INF and depth <= 0.35 * face
+		if _str(facing.get("omitted")).contains("symmetric"):
+			e["symmetric"] = true
+		out.append(e)
+		if not asset_mount.has(asset):
+			asset_mount[asset] = [0, 0]
+		var am: Array = asset_mount[asset]
+		var hangs: bool = bottom[1] >= 0.25
+		if pl.is_empty():
+			unplaced.append([e, asset])
+			continue
+		var kind := ""
+		var freestanding := re_free.search(String(e["piece"])) != null
+		if mounted >= 1 and mounted >= free:
+			if wall_axis != "":
+				kind = "wall" if (hangs or sheet) else "floor"
+			elif hangs and not freestanding:
+				kind = "wall"
+		elif wall_axis != "" and near >= 1 and free == 0 and gap_top >= 0.0 and gap_top <= 1.2 and bottom[0] >= 0.25:
+			kind = "wall"
+		if kind != "":
+			e["mount_kind"] = kind
+			e["wall_side"] = wall_axis if wall_axis != "" else "auto"
+			if gap_top >= 0.0:
+				e["standoff_m"] = snappedf(gap_top, 0.001)
+			if wall_axis == "":
+				e["symmetric"] = true
+		if kind == "wall":
+			am[0] = int(am[0]) + 1
+		elif kind == "floor" or not hangs:
+			am[1] = int(am[1]) + 1
+		elif free == 0:
+			# Placed off the floor without a mount claim: decided by its asset.
+			unplaced.append([e, asset])
+	# An asset whose placed parts hang on walls at least as often as they
+	# stand on the floor lends that to its parts the artists never placed, or
+	# placed off the floor without a measured axis (a triple duct run, a duct
+	# straight near a wall). An asset with no placed parts asks its name stem
+	# (rollershutter_window_02 -> rollershutter_window_01), then the pack (wall
+	# cables in a wall-fixtures pack, where hanging parts must outnumber
+	# floor-standing ones two to one). Free-standing names (fence, gate,
+	# post, bench, ...) never inherit a wall.
+	var stem_mount: Dictionary = {}
+	var pack_mount := [0, 0]
+	var re_stem := RegEx.create_from_string("_\\d+$")
+	for a in asset_mount:
+		var stem := re_stem.sub(String(a), "")
+		if not stem_mount.has(stem):
+			stem_mount[stem] = [0, 0]
+		var sm: Array = stem_mount[stem]
+		sm[0] = int(sm[0]) + int((asset_mount[a] as Array)[0])
+		sm[1] = int(sm[1]) + int((asset_mount[a] as Array)[1])
+		pack_mount[0] = int(pack_mount[0]) + int((asset_mount[a] as Array)[0])
+		pack_mount[1] = int(pack_mount[1]) + int((asset_mount[a] as Array)[1])
+	for pair in unplaced:
+		var e2: Dictionary = pair[0]
+		if re_free.search(String(e2["piece"])) != null:
+			continue
+		var am2: Array = asset_mount.get(String(pair[1]), [0, 0])
+		if int(am2[0]) + int(am2[1]) == 0:
+			am2 = stem_mount.get(re_stem.sub(String(pair[1]), ""), [0, 0])
+		if int(am2[0]) + int(am2[1]) == 0:
+			am2 = [int(pack_mount[0]), 2 * int(pack_mount[1])]
+		if int(am2[0]) >= 1 and int(am2[0]) >= int(am2[1]):
+			e2["mount_kind"] = "wall"
+			e2["wall_side"] = "auto"
+			e2["symmetric"] = true
+			e2["inferred"] = "asset"
+	return out
 
 
 # A prop pack without pieces.json may still say which props mount on a wall:
@@ -682,7 +898,7 @@ func _standoff_of(rec: Dictionary) -> Array:
 				top = maxf(top, float(v))
 		if top >= 0.0:
 			return [snappedf(top, 0.001), "pieces.json"]
-	var cat := String(man.get("category", "")).to_lower().replace("_", " ")
+	var cat := _str(man.get("category")).to_lower().replace("_", " ")
 	var scene := String(rec["scene"])
 	if cat == "" or scene == "":
 		return [null, ""]
@@ -727,25 +943,37 @@ func _classify(rec: Dictionary) -> void:
 	var sz := la.size.z
 	rec["front"] = Vector3.ZERO
 	rec["mount"] = Vector3.ZERO
-	var side := String(man.get("wall_side", man.get("mount_side", man.get("mount_axis", ""))))
+	var side := _str(man.get("wall_side"), _str(man.get("mount_side"), _str(man.get("mount_axis"))))
+	# The measured front (v1.3 facing.front_axis, or front_faces_plus_z).
+	var mfront := _axis_of(_str(man.get("front_axis")))
+	if mfront == Vector3.ZERO and bool(man.get("front_faces_plus_z", false)):
+		mfront = Vector3(0, 0, 1)
 	if man.has("fits_into") and typeof(man["fits_into"]) == TYPE_DICTIONARY:
 		rec["role"] = "insert"
-		rec["front"] = Vector3(0, 0, 1)
+		rec["front"] = mfront if mfront != Vector3.ZERO else Vector3(0, 0, 1)
+		return
+	if side.strip_edges().to_lower() == "auto":
+		# Mounted in the pack's reference scene, but its placements do not
+		# agree on one axis (a round pipe, a bracket): the side that faces
+		# the nearest wall is measured per instance (_scan_mounts).
+		rec["role"] = "mount"
+		rec["mount_auto"] = true
+		rec["mount_src"] = "pieces_auto"
 		return
 	if side != "":
 		var ax := _axis_of(side)
 		if ax != Vector3.ZERO:
 			rec["mount"] = ax
-			if String(man.get("from", "")) == "":
+			if _str(man.get("from")) == "" and _str(man.get("mount_kind"), "wall") != "floor":
 				rec["role"] = "mount"
 				rec["mount_src"] = "pieces"
 				return
-			# Read from a pack's prose: a free-standing prop that MAY hang on a
-			# wall. It stays a prop (support, overlap) with a mount hint.
+			# Read from a pack's prose, or a floor-standing piece the pack puts
+			# against a wall: a prop (support, overlap) with a mount hint.
 			rec["role"] = "prop"
-			rec["mount_src"] = "pack_text"
+			rec["mount_src"] = "pack_text" if _str(man.get("from")) != "" else "pieces_floor"
 			return
-	var cat := String(man.get("category", "")).to_lower()
+	var cat := _str(man.get("category")).to_lower()
 	if cat != "":
 		if cat.contains("plant") or _re_scatter.search(name) != null:
 			rec["role"] = "dressing"
@@ -754,12 +982,12 @@ func _classify(rec: Dictionary) -> void:
 			rec["role"] = "floor" if (_re_floor.search(name) != null and sy <= 0.6) else "dressing"
 			return
 		if cat.begins_with("facade") or cat == "courtyard" or cat == "walls" or cat == "wall":
-			var fz := bool(man.get("front_faces_plus_z", false))
 			if sy >= 1.0 and maxf(sx, sz) >= 0.8 and minf(sx, sz) <= 1.2:
 				rec["role"] = "wall"
-				rec["front"] = Vector3(0, 0, 1) if fz else Vector3.ZERO
+				rec["front"] = mfront
 				return
 			rec["role"] = "struct"
+			rec["front"] = mfront
 			return
 		rec["role"] = "struct"
 		return
@@ -1843,12 +2071,18 @@ func _scan_mounts() -> Array:
 	var done := 0
 	var total := 0
 	for rec in _inst:
-		if (rec["mount"] as Vector3) == Vector3.ZERO or not bool(rec["in"]):
+		var auto := bool(rec.get("mount_auto", false))
+		if ((rec["mount"] as Vector3) == Vector3.ZERO and not auto) or not bool(rec["in"]):
 			continue
 		total += 1
 		if _over():
 			continue
 		done += 1
+		if auto:
+			# The side facing the nearest wall (-Z when no wall is within 1 m:
+			# then nothing is behind it either, and the judge says so).
+			var found := _auto_mount_axis(rec)
+			rec["mount"] = found if found != Vector3.ZERO else Vector3(0, 0, -1)
 		var ax: Vector3 = rec["mount"]
 		var la: AABB = rec["laabb"]
 		var xf: Transform3D = rec["xf"]
@@ -1919,9 +2153,35 @@ func _scan_mounts() -> Array:
 		var sym_raw: Variant = (rec["man"] as Dictionary).get("symmetric", null)
 		if typeof(sym_raw) == TYPE_BOOL:
 			sym_meta = sym_raw
-		out.append([int(rec["i"]), _a3(wax, 0.0001), gaps, hit_inst, around, String((rec["man"] as Dictionary).get("category", "")), String(rec.get("mount_src", "")), _a3(ax, 1.0), chain, ground, so[0], so[1], _mount_planes(rec, ax), sym_meta, hit_at])
+		out.append([int(rec["i"]), _a3(wax, 0.0001), gaps, hit_inst, around, _str((rec["man"] as Dictionary).get("category")), String(rec.get("mount_src", "")), _a3(ax, 1.0), chain, ground, so[0], so[1], _mount_planes(rec, ax), sym_meta, hit_at])
 	_count("mount_gap", done, total)
 	return out
+
+
+# Mount pieces whose pack placements do not agree on one axis: the local
+# horizontal axis (+-X, +-Z) whose ray from the centre meets a facade first,
+# within 1 m of the bounds; ZERO when none does.
+func _auto_mount_axis(rec: Dictionary) -> Vector3:
+	var la: AABB = rec["laabb"]
+	var xf: Transform3D = rec["xf"]
+	var wc: Vector3 = xf * la.get_center()
+	var best := Vector3.ZERO
+	var best_gap := INF
+	for ldir in [Vector3(1, 0, 0), Vector3(-1, 0, 0), Vector3(0, 0, 1), Vector3(0, 0, -1)]:
+		var wd: Vector3 = xf.basis * ldir
+		wd.y = 0
+		if wd.length() < 0.2:
+			continue
+		wd = wd.normalized()
+		var ext := absf((ldir as Vector3).dot(la.size)) * 0.5
+		var hit := _ray(wc, wc + wd * (ext + 1.0), MASK_FACADE, rec["bodies"])
+		if hit.is_empty():
+			continue
+		var gap := (hit["position"] as Vector3).distance_to(wc) - ext
+		if gap < best_gap:
+			best_gap = gap
+			best = ldir
+	return best
 
 
 # Front-back symmetry about a mount axis: the largest plane facing +axis and

@@ -87,9 +87,12 @@ export interface InstRow {
   lo?: Vec3;
   cl?: number[];
   cat?: string;
-  /** Mount hint (local axis) and where it came from (pieces | pack_text). */
+  /** Mount hint (local axis) and where it came from (pieces | pieces_auto | pack_text). */
   mh?: Vec3;
   ms?: string;
+  /** Its LOCAL transform is identity / its parent's GLOBAL transform is identity. */
+  li?: boolean;
+  pi?: boolean;
 }
 
 export interface KernelResult {
@@ -809,8 +812,10 @@ interface MountRow {
   standoff: number | null;
   standoffSrc: string;
   symmetric: boolean;
-  /** Closest wall contact behind the mount side (any of the 9 samples). */
+  /** Closest contact behind the mount side (any of the 9 samples). */
   min: number | null;
+  /** Closest contact with the facade itself (a bracket ring around a pipe is not the wall). */
+  wallMin: number | null;
   /** The gap the check judges: the largest of the centre and side samples. */
   gap: number | null;
   at: number;
@@ -839,7 +844,11 @@ function parseMountRow(raw: unknown[], inst: InstRow[]): MountRow | null {
     gap = nearest!.dist;
     at = -1;
   }
+  const hitAt = arr(raw[14]).map((x) => num(x, -1));
+  const facade = gaps.map((g, k) => (g !== null && FACADE_ROLES.has(inst[hitAt[k] ?? -1]?.r ?? "") ? g : null));
+  const wallMin = flipped ? min : hitAt.length ? mountGap(facade).min : min;
   return {
+    wallMin,
     i,
     r,
     wax,
@@ -877,22 +886,25 @@ function sampleSide(local: Vec3, k: number): string {
  * piece at about the same standoff (within 3 cm) is held too (the outlet
  * at the foot of a braced gutter). Returns held index -> the holder's path.
  */
+const FACADE_ROLES = new Set(["wall", "struct", "insert"]);
+
 function heldByBrackets(rows: readonly MountRow[]): Map<number, string> {
-  const onWall = (m: MountRow) => m.min !== null && m.min <= 0.05;
+  const onWall = (m: MountRow) => m.wallMin !== null && m.wallMin <= 0.05;
   const size = (r: InstRow) => Math.max(r.e[0], r.e[1], r.e[2]);
   const held = new Map<number, string>();
   const anchors = rows.filter(onWall);
   for (const m of rows) {
-    if (onWall(m)) continue;
+    // A piece that touches the wall at one edge (a downpipe passing a proud
+    // dado) can still be held off it by a bracket at its centre.
     const holder = anchors.find((a) => a.i !== m.i && boundsTouch(m.r, a.r) && (HOLDER_RE.test(a.r.k) || HOLDER_RE.test(a.r.p.split("/").pop() ?? "") || size(a.r) <= 0.6 * size(m.r)));
-    if (holder) held.set(m.i, holder.r.p);
+    if (holder && !(HOLDER_RE.test(m.r.k) && onWall(m))) held.set(m.i, holder.r.p);
   }
   const queue = [...held.keys()];
   const byIndex = new Map(rows.map((m) => [m.i, m] as const));
   while (queue.length) {
     const h = byIndex.get(queue.shift()!)!;
     for (const n of rows) {
-      if (held.has(n.i) || n.i === h.i || onWall(n) || n.gap === null || h.gap === null) continue;
+      if (held.has(n.i) || n.i === h.i || n.gap === null || h.gap === null) continue;
       if (n.gap > h.gap + 0.03 || !boundsTouch(n.r, h.r)) continue;
       held.set(n.i, held.get(h.i)!);
       queue.push(n.i);
@@ -914,7 +926,9 @@ export function judgeMounts(mounts: unknown[], inst: InstRow[], checks: Set<Audi
     const standing = m.ground !== null && Math.abs(m.ground) <= 0.05;
     const side = axisLabel(m.local);
     if (m.min !== null && m.min <= 0.1) wallMounted.add(i);
-    const textOnly = m.src === "pack_text";
+    // Weak hints: a pack's prose, or a piece that stands on the floor
+    // against a wall in the pack's reference scene (a utility cabinet).
+    const textOnly = m.src === "pack_text" || m.src === "pieces_floor";
     // A hint read from a pack's prose is weak: if the piece touches a wall on
     // ANY side, the geometry says it is mounted (a lantern whose bracket runs
     // along X) and the prose is what is wrong. Only structured metadata
@@ -923,7 +937,7 @@ export function judgeMounts(mounts: unknown[], inst: InstRow[], checks: Set<Audi
       wallMounted.add(i);
       continue;
     }
-    const metadata = textOnly ? "PACK.json text" : "pieces.json";
+    const metadata = m.src === "pack_text" ? "PACK.json text" : m.src === "pieces_floor" ? "pieces.json (stands on the floor against a wall in the pack's scene)" : m.src === "pieces_auto" ? "pieces.json (mounted in the pack's scene; side measured: the nearest wall)" : "pieces.json";
     const frame = instFrame(r, r.c, (dir) => 1 - Math.abs(dir[0] * wax[0] + dir[2] * wax[2]) * 0.7);
     if (checks.has("mount_gap")) {
       if (m.min === null && !nearest) {
@@ -952,12 +966,15 @@ export function judgeMounts(mounts: unknown[], inst: InstRow[], checks: Set<Audi
         if (m.gap > limit && !(chained && m.gap > 0.3) && !held.has(i)) {
           const wall = (m.at >= 0 ? inst[m.hitAt[m.at] ?? -1] : undefined) ?? (m.flipped && nearest ? inst[nearest.at] : undefined) ?? m.hit;
           const atSide = m.at > 0 && m.gap - m.min > 0.01 ? sampleSide(m.local, m.at) : null;
+          // The largest gap opens onto a recessed window or door while another
+          // sample is on the wall within the allowance: the recess is by design.
+          const recess = wall?.r === "insert" && m.wallMin !== null && m.wallMin <= limit;
           issues.push({
             check: "mount_gap",
-            severity: textOnly || m.gap <= limit + 0.05 ? "look" : "warn",
+            severity: textOnly || recess || m.gap <= limit + 0.05 ? "look" : "warn",
             path: r.p,
             pos: v2(r.c),
-            why: `stands ${cm(m.gap)} off ${wall?.p ?? "the wall"} on its mount side (${side})${atSide ? ` at its ${atSide} (closest ${cm(m.min)})` : ""}${m.flipped ? ", measured on the side facing the wall (front-back symmetric)" : ""}${m.standoff !== null ? `; the pack allows ${cm(m.standoff)} (${m.standoffSrc})` : ""}`,
+            why: `stands ${cm(m.gap)} off ${wall?.p ?? "the wall"} on its mount side (${side})${atSide ? ` at its ${atSide} (closest ${cm(m.min)})` : ""}${recess ? `, a recessed window or door; ${cm(m.wallMin!)} from the wall itself` : ""}${m.flipped ? ", measured on the side facing the wall (front-back symmetric)" : ""}${m.standoff !== null ? `; the pack allows ${cm(m.standoff)} (${m.standoffSrc})` : ""}`,
             ev: {
               gap_m: r3(m.gap),
               mount_side: side,

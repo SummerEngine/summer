@@ -1,11 +1,11 @@
 id: tool/scene-audit
 kind: tool
 version: 1.3.0
-summary: 'One read-only pass over a 3D scene: see-through holes, broken bands and open corners, exposed edges, open pipe ends, floor gaps, clipping props.'
+summary: 'Read-only pass over any 3D scene, from geometry and materials: see-through holes, exposed edges, open pipe ends, floor gaps, clipping props.'
 use_when:
   - 'after each build stage of a 3D level or kit-built street: "what is wrong with this scene and where exactly?"'
   - 'before calling a scene done: find see-through walls (an insert narrower than its frame), floor tiles with holes, props floating, sunk or poking into walls'
-  - 'facade bands (base, dado, cornice, crown, trim) that stop short, leave a gap or do not wrap an outside corner; open band ends, seams between modules and modules out of line seen from the street; a duct or downpipe with a missing elbow, coupler or outlet'
+  - 'facade bands with an open end or a gap, seams between modules and modules out of line seen from the street; a duct or downpipe with a missing elbow, coupler or section'
   - 'the same look items keep coming back: accept the ones you judged fine (accept:[{key, reason}]) so later audits count them but hide them until their evidence changes'
   - 'finding props turned the wrong way against a wall (a bench standing perpendicular to it), stretched texture strips, duplicated pieces'
   - 'flickering faces: coplanar overlaps anywhere (props, roofs, ledges, inserts against hosts, decals, two surfaces of one mesh), judged by the 24-bit depth precision at the view distance'
@@ -63,7 +63,6 @@ input_schema:
         type: string
         enum:
           - through_hole
-          - band_continuity
           - floor_gap
           - floating
           - sunken
@@ -79,8 +78,8 @@ input_schema:
           - transform
           - resource
       minItems: 1
-      maxItems: 16
-      description: Only these checks (default all 16). Fewer checks run faster (duplicate, lights, transform and resource need no physics); rerun a check budget_ms left partial on its own. band_continuity is only an error when exposed_edge or depth_step ran and confirms it.
+      maxItems: 15
+      description: Only these checks (default all 15). Fewer checks run faster (duplicate, lights, transform and resource need no physics); rerun a check budget_ms left partial on its own.
     root:
       type: string
       description: Report only issues under this node (subtree), e.g. "Block3". The whole scene is still loaded, so walls and floors outside it count as surroundings.
@@ -121,7 +120,7 @@ input_schema:
             type: string
             minLength: 3
             maxLength: 200
-            description: Why it is fine, e.g. "inside-corner band overlap, hidden behind the corner piece".
+            description: Why it is fine, e.g. "coplanar faces hidden behind a sign".
         required:
           - key
           - reason

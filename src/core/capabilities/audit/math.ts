@@ -6,7 +6,7 @@
  * Conventions match the engine: +Y up, a basis is three COLUMN vectors
  * (x, y, z), a transform maps local to world as origin + basis * v.
  */
-import { add, dot, length, normalize, scale, sub, type Vec3 } from "../seeing/math.js";
+import { dot, length, normalize, scale, sub, type Vec3 } from "../seeing/math.js";
 
 export type { Vec3 };
 
@@ -19,11 +19,6 @@ export function basisColumns(b: Basis9): [Vec3, Vec3, Vec3] {
     [b[3]!, b[4]!, b[5]!],
     [b[6]!, b[7]!, b[8]!],
   ];
-}
-
-export function basisMulVec(b: Basis9, v: Vec3): Vec3 {
-  const [x, y, z] = basisColumns(b);
-  return add(add(scale(x, v[0]), scale(y, v[1])), scale(z, v[2]));
 }
 
 /** Rotation angle (degrees) between two bases, scale removed. */
@@ -300,7 +295,7 @@ export function localAxisName(b: readonly number[], v: Vec3): string {
 }
 
 // ---------------------------------------------------------------------------
-// Axis-aligned boxes (gap detectors: band runs, corner squares, confirmation)
+// Axis-aligned boxes (gap detectors: confirmation, door recesses)
 // ---------------------------------------------------------------------------
 
 export interface Box {
@@ -336,43 +331,4 @@ export function boxDistance(a: Box, b: Box): number {
     s += d * d;
   }
   return Math.sqrt(s);
-}
-
-/**
- * Share (0-1) of `square`'s XZ footprint that box `a` covers, when their
- * height ranges overlap. Two band pieces that meet only at the corner's edge
- * (they "touch at a point" seen from above) cover none of the corner square
- * out in front of both.
- */
-export function xzCover(a: Box, square: Box): number {
-  if (a.hi[1] < square.lo[1] || a.lo[1] > square.hi[1]) return 0;
-  const ox = Math.min(a.hi[0], square.hi[0]) - Math.max(a.lo[0], square.lo[0]);
-  const oz = Math.min(a.hi[2], square.hi[2]) - Math.max(a.lo[2], square.lo[2]);
-  if (ox <= 0 || oz <= 0) return 0;
-  return (ox * oz) / Math.max((square.hi[0] - square.lo[0]) * (square.hi[2] - square.lo[2]), 1e-9);
-}
-
-/** The band-height box a gap or an end of a band run spans: [a, b] along the
- *  band's axis, 10 cm deep around its plane c, the middle half of its height. */
-export function bandSpanBox(ax: 0 | 2, a: number, b: number, c: number, y0: number, y1: number): Box {
-  const th = 2 - ax;
-  const lo: [number, number, number] = [0, y0 + (y1 - y0) * 0.25, 0];
-  const hi: [number, number, number] = [0, y0 + (y1 - y0) * 0.75, 0];
-  lo[ax] = Math.min(a, b);
-  hi[ax] = Math.max(Math.max(a, b), Math.min(a, b) + 0.001);
-  lo[th] = c - 0.05;
-  hi[th] = c + 0.05;
-  return { lo, hi };
-}
-
-/** Merge sorted [lo, hi] intervals that touch or overlap within `join`. */
-export function mergeRuns(items: ReadonlyArray<readonly [number, number]>, join = 0.01): Array<[number, number]> {
-  const sorted = [...items].sort((a, b) => a[0] - b[0]);
-  const runs: Array<[number, number]> = [];
-  for (const [lo, hi] of sorted) {
-    const last = runs[runs.length - 1];
-    if (last && lo <= last[1] + join) last[1] = Math.max(last[1], hi);
-    else runs.push([lo, hi]);
-  }
-  return runs;
 }

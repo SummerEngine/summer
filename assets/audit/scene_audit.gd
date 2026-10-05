@@ -65,9 +65,9 @@ const PROP_MAX := 3.5
 const STRIP_STEP := 0.25
 const STRIP_REACH := 1.0
 # Usual share of a check's editor time (the budget's weights).
-const STAGE_WEIGHT := {"through_hole": 4.0, "floor_gap": 2.0, "floating_sunken": 1.0, "interpenetration": 2.0, "orientation": 1.0, "uv_stretch": 1.0, "z_fight_geometry": 3.0, "gap_setup": 0.3, "band_continuity": 0.5, "exposed_edge": 3.0, "open_fixture_end": 0.3, "depth_step": 2.0, "lights": 0.3, "resource": 0.5, "poses": 1.0}
+const STAGE_WEIGHT := {"through_hole": 4.0, "floor_gap": 2.0, "floating_sunken": 1.0, "interpenetration": 2.0, "orientation": 1.0, "uv_stretch": 1.0, "z_fight_geometry": 3.0, "gap_setup": 0.3, "exposed_edge": 3.0, "open_fixture_end": 0.3, "depth_step": 2.0, "lights": 0.3, "resource": 0.5, "poses": 1.0}
 # The gap detectors' stages (budget tier 2, run after every other check).
-const GAP_STAGES := ["gap_setup", "band_continuity", "open_fixture_end", "exposed_edge", "depth_step"]
+const GAP_STAGES := ["gap_setup", "open_fixture_end", "exposed_edge", "depth_step"]
 # z_fight geometry pass: planar face groups per mesh resource.
 # Triangles under ZF_MIN_TRI m2 are not bucketed (relief, props); a group
 # needs ZF_MIN_AREA m2 (the smallest overlap reported); at most
@@ -301,7 +301,7 @@ func _run() -> void:
 	t = _lap("roles", t)
 
 	var need_physics := false
-	for c in ["through_hole", "floor_gap", "floating", "sunken", "interpenetration", "orientation", "uv_stretch", "z_fight", "band_continuity", "exposed_edge", "open_fixture_end", "depth_step"]:
+	for c in ["through_hole", "floor_gap", "floating", "sunken", "interpenetration", "orientation", "uv_stretch", "z_fight", "exposed_edge", "open_fixture_end", "depth_step"]:
 		if _checks.has(c):
 			need_physics = true
 	if need_physics:
@@ -324,12 +324,11 @@ func _run() -> void:
 	var run_su := _checks.has("floating") or _checks.has("sunken")
 	var run_po := _want_poses and _state != null
 	var run_zg := _checks.has("z_fight") and _state != null
-	var run_bc := _checks.has("band_continuity") and _state != null
 	var run_ee := _checks.has("exposed_edge") and _state != null
 	var run_fe := _checks.has("open_fixture_end") and _state != null
 	var run_ds := _checks.has("depth_step") and _state != null
-	var run_gk := run_bc or run_ee or run_fe or run_ds
-	for stage_on in [["through_hole", run_th], ["floor_gap", run_fl], ["floating_sunken", run_su], ["interpenetration", _checks.has("interpenetration")], ["orientation", _checks.has("orientation")], ["uv_stretch", _checks.has("uv_stretch")], ["z_fight_geometry", run_zg], ["lights", _checks.has("lights")], ["resource", _checks.has("resource")], ["poses", run_po], ["gap_setup", run_gk], ["band_continuity", run_bc], ["open_fixture_end", run_fe], ["exposed_edge", run_ee], ["depth_step", run_ds]]:
+	var run_gk := run_ee or run_fe or run_ds
+	for stage_on in [["through_hole", run_th], ["floor_gap", run_fl], ["floating_sunken", run_su], ["interpenetration", _checks.has("interpenetration")], ["orientation", _checks.has("orientation")], ["uv_stretch", _checks.has("uv_stretch")], ["z_fight_geometry", run_zg], ["lights", _checks.has("lights")], ["resource", _checks.has("resource")], ["poses", run_po], ["gap_setup", run_gk], ["open_fixture_end", run_fe], ["exposed_edge", run_ee], ["depth_step", run_ds]]:
 		if bool(stage_on[1]):
 			_pending.append(String(stage_on[0]))
 	if run_th:
@@ -375,12 +374,8 @@ func _run() -> void:
 	if run_gk:
 		_begin("gap_setup")
 		_gk_setup()
-		_result["gk"] = {"eyes": _gk_eyes.size(), "indoor_cells": _gk_indoor.size(), "floor_y": snappedf(_gk_floor_y, 0.001), "lines": _gk_lines_rows()}
+		_result["gk"] = {"eyes": _gk_eyes.size(), "indoor_cells": _gk_indoor.size(), "floor_y": snappedf(_gk_floor_y, 0.001), "lines": _gk_lines_rows(), "doors": _gk_doors()}
 		t = _lap("gap_setup", t)
-	if run_bc:
-		_begin("band_continuity")
-		_result["bands"] = _scan_bands()
-		t = _lap("band_continuity", t)
 	if run_fe:
 		_begin("open_fixture_end")
 		_result["fixture_ends"] = _scan_fixture_ends()
@@ -2614,11 +2609,13 @@ func _zf_flags(mat: Variant) -> Array:
 
 
 # ---------------------------------------------------------------------------
-# Gap detectors: band_continuity (B), exposed_edge (A), open_fixture_end and
-# depth_step (C). They share one setup (_gk_setup):
-# walkable eye points, indoor cells and axis-aligned facade lines grouped into
-# buildings. Everything here MEASURES; judge.ts groups, thresholds, confirms
-# (B by A or C) and grades.
+# Gap detectors: exposed_edge (A), open_fixture_end and depth_step (C). They
+# share one setup (_gk_setup): walkable eye points, indoor cells and
+# axis-aligned facade lines grouped into buildings. Which pieces they look at
+# comes from the roles (geometry only): walls, and the facade members
+# (bands, piers, joints) for edges and band levels; any piece whose mesh has
+# two or more open rims of one size for open ends. Everything here MEASURES;
+# gaps.ts thresholds, confirms (A by C) and grades.
 #
 # Sight lines are two-sided rays (any face blocks).
 # A point is "visible from walkable space" when an eye point (1.7 m over an
@@ -2637,11 +2634,6 @@ const GK_WELD := 10000.0
 # depth_step: wall rows every C_WALL_ROW m; runs merge across one row step.
 const C_WALL_ROW := 1.25
 const C_MERGE_Y := 1.3
-const BAND_WORD_RE := "(dado|base|plinth|cornice|crown|trim|band|sill)"
-const BAND_CORNER_RE := "(corner|end|angle|angled|pedestal)"
-const DOOR_RE := "(door|gate|passage|arch|shutter)"
-const FIXTURE_RE := "(pipe|duct|gutter|downpipe|drain|tube|conduit|hose)"
-const TERMINAL_RE := "(outlet|funnel|vent|fan|cap|plug|_end|spout|receiver|grille|shower|nozzle|valve|tap|converter|brac|clamp|strap|hanger|holder|support)"
 
 var _gk_ready := false
 var _gk_eyes := PackedVector3Array()
@@ -2654,22 +2646,12 @@ var _gk_sphere := RID()
 var _gk_sphere_q: PhysicsShapeQueryParameters3D = null
 var _gk_stats: Dictionary = {}
 var _gk_floor_y := 0.0
-var _re_band: RegEx = null
-var _re_band_corner: RegEx = null
-var _re_door: RegEx = null
-var _re_fixture: RegEx = null
-var _re_terminal: RegEx = null
 
 
 func _gk_setup() -> void:
 	if _gk_ready:
 		return
 	_gk_ready = true
-	_re_band = RegEx.create_from_string("(?i)" + BAND_WORD_RE)
-	_re_band_corner = RegEx.create_from_string("(?i)" + BAND_CORNER_RE)
-	_re_door = RegEx.create_from_string("(?i)" + DOOR_RE)
-	_re_fixture = RegEx.create_from_string("(?i)" + FIXTURE_RE)
-	_re_terminal = RegEx.create_from_string("(?i)" + TERMINAL_RE)
 	var b := _gk_struct_bounds()
 	if b.size == Vector3.ZERO:
 		_gk_stats = {"eyes": 0, "lines": 0}
@@ -2999,6 +2981,20 @@ func _gk_line_of(ab: AABB, margin: float) -> int:
 	return best
 
 
+# Door-like openings: inserts at least 1.8 m tall whose bottom is within 30 cm
+# of the floor level. [[lo, hi]] world bounds (depth_step skips the recess a
+# door leaves).
+func _gk_doors() -> Array:
+	var out: Array = []
+	for rec in _inst:
+		if rec["role"] != "insert":
+			continue
+		var ab: AABB = rec["waabb"]
+		if ab.size.y >= 1.8 and absf(ab.position.y - _gk_floor_y) <= 0.3 and out.size() < 200:
+			out.append([_a3(ab.position), _a3(ab.end)])
+	return out
+
+
 func _gk_lines_rows() -> Array:
 	var out: Array = []
 	for ln in _gk_lines:
@@ -3006,109 +3002,12 @@ func _gk_lines_rows() -> Array:
 	return out
 
 
-# The band type a piece's name (or its manifest category) names: base (dado,
-# base, plinth), cornice, crown, trim, band, sill; "" for none.
-func _gk_band_type(rec: Dictionary) -> String:
-	var cat := "".to_lower()
-	for text in [cat, String(rec["piece"]).to_lower()]:
-		var t := String(text)
-		if t == "":
-			continue
-		for k in ["dado", "base", "plinth"]:
-			if t.contains(k):
-				return "base"
-		for k in ["cornice", "crown", "trim", "band", "sill"]:
-			if t.contains(k):
-				return k
-	return ""
-
-
 # ---------------------------------------------------------------------------
-# band_continuity (B): the band pieces, what can close a band's gap or corner,
-# their facade lines, and visibility probes along each band. judge.ts groups
-# the runs per line, type and height and finds gaps, short ends, open
-# corners and flipped bands.
-# ---------------------------------------------------------------------------
-
-func _scan_bands() -> Dictionary:
-	_gk_setup()
-	var bands: Array = []
-	var coverers: Array = []
-	var probes_done := 0
-	var probes_planned := 0
-	for rec in _inst:
-		var role := String(rec["role"])
-		var name := String(rec["piece"]).to_lower()
-		var ab: AABB = rec["waabb"]
-		var btype := _gk_band_type(rec) if (role == "wall" or role == "struct") else ""
-		var corner := _re_band_corner.search(name) != null or "".contains("corner")
-		var door := _re_door.search(name) != null
-		var long_ax := 0 if ab.size.x >= ab.size.z else 2
-		var long_len: float = ab.size[long_ax]
-		if btype != "" and not corner and long_len >= 0.5 and ab.size.y < 1.2:
-			var th := 2 - long_ax
-			var lf: Vector3 = rec.get("front", Vector3.ZERO)
-			if lf == Vector3.ZERO:
-				lf = Vector3(0, 0, 1)
-			var front := ((rec["xf"] as Transform3D).basis * lf).normalized()
-			var c := ab.get_center()[th]
-			var line := -1
-			var best := 0.6
-			for li in _gk_lines.size():
-				var ln: Dictionary = _gk_lines[li]
-				if int(ln["ax"]) != long_ax:
-					continue
-				if ab.end[long_ax] < float(ln["lo"]) - 0.3 or ab.position[long_ax] > float(ln["hi"]) + 0.3:
-					continue
-				if ab.end.y < float(ln["y0"]) - 0.5 or ab.position.y > float(ln["y1"]) + 0.5:
-					continue
-				var dc: float = minf(absf(c - float(ln["tmin"])), absf(c - float(ln["tmax"])))
-				if c >= float(ln["tmin"]) and c <= float(ln["tmax"]):
-					dc = 0.0
-				if dc < best:
-					best = dc
-					line = li
-			# Visibility probes along the band, 5 cm off its front face (both
-			# faces when the front lies along the band): [s, seen].
-			var probes: Array = []
-			if line >= 0:
-				probes_planned += 1
-			if line >= 0 and not _over():
-				var lo: float = ab.position[long_ax]
-				var hi: float = ab.end[long_ax]
-				var ss: Array = [lo - 0.3, lo + 0.1]
-				var s := lo + 1.1
-				while s < hi - 0.5:
-					ss.append(s)
-					s += 1.0
-				ss.append_array([hi - 0.1, hi + 0.3])
-				var sides: Array = [1.0 if front[th] > 0.0 else -1.0] if absf(front[th]) >= 0.5 else [1.0, -1.0]
-				for sv in ss:
-					var seen := 0
-					for sg in sides:
-						var q := Vector3.ZERO
-						q[long_ax] = float(sv)
-						q.y = ab.get_center().y
-						q[th] = (ab.end[th] + 0.05) if float(sg) > 0.0 else (ab.position[th] - 0.05)
-						if not _gk_visible_eyes(q, 1, 40).is_empty():
-							seen = 1
-							break
-					probes.append([snappedf(float(sv), 0.01), seen])
-				probes_done += 1
-			bands.append([int(rec["i"]), btype, _a3(ab.position), _a3(ab.end), _a3(front, 0.001), line, probes])
-		elif btype != "" or corner or name.contains("pier") or door:
-			coverers.append([int(rec["i"]), _a3(ab.position), _a3(ab.end), door])
-	# Planned work = the bands on a facade line (the judge groups only those).
-	_count("band_continuity", probes_done, probes_planned)
-	return {"bands": bands, "coverers": coverers}
-
-
-# ---------------------------------------------------------------------------
-# exposed_edge (A): open outline edges of wall-, band- and pier-shaped pieces
-# that nothing covers within 4-7 mm and that walkable space sees, with what
-# shows behind them. Per mesh resource (cached): welded boundary edges of the
-# opaque surfaces, sampled every 25 cm, only those on the mesh's own bounds
-# (openings inside a module are by design; inserts are insert_host's).
+# exposed_edge (A): open outline edges of walls and facade members (bands,
+# piers, joints) that nothing covers within 4-7 mm and that walkable space
+# sees, with what shows behind them. Per mesh resource (cached): welded
+# boundary edges of the opaque surfaces, sampled every 25 cm, only those on
+# the mesh's own bounds (openings inside a module are by design).
 # ---------------------------------------------------------------------------
 
 # Raw boundary edges of a mesh's opaque surfaces: [a, b, n, d] per edge,
@@ -3308,23 +3207,19 @@ func _scan_exposed_edges() -> Dictionary:
 	var samples := 0
 	var uncovered := 0
 	var inside := 0
-	# Band pieces first (they confirm band_continuity and warn), then piers
-	# and the rest, then wall modules: a budget stop leaves the walls.
+	# Band pieces first (they warn), then piers and joints, then walls: a
+	# budget stop leaves the walls. Facade pieces only: walls and the facade
+	# members the roles found (a crate leaning on a wall is not one).
 	var order: Array = []
 	for rec in _inst:
 		var role := String(rec["role"])
-		if not bool(rec["in"]) or (role != "wall" and role != "struct"):
+		var why := String(rec.get("why", ""))
+		if not bool(rec["in"]):
 			continue
-		# Facade structure only: walls, bands, piers and corners, and anything
-		# a manifest files as a wall or facade (boards or a crate leaning on a
-		# wall are not).
-		var btype := _gk_band_type(rec)
-		var pname := String(rec["piece"]).to_lower()
-		var mcat := "".to_lower()
-		var facade_cat := mcat.begins_with("facade") or mcat.begins_with("wall")
-		if role == "struct" and btype == "" and not facade_cat and not (pname.contains("pier") or pname.contains("corner") or pname.contains("pilaster") or pname.contains("column")):
-			continue
-		order.append([0 if btype != "" else (2 if role == "wall" else 1), rec])
+		if role == "wall":
+			order.append([2, rec])
+		elif role == "struct" and (why == "band" or why == "pier" or why == "joint"):
+			order.append([0 if why == "band" else 1, rec])
 	order.sort_custom(func(a, b): return int(a[0]) < int(b[0]))
 	for item in order:
 		var rec: Dictionary = item[1]
@@ -3492,11 +3387,27 @@ func _gk_flags(pts: PackedVector3Array, lens: PackedFloat32Array, steps: PackedF
 
 
 # ---------------------------------------------------------------------------
-# open_fixture_end: the open ends of pipe, duct and gutter pieces (open
-# boundary loops on the mesh's bounds, cached per mesh) that nothing covers
-# within a sleeve tolerance and that walkable space sees into. Terminal
-# pieces (outlets, funnels, vents, caps, ...) are open by design.
+# open_fixture_end: the open ends of run pieces (pipe, duct or gutter
+# sections, elbows, tees: a piece whose mesh has two or more open rims of one
+# size, the rims being open boundary loops on the mesh's bounds, cached per
+# mesh) that nothing covers within a sleeve tolerance and that walkable space
+# sees into. A piece with one rim, or rims of different sizes (a cap, a
+# funnel, an outlet), is open by design. Meshes over FE_MAX_TRIS triangles
+# are not read (run pieces are simple).
 # ---------------------------------------------------------------------------
+
+const FE_MAX_TRIS := 20000
+
+
+# Two rims within 20% of each other's radius that face different ways.
+static func _run_piece(cands: Array) -> bool:
+	for i in cands.size():
+		for j in range(i + 1, cands.size()):
+			var ri: float = cands[i][2]
+			var rj: float = cands[j][2]
+			if absf(ri - rj) <= 0.2 * maxf(ri, rj) and (cands[i][1] as Vector3).dot(cands[j][1] as Vector3) < 0.9:
+				return true
+	return false
 
 # Open ends of a mesh: its boundary edges chained into
 # loops; a loop counts when every vertex lies on one face of the mesh's
@@ -3611,29 +3522,32 @@ func _scan_fixture_ends() -> Dictionary:
 	var ends := 0
 	for rec in _inst:
 		var role := String(rec["role"])
-		if not bool(rec["in"]) or (role != "mount" and role != "prop" and role != "struct"):
-			continue
-		var name := String(rec["piece"]).to_lower()
-		if _re_fixture.search(name) == null or _re_terminal.search(name) != null:
+		if not bool(rec["in"]) or (role != "prop" and role != "struct"):
 			continue
 		total += 1
 		if _over():
 			continue
 		done += 1
-		var ex: Array[RID] = []
-		for r in (rec["bodies"] as Array):
-			ex.append(r)
-		# The open loops of each mesh: [world centre, outward, radius].
+		# The open rims of each simple mesh (at most FE_MAX_TRIS triangles):
+		# [world centre, outward, radius].
 		var cands: Array = []
 		for m in (rec["meshes"] as Array):
 			var mesh: Mesh = m[1]
 			var info: Dictionary = _mesh_info.get(mesh.get_instance_id(), {})
-			if info.is_empty():
+			if info.is_empty() or int(info.get("tris", 0)) > FE_MAX_TRIS:
 				continue
 			var mxf: Transform3D = m[2]
 			var ol := _gk_mesh_ends(mesh, info)
 			for k in range(0, ol.size(), 3):
 				cands.append([mxf * ol[k], (mxf.basis * ol[k + 1]).normalized(), ol[k + 2].x * mxf.basis.get_scale().x])
+		# A run piece (a section, an elbow, a tee) has two or more rims of one
+		# size facing different ways; an end piece (a cap, a funnel, an outlet
+		# whose mouth differs from its socket) is open by design.
+		if not _run_piece(cands):
+			continue
+		var ex: Array[RID] = []
+		for r in (rec["bodies"] as Array):
+			ex.append(r)
 		for cd in cands:
 			ends += 1
 			var c: Vector3 = cd[0]
@@ -3678,10 +3592,7 @@ func _scan_depth_steps() -> Dictionary:
 	var rays_before := _rays
 	var band_levels: Dictionary = {}
 	for rec in _inst:
-		var role := String(rec["role"])
-		if role != "wall" and role != "struct":
-			continue
-		if _gk_band_type(rec) == "":
+		if rec["role"] != "struct" or String(rec.get("why", "")) != "band":
 			continue
 		var ab: AABB = rec["waabb"]
 		if ab.size.y >= 1.2 or maxf(ab.size.x, ab.size.z) < 0.5:

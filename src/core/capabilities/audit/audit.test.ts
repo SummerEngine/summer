@@ -80,17 +80,17 @@ describe("input validation: caller text never reaches a scene file or GDScript u
     expect(validateAuditArgs({ accept: [{ key: "z_fight:A/B@1,2.5,-3", reason: " hidden face " }] }).accept).toEqual([{ key: "z_fight:A/B@1,2.5,-3", reason: "hidden face" }]);
   });
 
-  it("accepts ordinary values and defaults to all 16 checks", () => {
+  it("accepts ordinary values and defaults to all 15 checks", () => {
     const v = validateAuditArgs({ scenePath: "res://town.tscn", root: "Block3/Props" });
     expect(v).toMatchObject({ scenePath: "res://town.tscn", root: "Block3/Props", minSeverity: "look", offset: 0, limit: 15, render: "none", budgetMs: 3000 });
     expect(v.checks).toEqual([...AUDIT_CHECKS]);
-    expect(AUDIT_CHECKS).toHaveLength(16);
+    expect(AUDIT_CHECKS).toHaveLength(15);
   });
 
   it("takes no kit metadata: a manifests argument is refused by the schema, and the removed checks are unknown", async () => {
     const { sceneAuditArgsSchema } = await import("./args.js");
     expect(sceneAuditArgsSchema.safeParse({ manifests: ["res://kit/kit.json"] }).success).toBe(false);
-    for (const gone of ["insert_host", "mount_gap"]) {
+    for (const gone of ["insert_host", "mount_gap", "band_continuity"]) {
       expect(() => validateAuditArgs({ checks: [gone as never] })).toThrow(ToolInputError);
     }
   });
@@ -131,12 +131,12 @@ describe("the private-copy path: arguments travel as data, the kernel is read-on
 
   it("gives roles from geometry and engine data only: no names, no metadata files", () => {
     const kernel = loadAuditKernel();
-    const fns = new Map(kernel.split("\nfunc ").slice(1).map((body) => [body.slice(0, body.indexOf("(")), body] as const));
+    const fns = new Map(kernel.split(/\n(?:static )?func /).slice(1).map((body) => [body.slice(0, body.indexOf("(")), body] as const));
     // No name patterns at all, and no metadata read besides its own config.
     expect(kernel).not.toMatch(/RegEx\.create_from_string\("\(\?i\)/);
     expect(kernel).not.toMatch(/manifest/i);
     expect(kernel).not.toMatch(/path_join\("(?!config\.json"|result\.json")[^"]*\.(json|md)"\)/);
-    for (const name of ["_see_through", "_mat_see_through", "_shape_of", "_classify_shapes", "_classify_rest", "_sheet_front", "_walls_under", "_find_inserts", "_open_at", "_facade_lines", "_find_members", "_touch_line", "_member", "_resolve_underlays", "_zf_flags"]) {
+    for (const name of ["_see_through", "_mat_see_through", "_shape_of", "_classify_shapes", "_classify_rest", "_sheet_front", "_walls_under", "_find_inserts", "_open_at", "_facade_lines", "_find_members", "_touch_line", "_member", "_resolve_underlays", "_zf_flags", "_scan_exposed_edges", "_scan_fixture_ends", "_run_piece", "_scan_depth_steps", "_gk_doors"]) {
       const body = fns.get(name);
       expect(body, name).toBeDefined();
       for (const field of ['["piece"]', '["name"]', '["scene"]', '["path"]', ".name", "resource_path", "resource_name", "RegEx"]) {

@@ -11,7 +11,6 @@ import { z } from "zod";
 
 export const AUDIT_CHECKS = [
   "through_hole",
-  "band_continuity",
   "floor_gap",
   "floating",
   "sunken",
@@ -54,7 +53,7 @@ export const sceneAuditShape = {
     .max(AUDIT_CHECKS.length)
     .optional()
     .describe(
-      "Only these checks (default: all 16). through_hole, band_continuity, floor_gap, floating, sunken, interpenetration, exposed_edge, open_fixture_end, orientation, uv_stretch, duplicate, z_fight, depth_step, lights, transform, resource. Fewer checks run faster (duplicate, lights, transform and resource need no physics); rerun a check budget_ms left partial on its own. band_continuity is only an error when exposed_edge or depth_step ran and confirms it."
+      "Only these checks (default: all 15). through_hole, floor_gap, floating, sunken, interpenetration, exposed_edge, open_fixture_end, orientation, uv_stretch, duplicate, z_fight, depth_step, lights, transform, resource. Fewer checks run faster (duplicate, lights, transform and resource need no physics); rerun a check budget_ms left partial on its own."
     ),
   root: z
     .string()
@@ -86,7 +85,7 @@ export const sceneAuditShape = {
       z
         .object({
           key: z.string().min(8).max(360).describe("The issue's key from a previous result (issues[].key)."),
-          reason: z.string().min(3).max(200).describe("Why it is fine, e.g. \"inside-corner band overlap, hidden behind the corner piece\"."),
+          reason: z.string().min(3).max(200).describe("Why it is fine, e.g. \"coplanar faces hidden behind a sign\"."),
         })
         .strict()
     )

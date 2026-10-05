@@ -2,7 +2,7 @@
  * Accepted audit items: res://.summer/audit-accept.json.
  *
  * Without it an agent re-judges the same look items (hidden contact faces,
- * inside-corner band overlaps) on every audit. An agent that has
+ * overlapping trim at an inside corner) on every audit. An agent that has
  * looked at an item and judged it fine passes accept: [{key, reason}]; the
  * MCP side writes the entry here (the kernel only reads it, and the audit
  * writes nothing else), and later audits count the item but hide it until

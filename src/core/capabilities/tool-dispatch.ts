@@ -153,6 +153,7 @@ import { connectSignalInputSchema, connectSignalPersisted } from "./connect-sign
 import { readFileInputSchema, readProjectFileWindow } from "./file-read.js";
 import { buildWorldSnapshotOp, shapeWorldSnapshot, worldSnapshotInputSchema } from "./world-snapshot.js";
 import { inspectNodeFields, inspectNodeInputSchema } from "./inspect-node.js";
+import { inspectResource, inspectResourceInputSchema } from "./inspect-resource.js";
 import { grepInputSchema, grepProject } from "./grep.js";
 import { snapToSurface } from "./surface-snap.js";
 import { withConsoleScope } from "./console-read.js";
@@ -1437,9 +1438,11 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     const parsed = parseToolArgs(inspectNodeInputSchema, args, "inspect-node");
     return requireEngineSuccess(await inspectNodeFields(await ctx.engine(), parsed));
   }),
-  entry("summer_inspect_resource", "Get all properties of a resource", true, async (args, ctx) =>
-    requireEngineSuccess(await (await ctx.engine()).inspectResource(str(args, "path")))
-  ),
+  entry("summer_inspect_resource", "Describe a resource file (mesh surfaces, AABB, materials; scene nodes; properties) or a resource a node holds", true, async (args, ctx) => {
+    // ONE implementation for both faces (core/capabilities/inspect-resource.ts).
+    const parsed = parseToolArgs(inspectResourceInputSchema, args, "inspect-resource");
+    return requireEngineSuccess(await inspectResource(await ctx.engine(), parsed));
+  }),
   entry("summer_batch", "Run multiple engine ops as one undo group (verbatim passthrough)", true, async (args, ctx) => {
     if (!Array.isArray(args.ops)) {
       throw new ToolDispatchError("ops must be an array of operation objects");
@@ -1941,7 +1944,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   }),
 
   // --- scene audit (shared implementation: core/capabilities/audit/) ---
-  entry("summer_scene_audit", "Read-only audit of a 3D scene: see-through holes, floor gaps, floating/sunken/overlapping props, orientation, UV stretch, z-fighting, lights, transforms, resources (<= 5 KB page)", true, async (args, ctx) => {
+  entry("summer_scene_audit", "Read-only audit of a 3D scene from geometry and materials: see-through holes, exposed edges, open pipe ends, depth steps, floor gaps, floating/sunken/overlapping props, orientation, UV stretch, z-fighting, lights, transforms, resources (<= 5 KB page; accept hides judged-fine look items)", true, async (args, ctx) => {
     const parsed = parseToolArgs(sceneAuditArgsSchema, args, "scene-audit");
     const client = (await ctx.engine()) as unknown as AuditClient;
     return auditResult(await buildOrRefuseAsync(() => sceneAudit(client, parsed)));

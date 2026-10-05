@@ -27,6 +27,8 @@ export const READ_LIBRARY_DESCRIPTION =
   "Skills: the SKILL.md body plus metadata (status, use_when, related) and how to invoke the skill in your host (bare slug). " +
   "Tools: how to call it (MCP name, `summer tool <slug> --args`, engine requirement, authority) plus the descriptor. " +
   "Templates: the pinned repo @ commit and tree digest (or built-in) and the `summer create <slug>` command. References: the markdown body. " +
+  "Linked files: a body ends with its relative links and the id that loads each; a file an entry links loads by <entry id>/<link as written> " +
+  "(e.g. skill/spatial-placement/references/kit-placement-tools.md), by the relative path alone when one entry ships it, inside library/ only. " +
   "part: 'skill' = body only, 'resource' = the resource.yaml descriptor only, 'all' (default) = both. " +
   "The LAST line of every load is the feedback footer `— entry_id: <id>@<content-hash>. If this entry is wrong, stale, or you deviate from it, report via summer_library_feedback.` " +
   "— copy that entry_id verbatim into summer_library_feedback once you have verified the outcome in-engine. " +

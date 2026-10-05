@@ -147,8 +147,8 @@
     {
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
-      "version": "1.3.0",
-      "content_hash": "1f86f1badf30e5c5c67fa52f488c32af280b07f5c0792e9cb30bc663dc93e023",
+      "version": "1.4.0",
+      "content_hash": "2aaa464f0c462460c6c77c163dbc83db7a8bc02e9b1db66adf67d9905bca285b",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -2324,7 +2324,7 @@
       "id": "skill/realtime-wet-surfaces",
       "kind": "skill",
       "version": "0.1.1",
-      "content_hash": "8a68e4c27f459ed819e84096d6f7d79dba1a695b6289215870971089333488d7",
+      "content_hash": "58eeea92f8afdf663cda02d5889e0d50f86d51e27a94be5ad3477202a2354eab",
       "summary": "Real-time wetness on existing Godot 4 materials without losing their values — value-copying wet shader, geometry-driven wet mask, instance-uniform wet amount.",
       "use_when": [
         "make surfaces look wet when it rains and dry off afterwards",
@@ -2884,7 +2884,7 @@
       "id": "skill/spatial-placement",
       "kind": "skill",
       "version": "1.1.0",
-      "content_hash": "8b70e46bd5ba34553193eb409563ca9ccae65f707e5f5d28d95db30eca5cda41",
+      "content_hash": "02202a4c162e804d386de6a87960e03dafc972ab3b32466a2bc358ba2be71b74",
       "summary": "Place 3D objects and modular kit pieces from measured geometry — inspect, place, starcast, measure, correct; floor, wall, facade, pipe and alcove recipes.",
       "use_when": [
         "positioning a prop, character, collider, or platform so it sits flush, avoids overlap, or keeps clearance",
@@ -3355,8 +3355,8 @@
     {
       "id": "skill/verifying-scenes",
       "kind": "skill",
-      "version": "1.4.1",
-      "content_hash": "2f9b022de46dab29b8327409dd4f184c870475997c5e8ad236aafc19e73f43f1",
+      "version": "1.5.0",
+      "content_hash": "ba03998253f61ed6a4ea7a0e21c2a9a04a52ae6e8f8879b8b38ce09abd56a2bf",
       "summary": "Prove scene work landed (snapshot, diff, screenshots, runtime reads), audit 3D scenes for holes and misplacement, review them with shot sheets and zooms.",
       "use_when": [
         "after any mutation batch, asset import, or lighting change, before claiming it worked",
@@ -3365,7 +3365,9 @@
         "taking before/after screenshots from the same saved camera viewpoint, or an annotated screenshot whose numbered labels map to node paths",
         "\"make this environment beautiful\" / reviewing a level like an artist: hero views, a shot sheet after each change, debug views of the weakest shot, zooms into problems",
         "finding good camera views automatically (establishing, player eye level, low-angle hero, detail, down a lane)",
-        "after each build stage of a 3D scene and before calling it done - run the scene audit, then frame every error and look item up close"
+        "after each build stage of a 3D scene and before calling it done - run the scene audit, then frame every error and look item up close",
+        "open band ends and seams on a facade, a gap in a band, a duct missing its elbow - the audit's exposed_edge, depth_step and open_fixture_end checks",
+        "accepting the audit's look items you judged fine so later audits stop repeating them"
       ],
       "facets": {
         "lifecycle": [
@@ -3758,7 +3760,7 @@
       "id": "skill/world-building-3d",
       "kind": "skill",
       "version": "1.1.1",
-      "content_hash": "fb7f2c08ac7656c315305bed6adda0c9d3a5dc410dd75c7abe3bea9211e85e79",
+      "content_hash": "c39021254fa26dcd20ffc1bf584c2ec51b0615c905e8eb81f03b4f284adcafd3",
       "summary": "Compose, ground, space, and validate 3D scenes with Summer's four bounded spatial tools — exact paths, one geometric decision at a time, verified.",
       "use_when": [
         "placing or grounding props on floors, shelves, ramps, or tables without hand-tuning transforms",
@@ -4644,8 +4646,8 @@
       "id": "tool/connect-ports",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "431a48a9b944d5680b55d2f2e96ad04706c06e9546e644b8972fc2cb20a7b547",
-      "summary": "Move and turn one piece so its port (a Marker3D or a measured open pipe end) meets another piece's port, facing it — pipes, ducts, gutters. Saves the scene.",
+      "content_hash": "d3423ce431ff8bde3f0f288d5b4bf47788fca541694390168f0b31baff40a45a",
+      "summary": "Join one piece's port (a Marker3D, or an open pipe end id such as '+Y') to another's, facing it; refuses joins that tilt the piece. Saves the scene.",
       "use_when": [
         "joining a pipe, duct or gutter section end to end with the previous one",
         "fitting a bend, funnel or outlet onto a run",
@@ -5059,7 +5061,7 @@
       "id": "tool/frame-shot",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "1505570c3f20f7a296a002b01ad68456d895a6d73a5988ce059ab4699472f338",
+      "content_hash": "896345ba57bd0d99d3d3fd2c721ee05866686c3450f9f8ec61bad24157c15cd3",
       "summary": "Smart framing: find, score and bookmark camera poses for a shot type (establishing, eye level, low-angle, detail, corridor) with in-engine visibility tests.",
       "use_when": [
         "\"find a good view of X\" / \"frame an establishing shot\" / \"show it from the player's eye\" / \"look down the street\"",
@@ -6119,7 +6121,7 @@
       "id": "tool/inspect-asset",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "d78f37b987bafde6e9197fd5bd644616b56ab5ae3608150519a0bca303e62654",
+      "content_hash": "f40a87d891da6193cf9efeb91a0cc6f4d831fd536fbfcad4d02d67ea7444d38d",
       "summary": "Measure a 3D asset file without adding it to a scene — AABB, origin, meshes, largest planar faces, open pipe ends, Marker3D anchors, collision shapes.",
       "use_when": [
         "learning a kit piece's real size, origin and which way it faces before placing it",
@@ -6203,11 +6205,12 @@
     {
       "id": "tool/inspect-resource",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "7bd86bff26997dfe472c2b34506822091bdc76cb4aafe1cc532dd3686db286c8",
-      "summary": "Get all properties of a resource such as a material, mesh, shape, or environment.",
+      "version": "1.1.0",
+      "content_hash": "410f1d81c41b6b22a0bf754acf6d347b01313ee4fc0c546ba64852f951f1b5ed",
+      "summary": "Read a resource file (a mesh's AABB, surfaces and materials; a scene's nodes; any resource's non-default properties) or a resource a node holds.",
       "use_when": [
         "reading sub-properties that the node inspector only names",
+        "\"how many surfaces, triangles and which materials does this mesh .res have?\"",
         "\"what colour is this material?\" / \"how big is this collision shape?\"",
         "\"what settings does the WorldEnvironment resource have?\""
       ],
@@ -6865,8 +6868,8 @@
     {
       "id": "tool/read-library",
       "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "2dc4c993dd7575b6672777c75ab38e16627717b2a9569e6fa1c80181bc871147",
+      "version": "1.1.0",
+      "content_hash": "ded3e95871d25d27a9a53b4f7bc70433587c9d62b81387409505a3e97fb3e2e3",
       "summary": "Load one library entry by id — a skill's body and metadata, a tool's call recipe, a template's pin, a reference's text — ending in the feedback footer.",
       "use_when": [
         "summer_search_library returned an id and you need the entry itself before acting",
@@ -7463,12 +7466,14 @@
     {
       "id": "tool/scene-audit",
       "kind": "tool",
-      "version": "1.2.0",
-      "content_hash": "c2ac51b38b049bc316093471d05ec8e7bc3ea6857e937f4a4bc49b2e77658aa3",
-      "summary": "Read-only pass over any 3D scene from geometry and materials: see-through holes, floor gaps, floating or clipping props, facing, UV stretch, z-fighting, lights.",
+      "version": "1.3.0",
+      "content_hash": "474abfec07fd4dc9a955bbaf7894bc5bea743f81842646b847bf091611ed2e37",
+      "summary": "Read-only pass over any 3D scene, from geometry and materials: see-through holes, exposed edges, open pipe ends, floor gaps, clipping props.",
       "use_when": [
         "after each build stage of a 3D level or kit-built street: \"what is wrong with this scene and where exactly?\"",
         "before calling a scene done: find see-through walls (an insert narrower than its frame), floor tiles with holes, props floating, sunk or poking into walls",
+        "facade bands with an open end or a gap, seams between modules and modules out of line seen from the street; a duct or downpipe with a missing elbow, coupler or section",
+        "the same look items keep coming back: accept the ones you judged fine (accept:[{key, reason}]) so later audits count them but hide them until their evidence changes",
         "finding props turned the wrong way against a wall (a bench standing perpendicular to it), stretched texture strips, duplicated pieces",
         "flickering faces: coplanar overlaps anywhere (props, roofs, ledges, inserts against hosts, decals, two surfaces of one mesh), judged by the 24-bit depth precision at the view distance",
         "bare ground at wall bases, an underlay plane covering drain channels, buried props: floor_gap and sunken say which surface a ray hits first",
@@ -7837,13 +7842,14 @@
     {
       "id": "tool/snap-to-surface",
       "kind": "tool",
-      "version": "1.1.0",
-      "content_hash": "9c9392a0e57db55186c17a6f623a724c9e13354e9c8e4aadfcb8f520338a5e08",
+      "version": "1.2.0",
+      "content_hash": "b7c9d59e4c42872f02689437a4e091d0429733b4dbf93850aac3fe8e363c93f0",
       "summary": "Move one 3D subject along a world ray until it sits at the requested gap from the first surface (floor, ramp, shelf, table), then save the scene.",
       "use_when": [
         "seating a prop on a floor, ramp, table, or shelf instead of hand-tuning its Y position",
         "grounding an imported or instantiated model that floats or sinks into its support",
-        "lifting a prop that is sunk a few centimetres into the ground back onto it"
+        "lifting a prop that is sunk a few centimetres into the ground back onto it",
+        "seating a prop without a collider (a fern, a bottle) on a PlaneMesh or other mesh-only ground"
       ],
       "facets": {
         "lifecycle": [

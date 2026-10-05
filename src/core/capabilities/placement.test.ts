@@ -26,6 +26,11 @@ import {
   seatOrigin,
   isSafeNodePath,
   isSafeResPath,
+  orderLoops,
+  parsePortSelector,
+  resolveProbePort,
+  tiltDegrees,
+  type RawLoop,
 } from "./placement.js";
 import { PLACEMENT_ARGS_TOKEN, buildPlacementScript, encodeScriptArgs, placementProbeTemplate } from "./placement-script.js";
 import { add, basisMulVec, dot, parseGodotTransform, parseGodotVector3, type Vec3 } from "./placement-math.js";
@@ -199,6 +204,15 @@ describe("hostile inputs never become GDScript", () => {
     expect(source).toContain('if cmd == "blockers":');
     expect(source).toContain('rec["transform_str"] = var_to_str(n.transform)');
     expect(source).toContain('"cull_back": acc[4] / acc[0]');
+    // Open-loop ports travel as raw loops; placement.ts orders them (orderLoops).
+    expect(source).toContain('var out = {"kind": "open_loops", "loops": loops, "node_xform": _xf12(nt)}');
+    expect(source).not.toContain("sort_custom(_loop_less)");
+    // Only ArrayMesh binds surface_get_primitive_type (mesh.cpp): a PlaneMesh or
+    // BoxMesh in the piece must not stop the probe with a runtime error.
+    const primitiveCalls = lines.filter((line) => line.includes("surface_get_primitive_type("));
+    expect(primitiveCalls).toEqual(["\t\treturn mesh.surface_get_primitive_type(s) == Mesh.PRIMITIVE_TRIANGLES"]);
+    expect(source).toContain("\tif mesh is ArrayMesh:\n\t\treturn mesh.surface_get_primitive_type(s)");
+    expect(source).toContain("\treturn mesh is PrimitiveMesh");
   });
 
   it("rejects hostile node paths, port names and res:// paths at the schema", () => {
@@ -315,8 +329,12 @@ describe("summer_inspect_asset", () => {
     };
     const { client } = mockClient(() => bend);
     const result = await inspectAsset(client, inspectAssetArgsSchema.parse({ path: "res://kit/duct_bend.glb" }));
-    expect((result.summary as Record<string, unknown>).port_like_loops).toEqual([0, 1]);
-    expect((result.open_loops as Array<{ index: number }>).map((loop) => loop.index)).toEqual([0, 1]);
+    // Stable order: +X, -X, +Y, -Y, +Z, -Z; the 4 mm +Y loop is not a port.
+    expect((result.summary as Record<string, unknown>).port_like_loops).toEqual(["+X", "-Z"]);
+    expect((result.open_loops as Array<{ id: string; index: number }>).map((loop) => [loop.id, loop.index])).toEqual([
+      ["+X", 0],
+      ["-Z", 2],
+    ]);
     expect(result.open_loops_omitted).toBe(1);
   });
 
@@ -864,16 +882,17 @@ describe("summer_connect_ports", () => {
   });
 
   it("applies one SetProp transform, saves, and verifies the joint", async () => {
+    // A quarter turn about the vertical: the piece turns but does not tilt.
     const before = {
       ok: true,
       subject_port: { kind: "marker", name: "Port_A", position: [0, 0, 0], direction: [0, 0, -1] },
-      target_port: { kind: "marker", name: "Port_B", position: [0, 2, 0], direction: [0, 1, 0] },
+      target_port: { kind: "marker", name: "Port_B", position: [0, 2, 0], direction: [1, 0, 0] },
       xform: IDENTITY12,
       parent_xform: IDENTITY12,
     };
     const after = {
       ...before,
-      subject_port: { kind: "marker", name: "Port_A", position: [0, 2, 0], direction: [0, -1, 0] },
+      subject_port: { kind: "marker", name: "Port_A", position: [0, 2, 0], direction: [-1, 0, 0] },
     };
     const { client, mutations } = mockClient([() => before, () => after]);
     const result = await connectPorts(
@@ -881,13 +900,19 @@ describe("summer_connect_ports", () => {
       connectPortsArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Pipe2", subjectPort: "Port_A", target: "Pipe1", targetPort: "Port_B" })
     );
     expect(mutations[0]![0]).toMatchObject({ op: "SetProp", path: "Pipe2", key: "transform" });
-    expect(result).toMatchObject({ ok: true, evidence: "markers", rotated_degrees: 90, verify: { distance: 0, angle_degrees: 0 } });
+    expect(result).toMatchObject({ ok: true, evidence: "markers", rotated_degrees: 90, tilt_degrees: 0, verify: { distance: 0, angle_degrees: 0, tilt_degrees: 0 } });
   });
 
-  it("accepts marker names or loop indices only", () => {
+  it("accepts marker names, loop ids or loop indices only", () => {
     const base = { scenePath: "res://a.tscn", subject: "A", target: "B", targetPort: 0 };
     expect(connectPortsArgsSchema.safeParse({ ...base, subjectPort: 2 }).success).toBe(true);
     expect(connectPortsArgsSchema.safeParse({ ...base, subjectPort: "Port_A" }).success).toBe(true);
+    for (const id of ["+Y", "-y", "+Z#2", "~X", "-X#12"]) {
+      expect(connectPortsArgsSchema.safeParse({ ...base, subjectPort: id }).success, id).toBe(true);
+    }
+    for (const bad of ["+Q", "+Y#", "+Y#0", "+Y#1234", "++Y", "+Y#2;"]) {
+      expect(connectPortsArgsSchema.safeParse({ ...base, subjectPort: bad }).success, bad).toBe(false);
+    }
     expect(connectPortsArgsSchema.safeParse({ ...base, subjectPort: -1 }).success).toBe(false);
     expect(connectPortsArgsSchema.safeParse({ ...base, subjectPort: 1.5 }).success).toBe(false);
     expect(connectPortsArgsSchema.safeParse({ ...base, subjectPort: 0, maxTriangles: 100 }).success).toBe(true);
@@ -942,9 +967,10 @@ describe("summer_connect_ports", () => {
     const { client, probeCalls } = mockClient([() => bendBefore, () => after]);
     const result = await connectPorts(
       client,
-      connectPortsArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Duct/Bend_1", subjectPort: "End_A", target: "Duct/Run_2", targetPort: "End", rollDegrees: 90 })
+      connectPortsArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Duct/Bend_1", subjectPort: "End_A", target: "Duct/Run_2", targetPort: "End", rollDegrees: 90, allowTilt: true })
     );
     expect(probeArgs(probeCalls[0]!)).toMatchObject({ cmd: "ports", other_ports: true });
+    expect(result).toMatchObject({ tilt_degrees: 90, warnings: ["tilt_allowed"] });
     expect(result).toMatchObject({
       ok: true,
       roll_axis: [0, 0, -1],
@@ -959,7 +985,7 @@ describe("summer_connect_ports", () => {
     const { client } = mockClient([() => bendBefore, () => ({ ok: false, failure_reason: "scene_not_open", error: "closed" })]);
     const result = await connectPorts(
       client,
-      connectPortsArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Duct/Bend_1", subjectPort: "End_A", target: "Duct/Run_2", targetPort: "End", rollDegrees: 90 })
+      connectPortsArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Duct/Bend_1", subjectPort: "End_A", target: "Duct/Run_2", targetPort: "End", rollDegrees: 90, allowTilt: true })
     );
     expect(result).toMatchObject({
       ok: true,
@@ -967,5 +993,176 @@ describe("summer_connect_ports", () => {
       other_ports: [{ name: "End_B", position: [5, -1, -1], direction: [0, -1, 0] }],
       verify: { ok: false },
     });
+  });
+});
+
+// A gutter outlet with four open loops, in the part's own frame and in the
+// order a probe might discover them: the +Y socket on top of its bounds, and
+// three seam loops inside, two of them tilted 30 degrees off +Y. Ordered by
+// radius, the larger tilted seams came first and joining one tilted the
+// outlet 30 degrees; ids come from facing and position instead.
+const OUTLET_LOOPS: RawLoop[] = [
+  { mesh: 0, center: [0, -0.06, -0.07], direction: [0, 0.866, -0.5], radius: 0.075, vertices: 28, max_dev: 0.001 },
+  { mesh: 0, center: [0, 0.02, -0.08], direction: [0, 0.998, -0.065], radius: 0.06, vertices: 26, max_dev: 0.001 },
+  { mesh: 0, center: [0, 0.13, -0.1], direction: [0, 1, 0], radius: 0.07, vertices: 27, max_dev: 0 },
+  { mesh: 0, center: [0, -0.08, -0.1], direction: [0, 0.866, -0.5], radius: 0.078, vertices: 27, max_dev: 0.001 },
+];
+const OUTLET_AABB = { min: [-0.08, -0.27, -0.17], max: [0.08, 0.13, 0.09], size: [0.16, 0.4, 0.26] };
+/** A straight downpipe section: 1 m, ends at y 0 (-Y) and y 1 (+Y). */
+const PIPE_LOOPS: RawLoop[] = [
+  { mesh: 0, center: [0, 0, 0], direction: [0, -1, 0], radius: 0.07, vertices: 24 },
+  { mesh: 0, center: [0, 1, 0], direction: [0, 1, 0], radius: 0.07, vertices: 24 },
+];
+const xf12 = (origin: Vec3, basis: number[] = [1, 0, 0, 0, 1, 0, 0, 0, 1]) => [...basis, ...origin];
+
+describe("stable open-loop ports", () => {
+  it("orders loops by facing, then position along the piece's axes, never by radius", () => {
+    const ordered = orderLoops(OUTLET_LOOPS);
+    expect(ordered.map((loop) => [loop.id, loop.index, loop.radius])).toEqual([
+      ["+Y", 0, 0.07],
+      ["+Y#2", 1, 0.06],
+      ["+Y#3", 2, 0.075],
+      ["+Y#4", 3, 0.078],
+    ]);
+    // The same ids whatever order the probe walked the loops in.
+    const name = (loops: RawLoop[]) => orderLoops(loops).map((loop) => `${(loop as { id: string }).id}@${loop.center.join(",")}`);
+    const expected = name(OUTLET_LOOPS);
+    for (const shuffled of [[...OUTLET_LOOPS].reverse(), [OUTLET_LOOPS[2]!, OUTLET_LOOPS[0]!, OUTLET_LOOPS[3]!, OUTLET_LOOPS[1]!]]) {
+      expect(name(shuffled)).toEqual(expected);
+    }
+    // Groups in axis order; undecided directions last; equal centres keep the larger radius first.
+    const mixed = orderLoops([
+      { center: [0, 0, 0.5], direction: [0, 0, 1], radius: 0.1 },
+      { center: [0, 0, 0], direction: [0, 0, 1], radius: 2, direction_ambiguous: true },
+      { center: [-0.5, 0, 0], direction: [-1, 0, 0], radius: 0.1 },
+      { center: [0, 0, 0.5], direction: [0, 0, 1], radius: 0.12 },
+      { center: [0.5, 0, 0], direction: [1, 0, 0], radius: 0.1 },
+    ]);
+    expect(mixed.map((loop) => [loop.id, loop.radius])).toEqual([
+      ["+X", 0.1],
+      ["-X", 0.1],
+      ["+Z", 0.12],
+      ["+Z#2", 0.1],
+      ["~Z", 2],
+    ]);
+  });
+
+  it("reads '+y', '+Y' and '+Y#1' as the loop +Y, numbers as indices, other names as markers", () => {
+    expect(parsePortSelector("+y")).toEqual({ kind: "loop_id", id: "+Y" });
+    expect(parsePortSelector("+Y#1")).toEqual({ kind: "loop_id", id: "+Y" });
+    expect(parsePortSelector("-z#3")).toEqual({ kind: "loop_id", id: "-Z#3" });
+    expect(parsePortSelector(2)).toEqual({ kind: "loop_index", index: 2 });
+    expect(parsePortSelector("Port_A")).toEqual({ kind: "marker", name: "Port_A" });
+  });
+
+  it("summer_inspect_asset lists the outlet's socket as its one port, by stable id", async () => {
+    const probe = { ...{ ok: true, frame: "asset_root", mesh_count: 1, triangles: 1200, meshes: [], planes: [], anchors: [], collision: [] }, aabb: OUTLET_AABB, open_loop_count: 4, open_loops: OUTLET_LOOPS };
+    const { client } = mockClient(() => probe);
+    const result = await inspectAsset(client, inspectAssetArgsSchema.parse({ path: "res://kit/gutter_outlet.tscn" }));
+    expect((result.summary as Record<string, unknown>).port_like_loops).toEqual(["+Y"]);
+    expect(result.open_loops).toEqual([{ id: "+Y", index: 0, mesh: 0, center: [0, 0.13, -0.1], direction: [0, 1, 0], radius: 0.07, vertices: 27, max_dev: 0 }]);
+    expect(result.open_loops_omitted).toBe(3);
+    const full = await inspectAsset(client, inspectAssetArgsSchema.parse({ path: "res://kit/outlet.tscn", detail: "full" }));
+    expect((full.open_loops as Array<{ id: string }>).map((loop) => loop.id)).toEqual(["+Y", "+Y#2", "+Y#3", "+Y#4"]);
+  });
+
+  it("resolves an id to the same loop in any pose of the node", () => {
+    const yawed = xf12([4, 0, -2], [0, 0, -1, 0, 1, 0, 1, 0, 0]); // 90 degrees about +Y
+    for (const nodeXform of [xf12([0, 0, 0]), yawed]) {
+      const read = resolveProbePort({ kind: "open_loops", loops: [...OUTLET_LOOPS].reverse(), node_xform: nodeXform }, parsePortSelector("+Y"), "subject", "Outlet", true);
+      expect("port" in read).toBe(true);
+      const port = (read as { port: { id: string; index: number; radius: number; direction: Vec3; others_total: number } }).port;
+      expect(port).toMatchObject({ id: "+Y", index: 0, radius: 0.07, others_total: 3 });
+      port.direction.forEach((v, k) => expect(v).toBeCloseTo([0, 1, 0][k]!));
+    }
+  });
+
+  it("measures tilt as the turn of the up axis: a turn about it is no tilt", () => {
+    const identity = { basis: [[1, 0, 0], [0, 1, 0], [0, 0, 1]] as [Vec3, Vec3, Vec3], origin: [0, 0, 0] as Vec3 };
+    const c = Math.cos(Math.PI / 6);
+    const s = Math.sin(Math.PI / 6);
+    expect(tiltDegrees(identity, [[c, 0, -s], [0, 1, 0], [s, 0, c]])).toBeCloseTo(0);
+    expect(tiltDegrees(identity, [[1, 0, 0], [0, c, s], [0, -s, c]])).toBeCloseTo(30);
+  });
+
+  // The outlet stands upright at (2, 0.5, 0.3); the downpipe's bottom end is at (2, 1.5, 0.2).
+  const subjectXf = xf12([2, 0.5, 0.3]);
+  const portsRead = (outletOrigin: Vec3 = [2, 0.5, 0.3]) => ({
+    ok: true,
+    subject_port: { kind: "open_loops", loops: OUTLET_LOOPS, node_xform: xf12(outletOrigin) },
+    target_port: { kind: "open_loops", loops: PIPE_LOOPS, node_xform: xf12([2, 1.5, 0.2]) },
+    xform: xf12(outletOrigin),
+    parent_xform: IDENTITY12,
+  });
+  const connect = (extra: Record<string, unknown>) =>
+    connectPortsArgsSchema.parse({ scenePath: "res://street.tscn", subject: "Lane1/Outlet", target: "Lane1/Downpipe_1", targetPort: "-Y", ...extra });
+
+  it("joins the outlet's +Y socket to the downpipe upright, and index 0 is that socket now", async () => {
+    // The socket lands on the pipe end: the outlet moves by (0, 0.87, 0) and does not turn.
+    const joined: Vec3 = [2, 1.37, 0.3];
+    for (const subjectPort of ["+Y", 0] as const) {
+      const { client, mutations, probeCalls } = mockClient([() => portsRead(), () => portsRead(joined)]);
+      const result = await connectPorts(client, connect({ subjectPort }));
+      expect(probeArgs(probeCalls[0]!)).toMatchObject({ subject_port: { loops: true }, target_port: { loops: true } });
+      expect(result).toMatchObject({
+        ok: true,
+        subject_port: { kind: "open_loop", id: "+Y", index: 0 },
+        target_port: { kind: "open_loop", id: "-Y", position: [2, 1.5, 0.2] },
+        rotated_degrees: 0,
+        tilt_degrees: 0,
+        moved_by: [0, 0.87, 0],
+        verify: { distance: 0, angle_degrees: 0, tilt_degrees: 0 },
+        warnings: [],
+      });
+      const set = parseGodotTransform(String(mutations[0]![0]!.value))!;
+      expect(set.basis).toEqual([[1, 0, 0], [0, 1, 0], [0, 0, 1]]);
+      set.origin.forEach((v, k) => expect(v).toBeCloseTo(joined[k]!, 4));
+    }
+  });
+
+  it("refuses the join that tilted the outlet 30 degrees, changes nothing, and names the ports that fit", async () => {
+    const { client, mutations, probeCalls } = mockClient(() => portsRead());
+    const result = await connectPorts(client, connect({ subjectPort: "+Y#4" }));
+    expect(result).toMatchObject({
+      ok: false,
+      failure_reason: "tilt_exceeds_limit",
+      max_tilt_degrees: 5,
+      subject_port: { id: "+Y#4", index: 3 },
+      ports_within_limit: [
+        { id: "+Y", index: 0, tilt_degrees: 0 },
+        { id: "+Y#2", index: 1 },
+      ],
+      saved: false,
+    });
+    expect(result.tilt_degrees as number).toBeCloseTo(30, 0);
+    expect(String(result.error)).toContain("+Y, +Y#2");
+    expect(mutations).toHaveLength(0);
+    expect(probeCalls).toHaveLength(1);
+  });
+
+  it("joins a tilting port when the caller allows it, and says so", async () => {
+    const allowed = mockClient(() => portsRead());
+    const result = await connectPorts(allowed.client, connect({ subjectPort: "+Y#4", allowTilt: true }));
+    expect(result).toMatchObject({ ok: true, subject_port: { id: "+Y#4" }, max_tilt_degrees: 5, warnings: ["tilt_allowed"] });
+    expect(result.tilt_degrees as number).toBeCloseTo(30, 0);
+    expect(allowed.mutations[0]![0]).toMatchObject({ op: "SetProp", path: "Lane1/Outlet", key: "transform" });
+
+    // A limit of 0 still accepts a join that does not tilt at all.
+    const strict = mockClient([() => portsRead(), () => portsRead([2, 1.37, 0.3])]);
+    expect(await connectPorts(strict.client, connect({ subjectPort: "+Y", maxTiltDegrees: 0 }))).toMatchObject({ ok: true, tilt_degrees: 0 });
+
+    const wider = mockClient(() => portsRead());
+    const within = await connectPorts(wider.client, connect({ subjectPort: "+Y#4", maxTiltDegrees: 45 }));
+    expect(within).toMatchObject({ ok: true, max_tilt_degrees: 45, warnings: [] });
+    expect(wider.mutations[0]![0]).toMatchObject({ op: "SetProp", path: "Lane1/Outlet", key: "transform" });
+  });
+
+  it("lists the loops by id when a port is not found", async () => {
+    const { client, mutations } = mockClient(() => portsRead());
+    const result = await connectPorts(client, connect({ subjectPort: "-Z" }));
+    expect(result).toMatchObject({ ok: false, failure_reason: "port_not_found" });
+    expect((result.subject_ports as Array<{ id: string }>).map((port) => port.id)).toEqual(["+Y", "+Y#2", "+Y#3", "+Y#4"]);
+    expect(String(result.error)).toContain("open loop -Z not found on the subject Lane1/Outlet");
+    expect(mutations).toHaveLength(0);
   });
 });

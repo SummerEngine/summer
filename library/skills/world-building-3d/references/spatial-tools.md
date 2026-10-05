@@ -25,7 +25,7 @@ Interpretation:
 
 ## `summer_snap_to_surface`
 
-The subject sweeps along a normalized world direction. Physics evidence uses enabled collider shapes; `visual_aabb` is a mesh-only fallback.
+The subject sweeps along a normalized world direction. Physics evidence uses enabled collider shapes; `visual_aabb` is a mesh-only fallback. When the engine answers with `visual_aabb` (no collider on the subject or the support), the tool re-measures the seat on visible triangles and reports `evidence: visual_mesh` with `verify.final_gap`; a prop without a collider is still invisible to physics.
 
 Use `alignUp` only when an exact collider support is intended. After the call,
 require `evidence: physics`, resolved contact, the expected `supportPath`,

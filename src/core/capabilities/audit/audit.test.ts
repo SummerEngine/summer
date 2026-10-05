@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -73,17 +73,24 @@ describe("input validation: caller text never reaches a scene file or GDScript u
     expect(() => validateAuditArgs({ budget_ms: 60001 })).toThrow(ToolInputError);
     expect(() => validateAuditArgs({ budget_ms: 1500.5 })).toThrow(ToolInputError);
   });
-  it("accepts ordinary values and defaults to all 12 checks", () => {
+  it("refuses malformed accept entries before anything is sent", () => {
+    expect(() => validateAuditArgs({ accept: [{ key: "not a key", reason: "fine" }] })).toThrow(/not an issue key/);
+    expect(() => validateAuditArgs({ accept: [{ key: "z_fight:A/B@1,2,3", reason: "x" }] })).toThrow(/3-200 characters/);
+    expect(() => validateAuditArgs({ accept: [{ key: "z_fight:A/B@1,2,3", reason: "two\nlines" }] })).toThrow(/one line/);
+    expect(validateAuditArgs({ accept: [{ key: "z_fight:A/B@1,2.5,-3", reason: " hidden face " }] }).accept).toEqual([{ key: "z_fight:A/B@1,2.5,-3", reason: "hidden face" }]);
+  });
+
+  it("accepts ordinary values and defaults to all 15 checks", () => {
     const v = validateAuditArgs({ scenePath: "res://town.tscn", root: "Block3/Props" });
     expect(v).toMatchObject({ scenePath: "res://town.tscn", root: "Block3/Props", minSeverity: "look", offset: 0, limit: 15, render: "none", budgetMs: 3000 });
     expect(v.checks).toEqual([...AUDIT_CHECKS]);
-    expect(AUDIT_CHECKS).toHaveLength(12);
+    expect(AUDIT_CHECKS).toHaveLength(15);
   });
 
   it("takes no kit metadata: a manifests argument is refused by the schema, and the removed checks are unknown", async () => {
     const { sceneAuditArgsSchema } = await import("./args.js");
     expect(sceneAuditArgsSchema.safeParse({ manifests: ["res://kit/kit.json"] }).success).toBe(false);
-    for (const gone of ["insert_host", "mount_gap"]) {
+    for (const gone of ["insert_host", "mount_gap", "band_continuity"]) {
       expect(() => validateAuditArgs({ checks: [gone as never] })).toThrow(ToolInputError);
     }
   });
@@ -124,18 +131,63 @@ describe("the private-copy path: arguments travel as data, the kernel is read-on
 
   it("gives roles from geometry and engine data only: no names, no metadata files", () => {
     const kernel = loadAuditKernel();
-    const fns = new Map(kernel.split("\nfunc ").slice(1).map((body) => [body.slice(0, body.indexOf("(")), body] as const));
+    const fns = new Map(kernel.split(/\n(?:static )?func /).slice(1).map((body) => [body.slice(0, body.indexOf("(")), body] as const));
     // No name patterns at all, and no metadata read besides its own config.
     expect(kernel).not.toMatch(/RegEx\.create_from_string\("\(\?i\)/);
     expect(kernel).not.toMatch(/manifest/i);
     expect(kernel).not.toMatch(/path_join\("(?!config\.json"|result\.json")[^"]*\.(json|md)"\)/);
-    for (const name of ["_see_through", "_mat_see_through", "_shape_of", "_classify_shapes", "_classify_rest", "_sheet_front", "_walls_under", "_find_inserts", "_open_at", "_facade_lines", "_find_members", "_touch_line", "_member", "_resolve_underlays", "_zf_flags"]) {
+    for (const name of ["_see_through", "_mat_see_through", "_shape_of", "_classify_shapes", "_classify_rest", "_sheet_front", "_walls_under", "_find_inserts", "_open_at", "_facade_lines", "_find_members", "_touch_line", "_member", "_resolve_underlays", "_zf_flags", "_scan_exposed_edges", "_scan_fixture_ends", "_run_piece", "_scan_depth_steps", "_gk_doors"]) {
       const body = fns.get(name);
       expect(body, name).toBeDefined();
       for (const field of ['["piece"]', '["name"]', '["scene"]', '["path"]', ".name", "resource_path", "resource_name", "RegEx"]) {
         expect(body, `${name} reads ${field}`).not.toContain(field);
       }
     }
+  });
+});
+
+describe("sceneAudit: accepted items", () => {
+  /** Two look items (z_fight) the agent judged fine, and one error (a NaN transform). */
+  function lookResult(accept?: unknown) {
+    const instances = [inst("House1/Corners/FR_c1", { r: "struct" }), inst("House1/F_c1_2", { r: "struct" }), inst("House/Back/Frame", { r: "wall" }), inst("House/Back/Door", { r: "insert", nan: true })];
+    const pair = (a: number, b: number, area: number, centre: number[]) => [a, b, area, 0, centre, [0, 1, 0], 6, "walkable area", false, [], [], "trim", "trim", false, area, 1, "", ""];
+    return {
+      ok: true,
+      stage: "done",
+      instances,
+      zfight_geo: { near: 0.05, far: 4000, pairs: [pair(0, 1, 0.02, [9, 2.9, 0.1]), pair(1, 0, 0.03, [6, 2.9, 0.1])] },
+      ...(accept ? { accept } : {}),
+    };
+  }
+
+  it("accept writes res://.summer/audit-accept.json; the next audit counts the item and hides it", async () => {
+    let file: unknown;
+    const engine = fakeEngine({ projectRoot: project, audit: () => lookResult(file) });
+    const first = (await sceneAudit(engine, { scenePath: "res://town.tscn", checks: ["z_fight", "transform"] })) as AuditSuccess;
+    const issues = first.summary.issues as Array<{ key: string; sev: string; check: string }>;
+    const look = issues.find((i) => i.sev === "look")!;
+    const error = issues.find((i) => i.sev === "error")!;
+    const second = (await sceneAudit(engine, { scenePath: "res://town.tscn", checks: ["z_fight", "transform"], accept: [{ key: look.key, reason: "inside-corner overlap, hidden" }, { key: error.key, reason: "nope" }] })) as AuditSuccess;
+    expect(second.summary.accept_result).toMatchObject({ added: 1, refused: [{ key: error.key, why: "errors cannot be accepted: fix it" }] });
+    const path = join(project, ".summer", "audit-accept.json");
+    file = JSON.parse(readFileSync(path, "utf-8"));
+    expect((file as { entries: unknown[] }).entries).toHaveLength(1);
+    // The kernel echoes the file on the next run: the item is counted, not listed.
+    const third = (await sceneAudit(engine, { scenePath: "res://town.tscn", checks: ["z_fight", "transform"] })) as AuditSuccess;
+    expect((third.summary.issues as Array<{ key: string }>).map((i) => i.key)).not.toContain(look.key);
+    expect(third.summary.counts).toMatchObject({ z_fight: { look: 1, accepted: 1 } });
+    expect(third.summary.accepted).toEqual({ hidden: 1, stale: 0 });
+    // show_accepted lists it with its reason.
+    const shown = (await sceneAudit(engine, { scenePath: "res://town.tscn", checks: ["z_fight", "transform"], show_accepted: true })) as AuditSuccess;
+    expect((shown.summary.issues as Array<{ key: string; accepted?: string }>).find((i) => i.key === look.key)).toMatchObject({ accepted: "inside-corner overlap, hidden" });
+  });
+
+  it("without a known project folder, accept fails with a structured reason and writes nothing", async () => {
+    const engine = fakeEngine({ audit: () => lookResult() });
+    const first = (await sceneAudit(engine, { scenePath: "res://town.tscn", checks: ["z_fight"] })) as AuditSuccess;
+    const key = (first.summary.issues as Array<{ key: string }>)[0]!.key;
+    const r = await sceneAudit(engine, { scenePath: "res://town.tscn", checks: ["z_fight"], accept: [{ key, reason: "fine here" }] });
+    expect(r).toMatchObject({ ok: false, failure_reason: "accept_no_project" });
   });
 });
 

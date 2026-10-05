@@ -29,6 +29,26 @@ import {
 export const SHOT_TYPES = ["establishing", "eye_level", "low_angle", "detail", "corridor"] as const;
 export type ShotType = (typeof SHOT_TYPES)[number];
 
+/**
+ * Eye mode (eye_level and corridor): the camera stands at eye height above the
+ * walkable surface under it and is never raised. The engine finds that
+ * surface straight below the lens (overhead structure never counts), checks
+ * it is within a step of the floor under `stand`, and puts the camera
+ * `target` above it (without a target: its current height, clamped into
+ * min..max). A pose that cannot stand there moves horizontally or is rejected.
+ */
+export interface EyeSpec {
+  /** Lowest and highest allowed camera height above the walkable surface (m). */
+  min: number;
+  max: number;
+  /** Height above the walkable surface to stand the camera at; absent = keep
+   *  its own height inside min..max (a spawn's Camera3D). */
+  target?: number;
+  /** Where the player stands (spawn origin, corridor seed): the floor under it
+   *  is the walkable reference. */
+  stand: Vec3;
+}
+
 export interface Candidate {
   id: string;
   position: Vec3;
@@ -37,9 +57,12 @@ export interface Candidate {
   /** World points the thick sweep must reach (subject bounds or corridor line). */
   samples: Vec3[];
   /** Below this height above the ground under the camera the engine applies
-   *  the low-angle rule (or raises the camera when it is not looking up). */
+   *  the low-angle rule (or raises the camera when it is not looking up).
+   *  Ignored in eye mode. */
   min_clearance: number;
   low_angle_rule: boolean;
+  /** Eye mode: eye_level and corridor poses. */
+  eye?: EyeSpec;
   note?: string;
   /** Corridor only: 1 = from an open end looking in, 0 = looking out of a
    *  dead end, 0.5 = a through passage (both ends alike). */
@@ -106,6 +129,14 @@ export const LOW_ANGLE_CLEARANCE = 0.35;
 export const DEFAULT_CLEARANCE = 0.3;
 export const MAX_FOV = 100;
 export const DEFAULT_EYE_HEIGHT = 1.6;
+/** A standing eye without an explicit eye_height: 1.5-1.8 m above the walkable
+ *  surface under the camera. */
+export const EYE_BAND: readonly [number, number] = [1.5, 1.8];
+
+/** The eye band: exactly eye_height when given, else EYE_BAND. */
+export function eyeBand(eyeHeight: number | undefined): [number, number] {
+  return eyeHeight !== undefined ? [eyeHeight, eyeHeight] : [EYE_BAND[0], EYE_BAND[1]];
+}
 
 /** Nine points the thick sweep aims at: the center plus the eight corners
  *  pulled 40% toward it, so a subject standing on the ground still offers
@@ -163,11 +194,17 @@ function eyeOf(ctx: CandidateContext): { eye: Vec3; source: string } {
   const spawn = ctx.spawn!;
   if (ctx.eyeHeight === undefined && spawn.camera) return { eye: spawn.camera.position, source: `camera ${spawn.camera.path}` };
   const h = ctx.eyeHeight ?? DEFAULT_EYE_HEIGHT;
-  return { eye: add(spawn.origin, [0, h, 0]), source: `origin + ${h} m` };
+  return { eye: add(spawn.origin, [0, h, 0]), source: `${h} m above the walkable surface at ${spawn.path}` };
 }
 
 function eyeLevelCandidates(ctx: CandidateContext, fovDefault: number): Candidate[] {
   const { eye, source } = eyeOf(ctx);
+  const [min, max] = eyeBand(ctx.eyeHeight);
+  // The engine stands the eye on the walkable surface under it: eye_height
+  // (or 1.6 m) above it, or a spawn camera's own height clamped into
+  // 1.5-1.8 m. Never higher.
+  const ownCamera = ctx.eyeHeight === undefined && ctx.spawn!.camera !== undefined;
+  const eyeSpec: EyeSpec = { min, max, ...(ownCamera ? {} : { target: ctx.eyeHeight ?? DEFAULT_EYE_HEIGHT }), stand: [...ctx.spawn!.origin] as Vec3 };
   const out: Candidate[] = [];
   const fovs = ctx.fov !== undefined ? [ctx.fov] : [fovDefault - 10, fovDefault + 5];
   if (ctx.subject) {
@@ -191,6 +228,7 @@ function eyeLevelCandidates(ctx: CandidateContext, fovDefault: number): Candidat
             samples,
             min_clearance: 0,
             low_angle_rule: false,
+            eye: eyeSpec,
             note: `eye ${source}`,
           });
         }
@@ -200,7 +238,7 @@ function eyeLevelCandidates(ctx: CandidateContext, fovDefault: number): Candidat
   }
   const fov = ctx.fov ?? fovDefault;
   const forward = normalize([ctx.spawn!.camera?.forward[0] ?? ctx.spawn!.forward[0], 0, ctx.spawn!.camera?.forward[2] ?? ctx.spawn!.forward[2]]);
-  out.push({ id: "eye_spawn_forward", position: eye, look_at: add(eye, scale(forward, 10)), fov, samples: [], min_clearance: 0, low_angle_rule: false, note: `eye ${source}` });
+  out.push({ id: "eye_spawn_forward", position: eye, look_at: add(eye, scale(forward, 10)), fov, samples: [], min_clearance: 0, low_angle_rule: false, eye: eyeSpec, note: `eye ${source}` });
   for (const azimuth of AZIMUTHS_16) {
     const dir = directionFromAngles(azimuth, 0);
     out.push({
@@ -211,6 +249,7 @@ function eyeLevelCandidates(ctx: CandidateContext, fovDefault: number): Candidat
       samples: [],
       min_clearance: 0,
       low_angle_rule: false,
+      eye: eyeSpec,
       note: `eye ${source}`,
     });
   }
@@ -262,45 +301,60 @@ export function chooseCorridorAxis(runs: readonly CorridorRun[], box: Aabb): Cor
   return distinct;
 }
 
+/** The walkable floor along a corridor axis: the scan put its seed at eye
+ *  height above the floor it found there. */
+export function corridorFloorY(axis: CorridorRun, eyeHeight: number | undefined): number {
+  return axis.seed[1] - (eyeHeight ?? DEFAULT_EYE_HEIGHT);
+}
+
 function corridorCandidates(ctx: CandidateContext, fovDefault: number): Candidate[] {
   const axis = ctx.corridor!;
-  const floorY = ctx.groundY ?? axis.seed[1] - (ctx.eyeHeight ?? DEFAULT_EYE_HEIGHT);
+  // The floor under the corridor line (the scan's seed), not the subject's
+  // lowest point: walls sunk into the ground or a backing plane below the
+  // floor would put every camera too low or, after the ground check, high.
+  const floorY = corridorFloorY(axis, ctx.eyeHeight);
+  const height = ctx.eyeHeight ?? DEFAULT_EYE_HEIGHT;
+  const [min, max] = eyeBand(ctx.eyeHeight);
+  const eyeSpec: EyeSpec = { min, max, target: height, stand: [...axis.seed] as Vec3 };
   const dir = normalize([axis.dir[0], 0, axis.dir[2]]);
   const perp: Vec3 = [dir[2], 0, -dir[0]];
-  const endB = add(axis.seed, scale(dir, axis.usableFwd * 0.92));
-  const endA = add(axis.seed, scale(dir, -axis.usableBack * 0.92));
   const halfWidth = Math.min(axis.left, axis.right, axis.width / 2);
   const fovs = ctx.fov !== undefined ? [ctx.fov] : [fovDefault - 5, fovDefault + 10];
   const out: Candidate[] = [];
   // "ab" starts at the back end and looks toward the forward end.
   const intoOf = (fromOpen: boolean, toOpen: boolean) => (fromOpen === toOpen ? 0.5 : fromOpen ? 1 : 0);
   const intoAb = intoOf(axis.openBack, axis.openFwd);
-  for (const [tag, from, to] of [["ab", endA, endB], ["ba", endB, endA]] as const) {
-    const into = tag === "ab" ? intoAb : 1 - intoAb;
-    // Eye level up to a raised eye; a corridor shot is about walking it.
-    for (const height of [1.6, 2.4, 3.5]) {
+  // A corridor shot is about walking it: every camera stands at eye height.
+  // The alternatives are horizontal only (how far in from the end, how far
+  // off the centre line), never a raised eye.
+  for (const reach of [0.92, 0.75]) {
+    const endB = add(axis.seed, scale(dir, axis.usableFwd * reach));
+    const endA = add(axis.seed, scale(dir, -axis.usableBack * reach));
+    for (const [tag, from, to] of [["ab", endA, endB], ["ba", endB, endA]] as const) {
+      const into = tag === "ab" ? intoAb : 1 - intoAb;
+      const far: Vec3 = [to[0], floorY + height, to[2]];
+      const samples: Vec3[] = [0.3, 0.55, 0.8, 1].map((t) => {
+        const p = lerp(from, to, t);
+        return [p[0], floorY + height, p[2]] as Vec3;
+      });
+      const mid = lerp(from, to, 0.55);
+      for (const side of [-0.3, 0.3]) {
+        const lat = scale(perp, side * halfWidth);
+        samples.push([mid[0] + lat[0], floorY + height, mid[2] + lat[2]]);
+      }
       for (const lateral of [-0.3, 0, 0.3]) {
         const offset = scale(perp, lateral * halfWidth);
         const position: Vec3 = [from[0] + offset[0], floorY + height, from[2] + offset[2]];
-        const far: Vec3 = [to[0], floorY + 1.6 + (height - 1.6) * 0.3, to[2]];
-        const samples: Vec3[] = [0.3, 0.55, 0.8, 1].map((t) => {
-          const p = lerp(from, to, t);
-          return [p[0], floorY + 1.6, p[2]] as Vec3;
-        });
-        const mid = lerp(from, to, 0.55);
-        for (const side of [-0.3, 0.3]) {
-          const lat = scale(perp, side * halfWidth);
-          samples.push([mid[0] + lat[0], floorY + 1.6, mid[2] + lat[2]]);
-        }
         for (const fov of fovs) {
           out.push({
-            id: `corridor_${tag}_h${height}_x${lateral}_fov${fov}`,
+            id: `corridor_${tag}_r${reach}_x${lateral}_fov${fov}`,
             position,
             look_at: far,
             fov,
             samples,
             min_clearance: DEFAULT_CLEARANCE,
             low_angle_rule: false,
+            eye: eyeSpec,
             into,
             ...(into === 1 ? { note: "looks in from the open end" } : into === 0 ? { note: "looks out from the dead end" } : {}),
           });

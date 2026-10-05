@@ -6,7 +6,7 @@
  * Conventions match the engine: +Y up, a basis is three COLUMN vectors
  * (x, y, z), a transform maps local to world as origin + basis * v.
  */
-import { add, dot, length, normalize, scale, sub, type Vec3 } from "../seeing/math.js";
+import { dot, length, normalize, scale, sub, type Vec3 } from "../seeing/math.js";
 
 export type { Vec3 };
 
@@ -19,11 +19,6 @@ export function basisColumns(b: Basis9): [Vec3, Vec3, Vec3] {
     [b[3]!, b[4]!, b[5]!],
     [b[6]!, b[7]!, b[8]!],
   ];
-}
-
-export function basisMulVec(b: Basis9, v: Vec3): Vec3 {
-  const [x, y, z] = basisColumns(b);
-  return add(add(scale(x, v[0]), scale(y, v[1])), scale(z, v[2]));
 }
 
 /** Rotation angle (degrees) between two bases, scale removed. */
@@ -276,4 +271,64 @@ export function robustBounds(points: readonly Vec3[]): { center: Vec3; radius: n
 export function fitCameraDistance(size: number, fovDegrees: number, fill = 0.55): number {
   const half = Math.tan((fovDegrees * Math.PI) / 360);
   return size / (2 * half * fill);
+}
+
+// ---------------------------------------------------------------------------
+// Axis labels (z_fight: which way to nudge)
+// ---------------------------------------------------------------------------
+
+/** World axis label of a vector's dominant component ("+X", "-Y", ...). */
+export function axisName(v: Vec3): string {
+  const k = Math.abs(v[0]) >= Math.abs(v[1]) && Math.abs(v[0]) >= Math.abs(v[2]) ? 0 : Math.abs(v[1]) >= Math.abs(v[2]) ? 1 : 2;
+  return `${v[k]! >= 0 ? "+" : "-"}${"XYZ"[k]}`;
+}
+
+/** The local axis of a piece (basis columns) that a world direction runs along. */
+export function localAxisName(b: readonly number[], v: Vec3): string {
+  const cols = basisColumns(b);
+  const local: Vec3 = [0, 1, 2].map((k) => {
+    const c = cols[k]!;
+    const L = length(c) || 1;
+    return (c[0] * v[0] + c[1] * v[1] + c[2] * v[2]) / L;
+  }) as unknown as Vec3;
+  return axisName(local);
+}
+
+// ---------------------------------------------------------------------------
+// Axis-aligned boxes (gap detectors: confirmation, door recesses)
+// ---------------------------------------------------------------------------
+
+export interface Box {
+  lo: Vec3;
+  hi: Vec3;
+}
+
+export function makeBox(a: Vec3, b: Vec3): Box {
+  return { lo: [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.min(a[2], b[2])], hi: [Math.max(a[0], b[0]), Math.max(a[1], b[1]), Math.max(a[2], b[2])] };
+}
+
+export function growBox(b: Box, g: number): Box {
+  return { lo: [b.lo[0] - g, b.lo[1] - g, b.lo[2] - g], hi: [b.hi[0] + g, b.hi[1] + g, b.hi[2] + g] };
+}
+
+export function boxCenter(b: Box): Vec3 {
+  return [(b.lo[0] + b.hi[0]) / 2, (b.lo[1] + b.hi[1]) / 2, (b.lo[2] + b.hi[2]) / 2];
+}
+
+/** Overlap of two boxes, or null when they do not overlap (touching counts). */
+export function boxIntersection(a: Box, b: Box): Box | null {
+  const lo: Vec3 = [Math.max(a.lo[0], b.lo[0]), Math.max(a.lo[1], b.lo[1]), Math.max(a.lo[2], b.lo[2])];
+  const hi: Vec3 = [Math.min(a.hi[0], b.hi[0]), Math.min(a.hi[1], b.hi[1]), Math.min(a.hi[2], b.hi[2])];
+  if (lo[0] > hi[0] || lo[1] > hi[1] || lo[2] > hi[2]) return null;
+  return { lo, hi };
+}
+
+/** Shortest distance between two boxes (0 when they touch or overlap). */
+export function boxDistance(a: Box, b: Box): number {
+  let s = 0;
+  for (let k = 0; k < 3; k++) {
+    const d = a.hi[k]! < b.lo[k]! ? b.lo[k]! - a.hi[k]! : b.hi[k]! < a.lo[k]! ? a.lo[k]! - b.hi[k]! : 0;
+    s += d * d;
+  }
+  return Math.sqrt(s);
 }

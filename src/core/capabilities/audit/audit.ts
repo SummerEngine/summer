@@ -30,6 +30,7 @@ import {
   AUDIT_CHECKS,
   AUDIT_DEFAULT_BUDGET_MS,
   AUDIT_DEFAULT_LIMIT,
+  AUDIT_MAX_ACCEPT,
   AUDIT_MAX_BUDGET_MS,
   AUDIT_MAX_LIMIT,
   AUDIT_MIN_BUDGET_MS,
@@ -37,6 +38,8 @@ import {
   type SceneAuditArgs,
   type Severity,
 } from "./args.js";
+import { AcceptStoreError, applyAccepts, mergeAccepts, parseAcceptFile, validIssueKey, writeAcceptFile } from "./accept.js";
+import { judgeGaps } from "./gaps.js";
 import {
   groupRepeats,
   judgeDuplicates,
@@ -104,6 +107,8 @@ export interface ValidatedAuditArgs {
   limit: number;
   render: "sheet" | "none";
   budgetMs: number;
+  accept: Array<{ key: string; reason: string }>;
+  showAccepted: boolean;
 }
 
 /** Strict validation; throws ToolInputError (nothing is sent). */
@@ -121,6 +126,15 @@ export function validateAuditArgs(args: SceneAuditArgs): ValidatedAuditArgs {
     throw new ToolInputError(`budget_ms must be an integer ${AUDIT_MIN_BUDGET_MS}-${AUDIT_MAX_BUDGET_MS}. Nothing was sent.`);
   }
   const root = args.root !== undefined && args.root.trim() !== "" && args.root.trim() !== "." ? validateNodePath(args.root.trim(), "root") : undefined;
+  const accept = (args.accept ?? []).map((a) => {
+    if (!a || typeof a.key !== "string" || !validIssueKey(a.key)) {
+      throw new ToolInputError(`accept: ${JSON.stringify(a?.key ?? a).slice(0, 80)} is not an issue key (check:path@x,y,z, from issues[].key). Nothing was sent.`);
+    }
+    const reason = typeof a.reason === "string" ? a.reason.trim() : "";
+    if (reason.length < 3 || reason.length > 200 || /[\r\n]/.test(reason)) throw new ToolInputError("accept: each reason must be one line of 3-200 characters. Nothing was sent.");
+    return { key: a.key, reason };
+  });
+  if (accept.length > AUDIT_MAX_ACCEPT) throw new ToolInputError(`accept: at most ${AUDIT_MAX_ACCEPT} per call. Nothing was sent.`);
   return {
     ...(args.scenePath !== undefined ? { scenePath: validateScenePath(args.scenePath) } : {}),
     checks: AUDIT_CHECKS.filter((c) => checks.includes(c)),
@@ -130,16 +144,32 @@ export function validateAuditArgs(args: SceneAuditArgs): ValidatedAuditArgs {
     limit,
     render: args.render ?? "none",
     budgetMs,
+    accept,
+    showAccepted: args.show_accepted === true,
   };
 }
 
 /** Raw kernel measurements -> sorted issues (all checks that ran). */
 export function judgeAll(result: KernelResult, checks: readonly AuditCheck[]): AuditIssue[] {
+  return judgeAllDetailed(result, checks).issues;
+}
+
+export interface JudgedAudit {
+  issues: AuditIssue[];
+  notes: string[];
+  /** Checks that ran but could measure nothing (never listed clean). */
+  unmeasured: AuditCheck[];
+}
+
+export function judgeAllDetailed(result: KernelResult, checks: readonly AuditCheck[]): JudgedAudit {
   const inst = (Array.isArray(result.instances) ? result.instances : []) as InstRow[];
   const want = new Set(checks);
   const lines = Array.isArray(result.lines) ? result.lines : [];
   const issues: AuditIssue[] = [];
-  if (want.has("through_hole")) issues.push(...judgeThroughHoles(lines, inst));
+  const holes = want.has("through_hole") ? judgeThroughHoles(lines, inst) : [];
+  issues.push(...holes);
+  const gaps = judgeGaps(result, inst, want, holes);
+  issues.push(...gaps.issues);
   if (want.has("floor_gap")) issues.push(...judgeFloorGaps(result.floors, inst));
   if (want.has("floating") || want.has("sunken")) {
     issues.push(...judgeSupport(Array.isArray(result.support) ? result.support : [], inst).filter((i) => want.has(i.check)));
@@ -156,7 +186,7 @@ export function judgeAll(result: KernelResult, checks: readonly AuditCheck[]): A
   if (want.has("lights")) issues.push(...judgeLights(result.lights, inst));
   if (want.has("transform")) issues.push(...judgeTransforms(inst));
   if (want.has("resource")) issues.push(...judgeResources(result.resources, inst));
-  return sortIssues(groupRepeats(issues, inst));
+  return { issues: sortIssues(groupRepeats(issues, inst)), notes: gaps.notes, unmeasured: gaps.unmeasured };
 }
 
 function sceneStats(result: KernelResult): Record<string, unknown> {
@@ -211,12 +241,38 @@ export async function sceneAudit(client: AuditClient, rawArgs: SceneAuditArgs): 
     }
     const result = run.result as KernelResult;
     const judgeStarted = Date.now();
-    const all = judgeAll(result, args.checks);
+    const judged = judgeAllDetailed(result, args.checks);
     const judgeMs = Date.now() - judgeStarted;
     const partial = partialChecks(result.partial, args.checks);
-    const { counts, clean } = countIssues(all, args.checks, partial.checks);
+    for (const c of judged.unmeasured) partial.checks[c] = 0;
+    // Accepted items: merge this call's accept list into the file, then hide
+    // what is accepted (stale entries show again).
+    let acceptEntries = parseAcceptFile(result.accept);
+    let acceptResult: Record<string, unknown> | undefined;
+    if (args.accept.length) {
+      const merged = mergeAccepts(acceptEntries, args.accept, judged.issues, scenePath);
+      acceptResult = { added: merged.added.length, ...(merged.refused.length ? { refused: merged.refused.slice(0, 5) } : {}) };
+      if (merged.entries) {
+        try {
+          await writeAcceptFile(client.getProjectRoot?.(), merged.entries);
+          acceptEntries = merged.entries;
+        } catch (err) {
+          const reason = err instanceof AcceptStoreError ? err.reason : "write_failed";
+          return fail(`accept_${reason}`, `Accepted items were not saved: ${err instanceof Error ? err.message : String(err)}`, "Run the audit without accept, or connect to the project's editor so its folder is known.");
+        }
+      }
+    }
+    const split = applyAccepts(judged.issues, acceptEntries, scenePath);
+    for (const st of split.stale) st.issue.acceptStale = st.why;
+    for (const a of split.accepted) a.issue.accepted = a.entry.reason;
+    const all = args.showAccepted ? judged.issues : split.shown;
+    const accepted = split.accepted.map((a) => a.issue);
+    const { counts, clean } = countIssues(split.shown, args.checks, partial.checks, accepted);
     const matching = filterIssues(all, args.minSeverity);
     const notes: string[] = ["Read-only: audited the SAVED file in a private copy (open tab, undo and file untouched); save first."];
+    if (accepted.length) notes.push(`${accepted.length} accepted item(s) ${args.showAccepted ? "listed (show_accepted)" : "hidden (counts.<check>.accepted; show_accepted:true lists them)"}${split.stale.length ? `; ${split.stale.length} shown again because their evidence changed (accept_stale)` : ""}.`);
+    else if (split.stale.length) notes.push(`${split.stale.length} accepted item(s) shown again because their evidence changed (accept_stale).`);
+    notes.push(...judged.notes);
     if (args.minSeverity !== "look") notes.push(`min_severity ${args.minSeverity}: ${all.length - matching.length} lower-severity issue(s) hidden.`);
     const lights = lightStats(result);
     if (lights && args.checks.includes("lights") && lights.renderer === "forward_plus") notes.push("lights: forward_plus has no per-object light limit; only spot rims were checked.");
@@ -237,6 +293,8 @@ export async function sceneAudit(client: AuditClient, rawArgs: SceneAuditArgs): 
       ms: timingPerCheck(result.ms as Record<string, unknown> | undefined, { judge: judgeMs, roundtrip }),
       ...(lights ? { lights } : {}),
       total: all.length,
+      ...(accepted.length || split.stale.length ? { accepted: { hidden: args.showAccepted ? 0 : accepted.length, stale: split.stale.length } } : {}),
+      ...(acceptResult ? { accept_result: acceptResult } : {}),
       notes,
     };
     let page = buildPage({ base, issues: matching, offset: args.offset, limit: args.limit });

@@ -7,6 +7,7 @@
  */
 import { AUDIT_CHECKS, SEVERITIES, type AuditCheck, type Severity } from "./args.js";
 import type { AuditIssue } from "./judge.js";
+import { issueKey } from "./accept.js";
 
 export const SUMMARY_CAP_BYTES = 5000;
 
@@ -33,7 +34,7 @@ export function filterIssues(issues: readonly AuditIssue[], minSeverity: Severit
   return issues.filter((i) => SEVERITY_RANK[i.severity] <= limit);
 }
 
-export type CheckCounts = Partial<Record<Severity, number>> & { partial?: number };
+export type CheckCounts = Partial<Record<Severity, number>> & { partial?: number; accepted?: number };
 
 /** Per check: { error: n, warn: n, look: n } without zeros, plus `partial`
  *  (the share of the check's samples it covered) when the editor-time budget
@@ -42,12 +43,17 @@ export type CheckCounts = Partial<Record<Severity, number>> & { partial?: number
 export function countIssues(
   issues: readonly AuditIssue[],
   ran: readonly AuditCheck[],
-  partial: Partial<Record<AuditCheck, number>> = {}
+  partial: Partial<Record<AuditCheck, number>> = {},
+  accepted: readonly AuditIssue[] = []
 ): { counts: Record<string, CheckCounts>; clean: AuditCheck[] } {
   const counts: Record<string, CheckCounts> = {};
   for (const i of issues) {
     const c = (counts[i.check] ??= {});
     c[i.severity] = (c[i.severity] ?? 0) + 1;
+  }
+  for (const i of accepted) {
+    const c = (counts[i.check] ??= {});
+    c.accepted = (c.accepted ?? 0) + 1;
   }
   const ordered: Record<string, CheckCounts> = {};
   for (const check of AUDIT_CHECKS) {
@@ -55,6 +61,7 @@ export function countIssues(
     if (!counts[check] && share === undefined) continue;
     const c: CheckCounts = {};
     for (const s of SEVERITIES) if (counts[check]?.[s]) c[s] = counts[check]![s];
+    if (counts[check]?.accepted) c.accepted = counts[check]!.accepted;
     if (share !== undefined) c.partial = share;
     ordered[check] = c;
   }
@@ -70,6 +77,10 @@ export const STAGE_CHECKS: Readonly<Record<string, readonly AuditCheck[]>> = {
   orientation: ["orientation"],
   uv_stretch: ["uv_stretch"],
   z_fight_geometry: ["z_fight"],
+  gap_setup: ["exposed_edge", "open_fixture_end", "depth_step"],
+  exposed_edge: ["exposed_edge"],
+  open_fixture_end: ["open_fixture_end"],
+  depth_step: ["depth_step"],
   lights: ["lights"],
   resource: ["resource"],
 };
@@ -111,10 +122,28 @@ export interface CompactIssue {
   why: string;
   ev: Record<string, unknown>;
   next: string;
+  /** Pass it in accept:[{key, reason}] to hide this item on later audits. */
+  key: string;
+  /** An accepted item (show_accepted) and the reason given. */
+  accepted?: string;
+  /** It was accepted, but its evidence changed. */
+  accept_stale?: string;
 }
 
 export function compactIssue(issue: AuditIssue, n: number): CompactIssue {
-  return { n, check: issue.check, sev: issue.severity, path: issue.path, pos: issue.pos, why: issue.why, ev: issue.ev, next: issue.next };
+  return {
+    n,
+    check: issue.check,
+    sev: issue.severity,
+    path: issue.path,
+    pos: issue.pos,
+    why: issue.why,
+    ev: issue.ev,
+    next: issue.next,
+    key: issueKey(issue),
+    ...(issue.accepted ? { accepted: issue.accepted } : {}),
+    ...(issue.acceptStale ? { accept_stale: issue.acceptStale } : {}),
+  };
 }
 
 /** A single issue that alone is too big for the page: cut its prose. */
@@ -208,6 +237,10 @@ export function timingPerCheck(ms: Record<string, unknown> | undefined, extra: R
     ["orientation", "orientation"],
     ["uv_stretch", "uv_stretch"],
     ["z_fight_geometry", "z_fight_geometry"],
+    ["gap_setup", "gap_setup"],
+    ["exposed_edge", "exposed_edge"],
+    ["open_fixture_end", "open_fixture_end"],
+    ["depth_step", "depth_step"],
     ["lights", "lights"],
     ["resource", "resource"],
     ["poses", "framing"],

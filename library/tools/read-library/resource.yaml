@@ -1,6 +1,6 @@
 id: tool/read-library
 kind: tool
-version: 1.0.0
+version: 1.1.0
 summary: Load one library entry by id — a skill's body and metadata, a tool's call recipe, a template's pin, a reference's text — ending in the feedback footer.
 use_when:
   - summer_search_library returned an id and you need the entry itself before acting
@@ -48,7 +48,7 @@ input_schema:
       type: string
       minLength: 1
       maxLength: 200
-      description: The entry id as returned by summer_search_library, <kind>/<slug>, e.g. skill/vfx-water-ripple or tool/screenshot.
+      description: The entry id as returned by summer_search_library, <kind>/<slug>, e.g. skill/vfx-water-ripple or tool/screenshot. A file an entry links loads by <entry id>/<link as written>, e.g. skill/spatial-placement/references/kit-placement-tools.md; the linked files list at the end of a body gives each id.
     part:
       type: string
       enum:

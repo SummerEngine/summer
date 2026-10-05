@@ -250,7 +250,7 @@ Preview. One fast, read-only call that walks every node of a 3D scene and lists 
 | Tool | Use |
 |---|---|
 | `summer_search_library` | Search the library (skills, tools, templates, references, examples, collections) by describing the task in plain words; ranked ids with `matched_by` (lexical / semantic). The first move for any task; works without the engine. |
-| `summer_read_library` | Load one entry by id: a skill's SKILL.md plus metadata, a tool's call recipe, a template's pin, a reference's body. The last line is the `entry_id` footer to report through `summer_library_feedback`. |
+| `summer_read_library` | Load one entry by id: a skill's SKILL.md plus metadata, a tool's call recipe, a template's pin, a reference's body. A body ends with its relative links and the id that loads each; a linked file loads by `<entry id>/<link as written>` (e.g. `skill/spatial-placement/references/kit-placement-tools.md`). The last line is the `entry_id` footer to report through `summer_library_feedback`. |
 
 ### Library feedback (1)
 

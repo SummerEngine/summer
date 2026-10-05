@@ -1,11 +1,13 @@
 id: tool/scene-audit
 kind: tool
-version: 1.2.0
-summary: 'One read-only pass over a 3D scene: see-through holes, floor gaps, floating or clipping props, wrong insert hosts, mount gaps, facing, UV stretch, lights.'
+version: 1.3.0
+summary: 'One read-only pass over a 3D scene: see-through holes, broken bands and open corners, exposed edges, open pipe ends, floor gaps, clipping props, wrong hosts.'
 use_when:
   - 'after each build stage of a 3D level or kit-built street: "what is wrong with this scene and where exactly?"'
   - 'before calling a scene done: find see-through walls (an insert narrower than its frame), floor tiles with holes, props floating, sunk or poking into walls'
   - 'checking kit pieces against a kit manifest you pass (manifests): a door or window in the wrong host (fits_into), pipes and ducts off their wall (mount_side, standoff_m)'
+  - 'facade bands (base, dado, cornice, crown, trim) that stop short, leave a gap or do not wrap an outside corner; open band ends, seams between modules and modules out of line seen from the street; a duct or downpipe with a missing elbow, coupler or outlet'
+  - 'the same look items keep coming back: accept the ones you judged fine (accept:[{key, reason}]) so later audits count them but hide them until their evidence changes'
   - 'finding props turned the wrong way against a wall (a bench standing perpendicular to it), stretched texture strips, duplicated pieces'
   - 'flickering faces: coplanar overlaps anywhere (props, roofs, ledges, inserts against hosts, decals, two surfaces of one mesh), judged by the 24-bit depth precision at the view distance'
   - 'bare ground at wall bases, an underlay plane covering drain channels, buried props: floor_gap and sunken say which surface a ray hits first'

@@ -44,6 +44,7 @@ A screenshot only shows what its camera points at. Problems behind a wall, under
    - A check with `partial` in its counts ran out of editor time (`budget_ms`, default 3000) and covered only that share. It is not clean: rerun it alone (`checks:["floor_gap"]`) or with a larger `budget_ms` before you call that check clean.
 3. **Frame every error and look item up close before calling the scene done.** `render:"sheet"` returns one image of the page's first 6 issues framed from their open side (tiles labelled `#n`); otherwise `summer_frame_nodes` on the path and `summer_zoom` into it. A look item (`orientation`, a facing or mounting question) is never an answer: decide the facing yourself from the asset (`summer_inspect_asset`) and the kit's own notes.
 4. **Classify each item as real or a false positive** in your notes. Fix the real ones with the placement tools, then audit again: the same check must come back clean (or the remaining items must be ones you have looked at and accepted).
+5. **Accept the look items you judged fine, once.** Pass `accept:[{key, reason}]` with each item's `key` from the page (a warn can be accepted too, an error never). The audit writes them to `res://.summer/audit-accept.json`; later audits count them (`counts.<check>.accepted`) but hide them. An accepted item comes back, marked `accept_stale`, when its evidence changes materially (its severity rises or its measured size moves by over 25%), so a fix that made it worse is not hidden. `show_accepted:true` lists them again.
 
 What the checks mean:
 - `through_hole`: rays pass the wall and reach the far side of the building.
@@ -58,14 +59,26 @@ What the checks mean:
 - `mount_gap`: a piece a kit manifest gives a `mount_side`, off its wall, measured at its centre and sides.
   - Over 5 cm is reported, or over the manifest's `standoff_m` + 5 cm.
   - A pipe that a wall-touching bracket or clamp holds is not reported, and neither is the rest of its run.
+- `band_continuity`: facade bands (base / dado / plinth, cornice, crown, trim, band, sill) per facade, height and facing.
+  - A missing run over 5 cm, unless a door, gate or shutter (or the kit's corner, end or pier piece) covers 80% of it over half the band height.
+  - A short end over 5 cm, when the band covers at least half its own block's facade (a lower neighbour's wall top is not this facade).
+  - An outside corner whose square (this band's depth x the return band's depth) is under 70% covered. Two bands that only touch at the corner's edge leave it empty: add the kit's corner piece for that band, or wrap one band past the corner by its depth. Inside corners are never flagged.
+  - A band facing into the wall, only when `exposed_edge` sees its open back.
+  - An **error** when `exposed_edge` or `depth_step` confirms the spot (the evidence says `confirmed_by`), otherwise a warning. Only spots walkable space sees.
+- `exposed_edge`: open outline edges of wall, band and pier pieces that nothing covers within 4-7 mm, seen from walkable space, with the reveal behind them: a 2-60 cm step (an open band end, a module out of line), a seam (the next sheet within 4 cm) or a gap to the next sheet (within 35 cm). A warning on band pieces (and on walls when `depth_step` agrees), a look item on walls. Repeats group per piece type.
+- `open_fixture_end`: an open end of a pipe, duct or gutter piece that nothing joins within 2.5 cm, seen from walkable space: a missing elbow, coupler, section or outlet. Terminal pieces (outlets, funnels, vents, caps) are open by design.
+- `depth_step` (look): ray rows across each facade at its band levels and every 1.25 m: band recesses, seams, modules standing proud, holes with something behind them. A hole next to a `through_hole` confirms it (that issue becomes an error). Runs a door or shutter covers are skipped.
 - `orientation`: front-back symmetric pieces (duct runs, strap braces) are never flagged for pointing away.
 - `uv_stretch`: stretched or collapsed texture an instance shows. A face that inserts normally cover is a warning where it shows.
 - `duplicate`: the same scene at the same transform.
 - `z_fight`: coplanar overlapping faces anywhere, including two surfaces of one mesh.
   - "Coplanar" means closer than twice the 24-bit depth step at the view distance, for the main camera's near and far. `ev` shows the gap, the tolerance and the viewpoint.
+  - `ev.normal` is the shared plane's normal and `ev.nudge` the axis to move along, in the world and in the piece's own frame. A window insert can share its head or a jamb with its host, not its front: nudge along `nudge.local`, not along the facade normal.
   - Decals, overlays, `render_priority` and depth offsets come back as look items with the reason. Check that they actually render on top.
 - `lights`: more lights on a mesh than the renderer's per-object limit, and hard spot rims.
-- `transform`, `resource`.
+- `transform`: NaN, mirrored, non-uniform scale, far out of bounds, and pieces left at the origin: only an identity LOCAL transform under an identity parent that touches nothing and is not one of a row of siblings. Several pieces sharing that identity transform are a warning each; one alone is a look item. A module whose corner is the world origin is not flagged.
+- `resource`.
+- `budget_ms`: the gap detectors run last on the time the other checks leave. On a large scene the default 3000 ms may cover `exposed_edge` / `depth_step` only partly (band pieces and band rows first). Before calling a facade done, rerun `checks:["exposed_edge","depth_step"]` (or with `budget_ms:6000`) when they show `partial`.
 
 `insert_host`, `mount_gap` and the manifest side of `orientation` need a kit manifest: an optional res:// JSON file you pass with `manifests:["res://kit/kit_manifest.json"]` (nothing is read from disk by itself). Each entry names a scene, by res:// path or by name relative to the manifest's folder, and gives only what the geometry cannot say:
 

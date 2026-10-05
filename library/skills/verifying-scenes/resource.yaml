@@ -1,6 +1,6 @@
 id: skill/verifying-scenes
 kind: skill
-version: 1.4.0
+version: 1.5.0
 summary: 'Prove scene work landed (snapshot, diff, screenshots, runtime reads), audit 3D scenes for holes and misplacement, review them with shot sheets and zooms.'
 use_when:
   - after any mutation batch, asset import, or lighting change, before claiming it worked
@@ -10,6 +10,8 @@ use_when:
   - '"make this environment beautiful" / reviewing a level like an artist: hero views, a shot sheet after each change, debug views of the weakest shot, zooms into problems'
   - finding good camera views automatically (establishing, player eye level, low-angle hero, detail, down a lane)
   - after each build stage of a 3D scene and before calling it done - run the scene audit, then frame every error and look item up close
+  - facade bands that stop short or do not wrap an outside corner, open band ends, a duct missing its elbow - the audit's band_continuity, exposed_edge and open_fixture_end checks
+  - accepting the audit's look items you judged fine so later audits stop repeating them
 do_not_use_when:
   - "the engine build lacks GetWorldSnapshot/DiffWorldSnapshot/GetRuntimeSceneTree/GetRuntimeNode (Summer Engine 0.5.66 or newer); older engines return engine_lacks_op — fall back to summer_get_scene_tree + summer_screenshot"
 facets:

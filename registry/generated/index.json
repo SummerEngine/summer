@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.3.0",
-      "content_hash": "76a86a74ca6694f75468c201bf47977d650ae1f0ff0f392d79d89b5ca6492a58",
+      "content_hash": "461a8eb1b31b9ce3d5b8c92252ff772fc038517bd9a96f6648bf04d561207403",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -3355,8 +3355,8 @@
     {
       "id": "skill/verifying-scenes",
       "kind": "skill",
-      "version": "1.4.0",
-      "content_hash": "d01ffdef2490d2ac0cd035ada368d2c56d3c117ad54b0a9bdd4d8f03c4c3358f",
+      "version": "1.4.1",
+      "content_hash": "2f9b022de46dab29b8327409dd4f184c870475997c5e8ad236aafc19e73f43f1",
       "summary": "Prove scene work landed (snapshot, diff, screenshots, runtime reads), audit 3D scenes for holes and misplacement, review them with shot sheets and zooms.",
       "use_when": [
         "after any mutation batch, asset import, or lighting change, before claiming it worked",
@@ -7465,12 +7465,11 @@
       "id": "tool/scene-audit",
       "kind": "tool",
       "version": "1.2.0",
-      "content_hash": "0ffa39baa0741dca25a170912487b0eaf39d13f4fbb78daaffe0a0f9e449133f",
-      "summary": "One read-only pass over a 3D scene: see-through holes, floor gaps, floating or clipping props, wrong insert hosts, mount gaps, facing, UV stretch, lights.",
+      "content_hash": "c2ac51b38b049bc316093471d05ec8e7bc3ea6857e937f4a4bc49b2e77658aa3",
+      "summary": "Read-only pass over any 3D scene from geometry and materials: see-through holes, floor gaps, floating or clipping props, facing, UV stretch, z-fighting, lights.",
       "use_when": [
         "after each build stage of a 3D level or kit-built street: \"what is wrong with this scene and where exactly?\"",
         "before calling a scene done: find see-through walls (an insert narrower than its frame), floor tiles with holes, props floating, sunk or poking into walls",
-        "checking kit pieces against a kit manifest you pass (manifests): a door or window in the wrong host (fits_into), pipes and ducts off their wall (mount_side, standoff_m)",
         "finding props turned the wrong way against a wall (a bench standing perpendicular to it), stretched texture strips, duplicated pieces",
         "flickering faces: coplanar overlaps anywhere (props, roofs, ledges, inserts against hosts, decals, two surfaces of one mesh), judged by the 24-bit depth precision at the view distance",
         "bare ground at wall bases, an underlay plane covering drain channels, buried props: floor_gap and sunken say which surface a ray hits first",

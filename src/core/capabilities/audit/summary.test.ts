@@ -21,7 +21,7 @@ describe("ordering and filters", () => {
     const sorted = sortIssues([
       issue({ severity: "look", check: "orientation", path: "a" }),
       issue({ severity: "warn", check: "floating", score: 0.03, path: "b" }),
-      issue({ severity: "error", check: "insert_host", path: "c" }),
+      issue({ severity: "error", check: "floating", path: "c" }),
       issue({ severity: "warn", check: "floating", score: 0.09, path: "d" }),
       issue({ severity: "error", check: "through_hole", path: "e" }),
     ]);
@@ -52,7 +52,7 @@ describe("budget: checks stopped early are partial in the counts", () => {
 
   it("kernel stages map to the checks they measure for; the lowest share wins; never rounded up to whole", () => {
     const ran = ["through_hole", "floor_gap", "z_fight", "floating", "sunken", "orientation"] as const;
-    const p = partialChecks({ through_hole: [620, 1000], floor_gap: [1, 2], floating_sunken: [9999, 10000], mount_gap: [0, 40], poses: [10, 20], resource: [5, 5] }, [...ran]);
+    const p = partialChecks({ through_hole: [620, 1000], floor_gap: [1, 2], floating_sunken: [9999, 10000], orientation: [0, 40], poses: [10, 20], resource: [5, 5] }, [...ran]);
     expect(p.checks).toEqual({ through_hole: 0.62, floor_gap: 0.5, z_fight: 0.5, floating: 0.99, sunken: 0.99, orientation: 0 });
     expect(p.other).toEqual({ poses: 0.5 });
     // A stage for a check that was not asked for adds nothing.
@@ -120,7 +120,7 @@ describe("paging under the 5 KB cap", () => {
 
 describe("timing per check", () => {
   it("folds setup stages and maps kernel stages to check names", () => {
-    const t = timingPerCheck({ collect: 5, manifests_roles: 2, mesh_pass: 100, physics_build: 150, through_hole: 190, floating_sunken: 3, total: 800 }, { roundtrip: 1100 });
+    const t = timingPerCheck({ collect: 5, roles: 2, mesh_pass: 100, physics_build: 150, through_hole: 190, floating_sunken: 3, total: 800 }, { roundtrip: 1100 });
     expect(t).toMatchObject({ setup: 257, through_hole: 190, "floating+sunken": 3, editor_total: 800, roundtrip: 1100 });
   });
 });

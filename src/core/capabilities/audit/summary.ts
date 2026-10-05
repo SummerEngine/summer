@@ -67,11 +67,9 @@ export const STAGE_CHECKS: Readonly<Record<string, readonly AuditCheck[]>> = {
   floor_gap: ["floor_gap", "z_fight"],
   floating_sunken: ["floating", "sunken"],
   interpenetration: ["interpenetration"],
-  mount_gap: ["mount_gap", "orientation"],
   orientation: ["orientation"],
   uv_stretch: ["uv_stretch"],
   z_fight_geometry: ["z_fight"],
-  insert_host: ["insert_host"],
   lights: ["lights"],
   resource: ["resource"],
 };
@@ -199,19 +197,17 @@ export function buildPage({ base, issues, offset, limit, cap = SUMMARY_CAP_BYTES
 export function timingPerCheck(ms: Record<string, unknown> | undefined, extra: Record<string, number>): Record<string, number | string> {
   const m = (k: string) => (typeof ms?.[k] === "number" ? (ms[k] as number) : 0);
   const out: Record<string, number | string> = {
-    setup: Math.round((m("collect") + m("manifests_roles") + m("mesh_pass") + m("physics_build")) * 10) / 10,
-    setup_parts: `walk ${Math.round(m("collect"))} + roles ${Math.round(m("manifests_roles"))} + meshes ${Math.round(m("mesh_pass"))} + physics ${Math.round(m("physics_build"))}`,
+    setup: Math.round((m("collect") + m("roles") + m("mesh_pass") + m("physics_build")) * 10) / 10,
+    setup_parts: `walk ${Math.round(m("collect"))} + roles ${Math.round(m("roles"))} + meshes ${Math.round(m("mesh_pass"))} + physics ${Math.round(m("physics_build"))}`,
   };
   const map: Array<[string, string]> = [
     ["through_hole", "through_hole"],
     ["floor_gap", "floor_gap"],
     ["floating_sunken", "floating+sunken"],
     ["interpenetration", "interpenetration"],
-    ["mount_gap", "mount_gap"],
     ["orientation", "orientation"],
     ["uv_stretch", "uv_stretch"],
     ["z_fight_geometry", "z_fight_geometry"],
-    ["insert_host", "insert_host"],
     ["lights", "lights"],
     ["resource", "resource"],
     ["poses", "framing"],

@@ -64,7 +64,7 @@ runner: manual   # /skill-test today; automated harness is a fast-follow (ROADMA
 
 **Assertions:**
 
-- [ ] The skill configures `SummerNetworkHitHistory3D` on the Spawner (`max_view_age_msec = 250`, `retention_msec` left at 350 or at least 100 ms above the view age, `interpolation_delay_msec` not lowered below 100) and a `SummerNetworkHitbox3D` on the archetype.
+- [ ] The skill configures `SummerNetworkHitHistory3D` on the Spawner (`max_view_age_msec = 250`, `retention_msec` set explicitly to 350, or at least 100 ms above the view age, `interpolation_delay_msec` not lowered below 100) and a `SummerNetworkHitbox3D` on the archetype.
 - [ ] It fires with `enqueue_ray_command` from inside `_summer_collect_input`.
 - [ ] No client-side raycast decides hits.
 

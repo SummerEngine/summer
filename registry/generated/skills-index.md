@@ -163,7 +163,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 |---|---|---|
 | [host-authoritative-state](./host-authoritative-state/SKILL.md) ★ | Design the state layer of a multiplayer game — what the host owns, how clients request changes, and how the host validates and broadcasts. | game-design |
 | [peer-to-peer-multiplayer](./peer-to-peer-multiplayer/SKILL.md) ★ | Start a multiplayer game from scratch with peer-to-peer host authority — network architecture built top-down, before writing game logic. | project |
-| [setup-multiplayer](./setup-multiplayer/SKILL.md) ★ | Add multiplayer to an existing game — LAN/online co-op, PvP, lobbies — via MultiplayerAPI, MultiplayerSpawner, and MultiplayerSynchronizer. | scripting |
+| [setup-multiplayer](./setup-multiplayer/SKILL.md) ★ | Add multiplayer with Summer's netcode: a predicted SummerNetworkBehavior per player, a Spawner and Local Play tests. No Godot RPCs or MultiplayerSynchronizer. | scripting |
 
 ## navigation
 

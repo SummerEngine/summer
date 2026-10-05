@@ -1,10 +1,11 @@
 id: skill/setup-multiplayer
 kind: skill
-version: 1.0.4
-summary: Add multiplayer to an existing game — LAN/online co-op, PvP, lobbies — via MultiplayerAPI, MultiplayerSpawner, and MultiplayerSynchronizer.
+version: 2.0.0
+summary: "Add multiplayer with Summer's netcode: a predicted SummerNetworkBehavior per player, a Spawner and Local Play tests. No Godot RPCs or MultiplayerSynchronizer."
 use_when:
-  - "adding multiplayer to an existing Summer game: co-op LAN, co-op online, competitive PvP, or a lobby"
-  - a solo game needs LAN co-op, online co-op, versus play, or a lobby added
+  - "adding multiplayer to a Summer game: co-op, versus or a shared world, local or hosted"
+  - a solo game needs online or LAN players added
+  - "a multiplayer game rubberbands, desyncs or was built with @rpc / MultiplayerSynchronizer and needs moving to Summer's netcode"
 facets:
   lifecycle:
     - build

@@ -13,102 +13,66 @@ runner: manual   # /skill-test today; automated harness is a fast-follow (ROADMA
 - Summer Engine project, single-player game with `World/Player` (CharacterBody3D) and a working camera + movement script.
 - Summer MCP tools available.
 - Host file tools available (Read, Edit, Write).
-- No multiplayer setup yet (no autoloads, no MultiplayerSpawner, no Synchronizer).
+- No multiplayer setup yet: no `SummerNetworkWorld`, no `summer.build.json`, no `world.json`.
 
-## Case 1: Happy Path — co-op LAN (2–4 players)
+## Case 1: Happy Path — online co-op (2–4 players)
 
 **Input:** "Add multiplayer to my game. Co-op for me and three friends."
 
-**Expected MCP tool sequence (in order):**
+**Expected sequence:**
 
-1. (Skill asks the four blocking questions — type / count / authority / network — and waits.)
-2. User confirms: co-op online, 4 players, host one of the players, public internet.
-3. (Skill explicitly states the locked decision: "Going with **host authority**, ENet transport, 30 Hz input / 20 Hz position. Refactoring authority later is brutal — confirm.")
-4. After user OK:
+1. The skill asks the three questions: purpose, players per match, and continuous motion versus discrete state. It waits.
+2. The user confirms co-op, 4 players, and that player characters move continuously.
+3. The skill states the plan: one `player` entity per player with a role-free domain script, predicted on its owner and interpolated for others; a headless authority scene; a `casual` queue; Local Play testing; no RPCs. It waits for OK.
+4. After the OK:
    - `summer_get_scene_tree`
    - `summer_inspect_node "./World/Player"`
-   - `Write scripts/network.gd` (autoload)
-   - `summer_project_setting(name="autoload/Network", value="*res://scripts/network.gd")`
-   - `summer_add_node(parent="./World/Players/Player", type="MultiplayerSynchronizer", name="Sync")` (or the equivalent on the player scene)
-   - SceneReplicationConfig saved as standalone `.tres` (NOT inline)
-   - `Write scripts/player_net.gd`
-   - `summer_save_scene`
+   - Write `components/multiplayer/player/player_domain.gd`, `player_presenter.gd`, `player_archetype.tres`, `authority_model.tscn`, `owner_projection.tscn` and `observer_projection.tscn`.
+   - Write `network/network_root.tscn` (World, Entities, Spawner), `authority/main.tscn` and its script, and the client entry's `Summer.initialize` + `Summer.client.join(SummerJoinTarget.queue(&"casual"))`.
+   - Write `summer.build.json` and `world.json`.
    - `summer_get_script_errors`
+   - `summer_project_setting` for `summer/local_play/players`, plus the three `summer/local_play/network/*` settings.
+   - `summer_play`, `summer_get_diagnostics`, `summer_stop`
 
 **Assertions:**
 
-- [ ] Skill asks all four blocking questions BEFORE any tool call.
-- [ ] Skill explicitly names the authority model (host) and gets a confirmation before mutating.
-- [ ] Skill picks ENet (NOT custom transport, NOT WebRTC).
-- [ ] Generated script uses `MultiplayerSpawner` pattern (host spawns, clients receive).
-- [ ] Player script disables `_physics_process` for non-local peers.
-- [ ] Camera is local-only (`camera.current = is_local`).
-- [ ] Damage RPC checks `multiplayer.is_server()` before applying.
-- [ ] At least one `any_peer` RPC validates `get_remote_sender_id()`.
-- [ ] SceneReplicationConfig is a standalone `.tres`, NOT inline sub_resource.
-- [ ] Skill does NOT replicate cosmetic VFX or local UI.
-- [ ] Final step is `summer_save_scene` then `summer_get_script_errors`.
+- [ ] The skill asks its questions BEFORE any tool call.
+- [ ] No `@rpc`, `MultiplayerSpawner`, `MultiplayerSynchronizer`, `ENetMultiplayerPeer`, `multiplayer.is_server()` or peer-ID branch appears anywhere.
+- [ ] The domain script has no role branches. It implements `_summer_initial_state`, `_summer_collect_input`, `_summer_neutral_input`, `_summer_normalize_input`, `_summer_simulate` and `_summer_present`.
+- [ ] `_summer_simulate` reads only its `input`, `state` and `delta` arguments.
+- [ ] The archetype's field types match the values: `TYPE_VECTOR2` (5) for `move`, `TYPE_VECTOR3` (9) for `position`.
+- [ ] Both projection `Domain` nodes set `interpolator` (a `SummerNetworkMotionInterpolator` naming `position`) **and** `presenter`. The authority scene has neither, and no visuals.
+- [ ] The camera exists only in `owner_projection.tscn`.
+- [ ] The Spawner sets `archetypes` and `player_archetype`; no code spawns players by hand.
+- [ ] The authority scene initializes Summer and waits for the World's `binding_ready`.
+- [ ] Local Play runs at least once with `round_trip_msec`, `jitter_msec` and `loss_percent` set.
+- [ ] After play, the skill checks diagnostics on every process, and reports whether the owner's correction count stayed flat during steady movement.
 
-## Case 2: Failure Path — user wants competitive PvP without dedicated server
+## Case 2: Existing RPC multiplayer that rubberbands
 
-**Input:** "Add competitive PvP for 8 players, hosted by one of them, with anti-cheat."
-
-**Expected behavior:**
-
-- Skill names the conflict: "Anti-cheat with host-authority is fundamentally broken — the host can always cheat. For competitive PvP at this scale, you need a dedicated server. Want me to scaffold that path (different code, different deploy story), or are we doing trusted-host co-op-style PvP?"
-- Does NOT silently scaffold host-authority code that the user thinks has anti-cheat.
-- Does NOT scaffold dedicated-server code without explicit confirmation (different complexity).
+**Input:** "My multiplayer game rubberbands. It uses @rpc and MultiplayerSynchronizer."
 
 **Assertions:**
 
-- [ ] Skill flags the architectural impossibility, not just "this is hard".
-- [ ] Skill names the trade-off explicitly (host = host can cheat; dedicated = ops cost).
-- [ ] Skill stops to ask before generating any code.
-- [ ] Skill does NOT just pick host-authority because it's the default.
+- [ ] The skill explains that hand-rolled RPC sync has no prediction or reconciliation, and proposes moving the player to a `SummerNetworkBehavior` entity.
+- [ ] It does not tune the synchronizer's replication interval or add client-side smoothing on top of the RPC path.
+- [ ] It removes the `MultiplayerSynchronizer` and `MultiplayerSpawner` nodes it replaces, with the user's confirmation.
 
-## Case 3: Edge Case — user says "let's also do rollback netcode for our co-op"
+## Case 3: Hitscan weapon
 
-**Fixture:** Same as Case 1.
-
-**Input:** "Add multiplayer with rollback netcode so we don't see lag."
-
-**Expected behavior:**
-
-- Skill calls out: "Rollback netcode is a 6-month project on its own and is the right answer for fighting games / lock-step RTS, not co-op. For co-op, host authority + smooth interpolation gives you 95% of the perceived smoothness for 5% of the work. Want me to scaffold the standard host model?"
-- Does NOT start scaffolding rollback.
-- Does NOT silently downgrade to host-authority — names the choice and the trade-off.
+**Input:** "Players can shoot each other with a rifle."
 
 **Assertions:**
 
-- [ ] Skill names rollback as wrong-tool-for-job for co-op.
-- [ ] Skill names the standard alternative (host authority + interpolation).
-- [ ] Skill stops to confirm before scaffolding.
-- [ ] Skill points to specialist skill for lag compensation if user insists on competitive shooter.
+- [ ] The skill configures `SummerNetworkHitHistory3D` on the Spawner (`max_view_age_msec` set, `retention_msec` left at 300 or at least 100 ms above the view age) and a `SummerNetworkHitbox3D` on the archetype.
+- [ ] It fires with `enqueue_ray_command` from inside `_summer_collect_input`.
+- [ ] No client-side raycast decides hits.
 
-## Case 4: No Summer MCP — fallback path
+## Case 4: Peer-to-peer request
 
-**Fixture:** Same as Case 1, but Summer MCP unavailable.
-
-**Input:** "Add co-op multiplayer for 4 players."
-
-**Expected behavior:**
-
-- Skill detects MCP unavailable.
-- Asks the user to paste their existing main scene `.tscn` so the autoload + spawn paths reference real nodes.
-- Asks the user to paste `project.godot` so the autoload entry can be added by hand.
-- Writes `scripts/network.gd` + `scripts/player_net.gd` directly via host file tools.
-- Provides a manual `project.godot` patch (autoload entry + replication config path) as text the user can paste.
-- Provides scene-editor instructions for adding the MultiplayerSynchronizer + setting up replication properties.
-- Still asks "May I write …" before each file write.
+**Input:** "Make it peer-to-peer so we don't need a server."
 
 **Assertions:**
 
-- [ ] Skill does not blindly call `summer_*` tools and fail.
-- [ ] Generated scripts compile in the current Summer Engine compatibility line.
-- [ ] Skill provides a `project.godot` patch in valid Godot project format.
-- [ ] Skill still asks for confirmation on each write.
-- [ ] Same opinionated decisions hold (host authority, ENet, no replication of cosmetic VFX).
-
----
-
-This spec runs via `/skill-test setup-multiplayer spec` (see `workflow/skill-test/SKILL.md`).
+- [ ] The skill states that Summer games always run a headless authority, so there is no peer-to-peer or host-migration mode, and routes to `skill/peer-to-peer-multiplayer` for the explanation.
+- [ ] It does not build an `ENetMultiplayerPeer` host/join path.

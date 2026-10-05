@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.3.0",
-      "content_hash": "b5a4e1df3ffe576f81e99a3ffe61a3212699183dfca00ffa8ef6599537e78e96",
+      "content_hash": "76a86a74ca6694f75468c201bf47977d650ae1f0ff0f392d79d89b5ca6492a58",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -3758,7 +3758,7 @@
       "id": "skill/world-building-3d",
       "kind": "skill",
       "version": "1.1.1",
-      "content_hash": "fb7f2c08ac7656c315305bed6adda0c9d3a5dc410dd75c7abe3bea9211e85e79",
+      "content_hash": "c39021254fa26dcd20ffc1bf584c2ec51b0615c905e8eb81f03b4f284adcafd3",
       "summary": "Compose, ground, space, and validate 3D scenes with Summer's four bounded spatial tools — exact paths, one geometric decision at a time, verified.",
       "use_when": [
         "placing or grounding props on floors, shelves, ramps, or tables without hand-tuning transforms",
@@ -7839,13 +7839,14 @@
     {
       "id": "tool/snap-to-surface",
       "kind": "tool",
-      "version": "1.1.0",
-      "content_hash": "9c9392a0e57db55186c17a6f623a724c9e13354e9c8e4aadfcb8f520338a5e08",
+      "version": "1.2.0",
+      "content_hash": "b7c9d59e4c42872f02689437a4e091d0429733b4dbf93850aac3fe8e363c93f0",
       "summary": "Move one 3D subject along a world ray until it sits at the requested gap from the first surface (floor, ramp, shelf, table), then save the scene.",
       "use_when": [
         "seating a prop on a floor, ramp, table, or shelf instead of hand-tuning its Y position",
         "grounding an imported or instantiated model that floats or sinks into its support",
-        "lifting a prop that is sunk a few centimetres into the ground back onto it"
+        "lifting a prop that is sunk a few centimetres into the ground back onto it",
+        "seating a prop without a collider (a fern, a bottle) on a PlaneMesh or other mesh-only ground"
       ],
       "facets": {
         "lifecycle": [

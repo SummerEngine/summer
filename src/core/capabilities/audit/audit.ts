@@ -38,6 +38,7 @@ import {
   type SceneAuditArgs,
   type Severity,
 } from "./args.js";
+import { judgeGaps } from "./gaps.js";
 import {
   groupRepeats,
   judgeDuplicates,
@@ -152,11 +153,25 @@ export function validateAuditArgs(args: SceneAuditArgs): ValidatedAuditArgs {
 
 /** Raw kernel measurements -> sorted issues (all checks that ran). */
 export function judgeAll(result: KernelResult, checks: readonly AuditCheck[]): AuditIssue[] {
+  return judgeAllDetailed(result, checks).issues;
+}
+
+export interface JudgedAudit {
+  issues: AuditIssue[];
+  notes: string[];
+  /** Checks that ran but could measure nothing (never listed clean). */
+  unmeasured: AuditCheck[];
+}
+
+export function judgeAllDetailed(result: KernelResult, checks: readonly AuditCheck[]): JudgedAudit {
   const inst = (Array.isArray(result.instances) ? result.instances : []) as InstRow[];
   const want = new Set(checks);
   const lines = Array.isArray(result.lines) ? result.lines : [];
   const issues: AuditIssue[] = [];
-  if (want.has("through_hole")) issues.push(...judgeThroughHoles(lines, inst));
+  const holes = want.has("through_hole") ? judgeThroughHoles(lines, inst) : [];
+  issues.push(...holes);
+  const gaps = judgeGaps(result, inst, want, holes);
+  issues.push(...gaps.issues);
   if (want.has("floor_gap")) issues.push(...judgeFloorGaps(result.floors, inst));
   const mounts = judgeMounts(Array.isArray(result.mounts) ? result.mounts : [], inst, want);
   issues.push(...mounts.issues);
@@ -176,7 +191,7 @@ export function judgeAll(result: KernelResult, checks: readonly AuditCheck[]): A
   if (want.has("lights")) issues.push(...judgeLights(result.lights, inst));
   if (want.has("transform")) issues.push(...judgeTransforms(inst));
   if (want.has("resource")) issues.push(...judgeResources(result.resources, inst));
-  return sortIssues(groupRepeats(issues, inst));
+  return { issues: sortIssues(groupRepeats(issues, inst)), notes: gaps.notes, unmeasured: gaps.unmeasured };
 }
 
 function sceneStats(result: KernelResult): Record<string, unknown> {
@@ -232,12 +247,15 @@ export async function sceneAudit(client: AuditClient, rawArgs: SceneAuditArgs): 
     }
     const result = run.result as KernelResult;
     const judgeStarted = Date.now();
-    const all = judgeAll(result, args.checks);
+    const judged = judgeAllDetailed(result, args.checks);
     const judgeMs = Date.now() - judgeStarted;
     const partial = partialChecks(result.partial, args.checks);
+    for (const c of judged.unmeasured) partial.checks[c] = 0;
+    const all = judged.issues;
     const { counts, clean } = countIssues(all, args.checks, partial.checks);
     const matching = filterIssues(all, args.minSeverity);
     const notes: string[] = ["Read-only: audited the SAVED file in a private copy (open tab, undo and file untouched); save first."];
+    notes.push(...judged.notes);
     if (args.minSeverity !== "look") notes.push(`min_severity ${args.minSeverity}: ${all.length - matching.length} lower-severity issue(s) hidden.`);
     const lights = lightStats(result);
     if (lights && args.checks.includes("lights") && lights.renderer === "forward_plus") notes.push("lights: forward_plus has no per-object light limit; only spot rims were checked.");

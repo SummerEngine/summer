@@ -11,16 +11,20 @@ import { z } from "zod";
 
 export const AUDIT_CHECKS = [
   "through_hole",
+  "band_continuity",
   "floor_gap",
   "floating",
   "sunken",
   "interpenetration",
   "insert_host",
   "mount_gap",
+  "exposed_edge",
+  "open_fixture_end",
   "orientation",
   "uv_stretch",
   "duplicate",
   "z_fight",
+  "depth_step",
   "lights",
   "transform",
   "resource",
@@ -49,7 +53,7 @@ export const sceneAuditShape = {
     .max(AUDIT_CHECKS.length)
     .optional()
     .describe(
-      "Only these checks (default: all 14). through_hole, floor_gap, floating, sunken, interpenetration, insert_host, mount_gap, orientation, uv_stretch, duplicate, z_fight, lights, transform, resource. Fewer checks run faster (insert_host, duplicate, lights, transform and resource need no physics); rerun a check budget_ms left partial on its own."
+      "Only these checks (default: all 18). through_hole, band_continuity, floor_gap, floating, sunken, interpenetration, insert_host, mount_gap, exposed_edge, open_fixture_end, orientation, uv_stretch, duplicate, z_fight, depth_step, lights, transform, resource. Fewer checks run faster (insert_host, duplicate, lights, transform and resource need no physics); rerun a check budget_ms left partial on its own. band_continuity is only an error when exposed_edge or depth_step ran and confirms it."
     ),
   root: z
     .string()

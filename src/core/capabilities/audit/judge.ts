@@ -1511,7 +1511,7 @@ export function groupRepeats(issues: AuditIssue[], inst: InstRow[], min = 3): Au
   const keyOf = (i: AuditIssue) => `${i.check}|${i.severity}|${pieceOf.get(i.path) ?? i.path}`;
   const groups = new Map<string, AuditIssue[]>();
   for (const i of issues) {
-    if (i.check !== "mount_gap" && i.check !== "orientation" && i.check !== "floating" && i.check !== "sunken") {
+    if (i.check !== "mount_gap" && i.check !== "orientation" && i.check !== "floating" && i.check !== "sunken" && i.check !== "exposed_edge" && i.check !== "depth_step") {
       groups.set(`${groups.size}#solo`, [i]);
       continue;
     }
@@ -1529,7 +1529,7 @@ export function groupRepeats(issues: AuditIssue[], inst: InstRow[], min = 3): Au
     const first = g.reduce((a, b) => (b.score > a.score ? b : a));
     const piece = pieceOf.get(first.path) ?? "pieces";
     const groupsOf = [...new Set(g.map((i) => (i.path.includes("/") ? i.path.slice(0, i.path.lastIndexOf("/")) : ".")))];
-    const nums = g.map((i) => i.ev.gap_m ?? i.ev.angle ?? i.ev.embed_m).filter((x): x is number => typeof x === "number");
+    const nums = g.map((i) => i.ev.gap_m ?? i.ev.angle ?? i.ev.embed_m ?? i.ev.reveal_m ?? i.ev.depth_m).filter((x): x is number => typeof x === "number");
     const range = nums.length && Math.min(...nums) !== Math.max(...nums) ? ` (${r3(Math.min(...nums))}..${r3(Math.max(...nums))})` : "";
     out.push({
       ...first,

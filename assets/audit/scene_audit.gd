@@ -3339,6 +3339,7 @@ func _scan_bands() -> Dictionary:
 	var bands: Array = []
 	var coverers: Array = []
 	var probes_done := 0
+	var probes_planned := 0
 	for rec in _inst:
 		var role := String(rec["role"])
 		var name := String(rec["piece"]).to_lower()
@@ -3374,6 +3375,8 @@ func _scan_bands() -> Dictionary:
 			# Visibility probes along the band, 5 cm off its front face (both
 			# faces when the front lies along the band): [s, seen].
 			var probes: Array = []
+			if line >= 0:
+				probes_planned += 1
 			if line >= 0 and not _over():
 				var lo: float = ab.position[long_ax]
 				var hi: float = ab.end[long_ax]
@@ -3399,7 +3402,8 @@ func _scan_bands() -> Dictionary:
 			bands.append([int(rec["i"]), btype, _a3(ab.position), _a3(ab.end), _a3(front, 0.001), line, probes])
 		elif btype != "" or corner or name.contains("pier") or door:
 			coverers.append([int(rec["i"]), _a3(ab.position), _a3(ab.end), door])
-	_count("band_continuity", probes_done, bands.size())
+	# Planned work = the bands on a facade line (the judge groups only those).
+	_count("band_continuity", probes_done, probes_planned)
 	return {"bands": bands, "coverers": coverers}
 
 

@@ -21,6 +21,25 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 - Seeing tools (preview) for judging 3D environments like a player and an artist; every image inline (one grid per call), rendered from the saved scene with its REAL WorldEnvironment and lights, read-only, structured failures. `summer_frame_nodes` (fit a pose to node world bounds, optional bookmark and marks), `summer_shot_sheet` (N bookmarks/poses in one labelled grid; `compare_previous` adds previous / now / difference map), `summer_debug_views` (beauty, lighting, unshaded, normals, overdraw, wireframe), `summer_zoom` (exact sub-frustum of a region or mark N at full resolution), `summer_frame_shot` (smart framing for establishing / eye_level / low_angle / detail / corridor: thick-sweep visibility, selective occluders, near-lens check, low-angle rule, a small beauty render per pose, rule-of-thirds / fill / horizon / sky / depth / featureless-area / value-contrast / foreground scoring; top 3, best bookmarked, one sheet). Built on the existing ScenePreview op (a throwaway wrapper scene with a read-only @tool kernel, `assets/seeing/seeing_probe.gd`); no engine change.
 - Bounded shot storage: one previous-image slot per rendered bookmark at `res://.summer/shots/<bookmark>.jpg` (JPEG, at most 1024 px, folder capped at 20 MB with oldest-first eviction) and explicit `save_to` copies; nothing else is written. `summer_screenshot framing:"bookmark"` keeps a clean render there when the bookmark has none, and gains `compare_previous` and `update_previous`.
 - `verifying-scenes` gains an environment review section (the loop and a beauty rubric); the playbook gains a `seeing` section.
+- `summer_scene_audit` (preview): one read-only call that walks every node of a 3D scene and lists likely visual and placement problems, at most 5 KB, sorted error / warn / look, each with node path, world position, reason, evidence numbers and the next tool; counts and editor time per check; `offset`/`limit` paging, `checks`, `root` (subtree) and `min_severity` filters; `render:"sheet"` adds one inline image of the page's first 6 issues framed from their open side. Checks: `through_hole` (capped ray grids through each facade line; rays that pass the wall and reach the far side of the building), `floor_gap`, `floating` / `sunken`, `interpenetration`, `insert_host` (pieces.json `fits_into`), `mount_gap` (`wall_side`), `orientation`, `uv_stretch`, `duplicate` / `z_fight`, `lights`, `transform`, `resource`. Built on the seeing tools' private-copy path (ScenePreview of a throwaway wrapper scene with a read-only @tool kernel, `assets/audit/scene_audit.gd`): the open tab never becomes unsaved; no engine change. `verifying-scenes` gains the audit loop and the playbook routes to it.
+- `summer_scene_audit`, after its first audit-driven fix run (three_houses_v2):
+  - `floor_gap` classifies each ray by the surface it hits first. An underlay plane above the floor's own drain channel or dip is "covers the floor" (warn), not a hole.
+  - `floor_gap` also samples bare strips between each tile edge and a wall within 1 m.
+  - `floor_gap` measures areas from the missed rays' own footprints, with the strip's size (a 4 cm x 8.4 m seam is 0.34 m2, not 8.66 m2).
+  - `floor_gap` names the pack's documented ground alternative from PACK.json or ASSEMBLY.md in `next`.
+  - `sunken` measures and names the surface a prop is buried in, seen from above.
+  - `interpenetration` lists every partner a prop cuts (up to 3).
+  - `mount_gap` takes the largest of the centre and side gaps.
+  - `mount_gap` accepts pieces that a wall-touching bracket or clamp holds, and the rest of their run.
+  - `mount_gap` accepts documented standoffs: pieces.json `standoff_m`, or an ASSEMBLY.md "0.1 m off the wall".
+  - `orientation` skips front-back symmetric pieces (detected from the mesh, or pieces.json `symmetric`).
+- `summer_scene_audit` `budget_ms` (default 3000): each check gets a weighted share of the editor time. A check past its share stops and shows `partial` (the share it covered) in its counts, and is never listed as clean.
+- `summer_scene_audit` `z_fight` is exhaustive. A geometry pass (its own stage time) compares each mesh's planar face groups:
+  - between any two pieces: props, roofs, ledges, side walls, inserts against hosts, decals; opposite-facing pairs only when both are double-sided;
+  - between two surfaces of one mesh, reported once per mesh;
+  - the ray samples still run.
+  - "Coplanar" means a gap under twice the 24-bit depth step at the view distance (the nearest walkable eye point, camera or bookmark) for the main camera's near/far. `ev` carries the overlap, gap, tolerance and surfaces.
+  - Decals, overlays, `render_priority` and depth or normal offsets are demoted to look with the reason.
 
 ### Fixed
 - Seeing tools (preview), bugs found by real agent runs:

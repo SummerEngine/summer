@@ -473,6 +473,7 @@ describe("playbook step 0 survives engines without the perception ops", () => {
       "summer_connect_ports",
       "summer_raycast",
       "summer_measure",
+      "summer_scene_audit",
     ]) {
       expect(placement, tool).toContain(tool);
     }
@@ -486,7 +487,7 @@ describe("playbook step 0 survives engines without the perception ops", () => {
 describe("playbook seeing section", () => {
   it("points environment work at the seeing tools and the verifying-scenes loop", () => {
     const seeing = JSON.stringify(buildAgentPlaybook().seeing);
-    for (const tool of ["summer_frame_shot", "summer_shot_sheet", "summer_debug_views", "summer_zoom", "summer_frame_nodes"]) {
+    for (const tool of ["summer_frame_shot", "summer_shot_sheet", "summer_debug_views", "summer_zoom", "summer_frame_nodes", "summer_scene_audit"]) {
       expect(seeing, tool).toContain(tool);
     }
     expect(seeing).toContain("compare_previous");

@@ -1730,11 +1730,12 @@
     {
       "id": "skill/host-authoritative-state",
       "kind": "skill",
-      "version": "1.0.3",
-      "content_hash": "8a1a930a2146a57f69454dac4b4dcf18e58e3b3bb80a4a17db1863034b56f070",
-      "summary": "Design the state layer of a multiplayer game — what the host owns, how clients request changes, and how the host validates and broadcasts.",
+      "version": "2.0.0",
+      "content_hash": "ecb3e1c3fabd48a4af7f878c5581af31b41c19fa35852dfc1a81a79fe1d6787b",
+      "summary": "Design a Summer game's authoritative state: what the authority owns, Commands for intent, authority-written State groups for shared and private state.",
       "use_when": [
-        "designing the state layer of a multiplayer Summer game: host ownership, client change requests, host validation and broadcast",
+        "designing a multiplayer Summer game's state: score, health, inventory, rounds, doors and who owns them",
+        "players need to buy, use, open or trade things in a multiplayer Summer game",
         "clients desync, cheat, or fight over one object and the state ownership model is undefined"
       ],
       "facets": {
@@ -2061,12 +2062,12 @@
     {
       "id": "skill/peer-to-peer-multiplayer",
       "kind": "skill",
-      "version": "1.0.4",
-      "content_hash": "f2d1e457a4d3bb3614513f164eac64f3b80b955c1a4d4383a85ed32102b0b593",
-      "summary": "Start a multiplayer game from scratch with peer-to-peer host authority — network architecture built top-down, before writing game logic.",
+      "version": "2.0.0",
+      "content_hash": "a601148eac5f71c38f46459af66a56b419b36d1774cff760a80daa0e31ed3190",
+      "summary": "Start a multiplayer Summer game the right way: no peer-to-peer or host migration, a headless authority instead, and which Summer skill to build it with.",
       "use_when": [
-        "starting a multiplayer Summer game from scratch with peer-to-peer host authority, before writing game logic",
-        "I want to play co-op or online with friends and the game doesn't exist yet"
+        "the user asks for peer-to-peer, a player-hosted server, host migration or join-by-IP multiplayer in a Summer game",
+        "starting a multiplayer Summer game from scratch and choosing its architecture"
       ],
       "facets": {
         "lifecycle": [

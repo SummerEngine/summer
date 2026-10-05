@@ -161,8 +161,8 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 
 | skill | when to use | also |
 |---|---|---|
-| [host-authoritative-state](./host-authoritative-state/SKILL.md) ★ | Design the state layer of a multiplayer game — what the host owns, how clients request changes, and how the host validates and broadcasts. | game-design |
-| [peer-to-peer-multiplayer](./peer-to-peer-multiplayer/SKILL.md) ★ | Start a multiplayer game from scratch with peer-to-peer host authority — network architecture built top-down, before writing game logic. | project |
+| [host-authoritative-state](./host-authoritative-state/SKILL.md) ★ | Design a Summer game's authoritative state: what the authority owns, Commands for intent, authority-written State groups for shared and private state. | game-design |
+| [peer-to-peer-multiplayer](./peer-to-peer-multiplayer/SKILL.md) ★ | Start a multiplayer Summer game the right way: no peer-to-peer or host migration, a headless authority instead, and which Summer skill to build it with. | project |
 | [setup-multiplayer](./setup-multiplayer/SKILL.md) ★ | Add multiplayer with Summer's netcode: a predicted SummerNetworkBehavior per player, a Spawner and Local Play tests. No Godot RPCs or MultiplayerSynchronizer. | scripting |
 
 ## navigation

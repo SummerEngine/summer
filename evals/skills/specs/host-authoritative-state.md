@@ -10,104 +10,49 @@ runner: manual   # /skill-test today; automated harness is a fast-follow (ROADMA
 
 ## Fixture
 
-- A Summer Engine project with `/peer-to-peer-multiplayer` Layer 1 already done. `NetworkManager` autoload exists and exposes `peer_joined` / `peer_left` signals.
-- Project may have a partial player scene; no Managers yet.
-- Summer MCP tools available; engine on localhost:6550.
+- Summer Engine project with a working multiplayer setup from `/setup-multiplayer`: `SummerNetworkWorld`, `SummerNetworkSpawner`, `summer.build.json`, `world.json` and an authority scene.
+- A shop: players spend coins to buy items, and everyone sees a shared stock count.
+- Summer MCP tools and host file tools available.
 
-## Case 1: Happy Path — design HealthManager from scratch with full ownership audit
+## Case 1: Happy Path — a shop with private wallets and shared stock
 
-**Input:** "I want to add health, damage, and a kill counter to my multiplayer game. Help me set it up correctly."
+**Input:** "Players should be able to buy items. Each player has coins; the shop's stock is shared."
 
-**Expected behavior:**
+**Expected sequence:**
 
-1. Skill confirms `NetworkManager` already exists; if not, defers to `/peer-to-peer-multiplayer`.
-2. Skill walks the user through the fundamental question on each new field: `health`, `max_health`, `score`, `kills`. All four → host-owned.
-3. Skill proposes one Manager per domain — `HealthManager` for health/max_health, `ScoreManager` for score/kills. Asks before creating each.
-4. For `HealthManager`, skill walks the canonical shape:
-   - Data dict keyed by `peer_id`.
-   - `_host_apply_damage()` mutator with `if not NetworkManager.is_host: return` first line.
-   - `_client_request_damage()` RPC with `@rpc("any_peer", "call_remote", "reliable")` and validation (range, line-of-sight, cooldown, magnitude).
-   - `_broadcast_health()` and `_broadcast_death()` with `@rpc("authority", "call_remote", "reliable")`.
-   - `peer_joined` registers, `peer_left` cleans up.
-5. After file write, `summer_get_script_errors` to verify clean compile.
-
-**Expected MCP tool sequence (partial):**
-
-1. `summer_get_scene_tree` — confirm NetworkManager autoload presence.
-2. `Read autoloads/network_manager.gd` — confirm signals match expected shape.
-3. (User approves HealthManager) `Write autoloads/HealthManager.gd`.
-4. `summer_get_script_errors` to verify.
-5. (User approves ScoreManager) repeat.
+1. The skill lists the state and its owner: stock shared (authority-written, world audience), wallets private (authority-written, target-session audience), buying a Command. It states this before writing code.
+2. After the OK:
+   - Write one shared composition script used by client and authority (a world-audience stream, a target-session stream, and a world-scoped Command stream with payload and result schemas).
+   - Write the authority's `command_received` handler.
+   - Write the client's `enqueue_command` call and its `state_group_created` handler.
+   - `summer_get_script_errors`
+   - `summer_project_setting` for `summer/local_play/players`, `summer_play`, `summer_get_diagnostics`, `summer_stop`.
 
 **Assertions:**
 
-- [ ] Skill applies the fundamental question explicitly to each field — does not silently dump generic state.
-- [ ] Skill proposes one Manager per domain, not one mega-Manager for all state.
-- [ ] Every `_host_apply_*` function's first line is `if not NetworkManager.is_host: return`.
-- [ ] Every `_client_request_*` is `@rpc("any_peer", "call_remote", "reliable")` and has at least three validators.
-- [ ] Every `_broadcast_*` is `@rpc("authority", "call_remote", "reliable")`.
-- [ ] `peer_joined` and `peer_left` lifecycle is wired in `_ready()`.
-- [ ] Skill does NOT use `MultiplayerSynchronizer` for any health/score field.
-- [ ] Skill asks "May I…" before each new file creation.
+- [ ] No `@rpc`, `MultiplayerSynchronizer`, synced variables or peer-ID checks.
+- [ ] Client and authority build the composition from the same script.
+- [ ] The authority reads identity from `request.get_session().player.user_id`, never from the payload.
+- [ ] Every Command carries a request id, and the authority answers a repeated id with the stored result without applying it again.
+- [ ] Refusals use stable reason ids (`request.refuse(&"...")`), and preconditions are checked before any state changes.
+- [ ] State changes only through authority-written groups (`reset`); the client never edits its copy.
+- [ ] Documents travel as `TYPE_PACKED_BYTE_ARRAY`, not `String`.
+- [ ] Audience bounds (`max_expansion`, `max_audience_count`) are set: at least the player count, or 1 for private streams.
+- [ ] The client connects `state_group_created` before joining, and reads `group.get_state()` in that handler before relying on `state_installed`.
 
-## Case 2: Late-join state sync
+## Case 2: "Sync the player's health with an RPC"
 
-**Input:** "I have HealthManager working but new players who join mid-match see 100 HP for everyone, even players who are at 30 HP. Fix it."
-
-**Expected behavior:**
-
-- Skill identifies the bug: no late-join state replay.
-- Skill explains the pattern: `_send_full_state(peer_id)` method on each Manager, called from `peer_joined`, uses `rpc_id` (flavor 4) to target only the joining peer.
-- Skill audits all existing Managers for missing `_send_full_state` and adds it.
-- Skill verifies idempotency — receiving a broadcast twice for the same peer must be a no-op.
+**Input:** "Add health and sync it to everyone with an RPC when it changes."
 
 **Assertions:**
 
-- [ ] Skill diagnoses the missing late-join replay before writing code.
-- [ ] Skill uses `rpc_id(target_peer, ...)` (flavor 4), NOT a broadcast to all peers.
-- [ ] Skill audits ALL existing Managers, not just HealthManager — score, inventory, cooldowns all need the same fix.
-- [ ] Skill checks that broadcast handlers are idempotent before shipping.
-- [ ] `summer_get_script_errors` runs after each file edit.
+- [ ] The skill puts health in an authority-written State group, not an RPC.
+- [ ] Damage reaches health only through the authority: a Command, or the authority's own hit resolution.
 
-## Case 3: Edge — client wants to lie about position (client-predicted)
+## Case 3: Movement routed elsewhere
 
-**Input:** "A peer reports another player is teleporting around the map. I added validation to `_client_request_position()` and it blocks legitimate movement. What do I do?"
-
-**Expected behavior:**
-
-- Skill identifies the user has put `position` into the wrong column. Position is **host-authoritative with client prediction**, not pure host-owned.
-- Skill explains: clients send their input/intent (movement direction + jump), not their final position. Host runs the same physics function authoritatively. If host's computed position diverges from client's reported position by more than a tolerance, host snaps the client (reconciliation).
-- Skill removes the `_client_request_position` validator and points to `/peer-to-peer-multiplayer` Layer 4 for the prediction/reconciliation pattern.
-- Skill notes that "blocking" position requests defeats the point of prediction — it would make movement feel terrible. The right response to a divergent client is reconciliation, not rejection.
+**Input:** "Players' positions keep desyncing."
 
 **Assertions:**
 
-- [ ] Skill recognizes position is the "Sometimes" category from the fundamental question, not pure host-owned.
-- [ ] Skill defers reconciliation logic to `/peer-to-peer-multiplayer` Layer 4 instead of inventing a new pattern.
-- [ ] Skill does NOT propose validating each position update with range/distance checks — that's the wrong tool.
-- [ ] Skill explains why teleport-cheating is caught by reconciliation, not rejection.
-
-## Case 4: No Summer MCP — fallback path
-
-**Fixture:** Same as Case 1, but Summer MCP unavailable.
-
-**Input:** "Add a HealthManager autoload to my multiplayer game."
-
-**Expected behavior:**
-
-- Skill detects MCP unavailable.
-- Walks the same Manager shape (data, mutators, requests, broadcasts, lifecycle).
-- Instead of `summer_get_script_errors`, asks the user to save and check errors
-  manually in Summer Engine.
-- Provides exact `[autoload]` lines for `project.godot` to paste.
-- File write still goes through `Write` host tool with "May I…" approval.
-
-**Assertions:**
-
-- [ ] Skill detects MCP unavailable; doesn't blindly call `summer_*` tools and fail.
-- [ ] `project.godot` autoload lines are provided as exact paste-able text.
-- [ ] Manager shape (5-part: data / mutators / requests / broadcasts / lifecycle) is identical regardless of MCP availability.
-
----
-
-This spec runs via `/skill-test host-authoritative-state spec` (see `workflow/skill-test/SKILL.md`).
+- [ ] The skill routes continuous motion to `skill/setup-multiplayer` (`SummerNetworkBehavior`) instead of putting positions in State groups or Commands.

@@ -517,7 +517,7 @@
     {
       "id": "skill/host-authoritative-state",
       "name": "host-authoritative-state",
-      "description": "Design the state layer of a multiplayer game — what the host owns, how clients request changes, and how the host validates and broadcasts.",
+      "description": "Design a Summer game's authoritative state: what the authority owns, Commands for intent, authority-written State groups for shared and private state.",
       "clients": "all",
       "recommended": true,
       "status": "stable",
@@ -637,7 +637,7 @@
     {
       "id": "skill/peer-to-peer-multiplayer",
       "name": "peer-to-peer-multiplayer",
-      "description": "Start a multiplayer game from scratch with peer-to-peer host authority — network architecture built top-down, before writing game logic.",
+      "description": "Start a multiplayer Summer game the right way: no peer-to-peer or host migration, a headless authority instead, and which Summer skill to build it with.",
       "clients": "all",
       "recommended": true,
       "status": "stable",

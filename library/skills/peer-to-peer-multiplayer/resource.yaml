@@ -1,10 +1,10 @@
 id: skill/peer-to-peer-multiplayer
 kind: skill
-version: 1.0.4
-summary: Start a multiplayer game from scratch with peer-to-peer host authority — network architecture built top-down, before writing game logic.
+version: 2.0.0
+summary: "Start a multiplayer Summer game the right way: no peer-to-peer or host migration, a headless authority instead, and which Summer skill to build it with."
 use_when:
-  - starting a multiplayer Summer game from scratch with peer-to-peer host authority, before writing game logic
-  - I want to play co-op or online with friends and the game doesn't exist yet
+  - "the user asks for peer-to-peer, a player-hosted server, host migration or join-by-IP multiplayer in a Summer game"
+  - starting a multiplayer Summer game from scratch and choosing its architecture
 facets:
   lifecycle:
     - build

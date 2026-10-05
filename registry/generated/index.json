@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.0",
-      "content_hash": "e0ab4f48922f555ba729a27edebab5185a40854f4b05e86cf03cf4c65a21d2da",
+      "content_hash": "315e26d82c809f2de808bf5bd58806fd2b01d948569496f9d6fd4b706429c8fe",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -3356,7 +3356,7 @@
       "id": "skill/verifying-scenes",
       "kind": "skill",
       "version": "1.5.0",
-      "content_hash": "4a8d9521f3caa42f1c3914939c38611ebfdf89c5bdb53df5ad1787ea862496a1",
+      "content_hash": "462c592788e8f1c29caeafa126604b60be8c47052726a37b873b17f85ed7da54",
       "summary": "Prove scene work landed (snapshot, diff, screenshots, runtime reads), audit 3D scenes for holes and misplacement, review them with shot sheets and zooms.",
       "use_when": [
         "after any mutation batch, asset import, or lighting change, before claiming it worked",
@@ -7467,12 +7467,11 @@
       "id": "tool/scene-audit",
       "kind": "tool",
       "version": "1.3.0",
-      "content_hash": "ae7b981c47cb35b63d7acbdb0a65b809a372dd3b080e3de8d4cadddecd0a5f37",
-      "summary": "One read-only pass over a 3D scene: see-through holes, broken bands and open corners, exposed edges, open pipe ends, floor gaps, clipping props, wrong hosts.",
+      "content_hash": "d694f8883ca27014108f577ca7ea4e4b0d91cb23f01b0a77e491dbb3e2bc5a90",
+      "summary": "One read-only pass over a 3D scene: see-through holes, broken bands and open corners, exposed edges, open pipe ends, floor gaps, clipping props.",
       "use_when": [
         "after each build stage of a 3D level or kit-built street: \"what is wrong with this scene and where exactly?\"",
         "before calling a scene done: find see-through walls (an insert narrower than its frame), floor tiles with holes, props floating, sunk or poking into walls",
-        "checking kit pieces against a kit manifest you pass (manifests): a door or window in the wrong host (fits_into), pipes and ducts off their wall (mount_side, standoff_m)",
         "facade bands (base, dado, cornice, crown, trim) that stop short, leave a gap or do not wrap an outside corner; open band ends, seams between modules and modules out of line seen from the street; a duct or downpipe with a missing elbow, coupler or outlet",
         "the same look items keep coming back: accept the ones you judged fine (accept:[{key, reason}]) so later audits count them but hide them until their evidence changes",
         "finding props turned the wrong way against a wall (a bench standing perpendicular to it), stretched texture strips, duplicated pieces",

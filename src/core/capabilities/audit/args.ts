@@ -16,8 +16,6 @@ export const AUDIT_CHECKS = [
   "floating",
   "sunken",
   "interpenetration",
-  "insert_host",
-  "mount_gap",
   "exposed_edge",
   "open_fixture_end",
   "orientation",
@@ -36,7 +34,6 @@ export type Severity = (typeof SEVERITIES)[number];
 
 export const AUDIT_DEFAULT_LIMIT = 15;
 export const AUDIT_MAX_LIMIT = 50;
-export const AUDIT_MAX_MANIFESTS = 8;
 /** Editor time the checks may take before the slow ones stop early (partial). */
 export const AUDIT_DEFAULT_BUDGET_MS = 3000;
 export const AUDIT_MIN_BUDGET_MS = 250;
@@ -57,7 +54,7 @@ export const sceneAuditShape = {
     .max(AUDIT_CHECKS.length)
     .optional()
     .describe(
-      "Only these checks (default: all 18). through_hole, band_continuity, floor_gap, floating, sunken, interpenetration, insert_host, mount_gap, exposed_edge, open_fixture_end, orientation, uv_stretch, duplicate, z_fight, depth_step, lights, transform, resource. Fewer checks run faster (insert_host, duplicate, lights, transform and resource need no physics); rerun a check budget_ms left partial on its own. band_continuity is only an error when exposed_edge or depth_step ran and confirms it."
+      "Only these checks (default: all 16). through_hole, band_continuity, floor_gap, floating, sunken, interpenetration, exposed_edge, open_fixture_end, orientation, uv_stretch, duplicate, z_fight, depth_step, lights, transform, resource. Fewer checks run faster (duplicate, lights, transform and resource need no physics); rerun a check budget_ms left partial on its own. band_continuity is only an error when exposed_edge or depth_step ran and confirms it."
     ),
   root: z
     .string()
@@ -75,13 +72,6 @@ export const sceneAuditShape = {
     .max(AUDIT_MAX_LIMIT)
     .optional()
     .describe(`Issues per page (default ${AUDIT_DEFAULT_LIMIT}, max ${AUDIT_MAX_LIMIT}). The result is capped at 5 KB; a page that does not fit is cut and says so.`),
-  manifests: z
-    .array(z.string())
-    .max(AUDIT_MAX_MANIFESTS)
-    .optional()
-    .describe(
-      'Optional kit manifests (res:// .json), read only when passed here: {"pieces": {"<scene path, or a scene name relative to the manifest>": {category, front_axis, mount_side, standoff_m, symmetric, fits_into: {piece, local_offset_m}}}}. category: wall/facade, floor, prop, dressing, or any structural word (band, corner, pier, ...); front_axis / mount_side: a local axis such as "+Z" / "-Z" (mount_side = the side that faces the wall it hangs on); standoff_m: how far off that wall it stands by design (a number or [min, max]); symmetric: looks the same turned 180 deg; fits_into: an insert (window, door) and its host piece, with its offset in the host\'s frame. Every field is optional; without manifests the checks use geometry and node names.'
-    ),
   budget_ms: z
     .number()
     .int()

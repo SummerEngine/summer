@@ -1,11 +1,10 @@
 id: tool/scene-audit
 kind: tool
 version: 1.3.0
-summary: 'One read-only pass over a 3D scene: see-through holes, broken bands and open corners, exposed edges, open pipe ends, floor gaps, clipping props, wrong hosts.'
+summary: 'One read-only pass over a 3D scene: see-through holes, broken bands and open corners, exposed edges, open pipe ends, floor gaps, clipping props.'
 use_when:
   - 'after each build stage of a 3D level or kit-built street: "what is wrong with this scene and where exactly?"'
   - 'before calling a scene done: find see-through walls (an insert narrower than its frame), floor tiles with holes, props floating, sunk or poking into walls'
-  - 'checking kit pieces against a kit manifest you pass (manifests): a door or window in the wrong host (fits_into), pipes and ducts off their wall (mount_side, standoff_m)'
   - 'facade bands (base, dado, cornice, crown, trim) that stop short, leave a gap or do not wrap an outside corner; open band ends, seams between modules and modules out of line seen from the street; a duct or downpipe with a missing elbow, coupler or outlet'
   - 'the same look items keep coming back: accept the ones you judged fine (accept:[{key, reason}]) so later audits count them but hide them until their evidence changes'
   - 'finding props turned the wrong way against a wall (a bench standing perpendicular to it), stretched texture strips, duplicated pieces'
@@ -69,8 +68,6 @@ input_schema:
           - floating
           - sunken
           - interpenetration
-          - insert_host
-          - mount_gap
           - exposed_edge
           - open_fixture_end
           - orientation
@@ -82,8 +79,8 @@ input_schema:
           - transform
           - resource
       minItems: 1
-      maxItems: 18
-      description: Only these checks (default all 18). Fewer checks run faster (insert_host, duplicate, lights, transform and resource need no physics); rerun a check budget_ms left partial on its own. band_continuity is only an error when exposed_edge or depth_step ran and confirms it.
+      maxItems: 16
+      description: Only these checks (default all 16). Fewer checks run faster (duplicate, lights, transform and resource need no physics); rerun a check budget_ms left partial on its own. band_continuity is only an error when exposed_edge or depth_step ran and confirms it.
     root:
       type: string
       description: Report only issues under this node (subtree), e.g. "Block3". The whole scene is still loaded, so walls and floors outside it count as surroundings.
@@ -104,12 +101,6 @@ input_schema:
       minimum: 1
       maximum: 50
       description: Issues per page (default 15, max 50). The result is capped at 5 KB; a page that does not fit is cut and says so.
-    manifests:
-      type: array
-      items:
-        type: string
-      maxItems: 8
-      description: 'Optional kit manifests (res:// .json), read only when passed here; nothing is looked up next to the scenes. Format: {"pieces": {"<scene path, or a scene name relative to the manifest>": {"category": "wall", "front_axis": "+Z", "mount_side": "-Z", "standoff_m": 0.1, "symmetric": true, "fits_into": {"piece": "<host scene path or name>", "local_offset_m": [x, y, z]}}}}. category: wall or facade (a facade module), floor, prop, dressing, or any structural word (band, corner, pier, ...). front_axis: the local axis the visible front faces. mount_side: the local axis that faces the wall the piece hangs on (mount_gap, orientation). standoff_m: how far off that wall it stands by design (a number, or [min, max]). symmetric: looks the same turned 180 deg about that axis. fits_into: an insert (window, door) and its host piece, with the insert''s offset in the host''s frame (insert_host). Every field is optional and other fields are ignored; the first manifest that names a scene wins. Without manifests every check works from geometry and node names.'
     budget_ms:
       type: integer
       minimum: 250

@@ -42,7 +42,7 @@ A screenshot only shows what its camera points at. Problems behind a wall, under
 1. **After each build stage** (a facade, a street, a dressing pass): save, then `summer_scene_audit scenePath:"res://..."`. It reads the SAVED file in a private offscreen copy, so the open tab never becomes unsaved and nothing is saved. Use `root:"Block3"` to audit only what you just built (the rest still counts as surroundings) and `checks:[...]` to rerun one check after a fix.
 2. **Read the page, not just the counts.** Issues come sorted `error`, `warn`, `look`, each with a node path, a world position, a reason, the evidence numbers (sizes, gaps, angles, the ray that reproduces it) and the next tool. The result is at most 5 KB; follow `next_offset` with `offset` for the next page, or narrow with `min_severity:"warn"`.
    - A check with `partial` in its counts ran out of editor time (`budget_ms`, default 3000) and covered only that share. It is not clean: rerun it alone (`checks:["floor_gap"]`) or with a larger `budget_ms` before you call that check clean.
-3. **Frame every error and look item up close before calling the scene done.** `render:"sheet"` returns one image of the page's first 6 issues framed from their open side (tiles labelled `#n`); otherwise `summer_frame_nodes` on the path and `summer_zoom` into it. A look item (`orientation`, a facing or mounting question) is never an answer: decide the facing yourself from the asset (`summer_inspect_asset`) and the kit's own notes.
+3. **Frame every error and look item up close before calling the scene done.** `render:"sheet"` returns one image of the page's first 6 issues framed from their open side (tiles labelled `#n`); otherwise `summer_frame_nodes` on the path and `summer_zoom` into it. A look item (`orientation`, a facing question) is never an answer: decide the facing yourself from the asset (`summer_inspect_asset`).
 4. **Classify each item as real or a false positive** in your notes. Fix the real ones with the placement tools, then audit again: the same check must come back clean (or the remaining items must be ones you have looked at and accepted).
 5. **Accept the look items you judged fine, once.** Pass `accept:[{key, reason}]` with each item's `key` from the page (a warn can be accepted too, an error never). The audit writes them to `res://.summer/audit-accept.json`; later audits count them (`counts.<check>.accepted`) but hide them. An accepted item comes back, marked `accept_stale`, when its evidence changes materially (its severity rises or its measured size moves by over 25%), so a fix that made it worse is not hidden. `show_accepted:true` lists them again.
 
@@ -55,10 +55,6 @@ What the checks mean:
   - Areas are measured (a 4 cm seam is a fraction of a square metre).
 - `floating` / `sunken`: props 2 cm above or 3 cm into their support. Sunken names the surface the prop is buried in, seen from above.
 - `interpenetration`: over 3 cm, with every piece it cuts (up to 3). Clear all of them, not only the first.
-- `insert_host`: an insert a kit manifest `fits_into` a host, in the wrong host or off its offset.
-- `mount_gap`: a piece a kit manifest gives a `mount_side`, off its wall, measured at its centre and sides.
-  - Over 5 cm is reported, or over the manifest's `standoff_m` + 5 cm.
-  - A pipe that a wall-touching bracket or clamp holds is not reported, and neither is the rest of its run.
 - `band_continuity`: facade bands (base / dado / plinth, cornice, crown, trim, band, sill) per facade, height and facing.
   - A missing run over 5 cm, unless a door, gate or shutter (or the kit's corner, end or pier piece) covers 80% of it over half the band height.
   - A short end over 5 cm, when the band covers at least half its own block's facade (a lower neighbour's wall top is not this facade).
@@ -68,30 +64,19 @@ What the checks mean:
 - `exposed_edge`: open outline edges of wall, band and pier pieces that nothing covers within 4-7 mm, seen from walkable space, with the reveal behind them: a 2-60 cm step (an open band end, a module out of line), a seam (the next sheet within 4 cm) or a gap to the next sheet (within 35 cm). A warning on band pieces (and on walls when `depth_step` agrees), a look item on walls. Repeats group per piece type.
 - `open_fixture_end`: an open end of a pipe, duct or gutter piece that nothing joins within 2.5 cm, seen from walkable space: a missing elbow, coupler, section or outlet. Terminal pieces (outlets, funnels, vents, caps) are open by design.
 - `depth_step` (look): ray rows across each facade at its band levels and every 1.25 m: band recesses, seams, modules standing proud, holes with something behind them. A hole next to a `through_hole` confirms it (that issue becomes an error). Runs a door or shutter covers are skipped.
-- `orientation`: front-back symmetric pieces (duct runs, strap braces) are never flagged for pointing away.
+- `orientation`: a long prop near a wall that does not run parallel to it. It never says which way to face.
 - `uv_stretch`: stretched or collapsed texture an instance shows. A face that inserts normally cover is a warning where it shows.
 - `duplicate`: the same scene at the same transform.
 - `z_fight`: coplanar overlapping faces anywhere, including two surfaces of one mesh.
   - "Coplanar" means closer than twice the 24-bit depth step at the view distance, for the main camera's near and far. `ev` shows the gap, the tolerance and the viewpoint.
   - `ev.normal` is the shared plane's normal and `ev.nudge` the axis to move along, in the world and in the piece's own frame. A window insert can share its head or a jamb with its host, not its front: nudge along `nudge.local`, not along the facade normal.
-  - Decals, overlays, `render_priority` and depth offsets come back as look items with the reason. Check that they actually render on top.
+  - A pair whose material may make it intentional comes back as a look item with the reason: `render_priority`, a depth or normal offset, a see-through (alpha) material such as a decal or overlay, or no depth test. Check that it actually renders on top.
 - `lights`: more lights on a mesh than the renderer's per-object limit, and hard spot rims.
 - `transform`: NaN, mirrored, non-uniform scale, far out of bounds, and pieces left at the origin: only an identity LOCAL transform under an identity parent that touches nothing and is not one of a row of siblings. Several pieces sharing that identity transform are a warning each; one alone is a look item. A module whose corner is the world origin is not flagged.
 - `resource`.
 - `budget_ms`: the gap detectors run last on the time the other checks leave. On a large scene the default 3000 ms may cover `exposed_edge` / `depth_step` only partly (band pieces and band rows first). Before calling a facade done, rerun `checks:["exposed_edge","depth_step"]` (or with `budget_ms:6000`) when they show `partial`.
 
-`insert_host`, `mount_gap` and the manifest side of `orientation` need a kit manifest: an optional res:// JSON file you pass with `manifests:["res://kit/kit_manifest.json"]` (nothing is read from disk by itself). Each entry names a scene, by res:// path or by name relative to the manifest's folder, and gives only what the geometry cannot say:
-
-```json
-{"pieces": {
-  "wall_door_a": {"category": "wall", "front_axis": "+Z"},
-  "door_a": {"fits_into": {"piece": "wall_door_a", "local_offset_m": [0, 0, -0.02]}, "front_axis": "+Z"},
-  "res://kit/props/wall_lamp.tscn": {"mount_side": "-Z", "standoff_m": [0, 0.05]},
-  "duct_straight": {"mount_side": "-Z", "standoff_m": 0.1, "symmetric": true}
-}}
-```
-
-`category`: `wall` or `facade` (a facade module), `floor`, `prop`, `dressing`, or any structural word (`band`, `corner`, `pier`, ...). `front_axis`: the local axis the visible front faces. `mount_side`: the local axis that faces the wall the piece hangs on. `standoff_m`: how far off that wall it stands by design (a number, or `[min, max]`). `symmetric`: looks the same turned 180 degrees. `fits_into`: an insert (window, door) and its host, with the insert's offset in the host's frame. Every field is optional; without a manifest the other checks still run from geometry and node names.
+Every check works on any scene from its geometry, the engine's node and resource data and its materials: never node or file names, never kit metadata. The audit decides each piece's role from its shape. See-through cards (every material alpha) are dressing, upright sheets are walls, flat slabs whose tops cover their footprint are floors (a raised one with walls under it is a roof, a large one below the rest is the underlay), a piece in a wall's opening is an insert, and bands, piers and corner blocks against a facade are structure; the rest are props. When a finding looks wrong because the audit read a piece's role differently from you, judge it from the geometry, as the audit did.
 
 ## Choosing the right screenshot
 

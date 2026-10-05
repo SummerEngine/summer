@@ -2,15 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   basisAngleDegrees,
   clusterSamples,
-  directionAngleDegrees,
-  expectedHostOrigin,
   fitCameraDistance,
   footprintExtent,
-  isFrontBackSymmetric,
   lineAngleDegrees,
-  matchInsertHost,
   mostCommon,
-  mountGap,
   robustBounds,
   triangleArea,
   uvStretchRatio,
@@ -76,11 +71,6 @@ describe("parallelism", () => {
   it("ignores the vertical component", () => {
     expect(lineAngleDegrees([1, 5, 0], wallDirection([0, 0, -1]))).toBeCloseTo(0, 6);
   });
-
-  it("direction angle is signed: a mount side pointing away from the wall is 180", () => {
-    expect(directionAngleDegrees([0, 0, -1], [0, 0, 1])).toBeCloseTo(180, 6);
-    expect(directionAngleDegrees([0, 0, -1], [1, 0, 0])).toBeCloseTo(90, 6);
-  });
 });
 
 describe("uvStretchRatio", () => {
@@ -115,50 +105,7 @@ describe("uvStretchRatio", () => {
   });
 });
 
-describe("insert host matching (a manifest's fits_into)", () => {
-  // A door insert at its frame's own transform; the manifest fits it into
-  // wall_door_b at local (0, 0, -0.1).
-  const insertOrigin = [31.5, 0, -7.9] as const;
-  const offset = [0, 0, -0.1] as const;
-
-  it("the host sits at the insert transform minus the offset, in the host's frame", () => {
-    const e = expectedHostOrigin(insertOrigin, YAW_180, offset);
-    expect(e[0]).toBeCloseTo(31.5, 6);
-    expect(e[2]).toBeCloseTo(-8.0, 6);
-    const unrotated = expectedHostOrigin([1, 0, 0], IDENTITY, [0, 0.3, -0.045]);
-    expect(unrotated).toEqual([1, -0.3, 0.045]);
-  });
-
-  it("ok within 2 cm and 1 deg", () => {
-    const m = matchInsertHost(insertOrigin, YAW_180, offset, "wall_door_b", [
-      { index: 4, piece: "wall_door_b", origin: [31.51, 0, -8.0], basis: YAW_180 },
-    ]);
-    expect(m.status).toBe("ok");
-  });
-
-  it("the named host 10 cm away is a wrong offset; 2 deg off is not ok either", () => {
-    const off = matchInsertHost(insertOrigin, YAW_180, offset, "wall_door_b", [
-      { index: 4, piece: "wall_door_b", origin: [31.5, 0, -7.9], basis: YAW_180 },
-    ]);
-    expect(off.status).toBe("wrong_offset");
-    expect(off.named!.distance).toBeCloseTo(0.1, 6);
-    const turned = matchInsertHost([0, 0, 0], IDENTITY, [0, 0, 0], "host", [{ index: 1, piece: "host", origin: [0, 0, 0], basis: yaw(2) }]);
-    expect(turned.status).toBe("wrong_offset");
-    expect(turned.named!.angle).toBeCloseTo(2, 4);
-  });
-
-  it("another piece at the expected pose is reported as the actual host", () => {
-    const m = matchInsertHost([0, 0, 0], IDENTITY, [0, 0, -0.1], "wall_door_b", [
-      { index: 9, piece: "facade_frame_a", origin: [0, 0, 0.1], basis: IDENTITY },
-    ]);
-    expect(m.status).toBe("wrong_piece");
-    expect(m.other).toMatchObject({ index: 9, piece: "facade_frame_a" });
-  });
-
-  it("nothing there is missing", () => {
-    expect(matchInsertHost([0, 0, 0], IDENTITY, [0, 0, 0], "host", []).status).toBe("missing");
-  });
-
+describe("basis angle", () => {
   it("basis angle", () => {
     expect(basisAngleDegrees(IDENTITY, yaw(90))).toBeCloseTo(90, 6);
     expect(basisAngleDegrees(IDENTITY, YAW_180)).toBeCloseTo(180, 4);
@@ -183,34 +130,6 @@ describe("floor gap footprints", () => {
     expect(mostCommon([4, 2, 4, 2, 4])).toBe(4);
     expect(mostCommon([7, 3])).toBe(7);
     expect(mostCommon([])).toBe(-1);
-  });
-});
-
-describe("mount gap samples and front-back symmetry", () => {
-  it("the gap is the largest of the centre and the 4 side midpoints; corners only count for the closest contact", () => {
-    // 0 centre, 1-4 corners, 5-8 sides.
-    expect(mountGap([0.102, 0.152, 0.152, 0.152, 0.152, 0.102, 0.152, 0.152, 0.152])).toEqual({ min: 0.102, gap: 0.152, at: 6 });
-    expect(mountGap([0.06, 0.01, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06])).toMatchObject({ min: 0.01, gap: 0.06 });
-    // A side ray past the wall's edge (80 cm into a recess) and missing rays are ignored.
-    expect(mountGap([0.0, 0, 0, 0, 0, 0, null, 0.8, 0])).toEqual({ min: 0, gap: 0, at: 0 });
-    expect(mountGap([null, null])).toEqual({ min: null, gap: null, at: -1 });
-    // Older rows with only the centre (or a corner) still give a gap.
-    expect(mountGap([0.059, 0.06])).toMatchObject({ gap: 0.059, at: 0 });
-    expect(mountGap([null, 0.04])).toMatchObject({ gap: 0.04, at: 1 });
-  });
-
-  it("symmetric: bounds centred on the origin, equal largest planes at mirrored positions", () => {
-    // A duct run (front/back planes at +-0.3, equal area) and a strap brace (+-0.345).
-    expect(isFrontBackSymmetric([0.3, 0.5, -0.3, 0.5, -0.3, 0.3])).toBe(true);
-    expect(isFrontBackSymmetric([0.345, 0.0018, -0.345, 0.0017, -0.345, 0.345])).toBe(true);
-    // A wall lantern: the back plate is three times the front plane.
-    expect(isFrontBackSymmetric([0.15, 0.01, -0.2, 0.03, -0.2, 0.15])).toBe(false);
-    // Equal planes, but the bounds sit behind the origin (origin on the back face).
-    expect(isFrontBackSymmetric([0.6, 0.5, 0, 0.5, 0, 0.6])).toBe(false);
-    // Planes not mirrored.
-    expect(isFrontBackSymmetric([0.3, 0.5, -0.1, 0.5, -0.3, 0.3])).toBe(false);
-    expect(isFrontBackSymmetric(null)).toBe(false);
-    expect(isFrontBackSymmetric([0.3, 0, -0.3, 0.5, -0.3, 0.3])).toBe(false);
   });
 });
 

@@ -56,7 +56,9 @@ describe("summer_scene_audit — MCP face", () => {
     const registered = tools();
     expect(registered.map((t) => t.name)).toEqual(["summer_scene_audit"]);
     const d = registered[0]!.description;
-    for (const word of ["Read-only", "5 KB", "through_hole", "insert_host", "uv_stretch", "offset", "min_severity", "render", "failure_reason"]) expect(d).toContain(word);
+    for (const word of ["Read-only", "5 KB", "through_hole", "orientation", "uv_stretch", "never node or file names", "offset", "min_severity", "render", "failure_reason"]) expect(d).toContain(word);
+    expect(d).not.toMatch(/manifest|insert_host|mount_gap|mount_side|fits_into/);
+    expect(registered[0]!.schema).not.toHaveProperty("manifests");
   });
 
   it("rejects malformed arguments at the schema boundary", () => {

@@ -54,7 +54,9 @@ const FREESTAND_RE := "(^|_)(fence|gate|post|pole|bench|seat|barrier|bollard|cra
 const STRIP_STEP := 0.25
 const STRIP_REACH := 1.0
 # Usual share of a check's editor time (the budget's weights).
-const STAGE_WEIGHT := {"through_hole": 4.0, "floor_gap": 2.0, "floating_sunken": 1.0, "interpenetration": 2.0, "mount_gap": 1.0, "orientation": 1.0, "uv_stretch": 1.0, "z_fight_geometry": 3.0, "insert_host": 0.3, "lights": 0.3, "resource": 0.5, "poses": 1.0}
+const STAGE_WEIGHT := {"through_hole": 4.0, "floor_gap": 2.0, "floating_sunken": 1.0, "interpenetration": 2.0, "mount_gap": 1.0, "orientation": 1.0, "uv_stretch": 1.0, "z_fight_geometry": 3.0, "gap_setup": 0.3, "band_continuity": 0.5, "exposed_edge": 3.0, "open_fixture_end": 0.3, "depth_step": 2.0, "insert_host": 0.3, "lights": 0.3, "resource": 0.5, "poses": 1.0}
+# The gap detectors' stages (budget tier 2, run after every other check).
+const GAP_STAGES := ["gap_setup", "band_continuity", "open_fixture_end", "exposed_edge", "depth_step"]
 # z_fight geometry pass: planar face groups per mesh resource.
 # Triangles under ZF_MIN_TRI m2 are not bucketed (relief, props); a group
 # needs ZF_MIN_AREA m2 (the smallest overlap reported); at most
@@ -86,6 +88,7 @@ var _screen_space := 0
 var _inst: Array = []
 var _lights: Array = []
 var _cameras: Array = []
+var _players: Array = []
 var _empty_meshes: Array = []
 var _shader_no_code: Array = []
 
@@ -102,6 +105,7 @@ var _hulls: Dictionary = {}
 var _body_inst: Dictionary = {}
 var _q: PhysicsRayQueryParameters3D = null
 var _ex: Array[RID] = []
+var _ex_set := false
 var _rays := 0
 var _floor_gap_count := 0
 var _floor_gap_void := false
@@ -203,9 +207,13 @@ func _lap(stage: String, since: int) -> int:
 
 # Start a check: its deadline is its weighted share of the budget left.
 func _begin(stage: String) -> void:
+	# Two tiers: the gap detectors run last and share what the other checks
+	# leave, so adding them never shortens another check's share.
+	var tier2 := GAP_STAGES.has(stage)
 	var w_all := 0.0
 	for s in _pending:
-		w_all += float(STAGE_WEIGHT.get(s, 1.0))
+		if GAP_STAGES.has(s) == tier2:
+			w_all += float(STAGE_WEIGHT.get(s, 1.0))
 	var w := float(STAGE_WEIGHT.get(stage, 1.0))
 	_pending.erase(stage)
 	if _budget_us <= 0:
@@ -294,7 +302,7 @@ func _run() -> void:
 	t = _lap("manifests_roles", t)
 
 	var need_physics := false
-	for c in ["through_hole", "floor_gap", "floating", "sunken", "interpenetration", "mount_gap", "orientation", "uv_stretch", "z_fight"]:
+	for c in ["through_hole", "floor_gap", "floating", "sunken", "interpenetration", "mount_gap", "orientation", "uv_stretch", "z_fight", "band_continuity", "exposed_edge", "open_fixture_end", "depth_step"]:
 		if _checks.has(c):
 			need_physics = true
 	var need_mesh_pass := need_physics or _checks.has("uv_stretch")
@@ -318,7 +326,12 @@ func _run() -> void:
 	var run_mo := _checks.has("mount_gap") or _checks.has("orientation")
 	var run_po := _want_poses and _state != null
 	var run_zg := _checks.has("z_fight") and _state != null
-	for stage_on in [["through_hole", run_th], ["floor_gap", run_fl], ["floating_sunken", run_su], ["interpenetration", _checks.has("interpenetration")], ["mount_gap", run_mo], ["orientation", _checks.has("orientation")], ["uv_stretch", _checks.has("uv_stretch")], ["z_fight_geometry", run_zg], ["insert_host", _checks.has("insert_host")], ["lights", _checks.has("lights")], ["resource", _checks.has("resource")], ["poses", run_po]]:
+	var run_bc := _checks.has("band_continuity") and _state != null
+	var run_ee := _checks.has("exposed_edge") and _state != null
+	var run_fe := _checks.has("open_fixture_end") and _state != null
+	var run_ds := _checks.has("depth_step") and _state != null
+	var run_gk := run_bc or run_ee or run_fe or run_ds
+	for stage_on in [["through_hole", run_th], ["floor_gap", run_fl], ["floating_sunken", run_su], ["interpenetration", _checks.has("interpenetration")], ["mount_gap", run_mo], ["orientation", _checks.has("orientation")], ["uv_stretch", _checks.has("uv_stretch")], ["z_fight_geometry", run_zg], ["insert_host", _checks.has("insert_host")], ["lights", _checks.has("lights")], ["resource", _checks.has("resource")], ["poses", run_po], ["gap_setup", run_gk], ["band_continuity", run_bc], ["open_fixture_end", run_fe], ["exposed_edge", run_ee], ["depth_step", run_ds]]:
 		if bool(stage_on[1]):
 			_pending.append(String(stage_on[0]))
 	if run_th:
@@ -369,6 +382,27 @@ func _run() -> void:
 		_begin("poses")
 		_scan_clearances()
 		t = _lap("poses", t)
+	if run_gk:
+		_begin("gap_setup")
+		_gk_setup()
+		_result["gk"] = {"eyes": _gk_eyes.size(), "indoor_cells": _gk_indoor.size(), "floor_y": snappedf(_gk_floor_y, 0.001), "lines": _gk_lines_rows()}
+		t = _lap("gap_setup", t)
+	if run_bc:
+		_begin("band_continuity")
+		_result["bands"] = _scan_bands()
+		t = _lap("band_continuity", t)
+	if run_fe:
+		_begin("open_fixture_end")
+		_result["fixture_ends"] = _scan_fixture_ends()
+		t = _lap("open_fixture_end", t)
+	if run_ee:
+		_begin("exposed_edge")
+		_result["exposed"] = _scan_exposed_edges()
+		t = _lap("exposed_edge", t)
+	if run_ds:
+		_begin("depth_step")
+		_result["depth_steps"] = _scan_depth_steps()
+		t = _lap("depth_step", t)
 	# Checks a budget stopped early: [units done, units planned].
 	var partial: Dictionary = {}
 	for stage in _tally:
@@ -427,6 +461,8 @@ func _collect() -> void:
 			owner_i = _new_inst(node, node.scene_file_path)
 		if node is Camera3D:
 			_cameras.append(node)
+		elif node is CharacterBody3D and _players.size() < 16:
+			_players.append(node)
 		if node is Light3D:
 			_lights.append(node)
 		elif node is MeshInstance3D:
@@ -1312,10 +1348,18 @@ func _ray(from: Vector3, to: Vector3, mask: int, exclude: Array = [], two_sided 
 	_q.to = to
 	_q.collision_mask = mask
 	_q.hit_back_faces = two_sided
-	_ex.clear()
-	for r in exclude:
-		_ex.append(r)
-	_q.exclude = _ex
+	# Re-set the exclude list only when it changes (most rays exclude nothing,
+	# and setting it costs more than the ray).
+	if not exclude.is_empty():
+		_ex.clear()
+		for r in exclude:
+			_ex.append(r)
+		_q.exclude = _ex
+		_ex_set = true
+	elif _ex_set:
+		_ex.clear()
+		_q.exclude = _ex
+		_ex_set = false
 	return _state.intersect_ray(_q)
 
 
@@ -2864,6 +2908,1386 @@ func _zf_flags(node: Node, mat: Variant, rec_i: int) -> Array:
 	if _re_decal.search(names.to_lower()) != null:
 		out.append("named as a decal or overlay")
 	return out
+
+
+# ---------------------------------------------------------------------------
+# Gap detectors, ported from the gap-detection experiment (scout kernel
+# gapkit.gd, 2026-10-04): band_continuity (B), exposed_edge (A),
+# open_fixture_end and depth_step (C). They share one setup (_gk_setup):
+# walkable eye points, indoor cells and axis-aligned facade lines grouped into
+# buildings. Everything here MEASURES; judge.ts groups, thresholds, confirms
+# (B by A or C) and grades.
+#
+# Sight lines are two-sided rays (any face blocks), like the experiment.
+# A point is "visible from walkable space" when an eye point (1.7 m over an
+# open-sky floor cell, flood-filled from the scene's cameras and characters
+# when it has any) sees it within 30 m without the sight line crossing an
+# indoor cell (a cell under a roof-sized piece: looking through a building).
+# ---------------------------------------------------------------------------
+
+const GK_EYE_H := 1.7
+const GK_EYE_STEP := 1.5
+const GK_EYE_CELL := 8.0
+const GK_IN_CELL := 0.5
+const GK_VIS_CELL := 0.5
+const GK_EDGE_SPACING := 0.25
+const GK_WELD := 10000.0
+# depth_step: wall rows every C_WALL_ROW m; runs merge across one row step.
+const C_WALL_ROW := 1.25
+const C_MERGE_Y := 1.3
+const BAND_WORD_RE := "(dado|base|plinth|cornice|crown|trim|band|sill)"
+const BAND_CORNER_RE := "(corner|end|angle|angled|pedestal)"
+const DOOR_RE := "(door|gate|passage|arch|shutter)"
+const FIXTURE_RE := "(pipe|duct|gutter|downpipe|drain|tube|conduit|hose)"
+const TERMINAL_RE := "(outlet|funnel|vent|fan|cap|plug|_end|spout|receiver|grille|shower|nozzle|valve|tap|converter|brac|clamp|strap|hanger|holder|support)"
+
+var _gk_ready := false
+var _gk_eyes := PackedVector3Array()
+var _gk_eye_grid: Dictionary = {}
+var _gk_ring: Array = []
+var _gk_indoor: Dictionary = {}
+var _gk_lines: Array = []
+var _gk_vis_cache: Dictionary = {}
+var _gk_sphere := RID()
+var _gk_sphere_q: PhysicsShapeQueryParameters3D = null
+var _gk_stats: Dictionary = {}
+var _gk_floor_y := 0.0
+var _re_band: RegEx = null
+var _re_band_corner: RegEx = null
+var _re_door: RegEx = null
+var _re_fixture: RegEx = null
+var _re_terminal: RegEx = null
+
+
+func _gk_setup() -> void:
+	if _gk_ready:
+		return
+	_gk_ready = true
+	_re_band = RegEx.create_from_string("(?i)" + BAND_WORD_RE)
+	_re_band_corner = RegEx.create_from_string("(?i)" + BAND_CORNER_RE)
+	_re_door = RegEx.create_from_string("(?i)" + DOOR_RE)
+	_re_fixture = RegEx.create_from_string("(?i)" + FIXTURE_RE)
+	_re_terminal = RegEx.create_from_string("(?i)" + TERMINAL_RE)
+	var b := _gk_struct_bounds()
+	if b.size == Vector3.ZERO:
+		_gk_stats = {"eyes": 0, "lines": 0}
+		return
+	_gk_build_eyes(b)
+	_gk_build_indoor(b)
+	_gk_build_lines()
+	_gk_stats = {"eyes": _gk_eyes.size(), "indoor_cells": _gk_indoor.size(), "lines": _gk_lines.size()}
+
+
+func _gk_struct_bounds() -> AABB:
+	var b := AABB()
+	var first := true
+	var tops: Array = []
+	for rec in _inst:
+		var role := String(rec["role"])
+		if role == "underlay" or role == "dressing" or role == "":
+			continue
+		var wa: AABB = rec["waabb"]
+		if wa.size.x > 120.0 or wa.size.z > 120.0:
+			continue
+		if role == "floor":
+			tops.append(wa.end.y)
+		b = wa if first else b.merge(wa)
+		first = false
+	if not tops.is_empty():
+		tops.sort()
+		_gk_floor_y = float(tops[tops.size() / 2])
+	elif not first:
+		_gk_floor_y = b.position.y
+	return b
+
+
+func _gk_build_eyes(b: AABB) -> void:
+	var floors := false
+	for rec in _inst:
+		if rec["role"] == "floor":
+			floors = true
+			break
+	var top := b.end.y + 5.0
+	var bot := b.position.y - 5.0
+	var x0 := b.position.x - 8.0
+	var z0 := b.position.z - 8.0
+	var nx := int((b.size.x + 16.0) / GK_EYE_STEP) + 1
+	var nz := int((b.size.z + 16.0) / GK_EYE_STEP) + 1
+	var raw: Dictionary = {}
+	for i in nx:
+		for k in nz:
+			var x := x0 + i * GK_EYE_STEP
+			var z := z0 + k * GK_EYE_STEP
+			# The first surface from above (two-sided): a floor with open sky
+			# over it; under a roof or a balcony the roof is hit first.
+			var hit := _ray(Vector3(x, top, z), Vector3(x, bot, z), MASK_SOLID, [], true)
+			if hit.is_empty() or absf((hit["normal"] as Vector3).y) <= 0.7:
+				continue
+			var hp: Vector3 = hit["position"]
+			if floors:
+				var hi := _hit_inst(hit)
+				if hi < 0 or String((_inst[hi] as Dictionary)["role"]) != "floor":
+					continue
+			elif hp.y > _gk_floor_y + 2.0:
+				continue
+			raw[Vector2i(i, k)] = hp + Vector3(0, GK_EYE_H, 0)
+	# Walkable: reachable from the scene's cameras and characters through
+	# 4-neighbour steps not blocked at 0.5 and 1.2 m (without any, every
+	# open-sky floor cell counts).
+	var seeds: Array = []
+	for c in _cameras:
+		seeds.append((c as Node3D).global_position)
+	for ch in _players:
+		seeds.append((ch as Node3D).global_position)
+	var keep: Dictionary = {}
+	if seeds.is_empty():
+		for key in raw:
+			keep[key] = true
+	else:
+		var queue: Array = []
+		for sd in seeds:
+			var best: Variant = null
+			var bd := 3.0
+			var sp: Vector3 = sd
+			for key in raw:
+				var e: Vector3 = raw[key]
+				var dd := Vector2(e.x - sp.x, e.z - sp.z).length()
+				if dd < bd:
+					bd = dd
+					best = key
+			if best != null and not keep.has(best):
+				keep[best] = true
+				queue.append(best)
+		if queue.is_empty():
+			for key in raw:
+				keep[key] = true
+		while not queue.is_empty():
+			var kk: Vector2i = queue.pop_back()
+			var e1: Vector3 = raw[kk]
+			for off in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var k2: Vector2i = kk + off
+				if keep.has(k2) or not raw.has(k2):
+					continue
+				var e2: Vector3 = raw[k2]
+				if absf(e2.y - e1.y) > 0.5:
+					continue
+				var lo := Vector3(0, 0.5 - GK_EYE_H, 0)
+				var mid := Vector3(0, 1.2 - GK_EYE_H, 0)
+				if not _ray(e1 + lo, e2 + lo, MASK_SOLID, [], true).is_empty() or not _ray(e1 + mid, e2 + mid, MASK_SOLID, [], true).is_empty():
+					continue
+				keep[k2] = true
+				queue.append(k2)
+	for key in keep:
+		var e: Vector3 = raw[key]
+		var cell := Vector2i(floori(e.x / GK_EYE_CELL), floori(e.z / GK_EYE_CELL))
+		if not _gk_eye_grid.has(cell):
+			_gk_eye_grid[cell] = PackedInt32Array()
+		var arr: PackedInt32Array = _gk_eye_grid[cell]
+		arr.append(_gk_eyes.size())
+		_gk_eye_grid[cell] = arr
+		_gk_eyes.append(e)
+	var r := int(ceil(32.0 / GK_EYE_CELL))
+	for dx in range(-r, r + 1):
+		for dz in range(-r, r + 1):
+			_gk_ring.append(Vector2i(dx, dz))
+	_gk_ring.sort_custom(func(a, c): return (a as Vector2i).length_squared() < (c as Vector2i).length_squared())
+
+
+# Indoor cells: 0.5 m cells whose up-ray from 0.5 m over the floor level hits a
+# roof-sized piece (2.5 m or more in x and z). A sight line through one looks
+# through a building (a hole, a window without glass), not from walkable space.
+func _gk_build_indoor(b: AABB) -> void:
+	var y := _gk_floor_y + 0.5
+	var x := b.position.x - 2.0
+	while x <= b.end.x + 2.0:
+		var z := b.position.z - 2.0
+		while z <= b.end.z + 2.0:
+			var hit := _ray(Vector3(x, y, z), Vector3(x, y + 60.0, z), MASK_SOLID, [], true)
+			if not hit.is_empty():
+				var hi := _hit_inst(hit)
+				if hi >= 0:
+					var ab: AABB = (_inst[hi] as Dictionary)["waabb"]
+					if ab.size.x >= 2.5 and ab.size.z >= 2.5:
+						_gk_indoor[Vector2i(floori(x / GK_IN_CELL), floori(z / GK_IN_CELL))] = true
+			z += GK_IN_CELL
+		x += GK_IN_CELL
+
+
+func _gk_crosses_indoor(e: Vector3, p: Vector3) -> bool:
+	var v := Vector2(p.x - e.x, p.z - e.z)
+	var L := v.length()
+	if L < 0.7:
+		return false
+	var u := v / L
+	var t := 0.25
+	while t < L - 0.6:
+		var q := Vector2(e.x, e.z) + u * t
+		if _gk_indoor.has(Vector2i(floori(q.x / GK_IN_CELL), floori(q.y / GK_IN_CELL))):
+			return true
+		t += 0.45
+	return false
+
+
+# Eye points that see p (at most max_eyes, at most max_tests sight lines,
+# nearest cells first). facing != ZERO: only eyes on that side of p.
+func _gk_visible_eyes(p: Vector3, max_eyes: int, max_tests: int, facing := Vector3.ZERO, facing_min := 0.2) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	if _gk_eyes.is_empty():
+		return out
+	var c0 := Vector2i(floori(p.x / GK_EYE_CELL), floori(p.z / GK_EYE_CELL))
+	var tests := 0
+	for off in _gk_ring:
+		var c: Vector2i = c0 + (off as Vector2i)
+		if not _gk_eye_grid.has(c):
+			continue
+		var cell_eyes: PackedInt32Array = _gk_eye_grid[c]
+		var stride := maxi(1, cell_eyes.size() / 4)
+		var j := 0
+		while j < cell_eyes.size():
+			var e: Vector3 = _gk_eyes[cell_eyes[j]]
+			j += stride
+			var dv := p - e
+			var dist := dv.length()
+			if dist > 30.0 or dist < 0.3:
+				continue
+			if facing != Vector3.ZERO and (-dv).dot(facing) < facing_min * dist:
+				continue
+			tests += 1
+			if _ray(e, p - dv / dist * 0.01, MASK_SOLID, [], true).is_empty() and not _gk_crosses_indoor(e, p):
+				out.append(e)
+				if out.size() >= max_eyes:
+					return out
+			if tests >= max_tests:
+				return out
+	return out
+
+
+# Cached per 50 cm cell (exposed_edge tests thousands of edge samples).
+func _gk_visible_cached(p: Vector3) -> PackedVector3Array:
+	var key := Vector3i(floori(p.x / GK_VIS_CELL), floori(p.y / GK_VIS_CELL), floori(p.z / GK_VIS_CELL))
+	if _gk_vis_cache.has(key):
+		return _gk_vis_cache[key]
+	var ve := _gk_visible_eyes(p, 3, 12)
+	_gk_vis_cache[key] = ve
+	return ve
+
+
+# Facade point visible: 15 cm off the facade on either side of its thin axis.
+func _gk_point_visible(p: Vector3, th: int) -> bool:
+	for sgn in [1.0, -1.0]:
+		var q := p
+		q[th] += 0.15 * float(sgn)
+		if not _gk_visible_eyes(q, 1, 60).is_empty():
+			return true
+	return false
+
+
+# Facade lines (gapkit): wall-like pieces (1-40 m tall, at least 0.8 m wide
+# along one horizontal axis and at most 0.6 m along the other), buildings =
+# pieces whose bounds touch within 0.15 m, lines = one building's pieces on
+# one axis within 0.35 m of one plane, merged along with gaps up to 1 m;
+# sides = the sides with walkable eyes 0.3-12 m in front.
+func _gk_build_lines() -> void:
+	var cands: Array = []
+	for rec in _inst:
+		var role := String(rec["role"])
+		if role != "wall" and role != "struct":
+			continue
+		var ab: AABB = rec["waabb"]
+		if ab.size.y < 1.0 or ab.size.y > 40.0:
+			continue
+		var ax := -1
+		if ab.size.x >= 0.8 and ab.size.z <= 0.6:
+			ax = 0
+		elif ab.size.z >= 0.8 and ab.size.x <= 0.6:
+			ax = 2
+		if ax < 0:
+			continue
+		var th := 2 - ax
+		cands.append({"i": int(rec["i"]), "ax": ax, "c": ab.get_center()[th], "lo": ab.position[ax], "hi": ab.end[ax], "y0": ab.position.y, "y1": ab.end.y, "tmin": ab.position[th], "tmax": ab.end[th], "ab": ab})
+	# Buildings: union-find over touching bounds, through a 4 m grid.
+	var par := PackedInt32Array()
+	par.resize(cands.size())
+	for i in cands.size():
+		par[i] = i
+	var grid: Dictionary = {}
+	for i in cands.size():
+		var a: AABB = (cands[i]["ab"] as AABB).grow(0.15)
+		for gx in range(floori(a.position.x / 4.0), floori(a.end.x / 4.0) + 1):
+			for gz in range(floori(a.position.z / 4.0), floori(a.end.z / 4.0) + 1):
+				var gk := Vector2i(gx, gz)
+				if not grid.has(gk):
+					grid[gk] = []
+				for j in (grid[gk] as Array):
+					if a.intersects(cands[j]["ab"] as AABB):
+						var ri := _gk_find(par, i)
+						var rj := _gk_find(par, int(j))
+						if ri != rj:
+							par[ri] = rj
+				(grid[gk] as Array).append(i)
+	for i in cands.size():
+		cands[i]["b"] = _gk_find(par, i)
+	cands.sort_custom(func(a, c): return int(a["ax"]) < int(c["ax"]) or (int(a["ax"]) == int(c["ax"]) and float(a["c"]) < float(c["c"])))
+	var groups: Array = []
+	for c in cands:
+		var placed := false
+		for g in groups:
+			if int(g["b"]) == int(c["b"]) and int(g["ax"]) == int(c["ax"]) and absf(float(g["c"]) - float(c["c"])) <= 0.35:
+				(g["items"] as Array).append(c)
+				placed = true
+				break
+		if not placed:
+			groups.append({"b": c["b"], "ax": c["ax"], "c": c["c"], "items": [c]})
+	for g in groups:
+		var items: Array = g["items"]
+		items.sort_custom(func(a, c): return float(a["lo"]) < float(c["lo"]))
+		var cur: Variant = null
+		for it in items:
+			if cur != null and float(it["lo"]) <= float(cur["hi"]) + 1.0:
+				cur["hi"] = maxf(float(cur["hi"]), float(it["hi"]))
+				cur["y0"] = minf(float(cur["y0"]), float(it["y0"]))
+				cur["y1"] = maxf(float(cur["y1"]), float(it["y1"]))
+				cur["tmin"] = minf(float(cur["tmin"]), float(it["tmin"]))
+				cur["tmax"] = maxf(float(cur["tmax"]), float(it["tmax"]))
+				(cur["pieces"] as Array).append(it["i"])
+			else:
+				if cur != null:
+					_gk_lines.append(cur)
+				cur = {"b": g["b"], "ax": g["ax"], "c": g["c"], "lo": it["lo"], "hi": it["hi"], "y0": it["y0"], "y1": it["y1"], "tmin": it["tmin"], "tmax": it["tmax"], "pieces": [it["i"]]}
+		if cur != null:
+			_gk_lines.append(cur)
+	for ln in _gk_lines:
+		var sides: Array = []
+		var ax: int = ln["ax"]
+		var th := 2 - ax
+		for s in [1, -1]:
+			var face: float = float(ln["tmax"]) if s == 1 else float(ln["tmin"])
+			for e in _gk_eyes:
+				var off: float = (e[th] - face) * float(s)
+				if off > 0.3 and off < 12.0 and e[ax] > float(ln["lo"]) - 2.0 and e[ax] < float(ln["hi"]) + 2.0:
+					sides.append(s)
+					break
+		ln["sides"] = sides
+
+
+static func _gk_find(par: PackedInt32Array, i: int) -> int:
+	while par[i] != i:
+		par[i] = par[par[i]]
+		i = par[i]
+	return i
+
+
+func _gk_line_of(ab: AABB, margin: float) -> int:
+	var best := -1
+	var bd := INF
+	for li in _gk_lines.size():
+		var ln: Dictionary = _gk_lines[li]
+		var ax: int = ln["ax"]
+		var th := 2 - ax
+		if ab.end[ax] < float(ln["lo"]) - margin or ab.position[ax] > float(ln["hi"]) + margin:
+			continue
+		if ab.end.y < float(ln["y0"]) - margin or ab.position.y > float(ln["y1"]) + margin:
+			continue
+		if ab.end[th] < float(ln["tmin"]) - margin or ab.position[th] > float(ln["tmax"]) + margin:
+			continue
+		var d := absf(ab.get_center()[th] - float(ln["c"]))
+		if d < bd:
+			bd = d
+			best = li
+	return best
+
+
+func _gk_lines_rows() -> Array:
+	var out: Array = []
+	for ln in _gk_lines:
+		out.append({"b": int(ln["b"]), "ax": int(ln["ax"]), "c": snappedf(float(ln["c"]), 0.001), "lo": snappedf(float(ln["lo"]), 0.001), "hi": snappedf(float(ln["hi"]), 0.001), "y0": snappedf(float(ln["y0"]), 0.001), "y1": snappedf(float(ln["y1"]), 0.001), "tmin": snappedf(float(ln["tmin"]), 0.001), "tmax": snappedf(float(ln["tmax"]), 0.001), "sides": ln["sides"], "pieces": ln["pieces"]})
+	return out
+
+
+# The band type a piece's name (or pieces.json category) names: base (dado,
+# base, plinth), cornice, crown, trim, band, sill; "" for none.
+func _gk_band_type(rec: Dictionary) -> String:
+	var cat := _str((rec["man"] as Dictionary).get("category")).to_lower()
+	for text in [cat, String(rec["piece"]).to_lower()]:
+		var t := String(text)
+		if t == "":
+			continue
+		for k in ["dado", "base", "plinth"]:
+			if t.contains(k):
+				return "base"
+		for k in ["cornice", "crown", "trim", "band", "sill"]:
+			if t.contains(k):
+				return k
+	return ""
+
+
+# ---------------------------------------------------------------------------
+# band_continuity (B): the band pieces, what can close a band's gap or corner,
+# their facade lines, and visibility probes along each band. judge.ts groups
+# the runs per line, type and height and finds gaps, short ends, open
+# corners and flipped bands.
+# ---------------------------------------------------------------------------
+
+func _scan_bands() -> Dictionary:
+	_gk_setup()
+	var bands: Array = []
+	var coverers: Array = []
+	var probes_done := 0
+	for rec in _inst:
+		var role := String(rec["role"])
+		var name := String(rec["piece"]).to_lower()
+		var ab: AABB = rec["waabb"]
+		var btype := _gk_band_type(rec) if (role == "wall" or role == "struct") else ""
+		var corner := _re_band_corner.search(name) != null or (rec["man"] as Dictionary).has("corner")
+		var door := _re_door.search(name) != null
+		var long_ax := 0 if ab.size.x >= ab.size.z else 2
+		var long_len: float = ab.size[long_ax]
+		if btype != "" and not corner and long_len >= 0.5 and ab.size.y < 1.2:
+			var th := 2 - long_ax
+			var lf: Vector3 = rec.get("front", Vector3.ZERO)
+			if lf == Vector3.ZERO:
+				lf = Vector3(0, 0, 1)
+			var front := ((rec["xf"] as Transform3D).basis * lf).normalized()
+			var c := ab.get_center()[th]
+			var line := -1
+			var best := 0.6
+			for li in _gk_lines.size():
+				var ln: Dictionary = _gk_lines[li]
+				if int(ln["ax"]) != long_ax:
+					continue
+				if ab.end[long_ax] < float(ln["lo"]) - 0.3 or ab.position[long_ax] > float(ln["hi"]) + 0.3:
+					continue
+				if ab.end.y < float(ln["y0"]) - 0.5 or ab.position.y > float(ln["y1"]) + 0.5:
+					continue
+				var dc: float = minf(absf(c - float(ln["tmin"])), absf(c - float(ln["tmax"])))
+				if c >= float(ln["tmin"]) and c <= float(ln["tmax"]):
+					dc = 0.0
+				if dc < best:
+					best = dc
+					line = li
+			# Visibility probes along the band, 5 cm off its front face (both
+			# faces when the front lies along the band): [s, seen].
+			var probes: Array = []
+			if line >= 0 and not _over():
+				var lo: float = ab.position[long_ax]
+				var hi: float = ab.end[long_ax]
+				var ss: Array = [lo - 0.3, lo + 0.1]
+				var s := lo + 1.1
+				while s < hi - 0.5:
+					ss.append(s)
+					s += 1.0
+				ss.append_array([hi - 0.1, hi + 0.3])
+				var sides: Array = [1.0 if front[th] > 0.0 else -1.0] if absf(front[th]) >= 0.5 else [1.0, -1.0]
+				for sv in ss:
+					var seen := 0
+					for sg in sides:
+						var q := Vector3.ZERO
+						q[long_ax] = float(sv)
+						q.y = ab.get_center().y
+						q[th] = (ab.end[th] + 0.05) if float(sg) > 0.0 else (ab.position[th] - 0.05)
+						if not _gk_visible_eyes(q, 1, 40).is_empty():
+							seen = 1
+							break
+					probes.append([snappedf(float(sv), 0.01), seen])
+				probes_done += 1
+			bands.append([int(rec["i"]), btype, _a3(ab.position), _a3(ab.end), _a3(front, 0.001), line, probes])
+		elif btype != "" or corner or name.contains("pier") or door:
+			coverers.append([int(rec["i"]), _a3(ab.position), _a3(ab.end), door])
+	_count("band_continuity", probes_done, bands.size())
+	return {"bands": bands, "coverers": coverers}
+
+
+# ---------------------------------------------------------------------------
+# exposed_edge (A): open outline edges of wall-, band- and pier-shaped pieces
+# that nothing covers within 4-7 mm and that walkable space sees, with what
+# shows behind them. Per mesh resource (cached): welded boundary edges of the
+# opaque surfaces, sampled every 25 cm, only those on the mesh's own bounds
+# (openings inside a module are by design; inserts are insert_host's).
+# ---------------------------------------------------------------------------
+
+# Raw boundary edges of a mesh's opaque surfaces: [a, b, n, d] per edge,
+# mesh-local (n: the edge's sheet normal, d: outward from its triangle).
+func _gk_boundary(mesh: Mesh, info: Dictionary) -> PackedVector3Array:
+	if info.has("gk_boundary"):
+		return info["gk_boundary"]
+	var out := PackedVector3Array()
+	var weld: Dictionary = {}
+	var pos := PackedVector3Array()
+	var cnt: Dictionary = {}
+	var third: Dictionary = {}
+	for s in mesh.get_surface_count():
+		if mesh is ArrayMesh and (mesh as ArrayMesh).surface_get_primitive_type(s) != Mesh.PRIMITIVE_TRIANGLES:
+			continue
+		var mat := mesh.surface_get_material(s)
+		if mat is BaseMaterial3D and (mat as BaseMaterial3D).transparency != BaseMaterial3D.TRANSPARENCY_DISABLED:
+			continue
+		var arrays := mesh.surface_get_arrays(s)
+		var v: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		if v.is_empty():
+			continue
+		var idx := PackedInt32Array()
+		if arrays[Mesh.ARRAY_INDEX] != null:
+			idx = arrays[Mesh.ARRAY_INDEX]
+		var n := idx.size() if idx.size() > 0 else v.size()
+		n -= n % 3
+		var remap := PackedInt32Array()
+		remap.resize(v.size())
+		for i in v.size():
+			var k := Vector3i((v[i] * GK_WELD).round())
+			var id: int = weld.get(k, -1)
+			if id == -1:
+				id = pos.size()
+				weld[k] = id
+				pos.append(v[i])
+			remap[i] = id
+		var t := 0
+		while t < n:
+			var ia := remap[idx[t] if idx.size() > 0 else t]
+			var ib := remap[idx[t + 1] if idx.size() > 0 else t + 1]
+			var ic := remap[idx[t + 2] if idx.size() > 0 else t + 2]
+			t += 3
+			if ia == ib or ib == ic or ia == ic:
+				continue
+			for e in [[ia, ib, ic], [ib, ic, ia], [ic, ia, ib]]:
+				var key := mini(int(e[0]), int(e[1])) * 4194304 + maxi(int(e[0]), int(e[1]))
+				cnt[key] = int(cnt.get(key, 0)) + 1
+				if not third.has(key):
+					third[key] = int(e[2])
+	for key in cnt:
+		if int(cnt[key]) != 1:
+			continue
+		var a: Vector3 = pos[int(key) / 4194304]
+		var b: Vector3 = pos[int(key) % 4194304]
+		var c: Vector3 = pos[int(third[key])]
+		var e := b - a
+		var L := e.length()
+		if L < 0.0005:
+			continue
+		e /= L
+		var w := c - a
+		var inward := w - e * w.dot(e)
+		if inward.length() < 1e-7:
+			continue
+		inward = inward.normalized()
+		out.append_array([a, b, e.cross(inward).normalized(), -inward])
+	info["gk_boundary"] = out
+	return out
+
+
+static func _gk_on_aabb(p: Vector3, b: AABB, tol: float) -> bool:
+	for k in 3:
+		if absf(p[k] - b.position[k]) <= tol or absf(p[k] - b.end[k]) <= tol:
+			return true
+	return false
+
+
+# Outline samples of a mesh: [p, n, d, (length, 0, 0)] every 25 cm along each
+# boundary edge that lies on the mesh's bounds (2 cm).
+func _gk_outline(mesh: Mesh, info: Dictionary) -> PackedVector3Array:
+	if info.has("gk_outline"):
+		return info["gk_outline"]
+	var bnd := _gk_boundary(mesh, info)
+	var out := PackedVector3Array()
+	var maab := mesh.get_aabb()
+	for k in range(0, bnd.size(), 4):
+		var a: Vector3 = bnd[k]
+		var b: Vector3 = bnd[k + 1]
+		var L := a.distance_to(b)
+		var ns := maxi(1, ceili(L / GK_EDGE_SPACING))
+		for s in ns:
+			var p := a.lerp(b, (float(s) + 0.5) / float(ns))
+			if not _gk_on_aabb(p, maab, 0.02):
+				continue
+			out.append_array([p, bnd[k + 2], bnd[k + 3], Vector3(L / float(ns), 0, 0)])
+	info["gk_outline"] = out
+	return out
+
+
+# Covered: another surface continues the edge's sheet within 4 or 7 mm (a
+# ray across the sheet's plane just beyond the edge), or a face meets or
+# abuts the edge (rays along d from 3 mm inside to 7 mm beyond, 2 mm to
+# either side of the sheet: a side wall turning the corner, a neighbour's
+# end face). Any face counts, the piece's own too.
+# (The query is set up once per stage: every gap ray is two-sided over all
+# solid layers and excludes nothing, so only the end points change.)
+func _gk_covered(p: Vector3, n: Vector3, d: Vector3) -> bool:
+	var q := p + d * 0.004
+	var n6 := n * 0.006
+	_rays += 1
+	_q.from = q - n6
+	_q.to = q + n6
+	if not _state.intersect_ray(_q).is_empty():
+		return true
+	var n2 := n * 0.002
+	_rays += 2
+	_q.from = p + n2 - d * 0.003
+	_q.to = p + n2 + d * 0.007
+	if not _state.intersect_ray(_q).is_empty():
+		return true
+	_q.from = p - n2 - d * 0.003
+	_q.to = p - n2 + d * 0.007
+	if not _state.intersect_ray(_q).is_empty():
+		return true
+	q = p + d * 0.007
+	_rays += 1
+	_q.from = q - n6
+	_q.to = q + n6
+	return not _state.intersect_ray(_q).is_empty()
+
+
+# Every gap-detector ray: two-sided, all solid layers, nothing excluded.
+func _gk_query() -> void:
+	_q.collision_mask = MASK_SOLID
+	_q.hit_back_faces = true
+	if _ex_set:
+		_ex.clear()
+		_q.exclude = _ex
+		_ex_set = false
+
+
+# A coplanar continuation a little further out: a seam (within 4 cm) or a
+# bridged gap (within 35 cm). Returns the width, -1 without one.
+func _gk_seam_width(p: Vector3, n: Vector3, d: Vector3) -> float:
+	for w in [0.008, 0.012, 0.018, 0.025, 0.035, 0.05, 0.075, 0.1, 0.14, 0.19, 0.25, 0.35]:
+		var q := p + d * float(w)
+		if not _ray(q - n * 0.006, q + n * 0.006, MASK_SOLID, [], true).is_empty():
+			return float(w)
+	return -1.0
+
+
+# What lies just beyond an open edge at p (outward d) seen from eye e: the
+# reveal depth (along the sheet normal n when it is within 0.6 m), 50 when
+# the reveal is the ground, 99 when nothing is within 2 m, -1 when blocked in
+# front. [depth, hit instance].
+func _gk_beyond(e: Vector3, p: Vector3, d: Vector3, n: Vector3) -> Array:
+	var v := (p - e).normalized()
+	var dp := d - v * d.dot(v)
+	if dp.length() < 0.2:
+		dp = d
+	var b := p + dp.normalized() * 0.02
+	var dist := (p - e).length()
+	var dir := (b - e).normalized()
+	var hit := _ray(e, e + dir * (dist + 2.0), MASK_SOLID, [], true)
+	if hit.is_empty():
+		return [99.0, -1]
+	var hp: Vector3 = hit["position"]
+	var t := (hp - e).length()
+	var hi := _hit_inst(hit)
+	if t < dist - 0.005:
+		return [-1.0, hi]
+	if absf((hit["normal"] as Vector3).y) > 0.7 and hp.y < _gk_floor_y + 0.35 and t - dist <= 0.6:
+		return [50.0, hi]
+	if t - dist <= 0.6:
+		return [maxf(absf((hp - p).dot(n)), 0.0), hi]
+	return [t - dist, hi]
+
+
+func _gk_sheet(ab: AABB) -> bool:
+	var dims := [ab.size.x, ab.size.y, ab.size.z]
+	dims.sort()
+	var hmax := maxf(ab.size.x, ab.size.z)
+	return (ab.size.y >= 1.0 and hmax >= 0.8) or (hmax >= 0.8 and ab.size.y <= 1.2 and float(dims[0]) <= 0.6) or (ab.size.y >= 1.5 and hmax <= 0.8)
+
+
+func _scan_exposed_edges() -> Dictionary:
+	_gk_setup()
+	var pts := PackedVector3Array()
+	var lens := PackedFloat32Array()
+	var steps := PackedFloat32Array()
+	var owners := PackedInt32Array()
+	var eyes_at := PackedVector3Array()
+	var hits := PackedInt32Array()
+	var total := 0
+	var done := 0
+	var samples := 0
+	var uncovered := 0
+	var inside := 0
+	# Band pieces first (they confirm band_continuity and warn), then piers
+	# and the rest, then wall modules: a budget stop leaves the walls.
+	var order: Array = []
+	for rec in _inst:
+		var role := String(rec["role"])
+		if not bool(rec["in"]) or (role != "wall" and role != "struct"):
+			continue
+		# Facade structure only: walls, bands, piers and corners, and anything
+		# a pack files as a facade (boards or a crate leaning on a wall are not).
+		var btype := _gk_band_type(rec)
+		var pname := String(rec["piece"]).to_lower()
+		var facade_cat := _str((rec["man"] as Dictionary).get("category")).to_lower().begins_with("facade")
+		if role == "struct" and btype == "" and not facade_cat and not (pname.contains("pier") or pname.contains("corner") or pname.contains("pilaster") or pname.contains("column")):
+			continue
+		order.append([0 if btype != "" else (2 if role == "wall" else 1), rec])
+	order.sort_custom(func(a, b): return int(a[0]) < int(b[0]))
+	for item in order:
+		var rec: Dictionary = item[1]
+		var ab: AABB = rec["waabb"]
+		if ab.size.y < 0.25 and ab.end.y < _gk_floor_y + 0.5 and maxf(ab.size.x, ab.size.z) > 1.5:
+			continue
+		if ab.size.length() < 0.15 or not _gk_sheet(ab):
+			continue
+		var xf: Transform3D = rec["xf"]
+		if xf.basis.y.normalized().y < 0.98:
+			continue
+		var li := _gk_line_of(ab, 0.8)
+		if li < 0 or ((_gk_lines[li] as Dictionary)["sides"] as Array).is_empty():
+			continue
+		total += 1
+		if _over():
+			continue
+		done += 1
+		# A facade seen from one side only: samples behind its back face, away
+		# from the line's ends (where a side street may see them), are inside.
+		var ln: Dictionary = _gk_lines[li]
+		var lsides: Array = ln["sides"]
+		var lax: int = ln["ax"]
+		var lth := 2 - lax
+		var back := INF
+		if lsides.size() == 1:
+			back = float(ln["tmin"]) - 0.02 if int(lsides[0]) == 1 else -(float(ln["tmax"]) + 0.02)
+		for m in (rec["meshes"] as Array):
+			var mesh: Mesh = m[1]
+			var info: Dictionary = _mesh_info.get(mesh.get_instance_id(), {})
+			if info.is_empty():
+				continue
+			var ol := _gk_outline(mesh, info)
+			var mxf: Transform3D = m[2]
+			var bas := mxf.basis
+			var sc := bas.get_scale().x
+			for k in range(0, ol.size(), 4):
+				samples += 1
+				var p: Vector3 = mxf * ol[k]
+				if back < INF and p[lax] > float(ln["lo"]) + 0.5 and p[lax] < float(ln["hi"]) - 0.5:
+					var depth_behind: float = (back - p[lth]) if int(lsides[0]) == 1 else (p[lth] + back)
+					if depth_behind > 0.0:
+						inside += 1
+						continue
+				var n: Vector3 = (bas * ol[k + 1]).normalized()
+				var d: Vector3 = (bas * ol[k + 2]).normalized()
+				_gk_query()
+				if _gk_covered(p, n, d):
+					continue
+				uncovered += 1
+				var ve := _gk_visible_cached(p)
+				if ve.is_empty():
+					continue
+				var best := [-1.0, Vector3.ZERO, -1]
+				for e in ve:
+					var bs := _gk_beyond(e, p, d, n)
+					var st: float = bs[0]
+					if st >= 0.02 and st <= 0.6:
+						best = [st, e, bs[1]]
+						break
+					if st > float(best[0]):
+						best = [st, e, bs[1]]
+				if float(best[0]) < 0.0:
+					continue
+				var sw := _gk_seam_width(p, n, d)
+				pts.append(p)
+				lens.append(ol[k + 3].x * sc)
+				steps.append((-2.0 if sw <= 0.04 else -3.0) if sw > 0.0 else float(best[0]))
+				owners.append(int(rec["i"]))
+				eyes_at.append(best[1])
+				hits.append(int(best[2]))
+	_count("exposed_edge", done, total)
+	var flags := _gk_flags(pts, lens, steps, owners, eyes_at, hits)
+	return {"flags": flags, "stats": {"pieces": total, "samples": samples, "inside": inside, "uncovered": uncovered, "exposed": pts.size(), "vis_cells": _gk_vis_cache.size()}}
+
+
+# Exposed samples -> clusters (25 cm links, one piece each), longest first:
+# [owner, class, length, samples, centre, min, max, deepest reveal, gap,
+#  seam, bridge, sky, far, an eye that sees it, what the reveal hit].
+func _gk_flags(pts: PackedVector3Array, lens: PackedFloat32Array, steps: PackedFloat32Array, owners: PackedInt32Array, eyes_at: PackedVector3Array, hits: PackedInt32Array) -> Array:
+	var par := PackedInt32Array()
+	par.resize(pts.size())
+	for i in pts.size():
+		par[i] = i
+	var grid: Dictionary = {}
+	for i in pts.size():
+		var c := Vector3i((pts[i] / 0.25).floor())
+		if not grid.has(c):
+			grid[c] = PackedInt32Array()
+		var arr: PackedInt32Array = grid[c]
+		arr.append(i)
+		grid[c] = arr
+	for c in grid:
+		for dx in [-1, 0, 1]:
+			for dy in [-1, 0, 1]:
+				for dz in [-1, 0, 1]:
+					var c2: Vector3i = (c as Vector3i) + Vector3i(dx, dy, dz)
+					if not grid.has(c2):
+						continue
+					for i in (grid[c] as PackedInt32Array):
+						for j in (grid[c2] as PackedInt32Array):
+							if j <= i or owners[i] != owners[j]:
+								continue
+							if pts[i].distance_to(pts[j]) <= 0.25:
+								var ri := _gk_find(par, i)
+								var rj := _gk_find(par, j)
+								if ri != rj:
+									par[ri] = rj
+	var groups: Dictionary = {}
+	for i in pts.size():
+		var g := _gk_find(par, i)
+		if not groups.has(g):
+			groups[g] = []
+		(groups[g] as Array).append(i)
+	var flags: Array = []
+	for g in groups:
+		var ids: Array = groups[g]
+		var L := 0.0
+		var c := Vector3.ZERO
+		var bmin: Vector3 = pts[ids[0]]
+		var bmax: Vector3 = pts[ids[0]]
+		var ngap := 0
+		var nseam := 0
+		var nbridge := 0
+		var nsky := 0
+		var nfar := 0
+		var smax := 0.0
+		for i in ids:
+			L += lens[i]
+			c += pts[i]
+			bmin = bmin.min(pts[i])
+			bmax = bmax.max(pts[i])
+			var st: float = steps[i]
+			if st == -2.0:
+				nseam += 1
+			elif st == -3.0:
+				nbridge += 1
+			elif st >= 0.02 and st <= 0.6:
+				ngap += 1
+				smax = maxf(smax, st)
+			elif st >= 98.0:
+				nsky += 1
+			else:
+				nfar += 1
+		if L < 0.05:
+			continue
+		c /= float(ids.size())
+		var cls := "mixed"
+		if nseam * 2 >= ids.size():
+			cls = "seam"
+		elif nbridge * 2 >= ids.size():
+			cls = "bridge"
+		elif (ngap + nbridge + nseam) * 2 >= ids.size():
+			cls = "gap"
+		elif nsky * 2 >= ids.size():
+			cls = "sky"
+		elif nfar * 2 >= ids.size():
+			cls = "far"
+		var mid: int = ids[ids.size() / 2]
+		flags.append([owners[ids[0]], cls, snappedf(L, 0.01), ids.size(), _a3(c), _a3(bmin), _a3(bmax), snappedf(smax, 0.001), ngap, nseam, nbridge, nsky, nfar, _a3(eyes_at[mid], 0.01), hits[mid]])
+	flags.sort_custom(func(a, b): return float(a[2]) > float(b[2]))
+	if flags.size() > 400:
+		flags.resize(400)
+	return flags
+
+
+# ---------------------------------------------------------------------------
+# open_fixture_end: the open ends of pipe, duct and gutter pieces (open
+# boundary loops on the mesh's bounds, cached per mesh) that nothing covers
+# within a sleeve tolerance and that walkable space sees into. Terminal
+# pieces (outlets, funnels, vents, caps, ...) are open by design.
+# ---------------------------------------------------------------------------
+
+# Open ends of a mesh without pack ports: its boundary edges chained into
+# loops; a loop counts when every vertex lies on one face of the mesh's
+# bounds (2% of its size, at least 1 cm), it encloses at least half of its
+# bounding rectangle (a rim, not a seam along a side) and spans 3 cm or
+# more. [centre, outward, (radius, vertices, 0)] per end, cached per mesh.
+func _gk_mesh_ends(mesh: Mesh, info: Dictionary) -> PackedVector3Array:
+	if info.has("gk_ends"):
+		return info["gk_ends"]
+	var bnd := _gk_boundary(mesh, info)
+	var maab := mesh.get_aabb()
+	var by_pt: Dictionary = {}
+	var nedge := bnd.size() / 4
+	for k in nedge:
+		for q in [bnd[k * 4], bnd[k * 4 + 1]]:
+			var key := Vector3i(((q as Vector3) * GK_WELD).round())
+			if not by_pt.has(key):
+				by_pt[key] = []
+			(by_pt[key] as Array).append(k)
+	var used := PackedByteArray()
+	used.resize(nedge)
+	var out := PackedVector3Array()
+	for k0 in nedge:
+		if used[k0] == 1:
+			continue
+		var loop := PackedVector3Array()
+		var k := k0
+		var cur: Vector3 = bnd[k * 4 + 1]
+		used[k] = 1
+		loop.append(bnd[k * 4])
+		var guard := 0
+		while guard < 4096:
+			guard += 1
+			loop.append(cur)
+			var nxt := -1
+			for e in (by_pt.get(Vector3i((cur * GK_WELD).round()), []) as Array):
+				if used[int(e)] == 0:
+					nxt = int(e)
+					break
+			if nxt < 0:
+				break
+			used[nxt] = 1
+			var a: Vector3 = bnd[nxt * 4]
+			var b: Vector3 = bnd[nxt * 4 + 1]
+			cur = b if Vector3i((a * GK_WELD).round()) == Vector3i((cur * GK_WELD).round()) else a
+		if loop.size() < 4:
+			continue
+		var face := -1
+		for ax in 3:
+			for side in 2:
+				var plane: float = maab.end[ax] if side == 1 else maab.position[ax]
+				var tol := maxf(0.01, maab.size[ax] * 0.02)
+				var all_on := true
+				for q in loop:
+					if absf(q[ax] - plane) > tol:
+						all_on = false
+						break
+				if all_on:
+					face = ax * 2 + side
+		if face < 0:
+			continue
+		var fa := face / 2
+		var centre := Vector3.ZERO
+		var lo := loop[0]
+		var hi := loop[0]
+		for q in loop:
+			centre += q
+			lo = lo.min(q)
+			hi = hi.max(q)
+		centre /= float(loop.size())
+		# Enclosed area (Newell) against the loop's bounding rectangle.
+		var area := Vector3.ZERO
+		for i in loop.size():
+			var p0: Vector3 = loop[i]
+			var p1: Vector3 = loop[(i + 1) % loop.size()]
+			area += p0.cross(p1)
+		var ext := hi - lo
+		var rect := 1.0
+		for kk in 3:
+			if kk != fa:
+				rect *= maxf(ext[kk], 1e-6)
+		var r := 0.0
+		for q in loop:
+			r = maxf(r, (q as Vector3).distance_to(centre))
+		# A rim, not a bolt hole in a flange: at least a quarter of the face.
+		var face_min := INF
+		for kk in 3:
+			if kk != fa:
+				face_min = minf(face_min, maab.size[kk])
+		if r < 0.015 or r < 0.25 * face_min or absf(area[fa]) * 0.5 < 0.5 * rect:
+			continue
+		var nrm := Vector3.ZERO
+		nrm[fa] = 1.0 if face % 2 == 1 else -1.0
+		out.append_array([centre, nrm, Vector3(r, loop.size(), 0)])
+	info["gk_ends"] = out
+	return out
+
+
+func _scan_fixture_ends() -> Dictionary:
+	_gk_setup()
+	if not _gk_sphere.is_valid():
+		_gk_sphere = PhysicsServer3D.sphere_shape_create()
+		_shapes.append(_gk_sphere)
+		_gk_sphere_q = PhysicsShapeQueryParameters3D.new()
+		_gk_sphere_q.collide_with_areas = false
+		_gk_sphere_q.collision_mask = MASK_SOLID
+		_gk_sphere_q.shape_rid = _gk_sphere
+	var out: Array = []
+	var dbg: Array = []
+	var total := 0
+	var done := 0
+	var ends := 0
+	for rec in _inst:
+		var role := String(rec["role"])
+		if not bool(rec["in"]) or (role != "mount" and role != "prop" and role != "struct"):
+			continue
+		var name := String(rec["piece"]).to_lower()
+		if _re_fixture.search(name) == null or _re_terminal.search(name) != null:
+			continue
+		total += 1
+		if _over():
+			continue
+		done += 1
+		var ex: Array[RID] = []
+		for r in (rec["bodies"] as Array):
+			ex.append(r)
+		# The pack's measured ports (in the part's frame = its root), else the
+		# open loops of each mesh: [world centre, outward, radius].
+		var cands: Array = []
+		var man: Dictionary = rec["man"]
+		var ports: Array = man["ports"] if typeof(man.get("ports")) == TYPE_ARRAY else []
+		if not ports.is_empty():
+			var rxf: Transform3D = rec["xf"]
+			for pt in ports:
+				cands.append([rxf * (pt[0] as Vector3), (rxf.basis * (pt[1] as Vector3)).normalized(), float(pt[2]) * 0.5 * rxf.basis.get_scale().x])
+		else:
+			for m in (rec["meshes"] as Array):
+				var mesh: Mesh = m[1]
+				var info: Dictionary = _mesh_info.get(mesh.get_instance_id(), {})
+				if info.is_empty():
+					continue
+				var mxf: Transform3D = m[2]
+				var ol := _gk_mesh_ends(mesh, info)
+				for k in range(0, ol.size(), 3):
+					cands.append([mxf * ol[k], (mxf.basis * ol[k + 1]).normalized(), ol[k + 2].x * mxf.basis.get_scale().x])
+		for cd in cands:
+			ends += 1
+			var c: Vector3 = cd[0]
+			var o: Vector3 = cd[1]
+			var r: float = cd[2]
+			# Sleeve tolerance: anything just beyond the opening, out to its
+			# radius plus 2.5 cm (the next section, a coupler sleeve around the
+			# joint, the wall the end runs into).
+			PhysicsServer3D.shape_set_data(_gk_sphere, 0.5 * r + 0.025)
+			_gk_sphere_q.transform = Transform3D(Basis(), c + o * (0.5 * r))
+			_gk_sphere_q.exclude = ex
+			var cover := _state.intersect_shape(_gk_sphere_q, 1)
+			if not cover.is_empty():
+				if dbg.size() < 120:
+					dbg.append([int(rec["i"]), _a3(c), _a3(o, 0.01), snappedf(r, 0.001), "covered", int(_body_inst.get((cover[0]["rid"] as RID).get_id(), -1))])
+				continue
+			# Seen from the open side or beside it (a downpipe ending in mid-air
+			# shows its cut end from eye height): within 107 deg of its axis.
+			var ve := _gk_visible_eyes(c + o * 0.05, 1, 40, o, -0.3)
+			if ve.is_empty():
+				if dbg.size() < 120:
+					dbg.append([int(rec["i"]), _a3(c), _a3(o, 0.01), snappedf(r, 0.001), "unseen", -1])
+				continue
+			out.append([int(rec["i"]), _a3(c), _a3(o, 0.001), snappedf(r, 0.001), _a3(ve[0], 0.01), "ports" if not ports.is_empty() else "loops"])
+			if out.size() >= 200:
+				break
+	_count("open_fixture_end", done, total)
+	return {"ends": out, "dropped": dbg, "stats": {"pieces": total, "ends": ends}}
+
+
+# ---------------------------------------------------------------------------
+# depth_step (C): perpendicular ray rows across each facade line's visible
+# sides, at the band levels (from the band pieces on the line, else a 2 m
+# depth profile) and every 1.25 m between them; runs of recessed or proud
+# depth: band recesses and missing runs, seams, proud modules, holes. One
+# look-level row per merged run that walkable space sees.
+# ---------------------------------------------------------------------------
+
+func _scan_depth_steps() -> Dictionary:
+	_gk_setup()
+	var raw: Array = []
+	var rays_before := _rays
+	var band_levels: Dictionary = {}
+	for rec in _inst:
+		var role := String(rec["role"])
+		if role != "wall" and role != "struct":
+			continue
+		if _gk_band_type(rec) == "":
+			continue
+		var ab: AABB = rec["waabb"]
+		if ab.size.y >= 1.2 or maxf(ab.size.x, ab.size.z) < 0.5:
+			continue
+		var li := _gk_line_of(ab, 0.6)
+		if li < 0:
+			continue
+		if not band_levels.has(li):
+			band_levels[li] = []
+		(band_levels[li] as Array).append([ab.position.y, ab.end.y])
+	# The row plan per visible line side; every band row of every line runs
+	# before any wall row (a budget stop leaves the wall rows).
+	var band_rows: Array = []
+	var wall_rows: Array = []
+	for li in _gk_lines.size():
+		var ln: Dictionary = _gk_lines[li]
+		var in_scope := false
+		for pi in (ln["pieces"] as Array):
+			if bool((_inst[int(pi)] as Dictionary)["in"]):
+				in_scope = true
+				break
+		if not in_scope:
+			continue
+		for sd in (ln["sides"] as Array):
+			for row in _depth_rows(li, ln, int(sd), band_levels.get(li, []) as Array):
+				if String(row["kind"]) == "band":
+					band_rows.append(row)
+				else:
+					wall_rows.append(row)
+	var total := band_rows.size() + wall_rows.size()
+	var done := 0
+	_q.collision_mask = MASK_SOLID
+	_q.hit_back_faces = true
+	_ex.clear()
+	_q.exclude = _ex
+	_ex_set = false
+	for row in band_rows + wall_rows:
+		if _over():
+			break
+		done += 1
+		_depth_row(row, raw)
+	_count("depth_step", done, total)
+	var merged := _gk_merge_c(raw)
+	return {"flags": merged, "stats": {"rows": total, "band_rows": band_rows.size(), "raw": raw.size(), "rays": _rays - rays_before}}
+
+
+# One line side's rows: each band level at mid height (and a quarter up when
+# 30 cm or taller), 3 cm steps; wall rows every 1.25 m between the bands, 5 cm
+# steps. Band levels come from the band pieces on the line, else from a depth
+# profile every 2 m (heights where 30% of the positions stand 1.5 cm or more
+# proud).
+func _depth_rows(li: int, ln: Dictionary, s: int, levels: Array) -> Array:
+	var ax: int = ln["ax"]
+	var th := 2 - ax
+	var D := 1.2
+	var face: float = float(ln["tmax"]) if s == 1 else float(ln["tmin"])
+	var o_th := face + float(s) * D
+	var t_th := face - float(s) * D
+	var y0: float = ln["y0"]
+	var y1: float = float(ln["y1"]) + 0.8
+	var lo: float = ln["lo"]
+	var hi: float = ln["hi"]
+	var base := {"li": li, "ax": ax, "th": th, "face": face, "o_th": o_th, "t_th": t_th, "s": s, "lo": lo, "hi": hi, "D": D}
+	var bands: Array = []
+	if not levels.is_empty():
+		levels.sort_custom(func(a, b): return float(a[0]) < float(b[0]))
+		for lv in levels:
+			if not bands.is_empty() and float(lv[0]) <= float(bands[-1][1]) + 0.02:
+				bands[-1][1] = maxf(float(bands[-1][1]), float(lv[1]))
+			else:
+				bands.append([float(lv[0]), float(lv[1])])
+	else:
+		var prof: Array = []
+		var sp := lo + 0.2537
+		while sp < hi - 0.1:
+			prof.append(sp)
+			sp += 2.0
+		var nh := int((y1 - y0) / 0.02)
+		if prof.is_empty() or nh < 5:
+			return []
+		var depth_by_h: Array = []
+		var all_d := PackedFloat32Array()
+		for h in nh:
+			var row := PackedFloat32Array()
+			for spos in prof:
+				var o := Vector3.ZERO
+				o[ax] = float(spos)
+				o[th] = o_th
+				o.y = y0 + 0.0113 + h * 0.02
+				var t := o
+				t[th] = t_th
+				var hit := _ray(o, t, MASK_SOLID, [], true)
+				var dd: float = 9.0 if hit.is_empty() else (hit["position"] as Vector3).distance_to(o) - D
+				row.append(dd)
+				if dd < 2.0:
+					all_d.append(dd)
+			depth_by_h.append(row)
+		if all_d.size() < 10:
+			return []
+		all_d.sort()
+		var wall_d: float = all_d[int(all_d.size() * 0.6)]
+		var h := 0
+		while h < nh:
+			var hj := h - 1
+			while hj + 1 < nh:
+				var r2: PackedFloat32Array = depth_by_h[hj + 1]
+				var c2 := 0
+				for dd in r2:
+					if dd < wall_d - 0.015 and dd > wall_d - 0.6:
+						c2 += 1
+				if c2 * 10 < r2.size() * 3:
+					break
+				hj += 1
+			if hj >= h:
+				var by0 := y0 + h * 0.02
+				var by1 := y0 + (hj + 1) * 0.02
+				if by1 - by0 >= 0.04 and by1 - by0 <= 1.2:
+					bands.append([by0, by1])
+				h = hj + 1
+			else:
+				h += 1
+	var rows: Array = []
+	for b in bands:
+		var bh: float = float(b[1]) - float(b[0])
+		var r := base.duplicate()
+		r.merge({"y": (float(b[0]) + float(b[1])) * 0.5, "kind": "band", "step": 0.03})
+		rows.append(r)
+		if bh >= 0.3:
+			var r2 := base.duplicate()
+			r2.merge({"y": float(b[0]) + bh * 0.25, "kind": "band", "step": 0.03})
+			rows.append(r2)
+	var wy := y0 + 0.2571
+	while wy < y1 - 0.1:
+		var inband := false
+		for b in bands:
+			if wy >= float(b[0]) - 0.03 and wy <= float(b[1]) + 0.03:
+				inband = true
+		if not inband:
+			var r3 := base.duplicate()
+			r3.merge({"y": wy, "kind": "wall", "step": 0.05})
+			rows.append(r3)
+		wy += C_WALL_ROW
+	return rows
+
+
+func _depth_row(row: Dictionary, raw: Array) -> void:
+	var ax: int = row["ax"]
+	var th: int = row["th"]
+	var step: float = row["step"]
+	var lo: float = row["lo"]
+	var hi: float = row["hi"]
+	var D: float = row["D"]
+	var s_lo := lo + 0.0037
+	var npos := int((hi - s_lo) / step) + 1
+	var dep := PackedFloat32Array()
+	dep.resize(npos)
+	var vals := PackedFloat32Array()
+	var o := Vector3.ZERO
+	o[th] = float(row["o_th"])
+	o.y = float(row["y"])
+	var t := o
+	t[th] = float(row["t_th"])
+	for k in npos:
+		o[ax] = s_lo + k * step
+		t[ax] = o[ax]
+		_q.from = o
+		_q.to = t
+		var hit := _state.intersect_ray(_q)
+		dep[k] = 9.0 if hit.is_empty() else (hit["position"] as Vector3).distance_to(o) - D
+		if dep[k] < 2.0:
+			vals.append(dep[k])
+	_rays += npos
+	if vals.size() < 10:
+		return
+	vals.sort()
+	var ref: float = vals[int(vals.size() * 0.5)]
+	var rf: Array = []
+	_gk_scan_runs(rf, dep, ref, row, ax, th, float(row["face"]), int(row["s"]), s_lo, step, lo, hi, int(row["li"]))
+	if String(row["kind"]) == "band":
+		# A periodic row (sills, lintels, window heads) is not a band.
+		var nrec := 0
+		for f in rf:
+			if String(f["kind"]).begins_with("band"):
+				nrec += 1
+		if nrec > maxi(3, int((hi - lo) / 3.5)):
+			return
+	raw.append_array(rf)
+
+
+func _gk_scan_runs(flags: Array, dep: PackedFloat32Array, ref: float, row: Dictionary, ax: int, th: int, face: float, s: int, s_lo: float, step: float, lo: float, hi: float, li: int) -> void:
+	var n := dep.size()
+	var k := 0
+	var band := String(row["kind"]) == "band"
+	while k < n:
+		var rel := dep[k] - ref
+		var rec := rel >= 0.03
+		var proud := rel <= -0.015 and rel >= -0.10
+		if not rec and not proud:
+			k += 1
+			continue
+		var j := k
+		if rec:
+			while j + 1 < n and dep[j + 1] - ref >= 0.03:
+				j += 1
+		else:
+			while j + 1 < n and dep[j + 1] - ref <= -0.015 and dep[j + 1] - ref >= -0.10:
+				j += 1
+		var w := (j - k + 1) * step
+		var flush_l := k > 0 and absf(dep[k - 1] - ref) < 0.015
+		var flush_r := j < n - 1 and absf(dep[j + 1] - ref) < 0.015
+		var s0 := s_lo + k * step
+		var s1 := s_lo + (j + 1) * step
+		var inside := s0 >= lo - 0.02 and s1 <= hi + 0.02
+		var mx := 0.0
+		for q in range(k, j + 1):
+			mx = maxf(mx, dep[q] - ref)
+		var kind := ""
+		# A miss (9.0: nothing within 1.2 m behind the face) is either an
+		# opening right through or sky over a lower roof; _gk_merge_c keeps it
+		# only where the facade bounds it (open: true).
+		var open := mx >= 2.0
+		if rec and band:
+			if w <= 1.5 and (flush_l or flush_r) and mx <= 0.30:
+				kind = "band_recess" if (flush_l and flush_r) else "band_end_recess"
+			elif w > 1.5 and mx <= 0.30 and (flush_l or flush_r):
+				kind = "band_missing_run"
+			elif (flush_l or flush_r) and mx > 0.30 and w >= 0.06 and not open:
+				kind = "band_through"
+		elif rec:
+			if w <= 0.06 and flush_l and flush_r:
+				kind = "seam"
+			elif w >= 0.9 and mx >= 0.50 and inside:
+				kind = "hole"
+		elif proud and not band:
+			if w >= 0.9 and inside:
+				kind = "proud"
+		if kind != "":
+			var p := Vector3.ZERO
+			p[ax] = (s0 + s1) * 0.5
+			p[th] = face
+			p.y = float(row["y"])
+			flags.append({"kind": kind, "c": p, "s0": s0, "s1": s1, "y": float(row["y"]), "depth": mx, "line": li, "side": s, "w": w, "open": open})
+		k = j + 1
+
+
+# An open hole (rays that find nothing behind the face) is a hole only when
+# the facade bounds it: line pieces reaching its top row on both sides along
+# the line, or a piece above it. Sky over a lower block's roof is not.
+func _gk_bounded(li: int, s0: float, s1: float, y0: float, y1: float) -> bool:
+	var ln: Dictionary = _gk_lines[li]
+	var ax: int = ln["ax"]
+	var left := false
+	var right := false
+	var above := false
+	var mid := (s0 + s1) * 0.5
+	for pi in (ln["pieces"] as Array):
+		var b: AABB = (_inst[int(pi)] as Dictionary)["waabb"]
+		if b.position[ax] <= mid and b.end[ax] >= mid and b.position.y >= y1 - 0.1:
+			above = true
+		if b.position.y > y1 or b.end.y < y1 - 0.05:
+			continue
+		if b.end[ax] >= s0 - 0.15 and b.position[ax] < s0 - 0.05:
+			left = true
+		if b.position[ax] <= s1 + 0.15 and b.end[ax] > s1 + 0.05:
+			right = true
+	return above or (left and right)
+
+
+# Merge runs of one line, side and kind that overlap along the line and lie
+# within one wall-row step (1.3 m) in height; holes and proud runs need two
+# rows; every run must be seen from walkable space. [kind, line, side, s0, s1, y0, y1, rows,
+# depth, centre].
+func _gk_merge_c(raw: Array) -> Array:
+	var out: Array = []
+	for f in raw:
+		var merged := false
+		for o in out:
+			if int(o["line"]) == int(f["line"]) and int(o["side"]) == int(f["side"]) and o["kind"] == f["kind"] and float(f["s0"]) <= float(o["s1"]) + 0.03 and float(f["s1"]) >= float(o["s0"]) - 0.03 and float(f["y"]) >= float(o["y0"]) - C_MERGE_Y and float(f["y"]) <= float(o["y1"]) + C_MERGE_Y:
+				o["s0"] = minf(float(o["s0"]), float(f["s0"]))
+				o["s1"] = maxf(float(o["s1"]), float(f["s1"]))
+				o["y0"] = minf(float(o["y0"]), float(f["y"]))
+				o["y1"] = maxf(float(o["y1"]), float(f["y"]))
+				o["rows"] = int(o["rows"]) + 1
+				o["depth"] = maxf(float(o["depth"]), float(f["depth"]))
+				o["open"] = bool(o["open"]) or bool(f.get("open", false))
+				merged = true
+				break
+		if not merged:
+			out.append({"kind": f["kind"], "line": f["line"], "side": f["side"], "s0": f["s0"], "s1": f["s1"], "y0": f["y"], "y1": f["y"], "rows": 1, "depth": f["depth"], "c": f["c"], "open": bool(f.get("open", false))})
+	var res: Array = []
+	for o in out:
+		if (o["kind"] == "hole" or o["kind"] == "proud") and int(o["rows"]) < 2:
+			continue
+		if o["kind"] == "hole" and bool(o["open"]) and not _gk_bounded(int(o["line"]), float(o["s0"]), float(o["s1"]), float(o["y0"]), float(o["y1"])):
+			continue
+		var ln: Dictionary = _gk_lines[int(o["line"])]
+		var ax: int = ln["ax"]
+		var p: Vector3 = o["c"]
+		p[ax] = (float(o["s0"]) + float(o["s1"])) * 0.5
+		p.y = (float(o["y0"]) + float(o["y1"])) * 0.5
+		if not _gk_point_visible(p, 2 - ax):
+			continue
+		res.append([String(o["kind"]), int(o["line"]), int(o["side"]), snappedf(float(o["s0"]), 0.01), snappedf(float(o["s1"]), 0.01), snappedf(float(o["y0"]), 0.01), snappedf(float(o["y1"]), 0.01), int(o["rows"]), snappedf(float(o["depth"]), 0.001), _a3(p)])
+		if res.size() >= 300:
+			break
+	return res
 
 
 # ---------------------------------------------------------------------------

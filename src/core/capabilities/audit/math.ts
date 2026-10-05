@@ -408,3 +408,81 @@ export function localAxisName(b: readonly number[], v: Vec3): string {
   }) as unknown as Vec3;
   return axisName(local);
 }
+
+// ---------------------------------------------------------------------------
+// Axis-aligned boxes (gap detectors: band runs, corner squares, confirmation)
+// ---------------------------------------------------------------------------
+
+export interface Box {
+  lo: Vec3;
+  hi: Vec3;
+}
+
+export function makeBox(a: Vec3, b: Vec3): Box {
+  return { lo: [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.min(a[2], b[2])], hi: [Math.max(a[0], b[0]), Math.max(a[1], b[1]), Math.max(a[2], b[2])] };
+}
+
+export function growBox(b: Box, g: number): Box {
+  return { lo: [b.lo[0] - g, b.lo[1] - g, b.lo[2] - g], hi: [b.hi[0] + g, b.hi[1] + g, b.hi[2] + g] };
+}
+
+export function boxCenter(b: Box): Vec3 {
+  return [(b.lo[0] + b.hi[0]) / 2, (b.lo[1] + b.hi[1]) / 2, (b.lo[2] + b.hi[2]) / 2];
+}
+
+/** Overlap of two boxes, or null when they do not overlap (touching counts). */
+export function boxIntersection(a: Box, b: Box): Box | null {
+  const lo: Vec3 = [Math.max(a.lo[0], b.lo[0]), Math.max(a.lo[1], b.lo[1]), Math.max(a.lo[2], b.lo[2])];
+  const hi: Vec3 = [Math.min(a.hi[0], b.hi[0]), Math.min(a.hi[1], b.hi[1]), Math.min(a.hi[2], b.hi[2])];
+  if (lo[0] > hi[0] || lo[1] > hi[1] || lo[2] > hi[2]) return null;
+  return { lo, hi };
+}
+
+/** Shortest distance between two boxes (0 when they touch or overlap). */
+export function boxDistance(a: Box, b: Box): number {
+  let s = 0;
+  for (let k = 0; k < 3; k++) {
+    const d = a.hi[k]! < b.lo[k]! ? b.lo[k]! - a.hi[k]! : b.hi[k]! < a.lo[k]! ? a.lo[k]! - b.hi[k]! : 0;
+    s += d * d;
+  }
+  return Math.sqrt(s);
+}
+
+/**
+ * Share (0-1) of `square`'s XZ footprint that box `a` covers, when their
+ * height ranges overlap. Two band pieces that meet only at the corner's edge
+ * (they "touch at a point" seen from above) cover none of the corner square
+ * out in front of both.
+ */
+export function xzCover(a: Box, square: Box): number {
+  if (a.hi[1] < square.lo[1] || a.lo[1] > square.hi[1]) return 0;
+  const ox = Math.min(a.hi[0], square.hi[0]) - Math.max(a.lo[0], square.lo[0]);
+  const oz = Math.min(a.hi[2], square.hi[2]) - Math.max(a.lo[2], square.lo[2]);
+  if (ox <= 0 || oz <= 0) return 0;
+  return (ox * oz) / Math.max((square.hi[0] - square.lo[0]) * (square.hi[2] - square.lo[2]), 1e-9);
+}
+
+/** The band-height box a gap or an end of a band run spans: [a, b] along the
+ *  band's axis, 10 cm deep around its plane c, the middle half of its height. */
+export function bandSpanBox(ax: 0 | 2, a: number, b: number, c: number, y0: number, y1: number): Box {
+  const th = 2 - ax;
+  const lo: [number, number, number] = [0, y0 + (y1 - y0) * 0.25, 0];
+  const hi: [number, number, number] = [0, y0 + (y1 - y0) * 0.75, 0];
+  lo[ax] = Math.min(a, b);
+  hi[ax] = Math.max(Math.max(a, b), Math.min(a, b) + 0.001);
+  lo[th] = c - 0.05;
+  hi[th] = c + 0.05;
+  return { lo, hi };
+}
+
+/** Merge sorted [lo, hi] intervals that touch or overlap within `join`. */
+export function mergeRuns(items: ReadonlyArray<readonly [number, number]>, join = 0.01): Array<[number, number]> {
+  const sorted = [...items].sort((a, b) => a[0] - b[0]);
+  const runs: Array<[number, number]> = [];
+  for (const [lo, hi] of sorted) {
+    const last = runs[runs.length - 1];
+    if (last && lo <= last[1] + join) last[1] = Math.max(last[1], hi);
+    else runs.push([lo, hi]);
+  }
+  return runs;
+}

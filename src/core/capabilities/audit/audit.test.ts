@@ -77,7 +77,7 @@ describe("input validation: caller text never reaches a scene file or GDScript u
     expect(() => validateAuditArgs({ budget_ms: 60001 })).toThrow(ToolInputError);
     expect(() => validateAuditArgs({ budget_ms: 1500.5 })).toThrow(ToolInputError);
   });
-  it("accepts ordinary values and defaults to all 14 checks", () => {
+  it("accepts ordinary values and defaults to all 18 checks", () => {
     const v = validateAuditArgs({ scenePath: "res://three_houses_v2.tscn", root: "Alley3/Props", manifests: ["res://starter/real-city-alley-kit/pieces.json"] });
     expect(v).toMatchObject({ scenePath: "res://three_houses_v2.tscn", root: "Alley3/Props", minSeverity: "look", offset: 0, limit: 15, render: "none", budgetMs: 3000 });
     expect(v.checks).toEqual([...AUDIT_CHECKS]);

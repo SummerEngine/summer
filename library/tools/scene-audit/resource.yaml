@@ -62,22 +62,26 @@ input_schema:
         type: string
         enum:
           - through_hole
+          - band_continuity
           - floor_gap
           - floating
           - sunken
           - interpenetration
           - insert_host
           - mount_gap
+          - exposed_edge
+          - open_fixture_end
           - orientation
           - uv_stretch
           - duplicate
           - z_fight
+          - depth_step
           - lights
           - transform
           - resource
       minItems: 1
-      maxItems: 14
-      description: Only these checks (default all 14). Fewer checks run faster (insert_host, duplicate, lights, transform and resource need no physics); rerun a check budget_ms left partial on its own.
+      maxItems: 18
+      description: Only these checks (default all 18). Fewer checks run faster (insert_host, duplicate, lights, transform and resource need no physics); rerun a check budget_ms left partial on its own. band_continuity is only an error when exposed_edge or depth_step ran and confirms it.
     root:
       type: string
       description: Report only issues under this node (subtree), e.g. "Alley3". The whole scene is still loaded, so walls and floors outside it count as surroundings.

@@ -68,10 +68,11 @@ describe("summer_world_snapshot", () => {
     vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
 
     const handler = tool(tools(), "summer_world_snapshot");
-    const result = (await handler.handler({ max_nodes: 500 })) as { isError?: boolean };
+    const result = (await handler.handler({ max_nodes: 500, scene_path: "res://main.tscn" })) as { isError?: boolean };
 
     expect(result.isError).toBeUndefined();
-    expect(executeOps).toHaveBeenCalledWith([{ op: "GetWorldSnapshot", max_nodes: 500 }]);
+    // max_nodes caps what is LISTED; the engine snapshot (the diff baseline) stays whole.
+    expect(executeOps).toHaveBeenCalledWith([{ op: "GetWorldSnapshot", scene_path: "res://main.tscn" }]);
   });
 
   it("maps an unknown-op failure (no capability advert) to the engine-too-old hint", async () => {

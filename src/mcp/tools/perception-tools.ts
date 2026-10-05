@@ -8,6 +8,12 @@ import {
   SNAPSHOT_DIFF_FALLBACK,
   WORLD_SNAPSHOT_FALLBACK,
 } from "../../core/capabilities/engine-fallbacks.js";
+import {
+  WORLD_SNAPSHOT_DEFAULT_MAX_NODES,
+  buildWorldSnapshotOp,
+  shapeWorldSnapshot,
+  worldSnapshotInputShape,
+} from "../../core/capabilities/world-snapshot.js";
 
 /**
  * Perception tools. Two signals, two jobs: these ops return STRUCTURED state —
@@ -60,29 +66,17 @@ export function registerPerceptionTools(server: McpServer): void {
 
 THE LOOP: summer_world_snapshot (note snapshot_id) -> mutate (summer_run_script / scene tools / imports) -> summer_snapshot_diff from_id:<that id> -> summer_screenshot. The diff proves exactly what changed structurally; the screenshot proves it looks right. This is how you catch a node that silently vanished on save, a transform that landed at the origin, or an AABB clipping through the floor.
 
-Node lists are path-sorted and truncated DETERMINISTICALLY (result carries total_nodes + truncated) so two snapshots stay diffable without phantom adds/removes. The engine retains the last 8 snapshots per session, keyed by snapshot_id. Use this instead of summer_get_scene_tree when you need transforms/AABBs/fingerprints or a diffable baseline; the tree read remains the hierarchy-shaped view. On an engine build that predates GetWorldSnapshot the result is a structured engine_lacks_op failure naming the fallback.`,
-    {
-      scene_path: z
-        .string()
-        .optional()
-        .describe("Scene to snapshot, e.g. 'res://main.tscn'. Omit for the currently edited scene."),
-      max_nodes: z
-        .number()
-        .int()
-        .positive()
-        .optional()
-        .describe("Node cap (engine default 4000). The result declares truncation — never assume a capped list is complete."),
-    },
-    async ({ scene_path, max_nodes }) =>
+Node lists are path-sorted and truncated DETERMINISTICALLY (result carries total_nodes + truncated) so two snapshots stay diffable without phantom adds/removes. The engine retains the last 8 snapshots per session, keyed by snapshot_id. Use this instead of summer_get_scene_tree when you need transforms/AABBs/fingerprints or a diffable baseline; the tree read remains the hierarchy-shaped view. On an engine build that predates GetWorldSnapshot the result is a structured engine_lacks_op failure naming the fallback.
+
+KEEP IT SMALL (about 250 bytes per node): at most ${WORLD_SNAPSHOT_DEFAULT_MAX_NODES} nodes are listed by default. path_prefix reads one subtree ('House3', 'Alley2/Props'), classes keeps some node classes, fields keeps some per-node fields (e.g. ['pos','aabb']), offset/next_offset page the list. A filtered read adds matched_nodes and matched_counts (class counts of the subtree). counts and total_nodes always describe the whole scene, and snapshot_id always covers the whole scene, so summer_snapshot_diff still sees every change.`,
+    worldSnapshotInputShape,
+    async (args) =>
       withEngine(async (client) => {
         const missing = missingEngineOpResult(client, "GetWorldSnapshot", WORLD_SNAPSHOT_FALLBACK);
         if (missing) return missing;
-        const op: Record<string, unknown> = { op: "GetWorldSnapshot" };
-        if (scene_path) op.scene_path = scene_path;
-        if (max_nodes !== undefined) op.max_nodes = max_nodes;
-        const result = await client.executeOps([op]);
+        const result = await client.executeOps([buildWorldSnapshotOp(args)]);
         return withFailureReasonHint(
-          withOldEngineHint(result, "GetWorldSnapshot", WORLD_SNAPSHOT_FALLBACK),
+          withOldEngineHint(shapeWorldSnapshot(result, args), "GetWorldSnapshot", WORLD_SNAPSHOT_FALLBACK),
           {
             no_scene:
               "No scene is open to snapshot. Call summer_get_project_context, then summer_open_main_scene (or summer_open_scene with a known .tscn path), then retry.",

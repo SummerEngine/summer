@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.3.0",
-      "content_hash": "f584a21e39d24548a8c39012605c3460ddb2800c846d33980d80a93bdbfe87a5",
+      "content_hash": "64104a603f17592a9250def6648dc275871d256b759b564763b61be4d051adb8",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -4493,8 +4493,8 @@
       "id": "tool/batch",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "1fd6143d77e00cb984bd7e919155ff7451bc56d614f70fa3ebd2b0ef6f559198",
-      "summary": "Run multiple engine ops in one call, forwarded verbatim; one undo step unless single-only ops force a split (then one per chunk). Also reaches raw ops.",
+      "content_hash": "ec6fa446a214a15c5562061ba0f39072f698ea69243e4326e4931683bc62f286",
+      "summary": "Run engine ops in one call, verbatim; one undo step unless single-only ops split it. ReparentNode keeps and verifies its subtree; raw ConnectSignal is refused.",
       "use_when": [
         "multi-node builds that should undo as one step (no single-only ops in the list)",
         "reaching engine ops that have no dedicated tool",
@@ -4690,9 +4690,9 @@
     {
       "id": "tool/connect-signal",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "7859bd208995ccb9cf3a6a8220ad97462d90c99a29e2d685854f0374691d0f2f",
-      "summary": "Connect a signal between two nodes; the receiver's script must define the target method.",
+      "version": "1.1.0",
+      "content_hash": "d37c9147743f97b9cd6f3acd1e287ef2af7df20b273c48dca05bb6cb427d236f",
+      "summary": "Connect a signal between two nodes so the saved scene keeps it (CONNECT_PERSIST, verified from the saved .tscn); the receiver should define the target method.",
       "use_when": [
         "wiring events like body_entered, pressed, or timeout",
         "\"when the button is pressed, call my function\"",
@@ -5675,12 +5675,13 @@
     {
       "id": "tool/get-project-context",
       "kind": "tool",
-      "version": "1.1.0",
-      "content_hash": "45b70760d0f94e807f565f5bef5394d4784a21d945d09bc49863ec4a1129978a",
-      "summary": "Bind to the open project and return engine health, project name and path, current and main scene, trimmed settings, the template pin, and memory summary.",
+      "version": "2.0.0",
+      "content_hash": "c8cde53eababe6b12b5e8ca07a189673b09a84d51eea0a844815f7e648465f6e",
+      "summary": "Bind to the open project and return a compact context (project, current and main scene, health summary, template pin, memory, warnings); tree on request.",
       "use_when": [
         "first call in every fresh session, to avoid guessing scene filenames",
-        "deliberately rebinding after the engine switched projects"
+        "deliberately rebinding after the engine switched projects",
+        "reading the open scene's tree, the engine's op list or project settings (include)"
       ],
       "facets": {
         "lifecycle": [
@@ -5851,6 +5852,45 @@
         "filesystem": false,
         "editor_mutation": false,
         "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/grep",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "91ce9352e74d92a9ded787be61d8354ed00fe046fef6633a457cc88a0f9d4209",
+      "summary": "Search project files with a regex (ripgrep through the engine) and get file, line and text per match, with optional context lines and a result cap.",
+      "use_when": [
+        "finding where something is in big project files without reading them whole",
+        "\"which pieces in pieces.json list fits_into?\" / \"every wall_side entry\"",
+        "\"where is _on_door_body_entered defined?\" / \"which scenes use this material?\""
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "file",
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/read-file"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_grep",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
         "credentials": false,
         "publish": false
       }
@@ -6127,13 +6167,14 @@
     {
       "id": "tool/inspect-node",
       "kind": "tool",
-      "version": "1.0.3",
-      "content_hash": "3110cdfd3503e30c208e8627b6ed71a952ad03392971d6ebe45fa6b61d2a281b",
-      "summary": "Get every editable property of a node with current values, Variant types (raw int plus type_name), and resource info.",
+      "version": "1.1.0",
+      "content_hash": "8016dc147b6eac09b87b75f7806b4f996bc80dd8204d29f9e701f40a1d9d75fd",
+      "summary": "A node's editable properties with values, Variant types and resources, or only named fields plus derived transform, global_transform, scene_file_path.",
       "use_when": [
         "before modifying a node, to understand its current state",
         "\"what is the player's speed / position / collision layer?\"",
-        "\"which material and mesh does this MeshInstance3D use?\""
+        "\"which material and mesh does this MeshInstance3D use?\"",
+        "\"where is this piece, locally and in the world, and which scene is it?\" — fields:[transform, global_transform, scene_file_path]"
       ],
       "facets": {
         "lifecycle": [
@@ -6781,12 +6822,14 @@
     {
       "id": "tool/read-file",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "ad9bc70c4e5a8d7df0551e5ecb8804a1cf2540d68792de12f63005cb041c5b36",
-      "summary": "Read a text file from the engine-bound project and return its full-file sha256 receipt for guarded overwrites.",
+      "version": "1.1.0",
+      "content_hash": "fc0272e9535bab6293798e35b8cc08c1febd6a72460e15e0d3867de586e9cd56",
+      "summary": "Read a project text file, a line or byte window of it, or the entries of a .json picked by json_path/keys, with the full-file sha256 receipt.",
       "use_when": [
         "reading project files through the engine",
-        "getting the sha256 required before overwriting a file"
+        "getting the sha256 required before overwriting a file",
+        "reading a file too big for one result in pages (offset/limit)",
+        "\"read the wall_tripple_door_02 entry of pieces.json\" — json_path / keys instead of the whole file"
       ],
       "facets": {
         "lifecycle": [
@@ -6799,6 +6842,13 @@
       },
       "compatibility": {
         "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/grep",
+          "tool/write-file",
+          "tool/replace-text"
+        ]
       },
       "status": "stable",
       "mcp_tool_name": "summer_read_file",
@@ -6998,13 +7048,14 @@
     {
       "id": "tool/replace-node",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "ce00f50ea84d1170be405694a2129b88028ee990522e088155a32e5dd89b0b20",
-      "summary": "Replace a node with a different type or scene, preserving its tree position and children.",
+      "version": "1.1.0",
+      "content_hash": "73ffc0dc80960e12daee3ec03cdf2a92014d259c1092fb23e60b19ef680f6549",
+      "summary": "Replace a node with another scene or type, keeping its parent, index, name, transform and children, and verify the saved scene holds it.",
       "use_when": [
         "swapping a placeholder for a prefab or changing a body type",
         "\"turn this StaticBody3D into a RigidBody3D but keep its children\"",
-        "swapping the placeholder cube for the real prefab in place"
+        "swapping the placeholder cube for the real prefab in place",
+        "swapping one kit piece for another (a wall host for a door host) without hand-copying its transform"
       ],
       "facets": {
         "lifecycle": [
@@ -7017,6 +7068,13 @@
       },
       "compatibility": {
         "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/remove-node",
+          "tool/instantiate-scene",
+          "tool/read-file"
+        ]
       },
       "status": "stable",
       "mcp_tool_name": "summer_replace_node",
@@ -7779,12 +7837,13 @@
     {
       "id": "tool/snap-to-surface",
       "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "9d31db26e206789c059beb1df2e17dbb47adf7fc8bb01a1b10ede534faa17709",
+      "version": "1.1.0",
+      "content_hash": "9c9392a0e57db55186c17a6f623a724c9e13354e9c8e4aadfcb8f520338a5e08",
       "summary": "Move one 3D subject along a world ray until it sits at the requested gap from the first surface (floor, ramp, shelf, table), then save the scene.",
       "use_when": [
         "seating a prop on a floor, ramp, table, or shelf instead of hand-tuning its Y position",
-        "grounding an imported or instantiated model that floats or sinks into its support"
+        "grounding an imported or instantiated model that floats or sinks into its support",
+        "lifting a prop that is sunk a few centimetres into the ground back onto it"
       ],
       "facets": {
         "lifecycle": [
@@ -7807,7 +7866,8 @@
           "tool/test-placement",
           "tool/align-distribute-3d",
           "tool/world-snapshot",
-          "tool/set-prop"
+          "tool/set-prop",
+          "tool/starcast"
         ],
         "skills": [
           "skill/world-building-3d"
@@ -8304,13 +8364,15 @@
     {
       "id": "tool/world-snapshot",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "bd51032ff7c9c717db882528d8419b05183650c4caf839585fb6a55947377dfe",
-      "summary": "Compact structured snapshot of the edited scene (paths, transforms, world AABBs, fingerprints, counts) — the cheap read before and after every mutation batch.",
+      "version": "1.1.0",
+      "content_hash": "b9533ac0b1b6e05292743e65e19e2b94a464df887fdbdbdfc30d0cede0a93ddf",
+      "summary": "Structured scene snapshot (paths, transforms, world AABBs, fingerprints, counts), filterable by subtree, class and field; the read around every mutation.",
       "use_when": [
         "taking a diffable baseline before a mutation batch, or verifying transforms/AABBs/fingerprints after one",
         "\"where exactly is everything in this scene?\" — positions, sizes, bounds",
-        "\"are these two props overlapping?\" / \"is anything floating?\""
+        "\"are these two props overlapping?\" / \"is anything floating?\"",
+        "\"where did the pieces of House3 land?\" — path_prefix + fields:[pos, aabb] reads one subtree cheaply",
+        "counting instances per class in one subtree (matched_counts)"
       ],
       "facets": {
         "lifecycle": [

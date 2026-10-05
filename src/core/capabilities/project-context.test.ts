@@ -213,10 +213,12 @@ describe("buildProjectContext", () => {
     const viaBuilder = await buildProjectContext(client, {}, { summerUpdateNotice: null });
     const viaCli = await dispatchTool("get-project-context", {}, { engine: async () => client as never });
     expect(viaCli).toEqual(viaBuilder);
-    for (const key of ["guidance", "fileEditingGuidance", "projectMemory", "summerUpdateNotice", "mainScene"]) {
+    for (const key of ["guidance", "fileEditingGuidance", "projectMemory", "summerUpdateNotice", "mainScene", "sceneSummary", "omitted"]) {
       expect(viaCli).toHaveProperty(key);
     }
-    const data = (viaCli as { project: { data: Record<string, unknown> } }).project.data;
+    const withSettings = await dispatchTool("get-project-context", { include: ["settings"] }, { engine: async () => client as never });
+    expect(withSettings).toEqual(await buildProjectContext(client, { include: ["settings"] }, { summerUpdateNotice: null }));
+    const data = (withSettings as { project: { data: Record<string, unknown> } }).project.data;
     expect(data.settingsTruncated).toBe(true);
     expect(data.totalSettings).toBe(ENTRIES.length);
   });
@@ -235,5 +237,99 @@ describe("buildProjectContext", () => {
       "audio/buses/default_bus_layout",
       "layer_names/2d_physics/layer_1",
     ]);
+  });
+});
+
+// A realistic first-call engine: a 0.5.66-class capability advert (the 130-op
+// list, navigation targets, runtime control) and a 200-node scene tree — the
+// shape that made the default payload 61 KB in the 2026-10-04 proof run.
+function heavyClient(): ProjectContextClient {
+  const opKinds = Array.from({ length: 130 }, (_, i) => `SomeEngineOperationKind${i}`);
+  const children = Array.from({ length: 200 }, (_, i) => ({
+    name: `Piece_${i}`,
+    class: "StaticBody3D",
+    path: `Alley1/Props/Piece_${i}`,
+    children: [],
+  }));
+  return fakeClient({
+    health: async () => ({
+      ok: true,
+      transportAlive: true,
+      version: "0.5.70",
+      port: 6550,
+      pid: 95936,
+      instanceId: "inst-1",
+      projectIdHash: "a".repeat(64),
+      project_name: "Hidden Alley sample",
+      project_path: null,
+      liveInstances: 1,
+      mainAliveMs: 12,
+      queueDepth: 0,
+      capabilities: {
+        protocolVersion: 1,
+        opKinds,
+        singleOnlyOps: opKinds.slice(0, 30),
+        sceneRead: { depth: 2, limit: 200 },
+        runtimeControl: { ops: opKinds.slice(30, 50), summerCapture: true, maxOffscreenInstances: 2 },
+        navigation: { version: 1, targets: Array.from({ length: 40 }, (_, i) => ({ id: `target_${i}`, title: `Target ${i}`, args: ["path"] })) },
+        launchPostures: ["focus", "background", "offscreen"],
+        events: { kinds: ["op.applied", "play.started"], ring: 512 },
+      },
+    }),
+    getSceneState: async () => ({
+      ok: true,
+      provenance: { scenePath: "res://three_houses_v2.tscn" },
+      data: { name: "Root", class: "Node3D", path: ".", total_nodes: 2692, visited: 200, truncated: true, children },
+    }),
+  });
+}
+
+describe("compact default (proof run 2026-10-04: 61 KB first call)", () => {
+  it("stays under 6 KB and keeps project, scene path, health summary, memory and warnings", async () => {
+    const payload = await buildProjectContext(heavyClient(), {});
+    const bytes = Buffer.byteLength(JSON.stringify(payload, null, 2), "utf8");
+    expect(bytes).toBeLessThan(6 * 1024);
+    expect(payload).not.toHaveProperty("scene");
+    expect(payload).not.toHaveProperty("project");
+    expect(payload.currentScene).toBe("res://three_houses_v2.tscn");
+    expect(payload.mainScene).toBe("res://main.tscn");
+    expect(payload.projectName).toBe("Hidden Alley sample");
+    expect(payload.sceneSummary).toEqual({
+      scenePath: "res://three_houses_v2.tscn",
+      rootName: "Root",
+      rootClass: "Node3D",
+      totalNodes: 2692,
+      topLevelChildren: 200,
+    });
+    const health = payload.health as Record<string, unknown>;
+    expect(health.version).toBe("0.5.70");
+    expect(health.capabilities).toMatchObject({ protocolVersion: 1, opKinds: 130, singleOnlyOps: 30, events: true, runtimeControl: true, navigationTargets: 40 });
+    expect(JSON.stringify(health)).not.toContain("SomeEngineOperationKind");
+    // The skew warning still names what the engine lacks (a warning, never trimmed).
+    expect(String(payload.capabilitySkewWarning)).toContain("GetWorldSnapshot");
+    expect(payload.projectMemory).toBeDefined();
+    expect(payload.included).toEqual([]);
+    expect(Object.keys(payload.omitted).sort()).toEqual(["capabilities", "scene_tree", "settings"]);
+  });
+
+  it("include opts each heavy block back in; a settings prefix implies settings", async () => {
+    const full = await buildProjectContext(heavyClient(), { include: ["scene_tree", "capabilities", "settings"] });
+    expect((full.scene as { data: { children: unknown[] } }).data.children).toHaveLength(200);
+    expect(((full.health as { capabilities: { opKinds: unknown[] } }).capabilities.opKinds)).toHaveLength(130);
+    expect((full.project as { data: { entries: unknown[] } }).data.entries.length).toBeGreaterThan(0);
+    expect(full.included).toEqual(["scene_tree", "capabilities", "settings"]);
+    expect(full.omitted).toEqual({});
+
+    const prefixed = await buildProjectContext(heavyClient(), { settingsPrefixes: ["audio/"] });
+    expect(prefixed.included).toEqual(["settings"]);
+    expect((prefixed.project as { data: { entries: Array<{ key: string }> } }).data.entries.map((e) => e.key)).toEqual([
+      "audio/buses/default_bus_layout",
+    ]);
+    expect(prefixed).not.toHaveProperty("scene");
+  });
+
+  it("schema: include takes only the three block names", () => {
+    expect(projectContextInputSchema.safeParse({ include: ["scene_tree"] }).success).toBe(true);
+    expect(projectContextInputSchema.safeParse({ include: ["everything"] }).success).toBe(false);
   });
 });

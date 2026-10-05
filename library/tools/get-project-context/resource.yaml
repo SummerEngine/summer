@@ -1,10 +1,11 @@
 id: tool/get-project-context
 kind: tool
-version: 1.1.0
-summary: Bind to the open project and return engine health, project name and path, current and main scene, trimmed settings, the template pin, and memory summary.
+version: 2.0.0
+summary: "Bind to the open project and return a compact context (project, current and main scene, health summary, template pin, memory, warnings); tree on request."
 use_when:
   - first call in every fresh session, to avoid guessing scene filenames
   - deliberately rebinding after the engine switched projects
+  - reading the open scene's tree, the engine's op list or project settings (include)
 facets:
   lifecycle:
     - build
@@ -28,6 +29,16 @@ surfaces:
 input_schema:
   type: object
   properties:
+    include:
+      type: array
+      items:
+        type: string
+        enum:
+          - scene_tree
+          - capabilities
+          - settings
+      maxItems: 3
+      description: "Heavy blocks to add to the compact default: 'scene_tree' (the open scene's node tree, up to 200 nodes), 'capabilities' (the engine's full op/capability lists), 'settings' (project settings, curated groups). settingsPrefix/settingsPrefixes imply 'settings'."
     settingsPrefix:
       type: string
       description: Only return project settings whose key starts with this prefix, e.g. 'audio/' or 'application/config/'. Omit for the curated default set.

@@ -1,11 +1,12 @@
 id: tool/inspect-node
 kind: tool
-version: 1.0.3
-summary: Get every editable property of a node with current values, Variant types (raw int plus type_name), and resource info.
+version: 1.1.0
+summary: A node's editable properties with values, Variant types and resources, or only named fields plus derived transform, global_transform, scene_file_path.
 use_when:
   - before modifying a node, to understand its current state
   - "\"what is the player's speed / position / collision layer?\""
   - '"which material and mesh does this MeshInstance3D use?"'
+  - '"where is this piece, locally and in the world, and which scene is it?" — fields:[transform, global_transform, scene_file_path]'
 do_not_use_when:
   - sub-properties of the material, mesh, or shape itself — summer_inspect_resource
   - live values while the game runs — summer_inspect_runtime_node
@@ -35,6 +36,12 @@ input_schema:
     path:
       type: string
       description: Node path from scene tree, e.g. 'Player', 'World/Enemies/Boss', 'DirectionalLight3D'
+    fields:
+      type: array
+      items:
+        type: string
+      maxItems: 48
+      description: "Only these fields: property names or globs (e.g. 'position', 'surface_material_override/*') and the derived fields transform, global_transform, scene_file_path, aabb, warnings. Omit for every property."
   required:
     - path
   additionalProperties: false

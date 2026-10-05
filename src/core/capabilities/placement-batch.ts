@@ -27,6 +27,7 @@ import { ToolInputError } from "../tool-errors.js";
 import { asRecord, type JsonRecord } from "../util/json.js";
 import { resolveSingleOnlyOps } from "../capability-skew.js";
 import { extractOpError } from "./engine-receipt.js";
+import { executeSceneBatch, rawConnectSignalRefusal, type SceneBatchClient } from "./scene-batch.js";
 import {
   executeOpsChunked,
   executeSceneMutation,
@@ -537,6 +538,9 @@ export const SCENE_QUERY_OPS: ReadonlySet<string> = new Set([
 
 export type BatchClient = SceneMutationClient & {
   executeOps(ops: Record<string, unknown>[], options?: Record<string, unknown>, timeoutMs?: number): Promise<unknown>;
+  /** The ReparentNode path reads the saved scene and the live tree (scene-batch.ts). */
+  readProjectFile?: SceneBatchClient["readProjectFile"];
+  getSceneState?: SceneBatchClient["getSceneState"];
 };
 
 export interface BatchArgs {
@@ -558,7 +562,24 @@ export async function runBatch(client: BatchClient, args: BatchArgs): Promise<un
     throw new ToolInputError("summer_batch requires scenePath when ops targets a scene");
   }
   const options: JsonRecord = { groupUndo: true, ...(scenePath ? { scenePath } : {}) };
+  // A raw ConnectSignal is saved without its connection (scene-batch.ts).
+  const connectRefusal = rawConnectSignalRefusal(ops);
+  if (connectRefusal) throw new ToolInputError(connectRefusal);
   const placement = ops.some((op) => String(op.op ?? "") === "InstantiateScene" && hasPlacementFields(op));
+  // ReparentNode drops the moved node's subtree on save; scene-batch.ts keeps
+  // and verifies it, with its own full receipt.
+  if (containsMutation && ops.some((op) => op.op === "ReparentNode")) {
+    if (placement || args.receipt === "summary") {
+      throw new ToolInputError(
+        "summer_batch sends ReparentNode through its keep-and-verify path, which does not expand InstantiateScene placement fields or build a summary receipt. " +
+          "Send the ReparentNode ops in their own summer_batch (receipt \"full\"). Nothing was sent."
+      );
+    }
+    if (typeof client.readProjectFile !== "function" || typeof client.getSceneState !== "function") {
+      throw new ToolInputError("summer_batch with ReparentNode needs an engine client that can read the saved scene back. Nothing was sent.");
+    }
+    return executeSceneBatch(client as SceneBatchClient, scenePath!, ops, options);
+  }
   if (!placement && args.receipt !== "summary") {
     if (containsMutation) return executeSceneMutation(client, scenePath!, ops, options);
     return executeOpsChunked(

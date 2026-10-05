@@ -172,6 +172,8 @@ describe("repo-lint: tool-dispatch <-> mcp/tools share one helper copy", () => {
       EVENTS_FALLBACK,
       RUN_SCRIPT_FALLBACK: sceneScript.RUN_SCRIPT_FALLBACK,
       RUN_EDITOR_SCRIPT_FALLBACK: sceneScript.RUN_EDITOR_SCRIPT_FALLBACK,
+      REPLACE_NODE_FALLBACK: engineFallbacks.REPLACE_NODE_FALLBACK,
+      GREP_FALLBACK: engineFallbacks.GREP_FALLBACK,
     };
     expect(Object.keys(sentences).length).toBeGreaterThan(30);
     for (const [name, sentence] of Object.entries(sentences)) {

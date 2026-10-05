@@ -13,17 +13,18 @@
 - Diagnostics, console, debugger output, script errors
 - Project text reads and guarded writes (`.gd`, `.cs`, `.tscn`, `.tres`, JSON, docs, config)
 
-**Use host tools for** git, shell, grep, and non-project work. External host file writes bypass Summer's project-identity, sha256, and editor-reload safeguards and should not be used for project mutations while MCP is available.
+**Use host tools for** git, shell, searching outside the project, and non-project work. External host file writes bypass Summer's project-identity, sha256, and editor-reload safeguards and should not be used for project mutations while MCP is available.
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (99 tools)
+## Tool surface (100 tools)
 
-### Project files (3)
+### Project files (4)
 
 | Tool | Use |
 |---|---|
-| `summer_read_file` | Read project text plus a full-file sha256 receipt. |
+| `summer_read_file` | Read project text plus a full-file sha256 receipt. Big files in parts: `offset`/`limit` page by lines (or `unit:'bytes'`), `data.window` gives `next_offset`/`eof`; for JSON, `json_path` picks one value (`pieces.wall_tripple_standard_01`), `keys` keeps matching object keys (`['wall_tripple_*']`), `keys_only` lists key names. The sha256 always covers the whole file. |
+| `summer_grep` | Regex search over project files (ripgrep through the engine): file, line and text per match, `context_lines` before/after (0-10), `path` (res:// dir or file), `glob`, `max_results` (default 50) with `truncated`. Find the part of a big file you need, then read just that part with `summer_read_file`. |
 | `summer_write_file` | Create-only or sha256-guarded complete file write. |
 | `summer_replace_text` | Unique (or explicit replace-all) text mutation with read/sha guard. |
 
@@ -37,10 +38,10 @@
 | `summer_open` | Navigate for the user: open a summerengine.com page (billing, my games, pricing, an MCP guide) or an editor surface (scene, node, script, file, a dock) by intent name, or `print` the URL / op. Destinations: the `product-map` reference; when to use it: the `navigate-summer` skill. |
 | `summer_create_scene` | Create a new scene. |
 | `summer_instantiate_scene` | Add an existing scene or 3D model as a child node; `position` / `rotation_degrees` / `scale` (or `transform`) place it in the same call. |
-| `summer_inspect_node` | Read a single node's properties. |
+| `summer_inspect_node` | Read a single node's properties (about 5 KB). `fields` keeps only named properties/globs plus derived `transform`, `global_transform`, `scene_file_path`, `aabb`, `warnings` — e.g. `fields:['transform','global_transform','scene_file_path']`. |
 | `summer_add_node` | Add a node to the explicit `scenePath`; the tab need not be open. |
 | `summer_remove_node` | Remove a node from the explicit `scenePath`. |
-| `summer_replace_node` | Swap a node's type in the explicit `scenePath`, preserving children. |
+| `summer_replace_node` | Swap a node for another scene/model or type in the explicit `scenePath` (a `.tscn`), keeping parent, index, name, transform, property overrides and added children. Verified: it saves, reads the saved file back and returns `persisted:true` only when the file holds the new scene; otherwise an error with `failure_reason: not_persisted`. `not_carried_over` lists what could not travel (groups, signal connections, sub_resource values). |
 | `summer_select_node` | Set editor selection (visual feedback for the user). |
 | `summer_save_scene` | Explicitly save/save-as a `scenePath`; mutation tools already append one final save. |
 
@@ -51,7 +52,7 @@
 | `summer_set_prop` | Set a typed property in an explicit `scenePath` using Godot's `str_to_var()`. |
 | `summer_set_resource_property` | Set a nested resource property in an explicit `scenePath`. |
 | `summer_inspect_resource` | Read a resource's properties. |
-| `summer_connect_signal` | Wire a signal between nodes. |
+| `summer_connect_signal` | Wire a signal between nodes in the explicit `scenePath` (a `.tscn`). Connects with `CONNECT_PERSIST` through a RunSceneScript probe (the engine's ConnectSignal op never saves the connection), saves, and returns `persisted:true` / `verified:true` only when the saved file holds the `[connection]` line; otherwise `failure_reason: not_persisted`. |
 
 ### Project & input (2)
 
@@ -96,7 +97,7 @@ Preview — the `Ui*` engine ops ship with a follow-up engine build; until then 
 
 | Tool | Use |
 |---|---|
-| `summer_world_snapshot` | Compact structured snapshot of the edited scene (paths, classes, transforms, world AABBs, visibility, resource fingerprints, light/camera/counts summary). The cheap read to run BEFORE and AFTER every mutation batch; keep the `snapshot_id`. |
+| `summer_world_snapshot` | Compact structured snapshot of the edited scene (paths, classes, transforms, world AABBs, visibility, resource fingerprints, light/camera/counts summary). The cheap read to run BEFORE and AFTER every mutation batch; keep the `snapshot_id`. Lists at most 200 nodes by default; `path_prefix` (one subtree), `classes`, `fields` (e.g. `['pos','aabb']`) and `offset` keep it small, `matched_counts` counts a subtree's classes. `counts` and the `snapshot_id` baseline always cover the whole scene. |
 | `summer_snapshot_diff` | Diff two snapshots into added/removed/changed + count deltas — the structural receipt that a mutation did exactly what was intended. Omit `to_id` to diff against a fresh snapshot taken now. |
 | `summer_get_runtime_tree` | Scene tree of the RUNNING game (spawned enemies, autoloads, pooled nodes) — live state the editor reads can't show. Needs `summer_play` first. |
 | `summer_inspect_runtime_node` | One running-game node's live properties (actual stats/position/flags) without stopping the game. Get paths from `summer_get_runtime_tree`. |
@@ -108,7 +109,7 @@ Bounded spatial evidence for deliberate 3D arrangement. All five take exact `sce
 | Tool | Use |
 |---|---|
 | `summer_test_placement` | Ghost-test one node at a candidate global pose (read-only, never saves): overlap evidence, grounded state, signed floor gap. `fits: null` means physics could not prove clearance — never coerce it to success. |
-| `summer_snap_to_surface` | Seat one subject on the first surface along a world ray (default downward); mutation + save. `evidence: physics` = collider sweep; `visual_aabb` = mesh-only broad-phase fallback. |
+| `summer_snap_to_surface` | Seat one subject on the first surface along a world ray (default downward); mutation + save. `evidence: physics` = collider sweep; `visual_aabb` = mesh-only broad-phase fallback. A prop sunk into its support is lifted by the overlap depth plus 2 cm (at most its own extent, 0.5 m) and settled from there (`recovery` in the receipt). `gap_exceeds_hit_travel` / `overlap_recovery_exceeded` failures add `start_overlap`, `blocking` (the nodes it touches or sits in), `below` and a `next_step`. |
 | `summer_align_distribute_3d` | Align (min/center/max) or equal-space (centers/gaps) 2–16 ordered subjects along one world axis from visible AABBs; mutation + save. One-axis evidence only. |
 | `summer_navigation_probe` | Read-only reachability between two world points on the scene's navigation map: readiness, snapped endpoints + snap distances, route length, ≤16 route points. `ready: false` = unknown, not unreachable. |
 | `summer_starcast` | Read-only 26-direction placement rundown around one exact node: per-direction `open`/`blocked` with nearest object, distance and evidence, contact-or-overlap paths, `grounded`, coverage, warnings. `detail: summary` ≤ 5 KB; `full` adds hit geometry, an objects table and nearby lists ≤ 12 KB and downgrades to summary rather than exceed it. `visual_aabb` evidence is broad-phase, never exact contact. |
@@ -225,7 +226,7 @@ Preview. One fast, read-only call that walks every node of a 3D scene and lists 
 | Tool | Use |
 |---|---|
 | `summer_check_job` | Poll a generation job. |
-| `summer_batch` | Run multiple ops as a transaction. `InstantiateScene` ops may carry `position` / `rotation_degrees` / `scale` / `transform`; `receipt: "summary"` returns counts, failures with op index and created paths under 5 KB. |
+| `summer_batch` | Run multiple ops as a transaction. `InstantiateScene` ops may carry `position` / `rotation_degrees` / `scale` / `transform`; `receipt: "summary"` returns counts, failures with op index and created paths under 5 KB. A `ReparentNode` keeps the moved node's scene-owned children and grandchildren (the engine op drops them from the saved file) and is verified from the saved `.tscn` (`persisted:true` / `verified:true`, else `failure_reason: not_persisted`); a raw `ConnectSignal` is refused — use `summer_connect_signal`. `scenePersistence.saved` only means the SaveScene ran. |
 
 ### Meta (4)
 
@@ -233,7 +234,7 @@ Preview. One fast, read-only call that walks every node of a 3D scene and lists 
 |---|---|
 | `summer_start_game_task` | Route a user goal into the right workflow, skills, MCP tool groups, asset policy, gates, and verification path. |
 | `summer_get_studio_workflow` | Discover Summer Studio's guided workflow recipes (starter prompts, ordered steps, required tools) for a goal. |
-| `summer_get_project_context` | Project, scene, and `.summer` memory summary — call at start of session. Binds the session to the open project and surfaces a `capabilitySkewWarning` when the engine build and CLI have drifted; tools whose op the engine provably lacks return a structured `engine_lacks_op` result instead of running. |
+| `summer_get_project_context` | Project, scene, and `.summer` memory summary — call at start of session. Binds the session to the open project and surfaces a `capabilitySkewWarning` when the engine build and CLI have drifted; tools whose op the engine provably lacks return a structured `engine_lacks_op` result instead of running. Compact by default (a few KB: `sceneSummary`, scalar `health` with capability counts); `include:['scene_tree','capabilities','settings']` adds the heavy blocks, `omitted` says how. |
 | `summer_get_agent_playbook` | Daily operating contract (observe-first loop, content routing, invariants, verification ritual) — call at start of session. Also served natively as the `summer_agent_playbook` MCP prompt. |
 
 ### Creator platform (3)
@@ -269,6 +270,13 @@ Every scene-touching skill should follow this loop:
 6. Mutation tools append one final `SaveScene`; use `summer_save_scene` directly only for a standalone save/save-as.
 7. `summer_get_script_errors` — catch GDScript breakage.
 8. `summer_play` → `summer_get_debugger_errors` → `summer_screenshot` (see what's on screen) → `summer_stop` if verifying runtime.
+
+Read big things in parts, never whole:
+
+- `summer_get_project_context` is compact by default; add `include:['scene_tree']` (or `'capabilities'`, `'settings'`) only when you need that block.
+- `summer_world_snapshot path_prefix:'House3' fields:['pos','aabb']` reads one subtree; `classes` and `offset` narrow and page it.
+- `summer_inspect_node fields:['transform','global_transform','scene_file_path']` reads a transform in a few hundred bytes.
+- `summer_grep` finds the lines (with `context_lines`), then `summer_read_file` reads just that part: `offset`/`limit` for text, `json_path` / `keys` / `keys_only` for JSON such as a kit's `pieces.json`.
 
 Every asset-generation skill should follow this loop:
 

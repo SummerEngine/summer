@@ -262,6 +262,23 @@ describe("EngineApiClient — async 202->poll port", () => {
     expect(pollHits).toBe(0); // never polled — legacy path
   });
 
+  it("executeOps hands scenePersistence.persisted out as saved (it only means SaveScene ran)", async () => {
+    mockFetch((url, method) => {
+      if (method === "POST" && url.includes("/api/ops")) {
+        return json({
+          status: "ok",
+          results: [{ ok: true, op: "ReparentNode" }, { ok: true, op: "SaveScene" }],
+          scenePersistence: { ok: true, attempted: true, persisted: true, targetScenePath: "res://a.tscn", scenePath: "res://a.tscn" },
+        });
+      }
+      return json({}, 404);
+    });
+    const r = (await client().executeOps([{ op: "X" }])) as Record<string, unknown>;
+    expect(r.scenePersistence).toEqual({ ok: true, attempted: true, saved: true, targetScenePath: "res://a.tscn", scenePath: "res://a.tscn" });
+    expect(r.scenePersistence).not.toHaveProperty("persisted");
+    expect(r.scenePersistence).not.toHaveProperty("verified");
+  });
+
   it("identity-bound file mutations fail closed when the client is unbound", async () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);

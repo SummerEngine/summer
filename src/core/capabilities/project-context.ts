@@ -15,10 +15,19 @@
  * is client-side and every trim is declared (settingsTruncated, totalSettings,
  * settingsPrefixesIncluded, settingsPrefixesExcluded) — nothing is hidden,
  * only deferred behind settingsPrefixes.
+ *
+ * Compact default (proof run 2026-10-04: the first call of every session
+ * returned 61 KB — the full capability lists plus a 200-node scene tree —
+ * which the host could not hand to the agent): the payload carries the
+ * project, the scene path with a one-line scene summary, a scalar health
+ * summary with capability COUNTS, projectMemory and every warning. The scene
+ * tree, the capability lists and the project settings come back only with
+ * include:['scene_tree' | 'capabilities' | 'settings']; `omitted` says how to
+ * ask for each one that was left out.
  */
 import { z } from "zod";
 import { EngineRebindError } from "../api-client.js";
-import { buildCapabilitySkewWarning } from "../capability-skew.js";
+import { buildCapabilitySkewWarning, parseEngineCapabilities } from "../capability-skew.js";
 import { isTrajectoryEvalMode } from "../trajectory.js";
 import {
   getProjectMemorySummary,
@@ -55,8 +64,19 @@ export const DEFAULT_PROJECT_CONTEXT_SETTINGS_EXCLUDED: readonly string[] = ["in
 
 export const MAX_SETTINGS_PREFIXES = 32;
 
+/** Heavy blocks the default (compact) payload leaves out; `include` opts in. */
+export const PROJECT_CONTEXT_INCLUDES = ["scene_tree", "capabilities", "settings"] as const;
+export type ProjectContextInclude = (typeof PROJECT_CONTEXT_INCLUDES)[number];
+
 // Mirrors library/tools/get-project-context/resource.yaml input_schema (parity-tested).
 export const projectContextInputShape = {
+  include: z
+    .array(z.enum(PROJECT_CONTEXT_INCLUDES))
+    .max(PROJECT_CONTEXT_INCLUDES.length)
+    .optional()
+    .describe(
+      "Heavy blocks to add to the compact default: 'scene_tree' (the open scene's node tree, up to 200 nodes), 'capabilities' (the engine's full op/capability lists), 'settings' (project settings, curated groups). settingsPrefix/settingsPrefixes imply 'settings'."
+    ),
   settingsPrefix: z
     .string()
     .optional()
@@ -94,10 +114,18 @@ export interface ProjectContextExtras {
 }
 
 export interface ProjectContextPayload extends JsonRecord {
+  /** Compact by default (scalar fields + a capabilities summary); the full
+   *  /api/health payload with include:['capabilities']. */
   health: unknown;
   capabilitySkewWarning?: string;
-  project: unknown;
-  scene: unknown;
+  /** Project settings: only with include:['settings'] or a settings prefix. */
+  project?: unknown;
+  /** The open scene's tree: only with include:['scene_tree']. */
+  scene?: unknown;
+  /** Always: path, root node and node count of the open scene. */
+  sceneSummary: JsonRecord;
+  included: ProjectContextInclude[];
+  omitted: Partial<Record<ProjectContextInclude, string>>;
   projectName: string | null;
   projectPath: string | null;
   currentScene: string | null;
@@ -257,6 +285,67 @@ export function resolveCurrentScene(projectState: unknown, sceneState: unknown, 
   );
 }
 
+// ── Compact blocks ─────────────────────────────────────────────────────────
+
+/** Which heavy blocks the payload carries: `include`, plus 'settings' when a
+ *  settings prefix was named (asking for a group is asking for settings). */
+export function resolveIncludes(args: ProjectContextArgs): Set<ProjectContextInclude> {
+  const included = new Set<ProjectContextInclude>(args.include ?? []);
+  if (resolveSettingsSelection(args).explicit) included.add("settings");
+  return included;
+}
+
+/** /api/health without its capability lists: every scalar field, plus counts
+ *  of what the engine advertises. */
+export function compactHealth(health: unknown): unknown {
+  const root = asRecord(health);
+  if (!root) return health;
+  const out: JsonRecord = {};
+  for (const [key, value] of Object.entries(root)) {
+    if (value === null || ["string", "number", "boolean"].includes(typeof value)) out[key] = value;
+  }
+  if ("capabilities" in root) {
+    const caps = parseEngineCapabilities(root.capabilities);
+    out.capabilities = caps
+      ? {
+          ...(caps.protocolVersion !== undefined ? { protocolVersion: caps.protocolVersion } : {}),
+          ...(caps.opKinds ? { opKinds: caps.opKinds.length } : {}),
+          ...(caps.singleOnlyOps ? { singleOnlyOps: caps.singleOnlyOps.length } : {}),
+          events: !!caps.events,
+          runtimeControl: !!caps.runtimeControl,
+          ...(caps.navigation ? { navigationTargets: caps.navigation.targets.length } : {}),
+          ...(caps.launchPostures ? { launchPostures: caps.launchPostures } : {}),
+          summary: "counts only; include:['capabilities'] returns the lists",
+        }
+      : { summary: "the engine advertised no readable capabilities" };
+  }
+  return out;
+}
+
+/** Path, root node and size of the open scene, from the scene-state read. */
+export function summarizeScene(sceneState: unknown, currentScene: string | null): JsonRecord {
+  const root = asRecord(sceneState);
+  if (!root || root.ok === false) {
+    return { scenePath: currentScene, ...(root?.error ? { error: String(root.error) } : {}) };
+  }
+  const data = asRecord(root.data);
+  const children = Array.isArray(data?.children) ? data!.children.length : undefined;
+  return {
+    scenePath: currentScene,
+    ...(typeof data?.name === "string" ? { rootName: data.name } : {}),
+    ...(typeof data?.class === "string" ? { rootClass: data.class } : {}),
+    ...(typeof data?.total_nodes === "number" ? { totalNodes: data.total_nodes } : {}),
+    ...(children !== undefined ? { topLevelChildren: children } : {}),
+  };
+}
+
+const OMITTED_HINTS: Record<ProjectContextInclude, string> = {
+  scene_tree:
+    "include:['scene_tree'] for the open scene's tree (up to 200 nodes); for one subtree use summer_world_snapshot path_prefix or summer_get_scene_tree",
+  capabilities: "include:['capabilities'] for the engine's full op and capability lists",
+  settings: "include:['settings'] (curated groups) or settingsPrefixes:['audio/', ...] for project settings",
+};
+
 // ── The builder ────────────────────────────────────────────────────────────
 
 export async function buildProjectContext(
@@ -265,6 +354,7 @@ export async function buildProjectContext(
   extras: ProjectContextExtras = {}
 ): Promise<ProjectContextPayload> {
   const selection = resolveSettingsSelection(args);
+  const included = resolveIncludes(args);
   const [health, fullProjectState, sceneState] = await Promise.all([
     client.health(),
     // ?prefix= rides along for forward-compatibility (a single prefix is all
@@ -303,11 +393,20 @@ export async function buildProjectContext(
   const capabilitySkewWarning = buildCapabilitySkewWarning(health);
   if (capabilitySkewWarning) extras.onCapabilitySkew?.(capabilitySkewWarning);
 
+  const includedList = PROJECT_CONTEXT_INCLUDES.filter((block) => included.has(block));
+  const omitted: Partial<Record<ProjectContextInclude, string>> = {};
+  for (const block of PROJECT_CONTEXT_INCLUDES) {
+    if (!included.has(block)) omitted[block] = OMITTED_HINTS[block];
+  }
+
   return {
-    health,
+    health: included.has("capabilities") ? health : compactHealth(health),
     ...(capabilitySkewWarning ? { capabilitySkewWarning } : {}),
-    project,
-    scene: sceneState,
+    ...(included.has("settings") ? { project } : {}),
+    ...(included.has("scene_tree") ? { scene: sceneState } : {}),
+    sceneSummary: summarizeScene(sceneState, currentScene),
+    included: includedList,
+    omitted,
     projectName,
     projectPath,
     currentScene,

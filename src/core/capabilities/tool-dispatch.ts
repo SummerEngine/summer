@@ -148,13 +148,20 @@ import {
   projectContextInputSchema,
   projectSettingValue,
 } from "./project-context.js";
-import { annotateVariantTypes } from "./variant-types.js";
+import { rawSceneReplaceRefusal, replaceNodeInputSchema, replaceNodePersisted } from "./replace-node.js";
+import { connectSignalInputSchema, connectSignalPersisted } from "./connect-signal.js";
+import { readFileInputSchema, readProjectFileWindow } from "./file-read.js";
+import { buildWorldSnapshotOp, shapeWorldSnapshot, worldSnapshotInputSchema } from "./world-snapshot.js";
+import { inspectNodeFields, inspectNodeInputSchema } from "./inspect-node.js";
+import { grepInputSchema, grepProject } from "./grep.js";
+import { snapToSurface } from "./surface-snap.js";
 import { withConsoleScope } from "./console-read.js";
 import { captureGame, captureScene, captureViewport, type CaptureResult } from "./capture.js";
 // engine_lacks_op fallbacks: ONE copy for every face (E2E 2026-09-03 F-16);
 // the scripting ones come with their op builders from ./scene-script.js.
 import {
   ALIGN_DISTRIBUTE_FALLBACK,
+  GREP_FALLBACK,
   NAVIGATION_PROBE_FALLBACK,
   RUNTIME_NODE_FALLBACK,
   RUNTIME_TREE_FALLBACK,
@@ -1052,14 +1059,18 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   }),
 
   // --- file ---
-  entry("summer_read_file", "Read a project text file and its sha256 receipt", true, async (args, ctx) =>
-    requireEngineSuccess(
-      await (await ctx.engine()).readProjectFile(
-        safeProjectPath(str(args, "path")),
-        typeof args.max_bytes === "number" ? args.max_bytes : 200_000
-      )
-    )
-  ),
+  entry("summer_read_file", "Read a project text file (or a window / JSON selection of it) and its sha256 receipt", true, async (args, ctx) => {
+    // ONE implementation for both faces (core/capabilities/file-read.ts).
+    const parsed = parseToolArgs(readFileInputSchema, args, "read-file");
+    const client = await ctx.engine();
+    return requireEngineSuccess(await buildOrRefuseAsync(() => readProjectFileWindow(client, parsed)));
+  }),
+  entry("summer_grep", "Search project files with a regex (ripgrep) and return matches with context lines", true, async (args, ctx) => {
+    // ONE implementation for both faces (core/capabilities/grep.ts).
+    const parsed = parseToolArgs(grepInputSchema, args, "grep");
+    const client = await ctx.engine();
+    return requireSupportedOp(await buildOrRefuseAsync(() => grepProject(client, parsed)), "Grep", GREP_FALLBACK);
+  }),
   entry("summer_write_file", "Create or safely overwrite one complete project text file", true, async (args, ctx) => {
     const safePath = safeProjectPath(str(args, "path"));
     const content = args.content;
@@ -1400,33 +1411,32 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     }
     return instantiateScene(await ctx.engine(), parsed);
   }),
-  entry("summer_connect_signal", "Connect a signal between two nodes", true, async (args, ctx) =>
-    executeSceneMutation(await ctx.engine(), str(args, "scenePath"), [
-      {
-        op: "ConnectSignal",
-        emitter: str(args, "emitter"),
-        signal: str(args, "signal"),
-        receiver: str(args, "receiver"),
-        method: str(args, "method"),
-      },
-    ])
-  ),
+  entry("summer_connect_signal", "Connect a signal between two nodes and verify it in the saved scene", true, async (args, ctx) => {
+    // ONE implementation for both faces (core/capabilities/connect-signal.ts):
+    // CONNECT_PERSIST through a RunSceneScript probe + read-back of the .tscn.
+    const parsed = parseToolArgs(connectSignalInputSchema, args, "connect-signal");
+    const client = await ctx.engine();
+    return buildOrRefuseAsync(() => connectSignalPersisted(client, parsed));
+  }),
   entry("summer_select_node", "Select a node in the editor scene tree", true, async (args, ctx) => {
     const op: DispatchArgs = { op: "SelectNode", nodePath: str(args, "nodePath") };
     if (optStr(args, "scenePath")) op.scenePath = args.scenePath;
     return requireEngineSuccess(await (await ctx.engine()).executeOps([op]));
   }),
-  entry("summer_replace_node", "Replace a node with a different type or scene", true, async (args, ctx) => {
-    const op: DispatchArgs = { op: "ReplaceNode", path: str(args, "path") };
-    if (optStr(args, "type")) op.type = args.type;
-    if (optStr(args, "scene")) op.scene = args.scene;
-    return executeSceneMutation(await ctx.engine(), str(args, "scenePath"), [op]);
+  entry("summer_replace_node", "Replace a node with a different scene or type and verify the saved scene", true, async (args, ctx) => {
+    // ONE implementation for both faces (core/capabilities/replace-node.ts):
+    // persisted ops + read-back of the saved .tscn.
+    const parsed = parseToolArgs(replaceNodeInputSchema, args, "replace-node");
+    const client = await ctx.engine();
+    return buildOrRefuseAsync(() => replaceNodePersisted(client, parsed));
   }),
-  entry("summer_inspect_node", "Get all editable properties of a node", true, async (args, ctx) =>
+  entry("summer_inspect_node", "Get a node's editable properties (or only the named fields)", true, async (args, ctx) => {
     // E2E 2026-09-03 F-14: the engine returns Variant.Type as a bare int; both
-    // faces add type_name (core/capabilities/variant-types.ts).
-    annotateVariantTypes(requireEngineSuccess(await (await ctx.engine()).inspectNode(str(args, "path"))))
-  ),
+    // faces add type_name. The fields filter lives with it in
+    // core/capabilities/inspect-node.ts.
+    const parsed = parseToolArgs(inspectNodeInputSchema, args, "inspect-node");
+    return requireEngineSuccess(await inspectNodeFields(await ctx.engine(), parsed));
+  }),
   entry("summer_inspect_resource", "Get all properties of a resource", true, async (args, ctx) =>
     requireEngineSuccess(await (await ctx.engine()).inspectResource(str(args, "path")))
   ),
@@ -1445,6 +1455,8 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
           "Use write-file or replace-text so content guards are enforced."
       );
     }
+    const replaceRefusal = rawSceneReplaceRefusal(ops);
+    if (replaceRefusal) throw new ToolDispatchError(replaceRefusal);
     const scenePath = optStr(args, "scenePath");
     const containsMutation = ops.some((op) => SCENE_MUTATION_OPS.has(String(op.op ?? "")));
     const needsScenePath =
@@ -1566,12 +1578,12 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   // --- perception ---
   entry("summer_world_snapshot", "Structured snapshot of the edited scene (transforms, AABBs, fingerprints, counts)", true, async (args, ctx) => {
     const client = await ctx.engine();
+    const parsed = parseToolArgs(worldSnapshotInputSchema, args, "world-snapshot");
     const missing = missingEngineOpResult(client, "GetWorldSnapshot", WORLD_SNAPSHOT_FALLBACK);
     if (missing) refuseMissingOp(missing);
-    const op: DispatchArgs = { op: "GetWorldSnapshot" };
-    if (optStr(args, "scene_path")) op.scene_path = args.scene_path;
-    if (typeof args.max_nodes === "number") op.max_nodes = args.max_nodes;
-    return requireSupportedOp(await client.executeOps([op]), "GetWorldSnapshot", WORLD_SNAPSHOT_FALLBACK);
+    // Same request + filter as the MCP face (core/capabilities/world-snapshot.ts).
+    const result = await client.executeOps([buildWorldSnapshotOp(parsed)]);
+    return requireSupportedOp(shapeWorldSnapshot(result, parsed), "GetWorldSnapshot", WORLD_SNAPSHOT_FALLBACK);
   }),
   entry("summer_snapshot_diff", "Diff two world snapshots into added/removed/changed nodes and count deltas", true, async (args, ctx) => {
     const client = await ctx.engine();
@@ -1675,17 +1687,16 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     const gap = optNumber(args, "gap", 0);
     if (maxDistance <= 0) throw new ToolDispatchError("maxDistance must be positive.");
     if (gap < 0 || gap > maxDistance) throw new ToolDispatchError("gap must be >= 0 and must not exceed maxDistance.");
+    // Same implementation as the MCP face (core/capabilities/surface-snap.ts).
     return requireSupportedOp(
-      await executeSceneMutation(client, scenePath, [
-        {
-          op: "SnapToSurface",
-          subject_path: exactPath(args, "subjectPath", SPATIAL_NODE_PATH_LIMIT_BYTES),
-          direction,
-          max_distance: maxDistance,
-          gap,
-          align_up: optBoolean(args, "alignUp", false),
-        },
-      ]),
+      await snapToSurface(client, {
+        scenePath,
+        subjectPath: exactPath(args, "subjectPath", SPATIAL_NODE_PATH_LIMIT_BYTES),
+        direction: direction as [number, number, number],
+        maxDistance,
+        gap,
+        alignUp: optBoolean(args, "alignUp", false),
+      }),
       "SnapToSurface",
       SNAP_TO_SURFACE_FALLBACK
     );

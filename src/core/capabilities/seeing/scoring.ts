@@ -9,8 +9,10 @@
  * seen from behind), light (key-light direction) and edge (no world edge
  * below the horizon). Weights depend on the shot type. Hard rejections
  * (blocked by walls/terrain, camera behind or inside a surface, camera in
- * geometry, subject out of frame, too much clutter) never rank, but are
- * counted by reason.
+ * geometry, subject out of frame, too much clutter, an eye-level or corridor
+ * camera off eye height) never rank, but are counted by reason. Establishing
+ * shots rank in tiers: a pose that shows more than EMPTY_LIMIT empty ground or
+ * world edge ranks below every pose that shows less, whatever the weights.
  */
 import { SHOT_DEFAULTS, type Candidate, type ShotType } from "./candidates.js";
 import {
@@ -41,7 +43,13 @@ export interface ShotProfile {
   foregroundTarget: number;
   foregroundMax: number;
   weights: Record<ScoreTerm, number>;
+  /** Tier rule: a pose whose empty share (world edge + empty ground) is over
+   *  this ranks below every pose at or under it. */
+  emptyLimit?: number;
 }
+
+/** Establishing: "about 15%" empty ground or world edge is decisive. */
+export const EMPTY_LIMIT = 0.15;
 
 export const SHOT_PROFILES: Record<ShotType, ShotProfile> = {
   establishing: {
@@ -51,6 +59,7 @@ export const SHOT_PROFILES: Record<ShotType, ShotProfile> = {
     foregroundTarget: 0.08,
     foregroundMax: 0.3,
     weights: { visibility: 3, fill: 2, thirds: 1, horizon: 1, sky: 1, void: 1.5, depth: 1.5, foreground: 0.5, clear: 1, balance: 0, detail: 1.5, contrast: 0.75, entry: 0, solid: 2, light: 1.25, edge: 2 },
+    emptyLimit: EMPTY_LIMIT,
   },
   eye_level: {
     fillTarget: SHOT_DEFAULTS.eye_level.fill,
@@ -116,6 +125,9 @@ export interface Measurement {
    *  luminance decile and texture spread, "0" = featureless. */
   lum?: string;
   tex?: string;
+  /** Height of the first solid surface straight below the final camera
+   *  position; null = nothing below it (the world edge). */
+  ground_y?: number | null;
 }
 
 export interface ScoringOptions {
@@ -162,6 +174,12 @@ export interface FrameStats {
   flat?: number;
   nearLum?: number;
   farLum?: number;
+  /** Image check: share of the frame that is featureless ground or
+   *  surroundings outside the subject's footprint, below the horizon (a bare
+   *  plain, a fogged backing plane). */
+  emptyGround?: number;
+  /** World edge + empty ground: what the establishing tier rule reads. */
+  empty?: number;
 }
 
 export interface ScoredCandidate {
@@ -179,6 +197,10 @@ export interface ScoredCandidate {
   adjustments?: Array<Record<string, unknown>>;
   blockers?: { hard?: string[]; soft?: string[]; back?: string[]; through?: string[]; lens?: string };
   note?: string;
+  /** The first solid surface straight below the camera (null: none). */
+  groundY?: number | null;
+  /** 0 = clean; 1 = over the shot's empty limit (ranks below every tier 0). */
+  tier?: number;
 }
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -222,6 +244,22 @@ export function horizonScore(pose: CameraPose, shot: ShotType = "establishing"):
   if (shot === "eye_level" || shot === "corridor") return v === null ? 0.85 : 1;
   if (v === null) return 0.75;
   return 1 - 0.6 * Math.max(0, 1 - Math.abs(v - 0.5) / 0.1);
+}
+
+/**
+ * One featureless grid cell (image check tex "0") is empty ground when its ray
+ * points below the horizon and meets non-subject geometry outside the
+ * subject's footprint (+ 0.5 m) and below its middle: the bare ground or
+ * fogged backing plane around the subject, not the subject's own floor.
+ */
+export function isEmptyGround(code: string | undefined, d: number, ray: Vec3, pose: CameraPose, subject: Aabb | undefined): boolean {
+  if (!subject || ray[1] >= 0 || d < 0 || (code !== "H" && code !== "F" && code !== "T")) return false;
+  const hit: Vec3 = [pose.position[0] + ray[0] * d, pose.position[1] + ray[1] * d, pose.position[2] + ray[2] * d];
+  const lo = subject.position;
+  const margin = 0.5;
+  const inside =
+    hit[0] >= lo[0] - margin && hit[0] <= lo[0] + subject.size[0] + margin && hit[2] >= lo[2] - margin && hit[2] <= lo[2] + subject.size[2] + margin;
+  return !inside && hit[1] <= lo[1] + subject.size[1] / 2;
 }
 
 export function frameStats(m: Measurement, pose: CameraPose, opts: ScoringOptions): { stats: FrameStats; depth: number } {
@@ -304,9 +342,11 @@ export function frameStats(m: Measurement, pose: CameraPose, opts: ScoringOption
   let flat: number | undefined;
   let nearLum: number | undefined;
   let farLum: number | undefined;
+  let emptyGround: number | undefined;
   if (m.lum && m.tex && m.lum.length === grid.length && m.tex.length === grid.length) {
     const nearRef = subjectDist ?? 12;
     let flatCount = 0;
+    let emptyCount = 0;
     let nearSum = 0;
     let nearN = 0;
     let farSum = 0;
@@ -316,8 +356,10 @@ export function frameStats(m: Measurement, pose: CameraPose, opts: ScoringOption
       const d = dists[k] ?? -1;
       const col = k % opts.gridCols;
       const row = Math.floor(k / opts.gridCols);
-      const isSky = code === "." && rayDirection(pose, opts.aspect, (col + 0.5) / opts.gridCols, (row + 0.5) / opts.gridRows)[1] >= 0;
+      const ray = rayDirection(pose, opts.aspect, (col + 0.5) / opts.gridCols, (row + 0.5) / opts.gridRows);
+      const isSky = code === "." && ray[1] >= 0;
       if (!isSky && m.tex[k] === "0") flatCount += 1;
+      if (m.tex[k] === "0" && isEmptyGround(code, d, ray, pose, opts.subject)) emptyCount += 1;
       const lum = Number(m.lum[k]);
       if (code === "B") continue;
       if (code !== "." && d >= 0 && d < nearRef) {
@@ -329,6 +371,7 @@ export function frameStats(m: Measurement, pose: CameraPose, opts: ScoringOption
       }
     }
     flat = flatCount / total;
+    if (opts.subject) emptyGround = emptyCount / total;
     if (nearN >= 3) nearLum = nearSum / nearN;
     if (farN >= 3) farLum = farSum / farN;
   }
@@ -337,6 +380,8 @@ export function frameStats(m: Measurement, pose: CameraPose, opts: ScoringOption
       ...(flat !== undefined ? { flat } : {}),
       ...(nearLum !== undefined ? { nearLum } : {}),
       ...(farLum !== undefined ? { farLum } : {}),
+      ...(emptyGround !== undefined ? { emptyGround } : {}),
+      empty: voids / total + (emptyGround ?? 0),
       sky: sky / total,
       void: voids / total,
       subject: subject / total,
@@ -443,6 +488,31 @@ export function viewProblem(m: Measurement, maxHardFraction = 0.34): ViewProblem
   return null;
 }
 
+/** Slack (m) for the probe's rounding when the eye height is checked. */
+const EYE_SLACK = 0.03;
+
+/**
+ * Eye mode guard (eye_level, corridor): the camera must stand min..max above
+ * the solid surface straight below it, and must never have been raised. The
+ * engine places eye poses that way; this refuses anything else, so a raised
+ * eye can never win. Null when the pose is at eye height.
+ */
+export function eyeProblem(m: Measurement, candidate: Candidate): string | null {
+  const eye = candidate.eye;
+  if (!eye) return null;
+  if (m.adjustments?.some((a) => a.kind === "raised")) return "raised_above_eye";
+  if (typeof m.ground_y !== "number") return "eye_height_unverified";
+  const height = m.position[1] - m.ground_y;
+  if (height > eye.max + EYE_SLACK) return "above_eye_height";
+  if (height < eye.min - EYE_SLACK) return "below_eye_height";
+  return null;
+}
+
+/** Camera height above the solid surface straight below it, or undefined. */
+export function heightAboveGround(position: Vec3, groundY: number | null | undefined): number | undefined {
+  return typeof groundY === "number" ? position[1] - groundY : undefined;
+}
+
 /**
  * Key-light direction relative to the view (0..1). `light` is the direction
  * the light travels. Best: side or front-side light (the faces the camera
@@ -481,10 +551,14 @@ export function scoreMeasurement(m: Measurement, candidate: Candidate, opts: Sco
     terms: {},
     ...(m.adjustments?.length ? { adjustments: m.adjustments } : {}),
     ...(candidate.note ? { note: candidate.note } : {}),
+    ...(m.ground_y !== undefined ? { groundY: m.ground_y } : {}),
   };
   if (m.rejected) {
     return { ...base, rejected: m.rejected, ...(m.near_lens_hit ? { blockers: { lens: m.near_lens_hit } } : {}) };
   }
+  // An eye-level or corridor camera off eye height never ranks.
+  const offEye = eyeProblem(m, candidate);
+  if (offEye) return { ...base, rejected: offEye };
   const vis = m.vis ?? "";
   const n = vis.length;
   const hardCount = [...vis].filter((c) => c === "H" || c === "B").length;
@@ -565,6 +639,7 @@ export function scoreMeasurement(m: Measurement, candidate: Candidate, opts: Sco
     weights += w;
   }
   const total = weights ? weighted / weights : 0;
+  const tier = profile.emptyLimit !== undefined && stats.empty! > profile.emptyLimit ? 1 : 0;
   const rounded: Partial<Record<ScoreTerm, number>> = {};
   for (const term of SCORE_TERMS) if (terms[term] !== undefined) rounded[term] = r2(terms[term]!);
   return {
@@ -575,6 +650,8 @@ export function scoreMeasurement(m: Measurement, candidate: Candidate, opts: Sco
       ...(stats.flat !== undefined ? { flat: r2(stats.flat) } : {}),
       ...(stats.nearLum !== undefined ? { nearLum: r2(stats.nearLum) } : {}),
       ...(stats.farLum !== undefined ? { farLum: r2(stats.farLum) } : {}),
+      ...(stats.emptyGround !== undefined ? { emptyGround: r2(stats.emptyGround) } : {}),
+      empty: r2(stats.empty ?? 0),
       sky: r2(stats.sky),
       void: r2(stats.void),
       subject: r2(stats.subject),
@@ -592,9 +669,16 @@ export function scoreMeasurement(m: Measurement, candidate: Candidate, opts: Sco
     softFraction: r2(softFraction),
     ...(fill !== undefined ? { fill: Number.isFinite(fill) ? r2(fill) : 99 } : {}),
     ...(inFrame !== undefined ? { inFrame: r2(inFrame) } : {}),
+    ...(profile.emptyLimit !== undefined ? { tier } : {}),
     ...(rejected ? { rejected } : {}),
     ...withBlockers,
   };
+}
+
+/** Rank order: tier first (a pose over the empty limit loses to every pose
+ *  under it), then score. */
+export function rankOrder(a: ScoredCandidate, b: ScoredCandidate): number {
+  return (a.tier ?? 0) - (b.tier ?? 0) || b.total - a.total;
 }
 
 export interface PickDiversity {
@@ -635,7 +719,7 @@ export function sideOf(yaw: number): number {
  * three times.
  */
 export function pickTop(scored: readonly ScoredCandidate[], count: number, minSeparation: number, diversity?: PickDiversity): ScoredCandidate[] {
-  const ranked = scored.filter((s) => !s.rejected).sort((a, b) => b.total - a.total);
+  const ranked = scored.filter((s) => !s.rejected).sort(rankOrder);
   const picks: ScoredCandidate[] = [];
   const dup = (s: ScoredCandidate) =>
     picks.some((p) => {
@@ -645,26 +729,31 @@ export function pickTop(scored: readonly ScoredCandidate[], count: number, minSe
       const cos = fa[0] * fb[0] + fa[1] * fb[1] + fa[2] * fb[2];
       return sep < minSeparation && cos > Math.cos((12 * Math.PI) / 180);
     });
-  const take = (accept: (s: ScoredCandidate) => boolean, stopBelow?: number) => {
-    for (const s of ranked) {
-      if (picks.length >= count) return;
-      if (stopBelow !== undefined && s.total < stopBelow) return;
-      if (picks.includes(s) || dup(s) || !accept(s)) continue;
-      picks.push(s);
+  // Tier by tier: a worse tier only fills what the better ones leave open.
+  const tiers = [...new Set(ranked.map((s) => s.tier ?? 0))];
+  for (const tier of tiers) {
+    const pool = ranked.filter((s) => (s.tier ?? 0) === tier);
+    const take = (accept: (s: ScoredCandidate) => boolean, stopBelow?: number) => {
+      for (const s of pool) {
+        if (picks.length >= count) return;
+        if (stopBelow !== undefined && s.total < stopBelow) return;
+        if (picks.includes(s) || dup(s) || !accept(s)) continue;
+        picks.push(s);
+      }
+    };
+    if (diversity && pool.length) {
+      const minYaw = diversity.minYaw ?? 25;
+      const yawOf = (s: ScoredCandidate) => poseYaw(s.pose, diversity.around);
+      const spread = (s: ScoredCandidate) => picks.every((p) => yawGap(yawOf(p), yawOf(s)) >= minYaw);
+      if (diversity.sides) {
+        const floor = pool[0]!.total - (diversity.sideMargin ?? 0.15);
+        take((s) => spread(s) && !picks.some((p) => sideOf(yawOf(p)) === sideOf(yawOf(s))), floor);
+      }
+      take(spread);
     }
-  };
-  if (diversity && ranked.length) {
-    const minYaw = diversity.minYaw ?? 25;
-    const yawOf = (s: ScoredCandidate) => poseYaw(s.pose, diversity.around);
-    const spread = (s: ScoredCandidate) => picks.every((p) => yawGap(yawOf(p), yawOf(s)) >= minYaw);
-    if (diversity.sides) {
-      const floor = ranked[0]!.total - (diversity.sideMargin ?? 0.15);
-      take((s) => spread(s) && !picks.some((p) => sideOf(yawOf(p)) === sideOf(yawOf(s))), floor);
-    }
-    take(spread);
+    take(() => true);
   }
-  take(() => true);
-  return picks.sort((a, b) => b.total - a.total);
+  return picks.sort(rankOrder);
 }
 
 function directionOf(pose: CameraPose): Vec3 {

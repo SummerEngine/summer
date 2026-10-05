@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.3.0",
-      "content_hash": "8bc0d5d573ed5f36e58209c258ec3ce6f5fb81639056387858dfefd4cb6ded56",
+      "content_hash": "06f4b4e43997f4014d8f164581d674f95cf30013b3eb0dcdf0089ac54a6e72cb",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -5058,7 +5058,7 @@
       "id": "tool/frame-shot",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "6fb6ae94259ee6f670379d99279491580b8675ecc1fe2832e003821a8ecbb5c1",
+      "content_hash": "f624ebb794ddf27cb242879abe9f71329d3b1244399d1b9b7b971d53e3becf30",
       "summary": "Smart framing: find, score and bookmark camera poses for a shot type (establishing, eye level, low-angle, detail, corridor) with in-engine visibility tests.",
       "use_when": [
         "\"find a good view of X\" / \"frame an establishing shot\" / \"show it from the player's eye\" / \"look down the alley\"",

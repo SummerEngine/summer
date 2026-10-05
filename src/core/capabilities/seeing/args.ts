@@ -155,14 +155,14 @@ export const frameShotShape = {
   scenePath,
   shot: z
     .enum(SHOT_TYPES)
-    .describe('"establishing" (wide, whole subject, 12-40 deg up), "eye_level" (player eye at spawn: its Camera3D, or origin + eye_height), "low_angle" (hero, camera near the ground looking up), "detail" (close-up), "corridor" (down an alley/corridor inside the subject, found by a free-space scan; prefers looking in from its open end).'),
+    .describe('"establishing" (wide, whole subject, 12-40 deg up; a pose showing more than 15% empty ground or world edge ranks below every pose showing less), "eye_level" (player eye at spawn: its Camera3D kept inside 1.5-1.8 m, or eye_height, above the walkable surface under the camera), "low_angle" (hero, camera near the ground looking up), "detail" (close-up), "corridor" (down an alley/corridor inside the subject, found by a free-space scan, at eye height; prefers looking in from its open end). Eye-level and corridor cameras are never raised: a pose that cannot stand at eye height moves horizontally or is rejected. Every top pose states its camera height above the surface below it and its absolute y.'),
   subject: z
     .array(z.string())
     .max(8)
     .optional()
     .describe("Node paths to frame (required except for eye_level, where it is what the player looks at)."),
   spawn: z.string().optional().describe("eye_level only: node the player stands at, e.g. the player or a spawn marker. Its own geometry never counts as an occluder."),
-  eye_height: z.number().optional().describe("eye_level/corridor: eye height above the spawn origin / corridor floor in metres (default: the spawn's Camera3D, else 1.6)."),
+  eye_height: z.number().optional().describe("eye_level/corridor: exact camera height in metres above the walkable surface under the camera (default: 1.6; an eye_level spawn's own Camera3D keeps its height clamped into 1.5-1.8)."),
   fov: z.number().optional().describe("Override the shot type's field of view (establishing 55, eye_level 60/75, low_angle 60 then widened, detail 40, corridor 60/75)."),
   aspect,
   occluders: z

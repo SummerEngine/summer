@@ -59,6 +59,14 @@ const FLAG_SEE := 2
 # A pose whose lens sits inside a closed shell: at least this many of the six
 # axis rays meet a back face first.
 const INSIDE_BACK_RAYS := 4
+# Eye mode: the surface under the camera is walkable when it lies at most this
+# far above / below the floor under the stand point (a kerb, a few steps, a
+# slope), so a car roof or a wall cap is never the ground an eye stands on.
+const EYE_STEP_UP := 0.75
+const EYE_STEP_DOWN := 2.0
+# Eye mode: the solid surfaces a camera can stand over (soft props and foliage
+# never count as ground; water and glass floors do).
+const EYE_GROUND_MASK := LAYER_HARD | LAYER_SUBJECT | LAYER_SEE
 
 const DEFAULT_SOFT_PATTERN := "(tree|bush|shrub|grass|weed|moss|foliage|leaf|leaves|plant|flower|vine|ivy|hedge|pebble|gravel|rubble|litter|puddle|decal|fence|rail|lamp|lantern|light|pole|post|sign|wire|cable|pipe|crate|barrel|bench|prop|clutter|debris|trash|bin|bollard|hydrant|planter|pot|chair|table|awning|banner|flag)"
 const DEFAULT_HARD_PATTERN := "(wall|building|house|facade|terrain|ground|floor|road|street|pavement|sidewalk|cliff|rock|mountain|roof|tower|bridge|stair|pier|corner|crown|cornice|base|dado|block)"
@@ -810,6 +818,67 @@ func _ground_below(pos: Vector3, mask: int) -> Variant:
 	return float((hit["position"] as Vector3).y)
 
 
+# The first surface straight below a point, cast from the point itself: what
+# a camera there stands over. Nothing above the point ever counts.
+func _surface_below(pos: Vector3, mask: int) -> Variant:
+	var hit := _ray(pos, pos + Vector3.DOWN * 500.0, mask)
+	if hit.is_empty():
+		return null
+	return float((hit["position"] as Vector3).y)
+
+
+# Eye mode (eye_level and corridor candidates): stand the camera at eye height
+# above the walkable surface under it, and never raise it. The surface is the
+# first solid one straight below the lens (cast from the lens, so a duct, a
+# balcony or a roof overhead never counts as ground), within EYE_STEP_UP /
+# EYE_STEP_DOWN of the floor under eye["stand"]. The height is eye["target"],
+# or the camera's own height clamped into eye["min"]..eye["max"]. When that
+# spot does not work (no walkable surface, or the lens is blocked) the camera
+# moves HORIZONTALLY: along the view up to 1 m, then 0.3 / 0.6 m sideways.
+# Returns {pos, ground, height}, or {rejected} when no spot has a walkable
+# surface. A spot with a walkable surface but a blocked lens is returned as
+# is, and the lens check rejects it with its reason.
+func _eye_place(pos: Vector3, look: Vector3, eye: Dictionary, lens_r: float) -> Dictionary:
+	var lo := float(eye.get("min", 1.5))
+	var hi := maxf(lo, float(eye.get("max", 1.8)))
+	var has_target := eye.has("target")
+	var target := clampf(float(eye.get("target", 1.6)), lo, hi)
+	var ref: Variant = null
+	if eye.has("stand"):
+		ref = _surface_below(_vec(eye["stand"]) + Vector3.UP * 0.1, EYE_GROUND_MASK)
+	var view := (look - pos).normalized()
+	var flat := Vector3(view.x, 0.0, view.z)
+	if flat.length() < 0.001:
+		flat = Vector3(0, 0, -1)
+	flat = flat.normalized()
+	var side := Vector3(flat.z, 0.0, -flat.x)
+	var offsets: Array = [Vector3.ZERO]
+	for k in [1, 2, 3, 4]:
+		offsets.append(flat * 0.25 * float(k))
+	for s in [0.3, -0.3, 0.6, -0.6]:
+		offsets.append(side * float(s))
+	var reason := "no_walkable_ground"
+	var fallback := {}
+	for off in offsets:
+		var p: Vector3 = pos + off
+		var g: Variant = _surface_below(p, EYE_GROUND_MASK)
+		if g == null:
+			continue
+		if ref != null and (float(g) > float(ref) + EYE_STEP_UP or float(g) < float(ref) - EYE_STEP_DOWN):
+			reason = "not_walkable"
+			continue
+		var h := target if has_target else clampf(p.y - float(g), lo, hi)
+		var placed := Vector3(p.x, float(g) + h, p.z)
+		var out := {"pos": placed, "ground": float(g), "height": h}
+		if _lens_problem(placed, view, lens_r) == "":
+			return out
+		if fallback.is_empty():
+			fallback = out
+	if not fallback.is_empty():
+		return fallback
+	return {"rejected": reason}
+
+
 func _corridor_scan(spec: Dictionary) -> Dictionary:
 	var box := AABB(_vec((spec.get("aabb", {}) as Dictionary).get("position")), _vec((spec.get("aabb", {}) as Dictionary).get("size")))
 	var height := float(spec.get("height", 1.6))
@@ -963,12 +1032,30 @@ func _measure_one(index: int, cand: Dictionary, spec: Dictionary) -> Dictionary:
 	var adjust := bool(cand.get("adjust", true))
 	var adjustments: Array = []
 	var rec := {"i": index}
+	# 0. Eye mode (eye_level, corridor): eye height above the walkable surface
+	# under the camera, moved only horizontally, never raised (_eye_place).
+	var eye_raw: Variant = cand.get("eye", null)
+	var eye: Dictionary = eye_raw if eye_raw is Dictionary else {}
+	var eye_mode := adjust and not eye.is_empty()
+	if eye_mode:
+		var placed := _eye_place(pos, look, eye, float(spec.get("near_lens_radius", 0.3)))
+		if placed.has("rejected"):
+			rec["rejected"] = placed["rejected"]
+			return _finish_measure(rec, pos, look, fov, adjustments)
+		var moved: Vector3 = (placed["pos"] as Vector3) - pos
+		pos += moved
+		look += moved
+		adjustments.append({"kind": "eye_height", "height": snappedf(float(placed["height"]), 0.01), "ground_y": snappedf(float(placed["ground"]), 0.001)})
+		var sideways := Vector2(moved.x, moved.z).length()
+		if sideways > 0.001:
+			adjustments.append({"kind": "moved_horizontally", "by": snappedf(sideways, 0.01)})
 	# 1. Ground clearance and the low-angle rule: a camera that would end up in
 	# the ground moves CLOSER along its line of sight and widens its FOV to keep
-	# the framing, instead of being pushed up or buried.
+	# the framing, instead of being pushed up or buried. Not in eye mode: an
+	# eye is never raised.
 	var clearance := float(cand.get("min_clearance", spec.get("min_clearance", 0.3)))
 	var max_fov := float(spec.get("max_fov", 100.0))
-	for _attempt in (2 if adjust else 0):
+	for _attempt in (2 if adjust and not eye_mode else 0):
 		var ground: Variant = _ground_below(pos, solid_mask)
 		if ground == null or pos.y >= float(ground) + clearance:
 			break
@@ -994,7 +1081,8 @@ func _measure_one(index: int, cand: Dictionary, spec: Dictionary) -> Dictionary:
 	# kind of geometry, and the lens must not sit inside a closed shell or just
 	# behind a one-sided surface (back faces are culled: the image would look
 	# through the wall it stands behind). If not, nudge forward along the view
-	# line a little (never for adjust:false).
+	# line a little (never for adjust:false, and not in eye mode: _eye_place
+	# already tried its horizontal moves).
 	var t_lens := Time.get_ticks_usec()
 	var lens_r := float(spec.get("near_lens_radius", 0.3))
 	var fwd := (look - pos).normalized()
@@ -1003,7 +1091,7 @@ func _measure_one(index: int, cand: Dictionary, spec: Dictionary) -> Dictionary:
 		var step := float(spec.get("nudge_step", 0.25))
 		var max_nudge := minf(float(spec.get("max_nudge", 1.5)), pos.distance_to(look) * 0.25)
 		var k := 1
-		while adjust and step * k <= max_nudge + 0.0001:
+		while adjust and not eye_mode and step * k <= max_nudge + 0.0001:
 			var p2 := pos + fwd * step * k
 			if _lens_problem(p2, fwd, lens_r) == "":
 				adjustments.append({"kind": "near_lens_nudge", "by": snappedf(step * k, 0.01)})
@@ -1169,6 +1257,10 @@ func _finish_measure(rec: Dictionary, pos: Vector3, look: Vector3, fov: float, a
 	rec["position"] = _arr(pos)
 	rec["look_at"] = _arr(look)
 	rec["fov"] = snappedf(fov, 0.01)
+	# The real camera height: the first solid surface straight below the final
+	# pose (null: nothing below it, the world edge).
+	var g: Variant = _surface_below(pos, EYE_GROUND_MASK) if _state != null else null
+	rec["ground_y"] = null if g == null else snappedf(float(g), 0.001)
 	if not adjustments.is_empty():
 		rec["adjustments"] = adjustments
 	return rec

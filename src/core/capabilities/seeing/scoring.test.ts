@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { generateCandidates, type Candidate } from "./candidates.js";
+import { chooseCorridorAxis, corridorBox, generateCandidates, type Candidate } from "./candidates.js";
 import {
+  EMPTY_LIMIT,
+  eyeProblem,
   foregroundScore,
   horizonScore,
   lightScore,
   pickTop,
   poseYaw,
+  rankOrder,
   rejectionCounts,
   scoreMeasurement,
   sideOf,
@@ -279,5 +282,103 @@ describe("establishing shots: light direction, world edge, three different views
     const steep = scored.map((s) => ({ ...s, total: s.id === "wide_az000_el12" ? 0.9 : s.id === "wide_az030_el12" || s.id === "wide_az330_el12" ? 0.85 : 0.3 }));
     const spaced = pickTop(steep, 3, 2, { around: center, minYaw: 25, sides: true });
     expect(spaced.map((p) => p.id)).toEqual(["wide_az000_el12", "wide_az030_el12", "wide_az330_el12"]);
+  });
+});
+
+// Round 1 (three_houses_v3, 2026-10-04): corridor winners were "adjusted:
+// raised" to 3.5-4.25 m, and the establishing winner (27.7 m, 40 deg down)
+// showed the model on a table with the empty world all round.
+describe("eye-level and corridor cameras stay at eye height (round 1: winners raised to 3.5-4.25 m)", () => {
+  const axis = chooseCorridorAxis([{ seed: [0, 1.6, 0], dir: [0, 0, 1], fwd: 12, back: 10, left: 1.5, right: 1.5 }], { position: [-3, 0, -10], size: [6, 8, 22] })[0]!;
+  const corridor = generateCandidates({ shot: "corridor", corridor: axis, aspect: 16 / 9 })[0]!;
+  const COPTS: ScoringOptions = { ...OPTS, shot: "corridor", subject: corridorBox(axis, 0) };
+  const walls = grid((r, c) => (r < 3 ? [".", -1] : c < 6 || c >= 18 ? ["H", 3 + r * 0.2] : ["S", 8]));
+  const at = (y: number, extra: Partial<Measurement> = {}): Measurement => ({
+    i: 0,
+    position: [corridor.position[0], y, corridor.position[2]],
+    look_at: [corridor.look_at[0], y, corridor.look_at[2]],
+    fov: corridor.fov,
+    vis: "VVVVVV",
+    ...walls,
+    ground_y: 0,
+    ...extra,
+  });
+
+  it("ranks a pose 1.5-1.8 m above the surface below it and rejects one off eye height, raised or unmeasured", () => {
+    expect(eyeProblem(at(1.6), corridor)).toBeNull();
+    expect(scoreMeasurement(at(1.6), corridor, COPTS).rejected).toBeUndefined();
+    // The old kernel's "raised" ground-clearance push never ranks.
+    const raised = scoreMeasurement(at(4.25, { adjustments: [{ kind: "raised", by: 2.65 }] }), corridor, COPTS);
+    expect(raised.rejected).toBe("raised_above_eye");
+    expect(scoreMeasurement(at(3.5), corridor, COPTS).rejected).toBe("above_eye_height");
+    expect(scoreMeasurement(at(1.2), corridor, COPTS).rejected).toBe("below_eye_height");
+    // Standing on a 2 m platform at 3.6 m is still 1.6 m above the surface below.
+    expect(scoreMeasurement(at(3.6, { ground_y: 2 }), corridor, COPTS).rejected).toBeUndefined();
+    expect(scoreMeasurement(at(1.6, { ground_y: undefined }), corridor, COPTS).rejected).toBe("eye_height_unverified");
+    expect(scoreMeasurement(at(1.6, { ground_y: null }), corridor, COPTS).rejected).toBe("eye_height_unverified");
+    expect(scoreMeasurement(at(1.6), corridor, COPTS).groundY).toBe(0);
+  });
+
+  it("an explicit eye_height is exact, and the guard applies to eye_level too", () => {
+    const exact = generateCandidates({ shot: "corridor", corridor: axis, aspect: 16 / 9, eyeHeight: 1.6 })[0]!;
+    expect(eyeProblem(at(1.6), exact)).toBeNull();
+    expect(eyeProblem(at(1.75), exact)).toBe("above_eye_height");
+    const spawn = { path: "Walker", origin: [0, 0, 0] as [number, number, number], forward: [0, 0, -1] as [number, number, number] };
+    const eye = generateCandidates({ shot: "eye_level", spawn, aspect: 16 / 9 })[0]!;
+    expect(eyeProblem({ ...at(4.25), adjustments: [{ kind: "raised", by: 2.65 }] }, eye)).toBe("raised_above_eye");
+    // Ring shots have no eye spec: their height is free.
+    expect(eyeProblem(measurement({ ground_y: 0 }), CAND)).toBeNull();
+  });
+});
+
+describe("establishing: empty ground and the world edge are decisive (round 1: the winner showed the empty world)", () => {
+  const featureless = (rows: (r: number) => boolean) => {
+    let tex = "";
+    let lum = "";
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+      tex += rows(r) ? "0" : "5";
+      lum += "5";
+    }
+    return { tex, lum };
+  };
+
+  it("counts featureless ground outside the subject's footprint as empty ground", () => {
+    // Rows below the subject hit flat ground 60 m out: far outside the box.
+    const m = measurement({ ...grid((r, c) => (r < 4 ? [".", -1] : r < 10 && c > 6 && c < 18 ? ["S", 30] : ["H", 60])), ...featureless((r) => r >= 10) });
+    const s = scoreMeasurement(m, CAND, OPTS);
+    expect(s.stats!.emptyGround!).toBeGreaterThan(EMPTY_LIMIT);
+    expect(s.tier).toBe(1);
+    // Textured ground there is not empty.
+    const textured = scoreMeasurement(measurement({ ...grid((r, c) => (r < 4 ? [".", -1] : r < 10 && c > 6 && c < 18 ? ["S", 30] : ["H", 60])), ...featureless(() => false) }), CAND, OPTS);
+    expect(textured.stats!.emptyGround).toBe(0);
+    expect(textured.tier).toBe(0);
+  });
+
+  it("a pose over 15% empty ground or world edge loses to every pose under it, whatever the scores", () => {
+    const ring = generateCandidates({ shot: "establishing", subject: BOX, aspect: 16 / 9 }).filter((c) => c.id.endsWith("_el12"));
+    const clean = grid((r, c) => (r < 4 ? [".", -1] : r < 10 && c > 6 && c < 18 ? ["S", 30] : ["H", 20 + r]));
+    // The bottom three rows miss everything: 21% world edge.
+    const edged = grid((r, c) => (r < 4 || r >= ROWS - 3 ? [".", -1] : r < 10 && c > 6 && c < 18 ? ["S", 30] : ["H", 20 + r]));
+    const scored = ring.map((c, i) => {
+      const s = scoreMeasurement({ ...measurement(), ...(i < 3 ? edged : clean), i, position: c.position, look_at: c.look_at, fov: c.fov }, c, OPTS);
+      // The edged poses get a far better weighted score than the clean ones.
+      return { ...s, id: c.id, total: i < 3 ? 0.95 : 0.4 + i / 100 };
+    });
+    expect(scored.slice(0, 3).every((s) => s.tier === 1 && s.stats!.empty > EMPTY_LIMIT)).toBe(true);
+    expect(scored.slice(3).every((s) => s.tier === 0)).toBe(true);
+    const top = pickTop(scored, 3, 2, { around: aabbCenter(BOX), minYaw: 25, sides: true });
+    expect(top).toHaveLength(3);
+    expect(top.every((s) => s.tier === 0)).toBe(true);
+    // Only when the clean poses run out does an empty one fill a slot, last.
+    const few = pickTop([...scored.slice(0, 3), scored[5]!], 3, 2);
+    expect(few[0]!.id).toBe(scored[5]!.id);
+    expect(few.slice(1).every((s) => s.tier === 1)).toBe(true);
+    expect([...scored].sort(rankOrder)[0]!.tier).toBe(0);
+  });
+
+  it("is an establishing rule only: other shots rank by score", () => {
+    const edged = measurement(grid((r, c) => (r < 4 || r >= ROWS - 3 ? [".", -1] : r < 10 && c > 6 && c < 18 ? ["S", 30] : ["H", 20 + r])));
+    const detail = generateCandidates({ shot: "detail", subject: BOX, aspect: 16 / 9 })[0]!;
+    expect(scoreMeasurement(edged, detail, { ...OPTS, shot: "detail" }).tier).toBeUndefined();
   });
 });

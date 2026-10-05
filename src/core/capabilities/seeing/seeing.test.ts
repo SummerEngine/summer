@@ -350,6 +350,120 @@ describe("summer_frame_shot", () => {
   });
 });
 
+// Round 1 (three_houses_v3, 2026-10-04): the corridor winner was "adjusted:
+// raised" to 4.25 m and the next alley's to 3.5 m; the establishing winner
+// (27.7 m up) showed the empty world; captions never said how high the camera
+// really was.
+describe("summer_frame_shot keeps eye-level and corridor cameras at eye height (round 1)", () => {
+  const COLS = 24;
+  const ROWS = 14;
+  const ALLEY = { position: [-3, -1.8, -10], size: [6, 10, 22] };
+
+  function corridorEngine(raiseFirst: boolean) {
+    return fakeEngine({
+      projectRoot: project,
+      analyze: (config) => {
+        const subjects = ((config.subjects ?? []) as string[]).map((p) => ({ path: p, resolved: p, has_geometry: true, visuals: 12, aabb: ALLEY }));
+        const candidates = config.candidates as Array<Record<string, unknown>> | undefined;
+        if (!candidates) {
+          return { ok: true, stage: "done", subjects, corridor_scan: { runs: [{ seed: [0, 1.6, 0], dir: [0, 0, 1], fwd: 12, back: 10, left: 1.5, right: 1.5 }] } };
+        }
+        return {
+          ok: true,
+          stage: "done",
+          subjects,
+          measurements: candidates.map((c, i) => {
+            let grid = "";
+            const dist: number[] = [];
+            for (let r = 0; r < ROWS; r++) for (let col = 0; col < COLS; col++) {
+              const code = r < 3 ? "." : col < 6 || col >= 18 ? "H" : "S";
+              grid += code;
+              dist.push(code === "." ? -1 : code === "H" ? 2 + r * 0.3 : 9);
+            }
+            const p = c.position as number[];
+            // What an old kernel did: pushed the camera up over a duct.
+            if (raiseFirst && i === 0) {
+              return { i, position: [p[0], 4.25, p[2]], look_at: c.look_at, fov: c.fov, vis: "VVVVVV", grid, dist, adjustments: [{ kind: "raised", by: 2.65 }], ground_y: 0 };
+            }
+            return { i, position: p, look_at: c.look_at, fov: c.fov, vis: "VVVVVV", grid, dist, adjustments: [{ kind: "eye_height", height: 1.6, ground_y: 0 }], ground_y: 0 };
+          }),
+        };
+      },
+    });
+  }
+
+  it("sends every corridor pose in eye mode on the scan's floor, never ranks a raised one, and states the real height", async () => {
+    const engine = corridorEngine(true);
+    const r = (await frameShot(engine, { scenePath: "res://three.tscn", shot: "corridor", subject: ["Alley1"], save_bookmark: false })) as SeeingSuccess;
+    expect(r.ok).toBe(true);
+    const sent = engine.configs[1]!.candidates as Array<{ position: number[]; eye?: Record<string, unknown> }>;
+    expect(sent.length).toBe(24);
+    for (const c of sent) {
+      // The floor under the seed (y 0), not the subject's lowest point (-1.8).
+      expect(c.position[1]).toBeCloseTo(1.6, 6);
+      expect(c.eye).toEqual({ min: 1.5, max: 1.8, target: 1.6, stand: [0, 1.6, 0] });
+    }
+    const receipt = r.receipt as { top: Array<{ id: string; camera_y: number; height_above_ground: number }>; rejected: Record<string, number> };
+    expect(receipt.rejected.raised_above_eye).toBe(1);
+    for (const t of receipt.top) {
+      expect(t.camera_y).toBeCloseTo(1.6, 6);
+      expect(t.height_above_ground).toBeCloseTo(1.6, 6);
+    }
+    expect(r.caption).toContain("camera 1.60 m above the surface below it (camera y 1.60, surface y 0.00)");
+    expect(r.caption).toContain("eye: 1.6 m above the walkable surface under each camera (corridor floor y 0.00); never raised");
+    const tiles = engine.configs[2]!.tiles as Array<{ label: string }>;
+    for (const t of tiles) expect(t.label).toMatch(/· camera 1\.60 m above surface \(y 1\.60\)$/);
+  });
+
+  it("eye_level poses carry the spawn's floor as their walkable reference", async () => {
+    const engine = fakeEngine({
+      projectRoot: project,
+      analyze: (config) => {
+        const candidates = config.candidates as Array<Record<string, unknown>> | undefined;
+        const base = { ...analyzeBounds(config), spawn: { path: "Walker", origin: [16.5, 0, 9], forward: [0, 0, -1] } };
+        if (!candidates) return base;
+        return {
+          ...base,
+          measurements: candidates.map((c, i) => {
+            let grid = "";
+            for (let r = 0; r < ROWS; r++) for (let col = 0; col < COLS; col++) grid += r < 5 ? "." : r < 10 && col > 5 && col < 18 ? "S" : "H";
+            return { i, position: c.position, look_at: c.look_at, fov: c.fov, vis: "VVVVVVVVV", grid, dist: [...grid].map((g) => (g === "." ? -1 : 20)), ground_y: 0 };
+          }),
+        };
+      },
+    });
+    const r = (await frameShot(engine, { scenePath: "res://three.tscn", shot: "eye_level", spawn: "Walker", subject: ["House1"], render: "none", save_bookmark: false })) as SeeingSuccess;
+    expect(r.ok).toBe(true);
+    const sent = engine.configs[1]!.candidates as Array<{ position: number[]; eye?: Record<string, unknown> }>;
+    for (const c of sent) expect(c.eye).toEqual({ min: 1.5, max: 1.8, target: 1.6, stand: [16.5, 0, 9] });
+    expect(r.caption).toContain("eye: 1.6 m above the walkable surface under the camera at Walker; never raised");
+    expect(r.caption).toContain("camera 1.60 m above the surface below it (camera y 1.60, surface y 0.00)");
+  });
+
+  it("establishing captions say the camera height too, and name the tier rule", async () => {
+    const engine = fakeEngine({
+      projectRoot: project,
+      analyze: (config) => {
+        const candidates = config.candidates as Array<Record<string, unknown>> | undefined;
+        if (!candidates) return analyzeBounds(config);
+        return {
+          ...analyzeBounds(config),
+          measurements: candidates.map((c, i) => {
+            let grid = "";
+            for (let r = 0; r < ROWS; r++) for (let col = 0; col < COLS; col++) grid += r < 4 ? "." : r < 10 && col > 5 && col < 18 ? "S" : "H";
+            return { i, position: c.position, look_at: c.look_at, fov: c.fov, vis: "VVVVVVVVV", grid, dist: [...grid].map((g) => (g === "." ? -1 : 30)), ground_y: i % 2 ? 0 : null };
+          }),
+        };
+      },
+    });
+    const r = (await frameShot(engine, { scenePath: "res://three.tscn", shot: "establishing", subject: ["House1"], save_bookmark: false })) as SeeingSuccess;
+    expect(r.caption).toContain("tier rule: a pose showing more than 15% empty ground or world edge ranks below every pose showing less");
+    expect(r.caption).toMatch(/camera [\d.]+ m above the surface below it \(camera y [\d.]+, surface y 0\.00\)|camera at y [\d.]+ \(absolute\); no surface below it \(world edge\)/);
+    const tiles = engine.configs[2]!.tiles as Array<{ label: string }>;
+    for (const t of tiles) expect(t.label).toMatch(/· camera ([\d.]+ m above surface \(y [\d.]+\)|y [\d.]+, nothing below)$/);
+  });
+});
+
 describe("summer_frame_nodes checks an explicit from (proof run: the camera sat behind Backdrop/BD_A)", () => {
   const FIRE_ESCAPE = { position: [5, 2, -9], size: [5, 8, 1.5] };
   const COLS = 24;
@@ -632,6 +746,18 @@ describe("the kernel's back-face, lens and transparency rules (source contract)"
     expect(kernel).toMatch(/var sweep_soft_mask := LAYER_SOFT\n/);
     expect(kernel).toContain("BaseMaterial3D.TRANSPARENCY_DISABLED");
     expect(kernel).toContain("BaseMaterial3D.CULL_DISABLED");
+  });
+
+  it("eye mode stands the camera on the surface below the lens and never raises it (round 1: corridor winners raised to 3.5-4.25 m)", () => {
+    // The surface under an eye is cast from the lens itself, so a duct or a
+    // balcony overhead never counts as ground.
+    expect(kernel).toMatch(/func _surface_below\(pos: Vector3, mask: int\) -> Variant:\n\tvar hit := _ray\(pos, pos \+ Vector3\.DOWN \* 500\.0, mask\)/);
+    expect(kernel).toContain("func _eye_place(");
+    // The ground-clearance push ("raised") and the along-the-view nudge are off in eye mode.
+    expect(kernel).toContain("for _attempt in (2 if adjust and not eye_mode else 0):");
+    expect(kernel).toContain("while adjust and not eye_mode and step * k <= max_nudge + 0.0001:");
+    expect(kernel).toContain('rec["ground_y"] = null if g == null else snappedf(float(g), 0.001)');
+    expect(kernel).toContain('"kind": "eye_height"');
   });
 
   it("rejects a lens inside a closed shell or just behind a one-sided surface, and measures adjust:false poses as given", () => {

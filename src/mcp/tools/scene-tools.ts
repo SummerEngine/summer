@@ -5,6 +5,7 @@ import { executeSceneMutation } from "../../core/capabilities/engine-ops.js";
 import { instantiateScene, runBatch } from "../../core/capabilities/placement-batch.js";
 import { renderPlacementResult } from "./placement-tools.js";
 import { inspectNodeFields, inspectNodeInputShape } from "../../core/capabilities/inspect-node.js";
+import { inspectResource, inspectResourceInputShape } from "../../core/capabilities/inspect-resource.js";
 import {
   rawSceneReplaceRefusal,
   replaceNodeInputShape,
@@ -383,14 +384,13 @@ The full read is about 5 KB. To read only what you need, pass fields: property n
 
   server.tool(
     "summer_inspect_resource",
-    `Get all properties of a resource (material, mesh, shape, environment, etc).
+    `Read a resource: a material, mesh, shape, texture, environment, or a scene/model file.
 
-Use when you need the sub-properties of a resource attached to a node. For example, summer_inspect_node tells you a MeshInstance3D has a "StandardMaterial3D" material — this tool tells you that material's albedo_color, metallic, roughness, etc.`,
-    {
-      path: z.string().describe("Resource path, e.g. 'res://materials/ground.tres' or 'res://models/player.glb'"),
-    },
-    async ({ path }) =>
-      withEngine(async (client) => client.inspectResource(path))
+Two forms, pass exactly one:
+- path: a resource FILE ('res://materials/ground.tres', a mesh 'res://kit/meshes/wall_01.res', 'res://models/player.glb'), loaded read-only in the editor. A Mesh returns its AABB, surface_count and per surface the primitive, vertex and index counts, attributes, triangles and material (class, path or embedded, albedo for standard materials), plus the unique materials and blend shapes. A scene or model (.tscn/.glb/.gltf) returns its node count, the first 40 nodes with type, instanced scene and mesh, and its meshes; summer_inspect_asset measures it (AABB, planes, ports). Every other resource (and a mesh) returns its editor properties that differ from the class default (props), with props_at_default counting the rest.
+- nodePath + property: a resource a node of the ACTIVE scene tab holds, e.g. nodePath 'Floor', property 'mesh'. For example, summer_inspect_node tells you a MeshInstance3D has a "StandardMaterial3D" material_override — this form returns its albedo_color, metallic, roughness, etc.`,
+    inspectResourceInputShape,
+    async (args) => withEngine(async (client) => inspectResource(client, args))
   );
 
   server.tool(

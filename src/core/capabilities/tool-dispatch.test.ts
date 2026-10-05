@@ -36,7 +36,7 @@ function fakeEngineContext(overrides: Record<string, unknown> = {}): {
     getProjectState: record("getProjectState"),
     getScriptErrors: record("getScriptErrors"),
     inspectNode: record("inspectNode"),
-    inspectResource: record("inspectResource"),
+    inspectNodeResource: record("inspectNodeResource"),
     readProjectFile: record("readProjectFile"),
     play: record("play"),
     stop: record("stop"),

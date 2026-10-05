@@ -186,4 +186,4 @@ The source author states heightmap support so wetness flows along map bumps is *
 
 ## Evidence
 
-- [sources/x/tenmomo-unity-realtime-wet/source.md](../../../sources/x/tenmomo-unity-realtime-wet/source.md)
+- Source record `sources/x/tenmomo-unity-realtime-wet/source.md` in the librarian's source archive (not shipped with this package; the evidence boundaries above summarise it).

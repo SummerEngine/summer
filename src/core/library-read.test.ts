@@ -1,5 +1,16 @@
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join, posix } from "node:path";
 import { describe, expect, it } from "vitest";
-import { FOOTER_SUFFIX, feedbackFooter, readLibraryEntry, readLibraryInputSchema } from "./library-read.js";
+import {
+  FOOTER_SUFFIX,
+  feedbackFooter,
+  readLibraryEntry,
+  readLibraryInputSchema,
+  relativeLinkTargets,
+  resolveLibraryLink,
+} from "./library-read.js";
+import { loadLibraryIndex } from "./library-search.js";
+import { PACKAGE_ROOT } from "./package-root.js";
 
 /** Same shape summer_library_feedback accepts for entry_id (feedback-tools.ts
  *  ENTRY_ID_PATTERN) — inlined so core tests never import the mcp layer. */
@@ -125,5 +136,133 @@ describe("input schema", () => {
     expect(readLibraryInputSchema.safeParse({ id: "skill/x", part: "all" }).success).toBe(true);
     expect(readLibraryInputSchema.safeParse({ id: "skill/x", part: "body" }).success).toBe(false);
     expect(readLibraryInputSchema.safeParse({}).success).toBe(false);
+  });
+});
+
+// Field evidence (round 1, 2026-10-04): skill/spatial-placement links
+// references/kit-placement-tools.md for "arguments, result shapes, limits",
+// but summer_read_library could not load it: reference/kit-placement-tools
+// was not_found and part "resource" returned only resource.yaml.
+describe("linked files load through read_library", () => {
+  it("loads a skill's linked reference by <entry id>/<link as written>, with the parent's footer", async () => {
+    const result = await readLibraryEntry("skill/spatial-placement/references/kit-placement-tools.md");
+    if (!result.ok) throw new Error(`expected ok: ${result.hint}`);
+    expect(result.id).toBe("skill/spatial-placement");
+    expect(result.linked_file).toBe("references/kit-placement-tools.md");
+    expect(result.text).toContain("--- library/skills/spatial-placement/references/kit-placement-tools.md ---");
+    expect(result.text).toContain(readFileSync(join(PACKAGE_ROOT, "library/skills/spatial-placement/references/kit-placement-tools.md"), "utf-8").split("\n")[0]);
+    expect(result.text).not.toContain("--- library/skills/spatial-placement/SKILL.md ---");
+    expect(lastLine(result.text)).toBe(result.footer);
+    expect(result.entry_id).toMatch(/^skill\/spatial-placement@[a-f0-9]{12}$/);
+  });
+
+  it("also loads it by the bare relative path and by the reference/<slug> guess", async () => {
+    for (const id of ["references/kit-placement-tools.md", "./references/kit-placement-tools.md", "reference/kit-placement-tools"]) {
+      const result = await readLibraryEntry(id, "skill");
+      expect(result.ok && result.linked_file, id).toBe("references/kit-placement-tools.md");
+    }
+  });
+
+  it("lists every link of a body with the id that loads it", async () => {
+    const result = await readLibraryEntry("skill/spatial-placement", "skill");
+    if (!result.ok) throw new Error("expected ok");
+    expect(result.links).toContainEqual({ target: "references/kit-placement-tools.md", id: "skill/spatial-placement/references/kit-placement-tools.md" });
+    expect(result.text).toContain("references/kit-placement-tools.md -> skill/spatial-placement/references/kit-placement-tools.md");
+    expect(lastLine(result.text)).toBe(result.footer);
+    // A link to another entry's body resolves to that entry's id.
+    const host = await readLibraryEntry("skill/host-authoritative-state", "skill");
+    if (!host.ok) throw new Error("expected ok");
+    expect(host.links).toContainEqual({ target: "../setup-multiplayer/SKILL.md", id: "skill/setup-multiplayer" });
+  });
+
+  it("renders an entry when the link names its body file or descriptor", async () => {
+    const body = await readLibraryEntry("skill/host-authoritative-state/../setup-multiplayer/SKILL.md", "skill");
+    expect(body.ok && body.id).toBe("skill/setup-multiplayer");
+    expect(body.ok && body.linked_file).toBeUndefined();
+    const descriptor = await readLibraryEntry("skill/spatial-placement/resource.yaml");
+    if (!descriptor.ok) throw new Error("expected ok");
+    expect(descriptor.part).toBe("resource");
+    expect(descriptor.text).toContain("id: skill/spatial-placement");
+  });
+
+  it("never reads outside library/ or a file that is not there", async () => {
+    for (const id of [
+      "skill/spatial-placement/../../../package.json",
+      "skill/spatial-placement/../../../../../../etc/passwd",
+      "skill/spatial-placement/%2e%2e/%2e%2e/%2e%2e/package.json",
+      "skill/spatial-placement//etc/passwd",
+      "skill/spatial-placement/references/missing.md",
+      "skill/spatial-placement/references",
+      "../package.json",
+    ]) {
+      const result = await readLibraryEntry(id);
+      expect(result.ok, id).toBe(false);
+      if (!result.ok) expect(result.hint, id).toContain("<entry id>/<link as written>");
+    }
+  });
+
+  it("extracts markdown links and library-path code spans, not URLs, anchors, project paths or fenced code", () => {
+    const md = [
+      "See [tools](references/kit-placement-tools.md#connect) and [web](https://example.com/x.md) and [top](#intro).",
+      "Also `../../references/gd-style/gd-style.md`, but not `./scripts/player.gd`, `res://a.tscn` or `./World/Player`.",
+      "Inline `[x](../nope/SKILL.md)` is code, not a link.",
+      "```",
+      "[fenced](../fenced/SKILL.md)",
+      "```",
+    ].join("\n");
+    expect(relativeLinkTargets(md).sort()).toEqual(["../../references/gd-style/gd-style.md", "references/kit-placement-tools.md"]);
+  });
+});
+
+/** Every markdown file a skill ships, as paths inside the skill directory. */
+function skillMarkdownFiles(skillDir: string, prefix = ""): string[] {
+  const out: string[] = [];
+  for (const name of readdirSync(join(skillDir, prefix)).sort()) {
+    const rel = prefix ? `${prefix}/${name}` : name;
+    if (statSync(join(skillDir, rel)).isDirectory()) out.push(...skillMarkdownFiles(skillDir, rel));
+    else if (name.toLowerCase().endsWith(".md")) out.push(rel);
+  }
+  return out;
+}
+
+describe("every link in every library skill resolves through read_library", () => {
+  const entries = loadLibraryIndex();
+  const skillsDir = join(PACKAGE_ROOT, "library", "skills");
+  const skills = readdirSync(skillsDir)
+    .filter((slug) => statSync(join(skillsDir, slug)).isDirectory())
+    .sort();
+
+  it("covers the shipped skills", () => {
+    expect(skills.length).toBeGreaterThan(50);
+    expect(skills).toContain("spatial-placement");
+  });
+
+  it.each(skills)("skill/%s", async (slug) => {
+    const entry = entries.find((e) => e.id === `skill/${slug}`);
+    expect(entry, `skill/${slug} is in the index`).toBeDefined();
+    const skillDir = join(skillsDir, slug);
+    const broken: string[] = [];
+    for (const file of skillMarkdownFiles(skillDir)) {
+      const markdown = readFileSync(join(skillDir, file), "utf-8");
+      for (const target of relativeLinkTargets(markdown)) {
+        const where = `${file}: ${target}`;
+        const canonical = resolveLibraryLink(entry!, file, target, { entries });
+        if (!canonical) {
+          broken.push(`${where} (not shipped inside library/)`);
+          continue;
+        }
+        // The id an agent builds from the link as written, and the canonical id,
+        // both load, and the load carries the target file's text.
+        const asWritten = `skill/${slug}/${posix.join(posix.dirname(file), target.split("#")[0]!)}`;
+        const targetPath = posix.normalize(posix.join("library/skills", slug, posix.dirname(file), decodeURIComponent(target)));
+        const firstLine = readFileSync(join(PACKAGE_ROOT, ...targetPath.split("/")), "utf-8").split("\n").find((l) => l.trim()) ?? "";
+        for (const id of [asWritten, canonical]) {
+          const loaded = await readLibraryEntry(id);
+          if (!loaded.ok) broken.push(`${where} (${id} -> not_found)`);
+          else if (!loaded.text.includes(firstLine.trim())) broken.push(`${where} (${id} loads another file)`);
+        }
+      }
+    }
+    expect(broken).toEqual([]);
   });
 });

@@ -147,8 +147,8 @@
     {
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
-      "version": "1.3.0",
-      "content_hash": "461a8eb1b31b9ce3d5b8c92252ff772fc038517bd9a96f6648bf04d561207403",
+      "version": "1.4.0",
+      "content_hash": "2aaa464f0c462460c6c77c163dbc83db7a8bc02e9b1db66adf67d9905bca285b",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -3355,8 +3355,8 @@
     {
       "id": "skill/verifying-scenes",
       "kind": "skill",
-      "version": "1.4.1",
-      "content_hash": "2f9b022de46dab29b8327409dd4f184c870475997c5e8ad236aafc19e73f43f1",
+      "version": "1.5.0",
+      "content_hash": "ba03998253f61ed6a4ea7a0e21c2a9a04a52ae6e8f8879b8b38ce09abd56a2bf",
       "summary": "Prove scene work landed (snapshot, diff, screenshots, runtime reads), audit 3D scenes for holes and misplacement, review them with shot sheets and zooms.",
       "use_when": [
         "after any mutation batch, asset import, or lighting change, before claiming it worked",
@@ -3365,7 +3365,9 @@
         "taking before/after screenshots from the same saved camera viewpoint, or an annotated screenshot whose numbered labels map to node paths",
         "\"make this environment beautiful\" / reviewing a level like an artist: hero views, a shot sheet after each change, debug views of the weakest shot, zooms into problems",
         "finding good camera views automatically (establishing, player eye level, low-angle hero, detail, down a lane)",
-        "after each build stage of a 3D scene and before calling it done - run the scene audit, then frame every error and look item up close"
+        "after each build stage of a 3D scene and before calling it done - run the scene audit, then frame every error and look item up close",
+        "open band ends and seams on a facade, a gap in a band, a duct missing its elbow - the audit's exposed_edge, depth_step and open_fixture_end checks",
+        "accepting the audit's look items you judged fine so later audits stop repeating them"
       ],
       "facets": {
         "lifecycle": [
@@ -7464,12 +7466,14 @@
     {
       "id": "tool/scene-audit",
       "kind": "tool",
-      "version": "1.2.0",
-      "content_hash": "c2ac51b38b049bc316093471d05ec8e7bc3ea6857e937f4a4bc49b2e77658aa3",
-      "summary": "Read-only pass over any 3D scene from geometry and materials: see-through holes, floor gaps, floating or clipping props, facing, UV stretch, z-fighting, lights.",
+      "version": "1.3.0",
+      "content_hash": "474abfec07fd4dc9a955bbaf7894bc5bea743f81842646b847bf091611ed2e37",
+      "summary": "Read-only pass over any 3D scene, from geometry and materials: see-through holes, exposed edges, open pipe ends, floor gaps, clipping props.",
       "use_when": [
         "after each build stage of a 3D level or kit-built street: \"what is wrong with this scene and where exactly?\"",
         "before calling a scene done: find see-through walls (an insert narrower than its frame), floor tiles with holes, props floating, sunk or poking into walls",
+        "facade bands with an open end or a gap, seams between modules and modules out of line seen from the street; a duct or downpipe with a missing elbow, coupler or section",
+        "the same look items keep coming back: accept the ones you judged fine (accept:[{key, reason}]) so later audits count them but hide them until their evidence changes",
         "finding props turned the wrong way against a wall (a bench standing perpendicular to it), stretched texture strips, duplicated pieces",
         "flickering faces: coplanar overlaps anywhere (props, roofs, ledges, inserts against hosts, decals, two surfaces of one mesh), judged by the 24-bit depth precision at the view distance",
         "bare ground at wall bases, an underlay plane covering drain channels, buried props: floor_gap and sunken say which surface a ray hits first",

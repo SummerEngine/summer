@@ -114,7 +114,7 @@ describe("paging under the 5 KB cap", () => {
 
   it("an issue never carries the internal frame hint or score", () => {
     const page = buildPage({ base, issues: [issue({ frame: { focus: [0, 0, 0], size: 1, dirs: [] } })], offset: 0, limit: 5 });
-    expect(Object.keys(page.shown[0]!).sort()).toEqual(["check", "ev", "n", "next", "path", "pos", "sev", "why"]);
+    expect(Object.keys(page.shown[0]!).sort()).toEqual(["check", "ev", "key", "n", "next", "path", "pos", "sev", "why"]);
   });
 });
 

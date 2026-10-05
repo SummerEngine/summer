@@ -1,11 +1,10 @@
 id: tool/scene-audit
 kind: tool
 version: 1.2.0
-summary: 'One read-only pass over a 3D scene: see-through holes, floor gaps, floating or clipping props, wrong insert hosts, mount gaps, facing, UV stretch, lights.'
+summary: 'Read-only pass over any 3D scene from geometry and materials: see-through holes, floor gaps, floating or clipping props, facing, UV stretch, z-fighting, lights.'
 use_when:
   - 'after each build stage of a 3D level or kit-built street: "what is wrong with this scene and where exactly?"'
   - 'before calling a scene done: find see-through walls (an insert narrower than its frame), floor tiles with holes, props floating, sunk or poking into walls'
-  - 'checking kit pieces against a kit manifest you pass (manifests): a door or window in the wrong host (fits_into), pipes and ducts off their wall (mount_side, standoff_m)'
   - 'finding props turned the wrong way against a wall (a bench standing perpendicular to it), stretched texture strips, duplicated pieces'
   - 'flickering faces: coplanar overlaps anywhere (props, roofs, ledges, inserts against hosts, decals, two surfaces of one mesh), judged by the 24-bit depth precision at the view distance'
   - 'bare ground at wall bases, an underlay plane covering drain channels, buried props: floor_gap and sunken say which surface a ray hits first'
@@ -66,8 +65,6 @@ input_schema:
           - floating
           - sunken
           - interpenetration
-          - insert_host
-          - mount_gap
           - orientation
           - uv_stretch
           - duplicate
@@ -76,8 +73,8 @@ input_schema:
           - transform
           - resource
       minItems: 1
-      maxItems: 14
-      description: Only these checks (default all 14). Fewer checks run faster (insert_host, duplicate, lights, transform and resource need no physics); rerun a check budget_ms left partial on its own.
+      maxItems: 12
+      description: Only these checks (default all 12). Fewer checks run faster (duplicate, lights, transform and resource need no physics); rerun a check budget_ms left partial on its own.
     root:
       type: string
       description: Report only issues under this node (subtree), e.g. "Block3". The whole scene is still loaded, so walls and floors outside it count as surroundings.
@@ -98,12 +95,6 @@ input_schema:
       minimum: 1
       maximum: 50
       description: Issues per page (default 15, max 50). The result is capped at 5 KB; a page that does not fit is cut and says so.
-    manifests:
-      type: array
-      items:
-        type: string
-      maxItems: 8
-      description: 'Optional kit manifests (res:// .json), read only when passed here; nothing is looked up next to the scenes. Format: {"pieces": {"<scene path, or a scene name relative to the manifest>": {"category": "wall", "front_axis": "+Z", "mount_side": "-Z", "standoff_m": 0.1, "symmetric": true, "fits_into": {"piece": "<host scene path or name>", "local_offset_m": [x, y, z]}}}}. category: wall or facade (a facade module), floor, prop, dressing, or any structural word (band, corner, pier, ...). front_axis: the local axis the visible front faces. mount_side: the local axis that faces the wall the piece hangs on (mount_gap, orientation). standoff_m: how far off that wall it stands by design (a number, or [min, max]). symmetric: looks the same turned 180 deg about that axis. fits_into: an insert (window, door) and its host piece, with the insert''s offset in the host''s frame (insert_host). Every field is optional and other fields are ignored; the first manifest that names a scene wins. Without manifests every check works from geometry and node names.'
     budget_ms:
       type: integer
       minimum: 250

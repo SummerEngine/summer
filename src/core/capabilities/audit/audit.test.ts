@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ToolInputError } from "../../tool-errors.js";
 import { fakeEngine, OK_JPEG } from "../../../test-helpers/seeing-engine.js";
 import { escapeTscnString } from "../seeing/probe.js";
-import { loadAuditKernel, sceneAudit, validateAuditArgs, validateManifestPath, type AuditSuccess } from "./audit.js";
+import { loadAuditKernel, sceneAudit, validateAuditArgs, type AuditSuccess } from "./audit.js";
 import { AUDIT_CHECKS } from "./args.js";
 import { bytes, SUMMARY_CAP_BYTES } from "./summary.js";
 
@@ -23,19 +23,20 @@ function inst(p: string, extra: Record<string, unknown> = {}) {
   return { p, k: p.toLowerCase(), s: `res://kit/${p.toLowerCase()}.tscn`, r: "prop", in: true, o: [0, 0, 0], b: ID9, sc: [1, 1, 1], det: 1, c: [0, 0.5, 0], e: [1, 1, 1], le: [1, 1, 1], lc: [0, 0.5, 0], m: 1, f: [0, 0, 0], cl: Array(16).fill(8), ...extra };
 }
 
-/** A kernel result with one through hole, one insert in the wrong host and
+/** A kernel result with one through hole, one lamp with nothing under it and
  *  200 floating crates (enough to overflow any page). */
 function kernelResult() {
   const crates = Array.from({ length: 200 }, (_, i) => inst(`Props/Crate_${i}`, { o: [i, 0, 3], c: [i, 0.5, 3] }));
   const instances = [
     inst("House/Back/Frame", { k: "facade_frame_a", r: "wall", o: [31.5, 0, -7.9], c: [31.5, 1.5, -7.9] }),
     inst("House/Back/Door", { k: "door_b", r: "insert", o: [31.5, 0, -7.9], c: [31.5, 1.4, -7.9] }),
+    inst("House/Back/Lamp", { k: "lamp_a", o: [28, 2.5, -7], c: [28, 2.6, -7] }),
     ...crates,
   ];
   return {
     ok: true,
     stage: "done",
-    ms: { collect: 5, manifests_roles: 2, mesh_pass: 90, physics_build: 140, through_hole: 180, floor_gap: 90, floating_sunken: 4, insert_host: 10, total: 700 },
+    ms: { collect: 5, roles: 2, mesh_pass: 90, physics_build: 140, through_hole: 180, floor_gap: 90, floating_sunken: 4, total: 700 },
     stats: { nodes: 2400, instances: 202, mesh_instances: 640, unique_meshes: 100, tris_unique: 300000, rays: 80000 },
     instances,
     lines: [
@@ -50,8 +51,7 @@ function kernelResult() {
         zfight: [],
       },
     ],
-    inserts: [[1, "wall_door_a", [0, 0, -0.1], [31.5, 0, -7.9], [-1, 0, 0, 0, 1, 0, 0, 0, -1], [[0, "facade_frame_a", [31.5, 0, -7.9], [-1, 0, 0, 0, 1, 0, 0, 0, -1]]], [0]]],
-    support: crates.map((_, i) => [i + 2, 0.06, 0.4, Array.from({ length: 5 }, () => [0, -1])]),
+    support: [[2, 2.5, 2.8, Array.from({ length: 5 }, () => null)], ...crates.map((_, i) => [i + 3, 0.06, 0.4, Array.from({ length: 5 }, () => [0, -1])])],
     warnings: [],
     errors: [],
   };
@@ -64,46 +64,50 @@ describe("input validation: caller text never reaches a scene file or GDScript u
   it.each([...HOSTILE, "res://a.gd", "user://x.tscn", "res://../x.tscn", 'res://a".tscn'])("refuses scenePath %j", (value) => {
     expect(() => validateAuditArgs({ scenePath: value })).toThrow(ToolInputError);
   });
-  it.each([...HOSTILE, "res://a.gd", "res://../kit.json", "user://kit.json", "res://x/kit.json\n", 'res://"x.json', "res://a$b.json", "res:///etc/passwd.json"])("refuses manifest %j", (value) => {
-    expect(() => validateManifestPath(value)).toThrow(ToolInputError);
-  });
   it("refuses unknown checks and bad paging", () => {
     expect(() => validateAuditArgs({ checks: ["everything" as never] })).toThrow(ToolInputError);
     expect(() => validateAuditArgs({ offset: -1 })).toThrow(ToolInputError);
     expect(() => validateAuditArgs({ limit: 0 })).toThrow(ToolInputError);
     expect(() => validateAuditArgs({ limit: 51 })).toThrow(ToolInputError);
-    expect(() => validateAuditArgs({ manifests: Array(9).fill("res://a/kit.json") })).toThrow(ToolInputError);
     expect(() => validateAuditArgs({ budget_ms: 100 })).toThrow(ToolInputError);
     expect(() => validateAuditArgs({ budget_ms: 60001 })).toThrow(ToolInputError);
     expect(() => validateAuditArgs({ budget_ms: 1500.5 })).toThrow(ToolInputError);
   });
-  it("accepts ordinary values and defaults to all 14 checks", () => {
-    const v = validateAuditArgs({ scenePath: "res://town.tscn", root: "Block3/Props", manifests: ["res://kit/kit_manifest.json"] });
-    expect(v).toMatchObject({ scenePath: "res://town.tscn", root: "Block3/Props", manifests: ["res://kit/kit_manifest.json"], minSeverity: "look", offset: 0, limit: 15, render: "none", budgetMs: 3000 });
+  it("accepts ordinary values and defaults to all 12 checks", () => {
+    const v = validateAuditArgs({ scenePath: "res://town.tscn", root: "Block3/Props" });
+    expect(v).toMatchObject({ scenePath: "res://town.tscn", root: "Block3/Props", minSeverity: "look", offset: 0, limit: 15, render: "none", budgetMs: 3000 });
     expect(v.checks).toEqual([...AUDIT_CHECKS]);
+    expect(AUDIT_CHECKS).toHaveLength(12);
+  });
+
+  it("takes no kit metadata: a manifests argument is refused by the schema, and the removed checks are unknown", async () => {
+    const { sceneAuditArgsSchema } = await import("./args.js");
+    expect(sceneAuditArgsSchema.safeParse({ manifests: ["res://kit/kit.json"] }).success).toBe(false);
+    for (const gone of ["insert_host", "mount_gap"]) {
+      expect(() => validateAuditArgs({ checks: [gone as never] })).toThrow(ToolInputError);
+    }
   });
 
   it("sends nothing when any argument is hostile", async () => {
     const engine = fakeEngine({ projectRoot: project });
     await expect(sceneAudit(engine, { root: '"); OS.execute("x' })).rejects.toThrow(/Nothing was sent/);
     await expect(sceneAudit(engine, { scenePath: "res://$&.tscn\n" })).rejects.toThrow(/Nothing was sent/);
-    await expect(sceneAudit(engine, { manifests: ["res://../../x.json"] })).rejects.toThrow(/Nothing was sent/);
     expect(engine.calls).toEqual([]);
   });
 });
 
 describe("the private-copy path: arguments travel as data, the kernel is read-only", () => {
-  it("embeds only the validated scene path and the kernel; root, checks and manifests go to config.json", async () => {
+  it("embeds only the validated scene path and the kernel; root and checks go to config.json", async () => {
     const engine = fakeEngine({ projectRoot: project, audit: () => kernelResult() });
-    await sceneAudit(engine, { scenePath: "res://levels/town.tscn", root: "Block 3", checks: ["through_hole"], manifests: ["res://kit/kit_manifest.json"] });
+    await sceneAudit(engine, { scenePath: "res://levels/town.tscn", root: "Block 3", checks: ["through_hole"] });
     expect(engine.calls).toHaveLength(1);
     expect(engine.calls[0]).toMatchObject({ op: "ScenePreview", framing: "free", size: [16, 16] });
     const wrapper = engine.wrappers[0]!;
     expect(wrapper).toContain('[ext_resource type="PackedScene" path="res://levels/town.tscn" id="1_subject"]');
     expect(wrapper).not.toContain("Block 3");
-    expect(wrapper).not.toContain("res://kit/kit_manifest.json");
     expect(wrapper).toContain(escapeTscnString(loadAuditKernel()));
-    expect(engine.configs[0]).toMatchObject({ mode: "audit", root: "Block 3", checks: ["through_hole"], manifests: ["res://kit/kit_manifest.json"], poses: false, budget_ms: 3000, scene_path: "res://levels/town.tscn" });
+    expect(engine.configs[0]).toMatchObject({ mode: "audit", root: "Block 3", checks: ["through_hole"], poses: false, budget_ms: 3000, scene_path: "res://levels/town.tscn" });
+    expect(engine.configs[0]).not.toHaveProperty("manifests");
   });
 
   it("the kernel reads its config from its own wrapper and never writes project files or shells out", () => {
@@ -118,16 +122,20 @@ describe("the private-copy path: arguments travel as data, the kernel is read-on
     expect(kernel).toContain('FileAccess.open(_out_dir.path_join("result.json"), FileAccess.WRITE)');
   });
 
-  it("reads kit manifests only from the manifests argument: nothing is looked up next to the instanced scenes", () => {
+  it("gives roles from geometry and engine data only: no names, no metadata files", () => {
     const kernel = loadAuditKernel();
     const fns = new Map(kernel.split("\nfunc ").slice(1).map((body) => [body.slice(0, body.indexOf("(")), body] as const));
-    const load = fns.get("_load_manifests")!;
-    expect(load).toContain('_cfg.get("manifests", [])');
-    expect(load).not.toContain("path_join");
-    // No file name is joined onto a scene's folder: besides its own config.json
-    // and result.json, the only files read are the ones passed.
+    // No name patterns at all, and no metadata read besides its own config.
+    expect(kernel).not.toMatch(/RegEx\.create_from_string\("\(\?i\)/);
+    expect(kernel).not.toMatch(/manifest/i);
     expect(kernel).not.toMatch(/path_join\("(?!config\.json"|result\.json")[^"]*\.(json|md)"\)/);
-    expect(fns.get("_read_manifest")).toContain('_warn("manifest not found: " + path)');
+    for (const name of ["_see_through", "_mat_see_through", "_shape_of", "_classify_shapes", "_classify_rest", "_sheet_front", "_walls_under", "_find_inserts", "_open_at", "_facade_lines", "_find_members", "_touch_line", "_member", "_resolve_underlays", "_zf_flags"]) {
+      const body = fns.get(name);
+      expect(body, name).toBeDefined();
+      for (const field of ['["piece"]', '["name"]', '["scene"]', '["path"]', ".name", "resource_path", "resource_name", "RegEx"]) {
+        expect(body, `${name} reads ${field}`).not.toContain(field);
+      }
+    }
   });
 });
 
@@ -140,8 +148,8 @@ describe("sceneAudit", () => {
     expect(r.image).toBeNull();
     const issues = r.summary.issues as Array<Record<string, unknown>>;
     expect(issues[0]).toMatchObject({ n: 1, check: "through_hole", sev: "error", path: "House/Back/Frame" });
-    expect(issues[1]).toMatchObject({ n: 2, check: "insert_host", sev: "error", path: "House/Back/Door" });
-    expect(r.summary.counts).toMatchObject({ through_hole: { error: 1 }, insert_host: { error: 1 } });
+    expect(issues[1]).toMatchObject({ n: 2, check: "floating", sev: "error", path: "House/Back/Lamp" });
+    expect(r.summary.counts).toMatchObject({ through_hole: { error: 1 }, floating: { error: 1, warn: 200 } });
     expect(r.summary.ms).toMatchObject({ setup: 237, through_hole: 180, editor_total: 700 });
     expect(r.summary.next_offset).toBe(issues.length);
     expect(r.summary.total).toBe(r.summary.matching);
@@ -154,9 +162,9 @@ describe("sceneAudit", () => {
     expect(errorsOnly.summary.next_offset).toBeNull();
     const page2 = (await sceneAudit(engine, { scenePath: "res://a.tscn", offset: 5, limit: 3 })) as AuditSuccess;
     expect((page2.summary.issues as Array<{ n: number }>).map((i) => i.n)).toEqual([6, 7, 8]);
-    const only = (await sceneAudit(engine, { scenePath: "res://a.tscn", checks: ["insert_host"] })) as AuditSuccess;
-    expect(only.summary.counts).toEqual({ insert_host: { error: 1 } });
-    expect(engine.configs.at(-1)!.checks).toEqual(["insert_host"]);
+    const only = (await sceneAudit(engine, { scenePath: "res://a.tscn", checks: ["through_hole"] })) as AuditSuccess;
+    expect(only.summary.counts).toEqual({ through_hole: { error: 1 } });
+    expect(engine.configs.at(-1)!.checks).toEqual(["through_hole"]);
   });
 
   it("render sheet: one more ScenePreview, ONE image with tiles labelled by issue number", async () => {
@@ -167,7 +175,7 @@ describe("sceneAudit", () => {
     const render = engine.configs[1]!;
     expect(render.mode).toBe("render");
     const tiles = render.tiles as Array<{ label: string; pose: { position: number[]; look_at: number[] } }>;
-    expect(tiles.map((t) => t.label)).toEqual(["#1 through_hole", "#2 insert_host", "#3 floating", "#4 floating"]);
+    expect(tiles.map((t) => t.label)).toEqual(["#1 through_hole", "#2 floating", "#3 floating", "#4 floating"]);
     // The hole is framed from its open side (the street, -Z), never from behind the wall.
     expect(tiles[0]!.pose.position[2]).toBeLessThan(tiles[0]!.pose.look_at[2]!);
     expect(r.image).toMatchObject({ base64: OK_JPEG.toString("base64"), mime: "image/jpeg" });
@@ -223,9 +231,9 @@ describe("sceneAudit", () => {
       partial: Number(config.budget_ms) >= 20000 ? {} : { through_hole: [620, 1000], floor_gap: [400, 1000] },
     });
     const engine = fakeEngine({ projectRoot: project, audit: slow });
-    const r = (await sceneAudit(engine, { scenePath: "res://a.tscn", checks: ["through_hole", "floor_gap", "insert_host"] })) as AuditSuccess;
+    const r = (await sceneAudit(engine, { scenePath: "res://a.tscn", checks: ["through_hole", "floor_gap"] })) as AuditSuccess;
     expect(engine.configs[0]!.budget_ms).toBe(3000);
-    expect(r.summary.counts).toEqual({ through_hole: { error: 1, partial: 0.62 }, floor_gap: { partial: 0.4 }, insert_host: { error: 1 } });
+    expect(r.summary.counts).toEqual({ through_hole: { error: 1, partial: 0.62 }, floor_gap: { partial: 0.4 } });
     expect(r.summary.clean).toEqual([]);
     expect(r.summary.budget_ms).toBe(3000);
     expect((r.summary.notes as string[]).some((n) => n.startsWith("budget_ms 3000: stopped early (editor time): through_hole 62%, floor_gap 40% covered"))).toBe(true);
@@ -239,7 +247,7 @@ describe("sceneAudit", () => {
   it("the kernel polls the budget in every check loop and reports what it covered", () => {
     const kernel = loadAuditKernel();
     const fns = new Map(kernel.split("\nfunc ").slice(1).map((body) => [body.slice(0, body.indexOf("(")), body] as const));
-    for (const name of ["_scan_line", "_scan_floors", "_scan_strips", "_scan_support", "_scan_overlaps", "_scan_mounts", "_scan_long_props", "_scan_uv", "_scan_zfight_geometry", "_scan_inserts", "_scan_lights", "_scan_resources", "_scan_clearances"]) {
+    for (const name of ["_scan_line", "_scan_floors", "_scan_strips", "_scan_support", "_scan_overlaps", "_scan_long_props", "_scan_uv", "_scan_zfight_geometry", "_scan_lights", "_scan_resources", "_scan_clearances"]) {
       const body = fns.get(name);
       expect(body, name).toBeDefined();
       expect(body, name).toContain("_over()");

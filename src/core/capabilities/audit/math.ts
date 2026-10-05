@@ -37,63 +37,6 @@ export function basisAngleDegrees(a: Basis9, b: Basis9): number {
 }
 
 // ---------------------------------------------------------------------------
-// insert_host: the host an insert expects, from the manifest's fits_into
-// ---------------------------------------------------------------------------
-
-/**
- * fits_into says: the insert has the host's rotation, and sits at
- * host.origin + host.basis * local_offset_m. So the host must be at
- * insert.origin - insert.basis * local_offset_m.
- */
-export function expectedHostOrigin(insertOrigin: Vec3, insertBasis: Basis9, localOffset: Vec3): Vec3 {
-  return sub(insertOrigin, basisMulVec(insertBasis, localOffset));
-}
-
-export interface HostCandidate {
-  index: number;
-  piece: string;
-  origin: Vec3;
-  basis: Basis9;
-}
-
-export interface HostMatch {
-  status: "ok" | "wrong_offset" | "wrong_piece" | "missing";
-  expected: Vec3;
-  /** The host-named piece nearest the expected origin (any distance), if any. */
-  named?: { index: number; distance: number; angle: number };
-  /** A different piece sitting at the expected pose. */
-  other?: { index: number; piece: string; distance: number; angle: number };
-}
-
-/** Match within `tolerance` metres and `maxAngle` degrees (spec: 2 cm, 1 deg). */
-export function matchInsertHost(
-  insertOrigin: Vec3,
-  insertBasis: Basis9,
-  localOffset: Vec3,
-  hostPiece: string,
-  candidates: readonly HostCandidate[],
-  tolerance = 0.02,
-  maxAngle = 1
-): HostMatch {
-  const expected = expectedHostOrigin(insertOrigin, insertBasis, localOffset);
-  let named: HostMatch["named"];
-  let other: HostMatch["other"];
-  for (const c of candidates) {
-    const distance = length(sub(c.origin, expected));
-    const angle = basisAngleDegrees(insertBasis, c.basis);
-    if (c.piece === hostPiece) {
-      if (!named || distance < named.distance) named = { index: c.index, distance, angle };
-    } else if (distance <= tolerance && angle <= maxAngle) {
-      if (!other || distance < other.distance) other = { index: c.index, piece: c.piece, distance, angle };
-    }
-  }
-  if (named && named.distance <= tolerance && named.angle <= maxAngle) return { status: "ok", expected, named };
-  if (named && named.distance <= 0.5) return { status: "wrong_offset", expected, named, ...(other ? { other } : {}) };
-  if (other) return { status: "wrong_piece", expected, other, ...(named ? { named } : {}) };
-  return { status: "missing", expected, ...(named ? { named } : {}) };
-}
-
-// ---------------------------------------------------------------------------
 // orientation: parallelism of a long axis to a wall
 // ---------------------------------------------------------------------------
 
@@ -108,59 +51,6 @@ export function lineAngleDegrees(axis: Vec3, line: Vec3): number {
   const l = normalize([line[0], 0, line[2]]);
   const c = Math.min(1, Math.abs(dot(a, l)));
   return (Math.acos(c) * 180) / Math.PI;
-}
-
-/** Angle in [0, 180] between two directions (signed: 180 = pointing away). */
-export function directionAngleDegrees(a: Vec3, b: Vec3): number {
-  const c = Math.min(1, Math.max(-1, dot(normalize(a), normalize(b))));
-  return (Math.acos(c) * 180) / Math.PI;
-}
-
-// ---------------------------------------------------------------------------
-// mount_gap: centre and sides; front-back symmetry about the mount axis
-// ---------------------------------------------------------------------------
-
-/** The kernel's 9 mount-side samples: 0 centre, 1-4 corners, 5-8 side midpoints. */
-export const MOUNT_GAP_SAMPLES = [0, 5, 6, 7, 8] as const;
-
-/**
- * A mounted piece's gap to its wall, measured at the centre AND the sides:
- * the largest of the centre and the 4 side-midpoint samples (a shutter
- * resting on a sill 10 cm out stands 15 cm off the wall at its sides).
- * Samples more than `reach` beyond the closest one are ignored: that ray
- * passed the wall's edge into a recess. `min` is the closest of all 9
- * samples (what holds the piece); `at` the sample `gap` came from.
- */
-export function mountGap(gaps: readonly (number | null | undefined)[], reach = 0.25): { min: number | null; gap: number | null; at: number } {
-  const valid = gaps.map((g, k) => ({ g, k })).filter((x): x is { g: number; k: number } => typeof x.g === "number" && Number.isFinite(x.g));
-  if (!valid.length) return { min: null, gap: null, at: -1 };
-  const closest = valid.reduce((a, b) => (b.g < a.g ? b : a));
-  let best: { g: number; k: number } | null = null;
-  for (const x of valid) {
-    if (!(MOUNT_GAP_SAMPLES as readonly number[]).includes(x.k) || x.g > closest.g + reach) continue;
-    if (!best || x.g > best.g) best = x;
-  }
-  const pick = best ?? closest;
-  return { min: closest.g, gap: pick.g, at: pick.k };
-}
-
-/**
- * Front-back symmetric about the mount axis, from the kernel's
- * [pos+, area+, pos-, area-, lo, hi] along that axis: the bounds are centred
- * on the origin, and the largest plane facing each way has about the same
- * area (within `tolerance`) at the mirrored position. Such a piece (a duct
- * run, a strap brace) looks the same turned 180 degrees, so which way its
- * mount side points says nothing.
- */
-export function isFrontBackSymmetric(planes: readonly number[] | null | undefined, tolerance = 0.15): boolean {
-  if (!planes || planes.length < 6 || !planes.every((n) => typeof n === "number" && Number.isFinite(n))) return false;
-  const [pp, ap, pm, am, lo, hi] = planes as [number, number, number, number, number, number];
-  const extent = hi - lo;
-  if (!(extent > 0) || !(ap > 0) || !(am > 0)) return false;
-  const slack = Math.max(0.01, 0.05 * extent);
-  if (Math.abs(lo + hi) > 2 * slack) return false;
-  if (Math.min(ap, am) / Math.max(ap, am) < 1 - tolerance) return false;
-  return Math.abs(pp + pm) <= 2 * slack;
 }
 
 // ---------------------------------------------------------------------------

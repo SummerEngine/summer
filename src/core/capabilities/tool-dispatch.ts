@@ -1941,7 +1941,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   }),
 
   // --- scene audit (shared implementation: core/capabilities/audit/) ---
-  entry("summer_scene_audit", "Read-only audit of a 3D scene: see-through holes, floor gaps, floating/sunken/overlapping props, wrong insert hosts, mount gaps, orientation, UV stretch, z-fighting, lights, transforms, resources (<= 5 KB page)", true, async (args, ctx) => {
+  entry("summer_scene_audit", "Read-only audit of a 3D scene: see-through holes, floor gaps, floating/sunken/overlapping props, orientation, UV stretch, z-fighting, lights, transforms, resources (<= 5 KB page)", true, async (args, ctx) => {
     const parsed = parseToolArgs(sceneAuditArgsSchema, args, "scene-audit");
     const client = (await ctx.engine()) as unknown as AuditClient;
     return auditResult(await buildOrRefuseAsync(() => sceneAudit(client, parsed)));

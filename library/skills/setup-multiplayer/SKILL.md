@@ -359,9 +359,12 @@ history:
 
 - Give the player archetype a `SummerNetworkHitbox3D` on its `position` field.
 - Assign a `SummerNetworkHitHistory3D` to the Spawner's `hit_history`, with
-  `max_view_age_msec = 200`.
-- Leave `retention_msec` at its default of 300, so there are at least 100 ms
+  `max_view_age_msec = 250`. That reaches players up to about 170 ms round
+  trip; 200 ms stops near 120 ms.
+- Leave `retention_msec` at its default of 350, so there are at least 100 ms
   beyond the view age.
+- Keep `interpolation_delay_msec` at 100. Lowering it makes presentation hold,
+  so views get older and more shots go stale.
 - Declare an entity-scoped `fire` Command stream, as for any Command (see
   `skill/host-authoritative-state`).
 

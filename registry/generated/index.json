@@ -2639,8 +2639,8 @@
     {
       "id": "skill/setup-multiplayer",
       "kind": "skill",
-      "version": "2.0.0",
-      "content_hash": "dbf55f9cecab07eb693a17e693630f410fc5c9e7eb206539a23aaa37d4e0b69e",
+      "version": "2.0.1",
+      "content_hash": "06400075202d1b757312fa1a3a43c8dd0f8ab7481d3d8f013f3219d6d1475585",
       "summary": "Add multiplayer with Summer's netcode: a predicted SummerNetworkBehavior per player, a Spawner and Local Play tests. No Godot RPCs or MultiplayerSynchronizer.",
       "use_when": [
         "adding multiplayer to a Summer game: co-op, versus or a shared world, local or hosted",

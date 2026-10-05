@@ -361,8 +361,10 @@ history:
 - Assign a `SummerNetworkHitHistory3D` to the Spawner's `hit_history`, with
   `max_view_age_msec = 250`. That reaches players up to about 170 ms round
   trip; 200 ms stops near 120 ms.
-- Leave `retention_msec` at its default of 350, so there are at least 100 ms
-  beyond the view age.
+- Set `retention_msec = 350` too, for at least 100 ms of history beyond the
+  view age. Released engines still default to 250: a shot near the view-age
+  cap then has no time to wait behind queued input and fails as
+  `historical_history_unavailable`. An explicit value works on every engine.
 - Keep `interpolation_delay_msec` at 100. Lowering it makes presentation hold,
   so views get older and more shots go stale.
 - Declare an entity-scoped `fire` Command stream, as for any Command (see
@@ -379,8 +381,9 @@ if Input.is_action_just_pressed(&"fire"):
 ```
 
 The authority rewinds every hitbox to what the shooter saw and resolves the
-Command; the shooter supplies only aim and range. A startup warning
-`HIT_HISTORY_DISPATCH_BUDGET` means the retention is too tight for the view age.
+Command; the shooter supplies only aim and range. On newer engines, a startup
+warning `HIT_HISTORY_DISPATCH_BUDGET` means the retention is too tight for the
+view age.
 
 ## Common mistakes
 

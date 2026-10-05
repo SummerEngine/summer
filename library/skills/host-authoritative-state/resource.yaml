@@ -1,9 +1,10 @@
 id: skill/host-authoritative-state
 kind: skill
-version: 1.0.3
-summary: Design the state layer of a multiplayer game — what the host owns, how clients request changes, and how the host validates and broadcasts.
+version: 2.0.0
+summary: "Design a Summer game's authoritative state: what the authority owns, Commands for intent, authority-written State groups for shared and private state."
 use_when:
-  - "designing the state layer of a multiplayer Summer game: host ownership, client change requests, host validation and broadcast"
+  - "designing a multiplayer Summer game's state: score, health, inventory, rounds, doors and who owns them"
+  - "players need to buy, use, open or trade things in a multiplayer Summer game"
   - clients desync, cheat, or fight over one object and the state ownership model is undefined
 facets:
   lifecycle:

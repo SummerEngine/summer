@@ -16,9 +16,8 @@
  * settingsPrefixesIncluded, settingsPrefixesExcluded) — nothing is hidden,
  * only deferred behind settingsPrefixes.
  *
- * Compact default (proof run 2026-10-04: the first call of every session
- * returned 61 KB — the full capability lists plus a 200-node scene tree —
- * which the host could not hand to the agent): the payload carries the
+ * Compact default (the full capability lists plus a 200-node scene tree make
+ * a first call too large for a host to hand to the agent): the payload carries the
  * project, the scene path with a one-line scene summary, a scalar health
  * summary with capability COUNTS, projectMemory and every warning. The scene
  * tree, the capability lists and the project settings come back only with

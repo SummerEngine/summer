@@ -9,8 +9,8 @@
  * `add_do_method(emitter, "connect", signal, cb)` — no CONNECT_PERSIST, and the
  * op reads no flags argument. PackedScene::pack writes only persistent
  * connections, so the receipt said ok, the batch said persisted:true, and the
- * saved .tscn had no [connection] line (live check 2026-10-04, engine 0.6.0:
- * Clock.timeout -> Door.queue_free). The editor's own Node dock connects with
+ * saved .tscn had no [connection] line (engine 0.6.0, a Clock.timeout ->
+ * Door.queue_free connection). The editor's own Node dock connects with
  * CONNECT_PERSIST; so does this tool:
  *   0. SaveScene (opens the scene as a tab if needed; the file is the editor
  *      state), read the file: an identical [connection] line already there is

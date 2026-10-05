@@ -1,30 +1,26 @@
 /**
  * Judgment for summer_scene_audit: the kernel's raw measurements (rays that
- * passed, gaps under props, hull overlaps, mount rays, UV candidates, ...)
+ * passed, gaps under props, hull overlaps, UV candidates, ...)
  * become issues with a check, a severity, a node path, a world position, a
  * one-line reason, the evidence numbers and the next tool to use.
  *
  * Every issue is a flag for the agent to LOOK at, never an auto-fix. The
- * thresholds are the spec's (2 cm floating, 3 cm embed/overlap, 5 cm mount,
- * 15 deg parallelism, UV stretch 8, insert host 2 cm / 1 deg); the severity
- * grading above them is ours and documented next to each check.
+ * thresholds are the spec's (2 cm floating, 3 cm embed/overlap, 15 deg
+ * parallelism, UV stretch 8); the severity grading above them is ours and
+ * documented next to each check. Roles (wall, floor, insert, prop, ...) come
+ * from the kernel, which derives them from geometry and engine data only.
  */
 import { add, length, normalize, scale, sub, type Vec3 } from "../seeing/math.js";
 import type { AuditCheck, Severity } from "./args.js";
 import {
   basisAngleDegrees,
-  basisColumns,
   clusterSamples,
   DEFAULT_FAR,
   DEFAULT_NEAR,
-  directionAngleDegrees,
   footprintExtent,
-  isFrontBackSymmetric,
   lineAngleDegrees,
-  matchInsertHost,
   median,
   mostCommon,
-  mountGap,
   TYPICAL_VIEW_M,
   robustBounds,
   triangleArea,
@@ -32,7 +28,6 @@ import {
   wallDirection,
   zFightTolerance,
   type Basis9,
-  type HostCandidate,
   type Vec2,
 } from "./math.js";
 
@@ -86,10 +81,8 @@ export interface InstRow {
   nan?: boolean;
   lo?: Vec3;
   cl?: number[];
-  cat?: string;
-  /** Mount hint (local axis) and where it came from (pieces | pack_text). */
-  mh?: Vec3;
-  ms?: string;
+  /** Why the kernel gave it its role (geometry or material evidence, e.g. "sheet", "slab", "in_opening", "band", "see_through", "size"). */
+  w?: string;
 }
 
 export interface KernelResult {
@@ -98,12 +91,8 @@ export interface KernelResult {
   floors?: Record<string, unknown>;
   support?: unknown[];
   overlaps?: unknown[];
-  mounts?: unknown[];
   long_props?: unknown[];
   uv?: unknown[];
-  inserts?: unknown[];
-  /** Ground alternatives packs document: [pack dir, source file, material, clause]. */
-  packs?: unknown[];
   /** z_fight from planar face groups: {near, far, pairs, in_mesh}. */
   zfight_geo?: Record<string, unknown>;
   lights?: Record<string, unknown>;
@@ -160,16 +149,6 @@ function instFrame(row: InstRow | undefined, focus?: Vec3, pref?: (dir: Vec3, k:
   const dirs = instDirs(row, pref);
   if (!dirs.length) return undefined;
   return { focus: focus ?? row.c, size: Math.max(0.6, Math.max(row.e[0], row.e[1], row.e[2])), dirs };
-}
-
-function axisLabel(local: Vec3): string {
-  const names: Array<[number, string]> = [
-    [local[0], "X"],
-    [local[1], "Y"],
-    [local[2], "Z"],
-  ];
-  const best = names.reduce((a, b) => (Math.abs(b[0]) > Math.abs(a[0]) ? b : a));
-  return `${best[0] >= 0 ? "+" : "-"}${best[1]}`;
 }
 
 function framesNodes(paths: string[], from: Vec3): string {
@@ -309,31 +288,6 @@ export function judgeThroughHoles(lines: unknown[], inst: InstRow[]): AuditIssue
 // floor_gap
 // ---------------------------------------------------------------------------
 
-/** A ground alternative a pack documents (PACK.json how_to_use or
- *  ASSEMBLY.md): "for any other ground use material ... on a PlaneMesh". */
-export interface PackGround {
-  dir: string;
-  source: string;
-  material: string;
-  plane: boolean;
-}
-
-export function parsePackGrounds(raw: unknown): PackGround[] {
-  return (arr(raw).filter(Array.isArray) as unknown[][])
-    .map((p) => ({ dir: String(p[0] ?? ""), source: String(p[1] ?? ""), material: String(p[2] ?? ""), plane: /plane ?mesh/i.test(String(p[3] ?? "")) }))
-    .filter((p) => p.dir.startsWith("res://") && p.material.startsWith("res://"));
-}
-
-/** The ground alternative of the pack a piece's scene lives in (deepest pack folder wins). */
-export function packGroundFor(scene: string | undefined, packs: readonly PackGround[]): PackGround | undefined {
-  if (!scene) return undefined;
-  return packs.filter((p) => scene.startsWith(p.dir.endsWith("/") ? p.dir : `${p.dir}/`)).sort((a, b) => b.dir.length - a.dir.length)[0];
-}
-
-function groundNext(pack: PackGround | undefined): string {
-  return pack ? `; the pack documents a ground alternative (${pack.source}): ${pack.material}${pack.plane ? " on a PlaneMesh" : ""}` : "";
-}
-
 /** One gap row as the kernel writes it (older kernels: the first 6-7 fields). */
 interface GapRow {
   x: number;
@@ -398,7 +352,7 @@ const TOP_DOWN = normalize([0.3, 1, 0.25]);
  * covers) in every tile is ONE issue for the piece. Areas are the sum of the
  * missed rays' own footprints, with the strip's dimensions.
  */
-export function judgeFloorGaps(floors: Record<string, unknown> | undefined, inst: InstRow[], packs: readonly PackGround[] = []): AuditIssue[] {
+export function judgeFloorGaps(floors: Record<string, unknown> | undefined, inst: InstRow[]): AuditIssue[] {
   if (!floors) return [];
   const out: AuditIssue[] = [];
   const cell = num(floors.cell, 0.3);
@@ -429,15 +383,14 @@ export function judgeFloorGaps(floors: Record<string, unknown> | undefined, inst
       const voidShare = showing.reduce((sum, x) => sum + x.void, 0) / showing.length;
       const shows = voidShare > meanFrac / 2 ? "the void" : "the underlay";
       const focus: Vec3 = [r.c[0], r.c[1] + r.e[1] / 2, r.c[2]];
-      const pack = packGroundFor(r.s, packs);
       out.push({
         check: "floor_gap",
         severity: shows === "the void" ? "error" : "warn",
         path: r.p,
         pos: v2(focus),
         why: `${piece} has holes in its own mesh: ${Math.round(meanFrac * 100)}% of each tile shows ${shows} (${showing.length}/${list.length} tiles)`,
-        ev: { piece, tiles: showing.length, fraction: r2(meanFrac), worst: r2(worst.holes), also: showing.filter((x) => x !== worst).slice(0, 2).map((x) => inst[x.i]!.p), ...(pack ? { pack_ground: pack.material } : {}) },
-        next: `summer_frame_nodes nodes=[${r.p}] direction=top${groundNext(pack)}`,
+        ev: { piece, tiles: showing.length, fraction: r2(meanFrac), worst: r2(worst.holes), also: showing.filter((x) => x !== worst).slice(0, 2).map((x) => inst[x.i]!.p) },
+        next: `summer_frame_nodes nodes=[${r.p}] direction=top`,
         score: meanFrac * showing.length,
         frame: { focus, size: Math.max(r.e[0], r.e[2]) * 0.6, dirs: [{ dir: TOP_DOWN, clear: 8, pref: 1 }] },
       });
@@ -486,15 +439,14 @@ export function judgeFloorGaps(floors: Record<string, unknown> | undefined, inst
     const fellTo = voidRows > group.length / 2 ? "void" : (inst[group.find((g) => g.hit >= 0)?.hit ?? -1]?.p ?? "void");
     const severity: Severity = fellTo === "void" ? "error" : group.length >= 3 ? "warn" : "look";
     const beside = [...new Set(group.map((g) => g.owner))].filter((k) => k !== ownerIdx).map((k) => inst[k]?.p).filter((p): p is string => !!p).slice(0, 2);
-    const pack = packGroundFor(owner?.s, packs);
     out.push({
       check: "floor_gap",
       severity,
       path: owner?.p ?? "?",
       pos: v2(pos),
       why: `floor gap ${r2(ext.area)} m2 (${dims(ext.long, ext.short)}): ${group.length} down rays miss the floor and fall to ${fellTo === "void" ? "the void" : fellTo}`,
-      ev: { ...size, ...(beside.length ? { beside } : {}), ...(pack ? { pack_ground: pack.material } : {}) },
-      next: `${ray}${groundNext(pack)}`,
+      ev: { ...size, ...(beside.length ? { beside } : {}) },
+      next: ray,
       score: ext.area,
       frame,
     });
@@ -522,15 +474,14 @@ export function judgeFloorGaps(floors: Record<string, unknown> | undefined, inst
     const wall = inst[mostCommon(group.map((g) => g.wall).filter((i) => i >= 0))];
     const voidRows = group.filter((g) => g.hit < 0).length;
     const shows = voidRows > group.length / 2 ? "the void" : (inst[mostCommon(group.map((g) => g.hit).filter((i) => i >= 0))]?.p ?? "the underlay");
-    const pack = packGroundFor(owner?.s, packs);
     out.push({
       check: "floor_gap",
       severity: shows === "the void" ? "error" : ext.area >= 0.05 ? "warn" : "look",
       path: owner?.p ?? "?",
       pos: v2(pos),
       why: `bare strip ${dims(ext.long, ext.short)} (${r2(ext.area)} m2) between ${owner?.p ?? "the floor"}'s edge and ${wall?.p ?? "a wall"}: the floor stops short of the wall and ${shows} shows`,
-      ev: { ...size, ...(wall ? { wall: wall.p } : {}), ...(pack ? { pack_ground: pack.material } : {}) },
-      next: `summer_measure ${owner?.p ?? "<floor>"} vs ${wall?.p ?? "<wall>"}; extend the floor to the wall${groundNext(pack)}`,
+      ev: { ...size, ...(wall ? { wall: wall.p } : {}) },
+      next: `summer_measure ${owner?.p ?? "<floor>"} vs ${wall?.p ?? "<wall>"}; extend the floor to the wall`,
       score: ext.area,
       frame,
     });
@@ -542,7 +493,7 @@ export function judgeFloorGaps(floors: Record<string, unknown> | undefined, inst
 // floating / sunken
 // ---------------------------------------------------------------------------
 
-export function judgeSupport(support: unknown[], inst: InstRow[], wallMounted: Set<number>): AuditIssue[] {
+export function judgeSupport(support: unknown[], inst: InstRow[]): AuditIssue[] {
   const out: AuditIssue[] = [];
   for (const raw of support) {
     if (!Array.isArray(raw)) continue;
@@ -557,14 +508,12 @@ export function judgeSupport(support: unknown[], inst: InstRow[], wallMounted: S
     const focus: Vec3 = [r.c[0], ymin + Math.min(0.3, r.e[1] / 2), r.c[2]];
     // Framed on the instance centre: that is where the clearances were measured.
     const frame = instFrame(r, r.c, (_d, k) => (k < 8 ? 1 : 0.5));
-    if (wallMounted.has(i)) continue;
     // Clear of the ground but against a wall (a lantern, a sign, an AC unit):
-    // held by the wall, not floating. With a mount hint, a wall within 15 cm
-    // of its bounds counts (a bracket tip is thinner than its box); without
-    // one it must touch and be well off the ground (a crate 5 cm up a wall
-    // still floats).
+    // held by the wall, not floating. It must touch the wall (within 5 cm of
+    // its bounds) and be well off the ground: a crate 5 cm up a wall still
+    // floats.
     const topY = found.length ? Math.max(...found.map((h) => h.y)) : -Infinity;
-    if (touch !== null && (r.mh !== undefined ? touch <= 0.15 : touch <= 0.05 && ymin - topY > 0.3)) continue;
+    if (touch !== null && touch <= 0.05 && ymin - topY > 0.3) continue;
     // Sunken, from ABOVE: the first surface a ray down through the footprint
     // meets (below the prop's own top) is what the prop stands in. The
     // support ray from mid-height never sees a floor top above its start, so
@@ -679,7 +628,7 @@ export function judgeOverlaps(overlaps: unknown[], inst: InstRow[]): AuditIssue[
     list.push({ b, depth, point: vec(raw[3]) });
     byProp.set(ai, list);
   }
-  const kindOf = (b: InstRow) => (b.r === "prop" ? "another prop" : b.r === "mount" ? "a mounted piece" : "the structure");
+  const kindOf = (b: InstRow) => (b.r === "prop" ? "another prop" : b.r === "insert" ? "an insert" : "the structure");
   const out: AuditIssue[] = [];
   for (const [ai, list] of byProp) {
     const a = inst[ai]!;
@@ -710,64 +659,7 @@ export function judgeOverlaps(overlaps: unknown[], inst: InstRow[]): AuditIssue[
 }
 
 // ---------------------------------------------------------------------------
-// insert_host
-// ---------------------------------------------------------------------------
-
-export function judgeInserts(inserts: unknown[], inst: InstRow[]): AuditIssue[] {
-  const out: AuditIssue[] = [];
-  for (const raw of inserts) {
-    if (!Array.isArray(raw)) continue;
-    const r = inst[num(raw[0], -1)];
-    if (!r) continue;
-    const hostPiece = String(raw[1] ?? "");
-    if (!hostPiece) continue;
-    const offset = vec(raw[2]);
-    const origin = vec(raw[3]);
-    const basis = arr(raw[4]).map((x) => num(x));
-    const candidates: HostCandidate[] = (arr(raw[5]).filter(Array.isArray) as unknown[][]).map((n) => ({
-      index: num(n[0], -1),
-      piece: String(n[1] ?? ""),
-      origin: vec(n[2]),
-      basis: arr(n[3]).map((x) => num(x)),
-    }));
-    const containing = arr(raw[6]).map((x) => num(x, -1));
-    const m = matchInsertHost(origin, basis, offset, hostPiece, candidates);
-    if (m.status === "ok") continue;
-    let why: string;
-    let found: Record<string, unknown> = {};
-    if (m.status === "wrong_offset" && m.named) {
-      const h = inst[m.named.index];
-      why = `its host ${hostPiece} ${h?.p ?? ""} is ${cm(m.named.distance)} / ${r2(m.named.angle)} deg from where pieces.json puts it`;
-      found = { path: h?.p, piece: hostPiece, off_m: r3(m.named.distance), angle: r2(m.named.angle) };
-    } else if (m.status === "wrong_piece" && m.other) {
-      const h = inst[m.other.index];
-      why = `pieces.json fits it into ${hostPiece}; it sits on ${m.other.piece} ${h?.p ?? ""}`;
-      found = { path: h?.p, piece: m.other.piece, off_m: r3(m.other.distance) };
-    } else {
-      const h = inst[containing[0] ?? -1];
-      const dist = h ? length(sub(h.o, m.expected)) : -1;
-      why = h ? `pieces.json fits it into ${hostPiece}; it sits in ${h.k} ${h.p}` : `no ${hostPiece} at the pose pieces.json expects`;
-      found = h ? { path: h.p, piece: h.k, off_m: r3(dist) } : {};
-    }
-    const front = normalize(basisColumns(basis)[2]);
-    const frame = instFrame(r, r.c, (dir) => Math.max(0, dir[0] * front[0] + dir[2] * front[2]));
-    out.push({
-      check: "insert_host",
-      severity: "error",
-      path: r.p,
-      pos: v2(r.c),
-      why,
-      ev: { insert: r.k, host_at: v2(m.expected), found: found.piece ?? null, off_m: found.off_m ?? null },
-      next: `summer_replace_node ${String(found.path ?? r.p)} -> ${hostPiece}, or a fitting insert`,
-      score: 1,
-      ...(frame ? { frame } : {}),
-    });
-  }
-  return out;
-}
-
-// ---------------------------------------------------------------------------
-// mount_gap + orientation of mounted pieces
+// Geometry helpers
 // ---------------------------------------------------------------------------
 
 /** World bounds of two pieces touch (within `slack`) on all three axes. */
@@ -776,224 +668,6 @@ export function boundsTouch(a: InstRow, b: InstRow, slack = 0.02): boolean {
     if (Math.abs(a.c[k]! - b.c[k]!) > (a.e[k]! + b.e[k]!) / 2 + slack) return false;
   }
   return true;
-}
-
-/** Another mounted piece's world bounds touch this one's (2 cm slack). */
-export function touchesMount(i: number, inst: InstRow[]): boolean {
-  const a = inst[i];
-  if (!a) return false;
-  return inst.some((b, j) => j !== i && (b.r === "mount" || b.mh !== undefined) && boundsTouch(a, b));
-}
-
-/** A bracket, clamp, strap or hanger: what holds a pipe off its wall. */
-const HOLDER_RE = /(brac|clamp|clip|hanger|strap|holder|support)/i;
-
-export interface MountJudgement {
-  issues: AuditIssue[];
-  /** Instances a wall holds (gap <= 10 cm behind): never "floating". */
-  wallMounted: Set<number>;
-}
-
-interface MountRow {
-  i: number;
-  r: InstRow;
-  wax: Vec3;
-  gaps: Array<number | null>;
-  hitAt: number[];
-  hit?: InstRow;
-  nearest: { dir: Vec3; dist: number; at: number } | null;
-  src: string;
-  local: Vec3;
-  chain: number | null;
-  ground: number | null;
-  standoff: number | null;
-  standoffSrc: string;
-  symmetric: boolean;
-  /** Closest wall contact behind the mount side (any of the 9 samples). */
-  min: number | null;
-  /** The gap the check judges: the largest of the centre and side samples. */
-  gap: number | null;
-  at: number;
-  /** A symmetric piece turned 180 degrees: measured on the side facing the wall. */
-  flipped: boolean;
-}
-
-function parseMountRow(raw: unknown[], inst: InstRow[]): MountRow | null {
-  const i = num(raw[0], -1);
-  const r = inst[i];
-  if (!r) return null;
-  const wax = vec(raw[1]);
-  const gaps = arr(raw[2]).map((g) => (typeof g === "number" && Number.isFinite(g) ? g : null));
-  const around = (arr(raw[4]).filter(Array.isArray) as unknown[][]).map((a) => ({ dir: vec(a[0]), dist: num(a[1]), at: num(a[2], -1) }));
-  const nearest = around.length ? around.reduce((a, b) => (b.dist < a.dist ? b : a)) : null;
-  const meta = raw[13];
-  const planes = Array.isArray(raw[12]) ? (raw[12] as unknown[]).map((x) => num(x, NaN)) : null;
-  const symmetric = meta === true || (meta !== false && isFrontBackSymmetric(planes));
-  const measured = mountGap(gaps);
-  let { min, gap, at } = measured;
-  // Turned 180 degrees, a symmetric piece's mount side faces away and finds
-  // no wall; its real gap is on the side that faces the wall.
-  const flipped = symmetric && nearest !== null && directionAngleDegrees(wax, nearest.dir) > 135 && (min === null || nearest.dist < min);
-  if (flipped) {
-    min = nearest!.dist;
-    gap = nearest!.dist;
-    at = -1;
-  }
-  return {
-    i,
-    r,
-    wax,
-    gaps,
-    hitAt: arr(raw[14]).map((x) => num(x, -1)),
-    ...(inst[num(raw[3], -1)] ? { hit: inst[num(raw[3], -1)]! } : {}),
-    nearest,
-    src: String(raw[6] ?? ""),
-    local: raw[7] ? vec(raw[7]) : ([0, 0, -1] as Vec3),
-    chain: typeof raw[8] === "number" ? raw[8] : null,
-    ground: typeof raw[9] === "number" ? raw[9] : null,
-    standoff: typeof raw[10] === "number" && Number.isFinite(raw[10]) ? raw[10] : null,
-    standoffSrc: String(raw[11] ?? ""),
-    symmetric,
-    min,
-    gap,
-    at,
-    flipped,
-  };
-}
-
-/** Which side of the mount face sample k sits on (the kernel's u / v axes). */
-function sampleSide(local: Vec3, k: number): string {
-  if (k === 0) return "centre";
-  const u: Vec3 = [local[1], local[2], local[0]];
-  const v: Vec3 = [local[1] * u[2] - local[2] * u[1], local[2] * u[0] - local[0] * u[2], local[0] * u[1] - local[1] * u[0]];
-  const dir = k === 5 ? u : k === 6 ? scale(u, -1) : k === 7 ? v : k === 8 ? scale(v, -1) : null;
-  return dir ? `${axisLabel(dir)} side` : "corner";
-}
-
-/**
- * Pieces held off the wall by design: a mounted sibling touching it that
- * touches the wall itself (a bracket, clamp or strap by name, or a piece
- * clearly smaller than it) holds it; along a run, a piece touching a held
- * piece at about the same standoff (within 3 cm) is held too (the outlet
- * at the foot of a braced gutter). Returns held index -> the holder's path.
- */
-function heldByBrackets(rows: readonly MountRow[]): Map<number, string> {
-  const onWall = (m: MountRow) => m.min !== null && m.min <= 0.05;
-  const size = (r: InstRow) => Math.max(r.e[0], r.e[1], r.e[2]);
-  const held = new Map<number, string>();
-  const anchors = rows.filter(onWall);
-  for (const m of rows) {
-    if (onWall(m)) continue;
-    const holder = anchors.find((a) => a.i !== m.i && boundsTouch(m.r, a.r) && (HOLDER_RE.test(a.r.k) || HOLDER_RE.test(a.r.p.split("/").pop() ?? "") || size(a.r) <= 0.6 * size(m.r)));
-    if (holder) held.set(m.i, holder.r.p);
-  }
-  const queue = [...held.keys()];
-  const byIndex = new Map(rows.map((m) => [m.i, m] as const));
-  while (queue.length) {
-    const h = byIndex.get(queue.shift()!)!;
-    for (const n of rows) {
-      if (held.has(n.i) || n.i === h.i || onWall(n) || n.gap === null || h.gap === null) continue;
-      if (n.gap > h.gap + 0.03 || !boundsTouch(n.r, h.r)) continue;
-      held.set(n.i, held.get(h.i)!);
-      queue.push(n.i);
-    }
-  }
-  return held;
-}
-
-export function judgeMounts(mounts: unknown[], inst: InstRow[], checks: Set<AuditCheck>): MountJudgement {
-  const issues: AuditIssue[] = [];
-  const wallMounted = new Set<number>();
-  const rows = (mounts.filter(Array.isArray) as unknown[][]).map((raw) => parseMountRow(raw, inst)).filter((m): m is MountRow => m !== null);
-  const held = heldByBrackets(rows);
-  for (const m of rows) {
-    const { i, r, wax, nearest } = m;
-    // Held by another mounted piece: a ray contact, or bounds that touch
-    // (open duct and pipe ends have no face at the joint for a ray to hit).
-    const chained = (m.chain !== null && m.chain <= 0.05) || touchesMount(i, inst);
-    const standing = m.ground !== null && Math.abs(m.ground) <= 0.05;
-    const side = axisLabel(m.local);
-    if (m.min !== null && m.min <= 0.1) wallMounted.add(i);
-    const textOnly = m.src === "pack_text";
-    // A hint read from a pack's prose is weak: if the piece touches a wall on
-    // ANY side, the geometry says it is mounted (a lantern whose bracket runs
-    // along X) and the prose is what is wrong. Only structured metadata
-    // (pieces.json wall_side) is held against a piece that touches a wall.
-    if (textOnly && nearest && nearest.dist <= 0.05) {
-      wallMounted.add(i);
-      continue;
-    }
-    const metadata = textOnly ? "PACK.json text" : "pieces.json";
-    const frame = instFrame(r, r.c, (dir) => 1 - Math.abs(dir[0] * wax[0] + dir[2] * wax[2]) * 0.7);
-    if (checks.has("mount_gap")) {
-      if (m.min === null && !nearest) {
-        // Free-standing. pieces.json says it mounts on a wall: flag it, unless
-        // it stands on the ground (a fence post) or hangs from another mounted
-        // piece. A hint read from a pack's prose is not enough either.
-        if (!textOnly && !standing && !chained) {
-          issues.push({
-            check: "mount_gap",
-            severity: "warn",
-            path: r.p,
-            pos: v2(r.c),
-            why: `no wall within 1 m behind or beside it (${metadata} mounts it on ${side})`,
-            ev: { gap_m: ">1", mount_side: side, metadata },
-            next: `summer_attach_to_surface ${r.p} backAxis=${side}`,
-            score: 1,
-            ...(frame ? { frame } : {}),
-          });
-        }
-      } else if (m.gap !== null && m.min !== null) {
-        // A wall IS behind the mount side, too far at the centre or a side.
-        // (A wall only beside or in front of it is the orientation check's
-        // finding.) The pack may document a standoff (ducts "about 0.1 m off
-        // the wall"); a bracket that touches the wall may hold it off by design.
-        const limit = m.standoff !== null ? Math.max(0.05, m.standoff + 0.05) : 0.05;
-        if (m.gap > limit && !(chained && m.gap > 0.3) && !held.has(i)) {
-          const wall = (m.at >= 0 ? inst[m.hitAt[m.at] ?? -1] : undefined) ?? (m.flipped && nearest ? inst[nearest.at] : undefined) ?? m.hit;
-          const atSide = m.at > 0 && m.gap - m.min > 0.01 ? sampleSide(m.local, m.at) : null;
-          issues.push({
-            check: "mount_gap",
-            severity: textOnly || m.gap <= limit + 0.05 ? "look" : "warn",
-            path: r.p,
-            pos: v2(r.c),
-            why: `stands ${cm(m.gap)} off ${wall?.p ?? "the wall"} on its mount side (${side})${atSide ? ` at its ${atSide} (closest ${cm(m.min)})` : ""}${m.flipped ? ", measured on the side facing the wall (front-back symmetric)" : ""}${m.standoff !== null ? `; the pack allows ${cm(m.standoff)} (${m.standoffSrc})` : ""}`,
-            ev: {
-              gap_m: r3(m.gap),
-              mount_side: side,
-              metadata,
-              ...(wall ? { wall: wall.p } : {}),
-              ...(atSide ? { at: atSide, min_m: r3(m.min) } : {}),
-              ...(m.standoff !== null ? { standoff_m: r3(m.standoff) } : {}),
-            },
-            next: `summer_attach_to_surface ${r.p} backAxis=${side}`,
-            score: m.gap,
-            ...(frame ? { frame } : {}),
-          });
-        }
-      }
-    }
-    // A front-back symmetric piece looks the same either way round: which
-    // way its mount side points says nothing.
-    if (checks.has("orientation") && nearest && nearest.dist <= 0.5 && !m.symmetric) {
-      const angle = directionAngleDegrees(wax, nearest.dir);
-      const behindOk = m.min !== null && m.min <= 0.1;
-      if (angle > 45 && !behindOk) {
-        issues.push({
-          check: "orientation",
-          severity: "look",
-          path: r.p,
-          pos: v2(r.c),
-          why: `its mount side (${side}, ${metadata}) points ${Math.round(angle)} deg away from the nearest wall ${inst[nearest.at]?.p ?? ""} (${cm(Math.max(0, nearest.dist))} away)`,
-          ev: { angle: Math.round(angle), mount_side: side, wall: inst[nearest.at]?.p ?? null, wall_dir: v2(nearest.dir), metadata },
-          next: `summer_frame_nodes nodes=[${r.p}] direction=top; decide the facing yourself`,
-          score: angle / 180,
-          ...(frame ? { frame } : {}),
-        });
-      }
-    }
-  }
-  return { issues, wallMounted };
 }
 
 // ---------------------------------------------------------------------------
@@ -1067,7 +741,7 @@ export function judgeUv(rows: unknown[], inst: InstRow[]): AuditIssue[] {
     const entries = arr(u.shown).filter(Array.isArray) as unknown[][];
     const shown = entries.filter((s) => (num(s[1]) & bad) !== 0);
     if (!shown.length) continue;
-    // A stretched face that inserts or mounted pieces cover in other
+    // A stretched face that inserts cover in other
     // instances (a door, a shutter in front of it) is meant to be hidden:
     // where it shows, it is EXPOSED (warn). Otherwise it is the asset's own
     // mapping as it looks in normal use: one look item for the mesh.
@@ -1242,8 +916,9 @@ const mm = (m: number) => Math.round(m * 10000) / 10;
  * the 24-bit depth step at its view distance (the nearest walkable eye
  * point, camera or bookmark; 30 m without one) for the main camera's near
  * and far. Severity: warn over 0.05 m2 seen from a viewpoint; look
- * otherwise, and look (never skipped) when render_priority, a depth or
- * normal offset, or a decal or overlay name may make it intentional.
+ * otherwise, and look (never skipped) when the material says it may be
+ * intentional: render_priority, a depth or normal offset, a see-through
+ * (alpha) material, or no depth test / depth writes.
  * Returns the issues and the instance pairs they cover (the ray samples do
  * not report those again).
  */
@@ -1389,7 +1064,7 @@ export function judgeLights(lights: Record<string, unknown> | undefined, inst: I
 // transform
 // ---------------------------------------------------------------------------
 
-const PLACED_ROLES = new Set(["prop", "mount", "insert", "wall", "struct"]);
+const PLACED_ROLES = new Set(["prop", "insert", "wall", "struct"]);
 
 export function judgeTransforms(inst: InstRow[]): AuditIssue[] {
   const out: AuditIssue[] = [];
@@ -1499,7 +1174,7 @@ export function groupRepeats(issues: AuditIssue[], inst: InstRow[], min = 3): Au
   const keyOf = (i: AuditIssue) => `${i.check}|${i.severity}|${pieceOf.get(i.path) ?? i.path}`;
   const groups = new Map<string, AuditIssue[]>();
   for (const i of issues) {
-    if (i.check !== "mount_gap" && i.check !== "orientation" && i.check !== "floating" && i.check !== "sunken") {
+    if (i.check !== "orientation" && i.check !== "floating" && i.check !== "sunken") {
       groups.set(`${groups.size}#solo`, [i]);
       continue;
     }

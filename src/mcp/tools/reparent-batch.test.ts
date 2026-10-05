@@ -10,12 +10,12 @@ import { executeSceneBatch, reownInPlaceOps } from "../../core/capabilities/scen
 import { dispatchTool } from "../../core/capabilities/tool-dispatch.js";
 import { findTscnNode } from "../../core/capabilities/tscn.js";
 
-const SCENE = "res://_bugcheck2/check.tscn";
+const SCENE = "res://levels/room.tscn";
 const CRATE = "res://kit/crate.tscn";
 
-// The live repro: Box/Toy/ToyPart moved under Shelf. Box also holds an
+// The repro: Box/Toy/ToyPart moved under Cabinet. Box also holds an
 // instanced Crate whose own Lid belongs to the crate scene, not to this one.
-const SHELF = `[gd_scene format=3]
+const CABINET = `[gd_scene format=3]
 
 [ext_resource type="PackedScene" path="${CRATE}" id="1_crate"]
 
@@ -30,17 +30,17 @@ position = Vector3(1, 0, 0)
 
 [node name="Crate" parent="Box" instance=ExtResource("1_crate")]
 
-[node name="Shelf" type="Node3D" parent="."]
+[node name="Cabinet" type="Node3D" parent="."]
 `;
 
-function engine(tscn = SHELF, options: Partial<ConstructorParameters<typeof FakeSceneEngine>[2]> = {}) {
+function engine(tscn = CABINET, options: Partial<ConstructorParameters<typeof FakeSceneEngine>[2]> = {}) {
   return new FakeSceneEngine(SCENE, tscn, {
     scenes: { [CRATE]: { rootType: "StaticBody3D", children: [{ name: "Lid", type: "MeshInstance3D" }] } },
     ...options,
   });
 }
 
-const MOVE = { op: "ReparentNode", path: "Box", new_parent_path: "Shelf" };
+const MOVE = { op: "ReparentNode", path: "Box", new_parent_path: "Cabinet" };
 
 type RegisteredTool = { name: string; handler: (args: Record<string, unknown>) => Promise<unknown> };
 type ToolText = { isError?: boolean; content: Array<{ text: string }> };
@@ -60,19 +60,19 @@ function savedPaths(fake: FakeSceneEngine): string[] {
   return fake.savedScene().nodes.map((n) => n.path);
 }
 
-describe("the fake engine reproduces the ReparentNode field bug (regression guard)", () => {
+describe("the fake engine reproduces the ReparentNode engine bug (regression guard)", () => {
   it("a raw ReparentNode + SaveScene saves the moved node without its children", async () => {
     const fake = engine();
     await fake.executeIdentityBoundOps([MOVE], { scenePath: SCENE });
     const receipt = (await fake.executeIdentityBoundOps([{ op: "SaveScene" }], { scenePath: SCENE })) as Record<string, unknown>;
     // The receipt says the save ran ...
     expect(receipt.scenePersistence).toMatchObject({ saved: true });
-    // ... and the file holds Shelf/Box but not Toy or ToyPart (the instanced Crate keeps its own Lid).
-    expect(savedPaths(fake)).toContain("Shelf/Box");
-    expect(savedPaths(fake)).not.toContain("Shelf/Box/Toy");
-    expect(savedPaths(fake)).not.toContain("Shelf/Box/Toy/ToyPart");
+    // ... and the file holds Cabinet/Box but not Toy or ToyPart (the instanced Crate keeps its own Lid).
+    expect(savedPaths(fake)).toContain("Cabinet/Box");
+    expect(savedPaths(fake)).not.toContain("Cabinet/Box/Toy");
+    expect(savedPaths(fake)).not.toContain("Cabinet/Box/Toy/ToyPart");
     // Live, the editor still shows them.
-    expect(fake.liveChildren("Shelf/Box")).toEqual(["Toy", "Crate"]);
+    expect(fake.liveChildren("Cabinet/Box")).toEqual(["Toy", "Crate"]);
   });
 });
 
@@ -87,23 +87,23 @@ describe("summer_batch ReparentNode keeps the moved node's subtree and verifies 
       verified: true,
       scenePersistence: { saved: true, verified: true },
       verification: { verified: true, read_back: SCENE },
-      reparented: [{ path: "Box", new_path: "Shelf/Box", reowned: ["Shelf/Box/Toy", "Shelf/Box/Crate", "Shelf/Box/Toy/ToyPart"] }],
+      reparented: [{ path: "Box", new_path: "Cabinet/Box", reowned: ["Cabinet/Box/Toy", "Cabinet/Box/Crate", "Cabinet/Box/Toy/ToyPart"] }],
     });
     expect((result.verification as Record<string, unknown>).checked).toEqual(
-      expect.arrayContaining(["Shelf/Box", "Shelf/Box/Toy", "Shelf/Box/Toy/ToyPart", "Shelf/Box/Crate"])
+      expect.arrayContaining(["Cabinet/Box", "Cabinet/Box/Toy", "Cabinet/Box/Toy/ToyPart", "Cabinet/Box/Crate"])
     );
     // One result per caller op (the ReparentNode and the appended SaveScene).
     expect((result.results as Array<{ op: string }>).map((r) => r.op)).toEqual(["ReparentNode", "SaveScene"]);
 
     const paths = savedPaths(fake);
-    expect(paths).toEqual(expect.arrayContaining(["Shelf/Box", "Shelf/Box/Toy", "Shelf/Box/Toy/ToyPart", "Shelf/Box/Crate"]));
+    expect(paths).toEqual(expect.arrayContaining(["Cabinet/Box", "Cabinet/Box/Toy", "Cabinet/Box/Toy/ToyPart", "Cabinet/Box/Crate"]));
     expect(paths).not.toContain("Box");
     // The crate scene's own Lid stays the crate's: never written as a node of this scene.
-    expect(paths).not.toContain("Shelf/Box/Crate/Lid");
-    expect(findTscnNode(fake.savedScene(), "Shelf/Box/Crate")?.instancePath).toBe(CRATE);
-    expect(findTscnNode(fake.savedScene(), "Shelf/Box")?.props).toEqual([{ key: "position", value: "Vector3(1, 0, 0)" }]);
+    expect(paths).not.toContain("Cabinet/Box/Crate/Lid");
+    expect(findTscnNode(fake.savedScene(), "Cabinet/Box/Crate")?.instancePath).toBe(CRATE);
+    expect(findTscnNode(fake.savedScene(), "Cabinet/Box")?.props).toEqual([{ key: "position", value: "Vector3(1, 0, 0)" }]);
     // Sibling order kept.
-    expect(fake.savedScene().nodes.filter((n) => n.parent === "Shelf/Box").map((n) => n.name)).toEqual(["Toy", "Crate"]);
+    expect(fake.savedScene().nodes.filter((n) => n.parent === "Cabinet/Box").map((n) => n.name)).toEqual(["Toy", "Crate"]);
   });
 
   it("sends a pre-save, the move with one in-place ReparentNode per descendant (shallowest first, same index), then the save", async () => {
@@ -113,9 +113,9 @@ describe("summer_batch ReparentNode keeps the moved node's subtree and verifies 
       [{ op: "SaveScene" }],
       [
         MOVE,
-        { op: "ReparentNode", path: "Shelf/Box/Toy", new_parent_path: "Shelf/Box", keep_global_transform: false, new_index: 0 },
-        { op: "ReparentNode", path: "Shelf/Box/Crate", new_parent_path: "Shelf/Box", keep_global_transform: false, new_index: 1 },
-        { op: "ReparentNode", path: "Shelf/Box/Toy/ToyPart", new_parent_path: "Shelf/Box/Toy", keep_global_transform: false, new_index: 0 },
+        { op: "ReparentNode", path: "Cabinet/Box/Toy", new_parent_path: "Cabinet/Box", keep_global_transform: false, new_index: 0 },
+        { op: "ReparentNode", path: "Cabinet/Box/Crate", new_parent_path: "Cabinet/Box", keep_global_transform: false, new_index: 1 },
+        { op: "ReparentNode", path: "Cabinet/Box/Toy/ToyPart", new_parent_path: "Cabinet/Box/Toy", keep_global_transform: false, new_index: 0 },
       ],
       [{ op: "SaveScene" }],
     ]);
@@ -127,18 +127,18 @@ describe("summer_batch ReparentNode keeps the moved node's subtree and verifies 
       { op: "AddNode", parent: ".", type: "Node3D", name: "Gift" },
       { op: "AddNode", parent: "./Gift", type: "Node3D", name: "Ribbon" },
       { op: "AddNode", parent: "Gift/Ribbon", type: "MeshInstance3D", name: "Bow" },
-      { op: "ReparentNode", path: "./Gift", new_parent_path: "./Shelf" },
-      { op: "SetProp", path: "Shelf/Gift", key: "name", value: "Present" },
+      { op: "ReparentNode", path: "./Gift", new_parent_path: "./Cabinet" },
+      { op: "SetProp", path: "Cabinet/Gift", key: "name", value: "Present" },
     ])) as Record<string, unknown>;
     expect(result).toMatchObject({ ok: true, persisted: true, verified: true });
-    expect(savedPaths(fake)).toEqual(expect.arrayContaining(["Shelf/Present", "Shelf/Present/Ribbon", "Shelf/Present/Ribbon/Bow"]));
+    expect(savedPaths(fake)).toEqual(expect.arrayContaining(["Cabinet/Present", "Cabinet/Present/Ribbon", "Cabinet/Present/Ribbon/Bow"]));
     expect((result.verification as Record<string, unknown>).checked).toEqual(
-      expect.arrayContaining(["Shelf/Present", "Shelf/Present/Ribbon", "Shelf/Present/Ribbon/Bow"])
+      expect.arrayContaining(["Cabinet/Present", "Cabinet/Present/Ribbon", "Cabinet/Present/Ribbon/Bow"])
     );
   });
 
   it("reports persisted:false with failure_reason not_persisted when the saved file lacks the subtree", async () => {
-    const fake = engine(SHELF, { saveDropsChanges: true });
+    const fake = engine(CABINET, { saveDropsChanges: true });
     const result = (await executeSceneBatch(fake, SCENE, [MOVE])) as Record<string, unknown>;
     expect(result).toMatchObject({
       ok: false,
@@ -148,7 +148,7 @@ describe("summer_batch ReparentNode keeps the moved node's subtree and verifies 
       scenePersistence: { saved: true, verified: false },
     });
     expect((result.verification as Record<string, unknown>).missing).toEqual(
-      expect.arrayContaining(["Shelf/Box", "Shelf/Box/Toy", "Shelf/Box/Toy/ToyPart"])
+      expect.arrayContaining(["Cabinet/Box", "Cabinet/Box/Toy", "Cabinet/Box/Toy/ToyPart"])
     );
     expect(String(result.error)).toContain("did NOT persist");
   });
@@ -159,9 +159,9 @@ describe("summer_batch ReparentNode keeps the moved node's subtree and verifies 
     const ok = (await sceneTool("summer_batch").handler({ scenePath: SCENE, ops: [MOVE] })) as ToolText;
     expect(ok.isError).toBeFalsy();
     expect(JSON.parse(ok.content[0]!.text)).toMatchObject({ ok: true, persisted: true, verified: true });
-    expect(savedPaths(good)).toContain("Shelf/Box/Toy/ToyPart");
+    expect(savedPaths(good)).toContain("Cabinet/Box/Toy/ToyPart");
 
-    const lying = engine(SHELF, { saveDropsChanges: true });
+    const lying = engine(CABINET, { saveDropsChanges: true });
     vi.mocked(getClient).mockResolvedValue(lying as never);
     const bad = (await sceneTool("summer_batch").handler({ scenePath: SCENE, ops: [MOVE] })) as ToolText;
     expect(bad.isError).toBe(true);
@@ -173,11 +173,11 @@ describe("summer_batch ReparentNode keeps the moved node's subtree and verifies 
     const fake = engine();
     const result = await dispatchTool("batch", { scenePath: SCENE, ops: [MOVE] }, { engine: async () => fake as never });
     expect(result).toMatchObject({ ok: true, persisted: true, verified: true });
-    expect(savedPaths(fake)).toContain("Shelf/Box/Toy/ToyPart");
+    expect(savedPaths(fake)).toContain("Cabinet/Box/Toy/ToyPart");
   });
 
   it("refuses a move onto a parent that already has a child of that name (the engine would rename it)", async () => {
-    const clash = SHELF + `\n[node name="Box" type="Node3D" parent="Shelf"]\n`;
+    const clash = CABINET + `\n[node name="Box" type="Node3D" parent="Cabinet"]\n`;
     const fake = engine(clash);
     const result = (await executeSceneBatch(fake, SCENE, [MOVE])) as Record<string, unknown>;
     expect(result).toMatchObject({ ok: false, failure_reason: "name_collision" });
@@ -215,11 +215,11 @@ describe("summer_batch refuses a raw ConnectSignal", () => {
 
 describe("reownInPlaceOps", () => {
   it("orders shallowest first and keeps the live index when known", () => {
-    const rebase = (p: string) => p.replace(/^Box/, "Shelf/Box");
+    const rebase = (p: string) => p.replace(/^Box/, "Cabinet/Box");
     expect(reownInPlaceOps(["Box/A/B", "Box/C", "Box/A"], rebase, new Map([["Box/A", 1], ["Box/C", 0], ["Box/A/B", 0]]))).toEqual([
-      { op: "ReparentNode", path: "Shelf/Box/C", new_parent_path: "Shelf/Box", keep_global_transform: false, new_index: 0 },
-      { op: "ReparentNode", path: "Shelf/Box/A", new_parent_path: "Shelf/Box", keep_global_transform: false, new_index: 1 },
-      { op: "ReparentNode", path: "Shelf/Box/A/B", new_parent_path: "Shelf/Box/A", keep_global_transform: false, new_index: 0 },
+      { op: "ReparentNode", path: "Cabinet/Box/C", new_parent_path: "Cabinet/Box", keep_global_transform: false, new_index: 0 },
+      { op: "ReparentNode", path: "Cabinet/Box/A", new_parent_path: "Cabinet/Box", keep_global_transform: false, new_index: 1 },
+      { op: "ReparentNode", path: "Cabinet/Box/A/B", new_parent_path: "Cabinet/Box/A", keep_global_transform: false, new_index: 0 },
     ]);
   });
 });

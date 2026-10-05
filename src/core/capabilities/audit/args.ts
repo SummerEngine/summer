@@ -15,8 +15,6 @@ export const AUDIT_CHECKS = [
   "floating",
   "sunken",
   "interpenetration",
-  "insert_host",
-  "mount_gap",
   "orientation",
   "uv_stretch",
   "duplicate",
@@ -32,7 +30,6 @@ export type Severity = (typeof SEVERITIES)[number];
 
 export const AUDIT_DEFAULT_LIMIT = 15;
 export const AUDIT_MAX_LIMIT = 50;
-export const AUDIT_MAX_MANIFESTS = 8;
 /** Editor time the checks may take before the slow ones stop early (partial). */
 export const AUDIT_DEFAULT_BUDGET_MS = 3000;
 export const AUDIT_MIN_BUDGET_MS = 250;
@@ -49,12 +46,12 @@ export const sceneAuditShape = {
     .max(AUDIT_CHECKS.length)
     .optional()
     .describe(
-      "Only these checks (default: all 14). through_hole, floor_gap, floating, sunken, interpenetration, insert_host, mount_gap, orientation, uv_stretch, duplicate, z_fight, lights, transform, resource. Fewer checks run faster (insert_host, duplicate, lights, transform and resource need no physics); rerun a check budget_ms left partial on its own."
+      "Only these checks (default: all 12). through_hole, floor_gap, floating, sunken, interpenetration, orientation, uv_stretch, duplicate, z_fight, lights, transform, resource. Fewer checks run faster (duplicate, lights, transform and resource need no physics); rerun a check budget_ms left partial on its own."
     ),
   root: z
     .string()
     .optional()
-    .describe('Report only issues under this node (subtree), e.g. "Alley3". The whole scene is still loaded so walls and floors outside it count as surroundings.'),
+    .describe('Report only issues under this node (subtree), e.g. "Block3". The whole scene is still loaded so walls and floors outside it count as surroundings.'),
   min_severity: z
     .enum(SEVERITIES)
     .optional()
@@ -67,13 +64,6 @@ export const sceneAuditShape = {
     .max(AUDIT_MAX_LIMIT)
     .optional()
     .describe(`Issues per page (default ${AUDIT_DEFAULT_LIMIT}, max ${AUDIT_MAX_LIMIT}). The result is capped at 5 KB; a page that does not fit is cut and says so.`),
-  manifests: z
-    .array(z.string())
-    .max(AUDIT_MAX_MANIFESTS)
-    .optional()
-    .describe(
-      "Extra pack manifests (res:// .json in the pieces.json format: {pieces:{name:{scene, fits_into, wall_side, front_faces_plus_z, category, standoff_m, symmetric}}}; standoff_m = how far off its wall a mounted piece stands by design, symmetric = looks the same turned 180 deg). pieces.json next to (or up to two folders above) every instanced scene is always read, and the pack's PACK.json and ASSEMBLY.md for ground alternatives and wall standoffs."
-    ),
   budget_ms: z
     .number()
     .int()

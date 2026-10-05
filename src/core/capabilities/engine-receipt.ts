@@ -140,7 +140,7 @@ export function extractOpError(result: unknown): string | null {
  * explicit_scene_save_succeeded). It only means SaveScene returned OK, not
  * that the file holds the change: a ReparentNode subtree whose owners the
  * engine cleared, or a ConnectSignal made without CONNECT_PERSIST, is missing
- * from a file whose save "persisted" (live check 2026-10-04). Rename it to
+ * from a file whose save "persisted". Rename it to
  * what it says — `saved` — on every receipt the client hands out, including
  * the per-request receipts of a chunked merge. Tools that read the saved file
  * back add their own `verified` (scene-readback.ts).

@@ -6,12 +6,12 @@ function node(path: string, cls: string, extra: Record<string, unknown> = {}) {
   return { path, class: cls, name: path.split("/").pop(), pos: "Vector3(0, 0, 0)", rot_deg: "Vector3(0, 0, 0)", scale: "Vector3(1, 1, 1)", visible: true, aabb: { pos: "Vector3(0, 0, 0)", size: "Vector3(1, 1, 1)" }, ...extra };
 }
 
-// 2692 nodes like the proof-run scene: two houses of 1300 pieces plus props.
+// A 2700-node scene: two houses of 1300 pieces plus props.
 const nodes = [
   node(".", "Node3D"),
   ...Array.from({ length: 1300 }, (_, i) => node(`House1/P${String(i).padStart(4, "0")}`, "StaticBody3D")),
   ...Array.from({ length: 1300 }, (_, i) => node(`House3/P${String(i).padStart(4, "0")}`, i % 2 ? "MeshInstance3D" : "StaticBody3D", { scene_file: "res://kit/wall.tscn" })),
-  ...Array.from({ length: 91 }, (_, i) => node(`Props/Bench${i}`, "Node3D")),
+  ...Array.from({ length: 99 }, (_, i) => node(`Props/Bench${i}`, "Node3D")),
 ].sort((a, b) => (a.path < b.path ? -1 : 1));
 
 const envelope = {
@@ -21,12 +21,12 @@ const envelope = {
       ok: true,
       op: "GetWorldSnapshot",
       snapshot_id: "ws-7",
-      total_nodes: 2692,
+      total_nodes: 2700,
       truncated: false,
       nodes,
       lights: [{ path: "House3/Lamp", class: "OmniLight3D" }, { path: "Props/Lamp", class: "SpotLight3D" }],
       cameras: [],
-      counts: { StaticBody3D: 1950, MeshInstance3D: 650, Node3D: 92 },
+      counts: { StaticBody3D: 1950, MeshInstance3D: 650, Node3D: 100 },
     },
   ],
 };
@@ -38,7 +38,7 @@ describe("summer_world_snapshot filters", () => {
     const shaped = (shapeWorldSnapshot(envelope, {}) as Shaped).results[0]!;
     expect(shaped.nodes).toHaveLength(WORLD_SNAPSHOT_DEFAULT_MAX_NODES);
     expect(WORLD_SNAPSHOT_DEFAULT_MAX_NODES).toBeLessThanOrEqual(300);
-    expect(shaped).toMatchObject({ truncated: true, matched_nodes: 2692, next_offset: 200, snapshot_id: "ws-7", total_nodes: 2692 });
+    expect(shaped).toMatchObject({ truncated: true, matched_nodes: 2700, next_offset: 200, snapshot_id: "ws-7", total_nodes: 2700 });
     expect(shaped.counts).toEqual(envelope.results[0]!.counts);
   });
 
@@ -76,7 +76,7 @@ describe("summer_world_snapshot filters", () => {
   it("the CLI face shapes the result the same way", async () => {
     const client = { executeOps: async () => envelope };
     const result = (await dispatchTool("world-snapshot", { path_prefix: "Props", fields: ["pos"] }, { engine: async () => client as never })) as Shaped;
-    expect(result.results[0]!.matched_nodes).toBe(91);
+    expect(result.results[0]!.matched_nodes).toBe(99);
     expect(Object.keys(result.results[0]!.nodes[0]!)).toEqual(["path", "pos"]);
   });
 });

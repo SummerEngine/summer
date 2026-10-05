@@ -10,7 +10,7 @@ import { dispatchTool } from "../../core/capabilities/tool-dispatch.js";
 import { findTscnNode, parseTscn } from "../../core/capabilities/tscn.js";
 import { parseTransform3D } from "../../core/capabilities/math3d.js";
 
-const SCENE = "res://three_houses_v2.tscn";
+const SCENE = "res://town.tscn";
 
 /**
  * A one-axis fake of SurfaceSnapOps::snap_to_surface for a downward cast:
@@ -169,7 +169,7 @@ const args = (extra: Partial<SnapToSurfaceArgs> = {}): SnapToSurfaceArgs => ({
 const SUNK_5CM = -0.2025;
 
 describe("summer_snap_to_surface: sunk props", () => {
-  it("the fake reproduces the field failure: a sunk prop gets gap_exceeds_hit_travel from the engine op", async () => {
+  it("the fake reproduces the engine failure: a sunk prop gets gap_exceeds_hit_travel from the engine op", async () => {
     const fake = new FakeSnapEngine(SUNK_5CM, FLOOR);
     const raw = (await fake.executeIdentityBoundOps([{ op: "SnapToSurface", gap: 0, max_distance: 20 }])) as { results: Array<Record<string, unknown>> };
     expect(raw.results[0]).toMatchObject({ failure_reason: "gap_exceeds_hit_travel", hitTravel: -0.05 });
@@ -205,12 +205,12 @@ describe("summer_snap_to_surface: sunk props", () => {
   });
 
   it("restores the original position when the lifted pose settles on something it was not sunk into", async () => {
-    const fake = new FakeSnapEngine(SUNK_5CM, [{ path: "Ground/Floor", top: 0 }, { path: "Shelf/Board", top: 0.01 }]);
+    const fake = new FakeSnapEngine(SUNK_5CM, [{ path: "Ground/Floor", top: 0 }, { path: "Counter/Board", top: 0.01 }]);
     fake.starcastContacts = ["Ground/Floor"]; // the board was not reported as a contact
     const result = (await snapToSurface(fake, args())) as { ok: boolean; error: string; results: Array<Record<string, unknown>> };
     expect(result.ok).toBe(false);
-    expect(result.results[0]!.recovery).toMatchObject({ settled_on: "Shelf/Board", restored: true });
-    expect(result.error).toContain("settled on Shelf/Board");
+    expect(result.results[0]!.recovery).toMatchObject({ settled_on: "Counter/Board", restored: true });
+    expect(result.error).toContain("settled on Counter/Board");
     expect(fake.local[1]).toBe(SUNK_5CM);
     expect(fake.savedLocalY()).toBe(SUNK_5CM);
   });

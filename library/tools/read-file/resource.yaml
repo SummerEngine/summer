@@ -6,7 +6,7 @@ use_when:
   - reading project files through the engine
   - getting the sha256 required before overwriting a file
   - reading a file too big for one result in pages (offset/limit)
-  - '"read the wall_tripple_door_02 entry of pieces.json" — json_path / keys instead of the whole file'
+  - '"read the wall_door_b entry of a kit manifest" — json_path / keys instead of the whole file'
 facets:
   lifecycle:
     - build
@@ -60,13 +60,13 @@ input_schema:
       description: "What offset/limit count: 'lines' (default) or 'bytes' (cut on UTF-8 character boundaries)."
     json_path:
       type: string
-      description: "For a JSON file: return only this value, e.g. 'pieces.wall_tripple_standard_01', 'pieces[\"a b\"]', 'items[3].size_m'."
+      description: "For a JSON file: return only this value, e.g. 'pieces.wall_a', 'pieces[\"a b\"]', 'items[3].size_m'."
     keys:
       type: array
       items:
         type: string
       maxItems: 64
-      description: "For a JSON object (the file root or the json_path value): keep only these keys; * and ? wildcards, e.g. ['wall_tripple_*']."
+      description: "For a JSON object (the file root or the json_path value): keep only these keys; * and ? wildcards, e.g. ['wall_*']."
     keys_only:
       type: boolean
       description: "For a JSON object: return only its key names (after the keys filter), not the values — a cheap table of contents."

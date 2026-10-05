@@ -1390,7 +1390,7 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
     const scan = pass1.result!.corridor_scan as { runs?: CorridorRun[] } | undefined;
     corridorAxes = chooseCorridorAxis(scan?.runs ?? [], subjectBox!);
     if (!corridorAxes.length) {
-      return fail("no_corridor_found", `No walkable corridor line was found inside ${subject!.join(", ")}: every free run from the scan seeds was shorter than 4 m or narrower than 1 m.`, "Check the subject is the corridor/alley node itself, or frame it with summer_frame_nodes instead.");
+      return fail("no_corridor_found", `No walkable corridor line was found inside ${subject!.join(", ")}: every free run from the scan seeds was shorter than 4 m or narrower than 1 m.`, "Check the subject is the corridor/lane node itself, or frame it with summer_frame_nodes instead.");
     }
   }
   const groundY = subjectBox ? subjectBox.position[1] : undefined;

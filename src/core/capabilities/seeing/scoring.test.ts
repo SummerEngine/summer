@@ -149,12 +149,12 @@ describe("smart framing scores", () => {
   });
 });
 
-describe("back faces: a camera behind a one-sided wall (proof run: frame_shot corridor winner behind Backdrop/BD_A)", () => {
+describe("back faces: a camera behind a one-sided wall (a corridor winner behind a backdrop)", () => {
   const corridorOpts: ScoringOptions = { ...OPTS, shot: "corridor" };
 
   it("rejects a corridor pose that looks through the back of a wall, even when every sight line slips through its door hole", () => {
-    // The v2 winner: camera 3 m behind BD_A at z -19.2, every corridor sample
-    // visible through the door hole, but most of the frame is BD_A's back.
+    // A camera 3 m behind a backdrop wall: every corridor sample is visible
+    // through the door hole, but most of the frame is the wall's back.
     const behind = grid((r, c) => (c >= 9 && c <= 13 && r >= 5 ? ["H", 12] : ["B", 3]));
     const s = scoreMeasurement({ ...measurement(behind), vis: "VVVVVV" }, { ...CAND, into: 1 }, corridorOpts);
     expect(s.rejected).toBe("behind_surface");
@@ -165,13 +165,13 @@ describe("back faces: a camera behind a one-sided wall (proof run: frame_shot co
   });
 
   it("a sight line crossing a surface from behind blocks like a wall (centre sample, or a third of them)", () => {
-    expect(scoreMeasurement(measurement({ vis: "BVVVVVVVV", blockers_back: ["Backdrop/BD_A"] }), CAND, OPTS).rejected).toBe("behind_surface");
-    const third = scoreMeasurement(measurement({ vis: "VBBBBVVVV", blockers_back: ["Backdrop/BD_A"] }), CAND, OPTS);
+    expect(scoreMeasurement(measurement({ vis: "BVVVVVVVV", blockers_back: ["Backdrop/Wall_A"] }), CAND, OPTS).rejected).toBe("behind_surface");
+    const third = scoreMeasurement(measurement({ vis: "VBBBBVVVV", blockers_back: ["Backdrop/Wall_A"] }), CAND, OPTS);
     expect(third.rejected).toBe("behind_surface");
     expect(third.hardFraction).toBeCloseTo(4 / 9, 2);
-    expect(third.blockers?.back).toEqual(["Backdrop/BD_A"]);
-    const problem = viewProblem(measurement({ vis: "VBBBBVVVV", blockers_back: ["Backdrop/BD_A"] }));
-    expect(problem).toMatchObject({ reason: "behind_surface", blockers: ["Backdrop/BD_A"] });
+    expect(third.blockers?.back).toEqual(["Backdrop/Wall_A"]);
+    const problem = viewProblem(measurement({ vis: "VBBBBVVVV", blockers_back: ["Backdrop/Wall_A"] }));
+    expect(problem).toMatchObject({ reason: "behind_surface", blockers: ["Backdrop/Wall_A"] });
     expect(problem!.detail).toContain("4 of 9 sight lines");
   });
 
@@ -187,13 +187,13 @@ describe("back faces: a camera behind a one-sided wall (proof run: frame_shot co
     const inside = viewProblem({ i: 0, position: [0, 1, 0], look_at: [0, 1, -5], fov: 50, rejected: "inside_volume" });
     expect(inside?.reason).toBe("inside_volume");
     expect(inside?.detail).toContain("closed shell");
-    const behind = scoreMeasurement({ i: 0, position: CAND.position, look_at: CAND.look_at, fov: 55, rejected: "behind_surface", near_lens_hit: "Backdrop/BD_A" }, CAND, OPTS);
+    const behind = scoreMeasurement({ i: 0, position: CAND.position, look_at: CAND.look_at, fov: 55, rejected: "behind_surface", near_lens_hit: "Backdrop/Wall_A" }, CAND, OPTS);
     expect(behind.rejected).toBe("behind_surface");
-    expect(behind.blockers?.lens).toBe("Backdrop/BD_A");
+    expect(behind.blockers?.lens).toBe("Backdrop/Wall_A");
   });
 });
 
-describe("transparent surfaces pass at partial weight (trial: foliage cards blocked like walls)", () => {
+describe("transparent surfaces pass at partial weight (foliage cards must not block like walls)", () => {
   it("sight lines through alpha/glass surfaces count 0.8, are never hard or soft overload", () => {
     const through = scoreMeasurement(measurement({ vis: "TTTTTTTTT", seen_through: ["Plants/IvyCards"] }), CAND, OPTS);
     expect(through.rejected).toBeUndefined();
@@ -254,9 +254,9 @@ describe("establishing shots: light direction, world edge, three different views
     expect(clean.total - edge.total).toBeGreaterThan(0.1);
   });
 
-  it("pickTop spreads the top 3 around the subject (trial: az000 / az030 / az330, three near-identical front views)", () => {
+  it("pickTop spreads the top 3 around the subject (not az000 / az030 / az330, three near-identical front views)", () => {
     const ring = generateCandidates({ shot: "establishing", subject: BOX, aspect: 16 / 9 }).filter((c) => c.id.endsWith("_el12"));
-    // Scores fall off with the angle from the front, like the trial's.
+    // Scores fall off with the angle from the front.
     const scored = ring.map((c, i) => {
       const s = scoreMeasurement({ ...measurement(), i, position: c.position, look_at: c.look_at, fov: c.fov }, c, OPTS);
       const az = Number(c.id.slice(c.id.indexOf("_az") + 3, c.id.indexOf("_el")));

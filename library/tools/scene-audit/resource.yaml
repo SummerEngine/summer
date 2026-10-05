@@ -1,11 +1,10 @@
 id: tool/scene-audit
 kind: tool
-version: 1.1.0
-summary: 'One read-only pass over a 3D scene: see-through holes, floor gaps, floating or clipping props, wrong insert hosts, mount gaps, facing, UV stretch, lights.'
+version: 1.2.0
+summary: 'Read-only pass over any 3D scene from geometry and materials: see-through holes, floor gaps, floating or clipping props, facing, UV stretch, z-fighting, lights.'
 use_when:
   - 'after each build stage of a 3D level or kit-built street: "what is wrong with this scene and where exactly?"'
   - 'before calling a scene done: find see-through walls (an insert narrower than its frame), floor tiles with holes, props floating, sunk or poking into walls'
-  - 'checking kit pieces against their pack metadata: a door or window in the wrong host (pieces.json fits_into), pipes and ducts off their wall (wall_side)'
   - 'finding props turned the wrong way against a wall (a bench standing perpendicular to it), stretched texture strips, duplicated pieces'
   - 'flickering faces: coplanar overlaps anywhere (props, roofs, ledges, inserts against hosts, decals, two surfaces of one mesh), judged by the 24-bit depth precision at the view distance'
   - 'bare ground at wall bases, an underlay plane covering drain channels, buried props: floor_gap and sunken say which surface a ray hits first'
@@ -66,8 +65,6 @@ input_schema:
           - floating
           - sunken
           - interpenetration
-          - insert_host
-          - mount_gap
           - orientation
           - uv_stretch
           - duplicate
@@ -76,11 +73,11 @@ input_schema:
           - transform
           - resource
       minItems: 1
-      maxItems: 14
-      description: Only these checks (default all 14). Fewer checks run faster (insert_host, duplicate, lights, transform and resource need no physics); rerun a check budget_ms left partial on its own.
+      maxItems: 12
+      description: Only these checks (default all 12). Fewer checks run faster (duplicate, lights, transform and resource need no physics); rerun a check budget_ms left partial on its own.
     root:
       type: string
-      description: Report only issues under this node (subtree), e.g. "Alley3". The whole scene is still loaded, so walls and floors outside it count as surroundings.
+      description: Report only issues under this node (subtree), e.g. "Block3". The whole scene is still loaded, so walls and floors outside it count as surroundings.
     min_severity:
       type: string
       enum:
@@ -98,12 +95,6 @@ input_schema:
       minimum: 1
       maximum: 50
       description: Issues per page (default 15, max 50). The result is capped at 5 KB; a page that does not fit is cut and says so.
-    manifests:
-      type: array
-      items:
-        type: string
-      maxItems: 8
-      description: 'Extra pack manifests (res:// .json in the pieces.json format, including optional standoff_m and symmetric per piece). pieces.json next to (or up to two folders above) every instanced scene is always read, and the pack''s PACK.json and ASSEMBLY.md for ground alternatives and wall standoffs.'
     budget_ms:
       type: integer
       minimum: 250

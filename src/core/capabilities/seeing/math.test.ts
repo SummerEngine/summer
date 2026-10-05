@@ -86,7 +86,7 @@ describe("seeing math — engine conventions", () => {
     expect(applyLowAngleRule([0, 0.1, 0], toCam, 30, 60, 0.35, 100).impossible).toBe(true);
   });
 
-  it("exactCrop honours the region (regression: a 0.3 x 0.6 region came back x1.3, grown to 16:9 and padded)", () => {
+  it("exactCrop honours the region (regression guard: never grown to 16:9 or padded)", () => {
     const exact = exactCrop({ u0: 0.5, v0: 0.15, u1: 0.8, v1: 0.75 });
     expect(exact.crop).toEqual([0.5, 0.15, 0.8, 0.75]);
     expect(exact.widenedBecause).toEqual([]);

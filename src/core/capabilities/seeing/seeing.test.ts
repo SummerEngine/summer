@@ -117,10 +117,10 @@ describe("layoutGrid", () => {
 describe("summer_frame_nodes", () => {
   it("fits the pose to the merged bounds and renders with the real environment (framing free)", async () => {
     const engine = fakeEngine({ projectRoot: project, analyze: analyzeBounds });
-    const r = (await frameNodes(engine, { scenePath: "res://three.tscn", nodes: ["House1", "House2"], direction: "front" })) as SeeingSuccess;
+    const r = (await frameNodes(engine, { scenePath: "res://square.tscn", nodes: ["House1", "House2"], direction: "front" })) as SeeingSuccess;
     expect(r.ok).toBe(true);
     expect(engine.configs[0]).toMatchObject({ mode: "analyze", subjects: ["House1", "House2"], tasks: [] });
-    const native = engine.calls.find((c) => c.op === "ScenePreview" && c.scene_path === "res://three.tscn")!;
+    const native = engine.calls.find((c) => c.op === "ScenePreview" && c.scene_path === "res://square.tscn")!;
     expect(native.framing).toBe("free");
     expect(String(native.camera_position)).toMatch(/^Vector3\(0, 9, \d+/);
     expect(r.image?.base64).toBe(OK_JPEG.toString("base64"));
@@ -131,7 +131,7 @@ describe("summer_frame_nodes", () => {
 
   it("saves the pose as a bookmark, renders that bookmark, and keeps its one previous-image slot", async () => {
     const engine = fakeEngine({ projectRoot: project, analyze: analyzeBounds });
-    const r = (await frameNodes(engine, { scenePath: "res://three.tscn", nodes: ["House1"], bookmark_name: "hero" })) as SeeingSuccess;
+    const r = (await frameNodes(engine, { scenePath: "res://square.tscn", nodes: ["House1"], bookmark_name: "hero" })) as SeeingSuccess;
     expect(r.ok).toBe(true);
     expect(engine.calls.map((c) => c.op)).toEqual(["ScenePreview", "SaveCameraBookmark", "ScenePreview"]);
     expect(engine.calls[2]!.framing).toBe("bookmark:hero");
@@ -141,19 +141,19 @@ describe("summer_frame_nodes", () => {
 
   it("passes a node_not_found failure through as structured data", async () => {
     const engine = fakeEngine({ projectRoot: project, analyze: () => ({ ok: false, stage: "analyze", failure_reason: "node_not_found", missing: ["Nope"], errors: ["Node(s) not found in the scene: Nope"] }) });
-    const r = await frameNodes(engine, { scenePath: "res://three.tscn", nodes: ["Nope"] });
+    const r = await frameNodes(engine, { scenePath: "res://square.tscn", nodes: ["Nope"] });
     expect(r).toMatchObject({ ok: false, failure_reason: "node_not_found", detail: { missing: ["Nope"] } });
   });
 
   it("says so when the kernel never ran (no silent fallback)", async () => {
     const engine = fakeEngine({ projectRoot: project, silentKernel: true });
-    const r = await frameNodes(engine, { scenePath: "res://three.tscn", nodes: ["A"] });
+    const r = await frameNodes(engine, { scenePath: "res://square.tscn", nodes: ["A"] });
     expect(r).toMatchObject({ ok: false, failure_reason: "probe_did_not_run" });
   });
 
   it("refuses up front on an engine that provably lacks ScenePreview", async () => {
     const engine = fakeEngine({ projectRoot: project, capabilities: { opKinds: ["AddNode"] } });
-    const r = await frameNodes(engine, { scenePath: "res://three.tscn", nodes: ["A"] });
+    const r = await frameNodes(engine, { scenePath: "res://square.tscn", nodes: ["A"] });
     expect(r).toMatchObject({ ok: false, failure_reason: "engine_lacks_op" });
     expect(engine.calls).toEqual([]);
   });
@@ -162,14 +162,14 @@ describe("summer_frame_nodes", () => {
 describe("summer_shot_sheet", () => {
   const bookmarks = {
     hero: { position: "Vector3(0, 5, 20)", look_at: "Vector3(0, 2, 0)", fov: 55, created: "2026-01-01T00:00:00Z" },
-    alley: { position: "Vector3(-24, 1.6, 1.3)", look_at: "Vector3(-24, 1.6, -15)", fov: 60 },
+    lane: { position: "Vector3(-24, 1.6, 1.3)", look_at: "Vector3(-24, 1.6, -15)", fov: 60 },
   };
 
   it("renders bookmarks and poses into one grid and keeps one slot per rendered bookmark", async () => {
     const engine = fakeEngine({ projectRoot: project, bookmarks });
     const r = (await shotSheet(engine, {
-      scenePath: "res://three.tscn",
-      shots: [{ bookmark_name: "hero" }, { bookmark_name: "alley" }, { camera_position: "Vector3(1, 2, 3)", camera_look_at: "Vector3(0, 0, 0)" }],
+      scenePath: "res://square.tscn",
+      shots: [{ bookmark_name: "hero" }, { bookmark_name: "lane" }, { camera_position: "Vector3(1, 2, 3)", camera_look_at: "Vector3(0, 0, 0)" }],
     })) as SeeingSuccess;
     expect(r.ok).toBe(true);
     const config = engine.configs[0]!;
@@ -179,7 +179,7 @@ describe("summer_shot_sheet", () => {
     expect(String(tiles[0]!.capture_path)).toContain("/summer-seeing-");
     expect(tiles[2]!.capture_path).toBeUndefined();
     expect(existsSync(join(project, ".summer", "shots", "hero.jpg"))).toBe(true);
-    expect(existsSync(join(project, ".summer", "shots", "alley.jpg"))).toBe(true);
+    expect(existsSync(join(project, ".summer", "shots", "lane.jpg"))).toBe(true);
     expect(r.caption).toContain("1 hero");
     // The per-call temp directory is gone afterwards.
     expect(existsSync(String(tiles[0]!.capture_path))).toBe(false);
@@ -191,7 +191,7 @@ describe("summer_shot_sheet", () => {
     writeFileSync(join(shots, "hero.jpg"), OK_JPEG);
     // hero was re-saved AFTER its previous render: the compare must say so.
     const engine = fakeEngine({ projectRoot: project, bookmarks: { ...bookmarks, hero: { ...bookmarks.hero, created: "2099-01-01T00:00:00Z" } } });
-    const r = (await shotSheet(engine, { scenePath: "res://three.tscn", shots: [{ bookmark_name: "hero" }, { bookmark_name: "alley" }], compare_previous: true })) as SeeingSuccess;
+    const r = (await shotSheet(engine, { scenePath: "res://square.tscn", shots: [{ bookmark_name: "hero" }, { bookmark_name: "lane" }], compare_previous: true })) as SeeingSuccess;
     expect(r.ok).toBe(true);
     const tiles = engine.configs[0]!.tiles as Array<Record<string, unknown>>;
     expect(tiles.map((t) => t.kind)).toEqual(["prev", "shot", "diff", "note", "shot", "note"]);
@@ -199,7 +199,7 @@ describe("summer_shot_sheet", () => {
     expect(tiles[2]!.now_tile).toBe(1);
     expect(r.caption).toMatch(/difference 1: 4\.2% of pixels changed visibly/);
     expect(r.caption).toContain("previous image may predate the bookmark's current pose");
-    expect(existsSync(join(shots, "alley.jpg"))).toBe(true);
+    expect(existsSync(join(shots, "lane.jpg"))).toBe(true);
   });
 
   it("refuses compare_previous without a bookmark and save_to with an oversized image", async () => {
@@ -211,25 +211,25 @@ describe("summer_shot_sheet", () => {
 
   it("writes a save_to copy only when asked", async () => {
     const engine = fakeEngine({ projectRoot: project, bookmarks });
-    await shotSheet(engine, { scenePath: "res://three.tscn", shots: [{ camera_position: "Vector3(1,2,3)", camera_look_at: "Vector3(0,0,0)" }], max_size: 1024 });
+    await shotSheet(engine, { scenePath: "res://square.tscn", shots: [{ camera_position: "Vector3(1,2,3)", camera_look_at: "Vector3(0,0,0)" }], max_size: 1024 });
     expect(existsSync(join(project, ".summer"))).toBe(false);
-    const r = (await shotSheet(engine, { scenePath: "res://three.tscn", shots: [{ camera_position: "Vector3(1,2,3)", camera_look_at: "Vector3(0,0,0)" }], max_size: 1024, save_to: "review_1" })) as SeeingSuccess;
+    const r = (await shotSheet(engine, { scenePath: "res://square.tscn", shots: [{ camera_position: "Vector3(1,2,3)", camera_look_at: "Vector3(0,0,0)" }], max_size: 1024, save_to: "review_1" })) as SeeingSuccess;
     expect(existsSync(join(project, ".summer", "shots", "saved", "review_1.jpg"))).toBe(true);
     expect(r.caption).toContain("res://.summer/shots/saved/review_1.jpg");
   });
 
   it("names the saved bookmarks when one is unknown", async () => {
     const engine = fakeEngine({ projectRoot: project, bookmarks });
-    const r = await shotSheet(engine, { scenePath: "res://three.tscn", shots: [{ bookmark_name: "nope" }] });
+    const r = await shotSheet(engine, { scenePath: "res://square.tscn", shots: [{ bookmark_name: "nope" }] });
     expect(r).toMatchObject({ ok: false, failure_reason: "unknown_bookmark" });
-    expect((r as { hint: string }).hint).toContain("alley, hero");
+    expect((r as { hint: string }).hint).toContain("hero, lane");
   });
 });
 
 describe("summer_debug_views", () => {
   it("renders the six views of one pose and reports the method per view", async () => {
     const engine = fakeEngine({ projectRoot: project, bookmarks: { hero: { position: "Vector3(0, 5, 20)", look_at: "Vector3(0, 2, 0)", fov: 55 } } });
-    const r = (await debugViews(engine, { scenePath: "res://three.tscn", bookmark_name: "hero" })) as SeeingSuccess;
+    const r = (await debugViews(engine, { scenePath: "res://square.tscn", bookmark_name: "hero" })) as SeeingSuccess;
     expect(r.ok).toBe(true);
     const tiles = engine.configs[0]!.tiles as Array<Record<string, unknown>>;
     expect(tiles.map((t) => t.view)).toEqual(["beauty", "lighting", "unshaded", "normals", "overdraw", "wireframe"]);
@@ -244,7 +244,7 @@ describe("summer_zoom", () => {
 
   it("renders the exact sub-frustum of a region", async () => {
     const engine = fakeEngine({ projectRoot: project });
-    const r = (await zoom(engine, { scenePath: "res://three.tscn", ...pose, region: [0.4, 0.4, 0.2, 0.2], pad: 0 })) as SeeingSuccess;
+    const r = (await zoom(engine, { scenePath: "res://square.tscn", ...pose, region: [0.4, 0.4, 0.2, 0.2], pad: 0 })) as SeeingSuccess;
     expect(r.ok).toBe(true);
     const tile = (engine.configs[0]!.tiles as Array<Record<string, unknown>>)[0]!;
     const crop = (tile.pose as { crop: number[] }).crop;
@@ -266,11 +266,11 @@ describe("summer_zoom", () => {
         marks_candidates: 1,
       }),
     });
-    const r = (await zoom(engine, { scenePath: "res://three.tscn", ...pose, mark: 3 })) as SeeingSuccess;
+    const r = (await zoom(engine, { scenePath: "res://square.tscn", ...pose, mark: 3 })) as SeeingSuccess;
     expect(r.ok).toBe(true);
-    expect(engine.calls[0]).toMatchObject({ op: "ScenePreview", scene_path: "res://three.tscn", marks: true, size: [1024, 576] });
+    expect(engine.calls[0]).toMatchObject({ op: "ScenePreview", scene_path: "res://square.tscn", marks: true, size: [1024, 576] });
     expect(r.caption).toContain("mark 3 -> Props/Crate_02");
-    const missing = await zoom(engine, { scenePath: "res://three.tscn", ...pose, mark: 9 });
+    const missing = await zoom(engine, { scenePath: "res://square.tscn", ...pose, mark: 9 });
     expect(missing).toMatchObject({ ok: false, failure_reason: "mark_not_found" });
   });
 });
@@ -302,7 +302,7 @@ describe("summer_frame_shot", () => {
 
   it("measures candidates in-engine, returns the top 3, saves the best and renders one sheet", async () => {
     const engine = fakeEngine({ projectRoot: project, analyze: measure });
-    const r = (await frameShot(engine, { scenePath: "res://three.tscn", shot: "establishing", subject: ["House1", "House2", "House3"] })) as SeeingSuccess;
+    const r = (await frameShot(engine, { scenePath: "res://square.tscn", shot: "establishing", subject: ["House1", "House2", "House3"] })) as SeeingSuccess;
     expect(r.ok).toBe(true);
     expect(engine.configs.map((c) => c.mode)).toEqual(["analyze", "analyze", "render"]);
     expect((engine.configs[1]!.candidates as unknown[]).length).toBe(36);
@@ -321,7 +321,7 @@ describe("summer_frame_shot", () => {
 
   it("render:none returns scores only and save_bookmark:false writes nothing", async () => {
     const engine = fakeEngine({ projectRoot: project, analyze: measure });
-    const r = (await frameShot(engine, { scenePath: "res://three.tscn", shot: "detail", subject: ["House1"], render: "none", save_bookmark: false })) as SeeingSuccess;
+    const r = (await frameShot(engine, { scenePath: "res://square.tscn", shot: "detail", subject: ["House1"], render: "none", save_bookmark: false })) as SeeingSuccess;
     expect(r.ok).toBe(true);
     expect(r.image).toBeNull();
     expect(engine.calls.some((c) => c.op === "SaveCameraBookmark")).toBe(false);
@@ -333,7 +333,7 @@ describe("summer_frame_shot", () => {
     await expect(frameShot(engine, { shot: "eye_level" })).rejects.toThrow(/needs spawn/);
     await expect(frameShot(engine, { shot: "corridor" })).rejects.toThrow(/needs subject/);
     const noCorridor = fakeEngine({ projectRoot: project, analyze: (c) => ({ ...analyzeBounds(c), corridor_scan: { runs: [] } }) });
-    expect(await frameShot(noCorridor, { scenePath: "res://three.tscn", shot: "corridor", subject: ["Alley1"] })).toMatchObject({ ok: false, failure_reason: "no_corridor_found" });
+    expect(await frameShot(noCorridor, { scenePath: "res://square.tscn", shot: "corridor", subject: ["Lane1"] })).toMatchObject({ ok: false, failure_reason: "no_corridor_found" });
   });
 
   it("reports no_usable_pose with the rejection counts when everything is blocked", async () => {
@@ -345,13 +345,13 @@ describe("summer_frame_shot", () => {
         return m;
       },
     });
-    const r = await frameShot(blocked, { scenePath: "res://three.tscn", shot: "establishing", subject: ["House1"] });
+    const r = await frameShot(blocked, { scenePath: "res://square.tscn", shot: "establishing", subject: ["House1"] });
     expect(r).toMatchObject({ ok: false, failure_reason: "no_usable_pose", detail: { rejected: { hard_blocked: 36 } } });
   });
 });
 
-describe("summer_frame_nodes checks an explicit from (proof run: the camera sat behind Backdrop/BD_A)", () => {
-  const FIRE_ESCAPE = { position: [5, 2, -9], size: [5, 8, 1.5] };
+describe("summer_frame_nodes checks an explicit from (a camera behind a backdrop wall)", () => {
+  const STAIRS = { position: [5, 2, -9], size: [5, 8, 1.5] };
   const COLS = 24;
   const ROWS = 14;
 
@@ -363,7 +363,7 @@ describe("summer_frame_nodes checks an explicit from (proof run: the camera sat 
         const base = {
           ok: true,
           stage: "done",
-          subjects: ((config.subjects ?? []) as string[]).map((p) => ({ path: p, resolved: p, has_geometry: true, visuals: 4, aabb: FIRE_ESCAPE })),
+          subjects: ((config.subjects ?? []) as string[]).map((p) => ({ path: p, resolved: p, has_geometry: true, visuals: 4, aabb: STAIRS })),
           ...extra(config),
         };
         if (!candidates) return base;
@@ -373,7 +373,7 @@ describe("summer_frame_nodes checks an explicit from (proof run: the camera sat 
             // The request (0) and every pose up to option 5 stand behind the wall.
             const behind = requestedBehindWall && i < 5;
             const grid = (behind ? "B" : "H").repeat(COLS * ROWS);
-            return { i, position: c.position, look_at: c.look_at, fov: c.fov, vis: behind ? "BBBBBBBBB" : "VVVVVVVVV", grid, dist: new Array(COLS * ROWS).fill(3), ...(behind ? { blockers_back: ["Backdrop/BD_A"] } : {}) };
+            return { i, position: c.position, look_at: c.look_at, fov: c.fov, vis: behind ? "BBBBBBBBB" : "VVVVVVVVV", grid, dist: new Array(COLS * ROWS).fill(3), ...(behind ? { blockers_back: ["Backdrop/Wall_A"] } : {}) };
           }),
         };
       },
@@ -382,7 +382,7 @@ describe("summer_frame_nodes checks an explicit from (proof run: the camera sat 
 
   it("measures the requested pose exactly (adjust:false) with nearby alternatives, warns and offers the nearest valid from", async () => {
     const engine = engineFor(true);
-    const r = (await frameNodes(engine, { scenePath: "res://three_houses_v2.tscn", nodes: ["Alley1/FireEscape"], from: "Vector3(0.24, 0.15, -0.96)", fov: 50 })) as SeeingSuccess;
+    const r = (await frameNodes(engine, { scenePath: "res://town.tscn", nodes: ["Lane1/Stairs"], from: "Vector3(0.24, 0.15, -0.96)", fov: 50 })) as SeeingSuccess;
     expect(r.ok).toBe(true);
     expect(engine.configs.map((c) => c.mode)).toEqual(["analyze", "analyze"]);
     const check = engine.configs[1]!;
@@ -391,10 +391,10 @@ describe("summer_frame_nodes checks an explicit from (proof run: the camera sat 
     expect(candidates.length).toBeGreaterThan(10);
     expect(candidates.every((c) => c.adjust === false)).toBe(true);
     // Candidate 0 is exactly the pose that was rendered.
-    const native = engine.calls.find((c) => c.op === "ScenePreview" && c.scene_path === "res://three_houses_v2.tscn")!;
+    const native = engine.calls.find((c) => c.op === "ScenePreview" && c.scene_path === "res://town.tscn")!;
     expect(`Vector3(${(candidates[0]!.position as number[]).join(", ")})`).toBe(String(native.camera_position));
     expect(r.caption.split("\n")[0]).toMatch(/^WARNING: this explicit from gives a view no player could have \(behind_surface\)/);
-    expect(r.caption).toContain("Backdrop/BD_A");
+    expect(r.caption).toContain("Backdrop/Wall_A");
     expect(r.caption).toContain("looks THROUGH it");
     expect(r.caption).toMatch(/nearest valid pose \(.+\): summer_frame_nodes from:"Vector3\(/);
     const receipt = r.receipt as { view_check: { ok: boolean; reason: string; nearest_valid: { from: string; position: string } } };
@@ -434,7 +434,7 @@ describe("summer_frame_nodes checks an explicit from (proof run: the camera sat 
   });
 });
 
-describe("marks get an occlusion test (trial: labels on nodes hidden behind walls)", () => {
+describe("marks get an occlusion test (labels on nodes hidden behind walls)", () => {
   const marksNative = (op: Record<string, unknown>) =>
     op.marks
       ? {
@@ -468,11 +468,11 @@ describe("marks get an occlusion test (trial: labels on nodes hidden behind wall
 
   it("frame_nodes marks:true tests every label from the rendered camera and notes the hidden ones", async () => {
     const engine = fakeEngine({ projectRoot: project, analyze: occlusionAnalyze, native: marksNative });
-    const r = (await frameNodes(engine, { scenePath: "res://three.tscn", nodes: ["House2"], direction: "front", marks: true })) as SeeingSuccess;
+    const r = (await frameNodes(engine, { scenePath: "res://square.tscn", nodes: ["House2"], direction: "front", marks: true })) as SeeingSuccess;
     expect(r.ok).toBe(true);
     const check = engine.configs[1]!;
     expect(check.tasks).toEqual(["occlusion"]);
-    const native = engine.calls.find((c) => c.op === "ScenePreview" && c.scene_path === "res://three.tscn")!;
+    const native = engine.calls.find((c) => c.op === "ScenePreview" && c.scene_path === "res://square.tscn")!;
     expect(`Vector3(${((check.occlusion as { position: number[] }).position).join(", ")})`).toBe(String(native.camera_position));
     expect((check.occlusion as { marks: unknown[] }).marks).toEqual([
       { id: 1, path: "House2/SideL/row0/Model/wall" },
@@ -496,19 +496,19 @@ describe("marks get an occlusion test (trial: labels on nodes hidden behind wall
         ...(config.occlusion ? { occlusion: { marks: [{ id: 2, path: "House3/SideL/row2/Model/wall", visible: 0, samples: 5, blocker: "House1/SideR/row1/Model/wall" }] } } : {}),
       }),
     });
-    const r = (await zoom(engine, { scenePath: "res://three.tscn", camera_position: "Vector3(0, 5, 20)", camera_look_at: "Vector3(0, 2, 0)", mark: 2 })) as SeeingSuccess;
+    const r = (await zoom(engine, { scenePath: "res://square.tscn", camera_position: "Vector3(0, 5, 20)", camera_look_at: "Vector3(0, 2, 0)", mark: 2 })) as SeeingSuccess;
     expect(r.ok).toBe(true);
     expect((engine.configs[0]!.occlusion as { marks: unknown[] }).marks).toEqual([{ id: 2, path: "House3/SideL/row2/Model/wall" }]);
     expect(r.caption).toContain("WARNING: mark 2's node is hidden behind House1/SideR/row1/Model/wall");
   });
 });
 
-describe("summer_zoom honours the region (proof run: a requested 2.6x came out as 1.3x)", () => {
+describe("summer_zoom honours the region (a requested 2.6x must not come out as 1.3x)", () => {
   const pose = { camera_position: "Vector3(0, 5, 20)", camera_look_at: "Vector3(0, 2, 0)", fov: 50 };
 
   it("renders exactly the region at its own aspect and reports the real zoom", async () => {
     const engine = fakeEngine({ projectRoot: project });
-    const r = (await zoom(engine, { scenePath: "res://three.tscn", ...pose, region: [0.5, 0.15, 0.3, 0.6] })) as SeeingSuccess;
+    const r = (await zoom(engine, { scenePath: "res://square.tscn", ...pose, region: [0.5, 0.15, 0.3, 0.6] })) as SeeingSuccess;
     expect(r.ok).toBe(true);
     const config = engine.configs[0]!;
     const tile = (config.tiles as Array<Record<string, unknown>>)[0]!;
@@ -529,19 +529,19 @@ describe("summer_zoom honours the region (proof run: a requested 2.6x came out a
 
   it("names the pad in widened_because, and a mark gets its default 0.15", async () => {
     const engine = fakeEngine({ projectRoot: project });
-    const r = (await zoom(engine, { scenePath: "res://three.tscn", ...pose, region: [0.4, 0.4, 0.2, 0.2], pad: 0.25 })) as SeeingSuccess;
+    const r = (await zoom(engine, { scenePath: "res://square.tscn", ...pose, region: [0.4, 0.4, 0.2, 0.2], pad: 0.25 })) as SeeingSuccess;
     expect(r.caption).toMatch(/widened_because: pad 0\.25/);
     expect((r.receipt as { widened_because: string[] }).widened_because).toHaveLength(1);
     const marks = fakeEngine({
       projectRoot: project,
       native: (op) => ({ ok: true, image_base64: OK_JPEG.toString("base64"), width: 1024, height: 576, framing: op.framing, marks: [{ id: 3, path: "Props/Crate", class: "MeshInstance3D", screen_rect: { x: 512, y: 288, w: 100, h: 60 } }], marks_candidates: 1 }),
     });
-    const m = (await zoom(marks, { scenePath: "res://three.tscn", ...pose, mark: 3 })) as SeeingSuccess;
+    const m = (await zoom(marks, { scenePath: "res://square.tscn", ...pose, mark: 3 })) as SeeingSuccess;
     expect(m.caption).toMatch(/widened_because: pad 0\.15/);
   });
 });
 
-describe("previous-image slots are the compare baseline (coordinator: a plain sheet reset it)", () => {
+describe("previous-image slots are the compare baseline (a plain sheet must not reset it)", () => {
   const bookmarks = { hero: { position: "Vector3(0, 5, 20)", look_at: "Vector3(0, 2, 0)", fov: 55, created: "2026-01-01T00:00:00Z" } };
   const BASELINE = Buffer.from("baseline-bytes");
 
@@ -556,7 +556,7 @@ describe("previous-image slots are the compare baseline (coordinator: a plain sh
   it("a sheet without compare_previous keeps an existing baseline and says so", async () => {
     const slot = seedSlot();
     const engine = fakeEngine({ projectRoot: project, bookmarks });
-    const r = (await shotSheet(engine, { scenePath: "res://three.tscn", shots: [{ bookmark_name: "hero" }] })) as SeeingSuccess;
+    const r = (await shotSheet(engine, { scenePath: "res://square.tscn", shots: [{ bookmark_name: "hero" }] })) as SeeingSuccess;
     expect(readFileSync(slot)).toEqual(BASELINE);
     expect((engine.configs[0]!.tiles as Array<Record<string, unknown>>)[0]!.capture_path).toBeUndefined();
     expect(r.caption).toContain("kept the existing previous image (compare baseline) of hero");
@@ -565,30 +565,30 @@ describe("previous-image slots are the compare baseline (coordinator: a plain sh
   it("update_previous:true or compare_previous:true replaces it; a missing slot is created", async () => {
     const slot = seedSlot();
     const engine = fakeEngine({ projectRoot: project, bookmarks });
-    await shotSheet(engine, { scenePath: "res://three.tscn", shots: [{ bookmark_name: "hero" }], update_previous: true });
+    await shotSheet(engine, { scenePath: "res://square.tscn", shots: [{ bookmark_name: "hero" }], update_previous: true });
     expect(readFileSync(slot)).toEqual(OK_JPEG);
     writeFileSync(slot, BASELINE);
-    await shotSheet(engine, { scenePath: "res://three.tscn", shots: [{ bookmark_name: "hero" }], compare_previous: true });
+    await shotSheet(engine, { scenePath: "res://square.tscn", shots: [{ bookmark_name: "hero" }], compare_previous: true });
     expect(readFileSync(slot)).toEqual(OK_JPEG);
     rmSync(slot);
-    await shotSheet(engine, { scenePath: "res://three.tscn", shots: [{ bookmark_name: "hero" }] });
+    await shotSheet(engine, { scenePath: "res://square.tscn", shots: [{ bookmark_name: "hero" }] });
     expect(readFileSync(slot)).toEqual(OK_JPEG);
   });
 
   it("debug views keep the baseline too unless update_previous:true", async () => {
     const slot = seedSlot();
     const engine = fakeEngine({ projectRoot: project, bookmarks });
-    const r = (await debugViews(engine, { scenePath: "res://three.tscn", bookmark_name: "hero" })) as SeeingSuccess;
+    const r = (await debugViews(engine, { scenePath: "res://square.tscn", bookmark_name: "hero" })) as SeeingSuccess;
     expect(readFileSync(slot)).toEqual(BASELINE);
     expect(r.caption).toContain("it was kept as the compare baseline");
-    await debugViews(engine, { scenePath: "res://three.tscn", bookmark_name: "hero", update_previous: true });
+    await debugViews(engine, { scenePath: "res://square.tscn", bookmark_name: "hero", update_previous: true });
     expect(readFileSync(slot)).toEqual(OK_JPEG);
   });
 
   it("frame_nodes saving the bookmark redefines its pose, so it replaces the slot", async () => {
     const slot = seedSlot();
     const engine = fakeEngine({ projectRoot: project, analyze: analyzeBounds, bookmarks });
-    await frameNodes(engine, { scenePath: "res://three.tscn", nodes: ["House1"], bookmark_name: "hero" });
+    await frameNodes(engine, { scenePath: "res://square.tscn", nodes: ["House1"], bookmark_name: "hero" });
     expect(readFileSync(slot)).toEqual(OK_JPEG);
   });
 });
@@ -613,7 +613,7 @@ describe("summer_frame_shot reads the key light", () => {
         };
       },
     });
-    const r = (await frameShot(engine, { scenePath: "res://three.tscn", shot: "establishing", subject: ["House1"], render: "none", save_bookmark: false })) as SeeingSuccess;
+    const r = (await frameShot(engine, { scenePath: "res://square.tscn", shot: "establishing", subject: ["House1"], render: "none", save_bookmark: false })) as SeeingSuccess;
     expect(r.caption).toContain("key light: Sun travelling Vector3(0.6, -0.6, -0.5)");
     const top = (r.receipt as { top: Array<{ terms: Record<string, number> }> }).top;
     expect(top[0]!.terms.light).toBeDefined();

@@ -12,7 +12,7 @@
  * stamped with the OLD node's scene path. The editor draws the new subtree,
  * the receipt says ok, and SaveScene packs the node as
  * `instance=ExtResource(<old scene>)` with a fresh unique_id — the change is
- * gone on reload (proof run 2026-10-04, three_houses_v2 door hosts). A plain
+ * gone on reload. A plain
  * node replaced by a scene loses the other way (scene_file_path cleared, the
  * instance's children owned by the instance root and dropped on save), and a
  * type change of an instanced node stays an instance of the old scene.

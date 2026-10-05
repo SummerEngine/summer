@@ -25,7 +25,7 @@ Read it before the first call in a task. The workflow that uses them is in
     Never triangle contact.
   - `physics`: a collider query (exact shapes, needs the active tab).
   - `mesh_triangles`: computed from the mesh triangles themselves.
-  - `markers`: Marker3D anchors shipped with the pack.
+  - `markers`: Marker3D anchors shipped with the kit.
 - **Compact results.** Every result is under 5 KB. A list cut to fit is
   declared in `truncated: {list: {shown, total}}`.
 - **No silent fallback.** A missing op answers `engine_lacks_op`; a measurement
@@ -54,7 +54,7 @@ Read it before the first call in a task. The workflow that uses them is in
 | Gap or overlap between two pieces; is the facade front flat? | `summer_measure` |
 | What surrounds a placed piece, which side is blocked? | `summer_starcast` (existing) |
 | Will a pose fit before I commit it in a tight spot? | `summer_test_placement` (existing) |
-| Seat a prop on a floor, table or shelf | `summer_snap_to_surface` (existing) |
+| Seat a prop on a floor, table or ledge | `summer_snap_to_surface` (existing) |
 | Line up or equally space 2-16 placed pieces on one axis | `summer_align_distribute_3d` (existing) |
 | Did exactly that change, and does it look right? | `summer_world_snapshot` + `summer_snapshot_diff`, then `summer_screenshot` (existing) |
 

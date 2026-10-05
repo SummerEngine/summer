@@ -1,7 +1,7 @@
 id: skill/spatial-placement
 kind: skill
 version: 1.1.0
-summary: Place 3D objects and modular kit pieces from measured geometry — inspect, place, starcast, measure, correct; wall, facade, pipe, shelf and alcove recipes.
+summary: Place 3D objects and modular kit pieces from measured geometry — inspect, place, starcast, measure, correct; floor, wall, facade, pipe and alcove recipes.
 use_when:
   - positioning a prop, character, collider, or platform so it sits flush, avoids overlap, or keeps clearance
   - placing something against a wall, inside an alcove, or on a shelf and needing to know which side is blocked and by how much

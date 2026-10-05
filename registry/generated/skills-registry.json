@@ -929,7 +929,7 @@
     {
       "id": "skill/spatial-placement",
       "name": "spatial-placement",
-      "description": "Place 3D objects and modular kit pieces from measured geometry — inspect, place, starcast, measure, correct; wall, facade, pipe, shelf and alcove recipes.",
+      "description": "Place 3D objects and modular kit pieces from measured geometry — inspect, place, starcast, measure, correct; floor, wall, facade, pipe and alcove recipes.",
       "clients": "all",
       "recommended": true,
       "status": "preview",

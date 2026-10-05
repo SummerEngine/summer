@@ -221,7 +221,7 @@ describe("hostile inputs never become GDScript", () => {
     expect(isSafeNodePath("./Facade/Wall_01")).toBe(true);
     expect(isSafeNodePath("Building A/Storey 2/Window-03")).toBe(true);
     expect(isSafeNodePath("Fassade/Fenster_Ä")).toBe(true);
-    expect(isSafeResPath("res://starter/real-city-alley-kit/pipes/wall_clamp_01.tscn")).toBe(true);
+    expect(isSafeResPath("res://kit/pipes/wall_clamp_a.tscn")).toBe(true);
     expect(connectPortsArgsSchema.safeParse({ scenePath: "res://a.tscn", subject: "A", subjectPort: "Port_A", target: "B", targetPort: "Ports/Port B" }).success).toBe(true);
   });
 });
@@ -252,13 +252,13 @@ describe("summer_inspect_asset", () => {
     expect(inspectAssetArgsSchema.safeParse({ path: "res://kit/wall.glb", detail: "everything" }).success).toBe(false);
   });
 
-  // Field evidence (proof run, 2026-10-04): a one-sided facade plane's facing
-  // was buried under kilobytes of open-loop noise (its outline reported as a
-  // "pipe end"), and nothing said the plane was single-sided.
+  // A one-sided facade plane's facing used to be buried under kilobytes of
+  // open-loop noise (its outline reported as a "pipe end"), and nothing said
+  // the plane was single-sided.
   const wallProbe = {
     ok: true,
     frame: "asset_root",
-    path: "res://kit/wall_double_standard_01.glb",
+    path: "res://kit/wall_plain_b.glb",
     aabb: { min: [-1, 0, 0], max: [1, 3, 0], size: [2, 3, 0] },
     origin: { fraction: [0.5, 0, 0.5], label: "x:center y:min z:center" },
     mesh_count: 1,
@@ -285,7 +285,7 @@ describe("summer_inspect_asset", () => {
 
   it("puts a compact facing summary first and drops open-loop noise by default", async () => {
     const { client } = mockClient(() => wallProbe);
-    const result = await inspectAsset(client, inspectAssetArgsSchema.parse({ path: "res://kit/wall_double_standard_01.glb" }));
+    const result = await inspectAsset(client, inspectAssetArgsSchema.parse({ path: "res://kit/wall_plain_b.glb" }));
     expect(Object.keys(result).slice(0, 4)).toEqual(["ok", "tool", "detail", "summary"]);
     expect(result.summary).toMatchObject({
       aabb: { size: [2, 3, 0] },
@@ -297,7 +297,7 @@ describe("summer_inspect_asset", () => {
     expect(result).toMatchObject({ open_loop_count: 40, open_loops_listed: "port_like", open_loops_omitted: 40 });
     expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThan(2 * 1024);
 
-    const full = await inspectAsset(client, inspectAssetArgsSchema.parse({ path: "res://kit/wall_double_standard_01.glb", detail: "full" }));
+    const full = await inspectAsset(client, inspectAssetArgsSchema.parse({ path: "res://kit/wall_plain_b.glb", detail: "full" }));
     expect(full.detail).toBe("full");
     expect((full.open_loops as unknown[]).length).toBeGreaterThan(0);
     expect(full).not.toHaveProperty("open_loops_omitted");
@@ -572,10 +572,10 @@ describe("summer_attach_to_surface", () => {
     expect(result.warnings).toEqual([]);
   });
 
-  // Field evidence (proof run, 2026-10-04): with a ray, the origin went to the
-  // ray height, so a street lamp and a power box landed 0.2 m too high.
+  // With a ray, the origin used to go to the ray height, so a wall-mounted
+  // piece landed above its mount height.
   const shutterBounds = (extra: Op = {}) =>
-    bounds("Alley2/ShutterWin", [[0.5, 3.5], [1.1, 3.7], [0.4, 0.6]], {
+    bounds("Lane2/ShutterWin", [[0.5, 3.5], [1.1, 3.7], [0.4, 0.6]], {
       xform: [1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 1.1, 0.6],
       transform_str: "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 1.1, 0.6)",
       ...extra,
@@ -598,7 +598,7 @@ describe("summer_attach_to_surface", () => {
     const { client, mutations } = mockClient(() => shutterRead(), { mutationResults: seatAt([2, 1.1, 0.2], "House2/Back/B0_w3") });
     const result = await attachToSurface(
       client,
-      attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Alley2/ShutterWin", ray: { origin: [2, 2.35, 3], direction: [0, 0, -1] } })
+      attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Lane2/ShutterWin", ray: { origin: [2, 2.35, 3], direction: [0, 0, -1] } })
     );
     const t = parseGodotTransform(String(mutations[0]![0]!.value))!;
     // The ray is at y 2.35; the shutter keeps y 1.1. Its back face (0.2 behind
@@ -633,8 +633,8 @@ describe("summer_attach_to_surface", () => {
     }
   });
 
-  // Field evidence (audit fix run, 2026-10-04): the shutter was seated on a
-  // duct brace instead of the named wall and saved, with only a warning.
+  // A shutter could be seated on a duct brace instead of the named wall and
+  // saved, with only a warning.
   it("refuses a seat on another node than the named surface and puts the piece back unsaved", async () => {
     const read = {
       ok: true,
@@ -643,25 +643,25 @@ describe("summer_attach_to_surface", () => {
         { ok: true, origin: [2, 1.1, 0.6], direction: [0, 0, -1], physics_available: true, physics: { path: "House2/Back/B0_w3", point: [2, 1.1, 0], normal: [0, 0, 1], distance: 0.6 } },
       ],
     };
-    const { client, mutations } = mockClient(() => read, { mutationResults: seatAt([2, 1.1, 0.33], "Alley2/Duct/Brace_3") });
+    const { client, mutations } = mockClient(() => read, { mutationResults: seatAt([2, 1.1, 0.33], "Lane2/Duct/Brace_3") });
     const result = await attachToSurface(
       client,
-      attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Alley2/ShutterWin", surface: "House2/Back/B0_w3" })
+      attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Lane2/ShutterWin", surface: "House2/Back/B0_w3" })
     );
     expect(result).toMatchObject({
       ok: false,
       failure_reason: "seated_on_other_node",
-      seated_on: "Alley2/Duct/Brace_3",
+      seated_on: "Lane2/Duct/Brace_3",
       intended_surface: "House2/Back/B0_w3",
       in_front_of_plan: 0.13,
       restored: true,
       mutationApplied: false,
       saved: false,
     });
-    expect(String(result.next_step)).toContain("Alley2/Duct/Brace_3");
+    expect(String(result.next_step)).toContain("Lane2/Duct/Brace_3");
     // Turn + seat, then the exact original transform; never a SaveScene.
     expect(mutations).toHaveLength(2);
-    expect(mutations[1]).toEqual([{ op: "SetProp", path: "Alley2/ShutterWin", key: "transform", value: "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 1.1, 0.6)" }]);
+    expect(mutations[1]).toEqual([{ op: "SetProp", path: "Lane2/ShutterWin", key: "transform", value: "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 1.1, 0.6)" }]);
     expect(mutations.flat().some((op) => op.op === "SaveScene")).toBe(false);
   });
 
@@ -689,13 +689,13 @@ describe("summer_attach_to_surface", () => {
     const farHit = { path: "House2/Back/B0_w7", point: [6, 2.35, 0], normal: [0, 0, 1], distance: 3 };
     const ray = { origin: [6, 2.35, 3] as Vec3, direction: [0, 0, -1] as Vec3 };
     const kept = mockClient(() => shutterRead(farHit));
-    const refused = await attachToSurface(kept.client, attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Alley2/ShutterWin", ray }));
+    const refused = await attachToSurface(kept.client, attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Lane2/ShutterWin", ray }));
     expect(refused).toMatchObject({ ok: false, failure_reason: "hit_far_from_piece", mutationApplied: false });
     expect(String(refused.next_step)).toContain("placeAt");
     expect(kept.mutations).toEqual([]);
 
     const moved = mockClient(() => shutterRead(farHit), { mutationResults: seatAt([6, 1.05, 0.2], "House2/Back/B0_w7") });
-    const result = await attachToSurface(moved.client, attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Alley2/ShutterWin", ray, placeAt: "hit", maxMove: 5 }));
+    const result = await attachToSurface(moved.client, attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Lane2/ShutterWin", ray, placeAt: "hit", maxMove: 5 }));
     expect(result).toMatchObject({ ok: true, placed_at: "hit", seated_on: "House2/Back/B0_w7", back_face_gap: 0 });
     const t = parseGodotTransform(String(moved.mutations[0]![0]!.value))!;
     t.origin.forEach((v, k) => expect(v).toBeCloseTo([6, 1.05, 0.25][k]!));
@@ -703,27 +703,27 @@ describe("summer_attach_to_surface", () => {
 
   it("with a ray only, accepts a coplanar neighbour module (warned) but refuses a node in front of the wall", async () => {
     const coplanar = mockClient(() => shutterRead({ path: "Facade/W1", point: [2, 2.35, 0], normal: [0, 0, 1], distance: 3 }), { mutationResults: seatAt([2, 1.1, 0.2], "Facade/W2") });
-    const accepted = await attachToSurface(coplanar.client, attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Alley2/ShutterWin", ray: { origin: [2, 2.35, 3], direction: [0, 0, -1] } }));
+    const accepted = await attachToSurface(coplanar.client, attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Lane2/ShutterWin", ray: { origin: [2, 2.35, 3], direction: [0, 0, -1] } }));
     expect(accepted).toMatchObject({ ok: true, saved: true, seated_on: "Facade/W2" });
     expect(accepted.warnings).toContain("seated_on_coplanar_Facade/W2");
 
     const brace = mockClient(() => shutterRead(), { mutationResults: seatAt([2, 1.1, 0.32], "Duct/Brace") });
-    const refused = await attachToSurface(brace.client, attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Alley2/ShutterWin", ray: { origin: [2, 2.35, 3], direction: [0, 0, -1] } }));
+    const refused = await attachToSurface(brace.client, attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Lane2/ShutterWin", ray: { origin: [2, 2.35, 3], direction: [0, 0, -1] } }));
     expect(refused).toMatchObject({ ok: false, failure_reason: "seated_on_other_node", seated_on: "Duct/Brace", restored: true, saved: false });
     expect(brace.mutations.flat().some((op) => op.op === "SaveScene")).toBe(false);
   });
 
   it("warns when the collider sits behind the visible back, so the mesh pokes into the wall", async () => {
     const { client } = mockClient(() => shutterRead(), { mutationResults: seatAt([2, 1.1, 0.15], "House2/Back/B0_w3") });
-    const result = await attachToSurface(client, attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Alley2/ShutterWin", ray: { origin: [2, 2.35, 3], direction: [0, 0, -1] } }));
+    const result = await attachToSurface(client, attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Lane2/ShutterWin", ray: { origin: [2, 2.35, 3], direction: [0, 0, -1] } }));
     expect(result).toMatchObject({ ok: true, back_face_gap: -0.05 });
     expect((result.warnings as string[]).some((w) => w.startsWith("visible_back_0.05_into_surface"))).toBe(true);
   });
 
-  // Field evidence (proof run): snap failures said neither what blocked the
-  // piece nor that it started out overlapping.
+  // Snap failures used to say neither what blocked the piece nor that it
+  // started out overlapping.
   it("names the blocker of a failed seat, says it started overlapping, gives a next step and puts the piece back", async () => {
-    const blockers = { ok: true, evidence: "physics", overlaps: ["Ground/Al_3"], first_contact: { path: "Ground/Al_3", distance: 0 } };
+    const blockers = { ok: true, evidence: "physics", overlaps: ["Ground/Tile_3"], first_contact: { path: "Ground/Tile_3", distance: 0 } };
     const { client, mutations, probeCalls } = mockClient([() => shutterRead(), () => blockers], {
       mutationResults: (ops) =>
         ops.map((op) =>
@@ -732,25 +732,25 @@ describe("summer_attach_to_surface", () => {
             : { ok: true, op: op.op }
         ),
     });
-    const result = await attachToSurface(client, attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Alley2/ShutterWin", ray: { origin: [2, 2.35, 3], direction: [0, 0, -1] } }));
-    expect(probeArgs(probeCalls[1]!)).toMatchObject({ cmd: "blockers", path: "Alley2/ShutterWin", direction: [0, 0, -1], max_distance: 0.3 });
+    const result = await attachToSurface(client, attachToSurfaceArgsSchema.parse({ scenePath: "res://a.tscn", subject: "Lane2/ShutterWin", ray: { origin: [2, 2.35, 3], direction: [0, 0, -1] } }));
+    expect(probeArgs(probeCalls[1]!)).toMatchObject({ cmd: "blockers", path: "Lane2/ShutterWin", direction: [0, 0, -1], max_distance: 0.3 });
     expect(result).toMatchObject({
       ok: false,
       failure_reason: "overlap_recovery_exceeded",
       seat: { initiallyOverlapping: true },
-      blockers: { evidence: "physics", overlapping: true, overlaps: ["Ground/Al_3"], first_contact: { path: "Ground/Al_3", distance: 0 } },
+      blockers: { evidence: "physics", overlapping: true, overlaps: ["Ground/Tile_3"], first_contact: { path: "Ground/Tile_3", distance: 0 } },
       restored: true,
       saved: false,
     });
-    expect(String(result.next_step)).toContain("Ground/Al_3");
+    expect(String(result.next_step)).toContain("Ground/Tile_3");
     expect(String(result.next_step)).toContain("lift");
     expect(mutations).toHaveLength(2);
     expect(mutations[1]![0]).toMatchObject({ op: "SetProp", key: "transform" });
   });
 
   it("gives a concrete next step for every seat failure the engine reports", () => {
-    const blockers = { overlaps: [], first_contact: { path: "Alley1/Props/Bin2", distance: 0.01 } };
-    expect(seatNextStep("gap_exceeds_hit_travel", blockers, 0.3)).toContain("Alley1/Props/Bin2");
+    const blockers = { overlaps: [], first_contact: { path: "Lane1/Props/Bin2", distance: 0.01 } };
+    expect(seatNextStep("gap_exceeds_hit_travel", blockers, 0.3)).toContain("Lane1/Props/Bin2");
     expect(seatNextStep("surface_not_found", undefined, 0.3)).toContain("collider");
     expect(seatNextStep("subject_not_ready", undefined, 0.3)).toContain("summer_open_scene");
     expect(seatNextStep("something_new", undefined, 0.3)).toContain("seat.error");
@@ -816,7 +816,7 @@ describe("summer_repeat_along", () => {
       client,
       repeatAlongArgsSchema.parse({
         scenePath: "res://a.tscn",
-        template: "res://kit/pipes/wall_clamp_01.tscn",
+        template: "res://kit/pipes/wall_clamp_a.tscn",
         parent: "./Pipe",
         start: [0, 0.3, 0],
         end: [0, 1.2, 0],
@@ -833,13 +833,13 @@ describe("summer_repeat_along", () => {
       ["SaveScene"],
     ]);
     expect(result.requests).toBe(5);
-    expect(mutations[0]![0]).toMatchObject({ name: "wall_clamp_01_1", parent: "./Pipe", scene: "res://kit/pipes/wall_clamp_01.tscn" });
+    expect(mutations[0]![0]).toMatchObject({ name: "wall_clamp_a_1", parent: "./Pipe", scene: "res://kit/pipes/wall_clamp_a.tscn" });
     expect(result).toMatchObject({
       ok: true,
       tool: "summer_repeat_along",
       count: 3,
       spacing: 0.45,
-      created: ["Pipe/wall_clamp_01_1", "Pipe/wall_clamp_01_2", "Pipe/wall_clamp_01_3"],
+      created: ["Pipe/wall_clamp_a_1", "Pipe/wall_clamp_a_2", "Pipe/wall_clamp_a_3"],
       saved: true,
       first: [0, 0.3, 0],
       last: [0, 1.2, 0],
@@ -928,8 +928,8 @@ describe("summer_connect_ports", () => {
     basisMulVec(rotation, [1, 0, 0]).forEach((v, k) => expect(v).toBeCloseTo([0, -1, 0][k]!));
   });
 
-  // Field evidence (proof run): each duct bend needed a measure call and a
-  // second connect because the receipt did not say where the other end went.
+  // Without the other ends in the receipt, each duct bend needed a measure
+  // call and a second connect.
   it("reports where every other port of the subject ends up, measured by the verify read", async () => {
     const after = {
       ...bendBefore,

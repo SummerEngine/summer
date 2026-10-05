@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.3.0",
-      "content_hash": "64104a603f17592a9250def6648dc275871d256b759b564763b61be4d051adb8",
+      "content_hash": "1f86f1badf30e5c5c67fa52f488c32af280b07f5c0792e9cb30bc663dc93e023",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -2884,8 +2884,8 @@
       "id": "skill/spatial-placement",
       "kind": "skill",
       "version": "1.1.0",
-      "content_hash": "2964338c81353cae39b6adf8e4372a07d7ffaffdb40daa6dc5852576a6da8e43",
-      "summary": "Place 3D objects and modular kit pieces from measured geometry — inspect, place, starcast, measure, correct; wall, facade, pipe, shelf and alcove recipes.",
+      "content_hash": "8b70e46bd5ba34553193eb409563ca9ccae65f707e5f5d28d95db30eca5cda41",
+      "summary": "Place 3D objects and modular kit pieces from measured geometry — inspect, place, starcast, measure, correct; floor, wall, facade, pipe and alcove recipes.",
       "use_when": [
         "positioning a prop, character, collider, or platform so it sits flush, avoids overlap, or keeps clearance",
         "placing something against a wall, inside an alcove, or on a shelf and needing to know which side is blocked and by how much",
@@ -3355,8 +3355,8 @@
     {
       "id": "skill/verifying-scenes",
       "kind": "skill",
-      "version": "1.4.0",
-      "content_hash": "f09ac41af91fcddfd886ca8322b01a9d5942917403c927df9ff872c8deb53949",
+      "version": "1.4.1",
+      "content_hash": "2f9b022de46dab29b8327409dd4f184c870475997c5e8ad236aafc19e73f43f1",
       "summary": "Prove scene work landed (snapshot, diff, screenshots, runtime reads), audit 3D scenes for holes and misplacement, review them with shot sheets and zooms.",
       "use_when": [
         "after any mutation batch, asset import, or lighting change, before claiming it worked",
@@ -3364,7 +3364,7 @@
         "deciding what counts as evidence for a visual or structural claim",
         "taking before/after screenshots from the same saved camera viewpoint, or an annotated screenshot whose numbered labels map to node paths",
         "\"make this environment beautiful\" / reviewing a level like an artist: hero views, a shot sheet after each change, debug views of the weakest shot, zooms into problems",
-        "finding good camera views automatically (establishing, player eye level, low-angle hero, detail, down an alley)",
+        "finding good camera views automatically (establishing, player eye level, low-angle hero, detail, down a lane)",
         "after each build stage of a 3D scene and before calling it done - run the scene audit, then frame every error and look item up close"
       ],
       "facets": {
@@ -4444,7 +4444,7 @@
       "id": "tool/attach-to-surface",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "62ceefdcfd5e67a557d9738000b8b9cd4369dcb83439bb7a3b3a59fe5dc0bd02",
+      "content_hash": "e2207bbdab1a86f499382d89314fc48ea501080d814f15ffdfb9d06b47f047db",
       "summary": "Mount a piece on a wall, ceiling or floor — turn its measured back into the surface found by a ray, keep it upright, seat it at a standoff. Saves the scene.",
       "use_when": [
         "mounting a downpipe, gutter, lamp, AC unit, sign or fire escape on a facade",
@@ -4644,7 +4644,7 @@
       "id": "tool/connect-ports",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "ca509afa46b32fd6647a844c25cf9a55149adba7eefb8f206aeef8a7454bdd3d",
+      "content_hash": "431a48a9b944d5680b55d2f2e96ad04706c06e9546e644b8972fc2cb20a7b547",
       "summary": "Move and turn one piece so its port (a Marker3D or a measured open pipe end) meets another piece's port, facing it — pipes, ducts, gutters. Saves the scene.",
       "use_when": [
         "joining a pipe, duct or gutter section end to end with the previous one",
@@ -5059,10 +5059,10 @@
       "id": "tool/frame-shot",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "6fb6ae94259ee6f670379d99279491580b8675ecc1fe2832e003821a8ecbb5c1",
+      "content_hash": "1505570c3f20f7a296a002b01ad68456d895a6d73a5988ce059ab4699472f338",
       "summary": "Smart framing: find, score and bookmark camera poses for a shot type (establishing, eye level, low-angle, detail, corridor) with in-engine visibility tests.",
       "use_when": [
-        "\"find a good view of X\" / \"frame an establishing shot\" / \"show it from the player's eye\" / \"look down the alley\"",
+        "\"find a good view of X\" / \"frame an establishing shot\" / \"show it from the player's eye\" / \"look down the street\"",
         "choosing hero views to bookmark for an environment review loop",
         "checking whether walls or terrain block the view of a subject, and which props frame it (a camera behind or inside a one-sided wall is rejected; transparent foliage and glass are see-through cover)",
         "three different establishing views at once (one per side while the score allows), scored on the key light's direction and the world edge below the horizon"
@@ -5861,11 +5861,11 @@
       "id": "tool/grep",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "91ce9352e74d92a9ded787be61d8354ed00fe046fef6633a457cc88a0f9d4209",
+      "content_hash": "57676c00eaf3003becb56c41ed837102cc29f82822d52d52d4389e9dba77115f",
       "summary": "Search project files with a regex (ripgrep through the engine) and get file, line and text per match, with optional context lines and a result cap.",
       "use_when": [
         "finding where something is in big project files without reading them whole",
-        "\"which pieces in pieces.json list fits_into?\" / \"every wall_side entry\"",
+        "\"which entries of a big JSON file list fits_into?\" / \"every mount_side entry\"",
         "\"where is _on_door_body_entered defined?\" / \"which scenes use this material?\""
       ],
       "facets": {
@@ -6119,12 +6119,12 @@
       "id": "tool/inspect-asset",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "9c9a64cc61525c605f6bba5052fc3fd14aa6bb16d088d0e2297fd9725028d05a",
+      "content_hash": "d78f37b987bafde6e9197fd5bd644616b56ab5ae3608150519a0bca303e62654",
       "summary": "Measure a 3D asset file without adding it to a scene — AABB, origin, meshes, largest planar faces, open pipe ends, Marker3D anchors, collision shapes.",
       "use_when": [
         "learning a kit piece's real size, origin and which way it faces before placing it",
         "finding a piece's front and back planes (largest planar faces with their normals) or its pipe and duct ends (open boundary loops)",
-        "reading the Marker3D anchors or collision shapes a pack ships"
+        "reading the Marker3D anchors or collision shapes a kit piece ships with"
       ],
       "facets": {
         "lifecycle": [
@@ -6419,7 +6419,7 @@
       "id": "tool/measure",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "53f31b54e4745d55c8824d12c5cf2665493a486763a959a05e8eada0b5c6dfdc",
+      "content_hash": "d6104d4b6e3ace9f0397b65ffdb2f2da2c541422ba02e776d7eab0fed5400094",
       "summary": "Gap or overlap per axis between two placed nodes, or whether one face of many nodes is coplanar — catches facade gaps and modules standing proud. Read-only.",
       "use_when": [
         "checking that two facade modules meet edge to edge, or how far apart or overlapping two pieces are on each axis",
@@ -6641,7 +6641,7 @@
       "id": "tool/place-adjacent",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "ff6de3e3a18cccf65849add3e382f55cf0d6f72d940eb2b294e6bad313a77fc7",
+      "content_hash": "891191f1947f53ad9803922be0075636554b4279914e5a6c4e9f064c1c7f3f25",
       "summary": "Move one node so its bounds face sits against another's along an axis, lining up the other axes — facade modules edge to edge, storeys stacked. Saves the scene.",
       "use_when": [
         "laying facade or wall modules edge to edge along a street line",
@@ -6776,7 +6776,7 @@
       "id": "tool/raycast",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "90b11bb7c433bf2ec4d1f8c8dcac768887ff4f3abe446ce972e6d492a510744f",
+      "content_hash": "c1b0a03e470031d6c0adfaeccab2c2c8eb386cb08fec980bcfa4c0f43ea5af8e",
       "summary": "Cast one ray from any point in an open scene — hit node, point and normal; physics first, visual AABB fallback declared. Read-only.",
       "use_when": [
         "finding the wall, floor or ceiling in front of a point and its normal before anything is placed there",
@@ -6824,13 +6824,13 @@
       "id": "tool/read-file",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "fc0272e9535bab6293798e35b8cc08c1febd6a72460e15e0d3867de586e9cd56",
+      "content_hash": "a17383c044d72243bd190c4d0f4e45f16fba35ad741796a3d68d9ffb495b7f8d",
       "summary": "Read a project text file, a line or byte window of it, or the entries of a .json picked by json_path/keys, with the full-file sha256 receipt.",
       "use_when": [
         "reading project files through the engine",
         "getting the sha256 required before overwriting a file",
         "reading a file too big for one result in pages (offset/limit)",
-        "\"read the wall_tripple_door_02 entry of pieces.json\" — json_path / keys instead of the whole file"
+        "\"read the wall_door_b entry of a kit manifest\" — json_path / keys instead of the whole file"
       ],
       "facets": {
         "lifecycle": [
@@ -7001,7 +7001,7 @@
       "id": "tool/repeat-along",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "0c64803852507adf94b9b494eb25b5fe854e76337a129fd1237c90be1a41f3e3",
+      "content_hash": "0f8df6a49ce6ea622343627bbf71ef997831da8830251bf6828bb5e3dcfc619e",
       "summary": "Instance copies of one scene along a line in one call — clamps every 0.45 m, braces, fence posts, window rows — and get the created node paths back.",
       "use_when": [
         "placing wall clamps, gutter braces or duct braces at a fixed spacing along a run",
@@ -7463,13 +7463,12 @@
     {
       "id": "tool/scene-audit",
       "kind": "tool",
-      "version": "1.1.0",
-      "content_hash": "ab05241fcd989576deb305237f3dc3466a1cd14cb2a58af89a0e5a4d77a53d5a",
-      "summary": "One read-only pass over a 3D scene: see-through holes, floor gaps, floating or clipping props, wrong insert hosts, mount gaps, facing, UV stretch, lights.",
+      "version": "1.2.0",
+      "content_hash": "c2ac51b38b049bc316093471d05ec8e7bc3ea6857e937f4a4bc49b2e77658aa3",
+      "summary": "Read-only pass over any 3D scene from geometry and materials: see-through holes, floor gaps, floating or clipping props, facing, UV stretch, z-fighting, lights.",
       "use_when": [
         "after each build stage of a 3D level or kit-built street: \"what is wrong with this scene and where exactly?\"",
         "before calling a scene done: find see-through walls (an insert narrower than its frame), floor tiles with holes, props floating, sunk or poking into walls",
-        "checking kit pieces against their pack metadata: a door or window in the wrong host (pieces.json fits_into), pipes and ducts off their wall (wall_side)",
         "finding props turned the wrong way against a wall (a bench standing perpendicular to it), stretched texture strips, duplicated pieces",
         "flickering faces: coplanar overlaps anywhere (props, roofs, ledges, inserts against hosts, decals, two surfaces of one mesh), judged by the 24-bit depth precision at the view distance",
         "bare ground at wall bases, an underlay plane covering drain channels, buried props: floor_gap and sunken say which surface a ray hits first",
@@ -8366,7 +8365,7 @@
       "id": "tool/world-snapshot",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "b9533ac0b1b6e05292743e65e19e2b94a464df887fdbdbdfc30d0cede0a93ddf",
+      "content_hash": "09d31f36f56fb04eefcd8d4c7b875e320a7525e75659f4a022ca8c5782982d58",
       "summary": "Structured scene snapshot (paths, transforms, world AABBs, fingerprints, counts), filterable by subtree, class and field; the read around every mutation.",
       "use_when": [
         "taking a diffable baseline before a mutation batch, or verifying transforms/AABBs/fingerprints after one",

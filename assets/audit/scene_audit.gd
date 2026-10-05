@@ -15,13 +15,15 @@ extends Node
 ## through this built-in script's own resource path and parsed as JSON.
 ##
 ## This kernel MEASURES; it does not judge. It walks every node, groups the
-## geometry into kit instances, builds one private physics space from the
-## VISIBLE meshes (one-sided like the renderer: a ray only hits a triangle
-## from its front, so back faces are as see-through as on screen; shapes are
-## cached per mesh resource and shared by every unscaled instance), casts
-## capped ray grids and per-instance probes, and writes raw evidence. The
-## TypeScript side (core/capabilities/audit/) clusters, applies thresholds,
-## assigns severities, sorts, pages and frames.
+## geometry into instances, gives each one a role from its geometry and
+## engine data alone (never its name or any metadata: see _classify_shapes),
+## builds one private physics space from the VISIBLE meshes (one-sided like
+## the renderer: a ray only hits a triangle from its front, so back faces are
+## as see-through as on screen; shapes are cached per mesh resource and
+## shared by every unscaled instance), casts capped ray grids and
+## per-instance probes, and writes raw evidence. The TypeScript side
+## (core/capabilities/audit/) clusters, applies thresholds, assigns
+## severities, sorts, pages and frames.
 
 const SUBJECT_NAME := "Subject"
 
@@ -30,28 +32,40 @@ const L_STRUCT := 2
 const L_FLOOR := 4
 const L_UNDERLAY := 8
 const L_PROP := 16
-const L_MOUNT := 32
 const L_INSERT := 64
-const ROLE_LAYER := {"wall": L_WALL, "struct": L_STRUCT, "floor": L_FLOOR, "underlay": L_UNDERLAY, "prop": L_PROP, "mount": L_MOUNT, "insert": L_INSERT}
+const ROLE_LAYER := {"wall": L_WALL, "struct": L_STRUCT, "floor": L_FLOOR, "underlay": L_UNDERLAY, "prop": L_PROP, "insert": L_INSERT}
 const MASK_FACADE := L_WALL | L_STRUCT | L_INSERT
-# What covers an opening: facade modules, inserts, and mounted pieces (a
-# roller shutter or boarding over a frame). Props never close a hole.
-const MASK_HOLE := MASK_FACADE | L_MOUNT
-const MASK_SOLID := L_WALL | L_STRUCT | L_INSERT | L_FLOOR | L_UNDERLAY | L_PROP | L_MOUNT
+# What covers an opening: walls, structure and inserts (a window, door or
+# shutter in its opening). Props never close a hole.
+const MASK_HOLE := MASK_FACADE
+const MASK_SOLID := L_WALL | L_STRUCT | L_INSERT | L_FLOOR | L_UNDERLAY | L_PROP
 
-const STRUCT_RE := "(wall|facade|building|house|floor|ground|road|street|pavement|sidewalk|terrain|roof|tower|bridge|stair|pier|corner|crown|cornice|base|dado|plinth|column|pillar|beam|ceiling|frame|trim|fence|gate|railing)"
-const FLOOR_RE := "(floor|ground|road|street|pavement|sidewalk|plaza|tile|terrain|asphalt|courtyard_floor|deck)"
-const WALL_RE := "(wall|facade|building|house)"
-const UNDERLAY_RE := "(underlay|backing|catch|void)"
-const SCATTER_RE := "(leaves|leaf|pebble|gravel|grass|weed|moss|litter|decal|puddle|ivy|vine|tree|bush|shrub|plant|flower|foliage)"
-const ROOF_RE := "(roof|ceiling|canopy|awning|overhang)"
-const HANGING_RE := "(ivy|vine|hanging|creeper)"
+# Roles (_classify_shapes, _classify_rest), in metres. A slab: upright, at most SLAB_THICK
+# thick, at least SLAB_MIN across both ways, its top faces covering at least
+# SLAB_COVER of its footprint. A sheet: upright, at least SHEET_H tall and
+# SHEET_W wide, at most SHEET_THICK thick. A facade member touches a wall face
+# within MEMBER_TOUCH; a band run is at most BAND_MAX_H tall and BAND_MAX_D
+# deep, and at least BAND_MIN_LEN and BAND_ASPECT times its height long.
+# PROP_MAX: the longest side of a prop.
+const SLAB_THICK := 0.6
+const SLAB_MIN := 1.5
+const SLAB_COVER := 0.5
+const SHEET_H := 1.5
+const SHEET_W := 1.0
+const SHEET_THICK := 0.6
+const MEMBER_TOUCH := 0.03
+const MEMBER_REACH := 0.8
+const BAND_MAX_H := 1.2
+const BAND_MAX_D := 0.6
+const BAND_MIN_LEN := 1.0
+const BAND_ASPECT := 3.0
+const PROP_MAX := 3.5
 # floor_gap strips: edge step along a tile edge, and how far out a wall bounds
 # the strip between that edge and the wall (walkable area enclosed by walls).
 const STRIP_STEP := 0.25
 const STRIP_REACH := 1.0
 # Usual share of a check's editor time (the budget's weights).
-const STAGE_WEIGHT := {"through_hole": 4.0, "floor_gap": 2.0, "floating_sunken": 1.0, "interpenetration": 2.0, "mount_gap": 1.0, "orientation": 1.0, "uv_stretch": 1.0, "z_fight_geometry": 3.0, "insert_host": 0.3, "lights": 0.3, "resource": 0.5, "poses": 1.0}
+const STAGE_WEIGHT := {"through_hole": 4.0, "floor_gap": 2.0, "floating_sunken": 1.0, "interpenetration": 2.0, "orientation": 1.0, "uv_stretch": 1.0, "z_fight_geometry": 3.0, "lights": 0.3, "resource": 0.5, "poses": 1.0}
 # z_fight geometry pass: planar face groups per mesh resource.
 # Triangles under ZF_MIN_TRI m2 are not bucketed (relief, props); a group
 # needs ZF_MIN_AREA m2 (the smallest overlap reported); at most
@@ -62,8 +76,10 @@ const ZF_MIN_AREA := 0.01
 const ZF_MAX_GROUPS := 96
 const ZF_MAX_GAP := 0.025
 const ZF_DEPTH_STEPS := 16777216.0
-const DECAL_RE := "(decal|overlay|grime|puddle|sticker|stain)"
+# Shader code that offsets depth or moves the vertex along its normal, and
+# shader code that makes a surface see-through (alpha-tested or blended).
 const DEPTH_OFFSET_RE := "(\\bDEPTH\\s*=|VERTEX\\s*[-+]?=[^;\\n]*NORMAL|NORMAL\\s*\\*[^;\\n]*VERTEX)"
+const ALPHA_CODE_RE := "(\\bALPHA\\s*=[^=]|\\bALPHA_SCISSOR_THRESHOLD\\b|\\bALPHA_HASH_SCALE\\b|\\bdiscard\\b|render_mode[^;]*\\bblend_(add|sub|mul|premul_alpha)\\b)"
 
 var _cfg: Dictionary = {}
 var _out_dir := ""
@@ -85,9 +101,8 @@ var _cameras: Array = []
 var _empty_meshes: Array = []
 var _shader_no_code: Array = []
 
-var _manifest_files: Dictionary = {}
-var _manifest_by_scene: Dictionary = {}
-var _manifest_loaded: Array = []
+# The role counts by the evidence that set them.
+var _role_stats: Dictionary = {}
 
 var _mesh_info: Dictionary = {}
 var _space := RID()
@@ -103,10 +118,6 @@ var _floor_gap_count := 0
 var _floor_gap_void := false
 var _floor_gap_covered := false
 var _floor_recs: Array = []
-# Ground alternatives packs document: [pack dir, source file, material, clause].
-var _pack_docs: Array = []
-# Wall standoffs ASSEMBLY.md gives per section: pack dir -> [[heading, metres]].
-var _pack_standoff: Dictionary = {}
 
 # Editor-time budget (budget_ms): each check gets a share of what is left,
 # weighted by its usual cost; time a fast check leaves unused passes on to
@@ -117,15 +128,8 @@ var _check_end := 0
 var _pending: Array = []
 var _tally: Dictionary = {}
 
-var _re_struct: RegEx = null
-var _re_floor: RegEx = null
-var _re_wall: RegEx = null
-var _re_underlay: RegEx = null
-var _re_scatter: RegEx = null
-var _re_hanging: RegEx = null
-var _re_roof: RegEx = null
-var _re_decal: RegEx = null
 var _re_offset: RegEx = null
+var _re_alpha: RegEx = null
 
 # z_fight geometry: finalized face groups per mesh (instance id), viewpoints
 # [[position, kind]], the main camera's near / far, floors for eye points.
@@ -271,32 +275,26 @@ func _run() -> void:
 		if _report_root == null:
 			_fail("node_not_found", "root node not found in the scene: " + root_path)
 			return
-	_re_struct = RegEx.create_from_string("(?i)" + STRUCT_RE)
-	_re_floor = RegEx.create_from_string("(?i)" + FLOOR_RE)
-	_re_wall = RegEx.create_from_string("(?i)" + WALL_RE)
-	_re_underlay = RegEx.create_from_string("(?i)" + UNDERLAY_RE)
-	_re_scatter = RegEx.create_from_string("(?i)" + SCATTER_RE)
-	_re_hanging = RegEx.create_from_string("(?i)" + HANGING_RE)
-	_re_roof = RegEx.create_from_string("(?i)" + ROOF_RE)
-	_re_decal = RegEx.create_from_string("(?i)" + DECAL_RE)
 	_re_offset = RegEx.create_from_string(DEPTH_OFFSET_RE)
+	_re_alpha = RegEx.create_from_string(ALPHA_CODE_RE)
 
 	_collect()
 	t = _lap("collect", t)
-	_load_manifests()
+	# Roles need the meshes' face areas; see-through cards (dressing) are
+	# decided from their materials first and skip the mesh pass.
 	for rec in _inst:
-		_classify(rec)
-	_resolve_underlays()
-	t = _lap("manifests_roles", t)
+		if _see_through(rec):
+			rec["role"] = "dressing"
+			rec["why"] = "see_through"
+	_mesh_pass()
+	t = _lap("mesh_pass", t)
+	var sheets := _classify_shapes()
+	t = _lap("roles", t)
 
 	var need_physics := false
-	for c in ["through_hole", "floor_gap", "floating", "sunken", "interpenetration", "mount_gap", "orientation", "uv_stretch", "z_fight"]:
+	for c in ["through_hole", "floor_gap", "floating", "sunken", "interpenetration", "orientation", "uv_stretch", "z_fight"]:
 		if _checks.has(c):
 			need_physics = true
-	var need_mesh_pass := need_physics or _checks.has("uv_stretch")
-	if need_mesh_pass:
-		_mesh_pass()
-		t = _lap("mesh_pass", t)
 	if need_physics:
 		_build_space()
 		t = _lap("physics_build", t)
@@ -306,15 +304,18 @@ func _run() -> void:
 		_q = PhysicsRayQueryParameters3D.new()
 		_q.collide_with_areas = false
 		_q.collide_with_bodies = true
+	_classify_rest(sheets)
+	var t_roles := Time.get_ticks_usec()
+	_ms["roles"] = snappedf(float(_ms.get("roles", 0.0)) + float(t_roles - t) / 1000.0, 0.1)
+	t = t_roles
 
 	_result["stage"] = "checks"
 	var run_th := _checks.has("through_hole") or _checks.has("z_fight")
 	var run_fl := _checks.has("floor_gap") or _checks.has("z_fight")
 	var run_su := _checks.has("floating") or _checks.has("sunken")
-	var run_mo := _checks.has("mount_gap") or _checks.has("orientation")
 	var run_po := _want_poses and _state != null
 	var run_zg := _checks.has("z_fight") and _state != null
-	for stage_on in [["through_hole", run_th], ["floor_gap", run_fl], ["floating_sunken", run_su], ["interpenetration", _checks.has("interpenetration")], ["mount_gap", run_mo], ["orientation", _checks.has("orientation")], ["uv_stretch", _checks.has("uv_stretch")], ["z_fight_geometry", run_zg], ["insert_host", _checks.has("insert_host")], ["lights", _checks.has("lights")], ["resource", _checks.has("resource")], ["poses", run_po]]:
+	for stage_on in [["through_hole", run_th], ["floor_gap", run_fl], ["floating_sunken", run_su], ["interpenetration", _checks.has("interpenetration")], ["orientation", _checks.has("orientation")], ["uv_stretch", _checks.has("uv_stretch")], ["z_fight_geometry", run_zg], ["lights", _checks.has("lights")], ["resource", _checks.has("resource")], ["poses", run_po]]:
 		if bool(stage_on[1]):
 			_pending.append(String(stage_on[0]))
 	if run_th:
@@ -333,10 +334,6 @@ func _run() -> void:
 		_begin("interpenetration")
 		_result["overlaps"] = _scan_overlaps()
 		t = _lap("interpenetration", t)
-	if run_mo:
-		_begin("mount_gap")
-		_result["mounts"] = _scan_mounts()
-		t = _lap("mount_gap", t)
 	if _checks.has("orientation"):
 		_begin("orientation")
 		_result["long_props"] = _scan_long_props()
@@ -349,10 +346,6 @@ func _run() -> void:
 		_begin("z_fight_geometry")
 		_result["zfight_geo"] = _scan_zfight_geometry()
 		t = _lap("z_fight_geometry", t)
-	if _checks.has("insert_host"):
-		_begin("insert_host")
-		_result["inserts"] = _scan_inserts()
-		t = _lap("insert_host", t)
 	if _checks.has("lights"):
 		_begin("lights")
 		_result["lights"] = _scan_lights()
@@ -381,8 +374,7 @@ func _run() -> void:
 		"unique_meshes": _mesh_info.size(), "tris_unique": _tris_unique(), "bodies": _bodies.size(), "lights": _lights.size(),
 		"multimesh_skipped": _multimesh, "rays": _rays,
 	}
-	_result["manifests"] = _manifest_loaded
-	_result["packs"] = _pack_docs
+	_result["roles"] = _role_stats
 	_result["ok"] = true
 	_result["stage"] = "done"
 	_write_result()
@@ -463,7 +455,7 @@ func _new_inst(node: Node, scene: String) -> int:
 	var path := _rel(node)
 	_inst.append({
 		"i": _inst.size(), "node": node, "path": path, "scene": scene, "piece": scene.get_file().get_basename(),
-		"name": String(node.name), "xf": xf, "meshes": [], "bodies": [], "man": {}, "role": "", "in": _in_root(node),
+		"name": String(node.name), "xf": xf, "meshes": [], "bodies": [], "role": "", "in": _in_root(node),
 		"top": path.get_slice("/", 0),
 	})
 	return _inst.size() - 1
@@ -514,277 +506,428 @@ func _bounds(rec: Dictionary) -> void:
 
 
 # ---------------------------------------------------------------------------
-# Manifests: pieces.json next to (or one or two folders above) each instanced
-# scene, plus config "manifests", plus PACK.json wall-mount lists.
+# Roles, from geometry and engine data only: never a node or scene name, never
+# metadata. In this order:
+# - dressing: every surface the piece draws is see-through (an alpha-tested or
+#   alpha-blended material: foliage cards, overlay sheets). Drawn, not solid:
+#   it stays out of the physics space.
+# - flat (upright, at most SLAB_THICK thick, at least SLAB_MIN across both
+#   ways): a slab when its upward faces cover SLAB_COVER of its footprint,
+#   else ground cover (struct: scattered pebbles, a grate). A slab is a floor;
+#   a roof (struct) when it is raised 2 m or more above the lowest slab and a
+#   wall stands under it (rising from at least 1 m below its underside to
+#   within 1.5 m of it, or up to 1.5 m above it: a parapet, within 10 cm of
+#   its footprint); the underlay when it is 8x the median floor and below the
+#   floor level.
+# - sheet (upright, at least SHEET_H tall and SHEET_W wide, at most
+#   SHEET_THICK thick): a wall facing along its thin axis, to the side with
+#   more outward face area.
+# - insert: a piece inside a larger wall's rectangle (80% of its own) that
+#   reaches at least 3 cm through the wall's front plane where the wall
+#   itself is open (rays through its rectangle miss the wall): a window, door
+#   or shutter in its opening. A piece pushed into a solid wall is not one.
+#   (Checks that build no physics space skip the opening test.)
+# - facade member (struct): walls on one plane form a facade line; a piece
+#   whose bounds touch a wall of the line (crossing or within MEMBER_TOUCH of
+#   its slab, overlapping it along the line and in height) and stick out at
+#   most MEMBER_REACH is
+#   - a band: a run of such pieces at one height (bottoms and tops within
+#     5 cm, end to end within 5 cm), at most BAND_MAX_H tall and BAND_MAX_D
+#     deep, together at least BAND_MIN_LEN and BAND_ASPECT x its height long;
+#   - a pier: at least BAND_MIN_LEN tall and BAND_ASPECT x taller than wide,
+#     at most 1 m wide;
+#   - a joint: a piece touching a band at that band's height (bottom within
+#     10 cm, top within 15 cm) and sticking out at most 30 cm further: a
+#     corner or end block.
+# - anything else: a prop up to PROP_MAX on its longest side, else struct.
+# rec.why keeps the evidence that set each role; result.roles counts them.
 # ---------------------------------------------------------------------------
 
-func _load_manifests() -> void:
-	for p in (_cfg.get("manifests", []) as Array):
-		_read_manifest(String(p), true)
-	var dirs: Dictionary = {}
-	for rec in _inst:
-		var scene := String(rec["scene"])
-		if scene == "" or not scene.begins_with("res://"):
-			continue
-		var d := scene.get_base_dir()
-		for k in 3:
-			if dirs.has(d):
-				break
-			dirs[d] = true
-			_read_manifest(d.path_join("pieces.json"), false)
-			_read_pack(d.path_join("PACK.json"))
-			if d == "res://" or d.count("/") <= 2:
-				break
-			d = d.get_base_dir()
-	for rec in _inst:
-		var scene := String(rec["scene"])
-		if _manifest_by_scene.has(scene):
-			rec["man"] = _manifest_by_scene[scene]
+# Every surface the instance draws uses a see-through material.
+func _see_through(rec: Dictionary) -> bool:
+	var any := false
+	for m in (rec["meshes"] as Array):
+		var node: Node = m[0]
+		var mesh: Mesh = m[1]
+		for s in mesh.get_surface_count():
+			any = true
+			if not _mat_see_through(_surface_mat(node, mesh, s)):
+				return false
+	return any
 
 
-func _read_manifest(path: String, explicit: bool) -> void:
-	if _manifest_files.has(path):
-		return
-	_manifest_files[path] = true
-	if not FileAccess.file_exists(path):
-		if explicit:
-			_warn("manifest not found: " + path)
-		return
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if typeof(parsed) != TYPE_DICTIONARY or typeof((parsed as Dictionary).get("pieces")) != TYPE_DICTIONARY:
-		_warn("manifest has no pieces object: " + path)
-		return
-	var pieces: Dictionary = (parsed as Dictionary)["pieces"]
-	var n := 0
-	for name in pieces:
-		var entry: Variant = pieces[name]
-		if typeof(entry) != TYPE_DICTIONARY:
-			continue
-		var e: Dictionary = (entry as Dictionary).duplicate()
-		e["piece"] = String(name)
-		e["manifest"] = path
-		var scene := String(e.get("scene", ""))
-		if scene == "":
-			scene = path.get_base_dir().path_join(String(name) + ".tscn")
-		if not _manifest_by_scene.has(scene):
-			_manifest_by_scene[scene] = e
-			n += 1
-	if _manifest_loaded.size() < 16:
-		_manifest_loaded.append([path, n])
-
-
-# A prop pack without pieces.json may still say which props mount on a wall:
-# PACK.json how_to_use "Wall-mounted props (a, b, c) have their back ... at -Z".
-func _read_pack(path: String) -> void:
-	if _manifest_files.has(path):
-		return
-	_manifest_files[path] = true
-	if not FileAccess.file_exists(path):
-		return
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if typeof(parsed) != TYPE_DICTIONARY:
-		return
-	var how := String((parsed as Dictionary).get("how_to_use", ""))
-	var pack_dir := path.get_base_dir()
-	var assembly := pack_dir.path_join("ASSEMBLY.md")
-	var md := ""
-	if FileAccess.file_exists(assembly):
-		md = FileAccess.get_file_as_string(assembly)
-	if not _pack_ground(pack_dir, "PACK.json", how):
-		_pack_ground(pack_dir, "ASSEMBLY.md", md)
-	_pack_standoffs(pack_dir, md)
-	var re := RegEx.create_from_string("(?i)wall[- ]mounted[^(]{0,40}\\(([^)]{1,600})\\)([^.]{0,120})")
-	var m := re.search(how)
-	if m == null:
-		return
-	var side := "-Z"
-	var tail := m.get_string(2)
-	var sm := RegEx.create_from_string("([+-][XYZ])").search(tail)
-	if sm != null:
-		side = sm.get_string(1)
-	var n := 0
-	for raw in m.get_string(1).split(","):
-		var word := String(raw).strip_edges().get_slice(" ", 0)
-		if word == "":
-			continue
-		var scene := path.get_base_dir().path_join(word + ".tscn")
-		if not _manifest_by_scene.has(scene):
-			_manifest_by_scene[scene] = {"piece": word, "wall_side": side, "manifest": path, "from": "PACK.json how_to_use"}
-			n += 1
-	if n > 0 and _manifest_loaded.size() < 16:
-		_manifest_loaded.append([path, n])
-
-
-# A pack that documents a ground alternative ("for any other ground use
-# material res://.../alley_ground.tres on a PlaneMesh"): the first clause that
-# names a ground or floor AND an existing material. floor_gap names it in its
-# next step. Returns whether one was found.
-func _pack_ground(dir: String, source: String, text: String) -> bool:
-	if text == "" or _pack_docs.size() >= 8:
-		return false
-	var re_path := RegEx.create_from_string("(res://[A-Za-z0-9_\\-./]+|[A-Za-z0-9_\\-]+/[A-Za-z0-9_\\-./]+)\\.(tres|material)")
-	var re_ground := RegEx.create_from_string("(?i)\\b(ground|floor|terrain|planemesh)")
-	for clause in text.replace("; ", "\n").replace(". ", "\n").split("\n"):
-		var c := String(clause).strip_edges()
-		if c.length() < 8 or re_ground.search(c) == null:
-			continue
-		var m := re_path.search(c)
-		if m == null:
-			continue
-		var material := m.get_string(0)
-		if not material.begins_with("res://"):
-			material = dir.path_join(material)
-		if not ResourceLoader.exists(material):
-			continue
-		_pack_docs.append([dir, source, material, c.substr(0, 200)])
-		return true
+# Alpha-tested or alpha-blended: BaseMaterial3D transparency (alpha, scissor,
+# hash, depth pre-pass), or a shader that writes ALPHA, discards or blends.
+func _mat_see_through(mat: Variant) -> bool:
+	if mat is BaseMaterial3D:
+		return (mat as BaseMaterial3D).transparency != BaseMaterial3D.TRANSPARENCY_DISABLED
+	if mat is ShaderMaterial:
+		var sh: Shader = (mat as ShaderMaterial).shader
+		return sh != null and _re_alpha.search(sh.code) != null
 	return false
 
 
-# ASSEMBLY.md sections that give a wall standoff ("Ducts: ... standing about
-# 0.1 m off the wall", "flush to the wall (0-10 cm)"): the largest distance
-# per section heading. A mounted piece whose pieces.json category the heading
-# names may stand that far off its wall (mount_gap).
-func _pack_standoffs(dir: String, md: String) -> void:
-	if md == "":
-		return
-	var re_off := RegEx.create_from_string("(?i)(\\d+(?:\\.\\d+)?)(?:\\s*-\\s*(\\d+(?:\\.\\d+)?))?\\s*(cm|m)\\s+off\\s+(?:the|a|its)\\s+wall")
-	var re_flush := RegEx.create_from_string("(?i)flush\\s+(?:to|against|on)\\s+(?:the|a|its)\\s+wall\\s*\\(\\s*(\\d+(?:\\.\\d+)?)(?:\\s*-\\s*(\\d+(?:\\.\\d+)?))?\\s*(cm|m)\\s*\\)")
-	var rows: Array = []
-	for section in md.split("\n## "):
-		var heading := String(section).get_slice("\n", 0).strip_edges().to_lower()
-		var hi := -1.0
-		for pattern in [re_off, re_flush]:
-			for found in (pattern as RegEx).search_all(String(section)):
-				var rm := found as RegExMatch
-				var v := float(rm.get_string(2) if rm.get_string(2) != "" else rm.get_string(1))
-				if rm.get_string(3).to_lower() == "cm":
-					v /= 100.0
-				hi = maxf(hi, v)
-		if hi >= 0.0 and hi <= 1.0 and heading != "" and rows.size() < 24:
-			rows.append([heading, hi])
-	if not rows.is_empty():
-		_pack_standoff[dir] = rows
-
-
-# How far off its wall a mounted piece may stand: pieces.json standoff_m (a
-# number, or [min, max]), else its pack's ASSEMBLY.md section whose heading
-# names its category. [metres or null, source].
-func _standoff_of(rec: Dictionary) -> Array:
-	var man: Dictionary = rec["man"]
-	var raw: Variant = man.get("standoff_m", null)
-	if typeof(raw) == TYPE_FLOAT or typeof(raw) == TYPE_INT:
-		return [snappedf(float(raw), 0.001), "pieces.json"]
-	if typeof(raw) == TYPE_ARRAY:
-		var top := -1.0
-		for v in (raw as Array):
-			if typeof(v) == TYPE_FLOAT or typeof(v) == TYPE_INT:
-				top = maxf(top, float(v))
-		if top >= 0.0:
-			return [snappedf(top, 0.001), "pieces.json"]
-	var cat := String(man.get("category", "")).to_lower().replace("_", " ")
-	var scene := String(rec["scene"])
-	if cat == "" or scene == "":
-		return [null, ""]
-	for pack in _pack_standoff:
-		if not scene.begins_with(String(pack) + "/"):
-			continue
-		for row in (_pack_standoff[pack] as Array):
-			if String(row[0]).contains(cat):
-				return [snappedf(float(row[1]), 0.001), "ASSEMBLY.md"]
-	return [null, ""]
-
-
-static func _axis_of(text: String) -> Vector3:
-	var t := text.strip_edges().to_upper()
-	if t.length() < 2:
-		return Vector3.ZERO
-	var s := 1.0 if t[0] == "+" else (-1.0 if t[0] == "-" else 0.0)
-	if s == 0.0:
-		return Vector3.ZERO
-	match t[1]:
-		"X":
-			return Vector3(s, 0, 0)
-		"Y":
-			return Vector3(0, s, 0)
-		"Z":
-			return Vector3(0, 0, s)
-	return Vector3.ZERO
-
-
-# ---------------------------------------------------------------------------
-# Roles: wall (facade module), struct (other structural module), floor,
-# underlay, insert (fits_into), mount (wall_side), prop, dressing.
-# ---------------------------------------------------------------------------
-
-func _classify(rec: Dictionary) -> void:
-	var man: Dictionary = rec["man"]
-	var name := (String(rec["piece"]) + " " + String(rec["name"])).to_lower()
+# Size in the instance's own scaled frame when that frame stands upright
+# (local +Y along world +Y or -Y, so local x and z are horizontal), else the
+# world bounds.
+func _shape_of(rec: Dictionary) -> void:
+	var xf: Transform3D = rec["xf"]
 	var la: AABB = rec["laabb"]
+	var b := xf.basis
+	var sc := Vector3(b.x.length(), b.y.length(), b.z.length())
+	var up := sc.y > 0.000001 and absf(b.y.y / sc.y) >= 0.98
+	rec["upright"] = up
+	rec["dims"] = Vector3(la.size.x * sc.x, la.size.y * sc.y, la.size.z * sc.z) if up else (rec["waabb"] as AABB).size
+
+
+# Outward face area per instance axis [+x, -x, +y, -y, +z, -z] (m2), from
+# each mesh's cached areas mapped through the mesh's transform.
+func _inst_axis_area(rec: Dictionary) -> PackedFloat32Array:
+	var out := PackedFloat32Array([0, 0, 0, 0, 0, 0])
+	var inv := (rec["xf"] as Transform3D).affine_inverse()
+	for m in (rec["meshes"] as Array):
+		var info: Dictionary = _mesh_info.get((m[1] as Mesh).get_instance_id(), {})
+		var areas: PackedFloat32Array = info.get("axis_area", PackedFloat32Array())
+		if areas.size() < 6:
+			continue
+		var mb: Basis = (m[2] as Transform3D).basis
+		var rel: Basis = (inv * (m[2] as Transform3D)).basis
+		var cols := [mb.x.length(), mb.y.length(), mb.z.length()]
+		for a in 3:
+			var f: float = float(cols[0]) * float(cols[1]) * float(cols[2]) / maxf(float(cols[a]), 0.000001)
+			for sgn in 2:
+				var e := Vector3.ZERO
+				e[a] = 1.0 if sgn == 0 else -1.0
+				var d := rel * e
+				var k := 0 if absf(d.x) >= absf(d.y) and absf(d.x) >= absf(d.z) else (1 if absf(d.y) >= absf(d.z) else 2)
+				out[k * 2 + (0 if d[k] > 0.0 else 1)] += areas[a * 2 + sgn] * f
+	return out
+
+
+func _role(rec: Dictionary, role: String, why: String) -> void:
+	rec["role"] = role
+	rec["why"] = why
+
+
+# First pass, before the physics space exists: slabs, roofs, the underlay and
+# sheets. Returns the sheets.
+func _classify_shapes() -> Array:
+	var sheets: Array = []
+	for rec in _inst:
+		_shape_of(rec)
+		rec["front"] = Vector3.ZERO
+		if rec["role"] == "dressing":
+			continue
+		var d: Vector3 = rec["dims"]
+		if bool(rec["upright"]) and d.y <= SLAB_THICK and d.x >= SLAB_MIN and d.z >= SLAB_MIN:
+			var ar := _inst_axis_area(rec)
+			var upk := 2 if (rec["xf"] as Transform3D).basis.y.y > 0.0 else 3
+			if ar[upk] >= SLAB_COVER * d.x * d.z:
+				_role(rec, "floor", "slab")
+			else:
+				# Flat but open (scattered pebbles, leaves, a grate): ground
+				# cover, part of the ground, not a floor and not a prop.
+				_role(rec, "struct", "flat")
+			continue
+		if bool(rec["upright"]) and d.y >= SHEET_H and maxf(d.x, d.z) >= SHEET_W and minf(d.x, d.z) <= SHEET_THICK:
+			_role(rec, "wall", "sheet")
+			_sheet_front(rec)
+			sheets.append(rec)
+	var ground := INF
+	for rec in _inst:
+		if rec["role"] == "floor":
+			ground = minf(ground, (rec["waabb"] as AABB).end.y)
+	for rec in _inst:
+		if rec["role"] == "floor" and _walls_under(rec, sheets, ground):
+			_role(rec, "struct", "roof")
+	_resolve_underlays()
+	return sheets
+
+
+# Second pass (the physics space, when there is one, holds every solid piece
+# on a provisional layer): inserts, facade lines, facade members, the rest by
+# size; then every body gets its role's layer.
+func _classify_rest(sheets: Array) -> void:
+	_find_inserts(sheets)
+	_find_members()
+	for rec in _inst:
+		if rec["role"] == "":
+			var wa: AABB = rec["waabb"]
+			_role(rec, "struct" if maxf(wa.size.x, maxf(wa.size.y, wa.size.z)) > PROP_MAX else "prop", "size")
+	for rec in _inst:
+		var k := String(rec["role"]) + ":" + String(rec.get("why", ""))
+		_role_stats[k] = int(_role_stats.get(k, 0)) + 1
+	_layers()
+
+
+# Every body on its role's layer (pieces without a role yet: the prop layer).
+func _layers() -> void:
+	if _state == null:
+		return
+	for rec in _inst:
+		var role := String(rec["role"])
+		var layer := int(ROLE_LAYER.get(role, L_PROP if role == "" else 0))
+		for b in (rec["bodies"] as Array):
+			PhysicsServer3D.body_set_collision_layer(b, layer)
+
+
+# The local axis nearest a local direction, as a unit vector.
+static func _axis_snap(v: Vector3) -> Vector3:
+	var k := 0 if absf(v.x) >= absf(v.y) and absf(v.x) >= absf(v.z) else (1 if absf(v.y) >= absf(v.z) else 2)
+	var out := Vector3.ZERO
+	out[k] = 1.0 if v[k] >= 0.0 else -1.0
+	return out
+
+
+# A sheet faces along its thin axis, to the side with more outward area.
+func _sheet_front(rec: Dictionary) -> void:
+	var d: Vector3 = rec["dims"]
+	var axis := 2 if d.z <= d.x else 0
+	var ar := _inst_axis_area(rec)
+	var v := Vector3.ZERO
+	v[axis] = 1.0 if ar[axis * 2] >= ar[axis * 2 + 1] else -1.0
+	rec["front"] = v
+
+
+# A roof: the slab is raised at least 2 m above the lowest slab (the ground)
+# and walls stand under it: one rises from at least 1 m below its underside to
+# within 1.5 m of it (or up to 1.5 m above: a parapet), within 10 cm of its
+# footprint.
+func _walls_under(rec: Dictionary, sheets: Array, ground: float) -> bool:
 	var wa: AABB = rec["waabb"]
-	var sx := la.size.x
-	var sy := la.size.y
-	var sz := la.size.z
-	rec["front"] = Vector3.ZERO
-	rec["mount"] = Vector3.ZERO
-	var side := String(man.get("wall_side", man.get("mount_side", man.get("mount_axis", ""))))
-	if man.has("fits_into") and typeof(man["fits_into"]) == TYPE_DICTIONARY:
-		rec["role"] = "insert"
-		rec["front"] = Vector3(0, 0, 1)
-		return
-	if side != "":
-		var ax := _axis_of(side)
-		if ax != Vector3.ZERO:
-			rec["mount"] = ax
-			if String(man.get("from", "")) == "":
-				rec["role"] = "mount"
-				rec["mount_src"] = "pieces"
-				return
-			# Read from a pack's prose: a free-standing prop that MAY hang on a
-			# wall. It stays a prop (support, overlap) with a mount hint.
-			rec["role"] = "prop"
-			rec["mount_src"] = "pack_text"
-			return
-	var cat := String(man.get("category", "")).to_lower()
-	if cat != "":
-		if cat.contains("plant") or _re_scatter.search(name) != null:
-			rec["role"] = "dressing"
-			return
-		if cat == "ground" or cat == "floor" or cat == "terrain":
-			rec["role"] = "floor" if (_re_floor.search(name) != null and sy <= 0.6) else "dressing"
-			return
-		if cat.begins_with("facade") or cat == "courtyard" or cat == "walls" or cat == "wall":
-			var fz := bool(man.get("front_faces_plus_z", false))
-			if sy >= 1.0 and maxf(sx, sz) >= 0.8 and minf(sx, sz) <= 1.2:
-				rec["role"] = "wall"
-				rec["front"] = Vector3(0, 0, 1) if fz else Vector3.ZERO
-				return
-			rec["role"] = "struct"
-			return
-		rec["role"] = "struct"
-		return
-	# No manifest: names, then size.
-	var horizontal := sx >= 1.5 and sz >= 1.5 and sy <= 0.6
-	if _re_roof.search(name) != null:
-		rec["role"] = "struct"
-		return
-	if _re_underlay.search(name) != null and horizontal:
-		rec["role"] = "underlay"
-		return
-	if horizontal and (_re_floor.search(name) != null or sx * sz >= 30.0):
-		rec["role"] = "floor"
-		return
-	if _re_scatter.search(name) != null:
-		rec["role"] = "dressing"
-		return
-	if _re_wall.search(name) != null and sy >= 1.5 and maxf(sx, sz) >= 1.0 and minf(sx, sz) <= 1.2:
-		rec["role"] = "wall"
-		return
-	if _re_struct.search(name) != null:
-		rec["role"] = "struct"
-		return
-	var longest := maxf(wa.size.x, maxf(wa.size.y, wa.size.z))
-	rec["role"] = "prop" if longest <= 3.5 else "struct"
+	var bottom := wa.position.y
+	if bottom < ground + 2.0:
+		return false
+	var foot := AABB(Vector3(wa.position.x - 0.1, -1.0e6, wa.position.z - 0.1), Vector3(wa.size.x + 0.2, 2.0e6, wa.size.z + 0.2))
+	for w in sheets:
+		var ww: AABB = w["waabb"]
+		if ww.end.y < bottom - 1.5 or ww.end.y > wa.end.y + 1.5 or ww.position.y > bottom - 1.0:
+			continue
+		if foot.intersects(ww):
+			return true
+	return false
+
+
+# Inserts: see the section comment. Without a physics space (only checks
+# that need none) the opening test is skipped.
+func _find_inserts(sheets: Array) -> void:
+	for w in sheets:
+		var pl := _wall_plane(w)
+		if pl.is_empty():
+			continue
+		w["plane"] = pl
+	for rec in _inst:
+		var role := String(rec["role"])
+		if role == "dressing" or role == "floor" or role == "underlay" or (role == "struct" and String(rec.get("why", "")) == "roof"):
+			continue
+		var pa: AABB = rec["waabb"]
+		for w in sheets:
+			if w == rec or not w.has("plane") or String(w["role"]) != "wall":
+				continue
+			if not pa.intersects((w["waabb"] as AABB).grow(0.05)):
+				continue
+			var pl: Dictionary = w["plane"]
+			var n: Vector3 = pl["n"]
+			var tax := Vector3(n.z, 0, -n.x)
+			var wr := _rect(w, tax)
+			var r := _rect(rec, tax)
+			var area: float = (r[1] - r[0]) * (r[3] - r[2])
+			var warea: float = (wr[1] - wr[0]) * (wr[3] - wr[2])
+			if area <= 0.0 or area > 0.9 * warea:
+				continue
+			var ot: float = minf(r[1], wr[1]) - maxf(r[0], wr[0])
+			var oy: float = minf(r[3], wr[3]) - maxf(r[2], wr[2])
+			if ot <= 0.0 or oy <= 0.0 or ot * oy < 0.8 * area:
+				continue
+			var nr := _span(rec, n)
+			var df := float(pl["d"])
+			if nr[0] > df - 0.03 or nr[1] > df + MEMBER_REACH:
+				continue
+			if _state != null and not _open_at(w, rec, n, tax, r, df - float(pl["thick"])):
+				continue
+			_role(rec, "insert", "in_opening")
+			rec["front"] = _axis_snap((rec["xf"] as Transform3D).basis.inverse() * n)
+			rec["host"] = int(w["i"])
+			break
+
+
+# The extent of an instance's bounds along a world direction: [min, max].
+func _span(rec: Dictionary, dir: Vector3) -> Array:
+	var la: AABB = rec["laabb"]
+	var xf: Transform3D = rec["xf"]
+	var lo := INF
+	var hi := -INF
+	for c in _corners(la):
+		var v := dir.dot(xf * c)
+		lo = minf(lo, v)
+		hi = maxf(hi, v)
+	return [lo, hi]
+
+
+# Rays through the piece's rectangle (its centre and a quarter in from each
+# side along the wall) miss the wall itself at two of the three points: the
+# wall is open there.
+func _open_at(w: Dictionary, rec: Dictionary, n: Vector3, tax: Vector3, r: Array, back: float) -> bool:
+	var probe_layer := 1 << 19
+	for b in (w["bodies"] as Array):
+		PhysicsServer3D.body_set_collision_layer(b, probe_layer)
+	var front := float((w["plane"] as Dictionary)["d"])
+	var yc: float = (float(r[2]) + float(r[3])) * 0.5
+	var open := 0
+	for f in [0.5, 0.25, 0.75]:
+		var t: float = float(r[0]) + (float(r[1]) - float(r[0])) * float(f)
+		var p := tax * t + Vector3(0, yc, 0)
+		var hit := _ray(p + n * (front + 0.05), p + n * (back - 0.05), probe_layer, [], true)
+		if hit.is_empty():
+			open += 1
+	for b in (w["bodies"] as Array):
+		PhysicsServer3D.body_set_collision_layer(b, L_WALL)
+	return open >= 2
+
+
+# Facade lines: walls whose fronts share a plane (normals within 2 deg, planes
+# within 20 cm). [{n, d, thick, walls}]
+func _facade_lines() -> Array:
+	var lines: Array = []
+	for rec in _inst:
+		if rec["role"] != "wall":
+			continue
+		var pl := _wall_plane(rec)
+		if pl.is_empty():
+			continue
+		var n: Vector3 = pl["n"]
+		var placed := false
+		for line in lines:
+			var ln: Vector3 = line["n"]
+			if ln.dot(n) > 0.9994 and absf(float(pl["d"]) - float(line["d"])) < 0.2:
+				(line["walls"] as Array).append(rec)
+				line["thick"] = maxf(float(line["thick"]), float(pl["thick"]))
+				placed = true
+				break
+		if not placed:
+			lines.append({"n": n, "d": float(pl["d"]), "thick": float(pl["thick"]), "walls": [rec]})
+	return lines
+
+
+# Facade members (see the section comment): pieces whose bounds touch a
+# facade line's wall.
+func _find_members() -> void:
+	var lines := _facade_lines()
+	for line in lines:
+		var n: Vector3 = line["n"]
+		var tax := Vector3(n.z, 0, -n.x)
+		line["t"] = tax
+		var rects: Array = []
+		var zone := AABB()
+		for w in (line["walls"] as Array):
+			rects.append(_rect(w, tax))
+			zone = (w["waabb"] as AABB) if zone.size == Vector3.ZERO else zone.merge(w["waabb"] as AABB)
+		line["rects"] = rects
+		line["zone"] = zone.grow(MEMBER_REACH)
+	var cand: Array = []
+	for rec in _inst:
+		if rec["role"] != "" or not bool(rec["upright"]):
+			continue
+		var d: Vector3 = rec["dims"]
+		var long := maxf(d.x, d.z)
+		var short := minf(d.x, d.z)
+		var pier := d.y >= BAND_MIN_LEN and d.y >= BAND_ASPECT * long and long <= 1.0
+		var band := d.y <= BAND_MAX_H and short <= BAND_MAX_D and long >= d.y
+		if not pier and not band:
+			continue
+		var c := _touch_line(rec, lines)
+		if c.is_empty():
+			continue
+		var n: Vector3 = c[0]
+		if pier:
+			_member(rec, "pier", n)
+			continue
+		var tax := Vector3(n.z, 0, -n.x)
+		var wa: AABB = rec["waabb"]
+		var r := _span(rec, tax)
+		cand.append([rec, n, float(c[1]), float(r[0]), float(r[1]), wa.position.y, wa.end.y])
+	# Band runs: pieces on one surface (normals within 2 deg, planes within
+	# 10 cm) at one height laid end to end.
+	var used: Dictionary = {}
+	for k in cand.size():
+		if used.has(k):
+			continue
+		var n: Vector3 = cand[k][1]
+		var run: Array = [k]
+		used[k] = true
+		var lo: float = cand[k][3]
+		var hi: float = cand[k][4]
+		var y0: float = cand[k][5]
+		var y1: float = cand[k][6]
+		var grew := true
+		while grew:
+			grew = false
+			for j in cand.size():
+				if used.has(j):
+					continue
+				var cj: Array = cand[j]
+				if (cj[1] as Vector3).dot(n) < 0.9994 or absf(float(cj[2]) - float(cand[k][2])) > 0.1:
+					continue
+				if absf(float(cj[5]) - y0) > 0.05 or absf(float(cj[6]) - y1) > 0.05:
+					continue
+				if float(cj[3]) > hi + 0.05 or float(cj[4]) < lo - 0.05:
+					continue
+				run.append(j)
+				used[j] = true
+				lo = minf(lo, float(cj[3]))
+				hi = maxf(hi, float(cj[4]))
+				grew = true
+		if hi - lo < maxf(BAND_MIN_LEN, BAND_ASPECT * (y1 - y0)):
+			continue
+		for j in run:
+			_member(cand[j][0], "band", cand[j][1])
+	# Joints: touch a band at its height, stick out at most 30 cm further.
+	var bands: Array = []
+	for rec in _inst:
+		if rec["role"] == "struct" and String(rec.get("why", "")) == "band":
+			bands.append(rec)
+	for rec in _inst:
+		if rec["role"] != "":
+			continue
+		var pa: AABB = rec["waabb"]
+		for b in bands:
+			var ba: AABB = b["waabb"]
+			if not pa.intersects(ba.grow(MEMBER_TOUCH)):
+				continue
+			if absf(pa.position.y - ba.position.y) > 0.1 or absf(pa.end.y - ba.end.y) > 0.15:
+				continue
+			var n: Vector3 = b["n_out"]
+			if float(_span(rec, n)[1]) > float(_span(b, n)[1]) + 0.3:
+				continue
+			_member(rec, "joint", n)
+			break
+
+
+func _member(rec: Dictionary, why: String, n: Vector3) -> void:
+	_role(rec, "struct", why)
+	rec["n_out"] = n
+	rec["front"] = _axis_snap((rec["xf"] as Transform3D).basis.inverse() * n)
+
+
+# [the line's front, the line's plane] when the piece's bounds touch one of
+# the line's walls: crossing or within MEMBER_TOUCH of the wall's slab,
+# overlapping it along the line and in height (5 cm slack), sticking out at
+# most MEMBER_REACH. [] otherwise.
+func _touch_line(rec: Dictionary, lines: Array) -> Array:
+	var wa: AABB = rec["waabb"]
+	for line in lines:
+		if not (line["zone"] as AABB).intersects(wa):
+			continue
+		var n: Vector3 = line["n"]
+		var d := float(line["d"])
+		var nr := _span(rec, n)
+		if nr[1] < d - float(line["thick"]) - MEMBER_TOUCH or nr[0] > d + MEMBER_TOUCH or nr[1] > d + MEMBER_REACH:
+			continue
+		var r := _rect(rec, line["t"] as Vector3)
+		for wr in (line["rects"] as Array):
+			if r[0] <= float(wr[1]) + 0.05 and r[1] >= float(wr[0]) - 0.05 and r[2] <= float(wr[3]) + 0.05 and r[3] >= float(wr[2]) - 0.05:
+				return [n, d]
+	return []
 
 
 func _resolve_underlays() -> void:
@@ -808,52 +951,26 @@ func _resolve_underlays() -> void:
 			continue
 		var wa: AABB = rec["waabb"]
 		if wa.size.x * wa.size.z >= 8.0 * median and wa.end.y < median_top - 0.005:
-			rec["role"] = "underlay"
+			_role(rec, "underlay", "below_floors")
 
 
 # ---------------------------------------------------------------------------
 # One pass per mesh RESOURCE (cached by instance id): physics faces in index
 # order (double-sided surfaces get both windings), outward face area per
-# local axis (front inference), and UV-stretch candidate triangles.
+# local axis (roles), and UV-stretch candidate triangles.
 # ---------------------------------------------------------------------------
 
 func _mesh_pass() -> void:
 	var want_uv := _checks.has("uv_stretch")
 	var want_groups := _checks.has("z_fight")
-	# Meshes of mounted pieces also get their largest plane per axis and side
-	# (front-back symmetry about the mount axis: mount_gap, orientation).
-	var mount_meshes: Dictionary = {}
-	if _checks.has("mount_gap") or _checks.has("orientation"):
-		for rec in _inst:
-			if (rec["mount"] as Vector3) != Vector3.ZERO:
-				for m in (rec["meshes"] as Array):
-					mount_meshes[(m[1] as Mesh).get_instance_id()] = true
 	for rec in _inst:
-		var role := String(rec["role"])
-		if role == "dressing":
+		if rec["role"] == "dressing":
 			continue
 		for m in (rec["meshes"] as Array):
 			var mesh: Mesh = m[1]
 			var key := mesh.get_instance_id()
 			if not _mesh_info.has(key):
-				_mesh_info[key] = _analyze_mesh(mesh, want_uv and role != "underlay", mount_meshes.has(key), want_groups)
-	# Walls without a declared front: the thin local axis, signed by which side
-	# carries more outward-facing area.
-	for rec in _inst:
-		if rec["role"] != "wall" or rec["front"] != Vector3.ZERO:
-			continue
-		var la: AABB = rec["laabb"]
-		var axis := 2 if la.size.z <= la.size.x else 0
-		var plus := 0.0
-		var minus := 0.0
-		for m in (rec["meshes"] as Array):
-			var info: Dictionary = _mesh_info.get((m[1] as Mesh).get_instance_id(), {})
-			var areas: PackedFloat32Array = info.get("axis_area", PackedFloat32Array([0, 0, 0, 0, 0, 0]))
-			plus += areas[axis * 2]
-			minus += areas[axis * 2 + 1]
-		var v := Vector3.ZERO
-		v[axis] = 1.0 if plus >= minus else -1.0
-		rec["front"] = v
+				_mesh_info[key] = _analyze_mesh(mesh, want_uv, want_groups)
 
 
 func _double_sided(mat: Material) -> bool:
@@ -867,11 +984,9 @@ func _double_sided(mat: Material) -> bool:
 	return false
 
 
-func _analyze_mesh(mesh: Mesh, want_uv: bool, want_planes := false, want_groups := false) -> Dictionary:
+func _analyze_mesh(mesh: Mesh, want_uv: bool, want_groups := false) -> Dictionary:
 	var faces := PackedVector3Array()
 	var axis_area := PackedFloat32Array([0, 0, 0, 0, 0, 0])
-	# Axis-facing area in 1 cm slabs: Vector3i(axis, 0 for + / 1 for -, cm) -> m2.
-	var planes: Dictionary = {}
 	# z_fight: per surface, triangles bucketed by (normal, plane offset):
 	# [surface, material, double-sided, {Vector4i -> [area, normal * area, offset * area, [vertices]]}].
 	var zf_raw: Array = []
@@ -938,11 +1053,6 @@ func _analyze_mesh(mesh: Mesh, want_uv: bool, want_planes := false, want_groups 
 					axis_area[2 if nn.y > 0 else 3] += area
 				if absf(nn.z) > 0.7:
 					axis_area[4 if nn.z > 0 else 5] += area
-				if want_planes:
-					for pa in 3:
-						if absf(nn[pa]) > 0.95:
-							var pk := Vector3i(pa, 0 if nn[pa] > 0.0 else 1, int(round((p0[pa] + p1[pa] + p2[pa]) * 100.0 / 3.0)))
-							planes[pk] = float(planes.get(pk, 0.0)) + area
 				if want_groups and area >= ZF_MIN_TRI:
 					var dd := nn.dot(p0)
 					var bk := Vector4i(roundi(nn.x * 30.0), roundi(nn.y * 30.0), roundi(nn.z * 30.0), roundi(dd / 0.004))
@@ -980,17 +1090,7 @@ func _analyze_mesh(mesh: Mesh, want_uv: bool, want_planes := false, want_groups 
 	uv_cands.sort_custom(func(a, b): return float(a[0]) > float(b[0]))
 	if uv_cands.size() > 6:
 		uv_cands.resize(6)
-	# The largest plane per (axis, side): [position (m), area (m2)] x 6, a plane
-	# split across neighbouring 1 cm slabs counted whole.
-	var plane_rows := PackedFloat32Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-	for key in planes:
-		var pk: Vector3i = key
-		var sum := float(planes[key]) + float(planes.get(Vector3i(pk.x, pk.y, pk.z - 1), 0.0)) + float(planes.get(Vector3i(pk.x, pk.y, pk.z + 1), 0.0))
-		var slot := (pk.x * 2 + pk.y) * 2
-		if sum > plane_rows[slot + 1]:
-			plane_rows[slot] = float(pk.z) / 100.0
-			plane_rows[slot + 1] = sum
-	return {"faces": faces, "axis_area": axis_area, "planes": plane_rows, "zf_raw": zf_raw, "uv": uv_cands, "tris": tris, "no_material": no_material, "shape": RID(), "name": _mesh_name(mesh)}
+	return {"faces": faces, "axis_area": axis_area, "zf_raw": zf_raw, "uv": uv_cands, "tris": tris, "no_material": no_material, "shape": RID(), "name": _mesh_name(mesh)}
 
 
 func _mesh_name(mesh: Mesh) -> String:
@@ -1013,9 +1113,11 @@ func _build_space() -> void:
 	_space = PhysicsServer3D.space_create()
 	PhysicsServer3D.space_set_active(_space, true)
 	for rec in _inst:
-		var layer := int(ROLE_LAYER.get(String(rec["role"]), 0))
-		if layer == 0:
+		# Every solid piece; pieces without a role yet sit on the prop layer
+		# until _classify_rest gives each body its role's layer.
+		if rec["role"] == "dressing":
 			continue
+		var layer := int(ROLE_LAYER.get(String(rec["role"]), L_PROP))
 		for m in (rec["meshes"] as Array):
 			var mesh: Mesh = m[1]
 			var xf: Transform3D = m[2]
@@ -1135,24 +1237,7 @@ func _rect(rec: Dictionary, tax: Vector3) -> Array:
 
 
 func _scan_facades() -> Array:
-	var lines: Array = []
-	for rec in _inst:
-		if rec["role"] != "wall":
-			continue
-		var pl := _wall_plane(rec)
-		if pl.is_empty():
-			continue
-		var n: Vector3 = pl["n"]
-		var placed := false
-		for line in lines:
-			var ln: Vector3 = line["n"]
-			if ln.dot(n) > 0.9994 and absf(float(pl["d"]) - float(line["d"])) < 0.2:
-				(line["walls"] as Array).append(rec)
-				line["thick"] = maxf(float(line["thick"]), float(pl["thick"]))
-				placed = true
-				break
-		if not placed:
-			lines.append({"n": n, "d": float(pl["d"]), "thick": float(pl["thick"]), "walls": [rec]})
+	var lines: Array = _facade_lines()
 	# Rects, union area, spacing.
 	var total_area := 0.0
 	for line in lines:
@@ -1533,7 +1618,7 @@ func _scan_floors() -> Dictionary:
 
 
 # Bare strips OUTSIDE the tile footprints: a tile row that stops short of a
-# wall (an alley's back wall 23-75 cm past the last tile) leaves the underlay
+# wall (a back wall a few decimetres past the last tile) leaves the underlay
 # showing at the wall base, where no grid cell or seam ray looks. Walk each
 # in-scope tile's footprint edges; where a horizontal ray finds a wall within
 # STRIP_REACH outside the edge, step down rays out from the edge to the wall
@@ -1670,8 +1755,6 @@ func _scan_support() -> Array:
 		var role := String(rec["role"])
 		if role != "prop" and role != "dressing":
 			continue
-		if role == "dressing" and _re_hanging.search(String(rec["piece"]) + " " + String(rec["name"])) != null:
-			continue
 		total += 1
 		if _over():
 			continue
@@ -1711,7 +1794,7 @@ func _scan_support() -> Array:
 					above.append([snappedf((ah["position"] as Vector3).y, 0.0001), _hit_inst(ah)])
 		# Held by a wall? Only asked when it would otherwise float clearly.
 		var touch: Variant = null
-		if top == -INF or ymin - top > 0.3 or ((rec["mount"] as Vector3) != Vector3.ZERO and ymin - top > 0.02):
+		if top == -INF or ymin - top > 0.3:
 			var wc: Vector3 = xf * c
 			for ldir in [Vector3(1, 0, 0), Vector3(-1, 0, 0), Vector3(0, 0, 1), Vector3(0, 0, -1)]:
 				var wd: Vector3 = xf.basis * ldir
@@ -1740,7 +1823,7 @@ func _scan_support() -> Array:
 
 # ---------------------------------------------------------------------------
 # interpenetration: each prop's per-mesh convex hulls against props, walls,
-# structure, inserts and mounts (floors excluded: that is support).
+# structure and inserts (floors excluded: that is support).
 # ---------------------------------------------------------------------------
 
 func _hull_for(mesh: Mesh) -> Shape3D:
@@ -1758,7 +1841,7 @@ func _scan_overlaps() -> Array:
 	var q := PhysicsShapeQueryParameters3D.new()
 	q.collide_with_areas = false
 	q.margin = 0.0
-	var mask := L_PROP | L_WALL | L_STRUCT | L_INSERT | L_MOUNT
+	var mask := L_PROP | L_WALL | L_STRUCT | L_INSERT
 	q.collision_mask = mask
 	var done := 0
 	var total := 0
@@ -1835,139 +1918,6 @@ func _scan_overlaps() -> Array:
 
 
 # ---------------------------------------------------------------------------
-# mount_gap + mount orientation: rays along the mount axis and around it
-# ---------------------------------------------------------------------------
-
-func _scan_mounts() -> Array:
-	var out: Array = []
-	var done := 0
-	var total := 0
-	for rec in _inst:
-		if (rec["mount"] as Vector3) == Vector3.ZERO or not bool(rec["in"]):
-			continue
-		total += 1
-		if _over():
-			continue
-		done += 1
-		var ax: Vector3 = rec["mount"]
-		var la: AABB = rec["laabb"]
-		var xf: Transform3D = rec["xf"]
-		var c := la.get_center()
-		var half := absf(ax.dot(la.size)) * 0.5
-		var back := c + ax * half
-		var u := Vector3(ax.y, ax.z, ax.x)
-		var v := ax.cross(u)
-		var su := absf(u.dot(la.size)) * 0.45
-		var sv := absf(v.dot(la.size)) * 0.45
-		var wax: Vector3 = (xf.basis * ax).normalized()
-		var ex: Array = rec["bodies"]
-		var gaps: Array = []
-		var hit_at: Array = []
-		var hit_inst := -1
-		# 9 samples on the mount-side face: centre, 4 corners, 4 side midpoints.
-		for off in [Vector3.ZERO, u * su + v * sv, u * su - v * sv, -u * su + v * sv, -u * su - v * sv, u * su, -u * su, v * sv, -v * sv]:
-			var wp: Vector3 = xf * (back + off)
-			var o := wp - wax * 0.15
-			var hit := _ray(o, wp + wax * 1.0, MASK_FACADE | L_MOUNT, ex)
-			if hit.is_empty():
-				gaps.append(null)
-				hit_at.append(-1)
-			else:
-				gaps.append(snappedf((hit["position"] as Vector3).distance_to(o) - 0.15, 0.001))
-				hit_at.append(_hit_inst(hit))
-				if hit_inst < 0:
-					hit_inst = _hit_inst(hit)
-		# Nearest wall around the piece (horizontal +-local X, +-local Z).
-		var wc: Vector3 = xf * c
-		var around: Array = []
-		for ldir in [Vector3(1, 0, 0), Vector3(-1, 0, 0), Vector3(0, 0, 1), Vector3(0, 0, -1)]:
-			var wd: Vector3 = xf.basis * ldir
-			wd.y = 0
-			if wd.length() < 0.2:
-				continue
-			wd = wd.normalized()
-			var ext := absf(ldir.dot(la.size)) * 0.5
-			var hit := _ray(wc, wc + wd * (ext + 1.0), MASK_FACADE, ex)
-			if hit.is_empty():
-				continue
-			var nrm: Vector3 = hit["normal"]
-			if absf(nrm.y) > 0.35:
-				continue
-			around.append([_a3(wd, 0.0001), snappedf((hit["position"] as Vector3).distance_to(wc) - ext, 0.001), _hit_inst(hit)])
-		# Held by another mounted piece (a ladder under its platform, an elbow
-		# on its duct run): the nearest contact with a mount, any of 6 sides.
-		var chain: Variant = null
-		for ldir in [Vector3(1, 0, 0), Vector3(-1, 0, 0), Vector3(0, 0, 1), Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(0, -1, 0)]:
-			var wd: Vector3 = (xf.basis * ldir).normalized()
-			var ext := absf((ldir as Vector3).dot(la.size)) * 0.5
-			var hit := _ray(wc, wc + wd * (ext + 0.15), L_MOUNT, ex)
-			if not hit.is_empty():
-				var gap := (hit["position"] as Vector3).distance_to(wc) - ext
-				if chain == null or gap < float(chain):
-					chain = snappedf(gap, 0.001)
-		# Standing on something (a fence post on the ground) rather than hanging.
-		var wa: AABB = rec["waabb"]
-		var foot := Vector3(wa.get_center().x, wa.position.y + 0.05, wa.get_center().z)
-		var down := _ray(foot, foot + Vector3.DOWN * 1.0, MASK_SOLID & ~L_MOUNT, ex)
-		var ground: Variant = null
-		if not down.is_empty():
-			ground = snappedf(wa.position.y - (down["position"] as Vector3).y, 0.001)
-		# How far off the wall the pack lets it stand, and its front-back
-		# symmetry (planes, or pieces.json "symmetric").
-		var so := _standoff_of(rec)
-		var sym_meta: Variant = null
-		var sym_raw: Variant = (rec["man"] as Dictionary).get("symmetric", null)
-		if typeof(sym_raw) == TYPE_BOOL:
-			sym_meta = sym_raw
-		out.append([int(rec["i"]), _a3(wax, 0.0001), gaps, hit_inst, around, String((rec["man"] as Dictionary).get("category", "")), String(rec.get("mount_src", "")), _a3(ax, 1.0), chain, ground, so[0], so[1], _mount_planes(rec, ax), sym_meta, hit_at])
-	_count("mount_gap", done, total)
-	return out
-
-
-# Front-back symmetry about a mount axis: the largest plane facing +axis and
-# the largest facing -axis (instance-local position along the axis, area),
-# and the piece's bounds along it: [pos+, area+, pos-, area-, lo, hi], or
-# null without plane data. A duct run or a strap brace looks the same turned
-# 180 degrees; the judge decides.
-func _mount_planes(rec: Dictionary, ax: Vector3) -> Variant:
-	var ai := 0 if absf(ax.x) > 0.5 else (1 if absf(ax.y) > 0.5 else 2)
-	var e := Vector3.ZERO
-	e[ai] = 1.0
-	var inv := (rec["xf"] as Transform3D).affine_inverse()
-	var best := [0.0, 0.0, 0.0, 0.0]
-	var found := false
-	for m in (rec["meshes"] as Array):
-		var info: Dictionary = _mesh_info.get((m[1] as Mesh).get_instance_id(), {})
-		var rows: PackedFloat32Array = info.get("planes", PackedFloat32Array())
-		if rows.size() < 12:
-			continue
-		var rel: Transform3D = inv * (m[2] as Transform3D)
-		for j in 3:
-			var ej := Vector3.ZERO
-			ej[j] = 1.0
-			var d: Vector3 = rel.basis * ej
-			var along := d.dot(e)
-			if absf(along) < 0.99 * d.length():
-				continue
-			for s in 2:
-				var slot := (j * 2 + s) * 2
-				var area := rows[slot + 1]
-				if area <= 0.0:
-					continue
-				var pos := rel.origin[ai] + along * rows[slot]
-				# Mesh side s (0 = +e_j) faces +axis when e_j maps onto +axis.
-				var k := 0 if ((s == 0) == (along > 0.0)) else 2
-				if area > float(best[k + 1]):
-					best[k] = pos
-					best[k + 1] = area
-					found = true
-	if not found:
-		return null
-	var la: AABB = rec["laabb"]
-	return [snappedf(float(best[0]), 0.001), snappedf(float(best[1]), 0.0001), snappedf(float(best[2]), 0.001), snappedf(float(best[3]), 0.0001), snappedf(la.position[ai], 0.001), snappedf(la.end[ai], 0.001)]
-
-
-# ---------------------------------------------------------------------------
 # orientation of long props near a wall
 # ---------------------------------------------------------------------------
 
@@ -1988,7 +1938,7 @@ func _scan_long_props() -> Array:
 		var sz := la.size.z
 		var length := maxf(sx, sz)
 		var depth := minf(sx, sz)
-		if length < 0.6 or length < 1.8 * maxf(depth, 0.001) or (rec["mount"] as Vector3) != Vector3.ZERO:
+		if length < 0.6 or length < 1.8 * maxf(depth, 0.001):
 			continue
 		var lax := Vector3(1, 0, 0) if sx >= sz else Vector3(0, 0, 1)
 		var wl: Vector3 = xf.basis * lax
@@ -2071,8 +2021,8 @@ func _scan_uv() -> Array:
 			if front != Vector3.ZERO:
 				wfront = ((rec["xf"] as Transform3D).basis * front).normalized()
 			# Per candidate triangle: visible (the view ray lands on it), or
-			# covered (an insert or a mounted piece sits within 0.3 m in front of
-			# it: a door, a shutter). Covered somewhere + visible here = exposed here.
+			# covered (an insert sits within 0.3 m in front of it: a door, a
+			# shutter). Covered somewhere + visible here = exposed here.
 			var mask_bits := 0
 			var covered_bits := 0
 			var viewer_out: Variant = null
@@ -2094,7 +2044,7 @@ func _scan_uv() -> Array:
 						if viewer_out == null:
 							viewer_out = _a3(viewer)
 							center_out = _a3(cw)
-				elif hi >= 0 and hp.distance_to(cw) <= 0.3 and (String((_inst[hi] as Dictionary)["role"]) == "insert" or String((_inst[hi] as Dictionary)["role"]) == "mount"):
+				elif hi >= 0 and hp.distance_to(cw) <= 0.3 and String((_inst[hi] as Dictionary)["role"]) == "insert":
 					covered_bits |= 1 << ti
 			if mask_bits != 0 or covered_bits != 0:
 				shown.append([int(rec["i"]), mask_bits, viewer_out, center_out, covered_bits])
@@ -2141,7 +2091,7 @@ func _scan_zfight_geometry() -> Dictionary:
 		var fid: int = km[0]
 		if not _mesh_info.has(fid):
 			# Dressing (decals, overlay cards) skips the mesh pass.
-			_mesh_info[fid] = _analyze_mesh(km[1] as Mesh, false, false, true)
+			_mesh_info[fid] = _analyze_mesh(km[1] as Mesh, false, true)
 		_zf_groups[fid] = _finalize_groups(_mesh_info[fid] as Dictionary)
 	# Within one mesh: groups of different surfaces on one plane.
 	var in_mesh: Array = []
@@ -2489,7 +2439,7 @@ func _zf_pair(ra: Dictionary, rb: Dictionary, pairs: Dictionary) -> void:
 			return
 	var ga: Dictionary = ra["g"]
 	var gb: Dictionary = rb["g"]
-	var row := [a, b, snappedf(area, 0.001), snappedf(gap, 0.00001), _a3(centre), _a3(na, 0.0001), snappedf(30.0 if view.is_empty() else float(view[0]), 0.01), ("typical view distance" if view.is_empty() else String(view[2])), seen, _zf_flags(ra["node"] as Node, ra["mat"], a), _zf_flags(rb["node"] as Node, rb["mat"], b), _mat_name(ra["mat"], int(ga["s"])), _mat_name(rb["mat"], int(gb["s"])), facing < 0, snappedf(area, 0.001), 1, _rel(ra["node"] as Node), _rel(rb["node"] as Node)]
+	var row := [a, b, snappedf(area, 0.001), snappedf(gap, 0.00001), _a3(centre), _a3(na, 0.0001), snappedf(30.0 if view.is_empty() else float(view[0]), 0.01), ("typical view distance" if view.is_empty() else String(view[2])), seen, _zf_flags(ra["mat"]), _zf_flags(rb["mat"]), _mat_name(ra["mat"], int(ga["s"])), _mat_name(rb["mat"], int(gb["s"])), facing < 0, snappedf(area, 0.001), 1, _rel(ra["node"] as Node), _rel(rb["node"] as Node)]
 	if prev != null:
 		row[14] = (prev as Array)[14]
 		row[15] = (prev as Array)[15]
@@ -2549,8 +2499,7 @@ func _zf_within(key: int, mesh_name: String, uses: Array) -> Array:
 			seen = _zf_seen(view[1] as Vector3, c)
 	if shows.is_empty():
 		return []
-	var first_node: Node = (uses[0] as Array)[1]
-	return [mesh_name, int(ga2["s"]), int(gb2["s"]), _mat_name(ga2["mat"], int(ga2["s"])), _mat_name(gb2["mat"], int(gb2["s"])), snappedf(float(best[0]), 0.001), snappedf(float(best[1]), 0.00001), shows, uses.size(), _a3(centre_w), _a3(normal_w, 0.0001), snappedf(view_d, 0.01), view_k, seen, _zf_flags(first_node, ga2["mat"], int(shows[0])), _zf_flags(first_node, gb2["mat"], int(shows[0])), int(best[5]) < 0]
+	return [mesh_name, int(ga2["s"]), int(gb2["s"]), _mat_name(ga2["mat"], int(ga2["s"])), _mat_name(gb2["mat"], int(gb2["s"])), snappedf(float(best[0]), 0.001), snappedf(float(best[1]), 0.00001), shows, uses.size(), _a3(centre_w), _a3(normal_w, 0.0001), snappedf(view_d, 0.01), view_k, seen, _zf_flags(ga2["mat"]), _zf_flags(gb2["mat"]), int(best[5]) < 0]
 
 
 # The material a surface renders with on this node: override, surface
@@ -2577,64 +2526,30 @@ static func _mat_name(mat: Variant, s: int) -> String:
 	return "surface %d" % s
 
 
-# Why a coplanar pair may be intentional (the judge demotes it to look):
-# render_priority, a shader or material that offsets depth or the vertex
-# along the normal, a decal or overlay by name.
-func _zf_flags(node: Node, mat: Variant, rec_i: int) -> Array:
+# Why a coplanar pair may be intentional (the judge demotes it to look), from
+# the material alone: render_priority, a material or shader that offsets
+# depth or the vertex along the normal, a see-through (alpha) material drawn
+# after the opaque pass like decals and overlays, or no depth test / write.
+func _zf_flags(mat: Variant) -> Array:
 	var out: Array = []
 	if mat is Material:
 		var m := mat as Material
 		if m.render_priority != 0:
 			out.append("render_priority %d" % m.render_priority)
-		if m is BaseMaterial3D and (m as BaseMaterial3D).grow and absf((m as BaseMaterial3D).grow_amount) > 0.0:
-			out.append("material grows along the normal")
-		if m is ShaderMaterial and (m as ShaderMaterial).shader != null and _re_offset.search((m as ShaderMaterial).shader.code) != null:
-			out.append("shader offsets depth or the vertex along the normal")
-	var names := String(node.name) + " " + String((_inst[rec_i] as Dictionary)["piece"]) + " " + _mat_name(mat, 0)
-	if _re_decal.search(names.to_lower()) != null:
-		out.append("named as a decal or overlay")
-	return out
-
-
-# ---------------------------------------------------------------------------
-# insert_host: what sits around each insert
-# ---------------------------------------------------------------------------
-
-func _scan_inserts() -> Array:
-	var out: Array = []
-	var done := 0
-	var total := 0
-	for rec in _inst:
-		if rec["role"] != "insert" or not bool(rec["in"]):
-			continue
-		total += 1
-		if _over():
-			continue
-		done += 1
-		var fit: Dictionary = (rec["man"] as Dictionary)["fits_into"]
-		var xf: Transform3D = rec["xf"]
-		var near: Array = []
-		for other in _inst:
-			if other == rec:
-				continue
-			var oxf: Transform3D = other["xf"]
-			if oxf.origin.distance_to(xf.origin) > 1.5:
-				continue
-			near.append([int(other["i"]), String(other["piece"]), _a3(oxf.origin, 0.0001), _b9(oxf.basis)])
-			if near.size() >= 12:
-				break
-		var center: Vector3 = (rec["waabb"] as AABB).get_center()
-		var containing: Array = []
-		for other in _inst:
-			if other == rec or other["role"] != "wall":
-				continue
-			if (other["waabb"] as AABB).grow(0.05).has_point(center):
-				containing.append(int(other["i"]))
-				if containing.size() >= 4:
-					break
-		var off: Variant = fit.get("local_offset_m", [0, 0, 0])
-		out.append([int(rec["i"]), String(fit.get("piece", "")), off, _a3(xf.origin, 0.0001), _b9(xf.basis), near, containing])
-	_count("insert_host", done, total)
+		if m is BaseMaterial3D:
+			var bm := m as BaseMaterial3D
+			if bm.grow and absf(bm.grow_amount) > 0.0:
+				out.append("material grows along the normal")
+			if bm.no_depth_test or bm.depth_draw_mode == BaseMaterial3D.DEPTH_DRAW_DISABLED:
+				out.append("material skips the depth test or depth writes")
+		if m is ShaderMaterial and (m as ShaderMaterial).shader != null:
+			var code := (m as ShaderMaterial).shader.code
+			if _re_offset.search(code) != null:
+				out.append("shader offsets depth or the vertex along the normal")
+			if code.contains("depth_test_disabled") or code.contains("depth_draw_never"):
+				out.append("shader skips the depth test or depth writes")
+		if _mat_see_through(m):
+			out.append("see-through material (alpha): drawn after opaque surfaces, like a decal or overlay")
 	return out
 
 
@@ -2857,11 +2772,9 @@ func _instance_rows() -> Array:
 			row["lo"] = _a3((node as Node3D).position, 0.0001)
 		if rec.has("clear"):
 			row["cl"] = rec["clear"]
-		if (rec["mount"] as Vector3) != Vector3.ZERO:
-			row["mh"] = _a3(rec["mount"], 1.0)
-			row["ms"] = String(rec.get("mount_src", ""))
-		var man: Dictionary = rec["man"]
-		if man.has("category"):
-			row["cat"] = String(man["category"])
+		# Why it has its role (geometry and engine data: see _classify_shapes).
+		row["w"] = String(rec.get("why", ""))
+		if rec.has("line"):
+			row["ln"] = int(rec["line"])
 		rows.append(row)
 	return rows

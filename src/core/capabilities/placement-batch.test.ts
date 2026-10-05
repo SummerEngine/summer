@@ -120,8 +120,7 @@ describe("executePlacementBatch", () => {
     expect(send).not.toHaveBeenCalled();
   });
 
-  // Field evidence (proof run, 2026-10-04): a 28-piece batch took 57 engine
-  // requests (2N + 1).
+  // A placed batch used to cost 2N + 1 engine requests.
   it("costs N + 2 requests for N placed pieces, at most 200 transforms per request", async () => {
     const { send, requests } = fakeEngine();
     const ops = Array.from({ length: 250 }, (_, i) => piece(`P${i}`, { position: [i, 0, 0] }));

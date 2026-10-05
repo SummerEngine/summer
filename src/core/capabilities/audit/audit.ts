@@ -32,7 +32,6 @@ import {
   AUDIT_DEFAULT_LIMIT,
   AUDIT_MAX_BUDGET_MS,
   AUDIT_MAX_LIMIT,
-  AUDIT_MAX_MANIFESTS,
   AUDIT_MIN_BUDGET_MS,
   type AuditCheck,
   type SceneAuditArgs,
@@ -42,10 +41,8 @@ import {
   groupRepeats,
   judgeDuplicates,
   judgeFloorGaps,
-  judgeInserts,
   judgeLights,
   judgeLongProps,
-  judgeMounts,
   judgeOverlaps,
   judgeResources,
   judgeSupport,
@@ -54,7 +51,6 @@ import {
   judgeUv,
   judgeZFight,
   judgeZFightGeometry,
-  parsePackGrounds,
   type AuditIssue,
   type InstRow,
   type KernelResult,
@@ -95,18 +91,8 @@ export interface AuditFailure {
 
 export type AuditResult = AuditSuccess | AuditFailure;
 
-const MANIFEST_PATTERN = /^res:\/\/[A-Za-z0-9_\-./ ]{1,480}\.json$/;
-
 function fail(failure_reason: string, error: string, hint?: string, detail?: Record<string, unknown>): AuditFailure {
   return { ok: false, failure_reason, error, ...(hint ? { hint } : {}), ...(detail ? { detail } : {}) };
-}
-
-export function validateManifestPath(path: string): string {
-  const p = path;
-  if (!MANIFEST_PATTERN.test(p) || p !== p.trim() || p.includes("..") || p.slice(5).includes("//")) {
-    throw new ToolInputError(`manifests: ${JSON.stringify(path).slice(0, 80)} is not a res:// .json path (letters, digits, _ - . / and spaces only, no ".."). Nothing was sent.`);
-  }
-  return p;
 }
 
 export interface ValidatedAuditArgs {
@@ -116,7 +102,6 @@ export interface ValidatedAuditArgs {
   minSeverity: Severity;
   offset: number;
   limit: number;
-  manifests: string[];
   render: "sheet" | "none";
   budgetMs: number;
 }
@@ -131,8 +116,6 @@ export function validateAuditArgs(args: SceneAuditArgs): ValidatedAuditArgs {
   const limit = args.limit ?? AUDIT_DEFAULT_LIMIT;
   if (!Number.isInteger(offset) || offset < 0) throw new ToolInputError("offset must be a non-negative integer. Nothing was sent.");
   if (!Number.isInteger(limit) || limit < 1 || limit > AUDIT_MAX_LIMIT) throw new ToolInputError(`limit must be 1-${AUDIT_MAX_LIMIT}. Nothing was sent.`);
-  const manifests = (args.manifests ?? []).map(validateManifestPath);
-  if (manifests.length > AUDIT_MAX_MANIFESTS) throw new ToolInputError(`manifests: at most ${AUDIT_MAX_MANIFESTS}. Nothing was sent.`);
   const budgetMs = args.budget_ms ?? AUDIT_DEFAULT_BUDGET_MS;
   if (!Number.isInteger(budgetMs) || budgetMs < AUDIT_MIN_BUDGET_MS || budgetMs > AUDIT_MAX_BUDGET_MS) {
     throw new ToolInputError(`budget_ms must be an integer ${AUDIT_MIN_BUDGET_MS}-${AUDIT_MAX_BUDGET_MS}. Nothing was sent.`);
@@ -145,7 +128,6 @@ export function validateAuditArgs(args: SceneAuditArgs): ValidatedAuditArgs {
     minSeverity: args.min_severity ?? "look",
     offset,
     limit,
-    manifests,
     render: args.render ?? "none",
     budgetMs,
   };
@@ -158,14 +140,11 @@ export function judgeAll(result: KernelResult, checks: readonly AuditCheck[]): A
   const lines = Array.isArray(result.lines) ? result.lines : [];
   const issues: AuditIssue[] = [];
   if (want.has("through_hole")) issues.push(...judgeThroughHoles(lines, inst));
-  if (want.has("floor_gap")) issues.push(...judgeFloorGaps(result.floors, inst, parsePackGrounds(result.packs)));
-  const mounts = judgeMounts(Array.isArray(result.mounts) ? result.mounts : [], inst, want);
-  issues.push(...mounts.issues);
+  if (want.has("floor_gap")) issues.push(...judgeFloorGaps(result.floors, inst));
   if (want.has("floating") || want.has("sunken")) {
-    issues.push(...judgeSupport(Array.isArray(result.support) ? result.support : [], inst, mounts.wallMounted).filter((i) => want.has(i.check)));
+    issues.push(...judgeSupport(Array.isArray(result.support) ? result.support : [], inst).filter((i) => want.has(i.check)));
   }
   if (want.has("interpenetration")) issues.push(...judgeOverlaps(Array.isArray(result.overlaps) ? result.overlaps : [], inst));
-  if (want.has("insert_host")) issues.push(...judgeInserts(Array.isArray(result.inserts) ? result.inserts : [], inst));
   if (want.has("orientation")) issues.push(...judgeLongProps(Array.isArray(result.long_props) ? result.long_props : [], inst));
   if (want.has("uv_stretch")) issues.push(...judgeUv(Array.isArray(result.uv) ? result.uv : [], inst));
   const dup = judgeDuplicates(inst);
@@ -217,7 +196,6 @@ export async function sceneAudit(client: AuditClient, rawArgs: SceneAuditArgs): 
     mode: "audit",
     checks: args.checks,
     ...(args.root ? { root: args.root } : {}),
-    manifests: args.manifests,
     poses: args.render === "sheet",
     budget_ms: args.budgetMs,
   };

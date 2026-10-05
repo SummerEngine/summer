@@ -79,7 +79,7 @@ describe("corridor axis choice", () => {
   it("prefers a long narrow free line, clipped to the subject bounds + 2 m", () => {
     const runs: CorridorRun[] = [
       { seed: [0, 1.6, 0], dir: [1, 0, 0], fwd: 4, back: 4, left: 10, right: 10 }, // open square
-      { seed: [0, 1.6, 0], dir: [0, 0, 1], fwd: 120, back: 9, left: 1.2, right: 1.4 }, // alley to the street
+      { seed: [0, 1.6, 0], dir: [0, 0, 1], fwd: 120, back: 9, left: 1.2, right: 1.4 }, // lane to the street
     ];
     const [best] = chooseCorridorAxis(runs, box);
     expect(best!.dir).toEqual([0, 0, 1]);

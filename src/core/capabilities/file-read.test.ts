@@ -24,7 +24,7 @@ function fileClient(content: string, options: { truncatedAt?: number } = {}) {
 }
 
 const read = (client: ReturnType<typeof fileClient>, args: Partial<ReadFileArgs>) =>
-  readProjectFileWindow(client, { path: "res://data/pieces.json", max_bytes: 200_000, ...args } as ReadFileArgs) as Promise<{
+  readProjectFileWindow(client, { path: "res://data/kit_manifest.json", max_bytes: 200_000, ...args } as ReadFileArgs) as Promise<{
     ok?: boolean;
     failure_reason?: string;
     error?: string;
@@ -35,9 +35,9 @@ const PIECES = JSON.stringify(
   {
     about: "kit",
     pieces: {
-      alley_floor_a: { scene: "res://kit/alley_floor_a.tscn", size_m: [5.28, 0.105, 7.478] },
-      wall_tripple_standard_01: { scene: "res://kit/wall_01.tscn", fits_into: null },
-      wall_tripple_standard_door_02: { scene: "res://kit/door_02.tscn", fits_into: null },
+      floor_tile_a: { scene: "res://kit/floor_tile_a.tscn", size_m: [5, 0.1, 7.5] },
+      wall_plain_a: { scene: "res://kit/wall_01.tscn", fits_into: null },
+      wall_door_b: { scene: "res://kit/door_02.tscn", fits_into: null },
       "odd.name": { scene: "res://kit/odd.tscn" },
     },
     list: [10, 20, 30],
@@ -92,18 +92,18 @@ describe("line and byte windows", () => {
 });
 
 describe("JSON selection", () => {
-  it("json_path returns one entry of a big pieces.json", async () => {
-    const result = await read(fileClient(PIECES), { json_path: "pieces.wall_tripple_standard_door_02" });
+  it("json_path returns one entry of a big JSON file", async () => {
+    const result = await read(fileClient(PIECES), { json_path: "pieces.wall_door_b" });
     expect(JSON.parse(result.data.content)).toEqual({ scene: "res://kit/door_02.tscn", fits_into: null });
-    expect(result.data.json).toMatchObject({ json_path: "pieces.wall_tripple_standard_door_02", type: "object", total_keys: 2 });
+    expect(result.data.json).toMatchObject({ json_path: "pieces.wall_door_b", type: "object", total_keys: 2 });
   });
 
   it("keys keeps matching object keys (globs); keys_only lists names", async () => {
-    const picked = await read(fileClient(PIECES), { json_path: "pieces", keys: ["wall_tripple_*"] });
-    expect(Object.keys(JSON.parse(picked.data.content))).toEqual(["wall_tripple_standard_01", "wall_tripple_standard_door_02"]);
+    const picked = await read(fileClient(PIECES), { json_path: "pieces", keys: ["wall_*"] });
+    expect(Object.keys(JSON.parse(picked.data.content))).toEqual(["wall_plain_a", "wall_door_b"]);
     expect(picked.data.json).toMatchObject({ total_keys: 4, matched_keys: 2 });
     const names = await read(fileClient(PIECES), { json_path: "pieces", keys_only: true });
-    expect(JSON.parse(names.data.content)).toEqual(["alley_floor_a", "wall_tripple_standard_01", "wall_tripple_standard_door_02", "odd.name"]);
+    expect(JSON.parse(names.data.content)).toEqual(["floor_tile_a", "wall_plain_a", "wall_door_b", "odd.name"]);
   });
 
   it("brackets reach keys with dots and array items", async () => {
@@ -117,7 +117,7 @@ describe("JSON selection", () => {
   it("a missing path names what is there", async () => {
     const result = await read(fileClient(PIECES), { json_path: "pieces.nope" });
     expect(result).toMatchObject({ ok: false, failure_reason: "json_path_not_found", resolved: "pieces" });
-    expect((result as unknown as { here: { keys: string[] } }).here.keys).toContain("alley_floor_a");
+    expect((result as unknown as { here: { keys: string[] } }).here.keys).toContain("floor_tile_a");
   });
 
   it("refuses non-JSON and keys on an array", async () => {
@@ -129,7 +129,7 @@ describe("JSON selection", () => {
     const client = fileClient(PIECES);
     const result = (await dispatchTool(
       "read-file",
-      { path: "res://data/pieces.json", json_path: "pieces", keys_only: true },
+      { path: "res://data/kit_manifest.json", json_path: "pieces", keys_only: true },
       { engine: async () => client as never }
     )) as { data: { content: string } };
     expect(JSON.parse(result.data.content)).toHaveLength(4);

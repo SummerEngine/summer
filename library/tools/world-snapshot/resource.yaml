@@ -59,7 +59,7 @@ input_schema:
       description: Skip this many matching nodes (path-sorted) before listing — page with the result's next_offset.
     path_prefix:
       type: string
-      description: Only this subtree, the node at this scene-relative path and everything below it, e.g. 'House3' or 'Alley2/Props'.
+      description: Only this subtree, the node at this scene-relative path and everything below it, e.g. 'House3' or 'Lane2/Props'.
     classes:
       type: array
       items:

@@ -5,20 +5,20 @@ import { dispatchTool } from "./tool-dispatch.js";
 const PIECES = [
   "{",
   ' "pieces": {',
-  '  "door_tripple_standard_03": {',
+  '  "door_b": {',
   '   "scene": "res://kit/door_03.tscn",',
-  '   "fits_into": "wall_tripple_standard_door_02",',
+  '   "fits_into": "wall_door_b",',
   '   "local_offset_m": [',
   "     0,",
   "     0,",
-  "     -0.105",
+  "     -0.1",
   "   ]",
   "  }",
   " }",
   "}",
 ].join("\n");
 
-function grepClient(result: unknown, files: Record<string, string> = { "res://kit/pieces.json": PIECES }) {
+function grepClient(result: unknown, files: Record<string, string> = { "res://kit/kit_manifest.json": PIECES }) {
   return {
     executeOps: vi.fn(async () => result),
     readProjectFile: vi.fn(async (path: string) =>
@@ -33,7 +33,7 @@ const matchResult = {
     {
       ok: true,
       op: "Grep",
-      matches: [{ file: "res://kit/pieces.json", line: 5, content: '"fits_into": "wall_tripple_standard_door_02",', matchStart: 4, matchEnd: 15 }],
+      matches: [{ file: "res://kit/kit_manifest.json", line: 5, content: '"fits_into": "wall_door_b",', matchStart: 4, matchEnd: 15 }],
       totalMatches: 1,
       filesSearched: 1,
       returned: 1,
@@ -50,7 +50,7 @@ describe("summer_grep", () => {
       { op: "Grep", pattern: "fits_into", maxResults: 50, path: "res://kit", glob: "*.json", caseSensitive: true },
     ]);
     expect(result).toMatchObject({ ok: true, returned: 1, files_with_matches: 1, truncated: false });
-    expect(result.matches).toEqual([{ file: "res://kit/pieces.json", line: 5, text: '"fits_into": "wall_tripple_standard_door_02",' }]);
+    expect(result.matches).toEqual([{ file: "res://kit/kit_manifest.json", line: 5, text: '"fits_into": "wall_door_b",' }]);
     expect(client.readProjectFile).not.toHaveBeenCalled();
   });
 
@@ -58,11 +58,11 @@ describe("summer_grep", () => {
     const client = grepClient(matchResult);
     const result = (await grepProject(client, { pattern: "fits_into", context_lines: 4 })) as { matches: Array<Record<string, unknown>> };
     expect(result.matches[0]).toEqual({
-      file: "res://kit/pieces.json",
+      file: "res://kit/kit_manifest.json",
       line: 5,
-      text: '   "fits_into": "wall_tripple_standard_door_02",',
-      before: ["{", ' "pieces": {', '  "door_tripple_standard_03": {', '   "scene": "res://kit/door_03.tscn",'],
-      after: ['   "local_offset_m": [', "     0,", "     0,", "     -0.105"],
+      text: '   "fits_into": "wall_door_b",',
+      before: ["{", ' "pieces": {', '  "door_b": {', '   "scene": "res://kit/door_03.tscn",'],
+      after: ['   "local_offset_m": [', "     0,", "     0,", "     -0.1"],
     });
   });
 
@@ -82,7 +82,7 @@ describe("summer_grep", () => {
 
   it("hints at .gitignore when nothing matched without a glob", async () => {
     const empty = { ok: true, results: [{ ok: true, op: "Grep", matches: [], totalMatches: 0, returned: 0, truncated: false }] };
-    const result = (await grepProject(grepClient(empty), { pattern: "x", path: "res://starter" })) as { notes: string[] };
+    const result = (await grepProject(grepClient(empty), { pattern: "x", path: "res://assets" })) as { notes: string[] };
     expect(result.notes.join(" ")).toContain(".gitignore");
   });
 

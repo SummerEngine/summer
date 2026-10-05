@@ -5,7 +5,7 @@ summary: Measure a 3D asset file without adding it to a scene — AABB, origin, 
 use_when:
   - learning a kit piece's real size, origin and which way it faces before placing it
   - finding a piece's front and back planes (largest planar faces with their normals) or its pipe and duct ends (open boundary loops)
-  - reading the Marker3D anchors or collision shapes a pack ships
+  - reading the Marker3D anchors or collision shapes a kit piece ships with
 do_not_use_when:
   - the piece is already in the scene and you need what surrounds it — summer_starcast
   - you need the measurement between two placed nodes — summer_measure

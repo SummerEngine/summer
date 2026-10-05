@@ -79,6 +79,7 @@ var _ms: Dictionary = {}
 var _nodes := 0
 var _hidden := 0
 var _multimesh := 0
+var _screen_space := 0
 var _inst: Array = []
 var _lights: Array = []
 var _cameras: Array = []
@@ -375,7 +376,7 @@ func _run() -> void:
 	_result["stats"] = {
 		"nodes": _nodes, "hidden_skipped": _hidden, "instances": _inst.size(), "mesh_instances": _count_meshes(),
 		"unique_meshes": _mesh_info.size(), "tris_unique": _tris_unique(), "bodies": _bodies.size(), "lights": _lights.size(),
-		"multimesh_skipped": _multimesh, "rays": _rays,
+		"multimesh_skipped": _multimesh, "screen_space_skipped": _screen_space, "rays": _rays,
 	}
 	_result["manifests"] = _manifest_loaded
 	_result["ok"] = true
@@ -422,6 +423,11 @@ func _collect() -> void:
 			_lights.append(node)
 		elif node is MeshInstance3D:
 			var mi := node as MeshInstance3D
+			# Screen-space effects (a post-process quad, never culled) are not
+			# scene geometry: they sit "at the origin" and "inside" whatever is there.
+			if mi.extra_cull_margin >= 1000.0 or mi.custom_aabb.size.length() > 1000.0:
+				_screen_space += 1
+				continue
 			if mi.mesh == null or mi.mesh.get_surface_count() == 0:
 				if _empty_meshes.size() < 64:
 					_empty_meshes.append([_rel(mi), owner_i])
@@ -945,6 +951,10 @@ func _mesh_name(mesh: Mesh) -> String:
 # ---------------------------------------------------------------------------
 # Physics space from the visible meshes (dressing excluded).
 # ---------------------------------------------------------------------------
+
+static func _is_identity(xf: Transform3D) -> bool:
+	return xf.origin.length() < 0.001 and (xf.basis.x - Vector3(1, 0, 0)).length() < 0.0001 and (xf.basis.y - Vector3(0, 1, 0)).length() < 0.0001 and (xf.basis.z - Vector3(0, 0, 1)).length() < 0.0001
+
 
 static func _is_rigid(b: Basis) -> bool:
 	return absf(b.x.length() - 1.0) < 0.001 and absf(b.y.length() - 1.0) < 0.001 and absf(b.z.length() - 1.0) < 0.001 \
@@ -2797,6 +2807,11 @@ func _instance_rows() -> Array:
 		var node: Node = rec["node"]
 		if node is Node3D:
 			row["lo"] = _a3((node as Node3D).position, 0.0001)
+			# transform: an identity LOCAL transform under an identity parent is
+			# what a never-placed piece looks like; a placed one is not.
+			row["li"] = _is_identity((node as Node3D).transform)
+			var par := node.get_parent()
+			row["pi"] = not (par is Node3D) or _is_identity((par as Node3D).global_transform)
 		if rec.has("clear"):
 			row["cl"] = rec["clear"]
 		if (rec["mount"] as Vector3) != Vector3.ZERO:

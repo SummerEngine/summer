@@ -81,8 +81,9 @@ describe("summer_scene_audit — MCP face", () => {
     expect(Buffer.byteLength(result.content[0]!.text!)).toBeLessThanOrEqual(5000);
     const body = JSON.parse(result.content[0]!.text!);
     expect(body).toMatchObject({ ok: true, tool: "summer_scene_audit" });
-    // 120 floating crates, plus the one left exactly at the origin.
-    expect(body.total).toBe(121);
+    // 120 floating crates. The one at x 0 is one of a row of siblings
+    // (placed, not left at the origin).
+    expect(body.total).toBe(120);
     expect(body.next_offset).toBeGreaterThan(0);
   });
 

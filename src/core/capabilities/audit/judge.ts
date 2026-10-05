@@ -12,6 +12,7 @@
 import { add, length, normalize, scale, sub, type Vec3 } from "../seeing/math.js";
 import type { AuditCheck, Severity } from "./args.js";
 import {
+  axisName,
   basisAngleDegrees,
   basisColumns,
   clusterSamples,
@@ -21,6 +22,7 @@ import {
   footprintExtent,
   isFrontBackSymmetric,
   lineAngleDegrees,
+  localAxisName,
   matchInsertHost,
   median,
   mostCommon,
@@ -90,6 +92,9 @@ export interface InstRow {
   /** Mount axis (local) and where it came from (manifest). */
   mh?: Vec3;
   ms?: string;
+  /** Its LOCAL transform is identity / its parent's GLOBAL transform is identity. */
+  li?: boolean;
+  pi?: boolean;
 }
 
 export interface KernelResult {
@@ -1180,8 +1185,8 @@ export function judgeZFight(lines: unknown[], floors: Record<string, unknown> | 
       path: subject.p,
       pos: v2(center),
       why: `coplanar overlapping faces with ${other.p}: ${z.count} ray(s) see both within 3 mm (flicker)`,
-      ev: { other: other.p, rays: z.count, extent_m: v2(ext), normal: v2(z.n) },
-      next: `summer_measure ${subject.p} vs ${other.p}`,
+      ev: { other: other.p, rays: z.count, extent_m: v2(ext), normal: v2(z.n), nudge: nudgeAxes(subject, z.n) },
+      next: `summer_measure ${subject.p} vs ${other.p}; nudge it along world ${axisName(z.n)[1]} (the plane's normal; its local ${localAxisName(subject.b, z.n)[1]})`,
       score: z.count,
       frame: { focus: z.p, size: Math.max(1, length(ext)), dirs: z.clear > 0 ? [{ dir: normalize(z.n), clear: z.clear, pref: 1 }] : [] },
     });
@@ -1195,6 +1200,12 @@ function gapText(gap: number): string {
 }
 
 const mm = (m: number) => Math.round(m * 10000) / 10;
+
+/** Which way to nudge a z-fighting face: the plane's normal as a world axis
+ *  and as the piece's own local axis (what summer_set_prop moves). */
+export function nudgeAxes(subject: InstRow, normal: Vec3): { world: string; local: string } {
+  return { world: axisName(normal), local: localAxisName(subject.b, normal) };
+}
 
 /**
  * z_fight from geometry: the kernel's planar face groups, compared between
@@ -1261,10 +1272,12 @@ export function judgeZFightGeometry(geo: Record<string, unknown> | undefined, in
         far,
         surfaces: [String(raw[11] ?? ""), String(raw[12] ?? "")],
         seen,
+        normal: v2(normal),
+        nudge: nudgeAxes(subject, normal),
         ...(groups > 1 ? { faces: groups } : {}),
         ...(demoted.length ? { demoted } : {}),
       },
-      next: `summer_zoom at ${fmt(centre)}; move one face more than ${mm(tol)} mm off the plane (summer_measure ${subject.p} vs ${other.p}) or remove the doubled face`,
+      next: `summer_zoom at ${fmt(centre)}; move ${subject.p} more than ${mm(tol)} mm along world ${axisName(normal)[1]} (the shared plane's normal ${fmt(normal)}; its local ${localAxisName(subject.b, normal)[1]}), not along the facade, or remove the doubled face`,
       score: total,
       frame: { focus: centre, size: Math.max(1, Math.sqrt(total) * 2), dirs: [{ dir: normalize(normal), clear: Math.min(6, Math.max(1.5, view)), pref: 1 }] },
     });
@@ -1353,11 +1366,43 @@ export function judgeLights(lights: Record<string, unknown> | undefined, inst: I
 
 const PLACED_ROLES = new Set(["prop", "mount", "insert", "wall", "struct"]);
 
+/**
+ * Pieces left at the scene origin, never placed: the global origin within
+ * 1 cm AND an identity LOCAL transform AND an identity parent, and not part
+ * of a structured layout (touching another piece, or one of a row of
+ * siblings along a line through the origin). A module placed so its corner is
+ * the world origin, or one placed by its parent, is not flagged.
+ */
+export function unplacedAtOrigin(inst: readonly InstRow[]): Set<InstRow> {
+  const out = new Set<InstRow>();
+  const parentOf = (p: string) => (p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : ".");
+  const siblings = new Map<string, InstRow[]>();
+  for (const r of inst) {
+    const k = parentOf(r.p);
+    const list = siblings.get(k);
+    if (list) list.push(r);
+    else siblings.set(k, [r]);
+  }
+  for (const r of inst) {
+    if (!r.in || !PLACED_ROLES.has(r.r) || length(r.o) >= 0.01 || r.li !== true || r.pi === false) continue;
+    const touching = inst.some((o) => o !== r && o.r !== "underlay" && o.r !== "floor" && boundsTouch(r, o, 0.02) && length(sub(o.o, r.o)) >= 0.01);
+    if (touching) continue;
+    const sibs = (siblings.get(parentOf(r.p)) ?? []).filter((o) => o !== r && o.lo && length(o.lo) >= 0.01);
+    // A row through the origin: two or more siblings whose local positions
+    // are zero on two of three axes (a facade laid out from 0 along X).
+    const row = sibs.filter((o) => o.lo!.filter((x) => Math.abs(x) < 0.01).length >= 2).length >= 2;
+    if (row) continue;
+    out.add(r);
+  }
+  return out;
+}
+
 export function judgeTransforms(inst: InstRow[]): AuditIssue[] {
   const out: AuditIssue[] = [];
   const bounded = inst.filter((r) => r.r !== "underlay" && !r.nan);
   const bounds = robustBounds(bounded.map((r) => r.c));
   const medianDist = median(bounded.map((r) => length(r.o)));
+  const atOrigin = unplacedAtOrigin(inst);
   for (const r of inst) {
     if (!r.in) continue;
     const frame = instFrame(r);
@@ -1371,8 +1416,13 @@ export function judgeTransforms(inst: InstRow[]): AuditIssue[] {
     const smin = Math.min(...r.sc);
     const smax = Math.max(...r.sc);
     if (smin > 0 && smax / smin > 1.01) push("look", `non-uniform scale ${v2(r.sc).join(" x ")}: textures and fitted openings stretch`, { scale: v2(r.sc) }, `summer_set_prop ${r.p} scale`, smax / smin - 1);
-    if (length(r.o) < 0.01 && PLACED_ROLES.has(r.r) && medianDist > 8) {
-      push("warn", "sits exactly at the scene origin while the scene is elsewhere (likely never placed)", { origin: v2(r.o), median_distance_m: r2(medianDist) }, `summer_inspect_node ${r.p}`, 1);
+    if (atOrigin.has(r)) {
+      const shared = atOrigin.size;
+      if (shared >= 2) {
+        push("warn", `${shared} pieces share the identity transform at the scene origin (local and parent transforms both identity, no neighbours): likely never placed`, { origin: v2(r.o), shared, others: [...atOrigin].filter((o) => o !== r).slice(0, 2).map((o) => o.p) }, `summer_inspect_node ${r.p}`, 1 + shared / 10);
+      } else if (medianDist > 8) {
+        push("look", "sits at the scene origin with an identity local transform under an identity parent, away from the rest of the scene and touching nothing: check that it was placed", { origin: v2(r.o), median_distance_m: r2(medianDist) }, `summer_inspect_node ${r.p}`, 0.5);
+      }
     }
     const dist = length(sub(r.c, bounds.center));
     const extreme = Math.max(Math.abs(r.c[0]), Math.abs(r.c[1]), Math.abs(r.c[2]));

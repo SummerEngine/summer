@@ -30,6 +30,7 @@ import {
   AUDIT_CHECKS,
   AUDIT_DEFAULT_BUDGET_MS,
   AUDIT_DEFAULT_LIMIT,
+  AUDIT_MAX_ACCEPT,
   AUDIT_MAX_BUDGET_MS,
   AUDIT_MAX_LIMIT,
   AUDIT_MAX_MANIFESTS,
@@ -38,6 +39,7 @@ import {
   type SceneAuditArgs,
   type Severity,
 } from "./args.js";
+import { AcceptStoreError, applyAccepts, mergeAccepts, parseAcceptFile, validIssueKey, writeAcceptFile } from "./accept.js";
 import { judgeGaps } from "./gaps.js";
 import {
   groupRepeats,
@@ -120,6 +122,8 @@ export interface ValidatedAuditArgs {
   manifests: string[];
   render: "sheet" | "none";
   budgetMs: number;
+  accept: Array<{ key: string; reason: string }>;
+  showAccepted: boolean;
 }
 
 /** Strict validation; throws ToolInputError (nothing is sent). */
@@ -139,6 +143,15 @@ export function validateAuditArgs(args: SceneAuditArgs): ValidatedAuditArgs {
     throw new ToolInputError(`budget_ms must be an integer ${AUDIT_MIN_BUDGET_MS}-${AUDIT_MAX_BUDGET_MS}. Nothing was sent.`);
   }
   const root = args.root !== undefined && args.root.trim() !== "" && args.root.trim() !== "." ? validateNodePath(args.root.trim(), "root") : undefined;
+  const accept = (args.accept ?? []).map((a) => {
+    if (!a || typeof a.key !== "string" || !validIssueKey(a.key)) {
+      throw new ToolInputError(`accept: ${JSON.stringify(a?.key ?? a).slice(0, 80)} is not an issue key (check:path@x,y,z, from issues[].key). Nothing was sent.`);
+    }
+    const reason = typeof a.reason === "string" ? a.reason.trim() : "";
+    if (reason.length < 3 || reason.length > 200 || /[\r\n]/.test(reason)) throw new ToolInputError("accept: each reason must be one line of 3-200 characters. Nothing was sent.");
+    return { key: a.key, reason };
+  });
+  if (accept.length > AUDIT_MAX_ACCEPT) throw new ToolInputError(`accept: at most ${AUDIT_MAX_ACCEPT} per call. Nothing was sent.`);
   return {
     ...(args.scenePath !== undefined ? { scenePath: validateScenePath(args.scenePath) } : {}),
     checks: AUDIT_CHECKS.filter((c) => checks.includes(c)),
@@ -149,6 +162,8 @@ export function validateAuditArgs(args: SceneAuditArgs): ValidatedAuditArgs {
     manifests,
     render: args.render ?? "none",
     budgetMs,
+    accept,
+    showAccepted: args.show_accepted === true,
   };
 }
 
@@ -252,10 +267,33 @@ export async function sceneAudit(client: AuditClient, rawArgs: SceneAuditArgs): 
     const judgeMs = Date.now() - judgeStarted;
     const partial = partialChecks(result.partial, args.checks);
     for (const c of judged.unmeasured) partial.checks[c] = 0;
-    const all = judged.issues;
-    const { counts, clean } = countIssues(all, args.checks, partial.checks);
+    // Accepted items: merge this call's accept list into the file, then hide
+    // what is accepted (stale entries show again).
+    let acceptEntries = parseAcceptFile(result.accept);
+    let acceptResult: Record<string, unknown> | undefined;
+    if (args.accept.length) {
+      const merged = mergeAccepts(acceptEntries, args.accept, judged.issues, scenePath);
+      acceptResult = { added: merged.added.length, ...(merged.refused.length ? { refused: merged.refused.slice(0, 5) } : {}) };
+      if (merged.entries) {
+        try {
+          await writeAcceptFile(client.getProjectRoot?.(), merged.entries);
+          acceptEntries = merged.entries;
+        } catch (err) {
+          const reason = err instanceof AcceptStoreError ? err.reason : "write_failed";
+          return fail(`accept_${reason}`, `Accepted items were not saved: ${err instanceof Error ? err.message : String(err)}`, "Run the audit without accept, or connect to the project's editor so its folder is known.");
+        }
+      }
+    }
+    const split = applyAccepts(judged.issues, acceptEntries, scenePath);
+    for (const st of split.stale) st.issue.acceptStale = st.why;
+    for (const a of split.accepted) a.issue.accepted = a.entry.reason;
+    const all = args.showAccepted ? judged.issues : split.shown;
+    const accepted = split.accepted.map((a) => a.issue);
+    const { counts, clean } = countIssues(split.shown, args.checks, partial.checks, accepted);
     const matching = filterIssues(all, args.minSeverity);
     const notes: string[] = ["Read-only: audited the SAVED file in a private copy (open tab, undo and file untouched); save first."];
+    if (accepted.length) notes.push(`${accepted.length} accepted item(s) ${args.showAccepted ? "listed (show_accepted)" : "hidden (counts.<check>.accepted; show_accepted:true lists them)"}${split.stale.length ? `; ${split.stale.length} shown again because their evidence changed (accept_stale)` : ""}.`);
+    else if (split.stale.length) notes.push(`${split.stale.length} accepted item(s) shown again because their evidence changed (accept_stale).`);
     notes.push(...judged.notes);
     if (args.minSeverity !== "look") notes.push(`min_severity ${args.minSeverity}: ${all.length - matching.length} lower-severity issue(s) hidden.`);
     const lights = lightStats(result);
@@ -277,6 +315,8 @@ export async function sceneAudit(client: AuditClient, rawArgs: SceneAuditArgs): 
       ms: timingPerCheck(result.ms as Record<string, unknown> | undefined, { judge: judgeMs, roundtrip }),
       ...(lights ? { lights } : {}),
       total: all.length,
+      ...(accepted.length || split.stale.length ? { accepted: { hidden: args.showAccepted ? 0 : accepted.length, stale: split.stale.length } } : {}),
+      ...(acceptResult ? { accept_result: acceptResult } : {}),
       notes,
     };
     let page = buildPage({ base, issues: matching, offset: args.offset, limit: args.limit });

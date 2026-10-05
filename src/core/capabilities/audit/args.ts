@@ -41,6 +41,10 @@ export const AUDIT_MAX_MANIFESTS = 8;
 export const AUDIT_DEFAULT_BUDGET_MS = 3000;
 export const AUDIT_MIN_BUDGET_MS = 250;
 export const AUDIT_MAX_BUDGET_MS = 60000;
+export const AUDIT_MAX_ACCEPT = 50;
+/** An issue key: check:node path@x,y,z (world position rounded to 0.1 m;
+ *  node names never contain ":" or "@"). */
+export const ISSUE_KEY_PATTERN = /^[a-z_]{3,24}:[^:@\n\r"\\]{1,300}@-?\d+(?:\.\d)?,-?\d+(?:\.\d)?,-?\d+(?:\.\d)?$/;
 
 export const sceneAuditShape = {
   scenePath: z
@@ -87,6 +91,21 @@ export const sceneAuditShape = {
     .describe(
       `Editor time for the whole audit (default ${AUDIT_DEFAULT_BUDGET_MS} ms, ${AUDIT_MIN_BUDGET_MS}-${AUDIT_MAX_BUDGET_MS}). Each check gets a share weighted by its usual cost (unused time passes on); a check past its share stops and counts.<check>.partial gives the share it covered. Under load, rerun the partial checks with checks:[...] or a larger budget.`
     ),
+  accept: z
+    .array(
+      z
+        .object({
+          key: z.string().min(8).max(360).describe("The issue's key from a previous result (issues[].key)."),
+          reason: z.string().min(3).max(200).describe("Why it is fine, e.g. \"inside-corner band overlap, hidden behind the corner piece\"."),
+        })
+        .strict()
+    )
+    .max(AUDIT_MAX_ACCEPT)
+    .optional()
+    .describe(
+      `Accept look or warn items you judged fine (up to ${AUDIT_MAX_ACCEPT} per call): [{key, reason}] with keys from this scene's issues. They are written to res://.summer/audit-accept.json (the only file the audit writes), then counted (counts.<check>.accepted) but hidden on every later audit, until their evidence changes materially (severity rises, or the measured size moves by over 25%): then they show again with accept_stale. Errors cannot be accepted.`
+    ),
+  show_accepted: z.boolean().optional().describe("List accepted items too (each with its accepted reason). Default false: hidden, only counted."),
   render: z
     .enum(["sheet", "none"])
     .optional()

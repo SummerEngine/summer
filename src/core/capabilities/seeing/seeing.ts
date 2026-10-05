@@ -41,6 +41,8 @@ import {
 import {
   chooseCorridorAxis,
   corridorBox,
+  corridorFloorY,
+  eyeBand,
   generateCandidates,
   SHOT_DEFAULTS,
   subjectSamples,
@@ -49,7 +51,18 @@ import {
   type ShotType,
   type SpawnInfo,
 } from "./candidates.js";
-import { pickTop, rejectionCounts, scoreMeasurement, viewProblem, type Measurement, type ScoredCandidate, type ViewProblem } from "./scoring.js";
+import {
+  EMPTY_LIMIT,
+  heightAboveGround,
+  pickTop,
+  rankOrder,
+  rejectionCounts,
+  scoreMeasurement,
+  viewProblem,
+  type Measurement,
+  type ScoredCandidate,
+  type ViewProblem,
+} from "./scoring.js";
 import { makeProbeDir, runProbe, type ProbeClient, type ProbeRun } from "./probe.js";
 import { SHOT_MAX_EDGE, ShotStore, ShotStoreError, type ShotWrite } from "./shot-store.js";
 import { readFile } from "node:fs/promises";
@@ -1328,6 +1341,48 @@ function readKeyLight(result: Record<string, unknown>): { path: string; directio
   return { path: String(raw.path ?? "?"), direction: [d[0]!, d[1]!, d[2]!] };
 }
 
+const fmt2 = (n: number) => (Math.round(n * 100) / 100).toFixed(2);
+
+/**
+ * The real camera height, said explicitly: the absolute y of the camera and
+ * its height above the first solid surface straight below it (the walkable
+ * surface for eye-level and corridor poses; for a high camera that can be a
+ * roof). `short` is for tile labels.
+ */
+export function cameraHeightText(pose: CameraPose, groundY: number | null | undefined, short = false): string {
+  const y = pose.position[1];
+  const h = heightAboveGround(pose.position, groundY);
+  if (short) return h === undefined ? `camera y ${fmt2(y)}, nothing below` : `camera ${fmt2(h)} m above surface (y ${fmt2(y)})`;
+  if (h === undefined) {
+    return groundY === null
+      ? `camera at y ${fmt2(y)} (absolute); no surface below it (world edge)`
+      : `camera at y ${fmt2(y)} (absolute); height above the surface below not measured`;
+  }
+  return `camera ${fmt2(h)} m above the surface below it (camera y ${fmt2(y)}, surface y ${fmt2(groundY as number)})`;
+}
+
+/** Where the corridor scan seeded: the walkable floor it found inside the
+ *  subject, or (declared) the subject's lowest point. */
+export interface CorridorScanFloor {
+  floor_y: number;
+  /** "walkable" (downward rays found it), "lowest_point" (none found), "caller". */
+  floor_source: string;
+  floor_hits?: number;
+  floor_rays?: number;
+}
+
+export function scanFloorText(floor: CorridorScanFloor, subject: Aabb): string {
+  if (floor.floor_source === "walkable") {
+    const votes = floor.floor_hits !== undefined && floor.floor_rays !== undefined ? ` (${floor.floor_hits} of ${floor.floor_rays} downward rays met a walkable surface)` : "";
+    const sunk = subject.position[1] < floor.floor_y - 0.05 ? `; the subject reaches ${fmt2(floor.floor_y - subject.position[1])} m below it (sunk walls or foundations), which is not floor` : "";
+    return `corridor scan seeded on the walkable floor at y ${fmt2(floor.floor_y)}${votes}${sunk}`;
+  }
+  if (floor.floor_source === "lowest_point") {
+    return `NOTE: the corridor scan found no walkable surface inside the subject and seeded from its lowest point (y ${fmt2(floor.floor_y)}); if that is under the floor, frame the corridor with summer_frame_nodes or pass a subject whose floor is walkable.`;
+  }
+  return `corridor scan seeded at y ${fmt2(floor.floor_y)} (${floor.floor_source})`;
+}
+
 function defaultBookmarkName(shot: ShotType, subject: string[] | undefined, spawn: string | undefined): string {
   const leaf = (subject?.[0] ?? spawn ?? "scene").split("/").pop() ?? "scene";
   return `${shot}_${leaf}`.replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 64);
@@ -1386,14 +1441,23 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
   const spawnInfo = pass1.result!.spawn as SpawnInfo | undefined;
   const keyLight = readKeyLight(pass1.result!);
   let corridorAxes: ReturnType<typeof chooseCorridorAxis> = [];
+  let scanFloor: CorridorScanFloor | undefined;
   if (shot === "corridor") {
-    const scan = pass1.result!.corridor_scan as { runs?: CorridorRun[] } | undefined;
+    const scan = pass1.result!.corridor_scan as ({ runs?: CorridorRun[] } & Partial<CorridorScanFloor>) | undefined;
+    if (scan && typeof scan.floor_y === "number") scanFloor = { floor_y: scan.floor_y, floor_source: String(scan.floor_source ?? "unknown"), ...(typeof scan.floor_hits === "number" ? { floor_hits: scan.floor_hits } : {}), ...(typeof scan.floor_rays === "number" ? { floor_rays: scan.floor_rays } : {}) };
     corridorAxes = chooseCorridorAxis(scan?.runs ?? [], subjectBox!);
     if (!corridorAxes.length) {
-      return fail("no_corridor_found", `No walkable corridor line was found inside ${subject!.join(", ")}: every free run from the scan seeds was shorter than 4 m or narrower than 1 m.`, "Check the subject is the corridor/lane node itself, or frame it with summer_frame_nodes instead.");
+      return fail(
+        "no_corridor_found",
+        `No walkable corridor line was found inside ${subject!.join(", ")}: every free run from the scan seeds was shorter than 4 m or narrower than 1 m.${scanFloor?.floor_source === "lowest_point" ? ` No walkable floor was found inside the subject either, so the seeds started from its lowest point (y ${fmt2(scanFloor.floor_y)}).` : ""}`,
+        "Check the subject is the corridor/lane node itself, or frame it with summer_frame_nodes instead.",
+        scanFloor ? { scan_floor: scanFloor } : undefined
+      );
     }
   }
-  const groundY = subjectBox ? subjectBox.position[1] : undefined;
+  // Corridors stand on the floor the scan found under its seed; other shots
+  // use the subject's lowest point for the low-angle rule.
+  const groundY = shot === "corridor" && corridorAxes[0] ? corridorFloorY(corridorAxes[0], args.eye_height) : subjectBox ? subjectBox.position[1] : undefined;
   const candidates: Candidate[] = generateCandidates({
     shot,
     ...(subjectBox ? { subject: subjectBox } : {}),
@@ -1414,7 +1478,17 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
       subjects: subject ?? [],
       tasks: ["measure"],
       occluders: occ,
-      candidates: candidates.map((c) => ({ position: [...c.position], look_at: [...c.look_at], fov: c.fov, samples: c.samples.map((s) => [...s]), min_clearance: c.min_clearance, low_angle_rule: c.low_angle_rule })),
+      candidates: candidates.map((c) => ({
+        position: [...c.position],
+        look_at: [...c.look_at],
+        fov: c.fov,
+        samples: c.samples.map((s) => [...s]),
+        min_clearance: c.min_clearance,
+        low_angle_rule: c.low_angle_rule,
+        // Eye mode: the kernel stands the camera at eye height above the
+        // walkable surface under it, moves it only horizontally, never up.
+        ...(c.eye ? { eye: { min: c.eye.min, max: c.eye.max, ...(c.eye.target !== undefined ? { target: c.eye.target } : {}), stand: [...c.eye.stand] } } : {}),
+      })),
       measure: { aspect, grid_cols: GRID_COLS, grid_rows: gridRows, subject_occludes: shot === "corridor", near_lens_radius: 0.3, sweep_radius: 0.15 },
       // A 4x4-pixel-per-cell beauty render per candidate, for the featureless
       // area and near/far value checks.
@@ -1424,7 +1498,7 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
   await pass2.dispose();
   if (!pass2.ok) return probeFailure(pass2);
   const measurements = (pass2.result!.measurements ?? []) as Measurement[];
-  const scoringSubject = shot === "corridor" ? corridorBox(corridorAxes[0]!, groundY ?? 0) : subjectBox;
+  const scoringSubject = shot === "corridor" ? corridorBox(corridorAxes[0]!, groundY!) : subjectBox;
   const scored: ScoredCandidate[] = measurements.map((m) =>
     scoreMeasurement(m, candidates[m.i]!, {
       shot,
@@ -1449,7 +1523,9 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
     return fail(
       "no_usable_pose",
       `All ${scored.length} candidate poses for a ${shot} shot were rejected.`,
-      "Loosen occluders (move blocking props to occluders.soft or occluders.ignore), raise max_soft_fraction, or pick a different subject/spawn.",
+      shot === "eye_level" || shot === "corridor"
+        ? "Eye-level and corridor cameras stand 1.5-1.8 m (or eye_height) above the walkable surface under them and are never raised; no_walkable_ground / not_walkable mean no floor within a step of the spawn's or corridor's floor below them. Loosen occluders (occluders.soft / occluders.ignore), raise max_soft_fraction, or pick a different subject/spawn."
+        : "Loosen occluders (move blocking props to occluders.soft or occluders.ignore), raise max_soft_fraction, or pick a different subject/spawn.",
       { rejected, occluders: occSummary.counts }
     );
   }
@@ -1473,7 +1549,7 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
     const dir = await makeProbeDir();
     const slots: SlotPlan[] = [];
     const tiles: TileSpec[] = shown.map((s, i) => {
-      const spec: TileSpec = { kind: "shot", rect: layout.rects[i]!, view: "beauty", label: `${i + 1} ${shot} ${s.total.toFixed(2)}`, pose: kernelPose(s.pose) };
+      const spec: TileSpec = { kind: "shot", rect: layout.rects[i]!, view: "beauty", label: `${i + 1} ${shot} ${s.total.toFixed(2)} · ${cameraHeightText(s.pose, s.groundY, true)}`, pose: kernelPose(s.pose) };
       if (i === 0 && bookmark && !(store instanceof ShotStoreError)) {
         spec.render_size = slotRenderSize(aspect, layout.tile);
         spec.capture_path = join(dir, "slot-0.jpg").replace(/\\/g, "/");
@@ -1501,7 +1577,12 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
     `Smart framing: ${shot} of ${subject?.join(", ") ?? `the view from ${spawn}`} in ${scenePath}. ${scored.length} candidates measured in-engine, ${scored.length - Object.values(rejected).reduce((a, b) => a + b, 0)} usable${Object.keys(rejected).length ? `; rejected ${Object.entries(rejected).map(([k, v]) => `${k} ${v}`).join(", ")}` : ""}.`,
     subjectBox ? `subject bounds: ${aabbLine(subjectBox)}` : "",
     shot === "corridor" ? `corridor axis: dir ${formatVector3(corridorAxes[0]!.dir)}, free ${(corridorAxes[0]!.usableFwd + corridorAxes[0]!.usableBack).toFixed(1)} m, width ${corridorAxes[0]!.width.toFixed(1)} m` : "",
-    spawnInfo ? `eye: ${spawnInfo.camera && args.eye_height === undefined ? `${spawnInfo.camera.path} at ${formatVector3(spawnInfo.camera.position)}` : `${spawnInfo.path} origin + ${args.eye_height ?? 1.6} m`}` : "",
+    spawnInfo
+      ? `eye: ${spawnInfo.camera && args.eye_height === undefined ? `${spawnInfo.camera.path} (its own height kept inside ${eyeBand(undefined).join("-")} m)` : `${args.eye_height ?? 1.6} m`} above the walkable surface under the camera at ${spawnInfo.path}; never raised`
+      : "",
+    shot === "corridor" ? `eye: ${args.eye_height ?? 1.6} m above the walkable surface under each camera (corridor floor y ${fmt2(groundY!)}); never raised` : "",
+    shot === "corridor" && scanFloor ? scanFloorText(scanFloor, subjectBox!) : "",
+    shot === "establishing" ? `tier rule: a pose showing more than ${Math.round(EMPTY_LIMIT * 100)}% empty ground or world edge ranks below every pose showing less` : "",
     `occluders: hard ${counts.hard ?? 0}, soft ${counts.soft ?? 0}, subject ${counts.subject ?? 0}, ignored ${counts.ignored ?? 0}, of which transparent (see-through cover) ${counts.translucent ?? 0} (by rule: ${Object.entries(byRule).map(([k, v]) => `${k} ${v}`).join(", ")})`,
     keyLight
       ? `key light: ${keyLight.path} travelling ${formatVector3(keyLight.direction)} (light term: side or front-side light scores best, light from straight behind the camera — a flat-lit face — worst)`
@@ -1516,9 +1597,11 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
     const img = s.stats?.flat !== undefined ? ` flat ${s.stats.flat}` : "";
     const backFaces = s.stats?.back ? ` back-faces ${s.stats.back}` : "";
     const worldEdge = s.stats?.void ? ` world-edge ${s.stats.void}` : "";
-    return `${i + 1}. score ${s.total.toFixed(2)} [${s.id}] ${poseLiteral(s.pose)}\n   ${termText}; sky ${s.stats?.sky} fg ${s.stats?.foreground} wall-behind ${s.stats?.wallBehind}${img}${backFaces}${worldEdge}${s.fill !== undefined ? ` fill ${s.fill}` : ""}${adj}${occl}${through}`;
+    const emptyGround = s.stats?.emptyGround ? ` empty-ground ${s.stats.emptyGround}` : "";
+    const tierNote = s.tier ? ` (over ${Math.round(EMPTY_LIMIT * 100)}% empty: ranked below every cleaner pose)` : "";
+    return `${i + 1}. score ${s.total.toFixed(2)} [${s.id}] ${poseLiteral(s.pose)}\n   ${cameraHeightText(s.pose, s.groundY)}\n   ${termText}; sky ${s.stats?.sky} fg ${s.stats?.foreground} wall-behind ${s.stats?.wallBehind}${img}${backFaces}${worldEdge}${emptyGround}${tierNote}${s.fill !== undefined ? ` fill ${s.fill}` : ""}${adj}${occl}${through}`;
   });
-  const ranked = scored.filter((x) => !x.rejected).sort((a, b) => b.total - a.total);
+  const ranked = scored.filter((x) => !x.rejected).sort(rankOrder);
   const spawnForward = scored.find((x) => x.id === "eye_spawn_forward");
   if (spawnForward) {
     const rank = ranked.indexOf(spawnForward) + 1;
@@ -1543,10 +1626,25 @@ export async function frameShot(client: SeeingClient, args: FrameShotArgs): Prom
       candidates: scored.length,
       rejected,
       occluders: { counts, by_rule: byRule, examples: occSummary.examples },
-      top: top.map((s) => ({ id: s.id, score: s.total, terms: s.terms, stats: s.stats, ...poseRecord(s.pose), ...(s.adjustments ? { adjustments: s.adjustments } : {}), ...(s.blockers ? { blockers: s.blockers } : {}) })),
+      top: top.map((s) => {
+        const h = heightAboveGround(s.pose.position, s.groundY);
+        return {
+          id: s.id,
+          score: s.total,
+          terms: s.terms,
+          stats: s.stats,
+          ...poseRecord(s.pose),
+          camera_y: Math.round(s.pose.position[1] * 1000) / 1000,
+          ...(s.groundY !== undefined ? { ground_y: s.groundY } : {}),
+          ...(h !== undefined ? { height_above_ground: Math.round(h * 1000) / 1000 } : {}),
+          ...(s.tier !== undefined ? { tier: s.tier } : {}),
+          ...(s.adjustments ? { adjustments: s.adjustments } : {}),
+          ...(s.blockers ? { blockers: s.blockers } : {}),
+        };
+      }),
       ...(bookmark ? { bookmark } : {}),
       ...(keyLight ? { key_light: { path: keyLight.path, direction: formatVector3(keyLight.direction) } } : {}),
-      ...(shot === "corridor" ? { corridor: corridorAxes[0] } : {}),
+      ...(shot === "corridor" ? { corridor: corridorAxes[0], ...(scanFloor ? { scan_floor: scanFloor } : {}) } : {}),
       timings,
       table: scored.map((s) => ({ id: s.id, total: s.total, ...(s.rejected ? { rejected: s.rejected } : {}), terms: s.terms })),
     },

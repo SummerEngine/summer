@@ -724,8 +724,13 @@ export class EngineApiClient {
     return this.request("GET", `/api/state/inspector?path=${encodeURIComponent(path)}`);
   }
 
-  async inspectResource(path: string): Promise<unknown> {
-    return this.request("GET", `/api/state/resource?path=${encodeURIComponent(path)}`);
+  /** A resource a node of the edited scene holds (state:resource takes
+   *  nodePath + property; resource FILES go through the inspect-resource probe). */
+  async inspectNodeResource(nodePath: string, property: string): Promise<unknown> {
+    return this.request(
+      "GET",
+      `/api/state/resource?nodePath=${encodeURIComponent(nodePath)}&property=${encodeURIComponent(property)}`
+    );
   }
 
   async getScriptErrors(path: string): Promise<unknown> {

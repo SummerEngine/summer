@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.3.0",
-      "content_hash": "e29e1693e10d8624208bd3780637d90dbb949f3143f4d388e193a7cd68502047",
+      "content_hash": "b5a4e1df3ffe576f81e99a3ffe61a3212699183dfca00ffa8ef6599537e78e96",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -6203,11 +6203,12 @@
     {
       "id": "tool/inspect-resource",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "7bd86bff26997dfe472c2b34506822091bdc76cb4aafe1cc532dd3686db286c8",
-      "summary": "Get all properties of a resource such as a material, mesh, shape, or environment.",
+      "version": "1.1.0",
+      "content_hash": "410f1d81c41b6b22a0bf754acf6d347b01313ee4fc0c546ba64852f951f1b5ed",
+      "summary": "Read a resource file (a mesh's AABB, surfaces and materials; a scene's nodes; any resource's non-default properties) or a resource a node holds.",
       "use_when": [
         "reading sub-properties that the node inspector only names",
+        "\"how many surfaces, triangles and which materials does this mesh .res have?\"",
         "\"what colour is this material?\" / \"how big is this collision shape?\"",
         "\"what settings does the WorldEnvironment resource have?\""
       ],

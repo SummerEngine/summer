@@ -9,6 +9,7 @@ import {
   type LoginSession,
 } from "../../core/auth.js";
 import { getCreatorApiUrl, resolveGatewayUrl } from "../../core/config.js";
+import { readStoredToken, runGamesLogin } from "../../core/web-publish/oauth.js";
 
 const POLL_INTERVAL_MS = 2000;
 // One generous window on ONE session id. First-time users may need to create an
@@ -25,8 +26,26 @@ export const loginCommand = new Command("login")
     "--creator",
     "Connect a separately scoped Summercraft creator token for publishing"
   )
+  .option(
+    "--games",
+    "Sign in with your Summer Engine account (browser, OAuth) to publish web games on summer.games"
+  )
   .option("--force", "Force re-authentication even if already logged in")
-  .action(async (opts: { creator?: boolean; force?: boolean }) => {
+  .action(async (opts: { creator?: boolean; games?: boolean; force?: boolean }) => {
+    if (opts.creator && opts.games) {
+      throw new Error("Choose one of --creator or --games.");
+    }
+    if (opts.games) {
+      const existingGames = await readStoredToken();
+      if (existingGames && !opts.force) {
+        console.log(
+          "Already signed in for summer.games publishing. Use --games --force to sign in again."
+        );
+        return;
+      }
+      await runGamesLogin();
+      return;
+    }
     if (opts.creator) {
       const existingCreator = await getCreatorToken();
       if (existingCreator && !opts.force) {

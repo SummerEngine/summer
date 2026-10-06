@@ -16,6 +16,8 @@ const LEGACY_CLOUD_TOKEN_FILE = "cloud-token";
 const CREATOR_TOKEN_FILE = "creator-token";
 const USER_FILE = "user.json";
 const METADATA_FILE = "credential-metadata.json";
+/** summer.games publishing OAuth credential (see core/web-publish/oauth.ts). */
+const GAMES_TOKEN_FILE = "games-oauth-token.json";
 
 export interface SummerUserInfo {
   id: string;
@@ -272,6 +274,7 @@ export async function clearAuthCredentials(): Promise<number> {
     CREATOR_TOKEN_FILE,
     USER_FILE,
     METADATA_FILE,
+    GAMES_TOKEN_FILE,
   ]) {
     if (await removeStoreFile(file)) removed += 1;
   }

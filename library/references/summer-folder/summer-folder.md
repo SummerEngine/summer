@@ -83,7 +83,7 @@ Then write the fact in normal Markdown so users can inspect and edit it:
 | `/play` | does NOT write here |
 | `/game-feel`, `/vfx-<effect>` | does NOT write here (VFX edits scenes/scripts) |
 | `/tune-performance` | optionally writes `.summer/perf-notes.md` if user requests |
-| `/setup-multiplayer` | optionally writes `.summer/multiplayer-architecture.md` |
+| `/multiplayer-*`, `/summer-*` | does NOT write here (writes `summer.build.json`, `world.json`, `network/`, `client/`, `authority/`) |
 | `/export-and-ship` | does NOT write here (writes export configs in `project.godot`) |
 
 ## Linter check (future)

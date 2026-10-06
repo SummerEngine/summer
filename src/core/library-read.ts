@@ -26,7 +26,7 @@
  *
  * Linked files: a body links files its entry ships (a skill's
  * `references/kit-placement-tools.md`) and other entries
- * (`../setup-multiplayer/SKILL.md`, `../../references/gd-style/gd-style.md`).
+ * (`../multiplayer-project/SKILL.md`, `../../references/gd-style/gd-style.md`).
  * Each loads by `<entry id>/<link as written>`, resolved inside library/ only
  * and for text files only; by the relative path alone when exactly one entry
  * ships it; and `reference/<slug>` that is no entry falls back to the one

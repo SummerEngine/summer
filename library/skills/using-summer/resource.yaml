@@ -1,6 +1,6 @@
 id: skill/using-summer
 kind: skill
-version: 1.0.4
+version: 1.0.5
 summary: Session bootstrap for Summer projects — establishes how to find and use Summer skills and the summer-engine MCP before any response.
 use_when:
   - starting any conversation in a Summer Engine project
@@ -25,7 +25,7 @@ related:
     - skill/debug
     - skill/design-mechanic
     - skill/design-level
-    - skill/setup-multiplayer
+    - skill/multiplayer
     - skill/art-direction
     - skill/brainstorm-game
     - skill/play

@@ -1,0 +1,36 @@
+id: skill/multiplayer-project
+kind: skill
+version: 1.0.0
+summary: "Set up a Summer multiplayer project: both entry scenes, World and queue files, joining, and a first Local Play run."
+use_when:
+  - "making a Summer game playable online or co-op: the first multiplayer setup"
+  - "adding multiplayer to a Summer game: the client and authority scenes, summer.build.json, world.json and joining a queue"
+  - "a Summer multiplayer project has no summer.build.json or world.json yet, or Local Play cannot find the World"
+  - "laying out a multiplayer project in client/, authority/ and network/ folders"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - multiplayer
+    - project
+    - scripting
+  modalities:
+    - scripts
+    - scenes
+    - project
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/multiplayer
+    - skill/multiplayer-movement
+    - skill/multiplayer-state
+    - skill/multiplayer-testing
+    - skill/multiplayer-publish
+    - skill/summer-matchmaking
+    - skill/summer-parties
+    - skill/summer-world-saves
+source: official
+license: MIT
+status: stable
+recommended: false

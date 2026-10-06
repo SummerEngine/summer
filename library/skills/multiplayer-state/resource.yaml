@@ -1,0 +1,35 @@
+id: skill/multiplayer-state
+kind: skill
+version: 1.0.0
+summary: "Authority-owned game state in Summer multiplayer: shared and private State groups, validated Commands, and Events."
+use_when:
+  - "score, health, doors, rounds, inventories or wallets in a Summer multiplayer game, and who owns them"
+  - "players need to collect, buy, use, open or trade things and the authority must validate it"
+  - "clients desync, cheat or double-spend; sending one-off effects to every player"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - multiplayer
+    - game-design
+    - scripting
+  modalities:
+    - scripts
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/multiplayer
+    - skill/multiplayer-movement
+    - skill/multiplayer-testing
+    - skill/summer-player-data
+    - skill/summer-match-results
+    - skill/multiplayer-project
+    - skill/summer-analytics
+    - skill/summer-store
+    - skill/summer-world-chat
+    - skill/summer-world-saves
+source: official
+license: MIT
+status: stable
+recommended: false

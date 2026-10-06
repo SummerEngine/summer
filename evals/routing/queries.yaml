@@ -106,13 +106,21 @@ queries:
 
   # ── Multiplayer ────────────────────────────────────────────────────────
   - query: "add a multiplayer lobby"
-    expected: [skill/setup-multiplayer]
+    expected: [skill/summer-matchmaking, skill/multiplayer]
   - query: "I want to play my game co-op with a friend online"
-    expected: [skill/setup-multiplayer, skill/peer-to-peer-multiplayer]
+    expected: [skill/multiplayer, skill/multiplayer-project]
   - query: "how do I stop clients from cheating their own health"
-    expected: [skill/host-authoritative-state]
+    expected: [skill/multiplayer-state]
   - query: "starting a multiplayer game from scratch, how should I architect the networking"
-    expected: [skill/peer-to-peer-multiplayer, skill/host-authoritative-state]
+    expected: [skill/multiplayer, skill/multiplayer-project]
+  - query: "the other player stutters and teleports around in my multiplayer game"
+    expected: [skill/multiplayer-movement]
+  - query: "publish my multiplayer game so my friends can join"
+    expected: [skill/multiplayer-publish, skill/multiplayer]
+  - query: "save each player's progress between matches"
+    expected: [skill/summer-player-data]
+  - query: "add a leaderboard to my online game"
+    expected: [skill/summer-leaderboards]
 
   # ── Rendering & look ───────────────────────────────────────────────────
   - query: "my grass lighting looks flat"

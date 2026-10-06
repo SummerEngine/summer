@@ -515,19 +515,6 @@
       ]
     },
     {
-      "id": "skill/host-authoritative-state",
-      "name": "host-authoritative-state",
-      "description": "Design a Summer game's authoritative state: what the authority owns, Commands for intent, authority-written State groups for shared and private state.",
-      "clients": "all",
-      "recommended": true,
-      "status": "stable",
-      "path": "library/skills/host-authoritative-state/",
-      "domains": [
-        "multiplayer",
-        "game-design"
-      ]
-    },
-    {
       "id": "skill/instantiate-asset-pack",
       "name": "instantiate-asset-pack",
       "description": "Import a whole create-asset-sheet pack into the scene: groups composites, sorts paint order, emits Sprite2D/Node2D/NinePatchRect ops to lay it out.",
@@ -582,6 +569,88 @@
       ]
     },
     {
+      "id": "skill/multiplayer",
+      "name": "multiplayer",
+      "description": "Start here for Summer multiplayer: how the authority, clients, Worlds and Sessions fit, and which skill comes next.",
+      "clients": "all",
+      "recommended": true,
+      "status": "stable",
+      "path": "library/skills/multiplayer/",
+      "domains": [
+        "multiplayer",
+        "project"
+      ]
+    },
+    {
+      "id": "skill/multiplayer-movement",
+      "name": "multiplayer-movement",
+      "description": "Client-side movement in Summer multiplayer: owners move instantly, others glide, the authority checks each pose.",
+      "clients": "all",
+      "recommended": false,
+      "status": "stable",
+      "path": "library/skills/multiplayer-movement/",
+      "domains": [
+        "multiplayer",
+        "character-controller",
+        "scripting"
+      ]
+    },
+    {
+      "id": "skill/multiplayer-project",
+      "name": "multiplayer-project",
+      "description": "Set up a Summer multiplayer project: both entry scenes, World and queue files, joining, and a first Local Play run.",
+      "clients": "all",
+      "recommended": false,
+      "status": "stable",
+      "path": "library/skills/multiplayer-project/",
+      "domains": [
+        "multiplayer",
+        "project",
+        "scripting"
+      ]
+    },
+    {
+      "id": "skill/multiplayer-publish",
+      "name": "multiplayer-publish",
+      "description": "Ship a hosted Summer multiplayer game: the summer.games bundle, server preset, pre-upload checks, and a new Build.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/multiplayer-publish/",
+      "domains": [
+        "multiplayer",
+        "deployment"
+      ]
+    },
+    {
+      "id": "skill/multiplayer-state",
+      "name": "multiplayer-state",
+      "description": "Authority-owned game state in Summer multiplayer: shared and private State groups, validated Commands, and Events.",
+      "clients": "all",
+      "recommended": false,
+      "status": "stable",
+      "path": "library/skills/multiplayer-state/",
+      "domains": [
+        "multiplayer",
+        "game-design",
+        "scripting"
+      ]
+    },
+    {
+      "id": "skill/multiplayer-testing",
+      "name": "multiplayer-testing",
+      "description": "Test a Summer multiplayer game with Local Play: several players, a bad network, bots, and what a passing run shows.",
+      "clients": "all",
+      "recommended": false,
+      "status": "stable",
+      "path": "library/skills/multiplayer-testing/",
+      "domains": [
+        "multiplayer",
+        "playtest",
+        "verification"
+      ]
+    },
+    {
       "id": "skill/music-track",
       "name": "music-track",
       "description": "Generate a looped or cinematic music track — loops authored at >=30s with a marked loop point, cinematic tracks at >=60s linear.",
@@ -632,19 +701,6 @@
       "domains": [
         "3d",
         "assets"
-      ]
-    },
-    {
-      "id": "skill/peer-to-peer-multiplayer",
-      "name": "peer-to-peer-multiplayer",
-      "description": "Start a multiplayer Summer game the right way: no peer-to-peer or host migration, a headless authority instead, and which Summer skill to build it with.",
-      "clients": "all",
-      "recommended": true,
-      "status": "stable",
-      "path": "library/skills/peer-to-peer-multiplayer/",
-      "domains": [
-        "multiplayer",
-        "project"
       ]
     },
     {
@@ -834,19 +890,6 @@
       ]
     },
     {
-      "id": "skill/setup-multiplayer",
-      "name": "setup-multiplayer",
-      "description": "Add multiplayer with Summer's netcode: a predicted SummerNetworkBehavior per player, a Spawner and Local Play tests. No Godot RPCs or MultiplayerSynchronizer.",
-      "clients": "all",
-      "recommended": true,
-      "status": "stable",
-      "path": "library/skills/setup-multiplayer/",
-      "domains": [
-        "multiplayer",
-        "scripting"
-      ]
-    },
-    {
       "id": "skill/skill-create",
       "name": "skill-create",
       "description": "Bootstrap a new Summer library skill (library/skills/<slug>/ with resource.yaml and SKILL.md), frontmatter, and stub sections.",
@@ -953,6 +996,136 @@
       "domains": [
         "2d",
         "assets"
+      ]
+    },
+    {
+      "id": "skill/summer-analytics",
+      "name": "summer-analytics",
+      "description": "Send game events to Summer analytics from the authority or client: fire-and-forget, never blocking gameplay.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-analytics/",
+      "domains": [
+        "multiplayer",
+        "scripting"
+      ]
+    },
+    {
+      "id": "skill/summer-friends",
+      "name": "summer-friends",
+      "description": "Summer friends in a game: a consented friends list, profile and chat screens, direct messages. Hosted only.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-friends/",
+      "domains": [
+        "multiplayer",
+        "ui"
+      ]
+    },
+    {
+      "id": "skill/summer-leaderboards",
+      "name": "summer-leaderboards",
+      "description": "Leaderboards in a Summer game: queue ratings from matches, and Game rankings your authority scores.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-leaderboards/",
+      "domains": [
+        "multiplayer",
+        "ui"
+      ]
+    },
+    {
+      "id": "skill/summer-match-results",
+      "name": "summer-match-results",
+      "description": "End a Summer match: report each player's win, loss or draw, show results on clients, then close the World.",
+      "clients": "all",
+      "recommended": false,
+      "status": "stable",
+      "path": "library/skills/summer-match-results/",
+      "domains": [
+        "multiplayer",
+        "gameplay"
+      ]
+    },
+    {
+      "id": "skill/summer-matchmaking",
+      "name": "summer-matchmaking",
+      "description": "Get players into matches with Summer matchmaking: queues, teams, accept prompts, join progress and failures.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-matchmaking/",
+      "domains": [
+        "multiplayer",
+        "ux"
+      ]
+    },
+    {
+      "id": "skill/summer-parties",
+      "name": "summer-parties",
+      "description": "Let a Summer party play together: the leader presses Play, members follow into the same match. Hosted only.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-parties/",
+      "domains": [
+        "multiplayer",
+        "ui"
+      ]
+    },
+    {
+      "id": "skill/summer-player-data",
+      "name": "summer-player-data",
+      "description": "Save a player's progress so it follows them to every match: authority load and commit, autosave, safe retries.",
+      "clients": "all",
+      "recommended": false,
+      "status": "stable",
+      "path": "library/skills/summer-player-data/",
+      "domains": [
+        "multiplayer",
+        "scripting"
+      ]
+    },
+    {
+      "id": "skill/summer-store",
+      "name": "summer-store",
+      "description": "Sell Summer items for Sparks in a multiplayer game: shop, checkout, owned items, authority entitlement checks.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-store/",
+      "domains": [
+        "multiplayer",
+        "gameplay"
+      ]
+    },
+    {
+      "id": "skill/summer-world-chat",
+      "name": "summer-world-chat",
+      "description": "Add match chat to a Summer game: one World channel shared by everyone in the match. Hosted only.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-world-chat/",
+      "domains": [
+        "multiplayer",
+        "ui"
+      ]
+    },
+    {
+      "id": "skill/summer-world-saves",
+      "name": "summer-world-saves",
+      "description": "Keep a persistent Summer World between restarts: checkpoint saves, restore before join, the final save.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-world-saves/",
+      "domains": [
+        "multiplayer",
+        "scripting"
       ]
     },
     {

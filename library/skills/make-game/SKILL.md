@@ -153,7 +153,7 @@ For each mechanic in the plan, **in order**:
 
 2. **Implement**:
    - Add the nodes via `summer_add_node` / `summer_set_prop`. Use `scene-composition` if the structure is non-trivial.
-   - For movement-class mechanics, prefer the matching pre-built skill: `fps-controller`, `peer-to-peer-multiplayer`, etc.
+   - For movement-class mechanics, prefer the matching pre-built skill: `fps-controller`, `multiplayer-movement`, etc.
    - Write GDScript with `gdscript-patterns` open.
 
 3. **Verify**:

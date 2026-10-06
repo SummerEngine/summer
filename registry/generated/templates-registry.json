@@ -270,9 +270,9 @@
     {
       "id": "template/3d-lan-multiplayer-starter",
       "slug": "3d-lan-multiplayer-starter",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "summary": "3D LAN multiplayer starter built on GDQuest's open-source work — host/join flow and synced players.",
-      "status": "stable",
+      "status": "deprecated",
       "aliases": [
         "template-3d-lan-multiplayer-starter"
       ],

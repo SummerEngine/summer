@@ -105,9 +105,9 @@ queries:
 
   # ── multiplayer ─────────────────────────────────────────────────────────
   - query: "let two people play together over the internet"
-    expected: [skill/setup-multiplayer, skill/peer-to-peer-multiplayer]
+    expected: [skill/multiplayer, skill/multiplayer-project]
   - query: "how do I stop players from cheating by editing their own health"
-    expected: [skill/host-authoritative-state]
+    expected: [skill/multiplayer-state]
 
   # ── project lifecycle / publishing ──────────────────────────────────────
   - query: "start a brand new empty project"

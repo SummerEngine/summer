@@ -1,0 +1,30 @@
+id: skill/summer-player-data
+kind: skill
+version: 1.0.0
+summary: "Save a player's progress so it follows them to every match: authority load and commit, autosave, safe retries."
+use_when:
+  - "saving player progress, coins, unlocks, levels or settings in a multiplayer Summer game so they persist between matches"
+  - "a player's progress resets every match, or saves fail with save_id_conflict, superseded or operation_in_progress"
+  - "showing a player's saved progress in the menu before they join a match"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - multiplayer
+    - scripting
+  modalities:
+    - scripts
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/multiplayer
+    - skill/multiplayer-state
+    - skill/multiplayer-testing
+    - skill/summer-world-saves
+    - skill/summer-leaderboards
+    - skill/summer-store
+source: official
+license: MIT
+status: stable
+recommended: false

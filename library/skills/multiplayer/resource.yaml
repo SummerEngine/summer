@@ -1,0 +1,33 @@
+id: skill/multiplayer
+kind: skill
+version: 1.0.0
+summary: "Start here for Summer multiplayer: how the authority, clients, Worlds and Sessions fit, and which skill comes next."
+use_when:
+  - "the user wants multiplayer, co-op, PvP, online play over the internet, or to play with friends in a Summer game"
+  - "the user asks for peer-to-peer, a player-hosted server, host migration, join-by-IP or a lobby"
+  - "deciding how a multiplayer Summer game is structured before writing networking code"
+  - "a multiplayer game was built with @rpc or MultiplayerSynchronizer and needs moving to Summer's networking"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - multiplayer
+    - project
+  modalities:
+    - scripts
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/multiplayer-project
+    - skill/multiplayer-movement
+    - skill/multiplayer-state
+    - skill/multiplayer-testing
+    - skill/multiplayer-publish
+    - skill/summer-matchmaking
+    - skill/summer-player-data
+source: official
+license: MIT
+status: stable
+recommended: true

@@ -1,0 +1,28 @@
+id: skill/multiplayer-publish
+kind: skill
+version: 1.0.0
+summary: "Ship a hosted Summer multiplayer game: the summer.games bundle, server preset, pre-upload checks, and a new Build."
+use_when:
+  - "publishing a hosted Summer multiplayer game online so other players can join it"
+  - "making the summer.games bundle of a hosted game: client.pck, server.pck and the Linux server preset"
+  - "a summer.games export error mentions summer.build.json, WorldDefinitions, the server preset, the composition or the source graph"
+facets:
+  lifecycle:
+    - launch
+  domains:
+    - multiplayer
+    - deployment
+  modalities:
+    - project
+    - docs
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/multiplayer
+    - skill/multiplayer-project
+    - skill/multiplayer-testing
+source: official
+license: MIT
+status: preview
+recommended: false

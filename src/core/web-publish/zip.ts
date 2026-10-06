@@ -12,7 +12,7 @@
  */
 import { createWriteStream } from "node:fs";
 import { open, readFile } from "node:fs/promises";
-import { deflateRawSync } from "node:zlib";
+import { deflateRawSync, inflateRawSync } from "node:zlib";
 
 export interface ZipEntryInfo {
   name: string;
@@ -23,6 +23,8 @@ export interface ZipEntryInfo {
   isDirectory: boolean;
   /** Unix mode from external attributes when the archive was made on Unix. */
   unixMode: number | null;
+  crc32: number;
+  localHeaderOffset: number;
 }
 
 export class ZipFormatError extends Error {
@@ -118,11 +120,13 @@ export async function readZipEntries(path: string, fileSize: number): Promise<Zi
     const nameLength = cd.readUInt16LE(p + 28);
     const extraLength = cd.readUInt16LE(p + 30);
     const commentLength = cd.readUInt16LE(p + 32);
+    const crc = cd.readUInt32LE(p + 16);
     const external = cd.readUInt32LE(p + 38);
+    let localHeaderOffset = cd.readUInt32LE(p + 42);
     const nameBytes = cd.subarray(p + 46, p + 46 + nameLength);
     const name = nameBytes.toString(flags & 0x0800 ? "utf8" : "latin1");
     const extra = cd.subarray(p + 46 + nameLength, p + 46 + nameLength + extraLength);
-    if (uncompressedSize === 0xffffffff || compressedSize === 0xffffffff) {
+    if (uncompressedSize === 0xffffffff || compressedSize === 0xffffffff || localHeaderOffset === 0xffffffff) {
       let q = 0;
       while (q + 4 <= extra.length) {
         const id = extra.readUInt16LE(q);
@@ -133,7 +137,11 @@ export async function readZipEntries(path: string, fileSize: number): Promise<Zi
             uncompressedSize = Number(extra.readBigUInt64LE(r));
             r += 8;
           }
-          if (compressedSize === 0xffffffff) compressedSize = Number(extra.readBigUInt64LE(r));
+          if (compressedSize === 0xffffffff) {
+            compressedSize = Number(extra.readBigUInt64LE(r));
+            r += 8;
+          }
+          if (localHeaderOffset === 0xffffffff) localHeaderOffset = Number(extra.readBigUInt64LE(r));
           break;
         }
         q += 4 + size;
@@ -148,10 +156,36 @@ export async function readZipEntries(path: string, fileSize: number): Promise<Zi
       flags,
       isDirectory: name.endsWith("/"),
       unixMode,
+      crc32: crc,
+      localHeaderOffset,
     });
     p += 46 + nameLength + extraLength + commentLength;
   }
   return entries;
+}
+
+/**
+ * Read and decompress one entry (stored or deflate), verifying its CRC.
+ * Refuses entries larger than `maxBytes` before reading them.
+ */
+export async function readZipEntryData(path: string, entry: ZipEntryInfo, maxBytes: number): Promise<Buffer> {
+  if (entry.uncompressedSize > maxBytes || entry.compressedSize > maxBytes) {
+    throw new ZipFormatError(`${entry.name} is too large to inspect.`);
+  }
+  const header = await readRange(path, entry.localHeaderOffset, 30);
+  if (header.length < 30 || header.readUInt32LE(0) !== LOCAL_SIG) {
+    throw new ZipFormatError(`${entry.name} has a damaged local header.`);
+  }
+  const start = entry.localHeaderOffset + 30 + header.readUInt16LE(26) + header.readUInt16LE(28);
+  const body = await readRange(path, start, entry.compressedSize);
+  let data: Buffer;
+  if (entry.method === 0) data = body;
+  else if (entry.method === 8) data = inflateRawSync(body, { maxOutputLength: Math.max(1, maxBytes) });
+  else throw new ZipFormatError(`${entry.name} uses unsupported compression method ${entry.method}.`);
+  if (data.length !== entry.uncompressedSize || crc32(data) !== entry.crc32) {
+    throw new ZipFormatError(`${entry.name} is damaged in the zip.`);
+  }
+  return data;
 }
 
 export interface ZipSourceFile {

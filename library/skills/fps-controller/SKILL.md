@@ -295,12 +295,14 @@ The skeleton doesn't change — only the `@export` defaults. That's the point of
 
 ## Networking Note
 
-For multiplayer, two viable patterns:
-
-1. **Server-authoritative (the open-source-friendly path):** gate physics with `if not multiplayer.is_server(): return` for non-local players, sync `global_position` + `velocity` via `MultiplayerSynchronizer`, send input via RPC. This skeleton is compatible — wrap the `_physics_process` body in a `is_local_player` check and add a separate `apply_remote_player_physics` that interpolates from network snapshots.
-2. **Custom action protocol (the shipped-game path):** the same skeleton runs on every client; one peer is "host" and broadcasts authoritative state at a fixed interval. Out of scope for this skill — see the multiplayer-and-networking category.
-
-The external-velocity accumulator pattern is a multiplayer-correctness gift either way: explosions and knockbacks happen on the host, the impulse is RPC'd to the affected player, and the client's controller absorbs it without fighting local input. That's why the subtract-previous-contribution trick at the top of `_physics_process` exists — it is the single fix that prevents knockback drift in netcode.
+In a Summer multiplayer game this controller stays on the player's own
+client: it moves the local body, and the client publishes the resulting pose
+for the authority to check (`multiplayer-movement`). Other players' bodies
+are drawn from their published poses, never simulated locally. Never sync it
+with `@rpc` or `MultiplayerSynchronizer`. Knockback, explosions and jump pads
+that the authority decides arrive as an authority `reset()` of the pose, or
+as State the owner applies to `external_velocity`; the external-velocity
+accumulator above absorbs them without fighting input.
 
 ## Beyond This Skeleton
 

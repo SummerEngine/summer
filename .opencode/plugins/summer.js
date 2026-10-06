@@ -31,7 +31,7 @@ Activate summer:using-summer FIRST in any Summer Engine session — it sets work
 
 Process skills (run before building): brainstorm-game, debug, play.
 Discipline skills (shape what you build): gdscript-patterns, scene-composition, art-direction, audio-direction, asset-strategy.
-Build skills (produce artifacts): fps-controller, design-mechanic, design-level, setup-multiplayer, host-authoritative-state, peer-to-peer-multiplayer, design-npc, 3d-lighting, ui-basics, game-feel, vfx-fire, vfx-smoke, vfx-lightning, vfx-hit-spark, tune-performance, export-and-ship, make-game.
+Build skills (produce artifacts): fps-controller, design-mechanic, design-level, multiplayer, multiplayer-project, multiplayer-movement, multiplayer-state, design-npc, 3d-lighting, ui-basics, game-feel, vfx-fire, vfx-smoke, vfx-lightning, vfx-hit-spark, tune-performance, export-and-ship, make-game.
 
 Always check for a relevant skill before responding. The summer-engine MCP server (npx -y summer-engine@latest mcp) provides identity-bound project file mutations plus scene, asset, render, play, and diagnostics tools. Git, shell, and grep remain native; do not bypass Summer's file guards when MCP is available.
 </EXTREMELY_IMPORTANT>`;

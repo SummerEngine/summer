@@ -236,8 +236,8 @@
     {
       "id": "reference/summer-folder",
       "kind": "reference",
-      "version": "1.0.1",
-      "content_hash": "ca4a34f41a96f756088c1ac618e8fbf53ed6aecf61ce99a440eb546fc36c8eb3",
+      "version": "1.0.2",
+      "content_hash": "80b561e1b454d38b7dc2952c2f7fd0d3b2a98ff1f596196c1213ef59cdec4b23",
       "summary": "The canonical layout of the project-scoped .summer/ folder — GameSoul.md, art/audio bibles, build plan, memory, and locked state.",
       "use_when": [
         "authoring a skill that writes durable design output or project memory",
@@ -732,8 +732,8 @@
     {
       "id": "skill/browse-templates",
       "kind": "skill",
-      "version": "1.0.4",
-      "content_hash": "e19996018524a4a541bede614376d4ee29a016e5465e27e8b3da2cb49ee43d1d",
+      "version": "1.0.5",
+      "content_hash": "40839f90ee91e540ef51c46d3cc1d09d1f78136a445df6df81169c79b7ef22de",
       "summary": "List available Summer Engine project templates, present the choices, and create a project from the chosen one via summer create.",
       "use_when": [
         "the user wants to see available Summer Engine project templates, start from an existing template, or asks what templates exist",
@@ -1492,8 +1492,8 @@
     {
       "id": "skill/fps-controller",
       "kind": "skill",
-      "version": "1.0.3",
-      "content_hash": "2be4e55c5110c8cf10b0e8aa9743a157adc415028be586adc867c3b7b7f8b536",
+      "version": "1.0.4",
+      "content_hash": "8d7b9c109f211afec7bccef73c9b9b8a8d4737637eebd931a2cc2d7ba929f792",
       "summary": "Production-quality first-person controller — WASD, mouse look, jump, coyote time, jump buffering, air control, and external-velocity handling.",
       "use_when": [
         "building an FPS, first-person movement, or a 3D character that walks, jumps, and reacts to external forces",
@@ -1728,42 +1728,6 @@
       "recommended": true
     },
     {
-      "id": "skill/host-authoritative-state",
-      "kind": "skill",
-      "version": "2.0.0",
-      "content_hash": "ecb3e1c3fabd48a4af7f878c5581af31b41c19fa35852dfc1a81a79fe1d6787b",
-      "summary": "Design a Summer game's authoritative state: what the authority owns, Commands for intent, authority-written State groups for shared and private state.",
-      "use_when": [
-        "designing a multiplayer Summer game's state: score, health, inventory, rounds, doors and who owns them",
-        "players need to buy, use, open or trade things in a multiplayer Summer game",
-        "clients desync, cheat, or fight over one object and the state ownership model is undefined"
-      ],
-      "facets": {
-        "lifecycle": [
-          "build"
-        ],
-        "domains": [
-          "multiplayer",
-          "game-design"
-        ],
-        "modalities": [
-          "scripts",
-          "scenes"
-        ]
-      },
-      "compatibility": {
-        "engine": ">=4.6"
-      },
-      "related": {
-        "skills": [
-          "skill/peer-to-peer-multiplayer",
-          "skill/setup-multiplayer"
-        ]
-      },
-      "status": "stable",
-      "recommended": true
-    },
-    {
       "id": "skill/instantiate-asset-pack",
       "kind": "skill",
       "version": "1.0.3",
@@ -1870,8 +1834,8 @@
     {
       "id": "skill/make-game",
       "kind": "skill",
-      "version": "1.0.3",
-      "content_hash": "03a6d9893371b1fd8f6b27cb7e7da2aab59c210b86fc8675cae68b982493c300",
+      "version": "1.0.4",
+      "content_hash": "b0ae9d3973e3a94881689e413006b89d9b6cc112f8fba8c5d866838e3baff5c3",
       "summary": "Orchestration spine for 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship — delegates to specialist skills.",
       "use_when": [
         "the user says 'make me a game', 'build me a game', 'I want to make a [genre] game', or 'let's build something' — running the full game-dev pipeline",
@@ -1908,6 +1872,261 @@
       },
       "status": "stable",
       "recommended": true
+    },
+    {
+      "id": "skill/multiplayer",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "7a7212fba4b1aee4d9c9e5649b2ade77836829e6d9409e010b9731d79232305b",
+      "summary": "Start here for Summer multiplayer: how the authority, clients, Worlds and Sessions fit, and which skill comes next.",
+      "use_when": [
+        "the user wants multiplayer, co-op, PvP, online play over the internet, or to play with friends in a Summer game",
+        "the user asks for peer-to-peer, a player-hosted server, host migration, join-by-IP or a lobby",
+        "deciding how a multiplayer Summer game is structured before writing networking code",
+        "a multiplayer game was built with @rpc or MultiplayerSynchronizer and needs moving to Summer's networking"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "project"
+        ],
+        "modalities": [
+          "scripts",
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer-project",
+          "skill/multiplayer-movement",
+          "skill/multiplayer-state",
+          "skill/multiplayer-testing",
+          "skill/multiplayer-publish",
+          "skill/summer-matchmaking",
+          "skill/summer-player-data"
+        ]
+      },
+      "status": "stable",
+      "recommended": true
+    },
+    {
+      "id": "skill/multiplayer-movement",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "ab68306636a6916030e4c1a6c3e06fb41cefb13bb1b47a5c2f0fa08e24067508",
+      "summary": "Client-side movement in Summer multiplayer: owners move instantly, others glide, the authority checks each pose.",
+      "use_when": [
+        "moving players in a Summer multiplayer game: each player's own character, other players drawn smoothly",
+        "remote players stutter, jitter, teleport or rubberband in a Summer multiplayer game",
+        "stopping speed hacks and teleport cheats on player movement; respawning or teleporting a player on purpose"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "character-controller",
+          "scripting"
+        ],
+        "modalities": [
+          "scripts",
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-project",
+          "skill/multiplayer-state",
+          "skill/multiplayer-testing"
+        ]
+      },
+      "status": "stable",
+      "recommended": false
+    },
+    {
+      "id": "skill/multiplayer-project",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "8adf72332e33f20842ea8f3f008b9704dd28aa25b923bdbf0f80109dcea2b400",
+      "summary": "Set up a Summer multiplayer project: both entry scenes, World and queue files, joining, and a first Local Play run.",
+      "use_when": [
+        "making a Summer game playable online or co-op: the first multiplayer setup",
+        "adding multiplayer to a Summer game: the client and authority scenes, summer.build.json, world.json and joining a queue",
+        "a Summer multiplayer project has no summer.build.json or world.json yet, or Local Play cannot find the World",
+        "laying out a multiplayer project in client/, authority/ and network/ folders"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "project",
+          "scripting"
+        ],
+        "modalities": [
+          "scripts",
+          "scenes",
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-movement",
+          "skill/multiplayer-state",
+          "skill/multiplayer-testing",
+          "skill/multiplayer-publish",
+          "skill/summer-matchmaking",
+          "skill/summer-parties",
+          "skill/summer-world-saves"
+        ]
+      },
+      "status": "stable",
+      "recommended": false
+    },
+    {
+      "id": "skill/multiplayer-publish",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "7d7f025367beb0f71efa96519a4325e9f3b97705c99ea597ea73aaf9da2052eb",
+      "summary": "Ship a hosted Summer multiplayer game: the summer.games bundle, server preset, pre-upload checks, and a new Build.",
+      "use_when": [
+        "publishing a hosted Summer multiplayer game online so other players can join it",
+        "making the summer.games bundle of a hosted game: client.pck, server.pck and the Linux server preset",
+        "a summer.games export error mentions summer.build.json, WorldDefinitions, the server preset, the composition or the source graph"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch"
+        ],
+        "domains": [
+          "multiplayer",
+          "deployment"
+        ],
+        "modalities": [
+          "project",
+          "docs"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-project",
+          "skill/multiplayer-testing"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
+      "id": "skill/multiplayer-state",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "64c1639093e7d51a39125236270278799fcddc42dab98cdf3d2649deec09d912",
+      "summary": "Authority-owned game state in Summer multiplayer: shared and private State groups, validated Commands, and Events.",
+      "use_when": [
+        "score, health, doors, rounds, inventories or wallets in a Summer multiplayer game, and who owns them",
+        "players need to collect, buy, use, open or trade things and the authority must validate it",
+        "clients desync, cheat or double-spend; sending one-off effects to every player"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "game-design",
+          "scripting"
+        ],
+        "modalities": [
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-movement",
+          "skill/multiplayer-testing",
+          "skill/summer-player-data",
+          "skill/summer-match-results",
+          "skill/multiplayer-project",
+          "skill/summer-analytics",
+          "skill/summer-store",
+          "skill/summer-world-chat",
+          "skill/summer-world-saves"
+        ]
+      },
+      "status": "stable",
+      "recommended": false
+    },
+    {
+      "id": "skill/multiplayer-testing",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "2226c9c44379c14c5e7693beb8957eab212c721206fbc272297ed9e284d764fc",
+      "summary": "Test a Summer multiplayer game with Local Play: several players, a bad network, bots, and what a passing run shows.",
+      "use_when": [
+        "running or testing a Summer multiplayer game locally with several players (Local Play)",
+        "testing multiplayer under latency, jitter or packet loss, or with bots",
+        "a multiplayer run says ok but nothing networked works, or deciding whether a multiplayer change is done"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build",
+          "support"
+        ],
+        "domains": [
+          "multiplayer",
+          "playtest",
+          "verification"
+        ],
+        "modalities": [
+          "scripts",
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-project",
+          "skill/multiplayer-movement",
+          "skill/multiplayer-state",
+          "skill/multiplayer-publish",
+          "skill/summer-friends",
+          "skill/summer-match-results",
+          "skill/summer-matchmaking",
+          "skill/summer-parties",
+          "skill/summer-player-data",
+          "skill/summer-store",
+          "skill/summer-world-chat"
+        ]
+      },
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/music-track",
@@ -2060,41 +2279,6 @@
       "recommended": false
     },
     {
-      "id": "skill/peer-to-peer-multiplayer",
-      "kind": "skill",
-      "version": "2.0.0",
-      "content_hash": "a601148eac5f71c38f46459af66a56b419b36d1774cff760a80daa0e31ed3190",
-      "summary": "Start a multiplayer Summer game the right way: no peer-to-peer or host migration, a headless authority instead, and which Summer skill to build it with.",
-      "use_when": [
-        "the user asks for peer-to-peer, a player-hosted server, host migration or join-by-IP multiplayer in a Summer game",
-        "starting a multiplayer Summer game from scratch and choosing its architecture"
-      ],
-      "facets": {
-        "lifecycle": [
-          "build"
-        ],
-        "domains": [
-          "multiplayer",
-          "project"
-        ],
-        "modalities": [
-          "scripts",
-          "scenes"
-        ]
-      },
-      "compatibility": {
-        "engine": ">=4.6"
-      },
-      "related": {
-        "skills": [
-          "skill/host-authoritative-state",
-          "skill/setup-multiplayer"
-        ]
-      },
-      "status": "stable",
-      "recommended": true
-    },
-    {
       "id": "skill/pixel-art",
       "kind": "skill",
       "version": "1.0.4",
@@ -2207,8 +2391,8 @@
     {
       "id": "skill/procedural-animation",
       "kind": "skill",
-      "version": "1.0.3",
-      "content_hash": "a4477d07d5ca297411ed891f6376c345b421db43426d70714536ac80d13ae0db",
+      "version": "1.0.4",
+      "content_hash": "476eac45175a9151cac7b2553624e7e541fbb8eb03c01236d27f82721e12320a",
       "summary": "Runtime bone modification on top of clips — head look-at, foot IK, hand-grabs-prop, additive lean, recoil. Code-and-modifier patterns, not generation.",
       "use_when": [
         "the user needs runtime-driven bone modification on top of clips — head look-at, foot IK on uneven ground, additive lean, hit recoil, ragdoll",
@@ -2637,42 +2821,6 @@
       "recommended": false
     },
     {
-      "id": "skill/setup-multiplayer",
-      "kind": "skill",
-      "version": "2.0.1",
-      "content_hash": "06400075202d1b757312fa1a3a43c8dd0f8ab7481d3d8f013f3219d6d1475585",
-      "summary": "Add multiplayer with Summer's netcode: a predicted SummerNetworkBehavior per player, a Spawner and Local Play tests. No Godot RPCs or MultiplayerSynchronizer.",
-      "use_when": [
-        "adding multiplayer to a Summer game: co-op, versus or a shared world, local or hosted",
-        "a solo game needs online or LAN players added",
-        "a multiplayer game rubberbands, desyncs or was built with @rpc / MultiplayerSynchronizer and needs moving to Summer's netcode"
-      ],
-      "facets": {
-        "lifecycle": [
-          "build"
-        ],
-        "domains": [
-          "multiplayer",
-          "scripting"
-        ],
-        "modalities": [
-          "scripts",
-          "scenes"
-        ]
-      },
-      "compatibility": {
-        "engine": ">=4.6"
-      },
-      "related": {
-        "skills": [
-          "skill/peer-to-peer-multiplayer",
-          "skill/host-authoritative-state"
-        ]
-      },
-      "status": "stable",
-      "recommended": true
-    },
-    {
       "id": "skill/skill-create",
       "kind": "skill",
       "version": "1.0.3",
@@ -2980,6 +3128,394 @@
       "recommended": false
     },
     {
+      "id": "skill/summer-analytics",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "7558853177577fbd5998c1aaf2dd5ce4710c7b0249bae5c434454d6ab48fcad5",
+      "summary": "Send game events to Summer analytics from the authority or client: fire-and-forget, never blocking gameplay.",
+      "use_when": [
+        "adding analytics, telemetry or event tracking to a Summer game: level completed, coin collected, tutorial funnel",
+        "deciding what to track on the client versus the authority, and how to name analytics events and properties",
+        "analytics capture fails with unavailable, capacity_exceeded or analytics_storage_limit_exceeded"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "scripting"
+        ],
+        "modalities": [
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-state",
+          "skill/summer-match-results",
+          "skill/summer-store"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
+      "id": "skill/summer-friends",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "ca70bb388a30e216ef2eb9ccd52feb7cb4a442724478bad4bf547131b846a4b4",
+      "summary": "Summer friends in a game: a consented friends list, profile and chat screens, direct messages. Hosted only.",
+      "use_when": [
+        "showing a friends list, who is online or which friends are playing this Summer game",
+        "opening a player's Summer profile, friends list or chat screen from inside a game",
+        "reading or writing a player's direct messages, or a friends call fails with permission_undeclared or permission_declined"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "ui"
+        ],
+        "modalities": [
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-testing",
+          "skill/summer-parties",
+          "skill/summer-world-chat"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
+      "id": "skill/summer-leaderboards",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "87cceb28b1893d024d24842332ff5059a73682acd46690aad60e3118419bd35e",
+      "summary": "Leaderboards in a Summer game: queue ratings from matches, and Game rankings your authority scores.",
+      "use_when": [
+        "the user wants a leaderboard, high scores, ranks, MMR, Elo or a 'top 50' screen in a Summer game",
+        "a rated queue should show each player's rating, standing or percentile",
+        "the authority should write a score, such as total coins or best time, to a Game-wide ranking",
+        "a co-op mode should rate players against the content with authority_v1 rating deltas"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "ui"
+        ],
+        "modalities": [
+          "scripts",
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/summer-matchmaking",
+          "skill/summer-match-results",
+          "skill/summer-player-data"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
+      "id": "skill/summer-match-results",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "d9c6d8e2ade6cbbf61841a30e92781ecea81dfa58c1859847a5be9afacb3e2fd",
+      "summary": "End a Summer match: report each player's win, loss or draw, show results on clients, then close the World.",
+      "use_when": [
+        "a multiplayer Summer game needs a winner, a game-over screen or a match that ends",
+        "reporting match outcomes, abandons or rating changes from the authority",
+        "players disconnect, reconnect or leave mid-match and the authority must handle it",
+        "the World should shut down after a match, or a persistent World runs several matches"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "gameplay"
+        ],
+        "modalities": [
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-state",
+          "skill/summer-matchmaking",
+          "skill/summer-leaderboards",
+          "skill/summer-world-saves",
+          "skill/multiplayer-testing",
+          "skill/summer-analytics"
+        ]
+      },
+      "status": "stable",
+      "recommended": false
+    },
+    {
+      "id": "skill/summer-matchmaking",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "3a8abe0ad4c52f564c271c3bf1a7586a9944ab99877f2f337a67fe8f6e186f50",
+      "summary": "Get players into matches with Summer matchmaking: queues, teams, accept prompts, join progress and failures.",
+      "use_when": [
+        "the user wants matchmaking, a lobby, a play button, quick play, ranked or casual modes in a multiplayer Summer game",
+        "declaring queues, player counts, teams (2v2, 5v5), rated queues or a ready check in summer.build.json",
+        "showing search progress, an Accept/Decline prompt, cancel search or join errors to players",
+        "the authority needs to know which team or queue each player is on"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "ux"
+        ],
+        "modalities": [
+          "scripts",
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-project",
+          "skill/multiplayer-testing",
+          "skill/summer-match-results",
+          "skill/summer-leaderboards",
+          "skill/summer-parties"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
+      "id": "skill/summer-parties",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "88bab0e56dc6dc3ea83873e464531f170b15a0845cfcb8747925f7fe29216c80",
+      "summary": "Let a Summer party play together: the leader presses Play, members follow into the same match. Hosted only.",
+      "use_when": [
+        "friends in a Summer party should land in the same multiplayer match: party play, play with friends, squad up",
+        "adding invite-friends and party buttons, a party roster or ready checks to a Summer game's menu",
+        "a party join fails with party_member_offline, party_not_searching or capability_unavailable"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "ui"
+        ],
+        "modalities": [
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-project",
+          "skill/multiplayer-testing",
+          "skill/summer-matchmaking",
+          "skill/summer-friends",
+          "skill/summer-world-chat"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
+      "id": "skill/summer-player-data",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "d65a852315fc4c0e3d3a1c59dd2af7653d3ea5209dbbd34fabaddc18827cb21b",
+      "summary": "Save a player's progress so it follows them to every match: authority load and commit, autosave, safe retries.",
+      "use_when": [
+        "saving player progress, coins, unlocks, levels or settings in a multiplayer Summer game so they persist between matches",
+        "a player's progress resets every match, or saves fail with save_id_conflict, superseded or operation_in_progress",
+        "showing a player's saved progress in the menu before they join a match"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "scripting"
+        ],
+        "modalities": [
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-state",
+          "skill/multiplayer-testing",
+          "skill/summer-world-saves",
+          "skill/summer-leaderboards",
+          "skill/summer-store"
+        ]
+      },
+      "status": "stable",
+      "recommended": false
+    },
+    {
+      "id": "skill/summer-store",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "70d4d2e36f10a1d5a72ed2f3e8a833d3514324e86fb4ee727f605e81cc6cf82b",
+      "summary": "Sell Summer items for Sparks in a multiplayer game: shop, checkout, owned items, authority entitlement checks.",
+      "use_when": [
+        "adding a shop, in-game purchases, cosmetics or skins sold for Sparks to a Summer game",
+        "checking on the authority that a player really owns an item before letting them use or equip it",
+        "checkout shows pending, manual_review, insufficient_funds or unavailable, or bought items don't appear"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "gameplay"
+        ],
+        "modalities": [
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-state",
+          "skill/multiplayer-testing",
+          "skill/summer-player-data",
+          "skill/summer-analytics"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
+      "id": "skill/summer-world-chat",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "dda281f1379c3be5814bc3bd81417efd3ba4ba2891691e911d64172fb8da2475",
+      "summary": "Add match chat to a Summer game: one World channel shared by everyone in the match. Hosted only.",
+      "use_when": [
+        "adding in-game text chat, match chat or a chat box to a multiplayer Summer game",
+        "chat messages fail with text_not_allowed, rate_limited or unavailable, or chat history looks incomplete",
+        "deciding where player chat should live instead of sending it through Commands or State"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "ui"
+        ],
+        "modalities": [
+          "scripts",
+          "ui"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-state",
+          "skill/multiplayer-testing",
+          "skill/summer-friends",
+          "skill/summer-parties"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
+      "id": "skill/summer-world-saves",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "46ca59c7ae9612cfa6d37c61e8e28789cca3920d823973393e36ea80c72d853c",
+      "summary": "Keep a persistent Summer World between restarts: checkpoint saves, restore before join, the final save.",
+      "use_when": [
+        "building a persistent World, shared base, farm or realm in a Summer game that must survive server restarts",
+        "saving and restoring World state with commit_save, load_save, finish_restore, save_requested or finish_snapshot",
+        "deciding whether progress belongs in a World save or in player data"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "scripting"
+        ],
+        "modalities": [
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-project",
+          "skill/multiplayer-state",
+          "skill/summer-player-data",
+          "skill/summer-match-results"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
       "id": "skill/text-to-motion",
       "kind": "skill",
       "version": "1.0.0",
@@ -3239,8 +3775,8 @@
     {
       "id": "skill/using-summer",
       "kind": "skill",
-      "version": "1.0.4",
-      "content_hash": "27980a37339ff2b75dd53ebf0fe39561a48ae3103f82b3aa7b96ce53ec45bfe9",
+      "version": "1.0.5",
+      "content_hash": "f2ab3f7a5ab1d593b2f7f3cbca7c8b9e5bc4162caae67ce9a2183ec520cd7564",
       "summary": "Session bootstrap for Summer projects — establishes how to find and use Summer skills and the summer-engine MCP before any response.",
       "use_when": [
         "starting any conversation in a Summer Engine project",
@@ -3272,7 +3808,7 @@
           "skill/debug",
           "skill/design-mechanic",
           "skill/design-level",
-          "skill/setup-multiplayer",
+          "skill/multiplayer",
           "skill/art-direction",
           "skill/brainstorm-game",
           "skill/play",
@@ -4129,8 +4665,8 @@
     {
       "id": "template/3d-lan-multiplayer-starter",
       "kind": "template",
-      "version": "1.0.1",
-      "content_hash": "8f42570dce914bdc5420a27aaace5331183b8c837c4a0dbac4e81a04f8aa9ebc",
+      "version": "1.0.2",
+      "content_hash": "846fc27f210946148cd76a3168095a8c700fc345eb60eac099179668483be4bd",
       "summary": "3D LAN multiplayer starter built on GDQuest's open-source work — host/join flow and synced players.",
       "use_when": [
         "starting a LAN or local multiplayer 3D game",
@@ -4148,7 +4684,7 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "deprecated"
     },
     {
       "id": "template/3d-open-world-explore-tps",

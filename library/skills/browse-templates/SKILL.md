@@ -11,7 +11,7 @@ paths: ["**/project.godot"]
 
 # /browse-templates — Pick a registry template and create a project from it
 
-Summer's templates are the pin manifests in `library/templates/<slug>/resource.yaml`, compiled into `registry/generated/templates-registry.json`: `3d-third-person-controller`, `3d-lan-multiplayer-starter`, `2d-platformer`, and so on. Each pinned template names a repo, an exact commit, and a tree digest; the two built-ins (`empty`, `3d-basic`) are generated locally. They're working starter projects — open in Summer Engine and play immediately.
+Summer's templates are the pin manifests in `library/templates/<slug>/resource.yaml`, compiled into `registry/generated/templates-registry.json`: `3d-third-person-controller`, `2d-platformer`, and so on. Each pinned template names a repo, an exact commit, and a tree digest; the two built-ins (`empty`, `3d-basic`) are generated locally. They're working starter projects — open in Summer Engine and play immediately.
 
 ## When to use this skill
 
@@ -99,7 +99,7 @@ Confirm it opens. Then invoke `play` to verify the template runs as expected bef
 Once the project is created and running, hand off cleanly. The next skill that fires depends on the template:
 
 - Third-person controller → likely `scene-composition` or `gdscript-patterns` next.
-- Multiplayer starter → `setup-multiplayer` or `host-authoritative-state`.
+- Multiplayer starter → `multiplayer` (it routes to `multiplayer-project`).
 - 2D platformer → `design-mechanic` for the platforming feel, then `design-level`.
 
 Don't auto-fire the next skill — wait for the user to say what they want to change first.

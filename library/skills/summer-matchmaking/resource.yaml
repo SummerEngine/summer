@@ -1,0 +1,32 @@
+id: skill/summer-matchmaking
+kind: skill
+version: 1.0.0
+summary: "Get players into matches with Summer matchmaking: queues, teams, accept prompts, join progress and failures."
+use_when:
+  - "the user wants matchmaking, a lobby, a play button, quick play, ranked or casual modes in a multiplayer Summer game"
+  - "declaring queues, player counts, teams (2v2, 5v5), rated queues or a ready check in summer.build.json"
+  - "showing search progress, an Accept/Decline prompt, cancel search or join errors to players"
+  - "the authority needs to know which team or queue each player is on"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - multiplayer
+    - ux
+  modalities:
+    - scripts
+    - project
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/multiplayer
+    - skill/multiplayer-project
+    - skill/multiplayer-testing
+    - skill/summer-match-results
+    - skill/summer-leaderboards
+    - skill/summer-parties
+source: official
+license: MIT
+status: preview
+recommended: false

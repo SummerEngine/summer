@@ -176,8 +176,8 @@ describe("linked files load through read_library", () => {
   });
 
   it("renders an entry when the link names its body file or descriptor", async () => {
-    const body = await readLibraryEntry("skill/host-authoritative-state/../setup-multiplayer/SKILL.md", "skill");
-    expect(body.ok && body.id).toBe("skill/setup-multiplayer");
+    const body = await readLibraryEntry("skill/multiplayer-state/../multiplayer-project/SKILL.md", "skill");
+    expect(body.ok && body.id).toBe("skill/multiplayer-project");
     expect(body.ok && body.linked_file).toBeUndefined();
     const descriptor = await readLibraryEntry("skill/spatial-placement/resource.yaml");
     if (!descriptor.ok) throw new Error("expected ok");

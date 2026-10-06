@@ -243,7 +243,7 @@ You need PhysicalBone3D children matching every major bone (set up once via the 
 - **Character is mounted (riding a horse).** Disable foot IK on the rider; ride animation already sells the contact. Enable upper-body additive sway driven by horse acceleration.
 - **First-person hands.** Same modifier set, but only the arm chain is visible — disable head/spine modifiers, keep hand-on-prop IK.
 - **Character is a quadruped.** All four legs need foot IK. The bone names are different (`FrontLeftLeg`, `BackRightLeg`, etc.); inspect first.
-- **Network-synced ragdoll.** Don't simulate on every client. Simulate on the host, send bone transforms via `MultiplayerSynchronizer`, blend on receivers. Out of scope; see `setup-multiplayer`.
+- **Network-synced ragdoll.** Don't simulate it on every client and don't sync bones with `MultiplayerSynchronizer`. In a Summer multiplayer game, send the few values that drive the ragdoll (the impulse, the moment it starts) as State or an Event and let each client simulate locally; see `multiplayer-state`.
 
 ## Fallback (no MCP)
 

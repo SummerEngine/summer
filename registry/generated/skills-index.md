@@ -1,6 +1,6 @@
 # Summer skills
 
-> 95 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
+> 108 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
 
 The folder is flat on purpose (`docs/design/DECISIONS.md`, D3): a skill usually belongs to several domains, so categories live in each skill's `facets.domains` and this index is rendered from them. The first domain listed is the primary one. `summer skills list --by-domain` prints the same grouping; `summer skills info <slug>` shows one skill.
 
@@ -21,7 +21,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 - [editor](#editor) (1)
 - [gameplay](#gameplay) (3)
 - [level-design](#level-design) (2)
-- [multiplayer](#multiplayer) (3)
+- [multiplayer](#multiplayer) (16)
 - [navigation](#navigation) (1)
 - [performance](#performance) (1)
 - [rendering](#rendering) (4)
@@ -161,9 +161,22 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 
 | skill | when to use | also |
 |---|---|---|
-| [host-authoritative-state](./host-authoritative-state/SKILL.md) ★ | Design a Summer game's authoritative state: what the authority owns, Commands for intent, authority-written State groups for shared and private state. | game-design |
-| [peer-to-peer-multiplayer](./peer-to-peer-multiplayer/SKILL.md) ★ | Start a multiplayer Summer game the right way: no peer-to-peer or host migration, a headless authority instead, and which Summer skill to build it with. | project |
-| [setup-multiplayer](./setup-multiplayer/SKILL.md) ★ | Add multiplayer with Summer's netcode: a predicted SummerNetworkBehavior per player, a Spawner and Local Play tests. No Godot RPCs or MultiplayerSynchronizer. | scripting |
+| [multiplayer](./multiplayer/SKILL.md) ★ | Start here for Summer multiplayer: how the authority, clients, Worlds and Sessions fit, and which skill comes next. | project |
+| [multiplayer-movement](./multiplayer-movement/SKILL.md) | Client-side movement in Summer multiplayer: owners move instantly, others glide, the authority checks each pose. | character-controller, scripting |
+| [multiplayer-project](./multiplayer-project/SKILL.md) | Set up a Summer multiplayer project: both entry scenes, World and queue files, joining, and a first Local Play run. | project, scripting |
+| [*multiplayer-publish*](./multiplayer-publish/SKILL.md) (preview) | Ship a hosted Summer multiplayer game: the summer.games bundle, server preset, pre-upload checks, and a new Build. | deployment |
+| [multiplayer-state](./multiplayer-state/SKILL.md) | Authority-owned game state in Summer multiplayer: shared and private State groups, validated Commands, and Events. | game-design, scripting |
+| [multiplayer-testing](./multiplayer-testing/SKILL.md) | Test a Summer multiplayer game with Local Play: several players, a bad network, bots, and what a passing run shows. | playtest, verification |
+| [*summer-analytics*](./summer-analytics/SKILL.md) (preview) | Send game events to Summer analytics from the authority or client: fire-and-forget, never blocking gameplay. | scripting |
+| [*summer-friends*](./summer-friends/SKILL.md) (preview) | Summer friends in a game: a consented friends list, profile and chat screens, direct messages. Hosted only. | ui |
+| [*summer-leaderboards*](./summer-leaderboards/SKILL.md) (preview) | Leaderboards in a Summer game: queue ratings from matches, and Game rankings your authority scores. | ui |
+| [summer-match-results](./summer-match-results/SKILL.md) | End a Summer match: report each player's win, loss or draw, show results on clients, then close the World. | gameplay |
+| [*summer-matchmaking*](./summer-matchmaking/SKILL.md) (preview) | Get players into matches with Summer matchmaking: queues, teams, accept prompts, join progress and failures. | ux |
+| [*summer-parties*](./summer-parties/SKILL.md) (preview) | Let a Summer party play together: the leader presses Play, members follow into the same match. Hosted only. | ui |
+| [summer-player-data](./summer-player-data/SKILL.md) | Save a player's progress so it follows them to every match: authority load and commit, autosave, safe retries. | scripting |
+| [*summer-store*](./summer-store/SKILL.md) (preview) | Sell Summer items for Sparks in a multiplayer game: shop, checkout, owned items, authority entitlement checks. | gameplay |
+| [*summer-world-chat*](./summer-world-chat/SKILL.md) (preview) | Add match chat to a Summer game: one World channel shared by everyone in the match. Hosted only. | ui |
+| [*summer-world-saves*](./summer-world-saves/SKILL.md) (preview) | Keep a persistent Summer World between restarts: checkpoint saves, restore before join, the final save. | scripting |
 
 ## navigation
 

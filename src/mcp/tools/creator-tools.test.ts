@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -68,14 +68,48 @@ afterEach(async () => {
 });
 
 describe("registerCreatorTools", () => {
-  it("extends the existing MCP with three creator tools", () => {
+  it("extends the existing MCP with the creator tools and web publishing", () => {
     const { server, tools } = createFakeServer();
     registerCreatorTools(server as any);
     expect(tools.map((tool) => tool.name)).toEqual([
       "summer_creator_publish",
+      "summer_publish_web_game",
       "summer_creator_releases",
       "summer_creator_config",
     ]);
+  });
+
+  it("returns the web publish plan as a structured confirmation result without network", async () => {
+    const { server, tools } = createFakeServer();
+    registerCreatorTools(server as any);
+    const build = join(root, "web");
+    await mkdir(build);
+    await writeFile(join(build, "index.html"), "<!doctype html><p>hi</p>");
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const result = await getTool(tools, "summer_publish_web_game").handler({
+      path: build,
+      name: "Hello",
+      submit: true,
+      waitSeconds: 600,
+      confirm: false,
+    });
+    expect(result.isError).toBe(true);
+    const payload = parseResult(result);
+    expect(payload).toMatchObject({
+      ok: false,
+      code: "publish_confirmation_required",
+      details: { plan: { source: build, fileCount: 1, name: "Hello", gameId: null } },
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("maps a missing web build to a structured error", async () => {
+    const { server, tools } = createFakeServer();
+    registerCreatorTools(server as any);
+    const payload = parseResult(
+      await getTool(tools, "summer_publish_web_game").handler({ path: join(root, "missing"), name: "X", confirm: false })
+    );
+    expect(payload).toMatchObject({ ok: false, code: "web_build_not_found" });
   });
 
   it("requires confirmation for config writes but never accepts secrets", async () => {

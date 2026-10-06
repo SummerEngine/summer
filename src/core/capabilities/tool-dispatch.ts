@@ -132,6 +132,7 @@ import {
   listCreatorReleases,
   publishCreator,
 } from "./creator.js";
+import { publishWebGame } from "../web-publish/publish.js";
 import {
   CONFIG_KEYS,
   getConfigValue,
@@ -883,6 +884,20 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       projectId: optStr(args, "projectId"),
       channel: optStr(args, "channel"),
       notes: optStr(args, "notes"),
+      confirm: args.confirm === true,
+      face: "cli",
+    })
+  ),
+  entry("summer_publish_web_game", "Publish an HTML5 web game to summer.games (confirm-gated)", false, (args) =>
+    publishWebGame({
+      path: str(args, "path"),
+      gameId: optStr(args, "gameId"),
+      name: optStr(args, "name"),
+      description: optStr(args, "description"),
+      contentRating: optStr(args, "contentRating"),
+      label: optStr(args, "label"),
+      submit: args.submit !== false,
+      waitSeconds: typeof args.waitSeconds === "number" ? args.waitSeconds : 600,
       confirm: args.confirm === true,
       face: "cli",
     })

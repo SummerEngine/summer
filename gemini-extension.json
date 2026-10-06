@@ -79,6 +79,7 @@
     "./library/skills/procedural-animation/",
     "./library/skills/prop-model/",
     "./library/skills/psx-retro-rendering/",
+    "./library/skills/publish-web-game/",
     "./library/skills/realtime-wet-surfaces/",
     "./library/skills/remote-deploy/",
     "./library/skills/retarget/",

@@ -3,7 +3,7 @@
   "_generated": "GENERATED from integrations/claude — do not edit; npm run generate:registry",
   "name": "summer",
   "version": "3.1.1",
-  "description": "Agent tooling for Summer Engine: game-dev skills, lifecycle hooks, and a 100-tool MCP bridge to the local desktop app.",
+  "description": "Agent tooling for Summer Engine: game-dev skills, lifecycle hooks, and a 101-tool MCP bridge to the local desktop app.",
   "author": {
     "name": "Summer Engine",
     "email": "founders@summerengine.com",
@@ -82,6 +82,7 @@
     "./library/skills/procedural-animation/",
     "./library/skills/prop-model/",
     "./library/skills/psx-retro-rendering/",
+    "./library/skills/publish-web-game/",
     "./library/skills/realtime-wet-surfaces/",
     "./library/skills/remote-deploy/",
     "./library/skills/retarget/",

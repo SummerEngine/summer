@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.0",
-      "content_hash": "2aaa464f0c462460c6c77c163dbc83db7a8bc02e9b1db66adf67d9905bca285b",
+      "content_hash": "8caf7b9600294a1cfb76af081767800382f0250a1577c2552c0322ec80d37782",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -1362,8 +1362,8 @@
     {
       "id": "skill/export-and-ship",
       "kind": "skill",
-      "version": "1.0.3",
-      "content_hash": "459ad769af5e734676659117ce4fbb3226668b5e41211afc3373b45a52ed8bba",
+      "version": "1.0.4",
+      "content_hash": "d2e13f64a37587f7ebad28a30fd55cbbf4c6639bc6491e64a99ec8b97e5590ae",
       "summary": "Assess and prepare a game export: inventory installed templates and targets, validate release assets and config, produce supported builds after approval.",
       "use_when": [
         "the user wants to assess or prepare a Summer game export — Steam, itch, HTML5, iOS, Android targets as available in the installed build",
@@ -1387,7 +1387,8 @@
       "related": {
         "skills": [
           "skill/debug",
-          "skill/tune-performance"
+          "skill/tune-performance",
+          "skill/publish-web-game"
         ]
       },
       "status": "stable",
@@ -2315,6 +2316,44 @@
         "skills": [
           "skill/art-direction",
           "skill/3d-lighting"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
+      "id": "skill/publish-web-game",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "1f9b5246d6e2b248f0e209c1af1b1f4fd542db983d4eb129011ccdf19bb8dc2c",
+      "summary": "Export a browser build from Godot, Unity, Phaser/Vite, plain HTML5 or Construct and publish it to summer.games in one confirmed step with summer publish-web.",
+      "use_when": [
+        "the user wants their game playable in the browser on summer.games",
+        "\"publish my web game\"",
+        "\"put this HTML5 / WebGL build on summer.games\"",
+        "a summer publish-web or summer_publish_web_game call failed and the build needs fixing"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch"
+        ],
+        "domains": [
+          "deployment",
+          "creator"
+        ],
+        "modalities": [
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/export-and-ship"
+        ],
+        "tools": [
+          "tool/publish-web-game"
         ]
       },
       "status": "preview",
@@ -6773,6 +6812,47 @@
         "network": false,
         "credentials": false,
         "publish": false
+      }
+    },
+    {
+      "id": "tool/publish-web-game",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "66eee8cf8575acff4ff446bd1bae889824ef85f9f9630edd3c221d2bcbd2aaab",
+      "summary": "Publish an HTML5 web game folder or .zip to summer.games — validate, upload, wait for processing, submit for review; confirm-gated.",
+      "use_when": [
+        "the user wants to put a finished web build (Godot web export, Unity WebGL, Phaser, plain HTML5, Construct) on summer.games",
+        "\"publish my web game\"",
+        "\"put this HTML5 build on summer.games\"",
+        "updating the web build of a game the user already has on summer.games"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch"
+        ],
+        "domains": [
+          "creator",
+          "deployment"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/publish-web-game"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_publish_web_game",
+      "remote": true,
+      "cli_command": "summer publish-web",
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": true
       }
     },
     {

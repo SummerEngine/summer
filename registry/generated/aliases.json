@@ -162,6 +162,7 @@
     "summer_place_adjacent": "tool/place-adjacent",
     "summer_play": "tool/play",
     "summer_project_setting": "tool/project-setting",
+    "summer_publish_web_game": "tool/publish-web-game",
     "summer_raycast": "tool/raycast",
     "summer_read_file": "tool/read-file",
     "summer_read_library": "tool/read-library",

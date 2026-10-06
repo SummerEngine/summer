@@ -726,6 +726,19 @@
       ]
     },
     {
+      "id": "skill/publish-web-game",
+      "name": "publish-web-game",
+      "description": "Export a browser build from Godot, Unity, Phaser/Vite, plain HTML5 or Construct and publish it to summer.games in one confirmed step with summer publish-web.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/publish-web-game/",
+      "domains": [
+        "deployment",
+        "creator"
+      ]
+    },
+    {
       "id": "skill/realtime-wet-surfaces",
       "name": "realtime-wet-surfaces",
       "description": "Real-time wetness on existing Godot 4 materials without losing their values — value-copying wet shader, geometry-driven wet mask, instance-uniform wet amount.",

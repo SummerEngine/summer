@@ -14,6 +14,36 @@ import {
   unsetConfigValue,
 } from "../../core/config.js";
 import { textJson } from "./text-json.js";
+import { GamesAuthError } from "../../core/web-publish/oauth.js";
+import {
+  CONTENT_RATINGS,
+  WebPublishError,
+  publishWebGame,
+} from "../../core/web-publish/publish.js";
+import { WebBuildError } from "../../core/web-publish/validate.js";
+
+async function webPublishResult<T>(operation: () => Promise<T>) {
+  try {
+    return textJson(await operation());
+  } catch (error) {
+    if (error instanceof WebPublishError || error instanceof GamesAuthError || error instanceof WebBuildError) {
+      return textJson(
+        {
+          ok: false,
+          code: error.code,
+          message: error.message,
+          recovery: error.recovery,
+          ...(error instanceof WebPublishError && error.details ? { details: error.details } : {}),
+        },
+        true
+      );
+    }
+    return textJson(
+      { ok: false, code: "games_publish_failed", message: error instanceof Error ? error.message : String(error) },
+      true
+    );
+  }
+}
 
 async function creatorResult<T>(operation: () => Promise<T>) {
   try {
@@ -59,6 +89,29 @@ export function registerCreatorTools(server: McpServer): void {
     async (args) =>
       creatorResult(() =>
         publishCreator({
+          ...args,
+          face: "mcp",
+        })
+      )
+  );
+
+  server.tool(
+    "summer_publish_web_game",
+    "Publish an HTML5 web game (a build folder with index.html at its root, or a .zip of it) to summer.games: validates locally with the store's rules, zips a folder, creates or reuses the game, uploads the web build, waits for processing, and submits the listing for review. First call with confirm=false and present the returned plan (source, file count, size, sha256, target game); set confirm only after the user approves. Needs a one-time `summer login --games` in a terminal.",
+    {
+      path: z.string().describe("Web build folder containing index.html, or a .zip of it."),
+      gameId: z.string().optional().describe("Existing summer.games game id (game_...) to update."),
+      name: z.string().optional().describe("Store name. Required the first time; reuses your game with this exact name or creates it."),
+      description: z.string().optional().describe("Store description for a new game."),
+      contentRating: z.enum(CONTENT_RATINGS).optional().describe("Content rating required before review."),
+      label: z.string().optional().describe("Version label shown in the creator history (max 64 bytes)."),
+      submit: z.boolean().default(true).describe("Submit the listing for review once the build is ready."),
+      waitSeconds: z.number().int().min(0).max(3600).default(600).describe("Seconds to wait for server-side processing."),
+      confirm: z.boolean().default(false).describe("Set true only after the user approves the exact plan."),
+    },
+    async (args) =>
+      webPublishResult(() =>
+        publishWebGame({
           ...args,
           face: "mcp",
         })

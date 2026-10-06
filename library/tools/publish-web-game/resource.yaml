@@ -1,0 +1,88 @@
+id: tool/publish-web-game
+kind: tool
+version: 1.0.0
+summary: Publish an HTML5 web game folder or .zip to summer.games — validate, upload, wait for processing, submit for review; confirm-gated.
+use_when:
+  - the user wants to put a finished web build (Godot web export, Unity WebGL, Phaser, plain HTML5, Construct) on summer.games
+  - '"publish my web game"'
+  - '"put this HTML5 build on summer.games"'
+  - updating the web build of a game the user already has on summer.games
+do_not_use_when:
+  - the user has not approved the exact build folder and target game
+  - the build is a native or .pck release — use summer_creator_publish
+  - the web build has not been exported yet — export it first (skill/publish-web-game)
+facets:
+  lifecycle:
+    - launch
+  domains:
+    - creator
+    - deployment
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/publish-web-game
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_publish_web_game
+implementation:
+  module: src/core/web-publish/publish.ts
+  export: publishWebGame
+surfaces:
+  mcp:
+    tool_name: summer_publish_web_game
+    remote: true
+  cli:
+    command: summer publish-web
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: Web build folder containing index.html, or a .zip of it.
+    gameId:
+      type: string
+      description: Existing summer.games game id (game_...) to update.
+    name:
+      type: string
+      description: Store name. Required the first time; reuses your game with this exact name or creates it.
+    description:
+      type: string
+      description: Store description for a new game.
+    contentRating:
+      type: string
+      enum:
+        - everyone
+        - everyone10Plus
+        - teen
+      description: Content rating required before review.
+    label:
+      type: string
+      description: Version label shown in the creator history (max 64 bytes).
+    submit:
+      type: boolean
+      default: true
+      description: Submit the listing for review once the build is ready.
+    waitSeconds:
+      type: integer
+      minimum: 0
+      maximum: 3600
+      default: 600
+      description: Seconds to wait for server-side processing.
+    confirm:
+      type: boolean
+      default: false
+      description: Set true only after the user approves the exact plan.
+  required:
+    - path
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: true
+evidence_checks:
+  - release-recorded

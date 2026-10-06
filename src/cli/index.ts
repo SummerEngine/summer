@@ -15,6 +15,7 @@ import { planCommand } from "./commands/plan.js";
 import { debugCommand } from "./commands/debug.js";
 import { configCommand } from "./commands/config.js";
 import { publishCommand } from "./commands/publish.js";
+import { publishWebCommand } from "./commands/publish-web.js";
 import { releasesCommand } from "./commands/releases.js";
 import { eventsCommand } from "./commands/events.js";
 import { toolCommand } from "./commands/tool.js";
@@ -56,6 +57,7 @@ export function runCli(mcpCommand: Command): void {
   program.addCommand(planCommand);
   program.addCommand(configCommand);
   program.addCommand(publishCommand);
+  program.addCommand(publishWebCommand);
   program.addCommand(releasesCommand);
   program.addCommand(eventsCommand);
   program.addCommand(toolCommand);

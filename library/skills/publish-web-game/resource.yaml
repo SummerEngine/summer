@@ -1,0 +1,29 @@
+id: skill/publish-web-game
+kind: skill
+version: 1.0.0
+summary: Export a browser build from Godot, Unity, Phaser/Vite, plain HTML5 or Construct and publish it to summer.games in one confirmed step with summer publish-web.
+use_when:
+  - the user wants their game playable in the browser on summer.games
+  - '"publish my web game"'
+  - '"put this HTML5 / WebGL build on summer.games"'
+  - a summer publish-web or summer_publish_web_game call failed and the build needs fixing
+do_not_use_when:
+  - publishing a native or .pck release — use skill/export-and-ship and summer_creator_publish
+facets:
+  lifecycle:
+    - launch
+  domains:
+    - deployment
+    - creator
+  modalities:
+    - project
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/export-and-ship
+  tools:
+    - tool/publish-web-game
+source: official
+license: MIT
+status: preview

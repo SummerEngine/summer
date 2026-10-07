@@ -33,6 +33,9 @@ This repo is not the engine itself. The CLI downloads the Summer Engine app for 
 With Summer installed, your agent can:
 
 - **Build real games**: scenes, scripts, physics and UI, through live MCP tools.
+- **Build multiplayer games** on Summer's own networking: matchmaking, parties, leaderboards, player data and world saves.
+- **Add analytics** to see how players play.
+- **Publish games** to the [summer.games](https://summer.games) store.
 - **Use proven recipes**: skills, templates and references, all searchable through one index.
 - **Check its own work**: play the game, take screenshots, read the debugger, press real keys.
 - **Resume any project**: `.summer/` project memory lets a fresh agent pick up where the last one stopped.

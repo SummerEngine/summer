@@ -390,6 +390,43 @@
       "recommended": true
     },
     {
+      "id": "skill/ai-characters-in-games",
+      "kind": "skill",
+      "version": "0.3.0",
+      "content_hash": "0dc36031c8011152d0f672675648e89be40066812a471a43d906b976104f7d89",
+      "summary": "Safe AI characters in published games: no keys in the build, replies via Summer's player AI gateway, moderation, spend caps, offline brain and a report button.",
+      "use_when": [
+        "a character, creature or object should answer free-form player text or speech in a published game (talking flowers, shopkeepers, companions)",
+        "about to put a model name, a provider SDK or a provider key into a game project",
+        "handling AI refusals (ai_disabled, age_policy, credits_exhausted, limit_exceeded) or adding the report button for AI replies",
+        "topping up Summer credits, setting AI limits or the kill switch for a game's AI characters"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "ai",
+          "npc"
+        ],
+        "modalities": [
+          "scripts",
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/design-npc",
+          "skill/multiplayer-state"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
       "id": "skill/ambient-bed",
       "kind": "skill",
       "version": "1.0.2",

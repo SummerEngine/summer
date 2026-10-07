@@ -1,6 +1,6 @@
 # Summer skills
 
-> 115 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
+> 116 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
 
 The folder is flat on purpose (`docs/design/DECISIONS.md`, D3): a skill usually belongs to several domains, so categories live in each skill's `facets.domains` and this index is rendered from them. The first domain listed is the primary one. `summer skills list --by-domain` prints the same grouping; `summer skills info <slug>` shows one skill.
 
@@ -11,7 +11,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 - [2d](#2d) (10)
 - [3d](#3d) (6)
 - [agent-workflow](#agent-workflow) (17)
-- [ai](#ai) (1)
+- [ai](#ai) (2)
 - [animation](#animation) (7)
 - [assets](#assets) (3)
 - [audio](#audio) (6)
@@ -84,6 +84,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 
 | skill | when to use | also |
 |---|---|---|
+| [*ai-characters-in-games*](./ai-characters-in-games/SKILL.md) (preview) | Safe AI characters in published games: no keys in the build, replies via Summer's player AI gateway, moderation, spend caps, offline brain and a report button. | npc |
 | [design-npc](./design-npc/SKILL.md) ★ | Design enemy/NPC/boss/companion behavior — perception, personality, intent, action state machine, telegraphs — outputs a GDScript stub plus node tree. | npc |
 
 ## animation

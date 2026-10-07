@@ -94,6 +94,31 @@ describe("registerAssetTools", () => {
     expect(tool.description).toContain("CC0");
   });
 
+  it("search keeps one art direction and returns its contact sheet as an image the model sees", async () => {
+    const fetchMock = vi.fn(async (_url: string) => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        assets: [{ id: "a1", title: "Concrete wall", type: "3d_model", style: "realistic" }],
+        count: 1,
+        contactSheet: "data:image/jpeg;base64,QUJD",
+      }),
+    }));
+    globalThis.fetch = fetchMock as any;
+    const { server, tools } = createFakeServer();
+    registerAssetTools(server as any);
+    const tool = getTool(tools, "summer_search_assets");
+    expect(tool.schema.style).toBeDefined();
+    expect(tool.schema.preview).toBeDefined();
+    const result = await tool.handler({ query: "wall", assetType: "3d_model", limit: 9, source: "library", style: "realistic", preview: true, includeCommunity: false });
+    const url = String(fetchMock.mock.calls[0][0]);
+    expect(url).toContain("style=realistic");
+    expect(url).toContain("contactSheet=true");
+    expect(url).not.toContain("includeCommunity");
+    expect(parseResult(result).assets[0].style).toBe("realistic");
+    expect(result.content[1]).toEqual({ type: "image", data: "QUJD", mimeType: "image/jpeg" });
+  });
+
   it("lists my assets through the MCP search endpoint", async () => {
     const fetchMock = vi.fn(async () => ({
       ok: true,

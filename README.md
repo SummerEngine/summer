@@ -18,8 +18,6 @@
 
 ---
 
-This repo is `summerengine/summer` — the front door to Summer. (It is being renamed from `summerengine/summer`; redirects keep every old link working.)
-
 Your agent gets a real engine, not a chat box. With Summer installed, any AI coding agent can:
 
 - **Build real games** in Summer Engine: scenes, scripts, physics, UI — through live MCP tools, not text about code.

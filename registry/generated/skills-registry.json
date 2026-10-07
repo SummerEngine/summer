@@ -173,6 +173,20 @@
       ]
     },
     {
+      "id": "skill/camera-rigs",
+      "name": "camera-rigs",
+      "description": "Camera rigs for 2D and 3D: Camera2D follow with limits, first-person head camera, SpringArm3D third-person, orthographic top-down, FOV guidance.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/camera-rigs/",
+      "domains": [
+        "scenes",
+        "3d",
+        "2d"
+      ]
+    },
+    {
       "id": "skill/celeste-momentum-platforming",
       "name": "celeste-momentum-platforming",
       "description": "Celeste-style 2D precision platformer movement — momentum running, coyote time, variable jumps, dash, wall jump/slide, climb stamina, pixel corner correction.",
@@ -213,6 +227,21 @@
       ]
     },
     {
+      "id": "skill/character-movement",
+      "name": "character-movement",
+      "description": "Player controllers for 2D and 3D, plus the canonical third-person controller for Summer humanoid packages: movement owns translation, clips follow state.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/character-movement/",
+      "domains": [
+        "character-controller",
+        "gameplay",
+        "2d",
+        "3d"
+      ]
+    },
+    {
       "id": "skill/character-portrait",
       "name": "character-portrait",
       "description": "Generate a single polished character bust for dialogue UI, character select, lore cards, or codex entries. One character, locked composition, VN-style.",
@@ -236,6 +265,20 @@
       "domains": [
         "video",
         "assets"
+      ]
+    },
+    {
+      "id": "skill/combat-basics",
+      "name": "combat-basics",
+      "description": "Damage in Summer Engine: hitbox and hurtbox Areas on opposing layers, a reusable Health component, damage signals, knockback, hit feedback, projectiles.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/combat-basics/",
+      "domains": [
+        "gameplay",
+        "scripting",
+        "game-design"
       ]
     },
     {
@@ -834,6 +877,19 @@
       ]
     },
     {
+      "id": "skill/save-load",
+      "name": "save-load",
+      "description": "Persist game state in Summer Engine: user:// paths, JSON progress vs ConfigFile settings, a versioned save schema with migration, autosave hooks.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/save-load/",
+      "domains": [
+        "scripting",
+        "gameplay"
+      ]
+    },
+    {
       "id": "skill/scene-composition",
       "name": "scene-composition",
       "description": "Scene structure conventions — node hierarchy, when to extract sub-scenes, reusable prefab patterns, and instance-versus-add-node decisions.",
@@ -1388,6 +1444,33 @@
       "domains": [
         "audio",
         "assets"
+      ]
+    },
+    {
+      "id": "skill/web-and-touch-input",
+      "name": "web-and-touch-input",
+      "description": "Input for the browser and phones: the first-click rule for sound and mouse capture, focus, and touch buttons or a virtual stick on the same actions.",
+      "clients": "all",
+      "recommended": true,
+      "status": "preview",
+      "path": "library/skills/web-and-touch-input/",
+      "domains": [
+        "gameplay",
+        "ui"
+      ]
+    },
+    {
+      "id": "skill/web-compatibility-look",
+      "name": "web-compatibility-look",
+      "description": "Make a web or browser game look high-end in the Compatibility renderer (WebGL 2): what works, what to avoid, 2D and 3D recipes, web performance.",
+      "clients": "all",
+      "recommended": true,
+      "status": "preview",
+      "path": "library/skills/web-compatibility-look/",
+      "domains": [
+        "rendering",
+        "2d",
+        "3d"
       ]
     },
     {

@@ -1,0 +1,40 @@
+id: skill/character-movement
+kind: skill
+version: 1.2.1
+summary: "Player controllers for 2D and 3D, plus the canonical third-person controller for Summer humanoid packages: movement owns translation, clips follow state."
+use_when:
+  - building or fixing player movement — gravity, collision, side-scroller, top-down, or 3D walk
+  - wiring an imported Summer character package (character.tscn) as the playable third-person player
+  - walk, run, and jump animation states, facing, or mouse look for a player controller
+  - the jump feels bad — coyote time, jump buffering, variable jump height, one-way platforms
+do_not_use_when:
+  - a production first-person shooter controller with air control and external velocity — use fps-controller
+  - Celeste-style momentum precision platforming with dash and wall climb — use celeste-momentum-platforming
+facets:
+  lifecycle:
+    - build
+  domains:
+    - character-controller
+    - gameplay
+    - 2d
+    - 3d
+  modalities:
+    - scripts
+    - scenes
+    - animation
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/make-game
+    - skill/camera-rigs
+    - skill/combat-basics
+    - skill/fps-controller
+    - skill/celeste-momentum-platforming
+    - skill/character-animation-wiring
+    - skill/character-model
+    - skill/playtesting-a-feature
+source: official
+license: MIT
+status: preview
+recommended: false

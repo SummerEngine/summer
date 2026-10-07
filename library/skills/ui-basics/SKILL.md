@@ -130,6 +130,15 @@ For UI that scales with window size:
 
 For simple cases, CenterContainer + fixed-size children works. For complex layouts, a Theme resource or script may be needed.
 
+## Text, fonts and symbols
+
+The default font only has letters, digits and common punctuation. Anything else renders as an empty box with a hex code in it (for example a box reading `25 B2` for ▲, or `25 C0` for ◀), and on the web there is no system font to fall back to.
+
+- Never put emoji or Unicode symbols in Label, Button or RichTextLabel text: arrows (▲ ▼ ◀ ▶ ← →), stars, hearts, check marks, music notes, keycap symbols. Write the words instead ("Up", "Next"), or show an icon.
+- Draw icons as nodes: a TextureRect with a small texture, a Polygon2D triangle for arrows, or a `_draw()` shape. Key prompts are a rounded StyleBoxFlat panel with the key's letter in it.
+- If the game really needs symbols or another script (Japanese, Arabic, Cyrillic), add a font file that contains them: import a TTF/OTF that covers the characters, set it as the theme's default font, and add it to the fallbacks of any other font you use.
+- After adding text, take one screenshot and look for boxes with hex codes; fix any you find before moving on.
+
 ## Fallback (no MCP — edit `.tscn` directly)
 
 If Summer MCP isn't connected, write the menu hierarchy by hand:

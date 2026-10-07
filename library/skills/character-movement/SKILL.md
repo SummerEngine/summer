@@ -248,7 +248,7 @@ func _physics_process(_delta: float) -> void:
 
 Survivors-style games with 200+ agents: enemies are `Area2D` moved with
 `position += dir * speed * delta`, NOT physics bodies. See the `make-game`
-skill's `references/2d-survivors.md`. The PLAYER stays a CharacterBody2D.
+skill's `../make-game/references/2d-survivors.md`. The PLAYER stays a CharacterBody2D.
 
 ## 3D controller (first + third person)
 

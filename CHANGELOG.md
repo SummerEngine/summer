@@ -2,7 +2,7 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [3.2.0] - 2026-10-07
 
 ### Added
 - Multiplayer skills, rewritten from scratch around Summer's own networking. `multiplayer` explains the model (one project, a client scene and a headless authority scene, Worlds, Sessions, queues, Local Play) and routes to a linked sequence:

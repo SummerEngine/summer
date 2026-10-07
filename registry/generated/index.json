@@ -798,7 +798,7 @@
       "id": "skill/camera-rigs",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "2c04ec8e7634e0375b128d04dc956400b1c5a51769dc66b0f00a6452e3f6e7d8",
+      "content_hash": "52cec93f1f8eb2e5d7bd2c0572fad53cace2129bc32a91005ae5675bfa9f7d00",
       "summary": "Camera rigs for 2D and 3D: Camera2D follow with limits, first-person head camera, SpringArm3D third-person, orthographic top-down, FOV guidance.",
       "use_when": [
         "black screen on play, or the camera shows past the level edge",
@@ -965,7 +965,7 @@
       "id": "skill/character-movement",
       "kind": "skill",
       "version": "1.2.1",
-      "content_hash": "8ea68420f37775dfc076a3c5f9534a73b88536240e2443ee39927de8891e7cb9",
+      "content_hash": "ba68f8a318d0a790ec4a1d872b88ffccedbcedd038327761ca913b404b6cc0d7",
       "summary": "Player controllers for 2D and 3D, plus the canonical third-person controller for Summer humanoid packages: movement owns translation, clips follow state.",
       "use_when": [
         "building or fixing player movement — gravity, collision, side-scroller, top-down, or 3D walk",
@@ -2036,7 +2036,7 @@
       "id": "skill/make-game",
       "kind": "skill",
       "version": "1.1.0",
-      "content_hash": "f2398edd248ad71a50fa91e6639c9daf0445d5ad17137ca75d20a1cf436da512",
+      "content_hash": "470ad99e15eaad332d1fa343dbb0e951ab4b1b9d031024df1ac236db595081cc",
       "summary": "Orchestration spine for 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship — delegates to specialist skills.",
       "use_when": [
         "the user says 'make me a game', 'build me a game', 'I want to make a [genre] game', or 'let's build something' — running the full game-dev pipeline",
@@ -8463,7 +8463,7 @@
       "id": "tool/search-assets",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "636f0ad4be720e41d175295801d358ca19f5ba1f9d95e82b5ba9cd4976bfbd24",
+      "content_hash": "0a76fbd9af655fa350bdbad9b55675ba59bf36182fefd0c831271e9b57d15748",
       "summary": "Search the Summer asset library and your own assets by keyword and meaning; returns names, types, preview and import-ready URLs.",
       "use_when": [
         "finding an existing asset in the public library before generating a new one",

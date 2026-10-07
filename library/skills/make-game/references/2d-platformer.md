@@ -2,7 +2,7 @@
 
 Side-scrolling platformer blueprint: architecture, the level, and the core loop.
 Movement itself lives in the `character-movement` skill (base controller) and its
-`references/platformer-feel.md` (coyote time, jump buffer, variable height) - do
+`../../character-movement/references/platformer-feel.md` (coyote time, jump buffer, variable height) - do
 not rewrite it here; wire it in. For Celeste-grade precision movement (dash, wall
 jump, climb) use `celeste-momentum-platforming` instead.
 

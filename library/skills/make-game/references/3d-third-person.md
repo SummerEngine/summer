@@ -128,7 +128,7 @@ global transform and zeroes `rotation.z`.
 If the visual is a Summer humanoid package, do not use the generic setup below.
 Instantiate its `character.tscn` under `CharacterRotationRoot`, preserve the package's
 normalized `-Z` forward axis, then install the `character-movement` skill's
-`references/default-third-person-controller.gd` unchanged for the standard
+`../../character-movement/references/default-third-person-controller.gd` unchanged for the standard
 playable controller (that skill has the byte-exact install steps and the
 verification probe). Do not hand-write an equivalent controller. Never rebuild package clips
 into a second AnimationTree.

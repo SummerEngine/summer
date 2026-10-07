@@ -1,12 +1,12 @@
-# Summer
+# Summer: MCP server, CLI and skills for Summer Engine
 
 <div align="center">
 
 <img src="docs/brand/sun.png" alt="" width="128">
 
-### The open-source game-development system for AI agents.
+### Let any AI coding agent build games in Summer Engine.
 
-**A verified game-dev library · live engine tools · project memory. One npm package.**
+**MCP server · game-dev skills · `summer` CLI. One npm package: `summer-engine`.**
 
 [![npm](https://img.shields.io/npm/v/summer-engine?label=npm&color=f7b731)](https://www.npmjs.com/package/summer-engine)
 [![downloads](https://img.shields.io/npm/dm/summer-engine?label=installs&color=f7b731)](https://www.npmjs.com/package/summer-engine)
@@ -18,12 +18,24 @@
 
 ---
 
-Your agent gets a real engine, not a chat box. With Summer installed, any AI coding agent can:
+## What this is
 
-- **Build real games** in Summer Engine: scenes, scripts, physics, UI — through live MCP tools, not text about code.
-- **Draw on a verified library**: skills (how to do something well), examples (proven working instances), templates (pinned project foundations), collections (curated assets), references (facts) — all searchable through one generated index.
-- **Verify its own work**: play the game, take screenshots, read the debugger, run input-driven probes.
-- **Resume any project**: `.summer/` project memory means a fresh agent picks up where the last one stopped, no conversation history needed.
+[Summer Engine](https://www.summerengine.com) is a desktop game engine. This repo connects your AI coding agent (Claude Code, Cursor, Codex, Copilot and many more) to it, the way an MCP server for Blender connects an agent to Blender, but for making whole games.
+
+| Part | What it does |
+|---|---|
+| **MCP server** (`summer mcp`) | Tools your agent calls to drive the running editor: build scenes, write scripts, play the game, take screenshots, read errors. |
+| **Skills** | Game-dev know-how your agent loads: movement, combat, multiplayer, VFX, audio, UI, level design and more. |
+| **CLI** (`summer`) | Installs the engine, signs you in, sets up your agent, creates projects from templates and publishes games. |
+
+This repo is not the engine itself. The CLI downloads the Summer Engine app for you.
+
+With Summer installed, your agent can:
+
+- **Build real games**: scenes, scripts, physics and UI, through live MCP tools.
+- **Use proven recipes**: skills, templates and references, all searchable through one index.
+- **Check its own work**: play the game, take screenshots, read the debugger, press real keys.
+- **Resume any project**: `.summer/` project memory lets a fresh agent pick up where the last one stopped.
 
 You stay in control of every change and release. Summer never publishes, installs, or spends without your explicit confirmation, and library entries are structurally prevented (by a capability lint in CI) from instructing agents to touch the network, credentials, or package managers.
 

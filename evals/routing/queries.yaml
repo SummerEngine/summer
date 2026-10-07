@@ -98,6 +98,10 @@ queries:
   - query: "turn this concept art into a playable level"
     expected: [skill/scene-to-level]
 
+  - query: "add a shop where players can buy a skin for Sparks"
+    expected: [skill/in-game-purchases]
+  - query: "player does not have enough sparks, let them buy more without leaving the game"
+    expected: [skill/in-game-purchases]
   # ── Character controllers ──────────────────────────────────────────────
   - query: "make an FPS"
     expected: [skill/make-game, skill/fps-controller]

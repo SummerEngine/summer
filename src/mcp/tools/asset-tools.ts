@@ -15,11 +15,17 @@ async function searchAssetsApi(params: {
   assetType?: string;
   limit?: number;
   source?: string;
+  /** One art direction: realistic, stylized-lowpoly, toon, pixel, hand-painted, voxel. */
+  style?: string;
+  includeCommunity?: boolean;
+  /** Ask for a numbered contact sheet of the first results (a JPEG data URL). */
+  preview?: boolean;
 }): Promise<{
-  assets?: { id: string; title: string; type: string; fileUrl: string; thumbnailUrl: string | null; pack: string | null; packSlug: string | null; similarity?: number }[];
+  assets?: { id: string; title: string; type: string; fileUrl: string; thumbnailUrl: string | null; pack: string | null; packSlug: string | null; similarity?: number; style?: string | null }[];
   count?: number;
   summary?: string;
   message?: string;
+  contactSheet?: string;
   error?: string;
 }> {
   const token = await getAuthToken();
@@ -42,6 +48,9 @@ async function searchAssetsApi(params: {
   if (params.source) {
     searchParams.set("source", params.source);
   }
+  if (params.style) searchParams.set("style", params.style);
+  if (params.includeCommunity) searchParams.set("includeCommunity", "true");
+  if (params.preview) searchParams.set("contactSheet", "true");
 
   const gatewayUrl = await resolveGatewayUrl();
   const res = await fetch(`${gatewayUrl}/api/mcp/assets?${searchParams}`, {
@@ -50,10 +59,11 @@ async function searchAssetsApi(params: {
   });
 
   const data = (await res.json()) as {
-    assets?: { id: string; title: string; type: string; fileUrl: string; thumbnailUrl: string | null; pack: string | null; packSlug: string | null; similarity?: number }[];
+    assets?: { id: string; title: string; type: string; fileUrl: string; thumbnailUrl: string | null; pack: string | null; packSlug: string | null; similarity?: number; style?: string | null }[];
     count?: number;
     summary?: string;
     message?: string;
+    contactSheet?: string;
     error?: string;
   };
 
@@ -192,7 +202,10 @@ Sources:
   - "all" — Search both library and your assets.
 
 Uses hybrid search: keywords + semantic similarity. Finds assets by name AND by meaning.
-Returns asset names, types, preview URLs, and import-ready file URLs.
+Returns asset names, types, each asset's art style, preview URLs, and import-ready file URLs.
+Keep a game in ONE art direction: pass style (the game's chosen family) so clashing styles are
+left out, and set preview to see the first results as one numbered picture before importing.
+Curated, open-source and Summer packs come first; people's own public generations only with includeCommunity.
 
 Cloud tool — works WITHOUT the Summer Engine app open.
 Requires authentication (so we can attribute usage and apply per-user rate limits): run 'npx -y summer-engine@latest login' first.`,
@@ -201,9 +214,15 @@ Requires authentication (so we can attribute usage and apply per-user rate limit
       assetType: z.enum(["2d_image", "animation", "3d_model", "audio", "music", "all"]).default("all").describe("Filter by asset type"),
       limit: z.number().default(10).describe("Max results (1-20)"),
       source: z.enum(["library", "my_assets", "all"]).default("library").describe("Where to search: library (public 25k+), my_assets (your generated assets), all"),
+      style: z
+        .enum(["realistic", "stylized-lowpoly", "toon", "pixel", "hand-painted", "voxel"])
+        .optional()
+        .describe("The game's one art direction: clashing styles are left out, matches come first"),
+      preview: z.boolean().default(false).describe("Also return one picture of the first 9 results, numbered in order, to see them before importing"),
+      includeCommunity: z.boolean().default(false).describe("Also include people's own public AI generations"),
     },
-    async ({ query, assetType, limit, source }) => {
-      const result = await searchAssetsApi({ query, assetType, limit: Math.min(limit, 20), source });
+    async ({ query, assetType, limit, source, style, preview, includeCommunity }) => {
+      const result = await searchAssetsApi({ query, assetType, limit: Math.min(limit, 20), source, style, preview, includeCommunity });
 
       if (result.error) {
         return {
@@ -221,6 +240,7 @@ Requires authentication (so we can attribute usage and apply per-user rate limit
         };
       }
 
+      const sheet = result.contactSheet?.match(/^data:(image\/[a-z]+);base64,(.+)$/);
       return {
         content: [
           {
@@ -231,11 +251,13 @@ Requires authentication (so we can attribute usage and apply per-user rate limit
                 count: result.count,
                 summary: result.summary,
                 message: result.message,
+                ...(sheet ? { preview: "attached: the first results, numbered in this order" } : {}),
               },
               null,
               2
             ),
           },
+          ...(sheet ? [{ type: "image" as const, data: sheet[2], mimeType: sheet[1] }] : []),
         ],
       };
     }

@@ -1,0 +1,29 @@
+id: skill/in-game-purchases
+kind: skill
+version: 1.0.0
+summary: "Sell items for Sparks and let short players buy Sparks in game via the Summer purchase sheet: checkout, Sparks purchase, results, testing, store policy."
+use_when:
+  - "adding a shop, buy button or paid item to a Summer game and wiring request_checkout"
+  - "a checkout was rejected with insufficient_funds and the player should be able to buy Sparks without leaving the game"
+  - "deciding whether an item should be sold for Sparks, or handling pending, declined, expired, rejected or manual_review purchase results"
+do_not_use_when:
+  - "designing multiplayer state ownership unrelated to purchases (use multiplayer-state)"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - gameplay
+    - scripting
+    - game-design
+  modalities:
+    - scripts
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/multiplayer-state
+    - skill/ui-basics
+source: official
+license: MIT
+status: preview
+recommended: false

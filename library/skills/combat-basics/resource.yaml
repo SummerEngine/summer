@@ -1,0 +1,34 @@
+id: skill/combat-basics
+kind: skill
+version: 1.0.0
+summary: "Damage in Summer Engine: hitbox and hurtbox Areas on opposing layers, a reusable Health component, damage signals, knockback, hit feedback, projectiles."
+use_when:
+  - adding attacks, health and damage, or enemies that can be hit and hit back
+  - adding projectiles or bullets — homing, piercing, area-of-effect, or pooling hundreds of them
+  - wiring death and respawn, or debugging hits that never land or friendly fire
+do_not_use_when:
+  - auto-fire weapons that over-commit or overkill targets — that is the pending-damage pattern in auto-fire-targeting
+  - hits work but feel weak or floaty — tune the feedback layer with game-feel or debugging-game-feel
+facets:
+  lifecycle:
+    - build
+  domains:
+    - gameplay
+    - scripting
+    - game-design
+  modalities:
+    - scripts
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/make-game
+    - skill/character-movement
+    - skill/game-feel
+    - skill/auto-fire-targeting
+    - skill/design-npc
+source: official
+license: MIT
+status: preview
+recommended: false

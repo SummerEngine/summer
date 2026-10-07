@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.0",
-      "content_hash": "2aaa464f0c462460c6c77c163dbc83db7a8bc02e9b1db66adf67d9905bca285b",
+      "content_hash": "09d9e3a92558c4b28e14105a5b26fffdd47587144debc30e44f6e26b88d3baf1",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -388,6 +388,43 @@
       },
       "status": "preview",
       "recommended": true
+    },
+    {
+      "id": "skill/ai-characters-in-games",
+      "kind": "skill",
+      "version": "0.3.0",
+      "content_hash": "0dc36031c8011152d0f672675648e89be40066812a471a43d906b976104f7d89",
+      "summary": "Safe AI characters in published games: no keys in the build, replies via Summer's player AI gateway, moderation, spend caps, offline brain and a report button.",
+      "use_when": [
+        "a character, creature or object should answer free-form player text or speech in a published game (talking flowers, shopkeepers, companions)",
+        "about to put a model name, a provider SDK or a provider key into a game project",
+        "handling AI refusals (ai_disabled, age_policy, credits_exhausted, limit_exceeded) or adding the report button for AI replies",
+        "topping up Summer credits, setting AI limits or the kill switch for a game's AI characters"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "ai",
+          "npc"
+        ],
+        "modalities": [
+          "scripts",
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/design-npc",
+          "skill/multiplayer-state"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
     },
     {
       "id": "skill/ambient-bed",
@@ -758,6 +795,44 @@
       "recommended": true
     },
     {
+      "id": "skill/camera-rigs",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "52cec93f1f8eb2e5d7bd2c0572fad53cace2129bc32a91005ae5675bfa9f7d00",
+      "summary": "Camera rigs for 2D and 3D: Camera2D follow with limits, first-person head camera, SpringArm3D third-person, orthographic top-down, FOV guidance.",
+      "use_when": [
+        "black screen on play, or the camera shows past the level edge",
+        "jerky camera follow, wrong FOV, or the third-person camera clips into walls",
+        "need a top-down, isometric, orthographic, orbit, or spring-arm camera"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "3d",
+          "2d"
+        ],
+        "modalities": [
+          "scenes",
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/make-game",
+          "skill/character-movement",
+          "skill/fps-controller"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
       "id": "skill/celeste-momentum-platforming",
       "kind": "skill",
       "version": "0.1.1",
@@ -887,6 +962,52 @@
       "recommended": true
     },
     {
+      "id": "skill/character-movement",
+      "kind": "skill",
+      "version": "1.2.1",
+      "content_hash": "ba68f8a318d0a790ec4a1d872b88ffccedbcedd038327761ca913b404b6cc0d7",
+      "summary": "Player controllers for 2D and 3D, plus the canonical third-person controller for Summer humanoid packages: movement owns translation, clips follow state.",
+      "use_when": [
+        "building or fixing player movement — gravity, collision, side-scroller, top-down, or 3D walk",
+        "wiring an imported Summer character package (character.tscn) as the playable third-person player",
+        "walk, run, and jump animation states, facing, or mouse look for a player controller",
+        "the jump feels bad — coyote time, jump buffering, variable jump height, one-way platforms"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "character-controller",
+          "gameplay",
+          "2d",
+          "3d"
+        ],
+        "modalities": [
+          "scripts",
+          "scenes",
+          "animation"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/make-game",
+          "skill/camera-rigs",
+          "skill/combat-basics",
+          "skill/fps-controller",
+          "skill/celeste-momentum-platforming",
+          "skill/character-animation-wiring",
+          "skill/character-model",
+          "skill/playtesting-a-feature"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
       "id": "skill/character-portrait",
       "kind": "skill",
       "version": "1.0.4",
@@ -958,6 +1079,46 @@
       },
       "status": "stable",
       "recommended": true
+    },
+    {
+      "id": "skill/combat-basics",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "a69f4470d1c0babc3855334ebfd7e5d53aee02b85bc0dbd5ad1fc9c8b3c8bdbb",
+      "summary": "Damage in Summer Engine: hitbox and hurtbox Areas on opposing layers, a reusable Health component, damage signals, knockback, hit feedback, projectiles.",
+      "use_when": [
+        "adding attacks, health and damage, or enemies that can be hit and hit back",
+        "adding projectiles or bullets — homing, piercing, area-of-effect, or pooling hundreds of them",
+        "wiring death and respawn, or debugging hits that never land or friendly fire"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "gameplay",
+          "scripting",
+          "game-design"
+        ],
+        "modalities": [
+          "scripts",
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/make-game",
+          "skill/character-movement",
+          "skill/game-feel",
+          "skill/auto-fire-targeting",
+          "skill/design-npc"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
     },
     {
       "id": "skill/concept-art",
@@ -1493,7 +1654,7 @@
       "id": "skill/fps-controller",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "8d7b9c109f211afec7bccef73c9b9b8a8d4737637eebd931a2cc2d7ba929f792",
+      "content_hash": "efa016e92bb775a6d10f8b085e8cdfd3412e03cc4910c63df6eba63fab8ab471",
       "summary": "Production-quality first-person controller — WASD, mouse look, jump, coyote time, jump buffering, air control, and external-velocity handling.",
       "use_when": [
         "building an FPS, first-person movement, or a 3D character that walks, jumps, and reacts to external forces",
@@ -1516,6 +1677,10 @@
         "engine": ">=4.6"
       },
       "related": {
+        "skills": [
+          "skill/character-movement",
+          "skill/camera-rigs"
+        ],
         "templates": [
           "template/3d-fps-old-school"
         ]
@@ -1728,6 +1893,42 @@
       "recommended": true
     },
     {
+      "id": "skill/in-game-purchases",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "87e5c785ec8919de1e364765a0913274d0d63771f024f35859a9f151fd3e62d8",
+      "summary": "Sell items for Sparks and let short players buy Sparks in game via the Summer purchase sheet: checkout, Sparks purchase, results, testing, store policy.",
+      "use_when": [
+        "adding a shop, buy button or paid item to a Summer game and wiring request_checkout",
+        "a checkout was rejected with insufficient_funds and the player should be able to buy Sparks without leaving the game",
+        "deciding whether an item should be sold for Sparks, or handling pending, declined, expired, rejected or manual_review purchase results"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "gameplay",
+          "scripting",
+          "game-design"
+        ],
+        "modalities": [
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer-state",
+          "skill/ui-basics"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
       "id": "skill/instantiate-asset-pack",
       "kind": "skill",
       "version": "1.0.3",
@@ -1834,12 +2035,13 @@
     {
       "id": "skill/make-game",
       "kind": "skill",
-      "version": "1.0.4",
-      "content_hash": "b0ae9d3973e3a94881689e413006b89d9b6cc112f8fba8c5d866838e3baff5c3",
+      "version": "1.1.0",
+      "content_hash": "470ad99e15eaad332d1fa343dbb0e951ab4b1b9d031024df1ac236db595081cc",
       "summary": "Orchestration spine for 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship — delegates to specialist skills.",
       "use_when": [
         "the user says 'make me a game', 'build me a game', 'I want to make a [genre] game', or 'let's build something' — running the full game-dev pipeline",
-        "the user wants a complete playable game end to end, from brainstorm through shipping"
+        "the user wants a complete playable game end to end, from brainstorm through shipping",
+        "the user names a genre — platformer, survivors, top-down RPG, FPS, third-person, horror — and the build needs its architecture and build order"
       ],
       "facets": {
         "lifecycle": [
@@ -1867,7 +2069,11 @@
           "skill/brainstorm-game",
           "skill/new-project",
           "skill/play",
-          "skill/scene-composition"
+          "skill/scene-composition",
+          "skill/character-movement",
+          "skill/camera-rigs",
+          "skill/combat-basics",
+          "skill/save-load"
         ]
       },
       "status": "stable",
@@ -2644,6 +2850,42 @@
         ]
       },
       "status": "stable",
+      "recommended": false
+    },
+    {
+      "id": "skill/save-load",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "2435b5bfa043c8615accb4eec56c674f57857eec7948a5249e7c51c964d2497f",
+      "summary": "Persist game state in Summer Engine: user:// paths, JSON progress vs ConfigFile settings, a versioned save schema with migration, autosave hooks.",
+      "use_when": [
+        "persisting progress, settings, high scores, checkpoints, or save slots",
+        "deciding between JSON and ConfigFile for a save or settings file",
+        "making saves survive game updates with a schema version and migration"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scripting",
+          "gameplay"
+        ],
+        "modalities": [
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/make-game",
+          "skill/gdscript-patterns",
+          "skill/ui-basics"
+        ]
+      },
+      "status": "preview",
       "recommended": false
     },
     {
@@ -3673,7 +3915,7 @@
       "id": "skill/ui-basics",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "bf47fc665ffdeed28b82b7fe82a066e27a811bcdadea433c72ceba200b6243f9",
+      "content_hash": "c725af703d014a7c6db43889db82077834231fbd3e4549f91b6b74af7ceaa20b",
       "summary": "Build Summer Engine UI — HUDs, menus, health bars, dialogue boxes, Control trees — anchors, containers, responsive layout, theme vs inline styling.",
       "use_when": [
         "building Summer Engine UI: HUDs, main menus, pause menus, health bars, progress bars, dialogue boxes, or any Control-node tree",
@@ -4290,6 +4532,82 @@
         "engine": ">=4.6"
       },
       "status": "stable",
+      "recommended": true
+    },
+    {
+      "id": "skill/web-and-touch-input",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "5a67ec23a03e1162725652d09af7458f47070e66e80040ef671eb22da334cbe8",
+      "summary": "Input for the browser and phones: the first-click rule for sound and mouse capture, focus, and touch buttons or a virtual stick on the same actions.",
+      "use_when": [
+        "the game plays in the browser and sound, mouse capture or keys do not work until something is clicked",
+        "the game should be playable on a phone or tablet with touch controls",
+        "adding a virtual joystick, on-screen buttons or touch camera controls"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "gameplay",
+          "ui"
+        ],
+        "modalities": [
+          "scenes",
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/make-game",
+          "skill/character-movement",
+          "skill/ui-basics"
+        ]
+      },
+      "status": "preview",
+      "recommended": true
+    },
+    {
+      "id": "skill/web-compatibility-look",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "f8649a98317c623e77f7b3d390d03b2317d1a455cecba707ea940467be8567a3",
+      "summary": "Make a web or browser game look high-end in the Compatibility renderer (WebGL 2): what works, what to avoid, 2D and 3D recipes, web performance.",
+      "use_when": [
+        "the game plays in the browser or is exported for the web and must look finished",
+        "the look is flat, grey or default in the web preview, or a Forward+ feature does nothing there",
+        "choosing lighting, fog, glow, shaders or post effects for a web or Compatibility project"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "rendering",
+          "2d",
+          "3d"
+        ],
+        "modalities": [
+          "scenes",
+          "shaders"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/3d-lighting",
+          "skill/art-direction",
+          "skill/tune-performance",
+          "skill/ui-basics"
+        ]
+      },
+      "status": "preview",
       "recommended": true
     },
     {
@@ -6076,6 +6394,40 @@
       }
     },
     {
+      "id": "tool/get-board",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "9cf6a23419cc4b1764dd816801aa791b0500d4fc1eeaf4ba7f490f97011cc574",
+      "summary": "Read the person's approved planning board (look, characters, place, storyboard, picks) with the look and picked cards as images to compare screenshots against.",
+      "use_when": [
+        "starting a build step for a game made from a planning board",
+        "\"does the game look like the board?\"",
+        "comparing a screenshot with the chosen look and picked cards"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "game-design",
+          "verification"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "stable",
+      "mcp_tool_name": "summer_get_board",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
       "id": "tool/get-console",
       "kind": "tool",
       "version": "1.0.3",
@@ -7229,15 +7581,16 @@
     {
       "id": "tool/play",
       "kind": "tool",
-      "version": "1.2.0",
-      "content_hash": "13b7e4d6f7073fe4d0961ed69026b20dfcaf4b2cca6a1e19e2329a8010b01ab7",
-      "summary": "Start the game quietly by default (editor keeps tab and focus; focus true for a toolbar-style launch) — main or a given scene, embedded or offscreen, with pins.",
+      "version": "1.3.0",
+      "content_hash": "847dc3ae4e1602479d2198e6cfa39f31e7b6285d05f97731ffd424830f708afd",
+      "summary": "Start the game quietly (editor keeps tab and focus) — main or a given scene, embedded or offscreen, with pins, or a local multiplayer session (players).",
       "use_when": [
         "runtime verification after edits",
         "the user wants to try the game or one level after a change",
         "reproducing a bug that only shows at runtime",
         "a deterministic, repeatable playtest run — pin the global RNG with seed and the timestep with fixed_fps",
         "launching a deterministic or parallel offscreen playtest instance (seed, fixed frame rate, named offscreen instance) for the runtime tools to drive",
+        "testing a Summer multiplayer game on this machine — players:2 (Local Play) runs its authority headless and two clients that join through the game's own Summer.client.join; no account, Docker or extra tools",
         "launching while the user works on the same machine — the default (focus omitted or false) sends PlayGame agent:true, so the editor does not switch to the Game tab or grab focus; the game still runs embedded and is visible to the runtime tools"
       ],
       "facets": {
@@ -8110,7 +8463,7 @@
       "id": "tool/search-assets",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "636f0ad4be720e41d175295801d358ca19f5ba1f9d95e82b5ba9cd4976bfbd24",
+      "content_hash": "0a76fbd9af655fa350bdbad9b55675ba59bf36182fefd0c831271e9b57d15748",
       "summary": "Search the Summer asset library and your own assets by keyword and meaning; returns names, types, preview and import-ready URLs.",
       "use_when": [
         "finding an existing asset in the public library before generating a new one",

@@ -27,6 +27,8 @@ import {
   runtimeBudgetMs,
   stripProbeImage,
   withPlayInstanceEcho,
+  withLocalPlayEcho,
+  PLAY_LOCAL_PLAY_NOT_SUPPORTED,
   withPlayPostureEcho,
   withRuntimeFailureHints,
   PLAY_QUIET_NOT_SUPPORTED,
@@ -317,6 +319,36 @@ describe("PlayGame / StopGame variants", () => {
     expect(withPlayInstanceEcho({ ok: true, results: [{ ok: true, op: "PlayGame" }] }, { seed: 1 })).toEqual({
       ok: true, results: [{ ok: true, op: "PlayGame" }],
     });
+  });
+});
+
+describe("summer_play Local Play — players/spectators/queue ride the PlayGame op", () => {
+  it("routes Local Play through the op with exactly the given keys", () => {
+    expect(playNeedsOp({ players: 2, focus: true })).toBe(true);
+    expect(buildPlayGameOp({ players: 2, focus: true }).op).toEqual({ op: "PlayGame", players: 2 });
+    expect(buildPlayGameOp({ players: 4, spectators: 1, queue: " duel-s1 " }).op).toEqual({
+      op: "PlayGame", agent: true, players: 4, spectators: 1, queue: "duel-s1",
+    });
+    expect(buildPlayGameOp({ players: 0, focus: true }).op).toEqual({ op: "PlayGame", players: 0 });
+  });
+
+  it("refuses rosters and combinations the engine would reject, before sending", () => {
+    expect(() => buildPlayGameOp({ players: 65 })).toThrow(/players must be an integer 0..64/);
+    expect(() => buildPlayGameOp({ players: 1.5 })).toThrow(/players must be an integer/);
+    expect(() => buildPlayGameOp({ players: 60, spectators: 5 })).toThrow(/at most 64/);
+    expect(() => buildPlayGameOp({ players: 0, spectators: 1 })).toThrow(/spectators need players/);
+    expect(() => buildPlayGameOp({ players: 2, queue: "  " })).toThrow(/queue must be/);
+    expect(() => buildPlayGameOp({ players: 2, instance: "a", mode: "offscreen" })).toThrow(/main game/);
+  });
+
+  it("says so when an engine without Local Play ran one client", () => {
+    const echoed = { ok: true, results: [{ ok: true, op: "PlayGame", playing: true, local_play: { applied: true, port: 7787 } }] };
+    expect(withLocalPlayEcho(echoed, { players: 2 })).toBe(echoed);
+    const silent = withLocalPlayEcho({ ok: true, results: [{ ok: true, op: "PlayGame", playing: true }] }, { players: 2 }) as { local_play_note?: string };
+    expect(silent.local_play_note).toBe(PLAY_LOCAL_PLAY_NOT_SUPPORTED);
+    const plain = { ok: true, results: [{ ok: true, op: "PlayGame", playing: true }] };
+    expect(withLocalPlayEcho(plain, {})).toBe(plain);
+    expect(withLocalPlayEcho(plain, { players: 0 })).toBe(plain);
   });
 });
 

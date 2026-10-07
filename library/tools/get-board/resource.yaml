@@ -1,0 +1,50 @@
+id: tool/get-board
+kind: tool
+version: 1.0.0
+summary: Read the person's approved planning board (look, characters, place, storyboard, picks) with the look and picked cards as images to compare screenshots against.
+use_when:
+  - starting a build step for a game made from a planning board
+  - '"does the game look like the board?"'
+  - comparing a screenshot with the chosen look and picked cards
+do_not_use_when:
+  - the game was not made from a planning board (no project id in the brief)
+facets:
+  lifecycle:
+    - build
+  domains:
+    - game-design
+    - verification
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: stable
+aliases:
+  - summer_get_board
+implementation:
+  module: src/mcp/tools/generate-tools.ts
+  export: registerGenerateTools
+surfaces:
+  mcp:
+    tool_name: summer_get_board
+    remote: true
+input_schema:
+  type: object
+  properties:
+    project:
+      type: string
+      description: The game's project id (given in your build brief)
+    pictures:
+      type: boolean
+      description: Also return the look and the picked cards as images (default true)
+  required:
+    - project
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false
+evidence_checks:
+  - none

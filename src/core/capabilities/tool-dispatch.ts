@@ -43,6 +43,7 @@ import {
 import { extractOpError, withOldEngineHint } from "./engine-receipt.js";
 import { lookupApiDocs } from "./api-docs.js";
 import { z, type ZodTypeAny } from "zod";
+import { BOARD_ENDPOINT, boardArgsSchema, boardQuery } from "./board.js";
 import { imageGenerationArgsSchema } from "./image-generation.js";
 import { buildMotionRequestBody, motionGenerationArgsSchema } from "./motion-generation.js";
 import { ImportHdriError, importHdriArgsSchema, importPolyHavenHdri } from "./hdri-import.js";
@@ -1130,6 +1131,11 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     const workflowId = optStr(args, "workflowId");
     if (workflowId) params.set("id", workflowId);
     return gatewayGet("/api/mcp/workflows", params);
+  }),
+  entry("summer_get_board", "Read the approved planning board for a game", false, (args) => {
+    // The CLI prints JSON: pictures (base64) only when asked for.
+    const parsed = parseToolArgs(boardArgsSchema, args, "get-board");
+    return gatewayGet(BOARD_ENDPOINT, boardQuery({ ...parsed, pictures: parsed.pictures ?? false }), 45_000);
   }),
   entry("summer_generate_image", "Generate or edit an image via Summer Studio", false, (args) =>
     gatewayPost("/api/mcp/generate/image", parseToolArgs(imageGenerationArgsSchema, args, "generate-image"))

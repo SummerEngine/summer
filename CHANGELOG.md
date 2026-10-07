@@ -5,7 +5,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 ## [3.2.1] - 2026-10-07
 
 ### Changed
-- The README now opens with what this package is: the MCP server, skills and CLI that connect AI coding agents to Summer Engine.
+- The README now opens with what this package is: the MCP server, skills and CLI that connect AI coding agents to Summer Engine, and that it builds multiplayer games, adds analytics and publishes to summer.games.
 
 ## [3.2.0] - 2026-10-07
 

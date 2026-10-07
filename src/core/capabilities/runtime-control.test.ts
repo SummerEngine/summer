@@ -4,6 +4,7 @@ import {
   GAME_STEP_MAX_FRAMES,
   INPUT_SCRIPT_MAX_EVENTS,
   PLAY_INSTANCE_TIMEOUT_MS,
+  PLAY_READY_TIMEOUT_MS,
   RUNTIME_ASYNC_OP_KINDS,
   RUNTIME_CLIENT_HEADROOM_MS,
   RUNTIME_CONTROL_OP_KINDS,
@@ -147,6 +148,19 @@ describe("buildGameInputOp", () => {
     expect(long.timeoutMs).toBe(runtimeBudgetMs(20)); // 3000/60 + 3 = 53 s -> capped 20 s
     const unwaited = buildGameInputOp({ action: "script", events: [{ at_frame: 3000, type: "key", keycode: 32 }], wait: false });
     expect(unwaited.timeoutMs).toBe(runtimeBudgetMs(10));
+  });
+
+  it("preserves raw Godot literal properties in scripts and inline replays", () => {
+    const rawEvents = [
+      { at_frame: 0, type: "raw" as const, class: "InputEventScreenTouch", props: { position: "Vector2(37, 416)", pressed: true, index: 0 } },
+      { at_frame: 30, type: "raw" as const, class: "InputEventScreenTouch", props: { position: "Vector2(37, 416)", pressed: false, index: 0 } },
+    ];
+    const original = JSON.stringify(rawEvents);
+    for (const action of ["script", "replay"] as const) {
+      const built = buildGameInputOp({ action, events: rawEvents, wait: false, instance: "touch" });
+      expect(built.op).toMatchObject({ events: rawEvents, wait: false, instance: "touch" });
+      expect(JSON.stringify(rawEvents)).toBe(original);
+    }
   });
 
   it("refuses empty, oversized, or over-horizon scripts before sending", () => {
@@ -371,5 +385,120 @@ describe("summer_play posture — quiet by default, focus:true opts in", () => {
     const missing = (await playGame(client, { instance: "a", mode: "offscreen" })) as Record<string, unknown>;
     expect(missing).toMatchObject({ ok: false, failure_reason: "engine_lacks_op", op: "ListGameInstances" });
     expect(executeOps).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("offscreen play runtime readiness", () => {
+  const launch = { ok: true, results: [{ ok: true, op: "PlayGame", instance: "a", session_attached: true }] };
+  const listed = (attached: boolean, summer_capture: boolean) => ({
+    ok: true,
+    results: [{ ok: true, op: "ListGameInstances", instances: [
+      { name: "main", attached: true, summer_capture: true },
+      { name: "a", attached, summer_capture, hold_until_release: true },
+    ] }],
+  });
+  const args = { instance: "a", mode: "offscreen" as const, deterministic: true };
+
+  it("waits for the named capture handshake even after debugger attachment, without advancing the game", async () => {
+    vi.useFakeTimers();
+    try {
+      const executeOps = vi.fn().mockResolvedValueOnce(launch)
+        .mockResolvedValueOnce(listed(false, false))
+        .mockResolvedValueOnce(listed(true, false))
+        .mockResolvedValueOnce(listed(true, true));
+      const pending = playGame({ play: vi.fn(), executeOps }, args);
+      await vi.advanceTimersByTimeAsync(200);
+      expect(await pending).toMatchObject({
+        results: launch.results,
+        readiness: { ready: true, instance: "a", attached: true, summer_capture: true, hold_until_release: true },
+      });
+      expect(executeOps.mock.calls.map(([ops]) => ops)).toEqual([
+        [{ op: "PlayGame", ...args }],
+        [{ op: "ListGameInstances" }], [{ op: "ListGameInstances" }], [{ op: "ListGameInstances" }],
+      ]);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it("bounds capture startup and retains the successful launch instead of relaunching or stopping it", async () => {
+    vi.useFakeTimers();
+    try {
+      const executeOps = vi.fn().mockResolvedValueOnce(launch).mockResolvedValue(listed(true, false));
+      const pending = playGame({ play: vi.fn(), executeOps }, args);
+      await vi.advanceTimersByTimeAsync(PLAY_READY_TIMEOUT_MS);
+      expect(await pending).toMatchObject({
+        ok: false, failure_reason: "runtime_not_ready", launch_result: launch,
+        readiness: { ready: false, attached: true, summer_capture: false, elapsed_ms: PLAY_READY_TIMEOUT_MS },
+      });
+      expect(executeOps.mock.calls.filter(([ops]) => ops[0].op !== "ListGameInstances")).toHaveLength(1);
+      for (const [, , budget] of executeOps.mock.calls.slice(1)) {
+        expect(budget).toBeGreaterThan(0);
+        expect(budget).toBeLessThanOrEqual(PLAY_READY_TIMEOUT_MS);
+      }
+    } finally { vi.useRealTimers(); }
+  });
+
+  it("bounds a readiness read even if the transport never resolves", async () => {
+    vi.useFakeTimers();
+    try {
+      const executeOps = vi.fn().mockResolvedValueOnce(launch).mockImplementationOnce(() => new Promise(() => {}));
+      const pending = playGame({ play: vi.fn(), executeOps }, args);
+      await vi.advanceTimersByTimeAsync(PLAY_READY_TIMEOUT_MS);
+      expect(await pending).toMatchObject({
+        ok: false, failure_reason: "runtime_not_ready", launch_result: launch,
+        readiness: { ready: false, elapsed_ms: PLAY_READY_TIMEOUT_MS },
+      });
+      expect(executeOps).toHaveBeenCalledTimes(2);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it("preserves identity rejection from the readiness read and never retries the launch", async () => {
+    const rejected = { ok: false, terminalState: "identity_mismatch", failure_reason: "rejected_identity", error: "project changed" };
+    const executeOps = vi.fn().mockResolvedValueOnce(launch).mockResolvedValueOnce(rejected);
+    expect(await playGame({ play: vi.fn(), executeOps }, args)).toMatchObject({
+      ...rejected, launch_result: launch, readiness: { ready: false },
+    });
+    expect(executeOps).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not poll an unconfirmed or different instance", async () => {
+    for (const instance of [undefined, "b"]) {
+      const executeOps = vi.fn().mockResolvedValue({ ok: true, results: [{ ok: true, op: "PlayGame", instance }] });
+      expect(await playGame({ play: vi.fn(), executeOps }, args)).toMatchObject({
+        ok: false, failure_reason: "instance_not_confirmed", readiness: { ready: false, instance: "a" },
+      });
+      expect(executeOps).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it("fails closed on a null or primitive launch receipt", async () => {
+    for (const launchResult of [null, undefined, "started", true]) {
+      const executeOps = vi.fn().mockResolvedValue(launchResult);
+      expect(await playGame({ play: vi.fn(), executeOps }, args)).toMatchObject({
+        ok: false, failure_reason: "invalid_launch_receipt", readiness: { ready: false },
+      });
+      expect(executeOps).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it("reports a vanished child or unreadable list without mutating recovery", async () => {
+    for (const [receipt, reason] of [
+      [{ ok: true, instances: [] }, "unknown_instance"],
+      [{ ok: true }, "invalid_readiness_receipt"],
+    ] as const) {
+      const executeOps = vi.fn().mockResolvedValueOnce(launch).mockResolvedValueOnce(receipt);
+      expect(await playGame({ play: vi.fn(), executeOps }, args)).toMatchObject({ ok: false, failure_reason: reason });
+      expect(executeOps).toHaveBeenCalledTimes(2);
+    }
+  });
+
+  it("preserves explicit release events verbatim for script and replay", () => {
+    const events = [
+      { at_frame: 0, type: "action" as const, action: "move_right", hold_ms: 0 },
+      { at_frame: 30, type: "action" as const, action: "move_right", pressed: false },
+    ];
+    for (const action of ["script", "replay"] as const) {
+      expect(buildGameInputOp({ action, events, wait: false, instance: "a" }).op.events).toEqual(events);
+    }
   });
 });

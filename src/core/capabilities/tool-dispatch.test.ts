@@ -1198,13 +1198,23 @@ describe("runtime control dispatch entries (runtime control)", () => {
     await dispatchTool("play", { seed: 7, fixed_fps: 60 }, ctx);
     expect(calls[1]).toEqual({ method: "executeOps", args: [[{ op: "PlayGame", agent: true, seed: 7, fixed_fps: 60 }], undefined, 60_000] });
 
-    await dispatchTool("play", { instance: "a", mode: "offscreen", deterministic: true }, ctx);
+    const { ctx: instanceCtx } = fakeEngineContext({
+      executeOps: async (...args: unknown[]) => {
+        calls.push({ method: "executeOps", args });
+        const ops = args[0] as Array<Record<string, unknown>>;
+        return ops[0]!.op === "PlayGame"
+          ? { ok: true, results: [{ ok: true, op: "PlayGame", instance: "a", session_attached: true }] }
+          : { ok: true, results: [{ ok: true, op: "ListGameInstances", instances: [{ name: "a", attached: true, summer_capture: true }] }] };
+      },
+    });
+    expect(await dispatchTool("play", { instance: "a", mode: "offscreen", deterministic: true }, instanceCtx)).toMatchObject({ readiness: { ready: true } });
     expect(calls[2]!.args[0]).toEqual([{ op: "PlayGame", instance: "a", mode: "offscreen", deterministic: true }]);
+    expect(calls[3]!.args[0]).toEqual([{ op: "ListGameInstances" }]);
 
     await dispatchTool("stop", {}, ctx);
-    expect(calls[3]!.method).toBe("stop");
+    expect(calls[4]!.method).toBe("stop");
     await dispatchTool("stop", { instance: "a" }, ctx);
-    expect(calls[4]).toEqual({ method: "executeOps", args: [[{ op: "StopGame", instance: "a" }], undefined, 15_000] });
+    expect(calls[5]).toEqual({ method: "executeOps", args: [[{ op: "StopGame", instance: "a" }], undefined, 15_000] });
   });
 
   it("play refuses an offscreen instance before sending on an engine that provably lacks the runtime-control wave", async () => {

@@ -104,6 +104,9 @@ export function runtimeBudgetMs(watchdogSec: number): number {
 /** Instance-aware PlayGame: the child must attach within 15 s, and a cold
  *  load of a large project can take 25-40 s on top — same 60 s as /api/play. */
 export const PLAY_INSTANCE_TIMEOUT_MS = 60_000;
+/** Read-only readiness wait after a successful offscreen launch. */
+export const PLAY_READY_TIMEOUT_MS = 15_000;
+const PLAY_READY_POLL_MS = 100;
 /** StopGame {instance}: kills a PID — same 15 s budget as /api/stop. */
 export const STOP_INSTANCE_TIMEOUT_MS = 15_000;
 
@@ -158,11 +161,11 @@ export const PLAY_INSTANCE_FALLBACK =
 
 export const RUNTIME_FAILURE_HINTS: Readonly<Record<string, string>> = {
   game_not_running:
-    "No game is running for this instance, so there is nothing to drive. Start it with summer_play (add instance + mode:'offscreen' for a disposable parallel instance; deterministic:true with seed for a reproducible run), confirm with summer_is_running or summer_game_control action:'instances' (attached:true), then retry. For the scene being EDITED use the scene tools or summer_run_script instead.",
+    "No game is running for this instance, so there is nothing to drive. Start it with summer_play (add instance + mode:'offscreen' for a disposable parallel instance; deterministic:true with seed for a reproducible run), confirm with summer_is_running or summer_game_control action:'instances' (attached:true AND summer_capture:true), then retry. For the scene being EDITED use the scene tools or summer_run_script instead.",
   unknown_instance:
     "No live game instance has that name. summer_game_control action:'instances' lists the live ones; start a new one with summer_play {instance, mode:'offscreen'}.",
   request_failed:
-    "The game's debug session has not attached yet (it may still be booting). Wait a moment, confirm with summer_game_control action:'instances' (attached:true) or summer_is_running, then retry.",
+    "The game's debug session or runtime capture channel is still booting. Check summer_game_control action:'instances' for attached:true AND summer_capture:true before runtime requests. A deterministic offscreen game starts held: explicitly step one frame before its first screenshot; use wait:false for input scripts while held, then step through their final release event.",
   game_breaked:
     "The game is stopped at a script breakpoint, so mutating runtime ops are refused until it continues. Resume it in the editor debugger (or summer_stop then summer_play), then retry. summer_game_probe, GetRuntimeBones and the input recorder still answer while breaked.",
   busy:
@@ -650,12 +653,12 @@ export const inputEventSchema = z.object({
     .number()
     .int()
     .optional()
-    .describe("When to fire, in frames after scheduling (clock:'frame'). Default 0 = the next frame."),
+    .describe("When to fire, in simulated physics ticks after scheduling (clock:'frame'). Default 0 = the first tick; an event at N needs N+1 stepped ticks."),
   at_ms: z
     .number()
     .int()
     .optional()
-    .describe("When to fire, in milliseconds after scheduling (clock:'ms'); mapped through --fixed-fps when the instance has one (clock_mapping 'exact'), else the physics tick rate ('approximate')."),
+    .describe("When to fire, in milliseconds after scheduling (clock:'ms'); rounded to simulated physics ticks at the project's physics_ticks_per_second. Read clock_mapping in the result; older engines may report approximate."),
   type: z
     .enum(["action", "key", "mouse_click", "axis", "raw"])
     .describe("'action' = InputMap action press/release; 'key' = keycode; 'mouse_click' = click at a position; 'axis' = analog strength between two actions; 'raw' = a recorded InputEvent replayed as {class, props}."),
@@ -674,7 +677,7 @@ export const inputEventSchema = z.object({
   action_positive: z.string().optional().describe("type:'axis' — action for positive strength (e.g. 'move_right')."),
   duration_ms: z.number().int().optional().describe("type:'axis' — auto-release after this many ms."),
   class: z.string().optional().describe("type:'raw' — InputEvent class to instantiate (e.g. 'InputEventKey')."),
-  props: z.record(z.unknown()).optional().describe("type:'raw' — properties set on the instantiated event."),
+  props: z.record(z.unknown()).optional().describe("type:'raw' — InputEvent properties. Booleans and numbers use JSON scalars; math properties use Godot literal strings, e.g. {position: 'Vector2(37, 416)', pressed: true, index: 0}, not coordinate arrays."),
 });
 
 export type InputEvent = z.infer<typeof inputEventSchema>;
@@ -696,7 +699,7 @@ export const gameInputArgsSchema = z.object({
   wait: z
     .boolean()
     .optional()
-    .describe("action:'script'|'replay' — wait for the last event to fire (default true; the engine caps a waited script at 20 s). Scripts longer than that: wait:false and observe with summer_game_probe."),
+    .describe("action:'script'|'replay' — wait for the last scheduled event to fire, NOT for hold_ms/duration_ms auto-releases (default true; cap 20 s). For a complete press/release, schedule an explicit release as the final event. For manual frame control use wait:false, then step past the last event; waited scripts on current engines drive a suspended game and re-suspend. Longer scripts also use wait:false and probes."),
   include_motion: z
     .boolean()
     .optional()
@@ -1139,6 +1142,74 @@ export interface PlayGameClient extends CapabilityAdvertisingClient {
   executeOps(ops: Array<Record<string, unknown>>, options?: undefined, timeoutMs?: number): Promise<unknown>;
 }
 
+/** Wait only with ListGameInstances: never step, resume, replay or relaunch. */
+async function waitForPlayInstanceReady(
+  client: PlayGameClient,
+  launchResult: unknown,
+  args: PlayGameArgs
+): Promise<unknown> {
+  if (!playTargetsInstance(args) || extractOpError(launchResult)) return launchResult;
+  const instance = args.instance!.trim();
+  const launch = (launchResult ?? {}) as Record<string, unknown> & { results?: Array<Record<string, unknown>> };
+  const started = Date.now();
+  let observed: Record<string, unknown> | null = null;
+  const readiness = (ready: boolean) => ({
+    ready, instance, attached: observed?.attached === true,
+    summer_capture: observed?.summer_capture === true,
+    hold_until_release: observed?.hold_until_release === true,
+    elapsed_ms: Date.now() - started,
+  });
+  const fail = (failure_reason: string, error: string) => ({
+    ok: false, status: "error", failure_reason, error,
+    launch_result: launchResult, readiness: readiness(false), observed,
+  });
+  if (!launchResult || typeof launchResult !== "object" || Array.isArray(launchResult)) {
+    return fail("invalid_launch_receipt", "PlayGame did not return an object launch receipt. Runtime readiness was not confirmed; inspect before retrying.");
+  }
+  const payload = launch.results?.[0] ?? launch;
+  if (payload.instance !== instance) {
+    return fail("instance_not_confirmed",
+      "The launch did not confirm the requested offscreen instance. It may have started the main game on an older engine; inspect instances before any retry.");
+  }
+  const deadline = started + PLAY_READY_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    let result: unknown;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const readBudget = deadline - Date.now();
+    try {
+      result = await Promise.race([
+        client.executeOps([{ op: "ListGameInstances" }], undefined, readBudget),
+        new Promise<never>((_resolve, reject) => {
+          timer = setTimeout(() => reject(new Error("readiness deadline expired")), readBudget);
+        }),
+      ]);
+    } catch (error) {
+      return fail(Date.now() >= deadline ? "runtime_not_ready" : "readiness_check_failed",
+        `Could not read game readiness: ${error instanceof Error ? error.message : String(error)}. The launch may still be running; inspect before retrying.`);
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
+    if (extractOpError(result)) {
+      return { ...(result as Record<string, unknown>), launch_result: launchResult, readiness: readiness(false) };
+    }
+    const envelope = result as Record<string, unknown> & { results?: Array<Record<string, unknown>> };
+    const list = envelope?.results?.[0] ?? envelope;
+    if (!Array.isArray(list?.instances)) {
+      return fail("invalid_readiness_receipt", "ListGameInstances did not return an instances list. Runtime readiness was not confirmed.");
+    }
+    observed = list.instances.find((entry: unknown) =>
+      entry !== null && typeof entry === "object" && (entry as Record<string, unknown>).name === instance
+    ) ?? null;
+    if (!observed) return fail("unknown_instance", "The launched instance is no longer listed. Inspect diagnostics before launching again.");
+    if (observed.attached === true && observed.summer_capture === true) {
+      return { ...launch, readiness: readiness(true) };
+    }
+    const remaining = deadline - Date.now();
+    if (remaining > 0) await new Promise((resolve) => setTimeout(resolve, Math.min(PLAY_READY_POLL_MS, remaining)));
+  }
+  return fail("runtime_not_ready", `Instance '${instance}' did not report attached:true AND summer_capture:true within ${PLAY_READY_TIMEOUT_MS} ms. The launch may still be running; inspect instances and diagnostics before retrying.`);
+}
+
 /**
  * summer_play, ONE implementation for both faces (MCP debug-tools.ts and the
  * CLI dispatcher). Throws ToolInputError for a bad parameter combination
@@ -1162,8 +1233,9 @@ export async function playGame(client: PlayGameClient, args: PlayGameArgs): Prom
     if (missing) return missing;
   }
   const result = await client.executeOps([op], undefined, timeoutMs);
-  return withPlayPostureEcho(
+  const launch = withPlayPostureEcho(
     withPlayInstanceEcho(withRuntimeFailureHints(withOldEngineHint(result, "PlayGame", PLAY_INSTANCE_FALLBACK)), args),
     args
   );
+  return waitForPlayInstanceReady(client, launch, args);
 }

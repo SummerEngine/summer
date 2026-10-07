@@ -63,10 +63,10 @@ input_schema:
         properties:
           at_frame:
             type: integer
-            description: When to fire, in frames after scheduling (clock frame). Default 0 = the next frame.
+            description: When to fire, in simulated physics ticks after scheduling (clock frame). Default 0 = the first tick; an event at N needs N+1 stepped ticks.
           at_ms:
             type: integer
-            description: When to fire, in milliseconds after scheduling (clock ms); exact only on an instance with fixed_fps.
+            description: When to fire, in milliseconds after scheduling (clock ms); rounded to simulated physics ticks at the project's physics_ticks_per_second. Read clock_mapping; older engines may report approximate.
           type:
             type: string
             enum:
@@ -118,7 +118,7 @@ input_schema:
             description: type raw — InputEvent class to instantiate (e.g. 'InputEventKey').
           props:
             type: object
-            description: type raw — properties set on the instantiated event.
+            description: "type raw — InputEvent properties. Booleans and numbers use JSON scalars; math properties use Godot literal strings, e.g. {position: 'Vector2(37, 416)', pressed: true, index: 0}, not coordinate arrays."
         required:
           - type
         additionalProperties: false
@@ -130,7 +130,7 @@ input_schema:
       description: action script — whether at_frame ('frame', default, exact) or at_ms ('ms') schedules the events.
     wait:
       type: boolean
-      description: action script|replay — wait for the last event to fire (default true; the engine caps a waited script at 20 s). Longer scripts use wait false and observe with summer_game_probe.
+      description: action script|replay — wait for the last scheduled event, not hold_ms/duration_ms auto-releases (default true; cap 20 s). Schedule an explicit final release when needed. Use wait false plus steps to control suspended frames yourself, or for longer scripts.
     include_motion:
       type: boolean
       description: action record_start — also record mouse/joypad motion events (default false; large).

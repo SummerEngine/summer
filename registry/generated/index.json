@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.0.3",
-      "content_hash": "cf0339df0f5b315b84610f778dd71e87ac50c4c62ca06533c8b13b293c6eed31",
+      "content_hash": "423965b3c1a1412bbeffe74c5f6da1fbfe457f2d0ea13b50b6f663e3e1eec5e6",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -335,7 +335,7 @@
       "id": "skill/agent-playtesting",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "db2fb6587ceaeb70b70a77e616880bf6e4e897cc84ea3c7b28d7628c4d26d64c",
+      "content_hash": "ac52533b52b9bbc2e8cdec60d5d23e9fa0032c5c12bff97092ec15083ffd2e0d",
       "summary": "Playtest by driving the LIVE game — deterministic launch, frame-stamped probes before/after each action, exact frame steps, scripted or recorded input.",
       "use_when": [
         "proving a gameplay feature works by driving the running game frame by frame with the runtime tools (summer_game_probe, summer_game_input, summer_game_control, summer_runtime_set/call/spawn/animate)",
@@ -1042,7 +1042,7 @@
       "id": "skill/debug",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "1673aa3a5dc7db710ef332ff3470165658e3a681b9ca3a746fc8c6e14b6f7f5c",
+      "content_hash": "5fed44d2d42c432eb4d5a2ccfb93a1693cda2a547bc4fe1280e5ee376dff10e6",
       "summary": "Disciplined bug/crash/error loop for Summer projects — script errors, console, debugger, hypothesis, fix, verify — before making code or scene changes.",
       "use_when": [
         "the user reports a bug, crash, error, or unexpected behavior in a Summer project, before making code or scene changes",
@@ -3340,7 +3340,7 @@
       "id": "skill/verifying-scenes",
       "kind": "skill",
       "version": "1.1.1",
-      "content_hash": "9753f7e9486dcb368969a8be4fd93187157a051349f020af2670705fedce4d57",
+      "content_hash": "738d9c6828a65d7f22e680973671d5f45337071d9795de4679ea23a011940ebd",
       "summary": "Prove scene work landed — snapshot before, diff + screenshot after (bookmarked viewpoint, labels), live runtime reads during playtests — then claim.",
       "use_when": [
         "after any mutation batch, asset import, or lighting change, before claiming it worked",
@@ -4836,12 +4836,12 @@
       "id": "tool/game-control",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "7e8656dbb2760a9a8d4952a6aeab127f54c1e26d9c2041fd19b7924c54414027",
+      "content_hash": "930a0a25f2c2a7452d2dabdabc236e7e56cd28a5c3b7603ede1d769891e8c7f1",
       "summary": "Pause the running game, resume it, step exactly N physics or process frames, set the time scale, or list the live game instances.",
       "use_when": [
         "pausing the running game and stepping one physics frame at a time to make exact frame-by-frame assertions",
         "\"pause the game and advance a single physics frame\" / \"run the game at quarter speed\" / \"which game instances are up?\"",
-        "checking that an offscreen playtest instance has attached before addressing it"
+        "checking that an offscreen playtest instance has attached and its summer_capture channel is ready before addressing it"
       ],
       "facets": {
         "lifecycle": [
@@ -4888,7 +4888,7 @@
       "id": "tool/game-input",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "8b66540c3f42f8eb040ee6fe6483ad59687db16c59334b737618f447132b1e53",
+      "content_hash": "66e9607928730b5efee5659dc2788d6598b8259a437b05b6f0e6fb96f9fd703f",
       "summary": "Drive the running game's input — script timed synthetic events, or record the real inputs and replay them deterministically on a seeded instance.",
       "use_when": [
         "scripting a timed input sequence against the running game (walk right for 500 ms, jump at frame 30, click a button)",

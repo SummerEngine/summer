@@ -11,6 +11,9 @@ export type OpResult = {
   errorClass?: string;
   failureReason?: string;
   failure_reason?: string;
+  launch_result?: unknown;
+  readiness?: unknown;
+  observed?: unknown;
   results?: Array<{
     ok?: boolean;
     op?: string;
@@ -95,6 +98,11 @@ export function extractOpError(result: unknown): string | null {
         ...(typeof firstFailed?.op === "string" ? { op: firstFailed.op } : {}),
         ...(typeof op.terminalState === "string" ? { terminalState: op.terminalState } : {}),
         ...(typeof op.errorClass === "string" ? { errorClass: op.errorClass } : {}),
+        // A readiness failure follows a successful launch. Preserve that receipt
+        // so the MCP face does not invite a duplicate launch during recovery.
+        ...(op.readiness && typeof op.readiness === "object"
+          ? { readiness: op.readiness, launch_result: op.launch_result, ...(op.observed ? { observed: op.observed } : {}) }
+          : {}),
       },
       null,
       2

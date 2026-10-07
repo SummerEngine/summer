@@ -48,8 +48,9 @@ The result's `determinism.seed_scope` tells you what the seed does NOT pin: `Ran
 
 Boot time varies. Confirm, do not assume:
 
-- Main game: `summer_is_running` until it reports running.
-- Offscreen instance: `summer_game_control action:"instances"` until the instance shows `attached: true`. Before that, every runtime op answers `request_failed` ("session has not attached yet"). `session_timeout` means the child never attached and was killed — read `summer_get_console` for its stderr.
+- Main game: `summer_is_running` confirms launch. For runtime capture, also check the main entry in `summer_game_control action:"instances"`.
+- Runtime readiness requires **both** `attached: true` AND `summer_capture: true` on the exact instance. Debugger attachment can precede the capture handshake; attachment alone is not enough. `summer_play` waits up to 15 s after an offscreen launch using read-only instance polls and returns a `readiness` receipt. `runtime_not_ready` means the launch may still be running: inspect instances and diagnostics before relaunching. `session_timeout` means the child never attached and was killed — read `summer_get_console` for its stderr.
+- A deterministic offscreen instance starts suspended at frame 0 (`hold_until_release:true`). After readiness, explicitly call `summer_game_control {action:"step", frames:1, instance:"a"}` before the first screenshot probe. This draws the first frame and leaves the game suspended. The readiness wait never advances the game.
 
 ### 3. Probe BEFORE
 
@@ -67,7 +68,7 @@ One action per step, so the AFTER probe attributes cleanly:
 
 - `summer_runtime_set path:"/root/Main/Player" property:"position" value:"Vector3(0, 2, 0)"` — read `applied`. `applied: false` (`not_applied`) means a script rewrote the value the same frame, or the literal type was wrong; do not proceed as if it landed.
 - `summer_runtime_call path:"/root/Main/Boss" method:"take_damage" args:[25]` — `return` is what the method answered; the effect still needs the probe.
-- `summer_game_input action:"script" events:[{at_frame:0, type:"action", action:"move_right", hold_ms:500}, {at_frame:30, type:"action", action:"jump", hold_ms:50}]` — `rejected[]` names events the game refused (`unknown_action` = not in the InputMap; bind it with `summer_input_map_bind` and restart, or drive `type:"key"`). One script in flight per instance: `busy` means wait for the first.
+- `summer_game_input action:"script" events:[{at_frame:0, type:"action", action:"move_right", hold_ms:0}, {at_frame:30, type:"action", action:"move_right", pressed:false}]` — `rejected[]` names events the game refused (`unknown_action` = not in the InputMap; bind it with `summer_input_map_bind` and restart, or drive `type:"key"`). One script in flight per instance: `busy` means wait for the first. The explicit release at tick 30 makes completion include release. `wait:true` completes at the last scheduled event, not at an automatic `hold_ms` / `duration_ms` release; on current engines it drives a suspended game through that event and re-suspends (read `drove` / `suspended`).
 - `summer_runtime_spawn action:"spawn" parent:"/root/Main/Enemies" scene:"res://enemies/goblin.tscn" props:{position:"Vector3(4, 0, -2)"}` — use the returned `node.path` from here on.
 
 ### 5. Step — for exact assertions
@@ -82,7 +83,9 @@ summer_game_control action:"step" frames:3   # kind "physics" (default)
 summer_game_probe props:[...]                 # frame N+3 — the step draws its last frame before replying
 ```
 
-The step result carries `before`, `after`, `exact`, and `overshoot`; cite them. The game stays suspended after a step — `summer_game_control action:"resume"` when you want it to run again. Time-based behaviour (a 500 ms hold, a 2 s cooldown) runs on the game's clock: with `fixed_fps` a step of N frames IS N/fps seconds; without it, use `at_ms` and read `clock_mapping` ("approximate" means the mapping went through the physics tick rate).
+The step result carries `before`, `after`, `exact`, and `overshoot`; cite them. The game stays suspended after a step — `summer_game_control action:"resume"` when you want it to run again. Input `at_frame` counts simulated physics ticks. `at_frame:0` fires on the first tick after scheduling, so a final event at N needs N+1 ticks. For the press/release example above, use `wait:false`, then step **31 physics frames** before the AFTER probe; three frames would leave the action pressed. A waited script on current engines drives those ticks itself and re-suspends.
+
+Time-based behaviour runs on the game's clock. `at_ms` is rounded to physics ticks at the project's `physics_ticks_per_second`; read `clock_mapping` and the returned frame counters. Older engines may report an approximate mapping.
 
 A minimized game window draws no frames and cannot step (`timeout`). `game_breaked` means the game sits at a script breakpoint; continue it in the debugger first.
 
@@ -106,9 +109,11 @@ Then `summer_get_debugger_errors` — a feature that "worked" while logging null
 |---|---|---|
 | Source | You write it from the spec | Whatever actually happened — a human's hands or a script's output |
 | Readable | Yes; edit a frame number and re-run | A JSON file of events; treat it as an artifact |
-| Timing | `at_frame` exact; `at_ms` exact only with `fixed_fps` | Recorded frames re-based on the first event |
+| Timing | `at_frame` counts physics ticks; `at_ms` rounds to those ticks (read `clock_mapping`) | Recorded frames re-based on the first event |
 | Best for | Golden paths, edge probes, regression checks | "Do exactly what the user did", A/B of two builds under identical input |
 | Reproducible | With `seed` + `fixed_fps` on the instance | With `seed` on a `deterministic:true` offscreen instance (`replay` refuses `seed` elsewhere: `nondeterministic_instance`) |
+
+For `type:"raw"`, use Godot literal strings for math properties and JSON scalars for booleans and numbers: `{class:"InputEventScreenTouch", props:{position:"Vector2(37, 416)", pressed:true, index:0}}`. Do not put coordinate arrays in `props.position`. The top-level `position:[x,y]` field belongs to `type:"mouse_click"`. Check `rejected[]` and probe the resulting interaction; older engines may mishandle raw math properties even when the input call reports success.
 
 Recording caps at 20,000 events / about 1 MiB (`truncated: true` when hit). Files land in `res://.summer/replays/<id>.json`; pass that exact path to `replay`. A waited script or replay is capped at 20 s by the engine — for longer sequences pass `wait:false` and follow along with probes.
 
@@ -133,7 +138,7 @@ Read `determinism.seed_scope` on the play result and believe it. Pinned: the glo
 |---|---|
 | Asserting motion from a `summer_runtime_set` result | applied means the write landed; probe to see the motion |
 | One probe, then "it works" | One frame proves a state, not a change; two frames prove a change |
-| Sleeping a fixed delay after `summer_play` | Boot varies; `summer_is_running` / `instances` `attached:true` |
+| Sleeping a fixed delay after `summer_play` | Boot varies; runtime readiness needs `instances` `attached:true` AND `summer_capture:true` |
 | `position.x == 250.0` on a non-deterministic run | Assert inequality, or pin the run with `fixed_fps` + steps |
 | Ignoring `rejected[]` because `applied > 0` | The rejected event may be the one the feature needed |
 | `seed` on the embedded game called "deterministic" | It pins the global RNG only; `deterministic:true` needs an offscreen instance |

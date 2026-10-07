@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { loadLibraryIndex } from "./library-search.js";
 import { FOOTER_SUFFIX, feedbackFooter, readLibraryEntry, readLibraryInputSchema } from "./library-read.js";
 
 /** Same shape summer_library_feedback accepts for entry_id (feedback-tools.ts
@@ -41,6 +42,25 @@ describe("readLibraryEntry over the shipped library", () => {
     expect(result.text).toContain("name: vfx-water-ripple"); // SKILL.md frontmatter
     expect(result.text).toContain("--- library/skills/vfx-water-ripple/resource.yaml ---");
     expect(result.text).toContain("Invoke: the `vfx-water-ripple` skill");
+  });
+
+  it("ships the corrected readiness and input guidance through the generated library", async () => {
+    const playtesting = await readLibraryEntry("skill/agent-playtesting");
+    const debug = await readLibraryEntry("skill/debug");
+    const scenes = await readLibraryEntry("skill/verifying-scenes");
+    const input = await readLibraryEntry("tool/game-input");
+    for (const result of [playtesting, debug, scenes, input]) {
+      if (!result.ok) throw new Error("expected shipped entry");
+      const index = loadLibraryIndex().find((entry) => entry.id === result.id);
+      expect(result.entry_id).toBe(`${result.id}@${index!.content_hash.slice(0, 12)}`);
+    }
+    if (!playtesting.ok || !debug.ok || !scenes.ok || !input.ok) return;
+    expect(playtesting.text).toContain("31 physics frames");
+    expect(playtesting.text).toContain("summer_capture: true");
+    expect(debug.text).toContain("no desktop chat bridge is required");
+    expect(debug.text).toContain("**only** op in its request");
+    expect(scenes.text).toContain("no desktop chat bridge required");
+    expect(input.text).toContain("not hold_ms/duration_ms auto-releases");
   });
 
   it("part=skill omits resource.yaml; part=resource omits the body; all has both", async () => {

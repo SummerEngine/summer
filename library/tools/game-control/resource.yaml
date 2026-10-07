@@ -5,7 +5,7 @@ summary: Pause the running game, resume it, step exactly N physics or process fr
 use_when:
   - pausing the running game and stepping one physics frame at a time to make exact frame-by-frame assertions
   - '"pause the game and advance a single physics frame" / "run the game at quarter speed" / "which game instances are up?"'
-  - checking that an offscreen playtest instance has attached before addressing it
+  - checking that an offscreen playtest instance has attached and its summer_capture channel is ready before addressing it
 do_not_use_when:
   - starting or stopping the game — summer_play / summer_stop
   - a probe-based check inside a hidden disposable instance — a RunVerification probe awaiting physics_frame

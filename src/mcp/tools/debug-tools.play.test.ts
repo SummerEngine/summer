@@ -103,10 +103,12 @@ describe("summer_play — instance-aware / deterministic variants", () => {
     expect(text(result)).toContain("without instance/mode");
   });
 
-  it("sends the instance op and passes the attach result through; warns when the engine did not echo the instance", async () => {
-    const executeOps = vi.fn().mockResolvedValue({
+  it("waits for the capture-ready instance and fails closed when launch identity is unconfirmed", async () => {
+    const executeOps = vi.fn().mockResolvedValueOnce({
       ok: true,
       results: [{ ok: true, op: "PlayGame", instance: "a", mode: "offscreen", pid: 4242, session_attached: true, seed: 20260725, fixed_fps: 60 }],
+    }).mockResolvedValue({
+      ok: true, results: [{ ok: true, op: "ListGameInstances", instances: [{ name: "a", attached: true, summer_capture: true }] }],
     });
     vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
 
@@ -114,11 +116,38 @@ describe("summer_play — instance-aware / deterministic variants", () => {
     expect(attached.isError).toBeUndefined();
     expect(executeOps).toHaveBeenCalledWith([{ op: "PlayGame", instance: "a", mode: "offscreen", deterministic: true }], undefined, 60_000);
     expect(text(attached)).toContain("session_attached");
+    expect(text(attached)).toContain("summer_capture");
+    expect(executeOps).toHaveBeenCalledTimes(2);
     expect(text(attached)).not.toContain("warning");
 
     executeOps.mockResolvedValue({ ok: true, results: [{ ok: true, op: "PlayGame", playing: true }] });
     const silent = await tool("summer_play").handler({ instance: "a", mode: "offscreen" });
-    expect(text(silent)).toContain("MAIN embedded game");
+    expect(text(silent)).toContain("instance_not_confirmed");
+    expect(text(silent)).toContain("main game");
+  });
+
+  it("keeps launch and readiness receipts in a capture-readiness failure", async () => {
+    const launch = { ok: true, results: [{ ok: true, op: "PlayGame", instance: "a", session_attached: true }] };
+    const executeOps = vi.fn().mockResolvedValueOnce(launch).mockResolvedValueOnce({ ok: true, instances: [] });
+    vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
+    const result = await tool("summer_play").handler({ instance: "a", mode: "offscreen" });
+    const receipt = JSON.parse(text(result));
+    expect(receipt).toMatchObject({ failure_reason: "unknown_instance", launch_result: launch, readiness: { ready: false, instance: "a" } });
+    expect(executeOps).toHaveBeenCalledTimes(2);
+  });
+
+  it("propagates a failed nested readiness op as an MCP error", async () => {
+    const launch = { ok: true, results: [{ ok: true, op: "PlayGame", instance: "a" }] };
+    const executeOps = vi.fn().mockResolvedValueOnce(launch).mockResolvedValueOnce({
+      ok: true, results: [{ ok: false, op: "ListGameInstances", failure_reason: "rejected_identity", error: "project changed" }],
+    });
+    vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
+    const result = await tool("summer_play").handler({ instance: "a", mode: "offscreen" }) as { isError?: boolean };
+    expect(result.isError).toBe(true);
+    expect(JSON.parse(text(result))).toMatchObject({
+      failure_reason: "rejected_identity", op: "ListGameInstances", launch_result: launch, readiness: { ready: false },
+    });
+    expect(executeOps).toHaveBeenCalledTimes(2);
   });
 
   it("teaches the instance failure reasons", async () => {

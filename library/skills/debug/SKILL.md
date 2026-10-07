@@ -200,7 +200,7 @@ The static and boot-time tools (`summer_get_script_errors`, `summer_get_console`
 - **Runtime debugger warning text** (`summer_get_debugger_warnings`) — same structured shape as the errors tool, filtered to severity `warning`. Use it whenever `summer_get_diagnostics` shows a non-zero `debugger.warnings`; do not report a warning count you never read.
 - **Diagnostics summary** (`summer_get_diagnostics`) — counts of console errors, debugger errors, debugger warnings, script errors. Tells you where to drill. **Counts only** — it carries no FPS, frame time, draw calls, or physics-body numbers.
 - **Scene tree + node properties** (`summer_get_scene_tree`, `summer_inspect_node`) — only the **edited** scene, not the running game's live tree.
-- **Rendered pixels** (`summer_screenshot`) — `target:"viewport"` for the editor's current view, `target:"scene"` for an offscreen render of a scene file, `target:"game"` for a frame of the running game (that one needs the Summer desktop app bridge and fails cleanly over a plain local connection). You look at the actual image, not a description of it.
+- **Rendered pixels** (`summer_screenshot`) — `target:"viewport"` for the editor's current view, `target:"scene"` for an offscreen render of a scene file, `target:"game"` for a frame of the embedded running game over the local API; no desktop chat bridge is required. For named offscreen or floating instances use `summer_game_probe` after `attached:true` AND `summer_capture:true`; step one frame before the first image when `hold_until_release:true`. You look at the actual image, not a description of it.
 - **Gameplay behaviour, driven by you** (`RunVerification` via `summer_batch`) — see the next section. Input, live tree, and frames from a real running instance.
 - **Whether the game is running** (`summer_is_running`) — and on which scene.
 
@@ -220,7 +220,7 @@ Probe API: `report(key, value)`, `save_frame(name)`, `dump_tree(max_depth)`, `pr
 
 This covers what static diagnostics cannot: pressed input, live scene tree (`dump_tree` reads the *running* tree, unlike `summer_get_scene_tree`), state sampled over several frames, and real rendered frames.
 
-`summer_batch` forwards unknown ops verbatim, which is how you reach `RunVerification` with no dedicated tool. Note that the sibling `SimulateInput` op is **not** reachable this way — non-bridge callers get `{ok:false, failure_reason:"unsupported_transport"}`; it only works from the in-editor chat bridge. Drive input with `press()` / `key()` inside a probe instead.
+`summer_batch` forwards raw ops, including `RunVerification`. `SimulateInput` also works over the local API when it is the **only** op in its request; batching it with other ops returns `unsupported_transport`. For timed live input use `summer_game_input`, with an explicit final release event; `wait:true` completes at the last scheduled event, not a later `hold_ms` auto-release. `press()` / `key()` inside a disposable probe remain the isolated repro route.
 
 ### What still genuinely needs the user
 

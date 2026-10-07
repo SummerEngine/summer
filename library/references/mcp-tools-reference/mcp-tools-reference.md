@@ -128,7 +128,7 @@ Drive and observe the RUNNING game (engine runtime-control ops, preview — `eng
 | Tool | Use |
 |---|---|
 | `summer_game_probe` | State AND pixels of ONE frame, atomically: live tree, up to 64 `path:property` reads, screenshot (returned as an image), all stamped with the same frame counters. The evidence read of the loop. |
-| `summer_game_control` | `pause` / `resume` / `step` exactly N physics or process frames (leaves the game suspended) / `speed` / `instances` (live instances with `attached`). |
+| `summer_game_control` | `pause` / `resume` / `step` exactly N physics or process frames (leaves the game suspended) / `speed` / `instances` (live instances with `attached` and `summer_capture`; both must be true before runtime capture). |
 | `summer_game_input` | `script` timed synthetic input (action / key / mouse_click / axis / raw), `record_start` / `record_stop` real input to `res://.summer/replays/`, `replay` a recording (`seed` only on a deterministic offscreen instance). One script in flight per instance (`busy`). |
 | `summer_runtime_set` | Set one property on a live node; `applied:false` means the read-back disagreed. Never touches the scene file. |
 | `summer_runtime_call` | Call one method on a live node and get its return value. |

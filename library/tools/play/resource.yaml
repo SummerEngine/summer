@@ -71,9 +71,9 @@ input_schema:
       exclusiveMinimum: 0
       description: "Fixed timestep for this launch (child gets --fixed-fps <n>): scene time decouples from the wall clock, the game runs as fast as it renders, frame-count-derived state repeats run to run, and at_ms input timing / GameStep frames map exactly. Opt-in per launch, never the default."
     time_scale:
-      type: number
+      type: [number, "null"]
       exclusiveMinimum: 0
-      description: Engine time scale for this launch (child gets --time-scale <f>). Not a determinism pin on its own.
+      description: "Embedded/main only. For offscreen play omit or pass null; use speed instead. null means not set and is never forwarded to the engine."
     speed:
       type: number
       description: User time scale applied on session start, (0, 100] — e.g. 0.5 for half speed.

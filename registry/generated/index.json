@@ -335,7 +335,7 @@
       "id": "skill/agent-playtesting",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "ac52533b52b9bbc2e8cdec60d5d23e9fa0032c5c12bff97092ec15083ffd2e0d",
+      "content_hash": "2eb47cc7a0f172bac917abc49e5280f52aa9cb4284644374f1ec24b1dee92bd0",
       "summary": "Playtest by driving the LIVE game — deterministic launch, frame-stamped probes before/after each action, exact frame steps, scripted or recorded input.",
       "use_when": [
         "proving a gameplay feature works by driving the running game frame by frame with the runtime tools (summer_game_probe, summer_game_input, summer_game_control, summer_runtime_set/call/spawn/animate)",
@@ -6226,7 +6226,7 @@
       "id": "tool/play",
       "kind": "tool",
       "version": "1.2.0",
-      "content_hash": "13b7e4d6f7073fe4d0961ed69026b20dfcaf4b2cca6a1e19e2329a8010b01ab7",
+      "content_hash": "e0731948a19a25806ae6a1c8a5e3709debb1beba2aa25fa94e6b0bb1694e56c2",
       "summary": "Start the game quietly by default (editor keeps tab and focus; focus true for a toolbar-style launch) — main or a given scene, embedded or offscreen, with pins.",
       "use_when": [
         "runtime verification after edits",

@@ -1,4 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 
 vi.mock("../server.js", () => ({
   getClient: vi.fn(),
@@ -53,6 +56,33 @@ describe("summer_play — instance-aware / deterministic variants", () => {
     for (const phrase of ["summer_is_running", "seed_scope", "summer_game_control", "agent-playtesting", "too_many_instances", "QUIET BY DEFAULT", "agent_quiet", "focus:true"]) {
       expect(play.description).toContain(phrase);
     }
+  });
+
+  it("advertises nullable time_scale over MCP and removes null before engine dispatch", async () => {
+    const executeOps = vi.fn().mockResolvedValueOnce({
+      ok: true, results: [{ ok: true, instance: "probe", mode: "offscreen", session_attached: true }],
+    }).mockResolvedValue({ ok: true, results: [{ instances: [{ name: "probe", attached: true, summer_capture: true }] }] });
+    vi.mocked(getClient).mockResolvedValue({ executeOps } as never);
+    const server = new McpServer({ name: "nullable-play", version: "1" });
+    registerDebugTools(server);
+    const client = new Client({ name: "play-client", version: "1" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+    await client.connect(clientTransport);
+    try {
+      const descriptor = (await client.listTools()).tools.find((t) => t.name === "summer_play")!;
+      const field = descriptor.inputSchema.properties!.time_scale as Record<string, unknown>;
+      expect(JSON.stringify(field)).toContain('"null"');
+      expect(descriptor.inputSchema.required ?? []).not.toContain("time_scale");
+      const result = await client.callTool({ name: "summer_play", arguments: { instance: "probe", mode: "offscreen", deterministic: true, time_scale: null } });
+      expect(result.isError).not.toBe(true);
+      expect(executeOps.mock.calls[0][0]).toEqual([{ op: "PlayGame", instance: "probe", mode: "offscreen", deterministic: true }]);
+      executeOps.mockClear();
+      const invalid = await client.callTool({ name: "summer_play", arguments: { instance: "probe", mode: "offscreen", time_scale: 1 } });
+      expect(invalid.isError).toBe(true);
+      expect(text(invalid)).toContain("embedded-only");
+      expect(executeOps).not.toHaveBeenCalled();
+    } finally { await client.close(); await server.close(); }
   });
 
   it("plain focus:true play still takes the legacy /api/play route byte-for-byte", async () => {

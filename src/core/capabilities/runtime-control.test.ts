@@ -311,6 +311,18 @@ describe("PlayGame / StopGame variants", () => {
     expect(buildPlayGameOp({ seed: 7, fixed_fps: 60 }).op).toEqual({ op: "PlayGame", agent: true, seed: 7, fixed_fps: 60 });
   });
 
+  it("rejects offscreen time_scale before any engine request, but keeps embedded timing", async () => {
+    const executeOps = vi.fn();
+    const client = { executeOps } as unknown as Parameters<typeof playGame>[0];
+    await expect(playGame(client, { instance: "probe", mode: "offscreen", speed: 1, time_scale: 1 }))
+      .rejects.toThrow(/OMIT time_scale.*speed/);
+    expect(executeOps).not.toHaveBeenCalled();
+    expect(buildPlayGameOp({ instance: "main", time_scale: 0.5 }).op.time_scale).toBe(0.5);
+    const offscreen = buildPlayGameOp({ instance: "probe", mode: "offscreen", speed: 0.5 });
+    expect(offscreen.op.speed).toBe(0.5);
+    expect(offscreen.op).not.toHaveProperty("time_scale");
+  });
+
   it("refuses the combinations the engine would reject, before sending", () => {
     expect(() => buildPlayGameOp({ mode: "offscreen" })).toThrow(/instance name other than 'main'/);
     expect(() => buildPlayGameOp({ instance: "main", mode: "offscreen" })).toThrow(/other than 'main'/);

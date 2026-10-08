@@ -39,7 +39,7 @@ An action is not evidence. `summer_runtime_set` returning `applied: true`, `summ
 Decide before pressing play what the run must pin.
 
 - **Embedded main game** (`summer_play` with no instance): the game the user sees. Add `seed` and `fixed_fps` to pin the RNG and the frame clock — `seed` only applies to a game that is not already running (`determinism.applied: false` with `reason: already_running` means `summer_stop` first).
-- **Offscreen instance** (`summer_play {instance:"a", mode:"offscreen"}`): a hidden child process the user never sees, addressed by name on every runtime tool. Up to three at once. `deterministic: true` launches it with `--fixed-fps 60 --summer-seed <seed> --audio-driver Dummy`; this is the only kind of instance on which `summer_game_input action:"replay"` accepts a `seed`.
+- **Offscreen instance** (`summer_play {instance:"a", mode:"offscreen"}`): a hidden child process the user never sees, addressed by name on every runtime tool. Up to three at once. For offscreen play, omit `time_scale` or pass `null`; use `speed` instead. `time_scale` with a numeric value is embedded-only. `deterministic: true` launches it with `--fixed-fps 60 --summer-seed <seed> --audio-driver Dummy`; this is the only kind of instance on which `summer_game_input action:"replay"` accepts a `seed`.
 - **Two variants side by side**: `instance:"before"` and `instance:"after"` (different scenes or different `summer_runtime_set` setups), the same recorded input replayed into each, probes compared frame for frame.
 
 The result's `determinism.seed_scope` tells you what the seed does NOT pin: `RandomNumberGenerator` instances (self-randomized on construction), scripts that call `randomize()`, wall-clock reads, thread timing. A feature that uses any of those is not deterministic under a seed; assert ranges there, or fix the script to use the global RNG.
@@ -63,6 +63,14 @@ summer_game_probe
 Write down `frame.process_frames` and `frame.physics_frames`. Every path you will act on comes from this tree — runtime paths are absolute (`/root/Main/Player`) and differ from the edited scene when nodes spawn, rename, or reparent at runtime. Look at the screenshot and say what is in it.
 
 ### 4. Act
+
+Choose inputs from the actual handler. `type:"action"` and `type:"axis"`
+change polled `Input` state; they do not deliver `_input()` or
+`_unhandled_input()` events. For those callbacks and GUI controls, send key,
+mouse or raw events. To press Space, use `type:"key", keycode:32` with explicit
+press and release entries. Do not change working game code to accommodate the
+wrong kind of test input. `applied` counts accepted input operations, not the
+expected gameplay effect.
 
 One action per step, so the AFTER probe attributes cleanly:
 

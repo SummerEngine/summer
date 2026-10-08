@@ -984,8 +984,10 @@ export const playGameExtensionSchema = {
   time_scale: z
     .number()
     .positive()
+    .nullable()
     .optional()
-    .describe("Engine time scale for this launch (child gets --time-scale <f>). Not a determinism pin on its own."),
+    .transform((value) => value ?? undefined)
+    .describe("Embedded/main only: engine time scale for this launch (child gets --time-scale <f>). For mode:offscreen, omit or pass null; use speed instead. null means not set and is never forwarded to the engine. Not a determinism pin on its own."),
   speed: z
     .number()
     .optional()
@@ -1064,6 +1066,13 @@ export function buildPlayGameOp(args: PlayGameArgs): BuiltRuntimeOp {
   if (args.deterministic === true && args.mode !== "offscreen") {
     throw new ToolInputError(
       "deterministic:true is offscreen-only (it launches a child with --fixed-fps 60 --summer-seed --audio-driver Dummy). Pass instance + mode:'offscreen', or use seed/fixed_fps alone for the embedded game."
+    );
+  }
+  if (args.mode === "offscreen" && args.time_scale !== undefined) {
+    throw new ToolInputError(
+      "time_scale is embedded-only. For offscreen play OMIT time_scale and use speed instead. " +
+      'Minimal call: {"instance":"test","mode":"offscreen","deterministic":true}. ' +
+      "Nothing was sent to the engine; correct the arguments before retrying."
     );
   }
   if (args.seed !== undefined && !isInt(args.seed)) throw new ToolInputError("seed must be an integer.");

@@ -226,7 +226,7 @@ Only skip brainstorm if the user explicitly said "skip brainstorm" or "just buil
 |---|---|---|
 | **Create** | Available | Scaffold from a pinned template, build scenes and scripts through MCP, generate 2D/3D/audio/video assets, guided by the library. |
 | **Test** | Available | The verification ladder: compile checks, screenshots, live play with debugger reads, and input-driven probes (`RunVerification`) that press real keys and assert on real frames. |
-| **Publish** | Available (creator CLI) | `summer publish` streams an already-exported Summer `.pck` to the Summer Platform for review — explicit, confirmed, immutable releases with real history (`summer releases`). Nothing is ever submitted silently. |
+| **Publish** | Preview | `summer_export_game` exports the summer.games `.zip` with the installed engine (headless); `summer_publish_build` uploads it to your game's store listing after you confirm the exact game, file and version (sign in once with `summer login --store`). The older `summer publish` (`.pck` to the legacy creator API) is deprecated. Nothing is ever submitted silently. |
 | **Grow** | Direction | Store distribution, analytics, retention and live-ops tooling arrive as new library entries (the structure is built for it — lifecycle is metadata, not architecture). Not promised by this package today. |
 
 ## What's in this repo
@@ -321,6 +321,7 @@ We tell you before we touch your disk.
 | Summer Engine app | ~1 GB (engine + bundled Git/runtime tools) | `npx -y summer-engine@latest install` | Summer's signed releases |
 | Auth token | ~1 KB | `npx -y summer-engine@latest login` | Browser to `~/.summer/auth-token` |
 | Creator token | ~50 bytes | only when you run `summer login --creator` and mint one | One-time browser value to `~/.summer/creator-token`; never replaces the auth token |
+| Store sign-in | ~2 KB | only when you run `summer login --store` | Browser OAuth (PKCE) to `~/.summer/oauth-token` with its refresh token; never replaces the auth token |
 | Skill files | small, bundled | in the npm package | no extra network call |
 | Generated assets (3D / image / audio / video) | varies | only on explicit `summer_generate_*` calls when that provider route is enabled for the account | Summer Engine Studio |
 | URL imports | varies | only on explicit `summer_import_from_url` calls | the URL you provide |
@@ -348,10 +349,11 @@ matchmaking are not promised by this package.
 |---|---|
 | `summer install [--yes]` | Download Summer Engine. Prints URL and size first; never replaces an installed engine without confirmation. |
 | `summer login` | Browser-based core Summer sign-in. |
-| `summer login --creator` | Open the Summer Platform token settings and securely connect a separate publish-scoped creator token. |
+| `summer login --store` | Browser sign-in to the Summer store so agents can upload builds (`summer_publish_build`). |
+| `summer login --creator` | Deprecated with `summer publish`: connect a separate publish-scoped creator token for the legacy creator API. |
 | `summer logout` | Clear auth tokens. |
 | `summer config [get\|set\|unset]` | Read or update the shared non-secret `~/.summer/config.json`. |
-| `summer publish [project] --artifact <game.pck> --version <value> [--confirm]` | Compute and show the exact immutable target; after approval, stream it through prepare → write-once PUT → finalize. |
+| `summer publish [project] --artifact <game.pck> --version <value> [--confirm]` | Deprecated: use `summer tool export-game`, then `summer tool publish-build`. Streams a `.pck` to the legacy creator API through prepare → write-once PUT → finalize. |
 | `summer releases [--cursor <value>]` | List real creator-owned release history. |
 | `summer status` | Engine state, port, auth. |
 | `summer doctor` | Diagnose Node, login, engine, project memory, MCP. |

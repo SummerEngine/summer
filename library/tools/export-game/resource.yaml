@@ -1,0 +1,59 @@
+id: tool/export-game
+kind: tool
+version: 1.0.0
+summary: Export the game for summer.games with the installed Summer Engine (headless, no window) and return the .zip bundle path, sha256, size and manifest.
+use_when:
+  - '"export my game for summer.games"'
+  - '"make a build I can upload to my store page"'
+  - preparing the bundle that summer_publish_build uploads
+do_not_use_when:
+  - exporting for Steam, itch.io, Windows, Android or other stores — skill/export-and-ship
+  - the game is still being built; export when the user wants a Build
+facets:
+  lifecycle:
+    - launch
+  domains:
+    - creator
+    - deployment
+    - headless
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_export_game
+implementation:
+  module: src/core/capabilities/export-game.ts
+  export: exportGame
+surfaces:
+  mcp:
+    tool_name: summer_export_game
+    remote: true
+input_schema:
+  type: object
+  properties:
+    project:
+      type: string
+      description: Project folder with project.godot. Defaults to the MCP's bound project, then the working directory.
+    out:
+      type: string
+      description: Output .zip path. Defaults to <project>/.summer/exports/<name>-<time>.zip.
+    debug:
+      type: boolean
+      default: false
+      description: Export a debug build (--export-debug).
+    timeoutSeconds:
+      type: integer
+      minimum: 10
+      maximum: 7200
+      description: Stop the engine after this many seconds (default 900; a first export imports every asset).
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - none

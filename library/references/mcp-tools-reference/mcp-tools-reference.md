@@ -17,7 +17,7 @@
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (101 tools)
+## Tool surface (103 tools)
 
 ### Project files (4)
 
@@ -237,11 +237,13 @@ Preview. One fast, read-only call that walks every node of a 3D scene and lists 
 | `summer_get_project_context` | Project, scene, and `.summer` memory summary — call at start of session. Binds the session to the open project and surfaces a `capabilitySkewWarning` when the engine build and CLI have drifted; tools whose op the engine provably lacks return a structured `engine_lacks_op` result instead of running. Compact by default (a few KB: `sceneSummary`, scalar `health` with capability counts); `include:['scene_tree','capabilities','settings']` adds the heavy blocks, `omitted` says how. |
 | `summer_get_agent_playbook` | Daily operating contract (observe-first loop, content routing, invariants, verification ritual) — call at start of session. Also served natively as the `summer_agent_playbook` MCP prompt. |
 
-### Creator platform (3)
+### Creator platform (5)
 
 | Tool | Use |
 |---|---|
-| `summer_creator_publish` | Compute the exact `.pck` digest and size, require user confirmation, then run versioned prepare → write-once upload → finalize. The server independently verifies `publish` scope, ownership, bytes, and review state. |
+| `summer_export_game` | Export the game for summer.games: runs the installed engine headless (no window) with the `summer.games` preset and returns the `.zip` path, sha256, size and bundle manifest. No running editor needed. |
+| `summer_publish_build` | Upload that `.zip` to the creator's game through Studio's store upload: confirm-gated preview first, then declare, part upload from disk, seal, wait for the Build, name its client pack; `publish:true` also approves it. Needs `summer login --store`; a retry with the same file and version continues the same upload. |
+| `summer_creator_publish` | **Deprecated** (use the two tools above). Compute the exact `.pck` digest and size, require user confirmation, then run versioned prepare → write-once upload → finalize. The server independently verifies `publish` scope, ownership, bytes, and review state. |
 | `summer_creator_releases` | List real creator-owned releases from `summer.creator.v1`, with opaque cursor pagination. |
 | `summer_creator_config` | Read or confirm updates to the shared non-secret `~/.summer/config.json`. It never accepts or returns tokens. |
 

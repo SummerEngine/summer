@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.0",
-      "content_hash": "09d9e3a92558c4b28e14105a5b26fffdd47587144debc30e44f6e26b88d3baf1",
+      "content_hash": "81296e116d7aec14e9ce92deb666abb0c1ec621980d109429fee36dcb8b62329",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -1524,7 +1524,7 @@
       "id": "skill/export-and-ship",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "459ad769af5e734676659117ce4fbb3226668b5e41211afc3373b45a52ed8bba",
+      "content_hash": "7137a9bb60cac360d7f8d26b6e0bd64a358abf87a30c7d515479da6de8e45868",
       "summary": "Assess and prepare a game export: inventory installed templates and targets, validate release assets and config, produce supported builds after approval.",
       "use_when": [
         "the user wants to assess or prepare a Summer game export — Steam, itch, HTML5, iOS, Android targets as available in the installed build",
@@ -2209,7 +2209,7 @@
       "id": "skill/multiplayer-publish",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "7d7f025367beb0f71efa96519a4325e9f3b97705c99ea597ea73aaf9da2052eb",
+      "content_hash": "52117117e661cbd898d4faece8f72ef2304118999c80bce55a709619e8cec289",
       "summary": "Ship a hosted Summer multiplayer game: the summer.games bundle, server preset, pre-upload checks, and a new Build.",
       "use_when": [
         "publishing a hosted Summer multiplayer game online so other players can join it",
@@ -2373,7 +2373,7 @@
       "id": "skill/navigate-summer",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "8fdf4a979ef8e40412fa23974097251937dbd5a553490be8b09842e5c7868b6f",
+      "content_hash": "261e7a6fc82faab880e61723cf39459596a7edaeabb90059c43c1d97c2fca079",
       "summary": "When to open a Summer web page or editor surface FOR the user (billing, their games, the scene just built) versus acting through the API, using summer_open.",
       "use_when": [
         "the user asks to see, check, or decide something — \"show me my billing\", \"where do I change my plan\", \"open my games\", \"let me look at the scene\", \"take me to the MCP guide for Cursor\"",
@@ -5684,9 +5684,9 @@
     {
       "id": "tool/creator-publish",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "5ced82fe5442354df55ef381c4284029142441fd462bc7a695c2e5853c3817f3",
-      "summary": "Publish an exported Summer .pck through the versioned Summercraft creator API, with an explicit confirm step before upload.",
+      "version": "1.1.0",
+      "content_hash": "0f62b7444688a0b5724b1d992a7f8aa20dbd138503aaeac02bc5fec242e899a4",
+      "summary": "Deprecated: publishes a .pck to the legacy Summercraft API. Use summer_export_game, then summer_publish_build, to upload to summer.games.",
       "use_when": [
         "releasing a user-approved build to a Summercraft channel",
         "\"ship this exported build to the live channel\"",
@@ -5704,7 +5704,7 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable",
+      "status": "deprecated",
       "mcp_tool_name": "summer_creator_publish",
       "remote": false,
       "cli_command": "summer publish",
@@ -5720,7 +5720,7 @@
       "id": "tool/creator-releases",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "75e19a8b5e872d42d9b52ae255cf55b24f7d455323d028cfa0856abf955cb0b5",
+      "content_hash": "7f807ae2bc66110570ee19351d3493e71f7f9e2bd327fb83b2eac53c1bfc8789",
       "summary": "List creator-owned releases from the Summercraft creator API with server-verified scope and ownership.",
       "use_when": [
         "reviewing which versions of a project are live per channel",
@@ -5792,6 +5792,41 @@
       "status": "preview",
       "mcp_tool_name": "summer_debug_views",
       "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/export-game",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "2e1cd5eb531d4f9a40f2eb38dbea0d87f8e19452269b4f2564676cb91cb7de1c",
+      "summary": "Export the game for summer.games with the installed Summer Engine (headless, no window) and return the .zip bundle path, sha256, size and manifest.",
+      "use_when": [
+        "\"export my game for summer.games\"",
+        "\"make a build I can upload to my store page\"",
+        "preparing the bundle that summer_publish_build uploads"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch"
+        ],
+        "domains": [
+          "creator",
+          "deployment",
+          "headless"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_export_game",
+      "remote": true,
       "authority": {
         "filesystem": true,
         "editor_mutation": false,
@@ -7408,7 +7443,7 @@
       "id": "tool/open",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "d32902fb14881139928d72eafaa2f0a54e1c59bbcfe0055884cac561cce72b86",
+      "content_hash": "c1087ddd07caf7bca466f5545aa8f15c3e28dd6d4cedd41eddb28f466025ff02",
       "summary": "Open the exact summerengine.com page or editor surface by intent name — billing, my games, an MCP guide, a scene, a node, a dock — or print the URL/op.",
       "use_when": [
         "the user wants to SEE or DECIDE something on the website — \"open my billing page\", \"show me my published games\", \"take me to pricing\", \"open the MCP setup guide for Cursor\"",
@@ -7662,6 +7697,41 @@
         "network": false,
         "credentials": false,
         "publish": false
+      }
+    },
+    {
+      "id": "tool/publish-build",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "e6d7412990ed2c424a38dcb0915b8ca1db8c06c355aaeb8b8f00e4de350487ce",
+      "summary": "Upload a summer.games export to the creator's game on summer.games (the store upload Studio uses), confirm-gated, optionally approving the Build for players.",
+      "use_when": [
+        "\"upload my game to summer.games\"",
+        "\"publish this build to my store page\"",
+        "\"put my game online so my friends can play it\"",
+        "uploading the .zip from summer_export_game as a new Build"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch"
+        ],
+        "domains": [
+          "creator",
+          "deployment"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_publish_build",
+      "remote": true,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": true
       }
     },
     {

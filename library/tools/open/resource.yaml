@@ -9,7 +9,7 @@ use_when:
   - 'handing the user a link instead of opening a browser (open: false), or checking which destination an intent maps to'
   - resolving where a user intent lives ("where do I change my plan?") before acting
 do_not_use_when:
-  - the user wants a result, not a view — add the node, set the property, publish; use the mutation tools (summer_add_node, summer_set_prop, summer_creator_publish)
+  - the user wants a result, not a view — add the node, set the property, publish; use the mutation tools (summer_add_node, summer_set_prop, summer_publish_build)
   - opening a project directory in the engine — that is the CLI's `summer open <path>` / `summer run <path>` project launcher, not a navigation target
   - the destination is not on summerengine.com or docs.summerengine.com — the tool refuses other origins
 facets:

@@ -117,7 +117,7 @@ queries:
   - query: "export a windows build of my game"
     expected: [skill/export-and-ship]
   - query: "put my game online so my friends can play it in the browser"
-    expected: [tool/creator-publish, skill/export-and-ship]
+    expected: [tool/publish-build, skill/export-and-ship]
   - query: "run the game from CI without opening the editor window"
     expected: [skill/headless-scripting, skill/running-in-the-cloud]
   - query: "teach summer a new trick I just figured out so the next agent knows it"

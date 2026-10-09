@@ -1,0 +1,69 @@
+id: tool/publish-build
+kind: tool
+version: 1.0.0
+summary: Upload a summer.games export to the creator's game on summer.games (the store upload Studio uses), confirm-gated, optionally approving the Build for players.
+use_when:
+  - '"upload my game to summer.games"'
+  - '"publish this build to my store page"'
+  - '"put my game online so my friends can play it"'
+  - uploading the .zip from summer_export_game as a new Build
+do_not_use_when:
+  - the user has not approved the exact game, file, digest, version and publish choice
+  - the game is not exported yet — summer_export_game first
+  - store page text, images or price — those are edited in Studio
+facets:
+  lifecycle:
+    - launch
+  domains:
+    - creator
+    - deployment
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_publish_build
+implementation:
+  module: src/core/capabilities/publish-build.ts
+  export: publishBuild
+surfaces:
+  mcp:
+    tool_name: summer_publish_build
+    remote: true
+input_schema:
+  type: object
+  properties:
+    gameId:
+      type: string
+      description: The store game id (Studio store page URL). Omit to get the list of your games.
+    file:
+      type: string
+      description: Exported .zip. Defaults to the last summer_export_game result.
+    clientVersion:
+      type: string
+      description: Build version, vMAJOR.MINOR.PATCH (e.g. v1.0.0); a new upload needs a new version.
+    publish:
+      type: boolean
+      default: false
+      description: Also approve the Build for players. A game that has not passed review keeps it as a preview.
+    confirm:
+      type: boolean
+      default: false
+      description: Set true only after the user approves the exact upload.
+    waitSeconds:
+      type: integer
+      minimum: 0
+      maximum: 1800
+      description: How long to wait for Summer to make the Build (default 600). On timeout, call again to keep waiting.
+  required:
+    - clientVersion
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: true
+evidence_checks:
+  - none

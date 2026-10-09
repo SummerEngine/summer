@@ -11,13 +11,13 @@ paths: ["assets/**", "art/pixel/**", "sprites/**"]
 
 # pixel-art — Pixel-Perfect Sprites and Tiles
 
-This skill generates pixel-art assets — sprites, items, tiles, icons, portraits — at a target resolution (32×32, 64×64, 128×128, etc.). Pixel art has hard constraints (grid alignment, limited palette, no anti-aliased edges) that diffusion models violate by default. This skill encodes the prompt patterns and post-processing discipline that makes the output actually look like pixel art and not "blurry small image."
+This skill generates pixel-art sprites, items, tiles, icons and portraits at a target resolution (32×32, 64×64, 128×128). Pixel art has hard constraints (grid alignment, limited palette, no anti-aliased edges) that diffusion models break by default. The prompt patterns and post-processing below make the output read as pixel art instead of a blurry small image.
 
 **Backing tool:** `summer_generate_image` with an explicit pixel-art prompt.
 
 Two things about that tool you have to know before writing a call, because both silently do nothing:
 
-- **There is no `"pixel"` style preset.** `style` accepts exactly `realistic`, `cartoon`, `anime`, `none`; anything else is coerced to `none`. Only `cartoon` and `anime` do anything at all (they append a short suffix); `realistic` and `none` append nothing. So `style: "pixel"` is identical to `style: "none"` — the pixel look has to come entirely from the prompt. Use `style: "none"` and say so honestly.
+- **There is no `"pixel"` style preset.** `style` accepts exactly `realistic`, `cartoon`, `anime`, `none`; anything else is coerced to `none`. Only `cartoon` and `anime` do anything at all (they append a short suffix); `realistic` and `none` append nothing. So `style: "pixel"` is identical to `style: "none"` — the pixel look has to come entirely from the prompt. Use `style: "none"`.
 - **`options` is not a general passthrough.** The MCP tool forwards `options` to the server, which only recognizes Nano Banana provider keys: `seed`, `outputFormat`, `safetyTolerance`, `syncMode`, `systemPrompt`, `limitGenerations`, `thinkingLevel`. `image_size` and `negative_prompt` are not among them and are dropped without an error. There is no size or aspect-ratio argument on this tool at all — MCP images come back at the server's 1:1 default. Put framing and exclusions in the prompt text instead.
 
 Pixel-perfect output is enforced in Summer Engine with Nearest texture filtering
@@ -82,14 +82,14 @@ summer_generate_image(
   prompt="pixel art slime monster, 32x32 sprite, PICO-8 palette, hard 1px outline in palette's darkest color, 3-tone shading, no anti-aliasing, no blur, sharp pixel edges, front-facing. Not blurry, no smooth gradients, no soft edges, not photorealistic, no 3D render.",
   model="nano-banana-2",
   style="none",
-  options={ removeBackground: true }
+  removeBackground=true
 )
 ```
 
 Two deliberate choices there:
 
 - **The negations live in the prompt.** There is no `negative_prompt` argument — putting one in `options` is dropped silently. Diffusion models honor in-prompt negations less reliably than a real negative-prompt field, so state them as plain sentences at the end and expect to regenerate more often than you would on a provider UI that exposes the field.
-- **`options.removeBackground: true` is real** and is the only `options` key in this skill that does anything: it runs a real background-removal pass after generation and returns a PNG with true alpha. Prefer it over asking for "transparent background" in the prompt, which is what makes models paint a literal checkerboard.
+- **`removeBackground: true` is a top-level argument**, not an `options` key. It runs a background-removal pass after generation and returns a PNG with true alpha. Prefer it over asking for "transparent background" in the prompt, which makes models paint a literal checkerboard.
 
 ### 5. Downscale to target resolution
 
@@ -158,7 +158,7 @@ Confirm `Filter: Nearest` is set in the import dock OR project-wide.
 - **User wants the entire game in pixel art.** Set `Project Settings → Rendering → Textures → Default Texture Filter: Nearest` once. Saves you from re-setting it on every import.
 - **User wants a high-res "pixel art" portrait that's not actually pixelated** (faux-pixel-aesthetic at full resolution). That's `character-portrait` with a "pixel art aesthetic" prompt — not this skill.
 - **User specifies a palette like "Sweetie-16" or "Endesga-32" and the model ignores it.** Name the hex codes explicitly. Palette names alone are unreliable below the top 5-10 famous ones.
-- **Tilesets need to tile cleanly.** Pixel-art tile-edge cleanliness from raw generation is poor. Generate the tile grid, then manually fix edge seams in Aseprite. The AI gets you 80% there.
+- **Tilesets need to tile cleanly.** Pixel-art tile-edge cleanliness from raw generation is poor. Generate the tile grid, then fix edge seams by hand in Aseprite.
 
 ## Fallback (no MCP)
 
@@ -169,7 +169,7 @@ summer_generate_image(
   prompt="<pixel art prompt with full anchor>. Not blurry, no smooth gradients, no anti-aliasing.",
   model="nano-banana-2",
   style="none",
-  options={ removeBackground: true }
+  removeBackground=true
 )
 ```
 

@@ -9,7 +9,6 @@ use_when:
   - "scripts break whenever I move nodes because of hardcoded paths"
 do_not_use_when:
   - "shader or material work, asset import mechanics, or gameplay tuning — this is purely about hierarchy shape"
-  - "intake from the gamedev-knowledge pipeline (source-cited, pipeline-validated, not yet exercised in-engine by the Summer team) — verify results in the engine as you would any technique"
 facets:
   lifecycle:
     - build

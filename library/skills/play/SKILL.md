@@ -104,11 +104,10 @@ Leave the game running. The user wants to play it. Stop only on explicit ask.
 
 This skill mutates engine state (clearing console, starting play). It's a read-side workflow with one safe write (`summer_play`). No "May I" needed — this is what the user asked for. Do confirm before stopping a running game.
 
-## Want a working starter?
+## Requirements
 
-No template. Works against any Summer project that has a main scene set in the
-technical `project.godot` file.
+Any Summer project with a main scene set in `project.godot`.
 
 ## See also
 
-- `debugging/debug/SKILL.md` — what to do when /play surfaces an error
+- `debug` — what to do when /play surfaces an error

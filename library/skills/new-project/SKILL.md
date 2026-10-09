@@ -11,7 +11,7 @@ paths: ["**/project.godot"]
 
 # /new-project — Scaffold a fresh empty project
 
-When the user wants to start from a blank canvas — not a community template, not a built-in starter scene — this is the path.
+Use this when the user wants a blank project instead of a template.
 
 ## When to use this skill
 
@@ -42,7 +42,7 @@ Default: `my-game`. If they say "anything is fine" or similar, use `my-game` and
 Two built-in options:
 
 - `empty` — root `Node3D` only. Pure blank canvas. Best for: experimentation, when the user knows exactly what they want to build.
-- `3d-basic` — root `Node3D` with `Camera3D`, `DirectionalLight3D`, a floor `MeshInstance3D`, and a `WorldEnvironment`. Best for: first-time users, when "just give me something I can press play on" is the vibe.
+- `3d-basic` — root `Node3D` with `Camera3D`, `DirectionalLight3D`, a floor `MeshInstance3D`, and a `WorldEnvironment`. Best for: first-time users who want something they can press Play on.
 
 If you're not sure which fits, ask:
 
@@ -62,7 +62,7 @@ or
 summer create 3d-basic my-game
 ```
 
-The command writes `project.godot` and the chosen `main.tscn`. No network call, fast, deterministic.
+The command writes `project.godot` and the chosen `main.tscn`. It makes no network call.
 
 ### 4. Open it
 
@@ -96,11 +96,9 @@ Ask: "Project is open. What do you want to build?"
 ## Edge cases
 
 - **Engine not running** → that's fine. `summer create` doesn't need the engine. After scaffolding, `summer run <name>` will start it.
-- **User wants 2D but `empty` is the only 2D-friendly built-in** → use `empty`, then in the next breath set up a 2D scene root via `summer_replace_node` (Node3D → Node2D). Mention this — don't surprise the user.
+- **User wants 2D but `empty` is the only 2D-friendly built-in** → use `empty`, then set up a 2D scene root via `summer_replace_node` (Node3D → Node2D). Mention this — don't surprise the user.
 - **Directory exists** → the CLI errors out. Ask for a different name; don't try to overwrite.
 
 ## Closing
 
 End with: "Project `<name>` is created and open. What do you want to build first?"
-
-That's the handoff to whatever skill comes next.

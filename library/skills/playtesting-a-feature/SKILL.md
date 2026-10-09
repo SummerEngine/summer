@@ -31,7 +31,7 @@ NO "FEATURE SHIPPED" CLAIM WITHOUT A PLAYED WALKTHROUGH
 
 If you have not, in this session, driven the feature and read back what happened, you cannot claim it works.
 
-**You walk the feature. Not the user.** A `RunVerification` probe presses your game's real inputs, reads state back across frames, and saves real rendered frames. Handing the walkthrough to the user is a last resort for things a probe genuinely cannot judge — see [What only a human can answer](#what-only-a-human-can-answer) — not the default.
+**You walk the feature. Not the user.** A `RunVerification` probe presses your game's real inputs, reads state back across frames, and saves real rendered frames. Handing the walkthrough to the user is a last resort for things a probe cannot judge — see [What only a human can answer](#what-only-a-human-can-answer) — not the default.
 
 On an engine build with the runtime-control ops (`summer_game_probe`, `summer_game_input`, `summer_game_control`, `summer_runtime_*`), drive the LIVE game instead of a hidden probe: deterministic launch, frame-stamped probe before and after every action, exact frame steps. That doctrine is the `agent-playtesting` skill; this skill's probe loop below is the path when those tools answer `engine_lacks_op`.
 
@@ -130,13 +130,13 @@ If anything is non-zero or unexpected, the feature is not done. Go to `debug`.
 
 ### What only a human can answer
 
-A probe reports facts. It cannot hold an opinion. Ask the user only when the question is genuinely experiential:
+A probe reports facts. It cannot hold an opinion. Ask the user only when the question is experiential:
 
 - **Does it feel right?** Floaty jumps, sluggish input, mushy hit feedback — see `debugging-game-feel`.
 - **Does it look good?** Composition, colour, readability. A probe can prove a light exists and prove the frame is not black; it cannot tell you the scene is ugly.
 - **Is this fun?** Not a measurable property.
 
-"I cannot simulate input" is not on that list, and has not been true since `RunVerification` shipped. If you catch yourself asking the user to press a key, write the probe instead.
+"I cannot simulate input" is not on that list: `RunVerification` presses real inputs. If you catch yourself asking the user to press a key, write the probe instead.
 
 ### 4. Probe the edges
 
@@ -210,7 +210,7 @@ Don't ask reflexively. A saved frame sequence answers most "did it visually work
 | "It would take too long to play" | Playtest takes 60 seconds. Shipping a broken feature costs hours. |
 | "The unit test passes" | Unit tests cover code paths, not gameplay sequences. |
 | "I already played it in a previous session" | State changed. Verify in this session. |
-| "I'll let the user catch any issues" | That is the user's job description for a non-AI engineer. Yours is to ship working features. |
+| "I'll let the user catch any issues" | Catching them is your job. Ship working features. |
 | Skipping `summer_clear_console` before `summer_play` | You will chase last session's errors. |
 | Sleeping a fixed delay after `summer_play` | Boot time varies. Wait for `play.started` with `summer_wait_for_event`, or confirm with `summer_is_running`. |
 | Skipping `summer_get_console` because diagnostics looked fine | Silent warnings and signal misfires hide there. |
@@ -253,8 +253,6 @@ So if `summer_play` returns "Summer Engine is not running":
 3. When the engine comes back, run the loop.
 
 ## The Bottom Line
-
-A game feature is a promise to the player. Verifying it means seeing the promise kept on screen, not seeing the code that would, in theory, keep it.
 
 Press play. Walk the path. Probe the edges. Read the diagnostics. Then claim done.
 

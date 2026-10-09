@@ -31,11 +31,11 @@ func run(ctx):
 - `print(...)` — captured into `output`.
 - Values are real GDScript: `Vector3(0, 10, 0)`, `Color(1, 0, 0, 1)`. The quoted variant-string convention (`"Vector3(0, 10, 0)"`) belongs to `summer_set_prop`, not to script code.
 - Budget: `max_seconds` default 20, clamp 5–120. The script blocks the editor between frames — keep it fast; move heavy batch work to `summer_run_editor_script`. On newer engines the budget is a HARD deadline: overrun raises the script error `"Summer script budget exceeded (Ns)"` (result `budget_enforced: true`). Split the work into smaller scripts — never resubmit the same oversized one.
-- Transactions: newer engines wrap the run in ONE named undo action (`undo: "action"`, the default) and roll it back on a mid-script runtime error — the result then carries `rolled_back: true` and the scene is untouched. Pass `undo: "none"` for v1 behavior (checkpoint only, partial mutations survive an error). Older engines ignore the param; treat any `errors` there as a possible half-applied mutation.
+- Transactions: newer engines wrap the run in ONE named undo action (`undo: "action"`, the default) and roll it back on a mid-script runtime error — the result then carries `rolled_back: true` and the scene is untouched. Pass `undo: "none"` for checkpoint-only behavior (partial mutations survive an error). Older engines ignore the param; treat any `errors` there as a possible half-applied mutation.
 
 ## The ctx stdlib (newer engines)
 
-Creation helpers that **set the owner for you** (to the edited scene root) and return the created node — prefer them over the manual `new()` + `add_child` + `set_owner_recursive` dance. Frozen signatures:
+Creation helpers that **set the owner for you** (to the edited scene root) and return the created node — prefer them over the manual `new()` + `add_child` + `set_owner_recursive` steps. Frozen signatures:
 
 ```gdscript
 add_node(type: String, name: String, parent: Node = null, props: Dictionary = {}) -> Node
@@ -237,7 +237,7 @@ set_main_scene(path: String) -> bool                   # application/run/main_sc
 
 **Undo posture.** File-writing helpers (`attach_script`, `make_prefab`) and project-settings helpers (`add_autoload`, `add_input_action`, `set_main_scene`) are covered by the pre-run checkpoint, NOT by the packed-scene undo action — a `rolled_back: true` result has reverted the scene but not those files or settings. The result's `undo_action` note says so whenever any of them ran (`files_written: [paths]`, `project_settings_changed: [keys]`): read it, and surface `no_rewind_point: true` to the user before more work of this kind.
 
-## Owner rules — the silent killer
+## Owner rules
 
 <EXTREMELY-IMPORTANT>
 **Every node you create must be owned by the scene root, or it silently vanishes when the scene saves.** Descendants too — being under an owned node is NOT enough. `add_child` succeeds, the screenshot even shows it, and the saved `.tscn` is missing it.

@@ -7,7 +7,7 @@ description: "Run Summer Engine on a Linux box with no display — install it, l
 
 ## Overview
 
-Summer Engine runs fine on a Linux machine with no display and no human. Everything in this skill was measured in a real cloud container: headless engine boots, MCP tools answer, and renders work under xvfb + llvmpipe.
+Summer Engine runs on a Linux machine with no display and no human. Everything in this skill was measured in a real cloud container: headless engine boots, MCP tools answer, and renders work under xvfb + llvmpipe.
 
 Three facts carry the whole setup:
 
@@ -21,14 +21,14 @@ Three facts carry the whole setup:
 
 | Priority | Source | When |
 |---|---|---|
-| 1 | `SUMMER_ENGINE_BINARY=<abs path>` | The container already carries a prebuilt engine binary (for example a source build's `bin/godot.linuxbsd.editor.x86_64`). Registers that binary — no download. |
+| 1 | `SUMMER_ENGINE_BINARY=<abs path>` | The container already carries a prebuilt engine binary. Registers that binary — no download. |
 | 2 | `SUMMER_ENGINE_URL=<url>` | Download any artifact URL: `.tar.gz`, `.zip`, or a raw executable. |
 | 3 | (default) | The newest published Linux release artifact (`Summer-linux-x86_64-<tag>.tar.gz`). |
 
 All three register the binary at `~/.summer/engine/summer-linux-x86_64`, which is where `summer run` and `summer doctor` look. `SUMMER_ENGINE_BINARY` is also honored directly at lookup time, so setting the env var alone (without ever running `summer install`) is enough for `summer doctor` to report the engine as installed.
 
 ```bash
-# Container with a prebuilt binary — today's cloud unlock:
+# Container with a prebuilt binary:
 export SUMMER_ENGINE_BINARY=/abs/path/to/engine-binary
 summer install      # registers it; summer doctor now shows Engine: ok
 ```
@@ -68,7 +68,7 @@ apt-get install -y xvfb libgl1-mesa-dri   # names vary by distro
 xvfb-run -a <engine-binary> --path <project-dir> --rendering-driver opengl3 ...
 ```
 
-Honest limitations:
+Limitations:
 
 - **No Vulkan in most containers** → Forward+/Mobile renderers are unavailable; you get software GL (Compatibility). Colors and composition are trustworthy; GPU-specific effects, performance numbers, and driver-dependent output are not.
 - Software rendering is slow. Budget seconds per frame, not milliseconds, and never quote FPS measured this way.
@@ -100,4 +100,4 @@ Treat it as a secret: env-inject it from the runner's secret store, never bake i
 **Related skills:**
 - `headless-scripting` — the headless invocation contract, exit-code traps, and what scripts unlock.
 - `playtesting-a-feature` — the verify instance and probes (run them under xvfb in the cloud).
-- `verification-before-completion` — judging work by artifacts, which matters double when nobody can see a screen.
+- `verification-before-completion` — judging work by artifacts, which matters more when nobody can see a screen.

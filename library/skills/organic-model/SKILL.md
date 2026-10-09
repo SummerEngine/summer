@@ -13,9 +13,9 @@ paths: ["assets/organic/**", "assets/models/**", "**/*.tscn", "**/*.gd"]
 
 Organic shapes (trees, rocks, mushrooms, coral, alien flora, crystals, vines, bones) are **the most forgiving category for AI 3D generation**. Lumps look natural. Asymmetry looks natural. Smoothing-group artifacts read as bark texture. The "melted" look that ruins vehicles and characters is fine on a mossy boulder.
 
-This is the cheapest, fastest way to fill out a scene. Use it liberally — it's the recommended go-to when the user says "this scene feels empty". Each generation is ~$0.30–0.50, and the failure rate is the lowest of any 3D-asset family.
+This is the cheapest, fastest way to fill out a scene, and the first choice when the user says "this scene feels empty". The failure rate is the lowest of any 3D-asset family.
 
-Backing tool: `summer_generate_3d`. Default `hunyuan` is great here, but `trellis` is faster and quality difference is mostly invisible on organic shapes — `trellis` is the recommended pick when generating many at once.
+Backing tool: `summer_generate_3d`. Default `hunyuan` works well here, but `trellis` is faster and the quality difference is hard to see on organic shapes. Pick `trellis` when generating many at once.
 
 ## When to use
 
@@ -25,7 +25,7 @@ Backing tool: `summer_generate_3d`. Default `hunyuan` is great here, but `trelli
 - "Fill this forest scene with foliage."
 - "Alien plants for the planet surface."
 - "Coral for the underwater level."
-- The user wants visual density without spending a lot of money or time.
+- The user wants visual density quickly and cheaply.
 
 ## When NOT to use
 
@@ -84,11 +84,11 @@ Organic prompts that DON'T work:
 
 ### 3. Confirm and call
 
-> About to generate `pine_tree_01` via `trellis`, target ~2k tris. ~$0.30, ~30s. OK?
+> About to generate `pine_tree_01` via `trellis`, target ~2k tris, ~30s. This uses credits. OK?
 
 For batch generation, batch the confirmation:
 
-> About to generate 3 trees + 3 rocks + 5 mushrooms (11 generations, ~$3.50, ~5 min). All low-poly via `trellis`. OK?
+> About to generate 3 trees + 3 rocks + 5 mushrooms (11 generations, ~5 min). All low-poly via `trellis`. OK?
 
 ```
 summer_generate_3d(
@@ -144,11 +144,11 @@ Every scene-mutating tool takes an explicit `scenePath`; node paths are relative
 For dense forests, the cheapest fix beyond MultiMesh is the billboard imposter:
 
 1. Generate the tree mesh once at high polycount.
-2. Render it from one angle to a transparent PNG (Godot's `EditorScript` can capture a viewport).
+2. Render it from one angle to a transparent PNG (an `EditorScript` can capture a viewport).
 3. Use that PNG as a `Sprite3D` with `billboard = enabled`.
-4. Swap from `MeshInstance3D` to `Sprite3D` at ~50m camera distance via Godot's `VisibleOnScreenNotifier3D` or a custom LOD script.
+4. Swap from `MeshInstance3D` to `Sprite3D` at ~50m camera distance with `visibility_range_end` on the mesh and `visibility_range_begin` on the sprite (both on `GeometryInstance3D`), or a custom LOD script.
 
-For a 200-tree forest, ~10 close trees are real meshes, 190 are billboards. Frame budget saved: ~80%.
+In a 200-tree forest, only the ~10 closest trees need to be real meshes; the other 190 can be billboards.
 
 ## Anti-patterns
 
@@ -166,7 +166,7 @@ For a 200-tree forest, ~10 close trees are real meshes, 190 are billboards. Fram
 - **Branching meshes (vines, roots) come back too thick.** Specify `thin tendril, fine branches`, or accept and scale Y down in the editor.
 - **Snow / ice / frozen variant.** Add `covered in snow, frosted, ice crystals` to the prompt — works well on trees and rocks. For temperature variants of the same scene, generate the variant rather than retexturing.
 - **Crystal/glass organic.** Mesh comes back opaque. Generate the geometry, then assign a `StandardMaterial3D` with `transparency = ALPHA` and emissive in the editor.
-- **Bones, skulls, dead trees.** All work great — organic forgives them more than props would. Add `weathered, sun-bleached` for desert / tundra feel.
+- **Bones, skulls, dead trees.** All work; organic forgives them more than props would. Add `weathered, sun-bleached` for desert / tundra feel.
 
 ## Fallback (no MCP)
 

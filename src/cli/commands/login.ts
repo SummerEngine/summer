@@ -39,7 +39,8 @@ export const loginCommand = new Command("login")
         );
         return;
       }
-      await runStoreLogin({ fetch, now: Date.now, openUrl: open, log: console.log });
+      // --force also registers a new client, the way back if this machine's was removed.
+      await runStoreLogin({ fetch, now: Date.now, openUrl: open, log: console.log, newClient: Boolean(opts.force) });
       console.log(
         "Signed in to the Summer store. Your core Summer login was not changed."
       );

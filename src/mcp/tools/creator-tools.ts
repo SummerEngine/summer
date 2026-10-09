@@ -5,6 +5,7 @@ import {
   listCreatorReleases,
   publishCreator,
 } from "../../core/capabilities/creator.js";
+import { captureGameplay } from "../../core/capabilities/capture-gameplay.js";
 import { exportGame } from "../../core/capabilities/export-game.js";
 import { STORE_TARGETS } from "../../core/capabilities/export-presets.js";
 import { exportTemplates, TEMPLATE_PLATFORMS } from "../../core/capabilities/export-templates.js";
@@ -101,6 +102,21 @@ export function registerCreatorTools(server: McpServer): void {
     },
     async ({ action, platforms, includeDebug, summerVersion }) =>
       creatorResult(() => exportTemplates({ action, platforms, includeDebug, summerVersion }))
+  );
+
+  server.tool(
+    "summer_capture_gameplay",
+    "Capture real gameplay frames without a running editor: starts the game in Summer Engine's offscreen verify instance (a real renderer, a window parked offscreen with no focus, never on screen), lets it run waitSeconds, and saves PNG frames of what the game draws, HUD included. Use for store screenshots (1920x1080 landscape or 1080x1920 portrait). With an editor open, summer_screenshot target game also works. Returns each frame's path, width and height; look at them before using them.",
+    {
+      project: z.string().optional().describe("Project folder with project.godot. Defaults to the MCP's bound project, then the working directory."),
+      scene: z.string().optional().describe("Scene to start (res://... or uid://...). Default: the project's main scene, which is often a title menu; pass the gameplay scene for gameplay frames."),
+      resolution: z.string().optional().describe("Window size WIDTHxHEIGHT (default 1920x1080; 1080x1920 for portrait)."),
+      frames: z.number().int().min(1).max(10).optional().describe("Frames to save (default 1)."),
+      waitSeconds: z.number().min(0).max(120).optional().describe("Seconds the game runs before the first frame (default 3)."),
+      intervalSeconds: z.number().min(0.1).max(60).optional().describe("Seconds between frames (default 1)."),
+      out: z.string().optional().describe("Output folder. Defaults to <project>/.summer/captures/<time>/ (ignored by git)."),
+    },
+    async (args) => creatorResult(() => captureGameplay(args))
   );
 
   server.tool(

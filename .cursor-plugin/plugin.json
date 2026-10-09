@@ -4,7 +4,7 @@
   "name": "summer",
   "displayName": "Summer",
   "version": "3.3.0",
-  "description": "Agent tooling for Summer Engine: game-dev skills, lifecycle hooks, and a 104-tool MCP bridge to the local desktop app.",
+  "description": "Agent tooling for Summer Engine: game-dev skills, lifecycle hooks, and a 105-tool MCP bridge to the local desktop app.",
   "author": {
     "name": "Summer Engine",
     "email": "founders@summerengine.com"

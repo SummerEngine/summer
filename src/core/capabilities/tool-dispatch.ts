@@ -135,6 +135,7 @@ import {
 } from "./creator.js";
 import { exportGame } from "./export-game.js";
 import { exportTemplates } from "./export-templates.js";
+import { captureGameplay } from "./capture-gameplay.js";
 import { publishBuild } from "./publish-build.js";
 import {
   CONFIG_KEYS,
@@ -898,6 +899,17 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       summerVersion: optStr(args, "summerVersion"),
     });
   }),
+  entry("summer_capture_gameplay", "Capture real gameplay frames offscreen, without a running editor", false, (args) =>
+    captureGameplay({
+      project: optStr(args, "project"),
+      scene: optStr(args, "scene"),
+      resolution: optStr(args, "resolution"),
+      frames: optNumberOrUndefined(args, "frames"),
+      waitSeconds: optNumberOrUndefined(args, "waitSeconds"),
+      intervalSeconds: optNumberOrUndefined(args, "intervalSeconds"),
+      out: optStr(args, "out"),
+    })
+  ),
   entry("summer_publish_build", "Upload a summer.games export to your store game (confirm-gated)", false, (args) =>
     publishBuild({
       gameId: optStr(args, "gameId"),

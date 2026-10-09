@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.0",
-      "content_hash": "d0fc28b8ca01a46e50a1053393760594ac0323643aa2e00aa7d68c0d1bd5732d",
+      "content_hash": "39cd3255d2bd7efec517f30aef0c3bf11217db083b8fd2c9332c355fb3a6a2b8",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -5420,6 +5420,42 @@
       "status": "preview",
       "mcp_tool_name": "summer_camera_bookmark",
       "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/capture-gameplay",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "ef3e2147a04e75c50043e0e88184f28c67a951cdf61b18181cb88a1297193c39",
+      "summary": "Capture real gameplay frames (PNG, HUD included) in Summer Engine's offscreen verify instance, without a running editor, e.g. store screenshots.",
+      "use_when": [
+        "\"take gameplay screenshots for my store page\"",
+        "\"I need screenshots but the editor is not open\"",
+        "\"capture a 1920x1080 frame of my game\"",
+        "collecting real gameplay screenshots for summer_store_set_art desktop.screenshots or mobile.screenshots"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch",
+          "build"
+        ],
+        "domains": [
+          "creator",
+          "headless"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_capture_gameplay",
+      "remote": true,
       "authority": {
         "filesystem": true,
         "editor_mutation": false,

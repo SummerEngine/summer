@@ -105,12 +105,16 @@ export function registerCreatorTools(server: McpServer): void {
 
   server.tool(
     "summer_publish_build",
-    "Upload a summer.games export (.zip from summer_export_game) to the creator's game on summer.games, through the same store upload Studio uses: declare, upload parts straight from disk, seal, wait until Summer makes the Build, name its client pack, and with publish=true approve it. First call with confirm=false and show the user the returned game, file, sha256, size, version and publish choice; set confirm only after they approve. Needs \"summer login --store\". A retry with the same file and clientVersion continues the same upload.",
+    "Upload an export from summer_export_game to the creator's game on summer.games, through the same store upload Studio uses, straight from disk. A store bundle (format bundle): declare, upload parts, seal, wait until Summer makes the Build, name its client pack, and with publish=true approve it. A web build or native download (format download): upload it as the game's store version for its platform (web, macos-universal, windows-x64, linux-x64; read from the last export) and wait until Summer has checked it. First call with confirm=false and show the user the returned target; set confirm only after they approve. Needs \"summer login --store\". A retry with the same file and clientVersion continues the same upload. Nothing here makes a game live: the owner approves publishing (summer_store_submit).",
     {
       gameId: z.string().optional().describe("The store game id (Studio store page URL). Omit to get the list of your games."),
       file: z.string().optional().describe("Exported .zip. Defaults to the last summer_export_game result."),
       clientVersion: z.string().describe("Build version, vMAJOR.MINOR.PATCH (e.g. v1.0.0); a new upload needs a new version."),
-      publish: z.boolean().default(false).describe("Also approve the Build for players. A game that has not passed review keeps it as a preview."),
+      publish: z.boolean().default(false).describe("Bundles only: also approve the Build for players. A game that has not passed review keeps it as a preview; an agent needs the owner's approval."),
+      platform: z
+        .enum(["web", "macos-universal", "windows-x64", "linux-x64"])
+        .optional()
+        .describe("Web builds and native downloads: the store platform. Defaults to the last export's platform; omit for a store bundle."),
       confirm: z.boolean().default(false).describe("Set true only after the user approves the exact upload."),
       waitSeconds: z.number().int().min(0).max(1800).optional().describe("How long to wait for Summer to make the Build (default 600). On timeout, call again to keep waiting."),
     },

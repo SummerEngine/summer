@@ -37,6 +37,7 @@ import {
   setCachedBootDriftNotice,
 } from "./boot-notice.js";
 import { appendMcpLogEvent } from "../core/mcp-log.js";
+import { prepareHostedMount } from "./hosted-mount.js";
 import {
   buildBootDriftNotice,
   fetchLatestRegistryVersion,
@@ -55,14 +56,16 @@ export const getCachedBootDriftNotice = getCachedNotice;
  * (docs/design/archive/E2E-2026-09-03.md, F-17) showed an agent needs on the first
  * turn and would otherwise learn the hard way. Kept under 600 characters so
  * it costs a few hundred tokens once; the full operating guide stays in the
- * summer_agent_playbook prompt / summer_get_agent_playbook tool.
+ * summer_agent_playbook prompt / summer_get_agent_playbook tool. The last
+ * sentence names the publishing path and the owner-approval rule.
  */
 export const SUMMER_MCP_INSTRUCTIONS =
-  "Summer Engine MCP. Call summer_get_project_context first: it binds this session to the open project and returns mainScene, projectMemory (GameSoul, template pin) and any capabilitySkewWarning, compactly. " +
-  "Before building or fixing, summer_search_library then summer_read_library the hit: skills, examples, templates live there. " +
-  "After a playthrough read summer_get_diagnostics, not summer_get_console alone (runtime errors live in the debugger). " +
-  "An all-black screenshot means the viewport had not redrawn — recapture before concluding. " +
-  "Report entries you verified in-engine via summer_library_feedback.";
+  "Summer Engine MCP. Call summer_get_project_context first: it binds the open project and returns mainScene, projectMemory and any capabilitySkewWarning. " +
+  "Before building or fixing, summer_search_library then summer_read_library the hit. " +
+  "After a playthrough read summer_get_diagnostics, not summer_get_console alone. " +
+  "An all-black screenshot means the viewport had not redrawn: recapture. " +
+  "Report verified entries via summer_library_feedback. " +
+  "Publishing: summer_export_game, summer_publish_build, summer_store_*; an agent never publishes alone: summer_store_submit returns the owner's approval link.";
 
 /**
  * Fire-and-forget probe of the npm registry on MCP boot. Caches the result for
@@ -428,8 +431,13 @@ export async function startMcpServer(
     appendMcpLogEvent("mcp:boot_drift_probe_failed", errorDetails(error));
   });
 
+  // Hosted Summer Engine MCP tools (store, publishing, board, Grow): ready
+  // before connect, mounted after it without blocking the engine tools.
+  const hosted = prepareHostedMount(server);
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
+  void hosted.mount();
   appendMcpLogEvent("mcp:ready", {
     version,
     pid: process.pid,

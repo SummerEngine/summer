@@ -15,12 +15,12 @@ Only file, import, scene-read, and game run/stop/logs/screenshot operations work
 ## Ships dark
 
 - Enabled by `SUMMER_HEADLESS_ROUTING=1`. Unset, the module is not loaded at all and nothing changes.
-- Requires an engine build that ships the worker mode and process registry (Summer 4.7.x line). On older builds, leave the flag off.
+- Requires an engine build that ships the worker mode and process registry. On builds without it, leave the flag off.
 - With the flag on and an editor open, the editor path is used unchanged — caching, credential-drift reconnects, and identity binding all behave as before.
 
 ## What an agent should expect
 
-- Errors from this layer are prefixed `[headless:<stage>]` where stage is one of `connect`, `auth`, `op`, `spawn`, so you can tell "could not reach the worker" from "the worker went quiet mid-import".
+- Errors from this layer are prefixed `[headless:<stage>]` where stage is one of `connect`, `auth`, `op`, `spawn`, so "could not reach the worker" and "the worker went quiet mid-import" read differently.
 - A first call with no editor and no worker can take up to two minutes while the worker starts and imports the project. Later calls are fast.
 - **No blind retries.** If a mutating operation (write, import, run, stop) times out or the worker connection drops, the outcome is reported as UNKNOWN and the connection is quarantined. Inspect the target (read the file, check the scene) before retrying. There is deliberately no automatic reconnect or replay.
 - Worker error strings start with a snake_case classifier (`sha256_mismatch`, `already_exists`, `needs_display`). `needs_display` on a screenshot means the machine has no display; open the project in the editor for screenshots.

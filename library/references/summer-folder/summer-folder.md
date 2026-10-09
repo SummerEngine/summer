@@ -1,6 +1,6 @@
 # `.summer/` Folder Convention
 
-> The canonical layout for project-scoped Summer state. Read this if you're authoring a skill that writes durable design output, locked project memory, or agent-readable design notes.
+> The layout of project-scoped Summer state. Read this before writing a skill that writes design output, locked project memory, or agent-readable notes.
 
 ## Files at the root of `.summer/`
 

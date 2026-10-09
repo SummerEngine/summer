@@ -1,6 +1,6 @@
 # Collaborative Protocol — "May I write?"
 
-> Every Summer skill must follow this. The agent works *with* the user, not around them.
+> Every Summer skill follows this rule.
 
 ## The rule
 
@@ -13,7 +13,7 @@ This applies to:
 - Setting up project-wide settings (`project.godot`)
 - Installing tools, libraries, or templates
 
-Reading is unconditional. Inspection, scene-tree walks, diagnostics — never need permission.
+Reading needs no permission: inspection, scene-tree walks and diagnostics run without asking.
 
 ## Phrasing
 
@@ -42,9 +42,9 @@ Plain, short, action-first. Examples:
 
 ## Linter check
 
-The `workflow/skill-test/SKILL.md` static linter looks for the phrases:
-- "May I" / "May I write" / "May I create" / "May I attach"
+The `skill-test` skill's static check looks for one of these phrases:
+- "May I"
 - "I'm about to"
 - "Continue?" / "OK?" / "Proceed?"
 
-A skill that mutates files but never says any of these fails the linter.
+A skill that triggers user-visible writes but never says any of these fails the check. Read-only skills are exempt.

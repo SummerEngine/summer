@@ -1,6 +1,6 @@
 ---
 name: in-game-purchases
-description: "Sell items for Sparks via the Summer purchase sheet: checkout, results, unlocking from inventory, authority grants, testing, store policy."
+description: "Sell items for Sparks in a game shop via the Summer purchase sheet: checkout, results, not enough Sparks, inventory unlocks, authority grants, store policy."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: gameplay

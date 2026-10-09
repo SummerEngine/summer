@@ -32,7 +32,7 @@ composition, and the authority neither sees nor writes them.
 | Channel keys | 1–64 of `A-Z a-z 0-9 _ . -`, starting with a letter or digit; at most 64 channels per World |
 | History | Best effort, not a full log. A new handle shows the newest 2 messages; `load_older()` grows the window to at most 16 |
 | Lifetime | A handle belongs to one World admission. After leaving or joining another World, open a new one |
-| Not included | Direct messages (`skill/summer-friends`), party chat (the Summer app) and messages written by your server |
+| Not included | Direct messages (`summer-friends`), party chat (the Summer app) and messages written by your server |
 
 **Hosted only.** Chat needs a joined hosted World and a Summer app whose Player
 Host offers `player.channels`. A queue reservation is not enough: open the
@@ -40,8 +40,8 @@ channel after `enter()` succeeds. In Local Play and editor runs,
 `check_open_readiness()` and `open_world_channel()` fail with `unavailable`.
 Build the "chat hidden" path first.
 
-This skill extends the Courtyard game from `skill/multiplayer-project` and
-`skill/multiplayer-state`.
+This skill extends the Courtyard game from `multiplayer-project` and
+`multiplayer-state`.
 
 ## Steps
 
@@ -49,7 +49,7 @@ This skill extends the Courtyard game from `skill/multiplayer-project` and
 
 Messages carry the author's Summer user id (`player_id`), not a name. The
 authority already knows every verified name. Publish them in the shared match
-document (`skill/multiplayer-state`): in `authority/main.gd`'s `_join`, before
+document (`multiplayer-state`): in `authority/main.gd`'s `_join`, before
 accepting, add
 
 ```gdscript
@@ -158,7 +158,7 @@ Call `$Chat.open()` after `enter()` returns `true`. Wire it into the UI:
 Locally, check that the hidden path works and nothing errors:
 
 ```
-summer_project_setting name="summer/local_play/players" value=2
+summer_project_setting key="summer/local_play/players" value=2
 summer_play
 summer_get_diagnostics
 summer_stop
@@ -189,7 +189,7 @@ Then test real chat on Summer staging with two accounts in one match.
 
 ## See also
 
-- `skill/multiplayer-state`: the match document that carries player names
-- `skill/summer-friends`: direct messages with friends
-- `skill/summer-parties`: party chat lives in the Summer app
-- `skill/multiplayer-testing`: what Local Play can and can't test
+- `multiplayer-state`: the match document that carries player names
+- `summer-friends`: direct messages with friends
+- `summer-parties`: party chat lives in the Summer app
+- `multiplayer-testing`: what Local Play can and can't test

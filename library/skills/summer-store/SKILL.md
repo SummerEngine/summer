@@ -45,8 +45,8 @@ proves nothing.
 Items and offers are created in your game's Studio pages (`summer_open` target
 `game`). Code never creates items.
 
-This skill extends the Courtyard game from `skill/multiplayer-project` and
-`skill/multiplayer-state`.
+This skill extends the Courtyard game from `multiplayer-project` and
+`multiplayer-state`.
 
 ## Steps
 
@@ -265,7 +265,7 @@ Walk through every outcome:
 
 ## See also
 
-- `skill/multiplayer-state`: Commands and the match document used for equipped items
-- `skill/multiplayer-testing`: Local Play fixtures and personas
-- `skill/summer-player-data`: saving a player's loadout between matches
-- `skill/summer-analytics`: measuring the shop
+- `multiplayer-state`: Commands and the match document used for equipped items
+- `multiplayer-testing`: Local Play fixtures and personas
+- `summer-player-data`: saving a player's loadout between matches
+- `summer-analytics`: measuring the shop

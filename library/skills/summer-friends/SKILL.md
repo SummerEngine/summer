@@ -42,7 +42,7 @@ Declining never blocks play. A game must work without these permissions.
 
 **Availability:**
 
-- **Engine release.** This needs an engine that includes Summer Engine PR #508. On engines without it, `Summer.client.friends` does not exist and scripts that use it fail to parse. Check the class reference for `SummerClientFriends` before using this skill.
+- **Engine release.** This needs an engine release that includes `SummerClientFriends`. On older engines, `Summer.client.friends` does not exist and scripts that use it fail to parse. Check the class reference for `SummerClientFriends` before using this skill.
 - **Hosted only.** `is_available()` is `false` in Local Play and editor runs, for guests, for accounts the platform keeps out of social features (`age_restricted`, under 13), and in Summer apps without `player.friends@1` (friends) or `player.messaging@1` (messages).
 - **Overlays.** The screens need the Summer app to offer friends and parties; otherwise they fail with `capability_unavailable` or `ui_unavailable`.
 
@@ -133,8 +133,8 @@ How it behaves:
 - **When the list is read again.** With a handler on `changed`, the engine re-reads the list on every change hint, after a consent decision, on `refresh()`, and about every 60 seconds while the game is in front. Never poll yourself.
 - **Statuses.** Show `in_this_game` friends first. `unknown` means presence couldn't be read; it is not `offline`.
 - **Rows.** Key them by `user_id`; each read replaces the `SummerFriend` objects.
-- **Profiles of other players.** For the people in the current match, use the user ids your authority publishes (the `players` map in `skill/summer-world-chat`, step 1) and call `show_profile(user_id)`. Your own id fails with `invalid_argument`.
-- **Inviting a friend into a match.** Use the party invite sheet (`skill/summer-parties`).
+- **Profiles of other players.** For the people in the current match, use the user ids your authority publishes (the `players` map in `summer-world-chat`, step 1) and call `show_profile(user_id)`. Your own id fails with `invalid_argument`.
+- **Inviting a friend into a match.** Use the party invite sheet (`summer-parties`).
 
 ### 3. Direct messages (only if chat is central)
 
@@ -188,7 +188,7 @@ Local Play has no accounts, so check the hidden path locally:
 - there are no script errors.
 
 ```
-summer_project_setting name="summer/local_play/players" value=2
+summer_project_setting key="summer/local_play/players" value=2
 summer_play
 summer_get_diagnostics
 summer_stop
@@ -199,7 +199,7 @@ and revoke access in the Summer app, and watch `access_changed`.
 
 ## Checklist
 
-- [ ] The engine's class reference lists `SummerClientFriends` (Summer Engine PR #508 or later).
+- [ ] The engine's class reference lists `SummerClientFriends`.
 - [ ] `summer.build.json` declares exactly the permissions the code asks for.
 - [ ] Local Play: friends features are hidden, with no script errors.
 - [ ] Declining consent leaves the game fully playable, and the button can ask again later.
@@ -216,11 +216,11 @@ and revoke access in the Summer app, and watch `access_changed`.
 | Treat `unknown` as `offline` | Show it as unknown | It means presence couldn't be read |
 | Poll `refresh()` on a timer | Connect `changed` | The engine already re-reads while a handler is connected |
 | Declare every permission "just in case" | Declare only what you use | The consent sheet lists each declared permission |
-| Use friends to put players in one match | `skill/summer-parties` | Parties are how players play together |
+| Use friends to put players in one match | `summer-parties` | Parties are how players play together |
 
 ## See also
 
-- `skill/summer-parties`: playing together, the invite sheet
-- `skill/summer-world-chat`: chat inside a match
-- `skill/multiplayer-publish`: `summer.build.json` and publishing a Build
-- `skill/multiplayer-testing`: what Local Play can and can't test
+- `summer-parties`: playing together, the invite sheet
+- `summer-world-chat`: chat inside a match
+- `multiplayer-publish`: `summer.build.json` and publishing a Build
+- `multiplayer-testing`: what Local Play can and can't test

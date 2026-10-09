@@ -9,7 +9,7 @@ allowed-tools: Read Write Glob Grep Bash
 
 # /skill-create: bootstrap a new library skill
 
-Works inside a checkout of the summer-engine agent repository (the one with `library/` and `registry/`). Outside it, capture the lesson with `gameskill` in the game project instead.
+Works inside a checkout of the Summer repository, `summerengine/summer` (the one with `library/` and `registry/`). Outside it, capture the lesson with `gameskill` in the game project instead.
 
 ## Steps
 

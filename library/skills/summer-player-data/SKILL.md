@@ -39,8 +39,8 @@ Local Play's store keeps the latest value plus five earlier revisions, with
 the same validation and `save_id` rules as hosted. Delete a persona's folder
 to start that player fresh. Only hosted play proves durability.
 
-This skill extends the game from `skill/multiplayer-project` and
-`skill/multiplayer-state`: the authority's `_join` Command handler, the
+This skill extends the game from `multiplayer-project` and
+`multiplayer-state`: the authority's `_join` Command handler, the
 private `mine` State group, and the `wallets` it keeps.
 
 ## Steps
@@ -70,7 +70,7 @@ var profiles := {}
 ```
 
 In `_ready()`, next to the other `world` signals, before `Summer.initialize`
-(connect `session_joined` only once if `skill/summer-match-results` already
+(connect `session_joined` only once if `summer-match-results` already
 did):
 
 ```gdscript
@@ -83,7 +83,7 @@ did):
 	autosave.start()
 ```
 
-If `_on_session_joined` already exists (`skill/summer-match-results` adds
+If `_on_session_joined` already exists (`summer-match-results` adds
 one), put this body at its end instead of defining it twice.
 
 ```gdscript
@@ -254,7 +254,7 @@ func _show_saved_progress() -> void:
 
 ### 6. Keep the publish checks passing
 
-The source-graph check in `skill/multiplayer-publish` (step 4b) flags every
+The source-graph check in `multiplayer-publish` (step 4b) flags every
 call ending in `load(` without a string literal inside, so
 `Summer.authority.player_data.load(session)` and
 `Summer.client.player_data.load()` report
@@ -274,7 +274,7 @@ Run the same session twice. Local Play personas (`player-1`, `player-2`)
 keep their files between runs, so run 2 must start where run 1 ended.
 
 ```
-summer_project_setting name="summer/local_play/players" value=2
+summer_project_setting key="summer/local_play/players" value=2
 summer_play
 summer_get_diagnostics
 summer_stop
@@ -284,7 +284,7 @@ summer_stop
 ```
 
 From a terminal: `<summer> --path . --summer-local-play 2 --summer-local-play-headless --summer-local-play-timeout 20 -- --bot={client}`,
-twice (see `skill/multiplayer-testing` for bot mode). Print markers such as
+twice (see `multiplayer-testing` for bot mode). Print markers such as
 `print("PROFILE_LOADED coins=", ...)` and `print("SAVED ", save_id, " revision=", commit.revision)` while testing, then check them.
 
 Files: `~/Library/Application Support/Godot/app_userdata/<project name>/summer_local_player_data/<game id>/<persona>/public.json`
@@ -311,12 +311,12 @@ folder to start over.
 | Start a second commit while one is pending | One commit per player and slot at a time | The second fails with `operation_in_progress` |
 | Keep retrying after `player_data_superseded` | Stop saving through that Session | A newer World owns the player now |
 | Store `Vector3`, `Color` or `null` | Plain JSON: numbers, strings, arrays, dictionaries | Unsupported types fail with `player_data_unsupported_type` |
-| Save the match (positions, round score) | Save only what outlives the match | The World ends; `skill/summer-world-saves` covers Worlds that persist |
+| Save the match (positions, round score) | Save only what outlives the match | The World ends; `summer-world-saves` covers Worlds that persist |
 | Truncate data that grew past 64 KiB | Refuse to grow; test the maximum size | `player_data_too_large` rejects the whole commit |
 
 ## See also
 
-- `skill/multiplayer-state` — the wallet and private State group this skill saves
-- `skill/summer-world-saves` — saving a whole persistent World instead of one player
-- `skill/multiplayer-testing` — bots and repeated Local Play runs
-- `skill/summer-leaderboards` — scores other players can see
+- `multiplayer-state` — the wallet and private State group this skill saves
+- `summer-world-saves` — saving a whole persistent World instead of one player
+- `multiplayer-testing` — bots and repeated Local Play runs
+- `summer-leaderboards` — scores other players can see

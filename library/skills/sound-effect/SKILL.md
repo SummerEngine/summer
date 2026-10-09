@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_generate_audio summer_search_assets summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_get_scene_tree
+allowed-tools: Read Grep Glob Write Edit summer_generate_audio summer_search_assets summer_import_from_url summer_add_node summer_set_prop summer_instantiate_scene summer_inspect_node summer_get_scene_tree
 paths: ["audio/sfx/**", "scripts/**", "**/*.tscn"]
 ---
 
@@ -13,22 +13,22 @@ paths: ["audio/sfx/**", "scripts/**", "**/*.tscn"]
 
 ## Overview
 
-This skill produces one named SFX clip aligned with the audio bible's vocabulary, then wires it into the scene as an AudioStreamPlayer that plays once and frees its parent (or stops cleanly if it's a looped texture). The shape of the prompt is what makes the difference between "metal sword swing whoosh, dry, sharp, 250ms" returning the right clip on the first try and "epic battle sound" returning twenty seconds of musical noise.
+This skill produces one named SFX clip that follows the audio bible's vocabulary, then wires it into the scene as an AudioStreamPlayer that plays once and frees itself (or stops cleanly if it is a short loop). The prompt shape decides the result: "metal sword swing whoosh, dry, sharp, 250ms" returns the right clip on the first try; "epic battle sound" returns twenty seconds of musical noise.
 
-ElevenLabs SFX (the `sound_effects` capability of `summer_generate_audio`) is *literal*. It treats the prompt as a description of a real sound, not as a vibe. Concrete material + action + intensity beats adjectives every time.
+ElevenLabs SFX (the `sound_effects` capability of `summer_generate_audio`) is literal. It treats the prompt as a description of a real sound. Concrete material, action and intensity beat adjectives.
 
 ## When to use
 
 - One-shot SFX: footstep, swing, click, hit, impact, pickup, jump, land, door, breath.
-- Short loops < 2s: hum, drone snippet, rain texture (for very short looping ambients prefer `audio/ambient-bed`).
+- Short loops < 2s: hum, drone snippet, rain texture (for longer looping ambience use `ambient-bed`).
 - Replacing a placeholder beep with something on-bible.
 
 ## When NOT to use
 
-- Music or musical stings → `audio/music-track`.
-- Long location ambience (>5s) → `audio/ambient-bed`.
-- Voice / dialogue → `audio/voice-line`.
-- Defining the *vocabulary* of SFX — that's `audio/audio-direction`. This skill executes against an existing bible.
+- Music or musical stings → `music-track`.
+- Long location ambience (>5s) → `ambient-bed`.
+- Voice / dialogue → `voice-line`.
+- Defining the *vocabulary* of SFX → `audio-direction`. This skill executes against an existing bible.
 
 ## Steps
 
@@ -46,7 +46,7 @@ The bible defines an SFX *class* (UI, Pickup positive, Damage, Footstep, Attack,
 
 ### 2. Search for an existing clip first
 
-Generation is metered. Reuse beats regenerate.
+Generation uses credits. Reuse an existing clip when one fits.
 
 ```
 summer_search_assets(query="<class> <subject>", assetType="audio", source="all")
@@ -64,7 +64,7 @@ ElevenLabs SFX responds to literal sound descriptions. Pattern:
 <subject> <material> <action>, <intensity>, <character>, <duration cue>
 ```
 
-Working examples (these produce the right clip on the first try):
+Working examples:
 
 | Goal | Prompt that works | Why |
 |---|---|---|
@@ -91,7 +91,7 @@ Prompts that DON'T work (and why):
 
 Show the prompt and the call before running:
 
-> Prompt: `metal sword swing whoosh, dry, sharp, 250ms`. Duration 0.5s (model floor). Model: ElevenLabs SFX. Cost: ~1 credit. Generate?
+> Prompt: `metal sword swing whoosh, dry, sharp, 250ms`. Duration 0.5s (model floor). Model: ElevenLabs SFX. Generate?
 
 The `sound_effects` capability reads the description from **`text`**, not `prompt`. Passing `prompt` here is a 400 `text_required` — `prompt` is only for the `music` capability.
 
@@ -155,7 +155,7 @@ func _ready() -> void:
 	play()
 ```
 
-Save it as a `.tscn`, then `summer_instantiate_scene(scenePath, parent, scene, name)` to place it. Note this only wires the node into a scene at author time — spawning one per event at the emitter's runtime position is a job for GDScript (`preload(...).instantiate()` + `add_child`), not for an MCP call. The node frees itself when the stream finishes — no leaks.
+Save it as a `.tscn`, then `summer_instantiate_scene(scenePath, parent, scene, name)` to place it. That only places the node at author time. To spawn one per event at the emitter's position at runtime, use GDScript (`preload(...).instantiate()` + `add_child`). The node frees itself when the stream finishes.
 
 ### 8. Volume calibration
 
@@ -170,7 +170,7 @@ If it comes back too loud (rare): negative `volume_db`, or trim attack in an edi
 ### 9. Confirm in scene
 
 ```
-summer_inspect_node(path="/root/Game/Player/SwingSFX")
+summer_inspect_node(path="Player/SwingSFX")
 ```
 
 Verify `stream`, `bus`, `volume_db`. Trigger it via `summer_play` if the user wants to hear it now.
@@ -199,7 +199,7 @@ Stinger event:   short triumphant brass stinger, 1.5s, hall reverb
 
 - **Adjective-only prompts.** `epic`, `cool`, `realistic`, `professional` — meaningless to the model.
 - **Multiple events in one prompt.** Split into two generations.
-- **Looping a non-loop-clean clip.** Will click. Use `audio/ambient-bed` for actual loops.
+- **Looping a non-loop-clean clip.** It clicks. Use `ambient-bed` for real loops.
 - **Skipping the bus.** Default bus is `Master`. SFX must route to the `SFX` bus or the mix breaks.
 - **Generating before searching.** Reuse before regenerate.
 - **Generating before reading the bible.** The clip will fight the rest of the audio.
@@ -230,13 +230,13 @@ After the SFX is wired:
 > SFX `sword_swing_01.wav` wired to `Player/SwingSFX` on the `SFX` bus. Next:
 > - Trigger it from your attack animation's `Call Method Track` → `play()`.
 > - Generate the parry / clash counterpart with `/sound-effect` again.
-> - For a full footstep system across surfaces, see `audio/footstep-systems`.
+> - For footsteps across surfaces, generate one clip per material and switch on the floor's `physics_material` (see Edge cases).
 
 ## See also
 
-- `audio/audio-direction` — defines the vocabulary this skill obeys
-- `audio/ambient-bed` — long looping textures
-- `audio/music-track` — music
-- `audio/voice-line` — TTS
+- `audio-direction` — defines the vocabulary this skill obeys
+- `ambient-bed` — long looping textures
+- `music-track` — music
+- `voice-line` — TTS
 - `../../references/mcp-tools-reference/mcp-tools-reference.md`
 - `../../references/godot-version/godot-version.md` — Summer compatibility for audio nodes

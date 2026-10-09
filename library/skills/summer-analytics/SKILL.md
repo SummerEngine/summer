@@ -142,6 +142,6 @@ Every failure is final: none of them asks you to capture again.
 
 ## See also
 
-- `skill/multiplayer` — where the client and the authority run
-- `skill/multiplayer-state` — the authority's Command handlers, where most events happen
-- `skill/summer-match-results` — results and ratings, which Summer records itself
+- `multiplayer` — where the client and the authority run
+- `multiplayer-state` — the authority's Command handlers, where most events happen
+- `summer-match-results` — results and ratings, which Summer records itself

@@ -59,7 +59,7 @@ defined relative to a rotated subject; then use `directionSpace="local"`.
 - `grounded: true` means downward support was detected. It does not mean the
   object is centered or otherwise well placed.
 - `contactStatus` and `contacts` identify touching or overlapping colliders.
-  Godot's shape query cannot distinguish touching from penetration here.
+  The physics shape query cannot distinguish touching from penetration here.
 - `directions.<label>.status` is `blocked` when clearance is below the tool's
   threshold; `distance` is measured from the subject bounds.
 - `evidence: "physics"` is exact collider-query evidence.
@@ -93,7 +93,7 @@ defined relative to a rotated subject; then use `directionSpace="local"`.
 5. Check: `summer_measure` plane mode on each facade line (every front on one
    plane), pair mode on joints you doubt, `summer_starcast` with
    `directionSpace: "local"` on mounted pieces, `summer_test_placement` before
-   committing a piece in a tight spot. Starcast's local names follow Godot:
+   committing a piece in a tight spot. Starcast's local names follow the engine:
    `forward` is -Z, `back` is +Z. A piece with a -Z back should read
    `forward` blocked by the wall at about the standoff (or the wall in
    `contacts` when flush) and `back` open.

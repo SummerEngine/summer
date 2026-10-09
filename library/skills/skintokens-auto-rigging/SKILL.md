@@ -1,6 +1,6 @@
 ---
 name: skintokens-auto-rigging
-description: "Offline auto-rigging with skin-tokens.cpp (GGML SkinTokens/TokenRig port) — skeleton and skin weights from a static GLB mesh on CPU/Vulkan, into Godot 4."
+description: "Offline auto-rigging with skin-tokens.cpp (GGML SkinTokens/TokenRig port) — skeleton and skin weights from a static GLB mesh on CPU/Vulkan, into Summer Engine."
 license: MIT
 category: art-pipeline
 tags:
@@ -13,13 +13,13 @@ tags:
 confidence: extracted
 ---
 
-# Auto-Rigging Static Meshes with skin-tokens.cpp (SkinTokens/TokenRig) in SummerEngine
+# Auto-Rigging Static Meshes with skin-tokens.cpp (SkinTokens/TokenRig) in Summer Engine
 
-## Tool review verdict
+## About the tool
 
-Not a "slop tool made by a solodev": it is published under the **localai-org** GitHub organization by Richard Palethorpe (LocalAI maintainer), is an Apache-2.0 C++23/GGML port of VAST-AI's MIT-licensed **SkinTokens/TokenRig** research model (arXiv:2602.04805), ships a flat C11 API, an ASan/UBSan libFuzzer build, CPU/Vulkan numerical-parity test suites against the upstream reference, and a Go/WebGL demo. Weights are a verified, non-retrained GGUF conversion (~1.25 GB F16) on Hugging Face.
+skin-tokens.cpp is published by the **localai-org** GitHub organization. It is an Apache-2.0 C++23/GGML port of VAST-AI's MIT-licensed **SkinTokens/TokenRig** research model (arXiv:2602.04805). It ships a flat C11 API, an ASan/UBSan libFuzzer build, CPU/Vulkan numerical-parity tests against the upstream reference, and a Go/WebGL demo. The weights are a non-retrained GGUF conversion (~1.25 GB F16) on Hugging Face.
 
-Honest limitations to plan around:
+Limitations to plan around:
 
 - The fully automatic `rig` command (unconstrained skeleton generation) is **explicitly experimental** — the policy can produce unsuitable bone topologies.
 - The author's own demo shows **open issues combining the output with kimodo.cpp skeletal animations**.
@@ -30,7 +30,7 @@ Honest limitations to plan around:
 
 ## Outcome
 
-Static `.glb` meshes (e.g. AI-generated or scanned characters/creatures) become rigged, skinned `.glb` assets that Godot 4 imports natively as `Skeleton3D` + skinned `MeshInstance3D`, ready for `AnimationPlayer`/retargeted animation — without manual weight painting.
+Static `.glb` meshes (e.g. AI-generated or scanned characters/creatures) become rigged, skinned `.glb` assets that Summer Engine imports natively as `Skeleton3D` + skinned `MeshInstance3D`, ready for `AnimationPlayer`/retargeted animation — without manual weight painting.
 
 ## When to Use
 
@@ -43,13 +43,13 @@ Static `.glb` meshes (e.g. AI-generated or scanned characters/creatures) become 
 - Hero characters needing production-quality, art-directed deformation — plan for manual weight cleanup after auto-rigging.
 - Non-triangle meshes (tool accepts arbitrary triangle meshes only; triangulate first).
 - Shapes far from the training distribution (expect weaker results; run `--geometric` diagnostic to compare).
-- Runtime/in-engine rigging — this is an offline CLI/library step, not a Godot plugin.
+- Runtime/in-engine rigging — this is an offline CLI/library step, not an editor plugin.
 
 ## Core Principle
 
 TokenRig models the whole rig — skeleton hierarchy followed by discrete skin-weight tokens (SkinTokens, an FSQ-CVAE vocabulary) — as one autoregressive sequence generated from a Michelangelo point-cloud encoding of the mesh (Qwen3-0.6B backbone, GRPO-refined). skin-tokens.cpp re-runs this stack through GGML on CPU or Vulkan and exports a standard skinned glTF/GLB with a one-frame rest pose, so it opens as a conventional rigged asset in any engine.
 
-## Pipeline shape (SummerEngine)
+## Pipeline shape (Summer Engine)
 
 ```
 static character.glb
@@ -61,7 +61,7 @@ static character.glb
 character-rigged.glb   (skeleton + skin weights + rest pose, skinned glTF)
       │
       ▼
-Godot 4 import  →  character-rigged.glb (scene)
+Summer Engine import  →  character-rigged.glb (scene)
       └── Skeleton3D
             └── MeshInstance3D (skinned, Skin resource)
       └── AnimationPlayer / retargeted animations
@@ -122,18 +122,18 @@ Fit modes:
 | `none` | Both files already share coordinates | No alignment transform |
 | `articulated` | Recognized humanoid arm chains; **experimental** | Picks whichever of rest pose / first animation frame actually runs inside the arms (bind pose == frame zero → playback starts without warping); falls back to analytic two-bone IK toward conservative mesh targets, preserving arm segment lengths |
 
-### 3. Import into Godot 4
+### 3. Import into Summer Engine
 
-Drop the rigged `.glb` into the project; Godot's glTF importer creates the scene automatically:
+Drop the rigged `.glb` into the project; the glTF importer creates the scene automatically:
 
 - `Skeleton3D` with bones and a skinned `MeshInstance3D` (Skin resource), rest pose included.
 - Check in the Import dock: mesh, skeleton, and (if supplied) animations present.
-- If the source GLB contains animations and the hierarchy matches, Godot imports them into `AnimationPlayer`; otherwise use Godot 4's retargeting (`SkeletonProfileHumanoid`) to map animations onto the generated skeleton.
+- If the source GLB contains animations and the hierarchy matches, the importer puts them into an `AnimationPlayer`; otherwise use retargeting (`SkeletonProfileHumanoid`, see the `retarget` skill) to map animations onto the generated skeleton.
 - glTF round-trip note from upstream: on Blender export of results, a `glTF_not_exported` node may need removing (only relevant if the pipeline goes through Blender).
 
 ### 4. Optional editor tooling (typed GDScript)
 
-An EditorScript/utility wrapper to rig assets from inside Godot:
+An EditorScript wrapper to rig assets from inside the editor:
 
 ```gdscript
 @tool
@@ -154,7 +154,7 @@ func _run() -> void:
 	var output: Array = []
 	var err := OS.execute(CLI, args, output, true, false)
 	if err != 0:
-		push_error("skin-tokens-cli failed (%d): %s" % [err, "\n".join(output)))
+		push_error("skin-tokens-cli failed (%d): %s" % [err, "\n".join(output)])
 		return
 	print("Rigged: ", dst)
 	# Reimport so the new GLB appears in the FileSystem dock.
@@ -187,14 +187,14 @@ For embedding in a tool/asset server, prefer the flat C11 API (`skintokens.h`): 
 
 ## Verification
 
-Not summerengine-verified. To validate in SummerEngine:
+Not yet verified in Summer Engine. To validate:
 
 1. `skintokens-cli inspect models/SkinTokens-GGUF/F16` succeeds after build + weights download.
-2. Rig a known test mesh (`rig … --postprocess`) and open the output in the Godot editor: `Skeleton3D` with sensible bone hierarchy + skinned `MeshInstance3D`, no import errors.
+2. Rig a known test mesh (`rig … --postprocess`) and open the output in the editor: `Skeleton3D` with sensible bone hierarchy + skinned `MeshInstance3D`, no import errors.
 3. Pose one bone in the editor; confirm the surface deforms smoothly without bleeding across disconnected parts.
-4. `skin` path: feed a mesh + animated skeleton GLB with `--fit global`; play the animation in Godot and confirm frame zero does not warp the mesh.
+4. `skin` path: feed a mesh + animated skeleton GLB with `--fit global`; play the animation in the editor and confirm frame zero does not warp the mesh.
 5. Re-run ctest / parity binaries if the CLI is rebuilt or GGML is updated.
 
 ## Confidence
 
-`extracted` — All tool behavior, commands, flags, sizes, numerics, and caveats come from the retrieved GitHub README, Hugging Face model card, upstream VAST-AI repo, and the author's X announcement (including the self-reported kimodo.cpp animation issue). The Godot 4 import mapping and GDScript wrapper are adaptations, not from the sources.
+`extracted` — All tool behavior, commands, flags, sizes, numerics, and caveats come from the retrieved GitHub README, Hugging Face model card, upstream VAST-AI repo, and the author's X announcement (including the self-reported kimodo.cpp animation issue). The import mapping and GDScript wrapper are adaptations, not from the sources.

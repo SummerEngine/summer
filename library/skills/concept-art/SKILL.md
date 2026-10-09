@@ -77,7 +77,7 @@ summer_generate_image(
 
 `style: "none"` is intentional: only `cartoon` and `anime` append anything to the prompt, `realistic` and `none` append nothing, and any other value is coerced to `none`. So the preset cannot override the prompt's stylistic direction — it just contributes nothing, which is what concept art wants. All four variants' divergence has to come from the prompt.
 
-There is no `image_size` argument, and `options` only recognizes Nano Banana provider keys; an unrecognized key is dropped without an error. Background removal is the top-level `removeBackground` argument, not an `options` key. Every MCP image comes back at the server's 1:1 default. For wide key art, ask for "wide cinematic framing" in the prompt and accept the square canvas, or generate in the Summer dashboard where aspect ratio is exposed. Since these are exploration images the user reacts to and throws away, square is usually fine.
+For a shape other than square, pass `aspectRatio` (`"16:9"`, `"9:16"`, ...) or `width` + `height`; the result reports the real width and height and the model that ran. Exploration images are thrown away, so square is usually fine. Background removal is the top-level `removeBackground` argument, not an `options` key.
 
 ### 5. Present the batch
 
@@ -121,7 +121,7 @@ The structure: **subject + axis variant + "concept art" + lighting/atmosphere**.
 
 - **User says "just one" after you propose 4.** That's a `character-portrait` job. Hand off.
 - **User wants 8+ variants.** Generate 4 first; if the user wants more on the same axis, generate 4 more. Don't dump 8 at once — overload paralyzes choice.
-- **Subject is a fully described scene, not an asset.** You're producing key art, not asset reference. Ask for wide cinematic framing in the prompt and bias toward atmospheric — you cannot set an aspect ratio over MCP.
+- **Subject is a fully described scene, not an asset.** You're producing key art, not asset reference. Pass `aspectRatio: "16:9"` (or `width: 1920, height: 1080` for store key art) and bias toward atmospheric.
 - **User wants the final to be 3D.** After they pick a direction, route to `asset-strategy` — concept-art images are not 3D-ready references (they have backgrounds, scene context, dramatic lighting baked in). The 3D pipeline needs its own clean white-background reference.
 
 ## Fallback (no MCP)

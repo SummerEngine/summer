@@ -17,7 +17,7 @@
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (104 tools)
+## Tool surface (105 tools)
 
 ### Project files (4)
 
@@ -238,7 +238,7 @@ Preview. One fast, read-only call that walks every node of a 3D scene and lists 
 | `summer_get_agent_playbook` | Daily operating contract (observe-first loop, content routing, invariants, verification ritual) — call at start of session. Also served natively as the `summer_agent_playbook` MCP prompt. |
 | `summer_get_board` | Read the person's approved planning board (look, characters, place, storyboard, picks), with the look and picked cards as images to compare screenshots against. Needs the project id from the build brief; works without the engine. |
 
-### Creator platform (6)
+### Creator platform (7)
 
 | Tool | Use |
 |---|---|
@@ -248,6 +248,7 @@ Preview. One fast, read-only call that walks every node of a 3D scene and lists 
 | `summer_creator_publish` | **Deprecated** (use the two tools above). Compute the exact `.pck` digest and size, require user confirmation, then run versioned prepare → write-once upload → finalize. The server independently verifies `publish` scope, ownership, bytes, and review state. |
 | `summer_creator_releases` | List real creator-owned releases from `summer.creator.v1`, with opaque cursor pagination. |
 | `summer_creator_config` | Read or confirm updates to the shared non-secret `~/.summer/config.json`. It never accepts or returns tokens. |
+| `summer_capture_gameplay` | Real gameplay frames without a running editor: starts the game (main scene or `scene`) in the engine's offscreen verify instance (`--summer-verify`, real renderer, window parked offscreen, no focus) at `resolution` (default `1920x1080`), waits `waitSeconds`, saves `frames` PNGs (HUD included) to `<project>/.summer/captures/<time>/`. Imports the project first when `.godot/` is missing. Returns each path with its real width and height; warns when the stretch settings render another size. For store screenshots. |
 
 ### Library search (2)
 

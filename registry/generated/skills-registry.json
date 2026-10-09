@@ -147,6 +147,20 @@
       ]
     },
     {
+      "id": "skill/bounded-engine-runs",
+      "name": "bounded-engine-runs",
+      "description": "Run Summer headless or offscreen safely from an agent: time limits, one engine per project, muted runs, import passes, tests that fail on crashes.",
+      "clients": "all",
+      "recommended": true,
+      "status": "preview",
+      "path": "library/skills/bounded-engine-runs/",
+      "domains": [
+        "agent-workflow",
+        "headless",
+        "verification"
+      ]
+    },
+    {
       "id": "skill/brainstorm-game",
       "name": "brainstorm-game",
       "description": "Turn a vague idea into a buildable plan — genre, scope, core loop, mechanics, art direction — written as a 1-page brief to .summer/GameSoul.md.",
@@ -292,6 +306,19 @@
         "gameplay",
         "scripting",
         "game-design"
+      ]
+    },
+    {
+      "id": "skill/compatibility-renderer-traps",
+      "name": "compatibility-renderer-traps",
+      "description": "Make a Forward+ Summer game also look right on the Compatibility renderer: instance-uniform budget, black MultiMesh colors, sRGB vertex colors.",
+      "clients": "all",
+      "recommended": true,
+      "status": "preview",
+      "path": "library/skills/compatibility-renderer-traps/",
+      "domains": [
+        "rendering",
+        "performance"
       ]
     },
     {
@@ -573,7 +600,7 @@
     {
       "id": "skill/in-game-purchases",
       "name": "in-game-purchases",
-      "description": "Sell items for Sparks and let short players buy Sparks in game via the Summer purchase sheet: checkout, Sparks purchase, results, testing, store policy.",
+      "description": "Sell items for Sparks in a game shop via the Summer purchase sheet: checkout, results, not enough Sparks, inventory unlocks, authority grants, store policy.",
       "clients": "all",
       "recommended": false,
       "status": "preview",

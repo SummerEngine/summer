@@ -360,7 +360,14 @@ Style presets: "realistic" (default), "cartoon", "anime", "none"
 For an alpha PNG, set removeBackground: true. Prompt wording alone does not
 guarantee transparency; background removal runs server-side after generation.
 
-The 'options' object is passed directly to the AI provider for full control.
+Size: aspectRatio (1:1, 16:9, 9:16, 4:3, 3:4, ...) or width + height (the
+smallest size you need). For store art ask width 1920 height 1080 (key art)
+or width 1080 height 1920 (tall cover): the server picks a model that reaches
+that size, or refuses a named model that cannot, before anything is spent.
+Each result reports the real width and height and the model that ran.
+
+'options' carries extra model params (seed, negative_prompt, ...); the result
+lists any the server did not use in ignoredOptions.
 
 Returns the asset with fileUrl (hosted) and localPath (temp file on disk).
 Use the Read tool on localPath to show the image to the user for approval.
@@ -368,13 +375,16 @@ Use the Read tool on localPath to show the image to the user for approval.
 Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
 Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     imageGenerationArgsSchema.shape,
-    async ({ prompt, model, style, referenceImageUrl, removeBackground, options }) => {
+    async ({ prompt, model, style, referenceImageUrl, removeBackground, aspectRatio, width, height, options }) => {
       const result = await mcpGenerate("/api/mcp/generate/image", {
         prompt,
         model,
         style,
         referenceImageUrl,
         removeBackground,
+        aspectRatio,
+        width,
+        height,
         options,
       });
 

@@ -2,6 +2,12 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+- `in-game-purchases` skill: uses only engine APIs that exist. It no longer calls `Summer.client.store.request_sparks_purchase`, `check_sparks_purchase_readiness` or `Summer.authority.items.consume`, which the engine does not have. Short players get Sparks in the Summer app; an authority grants a paid effect after checking `Summer.authority.items.inventory_for_session` and recording the redemption in the player's secret player data.
+- `summer_api_docs`: the offline class reference is rebuilt from the engine's current class XML (1282 classes), so it now includes `SummerRuntime` (`Summer`), `Summer.client.*`, `Summer.authority.*` and the Summer SDK types.
+
 ## [3.3.0] - 2026-10-09
 
 Your agent can now take a game from the editor to the Summer Games store:

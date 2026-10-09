@@ -18,6 +18,7 @@ compatibility:
 related:
   skills:
     - skill/scene-scripting
+    - skill/bounded-engine-runs
 source: official
 license: MIT
 status: stable

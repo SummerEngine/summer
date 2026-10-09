@@ -1,11 +1,11 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { ListToolsRequestSchema, type Tool } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import { connectHostedMcp, type HostedClient, type HostedConnectDependencies } from "../core/hosted-mcp.js";
 import { getStoreAccessToken, OAuthError, resolveMcpResourceUrl } from "../core/oauth.js";
 import { appendMcpLogEvent } from "../core/mcp-log.js";
-import { TOOLKIT_VERSION } from "../core/version.js";
+
+export type { HostedClient };
 
 /**
  * One Summer Engine MCP. The cloud tools a creator's agent needs to publish
@@ -18,57 +18,24 @@ import { TOOLKIT_VERSION } from "../core/version.js";
  * that server). A name the local MCP already has stays local (the engine and
  * generation tools keep their CLI-token path).
  *
- * Mounting is lazy: the server answers with the engine tools at once, and the
- * hosted tools appear when the mount finishes (tools/list_changed). Without a
- * store sign-in one tool, summer_store_tools, says how to sign in and mounts
- * on the next call.
+ * Mounting runs after connect. The first tools/list waits for a mount in
+ * progress (up to FIRST_LIST_WAIT_MS), so a host that lists tools once still
+ * sees the store tools; a slower mount adds them later (tools/list_changed).
+ * Without a store sign-in the mount fails at once, and one tool,
+ * summer_store_tools, says how to sign in and mounts on the next call.
  */
 
 export const STORE_TOOLS_STATUS = "summer_store_tools";
-const CALL_TIMEOUT_MS = 120_000;
+/** How long the first tools/list waits for a mount in progress, so hosts that list once see the store tools. */
+export const FIRST_LIST_WAIT_MS = 5_000;
 const passthroughArgs = z.object({}).passthrough();
 
-/** The part of an MCP client the mount uses (a fake in tests). */
-export interface HostedClient {
-  listTools(params?: { cursor?: string }): Promise<{ tools: Tool[]; nextCursor?: string }>;
-  callTool(params: { name: string; arguments?: Record<string, unknown> }): Promise<Record<string, unknown>>;
-  listPrompts(params?: { cursor?: string }): Promise<{ prompts: Array<{ name: string; title?: string; description?: string; arguments?: Array<{ name: string; description?: string; required?: boolean }> }>; nextCursor?: string }>;
-  getPrompt(params: { name: string; arguments?: Record<string, string> }): Promise<Record<string, unknown>>;
-  listResources(params?: { cursor?: string }): Promise<{ resources: Array<{ uri: string; name: string; title?: string; description?: string; mimeType?: string }>; nextCursor?: string }>;
-  readResource(params: { uri: string }): Promise<Record<string, unknown>>;
-}
-
-export interface HostedMountDependencies {
-  /** The hosted Summer Engine MCP URL (the store sign-in's resource). */
-  url: () => string;
-  token: () => Promise<string>;
-  connect: (url: string, token: () => Promise<string>) => Promise<HostedClient>;
-}
+export type HostedMountDependencies = HostedConnectDependencies;
 
 export const defaultHostedMountDependencies: HostedMountDependencies = {
   url: () => resolveMcpResourceUrl(),
   token: () => getStoreAccessToken(),
-  connect: async (url, token) => {
-    const transport = new StreamableHTTPClientTransport(new URL(url), {
-      // A fresh (refreshed when near expiry) token on every request.
-      fetch: async (input, init) => {
-        const headers = new Headers(init?.headers);
-        headers.set("authorization", `Bearer ${await token()}`);
-        return fetch(input, { ...init, headers });
-      },
-    });
-    const client = new Client({ name: "summer-engine-local", version: TOOLKIT_VERSION });
-    await client.connect(transport);
-    const timeout = { timeout: CALL_TIMEOUT_MS };
-    return {
-      listTools: (params) => client.listTools(params),
-      callTool: (params) => client.callTool(params, undefined, timeout) as Promise<Record<string, unknown>>,
-      listPrompts: (params) => client.listPrompts(params),
-      getPrompt: (params) => client.getPrompt(params) as Promise<Record<string, unknown>>,
-      listResources: (params) => client.listResources(params),
-      readResource: (params) => client.readResource(params) as Promise<Record<string, unknown>>,
-    };
-  },
+  connect: connectHostedMcp,
 };
 
 export interface HostedMountState {
@@ -109,7 +76,13 @@ function errorText(error: { code: string; message: string; recovery: string }) {
  * reports each mounted tool's own JSON Schema rather than the passthrough one.
  * Returns mount(), which callers run after connect without awaiting it.
  */
-export function prepareHostedMount(server: McpServer, deps: HostedMountDependencies = defaultHostedMountDependencies) {
+export function prepareHostedMount(
+  server: McpServer,
+  deps: HostedMountDependencies = defaultHostedMountDependencies,
+  options: { firstListWaitMs?: number } = {}
+) {
+  const firstListWaitMs = options.firstListWaitMs ?? FIRST_LIST_WAIT_MS;
+  let listed = false;
   const state: HostedMountState = { status: "idle", tools: [], prompts: [], resources: [], collisions: [] };
   const schemas = new Map<string, Tool>();
   const registries = server as unknown as Registries;
@@ -123,6 +96,10 @@ export function prepareHostedMount(server: McpServer, deps: HostedMountDependenc
   const listTools = handlers.get("tools/list");
   if (listTools) {
     server.server.setRequestHandler(ListToolsRequestSchema, async (request, extra) => {
+      if (!listed) {
+        listed = true;
+        await waitForMount(firstListWaitMs);
+      }
       const result = await listTools(request, extra);
       return {
         ...result,
@@ -136,6 +113,14 @@ export function prepareHostedMount(server: McpServer, deps: HostedMountDependenc
 
   let statusTool: { remove(): void } | null = null;
   let running: Promise<HostedMountState> | null = null;
+
+  /** Wait for a mount in progress, at most ms; returns at once when none runs. */
+  async function waitForMount(ms: number): Promise<void> {
+    if (!running || ms <= 0) return;
+    let timer: NodeJS.Timeout | undefined;
+    await Promise.race([running, new Promise<void>((done) => (timer = setTimeout(done, ms)))]);
+    clearTimeout(timer);
+  }
 
   const showStatusTool = () => {
     if (statusTool || STORE_TOOLS_STATUS in registries._registeredTools) return;

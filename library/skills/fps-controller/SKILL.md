@@ -5,14 +5,14 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: character-controllers
 user-invocable: false
-template-id: template-3d-fps
+template-id: template-3d-fps-old-school
 allowed-tools: Read Grep summer_get_scene_tree summer_add_node summer_set_prop summer_set_resource_property summer_input_map_bind summer_save_scene summer_get_script_errors
 paths: ["**/*.gd", "**/*.tscn"]
 ---
 
 # FPS Controller for Summer Engine
 
-The canonical first-person controller. Coyote time, jump buffering, air control, external-velocity, the works. This is the production minimum for an FPS that doesn't feel like a Unity tutorial — it follows the shipping FPS standard for movement (gravity, grace timers, separate ground/air acceleration, external force accumulator) so the player never says "this feels stiff" or "I jumped right at the edge and died unfairly".
+The canonical first-person controller: coyote time, jump buffering, air control and external velocity. It follows the standard shipping FPS movement model (asymmetric gravity, grace timers, separate ground/air acceleration, an external force accumulator), so the player never says "this feels stiff" or "I jumped right at the edge and died unfairly".
 
 ## Scene Structure
 
@@ -24,7 +24,7 @@ Player (CharacterBody3D)
 └── (optional) RayCast3D      # ground / interaction probe
 ```
 
-The Head/Camera split is the industry-standard movement model: yaw rotates the body, pitch rotates only the head. Don't pitch the body or you get tilted capsules and slope-collision bugs.
+The Head/Camera split is the standard: yaw rotates the body, pitch rotates only the head. Don't pitch the body or you get tilted capsules and slope-collision bugs.
 
 ## Step-by-Step Setup via MCP
 
@@ -48,7 +48,7 @@ summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/Play
 summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/Player/Collision", resourceProperty="shape", subProperty="height", value="1.8")
 ```
 
-Two things the older version of this skill got wrong:
+Two rules for these calls:
 
 - **`scenePath` is required** on `summer_add_node`, `summer_set_prop`,
   `summer_set_resource_property` and `summer_save_scene`. Omit it and the call
@@ -61,7 +61,7 @@ Two things the older version of this skill got wrong:
   and external `.tres` resources take the same path. Structural failures are
   explicit — `node not found`, `property is not a resource`, or `resource is
   null` when the property was never assigned — but a bad value shape is silent
-  on current engines: a JSON object instead of a Godot literal string, a
+  on current engines: a JSON object instead of an engine variant string, a
   misspelled `key`/`subProperty`, or a wrong-typed value returns `ok:true` yet
   no-ops or coerces destructively. Assign the resource first, pass class names
   and `Vector3(...)`/`Color(...)` strings, and confirm in the saved `.tscn`,
@@ -234,18 +234,18 @@ func add_external_velocity(impulse: Vector3) -> void:
 | `fall_gravity_multiplier` | `1.4` | Snappier descent than ascent (variable-jump-feel staple). |
 | `ground_accel` / `ground_friction` | `80 / 90` | Crisp start, near-instant stop. |
 | `air_accel` / `air_friction` | `25 / 5` | Reduced air control + minimal air drag. |
-| `coyote_time` | `0.1` | Standard 0.08–0.15s grace — invisible to players, fixes 60% of "unfair death" complaints. |
+| `coyote_time` | `0.1` | Standard 0.08–0.15s grace — invisible to players, removes most "unfair death" complaints. |
 | `jump_buffer_time` | `0.1` | Same window the other direction. |
 | `mouse_sensitivity` | `0.002` | Default raw multiplier; expose via settings. |
 | `external_damping` | `8.0` | Knockback decays over ~0.5s. |
 
 ## Why Each Feature Matters
 
-**Coyote time (~0.1s)** — Players judge ledges by what they see, not by frame-perfect collision. A small grace period after walking off a ledge where jump still works fixes the "I jumped right at the edge and died unfairly" complaint that breaks 60% of new players' tutorials. Cost: 3 lines. Industry-standard window is 0.08–0.15s — short enough to be invisible, long enough to mask the imprecision of human reaction time.
+**Coyote time (~0.1s)** — Players judge ledges by what they see, not by frame-perfect collision. A small grace period after walking off a ledge where jump still works fixes the "I jumped right at the edge and died unfairly" complaint. Cost: 3 lines. The usual window is 0.08–0.15s — short enough to be invisible, long enough to mask the imprecision of human reaction time.
 
 **Jump buffering (~0.1s)** — Pressing jump 50ms before landing should not be punished. Buffer the input for ~0.1s and fire on touchdown. Without this, fast-moving players feel like the controller "ate their input" — they pressed jump, they saw nothing happen, they blame the game. With it, every "near-miss" jump becomes a successful one. Cost: 4 lines.
 
-**Air control with reduced acceleration (~30% of ground)** — Zero air control feels like ice; the player commits to a direction at jump-takeoff and can't course-correct. Full air control feels like a Unity tutorial; momentum is meaningless and a strafe-jump cancels itself. The shipping FPS standard sits around 25–30% of ground accel: enough to course-correct mid-jump, not enough to cancel realistic momentum. The `move_toward` formulation lets designers tune this with one number — `air_accel` — without forking code.
+**Air control with reduced acceleration (~30% of ground)** — Zero air control feels like ice; the player commits to a direction at jump-takeoff and can't course-correct. Full air control feels weightless; momentum is meaningless and a strafe-jump cancels itself. The shipping FPS standard sits around 25–30% of ground accel: enough to course-correct mid-jump, not enough to cancel realistic momentum. The `move_toward` formulation lets designers tune this with one number — `air_accel` — without forking code.
 
 **External velocity accumulator** — Knockback, explosions, jump pads, conveyor belts, wind volumes, and grapple-yanks must not fight player input. Storing them in a separate `external_velocity`, applying once per frame, and decaying via `move_toward(0, damping * delta)` means an explosion shoves the player and then control returns smoothly — no "stuck at terminal velocity" or "input cancels the punch" bugs. The subtract-previous-contribution trick (line 1 of `_physics_process`) is the production fix that prevents accumulation when the player is also sprinting; it's the kind of detail you only learn by shipping multiplayer. Public API (`add_external_velocity`) means any system — AOE attack, jump pad scene, grapple ability — can shove the player with one call, no coupling.
 
@@ -255,7 +255,7 @@ func add_external_velocity(impulse: Vector3) -> void:
 
 Once the skeleton is in, designers tune by feel. Common targets:
 
-**Snappy military shooter (industry-standard FPS feel):**
+**Snappy military shooter:**
 - `walk_speed = 5.5`, `sprint_speed = 8.0`
 - `ground_accel = 90`, `ground_friction = 100`
 - `air_accel = 20`, `air_friction = 4`
@@ -284,14 +284,14 @@ The skeleton doesn't change — only the `@export` defaults. That's the point of
 - **Pressing jump just before landing does nothing** — `_jump_buffer_timer` is being decremented to zero before the player touches floor. The buffer must NOT be cleared by anything except a successful jump.
 - **Knockback compounds forever** — `_prev_external_applied` isn't being subtracted. Step 1 of `_physics_process` MUST run before gravity, or external impulses pile up frame after frame.
 - **Knockback decays too fast / too slow** — tune `external_damping`. `8.0` decays a 5 m/s impulse to near-zero in ~0.6s. Lower = longer hangtime.
-- **Air control feels like ice OR like a Unity tutorial** — `air_accel` is the only knob. Industry-standard is 20–30% of `ground_accel`. Zero = ice. Equal = arcade-y. The shipping FPS standard sits around 25.
+- **Air control feels like ice OR weightless** — `air_accel` is the only knob. The usual range is 20–30% of `ground_accel`. Zero = ice. Equal = arcade-y.
 - **Camera tilts on slopes** — pitch is on the body instead of the Head. Pitch only on `Head`; yaw only on `Player`.
 - **Camera rolls when looking around** — you're calling `rotate_x` on something that's already rotated on Y. Fix: only ever rotate Y on Player and X on Head, never combine.
 - **Mouse look doesn't work** — `Input.mouse_mode` isn't set to `MOUSE_MODE_CAPTURED`, or another node is consuming `_input` before this script. Use `_unhandled_input` to be a good citizen.
 - **Mouse look feels laggy at low FPS** — sensitivity is being applied in `_physics_process`. Mouse-motion handling MUST stay in `_input` or `_unhandled_input` — those fire per-event, not per-physics-tick.
 - **Falling through floor** — floor needs a StaticBody3D + CollisionShape3D on the same physics layer as the player.
 - **Camera clipping geometry** — push `Camera.near` to ~0.05 or shrink the capsule radius slightly.
-- **Player jitters on slopes / stairs** — enable `floor_snap_length = 0.5` and `floor_max_angle = 0.785` (~45°) on the CharacterBody3D. Out of scope for this skeleton; see the character-body-tuning skill when it ships.
+- **Player jitters on slopes / stairs** — enable `floor_snap_length = 0.5` and `floor_max_angle = 0.785` (~45°) on the CharacterBody3D. Out of scope for this skeleton.
 
 ## Networking Note
 
@@ -312,8 +312,8 @@ The skeleton is intentionally ~90 lines. When you outgrow it, add features by *l
 - **Crouch.** Lerp the capsule height (e.g., 1.8 → 1.0) and the Head Y (1.6 → 0.9) over ~0.15s. Halve `walk_speed` while crouched. Block standing if a short upward shapecast hits ceiling.
 - **Sprint FOV punch.** Tween `Camera.fov` from 75 → 82 over 0.2s when sprint starts, back when it ends. The single cheapest "feel of speed" effect available.
 - **Slide.** When sprint + crouch are pressed together with horizontal speed above a threshold, lock direction to current velocity, set a `slide_timer`, and skip the wish-direction step. Apply slide-specific friction. Restore on timer expiry, ceiling clearance, or speed-below-threshold.
-- **Wallrun, dash, double-jump.** Each is its own override state. Build a state machine (see `scripting-patterns/state-machine-patterns/SKILL.md`) and let each state run its own `_physics_process` branch with an early `move_and_slide()` return. Don't pile them as `if/elif` in a single function.
-- **Camera shake.** Add a `trauma` float on the camera, accumulate via `add_trauma(amount)`, decay each frame, apply a randomized rotation offset proportional to `trauma * trauma`. Subtract the previous frame's shake offset before applying the new one to prevent drift. See the post-processing/screen-shake skill.
+- **Wallrun, dash, double-jump.** Each is its own override state. Build a state machine (see `gdscript-patterns`) and let each state run its own `_physics_process` branch with an early `move_and_slide()` return. Don't pile them as `if/elif` in a single function.
+- **Camera shake.** Add a `trauma` float on the camera, accumulate via `add_trauma(amount)`, decay each frame, apply a randomized rotation offset proportional to `trauma * trauma`. Subtract the previous frame's shake offset before applying the new one to prevent drift. See `game-feel`.
 
 Each of these is a separate skill or a separate function, not a fork of this script.
 
@@ -349,9 +349,10 @@ Then patch `project.godot` with the InputMap actions (`input/move_forward = { ..
 
 This skill writes scene nodes, an InputMap, and a `.gd` script. Always ask before applying. Group writes per phase: "May I add the Player + Collision + Head + Camera, bind WASD/jump/sprint, and attach `player_controller.gd`?"
 
-If the user asks for a "third-person FPS", flag the contradiction: FPS = first-person. Either clarify, or hand off to the `tps-controller` skill when it ships.
+If the user asks for a "third-person FPS", flag the contradiction: FPS = first-person. Either clarify, or hand off to `character-movement`, which has the third-person controller.
 
 ## See Also
 
-- `scripting-patterns/state-machine-patterns/SKILL.md` — once movement grows past this skeleton (slide, grapple, hover), refactor into a state machine instead of stuffing more branches into `_physics_process`.
-- `physics/character-body-tuning/SKILL.md` (when shipped) — slope handling, step-up, floor-snap.
+- `gdscript-patterns` — once movement grows past this skeleton (slide, grapple, hover), refactor into a state machine instead of stuffing more branches into `_physics_process`.
+- `character-movement` — 2D and third-person controllers.
+- `game-feel` — camera shake and hit feedback.

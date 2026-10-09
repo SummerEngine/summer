@@ -13,13 +13,13 @@ tags:
 confidence: extracted
 ---
 
-# Single-Image → Editable Scene Reconstruction (Lumera-style) in SummerEngine
+# Single-Image → Editable Scene Reconstruction (Lumera-style) in Summer Engine
 
 ## Outcome
 
-Turn one reference image into an **editable, engine-native scene** in SummerEngine: individual `MeshInstance3D` objects with transforms, countable parametric light nodes, and an HDR environment probe — not a fused point cloud, Gaussian splat, or baked texture. This is the adaptation of the Lumera pipeline (arXiv:2607.20889, Tsinghua AIRSUN lab) from UE5 to SummerEngine.
+Turn one reference image into an **editable, engine-native scene** in Summer Engine: individual `MeshInstance3D` objects with transforms, countable parametric light nodes, and an HDR environment probe — not a fused point cloud, Gaussian splat, or baked texture. This adapts the Lumera pipeline (arXiv:2607.20889, Tsinghua AIRSUN lab), which was built on another engine, to Summer Engine.
 
-**Honesty caveat:** Lumera itself is UE5-only with no public code as of retrieval (2026-08-30); the paper explicitly lists Godot/engine-portable extraction as future work. This skill documents the architecture and the parts an agent can build in SummerEngine today (assembly, scene representation, refinement loop, evaluation), and flags the parts that require external model components (VLM box/light parsers, per-object mesh generator, HDR estimator).
+**Caveat:** Lumera has no public code, and the paper lists engine-portable extraction as future work. This skill documents the architecture and the parts an agent can build in Summer Engine today (assembly, scene representation, refinement loop, evaluation), and flags the parts that require external model components (VLM box/light parsers, per-object mesh generator, HDR estimator).
 
 ## When to Use
 
@@ -44,11 +44,11 @@ Lumera's stages (from paper abstract + appendices):
 3. **Per-object mesh reconstruction** — a mesh per parsed box.
 4. **HDR environment estimation** — environment probe (IntrinsicHDR partially compensates for SkyLight/unseen near-camera lights).
 5. **Bounded agentic refinement loop** — dual-agent (geometry stage, then light stage) edits + verifies against the reference image.
-6. **Assembly** — emit engine-native scene (Blender/UE5 in the paper; `.tscn` in SummerEngine).
+6. **Assembly** — emit an engine-native scene (`.tscn` in Summer Engine).
 
-Dataset backing it: Lumera-2K, 2,513 UE5 projects → 3.73M components, 63M object instances, 102.6K parametric lights, 95.1K camera views.
+Dataset backing it: Lumera-2K, 2,513 game-engine projects → 3.73M components, 63M object instances, 102.6K parametric lights, 95.1K camera views.
 
-## Scene / Node Shape (SummerEngine target)
+## Scene / Node Shape (Summer Engine target)
 
 The assembly stage should emit this node tree so output stays inspectable/editable:
 
@@ -65,10 +65,10 @@ ReconstructedScene (Node3D)
     ├── OmniLight3D / SpotLight3D / DirectionalLight3D × M
     │     # position/rotation from (x,y,z); color from (r,g,b);
     │     # light_energy from I (mind log-scale calibration, see Tunables)
-    └── (SkyLight-equivalent is carried by WorldEnvironment in Godot)
+    └── (the sky-light equivalent is carried by WorldEnvironment)
 ```
 
-Keep objects and lights as **separate siblings under named containers** — this mirrors UE5's component structure and is what makes the scene "editable" rather than "looks 3D".
+Keep objects and lights as **separate siblings under named containers**. That separation is what makes the scene editable rather than just looking 3D.
 
 ## Implementation Steps
 
@@ -97,15 +97,15 @@ Add a **repair layer** on ingest: drop/fix invalid labels, non-positive sizes, d
 
 ### 2. Box + light parsing (external VLM components)
 
-Lumera-Box/Lumera-Light are VLMs SFT'd on Lumera-2K; there is no public checkpoint. Options: use a hosted VLM prompted to emit the JSON tuples above, or fine-tune an open VLM on your own engine-exported scenes (Godot scenes are text `.tscn` and trivially exportable — this is the "build Lumera-2K for your engine" step the paper identifies as missing for non-UE5 engines).
+Lumera-Box/Lumera-Light are VLMs SFT'd on Lumera-2K; there is no public checkpoint. Options: use a hosted VLM prompted to emit the JSON tuples above, or fine-tune an open VLM on your own engine-exported scenes (`.tscn` scenes are text and easy to export; this is the "build Lumera-2K for your engine" step the paper identifies as missing for other engines).
 
 ### 3. Per-object mesh generation + HDR environment estimation
 
-Also external model components in Lumera (per-object mesh reconstruction; IntrinsicHDR-style environment estimation). For a SummerEngine blockout you can substitute: box mesh (`BoxMesh` sized to the parsed box) per object and a generated/estimated panorama `Sky`. Swap in real reconstructed meshes later without changing the schema.
+Also external model components in Lumera (per-object mesh reconstruction; IntrinsicHDR-style environment estimation). For a Summer Engine blockout you can substitute: box mesh (`BoxMesh` sized to the parsed box) per object and a generated/estimated panorama `Sky`. Swap in real reconstructed meshes later without changing the schema.
 
 ### 4. Assembly: write a `.tscn`
 
-Deterministic GDScript/tool script: instantiate the node shape above from the repaired records. Godot's `.tscn` is text — generating it directly keeps the output diffable and versionable. Save with `PackedScene.pack()` / `ResourceSaver.save()` from an editor tool.
+Deterministic GDScript/tool script: instantiate the node shape above from the repaired records. A `.tscn` is text, so generating it directly keeps the output diffable and versionable. Save with `PackedScene.pack()` / `ResourceSaver.save()` from an editor tool.
 
 ### 5. Bounded dual-agent refinement loop
 
@@ -148,17 +148,17 @@ Reproduce the paper's metrics on held-out scenes so improvements are measurable:
 - **Per-light localization is weak** (F1 0.209 @ 0.5 m) while scene-level light *count* recall is strong (0.998). Frame the output as "right number of lights, roughly right places."
 - **SkyLight / near-camera lights whose source is off-screen** are not supervised; the environment probe (IntrinsicHDR) only partially compensates.
 - **Large outdoor scenes drift geometrically** (~17 m Chamfer-L2); consider joint camera+geometry calibration if you need metric outdoor consistency.
-- **Engine conventions don't transfer for free** — the dataset and light conventions are UE5's; Godot's light units/probes differ, so recalibrate intensity and validate the representation on Godot-native scenes.
+- **Engine conventions don't transfer for free.** The dataset's light conventions come from another engine; Summer Engine's light units and probes differ, so recalibrate intensity and validate the representation on Summer-native scenes.
 
 ## Verification
 
-Not summerengine-verified. To validate an implementation in SummerEngine:
+Not yet verified in Summer Engine. To validate an implementation:
 
 1. Assemble a scene from a test image; confirm the `.tscn` contains separate, selectable `MeshInstance3D`s and light nodes (editability check).
 2. Move/replace one mesh and re-tune one light in the editor without breaking the scene.
-3. Run the evaluation harness (§6) against a held-out set of known Godot scenes and compare to the reference numbers above.
+3. Run the evaluation harness (§6) against a held-out set of known scenes and compare to the reference numbers above.
 4. Confirm the refinement loop terminates within `T_g`/`T_l` and the history window never exceeds the VLM context budget.
 
 ## Confidence
 
-`extracted` — Architecture, metrics, refinement-loop design, and limitations are drawn directly from the arXiv paper (abstract, intro, appendices H.7–I as retrieved; middle method sections were truncated and are not documented here) and the author's announcement post. The SummerEngine node mapping and GDScript schema are adaptations, not from the sources; no public Lumera code exists to reference.
+`extracted` — Architecture, metrics, refinement-loop design, and limitations are drawn directly from the arXiv paper (abstract, intro, appendices H.7–I as retrieved; middle method sections were truncated and are not documented here) and the author's announcement post. The Summer Engine node mapping and GDScript schema are adaptations, not from the sources; no public Lumera code exists to reference.

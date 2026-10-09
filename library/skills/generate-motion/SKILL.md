@@ -11,7 +11,7 @@ paths: ["**/*.tscn", "**/*.tres", "**/*.gd"]
 
 # Generate Motion — Curated Meshy Library
 
-Picks a clip from a **curated mocap library** by name and wires it onto a Meshy-rigged humanoid. Fast (~30s) and cheap (~$0.10) and looks great because it's real mocap. The five short aliases that always work are `idle`, `walk`, `run`, `jump`, `attack`; anything else must be an exact library name — see the Reference card before you invent one.
+Picks a clip from a **curated mocap library** by name and wires it onto a Meshy-rigged humanoid. Fast (~30s), and it looks good because it is real mocap. The five short aliases that always work are `idle`, `walk`, `run`, `jump`, `attack`; anything else must be an exact library name — see the Reference card before you invent one.
 
 The target must be a **Meshy-rigged humanoid** — a `rigAssetId` from a prior `summer_generate_3d({ kind: "image-to-3d", imageUrl: "...", options: { rig: true } })` call. The result job includes `rigAssetId`. If the user points at a non-rigged mesh, stop and route to `asset-strategy` (or directly call `summer_generate_3d` with `options.rig: true`) before generating motion.
 
@@ -19,22 +19,6 @@ The target must be a **Meshy-rigged humanoid** — a `rigAssetId` from a prior `
 > nodding flower, a creature) goes to the `text-to-motion` skill
 > (`backend: "text-to-motion"`) when the server has it enabled; otherwise fall
 > back to hand-authoring in Summer Engine or importing from Mixamo.
-
-## Web Chat / Public Orchestrator Equivalent
-
-In PublicSummerEngine chat, the equivalent direct tools are:
-
-```
-rigModel({ modelAssetId })
-generateAnimation({ rigAssetId, animationName })
-meshyJobStatus({ jobId })
-```
-
-If the character came from `createCharacter`, it may already be rigged and have `metadata.meshyRigTaskId`; generate animations directly against that rig asset. Verified animation names from the recovered production flow are `idle`, `walk`, `run`, `jump`, and `attack`. `fall` returned `invalid_animation`, so do not present it as a default.
-
-Before generating clips in PublicSummerEngine chat, confirm the rig asset listing/status exposes `hasMeshyRigTask` or `animationsReady:true`. If `generateAnimation` returns `animations_preparing`, wait, poll/list the rig again, and retry; this is the post-rig setup catching up, not a reason to send the user to Studio.
-
-After animation jobs complete, import the rig plus child animation assets together and wire them through `import-character`. Do not hand off to Studio unless the user asked for Studio/manual control or the direct chat tools fail.
 
 ## When to use this skill
 
@@ -64,7 +48,7 @@ The result must include `rigAssetId: <id>` on a Meshy rig. If it shows `rigAsset
 
 ### 2. Confirm with the user before spending
 
-> I'm about to generate a "run" animation on `goblin_rigged` via meshy-library — about 30s, ~$0.10. OK?
+> I'm about to generate a "run" animation on `goblin_rigged` via meshy-library — about 30s, and it uses credits. OK?
 
 ### 3. Call the tool
 
@@ -107,7 +91,7 @@ If the character will use multiple clips, leave the AnimationPlayer in place —
 
 ## Confirmation gates
 
-- **Before generation:** state the motion name and est. cost (~$0.10). Wait for OK.
+- **Before generation:** state the motion name and that it uses credits. Wait for OK.
 - **Before attaching:** state which AnimationPlayer and which library slot. Wait for OK.
 - **After generation:** if the user hasn't seen the preview, link `previewUrl` and ask "land or regenerate?" before wiring it into the scene.
 
@@ -129,9 +113,8 @@ nothing like a tidy snake_case scheme — real names look like `Walking_Woman`,
 Plausible-looking names that do **not** resolve, verified against the resolver:
 `attack_sword`, `hit_react`, `death`, `sprint`, `block`, `dodge_left`,
 `crouch_idle`, `walk_back`, `run_strafe_left`, `jump_land`, `idle_combat`,
-`wave`, `dance`, `sit_idle`. They return `null` and the call errors. The tool's
-own description uses `attack_sword` as an example — that example is wrong; use
-`attack`.
+`wave`, `dance`, `sit_idle`. They return `null` and the call errors. For a sword
+attack, use `attack`.
 
 So: if the user asks for something outside the five aliases, do not guess a
 snake_case name. Either use one of the five, quote an exact raw library name you

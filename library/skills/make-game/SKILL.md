@@ -40,9 +40,9 @@ Distilled blueprints for common genres live in this skill's `references/` folder
 | Third-person action / 3D platformer | `references/3d-third-person.md` | `references/3d-third-person-systems.md` | Node3D / CharacterBody3D / SpringArm3D |
 | First-person horror | `references/3d-horror.md` | `references/3d-horror-systems.md` | Node3D / CharacterBody3D / Camera3D on Head |
 
-No playbook (racing, sandbox, sim): build fresh through the phases below. The playbooks lean on these system skills — load one when its mechanic comes up: `character-movement`, `camera-rigs`, `combat-basics`, `save-load`, `ui-basics`, `setup-multiplayer`.
+No playbook (racing, sandbox, sim): build fresh through the phases below. The playbooks lean on these system skills — load one when its mechanic comes up: `character-movement`, `camera-rigs`, `combat-basics`, `save-load`, `ui-basics`, `multiplayer-project`.
 
-Two rules from the playbooks apply to every genre:
+These rules from the playbooks apply to every genre:
 
 - **2D scales to the viewport.** Set `display/window/stretch/mode = canvas_items` and `stretch/aspect = expand`; UI uses Control anchors; code-positioned nodes compute from `get_viewport_rect().size`. Never hardcode 1920x1080.
 - **Playable slice, not tech demo.** Name the core loop in one sentence; every input gets feedback (tween, sound, particle, flash, shake); progression is visible; a restart exists. The bar is "feels good for 30 seconds".
@@ -198,7 +198,7 @@ Repeat until every mechanic in the plan is implemented OR the user calls cut.
 Skill: art-direction
 ```
 
-That writes `.summer/art-bible.md` if it doesn't exist, then guides the lighting / material / palette pass. Use `3d-lighting` for the actual scene work. If the game plays in the browser or is exported for the web, it runs the Compatibility renderer only: follow `web-compatibility-look` instead of Forward+-only features (SDFGI, SSAO, SSR, volumetric fog), and keep `rendering/renderer/rendering_method` on `gl_compatibility`.
+That writes `.summer/art-bible.md` if it doesn't exist, then guides the lighting / material / palette pass. Use `3d-lighting` for the actual scene work. For the web, check the target first. A summer.games web build (`summer_export_game` with `targets:["web"]`) runs on Summer's WebGPU template, which needs the Forward+ or Mobile renderer. A WebGL 2 target runs the Compatibility renderer only: follow `web-compatibility-look` there, avoid Forward+-only features (SDFGI, SSAO, SSR, volumetric fog), and keep `rendering/renderer/rendering_method` on `gl_compatibility`.
 
 ```
 Skill: audio-direction
@@ -276,8 +276,6 @@ By the end of a successful run, the user has:
 - One `.gd` file per mechanic
 - `summer_get_diagnostics` returns clean
 - `summer_play` runs end-to-end and the win condition is reachable
-
-That's a real game. Not a half-finished prototype.
 
 ## Closing line
 

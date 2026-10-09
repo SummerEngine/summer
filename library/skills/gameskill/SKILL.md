@@ -15,9 +15,9 @@ You are being invoked at the end (or middle) of a game-development session. Turn
 
 Summer resolves skills in this order: the game project, then the user's agent skills directory, then the skills bundled with the Summer package. Pick the narrowest home that fits:
 
-1. **The game project** (default). Write `SKILL.md` into the project-scoped skills directory of the agent you are running in: `.claude/skills/<slug>/` for Claude Code, `.agents/skills/<slug>/` for Codex, `.cursor/rules/` for Cursor, `.windsurfrules` for Windsurf. `summer skills install --scope project` shows the exact path for the current agent. Commit it with the game.
+1. **The game project** (default). Write `SKILL.md` into the project-scoped skills directory of the agent you are running in: `.claude/skills/<slug>/` for Claude Code, `.agents/skills/<slug>/` for Codex, Cursor, Devin Desktop and the other agents that read the shared folder. `summer skills install --scope project` shows the exact path for the current agent. Commit it with the game.
 2. **The user's agent skills directory** when the lesson applies to every project on this machine (`~/.claude/skills/<slug>/`, `~/.agents/skills/<slug>/`). Do not edit skills that Summer installed there; they are overwritten on the next `summer setup`.
-3. **The Summer library** when the lesson is general enough for every Summer user. Only possible inside a checkout of the summer-engine agent repository: add `library/skills/<slug>/resource.yaml` and `library/skills/<slug>/SKILL.md` (flat slugs, no category folders), then run `npm run generate:registry` and `npm run validate:library`. Everything under `registry/generated/` and every plugin manifest is generated from `library/`; never hand-edit them. Outside that checkout, send the lesson through `summer_library_feedback` (or `summer tool library-feedback`) with the id of the closest existing skill so the maintainers can fold it in.
+3. **The Summer library** when the lesson is general enough for every Summer user. Only possible inside a checkout of the `summerengine/summer` repository: add `library/skills/<slug>/resource.yaml` and `library/skills/<slug>/SKILL.md` (flat slugs, no category folders), then run `npm run generate:registry` and `npm run validate:library`. Everything under `registry/generated/` and every plugin manifest is generated from `library/`; never hand-edit them. Outside that checkout, send the lesson through `summer_library_feedback` (or `summer tool library-feedback`) with the id of the closest existing skill so the maintainers can fold it in.
 
 Read the current project as ground truth. Working code from the real project beats invented examples.
 
@@ -32,7 +32,7 @@ Read the current project as ground truth. Working code from the real project bea
    - A GDScript idiom that beat the obvious approach
    - A UI layout that survived the design pass
    - A bug, its root cause and the fix that was not in any docs
-   - A Godot 4.x quirk (type inference, signal gotchas, plugin configuration)
+   - An engine quirk (type inference, signal gotchas, plugin configuration)
    - A spawning, AI or enemy pattern that worked
    - A performance fix with measured before and after
    - An asset workflow that beat the alternatives

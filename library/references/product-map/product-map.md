@@ -7,7 +7,7 @@
 ## Who owns what
 
 - **Web rows** come from summerengine.com's own route catalog (`/agent-routes.json`, published from the web repo's `src/lib/navigation/routes.ts`). The toolkit vendors a snapshot (`assets/navigation/web-routes.json`, refreshed with `npm run sync:web-routes`); it does not invent pages.
-- **Editor rows** are ids of Summer Engine's one navigation table (`navigate_ops.cpp`, op `Navigate`). The running engine advertises which ids it can open in `/api/health` `capabilities.navigation`; `summer open --list` shows availability from the connected engine. Engines that predate the `Navigate` op can still serve the rows with a legacy op (last-but-one column); every other row answers `engine_lacks_op` with an update hint.
+- **Editor rows** are ids of Summer Engine's one navigation table (the `Navigate` op). The running engine advertises which ids it can open in `/api/health` `capabilities.navigation`; `summer open --list` shows availability from the connected engine. Engines that predate the `Navigate` op can still serve the rows with a legacy op (last-but-one column); every other row answers `engine_lacks_op` with an update hint.
 
 ## How to read a row
 

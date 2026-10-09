@@ -274,6 +274,11 @@ describe("publishBuild", () => {
     expect((await failure(publishBuild({ gameId: "game-1", file: macos, clientVersion: "v1.0.0", face: "mcp" }, deps(store.fetch)))).code).toBe(
       "platforms_unsupported"
     );
+    const phones = join(root, "phones.zip");
+    await writeSummerBundle(phones, { targetPlatforms: ["ios", "android"] });
+    expect(await publishBuild({ gameId: "game-1", file: phones, clientVersion: "v1.0.0", face: "mcp" }, deps(store.fetch))).toMatchObject({
+      target: { hosted: false, targetPlatforms: ["ios", "android"] },
+    });
     const hosted = join(root, "hosted.zip");
     await writeSummerBundle(hosted, { hosted: true, targetPlatforms: ["ios", "macos"] });
     expect(await publishBuild({ gameId: "game-1", file: hosted, clientVersion: "v1.0.0", face: "mcp" }, deps(store.fetch))).toMatchObject({

@@ -6,6 +6,8 @@ import {
   publishCreator,
 } from "../../core/capabilities/creator.js";
 import { exportGame } from "../../core/capabilities/export-game.js";
+import { STORE_TARGETS } from "../../core/capabilities/export-presets.js";
+import { exportTemplates, TEMPLATE_PLATFORMS } from "../../core/capabilities/export-templates.js";
 import { publishBuild } from "../../core/capabilities/publish-build.js";
 import { BuildToolError } from "../../core/capabilities/summer-bundle.js";
 import {
@@ -61,17 +63,44 @@ async function creatorResult<T>(operation: () => Promise<T>) {
 export function registerCreatorTools(server: McpServer): void {
   server.tool(
     "summer_export_game",
-    "Export the game for summer.games: runs the installed Summer Engine headless (no window) with the project's summer.games export preset and returns the .zip bundle path, sha256, size and the bundle manifest (main scene, target platforms, hosted or not). Works without the editor running. Upload the result with summer_publish_build.",
+    "Export the game in the exact file the Summer Games store takes, with the installed Summer Engine headless (no window). format \"bundle\" (default): the summer.games .zip the Summer apps run on iPhone, Android, macOS and Windows; targets picks the platforms (a game without a server: ios and android only); upload it with summer_publish_build. format \"download\" with one target: web (an HTML5 .zip on Summer's WebGPU Forward+ web template, played on summer.games), macos (.app zip, macos-universal) or windows (.exe zip, windows-x64); these need the export template from summer_export_templates and are uploaded as store versions. Works without the editor running. Returns path, sha256, size, the manifest or store platform, and warnings.",
     {
       project: z.string().optional().describe("Project folder with project.godot. Defaults to the MCP's bound project, then the working directory."),
-      out: z.string().optional().describe("Output .zip path. Defaults to <project>/.summer/exports/<name>-<time>.zip."),
+      out: z.string().optional().describe("Output .zip path. Defaults to <project>/.summer/exports/."),
+      targets: z
+        .array(z.enum(STORE_TARGETS))
+        .optional()
+        .describe("Store platforms. Bundle: any of macos, windows, ios, android (omit to use every platform the project declares). Download: exactly one of web, macos, windows."),
+      format: z
+        .enum(["bundle", "download"])
+        .optional()
+        .describe("bundle (default): the summer.games store build. download: a web build or native download; the default when targets is [\"web\"]."),
       debug: z.boolean().default(false).describe("Export a debug build (--export-debug)."),
       timeoutSeconds: z.number().int().min(10).max(7200).optional().describe("Stop the engine after this many seconds (default 900; a first export imports every asset)."),
     },
-    async ({ project, out, debug, timeoutSeconds }) =>
+    async ({ project, out, targets, format, debug, timeoutSeconds }) =>
       creatorResult(() =>
-        exportGame({ project, out, debug, ...(timeoutSeconds ? { timeoutMs: timeoutSeconds * 1000 } : {}) })
+        exportGame({ project, out, targets, format, debug, ...(timeoutSeconds ? { timeoutMs: timeoutSeconds * 1000 } : {}) })
       )
+  );
+
+  server.tool(
+    "summer_export_templates",
+    "List, download and install Summer Engine export templates from Summer's CDN into the folder the installed engine reads, checking each file's sha256. Needed only for summer_export_game format \"download\": web (Summer's WebGPU Forward+ template), macos, windows. Store bundles (format \"bundle\") need no template. action list shows what is installed and published; action install fetches the platforms asked (default web).",
+    {
+      action: z.enum(["list", "install"]).describe("list: installed and published templates. install: download and install."),
+      platforms: z
+        .array(z.enum(TEMPLATE_PLATFORMS))
+        .optional()
+        .describe("Template platforms to install (default [\"web\"])."),
+      includeDebug: z.boolean().default(false).describe("Also install the debug templates (for exports with debug true)."),
+      summerVersion: z
+        .string()
+        .optional()
+        .describe("The installed Summer Engine version (Help > About, e.g. 0.7.1). Read automatically on macOS; needed on Windows and Linux."),
+    },
+    async ({ action, platforms, includeDebug, summerVersion }) =>
+      creatorResult(() => exportTemplates({ action, platforms, includeDebug, summerVersion }))
   );
 
   server.tool(

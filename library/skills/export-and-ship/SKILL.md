@@ -292,6 +292,7 @@ For each build:
 Per platform, point the user at the correct upload path:
 
 - **summer.games:** `summer_export_game` writes the summer.games `.zip`; `summer_publish_build` uploads it to the game's store listing after the user confirms the exact game, file and version (needs `summer login --store`). If it answers `store_auth_refused`, the user uploads the `.zip` in Studio instead.
+  - Per platform, the store takes: iPhone, Android, macOS and Windows in the Summer apps = one summer.games bundle (`summer_export_game` `targets`, format `bundle`; no template, no signing; a game without a server targets `ios`/`android` only). Web = an HTML5 `.zip` on Summer's WebGPU Forward+ template (`targets:["web"]`; the project must render with Forward+ or Mobile). A macOS or Windows download for the store page = `targets:["macos"]` or `["windows"]` with format `download`. Download exports need the template: `summer_export_templates` `install` fetches it from Summer's CDN.
 - **Steam:** `steamcmd` + Steam Pipe (`builder_app_xxx.vdf`). Set up depots first in Steamworks.
 - **itch.io:** `butler push <path> <user>/<game>:<channel>` (e.g. `butler push build/win <user>/mygame:windows`).
 - **Web (itch hosted):** zip + drop into itch upload UI as "playable in browser".

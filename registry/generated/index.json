@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.0",
-      "content_hash": "81296e116d7aec14e9ce92deb666abb0c1ec621980d109429fee36dcb8b62329",
+      "content_hash": "d0fc28b8ca01a46e50a1053393760594ac0323643aa2e00aa7d68c0d1bd5732d",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -1524,7 +1524,7 @@
       "id": "skill/export-and-ship",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "7137a9bb60cac360d7f8d26b6e0bd64a358abf87a30c7d515479da6de8e45868",
+      "content_hash": "371cc6ecc30a066a5f4906a9fb29a29d85ff4f6747f8656ce9f89671a87c6193",
       "summary": "Assess and prepare a game export: inventory installed templates and targets, validate release assets and config, produce supported builds after approval.",
       "use_when": [
         "the user wants to assess or prepare a Summer game export — Steam, itch, HTML5, iOS, Android targets as available in the installed build",
@@ -5804,11 +5804,14 @@
       "id": "tool/export-game",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "2e1cd5eb531d4f9a40f2eb38dbea0d87f8e19452269b4f2564676cb91cb7de1c",
-      "summary": "Export the game for summer.games with the installed Summer Engine (headless, no window) and return the .zip bundle path, sha256, size and manifest.",
+      "content_hash": "211be00e329de60498da0ae132721202b0efac9617d3a9bc440f44a1fdd51382",
+      "summary": "Export the game in the exact file the Summer Games store takes per platform (iPhone, Android, macOS, Windows bundle; web build; desktop download), headless.",
       "use_when": [
         "\"export my game for summer.games\"",
         "\"make a build I can upload to my store page\"",
+        "\"export my game for iPhone and Android on Summer Games\"",
+        "\"make a web build of my game for summer.games\"",
+        "\"export a Mac or Windows download for my store page\"",
         "preparing the bundle that summer_publish_build uploads"
       ],
       "facets": {
@@ -5831,6 +5834,41 @@
         "filesystem": true,
         "editor_mutation": false,
         "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/export-templates",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "df384233563daadc6ed0c1edef6169f63fc7aea0307f53df4b3ae75aaef1c2ea",
+      "summary": "List and install Summer Engine export templates (Summer's WebGPU Forward+ web template, macOS, Windows) from Summer's CDN, sha256-checked.",
+      "use_when": [
+        "\"install the web export template\"",
+        "\"summer_export_game says an export template is missing\"",
+        "\"which export templates do I have\"",
+        "before a web build or a macOS/Windows download export on a machine whose Summer Engine does not bundle that template"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch"
+        ],
+        "domains": [
+          "creator",
+          "deployment"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_export_templates",
+      "remote": true,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
         "credentials": false,
         "publish": false
       }

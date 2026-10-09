@@ -134,6 +134,7 @@ import {
   publishCreator,
 } from "./creator.js";
 import { exportGame } from "./export-game.js";
+import { exportTemplates } from "./export-templates.js";
 import { publishBuild } from "./publish-build.js";
 import {
   CONFIG_KEYS,
@@ -881,10 +882,22 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     exportGame({
       project: optStr(args, "project"),
       out: optStr(args, "out"),
+      targets: Array.isArray(args.targets) ? args.targets.map(String) : undefined,
+      format: optStr(args, "format"),
       debug: args.debug === true,
       ...(typeof args.timeoutSeconds === "number" ? { timeoutMs: args.timeoutSeconds * 1000 } : {}),
     })
   ),
+  entry("summer_export_templates", "List or install Summer export templates from the CDN (web, macos, windows)", false, (args) => {
+    const action = optStr(args, "action");
+    if (action !== "list" && action !== "install") throw new ToolDispatchError('action must be "list" or "install".');
+    return exportTemplates({
+      action,
+      platforms: Array.isArray(args.platforms) ? args.platforms.map(String) : undefined,
+      includeDebug: args.includeDebug === true,
+      summerVersion: optStr(args, "summerVersion"),
+    });
+  }),
   entry("summer_publish_build", "Upload a summer.games export to your store game (confirm-gated)", false, (args) =>
     publishBuild({
       gameId: optStr(args, "gameId"),

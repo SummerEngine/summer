@@ -4,8 +4,11 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { getAuthToken, getUserInfo } from "../auth.js";
 import { ENGINE_BIN_ENV, ENGINE_BINARY_ENV, findEngineBinary } from "../engine-install.js";
 import { checkEngineHealth, getApiPort, getApiToken } from "../engine.js";
+import { isVersionAtLeast } from "../launch-posture.js";
+import { EXPORT_MIN_ENGINE_VERSION, installedEngineVersion } from "./export-engine-version.js";
 import { brandLine, c, pad, sym, tildeify } from "../format.js";
 import { getMcpLogPath } from "../mcp-log.js";
+import { checkStoreAccess, hasStoreSignIn, type StoreAccessResult } from "../hosted-mcp.js";
 import {
   formatProjectPin,
   getProjectMemorySummary,
@@ -67,6 +70,7 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   checks.push(await checkSkillsVersion());
 
   checks.push(await checkLogin());
+  checks.push(await checkStoreSignIn());
   checks.push(checkEngineInstall());
   checks.push(await checkLocalApi());
   checks.push(await checkProjectMemory());
@@ -172,17 +176,60 @@ export async function checkLogin(): Promise<DoctorCheck> {
   };
 }
 
-export function checkEngineInstall(): DoctorCheck {
+/**
+ * Store access: with a store sign-in ("summer login --store"), ask the store
+ * for the creator's games through the hosted Summer Engine MCP, so a refusal
+ * shows here with its reason instead of on the first publishing call.
+ * A warning at worst: only publishing needs the store.
+ */
+export async function checkStoreSignIn(
+  probe: () => Promise<StoreAccessResult> = () => checkStoreAccess(),
+  signedIn: () => Promise<boolean> = hasStoreSignIn
+): Promise<DoctorCheck> {
+  const base = { id: "store-access", label: "Store" };
+  if (!(await signedIn())) {
+    return { ...base, status: "ok", message: "no store sign-in (only publishing needs it: summer login --store)" };
+  }
+  const result = await probe();
+  if (result.status === "ok") {
+    return { ...base, status: "ok", message: `the store accepts this sign-in${result.games === null ? "" : ` (${result.games} ${result.games === 1 ? "game" : "games"})`}` };
+  }
+  if (result.status === "not_signed_in") {
+    return { ...base, status: "warning", message: `${result.message} (run: summer login --store)` };
+  }
+  if (result.status === "unreachable") {
+    return { ...base, status: "warning", message: `could not reach the store: ${result.message}`, details: { ...result } };
+  }
+  return {
+    ...base,
+    status: "warning",
+    message: `the store refused this sign-in${result.code ? ` (${result.code})` : ""}: ${result.message}${result.requestId ? ` [requestId ${result.requestId}]` : ""}`,
+    details: { ...result },
+  };
+}
+
+export function checkEngineInstall(readVersion: (binary: string) => string | null = installedEngineVersion): DoctorCheck {
   const binary = findEngineBinary();
   if (binary) {
     // Shorten /Applications/Summer.app/Contents/MacOS/Summer -> /Applications/Summer.app
-    const display = binary.replace(/\/Contents\/MacOS\/Summer$/, "");
+    const display = tildeify(binary.replace(/\/Contents\/MacOS\/Summer$/, ""));
+    const version = readVersion(binary);
+    const details = { path: binary, version, minimumExportVersion: EXPORT_MIN_ENGINE_VERSION };
+    if (isVersionAtLeast(version, EXPORT_MIN_ENGINE_VERSION) === false) {
+      return {
+        id: "engine-install",
+        label: "Engine",
+        status: "warning",
+        message: `${display} is ${version}; summer.games exports need ${EXPORT_MIN_ENGINE_VERSION}+ (update: summer install --yes)`,
+        details,
+      };
+    }
     return {
       id: "engine-install",
       label: "Engine",
       status: "ok",
-      message: tildeify(display),
-      details: { path: binary },
+      message: version ? `${display} (${version})` : display,
+      details,
     };
   }
 

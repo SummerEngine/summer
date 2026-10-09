@@ -6,7 +6,8 @@ import { engineSelectionFromEnv } from "../engine.js";
 import { findEngineBinary } from "../engine-install.js";
 import { readStoreJson, writeStoreJson } from "../store.js";
 import { writeZip } from "../util/zip-write.js";
-import { runEngine, type EngineRun } from "./engine-run.js";
+import { engineErrorLines, runEngine, type EngineRun } from "./engine-run.js";
+import { assertExportEngine, installedEngineVersion } from "./export-engine-version.js";
 import {
   BUNDLE_TARGETS,
   DOWNLOAD_TARGETS,
@@ -28,7 +29,7 @@ export { runEngine, SUMMER_GAMES_PRESET, type EngineRun };
  * summer_export_game: run the installed Summer Engine headless and return the
  * file the Summer Games store takes for the chosen targets.
  *
- *   <engine> --headless --path <project> --export-release "<preset>" <out>
+ *   <engine> --headless --summer-no-api --path <project> --export-release "<preset>" <out>
  *
  * format "bundle" (default): the summer.bundle.v1 .zip for build-publications
  * (summer_publish_build). Summer runs its client.pck on its own templates in
@@ -111,9 +112,16 @@ export interface ExportGameResult {
   icon?: string | null;
   /** Download format: what signing the file carries. */
   signing?: string;
+  /** Files in the project folder the export created, changed or removed (export_presets.cfg, project.godot, ...). */
+  projectChanges?: ProjectChange[];
   /** Things the store will still refuse or warn about, in plain words. */
   warnings?: string[];
   next: string;
+}
+
+export interface ProjectChange {
+  file: string;
+  change: "created" | "modified" | "deleted";
 }
 
 export interface LastExport {
@@ -128,6 +136,8 @@ export interface LastExport {
 
 export interface ExportGameDependencies {
   findBinary: () => string | null;
+  /** Installed Summer version of the binary (Info.plist, sq.version), or null. */
+  engineVersion: (binary: string) => string | null;
   run: (binary: string, args: string[], timeoutMs: number) => Promise<EngineRun>;
   now: () => Date;
   /** Template lookup for download exports (overridable in tests). */
@@ -136,6 +146,7 @@ export interface ExportGameDependencies {
 
 const defaultDependencies: ExportGameDependencies = {
   findBinary: () => findEngineBinary(platform()),
+  engineVersion: installedEngineVersion,
   run: runEngine,
   now: () => new Date(),
 };
@@ -172,6 +183,72 @@ async function defaultExportDir(project: string): Promise<string> {
 
 function outputTail(output: string): string {
   return output.trim().split("\n").slice(-40).join("\n");
+}
+
+/** size and mtime of every file at the top of the project folder (project.godot, export_presets.cfg, ...). */
+async function snapshotProjectFiles(project: string): Promise<Map<string, string>> {
+  const files = new Map<string, string>();
+  for (const entry of await readdir(project, { withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    const info = await stat(join(project, entry.name)).catch(() => null);
+    if (info) files.set(entry.name, `${info.size}:${info.mtimeMs}`);
+  }
+  return files;
+}
+
+async function projectChangesSince(project: string, before: Map<string, string>, output?: string): Promise<ProjectChange[]> {
+  const after = await snapshotProjectFiles(project);
+  const changes: ProjectChange[] = [];
+  for (const [file, value] of after) {
+    if (output && resolve(project, file) === resolve(output)) continue;
+    if (!before.has(file)) changes.push({ file, change: "created" });
+    else if (before.get(file) !== value) changes.push({ file, change: "modified" });
+  }
+  for (const file of before.keys()) if (!after.has(file)) changes.push({ file, change: "deleted" });
+  return changes.sort((a, b) => a.file.localeCompare(b.file));
+}
+
+function projectChangeWarnings(changes: ProjectChange[]): string[] {
+  return changes.some((entry) => entry.file === "project.godot" && entry.change === "modified")
+    ? ["Summer Engine rewrote project.godot while it exported (an engine update cleans up old settings; the previous file is project.godot.bak). Review the change and commit or revert it."]
+    : [];
+}
+
+/** Re-throw an export failure with the project files it already changed. */
+async function withProjectChanges<T>(project: string, before: Map<string, string>, work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    if (!(error instanceof BuildToolError)) throw error;
+    const changes = await projectChangesSince(project, before).catch(() => []);
+    if (!changes.length) throw error;
+    throw new BuildToolError(
+      error.code,
+      error.message.replace(` ${error.recovery}`, ""),
+      error.recovery,
+      error.status,
+      { ...error.detail, projectChanges: changes }
+    );
+  }
+}
+
+/** Plain recovery for what the engine printed; the generic preset hint only when a preset is what it names. */
+function exportFailureRecovery(errors: string[], preset: string): string {
+  const text = errors.join("\n");
+  if (/export preset/i.test(text) && /(invalid|not found|no such|unknown)/i.test(text)) {
+    return `Recovery: this engine has no "${preset}" export preset, which means it predates summer.games exports: update Summer Engine to 0.7.0+ (run "summer install --yes"), then export again.`;
+  }
+  if (/source graph|client pack|authority|domain/i.test(text)) {
+    return (
+      "Recovery: this is a hosted game whose source graph puts a resource the client loads in a server-only (authority) domain. " +
+      "Open the source graph summer.build.json names (source_graph, usually source-domains.json) and narrow the authority root to the server-only files " +
+      "(for example the authority scene and its script), so the scenes and resources the client starts (such as the network composition .tres) sit under a shared or client root. " +
+      "The multiplayer-project skill explains the domains. Then export again."
+    );
+  }
+  return errors.length
+    ? "Recovery: fix what the engine names above and export again."
+    : "Recovery: the engine printed no ERROR line; read output, fix what it names, and export again.";
 }
 
 /** One value from project.godot ([section] key=value), unquoted. */
@@ -310,7 +387,8 @@ async function runExport(
   timeoutMs: number,
   notes: string[]
 ): Promise<void> {
-  const args = ["--headless", "--path", project, debug ? "--export-debug" : "--export-release", preset, out];
+  // --summer-no-api: an export needs no local HTTP API; nothing binds 127.0.0.1:6550 or writes discovery files.
+  const args = ["--headless", "--summer-no-api", "--path", project, debug ? "--export-debug" : "--export-release", preset, out];
   let run: EngineRun;
   try {
     run = await deps.run(binary, args, timeoutMs);
@@ -331,15 +409,14 @@ async function runExport(
     );
   }
   if (run.code !== 0 || !existsSync(out)) {
+    const errors = run.errors?.length ? run.errors : engineErrorLines(run.output);
+    const named = errors.slice(0, 3).map((line) => line.replace(/^(SCRIPT )?ERROR:\s*/, ""));
     throw new BuildToolError(
       "export_failed",
-      `Summer Engine did not export the game (exit ${run.code ?? run.signal}).`,
-      [
-        `Recovery: read the engine output, fix what it names, and export again. A missing "${preset}" preset means this engine predates summer.games exports: update Summer Engine.`,
-        ...notes,
-      ].join(" "),
+      `Summer Engine did not export the game (exit ${run.code ?? run.signal})${named.length ? `: ${named.join(" | ")}` : "."}`,
+      [exportFailureRecovery(errors, preset), ...notes].join(" "),
       undefined,
-      { output: outputTail(run.output) }
+      { errors, output: outputTail(run.output) }
     );
   }
 }
@@ -377,6 +454,8 @@ export async function exportGame(
       'Recovery: run "summer install", or set SUMMER_BIN to the engine executable, then export again.'
     );
   }
+  // Before any preset is written: an old engine cannot read them.
+  assertExportEngine(binary, deps.engineVersion(binary));
 
   if (format === "download") {
     return exportDownload(deps, binary, project, targets![0] as "web" | "macos" | "windows", out, debug, timeoutMs, started);
@@ -384,10 +463,12 @@ export async function exportGame(
 
   out ??= join(await defaultExportDir(project), `${basename(project)}-${stamp(started)}.zip`);
   const before = existsSync(out) ? statSync(out).mtimeMs : null;
+  const projectBefore = await snapshotProjectFiles(project);
   const ensured = targets ? await ensurePreset(project, bundlePresetSpec(targets)) : undefined;
   const preset = ensured?.name ?? (input.preset?.trim() || SUMMER_GAMES_PRESET);
   const notes = (targets ?? []).flatMap((target) => TARGET_ENGINE_NOTE[target] ?? []);
-  await runExport(deps, binary, project, preset, out, debug, timeoutMs, notes);
+  await withProjectChanges(project, projectBefore, () => runExport(deps, binary, project, preset, out!, debug, timeoutMs, notes));
+  const projectChanges = await projectChangesSince(project, projectBefore, out);
   if (before !== null && statSync(out).mtimeMs === before) {
     throw new BuildToolError(
       "export_failed",
@@ -409,7 +490,7 @@ export async function exportGame(
       { exportedPlatforms: bundle.targetPlatforms, path: out }
     );
   }
-  const warnings: string[] = [];
+  const warnings: string[] = projectChangeWarnings(projectChanges);
   const desktopOnly = bundle.hosted ? [] : bundle.targetPlatforms.filter((target) => !STANDALONE_TARGETS.includes(target));
   if (desktopOnly.length) {
     warnings.push(
@@ -435,6 +516,7 @@ export async function exportGame(
     engine: binary,
     durationMs: deps.now().getTime() - started.getTime(),
     bundle: { ...summary, fileCount: files.length },
+    ...(projectChanges.length ? { projectChanges } : {}),
     ...(warnings.length ? { warnings } : {}),
     next: "Upload it to the game's store listing with summer_publish_build (gameId, clientVersion).",
   };
@@ -485,6 +567,7 @@ async function exportDownload(
   }
 
   const spec = downloadPresetSpec(target, slug);
+  const projectBefore = await snapshotProjectFiles(project);
   const ensured = await ensurePreset(project, spec);
   const exportsDir = await defaultExportDir(project);
   const work = join(exportsDir, `${slug}-${target}-${stamp(started)}`);
@@ -493,38 +576,42 @@ async function exportDownload(
   const out = requestedOut ?? join(exportsDir, `${slug}-${storePlatform}-${stamp(started)}.zip`);
   const warnings: string[] = [];
   let fileCount = 1;
-  try {
-    if (target === "macos") {
-      // The macOS exporter writes the .app inside a .zip itself.
-      const engineOut = join(work, `${slug}.zip`);
-      await runExport(deps, binary, project, spec.name, engineOut, debug, timeoutMs, []);
-      await rename(engineOut, out);
-      warnings.push("macOS shows players an unidentified-developer prompt for an ad hoc signed app; the store accepts it as is.");
-    } else {
-      const engineOut = join(work, target === "web" ? "index.html" : `${slug}.exe`);
-      await runExport(deps, binary, project, spec.name, engineOut, debug, timeoutMs, []);
-      const files = await listFiles(work);
-      const entries = files.map((file) => ({ name: relative(work, file).split(sep).join("/"), source: file }));
-      if (target === "web") {
-        const sizes = await Promise.all(files.map(async (file) => (await stat(file)).size));
-        const total = sizes.reduce((sum, size) => sum + size, 0);
-        const tooBig = entries.find((_entry, index) => sizes[index] > WEB_LIMITS.fileBytes);
-        if (entries.length > WEB_LIMITS.files || total > WEB_LIMITS.zipBytes || tooBig) {
-          throw new BuildToolError(
-            "web_build_too_large",
-            `The web build has ${entries.length} files and ${Math.round(total / 1048576)} MiB${tooBig ? `; ${tooBig.name} is over 200 MiB` : ""}. The store takes at most ${WEB_LIMITS.files} files, 500 MiB, 200 MiB per file.`,
-            "Recovery: exclude unused assets from the export (Project > Export > Resources) or compress textures, then export again."
-          );
-        }
+  await withProjectChanges(project, projectBefore, async () => {
+    try {
+      if (target === "macos") {
+        // The macOS exporter writes the .app inside a .zip itself.
+        const engineOut = join(work, `${slug}.zip`);
+        await runExport(deps, binary, project, spec.name, engineOut, debug, timeoutMs, []);
+        await rename(engineOut, out);
+        warnings.push("macOS shows players an unidentified-developer prompt for an ad hoc signed app; the store accepts it as is.");
       } else {
-        warnings.push("The .exe is not code signed; Windows SmartScreen may warn players. The store accepts it as is.");
+        const engineOut = join(work, target === "web" ? "index.html" : `${slug}.exe`);
+        await runExport(deps, binary, project, spec.name, engineOut, debug, timeoutMs, []);
+        const files = await listFiles(work);
+        const entries = files.map((file) => ({ name: relative(work, file).split(sep).join("/"), source: file }));
+        if (target === "web") {
+          const sizes = await Promise.all(files.map(async (file) => (await stat(file)).size));
+          const total = sizes.reduce((sum, size) => sum + size, 0);
+          const tooBig = entries.find((_entry, index) => sizes[index] > WEB_LIMITS.fileBytes);
+          if (entries.length > WEB_LIMITS.files || total > WEB_LIMITS.zipBytes || tooBig) {
+            throw new BuildToolError(
+              "web_build_too_large",
+              `The web build has ${entries.length} files and ${Math.round(total / 1048576)} MiB${tooBig ? `; ${tooBig.name} is over 200 MiB` : ""}. The store takes at most ${WEB_LIMITS.files} files, 500 MiB, 200 MiB per file.`,
+              "Recovery: exclude unused assets from the export (Project > Export > Resources) or compress textures, then export again."
+            );
+          }
+        } else {
+          warnings.push("The .exe is not code signed; Windows SmartScreen may warn players. The store accepts it as is.");
+        }
+        await writeZip(out, entries);
+        fileCount = entries.length;
       }
-      await writeZip(out, entries);
-      fileCount = entries.length;
+    } finally {
+      await rm(work, { recursive: true, force: true });
     }
-  } finally {
-    await rm(work, { recursive: true, force: true });
-  }
+  });
+  const projectChanges = await projectChangesSince(project, projectBefore, out);
+  warnings.unshift(...projectChangeWarnings(projectChanges));
 
   const icon = projectSetting(project, "application", "config/icon");
   if (!icon) warnings.push("The project has no icon (Project Settings > Application > Config > Icon); the export uses the Summer default.");
@@ -548,6 +635,7 @@ async function exportDownload(
     fileCount,
     icon,
     signing: target === "macos" ? "ad hoc (built-in), not notarized" : "none",
+    ...(projectChanges.length ? { projectChanges } : {}),
     ...(warnings.length ? { warnings } : {}),
     next: `Upload it as the game's ${storePlatform} store version with summer_publish_build (gameId, clientVersion); it reads the platform from this export.`,
   };

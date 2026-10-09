@@ -298,6 +298,36 @@ describe("versioned creator API client", () => {
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it("accepts a plain HTTP upload URL on the IPv6 loopback", async () => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse({
+        contract: CREATOR_API_CONTRACT,
+        operation: "prepare",
+        uploadUrl: "http://[::1]:4000/immutable-upload",
+        headers: {
+          "content-type": "application/octet-stream",
+          "if-none-match": "*",
+        },
+        method: "PUT",
+        finalizeUrl: "/api/creator/v1/publish",
+      })
+    );
+    await publishCreator(
+      {
+        project: root,
+        artifact,
+        version: "1.0.0",
+        face: "cli",
+        confirm: true,
+      },
+      { fetch: fetchMock as typeof fetch }
+    ).catch(() => undefined);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(String(fetchMock.mock.calls[1]?.[0])).toBe(
+      "http://[::1]:4000/immutable-upload"
+    );
+  });
 });
 
 describe("creator input boundaries", () => {

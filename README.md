@@ -97,7 +97,7 @@ The first invocation downloads the npm package transparently to npx's cache (~3 
 
 Read the JSON output. **Top-level `ok: true` means "no check failed" — it does NOT mean Summer is installed.** A machine with no skills, no MCP config, and no login can report `ok: true` (those checks warn, they do not fail). So never skip Step 1 on `ok`: it is idempotent and fast. Use the `checks` array (each entry: `id`, `label`, `status` of `ok` / `warning` / `fail`, `message`, optional `details`) only to decide whether the expensive steps — engine download (Step 2) and browser login (Step 3) — are needed.
 
-The check ids are `node-version`, `cli-version`, `cli-version-current`, `skills-version-stale`, `login`, `engine-install`, `local-api`, `project-memory`, `mcp-boot`, and `mcp-tools-list`. For any check whose `status` is not `ok`, run the action in the table below, then re-run doctor.
+The check ids are `node-version`, `cli-version`, `cli-version-current`, `skills-version-stale`, `login`, `store-access`, `engine-install`, `local-api`, `project-memory`, `mcp-boot`, and `mcp-tools-list`. For any check whose `status` is not `ok`, run the action in the table below, then re-run doctor.
 
 | Check id | If `status` is `ok` | Action when attention is needed |
 |---|---|---|
@@ -106,6 +106,7 @@ The check ids are `node-version`, `cli-version`, `cli-version-current`, `skills-
 | `cli-version-current` | continue | run `npx clear-npx-cache && npx -y summer-engine@latest doctor --json` (forces a fresh resolve) |
 | `skills-version-stale` | run Step 1 anyway (idempotent) | run Step 1 (`--force` is already in the command) |
 | `login` | skip Step 3 | run Step 3 |
+| `store-access` | continue | only for publishing: surface the `message` (it carries the store's own reason); signing in again does not fix a refusal the store gives a valid sign-in |
 | `engine-install` | skip Step 2 | run Step 2 |
 | `local-api` | skip Step 5b wait-loop | expected before `summer run`; run the wait-loop after it |
 | `project-memory` | continue | if a project is open, use the `brainstorm-game` skill before building |

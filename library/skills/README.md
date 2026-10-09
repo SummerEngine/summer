@@ -1,6 +1,6 @@
 # Summer skills
 
-> 116 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
+> 118 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
 
 The folder is flat on purpose (`docs/design/DECISIONS.md`, D3): a skill usually belongs to several domains, so categories live in each skill's `facets.domains` and this index is rendered from them. The first domain listed is the primary one. `summer skills list --by-domain` prints the same grouping; `summer skills info <slug>` shows one skill.
 
@@ -10,7 +10,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 
 - [2d](#2d) (10)
 - [3d](#3d) (6)
-- [agent-workflow](#agent-workflow) (17)
+- [agent-workflow](#agent-workflow) (18)
 - [ai](#ai) (2)
 - [animation](#animation) (7)
 - [assets](#assets) (3)
@@ -24,7 +24,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 - [multiplayer](#multiplayer) (16)
 - [navigation](#navigation) (1)
 - [performance](#performance) (1)
-- [rendering](#rendering) (5)
+- [rendering](#rendering) (6)
 - [runtime](#runtime) (1)
 - [scenes](#scenes) (12)
 - [scripting](#scripting) (2)
@@ -62,6 +62,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 
 | skill | when to use | also |
 |---|---|---|
+| [*bounded-engine-runs*](./bounded-engine-runs/SKILL.md) ★ (preview) | Run Summer headless or offscreen safely from an agent: time limits, one engine per project, muted runs, import passes, tests that fail on crashes. | headless, verification |
 | [brainstorming](./brainstorming/SKILL.md) ★ | Explore user intent, requirements, and design before implementation — must run before any creative work: features, components, mechanics, behavior. | game-design |
 | [debugging-game-feel](./debugging-game-feel/SKILL.md) | Debug features that work but feel wrong — floaty jumps, mushy combat, sluggish camera — subjective bugs living in tuning, timing, and feedback layers. | gameplay |
 | [diagnosing-perf-regressions](./diagnosing-perf-regressions/SKILL.md) | Find why frame rate, frame time, or load time got worse since a known-good state — regression hunting, not general performance tuning. | performance |
@@ -152,7 +153,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [*celeste-momentum-platforming*](./celeste-momentum-platforming/SKILL.md) (preview) | Celeste-style 2D precision platformer movement — momentum running, coyote time, variable jumps, dash, wall jump/slide, climb stamina, pixel corner correction. | character-controller, game-design |
 | [*combat-basics*](./combat-basics/SKILL.md) (preview) | Damage in Summer Engine: hitbox and hurtbox Areas on opposing layers, a reusable Health component, damage signals, knockback, hit feedback, projectiles. | scripting, game-design |
 | [design-mechanic](./design-mechanic/SKILL.md) ★ | Design one game mechanic in detail — input, response, feedback, failure modes, depth, tunables — outputs a design doc, node-graph sketch, GDScript stub. | game-design |
-| [*in-game-purchases*](./in-game-purchases/SKILL.md) (preview) | Sell items for Sparks and let short players buy Sparks in game via the Summer purchase sheet: checkout, Sparks purchase, results, testing, store policy. | scripting, game-design |
+| [*in-game-purchases*](./in-game-purchases/SKILL.md) (preview) | Sell items for Sparks in a game shop via the Summer purchase sheet: checkout, results, not enough Sparks, inventory unlocks, authority grants, store policy. | scripting, game-design |
 | [*web-and-touch-input*](./web-and-touch-input/SKILL.md) ★ (preview) | Input for the browser and phones: the first-click rule for sound and mouse capture, focus, and touch buttons or a virtual stick on the same actions. | ui |
 
 ## level-design
@@ -201,6 +202,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 |---|---|---|
 | [3d-lighting](./3d-lighting/SKILL.md) ★ | Set up 3D scene lighting — DirectionalLight3D vs Omni vs Spot, WorldEnvironment, sky, shadow tuning, ambient — per current Summer conventions. | lighting |
 | [art-direction](./art-direction/SKILL.md) ★ | Define the game's visual style — references, palette, mood, lighting plan, post-processing, do/don't list — output as an art bible at .summer/art-bible.md. | lighting |
+| [*compatibility-renderer-traps*](./compatibility-renderer-traps/SKILL.md) ★ (preview) | Make a Forward+ Summer game also look right on the Compatibility renderer: instance-uniform budget, black MultiMesh colors, sRGB vertex colors. | performance |
 | [*psx-retro-rendering*](./psx-retro-rendering/SKILL.md) (preview) | Hardware-informed PlayStation 1 rendering in Godot 4 — low-res output, RGB5 and exact dither, affine textures, vertex snapping, blend modes, fog; limits named. | 3d |
 | [*realtime-wet-surfaces*](./realtime-wet-surfaces/SKILL.md) (preview) | Real-time wetness on existing Godot 4 materials without losing their values — value-copying wet shader, geometry-driven wet mask, instance-uniform wet amount. | vfx |
 | [*web-compatibility-look*](./web-compatibility-look/SKILL.md) ★ (preview) | Make a web or browser game look high-end in the Compatibility renderer (WebGL 2): what works, what to avoid, 2D and 3D recipes, web performance. | 2d, 3d |

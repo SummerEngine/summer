@@ -111,13 +111,27 @@ describe("doctor engine check", () => {
 
   it("resolves the binary through the shared engine-install module", () => {
     findEngineBinaryMock.mockReturnValue("/Applications/Summer.app/Contents/MacOS/Summer");
-    const check = checkEngineInstall();
+    const check = checkEngineInstall(() => "0.7.0");
     expect(findEngineBinaryMock).toHaveBeenCalledTimes(1);
     expect(check).toMatchObject({
       status: "ok",
-      message: "/Applications/Summer.app",
-      details: { path: "/Applications/Summer.app/Contents/MacOS/Summer" },
+      message: "/Applications/Summer.app (0.7.0)",
+      details: { path: "/Applications/Summer.app/Contents/MacOS/Summer", version: "0.7.0" },
     });
+  });
+
+  it("warns when the engine is older than the summer.games export minimum", () => {
+    findEngineBinaryMock.mockReturnValue("/Applications/Summer.app/Contents/MacOS/Summer");
+    const check = checkEngineInstall(() => "0.6.0");
+    expect(check.status).toBe("warning");
+    expect(check.message).toBe(
+      "/Applications/Summer.app is 0.6.0; summer.games exports need 0.7.0+ (update: summer install --yes)"
+    );
+  });
+
+  it("stays ok when this system cannot read the version", () => {
+    findEngineBinaryMock.mockReturnValue("/opt/summer/summer-linux-x86_64");
+    expect(checkEngineInstall(() => null)).toMatchObject({ status: "ok", message: "/opt/summer/summer-linux-x86_64" });
   });
 
   it("points at SUMMER_ENGINE_BINARY when no binary is found", () => {

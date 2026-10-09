@@ -304,7 +304,7 @@ summer_set_resource_property(
 
 `nodePath`, `resourceProperty` and `subProperty` are all required and canonical. There is no dotted `"mesh.size"` form.
 
-**Inline `sub_resource` targets work.** An earlier revision of this file claimed the op silently fails on an inline sub-resource and told you to save the resource as a standalone `.tres` first. That was wrong, and it propagated into nine skills. The implementation reads `node->get(resourceProperty)` and sets the sub-property on whatever comes back (`modules/1summer_engine/editor/ops/scene_ops.cpp:1273-1400`) — there is no inline-versus-external branch anywhere in it. The canonical example in the shipped `summer_batch` description does exactly this against an inline mesh.
+**Inline `sub_resource` targets work.** You do not need to save the resource as a standalone `.tres` first: the op reads the node's property and sets the sub-property on whatever resource it holds. The canonical example in the shipped `summer_batch` description does exactly this against an inline mesh.
 
 Structural failures are explicit:
 

@@ -1,6 +1,6 @@
 # Roo Code integration
 
-> **Legacy.** Roo Code shut down on 2026-05-15. The extension may still run, but it is no longer maintained; consider Cline or Kilo Code.
+> **Legacy.** Roo Code is no longer maintained. The target still works; consider Cline or Kilo Code.
 
 No manifest file is generated in this repo for Roo Code — `manifest-target.json`
 is intentionally empty. Support is delivered at install time by

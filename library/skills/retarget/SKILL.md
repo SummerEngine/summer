@@ -26,8 +26,7 @@ Two real paths exist. Pick by whether the target rig is Meshy-rigged.
 | Target is Meshy-rigged and the clip name is on the curated list | Re-run `summer_generate_motion` against the target's `rigAssetId`. Same clip, ~$0.10, ~30s. |
 | Target is not Meshy-rigged, or the clip is hand-authored / Mixamo / bought | In-engine retargeting: `BoneMap` + `SkeletonProfileHumanoid` + `RetargetModifier3D`. No credits, no network, but you configure the bone mapping. |
 
-The rest of this skill covers both. The cost math that used to live here assumed a
-retarget API that does not exist; the honest math is below.
+The rest of this skill covers both.
 
 ## When to use this skill
 

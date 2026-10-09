@@ -26,10 +26,10 @@ Project-local:
 npx -y summer-engine@latest skills install --recommended --agent claude-code --scope project
 ```
 
-The legacy alias still works:
+Single skill:
 
 ```bash
-summer skills install fps-controller --as-claude-skill
+summer skills install fps-controller --agent claude-code
 ```
 
 Paths:

@@ -20,8 +20,6 @@ related:
   skills:
     - skill/character-movement
     - skill/camera-rigs
-  # Legacy frontmatter declared template-id: template-3d-fps (no such repo exists);
-  # mapped to the real repo template-3d-fps-old-school.
   templates:
     - template/3d-fps-old-school
 source: official

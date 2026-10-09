@@ -83,7 +83,7 @@
     "agent-workflow": "How an agent should work — process skills such as brainstorming, planning, verification — not a game topic.",
     "asset-import": "Templates or tools centered on importing external asset kits.",
     "builtin": "Templates generated in-process by summer create, with no satellite-repo pin.",
-    "creator": "Summercraft creator API — publishing .pck builds, releases, shared config.",
+    "creator": "Legacy creator API — publishing .pck builds, releases, shared config.",
     "editor": "Tools that inspect or mutate the open editor session: scene-tree nodes, selection, inspector, Output panel, open and save scene tabs.",
     "file": "Raw project-file access (read, write, replace text) rather than scene- or node-level operations.",
     "generate": "Summer Studio generation — image, 3D, audio, video, motion — and the job plumbing around it.",

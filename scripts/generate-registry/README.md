@@ -65,8 +65,8 @@ npm run generate:registry" because the applied root dot-files are build
 artifacts of `integrations/<agent>` + `library/`. Agent hosts ignore unknown
 manifest fields.
 
-Manifest conventions preserved per agent (fields and field order match the
-pre-v3 manifests), with three
+Manifest conventions preserved per agent (fields and field order match each
+agent's manifest format), with three
 deliberate changes:
 
 1. every manifest carries the FULL skill list (the historical 4-skill

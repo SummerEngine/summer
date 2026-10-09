@@ -12,8 +12,6 @@ What is called what. **Do not deviate without updating this file first.**
 | **npm package** | `summer-engine` | What users install: `npx -y summer-engine@latest …`. Stays as-is forever — thousands of MCP configs run it. Never recommend `summer-cli` (an unrelated, inactive package we do not own). |
 | **Binary** | `summer` | The CLI entry point (`package.json` `bin.summer`), also the MCP server (`summer mcp`). |
 
-Other repos, for cross-references: engine `SummerEngine/SummerEngine` (private), web platform `SummerEngine/PublicSummerEngine`.
-
 ## Skill and command names (what agents type)
 
 | Surface | Form | Notes |
@@ -70,5 +68,5 @@ Silence is not consent on these.
 - [ ] Every plugin manifest has `name: "summer"`; the marketplace has `name: "summer-engine"` with a plugin entry `summer` (all generated — run `npm run generate:registry`, never hand-edit).
 - [ ] `package.json` has `name: "summer-engine"`, `bin.summer`, `main: ".opencode/plugins/summer.js"`.
 - [ ] README and docs say "Summer" for the system and "Summer Engine" for the editor, never mixed.
-- [ ] No `summer:<category>/<name>` or `summer:<slug>` form is used as an *invocation* anywhere in `library/**` or `docs/**`. `git grep -n 'summer:' library docs` should show only prose that explains the retired form (this file, `DEVELOPMENT.md`, `MIGRATION-V2-V3.md`, `design/REVIEW-*.md`) or a colon after the word "summer" in a sentence.
+- [ ] No `summer:<category>/<name>` or `summer:<slug>` form is used as an *invocation* anywhere in `library/**` or `docs/**`. `git grep -n 'summer:' library docs` should show only prose that explains the retired form (this file, `DEVELOPMENT.md`, `MIGRATION-V2-V3.md`) or a colon after the word "summer" in a sentence.
 - [ ] The repo name in prose is `summerengine/summer`.

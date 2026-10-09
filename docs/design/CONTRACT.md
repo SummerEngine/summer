@@ -1,18 +1,16 @@
-# Summer v3 Foundation — The Contract
+# The contract
 
-**Normative spec. Everything in the v3 build is generated from or validated against this document. Changing this file after migration is a breaking change; get sign-off.**
+**Normative spec.** Everything in this repo is generated from or validated against this document. Changing it is a breaking change; get sign-off. The reasoning is in [`DECISIONS.md`](DECISIONS.md).
 
-Locked 2026-09-01 after a repo audit and a multi-reviewer design board. Reasoning lives in `docs/design/DECISIONS.md`; this file is the rules.
-
-Truth pass 2026-09-02: every rule below was re-checked against the code on `v3-foundation`. Where the code does not yet do what the design intends, the rule is marked **planned, not implemented** rather than stated as fact.
+Where the code does not yet do what the design intends, the rule is marked **planned, not implemented**.
 
 ---
 
 ## 1. What Summer is
 
-Summer is the open-source game-development system for AI agents. One repo (`SummerEngine/summer`), one npm package (`summer-engine`), one binary (`summer`). It combines:
+Summer is the open-source game-development system for AI agents. One repo (`summerengine/summer`), one npm package (`summer-engine`), one binary (`summer`). It combines:
 
-1. **The Library** — the largest game-development knowledge base for agents (six kinds, below).
+1. **The Library** — game-development knowledge for agents (six kinds, below).
 2. **Live tools** for operating Summer Engine (MCP + CLI, same implementations).
 3. **Project memory** (`.summer/`) so any agent can resume any project.
 4. **Evidence** that entries and built games actually work (evals, verified outcomes).
@@ -44,10 +42,10 @@ summer/
 ├── registry/
 │   ├── schemas/         # JSON Schemas for resource.yaml, per kind
 │   └── generated/       # BUILD ARTIFACT. Never hand-edited. CI enforces parity.
-├── evals/               # routing/ skills/ examples/ tools/ templates/ collections/ end-to-end/
-├── integrations/        # per-agent adapters (claude/ codex/ cursor/ gemini/ opencode/ factory/)
+├── evals/               # routing/ skills/ examples/ tools/ templates/ outcomes/ canary/ mitl/ end-to-end/
+├── integrations/        # one folder per supported agent
 ├── docs/
-└── scripts/             # generate-registry/ validate-library/ build-integrations/
+└── scripts/             # generate-registry/ validate-library/ navigation/ smoke tests
 ```
 
 Rules:
@@ -70,7 +68,7 @@ Rules:
 
 Disambiguation rule: a **skill explains the process**; an **example is a finished working instance**. If one folder contains both, split it and link them via `related`.
 
-**Tool rule — one behavior, two faces, parity-tested.** Every tool has exactly one behavior and is reachable two ways: as an MCP tool (`surfaces.mcp.tool_name`) and from the CLI as `summer tool <slug> --args '<json>'` (plus a dedicated command for the five that declare `surfaces.cli.command`). How that is implemented today:
+**Tool rule — one behavior, two faces, parity-tested.** Every tool has exactly one behavior and is reachable two ways: as an MCP tool (`surfaces.mcp.tool_name`) and from the CLI as `summer tool <slug> --args '<json>'` (plus a dedicated command for the few that declare `surfaces.cli.command`). How that is implemented today:
 
 - most tools are registered in `src/mcp/tools/*.ts` with hand-written zod shapes; a handful live in `src/core/capabilities/` and `src/core/feedback/` (exact split: `docs/DEVELOPMENT.md`).
 - `src/core/capabilities/tool-dispatch.ts` is the CLI face: a dispatch table that validates `--args` with the same zod schemas and calls into the same functions. It is a mirror, not a second implementation of behavior, but it is a second registration.
@@ -100,7 +98,7 @@ do_not_use_when:                     # optional but strongly encouraged
   - importing one finished prop
 facets:
   lifecycle: [build]                 # build|launch|grow|support
-  domains: [world, level-design, 3d] # closed vocabulary: registry/schemas/domains.json (60 tokens); unknown token = validation error
+  domains: [world, level-design, 3d] # closed vocabulary: registry/schemas/domains.json; unknown token = validation error
   modalities: [scenes, assets]
 compatibility:
   engine: ">=4.6"
@@ -130,10 +128,10 @@ evidence:                             # REQUIRED for example; optional otherwise
 Per-kind extensions (defined in the per-kind schemas):
 - **tool** (`tool.schema.json`; required: `implementation`, `surfaces`, `input_schema`, `authority`):
   - `implementation` — `module` + `export`: the `src/` file and export that implements the tool (validated to exist).
-  - `surfaces` — `mcp: {tool_name, remote}` (both **required**; `remote: true` = needs no local engine, eligible for the hosted stateless endpoint below) and/or `cli: {command}` (only the five tools with a dedicated command declare it; every tool is also reachable as `summer tool <slug>`).
+  - `surfaces` — `mcp: {tool_name, remote}` (both **required**; `remote: true` = needs no local engine, eligible for the hosted stateless endpoint below) and/or `cli: {command}` (only tools with a dedicated command declare it; every tool is also reachable as `summer tool <slug>`).
   - `input_schema` — JSON Schema, what agents and the index read. Kept in agreement with the registered zod by the parity test (§3), not derived from it.
   - `authority` — the five booleans `filesystem`, `editor_mutation`, `network`, `credentials`, `publish`, all required. `filesystem: true` whenever the tool writes anything under the project or `~/.summer/` (screenshots, generated assets, publish audit rows included).
-  - `evidence_checks` — **optional** list of check names (42 of 86 tools carry it today).
+  - `evidence_checks` — **optional** list of check names.
 
 MCP protocol posture: the local server stays stdio (unchanged in MCP v2, spec 2026-07-28); the SDK is kept on the v2-supporting major (`@modelcontextprotocol/sdk` ^1.30); no elicitation patterns. Engine-free tools (`mcp.remote: true`) may additionally be served by a hosted stateless Streamable-HTTP endpoint (`summerengine.com/mcp`) — planned, not built.
 - **skill** (`skill.schema.json`): `recommended` (boolean, omitted = false) — the subset installed by `summer skills install --recommended` / `summer setup --recommended`. Plain `summer setup <agent>` installs **all** skills regardless of this flag.
@@ -146,7 +144,7 @@ MCP protocol posture: the local server stays stdio (unchanged in MCP v2, spec 20
 
 1. `index.json` — the searchable catalog: id, kind, version, content_hash, summary, use_when, facets, compatibility, related, status. Tool records additionally carry `mcp_tool_name`, `remote`, `authority`, and `cli_command` (when a dedicated command exists) so an index hit can be turned into a call. This is what agents (and later the gateway API) search.
 2. Every agent integration: `.claude-plugin/plugin.json` + `marketplace.json`, `.codex-plugin/plugin.json`, `.cursor-plugin/plugin.json`, `.factory-plugin/plugin.json`, `gemini-extension.json`, `.mcp.json`, OpenCode plugin data — all skill lists, counts, and version fields stamped from `package.json`.
-3. `skills-registry.json` — the data behind `summer skills list/install/info` and `summer setup` (replaced the hand-written `SKILL_REGISTRY`).
+3. `skills-registry.json` — the data behind `summer skills list/install/info` and `summer setup`.
 4. `templates-registry.json` — the only thing `summer create` / `summer list templates` read (§7).
 5. `counts.json` — canonical numbers (tools, skills, …) for README badges and the website (`toolsNumber`).
 6. `aliases.json` — legacy path/name → ID map. **Generated; runtime resolution planned.** Nothing in `src/` reads this file yet. Today legacy *template* names resolve through the `aliases` compiled into `templates-registry.json`; legacy tool and skill names do not resolve at runtime (§12).
@@ -215,7 +213,7 @@ MCP tool `summer_library_feedback` (`src/mcp/tools/feedback-tools.ts` → `src/c
 - `engine_version` (required), `agent_model` (required; the agent's self-reported model id, `"unknown"` allowed), `toolkit_version` (this CLI's version), `client` (host app name/version, captured from the MCP handshake), `session_id` (random uuid per MCP server process, never persisted).
 - `install_id` — random uuid stored in `~/.summer/`, sent **only when not logged in**; when logged in the Summer account bearer token is sent instead. No hardware, user, or project identity.
 
-Fire-and-forget, 1s timeout, no retry, never blocks; `{recorded: true}` only on a 2xx within the timeout, otherwise `{recorded: false, dropped: true}`. POSTs to `/api/mcp/library-feedback` (web repo) → append-only Postgres table, API-writes only, no anon insert policy. Nothing reads the table into any agent context. `SUMMER_NO_TELEMETRY=1` or `DO_NOT_TRACK=1` → nothing is ever sent. **First-run notice precedes the first event:** the first call ever made on a machine sends nothing and returns `{recorded: false, first_run: true, notice}`; the agent must call again to send.
+Fire-and-forget, 1s timeout, no retry, never blocks; `{recorded: true}` only on a 2xx within the timeout, otherwise `{recorded: false, dropped: true}`. POSTs to the Summer gateway's `/api/mcp/library-feedback` endpoint, which stores reports append-only. Nothing reads them into any agent context. `SUMMER_NO_TELEMETRY=1` or `DO_NOT_TRACK=1` → nothing is ever sent. **First-run notice precedes the first event:** the first call ever made on a machine sends nothing and returns `{recorded: false, first_run: true, notice}`; the agent must call again to send.
 
 **Planned, not implemented:** the Tier-1 opt-in longer note (≤1500 chars) — the schema caps at 280 today. Entry `content_hash` attribution is carried inside `entry_id` by the caller; there is no separate field. An automated triage and repair pipeline is explicitly NOT v1.
 

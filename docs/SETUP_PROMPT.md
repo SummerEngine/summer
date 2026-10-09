@@ -25,6 +25,4 @@ Expected agent behavior:
 
 First-class setup targets: `claude-code`, `claude-desktop`, `codex`, `cursor`, `windsurf`, `antigravity`, `cline`, `cline-cli`, `kilo-code`, `github-copilot`, `vscode-copilot`, `visual-studio`, `copilot-jetbrains`, `opencode`, `zed`, `kiro`, `goose`, `hermes`, `trae`, `qwen-code`, `kimi-code`, `crush`, `amp`, `factory`, `junie`, `warp`, `rovo-dev`, `qoder`, `grok-build`, `mistral-vibe`, `lm-studio`. Legacy (still accepted): `gemini`, `roo-code`.
 
-Factory Droid uses its plugin marketplace path today. Other older-school or adjacent surfaces worth watching are Continue, Aider, Zed, JetBrains AI/Junie, Goose, and Amp; do not claim first-class Summer setup support for those until a real config target exists.
-
-Manual terminal commands are still supported, but the primary onboarding path is the copy-paste prompt. This keeps users out of npm/global install details and lets their AI agent handle platform-specific setup.
+Manual terminal commands still work, but the copy-paste prompt is the main path: the agent handles npm and platform details.

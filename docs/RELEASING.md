@@ -1,6 +1,6 @@
 # Releasing `summer-engine`
 
-The npm package is `summer-engine`, its binary is `summer`, and its public source is [summerengine/summer](https://github.com/summerengine/summer) — this repository. It is the only checkout that publishes; the engine monorepo carries a `private: true` mirror that must never be published from.
+The npm package is `summer-engine`, its binary is `summer`, and its source is [summerengine/summer](https://github.com/summerengine/summer), this repository. Publish only from a fresh clone of this repository.
 
 For the exact copy-paste procedure, use [`NPM_PUBLISH_QUICK_COMMANDS.md`](./NPM_PUBLISH_QUICK_COMMANDS.md). It publishes only from a clean, fresh clone of public `main` and stops if the candidate version is not newer than npm `latest`. A major release soaks on the `next` dist-tag before `latest` moves.
 
@@ -12,17 +12,15 @@ For the exact copy-paste procedure, use [`NPM_PUBLISH_QUICK_COMMANDS.md`](./NPM_
 4. Run the fresh-terminal procedure from a new clone of the public repository.
 5. Verify the exact version and the `latest` dist-tag from npm after publishing.
 
-Never publish an uncommitted version bump or publish from this engine-monorepo mirror. npm never allows the same package name and version to be reused, even after unpublishing.
+Never publish an uncommitted version bump. npm never allows the same package name and version to be reused, even after unpublishing.
 
 ## Package commands
-
-These commands describe the public release checkout. The engine-monorepo copy may run install, build, and test commands, but must not be used for either publish command.
 
 | Purpose | Command | Effect |
 |---|---|---|
 | Reproducible install | `npm ci` | Installs exactly from `package-lock.json` |
 | Build | `npm run build` | Removes `dist/` and runs TypeScript compilation |
-| Test | `npm test` | Runs the Vitest suite once |
+| Test | `npm test` | Runs the Vitest suite once, then `validate:library` |
 | Package inspection | `npm pack --dry-run` | Shows the files npm would ship |
 | Publish simulation | `npm publish --dry-run` | Runs the publish lifecycle without uploading |
 | Publish | `npm publish` | Runs `prepublishOnly`, then uploads to npm |

@@ -80,7 +80,7 @@ The registry and validation scripts run TypeScript natively and need **Node >= 2
 
 Every test file runs under a throwaway `HOME` (`vitest.config.ts` → `src/test-helpers/fake-home.ts`), so `os.homedir()`, `getSummerDir()` and every default store path land in a temp dir; `setSummerDirForTests(null)` restores that fake home, never the real one. A global guard (`src/test-helpers/real-summer-dir-guard.ts`) snapshots the real `~/.summer` before the suite and fails the run if any test created, deleted or changed something in it (files a live engine/MCP process rewrites are reported, not failed). No test may touch the real `~/.summer`.
 
-The suite needs Node 22 or newer (`.nvmrc`; CI uses 22): vitest 3 does not run on Node 20 even though the published CLI itself does. Three tests need more than the checkout and **skip loudly** otherwise: `src/core/op-registry-drift.test.ts` (this package never sends an op the engine lacks) and `src/core/autopilot-assets.test.ts` (the vendored probe base matches the engine's) read the engine repo's `origin/main` with `git show`, never its working tree; set `SUMMER_ENGINE_REPO=/path/to/summerengine` (default: a `summerengine` sibling directory) and keep it fetched. The headless real-binary test needs an engine build with worker mode. A skip is printed by name; do not read a skip as a pass.
+The suite needs Node 22 or newer (`.nvmrc`; CI uses 22): vitest 3 does not run on Node 20 even though the published CLI itself does. Three tests need more than the checkout and **skip loudly** otherwise: `src/core/op-registry-drift.test.ts` (this package never sends an op the engine lacks) and `src/core/autopilot-assets.test.ts` (the vendored probe base matches the engine's) read the engine source's `origin/main` with `git show`, never its working tree, so they run only for maintainers with engine source access: set `SUMMER_ENGINE_REPO=/path/to/engine` (default: a `summerengine` sibling directory) and keep it fetched. The headless real-binary test needs an engine build with worker mode. A skip is printed by name; do not read a skip as a pass.
 
 ### CLI command reference
 
@@ -97,7 +97,7 @@ The suite needs Node 22 or newer (`.nvmrc`; CI uses 22): vitest 3 does not run o
 | `summer create <template> [name] [--keep-git]` | Scaffold from a pinned (or built-in) template; writes `.summer/project.json`. |
 | `summer list templates \| projects` | Browse the template registry / local projects. |
 | `summer memory [show <file>]` | Inspect `.summer/` project memory. |
-| `summer skills list \| info <name> \| install [name] [--all \| --recommended] [--stable-only] [--agent <a>] [--scope user\|project] [--force]` | Skill installer over `skills-registry.json`. Bulk installs take every `stable` and `preview` skill (`deprecated` only by name); `--stable-only` skips preview; `skills list` tags them `[preview]`. `--include-preview` is a hidden no-op alias for one release. |
+| `summer skills list \| info <name> \| install [name] [--all \| --recommended] [--stable-only] [--agent <a>] [--scope user\|project] [--force]` | Skill installer over `skills-registry.json`. Bulk installs take every `stable` and `preview` skill (`deprecated` only by name); `--stable-only` skips preview; `skills list` tags them `[preview]`. |
 | `summer mcp [--project <path> \| --instance <id>]` | Start the MCP server (stdio). `summer mcp setup <agent>` is a deprecated alias of `summer setup`. |
 | `summer setup [agent] [--yes] [--force] [--recommended] [--stable-only] [--scope …] [--channel <dist-tag>] [--local-dev]` | MCP config + all skills (preview included; `--stable-only` skips them) + doctor, one shot, idempotent. `--channel next` (or `SUMMER_CHANNEL=next`) writes `npx -y summer-engine@next mcp` so a release soaking on the `next` dist-tag is the one the agent runs; default `latest`. `--local-dev` (or `SUMMER_DEV=1`) points the agent at this checkout's `dist/bin/summer.js` instead of `npx summer-engine@latest`. |
 | `summer doctor [--json]` | Checks: `node-version`, `cli-version`, `cli-version-current`, `skills-version-stale`, `login`, `engine-install`, `local-api`, `project-memory`, `mcp-boot`, `mcp-tools-list`. `ok` = no failures. |
@@ -171,8 +171,6 @@ Today a tool is four edits, kept in step by tests:
 3. Add `library/tools/<slug>/resource.yaml` (descriptor: `implementation.module/export`, `surfaces.mcp.tool_name` + `remote`, `input_schema`, the five `authority` booleans).
 4. `npm run generate:registry`; then `npm test` — `descriptor-parity.test.ts` fails if the zod shape and `input_schema` disagree, `tool-dispatch.test.ts` if the CLI face is missing, and the validator if the descriptor names a module/export/tool that does not exist.
 
-Mechanics of the engine side (ops, capability list): [`ADDING_TOOLS.md`](ADDING_TOOLS.md).
-
 ### Adding an agent integration
 
 One folder in `integrations/` (plus, if the client has a manifest file in this repo, a builder in `scripts/generate-registry/manifests.ts` and a target in `scripts/generate-registry/targets.ts`), then regenerate. Never hand-edit root manifest files. The full per-client map: [`integrations/README.md`](../integrations/README.md).
@@ -202,7 +200,7 @@ No environment variables are required for normal use. Optional: `SUMMER_GATEWAY_
 
 ## Working in a shared worktree (multi-agent)
 
-The v3 build ran several agents in one checkout at once and lost work to it (DECISIONS D14). When more than one agent — or one agent and a human — edits the same worktree, these are not suggestions:
+When more than one agent, or an agent and a human, edit the same worktree:
 
 - **Own disjoint paths.** Before starting, agree who owns which files or directories for the duration of the task. Do not touch files outside your set; if you must, ask the owner.
 - **Commit with `--only`.** `git commit --only -m "…" -- <your exact paths>`. Never `git add`, never a bare `git commit` (it sweeps whatever anyone else staged), never `--amend`, `git reset`, `git stash`, or `git checkout -- <file>` — each of those can silently destroy or revert a sibling's work.
@@ -221,8 +219,6 @@ The CLI/MCP/library ship together as the npm package; the engine app and the web
 - Versioning: semver, independent of engine versions; the package stays backwards-compatible with older engines (tools report unsupported capabilities gracefully).
 - npm account: `summer-engine` (2FA required). Reserved placeholder names (`summer`, `summer-mcp`, `@summerengine/*`, …) stay reserved; never publish to them casually.
 
-An engine-repo mirror of this package exists for historical reasons; its `package.json` is `private: true` specifically so `npm publish` fails from there. This repo owns the releasable package.
-
 ---
 
 ## Related docs
@@ -231,4 +227,4 @@ An engine-repo mirror of this package exists for historical reasons; its `packag
 - The rules — [`design/CONTRACT.md`](design/CONTRACT.md) · the reasoning — [`design/DECISIONS.md`](design/DECISIONS.md)
 - Evals and their CI gates — [`../evals/README.md`](../evals/README.md)
 - Test an unpublished build end to end (local-dev setup, engine-less checks, expected failures, gates) — [`TESTING.md`](TESTING.md)
-- Engine-side tool mechanics — [`ADDING_TOOLS.md`](ADDING_TOOLS.md) · architecture tour — [`OVERVIEW.md`](OVERVIEW.md)
+- Architecture tour — [`OVERVIEW.md`](OVERVIEW.md)

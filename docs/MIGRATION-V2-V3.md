@@ -39,7 +39,7 @@ What resolves **today**: `summer create` accepts the legacy `template-<slug>` na
 
 ## Removed: Summer Cloud
 
-The v2 research preview `summer cloud` (content-addressed whole-project sync: `init / status / push / pull / restore / checkpoints / conflicts`), the seven `summer_cloud_*` MCP tools, and the `summer-cloud` skill are gone. It was never operational or maintained past the preview, so removing it is cleaner than shipping dormant code. Summer Platform publish/releases (`summer publish`, `summer releases`, `summer_creator_*`) is the wired path for getting a project off your machine; git remains the answer for moving code between machines.
+The v2 research preview `summer cloud` (content-addressed whole-project sync: `init / status / push / pull / restore / checkpoints / conflicts`), the seven `summer_cloud_*` MCP tools, and the `summer-cloud` skill are gone. It was never maintained past the preview. To publish a game, use `summer_export_game` and `summer_publish_build`; to move code between machines, use git.
 
 Old projects may still contain a `summer-cloud.json` binding at the root and a `.summer/local/cloud/` directory. Both are inert and can be deleted. A `~/.summer/cloud-token` left by a v2 login is never read; `summer logout` removes it.
 

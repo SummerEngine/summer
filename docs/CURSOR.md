@@ -1,6 +1,6 @@
 # Cursor
 
-Cursor uses Summer skills as generated project rules.
+Cursor reads Summer skills from the shared `.agents/skills` folders.
 
 ## Recommended Setup
 
@@ -10,26 +10,20 @@ Paste this into Cursor:
 Install Summer Engine and let's make a game.
 ```
 
-Cursor should run the setup playbook with `npx -y summer-engine@latest`, install project rules, configure MCP, run doctor, and open the engine.
+Cursor runs the install playbook from the README: it installs the skills, configures MCP, runs doctor, and opens the engine.
 
-## Install Rules
+## Install Skills
 
-Project rules:
+User-wide:
 
 ```bash
 npx -y summer-engine@latest setup cursor --yes --force
 ```
 
-This creates:
-
-```text
-.cursor/rules/summer-<skill>.mdc
-```
-
-User rules:
+Project-local:
 
 ```bash
-npx -y summer-engine@latest skills install --recommended --agent cursor --scope user
+npx -y summer-engine@latest skills install --recommended --agent cursor --scope project
 ```
 
 Single skill:
@@ -38,16 +32,23 @@ Single skill:
 summer skills install fps-controller --agent cursor
 ```
 
+Paths:
+
+- User scope: `~/.agents/skills/<skill>/SKILL.md`
+- Project scope: `.agents/skills/<skill>/SKILL.md`
+
+Older Summer versions wrote `.cursor/rules/summer-<skill>.mdc` or `.cursor/skills/`; `setup cursor --force` removes both.
+
 ## MCP
 
-Add Summer to `.cursor/mcp.json`:
+`summer setup cursor` writes this entry to `~/.cursor/mcp.json` (or `.cursor/mcp.json` with `--scope project`):
 
 ```json
 {
   "mcpServers": {
     "summer-engine": {
       "command": "npx",
-      "args": ["summer-engine", "mcp"]
+      "args": ["-y", "summer-engine@latest", "mcp"]
     }
   }
 }
@@ -61,4 +62,4 @@ Keep the engine open on the project:
 npx -y summer-engine@latest run path/to/project
 ```
 
-Cursor should use Summer MCP tools for project files and scene/editor operations. Native file edits bypass project identity and content guards and should be reserved for when MCP is unavailable.
+Cursor should use Summer MCP tools for project files and scene/editor operations. Native file edits bypass project identity and content guards; use them only when MCP is unavailable.

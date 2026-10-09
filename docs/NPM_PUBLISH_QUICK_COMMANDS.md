@@ -13,7 +13,7 @@ cd "$RELEASE_DIR"
 git pull --ff-only origin main
 ```
 
-Do not substitute an older checkout or the engine monorepo. The public package repository can be ahead of a mirrored copy.
+Do not substitute an older checkout.
 
 ## 2. Run the hard release gates
 
@@ -59,7 +59,7 @@ test -z "$(git status --porcelain)"
 The package scripts are:
 
 - Build: `npm run build`, which cleans `dist/` and compiles TypeScript.
-- Test: `npm test`, which runs Vitest once.
+- Test: `npm test`, which runs Vitest once, then `validate:library`.
 - Publish guard: `prepublishOnly`, which runs the build and tests again immediately before a real publish.
 - Publish: `npm publish`. `publishConfig` pins the public npm registry and public access.
 

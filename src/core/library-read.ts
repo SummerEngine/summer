@@ -23,9 +23,18 @@
  * Metadata comes from registry/generated/index.json (no YAML parser at
  * runtime); resource.yaml is returned as text. Unknown id -> not_found with
  * the three nearest ids from searchLibrary.
+ *
+ * Linked files: a body links files its entry ships (a skill's
+ * `references/kit-placement-tools.md`) and other entries
+ * (`../multiplayer-project/SKILL.md`, `../../references/gd-style/gd-style.md`).
+ * Each loads by `<entry id>/<link as written>`, resolved inside library/ only
+ * and for text files only; by the relative path alone when exactly one entry
+ * ships it; and `reference/<slug>` that is no entry falls back to the one
+ * `references/<slug>.md` an entry ships. A body render ends with its links and
+ * the id that loads each. A linked file's footer names its entry.
  */
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { join, posix, sep } from "node:path";
 import { z } from "zod";
 import {
   LIBRARY_KIND_DIRS,
@@ -45,12 +54,33 @@ export type ReadPart = (typeof READ_PARTS)[number];
 export const FOOTER_HASH_LENGTH = 12;
 export const FOOTER_SUFFIX = "If this entry is wrong, stale, or you deviate from it, report via summer_library_feedback.";
 
+/** Text files read_library loads when an entry links them. */
+export const LINKED_FILE_EXTENSIONS: ReadonlySet<string> = new Set([
+  ".md",
+  ".markdown",
+  ".txt",
+  ".yaml",
+  ".yml",
+  ".json",
+  ".gd",
+  ".gdshader",
+  ".shader",
+  ".cfg",
+  ".tscn",
+  ".tres",
+  ".csv",
+]);
+/** A linked file larger than this is refused rather than dumped. */
+export const LINKED_FILE_MAX_BYTES = 256 * 1024;
+
 export const readLibraryInputShape = {
   id: z
     .string()
     .min(1)
     .max(200)
-    .describe("The entry id as returned by summer_search_library: <kind>/<slug>, e.g. skill/vfx-water-ripple or tool/screenshot."),
+    .describe(
+      "The entry id as returned by summer_search_library: <kind>/<slug>, e.g. skill/vfx-water-ripple or tool/screenshot. A file an entry links loads by <entry id>/<link as written>, e.g. skill/spatial-placement/references/kit-placement-tools.md; the 'linked files' list at the end of a body gives each id."
+    ),
   part: z
     .enum(READ_PARTS)
     .optional()
@@ -86,6 +116,12 @@ export interface LibraryReadOk {
   files: string[];
   /** The file the body came from, when the body is a file. */
   body_file?: string;
+  /** Set when the load is a file the entry ships rather than the entry body:
+   *  its path inside the entry directory, e.g. "references/kit-placement-tools.md". */
+  linked_file?: string;
+  /** Relative links in the body and the summer_read_library id that loads
+   *  each (null: the target is not shipped with this package). */
+  links?: Array<{ target: string; id: string | null }>;
   /** Tool records: how to reach it. */
   mcp_tool_name?: string;
   cli_command?: string;
@@ -134,6 +170,115 @@ function resolveEntry(requested: string, entries: LibraryIndexEntry[]): LibraryI
   return null;
 }
 
+const KIND_BY_DIR = new Map<string, LibraryKind>(
+  Object.entries(LIBRARY_KIND_DIRS).map(([kind, dir]) => [dir, kind as LibraryKind])
+);
+const ENTRY_PATH_ID = /^(tool|skill|example|template|collection|reference)\/([a-z0-9]+(?:-[a-z0-9]+)*)\/(.+)$/;
+
+/** A file inside an entry's directory ("" = the entry directory itself). */
+interface FileTarget {
+  entry: LibraryIndexEntry;
+  file: string;
+}
+
+function entryDirOf(entry: LibraryIndexEntry): string {
+  const kind = entry.kind as LibraryKind;
+  return `library/${LIBRARY_KIND_DIRS[kind] ?? `${kind}s`}/${entry.id.split("/").pop()!}`;
+}
+
+/** Join a link onto a package-relative directory; null when it is absolute,
+ *  malformed, or leaves library/. */
+function joinInsideLibrary(baseDir: string, link: string): string | null {
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(link.trim());
+  } catch {
+    return null;
+  }
+  if (!decoded || /[\u0000-\u001f\\]/.test(decoded) || decoded.startsWith("/") || /^[a-z][a-z0-9+.-]*:/i.test(decoded)) return null;
+  const joined = posix.normalize(posix.join(baseDir, decoded)).replace(/\/+$/, "");
+  return joined === "library" || joined.startsWith("library/") ? joined : null;
+}
+
+/** library/<dir>/<slug>[/<file>] -> the entry and the file inside it. */
+function targetFromLibraryPath(libPath: string, entries: LibraryIndexEntry[]): FileTarget | null {
+  const parts = libPath.split("/");
+  if (parts.length < 3 || parts[0] !== "library") return null;
+  const kind = KIND_BY_DIR.get(parts[1]!);
+  if (!kind) return null;
+  const entry = entries.find((e) => e.id === `${kind}/${parts[2]}`);
+  return entry ? { entry, file: parts.slice(3).join("/") } : null;
+}
+
+function isFileInsideLibrary(root: string, libPath: string): boolean {
+  const abs = join(root, ...libPath.split("/"));
+  try {
+    if (!statSync(abs).isFile()) return false;
+    const libraryRoot = realpathSync(join(root, "library"));
+    return realpathSync(abs).startsWith(libraryRoot + sep);
+  } catch {
+    return false;
+  }
+}
+
+/** Resolve an id that names a file an entry ships (see the module comment). */
+function resolveLinkedFile(requested: string, entries: LibraryIndexEntry[], root: string): FileTarget | null {
+  const bare = requested.trim();
+  const qualified = ENTRY_PATH_ID.exec(bare);
+  if (qualified) {
+    const entry = entries.find((e) => e.id === `${qualified[1]}/${qualified[2]}`);
+    if (entry) {
+      const libPath = joinInsideLibrary(entryDirOf(entry), qualified[3]!);
+      const target = libPath ? targetFromLibraryPath(libPath, entries) : null;
+      if (!target || (target.file !== "" && !isFileInsideLibrary(root, libPath!))) return null;
+      return target;
+    }
+  }
+  const shipping = (relative: string): FileTarget[] =>
+    entries
+      .map((entry) => ({ entry, libPath: joinInsideLibrary(entryDirOf(entry), relative) }))
+      .filter((c): c is { entry: LibraryIndexEntry; libPath: string } => !!c.libPath && c.libPath.startsWith(`${entryDirOf(c.entry)}/`))
+      .filter((c) => isFileInsideLibrary(root, c.libPath))
+      .map((c) => ({ entry: c.entry, file: c.libPath.slice(entryDirOf(c.entry).length + 1) }));
+  // A relative path alone, when exactly one entry ships that file.
+  if ((bare.includes("/") || /\.[a-z0-9]+$/i.test(bare)) && !bare.startsWith("../")) {
+    const found = shipping(bare.replace(/^\.\//, ""));
+    if (found.length === 1) return found[0]!;
+  }
+  // reference/<slug> that is no entry: the references/<slug>.md one entry ships.
+  const asReference = /^references?\/([a-z0-9]+(?:[-_][a-z0-9]+)*)(?:\.md)?$/.exec(bare);
+  if (asReference) {
+    const found = shipping(`references/${asReference[1]}.md`);
+    if (found.length === 1) return found[0]!;
+  }
+  return null;
+}
+
+/**
+ * Relative link targets in a markdown body: markdown links outside code
+ * (`[x](references/y.md)`, fragment dropped) and inline code spans that name a
+ * library file by a relative path (`../../references/gd-style/gd-style.md`,
+ * `references/y.md`; a `./scripts/x.gd` span is a project path and is not
+ * one). URLs, anchors, absolute paths and fenced code blocks are skipped.
+ * Exported for the every-link-resolves test.
+ */
+export function relativeLinkTargets(markdown: string): string[] {
+  const out = new Set<string>();
+  const text = markdown.replace(/^(```|~~~)[^\n]*\n[\s\S]*?^\1[^\n]*$/gm, "");
+  for (const match of text.matchAll(/`([^`\n]+)`/g)) {
+    const span = match[1]!.trim();
+    if (/^((\.\.\/)+|(\.\/)?references\/)[^\s*?<>|]+\.[A-Za-z0-9]+$/.test(span)) out.add(span);
+  }
+  const prose = text.replace(/`[^`\n]*`/g, "");
+  for (const match of prose.matchAll(/\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\s*\)/g)) {
+    const target = match[1]!;
+    if (target.startsWith("#") || target.startsWith("/") || /^[a-z][a-z0-9+.-]*:/i.test(target)) continue;
+    const path = target.split("#")[0]!;
+    if (path) out.add(path);
+  }
+  return [...out];
+}
+
 // ── Rendering ──────────────────────────────────────────────────────────────
 
 function readText(file: string): string | null {
@@ -170,6 +315,45 @@ function pickBodyFile(kind: string, slug: string, dir: string): string | null {
     default:
       return null;
   }
+}
+
+/** The summer_read_library id that loads a target: the entry id for the
+ *  entry itself or its body file, else <entry id>/<file>. */
+function canonicalId(target: FileTarget, root: string): string {
+  if (target.file === "") return target.entry.id;
+  const slug = target.entry.id.split("/").pop()!;
+  const body = pickBodyFile(target.entry.kind, slug, join(root, ...entryDirOf(target.entry).split("/")));
+  return target.file === body ? target.entry.id : `${target.entry.id}/${target.file}`;
+}
+
+/**
+ * Where a link written in `fromFile` (a path inside `entry`'s directory, ""
+ * or "SKILL.md" for the body) points, as the id summer_read_library loads it
+ * by; null when the target is not shipped inside library/.
+ */
+export function resolveLibraryLink(
+  entry: LibraryIndexEntry,
+  fromFile: string,
+  link: string,
+  deps: { entries: LibraryIndexEntry[]; packageRoot?: string }
+): string | null {
+  const root = deps.packageRoot ?? PACKAGE_ROOT;
+  const libPath = joinInsideLibrary(posix.dirname(posix.join(entryDirOf(entry), fromFile || "_")), link);
+  if (!libPath) return null;
+  const target = targetFromLibraryPath(libPath, deps.entries);
+  if (!target) return null;
+  if (target.file !== "" && !isFileInsideLibrary(root, libPath)) return null;
+  return canonicalId(target, root);
+}
+
+function linksOf(body: string, entry: LibraryIndexEntry, fromFile: string, entries: LibraryIndexEntry[], root: string) {
+  return relativeLinkTargets(body).map((target) => ({ target, id: resolveLibraryLink(entry, fromFile, target, { entries, packageRoot: root }) }));
+}
+
+function linksSection(links: Array<{ target: string; id: string | null }>): string {
+  const lines = ["--- linked files (load each with summer_read_library and the id after the arrow) ---"];
+  for (const link of links) lines.push(`${link.target} -> ${link.id ?? "(not shipped with this package)"}`);
+  return lines.join("\n");
 }
 
 function toolBody(entry: LibraryIndexEntry, slug: string): string {
@@ -242,8 +426,9 @@ function header(entry: LibraryIndexEntry, slug: string, related: Record<string, 
 // ── Entry point ────────────────────────────────────────────────────────────
 
 /**
- * Read one entry. `deps.entries`/`deps.packageRoot`/`deps.templates` let
- * tests point at a fixture; production reads the installed package.
+ * Read one entry, or a file an entry links. `deps.entries`/`deps.packageRoot`/
+ * `deps.templates` let tests point at a fixture; production reads the
+ * installed package.
  */
 export async function readLibraryEntry(
   requestedId: string,
@@ -252,9 +437,20 @@ export async function readLibraryEntry(
 ): Promise<LibraryReadResult> {
   const entries = deps.entries ?? loadLibraryIndex();
   const root = deps.packageRoot ?? PACKAGE_ROOT;
-  const entry = resolveEntry(requestedId, entries);
+  let entry = resolveEntry(requestedId, entries);
+  let linkedFile: string | undefined;
   if (!entry) {
-    const query = requestedId.replace(/[/@_-]+/g, " ").replace(/[a-f0-9]{8,}/gi, " ").trim() || requestedId;
+    const target = resolveLinkedFile(requestedId, entries, root);
+    if (target) {
+      entry = target.entry;
+      const canonical = canonicalId(target, root);
+      // The entry's own body file and resource.yaml render as the entry.
+      if (target.file === "resource.yaml") part = "resource";
+      else if (canonical !== entry.id) linkedFile = target.file;
+    }
+  }
+  if (!entry) {
+    const query = requestedId.replace(/[/@_.-]+/g, " ").replace(/[a-f0-9]{8,}/gi, " ").replace(/\bmd\b/g, " ").trim() || requestedId;
     const nearest = (await searchLibrary(query, { limit: 3 }, deps)).map((hit) => hit.id);
     return {
       ok: false,
@@ -262,52 +458,24 @@ export async function readLibraryEntry(
       id: requestedId,
       nearest,
       hint:
-        nearest.length > 0
+        (nearest.length > 0
           ? `No library entry has id "${requestedId}". Nearest by search: ${nearest.join(", ")}. Ids are <kind>/<slug>; use summer_search_library to find the right one.`
-          : `No library entry has id "${requestedId}" and nothing similar was found. Ids are <kind>/<slug>; use summer_search_library.`,
+          : `No library entry has id "${requestedId}" and nothing similar was found. Ids are <kind>/<slug>; use summer_search_library.`) +
+        " A file an entry links loads by <entry id>/<link as written> (inside library/ only).",
     };
   }
 
   const kind = entry.kind as LibraryKind;
   const slug = entry.id.split("/").pop()!;
-  const kindDir = LIBRARY_KIND_DIRS[kind] ?? `${kind}s`;
-  const relPath = `library/${kindDir}/${slug}`;
-  const dir = join(root, "library", kindDir, slug);
+  const relPath = entryDirOf(entry);
+  const dir = join(root, ...relPath.split("/"));
   const files = listFiles(dir);
   const related = relatedMap(entry);
-
-  let bodyFile: string | undefined;
-  let bodyTitle: string;
-  let body: string;
-  if (kind === "tool") {
-    bodyTitle = "how to call";
-    body = toolBody(entry, slug);
-  } else if (kind === "template") {
-    bodyTitle = "pin";
-    body = templateBody(slug, deps.templates ?? safeTemplates());
-  } else {
-    const picked = pickBodyFile(kind, slug, dir);
-    const text = picked ? readText(join(dir, picked)) : null;
-    if (picked && text !== null) {
-      bodyFile = picked;
-      bodyTitle = `${relPath}/${picked}`;
-      body = text.replace(/\s+$/, "");
-    } else {
-      bodyTitle = "body";
-      body = `(no body file shipped for this ${kind}; the descriptor below is all there is)`;
-    }
-  }
-
-  const resourceYaml = readText(join(dir, "resource.yaml"))?.replace(/\s+$/, "") ?? "(resource.yaml not found in this install)";
   const footer = feedbackFooter(entry.id, entry.content_hash);
+  const resourceYaml = readText(join(dir, "resource.yaml"))?.replace(/\s+$/, "") ?? "(resource.yaml not found in this install)";
 
-  const sections: string[] = [header(entry, slug, related)];
-  if (part === "skill" || part === "all") sections.push(`--- ${bodyTitle} ---\n${body}`);
-  if (part === "resource" || part === "all") sections.push(`--- ${relPath}/resource.yaml ---\n${resourceYaml}`);
-  sections.push(footer);
-
-  const result: LibraryReadOk = {
-    ok: true,
+  const base = {
+    ok: true as const,
     id: entry.id,
     kind: entry.kind,
     slug,
@@ -322,9 +490,81 @@ export async function readLibraryEntry(
     files,
     entry_id: entryIdWithHash(entry.id, entry.content_hash),
     footer,
-    text: sections.join("\n\n"),
   };
+
+  if (linkedFile !== undefined) {
+    const libPath = `${relPath}/${linkedFile}`;
+    const extension = posix.extname(linkedFile).toLowerCase();
+    const size = (() => {
+      try {
+        return statSync(join(root, ...libPath.split("/"))).size;
+      } catch {
+        return Number.POSITIVE_INFINITY;
+      }
+    })();
+    const sections: string[] = [
+      `${entry.id}/${linkedFile} — a file shipped with ${entry.id} (${entry.kind} v${entry.version ?? "?"}, ${entry.status ?? "stable"}). The entry itself: summer_read_library id "${entry.id}".`,
+    ];
+    let links: Array<{ target: string; id: string | null }> = [];
+    if (part === "resource") {
+      sections.push(`--- ${relPath}/resource.yaml ---\n${resourceYaml}`);
+    } else if (!LINKED_FILE_EXTENSIONS.has(extension)) {
+      sections.push(`--- ${libPath} ---\n(not a text file read_library loads: ${extension || "no extension"}; it ships at ${libPath} in the package)`);
+    } else if (size > LINKED_FILE_MAX_BYTES) {
+      sections.push(`--- ${libPath} ---\n(${size} bytes, over the ${LINKED_FILE_MAX_BYTES}-byte limit for a linked file; it ships at ${libPath} in the package)`);
+    } else {
+      const text = readText(join(root, ...libPath.split("/")))?.replace(/\s+$/, "") ?? "(file could not be read)";
+      sections.push(`--- ${libPath} ---\n${text}`);
+      if (extension === ".md" || extension === ".markdown") {
+        links = linksOf(text, entry, linkedFile, entries, root);
+        if (links.length > 0) sections.push(linksSection(links));
+      }
+    }
+    sections.push(footer);
+    return {
+      ...base,
+      body_file: linkedFile,
+      linked_file: linkedFile,
+      ...(links.length > 0 ? { links } : {}),
+      text: sections.join("\n\n"),
+    };
+  }
+
+  let bodyFile: string | undefined;
+  let bodyTitle: string;
+  let body: string;
+  let links: Array<{ target: string; id: string | null }> = [];
+  if (kind === "tool") {
+    bodyTitle = "how to call";
+    body = toolBody(entry, slug);
+  } else if (kind === "template") {
+    bodyTitle = "pin";
+    body = templateBody(slug, deps.templates ?? safeTemplates());
+  } else {
+    const picked = pickBodyFile(kind, slug, dir);
+    const text = picked ? readText(join(dir, picked)) : null;
+    if (picked && text !== null) {
+      bodyFile = picked;
+      bodyTitle = `${relPath}/${picked}`;
+      body = text.replace(/\s+$/, "");
+      if (picked.toLowerCase().endsWith(".md")) links = linksOf(body, entry, picked, entries, root);
+    } else {
+      bodyTitle = "body";
+      body = `(no body file shipped for this ${kind}; the descriptor below is all there is)`;
+    }
+  }
+
+  const sections: string[] = [header(entry, slug, related)];
+  if (part === "skill" || part === "all") {
+    sections.push(`--- ${bodyTitle} ---\n${body}`);
+    if (links.length > 0) sections.push(linksSection(links));
+  }
+  if (part === "resource" || part === "all") sections.push(`--- ${relPath}/resource.yaml ---\n${resourceYaml}`);
+  sections.push(footer);
+
+  const result: LibraryReadOk = { ...base, text: sections.join("\n\n") };
   if (bodyFile) result.body_file = bodyFile;
+  if (links.length > 0 && part !== "resource") result.links = links;
   if (kind === "tool") {
     if (entry.mcp_tool_name) result.mcp_tool_name = entry.mcp_tool_name;
     if (entry.cli_command) result.cli_command = entry.cli_command;

@@ -52,6 +52,7 @@ describe("identity-bound MCP file tools", () => {
   it("registers read, guarded write, and guarded replace tools", () => {
     expect(tools().map((candidate) => candidate.name)).toEqual([
       "summer_read_file",
+      "summer_grep",
       "summer_write_file",
       "summer_replace_text",
     ]);

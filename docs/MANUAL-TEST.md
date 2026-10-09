@@ -22,7 +22,7 @@ node dist/bin/summer.js setup claude-code --local-dev --yes
 ```
 This rewrites the `summer-engine` MCP entry in `~/.claude.json` to this checkout's build and installs every library skill into `~/.claude/skills`. Restart Claude Code afterwards. **Revert** at any time: `npx -y summer-engine@2.8.2 setup claude-code --yes --force`.
 
-Sanity: `node dist/bin/summer.js doctor` → exit 0, "86 tools registered", and a skill count equal to `skill` in `registry/generated/counts.json`.
+Sanity: `node dist/bin/summer.js doctor` → exit 0, a registered-tool count equal to `tool` and a skill count equal to `skill` in `registry/generated/counts.json`.
 
 ## 2. Launch the engine WITHOUT it taking over your machine
 

@@ -23,5 +23,5 @@ by user traffic and blast radius:
 1. skill/create-asset-sheet — most complex 2D pipeline, many failure modes
 2. skill/character-model — gated rig pass, user-approval checkpoints
 3. skill/debug's siblings: skill/investigating-bugs, skill/debugging-game-feel
-4. skill/setup-multiplayer companions already covered; skill/remote-deploy is not
+4. skill/multiplayer-project and skill/multiplayer-movement (rewritten 2026-10-06, verified by recipe runs, no spec yet); skill/remote-deploy
 5. The 8 VFX recipes (fire, smoke, ...) — mechanical, cheap to spec, cheap to verify

@@ -1,0 +1,120 @@
+id: tool/connect-ports
+kind: tool
+version: 1.0.0
+summary: Join one piece's port (a Marker3D, or an open pipe end id such as '+Y') to another's, facing it; refuses joins that tilt the piece. Saves the scene.
+use_when:
+  - joining a pipe, duct or gutter section end to end with the previous one
+  - fitting a bend, funnel or outlet onto a run
+  - snapping any two pieces together by named Marker3D anchors
+do_not_use_when:
+  - mounting a piece on a wall — summer_attach_to_surface
+  - putting bounds faces together without ports — summer_place_adjacent
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - 3d
+    - world-building
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/inspect-asset
+    - tool/attach-to-surface
+    - tool/measure
+  skills:
+    - skill/spatial-placement
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_connect_ports
+implementation:
+  module: src/mcp/tools/placement-tools.ts
+  export: registerPlacementTools
+surfaces:
+  mcp:
+    tool_name: summer_connect_ports
+    remote: false
+input_schema:
+  type: object
+  properties:
+    scenePath:
+      type: string
+      minLength: 1
+      maxLength: 512
+      description: Exact scene, e.g. 'res://levels/street.tscn'. It must be open in the editor (any tab).
+    subject:
+      type: string
+      minLength: 1
+      maxLength: 256
+      description: Piece to move.
+    subjectPort:
+      oneOf:
+        - type: string
+          minLength: 1
+          maxLength: 128
+        - type: integer
+          minimum: 0
+          maximum: 255
+      description: "An open-loop id from summer_inspect_asset, e.g. '+Y' (the outermost open loop facing +Y in the piece's own axes) or '+Y#2' (the next one facing +Y); or a Marker3D (or Node3D) name under the subject, whose -Z axis points out of the port; or an open-loop index. Ids and indices follow the stable order (facing, then position), never the radius."
+    target:
+      type: string
+      minLength: 1
+      maxLength: 256
+      description: Piece that stays put.
+    targetPort:
+      oneOf:
+        - type: string
+          minLength: 1
+          maxLength: 128
+        - type: integer
+          minimum: 0
+          maximum: 255
+      description: Port on the target (open-loop id such as '-Y', marker name, or open-loop index).
+    gap:
+      type: number
+      minimum: -1
+      maximum: 10
+      default: 0
+      description: Distance between the ports along the target port's direction.
+    rollDegrees:
+      type: number
+      minimum: -360
+      maximum: 360
+      default: 0
+      description: "Extra turn of the subject, in degrees, about the joined port axis, applied after the ports are lined up. Axis: the target port's direction reversed, pointing from the joint into the target (receipt roll_axis). Sign: right-hand rule about that axis; positive turns counter-clockwise when you look back along the axis from inside the target toward the subject. Zero: the shortest turn that makes the subject's port face the target's from the subject's CURRENT orientation, so the same value gives different results from different start poses. Read other_ports in the receipt; once the ports are joined, a second call turns by exactly rollDegrees about the joint (180 flips a bend's free end to the other side)."
+    maxTiltDegrees:
+      type: number
+      minimum: 0
+      maximum: 180
+      default: 5
+      description: Refuse the join, changing nothing, when it would tilt the subject's up axis (its local +Y) more than this many degrees from where it points now. Turning about the up axis is never tilt. The refusal names the predicted tilt and the subject ports that would join within the limit.
+    allowTilt:
+      type: boolean
+      default: false
+      description: true joins even when the subject tilts more than maxTiltDegrees (a bend laid on its side, a sloped run). The receipt still reports tilt_degrees.
+    maxTriangles:
+      type: integer
+      minimum: 100
+      maximum: 300000
+      default: 60000
+      description: Triangle budget (100-300000) per node when ports are open-loop ids or indices.
+  required:
+    - scenePath
+    - subject
+    - subjectPort
+    - target
+    - targetPort
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: true
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - scene-valid

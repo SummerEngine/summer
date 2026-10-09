@@ -1,9 +1,10 @@
 id: tool/inspect-resource
 kind: tool
-version: 1.0.2
-summary: Get all properties of a resource such as a material, mesh, shape, or environment.
+version: 1.1.0
+summary: Read a resource file (a mesh's AABB, surfaces and materials; a scene's nodes; any resource's non-default properties) or a resource a node holds.
 use_when:
   - reading sub-properties that the node inspector only names
+  - '"how many surfaces, triangles and which materials does this mesh .res have?"'
   - '"what colour is this material?" / "how big is this collision shape?"'
   - '"what settings does the WorldEnvironment resource have?"'
 do_not_use_when:
@@ -33,9 +34,19 @@ input_schema:
   properties:
     path:
       type: string
-      description: Resource path, e.g. 'res://materials/ground.tres' or 'res://models/player.glb'
-  required:
-    - path
+      minLength: 1
+      maxLength: 512
+      description: A resource FILE, e.g. 'res://materials/ground.tres', a mesh 'res://kit/meshes/wall_01.res', or a scene/model 'res://models/player.glb'. Loaded read-only in the editor. Do not combine with nodePath.
+    nodePath:
+      type: string
+      minLength: 1
+      maxLength: 256
+      description: With property, a node of the ACTIVE scene tab whose resource to read, e.g. 'Floor'.
+    property:
+      type: string
+      minLength: 1
+      maxLength: 128
+      description: With nodePath, the node property holding the resource, e.g. 'mesh', 'material_override', 'shape', 'environment'.
   additionalProperties: false
 authority:
   filesystem: false

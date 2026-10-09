@@ -1,10 +1,12 @@
 id: tool/snap-to-surface
 kind: tool
-version: 1.0.0
+version: 1.2.0
 summary: Move one 3D subject along a world ray until it sits at the requested gap from the first surface (floor, ramp, shelf, table), then save the scene.
 use_when:
   - seating a prop on a floor, ramp, table, or shelf instead of hand-tuning its Y position
   - grounding an imported or instantiated model that floats or sinks into its support
+  - lifting a prop that is sunk a few centimetres into the ground back onto it
+  - seating a prop without a collider (a fern, a bottle) on a PlaneMesh or other mesh-only ground
 do_not_use_when:
   - you only want to know whether a pose fits — summer_test_placement is read-only
   - arranging several objects relative to each other — summer_align_distribute_3d
@@ -25,6 +27,7 @@ related:
     - tool/align-distribute-3d
     - tool/world-snapshot
     - tool/set-prop
+    - tool/starcast
   skills:
     - skill/world-building-3d
 source: official

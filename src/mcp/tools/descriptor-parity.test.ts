@@ -38,6 +38,8 @@ vi.mock("../../core/telemetry.js", () => ({
 import { registerSceneTools } from "./scene-tools.js";
 import { registerDebugTools } from "./debug-tools.js";
 import { registerVisualTools } from "./visual-tools.js";
+import { registerSeeingTools } from "./seeing-tools.js";
+import { registerAuditTools } from "./audit-tools.js";
 import { registerProjectTools } from "./project-tools.js";
 import { registerFileTools } from "./file-tools.js";
 import { registerAssetTools } from "./asset-tools.js";
@@ -47,6 +49,7 @@ import { registerFeedbackTools } from "./feedback-tools.js";
 import { registerScriptTools } from "./script-tools.js";
 import { registerPerceptionTools } from "./perception-tools.js";
 import { registerSpatialTools } from "./spatial-tools.js";
+import { registerPlacementTools } from "./placement-tools.js";
 import { registerNavigationTools } from "./navigation-tools.js";
 import { registerLibraryTools } from "./library-tools.js";
 import { registerEventTools } from "./event-tools.js";
@@ -265,6 +268,8 @@ function collectRegisteredTools(): RegisteredTool[] {
     registerSceneTools,
     registerDebugTools,
     registerVisualTools,
+    registerSeeingTools,
+    registerAuditTools,
     registerProjectTools,
     registerFileTools,
     registerAssetTools,
@@ -274,6 +279,7 @@ function collectRegisteredTools(): RegisteredTool[] {
     registerScriptTools,
     registerPerceptionTools,
     registerSpatialTools,
+    registerPlacementTools,
     registerNavigationTools,
     registerLibraryTools,
     registerEventTools,

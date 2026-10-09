@@ -1,11 +1,12 @@
 id: tool/replace-node
 kind: tool
-version: 1.0.2
-summary: Replace a node with a different type or scene, preserving its tree position and children.
+version: 1.1.0
+summary: Replace a node with another scene or type, keeping its parent, index, name, transform and children, and verify the saved scene holds it.
 use_when:
   - swapping a placeholder for a prefab or changing a body type
   - '"turn this StaticBody3D into a RigidBody3D but keep its children"'
   - swapping the placeholder cube for the real prefab in place
+  - swapping one kit piece for another (a wall host for a door host) without hand-copying its transform
 do_not_use_when:
   - adding alongside instead of replacing — summer_add_node / summer_instantiate_scene
 facets:
@@ -21,6 +22,11 @@ license: MIT
 status: stable
 aliases:
   - summer_replace_node
+related:
+  tools:
+    - tool/remove-node
+    - tool/instantiate-scene
+    - tool/read-file
 implementation:
   module: src/mcp/tools/scene-tools.ts
   export: registerSceneTools
@@ -36,13 +42,13 @@ input_schema:
       description: Target scene path, e.g. 'res://main.tscn'
     path:
       type: string
-      description: Node path to replace
+      description: Node path to replace, e.g. './House3/Front/G_f2_door'
     type:
       type: string
-      description: New node type, e.g. 'RigidBody3D'
+      description: New node type, e.g. 'RigidBody3D'. Give exactly one of type or scene.
     scene:
       type: string
-      description: Scene to replace with, e.g. 'res://enemies/boss.tscn'
+      description: Scene or model to replace with, e.g. 'res://kit/wall_door_02.tscn'. Give exactly one of type or scene.
   required:
     - scenePath
     - path

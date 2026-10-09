@@ -22,6 +22,7 @@ import {
   type OpResultEnvelope,
 } from "./async-op-lifecycle.js";
 import { pickPlayDeterminism, type PlayDeterminism } from "./capabilities/play-determinism.js";
+import { honestSceneReceipt } from "./capabilities/engine-receipt.js";
 
 export type EngineSnapshot = {
   ok: boolean;
@@ -315,6 +316,14 @@ export class EngineApiClient {
   /** Engine version string from the last health read, for skew messages. */
   getEngineVersion(): string | undefined {
     return this.lastHealth?.version;
+  }
+
+  /** Absolute project directory: the engine's own report from the last health
+   *  read (newer engines publish project_path), else the explicit --project
+   *  selection. Undefined when neither is known. Used for the bounded
+   *  res://.summer/shots/ folder the seeing tools keep on the local disk. */
+  getProjectRoot(): string | undefined {
+    return this.lastHealth?.project_path ?? this.selection?.projectPath;
   }
 
   /** The projectIdHash this session is bound to (undefined if none was reported
@@ -646,7 +655,9 @@ export class EngineApiClient {
     // different project (identity_mismatch, atomic — before any op applies).
     const merged = { ...(options ?? {}), ...this.identityOptions() };
     const body = Object.keys(merged).length ? { ops, options: merged } : { ops };
-    return this._requestQueued("POST", "/api/ops", body, timeoutMs);
+    // scenePersistence.persisted only means SaveScene ran; hand it out as
+    // `saved` (engine-receipt.ts honestSceneReceipt).
+    return honestSceneReceipt(await this._requestQueued("POST", "/api/ops", body, timeoutMs));
   }
 
   /**
@@ -673,19 +684,23 @@ export class EngineApiClient {
 
   async getSceneState(
     scenePath?: string,
-    options?: { depth?: number; limit?: number }
+    options?: { depth?: number; limit?: number; root?: string }
   ): Promise<unknown> {
-    // depth/limit only take effect on targeted (scene=) reads: the engine
+    // depth/limit/root only take effect on targeted (scene=) reads: the engine
     // routes those through the live command queue and forwards every query
     // param into StateProvider::scene_state (tool_net_thread.cpp
     // _parse_state_args). An UNtargeted read is answered from a pre-published
     // snapshot built with the defaults (depth 2, limit 200) and its query
     // params are ignored — callers who need depth/limit must pass scenePath
     // (summer_get_scene_tree resolves the current scene path for this).
+    // `root` starts the walk at a scene-relative node path; a path the engine
+    // cannot resolve falls back to the scene root, so callers compare the
+    // returned data.path before trusting a rooted read.
     const parts: string[] = [];
     if (scenePath) parts.push(`scene=${encodeURIComponent(scenePath)}`);
     if (options?.depth !== undefined) parts.push(`depth=${options.depth}`);
     if (options?.limit !== undefined) parts.push(`limit=${options.limit}`);
+    if (options?.root !== undefined) parts.push(`root=${encodeURIComponent(options.root)}`);
     const query = parts.length ? `?${parts.join("&")}` : "";
     return this.request("GET", `/api/state/scene${query}`);
   }
@@ -709,8 +724,13 @@ export class EngineApiClient {
     return this.request("GET", `/api/state/inspector?path=${encodeURIComponent(path)}`);
   }
 
-  async inspectResource(path: string): Promise<unknown> {
-    return this.request("GET", `/api/state/resource?path=${encodeURIComponent(path)}`);
+  /** A resource a node of the edited scene holds (state:resource takes
+   *  nodePath + property; resource FILES go through the inspect-resource probe). */
+  async inspectNodeResource(nodePath: string, property: string): Promise<unknown> {
+    return this.request(
+      "GET",
+      `/api/state/resource?nodePath=${encodeURIComponent(nodePath)}&property=${encodeURIComponent(property)}`
+    );
   }
 
   async getScriptErrors(path: string): Promise<unknown> {

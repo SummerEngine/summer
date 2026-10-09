@@ -10,6 +10,7 @@ import { registerCreatorTools } from "./creator-tools.js";
 
 type Registered = {
   name: string;
+  description: string;
   schema: Record<string, unknown>;
   handler: (args: any) => Promise<any>;
 };
@@ -21,11 +22,11 @@ function createFakeServer() {
     server: {
       tool(
         name: string,
-        _description: string,
+        description: string,
         schema: Record<string, unknown>,
         handler: (args: any) => Promise<any>
       ) {
-        tools.push({ name, schema, handler });
+        tools.push({ name, description, schema, handler });
         return { name };
       },
     },
@@ -68,10 +69,38 @@ afterEach(async () => {
 });
 
 describe("registerCreatorTools", () => {
-  it("extends the existing MCP with three creator tools", () => {
+  it("marks the legacy .pck publish as deprecated and points at the new tools", () => {
+    const { server, tools } = createFakeServer();
+    registerCreatorTools(server as any);
+    expect(getTool(tools, "summer_creator_publish").description).toMatch(
+      /^Deprecated: use summer_export_game, then summer_publish_build/
+    );
+  });
+
+  it("returns structured failures from summer_publish_build", async () => {
+    const { server, tools } = createFakeServer();
+    registerCreatorTools(server as any);
+    const result = await getTool(tools, "summer_publish_build").handler({
+      gameId: GAME_ID,
+      clientVersion: "v1.0.0",
+      publish: false,
+      confirm: false,
+    });
+    expect(result.isError).toBe(true);
+    expect(parseResult(result)).toMatchObject({
+      ok: false,
+      code: "export_required",
+      recovery: expect.stringContaining("summer_export_game"),
+    });
+  });
+
+  it("extends the existing MCP with the creator tools", () => {
     const { server, tools } = createFakeServer();
     registerCreatorTools(server as any);
     expect(tools.map((tool) => tool.name)).toEqual([
+      "summer_export_game",
+      "summer_export_templates",
+      "summer_publish_build",
       "summer_creator_publish",
       "summer_creator_releases",
       "summer_creator_config",

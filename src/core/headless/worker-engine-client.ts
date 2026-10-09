@@ -273,8 +273,8 @@ export class WorkerEngineClient {
   async inspectNode(_path: string): Promise<unknown> {
     unsupported("inspectNode");
   }
-  async inspectResource(_path: string): Promise<unknown> {
-    unsupported("inspectResource");
+  async inspectNodeResource(_nodePath: string, _property: string): Promise<unknown> {
+    unsupported("inspectNodeResource");
   }
   async getScriptErrors(_path: string): Promise<unknown> {
     unsupported("getScriptErrors");

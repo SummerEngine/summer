@@ -1,6 +1,6 @@
 id: template/3d-lan-multiplayer-starter
 kind: template
-version: 1.0.1
+version: 1.0.2
 summary: 3D LAN multiplayer starter built on GDQuest's open-source work — host/join flow and synced players.
 use_when:
   - starting a LAN or local multiplayer 3D game
@@ -12,7 +12,7 @@ compatibility:
   engine: ">=4.6"
 source: official
 license: MIT
-status: stable
+status: deprecated
 aliases:
   - template-3d-lan-multiplayer-starter
 repo: https://github.com/SummerEngine/template-3d-lan-multiplayer-starter

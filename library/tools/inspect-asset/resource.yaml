@@ -1,0 +1,71 @@
+id: tool/inspect-asset
+kind: tool
+version: 1.0.0
+summary: Measure a 3D asset file without adding it to a scene — AABB, origin, meshes, largest planar faces, open pipe ends, Marker3D anchors, collision shapes.
+use_when:
+  - learning a kit piece's real size, origin and which way it faces before placing it
+  - finding a piece's front and back planes (largest planar faces with their normals) or its pipe and duct ends (open boundary loops)
+  - reading the Marker3D anchors or collision shapes a kit piece ships with
+do_not_use_when:
+  - the piece is already in the scene and you need what surrounds it — summer_starcast
+  - you need the measurement between two placed nodes — summer_measure
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - 3d
+    - world-building
+    - assets
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/instantiate-scene
+    - tool/attach-to-surface
+    - tool/connect-ports
+    - tool/starcast
+  skills:
+    - skill/spatial-placement
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_inspect_asset
+implementation:
+  module: src/mcp/tools/placement-tools.ts
+  export: registerPlacementTools
+surfaces:
+  mcp:
+    tool_name: summer_inspect_asset
+    remote: false
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      minLength: 1
+      maxLength: 512
+      description: Asset to measure, e.g. 'res://kit/facade/wall_single_01.tscn' (.tscn, .scn, .glb, .gltf, .res, .tres, .mesh or .obj). Loaded and instanced off-scene, never added to an open scene.
+    maxTriangles:
+      type: integer
+      minimum: 100
+      maximum: 300000
+      default: 60000
+      description: Triangle budget (100-300000) for the face and open-loop analysis (AABBs and counts are always complete). summary.warnings says when the budget cut the analysis and which budget covers the whole mesh.
+    detail:
+      type: string
+      enum: [summary, full]
+      default: summary
+      description: "summary: open_loops lists only port-like loops (radius over 2 cm with a partner loop facing another way, or the one opening of an end piece on its bounding-box face), or none. full: every open loop, including the outline of flat sheets. Every loop has a stable id ('+Y', '+Y#2') that summer_connect_ports accepts. Both start with the summary block (AABB, origin, the two largest opposite plane pairs with one_sided flags, port-like loop ids)."
+  required:
+    - path
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

@@ -56,6 +56,24 @@ input_schema:
         - all
       default: library
       description: "Where to search: library (public 25k+), my_assets (your generated assets), all"
+    style:
+      type: string
+      enum:
+        - realistic
+        - stylized-lowpoly
+        - toon
+        - pixel
+        - hand-painted
+        - voxel
+      description: "The game's one art direction: clashing styles are left out, matches come first"
+    preview:
+      type: boolean
+      default: false
+      description: Also return one picture of the first 9 results, numbered in order, to see them before importing
+    includeCommunity:
+      type: boolean
+      default: false
+      description: Also include people's own public AI generations
   required:
     - query
   additionalProperties: false

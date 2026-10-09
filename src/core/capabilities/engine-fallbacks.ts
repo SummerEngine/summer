@@ -41,6 +41,15 @@ export const NAVIGATION_PROBE_FALLBACK =
 export const STARCAST_FALLBACK =
   "read the subject and its neighbours with summer_get_scene_tree + summer_inspect_node and judge support, contact, and clearance from their positions and sizes, then verify with summer_screenshot";
 
+/** summer_replace_node's instantiate/move/remove path (core/capabilities/replace-node.ts)
+ *  when the engine lacks one of the ops it sends. */
+export const REPLACE_NODE_FALLBACK =
+  "replace by hand: summer_remove_node, then summer_instantiate_scene with the same parent and name, then summer_set_prop for the transform, and confirm the saved scene with summer_read_file";
+
+/** summer_grep when the engine lacks the Grep op (core/capabilities/grep.ts). */
+export const GREP_FALLBACK =
+  "read the file you need with summer_read_file (offset/limit to page it; json_path/keys to pick entries out of a .json)";
+
 /** Every fallback, for the parity test: none may mention summer_world_snapshot. */
 export const ENGINE_OP_FALLBACKS: Readonly<Record<string, string>> = {
   GetWorldSnapshot: WORLD_SNAPSHOT_FALLBACK,

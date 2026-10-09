@@ -7,7 +7,7 @@ use_when:
   - '"what version is live right now?"'
   - '"did the publish go through?" — confirming a release landed'
 do_not_use_when:
-  - publishing a new release — summer_creator_publish
+  - publishing a new release — summer_publish_build
 facets:
   lifecycle:
     - launch

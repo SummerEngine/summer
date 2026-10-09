@@ -1,0 +1,94 @@
+id: tool/debug-views
+kind: tool
+version: 1.0.0
+summary: 'One pose as a grid of beauty, lighting-only, unshaded/albedo, world normals, overdraw and wireframe views.'
+use_when:
+  - 'understanding WHY a shot reads badly: light direction and pools, texture/value balance, normal seams, overdraw hot spots, triangle density'
+  - 'checking floating or duplicated geometry, flipped normals or missing light in one framed view'
+  - 'judging an environment like an artist, on the weakest shot of a sheet'
+do_not_use_when:
+  - 'you only need the final image — summer_shot_sheet or summer_frame_nodes'
+  - 'a pixel-exact close-up of a problem — summer_zoom with the same pose'
+facets:
+  lifecycle:
+    - build
+  domains:
+    - verification
+    - scenes
+    - 3d
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/shot-sheet
+    - tool/zoom
+    - tool/frame-shot
+    - tool/camera-bookmark
+  skills:
+    - skill/verifying-scenes
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_debug_views
+implementation:
+  module: src/mcp/tools/seeing-tools.ts
+  export: registerSeeingTools
+surfaces:
+  mcp:
+    tool_name: summer_debug_views
+    remote: false
+input_schema:
+  type: object
+  properties:
+    scenePath:
+      type: string
+      description: Scene to look at, e.g. "res://levels/town.tscn" (the SAVED file). Omit for the scene open in the editor.
+    bookmark_name:
+      type: string
+      description: Pose from a camera bookmark (summer_camera_bookmark). Use INSTEAD of camera_position/camera_look_at.
+    camera_position:
+      type: string
+      description: 'Explicit pose: camera position, "Vector3(x, y, z)". Goes with camera_look_at.'
+    camera_look_at:
+      type: string
+      description: 'Explicit pose: point the camera looks at, "Vector3(x, y, z)".'
+    fov:
+      type: number
+      description: "Vertical field of view in degrees (1..179). Default: the bookmark's own, or 60."
+    views:
+      type: array
+      items:
+        type: string
+        enum:
+          - beauty
+          - lighting
+          - unshaded
+          - normals
+          - overdraw
+          - wireframe
+      maxItems: 8
+      description: "Which views, in grid order (default all six: beauty, lighting, unshaded, normals, overdraw, wireframe)."
+    update_previous:
+      type: boolean
+      description: 'bookmark_name only: replace the bookmark''s previous image (compare baseline) with this beauty tile. Default false: only a missing slot is created.'
+    max_size:
+      type: integer
+      minimum: 64
+      maximum: 4096
+      description: Longest edge of the returned JPEG in pixels (default 1536). Bigger costs more context; up to 4096 for detail work on a PC.
+    aspect:
+      type: number
+      description: Frame width/height (default 1.7778 = 16:9). Every tile uses it.
+    save_to:
+      type: string
+      description: Also write the returned image to res://.summer/shots/saved/<name>.jpg (1-64 of A-Z a-z 0-9 _ -; needs max_size <= 1024). Nothing is written without it, except one previous-image slot per rendered bookmark.
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

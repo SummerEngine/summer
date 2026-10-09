@@ -29,16 +29,24 @@ export const CLI_PROTOCOL_VERSION = 1;
  * inside the engine monorepo (never send an op the engine has no branch for).
  *
  * Deliberately NOT listed: ops an agent may compose by hand through
- * summer_batch / `summer tool batch` (MoveNode, ReparentNode, DisconnectSignal,
- * Undo, Git*, RunCommand, ExtractZipFromUrl, CustomBake, ...). The CLI only
- * classifies those for dispatch (single-only / scene-mutation sets) and never
- * sends them on its own, so listing them would warn about skew the CLI cannot
- * cause; the engine's per-op "unknown op" error still covers them at call time.
+ * summer_batch / `summer tool batch` (DisconnectSignal, Undo, Git*,
+ * RunCommand, ExtractZipFromUrl, CustomBake, ...). The CLI only classifies
+ * those for dispatch (single-only / scene-mutation sets) and never sends them
+ * on its own, so listing them would warn about skew the CLI cannot cause; the
+ * engine's per-op "unknown op" error still covers them at call time.
  */
 export const CLI_KNOWN_OP_NEEDS: readonly string[] = [
   // Scene graph + properties
+  // (No ConnectSignal: it never saves the connection, so summer_connect_signal
+  // connects through RunSceneScript and summer_batch refuses the raw op —
+  // core/capabilities/connect-signal.ts.)
   "AddNode", "RemoveNode", "ReplaceNode", "SetProp", "SetResourceProperty",
-  "ConnectSignal", "SelectNode", "OpenScene", "SaveScene", "InstantiateScene",
+  "SelectNode", "OpenScene", "SaveScene", "InstantiateScene",
+  // summer_replace_node's instantiate/move/remove path (core/capabilities/replace-node.ts)
+  // and summer_batch's ReparentNode re-owning (core/capabilities/scene-batch.ts)
+  "MoveNode", "ReparentNode",
+  // summer_grep (core/capabilities/grep.ts)
+  "Grep",
   // Navigation (summer_open: core/capabilities/navigation/) — Navigate is the
   // one-table op (engine navigate_ops.cpp); the other three are the legacy
   // fallbacks on engines that predate it.

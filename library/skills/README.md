@@ -1,6 +1,6 @@
 # Summer skills
 
-> 95 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
+> 116 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
 
 The folder is flat on purpose (`docs/design/DECISIONS.md`, D3): a skill usually belongs to several domains, so categories live in each skill's `facets.domains` and this index is rendered from them. The first domain listed is the primary one. `summer skills list --by-domain` prints the same grouping; `summer skills info <slug>` shows one skill.
 
@@ -11,23 +11,23 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 - [2d](#2d) (10)
 - [3d](#3d) (6)
 - [agent-workflow](#agent-workflow) (17)
-- [ai](#ai) (1)
+- [ai](#ai) (2)
 - [animation](#animation) (7)
 - [assets](#assets) (3)
 - [audio](#audio) (6)
-- [character-controller](#character-controller) (1)
+- [character-controller](#character-controller) (2)
 - [debug](#debug) (1)
 - [deployment](#deployment) (2)
 - [editor](#editor) (1)
-- [gameplay](#gameplay) (3)
+- [gameplay](#gameplay) (6)
 - [level-design](#level-design) (2)
-- [multiplayer](#multiplayer) (3)
+- [multiplayer](#multiplayer) (16)
 - [navigation](#navigation) (1)
 - [performance](#performance) (1)
-- [rendering](#rendering) (4)
+- [rendering](#rendering) (5)
 - [runtime](#runtime) (1)
-- [scenes](#scenes) (11)
-- [scripting](#scripting) (1)
+- [scenes](#scenes) (12)
+- [scripting](#scripting) (2)
 - [ui](#ui) (1)
 - [vfx](#vfx) (9)
 - [video](#video) (3)
@@ -84,6 +84,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 
 | skill | when to use | also |
 |---|---|---|
+| [*ai-characters-in-games*](./ai-characters-in-games/SKILL.md) (preview) | Safe AI characters in published games: no keys in the build, replies via Summer's player AI gateway, moderation, spend caps, offline brain and a report button. | npc |
 | [design-npc](./design-npc/SKILL.md) ★ | Design enemy/NPC/boss/companion behavior — perception, personality, intent, action state machine, telegraphs — outputs a GDScript stub plus node tree. | npc |
 
 ## animation
@@ -121,6 +122,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 
 | skill | when to use | also |
 |---|---|---|
+| [*character-movement*](./character-movement/SKILL.md) (preview) | Player controllers for 2D and 3D, plus the canonical third-person controller for Summer humanoid packages: movement owns translation, clips follow state. | gameplay, 2d, 3d |
 | [fps-controller](./fps-controller/SKILL.md) ★ | Production-quality first-person controller — WASD, mouse look, jump, coyote time, jump buffering, air control, and external-velocity handling. | gameplay |
 
 ## debug
@@ -148,7 +150,10 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 |---|---|---|
 | [auto-fire-targeting](./auto-fire-targeting/SKILL.md) | Design or fix auto-fire weapon targeting (survivors, top-down ARPG, tower defense) — the pending-damage pattern that prevents over-commit and overkill. | game-design |
 | [*celeste-momentum-platforming*](./celeste-momentum-platforming/SKILL.md) (preview) | Celeste-style 2D precision platformer movement — momentum running, coyote time, variable jumps, dash, wall jump/slide, climb stamina, pixel corner correction. | character-controller, game-design |
+| [*combat-basics*](./combat-basics/SKILL.md) (preview) | Damage in Summer Engine: hitbox and hurtbox Areas on opposing layers, a reusable Health component, damage signals, knockback, hit feedback, projectiles. | scripting, game-design |
 | [design-mechanic](./design-mechanic/SKILL.md) ★ | Design one game mechanic in detail — input, response, feedback, failure modes, depth, tunables — outputs a design doc, node-graph sketch, GDScript stub. | game-design |
+| [*in-game-purchases*](./in-game-purchases/SKILL.md) (preview) | Sell items for Sparks and let short players buy Sparks in game via the Summer purchase sheet: checkout, Sparks purchase, results, testing, store policy. | scripting, game-design |
+| [*web-and-touch-input*](./web-and-touch-input/SKILL.md) ★ (preview) | Input for the browser and phones: the first-click rule for sound and mouse capture, focus, and touch buttons or a virtual stick on the same actions. | ui |
 
 ## level-design
 
@@ -161,9 +166,22 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 
 | skill | when to use | also |
 |---|---|---|
-| [host-authoritative-state](./host-authoritative-state/SKILL.md) ★ | Design the state layer of a multiplayer game — what the host owns, how clients request changes, and how the host validates and broadcasts. | game-design |
-| [peer-to-peer-multiplayer](./peer-to-peer-multiplayer/SKILL.md) ★ | Start a multiplayer game from scratch with peer-to-peer host authority — network architecture built top-down, before writing game logic. | project |
-| [setup-multiplayer](./setup-multiplayer/SKILL.md) ★ | Add multiplayer to an existing game — LAN/online co-op, PvP, lobbies — via MultiplayerAPI, MultiplayerSpawner, and MultiplayerSynchronizer. | scripting |
+| [multiplayer](./multiplayer/SKILL.md) ★ | Start here for Summer multiplayer: how the authority, clients, Worlds and Sessions fit, and which skill comes next. | project |
+| [multiplayer-movement](./multiplayer-movement/SKILL.md) | Client-side movement in Summer multiplayer: owners move instantly, others glide, the authority checks each pose. | character-controller, scripting |
+| [multiplayer-project](./multiplayer-project/SKILL.md) | Set up a Summer multiplayer project: both entry scenes, World and queue files, joining, and a first Local Play run. | project, scripting |
+| [*multiplayer-publish*](./multiplayer-publish/SKILL.md) (preview) | Ship a hosted Summer multiplayer game: the summer.games bundle, server preset, pre-upload checks, and a new Build. | deployment |
+| [multiplayer-state](./multiplayer-state/SKILL.md) | Authority-owned game state in Summer multiplayer: shared and private State groups, validated Commands, and Events. | game-design, scripting |
+| [multiplayer-testing](./multiplayer-testing/SKILL.md) | Test a Summer multiplayer game with Local Play: several players, a bad network, bots, and what a passing run shows. | playtest, verification |
+| [*summer-analytics*](./summer-analytics/SKILL.md) (preview) | Send game events to Summer analytics from the authority or client: fire-and-forget, never blocking gameplay. | scripting |
+| [*summer-friends*](./summer-friends/SKILL.md) (preview) | Summer friends in a game: a consented friends list, profile and chat screens, direct messages. Hosted only. | ui |
+| [*summer-leaderboards*](./summer-leaderboards/SKILL.md) (preview) | Leaderboards in a Summer game: queue ratings from matches, and Game rankings your authority scores. | ui |
+| [summer-match-results](./summer-match-results/SKILL.md) | End a Summer match: report each player's win, loss or draw, show results on clients, then close the World. | gameplay |
+| [*summer-matchmaking*](./summer-matchmaking/SKILL.md) (preview) | Get players into matches with Summer matchmaking: queues, teams, accept prompts, join progress and failures. | ux |
+| [*summer-parties*](./summer-parties/SKILL.md) (preview) | Let a Summer party play together: the leader presses Play, members follow into the same match. Hosted only. | ui |
+| [summer-player-data](./summer-player-data/SKILL.md) | Save a player's progress so it follows them to every match: authority load and commit, autosave, safe retries. | scripting |
+| [*summer-store*](./summer-store/SKILL.md) (preview) | Sell Summer items for Sparks in a multiplayer game: shop, checkout, owned items, authority entitlement checks. | gameplay |
+| [*summer-world-chat*](./summer-world-chat/SKILL.md) (preview) | Add match chat to a Summer game: one World channel shared by everyone in the match. Hosted only. | ui |
+| [*summer-world-saves*](./summer-world-saves/SKILL.md) (preview) | Keep a persistent Summer World between restarts: checkpoint saves, restore before join, the final save. | scripting |
 
 ## navigation
 
@@ -185,6 +203,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [art-direction](./art-direction/SKILL.md) ★ | Define the game's visual style — references, palette, mood, lighting plan, post-processing, do/don't list — output as an art bible at .summer/art-bible.md. | lighting |
 | [*psx-retro-rendering*](./psx-retro-rendering/SKILL.md) (preview) | Hardware-informed PlayStation 1 rendering in Godot 4 — low-res output, RGB5 and exact dither, affine textures, vertex snapping, blend modes, fog; limits named. | 3d |
 | [*realtime-wet-surfaces*](./realtime-wet-surfaces/SKILL.md) (preview) | Real-time wetness on existing Godot 4 materials without losing their values — value-copying wet shader, geometry-driven wet mask, instance-uniform wet amount. | vfx |
+| [*web-compatibility-look*](./web-compatibility-look/SKILL.md) ★ (preview) | Make a web or browser game look high-end in the Compatibility renderer (WebGL 2): what works, what to avoid, 2D and 3D recipes, web performance. | 2d, 3d |
 
 ## runtime
 
@@ -198,14 +217,15 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 |---|---|---|
 | [brainstorm-game](./brainstorm-game/SKILL.md) ★ | Turn a vague idea into a buildable plan — genre, scope, core loop, mechanics, art direction — written as a 1-page brief to .summer/GameSoul.md. | project |
 | [browse-templates](./browse-templates/SKILL.md) ★ | List available Summer Engine project templates, present the choices, and create a project from the chosen one via summer create. | project |
+| [*camera-rigs*](./camera-rigs/SKILL.md) (preview) | Camera rigs for 2D and 3D: Camera2D follow with limits, first-person head camera, SpringArm3D third-person, orthographic top-down, FOV guidance. | 3d, 2d |
 | [make-game](./make-game/SKILL.md) ★ | Orchestration spine for 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship — delegates to specialist skills. | project |
 | [new-project](./new-project/SKILL.md) ★ | Create a fresh blank Summer Engine project — asks one question (project name) and runs summer create empty. | project |
 | [play](./play/SKILL.md) ★ | Run the project in Summer Engine, wait briefly, then report what's happening — clean run, errors, or warnings. | project |
 | [scene-composition](./scene-composition/SKILL.md) ★ | Scene structure conventions — node hierarchy, when to extract sub-scenes, reusable prefab patterns, and instance-versus-add-node decisions. | project |
 | [*scene-hierarchy-design*](./scene-hierarchy-design/SKILL.md) (preview) | Structure Summer Engine scenes by access pattern — asset vs live hierarchies, wrapper nodes per operation, sub-scenes for reuse, path-agnostic logic. | project, agent-workflow |
 | [*scene-scripting*](./scene-scripting/SKILL.md) ★ (preview) | One GDScript in the live editor (summer_run_script) builds scenes, 2D levels, HUDs and gameplay wiring instead of CRUD chains; verify with diff + screenshot. | scripting, 2d, ui, agent-workflow |
-| [*spatial-placement*](./spatial-placement/SKILL.md) ★ (preview) | Place and verify 3D objects with Starcast evidence — inspect, place, starcast, correct, verify; floor, shelf, wall, alcove recipes and overlap repair. | 3d, world-building, level-design, verification |
-| [*verifying-scenes*](./verifying-scenes/SKILL.md) ★ (preview) | Prove scene work landed — snapshot before, diff + screenshot after (bookmarked viewpoint, labels), live runtime reads during playtests — then claim. | verification, agent-workflow |
+| [*spatial-placement*](./spatial-placement/SKILL.md) ★ (preview) | Place 3D objects and modular kit pieces from measured geometry — inspect, place, starcast, measure, correct; floor, wall, facade, pipe and alcove recipes. | 3d, world-building, level-design, verification |
+| [*verifying-scenes*](./verifying-scenes/SKILL.md) ★ (preview) | Prove scene work landed (snapshot, diff, screenshots, runtime reads), audit 3D scenes for holes and misplacement, review them with shot sheets and zooms. | verification, agent-workflow |
 | [*world-building-3d*](./world-building-3d/SKILL.md) ★ (preview) | Compose, ground, space, and validate 3D scenes with Summer's four bounded spatial tools — exact paths, one geometric decision at a time, verified. | 3d, world-building, level-design, verification |
 
 ## scripting
@@ -213,6 +233,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | skill | when to use | also |
 |---|---|---|
 | [gdscript-patterns](./gdscript-patterns/SKILL.md) ★ | GDScript conventions — type hints, signals, exports, onready, lifecycle methods, get_node vs $NodePath, naming. | conventions |
+| [*save-load*](./save-load/SKILL.md) (preview) | Persist game state in Summer Engine: user:// paths, JSON progress vs ConfigFile settings, a versioned save schema with migration, autosave hooks. | gameplay |
 
 ## ui
 

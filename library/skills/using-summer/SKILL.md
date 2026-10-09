@@ -111,7 +111,7 @@ When multiple Summer skills could apply, run them in this order:
 
 1. **Process skills first** — `brainstorm-game`, `debug`, `play`. These determine HOW to approach the task.
 2. **Discipline skills second** — `gdscript-patterns`, `scene-composition`, `art-direction`, `audio-direction`. These shape the content.
-3. **Build skills third** — `fps-controller`, `design-mechanic`, `design-level`, `setup-multiplayer`. These produce the artifacts.
+3. **Build skills third** — `fps-controller`, `design-mechanic`, `design-level`, `multiplayer`. These produce the artifacts.
 
 > "I want to make a game" → `brainstorm-game` first, then build skills.
 > "Fix this crash" → `debug` first, then domain skills.

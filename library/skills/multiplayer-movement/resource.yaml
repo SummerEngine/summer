@@ -1,0 +1,30 @@
+id: skill/multiplayer-movement
+kind: skill
+version: 1.0.0
+summary: "Client-side movement in Summer multiplayer: owners move instantly, others glide, the authority checks each pose."
+use_when:
+  - "moving players in a Summer multiplayer game: each player's own character, other players drawn smoothly"
+  - "remote players stutter, jitter, teleport or rubberband in a Summer multiplayer game"
+  - "stopping speed hacks and teleport cheats on player movement; respawning or teleporting a player on purpose"
+facets:
+  lifecycle:
+    - build
+  domains:
+    - multiplayer
+    - character-controller
+    - scripting
+  modalities:
+    - scripts
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/multiplayer
+    - skill/multiplayer-project
+    - skill/multiplayer-state
+    - skill/multiplayer-testing
+source: official
+license: MIT
+status: stable
+recommended: false

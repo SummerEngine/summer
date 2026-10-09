@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { withEngine, missingEngineOpResult, ToolInputError, withOldEngineHint } from "./with-engine.js";
 import { executeSceneMutation } from "./scene-tools.js";
+import { SNAP_LIFT_MARGIN, SNAP_MAX_AUTO_LIFT, snapToSurface } from "../../core/capabilities/surface-snap.js";
 // engine_lacks_op fallbacks: ONE copy for every face (E2E 2026-09-03 F-16).
 import {
   ALIGN_DISTRIBUTE_FALLBACK,
@@ -332,8 +333,13 @@ Use the default downward direction to seat props on floors, ramps, tables, or sh
 
 EVIDENCE BOUNDARY:
 - physics means Godot swept the subject's enabled collider shapes against body colliders and refined the first-contact bracket.
-- visual_aabb is an explicit broad-phase fallback for mesh-only geometry; it does not prove triangle contact, and alignUp is not applied from that approximate normal.
+- visual_aabb is the engine's broad-phase fallback for mesh-only geometry (no collider on the subject or the support): AABBs swept against AABBs. It does not prove triangle contact, and alignUp is not applied from that approximate normal.
+- visual_mesh: whenever the engine answers with visual_aabb (overlap_recovery_exceeded, gap_exceeds_hit_travel, surface_not_found, or a seat), a read-only probe measures the move from visible triangles instead: the subject's vertices cast along the direction onto the triangles of the meshes below (a surface cutting through the subject counts as sunk), plus the support's vertices under it cast back. One SetProp places the subject, a second read verifies the gap (the move is undone if it disagrees by more than 5 mm), and the scene is saved. The receipt says evidence visual_mesh, the engine's own answer under engine, verify {final_gap, ok}, and evidenceDetails (samples, triangles, whether the subject and the support have colliders). Meshes whose shader writes POSITION (screen-space quads) are not surfaces. When the triangles find no support either, the engine's failure is returned with mesh_fallback saying why.
 - initiallyOverlapping and backoffDistance expose bounded pre-sweep recovery. The tool fails instead of teleporting when the subject cannot be cleared within maxDistance.
+
+SUNK PROPS: when the subject starts inside its support (gap_exceeds_hit_travel with a start overlap), the tool lifts it against the cast direction by the overlap depth plus ${SNAP_LIFT_MARGIN} m (at most ${SNAP_MAX_AUTO_LIFT} m and the subject's own extent), snaps again from there, and keeps that only if it settles on a node it was sunk into; the receipt then carries recovery (lifted_by, original_local_position) and 'before' is the lifted pose. Otherwise the original position is restored.
+
+FAILURES EXPLAIN THEMSELVES: after gap_exceeds_hit_travel or overlap_recovery_exceeded a read-only starcast at the current pose adds start_overlap, blocking (the nodes it touches or sits inside), below, and a concrete next_step.
 
 The normal result is bounded below 5 KB and returns before/after transforms, supportPath, finalGap with an error bound, slopeDeg, evidence, and warnings. scenePath and subjectPath are always required; there is no editor-selection fallback. On an engine build that predates SnapToSurface the result is a structured engine_lacks_op failure naming the fallback.`,
     {
@@ -380,14 +386,16 @@ The normal result is bounded below 5 KB and returns before/after transforms, sup
         }
         // Cross-field: a raw zod shape cannot express it, so it stays here.
         if (gap > maxDistance) throw new ToolInputError("gap must not exceed maxDistance.");
-        const receipt = await executeSceneMutation(client, exactScene, [{
-          op: "SnapToSurface",
-          subject_path: exactSubject,
-          direction,
-          max_distance: maxDistance,
+        // ONE implementation for both faces (core/capabilities/surface-snap.ts):
+        // the snap, a starcast diagnosis on failure, and the sunk-prop lift.
+        const receipt = await snapToSurface(client, {
+          scenePath: exactScene,
+          subjectPath: exactSubject,
+          direction: direction as [number, number, number],
+          maxDistance,
           gap,
-          align_up: alignUp,
-        }]);
+          alignUp,
+        });
         return withOldEngineHint(receipt, "SnapToSurface", SNAP_TO_SURFACE_FALLBACK);
       }, compactResult({
         op: "SnapToSurface",

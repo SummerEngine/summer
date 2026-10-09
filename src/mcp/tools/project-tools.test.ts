@@ -198,7 +198,13 @@ priority: locked
     registerProjectTools(server as never);
 
     const contextTool = getTool(tools, "summer_get_project_context");
-    const body = parseToolResult(await contextTool.handler({}));
+    // Settings are opt-in: the compact default leaves them out and says how to ask.
+    const compact = parseToolResult(await contextTool.handler({}));
+    expect(compact).not.toHaveProperty("project");
+    expect(String((compact.omitted as Record<string, string>).settings)).toContain("include:['settings']");
+    expect(compact.mainScene).toBe("res://main.tscn");
+
+    const body = parseToolResult(await contextTool.handler({ include: ["settings"] }));
     const data = (body.project as { data: Record<string, unknown> }).data;
     const keys = (data.entries as Array<{ key: string }>).map((entry) => entry.key);
 
@@ -455,5 +461,42 @@ describe("playbook step 0 survives engines without the perception ops", () => {
     const text = JSON.stringify(buildAgentPlaybook());
     expect(text).not.toContain("community");
     expect(text).toContain("library | my_assets | all");
+  });
+
+  it("routes 3D placement questions to the spatial tools that ship", () => {
+    const placement = JSON.stringify(buildAgentPlaybook().placement3d);
+    for (const tool of [
+      "summer_starcast",
+      "summer_test_placement",
+      "summer_snap_to_surface",
+      "summer_align_distribute_3d",
+      "summer_navigation_probe",
+      "summer_snapshot_diff",
+      "summer_inspect_asset",
+      "summer_place_adjacent",
+      "summer_attach_to_surface",
+      "summer_repeat_along",
+      "summer_connect_ports",
+      "summer_raycast",
+      "summer_measure",
+      "summer_scene_audit",
+    ]) {
+      expect(placement, tool).toContain(tool);
+    }
+    expect(placement).toContain("skill/spatial-placement");
+    expect(placement).toContain("summer_search_library");
+    expect(placement).toContain("directionSpace:'local'");
+    expect(placement).toContain("receipt:'summary'");
+  });
+});
+
+describe("playbook seeing section", () => {
+  it("points environment work at the seeing tools and the verifying-scenes loop", () => {
+    const seeing = JSON.stringify(buildAgentPlaybook().seeing);
+    for (const tool of ["summer_frame_shot", "summer_shot_sheet", "summer_debug_views", "summer_zoom", "summer_frame_nodes", "summer_scene_audit"]) {
+      expect(seeing, tool).toContain(tool);
+    }
+    expect(seeing).toContain("compare_previous");
+    expect(seeing).toContain("verifying-scenes");
   });
 });

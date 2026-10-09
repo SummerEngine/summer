@@ -56,7 +56,7 @@ scripts/
 └── validate-library/   # schema validation + capability lint
 ```
 
-The import direction is a tested invariant (`src/import-direction.test.ts`): `cli/` never imports `mcp/`; `bin/` composes the two. The *layering* is not yet the ideal the contract describes: 81 of the 86 tools are implemented in `src/mcp/tools/*.ts` with hand-written zod, and `core/capabilities/tool-dispatch.ts` mirrors them so `summer tool <slug>` reaches the same functions. What keeps the two faces honest is `src/mcp/tools/descriptor-parity.test.ts` (zod shape ↔ `library/tools/*/resource.yaml` `input_schema`) plus the validator's cross-checks; folding the mirror into one registration is the scheduled consolidation pass (CONTRACT §3, DECISIONS D13).
+The import direction is a tested invariant (`src/import-direction.test.ts`): `cli/` never imports `mcp/`; `bin/` composes the two. The *layering* is not yet the ideal the contract describes: most tools are implemented in `src/mcp/tools/*.ts` with hand-written zod, and `core/capabilities/tool-dispatch.ts` mirrors them so `summer tool <slug>` reaches the same functions. Newer tools (fabricate, UI control, runtime control) share one zod schema and op builder from `core/capabilities/`; the kit-placement tools (`core/capabilities/placement.ts`), the five seeing tools (`core/capabilities/seeing/`) and `summer_scene_audit` (`core/capabilities/audit/`, kernel `assets/audit/scene_audit.gd`) share the whole implementation. What keeps the two faces honest is `src/mcp/tools/descriptor-parity.test.ts` (zod shape ↔ `library/tools/*/resource.yaml` `input_schema`) plus the validator's cross-checks; folding the mirror into one registration is the scheduled consolidation pass (CONTRACT §3, DECISIONS D13).
 
 ---
 
@@ -89,7 +89,7 @@ The suite needs Node 22 or newer (`.nvmrc`; CI uses 22): vitest 3 does not run o
 | Command | Does |
 |---|---|
 | `summer install [--yes] [--path <dir>]` | Download and install Summer Engine (macOS, Windows, Linux x86_64). Never replaces an installed engine without `--yes` or a TTY confirmation. |
-| `summer login [--creator] [--force]` | Browser sign-in; `--creator` connects a separately scoped publish token. |
+| `summer login [--store] [--creator] [--force]` | Browser sign-in; `--store` signs in to the Summer store (OAuth, `~/.summer/oauth-token`) for `summer_publish_build`; `--creator` connects the legacy publish token. |
 | `summer logout` | Clear stored tokens (says so when `SUMMER_TOKEN` is in effect instead). |
 | `summer status` | Engine state, port, auth. |
 | `summer run [path] [--no-project] [--background\|--focus] [--bin <executable>]` | Launch the engine with a project; bare editor needs `--no-project`. `--bin` (env `SUMMER_BIN`) launches a build that is not installed — the in-bundle executable on macOS, never the `.app`. Background (no focus steal) is the default when stdout is not a TTY, i.e. an agent; a human in a terminal gets focus. See `TESTING.md` "Working in the background". |
@@ -104,7 +104,7 @@ The suite needs Node 22 or newer (`.nvmrc`; CI uses 22): vitest 3 does not run o
 | `summer debug [issue…]` | Support-ready Markdown debug report. |
 | `summer plan <goal…>` | Route a goal to skills / tools / gates. |
 | `summer config [get \| set \| unset \| path]` | Shared non-secret `~/.summer/config.json` (`gateway.url`, …). |
-| `summer publish [project] --artifact <pck> --version <v> [--confirm]` | Confirmed creator release. |
+| `summer publish [project] --artifact <pck> --version <v> [--confirm]` | Deprecated confirmed `.pck` release to the legacy creator API; use `summer tool export-game` and `summer tool publish-build`. |
 | `summer releases [--cursor <c>]` | Creator release history. |
 | `summer events [--follow] [--kinds <csv>] [--since <seq>] [--limit <n>] [--json]` | Engine events channel: the newest events, or `--follow` to stream them live (long-poll over `/api/events/poll`, one line per event, JSON when piped). Builds without the channel print a structured `engine_lacks_events` receipt and exit 1. |
 | `summer tool [name] [--args '<json>'] [--list]` | Run any tool with the MCP implementation; `--list` prints every slug. |

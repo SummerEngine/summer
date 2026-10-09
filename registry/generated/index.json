@@ -147,8 +147,8 @@
     {
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
-      "version": "1.0.3",
-      "content_hash": "cf0339df0f5b315b84610f778dd71e87ac50c4c62ca06533c8b13b293c6eed31",
+      "version": "1.4.0",
+      "content_hash": "d0fc28b8ca01a46e50a1053393760594ac0323643aa2e00aa7d68c0d1bd5732d",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -236,8 +236,8 @@
     {
       "id": "reference/summer-folder",
       "kind": "reference",
-      "version": "1.0.1",
-      "content_hash": "ca4a34f41a96f756088c1ac618e8fbf53ed6aecf61ce99a440eb546fc36c8eb3",
+      "version": "1.0.2",
+      "content_hash": "80b561e1b454d38b7dc2952c2f7fd0d3b2a98ff1f596196c1213ef59cdec4b23",
       "summary": "The canonical layout of the project-scoped .summer/ folder — GameSoul.md, art/audio bibles, build plan, memory, and locked state.",
       "use_when": [
         "authoring a skill that writes durable design output or project memory",
@@ -388,6 +388,43 @@
       },
       "status": "preview",
       "recommended": true
+    },
+    {
+      "id": "skill/ai-characters-in-games",
+      "kind": "skill",
+      "version": "0.3.0",
+      "content_hash": "0dc36031c8011152d0f672675648e89be40066812a471a43d906b976104f7d89",
+      "summary": "Safe AI characters in published games: no keys in the build, replies via Summer's player AI gateway, moderation, spend caps, offline brain and a report button.",
+      "use_when": [
+        "a character, creature or object should answer free-form player text or speech in a published game (talking flowers, shopkeepers, companions)",
+        "about to put a model name, a provider SDK or a provider key into a game project",
+        "handling AI refusals (ai_disabled, age_policy, credits_exhausted, limit_exceeded) or adding the report button for AI replies",
+        "topping up Summer credits, setting AI limits or the kill switch for a game's AI characters"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "ai",
+          "npc"
+        ],
+        "modalities": [
+          "scripts",
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/design-npc",
+          "skill/multiplayer-state"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
     },
     {
       "id": "skill/ambient-bed",
@@ -732,8 +769,8 @@
     {
       "id": "skill/browse-templates",
       "kind": "skill",
-      "version": "1.0.4",
-      "content_hash": "e19996018524a4a541bede614376d4ee29a016e5465e27e8b3da2cb49ee43d1d",
+      "version": "1.0.5",
+      "content_hash": "40839f90ee91e540ef51c46d3cc1d09d1f78136a445df6df81169c79b7ef22de",
       "summary": "List available Summer Engine project templates, present the choices, and create a project from the chosen one via summer create.",
       "use_when": [
         "the user wants to see available Summer Engine project templates, start from an existing template, or asks what templates exist",
@@ -756,6 +793,44 @@
       },
       "status": "stable",
       "recommended": true
+    },
+    {
+      "id": "skill/camera-rigs",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "52cec93f1f8eb2e5d7bd2c0572fad53cace2129bc32a91005ae5675bfa9f7d00",
+      "summary": "Camera rigs for 2D and 3D: Camera2D follow with limits, first-person head camera, SpringArm3D third-person, orthographic top-down, FOV guidance.",
+      "use_when": [
+        "black screen on play, or the camera shows past the level edge",
+        "jerky camera follow, wrong FOV, or the third-person camera clips into walls",
+        "need a top-down, isometric, orthographic, orbit, or spring-arm camera"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "3d",
+          "2d"
+        ],
+        "modalities": [
+          "scenes",
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/make-game",
+          "skill/character-movement",
+          "skill/fps-controller"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
     },
     {
       "id": "skill/celeste-momentum-platforming",
@@ -887,6 +962,52 @@
       "recommended": true
     },
     {
+      "id": "skill/character-movement",
+      "kind": "skill",
+      "version": "1.2.1",
+      "content_hash": "ba68f8a318d0a790ec4a1d872b88ffccedbcedd038327761ca913b404b6cc0d7",
+      "summary": "Player controllers for 2D and 3D, plus the canonical third-person controller for Summer humanoid packages: movement owns translation, clips follow state.",
+      "use_when": [
+        "building or fixing player movement — gravity, collision, side-scroller, top-down, or 3D walk",
+        "wiring an imported Summer character package (character.tscn) as the playable third-person player",
+        "walk, run, and jump animation states, facing, or mouse look for a player controller",
+        "the jump feels bad — coyote time, jump buffering, variable jump height, one-way platforms"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "character-controller",
+          "gameplay",
+          "2d",
+          "3d"
+        ],
+        "modalities": [
+          "scripts",
+          "scenes",
+          "animation"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/make-game",
+          "skill/camera-rigs",
+          "skill/combat-basics",
+          "skill/fps-controller",
+          "skill/celeste-momentum-platforming",
+          "skill/character-animation-wiring",
+          "skill/character-model",
+          "skill/playtesting-a-feature"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
       "id": "skill/character-portrait",
       "kind": "skill",
       "version": "1.0.4",
@@ -958,6 +1079,46 @@
       },
       "status": "stable",
       "recommended": true
+    },
+    {
+      "id": "skill/combat-basics",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "a69f4470d1c0babc3855334ebfd7e5d53aee02b85bc0dbd5ad1fc9c8b3c8bdbb",
+      "summary": "Damage in Summer Engine: hitbox and hurtbox Areas on opposing layers, a reusable Health component, damage signals, knockback, hit feedback, projectiles.",
+      "use_when": [
+        "adding attacks, health and damage, or enemies that can be hit and hit back",
+        "adding projectiles or bullets — homing, piercing, area-of-effect, or pooling hundreds of them",
+        "wiring death and respawn, or debugging hits that never land or friendly fire"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "gameplay",
+          "scripting",
+          "game-design"
+        ],
+        "modalities": [
+          "scripts",
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/make-game",
+          "skill/character-movement",
+          "skill/game-feel",
+          "skill/auto-fire-targeting",
+          "skill/design-npc"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
     },
     {
       "id": "skill/concept-art",
@@ -1363,7 +1524,7 @@
       "id": "skill/export-and-ship",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "459ad769af5e734676659117ce4fbb3226668b5e41211afc3373b45a52ed8bba",
+      "content_hash": "371cc6ecc30a066a5f4906a9fb29a29d85ff4f6747f8656ce9f89671a87c6193",
       "summary": "Assess and prepare a game export: inventory installed templates and targets, validate release assets and config, produce supported builds after approval.",
       "use_when": [
         "the user wants to assess or prepare a Summer game export — Steam, itch, HTML5, iOS, Android targets as available in the installed build",
@@ -1492,8 +1653,8 @@
     {
       "id": "skill/fps-controller",
       "kind": "skill",
-      "version": "1.0.3",
-      "content_hash": "2be4e55c5110c8cf10b0e8aa9743a157adc415028be586adc867c3b7b7f8b536",
+      "version": "1.0.4",
+      "content_hash": "efa016e92bb775a6d10f8b085e8cdfd3412e03cc4910c63df6eba63fab8ab471",
       "summary": "Production-quality first-person controller — WASD, mouse look, jump, coyote time, jump buffering, air control, and external-velocity handling.",
       "use_when": [
         "building an FPS, first-person movement, or a 3D character that walks, jumps, and reacts to external forces",
@@ -1516,6 +1677,10 @@
         "engine": ">=4.6"
       },
       "related": {
+        "skills": [
+          "skill/character-movement",
+          "skill/camera-rigs"
+        ],
         "templates": [
           "template/3d-fps-old-school"
         ]
@@ -1728,26 +1893,27 @@
       "recommended": true
     },
     {
-      "id": "skill/host-authoritative-state",
+      "id": "skill/in-game-purchases",
       "kind": "skill",
-      "version": "1.0.3",
-      "content_hash": "8a1a930a2146a57f69454dac4b4dcf18e58e3b3bb80a4a17db1863034b56f070",
-      "summary": "Design the state layer of a multiplayer game — what the host owns, how clients request changes, and how the host validates and broadcasts.",
+      "version": "1.0.0",
+      "content_hash": "87e5c785ec8919de1e364765a0913274d0d63771f024f35859a9f151fd3e62d8",
+      "summary": "Sell items for Sparks and let short players buy Sparks in game via the Summer purchase sheet: checkout, Sparks purchase, results, testing, store policy.",
       "use_when": [
-        "designing the state layer of a multiplayer Summer game: host ownership, client change requests, host validation and broadcast",
-        "clients desync, cheat, or fight over one object and the state ownership model is undefined"
+        "adding a shop, buy button or paid item to a Summer game and wiring request_checkout",
+        "a checkout was rejected with insufficient_funds and the player should be able to buy Sparks without leaving the game",
+        "deciding whether an item should be sold for Sparks, or handling pending, declined, expired, rejected or manual_review purchase results"
       ],
       "facets": {
         "lifecycle": [
           "build"
         ],
         "domains": [
-          "multiplayer",
+          "gameplay",
+          "scripting",
           "game-design"
         ],
         "modalities": [
-          "scripts",
-          "scenes"
+          "scripts"
         ]
       },
       "compatibility": {
@@ -1755,12 +1921,12 @@
       },
       "related": {
         "skills": [
-          "skill/peer-to-peer-multiplayer",
-          "skill/setup-multiplayer"
+          "skill/multiplayer-state",
+          "skill/ui-basics"
         ]
       },
-      "status": "stable",
-      "recommended": true
+      "status": "preview",
+      "recommended": false
     },
     {
       "id": "skill/instantiate-asset-pack",
@@ -1869,12 +2035,13 @@
     {
       "id": "skill/make-game",
       "kind": "skill",
-      "version": "1.0.3",
-      "content_hash": "03a6d9893371b1fd8f6b27cb7e7da2aab59c210b86fc8675cae68b982493c300",
+      "version": "1.1.0",
+      "content_hash": "470ad99e15eaad332d1fa343dbb0e951ab4b1b9d031024df1ac236db595081cc",
       "summary": "Orchestration spine for 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship — delegates to specialist skills.",
       "use_when": [
         "the user says 'make me a game', 'build me a game', 'I want to make a [genre] game', or 'let's build something' — running the full game-dev pipeline",
-        "the user wants a complete playable game end to end, from brainstorm through shipping"
+        "the user wants a complete playable game end to end, from brainstorm through shipping",
+        "the user names a genre — platformer, survivors, top-down RPG, FPS, third-person, horror — and the build needs its architecture and build order"
       ],
       "facets": {
         "lifecycle": [
@@ -1902,11 +2069,270 @@
           "skill/brainstorm-game",
           "skill/new-project",
           "skill/play",
-          "skill/scene-composition"
+          "skill/scene-composition",
+          "skill/character-movement",
+          "skill/camera-rigs",
+          "skill/combat-basics",
+          "skill/save-load"
         ]
       },
       "status": "stable",
       "recommended": true
+    },
+    {
+      "id": "skill/multiplayer",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "7a7212fba4b1aee4d9c9e5649b2ade77836829e6d9409e010b9731d79232305b",
+      "summary": "Start here for Summer multiplayer: how the authority, clients, Worlds and Sessions fit, and which skill comes next.",
+      "use_when": [
+        "the user wants multiplayer, co-op, PvP, online play over the internet, or to play with friends in a Summer game",
+        "the user asks for peer-to-peer, a player-hosted server, host migration, join-by-IP or a lobby",
+        "deciding how a multiplayer Summer game is structured before writing networking code",
+        "a multiplayer game was built with @rpc or MultiplayerSynchronizer and needs moving to Summer's networking"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "project"
+        ],
+        "modalities": [
+          "scripts",
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer-project",
+          "skill/multiplayer-movement",
+          "skill/multiplayer-state",
+          "skill/multiplayer-testing",
+          "skill/multiplayer-publish",
+          "skill/summer-matchmaking",
+          "skill/summer-player-data"
+        ]
+      },
+      "status": "stable",
+      "recommended": true
+    },
+    {
+      "id": "skill/multiplayer-movement",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "ab68306636a6916030e4c1a6c3e06fb41cefb13bb1b47a5c2f0fa08e24067508",
+      "summary": "Client-side movement in Summer multiplayer: owners move instantly, others glide, the authority checks each pose.",
+      "use_when": [
+        "moving players in a Summer multiplayer game: each player's own character, other players drawn smoothly",
+        "remote players stutter, jitter, teleport or rubberband in a Summer multiplayer game",
+        "stopping speed hacks and teleport cheats on player movement; respawning or teleporting a player on purpose"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "character-controller",
+          "scripting"
+        ],
+        "modalities": [
+          "scripts",
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-project",
+          "skill/multiplayer-state",
+          "skill/multiplayer-testing"
+        ]
+      },
+      "status": "stable",
+      "recommended": false
+    },
+    {
+      "id": "skill/multiplayer-project",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "8adf72332e33f20842ea8f3f008b9704dd28aa25b923bdbf0f80109dcea2b400",
+      "summary": "Set up a Summer multiplayer project: both entry scenes, World and queue files, joining, and a first Local Play run.",
+      "use_when": [
+        "making a Summer game playable online or co-op: the first multiplayer setup",
+        "adding multiplayer to a Summer game: the client and authority scenes, summer.build.json, world.json and joining a queue",
+        "a Summer multiplayer project has no summer.build.json or world.json yet, or Local Play cannot find the World",
+        "laying out a multiplayer project in client/, authority/ and network/ folders"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "project",
+          "scripting"
+        ],
+        "modalities": [
+          "scripts",
+          "scenes",
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-movement",
+          "skill/multiplayer-state",
+          "skill/multiplayer-testing",
+          "skill/multiplayer-publish",
+          "skill/summer-matchmaking",
+          "skill/summer-parties",
+          "skill/summer-world-saves"
+        ]
+      },
+      "status": "stable",
+      "recommended": false
+    },
+    {
+      "id": "skill/multiplayer-publish",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "52117117e661cbd898d4faece8f72ef2304118999c80bce55a709619e8cec289",
+      "summary": "Ship a hosted Summer multiplayer game: the summer.games bundle, server preset, pre-upload checks, and a new Build.",
+      "use_when": [
+        "publishing a hosted Summer multiplayer game online so other players can join it",
+        "making the summer.games bundle of a hosted game: client.pck, server.pck and the Linux server preset",
+        "a summer.games export error mentions summer.build.json, WorldDefinitions, the server preset, the composition or the source graph"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch"
+        ],
+        "domains": [
+          "multiplayer",
+          "deployment"
+        ],
+        "modalities": [
+          "project",
+          "docs"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-project",
+          "skill/multiplayer-testing"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
+      "id": "skill/multiplayer-state",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "64c1639093e7d51a39125236270278799fcddc42dab98cdf3d2649deec09d912",
+      "summary": "Authority-owned game state in Summer multiplayer: shared and private State groups, validated Commands, and Events.",
+      "use_when": [
+        "score, health, doors, rounds, inventories or wallets in a Summer multiplayer game, and who owns them",
+        "players need to collect, buy, use, open or trade things and the authority must validate it",
+        "clients desync, cheat or double-spend; sending one-off effects to every player"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "game-design",
+          "scripting"
+        ],
+        "modalities": [
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-movement",
+          "skill/multiplayer-testing",
+          "skill/summer-player-data",
+          "skill/summer-match-results",
+          "skill/multiplayer-project",
+          "skill/summer-analytics",
+          "skill/summer-store",
+          "skill/summer-world-chat",
+          "skill/summer-world-saves"
+        ]
+      },
+      "status": "stable",
+      "recommended": false
+    },
+    {
+      "id": "skill/multiplayer-testing",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "2226c9c44379c14c5e7693beb8957eab212c721206fbc272297ed9e284d764fc",
+      "summary": "Test a Summer multiplayer game with Local Play: several players, a bad network, bots, and what a passing run shows.",
+      "use_when": [
+        "running or testing a Summer multiplayer game locally with several players (Local Play)",
+        "testing multiplayer under latency, jitter or packet loss, or with bots",
+        "a multiplayer run says ok but nothing networked works, or deciding whether a multiplayer change is done"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build",
+          "support"
+        ],
+        "domains": [
+          "multiplayer",
+          "playtest",
+          "verification"
+        ],
+        "modalities": [
+          "scripts",
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-project",
+          "skill/multiplayer-movement",
+          "skill/multiplayer-state",
+          "skill/multiplayer-publish",
+          "skill/summer-friends",
+          "skill/summer-match-results",
+          "skill/summer-matchmaking",
+          "skill/summer-parties",
+          "skill/summer-player-data",
+          "skill/summer-store",
+          "skill/summer-world-chat"
+        ]
+      },
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/music-track",
@@ -1947,7 +2373,7 @@
       "id": "skill/navigate-summer",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "8fdf4a979ef8e40412fa23974097251937dbd5a553490be8b09842e5c7868b6f",
+      "content_hash": "261e7a6fc82faab880e61723cf39459596a7edaeabb90059c43c1d97c2fca079",
       "summary": "When to open a Summer web page or editor surface FOR the user (billing, their games, the scene just built) versus acting through the API, using summer_open.",
       "use_when": [
         "the user asks to see, check, or decide something — \"show me my billing\", \"where do I change my plan\", \"open my games\", \"let me look at the scene\", \"take me to the MCP guide for Cursor\"",
@@ -2057,41 +2483,6 @@
       },
       "status": "stable",
       "recommended": false
-    },
-    {
-      "id": "skill/peer-to-peer-multiplayer",
-      "kind": "skill",
-      "version": "1.0.4",
-      "content_hash": "f2d1e457a4d3bb3614513f164eac64f3b80b955c1a4d4383a85ed32102b0b593",
-      "summary": "Start a multiplayer game from scratch with peer-to-peer host authority — network architecture built top-down, before writing game logic.",
-      "use_when": [
-        "starting a multiplayer Summer game from scratch with peer-to-peer host authority, before writing game logic",
-        "I want to play co-op or online with friends and the game doesn't exist yet"
-      ],
-      "facets": {
-        "lifecycle": [
-          "build"
-        ],
-        "domains": [
-          "multiplayer",
-          "project"
-        ],
-        "modalities": [
-          "scripts",
-          "scenes"
-        ]
-      },
-      "compatibility": {
-        "engine": ">=4.6"
-      },
-      "related": {
-        "skills": [
-          "skill/host-authoritative-state",
-          "skill/setup-multiplayer"
-        ]
-      },
-      "status": "stable",
-      "recommended": true
     },
     {
       "id": "skill/pixel-art",
@@ -2206,8 +2597,8 @@
     {
       "id": "skill/procedural-animation",
       "kind": "skill",
-      "version": "1.0.3",
-      "content_hash": "a4477d07d5ca297411ed891f6376c345b421db43426d70714536ac80d13ae0db",
+      "version": "1.0.4",
+      "content_hash": "476eac45175a9151cac7b2553624e7e541fbb8eb03c01236d27f82721e12320a",
       "summary": "Runtime bone modification on top of clips — head look-at, foot IK, hand-grabs-prop, additive lean, recoil. Code-and-modifier patterns, not generation.",
       "use_when": [
         "the user needs runtime-driven bone modification on top of clips — head look-at, foot IK on uneven ground, additive lean, hit recoil, ragdoll",
@@ -2323,7 +2714,7 @@
       "id": "skill/realtime-wet-surfaces",
       "kind": "skill",
       "version": "0.1.1",
-      "content_hash": "8a68e4c27f459ed819e84096d6f7d79dba1a695b6289215870971089333488d7",
+      "content_hash": "58eeea92f8afdf663cda02d5889e0d50f86d51e27a94be5ad3477202a2354eab",
       "summary": "Real-time wetness on existing Godot 4 materials without losing their values — value-copying wet shader, geometry-driven wet mask, instance-uniform wet amount.",
       "use_when": [
         "make surfaces look wet when it rains and dry off afterwards",
@@ -2459,6 +2850,42 @@
         ]
       },
       "status": "stable",
+      "recommended": false
+    },
+    {
+      "id": "skill/save-load",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "2435b5bfa043c8615accb4eec56c674f57857eec7948a5249e7c51c964d2497f",
+      "summary": "Persist game state in Summer Engine: user:// paths, JSON progress vs ConfigFile settings, a versioned save schema with migration, autosave hooks.",
+      "use_when": [
+        "persisting progress, settings, high scores, checkpoints, or save slots",
+        "deciding between JSON and ConfigFile for a save or settings file",
+        "making saves survive game updates with a schema version and migration"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scripting",
+          "gameplay"
+        ],
+        "modalities": [
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/make-game",
+          "skill/gdscript-patterns",
+          "skill/ui-basics"
+        ]
+      },
+      "status": "preview",
       "recommended": false
     },
     {
@@ -2634,41 +3061,6 @@
       },
       "status": "stable",
       "recommended": false
-    },
-    {
-      "id": "skill/setup-multiplayer",
-      "kind": "skill",
-      "version": "1.0.4",
-      "content_hash": "ee3d07414b86884052f9bfa231158579401a0bfdbe33758bc673d265c3028ba1",
-      "summary": "Add multiplayer to an existing game — LAN/online co-op, PvP, lobbies — via MultiplayerAPI, MultiplayerSpawner, and MultiplayerSynchronizer.",
-      "use_when": [
-        "adding multiplayer to an existing Summer game: co-op LAN, co-op online, competitive PvP, or a lobby",
-        "a solo game needs LAN co-op, online co-op, versus play, or a lobby added"
-      ],
-      "facets": {
-        "lifecycle": [
-          "build"
-        ],
-        "domains": [
-          "multiplayer",
-          "scripting"
-        ],
-        "modalities": [
-          "scripts",
-          "scenes"
-        ]
-      },
-      "compatibility": {
-        "engine": ">=4.6"
-      },
-      "related": {
-        "skills": [
-          "skill/peer-to-peer-multiplayer",
-          "skill/host-authoritative-state"
-        ]
-      },
-      "status": "stable",
-      "recommended": true
     },
     {
       "id": "skill/skill-create",
@@ -2881,14 +3273,17 @@
     {
       "id": "skill/spatial-placement",
       "kind": "skill",
-      "version": "1.0.1",
-      "content_hash": "e3732df29c8e090b287e25e00aaf0085af43e54e197e60cbb8bdf2dbb695d552",
-      "summary": "Place and verify 3D objects with Starcast evidence — inspect, place, starcast, correct, verify; floor, shelf, wall, alcove recipes and overlap repair.",
+      "version": "1.1.0",
+      "content_hash": "02202a4c162e804d386de6a87960e03dafc972ab3b32466a2bc358ba2be71b74",
+      "summary": "Place 3D objects and modular kit pieces from measured geometry — inspect, place, starcast, measure, correct; floor, wall, facade, pipe and alcove recipes.",
       "use_when": [
         "positioning a prop, character, collider, or platform so it sits flush, avoids overlap, or keeps clearance",
         "placing something against a wall, inside an alcove, or on a shelf and needing to know which side is blocked and by how much",
         "repairing an overlap or a floating object after a placement",
-        "post-placement checks on a rotated prop using its own local axes"
+        "post-placement checks on a rotated prop using its own local axes",
+        "placing modular kit pieces — facade or wall modules edge to edge, storeys stacked, pipes, gutters and lamps on a wall, clamps along a pipe",
+        "measuring a kit piece's size, origin and which way it faces before placing it",
+        "checking that a facade line is flush, with no gaps and no module standing proud"
       ],
       "facets": {
         "lifecycle": [
@@ -2911,6 +3306,17 @@
       "related": {
         "tools": [
           "tool/starcast",
+          "tool/inspect-asset",
+          "tool/place-adjacent",
+          "tool/attach-to-surface",
+          "tool/repeat-along",
+          "tool/connect-ports",
+          "tool/raycast",
+          "tool/measure",
+          "tool/instantiate-scene",
+          "tool/test-placement",
+          "tool/snap-to-surface",
+          "tool/align-distribute-3d",
           "tool/get-scene-tree",
           "tool/inspect-node",
           "tool/set-prop",
@@ -2961,6 +3367,394 @@
         ]
       },
       "status": "stable",
+      "recommended": false
+    },
+    {
+      "id": "skill/summer-analytics",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "7558853177577fbd5998c1aaf2dd5ce4710c7b0249bae5c434454d6ab48fcad5",
+      "summary": "Send game events to Summer analytics from the authority or client: fire-and-forget, never blocking gameplay.",
+      "use_when": [
+        "adding analytics, telemetry or event tracking to a Summer game: level completed, coin collected, tutorial funnel",
+        "deciding what to track on the client versus the authority, and how to name analytics events and properties",
+        "analytics capture fails with unavailable, capacity_exceeded or analytics_storage_limit_exceeded"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "scripting"
+        ],
+        "modalities": [
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-state",
+          "skill/summer-match-results",
+          "skill/summer-store"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
+      "id": "skill/summer-friends",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "ca70bb388a30e216ef2eb9ccd52feb7cb4a442724478bad4bf547131b846a4b4",
+      "summary": "Summer friends in a game: a consented friends list, profile and chat screens, direct messages. Hosted only.",
+      "use_when": [
+        "showing a friends list, who is online or which friends are playing this Summer game",
+        "opening a player's Summer profile, friends list or chat screen from inside a game",
+        "reading or writing a player's direct messages, or a friends call fails with permission_undeclared or permission_declined"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "ui"
+        ],
+        "modalities": [
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-testing",
+          "skill/summer-parties",
+          "skill/summer-world-chat"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
+      "id": "skill/summer-leaderboards",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "87cceb28b1893d024d24842332ff5059a73682acd46690aad60e3118419bd35e",
+      "summary": "Leaderboards in a Summer game: queue ratings from matches, and Game rankings your authority scores.",
+      "use_when": [
+        "the user wants a leaderboard, high scores, ranks, MMR, Elo or a 'top 50' screen in a Summer game",
+        "a rated queue should show each player's rating, standing or percentile",
+        "the authority should write a score, such as total coins or best time, to a Game-wide ranking",
+        "a co-op mode should rate players against the content with authority_v1 rating deltas"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "ui"
+        ],
+        "modalities": [
+          "scripts",
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/summer-matchmaking",
+          "skill/summer-match-results",
+          "skill/summer-player-data"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
+      "id": "skill/summer-match-results",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "d9c6d8e2ade6cbbf61841a30e92781ecea81dfa58c1859847a5be9afacb3e2fd",
+      "summary": "End a Summer match: report each player's win, loss or draw, show results on clients, then close the World.",
+      "use_when": [
+        "a multiplayer Summer game needs a winner, a game-over screen or a match that ends",
+        "reporting match outcomes, abandons or rating changes from the authority",
+        "players disconnect, reconnect or leave mid-match and the authority must handle it",
+        "the World should shut down after a match, or a persistent World runs several matches"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "gameplay"
+        ],
+        "modalities": [
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-state",
+          "skill/summer-matchmaking",
+          "skill/summer-leaderboards",
+          "skill/summer-world-saves",
+          "skill/multiplayer-testing",
+          "skill/summer-analytics"
+        ]
+      },
+      "status": "stable",
+      "recommended": false
+    },
+    {
+      "id": "skill/summer-matchmaking",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "3a8abe0ad4c52f564c271c3bf1a7586a9944ab99877f2f337a67fe8f6e186f50",
+      "summary": "Get players into matches with Summer matchmaking: queues, teams, accept prompts, join progress and failures.",
+      "use_when": [
+        "the user wants matchmaking, a lobby, a play button, quick play, ranked or casual modes in a multiplayer Summer game",
+        "declaring queues, player counts, teams (2v2, 5v5), rated queues or a ready check in summer.build.json",
+        "showing search progress, an Accept/Decline prompt, cancel search or join errors to players",
+        "the authority needs to know which team or queue each player is on"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "ux"
+        ],
+        "modalities": [
+          "scripts",
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-project",
+          "skill/multiplayer-testing",
+          "skill/summer-match-results",
+          "skill/summer-leaderboards",
+          "skill/summer-parties"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
+      "id": "skill/summer-parties",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "88bab0e56dc6dc3ea83873e464531f170b15a0845cfcb8747925f7fe29216c80",
+      "summary": "Let a Summer party play together: the leader presses Play, members follow into the same match. Hosted only.",
+      "use_when": [
+        "friends in a Summer party should land in the same multiplayer match: party play, play with friends, squad up",
+        "adding invite-friends and party buttons, a party roster or ready checks to a Summer game's menu",
+        "a party join fails with party_member_offline, party_not_searching or capability_unavailable"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "ui"
+        ],
+        "modalities": [
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-project",
+          "skill/multiplayer-testing",
+          "skill/summer-matchmaking",
+          "skill/summer-friends",
+          "skill/summer-world-chat"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
+      "id": "skill/summer-player-data",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "d65a852315fc4c0e3d3a1c59dd2af7653d3ea5209dbbd34fabaddc18827cb21b",
+      "summary": "Save a player's progress so it follows them to every match: authority load and commit, autosave, safe retries.",
+      "use_when": [
+        "saving player progress, coins, unlocks, levels or settings in a multiplayer Summer game so they persist between matches",
+        "a player's progress resets every match, or saves fail with save_id_conflict, superseded or operation_in_progress",
+        "showing a player's saved progress in the menu before they join a match"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "scripting"
+        ],
+        "modalities": [
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-state",
+          "skill/multiplayer-testing",
+          "skill/summer-world-saves",
+          "skill/summer-leaderboards",
+          "skill/summer-store"
+        ]
+      },
+      "status": "stable",
+      "recommended": false
+    },
+    {
+      "id": "skill/summer-store",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "70d4d2e36f10a1d5a72ed2f3e8a833d3514324e86fb4ee727f605e81cc6cf82b",
+      "summary": "Sell Summer items for Sparks in a multiplayer game: shop, checkout, owned items, authority entitlement checks.",
+      "use_when": [
+        "adding a shop, in-game purchases, cosmetics or skins sold for Sparks to a Summer game",
+        "checking on the authority that a player really owns an item before letting them use or equip it",
+        "checkout shows pending, manual_review, insufficient_funds or unavailable, or bought items don't appear"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "gameplay"
+        ],
+        "modalities": [
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-state",
+          "skill/multiplayer-testing",
+          "skill/summer-player-data",
+          "skill/summer-analytics"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
+      "id": "skill/summer-world-chat",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "dda281f1379c3be5814bc3bd81417efd3ba4ba2891691e911d64172fb8da2475",
+      "summary": "Add match chat to a Summer game: one World channel shared by everyone in the match. Hosted only.",
+      "use_when": [
+        "adding in-game text chat, match chat or a chat box to a multiplayer Summer game",
+        "chat messages fail with text_not_allowed, rate_limited or unavailable, or chat history looks incomplete",
+        "deciding where player chat should live instead of sending it through Commands or State"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "ui"
+        ],
+        "modalities": [
+          "scripts",
+          "ui"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-state",
+          "skill/multiplayer-testing",
+          "skill/summer-friends",
+          "skill/summer-parties"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
+      "id": "skill/summer-world-saves",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "46ca59c7ae9612cfa6d37c61e8e28789cca3920d823973393e36ea80c72d853c",
+      "summary": "Keep a persistent Summer World between restarts: checkpoint saves, restore before join, the final save.",
+      "use_when": [
+        "building a persistent World, shared base, farm or realm in a Summer game that must survive server restarts",
+        "saving and restoring World state with commit_save, load_save, finish_restore, save_requested or finish_snapshot",
+        "deciding whether progress belongs in a World save or in player data"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "multiplayer",
+          "scripting"
+        ],
+        "modalities": [
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-project",
+          "skill/multiplayer-state",
+          "skill/summer-player-data",
+          "skill/summer-match-results"
+        ]
+      },
+      "status": "preview",
       "recommended": false
     },
     {
@@ -3121,7 +3915,7 @@
       "id": "skill/ui-basics",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "bf47fc665ffdeed28b82b7fe82a066e27a811bcdadea433c72ceba200b6243f9",
+      "content_hash": "c725af703d014a7c6db43889db82077834231fbd3e4549f91b6b74af7ceaa20b",
       "summary": "Build Summer Engine UI — HUDs, menus, health bars, dialogue boxes, Control trees — anchors, containers, responsive layout, theme vs inline styling.",
       "use_when": [
         "building Summer Engine UI: HUDs, main menus, pause menus, health bars, progress bars, dialogue boxes, or any Control-node tree",
@@ -3223,8 +4017,8 @@
     {
       "id": "skill/using-summer",
       "kind": "skill",
-      "version": "1.0.4",
-      "content_hash": "27980a37339ff2b75dd53ebf0fe39561a48ae3103f82b3aa7b96ce53ec45bfe9",
+      "version": "1.0.5",
+      "content_hash": "f2ab3f7a5ab1d593b2f7f3cbca7c8b9e5bc4162caae67ce9a2183ec520cd7564",
       "summary": "Session bootstrap for Summer projects — establishes how to find and use Summer skills and the summer-engine MCP before any response.",
       "use_when": [
         "starting any conversation in a Summer Engine project",
@@ -3256,7 +4050,7 @@
           "skill/debug",
           "skill/design-mechanic",
           "skill/design-level",
-          "skill/setup-multiplayer",
+          "skill/multiplayer",
           "skill/art-direction",
           "skill/brainstorm-game",
           "skill/play",
@@ -3339,14 +4133,19 @@
     {
       "id": "skill/verifying-scenes",
       "kind": "skill",
-      "version": "1.1.1",
-      "content_hash": "9753f7e9486dcb368969a8be4fd93187157a051349f020af2670705fedce4d57",
-      "summary": "Prove scene work landed — snapshot before, diff + screenshot after (bookmarked viewpoint, labels), live runtime reads during playtests — then claim.",
+      "version": "1.5.0",
+      "content_hash": "ba03998253f61ed6a4ea7a0e21c2a9a04a52ae6e8f8879b8b38ce09abd56a2bf",
+      "summary": "Prove scene work landed (snapshot, diff, screenshots, runtime reads), audit 3D scenes for holes and misplacement, review them with shot sheets and zooms.",
       "use_when": [
         "after any mutation batch, asset import, or lighting change, before claiming it worked",
         "during a playtest, to read live runtime state (spawned nodes, actual stats) without stopping the game",
         "deciding what counts as evidence for a visual or structural claim",
-        "taking before/after screenshots from the same saved camera viewpoint, or an annotated screenshot whose numbered labels map to node paths"
+        "taking before/after screenshots from the same saved camera viewpoint, or an annotated screenshot whose numbered labels map to node paths",
+        "\"make this environment beautiful\" / reviewing a level like an artist: hero views, a shot sheet after each change, debug views of the weakest shot, zooms into problems",
+        "finding good camera views automatically (establishing, player eye level, low-angle hero, detail, down a lane)",
+        "after each build stage of a 3D scene and before calling it done - run the scene audit, then frame every error and look item up close",
+        "open band ends and seams on a facade, a gap in a band, a duct missing its elbow - the audit's exposed_edge, depth_step and open_fixture_end checks",
+        "accepting the audit's look items you judged fine so later audits stop repeating them"
       ],
       "facets": {
         "lifecycle": [
@@ -3373,7 +4172,13 @@
           "tool/screenshot",
           "tool/wait-for-event",
           "tool/recent-events",
-          "tool/camera-bookmark"
+          "tool/camera-bookmark",
+          "tool/frame-nodes",
+          "tool/shot-sheet",
+          "tool/debug-views",
+          "tool/zoom",
+          "tool/frame-shot",
+          "tool/scene-audit"
         ],
         "skills": [
           "skill/scene-scripting",
@@ -3730,10 +4535,86 @@
       "recommended": true
     },
     {
+      "id": "skill/web-and-touch-input",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "5a67ec23a03e1162725652d09af7458f47070e66e80040ef671eb22da334cbe8",
+      "summary": "Input for the browser and phones: the first-click rule for sound and mouse capture, focus, and touch buttons or a virtual stick on the same actions.",
+      "use_when": [
+        "the game plays in the browser and sound, mouse capture or keys do not work until something is clicked",
+        "the game should be playable on a phone or tablet with touch controls",
+        "adding a virtual joystick, on-screen buttons or touch camera controls"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "gameplay",
+          "ui"
+        ],
+        "modalities": [
+          "scenes",
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/make-game",
+          "skill/character-movement",
+          "skill/ui-basics"
+        ]
+      },
+      "status": "preview",
+      "recommended": true
+    },
+    {
+      "id": "skill/web-compatibility-look",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "f8649a98317c623e77f7b3d390d03b2317d1a455cecba707ea940467be8567a3",
+      "summary": "Make a web or browser game look high-end in the Compatibility renderer (WebGL 2): what works, what to avoid, 2D and 3D recipes, web performance.",
+      "use_when": [
+        "the game plays in the browser or is exported for the web and must look finished",
+        "the look is flat, grey or default in the web preview, or a Forward+ feature does nothing there",
+        "choosing lighting, fog, glow, shaders or post effects for a web or Compatibility project"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "rendering",
+          "2d",
+          "3d"
+        ],
+        "modalities": [
+          "scenes",
+          "shaders"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/3d-lighting",
+          "skill/art-direction",
+          "skill/tune-performance",
+          "skill/ui-basics"
+        ]
+      },
+      "status": "preview",
+      "recommended": true
+    },
+    {
       "id": "skill/world-building-3d",
       "kind": "skill",
-      "version": "1.1.0",
-      "content_hash": "06ad6af0062e89cd4e1ec28560b758091761400fdee708f0005ae534ad766b2a",
+      "version": "1.1.1",
+      "content_hash": "c39021254fa26dcd20ffc1bf584c2ec51b0615c905e8eb81f03b4f284adcafd3",
       "summary": "Compose, ground, space, and validate 3D scenes with Summer's four bounded spatial tools — exact paths, one geometric decision at a time, verified.",
       "use_when": [
         "placing or grounding props on floors, shelves, ramps, or tables without hand-tuning transforms",
@@ -4102,8 +4983,8 @@
     {
       "id": "template/3d-lan-multiplayer-starter",
       "kind": "template",
-      "version": "1.0.1",
-      "content_hash": "8f42570dce914bdc5420a27aaace5331183b8c837c4a0dbac4e81a04f8aa9ebc",
+      "version": "1.0.2",
+      "content_hash": "846fc27f210946148cd76a3168095a8c700fc345eb60eac099179668483be4bd",
       "summary": "3D LAN multiplayer starter built on GDQuest's open-source work — host/join flow and synced players.",
       "use_when": [
         "starting a LAN or local multiplayer 3D game",
@@ -4121,7 +5002,7 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable"
+      "status": "deprecated"
     },
     {
       "id": "template/3d-open-world-explore-tps",
@@ -4416,14 +5297,65 @@
       }
     },
     {
+      "id": "tool/attach-to-surface",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "e2207bbdab1a86f499382d89314fc48ea501080d814f15ffdfb9d06b47f047db",
+      "summary": "Mount a piece on a wall, ceiling or floor — turn its measured back into the surface found by a ray, keep it upright, seat it at a standoff. Saves the scene.",
+      "use_when": [
+        "mounting a downpipe, gutter, lamp, AC unit, sign or fire escape on a facade",
+        "turning a piece so its back faces a wall instead of guessing its rotation",
+        "seating a piece against a surface at an exact standoff"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "3d",
+          "world-building",
+          "level-design"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/raycast",
+          "tool/snap-to-surface",
+          "tool/inspect-asset",
+          "tool/starcast"
+        ],
+        "skills": [
+          "skill/spatial-placement"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_attach_to_surface",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
       "id": "tool/batch",
       "kind": "tool",
-      "version": "1.0.3",
-      "content_hash": "7542d9351dd1a04341338444731dff558f440a565d3e323278d70a97407ad568",
-      "summary": "Run multiple engine ops in one call, forwarded verbatim; one undo step unless single-only ops force a split (then one per chunk). Also reaches raw ops.",
+      "version": "1.1.0",
+      "content_hash": "ec6fa446a214a15c5562061ba0f39072f698ea69243e4326e4931683bc62f286",
+      "summary": "Run engine ops in one call, verbatim; one undo step unless single-only ops split it. ReparentNode keeps and verifies its subtree; raw ConnectSignal is refused.",
       "use_when": [
         "multi-node builds that should undo as one step (no single-only ops in the list)",
-        "reaching engine ops that have no dedicated tool"
+        "reaching engine ops that have no dedicated tool",
+        "placing many kit pieces, one InstantiateScene op per piece with its position and rotation, read back with receipt summary"
       ],
       "facets": {
         "lifecycle": [
@@ -4565,11 +5497,59 @@
       }
     },
     {
+      "id": "tool/connect-ports",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "d3423ce431ff8bde3f0f288d5b4bf47788fca541694390168f0b31baff40a45a",
+      "summary": "Join one piece's port (a Marker3D, or an open pipe end id such as '+Y') to another's, facing it; refuses joins that tilt the piece. Saves the scene.",
+      "use_when": [
+        "joining a pipe, duct or gutter section end to end with the previous one",
+        "fitting a bend, funnel or outlet onto a run",
+        "snapping any two pieces together by named Marker3D anchors"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "3d",
+          "world-building"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/inspect-asset",
+          "tool/attach-to-surface",
+          "tool/measure"
+        ],
+        "skills": [
+          "skill/spatial-placement"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_connect_ports",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
       "id": "tool/connect-signal",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "7859bd208995ccb9cf3a6a8220ad97462d90c99a29e2d685854f0374691d0f2f",
-      "summary": "Connect a signal between two nodes; the receiver's script must define the target method.",
+      "version": "1.1.0",
+      "content_hash": "d37c9147743f97b9cd6f3acd1e287ef2af7df20b273c48dca05bb6cb427d236f",
+      "summary": "Connect a signal between two nodes so the saved scene keeps it (CONNECT_PERSIST, verified from the saved .tscn); the receiver should define the target method.",
       "use_when": [
         "wiring events like body_entered, pressed, or timeout",
         "\"when the button is pressed, call my function\"",
@@ -4704,9 +5684,9 @@
     {
       "id": "tool/creator-publish",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "5ced82fe5442354df55ef381c4284029142441fd462bc7a695c2e5853c3817f3",
-      "summary": "Publish an exported Summer .pck through the versioned Summercraft creator API, with an explicit confirm step before upload.",
+      "version": "1.1.0",
+      "content_hash": "0f62b7444688a0b5724b1d992a7f8aa20dbd138503aaeac02bc5fec242e899a4",
+      "summary": "Deprecated: publishes a .pck to the legacy Summercraft API. Use summer_export_game, then summer_publish_build, to upload to summer.games.",
       "use_when": [
         "releasing a user-approved build to a Summercraft channel",
         "\"ship this exported build to the live channel\"",
@@ -4724,7 +5704,7 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable",
+      "status": "deprecated",
       "mcp_tool_name": "summer_creator_publish",
       "remote": false,
       "cli_command": "summer publish",
@@ -4740,7 +5720,7 @@
       "id": "tool/creator-releases",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "75e19a8b5e872d42d9b52ae255cf55b24f7d455323d028cfa0856abf955cb0b5",
+      "content_hash": "7f807ae2bc66110570ee19351d3493e71f7f9e2bd327fb83b2eac53c1bfc8789",
       "summary": "List creator-owned releases from the Summercraft creator API with server-verified scope and ownership.",
       "use_when": [
         "reviewing which versions of a project are live per channel",
@@ -4765,6 +5745,128 @@
       "cli_command": "summer releases",
       "authority": {
         "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/debug-views",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "deb767453ff63dcacf4b92208baa69b49b1b15b7d3d557b1c23f839a3d45c9f8",
+      "summary": "One pose as a grid of beauty, lighting-only, unshaded/albedo, world normals, overdraw and wireframe views.",
+      "use_when": [
+        "understanding WHY a shot reads badly: light direction and pools, texture/value balance, normal seams, overdraw hot spots, triangle density",
+        "checking floating or duplicated geometry, flipped normals or missing light in one framed view",
+        "judging an environment like an artist, on the weakest shot of a sheet"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "verification",
+          "scenes",
+          "3d"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/shot-sheet",
+          "tool/zoom",
+          "tool/frame-shot",
+          "tool/camera-bookmark"
+        ],
+        "skills": [
+          "skill/verifying-scenes"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_debug_views",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/export-game",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "211be00e329de60498da0ae132721202b0efac9617d3a9bc440f44a1fdd51382",
+      "summary": "Export the game in the exact file the Summer Games store takes per platform (iPhone, Android, macOS, Windows bundle; web build; desktop download), headless.",
+      "use_when": [
+        "\"export my game for summer.games\"",
+        "\"make a build I can upload to my store page\"",
+        "\"export my game for iPhone and Android on Summer Games\"",
+        "\"make a web build of my game for summer.games\"",
+        "\"export a Mac or Windows download for my store page\"",
+        "preparing the bundle that summer_publish_build uploads"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch"
+        ],
+        "domains": [
+          "creator",
+          "deployment",
+          "headless"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_export_game",
+      "remote": true,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/export-templates",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "df384233563daadc6ed0c1edef6169f63fc7aea0307f53df4b3ae75aaef1c2ea",
+      "summary": "List and install Summer Engine export templates (Summer's WebGPU Forward+ web template, macOS, Windows) from Summer's CDN, sha256-checked.",
+      "use_when": [
+        "\"install the web export template\"",
+        "\"summer_export_game says an export template is missing\"",
+        "\"which export templates do I have\"",
+        "before a web build or a macOS/Windows download export on a machine whose Summer Engine does not bundle that template"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch"
+        ],
+        "domains": [
+          "creator",
+          "deployment"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_export_templates",
+      "remote": true,
+      "authority": {
+        "filesystem": true,
         "editor_mutation": false,
         "network": true,
         "credentials": false,
@@ -4827,6 +5929,107 @@
       "authority": {
         "filesystem": true,
         "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/frame-nodes",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "4a6c94a6ad6dc741d4283434dbdd6d46a8c356793694007623ed0556024eba1b",
+      "summary": "Frame nodes by their world bounds and render with the scene's REAL environment and lights (optionally save the pose as a bookmark).",
+      "use_when": [
+        "\"show me the houses/props with the real lighting\" — fit a camera to one or more nodes and render it with the scene's WorldEnvironment",
+        "framing a node from a chosen side (front/back/left/right/top/iso or an explicit direction) for a lighting or mood check; an explicit direction is checked for walls and back faces between the camera and the nodes",
+        "creating a hero-view bookmark that fits a group of nodes, so later shot sheets and compares line up"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "verification",
+          "scenes",
+          "3d"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/screenshot",
+          "tool/camera-bookmark",
+          "tool/shot-sheet",
+          "tool/frame-shot",
+          "tool/zoom"
+        ],
+        "skills": [
+          "skill/verifying-scenes"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_frame_nodes",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/frame-shot",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "896345ba57bd0d99d3d3fd2c721ee05866686c3450f9f8ec61bad24157c15cd3",
+      "summary": "Smart framing: find, score and bookmark camera poses for a shot type (establishing, eye level, low-angle, detail, corridor) with in-engine visibility tests.",
+      "use_when": [
+        "\"find a good view of X\" / \"frame an establishing shot\" / \"show it from the player's eye\" / \"look down the street\"",
+        "choosing hero views to bookmark for an environment review loop",
+        "checking whether walls or terrain block the view of a subject, and which props frame it (a camera behind or inside a one-sided wall is rejected; transparent foliage and glass are see-through cover)",
+        "three different establishing views at once (one per side while the score allows), scored on the key light's direction and the world edge below the horizon"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "verification",
+          "scenes",
+          "3d"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/shot-sheet",
+          "tool/camera-bookmark",
+          "tool/frame-nodes",
+          "tool/debug-views",
+          "tool/zoom"
+        ],
+        "skills": [
+          "skill/verifying-scenes"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_frame_shot",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
         "network": false,
         "credentials": false,
         "publish": false
@@ -5264,6 +6467,40 @@
       }
     },
     {
+      "id": "tool/get-board",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "9cf6a23419cc4b1764dd816801aa791b0500d4fc1eeaf4ba7f490f97011cc574",
+      "summary": "Read the person's approved planning board (look, characters, place, storyboard, picks) with the look and picked cards as images to compare screenshots against.",
+      "use_when": [
+        "starting a build step for a game made from a planning board",
+        "\"does the game look like the board?\"",
+        "comparing a screenshot with the chosen look and picked cards"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "game-design",
+          "verification"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "stable",
+      "mcp_tool_name": "summer_get_board",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
       "id": "tool/get-console",
       "kind": "tool",
       "version": "1.0.3",
@@ -5402,12 +6639,13 @@
     {
       "id": "tool/get-project-context",
       "kind": "tool",
-      "version": "1.1.0",
-      "content_hash": "45b70760d0f94e807f565f5bef5394d4784a21d945d09bc49863ec4a1129978a",
-      "summary": "Bind to the open project and return engine health, project name and path, current and main scene, trimmed settings, the template pin, and memory summary.",
+      "version": "2.0.0",
+      "content_hash": "c8cde53eababe6b12b5e8ca07a189673b09a84d51eea0a844815f7e648465f6e",
+      "summary": "Bind to the open project and return a compact context (project, current and main scene, health summary, template pin, memory, warnings); tree on request.",
       "use_when": [
         "first call in every fresh session, to avoid guessing scene filenames",
-        "deliberately rebinding after the engine switched projects"
+        "deliberately rebinding after the engine switched projects",
+        "reading the open scene's tree, the engine's op list or project settings (include)"
       ],
       "facets": {
         "lifecycle": [
@@ -5578,6 +6816,45 @@
         "filesystem": false,
         "editor_mutation": false,
         "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/grep",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "57676c00eaf3003becb56c41ed837102cc29f82822d52d52d4389e9dba77115f",
+      "summary": "Search project files with a regex (ripgrep through the engine) and get file, line and text per match, with optional context lines and a result cap.",
+      "use_when": [
+        "finding where something is in big project files without reading them whole",
+        "\"which entries of a big JSON file list fits_into?\" / \"every mount_side entry\"",
+        "\"where is _on_door_body_entered defined?\" / \"which scenes use this material?\""
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "file",
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/read-file"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_grep",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
         "credentials": false,
         "publish": false
       }
@@ -5802,15 +7079,66 @@
       }
     },
     {
+      "id": "tool/inspect-asset",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "f40a87d891da6193cf9efeb91a0cc6f4d831fd536fbfcad4d02d67ea7444d38d",
+      "summary": "Measure a 3D asset file without adding it to a scene — AABB, origin, meshes, largest planar faces, open pipe ends, Marker3D anchors, collision shapes.",
+      "use_when": [
+        "learning a kit piece's real size, origin and which way it faces before placing it",
+        "finding a piece's front and back planes (largest planar faces with their normals) or its pipe and duct ends (open boundary loops)",
+        "reading the Marker3D anchors or collision shapes a kit piece ships with"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "3d",
+          "world-building",
+          "assets"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/instantiate-scene",
+          "tool/attach-to-surface",
+          "tool/connect-ports",
+          "tool/starcast"
+        ],
+        "skills": [
+          "skill/spatial-placement"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_inspect_asset",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
       "id": "tool/inspect-node",
       "kind": "tool",
-      "version": "1.0.3",
-      "content_hash": "3110cdfd3503e30c208e8627b6ed71a952ad03392971d6ebe45fa6b61d2a281b",
-      "summary": "Get every editable property of a node with current values, Variant types (raw int plus type_name), and resource info.",
+      "version": "1.1.0",
+      "content_hash": "8016dc147b6eac09b87b75f7806b4f996bc80dd8204d29f9e701f40a1d9d75fd",
+      "summary": "A node's editable properties with values, Variant types and resources, or only named fields plus derived transform, global_transform, scene_file_path.",
       "use_when": [
         "before modifying a node, to understand its current state",
         "\"what is the player's speed / position / collision layer?\"",
-        "\"which material and mesh does this MeshInstance3D use?\""
+        "\"which material and mesh does this MeshInstance3D use?\"",
+        "\"where is this piece, locally and in the world, and which scene is it?\" — fields:[transform, global_transform, scene_file_path]"
       ],
       "facets": {
         "lifecycle": [
@@ -5838,11 +7166,12 @@
     {
       "id": "tool/inspect-resource",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "7bd86bff26997dfe472c2b34506822091bdc76cb4aafe1cc532dd3686db286c8",
-      "summary": "Get all properties of a resource such as a material, mesh, shape, or environment.",
+      "version": "1.1.0",
+      "content_hash": "410f1d81c41b6b22a0bf754acf6d347b01313ee4fc0c546ba64852f951f1b5ed",
+      "summary": "Read a resource file (a mesh's AABB, surfaces and materials; a scene's nodes; any resource's non-default properties) or a resource a node holds.",
       "use_when": [
         "reading sub-properties that the node inspector only names",
+        "\"how many surfaces, triangles and which materials does this mesh .res have?\"",
         "\"what colour is this material?\" / \"how big is this collision shape?\"",
         "\"what settings does the WorldEnvironment resource have?\""
       ],
@@ -5918,13 +7247,14 @@
     {
       "id": "tool/instantiate-scene",
       "kind": "tool",
-      "version": "1.0.3",
-      "content_hash": "7f3856ca5224aedb59a4fa8d29f46e5fdd82dd874c5dc94aee8590fc95f1d6ff",
-      "summary": "Add an existing scene or 3D model file as a child node, composing scenes from prefabs.",
+      "version": "1.1.0",
+      "content_hash": "f53c8c4d2df1ae52eb8d47518f780c16c910b17e9b9b443e33bc4030b7a8b039",
+      "summary": "Add an existing scene or 3D model file as a child node, optionally placed in the same call (position, rotation_degrees, scale or transform).",
       "use_when": [
         "placing a .tscn prefab or imported 3D model into a scene",
         "\"put three copies of the enemy prefab in the level\"",
-        "\"add the imported car.glb to the scene\""
+        "\"add the imported car.glb to the scene\"",
+        "placing a kit piece at an exact position and rotation in one call per piece"
       ],
       "facets": {
         "lifecycle": [
@@ -6050,6 +7380,55 @@
       }
     },
     {
+      "id": "tool/measure",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "d6104d4b6e3ace9f0397b65ffdb2f2da2c541422ba02e776d7eab0fed5400094",
+      "summary": "Gap or overlap per axis between two placed nodes, or whether one face of many nodes is coplanar — catches facade gaps and modules standing proud. Read-only.",
+      "use_when": [
+        "checking that two facade modules meet edge to edge, or how far apart or overlapping two pieces are on each axis",
+        "checking that every module of a facade line has its front on one plane (plane mode) and which ones stand proud or sit recessed",
+        "verifying a placement numerically before the screenshot"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "3d",
+          "world-building",
+          "verification"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/starcast",
+          "tool/place-adjacent",
+          "tool/screenshot"
+        ],
+        "skills": [
+          "skill/spatial-placement"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_measure",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
       "id": "tool/navigation-probe",
       "kind": "tool",
       "version": "1.0.0",
@@ -6102,7 +7481,7 @@
       "id": "tool/open",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "d32902fb14881139928d72eafaa2f0a54e1c59bbcfe0055884cac561cce72b86",
+      "content_hash": "c1087ddd07caf7bca466f5545aa8f15c3e28dd6d4cedd41eddb28f466025ff02",
       "summary": "Open the exact summerengine.com page or editor surface by intent name — billing, my games, an MCP guide, a scene, a node, a dock — or print the URL/op.",
       "use_when": [
         "the user wants to SEE or DECIDE something on the website — \"open my billing page\", \"show me my published games\", \"take me to pricing\", \"open the MCP setup guide for Cursor\"",
@@ -6223,17 +7602,68 @@
       }
     },
     {
+      "id": "tool/place-adjacent",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "891191f1947f53ad9803922be0075636554b4279914e5a6c4e9f064c1c7f3f25",
+      "summary": "Move one node so its bounds face sits against another's along an axis, lining up the other axes — facade modules edge to edge, storeys stacked. Saves the scene.",
+      "use_when": [
+        "laying facade or wall modules edge to edge along a street line",
+        "stacking a storey, cornice or crown on the piece below",
+        "putting a piece flush beside another with the same base height and front plane"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "3d",
+          "world-building",
+          "level-design"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/measure",
+          "tool/align-distribute-3d",
+          "tool/repeat-along",
+          "tool/inspect-asset"
+        ],
+        "skills": [
+          "skill/spatial-placement"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_place_adjacent",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
       "id": "tool/play",
       "kind": "tool",
-      "version": "1.2.0",
-      "content_hash": "13b7e4d6f7073fe4d0961ed69026b20dfcaf4b2cca6a1e19e2329a8010b01ab7",
-      "summary": "Start the game quietly by default (editor keeps tab and focus; focus true for a toolbar-style launch) — main or a given scene, embedded or offscreen, with pins.",
+      "version": "1.3.0",
+      "content_hash": "847dc3ae4e1602479d2198e6cfa39f31e7b6285d05f97731ffd424830f708afd",
+      "summary": "Start the game quietly (editor keeps tab and focus) — main or a given scene, embedded or offscreen, with pins, or a local multiplayer session (players).",
       "use_when": [
         "runtime verification after edits",
         "the user wants to try the game or one level after a change",
         "reproducing a bug that only shows at runtime",
         "a deterministic, repeatable playtest run — pin the global RNG with seed and the timestep with fixed_fps",
         "launching a deterministic or parallel offscreen playtest instance (seed, fixed frame rate, named offscreen instance) for the runtime tools to drive",
+        "testing a Summer multiplayer game on this machine — players:2 (Local Play) runs its authority headless and two clients that join through the game's own Summer.client.join; no account, Docker or extra tools",
         "launching while the user works on the same machine — the default (focus omitted or false) sends PlayGame agent:true, so the editor does not switch to the Game tab or grab focus; the game still runs embedded and is visible to the runtime tools"
       ],
       "facets": {
@@ -6308,14 +7738,100 @@
       }
     },
     {
+      "id": "tool/publish-build",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "a70684f394a5cea3125f3df03a581b9a5a3cac50ae6245ece26d80f6d4c4ddde",
+      "summary": "Upload an export from summer_export_game to the creator's store game, confirm-gated - a store bundle as a Build, or a web or native download as a store version.",
+      "use_when": [
+        "\"upload my game to summer.games\"",
+        "\"publish this build to my store page\"",
+        "\"put my game online so my friends can play it\"",
+        "uploading the .zip from summer_export_game as a new Build",
+        "uploading a web build or a macOS or Windows download from summer_export_game format download"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch"
+        ],
+        "domains": [
+          "creator",
+          "deployment"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_publish_build",
+      "remote": true,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": true
+      }
+    },
+    {
+      "id": "tool/raycast",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "c1b0a03e470031d6c0adfaeccab2c2c8eb386cb08fec980bcfa4c0f43ea5af8e",
+      "summary": "Cast one ray from any point in an open scene — hit node, point and normal; physics first, visual AABB fallback declared. Read-only.",
+      "use_when": [
+        "finding the wall, floor or ceiling in front of a point and its normal before anything is placed there",
+        "choosing where a lamp, pipe or sign mounts on a facade",
+        "checking what a line of sight or a drop line hits"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "3d",
+          "world-building"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/attach-to-surface",
+          "tool/starcast",
+          "tool/snap-to-surface"
+        ],
+        "skills": [
+          "skill/spatial-placement"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_raycast",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
       "id": "tool/read-file",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "ad9bc70c4e5a8d7df0551e5ecb8804a1cf2540d68792de12f63005cb041c5b36",
-      "summary": "Read a text file from the engine-bound project and return its full-file sha256 receipt for guarded overwrites.",
+      "version": "1.1.0",
+      "content_hash": "a17383c044d72243bd190c4d0f4e45f16fba35ad741796a3d68d9ffb495b7f8d",
+      "summary": "Read a project text file, a line or byte window of it, or the entries of a .json picked by json_path/keys, with the full-file sha256 receipt.",
       "use_when": [
         "reading project files through the engine",
-        "getting the sha256 required before overwriting a file"
+        "getting the sha256 required before overwriting a file",
+        "reading a file too big for one result in pages (offset/limit)",
+        "\"read the wall_door_b entry of a kit manifest\" — json_path / keys instead of the whole file"
       ],
       "facets": {
         "lifecycle": [
@@ -6328,6 +7844,13 @@
       },
       "compatibility": {
         "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/grep",
+          "tool/write-file",
+          "tool/replace-text"
+        ]
       },
       "status": "stable",
       "mcp_tool_name": "summer_read_file",
@@ -6343,8 +7866,8 @@
     {
       "id": "tool/read-library",
       "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "2dc4c993dd7575b6672777c75ab38e16627717b2a9569e6fa1c80181bc871147",
+      "version": "1.1.0",
+      "content_hash": "ded3e95871d25d27a9a53b4f7bc70433587c9d62b81387409505a3e97fb3e2e3",
       "summary": "Load one library entry by id — a skill's body and metadata, a tool's call recipe, a template's pin, a reference's text — ending in the feedback footer.",
       "use_when": [
         "summer_search_library returned an id and you need the entry itself before acting",
@@ -6476,15 +7999,65 @@
       }
     },
     {
+      "id": "tool/repeat-along",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "0f8df6a49ce6ea622343627bbf71ef997831da8830251bf6828bb5e3dcfc619e",
+      "summary": "Instance copies of one scene along a line in one call — clamps every 0.45 m, braces, fence posts, window rows — and get the created node paths back.",
+      "use_when": [
+        "placing wall clamps, gutter braces or duct braces at a fixed spacing along a run",
+        "a row of fence posts, bollards, lamps or window modules",
+        "filling a line with as many copies as fit at a spacing"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "scenes",
+          "3d",
+          "world-building",
+          "level-design"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/instantiate-scene",
+          "tool/batch",
+          "tool/attach-to-surface"
+        ],
+        "skills": [
+          "skill/spatial-placement"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_repeat_along",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
       "id": "tool/replace-node",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "ce00f50ea84d1170be405694a2129b88028ee990522e088155a32e5dd89b0b20",
-      "summary": "Replace a node with a different type or scene, preserving its tree position and children.",
+      "version": "1.1.0",
+      "content_hash": "73ffc0dc80960e12daee3ec03cdf2a92014d259c1092fb23e60b19ef680f6549",
+      "summary": "Replace a node with another scene or type, keeping its parent, index, name, transform and children, and verify the saved scene holds it.",
       "use_when": [
         "swapping a placeholder for a prefab or changing a body type",
         "\"turn this StaticBody3D into a RigidBody3D but keep its children\"",
-        "swapping the placeholder cube for the real prefab in place"
+        "swapping the placeholder cube for the real prefab in place",
+        "swapping one kit piece for another (a wall host for a door host) without hand-copying its transform"
       ],
       "facets": {
         "lifecycle": [
@@ -6497,6 +8070,13 @@
       },
       "compatibility": {
         "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/remove-node",
+          "tool/instantiate-scene",
+          "tool/read-file"
+        ]
       },
       "status": "stable",
       "mcp_tool_name": "summer_replace_node",
@@ -6882,17 +8462,76 @@
       }
     },
     {
+      "id": "tool/scene-audit",
+      "kind": "tool",
+      "version": "1.3.0",
+      "content_hash": "474abfec07fd4dc9a955bbaf7894bc5bea743f81842646b847bf091611ed2e37",
+      "summary": "Read-only pass over any 3D scene, from geometry and materials: see-through holes, exposed edges, open pipe ends, floor gaps, clipping props.",
+      "use_when": [
+        "after each build stage of a 3D level or kit-built street: \"what is wrong with this scene and where exactly?\"",
+        "before calling a scene done: find see-through walls (an insert narrower than its frame), floor tiles with holes, props floating, sunk or poking into walls",
+        "facade bands with an open end or a gap, seams between modules and modules out of line seen from the street; a duct or downpipe with a missing elbow, coupler or section",
+        "the same look items keep coming back: accept the ones you judged fine (accept:[{key, reason}]) so later audits count them but hide them until their evidence changes",
+        "finding props turned the wrong way against a wall (a bench standing perpendicular to it), stretched texture strips, duplicated pieces",
+        "flickering faces: coplanar overlaps anywhere (props, roofs, ledges, inserts against hosts, decals, two surfaces of one mesh), judged by the 24-bit depth precision at the view distance",
+        "bare ground at wall bases, an underlay plane covering drain channels, buried props: floor_gap and sunken say which surface a ray hits first",
+        "a lit city scene in the Compatibility renderer: meshes lit by more than the per-object light limit, hard spot rims"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "verification",
+          "scenes",
+          "3d",
+          "level-design"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/frame-nodes",
+          "tool/zoom",
+          "tool/shot-sheet",
+          "tool/raycast",
+          "tool/measure",
+          "tool/inspect-asset"
+        ],
+        "skills": [
+          "skill/verifying-scenes",
+          "skill/spatial-placement"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_scene_audit",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
       "id": "tool/screenshot",
       "kind": "tool",
-      "version": "1.1.2",
-      "content_hash": "21a24371419f53fb37aa79a8f1e270d34ac595e43a776d95963d20985be4929e",
+      "version": "1.2.0",
+      "content_hash": "1b3955c9e46ce009b49de86f00418b60d10f55fff0f9804cea7586bcdfc1b551",
       "summary": "Capture a frame from the editor viewport, an offscreen scene render (fixed or bookmarked pose, numbered labels), or the running game, as an actual image.",
       "use_when": [
         "visually verifying layout, scale, framing, or runtime state",
         "\"show me what the scene looks like right now\"",
         "\"did the model land where I put it?\" / \"does the UI overlap?\"",
         "\"take a screenshot of the game\" / \"screenshot the running game\" — target \"game\" grabs the live frame",
-        "before/after frames from the SAME viewpoint (framing \"bookmark\" / \"free\"), or an annotated screenshot with numbered labels mapped to node paths (marks)"
+        "before/after frames from the SAME viewpoint (framing \"bookmark\" / \"free\"), or an annotated screenshot with numbered labels mapped to node paths (marks)",
+        "\"what changed since the last render of this view?\" — framing \"bookmark\" with compare_previous returns previous | now | difference map in one image"
       ],
       "facets": {
         "lifecycle": [
@@ -6909,7 +8548,10 @@
       "related": {
         "tools": [
           "tool/camera-bookmark",
-          "tool/world-snapshot"
+          "tool/world-snapshot",
+          "tool/frame-nodes",
+          "tool/shot-sheet",
+          "tool/frame-shot"
         ],
         "skills": [
           "skill/verifying-scenes"
@@ -6930,7 +8572,7 @@
       "id": "tool/search-assets",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "636f0ad4be720e41d175295801d358ca19f5ba1f9d95e82b5ba9cd4976bfbd24",
+      "content_hash": "0a76fbd9af655fa350bdbad9b55675ba59bf36182fefd0c831271e9b57d15748",
       "summary": "Search the Summer asset library and your own assets by keyword and meaning; returns names, types, preview and import-ready URLs.",
       "use_when": [
         "finding an existing asset in the public library before generating a new one",
@@ -7112,6 +8754,56 @@
       }
     },
     {
+      "id": "tool/shot-sheet",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "45db27ac2ad936e72212fc8172bc6facaddc4e8ee7eee723b9decf88f3629dbf",
+      "summary": "Render N bookmarks and/or poses into one labelled grid image with real lighting; compare each bookmark with its previous render (difference map).",
+      "use_when": [
+        "seeing every hero view of an environment at once after a change, in one image",
+        "\"did this change make it better?\" — compare_previous puts previous, now and a difference map side by side per bookmark; plain sheets in between never reset that baseline",
+        "rendering several poses in one debug view (lighting, unshaded, normals, overdraw, wireframe) for a quick sweep"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "verification",
+          "scenes",
+          "3d"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/camera-bookmark",
+          "tool/frame-shot",
+          "tool/debug-views",
+          "tool/zoom",
+          "tool/screenshot"
+        ],
+        "skills": [
+          "skill/verifying-scenes"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_shot_sheet",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
       "id": "tool/slice-asset-sheet",
       "kind": "tool",
       "version": "1.0.2",
@@ -7148,12 +8840,14 @@
     {
       "id": "tool/snap-to-surface",
       "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "9d31db26e206789c059beb1df2e17dbb47adf7fc8bb01a1b10ede534faa17709",
+      "version": "1.2.0",
+      "content_hash": "b7c9d59e4c42872f02689437a4e091d0429733b4dbf93850aac3fe8e363c93f0",
       "summary": "Move one 3D subject along a world ray until it sits at the requested gap from the first surface (floor, ramp, shelf, table), then save the scene.",
       "use_when": [
         "seating a prop on a floor, ramp, table, or shelf instead of hand-tuning its Y position",
-        "grounding an imported or instantiated model that floats or sinks into its support"
+        "grounding an imported or instantiated model that floats or sinks into its support",
+        "lifting a prop that is sunk a few centimetres into the ground back onto it",
+        "seating a prop without a collider (a fern, a bottle) on a PlaneMesh or other mesh-only ground"
       ],
       "facets": {
         "lifecycle": [
@@ -7176,7 +8870,8 @@
           "tool/test-placement",
           "tool/align-distribute-3d",
           "tool/world-snapshot",
-          "tool/set-prop"
+          "tool/set-prop",
+          "tool/starcast"
         ],
         "skills": [
           "skill/world-building-3d"
@@ -7673,13 +9368,15 @@
     {
       "id": "tool/world-snapshot",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "bd51032ff7c9c717db882528d8419b05183650c4caf839585fb6a55947377dfe",
-      "summary": "Compact structured snapshot of the edited scene (paths, transforms, world AABBs, fingerprints, counts) — the cheap read before and after every mutation batch.",
+      "version": "1.1.0",
+      "content_hash": "09d31f36f56fb04eefcd8d4c7b875e320a7525e75659f4a022ca8c5782982d58",
+      "summary": "Structured scene snapshot (paths, transforms, world AABBs, fingerprints, counts), filterable by subtree, class and field; the read around every mutation.",
       "use_when": [
         "taking a diffable baseline before a mutation batch, or verifying transforms/AABBs/fingerprints after one",
         "\"where exactly is everything in this scene?\" — positions, sizes, bounds",
-        "\"are these two props overlapping?\" / \"is anything floating?\""
+        "\"are these two props overlapping?\" / \"is anything floating?\"",
+        "\"where did the pieces of House3 land?\" — path_prefix + fields:[pos, aabb] reads one subtree cheaply",
+        "counting instances per class in one subtree (matched_counts)"
       ],
       "facets": {
         "lifecycle": [
@@ -7744,6 +9441,55 @@
       },
       "status": "stable",
       "mcp_tool_name": "summer_write_file",
+      "remote": false,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/zoom",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "89aa4303b4c395883ffbc34ca9aa9896fd7bbc75ed23f9d3993550c17ab725ea",
+      "summary": "High-resolution close-up of exactly a frame region or of mark N, rendered as the exact sub-frustum at full resolution (real detail, not upscaled pixels).",
+      "use_when": [
+        "checking seams, gaps, floating pieces, texture resolution or tiling up close",
+        "looking closer at a numbered mark from a marks render (summer_frame_nodes marks:true, or summer_screenshot marks at the same size)",
+        "inspecting a region a difference map or debug view flagged"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "verification",
+          "scenes",
+          "3d"
+        ],
+        "modalities": [
+          "scenes"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "tools": [
+          "tool/frame-nodes",
+          "tool/screenshot",
+          "tool/debug-views",
+          "tool/shot-sheet"
+        ],
+        "skills": [
+          "skill/verifying-scenes"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_zoom",
       "remote": false,
       "authority": {
         "filesystem": true,

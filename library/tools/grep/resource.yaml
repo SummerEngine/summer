@@ -1,0 +1,77 @@
+id: tool/grep
+kind: tool
+version: 1.0.0
+summary: Search project files with a regex (ripgrep through the engine) and get file, line and text per match, with optional context lines and a result cap.
+use_when:
+  - finding where something is in big project files without reading them whole
+  - '"which entries of a big JSON file list fits_into?" / "every mount_side entry"'
+  - '"where is _on_door_body_entered defined?" / "which scenes use this material?"'
+do_not_use_when:
+  - you already know the file and want its content — summer_read_file (offset/limit, json_path)
+  - searching the Summer library — summer_search_library
+facets:
+  lifecycle:
+    - build
+  domains:
+    - file
+    - project
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/read-file
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_grep
+implementation:
+  module: src/mcp/tools/file-tools.ts
+  export: registerFileTools
+surfaces:
+  mcp:
+    tool_name: summer_grep
+    remote: false
+input_schema:
+  type: object
+  properties:
+    pattern:
+      type: string
+      minLength: 1
+      description: Ripgrep regular expression, e.g. '"fits_into"' or 'func _on_.*_pressed'
+    path:
+      type: string
+      description: "Search scope: a res:// directory or file, e.g. 'res://kit/' or 'res://kit/kit_manifest.json'. Default: the whole project."
+    glob:
+      type: string
+      description: File filter passed to ripgrep --glob, e.g. '*.gd', '**/*.json', '!addons/**'. A glob also reaches files .gitignore would skip.
+    case_sensitive:
+      type: boolean
+      description: "Match case exactly (default false: case-insensitive)."
+    context_lines:
+      type: integer
+      minimum: 0
+      maximum: 10
+      description: Lines of context before and after each match (0-10, default 0).
+    max_results:
+      type: integer
+      exclusiveMinimum: 0
+      maximum: 500
+      description: Most matches to return (default 50, max 500). truncated:true means there were more.
+    max_line_chars:
+      type: integer
+      minimum: 40
+      maximum: 2000
+      description: Clip every returned line to this many characters (default 240).
+    multiline:
+      type: boolean
+      description: Let the pattern span lines (ripgrep -U --multiline-dotall).
+  required:
+    - pattern
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

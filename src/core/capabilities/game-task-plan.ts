@@ -335,8 +335,10 @@ function inferSkills(mode: GameTaskPlan["mode"], target: GameTaskPlan["target"],
   }
 
   if (target === "multiplayer") {
-    addSkill(routes, "setup-multiplayer", "Choose networking model before implementation.", 270);
-    addSkill(routes, "host-authoritative-state", "Server-authoritative state model.", 220);
+    addSkill(routes, "multiplayer", "How Summer multiplayer works and which skill builds each piece.", 270);
+    addSkill(routes, "multiplayer-project", "Client and authority scenes, World, queue and Local Play.", 240);
+    addSkill(routes, "multiplayer-movement", "Client-side player movement checked by the authority.", 220);
+    addSkill(routes, "multiplayer-state", "Authority-owned state, Commands and Events.", 210);
   }
 
   if (includesAny(text, ["player controller", "fps", "first person", "wasd", "camera"])) {

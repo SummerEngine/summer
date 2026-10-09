@@ -36,7 +36,7 @@ function fakeEngineContext(overrides: Record<string, unknown> = {}): {
     getProjectState: record("getProjectState"),
     getScriptErrors: record("getScriptErrors"),
     inspectNode: record("inspectNode"),
-    inspectResource: record("inspectResource"),
+    inspectNodeResource: record("inspectNodeResource"),
     readProjectFile: record("readProjectFile"),
     play: record("play"),
     stop: record("stop"),
@@ -247,9 +247,13 @@ describe("scene-scripting and perception dispatch entries", () => {
   it("world-snapshot and snapshot-diff dispatch single ops and surface failures", async () => {
     const { ctx, calls } = fakeEngineContext();
     await dispatchTool("world-snapshot", { max_nodes: 100 }, ctx);
+    await dispatchTool("world-snapshot", { max_nodes: 6000 }, ctx);
     await dispatchTool("snapshot-diff", { from_id: "snap-1" }, ctx);
+    // max_nodes caps the LISTED entries; the stored snapshot (the diff
+    // baseline) is never capped below the engine default.
     expect(calls.map((call) => call.args[0])).toEqual([
-      [{ op: "GetWorldSnapshot", max_nodes: 100 }],
+      [{ op: "GetWorldSnapshot" }],
+      [{ op: "GetWorldSnapshot", max_nodes: 6000 }],
       [{ op: "DiffWorldSnapshot", from_id: "snap-1" }],
     ]);
     const failing = fakeEngineContext({

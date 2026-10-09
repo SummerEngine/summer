@@ -98,21 +98,49 @@ queries:
   - query: "turn this concept art into a playable level"
     expected: [skill/scene-to-level]
 
+  - query: "add a shop where players can buy a skin for Sparks"
+    expected: [skill/in-game-purchases]
+  - query: "player does not have enough sparks, let them buy more without leaving the game"
+    expected: [skill/in-game-purchases]
   # ── Character controllers ──────────────────────────────────────────────
   - query: "make an FPS"
     expected: [skill/make-game, skill/fps-controller]
   - query: "add WASD movement and mouse look"
     expected: [skill/fps-controller]
+  - query: "third person camera that doesn't clip through walls"
+    expected: [skill/camera-rigs]
+    note: "Former gap, filled by camera-rigs (SpringArm3D rig) and character-movement."
+  - query: "make my imported character walk, run and jump as the player"
+    expected: [skill/character-movement]
+  - query: "add touch controls so the game works on a phone"
+    expected: [skill/web-and-touch-input]
+  - query: "the game looks flat and grey in the browser preview"
+    expected: [skill/web-compatibility-look]
+
+  # ── Gameplay systems ───────────────────────────────────────────────────
+  - query: "add a save and load system"
+    expected: [skill/save-load]
+    note: "Former gap, filled by save-load."
+  - query: "add health and damage so my sword can hit enemies"
+    expected: [skill/combat-basics]
 
   # ── Multiplayer ────────────────────────────────────────────────────────
   - query: "add a multiplayer lobby"
-    expected: [skill/setup-multiplayer]
+    expected: [skill/summer-matchmaking, skill/multiplayer]
   - query: "I want to play my game co-op with a friend online"
-    expected: [skill/setup-multiplayer, skill/peer-to-peer-multiplayer]
+    expected: [skill/multiplayer, skill/multiplayer-project]
   - query: "how do I stop clients from cheating their own health"
-    expected: [skill/host-authoritative-state]
+    expected: [skill/multiplayer-state]
   - query: "starting a multiplayer game from scratch, how should I architect the networking"
-    expected: [skill/peer-to-peer-multiplayer, skill/host-authoritative-state]
+    expected: [skill/multiplayer, skill/multiplayer-project]
+  - query: "the other player stutters and teleports around in my multiplayer game"
+    expected: [skill/multiplayer-movement]
+  - query: "publish my multiplayer game so my friends can join"
+    expected: [skill/multiplayer-publish, skill/multiplayer]
+  - query: "save each player's progress between matches"
+    expected: [skill/summer-player-data]
+  - query: "add a leaderboard to my online game"
+    expected: [skill/summer-leaderboards]
 
   # ── Rendering & look ───────────────────────────────────────────────────
   - query: "my grass lighting looks flat"
@@ -123,6 +151,20 @@ queries:
     expected: [skill/art-direction]
   - query: "pick a color palette and visual style for my cozy farming game"
     expected: [skill/art-direction]
+
+  # ── 3D placement ───────────────────────────────────────────────────────
+  - query: "place the facade wall modules edge to edge along the street"
+    expected: [skill/spatial-placement, tool/place-adjacent]
+  - query: "how do I place modular kit pieces so the walls line up"
+    expected: [skill/spatial-placement]
+  - query: "put a downpipe and a lamp on the wall"
+    expected: [skill/spatial-placement, tool/attach-to-surface]
+  - query: "the building facade has gaps between the wall pieces"
+    expected: [skill/spatial-placement, tool/measure]
+  - query: "how big is this kit piece and which way does it face before I place it"
+    expected: [skill/spatial-placement, tool/inspect-asset]
+  - query: "add a wall clamp every 45 cm up the pipe"
+    expected: [skill/spatial-placement, tool/repeat-along]
 
   # ── VFX ────────────────────────────────────────────────────────────────
   - query: "make a fireball"
@@ -240,6 +282,8 @@ queries:
     expected: [tool/game-control]
   - query: "record my inputs and replay them deterministically"
     expected: [tool/game-input]
+  - query: "connect this pipe section to the end of the previous one"
+    expected: [tool/connect-ports]
 
   # ── Known gaps (expected_gap: true — the authoring backlog) ────────────
   - query: "add enemy pathfinding"
@@ -247,10 +291,6 @@ queries:
     expected_gap: true
     closest: skill/design-npc
     note: "No navigation/NavMesh/pathfinding skill exists. design-npc covers behavior, not navigation."
-  - query: "add a save and load system"
-    expected: []
-    expected_gap: true
-    note: "No save/serialization skill. High-frequency ask for any game past a prototype."
   - query: "add an inventory system"
     expected: []
     expected_gap: true
@@ -293,11 +333,6 @@ queries:
     expected_gap: true
     closest: skill/design-level
     note: "design-level authors one level by hand; no procgen skill."
-  - query: "third person camera that doesn't clip through walls"
-    expected: []
-    expected_gap: true
-    closest: skill/fps-controller
-    note: "No third-person controller/camera skill (fps-controller spec Case 3 already anticipates the handoff)."
 
   # ── Navigation (summer open / product map / navigate-summer) ───────────
   - query: "open my billing page"

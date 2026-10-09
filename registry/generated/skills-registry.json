@@ -43,6 +43,19 @@
       ]
     },
     {
+      "id": "skill/ai-characters-in-games",
+      "name": "ai-characters-in-games",
+      "description": "Safe AI characters in published games: no keys in the build, replies via Summer's player AI gateway, moderation, spend caps, offline brain and a report button.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/ai-characters-in-games/",
+      "domains": [
+        "ai",
+        "npc"
+      ]
+    },
+    {
       "id": "skill/ambient-bed",
       "name": "ambient-bed",
       "description": "Generate a long looping location ambience — forest, dungeon, city, spaceship, cave — a looping AudioStreamPlayer on the Ambient bus with a seamless loop.",
@@ -173,6 +186,20 @@
       ]
     },
     {
+      "id": "skill/camera-rigs",
+      "name": "camera-rigs",
+      "description": "Camera rigs for 2D and 3D: Camera2D follow with limits, first-person head camera, SpringArm3D third-person, orthographic top-down, FOV guidance.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/camera-rigs/",
+      "domains": [
+        "scenes",
+        "3d",
+        "2d"
+      ]
+    },
+    {
       "id": "skill/celeste-momentum-platforming",
       "name": "celeste-momentum-platforming",
       "description": "Celeste-style 2D precision platformer movement — momentum running, coyote time, variable jumps, dash, wall jump/slide, climb stamina, pixel corner correction.",
@@ -213,6 +240,21 @@
       ]
     },
     {
+      "id": "skill/character-movement",
+      "name": "character-movement",
+      "description": "Player controllers for 2D and 3D, plus the canonical third-person controller for Summer humanoid packages: movement owns translation, clips follow state.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/character-movement/",
+      "domains": [
+        "character-controller",
+        "gameplay",
+        "2d",
+        "3d"
+      ]
+    },
+    {
       "id": "skill/character-portrait",
       "name": "character-portrait",
       "description": "Generate a single polished character bust for dialogue UI, character select, lore cards, or codex entries. One character, locked composition, VN-style.",
@@ -236,6 +278,20 @@
       "domains": [
         "video",
         "assets"
+      ]
+    },
+    {
+      "id": "skill/combat-basics",
+      "name": "combat-basics",
+      "description": "Damage in Summer Engine: hitbox and hurtbox Areas on opposing layers, a reusable Health component, damage signals, knockback, hit feedback, projectiles.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/combat-basics/",
+      "domains": [
+        "gameplay",
+        "scripting",
+        "game-design"
       ]
     },
     {
@@ -515,15 +571,16 @@
       ]
     },
     {
-      "id": "skill/host-authoritative-state",
-      "name": "host-authoritative-state",
-      "description": "Design the state layer of a multiplayer game — what the host owns, how clients request changes, and how the host validates and broadcasts.",
+      "id": "skill/in-game-purchases",
+      "name": "in-game-purchases",
+      "description": "Sell items for Sparks and let short players buy Sparks in game via the Summer purchase sheet: checkout, Sparks purchase, results, testing, store policy.",
       "clients": "all",
-      "recommended": true,
-      "status": "stable",
-      "path": "library/skills/host-authoritative-state/",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/in-game-purchases/",
       "domains": [
-        "multiplayer",
+        "gameplay",
+        "scripting",
         "game-design"
       ]
     },
@@ -582,6 +639,88 @@
       ]
     },
     {
+      "id": "skill/multiplayer",
+      "name": "multiplayer",
+      "description": "Start here for Summer multiplayer: how the authority, clients, Worlds and Sessions fit, and which skill comes next.",
+      "clients": "all",
+      "recommended": true,
+      "status": "stable",
+      "path": "library/skills/multiplayer/",
+      "domains": [
+        "multiplayer",
+        "project"
+      ]
+    },
+    {
+      "id": "skill/multiplayer-movement",
+      "name": "multiplayer-movement",
+      "description": "Client-side movement in Summer multiplayer: owners move instantly, others glide, the authority checks each pose.",
+      "clients": "all",
+      "recommended": false,
+      "status": "stable",
+      "path": "library/skills/multiplayer-movement/",
+      "domains": [
+        "multiplayer",
+        "character-controller",
+        "scripting"
+      ]
+    },
+    {
+      "id": "skill/multiplayer-project",
+      "name": "multiplayer-project",
+      "description": "Set up a Summer multiplayer project: both entry scenes, World and queue files, joining, and a first Local Play run.",
+      "clients": "all",
+      "recommended": false,
+      "status": "stable",
+      "path": "library/skills/multiplayer-project/",
+      "domains": [
+        "multiplayer",
+        "project",
+        "scripting"
+      ]
+    },
+    {
+      "id": "skill/multiplayer-publish",
+      "name": "multiplayer-publish",
+      "description": "Ship a hosted Summer multiplayer game: the summer.games bundle, server preset, pre-upload checks, and a new Build.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/multiplayer-publish/",
+      "domains": [
+        "multiplayer",
+        "deployment"
+      ]
+    },
+    {
+      "id": "skill/multiplayer-state",
+      "name": "multiplayer-state",
+      "description": "Authority-owned game state in Summer multiplayer: shared and private State groups, validated Commands, and Events.",
+      "clients": "all",
+      "recommended": false,
+      "status": "stable",
+      "path": "library/skills/multiplayer-state/",
+      "domains": [
+        "multiplayer",
+        "game-design",
+        "scripting"
+      ]
+    },
+    {
+      "id": "skill/multiplayer-testing",
+      "name": "multiplayer-testing",
+      "description": "Test a Summer multiplayer game with Local Play: several players, a bad network, bots, and what a passing run shows.",
+      "clients": "all",
+      "recommended": false,
+      "status": "stable",
+      "path": "library/skills/multiplayer-testing/",
+      "domains": [
+        "multiplayer",
+        "playtest",
+        "verification"
+      ]
+    },
+    {
       "id": "skill/music-track",
       "name": "music-track",
       "description": "Generate a looped or cinematic music track — loops authored at >=30s with a marked loop point, cinematic tracks at >=60s linear.",
@@ -632,19 +771,6 @@
       "domains": [
         "3d",
         "assets"
-      ]
-    },
-    {
-      "id": "skill/peer-to-peer-multiplayer",
-      "name": "peer-to-peer-multiplayer",
-      "description": "Start a multiplayer game from scratch with peer-to-peer host authority — network architecture built top-down, before writing game logic.",
-      "clients": "all",
-      "recommended": true,
-      "status": "stable",
-      "path": "library/skills/peer-to-peer-multiplayer/",
-      "domains": [
-        "multiplayer",
-        "project"
       ]
     },
     {
@@ -778,6 +904,19 @@
       ]
     },
     {
+      "id": "skill/save-load",
+      "name": "save-load",
+      "description": "Persist game state in Summer Engine: user:// paths, JSON progress vs ConfigFile settings, a versioned save schema with migration, autosave hooks.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/save-load/",
+      "domains": [
+        "scripting",
+        "gameplay"
+      ]
+    },
+    {
       "id": "skill/scene-composition",
       "name": "scene-composition",
       "description": "Scene structure conventions — node hierarchy, when to extract sub-scenes, reusable prefab patterns, and instance-versus-add-node decisions.",
@@ -831,19 +970,6 @@
       "domains": [
         "level-design",
         "game-design"
-      ]
-    },
-    {
-      "id": "skill/setup-multiplayer",
-      "name": "setup-multiplayer",
-      "description": "Add multiplayer to an existing game — LAN/online co-op, PvP, lobbies — via MultiplayerAPI, MultiplayerSpawner, and MultiplayerSynchronizer.",
-      "clients": "all",
-      "recommended": true,
-      "status": "stable",
-      "path": "library/skills/setup-multiplayer/",
-      "domains": [
-        "multiplayer",
-        "scripting"
       ]
     },
     {
@@ -929,7 +1055,7 @@
     {
       "id": "skill/spatial-placement",
       "name": "spatial-placement",
-      "description": "Place and verify 3D objects with Starcast evidence — inspect, place, starcast, correct, verify; floor, shelf, wall, alcove recipes and overlap repair.",
+      "description": "Place 3D objects and modular kit pieces from measured geometry — inspect, place, starcast, measure, correct; floor, wall, facade, pipe and alcove recipes.",
       "clients": "all",
       "recommended": true,
       "status": "preview",
@@ -953,6 +1079,136 @@
       "domains": [
         "2d",
         "assets"
+      ]
+    },
+    {
+      "id": "skill/summer-analytics",
+      "name": "summer-analytics",
+      "description": "Send game events to Summer analytics from the authority or client: fire-and-forget, never blocking gameplay.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-analytics/",
+      "domains": [
+        "multiplayer",
+        "scripting"
+      ]
+    },
+    {
+      "id": "skill/summer-friends",
+      "name": "summer-friends",
+      "description": "Summer friends in a game: a consented friends list, profile and chat screens, direct messages. Hosted only.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-friends/",
+      "domains": [
+        "multiplayer",
+        "ui"
+      ]
+    },
+    {
+      "id": "skill/summer-leaderboards",
+      "name": "summer-leaderboards",
+      "description": "Leaderboards in a Summer game: queue ratings from matches, and Game rankings your authority scores.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-leaderboards/",
+      "domains": [
+        "multiplayer",
+        "ui"
+      ]
+    },
+    {
+      "id": "skill/summer-match-results",
+      "name": "summer-match-results",
+      "description": "End a Summer match: report each player's win, loss or draw, show results on clients, then close the World.",
+      "clients": "all",
+      "recommended": false,
+      "status": "stable",
+      "path": "library/skills/summer-match-results/",
+      "domains": [
+        "multiplayer",
+        "gameplay"
+      ]
+    },
+    {
+      "id": "skill/summer-matchmaking",
+      "name": "summer-matchmaking",
+      "description": "Get players into matches with Summer matchmaking: queues, teams, accept prompts, join progress and failures.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-matchmaking/",
+      "domains": [
+        "multiplayer",
+        "ux"
+      ]
+    },
+    {
+      "id": "skill/summer-parties",
+      "name": "summer-parties",
+      "description": "Let a Summer party play together: the leader presses Play, members follow into the same match. Hosted only.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-parties/",
+      "domains": [
+        "multiplayer",
+        "ui"
+      ]
+    },
+    {
+      "id": "skill/summer-player-data",
+      "name": "summer-player-data",
+      "description": "Save a player's progress so it follows them to every match: authority load and commit, autosave, safe retries.",
+      "clients": "all",
+      "recommended": false,
+      "status": "stable",
+      "path": "library/skills/summer-player-data/",
+      "domains": [
+        "multiplayer",
+        "scripting"
+      ]
+    },
+    {
+      "id": "skill/summer-store",
+      "name": "summer-store",
+      "description": "Sell Summer items for Sparks in a multiplayer game: shop, checkout, owned items, authority entitlement checks.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-store/",
+      "domains": [
+        "multiplayer",
+        "gameplay"
+      ]
+    },
+    {
+      "id": "skill/summer-world-chat",
+      "name": "summer-world-chat",
+      "description": "Add match chat to a Summer game: one World channel shared by everyone in the match. Hosted only.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-world-chat/",
+      "domains": [
+        "multiplayer",
+        "ui"
+      ]
+    },
+    {
+      "id": "skill/summer-world-saves",
+      "name": "summer-world-saves",
+      "description": "Keep a persistent Summer World between restarts: checkpoint saves, restore before join, the final save.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/summer-world-saves/",
+      "domains": [
+        "multiplayer",
+        "scripting"
       ]
     },
     {
@@ -1089,7 +1345,7 @@
     {
       "id": "skill/verifying-scenes",
       "name": "verifying-scenes",
-      "description": "Prove scene work landed — snapshot before, diff + screenshot after (bookmarked viewpoint, labels), live runtime reads during playtests — then claim.",
+      "description": "Prove scene work landed (snapshot, diff, screenshots, runtime reads), audit 3D scenes for holes and misplacement, review them with shot sheets and zooms.",
       "clients": "all",
       "recommended": true,
       "status": "preview",
@@ -1215,6 +1471,33 @@
       "domains": [
         "audio",
         "assets"
+      ]
+    },
+    {
+      "id": "skill/web-and-touch-input",
+      "name": "web-and-touch-input",
+      "description": "Input for the browser and phones: the first-click rule for sound and mouse capture, focus, and touch buttons or a virtual stick on the same actions.",
+      "clients": "all",
+      "recommended": true,
+      "status": "preview",
+      "path": "library/skills/web-and-touch-input/",
+      "domains": [
+        "gameplay",
+        "ui"
+      ]
+    },
+    {
+      "id": "skill/web-compatibility-look",
+      "name": "web-compatibility-look",
+      "description": "Make a web or browser game look high-end in the Compatibility renderer (WebGL 2): what works, what to avoid, 2D and 3D recipes, web performance.",
+      "clients": "all",
+      "recommended": true,
+      "status": "preview",
+      "path": "library/skills/web-compatibility-look/",
+      "domains": [
+        "rendering",
+        "2d",
+        "3d"
       ]
     },
     {

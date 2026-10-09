@@ -1,0 +1,101 @@
+id: tool/raycast
+kind: tool
+version: 1.0.0
+summary: Cast one ray from any point in an open scene — hit node, point and normal; physics first, visual AABB fallback declared. Read-only.
+use_when:
+  - finding the wall, floor or ceiling in front of a point and its normal before anything is placed there
+  - choosing where a lamp, pipe or sign mounts on a facade
+  - checking what a line of sight or a drop line hits
+do_not_use_when:
+  - you want clearance around an existing node in every direction — summer_starcast
+  - you want to mount the piece in the same call — summer_attach_to_surface casts its own ray
+facets:
+  lifecycle:
+    - build
+  domains:
+    - scenes
+    - 3d
+    - world-building
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/attach-to-surface
+    - tool/starcast
+    - tool/snap-to-surface
+  skills:
+    - skill/spatial-placement
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_raycast
+implementation:
+  module: src/mcp/tools/placement-tools.ts
+  export: registerPlacementTools
+surfaces:
+  mcp:
+    tool_name: summer_raycast
+    remote: false
+input_schema:
+  type: object
+  properties:
+    scenePath:
+      type: string
+      minLength: 1
+      maxLength: 512
+      description: Exact scene, e.g. 'res://levels/street.tscn'. It must be open; physics needs it to be the active tab.
+    origin:
+      type: array
+      minItems: 3
+      maxItems: 3
+      items:
+        type: number
+      description: Ray start [x, y, z] in scene (world) space.
+    direction:
+      type: array
+      minItems: 3
+      maxItems: 3
+      items:
+        type: number
+      description: Ray direction [x, y, z], non-zero; normalized for you.
+    maxDistance:
+      type: number
+      exclusiveMinimum: 0
+      maximum: 10000
+      default: 100
+      description: Maximum ray length in scene units.
+    collisionMask:
+      type: integer
+      minimum: 0
+      maximum: 4294967295
+      default: 4294967295
+      description: Godot 3D physics layer mask for physics queries.
+    collideWithAreas:
+      type: boolean
+      default: false
+      description: Also hit Area3D volumes (physics only).
+    evidence:
+      type: string
+      enum: [auto, physics, visual_aabb]
+      default: auto
+      description: "auto: physics first, visual AABB fallback when physics finds nothing (declared). physics or visual_aabb: that channel only."
+    exclude:
+      type: array
+      maxItems: 16
+      items:
+        type: string
+      description: Nodes (with descendants) the ray ignores.
+  required:
+    - scenePath
+    - origin
+    - direction
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

@@ -18,12 +18,11 @@
  */
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { EngineApiClient } from "../api-client.js";
 import {
   missingEngineEventsResult,
   missingEngineOpResult,
-  resolveSingleOnlyOps,
   type MissingOpResult,
 } from "../capability-skew.js";
 import { buildAgentPlaybook } from "./agent-playbook.js";
@@ -35,7 +34,6 @@ import {
 } from "./events.js";
 import { importResolvedAsset, type GatewayAsset } from "./asset-import.js";
 import {
-  executeOpsChunked,
   executeSceneMutation,
   occurrenceCount,
   readTextPayload,
@@ -45,6 +43,7 @@ import {
 import { extractOpError, withOldEngineHint } from "./engine-receipt.js";
 import { lookupApiDocs } from "./api-docs.js";
 import { z, type ZodTypeAny } from "zod";
+import { BOARD_ENDPOINT, boardArgsSchema, boardQuery } from "./board.js";
 import { imageGenerationArgsSchema } from "./image-generation.js";
 import { buildMotionRequestBody, motionGenerationArgsSchema } from "./motion-generation.js";
 import { ImportHdriError, importHdriArgsSchema, importPolyHavenHdri } from "./hdri-import.js";
@@ -105,6 +104,26 @@ import {
   type ScreenshotFraming,
 } from "./camera-view.js";
 import { PLAY_DETERMINISM_NOT_SUPPORTED, pickPlayDeterminism, readPlayDeterminism } from "./play-determinism.js";
+import {
+  debugViews,
+  frameNodes,
+  frameShot,
+  rememberBookmarkRender,
+  shotSheet,
+  slotPolicy,
+  zoom,
+  type SeeingClient,
+  type SeeingResult,
+} from "./seeing/seeing.js";
+import {
+  debugViewsArgsSchema,
+  frameNodesArgsSchema,
+  frameShotArgsSchema,
+  shotSheetArgsSchema,
+  zoomArgsSchema,
+} from "./seeing/args.js";
+import { sceneAudit, type AuditClient, type AuditResult } from "./audit/audit.js";
+import { sceneAuditArgsSchema } from "./audit/args.js";
 import { ToolInputError } from "../tool-errors.js";
 import { getAuthToken } from "../auth.js";
 import open from "open";
@@ -114,6 +133,9 @@ import {
   listCreatorReleases,
   publishCreator,
 } from "./creator.js";
+import { exportGame } from "./export-game.js";
+import { exportTemplates } from "./export-templates.js";
+import { publishBuild } from "./publish-build.js";
 import {
   CONFIG_KEYS,
   getConfigValue,
@@ -130,13 +152,21 @@ import {
   projectContextInputSchema,
   projectSettingValue,
 } from "./project-context.js";
-import { annotateVariantTypes } from "./variant-types.js";
+import { rawSceneReplaceRefusal, replaceNodeInputSchema, replaceNodePersisted } from "./replace-node.js";
+import { connectSignalInputSchema, connectSignalPersisted } from "./connect-signal.js";
+import { readFileInputSchema, readProjectFileWindow } from "./file-read.js";
+import { buildWorldSnapshotOp, shapeWorldSnapshot, worldSnapshotInputSchema } from "./world-snapshot.js";
+import { inspectNodeFields, inspectNodeInputSchema } from "./inspect-node.js";
+import { inspectResource, inspectResourceInputSchema } from "./inspect-resource.js";
+import { grepInputSchema, grepProject } from "./grep.js";
+import { snapToSurface } from "./surface-snap.js";
 import { withConsoleScope } from "./console-read.js";
 import { captureGame, captureScene, captureViewport, type CaptureResult } from "./capture.js";
 // engine_lacks_op fallbacks: ONE copy for every face (E2E 2026-09-03 F-16);
 // the scripting ones come with their op builders from ./scene-script.js.
 import {
   ALIGN_DISTRIBUTE_FALLBACK,
+  GREP_FALLBACK,
   NAVIGATION_PROBE_FALLBACK,
   RUNTIME_NODE_FALLBACK,
   RUNTIME_TREE_FALLBACK,
@@ -150,6 +180,32 @@ import {
   sendLibraryFeedback,
   type LibraryFeedbackReport,
 } from "../feedback/client.js";
+// One copy of the batch op classification and the instantiate/batch engine
+// path, shared with the MCP face.
+import {
+  PLACEMENT_FIELDS,
+  SCENE_MUTATION_OPS,
+  SCENE_QUERY_OPS,
+  instantiateScene,
+  runBatch,
+  type InstantiateSceneArgs,
+} from "./placement-batch.js";
+import {
+  attachToSurface,
+  attachToSurfaceArgsSchema,
+  connectPorts,
+  connectPortsArgsSchema,
+  inspectAsset,
+  inspectAssetArgsSchema,
+  measure,
+  measureArgsSchema,
+  placeAdjacent,
+  placeAdjacentArgsSchema,
+  raycast,
+  raycastArgsSchema,
+  repeatAlong,
+  repeatAlongArgsSchema,
+} from "./placement.js";
 import { readLibraryEntry, readLibraryInputSchema } from "../library-read.js";
 import { runSearchLibrary, searchLibraryInputSchema } from "../library-search.js";
 
@@ -567,6 +623,42 @@ async function snapshotResult(snap: CaptureResult, target: string): Promise<Disp
   return { ...rest, localPath };
 }
 
+/** The shell face of the seeing tools: the same implementation as the MCP
+ *  face; the image (inline over MCP) is written to the OS temp directory here
+ *  like `summer tool screenshot`, and the receipt + caption print as JSON. */
+async function seeingResult(result: SeeingResult, name: string): Promise<DispatchArgs> {
+  if (!result.ok) {
+    throw new ToolResultError({ ok: false, failure_reason: result.failure_reason, error: result.error, ...(result.hint ? { hint: result.hint } : {}), ...(result.detail ? { detail: result.detail } : {}) }, result.error);
+  }
+  let localPath: string | undefined;
+  if (result.image) {
+    // A private mkdtemp directly in the OS temp dir, never a shared fixed
+    // parent another local user could pre-create or symlink.
+    const dir = await mkdtemp(join(tmpdir(), `summer-seeing-cli-${name}-`));
+    localPath = join(dir, `${name}.jpg`);
+    await writeFile(localPath, Buffer.from(result.image.base64, "base64"), { mode: 0o600 });
+  }
+  return {
+    ok: true,
+    ...result.receipt,
+    caption: result.caption,
+    ...(result.image ? { image: { localPath, width: result.image.width, height: result.image.height, mime: result.image.mime } } : {}),
+  };
+}
+
+/** The shell face of summer_scene_audit: the same page as the MCP face; a
+ *  sheet image (inline over MCP) goes to a private temp file here. */
+async function auditResult(result: AuditResult): Promise<DispatchArgs> {
+  if (!result.ok) {
+    throw new ToolResultError({ ok: false, failure_reason: result.failure_reason, error: result.error, ...(result.hint ? { hint: result.hint } : {}), ...(result.detail ? { detail: result.detail } : {}) }, result.error);
+  }
+  if (!result.image) return result.summary;
+  const dir = await mkdtemp(join(tmpdir(), "summer-audit-cli-"));
+  const localPath = join(dir, "scene-audit-sheet.jpg");
+  await writeFile(localPath, Buffer.from(result.image.base64, "base64"), { mode: 0o600 });
+  return { ...result.summary, image: { localPath, width: result.image.width, height: result.image.height, mime: result.image.mime } };
+}
+
 // ---------------------------------------------------------------------------
 // The registry
 // ---------------------------------------------------------------------------
@@ -585,14 +677,6 @@ function entry(
   };
 }
 
-const SCENE_MUTATION_OPS = new Set([
-  "AddNode", "RemoveNode", "MoveNode", "ReparentNode", "ReplaceNode",
-  "SetProp", "SetResourceProperty", "ConnectSignal", "DisconnectSignal",
-  "InstantiateScene", "SaveScene", "SnapToSurface", "AlignDistribute3D", "Undo",
-]);
-
-/** Read-only spatial queries: identity-bound to an exact scene, never saved. */
-const SCENE_QUERY_OPS = new Set(["TestPlacement3D", "NavigationProbe3D", "Starcast3D"]);
 
 // ---------------------------------------------------------------------------
 // Spatial tool argument helpers. Mirror of the bounds in
@@ -794,7 +878,39 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     }
   }),
 
-  entry("summer_creator_publish", "Publish an exported .pck through the creator API (confirm-gated)", false, (args) =>
+  entry("summer_export_game", "Export the game as a summer.games .zip with the installed engine (headless)", false, (args) =>
+    exportGame({
+      project: optStr(args, "project"),
+      out: optStr(args, "out"),
+      targets: Array.isArray(args.targets) ? args.targets.map(String) : undefined,
+      format: optStr(args, "format"),
+      debug: args.debug === true,
+      ...(typeof args.timeoutSeconds === "number" ? { timeoutMs: args.timeoutSeconds * 1000 } : {}),
+    })
+  ),
+  entry("summer_export_templates", "List or install Summer export templates from the CDN (web, macos, windows)", false, (args) => {
+    const action = optStr(args, "action");
+    if (action !== "list" && action !== "install") throw new ToolDispatchError('action must be "list" or "install".');
+    return exportTemplates({
+      action,
+      platforms: Array.isArray(args.platforms) ? args.platforms.map(String) : undefined,
+      includeDebug: args.includeDebug === true,
+      summerVersion: optStr(args, "summerVersion"),
+    });
+  }),
+  entry("summer_publish_build", "Upload a summer.games export to your store game (confirm-gated)", false, (args) =>
+    publishBuild({
+      gameId: optStr(args, "gameId"),
+      file: optStr(args, "file"),
+      clientVersion: optStr(args, "clientVersion"),
+      publish: args.publish === true,
+      platform: optStr(args, "platform"),
+      confirm: args.confirm === true,
+      ...(typeof args.waitSeconds === "number" ? { waitSeconds: args.waitSeconds } : {}),
+      face: "cli",
+    })
+  ),
+  entry("summer_creator_publish", "Deprecated: publish a .pck to the legacy creator API; use publish-build", false, (args) =>
     publishCreator({
       project: optStr(args, "project"),
       artifact: optStr(args, "artifact"),
@@ -899,7 +1015,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     if (args.raw === true) return engineResult;
     return shapeEngineLogResponse(engineResult, { maxEntries: maxWarnings }).result;
   }),
-  entry("summer_play", "Start the game quietly (no Game-tab switch or focus grab; focus:true for the toolbar-style launch) — main scene or a specific scene; seed/fixed_fps/time_scale pins, instance/mode for playtests", true, async (args, ctx) => {
+  entry("summer_play", "Start the game quietly (no Game-tab switch or focus grab; focus:true for the toolbar-style launch) — main scene or a specific scene; seed/fixed_fps/time_scale pins, instance/mode for playtests, players for a Local Play multiplayer session", true, async (args, ctx) => {
     const seed = optNumberOrUndefined(args, "seed");
     const fixedFps = optNumberOrUndefined(args, "fixed_fps");
     const timeScale = optNumberOrUndefined(args, "time_scale");
@@ -919,6 +1035,9 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       time_scale: timeScale,
       speed,
       focus: typeof args.focus === "boolean" ? args.focus : undefined,
+      players: optNumberOrUndefined(args, "players"),
+      spectators: optNumberOrUndefined(args, "spectators"),
+      queue: optStr(args, "queue"),
     };
     if (args.focus !== undefined && typeof args.focus !== "boolean") throw new ToolDispatchError("focus must be a boolean");
     const requested = pickPlayDeterminism({ seed, fixed_fps: fixedFps, time_scale: timeScale });
@@ -980,14 +1099,18 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   }),
 
   // --- file ---
-  entry("summer_read_file", "Read a project text file and its sha256 receipt", true, async (args, ctx) =>
-    requireEngineSuccess(
-      await (await ctx.engine()).readProjectFile(
-        safeProjectPath(str(args, "path")),
-        typeof args.max_bytes === "number" ? args.max_bytes : 200_000
-      )
-    )
-  ),
+  entry("summer_read_file", "Read a project text file (or a window / JSON selection of it) and its sha256 receipt", true, async (args, ctx) => {
+    // ONE implementation for both faces (core/capabilities/file-read.ts).
+    const parsed = parseToolArgs(readFileInputSchema, args, "read-file");
+    const client = await ctx.engine();
+    return requireEngineSuccess(await buildOrRefuseAsync(() => readProjectFileWindow(client, parsed)));
+  }),
+  entry("summer_grep", "Search project files with a regex (ripgrep) and return matches with context lines", true, async (args, ctx) => {
+    // ONE implementation for both faces (core/capabilities/grep.ts).
+    const parsed = parseToolArgs(grepInputSchema, args, "grep");
+    const client = await ctx.engine();
+    return requireSupportedOp(await buildOrRefuseAsync(() => grepProject(client, parsed)), "Grep", GREP_FALLBACK);
+  }),
   entry("summer_write_file", "Create or safely overwrite one complete project text file", true, async (args, ctx) => {
     const safePath = safeProjectPath(str(args, "path"));
     const content = args.content;
@@ -1046,6 +1169,11 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     const workflowId = optStr(args, "workflowId");
     if (workflowId) params.set("id", workflowId);
     return gatewayGet("/api/mcp/workflows", params);
+  }),
+  entry("summer_get_board", "Read the approved planning board for a game", false, (args) => {
+    // The CLI prints JSON: pictures (base64) only when asked for.
+    const parsed = parseToolArgs(boardArgsSchema, args, "get-board");
+    return gatewayGet(BOARD_ENDPOINT, boardQuery({ ...parsed, pictures: parsed.pictures ?? false }), 45_000);
   }),
   entry("summer_generate_image", "Generate or edit an image via Summer Studio", false, (args) =>
     gatewayPost("/api/mcp/generate/image", parseToolArgs(imageGenerationArgsSchema, args, "generate-image"))
@@ -1308,45 +1436,57 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       await (await ctx.engine()).executeOps([{ op: "OpenScene", path: str(args, "path") }])
     )
   ),
-  entry("summer_instantiate_scene", "Add an existing scene or 3D model as a child node", true, async (args, ctx) => {
-    const op: DispatchArgs = {
-      op: "InstantiateScene",
+  entry("summer_instantiate_scene", "Add an existing scene or 3D model as a child node, optionally placed (position/rotation_degrees/scale/transform)", true, async (args, ctx) => {
+    const parsed: InstantiateSceneArgs = {
+      scenePath: str(args, "scenePath"),
       parent: str(args, "parent"),
       scene: str(args, "scene"),
     };
-    if (optStr(args, "name")) op.name = args.name;
-    return executeSceneMutation(await ctx.engine(), str(args, "scenePath"), [op]);
+    if (optStr(args, "name")) parsed.name = String(args.name);
+    if (args.target_size !== undefined) {
+      if (typeof args.target_size !== "number" || !(args.target_size > 0)) {
+        throw new ToolDispatchError("target_size must be a positive number");
+      }
+      parsed.target_size = args.target_size;
+    }
+    // Shape-checked in placement-batch (arrays or Godot strings), same as MCP.
+    const placement = parsed as unknown as Record<string, unknown>;
+    for (const field of PLACEMENT_FIELDS) {
+      if (args[field] !== undefined) placement[field] = args[field];
+    }
+    return instantiateScene(await ctx.engine(), parsed);
   }),
-  entry("summer_connect_signal", "Connect a signal between two nodes", true, async (args, ctx) =>
-    executeSceneMutation(await ctx.engine(), str(args, "scenePath"), [
-      {
-        op: "ConnectSignal",
-        emitter: str(args, "emitter"),
-        signal: str(args, "signal"),
-        receiver: str(args, "receiver"),
-        method: str(args, "method"),
-      },
-    ])
-  ),
+  entry("summer_connect_signal", "Connect a signal between two nodes and verify it in the saved scene", true, async (args, ctx) => {
+    // ONE implementation for both faces (core/capabilities/connect-signal.ts):
+    // CONNECT_PERSIST through a RunSceneScript probe + read-back of the .tscn.
+    const parsed = parseToolArgs(connectSignalInputSchema, args, "connect-signal");
+    const client = await ctx.engine();
+    return buildOrRefuseAsync(() => connectSignalPersisted(client, parsed));
+  }),
   entry("summer_select_node", "Select a node in the editor scene tree", true, async (args, ctx) => {
     const op: DispatchArgs = { op: "SelectNode", nodePath: str(args, "nodePath") };
     if (optStr(args, "scenePath")) op.scenePath = args.scenePath;
     return requireEngineSuccess(await (await ctx.engine()).executeOps([op]));
   }),
-  entry("summer_replace_node", "Replace a node with a different type or scene", true, async (args, ctx) => {
-    const op: DispatchArgs = { op: "ReplaceNode", path: str(args, "path") };
-    if (optStr(args, "type")) op.type = args.type;
-    if (optStr(args, "scene")) op.scene = args.scene;
-    return executeSceneMutation(await ctx.engine(), str(args, "scenePath"), [op]);
+  entry("summer_replace_node", "Replace a node with a different scene or type and verify the saved scene", true, async (args, ctx) => {
+    // ONE implementation for both faces (core/capabilities/replace-node.ts):
+    // persisted ops + read-back of the saved .tscn.
+    const parsed = parseToolArgs(replaceNodeInputSchema, args, "replace-node");
+    const client = await ctx.engine();
+    return buildOrRefuseAsync(() => replaceNodePersisted(client, parsed));
   }),
-  entry("summer_inspect_node", "Get all editable properties of a node", true, async (args, ctx) =>
+  entry("summer_inspect_node", "Get a node's editable properties (or only the named fields)", true, async (args, ctx) => {
     // E2E 2026-09-03 F-14: the engine returns Variant.Type as a bare int; both
-    // faces add type_name (core/capabilities/variant-types.ts).
-    annotateVariantTypes(requireEngineSuccess(await (await ctx.engine()).inspectNode(str(args, "path"))))
-  ),
-  entry("summer_inspect_resource", "Get all properties of a resource", true, async (args, ctx) =>
-    requireEngineSuccess(await (await ctx.engine()).inspectResource(str(args, "path")))
-  ),
+    // faces add type_name. The fields filter lives with it in
+    // core/capabilities/inspect-node.ts.
+    const parsed = parseToolArgs(inspectNodeInputSchema, args, "inspect-node");
+    return requireEngineSuccess(await inspectNodeFields(await ctx.engine(), parsed));
+  }),
+  entry("summer_inspect_resource", "Describe a resource file (mesh surfaces, AABB, materials; scene nodes; properties) or a resource a node holds", true, async (args, ctx) => {
+    // ONE implementation for both faces (core/capabilities/inspect-resource.ts).
+    const parsed = parseToolArgs(inspectResourceInputSchema, args, "inspect-resource");
+    return requireEngineSuccess(await inspectResource(await ctx.engine(), parsed));
+  }),
   entry("summer_batch", "Run multiple engine ops as one undo group (verbatim passthrough)", true, async (args, ctx) => {
     if (!Array.isArray(args.ops)) {
       throw new ToolDispatchError("ops must be an array of operation objects");
@@ -1362,6 +1502,8 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
           "Use write-file or replace-text so content guards are enforced."
       );
     }
+    const replaceRefusal = rawSceneReplaceRefusal(ops);
+    if (replaceRefusal) throw new ToolDispatchError(replaceRefusal);
     const scenePath = optStr(args, "scenePath");
     const containsMutation = ops.some((op) => SCENE_MUTATION_OPS.has(String(op.op ?? "")));
     const needsScenePath =
@@ -1369,17 +1511,13 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     if (needsScenePath && !scenePath) {
       throw new ToolDispatchError("batch requires scenePath when ops targets a scene");
     }
-    const client = await ctx.engine();
-    const options: DispatchArgs = { groupUndo: true, ...(scenePath ? { scenePath } : {}) };
-    if (containsMutation) return executeSceneMutation(client, scenePath!, ops, options);
-    return executeOpsChunked(
-      (chunk) =>
-        needsScenePath
-          ? client.executeIdentityBoundOps(chunk, options)
-          : client.executeOps(chunk, options),
-      ops,
-      resolveSingleOnlyOps(client)
-    );
+    const receipt = optStr(args, "receipt");
+    if (receipt !== undefined && receipt !== "full" && receipt !== "summary") {
+      throw new ToolDispatchError("receipt must be one of full, summary");
+    }
+    // Same engine path as the MCP face (core/capabilities/placement-batch.ts):
+    // InstantiateScene placement fields and the compact summary receipt.
+    return runBatch(await ctx.engine(), { scenePath, ops, receipt });
   }),
 
   // --- scene scripting ---
@@ -1487,12 +1625,12 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
   // --- perception ---
   entry("summer_world_snapshot", "Structured snapshot of the edited scene (transforms, AABBs, fingerprints, counts)", true, async (args, ctx) => {
     const client = await ctx.engine();
+    const parsed = parseToolArgs(worldSnapshotInputSchema, args, "world-snapshot");
     const missing = missingEngineOpResult(client, "GetWorldSnapshot", WORLD_SNAPSHOT_FALLBACK);
     if (missing) refuseMissingOp(missing);
-    const op: DispatchArgs = { op: "GetWorldSnapshot" };
-    if (optStr(args, "scene_path")) op.scene_path = args.scene_path;
-    if (typeof args.max_nodes === "number") op.max_nodes = args.max_nodes;
-    return requireSupportedOp(await client.executeOps([op]), "GetWorldSnapshot", WORLD_SNAPSHOT_FALLBACK);
+    // Same request + filter as the MCP face (core/capabilities/world-snapshot.ts).
+    const result = await client.executeOps([buildWorldSnapshotOp(parsed)]);
+    return requireSupportedOp(shapeWorldSnapshot(result, parsed), "GetWorldSnapshot", WORLD_SNAPSHOT_FALLBACK);
   }),
   entry("summer_snapshot_diff", "Diff two world snapshots into added/removed/changed nodes and count deltas", true, async (args, ctx) => {
     const client = await ctx.engine();
@@ -1596,17 +1734,16 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     const gap = optNumber(args, "gap", 0);
     if (maxDistance <= 0) throw new ToolDispatchError("maxDistance must be positive.");
     if (gap < 0 || gap > maxDistance) throw new ToolDispatchError("gap must be >= 0 and must not exceed maxDistance.");
+    // Same implementation as the MCP face (core/capabilities/surface-snap.ts).
     return requireSupportedOp(
-      await executeSceneMutation(client, scenePath, [
-        {
-          op: "SnapToSurface",
-          subject_path: exactPath(args, "subjectPath", SPATIAL_NODE_PATH_LIMIT_BYTES),
-          direction,
-          max_distance: maxDistance,
-          gap,
-          align_up: optBoolean(args, "alignUp", false),
-        },
-      ]),
+      await snapToSurface(client, {
+        scenePath,
+        subjectPath: exactPath(args, "subjectPath", SPATIAL_NODE_PATH_LIMIT_BYTES),
+        direction: direction as [number, number, number],
+        maxDistance,
+        gap,
+        alignUp: optBoolean(args, "alignUp", false),
+      }),
       "SnapToSurface",
       SNAP_TO_SURFACE_FALLBACK
     );
@@ -1705,10 +1842,59 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     );
   }),
 
+  // --- kit placement (core/capabilities/placement.ts, shared with the MCP face) ---
+  entry("summer_inspect_asset", "Measure an asset file (AABB, origin, meshes, planar faces, open loops, anchors, collision) without adding it to a scene", true, async (args, ctx) => {
+    const parsed = parseToolArgs(inspectAssetArgsSchema, args, "inspect-asset");
+    return inspectAsset(await ctx.engine(), parsed);
+  }),
+  entry("summer_place_adjacent", "Put one node's bounds face against another's along an axis and line up the other axes (mutation + save)", true, async (args, ctx) => {
+    const parsed = parseToolArgs(placeAdjacentArgsSchema, args, "place-adjacent");
+    return placeAdjacent(await ctx.engine(), parsed);
+  }),
+  entry("summer_attach_to_surface", "Turn a piece's back onto a surface hit by a ray and seat it at a standoff (mutation + save)", true, async (args, ctx) => {
+    const parsed = parseToolArgs(attachToSurfaceArgsSchema, args, "attach-to-surface");
+    return attachToSurface(await ctx.engine(), parsed);
+  }),
+  entry("summer_repeat_along", "Instance copies of a scene along a line at a spacing or count (mutation + save)", true, async (args, ctx) => {
+    const parsed = parseToolArgs(repeatAlongArgsSchema, args, "repeat-along");
+    return repeatAlong(await ctx.engine(), parsed);
+  }),
+  entry("summer_connect_ports", "Move and turn a piece so its port meets another piece's port (mutation + save)", true, async (args, ctx) => {
+    const parsed = parseToolArgs(connectPortsArgsSchema, args, "connect-ports");
+    return connectPorts(await ctx.engine(), parsed);
+  }),
+  entry("summer_raycast", "Cast one ray from any point: hit path, point, normal (physics first, visual AABB fallback declared)", true, async (args, ctx) => {
+    const parsed = parseToolArgs(raycastArgsSchema, args, "raycast");
+    return raycast(await ctx.engine(), parsed);
+  }),
+  entry("summer_measure", "Gap or overlap per axis between two nodes, or face coplanarity across nodes (read-only)", true, async (args, ctx) => {
+    const parsed = parseToolArgs(measureArgsSchema, args, "measure");
+    return measure(await ctx.engine(), parsed);
+  }),
+
   // --- visual ---
   entry("summer_screenshot", "Capture an editor viewport, scene render, or game frame to a file", true, async (args, ctx) => {
     const client = await ctx.engine();
     const target = optStr(args, "target") ?? "viewport";
+    if (args.compare_previous === true) {
+      const bookmarkName = optStr(args, "bookmark_name");
+      const framingArg = optStr(args, "framing");
+      if (target !== "scene" || !bookmarkName || (framingArg !== undefined && framingArg !== "bookmark")) {
+        throw new ToolDispatchError('compare_previous needs target "scene" with framing "bookmark" and bookmark_name.');
+      }
+      const fovArg = optNumberOrUndefined(args, "fov");
+      return seeingResult(
+        await buildOrRefuseAsync(() =>
+          shotSheet(client as unknown as SeeingClient, {
+            scenePath: optStr(args, "scenePath"),
+            shots: [{ bookmark_name: bookmarkName, ...(fovArg !== undefined ? { fov: fovArg } : {}) }],
+            compare_previous: true,
+            max_size: 1536,
+          })
+        ),
+        "screenshot-compare"
+      );
+    }
     // Same capture path as the MCP face (core/capabilities/capture.ts): every
     // frame is content-checked, a flat viewport frame is recaptured once, and a
     // camera-less scene render learns its 2D/3D kind — the receipt carries
@@ -1737,6 +1923,17 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
         })
       );
       snap = await captureScene(client, preview);
+      const bookmark = preview.framing?.startsWith("bookmark:") ? preview.framing.slice("bookmark:".length) : undefined;
+      if (snap.ok && snap.base64 && bookmark && snap.framing === preview.framing) {
+        const slotNotes = await rememberBookmarkRender(
+          typeof client.getProjectRoot === "function" ? client.getProjectRoot() : undefined,
+          bookmark,
+          { base64: snap.base64, width: snap.width, height: snap.height },
+          preview.marks === true,
+          slotPolicy({ updatePrevious: optBoolean(args, "update_previous", false) })
+        );
+        return { ...(await snapshotResult(snap, target)), slot_notes: slotNotes };
+      }
     } else {
       snap = await captureViewport(client);
     }
@@ -1761,6 +1958,40 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     const missing = missingEngineOpResult(client, kind, CAMERA_BOOKMARK_FALLBACK);
     if (missing) refuseMissingOp(missing);
     return requireSupportedOp(await client.executeOps([op]), kind, CAMERA_BOOKMARK_FALLBACK);
+  }),
+
+  // --- seeing (shared implementation: core/capabilities/seeing/) ---
+  entry("summer_frame_nodes", "Frame nodes by their world bounds and render with the REAL environment (image to a temp file)", true, async (args, ctx) => {
+    const parsed = parseToolArgs(frameNodesArgsSchema, args, "frame-nodes");
+    const client = (await ctx.engine()) as unknown as SeeingClient;
+    return seeingResult(await buildOrRefuseAsync(() => frameNodes(client, parsed)), "frame-nodes");
+  }),
+  entry("summer_shot_sheet", "Render N bookmarks/poses into one labelled grid with real lighting; compare_previous adds a difference map", true, async (args, ctx) => {
+    const parsed = parseToolArgs(shotSheetArgsSchema, args, "shot-sheet");
+    const client = (await ctx.engine()) as unknown as SeeingClient;
+    return seeingResult(await buildOrRefuseAsync(() => shotSheet(client, parsed)), "shot-sheet");
+  }),
+  entry("summer_debug_views", "One pose as beauty/lighting/unshaded/normals/overdraw/wireframe in one grid", true, async (args, ctx) => {
+    const parsed = parseToolArgs(debugViewsArgsSchema, args, "debug-views");
+    const client = (await ctx.engine()) as unknown as SeeingClient;
+    return seeingResult(await buildOrRefuseAsync(() => debugViews(client, parsed)), "debug-views");
+  }),
+  entry("summer_zoom", "High-resolution sub-frustum render of a frame region or mark N", true, async (args, ctx) => {
+    const parsed = parseToolArgs(zoomArgsSchema, args, "zoom");
+    const client = (await ctx.engine()) as unknown as SeeingClient;
+    return seeingResult(await buildOrRefuseAsync(() => zoom(client, parsed)), "zoom");
+  }),
+  entry("summer_frame_shot", "Smart framing: score candidate poses for a shot type in-engine, bookmark the best, render the top 3", true, async (args, ctx) => {
+    const parsed = parseToolArgs(frameShotArgsSchema, args, "frame-shot");
+    const client = (await ctx.engine()) as unknown as SeeingClient;
+    return seeingResult(await buildOrRefuseAsync(() => frameShot(client, parsed)), "frame-shot");
+  }),
+
+  // --- scene audit (shared implementation: core/capabilities/audit/) ---
+  entry("summer_scene_audit", "Read-only audit of a 3D scene from geometry and materials: see-through holes, exposed edges, open pipe ends, depth steps, floor gaps, floating/sunken/overlapping props, orientation, UV stretch, z-fighting, lights, transforms, resources (<= 5 KB page; accept hides judged-fine look items)", true, async (args, ctx) => {
+    const parsed = parseToolArgs(sceneAuditArgsSchema, args, "scene-audit");
+    const client = (await ctx.engine()) as unknown as AuditClient;
+    return auditResult(await buildOrRefuseAsync(() => sceneAudit(client, parsed)));
   }),
 
   // --- library (the runtime librarian; engine-free) ---

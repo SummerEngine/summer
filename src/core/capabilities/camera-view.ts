@@ -282,8 +282,10 @@ export function readCameraPose(payload: Record<string, unknown> | undefined): Ca
 }
 
 /** One compact line per mark so the model can map a numbered label in the
- *  image to a node path: `1 -> Props/Crate_02 (MeshInstance3D) @ 120,80 200x140`. */
-export function formatSceneMarks(summary: SceneMarksSummary): string[] {
+ *  image to a node path: `1 -> Props/Crate_02 (MeshInstance3D) @ 120,80 200x140`.
+ *  `notes` (by mark id) are appended in parentheses, e.g. the occlusion test's
+ *  "(hidden behind House1/Front)". */
+export function formatSceneMarks(summary: SceneMarksSummary, notes?: ReadonlyMap<number, string>): string[] {
   const lines: string[] = [];
   if (summary.unsupported) {
     lines.push(
@@ -303,7 +305,8 @@ export function formatSceneMarks(summary: SceneMarksSummary): string[] {
     const rect = mark.screen_rect
       ? ` @ ${Math.round(mark.screen_rect.x)},${Math.round(mark.screen_rect.y)} ${Math.round(mark.screen_rect.w)}x${Math.round(mark.screen_rect.h)}`
       : "";
-    lines.push(`  ${mark.id} -> ${mark.path} (${mark.class})${rect}`);
+    const note = notes?.get(mark.id);
+    lines.push(`  ${mark.id} -> ${mark.path} (${mark.class})${rect}${note ? ` (${note})` : ""}`);
   }
   return lines;
 }

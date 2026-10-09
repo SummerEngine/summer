@@ -1,0 +1,39 @@
+id: skill/multiplayer-testing
+kind: skill
+version: 1.0.0
+summary: "Test a Summer multiplayer game with Local Play: several players, a bad network, bots, and what a passing run shows."
+use_when:
+  - "running or testing a Summer multiplayer game locally with several players (Local Play)"
+  - "testing multiplayer under latency, jitter or packet loss, or with bots"
+  - "a multiplayer run says ok but nothing networked works, or deciding whether a multiplayer change is done"
+facets:
+  lifecycle:
+    - build
+    - support
+  domains:
+    - multiplayer
+    - playtest
+    - verification
+  modalities:
+    - scripts
+    - project
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/multiplayer
+    - skill/multiplayer-project
+    - skill/multiplayer-movement
+    - skill/multiplayer-state
+    - skill/multiplayer-publish
+    - skill/summer-friends
+    - skill/summer-match-results
+    - skill/summer-matchmaking
+    - skill/summer-parties
+    - skill/summer-player-data
+    - skill/summer-store
+    - skill/summer-world-chat
+source: official
+license: MIT
+status: stable
+recommended: false

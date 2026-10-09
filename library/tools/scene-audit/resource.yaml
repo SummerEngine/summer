@@ -1,0 +1,144 @@
+id: tool/scene-audit
+kind: tool
+version: 1.3.0
+summary: 'Read-only pass over any 3D scene, from geometry and materials: see-through holes, exposed edges, open pipe ends, floor gaps, clipping props.'
+use_when:
+  - 'after each build stage of a 3D level or kit-built street: "what is wrong with this scene and where exactly?"'
+  - 'before calling a scene done: find see-through walls (an insert narrower than its frame), floor tiles with holes, props floating, sunk or poking into walls'
+  - 'facade bands with an open end or a gap, seams between modules and modules out of line seen from the street; a duct or downpipe with a missing elbow, coupler or section'
+  - 'the same look items keep coming back: accept the ones you judged fine (accept:[{key, reason}]) so later audits count them but hide them until their evidence changes'
+  - 'finding props turned the wrong way against a wall (a bench standing perpendicular to it), stretched texture strips, duplicated pieces'
+  - 'flickering faces: coplanar overlaps anywhere (props, roofs, ledges, inserts against hosts, decals, two surfaces of one mesh), judged by the 24-bit depth precision at the view distance'
+  - 'bare ground at wall bases, an underlay plane covering drain channels, buried props: floor_gap and sunken say which surface a ray hits first'
+  - 'a lit city scene in the Compatibility renderer: meshes lit by more than the per-object light limit, hard spot rims'
+do_not_use_when:
+  - 'you already know the spot: look at it with summer_frame_nodes or summer_zoom, measure it with summer_raycast or summer_measure'
+  - 'the question is gameplay or reachability: summer_navigation_probe, summer_play'
+  - 'the scene has unsaved edits you want audited: it reads the SAVED file, so save first'
+  - 'requires ScenePreview (any current Summer Engine); an engine without it answers engine_lacks_op'
+facets:
+  lifecycle:
+    - build
+  domains:
+    - verification
+    - scenes
+    - 3d
+    - level-design
+  modalities:
+    - scenes
+compatibility:
+  engine: ">=4.6"
+related:
+  tools:
+    - tool/frame-nodes
+    - tool/zoom
+    - tool/shot-sheet
+    - tool/raycast
+    - tool/measure
+    - tool/inspect-asset
+  skills:
+    - skill/verifying-scenes
+    - skill/spatial-placement
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_scene_audit
+implementation:
+  module: src/mcp/tools/audit-tools.ts
+  export: registerAuditTools
+surfaces:
+  mcp:
+    tool_name: summer_scene_audit
+    remote: false
+input_schema:
+  type: object
+  properties:
+    scenePath:
+      type: string
+      description: Scene to audit, e.g. "res://levels/town.tscn" (the SAVED file). Omit for the scene open in the editor.
+    checks:
+      type: array
+      items:
+        type: string
+        enum:
+          - through_hole
+          - floor_gap
+          - floating
+          - sunken
+          - interpenetration
+          - exposed_edge
+          - open_fixture_end
+          - orientation
+          - uv_stretch
+          - duplicate
+          - z_fight
+          - depth_step
+          - lights
+          - transform
+          - resource
+      minItems: 1
+      maxItems: 15
+      description: Only these checks (default all 15). Fewer checks run faster (duplicate, lights, transform and resource need no physics); rerun a check budget_ms left partial on its own.
+    root:
+      type: string
+      description: Report only issues under this node (subtree), e.g. "Block3". The whole scene is still loaded, so walls and floors outside it count as surroundings.
+    min_severity:
+      type: string
+      enum:
+        - error
+        - warn
+        - look
+      description: '"error" (only errors), "warn" (errors and warnings) or "look" (default: everything, including look items that only ask you to look).'
+    offset:
+      type: integer
+      minimum: 0
+      maximum: 100000
+      description: Skip this many issues of the sorted, filtered list (paging; the result names the next offset).
+    limit:
+      type: integer
+      minimum: 1
+      maximum: 50
+      description: Issues per page (default 15, max 50). The result is capped at 5 KB; a page that does not fit is cut and says so.
+    budget_ms:
+      type: integer
+      minimum: 250
+      maximum: 60000
+      description: 'Editor time for the whole audit (default 3000 ms). Each check gets a share weighted by its usual cost (unused time passes on); a check past its share stops and counts.<check>.partial gives the share it covered. Under load, rerun the partial checks with checks or a larger budget.'
+    accept:
+      type: array
+      maxItems: 50
+      items:
+        type: object
+        properties:
+          key:
+            type: string
+            minLength: 8
+            maxLength: 360
+            description: The issue's key from a previous result (issues[].key).
+          reason:
+            type: string
+            minLength: 3
+            maxLength: 200
+            description: Why it is fine, e.g. "coplanar faces hidden behind a sign".
+        required:
+          - key
+          - reason
+        additionalProperties: false
+      description: 'Accept look or warn items you judged fine (up to 50 per call): [{key, reason}] with keys from this scene''s issues. Written to res://.summer/audit-accept.json (the only file the audit writes), then counted (counts.<check>.accepted) but hidden on every later audit until their evidence changes materially (severity rises, or the measured size moves by over 25%): then they show again with accept_stale. Errors cannot be accepted.'
+    show_accepted:
+      type: boolean
+      description: 'List accepted items too (each with its accepted reason). Default false: hidden, only counted.'
+    render:
+      type: string
+      enum:
+        - sheet
+        - none
+      description: '"sheet": also return ONE inline image of the first 6 issues of this page framed up close from their open side, each tile labelled with its issue number. Default "none".'
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false

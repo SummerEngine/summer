@@ -40,6 +40,14 @@ export function buildAgentPlaybook(
       "For lighting, mood, environment, or emissive materials, use summer_screenshot target:'scene' framing:'camera' — it renders through the scene's OWN camera with its REAL WorldEnvironment. The preset framings (iso/top/...) substitute a flat preview environment and CANNOT verify lighting.",
       "When executing multiple batches, screenshot between them — catch the wrong turn at batch 2, not batch 7.",
       "If something looks wrong in the screenshot or the diff, investigate and fix before proceeding. Do not stack more work on a broken base.",
+      "A game made from a planning board (the brief gives its project id): read the board with summer_get_board at the start of each build step and compare your screenshot against its images (palette, shapes and proportions, camera angle, composition); fix the biggest difference.",
+    ],
+    // ------------------------------------------------------------------
+    // SEEING — judge a 3D environment the way a player and an artist do.
+    // ------------------------------------------------------------------
+    seeing: [
+      "Environment work ('make it beautiful', level dressing, lighting passes): bookmark hero views with summer_frame_shot (establishing / eye_level / low_angle / detail / corridor; walls, or a camera behind a one-sided wall, reject a pose; props frame it), then after every change one summer_shot_sheet of those bookmarks (compare_previous:true for previous / now / difference; only it or update_previous:true replaces a bookmark's baseline), summer_debug_views on the weakest shot (lighting, unshaded, normals, overdraw, wireframe) and summer_zoom (region or mark N) into each problem. summer_frame_nodes fits nodes with the REAL environment. Images come back inline, one grid per call; the verifying-scenes skill carries the loop and the beauty rubric. Preview tools.",
+      "Before calling a 3D scene done: summer_scene_audit (read-only, one call, at most 5 KB) lists what a camera may miss — see-through gaps, floor holes, floating or clipping props, facing look items, UV stretch, z-fighting, lights — sorted by severity with the node path, world position, evidence and next tool. Look at every error and look item up close (render:'sheet', or summer_frame_nodes / summer_zoom) and decide facings yourself; the audit never auto-fixes. Preview tool.",
     ],
     // ------------------------------------------------------------------
     // LIBRARY FEEDBACK — report how the library entries you used worked out.
@@ -101,6 +109,28 @@ export function buildAgentPlaybook(
       },
     },
     // ------------------------------------------------------------------
+    // 3D PLACEMENT — question -> tool. These bounded spatial tools ship
+    // today; an agent that never hears of them falls back to hand math.
+    // ------------------------------------------------------------------
+    placement3d: {
+      first: "For any 3D placement (props, kit pieces, walls, ledges, alcoves), call summer_search_library and read skill/spatial-placement (and skill/world-building-3d) before placing. Observe first still applies: snapshot, then place, then verify.",
+      questionToTool: [
+        "'How big is this kit piece, where is its origin, which side is its back, where are its pipe ends?' -> summer_inspect_asset (measures the file without adding it to a scene). Measure every piece type before placing it; never guess facing.",
+        "'Place it at this pose' -> summer_instantiate_scene with position / rotation_degrees (one call per piece). Many pieces -> one summer_batch of InstantiateScene ops carrying position / rotation_degrees, with receipt:'summary'.",
+        "'Next module edge to edge, next storey on top' -> summer_place_adjacent. 'Mount it on the wall' -> summer_attach_to_surface (backAxis from summer_inspect_asset). 'Clamps every 0.45 m' -> summer_repeat_along. 'Pipe to pipe' -> summer_connect_ports.",
+        "'What surface is in front of this point?' -> summer_raycast. 'Gap or overlap between these two, is the facade front flush?' -> summer_measure.",
+        "'What is around it, which side is blocked, is it flush against the wall?' -> summer_starcast (read-only, 26 directional casts from one node's bounds: open|blocked per direction with distance and object, contact-or-overlap, grounded). Call it BEFORE and AFTER placing; pass directionSpace:'local' for rotated pieces, wall gaps and alcoves.",
+        "'Will it fit here?' -> summer_test_placement: ghost-test a candidate global pose for overlap and floor gap without moving anything. Use it before committing a pose in a tight or dense spot.",
+        "'Seat it on the floor, table or wall' -> summer_snap_to_surface: move along a ray to the first surface at a requested gap (default straight down).",
+        "'Line these up / space them evenly' -> summer_align_distribute_3d: align (min/center/max) or equal-space 2-16 pieces along one axis from their visible AABBs.",
+        "'Did exactly that change, and does it look right?' -> summer_world_snapshot before + summer_snapshot_diff after, then summer_screenshot.",
+        "'What is wrong with this scene, and where?' -> summer_scene_audit after each build stage (save first; it reads the saved file in a private copy, so the tab stays clean): see-through holes in facades, exposed band ends and seams, open duct or pipe ends, floor gaps, floating/sunken/clipping props, facing look items, UV stretch, z-fighting (with the axis to nudge), lights; every check works from geometry, engine data and materials, never names or kit metadata. At most 5 KB, sorted error/warn/look; page with offset, narrow with checks/root/min_severity, render:'sheet' frames the first 6. Frame every error and look item before calling the scene done; accept:[{key, reason}] the look items you judged fine so later audits hide them.",
+        "'Can the player get from A to B?' -> summer_navigation_probe (reachability on the scene's navigation map).",
+      ],
+      evidence: "physics evidence comes from colliders; visual_aabb is a broad-phase fallback for mesh-only geometry. Read the evidence field before trusting a contact or a gap.",
+      status: "skill/spatial-placement, skill/world-building-3d and summer_starcast / summer_test_placement / summer_snap_to_surface / summer_align_distribute_3d / summer_navigation_probe / summer_world_snapshot / summer_snapshot_diff / summer_inspect_asset / summer_place_adjacent / summer_attach_to_surface / summer_repeat_along / summer_connect_ports / summer_raycast / summer_measure / summer_scene_audit are preview: verify their receipts with a screenshot. An engine build that predates an op answers engine_lacks_op naming the fallback.",
+    },
+    // ------------------------------------------------------------------
     // PHYSICAL INVARIANTS — hold after EVERY placement/import.
     // ------------------------------------------------------------------
     physicalInvariants: [
@@ -115,6 +145,15 @@ export function buildAgentPlaybook(
       "Duplicate is cheaper than regenerate: reuse previously generated/imported assets by duplicating nodes in a script — never re-run a paid generation for the same item.",
       "Generation is metered; import and reuse are not. Exhaust routes 1-2 before route 3, and batch what you can.",
       "Engine calls are cheap; YOUR context is not: prefer summer_world_snapshot + summer_snapshot_diff (compact, capped, fingerprinted) over repeated full-tree dumps.",
+    ],
+    // ------------------------------------------------------------------
+    // READ IN PARTS — a result too big for the host is a result you never see.
+    // ------------------------------------------------------------------
+    readingInParts: [
+      "summer_get_project_context is compact by default (project, scene path + sceneSummary, health summary, projectMemory, warnings). Add include:['scene_tree'] / ['capabilities'] / ['settings'] only when you need that block; `omitted` names what was left out.",
+      "summer_world_snapshot lists at most 200 nodes by default. Read one subtree with path_prefix ('House3', 'Lane2/Props'), narrow with classes and fields (['pos','aabb']), page with offset/next_offset; matched_counts counts the subtree's classes. counts and the snapshot_id diff baseline always cover the whole scene.",
+      "summer_inspect_node fields:['transform','global_transform','scene_file_path'] reads where a node is (locally and in the world) and which scene it instances in a few hundred bytes instead of about 5 KB.",
+      "Search, then read the part: summer_grep (regex over project files; context_lines, path, glob, max_results) finds the lines; summer_read_file then reads just that part — offset/limit for text (data.window.next_offset continues), json_path / keys / keys_only for JSON (e.g. json_path:'pieces', keys:['wall_*'] on a kit manifest).",
     ],
     // ------------------------------------------------------------------
     // Verification ladder (climb only as high as the change demands).
@@ -177,6 +216,8 @@ export function buildAgentPlaybook(
       "For live scene hierarchy and inspector changes, prefer scene tools. Guarded text writes support .tscn/.tres, and the engine schedules editor reloads after they land.",
       "Write GDScript by default; use C# only if the project already uses it.",
       "Never remove multiple top-level nodes unless the user explicitly requests destructive edits.",
+      "summer_snap_to_surface lifts a prop that is sunk into its support and settles it (receipt.recovery); when it still fails, read blocking and next_step in the failure instead of guessing a new position.",
+      "To swap one piece for another use summer_replace_node: it keeps parent, index, name, transform and added children, and proves the swap from the saved file. Trust persisted:true only; failure_reason not_persisted means the editor shows a change the file does not hold.",
       "Never change priority: locked .summer memory, voice IDs, canon, or provider bindings without explicit user confirmation.",
     ],
     liveEngineFlow: [
@@ -196,6 +237,11 @@ export function buildAgentPlaybook(
       "SimulateInput (drive the RUNNING game — summer_play first): summer_batch ops:[{op:'SimulateInput', type:'action', action:'jump', pressed:true}], sent ALONE as the only op. failure_reason 'not_running' = start the game first; 'unsupported' = the running game build predates the handler — use RunVerification instead.",
       "SINGLE-OP CONTRACT: the engine rejects any multi-op batch containing SaveScene, InstantiateScene, ReplaceNode, SimulateInput, ViewportSnapshot, GameSnapshot, GetRuntimeSceneTree, GetRuntimeNode, the runtime-control ops (SetRuntimeProp, CallRuntimeMethod, SpawnRuntimeScene, FreeRuntimeNode, RuntimeAnimation, RuntimeAnimationTree, GetRuntimeBones, GamePause, GameStep, GameSpeed, SimulateInputScript, InputRecordStart, InputRecordStop, InputReplay, GameProbe), Run*/Import* or Git* ops (failure_reason 'unsupported_transport', nothing executes). summer_batch splits these into sequential requests for you; when composing raw batches keep them as their own call anyway.",
       "WriteFile and ReplaceText are rejected here by design — use summer_write_file / summer_replace_text so project identity, content guards and same-file ordering are enforced.",
+      "A raw ReplaceNode with scene is rejected here too: the engine op shows the new scene but saves the OLD scene reference. summer_replace_node does the swap with ops that persist and verifies the saved file (persisted:true, or failure_reason not_persisted).",
+      "A raw ConnectSignal is rejected here: the engine connects without CONNECT_PERSIST, so the saved scene never holds it. summer_connect_signal connects with the flag and verifies the [connection] line in the saved file.",
+      "ReparentNode in summer_batch keeps the moved node's subtree: the engine op re-owns only the moved node, so the tool re-owns each scene-owned descendant in place and verifies every moved node in the saved file (persisted:true / verified:true, or failure_reason not_persisted).",
+      "scenePersistence.saved only says the SaveScene ran. Trust verified:true, which a tool sets only after reading the saved file back.",
+      "Searching project files needs no raw op: summer_grep wraps the engine's Grep op and adds context lines and a result cap.",
       "You do not need an engine op to run a shell command: your own host already has a shell. The engine binary that runs project scripts is at OS.get_executable_path() (on macOS, /Applications/Summer.app/Contents/MacOS/Summer); see the summer-cli headless-scripting skill.",
       "These are runtime ops, not scene mutations — the batch undo group is a harmless no-op for them.",
     ],

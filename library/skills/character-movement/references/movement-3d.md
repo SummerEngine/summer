@@ -84,7 +84,7 @@ Set its `collision_mask` to your Level layer only (not the player).
 Third-person differences from FPS:
 - Mouse motion rotates the `CameraController` (orbit), not the body.
 - The visual wrapper rotates to face the MOVEMENT direction, decoupled from the camera.
-  Because imported characters face Godot forward `-Z`, lerp
+  Because imported characters face the engine forward `-Z`, lerp
   `CharacterRotationRoot.rotation.y` toward `atan2(-direction.x, -direction.z)`.
 - Rotate only `CharacterRotationRoot.rotation.y`. Do not yaw the CharacterBody3D or add a
   compensating 180-degree model rotation. The package already normalizes forward to `-Z`.

@@ -13,7 +13,7 @@ paths: [".summer/**", "project.godot", "**/*.tscn", "audio/**"]
 
 ## Overview
 
-Most indie games sound like a single library used flat. The same generic "swoosh" for menu, jump, pickup, hit. That's not audio direction — that's audio absence. This skill builds an audio bible that names the music style, the SFX vocabulary, the dynamic music plan, and the spatial / mix rules. Writes to `.summer/audio-bible.md` and configures the audio bus layout in the project so the rest of the work has a real foundation.
+Many indie games sound like one sound library used flat: the same generic "swoosh" for menu, jump, pickup and hit. This skill builds an audio bible that names the music style, the SFX vocabulary, the dynamic music plan, and the spatial / mix rules. Writes to `.summer/audio-bible.md` and configures the audio bus layout in the project so the rest of the work has a real foundation.
 
 **Core principle:** SFX needs a *vocabulary*, not a *library*. Eight named SFX classes with consistent character beat 80 random library hits.
 
@@ -25,7 +25,7 @@ Ask exactly this:
 
 > Three reference tracks, games, or films for the music. What instruments matter? And what's the SFX vibe — chunky, clean, synthetic, or organic?
 
-Three is the minimum. One or two collapses into a clone. References are the highest-signal input — listen carefully.
+Three is the minimum. One or two collapses into a clone.
 
 If they freeze, offer four axes (not titles):
 
@@ -237,9 +237,9 @@ End with:
 | Music louder than SFX | Players need SFX for gameplay; music is mood. Default mix is -8 dB music vs 0 dB SFX. |
 | No reverb buses | "Send" architecture (rooms route to a small/large/outdoor reverb bus) is mandatory or your mix sounds dry-then-wet inconsistently. |
 | Pure sine "ding" for pickup | Reads as cheap mobile game. Use a major-third interval with character. |
-| Same footstep sample for all surfaces | Material-aware footsteps are 80% of the perceived audio quality. |
+| Same footstep sample for all surfaces | Players hear footsteps constantly; material-aware steps carry much of the perceived audio quality. |
 | No master ceiling / true peak | Audio clips on console builds without `-1 dBTP` ceiling. Always set it. |
-| Assuming SetResourceProperty fails silently on inline sub_resources | It does not — inline targets work, and the structural failures (`node not found`, `property is not a resource`, `resource is null`) are explicit errors. What *is* silent on current engines is a bad value shape: a JSON object instead of a Godot literal string, a misspelled `subProperty`, or a wrong-typed value returns `ok:true` yet no-ops or coerces destructively. Pass class names and literal strings, and confirm in the saved `.tres`/`.tscn`, never from `ok` alone. See `../../references/mcp-tools-reference/mcp-tools-reference.md`. |
+| Assuming SetResourceProperty fails silently on inline sub_resources | It does not — inline targets work, and the structural failures (`node not found`, `property is not a resource`, `resource is null`) are explicit errors. What *is* silent on current engines is a bad value shape: a JSON object instead of an engine literal string, a misspelled `subProperty`, or a wrong-typed value returns `ok:true` yet no-ops or coerces destructively. Pass class names and literal strings, and confirm in the saved `.tres`/`.tscn`, never from `ok` alone. See `../../references/mcp-tools-reference/mcp-tools-reference.md`. |
 
 ## Collaborative protocol
 
@@ -255,9 +255,7 @@ No template — this is a workflow that produces the bible the rest of the proje
 - `../../references/godot-version/godot-version.md` — Summer compatibility and
   version-sensitive audio API notes
 - `../../references/mcp-tools-reference/mcp-tools-reference.md`
-- `scene-and-project/brainstorm-game/SKILL.md` — produces the brief that anchors the bible
-- `rendering-and-lighting/art-direction/SKILL.md` — the visual counterpart; audio must rhyme with it
-- `audio/audio-bus-setup/SKILL.md` (NEXT) — implements the bus layout in detail
-- `audio/3d-spatial-audio/SKILL.md` (NEXT) — spatial attenuation patterns
-- `audio/footstep-systems/SKILL.md` (NEXT) — material-aware footstep impl
-- `audio/dynamic-music-stingers/SKILL.md` (LATER) — implements the dynamic music plan
+- `brainstorm-game` — produces the brief that anchors the bible
+- `art-direction` — the visual counterpart; audio must rhyme with it
+- `adaptive-music` — implements the dynamic music plan
+- `sound-effect`, `music-track`, `ambient-bed`, `voice-line` — generate the audio the bible describes

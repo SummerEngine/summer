@@ -273,8 +273,8 @@ The skeleton this skill produces is meant to be filled in via `/design-mechanic`
 
 ## See also
 
-- `scene-and-project/brainstorm-game/SKILL.md` — produces `.summer/GameSoul.md`
-- `gameplay-mechanics/design-mechanic/SKILL.md` — designs the verbs the level exercises
-- `ai-and-npcs/design-npc/SKILL.md` — designs the enemies the encounters reference
-- `rendering-and-lighting/3d-lighting/SKILL.md` — sets the lighting in `WorldEnvironment` + lights
-- `rendering-and-lighting/art-direction/SKILL.md` — defines the visual style the level expresses
+- `brainstorm-game` — produces `.summer/GameSoul.md`
+- `design-mechanic` — designs the verbs the level exercises
+- `design-npc` — designs the enemies the encounters reference
+- `3d-lighting` — sets the lighting in `WorldEnvironment` + lights
+- `art-direction` — defines the visual style the level expresses

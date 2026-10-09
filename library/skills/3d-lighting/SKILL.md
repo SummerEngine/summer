@@ -11,7 +11,7 @@ paths: ["**/*.tscn", "**/*.tres"]
 
 # 3D Lighting for Summer Engine
 
-Set up lighting and environment for 3D scenes. Follow these patterns for outdoor and indoor setups.
+Outdoor and indoor lighting setups for 3D scenes.
 
 ## Light Types
 
@@ -59,9 +59,9 @@ For a simple procedural sky:
 summer_set_resource_property(nodePath="./World/WorldEnvironment", resourceProperty="environment", subProperty="background_mode", value="2")
 ```
 
-You may need to create a Sky resource and assign it. In the editor this is done via the inspector; via MCP, SetResourceProperty on nested resources may require the resource to exist first. If `environment` is "Environment", the engine creates a default. For `sky`, you might set `sky` to "ProceduralSkyMaterial" or similarâ€”check Godot docs for the exact property chain.
+A sky is a `Sky` resource in `environment.sky`, with a `ProceduralSkyMaterial` (or `PhysicalSkyMaterial`) in its `sky_material`. `summer_set_resource_property` only sets properties on a resource that already exists, so create the `Sky` and its material in one `summer_run_script` call.
 
-**Simpler path:** Use the 3d-basic template which already has a sky. Copy that structure.
+**Simpler path:** start from the `3d-basic` template, which already has a sky, and copy its structure.
 
 ### 3. Fill Light (Optional)
 
@@ -128,7 +128,7 @@ set the meshes' `gi_mode`, then run the bake yourself from `summer_run_script` â
 enum (0 is OK; `BAKE_ERROR_NO_LIGHTMAPPER` means no renderer in this process, not a
 missing binding). Verify with a `framing:"camera"` screenshot, which renders the
 real environment. Only fall back to "press Bake Lightmaps in the editor" when
-there is genuinely no renderer available. If they want GI with zero bake step,
+no renderer is available. If they want GI with zero bake step,
 steer to `SDFGI` (`Environment.sdfgi_enabled`) or `VoxelGI`.
 
 Note the related trap: `Engine.has_singleton("EditorInterface")` returns **true**

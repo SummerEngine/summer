@@ -11,30 +11,20 @@ paths: ["assets/characters/**", "assets/models/**", "**/*.tscn", "**/*.gd"]
 
 # Character Model — T-Pose to Rigged Humanoid, Gated
 
-This is the **canonical Meshy auto-rig pipeline**. It produces a humanoid `.glb` with a Meshy-compatible skeleton that `generate-motion` can drive directly. The work is split into two paid passes with a **mandatory user-review gate between them** — the rig pass is more expensive and locks the topology, so the user must see the un-rigged preview and approve before you spend on the rig.
+This is the canonical auto-rig pipeline. It produces a humanoid `.glb` with a skeleton that `generate-motion` can drive directly. The work is two paid passes with a **mandatory user-review gate between them**: the rig pass costs more credits and locks the topology, so the user must see the un-rigged preview and approve it first.
 
 The whole flow:
 
 ```
-1. T-pose reference image    →  summer_generate_image                          (~$0.05, ~10s)
-2. Un-rigged 3D mesh         →  summer_generate_3d(image-to-3d)                (~$0.50, ~60s)
+1. T-pose reference image    →  summer_generate_image                          (~10s)
+2. Un-rigged 3D mesh         →  summer_generate_3d(image-to-3d)                (~60s)
 3. ── USER REVIEW GATE ──
-4. Rigged .glb               →  summer_generate_3d(image-to-3d, rig=true)      (~$1.00, ~90s)
+4. Rigged .glb               →  summer_generate_3d(image-to-3d, rig=true)      (~90s)
 5. Import → editor RESTART → wire as CharacterBody3D / Node3D
 6. Hand off to generate-motion for clips
 ```
 
 The animation skill (`generate-motion`) requires a rigged humanoid; a static `.glb` won't drive motion.
-
-## Web Chat / Public Orchestrator Equivalent
-
-When this skill is running inside the PublicSummerEngine chat orchestrator, use the chat-native tools directly instead of sending the user to Studio:
-
-```
-generateImage -> createCharacter -> checkGenerationStatus/meshyJobStatus -> listUserAssets readiness -> rigModel if needed -> generateAnimation -> meshyJobStatus -> importAssets -> import-character
-```
-
-Use Studio only when the user explicitly asks for visual/manual picking or when chat-side generation fails. The recovered working flow used `createCharacter`, confirmed the rig had `hasMeshyRigTask` or `animationsReady:true`, then generated `idle`, `walk`, `run`, `jump`, and `attack`, imported the rig plus child animation GLBs into `res://characters/<slug>/`, then wired playback from the imported GLB AnimationPlayers/libraries. If `generateAnimation` returns `animations_preparing`, wait, poll/list the rig asset again, and retry instead of routing to Studio. Keep this path repeatable for "animated character", "3D character with animations", "walking enemy", and similar prompts.
 
 ## When to use
 
@@ -121,11 +111,11 @@ Before paying for the rig pass, surface the un-rigged mesh:
 
 > Un-rigged knight mesh ready: `res://assets/characters/knight_unrigged.glb` (~12k tris, [preview link]).
 >
-> Next step is the **rig pass** (~$1.00, ~90s, Meshy auto-rig). It locks the topology and adds a skeleton compatible with `generate-motion`. Once you approve I'll run it.
+> Next step is the **rig pass** (uses credits, ~90s). It locks the topology and adds a skeleton compatible with `generate-motion`. Once you approve I'll run it.
 >
 > **Approve the mesh and proceed to rig?** Or regenerate the mesh first (different prompt, different polycount, different model)?
 
-If the user wants changes, loop back to step 1 or 2. Do NOT silently run the rig pass — it doubles the cost and locks the design.
+If the user wants changes, loop back to step 1 or 2. Do NOT silently run the rig pass — it spends more credits and locks the design.
 
 ### 4. Run the rig pass
 
@@ -205,17 +195,16 @@ The imported `.glb` includes its own `Skeleton3D` and `AnimationPlayer` (empty l
 
 ### 7. Hand off to animation
 
-> Knight is wired at `./World/Knight` with a Meshy-rigged skeleton. `rigAssetId` saved.
+> Knight is wired at `./World/Knight` with an auto-rigged skeleton. `rigAssetId` saved.
 >
 > Next: `generate-motion` to add idle / walk / run / attack
 > clips. Example call: `summer_generate_motion(rigAssetId: "<saved id>",
-> backend: "meshy-library", motionName: "walk")`. Custom prompt-driven motion
-> is not shipped; hand-author one-off moves in Summer Engine or import a
-> licensed clip.
+> backend: "meshy-library", motionName: "walk")`. For custom actions, use
+> `text-to-motion` (`backend: "text-to-motion"`).
 
 ## Anti-patterns
 
-- **Skipping the user-review gate.** Doubles cost, locks the design, and removes the user's chance to course-correct cheaply.
+- **Skipping the user-review gate.** Spends the rig credits, locks the design, and removes the user's chance to course-correct cheaply.
 - **Generating the mesh from a non-T-pose image.** Locomotion will look broken (inverted knees, snapped elbows). Always re-pose first.
 - **Forgetting the editor restart.** Animations will appear to bind successfully but play to a stale skeleton — the character T-poses motionless. The fix is always restart, never code.
 - **Wrapping a cinematic NPC in CharacterBody3D.** Wastes physics ticks; use Node3D.
@@ -225,7 +214,7 @@ The imported `.glb` includes its own `Skeleton3D` and `AnimationPlayer` (empty l
 
 ## Edge cases
 
-- **Multiple characters share a silhouette.** Generate the rig once, then re-skin via texture swap (cheaper than re-rigging). See `character-model` retexture flow (TBD) — for now, route to `asset-strategy`.
+- **Multiple characters share a silhouette.** Generate the rig once, then re-skin via texture swap (cheaper than re-rigging): generate a new albedo and assign it as a material override.
 - **Character has wings, tail, extra limbs.** Meshy's humanoid rig only weights the standard skeleton — extras sag. Either prompt them as static (e.g. cape held by physics in-engine) or hand-rig in Blender post-export.
 - **Child / dwarf / giant.** Generate at correct proportions in the T-pose; the rig retargets cleanly. Locomotion clips from `generate-motion` will retarget but stride length needs `playback_speed` tuning on the AnimationPlayer.
 - **First-person hands-only character.** Generate just hands + forearms in T-pose; rig pass still works. See `fps-controller` for first-person wiring.
@@ -233,20 +222,20 @@ The imported `.glb` includes its own `Skeleton3D` and `AnimationPlayer` (empty l
 
 ## Fallback (no MCP)
 
-1. Generate the T-pose reference at the Summer dashboard (or any image gen — Midjourney, nano-banana web, DALL-E).
-2. Upload to Meshy at meshy.ai → Image to 3D → enable rigging.
+1. Generate the T-pose reference in the Summer dashboard.
+2. Run image-to-3D with rigging enabled in the Summer dashboard.
 3. Download the `.glb`.
 4. Drop into `res://assets/characters/`; Summer Engine's Import dock picks it up.
 5. Restart the editor.
 6. Wire as CharacterBody3D / Node3D in Summer Engine manually.
 
-The output is identical to the MCP path — same Meshy skeleton, same compatibility with `generate-motion` (which has its own dashboard fallback).
+The output matches the MCP path — same skeleton, same compatibility with `generate-motion` (which has its own dashboard fallback).
 
 ## Handoff
 
 After the rigged character is wired:
 
-> `Knight` is at `./World/Knight` with a Meshy-rigged skeleton. Next:
+> `Knight` is at `./World/Knight` with an auto-rigged skeleton. Next:
 > - **Animations:** `generate-motion` for idle / walk / run / attack. Pass the `rigAssetId` returned in step 4.
 > - **State machine:** after a few clips exist, `animation-tree` for idle → walk → run blends.
 > - **Player input:** if this is the player, wire WASD + mouse via `fps-controller` or a third-person controller skill.

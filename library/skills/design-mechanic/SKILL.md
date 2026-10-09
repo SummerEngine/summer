@@ -142,7 +142,7 @@ Argument notes, all of which the tool schema enforces:
   "current scene" default.
 - `summer_set_prop` takes named `path` / `key` / `value` — not positional.
 - `summer_input_map_bind` events are dicts. `{"type": "key", "key": "Space"}`
-  works; key names go through Godot's keycode table, so `W`, `Space`, `Shift`,
+  works; key names go through the engine's keycode table, so `W`, `Space`, `Shift`,
   `Escape` resolve and typos silently produce no event.
 - `summer_get_script_errors` checks one file and requires `path`. Use
   `summer_get_diagnostics()` (no args) for a project-wide check.
@@ -266,8 +266,8 @@ This skill is a workflow that designs and scaffolds — the templates are runnab
 
 ## See also
 
-- `scene-and-project/brainstorm-game/SKILL.md` — produces `.summer/GameSoul.md` this skill reads
-- `level-design/design-level/SKILL.md` — design the levels that exercise the mechanic
-- `character-controllers/fps-controller/SKILL.md` — FPS movement scaffolding
-- `scripting-patterns/state-machine-patterns/SKILL.md` — state machines for complex mechanics
-- `audio/audio-direction/SKILL.md` — defines the SFX vocabulary the mechanic draws from
+- `brainstorm-game` — produces `.summer/GameSoul.md` this skill reads
+- `design-level` — design the levels that exercise the mechanic
+- `fps-controller` — FPS movement scaffolding
+- `gdscript-patterns` — state machines and other script patterns for complex mechanics
+- `audio-direction` — defines the SFX vocabulary the mechanic draws from

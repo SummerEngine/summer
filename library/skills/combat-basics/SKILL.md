@@ -11,7 +11,7 @@ paths: ["**/*.gd", "**/*.tscn"]
 
 # Combat Basics
 
-The Godot combat pattern is hitbox + hurtbox + health, wired by signals. Build it
+The standard combat pattern is hitbox + hurtbox + health, wired by signals. Build it
 component-first: the same three pieces work for player, enemies, and destructibles.
 
 ## The layer model (set this up first)

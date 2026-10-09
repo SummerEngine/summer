@@ -11,18 +11,18 @@ paths: ["**/*.gd", "**/*.tscn", "**/*.tres"]
 
 # AnimationTree — Wire Clips Into Behavior
 
-Generation gives you clips. The AnimationTree gives the character life. This skill is **not generative** — no FAL, no MCP AI calls. It composes existing clips on an `AnimationPlayer` into an `AnimationTree` with a `StateMachine` for distinct states (idle / attack / hit / dead) and `BlendSpace` nodes for continuous parameters (walk-run blend by speed). Done right, the character moves like a shipped game; done wrong, you get T-poses, snapping, or animations that "eat" each other.
+This skill generates nothing. It composes existing clips on an `AnimationPlayer` into an `AnimationTree` with a `StateMachine` for distinct states (idle / attack / hit / dead) and `BlendSpace` nodes for continuous parameters (walk-run blend by speed). Wired wrong, you get T-poses, snapping, or clips that cut each other off.
 
 The canonical Summer Engine stack:
 
 ```
 Character (CharacterBody3D)
-├── Skeleton3D (from the Meshy rig)
+├── Skeleton3D (from the rigged GLB)
 ├── AnimationPlayer            # holds the raw clips (idle, walk, run, attack_sword, ...)
 └── AnimationTree              # references AnimationPlayer, drives behavior
 ```
 
-Before adding the tree, prove direct `AnimationPlayer.play()` visibly moves the rig. Godot may import animation GLBs as `AnimationLibrary` resources or as `PackedScene`s with embedded `AnimationPlayer`s. If a copied clip appears in the list but the mesh T-poses, its tracks probably target a different root/skeleton path. Use the embedded player that came with the matching GLB, or remap/copy tracks only after confirming they target the active `Skeleton3D`. An inactive AnimationTree is also a no-op, so always set `AnimationTree.active = true`.
+Before adding the tree, prove direct `AnimationPlayer.play()` visibly moves the rig. The engine may import animation GLBs as `AnimationLibrary` resources or as `PackedScene`s with embedded `AnimationPlayer`s. If a copied clip appears in the list but the mesh T-poses, its tracks probably target a different root/skeleton path. Use the embedded player that came with the matching GLB, or remap/copy tracks only after confirming they target the active `Skeleton3D`. An inactive AnimationTree is also a no-op, so always set `AnimationTree.active = true`.
 
 ## When to use this skill
 
@@ -72,7 +72,7 @@ Before walking the CRUD steps below, check the ctx lane — one `summer_run_scri
 - **Animation-tier engines:** `ctx.anim_state_machine(character, {states: {...}, transitions: [[from, to, {blend_s: 0.2}], ...], start: "idle"})` gets-or-creates the AnimationTree, wires it to the player, builds the state machine, sets `active = true`. Unknown clip names come back as a report entry listing the player's REAL clips — never wire against guessed names. Full recipe (inspect clips/bones first, method-track events, root motion, playtest verification): `character-animation-wiring`.
 - **Any engine (raw fallback):** the same classes are fully script-bound — `AnimationNodeStateMachine.add_node(name, AnimationNodeAnimation)`, `add_transition(from, to, AnimationNodeStateMachineTransition)` (one transition resource each, `xfade_time` on it), then `tree.anim_player = tree.get_path_to(player)`, `tree.tree_root = sm`, `tree.active = true`, and `ctx.set_owner_recursive(tree)`. The raw script is quoted in `character-animation-wiring`.
 
-Note the helper's scope honestly: `anim_state_machine` builds clip states + transitions only. The canonical machine below — BlendSpace1D locomotion, OneShot attack/hit — still needs the `.tres` (or raw-script) lane for those node types. Discrete idle/walk/run backbones don't.
+Scope: `anim_state_machine` builds clip states + transitions only. The canonical machine below — BlendSpace1D locomotion, OneShot attack/hit — still needs the `.tres` (or raw-script) lane for those node types. Discrete idle/walk/run backbones don't.
 
 ## Steps via MCP
 
@@ -259,7 +259,7 @@ Then `summer_play` and watch — the goblin should idle in place, blend up to wa
 
 - **OneShot:** the action is a *temporary override* of an underlying state (attack while running, hit-react while attacking). The base keeps playing.
 - **StateMachine state:** the action is a *replacement* (dead, stunned, ragdoll). Nothing else plays.
-- Combat in 2026-feel games is almost always OneShot for attacks + StateMachine state for "dead". Don't model attacks as StateMachine states unless you need precise transition control between attack-string variants.
+- Action combat is usually OneShot for attacks + a StateMachine state for "dead". Don't model attacks as StateMachine states unless you need precise transition control between attack-string variants.
 
 ### BlendSpace1D vs BlendSpace2D
 
@@ -270,7 +270,7 @@ Then `summer_play` and watch — the goblin should idle in place, blend up to wa
 
 - Skipping AnimationTree and calling `AnimationPlayer.play("walk")` from script. Works for one clip; breaks the moment you need a crossfade.
 - Modeling every attack as a StateMachine state. The transition matrix explodes (N states × N transitions). Use one OneShot per attack and switch its inner clip via `parameters/Attack/animation`.
-- Writing the `.tres` by hand without using sub_resource IDs — Godot loses references and the inspector is unhappy. Always use `[sub_resource id="..."]` blocks.
+- Writing the `.tres` by hand without using sub_resource IDs — the engine loses the references. Always use `[sub_resource id="..."]` blocks.
 - Driving `blend_position` from raw input (`Input.get_axis(...)`). Drive from actual velocity — that way the blend matches the body's real motion, including knockback and slope-slide.
 
 ## Edge cases

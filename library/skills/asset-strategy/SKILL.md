@@ -34,7 +34,7 @@ Ask the **exact phrase** before dispatching. Skipping the question is the most c
 | Concept art vs character portrait | "Quick check — exploring the look (3-4 variants for art direction) or generating a final character portrait for dialogue UI?" | `concept-art` (exploring) / `character-portrait` (final) |
 | Prop vs character model | "Static object (sword, chair, lantern) or rigged character that needs animation?" | `prop-model` / `character-model` |
 | Tile vs sprite sheet | "One seamless tile that repeats, or a frame grid for an animated sprite?" | `tileable-texture` / `sprite-sheet` |
-| SFX vs music | "One-shot effect or a longer track (loop, theme, ambient bed)?" | `sound-effect` / `music-track` (or `audio/ambient-bed`) |
+| SFX vs music | "One-shot effect or a longer track (loop, theme, ambient bed)?" | `sound-effect` / `music-track` (or `ambient-bed`) |
 | Generate vs retarget motion | "Generate a new clip on this character, or apply an existing library to a new character?" | `generate-motion` / `retarget` |
 | VFX recipe vs game-feel | "Particle/shader effect in the world or screen-feel (camera shake, hit-stop)?" | `vfx-<name>` / `game-feel` |
 
@@ -61,7 +61,7 @@ Invoke the specialist via the `Skill` tool. Don't paraphrase — let it run. Pas
 | Request | Skill |
 |---|---|
 | Sword / chair / barrel / static object | `prop-model` |
-| Player / NPC / enemy / boss / rigged humanoid | `character-model` (canonical Meshy auto-rig) |
+| Player / NPC / enemy / boss / rigged humanoid | `character-model` (generated mesh + auto-rig) |
 | Modular dungeon / building blocks | `environment-kit` |
 | Car / spaceship / hard-surface vehicle | `vehicle-model` |
 | Tree / rock / mushroom / foliage | `organic-model` |
@@ -132,4 +132,4 @@ VFX is **code, not generative** — recipes are shader + GDScript + node setup, 
 
 ## Fallback (no MCP)
 
-The router still works without MCP — classification is text-only. It hands off to the specialist, which surfaces its own no-MCP fallback (typically: run the equivalent generation via the Summer dashboard / Meshy / nano-banana web, then `summer_import_from_url` once MCP is back).
+The router still works without MCP — classification is text-only. It hands off to the specialist, which surfaces its own no-MCP fallback (typically: run the same generation in the Summer dashboard, then `summer_import_from_url` once MCP is back).

@@ -702,6 +702,44 @@
       "recommended": false
     },
     {
+      "id": "skill/bounded-engine-runs",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "8e749bad18a8050fcad820422012466dd51c22ae97f4502f1b89d02016b201d4",
+      "summary": "Run Summer headless or offscreen safely from an agent: time limits, one engine per project, muted runs, import passes, tests that fail on crashes.",
+      "use_when": [
+        "running the engine from a shell or agent for tests, imports, captures or bots",
+        "several agents or processes share one project",
+        "a run hangs, a capture freezes, or errors cascade across unrelated scripts"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "agent-workflow",
+          "headless",
+          "verification"
+        ],
+        "modalities": [
+          "project",
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/headless-scripting",
+          "skill/multiplayer-testing",
+          "skill/compatibility-renderer-traps"
+        ]
+      },
+      "status": "preview",
+      "recommended": true
+    },
+    {
       "id": "skill/brainstorm-game",
       "kind": "skill",
       "version": "1.0.3",
@@ -1119,6 +1157,43 @@
       },
       "status": "preview",
       "recommended": false
+    },
+    {
+      "id": "skill/compatibility-renderer-traps",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "a9ad66f3cebbba35f2730bcef17a176b8bfccccc51c60bee852ac95252785ee7",
+      "summary": "Make a Forward+ Summer game also look right on the Compatibility renderer: instance-uniform budget, black MultiMesh colors, sRGB vertex colors.",
+      "use_when": [
+        "a game must run on phones or weak GPUs that may use the Compatibility or Mobile renderer",
+        "objects render black, pale or stop animating on one renderer but not another",
+        "writing shaders for many instances (crops, foliage, tiles) that must work everywhere"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "rendering",
+          "performance"
+        ],
+        "modalities": [
+          "shaders",
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/web-compatibility-look",
+          "skill/3d-lighting",
+          "skill/bounded-engine-runs"
+        ]
+      },
+      "status": "preview",
+      "recommended": true
     },
     {
       "id": "skill/concept-art",
@@ -1863,7 +1938,7 @@
       "id": "skill/headless-scripting",
       "kind": "skill",
       "version": "1.1.3",
-      "content_hash": "9f916bbf3750db44541aedb7c065eb48fb6e174e20ee71b12f30e698148c3ca9",
+      "content_hash": "ed2bd4e4a0c35a07a16e0ab9c1a40caaa0058bc4c90877d41f9f344eb72ad1eb",
       "summary": "Run a GDScript file against Summer Engine from the shell for operations no MCP tool exposes — navmesh baking, collision shapes, TileSets, re-imports.",
       "use_when": [
         "a Summer project needs an operation no MCP tool exposes — baking a navmesh, generating collision shapes, authoring an Animation, building a TileSet, re-importing assets",
@@ -1886,7 +1961,8 @@
       },
       "related": {
         "skills": [
-          "skill/scene-scripting"
+          "skill/scene-scripting",
+          "skill/bounded-engine-runs"
         ]
       },
       "status": "stable",
@@ -4575,7 +4651,7 @@
       "id": "skill/web-compatibility-look",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "f8649a98317c623e77f7b3d390d03b2317d1a455cecba707ea940467be8567a3",
+      "content_hash": "213186fd90b4a308419f271d7a6b3c38935ccb58dca918efa33ffdf90ce2b50f",
       "summary": "Make a web or browser game look high-end in the Compatibility renderer (WebGL 2): what works, what to avoid, 2D and 3D recipes, web performance.",
       "use_when": [
         "the game plays in the browser or is exported for the web and must look finished",
@@ -4604,7 +4680,8 @@
           "skill/3d-lighting",
           "skill/art-direction",
           "skill/tune-performance",
-          "skill/ui-basics"
+          "skill/ui-basics",
+          "skill/compatibility-renderer-traps"
         ]
       },
       "status": "preview",

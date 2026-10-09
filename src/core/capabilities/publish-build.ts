@@ -43,8 +43,8 @@ const POLL_MS = 3_000;
 export const CLIENT_VERSION = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-r[1-9]\d*)?$/;
 const INTAKE_DONE = ["preview_ready", "published", "ready", "succeeded"];
 const NOT_ACTIONABLE = "deployment_not_actionable";
-/** Games without a server run on iPhone only for now (summer-platform template_execution_unsupported). */
-const STANDALONE_TARGETS = ["ios"];
+/** Games without a server run on the Summer Games phone apps only (summer-platform gameplatforms.StandaloneTargets). */
+const STANDALONE_TARGETS = ["ios", "android"];
 
 /** Why the Platform did not take the export, in plain words (same text Studio shows). */
 const INTAKE_FAILURES: Record<string, string> = {
@@ -313,11 +313,12 @@ function targetPlatforms(bundle: SummerBundle): string[] {
   if (other.length) {
     throw new BuildToolError(
       "platforms_unsupported",
-      `A game without a server runs on iPhone only for now; this export also targets ${other.join(", ")}.`,
-      "Recovery: untick the other platforms in the summer.games preset (or summer.build.json) and export again."
+      `A game without a server runs on iPhone and Android only for now; this export also targets ${other.join(", ")}.`,
+      'Recovery: export again with summer_export_game targets ["ios"] or ["ios","android"]; ship macOS or Windows as a download (format "download").'
     );
   }
-  return STANDALONE_TARGETS;
+  // The Build declares exactly what the bundle declares (declaration_mismatch otherwise).
+  return bundle.targetPlatforms;
 }
 
 export type PublishBuildResult = Record<string, unknown> & { ok: true; status: string };

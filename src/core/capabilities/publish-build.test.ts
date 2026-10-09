@@ -30,6 +30,7 @@ function fakeStore(options: {
   refuseAll?: number;
   refusePartOnce?: number;
   neverDone?: boolean;
+  gameTargets?: string[];
 } = {}) {
   const calls: Call[] = [];
   const parts = new Map<number, Buffer>();
@@ -54,8 +55,9 @@ function fakeStore(options: {
       parts.set(partNumber, Buffer.from(raw as Uint8Array));
       return new Response(null, { status: 200, headers: { etag: `"e${partNumber}"` } });
     }
-    if (options.refuseAll) return json(options.refuseAll, { error: { code: "unauthorized", message: "Sign in to continue." } });
-    if (method === "GET" && url === `${STORE}/games`) return json(200, { items: [{ id: "game-1", name: "Star Weavers", slug: "star-weavers", status: "draft" }] });
+    if (options.refuseAll) return json(options.refuseAll, { error: { code: "unauthorized", message: "Agent sign-in to the Summer store is not available yet.", requestId: "req-1" } });
+    if (method === "GET" && url === `${STORE}/games`) return json(200, { items: [{ id: "game-1", name: "Star Weavers", slug: "star-weavers", status: "draft", supportedPlatforms: ["ios"] }] });
+    if (method === "GET" && url === `${STORE}/games/game-1`) return json(200, { id: "game-1", name: "Star Weavers", slug: "star-weavers", status: "draft", supportedPlatforms: options.gameTargets ?? ["ios", "android"] });
     if (method === "POST" && url === PUBLICATIONS) return json(202, { operationId: "op-1", publicationId: "pub-1", buildId: "build-1", state: "uploading" });
     if (method === "GET" && url === `${PUBLICATIONS}/pub-1`) {
       if (!sealed) return json(200, { id: "pub-1", state: "uploading", progress: { phase: "upload" } });
@@ -134,15 +136,33 @@ async function failure(promise: Promise<unknown>): Promise<BuildToolError> {
 const sha = (data: Buffer) => `sha256:${createHash("sha256").update(data).digest("hex")}`;
 
 describe("publishBuild", () => {
-  it("previews the exact upload without touching the network until confirmed", async () => {
+  it("previews the exact upload after checking the game, and uploads nothing until confirmed", async () => {
     const store = fakeStore();
     const result = await publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", face: "mcp" }, deps(store.fetch));
     expect(result).toMatchObject({
       ok: true,
       status: "confirmation_required",
       target: { gameId: "game-1", file: bundle, sha256: sha(bytes), sizeBytes: bytes.length, clientVersion: "v1.0.0", mainScene: "res://main.tscn", targetPlatforms: ["ios"], publish: false },
+      game: { gameId: "game-1", name: "Star Weavers", status: "draft", targets: ["ios", "android"] },
     });
-    expect(store.calls).toEqual([]);
+    expect(result.warnings).toBeUndefined();
+    expect(store.calls.map((call) => `${call.method} ${call.url}`)).toEqual([`GET ${STORE}/games/game-1`]);
+  });
+
+  it("refuses to preview an upload to a game that does not exist, and lists the real ones", async () => {
+    const store = fakeStore();
+    const error = await failure(publishBuild({ gameId: "critter-caper-probe", file: bundle, clientVersion: "v1.0.0", face: "mcp" }, deps(store.fetch)));
+    expect(error.code).toBe("game_not_found");
+    expect(error.message).toContain("critter-caper-probe");
+    expect(error.detail?.games).toEqual([{ id: "game-1", name: "Star Weavers", slug: "star-weavers", status: "draft", targets: ["ios"] }]);
+    expect(store.calls.some((call) => call.method === "POST")).toBe(false);
+  });
+
+  it("warns when the store page does not list a platform the export targets", async () => {
+    const store = fakeStore({ gameTargets: ["macos-universal"] });
+    const result = await publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", face: "mcp" }, deps(store.fetch));
+    expect(result.status).toBe("confirmation_required");
+    expect(String((result.warnings as string[])[0])).toContain("does not list ios");
   });
 
   it("declares, uploads every part from disk, seals, waits and names the client pack", async () => {
@@ -213,14 +233,17 @@ describe("publishBuild", () => {
     ).toMatchObject({ status: "uploaded", published: false, publishNote: expect.stringContaining("review") });
   });
 
-  it("explains a refused sign-in (the store does not accept agent tokens yet)", async () => {
+  it("passes the store's reason for a refused sign-in through, and does not send people round a re-login loop", async () => {
     const store = fakeStore({ refuseAll: 401 });
     const error = await failure(
       publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", confirm: true, face: "mcp" }, deps(store.fetch))
     );
     expect(error.code).toBe("store_auth_refused");
-    expect(error.recovery).toContain("summer login --store --force");
+    expect(error.message).toContain("Agent sign-in to the Summer store is not available yet");
+    expect(error.detail).toEqual({ requestId: "req-1" });
+    expect(error.recovery).toContain("summer doctor");
     expect(error.recovery).toContain("Studio");
+    expect(error.recovery).not.toContain("--force");
   });
 
   it("needs a store sign-in before uploading", async () => {
@@ -239,7 +262,15 @@ describe("publishBuild", () => {
     const store = fakeStore();
     const error = await failure(publishBuild({ file: bundle, clientVersion: "v1.0.0", face: "mcp" }, deps(store.fetch)));
     expect(error.code).toBe("game_required");
-    expect(error.detail?.games).toEqual([{ id: "game-1", name: "Star Weavers", slug: "star-weavers", status: "draft" }]);
+    expect(error.detail?.games).toEqual([{ id: "game-1", name: "Star Weavers", slug: "star-weavers", status: "draft", targets: ["ios"] }]);
+  });
+
+  it("says why the games are not listed when the store refuses", async () => {
+    const store = fakeStore({ refuseAll: 401 });
+    const error = await failure(publishBuild({ file: bundle, clientVersion: "v1.0.0", face: "mcp" }, deps(store.fetch)));
+    expect(error.code).toBe("game_required");
+    expect(error.message).toContain("did not list your games");
+    expect(error.message).toContain("Agent sign-in to the Summer store is not available yet");
   });
 
   it("reports why Summer did not make a Build", async () => {

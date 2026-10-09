@@ -1,6 +1,6 @@
 ---
 name: in-game-purchases
-description: "Sell items for Sparks and let short players buy Sparks in game via the Summer purchase sheet: checkout, Sparks purchase, results, testing, store policy."
+description: "Sell items for Sparks in a game shop via the Summer purchase sheet: checkout, results, not enough Sparks, inventory unlocks, authority grants, store policy."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: gameplay
@@ -11,14 +11,19 @@ paths: ["**/*.gd"]
 # In-game purchases with Sparks
 
 Sparks are Summer's currency. A game never takes money, never holds a
-balance and never approves a payment. It asks Summer, Summer shows its own
-purchase sheet over the game, and the game reacts to the authoritative
-result. There are two calls and they follow the same shape:
+balance and never approves a payment. It asks Summer for a checkout, Summer
+shows its own purchase sheet over the game, and the game reacts to the
+authoritative result.
 
 | The player wants to | Call | Validated by |
 | --- | --- | --- |
 | buy an item with Sparks they have | `Summer.client.store.request_checkout(lines)` | the Summer ledger (debit) |
-| buy Sparks because they are short | `Summer.client.store.request_sparks_purchase(minimum_sparks)` | the payment provider (Stripe or Apple), then the ledger credit |
+| buy Sparks because they are short | no game call: the player gets Sparks in the Summer app | the Summer app |
+
+The engine has no call that sells Sparks from inside the game. When a
+checkout fails with `insufficient_funds`, tell the player they need more
+Sparks and that they can get them in the Summer app, then let them press Buy
+again.
 
 ## When to sell with Sparks
 
@@ -28,9 +33,9 @@ result. There are two calls and they follow the same shape:
   game.
 - Do not invent your own currency that is bought with money. *Why:* Summer
   can only refund, protect and pay you out for Sparks purchases.
-- Offer "Get Sparks" only when a purchase failed for lack of Sparks, or on an
-  explicit shop button. *Why:* the Summer sheet interrupts play; surprise
-  payment prompts read as pressure and get games reported.
+- Open the shop only from an explicit shop or buy button. *Why:* the Summer
+  sheet interrupts play; surprise payment prompts read as pressure and get
+  games reported.
 
 ## Rules and the reason for each
 
@@ -38,66 +43,66 @@ result. There are two calls and they follow the same shape:
    `Summer.client.items` shows the player owns it. *Why:* the receipt proves
    the debit; the inventory projection is what the platform guarantees the
    player owns, including after a crash or on another device.
-2. **Never send prices, amounts or providers.** The game passes an offer ID
-   and a quantity, or a Sparks hint. *Why:* the platform prices everything; a
-   client-supplied price is exactly what a cheater edits.
-3. **One call is one purchase.** Every call creates a new identity. Never
-   call again to "retry" an unknown outcome. *Why:* the first request may
-   already be charged; the SDK and the Summer app recover it and deliver the
-   result on the signal.
-4. **Handle results only in the status signals, and deduplicate by
+2. **Never send prices or amounts.** The game passes an offer ID and a
+   quantity (`SummerCheckoutLine.create(offer_id, quantity)`). *Why:* the
+   platform prices everything; a client-supplied price is exactly what a
+   cheater edits.
+3. **One call is one purchase.** Every `request_checkout` creates a new
+   identity. Never call again to "retry" an unknown outcome
+   (`SummerCheckoutOperation.is_outcome_unknown()`). *Why:* the first request
+   may already be charged; the SDK recovers it and delivers the result on the
+   signal.
+4. **Handle results in `checkout_status_changed`, and deduplicate by
    `request_id` plus `version`.** Connect normally (not deferred) before
-   requesting. *Why:* results can arrive after a restart or twice after a
-   crash; a synchronous handler is how the SDK knows the result was delivered.
-5. **Treat `manual_review` and pending as not done.** *Why:* the platform
+   requesting. To draw a checkout panel, read `get_checkout_statuses()` and
+   `has_pending_checkouts()` instead of keeping your own list. *Why:* results
+   can arrive after a restart or twice after a crash; a synchronous handler is
+   how the SDK knows the result was delivered.
+5. **Treat `manual_review` and `pending` as not done.** *Why:* the platform
    has not decided yet; showing success or failure would be a guess.
 6. **Check readiness and hide what is unavailable.**
-   `check_checkout_readiness()` and `check_sparks_purchase_readiness()` return
-   a `SummerResult`. *Why:* editor play, guest sessions and older Summer apps
-   do not offer purchases; a dead button is worse than no button.
+   `check_checkout_readiness()` (buying) and `check_browse_readiness()`
+   (listing with `list_items()`) return a `SummerResult`. *Why:* editor play,
+   guest sessions and older Summer apps do not offer purchases; a dead button
+   is worse than no button.
 
 ## Result states
 
-Both signals deliver a status with `state`:
+`checkout_status_changed(status: SummerCheckoutStatus)` delivers a status
+whose `state` is one of:
 
 | State | Meaning | What the game does |
 | --- | --- | --- |
 | `awaiting_approval` | the Summer sheet is open | nothing; optionally dim the shop |
-| `pending` | payment or debit in progress | show "processing" |
-| `purchased` | done; Sparks debited (checkout) or credited (Sparks) | checkout: refresh items and unlock from inventory. Sparks: say "Sparks added", let the player buy again |
+| `pending` | the debit is in progress | show "processing" |
+| `purchased` | done; Sparks debited, `status.receipt` is set | refresh items and unlock from inventory |
 | `declined` | the player closed the sheet | return to the shop quietly |
-| `expired` | the sheet or payment timed out | same as declined |
-| `rejected` | refused; read `error_code` | checkout with `insufficient_funds`: offer "Get Sparks". Sparks: `provider_rejected`, say the payment did not go through |
+| `expired` | the sheet timed out | same as declined |
+| `rejected` | refused; read `error_code` | `insufficient_funds`: "Not enough Sparks. Get Sparks in the Summer app." Other codes: "The purchase was not completed." |
 | `manual_review` | platform is checking it | "We are confirming this purchase" |
-| `refunded` | Sparks only: a credited purchase was refunded or charged back (`full_refund`, `dispute_lost`) | nothing to undo; Summer already took the Sparks back. Refresh any balance display |
 
-A Sparks request can also fail to start with `purchase_limit` (the player
-reached the daily in-game Sparks limit) or `age_required` / `adult_required`
-(only adults with a saved age can buy Sparks). Show a short message and no
-retry button. *Why:* both limits are platform policy; retrying changes nothing.
+`status.is_terminal()` tells you whether the state can still change. Unknown
+future `error_code` values never mean success.
 
-The operation returned by each call also completes (`completed` signal) on
-`purchased` (ok) or a terminal failure with codes such as `checkout_declined`
-or `sparks_purchase_declined`. The status signal is the one to build UI on.
+The operation returned by `request_checkout` also completes: ok on
+`purchased`, a failure otherwise. The status signal is the one to build UI on.
 
 ## Minimal complete example
 
 ```gdscript
 extends Node
-## A one-item shop. Buys `offer_id`; if the player is short, lets them buy
-## Sparks through the Summer sheet, then they press Buy again.
+## A one-item shop. Buys `offer_id` and unlocks from inventory.
 
 @export var offer_id := "offer_sword"
 @export var definition_id := "item_sword"
-@export var price_sparks := 250 # display only; the platform charges its own price
 
 signal message(text: String)
 var _seen := {}
 
 func _ready() -> void:
-	var store := Summer.client.store
-	store.checkout_status_changed.connect(_on_checkout)
-	store.sparks_purchase_status_changed.connect(_on_sparks)
+	if Summer.client == null:
+		return # not running as a player's game
+	Summer.client.store.checkout_status_changed.connect(_on_checkout)
 	Summer.client.items.refreshed.connect(_sync_owned)
 	_sync_owned()
 
@@ -108,13 +113,7 @@ func buy() -> void:
 	var lines: Array[SummerCheckoutLine] = [SummerCheckoutLine.create(offer_id, 1)]
 	Summer.client.store.request_checkout(lines) # result arrives in _on_checkout
 
-func get_sparks() -> void:
-	if not Summer.client.store.check_sparks_purchase_readiness().ok:
-		message.emit("Get Sparks from the Summer app.")
-		return
-	Summer.client.store.request_sparks_purchase(price_sparks) # hint only
-
-func _first_time(status) -> bool:
+func _first_time(status: SummerCheckoutStatus) -> bool:
 	var key := "%s:%d" % [status.request_id, status.version]
 	if _seen.has(key):
 		return false
@@ -129,7 +128,7 @@ func _on_checkout(status: SummerCheckoutStatus) -> void:
 			Summer.client.items.refresh() # ownership comes from inventory
 		&"rejected":
 			if status.error_code == &"insufficient_funds":
-				message.emit("Not enough Sparks.") # show a Get Sparks button -> get_sparks()
+				message.emit("Not enough Sparks. Get Sparks in the Summer app, then buy again.")
 			else:
 				message.emit("The purchase was not completed.")
 		&"manual_review":
@@ -137,84 +136,91 @@ func _on_checkout(status: SummerCheckoutStatus) -> void:
 		&"declined", &"expired":
 			pass
 
-func _on_sparks(status: SummerSparksPurchaseStatus) -> void:
-	if not _first_time(status):
-		return
-	match status.state:
-		&"purchased":
-			message.emit("%d Sparks added." % status.receipt.sparks_credited)
-		&"rejected":
-			message.emit("The payment did not go through.")
-		&"manual_review":
-			message.emit("We are confirming your payment.")
-
 func _sync_owned() -> void:
 	if Summer.client.items.has_owned_definition(definition_id):
 		message.emit("Sword unlocked.") # the only place the item is granted
 ```
 
-After Sparks are added the player presses Buy again. That is a new checkout
-and Summer shows it again. *Why:* the player confirms each spend separately.
-
 ## Multiplayer: granting an effect on a dedicated authority
 
-Buying Sparks only adds Sparks to the wallet. Anything the Sparks buy
-("Grow now", "Summon rain") is a separate checkout, and on a server the
-authority must never grant it because a client says it paid. *Why:* a client
-message is the one thing a cheater controls.
+Anything the Sparks buy ("Grow now", "Summon rain") is a checkout for an
+item, and on a server the authority must never grant it because a client says
+it paid. *Why:* a client message is the one thing a cheater controls.
 
-Model the effect as a consumable catalog item with instance ownership (each
-purchase is a separate item, not a stack). *Why:* a stackable (quantity) item
-shares one owned item ID across purchases, so the ID could not tell two
-purchases apart. The client checks out; the receipt's `owned_item_ids` are item instances in
-the player's Summer inventory. The client sends the authority only that owned
-item ID. The authority consumes it with
-`Summer.authority.items.consume(session, owned_item_id, idempotency_key)` and
-applies the effect only after a successful receipt. *Why:* the platform ledger
-consumes an instance item once, so the same item cannot be redeemed twice, in
-this world or any other.
+Model the effect as a catalog item with instance ownership (each purchase is a
+separate owned item, not a stack). *Why:* a stackable item shares one owned
+item ID across purchases, so the ID could not tell two purchases apart.
+
+The client checks out; the receipt's `items[i].owned_item_ids` are the owned
+items. The client sends the authority only an owned item ID. The authority:
+
+1. reads that player's inventory with
+   `Summer.authority.items.inventory_for_session(session)` and checks the
+   item is there, owned, and of the right definition;
+2. checks its own record of redeemed item IDs, kept in the player's secret
+   player data (`Summer.authority.player_data`), so the item grants once per
+   player in every world;
+3. writes the new record, and applies the effect only after that write
+   succeeds.
 
 ```gdscript
-# On the dedicated authority. `redeemed` is saved with the world.
+# On the dedicated authority.
+const EFFECT_DEFINITION := "item_grow_now"
+
 func redeem(session: SummerSession, owned_item_id: String) -> void:
+	var inv := Summer.authority.items.inventory_for_session(session)
+	var read: SummerResult = await inv.get_result_or_completed_signal()
+	if not read.ok:
+		return # unavailable: the client may ask again later
+	var item: SummerInventoryItem = null
+	for candidate in inv.items:
+		if candidate.get_owned_item_id() == owned_item_id:
+			item = candidate
+	if item == null or not item.is_owned() or item.get_definition_id() != EFFECT_DEFINITION:
+		return # not owned by this player: never grant
+
+	var load_op := Summer.authority.player_data.load(session)
+	var loaded: SummerResult = await load_op.get_result_or_completed_signal()
+	if not loaded.ok:
+		return
+	var data: Dictionary = load_op.secret_record.data
+	var redeemed: Dictionary = data.get("redeemed", {})
 	if redeemed.has(owned_item_id):
 		return # a repeated message grants once
-	var key := "redeem_" + owned_item_id.sha256_text().substr(0, 40)
-	var op := Summer.authority.items.consume(session, owned_item_id, key)
-	var result: SummerResult = await op.get_result_or_completed_signal()
-	if not result.ok:
-		# item_not_found: not owned or already used, never grant.
-		# unavailable: retry later with the same key.
-		return
-	redeemed[owned_item_id] = op.command_id # record, apply, then save the world
+	redeemed[owned_item_id] = true
+	data["redeemed"] = redeemed
+	var save_id := "redeem_" + owned_item_id.sha256_text().substr(0, 40)
+	var commit := Summer.authority.player_data.commit_secret(session, save_id, data)
+	var saved: SummerResult = await commit.get_result_or_completed_signal()
+	if not saved.ok:
+		return # retryable: commit again with the same save_id
 	apply_grow_now(session)
 ```
 
-- Derive the key from the owned item ID. *Why:* the same key returns the same
-  receipt (`op.replayed` is true), so a retry after a timeout never consumes
-  twice, and a different item with that key fails with `idempotency_conflict`.
-- Apply the effect when the receipt arrives even if `op.replayed` is true, as
-  long as `redeemed` does not have the item. *Why:* a replay means the item was
-  consumed earlier but your world may have crashed before saving the effect.
-- Save the world right after applying. *Why:* the receipt replay is tied to
-  the authority process; after a restart as a different process the same key
-  is a new consumption and the already-consumed item returns `item_not_found`.
+- The save ID comes from the owned item ID. *Why:* resending the same save ID
+  with the same content returns the earlier commit (`commit.replayed`), so a
+  retry after a timeout records the redemption once.
+- Apply the effect when the commit succeeds even if `commit.replayed` is true
+  and the effect is not in your world yet. *Why:* a replay means the
+  redemption was recorded earlier, but your world may have crashed before it
+  applied the effect.
+- The engine has no call that uses up an owned item. The item stays in the
+  player's inventory after it is redeemed; the redeemed list is what stops a
+  second grant. Show redeemed items as used in your UI.
 
 ## Idempotency
 
-The SDK generates the request ID and replays it across transport failures and
-app restarts; the platform credits a Sparks purchase once per provider
-transaction and debits a checkout once per request. Your only job is the
-`request_id:version` dedupe above, so a replayed signal does not show a
-message or play an effect twice.
+The SDK generates the checkout request ID and replays it across transport
+failures and app restarts; the platform debits a checkout once per request.
+Your only job is the `request_id:version` dedupe above, so a replayed signal
+does not show a message or play an effect twice.
 
 ## Per-surface behaviour
 
-- **Summer Games app on iOS:** a native Summer sheet over the game. Sparks are
-  bought with Apple In-App Purchase only.
-- **Summer desktop app:** an overlay sheet; Sparks are paid with Stripe in the
-  browser, and the result returns to the game on the signal.
-- **Web:** the same sheet in the page, paid with Stripe.
+- **Summer Games app on iOS:** a native Summer sheet over the game.
+- **Summer desktop app:** an overlay sheet; the result returns to the game on
+  the signal.
+- **Web:** the same sheet in the page.
 - **Editor play and local runs:** readiness is `unavailable`. Build the
   unavailable path first.
 
@@ -222,31 +228,30 @@ The game code is identical on every surface.
 
 ## Testing
 
-- Test against Summer staging, which runs payments in sandbox mode: Stripe
-  sandbox cards on web and desktop, an Apple Sandbox tester account on iOS test
-  builds. *Why:* no real money moves and results are identical to production.
+- Test against Summer staging, which runs in sandbox mode. *Why:* no real
+  money moves and results are identical to production.
 - Walk every state: decline the sheet, let it expire, buy with too few
-  Sparks, buy Sparks, then buy the item. Kill the game while a payment is
-  pending and relaunch; the result must still arrive once.
+  Sparks, get Sparks in the Summer app, then buy the item. Kill the game while
+  a checkout is pending and relaunch; the result must still arrive once.
 - Verify the unlock comes from `items.refreshed`, not from the checkout
   signal.
 
 ## Store policy notes
 
 - Apple requires In-App Purchase for digital goods and currency sold inside
-  iOS apps. Summer's iOS sheet handles this; never add your own payment links,
-  web prices or "cheaper on the web" text inside the game. *Why:* it can get
-  the Summer app removed from the App Store for every game.
+  iOS apps. Summer's iOS sheet and app handle this; never add your own payment
+  links, web prices or "cheaper on the web" text inside the game. *Why:* it
+  can get the Summer app removed from the App Store for every game.
 - Randomized paid rewards must disclose their odds before purchase (Apple and
   most regions require it).
 - Say what a purchase gives in plain words next to the price.
 
 ## Availability
 
-`request_checkout` ships today. `request_sparks_purchase` needs a Summer
-Engine and Summer app release that advertise `player.store.sparks_purchase@1`;
-until then `check_sparks_purchase_readiness()` reports `unavailable` and the
-example above falls back to "Get Sparks from the Summer app".
+`request_checkout`, `list_items`, `Summer.client.items`,
+`Summer.authority.items.inventory_for_session` and `Summer.authority.player_data`
+ship in the engine today. Buying Sparks inside the game does not: players get
+Sparks in the Summer app.
 
 ## See also
 

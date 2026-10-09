@@ -13,10 +13,10 @@ paths: ["**/*.gd", "**/*.tscn", "**/*.tres"]
 
 Half generative, half authored. The *generative* half: an audio file (TTS via `summer_generate_audio` with `capability: "text_to_speech"`) goes through a phoneme-extraction tool (Summer does NOT wrap one — you run it externally), out comes a viseme timeline — a list of `{ phoneme, start_time, duration }` triples. The *authored* half: the character's face mesh must have BlendShapes named for the standard viseme set, or the timeline has nothing to drive. Without both halves, you get a talking robot.
 
-The 2026 production stack:
+The pipeline:
 
 1. **Audio in** — `.wav`/`.mp3` from `summer_generate_audio({capability: "text_to_speech", ...})` or imported VO.
-2. **Phoneme extraction** — done OUTSIDE Summer. Recommended: **Rhubarb Lip Sync** (open source, the industry standard for game-dev lipsync; outputs JSON with mouth-shape cues over time). Alternatives: gentle, allosaurus, or a Whisper-phoneme model on Replicate / Hugging Face. There is no `summer_*` MCP for this in the current engine.
+2. **Phoneme extraction** — done OUTSIDE Summer. Recommended: **Rhubarb Lip Sync** (open source, widely used for game lipsync; outputs JSON with mouth-shape cues over time). Alternatives: gentle, allosaurus, or a Whisper-phoneme model on Replicate / Hugging Face. There is no `summer_*` MCP for this in the current engine.
 3. **Viseme mapping** — phonemes / Rhubarb cues → Oculus / Apple ARKit viseme set (15 standard shapes covers English).
 4. **BlendShape driver** — at runtime, lerp the mesh's BlendShape weights along the timeline, synced to audio playback.
 5. **Optional emotional layer** — separate BlendShape track for `smile`, `brow_raise`, `eye_squint` etc., authored in code or at clip-edit time.
@@ -122,7 +122,7 @@ Rhubarb mouth-shape → ARKit viseme cheat sheet (apply during the bake step):
 
 **Cloud fallback:** a Whisper-phoneme model on Replicate or a Hugging Face inference endpoint will emit ARPAbet phonemes with timestamps. Then map ARPAbet → ARKit visemes via the table in the Reference card section. More accurate than Rhubarb on noisy audio; slower and costs cents per minute.
 
-Cost: Rhubarb is free + ~5s CPU per 30s clip locally. Cloud fallback ~$0.02 / minute, ~5s wall-clock for a 30s clip.
+Rhubarb is free and takes ~5s of local CPU per 30s clip. The cloud fallback is billed per minute by its provider and takes ~5s for a 30s clip.
 
 ### 4. Persist the viseme track as an AnimationLibrary entry
 
@@ -254,7 +254,7 @@ Driven from gameplay events; orthogonal to the lipsync layer.
 
 ### Phoneme → viseme mapping (for hand-rolled extraction)
 
-If the user has a CMUDict-style phoneme list and wants to map manually, this is the table to apply.
+If the user has a CMUDict-style phoneme list, map it with the ARPAbet column of the table above.
 
 ### Pitfalls
 
@@ -300,7 +300,7 @@ production speech recognition or photoreal lip sync.
 - For dialogue scripts and conversation flow, `design-npc`.
 - For the AnimationTree this layer composes into, `animation-tree`.
 - For idle blinks, saccades, and head-tracking that complement lipsync, `procedural-animation`.
-- For full performance capture (face + body together), out of scope — see Meshy's mocap docs or external pipelines.
+- Full performance capture (face and body together) is out of scope; use an external capture pipeline.
 
 ## See also
 

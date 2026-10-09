@@ -27,7 +27,7 @@ For wiring individual widget slices (9-slice panels, progress bars, toggles), th
 
 - User wants a single slice → import it directly as a `Sprite2D` (or `use-widget-asset` if it's a UI widget).
 - User wants to **generate** a new pack → `create-asset-sheet`.
-- User wants to apply a slice as a material/texture on a 3D mesh → not the pack flow; see `asset_pipeline.json`.
+- User wants to apply a slice as a material/texture on a 3D mesh → not the pack flow; see `asset-strategy`.
 
 ## Pack JSON shape
 
@@ -98,12 +98,15 @@ Delegate the actual wiring (percentage-to-pixel conversion, node-specific props)
 
 ## Examples
 
+Both examples are `summer_batch` arguments; `scenePath` names the scene that receives the nodes.
+
 ### Example 1 — Standalone slice import
 
 Pack has one non-composite slice, `crate_wooden`, no widget metadata. Place it at scene origin:
 
 ```json
 {
+  "scenePath": "res://scenes/level.tscn",
   "ops": [
     {
       "op": "AddNode",
@@ -138,6 +141,7 @@ Pack has a composite parent `settings_panel` (filtered out) plus three children:
 
 ```json
 {
+  "scenePath": "res://ui/settings.tscn",
   "ops": [
     {
       "op": "AddNode",
@@ -224,7 +228,7 @@ Pack has a composite parent `settings_panel` (filtered out) plus three children:
 
 After this, hand `panel_bg` and `apply_button` to `use-widget-asset` to set `patch_margin_*` from their `widget.frameMargins`.
 
-Note the ops format: `position` is the **Godot string** `"Vector2(0, 0)"`, not a JSON object. `z_index` is a bare integer. This is the format Summer Engine expects — see `../../references/mcp-tools-reference/mcp-tools-reference.md`.
+Note the ops format: `position` is the **engine variant string** `"Vector2(0, 0)"`, not a JSON object. `z_index` is a bare integer. This is the format Summer Engine expects — see `../../references/mcp-tools-reference/mcp-tools-reference.md`.
 
 ## Failure modes
 
@@ -240,4 +244,4 @@ Note the ops format: `position` is the **Godot string** `"Vector2(0, 0)"`, not a
 
 - `create-asset-sheet` — production side; how the pack was made.
 - `use-widget-asset` — wiring an individual widget slice (NinePatchRect, TextureProgressBar geometry).
-- `asset_pipeline.json` — broader find-or-generate -> import -> apply flow.
+- `asset-strategy` — broader find-or-generate -> import -> apply flow.

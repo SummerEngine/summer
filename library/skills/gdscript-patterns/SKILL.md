@@ -11,7 +11,7 @@ paths: ["**/*.gd"]
 
 # GDScript Patterns for Summer Engine
 
-When writing GDScript for Summer Engine projects, follow these patterns. They align with Godot 4.x conventions and work well with MCP scene operations.
+When writing GDScript for Summer Engine projects, follow these patterns. They match the engine's GDScript 4 conventions and work well with MCP scene operations.
 
 ## Type Hints
 
@@ -92,7 +92,7 @@ For health systems, input handling, and state machines, see [reference.md](refer
 
 ## Anti-patterns — introspection traps
 
-Godot's introspection API has Object-instance methods that look like they should work on script-class references. They don't. Calling them on a `const ScriptName = preload(...)` reference is a parse error, not a runtime no-op.
+The engine's introspection API has Object-instance methods that look like they should work on script-class references. They don't. Calling them on a `const ScriptName = preload(...)` reference is a parse error, not a runtime no-op.
 
 | Wrong | Right | Why |
 |---|---|---|
@@ -106,7 +106,7 @@ Godot's introspection API has Object-instance methods that look like they should
 
 ## Anti-pattern — `@onready var = $Path` on nodes that don't exist on every variant
 
-Godot resolves `$Path` (the `get_node` shorthand) at `@implicit_ready` time. If the node is missing from the current scene, you get `Node not found: "X" (relative to "Y")` errors before any of your `_ready()` runtime guards can run.
+The engine resolves `$Path` (the `get_node` shorthand) at `@implicit_ready` time. If the node is missing from the current scene, you get `Node not found: "X" (relative to "Y")` errors before any of your `_ready()` runtime guards can run.
 
 Common case: a script is shared by multiple scene variants where some variants have an optional child. Even if every code path that touches the variable has a `if inventory_ui:` guard, the `@onready` line itself errors at scene load.
 

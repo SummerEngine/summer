@@ -56,7 +56,7 @@ separate Area under the player masking only the Enemies layer.
 
 ## Building the level with a TileMap
 
-Use a `TileMapLayer` (Godot 4.3+) for the solid world. Create a `TileSet`, paint
+Use a `TileMapLayer` for the solid world. Create a `TileSet`, paint
 the collision polygon on the solid tiles, put the layer on the World collision
 layer. The player collides with it for free - no per-tile StaticBody.
 

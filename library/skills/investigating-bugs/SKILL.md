@@ -230,9 +230,9 @@ If you catch yourself thinking:
 
 **ALL of these mean: STOP. Return to Phase 1.**
 
-**If 3+ fixes failed:** Question the architecture (see Phase 4.5)
+**If 3+ fixes failed:** Question the architecture (Phase 4, step 5)
 
-## the user's Signals You're Doing It Wrong
+## Signals From the User That You're Doing It Wrong
 
 **Watch for these redirections:**
 - "Is that not happening?" - You assumed without verifying
@@ -274,7 +274,7 @@ If systematic investigation reveals issue is truly environmental, timing-depende
 3. Implement appropriate handling (retry, timeout, error message)
 4. Add monitoring/logging for future investigation
 
-**But:** 95% of "no root cause" cases are incomplete investigation.
+**But:** most "no root cause" cases are incomplete investigation.
 
 ## Supporting Techniques
 
@@ -288,11 +288,3 @@ These techniques are part of systematic debugging and available in this director
 - **verification-before-completion** - Verify fix worked before claiming success
 - **debug** - The Summer-specific triage loop (script errors → console → debugger → probe)
 - **playtesting-a-feature** - When the fix is a gameplay behaviour that has to be walked
-
-## Real-World Impact
-
-From debugging sessions:
-- Systematic approach: 15-30 minutes to fix
-- Random fixes approach: 2-3 hours of thrashing
-- First-time fix rate: 95% vs 40%
-- New bugs introduced: Near zero vs common

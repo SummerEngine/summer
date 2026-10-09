@@ -13,7 +13,7 @@ Godot Engine remains relevant in narrow technical and legal contexts:
 - upstream contributions, attribution, copyright, and licenses.
 
 The current technical base is 4.6.1 and the approved next target is 4.7.1. The
-source of truth is the repository compatibility contract. Neither number is a
+source of truth is `src/core/summer-compatibility.ts`. Neither number is a
 permanent Summer identity, so creator prompts and skills should not pin
 themselves to one upstream release.
 

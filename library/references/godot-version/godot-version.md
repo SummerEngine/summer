@@ -18,8 +18,8 @@ running engine also reports its measured technical version:
 <engineBinaryPath> --version      # e.g. 4.6.1.stable.mono.custom_build.<hash>
 ```
 
-Get `engineBinaryPath` from `summer_get_project_context`. Prefer live
-inspection to a copied version string. Creator onboarding and headlines should
+Get `engineBinaryPath` from `summer_get_project_context`. Prefer the live
+version to a copied version string. Creator onboarding and headlines should
 say Summer Engine, Summer game, Summer SDK, and GDScript. Use the upstream name
 only where technical compatibility, migration, extension APIs, contribution
 routing, attribution, or licensing requires it.
@@ -40,7 +40,7 @@ routing, attribution, or licensing requires it.
 ## Summer-specific deltas from the upstream engine
 
 - Local API server runs on `localhost:6550` by default (the port increments when several editors are open; each live editor publishes its port in `~/.summer/instances/<id>.json`, and the shared token lives in `~/.summer/api-token`).
-- Engine ships a webview module in `modules/1summer_engine/`. Do not assume the
+- The editor carries Summer's own modules (including a webview). Do not assume the
   unmodified upstream editor for UI patches.
 - Project root contains `.summer/` for project memory; do not delete it.
 

@@ -1,14 +1,14 @@
 # Summer MCP Tools — Canonical Reference
 
-> Use this as the single source of truth for which Summer MCP tool to call. Skills should reference tool names exactly as written here.
+> Which Summer MCP tool to call. Skills reference tool names exactly as written here.
 
 ## When to use Summer MCP vs. host tools
 
-**Use Summer MCP for** anything that needs the live editor or Godot's import pipeline:
+**Use Summer MCP for** anything that needs the live editor or the engine's import pipeline:
 - Scene graph mutation (`.tscn`)
 - Node properties and resources (`.tres`)
 - Project settings (`project.godot`) and InputMap
-- Asset import (Godot's import pipeline must run)
+- Asset import (the import pipeline must run)
 - Play / stop / runtime state
 - Diagnostics, console, debugger output, script errors
 - Project text reads and guarded writes (`.gd`, `.cs`, `.tscn`, `.tres`, JSON, docs, config)
@@ -28,7 +28,7 @@
 | `summer_write_file` | Create-only or sha256-guarded complete file write. |
 | `summer_replace_text` | Unique (or explicit replace-all) text mutation with read/sha guard. |
 
-### Scene graph (11)
+### Scene graph (12)
 
 | Tool | Use |
 |---|---|
@@ -49,7 +49,7 @@
 
 | Tool | Use |
 |---|---|
-| `summer_set_prop` | Set a typed property in an explicit `scenePath` using Godot's `str_to_var()`. |
+| `summer_set_prop` | Set a typed property in an explicit `scenePath` using `str_to_var()`. |
 | `summer_set_resource_property` | Set a nested resource property in an explicit `scenePath`. |
 | `summer_inspect_resource` | Read a resource FILE (`path`): a Mesh `.res` gives AABB, surfaces (primitive, vertex/index counts, attributes, triangles, material) and materials; a `.tscn`/`.glb` gives its nodes and meshes; anything else its non-default editor properties. Or a resource a node of the active scene holds (`nodePath` + `property`). |
 | `summer_connect_signal` | Wire a signal between nodes in the explicit `scenePath` (a `.tscn`). Connects with `CONNECT_PERSIST` through a RunSceneScript probe (the engine's ConnectSignal op never saves the connection), saves, and returns `persisted:true` / `verified:true` only when the saved file holds the `[connection]` line; otherwise `failure_reason: not_persisted`. |
@@ -65,7 +65,7 @@
 
 | Tool | Use |
 |---|---|
-| `summer_import_from_url` | Download a `.glb`/`.png`/etc and run Godot's full import pipeline. |
+| `summer_import_from_url` | Download a `.glb`/`.png`/etc and run the engine's full import pipeline. |
 | `summer_import_from_url_batch` | Same, batched (single filesystem scan). |
 
 ### Scene scripting (3)
@@ -84,7 +84,7 @@
 
 ### Editor UI control (4)
 
-Preview — the `Ui*` engine ops ship with a follow-up engine build; until then these return `engine_lacks_op`. Semantic first: scene work never goes through the editor UI (use the scene, scripting, and perception tools). UI ops are for editor-workflow steps a human does with the mouse — open Project Settings, switch the main screen, clear a blocking dialog, read a dock. Ladder: dedicated tool → named action → tree + activate → screenshot (pixels last, never for coordinates). Quit / project-reload / delete-without-confirm actions are denied by the engine. The `driving-the-editor-ui` skill carries the patterns.
+Preview: needs Summer Engine 0.5.66 or newer; older engines return `engine_lacks_op`. Scene work never goes through the editor UI (use the scene, scripting, and perception tools). UI ops are for editor-workflow steps a human does with the mouse — open Project Settings, switch the main screen, clear a blocking dialog, read a dock. Ladder: dedicated tool → named action → tree + activate → screenshot (pixels last, never for coordinates). Quit / project-reload / delete-without-confirm actions are denied by the engine. The `driving-the-editor-ui` skill carries the patterns.
 
 | Tool | Use |
 |---|---|
@@ -190,7 +190,7 @@ Preview. One fast, read-only call that walks every node of a 3D scene and lists 
 
 | Tool | Use |
 |---|---|
-| `summer_create_debug_report` | Create a support-ready Markdown report for `/summer debug`. |
+| `summer_create_debug_report` | Create a support-ready Markdown report (same as `summer debug`). |
 | `summer_get_diagnostics` | Aggregate error/warning summary. Call after every change. |
 | `summer_get_console` | Engine output panel. |
 | `summer_clear_console` | Clear before a fresh play, so post-run output is clean. |
@@ -206,9 +206,9 @@ Preview. One fast, read-only call that walks every node of a 3D scene and lists 
 | `summer_list_my_assets` | List/search the signed-in user's generated and uploaded assets. Empty query lists recent assets. |
 | `summer_get_asset` | Fetch one exact asset by ID with file URL, download URL, viewer URL, metadata, license, and visibility. |
 | `summer_get_asset_download_url` | Get the primary or thumbnail download URL for a specific asset. Stable shape for future signed URLs. |
-| `summer_import_asset` | Search, choose the top match, download, run Godot import, and optionally instantiate 3D models. |
+| `summer_import_asset` | Search, choose the top match, download, run the engine import, and optionally instantiate 3D models. |
 | `summer_import_asset_by_id` | Import one exact Summer asset ID. Use after generation jobs or when the user selects a specific asset. |
-| `summer_import_hdri` | Search Poly Haven's CC0 HDRIs (public API, no Summer login), import the `.hdr`/`.exr` into `res://sky/`, and get the exact `summer_run_script` snippet that wires it as the WorldEnvironment sky. The cheapest whole-scene lighting upgrade. |
+| `summer_import_hdri` | Search Poly Haven's CC0 HDRIs (public API, no Summer login), import the `.hdr`/`.exr` into `res://sky/`, and get the exact `summer_run_script` snippet that wires it as the WorldEnvironment sky. |
 | `summer_slice_asset_sheet` | Detect and crop every distinct asset from a generated sheet image into named individual assets (works without the engine; import the results afterwards). |
 
 ### Asset generation (5 — metered)
@@ -228,7 +228,7 @@ Preview. One fast, read-only call that walks every node of a 3D scene and lists 
 | `summer_check_job` | Poll a generation job. |
 | `summer_batch` | Run multiple ops as a transaction. `InstantiateScene` ops may carry `position` / `rotation_degrees` / `scale` / `transform`; `receipt: "summary"` returns counts, failures with op index and created paths under 5 KB. A `ReparentNode` keeps the moved node's scene-owned children and grandchildren (the engine op drops them from the saved file) and is verified from the saved `.tscn` (`persisted:true` / `verified:true`, else `failure_reason: not_persisted`); a raw `ConnectSignal` is refused — use `summer_connect_signal`. `scenePersistence.saved` only means the SaveScene ran. |
 
-### Meta (4)
+### Meta (5)
 
 | Tool | Use |
 |---|---|
@@ -236,8 +236,9 @@ Preview. One fast, read-only call that walks every node of a 3D scene and lists 
 | `summer_get_studio_workflow` | Discover Summer Studio's guided workflow recipes (starter prompts, ordered steps, required tools) for a goal. |
 | `summer_get_project_context` | Project, scene, and `.summer` memory summary — call at start of session. Binds the session to the open project and surfaces a `capabilitySkewWarning` when the engine build and CLI have drifted; tools whose op the engine provably lacks return a structured `engine_lacks_op` result instead of running. Compact by default (a few KB: `sceneSummary`, scalar `health` with capability counts); `include:['scene_tree','capabilities','settings']` adds the heavy blocks, `omitted` says how. |
 | `summer_get_agent_playbook` | Daily operating contract (observe-first loop, content routing, invariants, verification ritual) — call at start of session. Also served natively as the `summer_agent_playbook` MCP prompt. |
+| `summer_get_board` | Read the person's approved planning board (look, characters, place, storyboard, picks), with the look and picked cards as images to compare screenshots against. Needs the project id from the build brief; works without the engine. |
 
-### Creator platform (5)
+### Creator platform (6)
 
 | Tool | Use |
 |---|---|
@@ -287,7 +288,7 @@ Every asset-generation skill should follow this loop:
 2. `summer_generate_image` / `summer_generate_3d` / `summer_generate_audio` — metered creation.
 3. `summer_check_job` if the generation was async.
 4. `summer_get_asset` — resolve the returned `assetId`, `rigAssetId`, or `animationAssetId`.
-5. `summer_import_asset_by_id` — import the exact result into Godot's pipeline.
+5. `summer_import_asset_by_id` — import the exact result through the engine's import pipeline.
 6. `summer_get_asset_download_url` — only when the user explicitly wants a downloadable file/link.
 
 ## summer_set_resource_property — nested properties

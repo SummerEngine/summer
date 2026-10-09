@@ -548,7 +548,7 @@ Optional rig pass (image-to-3d only):
   Set options.rig = true to add an auto-rig pass via Meshy v6. The result
   job (poll via summer_check_job) will include rigAssetId — the asset ID
   of the rigged glb. Use that rigAssetId with summer_generate_motion to
-  add animation clips. Adds ~$0.30 and ~60s to the job.
+  add animation clips. Adds ~60s to the job.
 
 Example:
   summer_generate_3d({
@@ -702,11 +702,11 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     `Generate a video using AI models via Summer Engine Studio.
 
 Known models (text-to-video):
-  - "ltx" (default) — LTX Video, fast (~$0.10)
-  - "kling" — Kling 2 Master, high quality (~$0.50)
-  - "kling-turbo" — Kling 2.5 Turbo Pro (~$0.30)
-  - "minimax" — MiniMax (~$0.25)
-  - "veo3" — Google Veo 3, premium (~$1.00)
+  - "ltx" (default) — LTX Video, fast
+  - "kling" — Kling 2 Master, high quality
+  - "kling-turbo" — Kling 2.5 Turbo Pro
+  - "minimax" — MiniMax
+  - "veo3" — Google Veo 3, premium
 
 Known models (image-to-video, when imageUrl provided):
   - "ltx" (default), "kling", "minimax"
@@ -826,7 +826,7 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
 Backends (pick one):
   - "meshy-library" (default) — a curated mocap clip by motionName on a
     Summer-rigged humanoid (rigAssetId from summer_generate_3d with
-    options.rig=true). Fast (~30s), cheap (~$0.10), real mocap quality.
+    options.rig=true). Fast (~30s), real mocap quality.
     Names that always work: idle, walk, run, jump, attack; anything else must
     be an exact library name.
   - "text-to-motion" — custom 2-second clips (60 frames) from text prompts on

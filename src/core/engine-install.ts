@@ -1,6 +1,7 @@
-import { existsSync, statSync } from "fs";
+import { existsSync, readFileSync, statSync } from "fs";
 import { homedir, platform } from "os";
 import { basename, join } from "path";
+import { getSummerDir, writeStoreJson } from "./store.js";
 
 /**
  * Where each platform's engine binary lives, shared by `summer install`,
@@ -113,6 +114,41 @@ export function linuxEnginePaths(): string[] {
   return [join(linuxEngineInstallDir(), LINUX_ENGINE_BINARY_NAME)];
 }
 
+/** Where `summer install` records the engine it installed last
+ *  (~/.summer/engine-install.json), so an install with --path is found later
+ *  without SUMMER_BIN. */
+export const ENGINE_INSTALL_FILE = "engine-install.json";
+
+export interface RecordedEngineInstall {
+  schemaVersion: 1;
+  /** The engine executable (on macOS the one inside Summer.app). */
+  binary: string;
+  version: string | null;
+  installedAt: string;
+}
+
+export async function recordEngineInstall(binary: string, version: string | null): Promise<void> {
+  const record: RecordedEngineInstall = { schemaVersion: 1, binary, version, installedAt: new Date().toISOString() };
+  await writeStoreJson(ENGINE_INSTALL_FILE, record);
+}
+
+/** The engine `summer install` installed last, or null (sync: findEngineBinary is). */
+export function recordedEngineBinary(): string | null {
+  try {
+    const record = JSON.parse(readFileSync(join(getSummerDir(), ENGINE_INSTALL_FILE), "utf8")) as Partial<RecordedEngineInstall>;
+    return record.schemaVersion === 1 && typeof record.binary === "string" && record.binary ? record.binary : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The bundle summer install writes on macOS: <path>/Summer.app, or the path itself when it names a .app. */
+export function macInstallDestination(customPath?: string): string {
+  if (!customPath?.trim()) return "/Applications/Summer.app";
+  const trimmed = customPath.trim().replace(/\/+$/, "");
+  return /\.app$/i.test(trimmed) ? trimmed : join(trimmed, "Summer.app");
+}
+
 export function engineBinaryCandidates(
   os: NodeJS.Platform = platform(),
   env: NodeJS.ProcessEnv = process.env
@@ -124,7 +160,11 @@ export function engineBinaryCandidates(
       : os === "linux"
         ? linuxEnginePaths()
         : windowsEnginePaths(env);
-  return override ? [override, ...platformPaths] : platformPaths;
+  // The engine summer install put in place last wins over the default
+  // locations (an install with --path next to an older /Applications copy).
+  const recorded = recordedEngineBinary();
+  const paths = recorded ? [recorded, ...platformPaths.filter((path) => path !== recorded)] : platformPaths;
+  return override ? [override, ...paths] : paths;
 }
 
 /** First existing engine binary for this machine, or null. SUMMER_BIN /

@@ -13,9 +13,9 @@ paths: ["audio/ambient/**", "**/*.tscn", "**/*.import"]
 
 ## Overview
 
-An ambient bed is the *air* of a place. Forest at dawn, dungeon corridor, spaceship hum, market street, ocean cave. It plays at low energy under everything else — never melodic, never drawing attention, but its absence is immediately felt. Players don't notice an ambient bed; they notice the silence when you forget one.
+An ambient bed is the *air* of a place. Forest at dawn, dungeon corridor, spaceship hum, market street, ocean cave. It plays at low energy under everything else and is never melodic. Players rarely notice a bed, but they notice the silence when a level has none.
 
-This is **not** music. Use `summer_generate_audio({capability: 'sound_effects'})`, not `{capability: 'music'}`. SFX renders textures; Music renders melody. You want texture.
+This is **not** music. Use `summer_generate_audio({capability: 'sound_effects'})`, not `{capability: 'music'}`: the SFX model renders texture, the music model renders melody.
 
 Generated at 15–22 seconds (the SFX duration ceiling) and looped with a Summer
 Engine import loop point and optional crossfade.
@@ -28,9 +28,9 @@ Engine import loop point and optional crossfade.
 
 ## When NOT to use
 
-- Short event SFX (<5s) → `audio/sound-effect`.
-- Music with melody / chord progression → `audio/music-track`.
-- Voice barks → `audio/voice-line`.
+- Short event SFX (<5s) → `sound-effect`.
+- Music with melody / chord progression → `music-track`.
+- Voice barks → `voice-line`.
 
 ## Steps
 
@@ -50,7 +50,7 @@ Ask if it's not pinned by context:
 
 ### 3. Build the prompt — environment + time + weather + 2–3 sources + density + duration
 
-ElevenLabs SFX renders ambient textures well when the prompt names sources, not vibes.
+The SFX model renders ambient texture well when the prompt names sound sources, not moods.
 
 Prompts that work:
 
@@ -117,9 +117,7 @@ If the model returns a clip with a loud event near the start or end (a sudden bi
 
 ### 6. Mark the seamless loop in Summer Engine's Import dock
 
-This step is what makes the bed sound like a place rather than a 22-second sample.
-
-WAV and MP3 use **different importers with different option names** — do not copy the MP3 block from `audio/music-track` here. The WAV importer has no `loop` / `loop_offset`; it has an `edit/loop_mode` enum plus sample-frame bounds.
+WAV and MP3 use **different importers with different option names** — do not copy the MP3 block from `music-track` here. The WAV importer has no `loop` / `loop_offset`; it has an `edit/loop_mode` enum plus sample-frame bounds.
 
 In Summer Engine, select the `.wav` and open the Import dock:
 
@@ -144,7 +142,7 @@ After changing, click `Reimport`.
 
 ### 7. Crossfade-loop pattern for seamlessness
 
-ElevenLabs SFX returns are not gapless. Even with `loop = true`, you'll hear a tiny click on the loop point. Fix it with a two-player crossfade in code:
+Generated SFX clips are not gapless. Even with the loop mode set, you will often hear a small click at the loop point. Fix it with a two-player crossfade in code:
 
 ```gdscript
 # scripts/audio/AmbientBed.gd
@@ -278,7 +276,7 @@ Print the SFX prompt and the import dock settings. User runs via the Summer dash
 
 ## See also
 
-- `audio/audio-direction` — defines the Ambient layer class
-- `audio/sound-effect` — short event SFX layered over the bed
-- `audio/music-track` — melodic music layered over the bed
-- `audio/adaptive-music` — state-driven crossfades use the same pattern
+- `audio-direction` — defines the Ambient layer class
+- `sound-effect` — short event SFX layered over the bed
+- `music-track` — melodic music layered over the bed
+- `adaptive-music` — state-driven crossfades use the same pattern

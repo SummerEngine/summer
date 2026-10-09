@@ -211,7 +211,7 @@ resources exactly as it does against external `.tres` files — it reads the
 property off the node and writes the sub-property onto whatever Resource is
 there. Structural failures are explicit errors (`node not found`, `property is
 not a resource`, `resource is null`); a bad value shape is not — a JSON object
-instead of a Godot literal string, a misspelled `subProperty`, or a wrong-typed
+instead of an engine literal string, a misspelled `subProperty`, or a wrong-typed
 value returns `ok:true` yet silently no-ops or coerces destructively on current
 engines. Pass class names and literal strings (`"12.0"`, `"Color(r, g, b, a)"`)
 and confirm the result in the saved `.tscn`, never from `ok` alone. The order
@@ -490,20 +490,13 @@ This skill writes scenes and scripts. Always ask before each step. Group related
 
 ## Want a working starter?
 
-For a fully-rigged enemy with anim controller + loot drop:
-
-→ **template-id**: `template-3d-fps` — ships with a sample patrol enemy
-→ For higher-complexity AI (boss with phases, behavior trees), defer to `ai-and-npcs/behavior-trees/SKILL.md`.
+For an animated NPC in a runnable project: `summer create 3d-fps-simple-animated-npc`. Run `summer list templates` for the current list.
 
 ## See also
 
-- `ai-and-npcs/state-machine-npc/SKILL.md` — FSM pattern deep dive
-- `ai-and-npcs/behavior-trees/SKILL.md` — when complexity demands a BT
-- `ai-and-npcs/perception-sight-and-hearing/SKILL.md` — sensor patterns
-- `ai-and-npcs/navmesh-pathfinding/SKILL.md` — NavigationAgent3D for movement
-- `ai-and-npcs/llm-driven-dialogue/SKILL.md` — Summer's wedge for talking NPCs
-- `ai-and-npcs/boss-patterns/SKILL.md` — phase transitions, mechanics
-- `visual-effects/recipes/hit-spark/SKILL.md` — hit flash recipe
-- `visual-effects/recipes/dissolve/SKILL.md` — death dissolve recipe
-- `visual-effects/game-feel/SKILL.md` — screen-feel discipline (camera shake, hit-stop)
-- `scripting-patterns/state-machine-patterns/SKILL.md` — generic FSM patterns
+- `animation-tree` — wire the action states to animation clips
+- `ai-characters-in-games` — NPCs that answer free-form player text
+- `vfx-hit-spark` — hit flash recipe
+- `vfx-dissolve` — death dissolve recipe
+- `game-feel` — screen-feel discipline (camera shake, hit-stop)
+- `gdscript-patterns` — generic state machine and script patterns

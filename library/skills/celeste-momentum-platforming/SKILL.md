@@ -16,11 +16,11 @@ confidence: extracted
 
 ## Outcome
 
-A 2D character controller for SummerEngine that reproduces the tuning architecture and forgiveness mechanics of Celeste's player movement: momentum-based running with distinct ground/air acceleration, variable-height jumping with coyote time, a multi-directional dash with cooldown and residual speed, wall interaction (jump, slide, climb with stamina), and pixel-scale corner corrections that make near-miss inputs succeed instead of fail.
+A 2D character controller for Summer Engine that reproduces the tuning architecture and forgiveness mechanics of Celeste's player movement: momentum-based running with distinct ground/air acceleration, variable-height jumping with coyote time, a multi-directional dash with cooldown and residual speed, wall interaction (jump, slide, climb with stamina), and pixel-scale corner corrections that make near-miss inputs succeed instead of fail.
 
 ## When to Use
 
-- Building a precision 2D platformer in SummerEngine where movement feel is the core gameplay.
+- Building a precision 2D platformer in Summer Engine where movement feel is the core gameplay.
 - Porting or prototyping Celeste-style mechanics (dash, wall jump, climb stamina).
 - Tuning an existing platformer controller that feels "unfair" or unresponsive — the forgiveness systems below are the primary fix.
 
@@ -28,9 +28,9 @@ Do not use for: 3D character controllers, physics-driven (RigidBody) movement, o
 
 ## Core Principle
 
-Celeste's movement is a **single controller class driven by an explicit integer state machine**, with all feel-critical numbers as a **flat compile-time constants table** at the top of the class. The retrieved source (Player.cs, 5,471 lines) defines states `Normal=0, Climb=1, Dash=2, Swim=3, Boost=4, RedDash=5, HitSquash=6, Launch=7, Pickup=8, DreamDash=9` (+ a Summit state), each with Begin/Update/End callbacks. State transitions are direct integer assignments.
+Celeste's movement is a **single controller class driven by an explicit integer state machine**, with all feel-critical numbers as a **flat compile-time constants table** at the top of the class. The released source (`Player.cs`, 5,471 lines) defines states `Normal=0, Climb=1, Dash=2, Swim=3, Boost=4, RedDash=5, HitSquash=6, Launch=7, Pickup=8, DreamDash=9` (+ a Summit state), each with Begin/Update/End callbacks. State transitions are direct integer assignments.
 
-The second principle: **forgiveness at the pixel and millisecond scale**. The code repeatedly nudges the player 2–6 pixels or grants 50–200 ms windows so that inputs which are *almost* correct still succeed. This is the source of the "tightest" feel described in the originating post.
+The second principle: **forgiveness at the pixel and millisecond scale**. The code repeatedly nudges the player 2–6 pixels or grants 50–200 ms windows so that inputs which are *almost* correct still succeed. Most of the "tight" feel comes from these windows.
 
 ## Tuning Constants (verbatim from Player.cs)
 
@@ -133,7 +133,7 @@ Celeste's units are pixels/second for speeds and pixels/second² for acceleratio
 | DuckWindMult | 0 (ducking negates wind) |
 | SpacePhysicsMult | 0.6 (low-gravity zones) |
 
-## Scene / Node Shape (Godot 4)
+## Scene / Node Shape
 
 ```
 Player (CharacterBody2D)
@@ -300,7 +300,7 @@ func _probe_wall() -> int:
     return 0
 ```
 
-The skeleton above is a structural translation for Godot; the exact per-frame update bodies from Player.cs were not fully retrievable (see evidence limitations). The constants, state IDs, and confirmed behaviors (corner correction loops, variable-jump window logic, forced wall-jump timers, stamina costs, squish safety) are extracted directly from the source.
+The skeleton above is a structural translation to GDScript, not a line-by-line port of the per-frame update bodies in `Player.cs`. The constants, state IDs, and confirmed behaviors (corner correction loops, variable-jump window logic, forced wall-jump timers, stamina costs, squish safety) are extracted directly from the source.
 
 ## Confirmed Behavioral Patterns to Replicate
 
@@ -322,7 +322,7 @@ The skeleton above is a structural translation for Godot; the exact per-frame up
 6. Implement dash with 8-way aim, cooldown, residual EndDashSpeed, and corner correction.
 7. Implement climb stamina with the three cost rates and tired threshold.
 8. Add forgiveness pass: upward corner correction on jump, dash nudges, jump-through assist, wall speed retention, squish-safety cascade.
-9. Rescale units if SummerEngine's pixels-per-meter differs from Celeste's native resolution: preserve ratios (e.g., DashSpeed ≈ 2.67× MaxRun; RunAccel ≈ 11× MaxRun).
+9. Rescale units if your game's pixels-per-meter differs from Celeste's native resolution: preserve ratios (e.g., DashSpeed ≈ 2.67× MaxRun; RunAccel ≈ 11× MaxRun).
 
 ## Tunables
 
@@ -358,9 +358,4 @@ After implementing, test each forgiveness system explicitly:
 
 ## Confidence
 
-`extracted` — All tuning values, state IDs, and confirmed behavioral patterns are taken directly from the retrieved Player.cs source. Per-state update-loop bodies from the middle of the 182 KB file were not retrievable (tool truncation); where the skeleton fills standard platformer patterns (e.g., jump-cut-on-release), this is noted as structural translation, not extracted code. Not yet verified inside SummerEngine.
-
-## Evidence
-
-- sources/web/celeste-player-cs/source.md — primary source record: constants tables, state machine, confirmed behavioral snippets, retrieval limitations.
-- sources/x/valigo-celeste-movement/source.md — originating post and primary-source identification.
+`extracted` — All tuning values, state IDs, and confirmed behavioral patterns come from Celeste's publicly released `Player.cs`. Where the skeleton fills in standard platformer patterns (for example jump-cut-on-release), it is a structural translation, not extracted code. Not yet verified inside Summer Engine.

@@ -207,7 +207,7 @@ integration handed off for a playtest, not an incomplete one.
    Referencing an unbound action is a silent no-op that reads as "controls dead".
 5. Compile-check, then run and watch it move. Feel is a user call, not a still frame.
 
-## 2D side-scroller controller (the 40% every 2D game shares)
+## 2D side-scroller controller
 
 ```gdscript
 extends CharacterBody2D

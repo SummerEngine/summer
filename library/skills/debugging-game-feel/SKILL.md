@@ -184,11 +184,8 @@ After diagnosis pins down which variable(s) are wrong, the tuning is done — bu
 - `game-feel` — for the screen-shake, hit-stop, particle, sound layer once tuning is locked.
 - `debug` — if mid-debug you discover an actual error (signal not firing, node freed) hiding under the feel issue.
 
-## The Bottom Line
+## Related skills
 
-Feel bugs are tuning bugs. Tuning is a one-variable-at-a-time discipline. Anchor to a reference. Tweak one number. Play it. Decide. Repeat.
-
-**Related skills:**
 - `investigating-bugs` — for logical bugs with concrete repros, not feel.
 - `playtesting-a-feature` — the playtest discipline this skill plugs into.
 - `debug` — when the feel investigation surfaces an actual error.

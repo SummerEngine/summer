@@ -28,7 +28,7 @@ victory. Never grep the codebase before reading the actual error.
 
 - The user is asking how to *prevent* a class of bug — that's a design question. Use the relevant discipline skill (`gdscript-patterns`, `scene-composition`).
 - The user is asking for a feature with a known unfinished spec — that's `make-game` territory.
-- The bug is in a non-Godot file the host agent can debug natively (CI config, npm scripts) — use the host's debugger.
+- The bug is in a file outside the game project that the host agent can debug natively (CI config, npm scripts) — use the host's debugger.
 
 ## The Loop
 
@@ -143,7 +143,7 @@ Surface the proposed fix in plain language and ask permission. Two patterns:
 
 - For GDScript edits: `Read` the 20–40 lines around the error, `Edit` the exact change. Don't read the whole file. Don't reformat. Don't rename other things.
 - For scene edits: use the appropriate `summer_*` tool (`summer_add_node`, `summer_set_prop`, `summer_replace_node`). Group multi-step changes in `summer_batch` for one undo step.
-- **Nested resource properties:** `summer_set_resource_property` works against inline `sub_resource` targets too — pass `nodePath`, `resourceProperty`, and `subProperty` (there is no dotted `"mesh.size"` form). Structural failures (`node not found`, `property is not a resource`, `resource is null`) are explicit errors; a bad value shape is not — a JSON object instead of a Godot literal string, a misspelled `key`/`subProperty`, or a wrong-typed value returns `ok:true` yet silently no-ops or coerces destructively on current engines (dict → material cleared; dict → `Color(0,0,0,1)`; newer engines reject these with `unknown_property` / `bad_value_shape` / `type_mismatch`). Pass class names and `Color(...)`/`Vector3(...)` strings, and confirm the fix in the saved `.tscn` or a snapshot diff, never from `ok` alone. See `../../references/mcp-tools-reference/mcp-tools-reference.md`.
+- **Nested resource properties:** `summer_set_resource_property` works against inline `sub_resource` targets too — pass `nodePath`, `resourceProperty`, and `subProperty` (there is no dotted `"mesh.size"` form). Structural failures (`node not found`, `property is not a resource`, `resource is null`) are explicit errors; a bad value shape is not — a JSON object instead of an engine literal string, a misspelled `key`/`subProperty`, or a wrong-typed value returns `ok:true` yet silently no-ops or coerces destructively on current engines (dict → material cleared; dict → `Color(0,0,0,1)`; newer engines reject these with `unknown_property` / `bad_value_shape` / `type_mismatch`). Pass class names and `Color(...)`/`Vector3(...)` strings, and confirm the fix in the saved `.tscn` or a snapshot diff, never from `ok` alone. See `../../references/mcp-tools-reference/mcp-tools-reference.md`.
 
 ### 6. Verify — re-run the diagnostic that found it
 
@@ -160,7 +160,7 @@ If the diagnostic is still red after the fix, you formed the wrong hypothesis. G
 | Don't | Why |
 |---|---|
 | Grep the whole project before reading the error | The error already names the file and line. Save the user's tokens. |
-| Read whole files | 20–40 lines around the error is enough 90% of the time. |
+| Read whole files | 20–40 lines around the error is usually enough. |
 | Run multiple diagnostics in parallel | They mask each other's signal. Cheapest first, escalate. |
 | Edit before asking | The user owns the fix decision, you own the diagnosis. |
 | "Try this, see if it works" | That's not a hypothesis, that's gambling. State the theory or ask another question. |
@@ -177,7 +177,7 @@ If the diagnostic is still red after the fix, you formed the wrong hypothesis. G
 | "Cannot find type 'X'" | `summer_get_script_errors` | Class name mismatch, missing autoload, missing `class_name` |
 | Game runs but visuals wrong | `summer_get_console` + `summer_inspect_node` | Material/light/camera misconfigured |
 | Game freezes (no crash) | `summer_get_console` after `summer_play` for ~3s | Infinite loop in `_process` or `_ready` |
-| `summer_set_resource_property` "succeeded" but nothing changed | n/a | Inline sub-resource silent-fail. Use `summer_set_prop` with class name first. |
+| `summer_set_resource_property` "succeeded" but nothing changed | n/a | Bad value shape (JSON object, misspelled `subProperty`, wrong type). Pass engine literal strings and confirm in the saved `.tscn`. |
 
 ## Closing
 
@@ -200,6 +200,7 @@ The static and boot-time tools (`summer_get_script_errors`, `summer_get_console`
 - **Runtime debugger warning text** (`summer_get_debugger_warnings`) — same structured shape as the errors tool, filtered to severity `warning`. Use it whenever `summer_get_diagnostics` shows a non-zero `debugger.warnings`; do not report a warning count you never read.
 - **Diagnostics summary** (`summer_get_diagnostics`) — counts of console errors, debugger errors, debugger warnings, script errors. Tells you where to drill. **Counts only** — it carries no FPS, frame time, draw calls, or physics-body numbers.
 - **Scene tree + node properties** (`summer_get_scene_tree`, `summer_inspect_node`) — only the **edited** scene, not the running game's live tree.
+- **Live runtime state** (`summer_get_runtime_tree`, `summer_inspect_runtime_node`, `summer_game_probe`) — the running game's tree, properties and frames, on engine builds with the runtime-control ops. See `agent-playtesting`.
 - **Rendered pixels** (`summer_screenshot`) — `target:"viewport"` for the editor's current view, `target:"scene"` for an offscreen render of a scene file, `target:"game"` for a frame of the running game (that one needs the Summer desktop app bridge and fails cleanly over a plain local connection). You look at the actual image, not a description of it.
 - **Gameplay behaviour, driven by you** (`RunVerification` via `summer_batch`) — see the next section. Input, live tree, and frames from a real running instance.
 - **Whether the game is running** (`summer_is_running`) — and on which scene.

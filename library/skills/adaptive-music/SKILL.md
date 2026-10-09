@@ -13,7 +13,7 @@ paths: ["audio/music/**", "scripts/audio/**", "**/*.tscn", "default_bus_layout.t
 
 ## Overview
 
-This is the **wiring** skill, not the generation skill. The job is to take 3–5 music stems (or full tracks) and connect them to a game state machine so the music shifts as the player's situation changes — exploration → tension → combat → victory → exploration — with crossfades, ducking, and bus routing the player never consciously notices but always feels.
+This skill wires music; it does not generate it. It connects 3–5 music stems (or full tracks) to a game state machine so the music follows the player's situation — exploration → tension → combat → victory → exploration — with crossfades, ducking, and bus routing.
 
 This skill assumes the stems already exist. If they don't, run `/music-track` first for each state, or generate matching stems (same tempo, same key, same bar count) so they layer/crossfade cleanly.
 
@@ -51,7 +51,7 @@ If the plan is absent, run `/audio-direction` step 6 first.
 | **Vertical re-orchestration** | Same melody, different orchestration per state, snap on bar | All variants play simultaneously muted; swap on next bar boundary |
 | **Procedural / generative** | Rules generate music in real-time | Beyond this skill; needs a custom system |
 
-For 90% of indie games, **horizontal sequencing** is correct. It's cheaper to author, easier to swap, and players don't notice the difference.
+For most games, **horizontal sequencing** is right. It is cheaper to author and easier to swap.
 
 ### 3. Confirm stems exist (or generate them)
 
@@ -67,7 +67,7 @@ You need (typical case):
 - (optional) `audio/music/boss.mp3` — distinct from combat
 - (optional) `audio/music/victory.mp3` — short linear sting (4–8s)
 
-If any are missing, run `/music-track` for each. Critically: **same BPM, same key, same time signature, same bar length** so they overlap cleanly.
+If any are missing, run `/music-track` for each. Use **the same BPM, key, time signature, and bar length** for all of them so they overlap cleanly.
 
 ### 4. Verify / extend the bus layout
 
@@ -294,7 +294,7 @@ Master
 ## Anti-patterns
 
 - **Stems generated at different BPM/key.** They will not crossfade cleanly. Same BPM, same key, same bar count.
-- **Restarting tracks on state change.** Players hear the restart and the magic dies. Always crossfade volumes; never `play()` mid-state.
+- **Restarting tracks on state change.** Players hear the restart. Always crossfade volumes; never `play()` mid-state.
 - **No autoplay on the silent stems.** They can't fade in to phase if they never started.
 - **Polling state in `_process`.** Use signals. Music director listens to `EventBus`, not to game state every frame.
 - **Hardcoding volumes in `set_state`.** Use the table-driven `_apply_state` so adding a new state doesn't fork the function.
@@ -323,8 +323,8 @@ in Summer Engine.
 
 ## See also
 
-- `audio/audio-direction` — defines the dynamic music plan and bus layout
-- `audio/music-track` — generates the stems
-- `audio/voice-line` — the voice bus that triggers ducking
+- `audio-direction` — defines the dynamic music plan and bus layout
+- `music-track` — generates the stems
+- `voice-line` — the voice bus that triggers ducking
 - `../../references/godot-version/godot-version.md` — Summer compatibility for AudioServer
   and Tween APIs

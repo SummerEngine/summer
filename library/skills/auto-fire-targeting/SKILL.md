@@ -172,10 +172,11 @@ Use `summer_get_diagnostics` to confirm no new errors.
 `summer_inspect_node` will **not** show you `pending_damage` mid-fight. It reads
 the edited scene in the editor — the response even tags itself
 `provenance: editor_scene` — so it reports the saved node, not the live
-instance. Runtime values need a runtime probe.
+instance. Runtime values need a runtime read: with the game running, read
+the enemy with `summer_inspect_runtime_node` or `summer_game_probe` (engine
+builds with the runtime-control ops; see the `agent-playtesting` skill).
 
-The route that works from MCP is the `RunVerification` op, sent through
-`summer_batch`. It spins up a hidden, disposable game instance that runs a
+On any build, the `RunVerification` op, sent through `summer_batch`, also works. It spins up a hidden, disposable game instance that runs a
 GDScript probe and exits; it never touches the editor:
 
 ```

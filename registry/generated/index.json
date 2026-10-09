@@ -1524,7 +1524,7 @@
       "id": "skill/export-and-ship",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "371cc6ecc30a066a5f4906a9fb29a29d85ff4f6747f8656ce9f89671a87c6193",
+      "content_hash": "91c05dd9cfb95cedf04d109441ec7246ada6f3f66eabd89902823329c0aa94c6",
       "summary": "Assess and prepare a game export: inventory installed templates and targets, validate release assets and config, produce supported builds after approval.",
       "use_when": [
         "the user wants to assess or prepare a Summer game export — Steam, itch, HTML5, iOS, Android targets as available in the installed build",

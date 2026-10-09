@@ -77,7 +77,7 @@ summer_generate_image(
 
 `style: "none"` is intentional: only `cartoon` and `anime` append anything to the prompt, `realistic` and `none` append nothing, and any other value is coerced to `none`. So the preset cannot override the prompt's stylistic direction — it just contributes nothing, which is what concept art wants. All four variants' divergence has to come from the prompt.
 
-There is no `image_size` argument, and `options` only recognizes Nano Banana provider keys plus `removeBackground` — an unrecognized key is dropped without an error. Every MCP image comes back at the server's 1:1 default. For wide key art, ask for "wide cinematic framing" in the prompt and accept the square canvas, or generate in the Summer dashboard where aspect ratio is exposed. Since these are exploration images the user reacts to and throws away, square is usually fine.
+There is no `image_size` argument, and `options` only recognizes Nano Banana provider keys; an unrecognized key is dropped without an error. Background removal is the top-level `removeBackground` argument, not an `options` key. Every MCP image comes back at the server's 1:1 default. For wide key art, ask for "wide cinematic framing" in the prompt and accept the square canvas, or generate in the Summer dashboard where aspect ratio is exposed. Since these are exploration images the user reacts to and throws away, square is usually fine.
 
 ### 5. Present the batch
 

@@ -114,6 +114,7 @@
     "summer_creator_releases": "tool/creator-releases",
     "summer_debug_views": "tool/debug-views",
     "summer_export_game": "tool/export-game",
+    "summer_export_templates": "tool/export-templates",
     "summer_fabricate_3d": "tool/fabricate-3d",
     "summer_frame_nodes": "tool/frame-nodes",
     "summer_frame_shot": "tool/frame-shot",

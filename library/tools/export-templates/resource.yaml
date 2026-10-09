@@ -1,0 +1,63 @@
+id: tool/export-templates
+kind: tool
+version: 1.0.0
+summary: List and install Summer Engine export templates (Summer's WebGPU Forward+ web template, macOS, Windows) from Summer's CDN, sha256-checked.
+use_when:
+  - '"install the web export template"'
+  - '"summer_export_game says an export template is missing"'
+  - '"which export templates do I have"'
+  - before a web build or a macOS/Windows download export on a machine whose Summer Engine does not bundle that template
+do_not_use_when:
+  - exporting the summer.games store bundle (iPhone, Android, macOS, Windows apps) — it needs no template, tool/export-game
+  - exporting for Steam, itch.io or other stores — skill/export-and-ship
+facets:
+  lifecycle:
+    - launch
+  domains:
+    - creator
+    - deployment
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_export_templates
+implementation:
+  module: src/core/capabilities/export-templates.ts
+  export: exportTemplates
+surfaces:
+  mcp:
+    tool_name: summer_export_templates
+    remote: true
+input_schema:
+  type: object
+  properties:
+    action:
+      type: string
+      enum: [list, install]
+      description: "list: installed and published templates. install: download and install."
+    platforms:
+      type: array
+      items:
+        type: string
+        enum: [web, macos, windows, linux, ios, android]
+      description: Template platforms to install (default ["web"]).
+    includeDebug:
+      type: boolean
+      default: false
+      description: Also install the debug templates (for exports with debug true).
+    summerVersion:
+      type: string
+      description: The installed Summer Engine version (Help > About, e.g. 0.7.1). Read automatically on macOS; needed on Windows and Linux.
+  required:
+    - action
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false
+evidence_checks:
+  - none

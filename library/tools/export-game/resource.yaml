@@ -1,13 +1,16 @@
 id: tool/export-game
 kind: tool
 version: 1.0.0
-summary: Export the game for summer.games with the installed Summer Engine (headless, no window) and return the .zip bundle path, sha256, size and manifest.
+summary: Export the game in the exact file the Summer Games store takes per platform (iPhone, Android, macOS, Windows bundle; web build; desktop download), headless.
 use_when:
   - '"export my game for summer.games"'
   - '"make a build I can upload to my store page"'
+  - '"export my game for iPhone and Android on Summer Games"'
+  - '"make a web build of my game for summer.games"'
+  - '"export a Mac or Windows download for my store page"'
   - preparing the bundle that summer_publish_build uploads
 do_not_use_when:
-  - exporting for Steam, itch.io, Windows, Android or other stores — skill/export-and-ship
+  - exporting for Steam, itch.io, the App Store, Google Play or other stores — skill/export-and-ship
   - the game is still being built; export when the user wants a Build
 facets:
   lifecycle:
@@ -38,7 +41,17 @@ input_schema:
       description: Project folder with project.godot. Defaults to the MCP's bound project, then the working directory.
     out:
       type: string
-      description: Output .zip path. Defaults to <project>/.summer/exports/<name>-<time>.zip.
+      description: Output .zip path. Defaults to <project>/.summer/exports/.
+    targets:
+      type: array
+      items:
+        type: string
+        enum: [macos, windows, ios, android, web]
+      description: "Store platforms. Bundle: any of macos, windows, ios, android (omit to use every platform the project declares). Download: exactly one of web, macos, windows."
+    format:
+      type: string
+      enum: [bundle, download]
+      description: 'bundle (default): the summer.games store build. download: a web build or native download; the default when targets is ["web"].'
     debug:
       type: boolean
       default: false

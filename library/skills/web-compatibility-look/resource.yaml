@@ -24,6 +24,7 @@ related:
     - skill/art-direction
     - skill/tune-performance
     - skill/ui-basics
+    - skill/compatibility-renderer-traps
 source: official
 license: MIT
 status: preview

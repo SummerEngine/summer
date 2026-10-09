@@ -164,4 +164,45 @@ describe("one Summer Engine MCP: hosted tools mounted locally", () => {
       await server.close();
     }
   });
+
+  it("holds the first tools/list until the mount finishes, so hosts that list once see the store tools", async () => {
+    const { server } = createMcpServer();
+    const mount = prepareHostedMount(server, deps());
+    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverSide);
+    const client = new Client({ name: "agent", version: "1.0.0" });
+    await client.connect(clientSide);
+    try {
+      void mount.mount();
+      const names = (await client.listTools()).tools.map((tool) => tool.name);
+      expect(names).toContain("summer_store_submit");
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
+  it("answers the first tools/list after the wait cap when the mount is slow", async () => {
+    const { server } = createMcpServer();
+    const mount = prepareHostedMount(
+      server,
+      deps({ connect: () => new Promise(() => undefined) }),
+      { firstListWaitMs: 50 }
+    );
+    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverSide);
+    const client = new Client({ name: "agent", version: "1.0.0" });
+    await client.connect(clientSide);
+    try {
+      void mount.mount();
+      const started = Date.now();
+      const names = (await client.listTools()).tools.map((tool) => tool.name);
+      expect(Date.now() - started).toBeLessThan(2_000);
+      expect(names).toContain("summer_get_project_context");
+      expect(names).not.toContain("summer_store_submit");
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
 });

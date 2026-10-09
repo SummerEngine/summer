@@ -52,7 +52,7 @@ function validateGatewayUrl(value: string): string {
   const local =
     parsed.hostname === "localhost" ||
     parsed.hostname === "127.0.0.1" ||
-    parsed.hostname === "::1";
+    parsed.hostname === "[::1]";
   if (parsed.protocol !== "https:" && !(local && parsed.protocol === "http:")) {
     throw new Error(
       "gateway.url must use HTTPS (HTTP is allowed only for localhost). Recovery: set an HTTPS URL and retry."
@@ -78,7 +78,7 @@ function validateCreatorApiUrl(value: string): string {
   const local =
     parsed.hostname === "localhost" ||
     parsed.hostname === "127.0.0.1" ||
-    parsed.hostname === "::1";
+    parsed.hostname === "[::1]";
   if (parsed.protocol !== "https:" && !(local && parsed.protocol === "http:")) {
     throw new Error(
       "creator.apiUrl must use HTTPS (HTTP is allowed only for localhost). Recovery: set an HTTPS URL and retry."

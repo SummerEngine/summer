@@ -7,6 +7,7 @@ import { findEngineBinary } from "../engine-install.js";
 import { readStoreJson, writeStoreJson } from "../store.js";
 import { writeZip } from "../util/zip-write.js";
 import { runEngine, type EngineRun } from "./engine-run.js";
+import { assertExportEngine, installedEngineVersion } from "./export-engine-version.js";
 import {
   BUNDLE_TARGETS,
   DOWNLOAD_TARGETS,
@@ -128,6 +129,8 @@ export interface LastExport {
 
 export interface ExportGameDependencies {
   findBinary: () => string | null;
+  /** Installed Summer version of the binary (Info.plist, sq.version), or null. */
+  engineVersion: (binary: string) => string | null;
   run: (binary: string, args: string[], timeoutMs: number) => Promise<EngineRun>;
   now: () => Date;
   /** Template lookup for download exports (overridable in tests). */
@@ -136,6 +139,7 @@ export interface ExportGameDependencies {
 
 const defaultDependencies: ExportGameDependencies = {
   findBinary: () => findEngineBinary(platform()),
+  engineVersion: installedEngineVersion,
   run: runEngine,
   now: () => new Date(),
 };
@@ -377,6 +381,8 @@ export async function exportGame(
       'Recovery: run "summer install", or set SUMMER_BIN to the engine executable, then export again.'
     );
   }
+  // Before any preset is written: an old engine cannot read them.
+  assertExportEngine(binary, deps.engineVersion(binary));
 
   if (format === "download") {
     return exportDownload(deps, binary, project, targets![0] as "web" | "macos" | "windows", out, debug, timeoutMs, started);

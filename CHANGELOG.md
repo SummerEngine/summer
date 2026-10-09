@@ -2,7 +2,15 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [3.3.0] - 2026-10-09
+
+Your agent can now take a game from the editor to the Summer Games store:
+
+- Export for every platform the store takes: iPhone, Android, Mac, Windows and the web, as a summer.games bundle or as a store download.
+- Install the export templates for your engine version with one tool call. Each file is checked before it is installed.
+- Sign in to the store from the terminal with `summer login --store`.
+- Upload a build and publish it with `summer_publish_build`, after you confirm the game, file and version.
+- Use the Studio, board and store tools (projects, store page, art, build upload, send for the owner's approval, the board, Grow) through the one Summer Engine MCP. After the store sign-in, the local MCP loads the hosted tools, prompts and resources next to the engine tools.
 
 ### Added
 - `summer_export_game` (preview): exports the game for summer.games with the installed Summer Engine, headless and without a window (`--headless --path <project> --export-release "summer.games" <out>.zip`), and returns the `.zip` path, sha256, size and the bundle manifest (main scene, target platforms, hosted or not). The default output is `<project>/.summer/exports/`, ignored by the editor and by git. No running editor and no export template are needed.

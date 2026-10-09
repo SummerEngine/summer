@@ -21,8 +21,8 @@ const path = require("node:path");
 const args = process.argv.slice(2);
 if (args.includes("--version")) { console.log("4.7.2.stable.custom_build.abc123"); process.exit(0); }
 fs.writeFileSync(process.env.FAKE_ENGINE_ARGS, JSON.stringify(args));
-const preset = args[4];
-const out = args[5];
+const preset = args[5];
+const out = args[6];
 if (preset.startsWith("summer.games")) fs.copyFileSync(process.env.FAKE_BUNDLE, out);
 else if (preset === "Summer download Web") {
   for (const name of ["index.html", "index.js", "index.wasm", "index.pck"]) fs.writeFileSync(path.join(path.dirname(out), name), name + " bytes");
@@ -77,7 +77,7 @@ describe("exportGame targets (store bundle)", () => {
   it("exports through a summer.games preset that ticks exactly the targets", async () => {
     await writeSummerBundle(process.env.FAKE_BUNDLE!, { targetPlatforms: ["ios", "android"] });
     const result = await exportGame({ project, targets: ["android", "ios"] }, deps());
-    expect((await lastArgs()).slice(3, 5)).toEqual(["--export-release", "summer.games ios+android"]);
+    expect((await lastArgs()).slice(4, 6)).toEqual(["--export-release", "summer.games ios+android"]);
     expect(result).toMatchObject({ format: "bundle", preset: "summer.games ios+android", targets: ["ios", "android"], presetChange: "created" });
     expect(result.warnings).toBeUndefined();
     const presets = await readFile(join(project, "export_presets.cfg"), "utf8");
@@ -117,7 +117,7 @@ describe("exportGame download format", () => {
     await mkdir(templateDir(), { recursive: true });
     await writeFile(join(templateDir(), "web_summer_jspi_release.zip"), "template");
     const result = await exportGame({ project, targets: ["web"] }, deps());
-    expect((await lastArgs()).slice(4)).toEqual(["Summer download Web", expect.stringMatching(/index\.html$/)]);
+    expect((await lastArgs()).slice(5)).toEqual(["Summer download Web", expect.stringMatching(/index\.html$/)]);
     expect(result).toMatchObject({ format: "download", storePlatform: "web", fileCount: 4, icon: "res://icon.svg", signing: "none" });
     expect(result.path).toMatch(/star-weavers-web-.*\.zip$/);
     const entries = await readZipEntries(result.path);

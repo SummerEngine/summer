@@ -5,6 +5,7 @@ import {
   listCreatorReleases,
   publishCreator,
 } from "../../core/capabilities/creator.js";
+import { captureGameplay } from "../../core/capabilities/capture-gameplay.js";
 import { exportGame } from "../../core/capabilities/export-game.js";
 import { STORE_TARGETS } from "../../core/capabilities/export-presets.js";
 import { exportTemplates, TEMPLATE_PLATFORMS } from "../../core/capabilities/export-templates.js";
@@ -104,10 +105,25 @@ export function registerCreatorTools(server: McpServer): void {
   );
 
   server.tool(
-    "summer_publish_build",
-    "Upload an export from summer_export_game to the creator's game on summer.games, through the same store upload Studio uses, straight from disk. A store bundle (format bundle): declare, upload parts, seal, wait until Summer makes the Build, name its client pack, and with publish=true approve it. A web build or native download (format download): upload it as the game's store version for its platform (web, macos-universal, windows-x64, linux-x64; read from the last export) and wait until Summer has checked it. First call with confirm=false and show the user the returned target; set confirm only after they approve. Needs \"summer login --store\". A retry with the same file and clientVersion continues the same upload. Nothing here makes a game live: the owner approves publishing (summer_store_submit).",
+    "summer_capture_gameplay",
+    "Capture real gameplay frames without a running editor: starts the game in Summer Engine's offscreen verify instance (a real renderer, a window parked offscreen with no focus, never on screen), lets it run waitSeconds, and saves PNG frames of what the game draws, HUD included. Use for store screenshots (1920x1080 landscape or 1080x1920 portrait). With an editor open, summer_screenshot target game also works. Returns each frame's path, width and height; look at them before using them.",
     {
-      gameId: z.string().optional().describe("The store game id (Studio store page URL). Omit to get the list of your games."),
+      project: z.string().optional().describe("Project folder with project.godot. Defaults to the MCP's bound project, then the working directory."),
+      scene: z.string().optional().describe("Scene to start (res://... or uid://...). Default: the project's main scene, which is often a title menu; pass the gameplay scene for gameplay frames."),
+      resolution: z.string().optional().describe("Window size WIDTHxHEIGHT (default 1920x1080; 1080x1920 for portrait)."),
+      frames: z.number().int().min(1).max(10).optional().describe("Frames to save (default 1)."),
+      waitSeconds: z.number().min(0).max(120).optional().describe("Seconds the game runs before the first frame (default 3)."),
+      intervalSeconds: z.number().min(0.1).max(60).optional().describe("Seconds between frames (default 1)."),
+      out: z.string().optional().describe("Output folder. Defaults to <project>/.summer/captures/<time>/ (ignored by git)."),
+    },
+    async (args) => creatorResult(() => captureGameplay(args))
+  );
+
+  server.tool(
+    "summer_publish_build",
+    "Upload an export from summer_export_game to the creator's game on summer.games, through the same store upload Studio uses, straight from disk. A store bundle (format bundle): declare, upload parts, seal, wait until Summer makes the Build, name its client pack, and with publish=true approve it. A web build or native download (format download): upload it as the game's store version for its platform (web, macos-universal, windows-x64, linux-x64; read from the last export) and wait until Summer has checked it. First call with confirm=false: it checks that the game exists for this account and warns when its store page does not list the export's platforms, then returns the target (game name and id, file, digest, size, version) to show the user; set confirm only after they approve. Needs \"summer login --store\". A retry with the same file and clientVersion continues the same upload. Nothing here makes a game live: the owner approves publishing (summer_store_submit).",
+    {
+      gameId: z.string().optional().describe("The store game id (from summer_store_list_games, or the Studio store page URL). Without it the call fails with game_required and lists your store games, or says why the store did not list them."),
       file: z.string().optional().describe("Exported .zip. Defaults to the last summer_export_game result."),
       clientVersion: z.string().describe("Build version, vMAJOR.MINOR.PATCH (e.g. v1.0.0); a new upload needs a new version."),
       publish: z.boolean().default(false).describe("Bundles only: also approve the Build for players. A game that has not passed review keeps it as a preview; an agent needs the owner's approval."),

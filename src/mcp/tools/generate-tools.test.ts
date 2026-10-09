@@ -608,6 +608,32 @@ describe("image background removal across MCP and CLI", () => {
   }
 });
 
+describe("image size across MCP and CLI", () => {
+  for (const surface of ["mcp", "cli"] as const) {
+    it(`${surface} sends aspectRatio, width and height to the gateway`, async () => {
+      const fetchMock = vi.fn(async () => new Response(JSON.stringify({ asset: { id: "image-1" } }), { status: 200 }));
+      globalThis.fetch = fetchMock;
+      const args = { prompt: "key art", aspectRatio: "16:9", width: 1920, height: 1080 };
+      if (surface === "cli") {
+        await dispatchTool("generate-image", args, { engine: async () => { throw new Error("Image generation must not need an engine"); } });
+      } else {
+        const { server, tools } = createFakeServer();
+        registerGenerateTools(server as any);
+        const image = getTool(tools, "summer_generate_image");
+        await image.handler(z.object(image.schema).parse(args));
+      }
+      const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+      expect(JSON.parse(init.body as string)).toMatchObject({ aspectRatio: "16:9", width: 1920, height: 1080 });
+    });
+  }
+
+  it("rejects an aspect ratio the server does not map", () => {
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    expect(() => z.object(getTool(tools, "summer_generate_image").schema).parse({ prompt: "x", aspectRatio: "7:3" })).toThrow();
+  });
+});
+
 describe("summer_generate_motion across MCP and CLI", () => {
   const noEngine = { engine: async () => { throw new Error("Motion generation must not need an engine"); } };
 

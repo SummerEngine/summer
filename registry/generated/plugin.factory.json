@@ -1,7 +1,7 @@
 {
   "_generated": "GENERATED from integrations/factory — do not edit; npm run generate:registry",
   "name": "summer",
-  "description": "Agent tooling for Summer Engine: game-dev skills, lifecycle hooks, and a 104-tool MCP bridge to the local desktop app.",
+  "description": "Agent tooling for Summer Engine: game-dev skills, lifecycle hooks, and a 105-tool MCP bridge to the local desktop app.",
   "version": "3.3.0",
   "author": {
     "name": "Summer Engine",
@@ -30,6 +30,7 @@
     "./library/skills/asset-strategy/",
     "./library/skills/audio-direction/",
     "./library/skills/auto-fire-targeting/",
+    "./library/skills/bounded-engine-runs/",
     "./library/skills/brainstorm-game/",
     "./library/skills/brainstorming/",
     "./library/skills/browse-templates/",
@@ -41,6 +42,7 @@
     "./library/skills/character-portrait/",
     "./library/skills/cinematic-cutscene/",
     "./library/skills/combat-basics/",
+    "./library/skills/compatibility-renderer-traps/",
     "./library/skills/concept-art/",
     "./library/skills/create-asset-sheet/",
     "./library/skills/debug/",

@@ -15,10 +15,13 @@ import {
 import { pipeline } from "stream/promises";
 import { Readable } from "stream";
 import { tmpdir, platform } from "os";
-import { join, resolve } from "path";
+import { dirname, join, resolve } from "path";
 import {
   ENGINE_BINARY_ENV,
   LINUX_ENGINE_BINARY_NAME,
+  macInstallDestination,
+  recordEngineInstall,
+  windowsEnginePaths,
   type LinuxReleaseAsset,
   findExtractedEngineBinary,
   linuxArchiveKind,
@@ -158,9 +161,45 @@ export function windowsInstallerArgs(customPath?: string): string {
   return customPath ? `--silent --installto "${customPath}"` : "--silent";
 }
 
+/** Printed after an install: the first start of a new engine is slow and silent. */
+export const FIRST_START_NOTE =
+  "The first start of a new engine version can take several minutes with no output " +
+  "(the system checks the new app and the engine builds its caches). Later starts are fast.";
+
+/** Where the Velopack installer put Summer.exe: <dir>/current/Summer.exe for --path, else the default locations. */
+export function windowsInstalledBinary(customPath?: string, exists: (path: string) => boolean = existsSync): string | null {
+  const candidates = customPath
+    ? [join(customPath, "current", "Summer.exe"), join(customPath, "Summer.exe")]
+    : windowsEnginePaths();
+  return candidates.find((path) => exists(path)) ?? null;
+}
+
+/**
+ * Download progress: rewrites one line on a terminal; elsewhere (an agent,
+ * a log file) one line per 10%, so a 1 GB download is about ten lines
+ * instead of hundreds of kilobytes.
+ */
+export function createProgressReporter(isTTY: boolean, write: (text: string) => void) {
+  let lastStep = -1;
+  return (downloaded: number, total: number) => {
+    if (total <= 0) return;
+    const pct = Math.min(100, Math.floor((downloaded / total) * 100));
+    const mb = (downloaded / 1024 / 1024).toFixed(1);
+    if (isTTY) {
+      write(`\r  ${pct}% (${mb}MB)`);
+      return;
+    }
+    const step = Math.floor(pct / 10);
+    if (step > lastStep) {
+      lastStep = step;
+      write(`  ${pct}% (${mb}MB)\n`);
+    }
+  };
+}
+
 export const installCommand = new Command("install")
   .description("Download and install Summer Engine")
-  .option("--path <dir>", "Custom install directory")
+  .option("--path <dir>", "Custom install directory (macOS: the engine goes in <dir>/Summer.app). summer remembers it, so later commands find this engine")
   .option("--yes", "Replace an already-installed engine without prompting")
   .action(async (opts: { path?: string; yes?: boolean }) => {
     const os = platform();
@@ -211,7 +250,8 @@ async function installMac(releases: ReleaseInfo, customPath?: string, yes = fals
   const dmgUrl = requireDownloadUrl(info.dmg_url, "macOS DMG");
   console.log(`Latest version: ${info.version}`);
 
-  const destApp = customPath || "/Applications/Summer.app";
+  const destApp = macInstallDestination(customPath);
+  const destBinary = join(destApp, "Contents", "MacOS", "Summer");
   const exists = existsSync(destApp);
   const installedVersion = exists ? readMacBundleVersion(destApp) : null;
   const plan = planMacInstall({
@@ -222,6 +262,7 @@ async function installMac(releases: ReleaseInfo, customPath?: string, yes = fals
     isTTY: Boolean(process.stdin.isTTY),
   });
   if (plan.action === "up-to-date") {
+    await recordEngineInstall(destBinary, plan.version);
     console.log(`Summer Engine v${plan.version} is already installed at ${destApp} (up to date).`);
     return;
   }
@@ -273,6 +314,7 @@ async function installMac(releases: ReleaseInfo, customPath?: string, yes = fals
 
   try {
     console.log("Installing to " + destApp + "...");
+    mkdirSync(dirname(destApp), { recursive: true });
     replaceMacApp(mountPoint, destApp, (command) => execSync(command, { stdio: "ignore" }));
     console.log("Done!");
   } catch (err) {
@@ -288,7 +330,9 @@ async function installMac(releases: ReleaseInfo, customPath?: string, yes = fals
     releaseSignals();
   }
 
+  await recordEngineInstall(destBinary, info.version);
   console.log(`\nSummer Engine v${info.version} installed to ${destApp}`);
+  console.log(FIRST_START_NOTE);
   console.log("\nNext steps:");
   console.log("  summer login    # Sign in to your account");
   console.log("  summer run      # Launch the engine");
@@ -330,7 +374,10 @@ async function installWindows(releases: ReleaseInfo, customPath?: string): Promi
 
   try { execSync(`del "${exePath}"`, { stdio: "ignore" }); } catch {}
 
-  console.log(`\nSummer Engine v${info.version} installed!`);
+  const installed = windowsInstalledBinary(customPath);
+  if (installed) await recordEngineInstall(installed, info.version);
+  console.log(`\nSummer Engine v${info.version} installed${installed ? ` to ${installed}` : "!"}`);
+  console.log(FIRST_START_NOTE);
   console.log("\nNext steps:");
   console.log("  summer login    # Sign in to your account");
   console.log("  summer run      # Launch the engine");
@@ -403,6 +450,7 @@ async function installLinux(customPath?: string): Promise<void> {
 
   if (source.kind === "binary") {
     registerExistingLinuxBinary(source.path, destDir, destBinary);
+    await recordEngineInstall(destBinary, null);
     printLinuxNextSteps(destBinary);
     return;
   }
@@ -481,7 +529,9 @@ async function installLinux(customPath?: string): Promise<void> {
     rmSync(downloadPath, { force: true });
   }
 
+  await recordEngineInstall(destBinary, versionLabel === "custom" ? null : versionLabel);
   console.log(`\nSummer Engine (${versionLabel}) installed to ${destBinary}`);
+  console.log(FIRST_START_NOTE);
   printLinuxNextSteps(destBinary);
 }
 
@@ -509,17 +559,16 @@ export async function downloadFile(url: string, dest: string): Promise<{ sha256:
   const hash = createHash("sha256");
   let downloaded = 0;
   const total = parseInt(res.headers.get("content-length") || "0", 10);
+  const isTTY = Boolean(process.stdout.isTTY);
+  const report = createProgressReporter(isTTY, (text) => process.stdout.write(text));
 
   readable.on("data", (chunk: Buffer) => {
     hash.update(chunk);
     downloaded += chunk.length;
-    if (total > 0) {
-      const pct = Math.round((downloaded / total) * 100);
-      process.stdout.write(`\r  ${pct}% (${(downloaded / 1024 / 1024).toFixed(1)}MB)`);
-    }
+    report(downloaded, total);
   });
 
   await pipeline(readable, fileStream);
-  process.stdout.write("\n");
+  if (isTTY) process.stdout.write("\n");
   return { sha256: hash.digest("hex") };
 }

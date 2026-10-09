@@ -1,0 +1,73 @@
+id: tool/capture-gameplay
+kind: tool
+version: 1.0.0
+summary: Capture real gameplay frames (PNG, HUD included) in Summer Engine's offscreen verify instance, without a running editor, e.g. store screenshots.
+use_when:
+  - '"take gameplay screenshots for my store page"'
+  - '"I need screenshots but the editor is not open"'
+  - '"capture a 1920x1080 frame of my game"'
+  - collecting real gameplay screenshots for summer_store_set_art desktop.screenshots or mobile.screenshots
+do_not_use_when:
+  - the editor is open and the game is running — tool/screenshot with target game shows the live game
+  - key art, covers or icons — those are generated art, not gameplay frames
+  - checking an interaction with inputs and assertions — RunVerification through tool/batch
+facets:
+  lifecycle:
+    - launch
+    - build
+  domains:
+    - creator
+    - headless
+compatibility:
+  engine: ">=4.6"
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_capture_gameplay
+implementation:
+  module: src/core/capabilities/capture-gameplay.ts
+  export: captureGameplay
+surfaces:
+  mcp:
+    tool_name: summer_capture_gameplay
+    remote: true
+input_schema:
+  type: object
+  properties:
+    project:
+      type: string
+      description: Project folder with project.godot. Defaults to the MCP's bound project, then the working directory.
+    scene:
+      type: string
+      description: Scene to start (res://... or uid://...). Default is the project's main scene, often a title menu; pass the gameplay scene for gameplay frames.
+    resolution:
+      type: string
+      description: Window size WIDTHxHEIGHT (default 1920x1080; 1080x1920 for portrait).
+    frames:
+      type: integer
+      minimum: 1
+      maximum: 10
+      description: Frames to save (default 1).
+    waitSeconds:
+      type: number
+      minimum: 0
+      maximum: 120
+      description: Seconds the game runs before the first frame (default 3).
+    intervalSeconds:
+      type: number
+      minimum: 0.1
+      maximum: 60
+      description: Seconds between frames (default 1).
+    out:
+      type: string
+      description: Output folder. Defaults to <project>/.summer/captures/<time>/ (ignored by git).
+  additionalProperties: false
+authority:
+  filesystem: true
+  editor_mutation: false
+  network: false
+  credentials: false
+  publish: false
+evidence_checks:
+  - none

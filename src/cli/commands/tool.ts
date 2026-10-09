@@ -21,6 +21,31 @@ import {
   type ToolDispatchEntry,
 } from "../../core/capabilities/tool-dispatch.js";
 import { c } from "../../core/format.js";
+import {
+  callHostedToolForCli,
+  hostedResultPayload,
+  listHostedToolsForCli,
+  type HostedToolsListing,
+} from "../../core/hosted-mcp.js";
+
+/** The hosted store and publishing tools (Summer Engine MCP); replaceable in tests. */
+export const hostedCli = { list: listHostedToolsForCli, call: callHostedToolForCli };
+
+const STORE_SIGN_IN_HINT =
+  "Store and publishing tools (summer_store_*, summer_upload_image_*, summer_list_projects, ...) come from the hosted Summer Engine MCP: run 'summer login --store' to use them here.";
+
+export function formatHostedToolList(listing: HostedToolsListing): string {
+  if (listing.status === "not_signed_in") return c.dim(STORE_SIGN_IN_HINT);
+  if (listing.status === "unavailable") return c.dim(`Store and publishing tools: the hosted Summer Engine MCP did not answer (${listing.message}).`);
+  const local = new Set(listToolDispatches().map((entry) => `summer_${entry.slug.replace(/-/g, "_")}`));
+  const tools = listing.tools.filter((tool) => !local.has(tool.name)).sort((a, b) => a.name.localeCompare(b.name));
+  if (!tools.length) return c.dim("Store and publishing tools: none listed by the hosted Summer Engine MCP.");
+  const width = Math.max(...tools.map((tool) => tool.name.length));
+  return [
+    c.bold(`Store and publishing tools (${tools.length}, hosted, with your store sign-in)`),
+    ...tools.map((tool) => `  ${tool.name.padEnd(width)}  ${(tool.description ?? "").split(/(?<=\.)\s/)[0].slice(0, 120)}`),
+  ].join("\n");
+}
 
 interface ToolCommandOptions {
   args?: string;
@@ -118,6 +143,8 @@ export const toolCommand = new Command("tool")
   .action(async (name: string | undefined, options: ToolCommandOptions) => {
     if (options.list || name === undefined) {
       console.log(formatToolList(listToolDispatches()));
+      console.log("");
+      console.log(formatHostedToolList(await hostedCli.list()));
       if (name === undefined && !options.list) {
         console.log("");
         console.log(c.dim("Pass a tool name to run one."));
@@ -127,8 +154,22 @@ export const toolCommand = new Command("tool")
 
     const entry = resolveToolForCli(name);
     if (!entry) {
+      // Not a local tool: the hosted store and publishing tools, with the store sign-in.
+      const hosted = await hostedCli.call(name, parseJsonArgs(options.args ?? options.json));
+      if (hosted.status === "called") {
+        const payload = hostedResultPayload(hosted.result);
+        console.log(payload.json ? JSON.stringify(payload.json, null, 2) : payload.text);
+        if (payload.isError) process.exitCode = 1;
+        return;
+      }
+      const why =
+        hosted.status === "not_signed_in"
+          ? ` ${STORE_SIGN_IN_HINT}`
+          : hosted.status === "unavailable"
+            ? ` The hosted Summer Engine MCP did not answer: ${hosted.message}.`
+            : "";
       throw new ToolDispatchError(
-        `Unknown tool "${name}". Run 'summer tool --list' to see all ${listToolDispatches().length} tools.`
+        `Unknown tool "${name}". Run 'summer tool --list' to see every tool.${why}`
       );
     }
 

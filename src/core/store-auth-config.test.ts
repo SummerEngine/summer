@@ -238,4 +238,16 @@ describe("shared Summer config", () => {
       setConfigValue("creator.apiUrl", "https://api.example/path")
     ).rejects.toThrow(/must be an origin/);
   });
+
+  it("treats the IPv6 loopback like localhost for local HTTP", async () => {
+    await setConfigValue("gateway.url", "http://[::1]:3000");
+    expect(await resolveGatewayUrl()).toBe("http://[::1]:3000");
+    await setConfigValue("creator.apiUrl", "http://[::1]:3000");
+    expect(
+      getConfigValue(await readSummerConfig(), "creator.apiUrl")
+    ).toBe("http://[::1]:3000");
+    await expect(
+      setConfigValue("gateway.url", "http://[2001:db8::1]:3000")
+    ).rejects.toThrow(/must use HTTPS/);
+  });
 });

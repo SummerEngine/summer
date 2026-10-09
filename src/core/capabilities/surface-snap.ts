@@ -1,7 +1,7 @@
 /**
  * surface-snap — ONE implementation of `summer_snap_to_surface` for both faces
  * (src/mcp/tools/spatial-tools.ts and tool-dispatch.ts), around the engine's
- * SnapToSurface op (modules/1summer_engine/editor/ops/surface_snap_ops.cpp).
+ * SnapToSurface op.
  *
  * Two gaps in the engine op, closed here with ops main already ships:
  *

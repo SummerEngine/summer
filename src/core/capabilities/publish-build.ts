@@ -13,8 +13,7 @@ import { BuildToolError, readSummerBundle, type SummerBundle } from "./summer-bu
 /**
  * summer_publish_build: upload a summer.games export to the creator's game
  * through the same creator store routes Studio's export upload uses
- * (publicsummerengine /api/creator-store/* -> summer-platform
- * /v1/management/*, build-publications, ADR 0033):
+ * (/api/creator-store/*, build-publications):
  *
  *   POST games/{g}/build-publications            declare the export (idempotent)
  *   POST .../{p}:source-upload                    open the part plan (64 MiB parts)
@@ -25,8 +24,7 @@ import { BuildToolError, readSummerBundle, type SummerBundle } from "./summer-bu
  *   POST games/{g}/builds/{b}/client-packages     name the Build's client pack
  *   POST .../{p}:publish                          only with publish=true
  *
- * Mirrors publicsummerengine src/lib/creator-store/pack-upload.ts
- * (uploadExportedGame), including its idempotency keys, so a retry continues
+ * Mirrors Studio's export upload, including its idempotency keys, so a retry continues
  * the same publication instead of creating another one.
  *
  * Auth: the Summer store OAuth token from "summer login --store" (audience
@@ -40,11 +38,11 @@ const CONCURRENCY = 3;
 const PART_RETRIES = 3;
 const DEFAULT_WAIT_SECONDS = 600;
 const POLL_MS = 3_000;
-/** summer-platform client versions: vMAJOR.MINOR.PATCH[-rN]. */
+/** Store client versions: vMAJOR.MINOR.PATCH[-rN]. */
 export const CLIENT_VERSION = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-r[1-9]\d*)?$/;
 const INTAKE_DONE = ["preview_ready", "published", "ready", "succeeded"];
 const NOT_ACTIONABLE = "deployment_not_actionable";
-/** Games without a server run on the Summer Games phone apps only (summer-platform gameplatforms.StandaloneTargets). */
+/** Games without a server run on the Summer Games phone apps only (the store's standalone targets). */
 const STANDALONE_TARGETS = ["ios", "android"];
 
 /** Why the Platform did not take the export, in plain words (same text Studio shows). */

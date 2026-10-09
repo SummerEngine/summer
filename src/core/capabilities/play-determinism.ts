@@ -5,7 +5,7 @@
  * summer_play tool and the CLI dispatcher.
  *
  * Transport note: the engine's /api/play rung copies only `scene` into the
- * PlayGame op (local_api_server.cpp play branch), so a launch that carries a
+ * PlayGame op, so a launch that carries a
  * pin is sent as an explicit PlayGame op through /api/ops instead. A launch
  * without any pin stays on /api/play, byte-for-byte the v1 call.
  *

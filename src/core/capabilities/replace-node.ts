@@ -3,9 +3,7 @@
  * (src/mcp/tools/scene-tools.ts and tool-dispatch.ts), built from ops whose
  * results persist, and verified against the SAVED scene file.
  *
- * Why not the engine's ReplaceNode op for scenes: SceneOps::replace_node
- * (engine modules/1summer_engine/editor/ops/scene_ops.cpp, scene branch and
- * the async _finish_replace_node) instantiates the new PackedScene and hands
+ * Why not the engine's ReplaceNode op for scenes: for a scene it instantiates the new PackedScene and hands
  * it to SceneTreeDock::replace_node — the editor's "Change Type" path — which
  * ends in Node::replace_by (scene/main/node.cpp). replace_by finishes with
  * `p_node->set_scene_file_path(get_scene_file_path())`: the new instance is

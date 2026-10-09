@@ -4,7 +4,7 @@
  * and the CLI dispatcher so both faces validate the same way and send the same
  * op.
  *
- * Engine contract (doc/SUMMER/SCENE_SCRIPTING_CONTRACTS.md, "Wave I"):
+ * Engine contract:
  *   SaveCameraBookmark { name, position?, look_at?, fov? }  -> pose_source
  *   ListCameraBookmarks {}                                   -> names, bookmarks
  *   DeleteCameraBookmark { name }                            -> remaining
@@ -31,7 +31,7 @@ export const CAMERA_BOOKMARK_OPS: Record<CameraBookmarkAction, string> = {
 export const CAMERA_BOOKMARK_FALLBACK =
   "pass the pose explicitly on every capture with summer_screenshot framing:\"free\" (camera_position + camera_look_at), or render through a Camera3D placed in the scene with framing:\"camera\"";
 
-/** Bookmark name grammar (preview_ops.cpp): 1-64 of [A-Za-z0-9_-]. */
+/** Bookmark name grammar (same as the engine's): 1-64 of [A-Za-z0-9_-]. */
 export const BOOKMARK_NAME_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
 export interface CameraBookmarkArgs {

@@ -450,7 +450,7 @@ skillsCommand
     if (previewIncluded > 0) console.log(previewIncludedLine(previewIncluded));
     if (previewSkipped > 0) console.log(previewSkippedLine(previewSkipped));
 
-    // Claude Code: also install slash commands (`tools/summer-cli/commands/*.md`)
+    // Claude Code: also install slash commands (`commands/*.md`)
     // into `~/.claude/commands/`. Other agents don't have an equivalent today.
     if (agent === "claude-code") {
       const commandResults = installClaudeCommands(scope, Boolean(opts.force));
@@ -464,7 +464,7 @@ skillsCommand
   });
 
 /**
- * Copy every `.md` file in `tools/summer-cli/commands/` to the user's
+ * Copy every `.md` file in the package's `commands/` to the user's
  * `~/.claude/commands/` directory so the slash commands (e.g. `/gameskill`)
  * are available on every machine that runs `summer skills install`.
  *

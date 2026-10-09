@@ -5,6 +5,9 @@ import {
   listCreatorReleases,
   publishCreator,
 } from "../../core/capabilities/creator.js";
+import { exportGame } from "../../core/capabilities/export-game.js";
+import { publishBuild } from "../../core/capabilities/publish-build.js";
+import { BuildToolError } from "../../core/capabilities/summer-bundle.js";
 import {
   CONFIG_KEYS,
   getConfigValue,
@@ -31,6 +34,19 @@ async function creatorResult<T>(operation: () => Promise<T>) {
         true
       );
     }
+    if (error instanceof BuildToolError) {
+      return textJson(
+        {
+          ok: false,
+          code: error.code,
+          message: error.message.replace(` ${error.recovery}`, ""),
+          recovery: error.recovery,
+          ...(error.status ? { status: error.status } : {}),
+          ...error.detail,
+        },
+        true
+      );
+    }
     return textJson(
       {
         ok: false,
@@ -44,8 +60,37 @@ async function creatorResult<T>(operation: () => Promise<T>) {
 
 export function registerCreatorTools(server: McpServer): void {
   server.tool(
+    "summer_export_game",
+    "Export the game for summer.games: runs the installed Summer Engine headless (no window) with the project's summer.games export preset and returns the .zip bundle path, sha256, size and the bundle manifest (main scene, target platforms, hosted or not). Works without the editor running. Upload the result with summer_publish_build.",
+    {
+      project: z.string().optional().describe("Project folder with project.godot. Defaults to the MCP's bound project, then the working directory."),
+      out: z.string().optional().describe("Output .zip path. Defaults to <project>/.summer/exports/<name>-<time>.zip."),
+      debug: z.boolean().default(false).describe("Export a debug build (--export-debug)."),
+      timeoutSeconds: z.number().int().min(10).max(7200).optional().describe("Stop the engine after this many seconds (default 900; a first export imports every asset)."),
+    },
+    async ({ project, out, debug, timeoutSeconds }) =>
+      creatorResult(() =>
+        exportGame({ project, out, debug, ...(timeoutSeconds ? { timeoutMs: timeoutSeconds * 1000 } : {}) })
+      )
+  );
+
+  server.tool(
+    "summer_publish_build",
+    "Upload a summer.games export (.zip from summer_export_game) to the creator's game on summer.games, through the same store upload Studio uses: declare, upload parts straight from disk, seal, wait until Summer makes the Build, name its client pack, and with publish=true approve it. First call with confirm=false and show the user the returned game, file, sha256, size, version and publish choice; set confirm only after they approve. Needs \"summer login --store\". A retry with the same file and clientVersion continues the same upload.",
+    {
+      gameId: z.string().optional().describe("The store game id (Studio store page URL). Omit to get the list of your games."),
+      file: z.string().optional().describe("Exported .zip. Defaults to the last summer_export_game result."),
+      clientVersion: z.string().describe("Build version, vMAJOR.MINOR.PATCH (e.g. v1.0.0); a new upload needs a new version."),
+      publish: z.boolean().default(false).describe("Also approve the Build for players. A game that has not passed review keeps it as a preview."),
+      confirm: z.boolean().default(false).describe("Set true only after the user approves the exact upload."),
+      waitSeconds: z.number().int().min(0).max(1800).optional().describe("How long to wait for Summer to make the Build (default 600). On timeout, call again to keep waiting."),
+    },
+    async (args) => creatorResult(() => publishBuild({ ...args, face: "mcp" }))
+  );
+
+  server.tool(
     "summer_creator_publish",
-    "Publish an exact exported Summer .pck through the versioned Summer Platform creator API. First call with confirm=false and present the returned project, version, digest, size, artifact path, channel, and notes; set confirm only after the user approves that exact target. The server independently verifies token scope, ownership, bytes, and review state.",
+    "Deprecated: use summer_export_game, then summer_publish_build, which upload the summer.games .zip to the game's store listing. This old path publishes a .pck to the legacy Summercraft creator API with a separate sc_ token and will be removed. First call with confirm=false and present the returned project, version, digest, size, artifact path, channel, and notes; set confirm only after the user approves that exact target. The server independently verifies token scope, ownership, bytes, and review state.",
     {
       project: z.string().optional().describe("Project root. Defaults to the current working directory."),
       artifact: z.string().describe("Exact path to the exported Summer .pck artifact."),

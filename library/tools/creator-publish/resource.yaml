@@ -1,12 +1,13 @@
 id: tool/creator-publish
 kind: tool
-version: 1.0.2
-summary: Publish an exported Summer .pck through the versioned Summercraft creator API, with an explicit confirm step before upload.
+version: 1.1.0
+summary: "Deprecated: publishes a .pck to the legacy Summercraft API. Use summer_export_game, then summer_publish_build, to upload to summer.games."
 use_when:
   - releasing a user-approved build to a Summercraft channel
   - '"ship this exported build to the live channel"'
   - '"release version 1.2.0 of my game"'
 do_not_use_when:
+  - uploading to summer.games — summer_export_game, then summer_publish_build
   - the user has not approved the exact version, digest, and channel
   - the game is not exported yet — export the .pck first (skill/export-and-ship)
 facets:
@@ -19,7 +20,7 @@ compatibility:
   engine: ">=4.6"
 source: official
 license: MIT
-status: stable
+status: deprecated
 aliases:
   - summer_creator_publish
 implementation:

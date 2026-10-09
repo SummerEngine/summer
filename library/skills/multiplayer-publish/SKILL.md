@@ -197,7 +197,11 @@ writes `rejection.json`; its codes are in [export-errors.md](export-errors.md).
    `gameId` and section `builds`, or summerengine.com → Studio → your game →
    Builds.
 3. Upload the `.zip` as a new Build. Summer checks it again: unknown fields,
-   queue rules, both packs, and the composition match.
+   queue rules, both packs, and the composition match. From an agent:
+   `summer_export_game`, then `summer_publish_build` with `gameId` and
+   `clientVersion`; it asks for confirmation first and needs
+   `summer login --store`. If it answers `store_auth_refused`, upload in
+   Studio.
 4. Release the Build to an environment. Its queues go live there, and
    clients join them with `Summer.client.join(SummerJoinTarget.queue(...))`.
    The code is the same as in Local Play.

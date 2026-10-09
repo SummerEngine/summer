@@ -9,6 +9,7 @@ import {
   type LoginSession,
 } from "../../core/auth.js";
 import { getCreatorApiUrl, resolveGatewayUrl } from "../../core/config.js";
+import { readStoredOAuthToken, runStoreLogin } from "../../core/oauth.js";
 
 const POLL_INTERVAL_MS = 2000;
 // One generous window on ONE session id. First-time users may need to create an
@@ -25,8 +26,25 @@ export const loginCommand = new Command("login")
     "--creator",
     "Connect a separately scoped Summercraft creator token for publishing"
   )
+  .option(
+    "--store",
+    "Sign in to the Summer store so agents can upload builds (summer_publish_build)"
+  )
   .option("--force", "Force re-authentication even if already logged in")
-  .action(async (opts: { creator?: boolean; force?: boolean }) => {
+  .action(async (opts: { creator?: boolean; store?: boolean; force?: boolean }) => {
+    if (opts.store) {
+      if ((await readStoredOAuthToken()) && !opts.force) {
+        console.log(
+          "Already signed in to the Summer store. Use --store --force to sign in again."
+        );
+        return;
+      }
+      await runStoreLogin({ fetch, now: Date.now, openUrl: open, log: console.log });
+      console.log(
+        "Signed in to the Summer store. Your core Summer login was not changed."
+      );
+      return;
+    }
     if (opts.creator) {
       const existingCreator = await getCreatorToken();
       if (existingCreator && !opts.force) {

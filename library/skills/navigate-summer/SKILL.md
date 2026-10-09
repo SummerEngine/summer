@@ -22,7 +22,7 @@ Rigid skill: follow the rules below exactly.
 | The user wants to… | Do |
 |---|---|
 | **see / check / decide** — plan and billing (money), their published games and releases, usage, pricing, the MCP setup guide for their agent, docs, the scene or node you just built ("show me") | **Open the surface** with `summer_open` |
-| **get a result** — add a node, set a property, import an asset, run the game, publish | **Act through Summer tools** (mutation tools, `summer_play`, `summer_creator_publish`); do not open the editor to do by hand what a tool does |
+| **get a result** — add a node, set a property, import an asset, run the game, publish | **Act through Summer tools** (mutation tools, `summer_play`, `summer_publish_build`); do not open the editor to do by hand what a tool does |
 | **both** ("add a camera and show me") | act first, then open the scene / select the node so the user sees the result |
 
 Never open a browser or switch the editor's tab as a side effect of building. Opening is a user-visible action — do it because the user asked to look, and say what will open before it opens.

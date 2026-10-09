@@ -133,6 +133,8 @@ import {
   listCreatorReleases,
   publishCreator,
 } from "./creator.js";
+import { exportGame } from "./export-game.js";
+import { publishBuild } from "./publish-build.js";
 import {
   CONFIG_KEYS,
   getConfigValue,
@@ -875,7 +877,26 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     }
   }),
 
-  entry("summer_creator_publish", "Publish an exported .pck through the creator API (confirm-gated)", false, (args) =>
+  entry("summer_export_game", "Export the game as a summer.games .zip with the installed engine (headless)", false, (args) =>
+    exportGame({
+      project: optStr(args, "project"),
+      out: optStr(args, "out"),
+      debug: args.debug === true,
+      ...(typeof args.timeoutSeconds === "number" ? { timeoutMs: args.timeoutSeconds * 1000 } : {}),
+    })
+  ),
+  entry("summer_publish_build", "Upload a summer.games export to your store game (confirm-gated)", false, (args) =>
+    publishBuild({
+      gameId: optStr(args, "gameId"),
+      file: optStr(args, "file"),
+      clientVersion: optStr(args, "clientVersion"),
+      publish: args.publish === true,
+      confirm: args.confirm === true,
+      ...(typeof args.waitSeconds === "number" ? { waitSeconds: args.waitSeconds } : {}),
+      face: "cli",
+    })
+  ),
+  entry("summer_creator_publish", "Deprecated: publish a .pck to the legacy creator API; use publish-build", false, (args) =>
     publishCreator({
       project: optStr(args, "project"),
       artifact: optStr(args, "artifact"),

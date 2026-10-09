@@ -2,7 +2,9 @@ import { Command } from "commander";
 import { publishCreator } from "../../core/capabilities/creator.js";
 
 export const publishCommand = new Command("publish")
-  .description("Publish a confirmed creator release")
+  .description(
+    "Deprecated: publish a .pck to the legacy creator API (use `summer tool export-game`, then `summer tool publish-build`)"
+  )
   .argument("[project]", "Project root. Defaults to the current directory.")
   .requiredOption("--artifact <path>", "Exact exported Summer .pck artifact")
   .requiredOption("--version <value>", "Immutable release version")
@@ -27,6 +29,9 @@ export const publishCommand = new Command("publish")
         confirm?: boolean;
       }
     ) => {
+      console.error(
+        "summer publish is deprecated: run `summer tool export-game`, then `summer tool publish-build`, to upload the summer.games .zip to your game."
+      );
       const result = await publishCreator({
         project,
         ...opts,

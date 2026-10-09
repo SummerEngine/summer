@@ -16,6 +16,8 @@ const LEGACY_CLOUD_TOKEN_FILE = "cloud-token";
 const CREATOR_TOKEN_FILE = "creator-token";
 const USER_FILE = "user.json";
 const METADATA_FILE = "credential-metadata.json";
+/** The Summer store OAuth token (core/oauth.ts OAUTH_TOKEN_FILE). */
+const STORE_OAUTH_TOKEN_FILE = "oauth-token";
 
 export interface SummerUserInfo {
   id: string;
@@ -270,6 +272,7 @@ export async function clearAuthCredentials(): Promise<number> {
     AUTH_TOKEN_FILE,
     LEGACY_CLOUD_TOKEN_FILE,
     CREATOR_TOKEN_FILE,
+    STORE_OAUTH_TOKEN_FILE,
     USER_FILE,
     METADATA_FILE,
   ]) {

@@ -103,6 +103,7 @@
     "summer_attach_to_surface": "tool/attach-to-surface",
     "summer_batch": "tool/batch",
     "summer_camera_bookmark": "tool/camera-bookmark",
+    "summer_capture_gameplay": "tool/capture-gameplay",
     "summer_check_job": "tool/check-job",
     "summer_clear_console": "tool/clear-console",
     "summer_connect_ports": "tool/connect-ports",

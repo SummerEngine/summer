@@ -100,6 +100,7 @@ describe("registerCreatorTools", () => {
     expect(tools.map((tool) => tool.name)).toEqual([
       "summer_export_game",
       "summer_export_templates",
+      "summer_capture_gameplay",
       "summer_publish_build",
       "summer_creator_publish",
       "summer_creator_releases",

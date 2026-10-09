@@ -2,7 +2,7 @@
  * Agent manifest builders (CONTRACT.md §6.2).
  *
  * Each builder reproduces the CURRENT manifest format of that agent
- * (fields and field order per migration/manifests-inventory.json), with:
+ * (fields and field order), with:
  *  - version fields stamped from package.json,
  *  - the FULL skill list in every manifest (the historical 4-skill
  *    codex/cursor gap and the 0-skill factory/gemini gaps were bugs),

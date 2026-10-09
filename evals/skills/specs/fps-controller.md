@@ -3,7 +3,7 @@ spec: eval/skill-spec/fps-controller
 skill: skill/fps-controller
 status: ported
 source: tests/specs/fps-controller.md
-runner: manual   # /skill-test today; automated harness is a fast-follow (ROADMAP §3.4)
+runner: manual   # /skill-test today; no automated harness yet
 ---
 
 # Skill Spec: /fps-controller

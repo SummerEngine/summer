@@ -5,8 +5,8 @@ import { PACKAGE_ROOT } from "../package-root.js";
 import { analyzeFrameBase64, analyzeJpegFrame, describeFlatFrame } from "./frame-quality.js";
 
 /**
- * Real frames from the 2026-09-03 end-to-end run (docs/design/archive/E2E-2026-09-03.md,
- * F-01), kept in __fixtures__/frames/. 01 is the all-black viewport capture the MCP face returned with a
+ * Real frames from the 2026-09-03 end-to-end run,
+ * kept in __fixtures__/frames/. 01 is the all-black viewport capture the MCP face returned with a
  * "describe what you see" caption; the others are genuine editor, offscreen,
  * game and probe frames from the same session. The probe frames carry restart
  * markers (DRI=80), so they also exercise the restart path.

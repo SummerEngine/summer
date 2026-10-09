@@ -186,7 +186,7 @@ describe("tool registration", () => {
     const tool = register();
     expect(tool.name).toBe("summer_library_feedback");
     expect(tool.description).toBe(FEEDBACK_TOOL_DESCRIPTION);
-    // Disclosure invariants from SELF_IMPROVING_LIBRARY.md §3.
+    // Disclosure invariants of the feedback mailbox.
     expect(tool.description).toContain(
       "no field for project files, chat content, or code"
     );

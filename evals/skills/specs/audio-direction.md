@@ -3,7 +3,7 @@ spec: eval/skill-spec/audio-direction
 skill: skill/audio-direction
 status: ported
 source: tests/specs/audio-direction.md
-runner: manual   # /skill-test today; automated harness is a fast-follow (ROADMAP §3.4)
+runner: manual   # /skill-test today; no automated harness yet
 ---
 
 # Skill Spec: /audio-direction

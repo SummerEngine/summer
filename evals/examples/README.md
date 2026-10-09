@@ -7,7 +7,7 @@ checks pass — against the exact engine version its resource.yaml declares.
 An example that does not execute is not an example; it is a liability with
 sample code attached. CONTRACT.md §3 makes evidence REQUIRED for the kind.
 
-## Contract (binding now, runner lands later — ROADMAP §3.4)
+## Contract (binding now, runner lands later)
 
 Per example:
 

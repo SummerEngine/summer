@@ -36,7 +36,7 @@ Requires: live engine (pinned version), a real agent harness, generation
 credits. Not in per-PR CI — this is the expensive slow suite. Cadence target:
 nightly E0–E2, weekly E0–E5, plus manual before any release tag.
 
-Runner is future work gated on the example runner's engine fixture (ROADMAP
-§3.4 shares the same headless-engine plumbing). The ladder definition above is
+Runner is future work gated on the example runner's engine fixture (both
+share the same headless-engine plumbing). The ladder definition above is
 binding now so skills/templates are authored against these gates — `make-game`'s
-spec stub (evals/skills/GAPS.md) should be written to terminate in E2.
+spec stub (issue #77) should be written to terminate in E2.

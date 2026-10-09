@@ -3,7 +3,7 @@ spec: eval/skill-spec/design-mechanic
 skill: skill/design-mechanic
 status: ported
 source: tests/specs/design-mechanic.md
-runner: manual   # /skill-test today; automated harness is a fast-follow (ROADMAP §3.4)
+runner: manual   # /skill-test today; no automated harness yet
 ---
 
 # Skill Spec: /design-mechanic

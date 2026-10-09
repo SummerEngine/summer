@@ -50,7 +50,7 @@ Filesystem names shared with the desktop engine — do not rename: `~/.summer/` 
 | Headline / first mention | "Summer is the open-source game-development system for AI agents." |
 | The app the user downloads | "Summer Engine" ("the Summer Engine app" when the distinction matters) |
 | The package in a command | code-style `summer-engine`; the binary, code-style `summer` |
-| Platform publishing | "Summer Platform" (`summer publish`, `summer_creator_*`). The older "Summercraft" name survives only in the historical audit doc (`GATE_E3_CREATOR_CLI.md`) and in three creator-token strings in `src/core/auth.ts` / `src/cli/commands/login.ts` (P2 cleanup). |
+| Platform publishing | "Summer Platform" (`summer publish`, `summer_creator_*`). The older "Summercraft" name survives only in three creator-token strings in `src/core/auth.ts` / `src/cli/commands/login.ts`. |
 | The technical base | "Summer Engine's upstream technical base is Godot 4.6.1" — use the upstream name only where compatibility, migration, extension APIs, attribution, or licensing requires it (`library/references/godot-version`). |
 
 ## Changes that need an explicit "yes" in the same session before commit

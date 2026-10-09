@@ -52,8 +52,8 @@ export const getCachedBootDriftNotice = getCachedNotice;
 /**
  * Server `instructions` in the MCP initialize response (SDK ServerOptions,
  * @modelcontextprotocol/sdk >= 1.x). Hosts hand this to the model once per
- * session, before any tool call — the place for the five habits the E2E run
- * (docs/design/archive/E2E-2026-09-03.md, F-17) showed an agent needs on the first
+ * session, before any tool call — the place for the five habits an end-to-end run
+ * showed an agent needs on the first
  * turn and would otherwise learn the hard way. Kept under 600 characters so
  * it costs a few hundred tokens once; the full operating guide stays in the
  * summer_agent_playbook prompt / summer_get_agent_playbook tool. The last

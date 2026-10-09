@@ -12,7 +12,7 @@
  * advertises `capabilities.navigation` the tool sends the one-table op
  * `Navigate { target, ...args }`; on an engine that predates it the few ids the
  * original ops can serve (scene, node, script, file, the three docks) use those
- * ops and everything else answers `engine_lacks_op`. See NAVIGATION-PLAN.md.
+ * ops and everything else answers `engine_lacks_op`.
  *
  * Both faces call runOpen(); the CLI (tool-dispatch + `summer open`) and the
  * MCP tool (src/mcp/tools/navigation-tools.ts) only differ in how the engine

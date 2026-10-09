@@ -97,7 +97,7 @@ describe("summer create <builtin>", () => {
     expect(out).toContain("brainstorm-game skill");
     expect(out).not.toContain("summer:brainstorm-game");
     // The printed next step must say what the first run really does: the one-off
-    // asset import comes before any verify (docs/design/archive/TEMPLATES-PRISTINE-BOOT-2026-09-03.md, T-01).
+    // asset import comes before any verify.
     expect(out).toContain(`tests/autopilot/run.sh   (${AUTOPILOT_NEXT_STEP_HINT})`);
     expect(out).not.toContain("verify the game without opening it");
   });

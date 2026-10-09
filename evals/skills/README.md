@@ -10,9 +10,9 @@ One spec per skill in `specs/<slug>.md`. YAML frontmatter + the case body:
 ---
 spec: eval/skill-spec/<slug>     # spec identity
 skill: skill/<slug>              # the library ID under test (CONTRACT.md §4)
-status: ported | tbd             # tbd = stub, listed in GAPS.md
+status: ported | tbd             # tbd = stub, not yet written
 source: tests/specs/<file>.md    # provenance (original prose spec)
-runner: manual                   # manual today; automated harness is ROADMAP §3.4
+runner: manual                   # manual today; no automated harness yet
 ---
 ```
 
@@ -33,7 +33,7 @@ or by handing the fixture + input to an agent and checking assertions by hand.
 `skill-improve` uses these specs as its with/without harness.
 
 Automated execution (LLM-driven, against a live engine fixture) is a
-fast-follow, not part of the v1 cut — ROADMAP §3 item 4. The specs are written
+planned, not built. The specs are written
 so that the future runner needs no reformatting: fixture is machine-buildable,
 inputs are literal strings, assertions are checkable predicates.
 
@@ -48,5 +48,4 @@ become required gates for changes to their skill.
 ## Coverage
 
 - 15 ported specs in `specs/` (from `tests/specs/`, the 21 prose specs minus stubs).
-- 6 TBD stubs tracked in `GAPS.md`.
-- 58 skills have no spec at all — also in `GAPS.md`.
+- 6 TBD stubs and the skills with no spec at all are tracked in [issue #77](https://github.com/summerengine/summer/issues/77).

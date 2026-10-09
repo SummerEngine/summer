@@ -93,7 +93,7 @@ The suite needs Node 22 or newer (`.nvmrc`; CI uses 22): vitest 3 does not run o
 | `summer logout` | Clear stored tokens (says so when `SUMMER_TOKEN` is in effect instead). |
 | `summer status` | Engine state, port, auth. |
 | `summer run [path] [--no-project] [--background\|--focus] [--bin <executable>]` | Launch the engine with a project; bare editor needs `--no-project`. `--bin` (env `SUMMER_BIN`) launches a build that is not installed — the in-bundle executable on macOS, never the `.app`. Background (no focus steal) is the default when stdout is not a TTY, i.e. an agent; a human in a terminal gets focus. See `TESTING.md` "Working in the background". |
-| `summer open <path \| target> [--print] [--list] [--web \| --editor] [--json] [--path <res>] [--node <p>] [--scene <res>] [--param k=v]` | A project directory (contains `project.godot`) opens in the engine as before. Anything else is a navigation target — a product-map id (`billing`, `my-games`, `mcp-guide`, `scene`, `inspector`), an intent phrase, a `res://` path, or a summerengine.com path — opened in the browser (through `/login?returnUrl=` when needed) or sent to the running editor; `--print` resolves without opening. Same behavior as the `summer_open` MCP tool and `summer tool open` (`docs/design/NAVIGATION-DESIGN.md`). |
+| `summer open <path \| target> [--print] [--list] [--web \| --editor] [--json] [--path <res>] [--node <p>] [--scene <res>] [--param k=v]` | A project directory (contains `project.godot`) opens in the engine as before. Anything else is a navigation target — a product-map id (`billing`, `my-games`, `mcp-guide`, `scene`, `inspector`), an intent phrase, a `res://` path, or a summerengine.com path — opened in the browser (through `/login?returnUrl=` when needed) or sent to the running editor; `--print` resolves without opening. Same behavior as the `summer_open` MCP tool and `summer tool open` (`library/references/product-map`). |
 | `summer create <template> [name] [--keep-git]` | Scaffold from a pinned (or built-in) template; writes `.summer/project.json`. |
 | `summer list templates \| projects` | Browse the template registry / local projects. |
 | `summer memory [show <file>]` | Inspect `.summer/` project memory. |
@@ -228,7 +228,7 @@ An engine-repo mirror of this package exists for historical reasons; its `packag
 ## Related docs
 
 - v2 → v3: what moved and why nothing breaks — [`MIGRATION-V2-V3.md`](MIGRATION-V2-V3.md)
-- The rules — [`design/CONTRACT.md`](design/CONTRACT.md) · the reasoning — [`design/DECISIONS.md`](design/DECISIONS.md) · the sequence — [`design/ROADMAP.md`](design/ROADMAP.md)
+- The rules — [`design/CONTRACT.md`](design/CONTRACT.md) · the reasoning — [`design/DECISIONS.md`](design/DECISIONS.md)
 - Evals and their CI gates — [`../evals/README.md`](../evals/README.md)
 - Test an unpublished build end to end (local-dev setup, engine-less checks, expected failures, gates) — [`TESTING.md`](TESTING.md)
 - Engine-side tool mechanics — [`ADDING_TOOLS.md`](ADDING_TOOLS.md) · architecture tour — [`OVERVIEW.md`](OVERVIEW.md)

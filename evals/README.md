@@ -7,7 +7,7 @@ this file is the map.
 | Family | Tests | Runner status | CI gate |
 |---|---|---|---|
 | [`routing/`](routing/) | Index + metadata quality: do real asks retrieve the right entries? | **LIVE** (`npm run eval:routing`) | no regression vs committed `baseline.json` |
-| [`skills/`](skills/) | Behavioral specs: does following a skill produce correct behavior? | manual (`/skill-test`); 21 specs in `tests/specs/`, gaps in `skills/GAPS.md` | none yet (needs LLM+engine harness) |
+| [`skills/`](skills/) | Behavioral specs: does following a skill produce correct behavior? | manual (`/skill-test`); 21 specs in `tests/specs/`, gaps in [issue #77](https://github.com/summerengine/summer/issues/77) | none yet (needs LLM+engine harness) |
 | [`examples/`](examples/) | Every example executes against its pinned engine + evidence re-verifies | typed interface + SKIP stub | stub runs green; real runner flips it to a gate |
 | [`templates/`](templates/) | Pin integrity: clone-at-commit, tree-digest verify, project-opens smoke | contract defined; lands with template migration | steps 1–3 on `library/templates/**` PRs |
 | [`tools/`](tools/) | Conformance: input_schema round-trips to zod + commander with zero drift | lands with the registry compiler (shares its derivation code) | vitest, once compiler lands |

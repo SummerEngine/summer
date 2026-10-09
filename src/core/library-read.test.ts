@@ -21,7 +21,7 @@ function lastLine(text: string): string {
   return text.split("\n").at(-1)!;
 }
 
-describe("feedback footer (SELF_IMPROVING_LIBRARY §3.1 trigger placement)", () => {
+describe("feedback footer", () => {
   it("has the exact wording and the first 12 hash chars", () => {
     const footer = feedbackFooter("skill/grappling-hook", "0123456789abcdef".repeat(4));
     expect(footer).toBe(`— entry_id: skill/grappling-hook@0123456789ab. ${FOOTER_SUFFIX}`);

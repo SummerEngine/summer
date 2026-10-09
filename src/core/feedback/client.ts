@@ -7,7 +7,7 @@
  * silent failure, never throws, never retries, never blocks the agent
  * for more than the timeout.
  *
- * Consent (SELF_IMPROVING_LIBRARY.md §3.4):
+ * Consent:
  * - SUMMER_NO_TELEMETRY=1 or DO_NOT_TRACK=1 → nothing is ever sent.
  * - First-run notice BEFORE the first event (CONTRACT §10): the first call
  *   ever made on a machine sends NOTHING and returns a one-paragraph notice

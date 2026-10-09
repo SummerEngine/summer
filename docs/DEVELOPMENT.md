@@ -100,14 +100,14 @@ The suite needs Node 22 or newer (`.nvmrc`; CI uses 22): vitest 3 does not run o
 | `summer skills list \| info <name> \| install [name] [--all \| --recommended] [--stable-only] [--agent <a>] [--scope user\|project] [--force]` | Skill installer over `skills-registry.json`. Bulk installs take every `stable` and `preview` skill (`deprecated` only by name); `--stable-only` skips preview; `skills list` tags them `[preview]`. `--include-preview` is a hidden no-op alias for one release. |
 | `summer mcp [--project <path> \| --instance <id>]` | Start the MCP server (stdio). `summer mcp setup <agent>` is a deprecated alias of `summer setup`. |
 | `summer setup [agent] [--yes] [--force] [--recommended] [--stable-only] [--scope …] [--channel <dist-tag>] [--local-dev]` | MCP config + all skills (preview included; `--stable-only` skips them) + doctor, one shot, idempotent. `--channel next` (or `SUMMER_CHANNEL=next`) writes `npx -y summer-engine@next mcp` so a release soaking on the `next` dist-tag is the one the agent runs; default `latest`. `--local-dev` (or `SUMMER_DEV=1`) points the agent at this checkout's `dist/bin/summer.js` instead of `npx summer-engine@latest`. |
-| `summer doctor [--json]` | Checks: `node-version`, `cli-version`, `cli-version-current`, `skills-version-stale`, `login`, `engine-install`, `local-api`, `project-memory`, `mcp-boot`, `mcp-tools-list`. `ok` = no failures. |
+| `summer doctor [--json]` | Checks: `node-version`, `cli-version`, `cli-version-current`, `skills-version-stale`, `login`, `store-access` (with a store sign-in: asks the store for your games through the hosted MCP and shows its answer), `engine-install`, `local-api`, `project-memory`, `mcp-boot`, `mcp-tools-list`. `ok` = no failures. |
 | `summer debug [issue…]` | Support-ready Markdown debug report. |
 | `summer plan <goal…>` | Route a goal to skills / tools / gates. |
 | `summer config [get \| set \| unset \| path]` | Shared non-secret `~/.summer/config.json` (`gateway.url`, …). |
 | `summer publish [project] --artifact <pck> --version <v> [--confirm]` | Deprecated confirmed `.pck` release to the legacy creator API; use `summer tool export-game` and `summer tool publish-build`. |
 | `summer releases [--cursor <c>]` | Creator release history. |
 | `summer events [--follow] [--kinds <csv>] [--since <seq>] [--limit <n>] [--json]` | Engine events channel: the newest events, or `--follow` to stream them live (long-poll over `/api/events/poll`, one line per event, JSON when piped). Builds without the channel print a structured `engine_lacks_events` receipt and exit 1. |
-| `summer tool [name] [--args '<json>'] [--list]` | Run any tool with the MCP implementation; `--list` prints every slug. |
+| `summer tool [name] [--args '<json>'] [--list]` | Run any tool with the MCP implementation; `--list` prints every slug. With a store sign-in it also lists and runs the hosted store and publishing tools (`summer tool summer_store_list_games`). |
 | `summer help [command]` | Commander's built-in help. |
 
 Unknown commands exit 1. `summer` alone prints the intro.

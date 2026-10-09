@@ -705,7 +705,7 @@
       "id": "skill/bounded-engine-runs",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "8e749bad18a8050fcad820422012466dd51c22ae97f4502f1b89d02016b201d4",
+      "content_hash": "59795a003543231c774238368a037e26c6fe10e25a4829761cdcadccceb72e5d",
       "summary": "Run Summer headless or offscreen safely from an agent: time limits, one engine per project, muted runs, import passes, tests that fail on crashes.",
       "use_when": [
         "running the engine from a shell or agent for tests, imports, captures or bots",
@@ -1162,7 +1162,7 @@
       "id": "skill/compatibility-renderer-traps",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "a9ad66f3cebbba35f2730bcef17a176b8bfccccc51c60bee852ac95252785ee7",
+      "content_hash": "7fbd6cc526c0c0776e932091e815e6914d9a2c2d6b7d5f8565c0455621b2bf08",
       "summary": "Make a Forward+ Summer game also look right on the Compatibility renderer: instance-uniform budget, black MultiMesh colors, sRGB vertex colors.",
       "use_when": [
         "a game must run on phones or weak GPUs that may use the Compatibility or Mobile renderer",

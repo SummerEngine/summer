@@ -239,3 +239,31 @@ describe("detectBackgroundLaunchSupport — probe first, cached per binary, vers
     await expect(readFile(join(root, HELP_PROBE_CACHE_FILE), "utf-8")).rejects.toThrow();
   });
 });
+
+describe("isVersionAtLeast", () => {
+  it("compares x.y.z versions and says null when either is unreadable", async () => {
+    const { isVersionAtLeast } = await import("./launch-posture.js");
+    expect(isVersionAtLeast("0.6.0", "0.7.0")).toBe(false);
+    expect(isVersionAtLeast("0.7.0", "0.7.0")).toBe(true);
+    expect(isVersionAtLeast("v0.10.2-beta", "0.7.0")).toBe(true);
+    expect(isVersionAtLeast(null, "0.7.0")).toBeNull();
+    expect(isVersionAtLeast("latest", "0.7.0")).toBeNull();
+  });
+});
+
+describe("readInstalledEngineVersion on a bundle unpacked without its .app folder", () => {
+  it("reads <dir>/Contents/Info.plist", async () => {
+    const { mkdir } = await import("node:fs/promises");
+    const dir = await mkdtemp(join(tmpdir(), "summer-loose-bundle-"));
+    try {
+      await mkdir(join(dir, "Contents", "MacOS"), { recursive: true });
+      await writeFile(
+        join(dir, "Contents", "Info.plist"),
+        "<plist><dict><key>CFBundleShortVersionString</key>\n<string>0.7.0</string></dict></plist>"
+      );
+      expect(readInstalledEngineVersion(join(dir, "Contents", "MacOS", "Summer"), "darwin")).toBe("0.7.0");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});

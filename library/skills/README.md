@@ -152,7 +152,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [*celeste-momentum-platforming*](./celeste-momentum-platforming/SKILL.md) (preview) | Celeste-style 2D precision platformer movement — momentum running, coyote time, variable jumps, dash, wall jump/slide, climb stamina, pixel corner correction. | character-controller, game-design |
 | [*combat-basics*](./combat-basics/SKILL.md) (preview) | Damage in Summer Engine: hitbox and hurtbox Areas on opposing layers, a reusable Health component, damage signals, knockback, hit feedback, projectiles. | scripting, game-design |
 | [design-mechanic](./design-mechanic/SKILL.md) ★ | Design one game mechanic in detail — input, response, feedback, failure modes, depth, tunables — outputs a design doc, node-graph sketch, GDScript stub. | game-design |
-| [*in-game-purchases*](./in-game-purchases/SKILL.md) (preview) | Sell items for Sparks and let short players buy Sparks in game via the Summer purchase sheet: checkout, Sparks purchase, results, testing, store policy. | scripting, game-design |
+| [*in-game-purchases*](./in-game-purchases/SKILL.md) (preview) | Sell items for Sparks in a game shop via the Summer purchase sheet: checkout, results, not enough Sparks, inventory unlocks, authority grants, store policy. | scripting, game-design |
 | [*web-and-touch-input*](./web-and-touch-input/SKILL.md) ★ (preview) | Input for the browser and phones: the first-click rule for sound and mouse capture, focus, and touch buttons or a virtual stick on the same actions. | ui |
 
 ## level-design

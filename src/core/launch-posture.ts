@@ -61,7 +61,7 @@
  * --help probe below runs against THAT binary (cache key: path + mtime + size).
  */
 import { spawn } from "node:child_process";
-import { mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { platform } from "node:os";
 import { getSummerDir } from "./auth.js";
@@ -124,6 +124,15 @@ function compareVersions(a: SemverParts, b: SemverParts): number {
   if (a.major !== b.major) return a.major - b.major;
   if (a.minor !== b.minor) return a.minor - b.minor;
   return a.patch - b.patch;
+}
+
+/** Whether `version` is `minimum` or newer; null when either is missing or
+ *  not x.y.z (an unknown version is never "too old" and never "new enough"). */
+export function isVersionAtLeast(version: string | null | undefined, minimum: string): boolean | null {
+  const parsed = version ? parseVersion(version) : null;
+  const min = parseVersion(minimum);
+  if (!parsed || !min) return null;
+  return compareVersions(parsed, min) >= 0;
 }
 
 /**
@@ -364,11 +373,14 @@ export function parseVelopackVersion(sqVersionText: string): string | null {
   return match ? match[1].trim() : null;
 }
 
-/** Walk up from `.../Summer.app/Contents/MacOS/Summer` to the bundle. */
+/** Walk up from `.../Summer.app/Contents/MacOS/Summer` to the bundle. A
+ *  bundle unpacked without its `.app` folder (`<dir>/Contents/MacOS/Summer`)
+ *  reads as `<dir>`. */
 function macBundlePathFor(binary: string): string | null {
   let current = dirname(binary);
   for (let depth = 0; depth < 4; depth++) {
     if (basename(current).endsWith(".app")) return current;
+    if (basename(current) === "Contents" && existsSync(join(current, "Info.plist"))) return dirname(current);
     const parent = dirname(current);
     if (parent === current) break;
     current = parent;

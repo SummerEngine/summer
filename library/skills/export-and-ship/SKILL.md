@@ -39,10 +39,13 @@ export command.
 4. Build a capability table with `available`, `missing prerequisite`, or
    `impossible on this build` for every requested target.
 
-A stock Summer 4.6.1 Mono install has only the macOS template. Web export is
-incompatible with that Mono build. Windows, Linux, Android, and iOS require a
-matching custom template or an external CI/build environment, plus their
-platform toolchains where applicable.
+A stock Summer Mono install ships only the macOS template. Run
+`summer_export_templates` before marking a target missing: it installs Summer's
+macOS, Windows and web (WebGPU) templates. The web template is the one
+`summer_export_game` uses for `targets:["web"]`; it needs the Forward+ or
+Mobile renderer. Linux, Android, and iOS require a matching custom template or
+an external CI/build environment, plus their platform toolchains where
+applicable.
 
 **Hard gate:** an absent template or toolchain means the target is unavailable.
 Do not create its preset, recommend it as a local option, or invoke an export
@@ -56,7 +59,7 @@ Offer only targets marked `available` by step 1. Record other requested
 destinations as blocked follow-ups with their exact prerequisite.
 
 > Locally proven targets: **macOS**. Requested but blocked: **Windows**
-> (matching template or external CI), **Web** (non-Mono build), **Android**
+> (install the template with `summer_export_templates`), **Android**
 > (template + Android toolchain). Which proven target should I prepare?
 
 Each destination has a different list. Multiple destinations = multiple lists. Don't shortcut — the iOS list does not satisfy the Steam list.
@@ -141,8 +144,7 @@ Lower bar than Steam. itch is forgiving.
 Build config:
 - Package each proven platform build as a ZIP.
 - Or use `butler push` (itch's CLI) for atomic versioning and patches.
-- A browser build is optional and requires a separately proven non-Mono Web
-  export environment.
+- A browser build is optional and needs a proven web export path (section c).
 
 #### c) Web (HTML5) — unavailable until a web template is proven
 
@@ -237,9 +239,9 @@ For each preset:
 
 ### 6. Propose the build sequence
 
-> Capability proof: macOS available locally; Windows and Linux require external
-> CI; Web is unavailable on this Mono build. Pre-flight is clean for the macOS
-> preset. May I produce that one proven build now?
+> Capability proof: macOS available locally; Windows needs its template
+> (`summer_export_templates`); Linux requires external CI. Pre-flight is clean
+> for the macOS preset. May I produce that one proven build now?
 
 ### 7. Produce a proven build
 

@@ -25,8 +25,8 @@ The dissolve shader samples 3D noise per fragment and clips pixels whose noise v
 
 ## When NOT to use
 
-- The user wants *fire* on the object that doesn't consume it — use `fire`, not dissolve. Dissolve makes the mesh disappear; fire just sits on top.
-- The user wants a particle-driven ash cloud as the object disappears — pair this with `smoke` (recolor to ash gray) spawned at the dissolving mesh's bounds.
+- The user wants *fire* on the object that doesn't consume it — use `vfx-fire`, not dissolve. Dissolve makes the mesh disappear; fire just sits on top.
+- The user wants a particle-driven ash cloud as the object disappears — pair this with `vfx-smoke` (recolor to ash gray) spawned at the dissolving mesh's bounds.
 - The user wants a fade-out via alpha (cheap, no shader) — set `transparency = TRANSPARENCY_ALPHA` and tween `albedo_color.a` to 0. Dissolve is better but more expensive.
 - The user wants the *world* to dissolve in for a level transition — that's a screen-space post-process, not this per-mesh recipe.
 - The character has skinned mesh + multiple materials — this works but you have to override every material slot. Confirm with user; consider a fade-out instead.
@@ -307,7 +307,7 @@ noise_scale    = 3.0
 
 ### thanos-snap
 
-Fast, fine grain, blue edge for the cosmic feel. Pair with `smoke` in pale gray for ash particles rising.
+Fast, fine grain, blue edge for the cosmic feel. Pair with `vfx-smoke` in pale gray for ash particles rising.
 
 ```
 duration       = 0.8
@@ -319,7 +319,7 @@ noise_scale    = 8.0
 
 ### holy-banish
 
-Slow, white edge, big halo. Add `magic-glow` underneath for a beam of light.
+Slow, white edge, big halo. Add `vfx-magic-glow` underneath for a beam of light.
 
 ```
 duration       = 2.5

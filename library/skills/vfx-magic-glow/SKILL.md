@@ -21,13 +21,13 @@ Three layered cues that together read as "magical": a pulsing `OmniLight3D` (sin
 - "Wisp / fairy / firefly companion."
 - "The summoning circle is active."
 - "Quest item glows so the player notices it."
-- Pre-charge phase before casting `lightning` or `muzzle-flash` (charge-up beam).
+- Pre-charge phase before casting `vfx-lightning` or `vfx-muzzle-flash` (charge-up beam).
 
 ## When NOT to use
 
 - The user wants a static, non-animated glow — just enable emission on the mesh's material; this recipe is overkill.
-- The user wants flames, not a glow — use `fire` (or `magic-fire` variant of `fire`).
-- The user wants a beam shooting out, not an aura — use `lightning` with the `plasma-laser` variant.
+- The user wants flames, not a glow — use `vfx-fire` (or `magic-fire` variant of `vfx-fire`).
+- The user wants a beam shooting out, not an aura — use `vfx-lightning` with the `plasma-laser` variant.
 - The user wants a screen-space bloom on the whole scene — that's `WorldEnvironment.glow_*`, not a per-object recipe.
 - The user wants a 2D glow on a UI sprite — use `canvas_item` shader with a radial gradient, not this 3D recipe.
 
@@ -415,7 +415,7 @@ manually in Summer Engine:
 
 After firing this recipe, suggest:
 
-- `vfx-lightning` — perfect pre-cast charge-up. Use the `charge-up` variant and ramp `set_intensity(0→1)` then call `Lightning.cast_lightning`.
+- `vfx-lightning` — pre-cast charge-up. Use this skill's `charge-up` variant, ramp `set_intensity(0→1)` then call `Lightning.cast_lightning`.
 - `vfx-dissolve` — pair `summon-arrival` (materialize_object) with the `summoning-circle` variant.
 - `vfx-fire` (the `magic-fire` variant) — for items that should glow AND flame.
 - `game-feel` — slight time-dilation when picking up a pulsing quest item adds weight.

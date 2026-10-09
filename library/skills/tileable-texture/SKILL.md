@@ -68,7 +68,7 @@ summer_generate_image(
 
 Two things about the arguments:
 
-- **There is no `image_size` and no `negative_prompt`.** `summer_generate_image` takes only `prompt`, `model`, `style`, `referenceImageUrl`, and `options`, and `options` only recognizes Nano Banana provider keys (`seed`, `outputFormat`, `safetyTolerance`, `syncMode`, `systemPrompt`, `limitGenerations`, `thinkingLevel`) plus `removeBackground`. Anything else is dropped without an error, so the call looks like it worked. Put the negations in the prompt text. Square is what you get regardless — MCP images come back at the server's 1:1 default, which is exactly what a tileable texture wants.
+- **There is no `image_size` and no `negative_prompt`.** `summer_generate_image` takes only `prompt`, `model`, `style`, `referenceImageUrl`, `removeBackground` and `options`, and `options` only recognizes Nano Banana provider keys (`seed`, `outputFormat`, `safetyTolerance`, `syncMode`, `systemPrompt`, `limitGenerations`, `thinkingLevel`). Anything else is dropped without an error, so the call looks like it worked. Put the negations in the prompt text. Square is what you get regardless — MCP images come back at the server's 1:1 default, which is exactly what a tileable texture wants.
 - **`style: "realistic"` is a no-op.** Only `cartoon` and `anime` append anything to the prompt; `realistic` and `none` append nothing, and any other value is coerced to `none`. The photographic look has to come from the prompt (`photographic detail`). Switching to `"none"` for stylized work likewise changes nothing on its own — change the prompt.
 
 ### 4. Import to project

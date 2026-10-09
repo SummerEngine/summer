@@ -4,6 +4,8 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { getAuthToken, getUserInfo } from "../auth.js";
 import { ENGINE_BIN_ENV, ENGINE_BINARY_ENV, findEngineBinary } from "../engine-install.js";
 import { checkEngineHealth, getApiPort, getApiToken } from "../engine.js";
+import { isVersionAtLeast } from "../launch-posture.js";
+import { EXPORT_MIN_ENGINE_VERSION, installedEngineVersion } from "./export-engine-version.js";
 import { brandLine, c, pad, sym, tildeify } from "../format.js";
 import { getMcpLogPath } from "../mcp-log.js";
 import { checkStoreAccess, hasStoreSignIn, type StoreAccessResult } from "../hosted-mcp.js";
@@ -206,17 +208,28 @@ export async function checkStoreSignIn(
   };
 }
 
-export function checkEngineInstall(): DoctorCheck {
+export function checkEngineInstall(readVersion: (binary: string) => string | null = installedEngineVersion): DoctorCheck {
   const binary = findEngineBinary();
   if (binary) {
     // Shorten /Applications/Summer.app/Contents/MacOS/Summer -> /Applications/Summer.app
-    const display = binary.replace(/\/Contents\/MacOS\/Summer$/, "");
+    const display = tildeify(binary.replace(/\/Contents\/MacOS\/Summer$/, ""));
+    const version = readVersion(binary);
+    const details = { path: binary, version, minimumExportVersion: EXPORT_MIN_ENGINE_VERSION };
+    if (isVersionAtLeast(version, EXPORT_MIN_ENGINE_VERSION) === false) {
+      return {
+        id: "engine-install",
+        label: "Engine",
+        status: "warning",
+        message: `${display} is ${version}; summer.games exports need ${EXPORT_MIN_ENGINE_VERSION}+ (update: summer install --yes)`,
+        details,
+      };
+    }
     return {
       id: "engine-install",
       label: "Engine",
       status: "ok",
-      message: tildeify(display),
-      details: { path: binary },
+      message: version ? `${display} (${version})` : display,
+      details,
     };
   }
 

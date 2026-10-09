@@ -24,9 +24,9 @@ Concentric expanding rings on a water surface, normal-distorted so the ripple ac
 
 ## When NOT to use
 
-- The user wants the *whole* water surface to wave (Gerstner / FFT ocean) — that's a separate `ocean-water` recipe; this is impact ripples on top.
+- The user wants the *whole* water surface to wave (Gerstner / FFT ocean) — that needs an ocean wave shader; this recipe adds impact ripples on top.
 - The user wants a 2D top-down ripple effect on a UI map — use `canvas_item` shader, not this `spatial` one.
-- The user wants splash particles flying upward on impact — pair this with `hit-spark` (recolor blue) for the droplets; this only handles the ring on the surface.
+- The user wants splash particles flying upward on impact — pair this with `vfx-hit-spark` (recolor blue) for the droplets; this only handles the ring on the surface.
 - The user wants the ripple to physically displace floating objects — this is visual only. Use `Area3D` impulses for the simulation side.
 
 ## Recipe

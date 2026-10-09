@@ -36,14 +36,12 @@ If `CLAUDE.md` says "skip the brainstorm, just build it" and a skill says "alway
 Two layers:
 
 - **Skills** — discipline guides that fire on specific situations: brainstorming a game, designing a mechanic, building an FPS controller, debugging a crash, shipping a build. Each one is a SKILL.md you load via the Skill tool.
-- **MCP tools** — `summer_*` tools that talk to the running Summer Engine on `localhost:6550`. Scene mutation (`summer_add_node`, `summer_set_prop`), inspection (`summer_get_scene_tree`, `summer_inspect_node`), play/diagnostics (`summer_play`, `summer_get_diagnostics`), asset import/generation (`summer_import_from_url`, `summer_generate_3d`), and 30+ more.
+- **MCP tools** — `summer_*` tools that talk to the running Summer Engine on `localhost:6550`. Scene mutation (`summer_add_node`, `summer_set_prop`), inspection (`summer_get_scene_tree`, `summer_inspect_node`), play/diagnostics (`summer_play`, `summer_get_diagnostics`), asset import/generation (`summer_import_from_url`, `summer_generate_3d`), and the rest of the `summer_*` set.
 
 **Scripting language:** The user is making a Summer game with the Summer SDK.
-GDScript is the default creator language. Summer currently uses the 4.6.1
-upstream technical base, plans to adopt 4.7.1 next, and follows upstream
-continuously. Confirm version-sensitive behavior from the engine's own version
-string rather than turning that base into the product identity. You can write
-game code in either:
+GDScript is the default creator language. Summer Engine follows its upstream
+technical base continuously, so confirm version-sensitive behavior from the
+engine's own version string. You can write game code in either:
 
 - **GDScript** (`.gd`) — the default. Best supported by Summer skills (see `gdscript-patterns`). Use this unless the user has explicitly chosen C#.
 - **C#** (`.cs`) — supported by the shipped Mono build. The GDScript
@@ -150,7 +148,7 @@ Run `summer doctor` early in a fresh Summer session when setup, MCP tools, slash
 npx clear-npx-cache && npx -y summer-engine@latest setup <agent> --yes --force
 ```
 
-Use the dist-tag `summer doctor` recommends: `@latest` normally, `@next` (with `--channel next`) when this CLI was installed from the soaking release, otherwise the MCP server silently drops back to the older `latest`. Use the real agent slug from doctor or the current environment (`claude-code`, `codex`, `cursor`, `gemini`, `github-copilot`, `vscode-copilot`, `opencode`, etc.).
+Use the dist-tag `summer doctor` recommends: `@latest` normally, `@next` (with `--channel next`) when this CLI was installed from the soaking release, otherwise the MCP server silently drops back to the older `latest`. Use the real agent slug from doctor or the current environment (`claude-code`, `codex`, `cursor`, `antigravity`, `github-copilot`, `vscode-copilot`, `opencode`, etc.).
 
 Why this exact command matters:
 

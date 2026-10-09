@@ -24,7 +24,7 @@ Then it generates one line (or a multi-turn dialogue) with the right stability /
 
 ## When NOT to use
 
-- Non-verbal vocal SFX (grunt, scream) → `audio/sound-effect` with prompt `male grunt of pain, mid-thirties, sharp, 400ms`.
+- Non-verbal vocal SFX (grunt, scream) → `sound-effect` with prompt `male grunt of pain, mid-thirties, sharp, 400ms`.
 - Pre-recorded voice from a real actor — import the .mp3 / .wav with `summer_import_from_url` and skip TTS.
 
 ## Steps
@@ -146,7 +146,7 @@ For a single line, the prompt is just the text. Punctuation and formatting matte
 
 - **Periods** = clear pauses (~300ms). Use them.
 - **Commas** = short pauses (~100ms).
-- **Em dashes** = sharp cut. (Note: avoid em dashes in user-facing UI copy per project standard, but they're fine in voice prompts as a delivery cue.)
+- **Em dashes** = sharp cut.
 - **All-caps word** = stress: `You SHALL not pass.`
 - **Ellipsis** = trailing pause: `I... I don't know what to say.`
 - **Parenthetical stage direction is ignored** — `(angrily)` is read as the word "angrily". Use stability/style instead.
@@ -230,7 +230,7 @@ Excited young hero:       18-28, high energy, mid-high pitch
 Cold villain:             30-50, neutral/theatrical, low-mid, slow with sharp consonants
 Mischievous trickster:    theatrical, light, fast cadence
 Calm scholar:             30-50, neutral, mid, even cadence
-Scared / breathy:         high stability=0.25, style=0.5
+Scared / breathy:         stability=0.25, style=0.5
 Robotic AI:               stability=1.0, style=0.0
 Narrator cinematic:       mid-deep, neutral/theatrical, even, very stable
 Narrator intimate:        warmer mid pitch, lower stability for breath
@@ -250,9 +250,9 @@ Narrator intimate:        warmer mid pitch, lower stability for breath
 
 ## Edge cases
 
-- **Line longer than ~1000 characters.** ElevenLabs caps per-call. Split at sentence boundaries, generate each, concatenate with `AudioStreamPlayer.queue` or chained `finished` signals.
+- **Line longer than ~1000 characters.** ElevenLabs caps per-call. Split at sentence boundaries, generate each, and play them in order by chaining the player's `finished` signal.
 - **Mispronunciation of a fictional word.** Spell it phonetically: `Caelthorne` → `KEL-thorn` or `KAYL-thorn`. Or use SSML if the model supports it.
-- **Voice drifts in long lines.** Increase `similarity_boost` toward 0.9; or split.
+- **Voice drifts in long lines.** Increase `similarityBoost` toward 0.9; or split.
 - **Need a non-English line.** `eleven_multilingual_v2` supports 29 languages. Just write in the target language; the same voice id works.
 - **User wants the line shorter on regen.** Edit the text first; don't try to compress with `speed` past 1.15 (artifacts).
 - **NPC bark variants.** Generate 3–5 variants of the same intent (`"They're at the gate!"`, `"Enemy approaching!"`, `"Look out!"`) and pick at random in code so the bark doesn't repeat.
@@ -266,10 +266,10 @@ Print the call (text, voice id, params, target path). User runs via the Summer d
 > Line `hodge_hold_the_line.mp3` wired to `NPC/VoiceLine` on the `Voice` bus. Cast bible updated. Next:
 > - Generate 3 bark variants of the same intent so the NPC doesn't sound like a recording.
 > - For the upcoming gate scene, run `/voice-line` with `text_to_dialogue` for the multi-turn exchange.
-> - Set up music ducking on the `Music` bus when `Voice` is active (one Tween or a `BusEffect Compressor` sidechained to `Voice`).
+> - Set up music ducking on the `Music` bus when `Voice` is active (one Tween, or an `AudioEffectCompressor` on `Music` with `sidechain` set to `Voice`).
 
 ## See also
 
-- `audio/audio-direction` — Voice bus and ducking rules
-- `audio/sound-effect` — non-verbal vocal SFX (grunt, scream)
-- `audio/adaptive-music` — ducking integration
+- `audio-direction` — Voice bus and ducking rules
+- `sound-effect` — non-verbal vocal SFX (grunt, scream)
+- `adaptive-music` — ducking integration

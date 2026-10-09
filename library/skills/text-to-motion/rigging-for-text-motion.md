@@ -3,7 +3,7 @@
 The motion model reads the skeleton's rest pose, hierarchy **and bone names**. Names carry
 meaning: a bone called `LeftArm` borrows everything the model learned from human arms.
 Rigs named like a human skeleton therefore animate far better than freeform names, even
-on non-humans. Measured on cartoon flowers (2026-09-29): with plant names (`Stem1`,
+on non-humans. Measured on cartoon flowers: with plant names (`Stem1`,
 `LeafL1`) most prompts barely moved; the same rig with human names nodded, bowed,
 gestured and looked around on cue.
 

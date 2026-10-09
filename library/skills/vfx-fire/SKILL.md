@@ -19,14 +19,14 @@ Fire in games is almost never a video clip and never an AI-generated sprite. It'
 - "Make a campfire / bonfire / hearth flame."
 - "Light the brazier."
 - "I need a candle flame on this candlestick."
-- "The dragon needs a flame breath" (use this for the persistent emitter; pair with a one-shot `muzzle-flash` for the burst).
+- "The dragon needs a flame breath" (use this for the persistent emitter; pair with a one-shot `vfx-muzzle-flash` for the burst).
 - The player set something on fire and you need a continuous, physically-anchored flame.
 
 ## When NOT to use
 
-- The user wants an object to *burn away* (mesh disintegrating with a fire edge) — route to `dissolve`. Fire is a separate effect; pair them.
-- The user wants smoke without flame — go straight to `smoke`. (Most fires want a smoke trail above; spawn this recipe and add `smoke` on top.)
-- The user wants a one-frame muzzle flash from a gun — that's `muzzle-flash`, not fire.
+- The user wants an object to *burn away* (mesh disintegrating with a fire edge) — route to `vfx-dissolve`. Fire is a separate effect; pair them.
+- The user wants smoke without flame — go straight to `vfx-smoke`. (Most fires want a smoke trail above; spawn this recipe and add `vfx-smoke` on top.)
+- The user wants a one-frame muzzle flash from a gun — that's `vfx-muzzle-flash`, not fire.
 - The user wants 2D fire on a UI element — use `canvas_item` shader; this recipe is `spatial`/`particles`.
 - The user wants stylized magic flame (blue, purple, ethereal) — use this recipe and load the `magic-fire` variant in the cookbook below.
 
@@ -397,7 +397,7 @@ OmniLight3D: light_energy = 1.6, omni_range = 6.0
 
 ### bonfire
 
-Wide, tall, hungry. Pair with `smoke` directly above.
+Wide, tall, hungry. Pair with `vfx-smoke` directly above.
 
 ```
 particle_count = 256
@@ -442,7 +442,7 @@ OmniLight3D: light_color = Color(0.40, 0.65, 1.0), light_energy = 2.4
 ## Anti-patterns
 
 - **Spatial-only shader on the visual quad.** It still works, but you forgot `blend_add` + `unshaded` and the flame looks like a flat orange triangle in shadow. Always: `render_mode unshaded, blend_add, depth_draw_never;`.
-- **Looping a one-shot emitter.** `one_shot = false` for fire (continuous). One-shot is for `muzzle-flash` and `hit-spark`.
+- **Looping a one-shot emitter.** `one_shot = false` for fire (continuous). One-shot is for `vfx-muzzle-flash` and `vfx-hit-spark`.
 - **Missing `cull_disabled`.** Particles billboard toward camera; if you cull backfaces, the flame disappears at certain angles.
 - **`depth_draw_opaque` on the visual material.** You'll z-fight with anything inside the flame (the torch handle). Use `depth_draw_never`.
 - **OmniLight3D parented under the GPUParticles3D.** The particles emit in local space; the light moves with them. Sibling, not child.

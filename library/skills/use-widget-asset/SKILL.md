@@ -108,12 +108,12 @@ extends TextureProgressBar
 
 func _ready():
     var tex = load(slice_url)
-    # The base / "under" texture is the same image — Godot will mask it
+    # The base / "under" texture is the same image — the bar masks it
     # to whatever value 0-100 we set.
     texture_under  = tex
     texture_progress = tex
     fill_mode = TextureProgressBar.FILL_LEFT_TO_RIGHT if orientation == "horizontal" else TextureProgressBar.FILL_TOP_TO_BOTTOM
-    # The fill rect tells Godot which sub-region of the texture is the
+    # The fill rect tells the bar which sub-region of the texture is the
     # bar fill (vs the frame). Texture_progress_offset + stretch_margin_*
     # form the inset.
     var sw = tex.get_width()
@@ -160,7 +160,7 @@ In the pack, find the pair: `sliceMeta[currentIndex].pairWith` gives the other s
 
 ## Cut-offs and re-renders
 
-If the detected `frameMargins` are obviously wrong (the dashed overlay in the wizard's lightbox shows the center area clipping into a corner ornament), the user should hit **Recreate (HD)** on that slice. FLUX will regenerate it cleanly — but the *margins themselves* don't get re-detected after upscale. Margins live on the original detection. The user can also manually edit them in code via the `patch_margin_*` properties after instantiating.
+If the detected `frameMargins` are obviously wrong (the dashed overlay in the wizard's lightbox shows the center area clipping into a corner ornament), the user should hit **Recreate (HD)** on that slice. It regenerates cleanly — but the *margins themselves* don't get re-detected after upscale. Margins live on the original detection. The user can also manually edit them in code via the `patch_margin_*` properties after instantiating.
 
 ## Composite panels with sub-elements
 
@@ -171,16 +171,16 @@ When a slice has `parentSliceIndex` set, it came from a **Break-down** pass — 
 
 Pick based on whether your game needs the panel to stretch as one unit or whether each control needs independent interaction.
 
-See **Composite Panels (Sliced Further)** below for the canonical fields the wizard now emits (`isComposite`, `zOrder`) and the consume recipe.
+See **Composite Panels (Sliced Further)** below for the fields the wizard emits (`isComposite`, `zOrder`) and the consume recipe.
 
 ## Composite Panels (Sliced Further)
 
-The wizard's Break-down pass produces two new per-slice fields the runtime must understand:
+The wizard's Break-down pass adds per-slice fields the runtime must understand:
 
 | Field | Type | Meaning |
 |---|---|---|
 | `isComposite` | boolean | True on the **parent** slice — the flat preview image of the assembled panel. NOT a runtime asset. Filter it out on import unless the caller explicitly wants the preview thumbnail. |
-| `zOrder` | number | Back-to-front paint order on children. Lower = behind. Matches Godot `z_index`, Unity `sortingOrder`, CSS `z-index`. |
+| `zOrder` | number | Back-to-front paint order on children. Lower = behind. Maps to `CanvasItem.z_index`. |
 | `parentSliceIndex` | number | Set on each child, points at the composite parent. Used to group children. |
 
 The table above lists every field this skill reads; treat any other field in the pack manifest as opaque.
@@ -201,7 +201,7 @@ For the full instantiation flow (op JSON, examples), use `instantiate-asset-pack
 
 ### Legacy compatibility
 
-Older packs (saved before the rename) used different field names. Always fall back:
+Older packs use different field names. Always fall back:
 
 ```
 const zOrder      = slice.zOrder      ?? slice.layerIndex   ?? packFileIndex;

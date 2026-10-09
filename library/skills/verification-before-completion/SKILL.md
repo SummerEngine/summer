@@ -109,12 +109,11 @@ Bad: Trust agent report
 
 ## Why This Matters
 
-From 24 failure memories:
-- the user said "I don't believe you" - trust broken
-- Undefined functions shipped - would crash
-- Missing requirements shipped - incomplete features
-- Time wasted on false completion → redirect → rework
-- Violates: "Honesty is a core value. If you lie, you'll be replaced."
+False completion claims cost trust and time:
+- The user stops believing your reports.
+- Undefined functions ship and crash.
+- Missing requirements ship as incomplete features.
+- Time goes to redirecting and rework.
 
 ## When To Apply
 

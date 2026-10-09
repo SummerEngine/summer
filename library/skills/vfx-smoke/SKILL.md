@@ -11,7 +11,7 @@ paths: ["**/*.tscn", "**/*.gd", "**/*.gdshader", "addons/vfx/**"]
 
 # smoke — Soft Particle Smoke Plume
 
-Smoke is the same particle pattern as fire — billboard quads emitted from a small disc, drifting upward — except the shader is dim, soft, low-emission, and tinted by depth instead of glowing. Slower spawn rate, longer lifetime, larger end scale. Pair it with `fire` for any campfire/torch/explosion. Used everywhere: chimney smoke, smoldering wreckage, smoke trails behind rockets, steam from vents, fog clouds.
+Smoke is the same particle pattern as fire — billboard quads emitted from a small disc, drifting upward — except the shader is dim, soft, low-emission, and tinted by depth instead of glowing. Slower spawn rate, longer lifetime, larger end scale. Pair it with `vfx-fire` for any campfire/torch/explosion. Used everywhere: chimney smoke, smoldering wreckage, smoke trails behind rockets, steam from vents, fog clouds.
 
 ## When to use
 
@@ -21,12 +21,12 @@ Smoke is the same particle pattern as fire — billboard quads emitted from a sm
 - "Steam from the vent."
 - "Smoke from the smoldering wreckage."
 - "Fog cloud at the cave entrance."
-- After spawning `fire`, smoke almost always belongs above it.
+- After spawning `vfx-fire`, smoke almost always belongs above it.
 
 ## When NOT to use
 
-- The user wants flames, not smoke — use `fire`.
-- The user wants a giant ground-hugging fog volume — use a `FogVolume` node with the `WorldEnvironment.volumetric_fog` shader, not a particle system. Particles don't scale to room-size fog.
+- The user wants flames, not smoke — use `vfx-fire`.
+- The user wants a giant ground-hugging fog volume — use a `FogVolume` node with volumetric fog enabled in the `WorldEnvironment`, not a particle system. Particles don't scale to room-size fog.
 - The user wants a 2D smoke effect — `canvas_item` shader, not this.
 - The user wants the smoke to physically interact with the player (pushed by movement) — particles are visual; use a `FogVolume` + script that follows the player.
 - The user wants thick black bonfire smoke that completely occludes — bump density way up, but consider a `FogVolume` for genuine visual occlusion.
@@ -334,7 +334,7 @@ color_old      = Color(0.55, 0.55, 0.55)
 
 ### black-fire-smoke
 
-Burning oil / tires. Pair with `fire` set to `bonfire`.
+Burning oil / tires. Pair with `vfx-fire` set to `bonfire`.
 
 ```
 particle_count = 96

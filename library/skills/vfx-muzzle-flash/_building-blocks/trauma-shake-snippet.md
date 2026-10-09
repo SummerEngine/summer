@@ -1,6 +1,6 @@
 # Trauma Camera Shake — Reusable Snippet
 
-Variant of the canonical "trauma model" shake (see `visual-effects/game-feel/SKILL.md` for the full game-feel discipline). Lightning and explosion recipes call `add_trauma()` to chain visual impact with screen-level reaction.
+Variant of the canonical "trauma model" shake (the `game-feel` skill has the full game-feel discipline). Lightning and explosion recipes call `add_trauma()` to chain visual impact with screen-level reaction.
 
 ## Setup (autoload script)
 

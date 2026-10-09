@@ -21,14 +21,14 @@ Tiny stretched additive billboards spraying outward from an impact point, orient
 - "Footstep sparks on stone for the heavy armor."
 - "Ricochet sparks when the projectile glances off."
 - "Mining: sparks fly when pickaxe hits rock."
-- Endpoint sparks on `lightning` and `muzzle-flash` recipes (they reference this).
+- Endpoint sparks on `vfx-lightning` and `vfx-muzzle-flash` recipes (they reference this).
 
 ## When NOT to use
 
-- The user wants a *flash* at the impact, not a spray of particles — use `muzzle-flash` (recolor it).
+- The user wants a *flash* at the impact, not a spray of particles — use `vfx-muzzle-flash` (recolor it).
 - The user wants debris chunks (rock pieces, splinters) — those are physics objects, not particles. Spawn `RigidBody3D` shards, then sparks on top.
-- The user wants water droplets at a water impact — recolor this recipe blue/white (it works) or pair with `water-ripple` for the ring on the surface.
-- The user wants persistent burning sparks that linger and cool down — that's a hybrid; use this for the burst, then tiny `fire` particles for residual embers.
+- The user wants water droplets at a water impact — recolor this recipe blue/white (it works) or pair with `vfx-water-ripple` for the ring on the surface.
+- The user wants persistent burning sparks that linger and cool down — that's a hybrid; use this for the burst, then tiny `vfx-fire` particles for residual embers.
 
 ## Recipe
 

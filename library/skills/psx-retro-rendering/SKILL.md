@@ -1,6 +1,6 @@
 ---
 name: psx-retro-rendering
-description: "Hardware-informed PlayStation 1 rendering in Godot 4 — low-res output, RGB5 and exact dither, affine textures, vertex snapping, blend modes, fog; limits named."
+description: "PlayStation 1 rendering in Summer Engine — low-res output, RGB5 and exact dither, affine textures, vertex snapping, blend modes, fog; limits named."
 license: MIT
 category: shaders
 tags:
@@ -13,19 +13,19 @@ confidence: extracted
 adaptation: translated
 ---
 
-# PSX Retro Rendering in Godot 4
+# PSX Retro Rendering in Summer Engine
 
 ## Outcome
 
 Recreate the visible behavior of the original PlayStation rendering pipeline while keeping three things distinct:
 
 1. behavior the PS1 actually had;
-2. the Godot technique used to imitate it;
+2. the engine technique used to imitate it;
 3. places where the imitation cannot reproduce the hardware exactly.
 
 The characteristic result comes from several interacting constraints, not from a single fullscreen filter: a low-resolution framebuffer, 5-bit color, conditional polygon dithering, unfiltered affine textures, integer screen-coordinate vertices, CPU-style polygon ordering, vertex colors and lighting, fixed semi-transparency equations, and depth-cued fog.
 
-The article author's MIT-licensed Godot 4 addon is useful implementation evidence:
+The article author's MIT-licensed addon is useful implementation evidence:
 
 - `https://github.com/wyvernbw/godot-psxlike`
 - Treat it as a reference implementation, not as proof that every approximation is hardware-exact, compatible with the current Summer Engine build, or suitable for every scene.
@@ -40,7 +40,7 @@ Do not activate this skill for an ordinary low-resolution or pixel-art presentat
 
 ## Authenticity Boundary
 
-| Visible behavior | Original hardware mechanism | Practical Godot implementation | Accuracy boundary |
+| Visible behavior | Original hardware mechanism | Practical engine implementation | Accuracy boundary |
 |---|---|---|---|
 | Low resolution | 1 MB VRAM shared by framebuffers and textures | Render the root viewport at a PSX-era base size | Does not reproduce the VRAM budget |
 | RGB5 color | GPU draws RGB555 plus one mask bit | Quantize fragment color to 31 levels per channel | Mask-bit write protection is normally omitted |
@@ -48,7 +48,7 @@ Do not activate this skill for an ordinary low-resolution or pixel-art presentat
 | Texture warping | UVs are interpolated affinely | Cancel the GPU's perspective correction with clip `w` | Subdivision strongly changes the result |
 | Vertex wobble | Integer screen coordinates and no subpixel rasterization | Quantize clip/NDC coordinates against the viewport | Do not use an arbitrary object-space grid |
 | Polygon overlap | No hardware Z-buffer; the CPU submits depth-sorted primitives | Flat `DEPTH`, mesh subdivision, and an optional depth bias | Flat depth is only a proxy for draw ordering |
-| Lighting | CPU/GTE-derived colors, Gouraud interpolation | Calculate light at vertices and carry it through `COLOR` | Godot's ordinary per-pixel light pass is different |
+| Lighting | CPU/GTE-derived colors, Gouraud interpolation | Calculate light at vertices and carry it through `COLOR` | The engine's ordinary per-pixel light pass is different |
 | Semi-transparency | Four fixed framebuffer blend equations | Sample the screen texture in a transparent material | Transparent objects cannot reliably blend with each other |
 | Fog | GTE depth cue and color operations | Quantized per-vertex factor plus modulation or a fragment blend | Authentic Silent Hill fog is a two-pass technique |
 
@@ -56,9 +56,9 @@ The PS1 GPU is fundamentally a 2D ordered polygon rasterizer. Avoid saying that 
 
 ## Summer Engine Integration
 
-At the pinned Summer Engine revision, `ShaderMaterial` supports shared shaders, material uniforms, and per-instance uniforms through `GeometryInstance3D.set_instance_shader_parameter()`. Prefer per-instance uniforms over duplicating materials when changing mesh-local PSX settings. See `SummerEngine/SummerEngine@a8e5ca520efa927bde6131c9fb36557f19c1bb18:doc/classes/ShaderMaterial.xml`.
+`ShaderMaterial` supports shared shaders, material uniforms, and per-instance uniforms through `GeometryInstance3D.set_instance_shader_parameter()`. Prefer per-instance uniforms over duplicating materials when changing mesh-local PSX settings.
 
-In Summer's material workflow, attach a `.tres` material override to the `MeshInstance3D`, not its parent `Node3D`, and save the scene after assignment. A custom PSX pipeline is an appropriate `ShaderMaterial` use because `StandardMaterial3D` cannot express affine interpolation, screen-coordinate snapping, or fixed framebuffer blend equations. See `SummerEngine/PublicSummerEngine@63f6e5cf71d0ddd5df9092cbbe82fee9b9ecf6c0:skills/look/materials-and-vfx/SKILL.md`.
+In Summer's material workflow, attach a `.tres` material override to the `MeshInstance3D`, not its parent `Node3D`, and save the scene after assignment. A custom PSX pipeline is an appropriate `ShaderMaterial` use because `StandardMaterial3D` cannot express affine interpolation, screen-coordinate snapping, or fixed framebuffer blend equations.
 
 Use this project shape:
 
@@ -84,7 +84,7 @@ Assign the spatial shader material to meshes. A `WorldEnvironment` or camera env
 
 Shared materials, texture arrays, instance uniforms, and Forward+ can improve batching opportunities. They do not guarantee that arbitrary meshes render in one draw call. Transparent and opaque rendering already require separate materials.
 
-Compatibility-sensitive names and shader behavior must be checked against the installed Summer Engine build. The pinned references document the integration surface used for this translation; they are not a permanent API guarantee.
+Check compatibility-sensitive names and shader behavior against the installed Summer Engine build.
 
 ## Agent Procedure
 
@@ -109,7 +109,7 @@ Disable MSAA, TAA, FXAA, texture filtering, and modern post-effects on the PSX p
 
 ### 2. Keep the Color Pipeline Explicit
 
-RGB5 quantization and the PS1 dither operate on display-encoded RGB values, not on linear-light values. Godot's Forward+ color conversions can otherwise change the palette and dither response.
+RGB5 quantization and the PS1 dither operate on display-encoded RGB values, not on linear-light values. The Forward+ color conversions can otherwise change the palette and dither response.
 
 Choose one coherent texture path:
 
@@ -159,7 +159,7 @@ vec3 psx_dither(vec3 color, vec2 fragcoord, bool eligible) {
 }
 ```
 
-On hardware, dithering was selectable per polygon and was available only to Gouraud-shaded or texture-modulated polygons. In a normal Godot mesh shader, a per-mesh instance uniform is a practical compromise:
+On hardware, dithering was selectable per polygon and was available only to Gouraud-shaded or texture-modulated polygons. In a normal mesh shader, a per-mesh instance uniform is a practical compromise:
 
 ```glsl
 bool dither_eligible = shading == SHADING_GOURAUD || use_modulation;
@@ -200,7 +200,7 @@ if (texturing == TEX_TEXTURED && all(equal(color, vec3(0.0)))) {
 
 PS1 polygons can be flat- or Gouraud-shaded, textured or untextured, and raw-textured or texture-modulated. Preserve those as explicit modes.
 
-True per-triangle flat colors are awkward in an ordinary Godot mesh shader. Practical choices are:
+True per-triangle flat colors are awkward in an ordinary mesh shader. Practical choices are:
 
 - use one `flat_color` instance uniform for a whole mesh;
 - duplicate triangle vertices and bake the same color into all three;
@@ -258,7 +258,7 @@ Use the snapped value for `POSITION` and for the clip position carried to the fr
 
 ### 8. Treat Flat Depth as an Approximation
 
-The original GPU drew polygons in submission order. A Godot shader cannot reproduce the CPU ordering table, so the reference shader uses a non-interpolated depth value:
+The original GPU drew polygons in submission order. A spatial shader cannot reproduce the CPU ordering table, so the reference shader uses a non-interpolated depth value:
 
 ```glsl
 varying flat float polygon_depth;
@@ -287,7 +287,7 @@ If exact ordering is a requirement, sort and submit appropriately partitioned ge
 
 On original hardware, the CPU/GTE calculates vertex colors. Normals are not interpolated and lit per fragment. The GTE provides a basic three-light directional model; games can also implement their own point-light logic.
 
-Godot's normal `light()` path is per fragment. Enabling Godot vertex lighting gets closer geometrically, but lighting can be applied after the custom fragment pipeline, which leaves gradients too smooth and bypasses the intended RGB5/dither response.
+The normal `light()` path is per fragment. Enabling vertex lighting gets closer geometrically, but lighting can be applied after the custom fragment pipeline, which leaves gradients too smooth and bypasses the intended RGB5/dither response.
 
 For a consistent result:
 
@@ -314,7 +314,7 @@ For existing framebuffer color `B` and incoming fragment color `F`, support:
 | Subtract | `B - F` |
 | Quarter add | `B + 0.25 * F` |
 
-These are fixed blend modes, not ordinary source-alpha blending. In Godot, screen-texture access moves the material into the transparent pass. Keep common pipeline code in a `.gdshaderinc` file and provide separate opaque and transparent shaders.
+These are fixed blend modes, not ordinary source-alpha blending. Screen-texture access moves the material into the transparent pass. Keep common pipeline code in a `.gdshaderinc` file and provide separate opaque and transparent shaders.
 
 Apply the selected blend before the final dither, RGB5 quantization, and linear conversion:
 
@@ -361,8 +361,8 @@ Preserve these relationships even if the implementation is reorganized:
 - Affine UV compensation multiplies at the vertex and divides after interpolation.
 - Vertex lighting and modulation happen before fragment dithering and quantization.
 - Dithering uses fragment coordinates and precedes RGB5 quantization.
-- RGB5 and dithering operate in sRGB; the final `ALBEDO` is converted to linear for Godot.
-- Flat depth is explicitly labeled as a Godot approximation of ordered drawing.
+- RGB5 and dithering operate in sRGB; the final `ALBEDO` is converted to linear.
+- Flat depth is explicitly labeled as an approximation of ordered drawing.
 - Opaque and transparent materials share code but remain separate render paths.
 - Silent Hill-style single-pass fog is labeled as an approximation if geometry is not actually rendered twice.
 
@@ -390,7 +390,7 @@ Preserve these relationships even if the implementation is reorganized:
 - **Textures explode on large surfaces:** subdivide geometry or reduce grazing camera angles; affine mapping is working but uncontrolled.
 - **A floor covers nearby meshes:** this is a flat-depth proxy failure; subdivide first, then apply a small depth modifier.
 - **Transparent objects do not blend with each other:** this is the screen-texture/transparent-pass limitation.
-- **Lighting gradients look modern and smooth:** Godot's per-fragment lighting is bypassing the custom vertex-color pipeline.
+- **Lighting gradients look modern and smooth:** the engine's per-fragment lighting is bypassing the custom vertex-color pipeline.
 - **Colored modulation fog looks too bright:** modulation is not a conventional color lerp; choose black or use the labeled Silent Hill-style approximation.
 - **Flat fog is excessively patterned:** use an RGB5-representable fog color, dither before quantizing, and quantize with `round()`.
 - **Batching is worse than expected:** different meshes, materials, transparency paths, shader variants, or instance state can split batches; shared materials do not guarantee one draw call.
@@ -406,11 +406,11 @@ Verify the running client, not only shader compilation:
 5. Rotate a large textured quad to expose affine warping, then subdivide it and confirm the distortion decreases.
 6. Overlap intersecting triangles and verify the chosen flat-depth approximation and depth modifiers are understood.
 7. Test raw texture mode, half-gray neutral modulation, and the pure-black transparency rule independently.
-8. Compare a custom vertex-lit mesh against Godot per-pixel lighting and confirm the light gradient passes through dither and RGB5.
+8. Compare a custom vertex-lit mesh against the engine's per-pixel lighting and confirm the light gradient passes through dither and RGB5.
 9. Exercise every transparency equation over known background colors, then separately demonstrate the overlapping-transparent limitation.
 10. Test black modulation fog, colored modulation fog, and the Silent Hill-style approximation at the near and far planes.
 11. Capture the same scene in Compatibility and Forward+ if both are supported; investigate color-space or feature differences rather than assuming parity.
 
 ## Confidence
 
-`extracted` — Hardware mechanisms and the Godot techniques are drawn from Calin P's hardware-informed article and MIT reference addon. The skill explicitly identifies modern approximations and known limitations. It has not been verified end to end inside SummerEngine, so do not label a project `summerengine-verified` until the visible client flow and renderer-specific behavior have been tested.
+`extracted` — Hardware mechanisms and the engine techniques are drawn from Calin P's hardware-informed article and MIT reference addon. The skill explicitly identifies modern approximations and known limitations. It has not been verified end to end inside Summer Engine. Test the visible client flow and renderer-specific behavior before calling a project verified.

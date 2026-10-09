@@ -11,7 +11,7 @@ paths: ["assets/models/**", "**/*.tscn", "**/*.gd"]
 
 # Prop Model — Generate One Static 3D Prop and Wire It
 
-One prop, one mesh, one MeshInstance3D. This is the bread-and-butter call of the 3D-asset family — most game-world objects are static props. The skill exists to keep two things tight: the **prompt shape** that produces a clean isolated mesh on the first try, and the **wire-in pattern** that gets the asset into the scene without leaving orphans in `res://assets/models/`.
+One prop, one mesh, one MeshInstance3D. Most game-world objects are static props, so this is the most common 3D-asset call. The skill keeps two things tight: the **prompt shape** that produces a clean isolated mesh on the first try, and the **wire-in pattern** that gets the asset into the scene without leaving orphans in `res://assets/models/`.
 
 The backing tool is `summer_generate_3d`. Default model is `hunyuan` (Hunyuan 3D v3.1 Pro — best quality). Use `trellis` when speed matters (Trellis 2 is ~2× faster, slightly lower fidelity). `meshy` is the legacy fallback — only pick it if the user asks by name.
 
@@ -72,7 +72,7 @@ The `isolated object` and `white background` clauses are load-bearing — withou
 
 ### 4. Confirm and call
 
-> About to generate `viking_axe` via `hunyuan`, target ~5k tris. ~$0.50, ~60s. OK?
+> About to generate `viking_axe` via `hunyuan`, target ~5k tris, ~60s. This uses credits. OK?
 
 ```
 summer_generate_3d(
@@ -127,8 +127,8 @@ the parent-shape pattern.
 
 The user can run the same prompt in the Summer dashboard or a supported
 provider UI, download the `.glb`, and drop it into `res://assets/models/`.
-Summer Engine's Import dock will pick it up. Then add a MeshInstance3D and
-assign the mesh.
+Summer Engine's Import dock will pick it up. Then instance the `.glb` scene in
+the level (an imported `.glb` is a scene, not a `Mesh`).
 
 ## Handoff
 

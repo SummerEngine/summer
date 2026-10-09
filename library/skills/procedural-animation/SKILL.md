@@ -11,9 +11,9 @@ paths: ["**/*.gd", "**/*.tscn", "**/*.tres"]
 
 # Procedural Animation — Bones Driven by Code
 
-Generated clips give you 80% of a character. The remaining 20% — the eye contact when an NPC speaks, feet that plant on slopes, hands that wrap a sword grip, the lean into a sprint, the recoil from a hit on the left shoulder — is procedural. In Summer Engine this is done via the `SkeletonModifier3D` family attached to the `Skeleton3D`, plus tween-driven additive blend layers on the `AnimationTree`. None of it is generative; this skill is a recipe set.
+Generated clips cover most of a character's motion. The rest — the eye contact when an NPC speaks, feet that plant on slopes, hands that wrap a sword grip, the lean into a sprint, the recoil from a hit on the left shoulder — is procedural. In Summer Engine this is done via the `SkeletonModifier3D` family attached to the `Skeleton3D`, plus additive blend layers on the `AnimationTree`. None of it is generative; this skill is a set of recipes.
 
-Honest limit: Summer Engine's current IK is good enough for look-at, foot-snap,
+Limit: Summer Engine's current IK is good enough for look-at, foot-snap,
 and simple two-bone arm/leg chains. It is not a full-body IK system with weight
 redistribution. For combat-grappling or contact-heavy interactions, hand-author
 the contact frame and accept some clipping.
@@ -40,7 +40,7 @@ Almost every procedural request maps to one of these three. Pick the right one b
 
 ### Pattern A — SkeletonModifier3D (post-clip bone overrides)
 
-Attached as a child of `Skeleton3D`. Runs after the AnimationTree writes the pose, modifies specific bones in-place. Includes `LookAtModifier3D`, `SkeletonIK3D` (legacy, still supported), and the new (4.4+) `LookAtModifier3D` chain. Cheap, deterministic, no animation graph dependency.
+Attached as a child of `Skeleton3D`. Runs after the AnimationTree writes the pose, modifies specific bones in-place. Includes `LookAtModifier3D` and `SkeletonIK3D`. Cheap, deterministic, no animation graph dependency.
 
 ### Pattern B — Additive AnimationNodeAdd2 layer in the tree
 
@@ -54,7 +54,7 @@ The skeleton hands off to physics on death. Bones become `PhysicalBone3D` rigid 
 
 ### A1 — Head look-at the player
 
-The bread-and-butter NPC liveliness fix.
+The most common NPC liveliness fix.
 
 **ctx lane (animation-tier engines):** one `summer_run_script` call creates the owned modifier and sets the props — prefer it over the 10-call CRUD chain below:
 
@@ -109,7 +109,7 @@ func _process(_delta: float) -> void:
     head_look.influence = clamp(1.0 - (dist - 6.0) / 2.0, 0.0, 1.0)   # fade out 6→8m
 ```
 
-`use_angle_limitation` is the production trick, and it defaults to **false** — a stock `LookAtModifier3D` does not clamp at all, so the head can rotate 180° and the model looks possessed. Turn it on and set `primary_limit_angle` to ~80° (1.4 rad), which matches a human's neck-only range; for a "whole-body turn" use it with the spine chain (next recipe). `primary_limit_angle` defaults to 2π, i.e. unlimited.
+`use_angle_limitation` is the key setting, and it defaults to **false** — a stock `LookAtModifier3D` does not clamp at all, so the head can rotate 180° and the model looks possessed. Turn it on and set `primary_limit_angle` to ~80° (1.4 rad), which matches a human's neck-only range; for a "whole-body turn" use it with the spine chain (next recipe). `primary_limit_angle` defaults to 2π, i.e. unlimited.
 
 ### A2 — Spine + head chain (look-at with body turn)
 
@@ -118,8 +118,7 @@ Multiple `LookAtModifier3D` nodes on the same chain — one for `Spine1` (`prima
 ### A3 — Foot IK (slopes & uneven terrain)
 
 The clip has the foot at Y=0; on a slope the ground is at Y=0.15. Without IK,
-the foot floats. `SkeletonIK3D` remains available for two-bone chains in the
-current Summer technical base; prefer the newer chain modifier for production:
+the foot floats. Use `SkeletonIK3D` on each two-bone leg chain:
 
 ```gdscript
 @onready var skel: Skeleton3D = $Skeleton3D
@@ -149,7 +148,7 @@ func _solve_foot(ik: SkeletonIK3D, bone_name: String) -> void:
         ik.stop()
 ```
 
-The 0.5m up-offset on the ray prevents self-occlusion. The "only lift, never drop" rule is the production fix — letting IK push feet into the ground breaks knee bends.
+The 0.5m up-offset on the ray prevents self-occlusion. The "only lift, never drop" rule matters: letting IK push feet into the ground breaks knee bends.
 
 Limits: this works for stairs and gentle slopes. On 45°+ slopes, use a pelvis lowering pass first (drop the root by `min(left_offset, right_offset)`) so the body squats and the legs don't over-extend.
 
@@ -168,7 +167,7 @@ In the AnimationTree, wrap Locomotion in an `AnimationNodeAdd2`:
     add: AnimationNodeAnimation         # an additive clip — must be authored as delta
 ```
 
-Drive `parameters/Locomotion/Add/blend_amount` (0..1) from script. Use cases: turn-lean (lean amount = clamp(turn_rate, -1, 1)), aim offset (lean while aiming up/down), breathing-while-idle. The "lean" clip must be exported with `track_type = additive` from Blender, or you'll see a 2x-pose stacked on the base.
+Drive `parameters/Locomotion/Add/blend_amount` (0..1) from script. Use cases: turn-lean (lean amount = clamp(turn_rate, -1, 1)), aim offset (lean while aiming up/down), breathing-while-idle. The lean clip must be authored as a delta from the base pose, or the pose is applied twice.
 
 ## Pattern C — Ragdoll on death
 
@@ -220,7 +219,7 @@ You need PhysicalBone3D children matching every major bone (set up once via the 
 - **LookAt rotates wildly / no clamp at all.** `use_angle_limitation` is false by default and `primary_limit_angle` defaults to 2π. Set both. ~80° (1.4 rad) for a head-only modifier; ~25° (0.4 rad) for a single spine bone.
 - **IK pops on the first frame.** Solver hasn't been initialized. Call `ik.start()` after the AnimationTree's first tick, not in `_ready()` — the bone pose is identity until the tree runs.
 - **Foot IK pushes the body up on stairs but the camera doesn't follow.** Camera is parented to the root, not the head. Either parent the camera to a chest bone via `BoneAttachment3D`, or accept that the camera doesn't bob with foot IK.
-- **Additive layer doubles the clip.** The "additive" clip wasn't authored as a delta. Re-export from Blender with `Pose Mode → bake additive`.
+- **Additive layer doubles the clip.** The "additive" clip wasn't authored as a delta from the base pose. Re-author it as a delta.
 - **Ragdoll just collapses, no spread.** Missing per-bone impulse + missing collision shapes on hands/feet PhysicalBone3D children. Auto-generate via Skeleton3D inspector → "Create Physical Skeleton" with the "Add collisions" option.
 - **Modifiers run before the AnimationTree, not after.** Modifier order is set by tree-position in the scene. SkeletonModifier3D nodes must be CHILDREN of Skeleton3D and appear AFTER any nodes that drive the pose. AnimationTree itself doesn't sit under Skeleton3D — it sits at the character root and writes into Skeleton3D's pose every frame.
 - **Look-at influence flickers at fade boundary.** Use `lerp(current_influence, target, 5 * delta)` instead of an instant assignment. Avoids the sub-pixel oscillation when the player walks the threshold.
@@ -233,7 +232,7 @@ You need PhysicalBone3D children matching every major bone (set up once via the 
 
 ## Anti-patterns
 
-- Writing `skel.set_bone_pose_position(...)` in `_process`. Bypasses the AnimationTree, fights it next frame, results in jitter. Use modifiers instead — they integrate with the pipeline. (Edit-time STILL poses — a corpse, a statue — are the exception: no tree is running, so `ctx.bone_pose(skel, bone, {position/rotation/scale})` on animation-tier engines, or `set_bone_pose_*` in a one-off `summer_run_script`, is exactly right. See `character-animation-wiring`.)
+- Writing `skel.set_bone_pose_position(...)` in `_process`. Bypasses the AnimationTree, fights it next frame, results in jitter. Use modifiers instead; they run after the tree. (Edit-time STILL poses — a corpse, a statue — are the exception: no tree is running, so `ctx.bone_pose(skel, bone, {position/rotation/scale})` on animation-tier engines, or `set_bone_pose_*` in a one-off `summer_run_script`, is exactly right. See `character-animation-wiring`.)
 - Putting IK targets in worldspace and forgetting they don't follow the character. Parent IK targets under the character root or bone — IK target is in the modifier's local space.
 - Procedural look-at without a fade-out at distance. Distant NPCs all snap to player every frame, looks like a hivemind.
 - Foot IK on flying / floating characters. Disable when `is_on_floor() == false`.

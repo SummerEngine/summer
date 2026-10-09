@@ -13,7 +13,7 @@ paths: ["audio/music/**", "scripts/**", "**/*.tscn"]
 
 ## Overview
 
-ElevenLabs Music renders a track from a prompt. Summer clamps the requested length to **3–600 seconds** before sending it, so anything outside that range is silently pulled to the nearest bound. The output quality depends entirely on prompt specificity: tempo (BPM), key, instrumentation, mood, structural cue. "Epic orchestral" returns generic stock music. "85 BPM, D minor, solo cello and detuned upright piano, sparse, melancholic, no drums, 4/4" returns a usable score for a melancholic exploration scene.
+ElevenLabs Music renders a track from a prompt. Summer clamps the requested length to **3–600 seconds** before sending it, so anything outside that range is silently pulled to the nearest bound. Quality depends on prompt specificity: tempo (BPM), key, instrumentation, mood, structural cue. "Epic orchestral" returns generic stock music. "85 BPM, D minor, solo cello and detuned upright piano, sparse, melancholic, no drums, 4/4" returns a usable score for a melancholic exploration scene.
 
 This skill produces one track aligned with the audio bible's music style and dynamic music plan, then wires it as an `AudioStreamPlayer` on the `Music` bus with a marked loop point if it's a loop, or as a linear cinematic stream if it's a one-shot.
 
@@ -25,9 +25,9 @@ This skill produces one track aligned with the audio bible's music style and dyn
 
 ## When NOT to use
 
-- Short stings / event punctuation (<5s) → use `audio/sound-effect` with class `Stinger`.
-- Adaptive layered stems with state-driven crossfades → `audio/adaptive-music`.
-- Ambient bed with no melody → `audio/ambient-bed`.
+- Short stings / event punctuation (<5s) → use `sound-effect` with class `Stinger`.
+- Adaptive layered stems with state-driven crossfades → `adaptive-music`.
+- Ambient bed with no melody → `ambient-bed`.
 
 ## Steps
 
@@ -116,7 +116,7 @@ Prompts that DON'T work (and why):
 
 For loops: generate **≥30s, prefer 45–60s**. Shorter loops are recognized as repetition within 90s of play and become annoying. The bible's "no state stays >90s without variation" rule means even a 60s loop should contain internal variation (instrument swap on alternating cycles).
 
-For linear: generate **≥60s for cutscenes, up to 300s for endings**. The model handles long arcs better than people expect; ask for one rendered piece rather than splicing.
+For linear: generate **≥60s for cutscenes, up to 300s for endings**. Ask for one rendered piece rather than splicing; the model handles long arcs.
 
 ### 6. Confirm and call
 
@@ -124,7 +124,7 @@ Show the prompt:
 
 > Prompt:
 > `85 BPM, D minor, 4/4, solo cello and detuned upright piano, sparse, melancholic exploration loop, no drums, gentle reverb, 60s loop`
-> Duration 60s. Cost: ~12 credits. Generate?
+> Duration 60s. This uses credits. Generate?
 
 The `music` capability reads the description from **`prompt`**, not `text` — the mirror image of `sound_effects`. Passing `text` here is a 400 `prompt_required`.
 
@@ -155,9 +155,9 @@ loop = true
 loop_offset = 0.0
 ```
 
-If the start has a fade-in but the body is loopable, set `loop_offset = 4.0` (4 seconds of intro skipped on loop, plays full track first time). `bpm` + `beat_count` + `bar_beats` are what you set if you want beat-synced transitions later — see `audio/adaptive-music`.
+If the start has a fade-in but the body is loopable, set `loop_offset = 4.0` (4 seconds of intro skipped on loop, plays full track first time). `bpm` + `beat_count` + `bar_beats` are what you set if you want beat-synced transitions later — see `adaptive-music`.
 
-For seamless looping, the cleaner option is to ask the model to generate a cell (one bar / one phrase) and concatenate; or generate at 60s and trust the model's structural cue. Crossfade looping in code is the practical fallback (see step 9).
+For seamless looping, the cleaner option is to ask the model to generate a cell (one bar / one phrase) and concatenate; or generate at 60s and trust the model's structural cue. Crossfade looping in code is the practical fallback (step 9).
 
 ### 8. Wire it as `AudioStreamPlayer` on the `Music` bus
 
@@ -175,40 +175,42 @@ Music is `AudioStreamPlayer` (not 2D / 3D) — non-positional. The bible's `Musi
 
 ### 9. Crossfade-loop pattern (no marked loop point)
 
-If the loop click bothers the user, use a two-player crossfade:
+If the loop click bothers the user, crossfade two players. Set `loop = false` in the import file first, so each player stops at the end.
 
 ```gdscript
 # scripts/audio/MusicLoopCrossfade.gd
 extends Node
 @export var stream: AudioStream
-@export var fade: float = 1.0
-var _a: AudioStreamPlayer
-var _b: AudioStreamPlayer
-var _active: AudioStreamPlayer
+@export var fade := 1.0
+@export var volume_db := -8.0
+var _players: Array[AudioStreamPlayer] = []
+var _current := 0
 
 func _ready() -> void:
-	_a = _make_player()
-	_b = _make_player()
-	_active = _a
-	_active.play()
-	_active.finished.connect(_on_finished)
+	for i in 2:
+		var p := AudioStreamPlayer.new()
+		p.stream = stream
+		p.bus = "Music"
+		p.volume_db = volume_db
+		add_child(p)
+		_players.append(p)
+	_players[0].play()
 
-func _make_player() -> AudioStreamPlayer:
-	var p := AudioStreamPlayer.new()
-	p.stream = stream
-	p.bus = "Music"
-	p.volume_db = -8.0
-	add_child(p)
-	return p
-
-func _on_finished() -> void:
-	var next := _b if _active == _a else _a
-	next.play()
-	next.finished.connect(_on_finished, CONNECT_ONE_SHOT)
-	_active = next
+func _process(_delta: float) -> void:
+	var a := _players[_current]
+	if not a.playing or a.get_playback_position() < stream.get_length() - fade:
+		return
+	_current = 1 - _current
+	var b := _players[_current]
+	b.volume_db = -80.0
+	b.play()
+	var t := create_tween().set_parallel()
+	t.tween_property(a, "volume_db", -80.0, fade)
+	t.tween_property(b, "volume_db", volume_db, fade)
+	t.chain().tween_callback(a.stop)
 ```
 
-The next instance starts at 0:00 the moment the previous finishes — gapless.
+The next player starts `fade` seconds before the current one ends and the two cross over, so the seam is never heard.
 
 ## Reference card — prompts by slot
 
@@ -249,7 +251,7 @@ Cutscene (cinematic):   varies tempo, D minor, 4/4, solo piano opens,
 
 ## Edge cases
 
-- **Clip is 50s but you wanted 60s.** Either regenerate (cheaper than you think) or extend by overlap-crossfading the last 5s onto the start in an audio editor.
+- **Clip is 50s but you wanted 60s.** Either regenerate or extend by overlap-crossfading the last 5s onto the start in an audio editor.
 - **Loop click on every cycle.** Use the crossfade pattern in step 9.
 - **Clip is too long.** Trim the tail in the import dock with `loop_offset`, or in an audio editor.
 - **Track sounds nothing like the references.** Re-read the bible; the prompt may be missing the anchor instrument. Add it explicitly.
@@ -268,7 +270,7 @@ Print the prompt and instruct the user to run via the Summer dashboard, then `su
 
 ## See also
 
-- `audio/audio-direction` — defines style, tempo, key, model
-- `audio/adaptive-music` — wiring stems to game state
-- `audio/sound-effect` — short stings
-- `audio/ambient-bed` — non-melodic location bed
+- `audio-direction` — defines style, tempo, key, model
+- `adaptive-music` — wiring stems to game state
+- `sound-effect` — short stings
+- `ambient-bed` — non-melodic location bed

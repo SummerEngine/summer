@@ -15,15 +15,14 @@ paths: ["project.godot", "export_presets.cfg"]
 
 Remote Deploy runs the game on an actual target device — a phone, tablet, or another machine — instead of inside the editor. It exports a **debug** build, installs and launches it on the device, and connects the running game back to the editor's debugger so the Output panel, errors, breakpoints, and profiler all work exactly like a local run.
 
-**Core principle:** Remote Deploy is "Play, but on the hardware." Same debug loop, real device.
-
 **Capability gate comes first:** before adding a Runnable preset or telling the
-user to pick a device, inventory the exact Summer build's export templates and
-the platform toolchain. A stock Summer 4.6.1 Mono install has only the macOS
-template. It cannot export Web, and Android/iOS/Windows/Linux are unavailable
-until a matching custom template or external build environment is configured.
-Never recommend or attempt a Remote Deploy target that has not passed this
-proof.
+user to pick a device, check the installed Summer Engine's export templates and
+the platform toolchain. Remote Deploy exports a debug build, so it needs the
+debug template for that platform. `summer_export_templates` with
+`action: "list"` shows what is installed and published; `action: "install"`
+with `includeDebug: true` adds missing ones. Android and iOS also need their SDK
+toolchain and signing. Never recommend or attempt a Remote Deploy target that
+has not passed this check.
 
 It is **not** the same as two neighbours:
 
@@ -31,7 +30,7 @@ It is **not** the same as two neighbours:
 |---|---|---|
 | **Play** (▶) | Runs in the editor (embedded or windowed) | Fast iteration on the dev machine |
 | **Remote Deploy** | Debug build → installs + runs on a device, remote-debugged | Testing real input/perf/screen on hardware |
-| **export-and-ship** (`export-and-ship`) | Supported local release builds | Preparing an artifact for a separate user-controlled distribution workflow |
+| **Release export** (`export-and-ship`) | Supported local release builds | Preparing an artifact for a separate user-controlled distribution workflow |
 
 If the user wants a release build for Steam / itch / the App Store, that is `export-and-ship`, not this.
 
@@ -39,22 +38,21 @@ If the user wants a release build for Steam / itch / the App Store, that is `exp
 
 - **Agent-layout topnav:** the button with the remote-play icon, immediately right of the **Play/Stop** button and the **`▾`** run-options dropdown. Hover tooltip reads **"Remote Deploy"**.
 - Clicking it opens a **dropdown of detected targets**, grouped by platform (e.g. an `Android` header with each connected device under it). Picking a target deploys and runs there.
-- It is **disabled (greyed out)** with the tooltip **"No Remote Deploy export presets configured."** until the prerequisites below are met. A greyed button is the #1 thing users ask about — it almost always means "no runnable preset or no device detected," not a bug.
+- It is **disabled (greyed out)** with the tooltip **"No Remote Deploy export presets configured."** until the prerequisites below are met. A greyed button is the most common question; it almost always means "no runnable preset or no device detected," not a bug.
 
 ## Step 1 — prove the requested target is available
 
-Use `summer_get_project_context` to identify the exact engine binary and
-technical base, inspect its matching export-template directory, then check the
-requested platform toolchain. Report one of:
+Run `summer_export_templates` with `action: "list"`, then check the requested
+platform toolchain. Report one of:
 
-- `available`: matching template and toolchain are present;
+- `available`: the matching debug template and toolchain are present;
 - `blocked`: name the missing template, toolchain, signing, or device
-  prerequisite;
-- `impossible on this build`: Web on the stock Mono build.
+  prerequisite.
 
-Stop on `blocked` or `impossible`. Route the user to template installation,
-custom-template setup, or an external CI/device workflow. Do not add a preset
-as if that made the target runnable.
+On `blocked`, install the missing template (`summer_export_templates`
+`action: "install"`, `includeDebug: true`) after the user agrees, or route the
+user to the toolchain setup. Do not add a preset as if that made the target
+runnable.
 
 ## Step 2 — prerequisites for a proven target
 
@@ -66,7 +64,7 @@ The button auto-enables the moment a runnable preset **and** at least one detect
 | A **runnable export preset** for that proven platform | Project → Export → add the proven preset → toggle **Runnable** on | A preset that exists but isn't marked Runnable does **not** count. |
 | A **detected target** | For example, an authorized Android device or a connected, trusted iOS device | The button enables only when at least one target is reported for a runnable platform. |
 
-**Important nuance:** the button does **not** pre-check that templates/toolchain are installed. Enable state is gated only on *runnable preset + detected target*. If templates or the toolchain are missing, the deploy **fails at run time** and the errors appear in a result dialog. So:
+**Note:** the button does **not** pre-check that templates/toolchain are installed. Enable state is gated only on *runnable preset + detected target*. If templates or the toolchain are missing, the deploy **fails at run time** and the errors appear in a result dialog. So:
 
 > **Runnable preset + a detected device make the button appear/enable. Installed export templates make the deploy actually succeed.**
 
@@ -99,18 +97,18 @@ This matters when guiding a user mid-setup (e.g. building out a mobile flow): yo
 
 **Web**
 
-Web is unavailable on the stock Summer Mono build. Do not add a Web Runnable
-preset or direct the user to a browser target. Use ordinary local Play for a
-sanity check, or first provision and verify a separate non-Mono-compatible
-export environment.
+1. First prove the web debug template is installed (`summer_export_templates`).
+   Otherwise install it or stop.
+2. Project → Export → Web preset → **Runnable** on.
+3. The browser target appears in the dropdown → pick it.
 
 ## Guiding the user (orchestrator playbook)
 
 When a user says "deploy to my phone" / "run this on device" and the button is greyed:
 
-1. **Prove target capability first** — inspect the exact build's matching
-   template directory and platform toolchain. Stop or route externally if
-   either is absent; Web is impossible on the stock Mono build.
+1. **Prove target capability first** — check the matching debug template
+   (`summer_export_templates`) and the platform toolchain. Stop or route
+   externally if either is absent.
 2. **Check the build is healthy** — a project with script errors won't export.
    - `summer_get_script_errors` and `summer_get_diagnostics` clean? If not, fix those before anything else.
    - `summer_get_console` for "import failed" noise.

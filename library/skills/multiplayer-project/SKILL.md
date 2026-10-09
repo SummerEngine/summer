@@ -476,7 +476,7 @@ Import once so new scripts register, then start two players.
 With the Summer MCP tools:
 
 ```
-summer_project_setting name="summer/local_play/players" value=2
+summer_project_setting key="summer/local_play/players" value=2
 summer_play
 summer_get_diagnostics
 summer_stop

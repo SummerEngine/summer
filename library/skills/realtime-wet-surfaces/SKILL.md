@@ -1,6 +1,6 @@
 ---
 name: realtime-wet-surfaces
-description: "Real-time wetness on existing Godot 4 materials without losing their values — value-copying wet shader, geometry-driven wet mask, instance-uniform wet amount."
+description: "Real-time wetness on existing materials without losing their values — value-copying wet shader, geometry-driven wet mask, instance-uniform wet amount."
 license: MIT
 category: shaders
 tags:
@@ -12,11 +12,11 @@ tags:
 confidence: extracted
 ---
 
-# Real-Time Wet Surfaces (Value-Preserving Wet Materials in Godot 4)
+# Real-Time Wet Surfaces (Value-Preserving Wet Materials)
 
 ## Outcome
 
-Implement a real-time wetness effect in SummerEngine that can be applied to existing materials **without losing their configured values** (albedo, metallic, roughness, textures). The wet mask is driven by geometry alone (upward-facing surfaces collect wetness first), with a global/per-instance wet amount that can be animated at runtime. This mirrors the Unity architecture described in the source evidence: a pre-configured shader-graph swap that keeps the standard Lit material's values, driven by a CustomFunction bridge.
+Implement a real-time wetness effect in Summer Engine that can be applied to existing materials **without losing their configured values** (albedo, metallic, roughness, textures). The wet mask is driven by geometry alone (upward-facing surfaces collect wetness first), with a global/per-instance wet amount that can be animated at runtime. This follows the source technique: a pre-configured shader swap that keeps the standard material's values, fed by a custom-function bridge.
 
 ## When to Use
 
@@ -28,17 +28,17 @@ Implement a real-time wetness effect in SummerEngine that can be applied to exis
 
 The source technique's key idea is **separation of wetness from material authoring**: the wet logic is a self-contained graph/function that receives material values and injects a wet mask, so enabling wetness is a swap, not a rewrite.
 
-Godot 4 mapping of the Unity concepts:
+How the source concepts map to Summer Engine:
 
-| Unity concept (from source) | Godot 4 equivalent |
+| Source concept | Summer Engine equivalent |
 |---|---|
-| Standard Lit material with retained values | `StandardMaterial3D` values copied into a `ShaderMaterial` by a one-time converter |
-| Pre-configured ShaderGraph swap | Shared wet-enabled `.gdshader`; swap the material once, keep all parameter values |
-| CustomFunction carrying values into the graph | Shader uniforms + instance uniforms (`set_instance_shader_parameter`) or `RenderingServer` global shader parameters for scene-wide wet state |
+| Standard lit material with retained values | `StandardMaterial3D` values copied into a `ShaderMaterial` by a one-time converter |
+| Pre-configured shader-graph swap | Shared wet-enabled `.gdshader`; swap the material once, keep all parameter values |
+| Custom-function node carrying values into the graph | Shader uniforms + instance uniforms (`set_instance_shader_parameter`) or `RenderingServer` global shader parameters for scene-wide wet state |
 | Wet mask from geometry shape alone | Fragment mask from world-space normal up-facing component (`world_normal.y`), optionally broken up by world-position noise |
 | Planned heightmap flow | Sample a heightmap texture and offset the wet mask along its gradient (future extension; not evidenced in source) |
 
-**Important constraint:** Godot cannot inject custom nodes into a `StandardMaterial3D` at runtime. The faithful equivalent of "swap in the pre-configured SG while keeping all values" is a **converter that copies `StandardMaterial3D` parameters into the wet shader** (below). The alternative — leaving `StandardMaterial3D` untouched and overlaying wetness via decals or post-processing — does not match the source's material-preserving architecture and is not recommended here.
+**Constraint:** the engine cannot inject custom nodes into a `StandardMaterial3D` at runtime. The equivalent of "swap in the pre-configured shader while keeping all values" is a **converter that copies `StandardMaterial3D` parameters into the wet shader** (below). The alternative — leaving `StandardMaterial3D` untouched and overlaying wetness via decals or post-processing — does not match the source's material-preserving architecture and is not recommended here.
 
 ## Scene / Node Shape
 
@@ -58,7 +58,7 @@ Scene
 
 ### 1. Write the shared wet-enabled spatial shader
 
-Preserve the PBR parameters as uniforms and compute the wet mask from geometry. In Godot 4, fragment-stage `NORMAL` is **view-space**, so pass a world-space normal from the vertex stage — otherwise the "upward-facing" mask rotates with the camera.
+Preserve the PBR parameters as uniforms and compute the wet mask from geometry. Fragment-stage `NORMAL` is **view-space**, so pass a world-space normal from the vertex stage — otherwise the "upward-facing" mask rotates with the camera.
 
 ```glsl
 shader_type spatial;
@@ -108,7 +108,7 @@ Assumes near-uniform mesh scale; for heavily non-uniform scale, use the inverse-
 
 ### 2. Convert existing materials while preserving their values
 
-This is the Godot equivalent of the source's "swap in the pre-configured SG; all values retained" step. Run once (editor tool or import-time), not per frame.
+This is the source's "swap in the pre-configured shader; all values retained" step. Run once (editor tool or import-time), not per frame.
 
 ```gdscript
 @tool
@@ -150,7 +150,7 @@ Use `Area3D` rain zones to toggle `raining` for objects inside them. For scene-w
 
 ### 4. Planned extension: heightmap-guided flow
 
-The source author states heightmap support so wetness flows along map bumps is **planned, not shipped**. When implementing later in Godot: sample a heightmap texture in the fragment stage and bias the wet mask along its gradient (e.g., offset `world_pos.xz` lookups downhill using the height texture derivatives) so streaks follow surface relief. Do not treat this as part of the evidenced technique.
+The source author states heightmap support so wetness flows along map bumps is **planned, not shipped**. To implement it: sample a heightmap texture in the fragment stage and bias the wet mask along its gradient (e.g., offset `world_pos.xz` lookups downhill using the height texture derivatives) so streaks follow surface relief. Do not treat this as part of the evidenced technique.
 
 ## Tunables
 
@@ -166,7 +166,7 @@ The source author states heightmap support so wetness flows along map bumps is *
 ## Failure Modes & Gotchas
 
 - **View-space normal mistake:** using fragment `NORMAL` directly makes the up-facing mask rotate with the camera. Always pass world normal from `vertex()` via a varying.
-- **Expecting in-place injection:** Godot cannot add wet logic to a live `StandardMaterial3D`. The value-preserving step is the one-time conversion, not runtime patching.
+- **Expecting in-place injection:** the engine cannot add wet logic to a live `StandardMaterial3D`. The value-preserving step is the one-time conversion, not runtime patching.
 - **Duplicate shaders per material:** keep ONE shared `.gdshader`; per-material differences live in uniforms, per-object state in instance uniforms. Otherwise you pay shader compilation and draw-call overhead.
 - **Over-darkening:** on already-dark albedos, clamp the darkened result or lower `darkening`.
 - **Transparent/unshaded materials:** out of scope; this skill targets opaque PBR surfaces.
@@ -182,8 +182,8 @@ The source author states heightmap support so wetness flows along map bumps is *
 
 ## Confidence
 
-`extracted` — the Unity-side architecture (Lit-preserving wet swap, CustomFunction→ShaderGraph value bridge, geometry-only mask, planned heightmap flow) is extracted from the linked X post (see evidence boundaries in the source file: demo video and replies not retrievable, no code published). The Godot 4 mapping, shader, and scripts are librarian engineering guidance consistent with that evidence, **not** source-extracted implementation and **not** verified inside SummerEngine.
+`extracted` — the architecture (material-preserving wet swap, custom-function value bridge, geometry-only mask, planned heightmap flow) comes from a public post that showed the technique in another engine; no code was published. The mapping, shader, and scripts here are engineering guidance consistent with that post, **not** source-extracted implementation and **not** verified inside Summer Engine.
 
 ## Evidence
 
-- Source record `sources/x/tenmomo-unity-realtime-wet/source.md`, kept outside this package (the evidence boundaries above summarise it).
+- A public X post describing the technique (demo video only, no code).

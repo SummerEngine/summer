@@ -26,13 +26,13 @@ a move. A new authority then restores the World from its last save.
 | Keep | Use |
 |---|---|
 | What belongs to the place: built walls, chests, the coins left on the ground | **World save** (this skill) |
-| What belongs to a player: their coins, unlocks, level | **Player data** (`skill/summer-player-data`) |
+| What belongs to a player: their coins, unlocks, level | **Player data** (`summer-player-data`) |
 
 The engine never serializes nodes for you. The game decides what one save
 holds. It must be **one consistent cut**: if an item moves from a chest into
 an inventory, both sides go in the same save.
 
-This skill extends the Courtyard game from `skill/multiplayer-state`: its
+This skill extends the Courtyard game from `multiplayer-state`: its
 `match_doc` (the coins still on the ground, and the scoreboard) becomes the
 World's saved state.
 
@@ -238,7 +238,7 @@ Local Play runs a persistent World with an **in-memory** save store:
 - Nothing survives the run.
 
 ```
-summer_project_setting name="summer/local_play/players" value=2
+summer_project_setting key="summer/local_play/players" value=2
 summer_play
 summer_get_diagnostics
 summer_stop
@@ -278,7 +278,7 @@ Restoring after a real restart can only be proven hosted.
 
 ## See also
 
-- `skill/summer-player-data` — progress that follows a player
-- `skill/multiplayer-state` — the shared document this skill saves
-- `skill/multiplayer-project` — `world.json` and the authority scene
-- `skill/multiplayer-testing` — Local Play runs and markers
+- `summer-player-data` — progress that follows a player
+- `multiplayer-state` — the shared document this skill saves
+- `multiplayer-project` — `world.json` and the authority scene
+- `multiplayer-testing` — Local Play runs and markers

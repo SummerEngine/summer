@@ -29,9 +29,9 @@ Where it works: all of this runs under Local Play with a deterministic
 settlement, so the whole flow is testable locally. Rating values are real only
 when hosted.
 
-This skill extends the Courtyard game (`skill/multiplayer-project` and
-`skill/multiplayer-state`): the first player to collect `WIN_COINS` coins wins.
-With a team queue (`skill/summer-matchmaking`), their whole team wins.
+This skill extends the Courtyard game (`multiplayer-project` and
+`multiplayer-state`): the first player to collect `WIN_COINS` coins wins.
+With a team queue (`summer-matchmaking`), their whole team wins.
 
 ## Steps
 
@@ -48,7 +48,7 @@ var sessions := {}      # session_id -> SummerSession
 ```
 
 In `_ready()`, next to the other World signals (skip this line if
-`skill/summer-player-data` already connected it):
+`summer-player-data` already connected it):
 
 ```gdscript
 	world.session_joined.connect(_on_session_joined)
@@ -61,7 +61,7 @@ func _on_session_joined(session: SummerSession) -> void:
 	sessions[session.session_id] = session
 ```
 
-If the game already has `_on_session_joined` (`skill/summer-player-data`
+If the game already has `_on_session_joined` (`summer-player-data`
 adds one), put the line at its start instead of defining it twice.
 
 At the top of `_on_session_left`:
@@ -159,7 +159,7 @@ The rules `conclude` enforces:
   refused. A rejected conclusion (`invalid_request`) commits nothing, so you
   may conclude again with corrected arguments.
 - `rating_deltas`, the third argument, is only for `authority_v1` queues
-  (`skill/summer-leaderboards`).
+  (`summer-leaderboards`).
 
 The settlement lists each player's committed rating changes:
 
@@ -205,7 +205,7 @@ func _on_server_disconnected(code: String, _detail: String) -> void:
 	show_status("The match has ended.")
 ```
 
-`show_status` and the `Hud/Status` label come from `skill/summer-matchmaking`.
+`show_status` and the `Hud/Status` label come from `summer-matchmaking`.
 
 - `match_result` arrives when the authority concludes. Its `rating_state` is
   `RATING_STATE_PENDING` on a rated queue, or `RATING_STATE_NONE`.
@@ -232,7 +232,7 @@ func _on_server_disconnected(code: String, _detail: String) -> void:
   `world.complete()` on a World that should keep running.
 - `draining(deadline_unix)` on the World means Summer is shutting the server
   down (maintenance). Conclude or save before the deadline
-  (`skill/summer-world-saves`).
+  (`summer-world-saves`).
 
 A match that never concludes holds its players until the World is stopped;
 every match needs an ending, including "everyone else left".
@@ -240,7 +240,7 @@ every match needs an ending, including "everyone else left".
 ### 5. Test it with Local Play
 
 ```
-summer_project_setting name="summer/local_play/players" value=2
+summer_project_setting key="summer/local_play/players" value=2
 summer_play
 summer_get_diagnostics
 summer_stop
@@ -280,7 +280,7 @@ clients stay connected until they leave.
 
 ## See also
 
-- `skill/summer-matchmaking` — queues and teams that the outcome refers to
-- `skill/summer-leaderboards` — ratings and `authority_v1` rating moves
-- `skill/summer-world-saves` — persistent Worlds that outlive a match
-- `skill/multiplayer-testing` — running bots through a whole match
+- `summer-matchmaking` — queues and teams that the outcome refers to
+- `summer-leaderboards` — ratings and `authority_v1` rating moves
+- `summer-world-saves` — persistent Worlds that outlive a match
+- `multiplayer-testing` — running bots through a whole match

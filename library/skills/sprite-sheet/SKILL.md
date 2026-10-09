@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_generate_image summer_slice_asset_sheet summer_get_studio_workflow summer_search_assets summer_import_from_url summer_import_asset_by_id summer_set_resource_property summer_add_node summer_set_prop
+allowed-tools: Read Grep Glob Write Edit summer_generate_image summer_slice_asset_sheet summer_get_studio_workflow summer_search_assets summer_import_from_url summer_import_asset_by_id summer_set_resource_property summer_write_file summer_add_node summer_set_prop summer_save_scene
 paths: ["assets/**", "sprites/**", "art/sprites/**"]
 ---
 
@@ -13,7 +13,7 @@ paths: ["assets/**", "sprites/**", "art/sprites/**"]
 
 This skill produces a grid of animation frames for a 2D character — walk cycle, idle bob, attack swing, death sequence — and wires the result into an `AnimatedSprite2D` via a `SpriteFrames` resource.
 
-**Up-front honesty:** sprite-sheet generation from a single text-to-image call is **unreliable**. Models can render "a sprite sheet of a knight walking" and produce 8 frames, but the inter-frame consistency (same anatomy, same costume, same lighting) is poor. Limbs morph between frames. Pixel sprites get extra fingers in frame 3. The result usually looks worse than the static sprite did.
+Sprite-sheet generation from a single text-to-image call is **unreliable**. Models can render "a sprite sheet of a knight walking" and produce 8 frames, but the inter-frame consistency (same anatomy, same costume, same lighting) is poor. Limbs morph between frames. Pixel sprites get extra fingers in frame 3. The result usually looks worse than the static sprite did.
 
 This skill therefore offers **three paths**, ranked by reliability:
 
@@ -38,7 +38,7 @@ So do not tell the user to cut a generated sheet by hand or in ImageMagick. The 
 - The character is 3D — use `generate-motion` for skeletal animation.
 - The user wants a single static sprite → `pixel-art` or `character-portrait`.
 - The user wants UI animation (loading spinner, button hover) — animate via `AnimationPlayer` rotating/tweening a static texture instead. Don't sprite-sheet UI.
-- The user has 12+ frames per animation and 4+ animations — that's hundreds of generations at $0.02 each. Pause and discuss budget.
+- The user has 12+ frames per animation and 4+ animations. That is dozens to hundreds of generations, each using credits. Pause and agree on scope first.
 
 ## Steps
 
@@ -62,7 +62,7 @@ Ask the user (or decide based on context):
 | Higher-res character (128px+), 6-12 frames | **Per-frame img2img** |
 | User wants exact-pixel consistency | **Aseprite manual** — AI cannot deliver exact pixels |
 
-State the path before starting: "I'll do per-frame img2img — 6 generations, ~$0.12. The first frame is the base; each next frame uses the previous as reference. OK?"
+State the path before starting: "I'll do per-frame img2img: 6 generations. The first frame is the base; each next frame uses the previous one as reference. OK?"
 
 ### 3a. Path 1 — Per-frame img2img
 
@@ -74,11 +74,11 @@ summer_generate_image(
   referenceImageUrl="<frame 1 fileUrl>",
   model="nano-banana-2",
   style="<same as base>",
-  options={ removeBackground: true }
+  removeBackground=true
 )
 ```
 
-`summer_generate_image` has no `image_size` and no `negative_prompt` — put negations in the prompt text; there is no size argument at all. `options.removeBackground: true` is real and gives you true alpha instead of a prompted "transparent background" the model may paint as a literal checkerboard. `referenceImageUrl` only works on edit-capable models (`nano-banana-2`, `seedream-5-pro`, `nano-banana-lite`, `gpt-image-2`, `gemini-flash`, `flux-2`); `grok-imagine` has no edit endpoint and returns `edit_not_supported`.
+`summer_generate_image` has no size argument; put negations in the prompt text. `removeBackground: true` gives you real alpha instead of a prompted "transparent background" that the model may paint as a literal checkerboard. `referenceImageUrl` only works on edit-capable models (`nano-banana-2`, `seedream-5-pro`, `nano-banana-lite`, `gpt-image-2`, `gemini-flash`, `flux-2`); `grok-imagine` has no edit endpoint and returns `edit_not_supported`.
 
 Repeat for each frame. Save each as `goblin_walk_01.png`, `goblin_walk_02.png`, etc.
 
@@ -93,11 +93,11 @@ summer_generate_image(
   prompt="goblin warrior walk cycle, sprite sheet, 6 frames in a horizontal row, identical character across frames, side view, frames clearly separated with empty space between them, consistent lighting, consistent palette. No scene background, no varying lighting, not a different character per frame.",
   model="nano-banana-2",
   style="none",
-  options={ removeBackground: true }
+  removeBackground=true
 )
 ```
 
-There is no `"pixel"` style preset (`style` is `realistic | cartoon | anime | none`; anything else is coerced to `none`), no `image_size`, and no `negative_prompt` — the layout and the negations have to be in the prompt.
+There is no `"pixel"` style preset (`style` is `realistic | cartoon | anime | none`; anything else is coerced to `none`) and no size argument; the layout and the negations have to be in the prompt.
 
 Then cut it with the same server-side slicer Studio uses, passing the asset id the generation returned:
 
@@ -113,7 +113,7 @@ Inspect the result. If the frames are coherent and the count matches, proceed. I
 
 Tell the user:
 
-> AI sprite-sheet generation is unreliable — best path for clean pixel animation is to hand-author in Aseprite (or Piskel for free in-browser). Onion-skin frame-by-frame; ~10 minutes for a 4-frame walk cycle. Want me to generate a base reference image you can trace?
+> AI sprite-sheet generation is unreliable. For clean pixel animation, hand-author it in Aseprite (or Piskel, free in the browser). Onion-skin frame-by-frame; ~10 minutes for a 4-frame walk cycle. Want me to generate a base reference image you can trace?
 
 If yes, generate the static base via `pixel-art` and stop here. The user takes it to Aseprite.
 
@@ -223,7 +223,7 @@ Frame 3: summer_generate_image(prompt="<base + delta>", referenceImageUrl="<fram
 ...
 ```
 
-Tell the user to run via the Summer dashboard. Or recommend Aseprite (paid, $20) / Piskel (free in-browser) for hand-authoring — for pixel art under 64×64, it is the faster path even with MCP available.
+Tell the user to run via the Summer dashboard. Or recommend Aseprite (paid) or Piskel (free, in the browser) for hand-authoring — for pixel art under 64×64, it is the faster path even with MCP available.
 
 ## Handoff
 

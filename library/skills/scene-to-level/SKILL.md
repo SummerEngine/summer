@@ -11,11 +11,11 @@ paths: ["**/*.tscn", "**/*.gd", "assets/**", ".summer/**", "levels/**"]
 
 # scene-to-level — From a reference image to a playable scene
 
-This is the **orchestrator** skill. It does not generate art, slice sheets, or
-write game code. It routes the user through the chain of skills that do and
-stitches their outputs into a placeable Summer Engine scene.
+This skill orchestrates. It does not generate art, slice sheets, or write game
+code. It routes the user through the skills that do, and assembles their
+outputs into a Summer Engine scene.
 
-Use it when the user shows you a screenshot or concept image and says "build this." The output is a `.tscn` you can hit play on, populated with assets that match the reference's style.
+Use it when the user shows you a screenshot or concept image and says "build this." The output is a `.tscn` you can play, with assets that match the reference's style.
 
 ## The pipeline (decision tree)
 
@@ -28,7 +28,7 @@ Use it when the user shows you a screenshot or concept image and says "build thi
         │   └── route to 3D ASSETS path (out of scope for this skill —
         │       use `asset-strategy` directly)
         └─ UI-only screen (menu, HUD)
-            └── route to UI ASSETS path (just plan-asset-pack)
+            └── route to UI ASSETS path (create-asset-sheet UI kit only)
 
 2. For each visible element, route to the right sub-pipeline:
 
@@ -38,13 +38,10 @@ Use it when the user shows you a screenshot or concept image and says "build thi
               not yet built)
 
    PROPS / DECOR / LIGHTING / NATURE / WATER / BUILDINGS / UI / VFX
-       ── If user has time for individual generation, prefer:
-       │   create-asset-sheet (Plan + Generate Pack
-       │   mode at /studio/plan-asset-pack — higher quality, each asset
-       │   gets full model attention)
-       └── If user wants fast / exploratory:
-           create-asset-sheet (Slice from a sheet at
-           /studio/create-tileset — one sheet, autoslice, cheaper)
+       ── Default: create-asset-sheet (one sheet, auto-sliced into a pack;
+       │   fast and consistent in style)
+       └── For a few hero assets that need full detail: generate them one
+           at a time with pixel-art or character-portrait
 
    CHARACTERS → character-portrait first for the static
                 frame, then sprite-sheet for animation
@@ -94,33 +91,33 @@ Before starting, you need either:
 
 If neither is offered, stop and ask. Don't guess what a "japanese village scene" looks like — get the reference first.
 
-## Honest reliability map
+## Reliability map
 
-| Pipeline node | Reliability | Cost (rough) | What can go wrong |
-|---|---|---|---|
-| Reading the reference (vision call) | High | $0.02 | Model misidentifies the scene type |
-| Plan + Generate Pack (theme → per-asset) | High for props / icons / UI | $0.10–0.50 per pack | Style drift across items if no style ref |
-| Slice from a sheet (single-sheet path) | Medium for dense sheets | $0.08 + upscales | Touching sprites merge into one slice |
-| Tileable terrain (auto-tile) | LOW today — not built. | n/a | Use a single tile placeholder or stitch by hand |
-| Sprite-sheet animation | Medium — see that skill's own honesty section | varies | Frame consistency is the hard part |
-| Scene assembly via `summer_*` tools | High | free | Engine must be running |
+| Pipeline node | Reliability | What can go wrong |
+|---|---|---|
+| Reading the reference (vision) | High | Model misidentifies the scene type |
+| One asset at a time (hero assets) | High for props / icons / UI | Style drift across items if no style reference |
+| Slice from a sheet (`create-asset-sheet`) | Medium for dense sheets | Touching sprites merge into one slice |
+| Tileable terrain (auto-tile) | Low: not built | Use a single tile placeholder or stitch by hand |
+| Sprite-sheet animation | Medium (see the `sprite-sheet` skill) | Frame consistency is the hard part |
+| Scene assembly via `summer_*` tools | High | Engine must be running |
 
-Surface this map to the user when relevant — don't claim "ready to play in 10 minutes" if terrain auto-tiling is what they actually need.
+Generation uses credits; confirm each batch with the user before you start. Share this map when it matters. Do not promise "ready to play in 10 minutes" if the user needs terrain auto-tiling.
 
 ## A worked example
 
 User shows you a screenshot of a Japanese village with multiple islands, water between them, buildings, characters, and a bottom palette UI:
 
 1. **Vision pass** identifies the scene as 2D isometric with: water terrain (large area), grass terrain (per island), buildings (5+ distinct), characters (2), UI palette + toolbar.
-2. **Plan the props pack** via the create-asset-sheet planner: 12 props at minimum (torii, sakura, lantern, pagoda, bridge, well, sign, banner, bucket, hay, fence, crate). Generated per-asset for quality.
-3. **Plan the buildings pack**: 5 distinct buildings (small house, barn, shop, pagoda, watchtower).
-4. **Generate terrain**: today, single grass tile + single water tile + edge variant placeholders. Full Wang-tile auto-tiling is the TERRAIN_AUTOTILE_IDEA.md unbuilt path.
-5. **Plan the UI pack** via the planner with theme "isometric voxel game UI: bottom palette, toolbar with Place/Erase/Pan/Save/Reset, asset category tabs, instruction panel."
-6. **For each UI slice that's a panel / button**, use `use-widget-asset` to wire as NinePatchRect.
-7. **Compose**: TileMap for terrain; Sprite2D placement matching the reference; Control nodes for the UI.
-8. **Validate + hand off**.
+2. **Props pack** with `create-asset-sheet`: 12 props at minimum (torii, sakura, lantern, pagoda, bridge, well, sign, banner, bucket, hay, fence, crate).
+3. **Buildings pack**: 5 distinct buildings (small house, barn, shop, pagoda, watchtower).
+4. **Terrain**: today, a single grass tile, a single water tile and edge placeholders. Wang-tile auto-tiling is not built.
+5. **UI pack** with `create-asset-sheet` and the theme "isometric voxel game UI: bottom palette, toolbar with Place/Erase/Pan/Save/Reset, asset category tabs, instruction panel."
+6. **For each UI slice that is a panel or button**, use `use-widget-asset` to wire it as a NinePatchRect.
+7. **Compose**: TileMapLayer for terrain; Sprite2D placement matching the reference; Control nodes for the UI.
+8. **Validate and hand off**.
 
-Total wall-clock: maybe 30 min for the asset packs (parallel), another 15 for scene composition. NOT a five-minute thing.
+Expect about 30 minutes for the asset packs (in parallel) and another 15 for scene composition.
 
 ## What this skill explicitly defers
 

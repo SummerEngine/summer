@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_generate_image summer_search_assets summer_import_from_url summer_set_resource_property summer_add_node summer_set_prop summer_inspect_node
+allowed-tools: Read Grep Glob Write Edit summer_generate_image summer_search_assets summer_import_from_url summer_set_resource_property summer_write_file summer_add_node summer_set_prop summer_save_scene summer_inspect_node
 paths: ["assets/**", "art/sky/**", "environments/**"]
 ---
 
@@ -16,7 +16,7 @@ e.g. 2048×1024 or 4096×2048) suitable for Summer Engine's
 `PanoramaSkyMaterial`. It wires the image into a `Sky` resource on a
 `WorldEnvironment` node so the sky is visible from every camera angle.
 
-The single biggest failure mode is **non-equirectangular output**. Diffusion models default to flat 2D scenes; if you don't explicitly demand "equirectangular projection," the result looks fine in a thumbnail but distorts brutally when wrapped onto a sphere — horizon bows, zenith pinches, the sun stretches into a smear. This skill encodes the prompt suffix and the import discipline that produces a usable sky on the first or second try.
+The most common failure is **non-equirectangular output**. Image models default to flat scenes. Without an explicit "equirectangular projection", the result looks fine as a thumbnail but distorts when wrapped onto a sphere: the horizon bows, the zenith pinches, and the sun smears. The prompt suffix and import settings below give a usable sky in one or two tries.
 
 ## When to use
 
@@ -41,7 +41,7 @@ The single biggest failure mode is **non-equirectangular output**. Diffusion mod
 summer_search_assets(query="<vibe> sky panorama", assetType="2d_image", source="all")
 ```
 
-Polyhaven (`polyhaven.com/hdris`) hosts hundreds of free CC0 HDRIs that beat AI generation for realism and provide IBL data. For realistic exterior scenes, prefer Polyhaven; for stylized / fantasy / sci-fi, AI generation wins.
+Polyhaven (`polyhaven.com/hdris`) hosts hundreds of free CC0 HDRIs. They look more realistic than generated skies and carry real HDR lighting data. Prefer Polyhaven for realistic exteriors; generate for stylized, fantasy or sci-fi skies.
 
 ### 2. Build the prompt — sky description + equirectangular suffix
 
@@ -60,7 +60,7 @@ Load-bearing phrases:
 
 ### 3. Generate, then fix the aspect yourself
 
-Equirectangular MUST be 2:1 (width = 2× height). **`summer_generate_image` cannot give you that.** The tool takes only `prompt`, `model`, `style`, `referenceImageUrl`, and `options` — there is no aspect or size argument, so every MCP image comes back at the server's 1:1 default. `aspectRatio` and `image_size` inside `options` are not recognized and are dropped without an error; the underlying provider does support 2:1-class aspect ratios, but nothing on this surface lets you request one.
+Equirectangular MUST be 2:1 (width = 2× height). **`summer_generate_image` cannot give you that.** The tool takes only `prompt`, `model`, `style`, `referenceImageUrl`, `removeBackground` and `options`; there is no aspect or size argument, so every MCP image comes back at the server's 1:1 default. `aspectRatio` and `image_size` inside `options` are not recognized and are dropped without an error; the underlying provider does support 2:1-class aspect ratios, but nothing on this surface lets you request one.
 
 ```
 summer_generate_image(
@@ -101,9 +101,9 @@ In the import dock:
 - `Mipmaps: Enabled`.
 - `Compress: VRAM Compressed` for ship.
 
-### 6. Wire into WorldEnvironment (3 lines)
+### 6. Wire into WorldEnvironment
 
-This is not three tool calls. `summer_set_resource_property` reaches exactly **one** level into a resource — it takes `scenePath`, `nodePath`, `resourceProperty`, `subProperty`, `value`, and there is no `"a:b:c"` colon-path form for walking Environment → Sky → SkyMaterial. Write the `Environment` (with its `Sky` and `PanoramaSkyMaterial` as sub-resources) as a `.tres`, then attach it in one property set:
+`summer_set_resource_property` reaches exactly **one** level into a resource — it takes `scenePath`, `nodePath`, `resourceProperty`, `subProperty`, `value`, and there is no `"a:b:c"` colon-path form for walking Environment → Sky → SkyMaterial. Write the `Environment` (with its `Sky` and `PanoramaSkyMaterial` as sub-resources) as a `.tres`, then attach it in one property set:
 
 ```
 summer_write_file(
@@ -158,7 +158,6 @@ Then `summer_play` and look around. Sun in the right place? Seam invisible? Top/
 - **Tight features at zenith/nadir.** Anything in the top or bottom 10% of the image gets pinched. Bias toward soft, diffuse features there.
 - **Expecting HDR / IBL quality.** AI panoramas are 8-bit. If the user needs realistic environment lighting from the sky, point them at Polyhaven HDRIs (CC0). AI is for visual sky, not for lighting.
 - **Forgetting `Repeat: Disabled` on import.** Panoramas wrap once via the material; if `Repeat` is on, you can get duplicate-tile artifacts at the seam.
-- **Visible vertical seam on the wrap.** If left/right edges don't match, regenerate with seed bump or fix the seam in Photoshop/GIMP via the offset trick (offset by 50% horizontally → heal the new visible seam → offset back).
 
 ## Edge cases
 
@@ -180,9 +179,9 @@ summer_generate_image(
 )
 ```
 
-The dashboard is actually the *better* surface for this skill, not just the fallback: it exposes aspect ratio and a real negative prompt, which MCP does not. Tell the user to set 2:1 and a negative of `vertical seam, foreground, distorted, warped, characters, buildings`, then `summer_import_from_url` to `res://art/sky/<name>.png`, set `Repeat: Disabled`, and wire the WorldEnvironment.
+The dashboard is the better surface for this skill: it exposes aspect ratio and a real negative prompt, which MCP does not. Tell the user to set 2:1 and a negative of `vertical seam, foreground, distorted, warped, characters, buildings`, then `summer_import_from_url` to `res://art/sky/<name>.png`, set `Repeat: Disabled`, and wire the WorldEnvironment.
 
-If MCP is offline entirely: Polyhaven (`polyhaven.com/hdris`) has hundreds of free CC0 HDRIs ready to drop into `PanoramaSkyMaterial`. Often a better choice than AI for realistic exteriors anyway.
+If MCP is offline entirely: Polyhaven (`polyhaven.com/hdris`) has hundreds of free CC0 HDRIs ready to drop into `PanoramaSkyMaterial`, and often the better choice for realistic exteriors.
 
 ## Handoff
 

@@ -9,12 +9,12 @@ allowed-tools: Read Write Edit Task
 
 # /skill-improve — Iterate on a Skill With Eval Harness
 
-Inspired by `anthropics/skills` `skill-creator/`. Use when a skill's behavioral spec is failing assertions or producing low-quality output.
+Adapted from the `skill-creator` skill in `anthropics/skills`. Use when a skill's behavioral spec fails assertions or the skill produces low-quality output.
 
 ## When to use this vs. `/skill-test`
 
-- `/skill-test spec` reasons over text. Cheap, fast, lossy.
-- `/skill-improve` actually runs the skill in parallel subagents with-vs-without proposed changes. Expensive, accurate.
+- `/skill-test spec` reasons over text. Cheap and fast, but lossy.
+- `/skill-improve` runs the skill in parallel subagents, with and without the proposed changes. Slower and more expensive, but accurate.
 
 Run this when `/skill-test spec` flags issues you can't fix by reading the skill alone.
 
@@ -23,8 +23,8 @@ Run this when `/skill-test spec` flags issues you can't fix by reading the skill
 ### 1. Pick the skill + the spec
 
 Ask the user:
-- **Skill name.** Resolves to `skills/<category>/<name>/SKILL.md`.
-- **Test cases to focus on.** Default: all `## Case` blocks in `tests/specs/<name>.md`.
+- **Skill slug.** Resolves to `library/skills/<slug>/SKILL.md`.
+- **Test cases to focus on.** Default: all `## Case` blocks in `evals/skills/specs/<slug>.md`.
 
 ### 2. Establish a baseline
 
@@ -69,12 +69,12 @@ Case 3 (Edge):      baseline 3/3  proposed 3/3  = no change
 
 If proposed wins on net, prompt the user:
 
-> Proposed version wins 2 cases, ties 1, loses 0. May I overwrite `skills/<category>/<name>/SKILL.md` with the proposed version?
+> Proposed version wins 2 cases, ties 1, loses 0. May I overwrite `library/skills/<slug>/SKILL.md` with the proposed version?
 
 ### 6. Ship
 
 On user yes:
-- Overwrite `SKILL.md`.
+- Overwrite `SKILL.md` and bump `version` in `resource.yaml`.
 - Commit with message `feat(skill): improve <name> — <one-line summary of change>`.
 
 ## Collaborative protocol
@@ -83,6 +83,6 @@ This skill writes files at multiple steps. Always ask before each write.
 
 ## See also
 
-- `workflow/skill-test/SKILL.md`
+- `skill-test`
 - `tests/runner.md`
-- `tests/specs/`
+- `evals/skills/specs/`

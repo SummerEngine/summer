@@ -30,7 +30,7 @@ Read it before the first call in a task. The workflow that uses them is in
   declared in `truncated: {list: {shown, total}}`.
 - **No silent fallback.** A missing op answers `engine_lacks_op`; a measurement
   that cannot be made answers a named `failure_reason`.
-- **Engine ops.** No new engine op. Reads run one read-only GDScript probe
+- **Engine ops.** Reads run one read-only GDScript probe
   through `RunSceneScript` (the op behind `summer_run_script`: in-process, no
   child editor, `undo: "none"`, no checkpoint). Mutations are ordinary
   `SetProp`, `SnapToSurface` and `InstantiateScene` ops: one undo step per
@@ -52,11 +52,11 @@ Read it before the first call in a task. The workflow that uses them is in
 | Pipe or duct end to end | `summer_connect_ports` |
 | What is in front of this point, and its normal? | `summer_raycast` |
 | Gap or overlap between two pieces; is the facade front flat? | `summer_measure` |
-| What surrounds a placed piece, which side is blocked? | `summer_starcast` (existing) |
-| Will a pose fit before I commit it in a tight spot? | `summer_test_placement` (existing) |
-| Seat a prop on a floor, table or ledge | `summer_snap_to_surface` (existing) |
-| Line up or equally space 2-16 placed pieces on one axis | `summer_align_distribute_3d` (existing) |
-| Did exactly that change, and does it look right? | `summer_world_snapshot` + `summer_snapshot_diff`, then `summer_screenshot` (existing) |
+| What surrounds a placed piece, which side is blocked? | `summer_starcast` |
+| Will a pose fit before I commit it in a tight spot? | `summer_test_placement` |
+| Seat a prop on a floor, table or ledge | `summer_snap_to_surface` |
+| Line up or equally space 2-16 placed pieces on one axis | `summer_align_distribute_3d` |
+| Did exactly that change, and does it look right? | `summer_world_snapshot` + `summer_snapshot_diff`, then `summer_screenshot` |
 
 ## `summer_inspect_asset`
 
@@ -133,20 +133,20 @@ instances it off the scene tree, measures, and frees it.
 
 ## `summer_instantiate_scene` (placed)
 
-- **Arguments added:** `position`, `rotation_degrees`, `scale` (`[x, y, z]`,
+- **Placement arguments:** `position`, `rotation_degrees`, `scale` (`[x, y, z]`,
   parent-local) or `transform` (`"Transform3D(xx, xy, xz, yx, yy, yz, zx, zy,
   zz, ox, oy, oz)"`). Not `transform` with the others; not `scale` or
   `transform` with `target_size`.
 - **Behaviour:** `InstantiateScene` (its own request, as the engine requires),
   then one `SetProp` request on the node path the receipt reports (a name
-  collision rename is followed), then `SaveScene`. Without the new fields it is
-  unchanged.
+  collision rename is followed), then `SaveScene`. Without these fields it only
+  instances the piece.
 - **Result:** the merged receipt (`results` holds every op; the per-request
   `receipts` copies are kept only when something failed) plus
   `placement {nodePath, applied, fields, space: "parent_local"}`.
 - **Ops:** `InstantiateScene`, `SetProp`, `SaveScene`.
 
-## `summer_batch` additions
+## `summer_batch` placement
 
 - `InstantiateScene` ops may carry the same placement fields (arrays or
   `"Vector3(...)"` strings). Each piece is one op; its `SetProp`s are sent right
@@ -161,8 +161,7 @@ instances it off the scene tree, measures, and frees it.
   transforms of a run of `InstantiateScene` ops are held back and sent
   together (up to 200 `SetProp`s per request) just before the next op that is
   not an `InstantiateScene`, riding along with it when it can. A batch of N
-  placed pieces is therefore about N + 2 requests and N + 2 undo steps (it was
-  2N + 1). Every later op in the list (a `SetProp`, `SnapToSurface`, a query,
+  placed pieces is therefore about N + 2 requests and N + 2 undo steps. Every later op in the list (a `SetProp`, `SnapToSurface`, a query,
   the save) runs after the transforms land. If an `InstantiateScene` fails,
   the pieces created before it still get their transforms; nothing is saved.
 
@@ -245,7 +244,7 @@ instances it off the scene tree, measures, and frees it.
   in front of the hit plane); `hit_normal_pointed_away_from_the_ray_flipped`
   (the ray hit a back face; the piece still mounts on the ray's side).
 - **Check after:** `summer_starcast` with `directionSpace: "local"`. Its local
-  names follow Godot (`forward` = -Z, `back` = +Z), so a -Z back reads
+  names follow the engine (`forward` = -Z, `back` = +Z), so a -Z back reads
   `forward` blocked (or the surface in `contacts` when seated flush) and `back`
   open.
 - **Limits:** the back face is the visible-mesh AABB in the piece's own axes;
@@ -353,12 +352,3 @@ instances it off the scene tree, measures, and frees it.
 - **Result, plane:** `{coplanar, plane, spread, off_plane_count, nodes [{path,
   face, deviation, off_plane: proud|recessed}], no_geometry?}`.
 - **Ops:** `RunSceneScript` (read-only).
-
-## What belongs in the engine later
-
-These tools compose existing ops. Natively they would be faster and exact:
-an `InstantiateScene` that takes a transform (one request, one undo step per
-piece), a compact `summer_batch` receipt mode in the ops executor, a raycast and
-a measure op that need no script and do not mark the active tab unsaved, an
-asset-geometry op that reads the import cache without instancing, and an
-oriented-bounds (OBB) query so rotated pieces stop needing `space: "local"`.

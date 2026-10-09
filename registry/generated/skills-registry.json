@@ -841,7 +841,7 @@
     {
       "id": "skill/psx-retro-rendering",
       "name": "psx-retro-rendering",
-      "description": "Hardware-informed PlayStation 1 rendering in Godot 4 — low-res output, RGB5 and exact dither, affine textures, vertex snapping, blend modes, fog; limits named.",
+      "description": "PlayStation 1 rendering in Summer Engine — low-res output, RGB5 and exact dither, affine textures, vertex snapping, blend modes, fog; limits named.",
       "clients": "all",
       "recommended": false,
       "status": "preview",
@@ -854,7 +854,7 @@
     {
       "id": "skill/realtime-wet-surfaces",
       "name": "realtime-wet-surfaces",
-      "description": "Real-time wetness on existing Godot 4 materials without losing their values — value-copying wet shader, geometry-driven wet mask, instance-uniform wet amount.",
+      "description": "Real-time wetness on existing materials without losing their values — value-copying wet shader, geometry-driven wet mask, instance-uniform wet amount.",
       "clients": "all",
       "recommended": false,
       "status": "preview",
@@ -1014,7 +1014,7 @@
     {
       "id": "skill/skintokens-auto-rigging",
       "name": "skintokens-auto-rigging",
-      "description": "Offline auto-rigging with skin-tokens.cpp (GGML SkinTokens/TokenRig port) — skeleton and skin weights from a static GLB mesh on CPU/Vulkan, into Godot 4.",
+      "description": "Offline auto-rigging with skin-tokens.cpp (GGML SkinTokens/TokenRig port) — skeleton and skin weights from a static GLB mesh on CPU/Vulkan, into Summer Engine.",
       "clients": "all",
       "recommended": false,
       "status": "preview",
@@ -1254,7 +1254,7 @@
     {
       "id": "skill/tune-performance",
       "name": "tune-performance",
-      "description": "Profile a slow game via summer_get_diagnostics, identify rendering/physics/scripting hotspots, propose fixes with before/after metric expectations.",
+      "description": "Profile a slow game with a measurement probe, identify rendering/physics/scripting hotspots, propose fixes with before/after metric expectations.",
       "clients": "all",
       "recommended": true,
       "status": "stable",
@@ -1319,7 +1319,7 @@
     {
       "id": "skill/vehicle-model",
       "name": "vehicle-model",
-      "description": "Generate a hard-surface vehicle — car, spaceship, mech, boat, tank — static mesh with optional detail-texture pass, wired as Vehicle3D or MeshInstance3D.",
+      "description": "Generate a hard-surface vehicle — car, spaceship, mech, boat, tank — static mesh with optional detail-texture pass, wired as VehicleBody3D or MeshInstance3D.",
       "clients": "all",
       "recommended": false,
       "status": "stable",

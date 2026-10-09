@@ -56,7 +56,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [*fabricating-assets*](./fabricating-assets/SKILL.md) (preview) | Fabricate meshes with a bpy script in the user's own Blender (summer_fabricate_3d) — kits with exact dimensions, VFX meshes, post-processing generated models. | assets, scripting, agent-workflow |
 | [organic-model](./organic-model/SKILL.md) | Generate organic 3D shapes — trees, rocks, mushrooms, coral, plants, vines, crystals — where AI artifacts read as natural irregularity. | assets |
 | [prop-model](./prop-model/SKILL.md) ★ | Generate a single static 3D prop — sword, barrel, chest, lantern, throne, statue — one isolated object, no rigging, wired as a MeshInstance3D. | assets |
-| [vehicle-model](./vehicle-model/SKILL.md) | Generate a hard-surface vehicle — car, spaceship, mech, boat, tank — static mesh with optional detail-texture pass, wired as Vehicle3D or MeshInstance3D. | assets |
+| [vehicle-model](./vehicle-model/SKILL.md) | Generate a hard-surface vehicle — car, spaceship, mech, boat, tank — static mesh with optional detail-texture pass, wired as VehicleBody3D or MeshInstance3D. | assets |
 
 ## agent-workflow
 
@@ -105,7 +105,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 |---|---|---|
 | [asset-strategy](./asset-strategy/SKILL.md) ★ | Route any 'I need a [thing]' asset request to the right specialist skill — disambiguates 2D / 3D / audio / video / VFX / animation pipelines. | pipeline |
 | [*lumera-single-image-scene-reconstruction*](./lumera-single-image-scene-reconstruction/SKILL.md) (preview) | Lumera-style single image to editable 3D scene — VLM-parsed object boxes and parametric lights, per-object meshes, HDR probe, .tscn assembly, refinement loop. | pipeline, 3d, scenes |
-| [*skintokens-auto-rigging*](./skintokens-auto-rigging/SKILL.md) (preview) | Offline auto-rigging with skin-tokens.cpp (GGML SkinTokens/TokenRig port) — skeleton and skin weights from a static GLB mesh on CPU/Vulkan, into Godot 4. | pipeline, 3d, animation |
+| [*skintokens-auto-rigging*](./skintokens-auto-rigging/SKILL.md) (preview) | Offline auto-rigging with skin-tokens.cpp (GGML SkinTokens/TokenRig port) — skeleton and skin weights from a static GLB mesh on CPU/Vulkan, into Summer Engine. | pipeline, 3d, animation |
 
 ## audio
 
@@ -193,7 +193,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 
 | skill | when to use | also |
 |---|---|---|
-| [tune-performance](./tune-performance/SKILL.md) ★ | Profile a slow game via summer_get_diagnostics, identify rendering/physics/scripting hotspots, propose fixes with before/after metric expectations. | debug |
+| [tune-performance](./tune-performance/SKILL.md) ★ | Profile a slow game with a measurement probe, identify rendering/physics/scripting hotspots, propose fixes with before/after metric expectations. | debug |
 
 ## rendering
 
@@ -201,8 +201,8 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 |---|---|---|
 | [3d-lighting](./3d-lighting/SKILL.md) ★ | Set up 3D scene lighting — DirectionalLight3D vs Omni vs Spot, WorldEnvironment, sky, shadow tuning, ambient — per current Summer conventions. | lighting |
 | [art-direction](./art-direction/SKILL.md) ★ | Define the game's visual style — references, palette, mood, lighting plan, post-processing, do/don't list — output as an art bible at .summer/art-bible.md. | lighting |
-| [*psx-retro-rendering*](./psx-retro-rendering/SKILL.md) (preview) | Hardware-informed PlayStation 1 rendering in Godot 4 — low-res output, RGB5 and exact dither, affine textures, vertex snapping, blend modes, fog; limits named. | 3d |
-| [*realtime-wet-surfaces*](./realtime-wet-surfaces/SKILL.md) (preview) | Real-time wetness on existing Godot 4 materials without losing their values — value-copying wet shader, geometry-driven wet mask, instance-uniform wet amount. | vfx |
+| [*psx-retro-rendering*](./psx-retro-rendering/SKILL.md) (preview) | PlayStation 1 rendering in Summer Engine — low-res output, RGB5 and exact dither, affine textures, vertex snapping, blend modes, fog; limits named. | 3d |
+| [*realtime-wet-surfaces*](./realtime-wet-surfaces/SKILL.md) (preview) | Real-time wetness on existing materials without losing their values — value-copying wet shader, geometry-driven wet mask, instance-uniform wet amount. | vfx |
 | [*web-compatibility-look*](./web-compatibility-look/SKILL.md) ★ (preview) | Make a web or browser game look high-end in the Compatibility renderer (WebGL 2): what works, what to avoid, 2D and 3D recipes, web performance. | 2d, 3d |
 
 ## runtime

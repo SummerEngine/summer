@@ -10,7 +10,6 @@ use_when:
 do_not_use_when:
   - "you only need a visual backdrop (a splat or depth-mesh bake is cheaper), large unbounded outdoor scenes, or exact light positions and intensities"
   - "Lumera itself has no public code; the VLM box/light parsers, per-object mesh generator, and HDR estimator are external components you must supply"
-  - "intake from the gamedev-knowledge pipeline (source-cited, pipeline-validated, not yet exercised in-engine by the Summer team) — verify results in the engine as you would any technique"
 facets:
   lifecycle:
     - build

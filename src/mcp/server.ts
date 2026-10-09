@@ -432,8 +432,9 @@ export async function startMcpServer(
   });
 
   // Hosted Summer Engine MCP tools (store, publishing, board, Grow): ready
-  // before connect, mounted after it without blocking the engine tools.
-  const hosted = prepareHostedMount(server);
+  // before connect, mounted after it. The first tools/list waits a few
+  // seconds for the mount (not under summer doctor, which times the list).
+  const hosted = prepareHostedMount(server, undefined, process.env.SUMMER_MCP_DOCTOR === "1" ? { firstListWaitMs: 0 } : {});
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

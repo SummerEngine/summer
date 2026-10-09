@@ -98,13 +98,16 @@ export interface Store {
   ): Promise<T>;
 }
 
-export function storeError(status: number, code: string, message: string | undefined): BuildToolError {
+export function storeError(status: number, code: string, message: string | undefined, requestId?: string): BuildToolError {
   if (status === 401) {
+    // The token was sent and refused: signing in again gives the same token
+    // shape and the same answer, so it is not the first thing to try.
     return new BuildToolError(
       "store_auth_refused",
-      "The Summer store refused this sign-in.",
-      'Recovery: run "summer login --store --force" and retry. If it is refused again, the store does not accept agent sign-ins yet: upload the .zip in Studio (Store > your game > Exports) until it does.',
-      status
+      `The Summer store did not accept this sign-in${message ? `: ${message.replace(/\.$/, "")}` : ""}.`,
+      'Recovery: run "summer doctor" (Store line) to see the store\'s answer. Signing in again does not change a refusal of a valid sign-in. Until the store accepts agent sign-in for this account, upload the .zip in Studio (Store > your game > Exports).',
+      status,
+      requestId ? { requestId } : undefined
     );
   }
   if (status === 403 && code === "owner_approval_required") {
@@ -155,7 +158,8 @@ export function createStore(baseUrl: string, token: string, deps: PublishBuildDe
       const body = (json && typeof json === "object" ? json : {}) as Record<string, any>;
       if (!response.ok) {
         const error = body.error && typeof body.error === "object" ? body.error : {};
-        throw storeError(response.status, typeof error.code === "string" ? error.code : `http_${response.status}`, typeof error.message === "string" ? error.message : undefined);
+        const requestId = [error.requestId, body.requestId, response.headers.get("x-request-id")].find((value) => typeof value === "string" && value) as string | undefined;
+        throw storeError(response.status, typeof error.code === "string" ? error.code : `http_${response.status}`, typeof error.message === "string" ? error.message : undefined, requestId);
       }
       return body as T;
     },
@@ -336,23 +340,91 @@ function targetPlatforms(bundle: SummerBundle): string[] {
   return bundle.targetPlatforms;
 }
 
-/** gameId is required: the error carries the person's games when the store answers. */
-async function listGamesOrThrow(deps: PublishBuildDependencies): Promise<never> {
-  let games: Array<Record<string, unknown>> | undefined;
+type GameSummary = { id: unknown; name: unknown; slug: unknown; status: unknown; targets: unknown };
+
+/** The signed-in person's store games, or why the store did not list them. */
+async function listGames(deps: PublishBuildDependencies): Promise<{ games: GameSummary[] } | { error: string }> {
   try {
-    const store = createStore(await resolveGatewayUrl(), await deps.token(), deps);
+    const store = createStore(await resolveGatewayUrl(), await storeToken(deps), deps);
     const page = await store.call<{ items?: Array<Record<string, any>> }>("GET", "games");
-    games = (page.items ?? []).map((game) => ({ id: game.id, name: game.name, slug: game.slug, status: game.status }));
-  } catch {
-    games = undefined;
+    return { games: (page.items ?? []).map((game) => ({ id: game.id, name: game.name, slug: game.slug, status: game.status, targets: game.supportedPlatforms ?? [] })) };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+/** gameId is required: the error carries the person's games, or why the store did not list them. */
+async function listGamesOrThrow(deps: PublishBuildDependencies): Promise<never> {
+  const listed = await listGames(deps);
+  if ("games" in listed) {
+    throw new BuildToolError(
+      "game_required",
+      listed.games.length
+        ? "gameId is required: pick one of your store games below (the export is uploaded to one existing game)."
+        : "gameId is required, and this account has no store game yet.",
+      listed.games.length
+        ? "Recovery: call again with gameId from the list."
+        : "Recovery: create the store game first (summer_store_create_game), then call again with its gameId.",
+      undefined,
+      { games: listed.games }
+    );
   }
   throw new BuildToolError(
     "game_required",
-    "gameId is required: the export is uploaded to one existing game.",
-    games ? "Recovery: pick the game's id from the list and retry." : "Recovery: copy the game id from Studio (the store page URL) and retry.",
+    `gameId is required, and the store did not list your games: ${listed.error}`,
+    "Recovery: copy the game id from Studio (the store page URL) and retry.",
     undefined,
-    games ? { games } : undefined
+    { listError: listed.error }
   );
+}
+
+async function storeToken(deps: PublishBuildDependencies): Promise<string> {
+  try {
+    return await deps.token();
+  } catch (error) {
+    if (error instanceof OAuthError) throw new BuildToolError(error.code, error.message.replace(` ${error.recovery}`, ""), error.recovery);
+    throw error;
+  }
+}
+
+/**
+ * Before the person confirms, prove the target is real: the game exists for
+ * this account, and its store page lists the platforms the export targets.
+ */
+export async function checkStoreGame(
+  gameId: string,
+  exportTargets: string[],
+  deps: PublishBuildDependencies
+): Promise<{ game: { gameId: string; name: string | null; status: string | null; targets: string[] }; warnings: string[] }> {
+  const store = createStore(await resolveGatewayUrl(), await storeToken(deps), deps);
+  let game: Record<string, any>;
+  try {
+    game = await store.call<Record<string, any>>("GET", `games/${seg(gameId)}`);
+  } catch (error) {
+    if (error instanceof BuildToolError && error.status === 404) {
+      const listed = await listGames(deps);
+      throw new BuildToolError(
+        "game_not_found",
+        "games" in listed
+          ? `There is no store game "${gameId}" for this account, so nothing can be uploaded to it.`
+          : `The store did not find game "${gameId}", and did not list your games either: ${listed.error}`,
+        "games" in listed && listed.games.length
+          ? "Recovery: call again with gameId from the list."
+          : "Recovery: create the store game first (summer_store_create_game), or copy its id from Studio (the store page URL).",
+        404,
+        "games" in listed ? { games: listed.games } : undefined
+      );
+    }
+    throw error;
+  }
+  const targets: string[] = Array.isArray(game.supportedPlatforms) ? game.supportedPlatforms.filter((value: unknown): value is string => typeof value === "string") : [];
+  // The store page speaks catalog names (ios, android, macos, windows, linux, web) or store ids (macos-universal, ...).
+  const catalog = new Set(targets.map((target) => target.replace(/-(universal|x64)$/, "")));
+  const unlisted = exportTargets.filter((target) => !catalog.has(target));
+  const warnings = unlisted.length
+    ? [`The store page of "${game.name ?? gameId}" does not list ${unlisted.join(", ")} (it lists ${targets.join(", ") || "no platforms"}). Players on ${unlisted.join(", ")} will not see this build until the store page lists them: add them with summer_store_update_listing.`]
+    : [];
+  return { game: { gameId, name: typeof game.name === "string" ? game.name : null, status: typeof game.status === "string" ? game.status : null, targets }, warnings };
 }
 
 export type PublishBuildResult = Record<string, unknown> & { ok: true; status: string };
@@ -374,7 +446,10 @@ export async function publishBuild(
   if (platform) {
     const clientVersion = normalizeClientVersion(input.clientVersion);
     if (!gameId) return listGamesOrThrow(deps);
-    return publishDownload({ gameId, file, platform, clientVersion, confirm: input.confirm, waitSeconds: input.waitSeconds, face: input.face }, deps);
+    const download = { gameId, file, platform, clientVersion, confirm: input.confirm, waitSeconds: input.waitSeconds, face: input.face };
+    if (input.confirm === true) return publishDownload(download, deps);
+    const preview = await publishDownload(download, deps);
+    return { ...preview, game: (await checkStoreGame(gameId, [], deps)).game };
   }
   if (extname(file).toLowerCase() !== ".zip") {
     throw new BuildToolError("export_format_unsupported", `${file} is not a summer.games .zip export.`, "Recovery: export with summer_export_game and upload that .zip.");
@@ -400,22 +475,19 @@ export async function publishBuild(
   if (!gameId) return listGamesOrThrow(deps);
 
   if (input.confirm !== true) {
+    const checked = await checkStoreGame(gameId, platforms, deps);
     return {
       ok: true,
       status: "confirmation_required",
       target,
-      next: `Show the user this exact game, file, digest, size, version and publish choice. Only after they approve, call again with confirm=true. Nothing was uploaded.`,
+      game: checked.game,
+      ...(checked.warnings.length ? { warnings: checked.warnings } : {}),
+      next: `Show the user this exact game (name and id), file, digest, size, version and publish choice. Only after they approve, call again with confirm=true. Nothing was uploaded.`,
     };
   }
 
   const audit = { at: new Date(deps.now()).toISOString(), operation: "publish_build", face: input.face, ...target };
-  let token: string;
-  try {
-    token = await deps.token();
-  } catch (error) {
-    if (error instanceof OAuthError) throw new BuildToolError(error.code, error.message.replace(` ${error.recovery}`, ""), error.recovery);
-    throw error;
-  }
+  const token = await storeToken(deps);
   const store = createStore(await resolveGatewayUrl(), token, deps);
   await appendStoreJsonLine("creator-audit.jsonl", { ...audit, outcome: "started" });
   // Same keys Studio derives: the same bytes, version and scene are one declaration.

@@ -36,6 +36,7 @@ function fakeStore(options: { existing?: Record<string, unknown>; storedParts?: 
       put.add(Number(url.split("/").pop()));
       return new Response(null, { status: 200, headers: { etag: '"e"' } });
     }
+    if (method === "GET" && url.endsWith("/api/creator-store/games/game-1")) return json(200, { id: "game-1", name: "Star Weavers", status: "draft", supportedPlatforms: ["web"] });
     if (method === "GET" && url === `${VERSIONS}?platform=web`) return json(200, { items: options.existing ? [version()] : [] });
     if (method === "POST" && url === VERSIONS) {
       status = "awaiting_upload";
@@ -102,12 +103,13 @@ async function failure(promise: Promise<unknown>): Promise<BuildToolError> {
 }
 
 describe("summer_publish_build: web builds and native downloads (store versions)", () => {
-  it("previews the last download export with its platform and sends nothing before confirm", async () => {
+  it("previews the last download export with its platform, checks the game and sends nothing before confirm", async () => {
     const store = fakeStore();
     const result = await publishBuild({ gameId: "game-1", clientVersion: "v1.0.0", face: "mcp" }, deps(store.fetch));
     expect(result.status).toBe("confirmation_required");
     expect(result.target).toMatchObject({ platform: "web", fileName: "game-web.zip", fileCount: 2 });
-    expect(store.calls).toEqual([]);
+    expect(result.game).toMatchObject({ gameId: "game-1", name: "Star Weavers" });
+    expect(store.calls.map((call) => call.method)).toEqual(["GET"]);
   });
 
   it("creates the version, uploads every part with the store sign-in, completes it and waits until ready", async () => {

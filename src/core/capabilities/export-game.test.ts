@@ -21,7 +21,7 @@ if (process.env.FAKE_ENGINE_SLEEP) setTimeout(() => {}, Number(process.env.FAKE_
 else {
   console.log("Exporting summer.games");
   if (process.env.FAKE_ENGINE_EXIT === "0") fs.copyFileSync(process.env.FAKE_BUNDLE, args[args.length - 1]);
-  else console.error("ERROR: Export preset not found: " + args[4]);
+  else console.error(process.env.FAKE_ENGINE_ERROR || "ERROR: Export preset not found: " + args[5]);
   process.exitCode = Number(process.env.FAKE_ENGINE_EXIT);
 }
 `;
@@ -41,11 +41,12 @@ beforeEach(async () => {
   await chmod(engine, 0o755);
   await writeSummerBundle(join(root, "bundle.zip"));
   setSummerDirForTests(join(root, ".summer"));
-  for (const name of ["FAKE_ENGINE_ARGS", "FAKE_BUNDLE", "FAKE_ENGINE_EXIT", "FAKE_ENGINE_SLEEP"]) saved[name] = process.env[name];
+  for (const name of ["FAKE_ENGINE_ARGS", "FAKE_BUNDLE", "FAKE_ENGINE_EXIT", "FAKE_ENGINE_SLEEP", "FAKE_ENGINE_ERROR"]) saved[name] = process.env[name];
   process.env.FAKE_ENGINE_ARGS = join(root, "args.json");
   process.env.FAKE_BUNDLE = join(root, "bundle.zip");
   process.env.FAKE_ENGINE_EXIT = "0";
   delete process.env.FAKE_ENGINE_SLEEP;
+  delete process.env.FAKE_ENGINE_ERROR;
 });
 
 afterEach(async () => {
@@ -73,8 +74,8 @@ describe("exportGame", () => {
   it("runs the engine headless with the summer.games preset and returns the bundle", async () => {
     const result = await exportGame({ project }, { findBinary: () => engine });
     const args = await lastArgs();
-    expect(args.slice(0, 5)).toEqual(["--headless", "--path", project, "--export-release", "summer.games"]);
-    expect(args[5]).toBe(result.path);
+    expect(args.slice(0, 6)).toEqual(["--headless", "--summer-no-api", "--path", project, "--export-release", "summer.games"]);
+    expect(args[6]).toBe(result.path);
     expect(result.path.startsWith(join(project, ".summer", "exports", "My Game-"))).toBe(true);
     expect(result.path.endsWith(".zip")).toBe(true);
     expect(result).toMatchObject({
@@ -95,7 +96,7 @@ describe("exportGame", () => {
   it("exports debug builds to an explicit path", async () => {
     const out = join(root, "out", "game.zip");
     const result = await exportGame({ project, out, debug: true }, { findBinary: () => engine });
-    expect((await lastArgs()).slice(3)).toEqual(["--export-debug", "summer.games", out]);
+    expect((await lastArgs()).slice(4)).toEqual(["--export-debug", "summer.games", out]);
     expect(result.path).toBe(out);
   });
 
@@ -104,6 +105,52 @@ describe("exportGame", () => {
     const error = await failure(exportGame({ project }, { findBinary: () => engine }));
     expect(error.code).toBe("export_failed");
     expect(String(error.detail?.output)).toContain("Export preset not found: summer.games");
+    expect(error.message).toContain("did not export the game (exit 1): Export preset not found: summer.games");
+    expect(error.recovery).toContain("update Summer Engine to 0.7.0+");
+  });
+
+  it("puts the engine's own ERROR lines in the message, not the preset hint", async () => {
+    process.env.FAKE_ENGINE_EXIT = "1";
+    process.env.FAKE_ENGINE_ERROR = [
+      "\u001b[91mERROR: summer.games: The pack's compositionPath res://game/net/caper_composition.tres is in the source graph's authority_engine domain, which the client pack leaves out.\u001b[0m",
+      "   at: add_message (./editor/export/editor_export_platform.h:276)",
+      'ERROR: Project export for preset "summer.games" failed.',
+    ].join("\n");
+    const error = await failure(exportGame({ project }, { findBinary: () => engine }));
+    expect(error.message).toContain("compositionPath res://game/net/caper_composition.tres is in the source graph's authority_engine domain");
+    expect(error.message).toContain('| Project export for preset "summer.games" failed.');
+    expect(error.recovery).toContain("source-domains.json");
+    expect(error.recovery).not.toContain("predates");
+    expect(error.detail?.errors).toEqual([
+      "ERROR: summer.games: The pack's compositionPath res://game/net/caper_composition.tres is in the source graph's authority_engine domain, which the client pack leaves out.",
+      'ERROR: Project export for preset "summer.games" failed.',
+    ]);
+  });
+
+  it("reports the project files the export changed", async () => {
+    const touch = async () => {
+      await writeFile(join(project, "project.godot.bak"), "config_version=5\n");
+      await writeFile(join(project, "project.godot"), "config_version=5\n[application]\n");
+      return { code: 0, signal: null, timedOut: false, output: "" };
+    };
+    const out = join(project, "game.zip");
+    const result = await exportGame(
+      { project, out, targets: ["ios"] },
+      {
+        findBinary: () => engine,
+        run: async (binary, args, timeoutMs) => {
+          const run = await runEngine(binary, args, timeoutMs);
+          await touch();
+          return run;
+        },
+      }
+    );
+    expect(result.projectChanges).toEqual([
+      { file: "export_presets.cfg", change: "created" },
+      { file: "project.godot", change: "modified" },
+      { file: "project.godot.bak", change: "created" },
+    ]);
+    expect(result.warnings?.[0]).toContain("rewrote project.godot");
   });
 
   it("stops an engine that runs past the timeout", async () => {

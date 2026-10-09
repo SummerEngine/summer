@@ -116,6 +116,36 @@ describe("exportGame", () => {
     expect(error.code).toBe("export_timeout");
   });
 
+  it("refuses an engine older than 0.7.0 before it runs or writes a preset", async () => {
+    let ran = false;
+    const error = await failure(
+      exportGame(
+        { project, targets: ["ios", "macos"] },
+        {
+          findBinary: () => engine,
+          engineVersion: () => "0.6.0",
+          run: async () => {
+            ran = true;
+            return { code: 0, signal: null, timedOut: false, output: "" };
+          },
+        }
+      )
+    );
+    expect(error.code).toBe("engine_too_old");
+    expect(error.message).toContain("Summer Engine 0.6.0 is installed");
+    expect(error.recovery).toContain("summer install --yes");
+    expect(error.detail).toMatchObject({ engineVersion: "0.6.0", minimumEngineVersion: "0.7.0" });
+    expect(ran).toBe(false);
+    expect(existsSync(join(project, "export_presets.cfg"))).toBe(false);
+  });
+
+  it("exports with 0.7.0 or newer, and with a version this system cannot read", async () => {
+    for (const version of ["0.7.0", "0.7.1", null]) {
+      const result = await exportGame({ project }, { findBinary: () => engine, engineVersion: () => version });
+      expect(result.ok).toBe(true);
+    }
+  });
+
   it("says when the engine is not installed or the folder is not a project", async () => {
     expect((await failure(exportGame({ project }, { findBinary: () => null }))).code).toBe("engine_not_installed");
     expect((await failure(exportGame({ project: root }, { findBinary: () => engine }))).code).toBe("project_not_found");

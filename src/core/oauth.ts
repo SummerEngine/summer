@@ -7,16 +7,25 @@ import { readJsonResponse } from "./util/http.js";
  * The Summer store sign-in for local tools (summer_publish_build): OAuth 2.1
  * authorization code + PKCE against the same Supabase authorization server
  * and resource the hosted MCP uses (mcp.summerengine.com/mcp), with a
- * loopback redirect (RFC 8252) and dynamic client registration. The access
- * token's audience is the MCP resource, the one token the creator store is
- * meant to accept for agents (creator publishing spec, part C.3).
+ * loopback redirect (RFC 8252). The access token's audience is the MCP
+ * resource, the one token the creator store accepts for agents (creator
+ * publishing spec, part C.3).
  *
- * Stored in ~/.summer/oauth-token (0600) with its refresh token, separate
- * from the CLI JWT in auth-token: the engine reads that file and expects the
- * summer-cli contract.
+ * The Summer CLI is one public client (no secret; PKCE proves each login).
+ * The authorization server matches redirect URIs exactly, so the CLI listens
+ * on one of a few fixed loopback ports and registers its client once per
+ * machine with exactly those redirect URIs. Later logins and refreshes reuse
+ * that client id (~/.summer/oauth-client); only --force registers anew.
+ *
+ * The token is stored in ~/.summer/oauth-token (0600) with its refresh token,
+ * separate from the CLI JWT in auth-token: the engine reads that file and
+ * expects the summer-cli contract.
  */
 
 export const OAUTH_TOKEN_FILE = "oauth-token";
+export const OAUTH_CLIENT_FILE = "oauth-client";
+/** Loopback ports the Summer CLI client is registered for, tried in order. */
+export const STORE_LOGIN_PORTS = [47615, 47616, 47617] as const;
 export const DEFAULT_MCP_RESOURCE_URL = "https://mcp.summerengine.com/mcp";
 export const MCP_RESOURCE_ENV = "SUMMER_MCP_RESOURCE_URL";
 const SCOPES = ["openid", "email", "offline_access"];
@@ -44,6 +53,14 @@ export interface StoredOAuthToken {
   refreshToken?: string;
   expiresAt: string;
   scope?: string;
+}
+
+/** The machine's registered Summer CLI client for one authorization server. */
+export interface StoredOAuthClient {
+  schemaVersion: 1;
+  issuer: string;
+  clientId: string;
+  redirectUris: string[];
 }
 
 interface AuthorizationServer {
@@ -205,7 +222,7 @@ interface Callback {
 }
 
 /** A one-shot loopback listener on 127.0.0.1 for the authorization code. */
-async function listenForCode(state: string, timeoutMs: number): Promise<Callback> {
+async function listenForCode(state: string, timeoutMs: number, ports: readonly number[]): Promise<Callback> {
   let settle!: { resolve: (code: string) => void; reject: (error: Error) => void };
   const code = new Promise<string>((resolve, reject) => (settle = { resolve, reject }));
   // An unawaited rejection (timeout before anyone awaits) must not crash the process.
@@ -234,12 +251,29 @@ async function listenForCode(state: string, timeoutMs: number): Promise<Callback
         )
       );
   });
-  await new Promise<void>((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(0, "127.0.0.1", () => resolve());
-  });
-  const address = server.address();
-  const port = typeof address === "object" && address ? address.port : 0;
+  let port = 0;
+  for (const candidate of ports) {
+    const listening = await new Promise<boolean>((resolve, reject) => {
+      const onError = (error: NodeJS.ErrnoException) =>
+        error.code === "EADDRINUSE" || error.code === "EACCES" ? resolve(false) : reject(error);
+      server.once("error", onError);
+      server.listen(candidate, "127.0.0.1", () => {
+        server.off("error", onError);
+        resolve(true);
+      });
+    });
+    if (listening) {
+      port = candidate;
+      break;
+    }
+  }
+  if (!port) {
+    throw new OAuthError(
+      "oauth_ports_busy",
+      `Sign-in needs one free local port (${ports.join(", ")}); all are in use.`,
+      'Recovery: close the program using them (or an earlier "summer login --store" still waiting), then retry.'
+    );
+  }
   const timer = setTimeout(
     () =>
       settle.reject(
@@ -265,6 +299,59 @@ export interface StoreLoginDependencies extends OAuthDependencies {
   openUrl: (url: string) => Promise<unknown>;
   log: (message: string) => void;
   timeoutMs?: number;
+  /** Register a new client instead of reusing this machine's ("summer login --store --force"). */
+  newClient?: boolean;
+  /** Tests only: other loopback ports. */
+  ports?: readonly number[];
+}
+
+async function readStoredOAuthClient(issuer: string, redirectUris: string[]): Promise<string | null> {
+  const client = await readStoreJson<StoredOAuthClient>(OAUTH_CLIENT_FILE).catch(() => null);
+  const sameRedirects =
+    Array.isArray(client?.redirectUris) &&
+    client!.redirectUris.length === redirectUris.length &&
+    client!.redirectUris.every((uri, index) => uri === redirectUris[index]);
+  return client?.schemaVersion === 1 && client.issuer === issuer && sameRedirects && typeof client.clientId === "string" && client.clientId
+    ? client.clientId
+    : null;
+}
+
+/** One registration per machine and authorization server: a public client for the fixed loopback redirects. */
+async function registerClient(deps: OAuthDependencies, server: AuthorizationServer, redirectUris: string[]): Promise<string> {
+  let registration: Response;
+  try {
+    registration = await deps.fetch(server.registrationEndpoint, {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json" },
+      body: JSON.stringify({
+        client_name: "Summer CLI",
+        redirect_uris: redirectUris,
+        grant_types: ["authorization_code", "refresh_token"],
+        response_types: ["code"],
+        token_endpoint_auth_method: "none",
+        scope: SCOPES.join(" "),
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch (error) {
+    throw new OAuthError(
+      "oauth_network_failed",
+      `The sign-in server did not answer: ${error instanceof Error ? error.message : String(error)}.`,
+      "Recovery: check your network and retry."
+    );
+  }
+  const { json } = await readJsonResponse(registration);
+  const clientId = (json as Record<string, unknown> | undefined)?.client_id;
+  if (!registration.ok || typeof clientId !== "string" || !clientId) {
+    throw new OAuthError(
+      "oauth_registration_failed",
+      `The sign-in server did not register the Summer CLI (${registration.status}).`,
+      "Recovery: retry; if it repeats, report the Summer sign-in server as unhealthy."
+    );
+  }
+  const stored: StoredOAuthClient = { schemaVersion: 1, issuer: server.issuer, clientId, redirectUris };
+  await writeStoreJson(OAUTH_CLIENT_FILE, stored);
+  return clientId;
 }
 
 /** Browser sign-in (authorization code + PKCE) that stores ~/.summer/oauth-token. */
@@ -272,40 +359,13 @@ export async function runStoreLogin(deps: StoreLoginDependencies): Promise<Store
   const resource = resolveMcpResourceUrl();
   const server = await discoverAuthorizationServer(resource, deps);
   const state = randomBytes(16).toString("base64url");
-  const callback = await listenForCode(state, deps.timeoutMs ?? LOGIN_TIMEOUT_MS);
+  const ports = deps.ports ?? STORE_LOGIN_PORTS;
+  const redirectUris = ports.map((port) => `http://127.0.0.1:${port}/callback`);
+  const callback = await listenForCode(state, deps.timeoutMs ?? LOGIN_TIMEOUT_MS, ports);
   try {
-    // A public client per login: the loopback port changes every time.
-    let registration: Response;
-    try {
-      registration = await deps.fetch(server.registrationEndpoint, {
-        method: "POST",
-        headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify({
-          client_name: "Summer CLI",
-          redirect_uris: [callback.redirectUri],
-          grant_types: ["authorization_code", "refresh_token"],
-          response_types: ["code"],
-          token_endpoint_auth_method: "none",
-          scope: SCOPES.join(" "),
-        }),
-        signal: AbortSignal.timeout(15_000),
-      });
-    } catch (error) {
-      throw new OAuthError(
-        "oauth_network_failed",
-        `The sign-in server did not answer: ${error instanceof Error ? error.message : String(error)}.`,
-        "Recovery: check your network and retry."
-      );
-    }
-    const { json } = await readJsonResponse(registration);
-    const clientId = (json as Record<string, unknown> | undefined)?.client_id;
-    if (!registration.ok || typeof clientId !== "string" || !clientId) {
-      throw new OAuthError(
-        "oauth_registration_failed",
-        `The sign-in server did not register the Summer CLI (${registration.status}).`,
-        "Recovery: retry; if it repeats, report the Summer sign-in server as unhealthy."
-      );
-    }
+    const clientId =
+      (!deps.newClient && (await readStoredOAuthClient(server.issuer, redirectUris))) ||
+      (await registerClient(deps, server, redirectUris));
 
     const { verifier, challenge } = pkce();
     const authorize = new URL(server.authorizationEndpoint);

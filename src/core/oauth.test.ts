@@ -1,11 +1,12 @@
 import { mkdtemp, rm, stat } from "node:fs/promises";
-import { request } from "node:http";
+import { createServer, request, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { clearAuthCredentials } from "./auth.js";
 import {
   discoverAuthorizationServer,
+  STORE_LOGIN_PORTS,
   getStoreAccessToken,
   OAuthError,
   readStoredOAuthToken,
@@ -63,8 +64,29 @@ function fakeAuthServer(options: { redirectError?: string } = {}) {
   return { fetch, openUrl, forms, registrations };
 }
 
+/** Free loopback ports for one test (the real fixed ports may be taken on a CI host). */
+async function freePorts(count: number): Promise<number[]> {
+  const servers: Server[] = [];
+  for (let i = 0; i < count; i += 1) {
+    const server = createServer();
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    servers.push(server);
+  }
+  const ports = servers.map((server) => (server.address() as { port: number }).port);
+  await Promise.all(servers.map((server) => new Promise((resolve) => server.close(resolve))));
+  return ports;
+}
+
+async function occupy(port: number): Promise<Server> {
+  const server = createServer();
+  await new Promise<void>((resolve) => server.listen(port, "127.0.0.1", resolve));
+  return server;
+}
+
 let root = "";
+let ports: number[] = [];
 beforeEach(async () => {
+  ports = await freePorts(3);
   root = await mkdtemp(join(tmpdir(), "summer-oauth-test-"));
   setSummerDirForTests(join(root, ".summer"));
 });
@@ -87,13 +109,17 @@ describe("store OAuth sign-in", () => {
   it("signs in with PKCE on a loopback redirect, stores the token, then refreshes it", async () => {
     const auth = fakeAuthServer();
     let clock = Date.parse("2026-10-09T00:00:00Z");
-    const token = await runStoreLogin({ fetch: auth.fetch, now: () => clock, openUrl: auth.openUrl, log: () => undefined });
+    const token = await runStoreLogin({ fetch: auth.fetch, now: () => clock, openUrl: auth.openUrl, log: () => undefined, ports });
     const authorize = (auth.openUrl as any).authorize as URL;
     expect(authorize.searchParams.get("resource")).toBe(RESOURCE);
     expect(authorize.searchParams.get("code_challenge_method")).toBe("S256");
     expect(authorize.searchParams.get("scope")).toBe("openid email offline_access");
-    expect(auth.registrations[0]).toMatchObject({ token_endpoint_auth_method: "none", redirect_uris: [authorize.searchParams.get("redirect_uri")] });
-    expect(auth.registrations[0].redirect_uris[0]).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/callback$/);
+    // One public client, registered for exactly the fixed loopback redirects.
+    expect(auth.registrations[0]).toMatchObject({
+      token_endpoint_auth_method: "none",
+      redirect_uris: ports.map((port) => `http://127.0.0.1:${port}/callback`),
+    });
+    expect(authorize.searchParams.get("redirect_uri")).toBe(`http://127.0.0.1:${ports[0]}/callback`);
     expect(auth.forms[0]).toMatchObject({ grant_type: "authorization_code", code: "code-1", client_id: "client-1", resource: RESOURCE });
     expect(auth.forms[0]!.code_verifier).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(token).toMatchObject({ accessToken: "access-1", refreshToken: "refresh-1", clientId: "client-1", resource: RESOURCE });
@@ -114,10 +140,66 @@ describe("store OAuth sign-in", () => {
 
   it("fails clearly when access is denied or no sign-in exists", async () => {
     const auth = fakeAuthServer({ redirectError: "access_denied" });
-    await expect(runStoreLogin({ fetch: auth.fetch, now: Date.now, openUrl: auth.openUrl, log: () => undefined })).rejects.toMatchObject({
+    await expect(runStoreLogin({ fetch: auth.fetch, now: Date.now, openUrl: auth.openUrl, log: () => undefined, ports })).rejects.toMatchObject({
       code: "oauth_access_denied",
     });
     await expect(getStoreAccessToken({ fetch: auth.fetch, now: Date.now })).rejects.toBeInstanceOf(OAuthError);
     await expect(getStoreAccessToken({ fetch: auth.fetch, now: Date.now })).rejects.toMatchObject({ code: "store_login_required" });
+  });
+});
+
+describe("the Summer CLI OAuth client", () => {
+  const login = (auth: ReturnType<typeof fakeAuthServer>, extra: { newClient?: boolean } = {}) =>
+    runStoreLogin({ fetch: auth.fetch, now: Date.now, openUrl: auth.openUrl, log: () => undefined, ports, ...extra });
+
+  it("ships fixed loopback ports", () => {
+    expect([...STORE_LOGIN_PORTS]).toEqual([47615, 47616, 47617]);
+  });
+
+  it("registers once per machine and reuses that client on every later login", async () => {
+    const auth = fakeAuthServer();
+    await login(auth);
+    await login(auth);
+    expect(auth.registrations).toHaveLength(1);
+    expect(auth.forms.map((form) => form.client_id)).toEqual(["client-1", "client-1"]);
+  });
+
+  it("registers a new client only when asked (--force)", async () => {
+    const auth = fakeAuthServer();
+    await login(auth);
+    await login(auth, { newClient: true });
+    expect(auth.registrations).toHaveLength(2);
+  });
+
+  it("uses the next fixed port when the first is busy", async () => {
+    const busy = await occupy(ports[0]!);
+    try {
+      const auth = fakeAuthServer();
+      await login(auth);
+      const authorize = (auth.openUrl as any).authorize as URL;
+      expect(authorize.searchParams.get("redirect_uri")).toBe(`http://127.0.0.1:${ports[1]}/callback`);
+      expect(auth.forms[0]).toMatchObject({ redirect_uri: `http://127.0.0.1:${ports[1]}/callback` });
+    } finally {
+      await new Promise((resolve) => busy.close(resolve));
+    }
+  });
+
+  it("fails clearly when every fixed port is busy, before registering anything", async () => {
+    const busy = await Promise.all(ports.map(occupy));
+    try {
+      const auth = fakeAuthServer();
+      await expect(login(auth)).rejects.toMatchObject({ code: "oauth_ports_busy" });
+      expect(auth.registrations).toHaveLength(0);
+    } finally {
+      await Promise.all(busy.map((server) => new Promise((resolve) => server.close(resolve))));
+    }
+  });
+
+  it("does not reuse a client registered for other redirects", async () => {
+    const auth = fakeAuthServer();
+    await login(auth);
+    ports = await freePorts(3);
+    await login(auth);
+    expect(auth.registrations).toHaveLength(2);
   });
 });

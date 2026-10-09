@@ -122,6 +122,8 @@ export interface LastExport {
   sha256: string;
   sizeBytes: number;
   exportedAt: string;
+  /** Download exports: the store versions platform the file is for (summer_publish_build reads it). */
+  storePlatform?: string;
 }
 
 export interface ExportGameDependencies {
@@ -527,6 +529,8 @@ async function exportDownload(
   const icon = projectSetting(project, "application", "config/icon");
   if (!icon) warnings.push("The project has no icon (Project Settings > Application > Config > Icon); the export uses the Summer default.");
   const { sha256, sizeBytes } = await hashFile(out);
+  const last: LastExport = { path: out, project, sha256, sizeBytes, exportedAt: deps.now().toISOString(), storePlatform };
+  await writeStoreJson(LAST_EXPORT_FILE, last);
   return {
     ok: true,
     format: "download",
@@ -545,11 +549,11 @@ async function exportDownload(
     icon,
     signing: target === "macos" ? "ad hoc (built-in), not notarized" : "none",
     ...(warnings.length ? { warnings } : {}),
-    next: `Upload it as the game's ${storePlatform} store version (store versions upload, platform "${storePlatform}"). This is not a summer_publish_build bundle.`,
+    next: `Upload it as the game's ${storePlatform} store version with summer_publish_build (gameId, clientVersion); it reads the platform from this export.`,
   };
 }
 
-/** The bundle the last summer_export_game wrote, when it is still on disk. */
+/** The file the last summer_export_game wrote (bundle or download), when it is still on disk. */
 export async function readLastExport(): Promise<LastExport | null> {
   const last = await readStoreJson<LastExport>(LAST_EXPORT_FILE).catch(() => null);
   return last && typeof last.path === "string" && existsSync(last.path) ? last : null;

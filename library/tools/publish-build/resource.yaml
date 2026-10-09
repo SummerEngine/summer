@@ -1,12 +1,13 @@
 id: tool/publish-build
 kind: tool
 version: 1.0.0
-summary: Upload a summer.games export to the creator's game on summer.games (the store upload Studio uses), confirm-gated, optionally approving the Build for players.
+summary: Upload an export from summer_export_game to the creator's store game, confirm-gated - a store bundle as a Build, or a web or native download as a store version.
 use_when:
   - '"upload my game to summer.games"'
   - '"publish this build to my store page"'
   - '"put my game online so my friends can play it"'
   - uploading the .zip from summer_export_game as a new Build
+  - uploading a web build or a macOS or Windows download from summer_export_game format download
 do_not_use_when:
   - the user has not approved the exact game, file, digest, version and publish choice
   - the game is not exported yet — summer_export_game first
@@ -46,7 +47,15 @@ input_schema:
     publish:
       type: boolean
       default: false
-      description: Also approve the Build for players. A game that has not passed review keeps it as a preview.
+      description: "Bundles only: also approve the Build for players. A game that has not passed review keeps it as a preview; an agent needs the owner's approval."
+    platform:
+      type: string
+      enum:
+        - web
+        - macos-universal
+        - windows-x64
+        - linux-x64
+      description: "Web builds and native downloads: the store platform. Defaults to the last export's platform; omit for a store bundle."
     confirm:
       type: boolean
       default: false

@@ -904,6 +904,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       file: optStr(args, "file"),
       clientVersion: optStr(args, "clientVersion"),
       publish: args.publish === true,
+      platform: optStr(args, "platform"),
       confirm: args.confirm === true,
       ...(typeof args.waitSeconds === "number" ? { waitSeconds: args.waitSeconds } : {}),
       face: "cli",

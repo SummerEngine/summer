@@ -7,6 +7,7 @@ import { getStoreAccessToken, OAuthError } from "../oauth.js";
 import { appendStoreJsonLine } from "../store.js";
 import { readJsonResponse } from "../util/http.js";
 import { readLastExport } from "./export-game.js";
+import { publishDownload } from "./publish-download.js";
 import { BuildToolError, readSummerBundle, type SummerBundle } from "./summer-bundle.js";
 
 /**
@@ -65,6 +66,12 @@ export interface PublishBuildInput {
   clientVersion?: string;
   /** Also approve the Build for players (needs a game that passed review). */
   publish?: boolean;
+  /**
+   * A web build or native download (summer_export_game format "download"):
+   * the store versions platform (web, macos-universal, windows-x64,
+   * linux-x64). Read from the last export when it was a download.
+   */
+  platform?: string;
   confirm?: boolean;
   /** How long to wait for Summer to make the Build before returning. */
   waitSeconds?: number;
@@ -78,14 +85,14 @@ export interface PublishBuildDependencies {
   token: () => Promise<string>;
 }
 
-const defaultDependencies: PublishBuildDependencies = {
+export const defaultDependencies: PublishBuildDependencies = {
   fetch: (input, init) => globalThis.fetch(input, init),
   sleep: (ms) => new Promise((done) => setTimeout(done, ms)),
   now: Date.now,
   token: () => getStoreAccessToken(),
 };
 
-interface Store {
+export interface Store {
   call<T = Record<string, unknown>>(
     method: string,
     path: string,
@@ -93,12 +100,20 @@ interface Store {
   ): Promise<T>;
 }
 
-function storeError(status: number, code: string, message: string | undefined): BuildToolError {
+export function storeError(status: number, code: string, message: string | undefined): BuildToolError {
   if (status === 401) {
     return new BuildToolError(
       "store_auth_refused",
       "The Summer store refused this sign-in.",
       'Recovery: run "summer login --store --force" and retry. If it is refused again, the store does not accept agent sign-ins yet: upload the .zip in Studio (Store > your game > Exports) until it does.',
+      status
+    );
+  }
+  if (status === 403 && code === "owner_approval_required") {
+    return new BuildToolError(
+      "owner_approval_required",
+      message || "Only the game's owner can do this.",
+      "Recovery: nothing went live. Submit with summer_store_submit and give the owner the approval link it returns; a live game's new download is finished by the owner in Studio.",
       status
     );
   }
@@ -114,7 +129,7 @@ function storeError(status: number, code: string, message: string | undefined): 
   return new BuildToolError(code, INTAKE_FAILURES[code] ?? message ?? `The Summer store refused the request (${status}).`, "Recovery: read the message, fix the export or version, and retry.", status);
 }
 
-function createStore(baseUrl: string, token: string, deps: PublishBuildDependencies): Store {
+export function createStore(baseUrl: string, token: string, deps: PublishBuildDependencies): Store {
   return {
     async call<T>(method: string, path: string, options: { body?: unknown; key?: string } = {}): Promise<T> {
       let response: Response;
@@ -163,7 +178,7 @@ function assertPartUrl(value: unknown): string {
 }
 
 /** Whole-file and per-part SHA-256 ("sha256:<hex>") in one pass. */
-async function hashParts(path: string, partSize: number): Promise<{ sha256: string; sizeBytes: number; parts: string[] }> {
+export async function hashParts(path: string, partSize: number): Promise<{ sha256: string; sizeBytes: number; parts: string[] }> {
   const whole = createHash("sha256");
   const parts: string[] = [];
   let part = createHash("sha256");
@@ -189,14 +204,14 @@ async function hashParts(path: string, partSize: number): Promise<{ sha256: stri
   return { sha256: `sha256:${whole.digest("hex")}`, sizeBytes, parts };
 }
 
-interface Grant {
+export interface Grant {
   partNumber: number;
   url: string;
   headers: Record<string, string>;
   expiresAt: number;
 }
 
-function readGrants(body: Record<string, any>): Grant[] {
+export function readGrants(body: Record<string, any>): Grant[] {
   if (!Array.isArray(body.parts)) {
     throw new BuildToolError("store_invalid_response", "The store did not return part upload URLs.", "Recovery: retry; a retry continues the same upload.");
   }
@@ -226,17 +241,20 @@ async function readPart(path: string, partNumber: number, partSize: number, size
   }
 }
 
-/** Upload every part: signed in batches, PUT from disk, re-signed when refused or about to expire. */
-async function uploadParts(
-  store: Store,
-  publicationPath: string,
+/**
+ * Upload the given parts: signed in batches, PUT from disk, re-signed when
+ * refused or about to expire. `sign` asks the store for URLs (build
+ * publications bind each to its part SHA-256; store versions to its length).
+ */
+export async function uploadParts(
+  sign: (partNumbers: number[]) => Promise<Grant[]>,
   file: string,
   sizeBytes: number,
   plan: { partSizeBytes: number; partCount: number },
-  partHashes: string[],
-  deps: PublishBuildDependencies
+  deps: PublishBuildDependencies,
+  parts: number[] = Array.from({ length: plan.partCount }, (_, index) => index + 1)
 ): Promise<void> {
-  const queue = Array.from({ length: plan.partCount }, (_, index) => index + 1);
+  const queue = [...parts];
   const grants = new Map<number, Grant>();
   let signing: Promise<void> | null = null;
   const fresh = (grant?: Grant) => grant !== undefined && grant.expiresAt - deps.now() > 60_000;
@@ -245,10 +263,9 @@ async function uploadParts(
       if (fresh(grants.get(partNumber))) return grants.get(partNumber)!;
       if (!signing) {
         const batch = [...new Set([partNumber, ...queue.filter((n) => !fresh(grants.get(n)))])].slice(0, MAX_SIGNED_PARTS);
-        signing = store
-          .call("POST", `${publicationPath}:signParts`, { body: { parts: batch.map((n) => ({ partNumber: n, sha256: partHashes[n - 1] })) } })
-          .then((body) => {
-            for (const grant of readGrants(body)) grants.set(grant.partNumber, grant);
+        signing = sign(batch)
+          .then((signed) => {
+            for (const grant of signed) grants.set(grant.partNumber, grant);
           })
           .finally(() => {
             signing = null;
@@ -321,6 +338,25 @@ function targetPlatforms(bundle: SummerBundle): string[] {
   return bundle.targetPlatforms;
 }
 
+/** gameId is required: the error carries the person's games when the store answers. */
+async function listGamesOrThrow(deps: PublishBuildDependencies): Promise<never> {
+  let games: Array<Record<string, unknown>> | undefined;
+  try {
+    const store = createStore(await resolveGatewayUrl(), await deps.token(), deps);
+    const page = await store.call<{ items?: Array<Record<string, any>> }>("GET", "games");
+    games = (page.items ?? []).map((game) => ({ id: game.id, name: game.name, slug: game.slug, status: game.status }));
+  } catch {
+    games = undefined;
+  }
+  throw new BuildToolError(
+    "game_required",
+    "gameId is required: the export is uploaded to one existing game.",
+    games ? "Recovery: pick the game's id from the list and retry." : "Recovery: copy the game id from Studio (the store page URL) and retry.",
+    undefined,
+    games ? { games } : undefined
+  );
+}
+
 export type PublishBuildResult = Record<string, unknown> & { ok: true; status: string };
 
 export async function publishBuild(
@@ -330,9 +366,17 @@ export async function publishBuild(
   const deps = { ...defaultDependencies, ...overrides };
   const gameId = input.gameId?.trim();
   const fileInput = input.file?.trim();
-  const file = fileInput ? resolve(fileInput) : (await readLastExport())?.path;
+  const last = await readLastExport();
+  const file = fileInput ? resolve(fileInput) : last?.path;
   if (!file) {
     throw new BuildToolError("export_required", "No export to upload.", "Recovery: run summer_export_game first, or pass file with the exported .zip.");
+  }
+  // The store's second path: a web build or native download becomes a store version.
+  const platform = input.platform?.trim() || (last?.path === file ? last.storePlatform : undefined);
+  if (platform) {
+    const clientVersion = normalizeClientVersion(input.clientVersion);
+    if (!gameId) return listGamesOrThrow(deps);
+    return publishDownload({ gameId, file, platform, clientVersion, confirm: input.confirm, waitSeconds: input.waitSeconds, face: input.face }, deps);
   }
   if (extname(file).toLowerCase() !== ".zip") {
     throw new BuildToolError("export_format_unsupported", `${file} is not a summer.games .zip export.`, "Recovery: export with summer_export_game and upload that .zip.");
@@ -355,23 +399,7 @@ export async function publishBuild(
     publish,
   };
 
-  if (!gameId) {
-    let games: Array<Record<string, unknown>> | undefined;
-    try {
-      const store = createStore(await resolveGatewayUrl(), await deps.token(), deps);
-      const page = await store.call<{ items?: Array<Record<string, any>> }>("GET", "games");
-      games = (page.items ?? []).map((game) => ({ id: game.id, name: game.name, slug: game.slug, status: game.status }));
-    } catch {
-      games = undefined;
-    }
-    throw new BuildToolError(
-      "game_required",
-      "gameId is required: the export is uploaded to one existing game.",
-      games ? "Recovery: pick the game's id from the list and retry." : "Recovery: copy the game id from Studio (the store page URL) and retry.",
-      undefined,
-      games ? { games } : undefined
-    );
-  }
+  if (!gameId) return listGamesOrThrow(deps);
 
   if (input.confirm !== true) {
     return {
@@ -422,7 +450,13 @@ export async function publishBuild(
         throw new BuildToolError("store_invalid_response", "The store's part plan does not fit this file.", "Recovery: retry; if it repeats, report the store as unhealthy.");
       }
       const partHashes = plan.partSizeBytes === PART_BYTES ? digest.parts : (await hashParts(file, plan.partSizeBytes)).parts;
-      await uploadParts(store, publicationPath, file, digest.sizeBytes, plan, partHashes, deps);
+      await uploadParts(
+        async (numbers) => readGrants(await store.call("POST", `${publicationPath}:signParts`, { body: { parts: numbers.map((n) => ({ partNumber: n, sha256: partHashes[n - 1] })) } })),
+        file,
+        digest.sizeBytes,
+        plan,
+        deps
+      );
       await store.call("POST", `${publicationPath}:source-complete`, { body: {}, key: key(`seal:${publicationId}`) });
       uploaded = true;
     }

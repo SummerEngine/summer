@@ -1199,7 +1199,7 @@
       "id": "skill/concept-art",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "5fff2853775020d661a607c1a4b1ecbb6161f30b4c98bb7f6bd2590453875719",
+      "content_hash": "00ac3e2566171e6825f5654edeedfca7cc1e9250354547e0ea3cd834fa29d707",
       "summary": "Explore art direction with 3-4 rough concept variants of a character, environment, or prop to pick a vibe before committing to a final asset.",
       "use_when": [
         "exploring art direction with rough variants before committing to a final asset",
@@ -6343,7 +6343,7 @@
       "id": "tool/generate-image",
       "kind": "tool",
       "version": "1.0.3",
-      "content_hash": "ca4f1425c3d0340c7758c7c2fb3eaa6647b51121aa7c11c2536f9d78aefc3cda",
+      "content_hash": "89025d8f6c42acfbb04e950b34979ba68f48cb24c60e1641c665e339a5b9b687",
       "summary": "Generate or edit an image with allowlisted AI models via Summer Studio; supports text-to-image, image-to-image, and optional background removal.",
       "use_when": [
         "creating concept art, textures, or sprites from a prompt",

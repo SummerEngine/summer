@@ -1,4 +1,4 @@
-# Example evals — must execute against a pinned engine
+# Example evals: must execute against a pinned engine
 
 **What is tested:** that every `library/examples/<slug>/` actually works — the
 project opens, runs headless without script errors, and its claimed evidence
@@ -22,8 +22,8 @@ Per example:
    result; CI fails on any fail, and a scheduled run re-executes the whole
    library on each engine release to auto-flag broken entries.
 
-The runner interface is typed today in `runner-interface.ts` so the library
-migration can author examples against a fixed contract. The stub runner exits
+The runner interface is typed today in `runner-interface.ts` so example
+authors code against a fixed contract. The stub runner exits
 SKIP (exit code 0 + `SKIP` marker) until `library/examples/` and the pinned
 engine fetcher exist.
 

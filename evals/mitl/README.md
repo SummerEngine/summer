@@ -61,7 +61,7 @@ Scores per task: `playable`, `checks_passed n/m`, `tool_calls` (total / MCP / bu
 
 ## What it measures — and what it does not
 
-- It measures whether **the toolkit lets a competent model finish a reasonable task** on a real
+- It measures whether **Summer lets a competent model finish a reasonable task** on a real
   engine: did the tools it reached for exist, do what their descriptions say, return errors it could
   act on, and leave a project that still boots without errors.
 - `playable` means the autopilot **smoke** passed: the game booted offscreen, ran 60 physics frames,
@@ -74,7 +74,7 @@ Scores per task: `playable`, `checks_passed n/m`, `tool_calls` (total / MCP / bu
 - **No human judgment** of fun, feel, art or code quality. **No** measurement of the interactive
   Claude Code UX (permission prompts, skill picking by a human). One run per task: variance is
   unmeasured — do not read a single pass/fail as a rate.
-- The prompts named in the brief for 2d-platformer, 3d-third-person-controller and
+- The first prompts drafted for 2d-platformer, 3d-third-person-controller and
   2d-brario-platformer asked for features those templates already ship; `tasks.yaml` says what was
   substituted and why.
 
@@ -96,7 +96,7 @@ Scores per task: `playable`, `checks_passed n/m`, `tool_calls` (total / MCP / bu
   `se_session` cookie into its Studio webview — an editor launched with the real HOME would run
   production Studio as the developer. `NSHomeDirectory` honours `$HOME`, so Application Support, WebKit,
   HTTPStorages and `~/.summer` all land under the fake HOME: a cold machine. The instance file the
-  toolkit needs therefore appears in the fake `~/.summer/instances/` directly (no copy step);
+  MCP server needs therefore appears in the fake `~/.summer/instances/` directly (no copy step);
   `--summer-no-publish` additionally stops the global `api-token`/`api-port` from being written.
   The developer's real `~/.claude`, `~/.claude.json` and `~/.summer` are never written by the runner.
 - **Isolation audit** (`<task>/isolation.txt`, also in the task notes): `editor.log` must not mention

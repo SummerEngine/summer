@@ -1,6 +1,6 @@
 # Installing Summer in OpenCode
 
-OpenCode loads plugins as JavaScript modules from `node_modules`, so installation = `npm install` of this package into your OpenCode project.
+OpenCode loads plugins as JavaScript modules from `node_modules`, so you install this package into your OpenCode project with npm.
 
 ## Quick install
 
@@ -18,7 +18,7 @@ Then add the plugin to your `opencode.json`:
 }
 ```
 
-OpenCode resolves `summer-engine` via the package's `main` field, which points to the Summer plugin entry. You can also pin to git for unreleased changes:
+OpenCode resolves `summer-engine` through the package's `main` field, which points to the Summer plugin entry. To try unreleased changes, pin to git:
 
 ```json
 {
@@ -26,13 +26,13 @@ OpenCode resolves `summer-engine` via the package's `main` field, which points t
 }
 ```
 
-Restart OpenCode. The orientation primer ("Summer Engine is loaded. …") is prepended to the first user message of every new session, and the plugin registers `node_modules/summer-engine/library/skills/` in `skills.paths` so every `summer:<slug>` skill is discoverable.
+Restart OpenCode. The plugin prepends a short orientation ("Summer Engine is loaded. …") to the first user message of every new session, and registers `node_modules/summer-engine/library/skills/` in `skills.paths` so OpenCode finds every Summer skill by its plain name (`using-summer`, `fps-controller`).
 
 ## What this gives you
 
-- **Summer skills** under the `summer:` namespace, including `using-summer`, `brainstorm-game`, `debug`, `play`, `fps-controller`, `gdscript-patterns`, `scene-composition`, `art-direction`, and more.
-- **A `summer-engine` MCP server** — start it with `npx summer-engine mcp` and OpenCode will route scene/diagnostics/asset tools to your local Summer Engine running on `localhost:6550`.
-- **Session-start orientation** — first user message of every session is prefixed with the using-summer primer so the model invokes skills before responding.
+- **Summer skills**, including `using-summer`, `brainstorm-game`, `debug`, `play`, `fps-controller`, `gdscript-patterns`, `scene-composition`, `art-direction`, and more.
+- **The `summer-engine` MCP server** (configured below), which connects OpenCode to the Summer Engine editor running on your machine for scene, diagnostics and asset tools.
+- **Session-start orientation**: the first user message of each session gets the orientation, so the model checks for a skill before it answers.
 
 ## Configure the MCP server
 
@@ -50,7 +50,7 @@ Add this block to your `opencode.json` so OpenCode launches the MCP server on de
 }
 ```
 
-This is exactly what `npx -y summer-engine@latest setup opencode --yes` writes (to `~/.config/opencode/opencode.json`, or `./opencode.json` with `--scope project`). OpenCode's local MCP entries take `type: "local"` and an array `command`; the older `{ "command": "npx", "args": [...] }` shape is not accepted.
+`npx -y summer-engine@latest setup opencode --yes` writes this same block (to `~/.config/opencode/opencode.json`, or `./opencode.json` with `--scope project`). OpenCode's local MCP entries take `type: "local"` and an array `command`; the older `{ "command": "npx", "args": [...] }` shape is not accepted.
 
 ## Verify
 
@@ -58,7 +58,7 @@ In a fresh OpenCode session, ask:
 
 > Let's make an FPS in Summer Engine.
 
-The model should load the `summer:fps-controller` skill (via its `skill` tool) before writing any code. If it doesn't, the plugin isn't loaded — check `opencode.json` and your `node_modules/summer-engine/` install.
+The model should load the `fps-controller` skill (via its `skill` tool) before writing any code. If it doesn't, the plugin isn't loaded — check `opencode.json` and your `node_modules/summer-engine/` install.
 
 ## Troubleshooting
 

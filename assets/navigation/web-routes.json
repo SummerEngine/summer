@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0",
-  "source": "Matches publicsummerengine src/lib/navigation/routes.ts on branch feat/agent-routes-catalog (2026-09-10; account tab removed on web main). Refresh from the live catalog with: npm run sync:web-routes",
+  "source": "Snapshot of https://www.summerengine.com/agent-routes.json. Refresh with: npm run sync:web-routes",
   "base": "https://www.summerengine.com",
   "docsBase": "https://docs.summerengine.com",
   "login": {

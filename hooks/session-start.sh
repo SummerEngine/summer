@@ -3,8 +3,8 @@
 #
 # Event:    SessionStart (matcher: startup|clear|compact)
 # Purpose:  Orient Claude on every fresh Summer-enabled session.
-#           Detect Summer project + GameSoul + doctor health, surface a one-line
-#           Bob-style greeting as additional context.
+#           Detect Summer project + GameSoul + doctor health and surface a short
+#           greeting as additional context.
 #
 # Input:    JSON on stdin with { session_id, source, model, cwd, ... }
 #           Common Claude Code env vars: $CLAUDE_PROJECT_DIR, $CLAUDE_PLUGIN_ROOT

@@ -1,7 +1,7 @@
 #!/bin/bash
 # compat-smoke.sh — latest-MCP x candidate-engine compatibility smoke gate.
 #
-# Builds the LOCAL summer-cli, starts its real MCP server over stdio, and
+# Builds the LOCAL CLI, starts its real MCP server over stdio, and
 # drives the real summer_* tool handlers against the RUNNING Summer editor —
 # exercising the actual op-composition layer (scene-tools batch splitting)
 # that unit tests on both sides mock away. See compat-smoke.mjs for the
@@ -15,7 +15,7 @@
 #   summer create empty /tmp/compat-scratch && open it in Summer Engine
 #
 # Usage:
-#   bash tools/summer-cli/scripts/compat-smoke.sh [--project <path>]
+#   bash scripts/compat-smoke.sh [--project <path>]
 #
 # --project is required only when more than one Summer editor is running.
 # Env: SUMMER_COMPAT_SKIP_BUILD=1 skips npm run build (dist/ must exist).

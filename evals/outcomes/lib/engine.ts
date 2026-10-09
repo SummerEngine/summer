@@ -8,8 +8,7 @@
  * ready   -> discover the instance through the SAME registry code the toolkit's
  *            `summer mcp --project` uses (src/core/engine.ts
  *            resolveEngineConnection: ~/.summer/instances/*.json, resourceRoot
- *            match, live pid, fresh heartbeat, health check) — which is also
- *            exactly what the engine repo's run_e2e.sh discover_instance does.
+ *            match, live pid, fresh heartbeat, health check).
  * ops     -> raw op envelopes through the toolkit's EngineApiClient (identity
  *            bound: every request carries instanceId + projectIdHash).
  * stop    -> TERM the editor pid, never the xvfb-run launcher first (a TERM'd

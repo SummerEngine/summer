@@ -1,4 +1,4 @@
-# Skill evals — behavioral specs
+# Skill evals: behavioral specs
 
 **What is tested:** that an agent following a skill produces the right behavior — correct tool sequences, correct artifacts, correct refusals/clarifications — not that the skill's prose reads well.
 
@@ -28,24 +28,23 @@ Body structure (inherited from the original prose specs, kept because it works):
 
 ## How to run
 
-Today: manually, via `/skill-test <slug> spec` (see `skills/workflow/skill-test/`),
+Today: manually, via `/skill-test <slug> spec` (see `library/skills/skill-test/`),
 or by handing the fixture + input to an agent and checking assertions by hand.
 `skill-improve` uses these specs as its with/without harness.
 
-Automated execution (LLM-driven, against a live engine fixture) is a
-planned, not built. The specs are written
-so that the future runner needs no reformatting: fixture is machine-buildable,
-inputs are literal strings, assertions are checkable predicates.
+Automated execution (LLM-driven, against a live engine fixture) is planned,
+not built. The specs are written so a future runner needs no reformatting:
+fixtures are machine-buildable, inputs are literal strings, assertions are
+checkable predicates.
 
 ## CI
 
-No CI gate yet (nothing to execute deterministically without an LLM + engine).
-What CI does enforce today: every `specs/*.md` must have valid frontmatter whose
-`skill:` ID exists in the library — checked by the routing runner's corpus and
-eyeballed in review. When the automated runner lands, `status: ported` specs
-become required gates for changes to their skill.
+No CI gate yet: nothing runs deterministically without an LLM and an engine.
+Reviewers check that each spec's `skill:` ID exists in the library. When the
+automated runner lands, `status: ported` specs become required gates for
+changes to their skill.
 
 ## Coverage
 
-- 15 ported specs in `specs/` (from `tests/specs/`, the 21 prose specs minus stubs).
+- 12 ported specs in `specs/`, from the prose specs in `tests/specs/`.
 - 6 TBD stubs and the skills with no spec at all are tracked in [issue #77](https://github.com/summerengine/summer/issues/77).

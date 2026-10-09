@@ -1,4 +1,4 @@
-# Canary — blind A/B gateway for tool-suite trials
+# Canary: blind A/B gateway for tool-suite trials
 
 A stdio MCP **proxy** that sits between an agent under test and the real
 `summer mcp` server and makes the agent blind to which arm it is in. It exists
@@ -32,12 +32,10 @@ measured.
   budget, timeout. A second invocation against the same artifacts directory
   must reproduce the same catalog hash or it refuses.
 
-It does **not** score anything. The measurement protocol for the placement
-A/B this was built for (grounded state, contact/overlap, target-center error,
-per-side clearances, number of corrections, two same-camera renders) lives in
-the engine repo at
-`docs/superpowers/specs/2026-08-31-starcast-placement-ab-test-design.md`;
-you compute those from the trial's `calls.jsonl` results and captures.
+It does **not** score anything. For the placement A/B it was built for, you
+compute the measures (grounded state, contact/overlap, target-center error,
+per-side clearances, number of corrections, two same-camera renders) from the
+trial's `calls.jsonl` results and captures.
 
 ## Running an A/B
 
@@ -96,42 +94,13 @@ Gateway errors are structured: `{"ok":false,"error":{"code":…,"message":…}}`
 with codes such as `tool_not_visible`, `canary_raw_op_denied`,
 `call_budget_exhausted`, `canary_not_registered`, `mcp_startup_failed`.
 
-## Verified in this checkout (2026-09-03)
+## Tests
 
-- `npm test` runs `canary-gateway-core.test.ts` (12 tests: arms differ by
-  exactly one canary; hidden call denied before invoke and budget consumed;
-  every canary raw op denied through `summer_batch`; budget fails closed;
-  catalog hash is order-independent; media sanitization).
-- Smoke against the built server (no engine running): control `list` → 63
-  tools with no canary visible; treatment `--canary summer_starcast` `list` →
-  64 with only `summer_starcast` added; `describe summer_starcast` returns
-  the live schema; control `call summer_starcast` → `tool_not_visible` (budget
-  consumed); treatment `call summer_batch` with a raw `Starcast3D` op →
-  `canary_raw_op_denied`; treatment `call summer_starcast` reaches the real
-  tool, which reports the engine is not running.
+`npm test` runs `canary-gateway-core.test.ts`: the arms differ by exactly one
+canary; a hidden call is denied before invoke and still consumes budget; every
+canary raw op is denied through `summer_batch`; the budget fails closed; the
+catalog hash is order-independent; media blocks are sanitized.
 
-## Origin and adaptations
-
-Written by Marcus (frozaken) in the engine repo, SummerEngine/SummerEngine
-branch `codex/world-tool-balanced-suite-ready`, files
-`tools/summer-cli/src/dev/canary-gateway-core.ts` (+ `.test.ts`),
-`canary-gateway.ts`, `canary-mcp-server-host.ts` (commits "test: add blind
-tool canary gateway", "test: keep blind arm policy opaque", "Harden
-world-building spatial tools"). It had no npm script or docs there.
-
-Ported here 2026-09-03 into `evals/` (it is an evaluation harness, not
-product code — `src/` is the shipped CLI). Adaptations, all mechanical:
-
-- `.ts` import specifiers and the host launched as `.ts`, so it runs under
-  Node's type stripping without a build step (the CLI it proxies still needs
-  `npm run build`).
-- The two constructors in the core used TypeScript parameter properties,
-  which Node's strip-only mode rejects; they now assign explicit fields.
-  Behavior unchanged, test file verbatim apart from the import extension.
-- Default `--server-entry` is `<repo>/dist/bin/summer.js` (was the sibling
-  `bin/` of the built `dev/` directory).
-- `npm run eval:canary` added.
-
-Nothing it depends on was removed in v3: it needs only
-`@modelcontextprotocol/sdk` (a runtime dependency) and the built server's
-`startMcpServer({ projectPath, cwd })`, which v3 keeps.
+The scripts run unbuilt under Node type stripping. Only the CLI they proxy
+needs `npm run build`. Dependencies: `@modelcontextprotocol/sdk` and the built
+server's `startMcpServer({ projectPath, cwd })`.

@@ -5,7 +5,7 @@ is intentionally empty. Support is delivered at install time by
 `summer setup mistral-vibe` (aliases: `vibe`, `mistral`), which writes:
 
 - MCP config: `~/.vibe/config.toml`; Windows `%USERPROFILE%/.vibe/config.toml` (user); `.vibe/config.toml` (project).
-  Shape: undefined.
+  Shape: a `[[mcp_servers]]` entry with `name`, `transport`, `command`, `args` (TOML).
 - Skills: `~/.vibe/skills` (user) or `.agents/skills` (project) as `<skill>/SKILL.md`.
 - After: Restart Vibe so it reloads config.toml.
 

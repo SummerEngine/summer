@@ -1,23 +1,20 @@
-# Tool evals — conformance = schema round-trip
+# Tool evals: conformance
 
 **What is tested:** that every `library/tools/<slug>/` descriptor and its
-implementation in `src/core/capabilities/` agree — one `input_schema`, two
-derived surfaces (zod for MCP, commander for CLI), zero drift.
+implementation agree: one `input_schema`, matched by the MCP zod shape and the
+`summer tool` dispatch, with zero drift.
 
 ## Contract (CONTRACT.md §5 tool extension, §6 invariant)
 
 Per tool resource.yaml:
 
 1. **Implementation exists.** `implementation.module` + `implementation.export`
-   resolve to a real export in `src/core/capabilities/`. A descriptor pointing
+   resolve to a real export in `src/`. A descriptor pointing
    at nothing is a FAIL (the §6 no-double-registration invariant's other half:
    no ghost registration either).
-2. **Schema round-trip.** `input_schema` (JSON Schema, the single source):
-   - derive the zod schema (as the MCP adapter does) and re-emit JSON Schema
-     from it — the re-emission must be semantically equal to the source
-     (same required set, same types, same enums, same defaults);
-   - derive the commander option/argument set (as the CLI adapter does) and
-     verify every schema property is reachable from the CLI and vice versa.
+2. **Schema match.** The MCP tool's zod shape and the descriptor's
+   `input_schema` agree: same required set, same types, same enums, same
+   defaults. `summer tool <slug>` validates against the same shape.
 3. **Surface truth.** `surfaces` claims match reality: the MCP tool name is
    registered iff `surfaces.mcp` is declared; the CLI command path exists iff
    `surfaces.cli` is declared; `mcp.remote: true` tools import nothing from the
@@ -30,15 +27,18 @@ Per tool resource.yaml:
 5. **Golden invocations** (per-tool, optional): `evidence_checks` name minimal
    input → expected-shape output cases, run against a mock engine connection.
 
-## How to run
+## How it runs today
 
-The round-trip harness depends on the registry compiler's derivation code
-(zod + commander both derive from `input_schema` — CONTRACT.md §6.4). It lands
-with or immediately after the compiler; conformance tests import the SAME
-derivation functions the compiler uses, so the eval can never drift from
-production derivation.
+- `src/mcp/tools/descriptor-parity.test.ts`: every MCP tool's zod shape
+  matches its descriptor's `input_schema`.
+- `src/core/capabilities/tool-dispatch.test.ts`: every tool is reachable as
+  `summer tool <slug>` with the same validation.
+- `npm run validate:library`: each descriptor names a module, export and MCP
+  tool that exist, and the MCP registrations equal the descriptors.
+
+Not built yet: the `mcp.remote` import check in item 3, the authority scan (item 4) and golden invocations (item 5).
 
 ## CI
 
-Runs as vitest suites once the compiler lands (pure TS, no engine, fast).
-Until then, `scripts/validate-library` already schema-validates descriptors.
+The tests above run in `vitest run`; the cross-checks run in
+`npm run validate:library`. Both are CI steps.

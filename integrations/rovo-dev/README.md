@@ -5,7 +5,7 @@ is intentionally empty. Support is delivered at install time by
 `summer setup rovo-dev` (aliases: `rovodev`, `rovo`, `atlassian-rovo-dev`), which writes:
 
 - MCP config: `~/.rovodev/mcp.json`; Windows `%USERPROFILE%/.rovodev/mcp.json` (user); user scope only (project requests fall back with a warning).
-  Shape: undefined.
+  Shape: `mcpServers.summer-engine = { command, args, transport: "stdio" }`.
 - Skills: `~/.agents/skills` (user) or `.agents/skills` (project) as `<skill>/SKILL.md`.
 - After: Restart Rovo Dev CLI so it reconnects its MCP servers.
 

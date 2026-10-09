@@ -1,20 +1,20 @@
 # Evals
 
-Evidence that the library works. Nine families, one rule: **an eval that cannot
-fail is documentation, not an eval.** Each family README defines its contract;
-this file is the map.
+Evidence that the library works. One rule: **an eval that cannot fail is
+documentation, not an eval.** Each family README defines its contract; this
+file is the map.
 
 | Family | Tests | Runner status | CI gate |
 |---|---|---|---|
 | [`routing/`](routing/) | Index + metadata quality: do real asks retrieve the right entries? | **LIVE** (`npm run eval:routing`) | no regression vs committed `baseline.json` |
-| [`skills/`](skills/) | Behavioral specs: does following a skill produce correct behavior? | manual (`/skill-test`); 21 specs in `tests/specs/`, gaps in [issue #77](https://github.com/summerengine/summer/issues/77) | none yet (needs LLM+engine harness) |
+| [`skills/`](skills/) | Behavioral specs: does following a skill produce correct behavior? | manual (`/skill-test`); 18 specs in `tests/specs/` (6 are stubs), gaps in [issue #77](https://github.com/summerengine/summer/issues/77) | none yet (needs LLM+engine harness) |
 | [`examples/`](examples/) | Every example executes against its pinned engine + evidence re-verifies | typed interface + SKIP stub | stub runs green; real runner flips it to a gate |
-| [`templates/`](templates/) | Pin integrity: clone-at-commit, tree-digest verify, project-opens smoke | contract defined; lands with template migration | steps 1–3 on `library/templates/**` PRs |
-| [`tools/`](tools/) | Conformance: input_schema round-trips to zod + commander with zero drift | lands with the registry compiler (shares its derivation code) | vitest, once compiler lands |
+| [`templates/`](templates/) | Pin integrity: clone-at-commit, tree-digest verify, project-opens smoke | fetch + digest verify as an opt-in unit test (`SUMMER_E2E=1`); full runner not built | none yet |
+| [`tools/`](tools/) | Conformance: each descriptor's `input_schema` matches the MCP zod shape and the `summer tool` dispatch | **LIVE** in `npm test` (`descriptor-parity.test.ts`, `tool-dispatch.test.ts`) + `validate:library` cross-checks | vitest + validate:library |
 | [`end-to-end/`](end-to-end/) | The make-a-game ladder E0–E5: whole-system builds of real games | definition binding; runner future | nightly/weekly, never per-PR |
 | [`canary/`](canary/) | Blind A/B gateway: a stdio MCP proxy that hides or reveals one canary tool per arm, enforces a call budget, records evidence | **LIVE** (`npm run eval:canary`; needs `npm run build` + a fixture project) | none — manual trials; its policy core is unit-tested in `npm test` |
 | [`outcomes/`](outcomes/) | Agent OUTCOMES, not op correctness: replayed trajectories against a fresh engine on pristine fixtures, judged by assertions over snapshots, the saved `.tscn`, a clean play and probe reads from the running game | **LIVE, MVP-0** (`npm run eval:outcomes`; needs `npm run build` + `SUMMER_EDITOR_BIN`; replay only, assertions only) | per PR `--dry-run` (schema + golden drift); the engine-backed replay is nightly, gated on committed `baseline.json` via `--check` |
-| [`mitl/`](mitl/) | Model-in-the-loop: a real model drives this checkout's MCP server against a real editor on a pristine template project; scored by the template's autopilot probe | **LIVE, manual** (needs `npm run build`, a Claude login token and a launch window; 1 of 8 tasks run so far) | none; results are evidence, not a gate |
+| [`mitl/`](mitl/) | Model-in-the-loop: a real model drives this checkout's MCP server against a real editor on a pristine template project; scored by the template's autopilot probe | **LIVE, manual** (needs `npm run build`, a Claude login token and a launch window) | none; results are evidence, not a gate |
 
 ## Routing eval (the one that runs today)
 
@@ -24,13 +24,11 @@ npm run eval:routing -- --update-baseline  # accept a new baseline (commit the d
 npm run eval:routing -- --verbose          # includes the gap report
 ```
 
-- Corpus: `registry/generated/index.json` when it exists; falls back to
-  `library/skills/*/resource.yaml`, then to `skills/**` SKILL.md frontmatter
-  (pre-migration). Same queries, same gate across all three — the eval survives
-  the migration without edits.
-- Ranker: BM25 over slug tokens (boosted) + summary/description + use_when.
-  Deliberately dumb and deterministic: it measures METADATA quality, not LLM
-  routing skill.
+- Corpus: `registry/generated/index.json`; falls back to
+  `library/skills/*/resource.yaml` when the index is missing.
+- Ranker: the same deterministic ranker runtime search uses
+  (`src/core/registry-search.ts`: BM25 plus a kind prior and a related boost).
+  It measures METADATA quality, not LLM routing skill.
 - Metrics: mean recall@5; hijack flags (a non-expected entry outranking every
   expected one); per-query recall.
 - `expected_gap: true` queries are the authoring backlog — real asks the
@@ -39,16 +37,17 @@ npm run eval:routing -- --verbose          # includes the gap report
 
 ## CI
 
-`.github/workflows/ci.yml`, on PR + push to `main`/`v3-foundation`:
+`.github/workflows/ci.yml`, on every PR and push to `main`:
 
 1. `npm ci` (Node 22)
 2. `tsc --noEmit`
 3. `vitest run`
 4. `npm run validate:library` (schemas + capability lint)
-5. `npm run eval:routing -- --check` (regression gate)
-6. `npm run eval:outcomes -- --dry-run` (task/assertion schema + golden drift; no engine)
-7. registry parity (`generate:registry -- --check`) — soft-skips with a warning
-   until the compiler lands, then becomes the CONTRACT §6 drift gate.
+5. `npm run eval:routing -- --check` (regression gate), then the held-out set
+   (report only)
+6. `node evals/examples/runner-stub.ts` (SKIP until examples exist)
+7. `npm run eval:outcomes -- --dry-run` (task/assertion schema + golden drift; no engine)
+8. registry parity (`generate:registry -- --check`): the CONTRACT §6 drift gate
 
 ## Outcome eval (replay, assertions only — MVP-0)
 

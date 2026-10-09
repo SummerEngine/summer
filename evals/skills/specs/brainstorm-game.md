@@ -27,7 +27,7 @@ runner: manual   # /skill-test today; no automated harness yet
 5. Skill drafts the 1-page brief inline, shows it to the user.
 6. Skill asks: "May I create `.summer/GameSoul.md` with this brief?"
 7. On yes, calls `Write .summer/GameSoul.md`.
-8. Skill ends with the routing question pointing to `/summer:design-mechanic` or similar.
+8. Skill ends with the routing question pointing to the `design-mechanic` skill or similar.
 
 **Assertions:**
 

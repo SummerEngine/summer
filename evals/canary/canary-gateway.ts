@@ -3,11 +3,9 @@
  * Blind tool-canary gateway — CLI (stdio MCP proxy in front of the real
  * `summer mcp` server; see README.md).
  *
- * Origin: SummerEngine/SummerEngine branch codex/world-tool-balanced-suite-ready,
- * tools/summer-cli/src/dev/canary-gateway.ts (Marcus / frozaken). Ported into
- * evals/canary/ 2026-09-03. Edits: `.ts` import specifiers (Node type
- * stripping), the host is launched as `.ts`, and the default --server-entry is
- * this checkout's dist/bin/summer.js.
+ * Runs unbuilt under Node type stripping (`.ts` import specifiers, the host is
+ * launched as `.ts`). The default --server-entry is this checkout's
+ * dist/bin/summer.js.
  */
 
 import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, realpathSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";

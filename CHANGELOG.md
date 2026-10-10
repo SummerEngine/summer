@@ -2,9 +2,39 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [3.4.0] - 2026-10-09
+
+Publishing a game from your agent now works end to end, with fewer surprises:
+
+- Take store screenshots of real gameplay without opening the editor (`summer_capture_gameplay`).
+- Make store-size art: ask `summer_generate_image` for an aspect ratio or a size.
+- See the store tools as soon as your agent connects, and use them from the terminal (`summer tool`). `summer doctor` checks that the store accepts your sign-in.
+- An export tells you first when your Summer Engine is too old, shows the engine's real error when it fails, and lists the project files it changed.
+- A publish preview checks that the game exists before it asks you to confirm.
+- `summer install --path` installs Summer.app into the folder you name, and every command uses that engine.
+- New skills for running the engine safely from an agent and for games that also run on the Compatibility renderer.
+
+### Added
+- `summer_capture_gameplay` (CLI `summer tool capture-gameplay`): saves real gameplay frames (HUD included) without a running editor. It starts the game in the engine's offscreen verify instance (`--summer-verify`, real renderer, window offscreen, no focus, never `--headless`) at `resolution` (default `1920x1080`), waits `waitSeconds`, and saves `frames` PNGs to `<project>/.summer/captures/<time>/`. It imports a never-opened project first, passes `--summer-no-api`, and returns each frame's path with its real width and height. It warns when the stretch settings render another size.
+- `summer_generate_image` `aspectRatio` (1:1, 16:9, 9:16, 4:3, 3:4, 3:2, 2:3, 5:4, 4:5, 21:9) and `width` + `height` (64 to 4096), sent to the image route as top-level fields. The server picks a model that reaches the size, or refuses a named model that cannot, before any spend. The result reports the real size and the model. The `options` description now says what the server really does. Until the server side ships, the new fields are accepted and ignored.
+- `summer tool` runs a name that is not a local tool on the hosted Summer Engine MCP with the store sign-in (`summer tool summer_store_list_games`). `summer tool --list` lists the hosted tools after the local ones, or says to run `summer login --store`.
+- `summer doctor` store-access check: with a store sign-in it calls `summer_store_list_games` (8 s limit) and shows the answer, or the store's code, message and request id on a refusal. Without a sign-in it says only publishing needs one.
+- `summer doctor` shows the installed engine version and warns below 0.7.0, the first version that exports for summer.games.
+- Skills `bounded-engine-runs` (run the engine from an agent with a time limit, a memory cap, one engine per project, muted and offscreen) and `compatibility-renderer-traps` (Forward+ games that also run on Compatibility: the instance-uniform budget, black MultiMesh colors, sRGB vertex colors, paired captures).
+
+### Changed
+- With a store sign-in, the first `tools/list` waits up to 5 s for the hosted mount, so hosts that list tools once see the store tools. Without a sign-in nothing waits. A slower mount still adds them later.
+- `summer_export_game` reads the engine version before it writes any preset. Below 0.7.0 it stops with `engine_too_old` and says how to update; nothing is written to the project.
+- `summer_export_game` runs the engine with `--summer-no-api`, so an export no longer starts the local engine API. The result lists `projectChanges` (top-level files created, changed or deleted) and warns when the engine rewrote `project.godot`.
+- `summer_publish_build` checks the game in the store before the confirmation preview. An unknown id returns `game_not_found` with your real games. A platform the store page does not list returns a warning. The preview shows the game name and id.
+- `summer install --path` on macOS installs to `<dir>/Summer.app` (before, the bundle's contents went loose into the folder). Each install is recorded in `~/.summer/engine-install.json`, and run, doctor and export use that engine before the default locations. Without a terminal, progress prints one line per 10%. After an install, a note says the first start of a new engine version can take several minutes.
+- `export-and-ship` skill: store key art, covers and icons carry no text, logos or UI; screenshots are real gameplay and may show the game's own HUD. On the hosted-game error "is in the source graph's authority_engine domain", narrow the authority root in `source-domains.json`.
+- `concept-art` skill no longer says the aspect ratio cannot be set over MCP.
 
 ### Fixed
+- `summer_export_game` failures show the engine's own `ERROR:` lines: the first three in the message, up to 20 in `detail.errors`, instead of a guess about an old engine. The old-engine hint appears only when the engine names a missing or invalid preset. A source-graph domain error gets its own recovery step.
+- `summer_publish_build` without a `gameId` says why the game list is missing (for example the store's 401 message). `store_auth_refused` carries the store's message and request id and no longer sends you to `summer login --store --force` first, which looped.
+- `gateway.url`, `creator.apiUrl` and the creator upload URL accept the IPv6 loopback (`http://[::1]:3000`) as local HTTP.
 - `in-game-purchases` skill: uses only engine APIs that exist. It no longer calls `Summer.client.store.request_sparks_purchase`, `check_sparks_purchase_readiness` or `Summer.authority.items.consume`, which the engine does not have. Short players get Sparks in the Summer app; an authority grants a paid effect after checking `Summer.authority.items.inventory_for_session` and recording the redemption in the player's secret player data.
 - `summer_api_docs`: the offline class reference is rebuilt from the engine's current class XML (1282 classes), so it now includes `SummerRuntime` (`Summer`), `Summer.client.*`, `Summer.authority.*` and the Summer SDK types.
 

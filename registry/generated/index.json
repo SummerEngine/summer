@@ -6520,7 +6520,7 @@
       "id": "tool/generate-image",
       "kind": "tool",
       "version": "1.0.3",
-      "content_hash": "89025d8f6c42acfbb04e950b34979ba68f48cb24c60e1641c665e339a5b9b687",
+      "content_hash": "ebcde177678f94d41a8f76de13a1ddfef2b1a1433566d91c3b3565cf84ab6b48",
       "summary": "Generate or edit an image with allowlisted AI models via Summer Studio; supports text-to-image, image-to-image, and optional background removal.",
       "use_when": [
         "creating concept art, textures, or sprites from a prompt",

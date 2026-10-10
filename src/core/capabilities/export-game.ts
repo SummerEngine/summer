@@ -7,7 +7,7 @@ import { findEngineBinary } from "../engine-install.js";
 import { readStoreJson, writeStoreJson } from "../store.js";
 import { writeZip } from "../util/zip-write.js";
 import { engineErrorLines, runEngine, type EngineRun } from "./engine-run.js";
-import { assertExportEngine, installedEngineVersion } from "./export-engine-version.js";
+import { assertExportEngine, ENGINE_UPDATE_HOW, installedEngineVersion, targetsNeedingNewerEngine } from "./export-engine-version.js";
 import {
   BUNDLE_TARGETS,
   DOWNLOAD_TARGETS,
@@ -97,6 +97,8 @@ export interface ExportGameResult {
   preset: string;
   /** The targets asked for, when any were. */
   targets?: StoreTarget[];
+  /** Asked-for targets left out of the bundle (an engine too old for them); warnings say why. */
+  skippedTargets?: StoreTarget[];
   /** What happened to export_presets.cfg for the preset this export used. */
   presetChange?: EnsuredPreset["change"];
   debug: boolean;
@@ -427,7 +429,7 @@ export async function exportGame(
 ): Promise<ExportGameResult> {
   const deps = { ...defaultDependencies, ...overrides };
   const project = resolveExportProject(input.project);
-  const targets = input.targets?.length ? normalizeTargets(input.targets) : undefined;
+  let targets = input.targets?.length ? normalizeTargets(input.targets) : undefined;
   const format = resolveFormat(input, targets);
   const debug = input.debug === true;
   const started = deps.now();
@@ -455,7 +457,27 @@ export async function exportGame(
     );
   }
   // Before any preset is written: an old engine cannot read them.
-  assertExportEngine(binary, deps.engineVersion(binary));
+  const engineVersion = deps.engineVersion(binary);
+  assertExportEngine(binary, engineVersion);
+  // A target this engine cannot build is left out, not the whole export.
+  const skipped = format === "bundle" && targets ? targetsNeedingNewerEngine(targets, engineVersion) : [];
+  const skippedWarnings = skipped.map(
+    ({ target, needs }) =>
+      `${target} was not exported: it needs Summer Engine ${needs} or newer, and ${engineVersion} is installed. Update (${ENGINE_UPDATE_HOW}) and export ${target} again.`
+  );
+  if (skipped.length) {
+    const left = targets!.filter((target) => !skipped.some((entry) => entry.target === target));
+    if (!left.length) {
+      throw new BuildToolError(
+        "export_target_unsupported",
+        `Summer Engine ${engineVersion} cannot export ${skipped.map((entry) => entry.target).join(", ")}.`,
+        `Recovery: ${skippedWarnings.join(" ")}`,
+        undefined,
+        { engineVersion, skippedTargets: skipped }
+      );
+    }
+    targets = left;
+  }
 
   if (format === "download") {
     return exportDownload(deps, binary, project, targets![0] as "web" | "macos" | "windows", out, debug, timeoutMs, started);
@@ -479,7 +501,9 @@ export async function exportGame(
 
   const bundle = await readSummerBundle(out);
   const missing = (targets ?? []).filter((target) => !bundle.targetPlatforms.includes(target));
-  if (missing.length) {
+  // Some targets made it: keep the bundle and say which did not.
+  const partial = missing.length > 0 && missing.length < (targets ?? []).length;
+  if (missing.length && !partial) {
     throw new BuildToolError(
       "export_target_unsupported",
       `This Summer Engine exported the bundle without ${missing.join(", ")}: its summer.games preset has no such platform.`,
@@ -490,7 +514,13 @@ export async function exportGame(
       { exportedPlatforms: bundle.targetPlatforms, path: out }
     );
   }
-  const warnings: string[] = projectChangeWarnings(projectChanges);
+  const warnings: string[] = [...skippedWarnings, ...projectChangeWarnings(projectChanges)];
+  if (partial) {
+    warnings.push(
+      `This Summer Engine exported the bundle without ${missing.join(", ")}: its summer.games preset has no such platform. ` +
+        ["Update Summer Engine and export them again.", ...missing.flatMap((target) => TARGET_ENGINE_NOTE[target] ?? [])].join(" ")
+    );
+  }
   const desktopOnly = bundle.hosted ? [] : bundle.targetPlatforms.filter((target) => !STANDALONE_TARGETS.includes(target));
   if (desktopOnly.length) {
     warnings.push(
@@ -512,6 +542,9 @@ export async function exportGame(
     project,
     preset,
     ...(targets ? { targets, presetChange: ensured!.change } : {}),
+    ...(skipped.length || partial
+      ? { skippedTargets: [...skipped.map((entry) => entry.target), ...(partial ? missing : [])] as StoreTarget[] }
+      : {}),
     debug,
     engine: binary,
     durationMs: deps.now().getTime() - started.getTime(),

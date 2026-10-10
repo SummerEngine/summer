@@ -44,7 +44,7 @@ import { extractOpError, withOldEngineHint } from "./engine-receipt.js";
 import { lookupApiDocs } from "./api-docs.js";
 import { z, type ZodTypeAny } from "zod";
 import { BOARD_ENDPOINT, boardArgsSchema, boardQuery } from "./board.js";
-import { imageGenerationArgsSchema } from "./image-generation.js";
+import { IMAGE_GENERATION_TIMEOUT_MS, imageGenerationArgsSchema, saveGeneratedImage } from "./image-generation.js";
 import { buildMotionRequestBody, motionGenerationArgsSchema } from "./motion-generation.js";
 import { ImportHdriError, importHdriArgsSchema, importPolyHavenHdri } from "./hdri-import.js";
 import { FABRICATE_FALLBACK, buildFabricateMeshOp, fabricateArgsSchema } from "./fabricate-mesh.js";
@@ -1189,9 +1189,14 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     const parsed = parseToolArgs(boardArgsSchema, args, "get-board");
     return gatewayGet(BOARD_ENDPOINT, boardQuery({ ...parsed, pictures: parsed.pictures ?? false }), 45_000);
   }),
-  entry("summer_generate_image", "Generate or edit an image via Summer Studio", false, (args) =>
-    gatewayPost("/api/mcp/generate/image", parseToolArgs(imageGenerationArgsSchema, args, "generate-image"))
-  ),
+  entry("summer_generate_image", "Generate or edit an image via Summer Studio", false, async (args) => {
+    const { out, ...body } = parseToolArgs(imageGenerationArgsSchema, args, "generate-image");
+    const result = await gatewayPost("/api/mcp/generate/image", body, IMAGE_GENERATION_TIMEOUT_MS);
+    if (!out) return result;
+    const asset = (result.asset ?? {}) as DispatchArgs;
+    const url = typeof asset.fileUrl === "string" ? asset.fileUrl : typeof asset.thumbnailUrl === "string" ? asset.thumbnailUrl : null;
+    return { ...result, localPath: url ? await saveGeneratedImage(url, out) : null };
+  }),
   entry("summer_slice_asset_sheet", "Detect and crop every asset from a generated sheet image", false, (args) =>
     gatewayPost("/api/mcp/generate/slice-asset-sheet", { assetId: str(args, "assetId") }, 300_000)
   ),

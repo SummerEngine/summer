@@ -9,6 +9,17 @@ import { BuildToolError } from "./summer-bundle.js";
  */
 export const EXPORT_MIN_ENGINE_VERSION = "0.7.0";
 
+/** Bundle targets that need a newer engine than EXPORT_MIN_ENGINE_VERSION. */
+export const TARGET_MIN_ENGINE_VERSION: Readonly<Record<string, string>> = { android: "0.7.1" };
+
+/** The requested targets this engine version cannot export; an unreadable version skips none. */
+export function targetsNeedingNewerEngine(targets: readonly string[], version: string | null): Array<{ target: string; needs: string }> {
+  return targets.flatMap((target) => {
+    const needs = TARGET_MIN_ENGINE_VERSION[target];
+    return needs && isVersionAtLeast(version, needs) === false ? [{ target, needs }] : [];
+  });
+}
+
 export const ENGINE_UPDATE_HOW =
   'run "summer install --yes" (or download it from summerengine.com/download)';
 

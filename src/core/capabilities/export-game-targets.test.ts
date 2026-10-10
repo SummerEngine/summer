@@ -86,7 +86,12 @@ describe("exportGame targets (store bundle)", () => {
 
   it("says when the engine left a target out and warns on desktop targets for a game without a server", async () => {
     await writeSummerBundle(process.env.FAKE_BUNDLE!, { targetPlatforms: ["ios"] });
-    const error = await failure(exportGame({ project, targets: ["ios", "android"] }, deps()));
+    // Some asked targets made it: the bundle is kept, and the missing one is named.
+    const partial = await exportGame({ project, targets: ["ios", "android"] }, deps());
+    expect(partial.skippedTargets).toEqual(["android"]);
+    expect(partial.warnings?.join(" ")).toContain("newer than 0.7.0");
+    // None made it: refused.
+    const error = await failure(exportGame({ project, targets: ["android"] }, deps()));
     expect(error.code).toBe("export_target_unsupported");
     expect(error.recovery).toContain("newer than 0.7.0");
 

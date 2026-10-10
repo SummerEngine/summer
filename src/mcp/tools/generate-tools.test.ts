@@ -7,6 +7,9 @@ vi.mock("../../core/auth.js", () => ({
 
 import { dispatchTool } from "../../core/capabilities/tool-dispatch.js";
 import { z } from "zod";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { registerGenerateTools } from "./generate-tools.js";
 
 // ---------------------------------------------------------------------------
@@ -571,6 +574,33 @@ describe("registerGenerateTools — provider validation errors", () => {
 });
 
 
+describe("generated image file", () => {
+  it("saves into out (a folder or a file path), never sends out, and waits 3 minutes", async () => {
+    const dir = await mkdtemp(join(process.env.TMPDIR ?? tmpdir(), "summer-gen-test-"));
+    try {
+      const fetchMock = vi.fn(async (url: string, _init?: RequestInit) =>
+        url.endsWith("/api/mcp/generate/image")
+          ? new Response(JSON.stringify({ asset: { id: "image-1", fileUrl: "https://cdn.test/a.png" } }), { status: 200 })
+          : new Response(Buffer.from("png-bytes"), { status: 200 })
+      );
+      globalThis.fetch = fetchMock as never;
+      const { server, tools } = createFakeServer();
+      registerGenerateTools(server as any);
+      const image = getTool(tools, "summer_generate_image");
+      const intoFile = await image.handler(z.object(image.schema).parse({ prompt: "key art", width: 1920, height: 1080, out: join(dir, "art", "key.png") }));
+      expect(JSON.parse(intoFile.content[0].text).localPath).toBe(join(dir, "art", "key.png"));
+      expect(await readFile(join(dir, "art", "key.png"), "utf8")).toBe("png-bytes");
+      const intoFolder = await image.handler(z.object(image.schema).parse({ prompt: "icon", out: dir }));
+      expect(JSON.parse(intoFolder.content[0].text).localPath).toMatch(new RegExp(`^${dir}/img-\\d+\\.png$`));
+      const sent = JSON.parse((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as string);
+      expect(sent).not.toHaveProperty("out");
+      expect(sent).toMatchObject({ width: 1920, height: 1080 });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("image background removal across MCP and CLI", () => {
   for (const surface of ["mcp", "cli"] as const) {
     it.each([true, false, undefined])(`${surface} preserves removeBackground=%s in the gateway request`, async (removeBackground) => {
@@ -589,7 +619,10 @@ describe("image background removal across MCP and CLI", () => {
       const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
       expect(url).toMatch(/\/api\/mcp\/generate\/image$/);
       const body = JSON.parse(init.body as string);
-      expect(body).toMatchObject({ prompt: args.prompt, model: "nano-banana-2", style: "realistic" });
+      // No model is sent unless one is named: the server picks one that reaches the size.
+      expect(body).toMatchObject({ prompt: args.prompt, style: "realistic" });
+      expect(body).not.toHaveProperty("model");
+      expect(body).not.toHaveProperty("out");
       if (removeBackground === undefined) expect(body).not.toHaveProperty("removeBackground");
       else expect(body.removeBackground).toBe(removeBackground);
     });

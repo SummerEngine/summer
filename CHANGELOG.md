@@ -2,6 +2,16 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [3.4.2] - 2026-10-10
+
+Agents that publish a game find the publishing guides in the library:
+
+- `summer_search_library` and `summer_read_library` now find `skill/publish-your-game`, `skill/store-listing`, `skill/store-art` and `skill/grow-analytics`. Before, they were only hosted MCP resources and a read returned not_found.
+- A read loads the current text from the hosted Summer Engine MCP with the store sign-in (`summer login --store`). Without the sign-in it shows a short summary, the reason, and how to load the rest. The entries also load by their `summer://skills/<slug>` URI.
+
+### Added
+- Skill field `hosted_resource` in `resource.yaml`: the skill's body comes from that hosted MCP resource (#90).
+
 ## [3.4.1] - 2026-10-10
 
 Agents that publish a game find the right tools:

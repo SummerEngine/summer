@@ -660,7 +660,7 @@ async function readTextFileIfExists(path: string): Promise<string> {
 
 function upsertTomlTable(content: string, table: string, name: string = SUMMER_MCP_SERVER_NAME): string {
   const lines = content.split(/\r?\n/);
-  const key = name.replace(/[-.]/g, "\\$&");
+  const key = name.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&");
   const serverHeader = new RegExp(`^\\s*\\[mcp_servers\\.(?:"${key}"|${key})(?:\\.|\\])`);
   const start = lines.findIndex((line) =>
     new RegExp(`^\\s*\\[mcp_servers\\.(?:"${key}"|${key})\\]\\s*(?:#.*)?$`).test(line)

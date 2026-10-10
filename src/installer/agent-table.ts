@@ -144,11 +144,10 @@ export interface AgentSpec {
    * How this agent lists a remote MCP server that signs in with OAuth on its
    * own (the Summer Games player MCP). Absent: setup links the engine only.
    *  json-http { mcpServers: { <name>: { type: "http", url } } }   (Claude Code)
-   * Cursor is left out: its OAuth callback (cursor://...) is not a redirect
-   * api.summer.games accepts yet (docs/components/player-mcp.md in summer-platform).
    *  toml-url  [mcp_servers.<name>] url                            (Codex)
+   * signIn tells the person how to sign in once, for the entry's name.
    */
-  remoteMcp?: { format: RemoteMcpFormat; signIn: string };
+  remoteMcp?: { format: RemoteMcpFormat; signIn: (name: string) => string };
   mcp: {
     /** null: user-level servers are managed in the app's UI; a user request writes the project file with a warning. */
     user: ((ctx: PathContext) => string) | null;
@@ -234,7 +233,7 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_CLAUDE_CONFIG_FILE",
     format: "json-stdio",
-    remoteMcp: { format: "json-http", signIn: "In Claude Code, run /mcp, choose summer-games and sign in." },
+    remoteMcp: { format: "json-http", signIn: (name) => `In Claude Code, run /mcp, choose ${name} and sign in.` },
     mcp: { user: home(".claude.json"), project: project(".mcp.json") },
     restart: "Restart Claude Code or run /mcp in a new session.",
     skills: skillDirs(home(".claude", "skills"), project(".claude", "skills")),
@@ -262,7 +261,10 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_CODEX_CONFIG_FILE",
     format: "toml",
-    remoteMcp: { format: "toml-url", signIn: "Run `codex mcp login summer-games`; it opens summer.games to sign in." },
+    remoteMcp: {
+      format: "toml-url",
+      signIn: (name) => `In Codex, run /mcp login ${name} (or \`codex mcp login ${name}\` in a terminal) and sign in.`,
+    },
     mcp: {
       user: home(".codex", "config.toml"),
       project: project(".codex", "config.toml"),
@@ -278,6 +280,10 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_CURSOR_MCP_CONFIG_FILE",
     format: "json-stdio",
+    // No remoteMcp (Summer Games) yet: Cursor's fallback OAuth flow registers
+    // cursor://anysphere.cursor-mcp/oauth/callback, which api.summer.games
+    // refuses (summer-platform#1681 allows it). Add { format: "json-url" }
+    // ({ mcpServers: { <name>: { url } } }) once that is live.
     mcp: { user: home(".cursor", "mcp.json"), project: project(".cursor", "mcp.json") },
     restart: "Restart Cursor and enable the summer-engine MCP server if prompted.",
     skills: sharedSkills({

@@ -34,7 +34,9 @@ interface SetupCommandOptions {
 }
 
 export const setupCommand = new Command("setup")
-  .description("Configure Summer Engine for an AI agent and run diagnostics")
+  .description(
+    "Configure Summer Engine for an AI agent and run diagnostics. For Claude Code and Codex it also adds Summer Games (summer-games)."
+  )
   .argument("[agent]", `Agent to configure: ${supportedAgents.join(", ")}`)
   .option("--agent <agent>", `Agent to configure: ${supportedAgents.join(", ")}`)
   .option("--scope <scope>", "Configuration scope: user or project", "user")
@@ -51,7 +53,7 @@ export const setupCommand = new Command("setup")
   .option("--yes", "Apply practical setup steps without prompting")
   .option(
     "--no-games",
-    "Do not add the Summer Games MCP (summer-games: friends, parties and messages as you, signed in through summer.games)"
+    "Do not add the Summer Games MCP (summer-games: friends, parties and messages as you, signed in through summer.games; Claude Code and Codex)"
   )
   .option("--json", "Print setup result as JSON")
   .option(
@@ -158,12 +160,16 @@ function printSetupResult(
   }
 
   if (games) {
-    if (config.dryRun) {
-      console.log(`  ${c.dim("(dry run)")}  Would add Summer Games  ${c.dim(games.url)}`);
+    const name = c.bold("Summer Games");
+    const url = c.dim(games.url);
+    if (games.existingName) {
+      console.log(`  ${sym.ok()}  ${name} already added as ${c.bold(games.existingName)}  ${url}`);
+    } else if (config.dryRun) {
+      console.log(`  ${c.dim("(dry run)")}  ${games.changed ? "Would add" : "Already added"} ${name}  ${url}`);
     } else {
-      console.log(`  ${sym.ok()}  ${games.wrote ? "Added" : "Already added"} ${c.bold("Summer Games")}  ${c.dim(games.url)}`);
-      console.log(`     ${c.dim(`Sign in once: ${games.signIn}`)}`);
+      console.log(`  ${sym.ok()}  ${games.wrote ? "Added" : "Already added"} ${name}  ${url}`);
     }
+    if (!config.dryRun) console.log(`     ${c.dim(`Sign in once: ${games.signIn}`)}`);
   }
 
   if (skills.status === "installed") {

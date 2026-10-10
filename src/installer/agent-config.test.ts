@@ -422,6 +422,72 @@ describe("configureSummerGamesMcp", () => {
     expect(second?.changed).toBe(false);
   });
 
+  it("leaves Cursor out until api.summer.games accepts its OAuth redirect", async () => {
+    const path = join(tmp(), "mcp.json");
+    const result = await configureSummerGamesMcp({
+      agent: "cursor",
+      scope: "user",
+      env: { SUMMER_CURSOR_MCP_CONFIG_FILE: path } as NodeJS.ProcessEnv,
+    });
+    expect(result).toBeNull();
+    expect(existsSync(path)).toBe(false);
+  });
+
+  it("adds no second Claude Code entry when the URL is already listed under another name", async () => {
+    const path = join(tmp(), ".claude.json");
+    const seed = { mcpServers: { summer: { type: "http", url: `${GAMES_URL}/` } } };
+    writeFileSync(path, JSON.stringify(seed));
+    const result = await configureSummerGamesMcp({
+      agent: "claude-code",
+      scope: "user",
+      env: { SUMMER_CLAUDE_CONFIG_FILE: path } as NodeJS.ProcessEnv,
+    });
+    expect(result).toMatchObject({ serverName: "summer", existingName: "summer", changed: false, wrote: false });
+    expect(result?.signIn).toContain("choose summer and");
+    expect(JSON.parse(readFileSync(path, "utf-8"))).toEqual(seed);
+  });
+
+  it("counts a project-local Claude Code entry (claude mcp add without --scope user)", async () => {
+    const path = join(tmp(), ".claude.json");
+    const seed = { projects: { "/work/game": { mcpServers: { summer: { type: "http", url: GAMES_URL } } } } };
+    writeFileSync(path, JSON.stringify(seed));
+    const result = await configureSummerGamesMcp({
+      agent: "claude-code",
+      scope: "user",
+      env: { SUMMER_CLAUDE_CONFIG_FILE: path } as NodeJS.ProcessEnv,
+    });
+    expect(result?.existingName).toBe("summer");
+    expect(JSON.parse(readFileSync(path, "utf-8"))).toEqual(seed);
+  });
+
+  it("leaves an existing summer-games entry with extra fields as it is", async () => {
+    const path = join(tmp(), ".claude.json");
+    const seed = { mcpServers: { "summer-games": { type: "http", url: GAMES_URL, headers: { "X-Test": "1" } } } };
+    writeFileSync(path, JSON.stringify(seed));
+    const result = await configureSummerGamesMcp({
+      agent: "claude-code",
+      scope: "user",
+      env: { SUMMER_CLAUDE_CONFIG_FILE: path } as NodeJS.ProcessEnv,
+    });
+    expect(result).toMatchObject({ serverName: "summer-games", changed: false });
+    expect(result?.existingName).toBeUndefined();
+    expect(JSON.parse(readFileSync(path, "utf-8"))).toEqual(seed);
+  });
+
+  it("adds no second Codex table when the URL is already listed under another name", async () => {
+    const path = join(tmp(), "config.toml");
+    const seed = '[mcp_servers."summer"]\nurl = "https://MCP.summer.games/mcp"\n\n[mcp_servers.summer.env]\nX = "1"\n';
+    writeFileSync(path, seed);
+    const result = await configureSummerGamesMcp({
+      agent: "codex",
+      scope: "user",
+      env: { SUMMER_CODEX_CONFIG_FILE: path } as NodeJS.ProcessEnv,
+    });
+    expect(result).toMatchObject({ serverName: "summer", existingName: "summer", changed: false });
+    expect(result?.signIn).toContain("/mcp login summer");
+    expect(readFileSync(path, "utf-8")).toBe(seed);
+  });
+
   it("adds a [mcp_servers.summer-games] url table for Codex without touching summer-engine", async () => {
     const path = join(tmp(), "config.toml");
     const env = { SUMMER_CODEX_CONFIG_FILE: path } as NodeJS.ProcessEnv;

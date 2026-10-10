@@ -145,18 +145,24 @@ export const SUMMER_GAMES_MCP_SERVER_NAME = "summer-games";
 export const SUMMER_GAMES_MCP_URL = "https://mcp.summer.games/mcp";
 
 export interface RemoteMcpResult {
+  /** The entry's name: summer-games, or the name the person already gave it. */
   serverName: string;
   url: string;
   path: string;
   changed: boolean;
   wrote: boolean;
+  /** Set when the server was already listed under another name (e.g. a
+   *  hand-added "summer"); setup then leaves the file alone. */
+  existingName?: string;
   /** What the person does once to sign in (the agent opens summer.games). */
   signIn: string;
 }
 
 /**
  * Adds the Summer Games MCP next to summer-engine in the same config file.
- * Returns null for agents without a remote-server entry in agent-table.ts.
+ * An entry that already points at the same URL, under any name, counts as
+ * added and is left as it is. Returns null for agents without a remote-server
+ * entry in agent-table.ts.
  */
 export async function configureSummerGamesMcp(
   options: Pick<AgentConfigOptions, "agent" | "scope" | "dryRun" | "cwd" | "env">
@@ -166,26 +172,93 @@ export async function configureSummerGamesMcp(
   const env = options.env ?? process.env;
   const target = resolveConfigTarget(spec, options.scope, resolve(options.cwd ?? process.cwd()), env);
   const write = !options.dryRun;
-  const name = SUMMER_GAMES_MCP_SERVER_NAME;
   const url = SUMMER_GAMES_MCP_URL;
 
-  let changed: boolean;
+  let existing: string | undefined;
+  let changed = false;
   if (spec.remoteMcp.format === "toml-url") {
     const current = await readTextFileIfExists(target.path);
-    const next = upsertTomlTable(current, `[mcp_servers.${name}]\nurl = ${tomlString(url)}\n`, name);
-    changed = current !== next;
-    if (write && changed) await writeTextFile(target.path, next);
+    existing = findTomlServerByUrl(current, url);
+    if (!existing) {
+      const name = SUMMER_GAMES_MCP_SERVER_NAME;
+      const next = upsertTomlTable(current, `[mcp_servers.${name}]\nurl = ${tomlString(url)}\n`, name);
+      changed = current !== next;
+      if (write && changed) await writeTextFile(target.path, next);
+    }
   } else {
     const current = await readJsonConfig(target.path);
-    const next = copyJsonObject(current);
-    const entry = { type: "http", url };
-    next.mcpServers = mergeNamedObject(next.mcpServers, name, entry, "mcpServers");
-    const nextRendered = renderJsonFile(next);
-    changed = renderJsonFile(current) !== nextRendered;
-    if (write && changed) await writeTextFile(target.path, nextRendered);
+    existing = findJsonServerByUrl(current, url);
+    if (!existing) {
+      const next = copyJsonObject(current);
+      next.mcpServers = mergeNamedObject(next.mcpServers, SUMMER_GAMES_MCP_SERVER_NAME, { type: "http", url }, "mcpServers");
+      const nextRendered = renderJsonFile(next);
+      changed = renderJsonFile(current) !== nextRendered;
+      if (write && changed) await writeTextFile(target.path, nextRendered);
+    }
   }
 
-  return { serverName: name, url, path: target.path, changed, wrote: write && changed, signIn: spec.remoteMcp.signIn };
+  const serverName = existing ?? SUMMER_GAMES_MCP_SERVER_NAME;
+  return {
+    serverName,
+    url,
+    path: target.path,
+    changed,
+    wrote: write && changed,
+    ...(existing && existing !== SUMMER_GAMES_MCP_SERVER_NAME ? { existingName: existing } : {}),
+    signIn: spec.remoteMcp.signIn(serverName),
+  };
+}
+
+function sameMcpUrl(a: unknown, b: string): boolean {
+  if (typeof a !== "string") return false;
+  const normalize = (value: string) => {
+    try {
+      const parsed = new URL(value.trim());
+      return `${parsed.protocol}//${parsed.host}${parsed.pathname.replace(/\/+$/, "")}`.toLowerCase();
+    } catch {
+      return value.trim().toLowerCase();
+    }
+  };
+  return normalize(a) === normalize(b);
+}
+
+/** The name of a server with this URL in mcpServers. Claude Code's
+ *  ~/.claude.json also keeps per-project servers (`claude mcp add` without
+ *  --scope user) under projects.<dir>.mcpServers; those count too. */
+function findJsonServerByUrl(config: JsonObject, url: string): string | undefined {
+  const maps: unknown[] = [config.mcpServers];
+  if (isJsonObject(config.projects)) {
+    for (const project of Object.values(config.projects)) {
+      if (isJsonObject(project)) maps.push(project.mcpServers);
+    }
+  }
+  for (const map of maps) {
+    if (!isJsonObject(map)) continue;
+    for (const [name, entry] of Object.entries(map)) {
+      if (isJsonObject(entry) && sameMcpUrl(entry.url, url)) return name;
+    }
+  }
+  return undefined;
+}
+
+/** The name of a [mcp_servers.<name>] table whose url is this URL. */
+function findTomlServerByUrl(content: string, url: string): string | undefined {
+  let table: string | undefined;
+  for (const line of content.split(/\r?\n/)) {
+    const header = /^\s*\[([^\[\]]+)\]\s*(?:#.*)?$/.exec(line);
+    if (header) {
+      const server = /^mcp_servers\.(?:"([^"]+)"|([A-Za-z0-9_-]+))$/.exec(header[1].trim());
+      table = server ? (server[1] ?? server[2]) : undefined;
+      continue;
+    }
+    if (/^\s*\[/.test(line)) {
+      table = undefined;
+      continue;
+    }
+    const value = /^\s*url\s*=\s*(?:"([^"]*)"|'([^']*)')/.exec(line);
+    if (table && value && sameMcpUrl(value[1] ?? value[2], url)) return table;
+  }
+  return undefined;
 }
 
 async function upsertConfig(

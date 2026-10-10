@@ -57,6 +57,8 @@ The first run will:
 4. Open your browser for one-click sign-in.
 5. Scaffold a starter project and open the engine.
 
+In Claude Code and Codex, setup also connects Summer Games (`summer-games`), so the agent can see your friends, start parties and send messages as you. You sign in once: Claude Code `/mcp`, choose `summer-games`; Codex `/mcp login summer-games`. A summer.games page opens in your browser; sign in and choose Allow.
+
 Then ask the agent to build something.
 
 ---
@@ -122,6 +124,8 @@ npx -y summer-engine@latest setup claude-code --yes --force
 ```
 
 Replace `claude-code` with the user's actual agent: `claude-desktop`, `codex`, `cursor`, `windsurf`, `antigravity`, `cline`, `cline-cli`, `kilo-code`, `github-copilot`, `vscode-copilot`, `visual-studio`, `copilot-jetbrains`, `opencode`, `zed`, `kiro`, `goose`, `hermes`, `trae`, `qwen-code`, `kimi-code`, `crush`, `amp`, `factory`, `junie`, `warp`, `rovo-dev`, `qoder`, `grok-build`, `mistral-vibe`, `lm-studio`. Use `github-copilot` for Copilot CLI, `vscode-copilot` for GitHub Copilot Chat/Agent in VS Code, `visual-studio` for Copilot in Visual Studio, and `copilot-jetbrains` for Copilot in JetBrains IDEs. Legacy targets `gemini` and `roo-code` still work; for Google's agent use `antigravity`. This installs **every skill in the library** to `~/.claude/skills/<slug>/SKILL.md` (or the agent's own skill directory), writes the MCP server config, runs doctor, and prints what it installed and where. Preview skills are included and labelled; `--stable-only` skips them. `--force` wipes stale skill copies first. Don't use `--recommended` from this playbook; it installs only a subset.
+
+**Summer Games:** for `claude-code` and `codex`, setup also adds the remote `summer-games` MCP (`https://mcp.summer.games/mcp`) and prints a `Sign in once:` line. Tell the user that line once, in plain words: in Claude Code, run `/mcp`, choose `summer-games` and sign in; in Codex, run `/mcp login summer-games`. Their browser opens summer.games; they sign in and choose Allow. Do not wait for it; continue the playbook. If the user already added the same URL under another name (for example `summer`), setup keeps theirs and adds no second entry.
 
 **First-install detection:** if `~/.claude/skills/` didn't exist before this command, Claude Code wasn't watching it and won't auto-detect the new files this session. Tell the user **once**: "Skills installed - restart your agent so they load." On subsequent installs (directory already existed), skills auto-detect mid-session and no restart is needed. **You can detect first-install vs upgrade by checking if `~/.claude/skills/` existed before Step 1; record the result before running setup.**
 
@@ -370,7 +374,7 @@ matchmaking are not promised by this package.
 | `summer tool <name> --args '<json>'` | Run any Summer tool from the shell — the same implementation the MCP tool uses. `summer tool --list` prints them all. |
 | `summer mcp [--project <path> \| --instance <id>]` | Start MCP; normally auto-binds from the agent's project directory. |
 | `summer mcp setup <agent>` | Deprecated alias of `summer setup <agent>`. |
-| `summer setup <agent> [--yes] [--force] [--recommended] [--stable-only] [--no-games]` | One shot: MCP config + all skills, preview included (`--recommended` for the subset, `--stable-only` to skip preview) + doctor. Idempotent. For Claude Code and Codex it also adds `summer-games` (`https://mcp.summer.games/mcp`: friends, parties and messages as you); the agent signs in through summer.games the first time. `--no-games` skips it. |
+| `summer setup <agent> [--yes] [--force] [--recommended] [--stable-only] [--no-games]` | One shot: MCP config + all skills, preview included (`--recommended` for the subset, `--stable-only` to skip preview) + doctor. Idempotent. For Claude Code and Codex it also adds `summer-games` (`https://mcp.summer.games/mcp`: friends, parties and messages as you) unless the same URL is already listed; you sign in once through summer.games. `--no-games` skips it. |
 
 Agents: `claude-code`, `claude-desktop`, `codex`, `cursor`, `windsurf`, `antigravity`, `cline`, `cline-cli`, `kilo-code`, `github-copilot`, `vscode-copilot`, `visual-studio`, `copilot-jetbrains`, `opencode`, `zed`, `kiro`, `goose`, `hermes`, `trae`, `qwen-code`, `kimi-code`, `crush`, `amp`, `factory`, `junie`, `warp`, `rovo-dev`, `qoder`, `grok-build`, `mistral-vibe`, `lm-studio`. Legacy (still accepted, warn on use): `gemini`, `roo-code`. Aliases: `devin`/`devin-desktop` → `windsurf`, `agy` → `antigravity`, `droid` → `factory`, `copilot` → `github-copilot`, `vscode` → `vscode-copilot`, `kilo` → `kilo-code`, `qwen` → `qwen-code`, `kimi` → `kimi-code`. Scopes: `--scope user` (default), `--scope project`.
 

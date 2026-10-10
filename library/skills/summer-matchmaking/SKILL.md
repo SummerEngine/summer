@@ -20,7 +20,7 @@ groups searching players, reserves a server for them, and every player's
 The authority then reads each player's team from the verified Session.
 
 There is no lobby object, invite code or server browser. Friends who want to
-play together use a party (`skill/summer-parties`), which enters a queue as one group.
+play together use a party (`summer-parties`), which enters a queue as one group.
 
 Where it works:
 
@@ -31,8 +31,8 @@ Where it works:
 | Accept/Decline prompt | No: no proposal happens | Yes, when the queue declares `acceptance` |
 | Rating-based grouping | No | Yes |
 
-This skill extends the Courtyard game from `skill/multiplayer-project` and
-`skill/multiplayer-state`. Its client already joins `Game.QUEUE` and sends a
+This skill extends the Courtyard game from `multiplayer-project` and
+`multiplayer-state`. Its client already joins `Game.QUEUE` and sends a
 `join` Command; its authority publishes `match_doc`.
 
 ## Steps
@@ -64,7 +64,7 @@ The fields Summer accepts, and their rules:
 | `minPlayers` / `maxPlayers` | Players per match | `minPlayers` ≥ 1, `maxPlayers` ≥ `minPlayers`. Measured support is up to 16 per match |
 | `worldDefinition` | The WorldDefinition's `definition_id` | Required; every WorldDefinition must be used by a queue |
 | `policy` | `fifo` (first come) or `rating` (group by skill) | `rating` needs `ratingSystemRef`; `fifo` must not declare one |
-| `ratingSystemRef` | `elo_v1` (Summer rates two sides) or `authority_v1` (your authority reports rating moves) | See `skill/summer-leaderboards` |
+| `ratingSystemRef` | `elo_v1` (Summer rates two sides) or `authority_v1` (your authority reports rating moves) | See `summer-leaderboards` |
 | `teams` | `{count, size}`: fixed sides, such as 2v2 = `{2, 2}` | `count` 2..64, `size` 1..16, `minPlayers` = `maxPlayers` = count × size; `elo_v1` needs exactly 2 teams |
 | `acceptance` | `{"mode": "all", "ttl": "20s"}` asks every player to accept; `{"mode": "none"}` skips it | `ttl` required with `all`, forbidden with `none` |
 | `searchTtl` | `{min, default, max}` search lifetime | Go durations (`30s`, `2m`); min ≤ default ≤ max |
@@ -249,8 +249,8 @@ one you name. In the editor and with `summer_play`, name it with the
 `summer/local_play/queue` project setting:
 
 ```
-summer_project_setting name="summer/local_play/queue" value="duel"
-summer_project_setting name="summer/local_play/players" value=2
+summer_project_setting key="summer/local_play/queue" value="duel"
+summer_project_setting key="summer/local_play/players" value=2
 summer_play
 summer_get_diagnostics
 summer_stop
@@ -294,8 +294,8 @@ Test the accept prompt and rating-based grouping on a hosted staging build.
 
 ## See also
 
-- `skill/multiplayer` — how Summer multiplayer fits together
-- `skill/summer-match-results` — ending a match and reporting who won
-- `skill/summer-leaderboards` — ratings and leaderboards for rated queues
-- `skill/summer-parties` — friends entering a queue together
-- `skill/multiplayer-testing` — Local Play options and bots
+- `multiplayer` — how Summer multiplayer fits together
+- `summer-match-results` — ending a match and reporting who won
+- `summer-leaderboards` — ratings and leaderboards for rated queues
+- `summer-parties` — friends entering a queue together
+- `multiplayer-testing` — Local Play options and bots

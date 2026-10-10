@@ -13,7 +13,7 @@ paths: ["assets/video/**", "trailers/**", "marketing/**"]
 
 A trailer shot is not a cutscene and not a loop. It is a single, deliberately-composed beat designed to live inside an edit — Steam capsule video, social cut, pitch-deck reel, Discord teaser, Twitter promo. Every shot has to earn its slot in 5 seconds or less because viewer attention drops past that. This skill produces those shots one at a time, with strong composition references and trailer-grade prompting, then hands the user off to a non-linear editor (DaVinci Resolve, Premiere, CapCut) to chain them. **Studio doesn't ship a video editor** — generation is the part this skill owns; the cutting is yours.
 
-If the user is generating a non-interactive narrative beat with dialogue, that's `video/cinematic-cutscene`. If they want a seamless background loop for a splash screen, that's `video/animated-loop`. This skill is for the punchy stuff — the kind of shot that ends up on the Steam page or in the first 10 seconds of a launch trailer.
+If the user is generating a non-interactive narrative beat with dialogue, that's `cinematic-cutscene`. If they want a seamless background loop for a splash screen, that's `animated-loop`. This skill is for the punchy stuff — the kind of shot that ends up on the Steam page or in the first 10 seconds of a launch trailer.
 
 ## When to use
 
@@ -26,9 +26,9 @@ If the user is generating a non-interactive narrative beat with dialogue, that's
 
 ## When NOT to use
 
-- Multi-shot story sequence with dialogue — `video/cinematic-cutscene`.
-- Seamless looping background — `video/animated-loop`.
-- Static marketing key art — `2d-assets/concept-art` then `2d-assets/character-portrait`.
+- Multi-shot story sequence with dialogue — `cinematic-cutscene`.
+- Seamless looping background — `animated-loop`.
+- Static marketing key art — `concept-art` then `character-portrait`.
 - Animated GIF of UI — that's a screen recording, not a generated video.
 - A literal Steam trailer (the assembled cut) — generate the shots here, then take them to your NLE.
 
@@ -69,13 +69,13 @@ For pure environment / abstract / VFX shots, you can skip this and prompt text-t
 
 The available models depend on whether you pass `imageUrl`. With a reference image (step 2) the call goes to the image-to-video route, which accepts only `ltx`, `kling`, and `minimax`; `kling-turbo` and `veo3` exist on the text-to-video route only, and pairing either with an `imageUrl` is a 400 `invalid_model`.
 
-| Model | Text-to-video | Image-to-video | Cost | Speed | When |
-|---|---|---|---|---|---|
-| `kling` | yes | yes | $0.50 | 2-4 min | Default for trailer hero shots — best motion + composition |
-| `ltx` | yes | yes | $0.10 | ~30s | B-roll, throwaway tests, blocking the composition before committing |
-| `minimax` | yes | yes | $0.25 | 2-3 min | Anime / stylized trailer looks |
-| `kling-turbo` | yes | **no** | $0.30 | 1-2 min | Same look as kling, faster, slight quality dip — but you lose `imageUrl` |
-| `veo3` | yes | **no** | $1.00 | 3-5 min | Pitch deck for investors, the one shot that has to be perfect — but you lose `imageUrl` |
+| Model | Text-to-video | Image-to-video | Speed | When |
+|---|---|---|---|---|
+| `kling` | yes | yes | 2-4 min | Default for trailer hero shots — best motion + composition |
+| `ltx` | yes | yes | ~30s | Cheapest. B-roll, throwaway tests, blocking the composition before committing |
+| `minimax` | yes | yes | 2-3 min | Anime / stylized trailer looks |
+| `kling-turbo` | yes | **no** | 1-2 min | Same look as kling, faster, slight quality dip — but you lose `imageUrl` |
+| `veo3` | yes | **no** | 3-5 min | Most expensive. Pitch deck for investors, the one shot that has to be perfect — but you lose `imageUrl` |
 
 Default: **`ltx` first to block the composition, then `kling` for the final**. For the *one* hero shot that drives the Steam page, escalate to `veo3` only if `kling` failed twice.
 
@@ -114,7 +114,7 @@ If "regenerate", revise *one* axis (camera move, lighting, or framing) — don't
 
 Trailer footage usually lives on the user's local disk and goes straight into the NLE, where the generated `.mp4` is exactly what you want.
 
-For shots that double as **in-engine** splash content, transcode first — Summer Engine has no MP4 or WebM loader, and `.ogv` (Ogg Theora) is the only video container it can open. `summer_import_from_url` runs Godot's import pipeline and rejects the file if it never becomes a loadable resource, so importing the `.mp4` fails outright rather than half-working.
+For shots that double as **in-engine** splash content, transcode first — Summer Engine has no MP4 or WebM loader, and `.ogv` (Ogg Theora) is the only video container it can open. `summer_import_from_url` runs the engine's import pipeline and rejects the file if it never becomes a loadable resource, so importing the `.mp4` fails outright rather than half-working.
 
 ```
 ffmpeg -i hero_boss_reveal.mp4 -c:v libtheora -q:v 8 -an hero_boss_reveal.ogv
@@ -133,24 +133,24 @@ Studio does not ship a video editor. After all the shots land, tell the user:
 > 3-5. Action beats (slow-mo combat, environmental destruction)
 > 6. Money shot (low-angle hero, ends on logo card)
 >
-> Score it with the music from `audio/music-track`. Add SFX hits on the cuts with `audio/sound-effect`.
+> Score it with the music from `music-track`. Add SFX hits on the cuts with `sound-effect`.
 
 ## Reference card — prompts that work
 
 Pattern: `<archetype framing> + <subject> + <action verb> + <camera move> + <lighting / time of day> + <stylistic anchor>`. Keep under 50 words. Anchor with a reference image whenever a specific character or asset appears.
 
-| Goal | Model | Prompt | Cost | Duration |
-|---|---|---|---|---|
-| Hero boss reveal | `kling` | `low-angle hero shot of an armored dragon turning toward camera, slow tilt-up, volcanic backlight, embers in air, cinematic, anamorphic flare, 16mm grain` | $0.50 | 5s |
-| Slow-mo combat impact | `kling` | `mid shot of a swordsman striking a parry, sparks fly, time-dilation slow motion, dust and motion blur, dramatic side-light, cinematic` | $0.50 | 5s |
-| Establishing kingdom wide | `kling` | `wide aerial of a clifftop fortress at golden hour, slow dolly forward, low sun raking the towers, cinematic, anamorphic, faint heat haze` | $0.50 | 5s |
-| Splash screen card | `kling` | `static composition of a lone hooded figure on a windswept ridge, only the cloak and grass moving, dusk, painterly cinematic, room for title text upper third` | $0.50 | 5s |
-| Whip pan reveal | `kling` | `whip pan from left to right across a battlefield at night, lands on the protagonist standing alone among bodies, torches flickering, cinematic` | $0.50 | 5s |
-| Detail dolly-in | `kling` | `slow dolly-in on a glowing rune-etched sword embedded in stone, motes of magic rising, blue-cold key light, shallow depth of field, cinematic` | $0.50 | 5s |
-| Vertical social hero | `kling` | `vertical close-up of a young witch raising hands, magical wind, hair flowing, candle-warm key, cinematic, framed for 9:16` | $0.50 | 5s |
-| Pitch-deck premium shot | `veo3` | `wide cinematic of a fleet of airships emerging through cloud cover at dawn, slow truck forward, golden god-rays, soaring orchestral cinematic` | $1.00 | 5s |
-| Cheap B-roll iteration | `ltx` | `mid shot of a knight walking through fog, slow truck backward, dawn light, cinematic` | $0.10 | 5s |
-| Anime style hero | `minimax` | `anime-style hero girl draws a katana in slow motion, sakura petals swirling, dramatic side-light, dynamic camera, Ghibli painterly` | $0.25 | 5s |
+| Goal | Model | Prompt | Duration |
+|---|---|---|---|
+| Hero boss reveal | `kling` | `low-angle hero shot of an armored dragon turning toward camera, slow tilt-up, volcanic backlight, embers in air, cinematic, anamorphic flare, 16mm grain` | 5s |
+| Slow-mo combat impact | `kling` | `mid shot of a swordsman striking a parry, sparks fly, time-dilation slow motion, dust and motion blur, dramatic side-light, cinematic` | 5s |
+| Establishing kingdom wide | `kling` | `wide aerial of a clifftop fortress at golden hour, slow dolly forward, low sun raking the towers, cinematic, anamorphic, faint heat haze` | 5s |
+| Splash screen card | `kling` | `static composition of a lone hooded figure on a windswept ridge, only the cloak and grass moving, dusk, painterly cinematic, room for title text upper third` | 5s |
+| Whip pan reveal | `kling` | `whip pan from left to right across a battlefield at night, lands on the protagonist standing alone among bodies, torches flickering, cinematic` | 5s |
+| Detail dolly-in | `kling` | `slow dolly-in on a glowing rune-etched sword embedded in stone, motes of magic rising, blue-cold key light, shallow depth of field, cinematic` | 5s |
+| Vertical social hero | `kling` | `vertical close-up of a young witch raising hands, magical wind, hair flowing, candle-warm key, cinematic, framed for 9:16` | 5s |
+| Pitch-deck premium shot | `veo3` | `wide cinematic of a fleet of airships emerging through cloud cover at dawn, slow truck forward, golden god-rays, soaring orchestral cinematic` | 5s |
+| Cheap B-roll iteration | `ltx` | `mid shot of a knight walking through fog, slow truck backward, dawn light, cinematic` | 5s |
+| Anime style hero | `minimax` | `anime-style hero girl draws a katana in slow motion, sakura petals swirling, dramatic side-light, dynamic camera, Ghibli painterly` | 5s |
 
 ### Bad prompts and why
 
@@ -166,7 +166,7 @@ Pattern: `<archetype framing> + <subject> + <action verb> + <camera move> + <lig
 
 - **Trying to chain shots inside one video generation.** Each clip is one beat. The cut between shots is the editor's job, not the model's. A 10s prompt with three actions returns mush.
 - **Skipping the reference image for the hero shot.** The boss in the Steam capsule must look like the boss in the game. Always lock identity with `imageUrl`.
-- **Using `veo3` for B-roll.** Burn $0.10 on `ltx` for blocking and B-roll; reserve `veo3` for the one shot that has to be perfect.
+- **Using `veo3` for B-roll.** Use `ltx` for blocking and B-roll; reserve `veo3` for the one shot that has to be perfect.
 - **Generating shots without composing the trailer first.** Make a 6-shot list before generating shot 1. Otherwise you'll generate shots that don't intercut.
 - **Assuming `aspectRatio="9:16"` reframed an image-to-video call.** It is ignored whenever `imageUrl` is set — the reference image decides the framing. Pillarboxed 16:9 on TikTok / Reels / Shorts reads as a desktop YouTube embed and gets demoted by the algorithm, so fix the reference, not the argument.
 - **Treating `summer_generate_video` as synchronous.** It returns `{ queued: true, jobId }` and no URL. Poll `summer_check_job` before handing the user a link.
@@ -176,7 +176,7 @@ Pattern: `<archetype framing> + <subject> + <action verb> + <camera move> + <lig
 ## Edge cases
 
 - **Steam capsule animated header (Steam asset).** Steam wants `.webm` at 616x353 or 1920x1080, ≤6s, 30fps, no audio, ≤4MB. Generate at 16:9, transcode in DaVinci, export `.webm` with VP9. The video model gives you the source; format conversion is on you.
-- **Pitch deck for investors.** One shot, `veo3`, money composition (low-angle hero or wide establishing). Worth the $1.00.
+- **Pitch deck for investors.** One shot, `veo3`, money composition (low-angle hero or wide establishing).
 - **Vertical for TikTok / Shorts.** The reference image must genuinely be portrait — `aspectRatio` is ignored once `imageUrl` is set. Frame the subject in the upper-middle so titles can sit at the bottom.
 - **Subject is a UGC environment the player built.** Take a screenshot of the in-engine view, run it through `summer_generate_image` as `referenceImageUrl` to "upgrade" the look, then use that as the video reference. The model can stylize a screenshot; it can't invent the user's level.
 - **Logo splash with motion graphics.** Generate a static logo card in `summer_generate_image` (or use the user's existing logo PNG), then prompt video as `static composition of <logo>, only background particles drifting, cinematic, room for title text` — keep the foreground motionless.
@@ -197,16 +197,16 @@ Once the shots are generated:
 
 > Generated 6 shots, ready for the cut. Next:
 > - Take them into DaVinci Resolve (free) or Premiere. Studio doesn't cut video.
-> - Score the trailer with `audio/music-track` — a 60-second trailer cue with a swell and a cold ending.
-> - Add hit SFX on the cuts with `audio/sound-effect` (impact whooshes between shots).
-> - For the title-card splash that ships in-engine, hand off to `video/animated-loop` with the established palette.
-> - For a narrative beat inside the trailer (a 10s "story" segment), hand off to `video/cinematic-cutscene`.
+> - Score the trailer with `music-track` — a 60-second trailer cue with a swell and a cold ending.
+> - Add hit SFX on the cuts with `sound-effect` (impact whooshes between shots).
+> - For the title-card splash that ships in-engine, hand off to `animated-loop` with the established palette.
+> - For a narrative beat inside the trailer (a 10s "story" segment), hand off to `cinematic-cutscene`.
 
 ## See also
 
-- `video/cinematic-cutscene` — narrative beats with dialogue.
-- `video/animated-loop` — seamless background clips for splash screens / title menus.
-- `audio/music-track` — trailer score.
-- `audio/sound-effect` — cut SFX (whooshes, impacts, stingers).
-- `2d-assets/concept-art` — generate the reference image axis when no asset exists yet.
+- `cinematic-cutscene` — narrative beats with dialogue.
+- `animated-loop` — seamless background clips for splash screens / title menus.
+- `music-track` — trailer score.
+- `sound-effect` — cut SFX (whooshes, impacts, stingers).
+- `concept-art` — generate the reference image axis when no asset exists yet.
 - `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_video` parameter schema and error codes.

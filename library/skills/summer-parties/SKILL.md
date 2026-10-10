@@ -39,7 +39,7 @@ Outside a party, or when parties are unavailable, getters are empty and
 `is_in_party()` is `false`. So the same Play button works everywhere: no party
 means an ordinary `SummerJoinTarget.queue(...)` join. Build that path first.
 
-This skill extends the Courtyard game from `skill/multiplayer-project`
+This skill extends the Courtyard game from `multiplayer-project`
 (`network/game.gd` as `Game`, `client/main.gd` with `command()`).
 
 ## Steps
@@ -48,7 +48,7 @@ This skill extends the Courtyard game from `skill/multiplayer-project`
 
 A party member must not join on their own the moment the game starts. Move the
 join out of `client/main.gd`'s `_ready` into `enter(target)`, and keep every
-signal connection from `skill/multiplayer-movement` and `skill/multiplayer-state`:
+signal connection from `multiplayer-movement` and `multiplayer-state`:
 
 ```gdscript
 func _ready() -> void:
@@ -87,7 +87,7 @@ func enter(target: SummerJoinTarget) -> bool:
 	return true
 ```
 
-Move the Local Play bot hook from `skill/multiplayer-testing` into `enter()`,
+Move the Local Play bot hook from `multiplayer-testing` into `enter()`,
 after the joined line.
 
 ### 2. Add the party node
@@ -193,7 +193,7 @@ fails with retryable `party_version_conflict`. React to `data_changed(key)` and
 `member_data_changed(member, key)`, or just re-render on `changed`.
 
 Party data is a lobby convenience, not game state. Once the match starts, the
-authority owns everything (`skill/multiplayer-state`). It never sees party data;
+authority owns everything (`multiplayer-state`). It never sees party data;
 send choices that matter in your `join` Command and validate them there.
 
 ### 4. Handle join failures
@@ -217,7 +217,7 @@ client joins solo from `_ready`. Test that path locally, then the party path
 on Summer staging with real accounts.
 
 ```
-summer_project_setting name="summer/local_play/players" value=2
+summer_project_setting key="summer/local_play/players" value=2
 summer_play
 summer_get_diagnostics
 summer_stop
@@ -247,7 +247,7 @@ summer_stop
 
 ## See also
 
-- `skill/summer-matchmaking`: queues, sizes, teams and the accept prompt
-- `skill/summer-friends`: friends list, profiles and messages
-- `skill/multiplayer-project`: the client entry scene this extends
-- `skill/multiplayer-testing`: Local Play, and what needs staging
+- `summer-matchmaking`: queues, sizes, teams and the accept prompt
+- `summer-friends`: friends list, profiles and messages
+- `multiplayer-project`: the client entry scene this extends
+- `multiplayer-testing`: Local Play, and what needs staging

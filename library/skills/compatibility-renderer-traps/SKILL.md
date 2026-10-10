@@ -13,8 +13,8 @@ paths: ["**/*.gdshader", "**/*.gdshaderinc", "**/*.gd", "project.godot"]
 
 Games built on Forward+ can end up on the Compatibility renderer (OpenGL): phones where Metal/Vulkan is
 unavailable, weak GPUs, or a project that picks it for battery. The failures are silent: no error, just
-black fruit, pale colors, or objects that stop animating after the first few hundred. These are the traps
-that cost real renders in a shipped-quality game, each with the fix and the reason.
+black fruit, pale colors, or objects that stop animating after the first few hundred. Each trap below
+comes with its fix and the reason.
 
 ## 1. Know which renderer you actually got
 

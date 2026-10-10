@@ -1,6 +1,6 @@
 # GDScript Style — Summer Conventions
 
-> The bar for GDScript in Summer. Skills should produce code that matches this. Where Godot's official style guide is silent, this is the tiebreaker.
+> Skills produce GDScript that matches this. Where the upstream GDScript style guide is silent, this file decides.
 
 ## File structure
 
@@ -43,7 +43,7 @@ func _physics_process(delta: float) -> void:
 func _input(event: InputEvent) -> void:
     pass
 
-# 7. Public API (PascalCase or snake_case methods, snake_case for funcs)
+# 7. Public API (snake_case)
 func take_damage(amount: int) -> void:
     pass
 
@@ -115,7 +115,5 @@ tween.tween_property(self, "modulate", Color.WHITE, 0.3)
 
 ## See also
 
-- [Official Godot GDScript style guide](https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_styleguide.html)
-- `scripting-patterns/gdscript-patterns/SKILL.md` — patterns and idioms
-- `scripting-patterns/signal-patterns/SKILL.md` — signal usage
-- `scripting-patterns/state-machine-patterns/SKILL.md` — state machine patterns
+- [Upstream GDScript style guide](https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_styleguide.html)
+- The `gdscript-patterns` skill: patterns and idioms, including signals

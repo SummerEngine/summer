@@ -16,7 +16,7 @@ adaptation: translated
 
 ## Outcome
 
-Scenes in Summer Engine (Godot-based) that are organized by **access pattern**, not by accident: clear separation between reusable asset scenes (`.tscn` prefabs) and the live node tree, wrapper grouping where whole subtrees are operated on together, flat siblings where type-wide queries dominate, and gameplay logic that does not depend on deep fragile node paths.
+Scenes in Summer Engine that are organized by **access pattern**, not by accident: clear separation between reusable asset scenes (`.tscn` prefabs) and the live node tree, wrapper grouping where whole subtrees are operated on together, flat siblings where type-wide queries dominate, and gameplay logic that does not depend on deep fragile node paths.
 
 ## When to Use
 
@@ -31,7 +31,7 @@ Do not use this for shader/material work, asset import mechanics, or gameplay tu
 
 Sander Mertens' ECS article evaluates hierarchies on two axes and both translate directly:
 
-1. **Usability: two hierarchy kinds must compose.** *Asset hierarchies* (inheritance, variations, property overrides → Godot `.tscn` sub-scenes and scene inheritance) and *scene hierarchies* (live parent-child relations → the node tree). A scene that repeatedly rebuilds the same inline cluster is missing its asset hierarchy; an asset scene nobody instantiates is dead weight.
+1. **Usability: two hierarchy kinds must compose.** *Asset hierarchies* (inheritance, variations, property overrides → `.tscn` sub-scenes and scene inheritance) and *scene hierarchies* (live parent-child relations → the node tree). A scene that repeatedly rebuilds the same inline cluster is missing its asset hierarchy; an asset scene nobody instantiates is dead weight.
 2. **Performance: match structure to dominant access patterns.** Group nodes stored/operated together under one parent (subtree operations become one operation); keep nodes queried independently as flat siblings. There is no universally optimal depth — analyze usage before picking one.
 3. **Hierarchy-agnostic logic.** The article's hybrid design keeps application code independent of storage; the Summer translation is: scripts and agents should not hardcode deep paths. Use groups, signals, and exported `NodePath` references instead of long ancestor chains.
 
@@ -67,7 +67,7 @@ Rules of thumb:
 - **Wrapper node per operation boundary.** If you ever need to "remove all enemies", "hide all props", or "rebuild the level", they share one parent; the operation becomes a single node op.
 - **Sub-scene per reusable setup.** Same cluster appearing twice or more → extract to its own `.tscn` and instantiate. One-offs (main camera, a level-specific light) stay inline.
 - **Flat over deep.** Every extra level of nesting adds path length and fragility. Prefer named sibling containers over long chains.
-- **Unique descriptive names.** Godot auto-renames duplicates (`Node`, `Node2`); that breaks name lookup. Name by role and index (`Crate_01`).
+- **Unique descriptive names.** The engine auto-renames duplicates (`Node`, `Node2`); that breaks name lookup. Name by role and index (`Crate_01`).
 - **Never mix 2D under 3D** (or vice versa) in one hierarchy.
 
 ## Agent Procedure

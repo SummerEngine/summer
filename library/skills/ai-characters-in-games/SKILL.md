@@ -48,7 +48,7 @@ Not for scripted dialogue trees (design-npc) or for enemy behaviour.
 
 ## Top up and set limits
 
-AI characters are paid from the Summer credits of the developer who turned them on: usage is billed from your Summer credits. Cost depends on the models and voices you choose. Your dashboard shows spend as it happens, and your limits cap it. Players never pay. There is nothing to configure in the game project.
+AI characters are paid from the Summer credits of the developer who turned them on. Cost depends on the models and voices you choose. Your dashboard shows spend as it happens, and your limits cap it. Players never pay. There is nothing to configure in the game project.
 
 1. In Summer Studio, open the game and its **AI characters** section.
 2. Add a persona per character: name, a plain-words description, an optional voice, reply length, a safe line in character, and the model (from the models the game allows, each marked fast or smart).

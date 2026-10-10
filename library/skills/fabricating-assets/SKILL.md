@@ -24,7 +24,7 @@ Three facts shape every use:
 | Blockout / placeholder | `scene-scripting` primitives or CSG | fabricate | Must be instant and in-scene; no process spawn is justified |
 | Generic hard-surface prop ("a barrel") | `summer_search_assets` → `summer_import_asset` (`prop-model`) | `summer_generate_3d` | The free library plus `target_size` beats paid generation and a 2-minute wait, in a consistent style |
 | Bespoke prop ("the artifact from our GDD") | `summer_generate_3d` | fabricate | Image-to-3D is exactly what generation is for; fabricate when exact dimensions or parametric variants matter |
-| **Modular kit** (walls, pipes, fences, rails that snap) | **fabricate** | library kit (`environment-kit`) | Generation cannot hold dimensions and style across 30 pieces; array + boolean + bevel + one material is the classic kit workflow |
+| **Modular kit** (walls, pipes, fences, rails that snap) | **fabricate** | generated kit (`environment-kit`) | Generation cannot hold dimensions and style across 30 pieces; array + boolean + bevel + one material is the classic kit workflow |
 | Characters (rigged, animated) | `summer_generate_3d` (`character-model`) | library | Scripted organic modelling is the documented failure mode; fabrication has no path to competitive organics blind |
 | Environments / terrain | in-engine terrain + library set dressing | generation for landmarks | Terrain wants interactive tools; dressing wants scatter |
 | Materials / textures / skies | library (`summer_import_hdri`, texture packs) | generation | Fabricate only to bake a procedural material to images |

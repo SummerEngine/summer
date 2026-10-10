@@ -75,9 +75,9 @@ summer_generate_image(
 )
 ```
 
-`style: "none"` is intentional, but be precise about why: only `cartoon` and `anime` append anything to the prompt, `realistic` and `none` append nothing, and any other value is coerced to `none`. So the preset cannot override the prompt's stylistic direction — it just contributes nothing, which is what concept art wants. All four variants' divergence has to come from the prompt.
+`style: "none"` is intentional: only `cartoon` and `anime` append anything to the prompt, `realistic` and `none` append nothing, and any other value is coerced to `none`. So the preset cannot override the prompt's stylistic direction — it just contributes nothing, which is what concept art wants. All four variants' divergence has to come from the prompt.
 
-For a shape other than square, pass `aspectRatio` (`"16:9"`, `"9:16"`, ...) or `width` + `height`; the result reports the real width and height and the model that ran. Exploration images are thrown away, so square is usually fine.
+For a shape other than square, pass `aspectRatio` (`"16:9"`, `"9:16"`, ...) or `width` + `height`; the result reports the real width and height and the model that ran. Exploration images are thrown away, so square is usually fine. Background removal is the top-level `removeBackground` argument, not an `options` key.
 
 ### 5. Present the batch
 
@@ -114,7 +114,7 @@ The structure: **subject + axis variant + "concept art" + lighting/atmosphere**.
 - **Generating 4 near-identical variants** because you didn't pick a real axis. The user can't choose between four images that all look like the same painting.
 - **Importing concept art as final assets.** These are exploration. The polished version comes from `character-portrait` after a direction is picked.
 - **Treating `style` as the variant axis.** The presets are `realistic | cartoon | anime | none`, and only two of them append anything. Four "stylization" variants have to differ in their prompt text, not in the `style` argument.
-- **Skipping the disambiguation question.** If you don't ask, you'll get yelled at when you generate 4 portraits and the user wanted one polished bust.
+- **Skipping the disambiguation question.** If you don't ask, you may generate four rough variants when the user wanted one polished bust.
 - **Generating before the GameSoul.md is written.** If `.summer/GameSoul.md` exists, read it first — its visual-style section narrows the axis.
 
 ## Edge cases

@@ -9,7 +9,7 @@ allowed-tools: Read Grep Edit Write summer_write_file summer_read_file summer_ge
 paths: ["**/*.gd", "**/*.tscn", "**/*.tres"]
 ---
 
-# /vfx — The Trio That Makes Games Feel Punchy
+# Game Feel — The Trio That Makes Hits Land
 
 Particles do not make a game feel good. Screen shake alone does not either.
 What makes a hit land is three systems firing on the same frame: a sub-frame
@@ -327,7 +327,7 @@ summer_connect_signal(scenePath="res://levels/world.tscn", emitter="./World/Enem
 
 ## Step 8 — Scaling intensity per hit weight
 
-The trio's whole magic is that the same code makes a glancing parry feel different from a critical hit. Calibrate the curve once:
+The same code makes a glancing parry feel different from a critical hit. Calibrate the curve once:
 
 | Hit type | `damage` (HP) | trauma | duck amount |
 |---|---|---|---|
@@ -343,7 +343,7 @@ Because trauma is squared inside the camera, the *felt* difference between 0.35 
 
 ```
 summer_save_scene(scenePath="res://levels/world.tscn")
-summer_get_script_errors          # all three scripts parsed?
+summer_get_script_errors(path="res://scripts/vfx/hit_flash.gd")   # repeat for each of the three scripts
 summer_play
 # user reproduces a hit
 summer_get_debugger_errors        # runtime errors from the tweens / bus lookups
@@ -391,7 +391,6 @@ This skill writes 3 GDScript files and adds 1 node + 1 autoload entry. Always as
   version-sensitive API notes
 - `../../references/collaborative-protocol/collaborative-protocol.md` — "May I write" pattern
 - `../../references/gd-style/gd-style.md` — typed GDScript conventions
-- `audio/audio-direction/SKILL.md` — bus layout setup (prerequisite for ducking)
-- `post-processing/screen-shake/SKILL.md` — deeper trauma variants (Perlin noise, stacked sources)
-- `visual-effects/gpuparticles-3d-basics/SKILL.md` — particles to layer on top of the trio
-- `visual-effects/hit-impact-flashes/SKILL.md` — flash material variations beyond white pulse
+- `audio-direction` — bus layout setup (prerequisite for ducking)
+- `vfx-hit-spark` — particles to layer on top of the trio
+- `debugging-game-feel` — when the trio is installed and it still feels wrong

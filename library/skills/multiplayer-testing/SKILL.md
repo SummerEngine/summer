@@ -26,7 +26,7 @@ Pick whichever the session has.
 **Summer MCP tools** (they set project settings, then play):
 
 ```
-summer_project_setting name="summer/local_play/players" value=2
+summer_project_setting key="summer/local_play/players" value=2
 summer_play
 summer_get_diagnostics
 summer_stop
@@ -59,9 +59,9 @@ Loopback has no latency, so it hides every timing bug. Always run once with
 these settings; they apply to every client:
 
 ```
-summer_project_setting name="summer/local_play/network/round_trip_msec" value=100
-summer_project_setting name="summer/local_play/network/jitter_msec" value=10
-summer_project_setting name="summer/local_play/network/loss_percent" value=1
+summer_project_setting key="summer/local_play/network/round_trip_msec" value=100
+summer_project_setting key="summer/local_play/network/jitter_msec" value=10
+summer_project_setting key="summer/local_play/network/loss_percent" value=1
 ```
 
 Or put them in `project.godot` while testing:

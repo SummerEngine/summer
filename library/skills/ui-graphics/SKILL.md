@@ -77,7 +77,7 @@ Pattern:
 <asset class> of <subject>, game UI, <anchor style>, flat design, clean edges, transparent background, centered, isolated
 ```
 
-`isolated` is load-bearing. For the background, **do not rely on the prompt** — pass `options.removeBackground: true`, which runs a real background-removal pass after generation and returns a PNG with true alpha. That is the single highest-value argument in this skill, and it is the actual fix for the checkerboard failure listed below: models asked for a "transparent background" in text frequently paint the checkerboard.
+`isolated` is load-bearing. For the background, **do not rely on the prompt** — pass `removeBackground: true`, which runs a real background-removal pass after generation and returns a PNG with true alpha. That is the single highest-value argument in this skill, and it is the actual fix for the checkerboard failure listed below: models asked for a "transparent background" in text frequently paint the checkerboard.
 
 ### 5. Generate
 
@@ -87,11 +87,11 @@ summer_generate_image(
   prompt="ability icon for a fire spell, glowing flame in cupped hand, game UI, flat design with subtle gradient and soft inner shadow, 2px deep navy outline, gold and parchment palette, rounded square frame, centered, isolated on a plain background. Not photorealistic, no 3D render, no scene background, not busy, no multiple objects.",
   model="nano-banana-2",
   style="none",
-  options={ removeBackground: true }
+  removeBackground=true
 )
 ```
 
-`image_size` and `negative_prompt` do not exist on this tool and are dropped without an error — the negations have to live in the prompt text, and the size is fixed. `removeBackground` is the one `options` key here that does real work.
+`image_size` and `negative_prompt` do not exist on this tool and are dropped without an error — the negations have to live in the prompt text, and the size is fixed.
 
 **Button (3 states in 3 calls):**
 ```
@@ -164,7 +164,7 @@ If you generate a 4×4 grid of icons in one image, each icon becomes an `AtlasTe
 | Bad | Failure mode |
 |---|---|
 | `cool button` | No subject, no anchor. Returns a generic button on a card background. |
-| `transparent button with icon` | Model often renders a checkerboard "transparent" pattern as the actual fill. There is no negative-prompt argument to counter it — drop the word "transparent" from the prompt entirely and pass `options.removeBackground: true` instead. |
+| `transparent button with icon` | Model often renders a checkerboard "transparent" pattern as the actual fill. There is no negative-prompt argument to counter it — drop the word "transparent" from the prompt entirely and pass `removeBackground: true` instead. |
 | `8 ability icons in one image` | Inconsistent style across the 8. Generate one at a time with the same anchor. |
 | `realistic 3D rendered button` | Conflicts with flat-UI. Stay flat. |
 | `button with the word "Play"` on it | Models render text badly. Add text in Summer Engine via a `Label` over the button, not in the texture. |
@@ -175,7 +175,7 @@ If you generate a 4×4 grid of icons in one image, each icon becomes an `AtlasTe
 - **Letting the model render text.** Diffusion models cannot render reliable
   text. Always overlay text in Summer Engine with a `Label` node. The button
   texture is the frame; the label is the word.
-- **Forgetting `options.removeBackground: true`.** Default is opaque. Prompting for "transparent background" instead is what produces the painted-checkerboard failure below — the option runs a real alpha pass and does not.
+- **Forgetting `removeBackground: true`.** Default is opaque. Prompting for "transparent background" instead is what produces the painted-checkerboard failure below — the option runs a real alpha pass and does not.
 - **Expecting `style` to do the work.** Only `cartoon` and `anime` append anything; `realistic` and `none` append nothing, and any other value is coerced to `none`. `style: "none"` is right for UI, but "flat design" has to be in the prompt regardless.
 - **NinePatch with no border-vs-center distinction.** The 9-slice scaling smears the border into the center.
 - **Mipmaps on UI.** UI textures shouldn't mipmap — they're displayed at 1:1 or near it. Mipmaps waste memory and blur sharp edges.
@@ -187,7 +187,7 @@ If you generate a 4×4 grid of icons in one image, each icon becomes an `AtlasTe
   `STRETCH_KEEP_ASPECT_CENTERED` scales it down cleanly.
 - **User wants pixel-style UI.** Route to `pixel-art` — different prompt pattern, different filter, different anchor.
 - **User wants animated UI (spinning loading icon).** Generate the static frame here. Animate via `AnimationPlayer` rotating the `TextureRect`, not as a sprite sheet.
-- **Transparency comes back as a checkerboard pattern in the image.** The model rendered the checkerboard literally because the prompt asked for transparency. Remove every mention of transparency from the prompt, generate on a plain background, and pass `options.removeBackground: true` to cut the alpha server-side.
+- **Transparency comes back as a checkerboard pattern in the image.** The model rendered the checkerboard literally because the prompt asked for transparency. Remove every mention of transparency from the prompt, generate on a plain background, and pass `removeBackground: true` to cut the alpha server-side.
 - **Icons need to read at very small size (16-24px in a packed bar).** Bias prompts toward bold silhouette + minimal interior detail. Ornate detail is invisible at 16px and adds noise.
 
 ## Fallback (no MCP)
@@ -199,7 +199,7 @@ summer_generate_image(
   prompt="<asset + anchor>, isolated on a plain background. No scene background, not photorealistic, no 3D, not busy.",
   model="nano-banana-2",
   style="none",
-  options={ removeBackground: true }
+  removeBackground=true
 )
 ```
 

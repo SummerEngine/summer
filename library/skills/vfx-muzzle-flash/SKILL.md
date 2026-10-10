@@ -11,7 +11,7 @@ paths: ["**/*.tscn", "**/*.gd", "**/*.gdshader", "addons/vfx/**"]
 
 # muzzle-flash — One-Shot Star-Burst Flare
 
-A muzzle flash is on screen for 60–100 ms. Long enough to read, too short to animate. The recipe: a single billboarded quad with a star-burst gradient shader, fired by `restart()` on a weapon's `fired` signal, plus an `OmniLight3D` snapping on for 60 ms to light the room. Optional: a tiny GPUParticles3D one-shot for sparks. Doom Eternal does this. Half-Life 2 did this. Every shooter does this.
+A muzzle flash is on screen for 60–100 ms. Long enough to read, too short to animate. The recipe: a single billboarded quad with a star-burst gradient shader, fired by `restart()` on a weapon's `fired` signal, plus an `OmniLight3D` snapping on for 60 ms to light the room. Optional: a tiny GPUParticles3D one-shot for sparks. Most shooters use this pattern.
 
 ## When to use
 
@@ -23,12 +23,12 @@ A muzzle flash is on screen for 60–100 ms. Long enough to read, too short to a
 
 ## When NOT to use
 
-- The user wants a *continuous* flame (flamethrower) — use `fire`, not muzzle-flash.
-- The user wants the impact spark on the wall the bullet hit — that's `hit-spark`.
+- The user wants a *continuous* flame (flamethrower) — use `vfx-fire`, not muzzle-flash.
+- The user wants the impact spark on the wall the bullet hit — that's `vfx-hit-spark`.
 - The user wants a tracer line from barrel to target — use an `ImmediateMesh`
   recipe, not this. The current Summer build has no `Line3D`
   (`ClassDB.class_exists("Line3D")` is `false`).
-- The user wants a slow-glowing spell charge-up — use `magic-glow` for the buildup, then this for the release frame.
+- The user wants a slow-glowing spell charge-up — use `vfx-magic-glow` for the buildup, then this for the release frame.
 
 ## Recipe
 
@@ -377,7 +377,7 @@ After firing this recipe, suggest:
 
 - `vfx-hit-spark` — pair on the bullet impact end.
 - `vfx-smoke` — for a small puff at the barrel after the flash for high-caliber weapons.
-- `game-feel` — recoil camera kick + screen shake (`CameraShake.add_trauma(0.15)`) on every shot makes the flash feel 5× more powerful.
+- `game-feel` — recoil camera kick + screen shake (`CameraShake.add_trauma(0.15)`) on every shot makes the flash land much harder.
 - `sound-effect` — generate `9mm pistol shot, sharp crack, indoor, short tail, 400ms` and play in the same `fire()`.
 
 ## See also

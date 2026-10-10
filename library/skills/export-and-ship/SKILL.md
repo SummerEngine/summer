@@ -33,15 +33,17 @@ export command.
 1. Read `engineBinaryPath` from `summer_get_project_context`.
 2. Resolve the matching export-template directory for that exact Summer
    technical base.
-3. Inventory the installed templates and any `custom_template/release` paths
-   already configured in `export_presets.cfg`.
+3. Inventory the installed templates (`summer_export_templates` lists them and
+   installs Summer's macOS, Windows and web templates) and any
+   `custom_template/release` paths already configured in `export_presets.cfg`.
 4. Build a capability table with `available`, `missing prerequisite`, or
    `impossible on this build` for every requested target.
 
-A stock Summer 4.6.1 Mono install has only the macOS template. Web export is
-incompatible with that Mono build. Windows, Linux, Android, and iOS require a
-matching custom template or an external CI/build environment, plus their
-platform toolchains where applicable.
+A stock Summer Mono install ships only the macOS template. Web export is
+incompatible with that Mono build. Run `summer_export_templates` before marking
+another target missing: it installs Summer's macOS and Windows templates. Linux,
+Android, and iOS require a matching custom template or an external CI/build
+environment, plus their platform toolchains where applicable.
 
 **Hard gate:** an absent template or toolchain means the target is unavailable.
 Do not create its preset, recommend it as a local option, or invoke an export
@@ -55,7 +57,8 @@ Offer only targets marked `available` by step 1. Record other requested
 destinations as blocked follow-ups with their exact prerequisite.
 
 > Locally proven targets: **macOS**. Requested but blocked: **Windows**
-> (matching template or external CI), **Web** (non-Mono build), **Android**
+> (install the template with `summer_export_templates`), **Web** (non-Mono
+> build), **Android**
 > (template + Android toolchain). Which proven target should I prepare?
 
 Each destination has a different list. Multiple destinations = multiple lists. Don't shortcut — the iOS list does not satisfy the Steam list.
@@ -145,7 +148,7 @@ Build config:
 
 #### c) Web (HTML5) — unavailable on the stock Mono build
 
-Do not recommend or attempt this target from the stock Summer installation.
+Do not recommend or attempt this target from the stock Mono installation.
 Route it to a verified non-Mono Summer-compatible build environment first.
 Once that prerequisite is proven, these browser constraints apply:
 
@@ -157,7 +160,7 @@ Once that prerequisite is proven, these browser constraints apply:
 Build config:
 - Export preset: **Web**.
 - Output `.html` + `.wasm` + `.pck` + `.js`.
-- Disable: "Variant: Editor support", "Encryption". Keep: "GLES3 Fallback to GLES2" if targeting old browsers.
+- Disable: "Variant: Editor support", "Encryption".
 
 Known traps:
 - Audio: Chrome blocks autoplay. First user click must trigger audio context resume.
@@ -168,7 +171,7 @@ Known traps:
 | Asset | Resolution / Format |
 |---|---|
 | App icon | 1024×1024 PNG (Apple generates the rest) |
-| Launch screen | Storyboard (Godot generates) |
+| Launch screen | Storyboard (the engine generates it) |
 | Screenshots | 6.5" iPhone: 1242×2688 / 2688×1242 (≥ 3); 12.9" iPad if iPad-eligible |
 | App Store description | text per locale, ≤ 4000 chars |
 | Keywords | ≤ 100 chars, comma-separated |
@@ -230,13 +233,14 @@ For each preset:
 | `texture_format/etc2_astc` | `true` for mobile | Smaller texture compression |
 | `application/short_version` | matches `application/config/version` | Steam reads it |
 | `script_encryption_key` in `export_credentials.cfg` | set only when the user explicitly chooses script encryption | The similarly named preset field does not exist |
-| `application/icon` | path to your `.ico` / `.icns` / `.png` | Otherwise generic Godot icon ships |
+| `application/icon` | path to your `.ico` / `.icns` / `.png` | Otherwise the default engine icon ships |
 
 ### 6. Propose the build sequence
 
-> Capability proof: macOS available locally; Windows and Linux require external
-> CI; Web is unavailable on this Mono build. Pre-flight is clean for the macOS
-> preset. May I produce that one proven build now?
+> Capability proof: macOS available locally; Windows needs its template
+> (`summer_export_templates`); Linux requires external CI; Web is unavailable
+> on this Mono build. Pre-flight is clean
+> for the macOS preset. May I produce that one proven build now?
 
 ### 7. Produce a proven build
 
@@ -270,14 +274,14 @@ To enable another target, prove one of these before returning to step 2:
 
 ### Export-option cautions
 
-- **`script/encryption_key` does not exist.** The real key is `script_encryption_key`, and it lives in a separate `export_credentials.cfg`, not `export_presets.cfg` (`editor/export/editor_export.cpp:101,372-373`). Writing the wrong name produces an **unencrypted build with no error at all**.
+- **`script/encryption_key` does not exist.** The real key is `script_encryption_key`, and it lives in a separate `export_credentials.cfg`, not `export_presets.cfg`. Writing the wrong name produces an **unencrypted build with no error at all**.
 - **There is no `debug` field in a preset.** Debug versus release is chosen by `--export-debug` versus `--export-release`, nothing else.
 
 On Apple Silicon, `binary_format/architecture="arm64"` is the natural guess, and it fails leaving a **0-byte `.app` that looks like success**. Only `"universal"` ships.
 
 See `headless-scripting` for the wider pattern this is one instance of.
 
-If the user is on a CI system (GitHub Actions etc), this is the right place to point them at a cross-compile workflow — Godot can export Windows + Linux from a Linux runner.
+If the user is on a CI system (GitHub Actions etc), point them at a cross-compile workflow: the engine can export Windows and Linux from a Linux runner.
 
 ### 8. Verify each build
 
@@ -354,7 +358,7 @@ This skill produces release artifacts. Always ask before each build is invoked. 
 
 ## Want a working starter?
 
-No template — this is a workflow. Each project's export config and store assets are project-specific. For the Steam-specific GodotSteam GDExtension setup, see `deployment/steam-uploader/SKILL.md` (when shipped).
+No template — this is a workflow. Each project's export config and store assets are project-specific.
 
 ## See also
 
@@ -362,10 +366,5 @@ No template — this is a workflow. Each project's export config and store asset
 - `../../references/godot-version/godot-version.md` — Summer compatibility and
   export-template versioning
 - `../../references/collaborative-protocol/collaborative-protocol.md` — "May I write" pattern
-- `deployment/export-presets/SKILL.md` — preset config deep dive
-- `deployment/web-html5-export/SKILL.md` — HTML5-specific traps
-- `deployment/steam-uploader/SKILL.md` — `steamcmd` + GodotSteam (when shipped)
-- `deployment/itch-uploader/SKILL.md` — `butler` workflow (when shipped)
-- `deployment/mobile-export/SKILL.md` — iOS / Android specifics (when shipped)
-- `asset-pipeline/attribution-and-licensing/SKILL.md` — community asset attribution
-- `performance/tune-performance/SKILL.md` — pre-ship performance pass
+- `headless-scripting` — the headless CLI pattern the export command follows
+- `tune-performance` — pre-ship performance pass

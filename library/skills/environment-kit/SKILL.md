@@ -13,7 +13,7 @@ paths: ["assets/kits/**", "assets/models/**", "**/*.tscn", "**/*.gd"]
 
 A kit is a *family* of meshes — wall, floor, door, pillar, corner, arch — that the level designer snaps together to build interiors and exteriors. The skill exists to solve **one specific failure mode**: generating each piece with a fresh prompt produces six pieces that look like they came from six different games. The fix is the **style anchor pattern** — generate one piece first, lock its prompt suffix, and reuse that exact suffix for every subsequent piece.
 
-The backing tool is `summer_generate_3d`, called multiple times. Each call costs ~$0.50, so a 6-piece kit is ~$3 and ~5 minutes. Confirm scope before starting.
+The backing tool is `summer_generate_3d`, called once per piece. A 6-piece kit is six generations and about 5 minutes. Generation uses credits, so confirm scope before starting.
 
 ## When to use
 
@@ -32,7 +32,7 @@ The backing tool is `summer_generate_3d`, called multiple times. Each call costs
 
 ## The style anchor pattern
 
-This is the whole skill. Get this right and the kit looks unified. Get this wrong and you waste $3.
+This is the whole skill. Get it right and the kit looks unified. Get it wrong and every piece is wasted.
 
 1. **Generate the anchor piece first.** Pick the most visually defining piece — usually the wall or the door. Iterate the prompt until the user approves it visually.
 2. **Extract the style suffix.** Everything after the object description. Example anchor prompt:
@@ -69,7 +69,7 @@ Kit pieces only feel modular if they snap to a fixed grid. Pick the grid before 
 
 ### 1. Confirm scope and pick the grid
 
-> About to build a dungeon kit. Suggested pieces: wall, floor, pillar, door, corner, arch (6 pieces, ~$3, ~5 min). Snap grid: 2m (standard interior). OK?
+> About to build a dungeon kit. Suggested pieces: wall, floor, pillar, door, corner, arch (6 generations, ~5 min). Snap grid: 2m (standard interior). OK?
 
 ### 2. Generate the anchor (wall)
 
@@ -131,13 +131,13 @@ Three things the shape of those calls encodes:
 summer_inspect_resource(path="res://assets/kits/dungeon/wall.glb")
 ```
 
-Check the AABB. If the wall is 1.85m tall when you asked for 3m, scale it in the editor (or re-import with `Scale` in the import dock). Pivots should sit at the *bottom-back* corner for walls and *bottom-center* for floors — that makes snapping to a 2m grid trivial. If pivots are wrong, use Godot's "Center to Origin" import option.
+Check the AABB. If the wall is 1.85m tall when you asked for 3m, scale it in the editor (or re-import with `Scale` in the import dock). Pivots should sit at the *bottom-back* corner for walls and *bottom-center* for floors — that makes snapping to a 2m grid trivial. If pivots are wrong, use the "Center to Origin" import option.
 
 ## Anti-patterns
 
 - **Drifting style suffix.** Each piece gets a slightly different suffix → the kit looks mismatched. Copy-paste the exact string.
 - **Different polycount per piece.** A 5k-tri pillar next to a 500-tri wall reads as "the pillar is a hero piece" — wrong; they should feel like equal kit citizens. Match polycount within ~2× across the kit.
-- **Skipping the anchor approval.** If you generate all six pieces in a batch, you bake in whatever the first call's interpretation of the style was — and the user may hate it after $3 of generation.
+- **Skipping the anchor approval.** If you generate all six pieces in a batch, you bake in whatever the first call's interpretation of the style was — and the user may hate it after six generations.
 - **Generating walls / floors as individual meshes when you only need a tileable texture.** A flat wall section is cheaper as a textured `CSGBox3D`. Reserve the kit for pieces that need actual geometric detail (sconces, mouldings, doorways, arches).
 - **No scale cue in the prompt.** Wall comes back 0.4m tall. Always include `2 meter wide by 3 meter tall` (or your chosen grid).
 - **Forgetting the snap grid.** A 1.87m-tall wall with no scale fix → level looks crooked when tiled.

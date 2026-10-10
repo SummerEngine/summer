@@ -6,7 +6,7 @@ use_when:
   - a gameplay feature works correctly but feels wrong — floaty jumps, mushy combat, sluggish camera, weightless impacts
   - tuning jump height, gravity, camera lag, hit-stop, or impact feedback until controls feel right
 do_not_use_when:
-  - the bug is a logic error rather than subjective feel — use logical bug debugging
+  - the bug is a logic error rather than subjective feel — use investigating-bugs
 facets:
   lifecycle:
     - build

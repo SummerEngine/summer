@@ -117,7 +117,7 @@ If a single commit is the obvious suspect (e.g. "Added 200 enemies to spawner"),
 
 ### 4. Match to one of the four Summer Engine performance cliffs
 
-Godot 4.x regressions cluster heavily into four categories. Knowing them shortens diagnosis to minutes.
+Regressions cluster into four categories. Matching the symptom to one shortens diagnosis.
 
 | Cliff | Symptom | How to verify | Common cause |
 |---|---|---|---|
@@ -156,7 +156,7 @@ State the result with the number: "Reverted the per-frame `get_tree().get_nodes_
 |---|---|
 | Regression confirmed and root cause known, but the fix is "make the feature cheaper" rather than "undo the change" | `tune-performance` for the optimization pass |
 | The regression turns out to be a crash or error in disguise (the slow path is throwing exceptions in a tight loop) | `debug` |
-| The cause is a Godot version change or engine-side regression | Surface to the user; this is not a project-side fix |
+| The cause is an engine version change or engine-side regression | Surface to the user; this is not a project-side fix |
 | Bisect lands on a commit that touches 40 files | Subdivide the commit: check out the commit, revert subsets, re-measure |
 
 ## Red Flags — STOP
@@ -179,9 +179,9 @@ State the result with the number: "Reverted the per-frame `get_tree().get_nodes_
 | Excuse | Reality |
 |---|---|
 | "User wants it fixed now, no time to bisect" | Bisect is 5-15 minutes. Blind optimization can burn a day. |
-| "The slow commit is obvious, no need to A/B" | The "obvious" cause is wrong ~30% of the time. Verify before fixing. |
+| "The slow commit is obvious, no need to A/B" | The "obvious" cause is often wrong. Verify before fixing. |
 | "I'll measure after I fix it" | If you don't have the bad number, you can't prove the fix worked. |
-| "It's probably just Godot" | Engine-side regressions exist but are rare. Suspect your project first. |
+| "It's probably the engine" | Engine-side regressions exist but are rare. Suspect your project first. |
 | "Adding a pool / LOD / cache will help anyway" | Premature optimization on the wrong system is wasted work. |
 
 ## When The Engine Isn't Running
@@ -202,13 +202,8 @@ If the MCP tools report the engine isn't running:
 3. Only if neither is possible: ask the user for an in-game perf overlay reading (FPS, frame time, draw call count) and walk the bisect with them — "run on commit X, tell me the FPS; run on commit Y, tell me the FPS."
 4. Do not claim a fix is verified from code reading alone.
 
-## The Bottom Line
+## Related skills
 
-A regression is a delta. Diagnose the delta, not the codebase.
-
-Measure now. Measure last-good. Bisect what changed. Match to a Godot perf cliff. A/B one variable. Re-measure. Done.
-
-**Related skills:**
 - `tune-performance` — for general optimization once the regression is fixed or when no regression exists.
 - `investigating-bugs` — when the slow path turns out to be a logic bug (errors in a tight loop).
 - `debug` — when the perf issue is actually a crash or freeze.

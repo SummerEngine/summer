@@ -113,7 +113,7 @@ screenshot alone.
 
 1. **Wrong parent path:** `./NonExistent` fails. Ensure the parent exists before adding children.
 2. **Unnamed scene:** Saving without a path fails if the scene was never saved. Use `path` for new scenes.
-3. **Duplicate names:** Godot auto-renames (Node, Node2, etc.). Use descriptive unique names.
+3. **Duplicate names:** the engine auto-renames (Node, Node2, etc.). Use descriptive unique names.
 4. **Mixing 2D and 3D:** Don't put Node2D under Node3D or vice versa in the same hierarchy.
 
 ## Fallback
@@ -121,7 +121,7 @@ screenshot alone.
 MCP is the preferred path, not a requirement. Hand-written `.tscn` text loads and
 instantiates fine — including `[ext_resource]` lines with **no `uid=` field**,
 which the engine resolves by path (verified by loading such a scene on the
-shipped 4.6.1 build). Format version 3 is current for Godot 4.
+shipped 4.6.1 build). Format version 3 is current.
 
 What actually goes wrong when you hand-write scenes is mundane and checkable:
 a `SubResource("id")` with no matching `[sub_resource id="id"]` block, a
@@ -146,7 +146,7 @@ Rule when copying a scene as a template:
 
 ## Trap — Third-person camera collision when foliage shouldn't block
 
-Godot's `SpringArm3D` shortens the camera boom when it raycasts into geometry on the configured `collision_mask`. If your trees, bushes, or grass have collision so the player physically bumps them, on the same layer the SpringArm queries, the camera shortens for foliage too. Players see the camera awkwardly snap forward whenever they walk near a tree.
+`SpringArm3D` shortens the camera boom when it raycasts into geometry on the configured `collision_mask`. If your trees, bushes, or grass have collision so the player physically bumps them, on the same layer the SpringArm queries, the camera shortens for foliage too. Players see the camera awkwardly snap forward whenever they walk near a tree.
 
 The pattern that works:
 
@@ -156,9 +156,9 @@ The pattern that works:
    - Player `CharacterBody3D`: `collision_mask = 259` (which is 1 + 2 + 256, Entities + Level + Foliage).
 3. SpringArm uses a mask that catches solid level geometry but excludes foliage.
    - SpringArm: `collision_mask = 3` (which is 1 + 2, Entities + Level only).
-4. For the visual fade the user expects when the camera is "behind" a tree, add the foliage mesh to the `camera_fade` group. An existing camera-occlusion fade system can ghost the mesh by AABB intersection with the camera-to-player segment without touching collision.
+4. For the visual fade the user expects when the camera is "behind" a tree, use a camera-occlusion fade instead of collision: if the project has one, add the foliage mesh to its group (for example `camera_fade`) so it ghosts the mesh when it crosses the camera-to-player segment.
 
-Why per-layer split: there's no clean way to exclude a single body type from `SpringArm3D`'s collision check via `add_excluded_object` for dynamically-spawned foliage. You'd have to register every tree at spawn time and re-register on level change. Layer-level filtering is set-and-forget.
+Why per-layer split: there's no clean way to exclude a single body type from `SpringArm3D`'s collision check via `add_excluded_object` for dynamically-spawned foliage. You'd have to register every tree at spawn time and re-register on level change. Layer filtering needs no upkeep.
 
 Don't skip the player mask update. If you only move foliage to layer 9 without adding it to the player's mask, the player walks straight through trees.
 

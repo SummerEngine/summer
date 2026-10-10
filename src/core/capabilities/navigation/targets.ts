@@ -7,7 +7,7 @@
  *   src/lib/navigation/routes.ts). A vendored snapshot lives at
  *   assets/navigation/web-routes.json (refresh: `npm run sync:web-routes`) and
  *   every web row below is built from it — nothing hand-written.
- * - Summer Engine owns one table of editor destinations (navigate_ops.cpp) and
+ * - Summer Engine owns one table of editor destinations (the Navigate op) and
  *   advertises the ids it can open in /api/health capabilities.navigation.
  *   The rows below are METADATA for those ids (titles, intents, argument
  *   names) plus, for the few ids an older engine can serve through its

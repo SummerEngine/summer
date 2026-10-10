@@ -201,8 +201,8 @@ No template — this is a workflow that produces the brief that drives template 
 
 ## See also
 
-- `gameplay-mechanics/design-mechanic/SKILL.md` — design the core loop in detail
-- `level-design/design-level/SKILL.md` — sketch level 1
-- `rendering-and-lighting/art-direction/SKILL.md` — turn the one-phrase look into a full bible
-- `audio/audio-direction/SKILL.md` — sonic identity
-- `scene-and-project/make-game/SKILL.md` — scaffold the project once the brief is locked
+- `design-mechanic` — design the core loop in detail
+- `design-level` — sketch level 1
+- `art-direction` — turn the one-phrase look into a full bible
+- `audio-direction` — sonic identity
+- `make-game` — scaffold the project once the brief is locked

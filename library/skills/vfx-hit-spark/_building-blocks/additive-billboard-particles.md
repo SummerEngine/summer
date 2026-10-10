@@ -1,6 +1,6 @@
 # Additive Billboard Particles — Canonical Material Settings
 
-Reusable material configuration for additive particle billboards (motes, sparks, glow, ash). Used by `magic-glow`, optionally substitutable in `hit-spark` and `fire` if a custom shader is overkill.
+Reusable material configuration for additive particle billboards (motes, sparks, glow, ash). Used by `vfx-magic-glow`, optionally substitutable in `vfx-hit-spark` and `vfx-fire` if a custom shader is overkill.
 
 `BaseMaterial3D` is abstract — `BaseMaterial3D.new()` is a parse error ("Native class
 "BaseMaterial3D" cannot be constructed as it is abstract"). Instantiate
@@ -27,8 +27,8 @@ bm.emission = Color(R, G, B)          # usually same as albedo for single-color 
 
 ## When to use this vs a custom shader
 
-- **Use this `StandardMaterial3D` config** when the effect is just a tinted soft-circle mote (magic glow, sparkles, dust). Less code, faster iteration, free Godot-managed billboard math.
-- **Per-particle color over age does NOT need a custom shader.** `ParticleProcessMaterial` has `color_ramp`, `color_initial_ramp`, `alpha_curve` and `emission_curve` (all verified present in 4.6) — those drive the particle's `COLOR` from age and feed straight into a plain `StandardMaterial3D`. Reach for a ramp before reaching for a shader.
+- **Use this `StandardMaterial3D` config** when the effect is just a tinted soft-circle mote (magic glow, sparkles, dust). Less code, faster iteration, free engine-managed billboard math.
+- **Per-particle color over age does NOT need a custom shader.** `ParticleProcessMaterial` has `color_ramp`, `color_initial_ramp`, `alpha_curve` and `emission_curve` (all present on the shipped engine) — those drive the particle's `COLOR` from age and feed straight into a plain `StandardMaterial3D`. Reach for a ramp before reaching for a shader.
 - **Use a custom `ShaderMaterial`** when you need per-fragment shape masks (muzzle flash star burst), noise-distorted UVs (fire, smoke), or anything that varies *within* the quad. Those are what `StandardMaterial3D` genuinely can't express.
 - If a custom shader does need the particle age, note that the age lives in `INSTANCE_CUSTOM.y` (normalized by `INSTANCE_CUSTOM.w`, the lifetime), that `INSTANCE_CUSTOM.x` is the rotation angle — not the age — and that `INSTANCE_CUSTOM` is **vertex-stage only**. Pass it to `fragment()` through a `varying`.
 

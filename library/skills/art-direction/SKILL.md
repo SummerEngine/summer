@@ -13,7 +13,7 @@ paths: [".summer/**", "project.godot", "**/*.tscn"]
 
 ## Overview
 
-A consistent art direction is what makes a low-budget game *look* like a finished game. Most solo devs lose this fight by mixing styles — a toon-shaded character on a photoreal terrain, a pixel UI over a smooth 3D world. This skill builds an art bible the rest of the project obeys: references, palette, mood, lighting plan, post-processing, and a do/don't list. It writes to `.summer/art-bible.md` — the file every rendering / shader / lighting / VFX skill reads later.
+A consistent art direction makes a low-budget game look finished. Solo developers most often lose it by mixing styles — a toon-shaded character on a photoreal terrain, a pixel UI over a smooth 3D world. This skill builds an art bible the rest of the project obeys: references, palette, mood, lighting plan, post-processing, and a do/don't list. It writes to `.summer/art-bible.md` — the file every rendering / shader / lighting / VFX skill reads later.
 
 **Core principle:** Constraint produces style. A game with **15 colors total** looks more intentional than a game with infinite-color textures. Pick the constraint, then defend it.
 
@@ -118,7 +118,7 @@ State the plan in one block. For the current Summer Engine rendering stack:
 ```
 Sun: DirectionalLight3D, color #fff2d9, energy 0.9, angle ~30° (warm low-angle)
 Sky: ProceduralSkyMaterial, sky_top_color #6b88a3, sky_horizon_color #d8b88e
-Ambient: AmbientLight #4a5570, energy 0.15
+Ambient: Environment ambient_light_color #4a5570, ambient_light_energy 0.15
 Indoor fills: OmniLight3D color #ffd9a8, energy 0.6, range 4m
 NEVER: pure-white DirectionalLight, no ambient, hard cube shadows
 ```
@@ -138,7 +138,7 @@ Summer Engine post stack: Glow, SDFGI, SSAO, SSR, Adjustments, Color Correction
 
 ```
 Glow: ON, threshold 0.9, intensity 0.5  (soft bloom on highlights only)
-SDFGI: OFF for vertical-slice scope (perf cost; bake light probes later)
+SDFGI: OFF for vertical-slice scope (perf cost; bake lightmaps later)
 SSAO: ON, light_affect 0.3 (just enough for grounding)
 SSR: OFF unless we have wet/glass surfaces
 Color correction: Filmic tonemap, slight S-curve LUT toward warm
@@ -159,7 +159,7 @@ This is the contract. Five do's, five don'ts. Specific, enforceable.
 - Outline shader on character + interactable props (no outline on environment).
 - Soft shadows (DirectionalLight3D shadow_blur 1.5).
 - Warm key + cool fill — never both warm or both cool.
-- Texture filter: Linear with mipmaps OFF for crunchy near-pixel feel.
+- Texture filter: Nearest for a crunchy, near-pixel feel.
 
 ## DON'T
 - No pure white (#ffffff). Use #f4ecdf.
@@ -176,7 +176,7 @@ Some art-direction calls translate to `project.godot` settings. Apply them.
 **Preferred (Summer MCP):**
 
 ```
-summer_project_setting(key="rendering/textures/canvas_textures/default_texture_filter", value="2")  # Linear no mipmaps if pixel-art-ish
+summer_project_setting(key="rendering/textures/canvas_textures/default_texture_filter", value="0")  # Nearest, if pixel-art-ish (1 = Linear, the default)
 summer_project_setting(key="rendering/environment/defaults/default_clear_color", value="Color(0.227, 0.290, 0.227)")  # palette primary
 summer_project_setting(key="rendering/anti_aliasing/quality/msaa_3d", value="2")  # MSAA 2x for clean edges
 ```
@@ -274,9 +274,6 @@ No template — this is a workflow that produces the bible the rest of the proje
 
 ## See also
 
-- `scene-and-project/brainstorm-game/SKILL.md` — produces the brief that anchors the bible
-- `audio/audio-direction/SKILL.md` — the sonic counterpart
-- `rendering-and-lighting/3d-lighting/SKILL.md` — implements the lighting plan
-- `shaders/shader-basics/SKILL.md` — for outline / toon shaders
-- `post-processing/bloom-and-glow/SKILL.md` — implements the glow rule
-- `post-processing/color-grading/SKILL.md` — implements the LUT and tonemap call
+- `brainstorm-game` — produces the brief that anchors the bible
+- `audio-direction` — the sonic counterpart
+- `3d-lighting` — implements the lighting plan and the environment's glow, tonemap and SSAO settings

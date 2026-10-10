@@ -21,7 +21,7 @@ This is the widest capability surface you have, and it is the one you are least 
 <engine-binary> --headless --disable-crash-handler --path <project-dir> -s res://<script>.gd
 ```
 
-**Always pass `--disable-crash-handler` on an agent-driven run.** Summer's handler shells out to `atos` from inside a signal handler; when anything does go wrong it turns a clean failure into a hang or a cascade. Three agent-triggered crashes in eight minutes were traced to this on 2026-07-25.
+**Always pass `--disable-crash-handler` on an agent-driven run.** Summer's handler shells out to `atos` from inside a signal handler; when anything does go wrong it turns a clean failure into a hang or a cascade of crashes.
 
 ### Lint before you boot
 
@@ -53,7 +53,7 @@ Exit codes lie in both directions here.
 <EXTREMELY-IMPORTANT>
 **Every engine launch you make is `--headless`.** The user did not ask you to open anything. A window that appears unasked steals focus, interrupts whatever they were doing, and is indistinguishable from a crash or a bug from their side. This is a product rule, not a convenience.
 
-The one exception is the verify instance, and it is safe precisely because it is not visible: `--summer-verify` opens a real rendering window that is **hidden, `NO_FOCUS`, and positioned at `(-32000,-32000)`** (`main/main.cpp:2363` and following). That is why it can produce real pixels without ever appearing. Never reproduce the "I need a renderer" reasoning by launching a plain windowed editor — use `--summer-verify`.
+The one exception is the verify instance, and it is safe precisely because it is not visible: `--summer-verify` opens a real rendering window that is **hidden, `NO_FOCUS`, and positioned at `(-32000,-32000)`**. That is why it can produce real pixels without ever appearing. Never reproduce the "I need a renderer" reasoning by launching a plain windowed editor — use `--summer-verify`.
 
 If you genuinely believe the user needs to see the editor, ask them first.
 </EXTREMELY-IMPORTANT>
@@ -73,12 +73,12 @@ If neither is available (an older engine build that predates `engineBinaryPath`,
 | Linux | `~/.summer/engine/summer-linux-x86_64`, or `$SUMMER_ENGINE_BINARY` (see `running-in-the-cloud`) |
 
 <EXTREMELY-IMPORTANT>
-There is no `godot` binary on a Summer user's machine. `godot --headless`, `godot4`, `/usr/local/bin/godot` — none of these exist. A command built on that name fails with "command not found" on every single user, and no amount of retrying changes it. This skill exists partly because that exact instruction shipped in our own docs for months.
+There is no `godot` binary on a Summer user's machine. `godot --headless`, `godot4`, `/usr/local/bin/godot` — none of these exist. A command built on that name fails with "command not found" for every user, and no amount of retrying changes it.
 </EXTREMELY-IMPORTANT>
 
 ### The script must extend `SceneTree` or `MainLoop`
 
-`-s` does not load an arbitrary script. `main/main.cpp` instantiates it as the process's main loop, and rejects anything that is not one.
+`-s` does not load an arbitrary script. The engine instantiates it as the process's main loop, and rejects anything that is not one.
 
 ```gdscript
 extends SceneTree
@@ -92,7 +92,7 @@ func _initialize():
 
 Always call `quit()`. There is no other exit.
 
-**The trap:** a script extending `Node` (the reflex, since almost all GDScript does) is a wedge, not an error. The engine's rejection path calls `OS.alert()`, and on macOS that is an `NSAlert` `runModal` with **no headless guard** (`platform/macos/os_macos.mm:352-369`). The process blocks forever on a modal dialog that has no window to appear in. You get **no output at all** and a hung process that must be killed. Measured: five orphaned processes accumulated in one session before the cause was found.
+**The trap:** a script extending `Node` (the reflex, since almost all GDScript does) is a wedge, not an error. The engine's rejection path calls `OS.alert()`, and on macOS that is an `NSAlert` `runModal` with **no headless guard**. The process blocks forever on a modal dialog that has no window to appear in. You get **no output at all** and a hung process that must be killed. Measured: five orphaned processes accumulated in one session before the cause was found.
 
 If a headless run produces zero output and never returns, check the first line of your script before you check anything else.
 
@@ -262,13 +262,13 @@ Measured on 0.5.55: `port 6550 -> 6551`, new token, editor still alive on 6550 a
 
 So on a shipped build: run `--import` against a throwaway copy where you can, warn the user before running it against their open project, and tell them to restart the editor afterwards if their agent connection drops.
 
-**Fixed on `main` but not yet in any shipped binary** (`_should_publish_discovery`, commit `420222554e`; tracked as SUM-161): batch-mode invocations — `--import`, `--summer-verify`, `--export-*`, `-s`, `--headless`, `--quit-after` — no longer publish. Once that ships, this warning applies only to older builds. Plain `--headless -s` never started the server on any build, so everything else in this skill is unaffected.
+A later engine fix stops batch-mode invocations (`--import`, `--summer-verify`, `--export-*`, `-s`, `--headless`, `--quit-after`) from publishing. On a build with that fix this warning does not apply; if you cannot tell which build is installed, follow the precautions above. Plain `--headless -s` never started the server on any build, so everything else in this skill is unaffected.
 </EXTREMELY-IMPORTANT>
 
 Two lifecycle facts that decide the shape of every headless run:
 
 - **There is a hard work-completion floor between 3 and 5 seconds.** Fresh project, 8 small PNGs, editor killed at N seconds: at **3s, 0/8 imports landed in 10/10 cycles** — it boots, gets killed mid-scan, and accomplishes nothing. At **5s, 8/8 landed every cycle.** Never give an import a 3-second budget.
-- **`--headless --editor` is not a filesystem watcher.** It never notices files created after boot — 6 assets added 12s in, 45s wait, 0 imported. The rescan is driven by `NOTIFICATION_APPLICATION_FOCUS_IN` (`editor_node.cpp:1096`) and headless never fires a focus event. A long-lived headless editor serves a boot-time snapshot forever.
+- **`--headless --editor` is not a filesystem watcher.** It never notices files created after boot — 6 assets added 12s in, 45s wait, 0 imported. The rescan is driven by `NOTIFICATION_APPLICATION_FOCUS_IN`, and headless never fires a focus event. A long-lived headless editor serves a boot-time snapshot forever.
 
 Both ends of the lifecycle are broken, differently: short runs do no work, long ones go stale. **Boot → act → exit is the only shape that works today.**
 
@@ -379,7 +379,7 @@ Four measured instances of the same shape:
 
 1. Write the script with `summer_write_file` (or your own shell) into the project.
 2. Get the binary from `summer_get_project_context` → `engineBinaryPath`.
-3. Run it. **Read stdout** — GDScript errors go there, and a script that failed to parse still exits cleanly-looking.
+3. Run it. **Read stdout and stderr**: your `print()` output is on stdout, script errors are on stderr, and a script that failed to parse still exits 0.
 4. Verify the artifact exists on disk and check the `ResourceSaver.save()` return value. "The script ran" is not "the resource was written".
 5. If you wrote raw asset files, run `--import`.
 6. Delete throwaway scripts. Do not leave `probe_temp_3.gd` in a user's project.

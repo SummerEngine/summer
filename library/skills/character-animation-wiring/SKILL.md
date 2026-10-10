@@ -172,7 +172,7 @@ func run(ctx):
 
 That is the mechanism; a full audio-synced viseme timeline is `facial-and-lipsync`. Bone-track keyframes work the same way through `animate()` v2 — `ctx.animate(character, "Skeleton3D:Head/rotation", keys, "nod")` creates a proper bone rotation track (the helper owns the quaternion conversion; never hand-build quaternion tracks).
 
-## Step 6 — Root motion, honestly
+## Step 6 — Root motion
 
 Meshy/mocap locomotion clips translate the root bone forward (Meshy `run` moves ~5m per cycle). Two valid setups — **pick one, never both**:
 
@@ -185,7 +185,7 @@ Root motion CANNOT be judged from the editor state. Playtest it: `summer_play`, 
 
 ## Raw lane — the same wiring on older engines
 
-Every class above is script-bound; `ctx.anim_state_machine` is convenience, not capability. The raw locomotion wiring, verbatim the calls that matter:
+Every class above is script-bound; `ctx.anim_state_machine` is convenience, not capability. The raw locomotion wiring:
 
 ```gdscript
 func run(ctx):

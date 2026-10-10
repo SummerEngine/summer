@@ -66,9 +66,9 @@ This structure informs the task decomposition. Each task should produce self-con
 ### Task N: [Component Name]
 
 **Files:**
-- Create: `exact/path/to/file.py`
-- Modify: `exact/path/to/existing.py:123-145`
-- Test: `tests/exact/path/to/test.py`
+- Create: `exact/path/to/file.gd`
+- Modify: `exact/path/to/existing.gd:123-145`
+- Test: `tests/exact/path/to/test_file.gd`
 
 - [ ] **Step 1: Write the failing test**
 
@@ -103,7 +103,7 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add tests/path/test.py src/path/file.py
+git add tests/unit/test_health.gd scripts/health.gd
 git commit -m "feat: add specific feature"
 ```
 ````

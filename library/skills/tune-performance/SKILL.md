@@ -1,6 +1,6 @@
 ---
 name: tune-performance
-description: "Profile a slow game via summer_get_diagnostics, identify rendering/physics/scripting hotspots, propose fixes with before/after metric expectations."
+description: "Profile a slow game with a measurement probe, identify rendering/physics/scripting hotspots, propose fixes with before/after metric expectations."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: performance
@@ -23,7 +23,7 @@ Performance tuning without measurement is gambling. This skill enforces a measur
 
 > What's slow? Pick the closest: framerate drops in scene X / startup is long / freezes for a moment / runs fine on my machine but bad on hardware Y.
 
-Wait. The answer narrows the fix domain by 5x:
+Wait for the answer. It narrows where to look:
 
 | Symptom | Likely subsystem |
 |---|---|
@@ -75,7 +75,7 @@ Write the returned numbers down before fixing anything. Drive the probe to the s
 
 **Never profile with `--headless`.** A headless instance has no renderer: `RENDER_TOTAL_DRAW_CALLS_IN_FRAME` and `RENDER_TOTAL_OBJECTS_IN_FRAME` read `0.0`, and the FPS figure is an uncapped loop rate, not the game's framerate. The verify instance is windowed-offscreen precisely so the numbers are real.
 
-**Genuine fallback (engine not running at all):** ask the user to enable Godot's built-in monitor (`Debug → Monitor`, or in-game with `Performance.get_monitor`) and paste numbers. At minimum: FPS, frame time, draw calls, physics active objects.
+**Fallback (engine not running at all):** ask the user to open the editor's built-in monitors (Debugger → Monitors) or print `Performance.get_monitor` values in game, and paste the numbers. At minimum: FPS, frame time, draw calls, physics active objects.
 
 ### 3. Identify the dominant cost
 
@@ -91,7 +91,7 @@ Decision tree:
 
 ### 4a. Rendering hotspot
 
-Common Godot 4.x rendering costs, ordered by frequency:
+Common rendering costs, ordered by frequency:
 
 | Pattern | Symptom | Fix |
 |---|---|---|
@@ -105,8 +105,8 @@ Common Godot 4.x rendering costs, ordered by frequency:
 To inspect a suspect node:
 
 ```
-summer_inspect_node "./World/Enemy"
-summer_inspect_resource "./World/Enemy"   # for mesh/material/shape details
+summer_inspect_node path:"./World/Enemy"
+summer_inspect_resource nodePath:"./World/Enemy" property:"mesh"   # mesh/material/shape details
 ```
 
 **Bakes: know which process can run them.** `LightmapGI.bake(from_node, image_data_path)` IS script-bound on this build — run it from `summer_run_script` in the live editor (the GPU lightmapper needs a real renderer: desktop editors have one, cloud containers need xvfb + GL per `running-in-the-cloud`, and pure-headless returns `BAKE_ERROR_NO_LIGHTMAPPER`). The `OccluderInstance3D` bake remains editor-button only — say so rather than reporting it as applied. Navmesh baking, collision-shape generation from meshes, and `ImporterMesh.generate_lods` are all scriptable and remain yours to do.
@@ -119,7 +119,7 @@ Top patterns:
 |---|---|
 | 100+ active RigidBody3D | Sleep them when idle (`can_sleep = true`), or convert to Area3D where collision response isn't needed |
 | Concave collision shapes on dynamic bodies | Convert to ConvexPolygonShape3D or compound primitives (sphere/capsule/box). Concave costs 5–20x more. |
-| Physics tick at 120 Hz default | Lower `physics/common/physics_ticks_per_second` to 60 if visual smoothness allows |
+| Physics tick rate raised above the 60 Hz default | Lower `physics/common/physics_ticks_per_second` back to 60 if visual smoothness allows |
 | Per-frame raycast in `_physics_process` | Cache the result, raycast every N frames, or use ShapeCast3D |
 | Hundreds of overlap queries | Use Area3D with `monitoring = true` only on the bodies that need to detect — turn it off on environment |
 
@@ -142,13 +142,13 @@ Fixes:
 - Cache the group lookup in `_ready()` if the group composition is stable.
 - Move per-frame work to a timer at 10 Hz (`_on_timer_timeout`), not 60 Hz.
 - Replace `distance_to` with `distance_squared_to` in comparisons (no sqrt).
-- Push hot loops to a `@tool`-able C# script or GDExtension if it's truly per-frame.
+- Move a truly per-frame hot loop to C# or a GDExtension.
 
 ### 4d. Frame time spikes (jitter)
 
 If FPS is good but frame time spikes:
 
-- **Shader compilation**: precompile shaders during loading screen via `RenderingServer.shader_compile_from_code` or by warming up the scene off-screen.
+- **Shader compilation**: warm shaders up during a loading screen by rendering each material once off-screen.
 - **GC / object allocation**: `var x := []` inside `_process` allocates each frame. Pre-allocate.
 - **Async resource load**: ensure `ResourceLoader.load_threaded_request` is finished before referencing.
 
@@ -217,7 +217,7 @@ Compare: was the metric movement at least 50% of what was promised? If yes, ship
 - **"Just disable VSync to see real FPS."** Disabling VSync helps you measure, but performance work targets perceived smoothness (16.7 ms, locked). Re-enable before shipping.
 - **Premature C++ rewrite.** A GDScript hotpath at 5% of frame time isn't the bottleneck. Profile first.
 - **"It's slow on user machines, must be the GPU."** Often it's resolution scale + shadow quality + GI settings. Add a quality preset switcher first.
-- **Threading gameplay code.** Godot's gameplay layer isn't thread-safe. Threading is for asset load, network, AI compute — not `_physics_process`.
+- **Threading gameplay code.** The scene tree isn't thread-safe. Threading is for asset load, network, AI compute — not `_physics_process`.
 
 ## Collaborative protocol
 
@@ -233,6 +233,6 @@ No template — this is a workflow. Performance tuning is project-specific by de
 - `../../references/godot-version/godot-version.md` — renderer API churn notes (Compositor, RenderSceneBuffers)
 - `../../references/collaborative-protocol/collaborative-protocol.md` — "May I write" pattern
 - `../../references/gd-style/gd-style.md` — GDScript conventions (avoid bare types, use `:=`)
-- `debugging/debug/SKILL.md` — bug triage (related but different)
-- `workflow/diagnosing-perf-regressions/SKILL.md` — when it *got* slow rather than always was
-- `rendering-and-lighting/3d-lighting/SKILL.md` — light setup and bake decisions
+- `debug` — bug triage (related but different)
+- `diagnosing-perf-regressions` — when it *got* slow rather than always was
+- `3d-lighting` — light setup and bake decisions

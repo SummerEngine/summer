@@ -11,20 +11,20 @@ paths: ["**/*.tscn", "**/*.gd", "**/*.gdshader", "addons/vfx/**"]
 
 # lightning — Procedural Jagged Bolt
 
-A lightning bolt is a noisy line from A to B, drawn for ~150 ms with a glow shader, sparks at both endpoints, and camera shake on cast. The recipe builds the jagged path in GDScript (midpoint displacement on a polyline), feeds the verts into an `ImmediateMesh`, applies a `ShaderMaterial` for additive bloom + flicker, spawns `hit-spark` particles at each endpoint, and calls `CameraShake.add_trauma(0.6)` for the impact. Used for shock spells, tesla coils, weapon discharges, electric enemies.
+A lightning bolt is a noisy line from A to B, drawn for ~150 ms with a glow shader, sparks at both endpoints, and camera shake on cast. The recipe builds the jagged path in GDScript (midpoint displacement on a polyline), feeds the verts into an `ImmediateMesh`, applies a `ShaderMaterial` for additive bloom + flicker, spawns `vfx-hit-spark` particles at each endpoint, and calls `CameraShake.add_trauma(0.6)` for the impact. Used for shock spells, tesla coils, weapon discharges, electric enemies.
 
 ## When to use
 
 - "Cast a lightning bolt from the wizard's hand to the enemy."
 - "Chain lightning from one enemy to the next." (call `cast_lightning` per segment)
 - "Tesla coil firing at the player every 2 seconds."
-- "Energy weapon laser." (use the `laser-beam` variant)
+- "Energy weapon laser." (use the `plasma-laser` variant)
 - "Lightning strike from the sky."
 - The user wants a *short, dramatic* energy connection between two points.
 
 ## When NOT to use
 
-- The user wants a continuous beam that holds (e.g., laser sniper holding the trigger) — use the same shader on a `MeshInstance3D` cylinder with continuous emission, not the `ImmediateMesh` one-shot pattern. (See variants for `held-beam`.)
+- The user wants a continuous beam that holds (e.g., laser sniper holding the trigger) — use the same shader on a `MeshInstance3D` cylinder with continuous emission, not the `ImmediateMesh` one-shot pattern. (See the `plasma-laser` variant.)
 - The user wants ambient electricity *on* an object (Frankenstein arcs) — use a custom shader on the mesh with screen-space arcs; this recipe is for two-point bolts.
 - The user wants a 2D lightning effect on UI — `canvas_item` shader, not this.
 - The user wants a tracer line for a bullet — use a simple `ImmediateMesh`
@@ -369,7 +369,7 @@ trauma_amount = 0.0  # no shake on a held beam
 
 - One bolt at `SEGMENTS = 18`: 19 path points × 2 verts = 38 verts for the trunk, plus 2 × (`SEGMENTS / 3` + 1) = 14 verts per forked branch. One draw call, freed after 150 ms. Effectively free.
 - Chain lightning with 5 segments stays in the same negligible band — that is an order-of-magnitude expectation, not a measurement.
-- Endpoint sparks (instantiated `hit-spark` scenes) are the bigger cost — 64 particles × 2 = 128 particles per cast. Throttle for storms (see edge cases).
+- Endpoint sparks (instantiated `vfx-hit-spark` scenes) are the bigger cost — 64 particles × 2 = 128 particles per cast. Throttle for storms (see edge cases).
 - The shader's flicker uses `floor(TIME * flicker_rate)`, so it ages with `TIME` not particle time — flicker is consistent across all bolts in flight.
 
 ## Edge cases
@@ -378,7 +378,7 @@ trauma_amount = 0.0  # no shake on a held beam
 - **Bolt passes through a wall.** Visual only — the bolt shader doesn't depth test. If the user wants the bolt to be occluded by walls, set `depth_draw_opaque` and let the depth buffer cull it (loses the additive bloom in front of geometry).
 - **Bolt origin and target at the same point.** Falloff goes to zero; `_generate_path` returns a degenerate strip. Add a guard: if `(to - from).length() < 0.01`, skip.
 - **Underwater bolt.** Tint blue-green, drop `emission_boost` to 5.0; underwater bloom is muted.
-- **First-person caster (player's hand).** The bolt starts inside the player's view and reads as a flash. Use a `held-beam` variant or shorten `LIFETIME` to 0.08.
+- **First-person caster (player's hand).** The bolt starts inside the player's view and reads as a flash. Use the `plasma-laser` variant or shorten `LIFETIME` to 0.08.
 - **No `CameraShake` autoload registered.** `get_node_or_null("/root/CameraShake")` returns null and the `if cs` check skips the call; the bolt fires without shake. Suggest `_building-blocks/trauma-shake-snippet.md` to wire it.
 
 ## Fallback (no MCP)

@@ -31,7 +31,7 @@ Under Local Play they fail with a typed code (step 5); the authority's
 degrade gracefully, and check the real numbers on a hosted staging build.
 
 This skill extends the Courtyard game: its authority concludes matches as in
-`skill/summer-match-results`.
+`summer-match-results`.
 
 ## Steps
 
@@ -104,7 +104,7 @@ func show_queue_board(queue: StringName) -> void:
   pending returns the same operation.
 
 After a match, `Summer.client.ratings.rating_committed` delivers the
-player's own before-and-after rating (see `skill/summer-match-results`).
+player's own before-and-after rating (see `summer-match-results`).
 
 ### 3. Write a Game ranking from the authority
 
@@ -136,7 +136,7 @@ func _add_score(ranking: StringName, player_id: String, points: int) -> void:
 ```
 
 `sessions` maps each `session_id` to the `SummerSession` the authority keeps
-in `_on_session_joined` (`skill/summer-match-results`, step 1). The engine never
+in `_on_session_joined` (`summer-match-results`, step 1). The engine never
 retries a write. After a failure other than a conflict, read the score before
 deciding to write again: the first write may have committed.
 
@@ -226,6 +226,6 @@ on them.
 
 ## See also
 
-- `skill/summer-match-results` — concluding matches, which moves ratings
-- `skill/summer-matchmaking` — declaring rated queues and teams
-- `skill/summer-player-data` — saving per-player progress that isn't a ranking
+- `summer-match-results` — concluding matches, which moves ratings
+- `summer-matchmaking` — declaring rated queues and teams
+- `summer-player-data` — saving per-player progress that isn't a ranking

@@ -4,10 +4,10 @@ The minimum safe workflow for AI agents building in a Summer Engine project.
 
 ## Build flow (default)
 
-1. **Understand** the request, then outline a brief plan. Proceed once it's clearly right.
+1. **Understand** the request and outline a short plan.
 2. **Call `summer_get_project_context` first** so you don't guess scene paths or the project language and so the MCP session binds to the open project. Use `projectMemory` to decide which `.summer` files to read.
 3. **Edit through identity-bound Summer tools.** Use `summer_read_file`, `summer_replace_text`, and guarded `summer_write_file` for `.gd`, `.tscn`, `.tres`, `.cs`, `.json`, docs, and config. Write GDScript by default; use C# only if the project already uses it.
-4. **Play and iterate.** After writing code, **play the scene you just made** and read `summer_get_diagnostics`; fix and repeat until it launches clean — don't wait for the user to navigate to the feature before the first error shows.
+4. **Play and iterate.** After writing code, **play the scene you just made** and read `summer_get_diagnostics`; fix and repeat until it launches clean. Do not wait for the user to find the first error.
 
 ## When to use Summer MCP (the live engine)
 

@@ -1,7 +1,7 @@
 id: skill/tune-performance
 kind: skill
 version: 1.0.3
-summary: Profile a slow game via summer_get_diagnostics, identify rendering/physics/scripting hotspots, propose fixes with before/after metric expectations.
+summary: Profile a slow game with a measurement probe, identify rendering/physics/scripting hotspots, propose fixes with before/after metric expectations.
 use_when:
   - the game is slow, drops framerate, stutters, takes forever to start, or runs poorly on specific hardware
   - fps drops or stutter when many units, projectiles, or particles spawn at once and the hotspot is unknown

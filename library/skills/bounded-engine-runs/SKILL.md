@@ -11,9 +11,9 @@ paths: ["project.godot", "tests/**/*.gd", "tools/**/*.gd"]
 
 # Bounded engine runs for agents
 
-Agents verify games by running the engine many times: imports, tests, captures, multiplayer bots. Each run
-that hangs, overlaps another, makes noise or hides an error costs time and trust. These rules come from a
-day of several agents sharing one project on one Mac.
+Agents verify games by running the engine many times: imports, tests, captures, multiplayer bots. A run
+that hangs, overlaps another, makes noise or hides an error costs time. These rules keep runs safe when
+several agents share one project on one machine.
 
 ## 1. Every run is bounded, muted and alone
 
@@ -29,14 +29,13 @@ day of several agents sharing one project on one Mac.
     <project>/.engine.lock 180 <summer> ...
   ```
   Put this in one wrapper script and make every agent use it.
-- **Cap its memory.** A time limit does not stop a run from eating all memory first. One day of several agents
-  running builds, renders and a browser load of a large web export at once kernel-panicked the Mac
-  (compressor full, swap unable to grow). The wrapper should run the command as a child, sum the resident
+- **Cap its memory.** A time limit does not stop a run from eating all memory first; several engine runs plus a
+  browser loading a large web export can exhaust memory and crash the machine. The wrapper should run the command as a child, sum the resident
   memory of its whole process tree (browsers spawn GPU/renderer helpers), kill the tree past a cap (e.g.
   3 GB), and also stop when system free memory falls low (`sysctl -n kern.memorystatus_level` < 15 on macOS),
   because GPU memory on Apple Silicon is system memory but is not counted in RSS. Refuse to start when the
   system is already short (< 35).
-- **Mute it.** `--audio-driver Dummy`. Someone is working next to you.
+- **Mute it.** `--audio-driver Dummy`.
 - **Render only when you must, and offscreen.** `--headless` for logic (no pixels). For visual checks use
   `--summer-offscreen` with a fixed `--resolution` and a capture script that saves PNGs and quits. Visible
   windows only when a human asked to watch.

@@ -17,7 +17,7 @@ Input is a candidate global position and global Euler rotation. The subject's cu
 
 Interpretation:
 
-- Physics overlap counts are lower bounds because Godot exposes no broadphase-completeness bit.
+- Physics overlap counts are lower bounds because the physics server exposes no broadphase-completeness bit.
 - Any known obstruction makes `fits: false`.
 - Zero known physics overlaps can still yield `fits: null`; never coerce it to success.
 - `grounded`, signed `floorGap`, and support evidence are independent of overlap certainty. Claim physics-grounded only when `floorEvidence` is `physics` and `supportQueryComplete` is true; otherwise label the evidence approximate or incomplete.
@@ -42,7 +42,7 @@ This is one-dimensional arrangement evidence. It does not prove clearance on the
 
 ## `summer_navigation_probe`
 
-Iteration 0 is unready; iteration 1 and later can be queried. Layer-filtered snapped endpoints and the reported snap distances define what Godot actually tested. `ready: false` means unknown, not unreachable.
+Iteration 0 is unready; iteration 1 and later can be queried. Layer-filtered snapped endpoints and the reported snap distances define what the engine actually tested. `ready: false` means unknown, not unreachable.
 
 Require both a reachable path and a small endpoint snap distance appropriate to the authored target.
 Probe every independent destination; one reachable subject does not validate the

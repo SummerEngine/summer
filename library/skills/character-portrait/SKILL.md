@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_generate_image summer_search_assets summer_import_from_url summer_set_resource_property
+allowed-tools: Read Grep Glob Write Edit summer_generate_image summer_search_assets summer_import_from_url summer_set_prop summer_set_resource_property
 paths: ["assets/**", "art/portraits/**", "ui/portraits/**"]
 ---
 
@@ -62,7 +62,7 @@ background: muted painterly gradient, dark teal to deep brown, no scene detail
 style: semi-realistic painterly, soft edges, oil-painting feel
 ```
 
-Note there is no aspect line. `summer_generate_image` has no size or aspect argument — every MCP image comes back at the server's 1:1 default. Bust framing reads fine square, which is why this skill works over MCP at all; if the cast needs true portrait framing, generate in the Summer dashboard (which exposes aspect ratio) and bring the results back with `summer_import_from_url`, or crop after. Whichever you pick, do it for the *whole* cast — mixed aspect is as visible as mixed lighting.
+Note there is no aspect line. `summer_generate_image` has no size or aspect argument — every MCP image comes back at the server's 1:1 default. Bust framing reads fine square; if the cast needs true portrait framing, generate in the Summer dashboard (which exposes aspect ratio) and bring the results back with `summer_import_from_url`, or crop after. Whichever you pick, do it for the *whole* cast — mixed aspect is as visible as mixed lighting.
 
 Every subsequent portrait in this cast appends the anchor to the prompt verbatim. **Do not edit the anchor mid-cast** unless the user explicitly says "I want the new ones to look different."
 
@@ -86,7 +86,7 @@ The character description should include: identity (age, build, hair, distinctiv
 
 ### 4. Confirm and call
 
-> Generating Aria the witch portrait — 1 image, ~$0.02, model nano-banana-2, anchor locked from `.summer/portrait-anchor.md`. OK?
+> Generating Aria the witch portrait — 1 image (uses credits), model nano-banana-2, anchor locked from `.summer/portrait-anchor.md`. OK?
 
 ```
 summer_generate_image(
@@ -96,7 +96,7 @@ summer_generate_image(
 )
 ```
 
-`style: "none"` because the anchor's "semi-realistic painterly" already specifies style. Be clear about what the preset actually does though: only `cartoon` and `anime` append anything to the prompt, and `realistic` / `none` append nothing — any other value is coerced to `none`. So the preset cannot "fight" a painterly anchor; it just does nothing either way, and every bit of the look has to be in the prompt.
+`style: "none"` because the anchor's "semi-realistic painterly" already specifies style. Only `cartoon` and `anime` append anything to the prompt, and `realistic` / `none` append nothing — any other value is coerced to `none`. So the preset cannot "fight" a painterly anchor; it just does nothing either way, and every bit of the look has to be in the prompt.
 
 `options={ image_size: ... }` is dropped without an error — see the anchor note above.
 

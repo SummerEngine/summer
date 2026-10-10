@@ -31,6 +31,12 @@
  * ships it; and `reference/<slug>` that is no entry falls back to the one
  * `references/<slug>.md` an entry ships. A body render ends with its links and
  * the id that loads each. A linked file's footer names its entry.
+ *
+ * Hosted skills: a skill whose resource.yaml names a `hosted_resource`
+ * (summer://skills/<slug>) keeps its current text on the hosted Summer Engine
+ * MCP, the text the Studio agent reads. The body is read from there with the
+ * store sign-in; without it the local SKILL.md renders with the reason and how
+ * to load the full text. The entry also resolves by that resource URI.
  */
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { join, posix, sep } from "node:path";
@@ -43,6 +49,7 @@ import {
   type LibraryKind,
   type LibrarySearchDeps,
 } from "./library-search.js";
+import { withHostedMcp } from "./hosted-mcp.js";
 import { PACKAGE_ROOT } from "./package-root.js";
 import { getTemplateRegistry, type TemplateEntry } from "./templates.js";
 
@@ -71,6 +78,8 @@ export const LINKED_FILE_EXTENSIONS: ReadonlySet<string> = new Set([
 ]);
 /** A linked file larger than this is refused rather than dumped. */
 export const LINKED_FILE_MAX_BYTES = 256 * 1024;
+/** How long a hosted skill read waits for the hosted Summer Engine MCP. */
+export const HOSTED_READ_TIMEOUT_MS = 8_000;
 
 export const readLibraryInputShape = {
   id: z
@@ -95,6 +104,8 @@ export interface LibraryReadDeps extends LibrarySearchDeps {
   /** Root holding library/ (default: the installed package). */
   packageRoot?: string;
   templates?: readonly TemplateEntry[];
+  /** Reads a hosted skill's text by resource URI; throws when it cannot. */
+  readHostedResource?: (uri: string) => Promise<string>;
 }
 
 export interface LibraryReadOk {
@@ -121,6 +132,9 @@ export interface LibraryReadOk {
   /** Relative links in the body and the summer_read_library id that loads
    *  each (null: the target is not shipped with this package). */
   links?: Array<{ target: string; id: string | null }>;
+  /** Hosted skills: the resource the body comes from, and why it did not load. */
+  hosted_resource?: string;
+  hosted_error?: string;
   /** Tool records: how to reach it. */
   mcp_tool_name?: string;
   cli_command?: string;
@@ -155,12 +169,12 @@ export function entryIdWithHash(id: string, contentHash: string | undefined): st
 
 // ── Resolution ─────────────────────────────────────────────────────────────
 
-/** Exact id, an id with an @hash suffix (as the footer prints it), or a bare
- *  slug that names exactly one entry. */
+/** Exact id, an id with an @hash suffix (as the footer prints it), a hosted
+ *  skill's resource URI, or a bare slug that names exactly one entry. */
 function resolveEntry(requested: string, entries: LibraryIndexEntry[]): LibraryIndexEntry | null {
   const bare = requested.trim().replace(/@[a-f0-9]+$/i, "");
   if (!bare) return null;
-  const exact = entries.find((entry) => entry.id === bare);
+  const exact = entries.find((entry) => entry.id === bare || entry.hosted_resource === bare);
   if (exact) return exact;
   if (!bare.includes("/")) {
     const bySlug = entries.filter((entry) => entry.id.split("/").pop() === bare);
@@ -403,7 +417,7 @@ function relatedMap(entry: LibraryIndexEntry): Record<string, string[]> {
   return out;
 }
 
-function header(entry: LibraryIndexEntry, slug: string, related: Record<string, string[]>): string {
+function header(entry: LibraryIndexEntry, slug: string, related: Record<string, string[]>, hostedLoaded: boolean): string {
   const lines: string[] = [];
   lines.push(`${entry.id} — ${entry.kind} v${entry.version ?? "?"} (${entry.status ?? "stable"})`);
   if (entry.summary) lines.push(entry.summary);
@@ -414,7 +428,11 @@ function header(entry: LibraryIndexEntry, slug: string, related: Record<string, 
   }
   const relatedIds = Object.values(related).flat();
   if (relatedIds.length > 0) lines.push(`related: ${relatedIds.join(", ")}`);
-  if (entry.kind === "skill") {
+  if (hostedLoaded) {
+    lines.push(
+      `The body is the current text from the hosted Summer Engine MCP (also the \`${slug}\` MCP prompt and the resource ${entry.hosted_resource}). Follow it, do not paraphrase it.`
+    );
+  } else if (entry.kind === "skill") {
     lines.push(
       `Invoke: the \`${slug}\` skill in your host (Claude Code: /${slug}); installed under its bare slug by \`summer setup\`. The body follows — follow it, do not paraphrase it.`
     );
@@ -533,7 +551,19 @@ export async function readLibraryEntry(
   let bodyTitle: string;
   let body: string;
   let links: Array<{ target: string; id: string | null }> = [];
-  if (kind === "tool") {
+  let hostedText: string | null = null;
+  let hostedError: string | undefined;
+  if (kind === "skill" && entry.hosted_resource && part !== "resource") {
+    try {
+      hostedText = (await (deps.readHostedResource ?? readHostedSkill)(entry.hosted_resource)).replace(/\s+$/, "");
+    } catch (error) {
+      hostedError = error instanceof Error ? error.message : String(error);
+    }
+  }
+  if (hostedText !== null) {
+    bodyTitle = `${entry.hosted_resource} (hosted Summer Engine MCP)`;
+    body = hostedText;
+  } else if (kind === "tool") {
     bodyTitle = "how to call";
     body = toolBody(entry, slug);
   } else if (kind === "template") {
@@ -553,16 +583,23 @@ export async function readLibraryEntry(
     }
   }
 
-  const sections: string[] = [header(entry, slug, related)];
+  const sections: string[] = [header(entry, slug, related, hostedText !== null)];
   if (part === "skill" || part === "all") {
     sections.push(`--- ${bodyTitle} ---\n${body}`);
     if (links.length > 0) sections.push(linksSection(links));
+    if (hostedError !== undefined) {
+      sections.push(
+        `--- hosted text not loaded ---\nThe full current text of this skill is the resource ${entry.hosted_resource} on the hosted Summer Engine MCP, and it could not be read: ${hostedError}\nThe body above is only the local summary: load the full text before you act (here after the fix, or as the \`${slug}\` MCP prompt or resource in a host connected to the hosted Summer Engine MCP).`
+      );
+    }
   }
   if (part === "resource" || part === "all") sections.push(`--- ${relPath}/resource.yaml ---\n${resourceYaml}`);
   sections.push(footer);
 
   const result: LibraryReadOk = { ...base, text: sections.join("\n\n") };
   if (bodyFile) result.body_file = bodyFile;
+  if (entry.hosted_resource) result.hosted_resource = entry.hosted_resource;
+  if (hostedError !== undefined) result.hosted_error = hostedError;
   if (links.length > 0 && part !== "resource") result.links = links;
   if (kind === "tool") {
     if (entry.mcp_tool_name) result.mcp_tool_name = entry.mcp_tool_name;
@@ -571,6 +608,24 @@ export async function readLibraryEntry(
     if (entry.authority) result.authority = entry.authority;
   }
   return result;
+}
+
+/** A hosted skill's text, read from the hosted Summer Engine MCP with the store sign-in. */
+async function readHostedSkill(uri: string): Promise<string> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`the hosted Summer Engine MCP did not answer within ${HOSTED_READ_TIMEOUT_MS / 1000} s.`)), HOSTED_READ_TIMEOUT_MS);
+    timer.unref?.();
+  });
+  try {
+    const result = await Promise.race([withHostedMcp((client) => client.readResource({ uri })), timeout]);
+    const contents = Array.isArray(result.contents) ? (result.contents as Array<{ text?: unknown }>) : [];
+    const text = contents.map((content) => (typeof content.text === "string" ? content.text : "")).join("\n").trim();
+    if (!text) throw new Error("the hosted Summer Engine MCP returned no text for it.");
+    return text;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function safeTemplates(): readonly TemplateEntry[] {

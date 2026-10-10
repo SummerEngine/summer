@@ -3,7 +3,8 @@
  * librarian. Behavior lives in src/core/library-search.ts and
  * src/core/library-read.ts; `summer tool search-library|read-library`
  * (src/core/capabilities/tool-dispatch.ts) calls the same functions.
- * Engine-free: both read the library shipped with this package.
+ * Engine-free: both read the library shipped with this package; a hosted
+ * skill's body comes from the hosted Summer Engine MCP when signed in.
  */
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { readLibraryEntry, readLibraryInputShape } from "../../core/library-read.js";
@@ -27,6 +28,7 @@ export const READ_LIBRARY_DESCRIPTION =
   "Skills: the SKILL.md body plus metadata (status, use_when, related) and how to invoke the skill in your host (bare slug). " +
   "Tools: how to call it (MCP name, `summer tool <slug> --args`, engine requirement, authority) plus the descriptor. " +
   "Templates: the pinned repo @ commit and tree digest (or built-in) and the `summer create <slug>` command. References: the markdown body. " +
+  "Hosted skills (publish-your-game, store-listing, store-art, grow-analytics; also by their summer://skills/<slug> URI): the current text from the hosted Summer Engine MCP with the store sign-in, else the local summary plus why and how to load the rest. " +
   "Linked files: a body ends with its relative links and the id that loads each; a file an entry links loads by <entry id>/<link as written> " +
   "(e.g. skill/spatial-placement/references/kit-placement-tools.md), by the relative path alone when one entry ships it, inside library/ only. " +
   "part: 'skill' = body only, 'resource' = the resource.yaml descriptor only, 'all' (default) = both. " +

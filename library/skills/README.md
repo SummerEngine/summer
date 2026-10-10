@@ -1,6 +1,6 @@
 # Summer skills
 
-> 118 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
+> 122 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
 
 The folder is flat on purpose (`docs/design/DECISIONS.md`, D3): a skill usually belongs to several domains, so categories live in each skill's `facets.domains` and this index is rendered from them. The first domain listed is the primary one. `summer skills list --by-domain` prints the same grouping; `summer skills info <slug>` shows one skill.
 
@@ -16,6 +16,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 - [assets](#assets) (3)
 - [audio](#audio) (6)
 - [character-controller](#character-controller) (2)
+- [creator](#creator) (4)
 - [debug](#debug) (1)
 - [deployment](#deployment) (2)
 - [editor](#editor) (1)
@@ -125,6 +126,15 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 |---|---|---|
 | [*character-movement*](./character-movement/SKILL.md) (preview) | Player controllers for 2D and 3D, plus the canonical third-person controller for Summer humanoid packages: movement owns translation, clips follow state. | gameplay, 2d, 3d |
 | [fps-controller](./fps-controller/SKILL.md) ★ | Production-quality first-person controller — WASD, mouse look, jump, coyote time, jump buffering, air control, and external-velocity handling. | gameplay |
+
+## creator
+
+| skill | when to use | also |
+|---|---|---|
+| [grow-analytics](./grow-analytics/SKILL.md) | Read and analyse a creator's Summer Grow numbers: store page views, launches, play sessions, play time; compare windows, flag drops. | deployment |
+| [publish-your-game](./publish-your-game/SKILL.md) | Publish a Summer game on Summer Games through MCP: store page, art, build upload, submit, and one approval link for the owner. | deployment |
+| [store-art](./store-art/SKILL.md) | Make Summer Games store art per slot and flow: key art, covers, icons, screenshots, trailer: size, shape, text rules, fallbacks. | assets |
+| [store-listing](./store-listing/SKILL.md) | Write a Summer Games store page per flow (desktop, mobile): targets, title, tagline, descriptions, tags, and what never to write. | product-language |
 
 ## debug
 

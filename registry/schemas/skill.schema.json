@@ -5,6 +5,11 @@
   "allOf": [{ "$ref": "resource.schema.json" }],
   "properties": {
     "kind": { "const": "skill" },
+    "hosted_resource": {
+      "type": "string",
+      "pattern": "^summer://skills/[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "The skill's current text lives on the hosted Summer Engine MCP as this resource; summer_read_library loads it from there (store sign-in) and falls back to the local SKILL.md."
+    },
     "recommended": {
       "type": "boolean",
       "description": "Installed by `summer skills install --recommended` (and `summer setup`). Omitted means false."

@@ -105,6 +105,8 @@ export interface LibraryIndexEntry {
   authority?: Record<string, boolean>;
   // skill records
   recommended?: boolean;
+  /** The hosted Summer Engine MCP resource holding the skill's current text. */
+  hosted_resource?: string;
 }
 
 export type MatchedBy = "lexical" | "semantic";

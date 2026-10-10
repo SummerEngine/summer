@@ -202,7 +202,7 @@ queries:
 
   # ── Project lifecycle ──────────────────────────────────────────────────
   - query: "publish my game"
-    expected: [skill/export-and-ship]
+    expected: [skill/publish-your-game, skill/export-and-ship]
   - query: "export a windows build I can send to my friend"
     expected: [skill/export-and-ship]
   - query: "test the game on my phone"

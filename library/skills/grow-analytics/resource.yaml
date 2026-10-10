@@ -1,0 +1,27 @@
+id: skill/grow-analytics
+kind: skill
+version: 1.0.0
+summary: "Read and analyse a creator's Summer Grow numbers: store page views, launches, play sessions, play time; compare windows, flag drops."
+use_when:
+  - "the user asks how their game is doing on Summer Games: views, launches, players, play time"
+  - "reading summer_grow_overview or summer_grow_analytics and turning the numbers into one next step"
+  - "comparing two time windows, walking the store funnel or finding where players drop"
+do_not_use_when:
+  - "sending analytics events from game code — skill/summer-analytics"
+facets:
+  lifecycle:
+    - grow
+  domains:
+    - creator
+    - deployment
+  modalities:
+    - docs
+related:
+  skills:
+    - skill/publish-your-game
+    - skill/summer-analytics
+hosted_resource: "summer://skills/grow-analytics"
+source: official
+license: MIT
+status: stable
+recommended: false

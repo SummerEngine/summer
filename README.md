@@ -48,16 +48,16 @@ Open your AI agent (Claude Code, Cursor, Codex, Copilot, Devin Desktop, etc.) an
 
 > Install Summer Engine and let's make a game. Read github.com/summerengine/summer, check what I already have installed, install whatever is missing, log me in, and scaffold a starter project so we can start building.
 
-That's it. The agent reads this README, detects what's already on your machine, and runs only what's missing via Bash. **No `/plugin` slash commands. No manual installs. One paste.**
+The agent reads this README, checks what is already on your machine, and runs only the missing steps in its shell.
 
 The first run will:
-1. Install the `summer-engine` npm package (~3 MB) if it's not on `PATH`.
+1. Fetch the `summer-engine` npm package (~2 MB) through npx.
 2. Install Summer's game-dev skills into `~/.claude/skills/` (or your agent's user-skill directory) so the agent loads them next session.
-3. Download the Summer Engine app (~1 GB, including the engine binary, Git, and other runtime tools so users without them aren't blocked) if it's not installed.
+3. Download the Summer Engine app (~1 GB, including Git and other runtime tools) if it's not installed.
 4. Open your browser for one-click sign-in.
 5. Scaffold a starter project and open the engine.
 
-At that point the agent has the skills, the MCP server, and your engine running. Ask it to build something.
+Then ask the agent to build something.
 
 ---
 
@@ -87,13 +87,13 @@ The second line makes the new Node visible to this shell without a restart. Wind
 
 **macOS/Linux, Node missing or older than 20:** stop and tell the user: "Summer needs Node.js 20+. Install from https://nodejs.org and re-run the prompt."
 
-### Step 0: Pre-detection (no commits to disk, just check state)
+### Step 0: Check what is installed (read-only)
 
 ```bash
 npx -y summer-engine@latest doctor --json
 ```
 
-The first invocation downloads the npm package transparently to npx's cache (~3 MB, ~5 sec). Subsequent calls are fast. The `-y` flag auto-confirms npx's "ok to install summer-engine?" prompt so the call doesn't hang in a non-interactive shell.
+The first call downloads the package into npx's cache (~2 MB, a few seconds); later calls are fast. `-y` answers npx's "ok to install summer-engine?" prompt so the call doesn't hang in a non-interactive shell.
 
 Read the JSON output. **Top-level `ok: true` means "no check failed" — it does NOT mean Summer is installed.** A machine with no skills, no MCP config, and no login can report `ok: true` (those checks warn, they do not fail). So never skip Step 1 on `ok`: it is idempotent and fast. Use the `checks` array (each entry: `id`, `label`, `status` of `ok` / `warning` / `fail`, `message`, optional `details`) only to decide whether the expensive steps — engine download (Step 2) and browser login (Step 3) — are needed.
 
@@ -121,11 +121,11 @@ The check ids are `node-version`, `cli-version`, `cli-version-current`, `skills-
 npx -y summer-engine@latest setup claude-code --yes --force
 ```
 
-Replace `claude-code` with the user's actual agent: `claude-desktop`, `codex`, `cursor`, `windsurf`, `antigravity`, `cline`, `cline-cli`, `kilo-code`, `github-copilot`, `vscode-copilot`, `visual-studio`, `copilot-jetbrains`, `opencode`, `zed`, `kiro`, `goose`, `hermes`, `trae`, `qwen-code`, `kimi-code`, `crush`, `amp`, `factory`, `junie`, `warp`, `rovo-dev`, `qoder`, `grok-build`, `mistral-vibe`, `lm-studio`. Use `github-copilot` for Copilot CLI, `vscode-copilot` for GitHub Copilot Chat/Agent in VS Code, `visual-studio` for Copilot in Visual Studio, and `copilot-jetbrains` for Copilot in JetBrains IDEs. Legacy targets `gemini` and `roo-code` still work; for Google's agent use `antigravity`. This installs **every skill in the library** (`status: preview` skills included — they are labelled as preview in their guidance, and `--stable-only` skips them) to `~/.claude/skills/<slug>/SKILL.md` (or the agent's equivalent user-skill directory) AND writes the MCP server config so the agent can talk to the engine, then runs doctor and prints what it installed and where. The `--force` flag wipes any stale skill content first, so re-runs always end up with the latest copy. `--recommended` installs only the recommended subset — don't use it from this playbook.
+Replace `claude-code` with the user's actual agent: `claude-desktop`, `codex`, `cursor`, `windsurf`, `antigravity`, `cline`, `cline-cli`, `kilo-code`, `github-copilot`, `vscode-copilot`, `visual-studio`, `copilot-jetbrains`, `opencode`, `zed`, `kiro`, `goose`, `hermes`, `trae`, `qwen-code`, `kimi-code`, `crush`, `amp`, `factory`, `junie`, `warp`, `rovo-dev`, `qoder`, `grok-build`, `mistral-vibe`, `lm-studio`. Use `github-copilot` for Copilot CLI, `vscode-copilot` for GitHub Copilot Chat/Agent in VS Code, `visual-studio` for Copilot in Visual Studio, and `copilot-jetbrains` for Copilot in JetBrains IDEs. Legacy targets `gemini` and `roo-code` still work; for Google's agent use `antigravity`. This installs **every skill in the library** to `~/.claude/skills/<slug>/SKILL.md` (or the agent's own skill directory), writes the MCP server config, runs doctor, and prints what it installed and where. Preview skills are included and labelled; `--stable-only` skips them. `--force` wipes stale skill copies first. Don't use `--recommended` from this playbook; it installs only a subset.
 
 **First-install detection:** if `~/.claude/skills/` didn't exist before this command, Claude Code wasn't watching it and won't auto-detect the new files this session. Tell the user **once**: "Skills installed - restart your agent so they load." On subsequent installs (directory already existed), skills auto-detect mid-session and no restart is needed. **You can detect first-install vs upgrade by checking if `~/.claude/skills/` existed before Step 1; record the result before running setup.**
 
-**Do NOT run `/plugin install` or any slash command.** The CLI path is the canonical install. The marketplace path is an alternative for users who specifically prefer the official plugin TUI; we don't route agents there.
+**Do NOT run `/plugin install` or any slash command.** The CLI is the supported install path; the plugin marketplace is only for users who ask for it.
 
 ### Step 2: Install the engine app (only if `engine-install` needs attention)
 
@@ -133,7 +133,7 @@ Replace `claude-code` with the user's actual agent: `claude-desktop`, `codex`, `
 npx -y summer-engine@latest install
 ```
 
-~1 GB. Downloads from Summer's signed releases. The bundle includes the engine binary plus Git and a handful of other runtime tools so users who don't already have them aren't blocked. The CLI prints the URL and size before touching disk. Tell the user **"downloading the engine app, ~1 GB, this takes a couple minutes"** so they don't bail thinking it stalled.
+~1 GB from Summer's signed releases, including Git and other runtime tools. The CLI prints the URL and size before it writes anything. Tell the user **"downloading the engine app, ~1 GB, this takes a couple minutes"** so they don't bail thinking it stalled.
 
 **Already installed?** `summer install` never silently replaces an engine. An equal version exits 0 as "up to date"; a different version is replaced only with `--yes` or a TTY confirmation, and the new bundle is swapped in only after it copied completely, so a failed download leaves the old engine in place.
 
@@ -145,7 +145,7 @@ npx -y summer-engine@latest install
 npx -y summer-engine@latest login
 ```
 
-This opens the user's default browser. **Tell the user**: "Your browser is opening now. Click sign-in once and come back to this terminal." The CLI waits up to 120 seconds for the auth callback, validates that the returned identity matches the CLI token, writes the core-compatible session to the secured `~/.summer/` store, and returns. **If the user takes longer than 120 seconds, re-run `npx -y summer-engine@latest login` and tell them to come back to the terminal quickly.** Don't loop indefinitely. The same `auth-token` and `user.json` filenames remain shared with the engine; they sign in once, both surfaces accept it.
+This opens the user's default browser. **Tell the user**: "Your browser is opening now. Click sign-in once and come back to this terminal." The CLI waits up to 120 seconds for the sign-in, checks the returned identity, and stores the session in `~/.summer/`, which the engine shares. **If the user takes longer than 120 seconds, re-run `npx -y summer-engine@latest login` once and tell them to come back to the terminal quickly.** Don't loop.
 
 ### Step 4: Re-run doctor to confirm
 
@@ -174,7 +174,7 @@ npx -y summer-engine@latest run my-fps-game
 
 ### Step 5b: Wait for the engine to be reachable (only if `summer run` printed "API not responding yet")
 
-If the engine takes longer than 20s to boot (cold start, slow disk, etc.), `summer run` returns successfully but the local API isn't up yet. MCP tools may not connect until the local API is ready. Wait for it:
+If the engine takes longer than 20 seconds to boot, `summer run` returns before the local API is up, and MCP tools cannot connect yet. Wait for it:
 
 `doctor --json` is pretty-printed (one field per line: `"id"`, `"label"`, `"status"`, …), so match across lines:
 
@@ -203,9 +203,8 @@ Only skip brainstorm if the user explicitly said "skip brainstorm" or "just buil
 - **Don't run `npm install -g summer-engine`.** Use `npx -y summer-engine@latest ...` instead. `-g` requires `sudo` on most Mac/Linux setups, so the user will get permission errors and you'll get stuck. `npx` works without root and the MCP config we ship already points at `npx summer-engine mcp`.
 - **Don't install Node.js without asking, and don't use anything but winget for it.** On Windows, Step -1 installs Node LTS with winget after the user says yes. On macOS/Linux, point them at https://nodejs.org and stop.
 - **Don't run plain `npx` in Windows PowerShell, and don't change the execution policy or Defender to make it work.** Use `npx.cmd`.
-- **Don't ask the user "do you want the engine too?" or "do you also want the CLI?"** There is one product, three pieces, all installed by this playbook.
+- **Don't ask the user "do you want the engine too?" or "do you also want the CLI?"** This playbook installs all of it.
 - **Don't double-download.** Always run `npx -y summer-engine@latest doctor --json` first and skip the engine download and the browser login when their checks are `status: "ok"`. Step 1 (`setup`) is the exception: run it every time — it is idempotent, and doctor's top-level `ok` cannot tell you whether skills or the MCP config are installed.
-- **Don't tell the user to type `/plugin marketplace add` or `/plugin install`.** The CLI path is the canonical install. Those slash commands are an alternative for the marketplace TUI, not the primary flow.
 - **Don't run `summer install` or `summer login` in the background.** They print user-facing output (engine download progress, browser-opening notice). Run them in the foreground so the user sees what's happening.
 - **Don't skip the `--json` flag on `summer doctor`.** Text output is fragile to parse and changes per version.
 - **Don't skip the `-y` flag on `npx`.** Without it, npx prompts "ok to install summer-engine?" interactively and the call hangs in a non-interactive shell.
@@ -215,9 +214,9 @@ Only skip brainstorm if the user explicitly said "skip brainstorm" or "just buil
 - **Don't loop `summer login` if it times out at 120s.** Re-run it once and tell the user to be quicker; loop forever and the user is stuck.
 - **Don't jump straight into `summer create` from a vague prompt.** Invoke the `brainstorm-game` skill first (Step 6). The build skills assume `.summer/GameSoul.md` exists.
 
-**Using a different agent?** Replace `claude-code` with any supported agent in Step 1: `claude-desktop`, `codex`, `cursor`, `windsurf`, `antigravity`, `cline`, `cline-cli`, `kilo-code`, `github-copilot`, `vscode-copilot`, `visual-studio`, `copilot-jetbrains`, `opencode`, `zed`, `kiro`, `goose`, `hermes`, `trae`, `qwen-code`, `kimi-code`, `crush`, `amp`, `factory`, `junie`, `warp`, `rovo-dev`, `qoder`, `grok-build`, `mistral-vibe`, `lm-studio`. (`devin` is also accepted as an alias for `windsurf`; `agy` for `antigravity`; `droid` for `factory`.) Skill targets vary per agent; the CLI handles the difference, and [`integrations/README.md`](integrations/README.md) documents exactly what gets written where for every client. After install, **Cline users should restart VS Code** so the extension reloads its MCP config. **VS Code Copilot users** should start the `summer-engine` MCP server from Agent mode if VS Code does not autostart it.
+**Using a different agent?** Use its id from Step 1 (aliases such as `devin`, `agy` and `droid` also work; see the [CLI reference](#cli-reference)). Skill folders vary per agent; the CLI handles the difference, and [`integrations/README.md`](integrations/README.md) documents exactly what gets written where for every client. After install, **Cline users should restart VS Code** so the extension reloads its MCP config. **VS Code Copilot users** should start the `summer-engine` MCP server from Agent mode if VS Code does not autostart it.
 
-**Power-user note:** if the user specifically wants `summer` on their `PATH` for everyday terminal use outside the AI agent, a global npm install is still possible. The agent flow doesn't need it.
+If the user wants `summer` on their `PATH` for everyday terminal use, a global npm install works too. The agent flow doesn't need it.
 
 ---
 
@@ -227,14 +226,14 @@ Only skip brainstorm if the user explicitly said "skip brainstorm" or "just buil
 |---|---|---|
 | **Create** | Available | Scaffold from a pinned template, build scenes and scripts through MCP, generate 2D/3D/audio/video assets, guided by the library. |
 | **Test** | Available | The verification ladder: compile checks, screenshots, live play with debugger reads, and input-driven probes (`RunVerification`) that press real keys and assert on real frames. |
-| **Publish** | Preview | `summer_export_game` exports the summer.games `.zip` with the installed engine (headless); `summer_publish_build` uploads it to your game's store listing after you confirm the exact game, file and version (sign in once with `summer login --store`). The older `summer publish` (`.pck` to the legacy creator API) is deprecated. Nothing is ever submitted silently. |
-| **Grow** | Direction | Store distribution, analytics, retention and live-ops tooling arrive as new library entries (the structure is built for it — lifecycle is metadata, not architecture). Not promised by this package today. |
+| **Publish** | Preview | `summer_export_game` exports the game with the installed engine (headless); `summer_publish_build` uploads it to your game's summer.games store listing after you confirm the exact game, file and version (sign in once with `summer login --store`). Nothing is submitted silently. |
+| **Grow** | Planned | Analytics, retention and live-ops tooling will arrive as new library entries. Not part of this package yet. |
 
 ## What's in this repo
 
 ```
 summer/
-├── README.md          # you are here — humans + the one-paste install prompt
+├── README.md          # you are here: overview + the install playbook
 ├── AGENTS.md          # the agent guide: trust, the library, navigation, engine rules
 ├── src/               # the Summer software (TypeScript)
 │   ├── core/          #   shared implementations (capabilities used by both CLI and MCP)
@@ -242,10 +241,10 @@ summer/
 │   ├── mcp/           #   the MCP server and tool adapters
 │   ├── project-memory/#   .summer/ read/write
 │   └── installer/     #   agent detection and config writing for every supported client
-├── library/           # the Library — skills, templates, references (examples, tools, collections as they land)
+├── library/           # the Library: tools, skills, templates, references
 ├── registry/          # schemas + generated/ (the compiled index everything reads; never hand-edited)
 ├── evals/             # evidence the library works: routing, skills, examples, templates, tools, end-to-end
-├── integrations/      # one folder per supported agent — the honest map of who gets what
+├── integrations/      # one folder per supported agent: what gets installed where
 ├── scripts/           # generate-registry (the compiler), validate-library (schema + capability lint)
 └── docs/              # development guide, migration notes, design contract
 ```
@@ -259,7 +258,7 @@ Six kinds of entry, all searchable through the same generated index:
 - **Skills** — how to do something well (FPS controllers, scene composition, debugging discipline, VFX recipes, audio direction…). Open [Agent Skills](https://agentskills.io) format, so any conformant tool picks them up.
 - **Examples** — proven working instances with required evidence (screenshots, verification receipts) — an example that can't show it works doesn't ship.
 - **Templates** — complete project foundations (platformers, FPS, racing, roguelikes, multiplayer starters…), each pinned to an exact commit with a verified tree digest. `summer create <slug>` fetches exactly that commit, recomputes the digest and refuses on mismatch, then records the pin into the project's `.summer/project.json` — never whatever a branch happens to contain today. Two small templates (`3d-basic`, `empty`) are built in and generate offline. Browse with `summer list templates`; pinning rules and the digest formula in [`library/templates/README.md`](library/templates/README.md).
-- **Collections** — curated, compatible creative materials: asset sets with style rules and presets. **Preview** — the catalog system lives platform-side today and is being unified into the library format.
+- **Collections** — curated, compatible creative materials: asset sets with style rules and presets. None ship yet.
 - **References** — facts: engine version compatibility, GDScript style, tool references.
 - **Tools** — the executable capabilities themselves, described in the same registry so agents can discover what they can do.
 
@@ -281,10 +280,10 @@ Agents don't browse folders; they search the compiled index (`registry/generated
  Summer Engine (desktop app: editor + runtime)
         │
         ▼
- Summer Platform (publishing) · your players
+ summer.games store · your players
 ```
 
-Summer is agent-neutral by construction: `integrations/` adapts one generated system to each agent; no agent is the foundation. Currently 13 clients are supported end-to-end — the full map of what gets installed where is [`integrations/README.md`](integrations/README.md).
+Summer works with any agent: `integrations/` adapts one generated system to each. The map of what gets installed where is [`integrations/README.md`](integrations/README.md).
 
 ## Project memory: `.summer/`
 
@@ -305,9 +304,7 @@ Two ways to extend Summer with your own material:
 
 Official entries land in this repo by PR, gated by schema validation and the capability lint.
 
-## The self-improving library
-
-The long-term bet: the best library is the one that learns from real usage. v1 of that loop is deliberately small and honest:
+## Library feedback
 
 - Agents can report how an entry worked (`summer_library_feedback`): worked / worked with fixes / wrong / outdated / incomplete / did not apply / misrouted. What is sent, in full: the entry ids, one outcome word each, an optional note and deviation (280 characters max, about the entry), the engine version, the agent's self-reported model id, this CLI's version, the host app name/version, a random per-process session id, and — only when logged out — a random install uuid (when logged in, the account token is sent instead). **The schema cannot carry your code, files, or chat.** The very first call on a machine sends nothing and returns a notice; `SUMMER_NO_TELEMETRY=1` or `DO_NOT_TRACK=1` turns it off entirely.
 - Today those reports land in a write-only mailbox that maintainers read. Only verified outcomes count; popularity never ranks an entry.
@@ -318,7 +315,7 @@ We tell you before we touch your disk.
 
 | What | Size | When | Source |
 |---|---|---|---|
-| `summer-engine` npm package (CLI + MCP + library) | ~2 MB download, ~4 MB unpacked | first `npx -y summer-engine@latest ...` call | [npmjs.com/package/summer-engine](https://www.npmjs.com/package/summer-engine) |
+| `summer-engine` npm package (CLI + MCP + library) | ~2 MB download, ~6 MB unpacked | first `npx -y summer-engine@latest ...` call | [npmjs.com/package/summer-engine](https://www.npmjs.com/package/summer-engine) |
 | Summer Engine app | ~1 GB (engine + bundled Git/runtime tools) | `npx -y summer-engine@latest install` | Summer's signed releases |
 | Auth token | ~1 KB | `npx -y summer-engine@latest login` | Browser to `~/.summer/auth-token` |
 | Creator token | ~50 bytes | only when you run `summer login --creator` and mint one | One-time browser value to `~/.summer/creator-token`; never replaces the auth token |
@@ -351,11 +348,11 @@ matchmaking are not promised by this package.
 | `summer install [--yes]` | Download Summer Engine. Prints URL and size first; never replaces an installed engine without confirmation. |
 | `summer login` | Browser-based core Summer sign-in. |
 | `summer login --store` | Browser sign-in to the Summer store so agents can upload builds (`summer_publish_build`). |
-| `summer login --creator` | Deprecated with `summer publish`: connect a separate publish-scoped creator token for the legacy creator API. |
+| `summer login --creator` | Deprecated: connect a creator token for the legacy `summer publish`. |
 | `summer logout` | Clear auth tokens. |
 | `summer config [get\|set\|unset]` | Read or update the shared non-secret `~/.summer/config.json`. |
-| `summer publish [project] --artifact <game.pck> --version <value> [--confirm]` | Deprecated: use `summer tool export-game`, then `summer tool publish-build`. Streams a `.pck` to the legacy creator API through prepare → write-once PUT → finalize. |
-| `summer releases [--cursor <value>]` | List real creator-owned release history. |
+| `summer publish [project] --artifact <game.pck> --version <value> [--confirm]` | Deprecated: use `summer tool export-game`, then `summer tool publish-build`. |
+| `summer releases [--cursor <value>]` | List your creator release history. |
 | `summer status` | Engine state, port, auth. |
 | `summer doctor` | Diagnose Node, login, engine, project memory, MCP. |
 | `summer plan <goal>` | Route a game-building goal into skills, MCP tools, gates, and verification. |
@@ -405,6 +402,5 @@ Some process skills (brainstorming, writing-plans, writing-skills, investigating
 
 - [Website](https://summerengine.com)
 - [Download Summer Engine](https://summerengine.com/download)
-- [Documentation](https://summerengine.com/docs)
-- [Community](https://summerengine.com/community)
+- [Documentation](https://docs.summerengine.com)
 - [Issues](https://github.com/summerengine/summer/issues)

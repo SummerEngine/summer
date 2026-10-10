@@ -10,7 +10,7 @@ Paste this into Codex:
 Install Summer Engine and let's make a game.
 ```
 
-Codex should run the setup playbook with `npx -y summer-engine@latest`, install skills, configure MCP, run doctor, and open the engine.
+Codex runs the install playbook from the README: it installs the skills, configures MCP, runs doctor, and opens the engine.
 
 ## Install Skills
 
@@ -33,7 +33,7 @@ Paths:
 
 ## MCP
 
-Configure your Codex environment to run the Summer MCP server with:
+`summer setup codex` adds the server to `~/.codex/config.toml`. The command it runs:
 
 ```bash
 npx -y summer-engine@latest mcp

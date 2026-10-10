@@ -10,7 +10,7 @@ Paste this into Claude Code:
 Install Summer Engine and let's make a game.
 ```
 
-Claude should run the setup playbook with `npx -y summer-engine@latest`, install skills, configure MCP, run doctor, and open the engine.
+Claude Code runs the install playbook from the README: it installs the skills, configures MCP, runs doctor, and opens the engine.
 
 ## Install Skills
 
@@ -39,14 +39,14 @@ Paths:
 
 ## MCP
 
-Add Summer as an MCP server using your Claude Code MCP configuration:
+`summer setup claude-code` writes this entry for you. To add it by hand:
 
 ```json
 {
   "mcpServers": {
     "summer-engine": {
       "command": "npx",
-      "args": ["summer-engine", "mcp"]
+      "args": ["-y", "summer-engine@latest", "mcp"]
     }
   }
 }

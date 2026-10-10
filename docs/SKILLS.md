@@ -3,33 +3,16 @@
 Summer skills teach AI agents how to build Summer games in Summer Engine with
 the Summer SDK, GDScript, and `.tscn` scenes. Version-sensitive guidance follows
 the repository compatibility contract instead of pinning onboarding to one
-upstream release. Two kinds:
+upstream release.
 
-## Workflow skills (slash commands)
+The browsable index, one section per domain, is the generated
+[`library/skills/README.md`](../library/skills/README.md). In a terminal:
+`summer skills list` (add `--by-domain` to group them).
 
-User-invocable. The user types `/<name>` to trigger them. Each is a guided workflow that opens with a clarifying question and orchestrates specialist skills + MCP tools.
+## Two kinds
 
-| Slash | What it does |
-|---|---|
-| `/summer debug` | Create a support-ready debug report, then optionally continue the debug loop |
-| `/debug` | Triage and fix a bug end-to-end |
-| `/play` | Run the game and report state |
-
-More coming as the library grows. See the `skills:` array in `.claude-plugin/plugin.json` for what ships today.
-
-## Specialist skills (auto-triggered)
-
-Not invoked directly. Auto-load when the user's prompt matches the skill's `description:` field. The user describes intent ("make me an FPS", "add lighting", "I need a HUD") and the right specialist fires.
-
-| Skill | Auto-trigger phrases |
-|---|---|
-| `fps-controller` | "FPS", "first-person", "WASD", "character controller" |
-| `3d-lighting` | "lighting", "shadows", "WorldEnvironment", "sun" |
-| `ui-basics` | "UI", "HUD", "menu", "health bar", "Control" |
-| `gdscript-patterns` | "GDScript", "signals", "exports", "type hints" |
-| `scene-composition` | "scene structure", "sub-scene", "instance", "prefab" |
-| `asset-strategy` | "assets", "3D models", "textures", "art pipeline" |
-| `make-game` | "make a game", "build me a game" (broad, less recommended) |
+- **Workflow skills** (`user-invocable: true`): the user can call them by name, such as `/debug`, `/play` or `/brainstorm-game` in Claude Code. Each opens with a clarifying question and drives specialist skills and MCP tools.
+- **Specialist skills** (`user-invocable: false`): narrow technical knowledge. The host loads one when the user's request matches its description ("make me an FPS", "add lighting", "I need a HUD").
 
 ## Commands
 
@@ -37,31 +20,24 @@ Not invoked directly. Auto-load when the user's prompt matches the skill's `desc
 summer skills list                                     # List all
 summer skills info <name>                              # Detail on one
 summer skills install <name>                           # Install one
-summer skills install --recommended --agent codex      # Install recommended set
+summer skills install --recommended --agent codex      # Install the recommended set
 summer skills install --all --agent claude-code        # All skills (preview included)
 summer skills install --all --stable-only --agent claude-code   # Stable skills only (skip preview)
 summer skills install --recommended --agent cursor --scope project   # Per-project
 ```
 
-Supported agents: `summer`, `claude-code`, `codex`, `cursor`, `windsurf`, `antigravity`, `gemini`, `cline`, `cline-cli`, `roo-code`, `kilo-code`, `github-copilot`, `vscode-copilot`, `opencode`, `zed`, `kiro`, `goose`, `hermes`, `qwen-code`, `kimi-code`, `crush`, `amp`, `factory`, `warp`, `rovo-dev`, `qoder`, `grok-build`, `mistral-vibe`. Supported scopes: `user`, `project`.
+`summer skills install --help` lists the supported `--agent` values. Scopes: `user`, `project`.
 
-## Recommended set
-
-`--recommended` includes both workflow and specialist skills, excludes the broad `make-game`:
-
-- `debug`, `play` (workflows)
-- `fps-controller`, `3d-lighting`, `gdscript-patterns`, `scene-composition`, `ui-basics`, `asset-strategy` (specialists)
+`--recommended` installs the skills marked `recommended: true` in their `resource.yaml`. Plain `summer setup <agent>` installs every skill.
 
 ## Registry
 
 One source of truth: `library/skills/<slug>/` (`resource.yaml` + `SKILL.md`).
 The folder is flat by design (categories are `facets.domains`, see
-`docs/design/DECISIONS.md` D3); the human view is the generated
-[`library/skills/README.md`](../library/skills/README.md), one section per
-primary domain, and `summer skills list --by-domain` in the terminal.
-Everything else is compiled from it by `npm run generate:registry`:
+`docs/design/DECISIONS.md` D3). Everything else is compiled from it by
+`npm run generate:registry`:
 
-- `library/skills/README.md`: the browsable index above (`skills-index.md`).
+- `library/skills/README.md`: the browsable index (`skills-index.md`).
 - `registry/generated/skills-registry.json`: what `summer skills list/install`
   and `summer setup` read (all agents, plugin and non-plugin).
 - `.claude-plugin/plugin.json` `skills:` (plus the `.codex-plugin/`,
@@ -75,12 +51,12 @@ disk files, plugin paths, registry entries, or recommended installs.
 
 Per-skill metadata lives in `resource.yaml` (schema:
 `registry/schemas/skill.schema.json`): `id`, `summary`, `use_when`, `facets`,
-`recommended` (drives `summer skills install --recommended` / `summer setup`),
-`aliases` (old `skills/<category>/<name>` paths keep resolving), `status`
-(`stable` and `preview` both install in bulk — `preview` is a label for work
-not yet exercised in-engine by the Summer team, carried in the skill's own
-guidance, and `--stable-only` skips it; `deprecated` installs only by name),
-`version`.
+`recommended` (drives `summer skills install --recommended`),
+`aliases` (old `skills/<category>/<name>` paths, recorded in
+`registry/generated/aliases.json`), `status`
+(`stable` and `preview` both install in bulk — `preview` marks work not yet
+exercised in-engine, carried in the skill's own guidance, and `--stable-only`
+skips it; `deprecated` installs only by name), `version`.
 
 ## Authoring rules
 
@@ -91,14 +67,14 @@ guidance, and `--stable-only` skips it; `deprecated` installs only by name),
   each description is one short line. Put trigger phrases and examples in the
   skill body, not the description. `npm run validate:library` enforces the match.
 
-1. **Specialist skills:** narrow technical knowledge, auto-trigger via rich `description:`. Set `user-invocable: false`.
+1. **Specialist skills:** narrow technical knowledge. Set `user-invocable: false`.
 2. **Workflow skills:** action-verb names (`/debug`, `/play`), open with one clarifying question, orchestrate specialists. Set `user-invocable: true`.
 3. SKILL.md <= 500 lines. Push shared detail into `library/references/`.
-4. Show Summer MCP-preferred + explicit offline/manual fallback in every code-touching skill.
+4. Show the Summer MCP path plus an explicit offline/manual fallback in every code-touching skill.
 5. Teach identity-bound file mutation for `.tscn`/`.tres`: use `summer_read_file` plus guarded `summer_replace_text`/`summer_write_file`, and use scene tools for live hierarchy/inspector work.
 6. "May I write this change?" before any user-visible mutation. See `library/references/collaborative-protocol/collaborative-protocol.md`.
 7. A skill may ship `tests/spec.md` with Test Cases; `library/skills/skill-test/SKILL.md` runs the structural checks every skill must pass (frontmatter, `resource.yaml` schema, routing metadata).
 
 ## Standard
 
-Adopts the **Anthropic Agent Skills open standard** (`agentskills.io`). SKILL.md portable across Cursor / Codex / Claude Code / Devin Desktop. Summer-specific extensions: `compatibility`, `category`, `template-id`. Anthropic spec ignores unknown frontmatter fields, so portability holds.
+Skills follow the open Agent Skills format (`agentskills.io`), so a `SKILL.md` is portable across Claude Code, Codex, Cursor, Devin Desktop and other hosts. Summer adds a few optional frontmatter fields (`compatibility`, `category`, `allowed-tools`, `paths`); hosts ignore fields they do not know.

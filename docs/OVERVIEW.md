@@ -1,6 +1,6 @@
 # How Summer Works
 
-Summer Engine is the AI game engine. **Summer** — this repo — is the open-source layer that makes any coding agent fluent in it.
+Summer Engine is the AI game engine. **Summer**, this repo, is the open-source layer that lets any coding agent use it.
 
 Source: [github.com/summerengine/summer](https://github.com/summerengine/summer)
 
@@ -8,9 +8,9 @@ Source: [github.com/summerengine/summer](https://github.com/summerengine/summer)
 
 Three things, plus glue.
 
-**Skills.** Markdown files. Each one is a discipline guide — debug, brainstorm, FPS controller, multiplayer, art direction, ship. They auto-fire on natural language. No slash command needed.
+**Skills.** Markdown guides: debug, brainstorm, FPS controller, multiplayer, art direction, ship. The host loads the right one from what the user asks; no slash command needed.
 
-**MCP server.** A focused tool registry that talks to a running Summer Engine on `localhost:6550`. Scene mutation, asset import, runtime control, diagnostics, generation. Your agent calls them; the engine moves.
+**MCP server.** Tools that talk to a running Summer Engine over its local API (port 6550 by default): scene edits, asset import, runtime control, diagnostics, generation.
 
 **CLI.** Install the engine, log in, scaffold projects, run them, run doctor — and `summer tool <name>` runs any MCP tool from the terminal. The complete command reference is in [`DEVELOPMENT.md`](DEVELOPMENT.md#cli-command-reference); `summer --help` is the source of truth.
 
@@ -24,7 +24,7 @@ Paste this into your AI environment:
 Install Summer Engine and let's make a game.
 ```
 
-That is the preferred setup wizard. The agent reads the install playbook, runs `npx -y summer-engine@latest doctor --json`, downloads and logs in only if those checks need it, always runs `setup` (idempotent: MCP config + every skill in the library), and opens the engine.
+The agent reads the install playbook, runs `npx -y summer-engine@latest doctor --json`, downloads and logs in only if those checks need it, always runs `setup` (idempotent: MCP config + every skill in the library), and opens the engine.
 
 Manual fallback:
 
@@ -114,7 +114,7 @@ Scenes are always `.tscn`/`.scn`. Resources are always `.tres`/`.res`.
 | Summer Engine (binary, editor, runtime) | proprietary, free to use |
 | Summer Engine Studio (asset generation, cloud) | proprietary, paid plans |
 
-The agent layer is open so you can audit, fork, and extend. The engine is the moat.
+This repo is open so you can audit, fork, and extend it.
 
 ## How the pieces fit
 
@@ -131,7 +131,7 @@ The agent layer is open so you can audit, fork, and extend. The engine is the mo
    │                       Summer (CLI)                      │
    │   skills bundle + MCP server + setup + doctor           │
    └────────────────┬────────────────────────────────────────┘
-                    │ HTTP localhost:6550
+                    │ HTTP localhost (6550+)
                     ▼
    ┌─────────────────────────────────────────────────────────┐
    │            Summer Engine (running locally)              │

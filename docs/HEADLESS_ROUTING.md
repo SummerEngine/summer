@@ -9,14 +9,12 @@ demand. It ships dark — everything below is inert unless
 
 Protocol version: **v1.1** (mutual auth — the raw token never crosses the
 wire; byte-exact framing with an 8MiB frame cap; pid verification against the
-registry). v1.0's plaintext `{"token":...}` first line is gone.
+registry).
 
 **Activation dependency.** This is the CLI/MCP half only. The engine half —
 `--summer-worker` mode, the `summer_processes.cfg` registry, the v1.1
-handshake — lives on the `summerengine` branch `feature/headless-worker` and
-must merge and be rebased over 4.7.x before the flag does anything against a
-shipped build. Until then the flag stays off and nothing in this repo changes
-behavior.
+handshake — needs an engine build with worker mode. Without one the flag does
+nothing.
 
 ## Files
 

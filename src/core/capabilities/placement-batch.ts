@@ -4,7 +4,7 @@
  * twins.
  *
  * The engine's InstantiateScene accepts only parent / scene / name /
- * target_size (scene_ops.cpp instantiate_scene) and must travel as its own
+ * target_size and must travel as its own
  * request (single-only). A placed piece is therefore an InstantiateScene plus
  * SetProps on the node path its receipt reports (meta.nodePath, which already
  * carries any collision rename). The caller writes ONE op; this module expands
@@ -51,7 +51,7 @@ export type PlacementField = (typeof PLACEMENT_FIELDS)[number];
 /** Model-visible budget for compact receipts (the 5 KB tool-result contract). */
 export const COMPACT_LIMIT_BYTES = 5 * 1024;
 /** Held-back transform SetProps sent per request; the engine refuses requests
- *  over 256 ops (local_api_server.cpp). */
+ *  over 256 ops. */
 export const TRANSFORM_OPS_PER_REQUEST = 200;
 const SUMMARY_TARGET_BYTES = 4600;
 const ERROR_TEXT_LIMIT = 240;

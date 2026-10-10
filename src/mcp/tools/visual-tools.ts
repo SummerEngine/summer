@@ -472,8 +472,8 @@ Static frame only — one moment, not motion. For a SEQUENCE of frames over time
                   "WARNING: this scene has no light — lit materials may appear black when played."
                 );
               }
-              // The engine ALWAYS synthesizes the preview camera (preview_ops.cpp
-              // sets used_synthetic_camera unconditionally) — the flag says nothing
+              // The engine ALWAYS synthesizes the preview camera (it sets
+              // used_synthetic_camera unconditionally) — the flag says nothing
               // about the scene's own cameras. sceneHasCamera above is the
               // authoritative "does this scene have a camera" answer.
               if (snap.usedSyntheticCamera) {

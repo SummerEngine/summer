@@ -3,11 +3,10 @@ import { createReadStream } from "node:fs";
 import { readZipEntries, readZipEntry, ZipReadError, type ZipEntry } from "../util/zip.js";
 
 /**
- * The summer.games export (summer-platform ADR 0033): one .zip with
+ * The summer.games export: one .zip with
  * summer-bundle.json, client.pck, and for a game with a host server.pck plus
  * config/. This reads what the build upload declares; the Platform verifies
- * the uploaded bytes again. Same rules as Studio's browser check
- * (publicsummerengine src/lib/creator-store/pck-check.ts, checkBundle).
+ * the uploaded bytes again. Same rules as Studio's browser check.
  */
 
 export const BUNDLE_SCHEMA = "summer.bundle.v1";

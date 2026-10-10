@@ -48,7 +48,7 @@ export const CLI_KNOWN_OP_NEEDS: readonly string[] = [
   // summer_grep (core/capabilities/grep.ts)
   "Grep",
   // Navigation (summer_open: core/capabilities/navigation/) — Navigate is the
-  // one-table op (engine navigate_ops.cpp); the other three are the legacy
+  // engine's one-table op; the other three are the legacy
   // fallbacks on engines that predate it.
   "Navigate", "OpenResource", "FocusDock", "RevealInFileSystem",
   // Project + input
@@ -141,7 +141,7 @@ export interface EngineCapabilities {
    *  `summer` capture ships, and the offscreen instance cap. Absent = engine
    *  predates runtime control (or advertises the kinds only in opKinds). */
   runtimeControl?: EngineRuntimeControlCapabilities;
-  /** Editor navigation advert (engine `Navigate` op, navigate_ops.cpp): the
+  /** Editor navigation advert (engine `Navigate` op): the
    *  destination ids this build can open. Absent = engine predates the op;
    *  summer_open then falls back to the legacy per-surface ops it can map. */
   navigation?: EngineNavigationCapabilities;
@@ -449,8 +449,7 @@ export function buildCapabilitySkewWarning(health: unknown): string | null {
 
 /**
  * Engine ops that MUST be dispatched as their own single-op request. Mirrors
- * _summer_requires_single_async_dispatch (local_api_server.cpp, engine
- * 0.5.60+): the engine rejects any multi-op batch containing one of these
+ * the engine's single-async-op list (engine 0.5.60+): the engine rejects any multi-op batch containing one of these
  * WHOLESALE — nothing in the batch executes, and the batch fails with per-op
  * failure_reason "unsupported_transport"/"skipped". Git ops are covered by a
  * prefix check in the dispatchers.
@@ -468,12 +467,12 @@ export const FALLBACK_SINGLE_ONLY_OPS: ReadonlySet<string> = new Set([
   "RunCommand", "RunVerification", "RunEditorScript", "RunSceneScript",
   "ImportFromUrl", "ImportFromUrlBatch", "ExtractZipFromUrl",
   // Mesh fabrication: a headless Blender child on the same async single-op lane as
-  // RunEditorScript (local_api_server.cpp SUMMER_SINGLE_ASYNC_OPS).
+  // RunEditorScript.
   "FabricateMesh",
   // runtime control (RuntimeOps::async_op_kinds): every op below rides
   // the `summer` debugger capture, so like GameSnapshot each needs the async
   // single-op reply channel. ListGameInstances is deliberately NOT here — it
-  // is a cheap synchronous editor read that batches fine (runtime_ops.h).
+  // is a cheap synchronous editor read that batches fine.
   "SetRuntimeProp", "CallRuntimeMethod", "SpawnRuntimeScene", "FreeRuntimeNode",
   "RuntimeAnimation", "RuntimeAnimationTree", "GetRuntimeBones",
   "GamePause", "GameSpeed", "GameStep",

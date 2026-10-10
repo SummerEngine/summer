@@ -4,7 +4,7 @@
  * re-owning step every MCP path that sends ReparentNode shares.
  *
  * Two engine ops answer ok for changes SaveScene then leaves out of the file
- * (engine modules/1summer_engine/editor/ops/scene_ops.cpp, engine 0.6.0):
+ * (engine 0.6.0):
  *
  *  - ReparentNode (SceneOps::reparent_node) re-owns only the node it moves
  *    (`add_do_method(node, "set_owner", root)`). The remove_child before it

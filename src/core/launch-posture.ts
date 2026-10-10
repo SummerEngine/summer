@@ -11,8 +11,8 @@
  *               or takes focus until the user clicks it.
  *   offscreen   `--summer-offscreen` (also `--summer-verify`) — never
  *               activates, never frontmost; on shipped engines an unfocusable
- *               window pushed off-screen where a sliver may stay visible
- *               (main.cpp says so), on the background-posture engine a
+ *               window pushed off-screen where a sliver may stay visible;
+ *               on the background-posture engine a
  *               no-Dock-icon accessory process. Used by RunVerification /
  *               offscreen play instances, never by `summer run`.
  *
@@ -306,7 +306,7 @@ export async function detectBackgroundLaunchSupport(
 
 /**
  * The running engine's own word, once it is up: /api/health
- * `capabilities.launchPostures` (engine tool_net_thread.cpp, newer builds;
+ * `capabilities.launchPostures` (newer engine builds;
  * "focus" always, "background" / "offscreen" only where enforced). true /
  * false when advertised, null when the engine predates the advert.
  */

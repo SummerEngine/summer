@@ -72,8 +72,7 @@ function readClassifiers(result: unknown): Pick<WithEngineMeta, "terminalState" 
 
 /**
  * An auth failure is the ONE class of thrown error that is provably pre-apply:
- * the engine rejects on the Bearer-token check (tool_net_thread.cpp::_validate_auth)
- * BEFORE the op is queued or applied, so reconnecting with the fresh api-token and
+ * the engine rejects on the Bearer-token check BEFORE the op is queued or applied, so reconnecting with the fresh api-token and
  * retrying cannot double-apply a mutation. This is exactly the stale-token case
  * after the engine rotates its api-token on relaunch.
  *

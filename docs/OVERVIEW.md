@@ -1,6 +1,6 @@
 # How Summer Works
 
-Summer Engine is the AI game engine. **Summer**, this repo, is the open-source layer that lets any coding agent use it.
+Summer Engine is the game engine built for AI. **Summer**, this repo, is the open-source layer that lets any coding agent use it: build a full multiplayer game, test it, publish it to summer.games and grow it.
 
 Source: [github.com/summerengine/summer](https://github.com/summerengine/summer)
 
@@ -10,7 +10,7 @@ Three things, plus glue.
 
 **Skills.** Markdown guides: debug, brainstorm, FPS controller, multiplayer, art direction, ship. The host loads the right one from what the user asks; no slash command needed.
 
-**MCP server.** Tools that talk to a running Summer Engine over its local API (port 6550 by default): scene edits, asset import, runtime control, diagnostics, generation.
+**MCP server.** Tools that talk to a running Summer Engine over its local API (port 6550 by default): scene edits, asset import, runtime control, diagnostics, generation. After `summer login --store` it also mounts the hosted store, publishing and Grow tools.
 
 **CLI.** Install the engine, log in, scaffold projects, run them, run doctor — and `summer tool <name>` runs any MCP tool from the terminal. The complete command reference is in [`DEVELOPMENT.md`](DEVELOPMENT.md#cli-command-reference); `summer --help` is the source of truth.
 

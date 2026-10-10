@@ -147,8 +147,8 @@
     {
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
-      "version": "1.4.0",
-      "content_hash": "b205cc628b163fb3f39e7f2c5d808147738a0bdd913e02b8dce7d73239425adc",
+      "version": "1.4.1",
+      "content_hash": "cc12d086131673ef2629fecde788493ac26c7e2e09e86a47fda191e221fc4eff",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -2318,8 +2318,8 @@
     {
       "id": "skill/multiplayer-publish",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "52117117e661cbd898d4faece8f72ef2304118999c80bce55a709619e8cec289",
+      "version": "1.0.1",
+      "content_hash": "93a95dce250cd96f79870b56e19a15eec62cdd8aaa4067fafb5047b1c026a3ab",
       "summary": "Ship a hosted Summer multiplayer game: the summer.games bundle, server preset, pre-upload checks, and a new Build.",
       "use_when": [
         "publishing a hosted Summer multiplayer game online so other players can join it",
@@ -2349,7 +2349,7 @@
           "skill/multiplayer-testing"
         ]
       },
-      "status": "preview",
+      "status": "stable",
       "recommended": false
     },
     {
@@ -3589,8 +3589,8 @@
     {
       "id": "skill/summer-analytics",
       "kind": "skill",
-      "version": "1.0.0",
-      "content_hash": "175f19b54e39a94350342e5c72255c286a7e067ba215bbf7c3de54b03cfda2d0",
+      "version": "1.0.1",
+      "content_hash": "2da92f5632d341048d137ad4fec70660da1a1bcbdb42b1fe28e5bcdaa792e143",
       "summary": "Send game events to Summer analytics from the authority or client: fire-and-forget, never blocking gameplay.",
       "use_when": [
         "adding analytics, telemetry or event tracking to a Summer game: level completed, coin collected, tutorial funnel",
@@ -3621,7 +3621,7 @@
           "skill/grow-analytics"
         ]
       },
-      "status": "preview",
+      "status": "stable",
       "recommended": false
     },
     {
@@ -5650,8 +5650,8 @@
     {
       "id": "tool/capture-gameplay",
       "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "7195fee358600665d2b1e0ec40eeb68a7c517e775f5cc4a366259bceba07cd03",
+      "version": "1.0.1",
+      "content_hash": "f40a9891d98ae4e05d45c422b1f551bcc19dac19985d39a0bdcca62adfb36ed0",
       "summary": "Capture real gameplay PNGs (HUD included) offscreen without a running editor; game flags and player steps (press, key, click) get past the title screen.",
       "use_when": [
         "\"take gameplay screenshots for my store page\"",
@@ -5673,7 +5673,7 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "preview",
+      "status": "stable",
       "mcp_tool_name": "summer_capture_gameplay",
       "remote": true,
       "authority": {
@@ -6057,8 +6057,8 @@
     {
       "id": "tool/export-game",
       "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "96efe498dc6c5976b482c00828c770975bb77e4c03a0df4e5f3208e8f0013e95",
+      "version": "1.0.1",
+      "content_hash": "a5248abcad904b37a361e45d7010516cbab3b82427f5896878b29afd5fed5703",
       "summary": "Export the game in the exact file the Summer Games store takes per platform (iPhone, Android, macOS, Windows bundle; web build; desktop download), headless.",
       "use_when": [
         "\"export my game for summer.games\"",
@@ -6081,7 +6081,7 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "preview",
+      "status": "stable",
       "mcp_tool_name": "summer_export_game",
       "remote": true,
       "authority": {
@@ -7994,8 +7994,8 @@
     {
       "id": "tool/publish-build",
       "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "653ac78e87a1a84c674bfdf0bf9c03889812edd5566b2c611f327b7cf84335c5",
+      "version": "1.0.1",
+      "content_hash": "ea490bc612b2ab1332036803718f1e95a89abe04b1e4cb9f4731957f599bb310",
       "summary": "Upload an export from summer_export_game to the creator's store game, confirm-gated - a store bundle as a Build, or a web or native download as a store version.",
       "use_when": [
         "\"upload my game to summer.games\"",
@@ -8018,7 +8018,7 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "preview",
+      "status": "stable",
       "mcp_tool_name": "summer_publish_build",
       "remote": true,
       "authority": {

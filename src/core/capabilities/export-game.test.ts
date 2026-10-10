@@ -127,6 +127,28 @@ describe("exportGame", () => {
     ]);
   });
 
+  it("exports the targets this engine can build and warns about android on 0.7.0", async () => {
+    // The engine is 0.7.0: android needs 0.7.1, so it never reaches the preset.
+    const result = await exportGame({ project, targets: ["ios", "android"] }, { findBinary: () => engine, engineVersion: () => "0.7.0" });
+    expect(result.targets).toEqual(["ios"]);
+    expect(result.skippedTargets).toEqual(["android"]);
+    expect(result.warnings?.[0]).toContain("android was not exported: it needs Summer Engine 0.7.1 or newer, and 0.7.0 is installed");
+    const presets = await readFile(join(project, "export_presets.cfg"), "utf8");
+    expect(presets).toContain('name="summer.games ios"');
+    expect(presets).not.toMatch(/platforms\/android=(true|"true")/);
+    const onlyAndroid = await failure(exportGame({ project, targets: ["android"] }, { findBinary: () => engine, engineVersion: () => "0.7.0" }));
+    expect(onlyAndroid.code).toBe("export_target_unsupported");
+    const newer = await exportGame({ project, targets: ["ios"] }, { findBinary: () => engine, engineVersion: () => "0.7.1" });
+    expect(newer.skippedTargets).toBeUndefined();
+  });
+
+  it("keeps a bundle that holds some of the asked targets, and names the missing ones", async () => {
+    await writeSummerBundle(join(root, "bundle.zip"), { targetPlatforms: ["ios"] });
+    const result = await exportGame({ project, targets: ["ios", "android"] }, { findBinary: () => engine, engineVersion: () => null });
+    expect(result.skippedTargets).toEqual(["android"]);
+    expect(result.warnings?.some((line) => line.includes("without android"))).toBe(true);
+  });
+
   it("reports the project files the export changed", async () => {
     const touch = async () => {
       await writeFile(join(project, "project.godot.bak"), "config_version=5\n");

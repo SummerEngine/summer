@@ -11,6 +11,9 @@ Agents that publish a game find the publishing guides in the library:
 
 - `summer_capture_gameplay` gets past the title screen. `args` passes the game's own flags after `--` (for example `["--autostart"]`). `steps` play like a player before and between frames: press a button by its text, a key, an input action, a click, a drag, a wait, and a shot. The run always passes `--summer-offscreen`.
 
+- `summer_generate_image` sends no model unless you name one, so width 1920 with height 1080 gets a model that reaches it instead of `size_unreachable`. It waits up to 3 minutes for the larger models. The new `out` parameter (a folder or a .png/.jpg/.webp path) says where to save the image; without it, it goes to `<TMPDIR>/summer-gen/`.
+- `summer_export_game` exports the targets the installed engine can build: Android on 0.7.0 is left out with a warning (it needs 0.7.1), and the other targets still export. `skippedTargets` names what was left out.
+
 ### Added
 - Skill field `hosted_resource` in `resource.yaml`: the skill's body comes from that hosted MCP resource (#90).
 - `summer_capture_gameplay` `args` and `steps`; a step that cannot run (no such button, key or action) is a warning, not a failure.

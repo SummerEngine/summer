@@ -33,8 +33,7 @@ input_schema:
       description: Description of the image to generate
     model:
       type: string
-      default: nano-banana-2
-      description: Model name or full provider ID
+      description: Model name or full provider ID. Omit it and the server picks one that reaches the requested size (nano-banana-2 when no size is asked).
     style:
       type: string
       default: realistic
@@ -63,6 +62,9 @@ input_schema:
       type: object
       additionalProperties: {}
       description: Extra model params (seed, negative_prompt, ...). The result lists any it did not use in ignoredOptions.
+    out:
+      type: string
+      description: Where to save the image on this machine, a folder or a file path ending in .png, .jpg or .webp. Default is <TMPDIR>/summer-gen/.
   required:
     - prompt
   additionalProperties: false

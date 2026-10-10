@@ -1,16 +1,13 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BOARD_ENDPOINT, boardArgsSchema, boardContent, boardQuery } from "../../core/capabilities/board.js";
-import { imageGenerationArgsSchema } from "../../core/capabilities/image-generation.js";
+import { IMAGE_GENERATION_TIMEOUT_MS, imageGenerationArgsSchema, saveGeneratedImage } from "../../core/capabilities/image-generation.js";
 import {
   buildMotionRequestBody,
   motionErrorHint,
   motionGenerationArgsSchema,
   motionJobFailureHint,
 } from "../../core/capabilities/motion-generation.js";
-import { writeFile, mkdir } from "fs/promises";
-import { tmpdir } from "os";
-import { join } from "path";
 import { getAuthToken } from "../../core/auth.js";
 import { resolveGatewayUrl } from "../../core/config.js";
 import { readJsonResponse } from "../../core/util/http.js";
@@ -186,31 +183,6 @@ async function mcpGet(
 }
 
 /**
- * Download an image URL to a temp file so the AI can Read it and show the user.
- */
-async function downloadToTemp(
-  url: string,
-  prefix: string,
-  ext = "png"
-): Promise<string | null> {
-  try {
-    const dir = join(tmpdir(), "summer-gen");
-    await mkdir(dir, { recursive: true });
-    const filename = `${prefix}-${Date.now()}.${ext}`;
-    const filepath = join(dir, filename);
-
-    const res = await fetch(url, { signal: AbortSignal.timeout(30_000) });
-    if (!res.ok) return null;
-
-    const buffer = Buffer.from(await res.arrayBuffer());
-    await writeFile(filepath, buffer);
-    return filepath;
-  } catch {
-    return null;
-  }
-}
-
-/**
  * Poll a job until completed, failed, or timeout.
  * Returns the final job status object.
  */
@@ -344,7 +316,8 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     `Generate an image using AI models via Summer Engine Studio.
 
 Known models:
-  - "nano-banana-2" (default) — High quality, supports txt2img and img2img
+  - "nano-banana-2" — High quality, supports txt2img and img2img (used when no
+    model and no size is asked)
   - "gemini-flash" — Google Gemini 2.5 Flash, fast
   - "flux-2" — FLUX.2, good for specific styles
 
@@ -363,30 +336,37 @@ guarantee transparency; background removal runs server-side after generation.
 Size: aspectRatio (1:1, 16:9, 9:16, 4:3, 3:4, ...) or width + height (the
 smallest size you need). For store art ask width 1920 height 1080 (key art)
 or width 1080 height 1920 (tall cover): the server picks a model that reaches
-that size, or refuses a named model that cannot, before anything is spent.
+that size when model is omitted, or refuses a named model that cannot, before
+anything is spent. Larger models can take over a minute; the call waits up to
+3 minutes.
 Each result reports the real width and height and the model that ran.
 
 'options' carries extra model params (seed, negative_prompt, ...); the result
 lists any the server did not use in ignoredOptions.
 
-Returns the asset with fileUrl (hosted) and localPath (temp file on disk).
+Returns the asset with fileUrl (hosted) and localPath: the file on disk, in
+'out' (a folder, or a .png/.jpg/.webp path) or else <TMPDIR>/summer-gen/.
 Use the Read tool on localPath to show the image to the user for approval.
 
 Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
 Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     imageGenerationArgsSchema.shape,
-    async ({ prompt, model, style, referenceImageUrl, removeBackground, aspectRatio, width, height, options }) => {
-      const result = await mcpGenerate("/api/mcp/generate/image", {
-        prompt,
-        model,
-        style,
-        referenceImageUrl,
-        removeBackground,
-        aspectRatio,
-        width,
-        height,
-        options,
-      });
+    async ({ prompt, model, style, referenceImageUrl, removeBackground, aspectRatio, width, height, options, out }) => {
+      const result = await mcpGenerate(
+        "/api/mcp/generate/image",
+        {
+          prompt,
+          model,
+          style,
+          referenceImageUrl,
+          removeBackground,
+          aspectRatio,
+          width,
+          height,
+          options,
+        },
+        IMAGE_GENERATION_TIMEOUT_MS
+      );
 
       if (result.error) {
         return errorResult(result.error, result.data);
@@ -397,7 +377,7 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
         result.data?.asset?.fileUrl || result.data?.asset?.thumbnailUrl;
       let localPath: string | null = null;
       if (imageUrl) {
-        localPath = await downloadToTemp(imageUrl, "img");
+        localPath = await saveGeneratedImage(imageUrl, out);
       }
 
       return successResult({

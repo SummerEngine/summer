@@ -1,12 +1,19 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, extname, join, resolve } from "node:path";
 import { z } from "zod";
+
+/** Image generation can take over a minute on the larger models; wait this long for the server. */
+export const IMAGE_GENERATION_TIMEOUT_MS = 180_000;
+const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp"]);
 
 /** Shared MCP/CLI image request contract; optional flags preserve omission. */
 export const imageGenerationArgsSchema = z.object({
       prompt: z.string().describe("Description of the image to generate"),
       model: z
         .string()
-        .default("nano-banana-2")
-        .describe("Model name or full provider ID"),
+        .optional()
+        .describe("Model name or full provider ID. Omit it and the server picks one that reaches the requested size (nano-banana-2 when no size is asked)."),
       style: z
         .string()
         .default("realistic")
@@ -40,4 +47,26 @@ export const imageGenerationArgsSchema = z.object({
         .record(z.any())
         .optional()
         .describe("Extra model params (seed, negative_prompt, ...). The result lists any it did not use in ignoredOptions."),
+      out: z
+        .string()
+        .optional()
+        .describe("Where to save the image on this machine: a folder, or a file path ending in .png, .jpg or .webp. Default: <TMPDIR>/summer-gen/."),
     });
+
+/**
+ * Save a generated image where the caller asked (a folder or a file path), or
+ * under TMPDIR/summer-gen. Returns the path, or null when the download failed.
+ */
+export async function saveGeneratedImage(url: string, out?: string, prefix = "img"): Promise<string | null> {
+  try {
+    const target = out?.trim() ? resolve(out.trim()) : join(tmpdir(), "summer-gen");
+    const file = IMAGE_EXTENSIONS.has(extname(target).toLowerCase()) ? target : join(target, `${prefix}-${Date.now()}.png`);
+    await mkdir(dirname(file), { recursive: true });
+    const res = await fetch(url, { signal: AbortSignal.timeout(60_000) });
+    if (!res.ok) return null;
+    await writeFile(file, Buffer.from(await res.arrayBuffer()));
+    return file;
+  } catch {
+    return null;
+  }
+}

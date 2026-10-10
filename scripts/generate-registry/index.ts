@@ -204,6 +204,7 @@ function buildIndex(resources: LoadedResource[]): string {
     }
     if (res.kind === "skill") {
       entry.recommended = d.recommended === true;
+      if (typeof d.hosted_resource === "string") entry.hosted_resource = d.hosted_resource;
     }
     return entry;
   });

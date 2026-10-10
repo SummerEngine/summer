@@ -585,6 +585,19 @@
       ]
     },
     {
+      "id": "skill/grow-analytics",
+      "name": "grow-analytics",
+      "description": "Read and analyse a creator's Summer Grow numbers: store page views, launches, play sessions, play time; compare windows, flag drops.",
+      "clients": "all",
+      "recommended": false,
+      "status": "stable",
+      "path": "library/skills/grow-analytics/",
+      "domains": [
+        "creator",
+        "deployment"
+      ]
+    },
+    {
       "id": "skill/headless-scripting",
       "name": "headless-scripting",
       "description": "Run a GDScript file against Summer Engine from the shell for operations no MCP tool exposes — navmesh baking, collision shapes, TileSets, re-imports.",
@@ -879,6 +892,19 @@
       ]
     },
     {
+      "id": "skill/publish-your-game",
+      "name": "publish-your-game",
+      "description": "Publish a Summer game on Summer Games through MCP: store page, art, build upload, submit, and one approval link for the owner.",
+      "clients": "all",
+      "recommended": false,
+      "status": "stable",
+      "path": "library/skills/publish-your-game/",
+      "domains": [
+        "creator",
+        "deployment"
+      ]
+    },
+    {
       "id": "skill/realtime-wet-surfaces",
       "name": "realtime-wet-surfaces",
       "description": "Real-time wetness on existing materials without losing their values — value-copying wet shader, geometry-driven wet mask, instance-uniform wet amount.",
@@ -1106,6 +1132,32 @@
       "domains": [
         "2d",
         "assets"
+      ]
+    },
+    {
+      "id": "skill/store-art",
+      "name": "store-art",
+      "description": "Make Summer Games store art per slot and flow: key art, covers, icons, screenshots, trailer: size, shape, text rules, fallbacks.",
+      "clients": "all",
+      "recommended": false,
+      "status": "stable",
+      "path": "library/skills/store-art/",
+      "domains": [
+        "creator",
+        "assets"
+      ]
+    },
+    {
+      "id": "skill/store-listing",
+      "name": "store-listing",
+      "description": "Write a Summer Games store page per flow (desktop, mobile): targets, title, tagline, descriptions, tags, and what never to write.",
+      "clients": "all",
+      "recommended": false,
+      "status": "stable",
+      "path": "library/skills/store-listing/",
+      "domains": [
+        "creator",
+        "product-language"
       ]
     },
     {

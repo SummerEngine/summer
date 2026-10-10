@@ -6,7 +6,7 @@ use_when:
   - the user wants to assess or prepare a Summer game export — Steam, itch, HTML5, iOS, Android targets as available in the installed build
   - the user says 'publish my game', 'release it', or 'ship a build to players' — produce the build they will upload
 do_not_use_when:
-  - publishing, uploading, hosting, or submitting a game — this skill only produces local builds
+  - publishing, uploading, hosting, or submitting a game — this skill only produces local builds; publishing is skill/publish-your-game
 facets:
   lifecycle:
     - launch
@@ -21,6 +21,7 @@ related:
   skills:
     - skill/debug
     - skill/tune-performance
+    - skill/publish-your-game
 source: official
 license: MIT
 status: stable

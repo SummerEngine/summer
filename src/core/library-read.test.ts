@@ -9,7 +9,7 @@ import {
   relativeLinkTargets,
   resolveLibraryLink,
 } from "./library-read.js";
-import { loadLibraryIndex } from "./library-search.js";
+import { loadLibraryIndex, searchLibrary } from "./library-search.js";
 import { PACKAGE_ROOT } from "./package-root.js";
 
 /** Same shape summer_library_feedback accepts for entry_id (feedback-tools.ts
@@ -126,6 +126,72 @@ describe("readLibraryEntry over the shipped library", () => {
     expect(result.nearest).toContain("skill/vfx-water-ripple");
     expect(result.hint).toContain("summer_search_library");
     expect(result.hint).toContain("skill/vfx-water-ripple");
+  });
+});
+
+describe("hosted skills (publish-your-game, store-listing, store-art, grow-analytics)", () => {
+  const HOSTED = ["publish-your-game", "store-listing", "store-art", "grow-analytics"];
+
+  it("are library entries that name their hosted resource", () => {
+    const entries = loadLibraryIndex();
+    for (const slug of HOSTED) {
+      expect(entries.find((e) => e.id === `skill/${slug}`)?.hosted_resource, slug).toBe(`summer://skills/${slug}`);
+    }
+  });
+
+  it("search finds them by the task", async () => {
+    const top = async (query: string) => (await searchLibrary(query, { limit: 5 })).map((hit) => hit.id);
+    expect(await top("publish my game on summer games and submit it for approval")).toContain("skill/publish-your-game");
+    expect(await top("write the store page tagline and description")).toContain("skill/store-listing");
+    expect(await top("store key art icon and screenshots sizes")).toContain("skill/store-art");
+    expect(await top("how is my game doing: store page views, launches, play time")).toContain("skill/grow-analytics");
+  });
+
+  it("read loads the current text from the hosted MCP", async () => {
+    const asked: string[] = [];
+    const readHostedResource = async (uri: string) => {
+      asked.push(uri);
+      return "# Publish a game through MCP\n\n1. Find the game.\n";
+    };
+    for (const id of ["skill/publish-your-game", "publish-your-game", "summer://skills/publish-your-game"]) {
+      const result = await readLibraryEntry(id, "all", { readHostedResource });
+      expect(result.ok, id).toBe(true);
+      if (!result.ok) return;
+      expect(result.id).toBe("skill/publish-your-game");
+      expect(result.hosted_resource).toBe("summer://skills/publish-your-game");
+      expect(result.hosted_error).toBeUndefined();
+      expect(result.text).toContain("--- summer://skills/publish-your-game (hosted Summer Engine MCP) ---\n# Publish a game through MCP");
+      expect(result.text).toContain("current text from the hosted Summer Engine MCP");
+      expect(result.text).not.toContain("hosted text not loaded");
+      expect(lastLine(result.text)).toMatch(FOOTER);
+    }
+    expect(asked).toEqual(Array(3).fill("summer://skills/publish-your-game"));
+  });
+
+  it("falls back to the local summary with the reason when the hosted MCP cannot be read", async () => {
+    const result = await readLibraryEntry("skill/store-art", "skill", {
+      readHostedResource: async () => {
+        throw new Error('This machine is not signed in to the Summer store. Recovery: run "summer login --store" in a terminal and approve access in the browser, then retry.');
+      },
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.body_file).toBe("SKILL.md");
+    expect(result.hosted_error).toContain("summer login --store");
+    expect(result.text).toContain("--- library/skills/store-art/SKILL.md ---");
+    expect(result.text).toContain("--- hosted text not loaded ---");
+    expect(result.text).toContain("summer://skills/store-art");
+    expect(lastLine(result.text)).toMatch(FOOTER);
+  });
+
+  it("part resource never calls the hosted MCP", async () => {
+    const result = await readLibraryEntry("skill/grow-analytics", "resource", {
+      readHostedResource: async () => {
+        throw new Error("must not be called");
+      },
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.text).toContain("hosted_resource: \"summer://skills/grow-analytics\"");
   });
 });
 

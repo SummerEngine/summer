@@ -1599,7 +1599,7 @@
       "id": "skill/export-and-ship",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "bd542c09730200c302d5ab2850759b9d98c86336ad102e32ea0389380730b0dd",
+      "content_hash": "9ece7668645e85a92a6fafafef0fa7cd7a402e6e4d77f448701c4ec52e725e08",
       "summary": "Assess and prepare a game export: inventory installed templates and targets, validate release assets and config, produce supported builds after approval.",
       "use_when": [
         "the user wants to assess or prepare a Summer game export — Steam, itch, HTML5, iOS, Android targets as available in the installed build",
@@ -1623,7 +1623,8 @@
       "related": {
         "skills": [
           "skill/debug",
-          "skill/tune-performance"
+          "skill/tune-performance",
+          "skill/publish-your-game"
         ]
       },
       "status": "stable",
@@ -1933,6 +1934,39 @@
       },
       "status": "preview",
       "recommended": false
+    },
+    {
+      "id": "skill/grow-analytics",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "202c5517866e6fe7cf6d15f8a89292175dbb07f67d8a2a9a56bcf25a932f1d5a",
+      "summary": "Read and analyse a creator's Summer Grow numbers: store page views, launches, play sessions, play time; compare windows, flag drops.",
+      "use_when": [
+        "the user asks how their game is doing on Summer Games: views, launches, players, play time",
+        "reading summer_grow_overview or summer_grow_analytics and turning the numbers into one next step",
+        "comparing two time windows, walking the store funnel or finding where players drop"
+      ],
+      "facets": {
+        "lifecycle": [
+          "grow"
+        ],
+        "domains": [
+          "creator",
+          "deployment"
+        ],
+        "modalities": [
+          "docs"
+        ]
+      },
+      "related": {
+        "skills": [
+          "skill/publish-your-game",
+          "skill/summer-analytics"
+        ]
+      },
+      "status": "stable",
+      "recommended": false,
+      "hosted_resource": "summer://skills/grow-analytics"
     },
     {
       "id": "skill/headless-scripting",
@@ -2787,6 +2821,41 @@
       "recommended": false
     },
     {
+      "id": "skill/publish-your-game",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "b39692641d859b1d5a9d9b2e990bed521b0aba52319d336b4e3633c253a07a60",
+      "summary": "Publish a Summer game on Summer Games through MCP: store page, art, build upload, submit, and one approval link for the owner.",
+      "use_when": [
+        "the user says 'publish my game', 'put it on summer.games', 'launch it on the store' or 'submit it for review'",
+        "taking a built Summer game to a submitted store page: listing text, art, build upload, summer_store_submit and the owner's approval link",
+        "an agent publishes for the owner end to end and needs the order of the summer_store_* and summer_build_* tools"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch"
+        ],
+        "domains": [
+          "creator",
+          "deployment"
+        ],
+        "modalities": [
+          "docs"
+        ]
+      },
+      "related": {
+        "skills": [
+          "skill/store-listing",
+          "skill/store-art",
+          "skill/grow-analytics",
+          "skill/export-and-ship"
+        ]
+      },
+      "status": "stable",
+      "recommended": false,
+      "hosted_resource": "summer://skills/publish-your-game"
+    },
+    {
       "id": "skill/realtime-wet-surfaces",
       "kind": "skill",
       "version": "0.1.1",
@@ -3446,10 +3515,82 @@
       "recommended": false
     },
     {
+      "id": "skill/store-art",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "e8de61be6d43547164b99b423401c4aee3e56969461b9e36f50914e11cd201bb",
+      "summary": "Make Summer Games store art per slot and flow: key art, covers, icons, screenshots, trailer: size, shape, text rules, fallbacks.",
+      "use_when": [
+        "making or choosing store art for Summer Games: key art, cover, icon, screenshots, trailer",
+        "summer_store_set_art rejects an image for its shape or size, or summer_store_get_listing says an art slot is missing",
+        "deciding whether a store image may carry text, and which slot falls back to which"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch"
+        ],
+        "domains": [
+          "creator",
+          "assets"
+        ],
+        "modalities": [
+          "images",
+          "video"
+        ]
+      },
+      "related": {
+        "skills": [
+          "skill/publish-your-game",
+          "skill/store-listing"
+        ],
+        "tools": [
+          "tool/generate-image",
+          "tool/capture-gameplay",
+          "tool/list-my-assets"
+        ]
+      },
+      "status": "stable",
+      "recommended": false,
+      "hosted_resource": "summer://skills/store-art"
+    },
+    {
+      "id": "skill/store-listing",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "9a0556424d7a4573e0163ecf47dfb0becd1fee32177eb122c606fc2145968a10",
+      "summary": "Write a Summer Games store page per flow (desktop, mobile): targets, title, tagline, descriptions, tags, and what never to write.",
+      "use_when": [
+        "writing or fixing a game's store page text on Summer Games: title, tagline, description, tags",
+        "summer_store_update_listing or summer_store_get_listing says a text field is missing or wrong",
+        "choosing the targets (web, Mac, Windows, Linux, iPhone, Android) that decide the desktop and mobile store flows"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch"
+        ],
+        "domains": [
+          "creator",
+          "product-language"
+        ],
+        "modalities": [
+          "docs"
+        ]
+      },
+      "related": {
+        "skills": [
+          "skill/publish-your-game",
+          "skill/store-art"
+        ]
+      },
+      "status": "stable",
+      "recommended": false,
+      "hosted_resource": "summer://skills/store-listing"
+    },
+    {
       "id": "skill/summer-analytics",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "136e0725594ae79ca2326f3865920cd10abbfa47192a79433630c39126f49cea",
+      "content_hash": "175f19b54e39a94350342e5c72255c286a7e067ba215bbf7c3de54b03cfda2d0",
       "summary": "Send game events to Summer analytics from the authority or client: fire-and-forget, never blocking gameplay.",
       "use_when": [
         "adding analytics, telemetry or event tracking to a Summer game: level completed, coin collected, tutorial funnel",
@@ -3476,7 +3617,8 @@
           "skill/multiplayer",
           "skill/multiplayer-state",
           "skill/summer-match-results",
-          "skill/summer-store"
+          "skill/summer-store",
+          "skill/grow-analytics"
         ]
       },
       "status": "preview",

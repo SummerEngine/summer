@@ -1,0 +1,29 @@
+id: skill/publish-your-game
+kind: skill
+version: 1.0.0
+summary: "Publish a Summer game on Summer Games through MCP: store page, art, build upload, submit, and one approval link for the owner."
+use_when:
+  - "the user says 'publish my game', 'put it on summer.games', 'launch it on the store' or 'submit it for review'"
+  - "taking a built Summer game to a submitted store page: listing text, art, build upload, summer_store_submit and the owner's approval link"
+  - "an agent publishes for the owner end to end and needs the order of the summer_store_* and summer_build_* tools"
+do_not_use_when:
+  - "only producing a local export build — skill/export-and-ship"
+facets:
+  lifecycle:
+    - launch
+  domains:
+    - creator
+    - deployment
+  modalities:
+    - docs
+related:
+  skills:
+    - skill/store-listing
+    - skill/store-art
+    - skill/grow-analytics
+    - skill/export-and-ship
+hosted_resource: "summer://skills/publish-your-game"
+source: official
+license: MIT
+status: stable
+recommended: false

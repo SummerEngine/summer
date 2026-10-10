@@ -5,7 +5,7 @@ import {
   listCreatorReleases,
   publishCreator,
 } from "../../core/capabilities/creator.js";
-import { captureGameplay } from "../../core/capabilities/capture-gameplay.js";
+import { captureGameplay, type CaptureGameplayInput } from "../../core/capabilities/capture-gameplay.js";
 import { exportGame } from "../../core/capabilities/export-game.js";
 import { STORE_TARGETS } from "../../core/capabilities/export-presets.js";
 import { exportTemplates, TEMPLATE_PLATFORMS } from "../../core/capabilities/export-templates.js";
@@ -106,7 +106,7 @@ export function registerCreatorTools(server: McpServer): void {
 
   server.tool(
     "summer_capture_gameplay",
-    "Capture real gameplay frames without a running editor: starts the game in Summer Engine's offscreen verify instance (a real renderer, a window parked offscreen with no focus, never on screen), lets it run waitSeconds, and saves PNG frames of what the game draws, HUD included. Use for store screenshots (1920x1080 landscape or 1080x1920 portrait). With an editor open, summer_screenshot target game also works. Returns each frame's path, width and height; look at them before using them.",
+    "Capture real gameplay frames without a running editor: starts the game in Summer Engine's offscreen verify instance (--summer-offscreen: a real renderer, a window parked offscreen with no focus, never on screen), lets it run waitSeconds, runs steps, and saves PNG frames of what the game draws, HUD included. Use for store screenshots (1920x1080 landscape or 1080x1920 portrait). The main scene is often a title menu: pass the game's own flags in args (after \"--\", e.g. [\"--autostart\"]), a gameplay scene, or steps that play like a player: [{press:\"Play\"}, {wait:3000}, {key:\"Space\"}, {action:\"jump\"}, {click:[960,540]}, {drag:{from:[400,800],to:[1400,800]}}, {shot:true}]. With a shot step, only shot steps save frames; without one, frames are saved after the steps. A step that cannot run (no such button, key or action) becomes a warning. With an editor open, summer_screenshot target game also works. Returns each frame's path, width and height; look at them before using them.",
     {
       project: z.string().optional().describe("Project folder with project.godot. Defaults to the MCP's bound project, then the working directory."),
       scene: z.string().optional().describe("Scene to start (res://... or uid://...). Default: the project's main scene, which is often a title menu; pass the gameplay scene for gameplay frames."),
@@ -115,8 +115,35 @@ export function registerCreatorTools(server: McpServer): void {
       waitSeconds: z.number().min(0).max(120).optional().describe("Seconds the game runs before the first frame (default 3)."),
       intervalSeconds: z.number().min(0.1).max(60).optional().describe("Seconds between frames (default 1)."),
       out: z.string().optional().describe("Output folder. Defaults to <project>/.summer/captures/<time>/ (ignored by git)."),
+      args: z
+        .array(z.string())
+        .max(32)
+        .optional()
+        .describe('The game\'s own command-line flags, passed after "--" (OS.get_cmdline_user_args()), e.g. ["--autostart", "--solo"] to skip the title screen.'),
+      steps: z
+        .array(
+          z
+            .object({
+              press: z.string().optional().describe("Press the visible button with this text (or node name); waits up to timeoutSeconds (default 10) for it."),
+              timeoutSeconds: z.number().min(0).max(60).optional(),
+              key: z.string().optional().describe("Press a key by Godot name: Space, Enter, Escape, A, Up."),
+              action: z.string().optional().describe("Press an input action from the project's InputMap, e.g. jump."),
+              holdMs: z.number().min(0).max(10000).optional().describe("How long key or action is held (default 100)."),
+              click: z.tuple([z.number(), z.number()]).optional().describe("Left-click at [x, y] in frame pixels."),
+              drag: z
+                .object({ from: z.tuple([z.number(), z.number()]), to: z.tuple([z.number(), z.number()]), ms: z.number().min(0).max(10000).optional() })
+                .optional()
+                .describe("Drag with the left button from [x, y] to [x, y] over ms (default 300)."),
+              wait: z.number().min(0).max(60000).optional().describe("Wait this many milliseconds."),
+              shot: z.boolean().optional().describe("true: save a frame now."),
+            })
+            .strict()
+        )
+        .max(50)
+        .optional()
+        .describe("What to do after waitSeconds, in order; exactly one of press, key, action, click, drag, wait, shot per step."),
     },
-    async (args) => creatorResult(() => captureGameplay(args))
+    async (args) => creatorResult(() => captureGameplay(args as CaptureGameplayInput))
   );
 
   server.tool(

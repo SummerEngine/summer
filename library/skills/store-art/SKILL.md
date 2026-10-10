@@ -18,4 +18,6 @@ Its current text lives on the hosted Summer Engine MCP, the same text the Studio
 2. A host that shows MCP prompts or resources has it as the `store-art` prompt and the resource `summer://skills/store-art`.
 3. Without a store sign-in: https://docs.summerengine.com/llms.txt lists every docs page; fetch any page as .md.
 
+Screenshots: `summer_capture_gameplay` takes them offscreen. Get past the title screen with the game's own flags in `args` or with `steps`, e.g. `{"args":["--autostart"],"steps":[{"wait":3000},{"shot":true},{"key":"Space"},{"wait":800},{"shot":true}]}`.
+
 The one rule to keep even before you load it: Key art, covers and icons carry no text: the stores draw the title over them. Screenshots are real play.

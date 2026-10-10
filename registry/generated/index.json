@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.0",
-      "content_hash": "551529158fd1f1846249199108c63b6978313a0226e98878ca85cc5ab85f9f6d",
+      "content_hash": "b205cc628b163fb3f39e7f2c5d808147738a0bdd913e02b8dce7d73239425adc",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -1599,7 +1599,7 @@
       "id": "skill/export-and-ship",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "9ece7668645e85a92a6fafafef0fa7cd7a402e6e4d77f448701c4ec52e725e08",
+      "content_hash": "6d8551fc18fd82ae6c71df61ca5798c0f0753a89b83e45824e3b87828b871d93",
       "summary": "Assess and prepare a game export: inventory installed templates and targets, validate release assets and config, produce supported builds after approval.",
       "use_when": [
         "the user wants to assess or prepare a Summer game export — Steam, itch, HTML5, iOS, Android targets as available in the installed build",
@@ -3518,7 +3518,7 @@
       "id": "skill/store-art",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "e8de61be6d43547164b99b423401c4aee3e56969461b9e36f50914e11cd201bb",
+      "content_hash": "70d6b7f61395a329958bdd0fb6abfaf8c829d6b287ef115d52db4b16184f42c3",
       "summary": "Make Summer Games store art per slot and flow: key art, covers, icons, screenshots, trailer: size, shape, text rules, fallbacks.",
       "use_when": [
         "making or choosing store art for Summer Games: key art, cover, icon, screenshots, trailer",
@@ -5651,13 +5651,14 @@
       "id": "tool/capture-gameplay",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "ef3e2147a04e75c50043e0e88184f28c67a951cdf61b18181cb88a1297193c39",
-      "summary": "Capture real gameplay frames (PNG, HUD included) in Summer Engine's offscreen verify instance, without a running editor, e.g. store screenshots.",
+      "content_hash": "7195fee358600665d2b1e0ec40eeb68a7c517e775f5cc4a366259bceba07cd03",
+      "summary": "Capture real gameplay PNGs (HUD included) offscreen without a running editor; game flags and player steps (press, key, click) get past the title screen.",
       "use_when": [
         "\"take gameplay screenshots for my store page\"",
         "\"I need screenshots but the editor is not open\"",
         "\"capture a 1920x1080 frame of my game\"",
-        "collecting real gameplay screenshots for summer_store_set_art desktop.screenshots or mobile.screenshots"
+        "collecting real gameplay screenshots for summer_store_set_art desktop.screenshots or mobile.screenshots",
+        "every capture shows the title screen — pass the game's flags in args or steps like press Play"
       ],
       "facets": {
         "lifecycle": [

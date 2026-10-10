@@ -135,7 +135,7 @@ import {
 } from "./creator.js";
 import { exportGame } from "./export-game.js";
 import { exportTemplates } from "./export-templates.js";
-import { captureGameplay } from "./capture-gameplay.js";
+import { captureGameplay, type CaptureStep } from "./capture-gameplay.js";
 import { publishBuild } from "./publish-build.js";
 import {
   CONFIG_KEYS,
@@ -908,6 +908,8 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       waitSeconds: optNumberOrUndefined(args, "waitSeconds"),
       intervalSeconds: optNumberOrUndefined(args, "intervalSeconds"),
       out: optStr(args, "out"),
+      args: args.args as string[] | undefined,
+      steps: args.steps as CaptureStep[] | undefined,
     })
   ),
   entry("summer_publish_build", "Upload a summer.games export to your store game (confirm-gated)", false, (args) =>

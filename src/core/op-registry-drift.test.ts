@@ -9,8 +9,7 @@ import { ENGINE_MAIN_REF, readEngineMainFile } from "../test-helpers/engine-main
  * `op` the engine has no dispatch branch for.
  *
  * The engine's dispatch ladder is the source of truth; the registry is generated
- * from it (modules/1summer_engine/dev/op_registry/op_registry.json in the engine
- * repo). If this package sends an op the engine lacks, fail here rather than on
+ * from it (an op_registry.json in the engine source, path below). If this package sends an op the engine lacks, fail here rather than on
  * a user's machine.
  *
  * This is not hypothetical. It is exactly how `ScanChanges` (the filesystem rescan

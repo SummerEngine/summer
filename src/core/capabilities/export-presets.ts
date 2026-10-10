@@ -6,7 +6,7 @@ import { BuildToolError } from "./summer-bundle.js";
 /**
  * Store targets for summer_export_game, and the export presets that make them.
  *
- * The Summer Games store has two intakes (summer-platform):
+ * The Summer Games store has two intakes:
  * - build-publications takes ONE summer.bundle.v1 .zip per Build. Summer runs
  *   its client.pck on its own client templates (the Summer Games iOS and
  *   Android apps, the Summer desktop app on macOS and Windows), so the creator

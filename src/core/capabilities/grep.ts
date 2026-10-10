@@ -1,7 +1,7 @@
 /**
  * grep — ONE implementation of `summer_grep` for both faces
  * (src/mcp/tools/file-tools.ts and tool-dispatch.ts), over the engine's
- * ripgrep-backed Grep op (modules/1summer_engine/editor/ops/search_ops.cpp).
+ * ripgrep-backed Grep op.
  *
  * The engine op returns {file, line, content} per match and parses only
  * ripgrep's "match" events, so its contextLines flag adds nothing to the

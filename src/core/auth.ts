@@ -235,8 +235,8 @@ export async function saveLoginSession(session: LoginSession): Promise<void> {
   // those exact files. credential-metadata.json adds audience/scope information
   // without changing or duplicating the secret.
   // Write order: user.json, then auth-token, then the advisory metadata. The
-  // desktop engine cross-checks token.sub against user.json's id
-  // (summerengine auth_manager.cpp, inspect_cli_bootstrap_credential), so a
+  // desktop engine cross-checks token.sub against user.json's id when it
+  // adopts the CLI credential, so a
   // write interrupted between the first two files fails closed instead of
   // adopting a mismatched identity. The metadata write is last and is NOT a
   // gate: the token is already live by then, and its contents are re-derived

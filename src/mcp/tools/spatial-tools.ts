@@ -52,7 +52,7 @@ const MIN_PLACEMENT_FLOOR_DISTANCE = 0.001;
 /** Mirrors the engine's SnapToSurface direction guard (length² > 1e-5). */
 const MIN_SNAP_DIRECTION_LENGTH_SQUARED = 0.00001;
 
-/** Starcast's own ceilings (engine spatial_ops.cpp starcast_3d): the engine
+/** Starcast's own ceilings in the engine: the engine
  *  measures the compact receipt as UTF-8 JSON, downgrades full -> summary
  *  above 12 KiB, and strips secondary paths above 5 KiB, so a receipt past the
  *  ceiling for its returnedDetail is one this CLI does not understand. Unlike

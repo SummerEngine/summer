@@ -45,7 +45,7 @@ export type EngineSnapshot = {
   /** Structured failure classifier the engine returns on a game snapshot over
    *  local HTTP (409 `bridge_required`) — surfaced verbatim so the tool can give
    *  an honest, actionable message instead of a truncated generic 409 string.
-   *  When P4.4 lands (game snapshots answer 200/202 over HTTP) this simply
+   *  Once game snapshots answer 200/202 over HTTP this simply
    *  never fires and the tool works. */
   failureReason?: string;
   /** Scene-preview confession fields (P4.3). Populated only for target:"scene".
@@ -688,8 +688,7 @@ export class EngineApiClient {
   ): Promise<unknown> {
     // depth/limit/root only take effect on targeted (scene=) reads: the engine
     // routes those through the live command queue and forwards every query
-    // param into StateProvider::scene_state (tool_net_thread.cpp
-    // _parse_state_args). An UNtargeted read is answered from a pre-published
+    // param into the engine's scene-state reader. An UNtargeted read is answered from a pre-published
     // snapshot built with the defaults (depth 2, limit 200) and its query
     // params are ignored — callers who need depth/limit must pass scenePath
     // (summer_get_scene_tree resolves the current scene path for this).
@@ -708,9 +707,8 @@ export class EngineApiClient {
   async getProjectState(prefix?: string): Promise<unknown> {
     // ?prefix= is sent for forward-compatibility, but current engine builds
     // IGNORE it: /api/state/project is always served from the snapshot, which
-    // is published with empty args (local_api_server.cpp
-    // _maybe_publish_snapshot), so StateProvider::project_state never sees the
-    // query. Callers that need a prefix subset must also filter client-side
+    // is published with empty args, so the engine's project-state reader never
+    // sees the query. Callers that need a prefix subset must also filter client-side
     // (summer_get_project_context does).
     const query = prefix ? `?prefix=${encodeURIComponent(prefix)}` : "";
     return this.request("GET", `/api/state/project${query}`);
@@ -743,13 +741,13 @@ export class EngineApiClient {
     if (pins) {
       // Determinism params (seed / fixed_fps / time_scale) — the /api/play rung
       // copies ONLY `scene` from options into the PlayGame op
-      // (local_api_server.cpp play branch), so a pinned launch travels as an
+      // (the engine's /api/play handler), so a pinned launch travels as an
       // explicit PlayGame op through /api/ops. executeOps stamps the bound
       // identity like every other op. An engine that predates the params
       // ignores the extra keys and answers the v1 result (no `determinism`).
       return this.executeOps([{ op: "PlayGame", ...(scene ? { scene } : {}), ...pins }], undefined, 60_000);
     }
-    // The engine reads play params from body.options (tool_net_thread.cpp:503),
+    // The engine reads play params from body.options,
     // and the play handler reads options["scene"] — a top-level { scene } is
     // dropped, so the scene MUST be nested inside options. The bound identity
     // rides in the same options dict so play is refused on a mismatched project.
@@ -819,10 +817,10 @@ export class EngineApiClient {
     // with the same payload shape — _requestQueued resolves both.
     //
     // Game capture over local HTTP structurally 409s today with a STRUCTURED
-    // reason (`failure_reason:"unsupported_transport"`, `bridge_required:true`,
-    // tool_net_thread.cpp:495-503). Detect that specific shape and return it
+    // reason (`failure_reason:"unsupported_transport"`, `bridge_required:true`).
+    // Detect that specific shape and return it
     // verbatim so the tool can give an honest message — do NOT hardcode "game
-    // always fails": once the engine answers 200/202 (P4.4), the same response
+    // always fails": once the engine answers 200/202, the same response
     // flows into the normal queued path. ONE request either way: a probe that
     // discarded a 200 (or orphaned an accepted 202 requestId) and then asked
     // again would capture the game twice.
@@ -915,8 +913,8 @@ export class EngineApiClient {
 
   /**
    * Turn a 409 from /api/snapshot/game into a structured failure. The engine's
-   * structural refusal carries `bridge_required` / `unsupported_transport`
-   * (tool_net_thread.cpp:495-503); a 409 without that shape is surfaced as a
+   * structural refusal carries `bridge_required` / `unsupported_transport`;
+   * a 409 without that shape is surfaced as a
    * plain error rather than silently claiming "bridge required".
    */
   private async _bridgeRequiredFromResponse(res: Response): Promise<EngineSnapshot> {
@@ -1019,9 +1017,8 @@ export class EngineApiClient {
 
   /**
    * Cheap drift probe for the MCP client cache. The engine mints a fresh
-   * api-token on every launch (local_api_server.cpp::_generate_api_token) and can
-   * bind a different port (tool_net_thread.cpp::start increments 6550..6565 when
-   * the old socket lingers), so a client built before an engine restart holds
+   * api-token on every launch and can bind a different port (it increments
+   * 6550..6565 when the old socket lingers), so a client built before an engine restart holds
    * dead credentials. Re-read the on-disk creds and report whether they no longer
    * match this client's snapshot.
    *

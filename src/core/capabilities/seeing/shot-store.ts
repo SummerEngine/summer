@@ -23,7 +23,7 @@ export const SHOTS_DIR = join(".summer", "shots");
 export const SAVED_SUBDIR = "saved";
 export const SHOT_MAX_EDGE = 1024;
 export const SHOTS_MAX_TOTAL_BYTES = 20 * 1024 * 1024;
-/** Same grammar as camera bookmark names (preview_ops.cpp). */
+/** Same grammar as camera bookmark names. */
 export const SHOT_NAME_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
 export class ShotStoreError extends Error {

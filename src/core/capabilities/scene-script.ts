@@ -5,8 +5,8 @@
  *
  * Server-side clamps: RunSceneScript blocks between frames of the LIVE editor,
  * so its ceiling is deliberately low; RunEditorScript boots a whole headless
- * child editor, so its floor covers the boot cost (editor_script_ops.cpp:
- * 15..600 default 120).
+ * child editor, so its floor covers the boot cost (engine clamp: 15..600,
+ * default 120).
  */
 
 export const SCENE_SCRIPT_MIN_SECONDS = 5;

@@ -6,7 +6,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 /**
  * Project-binding proof over REAL HTTP.
  *
- * A fake engine emulates the identity preflight (local_api_server.cpp ~271-302):
+ * A fake engine emulates the engine's identity preflight:
  * a command carrying options.projectIdHash that differs from the engine's current
  * project is rejected with terminalState "identity_mismatch" BEFORE anything is
  * applied; an empty/absent hash skips the check. Reads (GET /api/state/*) carry

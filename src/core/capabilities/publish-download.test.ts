@@ -19,7 +19,7 @@ interface Call {
   body: any;
 }
 
-/** A fake creator store for store versions (summer-platform creatorstore), plus storage part PUTs. */
+/** A fake creator store for store versions, plus storage part PUTs. */
 function fakeStore(options: { existing?: Record<string, unknown>; storedParts?: number[]; completeStatus?: number; reject?: string } = {}) {
   const calls: Call[] = [];
   const put = new Set<number>(options.storedParts ?? []);

@@ -115,7 +115,7 @@ export type RunBinaryResolution =
  * (findEngineBinary, which also honours the older SUMMER_ENGINE_BINARY).
  * An explicit override is never silently swapped for the installed engine:
  * a missing path or a bare `.app` bundle is an error, because the caller
- * asked for THAT build (docs/design/archive/TK-VS-FOLD-2026-09-07.md, gap 5).
+ * asked for THAT build.
  */
 export function resolveRunBinary(
   binFlag: string | undefined,

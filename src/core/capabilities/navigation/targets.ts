@@ -1,5 +1,5 @@
 /**
- * The product map as the toolkit sees it (docs/design/NAVIGATION-PLAN.md).
+ * The product map as the toolkit sees it (rendered for agents as library/references/product-map).
  *
  * The toolkit does NOT own where things are. Each product does:
  *

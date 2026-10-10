@@ -4,7 +4,7 @@
 
 Locked 2026-09-01 after a repo audit and a multi-reviewer design board. Reasoning lives in `docs/design/DECISIONS.md`; this file is the rules.
 
-Truth pass 2026-09-02: every rule below was re-checked against the code on `v3-foundation`. Where the code does not yet do what the design intends, the rule is marked **planned, not implemented** rather than stated as fact. What is verified and what is not: `STATUS.md`.
+Truth pass 2026-09-02: every rule below was re-checked against the code on `v3-foundation`. Where the code does not yet do what the design intends, the rule is marked **planned, not implemented** rather than stated as fact.
 
 ---
 
@@ -76,7 +76,7 @@ Disambiguation rule: a **skill explains the process**; an **example is a finishe
 - `src/core/capabilities/tool-dispatch.ts` is the CLI face: a dispatch table that validates `--args` with the same zod schemas and calls into the same functions. It is a mirror, not a second implementation of behavior, but it is a second registration.
 - The descriptor's `input_schema` is **not** the source the zod is derived from. Instead `src/mcp/tools/descriptor-parity.test.ts` converts each registered zod shape to a structural JSON-Schema form and fails the build when it disagrees with `input_schema` (types, required, property names, enums). `scripts/validate-library` additionally checks that `implementation.module` exists, that `surfaces.mcp.tool_name` is a real registration, and that `input_schema` is a legal schema.
 
-The invariant the contract holds is the parity test, not the folder. Folding the mirrors into a single shared-capabilities registration is scheduled as the post-hardening consolidation pass (archive/REVIEW-2026-09-02.md, P2; tracked in STATUS.md), not claimed here.
+The invariant the contract holds is the parity test, not the folder. Folding the mirrors into a single shared-capabilities registration is scheduled as the post-hardening consolidation pass, not claimed here.
 
 ## 4. Identity
 
@@ -135,7 +135,7 @@ Per-kind extensions (defined in the per-kind schemas):
   - `authority` — the five booleans `filesystem`, `editor_mutation`, `network`, `credentials`, `publish`, all required. `filesystem: true` whenever the tool writes anything under the project or `~/.summer/` (screenshots, generated assets, publish audit rows included).
   - `evidence_checks` — **optional** list of check names (42 of 86 tools carry it today).
 
-MCP protocol posture: the local server stays stdio (unchanged in MCP v2, spec 2026-07-28); the SDK is kept on the v2-supporting major (`@modelcontextprotocol/sdk` ^1.30); no elicitation patterns. Engine-free tools (`mcp.remote: true`) may additionally be served by a hosted stateless Streamable-HTTP endpoint (`summerengine.com/mcp`) — a fast-follow, not built (ROADMAP §3.1).
+MCP protocol posture: the local server stays stdio (unchanged in MCP v2, spec 2026-07-28); the SDK is kept on the v2-supporting major (`@modelcontextprotocol/sdk` ^1.30); no elicitation patterns. Engine-free tools (`mcp.remote: true`) may additionally be served by a hosted stateless Streamable-HTTP endpoint (`summerengine.com/mcp`) — planned, not built.
 - **skill** (`skill.schema.json`): `recommended` (boolean, omitted = false) — the subset installed by `summer skills install --recommended` / `summer setup --recommended`. Plain `summer setup <agent>` installs **all** skills regardless of this flag.
 - **template** (`template.schema.json`): exactly one shape. **Pinned**: `repo`, `commit` (40-hex SHA), `tree_digest` (sha256), optional `default_branch` (informational only — never used for resolution) and `zip` (release-asset URL + sha256). **Built-in**: `builtin: true` and no pin — generated in-process by `summer create`, nothing downloaded. Declaring both or neither is a schema error. Both shapes may carry `systems` (list) and `smoke_test` (eval ref).
 - **collection** (`collection.schema.json`): `items` (asset refs: `slug` + `license` required; per-item `sha256` required for `status: stable`), `style` (`rules`), `presets` (named subsets), `recommended` (skill/template IDs). Collections carry **no executable instructions** — they may only *reference* trusted skills by ID. No collection ships yet (`counts.json`: 0).
@@ -196,7 +196,7 @@ Extends what exists (GameSoul.md, memory tree, locked flags — do not reinvent)
 **Planned, not implemented** — named by the design, written by nothing yet:
 
 ```
-├── state.json        # current mission/task state: what's built, verified, next  (ROADMAP §3.2)
+├── state.json        # current mission/task state: what's built, verified, next  (planned)
 ├── decisions.ndjson  # append-only decision log
 └── receipts/         # verification receipts (playtest passed, screenshot, eval)
 ```
@@ -217,7 +217,7 @@ MCP tool `summer_library_feedback` (`src/mcp/tools/feedback-tools.ts` → `src/c
 
 Fire-and-forget, 1s timeout, no retry, never blocks; `{recorded: true}` only on a 2xx within the timeout, otherwise `{recorded: false, dropped: true}`. POSTs to `/api/mcp/library-feedback` (web repo) → append-only Postgres table, API-writes only, no anon insert policy. Nothing reads the table into any agent context. `SUMMER_NO_TELEMETRY=1` or `DO_NOT_TRACK=1` → nothing is ever sent. **First-run notice precedes the first event:** the first call ever made on a machine sends nothing and returns `{recorded: false, first_run: true, notice}`; the agent must call again to send.
 
-**Planned, not implemented:** the Tier-1 opt-in longer note (≤1500 chars) — the schema caps at 280 today (ROADMAP §4, Later). Entry `content_hash` attribution is carried inside `entry_id` by the caller; there is no separate field. The full Librarian pipeline (triage → PRs → ranking → automation ladder) is specced in `docs/design/SELF_IMPROVING_LIBRARY.md` and is explicitly NOT v1.
+**Planned, not implemented:** the Tier-1 opt-in longer note (≤1500 chars) — the schema caps at 280 today. Entry `content_hash` attribution is carried inside `entry_id` by the caller; there is no separate field. An automated triage and repair pipeline is explicitly NOT v1.
 
 ## 11. Extension model
 

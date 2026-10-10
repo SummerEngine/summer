@@ -1,7 +1,7 @@
 /**
  * Example-eval runner interface — the fixed contract (evals/examples/README.md).
  *
- * The real runner (ROADMAP §3.4) implements ExampleRunner. Everything that
+ * The real runner implements ExampleRunner. Everything that
  * authors examples during the library migration codes against these types;
  * the interface changing after examples land is a breaking change.
  */

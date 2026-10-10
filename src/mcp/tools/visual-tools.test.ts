@@ -18,7 +18,7 @@ import { registerVisualTools, VIEWPORT_RECAPTURE_DELAY_MS } from "./visual-tools
 /**
  * Two suites share this file:
  *  - summer_screenshot against the REAL frames of the 2026-09-03 e2e run
- *    (docs/design/archive/E2E-2026-09-03.md F-01 / F-05 / F-15). 01 is the all-black
+ *   . 01 is the all-black
  *    viewport capture that shipped with a "describe what you see" caption; 04 is
  *    a genuine 2D editor frame; 02 is the offscreen render of the 2D room whose
  *    caption falsely warned about a missing Camera3D.

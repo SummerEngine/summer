@@ -3,7 +3,7 @@ spec: eval/skill-spec/brainstorm-game
 skill: skill/brainstorm-game
 status: ported
 source: tests/specs/brainstorm-game.md
-runner: manual   # /skill-test today; automated harness is a fast-follow (ROADMAP §3.4)
+runner: manual   # /skill-test today; no automated harness yet
 ---
 
 # Skill Spec: /brainstorm-game

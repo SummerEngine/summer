@@ -310,7 +310,7 @@ Official entries land in this repo by PR, gated by schema validation and the cap
 The long-term bet: the best library is the one that learns from real usage. v1 of that loop is deliberately small and honest:
 
 - Agents can report how an entry worked (`summer_library_feedback`): worked / worked with fixes / wrong / outdated / incomplete / did not apply / misrouted. What is sent, in full: the entry ids, one outcome word each, an optional note and deviation (280 characters max, about the entry), the engine version, the agent's self-reported model id, this CLI's version, the host app name/version, a random per-process session id, and — only when logged out — a random install uuid (when logged in, the account token is sent instead). **The schema cannot carry your code, files, or chat.** The very first call on a machine sends nothing and returns a notice; `SUMMER_NO_TELEMETRY=1` or `DO_NOT_TRACK=1` turns it off entirely.
-- Today those reports land in a write-only mailbox that maintainers read. Automated triage, ranking, and repair are specced ([`docs/design/SELF_IMPROVING_LIBRARY.md`](docs/design/SELF_IMPROVING_LIBRARY.md)) and gated behind written promotion criteria — verified outcomes only, popularity never ranks.
+- Today those reports land in a write-only mailbox that maintainers read. Only verified outcomes count; popularity never ranks an entry.
 
 ## What gets downloaded
 
@@ -391,7 +391,7 @@ Testing an unpublished build end to end against the real engine and a real agent
 
 - [Agent guide (AGENTS.md)](AGENTS.md) — how agents use Summer, including the verification ladder
 - [Development guide](docs/DEVELOPMENT.md) · [v2 → v3 migration](docs/MIGRATION-V2-V3.md)
-- [Design: contract](docs/design/CONTRACT.md) · [decisions](docs/design/DECISIONS.md) · [roadmap](docs/design/ROADMAP.md)
+- [Design: contract](docs/design/CONTRACT.md) · [decisions](docs/design/DECISIONS.md)
 - [Agent support map](integrations/README.md) · [Template pinning](library/templates/README.md) · [Evals](evals/README.md)
 - Per-host notes: [Claude Code](docs/CLAUDE_CODE.md) · [Codex](docs/CODEX.md) · [Cursor](docs/CURSOR.md) · [OpenCode](.opencode/INSTALL.md)
 

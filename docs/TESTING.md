@@ -144,7 +144,7 @@ advertises:
 
 The other two — `wait-for-event` and `recent-events` (and the `summer events` command) — need the engine **events channel** (`capabilities.events` in `/api/health`, `GET /api/events/poll`; engine PR #156 follow-up commits) rather than an op. Without it they return `failure_reason: "engine_lacks_events"` before sending anything, on both faces; with the same escape hatch set, the poll is sent and the engine's 404 is rewritten into the same shape.
 
-Unblocked by engine PRs **SummerEngine/SummerEngine #155** (headless worker) and **#156** (scene scripting); the four spatial tools additionally need the world-tool engine half (`docs/design/ROADMAP.md`) and `starcast` needs **#147**. Until those merge, a `worked` outcome for any of these is impossible — record `engine_lacks_op` as the expected result, not a failure.
+Unblocked by engine PRs **SummerEngine/SummerEngine #155** (headless worker) and **#156** (scene scripting); the four spatial tools additionally need the world-tool engine half and `starcast` needs **#147**. Until those merge, a `worked` outcome for any of these is impossible — record `engine_lacks_op` as the expected result, not a failure.
 
 `SUMMER_HEADLESS_ROUTING=1` (route tool calls to a headless worker when no editor has the project open) needs the worker build from #155. Without it the flag does nothing. With a worker binary: `SUMMER_ENGINE_BIN=/path/to/Summer npx vitest run src/core/headless/worker-integration.test.ts` (`docs/HEADLESS_ROUTING.md`).
 
@@ -193,6 +193,5 @@ Two tests skip loudly without a sibling engine checkout / worker build (`docs/DE
 
 Nothing lives only in chat. For each finding:
 
-1. One row in the current review ledger, `docs/design/archive/REVIEW-<date>.md` (P0 blocks publish / P1 wrong and user-visible / P2 debt; one line; an owner). Start a new dated file for a new review.
-2. Flip the matching row in `docs/design/STATUS.md` — "If it isn't here, it isn't real." Verified rows say *how* they were verified.
-3. Paste the exact command and output. "It didn't work" is not a finding.
+1. Open a GitHub issue with one line per finding (P0 blocks publish / P1 wrong and user-visible / P2 debt).
+2. Paste the exact command and output. "It didn't work" is not a finding.

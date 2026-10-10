@@ -213,7 +213,7 @@ describe("per-instance Summer editor discovery", () => {
 // The CLI face has no --project flag: EngineApiClient.connect() with no
 // selection used to read only the global api-token/api-port pointer, so an
 // editor launched --summer-no-publish (registry entry, no pointer) read as
-// "not running" on every call (docs/design/archive/TK-VS-FOLD-2026-09-07.md, gap 3).
+// "not running" on every call.
 // connect() still reads the pointer first (api-client.test.ts covers that);
 // this is the registry half it falls back to.
 describe("registry fallback for no-selection discovery (CLI face)", () => {

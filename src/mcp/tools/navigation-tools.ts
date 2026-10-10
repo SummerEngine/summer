@@ -8,7 +8,7 @@ import { openArgsShape, runOpen } from "../../core/capabilities/navigation/open.
 /**
  * summer_open — the MCP face of `summer open`. Same behavior as the CLI
  * (src/core/capabilities/navigation/open.ts runOpen); this file only supplies
- * the engine client and the browser launcher. Design: docs/design/NAVIGATION-DESIGN.md §3.
+ * the engine client and the browser launcher.
  */
 export function registerNavigationTools(server: McpServer): void {
   server.tool(

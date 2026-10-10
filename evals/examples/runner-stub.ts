@@ -20,7 +20,7 @@ const report: ExampleRunReport = {
   results: [],
   skipped: true,
   skipReason: fs.existsSync(examplesDir)
-    ? "library/examples/ exists but the pinned-engine runner is not implemented yet (ROADMAP §3.4)"
+    ? "library/examples/ exists but the pinned-engine runner is not implemented yet"
     : "library/examples/ does not exist yet (migration in flight)",
 };
 

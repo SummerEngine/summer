@@ -1,8 +1,8 @@
 /**
  * Frame-quality probe for engine screenshots (tool/screenshot).
  *
- * WHY THIS EXISTS. In the 2026-09-03 end-to-end run (docs/design/archive/E2E-2026-09-03.md,
- * F-01) `summer_screenshot target:"viewport"` returned an entirely black
+ * WHY THIS EXISTS. In the 2026-09-03 end-to-end run,
+ * `summer_screenshot target:"viewport"` returned an entirely black
  * 1072x1280 JPEG (src/core/capabilities/__fixtures__/frames/01-mcp-viewport-black.jpg)
  * with a caption
  * telling the agent to describe what it saw. It was the first viewport capture

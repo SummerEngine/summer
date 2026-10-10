@@ -3,7 +3,7 @@ spec: eval/skill-spec/tune-performance
 skill: skill/tune-performance
 status: ported
 source: tests/specs/tune-performance.md
-runner: manual   # /skill-test today; automated harness is a fast-follow (ROADMAP §3.4)
+runner: manual   # /skill-test today; no automated harness yet
 ---
 
 # Skill Spec: /tune-performance

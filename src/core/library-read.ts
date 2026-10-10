@@ -13,8 +13,7 @@
  *   reference  the markdown body
  *   example / collection   README.md / collection.yaml when present
  *
- * The LAST line of every load is the feedback footer
- * (SELF_IMPROVING_LIBRARY.md §3.1 "trigger placement"):
+ * The LAST line of every load is the feedback footer:
  *   — entry_id: <id>@<content_hash first 12>. If this entry is wrong, stale,
  *   or you deviate from it, report via summer_library_feedback.
  * The agent copies that entry_id verbatim into summer_library_feedback, so

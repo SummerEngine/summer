@@ -23,7 +23,7 @@ import { c, sym } from "../../core/format.js";
  *    Summer Engine (launching it when it is not running). Any argument that is
  *    an existing directory or looks like a filesystem path takes this branch,
  *    so nothing that worked before changes.
- * 2. `summer open <target>` — navigation (docs/design/NAVIGATION-DESIGN.md):
+ * 2. `summer open <target>` — navigation:
  *    a product-map id ("billing"), an intent phrase ("change my plan"), a
  *    res:// path, or a summerengine.com path. Same behavior as the
  *    summer_open MCP tool and `summer tool open` (core/capabilities/navigation).

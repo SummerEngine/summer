@@ -16,7 +16,7 @@ registry). v1.0's plaintext `{"token":...}` first line is gone.
 handshake — lives on the `summerengine` branch `feature/headless-worker` and
 must merge and be rebased over 4.7.x before the flag does anything against a
 shipped build. Until then the flag stays off and nothing in this repo changes
-behavior (see `docs/design/ROADMAP.md` §3).
+behavior.
 
 ## Files
 

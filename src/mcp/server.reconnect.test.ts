@@ -6,9 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * The MCP server is a long-lived stdio process (it lives as long as Claude Code /
  * Cursor / Codex keep it). It caches ONE EngineApiClient that snapshots the
  * engine's api-port + api-token at first connect. But the engine mints a NEW
- * random api-token on EVERY launch (local_api_server.cpp::_generate_api_token)
- * and can bind a different port (tool_net_thread.cpp::start increments 6550..6565
- * when the old socket lingers). So any engine restart / reopen / crash-relaunch
+ * random api-token on EVERY launch and can bind a different port (it
+ * increments 6550..6565 when the old socket lingers). So any engine restart / reopen / crash-relaunch
  * invalidates the cached credentials, and the stale client keeps hitting the old
  * port with the old Bearer token -> 401 -> reads as "disconnected".
  *

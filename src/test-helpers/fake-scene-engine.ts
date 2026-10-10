@@ -11,9 +11,9 @@
  *    keeps the OLD scene path, so SaveScene writes the old ExtResource.
  *  - ReparentNode: remove_child clears the owner of every node below the
  *    moved one whose owner is outside the removed subtree; the op re-owns
- *    only the node it moved (scene_ops.cpp SceneOps::reparent_node).
+ *    only the node it moved.
  *  - ConnectSignal: connects without CONNECT_PERSIST, so SaveScene writes no
- *    [connection] line (scene_ops.cpp SceneOps::connect_signal).
+ *    [connection] line.
  *
  * RunSceneScript runs only the connect probe of core/capabilities/
  * connect-signal.ts (read from its constants), in the ACTIVE tab, and marks
@@ -397,7 +397,7 @@ export class FakeSceneEngine {
     const failed = results.some((r) => r.ok === false);
     const save = results.find((r) => r.op === "SaveScene");
     const sceneTargeted = typeof options?.scenePath === "string";
-    // ops_executor.cpp: scenePersistence.persisted is "the SaveScene returned OK".
+    // Engine: scenePersistence.persisted means "the SaveScene returned OK".
     return honestSceneReceipt({
       ok: !failed,
       status: failed ? "error" : "ok",

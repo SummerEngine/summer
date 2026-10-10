@@ -6,8 +6,8 @@
  * Output panel (EditorLog) never received them: a running game's errors are
  * collected by the debugger (summer_get_debugger_errors / the `debugger`
  * section of summer_get_diagnostics). The engine types console lines straight
- * from EditorLog::MSG_TYPE (error / warning / std / editor — debug_ops.cpp
- * GetConsoleOutput), so dropping `std` lines by default hides nothing that
+ * from EditorLog::MSG_TYPE (error / warning / std / editor) in
+ * GetConsoleOutput, so dropping `std` lines by default hides nothing that
  * was an error; the trap is treating this tool's count as the post-play
  * verdict at all. The note travels with the result because tool descriptions
  * are read once and results are read every time.

@@ -215,7 +215,7 @@ Use this when summer_get_diagnostics shows a non-zero \`debugger.warnings\` coun
       withEngine(async (client) => {
         // Reuses the existing GetDebuggerErrors op with type: "warning" filter.
         // Engine-side change: ScriptEditorDebugger::get_errors_data() supports
-        // include_warnings; debug_ops::get_debugger_errors honours `type` to
+        // include_warnings; the engine's GetDebuggerErrors honours `type` to
         // return warnings only. Diagnostics also exposes `warnings_data`.
         const op: Record<string, unknown> = {
           op: "GetDebuggerErrors",

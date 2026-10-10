@@ -4,8 +4,7 @@
  * both faces validate the same arguments, send the same op, and render the
  * engine's failure taxonomy the same way.
  *
- * Seven engine ops (modules/1summer_engine/editor/ops/ui_ops.cpp, frozen in
- * doc/SUMMER/SCENE_SCRIPTING_CONTRACTS.md "Wave L") behind four tools:
+ * Seven engine ops (a frozen engine contract) behind four tools:
  *
  *   summer_ui_actions     mode:"list"   -> UiListActions   (read)
  *                         mode:"invoke" -> UiInvoke        (mutates)

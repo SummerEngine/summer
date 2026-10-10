@@ -8,8 +8,7 @@ import { BuildToolError } from "./summer-bundle.js";
 import { createStore, readGrants, uploadParts, type PublishBuildDependencies } from "./publish-build.js";
 
 /**
- * The store's second build path (summer-platform store versions,
- * internal/creatorstore): a web build (an HTML5 .zip played on summer.games)
+ * The store's second build path (store versions): a web build (an HTML5 .zip played on summer.games)
  * or a native download (macOS universal, Windows x64, Linux x64) that players
  * download. summer_export_game format "download" makes these files;
  * summer_publish_build uploads them here, through the same creator store
@@ -29,7 +28,7 @@ import { createStore, readGrants, uploadParts, type PublishBuildDependencies } f
 export const DOWNLOAD_PLATFORMS = ["web", "macos-universal", "windows-x64", "linux-x64"] as const;
 export type DownloadPlatform = (typeof DOWNLOAD_PLATFORMS)[number];
 
-/** summer-platform creatorstore limits (versions.go, webzip.go). */
+/** The store's upload limits for store versions and web zips. */
 const WEB_MAX_BYTES = 500 * 1024 * 1024;
 const WEB_MAX_FILES = 2000;
 const WEB_MAX_FILE_BYTES = 200 * 1024 * 1024;

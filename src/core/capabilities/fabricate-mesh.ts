@@ -4,7 +4,7 @@
  * (`summer tool fabricate-3d`) so both faces validate the same arguments, send
  * the same op with the same clamps, and wait the same client poll budget.
  *
- * What the op does on the engine side (fabricate_ops.cpp, mesh fabrication): run one
+ * What the op does on the engine side: run one
  * agent-authored bpy script in a supervised headless child of the USER'S OWN
  * Blender install, validate the .glb the child exported, move it under res://,
  * wait for the editor import to settle, and optionally instantiate it into the
@@ -39,8 +39,7 @@ const VECTOR3_VARIANT_RE =
   /^Vector3\(\s*[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?\s*,\s*[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?\s*,\s*[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?\s*\)$/;
 
 /**
- * Mirror of the engine's out_path pre-validation (fabricate_ops.cpp
- * _resolve_out_path) so a bad destination is refused on this side with the
+ * Mirror of the engine's out_path pre-validation so a bad destination is refused on this side with the
  * same words, and nothing is sent. Returns null when the path is acceptable.
  */
 export function fabricateOutPathProblem(rawPath: string): string | null {

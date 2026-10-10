@@ -7,7 +7,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
  * End-to-end disconnect repro over REAL HTTP.
  *
  * A fake "engine" HTTP server stands in for Summer Engine: /api/health is
- * unauthenticated (matches tool_net_thread.cpp::_validate_auth) and every other
+ * unauthenticated (like the real engine) and every other
  * route requires `Authorization: Bearer <currentToken>`, returning 401 on a stale
  * token — exactly what the real engine does after it mints a fresh api-token on
  * relaunch. We rotate the token to simulate an engine restart mid-session and

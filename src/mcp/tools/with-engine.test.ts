@@ -3,9 +3,8 @@ import { describe, it, expect } from "vitest";
 import { extractOpError, missingEngineOpResult, withTransportRecovery } from "./with-engine.js";
 
 /**
- * 0.5.34 Block E follow-up — the CLI/MCP must NOT repeat the web's
- * "no-results envelope = silent success" masking (publicsummerengine cf17134f)
- * or the dual-shape blindness fixed in 81b825f7.
+ * The CLI/MCP must NOT repeat the "no-results envelope = silent success"
+ * masking or the dual-shape blindness the web platform's tool layer once had.
  *
  * extractOpError is the SOLE result-interpreter for every mutating MCP tool
  * (everything routed through withEngine -> executeOps/play/stop). The async

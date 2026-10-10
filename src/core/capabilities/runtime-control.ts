@@ -6,8 +6,7 @@
  * both faces validate the same inputs, send the same op and wait the same
  * budget.
  *
- * Engine contract (frozen): doc/SUMMER/SCENE_SCRIPTING_CONTRACTS.md "Wave I —
- * Runtime control & playtest ops" + editor/ops/runtime_ops.h. Every op except
+ * Engine contract (frozen): the runtime control and playtest ops. Every op except
  * ListGameInstances is SINGLE-ONLY and ASYNC (a debugger round-trip needs the
  * reply channel), requires a RUNNING game, accepts `instance?` (default
  * "main"), stamps the game frame it describes, rounds floats to 3dp and
@@ -64,7 +63,7 @@ export const RUNTIME_CONTROL_OP_KINDS: readonly string[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Budgets — mirror the engine's watchdogs (runtime_ops.cpp) plus relay headroom.
+// Budgets — mirror the engine's runtime-op watchdogs plus relay headroom.
 // ---------------------------------------------------------------------------
 
 /** Default editor-side watchdog for a runtime op (_RT_DEFAULT_TIMEOUT_SEC). */
@@ -1039,9 +1038,8 @@ export function playRequestsLocalPlay(args: PlayGameArgs): boolean {
 /**
  * Quiet is the default whenever an agent drives play — both faces of this tool
  * (MCP and `summer tool`) ARE agent faces, so the only way to a focus-stealing
- * launch is an explicit focus:true. Quiet travels as PlayGame `agent:true`
- * (debug_ops.cpp play_game -> GameView::set_agent_quiet_play), which the engine
- * has honoured since 0.5.45 (c7c490d84f3, 2026-07-02).
+ * launch is an explicit focus:true. Quiet travels as PlayGame `agent:true`,
+ * which the engine has honoured since 0.5.45.
  */
 export function playIsQuiet(args: PlayGameArgs): boolean {
   return args.focus !== true;
@@ -1052,7 +1050,7 @@ export function playIsQuiet(args: PlayGameArgs): boolean {
 export function playNeedsOp(args: PlayGameArgs): boolean {
   return (
     // The /api/play rung builds a PlayGame op with ONLY `scene`
-    // (local_api_server.cpp play branch), so `agent:true` has to ride the op.
+    // (the engine's /api/play handler), so `agent:true` has to ride the op.
     playIsQuiet(args) ||
     (typeof args.instance === "string" && args.instance.trim().length > 0) ||
     args.mode !== undefined ||
@@ -1189,8 +1187,8 @@ export const PLAY_QUIET_NOT_SUPPORTED =
 
 /**
  * Quiet was requested: the engine echoes `agent_quiet` when it understood the
- * flag (debug_ops.cpp play_game — in the launch branch AND the already-running
- * branch on current engines). No echo at all means an engine that predates
+ * flag (in the launch branch AND the already-running branch on current
+ * engines). No echo at all means an engine that predates
  * the flag ignored it — say so instead of letting the model believe the user
  * was left alone. The field is the contract; the `note` text is never matched.
  */

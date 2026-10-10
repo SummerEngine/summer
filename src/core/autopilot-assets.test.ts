@@ -8,7 +8,7 @@ import { ENGINE_MAIN_REF, readEngineMainFile } from "../test-helpers/engine-main
 
 /**
  * assets/autopilot/probe_base.gd is a VENDORED COPY of the engine's canonical
- * modules/1summer_engine/verify/summer_probe_base.gd, so that `summer create`
+ * probe base (CANONICAL_PATH below), so that `summer create`
  * can scaffold a runnable probe into a project that has no engine checkout.
  *
  * It has already drifted once: the vendored copy predated the fix for

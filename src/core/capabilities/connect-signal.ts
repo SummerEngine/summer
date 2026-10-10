@@ -3,8 +3,7 @@
  * (src/mcp/tools/scene-tools.ts and tool-dispatch.ts) that leaves the
  * connection in the saved scene, verified from the file.
  *
- * Why not the engine's ConnectSignal op: SceneOps::connect_signal (engine
- * modules/1summer_engine/editor/ops/scene_ops.cpp) builds
+ * Why not the engine's ConnectSignal op: it builds
  * `Callable(receiver, method)` and registers
  * `add_do_method(emitter, "connect", signal, cb)` — no CONNECT_PERSIST, and the
  * op reads no flags argument. PackedScene::pack writes only persistent

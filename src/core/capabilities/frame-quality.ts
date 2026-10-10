@@ -8,10 +8,10 @@
  * telling the agent to describe what it saw. It was the first viewport capture
  * after scene mutations had flipped the editor from the 3D to the 2D tab; the
  * same call 67 s later returned real content. Engine side, the ViewportSnapshot
- * op (summerengine modules/1summer_engine/editor/ops/debug_ops.cpp) reads the
+ * op reads the
  * editor SubViewport's texture with get_texture()->get_image() AS-IS — no forced
  * RenderingServer draw and no blank-frame retry, both of which ScenePreview has
- * (preview_ops.cpp "render-readiness hardening") because a not-yet-drawn
+ * because a not-yet-drawn
  * texture reads back black. That is consistent with a 2D subviewport that had
  * not been redrawn since the tab switch, but it has NOT been proven by
  * instrumenting the engine, so this module detects the SYMPTOM (a flat frame)

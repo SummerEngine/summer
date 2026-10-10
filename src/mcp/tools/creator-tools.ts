@@ -161,7 +161,7 @@ export function registerCreatorTools(server: McpServer): void {
 
   server.tool(
     "summer_creator_releases",
-    "List real creator-owned releases from the versioned Summer Platform creator API. The server independently verifies the exact publish scope and project ownership.",
+    "Deprecated: lists releases on the legacy Summercraft creator API (separate sc_ token), not summer.games. For what players get on summer.games, and which upload can be released, use summer_store_releases.",
     {
       projectId: z.string().optional().describe("Creator project ID. Defaults to ~/.summer/config.json."),
       limit: z.number().int().min(1).max(100).default(20),

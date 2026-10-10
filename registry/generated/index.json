@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.0",
-      "content_hash": "1bd02b06d6eef7fc61cc5bdd383e81d879686e6869da54a7107b4ed35a5dea53",
+      "content_hash": "551529158fd1f1846249199108c63b6978313a0226e98878ca85cc5ab85f9f6d",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -5798,12 +5798,11 @@
       "id": "tool/creator-publish",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "5d77f879e2a46ecdeeac014a714fb25cbda91fbcb4c79e7d584f12f68cec51de",
+      "content_hash": "48ee4dbe8810da6ae327ebf9e80b3e2a352daad18fe7e7061d53db17110a06fe",
       "summary": "Deprecated: publishes a .pck to the legacy creator API. Use summer_export_game, then summer_publish_build, to upload to summer.games.",
       "use_when": [
-        "releasing a user-approved build to a legacy creator channel",
-        "\"ship this exported build to the live channel\"",
-        "\"release version 1.2.0 of my game\""
+        "an old project that still publishes a .pck to the legacy Summercraft creator channel with an sc_ creator token",
+        "a ~/.summer/config.json that names a legacy creator projectId and channel"
       ],
       "facets": {
         "lifecycle": [
@@ -5833,12 +5832,11 @@
       "id": "tool/creator-releases",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "4cf9f8e91bba01805c0dab576017a8c92969c879328591fab9f97a563823beda",
-      "summary": "List creator-owned releases from the legacy creator API with server-verified scope and ownership.",
+      "content_hash": "8abe66c592d1d0f45db5106179f390a4d43cff8d72834c7029aefbaec57e628e",
+      "summary": "Deprecated: lists releases on the legacy creator API. For summer.games use summer_store_releases.",
       "use_when": [
-        "reviewing which versions of a project are live per channel",
-        "\"what version is live right now?\"",
-        "\"did the publish go through?\" — confirming a release landed"
+        "an old project that published a .pck to the legacy Summercraft creator channel with an sc_ creator token",
+        "paging legacy creator releases by projectId and cursor"
       ],
       "facets": {
         "lifecycle": [
@@ -5852,7 +5850,7 @@
       "compatibility": {
         "engine": ">=4.6"
       },
-      "status": "stable",
+      "status": "deprecated",
       "mcp_tool_name": "summer_creator_releases",
       "remote": true,
       "cli_command": "summer releases",
@@ -7854,12 +7852,14 @@
       "id": "tool/publish-build",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "486c1629cc63f66a13e6da79727d6558ef5725bd989d6d43d5442a3446ae5c55",
+      "content_hash": "653ac78e87a1a84c674bfdf0bf9c03889812edd5566b2c611f327b7cf84335c5",
       "summary": "Upload an export from summer_export_game to the creator's store game, confirm-gated - a store bundle as a Build, or a web or native download as a store version.",
       "use_when": [
         "\"upload my game to summer.games\"",
         "\"publish this build to my store page\"",
         "\"put my game online so my friends can play it\"",
+        "\"release version 1.2.0 of my game\"",
+        "\"ship this exported build to the live channel\"",
         "uploading the .zip from summer_export_game as a new Build",
         "uploading a web build or a macOS or Windows download from summer_export_game format download"
       ],

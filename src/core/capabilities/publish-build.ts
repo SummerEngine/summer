@@ -8,7 +8,7 @@ import { appendStoreJsonLine } from "../store.js";
 import { readJsonResponse } from "../util/http.js";
 import { readLastExport } from "./export-game.js";
 import { publishDownload } from "./publish-download.js";
-import { BuildToolError, readSummerBundle, type SummerBundle } from "./summer-bundle.js";
+import { BuildToolError, declarationMismatch, readSummerBundle, type SummerBundle } from "./summer-bundle.js";
 
 /**
  * summer_publish_build: upload a summer.games export to the creator's game
@@ -327,6 +327,14 @@ export function normalizeClientVersion(value?: string): string {
 }
 
 function targetPlatforms(bundle: SummerBundle): string[] {
+  const mismatch = declarationMismatch(bundle);
+  if (mismatch) {
+    throw new BuildToolError(
+      "declaration_mismatch",
+      `The store would refuse this upload (declaration_mismatch): ${mismatch}. Nothing was uploaded and no version was used.`,
+      "Recovery: export again with summer_export_game alignDeclaration:true (it sets summer.build.json targetPlatforms to the targets you export), or with targets equal to what summer.build.json declares; then upload the new export."
+    );
+  }
   if (bundle.hosted) return bundle.targetPlatforms;
   const other = bundle.targetPlatforms.filter((platform) => !STANDALONE_TARGETS.includes(platform));
   if (other.length) {
@@ -540,7 +548,11 @@ export async function publishBuild(
         throw new BuildToolError(
           code,
           (code === "declaration_mismatch" && publication.errorMessage) || INTAKE_FAILURES[code] || publication.errorMessage || "Summer could not make a build from this upload.",
-          "Recovery: export again, use a new clientVersion, and retry.",
+          // The store checks the declaration and the bundle before it records a
+          // client pack, so those refusals leave the version free.
+          code === "declaration_mismatch" || code === "bundle_invalid"
+            ? "Recovery: fix what the message names, export again and retry; the same clientVersion still works, because a refused upload records no version."
+            : "Recovery: export again, use a new clientVersion, and retry.",
           undefined,
           { publicationId }
         );

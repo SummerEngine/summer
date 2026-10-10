@@ -886,6 +886,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       targets: Array.isArray(args.targets) ? args.targets.map(String) : undefined,
       format: optStr(args, "format"),
       debug: args.debug === true,
+      alignDeclaration: args.alignDeclaration === true,
       ...(typeof args.timeoutSeconds === "number" ? { timeoutMs: args.timeoutSeconds * 1000 } : {}),
     })
   ),

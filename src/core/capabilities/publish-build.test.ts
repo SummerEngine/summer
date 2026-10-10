@@ -317,6 +317,20 @@ describe("publishBuild", () => {
     });
   });
 
+  it("refuses a hosted export whose summer.build.json declares other platforms, before anything is uploaded", async () => {
+    const store = fakeStore();
+    const mismatched = join(root, "mismatched.zip");
+    await writeSummerBundle(mismatched, { hosted: true, targetPlatforms: ["ios", "macos", "windows"], declaredPlatforms: ["android", "ios", "macos", "web", "windows"] });
+    for (const confirm of [false, true]) {
+      const error = await failure(publishBuild({ gameId: "game-1", file: mismatched, clientVersion: "v1.0.0", confirm, face: "mcp" }, deps(store.fetch)));
+      expect(error.code).toBe("declaration_mismatch");
+      expect(error.message).toContain("the bundle targets ios, macos, windows but its summer.build.json declares android, ios, macos, web, windows");
+      expect(error.recovery).toContain("alignDeclaration:true");
+    }
+    // Nothing reached the store: the version is not spent.
+    expect(store.calls.filter((call) => call.method !== "GET")).toEqual([]);
+  });
+
   it("accepts Summer client versions only", () => {
     expect(normalizeClientVersion("v1.0.0")).toBe("v1.0.0");
     expect(normalizeClientVersion("1.0.0-r2")).toBe("v1.0.0-r2");

@@ -64,7 +64,7 @@ async function creatorResult<T>(operation: () => Promise<T>) {
 export function registerCreatorTools(server: McpServer): void {
   server.tool(
     "summer_export_game",
-    "Export the game in the exact file the Summer Games store takes, with the installed Summer Engine headless (no window). format \"bundle\" (default): the summer.games .zip the Summer apps run on iPhone, Android, macOS and Windows; targets picks the platforms (a game without a server: ios and android only); upload it with summer_publish_build. format \"download\" with one target: web (an HTML5 .zip on Summer's WebGPU Forward+ web template, played on summer.games), macos (.app zip, macos-universal) or windows (.exe zip, windows-x64); these need the export template from summer_export_templates and are uploaded as store versions. Needs Summer Engine 0.7.0 or newer: an older engine is refused before anything is written (code engine_too_old). A target the installed engine cannot build (android needs 0.7.1) is left out: the other targets export, and skippedTargets plus a warning name it. Works without the editor running. Returns path, sha256, size, the manifest or store platform, and warnings.",
+    "Export the game in the exact file the Summer Games store takes, with the installed Summer Engine headless (no window). format \"bundle\" (default): the summer.games .zip the Summer apps run on iPhone, Android, macOS and Windows; targets picks the platforms (a game without a server: ios and android only); upload it with summer_publish_build. format \"download\" with one target: web (an HTML5 .zip on Summer's WebGPU Forward+ web template, played on summer.games), macos (.app zip, macos-universal) or windows (.exe zip, windows-x64); these need the export template from summer_export_templates and are uploaded as store versions. Needs Summer Engine 0.7.0 or newer: an older engine is refused before anything is written (code engine_too_old). A target the installed engine cannot build (android needs 0.7.1) is left out: the other targets export, and skippedTargets plus a warning name it. A game with a server declares its platforms in summer.build.json; when they differ from the exported targets a warning says so (summer_publish_build would be refused), and alignDeclaration:true aligns them. Works without the editor running. Returns path, sha256, size, the manifest or store platform, and warnings.",
     {
       project: z.string().optional().describe("Project folder with project.godot. Defaults to the MCP's bound project, then the working directory."),
       out: z.string().optional().describe("Output .zip path. Defaults to <project>/.summer/exports/."),
@@ -78,10 +78,14 @@ export function registerCreatorTools(server: McpServer): void {
         .describe("bundle (default): the summer.games store build. download: a web build or native download; the default when targets is [\"web\"]."),
       debug: z.boolean().default(false).describe("Export a debug build (--export-debug)."),
       timeoutSeconds: z.number().int().min(10).max(7200).optional().describe("Stop the engine after this many seconds (default 900; a first export imports every asset)."),
+      alignDeclaration: z
+        .boolean()
+        .optional()
+        .describe("A game with a server: set summer.build.json targetPlatforms to targets before exporting. The store refuses an upload whose declaration differs from the exported platforms (declaration_mismatch) and that spends the version."),
     },
-    async ({ project, out, targets, format, debug, timeoutSeconds }) =>
+    async ({ project, out, targets, format, debug, timeoutSeconds, alignDeclaration }) =>
       creatorResult(() =>
-        exportGame({ project, out, targets, format, debug, ...(timeoutSeconds ? { timeoutMs: timeoutSeconds * 1000 } : {}) })
+        exportGame({ project, out, targets, format, debug, alignDeclaration, ...(timeoutSeconds ? { timeoutMs: timeoutSeconds * 1000 } : {}) })
       )
   );
 

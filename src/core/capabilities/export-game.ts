@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { mkdir, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { platform } from "node:os";
 import { engineSelectionFromEnv } from "../engine.js";
@@ -21,7 +21,7 @@ import {
   type StoreTarget,
 } from "./export-presets.js";
 import { engineTemplateInfo, findInstalledTemplate, templateFileFor, type TemplatesDependencies } from "./export-templates.js";
-import { BuildToolError, hashFile, readSummerBundle, type SummerBundle } from "./summer-bundle.js";
+import { BuildToolError, declarationMismatch, hashFile, readSummerBundle, samePlatforms, type SummerBundle } from "./summer-bundle.js";
 
 export { runEngine, SUMMER_GAMES_PRESET, type EngineRun };
 
@@ -78,6 +78,8 @@ export interface ExportGameInput {
   out?: string;
   /** Export with debug enabled (--export-debug). */
   debug?: boolean;
+  /** Bundle with targets: set summer.build.json targetPlatforms to the targets first, so the store takes the declaration. */
+  alignDeclaration?: boolean;
   /** Export preset name; the engine's own is "summer.games". Bundle format without targets only. */
   preset?: string;
   /** Store platforms: macos, windows, ios, android, web. */
@@ -423,6 +425,21 @@ async function runExport(
   }
 }
 
+/** Set the project's summer.build.json targetPlatforms to the export targets (a hosted game's Build declaration). */
+async function alignBuildDeclaration(project: string, targets: readonly string[]): Promise<void> {
+  const path = join(project, "summer.build.json");
+  if (!existsSync(path)) return;
+  let build: Record<string, unknown>;
+  try {
+    build = JSON.parse(await readFile(path, "utf8")) as Record<string, unknown>;
+  } catch {
+    throw new BuildToolError("build_declaration_invalid", "summer.build.json is not valid JSON.", "Recovery: fix summer.build.json, then export again.");
+  }
+  if (Array.isArray(build.targetPlatforms) && samePlatforms(build.targetPlatforms.map(String), targets)) return;
+  build.targetPlatforms = [...targets];
+  await writeFile(path, `${JSON.stringify(build, null, 2)}\n`);
+}
+
 export async function exportGame(
   input: ExportGameInput,
   overrides: Partial<ExportGameDependencies> = {}
@@ -486,6 +503,7 @@ export async function exportGame(
   out ??= join(await defaultExportDir(project), `${basename(project)}-${stamp(started)}.zip`);
   const before = existsSync(out) ? statSync(out).mtimeMs : null;
   const projectBefore = await snapshotProjectFiles(project);
+  if (targets && input.alignDeclaration === true) await alignBuildDeclaration(project, targets);
   const ensured = targets ? await ensurePreset(project, bundlePresetSpec(targets)) : undefined;
   const preset = ensured?.name ?? (input.preset?.trim() || SUMMER_GAMES_PRESET);
   const notes = (targets ?? []).flatMap((target) => TARGET_ENGINE_NOTE[target] ?? []);
@@ -515,6 +533,12 @@ export async function exportGame(
     );
   }
   const warnings: string[] = [...skippedWarnings, ...projectChangeWarnings(projectChanges)];
+  const mismatch = declarationMismatch(bundle);
+  if (mismatch) {
+    warnings.unshift(
+      `summer_publish_build will refuse this export (declaration_mismatch): ${mismatch}. Export again with alignDeclaration:true to set summer.build.json targetPlatforms to [${bundle.targetPlatforms.join(", ")}], or with targets equal to what it declares.`
+    );
+  }
   if (partial) {
     warnings.push(
       `This Summer Engine exported the bundle without ${missing.join(", ")}: its summer.games preset has no such platform. ` +

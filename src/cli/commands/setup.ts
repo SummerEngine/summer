@@ -2,6 +2,7 @@ import { Command, Option } from "commander";
 import {
   SupportedAgent,
   configureAgentMcp,
+  configureSummerGamesMcp,
   resolveAgentSelection,
   resolveConfigScope,
   supportedAgents,
@@ -23,6 +24,8 @@ interface SetupCommandOptions {
   channel?: string;
   yes?: boolean;
   json?: boolean;
+  /** false with --no-games: link the engine only. */
+  games?: boolean;
   force?: boolean;
   recommended?: boolean;
   stableOnly?: boolean;
@@ -46,6 +49,10 @@ export const setupCommand = new Command("setup")
     "npm dist-tag the agent's MCP entry runs: npx -y summer-engine@<dist-tag> mcp (default latest; use next while a release soaks on the next tag). SUMMER_CHANNEL does the same."
   )
   .option("--yes", "Apply practical setup steps without prompting")
+  .option(
+    "--no-games",
+    "Do not add the Summer Games MCP (summer-games: friends, parties and messages as you, signed in through summer.games)"
+  )
   .option("--json", "Print setup result as JSON")
   .option(
     "--force",
@@ -74,6 +81,10 @@ export const setupCommand = new Command("setup")
       localDev: Boolean(opts.localDev) || process.env.SUMMER_DEV === "1",
       channel: opts.channel ?? process.env.SUMMER_CHANNEL ?? defaultChannel.channel,
     });
+    const games =
+      opts.games === false || opts.print
+        ? null
+        : await configureSummerGamesMcp({ agent, scope, dryRun: opts.dryRun });
     if (!opts.channel && !process.env.SUMMER_CHANNEL && defaultChannel.note && !opts.print) {
       console.log(`  ${c.dim(defaultChannel.note)}`);
     }
@@ -95,6 +106,7 @@ export const setupCommand = new Command("setup")
           {
             ok: doctor.ok && skills.status !== "failed",
             config,
+            games,
             skills,
             doctor,
           },
@@ -103,7 +115,7 @@ export const setupCommand = new Command("setup")
         )
       );
     } else {
-      printSetupResult(config, skills, doctor);
+      printSetupResult(config, games, skills, doctor);
     }
 
     if (!doctor.ok || skills.status === "failed") {
@@ -113,6 +125,7 @@ export const setupCommand = new Command("setup")
 
 function printSetupResult(
   config: Awaited<ReturnType<typeof configureAgentMcp>>,
+  games: Awaited<ReturnType<typeof configureSummerGamesMcp>>,
   skills: SkillSetupResult,
   doctor: DoctorResult
 ): void {
@@ -142,6 +155,15 @@ function printSetupResult(
     console.log(
       `  ${c.dim(`(channel ${config.channel})`)}  MCP server command: ${c.dim(`${config.server.command} ${config.server.args.join(" ")}`)}`
     );
+  }
+
+  if (games) {
+    if (config.dryRun) {
+      console.log(`  ${c.dim("(dry run)")}  Would add Summer Games  ${c.dim(games.url)}`);
+    } else {
+      console.log(`  ${sym.ok()}  ${games.wrote ? "Added" : "Already added"} ${c.bold("Summer Games")}  ${c.dim(games.url)}`);
+      console.log(`     ${c.dim(`Sign in once: ${games.signIn}`)}`);
+    }
   }
 
   if (skills.status === "installed") {

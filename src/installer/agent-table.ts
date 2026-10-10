@@ -89,6 +89,8 @@ export type McpFormat =
   | "yaml-hermes"
   | "json-gemini";
 
+export type RemoteMcpFormat = "json-http" | "json-url" | "toml-url";
+
 export type SkillLocationKind =
   | "skill-dir"
   | "cursor-rule-dir"
@@ -138,6 +140,14 @@ export interface AgentSpec {
   /** Env var that overrides the MCP config path (tests, unusual installs). */
   envOverride: string;
   format: McpFormat;
+  /**
+   * How this agent lists a remote MCP server that signs in with OAuth on its
+   * own (the Summer Games player MCP). Absent: setup links the engine only.
+   *  json-http { mcpServers: { <name>: { type: "http", url } } }   (Claude Code)
+   *  json-url  { mcpServers: { <name>: { url } } }                 (Cursor)
+   *  toml-url  [mcp_servers.<name>] url                            (Codex)
+   */
+  remoteMcp?: { format: RemoteMcpFormat; signIn: string };
   mcp: {
     /** null: user-level servers are managed in the app's UI; a user request writes the project file with a warning. */
     user: ((ctx: PathContext) => string) | null;
@@ -223,6 +233,7 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_CLAUDE_CONFIG_FILE",
     format: "json-stdio",
+    remoteMcp: { format: "json-http", signIn: "In Claude Code, run /mcp, choose summer-games and sign in." },
     mcp: { user: home(".claude.json"), project: project(".mcp.json") },
     restart: "Restart Claude Code or run /mcp in a new session.",
     skills: skillDirs(home(".claude", "skills"), project(".claude", "skills")),
@@ -250,6 +261,7 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_CODEX_CONFIG_FILE",
     format: "toml",
+    remoteMcp: { format: "toml-url", signIn: "Run `codex mcp login summer-games`; it opens summer.games to sign in." },
     mcp: {
       user: home(".codex", "config.toml"),
       project: project(".codex", "config.toml"),
@@ -265,6 +277,7 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_CURSOR_MCP_CONFIG_FILE",
     format: "json-stdio",
+    remoteMcp: { format: "json-url", signIn: "In Cursor Settings, open MCP and choose Connect next to summer-games." },
     mcp: { user: home(".cursor", "mcp.json"), project: project(".cursor", "mcp.json") },
     restart: "Restart Cursor and enable the summer-engine MCP server if prompted.",
     skills: sharedSkills({

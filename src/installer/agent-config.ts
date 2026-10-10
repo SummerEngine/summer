@@ -138,6 +138,56 @@ export async function configureAgentMcp(
   };
 }
 
+/** The Summer Games player MCP: friends, parties, messages and the player's
+ *  inbox, as the signed-in player. A remote server; the agent signs in to it
+ *  with OAuth in the browser, so setup writes no credential. */
+export const SUMMER_GAMES_MCP_SERVER_NAME = "summer-games";
+export const SUMMER_GAMES_MCP_URL = "https://mcp.summer.games/mcp";
+
+export interface RemoteMcpResult {
+  serverName: string;
+  url: string;
+  path: string;
+  changed: boolean;
+  wrote: boolean;
+  /** What the person does once to sign in (the agent opens summer.games). */
+  signIn: string;
+}
+
+/**
+ * Adds the Summer Games MCP next to summer-engine in the same config file.
+ * Returns null for agents without a remote-server entry in agent-table.ts.
+ */
+export async function configureSummerGamesMcp(
+  options: Pick<AgentConfigOptions, "agent" | "scope" | "dryRun" | "cwd" | "env">
+): Promise<RemoteMcpResult | null> {
+  const spec = agentSpec(options.agent);
+  if (!spec.remoteMcp) return null;
+  const env = options.env ?? process.env;
+  const target = resolveConfigTarget(spec, options.scope, resolve(options.cwd ?? process.cwd()), env);
+  const write = !options.dryRun;
+  const name = SUMMER_GAMES_MCP_SERVER_NAME;
+  const url = SUMMER_GAMES_MCP_URL;
+
+  let changed: boolean;
+  if (spec.remoteMcp.format === "toml-url") {
+    const current = await readTextFileIfExists(target.path);
+    const next = upsertTomlTable(current, `[mcp_servers.${name}]\nurl = ${tomlString(url)}\n`, name);
+    changed = current !== next;
+    if (write && changed) await writeTextFile(target.path, next);
+  } else {
+    const current = await readJsonConfig(target.path);
+    const next = copyJsonObject(current);
+    const entry = spec.remoteMcp.format === "json-http" ? { type: "http", url } : { url };
+    next.mcpServers = mergeNamedObject(next.mcpServers, name, entry, "mcpServers");
+    const nextRendered = renderJsonFile(next);
+    changed = renderJsonFile(current) !== nextRendered;
+    if (write && changed) await writeTextFile(target.path, nextRendered);
+  }
+
+  return { serverName: name, url, path: target.path, changed, wrote: write && changed, signIn: spec.remoteMcp.signIn };
+}
+
 async function upsertConfig(
   format: McpFormat,
   path: string,
@@ -608,11 +658,12 @@ async function readTextFileIfExists(path: string): Promise<string> {
   }
 }
 
-function upsertTomlTable(content: string, table: string): string {
+function upsertTomlTable(content: string, table: string, name: string = SUMMER_MCP_SERVER_NAME): string {
   const lines = content.split(/\r?\n/);
-  const serverHeader = /^\s*\[mcp_servers\.(?:"summer-engine"|summer-engine)(?:\.|\])/;
+  const key = name.replace(/[-.]/g, "\\$&");
+  const serverHeader = new RegExp(`^\\s*\\[mcp_servers\\.(?:"${key}"|${key})(?:\\.|\\])`);
   const start = lines.findIndex((line) =>
-    /^\s*\[mcp_servers\.(?:"summer-engine"|summer-engine)\]\s*(?:#.*)?$/.test(line)
+    new RegExp(`^\\s*\\[mcp_servers\\.(?:"${key}"|${key})\\]\\s*(?:#.*)?$`).test(line)
   );
 
   if (start === -1) {

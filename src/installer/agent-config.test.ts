@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   GEMINI_EXTENSION_DIR_NAME,
   configureAgentMcp,
+  configureSummerGamesMcp,
   createSummerMcpServerConfig,
   normalizeChannel,
   parseAgent,
@@ -397,5 +398,73 @@ describe("configureAgentMcp", () => {
       "summer-engine@latest",
       "mcp",
     ]);
+  });
+});
+
+describe("configureSummerGamesMcp", () => {
+  const GAMES_URL = "https://mcp.summer.games/mcp";
+
+  it("adds summer-games as a remote http server next to summer-engine in Claude Code", async () => {
+    const path = join(tmp(), ".claude.json");
+    writeFileSync(path, JSON.stringify({ theme: "dark", mcpServers: { other: { command: "node", args: [] } } }));
+    const env = { SUMMER_CLAUDE_CONFIG_FILE: path } as NodeJS.ProcessEnv;
+    await configureAgentMcp({ agent: "claude-code", scope: "user", env });
+
+    const first = await configureSummerGamesMcp({ agent: "claude-code", scope: "user", env });
+    expect(first?.wrote).toBe(true);
+    const written = JSON.parse(readFileSync(path, "utf-8"));
+    expect(written.mcpServers["summer-games"]).toEqual({ type: "http", url: GAMES_URL });
+    expect(written.mcpServers["summer-engine"].args).toEqual(NPX_ARGS);
+    expect(written.mcpServers.other.command).toBe("node");
+    expect(written.theme).toBe("dark");
+
+    const second = await configureSummerGamesMcp({ agent: "claude-code", scope: "user", env });
+    expect(second?.changed).toBe(false);
+  });
+
+  it("adds a url-only entry for Cursor", async () => {
+    const path = join(tmp(), "mcp.json");
+    await configureSummerGamesMcp({ agent: "cursor", scope: "user", env: { SUMMER_CURSOR_MCP_CONFIG_FILE: path } as NodeJS.ProcessEnv });
+    expect(JSON.parse(readFileSync(path, "utf-8")).mcpServers["summer-games"]).toEqual({ url: GAMES_URL });
+  });
+
+  it("adds a [mcp_servers.summer-games] url table for Codex without touching summer-engine", async () => {
+    const path = join(tmp(), "config.toml");
+    const env = { SUMMER_CODEX_CONFIG_FILE: path } as NodeJS.ProcessEnv;
+    await configureAgentMcp({ agent: "codex", scope: "user", env });
+    const engineOnly = readFileSync(path, "utf-8");
+
+    await configureSummerGamesMcp({ agent: "codex", scope: "user", env });
+    await configureSummerGamesMcp({ agent: "codex", scope: "user", env });
+    await configureAgentMcp({ agent: "codex", scope: "user", env });
+
+    const content = readFileSync(path, "utf-8");
+    expect(content.startsWith(engineOnly)).toBe(true);
+    expect(content.match(/\[mcp_servers\.summer-games\]/g)).toHaveLength(1);
+    expect(content.match(/\[mcp_servers\.summer-engine\]/g)).toHaveLength(1);
+    expect(content).toContain(`[mcp_servers.summer-games]\nurl = "${GAMES_URL}"`);
+  });
+
+  it("dry-run writes nothing", async () => {
+    const path = join(tmp(), ".claude.json");
+    const result = await configureSummerGamesMcp({
+      agent: "claude-code",
+      scope: "user",
+      dryRun: true,
+      env: { SUMMER_CLAUDE_CONFIG_FILE: path } as NodeJS.ProcessEnv,
+    });
+    expect(result?.changed).toBe(true);
+    expect(existsSync(path)).toBe(false);
+  });
+
+  it("skips agents without a remote server entry", async () => {
+    const path = join(tmp(), "mcp_config.json");
+    const result = await configureSummerGamesMcp({
+      agent: "windsurf",
+      scope: "user",
+      env: { SUMMER_WINDSURF_CONFIG_FILE: path } as NodeJS.ProcessEnv,
+    });
+    expect(result).toBeNull();
+    expect(existsSync(path)).toBe(false);
   });
 });

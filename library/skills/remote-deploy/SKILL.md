@@ -47,9 +47,10 @@ platform toolchain. Report one of:
 
 - `available`: the matching debug template and toolchain are present;
 - `blocked`: name the missing template, toolchain, signing, or device
-  prerequisite.
+  prerequisite;
+- `impossible on this build`: Web on the stock Mono build.
 
-On `blocked`, install the missing template (`summer_export_templates`
+Stop on `impossible`. On `blocked`, install the missing template (`summer_export_templates`
 `action: "install"`, `includeDebug: true`) after the user agrees, or route the
 user to the toolchain setup. Do not add a preset as if that made the target
 runnable.
@@ -97,10 +98,10 @@ This matters when guiding a user mid-setup (e.g. building out a mobile flow): yo
 
 **Web**
 
-1. First prove the web debug template is installed (`summer_export_templates`).
-   Otherwise install it or stop.
-2. Project → Export → Web preset → **Runnable** on.
-3. The browser target appears in the dropdown → pick it.
+Web is unavailable on the stock Summer Mono build. Do not add a Web Runnable
+preset or direct the user to a browser target. Use ordinary local Play for a
+sanity check, or first provision and verify a separate non-Mono-compatible
+export environment.
 
 ## Guiding the user (orchestrator playbook)
 
@@ -108,7 +109,7 @@ When a user says "deploy to my phone" / "run this on device" and the button is g
 
 1. **Prove target capability first** — check the matching debug template
    (`summer_export_templates`) and the platform toolchain. Stop or route
-   externally if either is absent.
+   externally if either is absent; Web is impossible on the stock Mono build.
 2. **Check the build is healthy** — a project with script errors won't export.
    - `summer_get_script_errors` and `summer_get_diagnostics` clean? If not, fix those before anything else.
    - `summer_get_console` for "import failed" noise.

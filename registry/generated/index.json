@@ -1599,7 +1599,7 @@
       "id": "skill/export-and-ship",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "45c2ec3352eb00a3440c5f84afe5c79a0a7477073ce101c04c04be4017a37aef",
+      "content_hash": "bd542c09730200c302d5ab2850759b9d98c86336ad102e32ea0389380730b0dd",
       "summary": "Assess and prepare a game export: inventory installed templates and targets, validate release assets and config, produce supported builds after approval.",
       "use_when": [
         "the user wants to assess or prepare a Summer game export — Steam, itch, HTML5, iOS, Android targets as available in the installed build",
@@ -2827,7 +2827,7 @@
       "id": "skill/remote-deploy",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "5873bfdc59589e4f484d2f9ee00827d9f239ef094b39d17f6acca2c334e2dad1",
+      "content_hash": "9691ff133681cdab3d1f662978c3d92bd55b4a256a27f23eadf997f6f6b183cb",
       "summary": "Run or test the game on a real device — phone, tablet, another computer — via the Remote Deploy button, runnable export presets, and on-device debugging.",
       "use_when": [
         "the user wants to run or test the game on a real target instead of the editor — a phone, tablet, or another computer",

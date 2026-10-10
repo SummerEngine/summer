@@ -4,13 +4,15 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
-- `summer setup claude-code` and `summer setup codex` also add `summer-games`, the Summer Games MCP at `https://mcp.summer.games/mcp` (friends, parties, messages and the inbox, as you). You sign in once through summer.games: `/mcp` in Claude Code, `/mcp login summer-games` in Codex. No credential is written. If the same URL is already listed under another name (for example `summer`), setup keeps it and adds no second entry. `--no-games` skips it. Cursor is not included yet: its sign-in can use a `cursor://` return address that summer.games does not accept yet.
+## [3.5.0] - 2026-10-10
+
+Setup now connects Summer Games too, and agents that publish a game get further on their own. 3.4.2 was never published; its changes ship here.
+
+- **Summer Games in your agent.** `summer setup claude-code` and `summer setup codex` also add `summer-games`, the Summer Games MCP at `https://mcp.summer.games/mcp`. Your agent can then see your friends and who is online, start a party, invite friends to a game and send messages, as you. You sign in once through summer.games: run `/mcp` in Claude Code and choose `summer-games`, or `/mcp login summer-games` in Codex. Your browser opens summer.games; sign in and choose Allow. No key or password is written to your config.
+  - If you already added the same address under another name (for example `summer`), setup keeps yours and adds no second entry. Running setup again changes nothing.
+  - `--no-games` skips it. To remove it: `claude mcp remove summer-games -s user` or `codex mcp remove summer-games`.
+  - Cursor does not get it yet: Cursor's sign-in can use a `cursor://` return address that summer.games does not accept yet. A later release adds it.
 - `summer_publish_build` refused with `template_set_unavailable` no longer only says "update Summer Engine": with the newest engine, Summer Games may still be turning that Summer version on, so retry the same upload later (the same clientVersion works). It shows the store's own reason when there is one.
-
-## [3.4.2] - 2026-10-10
-
-Agents that publish a game get further on their own: the library finds the publishing guides, gameplay captures get past the title screen, and image generation and exports stop failing on store sizes and Android:
-
 - `summer_search_library` and `summer_read_library` now find `skill/publish-your-game`, `skill/store-listing`, `skill/store-art` and `skill/grow-analytics`. Before, they were only hosted MCP resources and a read returned not_found.
 - A read loads the current text from the hosted Summer Engine MCP with the store sign-in (`summer login --store`). Without the sign-in it shows a short summary, the reason, and how to load the rest. The entries also load by their `summer://skills/<slug>` URI.
 - `summer_capture_gameplay` gets past the title screen. `args` passes the game's own flags after `--` (for example `["--autostart"]`). `steps` play like a player before and between frames: press a button by its text, a key, an input action, a click, a drag, a wait, and a shot. The run always passes `--summer-offscreen`.

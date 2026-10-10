@@ -15,12 +15,15 @@ import { BuildToolError } from "./summer-bundle.js";
  * focus, so it never shows on screen, unlike --headless, which has no pixels.
  *
  *   <engine> --disable-crash-handler --summer-no-api --path <project> --resolution WxH
- *            [--scene res://...] --summer-verify <probe.gd>
- *            --summer-verify-out <dir> --summer-verify-max <s>
+ *            [--scene res://...] --summer-offscreen --summer-verify <probe.gd>
+ *            --summer-verify-out <dir> --summer-verify-max <s> [-- <args>]
  *
- * The stock probe waits for the scene to draw and settle, saves PNG frames of
- * the game viewport, and writes results.json. The frames are what the game
- * really draws, HUD included: use them as store screenshots.
+ * The stock probe waits for the scene to draw and settle, runs the steps (press
+ * a button, a key or an input action, click, drag, wait, shot) from inside the
+ * game, saves PNG frames of the game viewport, and writes results.json. The
+ * frames are what the game really draws, HUD included: use them as store
+ * screenshots. `args` reach the game as OS.get_cmdline_user_args(), so a game
+ * that skips its title screen on a flag starts in play.
  */
 
 export interface CaptureGameplayInput {
@@ -38,6 +41,37 @@ export interface CaptureGameplayInput {
   intervalSeconds?: number;
   /** Output folder. Default <project>/.summer/captures/<time>/. */
   out?: string;
+  /** The game's own command-line args, passed after "--" (OS.get_cmdline_user_args()). */
+  args?: string[];
+  /** What to do after waitSeconds, in order. With a shot step, only shot steps save frames. */
+  steps?: CaptureStep[];
+}
+
+/**
+ * One capture step, run from inside the game. Coordinates are frame pixels
+ * (the saved PNG's space). press finds a visible, enabled button by its text,
+ * then its node name, then a partial match, waiting up to timeoutSeconds for
+ * it to appear; it clicks the button's centre, and emits pressed when the
+ * click did not reach it. key takes Godot key names (Space, Enter, Escape, A).
+ */
+export type CaptureStep =
+  | { press: string; timeoutSeconds?: number }
+  | { key: string; holdMs?: number }
+  | { action: string; holdMs?: number }
+  | { click: [number, number] }
+  | { drag: { from: [number, number]; to: [number, number]; ms?: number } }
+  | { wait: number }
+  | { shot: true };
+
+/** A step as the probe reads it (one shape, all fields named). */
+export interface ProbeStep {
+  type: "press" | "key" | "action" | "click" | "drag" | "wait" | "shot";
+  text?: string;
+  timeout?: number;
+  hold_ms?: number;
+  at?: [number, number];
+  to?: [number, number];
+  ms?: number;
 }
 
 export interface CapturedFrame {
@@ -78,6 +112,9 @@ const MAX_FRAMES = 10;
 const ENGINE_MAX_SECONDS = 240;
 const IMPORT_TIMEOUT_MS = 5 * 60_000;
 const PROBE_FILE = "capture_probe.gd";
+const MAX_STEPS = 50;
+const MAX_ARGS = 32;
+const STEP_KINDS = ["press", "key", "action", "click", "drag", "wait", "shot"] as const;
 
 function invalid(message: string, recovery: string): BuildToolError {
   return new BuildToolError("capture_args_invalid", message, recovery);
@@ -116,6 +153,78 @@ function checkScene(project: string, scene: string | undefined): string | undefi
   return value;
 }
 
+function checkArgs(args: unknown): string[] {
+  if (args === undefined) return [];
+  if (!Array.isArray(args) || args.length > MAX_ARGS || args.some((arg) => typeof arg !== "string" || arg.length > 200 || /[\u0000\n\r]/.test(arg))) {
+    throw invalid(`args must be at most ${MAX_ARGS} single-line strings.`, 'Recovery: pass the game\'s own flags, e.g. ["--autostart", "--solo"].');
+  }
+  return args as string[];
+}
+
+function point(value: unknown, where: string): [number, number] {
+  if (!Array.isArray(value) || value.length !== 2 || !value.every((n) => typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= 7680)) {
+    throw invalid(`${where} must be [x, y] in frame pixels.`, "Recovery: pass two numbers from 0 to 7680, e.g. [960, 540] for the middle of a 1920x1080 frame.");
+  }
+  return [value[0], value[1]];
+}
+
+/** Validate the steps and turn them into the probe's one shape. */
+export function probeSteps(steps: unknown): ProbeStep[] {
+  if (steps === undefined) return [];
+  if (!Array.isArray(steps) || steps.length > MAX_STEPS) {
+    throw invalid(`steps must be a list of at most ${MAX_STEPS} steps.`, 'Recovery: pass e.g. [{"press":"Play"},{"wait":2000},{"shot":true}].');
+  }
+  const out = steps.map((raw, index): ProbeStep => {
+    const where = `steps[${index}]`;
+    const step = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+    const kinds = STEP_KINDS.filter((kind) => kind in step);
+    if (kinds.length !== 1) {
+      throw invalid(`${where} must have exactly one of ${STEP_KINDS.join(", ")}.`, 'Recovery: one step per object, e.g. {"press":"Play"} or {"key":"Space"}.');
+    }
+    const hold = boundedNumber(step.holdMs as number | undefined, 100, 0, 10_000, `${where}.holdMs`);
+    const name = (key: string): string => {
+      const value = step[key];
+      if (typeof value !== "string" || !value.trim() || value.length > 100) {
+        throw invalid(`${where}.${key} must be a non-empty name.`, 'Recovery: e.g. {"press":"Play"}, {"key":"Space"}, {"action":"jump"}.');
+      }
+      return value.trim();
+    };
+    switch (kinds[0]) {
+      case "press":
+        return { type: "press", text: name("press"), timeout: boundedNumber(step.timeoutSeconds as number | undefined, 10, 0, 60, `${where}.timeoutSeconds`) };
+      case "key":
+        return { type: "key", text: name("key"), hold_ms: hold };
+      case "action":
+        return { type: "action", text: name("action"), hold_ms: hold };
+      case "click":
+        return { type: "click", at: point(step.click, `${where}.click`) };
+      case "drag": {
+        const drag = (step.drag && typeof step.drag === "object" ? step.drag : {}) as Record<string, unknown>;
+        return {
+          type: "drag",
+          at: point(drag.from, `${where}.drag.from`),
+          to: point(drag.to, `${where}.drag.to`),
+          ms: boundedNumber(drag.ms as number | undefined, 300, 0, 10_000, `${where}.drag.ms`),
+        };
+      }
+      case "wait":
+        return { type: "wait", ms: boundedNumber(step.wait as number | undefined, 0, 0, 60_000, `${where}.wait`) };
+      default:
+        if (step.shot !== true) throw invalid(`${where}.shot must be true.`, 'Recovery: {"shot":true} saves a frame at that point.');
+        return { type: "shot" };
+    }
+  });
+  if (out.filter((step) => step.type === "shot").length > MAX_FRAMES) {
+    throw invalid(`at most ${MAX_FRAMES} shot steps.`, "Recovery: capture again for more frames.");
+  }
+  return out;
+}
+
+/** Seconds the steps can take at most (press waits for its button). */
+function stepSeconds(steps: ProbeStep[]): number {
+  return steps.reduce((sum, step) => sum + (step.timeout ?? 0) + ((step.hold_ms ?? 0) + (step.ms ?? 0)) / 1000 + 0.5, 0);
+}
+
 function stamp(date: Date): string {
   return date.toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z").replace("T", "-");
 }
@@ -147,7 +256,7 @@ export function pngSize(bytes: Buffer): { width: number; height: number } | null
  * first frames are empty until the scene has drawn twice, results.json is
  * always written.
  */
-export function captureProbeSource(frames: number, waitSeconds: number, intervalSeconds: number): string {
+export function captureProbeSource(frames: number, waitSeconds: number, intervalSeconds: number, steps: ProbeStep[] = []): string {
   return `# Written by summer_capture_gameplay. Safe to delete.
 # Fully typed: projects that treat GDScript warnings as errors must still load it.
 extends Node
@@ -158,6 +267,7 @@ var summer_max_seconds: int = 20
 const FRAMES: int = ${frames}
 const WAIT_SECONDS: float = ${waitSeconds.toFixed(3)}
 const INTERVAL_SECONDS: float = ${intervalSeconds.toFixed(3)}
+const STEPS_JSON: String = ${JSON.stringify(JSON.stringify(steps))}
 
 var _shots: Array = []
 var _warnings: Array = []
@@ -184,20 +294,171 @@ func _run() -> void:
 \t\t_finish(true)
 \t\treturn
 \tawait get_tree().create_timer(WAIT_SECONDS, true).timeout
-\tfor i: int in range(FRAMES):
-\t\tif i > 0:
-\t\t\tawait get_tree().create_timer(INTERVAL_SECONDS, true).timeout
-\t\tawait RenderingServer.frame_post_draw
-\t\tvar img: Image = get_viewport().get_texture().get_image()
-\t\tvar file_name: String = "shot-%02d.png" % (i + 1)
-\t\tif img == null:
-\t\t\t_warnings.append("%s: the viewport returned no image." % file_name)
-\t\t\tcontinue
-\t\tif img.save_png(summer_out_dir.path_join(file_name)) == OK:
-\t\t\t_shots.append({"file": file_name, "width": img.get_width(), "height": img.get_height()})
-\t\telse:
-\t\t\t_warnings.append("%s: could not write the PNG." % file_name)
+\tvar steps: Array = JSON.parse_string(STEPS_JSON)
+\tvar shot_steps: bool = false
+\tfor i: int in range(steps.size()):
+\t\tvar step: Dictionary = steps[i]
+\t\tmatch String(step["type"]):
+\t\t\t"press":
+\t\t\t\tawait _press(i, String(step["text"]), float(step["timeout"]))
+\t\t\t"key":
+\t\t\t\tvar keycode: Key = OS.find_keycode_from_string(String(step["text"]))
+\t\t\t\tif keycode == KEY_NONE:
+\t\t\t\t\t_warnings.append('steps[%d]: no key is named "%s" (use names like Space, Enter, Escape, A, Up).' % [i, step["text"]])
+\t\t\t\telse:
+\t\t\t\t\tawait _key(keycode, int(step["hold_ms"]))
+\t\t\t"action":
+\t\t\t\tif not InputMap.has_action(StringName(String(step["text"]))):
+\t\t\t\t\t_warnings.append('steps[%d]: the project has no input action "%s".' % [i, step["text"]])
+\t\t\t\telse:
+\t\t\t\t\tawait _action(String(step["text"]), int(step["hold_ms"]))
+\t\t\t"click":
+\t\t\t\tawait _click(Vector2(step["at"][0], step["at"][1]))
+\t\t\t"drag":
+\t\t\t\tawait _drag(Vector2(step["at"][0], step["at"][1]), Vector2(step["to"][0], step["to"][1]), int(step["ms"]))
+\t\t\t"wait":
+\t\t\t\tawait get_tree().create_timer(float(step["ms"]) / 1000.0, true).timeout
+\t\t\t"shot":
+\t\t\t\tshot_steps = true
+\t\t\t\tawait _shot()
+\tif not shot_steps:
+\t\tfor i: int in range(FRAMES):
+\t\t\tif i > 0:
+\t\t\t\tawait get_tree().create_timer(INTERVAL_SECONDS, true).timeout
+\t\t\tawait _shot()
 \t_finish(true)
+
+func _shot() -> void:
+\tawait RenderingServer.frame_post_draw
+\tvar img: Image = get_viewport().get_texture().get_image()
+\tvar file_name: String = "shot-%02d.png" % (_shots.size() + 1)
+\tif img == null:
+\t\t_warnings.append("%s: the viewport returned no image." % file_name)
+\t\treturn
+\tif img.save_png(summer_out_dir.path_join(file_name)) == OK:
+\t\t_shots.append({"file": file_name, "width": img.get_width(), "height": img.get_height()})
+\telse:
+\t\t_warnings.append("%s: could not write the PNG." % file_name)
+
+# Frame pixels (the saved PNG) -> window coordinates, through the stretch transform.
+func _to_window(frame_pos: Vector2) -> Vector2:
+\treturn get_viewport().get_final_transform() * frame_pos
+
+func _mouse_button(frame_pos: Vector2, pressed: bool) -> void:
+\tvar ev: InputEventMouseButton = InputEventMouseButton.new()
+\tev.button_index = MOUSE_BUTTON_LEFT
+\tev.pressed = pressed
+\tev.button_mask = MOUSE_BUTTON_MASK_LEFT if pressed else 0
+\tev.position = _to_window(frame_pos)
+\tev.global_position = ev.position
+\tInput.parse_input_event(ev)
+
+func _mouse_move(frame_pos: Vector2, relative: Vector2, held: bool) -> void:
+\tvar ev: InputEventMouseMotion = InputEventMouseMotion.new()
+\tev.position = _to_window(frame_pos)
+\tev.global_position = ev.position
+\tev.relative = relative
+\tev.button_mask = MOUSE_BUTTON_MASK_LEFT if held else 0
+\tInput.parse_input_event(ev)
+
+func _click(frame_pos: Vector2) -> void:
+\t_mouse_move(frame_pos, Vector2.ZERO, false)
+\tawait get_tree().process_frame
+\t_mouse_button(frame_pos, true)
+\tawait get_tree().create_timer(0.05, true).timeout
+\t_mouse_button(frame_pos, false)
+\tawait get_tree().process_frame
+
+func _drag(from: Vector2, to: Vector2, ms: int) -> void:
+\t_mouse_move(from, Vector2.ZERO, false)
+\t_mouse_button(from, true)
+\tvar moves: int = maxi(2, int(ms / 16.0))
+\tvar last: Vector2 = from
+\tfor j: int in range(1, moves + 1):
+\t\tawait get_tree().create_timer(float(ms) / 1000.0 / moves, true).timeout
+\t\tvar here: Vector2 = from.lerp(to, float(j) / moves)
+\t\t_mouse_move(here, here - last, true)
+\t\tlast = here
+\t_mouse_button(to, false)
+\tawait get_tree().process_frame
+
+func _key(keycode: Key, hold_ms: int) -> void:
+\tvar ev: InputEventKey = InputEventKey.new()
+\tev.keycode = keycode
+\tev.physical_keycode = keycode
+\tev.pressed = true
+\tInput.parse_input_event(ev)
+\tawait get_tree().create_timer(hold_ms / 1000.0, true).timeout
+\tvar up: InputEventKey = InputEventKey.new()
+\tup.keycode = keycode
+\tup.physical_keycode = keycode
+\tup.pressed = false
+\tInput.parse_input_event(up)
+\tawait get_tree().process_frame
+
+func _action(action: String, hold_ms: int) -> void:
+\tvar ev: InputEventAction = InputEventAction.new()
+\tev.action = action
+\tev.pressed = true
+\tInput.parse_input_event(ev)
+\tawait get_tree().create_timer(hold_ms / 1000.0, true).timeout
+\tvar up: InputEventAction = InputEventAction.new()
+\tup.action = action
+\tup.pressed = false
+\tInput.parse_input_event(up)
+\tawait get_tree().process_frame
+
+# A visible, enabled button: exact text, then node name, then partial text, then partial name.
+func _find_button(label: String) -> BaseButton:
+\tvar want: String = label.strip_edges().to_lower()
+\tvar best: BaseButton = null
+\tvar best_rank: int = 99
+\tfor node: Node in get_tree().root.find_children("*", "BaseButton", true, false):
+\t\tvar button: BaseButton = node as BaseButton
+\t\tif button == null or button.disabled or not button.is_visible_in_tree():
+\t\t\tcontinue
+\t\tvar text: String = ""
+\t\tif button is Button:
+\t\t\ttext = tr((button as Button).text).strip_edges().to_lower()
+\t\tvar node_name: String = String(button.name).to_lower()
+\t\tvar rank: int = 99
+\t\tif text == want:
+\t\t\trank = 0
+\t\telif node_name == want:
+\t\t\trank = 1
+\t\telif text.contains(want):
+\t\t\trank = 2
+\t\telif node_name.contains(want):
+\t\t\trank = 3
+\t\tif rank < best_rank:
+\t\t\tbest = button
+\t\t\tbest_rank = rank
+\treturn best
+
+var _pressed_seen: bool = false
+
+func _on_pressed_seen() -> void:
+\t_pressed_seen = true
+
+# Click the button's centre like a player; emit pressed when the click did not reach it.
+func _press(index: int, label: String, timeout: float) -> void:
+\tvar button: BaseButton = _find_button(label)
+\tvar deadline: int = Time.get_ticks_msec() + int(timeout * 1000.0)
+\twhile button == null and Time.get_ticks_msec() < deadline:
+\t\tawait get_tree().create_timer(0.1, true).timeout
+\t\tbutton = _find_button(label)
+\tif button == null:
+\t\t_warnings.append('steps[%d]: no visible, enabled button "%s" within %.1f s.' % [index, label, timeout])
+\t\treturn
+\t_pressed_seen = false
+\tbutton.pressed.connect(_on_pressed_seen, CONNECT_ONE_SHOT)
+\tvar centre: Vector2 = button.get_global_transform_with_canvas() * (button.size / 2.0)
+\tawait _click(centre)
+\tif not _pressed_seen and is_instance_valid(button):
+\t\tif button.pressed.is_connected(_on_pressed_seen):
+\t\t\tbutton.pressed.disconnect(_on_pressed_seen)
+\t\tbutton.pressed.emit()
+\tawait get_tree().process_frame
 
 func _errors() -> Array:
 \tvar errors: Array = []
@@ -249,6 +510,8 @@ export async function captureGameplay(
   const waitSeconds = boundedNumber(input.waitSeconds, 3, 0, 120, "waitSeconds");
   const intervalSeconds = boundedNumber(input.intervalSeconds, 1, 0.1, 60, "intervalSeconds");
   const scene = checkScene(project, input.scene);
+  const userArgs = checkArgs(input.args);
+  const steps = probeSteps(input.steps);
   const started = deps.now();
 
   const binary = deps.findBinary();
@@ -287,8 +550,8 @@ export async function captureGameplay(
   }
 
   const probe = join(out, PROBE_FILE);
-  await writeFile(probe, captureProbeSource(frames, waitSeconds, intervalSeconds));
-  const maxSeconds = Math.min(ENGINE_MAX_SECONDS, Math.ceil(waitSeconds + (frames - 1) * intervalSeconds + 30));
+  await writeFile(probe, captureProbeSource(frames, waitSeconds, intervalSeconds, steps));
+  const maxSeconds = Math.min(ENGINE_MAX_SECONDS, Math.ceil(waitSeconds + (frames - 1) * intervalSeconds + stepSeconds(steps) + 30));
   const args = [
     "--disable-crash-handler",
     // No local HTTP API or ~/.summer discovery files for this throwaway run.
@@ -298,12 +561,15 @@ export async function captureGameplay(
     "--resolution",
     resolution.text,
     ...(scene ? ["--scene", scene] : []),
+    // The verify instance is offscreen already; the posture flag says so explicitly.
+    "--summer-offscreen",
     "--summer-verify",
     probe,
     "--summer-verify-out",
     out,
     "--summer-verify-max",
     String(maxSeconds),
+    ...(userArgs.length ? ["--", ...userArgs] : []),
   ];
   let run: EngineRun;
   try {

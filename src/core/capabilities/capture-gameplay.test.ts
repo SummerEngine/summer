@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { EngineRun } from "./engine-run.js";
-import { captureGameplay, captureProbeSource, pngSize } from "./capture-gameplay.js";
+import { captureGameplay, captureProbeSource, pngSize, probeSteps } from "./capture-gameplay.js";
 import { BuildToolError } from "./summer-bundle.js";
 
 /** A minimal PNG header (signature + IHDR) with the given size; enough for pngSize. */
@@ -70,6 +70,39 @@ describe("captureGameplay", () => {
     expect(result.imported).toBe(false);
   });
 
+  it("runs offscreen explicitly and passes the game's own args after --", async () => {
+    await captureGameplay({ project, args: ["--caper-autostart", "--caper-solo"] }, deps());
+    const args = calls[0];
+    expect(args).toContain("--summer-offscreen");
+    expect(args.slice(-3)).toEqual(["--", "--caper-autostart", "--caper-solo"]);
+    await captureGameplay({ project }, deps());
+    expect(calls[1]).not.toContain("--");
+  });
+
+  it("writes the steps into the probe and gives them time", async () => {
+    let probe = "";
+    let maxSeconds = 0;
+    const run = fakeRun();
+    await captureGameplay(
+      { project, waitSeconds: 1, steps: [{ press: "Play", timeoutSeconds: 20 }, { wait: 5000 }, { key: "Space" }, { shot: true }] },
+      deps(async (binary, args, timeoutMs) => {
+        probe = await readFile(args[args.indexOf("--summer-verify") + 1], "utf8");
+        maxSeconds = Number(args[args.indexOf("--summer-verify-max") + 1]);
+        return run(binary, args, timeoutMs);
+      })
+    );
+    expect(probe).toContain('const STEPS_JSON: String = "[{\\"type\\":\\"press\\",\\"text\\":\\"Play\\",\\"timeout\\":20}');
+    expect(maxSeconds).toBeGreaterThanOrEqual(1 + 20 + 5 + 30);
+  });
+
+  it("refuses malformed steps and args before starting anything", async () => {
+    for (const steps of [[{}], [{ press: "Play", key: "Space" }], [{ click: [1] }], [{ shot: false }], [{ wait: -1 }], Array(11).fill({ shot: true })]) {
+      await expect(captureGameplay({ project, steps: steps as never }, deps()), JSON.stringify(steps)).rejects.toMatchObject({ code: "capture_args_invalid" });
+    }
+    await expect(captureGameplay({ project, args: ["ok", "bad\nline"] }, deps())).rejects.toMatchObject({ code: "capture_args_invalid" });
+    expect(calls).toHaveLength(0);
+  });
+
   it("warns when the project's stretch settings render another size", async () => {
     const result = await captureGameplay({ project, resolution: "1080x1920" }, deps(fakeRun(720, 1280)));
     expect(calls[0]).toEqual(expect.arrayContaining(["--resolution", "1080x1920"]));
@@ -112,5 +145,20 @@ describe("probe and helpers", () => {
     expect(probe).toContain("const FRAMES: int = 3");
     expect(probe).toContain("save_png");
     expect(probe).toContain("results.json");
+    expect(probe).toContain('const STEPS_JSON: String = "[]"');
+  });
+
+  it("turns steps into one shape with defaults", () => {
+    expect(
+      probeSteps([{ press: " Play " }, { key: "Space", holdMs: 300 }, { action: "jump" }, { click: [960, 540] }, { drag: { from: [0, 0], to: [10, 10] } }, { wait: 250 }, { shot: true }])
+    ).toEqual([
+      { type: "press", text: "Play", timeout: 10 },
+      { type: "key", text: "Space", hold_ms: 300 },
+      { type: "action", text: "jump", hold_ms: 100 },
+      { type: "click", at: [960, 540] },
+      { type: "drag", at: [0, 0], to: [10, 10], ms: 300 },
+      { type: "wait", ms: 250 },
+      { type: "shot" },
+    ]);
   });
 });

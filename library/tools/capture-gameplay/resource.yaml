@@ -1,12 +1,13 @@
 id: tool/capture-gameplay
 kind: tool
 version: 1.0.0
-summary: Capture real gameplay frames (PNG, HUD included) in Summer Engine's offscreen verify instance, without a running editor, e.g. store screenshots.
+summary: Capture real gameplay PNGs (HUD included) offscreen without a running editor; game flags and player steps (press, key, click) get past the title screen.
 use_when:
   - '"take gameplay screenshots for my store page"'
   - '"I need screenshots but the editor is not open"'
   - '"capture a 1920x1080 frame of my game"'
   - collecting real gameplay screenshots for summer_store_set_art desktop.screenshots or mobile.screenshots
+  - every capture shows the title screen — pass the game's flags in args or steps like press Play
 do_not_use_when:
   - the editor is open and the game is running — tool/screenshot with target game shows the live game
   - key art, covers or icons — those are generated art, not gameplay frames
@@ -62,6 +63,70 @@ input_schema:
     out:
       type: string
       description: Output folder. Defaults to <project>/.summer/captures/<time>/ (ignored by git).
+    args:
+      type: array
+      maxItems: 32
+      items:
+        type: string
+      description: The game's own command-line flags, passed after "--" (OS.get_cmdline_user_args()), e.g. ["--autostart", "--solo"] to skip the title screen.
+    steps:
+      type: array
+      maxItems: 50
+      description: 'What to do after waitSeconds, in order; exactly one of press, key, action, click, drag, wait, shot per step. Example: [{"press":"Play"},{"wait":3000},{"key":"Space"},{"shot":true},{"action":"jump"},{"wait":500},{"shot":true}]. With a shot step only shot steps save frames. A step that cannot run becomes a warning.'
+      items:
+        type: object
+        properties:
+          press:
+            type: string
+            description: Press the visible button with this text (or node name); waits up to timeoutSeconds (default 10) for it.
+          timeoutSeconds:
+            type: number
+            minimum: 0
+            maximum: 60
+          key:
+            type: string
+            description: Press a key by Godot name (Space, Enter, Escape, A, Up).
+          action:
+            type: string
+            description: Press an input action from the project's InputMap, e.g. jump.
+          holdMs:
+            type: number
+            minimum: 0
+            maximum: 10000
+            description: How long key or action is held (default 100).
+          click:
+            type: array
+            items:
+              type: number
+            description: Left-click at [x, y] in frame pixels.
+          drag:
+            type: object
+            properties:
+              from:
+                type: array
+                items:
+                  type: number
+              to:
+                type: array
+                items:
+                  type: number
+              ms:
+                type: number
+                minimum: 0
+                maximum: 10000
+            required:
+              - from
+              - to
+            description: Drag with the left button from [x, y] to [x, y] over ms (default 300).
+          wait:
+            type: number
+            minimum: 0
+            maximum: 60000
+            description: Wait this many milliseconds.
+          shot:
+            type: boolean
+            description: true saves a frame now.
+        additionalProperties: false
   additionalProperties: false
 authority:
   filesystem: true

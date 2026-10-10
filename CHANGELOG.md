@@ -9,8 +9,11 @@ Agents that publish a game find the publishing guides in the library:
 - `summer_search_library` and `summer_read_library` now find `skill/publish-your-game`, `skill/store-listing`, `skill/store-art` and `skill/grow-analytics`. Before, they were only hosted MCP resources and a read returned not_found.
 - A read loads the current text from the hosted Summer Engine MCP with the store sign-in (`summer login --store`). Without the sign-in it shows a short summary, the reason, and how to load the rest. The entries also load by their `summer://skills/<slug>` URI.
 
+- `summer_capture_gameplay` gets past the title screen. `args` passes the game's own flags after `--` (for example `["--autostart"]`). `steps` play like a player before and between frames: press a button by its text, a key, an input action, a click, a drag, a wait, and a shot. The run always passes `--summer-offscreen`.
+
 ### Added
 - Skill field `hosted_resource` in `resource.yaml`: the skill's body comes from that hosted MCP resource (#90).
+- `summer_capture_gameplay` `args` and `steps`; a step that cannot run (no such button, key or action) is a warning, not a failure.
 
 ## [3.4.1] - 2026-10-10
 

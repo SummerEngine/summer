@@ -2,6 +2,20 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [3.4.1] - 2026-10-10
+
+Agents that publish a game find the right tools:
+
+- A request such as "release version 1.2.0 of my game" now leads to `summer_publish_build`, not to the legacy creator tool.
+- The library and the tool reference name the store tools for the steps after an upload: store page text and art, submitting for the owner's approval, releasing, and `summer_store_releases` for what players get now. These are hosted tools, mounted after `summer login --store`.
+- The library and the docs are shorter, and stale or internal content is gone.
+
+### Changed
+- `tool/creator-publish` and `tool/creator-releases` match only old projects that publish to the legacy Summercraft creator channel. `creator-releases` is marked deprecated.
+- `summer_creator_releases` (MCP and `summer tool`) says it reads the legacy creator API and points to `summer_store_releases`.
+- `tool/publish-build` matches release requests. Its "do not use" list names the store tools.
+- Library and docs clean-up: generation prices, internal references and wrong tool calls removed (#78, #81, #83, #84, #85, #86).
+
 ## [3.4.0] - 2026-10-09
 
 Publishing a game from your agent now works end to end, with fewer surprises:

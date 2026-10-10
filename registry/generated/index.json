@@ -6058,7 +6058,7 @@
       "id": "tool/export-game",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "211be00e329de60498da0ae132721202b0efac9617d3a9bc440f44a1fdd51382",
+      "content_hash": "96efe498dc6c5976b482c00828c770975bb77e4c03a0df4e5f3208e8f0013e95",
       "summary": "Export the game in the exact file the Summer Games store takes per platform (iPhone, Android, macOS, Windows bundle; web build; desktop download), headless.",
       "use_when": [
         "\"export my game for summer.games\"",

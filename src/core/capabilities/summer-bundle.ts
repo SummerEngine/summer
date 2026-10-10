@@ -14,6 +14,26 @@ export const BUNDLE_MANIFEST = "summer-bundle.json";
 const BUNDLE_CLIENT = "client.pck";
 const BUNDLE_SERVER = "server.pck";
 const BUNDLE_BUILD = "config/summer.build.json";
+
+/** The same platforms, in any order. */
+export function samePlatforms(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && [...a].sort().join(",") === [...b].sort().join(",");
+}
+
+/**
+ * Why the store will refuse this hosted bundle's Build declaration, or null.
+ * The store requires summer.build.json's targetPlatforms to equal the
+ * platforms the client pack was exported for (declaration_mismatch), and the
+ * refusal spends the clientVersion, so this is checked before any upload.
+ */
+export function declarationMismatch(bundle: Pick<SummerBundle, "hostedBuild" | "targetPlatforms">): string | null {
+  const declared = bundle.hostedBuild?.targetPlatforms;
+  if (!Array.isArray(declared)) return null;
+  const platforms = declared.map(String);
+  return samePlatforms(platforms, bundle.targetPlatforms)
+    ? null
+    : `the bundle targets ${[...bundle.targetPlatforms].sort().join(", ")} but its summer.build.json declares ${[...platforms].sort().join(", ")}`;
+}
 const SHA256 = /^sha256:[0-9a-f]{64}$/;
 const AS_EXPORTED =
   "Recovery: export the game again with the summer.games preset and use the .zip exactly as Summer Engine wrote it.";

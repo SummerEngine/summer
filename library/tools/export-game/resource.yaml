@@ -61,6 +61,9 @@ input_schema:
       minimum: 10
       maximum: 7200
       description: Stop the engine after this many seconds (default 900; a first export imports every asset).
+    alignDeclaration:
+      type: boolean
+      description: A game with a server, set summer.build.json targetPlatforms to targets before exporting. The store refuses an upload whose declaration differs from the exported platforms (declaration_mismatch) and that spends the version.
   additionalProperties: false
 authority:
   filesystem: true

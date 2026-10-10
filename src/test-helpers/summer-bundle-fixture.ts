@@ -94,6 +94,8 @@ const sha = (data: Buffer) => `sha256:${createHash("sha256").update(data).digest
 export interface BundleFixtureOptions {
   hosted?: boolean;
   targetPlatforms?: string[];
+  /** Hosted only: the platforms config/summer.build.json declares (default: the client's targets). */
+  declaredPlatforms?: string[];
   clientPack?: Buffer;
   zip64?: boolean;
   /** Edit the manifest before it is written. */
@@ -112,7 +114,7 @@ export function buildSummerBundle(options: BundleFixtureOptions = {}): Buffer {
   };
   if (options.hosted) {
     const server = Buffer.from("GDPC".padEnd(2048, "s"));
-    const build = Buffer.from(JSON.stringify({ gameId: "game-1", executionMode: "hosted", targetPlatforms: ["ios", "macos"] }));
+    const build = Buffer.from(JSON.stringify({ gameId: "game-1", executionMode: "hosted", targetPlatforms: options.declaredPlatforms ?? options.targetPlatforms ?? ["ios"] }));
     files.push({ name: "server.pck", data: server }, { name: "config/summer.build.json", data: build, deflate: true });
     manifest.server = { path: "server.pck", mainScene: "res://authority/main.tscn" };
     manifest.compositionPath = "res://network/composition.tres";

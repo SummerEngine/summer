@@ -8,7 +8,7 @@ import { appendStoreJsonLine } from "../store.js";
 import { readJsonResponse } from "../util/http.js";
 import { readLastExport } from "./export-game.js";
 import { publishDownload } from "./publish-download.js";
-import { BuildToolError, readSummerBundle, type SummerBundle } from "./summer-bundle.js";
+import { BuildToolError, declarationMismatch, readSummerBundle, type SummerBundle } from "./summer-bundle.js";
 
 /**
  * summer_publish_build: upload a summer.games export to the creator's game
@@ -327,6 +327,14 @@ export function normalizeClientVersion(value?: string): string {
 }
 
 function targetPlatforms(bundle: SummerBundle): string[] {
+  const mismatch = declarationMismatch(bundle);
+  if (mismatch) {
+    throw new BuildToolError(
+      "declaration_mismatch",
+      `The store would refuse this upload (declaration_mismatch): ${mismatch}. Nothing was uploaded and no version was used.`,
+      "Recovery: export again with summer_export_game alignDeclaration:true (it sets summer.build.json targetPlatforms to the targets you export), or with targets equal to what summer.build.json declares; then upload the new export."
+    );
+  }
   if (bundle.hosted) return bundle.targetPlatforms;
   const other = bundle.targetPlatforms.filter((platform) => !STANDALONE_TARGETS.includes(platform));
   if (other.length) {

@@ -3,7 +3,7 @@
  * `summer_world_snapshot` (src/mcp/tools/perception-tools.ts and
  * tool-dispatch.ts).
  *
- * The engine's GetWorldSnapshot (world_snapshot_ops.cpp) takes only
+ * The engine's GetWorldSnapshot op takes only
  * scene_path / max_nodes / max_lights / include_2d and returns every node it
  * walked, about 250 bytes each: a scene of a few thousand nodes is far too
  * big to read.

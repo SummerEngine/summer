@@ -455,8 +455,7 @@ export interface EngineHealth {
   capabilities?: EngineCapabilities;
 
   // NEVER POPULATED as of engine 4.6.1 / 0.5.55. `/api/health` returns exactly 18
-  // keys (ToolNetThread::_health, modules/1summer_engine/api/tool_net_thread.cpp:808-836)
-  // and none of these three is among them — verified against the shipped binary.
+  // keys and none of these three is among them — verified against the shipped binary.
   //
   // They stay declared rather than deleted because O5 is landing the engine side.
   // Until it lands, every consumer of these is dead code: `summer run`'s

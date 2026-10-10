@@ -53,17 +53,17 @@ const DEFAULT_TIMEOUT_MS = 15 * 60_000;
 
 export type ExportFormat = "bundle" | "download";
 
-/** Store platform ids of the versions intake (summer-platform creatorstore). */
+/** Store platform ids of the store's versions intake. */
 const STORE_VERSION_PLATFORM: Record<"web" | "macos" | "windows", string> = {
   web: "web",
   macos: "macos-universal",
   windows: "windows-x64",
 };
 
-/** Web zip limits of the store (summer-platform internal/creatorstore/webzip.go). */
+/** Web zip limits of the store. */
 const WEB_LIMITS = { zipBytes: 500 * 1024 * 1024, fileBytes: 200 * 1024 * 1024, files: 2000 };
 
-/** Games without a server run on the phone apps only (summer-platform gameplatforms.StandaloneTargets). */
+/** Games without a server run on the phone apps only (the store's standalone targets). */
 const STANDALONE_TARGETS: readonly string[] = ["ios", "android"];
 
 /** Engine support per bundle target, for the recovery text when a target is missing. */

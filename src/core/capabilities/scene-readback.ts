@@ -4,10 +4,9 @@
  * trusting the engine receipt (summer_replace_node, summer_batch with
  * ReparentNode, summer_connect_signal).
  *
- * The engine's `scenePersistence.persisted` only says SaveScene returned OK
- * (ops_executor.cpp: scene_persistence["persisted"] =
- * explicit_scene_save_succeeded); what the file holds is only known by reading
- * it. The client renames that flag to `saved` (engine-receipt.ts
+ * The engine's `scenePersistence.persisted` only says SaveScene returned OK;
+ * what the file holds is only known by reading it. The client renames that
+ * flag to `saved` (engine-receipt.ts
  * honestSceneReceipt); `verified` is set only by tools that read back here.
  */
 import { asRecord, type JsonRecord } from "../util/json.js";

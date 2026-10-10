@@ -116,8 +116,8 @@ describe("summer tool command", () => {
   }
 
   it("exits 1 and prints the engine's failure envelope when a read fails — the CLI twin of the MCP face's isError (E2E F-06)", async () => {
-    // Engine 0.5.65 answers a missing node with HTTP 200 + {ok:false, error}
-    // (state_provider.cpp inspector_state); the MCP face marks that isError.
+    // Engine 0.5.65 answers a missing node with HTTP 200 + {ok:false, error};
+    // the MCP face marks that isError.
     vi.mocked(EngineApiClient.connect).mockResolvedValue({
       inspectNode: async () => ({ ok: false, error: "node not found: DoesNotExist", appliedThroughSeq: 12 }),
     } as never);

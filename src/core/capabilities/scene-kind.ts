@@ -1,6 +1,6 @@
 /**
  * Is a scene 2D or 3D? Decided from a scene-tree read, the way the engine's
- * ScenePreview decides it (preview_ops.cpp `_scene_has_3d` / `_scene_has_2d`):
+ * ScenePreview decides it:
  * any Node3D anywhere in the tree makes the scene 3D; otherwise any CanvasItem
  * makes it 2D; a tree of plain Nodes is neither.
  *

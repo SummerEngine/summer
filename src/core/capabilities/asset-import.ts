@@ -2,7 +2,6 @@
  * Asset import into the engine-bound project (Kenney texture pairing + path
  * inference + optional scene placement). ONE copy shared by the MCP asset tools
  * and the CLI dispatch table.
- * See: publicsummerengine/Docs/ASSET_IMPORT_END_TO_END.md
  */
 import type { EngineApiClient } from "../api-client.js";
 import { ToolInputError } from "../tool-errors.js";

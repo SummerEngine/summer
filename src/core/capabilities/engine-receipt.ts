@@ -31,7 +31,7 @@ export function getFailureReason(value: {
       : undefined;
 }
 
-// 0.5.34 Block E contract (publicsummerengine src/lib/tools/contract.ts §0.1).
+// Engine 0.5.34 receipt contract, shared with the web platform's tool layer.
 // The async lifecycle (async-op-lifecycle.ts pollOpToTerminal) merges
 // terminalState/errorClass onto the apply dict it returns. ONLY these two are
 // "applied something / applied nothing-on-purpose" — every other terminal state
@@ -63,10 +63,9 @@ const TERMINAL_STATE_MESSAGES: Record<string, string> = {
  * Decide whether an engine result envelope represents a FAILURE, and if so
  * return a model-visible message. Returns null only for genuine success.
  *
- * Guards the two web bug classes (publicsummerengine cf17134f + contract.ts
- * `isFailureSignal`):
+ * Guards the two bug classes the web platform's tool layer once had:
  *   - a failure `terminalState` (anything other than applied/no_op) is a failure
- *     even when results[] is absent — the cf17134f "no-results envelope looked
+ *     even when results[] is absent — the "no-results envelope looked
  *     applied" masking. The poll loop surfaces timed_out/etc. here.
  *   - an explicit ok:false / status:"error" / failed op inside results[].
  *
@@ -135,9 +134,8 @@ export function extractOpError(result: unknown): string | null {
 }
 
 /**
- * The engine stamps `scenePersistence.persisted` on every scene-targeted batch
- * (ops_executor.cpp: scene_persistence["persisted"] =
- * explicit_scene_save_succeeded). It only means SaveScene returned OK, not
+ * The engine stamps `scenePersistence.persisted` on every scene-targeted batch.
+ * It only means SaveScene returned OK, not
  * that the file holds the change: a ReparentNode subtree whose owners the
  * engine cleared, or a ConnectSignal made without CONNECT_PERSIST, is missing
  * from a file whose save "persisted". Rename it to
@@ -161,12 +159,12 @@ export function honestSceneReceipt<T>(result: T): T {
 }
 
 /** The per-op text an older engine answers for a Kind its dispatch ladder does
- *  not know (ops_executor.cpp fallthrough: `unknown op: <Kind>`). */
+ *  not know (`unknown op: <Kind>`). */
 const UNKNOWN_OP_PATTERN = /unknown op/i;
 
 /**
  * An older engine answers an unknown op with a per-op "unknown op: <Kind>"
- * (ops_executor.cpp fallthrough). Amend the envelope's error so the model gets
+ * Amend the envelope's error so the model gets
  * the upgrade path instead of retrying, and stamp `failure_reason:
  * "engine_lacks_op"` (+ `op`) so the result is detectable the same way as the
  * capability pre-flight's MissingOpResult: programmatic callers read the

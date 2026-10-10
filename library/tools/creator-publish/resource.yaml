@@ -3,10 +3,10 @@ kind: tool
 version: 1.1.0
 summary: "Deprecated: publishes a .pck to the legacy creator API. Use summer_export_game, then summer_publish_build, to upload to summer.games."
 use_when:
-  - releasing a user-approved build to a legacy creator channel
-  - '"ship this exported build to the live channel"'
-  - '"release version 1.2.0 of my game"'
+  - an old project that still publishes a .pck to the legacy Summercraft creator channel with an sc_ creator token
+  - a ~/.summer/config.json that names a legacy creator projectId and channel
 do_not_use_when:
+  - releasing a version on summer.games — summer_publish_build, then summer_store_submit (the owner approves)
   - uploading to summer.games — summer_export_game, then summer_publish_build
   - the user has not approved the exact version, digest, and channel
   - the game is not exported yet — export the .pck first (skill/export-and-ship)

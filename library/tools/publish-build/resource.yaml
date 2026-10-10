@@ -6,12 +6,16 @@ use_when:
   - '"upload my game to summer.games"'
   - '"publish this build to my store page"'
   - '"put my game online so my friends can play it"'
+  - '"release version 1.2.0 of my game"'
+  - '"ship this exported build to the live channel"'
   - uploading the .zip from summer_export_game as a new Build
   - uploading a web build or a macOS or Windows download from summer_export_game format download
 do_not_use_when:
   - the user has not approved the exact game, file, digest, version and publish choice
   - the game is not exported yet — summer_export_game first
-  - store page text, images or price — those are edited in Studio
+  - store page text, art or price — summer_store_update_listing, summer_store_set_art (mounted after summer login --store)
+  - making the build live — summer_store_submit (the owner approves publishing), then summer_build_release
+  - what players get now — summer_store_releases
 facets:
   lifecycle:
     - launch

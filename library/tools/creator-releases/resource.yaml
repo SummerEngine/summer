@@ -1,12 +1,12 @@
 id: tool/creator-releases
 kind: tool
 version: 1.0.2
-summary: List creator-owned releases from the legacy creator API with server-verified scope and ownership.
+summary: "Deprecated: lists releases on the legacy creator API. For summer.games use summer_store_releases."
 use_when:
-  - reviewing which versions of a project are live per channel
-  - '"what version is live right now?"'
-  - '"did the publish go through?" — confirming a release landed'
+  - an old project that published a .pck to the legacy Summercraft creator channel with an sc_ creator token
+  - paging legacy creator releases by projectId and cursor
 do_not_use_when:
+  - what players get on summer.games, or whether a release landed — summer_store_releases
   - publishing a new release — summer_publish_build
 facets:
   lifecycle:
@@ -18,7 +18,7 @@ compatibility:
   engine: ">=4.6"
 source: official
 license: MIT
-status: stable
+status: deprecated
 aliases:
   - summer_creator_releases
 implementation:

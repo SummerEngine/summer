@@ -935,7 +935,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       face: "cli",
     })
   ),
-  entry("summer_creator_releases", "List creator-owned releases", false, (args) =>
+  entry("summer_creator_releases", "Deprecated: list releases on the legacy creator API; use summer_store_releases", false, (args) =>
     listCreatorReleases({
       projectId: optStr(args, "projectId"),
       limit: typeof args.limit === "number" ? args.limit : 20,

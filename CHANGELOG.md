@@ -10,6 +10,7 @@ Agents that publish a game find the publishing guides in the library:
 - A read loads the current text from the hosted Summer Engine MCP with the store sign-in (`summer login --store`). Without the sign-in it shows a short summary, the reason, and how to load the rest. The entries also load by their `summer://skills/<slug>` URI.
 
 - `summer_capture_gameplay` gets past the title screen. `args` passes the game's own flags after `--` (for example `["--autostart"]`). `steps` play like a player before and between frames: press a button by its text, a key, an input action, a click, a drag, a wait, and a shot. The run always passes `--summer-offscreen`.
+- `summer_capture_gameplay` no longer stops at about half the requested time: the run is capped at 60 fps (`--max-fps 60`) because the engine's time limit counts frames, and it gets twice its planned time. The probe is fully typed, so projects that treat GDScript warnings as errors load it. The project is imported again when an asset is new or its content changed since the last import (a pull, or Git LFS files fetched later), and files that are still LFS pointers are named in a warning.
 
 ### Added
 - Skill field `hosted_resource` in `resource.yaml`: the skill's body comes from that hosted MCP resource (#90).

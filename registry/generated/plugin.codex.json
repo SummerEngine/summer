@@ -1,7 +1,7 @@
 {
   "_generated": "GENERATED from integrations/codex — do not edit; npm run generate:registry",
   "name": "summer",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "description": "Agent tooling for Summer Engine: game-dev skills, lifecycle hooks, and a 105-tool MCP bridge. Build games by talking.",
   "author": {
     "name": "Summer Engine",

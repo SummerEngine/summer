@@ -282,6 +282,17 @@ describe("publishBuild", () => {
     expect(error.message).toContain("new clientVersion");
   });
 
+  it("says a Summer version may still be turning on, instead of only asking for an update", async () => {
+    const store = fakeStore({ finalState: "failed", errorCode: "template_set_unavailable" });
+    const error = await failure(
+      publishBuild({ gameId: "game-1", file: bundle, clientVersion: "v1.0.0", confirm: true, face: "mcp" }, deps(store.fetch))
+    );
+    expect(error.code).toBe("template_set_unavailable");
+    expect(error.message).toContain("may still be turning that version on");
+    expect(error.recovery).toContain("retry the same upload later");
+    expect(error.recovery).toContain("The same clientVersion works on the retry");
+  });
+
   it("returns while Summer is still checking, with how to continue", async () => {
     const store = fakeStore({ neverDone: true });
     let clock = 0;

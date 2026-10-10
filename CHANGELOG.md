@@ -2,6 +2,10 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+- `summer_publish_build` refused with `template_set_unavailable` no longer only says "update Summer Engine": with the newest engine, Summer Games may still be turning that Summer version on, so retry the same upload later (the same clientVersion works). It shows the store's own reason when there is one.
+
 ## [3.4.2] - 2026-10-10
 
 Agents that publish a game get further on their own: the library finds the publishing guides, gameplay captures get past the title screen, and image generation and exports stop failing on store sizes and Android:

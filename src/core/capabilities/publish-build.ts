@@ -50,7 +50,8 @@ const INTAKE_FAILURES: Record<string, string> = {
   game_identity_mismatch: "This export belongs to another game. Upload it to its original game, or make a portable export for this game.",
   bundle_invalid: "Summer could not read this export. Export the game again and upload the new file.",
   declaration_mismatch: "The export's game or settings do not match this upload. Use the original game or export a new version with the intended settings.",
-  template_set_unavailable: "Summer Games cannot run this Summer version yet. Update Summer Engine, export again and upload the new file.",
+  template_set_unavailable:
+    "Summer Games cannot run this Summer version yet. If you exported with the newest Summer Engine, Summer Games may still be turning that version on: retry the same upload later, there is nothing to update. With an older engine, update Summer Engine and export again.",
   client_version_conflict: "This version number already belongs to a different export. Use a new clientVersion.",
   artifact_exists: "This exact export is already uploaded for this game. Export a new version and upload that.",
   approval_denied: "Summer Games did not approve this game, so it cannot take new builds.",
@@ -547,12 +548,17 @@ export async function publishBuild(
         const code = typeof publication.errorCode === "string" ? publication.errorCode : "publication_failed";
         throw new BuildToolError(
           code,
-          (code === "declaration_mismatch" && publication.errorMessage) || INTAKE_FAILURES[code] || publication.errorMessage || "Summer could not make a build from this upload.",
+          ((code === "declaration_mismatch" || code === "template_set_unavailable") && publication.errorMessage) ||
+            INTAKE_FAILURES[code] ||
+            publication.errorMessage ||
+            "Summer could not make a build from this upload.",
           // The store checks the declaration and the bundle before it records a
           // client pack, so those refusals leave the version free.
           code === "declaration_mismatch" || code === "bundle_invalid"
             ? "Recovery: fix what the message names, export again and retry; the same clientVersion still works, because a refused upload records no version."
-            : "Recovery: export again, use a new clientVersion, and retry.",
+            : code === "template_set_unavailable"
+              ? `Recovery: ${INTAKE_FAILURES.template_set_unavailable.replace(/^Summer Games cannot run this Summer version yet\. /, "")} The same clientVersion works on the retry.`
+              : "Recovery: export again, use a new clientVersion, and retry.",
           undefined,
           { publicationId }
         );

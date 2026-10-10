@@ -39,6 +39,19 @@ Paths:
 npx -y summer-engine@latest mcp
 ```
 
+### Summer Games
+
+`summer setup codex` also adds Summer Games, so Codex can see your friends, start parties and send messages as you:
+
+```toml
+[mcp_servers.summer-games]
+url = "https://mcp.summer.games/mcp"
+```
+
+Sign in once: in Codex, run `/mcp login summer-games` (or `codex mcp login summer-games` in a terminal). A summer.games page opens in your browser; sign in and choose Allow. Until then `codex mcp list` shows it as not logged in. If you already added the same URL under another name, setup keeps yours. `--no-games` skips it.
+
+To remove Summer: `codex mcp remove summer-engine` and `codex mcp remove summer-games`.
+
 Keep Summer Engine running on the project while the agent works:
 
 ```bash

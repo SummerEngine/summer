@@ -548,7 +548,11 @@ export async function publishBuild(
         throw new BuildToolError(
           code,
           (code === "declaration_mismatch" && publication.errorMessage) || INTAKE_FAILURES[code] || publication.errorMessage || "Summer could not make a build from this upload.",
-          "Recovery: export again, use a new clientVersion, and retry.",
+          // The store checks the declaration and the bundle before it records a
+          // client pack, so those refusals leave the version free.
+          code === "declaration_mismatch" || code === "bundle_invalid"
+            ? "Recovery: fix what the message names, export again and retry; the same clientVersion still works, because a refused upload records no version."
+            : "Recovery: export again, use a new clientVersion, and retry.",
           undefined,
           { publicationId }
         );

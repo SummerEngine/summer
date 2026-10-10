@@ -1,4 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, openSync, readdirSync, readFileSync, readSync, closeSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { platform } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
@@ -89,6 +90,8 @@ export interface CaptureGameplayResult {
   out: string;
   engine: string;
   imported: boolean;
+  /** Why the project was imported before the capture. */
+  importReason?: string;
   durationMs: number;
   warnings?: string[];
   next: string;
@@ -110,6 +113,17 @@ const DEFAULT_RESOLUTION = "1920x1080";
 const MAX_FRAMES = 10;
 /** The engine clamps --summer-verify-max to 240 (main.cpp SUMMER_VERIFY_MAX_SECONDS). */
 const ENGINE_MAX_SECONDS = 240;
+/** Offscreen runs draw uncapped (~130 fps) while the verify backstop counts 60 frames a second; cap the frame rate so seconds stay seconds. */
+const CAPTURE_MAX_FPS = 60;
+/** Files the engine imports; a new or changed one means the .godot/ caches are stale. */
+const IMPORTED_EXTENSIONS = new Set([
+  ".png", ".jpg", ".jpeg", ".webp", ".svg", ".tga", ".bmp", ".exr", ".hdr", ".ktx", ".dds",
+  ".glb", ".gltf", ".fbx", ".obj", ".blend", ".dae",
+  ".wav", ".ogg", ".mp3",
+  ".ttf", ".otf", ".woff", ".woff2", ".fnt", ".csv",
+]);
+const SKIPPED_DIRS = new Set([".godot", ".git", ".summer", ".import", "node_modules", "build", "exports"]);
+const MAX_SCANNED_FILES = 50_000;
 const IMPORT_TIMEOUT_MS = 5 * 60_000;
 const PROBE_FILE = "capture_probe.gd";
 const MAX_STEPS = 50;
@@ -225,6 +239,88 @@ function stepSeconds(steps: ProbeStep[]): number {
   return steps.reduce((sum, step) => sum + (step.timeout ?? 0) + ((step.hold_ms ?? 0) + (step.ms ?? 0)) / 1000 + 0.5, 0);
 }
 
+/**
+ * Why one imported file needs importing again, or null when its import is
+ * current. Like the editor: the .import sidecar names the cached result, whose
+ * .md5 records the source's hash; the hash is only computed when the source is
+ * newer than that record.
+ */
+function staleImport(project: string, path: string): string | null {
+  const relative = path.slice(project.length + 1);
+  let sidecar: string;
+  try {
+    sidecar = readFileSync(`${path}.import`, "utf8");
+  } catch {
+    return `${relative} has not been imported`;
+  }
+  const dest = /^path(?:\.[a-z0-9_]+)?="res:\/\/\.godot\/imported\/([^"]+)"/m.exec(sidecar)?.[1];
+  // importer "keep" or "skip": nothing is cached.
+  if (!dest) return null;
+  const record = join(project, ".godot", "imported", dest.replace(/\.[^.]+$/, ".md5"));
+  let recorded: { text: string; mtimeMs: number };
+  try {
+    recorded = { text: readFileSync(record, "utf8"), mtimeMs: statSync(record).mtimeMs };
+  } catch {
+    return `${relative} has no import cache`;
+  }
+  if (statSync(path).mtimeMs <= recorded.mtimeMs) return null;
+  const sourceMd5 = /source_md5="([0-9a-f]+)"/.exec(recorded.text)?.[1];
+  return sourceMd5 === createHash("md5").update(readFileSync(path)).digest("hex") ? null : `${relative} changed after the last import`;
+}
+
+function isLfsPointer(path: string): boolean {
+  try {
+    if (statSync(path).size > 1024) return false;
+    const fd = openSync(path, "r");
+    const buffer = Buffer.alloc(64);
+    readSync(fd, buffer, 0, 64, 0);
+    closeSync(fd);
+    return buffer.toString("utf8").startsWith("version https://git-lfs");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Whether the project's import caches are stale: an imported file (texture,
+ * model, sound, font) that has no .import sidecar or cache yet, or whose
+ * content changed since it was imported (a pull, or LFS files fetched after
+ * the first import). Also names files that are still Git LFS pointers, which no
+ * import can fix.
+ */
+export function importState(project: string): { needed: boolean; reason?: string; lfsPointers: string[] } {
+  if (!existsSync(join(project, ".godot"))) return { needed: true, reason: "the project was never imported", lfsPointers: [] };
+  const lfsPointers: string[] = [];
+  let reason: string | undefined;
+  let scanned = 0;
+  const walk = (dir: string) => {
+    let entries;
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (scanned >= MAX_SCANNED_FILES) return;
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (!SKIPPED_DIRS.has(entry.name) && !existsSync(join(path, ".gdignore"))) walk(path);
+        continue;
+      }
+      const dot = entry.name.lastIndexOf(".");
+      if (!entry.isFile() || dot < 0 || !IMPORTED_EXTENSIONS.has(entry.name.slice(dot).toLowerCase())) continue;
+      scanned++;
+      if (isLfsPointer(path)) {
+        if (lfsPointers.length < 10) lfsPointers.push(path.slice(project.length + 1));
+        continue;
+      }
+      if (!reason) reason = staleImport(project, path) ?? undefined;
+    }
+  };
+  walk(project);
+  return { needed: reason !== undefined, ...(reason ? { reason } : {}), lfsPointers };
+}
+
 function stamp(date: Date): string {
   return date.toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z").replace("T", "-");
 }
@@ -249,14 +345,44 @@ export function pngSize(bytes: Buffer): { width: number; height: number } | null
   return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
 }
 
+/** A GDScript string literal (JSON escapes are valid GDScript escapes). */
+const gdString = (text: string): string => JSON.stringify(text);
+const gdFloat = (value: number): string => (Number.isInteger(value) ? `${value}.0` : String(value));
+const gdVector = (point: [number, number]): string => `Vector2(${gdFloat(point[0])}, ${gdFloat(point[1])})`;
+
+/** One step as a typed GDScript call: no Variant reads, so strict projects load it. */
+function stepLine(step: ProbeStep, index: number): string {
+  switch (step.type) {
+    case "press":
+      return `await _press(${index}, ${gdString(step.text!)}, ${gdFloat(step.timeout!)})`;
+    case "key":
+      return `await _key_named(${index}, ${gdString(step.text!)}, ${step.hold_ms})`;
+    case "action":
+      return `await _action_named(${index}, ${gdString(step.text!)}, ${step.hold_ms})`;
+    case "click":
+      return `await _click(${gdVector(step.at!)})`;
+    case "drag":
+      return `await _drag(${gdVector(step.at!)}, ${gdVector(step.to!)}, ${step.ms})`;
+    case "wait":
+      return `await get_tree().create_timer(${gdFloat(step.ms! / 1000)}, true).timeout`;
+    default:
+      return "await _shot()";
+  }
+}
+
 /**
  * The stock probe. Self-contained (extends Node, no base class to copy into the
  * project); follows the verify-instance contract of assets/autopilot/probe_base.gd:
  * the engine sets summer_out_dir and summer_max_seconds before _ready(), the
  * first frames are empty until the scene has drawn twice, results.json is
- * always written.
+ * always written. The steps are generated as typed calls, and nothing reads a
+ * Variant, so projects that treat every GDScript warning as an error
+ * (untyped_declaration, unsafe_call_argument, unsafe_cast, integer_division)
+ * still load it.
  */
 export function captureProbeSource(frames: number, waitSeconds: number, intervalSeconds: number, steps: ProbeStep[] = []): string {
+  const shotSteps = steps.some((step) => step.type === "shot");
+  const body = steps.length ? steps.map((step, index) => `\t${stepLine(step, index)}`).join("\n") : "\tpass";
   return `# Written by summer_capture_gameplay. Safe to delete.
 # Fully typed: projects that treat GDScript warnings as errors must still load it.
 extends Node
@@ -267,12 +393,13 @@ var summer_max_seconds: int = 20
 const FRAMES: int = ${frames}
 const WAIT_SECONDS: float = ${waitSeconds.toFixed(3)}
 const INTERVAL_SECONDS: float = ${intervalSeconds.toFixed(3)}
-const STEPS_JSON: String = ${JSON.stringify(JSON.stringify(steps))}
+const SHOT_STEPS: bool = ${shotSteps}
 
-var _shots: Array = []
-var _warnings: Array = []
+var _shots: Array[Dictionary] = []
+var _warnings: Array[String] = []
 var _start_ms: int = 0
 var _done: bool = false
+var _pressed_seen: bool = false
 
 func _ready() -> void:
 \tprocess_mode = Node.PROCESS_MODE_ALWAYS
@@ -294,39 +421,16 @@ func _run() -> void:
 \t\t_finish(true)
 \t\treturn
 \tawait get_tree().create_timer(WAIT_SECONDS, true).timeout
-\tvar steps: Array = JSON.parse_string(STEPS_JSON)
-\tvar shot_steps: bool = false
-\tfor i: int in range(steps.size()):
-\t\tvar step: Dictionary = steps[i]
-\t\tmatch String(step["type"]):
-\t\t\t"press":
-\t\t\t\tawait _press(i, String(step["text"]), float(step["timeout"]))
-\t\t\t"key":
-\t\t\t\tvar keycode: Key = OS.find_keycode_from_string(String(step["text"]))
-\t\t\t\tif keycode == KEY_NONE:
-\t\t\t\t\t_warnings.append('steps[%d]: no key is named "%s" (use names like Space, Enter, Escape, A, Up).' % [i, step["text"]])
-\t\t\t\telse:
-\t\t\t\t\tawait _key(keycode, int(step["hold_ms"]))
-\t\t\t"action":
-\t\t\t\tif not InputMap.has_action(StringName(String(step["text"]))):
-\t\t\t\t\t_warnings.append('steps[%d]: the project has no input action "%s".' % [i, step["text"]])
-\t\t\t\telse:
-\t\t\t\t\tawait _action(String(step["text"]), int(step["hold_ms"]))
-\t\t\t"click":
-\t\t\t\tawait _click(Vector2(step["at"][0], step["at"][1]))
-\t\t\t"drag":
-\t\t\t\tawait _drag(Vector2(step["at"][0], step["at"][1]), Vector2(step["to"][0], step["to"][1]), int(step["ms"]))
-\t\t\t"wait":
-\t\t\t\tawait get_tree().create_timer(float(step["ms"]) / 1000.0, true).timeout
-\t\t\t"shot":
-\t\t\t\tshot_steps = true
-\t\t\t\tawait _shot()
-\tif not shot_steps:
+\tawait _steps()
+\tif not SHOT_STEPS:
 \t\tfor i: int in range(FRAMES):
 \t\t\tif i > 0:
 \t\t\t\tawait get_tree().create_timer(INTERVAL_SECONDS, true).timeout
 \t\t\tawait _shot()
 \t_finish(true)
+
+func _steps() -> void:
+${body}
 
 func _shot() -> void:
 \tawait RenderingServer.frame_post_draw
@@ -340,7 +444,9 @@ func _shot() -> void:
 \telse:
 \t\t_warnings.append("%s: could not write the PNG." % file_name)
 
-# Frame pixels (the saved PNG) -> window coordinates, through the stretch transform.
+# Clicks and drags take frame pixels: the saved PNG's own coordinates. The frame
+# is the root viewport; the final transform maps it to the window, where input
+# events land, so a stretched canvas still gets the click where the frame shows it.
 func _to_window(frame_pos: Vector2) -> Vector2:
 \treturn get_viewport().get_final_transform() * frame_pos
 
@@ -372,17 +478,21 @@ func _click(frame_pos: Vector2) -> void:
 func _drag(from: Vector2, to: Vector2, ms: int) -> void:
 \t_mouse_move(from, Vector2.ZERO, false)
 \t_mouse_button(from, true)
-\tvar moves: int = maxi(2, int(ms / 16.0))
+\tvar moves: int = maxi(2, roundi(ms / 16.0))
 \tvar last: Vector2 = from
 \tfor j: int in range(1, moves + 1):
-\t\tawait get_tree().create_timer(float(ms) / 1000.0 / moves, true).timeout
+\t\tawait get_tree().create_timer(ms / 1000.0 / moves, true).timeout
 \t\tvar here: Vector2 = from.lerp(to, float(j) / moves)
 \t\t_mouse_move(here, here - last, true)
 \t\tlast = here
 \t_mouse_button(to, false)
 \tawait get_tree().process_frame
 
-func _key(keycode: Key, hold_ms: int) -> void:
+func _key_named(index: int, key_name: String, hold_ms: int) -> void:
+\tvar keycode: Key = OS.find_keycode_from_string(key_name)
+\tif keycode == KEY_NONE:
+\t\t_warnings.append('steps[%d]: no key is named "%s" (use names like Space, Enter, Escape, A, Up).' % [index, key_name])
+\t\treturn
 \tvar ev: InputEventKey = InputEventKey.new()
 \tev.keycode = keycode
 \tev.physical_keycode = keycode
@@ -396,14 +506,17 @@ func _key(keycode: Key, hold_ms: int) -> void:
 \tInput.parse_input_event(up)
 \tawait get_tree().process_frame
 
-func _action(action: String, hold_ms: int) -> void:
+func _action_named(index: int, action: String, hold_ms: int) -> void:
+\tif not InputMap.has_action(StringName(action)):
+\t\t_warnings.append('steps[%d]: the project has no input action "%s".' % [index, action])
+\t\treturn
 \tvar ev: InputEventAction = InputEventAction.new()
-\tev.action = action
+\tev.action = StringName(action)
 \tev.pressed = true
 \tInput.parse_input_event(ev)
 \tawait get_tree().create_timer(hold_ms / 1000.0, true).timeout
 \tvar up: InputEventAction = InputEventAction.new()
-\tup.action = action
+\tup.action = StringName(action)
 \tup.pressed = false
 \tInput.parse_input_event(up)
 \tawait get_tree().process_frame
@@ -418,8 +531,9 @@ func _find_button(label: String) -> BaseButton:
 \t\tif button == null or button.disabled or not button.is_visible_in_tree():
 \t\t\tcontinue
 \t\tvar text: String = ""
-\t\tif button is Button:
-\t\t\ttext = tr((button as Button).text).strip_edges().to_lower()
+\t\tvar as_button: Button = button as Button
+\t\tif as_button != null:
+\t\t\ttext = tr(as_button.text).strip_edges().to_lower()
 \t\tvar node_name: String = String(button.name).to_lower()
 \t\tvar rank: int = 99
 \t\tif text == want:
@@ -435,15 +549,13 @@ func _find_button(label: String) -> BaseButton:
 \t\t\tbest_rank = rank
 \treturn best
 
-var _pressed_seen: bool = false
-
 func _on_pressed_seen() -> void:
 \t_pressed_seen = true
 
 # Click the button's centre like a player; emit pressed when the click did not reach it.
 func _press(index: int, label: String, timeout: float) -> void:
 \tvar button: BaseButton = _find_button(label)
-\tvar deadline: int = Time.get_ticks_msec() + int(timeout * 1000.0)
+\tvar deadline: int = Time.get_ticks_msec() + roundi(timeout * 1000.0)
 \twhile button == null and Time.get_ticks_msec() < deadline:
 \t\tawait get_tree().create_timer(0.1, true).timeout
 \t\tbutton = _find_button(label)
@@ -460,8 +572,8 @@ func _press(index: int, label: String, timeout: float) -> void:
 \t\tbutton.pressed.emit()
 \tawait get_tree().process_frame
 
-func _errors() -> Array:
-\tvar errors: Array = []
+func _errors() -> Array[String]:
+\tvar errors: Array[String] = []
 \tvar path: String = summer_out_dir.path_join("errors.log")
 \tif FileAccess.file_exists(path):
 \t\tvar f: FileAccess = FileAccess.open(path, FileAccess.READ)
@@ -532,10 +644,12 @@ export async function captureGameplay(
   await mkdir(out, { recursive: true });
   await rm(join(out, "results.json"), { force: true });
 
-  // A never-opened checkout has no .godot/ caches; the game would boot into
-  // missing-import errors. Build them once, headless (same as tests/autopilot).
+  // A never-opened checkout has no .godot/ caches, and a pull (or LFS files
+  // fetched later) leaves them stale; the game would boot into missing or old
+  // imports. Import headless first (same as tests/autopilot).
   let imported = false;
-  if (!existsSync(join(project, ".godot"))) {
+  const importCheck = importState(project);
+  if (importCheck.needed) {
     const run = await deps.run(binary, ["--headless", "--import", "--disable-crash-handler", "--path", project], IMPORT_TIMEOUT_MS);
     if (run.timedOut || !existsSync(join(project, ".godot"))) {
       throw new BuildToolError(
@@ -548,10 +662,14 @@ export async function captureGameplay(
     }
     imported = true;
   }
+  const importReason = importCheck.reason;
 
   const probe = join(out, PROBE_FILE);
   await writeFile(probe, captureProbeSource(frames, waitSeconds, intervalSeconds, steps));
-  const maxSeconds = Math.min(ENGINE_MAX_SECONDS, Math.ceil(waitSeconds + (frames - 1) * intervalSeconds + stepSeconds(steps) + 30));
+  // The engine's verify backstop counts frames, not seconds; with the frame rate
+  // capped at 60 twice the planned run leaves room for slow loads.
+  const plannedSeconds = waitSeconds + (frames - 1) * intervalSeconds + stepSeconds(steps) + 15;
+  const maxSeconds = Math.min(ENGINE_MAX_SECONDS, Math.ceil(2 * plannedSeconds));
   const args = [
     "--disable-crash-handler",
     // No local HTTP API or ~/.summer discovery files for this throwaway run.
@@ -560,6 +678,8 @@ export async function captureGameplay(
     project,
     "--resolution",
     resolution.text,
+    "--max-fps",
+    String(CAPTURE_MAX_FPS),
     ...(scene ? ["--scene", scene] : []),
     // The verify instance is offscreen already; the posture flag says so explicitly.
     "--summer-offscreen",
@@ -624,6 +744,9 @@ export async function captureGameplay(
     captured.push({ path, ...size });
   }
   const warnings = [...(results.frame_warnings ?? [])];
+  if (importCheck.lfsPointers.length) {
+    warnings.push(`These files are Git LFS pointers, not the real files, so the game shows them missing: ${importCheck.lfsPointers.join(", ")}. Run "git lfs pull" in the project, then capture again.`);
+  }
   if (results.finished === false) warnings.push("The game hit its time limit before every frame was saved.");
   const off = captured.filter((frame) => frame.width !== resolution.width || frame.height !== resolution.height);
   if (off.length) {
@@ -642,6 +765,7 @@ export async function captureGameplay(
     out,
     engine: binary,
     imported,
+    ...(imported && importReason ? { importReason } : {}),
     durationMs: deps.now().getTime() - started.getTime(),
     ...(warnings.length ? { warnings } : {}),
     next: "Look at each frame before using it. For the store: upload with summer_upload_image_begin/complete and set them as desktop.screenshots or mobile.screenshots (summer_store_set_art). The game's own HUD may show; add no captions, logos or overlays.",

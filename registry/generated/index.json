@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.0",
-      "content_hash": "39cd3255d2bd7efec517f30aef0c3bf11217db083b8fd2c9332c355fb3a6a2b8",
+      "content_hash": "90476efaf15a8f8ba3f83dbc213de91408934672421b4431f173f5560ab58764",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -1729,7 +1729,7 @@
       "id": "skill/fps-controller",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "efa016e92bb775a6d10f8b085e8cdfd3412e03cc4910c63df6eba63fab8ab471",
+      "content_hash": "943a8b9d3fc3ac9645a3e1e2777c0c9e27dbac4c4d8f0724484afdda41a43d25",
       "summary": "Production-quality first-person controller — WASD, mouse look, jump, coyote time, jump buffering, air control, and external-velocity handling.",
       "use_when": [
         "building an FPS, first-person movement, or a 3D character that walks, jumps, and reacts to external forces",
@@ -2855,7 +2855,7 @@
       "id": "skill/retarget",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "8fec859fdd9166951b49ed698ce894b891e0a13db94bbedd4a507aa74217a229",
+      "content_hash": "9f03de5d66b54346cc2df2778f1d838312f819086963c142f81ef11a6f9e2ac0",
       "summary": "Apply existing animation clips from one rigged character to a different rigged character — same library, multiple models, no regeneration.",
       "use_when": [
         "applying existing animation clips from one rigged character to a different rigged character — sharing one animation library across models",
@@ -5798,10 +5798,10 @@
       "id": "tool/creator-publish",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "0f62b7444688a0b5724b1d992a7f8aa20dbd138503aaeac02bc5fec242e899a4",
-      "summary": "Deprecated: publishes a .pck to the legacy Summercraft API. Use summer_export_game, then summer_publish_build, to upload to summer.games.",
+      "content_hash": "5d77f879e2a46ecdeeac014a714fb25cbda91fbcb4c79e7d584f12f68cec51de",
+      "summary": "Deprecated: publishes a .pck to the legacy creator API. Use summer_export_game, then summer_publish_build, to upload to summer.games.",
       "use_when": [
-        "releasing a user-approved build to a Summercraft channel",
+        "releasing a user-approved build to a legacy creator channel",
         "\"ship this exported build to the live channel\"",
         "\"release version 1.2.0 of my game\""
       ],
@@ -5833,8 +5833,8 @@
       "id": "tool/creator-releases",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "7f807ae2bc66110570ee19351d3493e71f7f9e2bd327fb83b2eac53c1bfc8789",
-      "summary": "List creator-owned releases from the Summercraft creator API with server-verified scope and ownership.",
+      "content_hash": "4cf9f8e91bba01805c0dab576017a8c92969c879328591fab9f97a563823beda",
+      "summary": "List creator-owned releases from the legacy creator API with server-verified scope and ownership.",
       "use_when": [
         "reviewing which versions of a project are live per channel",
         "\"what version is live right now?\"",

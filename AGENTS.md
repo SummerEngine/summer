@@ -70,7 +70,7 @@ You are building a **Summer game** in **Summer Engine** — the editor, scene gr
 2. **The user owns fix decisions.** Diagnose first, propose, ask, then edit.
 3. **Read the actual error before grepping the project.** `summer_get_script_errors` first.
 4. **Don't edit `.tscn` files directly while the engine is running.** Use the `summer_*` MCP tools — direct edits get overwritten when the editor saves.
-5. **`summer_set_resource_property` needs a resource to exist first.** If the property is still empty you get an explicit `resource is null` error, not a silent drop — assign it via `summer_set_prop` with a class-name string (`"BoxMesh"`), then set sub-properties. Inline `sub_resource` targets work; an older revision of this rule said otherwise and was wrong (`library/references/mcp-tools-reference/mcp-tools-reference.md`).
+5. **`summer_set_resource_property` needs a resource to exist first.** If the property is still empty you get an explicit `resource is null` error, not a silent drop — assign it via `summer_set_prop` with a class-name string (`"BoxMesh"`), then set sub-properties. Inline `sub_resource` targets work.
 6. **Every scene mutation names its target.** Pass the exact `res://...tscn` as `scenePath` to add/set/remove/replace/connect/instantiate/save tools and mutation batches. `summer_open_scene` is a user-visible tab action, not a prerequisite or target selector.
 7. **Never mix `OpenScene` with scene mutations in one batch.** Send the UI action separately; `scenePath` already selects the mutation target.
 8. **Save once at the transaction boundary.** Dedicated scene mutation tools and `summer_batch` append one final `SaveScene`. Raw engine batches must include one final `SaveScene` themselves.

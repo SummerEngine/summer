@@ -32,10 +32,10 @@ User rules:
 npx -y summer-engine@latest skills install --recommended --agent cursor --scope user
 ```
 
-The legacy alias still works:
+Single skill:
 
 ```bash
-summer skills install fps-controller --as-cursor-skill
+summer skills install fps-controller --agent cursor
 ```
 
 ## MCP

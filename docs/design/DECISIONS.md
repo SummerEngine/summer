@@ -2,9 +2,9 @@
 
 Why the contract says what it says. Written for a fresh agent (or human) who needs to trust the system before working inside it. The rules themselves live in `CONTRACT.md`.
 
-## D1. Rename to `SummerEngine/summer`; npm stays `summer-engine`
+## D1. Repo `summerengine/summer`; npm stays `summer-engine`
 
-The repo was created as `SummerEngine/summer` (2026-02-26) and later renamed to `summer-engine-agent`; the old slug still redirects, so the org owns the name. "Summer" is the product people speak ("install Summer", "build it with Summer"); the repo is its front door. The npm package keeps its name because thousands of MCP configs run `npx -y summer-engine@latest` and there is zero benefit to breaking them. Rejected: `summer-agent` (this is not an agent — Codex/Claude/Cursor are the agents; it's the system they use), `summer-mcp`/`summer-cli` (one interface each), `summer-sdk` (reserved for in-game APIs).
+"Summer" is the product people speak ("install Summer", "build it with Summer"); the repo is its front door. The npm package keeps its name because thousands of MCP configs run `npx -y summer-engine@latest` and there is zero benefit to breaking them. Rejected: `summer-agent` (this is not an agent — Codex/Claude/Cursor are the agents; it's the system they use), `summer-mcp`/`summer-cli` (one interface each), `summer-sdk` (reserved for in-game APIs).
 
 ## D2. Six content kinds; no process ontology
 

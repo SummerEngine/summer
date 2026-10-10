@@ -39,7 +39,7 @@ What it does (verified output at the time of writing; counts move as the library
 
 ```
   ✓  Linked to Claude Code  ~/.claude.json
-  (local dev)  MCP server command: node /abs/path/summer-engine-agent/dist/bin/summer.js mcp
+  (local dev)  MCP server command: node /abs/path/summer/dist/bin/summer.js mcp
   ✓  Installed <N> skills (<N> new, 0 updated; <M> preview — labelled in each skill's guidance; use --stable-only to skip)  ~/.claude/skills/
 Doctor …
 ```

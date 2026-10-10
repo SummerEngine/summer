@@ -1,6 +1,6 @@
 # Naming conventions
 
-One story for what is called what. Three docs used to tell three different ones; this file is the only one. **Do not deviate without updating this file first.**
+What is called what. **Do not deviate without updating this file first.**
 
 ## The five names
 
@@ -8,7 +8,7 @@ One story for what is called what. Three docs used to tell three different ones;
 |---|---|---|
 | **The product** | **Summer** | The open-source system in this repo: the library, the live tools (MCP + CLI), project memory, evals. "Install Summer", "build it with Summer", "Summer's library". |
 | **The editor** | **Summer Engine** | The proprietary desktop app — editor + runtime — that `summer install` downloads. Always two words. Never shorten it to "Summer" when you mean the app; never call the system "Summer Engine". |
-| **GitHub repo** | `summerengine/summer` | Renamed from `summer-engine-agent` with the 3.0.0 release (2026-09-10); GitHub redirects keep old links working. The org's display casing is still `SummerEngine` — URLs are case-insensitive, so `summerengine/summer` is the name to write. |
+| **GitHub repo** | `summerengine/summer` | GitHub URLs are case-insensitive; write it lowercase. |
 | **npm package** | `summer-engine` | What users install: `npx -y summer-engine@latest …`. Stays as-is forever — thousands of MCP configs run it. Never recommend `summer-cli` (an unrelated, inactive package we do not own). |
 | **Binary** | `summer` | The CLI entry point (`package.json` `bin.summer`), also the MCP server (`summer mcp`). |
 
@@ -50,7 +50,7 @@ Filesystem names shared with the desktop engine — do not rename: `~/.summer/` 
 | Headline / first mention | "Summer is the open-source game-development system for AI agents." |
 | The app the user downloads | "Summer Engine" ("the Summer Engine app" when the distinction matters) |
 | The package in a command | code-style `summer-engine`; the binary, code-style `summer` |
-| Platform publishing | "Summer Platform" (`summer publish`, `summer_creator_*`). The older "Summercraft" name survives only in three creator-token strings in `src/core/auth.ts` / `src/cli/commands/login.ts`. |
+| Platform publishing | "the Summer store" (`summer_export_game`, `summer_publish_build`). `summer publish` and `summer_creator_*` are the deprecated legacy creator API. |
 | The technical base | "Summer Engine's upstream technical base is Godot 4.6.1" — use the upstream name only where compatibility, migration, extension APIs, attribution, or licensing requires it (`library/references/godot-version`). |
 
 ## Changes that need an explicit "yes" in the same session before commit
@@ -71,4 +71,4 @@ Silence is not consent on these.
 - [ ] `package.json` has `name: "summer-engine"`, `bin.summer`, `main: ".opencode/plugins/summer.js"`.
 - [ ] README and docs say "Summer" for the system and "Summer Engine" for the editor, never mixed.
 - [ ] No `summer:<category>/<name>` or `summer:<slug>` form is used as an *invocation* anywhere in `library/**` or `docs/**`. `git grep -n 'summer:' library docs` should show only prose that explains the retired form (this file, `DEVELOPMENT.md`, `MIGRATION-V2-V3.md`, `design/REVIEW-*.md`) or a colon after the word "summer" in a sentence.
-- [ ] The repo name in prose is `summerengine/summer` with the rename parenthetical until the rename lands; drop the parenthetical after.
+- [ ] The repo name in prose is `summerengine/summer`.

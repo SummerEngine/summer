@@ -1,9 +1,9 @@
 id: tool/creator-publish
 kind: tool
 version: 1.1.0
-summary: "Deprecated: publishes a .pck to the legacy Summercraft API. Use summer_export_game, then summer_publish_build, to upload to summer.games."
+summary: "Deprecated: publishes a .pck to the legacy creator API. Use summer_export_game, then summer_publish_build, to upload to summer.games."
 use_when:
-  - releasing a user-approved build to a Summercraft channel
+  - releasing a user-approved build to a legacy creator channel
   - '"ship this exported build to the live channel"'
   - '"release version 1.2.0 of my game"'
 do_not_use_when:

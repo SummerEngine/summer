@@ -47,7 +47,7 @@ How the plugin manifests reference skills, and what is verified:
   run exists.
 - **Codex** — `.codex-plugin/plugin.json` carries the same per-skill `skills`
   array. Whether Codex reads that field, and with which type, is
-  **unverified**; the v2 manifest carried it and nobody has confirmed a load.
+  **unverified**.
 - **Factory** — reads skills only from a root `skills/` directory; the
   manifest's `skills` array is not read (open gap, see the table).
 

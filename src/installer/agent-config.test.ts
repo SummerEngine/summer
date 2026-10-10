@@ -422,12 +422,6 @@ describe("configureSummerGamesMcp", () => {
     expect(second?.changed).toBe(false);
   });
 
-  it("adds a url-only entry for Cursor", async () => {
-    const path = join(tmp(), "mcp.json");
-    await configureSummerGamesMcp({ agent: "cursor", scope: "user", env: { SUMMER_CURSOR_MCP_CONFIG_FILE: path } as NodeJS.ProcessEnv });
-    expect(JSON.parse(readFileSync(path, "utf-8")).mcpServers["summer-games"]).toEqual({ url: GAMES_URL });
-  });
-
   it("adds a [mcp_servers.summer-games] url table for Codex without touching summer-engine", async () => {
     const path = join(tmp(), "config.toml");
     const env = { SUMMER_CODEX_CONFIG_FILE: path } as NodeJS.ProcessEnv;

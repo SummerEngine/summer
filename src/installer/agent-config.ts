@@ -178,7 +178,7 @@ export async function configureSummerGamesMcp(
   } else {
     const current = await readJsonConfig(target.path);
     const next = copyJsonObject(current);
-    const entry = spec.remoteMcp.format === "json-http" ? { type: "http", url } : { url };
+    const entry = { type: "http", url };
     next.mcpServers = mergeNamedObject(next.mcpServers, name, entry, "mcpServers");
     const nextRendered = renderJsonFile(next);
     changed = renderJsonFile(current) !== nextRendered;

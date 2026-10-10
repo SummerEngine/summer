@@ -89,7 +89,7 @@ export type McpFormat =
   | "yaml-hermes"
   | "json-gemini";
 
-export type RemoteMcpFormat = "json-http" | "json-url" | "toml-url";
+export type RemoteMcpFormat = "json-http" | "toml-url";
 
 export type SkillLocationKind =
   | "skill-dir"
@@ -144,7 +144,8 @@ export interface AgentSpec {
    * How this agent lists a remote MCP server that signs in with OAuth on its
    * own (the Summer Games player MCP). Absent: setup links the engine only.
    *  json-http { mcpServers: { <name>: { type: "http", url } } }   (Claude Code)
-   *  json-url  { mcpServers: { <name>: { url } } }                 (Cursor)
+   * Cursor is left out: its OAuth callback (cursor://...) is not a redirect
+   * api.summer.games accepts yet (docs/components/player-mcp.md in summer-platform).
    *  toml-url  [mcp_servers.<name>] url                            (Codex)
    */
   remoteMcp?: { format: RemoteMcpFormat; signIn: string };
@@ -277,7 +278,6 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_CURSOR_MCP_CONFIG_FILE",
     format: "json-stdio",
-    remoteMcp: { format: "json-url", signIn: "In Cursor Settings, open MCP and choose Connect next to summer-games." },
     mcp: { user: home(".cursor", "mcp.json"), project: project(".cursor", "mcp.json") },
     restart: "Restart Cursor and enable the summer-engine MCP server if prompted.",
     skills: sharedSkills({

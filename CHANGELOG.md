@@ -4,7 +4,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
-- `summer setup claude-code|codex|cursor` also adds `summer-games`, the Summer Games MCP at `https://mcp.summer.games/mcp` (friends, parties, messages and the inbox, as you). The agent signs in through summer.games the first time: `/mcp` in Claude Code, `codex mcp login summer-games` in Codex, Connect in Cursor's MCP settings. No credential is written. `--no-games` skips it.
+- `summer setup claude-code|codex` also adds `summer-games`, the Summer Games MCP at `https://mcp.summer.games/mcp` (friends, parties, messages and the inbox, as you). The agent signs in through summer.games the first time: `/mcp` in Claude Code, `codex mcp login summer-games` in Codex. No credential is written. `--no-games` skips it.
 - `summer_publish_build` refused with `template_set_unavailable` no longer only says "update Summer Engine": with the newest engine, Summer Games may still be turning that Summer version on, so retry the same upload later (the same clientVersion works). It shows the store's own reason when there is one.
 
 ## [3.4.2] - 2026-10-10

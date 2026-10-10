@@ -1,4 +1,4 @@
-# generate-registry — the registry compiler
+# generate-registry: the registry compiler
 
 One definition, every surface; drift is a build failure (CONTRACT.md §6).
 
@@ -38,7 +38,7 @@ Requires Node >= 22.18 (native TypeScript type stripping), same as
 | `index.json` | Searchable catalog: id, kind, version, content_hash, summary, use_when, facets, compatibility, related, status (sorted by id) |
 | `counts.json` | Per-kind totals + grand total (README badges, website `toolsNumber`) |
 | `aliases.json` | legacy alias -> id map (generation fails on a duplicate alias) |
-| `skills-registry.json` | Data replacing the hand-written TS `SKILL_REGISTRY`: id, name, description, clients, recommended, status, path |
+| `skills-registry.json` | What the skill installer reads: id, name, description, clients, recommended, status, path |
 | `templates-registry.json` | What `summer create` / `summer list templates` read (`src/core/templates.ts`): id, slug, version, summary, status, aliases, systems, do_not_use_when, path, and `builtin` or `pin {repo, commit, tree_digest, default_branch}` |
 | `plugin.claude.json` | -> `.claude-plugin/plugin.json` |
 | `marketplace.claude.json` | -> `.claude-plugin/marketplace.json` |
@@ -51,10 +51,9 @@ Requires Node >= 22.18 (native TypeScript type stripping), same as
 Apply targets live in `targets.ts` (source of truth, one key per supported
 client) and are mirrored by the committed
 `integrations/<agent>/manifest-target.json` files; a test fails if they drift
-apart. Clients without a generated manifest (windsurf, cline, roo-code,
-kilo-code, github-copilot, vscode-copilot, opencode, lm-studio) have empty
-target lists — their `integrations/<agent>/README.md` documents exactly what
-`summer setup <client>` writes instead. See `integrations/README.md` for the
+apart. Clients without a generated manifest have empty target lists; their
+`integrations/<agent>/README.md` documents what `summer setup <client>`
+writes instead. See `integrations/README.md` for the
 complete agent-support map.
 
 Every output is deterministic: stable key order, sorted resource and skill
@@ -65,16 +64,10 @@ npm run generate:registry" because the applied root dot-files are build
 artifacts of `integrations/<agent>` + `library/`. Agent hosts ignore unknown
 manifest fields.
 
-Manifest conventions preserved per agent (fields and field order match each
-agent's manifest format), with three
-deliberate changes:
-
-1. every manifest carries the FULL skill list (the historical 4-skill
-   codex/cursor gap and 0-skill factory/gemini gaps were bugs);
-2. skill paths point at `./library/skills/<slug>/`;
-3. `version` fields and the numeric tool-count claims inside descriptions are
-   stamped from `package.json` and the real tool count (they had drifted to
-   58/62/52/50+ across manifests).
+Each manifest keeps its agent's fields and field order. Every manifest
+carries the full skill list at `./library/skills/<slug>/`, and `version`
+fields and tool-count claims inside descriptions are stamped from
+`package.json` and the real tool count.
 
 ## content_hash formula
 
@@ -130,15 +123,15 @@ embeds the query and fuses the two rankings (reciprocal rank fusion, k = 60;
 ## Count-claims guard (part of `--check`)
 
 Scans the docs that actually carry numeric claims — `README.md`, `AGENTS.md`,
-`GEMINI.md`, `CLAUDE.md`, `library/references/**/*.md`, `_persona/**/*.md`,
-`.opencode/**/*.md`, `docs/*.md` (top level only; `docs/design/` is a dated
-historical record), `integrations/**/*.md` — for claims matching
+`GEMINI.md`, `CLAUDE.md`, `library/references/**/*.md`,
+`.opencode/**/*.md`, `docs/*.md` (top level only; `docs/design/` is not
+scanned), `integrations/**/*.md` — for claims matching
 `(?<![\w.])(\d+)[ -](tools?|skills?)(?![\w-])` (e.g. "58 tools", "58-tool",
 "3 skills") and fails when the number differs from `counts.json`. The
-look-arounds keep "4.6 tools" and "pre-v3 skill" (versions), "skills-based",
+look-arounds keep "4.6 tools" and "v3 skills" (versions), "skills-based",
 and "3-toolkit" from matching.
 
-Limitations (simple, honest regex — by design):
+Limitations (a simple regex, by design):
 
 - `50+ tools`, spelled-out numbers, and prose separating number from noun are
   not checked.

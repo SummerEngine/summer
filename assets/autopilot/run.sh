@@ -123,8 +123,8 @@ echo
 echo "Frames and full log: $OUT"
 
 # ── Verdict ───────────────────────────────────────────────────────────────────────
-# Every errors_seen entry is one line the engine's SummerVerifyLogger::log_error wrote
-# (modules/1summer_engine/verify/summer_verify_logger.cpp), shaped exactly
+# Every errors_seen entry is one line the engine's SummerVerifyLogger::log_error wrote,
+# shaped exactly
 #
 #     LEVEL|file:line|function|code|rationale
 #

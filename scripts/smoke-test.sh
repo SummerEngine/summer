@@ -1,6 +1,6 @@
 #!/bin/bash
-# Smoke test for the Summer
-# Run from: tools/summer-cli/
+# Smoke test for the Summer CLI
+# Run from: the repository root
 # Requires: npm run build (dist/ must exist)
 
 set -e

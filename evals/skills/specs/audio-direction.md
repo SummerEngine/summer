@@ -52,7 +52,7 @@ runner: manual   # /skill-test today; no automated harness yet
 - [ ] Skill asks "May I ..." before any `Write`, `summer_project_setting`, or `summer_generate_audio` call.
 - [ ] Skill writes `.summer/audio-bible.md` only after asking.
 - [ ] Skill never calls `summer_set_resource_property` on an inline sub_resource (silent-fail trap).
-- [ ] Skill ends with routing to `/summer:design-mechanic` or implementation skill.
+- [ ] Skill ends with routing to the `design-mechanic` skill or implementation skill.
 
 ## Case 2: Failure Path — references contradict the brief
 

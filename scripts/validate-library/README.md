@@ -90,8 +90,8 @@ What it checks:
    exit code is unaffected; the line exists so authors decide deliberately.
    Only skill<->skill pairs are checked.
 
-Exit codes: 0 clean (including when `library/` does not exist yet), 1 on any
-violation; `WARN` lines never change the exit code. Requires Node >= 22.18 (native TypeScript type stripping); use
-`/opt/homebrew/bin/node` locally.
+Exit codes: 0 clean (including when `library/` does not exist), 1 on any
+violation; `WARN` lines never change the exit code. Requires Node >= 22.18
+(native TypeScript type stripping).
 
 Tests: `src/lib/registry/*.test.ts` (vitest), fixtures under `fixtures/`.

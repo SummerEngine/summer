@@ -13,7 +13,7 @@
  *
  * PRECONDITION: a running Summer editor with a SCRATCH project open (the gate
  * mutates the open scene, then cleans up after itself). Auto-detected via the
- * ~/.summer/instances registry (same registry lib/engine.ts uses), falling
+ * ~/.summer/instances registry (same registry src/core/engine.ts uses), falling
  * back to the legacy ~/.summer/api-port + api-token files.
  *
  * Invoked by scripts/compat-smoke.sh — run that, not this, so the CLI is
@@ -32,7 +32,7 @@ import { createInterface } from "node:readline";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CLI_DIR = resolve(__dirname, "..");
-// Hardcoded to match lib/store.ts getSummerDir(): the spawned MCP server always
+// Hardcoded to match src/core/store.ts getSummerDir(): the spawned MCP server always
 // reads ~/.summer, so preflight must look in exactly the same place.
 const SUMMER_DIR = join(homedir(), ".summer");
 const INSTANCE_STALE_MS = 180_000;
@@ -50,7 +50,7 @@ let projectArg = null;
       projectArg = args[++i];
       if (!projectArg) fatal(2, "--project requires a path");
     } else if (args[i] === "--help" || args[i] === "-h") {
-      console.log("Usage: bash tools/summer-cli/scripts/compat-smoke.sh [--project <path>]");
+      console.log("Usage: bash scripts/compat-smoke.sh [--project <path>]");
       process.exit(0);
     } else {
       fatal(2, `Unknown argument: ${args[i]}`);

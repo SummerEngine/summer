@@ -7,7 +7,7 @@
  * library/references/mcp-tools-reference/):
  *   README.md, AGENTS.md, GEMINI.md, CLAUDE.md,
  *   library/references/** /*.md, _persona/** /*.md, .opencode/** /*.md,
- *   docs/*.md (top level only — docs/design/ is a dated historical record),
+ *   docs/*.md (top level only — docs/design/ is not scanned),
  *   integrations/** /*.md
  *
  * Honest limitations (documented, deliberate):

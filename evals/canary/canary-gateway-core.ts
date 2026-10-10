@@ -1,13 +1,9 @@
 /**
  * Blind tool-canary gateway — pure policy core (no I/O).
  *
- * Origin: SummerEngine/SummerEngine branch codex/world-tool-balanced-suite-ready,
- * tools/summer-cli/src/dev/canary-gateway-core.ts (Marcus / frozaken). Ported
- * into evals/canary/ 2026-09-03. The only edits: the two constructors, whose
- * TypeScript parameter properties Node's strip-only mode rejects, now assign
- * explicit fields; this header; and the canary lists below, trimmed
- * 2026-09-03 when summer_frame_camera / summer_camera_visibility were dropped
- * by their author after benchmarks. See README.md in this directory.
+ * The two constructors assign explicit fields instead of using TypeScript
+ * parameter properties, which Node's strip-only mode rejects. See README.md
+ * in this directory.
  */
 import { createHash } from "node:crypto";
 

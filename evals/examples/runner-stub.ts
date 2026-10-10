@@ -21,7 +21,7 @@ const report: ExampleRunReport = {
   skipped: true,
   skipReason: fs.existsSync(examplesDir)
     ? "library/examples/ exists but the pinned-engine runner is not implemented yet"
-    : "library/examples/ does not exist yet (migration in flight)",
+    : "library/examples/ does not exist yet",
 };
 
 console.log(`example-eval: SKIP — ${report.skipReason}`);

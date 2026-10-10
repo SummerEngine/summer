@@ -14,7 +14,7 @@
 bash scripts/compat-smoke.sh [--project <path>]
 ```
 
-**Run it before every engine release AND before every npm publish of summer-engine.** Both sides of the MCP <-> engine HTTP contract are unit-tested only against mocks (MCP tests mock the engine; engine tests mock the client), so a contract drift between them is invisible to CI. That is exactly how MCP 2.7.0-2.8.0 shipped appending `SaveScene` into multi-op batches while engine 0.5.60+ rejects such batches wholesale (`failure_reason: "unsupported_transport"`) — every scene mutation via MCP was broken for weeks with all tests green.
+**Run it before every engine release AND before every npm publish of summer-engine.** Both sides of the MCP <-> engine HTTP contract are unit-tested only against mocks (MCP tests mock the engine; engine tests mock the client), so a contract drift between them is invisible to CI. In 2.7.0–2.8.0 the MCP server appended `SaveScene` to multi-op batches, which engine 0.5.60+ rejects (`failure_reason: "unsupported_transport"`); every scene mutation through MCP failed for weeks while all tests passed.
 
 What it does:
 

@@ -76,13 +76,13 @@
 **Expected behavior:**
 
 - Skill detects no brief exists.
-- Skill suggests: "No `.summer/GameSoul.md` yet — without a brief, this level has no game to serve. Run `/summer:brainstorm-game` first, or give me the core loop + mechanics inline so I can anchor the design."
+- Skill suggests: "No `.summer/GameSoul.md` yet — without a brief, this level has no game to serve. Run the `brainstorm-game` skill first, or give me the core loop + mechanics inline so I can anchor the design."
 - Skill does NOT design a generic level in a vacuum.
 
 **Assertions:**
 
 - [ ] Skill checks for `.summer/GameSoul.md` early (before designing).
-- [ ] Skill explicitly recommends `/summer:brainstorm-game` if absent.
+- [ ] Skill explicitly recommends the `brainstorm-game` skill if absent.
 - [ ] Skill offers the inline-anchor alternative as a fallback.
 - [ ] No design happens without anchoring information.
 

@@ -41,7 +41,7 @@
 - [ ] Skill asks "May I ..." before any `summer_project_setting` or `summer_set_prop` call.
 - [ ] Skill writes `.summer/art-bible.md` only after asking.
 - [ ] Skill never calls `summer_set_resource_property` on an inline sub_resource (silent-fail trap).
-- [ ] Skill ends with routing to `/summer:audio-direction` or similar.
+- [ ] Skill ends with routing to the `audio-direction` skill or similar.
 
 ## Case 2: Failure Path — mixed-technique pitch
 

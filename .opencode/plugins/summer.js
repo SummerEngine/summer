@@ -25,9 +25,9 @@ const SKILLS_DIR = path.resolve(__dirname, '../../library/skills');
 const ORIENTATION_MARKER = 'Summer Engine is loaded.';
 
 const ORIENTATION = `<EXTREMELY_IMPORTANT>
-${ORIENTATION_MARKER} Summer skills are available under the summer: namespace.
+${ORIENTATION_MARKER} Summer skills are available by their plain names.
 
-Activate summer:using-summer FIRST in any Summer Engine session — it sets workflow priority and the red-flag list.
+Activate using-summer FIRST in any Summer Engine session; it sets workflow priority and the red-flag list.
 
 Process skills (run before building): brainstorm-game, debug, play.
 Discipline skills (shape what you build): gdscript-patterns, scene-composition, art-direction, audio-direction, asset-strategy.

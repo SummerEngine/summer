@@ -1,19 +1,17 @@
 # Outcome evals — does the agent's work hold up as a scene or a game?
 
 **What is tested:** the OUTCOME of an agent trajectory, not the correctness of
-individual engine ops. The engine repo's mechanical E2E proves that
+individual engine ops. Engine-level tests prove that
 `RunSceneScript` rolls back on error and a snapshot diff reports the right
 `added[]`; it says nothing about whether "block out a courtyard" produced a
 courtyard a camera can frame with its floor on the ground. This family replays
-recorded tool-call trajectories through the toolkit's own tool table against a
+recorded tool-call trajectories through Summer's own tool table against a
 **fresh editor on a pristine fixture**, then judges the result with programmatic
 assertions over five evidence sources: the world snapshot, the snapshot diff,
 the `.tscn`/`project.godot` the agent left on disk, a bounded play of the game
 (debugger errors), and a verification probe that reads the RUNNING game
-(frustum containment, animation-tree state, a jump, a frame). The design this
-implements is the engine repo's
-`doc/SUMMER/research/blender-mcp/09-outcome-evals-design.md`; this directory is
-its MVP-0 cut: **replay mode, assertions only** — no live hosts, no budgets
+(frustum containment, animation-tree state, a jump, a frame). This is the
+first cut (MVP-0): **replay mode, assertions only**. No live hosts, no budgets
 enforced, no VLM judge.
 
 One rule from `evals/README.md` applies twice here: an eval that cannot fail is
@@ -26,7 +24,7 @@ discriminate, and it goes red.
 ## Running it
 
 Needs Node >= 22.18 (the runner runs unbuilt, like the rest of `evals/`), a
-built toolkit (`npm run build` — the tool table under test is imported from
+built package (`npm run build` — the tool table under test is imported from
 `dist/`, exactly as `evals/canary` does), and a Summer Engine editor binary. On
 Linux without a display you also need `xvfb-run` + Mesa llvmpipe
 (`apt-get install -y xvfb libgl1-mesa-dri`): every MVP-0 task either plays the
@@ -63,7 +61,7 @@ or `dist/` is missing.
 |---|---|
 | `run.json` | task, mode, toolkit version, engine version + sha256 of its advertised `opKinds`, fixture/golden sha256, pre-flight (needed vs advertised ops), per-phase timings, replay divergence |
 | `editor.log` | the editor's stdout/stderr (xvfb child) |
-| `trajectory.jsonl`, `trajectory.full.jsonl` | the replayed calls, recorded through the toolkit's own capture (redacted + eval-mode full stream) — a passing run's full stream is a valid golden |
+| `trajectory.jsonl`, `trajectory.full.jsonl` | the replayed calls, recorded through Summer's own capture (redacted + eval-mode full stream) — a passing run's full stream is a valid golden |
 | `replay.json` | per-step fresh vs recorded `ok`/`failure_reason`, divergence list, skipped (unreplayable) records |
 | `snapshot.before.json`, `snapshot.after.json`, `diff.json` | `GetWorldSnapshot` / `DiffWorldSnapshot` raw results |
 | `project.agent/` | `.tscn`/`.gd`/`project.godot` **as the agent left them** — the `tscn`/`project` evidence |
@@ -85,7 +83,7 @@ shape plus every run's result).
    one refuses the task with `evidence_missing:engine_lacks_op` (every
    assertion FAILs with that reason, nothing is replayed, exit 1) instead of
    scoring zeros. An engine that advertises no op list proves nothing and is let
-   through — the same posture as the toolkit's per-tool pre-flight. The hook
+   through — the same posture as Summer's per-tool pre-flight. The hook
    `--simulate-missing-ops GetWorldSnapshot` removes ops from a real advert so
    the refusal path can be exercised against a current build.
 2. **Unevaluable is FAIL.** A predicate whose evidence is missing (op failed,
@@ -105,14 +103,14 @@ shape plus every run's result).
    `summer mcp --project` uses (`~/.summer/instances/*.json`, `resourceRoot`
    match, live pid, health check). A developer's own open editor is never
    touched, and the eval editor never steals the machine-global api-port.
-5. **Replay goes through the toolkit, in-process.** Each golden record is
+5. **Replay goes through Summer's tool table, in-process.** Each golden record is
    re-issued with `dispatchTool()` from `src/core/capabilities/tool-dispatch.ts`
    — the same table `summer tool <slug>` uses and the same functions the MCP
    tools mirror — bound to the eval editor by project path. Not via
    `node dist/bin/summer.js tool …` as a subprocess: that command has no
    `--project` selector and resolves the engine through the machine-global
    `~/.summer/api-port` pointer, which the eval editor deliberately does not
-   publish. Every replayed call is also recorded through the toolkit's own
+   publish. Every replayed call is also recorded through Summer's own
    trajectory capture (`SUMMER_TRAJECTORY_DIR` + `SUMMER_TRAJECTORY_EVAL=1`),
    so a passing run's `trajectory.full.jsonl` is itself a replayable golden.
 6. **Determinism by construction.** The probe child is pinned by the engine to
@@ -224,7 +222,7 @@ evidence source and every predicate family exercised at least once.
 | T6.1-hills | empty3d | terrain exists + collision + HeightMapShape3D, shadowed sun, camera current, camera sees terrain, camera preview ok | — |
 | T7.1-flyover | grid | AnimationPlayer, clip length ≥ 5.5, autoplay set, position_3d track on Camera3D, camera sees GridBox_* at t=6.2 s, clean 7 s play | — |
 
-### Scoreboard on the baseline build (engine 0.5.65, toolkit 2.8.2, xvfb + llvmpipe, 4 vCPU)
+### Scoreboard on the baseline build (engine 0.5.65, summer-engine 2.8.2, xvfb + llvmpipe, 4 vCPU)
 
 ```
 | run                                         | kind   | verdict | failed required      | expected to fail     | exact | divergence | retried |    s |
@@ -280,7 +278,7 @@ and exits 1.
    with the task in the same PR.
 
 Never weaken an assertion to make a golden pass; if an expectation changes,
-change it in the same commit as the engine/toolkit change that justifies it,
+change it in the same commit as the engine or Summer change that justifies it,
 and say so in the baseline diff.
 
 ## Cadence
@@ -292,12 +290,10 @@ behaviour change on a fixed script (usually the intended fix, sometimes the
 regression) or an assertion that stopped discriminating; both are read from
 `board.md` and the failing run's `assertions.json`.
 
-## Not in MVP-0 (design §5, MVP-1 and Full)
+## Not in MVP-0
 
 Live drivers through the canary gateway, tool-call/wall-clock budget
 enforcement (`budget` is recorded only), `ScenePreview` iso captures and the
 VLM rubric, honesty metrics over the final message, the asset kit and the
-T2/T8 tiers, `runtime_prop` via `GetRuntimeNode`, PlayGame `seed`/`fixed_fps`
-(engine §6.2), 2D `rect` in the snapshot (engine §6.1). The engine E2E
-relocation (acceptance criterion 6) is engine-repo work and is not part of this
-change.
+T2/T8 tiers, `runtime_prop` via `GetRuntimeNode`, PlayGame `seed`/`fixed_fps`,
+2D `rect` in the snapshot.

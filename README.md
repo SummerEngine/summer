@@ -4,7 +4,7 @@
 
 <img src="docs/brand/sun.png" alt="" width="128">
 
-### Let any AI coding agent build games in Summer Engine.
+### The game engine built for AI: any agent builds, tests and publishes a full game.
 
 **MCP server · game-dev skills · `summer` CLI. One npm package: `summer-engine`.**
 
@@ -20,11 +20,11 @@
 
 ## What this is
 
-[Summer Engine](https://www.summerengine.com) is a desktop game engine. This repo connects your AI coding agent (Claude Code, Cursor, Codex, Copilot and many more) to it, the way an MCP server for Blender connects an agent to Blender, but for making whole games.
+[Summer Engine](https://www.summerengine.com) is the game engine built for AI. This repo connects your AI coding agent (Claude Code, Cursor, Codex, Copilot and many more) to it: the agent builds a whole game in the engine, tests it, publishes it to [summer.games](https://summer.games) and reads how players play it.
 
 | Part | What it does |
 |---|---|
-| **MCP server** (`summer mcp`) | Tools your agent calls to drive the running editor: build scenes, write scripts, play the game, take screenshots, read errors. |
+| **MCP server** (`summer mcp`) | Tools your agent calls to drive the running editor: build scenes, write scripts, play the game, take screenshots, read errors. After `summer login --store` it also carries the store, publishing and Grow tools. |
 | **Skills** | Game-dev know-how your agent loads: movement, combat, multiplayer, VFX, audio, UI, level design and more. |
 | **CLI** (`summer`) | Installs the engine, signs you in, sets up your agent, creates projects from templates and publishes games. |
 
@@ -34,8 +34,8 @@ With Summer installed, your agent can:
 
 - **Build real games**: scenes, scripts, physics and UI, through live MCP tools.
 - **Build multiplayer games** on Summer's own networking: matchmaking, parties, leaderboards, player data and world saves.
-- **Add analytics** to see how players play.
-- **Publish games** to the [summer.games](https://summer.games) store.
+- **Add analytics** to the game and read it back: store page views, launches, play sessions, play time and your own events.
+- **Publish games** to the [summer.games](https://summer.games) store: the store page, art, the build, a private preview link, and one approval click for the owner.
 - **Use proven recipes**: skills, templates and references, all searchable through one index.
 - **Check its own work**: play the game, take screenshots, read the debugger, press real keys.
 - **Resume any project**: `.summer/` project memory lets a fresh agent pick up where the last one stopped.
@@ -226,8 +226,10 @@ If the user wants `summer` on their `PATH` for everyday terminal use, a global n
 |---|---|---|
 | **Create** | Available | Scaffold from a pinned template, build scenes and scripts through MCP, generate 2D/3D/audio/video assets, guided by the library. |
 | **Test** | Available | The verification ladder: compile checks, screenshots, live play with debugger reads, and input-driven probes (`RunVerification`) that press real keys and assert on real frames. |
-| **Publish** | Preview | `summer_export_game` exports the game with the installed engine (headless); `summer_publish_build` uploads it to your game's summer.games store listing after you confirm the exact game, file and version (sign in once with `summer login --store`). Nothing is submitted silently. |
-| **Grow** | Planned | Analytics, retention and live-ops tooling will arrive as new library entries. Not part of this package yet. |
+| **Publish** | Available | `summer_export_game` builds the store file with the installed engine; `summer_publish_build` uploads it after you confirm the exact game, file and version. The store tools write the store page (text, tags, long description, support contact, release date), set its art and trailer, make private preview links, and submit it with one approval link for the owner; `summer_store_releases` and `summer_build_release` ship approved builds. Nothing publishes without the owner's approval. |
+| **Grow** | Available | `summer_grow_overview` and `summer_grow_analytics` read store page views, launches, play sessions, play time and your game's own events (`Summer.client.analytics.capture`, see the `summer-analytics` skill); the Grow tools also manage team members, store A/B tests, prices per country and applications for Summer's growth services. |
+
+The store, publishing and Grow tools come from the hosted Summer Engine MCP; the local MCP mounts them after `summer login --store`.
 
 ## What's in this repo
 
@@ -321,7 +323,7 @@ We tell you before we touch your disk.
 | Creator token | ~50 bytes | only when you run `summer login --creator` and mint one | One-time browser value to `~/.summer/creator-token`; never replaces the auth token |
 | Store sign-in | ~2 KB | only when you run `summer login --store` | Browser OAuth (PKCE, loopback port 47615-47617) to `~/.summer/oauth-token` with its refresh token, plus this machine's public client id in `~/.summer/oauth-client`; never replaces the auth token |
 | Skill files | small, bundled | in the npm package | no extra network call |
-| Generated assets (3D / image / audio / video) | varies | only on explicit `summer_generate_*` calls when that provider route is enabled for the account | Summer Engine Studio |
+| Generated assets (3D / image / audio / video) | varies | only on explicit `summer_generate_*` calls | Summer Engine Studio |
 | URL imports | varies | only on explicit `summer_import_from_url` calls | the URL you provide |
 
 Not downloaded, not collected:
@@ -335,11 +337,9 @@ Not downloaded, not collected:
 |---|---|---|
 | **Summer** (this repo: CLI, MCP server, library, integrations) | **MIT** | [summerengine/summer](https://github.com/summerengine/summer) |
 | **Summer Engine app** (the desktop editor and runtime) | free to download, closed source for now | [summerengine.com/download](https://summerengine.com/download) |
-| **Hosted Summer integrations** | availability and terms vary by rollout; preview features are labeled in the CLI | [summerengine.com/pricing](https://summerengine.com/pricing) |
+| **Hosted Summer services** (store, publishing, Grow, multiplayer hosting, AI generation) | run under your Summer account | [summerengine.com/pricing](https://summerengine.com/pricing) |
 
-A command, tool contract, or roadmap entry does not by itself mean a hosted
-service is production-ready. Managed publishing, hosting, store submission, and
-matchmaking are not promised by this package.
+Publishing to summer.games, multiplayer hosting, matchmaking and Grow are live. Coming next: selling paid games, push notifications to players, and Android play inside the Summer Games app.
 
 ## CLI reference
 

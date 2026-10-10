@@ -250,6 +250,15 @@ Preview. One fast, read-only call that walks every node of a 3D scene and lists 
 | `summer_creator_config` | Read or confirm updates to the shared non-secret `~/.summer/config.json`. It never accepts or returns tokens. |
 | `summer_capture_gameplay` | Real gameplay frames without a running editor: starts the game (main scene or `scene`) in the engine's offscreen verify instance (`--summer-verify`, real renderer, window parked offscreen, no focus) (`--summer-offscreen`) at `resolution` (default `1920x1080`), waits `waitSeconds`, runs `steps` (`press` a button by text, `key`, `action`, `click`, `drag`, `wait`, `shot`), saves `frames` PNGs (HUD included; with a `shot` step, one per shot) to `<project>/.summer/captures/<time>/`. `args` are the game's own flags, passed after `--` (e.g. `["--autostart"]` to skip the title screen). Imports the project first when `.godot/` is missing. Returns each path with its real width and height; warns when the stretch settings render another size. For store screenshots. |
 
+### Hosted store, publishing and Grow tools
+
+These come from the hosted Summer Engine MCP (the same server ChatGPT and Claude connect to) and are mounted into the local MCP after `summer login --store`; `summer tool <name>` reaches them too.
+
+- **Store page:** `summer_store_list_games`, `summer_store_create_game`, `summer_store_get_listing` (the page, the checklist and `availableTags`), `summer_store_update_listing` (text, tags, long description, support contact, release date, content rating), `summer_store_set_art`, `summer_store_set_trailer`, `summer_store_preview_link`.
+- **Builds and release:** `summer_build_begin_upload` / `_sign_parts` / `_complete_upload` / `_status` (the local `summer_publish_build` does these from disk), `summer_store_version_*` for web and native downloads, `summer_store_submit` (one approval link for the owner), `summer_store_cancel_submission`, `summer_store_releases`, `summer_build_release`.
+- **Grow:** `summer_grow_overview` and `summer_grow_analytics` (store page views, launches, play sessions, play time, custom events), `summer_grow_members`, `summer_grow_ab_tests`, `summer_grow_prices`, `summer_grow_event_limit`, `summer_grow_apply` and `summer_grow_applications`.
+- **Guides:** the `publish-your-game`, `store-listing`, `store-art` and `grow-analytics` skills (`summer_read_library`).
+
 ### Library search (2)
 
 | Tool | Use |

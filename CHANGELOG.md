@@ -2,10 +2,6 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
-
-- `summer_publish_build` refused with `template_set_unavailable` no longer only says "update Summer Engine": with the newest engine, Summer Games may still be turning that Summer version on, so retry the same upload later (the same clientVersion works). It shows the store's own reason when there is one.
-
 ## [3.4.2] - 2026-10-10
 
 Agents that publish a game get further on their own: the library finds the publishing guides, gameplay captures get past the title screen, and image generation and exports stop failing on store sizes and Android:
@@ -17,6 +13,8 @@ Agents that publish a game get further on their own: the library finds the publi
 - `summer_generate_image` sends no model unless you name one, so width 1920 with height 1080 gets a model that reaches it instead of `size_unreachable`. It waits up to 3 minutes for the larger models. The new `out` parameter (a folder or a .png/.jpg/.webp path) says where to save the image; without it, it goes to `<TMPDIR>/summer-gen/`.
 - `summer_export_game` exports the targets the installed engine can build: Android on 0.7.0 is left out with a warning (it needs 0.7.1), and the other targets still export. `skippedTargets` names what was left out.
 - `summer_publish_build` checks a game with a server's Build declaration before anything is uploaded: when `summer.build.json` declares other platforms than the export holds, the preview and the upload stop with `declaration_mismatch`, so no version is spent. `summer_export_game` warns about the same mismatch, and `alignDeclaration: true` sets `summer.build.json` targetPlatforms to the exported targets.
+- `summer_publish_build` refused with `template_set_unavailable` no longer only says "update Summer Engine": with the newest engine, Summer Games may still be turning that Summer version on, so retry the same upload later (the same clientVersion works). It shows the store's own reason when there is one.
+- The README, the overview and the tool reference describe the shipped product: publishing to summer.games and Grow are available, the hosted store, publishing and Grow tools are listed, and what is still coming is named (selling paid games, push notifications, Android play in the Summer Games app). `tool/export-game`, `tool/publish-build`, `tool/capture-gameplay`, `skill/multiplayer-publish` and `skill/summer-analytics` are stable: the store launch used them on real games.
 
 ### Added
 - Skill field `hosted_resource` in `resource.yaml`: the skill's body comes from that hosted MCP resource (#90).

@@ -1,12 +1,12 @@
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { getSummerDir, setSummerDirForTests, writeStoreJson } from "../store.js";
 import { writeSummerBundle } from "../../test-helpers/summer-bundle-fixture.js";
 import { LAST_EXPORT_FILE } from "./export-game.js";
-import { normalizeClientVersion, publishBuild, type PublishBuildDependencies } from "./publish-build.js";
+import { normalizeClientVersion, publishBuild, uploadParts, type Grant, type PublishBuildDependencies } from "./publish-build.js";
 import { BuildToolError } from "./summer-bundle.js";
 
 const GATEWAY = "https://gateway.test";
@@ -347,5 +347,95 @@ describe("publishBuild", () => {
     expect(normalizeClientVersion("1.0.0-r2")).toBe("v1.0.0-r2");
     expect(() => normalizeClientVersion("1.0")).toThrow(/vMAJOR\.MINOR\.PATCH/);
     expect(() => normalizeClientVersion(undefined)).toThrow(BuildToolError);
+  });
+});
+
+describe("uploadParts", () => {
+  const PART = 8;
+  const wait = (ms: number) => new Promise<void>((done) => setTimeout(done, ms));
+  /** Deterministic 5-20 ms jitter, so a failing seed can be replayed. */
+  const jitter = (seed: number) => () => {
+    seed = (seed * 1103515245 + 12345) % 2 ** 31;
+    return 5 + (seed % 16);
+  };
+
+  /**
+   * A store whose signing takes real time, like the network round-trip to
+   * :signParts. It signs exactly the parts it is asked for, except `refuse`.
+   * PUTs take a few ms and record their bytes.
+   */
+  async function upload(partCount: number, options: { signMs: () => number; refuse?: number }) {
+    const file = join(root, `export-${partCount}.bin`);
+    const content = Buffer.from(Array.from({ length: partCount * PART - 3 }, (_, index) => index % 251));
+    await writeFile(file, content);
+    const puts = new Map<number, Buffer[]>();
+    const sign = async (numbers: number[]): Promise<Grant[]> => {
+      await wait(options.signMs());
+      return numbers
+        .filter((n) => n !== options.refuse)
+        .map((n) => ({ partNumber: n, url: `https://r2.test/part/${n}`, headers: {}, expiresAt: Date.now() + 3_600_000 }));
+    };
+    const fetch = (async (input: string | URL | Request, init: RequestInit = {}) => {
+      const partNumber = Number(String(input).split("/").pop());
+      puts.set(partNumber, [...(puts.get(partNumber) ?? []), Buffer.from(init.body as Uint8Array)]);
+      await wait(2);
+      return new Response(null, { status: 200 });
+    }) as typeof globalThis.fetch;
+    const run = uploadParts(sign, file, content.length, { partSizeBytes: PART, partCount }, { fetch, sleep: async () => undefined, now: Date.now, token: async () => "unused" });
+    return { run, puts, content };
+  }
+
+  for (const [name, signMs] of [
+    ["10 ms", () => () => 10],
+    ["5-20 ms jitter", (seed: number) => jitter(seed)],
+  ] as const) {
+    it(`uploads every part exactly once when each sign takes ${name}`, async () => {
+      for (const partCount of [1, 2, 3, 4, 5, 8]) {
+        const { run, puts, content } = await upload(partCount, { signMs: signMs(partCount) });
+        await run;
+        expect([...puts.keys()].sort((a, b) => a - b)).toEqual(Array.from({ length: partCount }, (_, index) => index + 1));
+        for (const [partNumber, bodies] of puts) {
+          expect(bodies).toEqual([content.subarray((partNumber - 1) * PART, partNumber * PART)]);
+        }
+      }
+    });
+  }
+
+  it("fails with store_sign_failed when the store will not sign a part", async () => {
+    const { run, puts } = await upload(5, { signMs: () => 10, refuse: 3 });
+    const error = await failure(run);
+    expect(error.code).toBe("store_sign_failed");
+    expect(error.message).toContain("part 3");
+    expect(puts.has(3)).toBe(false);
+  });
+
+  it("aborts the other parts' uploads once one part fails", async () => {
+    const file = join(root, "export-stuck.bin");
+    await writeFile(file, Buffer.alloc(4 * PART, 1));
+    const signals: AbortSignal[] = [];
+    const sign = async (numbers: number[]): Promise<Grant[]> =>
+      numbers.map((n) => ({ partNumber: n, url: `https://r2.test/part/${n}`, headers: {}, expiresAt: Date.now() + 3_600_000 }));
+    // Part 1 is always refused; the other PUTs never finish on their own: like fetch, only an abort ends them.
+    const fetch = (async (input: string | URL | Request, init: RequestInit = {}) => {
+      if (String(input).endsWith("/1")) {
+        await wait(5);
+        return new Response(null, { status: 500 });
+      }
+      const signal = init.signal!;
+      signals.push(signal);
+      return new Promise<Response>((_, reject) => {
+        if (signal.aborted) reject(signal.reason);
+        signal.addEventListener("abort", () => reject(signal.reason));
+      });
+    }) as typeof globalThis.fetch;
+    const error = await failure(uploadParts(sign, file, 4 * PART, { partSizeBytes: PART, partCount: 4 }, { fetch, sleep: async () => undefined, now: Date.now, token: async () => "unused" }));
+    expect(error.code).toBe("store_part_upload_failed");
+    expect(error.message).toContain("Part 1 of 4");
+    expect(signals.length).toBeGreaterThan(0);
+    expect(signals.every((signal) => signal.aborted)).toBe(true);
+    // Nothing starts another upload after the failure was reported.
+    const started = signals.length;
+    await wait(20);
+    expect(signals.length).toBe(started);
   });
 });

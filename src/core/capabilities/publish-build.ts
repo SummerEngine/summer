@@ -248,6 +248,10 @@ async function readPart(path: string, partNumber: number, partSize: number, size
  * Upload the given parts: signed in batches, PUT from disk, re-signed when
  * refused or about to expire. `sign` asks the store for URLs (build
  * publications bind each to its part SHA-256; store versions to its length).
+ * Each sign asks for every part not yet uploaded, including the parts other
+ * workers hold, so one sign usually covers them all. A part fails to sign only
+ * when the store was asked for it and did not sign it; the first fatal error
+ * stops the other workers and aborts their uploads.
  */
 export async function uploadParts(
   sign: (partNumbers: number[]) => Promise<Grant[]>,
@@ -258,60 +262,85 @@ export async function uploadParts(
   parts: number[] = Array.from({ length: plan.partCount }, (_, index) => index + 1)
 ): Promise<void> {
   const queue = [...parts];
+  const unfinished = new Set(parts);
   const grants = new Map<number, Grant>();
-  let signing: Promise<void> | null = null;
+  const stop = new AbortController();
+  let failure: unknown;
+  let signing: { batch: number[]; done: Promise<void> } | null = null;
   const fresh = (grant?: Grant) => grant !== undefined && grant.expiresAt - deps.now() > 60_000;
   const grantFor = async (partNumber: number): Promise<Grant> => {
-    for (let attempt = 0; attempt < 3; attempt++) {
-      if (fresh(grants.get(partNumber))) return grants.get(partNumber)!;
+    for (;;) {
+      const grant = grants.get(partNumber);
+      if (fresh(grant)) return grant!;
       if (!signing) {
-        const batch = [...new Set([partNumber, ...queue.filter((n) => !fresh(grants.get(n)))])].slice(0, MAX_SIGNED_PARTS);
-        signing = sign(batch)
+        const others = [...unfinished].filter((n) => n !== partNumber && !fresh(grants.get(n)));
+        const batch = [partNumber, ...others].slice(0, MAX_SIGNED_PARTS);
+        const done = sign(batch)
           .then((signed) => {
             for (const grant of signed) grants.set(grant.partNumber, grant);
           })
           .finally(() => {
             signing = null;
           });
+        signing = { batch, done };
       }
-      await signing;
+      const { batch, done } = signing;
+      await done;
+      // The store was asked for this part and did not sign it (or signed it already expiring).
+      if (batch.includes(partNumber) && !fresh(grants.get(partNumber))) {
+        throw new BuildToolError("store_sign_failed", `The store did not sign part ${partNumber}.`, "Recovery: retry; a retry continues the same upload.");
+      }
     }
-    throw new BuildToolError("store_sign_failed", `The store did not sign part ${partNumber}.`, "Recovery: retry; a retry continues the same upload.");
+  };
+
+  const upload = async (partNumber: number) => {
+    const body = await readPart(file, partNumber, plan.partSizeBytes, sizeBytes);
+    for (let attempt = 0; ; attempt++) {
+      let status: number | null = null;
+      let error: unknown = null;
+      try {
+        const grant = await grantFor(partNumber);
+        const response = await deps.fetch(grant.url, {
+          method: "PUT",
+          headers: grant.headers,
+          body,
+          redirect: "error",
+          signal: AbortSignal.any([stop.signal, AbortSignal.timeout(600_000)]),
+        });
+        if (response.ok) return;
+        status = response.status;
+      } catch (caught) {
+        error = caught;
+      }
+      if (stop.signal.aborted) return;
+      // An expired or refused signature gets a new URL on the next try.
+      if (status === 400 || status === 403) grants.delete(partNumber);
+      if (attempt >= PART_RETRIES) {
+        if (error instanceof BuildToolError) throw error;
+        throw new BuildToolError(
+          "store_part_upload_failed",
+          `Part ${partNumber} of ${plan.partCount} did not upload${status ? ` (${status})` : ""}.`,
+          "Recovery: retry with the same file and clientVersion; the upload continues where it stopped."
+        );
+      }
+      await deps.sleep(500 * 2 ** attempt);
+      if (stop.signal.aborted) return;
+    }
   };
 
   const worker = async () => {
-    for (let partNumber = queue.shift(); partNumber !== undefined; partNumber = queue.shift()) {
-      const body = await readPart(file, partNumber, plan.partSizeBytes, sizeBytes);
-      for (let attempt = 0; ; attempt++) {
-        const grant = await grantFor(partNumber);
-        let status: number | null = null;
-        try {
-          const response = await deps.fetch(grant.url, {
-            method: "PUT",
-            headers: grant.headers,
-            body,
-            redirect: "error",
-            signal: AbortSignal.timeout(600_000),
-          });
-          if (response.ok) break;
-          status = response.status;
-        } catch {
-          status = null;
-        }
-        // An expired or refused signature gets a new URL on the next try.
-        if (status === 400 || status === 403) grants.delete(partNumber);
-        if (attempt >= PART_RETRIES) {
-          throw new BuildToolError(
-            "store_part_upload_failed",
-            `Part ${partNumber} of ${plan.partCount} did not upload${status ? ` (${status})` : ""}.`,
-            "Recovery: retry with the same file and clientVersion; the upload continues where it stopped."
-          );
-        }
-        await deps.sleep(500 * 2 ** attempt);
+    for (let partNumber = queue.shift(); partNumber !== undefined && !stop.signal.aborted; partNumber = queue.shift()) {
+      try {
+        await upload(partNumber);
+        unfinished.delete(partNumber);
+      } catch (error) {
+        failure ??= error;
+        stop.abort();
       }
     }
   };
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, queue.length) }, worker));
+  if (stop.signal.aborted) throw failure;
 }
 
 export function normalizeClientVersion(value?: string): string {

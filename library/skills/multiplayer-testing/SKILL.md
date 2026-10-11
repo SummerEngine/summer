@@ -207,8 +207,21 @@ capture, window size) with `DisplayServer.get_name() != "headless"`.
   `Summer.client.leave()` only disconnects. `session_disconnected` fires and
   their seat is held. `session_left` arrives when the World ends; hosted, it
   arrives when Summer ends the Session.
+- **Which scene the hosted server starts.** Local Play starts the authority
+  scene by name. Summer starts the exported `server.pck` with no scene, so a
+  server preset without the `summer_authority` feature still passes here and
+  then runs the title screen hosted, where every join fails with
+  `world_start_timeout`. Run the bundle's `server.pck` with no scene
+  (`multiplayer-publish`, step 4d).
+- **A wrong Game ID.** Local Play has no hosted identity, so
+  `Summer.initialize("some-id")` passes here and fails hosted with
+  `game_identity_mismatch`. Call `Summer.initialize()` with no ID; only a
+  real online join after publishing proves it.
 - **Real devices, real accounts, real distances.** Publish to staging for that
   (`multiplayer-publish`).
+
+Before a version reaches players, run `release-readiness`: it covers these
+gaps on the `.zip` you upload.
 
 ## Checklist for any multiplayer change
 

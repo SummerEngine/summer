@@ -26,7 +26,7 @@ func _ready() -> void:
 	spawner.entity_spawned.connect(_on_player_spawned)
 	spawner.command_received.connect(_on_command)
 	world.session_left.connect(_on_session_left)
-	var initialized: SummerResult = await Summer.initialize(Game.GAME_ID).get_result_or_completed_signal()
+	var initialized: SummerResult = await Summer.initialize().get_result_or_completed_signal()
 	if not initialized.ok:
 		push_error(initialized.message)
 		return
@@ -141,7 +141,7 @@ func _ready() -> void:
 	# Connect before joining, or the first values arrive unseen.
 	spawner.state_group_created.connect(_on_group_created)
 	spawner.entity_spawned.connect(_on_entity_spawned)
-	var initialized: SummerResult = await Summer.initialize(Game.GAME_ID).get_result_or_completed_signal()
+	var initialized: SummerResult = await Summer.initialize().get_result_or_completed_signal()
 	if not initialized.ok:
 		push_error(initialized.message)
 		return
@@ -440,7 +440,6 @@ occurrence_streams = Array[SummerNetworkOccurrenceStream]([SubResource("Commands
 extends RefCounted
 ## Shared by the client and the authority: ids, streams and shared rules.
 
-const GAME_ID := "game_courtyard"
 const QUEUE := &"courtyard"
 const MOTION := &"courtyard.motion"
 const CMD := &"courtyard.cmd"

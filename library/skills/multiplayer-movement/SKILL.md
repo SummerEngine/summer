@@ -176,7 +176,7 @@ func _ready() -> void:
 	spawner.entity_spawned.connect(_on_player_spawned)
 	spawner.command_received.connect(_on_command)
 	world.session_left.connect(_on_session_left)
-	var initialized: SummerResult = await Summer.initialize(Game.GAME_ID).get_result_or_completed_signal()
+	var initialized: SummerResult = await Summer.initialize().get_result_or_completed_signal()
 	if not initialized.ok:
 		push_error(initialized.message)
 		return

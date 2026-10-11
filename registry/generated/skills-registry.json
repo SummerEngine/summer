@@ -918,6 +918,20 @@
       ]
     },
     {
+      "id": "skill/release-readiness",
+      "name": "release-readiness",
+      "description": "Before releasing a Summer game version, prove players can play it: server starts its authority scene, online join works, progress saves, no fixed Game ID.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/release-readiness/",
+      "domains": [
+        "deployment",
+        "multiplayer",
+        "playtest"
+      ]
+    },
+    {
       "id": "skill/remote-deploy",
       "name": "remote-deploy",
       "description": "Run or test the game on a real device — phone, tablet, another computer — via the Remote Deploy button, runnable export presets, and on-device debugging.",

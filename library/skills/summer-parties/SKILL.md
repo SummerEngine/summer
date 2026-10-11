@@ -57,7 +57,7 @@ func _ready() -> void:
 	spawner.state_group_created.connect(_on_group_created)
 	spawner.entity_spawned.connect(_on_entity_spawned)
 	spawner.event_received.connect(_on_event)
-	var initialized: SummerResult = await Summer.initialize(Game.GAME_ID).get_result_or_completed_signal()
+	var initialized: SummerResult = await Summer.initialize().get_result_or_completed_signal()
 	if not initialized.ok:
 		push_error(initialized.message)
 		return

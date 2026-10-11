@@ -137,13 +137,17 @@ summer.games: Publish uploads this one file as a new Build.
 Check that `server.pck` and your `config/` files are listed, and that the
 "Left N server-only files" count covers your `authority/` files. The
 `Server: … mainScene …` line names the scene the Build declares, not the
-scene the pack will start; step 4d checks that. Every
+scene the pack will start; step 4d checks that. The `Exported by Summer`
+line must name a released Summer: export with the released editor from the
+download page, never a development build, and export again after you update
+Summer. Players' apps run the packs on the released Summer of that version;
+step 4e checks it. Every
 result message and every export error, with its fix, is in
 [export-errors.md](export-errors.md).
 
 ## 4. Check before uploading
 
-Do all four. Each catches problems the export doesn't. Run them on the
+Do all five. Each catches problems the export doesn't. Run them on the
 `.zip` you will upload, not on a pack exported separately with the server
 preset (`--export-pack`): that pack differs from the bundle's `server.pck`,
 for example it keeps `gameId`, and can pass where the upload fails.
@@ -218,6 +222,22 @@ scene, add `summer_authority` to the server preset's custom features and
 export again. Later lines may complain that there is no hosted World; that
 is expected locally.
 
+**e. The client compiles on the released Summer.** Run the bundle's
+`client.pck` with the released Summer of the version the export names (see
+`release-readiness` check 7 for how to confirm the stamp), and fail on any
+compile error:
+
+```sh
+perl -e 'alarm shift; exec @ARGV' 60 <released-summer> --headless --verbose --main-pack "$P/out/client.pck" --quit-after 600 > "$P/out/client-run.log" 2>&1
+grep -E 'SCRIPT ERROR|Parse Error|Failed to load script' "$P/out/client-run.log"
+```
+
+The grep must print nothing; the run itself exits normally even when a
+script fails. A failure here, such as `Static function "party_queue()" not
+found`, means the scripts use an API the released version lacks, usually
+because a development build made the export. Every player would see an
+empty window. Re-export with the current Summer release.
+
 ## 5. Upload the Build
 
 1. The game must exist in Summer Studio, and `gameId` in
@@ -271,6 +291,7 @@ Use step 4d to see which scene runs.
 - [ ] The analyzer prints `ok=true` twice.
 - [ ] Both probes load their scene, with identical composition manifests.
 - [ ] The bundle's `server.pck`, run with no scene, loads the authority scene first.
+- [ ] `Exported by Summer` names a released Summer, and the bundle's `client.pck` run on that release prints no `SCRIPT ERROR`, `Parse Error` or `Failed to load script`.
 - [ ] Every `Summer.initialize` call passes no Game ID.
 - [ ] After release: a real online join reaches the game (`release-readiness`).
 - [ ] Local Play passed with the same project.
@@ -288,5 +309,6 @@ Use step 4d to see which scene runs.
 | Upload after only exporting | Run Local Play, the analyzer, both probes and the server start check first | Each catches what the others miss |
 | Server preset without the `summer_authority` feature | `custom_features="summer_authority"` | The hosted server starts the title and every join times out |
 | Test a server pack exported on its own | Test the `server.pck` inside the `.zip` | The separate pack keeps `gameId` and hides a wrong Game ID |
+| Export with a development build of Summer | Export with the released editor from the download page, again after every update | Players run the pack on the released Summer of the stamped version; newer APIs fail to compile and the game opens to an empty window |
 | Read an empty server log as a hang | Run step 4d | A release server holds back its output until it exits |
 | Export a patch | Export Project, or Export PCK/ZIP without Export As Patch | summer.games takes complete bundles or packs |

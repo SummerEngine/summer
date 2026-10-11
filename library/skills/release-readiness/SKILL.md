@@ -1,6 +1,6 @@
 ---
 name: release-readiness
-description: "Before releasing a Summer game version, prove players can play it: server starts its authority scene, online join works, progress saves, no fixed Game ID."
+description: "Before releasing a Summer game version, prove players can play it: server scene, online join, saved progress, no fixed Game ID, a released Summer compiles it."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: deployment
@@ -58,8 +58,11 @@ of it:
 <summer> --headless --path . --import
 <summer> --headless --path . --export-release "summer.games" build/<game>.summer.zip
 mkdir -p build/bundle
-unzip -o build/<game>.summer.zip server.pck config/summer.build.json -d build/bundle
+unzip -o build/<game>.summer.zip server.pck client.pck summer-bundle.json config/summer.build.json -d build/bundle
 ```
+
+A game without a server has no `server.pck` or `config/`; `unzip` then
+warns about the missing names and extracts the rest.
 
 `<summer>` is the Summer Engine executable. Two look-alikes hide real
 failures:
@@ -75,7 +78,7 @@ failures:
 
 Checks 1 and 2 apply to every game with a server (`summer.build.json` names
 a `server.exportPreset`). Checks 3 and 4 apply to every game with online
-play. Checks 5 and 6 apply to every game.
+play. Checks 5, 6 and 7 apply to every game.
 
 ### 1. The server pack starts the authority scene
 
@@ -198,6 +201,47 @@ ID passes there. Only check 2 proves this one.
 **Fix.** Call `Summer.initialize()` with no ID (Summer 0.7.1 and later), on
 the client and on the authority.
 
+### 7. Export with a released Summer, and its scripts compile on the players' runtime
+
+**Why.** The export records which Summer made it, in the client pack's
+`.summer/export.json` and under `export` in the bundle's
+`summer-bundle.json`: `summerVersion` and `engineSha`. Players' apps run the
+game on a released Summer runtime with the same MAJOR.MINOR and a patch at
+least the stamped one. A development build of Summer
+can stamp a version that is already released while it has APIs that release
+lacks. Scripts that use them then fail to compile on every player's device,
+and the game opens to an empty or black window. Summer doesn't compile
+scripts when you upload, so every upload check passes.
+
+**Check it.**
+
+1. Read the stamp: `cat build/bundle/summer-bundle.json`. The export log
+   shows it too: `Exported by Summer <version> (engine <sha>)`.
+2. `summerVersion` must be a released Summer version, and `engineSha` must
+   equal that release's `engineSha` in
+   `downloads.summer.games/engine-templates/<summerVersion>/manifest.json`
+   (published for Summer 0.7.1 and later). If it differs, or that address has
+   nothing for the version, a development build made the export.
+3. Run the client pack on that released Summer, and fail on any compile
+   error. The run exits normally even when a script fails, so the grep is the
+   check:
+
+   ```sh
+   perl -e 'alarm shift; exec @ARGV' 60 <released-summer> --headless --verbose --main-pack build/bundle/client.pck --quit-after 600 > build/client-run.log 2>&1
+   grep -E 'SCRIPT ERROR|Parse Error|Failed to load script' build/client-run.log
+   ```
+
+   `<released-summer>` is the Summer executable of the stamped version from
+   the download page, not the development build that made the export. The
+   grep must print nothing. The run compiles the scripts that the main
+   scene and autoloads load; a script that loads only later in play compiles
+   when play reaches it, so check 2 still matters for online games.
+
+**Fix.** Ask the user to install the current Summer release from
+https://summerengine.com/download (or, with their OK, run
+`summer install --yes`). Export again with it, and rerun this check on the
+new `.zip` before you upload it.
+
 ## Troubleshooting
 
 ### Every online join fails with `world_start_timeout`, but Local Play works
@@ -208,6 +252,16 @@ Most likely, in this order:
 2. The game passes a fixed Game ID. Run check 6.
 
 After the fix, export a new `.zip`, upload it, promote it and run check 2.
+
+### The game opens to a blank window for every player
+
+The game works in your editor, but every player sees an empty or black
+window. Running the client pack as in check 7 prints
+`Parse Error: Static function "…" not found` and
+`Failed to load script "res://…"`. A development build of Summer made the
+export, and the scripts use something the released version doesn't have.
+Re-export with the current Summer release, upload the new version and
+promote it.
 
 ### The game server's log is empty
 
@@ -240,4 +294,5 @@ here would have caught:
 - [ ] 4. Online progress is loaded and committed through authority player data, and survives a fresh install.
 - [ ] 5. Players can get back to the title from inside a session, online and offline.
 - [ ] 6. Every `Summer.initialize` passes no ID, or an ID the game got from Summer.
+- [ ] 7. The export stamp names a released Summer and its `engineSha`, and `client.pck` run on that released Summer prints no `SCRIPT ERROR`, `Parse Error` or `Failed to load script`.
 - [ ] One line per check reported to the user before anything is changed.

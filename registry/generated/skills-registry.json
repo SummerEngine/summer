@@ -920,7 +920,7 @@
     {
       "id": "skill/release-readiness",
       "name": "release-readiness",
-      "description": "Before releasing a Summer game version, prove players can play it: server starts its authority scene, online join works, progress saves, no fixed Game ID.",
+      "description": "Before releasing a Summer game version, prove players can play it: server scene, online join, saved progress, no fixed Game ID, a released Summer compiles it.",
       "clients": "all",
       "recommended": false,
       "status": "preview",

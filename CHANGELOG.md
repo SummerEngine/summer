@@ -4,6 +4,13 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+## [3.5.2] - 2026-10-10
+
+Summer works with Kimi Code and other agents whose model checks tool schemas strictly.
+
+- Kimi Code no longer fails every prompt with `400 tools.function.parameters is not a valid moonshot flavored json schema ... items must be an object` when Summer is connected. Ten tools (`summer_align_distribute_3d`, `summer_raycast`, `summer_instantiate_scene`, `summer_capture_gameplay`, `summer_test_placement`, `summer_snap_to_surface`, `summer_navigation_probe`, `summer_attach_to_surface`, `summer_repeat_along`, `summer_game_input`) described their `[x, y, z]` and `[x, y]` vectors in a form Moonshot rejects. Every tool now lists its parameters in the JSON Schema subset strict providers accept: a vector is an array of numbers with an exact length, and no schema points into another with `$ref`. The hosted store tools get the same treatment. The tools still reject a vector of the wrong length.
+- If you added Summer tools to Kimi's `disabledTools` to work around this, remove them after updating, then restart Kimi Code.
+
 ## [3.5.1] - 2026-10-10
 
 Summer Games now connects from almost every agent setup supports, and large store uploads finish.

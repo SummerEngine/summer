@@ -2,6 +2,8 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs
 import { tmpdir } from "os";
 import { join } from "path";
 import { afterEach, describe, expect, it } from "vitest";
+import { parse as parseYaml } from "yaml";
+import { allAgentSpecs } from "./agent-table.js";
 import {
   GEMINI_EXTENSION_DIR_NAME,
   configureAgentMcp,
@@ -10,6 +12,7 @@ import {
   normalizeChannel,
   parseAgent,
   resolvePackageRoot,
+  topLevelKey,
 } from "./agent-config.js";
 
 const tmpDirs: string[] = [];
@@ -422,15 +425,74 @@ describe("configureSummerGamesMcp", () => {
     expect(second?.changed).toBe(false);
   });
 
-  it("leaves Cursor out until api.summer.games accepts its OAuth redirect", async () => {
+  it("adds a url entry for Cursor", async () => {
     const path = join(tmp(), "mcp.json");
-    const result = await configureSummerGamesMcp({
-      agent: "cursor",
-      scope: "user",
-      env: { SUMMER_CURSOR_MCP_CONFIG_FILE: path } as NodeJS.ProcessEnv,
-    });
-    expect(result).toBeNull();
-    expect(existsSync(path)).toBe(false);
+    await configureSummerGamesMcp({ agent: "cursor", scope: "user", env: { SUMMER_CURSOR_MCP_CONFIG_FILE: path } as NodeJS.ProcessEnv });
+    expect(JSON.parse(readFileSync(path, "utf-8")).mcpServers["summer-games"]).toEqual({ url: GAMES_URL });
+  });
+
+  // Every agent with a remoteMcp entry: written once in its own shape, found
+  // again by URL on the next run, next to summer-engine and its other servers.
+  const remoteAgents = allAgentSpecs().filter((spec) => spec.remoteMcp);
+  it.each(remoteAgents.map((spec) => [spec.id, spec] as const))("%s: written once, next to summer-engine", async (_id, spec) => {
+    const path = join(tmp(), spec.format.startsWith("toml") ? "config.toml" : spec.format.startsWith("yaml") ? "config.yaml" : "config.json");
+    const env = { [spec.envOverride]: path } as NodeJS.ProcessEnv;
+    await configureAgentMcp({ agent: spec.id, scope: "user", env });
+    const first = await configureSummerGamesMcp({ agent: spec.id, scope: "user", env });
+    expect(first).toMatchObject({ serverName: "summer-games", wrote: true });
+    const afterFirst = readFileSync(path, "utf-8");
+    const second = await configureSummerGamesMcp({ agent: spec.id, scope: "user", env });
+    expect(second).toMatchObject({ serverName: "summer-games", changed: false });
+    await configureAgentMcp({ agent: spec.id, scope: "user", env });
+    const text = readFileSync(path, "utf-8");
+    expect(text).toBe(afterFirst);
+
+    const entry = spec.remoteMcp!.entry(GAMES_URL);
+    if (spec.format === "toml") {
+      expect(text).toContain(`[mcp_servers.summer-games]\nurl = "${GAMES_URL}"`);
+      expect(text.match(/\[mcp_servers\.summer-engine\]/g)).toHaveLength(1);
+    } else if (spec.format === "toml-array") {
+      expect(text.match(/\[\[mcp_servers\]\]/g)).toHaveLength(2);
+      expect(text).toContain(`name = "summer-games"\ntransport = "streamable-http"\nurl = "${GAMES_URL}"\nauth = { type = "oauth", scopes = [] }`);
+    } else {
+      const parsed = (spec.format.startsWith("yaml") ? parseYaml(text) : JSON.parse(text)) as Record<string, Record<string, unknown>>;
+      const servers = parsed[topLevelKey(spec.format)];
+      expect(servers["summer-games"]).toEqual(entry);
+      expect(servers["summer-engine"]).toBeDefined();
+    }
+  });
+
+  it("only agents whose sign-in api.summer.games accepts get an entry", () => {
+    expect(remoteAgents.map((spec) => spec.id).sort()).toEqual(
+      [
+        "amp", "antigravity", "claude-code", "cline", "cline-cli", "codex", "copilot-jetbrains", "crush", "cursor",
+        "factory", "github-copilot", "goose", "grok-build", "hermes", "junie", "kilo-code", "kimi-code", "kiro",
+        "mistral-vibe", "opencode", "qwen-code", "trae", "vscode-copilot", "warp", "windsurf", "zed",
+      ].sort()
+    );
+  });
+
+  it("finds a hand-added entry under the agent's own address field (Windsurf serverUrl, Goose uri)", async () => {
+    const windsurf = join(tmp(), "mcp_config.json");
+    writeFileSync(windsurf, JSON.stringify({ mcpServers: { summer: { serverUrl: GAMES_URL } } }));
+    const ws = await configureSummerGamesMcp({ agent: "windsurf", scope: "user", env: { SUMMER_WINDSURF_MCP_CONFIG_FILE: windsurf } as NodeJS.ProcessEnv });
+    expect(ws).toMatchObject({ existingName: "summer", changed: false });
+
+    const goose = join(tmp(), "config.yaml");
+    const seed = "extensions:\n  summer:\n    type: streamable_http\n    name: summer\n    uri: https://mcp.summer.games/mcp\n";
+    writeFileSync(goose, seed);
+    const gs = await configureSummerGamesMcp({ agent: "goose", scope: "user", env: { SUMMER_GOOSE_CONFIG_FILE: goose } as NodeJS.ProcessEnv });
+    expect(gs).toMatchObject({ existingName: "summer", changed: false });
+    expect(readFileSync(goose, "utf-8")).toBe(seed);
+  });
+
+  it("finds a hand-added Mistral Vibe block by its url", async () => {
+    const path = join(tmp(), "config.toml");
+    const seed = '[[mcp_servers]]\nname = "summer"\ntransport = "streamable-http"\nurl = "https://mcp.summer.games/mcp"\n';
+    writeFileSync(path, seed);
+    const result = await configureSummerGamesMcp({ agent: "mistral-vibe", scope: "user", env: { SUMMER_MISTRAL_VIBE_CONFIG_FILE: path } as NodeJS.ProcessEnv });
+    expect(result).toMatchObject({ existingName: "summer", changed: false });
+    expect(readFileSync(path, "utf-8")).toBe(seed);
   });
 
   it("adds no second Claude Code entry when the URL is already listed under another name", async () => {
@@ -518,11 +580,11 @@ describe("configureSummerGamesMcp", () => {
   });
 
   it("skips agents without a remote server entry", async () => {
-    const path = join(tmp(), "mcp_config.json");
+    const path = join(tmp(), "claude_desktop_config.json");
     const result = await configureSummerGamesMcp({
-      agent: "windsurf",
+      agent: "claude-desktop",
       scope: "user",
-      env: { SUMMER_WINDSURF_CONFIG_FILE: path } as NodeJS.ProcessEnv,
+      env: { SUMMER_CLAUDE_DESKTOP_CONFIG_FILE: path } as NodeJS.ProcessEnv,
     });
     expect(result).toBeNull();
     expect(existsSync(path)).toBe(false);

@@ -4,6 +4,9 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- **Summer Games in more agents.** `summer setup` now adds `summer-games` (`https://mcp.summer.games/mcp`: friends, parties and messages as you) for Cursor, GitHub Copilot in VS Code, the Copilot CLI and Copilot in JetBrains, Zed, Cline and Cline CLI, Kilo Code, OpenCode, Devin Desktop (Windsurf), Antigravity, Kiro, Trae, Warp, Goose, Hermes, Crush, Amp, Factory Droid, Junie, Qwen Code, Kimi Code, Grok Build and Mistral Vibe, as well as Claude Code and Codex. Each gets the entry in its own format, and setup prints the one sign-in step for that agent. As in 3.5.0, setup adds no second entry when the same address is already listed under another name, and `--no-games` skips it.
+- Not included, because they cannot sign in to it from their config file: Claude Desktop (add Summer Games as a custom connector in its settings), Roo Code and Rovo Dev (no sign-in for remote servers), and Visual Studio, Qoder and LM Studio (sign-in not yet checked).
+
 ## [3.5.0] - 2026-10-10
 
 Setup now connects Summer Games too, and agents that publish a game get further on their own. 3.4.2 was never published; its changes ship here.

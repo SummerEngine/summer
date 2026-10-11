@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- `summer_publish_build` and `summer_publish_download` no longer fail an upload of 3 or more parts with `store_sign_failed: The store did not sign part N` when the store signed every part. Each sign now asks for every part still to upload, a part counts as unsigned only when the store was asked for it and left it out, a signing error is retried like a failed part upload, and the first failure stops the other parts' uploads.
+
 ## [3.5.0] - 2026-10-10
 
 Setup now connects Summer Games too, and agents that publish a game get further on their own. 3.4.2 was never published; its changes ship here.

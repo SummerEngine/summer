@@ -18,4 +18,6 @@ Its current text lives on the hosted Summer Engine MCP, the same text the Studio
 2. A host that shows MCP prompts or resources has it as the `publish-your-game` prompt and the resource `summer://skills/publish-your-game`.
 3. Without a store sign-in: https://docs.summerengine.com/llms.txt lists every docs page; fetch any page as .md.
 
+Before the build upload, run `release-readiness` on the exact `.zip` you upload, and report each check to the owner; a hosted game's upload checks can pass while every online join fails.
+
 The one rule to keep even before you load it: Submitting does not publish. `summer_store_submit` returns an approval link; only the owner's click sends the game to review, and review comes before live.

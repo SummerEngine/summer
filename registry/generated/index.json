@@ -1599,7 +1599,7 @@
       "id": "skill/export-and-ship",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "6d8551fc18fd82ae6c71df61ca5798c0f0753a89b83e45824e3b87828b871d93",
+      "content_hash": "a9f78e274664897b2999364e3464b70329e01a7693b53a3df83c20d3447c5289",
       "summary": "Assess and prepare a game export: inventory installed templates and targets, validate release assets and config, produce supported builds after approval.",
       "use_when": [
         "the user wants to assess or prepare a Summer game export — Steam, itch, HTML5, iOS, Android targets as available in the installed build",
@@ -2146,7 +2146,7 @@
       "id": "skill/make-game",
       "kind": "skill",
       "version": "1.1.0",
-      "content_hash": "eba4e2b75b685fa814b218d8fd6c4cac0e4f4f692030645ab7e37d36c1caf83d",
+      "content_hash": "6b254b93c236527ecf7d7a3128aa9daa3fe264e533a011ce7cb829df4fd90a32",
       "summary": "Orchestration spine for 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship — delegates to specialist skills.",
       "use_when": [
         "the user says 'make me a game', 'build me a game', 'I want to make a [genre] game', or 'let's build something' — running the full game-dev pipeline",
@@ -2173,6 +2173,7 @@
         "skills": [
           "skill/audio-direction",
           "skill/export-and-ship",
+          "skill/release-readiness",
           "skill/design-mechanic",
           "skill/tune-performance",
           "skill/art-direction",
@@ -2193,7 +2194,7 @@
       "id": "skill/multiplayer",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "7a7212fba4b1aee4d9c9e5649b2ade77836829e6d9409e010b9731d79232305b",
+      "content_hash": "06771fb6465e2ed96bb03900d98e1b53bb79e36cda4f5540d8371fc4308274d5",
       "summary": "Start here for Summer multiplayer: how the authority, clients, Worlds and Sessions fit, and which skill comes next.",
       "use_when": [
         "the user wants multiplayer, co-op, PvP, online play over the internet, or to play with friends in a Summer game",
@@ -2224,6 +2225,7 @@
           "skill/multiplayer-state",
           "skill/multiplayer-testing",
           "skill/multiplayer-publish",
+          "skill/release-readiness",
           "skill/summer-matchmaking",
           "skill/summer-player-data"
         ]
@@ -2235,7 +2237,7 @@
       "id": "skill/multiplayer-movement",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "ab68306636a6916030e4c1a6c3e06fb41cefb13bb1b47a5c2f0fa08e24067508",
+      "content_hash": "b48c1aa09e885071d5007ecd8863a38f9bd467fa216314bac329a6bbc8df6e68",
       "summary": "Client-side movement in Summer multiplayer: owners move instantly, others glide, the authority checks each pose.",
       "use_when": [
         "moving players in a Summer multiplayer game: each player's own character, other players drawn smoothly",
@@ -2274,7 +2276,7 @@
       "id": "skill/multiplayer-project",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "801ded4cdd3cff6ca060fa920c6738ffe26eff3e8cff63ea88dfe3d185931886",
+      "content_hash": "c730c94e08e9807ad9404f4104eb1ad389c1a73e47a804929b31db29c8497b17",
       "summary": "Set up a Summer multiplayer project: both entry scenes, World and queue files, joining, and a first Local Play run.",
       "use_when": [
         "making a Summer game playable online or co-op: the first multiplayer setup",
@@ -2319,7 +2321,7 @@
       "id": "skill/multiplayer-publish",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "52117117e661cbd898d4faece8f72ef2304118999c80bce55a709619e8cec289",
+      "content_hash": "593c9f89234fab5846cab173a1723e06d2f3755effec21b692ccad31a099c531",
       "summary": "Ship a hosted Summer multiplayer game: the summer.games bundle, server preset, pre-upload checks, and a new Build.",
       "use_when": [
         "publishing a hosted Summer multiplayer game online so other players can join it",
@@ -2346,7 +2348,8 @@
         "skills": [
           "skill/multiplayer",
           "skill/multiplayer-project",
-          "skill/multiplayer-testing"
+          "skill/multiplayer-testing",
+          "skill/release-readiness"
         ]
       },
       "status": "preview",
@@ -2356,7 +2359,7 @@
       "id": "skill/multiplayer-state",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "64c1639093e7d51a39125236270278799fcddc42dab98cdf3d2649deec09d912",
+      "content_hash": "38e79fe70609234ad717f00685b6165e2dd41ee860ce0b721a07ac2f56ad80f4",
       "summary": "Authority-owned game state in Summer multiplayer: shared and private State groups, validated Commands, and Events.",
       "use_when": [
         "score, health, doors, rounds, inventories or wallets in a Summer multiplayer game, and who owns them",
@@ -2400,7 +2403,7 @@
       "id": "skill/multiplayer-testing",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "dd727ec7384785d9515dd7e906c46d4229e600a752aef81f5a645e908470a536",
+      "content_hash": "115c160d7e42a95589bac14a572811b0c9c3b26b37c5386b6eb647f2889ef162",
       "summary": "Test a Summer multiplayer game with Local Play: several players, a bad network, bots, and what a passing run shows.",
       "use_when": [
         "running or testing a Summer multiplayer game locally with several players (Local Play)",
@@ -2432,6 +2435,7 @@
           "skill/multiplayer-movement",
           "skill/multiplayer-state",
           "skill/multiplayer-publish",
+          "skill/release-readiness",
           "skill/summer-friends",
           "skill/summer-match-results",
           "skill/summer-matchmaking",
@@ -2824,7 +2828,7 @@
       "id": "skill/publish-your-game",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "b39692641d859b1d5a9d9b2e990bed521b0aba52319d336b4e3633c253a07a60",
+      "content_hash": "0328c6d71f662059cc2514864e005c2e71cf90811553ef2a2ecabbbf9cb4305f",
       "summary": "Publish a Summer game on Summer Games through MCP: store page, art, build upload, submit, and one approval link for the owner.",
       "use_when": [
         "the user says 'publish my game', 'put it on summer.games', 'launch it on the store' or 'submit it for review'",
@@ -2887,6 +2891,53 @@
         "skills": [
           "skill/vfx-water-ripple",
           "skill/3d-lighting"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
+      "id": "skill/release-readiness",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "b3bb73125c8dc0d3b790a1e15229a3b7dca81e8120d03b5e41076d3c5c8ec490",
+      "summary": "Before releasing a Summer game version, prove players can play it: server starts its authority scene, online join works, progress saves, no fixed Game ID.",
+      "use_when": [
+        "before uploading, promoting or releasing a new version to players: is it ready to release",
+        "every online join fails with world_start_timeout, or the hosted server's log is empty, while Local Play works",
+        "Summer.initialize fails with game_identity_mismatch: the initialized Game ID does not match hosted runtime context",
+        "checking that a hosted game's server.pck starts the authority scene and not the title screen",
+        "a game release failed for players and the check that would have caught it needs adding"
+      ],
+      "facets": {
+        "lifecycle": [
+          "launch",
+          "support"
+        ],
+        "domains": [
+          "deployment",
+          "multiplayer",
+          "playtest"
+        ],
+        "modalities": [
+          "project",
+          "docs"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/multiplayer",
+          "skill/multiplayer-publish",
+          "skill/multiplayer-testing",
+          "skill/multiplayer-project",
+          "skill/summer-player-data",
+          "skill/publish-your-game",
+          "skill/export-and-ship",
+          "skill/make-game",
+          "skill/bounded-engine-runs"
         ]
       },
       "status": "preview",
@@ -3786,7 +3837,7 @@
       "id": "skill/summer-parties",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "f32352dafa1077cf124a7ef4136041333bc8c73110fe37545e393ec6d862f4cd",
+      "content_hash": "3e306760574435b38fa0d0aefddf9569ea733a1dce0f279bed1c1e7fc072a7c8",
       "summary": "Let a Summer party play together: the leader presses Play, members follow into the same match. Hosted only.",
       "use_when": [
         "friends in a Summer party should land in the same multiplayer match: party play, play with friends, squad up",

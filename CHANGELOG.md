@@ -4,6 +4,12 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+Hosted games: agents check that players can actually join before a release.
+
+- **New `release-readiness` skill.** Before a version reaches players, it runs six checks on the summer.games `.zip` you upload: the bundle's `server.pck`, started with no scene, loads the authority scene; a real online join with the released version reaches the game; online play is reachable by default; the server saves online progress through player data; players can get back to the title; and `Summer.initialize` passes no hard-coded Game ID. It reports pass, fail, not applicable or not run for each, and grows by one check after every release that fails in a way none of them caught. The same checklist is in the docs at `/publishing/release-readiness`.
+- **The multiplayer skills call `Summer.initialize()` with no Game ID.** The summer.games bundle leaves `gameId` out, so an ID in code (or a fallback when it is missing) fails on the hosted server with `game_identity_mismatch` and every online join ends in `world_start_timeout`.
+- `multiplayer-publish` explains why the server preset needs the `summer_authority` custom feature, adds a pre-upload step that runs the bundle's `server.pck` with no scene, a real online join after release, and what an empty server log does and doesn't mean. `multiplayer-testing` lists what Local Play can't catch; `make-game` plans online play reachable by default, server-saved progress and a way back to the title, and runs `release-readiness` before shipping.
+
 ## [3.5.2] - 2026-10-10
 
 Summer works with Kimi Code and other agents whose model checks tool schemas strictly.

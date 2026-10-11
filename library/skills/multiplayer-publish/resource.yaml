@@ -22,6 +22,7 @@ related:
     - skill/multiplayer
     - skill/multiplayer-project
     - skill/multiplayer-testing
+    - skill/release-readiness
 source: official
 license: MIT
 status: preview

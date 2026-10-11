@@ -137,6 +137,10 @@ queries:
     expected: [skill/multiplayer-movement]
   - query: "publish my multiplayer game so my friends can join"
     expected: [skill/multiplayer-publish, skill/multiplayer]
+  - query: "check my game is ready before I release the new version to players"
+    expected: [skill/release-readiness]
+  - query: "nobody can join my online game, every join times out with world_start_timeout but local play works"
+    expected: [skill/release-readiness, skill/multiplayer-publish]
   - query: "save each player's progress between matches"
     expected: [skill/summer-player-data]
   - query: "add a leaderboard to my online game"

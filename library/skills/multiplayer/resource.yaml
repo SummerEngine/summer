@@ -25,6 +25,7 @@ related:
     - skill/multiplayer-state
     - skill/multiplayer-testing
     - skill/multiplayer-publish
+    - skill/release-readiness
     - skill/summer-matchmaking
     - skill/summer-player-data
 source: official

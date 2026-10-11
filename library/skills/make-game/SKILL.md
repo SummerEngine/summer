@@ -47,6 +47,7 @@ These rules from the playbooks apply to every genre:
 - **2D scales to the viewport.** Set `display/window/stretch/mode = canvas_items` and `stretch/aspect = expand`; UI uses Control anchors; code-positioned nodes compute from `get_viewport_rect().size`. Never hardcode 1920x1080.
 - **Playable slice, not tech demo.** Name the core loop in one sentence; every input gets feedback (tween, sound, particle, flash, shake); progression is visible; a restart exists. The bar is "feels good for 30 seconds".
 - **Fast first draft when someone is waiting.** The first playable version uses shapes, the palette and any template art, plus at most one or two generated assets the person specifically asked for; generation takes minutes, so it never blocks the first play. Say plainly that it is a first draft to get a feel for the game, that the art is not final, and ask if this is the direction they want. Generate the rest of the art in later passes.
+- **A way back to the title.** From inside play, a pause menu or a **Leave** button returns to the title screen without quitting the app.
 - **Text the default font can show.** No emoji or symbols (▲ ◀ ★ ♥ ✓) in UI text: they render as boxes with hex codes. Use words or icons; see `ui-basics`.
 
 ## The Pipeline
@@ -94,6 +95,12 @@ This phase doesn't have a dedicated skill yet — do it inline. Read `.summer/Ga
 1. **Core scenes** — main scene, level/menu scenes, prefabs the game needs
 2. **Core mechanics** — ranked, max 3 (the brief enforces this; respect it)
 3. **Cut list** — what's explicitly NOT in scope
+
+If the game has online play, the plan also fixes three product defaults; each one was missed by a real release:
+
+- **Online play is reachable by default.** A new player gets to it from the title without changing a setting. Hiding it behind a setting or a grown-ups gate is the owner's explicit decision, recorded in the plan, and it means someone joins online before every release.
+- **Progress is saved by the server.** Online progress goes through authority player data (`summer-player-data`), not only the player's local files.
+- **A way back to the title** from inside an online and an offline session.
 
 Save the plan to `.summer/build-plan.md`. Format:
 
@@ -236,8 +243,10 @@ Only if `summer_get_diagnostics` flags rendering or physics hotspots. Don't opti
 1. `play` from main scene.
 2. Walk every mechanic from the plan.
 3. Hit the win condition (or lose condition).
-4. `summer_get_diagnostics` clean.
-5. `debug` until clean if not.
+4. Return to the title from inside play, then start again.
+5. Online games: run Local Play (`multiplayer-testing`) and reach online play from the title as a new player, with default settings.
+6. `summer_get_diagnostics` clean.
+7. `debug` until clean if not.
 
 **Don't skip this even if every mechanic worked individually.** Integration bugs hide between mechanics.
 
@@ -248,6 +257,14 @@ Skill: export-and-ship
 ```
 
 Pre-flight checklist (icon, store banners, build config) before producing release builds for the targets in the brief.
+
+Before any version reaches players, run:
+
+```
+Skill: release-readiness
+```
+
+It checks the file you upload, not the editor: a hosted game's `server.pck` starts its authority scene, `Summer.initialize` passes no hard-coded Game ID, online play is reachable, progress is saved by the server, and players can get back to the title. Then, after publishing, the user joins online with the released version. Report each check as pass, fail, not applicable or not run. Hosted games publish through `multiplayer-publish`; store pages through `publish-your-game`.
 
 If the brief said "jam" or "prototype", skip this phase. If the brief said "game I want to release", run it.
 
@@ -260,6 +277,8 @@ If the brief said "jam" or "prototype", skip this phase. If the brief said "game
 | Stack art direction on top of unfinished mechanics | Art changes are reversible only if the underlying scene structure is stable. Get mechanics done first. |
 | Treat "polish" as required | If the brief says "jam in 2 days", polish is a cut item. Respect the brief. |
 | Run all phases without confirming | The user owns scope. Stop at every checkpoint. |
+| Ship online play behind a setting nobody changes | Hosted join is never exercised, so it breaks without anyone noticing. Reachable by default, or the owner joins online before every release. |
+| Hard-code a Game ID in `Summer.initialize` | The summer.games bundle has no `gameId`; a different ID fails on the hosted server and every online join times out. Pass no ID. |
 | Build a fully featured menu before there's a playable mechanic | Menu work is endless polish; player-loop work is the actual game. Mechanics first. |
 | Fall back to "let me try a few things" mid-pipeline | If you don't know what to do, name the phase and ask the user, don't improvise around the structure. |
 

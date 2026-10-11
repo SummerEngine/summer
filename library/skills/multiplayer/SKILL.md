@@ -84,7 +84,7 @@ the sender's verified Session. Events are fire-and-forget.
 
 | Word | Meaning |
 |---|---|
-| Game | Your game on Summer; its id is `gameId` in `summer.build.json` and the argument to `Summer.initialize` |
+| Game | Your game on Summer; its id is `gameId` in `summer.build.json`. `Summer.initialize()` takes no ID: Summer knows which game is running |
 | World | One running match or shared place, simulated by one authority |
 | WorldDefinition | `world.json`: which scenes run the client and the authority, lifetime, persistence |
 | Queue | How players find a World; declared in `summer.build.json` |
@@ -109,6 +109,8 @@ Each skill continues the same small game, so their code fits together:
    what a passing run must show.
 5. **`multiplayer-publish`**: export the summer.games bundle and upload it as
    a Build.
+6. **`release-readiness`**: before players get a version, prove the server
+   starts its authority scene and a real online join works.
 
 ## Add Summer services
 

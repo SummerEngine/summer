@@ -74,7 +74,14 @@ textures/vram_compression/import_etc2_astc=true
 ```
 
 The `.summer_client` and `.summer_authority` overrides tell each exported pack
-which scene to start. Leave the `[summer] version` line the editor writes.
+which scene to start. Summer starts the hosted server with no scene
+argument, so `run/main_scene.summer_authority` is the only thing that makes
+`server.pck` start the authority. It applies only when the server export
+preset carries the custom feature `summer_authority` (`multiplayer-publish`).
+Without it the server starts the client scene, never reports ready, and every
+online join fails with `world_start_timeout`. Local Play names the scene
+itself, so it works either way. Leave the `[summer] version` line the editor
+writes.
 
 ## 4. The declarations
 
@@ -116,6 +123,9 @@ starts. Summer rejects unknown fields, so copy the shape exactly.
 }
 ```
 
+- `gameId` is the game's id in Summer Studio, for your publishing tools. The
+  summer.games export leaves it out of the bundle, so game code never reads
+  it: both sides call `Summer.initialize()` with no ID (sections 7 and 8).
 - `queues[].minPlayers` / `maxPlayers` bound a match. `worldDefinition` names
   the `definition_id` in `world.json`.
 - `server.exportPreset` names the server export preset (`multiplayer-publish`).
@@ -250,7 +260,6 @@ on both sides:
 extends RefCounted
 ## Shared by the client and the authority: ids, streams and shared rules.
 
-const GAME_ID := "game_courtyard"
 const QUEUE := &"courtyard"
 const CMD := &"courtyard.cmd"
 const MAX_PLAYERS := 8
@@ -321,7 +330,7 @@ func _ready() -> void:
 	spawner.entity_spawned.connect(_on_player_spawned)
 	spawner.command_received.connect(_on_command)
 	world.session_left.connect(_on_session_left)
-	var initialized: SummerResult = await Summer.initialize(Game.GAME_ID).get_result_or_completed_signal()
+	var initialized: SummerResult = await Summer.initialize().get_result_or_completed_signal()
 	if not initialized.ok:
 		push_error(initialized.message)
 		return
@@ -379,6 +388,11 @@ func _on_session_left(session: SummerSession, reason: String) -> void:
 
 `authority/main.tscn` is a plain `Node` with that script ([files.md](files.md)).
 
+- `Summer.initialize()` takes no Game ID. Summer takes the game's identity
+  from where it runs: Local Play, the hosted server or the Summer Games app.
+  Never pass a literal, a placeholder or a fallback ID: any ID that differs
+  from the hosted one fails with `game_identity_mismatch`, and the authority
+  stops before it reports ready.
 - **Never** read who sent a Command from its payload: `request.get_session()`
   is verified. Don't name your own classes `SummerSession`, `SummerWorld` or
   other engine class names.
@@ -426,7 +440,7 @@ func _ready() -> void:
 	spawner = Game.build_network(self, PlayerArchetype)
 	# Connect signals like state_group_created here, before joining, or values
 	# that arrive during the join go unseen (multiplayer-movement adds them).
-	var initialized: SummerResult = await Summer.initialize(Game.GAME_ID).get_result_or_completed_signal()
+	var initialized: SummerResult = await Summer.initialize().get_result_or_completed_signal()
 	if not initialized.ok:
 		push_error(initialized.message)
 		return
@@ -510,6 +524,8 @@ warning yourself.
 | `@rpc`, `MultiplayerSynchronizer`, `ENetMultiplayerPeer` | The Spawner, State groups and Commands | Unverified peers, no late join, no Summer hosting |
 | `if multiplayer.is_server()` in one shared scene | Separate `client/` and `authority/` scenes | The engine starts the right scene on each side |
 | Load an `authority/` file from client or shared code | Move what both sides need into `network/` | The export leaves `authority/` out of the players' pack |
+| `Summer.initialize("game_…")`, or a fallback ID when `gameId` is missing | `Summer.initialize()` | The bundle has no `gameId`; a different ID fails hosted with `game_identity_mismatch` |
+| Set `run/main_scene.summer_authority` and stop there | Also give the server preset the `summer_authority` feature | Without the feature the hosted server starts the client scene |
 | Build the composition differently on each side | One `network/composition.tres`, loaded by both | Different compositions refuse each other |
 | Send a Command right after `join` succeeds | Await `spawner.network_ready` first | The authority does not know the client's network until then |
 | Free a player's things on `session_disconnected` | Free them on `session_left` | A disconnected player keeps their seat and may reconnect |

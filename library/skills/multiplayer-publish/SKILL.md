@@ -96,6 +96,15 @@ To make the same in the Export dialog:
 Both presets must include the composition; each must include its entry
 scene.
 
+The `summer_authority` custom feature is what makes the server start the
+authority. Summer starts `server.pck` with no scene argument, so the pack's
+own main scene decides what runs: `run/main_scene.summer_authority` from
+`project.godot` (`multiplayer-project`), which applies only to a pack whose
+preset carries that feature. Without it, the server runs the client's main
+scene, usually the title. It never restores the World or reports ready, and
+every online join fails with `world_start_timeout`. Local Play and the upload
+checks name the scene themselves, so they can't catch this; step 4d can.
+
 Textures: iOS and macOS read ETC2/ASTC (`textures/vram_compression/import_etc2_astc=true`
 in `project.godot`), and Windows reads S3TC/BPTC (`import_s3tc_bptc=true`).
 Enable the ones for the platforms you tick. The exporter's **Fix Import**
@@ -126,13 +135,18 @@ summer.games: Publish uploads this one file as a new Build.
 ```
 
 Check that `server.pck` and your `config/` files are listed, and that the
-"Left N server-only files" count covers your `authority/` files. Every
+"Left N server-only files" count covers your `authority/` files. The
+`Server: … mainScene …` line names the scene the Build declares, not the
+scene the pack will start; step 4d checks that. Every
 result message and every export error, with its fix, is in
 [export-errors.md](export-errors.md).
 
 ## 4. Check before uploading
 
-Do all three. Each catches problems the export doesn't.
+Do all four. Each catches problems the export doesn't. Run them on the
+`.zip` you will upload, not on a pack exported separately with the server
+preset (`--export-pack`): that pack differs from the bundle's `server.pck`,
+for example it keeps `gameId`, and can pass where the upload fails.
 
 **a. Local Play passes** (`multiplayer-testing`): every process has
 `script_errors` 0, there's no `cannot attach`, and your ready lines appear.
@@ -187,12 +201,29 @@ unzip -o build/courtyard.summer.zip client.pck server.pck -d "$P/out"
 Paths must be absolute. Pass: both reports say `"sceneLoaded": true`, and
 their `compositionManifest` objects are identical. On failure the probe
 writes `rejection.json`; its codes are in [export-errors.md](export-errors.md).
+The probe names the scene to load, so it does not show which scene the
+server starts on its own.
+
+**d. The server pack starts the authority scene.** Start the bundle's
+`server.pck` the way Summer does, with no scene argument, and stop it after
+a few seconds:
+
+```sh
+perl -e 'alarm shift; exec @ARGV' 15 <summer> --headless --verbose --main-pack "$P/out/server.pck"
+```
+
+The first `Completed load for: 'res://….tscn'` line must be the authority
+scene (`res://authority/main.tscn` here). If it is the client or title
+scene, add `summer_authority` to the server preset's custom features and
+export again. Later lines may complain that there is no hosted World; that
+is expected locally.
 
 ## 5. Upload the Build
 
 1. The game must exist in Summer Studio, and `gameId` in
-   `summer.build.json` and `GAME_ID` in `network/game.gd` must both be its
-   id.
+   `summer.build.json` must be its id. The export leaves `gameId` out of the
+   bundle, and the game code calls `Summer.initialize()` with no ID: a
+   literal or fallback ID fails hosted with `game_identity_mismatch`.
 2. Open the game's Builds page: `summer_open` with target `game`,
    `gameId` and section `builds`, or summerengine.com → Studio → your game →
    Builds.
@@ -209,6 +240,28 @@ writes `rejection.json`; its codes are in [export-errors.md](export-errors.md).
 For a client-only fix to an existing Build, export to a `.pck` path instead
 of `.zip`. That writes `client.pck` alone.
 
+## 6. Join it for real
+
+Right after the Build is released, open the game in a Summer Games app,
+join online and play until you are in the game, before players hear about
+the update. A wrong Game ID only fails under a real hosted launch, so
+nothing before this step catches it. An agent can't do this; ask the user
+and record the result. The whole list of checks before a release is
+`release-readiness`, and the creator docs have it at
+https://docs.summerengine.com/publishing/release-readiness.
+
+## When online joins fail
+
+Every join ends in `world_start_timeout`, but Local Play works:
+
+1. The server starts the wrong scene: run step 4d.
+2. The game passes a fixed Game ID to `Summer.initialize`: pass none.
+
+Then export, upload and release a new Build, and join again. An empty game
+server log is not proof that the server hung: a release server holds back
+what the game prints until it exits when it isn't attached to a terminal.
+Use step 4d to see which scene runs.
+
 ## Checklist
 
 - [ ] `summer.build.json`: `gameId`, `targetPlatforms`, `server.exportPreset`, every WorldDefinition selected by a queue.
@@ -217,6 +270,9 @@ of `.zip`. That writes `client.pck` alone.
 - [ ] The export ends with `Publish uploads this one file as a new Build.`
 - [ ] The analyzer prints `ok=true` twice.
 - [ ] Both probes load their scene, with identical composition manifests.
+- [ ] The bundle's `server.pck`, run with no scene, loads the authority scene first.
+- [ ] Every `Summer.initialize` call passes no Game ID.
+- [ ] After release: a real online join reaches the game (`release-readiness`).
 - [ ] Local Play passed with the same project.
 
 ## Common mistakes
@@ -229,5 +285,8 @@ of `.zip`. That writes `client.pck` alone.
 | Ship C#, `.gdextension` or native libraries in the client | GDScript only | Summer Games runs GDScript client packs only |
 | Skip the source graph | Keep `source-domains.json` complete | Without it the server code ships to players (export warns) |
 | Load an `authority/` file from client code | Move shared code into `network/` | The export stops: the client would load a missing file |
-| Upload after only exporting | Run Local Play, the analyzer and both probes first | Each catches what the others miss |
+| Upload after only exporting | Run Local Play, the analyzer, both probes and the server start check first | Each catches what the others miss |
+| Server preset without the `summer_authority` feature | `custom_features="summer_authority"` | The hosted server starts the title and every join times out |
+| Test a server pack exported on its own | Test the `server.pck` inside the `.zip` | The separate pack keeps `gameId` and hides a wrong Game ID |
+| Read an empty server log as a hang | Run step 4d | A release server holds back its output until it exits |
 | Export a patch | Export Project, or Export PCK/ZIP without Export As Patch | summer.games takes complete bundles or packs |

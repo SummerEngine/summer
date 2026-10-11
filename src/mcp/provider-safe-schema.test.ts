@@ -3,7 +3,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createMcpServer } from "./server.js";
-import { providerSafeSchema } from "./provider-safe-schema.js";
+import { providerSafeSchema, STRICT_PROVIDER_FORMATS } from "./provider-safe-schema.js";
 
 /**
  * Guard for the schemas hosts forward to model providers. Kimi Code sent
@@ -20,7 +20,6 @@ const ALLOWED_KEYWORDS = new Set([
   "enum", "const", "description", "title", "default", "minimum", "maximum", "exclusiveMinimum",
   "exclusiveMaximum", "multipleOf", "pattern", "format", "minLength", "maxLength",
 ]);
-const ALLOWED_FORMATS = new Set(["date-time", "time", "date", "duration", "email", "hostname", "ipv4", "ipv6", "uuid"]);
 
 function strictProviderViolations(schema: Record<string, unknown>): string[] {
   const out: string[] = [];
@@ -35,7 +34,7 @@ function strictProviderViolations(schema: Record<string, unknown>): string[] {
     }
     if (Array.isArray(n.items)) out.push(`${path}: tuple items (items must be an object)`);
     if (Array.isArray(n.type)) out.push(`${path}: type array`);
-    if (typeof n.format === "string" && !ALLOWED_FORMATS.has(n.format)) out.push(`${path}: unsupported format ${n.format}`);
+    if (typeof n.format === "string" && !STRICT_PROVIDER_FORMATS.has(n.format)) out.push(`${path}: unsupported format ${n.format}`);
     if (n.type === "array" && n.items === undefined) out.push(`${path}: array without items`);
     for (const [key, child] of Object.entries((n.properties as Record<string, unknown>) ?? {})) walk(child, `${path}/properties/${key}`);
     if (n.items !== undefined && !Array.isArray(n.items)) walk(n.items, `${path}/items`);
@@ -138,12 +137,27 @@ describe("providerSafeSchema", () => {
     });
   });
 
-  it("turns a type array into anyOf and leaves enum, const and default data alone", () => {
+  it("turns a type array into anyOf, drops unsupported formats and string-only propertyNames", () => {
     expect(providerSafeSchema({ type: ["string", "number"], description: "Value." })).toEqual({
       anyOf: [{ type: "string" }, { type: "number" }],
       description: "Value.",
     });
-    const data = { type: "object", default: { items: [1, 2], $ref: "#/x" }, properties: { mode: { type: "string", enum: ["a"] } } };
-    expect(providerSafeSchema(data)).toEqual(data);
+    expect(providerSafeSchema({ type: "string", format: "uri" })).toEqual({ type: "string" });
+    expect(providerSafeSchema({ type: "string", format: "uuid" })).toEqual({ type: "string", format: "uuid" });
+    expect(providerSafeSchema({ type: "object", propertyNames: { type: "string" }, additionalProperties: {} })).toEqual({ type: "object", additionalProperties: {} });
+  });
+
+  it("leaves data and property names alone", () => {
+    const schema = {
+      type: "object",
+      default: { items: [1, 2], $ref: "#/x", format: "uri" },
+      properties: {
+        mode: { type: "string", enum: ["a"] },
+        format: { type: "string" },
+        propertyNames: { type: "string" },
+        items: { type: "array", items: { type: "string" } },
+      },
+    };
+    expect(providerSafeSchema(schema)).toEqual(schema);
   });
 });

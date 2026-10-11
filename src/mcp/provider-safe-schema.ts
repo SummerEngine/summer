@@ -6,29 +6,37 @@ import { ListToolsRequestSchema, type Tool } from "@modelcontextprotocol/sdk/typ
  * parameters, and strict providers (Moonshot/Kimi, OpenAI strict mode,
  * Gemini) accept only a subset of JSON Schema: one provider rejecting one
  * tool fails the whole request with HTTP 400, before any tool runs. The SDK's
- * zod conversion emits three shapes outside that subset:
+ * zod conversion, and the hosted tools' zod 4 output, carry shapes outside
+ * that subset:
  *
- * - tuples (`z.tuple`) as an array of schemas in `items`, plus
- *   `additionalItems`; Moonshot answers "items must be an object";
+ * - tuples (`z.tuple`) as an array of schemas in `items` (or `prefixItems`),
+ *   plus `additionalItems`; Moonshot answers "items must be an object";
  * - a zod value reused in one shape as a `$ref` into the same schema
  *   ("#/properties/start/items/0"), with no definitions to resolve against;
- * - a union of scalars as a `type` array (["string", "number"]).
+ * - a union of scalars as a `type` array (["string", "number"]);
+ * - string formats such as `uri`, and `propertyNames: { type: "string" }`
+ *   on records (JSON keys are strings anyway).
  *
  * providerSafeSchema rewrites them at the export boundary: a tuple becomes an
  * array with one `items` schema and exact minItems/maxItems, every local
- * `$ref` is inlined, and a `type` array becomes an `anyOf`. zod still
- * validates every call, so a wrong-length vector is rejected exactly as before.
+ * `$ref` is inlined, a `type` array becomes an `anyOf`, and the format and
+ * redundant propertyNames are dropped. zod still validates every call, so a
+ * wrong-length vector is rejected exactly as before.
  */
 
-type Json = unknown;
-type JsonObject = Record<string, Json>;
+type JsonObject = Record<string, unknown>;
 
-// Keywords whose values are data, not schemas.
-const DATA_KEYS = new Set(["enum", "const", "default", "examples"]);
+/** String formats OpenAI strict mode accepts; other providers accept no more. */
+export const STRICT_PROVIDER_FORMATS = new Set(["date-time", "time", "date", "duration", "email", "hostname", "ipv4", "ipv6", "uuid"]);
 
-const isObject = (value: Json): value is JsonObject => typeof value === "object" && value !== null && !Array.isArray(value);
+// Where a schema holds subschemas: one, a list, or a name -> schema map.
+const SCHEMA_KEYS = new Set(["items", "additionalItems", "additionalProperties", "contains", "not", "if", "then", "else", "propertyNames", "unevaluatedItems", "unevaluatedProperties"]);
+const SCHEMA_LIST_KEYS = new Set(["anyOf", "oneOf", "allOf", "prefixItems"]);
+const SCHEMA_MAP_KEYS = new Set(["properties", "patternProperties", "dependentSchemas", "$defs", "definitions"]);
 
-function resolvePointer(root: Json, ref: string): Json {
+const isObject = (value: unknown): value is JsonObject => typeof value === "object" && value !== null && !Array.isArray(value);
+
+function resolvePointer(root: unknown, ref: string): unknown {
   let node = root;
   for (const raw of ref.slice(2).split("/")) {
     if (raw === "") continue;
@@ -40,39 +48,44 @@ function resolvePointer(root: Json, ref: string): Json {
   return node;
 }
 
-function uniqueSchemas(schemas: Json[]): Json[] {
-  const seen = new Map<string, Json>();
+function uniqueSchemas(schemas: unknown[]): unknown[] {
+  const seen = new Map<string, unknown>();
   for (const schema of schemas) seen.set(JSON.stringify(schema), schema);
   return [...seen.values()];
 }
 
-function rewrite(node: Json, root: Json, expanding: string[]): Json {
-  if (Array.isArray(node)) return node.map((child) => rewrite(child, root, expanding));
-  if (!isObject(node)) return node;
+function rewrite(schema: unknown, root: unknown, expanding: string[]): unknown {
+  if (!isObject(schema)) return schema;
+  const child = (value: unknown) => rewrite(value, root, expanding);
 
-  const { $ref, ...rest } = node;
+  const { $ref, ...rest } = schema;
   if (typeof $ref === "string" && ($ref === "#" || $ref.startsWith("#/"))) {
     // A recursive shape cannot be inlined; accept any value there and let zod validate it.
     const target = expanding.includes($ref) ? {} : rewrite(resolvePointer(root, $ref), root, [...expanding, $ref]);
-    return { ...(isObject(target) ? target : {}), ...(rewrite(rest, root, expanding) as JsonObject) };
+    return { ...(isObject(target) ? target : {}), ...(child(rest) as JsonObject) };
   }
 
   const out: JsonObject = {};
-  for (const [key, value] of Object.entries(node)) {
+  for (const [key, value] of Object.entries(schema)) {
     if (key === "additionalItems" || key === "prefixItems") continue;
-    out[key] = DATA_KEYS.has(key) ? value : rewrite(value, root, expanding);
+    if (SCHEMA_KEYS.has(key)) out[key] = Array.isArray(value) ? value.map(child) : child(value);
+    else if (SCHEMA_LIST_KEYS.has(key) && Array.isArray(value)) out[key] = value.map(child);
+    else if (SCHEMA_MAP_KEYS.has(key) && isObject(value)) out[key] = Object.fromEntries(Object.entries(value).map(([name, sub]) => [name, child(sub)]));
+    else out[key] = value;
   }
 
-  if (Array.isArray(node.type) && !("anyOf" in out)) {
+  if (Array.isArray(schema.type) && !("anyOf" in out)) {
     delete out.type;
-    out.anyOf = node.type.map((type) => ({ type }));
+    out.anyOf = schema.type.map((type) => ({ type }));
   }
+  if (typeof out.format === "string" && !STRICT_PROVIDER_FORMATS.has(out.format)) delete out.format;
+  if (isObject(out.propertyNames) && Object.keys(out.propertyNames).length === 1 && out.propertyNames.type === "string") delete out.propertyNames;
 
-  const tuple = Array.isArray(node.prefixItems) ? node.prefixItems : Array.isArray(node.items) ? node.items : null;
+  const tuple = Array.isArray(schema.prefixItems) ? schema.prefixItems : Array.isArray(schema.items) ? schema.items : null;
   if (tuple) {
-    const extra = Array.isArray(node.prefixItems) ? node.items : node.additionalItems;
+    const extra = Array.isArray(schema.prefixItems) ? schema.items : schema.additionalItems;
     const open = extra !== undefined && extra !== false;
-    const members = uniqueSchemas([...tuple, ...(isObject(extra) ? [extra] : [])].map((child) => rewrite(child, root, expanding)));
+    const members = uniqueSchemas([...tuple, ...(isObject(extra) ? [extra] : [])].map(child));
     out.items = members.length === 1 ? members[0] : members.length === 0 ? {} : { anyOf: members };
     out.minItems ??= tuple.length;
     if (!open) out.maxItems ??= tuple.length;
@@ -80,7 +93,7 @@ function rewrite(node: Json, root: Json, expanding: string[]): Json {
   return out;
 }
 
-export function providerSafeSchema<T extends Json>(schema: T): T {
+export function providerSafeSchema<T>(schema: T): T {
   const out = rewrite(schema, schema, []);
   if (isObject(out)) {
     // Every local $ref is inlined, so the definition tables are dead weight.

@@ -24,6 +24,12 @@ never sits beside project-scope skills. `--scope project` moves both;
 `--recommended` installs only the recommended subset. Clients whose MCP config
 is user-only fall back to user scope with a warning.
 
+For every client with `remoteMcp` in `agent-table.ts`, setup also writes the
+remote `summer-games` server (`https://mcp.summer.games/mcp`) into the same
+file, in that client's entry shape, and prints its one sign-in step. A client
+gets `remoteMcp` only after its OAuth redirect is checked against what
+api.summer.games accepts; the table comments name why the rest have none.
+
 Generated root files (`.claude-plugin/plugin.json`, `gemini-extension.json`,
 `.mcp.json`, …) are build artifacts of `integrations/<agent>` + `library/`.
 Their `_generated` banner says so. CI `--check` fails on any drift between

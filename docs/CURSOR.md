@@ -39,7 +39,19 @@ Paths:
 
 Older Summer versions wrote `.cursor/rules/summer-<skill>.mdc` or `.cursor/skills/`; `setup cursor --force` removes both.
 
-Summer Games is not added for Cursor yet. Cursor's sign-in can use a `cursor://` return address that summer.games does not accept yet; setup will add it once it does.
+## Summer Games
+
+`summer setup cursor` also adds Summer Games to `~/.cursor/mcp.json`, so Cursor can see your friends, start parties and send messages as you:
+
+```json
+{
+  "mcpServers": {
+    "summer-games": { "url": "https://mcp.summer.games/mcp" }
+  }
+}
+```
+
+Sign in once: in Cursor Settings, open MCP and click Connect (or Authenticate) next to `summer-games`. A summer.games page opens in your browser; sign in and choose Allow. No key or password is stored in the file. If you already added the same URL under another name, setup keeps yours. `--no-games` skips it.
 
 ## MCP
 

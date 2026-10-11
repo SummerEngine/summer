@@ -35,7 +35,7 @@ interface SetupCommandOptions {
 
 export const setupCommand = new Command("setup")
   .description(
-    "Configure Summer Engine for an AI agent and run diagnostics. For Claude Code and Codex it also adds Summer Games (summer-games)."
+    "Configure Summer Engine for an AI agent and run diagnostics. For agents that can sign in to it, it also adds Summer Games (summer-games)."
   )
   .argument("[agent]", `Agent to configure: ${supportedAgents.join(", ")}`)
   .option("--agent <agent>", `Agent to configure: ${supportedAgents.join(", ")}`)
@@ -53,7 +53,7 @@ export const setupCommand = new Command("setup")
   .option("--yes", "Apply practical setup steps without prompting")
   .option(
     "--no-games",
-    "Do not add the Summer Games MCP (summer-games: friends, parties and messages as you, signed in through summer.games; Claude Code and Codex)"
+    "Do not add the Summer Games MCP (summer-games: friends, parties and messages as you, signed in through summer.games)"
   )
   .option("--json", "Print setup result as JSON")
   .option(

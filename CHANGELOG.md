@@ -4,6 +4,12 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+## [3.5.1] - 2026-10-10
+
+Summer Games now connects from almost every agent setup supports, and large store uploads finish.
+
+- **Summer Games in more agents.** `summer setup` now adds `summer-games` (`https://mcp.summer.games/mcp`: friends, parties and messages as you) for Cursor, GitHub Copilot in VS Code, the Copilot CLI and Copilot in JetBrains, Zed, Cline and Cline CLI, Kilo Code, OpenCode, Devin Desktop (Windsurf), Antigravity, Kiro, Trae, Warp, Goose, Hermes, Crush, Amp, Factory Droid, Junie, Qwen Code, Kimi Code, Grok Build and Mistral Vibe, as well as Claude Code and Codex. Each gets the entry in its own format, and setup prints the one sign-in step for that agent. As in 3.5.0, setup adds no second entry when the same address is already listed under another name, and `--no-games` skips it.
+- Not included, because they cannot sign in to it from their config file: Claude Desktop (add Summer Games as a custom connector in its settings), Roo Code and Rovo Dev (no sign-in for remote servers), and Visual Studio, Qoder and LM Studio (sign-in not yet checked).
 - `summer_publish_build` and `summer_publish_download` no longer fail an upload of 3 or more parts with `store_sign_failed: The store did not sign part N` when the store signed every part. Each sign now asks for every part still to upload, a part counts as unsigned only when the store was asked for it and left it out, a signing error is retried like a failed part upload, and the first failure stops the other parts' uploads.
 
 ## [3.5.0] - 2026-10-10

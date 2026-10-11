@@ -89,8 +89,6 @@ export type McpFormat =
   | "yaml-hermes"
   | "json-gemini";
 
-export type RemoteMcpFormat = "json-http" | "toml-url";
-
 export type SkillLocationKind =
   | "skill-dir"
   | "cursor-rule-dir"
@@ -141,13 +139,15 @@ export interface AgentSpec {
   envOverride: string;
   format: McpFormat;
   /**
-   * How this agent lists a remote MCP server that signs in with OAuth on its
-   * own (the Summer Games player MCP). Absent: setup links the engine only.
-   *  json-http { mcpServers: { <name>: { type: "http", url } } }   (Claude Code)
-   *  toml-url  [mcp_servers.<name>] url                            (Codex)
+   * The Summer Games player MCP (a remote server that signs in with OAuth on
+   * its own) in this agent's file, under the same key as summer-engine.
+   * entry is the server's value; for TOML it is written as key = value lines.
    * signIn tells the person how to sign in once, for the entry's name.
+   * Absent: setup links the engine only (no OAuth sign-in for remote servers,
+   * no file entry for them, or a sign-in api.summer.games has not been checked
+   * to accept).
    */
-  remoteMcp?: { format: RemoteMcpFormat; signIn: (name: string) => string };
+  remoteMcp?: { entry: (url: string) => Record<string, unknown>; signIn: (name: string) => string };
   mcp: {
     /** null: user-level servers are managed in the app's UI; a user request writes the project file with a warning. */
     user: ((ctx: PathContext) => string) | null;
@@ -233,7 +233,10 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_CLAUDE_CONFIG_FILE",
     format: "json-stdio",
-    remoteMcp: { format: "json-http", signIn: (name) => `In Claude Code, run /mcp, choose ${name} and sign in.` },
+    remoteMcp: {
+      entry: (url) => ({ type: "http", url }),
+      signIn: (name) => `In Claude Code, run /mcp, choose ${name} and sign in.`,
+    },
     mcp: { user: home(".claude.json"), project: project(".mcp.json") },
     restart: "Restart Claude Code or run /mcp in a new session.",
     skills: skillDirs(home(".claude", "skills"), project(".claude", "skills")),
@@ -245,6 +248,7 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_CLAUDE_DESKTOP_CONFIG_FILE",
     format: "json",
+    // No Summer Games entry: Claude Desktop's file takes local servers only; remote ones are added as Connectors in its settings.
     mcp: {
       user: (ctx) => join(appConfigRoot(ctx), "Claude", "claude_desktop_config.json"),
       project: null,
@@ -262,7 +266,7 @@ const SPECS: readonly AgentSpec[] = [
     envOverride: "SUMMER_CODEX_CONFIG_FILE",
     format: "toml",
     remoteMcp: {
-      format: "toml-url",
+      entry: (url) => ({ url }),
       signIn: (name) => `In Codex, run /mcp login ${name} (or \`codex mcp login ${name}\` in a terminal) and sign in.`,
     },
     mcp: {
@@ -280,10 +284,10 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_CURSOR_MCP_CONFIG_FILE",
     format: "json-stdio",
-    // No remoteMcp (Summer Games) yet: Cursor's fallback OAuth flow registers
-    // cursor://anysphere.cursor-mcp/oauth/callback, which api.summer.games
-    // refuses (summer-platform#1681 allows it). Add { format: "json-url" }
-    // ({ mcpServers: { <name>: { url } } }) once that is live.
+    remoteMcp: {
+      entry: (url) => ({ url }),
+      signIn: (name) => `In Cursor Settings, open MCP and click Connect (or Authenticate) next to ${name}.`,
+    },
     mcp: { user: home(".cursor", "mcp.json"), project: project(".cursor", "mcp.json") },
     restart: "Restart Cursor and enable the summer-engine MCP server if prompted.",
     skills: sharedSkills({
@@ -299,6 +303,10 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_WINDSURF_MCP_CONFIG_FILE",
     format: "json",
+    remoteMcp: {
+      entry: (url) => ({ serverUrl: url }),
+      signIn: (name) => `Devin Desktop opens summer.games in your browser the first time ${name} connects; sign in there.`,
+    },
     mcp: {
       user: home(".codeium", "windsurf", "mcp_config.json"),
       project: null,
@@ -313,6 +321,10 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_ANTIGRAVITY_CONFIG_FILE",
     format: "json",
+    remoteMcp: {
+      entry: (url) => ({ serverUrl: url }),
+      signIn: (name) => `In Antigravity, open Settings > Customizations, choose Authenticate next to ${name}, sign in on summer.games, then paste the code back and choose Submit.`,
+    },
     mcp: {
       user: home(".gemini", "config", "mcp_config.json"),
       project: project(".agents", "mcp_config.json"),
@@ -329,6 +341,7 @@ const SPECS: readonly AgentSpec[] = [
       "Gemini CLI was retired for individual accounts on 2026-06-18 and replaced by Antigravity. Use `summer setup antigravity` unless you are on a Workspace/enterprise Gemini CLI.",
     envOverride: "SUMMER_GEMINI_CONFIG_FILE",
     format: "json-gemini",
+    // No Summer Games entry: legacy target; use antigravity.
     mcp: {
       user: home(".gemini", "extensions", "summer-engine", "gemini-extension.json"),
       project: null,
@@ -344,6 +357,10 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_CLINE_CONFIG_FILE",
     format: "json",
+    remoteMcp: {
+      entry: (url) => ({ type: "streamableHttp", url }),
+      signIn: (name) => `In Cline, open MCP Servers and click Authenticate next to ${name}.`,
+    },
     mcp: {
       user: (ctx) => vsCodeGlobalStorage(ctx, "saoudrizwan.claude-dev", "cline_mcp_settings.json"),
       project: null,
@@ -358,6 +375,10 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_CLINE_CLI_CONFIG_FILE",
     format: "json",
+    remoteMcp: {
+      entry: (url) => ({ type: "streamableHttp", url }),
+      signIn: (name) => `Run \`cline mcp\`, pick ${name} and choose Authorize OAuth.`,
+    },
     mcp: { user: home(".cline", "data", "settings", "cline_mcp_settings.json"), project: null },
     restart: "Restart the Cline CLI so it reloads its MCP settings.",
     skills: skillDirs(home(".cline", "skills"), project(".cline", "skills")),
@@ -370,6 +391,7 @@ const SPECS: readonly AgentSpec[] = [
     legacyNote: "Roo Code shut down on 2026-05-15. The extension may still run, but it is no longer maintained; consider Cline or Kilo Code.",
     envOverride: "SUMMER_ROO_CODE_CONFIG_FILE",
     format: "json",
+    // No Summer Games entry: Roo Code has no OAuth sign-in for remote MCP servers.
     mcp: {
       user: (ctx) => vsCodeGlobalStorage(ctx, "rooveterinaryinc.roo-cline", "cline_mcp_settings.json"),
       project: null,
@@ -389,6 +411,10 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_KILO_CODE_CONFIG_FILE",
     format: "json-opencode",
+    remoteMcp: {
+      entry: (url) => ({ type: "remote", url }),
+      signIn: (name) => `In Kilo, click the sign-in notice for ${name} (Kilo CLI: \`kilo mcp auth ${name}\`).`,
+    },
     mcp: {
       user: (ctx) => join(xdgOrAppData(ctx), "kilo", "kilo.json"),
       project: project("kilo.json"),
@@ -403,6 +429,10 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_GITHUB_COPILOT_CONFIG_FILE",
     format: "json-copilot",
+    remoteMcp: {
+      entry: (url) => ({ type: "http", url, tools: ["*"] }),
+      signIn: (name) => `Copilot CLI opens summer.games to sign in when ${name} first connects; /mcp signs in again.`,
+    },
     mcp: { user: home(".copilot", "mcp-config.json"), project: project(".mcp.json") },
     restart: "Restart Copilot CLI, or run /mcp reload and /skills reload in the active session.",
     skills: skillDirs(home(".copilot", "skills"), project(".github", "skills")),
@@ -414,6 +444,10 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_VSCODE_COPILOT_CONFIG_FILE",
     format: "json-vscode",
+    remoteMcp: {
+      entry: (url) => ({ type: "http", url }),
+      signIn: (name) => `In VS Code, click Allow when ${name} asks to authenticate, then sign in on summer.games.`,
+    },
     mcp: { user: (ctx) => join(vsCodeUserDir(ctx), "mcp.json"), project: project(".vscode", "mcp.json") },
     restart: "Restart VS Code or run MCP: List Servers, then start summer-engine in Copilot Agent mode.",
     skills: sharedSkills({ legacyDirs: { user: home(".copilot", "skills"), project: project(".github", "skills") } }),
@@ -425,6 +459,7 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_VISUAL_STUDIO_CONFIG_FILE",
     format: "json-vscode",
+    // No Summer Games entry: Visual Studio's OAuth redirect for MCP is not documented; not checked against api.summer.games.
     mcp: { user: home(".mcp.json"), project: project(".mcp.json") },
     restart: "Restart Visual Studio, open Copilot Chat in Agent mode, and enable summer-engine in the tools picker.",
     skills: null,
@@ -437,6 +472,10 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_COPILOT_JETBRAINS_CONFIG_FILE",
     format: "json-servers",
+    remoteMcp: {
+      entry: (url) => ({ url }),
+      signIn: (name) => `In your JetBrains IDE, click OK when ${name} asks to authenticate, then sign in on summer.games.`,
+    },
     mcp: {
       user: (ctx) => join(xdgOrAppData(ctx), "github-copilot", "intellij", "mcp.json"),
       project: null,
@@ -452,6 +491,10 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_OPENCODE_CONFIG_FILE",
     format: "json-opencode",
+    remoteMcp: {
+      entry: (url) => ({ type: "remote", url }),
+      signIn: (name) => `Run \`opencode mcp auth ${name}\`; it opens summer.games to sign in.`,
+    },
     mcp: {
       user: (ctx) => join(xdgOrAppData(ctx), "opencode", "opencode.json"),
       project: project("opencode.json"),
@@ -470,6 +513,10 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_ZED_CONFIG_FILE",
     format: "json-zed",
+    remoteMcp: {
+      entry: (url) => ({ url }),
+      signIn: (name) => `In Zed, open the agent settings and click Authenticate next to ${name}.`,
+    },
     mcp: {
       user: (ctx) => join(xdgOrAppData(ctx), "zed", "settings.json"),
       project: null,
@@ -484,6 +531,10 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_KIRO_CONFIG_FILE",
     format: "json",
+    remoteMcp: {
+      entry: (url) => ({ url }),
+      signIn: (name) => `Kiro opens summer.games to sign in when ${name} connects (Kiro CLI: /mcp auth).`,
+    },
     mcp: { user: home(".kiro", "settings", "mcp.json"), project: project(".kiro", "settings", "mcp.json") },
     restart: "Kiro reloads MCP config on save; open the MCP Servers view to confirm summer-engine is connected.",
     skills: skillDirs(home(".kiro", "skills"), project(".kiro", "skills")),
@@ -495,6 +546,19 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_GOOSE_CONFIG_FILE",
     format: "yaml-goose",
+    remoteMcp: {
+      entry: (url) => ({
+        type: "streamable_http",
+        name: "summer-games",
+        description: "Summer Games: friends, parties and messages as you",
+        uri: url,
+        enabled: true,
+        timeout: 300,
+        env_keys: [],
+        envs: {},
+      }),
+      signIn: (name) => `Goose opens summer.games to sign in when the ${name} extension starts.`,
+    },
     mcp: {
       user: (ctx) =>
         ctx.os === "win32"
@@ -512,6 +576,10 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_HERMES_CONFIG_FILE",
     format: "yaml-hermes",
+    remoteMcp: {
+      entry: (url) => ({ url, auth: "oauth" }),
+      signIn: (name) => `Run \`hermes mcp login ${name}\`, or sign in on summer.games when Hermes first connects.`,
+    },
     mcp: { user: home(".hermes", "config.yaml"), project: null },
     restart: "Run /reload-mcp in Hermes Agent (or restart it).",
     skills: skillDirs(home(".hermes", "skills"), SHARED_SKILLS_PROJECT, {
@@ -526,6 +594,10 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_TRAE_CONFIG_FILE",
     format: "json",
+    remoteMcp: {
+      entry: (url) => ({ url }),
+      signIn: (name) => `Trae opens summer.games to sign in when ${name} connects.`,
+    },
     mcp: {
       user: null,
       project: project(".trae", "mcp.json"),
@@ -542,6 +614,10 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_QWEN_CODE_CONFIG_FILE",
     format: "json",
+    remoteMcp: {
+      entry: (url) => ({ httpUrl: url }),
+      signIn: (name) => `In Qwen Code, run /mcp auth ${name} and sign in.`,
+    },
     mcp: { user: home(".qwen", "settings.json"), project: project(".qwen", "settings.json") },
     restart: "Restart Qwen Code or run /mcp in a new session.",
     skills: skillDirs(home(".qwen", "skills"), project(".qwen", "skills")),
@@ -553,6 +629,10 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_KIMI_CODE_CONFIG_FILE",
     format: "json",
+    remoteMcp: {
+      entry: (url) => ({ url, auth: "oauth" }),
+      signIn: (name) => `Run \`kimi mcp auth ${name}\`; it opens summer.games to sign in.`,
+    },
     mcp: { user: home(".kimi-code", "mcp.json"), project: project(".kimi-code", "mcp.json") },
     restart: "Restart Kimi Code CLI so it reconnects its MCP servers.",
     skills: sharedSkills({ legacyDirs: { user: home(".kimi-code", "skills"), project: project(".kimi-code", "skills") } }),
@@ -564,6 +644,10 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_CRUSH_CONFIG_FILE",
     format: "json-crush",
+    remoteMcp: {
+      entry: (url) => ({ type: "http", url, oauth: true }),
+      signIn: (name) => `Crush opens summer.games to sign in when ${name} connects.`,
+    },
     mcp: {
       user: home(".config", "crush", "crushrc"),
       project: project(".crushrc"),
@@ -578,6 +662,10 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_AMP_CONFIG_FILE",
     format: "json-amp",
+    remoteMcp: {
+      entry: (url) => ({ url }),
+      signIn: (name) => `Amp opens summer.games to sign in for ${name} when it starts.`,
+    },
     mcp: { user: (ctx) => join(xdgOrAppData(ctx), "amp", "settings.json"), project: null },
     restart: "Restart Amp so it reloads settings.json.",
     skills: sharedSkills({ legacyDirs: { user: (ctx) => join(xdgOrAppData(ctx), "amp", "skills"), project: null } }),
@@ -589,6 +677,10 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_FACTORY_CONFIG_FILE",
     format: "json-stdio",
+    remoteMcp: {
+      entry: (url) => ({ type: "http", url }),
+      signIn: (name) => `In Droid, run /mcp, choose ${name} and Authenticate.`,
+    },
     mcp: { user: home(".factory", "mcp.json"), project: project(".factory", "mcp.json") },
     restart: "Restart droid or run /mcp in the active session.",
     skills: sharedSkills({ legacyDirs: { user: home(".factory", "skills"), project: project(".factory", "skills") } }),
@@ -600,6 +692,10 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_JUNIE_CONFIG_FILE",
     format: "json",
+    remoteMcp: {
+      entry: (url) => ({ url }),
+      signIn: (name) => `In Junie, run /mcp, open ${name} and choose Authorize.`,
+    },
     mcp: { user: home(".junie", "mcp", "mcp.json"), project: project(".junie", "mcp", "mcp.json") },
     restart: "Restart the JetBrains IDE so Junie reloads its MCP config.",
     skills: null,
@@ -612,6 +708,10 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_WARP_CONFIG_FILE",
     format: "json",
+    remoteMcp: {
+      entry: (url) => ({ url }),
+      signIn: (name) => `Warp opens summer.games to sign in when ${name} starts.`,
+    },
     mcp: { user: home(".warp", ".mcp.json"), project: project(".warp", ".mcp.json") },
     restart: "Warp detects the file and spawns the server; check Settings > AI > MCP servers.",
     skills: sharedSkills({ legacyDirs: { user: home(".warp", "skills"), project: project(".warp", "skills") } }),
@@ -623,6 +723,7 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_ROVO_DEV_CONFIG_FILE",
     format: "json-transport",
+    // No Summer Games entry: Rovo Dev CLI has no OAuth sign-in for remote MCP servers (headers only).
     mcp: { user: home(".rovodev", "mcp.json"), project: null },
     restart: "Restart Rovo Dev CLI so it reconnects its MCP servers.",
     skills: sharedSkills({ legacyDirs: { user: home(".rovodev", "skills"), project: project(".rovodev", "skills") } }),
@@ -634,6 +735,7 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_QODER_CONFIG_FILE",
     format: "json",
+    // No Summer Games entry: Qoder's remote-server fields in settings.json are not documented.
     mcp: { user: home(".qoder", "settings.json"), project: project(".mcp.json") },
     restart: "Restart Qoder CLI so it reloads its MCP settings (the Qoder IDE manages servers in its UI).",
     skills: skillDirs(home(".qoder", "skills"), project(".qoder", "skills")),
@@ -645,6 +747,10 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_GROK_BUILD_CONFIG_FILE",
     format: "toml",
+    remoteMcp: {
+      entry: (url) => ({ url }),
+      signIn: (name) => `In Grok Build, run /mcps, select ${name} and press i to sign in.`,
+    },
     mcp: { user: home(".grok", "config.toml"), project: project(".grok", "config.toml") },
     restart: "Restart Grok Build so it reloads config.toml (it also reads ~/.claude.json and .cursor/mcp.json).",
     skills: sharedSkills({ legacyDirs: { user: home(".grok", "skills"), project: project(".grok", "skills") } }),
@@ -656,6 +762,10 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_MISTRAL_VIBE_CONFIG_FILE",
     format: "toml-array",
+    remoteMcp: {
+      entry: (url) => ({ name: "summer-games", transport: "streamable-http", url, auth: { type: "oauth", scopes: [] } }),
+      signIn: (name) => `In Vibe, run /mcp login ${name}.`,
+    },
     mcp: { user: home(".vibe", "config.toml"), project: project(".vibe", "config.toml") },
     restart: "Restart Vibe so it reloads config.toml.",
     skills: skillDirs(home(".vibe", "skills"), SHARED_SKILLS_PROJECT, { legacyDirs: { user: home(".vibe", "skills"), project: project(".vibe", "skills") } }),
@@ -667,6 +777,7 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_LM_STUDIO_CONFIG_FILE",
     format: "json",
+    // No Summer Games entry: LM Studio's MCP client registration is closed and unverified.
     mcp: { user: home(".lmstudio", "mcp.json"), project: null },
     restart:
       "Open LM Studio, toggle on the summer-engine MCP server in the Program tab, and raise the loaded model's context length to 32k or higher.",

@@ -24,7 +24,7 @@ Paste this into your AI environment:
 Install Summer Engine and let's make a game.
 ```
 
-The agent reads the install playbook, runs `npx -y summer-engine@latest doctor --json`, downloads and logs in only if those checks need it, always runs `setup` (idempotent: MCP config + every skill in the library), and opens the engine. In Claude Code and Codex, setup also adds Summer Games (`summer-games`: friends, parties and messages as you); you sign in once through summer.games (Claude Code `/mcp`, Codex `/mcp login summer-games`).
+The agent reads the install playbook, runs `npx -y summer-engine@latest doctor --json`, downloads and logs in only if those checks need it, always runs `setup` (idempotent: MCP config + every skill in the library), and opens the engine. In most agents, setup also adds Summer Games (`summer-games`: friends, parties and messages as you); you sign in once through summer.games, and setup prints the step for your agent.
 
 Manual fallback:
 

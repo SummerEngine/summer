@@ -141,6 +141,8 @@ queries:
     expected: [skill/release-readiness]
   - query: "nobody can join my online game, every join times out with world_start_timeout but local play works"
     expected: [skill/release-readiness, skill/multiplayer-publish]
+  - query: "players only get a black screen when they open my game, but it runs fine in my editor"
+    expected: [skill/release-readiness]
   - query: "save each player's progress between matches"
     expected: [skill/summer-player-data]
   - query: "add a leaderboard to my online game"

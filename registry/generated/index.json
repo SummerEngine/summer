@@ -1599,7 +1599,7 @@
       "id": "skill/export-and-ship",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "a9f78e274664897b2999364e3464b70329e01a7693b53a3df83c20d3447c5289",
+      "content_hash": "d255ed8ed7d74ed8f8b8a67dde9e774fd877135392758e706ba34242e2453715",
       "summary": "Assess and prepare a game export: inventory installed templates and targets, validate release assets and config, produce supported builds after approval.",
       "use_when": [
         "the user wants to assess or prepare a Summer game export — Steam, itch, HTML5, iOS, Android targets as available in the installed build",
@@ -2321,7 +2321,7 @@
       "id": "skill/multiplayer-publish",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "593c9f89234fab5846cab173a1723e06d2f3755effec21b692ccad31a099c531",
+      "content_hash": "9b716c90273e17b261123d2ee828bc7eadc1d7ca73ed040bf007cd20a2fbae96",
       "summary": "Ship a hosted Summer multiplayer game: the summer.games bundle, server preset, pre-upload checks, and a new Build.",
       "use_when": [
         "publishing a hosted Summer multiplayer game online so other players can join it",
@@ -2900,13 +2900,14 @@
       "id": "skill/release-readiness",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "b3bb73125c8dc0d3b790a1e15229a3b7dca81e8120d03b5e41076d3c5c8ec490",
-      "summary": "Before releasing a Summer game version, prove players can play it: server starts its authority scene, online join works, progress saves, no fixed Game ID.",
+      "content_hash": "f6336bb2d8c2b5915a397d5a49341d142e8988ee3091d557950da0307f47761d",
+      "summary": "Before releasing a Summer game version, prove players can play it: server scene, online join, saved progress, no fixed Game ID, a released Summer compiles it.",
       "use_when": [
         "before uploading, promoting or releasing a new version to players: is it ready to release",
         "every online join fails with world_start_timeout, or the hosted server's log is empty, while Local Play works",
         "Summer.initialize fails with game_identity_mismatch: the initialized Game ID does not match hosted runtime context",
         "checking that a hosted game's server.pck starts the authority scene and not the title screen",
+        "players get a blank or black screen when they open the released game, but it runs in the editor: client scripts fail with Parse Error or Failed to load script",
         "a game release failed for players and the check that would have caught it needs adding"
       ],
       "facets": {

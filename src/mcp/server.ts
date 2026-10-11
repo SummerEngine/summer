@@ -38,6 +38,7 @@ import {
 } from "./boot-notice.js";
 import { appendMcpLogEvent } from "../core/mcp-log.js";
 import { prepareHostedMount } from "./hosted-mount.js";
+import { serveProviderSafeToolSchemas } from "./provider-safe-schema.js";
 import {
   buildBootDriftNotice,
   fetchLatestRegistryVersion,
@@ -390,6 +391,8 @@ export function createMcpServer(): {
   // The playbook is also an MCP prompt so prompt-surfacing hosts get it
   // natively (same content as the summer_get_agent_playbook tool).
   registerPlaybookPrompt(server);
+  // Strict providers (Kimi, OpenAI strict) reject tuple and $ref schemas.
+  serveProviderSafeToolSchemas(server);
 
   return { server, getRegisteredToolCount };
 }

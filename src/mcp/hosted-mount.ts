@@ -4,6 +4,7 @@ import { z } from "zod";
 import { connectHostedMcp, type HostedClient, type HostedConnectDependencies } from "../core/hosted-mcp.js";
 import { getStoreAccessToken, OAuthError, resolveMcpResourceUrl } from "../core/oauth.js";
 import { appendMcpLogEvent } from "../core/mcp-log.js";
+import { providerSafeSchema } from "./provider-safe-schema.js";
 
 export type { HostedClient };
 
@@ -105,7 +106,7 @@ export function prepareHostedMount(
         ...result,
         tools: result.tools.map((tool) => {
           const hosted = schemas.get(tool.name);
-          return hosted ? { ...tool, inputSchema: hosted.inputSchema, ...(hosted.annotations ? { annotations: hosted.annotations } : {}), ...(hosted.title ? { title: hosted.title } : {}) } : tool;
+          return hosted ? { ...tool, inputSchema: providerSafeSchema(hosted.inputSchema), ...(hosted.annotations ? { annotations: hosted.annotations } : {}), ...(hosted.title ? { title: hosted.title } : {}) } : tool;
         }),
       };
     });

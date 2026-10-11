@@ -23,7 +23,7 @@ function hostedSummerEngine() {
     const server = new McpServer({ name: "summer-engine", version: "1.0.0" });
     server.registerTool(
       "summer_store_submit",
-      { description: "Ask the owner to publish.", inputSchema: { gameId: z.string(), priceUsdCents: z.number().int().optional() } },
+      { description: "Ask the owner to publish.", inputSchema: { gameId: z.string(), priceUsdCents: z.number().int().optional(), focus: z.tuple([z.number(), z.number()]).optional() } },
       async (args) => {
         seen.push({ tool: "summer_store_submit", args, authorization });
         return { content: [{ type: "text", text: JSON.stringify({ status: "awaiting_owner_approval", approvalUrl: "https://www.summerengine.com/studio/store/g1/approve/oa_1" }) }] };
@@ -107,6 +107,8 @@ describe("one Summer Engine MCP: hosted tools mounted locally", () => {
       const submit = tools.find((tool) => tool.name === "summer_store_submit")!;
       expect(submit.inputSchema.properties).toHaveProperty("gameId");
       expect(submit.inputSchema.required).toEqual(["gameId"]);
+      // A hosted tuple leaves in the provider-safe form, like the local tools.
+      expect(submit.inputSchema.properties!.focus).toEqual({ type: "array", minItems: 2, maxItems: 2, items: { type: "number" } });
       // The local generate tool stays local.
       expect(tools.find((tool) => tool.name === "summer_generate_image")!.description).not.toBe("HOSTED generate");
     } finally {

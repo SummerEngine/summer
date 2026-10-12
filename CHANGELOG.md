@@ -2,9 +2,13 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [3.6.0] - 2026-10-12
 
-Hosted games: agents check that players can actually join before a release.
+Pick your sound effects by ear, and hosted games: agents check that players can actually join before a release.
+
+- **Three versions of a sound effect, picked in Summer Studio.** The best sound-effect model changes a lot from one sound to the next. The first time you ask for a sound effect in a chat, the `sound-effect` skill now asks whether you want three versions from three models. If you say yes, the new `summer_generate_sfx_choices` makes them and shows them on a Summer Studio page: in your open Studio tab when you are signed in to the store, else in your browser, else as a link. You listen and approve one or more; `summer_get_choices` tells the agent which ones, and it imports and wires them. The model you approve becomes your default for later sound effects.
+- `summer_generate_audio` sound effects take `modelId` (`eleven_text_to_sound_v2`, `sonilo-sfx-1.1`, `stable-audio-3-sfx`; left out, your approved default runs, else ElevenLabs) and `loop` for seamless loops (ElevenLabs only). Existing calls work as before.
+- The `sound-effect` skill has prompt shapes that held up in testing: a Foley one-shot with the materials, the attack and the tail; exact event times for sequences such as a rifle reload; "air movement only" for whooshes; and the minimum length of each model. `ambient-bed` names the looping model, and `audio-direction` makes its first sounds through `sound-effect`.
 
 - **`release-readiness` check 10: a signed-in player keeps playing for three minutes.** A released game closed for every player about a minute in, with "That link can't be opened", and left them signed out: a Summer service refused the player's sign-in and the app ended play. The fault was Summer's, and no check on the game's files could see it. The check asks the user to play the released version for 3 minutes in each Summer Games app, through an analytics event, and to report a close or sign-out to Summer with the time. `multiplayer-publish` step 6 points to it.
 - **`release-readiness` checks 8 and 9: every file the game reads is in the pack, and the export is on the apps' Summer version line.** A release's uploaded pack left out a font file the game read with `FileAccess`; it fell back to `SystemFont`, which draws every glyph as a box on iPhone, while desktop looked right. Check 8 traces every by-path read, checks the summer.games preset's non-resource filter, lists `client.pck` with a short `--script` probe, bans `SystemFont` for phone text and asks for a look at the text on an iPhone. Another release was a 0.6 export, and a Summer Games phone app that carries 0.7 refused it with "The game could not start" while desktop ran it. Check 9 compares the export's MAJOR.MINOR with the current Summer release. `export-and-ship`, `ui-basics` and `multiplayer-publish` point to both.

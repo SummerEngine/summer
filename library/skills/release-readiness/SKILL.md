@@ -78,8 +78,8 @@ failures:
 
 Checks 1 and 2 apply to every game with a server (`summer.build.json` names
 a `server.exportPreset`). Checks 3 and 4 apply to every game with online
-play. Checks 5 to 8 apply to every game. Check 9 applies to every bundle
-for iPhone or Android.
+play. Checks 5 to 8 and 10 apply to every game. Check 9 applies to every
+bundle for iPhone or Android.
 
 ### 1. The server pack starts the authority scene
 
@@ -338,6 +338,25 @@ their OK, run `summer install --yes`). Export again, upload it as a new
 version and promote it. Do this again after every Summer minor update
 (0.6 to 0.7), because the apps move to the new line.
 
+### 10. A signed-in player keeps playing for three minutes
+
+**Why.** While the game runs, it calls Summer services for the signed-in
+player: analytics, player data, the store. A short test can end before the
+first of those calls. A real release closed for every player about a minute
+in, with "That link can't be opened", and left them signed out: a Summer
+service refused the player's sign-in, and the app ended play. The fault was
+Summer's, not the game's, and no check on the game's files could see it.
+
+**Check it.** After publishing, sign in to a Summer Games app on a phone,
+open the released version and play it for at least 3 minutes, through at
+least one analytics event. The game must not close, and the player must
+still be signed in afterwards. Do it in each Summer Games app the game
+targets. An agent can't do this step; report it as **not run** and ask the
+user, then record what they saw.
+
+**Fix.** Nothing in the game. Ask the user to report it to Summer with the
+game's name, the app and the time it happened.
+
 ## Troubleshooting
 
 ### Every online join fails with `world_start_timeout`, but Local Play works
@@ -371,6 +390,14 @@ The game works on desktop, but the phone app says "The game could not
 start". The `.zip` most likely comes from a Summer version line the app
 doesn't carry. Run check 9, then export again with the current Summer
 release, upload and promote.
+
+### The game closes after about a minute and the player is signed out
+
+The Summer Games app closes the game 20 to 60 seconds into play with "Play
+paused" or "That link can't be opened", and the player finds they are signed
+out. A Summer service refused the player's sign-in while the game played.
+This is Summer's fault, not the game's: see check 10, and ask the user to
+report it with the time it happened.
 
 ### The game server's log is empty
 
@@ -406,4 +433,5 @@ here would have caught:
 - [ ] 7. The export stamp names a released Summer and its `engineSha`, and `client.pck` run on that released Summer prints no `SCRIPT ERROR`, `Parse Error` or `Failed to load script`.
 - [ ] 8. Every file the game reads by path has a `PACK res://…` line in the listing of `client.pck` (or `server.pck`), no phone text uses `SystemFont`, and text shows as letters on an iPhone (or is reported as not run).
 - [ ] 9. For an iPhone or Android bundle, `summerVersion` has the current Summer release's MAJOR.MINOR.
+- [ ] 10. A signed-in player played the released version for 3 minutes in each Summer Games app, through an analytics event, without the game closing or being signed out (or it is reported as not run).
 - [ ] One line per check reported to the user before anything is changed.

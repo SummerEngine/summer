@@ -267,8 +267,10 @@ of `.zip`. That writes `client.pck` alone.
 Right after the Build is released, open the game in a Summer Games app,
 join online and play until you are in the game, before players hear about
 the update. A wrong Game ID only fails under a real hosted launch, so
-nothing before this step catches it. An agent can't do this; ask the user
-and record the result. The whole list of checks before a release is
+nothing before this step catches it. Keep playing, signed in, for at least 3
+minutes: the game must not close and the player must stay signed in
+(`release-readiness` check 10). An agent can't do this; ask the user and
+record the result. The whole list of checks before a release is
 `release-readiness`, and the creator docs have it at
 https://docs.summerengine.com/publishing/release-readiness.
 
@@ -295,7 +297,7 @@ Use step 4d to see which scene runs.
 - [ ] The bundle's `server.pck`, run with no scene, loads the authority scene first.
 - [ ] `Exported by Summer` names a released Summer, and the bundle's `client.pck` run on that release prints no `SCRIPT ERROR`, `Parse Error` or `Failed to load script`.
 - [ ] Every `Summer.initialize` call passes no Game ID.
-- [ ] After release: a real online join reaches the game (`release-readiness`).
+- [ ] After release: a real online join reaches the game, and a signed-in player keeps playing for 3 minutes (`release-readiness` checks 2 and 10).
 - [ ] Local Play passed with the same project.
 
 ## Common mistakes

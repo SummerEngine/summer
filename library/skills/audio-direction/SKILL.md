@@ -203,15 +203,15 @@ Ask:
 
 ### 10. Optional — generate first SFX seeds
 
-If the user wants to start generating, propose 3-5 SFX seeds aligned with the vocabulary. These are starting points, not finals.
+If the user wants to start generating, propose 3-5 SFX seeds aligned with the vocabulary. These are starting points, not finals. Generate them with the `sound-effect` skill: the first sound effect in a chat starts with its question (three versions from three models, picked by ear in Summer Studio), and its prompt shape is the one that tested well.
 
 ```
-summer_generate_audio(capability="sound_effects", text="soft woody UI click, 80ms, no reverb, neutral pitch", durationSeconds=0.5)
-summer_generate_audio(capability="sound_effects", text="warm major-third coin pickup, 300ms, light reverb", durationSeconds=0.5)
-summer_generate_audio(capability="sound_effects", text="punchy low-mid player damage hit, slight detune, 200ms, no tail", durationSeconds=0.5)
+summer_generate_audio(capability="sound_effects", text="Foley one-shot: a fingertip taps a small wooden button, soft woody click, no tail, close-mic, dry, no reverb, no music, no voices.", durationSeconds=0.5)
+summer_generate_audio(capability="sound_effects", text="Foley one-shot: a small gold coin drops onto a wooden table, bright metallic ting with a short ring, close-mic, dry, no music, no voices.", durationSeconds=0.5)
+summer_generate_audio(capability="sound_effects", text="Foley one-shot: a fist hits a padded leather vest, low-mid thump, no tail, close-mic, dry, no reverb, no music, no voices.", durationSeconds=0.5)
 ```
 
-`capability` is required; `sound_effects` reads from `text` (not `prompt`), and the length argument is `durationSeconds` (not `duration`) with a floor of 0.5 s. Ask for the character you want inside the text and let the player only use the front of the clip — you cannot request 80 ms.
+`capability` is required; `sound_effects` reads from `text` (not `prompt`), and the length argument is `durationSeconds` (not `duration`) with a floor of 0.5 s (1 s for Stable Audio 3 SFX). Leave out `modelId` so the person's approved default model runs. Ask for the character you want inside the text and let the player only use the front of the clip — you cannot request 80 ms.
 
 Ask first:
 

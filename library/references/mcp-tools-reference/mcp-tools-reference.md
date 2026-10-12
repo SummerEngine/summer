@@ -17,7 +17,7 @@
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (105 tools)
+## Tool surface (107 tools)
 
 ### Project files (4)
 
@@ -211,13 +211,15 @@ Preview. One fast, read-only call that walks every node of a 3D scene and lists 
 | `summer_import_hdri` | Search Poly Haven's CC0 HDRIs (public API, no Summer login), import the `.hdr`/`.exr` into `res://sky/`, and get the exact `summer_run_script` snippet that wires it as the WorldEnvironment sky. |
 | `summer_slice_asset_sheet` | Detect and crop every distinct asset from a generated sheet image into named individual assets (works without the engine; import the results afterwards). |
 
-### Asset generation (5 — metered)
+### Asset generation (7 — metered)
 
 | Tool | Use |
 |---|---|
 | `summer_generate_image` | AI image gen. |
 | `summer_generate_3d` | Image-to-3D. |
-| `summer_generate_audio` | SFX / music gen. |
+| `summer_generate_audio` | SFX / music gen. Sound effects: `modelId` picks ElevenLabs SFX v2, Sonilo SFX 1.1 or Stable Audio 3 SFX; omitted = the person's approved default. |
+| `summer_generate_sfx_choices` | One sound effect from several models, shown on a Summer Studio page where the person approves one or more. |
+| `summer_get_choices` | Read which sound-effect versions the person approved (audioUrl, assetId, note). |
 | `summer_generate_video` | Video gen. |
 | `summer_generate_motion` | Generate/apply 3D skeletal motion from a rigged asset. |
 

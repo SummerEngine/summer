@@ -147,8 +147,8 @@
     {
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
-      "version": "1.4.0",
-      "content_hash": "b205cc628b163fb3f39e7f2c5d808147738a0bdd913e02b8dce7d73239425adc",
+      "version": "1.4.1",
+      "content_hash": "87742ed2af1190af6d5bda79b4fe0cde1973fcd74c0cd4a5763e1bdcc23b4fb9",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -429,8 +429,8 @@
     {
       "id": "skill/ambient-bed",
       "kind": "skill",
-      "version": "1.0.2",
-      "content_hash": "e479dae394dd6e490f634f20a40440c2c2bff6f77b6eb3701fa04d4f4aaad04a",
+      "version": "1.0.3",
+      "content_hash": "019312cde595bc12813c1fe6787cd0127f37e4933985930039214c58acbbdb45",
       "summary": "Generate a long looping location ambience — forest, dungeon, city, spaceship, cave — a looping AudioStreamPlayer on the Ambient bus with a seamless loop.",
       "use_when": [
         "generating a long looping location ambience — forest at dawn, dungeon air, city street, spaceship hum, cave drip — non-melodic and low-energy",
@@ -637,8 +637,8 @@
     {
       "id": "skill/audio-direction",
       "kind": "skill",
-      "version": "1.0.6",
-      "content_hash": "4ee78d97f4a9fa38023020b6e287595fd1e2b186f8283a015bc59c2a334e3a7f",
+      "version": "1.0.7",
+      "content_hash": "c9d7324e75b87eb183d0e0c0787aacd75008a1797b6fb58de6bf8273971c5ce9",
       "summary": "Define the game's sonic identity — music style, instruments, SFX vocabulary, dynamic music plan — output as an audio bible at .summer/audio-bible.md.",
       "use_when": [
         "defining the sonic identity — music style, instruments, SFX vocabulary, dynamic music plan",
@@ -3439,12 +3439,14 @@
     {
       "id": "skill/sound-effect",
       "kind": "skill",
-      "version": "1.0.3",
-      "content_hash": "f8560bb6234d982edcaa80f27c8ac287ed11853ea50539f285288b48e5f3c923",
-      "summary": "Generate short SFX one-shots — footsteps, weapon swings, UI clicks, hit impacts — wired as AudioStreamPlayer/2D/3D that auto-frees on finished.",
+      "version": "1.1.0",
+      "content_hash": "4ea1cf55a48cf8e4670018c9a7b858e970acb3852b3e0023bade97e408c8eb08",
+      "summary": "Make SFX one-shots and timed sequences (swings, hits, whooshes, reloads, UI) - offer three model versions to pick from, then wire them as AudioStreamPlayers.",
       "use_when": [
         "generating short SFX one-shots — footsteps, weapon swings, UI clicks, hit impacts, environmental cues",
-        "an action, impact, or UI interaction is silent and needs a short one-shot sound wired to it"
+        "an action, impact, or UI interaction is silent and needs a short one-shot sound wired to it",
+        "a timed sound that must match an animation, such as a rifle reload or an attack combo",
+        "the person wants several versions of a sound to pick from"
       ],
       "facets": {
         "lifecycle": [
@@ -3465,6 +3467,11 @@
       "related": {
         "skills": [
           "skill/audio-direction"
+        ],
+        "tools": [
+          "tool/generate-sfx-choices",
+          "tool/get-choices",
+          "tool/generate-audio"
         ]
       },
       "status": "stable",
@@ -6540,8 +6547,8 @@
     {
       "id": "tool/generate-audio",
       "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "4f9503dfe7384cb4894fb623a6c1cfd16584b512347ef682e93ecec5da4e54f8",
+      "version": "1.1.0",
+      "content_hash": "48834c5df50c389c3eff20c8aaa00885f9268ff90872ca8bec3ba89cb1bdb8c7",
       "summary": "Generate audio via Summer Studio: text-to-speech, sound effects, music, or multi-voice dialogue.",
       "use_when": [
         "creating sound effects, music beds, or spoken lines for the game",
@@ -6631,6 +6638,45 @@
       },
       "status": "stable",
       "mcp_tool_name": "summer_generate_motion",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/generate-sfx-choices",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "463a73530a24eb8a3379715b5c487cffa056bfca031c5ff3206971038b2df715",
+      "summary": "Make one sound effect with several models and show the versions in Summer Studio; the person approves one or more and that model becomes their default.",
+      "use_when": [
+        "the first sound effect in a chat, after the person said yes to three versions to pick from",
+        "\"give me a few versions of this sword clash to choose from\"",
+        "\"compare the sound effect models on this whoosh\""
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "generate",
+          "audio"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/sound-effect"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_generate_sfx_choices",
       "remote": true,
       "authority": {
         "filesystem": false,
@@ -6800,6 +6846,44 @@
       },
       "status": "stable",
       "mcp_tool_name": "summer_get_board",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/get-choices",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "57c7366d449347c8fb0ac94a4bd419b2babcccc26391a5ace790d9e55f319404",
+      "summary": "Read a sound-effect choice set: whether the person decided, which versions they approved (audioUrl, assetId, note) and their default sound-effect model.",
+      "use_when": [
+        "after summer_generate_sfx_choices, to learn which versions the person approved",
+        "\"I picked the sounds I like in Studio\""
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "generate",
+          "audio"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/sound-effect"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_get_choices",
       "remote": true,
       "authority": {
         "filesystem": false,

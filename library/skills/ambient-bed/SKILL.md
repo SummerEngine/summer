@@ -103,13 +103,15 @@ If the user wants a busier bed (market, party), still prevent foreground events:
 ```
 summer_generate_audio(
   capability: "sound_effects",
+  modelId: "eleven_text_to_sound_v2",
+  loop: true,
   text: "forest at dawn, gentle wind through leaves, distant bird calls every 6 seconds, soft creaking branches, no music, no human sound, 22s seamless loop",
   durationSeconds: 22
 )
 // Then: summer_import_from_url(url: "<fileUrl>", path: "res://audio/ambient/forest_dawn.wav")
 ```
 
-`sound_effects` reads from **`text`**, not `prompt` — passing `prompt` is a 400 `text_required`. (`prompt` is the `music` capability's field.) The clip comes back as WAV, so a `.wav` target path is correct.
+Name `modelId: "eleven_text_to_sound_v2"` with `loop: true`: it is the only sound-effect model that makes seamless loops, and without a `modelId` the person's default sound-effect model runs, which may not loop. `sound_effects` reads from **`text`**, not `prompt` — passing `prompt` is a 400 `text_required`. (`prompt` is the `music` capability's field.) The clip comes back as WAV, so a `.wav` target path is correct.
 
 22s is the SFX ceiling. Always generate at the ceiling for ambient — longer cycle means less recognized repetition.
 

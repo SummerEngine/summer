@@ -46,6 +46,16 @@ import { z, type ZodTypeAny } from "zod";
 import { BOARD_ENDPOINT, boardArgsSchema, boardQuery } from "./board.js";
 import { IMAGE_GENERATION_TIMEOUT_MS, imageGenerationArgsSchema, saveGeneratedImage } from "./image-generation.js";
 import { buildMotionRequestBody, motionGenerationArgsSchema } from "./motion-generation.js";
+import {
+  defaultCanOpenBrowser,
+  generateSfxChoices,
+  getChoices,
+  getChoicesArgsSchema,
+  openInStudioTab,
+  sfxChoicesArgsSchema,
+  type GatewayReply,
+  type SfxChoicesDeps,
+} from "./sfx-choices.js";
 import { ImportHdriError, importHdriArgsSchema, importPolyHavenHdri } from "./hdri-import.js";
 import { FABRICATE_FALLBACK, buildFabricateMeshOp, fabricateArgsSchema } from "./fabricate-mesh.js";
 import {
@@ -595,6 +605,26 @@ function optStr(args: DispatchArgs, key: string): string | undefined {
 
 /** Validate CLI args against the SAME zod schema the MCP face uses, so the
  *  two surfaces reject the same inputs with a readable message. */
+/** The gateway helpers as the shared sfx-choices module expects them: a reply, never a throw. */
+async function gatewayReply(call: () => Promise<DispatchArgs>): Promise<GatewayReply> {
+  try {
+    return { data: await call(), status: 200 };
+  } catch (error) {
+    if (!(error instanceof ToolDispatchError)) throw error;
+    return { error: error.message, status: 0 };
+  }
+}
+
+function sfxChoicesDeps(): SfxChoicesDeps {
+  return {
+    post: (endpoint, body, timeoutMs) => gatewayReply(() => gatewayPost(endpoint, body, timeoutMs)),
+    get: (endpoint, params, timeoutMs) => gatewayReply(() => gatewayGet(endpoint, params, timeoutMs)),
+    studioOpen: (path, reviewUrl) => openInStudioTab(path, reviewUrl),
+    openUrl: (url) => open(url),
+    canOpenBrowser: () => defaultCanOpenBrowser(),
+  };
+}
+
 function parseToolArgs<T extends ZodTypeAny>(schema: T, args: DispatchArgs, tool: string): z.output<T> {
   const parsed = schema.safeParse(args);
   if (parsed.success) return parsed.data as z.output<T>;
@@ -1207,9 +1237,20 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       if (optStr(args, key)) body[key] = args[key];
     }
     if (typeof args.durationSeconds === "number") body.durationSeconds = args.durationSeconds;
+    if (typeof args.loop === "boolean") body.loop = args.loop;
     if (Array.isArray(args.inputs)) body.inputs = args.inputs;
     if (args.options) body.options = args.options;
     return gatewayPost("/api/mcp/generate/audio", body);
+  }),
+  entry("summer_generate_sfx_choices", "Make one sound effect with several models and show them for the person to pick", false, async (args) => {
+    const result = await generateSfxChoices(parseToolArgs(sfxChoicesArgsSchema, args, "generate-sfx-choices"), sfxChoicesDeps());
+    if (result.ok !== true) throw new ToolResultError(result, String(result.error));
+    return result;
+  }),
+  entry("summer_get_choices", "Read which sound-effect versions the person approved", false, async (args) => {
+    const result = await getChoices(parseToolArgs(getChoicesArgsSchema, args, "get-choices"), sfxChoicesDeps());
+    if (result.ok !== true) throw new ToolResultError(result, String(result.error));
+    return result;
   }),
   entry("summer_generate_3d", "Generate a 3D model (optional auto-rig + animations)", false, async (args) => {
     const options = {

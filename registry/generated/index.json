@@ -2321,7 +2321,7 @@
       "id": "skill/multiplayer-publish",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "5811529926134ea52846d8c6e7060642ddf6d4fd8184b0bea455eedb7d9a914a",
+      "content_hash": "e0624b497dc1e45bbe9e529817502a4e05c829189402391d0882fc0b007e8766",
       "summary": "Ship a hosted Summer multiplayer game: the summer.games bundle, server preset, pre-upload checks, and a new Build.",
       "use_when": [
         "publishing a hosted Summer multiplayer game online so other players can join it",
@@ -2900,7 +2900,7 @@
       "id": "skill/release-readiness",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "914c1c1e77b2fea0e613c0d1a583cbb6b4d59353ca244b9d1998c4297c391b1d",
+      "content_hash": "229b468ac0f85c84e55c5cb952dd1e3fcbc8e8c8d1ebe7aca1919199d5b6090e",
       "summary": "Before releasing a Summer game version, prove players can play it: server scene, online join, progress, Game ID, released Summer, packed files, app version.",
       "use_when": [
         "before uploading, promoting or releasing a new version to players: is it ready to release",
@@ -2910,6 +2910,7 @@
         "players get a blank or black screen when they open the released game, but it runs in the editor: client scripts fail with Parse Error or Failed to load script",
         "text shows as boxes on iPhone but looks fine on desktop: a font or other file read with FileAccess is missing from the pack, or SystemFont is used",
         "the Summer Games phone app says the game could not start, but it works on desktop: the game's Summer version line differs from the app's",
+        "the game closes about a minute into play with Play paused or That link can't be opened, and the player is signed out",
         "a game release failed for players and the check that would have caught it needs adding"
       ],
       "facets": {

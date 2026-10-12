@@ -1,13 +1,15 @@
 id: skill/release-readiness
 kind: skill
 version: 1.0.0
-summary: "Before releasing a Summer game version, prove players can play it: server scene, online join, saved progress, no fixed Game ID, a released Summer compiles it."
+summary: "Before releasing a Summer game version, prove players can play it: server scene, online join, progress, Game ID, released Summer, packed files, app version."
 use_when:
   - "before uploading, promoting or releasing a new version to players: is it ready to release"
   - "every online join fails with world_start_timeout, or the hosted server's log is empty, while Local Play works"
   - "Summer.initialize fails with game_identity_mismatch: the initialized Game ID does not match hosted runtime context"
   - "checking that a hosted game's server.pck starts the authority scene and not the title screen"
   - "players get a blank or black screen when they open the released game, but it runs in the editor: client scripts fail with Parse Error or Failed to load script"
+  - "text shows as boxes on iPhone but looks fine on desktop: a font or other file read with FileAccess is missing from the pack, or SystemFont is used"
+  - "the Summer Games phone app says the game could not start, but it works on desktop: the game's Summer version line differs from the app's"
   - "a game release failed for players and the check that would have caught it needs adding"
 do_not_use_when:
   - "only producing a local export for a jam or prototype nobody else plays — skill/export-and-ship"

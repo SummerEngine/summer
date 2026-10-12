@@ -1599,7 +1599,7 @@
       "id": "skill/export-and-ship",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "d255ed8ed7d74ed8f8b8a67dde9e774fd877135392758e706ba34242e2453715",
+      "content_hash": "c0ed1e67fe9a32ea1ad869dd2c1c320f74816696a87ad17ab40a26cdd138d5c9",
       "summary": "Assess and prepare a game export: inventory installed templates and targets, validate release assets and config, produce supported builds after approval.",
       "use_when": [
         "the user wants to assess or prepare a Summer game export — Steam, itch, HTML5, iOS, Android targets as available in the installed build",
@@ -2321,7 +2321,7 @@
       "id": "skill/multiplayer-publish",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "9b716c90273e17b261123d2ee828bc7eadc1d7ca73ed040bf007cd20a2fbae96",
+      "content_hash": "5811529926134ea52846d8c6e7060642ddf6d4fd8184b0bea455eedb7d9a914a",
       "summary": "Ship a hosted Summer multiplayer game: the summer.games bundle, server preset, pre-upload checks, and a new Build.",
       "use_when": [
         "publishing a hosted Summer multiplayer game online so other players can join it",
@@ -2900,14 +2900,16 @@
       "id": "skill/release-readiness",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "f6336bb2d8c2b5915a397d5a49341d142e8988ee3091d557950da0307f47761d",
-      "summary": "Before releasing a Summer game version, prove players can play it: server scene, online join, saved progress, no fixed Game ID, a released Summer compiles it.",
+      "content_hash": "914c1c1e77b2fea0e613c0d1a583cbb6b4d59353ca244b9d1998c4297c391b1d",
+      "summary": "Before releasing a Summer game version, prove players can play it: server scene, online join, progress, Game ID, released Summer, packed files, app version.",
       "use_when": [
         "before uploading, promoting or releasing a new version to players: is it ready to release",
         "every online join fails with world_start_timeout, or the hosted server's log is empty, while Local Play works",
         "Summer.initialize fails with game_identity_mismatch: the initialized Game ID does not match hosted runtime context",
         "checking that a hosted game's server.pck starts the authority scene and not the title screen",
         "players get a blank or black screen when they open the released game, but it runs in the editor: client scripts fail with Parse Error or Failed to load script",
+        "text shows as boxes on iPhone but looks fine on desktop: a font or other file read with FileAccess is missing from the pack, or SystemFont is used",
+        "the Summer Games phone app says the game could not start, but it works on desktop: the game's Summer version line differs from the app's",
         "a game release failed for players and the check that would have caught it needs adding"
       ],
       "facets": {
@@ -4185,7 +4187,7 @@
       "id": "skill/ui-basics",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "c725af703d014a7c6db43889db82077834231fbd3e4549f91b6b74af7ceaa20b",
+      "content_hash": "76793a56f9517ec7fb20d705ab8584955cad3e3c827a54a26220f87afde343a3",
       "summary": "Build Summer Engine UI — HUDs, menus, health bars, dialogue boxes, Control trees — anchors, containers, responsive layout, theme vs inline styling.",
       "use_when": [
         "building Summer Engine UI: HUDs, main menus, pause menus, health bars, progress bars, dialogue boxes, or any Control-node tree",

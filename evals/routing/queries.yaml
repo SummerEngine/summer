@@ -143,6 +143,10 @@ queries:
     expected: [skill/release-readiness, skill/multiplayer-publish]
   - query: "players only get a black screen when they open my game, but it runs fine in my editor"
     expected: [skill/release-readiness]
+  - query: "on iPhone every letter in my game shows as a box, but on my Mac the text is fine"
+    expected: [skill/release-readiness]
+  - query: "the Summer Games phone app says the game could not start, but it works on desktop"
+    expected: [skill/release-readiness]
   - query: "save each player's progress between matches"
     expected: [skill/summer-player-data]
   - query: "add a leaderboard to my online game"

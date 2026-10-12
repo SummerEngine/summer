@@ -137,6 +137,7 @@ The default font only has letters, digits and common punctuation. Anything else 
 - Never put emoji or Unicode symbols in Label, Button or RichTextLabel text: arrows (▲ ▼ ◀ ▶ ← →), stars, hearts, check marks, music notes, keycap symbols. Write the words instead ("Up", "Next"), or show an icon.
 - Draw icons as nodes: a TextureRect with a small texture, a Polygon2D triangle for arrows, or a `_draw()` shape. Key prompts are a rounded StyleBoxFlat panel with the key's letter in it.
 - If the game really needs symbols or another script (Japanese, Arabic, Cyrillic), add a font file that contains them: import a TTF/OTF that covers the characters, set it as the theme's default font, and add it to the fallbacks of any other font you use.
+- Never use `SystemFont` for text players see on iPhone or Android, not even as a fallback: in the Summer Games app on iPhone it has no system fonts and draws every glyph as a box, while desktop looks fine. Import a TTF/OTF into the project, and fall back to `ThemeDB.fallback_font`. If you load font bytes with `FileAccess` instead, the file must be in the pack (`release-readiness` check 8).
 - After adding text, take one screenshot and look for boxes with hex codes; fix any you find before moving on.
 
 ## Fallback (no MCP — edit `.tscn` directly)

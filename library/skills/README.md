@@ -147,7 +147,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | skill | when to use | also |
 |---|---|---|
 | [export-and-ship](./export-and-ship/SKILL.md) ★ | Assess and prepare a game export: inventory installed templates and targets, validate release assets and config, produce supported builds after approval. | project |
-| [*release-readiness*](./release-readiness/SKILL.md) (preview) | Before releasing a Summer game version, prove players can play it: server scene, online join, saved progress, no fixed Game ID, a released Summer compiles it. | multiplayer, playtest |
+| [*release-readiness*](./release-readiness/SKILL.md) (preview) | Before releasing a Summer game version, prove players can play it: server scene, online join, progress, Game ID, released Summer, packed files, app version. | multiplayer, playtest |
 | [remote-deploy](./remote-deploy/SKILL.md) ★ | Run or test the game on a real device — phone, tablet, another computer — via the Remote Deploy button, runnable export presets, and on-device debugging. | project |
 
 ## editor

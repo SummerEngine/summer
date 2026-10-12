@@ -141,7 +141,9 @@ scene the pack will start; step 4d checks that. The `Exported by Summer`
 line must name a released Summer: export with the released editor from the
 download page, never a development build, and export again after you update
 Summer. Players' apps run the packs on the released Summer of that version;
-step 4e checks it. Every
+step 4e checks it. The Summer Games apps for iPhone and Android start only
+exports on their own MAJOR.MINOR, so export with the current Summer release
+(`release-readiness` check 9). Every
 result message and every export error, with its fix, is in
 [export-errors.md](export-errors.md).
 

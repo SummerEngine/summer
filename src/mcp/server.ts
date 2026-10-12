@@ -58,15 +58,16 @@ export const getCachedBootDriftNotice = getCachedNotice;
  * turn and would otherwise learn the hard way. Kept under 600 characters so
  * it costs a few hundred tokens once; the full operating guide stays in the
  * summer_agent_playbook prompt / summer_get_agent_playbook tool. The last
- * sentence names the publishing path and the owner-approval rule.
+ * sentence names the publishing path, the owner-approval rule and where
+ * review feedback is read.
  */
 export const SUMMER_MCP_INSTRUCTIONS =
-  "Summer Engine MCP. Call summer_get_project_context first: it binds the open project and returns mainScene, projectMemory and any capabilitySkewWarning. " +
+  "Summer Engine MCP. Call summer_get_project_context first: it binds the open project, returns mainScene, projectMemory, any capabilitySkewWarning. " +
   "Before building or fixing, summer_search_library then summer_read_library the hit. " +
-  "After a playthrough read summer_get_diagnostics, not summer_get_console alone. " +
-  "An all-black screenshot means the viewport had not redrawn: recapture. " +
+  "After play, read summer_get_diagnostics, not summer_get_console alone. " +
+  "An all-black screenshot means no redraw yet: recapture. " +
   "Report verified entries via summer_library_feedback. " +
-  "Publishing: summer_export_game, summer_publish_build, summer_store_*; an agent never publishes alone: summer_store_submit returns the owner's approval link.";
+  "Publishing: summer_export_game, summer_publish_build, summer_store_*; agents never publish alone: summer_store_submit returns the owner's approval link; summer_store_review, feedback to fix.";
 
 /**
  * Fire-and-forget probe of the npm registry on MCP boot. Caches the result for

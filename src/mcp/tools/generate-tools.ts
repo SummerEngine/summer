@@ -8,6 +8,18 @@ import {
   motionGenerationArgsSchema,
   motionJobFailureHint,
 } from "../../core/capabilities/motion-generation.js";
+import {
+  MAX_CHOICES_WAIT_SECONDS,
+  defaultCanOpenBrowser,
+  generateSfxChoices,
+  getChoices,
+  getChoicesArgsSchema,
+  openInStudioTab,
+  sfxChoicesArgsSchema,
+  SFX_CHOICES_ENDPOINT,
+  type SfxChoicesDeps,
+} from "../../core/capabilities/sfx-choices.js";
+import open from "open";
 import { getAuthToken } from "../../core/auth.js";
 import { resolveGatewayUrl } from "../../core/config.js";
 import { readJsonResponse } from "../../core/util/http.js";
@@ -17,6 +29,7 @@ import { TOOLKIT_VERSION as CLI_VERSION } from "../../core/version.js";
 const TOOL_BY_ENDPOINT: Record<string, string> = {
   "/api/mcp/generate/image": "summer_generate_image",
   "/api/mcp/generate/audio": "summer_generate_audio",
+  [SFX_CHOICES_ENDPOINT]: "summer_generate_sfx_choices",
   "/api/mcp/generate/3d": "summer_generate_3d",
   "/api/mcp/generate/video": "summer_generate_video",
   "/api/mcp/generate/motion": "summer_generate_motion",
@@ -442,9 +455,20 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
 
 Capabilities:
   - "text_to_speech" — Convert text to spoken audio. Requires 'text'. Optional 'voiceId'.
-  - "sound_effects" — Generate sound effects from description. Requires 'text'. Optional 'durationSeconds'.
+  - "sound_effects" — Generate sound effects from description. Requires 'text'. Optional 'durationSeconds', 'modelId', 'loop'.
   - "music" — Generate background music. Requires 'prompt'. Optional 'durationSeconds'.
   - "text_to_dialogue" — Multi-voice dialogue. Requires 'inputs' array of {text, voiceId} objects.
+
+Sound-effect models (modelId; omit it to use the person's approved default,
+else ElevenLabs):
+  - "eleven_text_to_sound_v2" — ElevenLabs SFX v2. Strong all-rounder, 0.5-30 s,
+    the only one that makes seamless loops (loop: true).
+  - "sonilo-sfx-1.1" — Sonilo SFX 1.1. Strong all-rounder, >= 0.5 s.
+  - "stable-audio-3-sfx" — Stable Audio 3 SFX. Sometimes best on fast movement
+    (swings, whooshes), less consistent; >= 1 s.
+The best model changes a lot from one sound to the next. For the first sound
+effect in a chat, offer the person three versions to pick from by ear:
+summer_generate_sfx_choices.
 
 The 'options' object is spread into the ElevenLabs SDK call at the TOP level, so
 only keys the SDK accepts there have any effect. Voice tuning is NOT top-level and
@@ -475,11 +499,18 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
       modelId: z
         .string()
         .optional()
-        .describe("ElevenLabs model ID (e.g. 'eleven_multilingual_v2')"),
+        .describe(
+          "Model id. text_to_speech: an ElevenLabs model (e.g. 'eleven_multilingual_v2'). " +
+          "sound_effects: eleven_text_to_sound_v2, sonilo-sfx-1.1 or stable-audio-3-sfx; omit to use the person's approved default"
+        ),
       durationSeconds: z
         .number()
         .optional()
         .describe("Duration in seconds for SFX or music"),
+      loop: z
+        .boolean()
+        .optional()
+        .describe("sound_effects only: ask for a seamless loop (eleven_text_to_sound_v2 only)"),
       inputs: z
         .array(z.object({ text: z.string(), voiceId: z.string() }))
         .optional()
@@ -493,13 +524,14 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
           "style, speed, useSpeakerBoost); flat snake_case is silently ignored."
         ),
     },
-    async ({ capability, text, prompt, voiceId, modelId, durationSeconds, inputs, options }) => {
+    async ({ capability, text, prompt, voiceId, modelId, durationSeconds, loop, inputs, options }) => {
       const body: Record<string, any> = { capability };
       if (text) body.text = text;
       if (prompt) body.prompt = prompt;
       if (voiceId) body.voiceId = voiceId;
       if (modelId) body.modelId = modelId;
       if (durationSeconds) body.durationSeconds = durationSeconds;
+      if (loop !== undefined) body.loop = loop;
       if (inputs) body.inputs = inputs;
       if (options) body.options = options;
 
@@ -510,6 +542,65 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
       }
 
       return successResult(result.data);
+    }
+  );
+
+  // ========================================================================
+  // summer_generate_sfx_choices + summer_get_choices
+  // Shared implementation: core/capabilities/sfx-choices.ts
+  // ========================================================================
+  const sfxChoicesDeps: SfxChoicesDeps = {
+    post: (endpoint, body, timeoutMs) => mcpGenerate(endpoint, body, timeoutMs),
+    get: (endpoint, params, timeoutMs) => mcpGet(endpoint, params, timeoutMs),
+    studioOpen: (path, reviewUrl) => openInStudioTab(path, reviewUrl),
+    openUrl: (url) => open(url),
+    canOpenBrowser: () => defaultCanOpenBrowser(),
+  };
+
+  server.tool(
+    "summer_generate_sfx_choices",
+    `Make one sound effect with several models (default three) and show the
+versions to the person on a Summer Studio page, where they listen and approve
+one or more. The approved model becomes their default for sound effects.
+
+Use it for the first sound effect in a chat after the person said yes to
+"three versions to pick from", or whenever they want to compare. The page
+opens in their open Summer Studio tab when there is one (needs the store
+sign-in), else in the browser; open:false only returns reviewUrl.
+
+Then tell the person the returned "say" text and call summer_get_choices
+with the choiceSetId. Do not pick for them.
+
+Models: eleven_text_to_sound_v2 (0.5-30 s, loops), sonilo-sfx-1.1 (>= 0.5 s),
+stable-audio-3-sfx (>= 1 s; give durationSeconds >= 1 when it is included).
+Each version is a billed generation.
+
+Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
+Requires authentication: run 'npx -y summer-engine@latest login' first.`,
+    sfxChoicesArgsSchema.shape,
+    async (args) => {
+      const result = await generateSfxChoices(sfxChoicesArgsSchema.parse(args), sfxChoicesDeps);
+      return result.ok ? successResult(result) : errorResult(String(result.error), result);
+    }
+  );
+
+  server.tool(
+    "summer_get_choices",
+    `Read a sound-effect choice set from summer_generate_sfx_choices: whether the
+person decided ("pending" or "decided"), which versions they approved (with
+audioUrl, assetId and their note) and their default sound-effect model.
+
+waitSeconds (max ${MAX_CHOICES_WAIT_SECONDS}) waits for the decision before answering; call again
+while status is "pending". Import each approved clip with
+summer_import_from_url (url: audioUrl, path: res://audio/sfx/<name>.<fileExtension>)
+or summer_import_asset_by_id (assetId), then wire it.
+
+Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
+Requires authentication: run 'npx -y summer-engine@latest login' first.`,
+    getChoicesArgsSchema.shape,
+    async (args) => {
+      const result = await getChoices(getChoicesArgsSchema.parse(args), sfxChoicesDeps);
+      return result.ok ? successResult(result) : errorResult(String(result.error), result);
     }
   );
 

@@ -734,3 +734,114 @@ describe("summer_generate_motion across MCP and CLI", () => {
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 });
+
+describe("sound-effect models and choices across MCP and CLI", () => {
+  const noEngine = { engine: async () => { throw new Error("Sound generation must not need an engine"); } };
+
+  async function call(surface: "mcp" | "cli", tool: string, args: Record<string, unknown>) {
+    if (surface === "cli") {
+      return dispatchTool(tool.replace(/^summer_/, "").replace(/_/g, "-"), args, noEngine);
+    }
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const registered = getTool(tools, tool);
+    return parseResult(await registered.handler(z.object(registered.schema).parse(args)));
+  }
+
+  for (const surface of ["mcp", "cli"] as const) {
+    it(`${surface} passes the sound_effects modelId and loop to /api/mcp/generate/audio`, async () => {
+      const fetchMock = vi.fn(async () => new Response(JSON.stringify({ modelId: "sonilo-sfx-1.1" }), { status: 200 }));
+      globalThis.fetch = fetchMock;
+      await call(surface, "summer_generate_audio", { capability: "sound_effects", text: "hum", modelId: "eleven_text_to_sound_v2", loop: true, durationSeconds: 3 });
+      const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+      expect(url).toMatch(/\/api\/mcp\/generate\/audio$/);
+      expect(JSON.parse(init.body as string)).toEqual({ capability: "sound_effects", text: "hum", modelId: "eleven_text_to_sound_v2", loop: true, durationSeconds: 3 });
+    });
+
+    it(`${surface} keeps the old audio body when no modelId or loop is given`, async () => {
+      const fetchMock = vi.fn(async () => new Response(JSON.stringify({}), { status: 200 }));
+      globalThis.fetch = fetchMock;
+      await call(surface, "summer_generate_audio", { capability: "sound_effects", text: "click" });
+      const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+      expect(JSON.parse(init.body as string)).toEqual({ capability: "sound_effects", text: "click" });
+    });
+
+    it(`${surface} makes a choice set and returns the review URL with open:false`, async () => {
+      const fetchMock = vi.fn(async () =>
+        new Response(
+          JSON.stringify({
+            choiceSetId: "cs_9",
+            reviewUrl: "https://www.summerengine.com/studio/choices/cs_9",
+            studioPath: "/studio/choices/cs_9",
+            prompt: "whoosh",
+            clips: [
+              { clipId: "c1", modelId: "eleven_text_to_sound_v2", modelName: "ElevenLabs SFX v2", audioUrl: "https://cdn.example/1.wav", assetId: "a1", durationSeconds: 1 },
+              { clipId: "c2", modelId: "stable-audio-3-sfx", modelName: "Stable Audio 3 SFX", audioUrl: "https://cdn.example/2.wav", assetId: "a2", durationSeconds: 1 },
+            ],
+            failed: [],
+          }),
+          { status: 200 }
+        )
+      );
+      globalThis.fetch = fetchMock;
+      const result = (await call(surface, "summer_generate_sfx_choices", {
+        text: "whoosh",
+        durationSeconds: 1,
+        models: ["eleven_text_to_sound_v2", "stable-audio-3-sfx"],
+        open: false,
+      })) as Record<string, unknown>;
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+      expect(url).toMatch(/\/api\/mcp\/generate\/audio\/choices$/);
+      expect(JSON.parse(init.body as string)).toEqual({
+        capability: "sound_effects",
+        text: "whoosh",
+        durationSeconds: 1,
+        models: ["eleven_text_to_sound_v2", "stable-audio-3-sfx"],
+      });
+      expect(result).toMatchObject({ ok: true, choiceSetId: "cs_9", shown: "not_opened", reviewUrl: "https://www.summerengine.com/studio/choices/cs_9" });
+      expect(String(result.next)).toContain("summer_get_choices");
+    });
+
+    it(`${surface} reads a choice set with waitSeconds`, async () => {
+      const fetchMock = vi.fn(async () =>
+        new Response(
+          JSON.stringify({
+            choiceSetId: "cs_9",
+            kind: "sfx",
+            prompt: "whoosh",
+            status: "decided",
+            preferredModelId: "stable-audio-3-sfx",
+            clips: [{ clipId: "c2", modelId: "stable-audio-3-sfx", audioUrl: "https://cdn.example/2.wav", assetId: "a2", approved: true }],
+          }),
+          { status: 200 }
+        )
+      );
+      globalThis.fetch = fetchMock;
+      const result = (await call(surface, "summer_get_choices", { choiceSetId: "cs_9", waitSeconds: 30 })) as Record<string, unknown>;
+      const [url] = fetchMock.mock.calls[0] as unknown as [string];
+      expect(url).toMatch(/\/api\/mcp\/choices\/cs_9\?waitSeconds=30$/);
+      expect(result).toMatchObject({ ok: true, status: "decided", preferredModelId: "stable-audio-3-sfx", approved: [{ assetId: "a2" }] });
+    });
+  }
+
+  it("mcp marks a failed choice set as isError and cli exits through ToolResultError", async () => {
+    globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({ message: "Insufficient credits." }), { status: 402 })) as any;
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const choices = getTool(tools, "summer_generate_sfx_choices");
+    const mcp = await choices.handler(z.object(choices.schema).parse({ text: "clash", open: false }));
+    expect(mcp.isError).toBe(true);
+    await expect(dispatchTool("generate-sfx-choices", { text: "clash", open: false }, noEngine)).rejects.toThrow(/Insufficient credits/);
+  });
+
+  it("documents the three sound-effect models and the choices tool on summer_generate_audio", () => {
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const audio = getTool(tools, "summer_generate_audio");
+    for (const id of ["eleven_text_to_sound_v2", "sonilo-sfx-1.1", "stable-audio-3-sfx", "summer_generate_sfx_choices"]) {
+      expect(audio.description).toContain(id);
+    }
+    expect(audio.schema.loop).toBeDefined();
+  });
+});

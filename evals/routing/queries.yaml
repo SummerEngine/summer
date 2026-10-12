@@ -85,6 +85,10 @@ queries:
     expected: [skill/voice-line]
   - query: "what should my game sound like overall"
     expected: [skill/audio-direction]
+  - query: "make three versions of a sword clash sound so I can pick the best one"
+    expected: [skill/sound-effect, tool/generate-sfx-choices]
+  - query: "I approved the sounds I liked in Studio, use them"
+    expected: [tool/get-choices]
 
   # ── Gameplay & design ──────────────────────────────────────────────────
   - query: "add a grappling hook"

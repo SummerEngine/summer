@@ -1109,7 +1109,7 @@
     {
       "id": "skill/sound-effect",
       "name": "sound-effect",
-      "description": "Generate short SFX one-shots — footsteps, weapon swings, UI clicks, hit impacts — wired as AudioStreamPlayer/2D/3D that auto-frees on finished.",
+      "description": "Make SFX one-shots and timed sequences (swings, hits, whooshes, reloads, UI) - offer three model versions to pick from, then wire them as AudioStreamPlayers.",
       "clients": "all",
       "recommended": true,
       "status": "stable",

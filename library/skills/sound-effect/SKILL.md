@@ -1,150 +1,143 @@
 ---
 name: sound-effect
-description: "Generate short SFX one-shots — footsteps, weapon swings, UI clicks, hit impacts — wired as AudioStreamPlayer/2D/3D that auto-frees on finished."
+description: "Make SFX one-shots and timed sequences (swings, hits, whooshes, reloads, UI) - offer three model versions to pick from, then wire them as AudioStreamPlayers."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_generate_audio summer_search_assets summer_import_from_url summer_add_node summer_set_prop summer_instantiate_scene summer_inspect_node summer_get_scene_tree
+allowed-tools: Read Grep Glob Write Edit summer_generate_sfx_choices summer_get_choices summer_generate_audio summer_search_assets summer_import_from_url summer_import_asset_by_id summer_add_node summer_set_prop summer_instantiate_scene summer_inspect_node summer_get_scene_tree
 paths: ["audio/sfx/**", "scripts/**", "**/*.tscn"]
 ---
 
-# /sound-effect — Generate a Short SFX One-Shot and Wire It
+# /sound-effect — Make a Sound Effect and Wire It
 
-## Overview
-
-This skill produces one named SFX clip that follows the audio bible's vocabulary, then wires it into the scene as an AudioStreamPlayer that plays once and frees itself (or stops cleanly if it is a short loop). The prompt shape decides the result: "metal sword swing whoosh, dry, sharp, 250ms" returns the right clip on the first try; "epic battle sound" returns twenty seconds of musical noise.
-
-ElevenLabs SFX (the `sound_effects` capability of `summer_generate_audio`) is literal. It treats the prompt as a description of a real sound. Concrete material, action and intensity beat adjectives.
+> **IMPORTANT — the first sound effect in a chat:** before you generate it, ask the person one short question:
+>
+> > Do you want me to create three versions with three different models, and show them to you in a page where you pick?
+>
+> Say why in one plain line: the best model changes a lot from one sound to the next, so picking by ear gives a better result.
+>
+> - **Yes** → `summer_generate_sfx_choices`, tell them the returned `say` text, then `summer_get_choices` until they decide. Import the approved clips and wire them. The model they approve becomes their default.
+> - **No** → `summer_generate_audio` with `capability: "sound_effects"` and **no** `modelId` (it uses their approved default, else ElevenLabs).
+>
+> Ask once per chat. After they answer, do not ask again in the same chat; follow their answer for the rest of it.
 
 ## When to use
 
-- One-shot SFX: footstep, swing, click, hit, impact, pickup, jump, land, door, breath.
-- Short loops < 2s: hum, drone snippet, rain texture (for longer looping ambience use `ambient-bed`).
-- Replacing a placeholder beep with something on-bible.
+- One-shots: swing, clash, scrape, hit, punch, impact, whoosh, pickup, jump, land, door, UI click.
+- Timed sequences tied to an animation: reload, attack combo, door unlock.
+- Short loops (hum, servo, energy field) up to a few seconds.
 
-## When NOT to use
-
-- Music or musical stings → `music-track`.
-- Long location ambience (>5s) → `ambient-bed`.
-- Voice / dialogue → `voice-line`.
-- Defining the *vocabulary* of SFX → `audio-direction`. This skill executes against an existing bible.
+Not for: music or stingers (`music-track`), long location ambience (`ambient-bed`), voice (`voice-line`), the SFX vocabulary of the game (`audio-direction`).
 
 ## Steps
 
 ### 1. Read the audio bible
 
-```
-Read .summer/audio-bible.md
-```
+Read `.summer/audio-bible.md` if it exists and map the request to one of its SFX classes; obey its character and DON'Ts. If it is missing, offer `/audio-direction` or go on with sensible defaults.
 
-If it doesn't exist, ask:
+### 2. Reuse before you generate
 
-> No audio bible at `.summer/audio-bible.md`. Want to run `/audio-direction` first to define the SFX vocabulary, or shall I just one-shot this with sensible defaults?
+Generation costs credits. `summer_search_assets(query="<subject>", assetType="audio", source="all")`; if a clip fits, ask whether to use it.
 
-The bible defines an SFX *class* (UI, Pickup positive, Damage, Footstep, Attack, Stinger, Ambient layer, Pickup neutral). Map the user's request to a class. Quote the class's character and DON'Ts back so the prompt obeys them.
+### 3. Write the prompt
 
-### 2. Search for an existing clip first
-
-Generation uses credits. Reuse an existing clip when one fits.
+Describe the physical event, not a mood. The shape that tested well:
 
 ```
-summer_search_assets(query="<class> <subject>", assetType="audio", source="all")
+Foley one-shot: <physical event with materials>, <transient + tail described>, close-mic, dry, no reverb, no music, no voices.
 ```
 
-If something fits, ask:
+- Sword clash: `Foley one-shot: two steel longswords strike edge to edge, bright sharp metallic impact, short ringing tail that dies in half a second, close-mic, dry, no reverb, no music, no voices.`
+- Punch: `Foley one-shot: a bare fist hits a heavy leather bag, deep thud with a slap on top, no tail, close-mic, dry, no reverb, no music, no voices.`
+- Boulder drop: `Foley one-shot: a large boulder drops onto packed dirt, heavy low thump with a short rumble and a few small stones settling, close-mic, dry, no music, no voices.`
 
-> Found `audio/sfx/sword_swing_01.wav`. Use this, or generate fresh?
+**Whooshes and swings:** say `air movement only, no metal ring, no impact`, or the model adds a clang.
 
-### 3. Build the prompt — subject + material + action + intensity + duration cue
-
-ElevenLabs SFX responds to literal sound descriptions. Pattern:
+**Timed sequences:** give the exact total length and the time of each event, and set `durationSeconds` to that length:
 
 ```
-<subject> <material> <action>, <intensity>, <character>, <duration cue>
+Foley sequence, exactly 2 seconds, three distinct mechanical sounds: at 0.2 s the empty magazine is released and pulled out with a metal click; at 1.0 s a full magazine is slammed in with a solid clack; at 1.6 s the charging handle is pulled back and released with a sharp metallic snap. Close-mic, dry, no gunshot, no music.
 ```
 
-Working examples:
+**Loops:** write `seamless loop` in the text and pass `loop: true`. Only ElevenLabs SFX v2 makes loops: use `summer_generate_audio` with `modelId: "eleven_text_to_sound_v2"`, or include it in a choice set.
 
-| Goal | Prompt that works | Why |
+Avoid: vibe words (`epic`, `cool`, `realistic`), several unrelated events in one prompt (split them, unless it is a timed sequence), and no length.
+
+### 4. Length
+
+- One-shots: 0.5-2 s.
+- Animation-synced sounds (reloads, attacks): `durationSeconds` = the animation length, with the event times written in the prompt.
+- Minimums: Stable Audio 3 SFX >= 1 s, Sonilo SFX 1.1 >= 0.5 s, ElevenLabs SFX v2 0.5-30 s. When a choice set includes Stable Audio 3, use at least 1 s and let the player use the front of the clip.
+
+### 5. Pick the models
+
+| Model id | Name | Use it for |
 |---|---|---|
-| Sword swing | `metal sword swing whoosh, dry, sharp, 250ms` | material + action + dry rules out reverb |
-| UI click | `soft woody UI click, short, neutral pitch, 80ms` | material + duration; "click" alone is too vague |
-| Footstep on stone | `single footstep on dry stone, leather sole, mid-weight, 180ms` | surface + footwear + body weight |
-| Player hit | `punchy low-mid body hit impact, slight detune, no tail, 200ms` | "no tail" kills reverb the bible forbids |
-| Coin pickup | `bright metallic coin pickup, warm major-third interval, 300ms, light room reverb` | named interval = melodic shape |
-| Door creak open | `old wooden door creak opening slowly, 1.2s, dry interior` | duration + space |
-| Bow draw | `recurve bow draw, taut string, leather grip, 600ms` | material specificity |
-| Magic cast | `short ice magic cast, crystalline shimmer, ascending, 500ms` | element + pitch motion |
+| `eleven_text_to_sound_v2` | ElevenLabs SFX v2 | Strong default on most sounds; the only one with seamless loops |
+| `sonilo-sfx-1.1` | Sonilo SFX 1.1 | Strong default on most sounds |
+| `stable-audio-3-sfx` | Stable Audio 3 SFX | Sometimes the best on fast movement (swings, whooshes); less consistent |
 
-Prompts that DON'T work (and why):
+A choice set makes all three by default. To compare only two, pass `models`: ElevenLabs + Sonilo is the strong pair; include Stable Audio 3 for movement sounds.
 
-| Bad prompt | Failure mode |
-|---|---|
-| `epic sword sound` | "Epic" is a vibe; the model can't render a vibe. Returns generic noise. |
-| `cool UI click` | No material, no duration. Returns a 5-second synth blip. |
-| `the sound when the player gets hit really hard and falls down` | Multiple events. Model tries to render all and returns nothing coherent. Split into two SFX. |
-| `swoosh` | Underspecified. Returns inconsistent character every regen. |
-| `realistic gunshot` | "Realistic" is a constraint, not a description. Use `9mm pistol shot, indoor, sharp crack, short tail, 400ms`. |
+### 6. Generate
 
-### 4. Confirm and call
+Show the prompt and the length before you call; every version is a billed generation.
 
-Show the prompt and the call before running:
-
-> Prompt: `metal sword swing whoosh, dry, sharp, 250ms`. Duration 0.5s (model floor). Model: ElevenLabs SFX. Generate?
-
-The `sound_effects` capability reads the description from **`text`**, not `prompt`. Passing `prompt` here is a 400 `text_required` — `prompt` is only for the `music` capability.
+**Choice set (the person said yes):**
 
 ```
-summer_generate_audio(
-  capability: "sound_effects",
-  text: "metal sword swing whoosh, dry, sharp, 250ms",
-  durationSeconds: 0.5
-)
-// Then: summer_import_from_url(url: "<fileUrl>", path: "res://audio/sfx/sword_swing_01.wav")
+summer_generate_sfx_choices(text: "<prompt>", durationSeconds: 1.0)
 ```
 
-`durationSeconds` floor is 0.5, ceiling is 22. If the user wants a 100ms click, generate 0.5s and the player only plays the front; or trim in the engine.
+The page opens in their open Summer Studio tab, else in the browser. Tell them the returned `say` text; if `shown` is `not_opened`, give them `reviewUrl`. Do not pick for them. Then:
 
-SFX comes back as **WAV**, not MP3 — Summer requests raw PCM from the provider, trims the model's lead-in silence, applies short anti-click fades, and emits a 16-bit mono WAV. A `.wav` target path is therefore correct, and the usual "ElevenLabs one-shots start with dead air" problem is already handled upstream.
+```
+summer_get_choices(choiceSetId: "<id>", waitSeconds: 50)
+```
 
-### 5. Decision: one-shot vs loop
+Call it again while `status` is `pending`. When it is `decided`, each entry in `approved` has `audioUrl`, `assetId`, `fileExtension` and the person's `note`. If they approved none, ask what to change and make a new set.
 
-| Use case | Setup |
-|---|---|
-| Footstep, swing, click, hit | One-shot AudioStreamPlayer, `autoplay=false`, fired by code or animation. |
-| Short hum / drone < 2s | Set the imported `AudioStream` `loop=true` in the import dock. |
+**One version (the person said no, or later sounds after a decided set):**
 
-For one-shots, set `Loop` OFF on the import. Default ElevenLabs returns are not loop-clean — looping a one-shot will click.
+```
+summer_generate_audio(capability: "sound_effects", text: "<prompt>", durationSeconds: 1.0)
+```
 
-### 6. Wire it into the scene
+Leave out `modelId` so their approved default runs. The description goes in `text`, not `prompt` (`prompt` gives a 400 `text_required` here).
 
-Choose the right player node:
+### 7. Import
+
+```
+summer_import_from_url(url: "<audioUrl>", path: "res://audio/sfx/sword_clash_01.<fileExtension>")
+```
+
+or `summer_import_asset_by_id(assetId: "<assetId>", path: "res://audio/sfx/sword_clash_01.<fileExtension>")`. Keep the extension of the file you got. When the person approved several versions, import each one (`_01`, `_02`, …) and play a random one per event for variety.
+
+One-shots keep loop OFF in the Import dock; looping a one-shot clicks. For a loop: WAV uses Edit > Loop Mode = Forward; OGG/MP3 use Loop = on.
+
+### 8. Wire
 
 | Node | Use for |
 |---|---|
-| `AudioStreamPlayer` | UI, music, non-positional (HUD click, menu confirm) |
-| `AudioStreamPlayer2D` | 2D positional (top-down hit, 2D pickup) |
-| `AudioStreamPlayer3D` | 3D positional (footstep on a 3D character, weapon swing in world) |
+| `AudioStreamPlayer` | UI and non-positional sounds |
+| `AudioStreamPlayer2D` | 2D positional |
+| `AudioStreamPlayer3D` | 3D positional (weapon swing in the world, footstep) |
 
-Add it under the emitting node:
-
-Every scene-mutating tool takes an explicit `scenePath`, node paths are relative to the scene root (`./`), and the property argument is named `key`, not `property`:
+Every scene-mutating tool takes an explicit `scenePath`, node paths are relative to the scene root (`./`), and the property argument is `key`:
 
 ```
 summer_add_node(scenePath="res://main.tscn", parent="./Player", type="AudioStreamPlayer3D", name="SwingSFX")
 summer_set_prop(scenePath="res://main.tscn", path="./Player/SwingSFX", key="stream", value="res://audio/sfx/sword_swing_01.wav")
 summer_set_prop(scenePath="res://main.tscn", path="./Player/SwingSFX", key="bus", value="SFX")
-summer_set_prop(scenePath="res://main.tscn", path="./Player/SwingSFX", key="volume_db", value=0.0)
 summer_set_prop(scenePath="res://main.tscn", path="./Player/SwingSFX", key="max_distance", value=25.0)
-summer_set_prop(scenePath="res://main.tscn", path="./Player/SwingSFX", key="attenuation_model", value=0)
 ```
 
-Bus name must match the bible (`SFX`, `UI`, `Ambient`, etc.). If the bus doesn't exist, run `/audio-direction` step 8.
+The bus must match the bible (`SFX`, `UI`, `Ambient`, …); the default bus is `Master`. If the bus does not exist, run `/audio-direction`.
 
-### 7. Spawn-and-free pattern (one-shots in flight)
+Fire animation-synced sounds from the animation's Call Method Track (`play()`), not from `_process`.
 
-For SFX that needs to outlive the emitter (player dies but the death-blow SFX should finish), instantiate a small scene with this script:
+For a sound that must outlive its emitter (a death blow), spawn a self-freeing player at runtime:
 
 ```gdscript
 # scripts/audio/SfxOneShot.gd
@@ -155,88 +148,20 @@ func _ready() -> void:
 	play()
 ```
 
-Save it as a `.tscn`, then `summer_instantiate_scene(scenePath, parent, scene, name)` to place it. That only places the node at author time. To spawn one per event at the emitter's position at runtime, use GDScript (`preload(...).instantiate()` + `add_child`). The node frees itself when the stream finishes.
+Save it as a `.tscn` and instantiate it per event in GDScript (`preload(...).instantiate()` + `add_child`).
 
-### 8. Volume calibration
+### 9. Check
 
-If the clip comes back too quiet:
-
-- First try `volume_db` on the player (+3 to +9 typical).
-- If still quiet, the clip itself is hot-low — regenerate with a louder intensity word: `loud`, `forceful`, `heavy`.
-- Never push `volume_db` past +12; clipping artifacts.
-
-If it comes back too loud (rare): negative `volume_db`, or trim attack in an editor.
-
-### 9. Confirm in scene
-
-```
-summer_inspect_node(path="Player/SwingSFX")
-```
-
-Verify `stream`, `bus`, `volume_db`. Trigger it via `summer_play` if the user wants to hear it now.
-
-## Reference card — prompt patterns by class
-
-```
-UI click:        soft woody UI click, neutral pitch, 80ms
-UI confirm:      affirmative UI chime, warm minor-third, 250ms
-UI error:        flat UI buzz, slight dissonance, 200ms
-Pickup positive: bright pickup, ascending major-third, 300ms, light reverb
-Pickup neutral:  small tactile pickup, no melody, 150ms
-Footstep wood:   single footstep on hollow wood floor, leather sole, 180ms
-Footstep grass:  single footstep on damp grass, soft, 200ms
-Footstep stone:  single footstep on dry stone, mid-weight, 180ms
-Hit body:        punchy body hit, low-mid thump, no tail, 200ms
-Hit metal:       metal-on-metal clang, sharp transient, short ring, 350ms
-Swing whoosh:    fast air whoosh from a swung blade, dry, 250ms
-Door creak:      old wooden door creak opening, 1.2s, dry interior
-Magic ice:       crystalline ice cast, ascending shimmer, 500ms
-Magic fire:      whoosh of fire ignition, low rumble, 700ms
-Stinger event:   short triumphant brass stinger, 1.5s, hall reverb
-```
-
-## Anti-patterns
-
-- **Adjective-only prompts.** `epic`, `cool`, `realistic`, `professional` — meaningless to the model.
-- **Multiple events in one prompt.** Split into two generations.
-- **Looping a non-loop-clean clip.** It clicks. Use `ambient-bed` for real loops.
-- **Skipping the bus.** Default bus is `Master`. SFX must route to the `SFX` bus or the mix breaks.
-- **Generating before searching.** Reuse before regenerate.
-- **Generating before reading the bible.** The clip will fight the rest of the audio.
-
-## Edge cases
-
-- **Clip too quiet:** `volume_db` first; regenerate with louder intensity word second.
-- **Clip too long:** trim in audio editor or set `AudioStreamPlayer` to `stop()` on a timer.
-- **Footstep needs surface variants:** generate one per material (wood / stone / grass / metal / dirt) and switch in code based on raycast on the floor's `physics_material`.
-- **SFX for an animation event:** wire to the animation's `Call Method Track`, not to `_process`.
+`summer_inspect_node(path="Player/SwingSFX")`: verify `stream`, `bus`, `volume_db`. Too quiet: raise `volume_db` (+3 to +9, never past +12), else regenerate with a heavier description. Too long: `stop()` on a timer.
 
 ## Fallback (no MCP)
 
-Print the call:
-
-```
-ElevenLabs SFX prompt: "metal sword swing whoosh, dry, sharp, 250ms"
-Duration: 0.5s
-Save to: audio/sfx/sword_swing_01.wav
-```
-
-Tell the user to run it via the Summer dashboard, then `summer_import_from_url` the result.
-
-## Handoff
-
-After the SFX is wired:
-
-> SFX `sword_swing_01.wav` wired to `Player/SwingSFX` on the `SFX` bus. Next:
-> - Trigger it from your attack animation's `Call Method Track` → `play()`.
-> - Generate the parry / clash counterpart with `/sound-effect` again.
-> - For footsteps across surfaces, generate one clip per material and switch on the floor's `physics_material` (see Edge cases).
+Print the prompt, the length and the target path (`res://audio/sfx/<name>.wav`), and tell the person to make it in Summer Studio, then import it.
 
 ## See also
 
-- `audio-direction` — defines the vocabulary this skill obeys
+- `audio-direction` — the SFX vocabulary this skill obeys
 - `ambient-bed` — long looping textures
 - `music-track` — music
-- `voice-line` — TTS
+- `voice-line` — speech
 - `../../references/mcp-tools-reference/mcp-tools-reference.md`
-- `../../references/godot-version/godot-version.md` — Summer compatibility for audio nodes

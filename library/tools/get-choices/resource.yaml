@@ -1,0 +1,50 @@
+id: tool/get-choices
+kind: tool
+version: 1.0.0
+summary: "Read a sound-effect choice set: whether the person decided, which versions they approved (audioUrl, assetId, note) and their default sound-effect model."
+use_when:
+  - after summer_generate_sfx_choices, to learn which versions the person approved
+  - '"I picked the sounds I like in Studio"'
+do_not_use_when:
+  - no choice set exists yet — summer_generate_sfx_choices first
+facets:
+  lifecycle:
+    - build
+  domains:
+    - generate
+    - audio
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/sound-effect
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_get_choices
+implementation:
+  module: src/mcp/tools/generate-tools.ts
+  export: registerGenerateTools
+surfaces:
+  mcp:
+    tool_name: summer_get_choices
+    remote: true
+input_schema:
+  type: object
+  properties:
+    choiceSetId:
+      type: string
+      description: The choiceSetId from summer_generate_sfx_choices
+    waitSeconds:
+      type: integer
+      description: "Wait up to this many seconds (max 50) for the person to decide before answering. 0 or omitted: answer now"
+  required:
+    - choiceSetId
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false

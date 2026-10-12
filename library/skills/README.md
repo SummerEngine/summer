@@ -117,7 +117,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [ambient-bed](./ambient-bed/SKILL.md) | Generate a long looping location ambience — forest, dungeon, city, spaceship, cave — a looping AudioStreamPlayer on the Ambient bus with a seamless loop. | assets |
 | [audio-direction](./audio-direction/SKILL.md) ★ | Define the game's sonic identity — music style, instruments, SFX vocabulary, dynamic music plan — output as an audio bible at .summer/audio-bible.md. | game-design |
 | [music-track](./music-track/SKILL.md) ★ | Generate a looped or cinematic music track — loops authored at >=30s with a marked loop point, cinematic tracks at >=60s linear. | assets |
-| [sound-effect](./sound-effect/SKILL.md) ★ | Generate short SFX one-shots — footsteps, weapon swings, UI clicks, hit impacts — wired as AudioStreamPlayer/2D/3D that auto-frees on finished. | assets |
+| [sound-effect](./sound-effect/SKILL.md) ★ | Make SFX one-shots and timed sequences (swings, hits, whooshes, reloads, UI) - offer three model versions to pick from, then wire them as AudioStreamPlayers. | assets |
 | [voice-line](./voice-line/SKILL.md) ★ | Generate TTS voice lines — NPC barks, narrator, dialogue — with voice-id sourcing, a character-to-voice decision tree, and multi-line dialogue support. | assets |
 
 ## character-controller

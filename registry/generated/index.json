@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.1",
-      "content_hash": "87742ed2af1190af6d5bda79b4fe0cde1973fcd74c0cd4a5763e1bdcc23b4fb9",
+      "content_hash": "ee626e6bac5ff34eb4a69ad44ef1c93c0c26d4b57783cc1068dd5ad4d280d473",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -5960,109 +5960,6 @@
         "filesystem": true,
         "editor_mutation": false,
         "network": false,
-        "credentials": false,
-        "publish": false
-      }
-    },
-    {
-      "id": "tool/creator-config",
-      "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "1449083d5fef74d8bdb5fcfe88d5a8dc0ab80824c4fec51fa4dcb24c5c5bfef6",
-      "summary": "Read or update the shared non-secret Summer configuration; mutations require confirm, and tokens are never returned or accepted.",
-      "use_when": [
-        "inspecting or changing shared CLI and MCP configuration values",
-        "\"which creator project id / channel is this CLI pointed at?\"",
-        "switching the default publish channel"
-      ],
-      "facets": {
-        "lifecycle": [
-          "launch"
-        ],
-        "domains": [
-          "creator",
-          "deployment"
-        ]
-      },
-      "compatibility": {
-        "engine": ">=4.6"
-      },
-      "status": "stable",
-      "mcp_tool_name": "summer_creator_config",
-      "remote": false,
-      "cli_command": "summer config",
-      "authority": {
-        "filesystem": true,
-        "editor_mutation": false,
-        "network": false,
-        "credentials": false,
-        "publish": false
-      }
-    },
-    {
-      "id": "tool/creator-publish",
-      "kind": "tool",
-      "version": "1.1.0",
-      "content_hash": "48ee4dbe8810da6ae327ebf9e80b3e2a352daad18fe7e7061d53db17110a06fe",
-      "summary": "Deprecated: publishes a .pck to the legacy creator API. Use summer_export_game, then summer_publish_build, to upload to summer.games.",
-      "use_when": [
-        "an old project that still publishes a .pck to the legacy Summercraft creator channel with an sc_ creator token",
-        "a ~/.summer/config.json that names a legacy creator projectId and channel"
-      ],
-      "facets": {
-        "lifecycle": [
-          "launch"
-        ],
-        "domains": [
-          "creator",
-          "deployment"
-        ]
-      },
-      "compatibility": {
-        "engine": ">=4.6"
-      },
-      "status": "deprecated",
-      "mcp_tool_name": "summer_creator_publish",
-      "remote": false,
-      "cli_command": "summer publish",
-      "authority": {
-        "filesystem": true,
-        "editor_mutation": false,
-        "network": true,
-        "credentials": false,
-        "publish": true
-      }
-    },
-    {
-      "id": "tool/creator-releases",
-      "kind": "tool",
-      "version": "1.0.2",
-      "content_hash": "8abe66c592d1d0f45db5106179f390a4d43cff8d72834c7029aefbaec57e628e",
-      "summary": "Deprecated: lists releases on the legacy creator API. For summer.games use summer_store_releases.",
-      "use_when": [
-        "an old project that published a .pck to the legacy Summercraft creator channel with an sc_ creator token",
-        "paging legacy creator releases by projectId and cursor"
-      ],
-      "facets": {
-        "lifecycle": [
-          "launch"
-        ],
-        "domains": [
-          "creator",
-          "deployment"
-        ]
-      },
-      "compatibility": {
-        "engine": ">=4.6"
-      },
-      "status": "deprecated",
-      "mcp_tool_name": "summer_creator_releases",
-      "remote": true,
-      "cli_command": "summer releases",
-      "authority": {
-        "filesystem": false,
-        "editor_mutation": false,
-        "network": true,
         "credentials": false,
         "publish": false
       }

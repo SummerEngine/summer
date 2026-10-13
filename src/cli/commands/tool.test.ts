@@ -35,7 +35,7 @@ describe("summer tool command", () => {
     const entries = listToolDispatches();
     const output = formatToolList(entries);
     expect(output).toContain(`Summer tools (${entries.length})`);
-    for (const entry of ["add-node", "generate-image", "creator-releases", "library-feedback"]) {
+    for (const entry of ["add-node", "generate-image", "publish-build", "library-feedback"]) {
       expect(output).toContain(entry);
     }
     expect(output).toContain("[engine]");

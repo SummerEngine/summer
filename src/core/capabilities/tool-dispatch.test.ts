@@ -166,7 +166,7 @@ describe("repo-lint: tool-dispatch registry", () => {
 
   it("engineRequired flags match the descriptor expectations for known tools", () => {
     expect(resolveToolDispatch("generate-image")?.engineRequired).toBe(false);
-    expect(resolveToolDispatch("creator-releases")?.engineRequired).toBe(false);
+    expect(resolveToolDispatch("publish-build")?.engineRequired).toBe(false);
     expect(resolveToolDispatch("add-node")?.engineRequired).toBe(true);
     expect(resolveToolDispatch("screenshot")?.engineRequired).toBe(true);
     expect(resolveToolDispatch("import-asset")?.engineRequired).toBe(true);

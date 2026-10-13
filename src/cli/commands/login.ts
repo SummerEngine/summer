@@ -3,12 +3,10 @@ import { randomUUID } from "crypto";
 import open from "open";
 import {
   getAuthToken,
-  getCreatorToken,
-  saveCreatorToken,
   saveLoginSession,
   type LoginSession,
 } from "../../core/auth.js";
-import { getCreatorApiUrl, resolveGatewayUrl } from "../../core/config.js";
+import { resolveGatewayUrl } from "../../core/config.js";
 import { readStoredOAuthToken, runStoreLogin } from "../../core/oauth.js";
 
 const POLL_INTERVAL_MS = 2000;
@@ -23,15 +21,11 @@ const HEARTBEAT_MS = 30000;
 export const loginCommand = new Command("login")
   .description("Sign in to Summer Engine via your browser")
   .option(
-    "--creator",
-    "Connect a separately scoped Summercraft creator token for publishing"
-  )
-  .option(
     "--store",
     "Sign in to the Summer store so agents can upload builds (summer_publish_build)"
   )
   .option("--force", "Force re-authentication even if already logged in")
-  .action(async (opts: { creator?: boolean; store?: boolean; force?: boolean }) => {
+  .action(async (opts: { store?: boolean; force?: boolean }) => {
     if (opts.store) {
       if ((await readStoredOAuthToken()) && !opts.force) {
         console.log(
@@ -46,18 +40,6 @@ export const loginCommand = new Command("login")
       );
       return;
     }
-    if (opts.creator) {
-      const existingCreator = await getCreatorToken();
-      if (existingCreator && !opts.force) {
-        console.log(
-          "A creator token is already connected. Use --creator --force to replace it."
-        );
-        return;
-      }
-      await runCreatorLogin();
-      return;
-    }
-
     const existing = await getAuthToken();
     if (existing && !opts.force) {
       console.log("Already logged in. Use --force to re-authenticate.");
@@ -66,87 +48,6 @@ export const loginCommand = new Command("login")
 
     await runLogin();
   });
-
-export interface CreatorLoginDependencies {
-  openUrl: (url: string) => Promise<unknown>;
-  readSecret: (prompt: string) => Promise<string>;
-  log: (message: string) => void;
-}
-
-async function readHiddenLine(prompt: string): Promise<string> {
-  if (!process.stdin.isTTY || !process.stdout.isTTY) {
-    process.stdout.write(prompt);
-    let value = "";
-    for await (const chunk of process.stdin) value += String(chunk);
-    return value.trim();
-  }
-
-  process.stdout.write(prompt);
-  const input = process.stdin;
-  const wasRaw = input.isRaw;
-  input.setRawMode(true);
-  input.resume();
-  return new Promise<string>((resolve, reject) => {
-    let value = "";
-    const finish = (error?: Error) => {
-      input.off("data", onData);
-      input.setRawMode(Boolean(wasRaw));
-      input.pause();
-      process.stdout.write("\n");
-      if (error) reject(error);
-      else resolve(value.trim());
-    };
-    const onData = (chunk: Buffer | string) => {
-      for (const char of String(chunk)) {
-        if (char === "\u0003") {
-          finish(new Error("Creator token entry cancelled."));
-          return;
-        }
-        if (char === "\r" || char === "\n" || char === "\u0004") {
-          finish();
-          return;
-        }
-        if (char === "\u007f" || char === "\b") {
-          value = value.slice(0, -1);
-        } else if (char >= " ") {
-          value += char;
-        }
-      }
-    };
-    input.on("data", onData);
-  });
-}
-
-const defaultCreatorLoginDependencies: CreatorLoginDependencies = {
-  openUrl: open,
-  readSecret: readHiddenLine,
-  log: console.log,
-};
-
-/**
- * The browser session mints the token; the token is pasted once into a hidden
- * prompt. This deliberately does not replace the core Summer login JWT.
- */
-export async function runCreatorLogin(
-  overrides: Partial<CreatorLoginDependencies> = {}
-): Promise<void> {
-  const deps = { ...defaultCreatorLoginDependencies, ...overrides };
-  const settingsUrl = `${await getCreatorApiUrl()}/creator/settings/tokens`;
-  deps.log(`Opening creator token settings: ${settingsUrl}`);
-  deps.log(
-    'Mint a token with the exact "publish" scope, copy its one-time sc_ value, then return here.'
-  );
-  try {
-    await deps.openUrl(settingsUrl);
-  } catch {
-    deps.log("Could not open the browser. Copy the URL above and open it manually.");
-  }
-  const token = await deps.readSecret("Creator token (input hidden): ");
-  await saveCreatorToken(token);
-  deps.log(
-    "Creator publishing connected. Your core Summer login token was not changed."
-  );
-}
 
 /** The gateway answered with a terminal 4xx — retrying the same URL cannot help. */
 class LoginRejectedError extends Error {}

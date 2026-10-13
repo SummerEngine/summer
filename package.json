@@ -83,7 +83,7 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@modelcontextprotocol/sdk": "^1.31.0",
     "commander": "^12.0.0",
     "open": "^10.0.0",
     "yaml": "^2.9.0",

@@ -32,15 +32,18 @@ You have freedom inside the app. Use it for the task, not for decoration.
 
 ## Page
 
-- Canvas `--se-bg`. No frame around the whole app. Content max 1280px centred
-  (forms 640px). Padding 28px top, 32px sides; 16px sides on phone.
-- **Header:** title 22/600 plus one 13px muted purpose line that says what the
-  tool does and where data goes ("Edits write to res://data/weapons.json"). Right
-  side, one line: presence avatars, one meta ("Synced 2 min ago" or a progress
-  "7 of 12 picked"), secondary actions, the one primary.
-- **Sections** stack 32px apart: a 15/500 title row (legend or meta on its right),
-  then content 12px below. No frame unless the content needs a boundary.
+- Wrap the app in `<summer-page heading="…" purpose="…">`. It paints the canvas,
+  centres content (max 1280px; forms 640px), sets padding and section spacing,
+  and renders the header: title 22/600 plus one 13px muted purpose line that says
+  what the tool does and where data goes ("Edits write to res://data/weapons.json").
+  Put avatars, one meta (`<span class="summer-meta">Synced 2 min ago</span>` or
+  `<summer-progress>`), secondary actions and the one primary in `slot="actions"`.
+- Each part of the page is a `<summer-section heading="…">`: 15/500 title row,
+  legend or meta in `slot="aside"`, content 12px below. No frame unless the content
+  needs a boundary. A page with one section needs no section title and no card.
 - 4px grid. 8-12px inside a group, 16-24px between groups.
+- Layout-format apps: the `page` node takes `{title, purpose, meta}` and puts its
+  button children in the header.
 
 ## Type and colour
 
@@ -59,17 +62,24 @@ You have freedom inside the app. Use it for the task, not for decoration.
 
 | Need | Use |
 | --- | --- |
-| Key numbers | `summer-stat` in a row: unboxed, split by hairlines, 3-5 of them |
-| Records | `summer-table`: numbers right-aligned, edit in place, badge only for exceptions, a save bar for unsaved edits |
-| Trends, comparisons | `summer-chart`: one question per chart, 200-240px tall, quiet bars plus a highlighted few, a dashed reference line when there is a target |
-| Sound | `summer-audio`: our play button + waveform. Never `<audio controls>` |
-| Pick one version | `summer-choice-grid`: tiles with media, the whole tile is the choice |
-| Images, renders | `summer-image`, `summer-model-viewer`, `summer-video` |
-| Filters | `summer-tabs` or a segmented control and a search pill in one 32px toolbar line |
+| Key numbers | `<summer-stats>` of 3-5 `<summer-stat label value delta hint tone>`: unboxed, split by hairlines |
+| Records | `summer-table`: columns with `type` (bar, badge, muted), `priority="secondary"` to hide on phone, `thumb`, `digits`; badge only for exceptions. `<summer-save-bar count>` for unsaved edits |
+| Trends, comparisons | `summer-chart` with `title`, `highlight` (the bars that matter) and `reference` (a target line). One question per chart. Frame only if asked |
+| Sound | `summer-audio`: our play button and waveform. Never `<audio controls>` |
+| Video | `summer-video`: our controls. Never `<video controls>` |
+| Pick one version | `summer-choice-grid` (`layout="rows"` for one row per need): the whole tile is the choice |
+| Boards | `<summer-board>` > `<summer-lane heading add-label>` > `<summer-board-card heading art meta person comments done>` |
+| A repeated object | `<summer-card variant="object" media selected>` |
+| Images, 3D | `summer-image`, `summer-model-viewer` |
+| Filters | `<summer-toolbar>`: `<summer-search>`, `<summer-segmented options value>`, extras in `slot="end"` |
 | Settings | `summer-select`, `summer-slider`, `summer-toggle`, `summer-text-input` |
-| Who is here | `summer-avatar-stack` in the header |
-| Layout helpers | `summer-stack`, `summer-grid`, `summer-card` (only for a real repeated object), `summer-heading`, `summer-markdown`, `summer-empty-state` |
-| Feedback | `summerUI.toast(text)` for a finished action; a notice in place for an error |
+| Actions | `<summer-button variant icon>` (primary once per view), `<summer-icon-button icon label>` |
+| Status | `<summer-badge tone>` (ok, warn, bad, info, quiet, count) with words, `<summer-progress value>` |
+| Icons | `<summer-icon name>` (lucide set). Do not draw your own glyphs |
+| Who is here | `summer-avatar-stack` in the page actions |
+| Loading, errors | `<summer-skeleton width height radius>`, `<summer-notice tone text>`, `summer-empty-state` |
+| Feedback | `summerUI.toast(text)` for a finished action |
+| Phone | `hide-sm` attribute hides a secondary element under 640px |
 
 ## Layout recipes
 
@@ -77,7 +87,7 @@ You have freedom inside the app. Use it for the task, not for decoration.
 question ("DPS by weapon", over-budget bars red, dashed budget line), a toolbar
 (search, class filter, "3 over budget" badge), a framed table with art thumbs,
 editable numbers and an inline bar on the value that matters, then a sticky save
-bar "2 unsaved changes · Discard · Write to game".
+bar "2 unsaved changes", Discard, "Write to game".
 
 **Pipeline board.** Header with "5 of 14 done" and primary "Add creature". Toolbar
 (search, Everyone/Mine, Board/List). Four lanes with a name, count and add button;

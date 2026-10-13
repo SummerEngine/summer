@@ -11,121 +11,157 @@ user-invocable: false
 
 A Summer App is a tool a game team uses every day inside Summer Studio. It should
 feel like a calm, precise studio instrument around colourful game content. The
-chrome is ink on paper; the colour comes from the game (art, renders, waveforms)
-and from data that means something.
+chrome is ink on paper; colour comes from the game (art, renders, waveforms) and
+from data that means something. You have freedom inside the app. Use it for the
+task, not for decoration.
 
-You have freedom inside the app. Use it for the task, not for decoration.
+## The catalog is the API
+
+The kit ships `summer-ui/v1/catalog.json` next to `ui.js` on the kit origin (the
+summer-apps skill says how to load the kit). It lists every component's
+attributes with value shapes, events with their `detail`, slots, methods, a working
+example, the icon names and the tokens. **Read the entry before you use a
+component** and copy its example. Never guess an attribute.
+
+- JSON attributes take a JSON string, or set the same-named property:
+  `table.rows = rows`. Prefer properties for data.
+- Events bubble out of the components; read `event.detail`.
+- Icons: only names in `icons.names` (lucide: `plus`, `check`, `pencil`,
+  `trash-2`, `search`, `sparkles`, `download`, `ellipsis`, ...). Never draw SVG.
+- Colours: only the tokens in `tokens` (`var(--se-text)`, ...). No hex.
 
 ## Do this
 
-1. **Start from the task.** Write down in one line what the person came to do and
-   the one action that finishes it. That action is the only primary button.
-2. **Use the kit.** `<script type="module" src="/summer-ui/v1/ui.js">` gives you the
-   tokens, Geist and the `summer-*` components, and follows Studio light/dark.
-   Never restyle a kit component's colours. Build a missing pattern from the
-   tokens in a small scoped `<style>`.
-3. **Lay out the page** (section "Page").
-4. **Show real data.** Read it from the SDK (`data`, `assets`, `engine.readFile`).
-   No lorem ipsum, no fake numbers when real ones exist.
-5. **Design every state** the app can reach (section "States").
-6. **Run the checklist**, then look at it light and dark, at 390px and 1440px.
+1. Write one line: what the person came to do, and the one action that finishes
+   it. That action is the primary button.
+2. Build the page from the recipe below. Every part is a kit component; write your
+   own CSS only for layout glue (a grid, a gap), from tokens, under 30 lines.
+3. Read real data through the SDK. No lorem ipsum, no invented numbers.
+4. Wire `loading`, empty and error for every data component.
+5. Run the checklist. Look at light and dark, 390px and 1440px.
 
-## Page
+## Page recipe
 
-- Wrap the app in `<summer-page heading="…" purpose="…">`. It paints the canvas,
-  centres content (max 1280px; forms 640px), sets padding and section spacing,
-  and renders the header: title 22/600 plus one 13px muted purpose line that says
-  what the tool does and where data goes ("Edits write to res://data/weapons.json").
-  Put avatars, one meta (`<span class="summer-meta">Synced 2 min ago</span>` or
-  `<summer-progress>`), secondary actions and the one primary in `slot="actions"`.
-- Each part of the page is a `<summer-section heading="…">`: 15/500 title row,
-  legend or meta in `slot="aside"`, content 12px below. No frame unless the content
-  needs a boundary. A page with one section needs no section title and no card.
-- 4px grid. 8-12px inside a group, 16-24px between groups.
-- Layout-format apps: the `page` node takes `{title, purpose, meta}` and puts its
-  button children in the header.
+```html
+<summer-page heading="Playtest results" purpose="How each level played in the latest playtest. Notes are shared with your team and your agent.">
+  <summer-avatar-stack slot="actions" people='[{"name":"Mia"},{"name":"Tom"}]'></summer-avatar-stack>
+  <span slot="actions" class="summer-meta">Playtest 12 Oct</span>
+  <summer-button slot="actions" variant="primary" icon="plus">Add note</summer-button>
 
-## Type and colour
+  <summer-stats loading>…3-5 summer-stat…</summer-stats>
+  <summer-chart heading="Where players stop" loading …></summer-chart>
+  <summer-section heading="Levels">
+    <summer-select slot="aside" inline label="Sort" options='…'></summer-select>
+    <summer-table loading …></summer-table>
+  </summer-section>
+</summer-page>
+```
 
-- Geist only. Sizes: 22 title, 28 metric, 15 section, 14 body, 13 table and
-  buttons, 12 labels and meta, 11 badges. Weights 400, 500, 600. Never bold 700,
-  never all caps. Numbers, money and times use `font-variant-numeric: tabular-nums`.
-- Colours are CSS variables only: `--se-bg`, `--se-bg-input`, `--se-bg-muted`,
-  `--se-bg-hover`, `--se-text`, `--se-text-secondary`, `--se-text-muted`,
-  `--se-border`, `--se-border-subtle`, `--se-border-focus`, `--se-cta-bg`,
-  `--se-cta-fg`, and status `--success`, `--warning`, `--destructive`, `--info`.
-  No hex values, no Tailwind palette colours.
-- Data colour carries meaning: normal marks are quiet, the thing to notice is
-  ink or a status colour. A status colour always comes with words.
+- `summer-page` gives the canvas, width (1280px; forms 640px), padding and spacing,
+  and the header. The purpose line says what the tool does and where data goes.
+  Header actions, in order: avatars, one meta (`.summer-meta` or
+  `summer-progress`), secondary buttons, the primary.
+- One `summer-section` per part, with a short noun heading. Extras for the title row
+  (an inline select, a count, a legend) go in `slot="aside"`.
+- A chart gets its own `heading` (its legend then sits in the title row). Do not
+  wrap a single chart in a section.
+- A page with one part needs no section heading and no card around it.
 
-## Components to reach for
+## Pick the component
 
-| Need | Use |
+| Job | Use (exact names; shapes in the catalog) |
 | --- | --- |
-| Key numbers | `<summer-stats>` of 3-5 `<summer-stat label value delta hint tone>`: unboxed, split by hairlines |
-| Records | `summer-table`: columns with `type` (bar, badge, muted), `priority="secondary"` to hide on phone, `thumb`, `digits`; badge only for exceptions. `<summer-save-bar count>` for unsaved edits |
-| Trends, comparisons | `summer-chart` with `title`, `highlight` (the bars that matter) and `reference` (a target line). One question per chart. Frame only if asked |
-| Sound | `summer-audio`: our play button and waveform. Never `<audio controls>` |
-| Video | `summer-video`: our controls. Never `<video controls>` |
-| Pick one version | `summer-choice-grid` (`layout="rows"` for one row per need): the whole tile is the choice |
-| Boards | `<summer-board>` > `<summer-lane heading add-label>` > `<summer-board-card heading art meta person comments done>` |
-| A repeated object | `<summer-card variant="object" media selected>` |
-| Images, 3D | `summer-image`, `summer-model-viewer` |
-| Filters | `<summer-toolbar>`: `<summer-search>`, `<summer-segmented options value>`, extras in `slot="end"` |
-| Settings | `summer-select`, `summer-slider`, `summer-toggle`, `summer-text-input` |
-| Actions | `<summer-button variant icon>` (primary once per view), `<summer-icon-button icon label>` |
-| Status | `<summer-badge tone>` (ok, warn, bad, info, quiet, count) with words, `<summer-progress value>` |
-| Icons | `<summer-icon name>` (lucide set). Do not draw your own glyphs |
-| Who is here | `summer-avatar-stack` in the page actions |
-| Loading, errors | `<summer-skeleton width height radius>`, `<summer-notice tone text>`, `summer-empty-state` |
-| Feedback | `summerUI.toast(text)` for a finished action |
-| Phone | `hide-sm` attribute hides a secondary element under 640px |
+| Key numbers | `summer-stats` > 3-5 `summer-stat label value delta hint tone`. Delta is text like "+12 this week"; the kit colours the number |
+| A comparison or trend | `summer-chart kind x y heading highlight reference`. `y` is a JSON array of keys; `highlight` `{above, below, tone, label, otherLabel}`; `reference` `{value, label, tone}`. One question per chart |
+| Records you scan, sort, edit | `summer-table columns rows row-key`. Column `{key, label, format, digits, type: bar/badge/muted, over, priority: "secondary", thumb, editable}`. `clickable` gives `summer-row`; `selectable="single"` or `"multi"` gives `summer-select-rows` |
+| Unsaved table edits | `summer-save-bar count save-label` (`save` and `discard` events; then `table.commit()` or `table.discard()`) |
+| Notes, tasks, comments | `summer-list items checkable menu actions`. Item `{id, title, meta, checked, badge: {text, tone}}` |
+| Pipeline stages | `summer-board` > `summer-lane heading lane-id add-label` > `summer-board-card heading card-id art meta person comments done`; `summer-move` event |
+| Pick between versions | `summer-choice-grid items` (`layout="row" heading meta` for one row per need). Item `{id, label, src, kind}` |
+| Filters above a list | `summer-toolbar` > `summer-search`, `summer-segmented options value` (`{value, label, count}`), `summer-select inline` in `slot="end"` |
+| Add or edit something | `summer-dialog heading description` > `summer-form submit-label` > named inputs |
+| Inputs | `summer-text-input name label hint required multiline`, `summer-select name label options`, `summer-slider`, `summer-toggle` |
+| Media | `summer-audio`, `summer-video`, `summer-image aspect`, `summer-model-viewer`. Never `<audio controls>` or `<video controls>` |
+| A repeated object | `summer-card variant="object" media selected` |
+| Status in words | `summer-badge tone` (ok, warn, bad, info, quiet, count) |
+| Buttons | `summer-button variant icon size`, `summer-icon-button icon label` |
+| Messages | `summer-notice tone text` in place; `summerUI.toast(text)` after an action |
+| Nothing yet | `summer-empty-state heading body` with one button inside |
 
-## Layout recipes
+If you play Web Audio yourself, call `summer.app.busy(true)` while it plays and
+`busy(false)` after.
 
-**Balance table + chart.** Header, metric strip, a chart section answering one
-question ("DPS by weapon", over-budget bars red, dashed budget line), a toolbar
-(search, class filter, "3 over budget" badge), a framed table with art thumbs,
-editable numbers and an inline bar on the value that matters, then a sticky save
-bar "2 unsaved changes", Discard, "Write to game".
+## Patterns
 
-**Pipeline board.** Header with "5 of 14 done" and primary "Add creature". Toolbar
-(search, Everyone/Mine, Board/List). Four lanes with a name, count and add button;
-no lane fill. Cards: 4:3 art (none in early stages), name 14/500, a 12px meta row
-with owner avatar, status text and comment count. On phone, lanes scroll sideways.
+**Dashboard (numbers, chart, table).** Stats, then one chart answering the main
+question with the problem bars highlighted and a reference line for the target,
+then the table with a bar column for the value that matters and a badge column only
+for exceptions. Secondary columns get `priority: "secondary"`.
 
-**Pick grid.** Header with "7 of 12 picked" + progress and primary "Send 7 to
-game". Filter Needs a pick / Picked. One row per need: name, meta and status on
-the left (220px), three choice tiles on the right. Playing tile: ink pause button
-and ink played bars. Picked tile: ink border and check. On phone, each tile is one
-48px row.
+**Edit flow.** The header's primary opens a `summer-dialog` holding a
+`summer-form`. Listen for `submit` (`detail.values`); set the `busy` attribute
+while saving and the `error` attribute if it fails;
+close the dialog on success and toast the result ("Note saved"). The rule is one
+primary per region: the page header, an open dialog, a form that is the whole page,
+and the save bar are separate regions. A page whose job is the form puts Save in the
+form and no primary in the header.
+
+**List with row actions.** `summer-list` with `checkable` for done or fixed, and
+`menu` for the rest (Edit, Copy, Delete with `tone: "danger"`). At most one icon in
+`actions`, and only when people use it on most rows. Never a labelled button
+repeated on every row. Delete asks first in a `summer-dialog` with
+`summer-form destructive`.
+
+**Data your agent fills in.** When the app waits on an agent (an import, an
+analysis), the empty state says what is missing and offers the request:
+`summer-empty-state heading="No playtest data yet" body="Your agent can import
+last night's playtest."` with a primary `summer-button icon="sparkles"` "Ask your
+agent". On click call `summer.agent.send("playtest.import", {})`, swap the button
+for `summer-notice tone="info"` "Your agent was asked. This fills in when it
+answers.", and subscribe to the collection so rows appear live.
+
+**Board.** Lanes per stage, art on cards from the asset, owner initial and comment
+count. Move cards with `summer-move`; write the new stage to data at once.
+
+**Pick grid.** One `summer-choice-grid layout="row"` per need; the header shows
+`summer-progress` and the primary sends the picks ("Send 7 to game").
 
 ## States
 
-- Loading: skeletons in `--se-bg-muted` with the result's shape. A spinner only
-  inside a busy button.
-- Empty: centred, a 15/500 title, one muted line that says what to do, one button.
-- Error: a notice in place of the failed part, plain words, a retry. The rest of
-  the app keeps working.
-- Live change from a teammate or agent: flash the changed row or card
-  `--se-bg-hover` for 600ms. No toast.
+- Loading: set `loading` on stats, chart, table, list and select until the data
+  arrives. Never show "No data yet" or "-" while loading.
+- Empty: `empty-text`, or `empty-heading` + `empty-body`, on the component, or
+  `summer-empty-state` for a whole page. Say what to do next.
+- Error: `summer-notice tone="error"` in place of the part that failed, with a retry
+  button. The rest keeps working.
+- Saving: `busy` on the form or save bar, `loading` on a button.
+
+## Type, colour, copy
+
+- The kit sets type. In your own glue use 14px body, 12px muted meta, weights 400,
+  500, 600, `tabular-nums` for numbers. Never 700, never all caps.
+- Colour means something: quiet by default, ink or a status tone for what needs
+  attention, always with words.
+- Plain words, sentence case, no full stop on labels. Name actions by result ("Save
+  note", "Write to game"). Errors do not apologise. Never "AI-generated".
 
 ## Never
 
-Grey filled boxes around numbers. Cards around every section, cards inside cards.
-Native audio, video, select or range controls. Two primary buttons. Huge charts
-with centred legends. Coloured left borders, accent lines, gradients, glows,
-shadows on cards. All-caps labels. A status badge on every row. Emoji. Mono font
-for numbers. "AI-generated" or "made with AI" anywhere.
+Grey boxes around numbers. Cards around every section, cards inside cards. Native
+audio, video, select or range controls. Two primaries in one region. A labelled
+button on every row. A status badge on every row. Hand-drawn icons, emoji. Hex
+colours, gradients, glows, shadows on cards. Mono font for numbers. "No data yet"
+while loading.
 
 ## Checklist
 
-- [ ] One line says what the tool does; one primary action finishes it.
-- [ ] Every component is a kit component or built from the tokens above.
-- [ ] Numbers line up (tabular, right-aligned); rows keep fixed slots.
+- [ ] The purpose line says what the tool does; one primary per region finishes it.
+- [ ] Every component and attribute matches its catalog entry.
+- [ ] Numbers line up; secondary table columns hide on a phone.
+- [ ] Loading, empty (including "waiting for your agent") and error states exist
+      and keep the layout in place.
 - [ ] Subtract: remove each badge, icon, helper line and frame; keep it only if the
       task gets worse without it.
-- [ ] Loading, empty and error states exist and keep the layout in place.
-- [ ] Works by keyboard; icon-only buttons have labels.
-- [ ] Looked at light and dark, 390px and 1440px. Nothing scrolls sideways except
-      a board or a wide table inside its own frame.
+- [ ] Works by keyboard; icon buttons have labels.
+- [ ] Looked at light and dark, 390px and 1440px; nothing scrolls sideways except a
+      board or a wide table inside its frame.

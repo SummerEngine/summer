@@ -76,7 +76,7 @@ component** and copy its example. Never guess an attribute.
 | --- | --- |
 | Key numbers | `summer-stats` > 3-5 `summer-stat label value delta hint tone`. Delta is text like "+12 this week"; the kit colours the number |
 | A comparison or trend | `summer-chart kind x y heading highlight reference`. `y` is a JSON array of keys; `highlight` `{above, below, tone, label, otherLabel}`; `reference` `{value, label, tone}`. One question per chart |
-| Records you scan, sort, edit | `summer-table columns rows row-key`. Column `{key, label, format, digits, type: bar/badge/muted, over, tone, priority: "secondary", thumb, editable, badge, badgeTone}`; `badge` names a row key shown as a small badge inside that cell (e.g. "+3:01" over target). `clickable` gives `summer-row`; `selectable="single"` or `"multi"` gives `summer-select-rows` |
+| Records you scan, sort, edit | `summer-table columns rows row-key`. Column `{key, label, format, digits, type: bar/badge/muted, over, tone, badges, priority: "secondary", thumb, editable, badge, badgeTone}`. `badges` maps values to tones for a status column (`{"draft": "quiet", "review": "info", "done": "ok"}`); `badge` names a row key shown as a small badge inside a cell (e.g. "+3:01" over target). On a phone the table stacks its rows by itself. `clickable` gives `summer-row`; `selectable="single"` or `"multi"` gives `summer-select-rows` |
 | Unsaved table edits | `summer-save-bar count save-label` (`save` and `discard` events; then `table.commit()` or `table.discard()`) |
 | Notes, tasks, comments | `summer-list items checkable action menu`. Item `{id, title, meta, checked, badge: {text, tone}, action}`; `action` `{id, label, icon}` is the one quiet button per row; `menu` items `{id, label, icon, tone: "danger"}`; events `summer-check`, `summer-action`, `summer-item` |
 | Pipeline stages | `summer-board` > `summer-lane heading lane-id add-label` > `summer-board-card heading card-id art meta person comments done`; `summer-move` event |
@@ -88,7 +88,7 @@ component** and copy its example. Never guess an attribute.
 | A repeated object | `summer-card variant="object" media selected` |
 | Status in words | `summer-badge tone` (ok, warn, bad, info, quiet, count) |
 | Buttons | `summer-button variant icon size`, `summer-icon-button icon label` |
-| Messages | `summer-notice tone text` in place; `summerUI.toast(text)` after an action |
+| Messages | `summer-notice tone text action` in place (`action="Try again"` adds a button; listen for `action`); `summerUI.toast(text)` after an action |
 | Nothing yet | `summer-empty-state heading body` with one button inside |
 
 If you play Web Audio yourself, call `summer.app.busy(true)` while it plays and
@@ -98,13 +98,14 @@ If you play Web Audio yourself, call `summer.app.busy(true)` while it plays and
 
 **Dashboard (numbers, chart, table).** Stats, then one chart answering the main
 question with the problem bars highlighted and a reference line for the target,
-then the table with a bar column for the value that matters and a badge column only
-for exceptions. Secondary columns get `priority: "secondary"`.
+then the table with a bar column for the value that matters and a badge only where
+something needs attention. Columns a phone can do without get `priority: "secondary"`.
 
-**Edit flow.** The header's primary opens a `summer-dialog` holding a
-`summer-form`. Listen for `submit` (`detail.values`); set the `busy` attribute
-while saving and the `error` attribute if it fails;
-close the dialog on success and toast the result ("Note saved"). The rule is one
+**Edit flow.** A row click (`summer-row`) or the header's primary opens a
+`summer-dialog` holding a `summer-form`. For an edit, call
+`form.setValues(record)` before `dialog.show()`; for a new item, show it empty.
+Listen for `submit` (`detail.values`; number fields give numbers, empty gives
+null); set `busy` while saving and `error` if it fails; close the dialog on success and toast the result ("Note saved"). The rule is one
 primary per region: the page header, an open dialog, a form that is the whole page,
 and the save bar are separate regions. A page whose job is the form puts Save in the
 form and no primary in the header.
@@ -112,8 +113,8 @@ form and no primary in the header.
 **List with row actions.** `summer-list` with `checkable` for done or fixed, one
 `action` for the most common step (`{id: "fix", label: "Mark fixed", icon:
 "check"}`: a quiet button that shows on hover and on touch), and `menu` for the rest
-(Edit, Copy, Delete with `tone: "danger"`). Never a bordered button on every row. Delete asks first in a `summer-dialog` with
-`summer-form destructive`.
+(Edit, Copy, Delete with `tone: "danger"`). Never a bordered button on every row.
+Delete asks first in a `summer-dialog` with `summer-form destructive`.
 
 **Data your agent fills in.** When the app waits on an agent (an import, an
 analysis), the empty state says what is missing and offers the request:
@@ -124,6 +125,12 @@ for `summer-notice tone="info"` "Your agent was asked. This fills in when it
 answers.", and subscribe so rows appear live:
 `summer.data.collection("levels").subscribe(render)` (there is no
 `summer.data.list(name)`).
+
+**Who changed it.** People and agents edit the same data. Each change from
+`subscribe` carries `actor` (`{kind: "person" | "agent", agent, via}`). Show
+it where it helps: a "By" column or list meta with the person's name, or the
+agent's name ("Claude Code") for agent changes. Flash a row or card that someone
+else just changed. Compare with `info.viewer.userId` to say "You".
 
 **Board.** Lanes per stage, art on cards from the asset, owner initial and comment
 count. Move cards with `summer-move`; write the new stage to data at once.
@@ -137,8 +144,9 @@ count. Move cards with `summer-move`; write the new stage to data at once.
   arrives. Never show "No data yet" or "-" while loading.
 - Empty: `empty-text`, or `empty-heading` + `empty-body`, on the component, or
   `summer-empty-state` for a whole page. Say what to do next.
-- Error: `summer-notice tone="error"` in place of the part that failed, with a retry
-  button. The rest keeps working.
+- Error: `summer-notice tone="error" text="The notes could not load." action="Try again"`
+  in place of the part that failed; retry on its `action` event. The rest keeps
+  working.
 - Saving: `busy` on the form or save bar, `loading` on a button.
 
 ## Type, colour, copy
@@ -154,7 +162,7 @@ count. Move cards with `summer-move`; write the new stage to data at once.
 
 Grey boxes around numbers. Cards around every section, cards inside cards. Native
 audio, video, select or range controls. Two primaries in one region. A labelled
-button on every row. A status badge on every row. Hand-drawn icons, emoji. Hex
+button on every row. A badge on every row that only says all is well. Hand-drawn icons, emoji. Hex
 colours, gradients, glows, shadows on cards. Mono font for numbers. "No data yet"
 while loading.
 
@@ -162,7 +170,7 @@ while loading.
 
 - [ ] The purpose line says what the tool does; one primary per region finishes it.
 - [ ] Every component and attribute matches its catalog entry.
-- [ ] Numbers line up; secondary table columns hide on a phone.
+- [ ] Numbers line up; on a phone nothing scrolls off (tables stack by themselves).
 - [ ] Loading, empty (including "waiting for your agent") and error states exist
       and keep the layout in place.
 - [ ] Subtract: remove each badge, icon, helper line and frame; keep it only if the

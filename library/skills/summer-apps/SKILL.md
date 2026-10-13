@@ -62,6 +62,9 @@ Read these before writing code; they are exact:
   copyable example) is `summer_app_guide` section `kit`, also at `/summer-ui/v1/catalog.json`
   on the app host. Copy its examples instead of inventing markup.
 
+To see an app, publish it to a Scratch app and open it in Studio (`/studio/apps/<appId>`;
+`summer_app_create` opens it for the person). Opening `index.html` on its own never connects.
+
 The app is served from its own host, apps.summerengine.app. Load the SDK and the kit as
 ES modules with root paths: `<script type="module" src="/summer-sdk/v1.js">` and
 `<script type="module" src="/summer-ui/v1/ui.js">`. Then `await summer.ready` before
@@ -97,7 +100,9 @@ and `summer_app_data` reads return it, so any agent knows what a record looks li
 ] }
 ```
 
-Without `ops`, `summer_app_data` reads (`collection`, `after`, `limit`). `patch` merges keys
+Up to 100 ops per call. Without `ops`, `summer_app_data` reads (`collection`, `after`, `limit`);
+removed records are not returned. Your writes are recorded as `actor { kind: "agent" }`, so the
+app can show which rows an agent made. `patch` merges keys
 (`null` removes one); `ifRevision` guards against overwriting a newer change.
 
 ## Agent tools

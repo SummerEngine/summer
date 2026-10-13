@@ -4,6 +4,12 @@
 host, apps.summerengine.app). The UI kit is `<script type="module" src="/summer-ui/v1/ui.js">`
 (stylesheet alone: `/summer-ui/v1/ui.css`). Classic `<script>` tags and other paths do not work.
 
+The app runs in a sandboxed frame on that host: an opaque origin (no cookies, no
+`localStorage`), no network unless the workspace allows a domain, and the kit and SDK are
+served with CORS so the module scripts load. It only works inside Summer Studio: publish to
+a Scratch app and open it there (`/studio/apps/<appId>`). Opening `index.html` on its own
+never connects, so `summer.ready` waits forever.
+
 Every call returns a promise and runs as the person using the app. Failures reject with
 `SummerError { code, message }`. Methods need the manifest permission in brackets.
 
@@ -11,7 +17,7 @@ Every call returns a promise and runs as the person using the app. Failures reje
 
 | Call | Returns |
 |---|---|
-| `await summer.ready` | `{ app: { id, name, version, surface: "page"\|"dock", format }, viewer: { id, name }, permissions: string[], params: { [k]: string }, theme: "light"\|"dark", restored?: any }` |
+| `await summer.ready` | `{ app: { id, name, version, surface, format }, viewer: { userId, name }, permissions: string[], params: { [k]: string }, theme: "light"\|"dark", restored?: any }` |
 | `summer.app.viewer()` | `{ userId, name, image, role: "owner"\|"admin"\|"member", canManage, spentTodayMicro, dailyCapMicro }` |
 | `summer.app.info({ params })` | `{ app, version, manifest, params }` |
 | `summer.app.setTitle(title)`, `summer.app.notify(text)`, `summer.app.needsYou(count)`, `summer.app.open("/studio/...")` | `void` |
@@ -29,19 +35,20 @@ const notes = summer.data.collection("notes");   // name: lowercase a-z 0-9 _ . 
 
 | Call | Returns |
 |---|---|
-| `notes.list({ limit = 200, after })` | `{ revision, records: Record[], next: string\|null, collections: [{ name, count }] }`. Pass `next` as `after` for the next page (max 500 per page). |
-| `notes.get(id)` | `Record` or `null` |
+| `notes.list({ limit = 200, after })` | `{ revision, records: Record[], next: string\|null, collections: [{ name, count }] }`. Removed records are never listed. Pass `next` as `after` for the next page (max 500 per page). |
+| `notes.get(id)` | `Record`, or `null` (also for a removed record) |
 | `notes.put(id, data, { ifRevision })` | `Write` (creates or replaces) |
 | `notes.patch(id, partial, { ifRevision })` | `Write` (shallow merge; `null` removes a key; creates if missing) |
 | `notes.remove(id, { ifRevision })` | `Write` |
 | `notes.subscribe((change) => …)` | stop function |
 | `summer.data.subscribe((change) => …)` | every collection |
-| `summer.data.commands({ requestId, baseRevision, ops })` | `Write`: several ops in one revision |
+| `summer.data.commands({ requestId, baseRevision, ops })` | `Write`: up to 100 ops in one revision |
 
 ```ts
-Record = { collection, recordId, data, revision, updatedBy, updatedAt, deleted }
-Write  = { revision, operation: { revision, requestId, actorId, ops, createdAt }, records: Record[], replayed }
-change = { revision, actorId, ops: Op[] } | { revision, reset: true }      // on reset, list again
+Record = { collection, recordId, data, revision, actor, updatedAt, deleted }
+Write  = { revision, operation: { revision, requestId, actor, ops, createdAt }, records: Record[], replayed }
+change = { revision, actor, ops: Op[] } | { revision, reset: true }      // on reset, list again
+actor  = { userId, kind: "person" | "agent", agent?: "claude-code" | ..., via?: "agent-tool" }
 Op     = { op: "put", collection, recordId, data, ifRevision? }
        | { op: "patch", collection, recordId, patch, ifRevision? }
        | { op: "remove", collection, recordId, ifRevision? }
@@ -51,6 +58,13 @@ Op     = { op: "put", collection, recordId, data, ifRevision? }
 exist); otherwise the call rejects with `conflict`. Record ids: letters, digits, `_ . : -`
 (max 128). Records are JSON up to 64 KB, 10,000 per collection, 50 collections.
 
+### Who changed it
+
+`actor.userId` is the account the write ran as, the same id as `ready.viewer.userId` and
+`app.viewer().userId`. `kind: "agent"` marks writes an agent made with `summer_app_data`, and
+writes your own code made while running an agent tool for `summer_app_call` (those also have
+`via: "agent-tool"`). Show agent-made rows (a small "by agent" label) so people know.
+
 ## Agents
 
 | Call | Returns |
@@ -58,7 +72,7 @@ exist); otherwise the call rejects with `conflict`. Record ids: letters, digits,
 | `summer.agent.send(name, payload)` | `{ seq }`. `name` must be in `manifest.agentEvents`. Agents read it with `summer_app_events`. |
 | `summer.agent.tool(name, async (input) => result)` | stop function. `name` must be in `manifest.agentTools`. `summer_app_call` runs it; return JSON (under 100 KB); a throw becomes `tool_failed`. |
 | `summer.agent.onMessage((message) => …)` | stop function |
-| `summer.page.declare({ fields, actions })` | promise. `fields: [{ id, label, kind: "text"\|"long-text"\|"number"\|"toggle"\|"choice", value, options?, max?, hint?, set(value) }]`, `actions: [{ id, label, description?, critical?, run() }]`. Call it again when values change. Critical actions are pressed only by the person. |
+| `summer.page.declare({ fields, actions })` | promise. `fields: [{ id, label, kind: "text"\|"long-text"\|"number"\|"toggle"\|"choice", value, options?: [{ value, label }] (for choice), max?, hint?, set(value) }]`, `actions: [{ id, label, description?, critical?, run() }]`. Call it again when values change. Critical actions are pressed only by the person. |
 
 ## Assets, generation, AI
 
@@ -94,6 +108,12 @@ Paid calls spend the viewer's credits; `spend_cap_reached` when the app's daily 
 | `summer.engine.onEvent(fn)`, `summer.engine.plugin.send(msg)`, `summer.engine.plugin.onMessage(fn)` | |
 
 `engine_offline`: no Summer Engine connected; show an "Open in Summer Engine" hint.
+
+## Kit values
+
+`<summer-form>` gives its fields' values by `name` (fields anywhere inside it count). A
+`<summer-text-input type="number">` value is a string: convert with `Number(value)` before you
+save it. A `<summer-toggle>` is a boolean.
 
 ## Errors
 

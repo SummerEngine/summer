@@ -13,8 +13,8 @@ paths: ["summer/save_fixtures/**", "world.json", "**/*save*.gd", "**/*migration*
 
 > **Coming with Engine interface v7.**
 > - `register_save_migration`, `get_save_version`, `get_readable_save_versions`, the fixture check and World upgrades ship with Summer Engine's `multiplayer` interface v7 and the matching platform release. Before that, a Build with two or more `snapshot_schemas` entries fails publication.
-> - **Check first:** `Summer.authority.world.has_method("register_save_migration")`. If it is false, follow "Before v7" below and do not change the save format of a published persistent World.
-> - Not verified in-engine yet. The design is summer-platform ADR 0035.
+> - **Check first:** `Summer.authority.world.has_method("register_save_migration")`. If it is false, follow "Before v7" below.
+> - Not verified in-engine yet; the contract may still change before it ships.
 
 ## Overview
 

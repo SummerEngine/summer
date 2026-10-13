@@ -178,10 +178,16 @@ function recoveryAdvice(key: string | undefined): string {
 
 function knownRefusal(reply: GatewayReply): boolean {
   if (reply.phase === "not_sent") return true;
+  if (reply.phase === "outcome_unknown") return false;
   if ([400, 401, 402, 403, 422, 429].includes(reply.status)) return true;
   if (reply.status === 503 && reply.data?.error === "idempotency_unavailable") return true;
-  if (reply.status === 503 && typeof reply.data?.message === "string" && /nothing was charged/i.test(reply.data.message)) return true;
   return false;
+}
+
+function validClip(value: unknown): value is Clip {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const clip = value as Record<string, unknown>;
+  return ["clipId", "modelId", "audioUrl", "assetId"].every((field) => typeof clip[field] === "string" && (clip[field] as string).length > 0);
 }
 
 function clipSummary(clip: Clip) {
@@ -223,14 +229,14 @@ export async function generateSfxChoices(
   const reviewUrl = typeof data.reviewUrl === "string" ? data.reviewUrl : null;
   const studioPath = typeof data.studioPath === "string" ? data.studioPath : undefined;
 
-  if (!choiceSetId || !reviewUrl || clips.length === 0) {
+  if (!choiceSetId || !reviewUrl || clips.length === 0 || !clips.every(validClip)) {
     return {
       ok: false,
       ...key,
       status: reply.status,
       outcome: "unknown",
       error: "The server response did not confirm a completed choice set.",
-      details: data,
+      details: reply.data,
       recovery: recoveryAdvice(args.idempotencyKey),
     };
   }

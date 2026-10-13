@@ -154,26 +154,36 @@ async function mcpGenerate(
 
   let data: any;
   try {
-    data = await readLenientJson(res);
+    if (trackSfxOutcome) {
+      const text = await res.text();
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = { message: text.slice(0, 1000) };
+      }
+    } else {
+      data = await readLenientJson(res);
+    }
   } catch (error) {
     if (!trackSfxOutcome) throw error;
     return { error: `Could not read the generation response: ${error instanceof Error ? error.message : String(error)}`, status: res.status, phase: "outcome_unknown" };
   }
   if (!res.ok) {
+    const record = asRecord(data) ?? {};
     let message = formattedApiErrorMessage(res.status, data);
 
     if (res.status === 402) {
       message =
-        (data.message || "Insufficient credits.") +
+        (stringFrom(record.message) || "Insufficient credits.") +
         "\nTop up at: https://www.summerengine.com/dashboard\nOr upgrade your plan at: https://www.summerengine.com/pricing";
     }
     if (res.status === 401) {
       message =
-        (data.message || "Auth token expired.") +
+        (stringFrom(record.message) || "Auth token expired.") +
         "\nRe-authenticate:\n  npx -y summer-engine@latest login";
     }
 
-    return { error: message, data: { ...data, status: res.status }, status: res.status };
+    return { error: message, data: trackSfxOutcome ? data : { ...data, status: res.status }, status: res.status };
   }
   return { data, status: res.status };
 }

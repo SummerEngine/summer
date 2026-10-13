@@ -623,9 +623,23 @@ async function gatewaySfxChoicesPost(endpoint: string, body: DispatchArgs, timeo
   } catch (error) {
     return { error: `Generation request failed: ${error instanceof Error ? error.message : String(error)}`, status: 0, phase: "outcome_unknown" };
   }
-  const data = await readJsonBody(response);
+  let rawBody: string;
+  try {
+    rawBody = await response.text();
+  } catch (error) {
+    return { error: `Could not read the generation response: ${error instanceof Error ? error.message : String(error)}`, status: response.status, phase: "outcome_unknown" };
+  }
+  let data: unknown = {};
+  if (rawBody) {
+    try {
+      data = JSON.parse(rawBody);
+    } catch {
+      data = { message: rawBody.slice(0, 1000) };
+    }
+  }
   if (!response.ok) {
-    const message = String(data.message || data.error || `Request failed (${response.status})`);
+    const record = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : {};
+    const message = String(record.message || record.error || `Request failed (${response.status})`);
     return { error: message, status: response.status, data };
   }
   return { status: response.status, data };

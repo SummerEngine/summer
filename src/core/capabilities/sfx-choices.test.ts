@@ -154,6 +154,7 @@ describe("generateSfxChoices", () => {
     [409, { error: "duplicate_in_progress", message: "Charge status unknown" }, "unknown"],
     [503, { error: "idempotency_unavailable", message: "No work started" }, "refused"],
     [503, { error: "unavailable", billedCredits: 2, message: "Audio may have been charged" }, "unknown"],
+    [503, { error: "unavailable", message: "Nothing was charged" }, "unknown"],
   ])("retains HTTP %i and response details", async (status, body, outcome) => {
     const deps = fakeDeps({}, { error: String(body.message ?? body.error), data: body, status });
     const result = await generateSfxChoices(sfxChoicesArgsSchema.parse({ text: "clash", idempotencyKey: "same-key" }), deps);
@@ -175,6 +176,11 @@ describe("generateSfxChoices", () => {
   it("marks missing credentials before dispatch as refused", async () => {
     const deps = fakeDeps({}, { error: "Not signed in", status: 401, phase: "not_sent" });
     expect(await generateSfxChoices(sfxChoicesArgsSchema.parse({ text: "clash", idempotencyKey: "attempt" }), deps)).toMatchObject({ outcome: "refused", status: 401, idempotencyKey: "attempt" });
+  });
+
+  it("does not infer refusal from status when the response body was lost", async () => {
+    const deps = fakeDeps({}, { error: "body stream lost", status: 402, phase: "outcome_unknown" });
+    expect(await generateSfxChoices(sfxChoicesArgsSchema.parse({ text: "clash", idempotencyKey: "attempt" }), deps)).toMatchObject({ outcome: "unknown", status: 402, idempotencyKey: "attempt" });
   });
 });
 

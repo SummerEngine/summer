@@ -823,10 +823,38 @@ describe("sound-effect models and choices across MCP and CLI", () => {
       expect(globalThis.fetch).toHaveBeenCalledTimes(1);
     });
 
+    it.each([
+      [503, null, "unknown"],
+      [402, null, "refused"],
+      [503, ["not an error object"], "unknown"],
+    ])(`${surface} keeps HTTP %i with a non-object body`, async (status, body, outcome) => {
+      globalThis.fetch = vi.fn(async () => new Response(JSON.stringify(body), { status }));
+      const result = await failedChoice(surface, { text: "whoosh", idempotencyKey: "attempt-123", open: false });
+      expect(result).toMatchObject({ ok: false, status, outcome, details: body, idempotencyKey: "attempt-123" });
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it(`${surface} keeps a failed body read uncertain even when the HTTP status is 402`, async () => {
+      const response = new Response("", { status: 402 });
+      vi.spyOn(response, "text").mockRejectedValue(new Error("body stream lost"));
+      globalThis.fetch = vi.fn(async () => response);
+      const result = await failedChoice(surface, { text: "whoosh", idempotencyKey: "attempt-123", open: false });
+      expect(result).toMatchObject({ ok: false, status: 402, outcome: "unknown", idempotencyKey: "attempt-123" });
+      expect(String(result.recovery)).toContain("Check existing choices");
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    });
+
     it(`${surface} does not turn a malformed success into a safe failure`, async () => {
       globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({ billedCredits: 4, clips: [] }), { status: 200 }));
       const result = await failedChoice(surface, { text: "whoosh", idempotencyKey: "attempt-123", open: false });
       expect(result).toMatchObject({ outcome: "unknown", status: 200, details: { billedCredits: 4 } });
+    });
+
+    it(`${surface} preserves cost details when a paid success contains a null clip`, async () => {
+      globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({ ...choiceResponse, clips: [null], costUsd: 0.04, notes: ["Cost may be incomplete"] }), { status: 200 }));
+      const result = await failedChoice(surface, { text: "whoosh", idempotencyKey: "attempt-123", open: false });
+      expect(result).toMatchObject({ ok: false, status: 200, outcome: "unknown", idempotencyKey: "attempt-123", details: { clips: [null], costUsd: 0.04, notes: ["Cost may be incomplete"] } });
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
     });
 
     it(`${surface} rejects a 451-character prompt before POST`, async () => {

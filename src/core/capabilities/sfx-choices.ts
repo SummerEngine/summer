@@ -106,7 +106,9 @@ interface Clip {
 
 function hostOf(url: string): string | null {
   try {
-    return new URL(url).hostname.toLowerCase();
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    return parsed.hostname.toLowerCase();
   } catch {
     return null;
   }
@@ -180,13 +182,13 @@ async function showChoicesPage(
   studioPath: string | undefined,
   deps: SfxChoicesDeps
 ): Promise<{ shown: ShownIn; studioTab?: string; browser?: string }> {
+  if (!canOpenReviewUrl(reviewUrl)) return { shown: "not_opened", browser: "not_a_summer_url" };
   let studioTab: string | undefined;
   if (studioPath) {
     const moved = await deps.studioOpen(studioPath, reviewUrl);
     if (moved.ok) return { shown: "studio_tab" };
     studioTab = moved.reason;
   }
-  if (!canOpenReviewUrl(reviewUrl)) return { shown: "not_opened", studioTab, browser: "not_a_summer_url" };
   if (!deps.canOpenBrowser()) return { shown: "not_opened", studioTab, browser: "no_browser_here" };
   try {
     await deps.openUrl(reviewUrl);
@@ -249,7 +251,9 @@ export async function generateSfxChoices(
 
   const count = clips.length;
   const where =
-    shown.shown === "studio_tab"
+    shown.browser === "not_a_summer_url"
+      ? "I could not open the review page because its URL was not an HTTP(S) Summer page"
+      : shown.shown === "studio_tab"
       ? "I opened them in your Summer Studio tab"
       : shown.shown === "browser"
         ? "I opened them in your browser"

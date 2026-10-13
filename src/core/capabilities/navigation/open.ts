@@ -144,14 +144,16 @@ export interface OpenDeps {
 // Safety rails
 // ---------------------------------------------------------------------------
 
-/** The only origins this tool ever opens a browser on: summerengine.com and its
+/** The only web origins this tool ever opens a browser on: summerengine.com and its
  *  subdomains, plus loopback for local web development. A configured gateway
  *  (SUMMER_GATEWAY_URL / gateway.url) that points anywhere else is refused —
  *  the API calls may go there, a browser launch never does. */
 export function isAllowedNavigationOrigin(origin: string): boolean {
   let host: string;
   try {
-    host = new URL(origin).hostname.toLowerCase();
+    const url = new URL(origin);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+    host = url.hostname.toLowerCase();
   } catch {
     return false;
   }
@@ -501,7 +503,7 @@ export async function runOpen(args: OpenArgs, deps: OpenDeps): Promise<OpenResul
     return {
       ok: false,
       action: "blocked_origin",
-      hint: `Refusing to open a browser on ${isAllowedNavigationOrigin(gateway) ? docsOrigin : gateway}: summer_open only opens summerengine.com, its subdomains, and loopback. Check gateway.url / SUMMER_GATEWAY_URL.`,
+      hint: `Refusing to open a browser on ${isAllowedNavigationOrigin(gateway) ? docsOrigin : gateway}: summer_open only opens HTTP(S) Summer domains and loopback. Check gateway.url / SUMMER_GATEWAY_URL.`,
     };
   }
 

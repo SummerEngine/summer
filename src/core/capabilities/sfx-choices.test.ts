@@ -104,6 +104,21 @@ describe("generateSfxChoices", () => {
     expect(r3).toMatchObject({ shown: "not_opened", notShownBecause: { browser: "not_a_summer_url" } });
   });
 
+  it("never launches a non-web review URL, even with a Summer hostname", async () => {
+    for (const reviewUrl of ["file://summerengine.com/studio/choices/cs_1", "summer-app://summerengine.com/studio/choices/cs_1"]) {
+      const deps = fakeDeps(
+        { studioOpen: vi.fn(async () => ({ ok: false as const, reason: "no_tab" })) },
+        { data: { ...choiceSet, reviewUrl }, status: 200 }
+      );
+      const result = await generateSfxChoices(sfxChoicesArgsSchema.parse({ text: "clash" }), deps);
+      expect(result).toMatchObject({ shown: "not_opened", notShownBecause: { browser: "not_a_summer_url" } });
+      expect(String(result.say)).not.toContain(reviewUrl);
+      expect(deps.studioOpen).not.toHaveBeenCalled();
+      expect(deps.openUrl).not.toHaveBeenCalled();
+      expect(canOpenReviewUrl(reviewUrl)).toBe(false);
+    }
+  });
+
   it("reports a browser launch failure as not_opened", async () => {
     const deps = fakeDeps({
       studioOpen: vi.fn(async () => ({ ok: false as const, reason: "no_tab" })),

@@ -2,6 +2,10 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+- **Agents read Summer's review feedback and resubmit.** When Summer staff ask for changes to a submitted game, or do not approve it, they can now write feedback for the creator. The hosted `summer_store_review` tool returns the decision, that feedback and the next step; `publish-your-game` and the MCP instructions tell the agent to fix what the feedback names and call `summer_store_submit` again, and never to call the game live before Summer approves it.
+
 ## [3.6.0] - 2026-10-12
 
 Pick your sound effects by ear, and hosted games: agents check that players can actually join before a release.

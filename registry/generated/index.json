@@ -2828,7 +2828,7 @@
       "id": "skill/publish-your-game",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "0328c6d71f662059cc2514864e005c2e71cf90811553ef2a2ecabbbf9cb4305f",
+      "content_hash": "c2ed78b67c43fbcea5792ec31b97daff0ded3e0fe63e8d676ecdc8da7527de4d",
       "summary": "Publish a Summer game on Summer Games through MCP: store page, art, build upload, submit, and one approval link for the owner.",
       "use_when": [
         "the user says 'publish my game', 'put it on summer.games', 'launch it on the store' or 'submit it for review'",

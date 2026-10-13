@@ -20,6 +20,7 @@ import {
   type SfxChoicesDeps,
 } from "../../core/capabilities/sfx-choices.js";
 import open from "open";
+import { LOCAL_SOUND_GENERATE_META, LOCAL_SOUND_READ_META, withLocalSoundPanel } from "../local-sound-panel.js";
 import { getAuthToken } from "../../core/auth.js";
 import { resolveGatewayUrl } from "../../core/config.js";
 import { readJsonResponse } from "../../core/util/http.js";
@@ -557,7 +558,7 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     canOpenBrowser: () => defaultCanOpenBrowser(),
   };
 
-  server.tool(
+  const generateChoicesTool = server.tool(
     "summer_generate_sfx_choices",
     `Make one sound effect with several models (default three) and show the
 versions to the person on a Summer Studio page, where they listen and approve
@@ -580,11 +581,12 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     sfxChoicesArgsSchema.shape,
     async (args) => {
       const result = await generateSfxChoices(sfxChoicesArgsSchema.parse(args), sfxChoicesDeps);
-      return result.ok ? successResult(result) : errorResult(String(result.error), result);
+      return withLocalSoundPanel(result.ok ? successResult(result) : errorResult(String(result.error), result));
     }
   );
+  generateChoicesTool.update({ _meta: LOCAL_SOUND_GENERATE_META });
 
-  server.tool(
+  const getChoicesTool = server.tool(
     "summer_get_choices",
     `Read a sound-effect choice set from summer_generate_sfx_choices: whether the
 person decided ("pending" or "decided"), which versions they approved (with
@@ -600,9 +602,10 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     getChoicesArgsSchema.shape,
     async (args) => {
       const result = await getChoices(getChoicesArgsSchema.parse(args), sfxChoicesDeps);
-      return result.ok ? successResult(result) : errorResult(String(result.error), result);
+      return withLocalSoundPanel(result.ok ? successResult(result) : errorResult(String(result.error), result));
     }
   );
+  getChoicesTool.update({ annotations: { readOnlyHint: true }, _meta: LOCAL_SOUND_READ_META });
 
   // ========================================================================
   // summer_generate_3d

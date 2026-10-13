@@ -88,8 +88,10 @@ describe("hosted metadata through the local MCP SDK", () => {
       const generate = listed.find((tool) => tool.name === "summer_generate_sfx_choices")!;
       expect(generate.inputSchema.properties).toHaveProperty("open");
       expect(generate.inputSchema.properties).not.toHaveProperty("hostedOnly");
-      expect(generate._meta).toEqual({ ui: { visibility: ["model"] } });
-      expect(listed.find((tool) => tool.name === "summer_get_choices")?._meta).toEqual({ ui: { visibility: ["model"] } });
+      expect(generate._meta?.ui).toEqual({ resourceUri: "ui://summer/local-sound-choices-v1.html", visibility: ["model"] });
+      expect(listed.find((tool) => tool.name === "summer_get_choices")?._meta?.ui).toEqual({ resourceUri: "ui://summer/local-sound-choices-v1.html", visibility: ["model", "app"] });
+      const localPanel = await client.readResource({ uri: "ui://summer/local-sound-choices-v1.html" });
+      expect(localPanel.contents[0].text).toContain("summer_get_choices");
     } finally {
       await client.close();
       await server.close();

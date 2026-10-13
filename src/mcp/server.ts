@@ -28,6 +28,7 @@ import {
 import { registerFileTools } from "./tools/file-tools.js";
 import { registerAssetTools } from "./tools/asset-tools.js";
 import { registerGenerateTools } from "./tools/generate-tools.js";
+import { registerLocalSoundPanel } from "./local-sound-panel.js";
 import { registerCreatorTools } from "./tools/creator-tools.js";
 import { registerFeedbackTools } from "./tools/feedback-tools.js";
 import { registerNavigationTools } from "./tools/navigation-tools.js";
@@ -377,6 +378,7 @@ export function createMcpServer(): {
   registerFileTools(server);
   registerAssetTools(server);
   registerGenerateTools(server);
+  registerLocalSoundPanel(server);
   registerCreatorTools(server);
   registerFeedbackTools(server);
   registerScriptTools(server);

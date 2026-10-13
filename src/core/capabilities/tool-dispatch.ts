@@ -51,7 +51,6 @@ import {
   generateSfxChoices,
   getChoices,
   getChoicesArgsSchema,
-  openInStudioTab,
   sfxChoicesArgsSchema,
   type GatewayReply,
   type SfxChoicesDeps,
@@ -619,7 +618,6 @@ function sfxChoicesDeps(): SfxChoicesDeps {
   return {
     post: (endpoint, body, timeoutMs) => gatewayReply(() => gatewayPost(endpoint, body, timeoutMs)),
     get: (endpoint, params, timeoutMs) => gatewayReply(() => gatewayGet(endpoint, params, timeoutMs)),
-    studioOpen: (path, reviewUrl) => openInStudioTab(path, reviewUrl),
     openUrl: (url) => open(url),
     canOpenBrowser: () => defaultCanOpenBrowser(),
   };

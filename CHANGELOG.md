@@ -2,6 +2,12 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [3.6.1] - 2026-10-12
+
+Sound-effect choices open in your Studio tab right away.
+
+- `summer_generate_sfx_choices` no longer waits 20 s and then reports `studio_tab_timeout` before it opens the page. Summer now sends the choices page to your open Summer Studio tab as it makes the versions, and the tool reads that answer: when your tab took it, no browser opens; when no tab is open, it opens your browser as before. Signing in to the store is no longer needed for the tab to open.
+
 ## [3.6.0] - 2026-10-12
 
 Pick your sound effects by ear, and hosted games: agents check that players can actually join before a release.

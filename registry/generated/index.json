@@ -6650,8 +6650,8 @@
     {
       "id": "tool/generate-sfx-choices",
       "kind": "tool",
-      "version": "1.0.0",
-      "content_hash": "463a73530a24eb8a3379715b5c487cffa056bfca031c5ff3206971038b2df715",
+      "version": "1.0.1",
+      "content_hash": "cc583f4378e6fa60a864a5bbae0b7d3ddb5b30962a443432d5bc4a7581fd5fb3",
       "summary": "Make one sound effect with several models and show the versions in Summer Studio; the person approves one or more and that model becomes their default.",
       "use_when": [
         "the first sound effect in a chat, after the person said yes to three versions to pick from",

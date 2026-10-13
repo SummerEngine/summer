@@ -113,6 +113,7 @@ describe("importPolyHavenHdri size ceiling", () => {
   it.each([
     [{ terminalState: "uncertain", requestId: "hdri-uncertain" }, "uncertain"],
     [{ ok: false, requestId: "hdri-failed" }, "ok: false"],
+    [{ status: "ok", results: [{ op: "ImportFromUrl", ok: true, pending: true, meta: { status: "pending" } }] }, "completed ImportFromUrl receipt"],
     [{ status: "ok", requestId: "hdri-missing", results: [] }, "completed ImportFromUrl receipt"],
     [{ status: "ok", requestId: "hdri-unimported", results: [{ ok: true, meta: { imported: false } }] }, "completed ImportFromUrl receipt"],
   ])("does not offer an apply script after %j", async (receipt, message) => {

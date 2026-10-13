@@ -243,6 +243,37 @@ describe("registerAssetTools", () => {
     expect(executeIdentityBoundOpsMock).not.toHaveBeenCalled();
   });
 
+  it("keeps an unacknowledged import request ID and asks for inspection before retry", async () => {
+    globalThis.fetch = vi.fn(async () => ({
+      ok: true, status: 200,
+      json: async () => ({ asset: { id: "asset-1", title: "Sword", type: "3d_model", fileUrl: "https://cdn.example/sword.glb" } }),
+    })) as any;
+    executeOpsMock.mockRejectedValue(new Error("Summer Engine did not acknowledge request mcp-test-1; dispatch state is unknown. Do not retry blindly."));
+    const { server, tools } = createFakeServer();
+    registerAssetTools(server as any);
+    const result = await getTool(tools, "summer_import_asset_by_id").handler({ assetId: "asset-1" });
+    const parsed = parseResult(result);
+    expect(result.isError).toBe(true);
+    expect(parsed.message).toContain("mcp-test-1");
+    expect(parsed.hint).toContain("Inspect the target");
+    expect(parsed.receipt).toBeUndefined();
+  });
+
+  it("keeps both import and scene receipts in a search-based placement result", async () => {
+    globalThis.fetch = vi.fn(async () => ({
+      ok: true, status: 200,
+      json: async () => ({ assets: [{ id: "asset-1", title: "Sword", type: "3d_model", fileUrl: "https://cdn.example/sword.glb" }] }),
+    })) as any;
+    const importReceipt = { requestId: "import-ok-1", status: "ok", results: [{ ok: true }] };
+    const sceneReceipt = { requestId: "place-ok-1", status: "ok", results: [{ ok: true }, { ok: true }] };
+    executeOpsMock.mockResolvedValue(importReceipt);
+    executeIdentityBoundOpsMock.mockResolvedValue(sceneReceipt);
+    const { server, tools } = createFakeServer();
+    registerAssetTools(server as any);
+    const result = await getTool(tools, "summer_import_asset").handler({ query: "sword", assetType: "3d_model", parent: "./World", scenePath: "res://main.tscn" });
+    expect(parseResult(result)).toMatchObject({ success: true, importedTo: "res://assets/models/sword.glb", scenePath: "res://main.tscn", importReceipt, sceneReceipt });
+  });
+
   function polyHavenFetchMock(overrides?: {
     catalog?: Record<string, unknown>;
     files?: Record<string, unknown>;
@@ -326,6 +357,19 @@ describe("registerAssetTools", () => {
     expect(result.isError).toBe(true);
     expect(parseResult(result)).toMatchObject({ error: "import_failed", receipt });
     expect(parseResult(result).applyScript).toBeUndefined();
+  });
+
+  it("keeps an unacknowledged HDRI request ID and asks for inspection before retry", async () => {
+    globalThis.fetch = polyHavenFetchMock() as any;
+    executeOpsMock.mockRejectedValue(new Error("Summer Engine did not acknowledge request mcp-hdri-1; dispatch state is unknown. Do not retry blindly."));
+    const { server, tools } = createFakeServer();
+    registerAssetTools(server as any);
+    const result = await getTool(tools, "summer_import_hdri").handler({ assetId: "kloppenheim_02", resolution: "2k" });
+    const parsed = parseResult(result);
+    expect(result.isError).toBe(true);
+    expect(parsed.message).toContain("mcp-hdri-1");
+    expect(parsed.hint).toContain("inspect the target");
+    expect(parsed.receipt).toBeUndefined();
   });
 
   it("imports by exact assetId and falls back to a lower available resolution", async () => {

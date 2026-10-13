@@ -143,6 +143,21 @@ export class EngineReceiptError extends Error {
   }
 }
 
+/** Native async ops can answer ok:true while their worker is still running. */
+export function hasPendingOpReceipt(receipt: unknown): boolean {
+  const pending = (value: unknown): boolean => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const item = value as Record<string, unknown>;
+    const meta = item.meta && typeof item.meta === "object" && !Array.isArray(item.meta)
+      ? item.meta as Record<string, unknown> : null;
+    return item.pending === true || item.status === "pending" || meta?.pending === true || meta?.status === "pending";
+  };
+  if (pending(receipt)) return true;
+  const results = receipt && typeof receipt === "object" && !Array.isArray(receipt)
+    ? (receipt as Record<string, unknown>).results : null;
+  return Array.isArray(results) && results.some(pending);
+}
+
 /** An import response needs one positive result for the one op we sent. A
  *  successful-looking envelope alone is not completion proof: legacy engines
  *  may omit terminalState, but they still return results[{ok:true}]. */
@@ -171,7 +186,7 @@ export function requireCompletedImportReceipt(
   const statesValid = states === undefined || (
     Array.isArray(states) && states.length === expectedFiles && states.every((value) => value === "applied")
   );
-  if (envelope && (envelope.status === undefined || envelope.status === "ok") &&
+  if (envelope && !hasPendingOpReceipt(receipt) && (envelope.status === undefined || envelope.status === "ok") &&
       (envelope.terminalState === undefined || envelope.terminalState === "applied" || envelope.terminalState === "no_op") &&
       (typeof envelope.error !== "string" || envelope.error.length === 0) &&
       item?.ok === true && (item.op === undefined || item.op === op) &&

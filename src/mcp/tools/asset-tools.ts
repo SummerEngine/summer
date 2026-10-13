@@ -417,7 +417,7 @@ itself does not — only this import step does).`,
           ...(err instanceof EngineReceiptError ? { receipt: err.receipt } : {}),
           hint: err instanceof EngineReceiptError
             ? "Read the engine receipt and inspect the target before retrying."
-            : "Make sure Summer Engine is running and pass the exact scenePath when parent is set.",
+            : "The engine may have received this request. Inspect the target and keep any request ID before retrying; check scenePath when parent is set.",
         });
       }
     }
@@ -509,7 +509,9 @@ Requires authentication. If the user gets an auth error, they need to run 'npx -
                   importedTo: imported.importedTo,
                   addedToScene: imported.addedToScene,
                   parent: imported.parent,
+                  scenePath: imported.scenePath,
                   importReceipt: imported.importReceipt,
+                  sceneReceipt: imported.sceneReceipt,
                   message: imported.addedToScene
                     ? `Imported "${best.title}" and added to ${parent}`
                     : `Imported "${best.title}" to ${imported.importedTo}`,
@@ -533,7 +535,7 @@ Requires authentication. If the user gets an auth error, they need to run 'npx -
                   ...(err instanceof EngineReceiptError ? { receipt: err.receipt } : {}),
                   hint: err instanceof EngineReceiptError
                     ? "Read the engine receipt and inspect the target before retrying."
-                    : "Make sure Summer Engine is running.",
+                    : "The engine may have received this request. Inspect the target and keep any request ID before retrying.",
                 },
                 null,
                 2
@@ -596,7 +598,7 @@ runs through the engine). No Summer login needed.`,
         return jsonError({
           error: "hdri_import_failed",
           message: msg,
-          hint: "Poly Haven may be unreachable, or Summer Engine is not running.",
+          hint: "If the engine received the import request, inspect the target and keep any request ID before retrying. Poly Haven or the engine may be unreachable.",
         });
       }
     }

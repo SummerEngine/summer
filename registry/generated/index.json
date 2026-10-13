@@ -3652,7 +3652,7 @@
       "id": "skill/summer-analytics",
       "kind": "skill",
       "version": "1.1.0",
-      "content_hash": "329efe79452dbfecdcc62002f6de4dff04475dabd4378b2e13ece79b75aa954a",
+      "content_hash": "3e856dfbd1a4cb20293d0e01e374636db0cf1b33e16a281d95ef65efa2bb0974",
       "summary": "Send game events to Summer analytics from the authority or client: fire-and-forget, never blocking gameplay.",
       "use_when": [
         "adding analytics, telemetry or event tracking to a Summer game: level completed, coin collected, tutorial funnel",

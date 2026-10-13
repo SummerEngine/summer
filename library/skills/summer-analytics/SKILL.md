@@ -109,9 +109,10 @@ Keep these three observations separate:
 
 1. **Attempted:** The `ANALYTICS` log means the helper ran. In Local Play,
    capture is unavailable and no event is stored.
-2. **Completed:** Inspect the terminal `SummerResult` outside gameplay. The
-   helper above warns only once on failure, so no warning is not proof of
-   storage. An `unavailable` or timed-out result is uncertain; never recapture
+2. **Completed:** During a hosted test, inspect the terminal `SummerResult`
+   inside the helper (for example, temporarily log `result.ok` and
+   `result.code` there). Do not await `_track` from gameplay. The helper
+   above warns only once on failure, so no warning is not proof of storage. An `unavailable` or timed-out result is uncertain; never recapture
    the same action. Do not expect a plan, cap or test-player drop status in
    `SummerResult`: the current Engine does not expose one there.
 3. **Observed:** Open the exact game's Analytics in Studio: `summer_open` with

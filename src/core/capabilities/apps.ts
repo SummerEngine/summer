@@ -20,7 +20,7 @@ import { TOOLKIT_VERSION } from "../version.js";
 export const APPS_ENDPOINT = "/api/mcp/apps";
 /** The server's long-poll ceiling for summer_app_events. */
 export const MAX_APP_EVENTS_WAIT_SECONDS = 50;
-export const APP_GUIDE_SECTIONS = ["all", "overview", "manifest", "sdk", "layout", "design", "examples"] as const;
+export const APP_GUIDE_SECTIONS = ["all", "overview", "manifest", "sdk", "kit", "layout", "design", "examples"] as const;
 export const APP_DOCK_SLOTS = ["left", "right", "bottom"] as const;
 
 /** Bundle limits the server enforces (checked here first for a clear local error). */
@@ -36,7 +36,7 @@ export const appGuideArgsSchema = z.object({
   section: z
     .enum(APP_GUIDE_SECTIONS)
     .default("all")
-    .describe("One part of the guide: overview, manifest, sdk, layout, design, examples. Default all"),
+    .describe("One part of the guide: overview, manifest, sdk, kit, layout, design, examples. Default all"),
 });
 
 export const appListArgsSchema = z.object({

@@ -39,11 +39,12 @@ input_schema:
         - overview
         - manifest
         - sdk
+        - kit
         - layout
         - design
         - examples
       default: all
-      description: "One part of the guide: overview, manifest, sdk, layout, design, examples. Default all"
+      description: "One part of the guide: overview, manifest, sdk, kit, layout, design, examples. Default all"
   additionalProperties: false
 authority:
   filesystem: false

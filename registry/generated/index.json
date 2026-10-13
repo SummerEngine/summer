@@ -5887,7 +5887,7 @@
       "id": "tool/app-guide",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "1d79f051cae4a28a2394602c13304e3c22f53339895b15086eb29287de31f67a",
+      "content_hash": "b112b7ecca975d7e516bd5698ca6a6c3850f5ce01b01eb84a885ad3eea4b7abf",
       "summary": "Read the Summer Apps build guide: when to build an app, Layout vs code, build loop, manifest, SDK, UI kit, layout format, design rules and worked examples.",
       "use_when": [
         "before building or changing a Summer App",

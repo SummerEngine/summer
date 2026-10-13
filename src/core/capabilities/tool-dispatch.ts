@@ -40,7 +40,7 @@ import {
   safeProjectPath,
   validSha256,
 } from "./engine-ops.js";
-import { EngineReceiptError, extractOpError, withOldEngineHint } from "./engine-receipt.js";
+import { EngineReceiptError, extractOpError, requireCompletedSceneCreateReceipt, withOldEngineHint } from "./engine-receipt.js";
 import { lookupApiDocs } from "./api-docs.js";
 import { z, type ZodTypeAny } from "zod";
 import { BOARD_ENDPOINT, boardArgsSchema, boardQuery } from "./board.js";
@@ -1375,16 +1375,15 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       throw new ToolDispatchError(`Invalid rootType "${rootType}".`);
     }
     const client = await ctx.engine();
-    const receipt = requireEngineSuccess(
-      await client.executeIdentityBoundOps([
-        {
-          op: "WriteFile",
-          path: safePath,
+    const receipt = await client.executeIdentityBoundOps([
+      {
+        op: "WriteFile",
+        path: safePath,
           content: `[gd_scene format=3]\n\n[node name="${rootName}" type="${rootType}"]\n`,
-          mustNotExist: true,
-        },
-      ])
-    );
+        mustNotExist: true,
+      },
+    ]);
+    requireCompletedSceneCreateReceipt(receipt, safePath);
     return {
       ok: true,
       created: safePath,

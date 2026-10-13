@@ -32,6 +32,7 @@ import {
   withEngine,
   type WithEngineMeta,
 } from "./with-engine.js";
+import { EngineReceiptError } from "../../core/capabilities/engine-receipt.js";
 
 afterEach(() => vi.clearAllMocks());
 
@@ -46,6 +47,21 @@ function meta(res: Result): WithEngineMeta | undefined {
 }
 
 describe("withEngine — thrown-error classes", () => {
+  it("preserves a receipt whose error mentions 401/403 without retrying the mutation", async () => {
+    mockGetClient.mockResolvedValue({ getBoundProjectIdHash: () => "hash-a" });
+    const receipt = { status: "ok", requestId: "scene-401", results: [] };
+    const submit = vi.fn(async () => {
+      throw new EngineReceiptError("WriteFile receipt missing after 401/403 gateway note", receipt);
+    });
+    const res = await withEngine(submit);
+    expect(res.isError).toBe(true);
+    expect(JSON.parse(text(res))).toMatchObject({ receipt, error: expect.stringContaining("401/403") });
+    expect(meta(res)).toMatchObject({ retried: false, boundProjectIdHash: "hash-a" });
+    expect(submit).toHaveBeenCalledTimes(1);
+    expect(mockGetClient).toHaveBeenCalledTimes(1);
+    expect(mockResetClient).not.toHaveBeenCalled();
+  });
+
   it("ToolInputError → errorClass input, failure_reason invalid_input, client kept, no recovery recipe", async () => {
     mockGetClient.mockResolvedValue({ getBoundProjectIdHash: () => "hash-a" });
     const res = await withEngine(async () => {

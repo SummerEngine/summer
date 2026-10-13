@@ -805,6 +805,33 @@ describe("spatial dispatch entries", () => {
 });
 
 describe("engine failures exit 1 on the CLI face exactly when the MCP face sets isError (E2E F-06)", () => {
+  it.each([
+    ["empty results", { status: "ok", requestId: "write-1", results: [] }],
+    ["identity mismatch", { status: "ok", terminalState: "identity_mismatch", requestId: "write-2", results: [] }],
+    ["pending write", { status: "ok", requestId: "write-3", results: [{ ok: true, op: "WriteFile", meta: { status: "pending" } }] }],
+    ["no-op", { status: "ok", terminalState: "no_op", requestId: "write-4", results: [{ ok: true, op: "WriteFile" }] }],
+  ])("scene creation returns a structured failure for %s", async (_case, receipt) => {
+    const { ctx, calls } = fakeEngineContext({ executeIdentityBoundOps: async () => receipt });
+    const failure = await dispatchTool("create-scene", { path: "res://new.tscn" }, ctx).catch((err) => err);
+    expect(failure).toBeInstanceOf(ToolResultError);
+    expect((failure as ToolResultError).result).toMatchObject({ ...receipt, ok: false });
+    expect((failure as ToolResultError).result.error).toEqual(expect.any(String));
+    expect(calls).toEqual([]);
+  });
+
+  it("scene creation accepts a positive legacy WriteFile receipt and keeps the create-only guard", async () => {
+    const { ctx, calls } = fakeEngineContext({
+      executeIdentityBoundOps: async (...args: unknown[]) => {
+        calls.push({ method: "executeIdentityBoundOps", args });
+        return { status: "ok", results: [{ ok: true }] };
+      },
+    });
+    const result = await dispatchTool("create-scene", { path: "res://new.tscn" }, ctx) as Record<string, unknown>;
+    expect(result).toMatchObject({ ok: true, created: "res://new.tscn" });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.args[0]).toMatchObject([{ op: "WriteFile", path: "res://new.tscn", mustNotExist: true }]);
+  });
+
   it("a read that the engine answers ok:false (inspect-node on a missing node) is a ToolResultError carrying the envelope", async () => {
     const { ctx } = fakeEngineContext({
       inspectNode: async () => ({ ok: false, error: "node not found: DoesNotExist", appliedThroughSeq: 12 }),

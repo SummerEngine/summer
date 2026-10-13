@@ -158,6 +158,37 @@ export function hasPendingOpReceipt(receipt: unknown): boolean {
   return Array.isArray(results) && results.some(pending);
 }
 
+/** A create-only WriteFile needs a positive result for the exact file. A
+ * successful envelope or a no-op cannot prove that a new scene was created. */
+export function requireCompletedSceneCreateReceipt(receipt: unknown, expectedPath: string): void {
+  const failure = extractOpError(receipt);
+  if (failure) throw new EngineReceiptError(failure, receipt);
+
+  const envelope = receipt && typeof receipt === "object" && !Array.isArray(receipt)
+    ? receipt as Record<string, unknown> : null;
+  const results = envelope?.results;
+  const result = Array.isArray(results) && results.length === 1 ? results[0] : null;
+  const item = result && typeof result === "object" && !Array.isArray(result)
+    ? result as Record<string, unknown> : null;
+  const meta = item?.meta && typeof item.meta === "object" && !Array.isArray(item.meta)
+    ? item.meta as Record<string, unknown> : null;
+  if (envelope && !hasPendingOpReceipt(receipt) &&
+      (envelope.status === undefined || envelope.status === "ok") &&
+      (envelope.terminalState === undefined || envelope.terminalState === "applied") &&
+      (envelope.error === undefined || envelope.error === null || envelope.error === "") &&
+      item?.ok === true && (item.op === undefined || item.op === "WriteFile") &&
+      (item.status === undefined || item.status === "ok") &&
+      (item.terminalState === undefined || item.terminalState === "applied") &&
+      (item.error === undefined || item.error === null || item.error === "") &&
+      meta?.noop !== true &&
+      (meta?.path === undefined || meta.path === expectedPath)) return;
+
+  throw new EngineReceiptError(
+    "Summer Engine did not confirm a completed create-only WriteFile. Inspect the scene path before retrying.",
+    receipt
+  );
+}
+
 /** An import response needs one positive result for the one op we sent. A
  *  successful-looking envelope alone is not completion proof: legacy engines
  *  may omit terminalState, but they still return results[{ok:true}]. */

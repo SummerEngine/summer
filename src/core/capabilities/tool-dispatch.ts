@@ -139,23 +139,11 @@ import { getAuthToken } from "../auth.js";
 import open from "open";
 import { openArgsSchema, runOpen } from "./navigation/open.js";
 import { shapeEngineLogResponse } from "../log-filters.js";
-import {
-  listCreatorReleases,
-  publishCreator,
-} from "./creator.js";
 import { exportGame } from "./export-game.js";
 import { exportTemplates } from "./export-templates.js";
 import { captureGameplay, type CaptureStep } from "./capture-gameplay.js";
 import { publishBuild } from "./publish-build.js";
-import {
-  CONFIG_KEYS,
-  getConfigValue,
-  isConfigKey,
-  readSummerConfig,
-  resolveGatewayUrl,
-  setConfigValue,
-  unsetConfigValue,
-} from "../config.js";
+import { resolveGatewayUrl } from "../config.js";
 import { createDebugReportArtifact } from "./debug-report.js";
 import { buildGameTaskPlan, gameTaskPlanInputSchema } from "./game-task-plan.js";
 import {
@@ -955,64 +943,6 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       face: "cli",
     })
   ),
-  entry("summer_creator_publish", "Deprecated: publish a .pck to the legacy creator API; use publish-build", false, (args) =>
-    publishCreator({
-      project: optStr(args, "project"),
-      artifact: optStr(args, "artifact"),
-      version: optStr(args, "version"),
-      manifest: optStr(args, "manifest"),
-      projectId: optStr(args, "projectId"),
-      channel: optStr(args, "channel"),
-      notes: optStr(args, "notes"),
-      confirm: args.confirm === true,
-      face: "cli",
-    })
-  ),
-  entry("summer_creator_releases", "Deprecated: list releases on the legacy creator API; use summer_store_releases", false, (args) =>
-    listCreatorReleases({
-      projectId: optStr(args, "projectId"),
-      limit: typeof args.limit === "number" ? args.limit : 20,
-      cursor: optStr(args, "cursor"),
-      face: "cli",
-    })
-  ),
-  entry("summer_creator_config", "Read or update the shared non-secret Summer configuration", false, async (args) => {
-    const action = str(args, "action");
-    if (action === "list") {
-      const config = await readSummerConfig();
-      return {
-        ok: true,
-        values: Object.fromEntries(
-          CONFIG_KEYS.map((name) => [name, getConfigValue(config, name) ?? null])
-        ),
-      };
-    }
-    const key = optStr(args, "key");
-    if (!key || !isConfigKey(key)) {
-      throw new ToolDispatchError(`A valid key is required. Use one of ${CONFIG_KEYS.join(", ")}.`);
-    }
-    if (action === "get") {
-      return { ok: true, key, value: getConfigValue(await readSummerConfig(), key) ?? null };
-    }
-    if (args.confirm !== true) {
-      throw new ToolDispatchError(
-        `Changing ${key} requires confirmation. Retry with "confirm": true after the user approves the exact change.`
-      );
-    }
-    if (action === "set") {
-      const value = optStr(args, "value");
-      if (value === undefined) {
-        throw new ToolDispatchError(`A value is required for ${key}.`);
-      }
-      const config = await setConfigValue(key, value);
-      return { ok: true, key, value: getConfigValue(config, key) };
-    }
-    if (action === "unset") {
-      const config = await unsetConfigValue(key);
-      return { ok: true, key, value: getConfigValue(config, key) ?? null };
-    }
-    throw new ToolDispatchError(`Unknown action "${action}". Use list, get, set, or unset.`);
-  }),
 
   // --- debug ---
   entry("summer_get_diagnostics", "Overview of editor console and runtime debugger errors/warnings", true, async (args, ctx) =>

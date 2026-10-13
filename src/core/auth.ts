@@ -13,7 +13,8 @@ export { getSummerDir } from "./store.js";
 const AUTH_TOKEN_FILE = "auth-token";
 /** Written by v2 `summer login` for the removed Summer Cloud sync. Only ever removed now (logout). */
 const LEGACY_CLOUD_TOKEN_FILE = "cloud-token";
-const CREATOR_TOKEN_FILE = "creator-token";
+/** Written by the removed `summer login --creator` (Summercraft). Only ever removed now (logout). */
+const LEGACY_CREATOR_TOKEN_FILE = "creator-token";
 const USER_FILE = "user.json";
 const METADATA_FILE = "credential-metadata.json";
 /** The Summer store OAuth token (core/oauth.ts OAUTH_TOKEN_FILE). */
@@ -36,7 +37,6 @@ export interface CredentialMetadata {
 interface CredentialMetadataDocument {
   schemaVersion: 1;
   auth?: CredentialMetadata;
-  creator?: CredentialMetadata;
 }
 
 export interface LoginSession {
@@ -121,7 +121,7 @@ async function readMetadata(): Promise<CredentialMetadataDocument> {
 }
 
 async function updateMetadata(
-  kind: "auth" | "creator",
+  kind: "auth",
   value: CredentialMetadata | undefined,
   current?: CredentialMetadataDocument
 ): Promise<void> {
@@ -132,7 +132,8 @@ async function updateMetadata(
     [kind]: value,
   };
   if (!next.auth) delete next.auth;
-  if (!next.creator) delete next.creator;
+  // Drop the removed Summercraft creator entry left by older CLIs.
+  delete (next as { creator?: unknown }).creator;
   await writeStoreJson(METADATA_FILE, next);
 }
 
@@ -171,31 +172,6 @@ export async function saveAuthToken(
   const metadata = await readMetadata();
   await writeStoreText(AUTH_TOKEN_FILE, `${clean}\n`);
   await updateMetadata("auth", decodeJwtMetadata(clean, scopes), metadata);
-}
-
-/**
- * Summercraft creator tokens are a separate credential audience from the
- * core-compatible Summer CLI JWT. Never store an sc_ token in auth-token:
- * the engine reads that file and expects the summer-cli JWT contract.
- */
-export async function getCreatorToken(): Promise<string | null> {
-  const token = await readStoreText(CREATOR_TOKEN_FILE);
-  return token?.trim() || null;
-}
-
-export async function saveCreatorToken(token: string): Promise<void> {
-  const clean = token.trim();
-  if (!/^sc_[A-Za-z0-9_-]{32,}$/.test(clean)) {
-    throw new Error(
-      'That is not a Summercraft creator API token. Recovery: open /creator/settings/tokens, mint a token with the "publish" scope, and paste the complete one-time sc_ value.'
-    );
-  }
-  await writeStoreText(CREATOR_TOKEN_FILE, `${clean}\n`);
-  await updateMetadata("creator", {
-    audience: ["summercraft-creator"],
-    scopes: ["publish"],
-    tokenType: "api",
-  });
 }
 
 export async function getUserInfo(): Promise<SummerUserInfo | null> {
@@ -248,20 +224,10 @@ export async function saveLoginSession(session: LoginSession): Promise<void> {
 export async function getCredentialMetadata(): Promise<CredentialMetadataDocument> {
   const metadata = await readMetadata();
   const token = await getAuthToken();
-  const creatorToken = await getCreatorToken();
   return {
     schemaVersion: 1,
     ...(token
       ? { auth: metadata.auth ?? decodeJwtMetadata(token) }
-      : {}),
-    ...(creatorToken
-      ? {
-          creator: metadata.creator ?? {
-            audience: ["summercraft-creator"],
-            scopes: [],
-            tokenType: "api",
-          },
-        }
       : {}),
   };
 }
@@ -271,7 +237,7 @@ export async function clearAuthCredentials(): Promise<number> {
   for (const file of [
     AUTH_TOKEN_FILE,
     LEGACY_CLOUD_TOKEN_FILE,
-    CREATOR_TOKEN_FILE,
+    LEGACY_CREATOR_TOKEN_FILE,
     STORE_OAUTH_TOKEN_FILE,
     USER_FILE,
     METADATA_FILE,

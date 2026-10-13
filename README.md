@@ -322,7 +322,6 @@ We tell you before we touch your disk.
 | `summer-engine` npm package (CLI + MCP + library) | ~2 MB download, ~6 MB unpacked | first `npx -y summer-engine@latest ...` call | [npmjs.com/package/summer-engine](https://www.npmjs.com/package/summer-engine) |
 | Summer Engine app | ~1 GB (engine + bundled Git/runtime tools) | `npx -y summer-engine@latest install` | Summer's signed releases |
 | Auth token | ~1 KB | `npx -y summer-engine@latest login` | Browser to `~/.summer/auth-token` |
-| Creator token | ~50 bytes | only when you run `summer login --creator` and mint one | One-time browser value to `~/.summer/creator-token`; never replaces the auth token |
 | Store sign-in | ~2 KB | only when you run `summer login --store` | Browser OAuth (PKCE, loopback port 47615-47617) to `~/.summer/oauth-token` with its refresh token, plus this machine's public client id in `~/.summer/oauth-client`; never replaces the auth token |
 | Skill files | small, bundled | in the npm package | no extra network call |
 | Generated assets (3D / image / audio / video) | varies | only on explicit `summer_generate_*` calls when that provider route is enabled for the account | Summer Engine Studio |
@@ -352,11 +351,8 @@ matchmaking are not promised by this package.
 | `summer install [--yes]` | Download Summer Engine. Prints URL and size first; never replaces an installed engine without confirmation. |
 | `summer login` | Browser-based core Summer sign-in. |
 | `summer login --store` | Browser sign-in to the Summer store so agents can upload builds (`summer_publish_build`). |
-| `summer login --creator` | Deprecated: connect a creator token for the legacy `summer publish`. |
 | `summer logout` | Clear auth tokens. |
 | `summer config [get\|set\|unset]` | Read or update the shared non-secret `~/.summer/config.json`. |
-| `summer publish [project] --artifact <game.pck> --version <value> [--confirm]` | Deprecated: use `summer tool export-game`, then `summer tool publish-build`. |
-| `summer releases [--cursor <value>]` | List your creator release history. |
 | `summer status` | Engine state, port, auth. |
 | `summer doctor` | Diagnose Node, login, engine, project memory, MCP. |
 | `summer plan <goal>` | Route a game-building goal into skills, MCP tools, gates, and verification. |

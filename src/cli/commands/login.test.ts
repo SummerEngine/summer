@@ -4,12 +4,10 @@ import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getAuthToken,
-  getCreatorToken,
   getUserInfo,
 } from "../../core/auth.js";
-import { setConfigValue } from "../../core/config.js";
 import { setSummerDirForTests } from "../../core/store.js";
-import { runCreatorLogin, runLogin } from "./login.js";
+import { runLogin } from "./login.js";
 
 let root = "";
 const originalGateway = process.env.SUMMER_GATEWAY_URL;
@@ -170,27 +168,5 @@ describe("runLogin failure handling", () => {
     const heartbeats = logs.filter((line) => line.startsWith("Still waiting"));
     expect(heartbeats.length).toBeGreaterThan(0);
     expect(heartbeats.at(-1)).toContain("last error: The login service is unavailable");
-  });
-});
-
-describe("runCreatorLogin", () => {
-  it("opens scoped token settings and stores creator auth separately", async () => {
-    const logs: string[] = [];
-    const openUrl = vi.fn(async () => undefined);
-    const creatorToken = `sc_${"b".repeat(43)}`;
-    await setConfigValue("creator.apiUrl", "https://creator.example");
-
-    await runCreatorLogin({
-      openUrl,
-      readSecret: async () => creatorToken,
-      log: (message) => logs.push(message),
-    });
-
-    expect(openUrl).toHaveBeenCalledWith(
-      "https://creator.example/creator/settings/tokens"
-    );
-    expect(await getCreatorToken()).toBe(creatorToken);
-    expect(await getAuthToken()).toBeNull();
-    expect(logs.at(-1)).toContain("core Summer login token was not changed");
   });
 });

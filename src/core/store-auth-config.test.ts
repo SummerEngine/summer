@@ -6,9 +6,7 @@ import {
   clearAuthCredentials,
   getAuthToken,
   getCredentialMetadata,
-  getCreatorToken,
   getUserInfo,
-  saveCreatorToken,
   saveLoginSession,
 } from "./auth.js";
 import {
@@ -107,22 +105,15 @@ describe("secure Summer store", () => {
       "utf8"
     );
     expect(metadata).not.toContain(jwt);
-    await saveCreatorToken(`sc_${"a".repeat(43)}`);
-    expect(await getCreatorToken()).toBe(`sc_${"a".repeat(43)}`);
-    expect(await getAuthToken()).toBe(jwt);
-    expect(await getCredentialMetadata()).toMatchObject({
-      creator: {
-        audience: ["summercraft-creator"],
-        tokenType: "api",
-        scopes: ["publish"],
-      },
-    });
-    expect(
-      await readFile(join(root, ".summer", "credential-metadata.json"), "utf8")
-    ).not.toContain(`sc_${"a".repeat(43)}`);
     expect(await clearAuthCredentials()).toBeGreaterThan(0);
     expect(await getAuthToken()).toBeNull();
-    expect(await getCreatorToken()).toBeNull();
+  });
+
+  it("logout removes the Summercraft creator token an older CLI left behind", async () => {
+    // `summer login --creator` is gone; its token file may still be on disk.
+    await writeStoreText("creator-token", `sc_${"a".repeat(43)}\n`);
+    await clearAuthCredentials();
+    expect(await readStoreText("creator-token")).toBeNull();
   });
 
   it("rejects a token/user identity mismatch before writing shared auth files", async () => {
@@ -189,22 +180,16 @@ describe("advisory credential metadata", () => {
 
 describe("shared Summer config", () => {
   it("sets, lists, unsets, and resolves non-secret configuration", async () => {
-    await setConfigValue("creator.projectId", "project-123");
-    await setConfigValue("creator.channel", "preview");
-    await setConfigValue("creator.apiUrl", "http://localhost:3000");
+    delete process.env.SUMMER_GATEWAY_URL;
     await setConfigValue("gateway.url", "https://gateway.example/");
 
     const config = await readSummerConfig();
-    expect(getConfigValue(config, "creator.projectId")).toBe("project-123");
-    expect(getConfigValue(config, "creator.channel")).toBe("preview");
-    expect(getConfigValue(config, "creator.apiUrl")).toBe(
-      "http://localhost:3000"
-    );
+    expect(getConfigValue(config, "gateway.url")).toBe("https://gateway.example");
     expect(await resolveGatewayUrl()).toBe("https://gateway.example");
 
-    await unsetConfigValue("creator.channel");
+    await unsetConfigValue("gateway.url");
     expect(
-      getConfigValue(await readSummerConfig(), "creator.channel")
+      getConfigValue(await readSummerConfig(), "gateway.url")
     ).toBeUndefined();
   });
 
@@ -234,18 +219,11 @@ describe("shared Summer config", () => {
     await expect(
       setConfigValue("gateway.url", "http://gateway.example")
     ).rejects.toThrow(/must use HTTPS/);
-    await expect(
-      setConfigValue("creator.apiUrl", "https://api.example/path")
-    ).rejects.toThrow(/must be an origin/);
   });
 
   it("treats the IPv6 loopback like localhost for local HTTP", async () => {
     await setConfigValue("gateway.url", "http://[::1]:3000");
     expect(await resolveGatewayUrl()).toBe("http://[::1]:3000");
-    await setConfigValue("creator.apiUrl", "http://[::1]:3000");
-    expect(
-      getConfigValue(await readSummerConfig(), "creator.apiUrl")
-    ).toBe("http://[::1]:3000");
     await expect(
       setConfigValue("gateway.url", "http://[2001:db8::1]:3000")
     ).rejects.toThrow(/must use HTTPS/);

@@ -4,6 +4,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- **Removed the legacy Summercraft creator path.** The deprecated `summer_creator_publish`, `summer_creator_releases` and `summer_creator_config` MCP tools (and their `summer tool` slugs and library entries), the `summer publish` and `summer releases` commands, `summer login --creator` and the `creator.apiUrl`, `creator.projectId` and `creator.channel` config keys are gone. Publish to summer.games with `summer_export_game`, then `summer_publish_build`, then the hosted `summer_store_submit` and `summer_store_review`. `gateway.url` stays settable with `summer config`; `summer logout` still removes a `~/.summer/creator-token` an older CLI left behind.
 - **Agents read Summer's review feedback and resubmit.** When Summer staff ask for changes to a submitted game, or do not approve it, they can now write feedback for the creator. The hosted `summer_store_review` tool returns the decision, that feedback and the next step; `publish-your-game` and the MCP instructions tell the agent to fix what the feedback names and call `summer_store_submit` again, and never to call the game live before Summer approves it.
 
 ## [3.6.0] - 2026-10-12

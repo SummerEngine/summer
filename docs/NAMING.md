@@ -39,7 +39,7 @@ What is called what. **Do not deviate without updating this file first.**
 | MCP server name in host configs | `summer-engine` (what `summer setup` writes; `SUMMER_MCP_SERVER_NAME` overrides) |
 | Setup targets | `claude-code`, `claude-desktop`, `codex`, `cursor`, `windsurf`, `antigravity`, `cline`, `cline-cli`, `kilo-code`, `github-copilot`, `vscode-copilot`, `visual-studio`, `copilot-jetbrains`, `opencode`, `zed`, `kiro`, `goose`, `hermes`, `trae`, `qwen-code`, `kimi-code`, `crush`, `amp`, `factory`, `junie`, `warp`, `rovo-dev`, `qoder`, `grok-build`, `mistral-vibe`, `lm-studio`; legacy `gemini`, `roo-code`. One row per agent in `src/installer/agent-table.ts` |
 
-Filesystem names shared with the desktop engine — do not rename: `~/.summer/` (`api-token`, `auth-token`, `creator-token`, `user.json`, `config.json`, `credential-metadata.json`, `creator-audit.jsonl`, `instances/`), and `.summer/` in every project (`GameSoul.md`, `project.json`, `memory/`).
+Filesystem names shared with the desktop engine — do not rename: `~/.summer/` (`api-token`, `auth-token`, `creator-token` (legacy; only removed, by logout), `user.json`, `config.json`, `credential-metadata.json`, `creator-audit.jsonl`, `instances/`), and `.summer/` in every project (`GameSoul.md`, `project.json`, `memory/`).
 
 ## Copy rules
 
@@ -48,7 +48,7 @@ Filesystem names shared with the desktop engine — do not rename: `~/.summer/` 
 | Headline / first mention | "Summer is the open-source game-development system for AI agents." |
 | The app the user downloads | "Summer Engine" ("the Summer Engine app" when the distinction matters) |
 | The package in a command | code-style `summer-engine`; the binary, code-style `summer` |
-| Platform publishing | "the Summer store" (`summer_export_game`, `summer_publish_build`). `summer publish` and `summer_creator_*` are the deprecated legacy creator API. |
+| Platform publishing | "the Summer store" (`summer_export_game`, `summer_publish_build`, then the hosted `summer_store_*` tools). |
 | The technical base | "Summer Engine's upstream technical base is Godot 4.6.1" — use the upstream name only where compatibility, migration, extension APIs, attribution, or licensing requires it (`library/references/godot-version`). |
 
 ## Changes that need an explicit "yes" in the same session before commit

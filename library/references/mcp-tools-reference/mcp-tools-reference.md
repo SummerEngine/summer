@@ -17,7 +17,7 @@
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (107 tools)
+## Tool surface (104 tools)
 
 ### Project files (4)
 
@@ -240,16 +240,13 @@ Preview. One fast, read-only call that walks every node of a 3D scene and lists 
 | `summer_get_agent_playbook` | Daily operating contract (observe-first loop, content routing, invariants, verification ritual) — call at start of session. Also served natively as the `summer_agent_playbook` MCP prompt. |
 | `summer_get_board` | Read the person's approved planning board (look, characters, place, storyboard, picks), with the look and picked cards as images to compare screenshots against. Needs the project id from the build brief; works without the engine. |
 
-### Creator platform (7)
+### Creator platform (4)
 
 | Tool | Use |
 |---|---|
 | `summer_export_game` | Export the game in the file the Summer Games store takes, headless (no window), no running editor needed. `format:"bundle"` (default): the `summer.games` `.zip` the Summer apps run; `targets` picks `ios`, `android`, `macos`, `windows` (a game without a server: phones only) through a named `summer.games <targets>` preset in `export_presets.cfg`. `format:"download"` with one target: `web` (HTML5 `.zip` on Summer's WebGPU Forward+ template; refuses Compatibility projects), `macos` (ad hoc signed `.app` zip, `macos-universal`) or `windows` (`.exe` with embedded pack, zipped, `windows-x64`). Returns path, sha256, size, bundle manifest or store platform, warnings. |
 | `summer_export_templates` | `list` or `install` export templates from Summer's CDN (`downloads.summer.games/engine-templates/<summerVersion>/manifest.json`) into the engine's user template folder (`<data>/Godot/export_templates/<FULL_CONFIG>/`), sha256-checked. Only download exports need them; store bundles need none. `summerVersion` is read on macOS, passed elsewhere. |
 | `summer_publish_build` | Upload that `.zip` to the creator's game through Studio's store upload: confirm-gated preview first, then declare, part upload from disk, seal, wait for the Build, name its client pack; `publish:true` also approves it. Needs `summer login --store`; a retry with the same file and version continues the same upload. |
-| `summer_creator_publish` | **Deprecated** (use the two tools above). Compute the exact `.pck` digest and size, require user confirmation, then run versioned prepare → write-once upload → finalize. The server independently verifies `publish` scope, ownership, bytes, and review state. |
-| `summer_creator_releases` | **Deprecated.** Lists releases on the legacy creator API. For summer.games use `summer_store_releases` (hosted, mounted after `summer login --store`). |
-| `summer_creator_config` | Read or confirm updates to the shared non-secret `~/.summer/config.json`. It never accepts or returns tokens. |
 | `summer_capture_gameplay` | Real gameplay frames without a running editor: starts the game (main scene or `scene`) in the engine's offscreen verify instance (`--summer-verify`, real renderer, window parked offscreen, no focus) (`--summer-offscreen`) at `resolution` (default `1920x1080`), waits `waitSeconds`, runs `steps` (`press` a button by text, `key`, `action`, `click`, `drag`, `wait`, `shot`), saves `frames` PNGs (HUD included; with a `shot` step, one per shot) to `<project>/.summer/captures/<time>/`. `args` are the game's own flags, passed after `--` (e.g. `["--autostart"]` to skip the title screen). Imports the project first when `.godot/` is missing. Returns each path with its real width and height; warns when the stretch settings render another size. For store screenshots. |
 
 ### Library search (2)

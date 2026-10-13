@@ -14,12 +14,32 @@ A Summer App is a tool the person's team uses inside Summer Studio: shared with
 the workspace, live on its assets, game data and engine, dockable in the editor.
 You build it in minutes; the team keeps it.
 
+## First: does Summer already do it?
+
+A custom app is something the team has to maintain. Before you build one, check whether
+Summer already does the job: Studio features (the asset library with its collections and
+groups, Pick one and sound choices, Grow dashboards, Team) and the existing `summer_*` MCP
+tools. If it does, use that and tell the person where it lives.
+
+Build an app only when the need is real and Summer lacks it, or as a Scratch throwaway (a
+quick asset review, a UI prototype) that you call throwaway when you make it. When
+something is missing natively, report it with `summer_app_report_gap` (and
+`summer_library_feedback` when a library entry fell short), so Summer can build it for
+everyone.
+
+| Ask | Do |
+| --- | --- |
+| "Let me pick from these 12 sword sounds" | Pick one: `summer_generate_sfx_choices`, or put the sounds in a library collection. No app. |
+| "Group our Studio assets into a moodboard for the forest level" | Organize them with the asset library's collections and groups. No app. |
+| "A weapon balance table that writes res://data/weapons.json" | Build an app: nothing in Summer edits game data with the team's balance rules. |
+
 ## When to build one
 
 - The person asks for a tool ("build us a loot balance tool", "track every creature
   from concept to in-engine", "a board to review playtest clips").
 - They need a UI to decide or edit something they will come back to.
 - Not for a one-off answer: reply in chat instead.
+- Not when Summer already does it (above).
 
 ## Layout or code
 

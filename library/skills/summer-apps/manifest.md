@@ -33,6 +33,7 @@ names them. Every field:
       }
     }
   ],
+  "surface": "both",
   "dock": { "preferred": "bottom" },
   "plugin": { "name": "loot_tools" }
 }
@@ -47,6 +48,7 @@ names them. Every field:
 | `collections` | Up to 50, keyed by collection name (lowercase `a-z 0-9 _ . -`). Each: `description`, `fields` (up to 50, name `[A-Za-z_][A-Za-z0-9_]*`) with `type` (`string`, `number`, `integer`, `boolean`, `object`, `array`, `any`), `description`, `required`. Descriptive: agents and people read it; writes are not rejected for it. |
 | `agentEvents` | Up to 50 names (`a-z 0-9 _ . -`) the app sends with `summer.agent.send`. |
 | `agentTools` | Up to 20: `name` (`a-z 0-9 _`, max 64), `description` (max 1,000), `input` (JSON Schema, up to 8 KB). |
+| `surface` | `page` (the Studio app page, default), `dock` (an editor dock) or `both`. A dock layout must work from 320 px wide; docked apps get selection and scene events (`summer.engine.onEvent`). |
 | `dock` | `{ "preferred": "left" \| "right" \| "bottom" }`. |
 | `plugin` | `{ "name": "<folder>" }`: the app may also write `res://addons/<folder>/`. |
 | `entry` | Always `index.html` (you can leave it out). |

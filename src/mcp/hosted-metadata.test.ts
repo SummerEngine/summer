@@ -78,7 +78,7 @@ describe("hosted metadata through the local MCP SDK", () => {
 
   it("keeps real local sound-choice schemas and metadata separate from colliding hosted tools", async () => {
     const hosted = remote(["summer_generate_sfx_choices", "summer_get_choices"].map((name) => ({
-      name, inputSchema: { type: "object", properties: { idempotencyKey: { type: "string" } } },
+      name, inputSchema: { type: "object", properties: { hostedOnly: { type: "string" } } },
       _meta: { ui: { resourceUri: "ui://summer/sound-choices-v1.html", visibility: ["model", "app"] }, securitySchemes: oauth },
     })));
     const { client, server, mount } = await mounted(createMcpServer().server, hosted);
@@ -87,7 +87,7 @@ describe("hosted metadata through the local MCP SDK", () => {
       const listed = (await client.listTools()).tools;
       const generate = listed.find((tool) => tool.name === "summer_generate_sfx_choices")!;
       expect(generate.inputSchema.properties).toHaveProperty("open");
-      expect(generate.inputSchema.properties).not.toHaveProperty("idempotencyKey");
+      expect(generate.inputSchema.properties).not.toHaveProperty("hostedOnly");
       expect(generate._meta).toEqual({ ui: { visibility: ["model"] } });
       expect(listed.find((tool) => tool.name === "summer_get_choices")?._meta).toEqual({ ui: { visibility: ["model"] } });
     } finally {

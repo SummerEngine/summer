@@ -51,7 +51,7 @@ component** and copy its example. Never guess an attribute.
   <summer-stats loading>…3-5 summer-stat…</summer-stats>
   <summer-chart heading="Where players stop" loading …></summer-chart>
   <summer-section heading="Levels">
-    <summer-select slot="aside" inline label="Sort" options='…'></summer-select>
+    <summer-select slot="aside" label="Sort" options='…'></summer-select>
     <summer-table loading …></summer-table>
   </summer-section>
 </summer-page>
@@ -62,10 +62,13 @@ component** and copy its example. Never guess an attribute.
   Header actions, in order: avatars, one meta (`.summer-meta` or
   `summer-progress`), secondary buttons, the primary.
 - One `summer-section` per part, with a short noun heading. Extras for the title row
-  (an inline select, a count, a legend) go in `slot="aside"`.
-- A chart gets its own `heading` (its legend then sits in the title row). Do not
-  wrap a single chart in a section.
+  (a select, a count) go in `slot="aside"`; a select there turns compact by itself.
+- A chart gets its own `heading` (its legend then sits in the title row). A chart
+  without a heading as the first thing in a section moves its legend into the
+  section's title row.
 - A page with one part needs no section heading and no card around it.
+- Tables and lists are always framed; charts never. Do not set `frame="false"` on
+  a page.
 
 ## Pick the component
 
@@ -73,12 +76,12 @@ component** and copy its example. Never guess an attribute.
 | --- | --- |
 | Key numbers | `summer-stats` > 3-5 `summer-stat label value delta hint tone`. Delta is text like "+12 this week"; the kit colours the number |
 | A comparison or trend | `summer-chart kind x y heading highlight reference`. `y` is a JSON array of keys; `highlight` `{above, below, tone, label, otherLabel}`; `reference` `{value, label, tone}`. One question per chart |
-| Records you scan, sort, edit | `summer-table columns rows row-key`. Column `{key, label, format, digits, type: bar/badge/muted, over, priority: "secondary", thumb, editable}`. `clickable` gives `summer-row`; `selectable="single"` or `"multi"` gives `summer-select-rows` |
+| Records you scan, sort, edit | `summer-table columns rows row-key`. Column `{key, label, format, digits, type: bar/badge/muted, over, tone, priority: "secondary", thumb, editable, badge, badgeTone}`; `badge` names a row key shown as a small badge inside that cell (e.g. "+3:01" over target). `clickable` gives `summer-row`; `selectable="single"` or `"multi"` gives `summer-select-rows` |
 | Unsaved table edits | `summer-save-bar count save-label` (`save` and `discard` events; then `table.commit()` or `table.discard()`) |
-| Notes, tasks, comments | `summer-list items checkable menu actions`. Item `{id, title, meta, checked, badge: {text, tone}}` |
+| Notes, tasks, comments | `summer-list items checkable action menu`. Item `{id, title, meta, checked, badge: {text, tone}, action}`; `action` `{id, label, icon}` is the one quiet button per row; `menu` items `{id, label, icon, tone: "danger"}`; events `summer-check`, `summer-action`, `summer-item` |
 | Pipeline stages | `summer-board` > `summer-lane heading lane-id add-label` > `summer-board-card heading card-id art meta person comments done`; `summer-move` event |
 | Pick between versions | `summer-choice-grid items` (`layout="row" heading meta` for one row per need). Item `{id, label, src, kind}` |
-| Filters above a list | `summer-toolbar` > `summer-search`, `summer-segmented options value` (`{value, label, count}`), `summer-select inline` in `slot="end"` |
+| Filters above a list | `summer-toolbar` > `summer-search`, `summer-segmented options value` (`{value, label, count}`), `summer-select` in `slot="end"` (compact by itself) |
 | Add or edit something | `summer-dialog heading description` > `summer-form submit-label` > named inputs |
 | Inputs | `summer-text-input name label hint required multiline`, `summer-select name label options`, `summer-slider`, `summer-toggle` |
 | Media | `summer-audio`, `summer-video`, `summer-image aspect`, `summer-model-viewer`. Never `<audio controls>` or `<video controls>` |
@@ -106,10 +109,10 @@ primary per region: the page header, an open dialog, a form that is the whole pa
 and the save bar are separate regions. A page whose job is the form puts Save in the
 form and no primary in the header.
 
-**List with row actions.** `summer-list` with `checkable` for done or fixed, and
-`menu` for the rest (Edit, Copy, Delete with `tone: "danger"`). At most one icon in
-`actions`, and only when people use it on most rows. Never a labelled button
-repeated on every row. Delete asks first in a `summer-dialog` with
+**List with row actions.** `summer-list` with `checkable` for done or fixed, one
+`action` for the most common step (`{id: "fix", label: "Mark fixed", icon:
+"check"}`: a quiet button that shows on hover and on touch), and `menu` for the rest
+(Edit, Copy, Delete with `tone: "danger"`). Never a bordered button on every row. Delete asks first in a `summer-dialog` with
 `summer-form destructive`.
 
 **Data your agent fills in.** When the app waits on an agent (an import, an
@@ -118,7 +121,9 @@ analysis), the empty state says what is missing and offers the request:
 last night's playtest."` with a primary `summer-button icon="sparkles"` "Ask your
 agent". On click call `summer.agent.send("playtest.import", {})`, swap the button
 for `summer-notice tone="info"` "Your agent was asked. This fills in when it
-answers.", and subscribe to the collection so rows appear live.
+answers.", and subscribe so rows appear live:
+`summer.data.collection("levels").subscribe(render)` (there is no
+`summer.data.list(name)`).
 
 **Board.** Lanes per stage, art on cards from the asset, owner initial and comment
 count. Move cards with `summer-move`; write the new stage to data at once.

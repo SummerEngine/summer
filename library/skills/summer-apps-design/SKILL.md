@@ -20,7 +20,7 @@ You have freedom inside the app. Use it for the task, not for decoration.
 
 1. **Start from the task.** Write down in one line what the person came to do and
    the one action that finishes it. That action is the only primary button.
-2. **Use the kit.** `<script type="module" src="/summer-ui/v1/ui.js">` gives you the
+2. **Use the kit.** `<script type="module" src="/kit/v1/summer-ui.js">` gives you the
    tokens, Geist and the `summer-*` components, and follows Studio light/dark.
    Never restyle a kit component's colours. Build a missing pattern from the
    tokens in a small scoped `<style>`.

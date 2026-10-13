@@ -3,6 +3,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import { getStoreAccessToken, OAuthError, readStoredOAuthToken, resolveMcpResourceUrl } from "./oauth.js";
 import { TOOLKIT_VERSION } from "./version.js";
+import { unknownHostedCall } from "./hosted-call-outcome.js";
 
 /**
  * A client for the hosted Summer Engine MCP (mcp.summerengine.com), signed in
@@ -187,6 +188,7 @@ export async function listHostedToolsForCli(
 
 export type HostedCallOutcome =
   | { status: "called"; tool: string; result: Record<string, unknown> }
+  | { status: "outcome_unknown"; error: ReturnType<typeof unknownHostedCall> }
   | { status: "not_found" }
   | { status: "not_signed_in" }
   | { status: "unavailable"; message: string };
@@ -203,7 +205,11 @@ export async function callHostedToolForCli(
     return await withHostedMcp(async (client) => {
       const tool = matchHostedTool(name, await listAllHostedTools(client));
       if (!tool) return { status: "not_found" } as const;
-      return { status: "called", tool: tool.name, result: await client.callTool({ name: tool.name, arguments: args }) } as const;
+      try {
+        return { status: "called", tool: tool.name, result: await client.callTool({ name: tool.name, arguments: args }) } as const;
+      } catch (error) {
+        return { status: "outcome_unknown", error: unknownHostedCall(tool, error) } as const;
+      }
     }, deps);
   } catch (error) {
     if (error instanceof OAuthError && error.code === "store_login_required") return { status: "not_signed_in" };

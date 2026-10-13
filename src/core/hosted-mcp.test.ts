@@ -85,4 +85,53 @@ describe("hosted tools from the CLI", () => {
     expect((await callHostedToolForCli("x", {}, deps, async () => false)).status).toBe("not_signed_in");
     expect((await listHostedToolsForCli(deps, async () => false)).status).toBe("not_signed_in");
   });
+
+  it("keeps a lost reply after a remote write distinct from a refused result", async () => {
+    let applied = 0;
+    const write = { ...tool("summer_store_submit"), annotations: { idempotentHint: true } };
+    const result = await callHostedToolForCli("store-submit", { gameId: "g1" }, fakeDeps(async () => {
+      applied++;
+      throw new Error("reply lost after request r-7");
+    }, [write]), async () => true);
+    expect(applied).toBe(1);
+    expect(result).toMatchObject({ status: "outcome_unknown", error: {
+      ok: false, code: "hosted_call_outcome_unknown", tool: "summer_store_submit", outcome: "unknown",
+      message: expect.stringContaining("reply lost after request r-7"),
+      recovery: expect.stringContaining("Inspect the target"),
+    } });
+    if (result.status === "outcome_unknown") expect(result.error.recovery).not.toContain("retry the read");
+  });
+
+  it("allows read retry only with explicit read-only annotation", async () => {
+    const read = { ...tool("summer_grow_event_catalog"), annotations: { readOnlyHint: true } };
+    const result = await callHostedToolForCli(read.name, {}, fakeDeps(async () => { throw new Error("timeout"); }, [read]), async () => true);
+    expect(result).toMatchObject({ status: "outcome_unknown", error: { tool: read.name, recovery: expect.stringContaining("retry the read") } });
+  });
+
+  it("does not turn an auth-word failure after call start into a pre-call sign-in result", async () => {
+    const result = await callHostedToolForCli("store-submit", {}, fakeDeps(async () => {
+      throw new OAuthError("store_login_required", "unauthorized after dispatch", "Recovery: sign in again.");
+    }, [tool("summer_store_submit")]), async () => true);
+    expect(result).toMatchObject({ status: "outcome_unknown", error: {
+      tool: "summer_store_submit", message: expect.stringContaining("unauthorized after dispatch"),
+      recovery: expect.stringContaining("Inspect the target"),
+    } });
+  });
+
+  it("distinguishes missing tools and failures before calling a tool", async () => {
+    let calls = 0;
+    const deps = fakeDeps(async () => { calls++; return text({}); });
+    expect(await callHostedToolForCli("missing", {}, deps, async () => true)).toEqual({ status: "not_found" });
+    deps.connect = async () => { throw new Error("connect failed"); };
+    expect(await callHostedToolForCli("store-list-games", {}, deps, async () => true)).toEqual({ status: "unavailable", message: "connect failed" });
+    deps.connect = async () => ({ ...await fakeDeps(async () => text({})).connect("", async () => ""), listTools: async () => { throw new Error("listing failed"); } });
+    expect(await callHostedToolForCli("store-list-games", {}, deps, async () => true)).toEqual({ status: "unavailable", message: "listing failed" });
+    expect(calls).toBe(0);
+  });
+
+  it("preserves an explicit hosted refusal as a returned result", async () => {
+    const refusal = text({ ok: false, code: "forbidden", message: "No access" }, true);
+    expect(await callHostedToolForCli("store-list-games", {}, fakeDeps(async () => refusal), async () => true))
+      .toMatchObject({ status: "called", result: refusal });
+  });
 });

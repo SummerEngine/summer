@@ -162,15 +162,18 @@ export const toolCommand = new Command("tool")
         if (payload.isError) process.exitCode = 1;
         return;
       }
-      const why =
-        hosted.status === "not_signed_in"
-          ? ` ${STORE_SIGN_IN_HINT}`
-          : hosted.status === "unavailable"
-            ? ` The hosted Summer Engine MCP did not answer: ${hosted.message}.`
-            : "";
-      throw new ToolDispatchError(
-        `Unknown tool "${name}". Run 'summer tool --list' to see every tool.${why}`
-      );
+      if (hosted.status === "outcome_unknown") {
+        console.log(JSON.stringify(hosted.error, null, 2));
+        process.exitCode = 1;
+        return;
+      }
+      if (hosted.status === "unavailable") {
+        throw new ToolDispatchError(`Could not check hosted tool "${name}": the hosted Summer Engine MCP did not answer: ${hosted.message}`);
+      }
+      if (hosted.status === "not_signed_in") {
+        throw new ToolDispatchError(`Could not check hosted tool "${name}". ${STORE_SIGN_IN_HINT}`);
+      }
+      throw new ToolDispatchError(`Unknown tool "${name}". Run 'summer tool --list' to see every tool.`);
     }
 
     if (options.json !== undefined && options.args === undefined) {

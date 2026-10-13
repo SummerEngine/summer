@@ -34,7 +34,7 @@ function createFakeServer() {
       handler: (args: any) => Promise<any>
     ) {
       tools.push({ name, description, schema, handler });
-      return { name };
+      return { name, update: () => undefined };
     },
   };
   return { server, tools };

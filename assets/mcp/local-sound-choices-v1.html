@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap">
+<style>
+/* The isolated iframe has no app stylesheet. Token values come from DESIGN.md, section 2.6. */
+:root { color-scheme: light; --se-bg: #ffffff; --se-bg-input: #ffffff; --se-text: #1b1b1b; --se-text-secondary: #555555; --se-text-muted: #636363; --se-border: #dedede; --se-border-subtle: #e1e1e1; --se-bg-hover: #e4e4e4; --se-cta-bg: #171717; --se-cta-fg: #fafafa; --se-ring: #696969; --font-geist-sans: "Geist", "Noto Sans SC", "Noto Sans JP", "PingFang SC", "Microsoft YaHei", sans-serif; }
+.dark { color-scheme: dark; --se-bg: #100f0b; --se-bg-input: #1a1915; --se-text: #f4f2ee; --se-text-secondary: rgba(255,255,255,.78); --se-text-muted: rgba(255,255,255,.55); --se-border: rgba(255,255,255,.09); --se-border-subtle: rgba(255,255,255,.065); --se-bg-hover: #23211c; --se-cta-bg: #fafafa; --se-cta-fg: #0a0a0a; --se-ring: rgba(255,255,255,.5); }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px; background: var(--se-bg); color: var(--se-text); font: 14px/1.5 var(--font-geist-sans); -webkit-font-smoothing: antialiased; }
+h1 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -.01em; }
+p { margin: 0; overflow-wrap: anywhere; }
+header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+#status, .approved { font-size: 11px; font-weight: 500; border: 1px solid var(--se-border); border-radius: 9999px; padding: 2px 8px; }
+#prompt { margin-top: 12px; font-size: 15px; }
+#hint, #preference, #error, #failed, .note, .unavailable { margin-top: 8px; color: var(--se-text-secondary); font-size: 12px; }
+#clips { display: grid; gap: 12px; margin-top: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
+.clip { min-width: 0; padding: 12px; border: 1px solid var(--se-border-subtle); border-radius: 10px; background: var(--se-bg-input); }
+.clip-header { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+.clip h2 { flex: 1; margin: 0; min-width: 0; overflow-wrap: anywhere; font-size: 14px; font-weight: 500; }
+audio { width: 100%; height: 40px; display: block; }
+.note { white-space: pre-wrap; }
+#actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+button, .button { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 8px 16px; border-radius: 9999px; font: 500 13px/1.5 var(--font-geist-sans); text-decoration: none; cursor: pointer; transition: opacity 150ms, background-color 150ms, transform 150ms; }
+#review { color: var(--se-cta-fg); background: var(--se-cta-bg); border: 1px solid transparent; }
+#review:hover { opacity: .9; }
+#refresh { color: var(--se-text); background: transparent; border: 1px solid var(--se-border); }
+#refresh:hover { background: var(--se-bg-hover); }
+button:active, .button:active { transform: scale(.98); }
+button:disabled { opacity: .5; cursor: default; }
+button:focus-visible, a:focus-visible, audio:focus-visible { outline: 2px solid var(--se-ring); outline-offset: 3px; }
+[hidden] { display: none !important; }
+@media (max-width: 480px) { body { padding: 16px; } }
+@media (prefers-reduced-motion: reduce) { button, .button { transition: none; } button:active, .button:active { transform: none; } }
+</style></head><body>
+<header><h1 id="title"></h1><span id="status" hidden></span></header>
+<p id="prompt"></p><p id="hint"></p>
+<div id="clips"></div><p id="failed" hidden></p><p id="preference" hidden></p>
+<p id="error" role="status" aria-live="polite" hidden></p>
+<div id="actions" hidden><a id="review" class="button" target="_blank" rel="noopener noreferrer"></a><button id="refresh" type="button"></button></div>
+<script>
+(() => {
+  const WEB_ORIGIN = "https://www.summerengine.com";
+  const COPY = {"en":{"choicesReviewInStudio":"Review in Studio","choicesRefreshPicks":"Refresh picks","choicesPanelHint":"Listen here, then open Studio to approve versions or leave notes.","choicesPreviewUnavailable":"Preview unavailable. Open Studio to listen.","choicesRefreshError":"Could not refresh. These picks may be out of date.","choicesSfxEyebrow":"Sound effect choices","choicesWaiting":"Waiting for your pick","choicesDone":"Done","choicesDoneBody":"Done. Your picks were sent to your agent. You can still play these sounds, but you cannot change your picks.","choicesApproved":"Approved","choicesNextModel":"Your next sound effect uses {model}.","choicesNoteLabel":"Note for your agent","choicesFailedModel":"{model} could not make this sound.","choicesNotFound":"These choices are gone. Choices are kept for 30 days.","choicesLoadError":"Could not load these choices. Try again.","choicesPlay":"Play {model}","choicesSeconds":"{seconds} s","choicesVersionCount":"{count} versions"},"ar":{"choicesReviewInStudio":"راجع في Studio","choicesRefreshPicks":"حدّث الاختيارات","choicesPanelHint":"استمع هنا، ثم افتح Studio لاعتماد النسخ أو ترك ملاحظات.","choicesPreviewUnavailable":"المعاينة غير متاحة. افتح Studio للاستماع.","choicesRefreshError":"تعذّر التحديث. قد تكون هذه الاختيارات قديمة.","choicesSfxEyebrow":"خيارات المؤثر الصوتي","choicesWaiting":"بانتظار اختيارك","choicesDone":"تم","choicesDoneBody":"تم إرسال اختياراتك إلى وكيلك. ما زال بإمكانك تشغيل هذه الأصوات، لكن لا يمكنك تغيير اختياراتك.","choicesApproved":"تمت الموافقة","choicesNextModel":"سيستخدم المؤثر الصوتي التالي {model}.","choicesNoteLabel":"ملاحظة لوكيلك","choicesFailedModel":"لم يتمكن {model} من صنع هذا الصوت.","choicesNotFound":"لم تعد هذه الخيارات متاحة. نحتفظ بالخيارات 30 يومًا.","choicesLoadError":"تعذر تحميل هذه الخيارات. حاول مرة أخرى.","choicesPlay":"تشغيل {model}","choicesSeconds":"{seconds} ث","choicesVersionCount":"{count} نسخ"},"de":{"choicesReviewInStudio":"In Studio prüfen","choicesRefreshPicks":"Auswahl aktualisieren","choicesPanelHint":"Höre hier rein. Öffne dann Studio, um Versionen zu bestätigen oder Notizen zu hinterlassen.","choicesPreviewUnavailable":"Vorschau nicht verfügbar. Öffne Studio zum Anhören.","choicesRefreshError":"Aktualisierung fehlgeschlagen. Diese Auswahl ist vielleicht nicht mehr aktuell.","choicesSfxEyebrow":"Soundeffekt-Auswahl","choicesWaiting":"Wartet auf deine Wahl","choicesDone":"Fertig","choicesDoneBody":"Deine Auswahl wurde an deinen Agenten gesendet. Du kannst die Klänge weiter abspielen, aber deine Auswahl nicht mehr ändern.","choicesApproved":"Freigegeben","choicesNextModel":"Dein nächster Soundeffekt nutzt {model}.","choicesNoteLabel":"Notiz für deinen Agenten","choicesFailedModel":"{model} konnte diesen Sound nicht machen.","choicesNotFound":"Diese Auswahl gibt es nicht mehr. Auswahlen werden 30 Tage aufbewahrt.","choicesLoadError":"Die Auswahl konnte nicht geladen werden. Versuch es noch mal.","choicesPlay":"{model} abspielen","choicesSeconds":"{seconds} s","choicesVersionCount":"{count} Versionen"},"es":{"choicesReviewInStudio":"Revisar en Studio","choicesRefreshPicks":"Actualizar selección","choicesPanelHint":"Escucha aquí y abre Studio para aprobar versiones o dejar notas.","choicesPreviewUnavailable":"Vista previa no disponible. Abre Studio para escuchar.","choicesRefreshError":"No se pudo actualizar. Esta selección puede estar desactualizada.","choicesSfxEyebrow":"Opciones de efecto de sonido","choicesWaiting":"Esperando tu elección","choicesDone":"Listo","choicesDoneBody":"Tus elecciones se enviaron a tu agente. Aún puedes reproducir estos sonidos, pero ya no puedes cambiar tus elecciones.","choicesApproved":"Aprobado","choicesNextModel":"Tu próximo efecto de sonido usará {model}.","choicesNoteLabel":"Nota para tu agente","choicesFailedModel":"{model} no pudo hacer este sonido.","choicesNotFound":"Estas opciones ya no están. Se guardan 30 días.","choicesLoadError":"No se pudieron cargar estas opciones. Inténtalo de nuevo.","choicesPlay":"Reproducir {model}","choicesSeconds":"{seconds} s","choicesVersionCount":"{count} versiones"},"fa":{"choicesReviewInStudio":"بررسی در Studio","choicesRefreshPicks":"تازه‌سازی انتخاب‌ها","choicesPanelHint":"اینجا گوش دهید، سپس Studio را باز کنید تا نسخه‌ها را تأیید کنید یا یادداشت بگذارید.","choicesPreviewUnavailable":"پیش‌نمایش در دسترس نیست. برای شنیدن، Studio را باز کنید.","choicesRefreshError":"تازه‌سازی انجام نشد. این انتخاب‌ها ممکن است قدیمی باشند.","choicesSfxEyebrow":"انتخاب افکت صوتی","choicesWaiting":"در انتظار انتخاب شما","choicesDone":"تمام","choicesDoneBody":"انتخاب‌هایتان برای عامل شما ارسال شد. هنوز می‌توانید این صداها را پخش کنید، اما دیگر نمی‌توانید انتخاب‌هایتان را تغییر دهید.","choicesApproved":"تأیید شد","choicesNextModel":"افکت صوتی بعدی شما از {model} استفاده می‌کند.","choicesNoteLabel":"یادداشت برای عامل شما","choicesFailedModel":"{model} نتوانست این صدا را بسازد.","choicesNotFound":"این انتخاب‌ها دیگر وجود ندارند. انتخاب‌ها ۳۰ روز نگه داشته می‌شوند.","choicesLoadError":"بارگذاری این انتخاب‌ها ممکن نشد. دوباره تلاش کنید.","choicesPlay":"پخش {model}","choicesSeconds":"{seconds} ث","choicesVersionCount":"{count} نسخه"},"fr":{"choicesReviewInStudio":"Vérifier dans Studio","choicesRefreshPicks":"Actualiser les choix","choicesPanelHint":"Écoutez ici, puis ouvrez Studio pour approuver les versions ou laisser des notes.","choicesPreviewUnavailable":"Aperçu indisponible. Ouvrez Studio pour écouter.","choicesRefreshError":"Actualisation impossible. Ces choix ne sont peut-être plus à jour.","choicesSfxEyebrow":"Choix d'effet sonore","choicesWaiting":"En attente de ton choix","choicesDone":"Terminé","choicesDoneBody":"Tes choix ont été envoyés à ton agent. Tu peux encore écouter ces sons, mais tu ne peux plus modifier tes choix.","choicesApproved":"Approuvé","choicesNextModel":"Ton prochain effet sonore utilisera {model}.","choicesNoteLabel":"Note pour ton agent","choicesFailedModel":"{model} n'a pas pu faire ce son.","choicesNotFound":"Ces choix n'existent plus. Ils sont gardés 30 jours.","choicesLoadError":"Impossible de charger ces choix. Réessaie.","choicesPlay":"Écouter {model}","choicesSeconds":"{seconds} s","choicesVersionCount":"{count} versions"},"he":{"choicesReviewInStudio":"בדיקה ב-Studio","choicesRefreshPicks":"רענון בחירות","choicesPanelHint":"האזינו כאן, ואז פתחו את Studio כדי לאשר גרסאות או להשאיר הערות.","choicesPreviewUnavailable":"התצוגה המקדימה אינה זמינה. פתחו את Studio כדי להאזין.","choicesRefreshError":"הרענון נכשל. ייתכן שהבחירות האלה אינן מעודכנות.","choicesSfxEyebrow":"בחירת אפקט קולי","choicesWaiting":"ממתין לבחירה שלך","choicesDone":"סיום","choicesDoneBody":"הבחירות שלך נשלחו לסוכן שלך. עדיין אפשר להשמיע את הצלילים האלה, אבל אי אפשר לשנות את הבחירות.","choicesApproved":"אושר","choicesNextModel":"האפקט הקולי הבא שלך ישתמש ב-{model}.","choicesNoteLabel":"הערה לסוכן שלך","choicesFailedModel":"{model} לא הצליח ליצור את הצליל הזה.","choicesNotFound":"הבחירות האלה כבר לא קיימות. בחירות נשמרות 30 יום.","choicesLoadError":"לא ניתן לטעון את הבחירות. נסה שוב.","choicesPlay":"נגן את {model}","choicesSeconds":"{seconds} ש׳","choicesVersionCount":"{count} גרסאות"},"id":{"choicesReviewInStudio":"Tinjau di Studio","choicesRefreshPicks":"Perbarui pilihan","choicesPanelHint":"Dengarkan di sini, lalu buka Studio untuk menyetujui versi atau memberi catatan.","choicesPreviewUnavailable":"Pratinjau tidak tersedia. Buka Studio untuk mendengarkan.","choicesRefreshError":"Gagal memperbarui. Pilihan ini mungkin sudah berubah.","choicesSfxEyebrow":"Pilihan efek suara","choicesWaiting":"Menunggu pilihanmu","choicesDone":"Selesai","choicesDoneBody":"Pilihanmu sudah dikirim ke agenmu. Kamu masih bisa memutar suara ini, tetapi tidak bisa mengubah pilihanmu.","choicesApproved":"Disetujui","choicesNextModel":"Efek suara berikutnya memakai {model}.","choicesNoteLabel":"Catatan untuk agenmu","choicesFailedModel":"{model} tidak bisa membuat suara ini.","choicesNotFound":"Pilihan ini sudah tidak ada. Pilihan disimpan selama 30 hari.","choicesLoadError":"Pilihan ini tidak bisa dimuat. Coba lagi.","choicesPlay":"Putar {model}","choicesSeconds":"{seconds} dtk","choicesVersionCount":"{count} versi"},"it":{"choicesReviewInStudio":"Rivedi in Studio","choicesRefreshPicks":"Aggiorna le scelte","choicesPanelHint":"Ascolta qui, poi apri Studio per approvare le versioni o lasciare note.","choicesPreviewUnavailable":"Anteprima non disponibile. Apri Studio per ascoltare.","choicesRefreshError":"Aggiornamento non riuscito. Queste scelte potrebbero non essere aggiornate.","choicesSfxEyebrow":"Scelte di effetti sonori","choicesWaiting":"In attesa della tua scelta","choicesDone":"Fatto","choicesDoneBody":"Le tue scelte sono state inviate al tuo agente. Puoi ancora ascoltare questi suoni, ma non puoi più cambiare le tue scelte.","choicesApproved":"Approvata","choicesNextModel":"Il tuo prossimo effetto sonoro userà {model}.","choicesNoteLabel":"Nota per il tuo agente","choicesFailedModel":"{model} non è riuscito a creare questo suono.","choicesNotFound":"Queste scelte non ci sono più. Restano 30 giorni.","choicesLoadError":"Impossibile caricare queste scelte. Riprova.","choicesPlay":"Riproduci {model}","choicesSeconds":"{seconds} s","choicesVersionCount":"{count} versioni"},"ja":{"choicesReviewInStudio":"Studioで確認","choicesRefreshPicks":"選択を更新","choicesPanelHint":"ここで聴いてから、Studioを開いてバージョンを承認したり、メモを残したりできます。","choicesPreviewUnavailable":"プレビューを利用できません。Studioを開いてお聴きください。","choicesRefreshError":"更新できませんでした。選択が古い可能性があります。","choicesSfxEyebrow":"効果音の候補","choicesWaiting":"選択待ち","choicesDone":"完了","choicesDoneBody":"選択内容をエージェントに送信しました。これらの音は引き続き再生できますが、選択は変更できません。","choicesApproved":"承認済み","choicesNextModel":"次の効果音は{model}で作ります。","choicesNoteLabel":"エージェントへのメモ","choicesFailedModel":"{model}ではこの音を作れませんでした。","choicesNotFound":"この候補はもうありません。候補は30日間保存されます。","choicesLoadError":"候補を読み込めませんでした。もう一度お試しください。","choicesPlay":"{model}を再生","choicesSeconds":"{seconds}秒","choicesVersionCount":"{count}バージョン"},"pl":{"choicesReviewInStudio":"Sprawdź w Studio","choicesRefreshPicks":"Odśwież wybory","choicesPanelHint":"Posłuchaj tutaj, a potem otwórz Studio, aby zatwierdzić wersje lub dodać notatki.","choicesPreviewUnavailable":"Podgląd niedostępny. Otwórz Studio, aby posłuchać.","choicesRefreshError":"Nie udało się odświeżyć. Te wybory mogą być nieaktualne.","choicesSfxEyebrow":"Wybór efektu dźwiękowego","choicesWaiting":"Czeka na twój wybór","choicesDone":"Gotowe","choicesDoneBody":"Twój wybór został wysłany do agenta. Nadal możesz odtwarzać te dźwięki, ale nie możesz już zmienić wyboru.","choicesApproved":"Zatwierdzono","choicesNextModel":"Twój następny efekt dźwiękowy użyje {model}.","choicesNoteLabel":"Notatka dla agenta","choicesFailedModel":"{model} nie zrobił tego dźwięku.","choicesNotFound":"Tych wyborów już nie ma. Przechowujemy je 30 dni.","choicesLoadError":"Nie udało się wczytać tych wyborów. Spróbuj ponownie.","choicesPlay":"Odtwórz {model}","choicesSeconds":"{seconds} s","choicesVersionCount":"Wersje: {count}"},"pt":{"choicesReviewInStudio":"Rever no Studio","choicesRefreshPicks":"Atualizar escolhas","choicesPanelHint":"Ouça aqui e abra o Studio para aprovar versões ou deixar notas.","choicesPreviewUnavailable":"Prévia indisponível. Abra o Studio para ouvir.","choicesRefreshError":"Não foi possível atualizar. Estas escolhas podem estar desatualizadas.","choicesSfxEyebrow":"Escolhas de efeito sonoro","choicesWaiting":"Aguardando sua escolha","choicesDone":"Concluído","choicesDoneBody":"Suas escolhas foram enviadas ao agente. Você ainda pode reproduzir esses sons, mas não pode mudar suas escolhas.","choicesApproved":"Aprovado","choicesNextModel":"Seu próximo efeito sonoro usa {model}.","choicesNoteLabel":"Nota para seu agente","choicesFailedModel":"{model} não conseguiu fazer este som.","choicesNotFound":"Estas escolhas não existem mais. Elas ficam guardadas por 30 dias.","choicesLoadError":"Não foi possível carregar estas escolhas. Tente de novo.","choicesPlay":"Tocar {model}","choicesSeconds":"{seconds} s","choicesVersionCount":"{count} versões"},"ru":{"choicesReviewInStudio":"Проверить в Studio","choicesRefreshPicks":"Обновить выбор","choicesPanelHint":"Послушайте здесь, затем откройте Studio, чтобы одобрить версии или оставить заметки.","choicesPreviewUnavailable":"Предпрослушивание недоступно. Откройте Studio, чтобы послушать.","choicesRefreshError":"Не удалось обновить. Эти варианты могут быть неактуальны.","choicesSfxEyebrow":"Выбор звукового эффекта","choicesWaiting":"Ждёт твоего выбора","choicesDone":"Готово","choicesDoneBody":"Твой выбор отправлен агенту. Эти звуки всё ещё можно слушать, но изменить выбор уже нельзя.","choicesApproved":"Одобрено","choicesNextModel":"Следующий звуковой эффект будет сделан моделью {model}.","choicesNoteLabel":"Заметка для агента","choicesFailedModel":"{model} не смог сделать этот звук.","choicesNotFound":"Этих вариантов больше нет. Они хранятся 30 дней.","choicesLoadError":"Не удалось загрузить варианты. Попробуй ещё раз.","choicesPlay":"Воспроизвести {model}","choicesSeconds":"{seconds} с","choicesVersionCount":"Версий: {count}"},"vi":{"choicesReviewInStudio":"Xem lại trong Studio","choicesRefreshPicks":"Làm mới lựa chọn","choicesPanelHint":"Nghe tại đây, rồi mở Studio để duyệt các phiên bản hoặc để lại ghi chú.","choicesPreviewUnavailable":"Không thể nghe thử. Mở Studio để nghe.","choicesRefreshError":"Không thể làm mới. Các lựa chọn này có thể đã thay đổi.","choicesSfxEyebrow":"Lựa chọn hiệu ứng âm thanh","choicesWaiting":"Đang chờ bạn chọn","choicesDone":"Xong","choicesDoneBody":"Lựa chọn của bạn đã được gửi cho tác tử. Bạn vẫn có thể phát các âm thanh này, nhưng không thể đổi lựa chọn.","choicesApproved":"Đã duyệt","choicesNextModel":"Hiệu ứng âm thanh tiếp theo sẽ dùng {model}.","choicesNoteLabel":"Ghi chú cho tác tử","choicesFailedModel":"{model} không làm được âm thanh này.","choicesNotFound":"Các lựa chọn này không còn nữa. Lựa chọn được giữ 30 ngày.","choicesLoadError":"Không tải được các lựa chọn này. Hãy thử lại.","choicesPlay":"Phát {model}","choicesSeconds":"{seconds} giây","choicesVersionCount":"{count} phiên bản"},"zh":{"choicesReviewInStudio":"在 Studio 中查看","choicesRefreshPicks":"刷新选择","choicesPanelHint":"在这里试听，然后打开 Studio 批准版本或留下备注。","choicesPreviewUnavailable":"无法试听。请打开 Studio 收听。","choicesRefreshError":"无法刷新。这些选择可能已过时。","choicesSfxEyebrow":"音效候选","choicesWaiting":"等待你的选择","choicesDone":"完成","choicesDoneBody":"你的选择已发送给智能体。你仍可播放这些声音，但不能更改选择。","choicesApproved":"已批准","choicesNextModel":"你的下一个音效将使用 {model}。","choicesNoteLabel":"给智能体的备注","choicesFailedModel":"{model} 没能做出这个声音。","choicesNotFound":"这些候选已不存在。候选会保留 30 天。","choicesLoadError":"无法加载这些候选，请重试。","choicesPlay":"播放 {model}","choicesSeconds":"{seconds} 秒","choicesVersionCount":"{count} 个版本"}};
+  const HOSTS = {"exactHosts":["res.cloudinary.com","fal.media","storage.googleapis.com"],"suffixHosts":["fal.media","supabase.co"]};
+  const $ = (id) => document.getElementById(id);
+  const openai = window.openai;
+  let locale = "en", view = null, revision = 0, refreshing = false, initialized = false;
+  let nextId = 1, lastHeight = 0;
+  const pending = new Map();
+  const t = (key, vars = {}) => {
+    let value = COPY[locale][key] || COPY.en[key] || "";
+    for (const [name, replacement] of Object.entries(vars)) value = value.split("{" + name + "}").join(String(replacement));
+    return value;
+  };
+  function context(value) {
+    if (!value) return;
+    if (value.theme === "dark" || value.theme === "light") document.documentElement.classList.toggle("dark", value.theme === "dark");
+    if (typeof value.locale === "string") {
+      const language = value.locale.toLowerCase().split(/[-_]/)[0];
+      const next = Object.hasOwn(COPY, language) ? language : "en";
+      if (locale !== next) { locale = next; render(); }
+    }
+    document.documentElement.lang = locale;
+    document.documentElement.dir = ["ar", "fa", "he"].includes(locale) ? "rtl" : "ltr";
+  }
+  function notifySize() {
+    if (!initialized) return;
+    const height = Math.ceil(document.body.getBoundingClientRect().height);
+    if (height === lastHeight) return;
+    lastHeight = height;
+    window.parent.postMessage({ jsonrpc: "2.0", method: "ui/notifications/size-changed", params: { height } }, "*");
+  }
+  function rpc(method, params) {
+    if (window.parent === window) return Promise.reject(new Error("No host"));
+    const id = nextId++;
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => { pending.delete(id); reject(new Error("Host timeout")); }, 10000);
+      pending.set(id, { resolve, reject, timeout });
+      window.parent.postMessage({ jsonrpc: "2.0", id, method, params }, "*");
+    });
+  }
+  function read(result) {
+    const value = result && (result.mcp_tool_result || result);
+    if (!value || value.isError) return null;
+    let data = value.structuredContent;
+    if (!data) {
+      const text = value.content && value.content.find((part) => part.type === "text");
+      try { data = text && JSON.parse(text.text); } catch { return null; }
+    }
+    if (!data || data.ok !== true || !/^[a-f0-9]{32}$/.test(data.choiceSetId) || (data.status !== undefined && data.status !== "pending" && data.status !== "decided") || !Array.isArray(data.clips) || data.clips.length < 1 || data.clips.length > 4) return null;
+    if (!data.clips.every((clip) => clip && typeof clip.modelId === "string" && typeof clip.modelName === "string" && typeof clip.audioUrl === "string")) return null;
+    return data;
+  }
+  function safeAudio(raw) {
+    try {
+      const url = new URL(raw);
+      if (url.protocol !== "https:" || url.username || url.password || (url.port && url.port !== "443")) return null;
+      if (!HOSTS.exactHosts.includes(url.hostname) && !(HOSTS.suffixHosts || []).some((host) => url.hostname.endsWith("." + host))) return null;
+      return url.href;
+    } catch { return null; }
+  }
+  function safeReview(raw, id) {
+    try {
+      const url = new URL(raw);
+      const host = url.hostname.toLowerCase();
+      const local = host === "localhost" || host === "127.0.0.1" || host === "[::1]";
+      if (url.protocol !== "https:" && !(local && url.protocol === "http:")) return null;
+      if (!local && host !== "summerengine.com" && !host.endsWith(".summerengine.com")) return null;
+      if (url.username || url.password || url.pathname !== "/studio/choices/" + id || url.search || url.hash) return null;
+      return url.href;
+    } catch { return null; }
+  }
+  function take(result) {
+    const data = read(result);
+    if (!data) return false;
+    if (view && view.choiceSetId === data.choiceSetId && !data.reviewUrl) data.reviewUrl = view.reviewUrl;
+    view = data; revision++; refreshing = false;
+    $("error").hidden = true;
+    render();
+    return true;
+  }
+  function render() {
+    $("title").textContent = t("choicesSfxEyebrow");
+    $("hint").textContent = view && view.status === "decided" ? t("choicesDoneBody") : t("choicesPanelHint");
+    $("review").textContent = t("choicesReviewInStudio");
+    $("refresh").textContent = t("choicesRefreshPicks");
+    $("refresh").disabled = refreshing;
+    $("refresh").setAttribute("aria-busy", String(refreshing));
+    if (!view) {
+      $("status").hidden = true; $("actions").hidden = true; $("prompt").textContent = "";
+      $("clips").replaceChildren(); $("failed").hidden = true; $("preference").hidden = true;
+      return;
+    }
+    $("status").hidden = false;
+    $("status").textContent = t(view.status === "decided" ? "choicesDone" : "choicesWaiting");
+    $("prompt").textContent = typeof view.prompt === "string" ? view.prompt.slice(0, 450) : "";
+    $("actions").hidden = false;
+    $("review").href = safeReview(view.reviewUrl, view.choiceSetId) || WEB_ORIGIN + "/studio/choices/" + view.choiceSetId;
+    $("clips").replaceChildren(...view.clips.map((clip) => {
+      const card = document.createElement("section"); card.className = "clip";
+      const header = document.createElement("div"); header.className = "clip-header";
+      const title = document.createElement("h2"); title.textContent = clip.modelName.slice(0, 128); header.append(title);
+      if (clip.approved === true) { const badge = document.createElement("span"); badge.className = "approved"; badge.textContent = t("choicesApproved"); header.append(badge); }
+      card.append(header);
+      const url = safeAudio(clip.audioUrl);
+      const unavailable = () => { const message = document.createElement("p"); message.className = "unavailable"; message.textContent = t("choicesPreviewUnavailable"); card.append(message); };
+      if (url) {
+        const player = document.createElement("audio"); player.controls = true; player.preload = "none"; player.src = url;
+        player.setAttribute("aria-label", t("choicesPlay", { model: clip.modelName.slice(0, 128) }));
+        player.addEventListener("play", () => document.querySelectorAll("audio").forEach((other) => { if (other !== player) other.pause(); }));
+        player.addEventListener("error", () => { player.hidden = true; unavailable(); }, { once: true });
+        card.append(player);
+      } else unavailable();
+      if (typeof clip.note === "string" && clip.note) { const note = document.createElement("p"); note.className = "note"; note.textContent = clip.note.slice(0, 280); card.append(note); }
+      return card;
+    }));
+    const failed = Array.isArray(view.failed) ? view.failed.slice(0, 4).filter((item) => item && typeof item.modelId === "string") : [];
+    $("failed").hidden = !failed.length;
+    $("failed").textContent = failed.map((item) => t("choicesFailedModel", { model: item.modelId.slice(0, 128) })).join(" ");
+    const preferred = view.clips.find((clip) => clip.modelId === view.preferredModelId);
+    $("preference").hidden = !preferred;
+    $("preference").textContent = preferred ? t("choicesNextModel", { model: preferred.modelName.slice(0, 128) }) : "";
+    notifySize();
+  }
+  $("refresh").addEventListener("click", async () => {
+    if (!view || refreshing) return;
+    const id = view.choiceSetId, requestRevision = revision;
+    refreshing = true; $("refresh").disabled = true; $("refresh").setAttribute("aria-busy", "true");
+    try {
+      const args = { choiceSetId: id, waitSeconds: 0 };
+      const result = openai && openai.callTool ? await openai.callTool("summer_get_choices", args) : await rpc("tools/call", { name: "summer_get_choices", arguments: args });
+      if (requestRevision !== revision) return;
+      const data = read(result);
+      if (!data || data.choiceSetId !== id || !take(result)) throw new Error("Unavailable");
+    } catch {
+      if (requestRevision === revision) { $("error").textContent = t("choicesRefreshError"); $("error").hidden = false; }
+    } finally {
+      if (requestRevision === revision) { refreshing = false; $("refresh").disabled = false; $("refresh").setAttribute("aria-busy", "false"); }
+      notifySize();
+    }
+  });
+  $("review").addEventListener("click", (event) => {
+    if (!view) { event.preventDefault(); return; }
+    if (openai && openai.openExternal) { event.preventDefault(); openai.openExternal({ href: $("review").href }); }
+    else if (initialized) { event.preventDefault(); rpc("ui/open-link", { url: $("review").href }).catch(() => { $("error").textContent = t("choicesLoadError"); $("error").hidden = false; }); }
+  });
+  window.addEventListener("message", (event) => {
+    if (event.source !== window.parent || window.parent === window) return;
+    const data = event.data;
+    if (!data || data.jsonrpc !== "2.0") return;
+    if (data.id !== undefined && pending.has(data.id)) {
+      const request = pending.get(data.id); pending.delete(data.id); clearTimeout(request.timeout);
+      if (data.error) request.reject(new Error("Host error")); else request.resolve(data.result);
+    } else if (data.method === "ui/notifications/tool-result") {
+      if (!take(data.params)) { view = null; revision++; refreshing = false; render(); $("error").textContent = t("choicesLoadError"); $("error").hidden = false; notifySize(); }
+    } else if (data.method === "ui/notifications/host-context-changed") context(data.params);
+  });
+  context({ locale: navigator.language, theme: window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light" });
+  render();
+  if (openai) {
+    context({ locale: openai.locale, theme: openai.theme });
+    take({ structuredContent: openai.toolOutput });
+    window.addEventListener("openai:set_globals", () => { context({ locale: openai.locale, theme: openai.theme }); take({ structuredContent: openai.toolOutput }); });
+  }
+  if (window.ResizeObserver) new ResizeObserver(notifySize).observe(document.body);
+  if (window.parent !== window) rpc("ui/initialize", {
+    protocolVersion: "2026-01-26", appInfo: { name: "summer-sound-choices", version: "1.0.0" }, appCapabilities: { availableDisplayModes: ["inline"] },
+  }).then((result) => {
+    context(result && result.hostContext); initialized = true;
+    window.parent.postMessage({ jsonrpc: "2.0", method: "ui/notifications/initialized", params: {} }, "*");
+    notifySize();
+  }).catch(() => {});
+  window.addEventListener("pagehide", () => { document.querySelectorAll("audio").forEach((player) => player.pause()); });
+})();
+</script></body></html>

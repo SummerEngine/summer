@@ -257,7 +257,7 @@ function collectRegisteredTools(): RegisteredTool[] {
       else if (isZod(raw)) shape = zodToShape(raw, name);
       else shape = objectShape(raw, name);
       registered.push({ name, shape });
-      return { name };
+      return { name, update: () => undefined };
     },
     prompt() {
       return {};

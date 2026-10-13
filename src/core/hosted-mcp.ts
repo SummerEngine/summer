@@ -1,6 +1,6 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+import type { Resource, Tool } from "@modelcontextprotocol/sdk/types.js";
 import { getStoreAccessToken, OAuthError, readStoredOAuthToken, resolveMcpResourceUrl } from "./oauth.js";
 import { TOOLKIT_VERSION } from "./version.js";
 
@@ -20,7 +20,7 @@ export interface HostedClient {
   callTool(params: { name: string; arguments?: Record<string, unknown> }): Promise<Record<string, unknown>>;
   listPrompts(params?: { cursor?: string }): Promise<{ prompts: Array<{ name: string; title?: string; description?: string; arguments?: Array<{ name: string; description?: string; required?: boolean }> }>; nextCursor?: string }>;
   getPrompt(params: { name: string; arguments?: Record<string, string> }): Promise<Record<string, unknown>>;
-  listResources(params?: { cursor?: string }): Promise<{ resources: Array<{ uri: string; name: string; title?: string; description?: string; mimeType?: string }>; nextCursor?: string }>;
+  listResources(params?: { cursor?: string }): Promise<{ resources: Resource[]; nextCursor?: string }>;
   readResource(params: { uri: string }): Promise<Record<string, unknown>>;
   close?(): Promise<void>;
 }

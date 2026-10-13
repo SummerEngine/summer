@@ -1,5 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { ListToolsRequestSchema, type Tool } from "@modelcontextprotocol/sdk/types.js";
+import { ListToolsRequestSchema, type Resource, type Tool } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { connectHostedMcp, type HostedClient, type HostedConnectDependencies } from "../core/hosted-mcp.js";
 import { getStoreAccessToken, OAuthError, resolveMcpResourceUrl } from "../core/oauth.js";
@@ -71,6 +71,22 @@ function errorText(error: { code: string; message: string; recovery: string }) {
   return { content: [{ type: "text" as const, text: JSON.stringify({ ok: false, ...error }) }], isError: true };
 }
 
+/** The local stdio server uses its own store sign-in, not the hosted server's OAuth scheme. */
+function mountedToolMeta(meta: Tool["_meta"]): Tool["_meta"] {
+  if (!meta) return undefined;
+  const mounted = { ...meta };
+  delete mounted.securitySchemes;
+  return Object.keys(mounted).length ? mounted : undefined;
+}
+
+/** Local Engine and gateway tools are model tools unless they explicitly allow Apps. */
+function localToolMeta(tool: Tool): Tool {
+  const meta = tool._meta ?? {};
+  const ui = meta.ui && typeof meta.ui === "object" && !Array.isArray(meta.ui) ? meta.ui as Record<string, unknown> : {};
+  if (ui.visibility !== undefined) return tool;
+  return { ...tool, _meta: { ...meta, ui: { ...ui, visibility: ["model"] } } };
+}
+
 /**
  * Get the server ready for hosted tools before the transport connects (the
  * SDK fixes capabilities at connect): resource handlers exist, and tools/list
@@ -106,7 +122,16 @@ export function prepareHostedMount(
         ...result,
         tools: result.tools.map((tool) => {
           const hosted = schemas.get(tool.name);
-          return hosted ? { ...tool, inputSchema: providerSafeSchema(hosted.inputSchema), ...(hosted.annotations ? { annotations: hosted.annotations } : {}), ...(hosted.title ? { title: hosted.title } : {}) } : tool;
+          if (!hosted) return localToolMeta(tool);
+          const meta = mountedToolMeta(hosted._meta);
+          return {
+            ...tool,
+            inputSchema: providerSafeSchema(hosted.inputSchema),
+            ...(hosted.outputSchema ? { outputSchema: hosted.outputSchema } : {}),
+            ...(hosted.annotations ? { annotations: hosted.annotations } : {}),
+            ...(hosted.title ? { title: hosted.title } : {}),
+            ...(meta ? { _meta: meta } : {}),
+          };
         }),
       };
     });
@@ -166,7 +191,7 @@ export function prepareHostedMount(
     const [tools, prompts, resources] = await Promise.all([
       listAll<Tool>((cursor) => client.listTools(cursor ? { cursor } : undefined) as never, "tools"),
       listAll<Awaited<ReturnType<HostedClient["listPrompts"]>>["prompts"][number]>((cursor) => client.listPrompts(cursor ? { cursor } : undefined) as never, "prompts").catch(() => []),
-      listAll<Awaited<ReturnType<HostedClient["listResources"]>>["resources"][number]>((cursor) => client.listResources(cursor ? { cursor } : undefined) as never, "resources").catch(() => []),
+      listAll<Resource>((cursor) => client.listResources(cursor ? { cursor } : undefined) as never, "resources").catch(() => []),
     ]);
 
     for (const tool of tools) {
@@ -176,9 +201,10 @@ export function prepareHostedMount(
       }
       if (schemas.has(tool.name)) continue;
       schemas.set(tool.name, tool);
+      const meta = mountedToolMeta(tool._meta);
       server.registerTool(
         tool.name,
-        { description: tool.description ?? "", inputSchema: passthroughArgs, ...(tool.annotations ? { annotations: tool.annotations } : {}) },
+        { description: tool.description ?? "", inputSchema: passthroughArgs, ...(tool.title ? { title: tool.title } : {}), ...(tool.annotations ? { annotations: tool.annotations } : {}), ...(meta ? { _meta: meta } : {}) },
         async (args: Record<string, unknown>) => {
           try {
             return (await client.callTool({ name: tool.name, arguments: args })) as never;
@@ -214,10 +240,11 @@ export function prepareHostedMount(
         if (!state.resources.includes(resource.uri)) state.collisions.push(`resource:${resource.uri}`);
         continue;
       }
+      const { name, uri, ...metadata } = resource;
       server.registerResource(
-        resource.name,
-        resource.uri,
-        { ...(resource.title ? { title: resource.title } : {}), ...(resource.description ? { description: resource.description } : {}), ...(resource.mimeType ? { mimeType: resource.mimeType } : {}) },
+        name,
+        uri,
+        metadata,
         async (uri) => (await client.readResource({ uri: uri.href })) as never
       );
       state.resources.push(resource.uri);

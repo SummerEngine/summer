@@ -16,6 +16,7 @@ import {
   getChoicesArgsSchema,
   sfxChoicesArgsSchema,
   SFX_CHOICES_ENDPOINT,
+  type GatewayReply,
   type SfxChoicesDeps,
 } from "../../core/capabilities/sfx-choices.js";
 import open from "open";
@@ -104,18 +105,32 @@ async function readLenientJson(res: Response): Promise<any> {
 async function mcpGenerate(
   endpoint: string,
   body: Record<string, any>,
-  timeoutMs = 120_000
-): Promise<{ data?: any; error?: string; status: number }> {
-  const token = await getAuthToken();
+  timeoutMs = 120_000,
+  trackSfxOutcome = false
+): Promise<GatewayReply> {
+  let token: string | null;
+  try {
+    token = await getAuthToken();
+  } catch (error) {
+    if (!trackSfxOutcome) throw error;
+    return { error: error instanceof Error ? error.message : String(error), status: 0, phase: "not_sent" };
+  }
   if (!token) {
     return {
       error:
         "Not signed in. Run in your terminal:\n  npx -y summer-engine@latest login\nOr open: https://www.summerengine.com/login",
       status: 401,
+      ...(trackSfxOutcome ? { phase: "not_sent" as const } : {}),
     };
   }
 
-  const gatewayUrl = await resolveGatewayUrl();
+  let gatewayUrl: string;
+  try {
+    gatewayUrl = await resolveGatewayUrl();
+  } catch (error) {
+    if (!trackSfxOutcome) throw error;
+    return { error: error instanceof Error ? error.message : String(error), status: 0, phase: "not_sent" };
+  }
   let res: Response;
   try {
     res = await fetch(`${gatewayUrl}${endpoint}`, {
@@ -134,10 +149,16 @@ async function mcpGenerate(
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return { error: `Generation request failed: ${msg}`, status: 0 };
+    return { error: `Generation request failed: ${msg}`, status: 0, ...(trackSfxOutcome ? { phase: "outcome_unknown" as const } : {}) };
   }
 
-  const data = await readLenientJson(res);
+  let data: any;
+  try {
+    data = await readLenientJson(res);
+  } catch (error) {
+    if (!trackSfxOutcome) throw error;
+    return { error: `Could not read the generation response: ${error instanceof Error ? error.message : String(error)}`, status: res.status, phase: "outcome_unknown" };
+  }
   if (!res.ok) {
     let message = formattedApiErrorMessage(res.status, data);
 
@@ -549,7 +570,7 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
   // Shared implementation: core/capabilities/sfx-choices.ts
   // ========================================================================
   const sfxChoicesDeps: SfxChoicesDeps = {
-    post: (endpoint, body, timeoutMs) => mcpGenerate(endpoint, body, timeoutMs),
+    post: (endpoint, body, timeoutMs) => mcpGenerate(endpoint, body, timeoutMs, true),
     get: (endpoint, params, timeoutMs) => mcpGet(endpoint, params, timeoutMs),
     openUrl: (url) => open(url),
     canOpenBrowser: () => defaultCanOpenBrowser(),
@@ -573,6 +594,9 @@ with the choiceSetId. Do not pick for them.
 Models: eleven_text_to_sound_v2 (0.5-30 s, loops), sonilo-sfx-1.1 (>= 0.5 s),
 stable-audio-3-sfx (>= 1 s; give durationSeconds >= 1 when it is included).
 Each version is a billed generation.
+Choose an idempotencyKey before generating. Use the same key only to check an
+uncertain outcome of the exact same request; check choices, assets and credits
+first. A key does not promise free replay after server records expire.
 
 Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
 Requires authentication: run 'npx -y summer-engine@latest login' first.`,

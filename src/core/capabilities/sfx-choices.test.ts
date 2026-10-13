@@ -55,6 +55,17 @@ describe("generateSfxChoices", () => {
     expect((deps.post as any).mock.calls[0][1]).toEqual({ capability: "sound_effects", text: "whoosh" });
   });
 
+  it("forwards a caller-chosen retry key exactly and rejects overlong prompts before the call", async () => {
+    const deps = fakeDeps({}, { data: { ...choiceSet, replayed: true, costUsd: 0.04, price: { usd: 0.04, credits: 4 }, notes: ["A failed version may also have been charged."] }, status: 200 });
+    const args = sfxChoicesArgsSchema.parse({ text: "whoosh", idempotencyKey: "sound-attempt-1", open: false });
+    const result = await generateSfxChoices(args, deps);
+    expect((deps.post as any).mock.calls[0][1]).toMatchObject({ idempotencyKey: "sound-attempt-1" });
+    expect(result).toMatchObject({ ok: true, idempotencyKey: "sound-attempt-1", replayed: true, costUsd: 0.04, price: { credits: 4 }, notes: ["A failed version may also have been charged."] });
+    expect(sfxChoicesArgsSchema.safeParse({ text: "x".repeat(450) }).success).toBe(true);
+    expect(sfxChoicesArgsSchema.safeParse({ text: "x".repeat(451) }).success).toBe(false);
+    expect(sfxChoicesArgsSchema.safeParse({ text: "x", idempotencyKey: "" }).success).toBe(false);
+  });
+
   it("rejects unknown models and fewer than two", () => {
     expect(sfxChoicesArgsSchema.safeParse({ text: "x", models: ["mirelo"] }).success).toBe(false);
     expect(sfxChoicesArgsSchema.safeParse({ text: "x", models: ["sonilo-sfx-1.1"] }).success).toBe(false);
@@ -130,12 +141,40 @@ describe("generateSfxChoices", () => {
 
   it("fails cleanly on a gateway error and when no model made a clip", async () => {
     const err = fakeDeps({}, { error: "Insufficient credits.", data: { status: 402 }, status: 402 });
-    expect(await generateSfxChoices(sfxChoicesArgsSchema.parse({ text: "clash" }), err)).toMatchObject({ ok: false, error: "Insufficient credits." });
+    expect(await generateSfxChoices(sfxChoicesArgsSchema.parse({ text: "clash", idempotencyKey: "k" }), err)).toMatchObject({ ok: false, outcome: "refused", status: 402, error: "Insufficient credits.", idempotencyKey: "k", details: { status: 402 } });
 
     const none = fakeDeps({}, { data: { ...choiceSet, clips: [], failed: [{ modelId: "stable-audio-3-sfx", error: "too short" }] }, status: 200 });
     const result = await generateSfxChoices(sfxChoicesArgsSchema.parse({ text: "clash" }), none);
-    expect(result).toMatchObject({ ok: false, failed: [{ modelId: "stable-audio-3-sfx" }] });
+    expect(result).toMatchObject({ ok: false, outcome: "unknown", details: { failed: [{ modelId: "stable-audio-3-sfx" }] } });
     expect(none.openUrl).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [429, { error: "rate_limited", retryAfterMs: 3000 }, "refused"],
+    [409, { error: "duplicate_in_progress", message: "Charge status unknown" }, "unknown"],
+    [503, { error: "idempotency_unavailable", message: "No work started" }, "refused"],
+    [503, { error: "unavailable", billedCredits: 2, message: "Audio may have been charged" }, "unknown"],
+  ])("retains HTTP %i and response details", async (status, body, outcome) => {
+    const deps = fakeDeps({}, { error: String(body.message ?? body.error), data: body, status });
+    const result = await generateSfxChoices(sfxChoicesArgsSchema.parse({ text: "clash", idempotencyKey: "same-key" }), deps);
+    expect(result).toMatchObject({ ok: false, status, outcome, details: body, idempotencyKey: "same-key" });
+    if (outcome === "unknown") expect(result.recovery).toContain("24 hours");
+  });
+
+  it("marks a lost reply as unknown, including when no key was sent", async () => {
+    const keyed = fakeDeps({}, { error: "socket closed", status: 0, phase: "outcome_unknown" });
+    expect(await generateSfxChoices(sfxChoicesArgsSchema.parse({ text: "clash", idempotencyKey: "attempt" }), keyed)).toMatchObject({ outcome: "unknown", idempotencyKey: "attempt", status: 0 });
+    expect(keyed.post).toHaveBeenCalledTimes(1);
+    const noKey = fakeDeps({}, { error: "socket closed", status: 0, phase: "outcome_unknown" });
+    const result = await generateSfxChoices(sfxChoicesArgsSchema.parse({ text: "clash" }), noKey);
+    expect(result).toMatchObject({ outcome: "unknown" });
+    expect(result.recovery).toContain("No retry key was sent");
+    expect(result).not.toHaveProperty("idempotencyKey");
+  });
+
+  it("marks missing credentials before dispatch as refused", async () => {
+    const deps = fakeDeps({}, { error: "Not signed in", status: 401, phase: "not_sent" });
+    expect(await generateSfxChoices(sfxChoicesArgsSchema.parse({ text: "clash", idempotencyKey: "attempt" }), deps)).toMatchObject({ outcome: "refused", status: 401, idempotencyKey: "attempt" });
   });
 });
 

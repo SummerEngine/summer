@@ -2,7 +2,7 @@
 
 `window.summer`, loaded with `<script type="module" src="/summer-sdk/v1.js">` (the app's own
 host, apps.summerengine.app). The UI kit is `<script type="module" src="/summer-ui/v1/ui.js">`
-(stylesheet alone: `/summer-ui/v1/ui.css`). Classic `<script>` tags and other paths do not work.
+(stylesheet alone: `/summer-ui/v1/ui.css`). Use `type="module"` (a classic script still works but warns); other paths do not work. Calling `summer.data.list(name)` and the like rejects with `invalid` and says to use `summer.data.collection(name)`.
 
 The app runs in a sandboxed frame on that host: an opaque origin (no cookies, no
 `localStorage`), no network unless the workspace allows a domain, and the kit and SDK are

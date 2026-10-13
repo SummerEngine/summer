@@ -20,6 +20,7 @@ import { registerEventTools } from "./tools/event-tools.js";
 import { registerFabricateTools } from "./tools/fabricate-tools.js";
 import { registerUiTools } from "./tools/ui-tools.js";
 import { registerRuntimeTools } from "./tools/runtime-tools.js";
+import { registerAppTools } from "./tools/app-tools.js";
 import {
   recordToolCall,
   registrationHasInputSchema,
@@ -389,6 +390,7 @@ export function createMcpServer(): {
   registerFabricateTools(server);
   registerUiTools(server);
   registerRuntimeTools(server);
+  registerAppTools(server);
   // The playbook is also an MCP prompt so prompt-surfacing hosts get it
   // natively (same content as the summer_get_agent_playbook tool).
   registerPlaybookPrompt(server);

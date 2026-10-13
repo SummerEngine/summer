@@ -1,6 +1,6 @@
 # Summer skills
 
-> 123 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
+> 125 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
 
 The folder is flat on purpose (`docs/design/DECISIONS.md`, D3): a skill usually belongs to several domains, so categories live in each skill's `facets.domains` and this index is rendered from them. The first domain listed is the primary one. `summer skills list --by-domain` prints the same grouping; `summer skills info <slug>` shows one skill.
 
@@ -29,7 +29,8 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 - [runtime](#runtime) (1)
 - [scenes](#scenes) (12)
 - [scripting](#scripting) (2)
-- [ui](#ui) (1)
+- [tools](#tools) (1)
+- [ui](#ui) (2)
 - [vfx](#vfx) (9)
 - [video](#video) (3)
 
@@ -248,10 +249,17 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [gdscript-patterns](./gdscript-patterns/SKILL.md) ★ | GDScript conventions — type hints, signals, exports, onready, lifecycle methods, get_node vs $NodePath, naming. | conventions |
 | [*save-load*](./save-load/SKILL.md) (preview) | Persist game state in Summer Engine: user:// paths, JSON progress vs ConfigFile settings, a versioned save schema with migration, autosave hooks. | gameplay |
 
+## tools
+
+| skill | when to use | also |
+|---|---|---|
+| [*summer-apps*](./summer-apps/SKILL.md) ★ (preview) | Build a Summer App, a team tool inside Summer Studio (balance table, quest editor, tracker, pick grid): build loop, Layout vs code, data as API, agent tools. | ui, agent-workflow |
+
 ## ui
 
 | skill | when to use | also |
 |---|---|---|
+| [*summer-apps-design*](./summer-apps-design/SKILL.md) ★ (preview) | How a Summer App should look - page layout, Summer UI kit components, tables, charts, media, boards, states and a pre-ship checklist. | tools |
 | [ui-basics](./ui-basics/SKILL.md) ★ | Build Summer Engine UI — HUDs, menus, health bars, dialogue boxes, Control trees — anchors, containers, responsive layout, theme vs inline styling. | ux |
 
 ## vfx

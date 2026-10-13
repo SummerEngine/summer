@@ -33,6 +33,22 @@ Engine MCP offers the same cloud tools under the same names.
 - `summer_app_dock` is the one engine tool: it sends `OpenAppDock {appId, slot}`, `CloseAppDock {appId}` or
   `ListAppDocks` to the running editor and returns `engine_lacks_op` on engine builds without app docks.
 
+## Testing against a local or staging web server
+
+Two settings, two different servers:
+
+- `SUMMER_GATEWAY_URL` moves the `summer_app_*` cloud tools (they call `/api/mcp/apps` there).
+- The tools mounted from the hosted Summer Engine MCP (`summer_studio_*`, store, board, Grow) come
+  from `SUMMER_MCP_RESOURCE_URL`, which defaults to production (`mcp.summerengine.com/mcp`).
+  `SUMMER_GATEWAY_URL` does not move them, because the web host itself does not serve the hosted
+  MCP; only its MCP host does.
+
+So with a local gateway, `summer_studio_page` still talks to the production Studio bridge and
+answers `no_tab` for a local Studio tab. To test both locally, also point
+`SUMMER_MCP_RESOURCE_URL` at a hosted MCP your local server answers (its MCP host and `/mcp`),
+and sign in to it with `summer login --store`. Otherwise use the `summer_app_*` tools and open
+the app in your local Studio by hand.
+
 ## More
 
 - Product and agent docs: the Summer Apps pages on the Summer docs site.

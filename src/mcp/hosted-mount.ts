@@ -1,5 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { ListToolsRequestSchema, type Tool } from "@modelcontextprotocol/sdk/types.js";
+import { CallToolRequestSchema, ListToolsRequestSchema, type Tool } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { connectHostedMcp, type HostedClient, type HostedConnectDependencies } from "../core/hosted-mcp.js";
 import { getStoreAccessToken, OAuthError, resolveMcpResourceUrl } from "../core/oauth.js";
@@ -109,6 +109,18 @@ export function prepareHostedMount(
           return hosted ? { ...tool, inputSchema: providerSafeSchema(hosted.inputSchema), ...(hosted.annotations ? { annotations: hosted.annotations } : {}), ...(hosted.title ? { title: hosted.title } : {}) } : tool;
         }),
       };
+    });
+  }
+
+  // tools/call for a name the server does not know yet: a hosted tool whose mount
+  // is still running (an agent that calls before it lists). Wait for that mount,
+  // at most the first-list cap, then dispatch; an unknown name still errors.
+  const callTool = handlers.get("tools/call") as ((request: unknown, extra: unknown) => Promise<unknown>) | undefined;
+  if (callTool) {
+    server.server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
+      const name = (request as { params?: { name?: unknown } }).params?.name;
+      if (typeof name === "string" && !(name in registries._registeredTools)) await waitForMount(firstListWaitMs);
+      return (await callTool(request, extra)) as never;
     });
   }
 

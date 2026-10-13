@@ -185,6 +185,26 @@ describe("one Summer Engine MCP: hosted tools mounted locally", () => {
     }
   });
 
+  it("holds a call to a hosted tool that arrives before any tools/list until the mount finishes", async () => {
+    const { server } = createMcpServer();
+    const slowConnect: HostedMountDependencies["connect"] = (...args) =>
+      new Promise((done) => setTimeout(done, 200)).then(() => defaultHostedMountDependencies.connect(...args));
+    const mount = prepareHostedMount(server, deps({ connect: slowConnect }));
+    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverSide);
+    const client = new Client({ name: "agent", version: "1.0.0" });
+    await client.connect(clientSide);
+    try {
+      void mount.mount();
+      const result = await client.callTool({ name: "summer_store_submit", arguments: { gameId: "g1" } });
+      expect(result.isError).not.toBe(true);
+      expect(hosted.seen.map((entry) => entry.tool)).toEqual(["summer_store_submit"]);
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
   it("answers the first tools/list after the wait cap when the mount is slow", async () => {
     const { server } = createMcpServer();
     const mount = prepareHostedMount(

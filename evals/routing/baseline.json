@@ -1,12 +1,12 @@
 {
   "generated_at": "2026-10-13",
   "corpus_source": "registry/generated/index.json",
-  "corpus_size": 255,
-  "query_count": 130,
+  "corpus_size": 269,
+  "query_count": 135,
   "gap_count": 11,
   "mean_recall_at_5": 1,
-  "mean_recall_at_1": 0.8269,
-  "mrr_at_5": 0.9329,
+  "mean_recall_at_1": 0.8259,
+  "mrr_at_5": 0.933,
   "per_kind": {
     "reference": {
       "expected": 1,
@@ -14,17 +14,17 @@
       "recall_at_5": 1
     },
     "skill": {
-      "expected": 109,
-      "hit": 109,
+      "expected": 112,
+      "hit": 112,
       "recall_at_5": 1
     },
     "tool": {
-      "expected": 37,
-      "hit": 37,
+      "expected": 40,
+      "hit": 40,
       "recall_at_5": 1
     }
   },
-  "hijacked_queries": 15,
+  "hijacked_queries": 16,
   "per_query": {
     "draw a portrait of my wizard for the dialogue box": 1,
     "show me a few different art styles for the main character before we commit": 1,
@@ -57,6 +57,11 @@
     "what should my game sound like overall": 1,
     "make three versions of a sword clash sound so I can pick the best one": 1,
     "I approved the sounds I liked in Studio, use them": 1,
+    "build us a loot balance tool for res://data/items.json that the whole team can use": 1,
+    "make an app in Studio to track every creature from concept to in-engine": 1,
+    "nerf the bow in our balance sheet app": 1,
+    "how should the team tool look so it is on brand": 1,
+    "dock the quest editor app next to my scene in the editor": 1,
     "add a grappling hook": 1,
     "design a boss arena for level 3": 1,
     "make an enemy that patrols and attacks when it sees the player": 1,

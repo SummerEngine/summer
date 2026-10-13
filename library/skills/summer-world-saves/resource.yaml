@@ -23,6 +23,7 @@ related:
     - skill/multiplayer-state
     - skill/summer-player-data
     - skill/summer-match-results
+    - skill/persistent-world-save-migrations
 source: official
 license: MIT
 status: preview

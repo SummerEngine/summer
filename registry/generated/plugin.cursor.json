@@ -95,6 +95,7 @@
     "./library/skills/navigate-summer/",
     "./library/skills/new-project/",
     "./library/skills/organic-model/",
+    "./library/skills/persistent-world-save-migrations/",
     "./library/skills/pixel-art/",
     "./library/skills/play/",
     "./library/skills/playtesting-a-feature/",

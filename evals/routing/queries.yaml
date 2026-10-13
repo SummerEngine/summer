@@ -155,6 +155,8 @@ queries:
     expected: [skill/summer-player-data]
   - query: "add a leaderboard to my online game"
     expected: [skill/summer-leaderboards]
+  - query: "I changed what my farm World saves, how do old Worlds keep their progress"
+    expected: [skill/persistent-world-save-migrations, skill/summer-world-saves]
 
   # ── Rendering & look ───────────────────────────────────────────────────
   - query: "my grass lighting looks flat"

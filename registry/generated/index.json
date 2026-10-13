@@ -2194,7 +2194,7 @@
       "id": "skill/multiplayer",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "06771fb6465e2ed96bb03900d98e1b53bb79e36cda4f5540d8371fc4308274d5",
+      "content_hash": "e06cb47a3263d9ed2412d9c29526aabac1a79e2ccdebc22a103da218a6369635",
       "summary": "Start here for Summer multiplayer: how the authority, clients, Worlds and Sessions fit, and which skill comes next.",
       "use_when": [
         "the user wants multiplayer, co-op, PvP, online play over the internet, or to play with friends in a Summer game",
@@ -2596,6 +2596,47 @@
         ]
       },
       "status": "stable",
+      "recommended": false
+    },
+    {
+      "id": "skill/persistent-world-save-migrations",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "02c94e1780c08f913759a950907e28eb691c0396671ba32539a635478ab9c9ca",
+      "summary": "Change a persistent World's save format without losing progress: save versions, migration steps, fixtures and upgrades.",
+      "use_when": [
+        "changing what a persistent Summer World saves, or the format of its save, after Worlds already exist",
+        "adding a save version to snapshot_schemas or writing a migration step with register_save_migration",
+        "a World upgrade failed with world_save_migration_failed, world_save_migration_missing, world_save_incompatible or world_upgrade_timeout",
+        "adding or running save fixtures under res://summer/save_fixtures",
+        "choosing when Worlds move to a new version: upgrade on next visit, manual, pinned or strict compatibility"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build",
+          "launch",
+          "support"
+        ],
+        "domains": [
+          "multiplayer",
+          "scripting"
+        ],
+        "modalities": [
+          "scripts"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-world-saves",
+          "skill/multiplayer-project",
+          "skill/multiplayer-publish",
+          "skill/headless-scripting"
+        ]
+      },
+      "status": "preview",
       "recommended": false
     },
     {
@@ -4003,7 +4044,7 @@
       "id": "skill/summer-world-saves",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "9c4125ed2113bd7b1a67eb7146493e8f7fd332a66853dc1552092bd2709bfbb8",
+      "content_hash": "92a8f12348b57aec2005d7463d9e88bf03cf987bced219970b093d4862d46661",
       "summary": "Keep a persistent Summer World between restarts: checkpoint saves, restore before join, the final save.",
       "use_when": [
         "building a persistent World, shared base, farm or realm in a Summer game that must survive server restarts",
@@ -4031,7 +4072,8 @@
           "skill/multiplayer-project",
           "skill/multiplayer-state",
           "skill/summer-player-data",
-          "skill/summer-match-results"
+          "skill/summer-match-results",
+          "skill/persistent-world-save-migrations"
         ]
       },
       "status": "preview",

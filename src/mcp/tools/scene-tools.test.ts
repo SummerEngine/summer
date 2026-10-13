@@ -179,7 +179,11 @@ describe("summer_create_scene guarded create-only write", () => {
     ["unrelated op", { status: "ok", requestId: "scene-1", results: [{ ok: true, op: "SaveScene" }] }],
     ["queued item", { status: "ok", requestId: "scene-1", results: [{ ok: true, op: "WriteFile", pending: true }] }],
     ["no-op", { status: "ok", terminalState: "no_op", requestId: "scene-1", results: [{ ok: true, op: "WriteFile" }] }],
-    ["per-op no-op", { status: "ok", requestId: "scene-1", results: [{ ok: true, op: "WriteFile", meta: { noop: true } }] }],
+    ["envelope no-op", { status: "ok", noop: true, requestId: "scene-1", results: [{ ok: true, op: "WriteFile" }] }],
+    ["per-op no-op", { status: "ok", requestId: "scene-1", results: [{ ok: true, op: "WriteFile", noop: true }] }],
+    ["meta no-op", { status: "ok", requestId: "scene-1", results: [{ ok: true, op: "WriteFile", meta: { noop: true } }] }],
+    ["wrong reported op path", { status: "ok", requestId: "scene-1", results: [{ ok: true, op: "WriteFile", path: "res://other.tscn" }] }],
+    ["wrong envelope path", { status: "ok", path: "res://other.tscn", requestId: "scene-1", results: [{ ok: true, op: "WriteFile" }] }],
     ["wrong path", { status: "ok", requestId: "scene-1", results: [{ ok: true, op: "WriteFile", meta: { path: "res://other.tscn" } }] }],
   ])("does not report creation or read back on %s receipt", async (_case, receipt) => {
     vi.mocked(resetClient).mockClear();

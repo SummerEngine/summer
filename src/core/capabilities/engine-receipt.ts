@@ -175,8 +175,12 @@ export function requireCompletedSceneCreateReceipt(receipt: unknown, expectedPat
   if (envelope && !hasPendingOpReceipt(receipt) &&
       (envelope.status === undefined || envelope.status === "ok") &&
       (envelope.terminalState === undefined || envelope.terminalState === "applied") &&
+      envelope.noop !== true &&
+      (envelope.path === undefined || envelope.path === expectedPath) &&
       (envelope.error === undefined || envelope.error === null || envelope.error === "") &&
       item?.ok === true && (item.op === undefined || item.op === "WriteFile") &&
+      item.noop !== true &&
+      (item.path === undefined || item.path === expectedPath) &&
       (item.status === undefined || item.status === "ok") &&
       (item.terminalState === undefined || item.terminalState === "applied") &&
       (item.error === undefined || item.error === null || item.error === "") &&

@@ -75,15 +75,15 @@ component** and copy its example. Never guess an attribute.
 | Job | Use (exact names; shapes in the catalog) |
 | --- | --- |
 | Key numbers | `summer-stats` > 3-5 `summer-stat label value delta hint tone`. Delta is text like "+12 this week"; the kit colours the number |
-| A comparison or trend | `summer-chart kind x y heading highlight reference`. `y` is a JSON array of keys; `highlight` `{above, below, tone, label, otherLabel}`; `reference` `{value, label, tone}`. One question per chart |
-| Records you scan, sort, edit | `summer-table columns rows row-key`. Column `{key, label, format, digits, type: bar/badge/muted, over, tone, badges, priority: "secondary", thumb, editable, badge, badgeTone}`. `badges` maps each value to a tone or `{tone, label}` for a status column (`{"draft": "quiet", "review": {"tone": "info", "label": "In review"}, "done": "ok"}`; unlabelled values show in sentence case); `badge` names a row key shown as a small badge inside a cell (e.g. "+3:01" over target). On a phone the table stacks its rows by itself. `clickable` gives `summer-row`; `selectable="single"` or `"multi"` gives `summer-select-rows` |
+| A comparison or trend | `summer-chart kind x y heading highlight reference`. `y` is a JSON array of keys; `highlight` `{key, above, below, equals, tone, label, otherLabel}` (`key` tests another field, e.g. colour `lines` bars where `redo` is above 3; `equals` takes a value or a list); counts get whole-number gridlines by themselves; `reference` `{value, label, tone}`. One question per chart |
+| Records you scan, sort, edit | `summer-table columns rows row-key`. Column `{key, label, format, digits, type: bar/badge/muted, over, tone, badges, priority: "secondary", thumb, editable, badge, badgeTone, width, minWidth, wrap}`. Text columns wrap by themselves; give the name column `width: "30%"` when notes are long. `badges` maps each value to a tone or `{tone, label}` for a status column (`{"draft": "quiet", "review": {"tone": "info", "label": "In review"}, "done": "ok"}`; unlabelled values show in sentence case); `badge` names a row key shown as a small badge inside a cell (e.g. "+3:01" over target). Under 640px badge columns fold under the name, and rows stack only if the columns still do not fit. `clickable` gives `summer-row`; `selectable="single"` or `"multi"` gives `summer-select-rows` |
 | Unsaved table edits | `summer-save-bar count save-label` (`save` and `discard` events; then `table.commit()` or `table.discard()`) |
 | Notes, tasks, comments | `summer-list items checkable action menu`. Item `{id, title, meta, checked, badge: {text, tone}, action}`; `action` `{id, label, icon}` is the one quiet button per row; `menu` items `{id, label, icon, tone: "danger"}`; events `summer-check`, `summer-action`, `summer-item` |
 | Pipeline stages | `summer-board` > `summer-lane heading lane-id add-label` > `summer-board-card heading card-id art meta person comments done`; `summer-move` event |
 | Pick between versions | `summer-choice-grid items` (`layout="row" heading meta` for one row per need). Item `{id, label, src, kind}` |
-| Filters above a list | `summer-toolbar` > `summer-search`, `summer-segmented options value` (`{value, label, count}`), `summer-select` in `slot="end"` (compact by itself) |
+| Filters above a list | `summer-toolbar` > `summer-search`, `summer-segmented options value` (`{value, label, count}`; turns into a compact select when it does not fit), `summer-select` in `slot="end"` (compact by itself) |
 | Add or edit something | `summer-dialog heading description` > `summer-form submit-label` > named inputs |
-| Inputs | `summer-text-input name label hint required multiline`, `summer-select name label options`, `summer-slider`, `summer-toggle` |
+| Inputs | `summer-text-input name label hint required multiline`, `summer-select name label options`, `summer-slider`, `summer-toggle`. Every field sends `input` and `change` with `event.detail.value` |
 | Media | `summer-audio`, `summer-video`, `summer-image aspect`, `summer-model-viewer`. Never `<audio controls>` or `<video controls>` |
 | A repeated object | `summer-card variant="object" media selected` |
 | Status in words | `summer-badge tone` (ok, warn, bad, info, quiet, count) |
@@ -187,7 +187,7 @@ while loading.
 
 - [ ] The purpose line says what the tool does; one primary per region finishes it.
 - [ ] Every component and attribute matches its catalog entry.
-- [ ] Numbers line up; on a phone nothing scrolls off (tables stack by themselves).
+- [ ] Numbers line up; long text wraps; on a phone nothing scrolls off.
 - [ ] Loading, empty (including "waiting for your agent") and error states exist
       and keep the layout in place.
 - [ ] Subtract: remove each badge, icon, helper line and frame; keep it only if the

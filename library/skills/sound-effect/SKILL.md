@@ -106,6 +106,8 @@ summer_generate_audio(capability: "sound_effects", text: "<prompt>", durationSec
 
 Leave out `modelId` so their approved default runs. The description goes in `text`, not `prompt` (`prompt` gives a 400 `text_required` here).
 
+No Summer project (an asset-only request, or the engine is not installed or not running): stop here. The clips are in the person's Summer library; give them the `audioUrl` of each approved version and skip steps 7 and 8.
+
 ### 7. Import
 
 ```

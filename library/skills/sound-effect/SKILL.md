@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_generate_sfx_choices summer_get_choices summer_generate_audio summer_search_assets summer_import_from_url summer_import_asset_by_id summer_add_node summer_set_prop summer_instantiate_scene summer_inspect_node summer_get_scene_tree
+allowed-tools: Read Grep Glob Write Edit summer_generate_sfx_choices summer_get_choices summer_generate_audio summer_search_assets summer_import_from_url summer_import_asset_by_id summer_add_node summer_set_prop summer_instantiate_scene summer_inspect_node summer_get_scene_tree summer_read_file summer_open_scene
 paths: ["audio/sfx/**", "scripts/**", "**/*.tscn"]
 ---
 
@@ -114,6 +114,8 @@ summer_import_from_url(url: "<audioUrl>", path: "res://audio/sfx/sword_clash_01.
 
 or `summer_import_asset_by_id(assetId: "<assetId>", path: "res://audio/sfx/sword_clash_01.<fileExtension>")`. Keep the extension of the file you got. When the person approved several versions, import each one (`_01`, `_02`, …) and play a random one per event for variety.
 
+For a choice set, prefer its exact `assetId`. Check that the import result establishes completion at the intended `res://` path before wiring it. An `audioUrl` or a generated asset is not yet a project file. If the result is failed, pending, unknown, or unclear, inspect the target before retrying or claiming an import.
+
 One-shots keep loop OFF in the Import dock; looping a one-shot clicks. For a loop: WAV uses Edit > Loop Mode = Forward; OGG/MP3 use Loop = on.
 
 ### 8. Wire
@@ -132,6 +134,8 @@ summer_set_prop(scenePath="res://main.tscn", path="./Player/SwingSFX", key="stre
 summer_set_prop(scenePath="res://main.tscn", path="./Player/SwingSFX", key="bus", value="SFX")
 summer_set_prop(scenePath="res://main.tscn", path="./Player/SwingSFX", key="max_distance", value=25.0)
 ```
+
+Check the node/property result and the final `SaveScene` result from each scene mutation. Both must succeed for the exact `scenePath`. If a property changed but saving failed, the editor may hold an unsaved change; do not call it saved. Import completion alone does not prove that the scene uses the sound.
 
 The bus must match the bible (`SFX`, `UI`, `Ambient`, …); the default bus is `Master`. If the bus does not exist, run `/audio-direction`.
 
@@ -152,7 +156,9 @@ Save it as a `.tscn` and instantiate it per event in GDScript (`preload(...).ins
 
 ### 9. Check
 
-`summer_inspect_node(path="Player/SwingSFX")`: verify `stream`, `bus`, `volume_db`. Too quiet: raise `volume_db` (+3 to +9, never past +12), else regenerate with a heavier description. Too long: `stop()` on a timer.
+Read the exact saved scene, for example `summer_read_file(path="res://main.tscn")`. Find `Player/SwingSFX` and confirm that its `stream` resolves to the imported `res://audio/sfx/...` path. In a text scene, the node may name an `ExtResource` ID; follow that ID to its resource path rather than matching a filename anywhere in the file. Check any explicitly set `bus` or volume value too. If the read is truncated or the node-to-resource link cannot be established, report the attachment as unverified.
+
+`summer_inspect_node` reads only the currently open editor scene, not the `scenePath` passed to the mutation. If live property inspection is useful, first open the exact target with `summer_open_scene(path="res://main.tscn")`, then inspect `Player/SwingSFX`. Opening changes the editor tab; live inspection alone does not prove the scene was saved. A saved stream also does not prove that the gameplay cue plays it. Use the `play` skill to test the trigger before claiming audible gameplay. Too quiet: raise `volume_db` (+3 to +9, never past +12), else regenerate with a heavier description. Too long: `stop()` on a timer.
 
 ## Fallback (no MCP)
 

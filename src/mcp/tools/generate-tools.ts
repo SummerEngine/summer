@@ -14,7 +14,6 @@ import {
   generateSfxChoices,
   getChoices,
   getChoicesArgsSchema,
-  openInStudioTab,
   sfxChoicesArgsSchema,
   SFX_CHOICES_ENDPOINT,
   type SfxChoicesDeps,
@@ -552,7 +551,6 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
   const sfxChoicesDeps: SfxChoicesDeps = {
     post: (endpoint, body, timeoutMs) => mcpGenerate(endpoint, body, timeoutMs),
     get: (endpoint, params, timeoutMs) => mcpGet(endpoint, params, timeoutMs),
-    studioOpen: (path, reviewUrl) => openInStudioTab(path, reviewUrl),
     openUrl: (url) => open(url),
     canOpenBrowser: () => defaultCanOpenBrowser(),
   };
@@ -565,8 +563,8 @@ one or more. The approved model becomes their default for sound effects.
 
 Use it for the first sound effect in a chat after the person said yes to
 "three versions to pick from", or whenever they want to compare. The page
-opens in their open Summer Studio tab when there is one (needs the store
-sign-in), else in the browser; open:false only returns reviewUrl.
+opens in their open Summer Studio tab when there is one, else in the browser
+(open:false skips the browser and only returns reviewUrl).
 
 Then tell the person the returned "say" text and call summer_get_choices
 with the choiceSetId. Do not pick for them.

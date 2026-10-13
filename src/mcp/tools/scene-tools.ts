@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { withEngine, ToolInputError } from "./with-engine.js";
 import { executeSceneMutation } from "../../core/capabilities/engine-ops.js";
+import { requireCompletedSceneCreateReceipt } from "../../core/capabilities/engine-receipt.js";
 import { instantiateScene, runBatch } from "../../core/capabilities/placement-batch.js";
 import { renderPlacementResult } from "./placement-tools.js";
 import { inspectNodeFields, inspectNodeInputShape } from "../../core/capabilities/inspect-node.js";
@@ -21,22 +22,6 @@ import {
 // executeSceneMutation is the ONE copy in core/capabilities/engine-ops.ts,
 // re-exported here for the spatial tools (snap / align).
 export { FALLBACK_SINGLE_ONLY_OPS, resolveSingleOnlyOps, executeSceneMutation };
-
-function requireSuccessfulOps(result: unknown, context: string): Record<string, unknown> {
-  const receipt = (result ?? {}) as Record<string, unknown>;
-  const results = Array.isArray(receipt.results)
-    ? receipt.results as Array<Record<string, unknown>>
-    : [];
-  const failed = results.find((entry) => entry?.ok === false);
-  if (receipt.status === "error" || failed) {
-    const error =
-      (typeof failed?.error === "string" && failed.error) ||
-      (typeof receipt.error === "string" && receipt.error) ||
-      `${context} failed`;
-    throw new Error(error);
-  }
-  return receipt;
-}
 
 /** Compose the minimal valid .tscn text scene: header + one root node.
  *  `uid` and `load_steps` are optional in the engine parser
@@ -104,17 +89,15 @@ Recommended workflow:
         // Same engine-routed guarded write path summer_write_file uses:
         // identity-bound, and mustNotExist makes the engine refuse (create-only)
         // if the path already exists. The open scene is never touched.
-        const receipt = requireSuccessfulOps(
-          await client.executeIdentityBoundOps([
-            {
-              op: "WriteFile",
-              path: safePath,
-              content: minimalSceneText(rootName, rootType),
-              mustNotExist: true,
-            },
-          ]),
-          `Creating ${safePath}`,
-        );
+        const receipt = await client.executeIdentityBoundOps([
+          {
+            op: "WriteFile",
+            path: safePath,
+            content: minimalSceneText(rootName, rootType),
+            mustNotExist: true,
+          },
+        ]);
+        requireCompletedSceneCreateReceipt(receipt, safePath);
 
         // Post-write verification: read the file back through the engine. The
         // write receipt already passed; a read-back failure is reported honestly

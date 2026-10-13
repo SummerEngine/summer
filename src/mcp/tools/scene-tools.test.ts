@@ -9,7 +9,7 @@ vi.mock("../../core/telemetry.js", () => ({
   recordMcpSession: vi.fn(),
 }));
 
-import { getClient } from "../server.js";
+import { getClient, resetClient } from "../server.js";
 import { FALLBACK_SINGLE_ONLY_OPS, registerSceneTools, resolveSingleOnlyOps } from "./scene-tools.js";
 
 type RegisteredTool = {
@@ -168,6 +168,66 @@ describe("summer_create_scene guarded create-only write", () => {
     expect(result.isError).toBe(true);
     expect(result.content?.[0]?.text).toContain("target already exists");
     expect(executeOps).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["wrong project", { status: "ok", terminalState: "identity_mismatch", requestId: "scene-1", results: [] }],
+    ["explicit failure", { status: "ok", ok: false, requestId: "scene-1", results: [] }],
+    ["missing result", { status: "ok", terminalState: "applied", requestId: "scene-1", results: [] }],
+    ["malformed results object", { status: "ok", requestId: "scene-1", results: {} }],
+    ["null result item", { status: "ok", requestId: "scene-1", results: [null] }],
+    ["unrelated op", { status: "ok", requestId: "scene-1", results: [{ ok: true, op: "SaveScene" }] }],
+    ["queued item", { status: "ok", requestId: "scene-1", results: [{ ok: true, op: "WriteFile", pending: true }] }],
+    ["no-op", { status: "ok", terminalState: "no_op", requestId: "scene-1", results: [{ ok: true, op: "WriteFile" }] }],
+    ["envelope no-op", { status: "ok", noop: true, requestId: "scene-1", results: [{ ok: true, op: "WriteFile" }] }],
+    ["per-op no-op", { status: "ok", requestId: "scene-1", results: [{ ok: true, op: "WriteFile", noop: true }] }],
+    ["meta no-op", { status: "ok", requestId: "scene-1", results: [{ ok: true, op: "WriteFile", meta: { noop: true } }] }],
+    ["wrong reported op path", { status: "ok", requestId: "scene-1", results: [{ ok: true, op: "WriteFile", path: "res://other.tscn" }] }],
+    ["wrong envelope path", { status: "ok", path: "res://other.tscn", requestId: "scene-1", results: [{ ok: true, op: "WriteFile" }] }],
+    ["wrong path", { status: "ok", requestId: "scene-1", results: [{ ok: true, op: "WriteFile", meta: { path: "res://other.tscn" } }] }],
+  ])("does not report creation or read back on %s receipt", async (_case, receipt) => {
+    vi.mocked(resetClient).mockClear();
+    const { executeIdentityBoundOps, readProjectFile } = mockCreateClient({
+      executeIdentityBoundOps: vi.fn(async () => receipt),
+    });
+    const result = (await sceneTool("summer_create_scene").handler(createArgs)) as {
+      isError?: boolean;
+      content?: Array<{ text?: string }>;
+    };
+    expect(result.isError).toBe(true);
+    const body = JSON.parse(result.content?.[0]?.text ?? "{}");
+    expect(body.receipt).toEqual(receipt);
+    expect(body.created).toBeUndefined();
+    expect(executeIdentityBoundOps).toHaveBeenCalledTimes(1);
+    expect(readProjectFile).not.toHaveBeenCalled();
+    expect(resetClient).not.toHaveBeenCalled();
+  });
+
+  it("accepts a positive legacy result without an op or terminal state", async () => {
+    mockCreateClient({
+      executeIdentityBoundOps: vi.fn(async () => ({ status: "ok", results: [{ ok: true }] })),
+    });
+    const result = (await sceneTool("summer_create_scene").handler(createArgs)) as {
+      isError?: boolean;
+      content?: Array<{ text?: string }>;
+    };
+    expect(result.isError).toBeUndefined();
+    expect(JSON.parse(result.content?.[0]?.text ?? "{}").created).toBe(createArgs.path);
+  });
+
+  it("accepts the current WriteFile result with its matching path", async () => {
+    mockCreateClient({
+      executeIdentityBoundOps: vi.fn(async () => ({
+        status: "ok", terminalState: "applied",
+        results: [{ ok: true, op: "WriteFile", meta: { path: createArgs.path } }],
+      })),
+    });
+    const result = (await sceneTool("summer_create_scene").handler(createArgs)) as {
+      isError?: boolean;
+      content?: Array<{ text?: string }>;
+    };
+    expect(result.isError).toBeUndefined();
+    expect(JSON.parse(result.content?.[0]?.text ?? "{}").created).toBe(createArgs.path);
   });
 
   it("reports a read-back verification failure honestly without failing the create", async () => {

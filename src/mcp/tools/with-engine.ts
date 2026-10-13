@@ -2,6 +2,7 @@ import { getClient, resetClient } from "../server.js";
 import { recordMcpSession } from "../../core/telemetry.js";
 import { thrownErrorClass } from "../../core/tool-errors.js";
 import {
+  EngineReceiptError,
   extractOpError,
   getFailureReason,
   withOldEngineHint,
@@ -62,7 +63,9 @@ export interface WithEngineOptions<T> {
 function readClassifiers(result: unknown): Pick<WithEngineMeta, "terminalState" | "errorClass" | "failureReason"> {
   if (!result || typeof result !== "object") return {};
   const op = result as OpResult;
-  const failed = op.results?.find((entry) => entry.ok === false);
+  const failed = Array.isArray(op.results)
+    ? op.results.find((entry) => entry && typeof entry === "object" && entry.ok === false)
+    : undefined;
   return {
     terminalState: typeof op.terminalState === "string" ? op.terminalState : undefined,
     errorClass: typeof op.errorClass === "string" ? op.errorClass : undefined,
@@ -180,6 +183,22 @@ export async function withEngine<T>(
         meta
       );
     } catch (err) {
+      // A typed post-submission receipt failure is never an authentication
+      // transport failure, even if the engine's error text mentions 401/403.
+      // Preserve the raw receipt and do not send the mutation again.
+      if (err instanceof EngineReceiptError) {
+        return attachMeta(
+          {
+            isError: true,
+            content: [{ type: "text", text: JSON.stringify({
+              error: err.message,
+              receipt: err.receipt,
+              hint: "Inspect the target before retrying the operation.",
+            }, null, 2) }],
+          },
+          { ...readClassifiers(err.receipt), retried, boundProjectIdHash }
+        );
+      }
       // A tagged pre-apply throw (argument validation, or a client that cannot
       // perform the op at all) never reached the engine: keep the cached
       // client, skip the transport recovery recipe, and say so.

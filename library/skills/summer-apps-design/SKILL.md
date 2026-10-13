@@ -76,7 +76,7 @@ component** and copy its example. Never guess an attribute.
 | --- | --- |
 | Key numbers | `summer-stats` > 3-5 `summer-stat label value delta hint tone`. Delta is text like "+12 this week"; the kit colours the number |
 | A comparison or trend | `summer-chart kind x y heading highlight reference`. `y` is a JSON array of keys; `highlight` `{above, below, tone, label, otherLabel}`; `reference` `{value, label, tone}`. One question per chart |
-| Records you scan, sort, edit | `summer-table columns rows row-key`. Column `{key, label, format, digits, type: bar/badge/muted, over, tone, badges, priority: "secondary", thumb, editable, badge, badgeTone}`. `badges` maps values to tones for a status column (`{"draft": "quiet", "review": "info", "done": "ok"}`); `badge` names a row key shown as a small badge inside a cell (e.g. "+3:01" over target). On a phone the table stacks its rows by itself. `clickable` gives `summer-row`; `selectable="single"` or `"multi"` gives `summer-select-rows` |
+| Records you scan, sort, edit | `summer-table columns rows row-key`. Column `{key, label, format, digits, type: bar/badge/muted, over, tone, badges, priority: "secondary", thumb, editable, badge, badgeTone}`. `badges` maps each value to a tone or `{tone, label}` for a status column (`{"draft": "quiet", "review": {"tone": "info", "label": "In review"}, "done": "ok"}`; unlabelled values show in sentence case); `badge` names a row key shown as a small badge inside a cell (e.g. "+3:01" over target). On a phone the table stacks its rows by itself. `clickable` gives `summer-row`; `selectable="single"` or `"multi"` gives `summer-select-rows` |
 | Unsaved table edits | `summer-save-bar count save-label` (`save` and `discard` events; then `table.commit()` or `table.discard()`) |
 | Notes, tasks, comments | `summer-list items checkable action menu`. Item `{id, title, meta, checked, badge: {text, tone}, action}`; `action` `{id, label, icon}` is the one quiet button per row; `menu` items `{id, label, icon, tone: "danger"}`; events `summer-check`, `summer-action`, `summer-item` |
 | Pipeline stages | `summer-board` > `summer-lane heading lane-id add-label` > `summer-board-card heading card-id art meta person comments done`; `summer-move` event |
@@ -98,8 +98,15 @@ If you play Web Audio yourself, call `summer.app.busy(true)` while it plays and
 
 **Dashboard (numbers, chart, table).** Stats, then one chart answering the main
 question with the problem bars highlighted and a reference line for the target,
-then the table with a bar column for the value that matters and a badge only where
-something needs attention. Columns a phone can do without get `priority: "secondary"`.
+then the table with a bar column for the value that matters. Columns a phone can do
+without get `priority: "secondary"`.
+
+**Badges in tables.** Two kinds, one rule each:
+- A workflow status column (draft, in review, done, needs art) shows every value as
+  a badge with `badges`. Neutral steps are `quiet`, work in progress `info`, done
+  `ok`; only values that need someone to act get `warn` or `bad`.
+- A health column (balance, over target, errors) shows a badge only on the rows
+  that need attention and stays empty on the rest. Never "OK" on every row.
 
 **Edit flow.** A row click (`summer-row`) or the header's primary opens a
 `summer-dialog` holding a `summer-form`. For an edit, call
@@ -110,6 +117,11 @@ primary per region: the page header, an open dialog, a form that is the whole pa
 and the save bar are separate regions. A page whose job is the form puts Save in the
 form and no primary in the header.
 
+**Empty page and the header.** One primary on screen. When the whole page is empty,
+the empty state holds the primary ("Add note" or "Ask your agent") and the header
+shows no primary until there is data. When only one section is empty, its
+empty-state button is `secondary` and the header keeps its primary.
+
 **List with row actions.** `summer-list` with `checkable` for done or fixed, one
 `action` for the most common step (`{id: "fix", label: "Mark fixed", icon:
 "check"}`: a quiet button that shows on hover and on touch), and `menu` for the rest
@@ -119,18 +131,23 @@ Delete asks first in a `summer-dialog` with `summer-form destructive`.
 **Data your agent fills in.** When the app waits on an agent (an import, an
 analysis), the empty state says what is missing and offers the request:
 `summer-empty-state heading="No playtest data yet" body="Your agent can import
-last night's playtest."` with a primary `summer-button icon="sparkles"` "Ask your
-agent". On click call `summer.agent.send("playtest.import", {})`, swap the button
+last night's playtest."` with a `summer-button icon="sparkles"` "Ask your agent"
+(primary or secondary per the empty-page rule above). On click call `summer.agent.send("playtest.import", {})`, swap the button
 for `summer-notice tone="info"` "Your agent was asked. This fills in when it
 answers.", and subscribe so rows appear live:
 `summer.data.collection("levels").subscribe(render)` (there is no
 `summer.data.list(name)`).
 
-**Who changed it.** People and agents edit the same data. Each change from
-`subscribe` carries `actor` (`{kind: "person" | "agent", agent, via}`). Show
-it where it helps: a "By" column or list meta with the person's name, or the
-agent's name ("Claude Code") for agent changes. Flash a row or card that someone
-else just changed. Compare with `info.viewer.userId` to say "You".
+**Who added it, who changed it.** People and agents edit the same data. Every
+record carries `createdBy` (set once, when it was added) and `actor` (the last
+writer), both `{userId, kind: "person" | "agent" | "seed", agent, via}` or null on
+old records. A "By"
+column or list meta shows `createdBy`: the person's name, or the agent's name
+("Claude Code") with an "Agent" badge when `createdBy.kind` is "agent". Show
+nothing for "seed" (starter data) or null. Add "Last changed by" from `actor` only when it
+helps the task. Say "You" when the `userId` is `info.viewer.userId`. Flash a row or
+card that someone else just changed. Changes from `subscribe` carry `actor` but not
+`createdBy`: read the record again (`get(id)`) to show who added it.
 
 **Board.** Lanes per stage, art on cards from the asset, owner initial and comment
 count. Move cards with `summer-move`; write the new stage to data at once.
@@ -162,7 +179,7 @@ count. Move cards with `summer-move`; write the new stage to data at once.
 
 Grey boxes around numbers. Cards around every section, cards inside cards. Native
 audio, video, select or range controls. Two primaries in one region. A labelled
-button on every row. A badge on every row that only says all is well. Hand-drawn icons, emoji. Hex
+button on every row. A health badge on every row that only says all is well. Hand-drawn icons, emoji. Hex
 colours, gradients, glows, shadows on cards. Mono font for numbers. "No data yet"
 while loading.
 

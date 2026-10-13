@@ -63,7 +63,9 @@ export interface WithEngineOptions<T> {
 function readClassifiers(result: unknown): Pick<WithEngineMeta, "terminalState" | "errorClass" | "failureReason"> {
   if (!result || typeof result !== "object") return {};
   const op = result as OpResult;
-  const failed = op.results?.find((entry) => entry.ok === false);
+  const failed = Array.isArray(op.results)
+    ? op.results.find((entry) => entry && typeof entry === "object" && entry.ok === false)
+    : undefined;
   return {
     terminalState: typeof op.terminalState === "string" ? op.terminalState : undefined,
     errorClass: typeof op.errorClass === "string" ? op.errorClass : undefined,

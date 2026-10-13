@@ -174,6 +174,8 @@ describe("summer_create_scene guarded create-only write", () => {
     ["wrong project", { status: "ok", terminalState: "identity_mismatch", requestId: "scene-1", results: [] }],
     ["explicit failure", { status: "ok", ok: false, requestId: "scene-1", results: [] }],
     ["missing result", { status: "ok", terminalState: "applied", requestId: "scene-1", results: [] }],
+    ["malformed results object", { status: "ok", requestId: "scene-1", results: {} }],
+    ["null result item", { status: "ok", requestId: "scene-1", results: [null] }],
     ["unrelated op", { status: "ok", requestId: "scene-1", results: [{ ok: true, op: "SaveScene" }] }],
     ["queued item", { status: "ok", requestId: "scene-1", results: [{ ok: true, op: "WriteFile", pending: true }] }],
     ["no-op", { status: "ok", terminalState: "no_op", requestId: "scene-1", results: [{ ok: true, op: "WriteFile" }] }],

@@ -1379,7 +1379,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       {
         op: "WriteFile",
         path: safePath,
-          content: `[gd_scene format=3]\n\n[node name="${rootName}" type="${rootType}"]\n`,
+        content: `[gd_scene format=3]\n\n[node name="${rootName}" type="${rootType}"]\n`,
         mustNotExist: true,
       },
     ]);

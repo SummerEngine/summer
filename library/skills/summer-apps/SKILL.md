@@ -28,6 +28,22 @@ You build it in minutes; the team keeps it.
 - **Code** (default): `index.html` + JS/CSS with the Summer SDK and UI kit. Use it
   for state, editing, shared data, generation or engine access.
 
+## Start from the working app
+
+Read these before writing code; they are exact:
+
+- [minimal-app.md](minimal-app.md): a complete working app (manifest, `index.html`,
+  `app.js`, `app.css`) using shared data, live changes, the viewer, `page.declare`, an
+  agent event, an agent tool and frame-move state. Copy it and change it.
+- [sdk-reference.md](sdk-reference.md): every SDK call with its exact arguments and
+  return shape.
+- [manifest.md](manifest.md): every manifest field.
+
+The app is served from its own host, apps.summerengine.app. Load the SDK and the kit as
+ES modules with root paths: `<script type="module" src="/summer-sdk/v1.js">` and
+`<script type="module" src="/summer-ui/v1/ui.js">`. Then `await summer.ready` before
+the first call, and reach data only through `summer.data.collection(name)`.
+
 ## The loop
 
 1. `summer_app_guide` (whole once per session; later one `section`). Load the
@@ -46,6 +62,20 @@ You build it in minutes; the team keeps it.
 Read and write an app's shared collections with `summer_app_data`. It works with
 no app open, and everyone in the app sees your edits live. "Nerf the bow in our
 balance sheet" is a data write, not a click.
+
+Declare each collection's record shape in the manifest `collections`; `summer_app_tools`
+and `summer_app_data` reads return it, so any agent knows what a record looks like.
+
+```json
+{ "appId": "<id>", "ops": [
+  { "op": "patch", "collection": "items", "recordId": "bow", "patch": { "damage": 36 }, "ifRevision": 4 },
+  { "op": "put", "collection": "notes", "recordId": "n-17", "data": { "text": "Boss too long", "status": "open" } },
+  { "op": "remove", "collection": "notes", "recordId": "n-3" }
+] }
+```
+
+Without `ops`, `summer_app_data` reads (`collection`, `after`, `limit`). `patch` merges keys
+(`null` removes one); `ifRevision` guards against overwriting a newer change.
 
 ## Agent tools
 

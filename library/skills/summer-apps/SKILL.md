@@ -64,6 +64,11 @@ app and answers `app_not_open` otherwise. Prefer data for plain reads and edits.
   building an app that generates.
 - Use real data (`summer.data`, `summer.assets`, `summer.engine.readFile`), never
   placeholder numbers.
+- Studio moves an idle app to a fresh frame every few minutes. Keep UI state you care
+  about in shared data, or return it from `summer.app.onSnapshot(() => state)` (up to
+  256 KB) and read it back from `(await summer.ready).restored`. Wrap Web Audio playback
+  in `summer.app.busy(true)` / `summer.app.busy(false)` so a long sound is not cut;
+  `<audio>` and `<video>` count on their own.
 - Call `summer.page.declare` so agents can read and use the UI; mark delete,
   publish, pay and send actions `critical`.
 - When the SDK cannot do what the app needs, say so and call

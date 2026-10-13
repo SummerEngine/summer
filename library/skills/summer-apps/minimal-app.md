@@ -2,9 +2,9 @@
 
 A working code app: shared notes for a playtest. Copy it, rename things, then grow it.
 It shows every piece an app needs: the manifest, loading the SDK and kit, waiting for
-the host, shared data (list, put, patch, live changes), the viewer, the page
-declaration, an agent event, an agent tool, frame-move state, and empty and error
-states.
+the host, shared data (list, put, live changes), who changed a row (person or agent),
+an edit flow (dialog + form with setValues), status badges, an error with Try again, the
+page declaration, an agent event, an agent tool and frame-move state.
 
 Publish it with `summer_app_publish {appId, dir, manifest, note}` where `dir` holds
 `index.html` and `app.js`, or pass the same two as `files`. The page, sections, inputs,
@@ -58,18 +58,22 @@ table, notice and empty text are kit components (`summer_app_guide` section `kit
 <script type="module" src="/summer-ui/v1/ui.js"></script>
 </head>
 <body>
-<summer-page heading="Playtest notes" purpose="Tester notes per level, shared with your team.">
+<summer-page heading="Playtest notes" purpose="Tester notes per level, shared with your team and your agent.">
   <summer-button slot="actions" id="add" variant="primary" icon="plus">Add note</summer-button>
-  <summer-section heading="New note">
-    <summer-grid columns="2">
-      <summer-text-input id="text" label="Note" placeholder="I fell through the bridge twice"></summer-text-input>
-      <summer-text-input id="level" label="Level" placeholder="bridge"></summer-text-input>
-    </summer-grid>
-  </summer-section>
   <summer-section heading="Notes">
-    <summer-notice id="error" tone="error" hidden></summer-notice>
-    <summer-table id="table" row-key="id" sortable loading empty-text="No notes yet. Add the first one, or ask your agent to add the testers' notes."></summer-table>
+    <summer-notice id="error" tone="error" action="Try again" action-icon="refresh-cw" hidden></summer-notice>
+    <summer-table id="table" row-key="id" sortable clickable loading
+      empty-text="No notes yet. Add the first one, or ask your agent to add the testers' notes."></summer-table>
   </summer-section>
+  <summer-dialog id="dialog" heading="Note" description="Shared with your team and your agent.">
+    <summer-form id="form" submit-label="Save note">
+      <summer-text-input label="Note" name="text" multiline required></summer-text-input>
+      <summer-grid columns="2">
+        <summer-text-input label="Level" name="level" placeholder="bridge"></summer-text-input>
+        <summer-select label="Status" name="status" options='[{"value":"open","label":"Open"},{"value":"fixed","label":"Fixed"}]'></summer-select>
+      </summer-grid>
+    </summer-form>
+  </summer-dialog>
 </summer-page>
 <!-- app.js runs after the SDK module (module scripts run in order). -->
 <script type="module" src="app.js"></script>
@@ -81,73 +85,84 @@ table, notice and empty text are kit components (`summer_app_guide` section `kit
 
 ```js
 const notes = summer.data.collection("notes");
-const info = await summer.ready;            // the Studio host connected: info.viewer, info.params, info.restored
-const viewer = await summer.app.viewer();   // { userId, name, role, canManage, ... }
-let rows = [];
+const info = await summer.ready;   // { viewer: { userId, name }, params, restored, ... }
+const $ = (id) => document.getElementById(id);
+const table = $("table"), dialog = $("dialog"), form = $("form"), error = $("error");
+let editing = null;                 // the note id being edited, or null for a new one
 
-// Frame moves: Studio moves an idle app to a fresh frame every few minutes.
-// Shared data survives on its own; keep only UI state here.
-const draft = document.getElementById("text");
-if (info.restored?.draft) draft.value = info.restored.draft;
-summer.app.onSnapshot(() => ({ draft: draft.value }));
+table.columns = [
+  { key: "text", label: "Note", priority: "primary" },
+  { key: "level", label: "Level" },
+  { key: "status", label: "Status", badges: { open: "warn", fixed: "ok" } },   // one badge tone per value
+  { key: "by", label: "By", type: "muted" },
+];
 
 async function load() {
+  table.setAttribute("loading", "");
   try {
-    const page = await notes.list({ limit: 500 });   // { revision, records: [{ recordId, data, revision, ... }], next }
-    rows = page.records.map((r) => ({ id: r.recordId, ...r.data }));
-    render();
-  } catch (error) {
-    showError(error.message);
+    const page = await notes.list({ limit: 500 });   // removed notes are never listed
+    table.rows = page.records.map((r) => ({
+      id: r.recordId,
+      ...r.data,
+      // actor: { userId, kind: "person" | "agent", agent?, via? }: show what an agent added
+      by: r.actor?.kind === "agent" ? `${r.actor.agent ?? "Agent"} (agent)` : r.data.author ?? "",
+    }));
+    error.hidden = true;
+  } catch (e) {
+    error.setAttribute("text", `Could not load notes: ${e.message}`);
+    error.hidden = false;
+  } finally {
+    table.removeAttribute("loading");
   }
 }
+error.addEventListener("action", load);   // the notice's "Try again" button
 
-function render() {
-  const table = document.getElementById("table");
-  table.columns = [
-    { key: "text", label: "Note" },
-    { key: "level", label: "Level" },
-    { key: "status", label: "Status" },
-    { key: "author", label: "By" },
-  ];
-  table.rows = rows;
-  table.removeAttribute("loading");
+function openEditor(row) {
+  editing = row?.id ?? null;
+  form.setValues(row ?? { text: "", level: "", status: "open" });
+  dialog.show();
 }
+$("add").addEventListener("click", () => openEditor(null));
+table.addEventListener("summer-row", (event) => openEditor(event.detail.row));   // click a row to edit
 
-function showError(message) {
-  const notice = document.getElementById("error");
-  notice.setAttribute("text", `Could not load notes: ${message}`);
-  notice.hidden = false;
-}
-
-async function addNote(text, level) {
-  const id = crypto.randomUUID();
-  await notes.put(id, { text, level: level || "", status: "open", author: viewer.name ?? "someone" });
-  await summer.agent.send("note.added", { id, text, level });   // name must be in manifest.agentEvents
-  return id;
-}
-
-document.getElementById("add").addEventListener("click", async () => {
-  const text = draft.value.trim();
-  if (!text) return;
-  await addNote(text, document.getElementById("level").value.trim());
-  draft.value = "";
-  summerUI.toast("Note added");
+form.addEventListener("submit", async (event) => {
+  const { text, level, status } = event.detail.values;   // numbers come as numbers, empty as null
+  form.setAttribute("busy", "");
+  try {
+    const id = editing ?? crypto.randomUUID();
+    await notes.put(id, { text, level: level ?? "", status: status ?? "open", author: info.viewer.name ?? "someone" });
+    if (!editing) await summer.agent.send("note.added", { id, text, level });   // name is in manifest.agentEvents
+    dialog.close();
+    summerUI.toast("Note saved");
+  } catch (e) {
+    form.setAttribute("error", e.message);
+  } finally {
+    form.removeAttribute("busy");
+  }
 });
 
-// Live: every change by a teammate or an agent arrives here.
-notes.subscribe((change) => {
-  if (change.reset) return load();        // the log moved on: read everything again
-  load();                                  // or apply change.ops ({ op, collection, recordId, data | patch }) in place
-});
+// Live: every change by a teammate or an agent arrives as { revision, actor, ops } (or { reset: true }).
+notes.subscribe(() => load());
 
 // Agent tool: summer_app_call { tool: "add_note", input: { text, level } } runs this while the app is open.
-summer.agent.tool("add_note", async ({ text, level }) => ({ id: await addNote(text, level) }));
+// Its writes are recorded as the calling agent's (actor.kind "agent", via "agent-tool").
+summer.agent.tool("add_note", async ({ text, level }, { agent }) => {
+  const id = crypto.randomUUID();
+  await notes.put(id, { text, level: level ?? "", status: "open", author: agent });
+  return { id };
+});
 
 // What agents can read and use with summer_app_page.
-summer.page.declare({
-  fields: [{ id: "text", label: "Note", kind: "text", value: draft.value, set: (value) => (draft.value = String(value)) }],
-  actions: [{ id: "add", label: "Add note", run: () => document.getElementById("add").click() }],
-});
+summer.page.declare({ actions: [{ id: "add", label: "Add note", run: () => openEditor(null) }] });
+
+// Frame moves: Studio moves an idle app to a fresh frame every few minutes. Shared data survives on
+// its own; keep only UI state, such as an open editor.
+summer.app.onSnapshot(() => (dialog.hasAttribute("open") ? { editing, values: form.values } : null));
+if (info.restored?.values) {
+  editing = info.restored.editing;
+  form.setValues(info.restored.values);
+  dialog.show();
+}
 
 load();
 ```

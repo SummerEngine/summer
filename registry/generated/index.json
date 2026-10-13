@@ -3736,7 +3736,7 @@
       "id": "skill/summer-apps-design",
       "kind": "skill",
       "version": "0.1.0",
-      "content_hash": "5d2f29de227f2452b9c9ac2f47a0946a51b3efd23de7a054c6ec27edbca36f7e",
+      "content_hash": "ef63d849a31e84142ec63ad57a7eb8db2743d273198549669a5bb7273e4984da",
       "summary": "How a Summer App should look - page layout, Summer UI kit components, tables, charts, media, boards, states and a pre-ship checklist.",
       "use_when": [
         "building or changing the UI of a Summer App (agent-built team tool inside Summer Studio)",

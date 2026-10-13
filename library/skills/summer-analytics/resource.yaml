@@ -1,11 +1,12 @@
 id: skill/summer-analytics
 kind: skill
-version: 1.0.0
+version: 1.1.0
 summary: "Send game events to Summer analytics from the authority or client: fire-and-forget, never blocking gameplay."
 use_when:
   - "adding analytics, telemetry or event tracking to a Summer game: level completed, coin collected, tutorial funnel"
   - "deciding what to track on the client versus the authority, and how to name analytics events and properties"
   - "analytics capture fails with unavailable, capacity_exceeded or analytics_storage_limit_exceeded"
+  - "checking whether a hosted custom event was observed, without treating a local log or an empty catalog as stored-event proof"
 facets:
   lifecycle:
     - build

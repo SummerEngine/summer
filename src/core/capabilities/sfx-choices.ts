@@ -106,7 +106,9 @@ interface Clip {
 
 function hostOf(url: string): string | null {
   try {
-    return new URL(url).hostname.toLowerCase();
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    return parsed.hostname.toLowerCase();
   } catch {
     return null;
   }
@@ -180,13 +182,13 @@ async function showChoicesPage(
   studioPath: string | undefined,
   deps: SfxChoicesDeps
 ): Promise<{ shown: ShownIn; studioTab?: string; browser?: string }> {
+  if (!canOpenReviewUrl(reviewUrl)) return { shown: "not_opened", browser: "not_a_summer_url" };
   let studioTab: string | undefined;
   if (studioPath) {
     const moved = await deps.studioOpen(studioPath, reviewUrl);
     if (moved.ok) return { shown: "studio_tab" };
     studioTab = moved.reason;
   }
-  if (!canOpenReviewUrl(reviewUrl)) return { shown: "not_opened", studioTab, browser: "not_a_summer_url" };
   if (!deps.canOpenBrowser()) return { shown: "not_opened", studioTab, browser: "no_browser_here" };
   try {
     await deps.openUrl(reviewUrl);
@@ -243,13 +245,18 @@ export async function generateSfxChoices(
     };
   }
 
-  const shown = args.open
-    ? await showChoicesPage(reviewUrl, studioPath, deps)
-    : { shown: "not_opened" as ShownIn, browser: "open_false" };
+  const safeReviewUrl = canOpenReviewUrl(reviewUrl);
+  const shown = !safeReviewUrl
+    ? { shown: "not_opened" as ShownIn, browser: "not_a_summer_url" }
+    : args.open
+      ? await showChoicesPage(reviewUrl, studioPath, deps)
+      : { shown: "not_opened" as ShownIn, browser: "open_false" };
 
   const count = clips.length;
   const where =
-    shown.shown === "studio_tab"
+    shown.browser === "not_a_summer_url"
+      ? "I could not open the review page because its URL was not an HTTP(S) Summer page"
+      : shown.shown === "studio_tab"
       ? "I opened them in your Summer Studio tab"
       : shown.shown === "browser"
         ? "I opened them in your browser"
@@ -269,7 +276,7 @@ export async function generateSfxChoices(
     clips: clips.map(clipSummary),
     failed,
     say,
-    next: `Tell the person the "say" text (include reviewUrl when shown is "not_opened"). Do not pick for them. Then call summer_get_choices with choiceSetId "${choiceSetId}" and waitSeconds ${MAX_CHOICES_WAIT_SECONDS}; call it again while status is "pending".`,
+    next: `Tell the person the "say" text${safeReviewUrl ? ' (include reviewUrl when shown is "not_opened")' : '; the returned reviewUrl was rejected, so do not suggest opening it'}. Do not pick for them. Then call summer_get_choices with choiceSetId "${choiceSetId}" and waitSeconds ${MAX_CHOICES_WAIT_SECONDS}; call it again while status is "pending".`,
   };
 }
 

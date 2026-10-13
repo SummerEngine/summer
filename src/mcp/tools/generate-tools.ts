@@ -562,9 +562,10 @@ versions to the person on a Summer Studio page, where they listen and approve
 one or more. The approved model becomes their default for sound effects.
 
 Use it for the first sound effect in a chat after the person said yes to
-"three versions to pick from", or whenever they want to compare. The page
-opens in their open Summer Studio tab when there is one, else in the browser
-(open:false skips the browser and only returns reviewUrl).
+"three versions to pick from", or whenever they want to compare. The server
+queues the page for their open Summer Studio tab when there is one; queuing
+does not confirm the page appeared, so share reviewUrl if it does not. With
+no open tab it opens the browser (open:false skips the browser).
 
 Then tell the person the returned "say" text and call summer_get_choices
 with the choiceSetId. Do not pick for them.

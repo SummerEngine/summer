@@ -68,7 +68,10 @@ describe("generateSfxChoices", () => {
     expect(result).toMatchObject({ ok: true, choiceSetId: "cs_1", shown: "studio_tab", reviewUrl: REVIEW_URL });
     expect(result).not.toHaveProperty("notShownBecause");
     expect(result.say).toContain("3 versions");
-    expect(result.say).toContain("I opened them in your Summer Studio tab");
+    expect(result.say).toContain("I sent them to your Summer Studio tab");
+    expect(result.say).toContain(`If the page does not appear, open ${REVIEW_URL}`);
+    expect(result.say).not.toContain("I opened them in your Summer Studio tab");
+    expect(result.next).toContain("not proof the page appeared");
     expect(result.next).toContain("summer_get_choices");
     expect((result.clips as unknown[]).length).toBe(3);
   });
@@ -78,6 +81,7 @@ describe("generateSfxChoices", () => {
     const result = await generateSfxChoices(sfxChoicesArgsSchema.parse({ text: "clash" }), deps);
     expect(deps.openUrl).toHaveBeenCalledWith(REVIEW_URL);
     expect(result).toMatchObject({ shown: "browser", notShownBecause: { studioTab: "no_tab" } });
+    expect(result.reviewUrl).toBe(REVIEW_URL);
   });
 
   it("opens the browser for an older server that sends no studioTab", async () => {
@@ -93,6 +97,7 @@ describe("generateSfxChoices", () => {
     const result = await generateSfxChoices(sfxChoicesArgsSchema.parse({ text: "clash", open: false }), deps);
     expect(deps.openUrl).not.toHaveBeenCalled();
     expect(result).toMatchObject({ shown: "studio_tab" });
+    expect(result.say).toContain(`If the page does not appear, open ${REVIEW_URL}`);
   });
 
   it("only returns the URL with open:false, without a browser, or for a non-Summer URL", async () => {

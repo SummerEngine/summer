@@ -90,7 +90,7 @@ Show the prompt and the length before you call; every version is a billed genera
 summer_generate_sfx_choices(text: "<prompt>", durationSeconds: 1.0)
 ```
 
-The page opens in their open Summer Studio tab, else in the browser. Tell them the returned `say` text; if `shown` is `not_opened`, give them `reviewUrl`. Do not pick for them. Then:
+The server queues the page for their open Summer Studio tab, else the tool opens a browser. Tell them the returned `say` text, including its `reviewUrl` fallback if the tab page does not appear. `shown: "studio_tab"` means queued, not confirmed on screen. Do not pick for them. Then:
 
 ```
 summer_get_choices(choiceSetId: "<id>", waitSeconds: 50)

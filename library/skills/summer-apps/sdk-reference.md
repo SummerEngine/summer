@@ -95,7 +95,7 @@ Paid calls spend the viewer's credits; `spend_cap_reached` when the app's daily 
 | `summer.team.members()` → `{ members: [{ userId, role, name, image }] }` (never emails) | team:read |
 | `summer.team.presence()` → `{ presence: [{ userId, name, image, surface, seenAt }] }` | none |
 | `summer.projects.list()`, `summer.projects.get(id)` | projects:read |
-| `summer.grow.portfolio({ range: 7\|28\|90 })`, `summer.grow.game(id)`, `summer.grow.earnings()` | grow:read |
+| `summer.grow.portfolio({ range: 7\|28\|90 })` (totals and per-game rows each carry `previous`: the same-length window before, or null), `summer.grow.game(id)`, `summer.grow.earnings()` | grow:read |
 
 ## Engine [engine:read / engine:write]
 

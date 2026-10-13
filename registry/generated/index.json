@@ -3690,7 +3690,7 @@
       "id": "skill/summer-apps",
       "kind": "skill",
       "version": "0.1.0",
-      "content_hash": "2e93b93eed8d161742b98b14085b3c9c7865b902ce41cad9521976a2ce310412",
+      "content_hash": "f15132b38b8540a53a04e74ab9f9ce4c7cfe5ff628383c5d20dfe5c5c71ca3b8",
       "summary": "Build a Summer App, a team tool inside Summer Studio (balance table, quest editor, tracker, pick grid): build loop, Layout vs code, data as API, agent tools.",
       "use_when": [
         "the person asks for a tool for their team (\"build us a loot balance tool\", \"a board to track creatures\")",

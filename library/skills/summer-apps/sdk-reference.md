@@ -70,7 +70,7 @@ writes your own code made while running an agent tool for `summer_app_call` (tho
 | Call | Returns |
 |---|---|
 | `summer.agent.send(name, payload)` | `{ seq }`. `name` must be in `manifest.agentEvents`. Agents read it with `summer_app_events`. |
-| `summer.agent.tool(name, async (input) => result)` | stop function. `name` must be in `manifest.agentTools`. `summer_app_call` runs it; return JSON (under 100 KB); a throw becomes `tool_failed`. |
+| `summer.agent.tool(name, async (input, { agent }) => result)` | stop function. `name` must be in `manifest.agentTools`; `agent` is the calling agent's name. Data writes the handler makes are recorded as that agent's (`via: "agent-tool"`). `summer_app_call` runs it; return JSON (under 100 KB); a throw becomes `tool_failed`. |
 | `summer.agent.onMessage((message) => …)` | stop function |
 | `summer.page.declare({ fields, actions })` | promise. `fields: [{ id, label, kind: "text"\|"long-text"\|"number"\|"toggle"\|"choice", value, options?: [{ value, label }] (for choice), max?, hint?, set(value) }]`, `actions: [{ id, label, description?, critical?, run() }]`. Call it again when values change. Critical actions are pressed only by the person. |
 
@@ -111,9 +111,11 @@ Paid calls spend the viewer's credits; `spend_cap_reached` when the app's daily 
 
 ## Kit values
 
-`<summer-form>` gives its fields' values by `name` (fields anywhere inside it count). A
-`<summer-text-input type="number">` value is a string: convert with `Number(value)` before you
-save it. A `<summer-toggle>` is a boolean.
+`<summer-form>` gives its fields' values by `name` (fields anywhere inside it count, also
+inside `summer-grid`); `form.values = {...}` or `form.setValues({...})` loads a record into it
+for editing. `<summer-text-input type="number">` and `<summer-slider>` give numbers in form
+values and change events (an empty number field gives `null`); the input's `.value` property
+stays text. A `<summer-toggle>` is a boolean.
 
 ## Errors
 

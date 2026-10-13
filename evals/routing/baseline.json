@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-12",
+  "generated_at": "2026-10-13",
   "corpus_source": "registry/generated/index.json",
-  "corpus_size": 258,
-  "query_count": 130,
+  "corpus_size": 259,
+  "query_count": 131,
   "gap_count": 11,
   "mean_recall_at_5": 1,
-  "mean_recall_at_1": 0.8231,
-  "mrr_at_5": 0.9291,
+  "mean_recall_at_1": 0.8206,
+  "mrr_at_5": 0.9296,
   "per_kind": {
     "reference": {
       "expected": 1,
@@ -14,8 +14,8 @@
       "recall_at_5": 1
     },
     "skill": {
-      "expected": 109,
-      "hit": 109,
+      "expected": 111,
+      "hit": 111,
       "recall_at_5": 1
     },
     "tool": {
@@ -85,6 +85,7 @@
     "the Summer Games phone app says the game could not start, but it works on desktop": 1,
     "save each player's progress between matches": 1,
     "add a leaderboard to my online game": 1,
+    "I changed what my farm World saves, how do old Worlds keep their progress": 1,
     "my grass lighting looks flat": 1,
     "the scene is too dark and the shadows are blocky": 1,
     "make it look like PS1 horror": 1,

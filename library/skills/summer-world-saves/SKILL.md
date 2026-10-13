@@ -62,7 +62,7 @@ In `world.json`, change these fields and keep everything else:
 ```
 
 - `recovery_point_seconds` (1 to 3600) is the most play you accept losing in a crash. Commit at least that often.
-- `snapshot_schemas`: exactly one name for your save format in this release. There are no migrations.
+- `snapshot_schemas`: one name for your save format, its **save version**. Reading older save versions with migration steps is coming with Engine interface v7: `persistent-world-save-migrations`.
 - `drain_seconds`: 60 to 300.
 - A save holds at most **16 MiB**.
 
@@ -282,3 +282,4 @@ Restoring after a real restart can only be proven hosted.
 - `multiplayer-state` — the shared document this skill saves
 - `multiplayer-project` — `world.json` and the authority scene
 - `multiplayer-testing` — Local Play runs and markers
+- `persistent-world-save-migrations` — changing the save format of existing Worlds

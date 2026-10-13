@@ -123,6 +123,7 @@ Each skill continues the same small game, so their code fits together:
 | `summer-friends` | The player's Summer friends and direct messages | No, hosted only |
 | `summer-player-data` | Progress that follows the player to any World | Yes, stored on disk |
 | `summer-world-saves` | Worlds that persist between sessions | Yes, in memory |
+| `persistent-world-save-migrations` | Changing a persistent World's save format (coming with Engine interface v7) | No; fixtures instead |
 | `summer-world-chat` | Text chat inside a World | No, hosted only |
 | `summer-store` | Selling items for Sparks, owned items | Items yes; the store is hosted only |
 | `summer-analytics` | Game events for your analytics dashboard | No, hosted only |

@@ -1,6 +1,6 @@
 # Summer skills
 
-> 123 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
+> 124 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
 
 The folder is flat on purpose (`docs/design/DECISIONS.md`, D3): a skill usually belongs to several domains, so categories live in each skill's `facets.domains` and this index is rendered from them. The first domain listed is the primary one. `summer skills list --by-domain` prints the same grouping; `summer skills info <slug>` shows one skill.
 
@@ -22,7 +22,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 - [editor](#editor) (1)
 - [gameplay](#gameplay) (6)
 - [level-design](#level-design) (2)
-- [multiplayer](#multiplayer) (16)
+- [multiplayer](#multiplayer) (17)
 - [navigation](#navigation) (1)
 - [performance](#performance) (1)
 - [rendering](#rendering) (6)
@@ -184,6 +184,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [*multiplayer-publish*](./multiplayer-publish/SKILL.md) (preview) | Ship a hosted Summer multiplayer game: the summer.games bundle, server preset, pre-upload checks, and a new Build. | deployment |
 | [multiplayer-state](./multiplayer-state/SKILL.md) | Authority-owned game state in Summer multiplayer: shared and private State groups, validated Commands, and Events. | game-design, scripting |
 | [multiplayer-testing](./multiplayer-testing/SKILL.md) | Test a Summer multiplayer game with Local Play: several players, a bad network, bots, and what a passing run shows. | playtest, verification |
+| [*persistent-world-save-migrations*](./persistent-world-save-migrations/SKILL.md) (preview) | Change a persistent World's save format without losing progress: save versions, migration steps, fixtures and upgrades. | scripting |
 | [*summer-analytics*](./summer-analytics/SKILL.md) (preview) | Send game events to Summer analytics from the authority or client: fire-and-forget, never blocking gameplay. | scripting |
 | [*summer-friends*](./summer-friends/SKILL.md) (preview) | Summer friends in a game: a consented friends list, profile and chat screens, direct messages. Hosted only. | ui |
 | [*summer-leaderboards*](./summer-leaderboards/SKILL.md) (preview) | Leaderboards in a Summer game: queue ratings from matches, and Game rankings your authority scores. | ui |

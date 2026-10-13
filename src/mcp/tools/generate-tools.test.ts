@@ -737,6 +737,17 @@ describe("summer_generate_motion across MCP and CLI", () => {
 
 describe("sound-effect models and choices across MCP and CLI", () => {
   const noEngine = { engine: async () => { throw new Error("Sound generation must not need an engine"); } };
+  const choiceResponse = {
+    choiceSetId: "cs_9",
+    reviewUrl: "https://www.summerengine.com/studio/choices/cs_9",
+    studioPath: "/studio/choices/cs_9",
+    prompt: "whoosh",
+    clips: [
+      { clipId: "c1", modelId: "eleven_text_to_sound_v2", modelName: "ElevenLabs SFX v2", audioUrl: "https://cdn.example/1.wav", assetId: "a1", durationSeconds: 1 },
+      { clipId: "c2", modelId: "stable-audio-3-sfx", modelName: "Stable Audio 3 SFX", audioUrl: "https://cdn.example/2.wav", assetId: "a2", durationSeconds: 1 },
+    ],
+    failed: [],
+  };
 
   async function call(surface: "mcp" | "cli", tool: string, args: Record<string, unknown>) {
     if (surface === "cli") {
@@ -768,20 +779,7 @@ describe("sound-effect models and choices across MCP and CLI", () => {
 
     it(`${surface} makes a choice set and returns the review URL with open:false`, async () => {
       const fetchMock = vi.fn(async () =>
-        new Response(
-          JSON.stringify({
-            choiceSetId: "cs_9",
-            reviewUrl: "https://www.summerengine.com/studio/choices/cs_9",
-            studioPath: "/studio/choices/cs_9",
-            prompt: "whoosh",
-            clips: [
-              { clipId: "c1", modelId: "eleven_text_to_sound_v2", modelName: "ElevenLabs SFX v2", audioUrl: "https://cdn.example/1.wav", assetId: "a1", durationSeconds: 1 },
-              { clipId: "c2", modelId: "stable-audio-3-sfx", modelName: "Stable Audio 3 SFX", audioUrl: "https://cdn.example/2.wav", assetId: "a2", durationSeconds: 1 },
-            ],
-            failed: [],
-          }),
-          { status: 200 }
-        )
+        new Response(JSON.stringify(choiceResponse), { status: 200 })
       );
       globalThis.fetch = fetchMock;
       const result = (await call(surface, "summer_generate_sfx_choices", {
@@ -801,6 +799,22 @@ describe("sound-effect models and choices across MCP and CLI", () => {
       });
       expect(result).toMatchObject({ ok: true, choiceSetId: "cs_9", shown: "not_opened", reviewUrl: "https://www.summerengine.com/studio/choices/cs_9" });
       expect(String(result.next)).toContain("summer_get_choices");
+    });
+
+    it(`${surface} reports a queued tab as unconfirmed and keeps its review URL with open:false`, async () => {
+      globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({ ...choiceResponse, studioTab: { queued: true, tabId: "tab_1" } }), { status: 200 }));
+      const result = (await call(surface, "summer_generate_sfx_choices", { text: "whoosh", open: false })) as Record<string, unknown>;
+      expect(result).toMatchObject({ ok: true, shown: "studio_tab", reviewUrl: choiceResponse.reviewUrl });
+      expect(String(result.say)).toContain(`If the page does not appear, open ${choiceResponse.reviewUrl}`);
+      expect(String(result.say)).not.toContain("I opened them in your Summer Studio tab");
+      expect(String(result.next)).toContain("not proof the page appeared");
+    });
+
+    it(`${surface} keeps the review URL when no tab is open and browser opening is disabled`, async () => {
+      globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({ ...choiceResponse, studioTab: { queued: false, reason: "no_tab" } }), { status: 200 }));
+      const result = (await call(surface, "summer_generate_sfx_choices", { text: "whoosh", open: false })) as Record<string, unknown>;
+      expect(result).toMatchObject({ ok: true, shown: "not_opened", reviewUrl: choiceResponse.reviewUrl });
+      expect(String(result.say)).toContain(choiceResponse.reviewUrl);
     });
 
     it(`${surface} reads a choice set with waitSeconds`, async () => {

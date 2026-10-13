@@ -82,6 +82,7 @@ export interface SfxChoicesDeps {
   canOpenBrowser(): boolean;
 }
 
+/** `studio_tab` means the open command was queued, not that the page rendered. */
 export type ShownIn = "studio_tab" | "browser" | "not_opened";
 
 interface Clip {
@@ -213,7 +214,7 @@ export async function generateSfxChoices(
   const count = clips.length;
   const where =
     shown.shown === "studio_tab"
-      ? "I opened them in your Summer Studio tab"
+      ? `I sent them to your Summer Studio tab. If the page does not appear, open ${reviewUrl}`
       : shown.shown === "browser"
         ? "I opened them in your browser"
         : `Open ${reviewUrl} to hear them`;
@@ -232,7 +233,7 @@ export async function generateSfxChoices(
     clips: clips.map(clipSummary),
     failed,
     say,
-    next: `Tell the person the "say" text (include reviewUrl when shown is "not_opened"). Do not pick for them. Then call summer_get_choices with choiceSetId "${choiceSetId}" and waitSeconds ${MAX_CHOICES_WAIT_SECONDS}; call it again while status is "pending".`,
+    next: `Tell the person the "say" text. A queued Studio tab is not proof the page appeared; the text includes reviewUrl as a fallback. Do not pick for them. Then call summer_get_choices with choiceSetId "${choiceSetId}" and waitSeconds ${MAX_CHOICES_WAIT_SECONDS}; call it again while status is "pending".`,
   };
 }
 

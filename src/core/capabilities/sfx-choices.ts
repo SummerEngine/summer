@@ -1,6 +1,4 @@
 import { z } from "zod";
-import { hasStoreSignIn, hostedResultPayload, withHostedMcp } from "../hosted-mcp.js";
-import { resolveMcpResourceUrl } from "../oauth.js";
 
 /**
  * Sound-effect choices (summer_generate_sfx_choices + summer_get_choices).
@@ -10,6 +8,8 @@ import { resolveMcpResourceUrl } from "../oauth.js";
  * POST /api/mcp/generate/audio/choices makes the versions and a choice set,
  * the person listens and approves one or more on the Studio page
  * /studio/choices/<id>, and GET /api/mcp/choices/<id> reads the decision.
+ * The server queues the page for the person's open Studio tab itself
+ * (studioTab.queued); only when no tab took it does this open a browser.
  * An approval makes that model the person's default for later
  * summer_generate_audio sound_effects calls without a modelId.
  *
@@ -26,7 +26,6 @@ export const CHOICES_ENDPOINT_PREFIX = "/api/mcp/choices/";
 /** Three models run in parallel on the server; the slowest decides. */
 export const SFX_CHOICES_TIMEOUT_MS = 240_000;
 export const MAX_CHOICES_WAIT_SECONDS = 50;
-const STUDIO_OPEN_TIMEOUT_MS = 20_000;
 
 export const sfxChoicesArgsSchema = z.object({
   text: z
@@ -53,7 +52,7 @@ export const sfxChoicesArgsSchema = z.object({
   open: z
     .boolean()
     .default(true)
-    .describe("Show the choices page to the person (their open Studio tab, else the browser). false: only return the URL"),
+    .describe("Show the choices page in the browser when no open Studio tab took it. false: no browser, only return the URL"),
 });
 export type SfxChoicesArgs = z.input<typeof sfxChoicesArgsSchema>;
 
@@ -76,13 +75,9 @@ export interface GatewayReply {
   status: number;
 }
 
-export type StudioOpenOutcome = { ok: true } | { ok: false; reason: string };
-
 export interface SfxChoicesDeps {
   post(endpoint: string, body: Record<string, unknown>, timeoutMs: number): Promise<GatewayReply>;
   get(endpoint: string, params: URLSearchParams, timeoutMs: number): Promise<GatewayReply>;
-  /** Move the person's open Studio tab to a /studio path (reviewUrl: the same page as a full URL). */
-  studioOpen(path: string, reviewUrl: string): Promise<StudioOpenOutcome>;
   openUrl(url: string): Promise<unknown>;
   canOpenBrowser(): boolean;
 }
@@ -133,66 +128,29 @@ export function defaultCanOpenBrowser(env: NodeJS.ProcessEnv = process.env, plat
   return true;
 }
 
-/**
- * Move the person's open Studio tab through the hosted Summer Engine MCP's
- * summer_studio_open (needs the store sign-in). Only for the production site:
- * the hosted MCP moves tabs on summerengine.com, so a review page on another
- * origin (a preview deploy, local web dev) is opened in the browser instead.
- */
-export async function openInStudioTab(path: string, reviewUrl: string): Promise<StudioOpenOutcome> {
-  if (!isSummerHost(hostOf(reviewUrl))) return { ok: false, reason: "review_page_not_on_summerengine_com" };
-  let resource: string;
-  try {
-    resource = resolveMcpResourceUrl();
-  } catch {
-    return { ok: false, reason: "hosted_mcp_url_invalid" };
-  }
-  if (!isSummerHost(hostOf(resource))) return { ok: false, reason: "hosted_mcp_not_summerengine_com" };
-  if (!(await hasStoreSignIn())) return { ok: false, reason: "no_store_sign_in" };
-
-  let timer: NodeJS.Timeout | undefined;
-  const timeout = new Promise<StudioOpenOutcome>((resolve) => {
-    timer = setTimeout(() => resolve({ ok: false, reason: "studio_tab_timeout" }), STUDIO_OPEN_TIMEOUT_MS);
-    timer.unref?.();
-  });
-  const attempt = (async (): Promise<StudioOpenOutcome> => {
-    try {
-      const result = await withHostedMcp((client) => client.callTool({ name: "summer_studio_open", arguments: { path } }));
-      const payload = hostedResultPayload(result);
-      if (payload.isError || payload.json?.ok === false) {
-        const code = typeof payload.json?.error === "string" ? payload.json.error : "studio_open_failed";
-        return { ok: false, reason: code };
-      }
-      return { ok: true };
-    } catch (error) {
-      return { ok: false, reason: error instanceof Error ? error.message : String(error) };
-    }
-  })();
-  try {
-    return await Promise.race([attempt, timeout]);
-  } finally {
-    clearTimeout(timer);
-  }
+/** The server's studioTab answer: queued for the person's open tab, or why not. Missing on older servers. */
+function studioTabAnswer(value: unknown): { queued: boolean; reason?: string } | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  return {
+    queued: record.queued === true,
+    ...(typeof record.reason === "string" ? { reason: record.reason } : {}),
+  };
 }
 
 async function showChoicesPage(
   reviewUrl: string,
-  studioPath: string | undefined,
+  studioTab: { queued: boolean; reason?: string } | null,
   deps: SfxChoicesDeps
 ): Promise<{ shown: ShownIn; studioTab?: string; browser?: string }> {
-  let studioTab: string | undefined;
-  if (studioPath) {
-    const moved = await deps.studioOpen(studioPath, reviewUrl);
-    if (moved.ok) return { shown: "studio_tab" };
-    studioTab = moved.reason;
-  }
-  if (!canOpenReviewUrl(reviewUrl)) return { shown: "not_opened", studioTab, browser: "not_a_summer_url" };
-  if (!deps.canOpenBrowser()) return { shown: "not_opened", studioTab, browser: "no_browser_here" };
+  const notQueued = studioTab ? (studioTab.reason ?? "not_queued") : undefined;
+  if (!canOpenReviewUrl(reviewUrl)) return { shown: "not_opened", studioTab: notQueued, browser: "not_a_summer_url" };
+  if (!deps.canOpenBrowser()) return { shown: "not_opened", studioTab: notQueued, browser: "no_browser_here" };
   try {
     await deps.openUrl(reviewUrl);
-    return { shown: "browser", studioTab };
+    return { shown: "browser", studioTab: notQueued };
   } catch (error) {
-    return { shown: "not_opened", studioTab, browser: error instanceof Error ? error.message : String(error) };
+    return { shown: "not_opened", studioTab: notQueued, browser: error instanceof Error ? error.message : String(error) };
   }
 }
 
@@ -243,9 +201,14 @@ export async function generateSfxChoices(
     };
   }
 
-  const shown = args.open
-    ? await showChoicesPage(reviewUrl, studioPath, deps)
-    : { shown: "not_opened" as ShownIn, browser: "open_false" };
+  // The server queued the Studio-tab open already; that happens even with
+  // open:false, so report it rather than hide it.
+  const studioTab = studioTabAnswer(data.studioTab);
+  const shown: { shown: ShownIn; studioTab?: string; browser?: string } = studioTab?.queued
+    ? { shown: "studio_tab" }
+    : args.open
+      ? await showChoicesPage(reviewUrl, studioTab, deps)
+      : { shown: "not_opened", browser: "open_false" };
 
   const count = clips.length;
   const where =

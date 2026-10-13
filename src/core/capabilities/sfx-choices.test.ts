@@ -5,7 +5,6 @@ import {
   generateSfxChoices,
   getChoices,
   getChoicesArgsSchema,
-  openInStudioTab,
   sfxChoicesArgsSchema,
   type GatewayReply,
   type SfxChoicesDeps,
@@ -30,7 +29,6 @@ function fakeDeps(overrides: Partial<SfxChoicesDeps> = {}, reply: GatewayReply =
   const deps: SfxChoicesDeps = {
     post: vi.fn(async () => reply),
     get: vi.fn(async () => reply),
-    studioOpen: vi.fn(async () => ({ ok: true as const })),
     openUrl: vi.fn(async () => undefined),
     canOpenBrowser: () => true,
     ...overrides,
@@ -63,42 +61,53 @@ describe("generateSfxChoices", () => {
     expect(sfxChoicesArgsSchema.safeParse({ text: "" }).success).toBe(false);
   });
 
-  it("moves the open Studio tab first and does not open a browser when that works", async () => {
-    const deps = fakeDeps();
+  it("reports the Studio tab and opens no browser when the server queued the tab open", async () => {
+    const deps = fakeDeps({}, { data: { ...choiceSet, studioTab: { queued: true, tabId: "tab_1" } }, status: 200 });
     const result = await generateSfxChoices(sfxChoicesArgsSchema.parse({ text: "clash" }), deps);
-    expect(deps.studioOpen).toHaveBeenCalledWith("/studio/choices/cs_1", REVIEW_URL);
     expect(deps.openUrl).not.toHaveBeenCalled();
     expect(result).toMatchObject({ ok: true, choiceSetId: "cs_1", shown: "studio_tab", reviewUrl: REVIEW_URL });
+    expect(result).not.toHaveProperty("notShownBecause");
     expect(result.say).toContain("3 versions");
-    expect(result.say).toContain("Summer Studio tab");
+    expect(result.say).toContain("I opened them in your Summer Studio tab");
     expect(result.next).toContain("summer_get_choices");
     expect((result.clips as unknown[]).length).toBe(3);
   });
 
-  it("falls back to the browser when no Studio tab is open", async () => {
-    const deps = fakeDeps({ studioOpen: vi.fn(async () => ({ ok: false as const, reason: "no_tab" })) });
+  it("falls back to the browser when no Studio tab took it", async () => {
+    const deps = fakeDeps({}, { data: { ...choiceSet, studioTab: { queued: false, reason: "no_tab" } }, status: 200 });
     const result = await generateSfxChoices(sfxChoicesArgsSchema.parse({ text: "clash" }), deps);
     expect(deps.openUrl).toHaveBeenCalledWith(REVIEW_URL);
     expect(result).toMatchObject({ shown: "browser", notShownBecause: { studioTab: "no_tab" } });
   });
 
+  it("opens the browser for an older server that sends no studioTab", async () => {
+    const deps = fakeDeps();
+    const result = await generateSfxChoices(sfxChoicesArgsSchema.parse({ text: "clash" }), deps);
+    expect(deps.openUrl).toHaveBeenCalledWith(REVIEW_URL);
+    expect(result).toMatchObject({ shown: "browser" });
+    expect(result).not.toHaveProperty("notShownBecause");
+  });
+
+  it("reports a queued Studio tab even with open:false (the server already queued it)", async () => {
+    const deps = fakeDeps({}, { data: { ...choiceSet, studioTab: { queued: true, tabId: "tab_1" } }, status: 200 });
+    const result = await generateSfxChoices(sfxChoicesArgsSchema.parse({ text: "clash", open: false }), deps);
+    expect(deps.openUrl).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ shown: "studio_tab" });
+  });
+
   it("only returns the URL with open:false, without a browser, or for a non-Summer URL", async () => {
     const off = fakeDeps();
     const r1 = await generateSfxChoices(sfxChoicesArgsSchema.parse({ text: "clash", open: false }), off);
-    expect(off.studioOpen).not.toHaveBeenCalled();
     expect(off.openUrl).not.toHaveBeenCalled();
     expect(r1).toMatchObject({ shown: "not_opened", reviewUrl: REVIEW_URL });
     expect(r1.say).toContain(REVIEW_URL);
 
-    const headless = fakeDeps({ studioOpen: vi.fn(async () => ({ ok: false as const, reason: "no_store_sign_in" })), canOpenBrowser: () => false });
+    const headless = fakeDeps({ canOpenBrowser: () => false });
     const r2 = await generateSfxChoices(sfxChoicesArgsSchema.parse({ text: "clash" }), headless);
     expect(headless.openUrl).not.toHaveBeenCalled();
     expect(r2).toMatchObject({ shown: "not_opened", notShownBecause: { browser: "no_browser_here" } });
 
-    const elsewhere = fakeDeps(
-      { studioOpen: vi.fn(async () => ({ ok: false as const, reason: "review_page_not_on_summerengine_com" })) },
-      { data: { ...choiceSet, reviewUrl: "https://evil.example/studio/choices/cs_1" }, status: 200 }
-    );
+    const elsewhere = fakeDeps({}, { data: { ...choiceSet, reviewUrl: "https://evil.example/studio/choices/cs_1" }, status: 200 });
     const r3 = await generateSfxChoices(sfxChoicesArgsSchema.parse({ text: "clash" }), elsewhere);
     expect(elsewhere.openUrl).not.toHaveBeenCalled();
     expect(r3).toMatchObject({ shown: "not_opened", notShownBecause: { browser: "not_a_summer_url" } });
@@ -106,7 +115,6 @@ describe("generateSfxChoices", () => {
 
   it("reports a browser launch failure as not_opened", async () => {
     const deps = fakeDeps({
-      studioOpen: vi.fn(async () => ({ ok: false as const, reason: "no_tab" })),
       openUrl: vi.fn(async () => {
         throw new Error("xdg-open missing");
       }),
@@ -122,7 +130,7 @@ describe("generateSfxChoices", () => {
     const none = fakeDeps({}, { data: { ...choiceSet, clips: [], failed: [{ modelId: "stable-audio-3-sfx", error: "too short" }] }, status: 200 });
     const result = await generateSfxChoices(sfxChoicesArgsSchema.parse({ text: "clash" }), none);
     expect(result).toMatchObject({ ok: false, failed: [{ modelId: "stable-audio-3-sfx" }] });
-    expect(none.studioOpen).not.toHaveBeenCalled();
+    expect(none.openUrl).not.toHaveBeenCalled();
   });
 });
 
@@ -189,16 +197,5 @@ describe("page-opening guards", () => {
     expect(defaultCanOpenBrowser({}, "linux")).toBe(false);
     expect(defaultCanOpenBrowser({ DISPLAY: ":0" }, "linux")).toBe(true);
     expect(defaultCanOpenBrowser({}, "darwin")).toBe(true);
-  });
-
-  it("does not ask the hosted MCP to move a tab for a page off summerengine.com", async () => {
-    await expect(openInStudioTab("/studio/choices/x", "https://preview.example/studio/choices/x")).resolves.toEqual({
-      ok: false,
-      reason: "review_page_not_on_summerengine_com",
-    });
-  });
-
-  it("needs the store sign-in to move a tab (none in the test home)", async () => {
-    await expect(openInStudioTab("/studio/choices/x", REVIEW_URL)).resolves.toEqual({ ok: false, reason: "no_store_sign_in" });
   });
 });

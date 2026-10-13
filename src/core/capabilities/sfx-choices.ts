@@ -245,9 +245,12 @@ export async function generateSfxChoices(
     };
   }
 
-  const shown = args.open
-    ? await showChoicesPage(reviewUrl, studioPath, deps)
-    : { shown: "not_opened" as ShownIn, browser: "open_false" };
+  const safeReviewUrl = canOpenReviewUrl(reviewUrl);
+  const shown = !safeReviewUrl
+    ? { shown: "not_opened" as ShownIn, browser: "not_a_summer_url" }
+    : args.open
+      ? await showChoicesPage(reviewUrl, studioPath, deps)
+      : { shown: "not_opened" as ShownIn, browser: "open_false" };
 
   const count = clips.length;
   const where =
@@ -273,7 +276,7 @@ export async function generateSfxChoices(
     clips: clips.map(clipSummary),
     failed,
     say,
-    next: `Tell the person the "say" text (include reviewUrl when shown is "not_opened"). Do not pick for them. Then call summer_get_choices with choiceSetId "${choiceSetId}" and waitSeconds ${MAX_CHOICES_WAIT_SECONDS}; call it again while status is "pending".`,
+    next: `Tell the person the "say" text${safeReviewUrl ? ' (include reviewUrl when shown is "not_opened")' : '; the returned reviewUrl was rejected, so do not suggest opening it'}. Do not pick for them. Then call summer_get_choices with choiceSetId "${choiceSetId}" and waitSeconds ${MAX_CHOICES_WAIT_SECONDS}; call it again while status is "pending".`,
   };
 }
 

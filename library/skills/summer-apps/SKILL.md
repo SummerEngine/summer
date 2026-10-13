@@ -53,11 +53,14 @@ everyone.
 Read these before writing code; they are exact:
 
 - [minimal-app.md](minimal-app.md): a complete working app (manifest, `index.html`,
-  `app.js`, `app.css`) using shared data, live changes, the viewer, `page.declare`, an
+  `app.js`) built from kit components, using shared data, live changes, the viewer, `page.declare`, an
   agent event, an agent tool and frame-move state. Copy it and change it.
 - [sdk-reference.md](sdk-reference.md): every SDK call with its exact arguments and
   return shape.
 - [manifest.md](manifest.md): every manifest field.
+- The kit's component catalog (every `<summer-*>` element with attributes, events and a
+  copyable example) is `summer_app_guide` section `kit`, also at `/summer-ui/v1/catalog.json`
+  on the app host. Copy its examples instead of inventing markup.
 
 The app is served from its own host, apps.summerengine.app. Load the SDK and the kit as
 ES modules with root paths: `<script type="module" src="/summer-sdk/v1.js">` and

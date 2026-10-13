@@ -7,7 +7,9 @@ declaration, an agent event, an agent tool, frame-move state, and empty and erro
 states.
 
 Publish it with `summer_app_publish {appId, dir, manifest, note}` where `dir` holds
-`index.html`, `app.js` and `app.css`, or pass the same three as `files`.
+`index.html` and `app.js`, or pass the same two as `files`. The page, sections, inputs,
+table, notice and empty text are kit components (`summer_app_guide` section `kit`, or
+`/summer-ui/v1/catalog.json` on the app host); no app CSS is needed.
 
 ## The manifest (send it as `manifest`)
 
@@ -54,27 +56,21 @@ Publish it with `summer_app_publish {appId, dir, manifest, note}` where `dir` ho
 <!-- Both are ES modules on the app's own host (apps.summerengine.app). Root paths, type="module". -->
 <script type="module" src="/summer-sdk/v1.js"></script>
 <script type="module" src="/summer-ui/v1/ui.js"></script>
-<link rel="stylesheet" href="app.css">
 </head>
 <body>
-<main class="page">
-  <header class="head">
-    <div>
-      <h1>Playtest notes</h1>
-      <p class="purpose">Tester notes per level, shared with your team.</p>
-    </div>
-    <summer-button id="add" variant="primary">Add note</summer-button>
-  </header>
-  <form id="form" class="row">
-    <summer-text-input id="text" label="Note" placeholder="I fell through the bridge twice"></summer-text-input>
-    <summer-text-input id="level" label="Level" placeholder="bridge"></summer-text-input>
-  </form>
-  <section>
-    <summer-table id="table" sortable></summer-table>
-    <summer-empty-state id="empty" heading="No notes yet" body="Add the first note, or ask your agent to add the testers' notes." hidden></summer-empty-state>
-    <p id="error" class="error" hidden></p>
-  </section>
-</main>
+<summer-page heading="Playtest notes" purpose="Tester notes per level, shared with your team.">
+  <summer-button slot="actions" id="add" variant="primary" icon="plus">Add note</summer-button>
+  <summer-section heading="New note">
+    <summer-grid columns="2">
+      <summer-text-input id="text" label="Note" placeholder="I fell through the bridge twice"></summer-text-input>
+      <summer-text-input id="level" label="Level" placeholder="bridge"></summer-text-input>
+    </summer-grid>
+  </summer-section>
+  <summer-section heading="Notes">
+    <summer-notice id="error" tone="error" hidden></summer-notice>
+    <summer-table id="table" row-key="id" sortable loading empty-text="No notes yet. Add the first one, or ask your agent to add the testers' notes."></summer-table>
+  </summer-section>
+</summer-page>
 <!-- app.js runs after the SDK module (module scripts run in order). -->
 <script type="module" src="app.js"></script>
 </body>
@@ -114,14 +110,13 @@ function render() {
     { key: "author", label: "By" },
   ];
   table.rows = rows;
-  document.getElementById("empty").hidden = rows.length > 0;
-  table.hidden = rows.length === 0;
+  table.removeAttribute("loading");
 }
 
 function showError(message) {
-  const box = document.getElementById("error");
-  box.textContent = `Could not load notes: ${message}`;
-  box.hidden = false;
+  const notice = document.getElementById("error");
+  notice.setAttribute("text", `Could not load notes: ${message}`);
+  notice.hidden = false;
 }
 
 async function addNote(text, level) {
@@ -160,18 +155,6 @@ load();
 Playing sound with Web Audio instead of `<audio>`? Wrap it so the frame is not moved
 mid-sound: `summer.app.busy(true)` when it starts, `summer.app.busy(false)` in the
 source's `onended`.
-
-## app.css
-
-```css
-.page { max-width: 1280px; margin: 0 auto; padding: 28px 32px 48px; }
-.head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 24px; }
-.head h1 { font-size: 22px; font-weight: 600; margin: 0; }
-.purpose { font-size: 13px; color: var(--se-text-muted); margin: 4px 0 0; }
-.row { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 24px; }
-.error { color: var(--destructive); font-size: 13px; }
-@media (max-width: 640px) { .page { padding: 20px 16px; } .row { grid-template-columns: 1fr; } }
-```
 
 ## The agent side of the same app
 

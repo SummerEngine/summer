@@ -228,6 +228,21 @@ describe("registerAssetTools", () => {
     });
   });
 
+  it("returns the denied import receipt and never attempts scene placement", async () => {
+    globalThis.fetch = vi.fn(async () => ({
+      ok: true, status: 200,
+      json: async () => ({ asset: { id: "asset-1", title: "Sword", type: "3d_model", fileUrl: "https://cdn.example/sword.glb" } }),
+    })) as any;
+    const receipt = { requestId: "import-denied-1", terminalState: "identity_mismatch", errorClass: "rejected_identity" };
+    executeOpsMock.mockResolvedValue(receipt);
+    const { server, tools } = createFakeServer();
+    registerAssetTools(server as any);
+    const result = await getTool(tools, "summer_import_asset_by_id").handler({ assetId: "asset-1", parent: "./World", scenePath: "res://main.tscn" });
+    expect(result.isError).toBe(true);
+    expect(parseResult(result)).toMatchObject({ error: "import_failed", receipt });
+    expect(executeIdentityBoundOpsMock).not.toHaveBeenCalled();
+  });
+
   function polyHavenFetchMock(overrides?: {
     catalog?: Record<string, unknown>;
     files?: Record<string, unknown>;
@@ -299,6 +314,18 @@ describe("registerAssetTools", () => {
     expect(parsed.applyScript).not.toContain("ensure_environment");
     expect(parsed.applyScript).toContain("PanoramaSkyMaterial");
     expect(parsed.applyScript).toContain("res://sky/kloppenheim_02_2k.hdr");
+  });
+
+  it("returns the uncertain HDRI import receipt instead of an apply script", async () => {
+    globalThis.fetch = polyHavenFetchMock() as any;
+    const receipt = { requestId: "hdri-pending-1", terminalState: "still_running" };
+    executeOpsMock.mockResolvedValue(receipt);
+    const { server, tools } = createFakeServer();
+    registerAssetTools(server as any);
+    const result = await getTool(tools, "summer_import_hdri").handler({ assetId: "kloppenheim_02", resolution: "2k" });
+    expect(result.isError).toBe(true);
+    expect(parseResult(result)).toMatchObject({ error: "import_failed", receipt });
+    expect(parseResult(result).applyScript).toBeUndefined();
   });
 
   it("imports by exact assetId and falls back to a lower available resolution", async () => {

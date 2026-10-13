@@ -5,6 +5,7 @@
  */
 import type { EngineApiClient } from "../api-client.js";
 import { ToolInputError } from "../tool-errors.js";
+import { EngineReceiptError, extractOpError, requireCompletedImportReceipt } from "./engine-receipt.js";
 
 /** An asset record as returned by the Summer gateway asset APIs. */
 export type GatewayAsset = {
@@ -150,11 +151,7 @@ export async function importResolvedAsset(client: EngineApiClient, args: ImportR
         ])
       : await client.executeOps([{ op: "ImportFromUrlBatch", imports }]);
 
-  const importReceipts = (importResult as { results?: Array<{ ok?: boolean; error?: string }> })?.results ?? [];
-  const importFailure = importReceipts.find((receipt) => receipt?.ok === false);
-  if ((importResult as { status?: string })?.status === "error" || importFailure) {
-    throw new Error(importFailure?.error || "Could not import asset. Check engine logs.");
-  }
+  requireCompletedImportReceipt(importResult, imports.length === 1 ? "ImportFromUrl" : "ImportFromUrlBatch", imports.length);
 
   let addedToScene = false;
   let sceneReceipt: unknown = null;
@@ -168,15 +165,16 @@ export async function importResolvedAsset(client: EngineApiClient, args: ImportR
       },
       { op: "SaveScene" },
     ], { scenePath });
-    const placementReceipts =
-      (sceneReceipt as { results?: Array<{ ok?: boolean; error?: string }> })?.results ?? [];
-    const placementFailure = placementReceipts.find((receipt) => receipt?.ok !== true);
-    if (
-      (sceneReceipt as { status?: string })?.status === "error" ||
-      placementReceipts.length !== 2 ||
-      placementFailure
-    ) {
-      throw new Error(placementFailure?.error || `Could not add asset to ${scenePath}`);
+    const placementFailure = extractOpError(sceneReceipt);
+    const placementEnvelope = sceneReceipt && typeof sceneReceipt === "object" && !Array.isArray(sceneReceipt)
+      ? sceneReceipt as Record<string, unknown> : null;
+    const placementReceipts = (sceneReceipt as { results?: Array<{ ok?: boolean; error?: string }> })?.results;
+    if (placementFailure || !placementEnvelope ||
+        (placementEnvelope.status !== undefined && placementEnvelope.status !== "ok") ||
+        (placementEnvelope.terminalState !== undefined && placementEnvelope.terminalState !== "applied" && placementEnvelope.terminalState !== "no_op") ||
+        !Array.isArray(placementReceipts) || placementReceipts.length !== 2 ||
+        placementReceipts.some((receipt) => receipt?.ok !== true)) {
+      throw new EngineReceiptError(placementFailure || `Could not confirm asset placement in ${scenePath}. Inspect the scene before retrying.`, sceneReceipt);
     }
     addedToScene = true;
   }
@@ -190,6 +188,7 @@ export async function importResolvedAsset(client: EngineApiClient, args: ImportR
     addedToScene,
     parent: parent || null,
     scenePath: scenePath || null,
+    importReceipt: importResult,
     sceneReceipt,
   };
 }

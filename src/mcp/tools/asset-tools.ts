@@ -9,6 +9,7 @@ import {
   type HdriResolution,
 } from "../../core/capabilities/hdri-import.js";
 import { importResolvedAsset, type GatewayAsset } from "../../core/capabilities/asset-import.js";
+import { EngineReceiptError } from "../../core/capabilities/engine-receipt.js";
 
 async function searchAssetsApi(params: {
   query: string;
@@ -413,7 +414,10 @@ itself does not — only this import step does).`,
         return jsonError({
           error: "import_failed",
           message: msg,
-          hint: "Make sure Summer Engine is running and pass the exact scenePath when parent is set.",
+          ...(err instanceof EngineReceiptError ? { receipt: err.receipt } : {}),
+          hint: err instanceof EngineReceiptError
+            ? "Read the engine receipt and inspect the target before retrying."
+            : "Make sure Summer Engine is running and pass the exact scenePath when parent is set.",
         });
       }
     }
@@ -505,6 +509,7 @@ Requires authentication. If the user gets an auth error, they need to run 'npx -
                   importedTo: imported.importedTo,
                   addedToScene: imported.addedToScene,
                   parent: imported.parent,
+                  importReceipt: imported.importReceipt,
                   message: imported.addedToScene
                     ? `Imported "${best.title}" and added to ${parent}`
                     : `Imported "${best.title}" to ${imported.importedTo}`,
@@ -525,7 +530,10 @@ Requires authentication. If the user gets an auth error, they need to run 'npx -
                 {
                   error: "Engine error",
                   message: msg,
-                  hint: "Make sure Summer Engine is running.",
+                  ...(err instanceof EngineReceiptError ? { receipt: err.receipt } : {}),
+                  hint: err instanceof EngineReceiptError
+                    ? "Read the engine receipt and inspect the target before retrying."
+                    : "Make sure Summer Engine is running.",
                 },
                 null,
                 2
@@ -580,6 +588,7 @@ runs through the engine). No Summer login needed.`,
           return jsonError({
             error: err.code,
             message: err.message,
+            ...(err.receipt !== undefined ? { receipt: err.receipt } : {}),
             ...(err.hint ? { hint: err.hint } : {}),
           });
         }

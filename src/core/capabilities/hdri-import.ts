@@ -10,6 +10,7 @@
  */
 
 import { z } from "zod";
+import { EngineReceiptError, requireCompletedImportReceipt } from "./engine-receipt.js";
 
 const POLYHAVEN_API_URL = "https://api.polyhaven.com";
 const POLYHAVEN_USER_AGENT = "summer-engine-cli";
@@ -61,6 +62,7 @@ export interface ImportHdriResult {
   alternates?: Array<{ id: string; name?: string }>;
   nextStep: string;
   applyScript: string;
+  importReceipt: unknown;
 }
 
 export type ImportHdriErrorCode =
@@ -75,7 +77,8 @@ export class ImportHdriError extends Error {
   constructor(
     readonly code: ImportHdriErrorCode,
     message: string,
-    readonly hint?: string
+    readonly hint?: string,
+    readonly receipt?: unknown
   ) {
     super(message);
     this.name = "ImportHdriError";
@@ -316,14 +319,14 @@ export async function importPolyHavenHdri(
   const importResult = await client.executeOps([
     { op: "ImportFromUrl", url: file.url, path: importedPath },
   ]);
-  const receipts =
-    (importResult as { results?: Array<{ ok?: boolean; error?: string }> })?.results ?? [];
-  const failure = receipts.find((receipt) => receipt?.ok === false);
-  if ((importResult as { status?: string })?.status === "error" || failure) {
+  try {
+    requireCompletedImportReceipt(importResult, "ImportFromUrl");
+  } catch (error) {
+    if (!(error instanceof EngineReceiptError)) throw error;
     throw new ImportHdriError(
-      "import_failed",
-      failure?.error || "Could not import the HDRI. Check engine logs.",
-      "Make sure Summer Engine is running with the project loaded."
+      "import_failed", error.message,
+      "Read the engine receipt before retrying; inspect the target if the final state is unknown.",
+      error.receipt
     );
   }
 
@@ -346,5 +349,6 @@ export async function importPolyHavenHdri(
       "summer_run_editor_script), then verify with summer_screenshot framing:\"camera\" " +
       "(preset framings substitute the environment):",
     applyScript: hdriApplySnippet(importedPath),
+    importReceipt: importResult,
   };
 }

@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.1",
-      "content_hash": "acab04b2ebac38e0aace61161924cb45e199be56a47643015b972b053c1bbf9c",
+      "content_hash": "8cee2242e1035dc46736bd88a8299ec09b5a9dba7f3145ec1f814c5c7f3f1cf6",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -6543,6 +6543,45 @@
       "authority": {
         "filesystem": true,
         "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/enable-plugin",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "e4785bfe2cf063958bc9c665873f0c38d4079a5127d46dd9310957ffcbfd20c4",
+      "summary": "Enable an editor plugin (res://addons/<name>/) and report the real load result, or that an older engine only queued it.",
+      "use_when": [
+        "an agent wrote or installed an editor plugin and needs it running",
+        "a Summer App's paired plugin must be enabled before the app can message it",
+        "\"turn on the quest_tools plugin\""
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "editor",
+          "tools"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-apps"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_enable_plugin",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": true,
         "network": false,
         "credentials": false,
         "publish": false

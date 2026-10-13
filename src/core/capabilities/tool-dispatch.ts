@@ -236,6 +236,7 @@ import {
   appTools,
   appToolsArgsSchema,
 } from "./apps.js";
+import { enablePluginArgsSchema, enablePluginOp, interpretEnablePluginResult } from "./enable-plugin.js";
 
 export type DispatchArgs = Record<string, unknown>;
 
@@ -1231,6 +1232,12 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       return result;
     })
   ),
+  entry("summer_enable_plugin", "Enable an editor plugin and report whether it really loaded", true, async (args, ctx) => {
+    const parsed = parseToolArgs(enablePluginArgsSchema, args, "enable-plugin");
+    const result = interpretEnablePluginResult(await (await ctx.engine()).executeOps([enablePluginOp(parsed)]));
+    if (result.ok !== true) throw new ToolResultError(result, String(result.error));
+    return result;
+  }),
   entry("summer_app_dock", "Dock a Summer App in the editor, close its dock, or list docks", true, async (args, ctx) => {
     const parsed = parseToolArgs(appDockArgsSchema, args, "app-dock");
     if (parsed.action !== "list" && !parsed.appId) throw new ToolDispatchError(`${parsed.action} needs appId`);

@@ -123,6 +123,7 @@
     "summer_create_debug_report": "tool/create-debug-report",
     "summer_create_scene": "tool/create-scene",
     "summer_debug_views": "tool/debug-views",
+    "summer_enable_plugin": "tool/enable-plugin",
     "summer_export_game": "tool/export-game",
     "summer_export_templates": "tool/export-templates",
     "summer_fabricate_3d": "tool/fabricate-3d",

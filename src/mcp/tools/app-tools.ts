@@ -30,6 +30,7 @@ import {
   appToolsArgsSchema,
   type AppsDeps,
 } from "../../core/capabilities/apps.js";
+import { enablePluginArgsSchema, enablePluginOp, interpretEnablePluginResult } from "../../core/capabilities/enable-plugin.js";
 import { missingEngineOpResult, withEngine } from "./with-engine.js";
 
 /**
@@ -138,6 +139,17 @@ export function registerAppTools(server: McpServer) {
         if (missing) return missing;
         return client.executeOps([op]);
       });
+    }
+  );
+
+  server.tool(
+    "summer_enable_plugin",
+    `Enable an editor plugin in the open project (res://addons/<name>/, for example one paired with a Summer App) and report the real result: enabled with the autoloads it registered, or why it failed (code SCRIPT_ERROR, NOT_TOOL, NOT_EDITOR_PLUGIN, CFG_MISSING, TIMEOUT, ...). Older Summer Engine builds only queue the enable; then the result says queued: true and enabled: null, and you check summer_get_debugger_errors before relying on the plugin.`,
+    enablePluginArgsSchema.shape,
+    async (args: unknown) => {
+      const parsed = enablePluginArgsSchema.safeParse(args ?? {});
+      if (!parsed.success) return result({ ok: false, code: "invalid", error: parsed.error.issues[0]?.message ?? "Invalid arguments" });
+      return withEngine(async (client) => interpretEnablePluginResult(await client.executeOps([enablePluginOp(parsed.data)])));
     }
   );
 }

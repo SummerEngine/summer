@@ -602,9 +602,52 @@ async function gatewayReply(call: () => Promise<DispatchArgs>): Promise<GatewayR
   }
 }
 
+/** Keep SFX choice HTTP receipts intact; a lost POST reply may follow paid work. */
+async function gatewaySfxChoicesPost(endpoint: string, body: DispatchArgs, timeoutMs: number): Promise<GatewayReply> {
+  let token: string;
+  let gatewayUrl: string;
+  try {
+    token = await requireToken();
+    gatewayUrl = await resolveGatewayUrl();
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : String(error), status: error instanceof ToolDispatchError ? 401 : 0, phase: "not_sent" };
+  }
+  let response: Response;
+  try {
+    response = await fetch(`${gatewayUrl}${endpoint}`, {
+      method: "POST",
+      headers: { ...gatewayHeaders(token, endpoint), "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (error) {
+    return { error: `Generation request failed: ${error instanceof Error ? error.message : String(error)}`, status: 0, phase: "outcome_unknown" };
+  }
+  let rawBody: string;
+  try {
+    rawBody = await response.text();
+  } catch (error) {
+    return { error: `Could not read the generation response: ${error instanceof Error ? error.message : String(error)}`, status: response.status, phase: "outcome_unknown" };
+  }
+  let data: unknown = {};
+  if (rawBody) {
+    try {
+      data = JSON.parse(rawBody);
+    } catch {
+      data = { message: rawBody.slice(0, 1000) };
+    }
+  }
+  if (!response.ok) {
+    const record = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : {};
+    const message = String(record.message || record.error || `Request failed (${response.status})`);
+    return { error: message, status: response.status, data };
+  }
+  return { status: response.status, data };
+}
+
 function sfxChoicesDeps(): SfxChoicesDeps {
   return {
-    post: (endpoint, body, timeoutMs) => gatewayReply(() => gatewayPost(endpoint, body, timeoutMs)),
+    post: (endpoint, body, timeoutMs) => gatewaySfxChoicesPost(endpoint, body, timeoutMs),
     get: (endpoint, params, timeoutMs) => gatewayReply(() => gatewayGet(endpoint, params, timeoutMs)),
     openUrl: (url) => open(url),
     canOpenBrowser: () => defaultCanOpenBrowser(),

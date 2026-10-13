@@ -31,7 +31,7 @@ export const sfxChoicesArgsSchema = z.object({
   text: z
     .string()
     .min(1)
-    .max(1000)
+    .max(450)
     .describe("The sound to make, written as a Foley description (what hits what, the attack and the tail, close-mic, dry)"),
   durationSeconds: z
     .number()
@@ -49,6 +49,7 @@ export const sfxChoicesArgsSchema = z.object({
     .max(4)
     .optional()
     .describe("2-4 model ids to compare. Default: eleven_text_to_sound_v2, sonilo-sfx-1.1, stable-audio-3-sfx"),
+  idempotencyKey: z.string().min(1).max(128).optional().describe("Choose one stable key before generating. Reuse it only for the exact same request after an uncertain result; a different sound needs a new key"),
   open: z
     .boolean()
     .default(true)
@@ -73,6 +74,7 @@ export interface GatewayReply {
   data?: any;
   error?: string;
   status: number;
+  phase?: "not_sent" | "outcome_unknown";
 }
 
 export interface SfxChoicesDeps {
@@ -164,7 +166,28 @@ export function sfxChoicesRequestBody(args: z.output<typeof sfxChoicesArgsSchema
   if (args.durationSeconds !== undefined) body.durationSeconds = args.durationSeconds;
   if (args.loop !== undefined) body.loop = args.loop;
   if (args.models) body.models = args.models;
+  if (args.idempotencyKey !== undefined) body.idempotencyKey = args.idempotencyKey;
   return body;
+}
+
+function recoveryAdvice(key: string | undefined): string {
+  return key
+    ? "The result or charge is unknown. Check existing choices, your asset library and credits before any retry. If you retry this same attempt, keep the exact request and idempotencyKey; server replay records may expire after 24 hours, so a later retry may start and bill new work."
+    : "The result or charge is unknown. No retry key was sent. Check existing choices, your asset library and credits; do not start another paid call blindly.";
+}
+
+function knownRefusal(reply: GatewayReply): boolean {
+  if (reply.phase === "not_sent") return true;
+  if (reply.phase === "outcome_unknown") return false;
+  if ([400, 401, 402, 403, 422, 429].includes(reply.status)) return true;
+  if (reply.status === 503 && reply.data?.error === "idempotency_unavailable") return true;
+  return false;
+}
+
+function validClip(value: unknown): value is Clip {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const clip = value as Record<string, unknown>;
+  return ["clipId", "modelId", "audioUrl", "assetId"].every((field) => typeof clip[field] === "string" && (clip[field] as string).length > 0);
 }
 
 function clipSummary(clip: Clip) {
@@ -183,8 +206,21 @@ export async function generateSfxChoices(
   deps: SfxChoicesDeps
 ): Promise<Record<string, unknown>> {
   const reply = await deps.post(SFX_CHOICES_ENDPOINT, sfxChoicesRequestBody(args), SFX_CHOICES_TIMEOUT_MS);
+  const key = args.idempotencyKey === undefined ? {} : { idempotencyKey: args.idempotencyKey };
   if (reply.error) {
-    return { ok: false, error: reply.error, ...(reply.data ? { details: reply.data } : {}) };
+    const refused = knownRefusal(reply);
+    return {
+      ok: false,
+      ...key,
+      status: reply.status,
+      outcome: refused ? "refused" : "unknown",
+      error: reply.error,
+      ...(reply.data !== undefined ? { details: reply.data } : {}),
+      ...(refused && args.idempotencyKey !== undefined
+        ? { note: "This request was refused before new work. It does not prove an earlier call with this key was uncharged; check choices, assets and credits." }
+        : {}),
+      ...(!refused ? { recovery: recoveryAdvice(args.idempotencyKey) } : {}),
+    };
   }
   const data = reply.data ?? {};
   const clips: Clip[] = Array.isArray(data.clips) ? data.clips : [];
@@ -193,12 +229,15 @@ export async function generateSfxChoices(
   const reviewUrl = typeof data.reviewUrl === "string" ? data.reviewUrl : null;
   const studioPath = typeof data.studioPath === "string" ? data.studioPath : undefined;
 
-  if (!choiceSetId || !reviewUrl || clips.length === 0) {
+  if (!choiceSetId || !reviewUrl || clips.length === 0 || !clips.every(validClip)) {
     return {
       ok: false,
-      error: clips.length === 0 ? "No model made a version of this sound." : "The server did not return a choice set.",
-      failed,
-      hint: "Read failed[] for each model's error. Fix the request (a longer durationSeconds, a plainer description) or call summer_generate_audio with one modelId.",
+      ...key,
+      status: reply.status,
+      outcome: "unknown",
+      error: "The server response did not confirm a completed choice set.",
+      details: reply.data,
+      recovery: recoveryAdvice(args.idempotencyKey),
     };
   }
 
@@ -218,10 +257,11 @@ export async function generateSfxChoices(
       : shown.shown === "browser"
         ? "I opened them in your browser"
         : `Open ${reviewUrl} to hear them`;
-  const say = `I made ${count} versions of this sound with ${count} different models. ${where}. Listen, approve the ones you like (one or more), then tell me. The model you approve becomes your default for sound effects.`;
+  const say = `${data.replayed === true ? "I found" : "I made"} ${count} versions of this sound with ${count} different models. ${where}. Listen, approve the ones you like (one or more), then tell me. The model you approve becomes your default for sound effects.`;
 
   return {
     ok: true,
+    ...key,
     choiceSetId,
     prompt: typeof data.prompt === "string" ? data.prompt : args.text,
     reviewUrl,
@@ -232,6 +272,10 @@ export async function generateSfxChoices(
       : {}),
     clips: clips.map(clipSummary),
     failed,
+    ...(Array.isArray(data.notes) ? { notes: data.notes.filter((note: unknown): note is string => typeof note === "string") } : {}),
+    ...(typeof data.costUsd === "number" && Number.isFinite(data.costUsd) ? { costUsd: data.costUsd } : {}),
+    ...(data.price && typeof data.price === "object" ? { price: data.price } : {}),
+    ...(data.replayed === true ? { replayed: true } : {}),
     say,
     next: `Tell the person the "say" text. A queued Studio tab is not proof the page appeared; the text includes reviewUrl as a fallback. Do not pick for them. Then call summer_get_choices with choiceSetId "${choiceSetId}" and waitSeconds ${MAX_CHOICES_WAIT_SECONDS}; call it again while status is "pending".`,
   };

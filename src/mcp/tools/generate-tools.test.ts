@@ -5,7 +5,8 @@ vi.mock("../../core/auth.js", () => ({
   getAuthToken: vi.fn(async () => "test-token"),
 }));
 
-import { dispatchTool } from "../../core/capabilities/tool-dispatch.js";
+import { dispatchTool, ToolResultError } from "../../core/capabilities/tool-dispatch.js";
+import { getAuthToken } from "../../core/auth.js";
 import { z } from "zod";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -759,7 +760,115 @@ describe("sound-effect models and choices across MCP and CLI", () => {
     return parseResult(await registered.handler(z.object(registered.schema).parse(args)));
   }
 
+  async function failedChoice(surface: "mcp" | "cli", args: Record<string, unknown>) {
+    try {
+      const result = await call(surface, "summer_generate_sfx_choices", args);
+      if (surface === "cli") throw new Error("Expected a CLI failure");
+      return result as Record<string, unknown>;
+    } catch (error) {
+      if (!(error instanceof ToolResultError)) throw error;
+      return error.result;
+    }
+  }
+
   for (const surface of ["mcp", "cli"] as const) {
+    it(`${surface} forwards the exact key and preserves a completed result`, async () => {
+      const fetchMock = vi.fn(async () => new Response(JSON.stringify(choiceResponse), { status: 200 }));
+      globalThis.fetch = fetchMock;
+      const result = await call(surface, "summer_generate_sfx_choices", { text: "whoosh", idempotencyKey: "attempt-123", open: false }) as Record<string, unknown>;
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(JSON.parse((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)).toMatchObject({ idempotencyKey: "attempt-123", text: "whoosh" });
+      expect(result).toMatchObject({ ok: true, choiceSetId: "cs_9", idempotencyKey: "attempt-123" });
+    });
+
+    it(`${surface} reports an applied POST with a lost reply as unknown and never retries`, async () => {
+      const fetchMock = vi.fn(async () => { throw new Error("connection reset after apply"); });
+      globalThis.fetch = fetchMock;
+      const result = await failedChoice(surface, { text: "whoosh", idempotencyKey: "attempt-123", open: false });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(JSON.parse((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)).toMatchObject({ idempotencyKey: "attempt-123" });
+      expect(result).toMatchObject({ ok: false, outcome: "unknown", status: 0, idempotencyKey: "attempt-123" });
+      expect(String(result.recovery)).toContain("Check existing choices");
+    });
+
+    it(`${surface} warns when a lost reply had no retry key`, async () => {
+      globalThis.fetch = vi.fn(async () => { throw new Error("connection reset"); });
+      const result = await failedChoice(surface, { text: "whoosh", open: false });
+      expect(result).toMatchObject({ outcome: "unknown" });
+      expect(String(result.recovery)).toContain("No retry key was sent");
+      expect(result).not.toHaveProperty("idempotencyKey");
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it(`${surface} distinguishes missing sign-in before POST`, async () => {
+      vi.mocked(getAuthToken).mockResolvedValueOnce(null);
+      globalThis.fetch = vi.fn();
+      const result = await failedChoice(surface, { text: "whoosh", idempotencyKey: "attempt-123" });
+      expect(result).toMatchObject({ ok: false, outcome: "refused", status: 401, idempotencyKey: "attempt-123" });
+      expect(result).not.toHaveProperty("recovery");
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      [402, { error: "insufficient_credits", billedCredits: 0 }, "refused"],
+      [429, { error: "rate_limited", retryAfterMs: 5000 }, "refused"],
+      [409, { error: "duplicate_in_progress", message: "Original charge status unknown" }, "unknown"],
+      [409, { error: "idempotency_conflict", message: "Key belongs to another request" }, "unknown"],
+      [503, { error: "unavailable", billedCredits: 4, message: "Audio may have been charged" }, "unknown"],
+      [500, { error: "generation_failed", billedCredits: 4, message: "Provider reply lost" }, "unknown"],
+    ])(`${surface} keeps HTTP %i and its body`, async (status, body, outcome) => {
+      globalThis.fetch = vi.fn(async () => new Response(JSON.stringify(body), { status }));
+      const result = await failedChoice(surface, { text: "whoosh", idempotencyKey: "attempt-123", open: false });
+      expect(result).toMatchObject({ ok: false, status, outcome, details: body, idempotencyKey: "attempt-123" });
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      [503, null, "unknown"],
+      [402, null, "refused"],
+      [503, ["not an error object"], "unknown"],
+    ])(`${surface} keeps HTTP %i with a non-object body`, async (status, body, outcome) => {
+      globalThis.fetch = vi.fn(async () => new Response(JSON.stringify(body), { status }));
+      const result = await failedChoice(surface, { text: "whoosh", idempotencyKey: "attempt-123", open: false });
+      expect(result).toMatchObject({ ok: false, status, outcome, details: body, idempotencyKey: "attempt-123" });
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it(`${surface} keeps a failed body read uncertain even when the HTTP status is 402`, async () => {
+      const response = new Response("", { status: 402 });
+      vi.spyOn(response, "text").mockRejectedValue(new Error("body stream lost"));
+      globalThis.fetch = vi.fn(async () => response);
+      const result = await failedChoice(surface, { text: "whoosh", idempotencyKey: "attempt-123", open: false });
+      expect(result).toMatchObject({ ok: false, status: 402, outcome: "unknown", idempotencyKey: "attempt-123" });
+      expect(String(result.recovery)).toContain("Check existing choices");
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it(`${surface} does not turn a malformed success into a safe failure`, async () => {
+      globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({ billedCredits: 4, clips: [] }), { status: 200 }));
+      const result = await failedChoice(surface, { text: "whoosh", idempotencyKey: "attempt-123", open: false });
+      expect(result).toMatchObject({ outcome: "unknown", status: 200, details: { billedCredits: 4 } });
+    });
+
+    it(`${surface} preserves cost details when a paid success contains a null clip`, async () => {
+      globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({ ...choiceResponse, clips: [null], costUsd: 0.04, notes: ["Cost may be incomplete"] }), { status: 200 }));
+      const result = await failedChoice(surface, { text: "whoosh", idempotencyKey: "attempt-123", open: false });
+      expect(result).toMatchObject({ ok: false, status: 200, outcome: "unknown", idempotencyKey: "attempt-123", details: { clips: [null], costUsd: 0.04, notes: ["Cost may be incomplete"] } });
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it(`${surface} rejects a 451-character prompt before POST`, async () => {
+      globalThis.fetch = vi.fn();
+      if (surface === "cli") {
+        await expect(call(surface, "summer_generate_sfx_choices", { text: "x".repeat(451) })).rejects.toThrow(/Invalid arguments/);
+      } else {
+        const { server, tools } = createFakeServer();
+        registerGenerateTools(server as any);
+        const tool = getTool(tools, "summer_generate_sfx_choices");
+        expect(z.object(tool.schema).safeParse({ text: "x".repeat(451) }).success).toBe(false);
+      }
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+    });
     it(`${surface} passes the sound_effects modelId and loop to /api/mcp/generate/audio`, async () => {
       const fetchMock = vi.fn(async () => new Response(JSON.stringify({ modelId: "sonilo-sfx-1.1" }), { status: 200 }));
       globalThis.fetch = fetchMock;

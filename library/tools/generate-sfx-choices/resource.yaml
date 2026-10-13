@@ -1,6 +1,6 @@
 id: tool/generate-sfx-choices
 kind: tool
-version: 1.0.1
+version: 1.0.2
 summary: "Make one sound effect with several models and show the versions in Summer Studio; the person approves one or more and that model becomes their default."
 use_when:
   - the first sound effect in a chat, after the person said yes to three versions to pick from
@@ -37,7 +37,14 @@ input_schema:
   properties:
     text:
       type: string
+      minLength: 1
+      maxLength: 450
       description: The sound to make, written as a Foley description (what hits what, the attack and the tail, close-mic, dry)
+    idempotencyKey:
+      type: string
+      minLength: 1
+      maxLength: 128
+      description: Choose one stable key before generating. Reuse it only for the exact same request after an uncertain result; a different sound needs a new key
     durationSeconds:
       type: number
       description: Exact length in seconds. One-shots 0.5-2; animation-synced sounds match the animation. stable-audio-3-sfx needs >= 1, sonilo-sfx-1.1 >= 0.5

@@ -112,6 +112,7 @@ When multiple Summer skills could apply, run them in this order:
 3. **Build skills third** — `fps-controller`, `design-mechanic`, `design-level`, `multiplayer`. These produce the artifacts.
 
 > "I want to make a game" → `brainstorm-game` first, then build skills.
+> "Make me a sword clash sound" with no game in sight → the asset skill (`sound-effect`) directly. Asset requests need no brainstorm, no project and no running engine.
 > "Fix this crash" → `debug` first, then domain skills.
 > "Add an FPS controller" → check `scene-composition` first, then `fps-controller`.
 

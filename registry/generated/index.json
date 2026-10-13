@@ -3440,7 +3440,7 @@
       "id": "skill/sound-effect",
       "kind": "skill",
       "version": "1.1.0",
-      "content_hash": "4ea1cf55a48cf8e4670018c9a7b858e970acb3852b3e0023bade97e408c8eb08",
+      "content_hash": "a02073249416a329b4d40848af7d5ba7df9b294d9bf7e9a4d856a6af846f2aad",
       "summary": "Make SFX one-shots and timed sequences (swings, hits, whooshes, reloads, UI) - offer three model versions to pick from, then wire them as AudioStreamPlayers.",
       "use_when": [
         "generating short SFX one-shots — footsteps, weapon swings, UI clicks, hit impacts, environmental cues",
@@ -4298,7 +4298,7 @@
       "id": "skill/using-summer",
       "kind": "skill",
       "version": "1.0.5",
-      "content_hash": "8051cc6e1cc6135796ba91daf32d205ddbbef202a80fddabf8623a1dcbb1914e",
+      "content_hash": "414b8174a55788c3eb3588ef02017bcba4b9c01b6bd59e776e547dbb11e472ea",
       "summary": "Session bootstrap for Summer projects — establishes how to find and use Summer skills and the summer-engine MCP before any response.",
       "use_when": [
         "starting any conversation in a Summer Engine project",

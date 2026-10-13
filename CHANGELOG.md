@@ -2,7 +2,7 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
-## [3.6.1] - 2026-10-13
+## [3.7.0] - 2026-10-13
 
 Sound-effect choices open in your Studio tab right away, agents act on Summer's review feedback, and the legacy creator path is gone.
 

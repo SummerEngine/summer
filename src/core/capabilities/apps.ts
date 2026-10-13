@@ -106,6 +106,7 @@ export const appDataArgsSchema = z.object({
     .max(100)
     .optional()
     .describe("Write: [{op: put, collection, recordId, data}, {op: patch, collection, recordId, patch}, {op: remove, collection, recordId}]; ifRevision on an op applies it only at that record revision (0: must not exist)"),
+  as: z.enum(["agent", "seed"]).optional().describe("Write: seed for starter data that belongs to the team (no author). Default: agent"),
 });
 
 export const appToolsArgsSchema = z.object({ appId });
@@ -303,7 +304,7 @@ export async function appPage(args: z.output<typeof appPageArgsSchema>, deps: Ap
 }
 
 export async function appData(args: z.output<typeof appDataArgsSchema>, deps: AppsDeps) {
-  if (args.ops) return done(await deps.request("POST", `${APPS_ENDPOINT}/${args.appId}/data`, { body: { ops: args.ops }, timeoutMs: 30_000 }));
+  if (args.ops) return done(await deps.request("POST", `${APPS_ENDPOINT}/${args.appId}/data`, { body: { ops: args.ops, ...(args.as ? { as: args.as } : {}) }, timeoutMs: 30_000 }));
   return done(
     await deps.request("GET", `${APPS_ENDPOINT}/${args.appId}/data`, {
       query: params({ collection: args.collection, after: args.after, limit: String(args.limit) }),

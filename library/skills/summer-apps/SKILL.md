@@ -64,6 +64,7 @@ Read these before writing code; they are exact:
 
 To see an app, publish it to a Scratch app and open it in Studio (`/studio/apps/<appId>`;
 `summer_app_create` opens it for the person). Opening `index.html` on its own never connects.
+There is no offline host: do not build one or mock the SDK.
 
 The app is served from its own host, apps.summerengine.app. Load the SDK and the kit as
 ES modules with root paths: `<script type="module" src="/summer-sdk/v1.js">` and
@@ -78,7 +79,8 @@ the first call, and reach data only through `summer.data.collection(name)`.
 3. Write the files in a local folder, then `summer_app_publish {appId, dir, manifest, note}`
    (or `layout`). Each publish is an immutable version the tab boots. A publish
    error names the file or rule: fix it and publish again.
-4. Seed data with `summer_app_data` (ops) when the app should start full.
+4. Seed starter data with `summer_app_data` (`ops` plus `"as": "seed"`) when the app should
+   start full. Seed rows belong to the team and show no author.
 5. `summer_app_events {appId, after}` waits for what the app sends you
    (`summer.agent.send`), errors and feedback. Act on them; pass the cursor on.
 6. Change the app by publishing again; `summer_app_get` returns the current files.
@@ -101,8 +103,9 @@ and `summer_app_data` reads return it, so any agent knows what a record looks li
 ```
 
 Up to 100 ops per call. Without `ops`, `summer_app_data` reads (`collection`, `after`, `limit`);
-removed records are not returned. Your writes are recorded as `actor { kind: "agent" }`, so the
-app can show which rows an agent made. `patch` merges keys
+removed records are not returned. Your writes are recorded as `actor { kind: "agent" }` (and
+as `createdBy` on records you create), so the app can show which rows an agent made. Add
+`"as": "seed"` for starter data that belongs to the team (`kind: "seed"`, no author). `patch` merges keys
 (`null` removes one); `ifRevision` guards against overwriting a newer change.
 
 ## Agent tools
@@ -116,8 +119,9 @@ app and answers `app_not_open` otherwise. Prefer data for plain reads and edits.
 
 - Declare only the permissions the app uses; declare every `engineFiles` path and
   every `agentEvents` name. A missing one fails at runtime with `permission_missing`.
-- The app runs sandboxed: no cookies, no `localStorage`, no network unless the
-  workspace allows a domain. Keep state in `summer.data`.
+- The app runs sandboxed (`allow-scripts allow-forms allow-popups allow-modals
+  allow-downloads`, never `allow-same-origin`): no cookies, no `localStorage`, no network
+  unless the workspace allows a domain. Keep state in `summer.data`.
 - Paid SDK calls spend the credits of the person using the app. Say so before
   building an app that generates.
 - Use real data (`summer.data`, `summer.assets`, `summer.engine.readFile`), never

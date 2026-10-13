@@ -4,11 +4,13 @@
 host, apps.summerengine.app). The UI kit is `<script type="module" src="/summer-ui/v1/ui.js">`
 (stylesheet alone: `/summer-ui/v1/ui.css`). Use `type="module"` (a classic script still works but warns); other paths do not work. Calling `summer.data.list(name)` and the like rejects with `invalid` and says to use `summer.data.collection(name)`.
 
-The app runs in a sandboxed frame on that host: an opaque origin (no cookies, no
-`localStorage`), no network unless the workspace allows a domain, and the kit and SDK are
-served with CORS so the module scripts load. It only works inside Summer Studio: publish to
-a Scratch app and open it there (`/studio/apps/<appId>`). Opening `index.html` on its own
-never connects, so `summer.ready` waits forever.
+The app runs in a sandboxed frame on that host:
+`sandbox="allow-scripts allow-forms allow-popups allow-modals allow-downloads"`, never
+`allow-same-origin`. So it is an opaque origin (no cookies, no `localStorage`), with no network
+unless the workspace allows a domain; the kit and SDK are served with CORS so the module
+scripts load. It only works inside Summer Studio. To preview, publish to a Scratch app and open
+it there (`/studio/apps/<appId>`). There is no offline or local host; do not build one or mock
+the SDK. Opening `index.html` on its own never connects, so `summer.ready` waits forever.
 
 Every call returns a promise and runs as the person using the app. Failures reject with
 `SummerError { code, message }`. Methods need the manifest permission in brackets.
@@ -24,6 +26,10 @@ Every call returns a promise and runs as the person using the app. Failures reje
 | `summer.app.theme()` / `summer.app.onTheme(fn)` | `"light"\|"dark"` / stop function |
 | `summer.app.onSnapshot(() => state)` | stop function. `state` (JSON, up to 256 KB) comes back as `(await summer.ready).restored` after Studio moves the app to a fresh frame. |
 | `summer.app.busy(on)` | `void`. Wrap Web Audio playback in `busy(true)` / `busy(false)`; `<audio>` and `<video>` count on their own. |
+
+Use `(await summer.ready).viewer` for who is using the app; `summer.app.viewer()` is the same
+person plus role and spend. The kit applies Studio's light or dark theme by itself
+(`html.dark`): apps never toggle it. `theme()` / `onTheme` are only for your own drawing (canvas).
 
 ## Shared data [data]
 
@@ -45,10 +51,10 @@ const notes = summer.data.collection("notes");   // name: lowercase a-z 0-9 _ . 
 | `summer.data.commands({ requestId, baseRevision, ops })` | `Write`: up to 100 ops in one revision |
 
 ```ts
-Record = { collection, recordId, data, revision, actor, updatedAt, deleted }
+Record = { collection, recordId, data, revision, actor, createdBy, createdAt, updatedAt, deleted }
 Write  = { revision, operation: { revision, requestId, actor, ops, createdAt }, records: Record[], replayed }
 change = { revision, actor, ops: Op[] } | { revision, reset: true }      // on reset, list again
-actor  = { userId, kind: "person" | "agent", agent?: "claude-code" | ..., via?: "agent-tool" }
+actor  = { userId, kind: "person" | "agent" | "seed", agent?: "claude-code" | ..., via?: "agent-tool" }
 Op     = { op: "put", collection, recordId, data, ifRevision? }
        | { op: "patch", collection, recordId, patch, ifRevision? }
        | { op: "remove", collection, recordId, ifRevision? }
@@ -64,6 +70,11 @@ exist); otherwise the call rejects with `conflict`. Record ids: letters, digits,
 `app.viewer().userId`. `kind: "agent"` marks writes an agent made with `summer_app_data`, and
 writes your own code made while running an agent tool for `summer_app_call` (those also have
 `via: "agent-tool"`). Show agent-made rows (a small "by agent" label) so people know.
+
+`actor` is the last writer. `createdBy` (same shape) is who created the record and does not
+change on later edits, so take the "by agent" label from `createdBy.kind === "agent"`: it
+survives a person's edit. `kind: "seed"` is starter data an agent wrote for the team
+(`summer_app_data` with `as: "seed"`): show no author for it.
 
 ## Agents
 

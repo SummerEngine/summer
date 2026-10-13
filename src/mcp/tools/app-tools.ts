@@ -102,7 +102,7 @@ export function registerAppTools(server: McpServer) {
   );
   server.tool(
     "summer_app_data",
-    `Read or write a Summer App's shared data, its API: works with no app open, and everyone in the app sees writes live. Without ops it reads records (paged with after) plus declaredCollections, the record shape the app declares; with ops it writes them in one revision: {op: put|patch|remove, collection, recordId, data|patch, ifRevision?}.\n\n${CLOUD}`,
+    `Read or write a Summer App's shared data, its API: works with no app open, and everyone in the app sees writes live. Without ops it reads records (paged with after) plus declaredCollections, the record shape the app declares; with ops it writes them in one revision: {op: put|patch|remove, collection, recordId, data|patch, ifRevision?}. Writes show as yours (actor kind agent); as: seed writes starter data for the team (kind seed, no author).\n\n${CLOUD}`,
     appDataArgsSchema.shape,
     cloud("summer_app_data", appDataArgsSchema, appData)
   );

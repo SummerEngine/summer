@@ -58,6 +58,8 @@ describe("summer_app_* cloud tools", () => {
       ["GET", `/api/mcp/apps/${APP}/data`],
       ["POST", `/api/mcp/apps/${APP}/data`],
     ]);
+    await appData({ appId: APP, limit: 200, as: "seed", ops: [{ op: "put", collection: "items", recordId: "bow", data: {} }] }, deps);
+    expect((request.mock.calls[2] as unknown[])[2]).toMatchObject({ body: { as: "seed", ops: [{ op: "put" }] } });
   });
 });
 

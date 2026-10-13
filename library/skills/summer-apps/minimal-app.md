@@ -104,8 +104,9 @@ async function load() {
     table.rows = page.records.map((r) => ({
       id: r.recordId,
       ...r.data,
-      // actor: { userId, kind: "person" | "agent", agent?, via? }: show what an agent added
-      by: r.actor?.kind === "agent" ? `${r.actor.agent ?? "Agent"} (agent)` : r.data.author ?? "",
+      // createdBy: who made the row ({ userId, kind: "person" | "agent" | "seed", agent?, via? });
+      // later edits do not change it (actor is the last writer). Seed rows have no author.
+      by: r.createdBy?.kind === "agent" ? `${r.createdBy.agent ?? "Agent"} (agent)` : r.data.author ?? "",
     }));
     error.hidden = true;
   } catch (e) {

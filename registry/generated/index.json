@@ -2602,7 +2602,7 @@
       "id": "skill/persistent-world-save-migrations",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "f457556d5550ad35d3a3b105aac8904155c6b15c9e25cc13e2eb7d356e0a09d8",
+      "content_hash": "02c94e1780c08f913759a950907e28eb691c0396671ba32539a635478ab9c9ca",
       "summary": "Change a persistent World's save format without losing progress: save versions, migration steps, fixtures and upgrades.",
       "use_when": [
         "changing what a persistent Summer World saves, or the format of its save, after Worlds already exist",

@@ -69,7 +69,7 @@ In Claude Code, type:
 /plugin install summer --marketplace summerengine/summer
 ```
 
-Then type `/summer:start`. It asks whether to build in Summer's cloud (nothing to install) or in the Summer Engine desktop app, signs you in, and gets a first game playing in about five minutes. The plugin brings Summer's skills and two MCP servers: `summer-engine` drives the desktop app (needs Node), and `summer-cloud` is Summer's hosted server (sign in once with `/mcp`). Use the plugin or `summer setup claude-code`, not both: they install the same skills.
+Then type `/summer:start`. It signs you in and gets a first game playing in about five minutes: from a template that already plays, or from a board of concept art Summer draws for your idea right in the chat, built in the Summer Engine desktop app. The plugin brings Summer's skills and two MCP servers: `summer-engine` drives the desktop app (needs Node), and `summer-cloud` is Summer's hosted server (sign in once with `/mcp`). Use the plugin or `summer setup claude-code`, not both: they install the same skills.
 
 ### Only want assets?
 

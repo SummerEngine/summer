@@ -1,5 +1,5 @@
 ---
-description: First run with Summer. Pick the cloud or the desktop engine, sign in, and make a first playable game in about five minutes.
+description: First run with Summer. Sign in, start a game from a template that already plays, or plan it first on Summer's board; a first playable game in about five minutes.
 argument-hint: [your game idea, in one sentence]
 allowed-tools: Bash Read Skill
 ---
@@ -17,27 +17,25 @@ $ARGUMENTS
 ## 1. Look before you ask (read-only, a few seconds)
 
 - Tools you already have: the `summer-engine` server (local, drives the Summer Engine desktop app; its tools include `summer_get_project_context`) and the `summer-cloud` server (hosted, Summer's cloud; its tools include `summer_make_game` once the user is signed in). A server that needs sign-in shows no tools yet.
-- `npx -y summer-engine@latest status` tells you whether the CLI is signed in and whether the engine is running. If `npx` is missing, there is no Node: use the cloud path.
+- `npx -y summer-engine@latest status` tells you whether the CLI is signed in and whether the engine is running. If `npx` is missing, there is no Node: plan on the board first (3a) and have them install Node 20 or later (nodejs.org) for the build.
 
 Do not run `summer setup claude-code` here: this plugin already brings the MCP servers and the skills, and a second copy of the skills only crowds the list.
 
 ## 2. Pick the path (one question)
 
-Offer two choices, recommend one, and wait:
+Games are built in Summer Engine, the desktop app (Mac, Windows, Linux). Offer two ways in, recommend one, and wait:
 
-- **Cloud (fastest, nothing to install).** Summer draws a board of the game, builds it on its servers in a few minutes, and the user plays it in the browser. Recommend this when there is no desktop app or no Node, or the user just wants to see something fast.
-- **Desktop (the full engine).** Install Summer Engine on Mac, Windows or Linux, start from a working template, and build it with the user in the editor. Recommend this when the app is already installed or the user wants full control.
+- **Play something now.** Install Summer Engine, start from a template that already plays, and make it theirs. Recommend this when the user wants a playable game fast, or the app is already installed.
+- **Plan it first, nothing to install yet.** Summer draws a board of concept art for the idea right here (the hero, the world, key moments) and writes it up as the Game Soul, the one-page plan. Then the desktop path builds it. Recommend this when the idea is still loose, or the user cannot install yet.
 
-## 3a. Cloud path
+## 3a. Plan on the board
 
 1. **Sign in.** If `summer_make_game` is not available, the `summer-cloud` server needs the user's Summer account. Tell them: type `/mcp`, pick `summer-cloud`, choose **Authenticate**, and sign in in the browser (a free account works). You cannot do this step for them. When they say done, call `summer_account` to confirm.
-2. **Start the game.** As soon as there is an idea (one sentence is enough; ask for one if `$ARGUMENTS` is empty), call `summer_make_game` with it. Summer starts drawing the board at once.
-3. **Shape it, briefly.** Ask at most two short questions, each with two or three concrete options (how it should feel, what the player does). Send each answer with `summer_game_message`. Use `summer_game` to see the board cards.
-4. **Build.** When the user is happy, call `summer_build_game` with `where: "cloud"`. Tell them it takes a few minutes. Check progress with `summer_game` about once a minute; do not poll faster.
-5. **Play.** When `playable` is true, give them the game's link (`siteUrl`) to play it in the browser. Never describe a game that is not built yet.
-6. **Change it.** Pass their changes with `summer_game_message`. Each change during the build uses one of their build messages; combine small changes into one.
+2. **Start the game.** As soon as there is an idea (one sentence is enough; ask for one if `$ARGUMENTS` is empty), call `summer_make_game` with it. Summer starts drawing the board at once; give them the game's link (`siteUrl`) to watch it fill in.
+3. **Shape it, briefly.** Ask at most two short questions, each with two or three concrete options (how it should feel, what the player does). Send each answer with `summer_game_message`. Use `summer_game` to see the cards, `summer_game_edit_card` to change one picture and `summer_game_choose_look` when they pick an art style.
+4. **Hand it to the engine.** When the user is happy, call `summer_build_game`. It returns the Summer Engine download, the setup steps and the Game Soul. Then follow 3b, using the Game Soul instead of a template: create an empty project (`npx -y summer-engine@latest create empty <folder-name>`), save the Game Soul as `res://.summer/GameSoul.md`, and build its first playable milestone with the `make-game` skill. Never describe a game that is not built yet.
 
-## 3b. Desktop path
+## 3b. Build in Summer Engine
 
 1. **Install** (only if the engine is missing). Installing software needs the user's yes: say what you will run and wait. Then `npx -y summer-engine@latest install`.
 2. **Sign in.** `npx -y summer-engine@latest login` opens the browser; the user signs in there. Skip it if `status` already shows them signed in.

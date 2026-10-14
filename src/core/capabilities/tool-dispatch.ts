@@ -208,6 +208,35 @@ import { readLibraryEntry, readLibraryInputSchema } from "../library-read.js";
 import { runSearchLibrary, searchLibraryInputSchema } from "../library-search.js";
 
 import { TOOLKIT_VERSION as CLI_VERSION } from "../version.js";
+import {
+  APP_DOCK_FALLBACK,
+  appCall,
+  appCallArgsSchema,
+  appCreate,
+  appCreateArgsSchema,
+  appData,
+  appDataArgsSchema,
+  appDockArgsSchema,
+  appDockOp,
+  appEvents,
+  appEventsArgsSchema,
+  appGet,
+  appGetArgsSchema,
+  appGuide,
+  appGuideArgsSchema,
+  appList,
+  appListArgsSchema,
+  appPage,
+  appPageArgsSchema,
+  appPublish,
+  appPublishArgsSchema,
+  appReportGap,
+  appReportGapArgsSchema,
+  appsGateway,
+  appTools,
+  appToolsArgsSchema,
+} from "./apps.js";
+import { enablePluginArgsSchema, enablePluginOp, interpretEnablePluginResult } from "./enable-plugin.js";
 
 export type DispatchArgs = Record<string, unknown>;
 
@@ -1179,6 +1208,44 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     const result = await getChoices(parseToolArgs(getChoicesArgsSchema, args, "get-choices"), sfxChoicesDeps());
     if (result.ok !== true) throw new ToolResultError(result, String(result.error));
     return result;
+  }),
+  // Summer Apps (core/capabilities/apps.ts): the same functions as the MCP face.
+  ...([
+    ["summer_app_guide", "Read the Summer Apps build guide (SDK, manifest, kit, layout, design, examples)", appGuideArgsSchema, appGuide],
+    ["summer_app_list", "List the Summer Apps in the person's workspaces", appListArgsSchema, appList],
+    ["summer_app_create", "Create a scratch Summer App and open it in Summer Studio", appCreateArgsSchema, appCreate],
+    ["summer_app_publish", "Publish a new version of a Summer App from a folder or files", appPublishArgsSchema, appPublish],
+    ["summer_app_get", "Read a Summer App's manifest, files and data summary", appGetArgsSchema, appGet],
+    ["summer_app_events", "Wait for events a Summer App sends to agents", appEventsArgsSchema, appEvents],
+    ["summer_app_page", "Read or use the open app's declared fields and buttons", appPageArgsSchema, appPage],
+    ["summer_app_data", "Read or write a Summer App's shared data", appDataArgsSchema, appData],
+    ["summer_app_tools", "List a Summer App's agent tools", appToolsArgsSchema, appTools],
+    ["summer_app_call", "Run a Summer App's agent tool in the person's open app", appCallArgsSchema, appCall],
+    ["summer_app_report_gap", "Report an SDK capability a Summer App needed", appReportGapArgsSchema, appReportGap],
+  ] as const).map(([name, summary, schema, run]) =>
+    entry(name, summary, false, async (args) => {
+      const result = await (run as (input: unknown, deps: { request: ReturnType<typeof appsGateway> }) => Promise<Record<string, unknown>>)(
+        parseToolArgs(schema as ZodTypeAny, args, name.replace(/^summer_/, "").replace(/_/g, "-")),
+        { request: appsGateway("cli", name) }
+      );
+      if (result.ok !== true) throw new ToolResultError(result, String(result.error));
+      return result;
+    })
+  ),
+  entry("summer_enable_plugin", "Enable an editor plugin and report whether it really loaded", true, async (args, ctx) => {
+    const parsed = parseToolArgs(enablePluginArgsSchema, args, "enable-plugin");
+    const result = interpretEnablePluginResult(await (await ctx.engine()).executeOps([enablePluginOp(parsed)]));
+    if (result.ok !== true) throw new ToolResultError(result, String(result.error));
+    return result;
+  }),
+  entry("summer_app_dock", "Dock a Summer App in the editor, close its dock, or list docks", true, async (args, ctx) => {
+    const parsed = parseToolArgs(appDockArgsSchema, args, "app-dock");
+    if (parsed.action !== "list" && !parsed.appId) throw new ToolDispatchError(`${parsed.action} needs appId`);
+    const op = appDockOp(parsed);
+    const client = await ctx.engine();
+    const missing = missingEngineOpResult(client, op.op, APP_DOCK_FALLBACK);
+    if (missing) throw new ToolResultError({ ...missing }, missing.error);
+    return requireEngineSuccess(await client.executeOps([op]));
   }),
   entry("summer_generate_3d", "Generate a 3D model (optional auto-rig + animations)", false, async (args) => {
     const options = {

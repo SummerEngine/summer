@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.1",
-      "content_hash": "ee626e6bac5ff34eb4a69ad44ef1c93c0c26d4b57783cc1068dd5ad4d280d473",
+      "content_hash": "8cee2242e1035dc46736bd88a8299ec09b5a9dba7f3145ec1f814c5c7f3f1cf6",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -3687,6 +3687,83 @@
       "recommended": false
     },
     {
+      "id": "skill/summer-apps",
+      "kind": "skill",
+      "version": "0.1.0",
+      "content_hash": "9b2cc04fbac8560f08f199ac46108381eb06f06d05619bedec997b1fe46c4df7",
+      "summary": "Build a Summer App, a team tool inside Summer Studio (balance table, quest editor, tracker, pick grid): build loop, Layout vs code, data as API, agent tools.",
+      "use_when": [
+        "the person asks for a tool for their team (\"build us a loot balance tool\", \"a board to track creatures\")",
+        "the person needs a UI to decide, rate or edit something they will come back to",
+        "reading or changing the data of an existing Summer App",
+        "calling an app's agent tools or waiting for what an app sends"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "tools",
+          "ui",
+          "agent-workflow"
+        ],
+        "modalities": [
+          "ui",
+          "docs"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-apps-design"
+        ],
+        "tools": [
+          "tool/app-guide",
+          "tool/app-create",
+          "tool/app-publish",
+          "tool/app-events",
+          "tool/app-data",
+          "tool/app-call",
+          "tool/app-dock"
+        ]
+      },
+      "status": "preview",
+      "recommended": true
+    },
+    {
+      "id": "skill/summer-apps-design",
+      "kind": "skill",
+      "version": "0.1.0",
+      "content_hash": "7176fc0bf683de75bf3231a873e240417ff91f1e864ca3c5670c54dc4c3d77c4",
+      "summary": "How a Summer App should look - page layout, Summer UI kit components, tables, charts, media, boards, states and a pre-ship checklist.",
+      "use_when": [
+        "building or changing the UI of a Summer App (agent-built team tool inside Summer Studio)",
+        "an app looks generic, cluttered or off-brand",
+        "choosing layout for a table, chart, board, pick grid or settings tool"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "ui",
+          "tools"
+        ],
+        "modalities": [
+          "docs"
+        ]
+      },
+      "related": {
+        "skills": [
+          "skill/summer-apps"
+        ]
+      },
+      "status": "preview",
+      "recommended": true
+    },
+    {
       "id": "skill/summer-friends",
       "kind": "skill",
       "version": "1.0.0",
@@ -5578,6 +5655,464 @@
       }
     },
     {
+      "id": "tool/app-call",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "489fb7d31ffe77b2ec9e403b7c51f2c2f1e486274e7e488797490209bab57ab2",
+      "summary": "Run one of a Summer App's agent tools inside the person's open app.",
+      "use_when": [
+        "\"nerf the bow using the balance formula in our app\"",
+        "using logic that lives in an app (a balance formula, an export) while the app is open"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "tools",
+          "ui"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-apps"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_app_call",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/app-create",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "d5dfb9704474c9085917da6b5f58f4a2e19dbb0234dc2c52935b0b17acaafb29",
+      "summary": "Create a new scratch Summer App (a tool for the person's team inside Summer Studio) and open it in their Studio tab.",
+      "use_when": [
+        "\"build me a tool for…\" / \"make an app that…\"",
+        "the person needs a UI to decide or edit something they will come back to"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "tools",
+          "ui"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-apps"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_app_create",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/app-data",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "4d2652bfdfa8d9f347ac91d0c4f7244a7babc62ad675e7b38125986c47d79509",
+      "summary": "Read or write a Summer App's shared data collections; works with no app open and the team sees writes live.",
+      "use_when": [
+        "\"nerf the bow in our balance sheet\"",
+        "seeding an app with data",
+        "reading what the team entered in an app"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "tools",
+          "ui"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-apps"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_app_data",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/app-dock",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "57cb8039759a799b9ef3c0019c620c5f072d78987d69bd7d089a29655893c676",
+      "summary": "Dock a Summer App as a panel in the running Summer Engine editor, close it, or list docked apps.",
+      "use_when": [
+        "\"put the quest editor next to my scene\"",
+        "keeping a team tool open while editing"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "tools",
+          "ui"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-apps"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_app_dock",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": true,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/app-events",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "69fa01768364c4f9927e62334ed5de0b48ab94ffd3b743aa354c604c98af246d",
+      "summary": "Wait for what a Summer App sends to agents: summer.agent.send events, app errors, feedback and tool calls.",
+      "use_when": [
+        "waiting for the person to act in an app you built",
+        "checking an app for errors after publishing"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "tools",
+          "ui"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-apps"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_app_events",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/app-get",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "1aea5d5dde2b779c32fd9525cfd349e8afaacd3366bc33f2d83b3b41ae40d49a",
+      "summary": "Read a Summer App's manifest, current files (or layout) and shared data summary.",
+      "use_when": [
+        "before changing an existing app",
+        "\"what does our loot table app do\""
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "tools",
+          "ui"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-apps"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_app_get",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/app-guide",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "b112b7ecca975d7e516bd5698ca6a6c3850f5ce01b01eb84a885ad3eea4b7abf",
+      "summary": "Read the Summer Apps build guide: when to build an app, Layout vs code, build loop, manifest, SDK, UI kit, layout format, design rules and worked examples.",
+      "use_when": [
+        "before building or changing a Summer App",
+        "\"build us a loot balance tool\"",
+        "\"make a tool for our team to track creatures\""
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "tools",
+          "ui"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-apps"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_app_guide",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/app-list",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "b1d677c0301be54ee09b640007c519876449df7f2b2afd59373402633caca576",
+      "summary": "List the Summer Apps (team tools inside Summer Studio) in the person's workspaces.",
+      "use_when": [
+        "\"which apps do we have\"",
+        "finding an app id to change or read"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "tools",
+          "ui"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-apps"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_app_list",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/app-page",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "4e3a2feb1c87ca57cebded9808fb7da24e46ca66c058b29ed1e3f2f15a07592e",
+      "summary": "Read or use the fields and buttons an open Summer App declared (fill values, press actions).",
+      "use_when": [
+        "\"set the budget to 60 in the balance app\"",
+        "reading what the person has selected in an open app"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "tools",
+          "ui"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-apps"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_app_page",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/app-publish",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "0c7f946c7d677a4f5aaaa7347583eff37371f0daf64b9c3ec36dd31d8b270ba7",
+      "summary": "Publish a new version of a Summer App from a local folder, files or a layout; the person's Studio tab boots it.",
+      "use_when": [
+        "after writing or changing an app's files",
+        "fixing an app after a publish error or an app error event"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "tools",
+          "ui"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-apps"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_app_publish",
+      "remote": true,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/app-report-gap",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "62863e862723f8694934067bf4f5e0d253af3ddc24f9bb6c34cbf7e3eb3dabb1",
+      "summary": "Report an SDK capability a Summer App needed and did not have, so Summer builds it.",
+      "use_when": [
+        "an app needed to reach a service or engine feature the SDK does not offer",
+        "an app needs something the Summer Apps SDK cannot do"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "tools",
+          "ui"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-apps"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_app_report_gap",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/app-tools",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "f9fda7b5271107ff4c1a057749fb2c213b50b187506b38f43a994794abb0d5a5",
+      "summary": "List the agent tools a Summer App declares.",
+      "use_when": [
+        "before calling app logic with summer_app_call",
+        "\"what can our balance app do for me\""
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "tools",
+          "ui"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-apps"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_app_tools",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
       "id": "tool/attach-to-surface",
       "kind": "tool",
       "version": "1.0.0",
@@ -6008,6 +6543,45 @@
       "authority": {
         "filesystem": true,
         "editor_mutation": false,
+        "network": false,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/enable-plugin",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "e4785bfe2cf063958bc9c665873f0c38d4079a5127d46dd9310957ffcbfd20c4",
+      "summary": "Enable an editor plugin (res://addons/<name>/) and report the real load result, or that an older engine only queued it.",
+      "use_when": [
+        "an agent wrote or installed an editor plugin and needs it running",
+        "a Summer App's paired plugin must be enabled before the app can message it",
+        "\"turn on the quest_tools plugin\""
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "editor",
+          "tools"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-apps"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_enable_plugin",
+      "remote": false,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": true,
         "network": false,
         "credentials": false,
         "publish": false

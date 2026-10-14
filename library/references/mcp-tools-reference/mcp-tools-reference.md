@@ -17,7 +17,7 @@
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (104 tools)
+## Tool surface (117 tools)
 
 ### Project files (4)
 
@@ -261,6 +261,26 @@ Preview. One fast, read-only call that walks every node of a 3D scene and lists 
 | Tool | Use |
 |---|---|
 | `summer_library_feedback` | Report library-entry outcomes (worked/wrong/outdated/...) so entries get fixed and re-ranked. Fire-and-forget with a 1s cap; enum-first schema with no field for project files, chat content, or code; honors `SUMMER_NO_TELEMETRY=1` and `DO_NOT_TRACK=1`. |
+
+### Summer Apps (13)
+
+Team tools inside Summer Studio that agents build: shared, live on the team's data and engine. Load the `summer-apps` and `summer-apps-design` skills first.
+
+| Tool | Use |
+|---|---|
+| `summer_app_guide` | The build guide: when to build, Layout vs code, build loop, manifest, SDK, UI kit, layout format, design rules, worked examples. |
+| `summer_app_list` | The apps in the person's workspaces. |
+| `summer_app_create` | New scratch app; the person's Studio tab opens it. |
+| `summer_app_publish` | New immutable version from a local `dir`, `files` or a `layout`, plus the manifest. |
+| `summer_app_get` | Manifest, current files and a data summary. |
+| `summer_app_events` | Long-poll (up to 50 s) what the app sends agents, errors, feedback and tool calls. |
+| `summer_app_page` | Read, fill and press the open app's declared fields and buttons. |
+| `summer_app_data` | Read or write the app's shared collections; no app needs to be open, the team sees writes live. |
+| `summer_app_tools` | The app's declared agent tools. |
+| `summer_app_call` | Run an agent tool inside the person's open app; `app_not_open` otherwise. |
+| `summer_app_report_gap` | Report an SDK capability an app needed and did not have. |
+| `summer_app_dock` | Dock an app in the editor (left, right, bottom), close it, list docks; `engine_lacks_op` on engines without app docks. |
+| `summer_enable_plugin` | Enable an editor plugin (`res://addons/<name>/`) and get the real load result (`enabled`, autoloads, or a failure `code`); older engines answer `queued: true, enabled: null` instead of claiming success. |
 
 ## Common pattern
 

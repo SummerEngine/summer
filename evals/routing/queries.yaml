@@ -89,6 +89,17 @@ queries:
     expected: [skill/sound-effect, tool/generate-sfx-choices]
   - query: "I approved the sounds I liked in Studio, use them"
     expected: [tool/get-choices]
+  # ── Summer Apps (team tools inside Summer Studio) ─────────────────────
+  - query: "build us a loot balance tool for res://data/items.json that the whole team can use"
+    expected: [skill/summer-apps, tool/app-create]
+  - query: "make an app in Studio to track every creature from concept to in-engine"
+    expected: [skill/summer-apps]
+  - query: "nerf the bow in our balance sheet app"
+    expected: [tool/app-data]
+  - query: "how should the team tool look so it is on brand"
+    expected: [skill/summer-apps-design]
+  - query: "dock the quest editor app next to my scene in the editor"
+    expected: [tool/app-dock]
 
   # ── Gameplay & design ──────────────────────────────────────────────────
   - query: "add a grappling hook"

@@ -1,0 +1,74 @@
+id: tool/app-data
+kind: tool
+version: 1.0.0
+summary: Read or write a Summer App's shared data collections; works with no app open and the team sees writes live.
+use_when:
+  - '"nerf the bow in our balance sheet"'
+  - seeding an app with data
+  - reading what the team entered in an app
+facets:
+  lifecycle:
+    - build
+  domains:
+    - tools
+    - ui
+compatibility:
+  engine: ">=4.6"
+related:
+  skills:
+    - skill/summer-apps
+source: official
+license: MIT
+status: preview
+aliases:
+  - summer_app_data
+implementation:
+  module: src/mcp/tools/app-tools.ts
+  export: registerAppTools
+surfaces:
+  mcp:
+    tool_name: summer_app_data
+    remote: true
+input_schema:
+  type: object
+  properties:
+    appId:
+      type: string
+      format: uuid
+      description: The app id from summer_app_create or summer_app_list
+    collection:
+      type: string
+      maxLength: 48
+      description: "Read: one collection. Default: all"
+    after:
+      type: string
+      maxLength: 200
+      description: "Read: the next cursor from the previous page"
+    limit:
+      type: integer
+      minimum: 1
+      maximum: 500
+      default: 200
+    ops:
+      type: array
+      items:
+        type: object
+        additionalProperties: {}
+      minItems: 1
+      maxItems: 100
+      description: "Write: [{op: put, collection, recordId, data}, {op: patch, collection, recordId, patch}, {op: remove, collection, recordId}]; ifRevision on an op applies it only at that record revision (0: must not exist)"
+    as:
+      type: string
+      enum:
+        - agent
+        - seed
+      description: "Write: seed for starter data that belongs to the team (no author). Default: agent"
+  required:
+    - appId
+  additionalProperties: false
+authority:
+  filesystem: false
+  editor_mutation: false
+  network: true
+  credentials: false
+  publish: false

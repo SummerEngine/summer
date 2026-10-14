@@ -25,6 +25,8 @@ import {
   appPublishArgsSchema,
   appReportGap,
   appReportGapArgsSchema,
+  appScreenshot,
+  appScreenshotArgsSchema,
   appsGateway,
   appTools,
   appToolsArgsSchema,
@@ -99,6 +101,19 @@ export function registerAppTools(server: McpServer) {
     `Read or use the fields and buttons a Summer App declared while it is open in the person's Studio tab or editor dock: no fill and no press reads the page; fill [{field, value}] and press an action id use it. Critical actions (delete, publish, pay, send) are pressed only by the person. app_not_open when the app is not open.\n\n${CLOUD}`,
     appPageArgsSchema.shape,
     cloud("summer_app_page", appPageArgsSchema, appPage)
+  );
+  server.tool(
+    "summer_app_screenshot",
+    `See a Summer App without the person: Summer renders its current version (or version) headless with the person's data and returns the picture plus what to fix: console lines, uncaught errors, refused calls, whether the SDK connected and rendered, and the fields, buttons and agent tools it declared. Read-only: writes, sends and paid calls are refused, nothing changes. width 390 for a phone, theme dark, fullPage for the whole scroll; out also saves the PNG. Use it after every publish.\n\n${CLOUD}`,
+    appScreenshotArgsSchema.shape,
+    async (args: unknown) => {
+      const parsed = appScreenshotArgsSchema.safeParse(args ?? {});
+      if (!parsed.success) return result({ ok: false, code: "invalid", error: parsed.error.issues[0]?.message ?? "Invalid arguments" });
+      const shot = await appScreenshot(parsed.data, { request: appsGateway("mcp", "summer_app_screenshot") });
+      if (shot.ok !== true || !("image" in shot)) return result(shot);
+      const { image, ...report } = shot as typeof shot & { image: { mimeType: string; base64: string } };
+      return { content: [{ type: "image" as const, data: image.base64, mimeType: image.mimeType }, { type: "text" as const, text: JSON.stringify(report, null, 2) }] };
+    }
   );
   server.tool(
     "summer_app_data",

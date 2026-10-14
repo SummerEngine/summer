@@ -17,7 +17,7 @@
 
 **Rule of thumb:** project reads/writes go through Summer; live hierarchy/inspector changes use scene tools; process-level work remains with the host.
 
-## Tool surface (117 tools)
+## Tool surface (118 tools)
 
 ### Project files (4)
 
@@ -275,6 +275,7 @@ Team tools inside Summer Studio that agents build: shared, live on the team's da
 | `summer_app_get` | Manifest, current files and a data summary. |
 | `summer_app_events` | Long-poll (up to 50 s) what the app sends agents, errors, feedback and tool calls. |
 | `summer_app_page` | Read, fill and press the open app's declared fields and buttons. |
+| `summer_app_screenshot` | See the app without the person: a headless, read-only render (PNG) with console, errors, refused calls and the declared page; `width` 390 for a phone, `theme` dark, `out` saves the PNG. |
 | `summer_app_data` | Read or write the app's shared collections; no app needs to be open, the team sees writes live. |
 | `summer_app_tools` | The app's declared agent tools. |
 | `summer_app_call` | Run an agent tool inside the person's open app; `app_not_open` otherwise. |

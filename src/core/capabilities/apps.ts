@@ -95,6 +95,17 @@ export const appPageArgsSchema = z.object({
   press: z.string().min(1).max(200).optional().describe("An action id to press after filling"),
 });
 
+export const appScreenshotArgsSchema = z.object({
+  appId,
+  version: z.number().int().positive().optional().describe("A published version. Default: the current one"),
+  width: z.number().int().min(320).max(1920).default(1280).describe("Viewport width in px: 390 for a phone"),
+  height: z.number().int().min(320).max(1600).default(800),
+  theme: z.enum(["light", "dark"]).default("light"),
+  fullPage: z.boolean().default(false).describe("Capture the whole scroll height (up to 4000 px)"),
+  params: z.record(z.string().max(500)).optional().describe("Launch params, as in /studio/apps/<id>?key=value"),
+  out: z.string().min(1).optional().describe("Also save the PNG to this local path"),
+});
+
 export const appDataArgsSchema = z.object({
   appId,
   collection: z.string().max(48).optional().describe("Read: one collection. Default: all"),
@@ -301,6 +312,21 @@ export async function appEvents(args: z.output<typeof appEventsArgsSchema>, deps
 export async function appPage(args: z.output<typeof appPageArgsSchema>, deps: AppsDeps) {
   const { appId: id, ...body } = args;
   return done(await deps.request("POST", `${APPS_ENDPOINT}/${id}/page`, { body, timeoutMs: 60_000 }));
+}
+
+/**
+ * summer_app_screenshot: the server renders the app headless and read-only as the
+ * person and answers the PNG (base64) with its console, errors and declared page.
+ * The image moves to `image`; `out` also writes it to disk.
+ */
+export async function appScreenshot(args: z.output<typeof appScreenshotArgsSchema>, deps: AppsDeps & { writeFile?: (file: string, data: Buffer) => Promise<void> }) {
+  const { appId: id, out, ...body } = args;
+  const result = done(await deps.request("POST", `${APPS_ENDPOINT}/${id}/screenshot`, { body, timeoutMs: 90_000 }));
+  if (result.ok !== true) return result;
+  const { image, ...report } = result as Record<string, unknown> & { image?: { mimeType: string; base64: string } };
+  if (!image) return { ...report, ok: false, code: "invalid", error: "The server answered without an image" };
+  if (out) await (deps.writeFile ?? ((file, data) => import("node:fs/promises").then((fs) => fs.writeFile(file, data))))(path.resolve(out), Buffer.from(image.base64, "base64"));
+  return { ...report, image, ...(out ? { savedTo: path.resolve(out) } : {}) };
 }
 
 export async function appData(args: z.output<typeof appDataArgsSchema>, deps: AppsDeps) {

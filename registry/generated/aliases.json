@@ -111,6 +111,7 @@
     "summer_app_page": "tool/app-page",
     "summer_app_publish": "tool/app-publish",
     "summer_app_report_gap": "tool/app-report-gap",
+    "summer_app_screenshot": "tool/app-screenshot",
     "summer_app_tools": "tool/app-tools",
     "summer_attach_to_surface": "tool/attach-to-surface",
     "summer_batch": "tool/batch",

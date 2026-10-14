@@ -228,6 +228,8 @@ import {
   appListArgsSchema,
   appPage,
   appPageArgsSchema,
+  appScreenshot,
+  appScreenshotArgsSchema,
   appPublish,
   appPublishArgsSchema,
   appReportGap,
@@ -629,6 +631,14 @@ async function gatewayReply(call: () => Promise<DispatchArgs>): Promise<GatewayR
     if (!(error instanceof ToolDispatchError)) throw error;
     return { error: error.message, status: 0 };
   }
+}
+
+/** summer tool app-screenshot: the PNG goes to `out` (default ./summer-app-screenshot.png), not into the printed JSON. */
+async function cliScreenshot(args: z.output<typeof appScreenshotArgsSchema>, deps: { request: ReturnType<typeof appsGateway> }) {
+  const shot = await appScreenshot({ ...args, out: args.out ?? "summer-app-screenshot.png" }, deps);
+  if (shot.ok !== true || !("image" in shot)) return shot;
+  const { image: _image, ...report } = shot;
+  return report;
 }
 
 function sfxChoicesDeps(): SfxChoicesDeps {
@@ -1219,6 +1229,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     ["summer_app_events", "Wait for events a Summer App sends to agents", appEventsArgsSchema, appEvents],
     ["summer_app_page", "Read or use the open app's declared fields and buttons", appPageArgsSchema, appPage],
     ["summer_app_data", "Read or write a Summer App's shared data", appDataArgsSchema, appData],
+    ["summer_app_screenshot", "See a Summer App rendered (read-only) with its console and errors; out saves the PNG", appScreenshotArgsSchema, cliScreenshot],
     ["summer_app_tools", "List a Summer App's agent tools", appToolsArgsSchema, appTools],
     ["summer_app_call", "Run a Summer App's agent tool in the person's open app", appCallArgsSchema, appCall],
     ["summer_app_report_gap", "Report an SDK capability a Summer App needed", appReportGapArgsSchema, appReportGap],

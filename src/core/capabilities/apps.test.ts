@@ -12,6 +12,8 @@ import {
   appEventsArgsSchema,
   appPublish,
   appPublishArgsSchema,
+  appScreenshot,
+  appScreenshotArgsSchema,
   readAppDir,
   type AppsDeps,
   type AppsReply,
@@ -60,6 +62,26 @@ describe("summer_app_* cloud tools", () => {
     ]);
     await appData({ appId: APP, limit: 200, as: "seed", ops: [{ op: "put", collection: "items", recordId: "bow", data: {} }] }, deps);
     expect((request.mock.calls[2] as unknown[])[2]).toMatchObject({ body: { as: "seed", ops: [{ op: "put" }] } });
+  });
+});
+
+describe("summer_app_screenshot", () => {
+  it("posts the view options, splits the image from the report and saves it to out", async () => {
+    const { request, deps } = fakeDeps({ data: { version: 2, connected: true, errors: [], image: { mimeType: "image/png", base64: Buffer.from("png").toString("base64") } } });
+    const writeFile = vi.fn(async () => {});
+    const args = appScreenshotArgsSchema.parse({ appId: APP, width: 390, theme: "dark", out: "shot.png" });
+    const result = await appScreenshot(args, { ...deps, writeFile });
+    expect(request).toHaveBeenCalledWith("POST", `/api/mcp/apps/${APP}/screenshot`, { body: { width: 390, height: 800, theme: "dark", fullPage: false }, timeoutMs: 90_000 });
+    expect(result).toMatchObject({ ok: true, version: 2, connected: true, image: { mimeType: "image/png" }, savedTo: path.resolve("shot.png") });
+    expect(writeFile).toHaveBeenCalledWith(path.resolve("shot.png"), Buffer.from("png"));
+  });
+
+  it("passes a server error through without writing a file", async () => {
+    const { deps } = fakeDeps({ ok: false, status: 404, data: { error: { code: "not_found", message: "App not found" } } });
+    const writeFile = vi.fn(async () => {});
+    const result = await appScreenshot(appScreenshotArgsSchema.parse({ appId: APP, out: "shot.png" }), { ...deps, writeFile });
+    expect(result).toMatchObject({ ok: false, code: "not_found" });
+    expect(writeFile).not.toHaveBeenCalled();
   });
 });
 

@@ -2,6 +2,10 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+- **`summer_app_screenshot`: see your Summer App without opening Studio.** Summer renders the app's published version with your data and returns the picture plus what to fix: console lines, uncaught errors, calls it refused, whether the SDK connected, and the fields and buttons the app declared. It is read-only: writes, sends and paid calls are refused, so nothing changes. `width: 390` shows the phone layout, `theme: "dark"` the dark theme, `fullPage` the whole scroll; `out` also saves the PNG (`summer tool app-screenshot` saves it to `./summer-app-screenshot.png`). The `summer-apps` skill now looks at every publish this way.
+
 ## [3.8.0] - 2026-10-13
 
 Agents build Summer Apps, team tools inside Summer Studio, and asset-only requests skip the engine.

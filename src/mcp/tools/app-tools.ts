@@ -76,7 +76,7 @@ export function registerAppTools(server: McpServer) {
   );
   server.tool(
     "summer_app_create",
-    `Create a new scratch Summer App in the person's workspace (default: personal); their open Summer Studio tab opens it. Read summer_app_guide first. format code (index.html + JS/CSS) or layout (a JSON layout of kit nodes for a quick decision UI). Then summer_app_publish.\n\n${CLOUD}`,
+    `Create a new scratch Summer App; their open Summer Studio tab opens it. Without workspaceId it goes to the person's team (the one their Studio tab is on, else their latest team, else personal); the result's workspace says which: tell the person. Read summer_app_guide first. format code (index.html + JS/CSS) or layout (a JSON layout of kit nodes for a quick decision UI). Then summer_app_publish.\n\n${CLOUD}`,
     appCreateArgsSchema.shape,
     cloud("summer_app_create", appCreateArgsSchema, appCreate)
   );
@@ -100,7 +100,7 @@ export function registerAppTools(server: McpServer) {
   );
   server.tool(
     "summer_app_events",
-    `Wait for what a Summer App sends you: summer.agent.send events (kind agent), errors in the app (kind error), feedback (kind feedback), agent tool calls (kind tool). Waits up to waitSeconds (max ${MAX_APP_EVENTS_WAIT_SECONDS}) for the first event after the cursor; pass the returned cursor as after next time.\n\n${CLOUD}`,
+    `Wait for what a Summer App sends you: summer.agent.send events (kind agent), errors in the app (kind error), feedback (kind feedback), agent tool calls (kind tool). Waits up to timeoutSeconds (max ${MAX_APP_EVENTS_WAIT_SECONDS}) for the first event after the cursor; pass the returned cursor as after next time.\n\n${CLOUD}`,
     appEventsArgsSchema.shape,
     cloud("summer_app_events", appEventsArgsSchema, appEvents)
   );

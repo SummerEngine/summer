@@ -45,12 +45,12 @@ describe("summer_app_* cloud tools", () => {
 
   it("events long-poll with the server ceiling plus slack", async () => {
     const { request, deps } = fakeDeps({ data: { events: [], cursor: 4, timedOut: true } });
-    await appEvents(appEventsArgsSchema.parse({ appId: APP, after: 4, waitSeconds: 50, kinds: ["agent", "tool"] }), deps);
+    await appEvents(appEventsArgsSchema.parse({ appId: APP, after: 4, timeoutSeconds: 50, kinds: ["agent", "tool"] }), deps);
     const [, endpoint, init] = request.mock.calls[0] as unknown as [string, string, { query: URLSearchParams; timeoutMs: number }];
     expect(endpoint).toBe(`/api/mcp/apps/${APP}/events`);
     expect(init.query.toString()).toBe("after=4&timeoutMs=50000&kinds=agent%2Ctool");
     expect(init.timeoutMs).toBe(70_000);
-    expect(() => appEventsArgsSchema.parse({ appId: APP, waitSeconds: 51 })).toThrow();
+    expect(() => appEventsArgsSchema.parse({ appId: APP, timeoutSeconds: 51 })).toThrow();
   });
 
   it("data reads without ops and writes with them", async () => {
@@ -96,12 +96,13 @@ describe("summer_app_screenshot", () => {
 });
 
 describe("summer_app_publish", () => {
-  it("publishes a local folder: text as utf8, binaries as base64, dotfiles and node_modules skipped", async () => {
+  it("publishes a local folder: text as utf8, binaries as base64, dotfiles, node_modules and .d.ts skipped", async () => {
     const dir = mkdtempSync(path.join(tmpdir(), "summer-app-"));
     writeFileSync(path.join(dir, "index.html"), "<h1>hi</h1>");
     mkdirSync(path.join(dir, "img"));
     writeFileSync(path.join(dir, "img", "a.png"), Buffer.from([1, 2, 3]));
     writeFileSync(path.join(dir, ".env"), "SECRET=1");
+    writeFileSync(path.join(dir, "summer-sdk.d.ts"), "declare const summer: unknown;");
     mkdirSync(path.join(dir, "node_modules"));
     writeFileSync(path.join(dir, "node_modules", "x.js"), "1");
     expect(await readAppDir(dir)).toEqual([

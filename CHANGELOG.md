@@ -5,6 +5,9 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 ## [Unreleased]
 
 - **`summer_app_screenshot`: see your Summer App without opening Studio.** Summer renders the app's published version with your data and returns the picture plus what to fix: console lines, uncaught errors, calls it refused, whether the SDK connected, and the fields and buttons the app declared. It is read-only: writes, sends and paid calls are refused, so nothing changes. `width: 390` shows the phone layout, `theme: "dark"` the dark theme, `fullPage` the whole scroll; `out` also saves the PNG (`summer tool app-screenshot` saves it to `./summer-app-screenshot.png`). The `summer-apps` skill now looks at every publish this way.
+- `summer_app_create` without `workspaceId` puts the app in the person's team: the one their Studio tab is on, else their latest team, else their personal workspace. The result says which.
+- `summer_app_events` takes `timeoutSeconds` (was `waitSeconds`), the same name as the hosted tool.
+- `summer_app_guide` has section `types`: the SDK's exact TypeScript types. A `dir` publish skips `.d.ts` files, so a types file next to the app no longer fails the publish.
 - **`summer_app_update`** renames a Summer App or sets it kept, archived or back to scratch, so agents archive the throwaway apps they made.
 
 ## [3.8.0] - 2026-10-13

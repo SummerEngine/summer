@@ -5,6 +5,7 @@ import { connectHostedMcp, type HostedClient, type HostedConnectDependencies } f
 import { getStoreAccessToken, OAuthError, resolveMcpResourceUrl } from "../core/oauth.js";
 import { appendMcpLogEvent } from "../core/mcp-log.js";
 import { providerSafeSchema } from "./provider-safe-schema.js";
+import { unknownHostedCall } from "../core/hosted-call-outcome.js";
 
 export type { HostedClient };
 
@@ -195,11 +196,7 @@ export function prepareHostedMount(
           try {
             return (await client.callTool({ name: tool.name, arguments: args })) as never;
           } catch (error) {
-            return errorText({
-              code: "store_tool_failed",
-              message: `The hosted Summer Engine MCP did not complete ${tool.name}: ${error instanceof Error ? error.message : String(error)}.`,
-              recovery: 'Recovery: retry; if it says unauthorized, run "summer login --store --force".',
-            });
+            return errorText(unknownHostedCall(tool, error));
           }
         }
       );

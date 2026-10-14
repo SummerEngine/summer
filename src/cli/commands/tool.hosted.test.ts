@@ -52,6 +52,29 @@ describe("summer tool reaches the hosted store and publishing tools", () => {
     vi.spyOn(hostedCli, "call").mockResolvedValue({ status: "not_signed_in" });
     const { thrown } = await run(["summer_store_list_games"]);
     expect(String((thrown as Error).message)).toContain("summer login --store");
+    expect(String((thrown as Error).message)).not.toContain("Unknown tool");
+  });
+
+  it("exits 1 with the exact tool and unknown outcome after a lost write reply", async () => {
+    vi.spyOn(hostedCli, "call").mockResolvedValue({ status: "outcome_unknown", error: {
+      ok: false, code: "hosted_call_outcome_unknown", tool: "summer_store_submit", outcome: "unknown",
+      message: "No confirmed result: reply lost after request r-7",
+      recovery: "The action may have applied. Inspect the target and read the same stable ID before any retry. Do not repeat it blindly.",
+    } });
+    const { exitCode, output, thrown } = await run(["store-submit", "--args", '{"gameId":"g1"}']);
+    expect(thrown).toBeNull();
+    expect(exitCode).toBe(1);
+    expect(JSON.parse(output)).toMatchObject({ code: "hosted_call_outcome_unknown", tool: "summer_store_submit", outcome: "unknown" });
+    expect(output).not.toContain("Unknown tool");
+  });
+
+  it("keeps pre-call unavailability and a genuinely missing tool distinct", async () => {
+    vi.spyOn(hostedCli, "call").mockResolvedValueOnce({ status: "unavailable", message: "listing failed" }).mockResolvedValueOnce({ status: "not_found" });
+    const unavailable = await run(["store-submit"]);
+    expect(String((unavailable.thrown as Error).message)).toContain("listing failed");
+    expect(String((unavailable.thrown as Error).message)).not.toContain("Unknown tool");
+    const missing = await run(["store-submit"]);
+    expect(String((missing.thrown as Error).message)).toContain('Unknown tool "store-submit"');
   });
 
   it("lists the hosted tools after the local ones, or how to get them", () => {

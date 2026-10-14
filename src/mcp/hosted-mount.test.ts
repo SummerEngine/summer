@@ -13,6 +13,7 @@ import { OAuthError } from "../core/oauth.js";
 import { setSummerDirForTests } from "../core/store.js";
 import { createMcpServer } from "./server.js";
 import { defaultHostedMountDependencies, prepareHostedMount, STORE_TOOLS_STATUS, type HostedMountDependencies } from "./hosted-mount.js";
+import type { HostedClient } from "../core/hosted-mcp.js";
 
 const TOKEN = "store-oauth-token";
 
@@ -125,6 +126,51 @@ describe("one Summer Engine MCP: hosted tools mounted locally", () => {
       const result = await client.callTool({ name: "summer_store_submit", arguments: { gameId: "g1", priceUsdCents: 499 } });
       expect(JSON.parse((result.content as Array<{ text: string }>)[0].text).status).toBe("awaiting_owner_approval");
       expect(hosted.seen).toEqual([{ tool: "summer_store_submit", args: { gameId: "g1", priceUsdCents: 499 }, authorization: `Bearer ${TOKEN}` }]);
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
+  it("reports a lost write reply as unknown through mounted MCP, without a second call", async () => {
+    let applied = 0;
+    const remote: HostedClient = {
+      listTools: async () => ({ tools: [{ name: "summer_store_submit", description: "Submit", inputSchema: { type: "object" }, annotations: { idempotentHint: true } }] }),
+      callTool: async () => { applied++; throw new Error("reply lost after request r-7"); },
+      listPrompts: async () => ({ prompts: [] }), getPrompt: async () => ({}),
+      listResources: async () => ({ resources: [] }), readResource: async () => ({}),
+    };
+    const { client, mount, server } = await localSession(deps({ connect: async () => remote }));
+    try {
+      await mount.mount();
+      const result = await client.callTool({ name: "summer_store_submit", arguments: { gameId: "g1" } });
+      expect(result.isError).toBe(true);
+      expect(JSON.parse((result.content as Array<{ text: string }>)[0].text)).toMatchObject({
+        ok: false, code: "hosted_call_outcome_unknown", tool: "summer_store_submit", outcome: "unknown",
+        message: expect.stringContaining("reply lost after request r-7"),
+        recovery: expect.stringContaining("Inspect the target"),
+      });
+      expect(applied).toBe(1);
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
+  it("preserves a returned hosted refusal unchanged", async () => {
+    const refusal = { isError: true, content: [{ type: "text", text: JSON.stringify({ ok: false, code: "forbidden", message: "No access" }) }] };
+    const remote: HostedClient = {
+      listTools: async () => ({ tools: [{ name: "summer_store_submit", inputSchema: { type: "object" } }] }),
+      callTool: async () => refusal,
+      listPrompts: async () => ({ prompts: [] }), getPrompt: async () => ({}),
+      listResources: async () => ({ resources: [] }), readResource: async () => ({}),
+    };
+    const { client, mount, server } = await localSession(deps({ connect: async () => remote }));
+    try {
+      await mount.mount();
+      const result = await client.callTool({ name: "summer_store_submit", arguments: {} });
+      expect(result.isError).toBe(true);
+      expect(result.content).toEqual(refusal.content);
     } finally {
       await client.close();
       await server.close();

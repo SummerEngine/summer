@@ -16,6 +16,7 @@ Agents build Summer Apps, team tools inside Summer Studio, and asset-only reques
 - **`summer_enable_plugin` enables an editor plugin (`res://addons/<name>/`) and reports what really happened.** On engines that wait for the plugin, it answers `enabled` with the plugin's autoloads, or the failure code with a hint. Older engines only queue the enable; the tool then answers `queued: true` and `enabled: null` with a note, and does not claim success.
 - Hosted tools such as `summer_studio_page` no longer fail with "Tool not found" when an agent calls them right after it connects, before it lists the tools. The call now waits for the hosted tools to finish loading, then runs.
 - **Assets only: no engine, no brainstorm, one sign-in.** If you only want assets (a sound, an image, a model), the README has a prompt to paste that skips the engine download and the starter project, and runs setup with `--no-games` so you sign in once. `/summer` sends an asset request such as "make me a sword clash sound" straight to its asset skill instead of a game brainstorm, and `sound-effect` stops after you approve the clips when there is no project to import into.
+- Out of credits, a generation tool now gives one link: the Add credits step in Summer Studio (`https://summerengine.com/studio/credits`). Pick an amount and pay once; no plan needed.
 
 ## [3.7.0] - 2026-10-13
 

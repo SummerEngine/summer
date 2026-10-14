@@ -142,9 +142,9 @@ async function mcpGenerate(
     let message = formattedApiErrorMessage(res.status, data);
 
     if (res.status === 402) {
-      message =
-        (data.message || "Insufficient credits.") +
-        "\nTop up at: https://www.summerengine.com/dashboard\nOr upgrade your plan at: https://www.summerengine.com/pricing";
+      // One link: the Add credits step in Studio (no plan needed). Newer servers already put it in the message.
+      const base = String(data.message || "Not enough credits.");
+      message = base.includes("summerengine.com") ? base : `${base}\nAdd credits: https://summerengine.com/studio/credits`;
     }
     if (res.status === 401) {
       message =

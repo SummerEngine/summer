@@ -27,6 +27,8 @@ import {
   appReportGapArgsSchema,
   appScreenshot,
   appScreenshotArgsSchema,
+  appUpdate,
+  appUpdateArgsSchema,
   appsGateway,
   appTools,
   appToolsArgsSchema,
@@ -89,6 +91,12 @@ export function registerAppTools(server: McpServer) {
     `A Summer App's manifest, its current version's files (or layout) and a summary of its shared data. Use it before changing an app.\n\n${CLOUD}`,
     appGetArgsSchema.shape,
     cloud("summer_app_get", appGetArgsSchema, appGet)
+  );
+  server.tool(
+    "summer_app_update",
+    `Rename a Summer App, change its purpose or folder, or set its status: kept (the team keeps it), archived (hidden from the app list; restore with scratch or kept), scratch. Archive the scratch apps you made that the person did not keep.\n\n${CLOUD}`,
+    appUpdateArgsSchema.shape,
+    cloud("summer_app_update", appUpdateArgsSchema, appUpdate)
   );
   server.tool(
     "summer_app_events",

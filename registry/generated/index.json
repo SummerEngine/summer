@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.1",
-      "content_hash": "d99d4016da308aecb2380db7982cda1fb9301acbb994788eaf3129bc783d804b",
+      "content_hash": "572d526eaf371d4790fa52e050fe8d779ef26bd86af5677775f9a1814a1ab372",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -3690,7 +3690,7 @@
       "id": "skill/summer-apps",
       "kind": "skill",
       "version": "0.1.0",
-      "content_hash": "d6d029cbb8fe415ebbe8b17beec5e7bde9a3718c3cd01a7cd37805333ca80cc5",
+      "content_hash": "9f6a38561db1bd8be5e63032d81de52dae805e19426f0027064a6eb6126b4177",
       "summary": "Build a Summer App, a team tool inside Summer Studio (balance table, quest editor, tracker, pick grid): build loop, Layout vs code, data as API, agent tools.",
       "use_when": [
         "the person asks for a tool for their team (\"build us a loot balance tool\", \"a board to track creatures\")",
@@ -6143,6 +6143,45 @@
       },
       "status": "preview",
       "mcp_tool_name": "summer_app_tools",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/app-update",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "1233adcc99796051529958cddf35f0fd7f6716a1e9c1e09b7c8f7bfa732a1c4f",
+      "summary": "Rename a Summer App, move it to a folder, or keep, archive or restore it.",
+      "use_when": [
+        "archiving a scratch app you made that the person did not keep",
+        "\"rename the loot app to Drop tables\"",
+        "\"keep this app\" (status kept)"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "tools",
+          "ui"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-apps"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_app_update",
       "remote": true,
       "authority": {
         "filesystem": false,

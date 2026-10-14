@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: tools
 user-invocable: true
-allowed-tools: Read Write Edit Glob summer_app_guide summer_app_list summer_app_create summer_app_publish summer_app_get summer_app_events summer_app_page summer_app_screenshot summer_app_data summer_app_tools summer_app_call summer_app_dock summer_app_report_gap
+allowed-tools: Read Write Edit Glob summer_app_guide summer_app_list summer_app_create summer_app_publish summer_app_get summer_app_update summer_app_events summer_app_page summer_app_screenshot summer_app_data summer_app_tools summer_app_call summer_app_dock summer_app_report_gap
 ---
 
 # Summer Apps
@@ -22,7 +22,8 @@ groups, Pick one and sound choices, Grow dashboards, Team) and the existing `sum
 tools. If it does, use that and tell the person where it lives.
 
 Build an app only when the need is real and Summer lacks it, or as a Scratch throwaway (a
-quick asset review, a UI prototype) that you call throwaway when you make it. When
+quick asset review, a UI prototype) that you call throwaway when you make it, and archive
+when it is done (`summer_app_update {appId, status: "archived"}`). When
 something is missing natively, report it with `summer_app_report_gap` (and
 `summer_library_feedback` when a library entry fell short), so Summer can build it for
 everyone.

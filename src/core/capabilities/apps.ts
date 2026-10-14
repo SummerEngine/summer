@@ -95,6 +95,14 @@ export const appPageArgsSchema = z.object({
   press: z.string().min(1).max(200).optional().describe("An action id to press after filling"),
 });
 
+export const appUpdateArgsSchema = z.object({
+  appId,
+  name: z.string().min(1).max(80).optional(),
+  purpose: z.string().max(280).optional(),
+  status: z.enum(["scratch", "kept", "archived"]).optional().describe("kept: the team keeps it. archived: hidden from the app list (restore with scratch or kept)"),
+  folder: z.string().min(1).max(80).nullable().optional().describe("null takes it out of its folder"),
+});
+
 export const appScreenshotArgsSchema = z.object({
   appId,
   version: z.number().int().positive().optional().describe("A published version. Default: the current one"),
@@ -312,6 +320,11 @@ export async function appEvents(args: z.output<typeof appEventsArgsSchema>, deps
 export async function appPage(args: z.output<typeof appPageArgsSchema>, deps: AppsDeps) {
   const { appId: id, ...body } = args;
   return done(await deps.request("POST", `${APPS_ENDPOINT}/${id}/page`, { body, timeoutMs: 60_000 }));
+}
+
+export async function appUpdate(args: z.output<typeof appUpdateArgsSchema>, deps: AppsDeps) {
+  const { appId: id, ...body } = args;
+  return done(await deps.request("POST", `${APPS_ENDPOINT}/${id}/update`, { body, timeoutMs: 30_000 }));
 }
 
 /**

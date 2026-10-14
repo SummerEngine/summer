@@ -14,6 +14,7 @@ import {
   appPublishArgsSchema,
   appScreenshot,
   appScreenshotArgsSchema,
+  appUpdate,
   readAppDir,
   type AppsDeps,
   type AppsReply,
@@ -62,6 +63,15 @@ describe("summer_app_* cloud tools", () => {
     ]);
     await appData({ appId: APP, limit: 200, as: "seed", ops: [{ op: "put", collection: "items", recordId: "bow", data: {} }] }, deps);
     expect((request.mock.calls[2] as unknown[])[2]).toMatchObject({ body: { as: "seed", ops: [{ op: "put" }] } });
+  });
+});
+
+describe("summer_app_update", () => {
+  it("posts the change to the app's update route", async () => {
+    const { request, deps } = fakeDeps({ data: { app: { id: APP, status: "archived" } } });
+    const result = await appUpdate({ appId: APP, status: "archived" }, deps);
+    expect(request).toHaveBeenCalledWith("POST", `/api/mcp/apps/${APP}/update`, { body: { status: "archived" }, timeoutMs: 30_000 });
+    expect(result).toMatchObject({ ok: true, app: { status: "archived" } });
   });
 });
 

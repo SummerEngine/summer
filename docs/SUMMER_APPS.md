@@ -18,7 +18,7 @@ Engine MCP offers the same cloud tools under the same names.
 
 ## How the tools work
 
-- Cloud tools (`summer_app_guide`, `list`, `create`, `publish`, `get`, `events`, `page`, `screenshot`, `data`, `tools`,
+- Cloud tools (`summer_app_guide`, `list`, `create`, `publish`, `get`, `update`, `events`, `page`, `screenshot`, `data`, `tools`,
   `call`, `report_gap`) call the Summer web API under `/api/mcp/apps` with the signed-in account (`summer login`).
   They work without the engine running.
 - The server answers errors as `{error: {code, message}}`; the tools return them flat as

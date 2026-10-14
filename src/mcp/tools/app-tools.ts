@@ -25,6 +25,10 @@ import {
   appPublishArgsSchema,
   appReportGap,
   appReportGapArgsSchema,
+  appScreenshot,
+  appScreenshotArgsSchema,
+  appUpdate,
+  appUpdateArgsSchema,
   appsGateway,
   appTools,
   appToolsArgsSchema,
@@ -72,7 +76,7 @@ export function registerAppTools(server: McpServer) {
   );
   server.tool(
     "summer_app_create",
-    `Create a new scratch Summer App in the person's workspace (default: personal); their open Summer Studio tab opens it. Read summer_app_guide first. format code (index.html + JS/CSS) or layout (a JSON layout of kit nodes for a quick decision UI). Then summer_app_publish.\n\n${CLOUD}`,
+    `Create a new scratch Summer App; their open Summer Studio tab opens it. Without workspaceId it goes to the person's team (the one their Studio tab is on, else their latest team, else personal); the result's workspace says which: tell the person. Read summer_app_guide first. format code (index.html + JS/CSS) or layout (a JSON layout of kit nodes for a quick decision UI). Then summer_app_publish.\n\n${CLOUD}`,
     appCreateArgsSchema.shape,
     cloud("summer_app_create", appCreateArgsSchema, appCreate)
   );
@@ -89,8 +93,14 @@ export function registerAppTools(server: McpServer) {
     cloud("summer_app_get", appGetArgsSchema, appGet)
   );
   server.tool(
+    "summer_app_update",
+    `Rename a Summer App, change its purpose or folder, or set its status: kept (the team keeps it), archived (hidden from the app list; restore with scratch or kept), scratch. Archive the scratch apps you made that the person did not keep.\n\n${CLOUD}`,
+    appUpdateArgsSchema.shape,
+    cloud("summer_app_update", appUpdateArgsSchema, appUpdate)
+  );
+  server.tool(
     "summer_app_events",
-    `Wait for what a Summer App sends you: summer.agent.send events (kind agent), errors in the app (kind error), feedback (kind feedback), agent tool calls (kind tool). Waits up to waitSeconds (max ${MAX_APP_EVENTS_WAIT_SECONDS}) for the first event after the cursor; pass the returned cursor as after next time.\n\n${CLOUD}`,
+    `Wait for what a Summer App sends you: summer.agent.send events (kind agent), errors in the app (kind error), feedback (kind feedback), agent tool calls (kind tool). Waits up to timeoutSeconds (max ${MAX_APP_EVENTS_WAIT_SECONDS}) for the first event after the cursor; pass the returned cursor as after next time.\n\n${CLOUD}`,
     appEventsArgsSchema.shape,
     cloud("summer_app_events", appEventsArgsSchema, appEvents)
   );
@@ -99,6 +109,19 @@ export function registerAppTools(server: McpServer) {
     `Read or use the fields and buttons a Summer App declared while it is open in the person's Studio tab or editor dock: no fill and no press reads the page; fill [{field, value}] and press an action id use it. Critical actions (delete, publish, pay, send) are pressed only by the person. app_not_open when the app is not open.\n\n${CLOUD}`,
     appPageArgsSchema.shape,
     cloud("summer_app_page", appPageArgsSchema, appPage)
+  );
+  server.tool(
+    "summer_app_screenshot",
+    `See a Summer App without the person: Summer renders its current version (or version) headless with the person's data and returns the picture plus what to fix: console lines, uncaught errors, refused calls, whether the SDK connected and rendered, and the fields, buttons and agent tools it declared. Read-only: writes, sends and paid calls are refused, nothing changes. width 390 for a phone, theme dark, fullPage for the whole scroll; out also saves the PNG. Use it after every publish.\n\n${CLOUD}`,
+    appScreenshotArgsSchema.shape,
+    async (args: unknown) => {
+      const parsed = appScreenshotArgsSchema.safeParse(args ?? {});
+      if (!parsed.success) return result({ ok: false, code: "invalid", error: parsed.error.issues[0]?.message ?? "Invalid arguments" });
+      const shot = await appScreenshot(parsed.data, { request: appsGateway("mcp", "summer_app_screenshot") });
+      if (shot.ok !== true || !("image" in shot)) return result(shot);
+      const { image, ...report } = shot as typeof shot & { image: { mimeType: string; base64: string } };
+      return { content: [{ type: "image" as const, data: image.base64, mimeType: image.mimeType }, { type: "text" as const, text: JSON.stringify(report, null, 2) }] };
+    }
   );
   server.tool(
     "summer_app_data",

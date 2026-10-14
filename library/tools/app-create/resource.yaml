@@ -51,7 +51,7 @@ input_schema:
     workspaceId:
       type: string
       format: uuid
-      description: "A team workspace id. Default: the person's personal workspace"
+      description: "A workspace id. Default: the person's team (the one their Studio tab is on, else their latest team, else personal); the result's workspace says which"
     folder:
       type: string
       minLength: 1

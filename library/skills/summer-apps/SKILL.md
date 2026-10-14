@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: tools
 user-invocable: true
-allowed-tools: Read Write Edit Glob summer_app_guide summer_app_list summer_app_create summer_app_publish summer_app_get summer_app_events summer_app_page summer_app_data summer_app_tools summer_app_call summer_app_dock summer_app_report_gap
+allowed-tools: Read Write Edit Glob summer_app_guide summer_app_list summer_app_create summer_app_publish summer_app_get summer_app_update summer_app_events summer_app_page summer_app_screenshot summer_app_data summer_app_tools summer_app_call summer_app_dock summer_app_report_gap
 ---
 
 # Summer Apps
@@ -22,7 +22,8 @@ groups, Pick one and sound choices, Grow dashboards, Team) and the existing `sum
 tools. If it does, use that and tell the person where it lives.
 
 Build an app only when the need is real and Summer lacks it, or as a Scratch throwaway (a
-quick asset review, a UI prototype) that you call throwaway when you make it. When
+quick asset review, a UI prototype) that you call throwaway when you make it, and archive
+when it is done (`summer_app_update {appId, status: "archived"}`). When
 something is missing natively, report it with `summer_app_report_gap` (and
 `summer_library_feedback` when a library entry fell short), so Summer can build it for
 everyone.
@@ -62,9 +63,11 @@ Read these before writing code; they are exact:
   copyable example) is `summer_app_guide` section `kit`, also at `/summer-ui/v1/catalog.json`
   on the app host. Copy its examples instead of inventing markup.
 
-To see an app, publish it to a Scratch app and open it in Studio (`/studio/apps/<appId>`;
-`summer_app_create` opens it for the person). Opening `index.html` on its own never connects.
-There is no offline host: do not build one or mock the SDK.
+To see an app, publish it and call `summer_app_screenshot {appId}`: Summer renders it headless
+with the person's data and returns the picture plus the console, uncaught errors, refused calls
+and the fields and buttons it declared. No Studio tab needed; the person sees it at
+`/studio/apps/<appId>` (`summer_app_create` opens it for them). Opening `index.html` on its own
+never connects. There is no offline host: do not build one or mock the SDK.
 
 The app is served from its own host, apps.summerengine.app. Load the SDK and the kit as
 ES modules with root paths: `<script type="module" src="/summer-sdk/v1.js">` and
@@ -81,9 +84,13 @@ the first call, and reach data only through `summer.data.collection(name)`.
    error names the file or rule: fix it and publish again.
 4. Seed starter data with `summer_app_data` (`ops` plus `"as": "seed"`) when the app should
    start full. Seed rows belong to the team and show no author.
-5. `summer_app_events {appId, after}` waits for what the app sends you
-   (`summer.agent.send`), errors and feedback. Act on them; pass the cursor on.
-6. Change the app by publishing again; `summer_app_get` returns the current files.
+5. Look at it: `summer_app_screenshot {appId}`, then `width: 390` (phone) and `theme: "dark"`.
+   Fix every error and console line it reports, publish again, look again. It is read-only:
+   writes, sends and paid calls are refused there and work in Studio.
+6. `summer_app_events {appId, after}` waits for what the app sends you
+   (`summer.agent.send`), errors (uncaught and `console.error`) and feedback. Act on them;
+   pass the cursor on.
+7. Change the app by publishing again; `summer_app_get` returns the current files.
 
 ## Data is the API
 
@@ -140,5 +147,6 @@ app and answers `app_not_open` otherwise. Prefer data for plain reads and edits.
 
 ## Done means
 
-The app is published, opened once with real data, its states (loading, empty,
-error) work, and the person knows what it does and where its data goes.
+The app is published; `summer_app_screenshot` shows it with real data in light, dark and at
+390 px with no errors; its states (loading, empty, error) work; and the person knows what it
+does and where its data goes.

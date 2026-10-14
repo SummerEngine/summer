@@ -20,7 +20,7 @@ import { TOOLKIT_VERSION } from "../version.js";
 export const APPS_ENDPOINT = "/api/mcp/apps";
 /** The server's long-poll ceiling for summer_app_events. */
 export const MAX_APP_EVENTS_WAIT_SECONDS = 50;
-export const APP_GUIDE_SECTIONS = ["all", "overview", "manifest", "sdk", "kit", "layout", "design", "examples"] as const;
+export const APP_GUIDE_SECTIONS = ["all", "overview", "manifest", "sdk", "kit", "layout", "design", "examples", "types"] as const;
 export const APP_DOCK_SLOTS = ["left", "right", "bottom"] as const;
 
 /** Bundle limits the server enforces (checked here first for a clear local error). */
@@ -36,7 +36,7 @@ export const appGuideArgsSchema = z.object({
   section: z
     .enum(APP_GUIDE_SECTIONS)
     .default("all")
-    .describe("One part of the guide: overview, manifest, sdk, kit, layout, design, examples. Default all"),
+    .describe("One part of the guide: overview, manifest, sdk, kit, layout, design, examples, or types (the SDK's exact TypeScript types, not in all). Default all"),
 });
 
 export const appListArgsSchema = z.object({
@@ -48,7 +48,7 @@ export const appCreateArgsSchema = z.object({
   name: z.string().min(1).max(80),
   purpose: z.string().max(280).optional().describe("One line: what the tool does and where its data goes"),
   format: z.enum(["code", "layout"]).default("code").describe("code: index.html + JS/CSS (default). layout: a JSON layout of kit nodes, for quick decision UIs"),
-  workspaceId: z.string().uuid().optional().describe("A team workspace id. Default: the person's personal workspace"),
+  workspaceId: z.string().uuid().optional().describe("A workspace id. Default: the person's team (the one their Studio tab is on, else their latest team, else personal); the result's workspace says which"),
   folder: z.string().min(1).max(80).optional(),
 });
 
@@ -58,7 +58,7 @@ export const appPublishArgsSchema = z.object({
     .string()
     .min(1)
     .optional()
-    .describe("A local folder holding the app (index.html at its root). Every file under it is published; dotfiles and node_modules are skipped"),
+    .describe("A local folder holding the app (index.html at its root). Every file under it is published; dotfiles, node_modules and .d.ts files are skipped"),
   files: z
     .array(
       z.object({
@@ -81,7 +81,7 @@ export const appGetArgsSchema = z.object({ appId });
 export const appEventsArgsSchema = z.object({
   appId,
   after: z.number().int().min(0).default(0).describe("Return events after this cursor (0: from the start). Pass the returned cursor next time"),
-  waitSeconds: z.number().int().min(0).max(MAX_APP_EVENTS_WAIT_SECONDS).default(25).describe("Wait up to this long (max 50) for the first new event"),
+  timeoutSeconds: z.number().int().min(0).max(MAX_APP_EVENTS_WAIT_SECONDS).default(25).describe("Wait up to this long (max 50) for the first new event"),
   kinds: z.array(z.enum(["agent", "error", "feedback", "tool"])).max(4).optional().describe("Default: agent, error, feedback"),
 });
 
@@ -93,6 +93,25 @@ export const appPageArgsSchema = z.object({
     .optional()
     .describe("Values to set: [{field, value}] with field ids from a read"),
   press: z.string().min(1).max(200).optional().describe("An action id to press after filling"),
+});
+
+export const appUpdateArgsSchema = z.object({
+  appId,
+  name: z.string().min(1).max(80).optional(),
+  purpose: z.string().max(280).optional(),
+  status: z.enum(["scratch", "kept", "archived"]).optional().describe("kept: the team keeps it. archived: hidden from the app list (restore with scratch or kept)"),
+  folder: z.string().min(1).max(80).nullable().optional().describe("null takes it out of its folder"),
+});
+
+export const appScreenshotArgsSchema = z.object({
+  appId,
+  version: z.number().int().positive().optional().describe("A published version. Default: the current one"),
+  width: z.number().int().min(320).max(1920).default(1280).describe("Viewport width in px: 390 for a phone"),
+  height: z.number().int().min(320).max(1600).default(800),
+  theme: z.enum(["light", "dark"]).default("light"),
+  fullPage: z.boolean().default(false).describe("Capture the whole scroll height (up to 4000 px)"),
+  params: z.record(z.string().max(500)).optional().describe("Launch params, as in /studio/apps/<id>?key=value"),
+  out: z.string().min(1).optional().describe("Also save the PNG to this local path"),
 });
 
 export const appDataArgsSchema = z.object({
@@ -228,21 +247,23 @@ export async function appCreate(args: z.output<typeof appCreateArgsSchema>, deps
   const reply = await deps.request("POST", APPS_ENDPOINT, { body: args, timeoutMs: 30_000 });
   if (!reply.ok) return failure(reply);
   const studio = reply.data.studio as { queued?: boolean } | undefined;
+  const workspace = reply.data.workspace as { name?: string; kind?: string } | undefined;
+  const where = workspace?.name ? `It is in ${workspace.kind === "personal" ? "the person's personal workspace" : `the team ${workspace.name}`}: tell them. ` : "";
   return {
     ok: true,
     ...reply.data,
-    next: `${studio?.queued ? "The person's Summer Studio tab is opening the app. " : ""}Write the app (summer_app_guide first), then summer_app_publish with appId and the files or dir.`,
+    next: `${where}${studio?.queued ? "The person's Summer Studio tab is opening the app. " : ""}Write the app (summer_app_guide first), then summer_app_publish with appId and the files or dir.`,
   };
 }
 
-/** Every file under dir (dotfiles and node_modules skipped), as publish files. */
+/** Every file under dir (dotfiles, node_modules and .d.ts type files skipped), as publish files. */
 export async function readAppDir(dir: string): Promise<Array<{ path: string; content: string; encoding: "utf8" | "base64" }>> {
   const root = path.resolve(dir);
   const files: Array<{ path: string; content: string; encoding: "utf8" | "base64" }> = [];
   let total = 0;
   const walk = async (current: string) => {
     for (const entry of (await readdir(current, { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name))) {
-      if (entry.name.startsWith(".") || entry.name === "node_modules") continue;
+      if (entry.name.startsWith(".") || entry.name === "node_modules" || entry.name.endsWith(".d.ts")) continue;
       const full = path.join(current, entry.name);
       if (entry.isDirectory()) {
         await walk(full);
@@ -292,8 +313,8 @@ export async function appGet(args: z.output<typeof appGetArgsSchema>, deps: Apps
 export async function appEvents(args: z.output<typeof appEventsArgsSchema>, deps: AppsDeps) {
   return done(
     await deps.request("GET", `${APPS_ENDPOINT}/${args.appId}/events`, {
-      query: params({ after: String(args.after), timeoutMs: String(args.waitSeconds * 1000), kinds: args.kinds?.join(",") }),
-      timeoutMs: (args.waitSeconds + 20) * 1000,
+      query: params({ after: String(args.after), timeoutMs: String(args.timeoutSeconds * 1000), kinds: args.kinds?.join(",") }),
+      timeoutMs: (args.timeoutSeconds + 20) * 1000,
     })
   );
 }
@@ -301,6 +322,26 @@ export async function appEvents(args: z.output<typeof appEventsArgsSchema>, deps
 export async function appPage(args: z.output<typeof appPageArgsSchema>, deps: AppsDeps) {
   const { appId: id, ...body } = args;
   return done(await deps.request("POST", `${APPS_ENDPOINT}/${id}/page`, { body, timeoutMs: 60_000 }));
+}
+
+export async function appUpdate(args: z.output<typeof appUpdateArgsSchema>, deps: AppsDeps) {
+  const { appId: id, ...body } = args;
+  return done(await deps.request("POST", `${APPS_ENDPOINT}/${id}/update`, { body, timeoutMs: 30_000 }));
+}
+
+/**
+ * summer_app_screenshot: the server renders the app headless and read-only as the
+ * person and answers the PNG (base64) with its console, errors and declared page.
+ * The image moves to `image`; `out` also writes it to disk.
+ */
+export async function appScreenshot(args: z.output<typeof appScreenshotArgsSchema>, deps: AppsDeps & { writeFile?: (file: string, data: Buffer) => Promise<void> }) {
+  const { appId: id, out, ...body } = args;
+  const result = done(await deps.request("POST", `${APPS_ENDPOINT}/${id}/screenshot`, { body, timeoutMs: 90_000 }));
+  if (result.ok !== true) return result;
+  const { image, ...report } = result as Record<string, unknown> & { image?: { mimeType: string; base64: string } };
+  if (!image) return { ...report, ok: false, code: "invalid", error: "The server answered without an image" };
+  if (out) await (deps.writeFile ?? ((file, data) => import("node:fs/promises").then((fs) => fs.writeFile(file, data))))(path.resolve(out), Buffer.from(image.base64, "base64"));
+  return { ...report, image, ...(out ? { savedTo: path.resolve(out) } : {}) };
 }
 
 export async function appData(args: z.output<typeof appDataArgsSchema>, deps: AppsDeps) {

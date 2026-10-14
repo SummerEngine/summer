@@ -18,8 +18,8 @@ Engine MCP offers the same cloud tools under the same names.
 
 ## How the tools work
 
-- Cloud tools (`summer_app_guide`, `list`, `create`, `publish`, `get`, `events`, `page`, `data`, `tools`, `call`,
-  `report_gap`) call the Summer web API under `/api/mcp/apps` with the signed-in account (`summer login`).
+- Cloud tools (`summer_app_guide`, `list`, `create`, `publish`, `get`, `update`, `events`, `page`, `screenshot`, `data`, `tools`,
+  `call`, `report_gap`) call the Summer web API under `/api/mcp/apps` with the signed-in account (`summer login`).
   They work without the engine running.
 - The server answers errors as `{error: {code, message}}`; the tools return them flat as
   `{ok: false, code, error, hint?}`. Codes agents meet most: `unauthorized` (log in), `not_found` (no access, or
@@ -30,6 +30,9 @@ Engine MCP offers the same cloud tools under the same names.
   skipped, text as UTF-8 and the rest base64, checked against the limits (10 MB, 300 files, 5 MB per file)
   before upload.
 - `summer_app_events` long-polls up to 50 s; pass the returned `cursor` as `after` next time.
+- `summer_app_screenshot` asks the server to render the app headless (read-only, as the person) and returns
+  the PNG as MCP image content plus the report; `summer tool app-screenshot` writes the PNG to `out`
+  (default `./summer-app-screenshot.png`).
 - `summer_app_dock` is the one engine tool: it sends `OpenAppDock {appId, slot}`, `CloseAppDock {appId}` or
   `ListAppDocks` to the running editor and returns `engine_lacks_op` on engine builds without app docks.
 

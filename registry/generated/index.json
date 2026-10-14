@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.1",
-      "content_hash": "8cee2242e1035dc46736bd88a8299ec09b5a9dba7f3145ec1f814c5c7f3f1cf6",
+      "content_hash": "572d526eaf371d4790fa52e050fe8d779ef26bd86af5677775f9a1814a1ab372",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -3690,7 +3690,7 @@
       "id": "skill/summer-apps",
       "kind": "skill",
       "version": "0.1.0",
-      "content_hash": "9b2cc04fbac8560f08f199ac46108381eb06f06d05619bedec997b1fe46c4df7",
+      "content_hash": "9f6a38561db1bd8be5e63032d81de52dae805e19426f0027064a6eb6126b4177",
       "summary": "Build a Summer App, a team tool inside Summer Studio (balance table, quest editor, tracker, pick grid): build loop, Layout vs code, data as API, agent tools.",
       "use_when": [
         "the person asks for a tool for their team (\"build us a loot balance tool\", \"a board to track creatures\")",
@@ -5696,7 +5696,7 @@
       "id": "tool/app-create",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "d5dfb9704474c9085917da6b5f58f4a2e19dbb0234dc2c52935b0b17acaafb29",
+      "content_hash": "a9ca4527c4397e449e88bc5b058353821b75dd3368a26e031ec2cc0b02736efb",
       "summary": "Create a new scratch Summer App (a tool for the person's team inside Summer Studio) and open it in their Studio tab.",
       "use_when": [
         "\"build me a tool for…\" / \"make an app that…\"",
@@ -5811,7 +5811,7 @@
       "id": "tool/app-events",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "69fa01768364c4f9927e62334ed5de0b48ab94ffd3b743aa354c604c98af246d",
+      "content_hash": "08baf882083352c40ab71d36b4f51aaa50754c72b9eb6386ab7993d62494f42a",
       "summary": "Wait for what a Summer App sends to agents: summer.agent.send events, app errors, feedback and tool calls.",
       "use_when": [
         "waiting for the person to act in an app you built",
@@ -5887,7 +5887,7 @@
       "id": "tool/app-guide",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "b112b7ecca975d7e516bd5698ca6a6c3850f5ce01b01eb84a885ad3eea4b7abf",
+      "content_hash": "4648e830cef1a162e9df85ab0423dc4fbe099409682d375e325dde085521e5e3",
       "summary": "Read the Summer Apps build guide: when to build an app, Layout vs code, build loop, manifest, SDK, UI kit, layout format, design rules and worked examples.",
       "use_when": [
         "before building or changing a Summer App",
@@ -6075,6 +6075,46 @@
       }
     },
     {
+      "id": "tool/app-screenshot",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "e2c089afcb531ea86b85ef8a3db5c99db23a7ada23a3056085f7d7e048df6fe6",
+      "summary": "See a Summer App without the person - a headless, read-only render (PNG) with its console, errors, refused calls and declared page.",
+      "use_when": [
+        "right after every summer_app_publish, to check the app renders with real data",
+        "\"does my app look right on a phone / in dark mode\"",
+        "finding why an app shows nothing (SDK not connected, script errors)"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "tools",
+          "ui"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-apps",
+          "skill/summer-apps-design"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_app_screenshot",
+      "remote": true,
+      "authority": {
+        "filesystem": true,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
       "id": "tool/app-tools",
       "kind": "tool",
       "version": "1.0.0",
@@ -6103,6 +6143,45 @@
       },
       "status": "preview",
       "mcp_tool_name": "summer_app_tools",
+      "remote": true,
+      "authority": {
+        "filesystem": false,
+        "editor_mutation": false,
+        "network": true,
+        "credentials": false,
+        "publish": false
+      }
+    },
+    {
+      "id": "tool/app-update",
+      "kind": "tool",
+      "version": "1.0.0",
+      "content_hash": "1233adcc99796051529958cddf35f0fd7f6716a1e9c1e09b7c8f7bfa732a1c4f",
+      "summary": "Rename a Summer App, move it to a folder, or keep, archive or restore it.",
+      "use_when": [
+        "archiving a scratch app you made that the person did not keep",
+        "\"rename the loot app to Drop tables\"",
+        "\"keep this app\" (status kept)"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "tools",
+          "ui"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-apps"
+        ]
+      },
+      "status": "preview",
+      "mcp_tool_name": "summer_app_update",
       "remote": true,
       "authority": {
         "filesystem": false,

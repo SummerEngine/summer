@@ -43,8 +43,9 @@ input_schema:
         - layout
         - design
         - examples
+        - types
       default: all
-      description: "One part of the guide: overview, manifest, sdk, kit, layout, design, examples. Default all"
+      description: "One part of the guide: overview, manifest, sdk, kit, layout, design, examples, or types (the SDK's exact TypeScript types, not in all). Default all"
   additionalProperties: false
 authority:
   filesystem: false

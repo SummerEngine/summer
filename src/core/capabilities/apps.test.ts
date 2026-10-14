@@ -12,6 +12,9 @@ import {
   appEventsArgsSchema,
   appPublish,
   appPublishArgsSchema,
+  appScreenshot,
+  appScreenshotArgsSchema,
+  appUpdate,
   readAppDir,
   type AppsDeps,
   type AppsReply,
@@ -42,12 +45,12 @@ describe("summer_app_* cloud tools", () => {
 
   it("events long-poll with the server ceiling plus slack", async () => {
     const { request, deps } = fakeDeps({ data: { events: [], cursor: 4, timedOut: true } });
-    await appEvents(appEventsArgsSchema.parse({ appId: APP, after: 4, waitSeconds: 50, kinds: ["agent", "tool"] }), deps);
+    await appEvents(appEventsArgsSchema.parse({ appId: APP, after: 4, timeoutSeconds: 50, kinds: ["agent", "tool"] }), deps);
     const [, endpoint, init] = request.mock.calls[0] as unknown as [string, string, { query: URLSearchParams; timeoutMs: number }];
     expect(endpoint).toBe(`/api/mcp/apps/${APP}/events`);
     expect(init.query.toString()).toBe("after=4&timeoutMs=50000&kinds=agent%2Ctool");
     expect(init.timeoutMs).toBe(70_000);
-    expect(() => appEventsArgsSchema.parse({ appId: APP, waitSeconds: 51 })).toThrow();
+    expect(() => appEventsArgsSchema.parse({ appId: APP, timeoutSeconds: 51 })).toThrow();
   });
 
   it("data reads without ops and writes with them", async () => {
@@ -63,13 +66,43 @@ describe("summer_app_* cloud tools", () => {
   });
 });
 
+describe("summer_app_update", () => {
+  it("posts the change to the app's update route", async () => {
+    const { request, deps } = fakeDeps({ data: { app: { id: APP, status: "archived" } } });
+    const result = await appUpdate({ appId: APP, status: "archived" }, deps);
+    expect(request).toHaveBeenCalledWith("POST", `/api/mcp/apps/${APP}/update`, { body: { status: "archived" }, timeoutMs: 30_000 });
+    expect(result).toMatchObject({ ok: true, app: { status: "archived" } });
+  });
+});
+
+describe("summer_app_screenshot", () => {
+  it("posts the view options, splits the image from the report and saves it to out", async () => {
+    const { request, deps } = fakeDeps({ data: { version: 2, connected: true, errors: [], image: { mimeType: "image/png", base64: Buffer.from("png").toString("base64") } } });
+    const writeFile = vi.fn(async () => {});
+    const args = appScreenshotArgsSchema.parse({ appId: APP, width: 390, theme: "dark", out: "shot.png" });
+    const result = await appScreenshot(args, { ...deps, writeFile });
+    expect(request).toHaveBeenCalledWith("POST", `/api/mcp/apps/${APP}/screenshot`, { body: { width: 390, height: 800, theme: "dark", fullPage: false }, timeoutMs: 90_000 });
+    expect(result).toMatchObject({ ok: true, version: 2, connected: true, image: { mimeType: "image/png" }, savedTo: path.resolve("shot.png") });
+    expect(writeFile).toHaveBeenCalledWith(path.resolve("shot.png"), Buffer.from("png"));
+  });
+
+  it("passes a server error through without writing a file", async () => {
+    const { deps } = fakeDeps({ ok: false, status: 404, data: { error: { code: "not_found", message: "App not found" } } });
+    const writeFile = vi.fn(async () => {});
+    const result = await appScreenshot(appScreenshotArgsSchema.parse({ appId: APP, out: "shot.png" }), { ...deps, writeFile });
+    expect(result).toMatchObject({ ok: false, code: "not_found" });
+    expect(writeFile).not.toHaveBeenCalled();
+  });
+});
+
 describe("summer_app_publish", () => {
-  it("publishes a local folder: text as utf8, binaries as base64, dotfiles and node_modules skipped", async () => {
+  it("publishes a local folder: text as utf8, binaries as base64, dotfiles, node_modules and .d.ts skipped", async () => {
     const dir = mkdtempSync(path.join(tmpdir(), "summer-app-"));
     writeFileSync(path.join(dir, "index.html"), "<h1>hi</h1>");
     mkdirSync(path.join(dir, "img"));
     writeFileSync(path.join(dir, "img", "a.png"), Buffer.from([1, 2, 3]));
     writeFileSync(path.join(dir, ".env"), "SECRET=1");
+    writeFileSync(path.join(dir, "summer-sdk.d.ts"), "declare const summer: unknown;");
     mkdirSync(path.join(dir, "node_modules"));
     writeFileSync(path.join(dir, "node_modules", "x.js"), "1");
     expect(await readAppDir(dir)).toEqual([

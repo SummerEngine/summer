@@ -35,8 +35,8 @@ const jsonObject = z.record(z.unknown());
 export const appGuideArgsSchema = z.object({
   section: z
     .enum(APP_GUIDE_SECTIONS)
-    .default("all")
-    .describe("One part of the guide: overview, manifest, sdk, kit, layout, design, examples, or types (the SDK's exact TypeScript types, not in all). Default all"),
+    .default("overview")
+    .describe("Start with overview (the default), then read what the app needs: examples (a working app to copy), sdk, manifest, kit, design, layout, types (exact SDK TypeScript types). all returns every section but types (about 100 KB)"),
 });
 
 export const appListArgsSchema = z.object({
@@ -111,6 +111,11 @@ export const appScreenshotArgsSchema = z.object({
   theme: z.enum(["light", "dark"]).default("light"),
   fullPage: z.boolean().default(false).describe("Capture the whole scroll height (up to 4000 px)"),
   params: z.record(z.string().max(500)).optional().describe("Launch params, as in /studio/apps/<id>?key=value"),
+  steps: z
+    .array(z.object({ click: z.string().max(300).optional(), press: z.string().max(40).optional(), wait: z.number().int().min(0).max(3000).optional() }))
+    .max(5)
+    .optional()
+    .describe('Before the capture, in order: click a CSS selector in the app (">>>" reaches inside kit components), press a declared action id, or wait ms. Use it to see a dialog or a second state'),
   out: z.string().min(1).optional().describe("Also save the PNG to this local path"),
 });
 

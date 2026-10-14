@@ -25,7 +25,9 @@ Never publish an uncommitted version bump. npm never allows the same package nam
 | Publish simulation | `npm publish --dry-run` | Runs the publish lifecycle without uploading |
 | Publish | `npm publish` | Runs `prepublishOnly`, then uploads to npm |
 
-`prepublishOnly` is `npm run build && npm test`, so the real publish repeats both checks immediately before upload. `publishConfig` fixes the target to `https://registry.npmjs.org` with public access.
+`prepublishOnly` is `npm run check:release-authors && npm run build && npm test`, so the real publish repeats both checks immediately before upload.
+
+`check:release-authors` runs first: it stops the publish if any commit since the last npm release (its `gitHead`) came through a PR or push by anyone other than `mathias-heide` or `frozaken`, unless that SHA is in `release-reviewed.json`, added in a commit by one of them. It needs `gh` signed in and fails closed otherwise; `SUMMER_RELEASE_AUTHORS_REVIEWED=1 npm publish` skips it after a manual check. `publishConfig` fixes the target to `https://registry.npmjs.org` with public access.
 
 ## Authentication and signing
 

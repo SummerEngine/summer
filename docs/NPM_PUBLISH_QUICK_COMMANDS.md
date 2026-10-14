@@ -60,7 +60,7 @@ The package scripts are:
 
 - Build: `npm run build`, which cleans `dist/` and compiles TypeScript.
 - Test: `npm test`, which runs Vitest once, then `validate:library`.
-- Publish guard: `prepublishOnly`, which runs the build and tests again immediately before a real publish.
+- Publish guard: `prepublishOnly`, which first runs `check:release-authors` (stops on commits from outside `mathias-heide` / `frozaken` that are not in `release-reviewed.json`; needs `gh` signed in), then the build and tests again immediately before a real publish.
 - Publish: `npm publish`. `publishConfig` pins the public npm registry and public access.
 
 Read the dry-run file list. Stop if it contains secrets, `.env` files, internal planning documents, or if expected CLI files, skills, and `dist/bin/summer.js` are missing.

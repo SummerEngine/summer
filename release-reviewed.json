@@ -1,0 +1,10 @@
+{
+  "reviewed": [
+    {
+      "sha": "ffeacda9d1988fa6caddfedc15574948899c09c8",
+      "pr": 41,
+      "author": "Abhishek-B-R",
+      "note": "Accepted by mathias-heide on 2026-10-14: PR #41 (IPv6 loopback in local HTTP checks), merged 2026-10-09; read and found harmless."
+    }
+  ]
+}

@@ -74,7 +74,8 @@
     "eval:canary": "node evals/canary/canary-gateway.ts",
     "eval:outcomes": "node evals/outcomes/runner.ts",
     "test:watch": "vitest",
-    "prepublishOnly": "npm run build && npm test",
+    "prepublishOnly": "npm run check:release-authors && npm run build && npm test",
+    "check:release-authors": "node scripts/release-authors/cli.ts",
     "generate:registry": "node scripts/generate-registry/cli.ts",
     "generate:product-map": "npm run build && node scripts/navigation/render-product-map.ts",
     "sync:web-routes": "npm run build && node scripts/navigation/sync-web-routes.ts"

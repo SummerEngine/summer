@@ -40,7 +40,7 @@ import {
   safeProjectPath,
   validSha256,
 } from "./engine-ops.js";
-import { extractOpError, withOldEngineHint } from "./engine-receipt.js";
+import { EngineReceiptError, extractOpError, withOldEngineHint } from "./engine-receipt.js";
 import { lookupApiDocs } from "./api-docs.js";
 import { z, type ZodTypeAny } from "zod";
 import { BOARD_ENDPOINT, boardArgsSchema, boardQuery } from "./board.js";
@@ -930,6 +930,9 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       return await importPolyHavenHdri(parsed, () => ctx.engine());
     } catch (err) {
       if (err instanceof ImportHdriError) {
+        if (err.receipt !== undefined) {
+          throw new ToolResultError(failedEnvelope(err.receipt, err.message), err.message);
+        }
         throw new ToolDispatchError(`${err.message}${err.hint ? ` ${err.hint}` : ""}`);
       }
       throw err;
@@ -2142,5 +2145,12 @@ export async function dispatchTool(
   // The one gate every result passes, mirroring withEngine on the MCP face:
   // whatever the MCP face would mark isError is a ToolResultError here, so the
   // CLI exit code says what the receipt says — for every tool, not per handler.
-  return requireEngineSuccess(await dispatchEntry.handler(args, ctx));
+  try {
+    return requireEngineSuccess(await dispatchEntry.handler(args, ctx));
+  } catch (error) {
+    if (error instanceof EngineReceiptError) {
+      throw new ToolResultError(failedEnvelope(error.receipt, error.message), error.message);
+    }
+    throw error;
+  }
 }

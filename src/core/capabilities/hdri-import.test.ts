@@ -97,7 +97,8 @@ describe("importPolyHavenHdri size ceiling", () => {
 
   it("imports files under the ceiling without opting in", async () => {
     stubFiles(12 * 1024 * 1024);
-    const executeOps = vi.fn(async () => ({ ok: true, results: [{ ok: true }] }));
+    const receipt = { status: "ok", terminalState: "applied", results: [{ ok: true, op: "ImportFromUrl", meta: { imported: true, applicationState: "applied" } }] };
+    const executeOps = vi.fn(async () => receipt);
     const result = await importPolyHavenHdri(
       { assetId: "kloppenheim_02", resolution: "2k" },
       async () => ({ executeOps })
@@ -106,5 +107,22 @@ describe("importPolyHavenHdri size ceiling", () => {
     expect(executeOps).toHaveBeenCalledWith([
       { op: "ImportFromUrl", url: HDR_URL, path: "res://sky/kloppenheim_02_2k.hdr" },
     ]);
+    expect(result.importReceipt).toEqual(receipt);
+  });
+
+  it.each([
+    [{ terminalState: "uncertain", requestId: "hdri-uncertain" }, "uncertain"],
+    [{ ok: false, requestId: "hdri-failed" }, "ok: false"],
+    [{ status: "ok", results: [{ op: "ImportFromUrl", ok: true, pending: true, meta: { status: "pending" } }] }, "completed ImportFromUrl receipt"],
+    [{ status: "ok", requestId: "hdri-missing", results: [] }, "completed ImportFromUrl receipt"],
+    [{ status: "ok", requestId: "hdri-unimported", results: [{ ok: true, meta: { imported: false } }] }, "completed ImportFromUrl receipt"],
+  ])("does not offer an apply script after %j", async (receipt, message) => {
+    stubFiles(12 * 1024 * 1024);
+    const executeOps = vi.fn(async () => receipt);
+    await expect(importPolyHavenHdri(
+      { assetId: "kloppenheim_02", resolution: "2k" },
+      async () => ({ executeOps })
+    )).rejects.toMatchObject({ code: "import_failed", receipt, message: expect.stringContaining(message) });
+    expect(executeOps).toHaveBeenCalledTimes(1);
   });
 });

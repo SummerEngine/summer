@@ -74,7 +74,7 @@ const TERMINAL_STATE_MESSAGES: Record<string, string> = {
 export function extractOpError(result: unknown): string | null {
   if (!result || typeof result !== "object") return null;
   const op = result as OpResult;
-  const firstFailed = op.results?.find((r) => r.ok === false);
+  const firstFailed = Array.isArray(op.results) ? op.results.find((r) => r?.ok === false) : undefined;
   // The engine stamps failure classifiers on the envelope OR per-op inside
   // results[] (the batch gate does the latter) — read both.
   const failureReason = getFailureReason(op) ?? (firstFailed ? getFailureReason(firstFailed) : undefined);
@@ -131,6 +131,73 @@ export function extractOpError(result: unknown): string | null {
     return classify(message);
   }
   return null;
+}
+
+/** Keep the engine's request identity and per-op details when a caller cannot
+ *  prove that a mutating request completed. Both CLI and MCP can surface this
+ *  receipt without asking the engine to repeat the operation. */
+export class EngineReceiptError extends Error {
+  constructor(message: string, readonly receipt: unknown) {
+    super(message);
+    this.name = "EngineReceiptError";
+  }
+}
+
+/** Native async ops can answer ok:true while their worker is still running. */
+export function hasPendingOpReceipt(receipt: unknown): boolean {
+  const pending = (value: unknown): boolean => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const item = value as Record<string, unknown>;
+    const meta = item.meta && typeof item.meta === "object" && !Array.isArray(item.meta)
+      ? item.meta as Record<string, unknown> : null;
+    return item.pending === true || item.status === "pending" || meta?.pending === true || meta?.status === "pending";
+  };
+  if (pending(receipt)) return true;
+  const results = receipt && typeof receipt === "object" && !Array.isArray(receipt)
+    ? (receipt as Record<string, unknown>).results : null;
+  return Array.isArray(results) && results.some(pending);
+}
+
+/** An import response needs one positive result for the one op we sent. A
+ *  successful-looking envelope alone is not completion proof: legacy engines
+ *  may omit terminalState, but they still return results[{ok:true}]. */
+export function requireCompletedImportReceipt(
+  receipt: unknown,
+  op: "ImportFromUrl" | "ImportFromUrlBatch",
+  expectedFiles = 1
+): void {
+  const failure = extractOpError(receipt);
+  if (failure) throw new EngineReceiptError(failure, receipt);
+
+  const envelope = receipt && typeof receipt === "object" && !Array.isArray(receipt)
+    ? receipt as Record<string, unknown> : null;
+  const results = envelope?.results;
+  const result = Array.isArray(results) && results.length === 1 ? results[0] : null;
+  const item = result && typeof result === "object" && !Array.isArray(result)
+    ? result as Record<string, unknown> : null;
+  const meta = item?.meta && typeof item.meta === "object" && !Array.isArray(item.meta)
+    ? item.meta as Record<string, unknown> : null;
+  const imported = meta?.imported;
+  const importedValid = imported === undefined || imported === true || (
+    Array.isArray(imported) && imported.length === expectedFiles && imported.every((value) => value === true)
+  );
+  const applicationValid = meta?.applicationState === undefined || meta.applicationState === "applied";
+  const states = meta?.applicationStates;
+  const statesValid = states === undefined || (
+    Array.isArray(states) && states.length === expectedFiles && states.every((value) => value === "applied")
+  );
+  if (envelope && !hasPendingOpReceipt(receipt) && (envelope.status === undefined || envelope.status === "ok") &&
+      (envelope.terminalState === undefined || envelope.terminalState === "applied" || envelope.terminalState === "no_op") &&
+      (typeof envelope.error !== "string" || envelope.error.length === 0) &&
+      item?.ok === true && (item.op === undefined || item.op === op) &&
+      (item.terminalState === undefined || item.terminalState === "applied" || item.terminalState === "no_op") &&
+      (typeof item.error !== "string" || item.error.length === 0) &&
+      importedValid && applicationValid && statesValid) return;
+
+  throw new EngineReceiptError(
+    `Summer Engine did not return a completed ${op} receipt. The import state is unknown; inspect the target before retrying.`,
+    receipt
+  );
 }
 
 /**

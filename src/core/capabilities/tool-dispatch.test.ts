@@ -314,6 +314,21 @@ describe("scene-scripting and perception dispatch entries", () => {
     await expect(dispatchTool("import-hdri", {}, ctx)).rejects.toThrow(/Pass query/);
     expect(calls).toEqual([]);
   });
+
+  it("returns a structured import receipt to the CLI when HDRI completion is unknown", async () => {
+    const receipt = { requestId: "hdri-uncertain-1", terminalState: "uncertain", errorClass: "transient" };
+    const { ctx } = fakeEngineContext({ executeOps: async () => receipt });
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({
+      hdri: { "2k": { hdr: { url: "https://dl.polyhaven.org/hdris/sky_2k.hdr", size: 1024 } } },
+    })));
+    try {
+      const failure = await dispatchTool("import-hdri", { assetId: "sky", resolution: "2k" }, ctx).catch((error) => error);
+      expect(failure).toBeInstanceOf(ToolResultError);
+      expect((failure as ToolResultError).result).toMatchObject({ ...receipt, ok: false });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });
 
 describe("mesh fabrication dispatch entry", () => {

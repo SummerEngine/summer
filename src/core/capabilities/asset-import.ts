@@ -5,6 +5,8 @@
  */
 import type { EngineApiClient } from "../api-client.js";
 import { ToolInputError } from "../tool-errors.js";
+import { safeProjectPath } from "./engine-ops.js";
+import { EngineReceiptError, extractOpError, hasPendingOpReceipt, requireCompletedImportReceipt } from "./engine-receipt.js";
 
 /** An asset record as returned by the Summer gateway asset APIs. */
 export type GatewayAsset = {
@@ -134,6 +136,41 @@ export interface ImportResolvedAssetArgs {
   name?: string;
 }
 
+/** The engine may correct a raster extension after sniffing the bytes. Use the
+ *  ordered paths in its completed receipt, and reject malformed supplied paths
+ *  instead of reporting or placing a different file. Older receipts omit them. */
+function actualImportPath(receipt: unknown, plannedPaths: string[]): string {
+  const result = (receipt as { results?: Array<{ meta?: unknown }> })?.results?.[0];
+  const meta = result?.meta;
+  if (meta === undefined) return plannedPaths.at(-1)!;
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) {
+    throw new EngineReceiptError("Summer Engine returned invalid import path metadata. Inspect the target before retrying.", receipt);
+  }
+  const single = plannedPaths.length === 1;
+  if ((single && "paths" in meta) || (!single && "path" in meta)) {
+    throw new EngineReceiptError("Summer Engine returned invalid import path metadata. Inspect the target before retrying.", receipt);
+  }
+  const supplied = single ? "path" in meta : "paths" in meta;
+  if (!supplied) return plannedPaths.at(-1)!;
+  const paths = single
+    ? [(meta as { path: unknown }).path]
+    : (meta as { paths: unknown }).paths;
+  if (!Array.isArray(paths) || paths.length !== plannedPaths.length || paths.some((path, index) => {
+    if (typeof path !== "string" || path.length <= "res://".length) return true;
+    try { if (safeProjectPath(path) !== path) return true; } catch { return true; }
+    const planned = plannedPaths[index]!;
+    if (path === planned) return false;
+    const dot = planned.lastIndexOf(".");
+    const requestedExt = dot > planned.lastIndexOf("/") ? planned.slice(dot + 1).toLowerCase() : "";
+    // Engine content-sniffing can change only a raster extension in place.
+    return !["png", "jpg", "jpeg", "webp", "bmp"].includes(requestedExt) ||
+      !["png", "jpg", "webp", "bmp"].some((ext) => path === `${planned.slice(0, dot + 1)}${ext}`);
+  })) {
+    throw new EngineReceiptError("Summer Engine returned invalid import path metadata. Inspect the target before retrying.", receipt);
+  }
+  return paths.at(-1) as string;
+}
+
 /** Import a resolved gateway asset into the project (texture + GLB for Kenney
  *  packs) and, for 3D models with a `parent`, instantiate it into `scenePath`
  *  and save. Throws with a user-facing message on any engine refusal. */
@@ -142,7 +179,7 @@ export async function importResolvedAsset(client: EngineApiClient, args: ImportR
   if (parent && !scenePath) {
     throw new ToolInputError("scenePath is required when importing an asset into a scene");
   }
-  const { imports, importPath } = await buildImportEntriesForAsset(asset, path);
+  const { imports } = await buildImportEntriesForAsset(asset, path);
   const importResult =
     imports.length === 1
       ? await client.executeOps([
@@ -150,33 +187,41 @@ export async function importResolvedAsset(client: EngineApiClient, args: ImportR
         ])
       : await client.executeOps([{ op: "ImportFromUrlBatch", imports }]);
 
-  const importReceipts = (importResult as { results?: Array<{ ok?: boolean; error?: string }> })?.results ?? [];
-  const importFailure = importReceipts.find((receipt) => receipt?.ok === false);
-  if ((importResult as { status?: string })?.status === "error" || importFailure) {
-    throw new Error(importFailure?.error || "Could not import asset. Check engine logs.");
-  }
+  requireCompletedImportReceipt(importResult, imports.length === 1 ? "ImportFromUrl" : "ImportFromUrlBatch", imports.length);
+  const actualPath = actualImportPath(importResult, imports.map((entry) => entry.path));
 
   let addedToScene = false;
   let sceneReceipt: unknown = null;
   if (parent && asset.type === "3d_model") {
-    sceneReceipt = await client.executeIdentityBoundOps([
-      {
-        op: "InstantiateScene",
-        parent,
-        scene: importPath,
-        name: sanitizeNodeName(name || asset.title),
-      },
-      { op: "SaveScene" },
-    ], { scenePath });
-    const placementReceipts =
-      (sceneReceipt as { results?: Array<{ ok?: boolean; error?: string }> })?.results ?? [];
-    const placementFailure = placementReceipts.find((receipt) => receipt?.ok !== true);
-    if (
-      (sceneReceipt as { status?: string })?.status === "error" ||
-      placementReceipts.length !== 2 ||
-      placementFailure
-    ) {
-      throw new Error(placementFailure?.error || `Could not add asset to ${scenePath}`);
+    try {
+      sceneReceipt = await client.executeIdentityBoundOps([
+        {
+          op: "InstantiateScene",
+          parent,
+          scene: actualPath,
+          name: sanitizeNodeName(name || asset.title),
+        },
+        { op: "SaveScene" },
+      ], { scenePath });
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new EngineReceiptError(
+        `Could not confirm asset placement in ${scenePath} after import: ${detail} Inspect the scene before retrying.`,
+        { importReceipt: importResult, importedTo: actualPath, scenePath, sceneError: detail }
+      );
+    }
+    const placementFailure = extractOpError(sceneReceipt);
+    const placementEnvelope = sceneReceipt && typeof sceneReceipt === "object" && !Array.isArray(sceneReceipt)
+      ? sceneReceipt as Record<string, unknown> : null;
+    const placementReceipts = (sceneReceipt as { results?: Array<{ ok?: boolean; op?: string; error?: string }> })?.results;
+    if (placementFailure || !placementEnvelope || hasPendingOpReceipt(sceneReceipt) ||
+        (placementEnvelope.status !== undefined && placementEnvelope.status !== "ok") ||
+        (placementEnvelope.terminalState !== undefined && placementEnvelope.terminalState !== "applied" && placementEnvelope.terminalState !== "no_op") ||
+        !Array.isArray(placementReceipts) || placementReceipts.length !== 2 ||
+        placementReceipts.some((receipt, index) => receipt?.ok !== true ||
+          (receipt.op !== undefined && receipt.op !== (index === 0 ? "InstantiateScene" : "SaveScene")))) {
+      throw new EngineReceiptError(placementFailure || `Could not confirm asset placement in ${scenePath}. Inspect the scene before retrying.`,
+        { importReceipt: importResult, importedTo: actualPath, scenePath, sceneReceipt });
     }
     addedToScene = true;
   }
@@ -186,10 +231,11 @@ export async function importResolvedAsset(client: EngineApiClient, args: ImportR
     assetId: asset.id,
     asset: asset.title,
     type: asset.type,
-    importedTo: importPath,
+    importedTo: actualPath,
     addedToScene,
     parent: parent || null,
     scenePath: scenePath || null,
+    importReceipt: importResult,
     sceneReceipt,
   };
 }

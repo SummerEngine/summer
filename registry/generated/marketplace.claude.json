@@ -1,6 +1,5 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
-  "_generated": "GENERATED from integrations/claude — do not edit; npm run generate:registry",
   "name": "summer-engine",
   "description": "Summer Engine plugins for Claude Code",
   "owner": {
@@ -12,7 +11,7 @@
       "name": "summer",
       "source": "./",
       "version": "3.8.0",
-      "description": "Agent tooling for Summer Engine: game-dev skills, lifecycle hooks, and a 117-tool MCP bridge to the local desktop app.",
+      "description": "Make real, playable games with Summer Engine. A first-run guide (/summer:start), game-dev skills, and two MCP servers: the bridge to the Summer Engine desktop app, and Summer's hosted cloud server for people without it.",
       "author": {
         "name": "Summer Engine",
         "email": "founders@summerengine.com"
@@ -28,16 +27,6 @@
         "godot",
         "ai-game-engine",
         "skills"
-      ],
-      "brandColor": "#FF8F17",
-      "capabilities": [
-        "Interactive",
-        "Read",
-        "Write"
-      ],
-      "defaultPrompt": [
-        "I want to make a game.",
-        "/summer:brainstorm-game"
       ]
     }
   ]

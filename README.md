@@ -61,6 +61,16 @@ In most agents (Claude Code, Codex, Cursor, GitHub Copilot (VS Code, CLI, JetBra
 
 Then ask the agent to build something.
 
+### Claude Code: the Summer plugin
+
+In Claude Code, type:
+
+```text
+/plugin install summer --marketplace summerengine/summer
+```
+
+Then type `/summer:start`. It asks whether to build in Summer's cloud (nothing to install) or in the Summer Engine desktop app, signs you in, and gets a first game playing in about five minutes. The plugin brings Summer's skills and two MCP servers: `summer-engine` drives the desktop app (needs Node), and `summer-cloud` is Summer's hosted server (sign in once with `/mcp`). Use the plugin or `summer setup claude-code`, not both: they install the same skills.
+
 ### Only want assets?
 
 Sound effects, music, voices, images, 3D models and video are made on Summer's servers, so you do not need the Summer Engine app for them. Paste this instead:

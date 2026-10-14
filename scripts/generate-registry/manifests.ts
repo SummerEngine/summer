@@ -12,7 +12,10 @@
  *    (they had drifted to 58/62/52/50+ across manifests).
  *
  * Every manifest carries a `_generated` banner field directly after `$schema`
- * (or first, when there is no `$schema`). Agent hosts ignore unknown fields.
+ * (or first, when there is no `$schema`). Agent hosts ignore unknown fields,
+ * except the Claude plugin manifests: `claude plugin validate --strict` (the
+ * directory's gate) fails on any unknown field, so those carry no banner and
+ * only documented fields; `--check` still catches a hand edit.
  */
 
 import { manifestBanner, stableJson } from "./shared.ts";
@@ -39,6 +42,12 @@ export function bundledMcpServer(): { command: string; args: string[] } {
   return { command: "npx", args: ["-y", "summer-engine@latest", "mcp"] };
 }
 
+/**
+ * Summer's hosted MCP: the cloud tools (games, assets, Studio, store) over
+ * OAuth with the Summer account, for people without the desktop app or Node.
+ */
+export const HOSTED_MCP_URL = "https://mcp.summerengine.com/mcp";
+
 function buildMcpJson(): string {
   return stableJson({
     _generated: manifestBanner("claude"),
@@ -56,13 +65,16 @@ function author(): Record<string, string> {
   };
 }
 
+const CLAUDE_DESCRIPTION =
+  "Make real, playable games with Summer Engine. A first-run guide (/summer:start), game-dev skills, and two MCP servers: the bridge to the Summer Engine desktop app, and Summer's hosted cloud server for people without it.";
+
 function buildClaudePlugin(i: ManifestInputs): string {
   return stableJson({
     $schema: "https://json.schemastore.org/claude-code-plugin-manifest.json",
-    _generated: manifestBanner("claude"),
     name: "summer",
+    displayName: "Summer Engine",
     version: i.version,
-    description: `Agent tooling for Summer Engine: game-dev skills, lifecycle hooks, and a ${i.toolCount}-tool MCP bridge to the local desktop app.`,
+    description: CLAUDE_DESCRIPTION,
     author: author(),
     homepage: "https://summerengine.com",
     repository: "https://github.com/summerengine/summer",
@@ -81,25 +93,31 @@ function buildClaudePlugin(i: ManifestInputs): string {
       "multiplayer",
       "performance",
     ],
+    // Anthropic's directory listing fields; Claude Code ignores them at load time.
+    icon: "./assets/icon.png",
+    documentationUrl: "https://www.summerengine.com/mcp",
+    supportUrl: "https://summer.games/support",
+    privacyPolicyUrl: "https://www.summerengine.com/privacy",
+    termsOfServiceUrl: "https://www.summerengine.com/terms",
     skills: skillPaths(i.skillSlugs),
-    hooks: "./hooks/hooks.json",
-    mcpServers: "./.mcp.json",
-    userConfig: {
-      enable_pre_commit_doctor: {
-        type: "boolean",
-        title: "Run summer doctor before commits",
-        description:
-          "Block git commits when the Summer Engine setup needs attention (runs `summer doctor` before each `git commit`). Off by default. Reaches the hook as CLAUDE_PLUGIN_OPTION_ENABLE_PRE_COMMIT_DOCTOR; SUMMER_PRE_COMMIT_DOCTOR=1 in the environment enables it too.",
-        default: false,
-      },
+    // hooks/hooks.json is the default plugin hooks file, so it is not named here
+    // (naming it as well can register every hook twice).
+    // Inline, not ./.mcp.json: that pointer is shared with Codex / Cursor / Factory,
+    // which do not get the hosted server. summer-engine needs Node and drives the
+    // desktop app; summer-cloud needs only a browser sign-in (/mcp).
+    mcpServers: {
+      "summer-engine": bundledMcpServer(),
+      "summer-cloud": { type: "http", url: HOSTED_MCP_URL },
     },
+    // No userConfig: Claude Code opens a settings dialog for every option when the
+    // plugin is enabled, which is noise on a first run. The opt-in pre-commit
+    // doctor hook reads SUMMER_PRE_COMMIT_DOCTOR=1 instead.
   });
 }
 
 function buildClaudeMarketplace(i: ManifestInputs): string {
   return stableJson({
     $schema: "https://json.schemastore.org/claude-code-marketplace.json",
-    _generated: manifestBanner("claude"),
     name: "summer-engine",
     description: "Summer Engine plugins for Claude Code",
     owner: {
@@ -111,7 +129,7 @@ function buildClaudeMarketplace(i: ManifestInputs): string {
         name: "summer",
         source: "./",
         version: i.version,
-        description: `Agent tooling for Summer Engine: game-dev skills, lifecycle hooks, and a ${i.toolCount}-tool MCP bridge to the local desktop app.`,
+        description: CLAUDE_DESCRIPTION,
         author: {
           name: "Summer Engine",
           email: "founders@summerengine.com",
@@ -119,9 +137,6 @@ function buildClaudeMarketplace(i: ManifestInputs): string {
         category: "game-development",
         tags: ["game-dev", "godot", "ai-game-engine"],
         keywords: ["game-dev", "godot", "ai-game-engine", "skills"],
-        brandColor: "#FF8F17",
-        capabilities: ["Interactive", "Read", "Write"],
-        defaultPrompt: ["I want to make a game.", "/summer:brainstorm-game"],
       },
     ],
   });

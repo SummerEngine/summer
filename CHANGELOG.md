@@ -2,6 +2,11 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+- `summer_app_guide` starts with section `overview` by default and answers Markdown text instead of one long JSON line; `all` still returns every section.
+- `summer_app_screenshot` takes `steps` (click a selector, press a declared action, wait) to show a dialog or a second state before the capture, and waits until the app's calls settle.
+
 ## [3.8.0] - 2026-10-13
 
 Agents build Summer Apps, team tools inside Summer Studio, and asset-only requests skip the engine.

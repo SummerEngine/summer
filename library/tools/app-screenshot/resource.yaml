@@ -70,6 +70,24 @@ input_schema:
         type: string
         maxLength: 500
       description: Launch params, as in /studio/apps/<id>?key=value
+    steps:
+      type: array
+      maxItems: 5
+      items:
+        type: object
+        properties:
+          click:
+            type: string
+            maxLength: 300
+          press:
+            type: string
+            maxLength: 40
+          wait:
+            type: integer
+            minimum: 0
+            maximum: 3000
+        additionalProperties: false
+      description: "Before the capture, in order: click a CSS selector in the app (\">>>\" reaches inside kit components), press a declared action id, or wait ms. Use it to see a dialog or a second state"
     out:
       type: string
       minLength: 1

@@ -44,8 +44,8 @@ input_schema:
         - design
         - examples
         - types
-      default: all
-      description: "One part of the guide: overview, manifest, sdk, kit, layout, design, examples, or types (the SDK's exact TypeScript types, not in all). Default all"
+      default: overview
+      description: "Start with overview (the default), then read what the app needs: examples (a working app to copy), sdk, manifest, kit, design, layout, types (exact SDK TypeScript types). all returns every section but types (about 100 KB)"
   additionalProperties: false
 authority:
   filesystem: false

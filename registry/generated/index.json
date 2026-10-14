@@ -3690,7 +3690,7 @@
       "id": "skill/summer-apps",
       "kind": "skill",
       "version": "0.1.0",
-      "content_hash": "9f6a38561db1bd8be5e63032d81de52dae805e19426f0027064a6eb6126b4177",
+      "content_hash": "5086545f051a3ef2e8219fe8c379cf7870ab161f23887dcdab56dbcbe76d57c0",
       "summary": "Build a Summer App, a team tool inside Summer Studio (balance table, quest editor, tracker, pick grid): build loop, Layout vs code, data as API, agent tools.",
       "use_when": [
         "the person asks for a tool for their team (\"build us a loot balance tool\", \"a board to track creatures\")",
@@ -5887,7 +5887,7 @@
       "id": "tool/app-guide",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "4648e830cef1a162e9df85ab0423dc4fbe099409682d375e325dde085521e5e3",
+      "content_hash": "f8c8dad7c576c3b8bdd4d9feaade4e7ce0dabf9627dfcf54396a81351d66f820",
       "summary": "Read the Summer Apps build guide: when to build an app, Layout vs code, build loop, manifest, SDK, UI kit, layout format, design rules and worked examples.",
       "use_when": [
         "before building or changing a Summer App",
@@ -6078,7 +6078,7 @@
       "id": "tool/app-screenshot",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "e2c089afcb531ea86b85ef8a3db5c99db23a7ada23a3056085f7d7e048df6fe6",
+      "content_hash": "dadfd3b5178c0f132cd0773acd4becb5130da5ec06d0960cc1e195b609736edc",
       "summary": "See a Summer App without the person - a headless, read-only render (PNG) with its console, errors, refused calls and declared page.",
       "use_when": [
         "right after every summer_app_publish, to check the app renders with real data",

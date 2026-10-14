@@ -57,6 +57,12 @@ input_schema:
       minItems: 1
       maxItems: 100
       description: "Write: [{op: put, collection, recordId, data}, {op: patch, collection, recordId, patch}, {op: remove, collection, recordId}]; ifRevision on an op applies it only at that record revision (0: must not exist)"
+    as:
+      type: string
+      enum:
+        - agent
+        - seed
+      description: "Write: seed for starter data that belongs to the team (no author). Default: agent"
   required:
     - appId
   additionalProperties: false

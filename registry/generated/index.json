@@ -5734,7 +5734,7 @@
       "id": "tool/app-data",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "476115f26d32a455bf0e36006c7305e83eff9da679682cabed8c544e9483d9e5",
+      "content_hash": "4d2652bfdfa8d9f347ac91d0c4f7244a7babc62ad675e7b38125986c47d79509",
       "summary": "Read or write a Summer App's shared data collections; works with no app open and the team sees writes live.",
       "use_when": [
         "\"nerf the bow in our balance sheet\"",

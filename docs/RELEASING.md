@@ -2,7 +2,7 @@
 
 The npm package is `summer-engine`, its binary is `summer`, and its source is [summerengine/summer](https://github.com/summerengine/summer), this repository. Publish only from a fresh clone of this repository.
 
-For the exact copy-paste procedure, use [`NPM_PUBLISH_QUICK_COMMANDS.md`](./NPM_PUBLISH_QUICK_COMMANDS.md). It publishes only from a clean, fresh clone of public `main` and stops if the candidate version is not newer than npm `latest`. A major release soaks on the `next` dist-tag before `latest` moves.
+For the exact copy-paste procedure, use [`NPM_PUBLISH_QUICK_COMMANDS.md`](./NPM_PUBLISH_QUICK_COMMANDS.md). It publishes only from a clean, fresh clone of public `main` and stops if the candidate version is not newer than npm `latest`. A major release soaks on the `next` dist-tag before `latest` moves, unless its release PR says otherwise (4.0.0 went straight to `latest`).
 
 ## Release contract
 

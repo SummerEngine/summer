@@ -92,7 +92,7 @@ test "$(cd "$VERIFY_DIR" && npm exec --yes --cache "$VERIFY_CACHE" --package="su
 
 Use a fresh npm cache so a pre-publish registry response cannot produce a false failure. Run the CLI smoke test outside the package checkout so npm links the published binary instead of resolving an older global `summer` command.
 
-Keep the terminal output with the release record. The temporary clone can be deleted after verification.
+Keep the terminal output with the release record. Keep the clone until step 8: steps 7 and 8 read `CHANGELOG.md` and `server.json` from it.
 
 ## 6. Point `next` at the new release
 
@@ -126,7 +126,9 @@ test "$(node -p 'require("./server.json").version')" = "$PACKAGE_VERSION"
 mcp-publisher validate
 mcp-publisher login github
 mcp-publisher publish
-curl -s "https://registry.modelcontextprotocol.io/v0/servers?search=SummerEngine/summer"
+curl -fsS "https://registry.modelcontextprotocol.io/v0/servers/io.github.SummerEngine%2Fsummer/versions/latest" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const v=JSON.parse(d).server.version;if(v!==process.argv[1]){console.error("STOP: registry has "+v);process.exit(1)}console.log("registry",v)})' "$PACKAGE_VERSION"
 ```
 
-The last command's answer must list `"version":"<version>"` for `io.github.SummerEngine/summer`.
+The last command prints `registry <version>`. If `publish` answers with a permission error although you are an Owner, the SummerEngine org may restrict third-party OAuth apps: approve the MCP Registry app for the org, then `mcp-publisher login github` again.
+
+The temporary clone can be deleted now.

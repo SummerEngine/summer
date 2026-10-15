@@ -366,7 +366,7 @@ export function normalizeChannel(channel: string | undefined): string {
   if (/^\d+\.\d+\.\d+(?:-[0-9a-z][0-9a-z.-]*)?$/.test(value)) return value;
   if (!/^[a-z][a-z0-9-]*$/.test(value) || /^v?\d/.test(value)) {
     throw new Error(
-      `Invalid channel "${channel}": use an npm dist-tag such as latest or next (lowercase letters, digits, hyphens), or an exact version such as 3.9.1.`
+      `Invalid channel "${channel}": use an npm dist-tag such as latest or next (lowercase letters, digits, hyphens), or an exact version such as 4.0.0.`
     );
   }
   return value;

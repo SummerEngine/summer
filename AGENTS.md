@@ -114,7 +114,7 @@ After you have **verified** an entry's result in-engine — not before — you m
 
 | Situation | Action |
 |---|---|
-| MCP tool returns "Summer Engine is not running" | Tell user `summer run`. Continue with non-MCP work; do not fall back to editing `.tscn` directly. |
+| MCP tool returns `code: "ENGINE_NOT_RUNNING"` | Tell the user to open the project in Summer Engine, or run `summer run <project-path>`. Continue with non-MCP work; do not fall back to editing `.tscn` directly. |
 | Skill loads but seems wrong | Re-read it. Entries evolve. If it is wrong after a verified attempt, report it. |
 | Skill not found or stale | Run `summer doctor`; if `cli-version-current` or `skills-version-stale` warns, run `npx clear-npx-cache && npx -y summer-engine@latest setup <agent> --yes --force`. |
 | Generic engine errors on launch | Run `summer doctor` first — usually auth/port/path issues. |

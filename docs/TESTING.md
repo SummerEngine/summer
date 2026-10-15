@@ -86,12 +86,17 @@ Run these from any directory with the engine open on a project.
 
 Engine not running, each `[engine]` command prints exactly this and exits 1:
 
+```json
+{
+  "ok": false,
+  "code": "ENGINE_NOT_RUNNING",
+  "error": "Summer Engine is not running.",
+  "recovery": "Open the project in Summer Engine, or run: summer run <project-path> (the folder that holds project.godot).",
+  "hint": "Engine-free tools (generate-*, asset search/list/get, library search/read, plan) work without it."
+}
 ```
-Summer Engine is not running (or no project is open).
-Summer Engine is not running (no api-token found, no live editor registered in ~/.summer/instances). Open Summer Engine first.
-Start it with 'summer run' or open the project in the Summer desktop app, then retry.
-Engine-free tools (generate-*, asset search/list/get, creator, plan) work without it.
-```
+
+The MCP face returns the same fields (`isError`), with the `npx -y summer-engine@latest run <project-path>` form of the command. Other shared failures carry their own `code` on both faces: `AUTH_REQUIRED` (not signed in, or the token expired), `NO_CREDITS`, `NETWORK_ERROR` (with the real cause, for example `ECONNREFUSED 127.0.0.1:443`). Each has one next step in `recovery`. The store sign-in keeps its own code, `store_login_required`.
 
 ## e. From Claude Code
 

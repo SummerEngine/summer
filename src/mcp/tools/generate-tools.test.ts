@@ -368,7 +368,8 @@ describe("registerGenerateTools — summer_generate_motion", () => {
 
     expect(result.isError).toBe(true);
     const body = parseResult(result);
-    expect(body.error).toBe(true);
+    expect(body).toMatchObject({ ok: false, code: "AUTH_REQUIRED" });
+    expect(body.recovery).toMatch(/summer-engine@latest login --force/);
     // Server message is preserved (and the raw response is spread in too).
     expect(body.message).toMatch(/Auth token expired/);
   });
@@ -394,8 +395,54 @@ describe("registerGenerateTools — summer_generate_motion", () => {
 
     expect(result.isError).toBe(true);
     const body = parseResult(result);
-    expect(body.error).toBe(true);
+    expect(body).toMatchObject({ ok: false, code: "NO_CREDITS" });
+    expect(body.recovery).toContain("/studio/credits");
     expect(body.message).toMatch(/Insufficient credits/);
+  });
+
+  it("names the real network cause with code NETWORK_ERROR", async () => {
+    globalThis.fetch = vi.fn(async () => {
+      throw new TypeError("fetch failed", { cause: new Error("connect ECONNREFUSED 127.0.0.1:443") });
+    }) as any;
+
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const result = await getTool(tools, "summer_generate_motion").handler({
+      rigAssetId: "rig_123",
+      backend: "meshy-library",
+      motionName: "walk",
+      wait: false,
+    });
+
+    expect(result.isError).toBe(true);
+    const body = parseResult(result);
+    expect(body).toMatchObject({ ok: false, code: "NETWORK_ERROR" });
+    expect(body.error).toContain("ECONNREFUSED 127.0.0.1:443");
+  });
+});
+
+describe("registerGenerateTools — not signed in", () => {
+  it("answers every generation and job tool with the same AUTH_REQUIRED shape, sending nothing", async () => {
+    const { getAuthToken } = await import("../../core/auth.js");
+    vi.mocked(getAuthToken).mockResolvedValue(null);
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as any;
+    try {
+      const { server, tools } = createFakeServer();
+      registerGenerateTools(server as any);
+      const bodies = [
+        parseResult(await getTool(tools, "summer_generate_image").handler({ prompt: "a tree" })),
+        parseResult(await getTool(tools, "summer_check_job").handler({ jobId: "job_1" })),
+        parseResult(await getTool(tools, "summer_generate_3d").handler({ prompt: "a crate", wait: false })),
+      ];
+      for (const body of bodies) {
+        expect(body).toMatchObject({ ok: false, code: "AUTH_REQUIRED", error: "Not signed in to Summer." });
+        expect(body.recovery).toContain("npx -y summer-engine@latest login");
+      }
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      vi.mocked(getAuthToken).mockResolvedValue("test-token");
+    }
   });
 });
 

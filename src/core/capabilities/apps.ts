@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getAuthToken } from "../auth.js";
 import { resolveGatewayUrl } from "../config.js";
 import { summerRequestHeaders } from "../agent-host.js";
+import { codedFailure, describeNetworkError, NOT_SIGNED_IN, SIGN_IN_AGAIN_RECOVERY } from "../error-codes.js";
 
 /**
  * Summer Apps (summer_app_*): tools a game team uses inside Summer Studio,
@@ -177,7 +178,7 @@ export function appsGateway(surface: "mcp" | "cli", tool: string): AppsDeps["req
       return {
         ok: false,
         status: 401,
-        data: { error: { code: "unauthorized", message: "Not signed in. Run: npx -y summer-engine@latest login" } },
+        data: { error: { code: "not_signed_in", message: NOT_SIGNED_IN } },
       };
     const gateway = await resolveGatewayUrl();
     const suffix = query?.toString() ? `?${query.toString()}` : "";
@@ -195,7 +196,7 @@ export function appsGateway(surface: "mcp" | "cli", tool: string): AppsDeps["req
         signal: AbortSignal.timeout(timeoutMs),
       });
     } catch (error) {
-      return { ok: false, status: 0, data: { error: { code: "unavailable", message: `Request failed: ${error instanceof Error ? error.message : String(error)}` } } };
+      return { ok: false, status: 0, data: { error: { code: "unavailable", message: `Request failed: ${describeNetworkError(error)}` } } };
     }
     const text = await response.text().catch(() => "");
     let data: Record<string, unknown> = {};
@@ -208,21 +209,27 @@ export function appsGateway(surface: "mcp" | "cli", tool: string): AppsDeps["req
   };
 }
 
-/** The server's `{error: {code, message}}` as one flat result an agent can act on. */
+/** The server's `{error: {code, message}}` as one flat result an agent can act on.
+ *  Not signed in, no credits and network failures carry the shared codes
+ *  (core/error-codes.ts); the server's own codes pass through. */
 function failure(reply: AppsReply): Record<string, unknown> {
   const error = reply.data.error;
   const record = error && typeof error === "object" ? (error as Record<string, unknown>) : {};
   const code = typeof record.code === "string" ? record.code : reply.status === 404 ? "not_found" : "unavailable";
   const message = typeof record.message === "string" ? record.message : typeof reply.data.message === "string" ? reply.data.message : `Request failed (${reply.status})`;
+  const { error: _error, message: _message, ...rest } = reply.data;
+  const extra = { status: reply.status, ...rest, ...(record.details ? { details: record.details } : {}) };
+  if (code === "not_signed_in") return codedFailure("AUTH_REQUIRED", message, extra);
+  if (code === "unauthorized" || reply.status === 401) return codedFailure("AUTH_REQUIRED", message, extra, SIGN_IN_AGAIN_RECOVERY);
+  if (reply.status === 402) return codedFailure("NO_CREDITS", message, extra);
+  if (reply.status === 0) return codedFailure("NETWORK_ERROR", message, extra);
   const hints: Record<string, string> = {
-    unauthorized: "Run: npx -y summer-engine@latest login",
     not_found: "Summer Apps is not available for this account yet, or the app id is wrong: summer_app_list shows the person's apps.",
     app_not_open: "Use summer_app_data, or ask the person to open the app in Summer Studio.",
     invalid: "Fix what the message names and try again (summer_app_guide has the rules).",
     too_large: "Limits: 10 MB per app, 300 files, 5 MB per file.",
     rate_limited: "Wait a minute and try again.",
   };
-  const { error: _error, message: _message, ...rest } = reply.data;
   return { ok: false, code, error: message, status: reply.status, ...(hints[code] ? { hint: hints[code] } : {}), ...rest, ...(record.details ? { details: record.details } : {}) };
 }
 

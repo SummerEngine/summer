@@ -2,6 +2,13 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+- **Errors carry a stable code.** When the engine is not running, the person is not signed in, the account has no credits or the network fails, every tool now answers `{ok: false, code, error, recovery}`: `code` is `ENGINE_NOT_RUNNING`, `AUTH_REQUIRED`, `NO_CREDITS` or `NETWORK_ERROR`, and `recovery` is the one next step. The fields each tool sent before (`message`, `hint`, `status`) are still there. Generation, job, asset and Summer Apps tools used five different sign-in answers; they now use this one. The store sign-in keeps its own code, `store_login_required`.
+- **The engine-down answer works.** It told agents to run `npx -y summer-engine@latest run`, which fails without a project path. It now says to open the project in Summer Engine or run `summer run <project-path>`, and no longer shows token-file details. `summer tool` prints the same fields as JSON (exit 1) instead of saying "not running" twice.
+- **Network errors keep their cause.** "fetch failed" now says why, for example `connect ECONNREFUSED 127.0.0.1:443`.
+- `summer_list_my_assets` no longer says "Asset search requires an account" when you are not signed in.
+
 ## [3.9.1] - 2026-10-15
 
 3.9.0 was not published to npm; 3.9.1 is the first release with everything in 3.9.0 below, plus these changes.

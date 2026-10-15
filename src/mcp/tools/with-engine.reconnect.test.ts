@@ -32,6 +32,7 @@ vi.mock("../../core/telemetry.js", () => ({
 }));
 
 import { withEngine, isAuthError } from "./with-engine.js";
+import { EngineNotRunningError } from "../../core/error-codes.js";
 
 afterEach(() => vi.clearAllMocks());
 
@@ -70,6 +71,22 @@ describe("withEngine — safe retry only where nothing could have applied", () =
     expect(fnCalls).toBe(1);
     expect(res.isError).toBeFalsy();
     expect(resultText(res)).toContain("7");
+  });
+
+  it("answers ENGINE_NOT_RUNNING as JSON when no editor is reachable, without the token jargon", async () => {
+    mockGetClient.mockRejectedValue(
+      new EngineNotRunningError("Summer Engine is not running.", "Summer Engine is not running (no api-token found, …)")
+    );
+    const fn = vi.fn();
+    const res = await withEngine(fn);
+    expect(fn).not.toHaveBeenCalled();
+    expect(mockGetClient).toHaveBeenCalledTimes(2); // the usual single pre-submission retry
+    expect(res.isError).toBe(true);
+    const body = JSON.parse(resultText(res));
+    expect(body).toMatchObject({ ok: false, code: "ENGINE_NOT_RUNNING", error: "Summer Engine is not running." });
+    expect(body.recovery).toMatch(/summer-engine@latest run <project-path>/);
+    expect(body.hint).toMatch(/summer_search_library/);
+    expect(resultText(res)).not.toMatch(/api-token/);
   });
 
   it("does NOT retry a generic connection error thrown from inside fn (may be mid-mutation)", async () => {

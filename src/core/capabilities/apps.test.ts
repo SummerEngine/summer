@@ -43,6 +43,25 @@ describe("summer_app_* cloud tools", () => {
     expect(String(result.hint)).toContain("summer_app_data");
   });
 
+  it("gives sign-in, credits and network failures the shared codes", async () => {
+    const notSignedIn = fakeDeps({ ok: false, status: 401, data: { error: { code: "not_signed_in", message: "Not signed in to Summer." } } });
+    expect(await appCall({ appId: APP, tool: "x", input: {} }, notSignedIn.deps)).toMatchObject({
+      ok: false,
+      code: "AUTH_REQUIRED",
+      error: "Not signed in to Summer.",
+      recovery: expect.stringContaining("npx -y summer-engine@latest login"),
+    });
+    const expired = fakeDeps({ ok: false, status: 401, data: { error: { code: "unauthorized", message: "Token expired" } } });
+    expect(await appCall({ appId: APP, tool: "x", input: {} }, expired.deps)).toMatchObject({
+      code: "AUTH_REQUIRED",
+      recovery: expect.stringContaining("login --force"),
+    });
+    const credits = fakeDeps({ ok: false, status: 402, data: { error: { code: "insufficient_credits", message: "Not enough credits" } } });
+    expect(await appCall({ appId: APP, tool: "x", input: {} }, credits.deps)).toMatchObject({ code: "NO_CREDITS" });
+    const offline = fakeDeps({ ok: false, status: 0, data: { error: { code: "unavailable", message: "Request failed: fetch failed (connect ECONNREFUSED 127.0.0.1:443)" } } });
+    expect(await appCall({ appId: APP, tool: "x", input: {} }, offline.deps)).toMatchObject({ code: "NETWORK_ERROR" });
+  });
+
   it("events long-poll with the server ceiling plus slack", async () => {
     const { request, deps } = fakeDeps({ data: { events: [], cursor: 4, timedOut: true } });
     await appEvents(appEventsArgsSchema.parse({ appId: APP, after: 4, timeoutSeconds: 50, kinds: ["agent", "tool"] }), deps);

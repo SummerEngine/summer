@@ -139,6 +139,20 @@ describe("repo-lint: tool-dispatch registry", () => {
     );
   });
 
+  it("prints engine-down as {ok:false, code:ENGINE_NOT_RUNNING} with the shell's run command", async () => {
+    const engine = async () => {
+      throw new EngineUnavailableError("Summer Engine is not running.");
+    };
+    const error = await dispatchTool("get-diagnostics", {}, { engine }).catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(ToolResultError);
+    expect((error as ToolResultError).result).toMatchObject({
+      ok: false,
+      code: "ENGINE_NOT_RUNNING",
+      error: "Summer Engine is not running.",
+      recovery: expect.stringContaining("summer run <project-path>"),
+    });
+  });
+
   it("write-file fails closed without exactly one guard", async () => {
     const { ctx, calls } = fakeEngineContext();
     await expect(

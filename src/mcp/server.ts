@@ -61,6 +61,7 @@ import {
 } from "../installer/version-check.js";
 
 import { TOOLKIT_VERSION as version } from "../core/version.js";
+import { ENGINE_FREE_NOTE, engineNotRunningFromConnectError } from "../core/error-codes.js";
 
 let processDiagnosticsInstalled = false;
 
@@ -156,12 +157,15 @@ export async function getClient(): Promise<EngineApiClient> {
       error instanceof Error
         ? error.message
         : "Summer Engine is not running.";
+    // Nothing reachable: a coded error withEngine renders as JSON
+    // (ENGINE_NOT_RUNNING). Anything else (several editors open, …) already
+    // says how to pick one.
+    const notRunning = engineNotRunningFromConnectError(reason);
+    if (notRunning) throw notRunning;
     throw new Error(
       reason + "\n" +
-        "Open the intended project in Summer Engine, or run: npx -y summer-engine@latest run\n" +
-        "Note: only tools that touch the local project need the engine. Cloud tools " +
-        "(summer_generate_*, summer_search_assets, summer_list_my_assets, summer_get_asset, " +
-        "summer_check_job) work right now without it — they only need 'npx -y summer-engine@latest login'."
+        "Open the intended project in Summer Engine, or run: npx -y summer-engine@latest run <project-path>\n" +
+        "Note: " + ENGINE_FREE_NOTE
     );
   }
 }

@@ -40,6 +40,13 @@ describe("selectSkillsForBulkInstall", () => {
     expect(result.previewSkipped).toBe(2);
   });
 
+  it("never takes a library-only skill (bundled: false) in bulk", () => {
+    const authorTool = { ...entry("author-tool", "stable", true), bundled: false };
+    for (const options of [{}, { recommended: true }, { stableOnly: true }]) {
+      expect(names(selectSkillsForBulkInstall([...SKILLS, authorTool], options).selected)).not.toContain("author-tool");
+    }
+  });
+
   it("--recommended applies the same rule inside the subset", () => {
     const byDefault = selectSkillsForBulkInstall(SKILLS, { recommended: true });
     expect(names(byDefault.selected)).toEqual(["stable-rec", "preview-rec"]);
@@ -65,6 +72,42 @@ describe("parseSkillRegistry", () => {
       ["b", "stable", false],
       ["c", "stable", false],
     ]);
+  });
+
+  it("reads bundled: false, and treats an entry without the field as bundled", () => {
+    const parsed = parseSkillRegistry({
+      skills: [
+        { id: "skill/a", name: "a", path: "library/skills/a/", bundled: false },
+        { id: "skill/b", name: "b", path: "library/skills/b/" },
+      ],
+    });
+    expect(parsed.map((skill) => [skill.name, skill.bundled])).toEqual([
+      ["a", false],
+      ["b", true],
+    ]);
+  });
+});
+
+describe("library-only skills", () => {
+  it("keeps the library-author tools and research digests out of every bulk install", () => {
+    const libraryOnly = [
+      "skill-create",
+      "skill-improve",
+      "skill-test",
+      "writing-skills",
+      "celeste-momentum-platforming",
+      "godogen-visual-proof-game-generation",
+      "lumera-single-image-scene-reconstruction",
+      "realtime-wet-surfaces",
+      "psx-retro-rendering",
+      "skintokens-auto-rigging",
+    ];
+    const registry = getSkillRegistry();
+    expect(registry.filter((skill) => skill.bundled === false).map((skill) => skill.name).sort()).toEqual([...libraryOnly].sort());
+    for (const options of [{}, { recommended: true }, { assetsOnly: true }]) {
+      const selected = names(selectSkillsForBulkInstall(registry, options).selected);
+      for (const name of libraryOnly) expect(selected).not.toContain(name);
+    }
   });
 });
 

@@ -1,6 +1,6 @@
 ---
 name: character-portrait
-description: "Generate a single polished character bust for dialogue UI, character select, lore cards, or codex entries. One character, locked composition, VN-style."
+description: "Generate one polished character bust for dialogue UI, character select, lore cards or codex entries."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
@@ -198,4 +198,4 @@ After the portrait is wired:
 - `concept-art` — explore the look first if not yet locked.
 - `asset-strategy` — meta-router and the 3D pipeline.
 - `scene-composition` — wiring the portrait into a dialogue UI scene.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_image` parameter schema.
+- `summer_read_library` id `reference/mcp-tools-reference` — `summer_generate_image` parameter schema.

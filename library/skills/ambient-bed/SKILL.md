@@ -1,6 +1,6 @@
 ---
 name: ambient-bed
-description: "Generate a long looping location ambience — forest, dungeon, city, spaceship, cave — a looping AudioStreamPlayer on the Ambient bus with a seamless loop."
+description: "Generate a long looping location ambience (forest, dungeon, city, cave) on the Ambient bus."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio

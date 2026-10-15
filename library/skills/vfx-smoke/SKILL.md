@@ -1,6 +1,6 @@
 ---
 name: vfx-smoke
-description: "Smoke effect — a slow-rising column or puff of soft particles built with a noise + density falloff shader on a quad mesh, GPUParticles3D."
+description: "Smoke effect: a rising column or puff of soft particles with a noise and density falloff shader."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects

@@ -1,6 +1,6 @@
 ---
 name: vfx-magic-glow
-description: "Magic-glow effect — a pulsing OmniLight3D plus drifting additive motes plus optional emission shader on the source mesh."
+description: "Magic-glow effect: a pulsing OmniLight3D, drifting additive motes and an optional emission shader."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects

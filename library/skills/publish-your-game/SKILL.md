@@ -1,6 +1,6 @@
 ---
 name: publish-your-game
-description: "Publish a Summer game on Summer Games through MCP: store page, art, build upload, submit, and one approval link for the owner."
+description: "Publish a game on Summer Games through MCP: store page, art, build upload, submit, owner approval link."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: deployment

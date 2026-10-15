@@ -1,6 +1,6 @@
 ---
 name: adaptive-music
-description: "Wire music stems to game state — combat/explore/boss/tension crossfades on a shared bus, paired with a state machine and AudioBus structure."
+description: "Wire music stems to game state: combat, explore, boss and tension crossfades on a shared bus."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio
@@ -326,5 +326,5 @@ in Summer Engine.
 - `audio-direction` — defines the dynamic music plan and bus layout
 - `music-track` — generates the stems
 - `voice-line` — the voice bus that triggers ducking
-- `../../references/godot-version/godot-version.md` — Summer compatibility for AudioServer
+- `summer_read_library` id `reference/godot-version` — Summer compatibility for AudioServer
   and Tween APIs

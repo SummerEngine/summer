@@ -1,6 +1,6 @@
 ---
 name: vfx-hit-spark
-description: "Hit-spark effect — a one-shot burst of additive billboard particles oriented to a surface normal, fired on impact."
+description: "Hit-spark effect: a one-shot burst of additive particles oriented to the surface, fired on impact."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects

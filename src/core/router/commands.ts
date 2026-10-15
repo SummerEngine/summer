@@ -243,7 +243,7 @@ export async function push(ctx: RouterContext, opts: PushOptions): Promise<Route
   const game = await requireGame(ctx, root);
   if (isOutcome(game)) return game;
   const gateway = await ctx.gateway();
-  const studio = studioRouterUrl(gateway, game.gameId, "characters");
+  const studio = studioRouterUrl(gateway, game.gameId);
   const state = readRouterState(root);
   const pushed: Array<{ id: string; version: number; action: "created" | "updated" | "unchanged" }> = [];
   const conflicts: Array<{ id: string; summer_version: number; base_version: number | null }> = [];
@@ -410,7 +410,7 @@ export async function test(ctx: RouterContext, opts: TestOptions): Promise<Route
   const root = projectRoot(ctx);
   const game = await requireGame(ctx, root);
   if (isOutcome(game)) return game;
-  const studio = studioRouterUrl(await ctx.gateway(), game.gameId, "characters", opts.id);
+  const studio = studioRouterUrl(await ctx.gateway(), game.gameId);
   let reply: ReplyResult;
   try {
     reply = await ctx.api.request<ReplyResult>("POST", `games/${seg(game.gameId)}/router/characters/${seg(opts.id)}:test`, {
@@ -497,7 +497,7 @@ export async function limitsGet(ctx: RouterContext): Promise<RouterOutcome> {
   const root = projectRoot(ctx);
   const game = await requireGame(ctx, root);
   if (isOutcome(game)) return game;
-  const studio = studioRouterUrl(await ctx.gateway(), game.gameId, "limits");
+  const studio = studioRouterUrl(await ctx.gateway(), game.gameId);
   try {
     const g = seg(game.gameId);
     const settings = await ctx.api.request<Settings>("GET", `games/${g}/router/settings`);
@@ -563,7 +563,7 @@ export async function limitsSet(ctx: RouterContext, opts: LimitsSetOptions): Pro
   const root = projectRoot(ctx);
   const game = await requireGame(ctx, root);
   if (isOutcome(game)) return game;
-  const studio = studioRouterUrl(await ctx.gateway(), game.gameId, "limits");
+  const studio = studioRouterUrl(await ctx.gateway(), game.gameId);
   const { registry } = await loadRegistry(null);
   const g = seg(game.gameId);
   const result: Record<string, unknown> = { game_id: game.gameId };

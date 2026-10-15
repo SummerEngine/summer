@@ -109,7 +109,7 @@ describe("summer router push", () => {
     expect(created.result).toMatchObject({ ok: true, game_id: "game_1", pushed: [{ id: "guard", version: 1, action: "created" }] });
     expect(calls.find((c) => c.method === "PUT")?.query).toEqual({ expected_version: 0 });
     expect(readRouterState(root).characters.guard.version).toBe(1);
-    expect(created.result.studio_url).toBe("https://www.summerengine.com/studio/games/game_1/router?panel=characters");
+    expect(created.result.studio_url).toBe("https://www.summerengine.com/studio/store/game_1?view=all&tab=router");
 
     const again = await push(context(api), {});
     expect(again.result.pushed).toEqual([{ id: "guard", version: 1, action: "unchanged" }]);
@@ -143,13 +143,13 @@ describe("summer router push", () => {
     expect(live.exitCode).toBe(1);
     expect(live.result.error).toMatchObject({
       code: "owner_action_required",
-      studio_url: "https://www.summerengine.com/studio/games/game_1/router?panel=characters",
+      studio_url: "https://www.summerengine.com/studio/store/game_1?view=all&tab=router",
     });
 
     writeFileSync(join(root, "summer.build.json"), "{}");
     const noGame = await push(context(api), {});
     expect(noGame.exitCode).toBe(2);
-    expect(noGame.result.error).toMatchObject({ code: "game_id_missing", studio_url: "https://www.summerengine.com/studio/games" });
+    expect(noGame.result.error).toMatchObject({ code: "game_id_missing", studio_url: "https://www.summerengine.com/studio?tab=store" });
   });
 
   it("says not signed in with the next step", async () => {
@@ -223,7 +223,7 @@ describe("summer router test", () => {
     expect(off.result.error).toMatchObject({
       code: "ai_disabled",
       docs_url: "https://docs.summerengine.com/router/errors#ai_disabled",
-      studio_url: "https://www.summerengine.com/studio/games/game_1/router?panel=characters&character=guard",
+      studio_url: "https://www.summerengine.com/studio/store/game_1?view=all&tab=router",
     });
     expect((await test(context(api), { id: "guard" })).exitCode).toBe(2);
   });
@@ -255,7 +255,7 @@ describe("summer router limits set", () => {
     });
     const outcome = await limitsSet(context(api), { enabled: "off" });
     expect(outcome.exitCode).toBe(1);
-    expect(outcome.result.error).toMatchObject({ code: "owner_action_required", studio_url: "https://www.summerengine.com/studio/games/game_1/router?panel=limits" });
+    expect(outcome.result.error).toMatchObject({ code: "owner_action_required", studio_url: "https://www.summerengine.com/studio/store/game_1?view=all&tab=router" });
   });
 });
 

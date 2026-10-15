@@ -1,17 +1,17 @@
 /**
- * The one Studio page for each human step. Summer Router lives under the
- * game's Studio section "router"; the panel query opens the exact part.
+ * The one Studio page for each human step. Summer Router is a tab of the
+ * game's store page in Studio (/studio/store/{gameId}?view=all&tab=router):
+ * characters, caps, the on/off switch and usage. A missing game id opens the
+ * creator's store games.
  */
 
-export type StudioPanel = "characters" | "limits" | "usage";
-
-export function studioRouterUrl(gateway: string, gameId: string, panel?: StudioPanel, character?: string): string {
-  const url = new URL(`${gateway.replace(/\/+$/, "")}/studio/games/${encodeURIComponent(gameId)}/router`);
-  if (panel) url.searchParams.set("panel", panel);
-  if (character) url.searchParams.set("character", character);
+export function studioRouterUrl(gateway: string, gameId: string): string {
+  const url = new URL(`${gateway.replace(/\/+$/, "")}/studio/store/${encodeURIComponent(gameId)}`);
+  url.searchParams.set("view", "all");
+  url.searchParams.set("tab", "router");
   return url.toString();
 }
 
 export function studioGamesUrl(gateway: string): string {
-  return `${gateway.replace(/\/+$/, "")}/studio/games`;
+  return `${gateway.replace(/\/+$/, "")}/studio?tab=store`;
 }

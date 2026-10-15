@@ -3966,7 +3966,7 @@
       "id": "skill/summer-router",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "e46f8121d710daf20cba1b820e012e1478b7533ba2b4d9dbcb79c9666c6fa7eb",
+      "content_hash": "5f446e341a148d6a5f87e0f84781210fc5b76aa1f47c68a7416538a4302e5637",
       "summary": "Summer Router: AI characters (text and realtime voice with tools), speech, transcription and images at runtime, no keys in the build.",
       "use_when": [
         "a character, creature or object should answer free-form player text or speech in a game (guard, shopkeeper, companion, talking flower)",

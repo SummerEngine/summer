@@ -237,7 +237,8 @@ Full list with fixes: `https://docs.summerengine.com/router/errors`.
 - Tool handlers validate. The model can be talked into calling any tool; the handler checks game state and clamps
   values. A tool that changes shared state in multiplayer runs on the authority (roadmap: `runs_on: "authority"`).
 - Label AI characters as AI in the UI.
-- Caps are on by default. The owner changes them in Studio or with `summer router limits set`.
+- Caps are on by default. The owner changes them in Studio (the Router tab of the game's store page) or with
+  `summer router limits set`.
 
 ## Verify
 

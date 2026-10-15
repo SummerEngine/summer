@@ -4,10 +4,10 @@ version: 1.0.0
 summary: The product map — every summerengine.com page and editor surface an agent can open for the user, with intent phrases, URL or op, required context, and status.
 use_when:
   - resolving where a user intent lives — "where do I change my plan", "where are my published games", "how do I get to the MCP guide for Codex"
-  - deciding whether a destination needs login, a running engine, or a parameter (gameId, path, node) before calling summer_open
+  - deciding whether a destination needs login, a running engine, or a parameter (gameId, path, node) before calling studio.open (3.x `summer_open`)
   - checking whether an editor surface (assistant dock, project settings, 2D/3D switch) can be opened on this engine build or is still planned
 do_not_use_when:
-  - you already know the target id — call summer_open directly (the tool carries the same table)
+  - you already know the target id — call studio.open directly (it carries the same table)
   - looking up which Summer MCP tool performs a change — that is the mcp-tools-reference
 facets:
   lifecycle:

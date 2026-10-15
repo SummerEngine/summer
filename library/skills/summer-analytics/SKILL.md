@@ -28,8 +28,8 @@ Analytics is for **looking at** your game, never for running it:
 - **Capture is never retried.** An `unavailable` result may already have stored the event, and capturing again records a second event.
 
 **Where it works:** hosted only. Under Local Play both calls complete with
-`ok == false` and code `unavailable`, and nothing is stored. Also print each
-event while testing, so you can check it in the logs.
+`ok == false` and code `unavailable`, and nothing is stored. Print each event
+while testing to confirm the helper ran. A log line is not a delivery receipt.
 
 ## Steps
 
@@ -103,11 +103,33 @@ On the client, after a menu choice:
 	_track("menu_opened", {"from": "pause"})
 ```
 
-### 4. Read the results
+### 4. Verify a hosted event
 
-Open the game's analytics in Studio: `summer_open` with target `game` and
-params `gameId` (your game's id) and `section: "analytics"`. Events show up
-there after a short delay.
+Keep these three observations separate:
+
+1. **Attempted:** The `ANALYTICS` log means the helper ran. In Local Play,
+   capture is unavailable and no event is stored.
+2. **Completed:** During a hosted test, inspect the terminal `SummerResult`
+   inside the helper (for example, temporarily log `result.ok` and
+   `result.code` there). Do not await `_track` from gameplay. The helper
+   above warns only once on failure, so no warning is not proof of storage. An `unavailable` or timed-out result is uncertain; never recapture
+   the same action. Do not expect a plan, cap or test-player drop status in
+   `SummerResult`: the current Engine does not expose one there.
+3. **Observed:** Open the exact game's Analytics in Studio: `summer_open` with
+   target `game`, params `gameId` (that game's id) and
+   `section: "analytics"`. Check Recent Events in the intended environment
+   for the event name and UTC time window. Allow a short query delay. If your
+   connected Summer tools expose a read-only event catalog or trend, discover
+   the current tool and use the same game, environment and window. Do not
+   assume a draft tool is installed.
+
+If the event is absent, say "not observed in this view," with the scope and
+window. Missing data is not proof that instrumentation failed or the count is
+zero: the view may lag, retention may exclude the event, and a hosted intake
+may drop custom events for a missing Summer Pro entitlement, a monthly limit
+or cap, or a test player. Check plan and usage only through available read-only
+Studio views or tools; never change them as part of verification. Report the
+log, terminal result and observed data separately.
 
 ## Result codes
 

@@ -16,6 +16,7 @@ import { debugCommand } from "./commands/debug.js";
 import { configCommand } from "./commands/config.js";
 import { eventsCommand } from "./commands/events.js";
 import { toolCommand } from "./commands/tool.js";
+import { routerCommand } from "./commands/router.js";
 import { getBanner } from "./banner.js";
 import { runRootAction } from "./root-action.js";
 import { c, sym } from "../core/format.js";
@@ -55,6 +56,7 @@ export function runCli(mcpCommand: Command): void {
   program.addCommand(configCommand);
   program.addCommand(eventsCommand);
   program.addCommand(toolCommand);
+  program.addCommand(routerCommand);
 
   program.parseAsync().catch((err) => {
     console.error(err instanceof Error ? err.message : String(err));

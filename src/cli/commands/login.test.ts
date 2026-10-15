@@ -8,7 +8,7 @@ import {
 } from "../../core/auth.js";
 import { setSummerDirForTests } from "../../core/store.js";
 import { Command } from "commander";
-import { STORE_STEP_TIMEOUT_MS, runLogin, runLoginCommand } from "./login.js";
+import { STORE_STEP_TIMEOUT_MS, runAgentLogin, runLogin, runLoginCommand, verificationCode, type PendingLogin } from "./login.js";
 
 let root = "";
 const originalGateway = process.env.SUMMER_GATEWAY_URL;
@@ -251,5 +251,88 @@ describe("summer login: one browser for the account and the store", () => {
     expect(parse([])).toBeUndefined();
     expect(parse(["--store"])).toBe(true);
     expect(parse(["--no-store"])).toBe(false);
+  });
+});
+
+describe("summer login for agents (no terminal): print the link, then --complete", () => {
+  function agentFakes(state: { token: boolean; store: boolean; pending?: PendingLogin | null; sessionFails?: boolean }) {
+    const calls: string[] = [];
+    return {
+      calls,
+      state,
+      deps: {
+        hasAuthToken: async () => state.token,
+        hasStoreSignIn: async () => state.store,
+        gateway: async () => "https://gateway.example",
+        randomId: () => "1a2b3c4d-0000-4000-8000-000000000000",
+        openUrl: async (url: string) => {
+          calls.push(`open:${url}`);
+        },
+        readPending: async () => state.pending ?? null,
+        writePending: async (pending: PendingLogin) => {
+          state.pending = pending;
+        },
+        clearPending: async () => {
+          state.pending = null;
+        },
+        waitForSession: async (sessionId: string, timeoutMs: number) => {
+          calls.push(`wait:${sessionId}:${timeoutMs}`);
+          if (state.sessionFails) throw new Error("Login timed out after 10 minutes.");
+          state.token = true;
+        },
+        storeLogin: async (options: { newClient: boolean; timeoutMs?: number }) => {
+          calls.push(`store:${options.timeoutMs}`);
+          state.store = true;
+        },
+        email: async () => (state.token ? "maker@example.com" : null),
+        now: () => Date.parse("2026-10-15T12:00:00Z"),
+        log: () => undefined,
+      },
+    };
+  }
+
+  it("prints {browser_url, verification_code, next_step}, keeps the session, and exits 0 without waiting", async () => {
+    const fake = agentFakes({ token: false, store: false });
+    const outcome = await runAgentLogin({}, fake.deps);
+    expect(outcome.exitCode).toBe(0);
+    expect(outcome.result).toMatchObject({
+      status: "pending",
+      browser_url: "https://gateway.example/login?cli_session=1a2b3c4d-0000-4000-8000-000000000000",
+      verification_code: "1A2B-3C4D",
+      next_step: "summer login --complete",
+    });
+    expect(fake.state.pending?.sessionId).toBe("1a2b3c4d-0000-4000-8000-000000000000");
+    expect(fake.calls.some((call) => call.startsWith("wait:"))).toBe(false);
+  });
+
+  it("--complete waits for that session, then connects the store, then reports signed_in", async () => {
+    const fake = agentFakes({ token: false, store: false });
+    await runAgentLogin({}, fake.deps);
+    const outcome = await runAgentLogin({ complete: true, timeout: "120" }, fake.deps);
+    expect(outcome).toEqual({ exitCode: 0, result: { status: "signed_in", email: "maker@example.com", store: true } });
+    expect(fake.calls.filter((call) => !call.startsWith("open:"))).toEqual(["wait:1a2b3c4d-0000-4000-8000-000000000000:120000", "store:120000"]);
+    expect(fake.state.pending).toBeNull();
+  });
+
+  it("fails --complete with the link when the person did not finish, and without a pending sign-in", async () => {
+    const fake = agentFakes({ token: false, store: false, sessionFails: true });
+    await runAgentLogin({}, fake.deps);
+    const late = await runAgentLogin({ complete: true }, fake.deps);
+    expect(late.exitCode).toBe(1);
+    expect(JSON.stringify(late.result)).toContain("https://gateway.example/login?cli_session=");
+
+    const none = await runAgentLogin({ complete: true }, agentFakes({ token: false, store: false }).deps);
+    expect(none.result).toMatchObject({ error: { code: "no_pending_login" }, next_step: "summer login" });
+    expect((await runAgentLogin({ timeout: "0" }, fake.deps)).exitCode).toBe(2);
+  });
+
+  it("reports signed_in at once when both sign-ins exist", async () => {
+    const fake = agentFakes({ token: true, store: true });
+    expect(await runAgentLogin({}, fake.deps)).toEqual({ exitCode: 0, result: { status: "signed_in", email: "maker@example.com", store: true } });
+    expect(fake.calls).toEqual([]);
+  });
+
+  it("derives the verification code from the session id", () => {
+    expect(verificationCode("abcd1234-ffff")).toBe("ABCD-1234");
   });
 });

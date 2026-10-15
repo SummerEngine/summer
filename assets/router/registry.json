@@ -1,0 +1,396 @@
+{
+  "registry": "summer-router",
+  "version": 1,
+  "source": "summer-platform contracts/summer-router/registry.json",
+  "limit_keys": [
+    {
+      "id": "player_day",
+      "title": "Per player per day",
+      "window": "day",
+      "setting": "player_day_micro_usd"
+    },
+    {
+      "id": "game_day",
+      "title": "Per game per day",
+      "window": "day",
+      "setting": "game_day_micro_usd"
+    },
+    {
+      "id": "game_month",
+      "title": "Per game per month",
+      "window": "month",
+      "setting": "game_month_micro_usd"
+    },
+    {
+      "id": "account_month",
+      "title": "Per account per month",
+      "window": "month",
+      "setting": "account_month_micro_usd"
+    },
+    {
+      "id": "environment_day",
+      "title": "Environment ceiling per day",
+      "window": "day",
+      "setting": ""
+    },
+    {
+      "id": "character_player_day",
+      "title": "Per character per player per day",
+      "window": "day",
+      "setting": "limits.player_daily_micro_usd"
+    },
+    {
+      "id": "character_game_day",
+      "title": "Per character per game per day",
+      "window": "day",
+      "setting": "limits.game_daily_micro_usd"
+    }
+  ],
+  "errors": [
+    {
+      "tag": "unavailable",
+      "http_status": 503,
+      "retryable": true,
+      "fix": "Keep the offline fallback. Summer Router needs the Summer Player Host and a configured gateway."
+    },
+    {
+      "tag": "not_signed_in",
+      "http_status": 401,
+      "retryable": false,
+      "fix": "Ask the player to sign in to Summer, then try again."
+    },
+    {
+      "tag": "mic_denied",
+      "http_status": 0,
+      "retryable": false,
+      "fix": "Fall back to text. Do not send the player to Settings."
+    },
+    {
+      "tag": "character_not_found",
+      "http_status": 404,
+      "retryable": false,
+      "fix": "Push the character with `summer router push`, then call it by its id."
+    },
+    {
+      "tag": "tool_unhandled",
+      "http_status": 0,
+      "retryable": false,
+      "fix": "Add a handler for this tool to the session's tools before the character calls it."
+    },
+    {
+      "tag": "limit_reached",
+      "http_status": 429,
+      "retryable": true,
+      "fix": "Wait until resets_at, or raise the cap in Studio or with `summer router caps`."
+    },
+    {
+      "tag": "credits_required",
+      "http_status": 402,
+      "retryable": false,
+      "fix": "The game's owner adds credits in Studio.",
+      "studio_url": "https://summerengine.com/studio/credits"
+    },
+    {
+      "tag": "ai_disabled",
+      "http_status": 403,
+      "retryable": false,
+      "fix": "Turn on Summer Router for this game in Studio or with `summer router settings`."
+    },
+    {
+      "tag": "age_restricted",
+      "http_status": 403,
+      "retryable": false,
+      "fix": "Keep the offline fallback for this player."
+    },
+    {
+      "tag": "provider_unavailable",
+      "http_status": 502,
+      "retryable": true,
+      "fix": "Retry later. The game keeps running."
+    },
+    {
+      "tag": "moderated",
+      "http_status": 422,
+      "retryable": false,
+      "fix": "The provider's safety filter blocked this turn. Rephrase, or show the fallback line."
+    },
+    {
+      "tag": "invalid_input",
+      "http_status": 400,
+      "retryable": false,
+      "fix": "Send inputs that match the kind's schema in the registry."
+    },
+    {
+      "tag": "rate_limited",
+      "http_status": 429,
+      "retryable": true,
+      "fix": "Slow down and retry after Retry-After seconds."
+    }
+  ],
+  "schemas": {
+    "character": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "instructions"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "instructions": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20000
+        },
+        "first_message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "language": {
+          "type": "string",
+          "pattern": "^[a-z]{2,3}(-[A-Z]{2})?$"
+        },
+        "variables": {
+          "type": "object",
+          "maxProperties": 32,
+          "propertyNames": {
+            "pattern": "^[a-z_][a-z0-9_]{0,63}$"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "model": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+        },
+        "temperature": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "max_output_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8192
+        },
+        "reasoning": {
+          "enum": [
+            "off",
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "voice": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            },
+            "design": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "stability": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "similarity": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "style": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "speed": {
+              "type": "number",
+              "minimum": 0.5,
+              "maximum": 2
+            }
+          }
+        },
+        "turn": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "enum": [
+                "server_vad",
+                "push_to_talk"
+              ]
+            },
+            "interruptions": {
+              "type": "boolean"
+            },
+            "silence_end_ms": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 10000
+            }
+          }
+        },
+        "session": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "max_seconds": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 3600
+            },
+            "idle_seconds": {
+              "type": "integer",
+              "minimum": 5,
+              "maximum": 600
+            }
+          }
+        },
+        "tools": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "description",
+              "parameters"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$"
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1024
+              },
+              "parameters": {
+                "type": "object"
+              },
+              "runs_on": {
+                "enum": [
+                  "client",
+                  "authority"
+                ]
+              },
+              "timeout_ms": {
+                "type": "integer",
+                "minimum": 100,
+                "maximum": 60000
+              }
+            }
+          }
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "player_daily_micro_usd": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500000000
+            },
+            "game_daily_micro_usd": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500000000
+            }
+          }
+        },
+        "overridable": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "first_message",
+              "variables",
+              "language",
+              "instructions",
+              "model",
+              "temperature",
+              "max_output_tokens",
+              "reasoning",
+              "voice",
+              "turn",
+              "session"
+            ]
+          }
+        },
+        "provider_options": {
+          "type": "object",
+          "propertyNames": {
+            "enum": [
+              "vercel-ai-gateway",
+              "elevenlabs"
+            ]
+          },
+          "additionalProperties": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "expected_revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "text_model": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+        },
+        "image_model": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+        },
+        "caps": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "player_day_micro_usd": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500000000
+            },
+            "game_day_micro_usd": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500000000
+            },
+            "game_month_micro_usd": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 15500000000
+            }
+          }
+        }
+      }
+    }
+  }
+}

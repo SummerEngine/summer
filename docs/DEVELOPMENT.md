@@ -84,12 +84,12 @@ The suite needs Node 22 or newer (`.nvmrc`; CI uses 22): vitest 3 does not run o
 
 ### CLI command reference
 
-`summer --help` is the source of truth; this is its current shape (20 commands plus `help`).
+`summer --help` is the source of truth; this is its current shape (21 commands plus `help`).
 
 | Command | Does |
 |---|---|
 | `summer install [--yes] [--path <dir>]` | Download and install Summer Engine (macOS, Windows, Linux x86_64). Never replaces an installed engine without `--yes` or a TTY confirmation. |
-| `summer login [--store \| --no-store] [--force]` | One browser sign-in: the Summer account (CLI token, `~/.summer/auth-token`), then the store OAuth grant (`~/.summer/oauth-token`) for `summer_publish_build` and the hosted store, publishing, board and Grow tools, in the same browser. `--store` runs only the store step; `--no-store` skips it. A failed store step keeps the account sign-in. |
+| `summer login [--store \| --no-store] [--force]` | One browser sign-in: the Summer account (CLI token, `~/.summer/auth-token`), then the store OAuth grant (`~/.summer/oauth-token`) for `summer_publish_build` and the hosted store, publishing, board and Grow tools, in the same browser. `--store` runs only the store step; `--no-store` skips it. A failed store step keeps the account sign-in. With no terminal on stdin (agents) or `--non-interactive` it prints `{status: "pending", browser_url, verification_code, next_step}` and exits; `summer login --complete [--timeout <s>]` then waits for the browser and connects the store. |
 | `summer logout` | Clear stored tokens (says so when `SUMMER_TOKEN` is in effect instead). |
 | `summer status` | Engine state, port, auth. |
 | `summer run [path] [--no-project] [--background\|--focus] [--bin <executable>]` | Launch the engine with a project; bare editor needs `--no-project`. `--bin` (env `SUMMER_BIN`) launches a build that is not installed — the in-bundle executable on macOS, never the `.app`. Background (no focus steal) is the default when stdout is not a TTY, i.e. an agent; a human in a terminal gets focus. See `TESTING.md` "Working in the background". |
@@ -107,6 +107,7 @@ The suite needs Node 22 or newer (`.nvmrc`; CI uses 22): vitest 3 does not run o
 | `summer publish [project] --artifact <pck> --version <v> [--confirm]` | Deprecated confirmed `.pck` release to the legacy creator API; use `summer tool export-game` and `summer tool publish-build`. |
 | `summer releases [--cursor <c>]` | Creator release history. |
 | `summer events [--follow] [--kinds <csv>] [--since <seq>] [--limit <n>] [--json]` | Engine events channel: the newest events, or `--follow` to stream them live (long-poll over `/api/events/poll`, one line per event, JSON when piped). Builds without the channel print a structured `engine_lacks_events` receipt and exit 1. |
+| `summer router <setup \| character add \| push \| pull \| test \| limits get\|set \| logs \| doctor> [--json] [--game <id>] [--project <dir>]` | Summer Router for the game in this folder: `ai/characters/<id>.json` files, validated against the registry (bundled copy in `assets/router/registry.json`, live from the management API when signed in) and against the project's GDScript tool handlers, then pushed through `/api/creator-store/*` with the store sign-in. Agent mode (piped stdout, `--json`, or an agent environment): one JSON object on stdout, messages on stderr, exit 0 / 1 / 2. Code in `src/core/router/`. |
 | `summer tool [name] [--args '<json>'] [--list]` | Run any tool with the MCP implementation; `--list` prints every slug. With a store sign-in it also lists and runs the hosted store and publishing tools (`summer tool summer_store_list_games`). |
 | `summer help [command]` | Commander's built-in help. |
 

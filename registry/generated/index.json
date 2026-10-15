@@ -390,43 +390,6 @@
       "recommended": true
     },
     {
-      "id": "skill/ai-characters-in-games",
-      "kind": "skill",
-      "version": "0.3.0",
-      "content_hash": "7ccd24e2c11e17af8a05bfcb5239ccff7636dc21b70b8de31965fa749a614785",
-      "summary": "Safe AI characters in published games: no keys in the build, replies via Summer's player AI gateway, moderation, spend caps, offline brain and a report button.",
-      "use_when": [
-        "a character, creature or object should answer free-form player text or speech in a published game (talking flowers, shopkeepers, companions)",
-        "about to put a model name, a provider SDK or a provider key into a game project",
-        "handling AI refusals (ai_disabled, age_policy, credits_exhausted, limit_exceeded) or adding the report button for AI replies",
-        "topping up Summer credits, setting AI limits or the kill switch for a game's AI characters"
-      ],
-      "facets": {
-        "lifecycle": [
-          "build"
-        ],
-        "domains": [
-          "ai",
-          "npc"
-        ],
-        "modalities": [
-          "scripts",
-          "scenes"
-        ]
-      },
-      "compatibility": {
-        "engine": ">=4.6"
-      },
-      "related": {
-        "skills": [
-          "skill/design-npc",
-          "skill/multiplayer-state"
-        ]
-      },
-      "status": "preview",
-      "recommended": false
-    },
-    {
       "id": "skill/ambient-bed",
       "kind": "skill",
       "version": "1.0.3",
@@ -1420,7 +1383,7 @@
       "id": "skill/design-npc",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "17afb4ce14e33b5e85ca6aab6c02f9ced74124cf5bd221bd7465c9d714052948",
+      "content_hash": "6b4809a55b7c37c1a6a88168224742d701bd9dc3bca29ff3fa296e80efe0c7a4",
       "summary": "Design enemy/NPC/boss/companion behavior — perception, personality, intent, action state machine, telegraphs — outputs a GDScript stub plus node tree.",
       "use_when": [
         "designing an enemy, NPC, boss, companion, civilian, or wave-spawned mob's behavior — perception, intent, state machine, telegraphs, defeat handling",
@@ -4000,6 +3963,50 @@
       "recommended": false
     },
     {
+      "id": "skill/summer-router",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "a957b216e5aefa53ba0c1a007a9dcfb40d6247d7178c1392de46365b832263fb",
+      "summary": "Summer Router: AI characters (text and realtime voice with tools), speech, transcription and images at runtime, no keys in the build.",
+      "use_when": [
+        "a character, creature or object should answer free-form player text or speech in a game (guard, shopkeeper, companion, talking flower)",
+        "a voice NPC that does things in the game through tool calls, for example opening a gate when the player says the password",
+        "players talk to a character with their own voice and the character talks back",
+        "speech, transcription or image generation while the game runs",
+        "about to put a model name, a provider SDK or an API key into a game project",
+        "running summer router (setup, character add, push, test, limits, logs, doctor) or handling Summer Router errors such as limit_reached, ai_disabled or tool_unhandled"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build",
+          "launch"
+        ],
+        "domains": [
+          "ai",
+          "npc",
+          "audio"
+        ],
+        "modalities": [
+          "scripts",
+          "scenes",
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/voice-and-mic-permissions",
+          "skill/design-npc",
+          "skill/voice-line",
+          "skill/multiplayer-state"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
       "id": "skill/summer-store",
       "kind": "skill",
       "version": "1.0.0",
@@ -4859,6 +4866,46 @@
         ]
       },
       "status": "stable",
+      "recommended": false
+    },
+    {
+      "id": "skill/voice-and-mic-permissions",
+      "kind": "skill",
+      "version": "0.1.0",
+      "content_hash": "0032974423f0ea41a5e41ebb6068ca75d17ccb80d1114cdd60caf8a58e992dca",
+      "summary": "Use the microphone in a Summer game the safe way: declare it, ask only from a talk tap, keep a text path, never touch OS permissions.",
+      "use_when": [
+        "adding a talking AI character the player speaks to",
+        "voice commands, shout or sing mechanics, or a mic level meter",
+        "any AudioStreamMicrophone or AudioEffectCapture use",
+        "\"the mic does not work\", \"the game asks for the mic at launch\", \"players denied the mic\""
+      ],
+      "facets": {
+        "lifecycle": [
+          "build",
+          "launch"
+        ],
+        "domains": [
+          "audio",
+          "ai"
+        ],
+        "modalities": [
+          "scripts",
+          "project"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/summer-router",
+          "skill/voice-line",
+          "skill/design-npc",
+          "skill/export-and-ship"
+        ]
+      },
+      "status": "preview",
       "recommended": false
     },
     {

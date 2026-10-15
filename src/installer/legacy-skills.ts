@@ -32,15 +32,22 @@ export const LEGACY_SKILL_SLUGS_2_8_2: readonly string[] = [
   "skill-test", "using-summer", "verification-before-completion", "writing-plans", "writing-skills",
 ];
 
+/**
+ * Skills that a v3 release installed and a later release renamed. A host that
+ * keeps the old copy would load two skills for one job, one of them stale.
+ * ai-characters-in-games -> summer-router (3.10).
+ */
+export const RENAMED_SKILL_SLUGS_V3: readonly string[] = ["ai-characters-in-games"];
+
 export interface PrunedSkill {
   name: string;
   path: string;
 }
 
-/** Names Summer installed in 2.8.x that the current registry no longer ships. */
+/** Names Summer installed before (2.8.x, or a v3 name since renamed) that the current registry no longer ships. */
 export function retiredSkillNames(currentSkillNames: Iterable<string>): string[] {
   const current = new Set(currentSkillNames);
-  return LEGACY_SKILL_SLUGS_2_8_2.filter((name) => !current.has(name));
+  return [...LEGACY_SKILL_SLUGS_2_8_2, ...RENAMED_SKILL_SLUGS_V3].filter((name) => !current.has(name));
 }
 
 /**

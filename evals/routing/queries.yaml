@@ -83,6 +83,12 @@ queries:
     expected: [skill/ambient-bed]
   - query: "give the shopkeeper a voice"
     expected: [skill/voice-line]
+  - query: "add a guard NPC who opens the gate when you say the password"
+    expected: [skill/summer-router]
+  - query: "players speak to an NPC with the microphone and it answers"
+    expected: [skill/summer-router, skill/voice-and-mic-permissions]
+  - query: "the game asks for the microphone at launch"
+    expected: [skill/voice-and-mic-permissions]
   - query: "what should my game sound like overall"
     expected: [skill/audio-direction]
   - query: "make three versions of a sword clash sound so I can pick the best one"

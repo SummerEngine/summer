@@ -495,7 +495,7 @@ For an animated NPC in a runnable project: `summer create 3d-fps-simple-animated
 ## See also
 
 - `animation-tree` — wire the action states to animation clips
-- `ai-characters-in-games` — NPCs that answer free-form player text
+- `summer-router` — NPCs that answer free-form player text or voice, with tool calls (Summer Router)
 - `vfx-hit-spark` — hit flash recipe
 - `vfx-dissolve` — death dissolve recipe
 - `game-feel` — screen-feel discipline (camera shake, hit-stop)

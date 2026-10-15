@@ -2,6 +2,15 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+Summer Router (preview): talking characters, speech, transcription and images at runtime, from the CLI.
+
+- **`summer router`.** `setup --yes` gives Claude Code or Codex the summer-engine MCP and the Summer Router skills (idempotent; without `--yes` it prints the plan). `character add <id> [--template voice-npc|shopkeeper|companion] [--voice "..."] [--tools a,b]` writes `ai/characters/<id>.json`. `push [--dry-run]` checks every character against the registry schema and fails (exit 1, `tool_unhandled`) when a client tool has no handler in the project's GDScript, then sends the characters to the game on Summer; it never overwrites a Studio edit it has not seen (`studio_changed`; `pull` or `--force`). `pull`, `test <id> --say "..." [--expect-tool <name>]` (exit 1 when the reply errors or skips an expected tool), `limits get|set` (caps in US dollars; the owner approves in Studio), `logs [--since 10m]` and `doctor`.
+- **Agent mode for `summer router`.** With `--json`, a piped stdout or an agent environment (Claude Code, Codex, CI): no prompts, one JSON object on stdout, messages on stderr, exit 0 (done), 1 (failed, with `error.code` and `error.fix`) or 2 (usage). Every human step is one URL to the exact Studio page.
+- **`summer login` for agents.** With no terminal on stdin (or `--non-interactive`) it prints `{status: "pending", browser_url, verification_code, next_step}` and exits instead of waiting. `summer login --complete` waits for the person to sign in, then connects the store. A person at a terminal sees no change.
+- **Skills.** `ai-characters-in-games` is now `summer-router` (the GDScript surface, the CLI flow, errors and fallbacks; no billing amounts). New `voice-and-mic-permissions`: ask for the microphone only from a talk tap, always keep a text path, never touch OS permissions. `summer skills install --all --force` removes the old `ai-characters-in-games` copy.
+
 ## [3.9.1] - 2026-10-15
 
 3.9.0 was not published to npm; 3.9.1 is the first release with everything in 3.9.0 below, plus these changes.

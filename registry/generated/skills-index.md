@@ -1,6 +1,6 @@
 # Summer skills
 
-> 125 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
+> 126 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
 
 The folder is flat on purpose (`docs/design/DECISIONS.md`, D3): a skill usually belongs to several domains, so categories live in each skill's `facets.domains` and this index is rendered from them. The first domain listed is the primary one. `summer skills list --by-domain` prints the same grouping; `summer skills info <slug>` shows one skill.
 
@@ -14,7 +14,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 - [ai](#ai) (2)
 - [animation](#animation) (7)
 - [assets](#assets) (3)
-- [audio](#audio) (6)
+- [audio](#audio) (7)
 - [character-controller](#character-controller) (2)
 - [creator](#creator) (4)
 - [debug](#debug) (1)
@@ -87,8 +87,8 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 
 | skill | when to use | also |
 |---|---|---|
-| [*ai-characters-in-games*](./ai-characters-in-games/SKILL.md) (preview) | Safe AI characters in published games: no keys in the build, replies via Summer's player AI gateway, moderation, spend caps, offline brain and a report button. | npc |
 | [design-npc](./design-npc/SKILL.md) ★ | Design enemy/NPC/boss/companion behavior — perception, personality, intent, action state machine, telegraphs — outputs a GDScript stub plus node tree. | npc |
+| [*summer-router*](./summer-router/SKILL.md) (preview) | Summer Router: AI characters (text and realtime voice with tools), speech, transcription and images at runtime, no keys in the build. | npc, audio |
 
 ## animation
 
@@ -119,6 +119,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [audio-direction](./audio-direction/SKILL.md) ★ | Define the game's sonic identity — music style, instruments, SFX vocabulary, dynamic music plan — output as an audio bible at .summer/audio-bible.md. | game-design |
 | [music-track](./music-track/SKILL.md) ★ | Generate a looped or cinematic music track — loops authored at >=30s with a marked loop point, cinematic tracks at >=60s linear. | assets |
 | [sound-effect](./sound-effect/SKILL.md) ★ | Make SFX one-shots and timed sequences (swings, hits, whooshes, reloads, UI) - offer three model versions to pick from, then wire them as AudioStreamPlayers. | assets |
+| [*voice-and-mic-permissions*](./voice-and-mic-permissions/SKILL.md) (preview) | Use the microphone in a Summer game the safe way: declare it, ask only from a talk tap, keep a text path, never touch OS permissions. | ai |
 | [voice-line](./voice-line/SKILL.md) ★ | Generate TTS voice lines — NPC barks, narrator, dialogue — with voice-id sourcing, a character-to-voice decision tree, and multi-line dialogue support. | assets |
 
 ## character-controller

@@ -426,7 +426,7 @@ skillsCommand
     // so no host keeps a skill that points at removed tools.
     if (opts.force && !name && (location.kind === "skill-dir" || location.kind === "opencode-skill-dir")) {
       for (const pruned of pruneRetiredSkills(location.path, getSkillRegistry().map((entry) => entry.name))) {
-        console.log(`  Removed ${pruned.name} -> ${pruned.path} (retired in 3.0.0)`);
+        console.log(`  Removed ${pruned.name} -> ${pruned.path} (retired or renamed)`);
       }
       // Agents that moved from generated rule files to SKILL.md skills in 3.1
       // (Cursor, OpenCode): drop the rule files 3.0 wrote so the agent does not

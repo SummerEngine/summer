@@ -153,7 +153,7 @@ When the next step depends on the engine reaching a moment — the game booting 
 - NEVER describe an image you did not receive. A failed capture is a result — report it and climb down (scene → viewport) or ask the user.
 - Preset-framing scene renders are static (t=0), synthetic-camera, flat-environment: no claims about animation, particles, lighting, or mood from them.
 - Pass structured failures (`failure_reason`, `terminalState`) through verbatim — never soften them into "it didn't work".
-- After the result is verified, record the outcome with `summer_library_feedback` (worked / worked with fixes / wrong / outdated / incomplete + a short note). Optional and fire-and-forget; if telemetry is off, move on.
+- After the result is verified, record the outcome with `summer_call` `{"op":"docs.feedback"}` (worked / worked with fixes / wrong / outdated / incomplete + a short note). Optional and fire-and-forget; if telemetry is off, move on.
 
 ## Red Flags — STOP
 

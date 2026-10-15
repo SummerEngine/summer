@@ -100,7 +100,7 @@ Open Claude Code in a directory (any), confirm `/mcp` lists `summer-engine`, the
 1. "Read the scene tree and describe the level." — expect `summer_get_project_context` then `summer_get_scene_tree`, and a description that matches what is open.
 2. "Add a MeshInstance3D cube at (0, 1, 0) and screenshot it." — expect `summer_add_node` (+ `summer_set_prop` / `summer_set_resource_property` for the BoxMesh), `summer_save_scene`, `summer_screenshot`; the cube is in the editor and the scene is saved.
 3. "Use the design-mechanic skill to plan a dash." — expect the skill to load (Claude names it) and a plan with the skill's structure, no engine mutation.
-4. "Report feedback on the skill you used." — expect `summer_library_feedback` with `entry_id: skill/design-mechanic` and one outcome word. The first call on a machine returns the disclosure notice and sends nothing (see g); the second sends.
+4. "Report feedback on the skill you used." — expect `summer_call` with `docs.feedback` (3.x: `summer_library_feedback`) and `entry_id: skill/design-mechanic` and one outcome word. The first call on a machine returns the disclosure notice and sends nothing (see g); the second sends.
 5. "Run an editor script that counts the nodes in the open scene and prints the total." — expect `summer_run_editor_script` and a printed count that matches `summer_get_scene_tree`.
 
 ## f. Expected to fail on older engines

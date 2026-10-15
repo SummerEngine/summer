@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.1",
-      "content_hash": "572d526eaf371d4790fa52e050fe8d779ef26bd86af5677775f9a1814a1ab372",
+      "content_hash": "3c9fb7e47228feb1039d77a97a11d5cfcf093dc8767d755fe594b7cf1976a060",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -1287,7 +1287,7 @@
       "id": "skill/create-asset-sheet",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "1c4120f049dcacfa25737164312d1e9dbd409b96f06817ca4eb00986fddcd6fa",
+      "content_hash": "85f6491c4d609007c5efa99574a404972da36de5a199c78f6148171dc716e3ed",
       "summary": "Generate a pack of 2D game assets from one prompt — tile sheet, UI kit, character pack, or biome set — sliced, classified, and saved as one pack ArtAsset.",
       "use_when": [
         "generating a pack of 2D game assets from a single prompt — a tile sheet, UI kit, menu screen, character pack, or biome set",
@@ -1851,7 +1851,7 @@
       "id": "skill/gameskill",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "1ca30765c394269299b9cddb24e992ecd397aeb7b647cfb6ce3c493fac9fd630",
+      "content_hash": "7b5cf4987bce08adf440900b35a5b5e54d0483929af560a9f7c1842347a1d0f0",
       "summary": "Capture what a game-dev session just learned as a reusable skill (project, user or Summer library) so the next session starts smarter.",
       "use_when": [
         "finishing a game-development session with learnings worth capturing as a reusable skill",
@@ -1988,7 +1988,7 @@
       "id": "skill/grow-analytics",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "202c5517866e6fe7cf6d15f8a89292175dbb07f67d8a2a9a56bcf25a932f1d5a",
+      "content_hash": "ba1d61345a3ade24edeb9e7fa2284eaaf86a915302f84c2a48eefa19a18d0faf",
       "summary": "Read and analyse a creator's Summer Grow numbers: store page views, launches, play sessions, play time; compare windows, flag drops.",
       "use_when": [
         "the user asks how their game is doing on Summer Games: views, launches, players, play time",
@@ -2877,7 +2877,7 @@
       "id": "skill/publish-your-game",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "c2ed78b67c43fbcea5792ec31b97daff0ded3e0fe63e8d676ecdc8da7527de4d",
+      "content_hash": "c477b8bdb837d9ed38b0b90251587e1bb4353501efd1a8bcfbd233fc82e9f6f3",
       "summary": "Publish a Summer game on Summer Games through MCP: store page, art, build upload, submit, and one approval link for the owner.",
       "use_when": [
         "the user says 'publish my game', 'put it on summer.games', 'launch it on the store' or 'submit it for review'",
@@ -3175,7 +3175,7 @@
       "id": "skill/scene-hierarchy-design",
       "kind": "skill",
       "version": "0.1.1",
-      "content_hash": "288acf3a2c2e66562a0cc5ce24e81277640951a6ad0766de1516a418889f737d",
+      "content_hash": "05d560d110728461cc019dcae209223636c2df9760f0933063793504d7bac466",
       "summary": "Structure Summer Engine scenes by access pattern — asset vs live hierarchies, wrapper nodes per operation, sub-scenes for reuse, path-agnostic logic.",
       "use_when": [
         "how should I structure the node hierarchy for this level or character",
@@ -3590,7 +3590,7 @@
       "id": "skill/sprite-sheet",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "bb135a8fc2e5a3044ec68582696c7ea956339daa7fa3ffedb10c3e7f67baff8c",
+      "content_hash": "b42b419014dff194409817b90491866b7c1a2e457b0adf53f3e44ec509f1f635",
       "summary": "Generate animated 2D character sprites laid out as a sprite sheet — walk cycle, attack, idle, death — wired into AnimatedSprite2D / SpriteFrames.",
       "use_when": [
         "generating animated 2D character sprites laid out as a grid of frames — walk cycle, attack frames, idle bob, death sequence",
@@ -3629,7 +3629,7 @@
       "id": "skill/store-art",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "70d6b7f61395a329958bdd0fb6abfaf8c829d6b287ef115d52db4b16184f42c3",
+      "content_hash": "fb7d3e0a77fa8de0e5e2fff257987ad9628cca8599e6f296c9acb28546ee285c",
       "summary": "Make Summer Games store art per slot and flow: key art, covers, icons, screenshots, trailer: size, shape, text rules, fallbacks.",
       "use_when": [
         "making or choosing store art for Summer Games: key art, cover, icon, screenshots, trailer",
@@ -3668,7 +3668,7 @@
       "id": "skill/store-listing",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "9a0556424d7a4573e0163ecf47dfb0becd1fee32177eb122c606fc2145968a10",
+      "content_hash": "27352e29107d37693488d0d2620193f2860b74e1823d967bfa2f0be48ae8b71a",
       "summary": "Write a Summer Games store page per flow (desktop, mobile): targets, title, tagline, descriptions, tags, and what never to write.",
       "use_when": [
         "writing or fixing a game's store page text on Summer Games: title, tagline, description, tags",
@@ -3739,7 +3739,7 @@
       "id": "skill/summer-apps",
       "kind": "skill",
       "version": "0.1.0",
-      "content_hash": "5086545f051a3ef2e8219fe8c379cf7870ab161f23887dcdab56dbcbe76d57c0",
+      "content_hash": "8b2d20bb5bdb2fbeca09c6c40df09204414a8028e169497db7869a8f3ee5e253",
       "summary": "Build a Summer App, a team tool inside Summer Studio (balance table, quest editor, tracker, pick grid): build loop, Layout vs code, data as API, agent tools.",
       "use_when": [
         "the person asks for a tool for their team (\"build us a loot balance tool\", \"a board to track creatures\")",
@@ -4424,7 +4424,7 @@
       "id": "skill/using-summer",
       "kind": "skill",
       "version": "1.0.5",
-      "content_hash": "414b8174a55788c3eb3588ef02017bcba4b9c01b6bd59e776e547dbb11e472ea",
+      "content_hash": "3a1b2eb3e17c5129e1c8cc58ea7b8b27075cdbb1c128587a5596db4241857b18",
       "summary": "Session bootstrap for Summer projects — establishes how to find and use Summer skills and the summer-engine MCP before any response.",
       "use_when": [
         "starting any conversation in a Summer Engine project",
@@ -4540,7 +4540,7 @@
       "id": "skill/verifying-scenes",
       "kind": "skill",
       "version": "1.5.0",
-      "content_hash": "ba03998253f61ed6a4ea7a0e21c2a9a04a52ae6e8f8879b8b38ce09abd56a2bf",
+      "content_hash": "3b6780a02caad2f48f8250a88ec6167777e1cb7bfaa8aa1a6e84f9947ea7dd00",
       "summary": "Prove scene work landed (snapshot, diff, screenshots, runtime reads), audit 3D scenes for holes and misplacement, review them with shot sheets and zooms.",
       "use_when": [
         "after any mutation batch, asset import, or lighting change, before claiming it worked",

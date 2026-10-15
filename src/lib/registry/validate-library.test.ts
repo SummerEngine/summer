@@ -329,3 +329,25 @@ describe("validate-library: capability lint", () => {
     expect(excepted.exceptions[0]).toContain("Asset licenses require linking the original author pages.");
   });
 });
+
+describe("validate-library: 3.x docs-area tool names", () => {
+  const result = run("retired-tool-names");
+
+  it("fails overall", () => {
+    expect(result.ok).toBe(false);
+  });
+
+  it.each([
+    ["summer_search_library", 3, /write summer_docs_search$/],
+    ["summer_read_library", 3, /write summer_docs_read$/],
+    ["summer_library_feedback", 5, /write summer_call \{"op":"docs\.feedback"\}$/],
+  ])("names %s on its line with the 4.0 form", (name, line, fix) => {
+    const hit = result.errors.find((e) => e.includes(`body.md:${line}: "${name}"`));
+    expect(hit).toMatch(fix);
+  });
+
+  it("allows a 3.x name called through summer_call or explained as 3.x", () => {
+    expect(result.errors.filter((e) => /body\.md:(7|9):/.test(e))).toEqual([]);
+    expect(result.errors).toHaveLength(3);
+  });
+});

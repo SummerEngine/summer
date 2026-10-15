@@ -45,7 +45,7 @@ Or download from [summerengine.com/download](https://summerengine.com/download).
 
 ## Where skills live per agent
 
-Skills install as `<skill>/SKILL.md`. Agents whose docs read the agentskills.io folder (`~/.agents/skills`, `.agents/skills`) share it, so one install covers Codex, Cursor, Zed, OpenCode, Copilot in VS Code, Devin Desktop, Amp, Crush, Warp, Kimi, Factory, Rovo Dev and Grok Build; the rest keep their own folder. Agents with no skills folder (Claude Desktop, Copilot in Visual Studio and JetBrains, Trae, Junie, LM Studio) get the MCP server only and pull guidance in-chat via `summer_get_agent_playbook`.
+Skills install as `<skill>/SKILL.md`. Agents whose docs read the agentskills.io folder (`~/.agents/skills`, `.agents/skills`) share it, so one install covers Codex, Cursor, Zed, OpenCode, Copilot in VS Code, Devin Desktop, Amp, Crush, Warp, Kimi, Factory, Rovo Dev and Grok Build; the rest keep their own folder. Agents with no skills folder (Claude Desktop, Copilot in Visual Studio and JetBrains, Trae, Junie, LM Studio) get the MCP server only and pull guidance in-chat via the `summer_agent_playbook` MCP prompt or `summer_call` `{"op":"summer_get_agent_playbook"}`.
 
 | Agent | User scope | Project scope |
 |---|---|---|

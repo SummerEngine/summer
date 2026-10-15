@@ -4,6 +4,8 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 
 ## [Unreleased]
 
+- **Setup never pins an older release.** When the CLI that runs `summer setup` was newer than npm `latest`, setup wrote `summer-engine@next` into the agent's MCP entry. `next` had stayed on 3.1.0, so the agent ran a release from September and silently lost `--assets-only`, `--profile` and every newer option. Setup now writes `next` only when `next` is this exact version; otherwise it pins this exact version (`summer-engine@3.9.1`), and a build that is not on npm keeps `latest` and says to use `--local-dev`. `--channel` (and `SUMMER_CHANNEL`) accepts an exact version, and the refresh command `summer doctor` prints follows the same rule.
+- The release steps (`docs/NPM_PUBLISH_QUICK_COMMANDS.md`) now point `next` at every new `latest` release and create the `v<version>` tag and GitHub Release from the CHANGELOG.
 - The `summer` banner no longer prints colour codes when `NO_COLOR` is set or the output is not a terminal (a log, a pipe, an agent's shell).
 - `summer setup notanagent` now says the agent name is unknown and lists the supported ones.
 - `summer setup codex` writes the MCP entry to `$CODEX_HOME/config.toml` when `CODEX_HOME` is set, where Codex reads it.

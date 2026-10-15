@@ -57,7 +57,7 @@ export const setupCommand = new Command("setup")
   )
   .option(
     "--channel <dist-tag>",
-    "npm dist-tag the agent's MCP entry runs: npx -y summer-engine@<dist-tag> mcp (default latest; use next while a release soaks on the next tag). SUMMER_CHANNEL does the same."
+    "npm dist-tag or exact version the agent's MCP entry runs: npx -y summer-engine@<dist-tag> mcp (default latest; a CLI newer than npm latest pins next when next is this version, else this version). SUMMER_CHANNEL does the same."
   )
   .option("--yes", "Apply practical setup steps without prompting")
   .option(

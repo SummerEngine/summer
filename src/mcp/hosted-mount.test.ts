@@ -13,6 +13,7 @@ import { OAuthError } from "../core/oauth.js";
 import { setSummerDirForTests } from "../core/store.js";
 import { createMcpServer } from "./server.js";
 import { defaultHostedMountDependencies, prepareHostedMount, STORE_TOOLS_STATUS, type HostedMountDependencies } from "./hosted-mount.js";
+import { resolveToolSelection, selectionIncludes } from "./tool-surface.js";
 
 const TOKEN = "store-oauth-token";
 
@@ -227,5 +228,31 @@ describe("one Summer Engine MCP: hosted tools mounted locally", () => {
       await client.close();
       await server.close();
     }
+  });
+
+  it("mounts only the hosted tools the profile includes", async () => {
+    const assets = resolveToolSelection({ profile: "assets" }, {});
+    const { server } = createMcpServer(assets);
+    const mount = prepareHostedMount(server, deps(), { includeTool: (name) => selectionIncludes(assets, name, false) });
+    const state = await mount.mount();
+    expect(state.status).toBe("mounted");
+    // summer_store_submit is a store tool; the assets profile has no store.
+    expect(state.tools).toEqual([]);
+    await server.close();
+
+    const engine = resolveToolSelection({ profile: "engine" }, {});
+    const second = createMcpServer(engine);
+    const engineMount = prepareHostedMount(second.server, deps(), { includeTool: (name) => selectionIncludes(engine, name, false) });
+    expect((await engineMount.mount()).tools).toEqual(["summer_store_submit"]);
+    await second.server.close();
+  });
+
+  it("stops mounting at the tool limit and logs what it left out", async () => {
+    const { server, getRegisteredToolCount } = createMcpServer();
+    const mount = prepareHostedMount(server, deps(), { maxTools: getRegisteredToolCount() });
+    const state = await mount.mount();
+    expect(state.tools).toEqual([]);
+    expect(state.overLimit).toEqual(["summer_store_submit"]);
+    await server.close();
   });
 });

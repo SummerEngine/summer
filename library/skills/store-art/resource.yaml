@@ -4,7 +4,7 @@ version: 1.0.0
 summary: "Make Summer Games store art per slot and flow: key art, covers, icons, screenshots, trailer: size, shape, text rules, fallbacks."
 use_when:
   - "making or choosing store art for Summer Games: key art, cover, icon, screenshots, trailer"
-  - "summer_store_set_art rejects an image for its shape or size, or summer_store_get_listing says an art slot is missing"
+  - "store.set_art rejects an image for its shape or size, or store.get_listing says an art slot is missing"
   - "deciding whether a store image may carry text, and which slot falls back to which"
 facets:
   lifecycle:

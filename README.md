@@ -250,7 +250,7 @@ If the user wants `summer` on their `PATH` for everyday terminal use, a global n
 |---|---|---|
 | **Create** | Available | Scaffold from a pinned template, build scenes and scripts through MCP, generate 2D/3D/audio/video assets, guided by the library. |
 | **Test** | Available | The verification ladder: compile checks, screenshots, live play with debugger reads, and input-driven probes (`RunVerification`) that press real keys and assert on real frames. |
-| **Publish** | Preview | `summer_export_game` exports the game with the installed engine (headless); `summer_publish_build` uploads it to your game's summer.games store listing after you confirm the exact game, file and version (`summer login` signs you in to the store too). Nothing is submitted silently. |
+| **Publish** | Preview | `summer_export_game` exports the game with the installed engine (headless); `store.upload_file` uploads it to your game's summer.games store listing after you confirm the exact game, file and version (`summer login` signs you in to the store too). `store.publish` asks the owner, who approves on a link. Nothing is submitted silently. |
 | **Grow** | Planned | Analytics, retention and live-ops tooling will arrive as new library entries. Not part of this package yet. |
 
 ## What's in this repo
@@ -370,7 +370,7 @@ matchmaking are not promised by this package.
 |---|---|
 | `summer install [--yes]` | Download Summer Engine. Prints URL and size first; never replaces an installed engine without confirmation. |
 | `summer login` | One browser sign-in for every Summer tool: your Summer account, then the store, publishing and Grow tools in the same browser. `--no-store` skips the store step. |
-| `summer login --store` | Only the store sign-in (`summer_publish_build`, the store, publishing, board and Grow tools). |
+| `summer login --store` | Only the store sign-in (`store.upload_file`, the store, publishing, board and Grow operations). |
 | `summer logout` | Clear auth tokens. |
 | `summer config [get\|set\|unset]` | Read or update the shared non-secret `~/.summer/config.json`. |
 | `summer status` | Engine state, port, auth. |

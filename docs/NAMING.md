@@ -48,7 +48,7 @@ Filesystem names shared with the desktop engine — do not rename: `~/.summer/` 
 | Headline / first mention | "Summer is the open-source game-development system for AI agents." |
 | The app the user downloads | "Summer Engine" ("the Summer Engine app" when the distinction matters) |
 | The package in a command | code-style `summer-engine`; the binary, code-style `summer` |
-| Platform publishing | "the Summer store" (`summer_export_game`, `summer_publish_build`, then the hosted `summer_store_*` tools). |
+| Platform publishing | "the Summer store" (`summer_export_game`, `store.upload_file`, then the hosted `store.*` operations). |
 | The technical base | "Summer Engine's upstream technical base is Godot 4.6.1" — use the upstream name only where compatibility, migration, extension APIs, attribution, or licensing requires it (`library/references/godot-version`). |
 
 ## Changes that need an explicit "yes" in the same session before commit

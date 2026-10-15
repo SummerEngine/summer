@@ -270,7 +270,7 @@ If the user wants `summer` on their `PATH` for everyday terminal use, a global n
 |---|---|---|
 | **Create** | Available | Scaffold from a pinned template, build scenes and scripts through MCP, generate 2D/3D/audio/video assets, guided by the library. |
 | **Test** | Available | The verification ladder: compile checks, screenshots, live play with debugger reads, and input-driven probes (`RunVerification`) that press real keys and assert on real frames. |
-| **Publish** | Available | `summer_export_game` builds the store file with the installed engine; `summer_publish_build` uploads it after you confirm the exact game, file and version. The store tools write the store page (text, tags, long description, support contact, release date), set its art and trailer, make private preview links, and submit it with one approval link for the owner; `summer_store_releases` and `summer_build_release` ship approved builds. Nothing publishes without the owner's approval. |
+| **Publish** | Available | `summer_export_game` builds the store file with the installed engine; `store.upload_file` uploads it after you confirm the exact game, file and version. The store operations write the store page (text, tags, long description, support contact, release date), set its art and trailer, make private preview links, and `store.publish` submits it with one approval link for the owner; `store.status` and `store.release` ship approved builds. Nothing publishes without the owner's approval. |
 | **Grow** | Available | `summer_grow_overview` and `summer_grow_analytics` read store page views, launches, play sessions, play time and your game's own events (see the `summer-analytics` skill). Other Grow tools cover prices per country, store page A/B tests, team members and applications for Summer's growth services. |
 
 The store, publishing and Grow tools come from the hosted Summer server; the local MCP carries them after `summer login`.
@@ -395,7 +395,7 @@ Publishing to summer.games, multiplayer hosting, matchmaking and Grow are live.
 |---|---|
 | `summer install [--yes]` | Download Summer Engine. Prints URL and size first; never replaces an installed engine without confirmation. |
 | `summer login` | One browser sign-in for every Summer tool: your Summer account, then the store, publishing and Grow tools in the same browser. `--no-store` skips the store step. |
-| `summer login --store` | Only the store sign-in (`summer_publish_build`, the store, publishing, board and Grow tools). |
+| `summer login --store` | Only the store sign-in (`store.upload_file`, the store, publishing, board and Grow operations). |
 | `summer logout` | Clear auth tokens. |
 | `summer config [get\|set\|unset]` | Read or update the shared non-secret `~/.summer/config.json`. |
 | `summer status` | Engine state, port, auth. |

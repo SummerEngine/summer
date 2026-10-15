@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.2",
-      "content_hash": "27741876bf4312e28ff5ee4fdad1c9274dbc25c0a2a50f6194d6754c6fa4280e",
+      "content_hash": "3f0ec960390bb5fb5ff0fd25bf78b9ee81bc42eb1f57ddc65e4081aa59582e5f",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -1649,7 +1649,7 @@
       "id": "skill/export-and-ship",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "5fa347a9a3d65b21b81f236e36ad3804d29306918dccb322963d5d2e9b6b0ff1",
+      "content_hash": "0c51c9989b2c8f6b6dbb7b7b62925d27fbe14ad0704c6a1819b39ecbce96a1c0",
       "summary": "Prepare a game export: check templates and targets, validate release assets, build after approval.",
       "use_when": [
         "the user wants to assess or prepare a Summer game export — Steam, itch, HTML5, iOS, Android targets as available in the installed build",
@@ -2371,7 +2371,7 @@
       "id": "skill/multiplayer-publish",
       "kind": "skill",
       "version": "1.0.1",
-      "content_hash": "1bbfe02233534e422153d1ee43482aa6a451d9baee82e61409ae43417cfa303e",
+      "content_hash": "c4b8349c6a562fd9eb74a8e05d32d4145ef57d963b504da079a560f8ddbec483",
       "summary": "Ship a hosted Summer multiplayer game: the bundle, server preset, pre-upload checks, a new Build.",
       "use_when": [
         "publishing a hosted Summer multiplayer game online so other players can join it",
@@ -2537,7 +2537,7 @@
       "id": "skill/navigate-summer",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "20f7432d4698a7842c587996c7764233a7f82f4124c72e827b435eb1247925e3",
+      "content_hash": "33431da232c04cf0bccf19f7f7f4121d4910cf79cd1f766ddfa4dfc8843af7bc",
       "summary": "Open a Summer web page or editor surface for the user (billing, their games, a scene) with summer_open.",
       "use_when": [
         "the user asks to see, check, or decide something — \"show me my billing\", \"where do I change my plan\", \"open my games\", \"let me look at the scene\", \"take me to the MCP guide for Cursor\"",
@@ -2878,12 +2878,12 @@
       "id": "skill/publish-your-game",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "c77520a856bd101c4cd167e2a91761f2522f849656b1a932d7b79625c8933303",
+      "content_hash": "0495cb2483560d7b7b29185cb2650256119916a39e911fe752d235527934a57f",
       "summary": "Publish a game on Summer Games through MCP: store page, art, build upload, submit, owner approval link.",
       "use_when": [
         "the user says 'publish my game', 'put it on summer.games', 'launch it on the store' or 'submit it for review'",
-        "taking a built Summer game to a submitted store page: listing text, art, build upload, summer_store_submit and the owner's approval link",
-        "an agent publishes for the owner end to end and needs the order of the summer_store_* and summer_build_* tools"
+        "taking a built Summer game to a submitted store page: listing text, art, build upload, store.publish and the owner's approval link",
+        "an agent publishes for the owner end to end and needs the order of the store.* operations"
       ],
       "facets": {
         "lifecycle": [
@@ -3630,11 +3630,11 @@
       "id": "skill/store-art",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "2e190864369258073319d984d46c1df5ed418e8a0c8e26594b4fd75bc57831f3",
+      "content_hash": "c7d62268685396e92e8c6726b92a554b0b3c29ec94dc9d83969af6f2ec4f8bde",
       "summary": "Make Summer Games store art per slot: key art, covers, icons, screenshots, trailer, size and text rules.",
       "use_when": [
         "making or choosing store art for Summer Games: key art, cover, icon, screenshots, trailer",
-        "summer_store_set_art rejects an image for its shape or size, or summer_store_get_listing says an art slot is missing",
+        "store.set_art rejects an image for its shape or size, or store.get_listing says an art slot is missing",
         "deciding whether a store image may carry text, and which slot falls back to which"
       ],
       "facets": {
@@ -3669,11 +3669,11 @@
       "id": "skill/store-listing",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "9b5c0e28774c723c0bf5bde5b4455de927f72c2a43daaf0708c8d7fa269f7409",
+      "content_hash": "6d0421b5dd069bc39289d36dd917c17635e58079aa22a751d42c2480f4ed0e13",
       "summary": "Write a Summer Games store page: title, tagline, descriptions, tags, per platform, and what never to write.",
       "use_when": [
         "writing or fixing a game's store page text on Summer Games: title, tagline, description, tags",
-        "summer_store_update_listing or summer_store_get_listing says a text field is missing or wrong",
+        "store.update_listing or store.get_listing says a text field is missing or wrong",
         "choosing the targets (web, Mac, Windows, Linux, iPhone, Android) that decide the desktop and mobile store flows"
       ],
       "facets": {
@@ -6421,13 +6421,13 @@
       "id": "tool/capture-gameplay",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "7bc43a3580dbab1ec3c726c9738597334164e15fdc69c0c3dd977cf1b100bd53",
+      "content_hash": "6e650359c7674783ad39e7fd1c75c856be4dd7d5da6215e8b86c7bd8e517be07",
       "summary": "Capture real gameplay PNGs (HUD included) offscreen without a running editor; game flags and player steps (press, key, click) get past the title screen.",
       "use_when": [
         "\"take gameplay screenshots for my store page\"",
         "\"I need screenshots but the editor is not open\"",
         "\"capture a 1920x1080 frame of my game\"",
-        "collecting real gameplay screenshots for summer_store_set_art desktop.screenshots or mobile.screenshots",
+        "collecting real gameplay screenshots for store.set_art desktop.screenshots or mobile.screenshots",
         "every capture shows the title screen — pass the game's flags in args or steps like press Play"
       ],
       "facets": {
@@ -6764,7 +6764,7 @@
       "id": "tool/export-game",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "29e356f43dee1d9239b1955ffcb32e397f27a8c6c49014993f67fbf4fbaa8f6b",
+      "content_hash": "065d9069434d9eda25b7a69594371c52502320adf6cc4caa139fae56b9d9b480",
       "summary": "Export the game in the exact file the Summer Games store takes per platform (iPhone, Android, macOS, Windows bundle; web build; desktop download), headless.",
       "use_when": [
         "\"export my game for summer.games\"",
@@ -6772,7 +6772,7 @@
         "\"export my game for iPhone and Android on Summer Games\"",
         "\"make a web build of my game for summer.games\"",
         "\"export a Mac or Windows download for my store page\"",
-        "preparing the bundle that summer_publish_build uploads"
+        "preparing the bundle that store.upload_file uploads"
       ],
       "facets": {
         "lifecycle": [
@@ -8518,7 +8518,7 @@
       "id": "tool/open",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "622d775be937ec0db3286a5d934ad9ff0b2097e62e53a64256e120b7b5758f60",
+      "content_hash": "818d25fa4bde4b36dcfb7b29f74b8ee13768f264feee21288998bbf1f7017904",
       "summary": "Open the exact summerengine.com page or editor surface by intent name — billing, my games, an MCP guide, a scene, a node, a dock — or print the URL/op.",
       "use_when": [
         "the user wants to SEE or DECIDE something on the website — \"open my billing page\", \"show me my published games\", \"take me to pricing\", \"open the MCP setup guide for Cursor\"",
@@ -8778,7 +8778,7 @@
       "id": "tool/publish-build",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "ea490bc612b2ab1332036803718f1e95a89abe04b1e4cb9f4731957f599bb310",
+      "content_hash": "2f9c5ce45a996d922b2f51f66acfc6c67c99bbd82c2fd3c7babaee29e5d9f914",
       "summary": "Upload an export from summer_export_game to the creator's store game, confirm-gated - a store bundle as a Build, or a web or native download as a store version.",
       "use_when": [
         "\"upload my game to summer.games\"",

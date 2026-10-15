@@ -4,7 +4,7 @@ version: 1.0.0
 summary: "Write a Summer Games store page: title, tagline, descriptions, tags, per platform, and what never to write."
 use_when:
   - "writing or fixing a game's store page text on Summer Games: title, tagline, description, tags"
-  - "summer_store_update_listing or summer_store_get_listing says a text field is missing or wrong"
+  - "store.update_listing or store.get_listing says a text field is missing or wrong"
   - "choosing the targets (web, Mac, Windows, Linux, iPhone, Android) that decide the desktop and mobile store flows"
 facets:
   lifecycle:

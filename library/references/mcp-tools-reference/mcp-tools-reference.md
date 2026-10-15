@@ -2,7 +2,7 @@
 
 > Which Summer MCP tool to call. Skills reference tool names exactly as written here.
 
-**Operations.** Summer's cloud work is named by operation (`area.action`): `assets.generate_3d`, `jobs.wait`. A call written `area.action({...})` is one operation: use the tool `summer_area_action` when your client lists it, else `summer_call({ op: "area.action", input: {...} })`. `summer_search` finds any operation and its exact input. Engine tools keep their `summer_*` names below. Every answer has one shape: `done` with a `result`, `running` with a `job`, `needs_approval` with a link for the person, `dry_run` with a `preview`, or an `error` with a `code` and one `next` step.
+**Operations.** Summer's cloud work is named by operation (`area.action`): `assets.generate_3d`, `jobs.wait`. A call written `area.action({...})` is one operation: use the tool `summer_area_action` when your client lists it, else `summer_call({ op: "area.action", input: {...} })`. `summer_search` finds any operation and its exact input. Engine tools keep their `summer_*` names below. Every answer has one shape: `done` with a `result`, `running` with a `job`, `needs_approval` with a link for the person, `dry_run` with a `preview`, or an `error` with a `code` and one `next` step. The person decides once what their agent may do: publishing (including `assets.make_public`), spending and building run at once by default, and deleting for good asks. An operation whose group they have not granted answers `needs_approval` with a link: give the link to the person, then `jobs.wait` on the `apr:` job.
 
 ## When to use Summer MCP vs. host tools
 
@@ -231,8 +231,9 @@ Each spends the person's credits. `dryRun: true` returns `preview.estimate` (`cr
 | Operation | Use |
 |---|---|
 | `assets.remove_background` | Transparent copies of up to 8 of the person's images (originals stay). Spends credits. |
-| `assets.update` | Title, description, tags, and `private` or `team` visibility. Making an asset public is the person's click in Studio. |
-| `assets.delete` | Answers `needs_approval` with a link: give it to the person; nothing is deleted until they confirm. |
+| `assets.update` | Title, description, tags, and `private` or `team` visibility. To list an asset for everyone, `assets.make_public`. |
+| `assets.make_public` | Lists one of the person's assets for everyone in Summer's asset store (publishing). Runs at once when the person lets their agent publish (the default), else answers `needs_approval` with a link. |
+| `assets.delete` | Deletes one of their assets for good. Asks the person unless they let their agent delete: it answers `needs_approval` with a link, and nothing is deleted until they confirm. |
 | `assets.upload_begin` → `assets.upload_complete` | Upload a PNG/JPEG/WebP from disk: a signed form to POST the file to, then the confirm step that makes the asset. |
 
 ### Jobs and batches

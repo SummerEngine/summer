@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.1",
-      "content_hash": "1feaddcb9e92e6bb1475d531e102b9cbe3a3c37970b764d30ca003559fb37928",
+      "content_hash": "f1aee7d4c9863eb1a900d03d90999cf179c92667f24f40cea2267375699c184b",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -569,7 +569,7 @@
       "id": "skill/asset-strategy",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "fc92789b0734d7a9cf739c7b24dbc28665a0c5867626e4d0ef8015d9de3f6e28",
+      "content_hash": "a2f0ed4ee53c770e000edecf0fff51b6ac0175cac2cc635691c2fe71e3559739",
       "summary": "Route any 'I need a [thing]' asset request to the right specialist skill — disambiguates 2D / 3D / audio / video / VFX / animation pipelines.",
       "use_when": [
         "planning asset creation, picking an asset pipeline, or routing an 'I need a [thing]' request to the right specialist skill",

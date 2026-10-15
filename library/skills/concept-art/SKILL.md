@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_generate_image summer_search_assets summer_import_from_url
+allowed-tools: Read Grep Glob Write Edit summer_assets_generate_image summer_search_assets summer_import_from_url summer_call
 paths: ["assets/**", "art/**", "concepts/**"]
 ---
 
@@ -68,16 +68,16 @@ State the axis to the user before generating: "I'll vary on **stylization** — 
 Issue 3-4 calls in parallel, one per variant. Use the same subject phrasing across all four; only the style-modifier changes.
 
 ```
-summer_generate_image(
-  prompt="<subject>. <axis variant 1>. concept art, evocative, rough painterly, atmospheric lighting, wide cinematic framing",
-  model="nano-banana-2",
-  style="none"
-)
+assets.generate_image({
+  prompt: "<subject>. <axis variant 1>. concept art, evocative, rough painterly, atmospheric lighting, wide cinematic framing",
+  model: "nano-banana-2",
+  style: "none"
+})
 ```
 
 `style: "none"` is intentional: only `cartoon` and `anime` append anything to the prompt, `realistic` and `none` append nothing, and any other value is coerced to `none`. So the preset cannot override the prompt's stylistic direction — it just contributes nothing, which is what concept art wants. All four variants' divergence has to come from the prompt.
 
-For a shape other than square, pass `aspectRatio` (`"16:9"`, `"9:16"`, ...) or `width` + `height`; the result reports the real width and height and the model that ran. Exploration images are thrown away, so square is usually fine. Background removal is the top-level `removeBackground` argument, not an `options` key.
+For a shape other than square, pass `aspectRatio` (`"16:9"`, `"9:16"`, ...) or `width` + `height`; the result reports the real width and height and the model that ran. Exploration images are thrown away, so square is usually fine. Background removal is the `removeBackground` argument (there is no `options` object). Four variants are four charges: `dryRun: true` on one call shows its credits.
 
 ### 5. Present the batch
 
@@ -129,8 +129,8 @@ The structure: **subject + axis variant + "concept art" + lighting/atmosphere**.
 Print the 4 prompts and the call for each:
 
 ```
-summer_generate_image(prompt="<variant 1>", model="nano-banana-2", style="none")
-summer_generate_image(prompt="<variant 2>", ...)
+assets.generate_image({ prompt: "<variant 1>", model: "nano-banana-2", style: "none" })
+assets.generate_image({ prompt: "<variant 2>", ... })
 ...
 ```
 
@@ -150,4 +150,4 @@ Once the user picks a direction:
 
 - `asset-strategy` — meta-router that delegates here vs other 2d-assets skills.
 - `character-portrait` — the polished single-image counterpart.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_image` parameter schema.
+- `../../references/mcp-tools-reference/mcp-tools-reference.md` — how to call `assets.generate_image`.

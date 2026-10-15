@@ -114,6 +114,16 @@ VFX is **code, not generative** — recipes are shader + GDScript + node setup, 
 | Magic glow / aura | `vfx-magic-glow` |
 | Camera shake / hit-stop | `game-feel` |
 
+## How the specialists call Summer
+
+The specialists name Summer's asset work by operation. A call written `area.action({...})` is one operation: use the tool `summer_area_action` when your client lists it, else `summer_call({ op: "area.action", input: {...} })`. `summer_search` finds any operation and its exact input.
+
+- **Generate:** `assets.generate_image`, `assets.generate_3d`, `assets.generate_audio`, `assets.generate_video`, `assets.generate_motion`, `assets.generate_sfx_choices` (then `assets.choices` for the person's picks). They spend the person's credits; `dryRun: true` returns the estimate (`credits`, `balance`, `enough`) and makes nothing.
+- **Wait:** 3D, video and animation answer at once with a job; `jobs.wait({ jobId, timeoutSeconds: 50 })` until `finished`, and the finished job's `result` holds the asset ids.
+- **Edit their assets:** `assets.remove_background`, `assets.slice_sheet`, `assets.update` (title, description, tags, private or team), `assets.delete` (answers with a link; nothing is deleted until the person confirms). Making an asset public is the person's own click in Studio.
+- **Upload an image from disk:** `assets.upload_begin`, then `assets.upload_complete`.
+- **One-shot makers:** `makers.<tool>` (for example `makers.npc_voice`, `makers.trailer_forge`); `summer_search` lists them.
+
 ## When NOT to use this skill
 
 - The user already named the specific skill — go straight there.
@@ -124,7 +134,7 @@ VFX is **code, not generative** — recipes are shader + GDScript + node setup, 
 
 ## Anti-patterns
 
-- **Generating yourself instead of dispatching.** This file holds zero prompt patterns by design. If you're writing a `summer_generate_image` call from here, stop and invoke the specialist.
+- **Generating yourself instead of dispatching.** This file holds zero prompt patterns by design. If you're writing an `assets.generate_image` call from here, stop and invoke the specialist.
 - **Skipping the disambiguation question.** Sends users to the wrong specialist and burns a paid generation. The verbatim phrasing in Step 2 is required.
 - **Routing concept-art to character-portrait** (or the reverse). Different goals: concept-art produces 4 divergent variants for art direction; character-portrait produces 1 polished bust for dialogue UI.
 - **Inventing skill names.** Only dispatch to skills listed above. If nothing fits, ask the user to clarify.

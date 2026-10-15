@@ -287,7 +287,7 @@ func _physics_process(delta: float) -> void:
 When the player visual is a Summer character package:
 
 1. Produce or import the package first — it comes from the shared character
-   pipeline (`character-model`; `summer_generate_3d` with rigging and animations)
+   pipeline (`character-model`; `assets.generate_3d` with `rig` and `animationNames`)
    and carries `character.tscn` plus its `character.json` manifest. Instantiate
    `character.tscn`; for clip wiring without this controller see
    `character-animation-wiring`.

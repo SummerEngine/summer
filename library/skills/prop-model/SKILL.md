@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 3d-assets
 user-invocable: true
-allowed-tools: Read Grep summer_search_assets summer_list_my_assets summer_get_asset summer_import_asset_by_id summer_generate_3d summer_generate_image summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_get_scene_tree summer_save_scene
+allowed-tools: Read Grep summer_search_assets summer_list_my_assets summer_get_asset summer_import_asset_by_id summer_assets_generate_3d summer_assets_generate_image summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_get_scene_tree summer_save_scene summer_jobs_wait summer_call
 paths: ["assets/models/**", "**/*.tscn", "**/*.gd"]
 ---
 
@@ -13,7 +13,7 @@ paths: ["assets/models/**", "**/*.tscn", "**/*.gd"]
 
 One prop, one mesh, one MeshInstance3D. Most game-world objects are static props, so this is the most common 3D-asset call. The skill keeps two things tight: the **prompt shape** that produces a clean isolated mesh on the first try, and the **wire-in pattern** that gets the asset into the scene without leaving orphans in `res://assets/models/`.
 
-The backing tool is `summer_generate_3d`. Default model is `hunyuan` (Hunyuan 3D v3.1 Pro — best quality). Use `trellis` when speed matters (Trellis 2 is ~2× faster, slightly lower fidelity). `meshy` is the legacy fallback — only pick it if the user asks by name.
+The backing operation is `assets.generate_3d`; it answers with a job that `jobs.wait` follows. Default model is `hunyuan` (Hunyuan 3D v3.1 Pro — best quality). Use `trellis` when speed matters (Trellis 2 is ~2× faster, slightly lower fidelity). `meshy` is the legacy fallback — only pick it if the user asks by name.
 
 ## When to use
 
@@ -48,10 +48,10 @@ If a fitting model exists, propose reuse:
 
 | Use case | Tris | Pass via |
 |---|---|---|
-| Hero prop (sword on hip, key item) | 3k–8k | `options: { target_polycount: 5000 }` |
-| Background prop (crate, barrel, sack) | 200–800 | `options: { target_polycount: 600 }` |
-| Mid-range interactive (chest, lantern) | 1k–3k | `options: { target_polycount: 2000 }` |
-| Cinematic showcase (throne, statue) | 10k–30k | `options: { target_polycount: 20000 }` |
+| Hero prop (sword on hip, key item) | 3k–8k | `targetPolycount: 5000` |
+| Background prop (crate, barrel, sack) | 200–800 | `targetPolycount: 600` |
+| Mid-range interactive (chest, lantern) | 1k–3k | `targetPolycount: 2000` |
+| Cinematic showcase (throne, statue) | 10k–30k | `targetPolycount: 20000` |
 
 Default if you don't pass it: provider picks (~10k–30k). For most game-world props, that's overkill — pass a target.
 
@@ -74,16 +74,18 @@ The `isolated object` and `white background` clauses are load-bearing — withou
 
 > About to generate `viking_axe` via `hunyuan`, target ~5k tris, ~60s. This uses credits. OK?
 
+To say how many credits, run the same call with `dryRun: true` first: it returns `estimate` (`credits`, `balance`, `enough`) and generates nothing.
+
 ```
-summer_generate_3d(
-  prompt="A two-handed viking battle axe, weathered iron head with rune etchings, leather-wrapped wooden haft. Game asset, centered, stylized, white background, isolated object.",
-  model="hunyuan",
-  options={ target_polycount: 5000 },
-  wait=true
-)
+assets.generate_3d({
+  prompt: "A two-handed viking battle axe, weathered iron head with rune etchings, leather-wrapped wooden haft. Game asset, centered, stylized, white background, isolated object.",
+  model: "hunyuan",
+  targetPolycount: 5000
+})
+jobs.wait({ jobId: "<job.id>", timeoutSeconds: 50 })   // again until finished
 ```
 
-Returns a job result with `assetId` and `fileUrl`. Treat `assetId` as the
+The finished job's `result` holds `assetId` and `fileUrl`. Treat `assetId` as the
 stable handle and `fileUrl` as a fallback preview/import URL.
 
 ### 5. Import and wire
@@ -111,8 +113,8 @@ the parent-shape pattern.
 
 - **Scene context in the prompt.** "A sword lying on a wooden table" → the table becomes geometry. Always say `isolated object`.
 - **Multi-object prompts.** "A sword and a shield" → fused single mesh. Generate separately.
-- **Skipping `target_polycount` for background props.** A 30k-tri barrel in the background tanks frame rate when the level has 50 of them.
-- **Forgetting to import.** `fileUrl` from `summer_generate_3d` is a remote URL — you MUST `summer_import_asset_by_id` or `summer_import_from_url` before referencing it as `res://...`.
+- **Skipping `targetPolycount` for background props.** A 30k-tri barrel in the background tanks frame rate when the level has 50 of them.
+- **Forgetting to import.** `fileUrl` from `assets.generate_3d` is a remote URL — you MUST `summer_import_asset_by_id` or `summer_import_from_url` before referencing it as `res://...`.
 - **Generating before searching.** Reuse beats regenerate every time.
 - **Picking `meshy` by default.** It's legacy. `hunyuan` is better; `trellis` is faster.
 
@@ -144,4 +146,4 @@ After the prop is wired:
 - `asset-strategy` — the meta-router that decides between this skill and Pipeline 2 (textures).
 - `character-model` — for humanoids.
 - `environment-kit` — for style-locked sets.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_3d` parameter schema.
+- `../../references/mcp-tools-reference/mcp-tools-reference.md` — how to call `assets.generate_3d`; `summer_search` returns its exact input.

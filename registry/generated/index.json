@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.1",
-      "content_hash": "572d526eaf371d4790fa52e050fe8d779ef26bd86af5677775f9a1814a1ab372",
+      "content_hash": "ca4f048408d8cc35c18c168eeb3b246a7da2926c38902bfeb2e685830c10f9fb",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -300,7 +300,7 @@
       "id": "skill/adaptive-music",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "412051ddd407c196e42c1114878325b50c5fa500fcde921e17510d5c17ef2b35",
+      "content_hash": "1d5071ac1e0aca1e6613ba3756d4a0dfeb1a5edde88dbd1008360582605a87ce",
       "summary": "Wire music stems to game state — combat/explore/boss/tension crossfades on a shared bus, paired with a state machine and AudioBus structure.",
       "use_when": [
         "wiring music stems to game state — combat / explore / boss / tension crossfades on a shared bus",
@@ -430,7 +430,7 @@
       "id": "skill/ambient-bed",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "019312cde595bc12813c1fe6787cd0127f37e4933985930039214c58acbbdb45",
+      "content_hash": "0bcc01ab8aa9c6dd7306fab7228420debc6ead44067e574cac3ddba1751e7949",
       "summary": "Generate a long looping location ambience — forest, dungeon, city, spaceship, cave — a looping AudioStreamPlayer on the Ambient bus with a seamless loop.",
       "use_when": [
         "generating a long looping location ambience — forest at dawn, dungeon air, city street, spaceship hum, cave drip — non-melodic and low-energy",
@@ -459,7 +459,7 @@
       "id": "skill/animated-loop",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "f94e9340295a16fd7fe8a3293d0dab2ea89f6f42e3334fa39346faa070c5a2fe",
+      "content_hash": "923e86f29b5800a84a8b236e4530540e73e1c6fb90599e8448c956fbe8edee1f",
       "summary": "Generate a short seamlessly-looping video clip — splash background, animated logo backdrop, idle title-screen footage — wired as a looping VideoStreamPlayer.",
       "use_when": [
         "generating a short looping video clip — splash screen background, animated logo backdrop, idle title-screen footage, looping environment ambience",
@@ -533,7 +533,7 @@
       "id": "skill/art-direction",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "a1f4535516d2a6588801cfe2d1c88f3c211d5316ab0049495bb9d6b337b6a02f",
+      "content_hash": "e496959243d1723285cc6d92139c722ce7b11b463d69c4c6512dd7690cc0c4bb",
       "summary": "Define the game's visual style — references, palette, mood, lighting plan, post-processing, do/don't list — output as an art bible at .summer/art-bible.md.",
       "use_when": [
         "defining the visual style of the game — references, palette, mood, lighting plan, post-processing",
@@ -569,7 +569,7 @@
       "id": "skill/asset-strategy",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "50357a6e850c4930e7f621c983a03aa93fb9088f937d08a215d1d3a7e5f523b6",
+      "content_hash": "e309c1893bbee257f4df061b1a97b3daff88e3bddd85f72077108017cc041abe",
       "summary": "Route any 'I need a [thing]' asset request to the right specialist skill — disambiguates 2D / 3D / audio / video / VFX / animation pipelines.",
       "use_when": [
         "planning asset creation, picking an asset pipeline, or routing an 'I need a [thing]' request to the right specialist skill",
@@ -638,7 +638,7 @@
       "id": "skill/audio-direction",
       "kind": "skill",
       "version": "1.0.7",
-      "content_hash": "c9d7324e75b87eb183d0e0c0787aacd75008a1797b6fb58de6bf8273971c5ce9",
+      "content_hash": "441628fba9e7fb7ef4f4b9e39d7f5c373890583c652842c051e46cbc6fa55240",
       "summary": "Define the game's sonic identity — music style, instruments, SFX vocabulary, dynamic music plan — output as an audio bible at .summer/audio-bible.md.",
       "use_when": [
         "defining the sonic identity — music style, instruments, SFX vocabulary, dynamic music plan",
@@ -913,7 +913,7 @@
       "id": "skill/character-animation-wiring",
       "kind": "skill",
       "version": "1.0.1",
-      "content_hash": "304420000b2b72164f244e4a406fff8088cd77e30142a9508e855ac484d24c2c",
+      "content_hash": "9bfe594023dcca3bd891cf1927ce200ba427fc09f1104bcdc043029e0d34ebbf",
       "summary": "Wire a rigged, animated character end to end — inspect real clips and bones, locomotion state machine, method-track events, poses, blend shapes, root motion.",
       "use_when": [
         "a rigged GLB or Meshy rig with generated clips is in the scene and needs idle/walk/run wiring with blend times",
@@ -960,7 +960,7 @@
       "id": "skill/character-model",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "0175a47a39e6d3cfd30abd703783a9acb48811b67a5aecdcfe9b3ad5f0d5d328",
+      "content_hash": "4e3eabb92898160286523667025c47761b76d2951e64608dfbd4c59f78c4e246",
       "summary": "Generate a rigged humanoid — player, NPC, enemy, boss — via T-pose reference, user-gated preview, and Meshy auto-rig, wired as CharacterBody3D or Node3D.",
       "use_when": [
         "generating a humanoid character ready for animation — player avatar, NPC, enemy, boss, companion",
@@ -1003,7 +1003,7 @@
       "id": "skill/character-movement",
       "kind": "skill",
       "version": "1.2.1",
-      "content_hash": "44b3db25a9e0d9d027f992c5a50b1e66b48bb65e829297cc4e16500971d0a267",
+      "content_hash": "8e20bf2650349e733b25f8be909eee75db49388edf5b4140068f527d6b5cf32d",
       "summary": "Player controllers for 2D and 3D, plus the canonical third-person controller for Summer humanoid packages: movement owns translation, clips follow state.",
       "use_when": [
         "building or fixing player movement — gravity, collision, side-scroller, top-down, or 3D walk",
@@ -1049,7 +1049,7 @@
       "id": "skill/character-portrait",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "9584c7d4a920b2813fa7677fddff728489a3548c0fbb1043d6246883d730871e",
+      "content_hash": "af6342ebcf66749a69cba70f3eb0bdb6ba8c876f4c656207a9299227439c87fc",
       "summary": "Generate a single polished character bust for dialogue UI, character select, lore cards, or codex entries. One character, locked composition, VN-style.",
       "use_when": [
         "generating a single polished bust/portrait of a character for dialogue UI, character-select screens, lore cards, or codex entries",
@@ -1086,7 +1086,7 @@
       "id": "skill/cinematic-cutscene",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "a2a499d2c483b07ff3d034280387caf3ffef7c48a99ad37761e931353adbe48c",
+      "content_hash": "d3a48fbff54ca33a7fcc456a45d3c2e070e94847d2616ebdbc1a2146ae84e27b",
       "summary": "Generate a non-interactive cutscene — reference-locked look, a 5-10s image-to-video shot, optional TTS dialogue — wired as a fading VideoStreamPlayer.",
       "use_when": [
         "generating a non-interactive cutscene clip — opening scene, story beat, character intro, ending",
@@ -1199,7 +1199,7 @@
       "id": "skill/concept-art",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "605c7ada815fb013d448f43349c12b2961159041e77568cf228daa1d9420a540",
+      "content_hash": "d2046452b1413c9b3fe255764d3e2014c0135faba58d607178b7d0490d756030",
       "summary": "Explore art direction with 3-4 rough concept variants of a character, environment, or prop to pick a vibe before committing to a final asset.",
       "use_when": [
         "exploring art direction with rough variants before committing to a final asset",
@@ -1238,7 +1238,7 @@
       "id": "skill/create-asset-sheet",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "1c4120f049dcacfa25737164312d1e9dbd409b96f06817ca4eb00986fddcd6fa",
+      "content_hash": "37ac5aeb441bdb137280323b9a43d255968e11b7a8d1828d5c049c04252d4031",
       "summary": "Generate a pack of 2D game assets from one prompt — tile sheet, UI kit, character pack, or biome set — sliced, classified, and saved as one pack ArtAsset.",
       "use_when": [
         "generating a pack of 2D game assets from a single prompt — a tile sheet, UI kit, menu screen, character pack, or biome set",
@@ -1563,7 +1563,7 @@
       "id": "skill/environment-kit",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "7589bfcd29aa233962c8747ab33218bbf42ec695f97efb506dca1a99209aa15d",
+      "content_hash": "2504d40e2d97c5b649d2480d5447aebf49c1e0998788bb89b4bd8bbc97899f2d",
       "summary": "Generate a modular environment kit — wall pieces, floor tiles, pillars, doors, arches, corners — snap-together meshes sharing one visual style.",
       "use_when": [
         "generating a modular environment kit of snap-together pieces that form a level — dungeon kit, modular walls, interior pieces",
@@ -1634,7 +1634,7 @@
       "id": "skill/fabricating-assets",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "43f25276757fe377069a5b3e2a37ebdeb58251614c2762d82314252d10e0b596",
+      "content_hash": "ec6aa33c32d5127d3c3c99d26419be6877964f0fb7ae536ae940cfeebfcb38b3",
       "summary": "Fabricate meshes with a bpy script in the user's own Blender (summer_fabricate_3d) — kits with exact dimensions, VFX meshes, post-processing generated models.",
       "use_when": [
         "writing a Blender Python (bpy) script for summer_fabricate_3d and deciding whether fabrication, generation, or the free library is the right route for an asset",
@@ -1691,7 +1691,7 @@
       "id": "skill/facial-and-lipsync",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "e4c916e5e155b95fc71912a1cf039eba3b1bbe45afa2224e7a8d11529bbedbf0",
+      "content_hash": "35d5bc83196159dbd02984efb8bbbe1d2955bb6ac0c4a2e01248659a42da2827",
       "summary": "Make a character's mouth move with a voice-over — phoneme extraction from audio, viseme blendshape mapping, and emotional facial expressions.",
       "use_when": [
         "the user has (or wants) a voice-over and needs the character's mouth to move with the words",
@@ -1858,7 +1858,7 @@
       "id": "skill/generate-motion",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "342ca77d9ff7982a2544d19ab0047abe5222a26aefdb39fd605180ba3ce9477e",
+      "content_hash": "dee05f2b96353f1cbd30a1ee924a282effb15b85b3c02e86e3e6aedd561716de",
       "summary": "Attach an animation clip to a rigged character from the curated Meshy motion library — idle, walk, run, attack — wired via AnimationPlayer.",
       "use_when": [
         "the user needs an animation clip on a rigged character — idle/walk/run/attack from the curated Meshy library",
@@ -1900,7 +1900,7 @@
       "id": "skill/godogen-visual-proof-game-generation",
       "kind": "skill",
       "version": "0.1.1",
-      "content_hash": "a4ab7a5cb7948dba0d26a3a5227d56b703de49f75f13b5ad30ec5dceee712ded",
+      "content_hash": "4fdbf8dc0135b4a861683a0b7d5ee37d232887020b0fd031c7682ca28b74833e",
       "summary": "Godogen-style game generation with a visual QC loop — capture frames from the running game, self-verify against the brief, bounded fix rounds, proof clip.",
       "use_when": [
         "generate a whole small game from a short brief and prove it actually runs",
@@ -2452,7 +2452,7 @@
       "id": "skill/music-track",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "f31b8aae49f483c6d1da9b15fc084fae19a41d1f5e45b770c037a619a65de738",
+      "content_hash": "72fc5414440d3b2a748e5f3bf04fc94e76f1ec2264195de9e0333f05296e2124",
       "summary": "Generate a looped or cinematic music track — loops authored at >=30s with a marked loop point, cinematic tracks at >=60s linear.",
       "use_when": [
         "generating a looped or cinematic music track — main theme, boss music, title screen, exploration loop, combat track",
@@ -2563,7 +2563,7 @@
       "id": "skill/organic-model",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "1ff008d9c308835e3b72ad7956d5614b9f655dec780860b36addaaf5141dea24",
+      "content_hash": "3f0d87d18e2c906544a1b86f1e2605faebba19bb605d954f07f36cc72948bd5d",
       "summary": "Generate organic 3D shapes — trees, rocks, mushrooms, coral, plants, vines, crystals — where AI artifacts read as natural irregularity.",
       "use_when": [
         "generating organic shapes — trees, rocks, mushrooms, coral, bushes, alien plants, vines, crystals, fruit, bones",
@@ -2602,7 +2602,7 @@
       "id": "skill/pixel-art",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "c61e867cba2cbeebf5d3de182f7813a72c14f3fff442c322c4c13ab31b252ed7",
+      "content_hash": "304b49cc3cef34473d0e2329e14e52bc9df98bad51d6e7280770659fd0989bb6",
       "summary": "Generate pixel-art assets — sprites, items, tiles, portraits — at a specific resolution with pixel-perfect grid, limited palette, retro feel.",
       "use_when": [
         "generating pixel-art assets — sprites, items, tiles, portraits — in a pixel style at a specific resolution (32x32, 64x64, 128x128)",
@@ -2752,7 +2752,7 @@
       "id": "skill/prop-model",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "dc899d46afde43f3a8df3fa78de1c87b27444f9ab482bf9b798a42e83272435d",
+      "content_hash": "a3d97b6a4436a20e06fb4f2c0ad44036716f9d40ded49a39269482666e269f8b",
       "summary": "Generate a single static 3D prop — sword, barrel, chest, lantern, throne, statue — one isolated object, no rigging, wired as a MeshInstance3D.",
       "use_when": [
         "generating a single static 3D prop — sword, barrel, chest, lantern, throne, statue, crate, key, potion, banner",
@@ -2979,7 +2979,7 @@
       "id": "skill/retarget",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "381b0916a73b07ad92b60afa318b9ca80c60f42c41cf76f3490900f29ad1086d",
+      "content_hash": "a99a02923ecafc3d0763011bf83f534abd71680c3c02316b62237c32151f8a35",
       "summary": "Apply existing animation clips from one rigged character to a different rigged character — same library, multiple models, no regeneration.",
       "use_when": [
         "applying existing animation clips from one rigged character to a different rigged character — sharing one animation library across models",
@@ -3163,7 +3163,7 @@
       "id": "skill/scene-scripting",
       "kind": "skill",
       "version": "1.1.1",
-      "content_hash": "f1aa667b0e0547b3fd3747070b14b26c5482dcd52aab9e8084b3a53b9dc52870",
+      "content_hash": "82c8fbfc3496a97cae622ba31a2e5eb5f8f04b3ea1830c31e3b383a63ff82648",
       "summary": "One GDScript in the live editor (summer_run_script) builds scenes, 2D levels, HUDs and gameplay wiring instead of CRUD chains; verify with diff + screenshot.",
       "use_when": [
         "a scene change needs 3+ related ops or any computed placement — scattering, grids, rings, procedural meshes, geometry helpers, terrain, lighting rigs, keyframe animation, shader FX",
@@ -3405,7 +3405,7 @@
       "id": "skill/skybox-panorama",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "2fa5eb148d8907b64368769738de5dfb2baed0165eb1a0c3ee761a8594092cda",
+      "content_hash": "8805f7bb1f0d4406ef6578b2d85fbcd11e8f77b7078a1dd8f0916618de7a1779",
       "summary": "Generate a 360-degree equirectangular sky panorama and wire it as a PanoramaSkyMaterial Sky resource on WorldEnvironment in a 3D scene.",
       "use_when": [
         "generating a 360-degree panoramic sky image for use as a Sky resource (PanoramaSkyMaterial) in a 3D scene",
@@ -3440,7 +3440,7 @@
       "id": "skill/sound-effect",
       "kind": "skill",
       "version": "1.1.0",
-      "content_hash": "a02073249416a329b4d40848af7d5ba7df9b294d9bf7e9a4d856a6af846f2aad",
+      "content_hash": "f6e026620183e32762beb026f4a153d16aa67b296e957ca2a2c2cc0b405b77fb",
       "summary": "Make SFX one-shots and timed sequences (swings, hits, whooshes, reloads, UI) - offer three model versions to pick from, then wire them as AudioStreamPlayers.",
       "use_when": [
         "generating short SFX one-shots — footsteps, weapon swings, UI clicks, hit impacts, environmental cues",
@@ -3541,7 +3541,7 @@
       "id": "skill/sprite-sheet",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "bb135a8fc2e5a3044ec68582696c7ea956339daa7fa3ffedb10c3e7f67baff8c",
+      "content_hash": "a6648a92d88dfbcad6c91e3a737a446df7164a6dbd21c6d6d2e053bf9359fb00",
       "summary": "Generate animated 2D character sprites laid out as a sprite sheet — walk cycle, attack, idle, death — wired into AnimatedSprite2D / SpriteFrames.",
       "use_when": [
         "generating animated 2D character sprites laid out as a grid of frames — walk cycle, attack frames, idle bob, death sequence",
@@ -3690,7 +3690,7 @@
       "id": "skill/summer-apps",
       "kind": "skill",
       "version": "0.1.0",
-      "content_hash": "5086545f051a3ef2e8219fe8c379cf7870ab161f23887dcdab56dbcbe76d57c0",
+      "content_hash": "e69f8976f69c37a38df6ec06764af1dd017f777e483fa75bf2b505ae5819d6ae",
       "summary": "Build a Summer App, a team tool inside Summer Studio (balance table, quest editor, tracker, pick grid): build loop, Layout vs code, data as API, agent tools.",
       "use_when": [
         "the person asks for a tool for their team (\"build us a loot balance tool\", \"a board to track creatures\")",
@@ -4118,7 +4118,7 @@
       "id": "skill/text-to-motion",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "a53e8434cc60354b9d56e87de63bce8d4806b4250be10c20392f42599ded4203",
+      "content_hash": "02dbb5d045f1b865a78f429f740de3ba6c5b4aa57b8d53116de71c0838742fb2",
       "summary": "Custom 2-second animation clips from text prompts on any of the user's own rigged models — humanoids, animals, creatures, cartoon plants, props.",
       "use_when": [
         "a custom action the curated motion library lacks — nod, bow, shrug, wave with a specific arm, an emotional gesture",
@@ -4162,7 +4162,7 @@
       "id": "skill/tileable-texture",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "8785dadfd93093c2bd2370474704cd8865721a694a2b4406b4556f4bca8b835c",
+      "content_hash": "052975b2975f3f64585c3207280de385eac7518acd1b9f70457be7eb259e578f",
       "summary": "Generate a seamless tileable texture for walls, floors, or terrain — repeats cleanly on all four edges, wired as a StandardMaterial3D albedo.",
       "use_when": [
         "generating a seamless tileable texture for walls, floors, terrain, or ceilings — a square tile that repeats cleanly on all four edges",
@@ -4200,7 +4200,7 @@
       "id": "skill/trailer-shot",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "5a52a9b984a63acc6435b7f82bc64d12402b764f784b389ca4dd8f04ee2b405e",
+      "content_hash": "520a7ccb8d0028f24f631a3a728bc119f0863ff69b60efc2f7d074aa65870795",
       "summary": "Generate marketing or trailer footage — slow-mo combat, establishing shots, hero beats, splash screens, pitch-deck B-roll — max punch in 5-10 seconds.",
       "use_when": [
         "generating marketing or trailer footage — slow-mo combat, dramatic establishing shots, hero beats, splash screens, pitch-deck B-roll",
@@ -4302,7 +4302,7 @@
       "id": "skill/ui-graphics",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "12b228e15fb4d145b88387a5c1cb5195c271b6a7aaa1ac7071b500716605d817",
+      "content_hash": "48bbe51e7877ca40c8fef7ba690f1e5dbbc21d1b255110edad6d145d1d870e37",
       "summary": "Generate game-UI elements — icons, buttons, panels, frames, HUD widgets, badges — flat design, transparent background, wired via TextureRect/NinePatchRect.",
       "use_when": [
         "generating UI elements — icons, buttons, panels, frames, HUD widgets, badges — in flat-design, transparent-background game-UI style",
@@ -4375,7 +4375,7 @@
       "id": "skill/using-summer",
       "kind": "skill",
       "version": "1.0.5",
-      "content_hash": "414b8174a55788c3eb3588ef02017bcba4b9c01b6bd59e776e547dbb11e472ea",
+      "content_hash": "cf2871418d4a621f3bb6d8b28abd9153716e103e7ff4cbaa7a0f87e8769c213a",
       "summary": "Session bootstrap for Summer projects — establishes how to find and use Summer skills and the summer-engine MCP before any response.",
       "use_when": [
         "starting any conversation in a Summer Engine project",
@@ -4422,7 +4422,7 @@
       "id": "skill/vehicle-model",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "e025a4a073a0d26fb4a92f91ad25c0321daf921bd10acc82e0e3c2c82ac3db38",
+      "content_hash": "ba79ef395f83ade3a9d1aeb6197ce8ad690f8ceb8ccd89de13f2290ff2dfebbd",
       "summary": "Generate a hard-surface vehicle — car, spaceship, mech, boat, tank — static mesh with optional detail-texture pass, wired as VehicleBody3D or MeshInstance3D.",
       "use_when": [
         "generating a hard-surface vehicle — car, motorcycle, spaceship, hover bike, boat, mech, tank, helicopter",
@@ -4865,7 +4865,7 @@
       "id": "skill/voice-line",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "15a8ec556f8304a100c80dbb631787d2ec1e475de33aac69e8da84572a23d2da",
+      "content_hash": "be8673d9bb2f3b401181e911ac4fb05ee064dadc9d58a42a91d891b1ba00269a",
       "summary": "Generate TTS voice lines — NPC barks, narrator, dialogue — with voice-id sourcing, a character-to-voice decision tree, and multi-line dialogue support.",
       "use_when": [
         "\"the NPC needs a greeting / a bark / a narrator intro read aloud\"",

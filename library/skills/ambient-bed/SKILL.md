@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_generate_audio summer_search_assets summer_import_from_url summer_add_node summer_set_prop summer_inspect_node
+allowed-tools: Read Grep Glob Write Edit summer_assets_generate_audio summer_search_assets summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_call
 paths: ["audio/ambient/**", "**/*.tscn", "**/*.import"]
 ---
 
@@ -15,7 +15,7 @@ paths: ["audio/ambient/**", "**/*.tscn", "**/*.import"]
 
 An ambient bed is the *air* of a place. Forest at dawn, dungeon corridor, spaceship hum, market street, ocean cave. It plays at low energy under everything else and is never melodic. Players rarely notice a bed, but they notice the silence when a level has none.
 
-This is **not** music. Use `summer_generate_audio({capability: 'sound_effects'})`, not `{capability: 'music'}`: the SFX model renders texture, the music model renders melody.
+This is **not** music. Use `assets.generate_audio({ capability: 'sound_effects' })`, not `{ capability: 'music' }`: the SFX model renders texture, the music model renders melody.
 
 Generated at 15–22 seconds (the SFX duration ceiling) and looped with a Summer
 Engine import loop point and optional crossfade.
@@ -101,17 +101,17 @@ If the user wants a busier bed (market, party), still prevent foreground events:
 ### 5. Generate at the duration ceiling
 
 ```
-summer_generate_audio(
+assets.generate_audio({
   capability: "sound_effects",
   modelId: "eleven_text_to_sound_v2",
   loop: true,
   text: "forest at dawn, gentle wind through leaves, distant bird calls every 6 seconds, soft creaking branches, no music, no human sound, 22s seamless loop",
   durationSeconds: 22
-)
-// Then: summer_import_from_url(url: "<fileUrl>", path: "res://audio/ambient/forest_dawn.wav")
+})
+// Then: summer_import_from_url(url: "<asset.fileUrl>", path: "res://audio/ambient/forest_dawn.wav")
 ```
 
-Name `modelId: "eleven_text_to_sound_v2"` with `loop: true`: it is the only sound-effect model that makes seamless loops, and without a `modelId` the person's default sound-effect model runs, which may not loop. `sound_effects` reads from **`text`**, not `prompt` — passing `prompt` is a 400 `text_required`. (`prompt` is the `music` capability's field.) The clip comes back as WAV, so a `.wav` target path is correct.
+Name `modelId: "eleven_text_to_sound_v2"` with `loop: true`: it is the only sound-effect model that makes seamless loops, and without a `modelId` the person's default sound-effect model runs, which may not loop. `sound_effects` reads from **`text`**, not `prompt` — without `text` the call is refused (`text_required`). (`prompt` is the `music` capability's field.) The clip comes back as WAV, so a `.wav` target path is correct.
 
 22s is the SFX ceiling. Always generate at the ceiling for ambient — longer cycle means less recognized repetition.
 
@@ -249,7 +249,7 @@ Boss arena:         vast stone arena, low ominous drone, distant rumble,
 
 ## Anti-patterns
 
-- **Using `summer_generate_audio({capability: 'music'})` for an ambient bed.** Music model adds melody. You don't want melody.
+- **Using `assets.generate_audio({ capability: 'music' })` for an ambient bed.** Music model adds melody. You don't want melody.
 - **Foreground events in the bed.** A wolf howl, an explosion, a clear word — these promote themselves and the bed becomes annoying.
 - **Bed louder than `-10 dB` on its bus.** Beds belong under everything; default is `-12 dB` to `-15 dB`.
 - **No loop point set.** The clip plays once and silence follows.

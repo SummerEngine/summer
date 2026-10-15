@@ -30,7 +30,7 @@ everyone.
 
 | Ask | Do |
 | --- | --- |
-| "Let me pick from these 12 sword sounds" | Pick one: `summer_generate_sfx_choices`, or put the sounds in a library collection. No app. |
+| "Let me pick from these 12 sword sounds" | Pick one: `assets.generate_sfx_choices`, or put the sounds in a library collection. No app. |
 | "Group our Studio assets into a moodboard for the forest level" | Organize them with the asset library's collections and groups. No app. |
 | "A weapon balance table that writes res://data/weapons.json" | Build an app: nothing in Summer edits game data with the team's balance rules. |
 

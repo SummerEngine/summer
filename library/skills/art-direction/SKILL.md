@@ -247,7 +247,7 @@ End with:
 > - `/audio-direction` to define the sonic identity that pairs with this look.
 > - `/game-feel` to design particle / hit-feedback styles within the palette.
 > - Open the project's `WorldEnvironment` node and dial in the lighting plan.
-> - Or generate first-pass concept assets via `summer_generate_image` using the palette + mood as the prompt prefix.
+> - Or generate first-pass concept assets via `assets.generate_image` using the palette + mood as the prompt prefix.
 
 ## Common mistakes
 

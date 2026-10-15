@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: video
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_generate_video summer_check_job summer_generate_image summer_search_assets summer_import_from_url summer_add_node summer_set_prop
+allowed-tools: Read Grep Glob Write Edit summer_assets_generate_video summer_jobs_wait summer_assets_generate_image summer_search_assets summer_import_from_url summer_add_node summer_set_prop summer_call
 paths: ["assets/video/**", "menus/**", "ui/**"]
 ---
 
@@ -13,7 +13,7 @@ paths: ["assets/video/**", "menus/**", "ui/**"]
 
 A loop is the only video format that has to *not have* a beginning or end. The viewer sees it on the title screen for 30 seconds; if the seam between loop iterations is visible, the whole thing reads as broken. This skill exists to force the constraints that make seams invisible: take the shortest duration available, keep the motion ambient (no narrative, no big camera moves), use the fast model (`ltx`), and prompt for a composition where the first and last frames are functionally identical.
 
-**Duration is not a dial here.** `summer_generate_video` accepts only `duration=5` or `duration=10`; the server coerces every other value to 5. So "drop to 3s to hide the seam" is not an option — 5s is the floor, and the seam has to be won in the prompt and the reference frame instead.
+**Duration is not a dial here.** On `ltx` and `kling`, `assets.generate_video` renders only `duration: 5` or `duration: 10`; every other value renders 5. So "drop to 3s to hide the seam" is not an option — 5s is the floor, and the seam has to be won in the prompt and the reference frame instead.
 
 If the user wants a 5s punchy marketing shot, that's `trailer-shot`. If they want a 10s narrative cutscene, that's `cinematic-cutscene`. This skill is the one for video that has to *disappear* — atmosphere behind a logo, mood behind a menu, ambience behind a splash card.
 
@@ -46,13 +46,12 @@ If the user wants narrative motion (a character walking, a door opening), this i
 
 For loops, `ltx` is almost always right. It takes ~30s, and short ambient motion is what it handles best. The premium models cost more credits and do not loop better.
 
-This skill always passes `imageUrl` (step 3), which puts every call on the image-to-video route — and that route accepts only `ltx`, `kling`, and `minimax`. `kling-turbo` and `veo3` are text-to-video only; pairing either with an `imageUrl` is a 400 `invalid_model`, not a silent downgrade.
+This skill always passes `imageUrl` (step 3), which puts every call on the image-to-video route. `kling-turbo` and `veo3` are text-to-video only; pairing either with an `imageUrl` is a 400 `invalid_model`, not a silent downgrade.
 
 | Model | i2v? | Speed | When |
 |---|---|---|---|
 | `ltx` | yes | ~30s | Default. Use this. |
 | `kling` | yes | 2-4 min | Only if the loop is the centerpiece of a premium splash and quality is visibly lacking on `ltx` |
-| `minimax` | yes | 2-3 min | Stylized / anime aesthetic loops |
 | `kling-turbo` | **no** | 1-2 min | Not reachable from this skill — text-to-video only |
 | `veo3` | **no** | 3-5 min | Not reachable from this skill, and pointless for ambient loops anyway |
 
@@ -61,15 +60,16 @@ This skill always passes `imageUrl` (step 3), which puts every call on the image
 The reference still doubles as the *target* loop frame. Generate it deliberately — the video model's first and last frames will gravitate toward the reference, which is exactly what you want for a closing seam.
 
 ```
-summer_generate_image(
-  prompt="<subject>, ambient atmospheric scene, cinematic lighting, painterly, wide 16:9 framing, balanced composition with no clear focal action",
-  model="nano-banana-2"
-)
+assets.generate_image({
+  prompt: "<subject>, ambient atmospheric scene, cinematic lighting, painterly, wide framing, balanced composition with no clear focal action",
+  model: "nano-banana-2",
+  aspectRatio: "16:9"
+})
 ```
 
-`summer_generate_image` has no size or aspect argument — `options.image_size` is dropped without an error and every MCP image comes back at the server's 1:1 default. Ask for the framing in the prompt, or generate the reference in the Summer dashboard (which exposes aspect ratio) and pass its URL.
+Set `aspectRatio` to the screen the loop fills (`16:9`, or `9:16` for a vertical mobile splash).
 
-On the image-to-video route `aspectRatio` is **not applied at all** — the clip inherits the reference image's framing. So a vertical mobile splash needs a 9:16 reference image, and setting `aspectRatio="9:16"` on the video call does nothing.
+On the image-to-video route `aspectRatio` is **not applied at all** — the clip inherits the reference image's framing. So a vertical mobile splash needs a 9:16 reference image, and setting `aspectRatio: "9:16"` on the video call does nothing.
 
 ### 4. Prompt for loopable motion only
 
@@ -80,20 +80,20 @@ Loopable verbs: `drift`, `flicker`, `swirl`, `shimmer`, `sway`, `pulse`, `glow`,
 Non-loopable verbs (avoid): `walks`, `enters`, `appears`, `emerges`, `transforms`, `attacks`, `falls down`, `opens`, `closes`.
 
 ```
-summer_generate_video(
-  prompt="<subject from reference>, <ambient loopable motion>, slow continuous, looping, seamless, cinematic",
-  model="ltx",
-  imageUrl="<reference URL from step 3>",
-  duration=5,
-  options={ negative_prompt: "sudden movement, character action, narrative event, fade to black" }
-)
+assets.generate_video({
+  prompt: "<subject from reference>, <ambient loopable motion>, slow continuous, looping, seamless, cinematic",
+  model: "ltx",
+  imageUrl: "<reference URL from step 3>",
+  duration: 5,
+  negativePrompt: "sudden movement, character action, narrative event, fade to black"
+})
 ```
 
-The phrase **"looping, seamless"** in the prompt biases the model toward stable first/last frames. `options.negative_prompt` is one of the few provider keys that does pass through on the video route (`prompt`, `image_url`, `num_frames`, `duration`, `resolution`, and `model` are stripped; everything else is forwarded), so the negative prompt does rule out narrative drift here — unlike on `summer_generate_image`, where no such argument exists.
+The phrase **"looping, seamless"** in the prompt biases the model toward stable first/last frames, and `negativePrompt` rules out narrative drift. Images have no negative prompt: put negations in the image prompt text.
 
 `aspectRatio` is omitted deliberately: it is applied on the text-to-video path only, and this call passes `imageUrl`.
 
-The call returns `{ success, queued: true, jobId, ... }` and **no URL** — video generation is asynchronous. Poll `summer_check_job(jobId="<jobId>")` until it reports `completed`, and only then treat the clip as existing.
+The call answers at once with `{ status: "running", job: { id } }` and **no URL**. Call `jobs.wait({ jobId: "<job.id>", timeoutSeconds: 50 })` until `finished` is true; only a `done` job's `result` holds the clip.
 
 ### 5. Inspect the seam
 
@@ -161,7 +161,7 @@ Pattern: `<subject> + <ambient loopable motion> + <constant lighting> + "looping
 | Logo backdrop — magic runes | `ltx` | `dark surface with glowing blue runes pulsing softly in slow rhythm, faint shimmer, no narrative motion, looping, seamless` | 5s |
 | Menu — underwater | `ltx` | `underwater scene with caustic light dancing on a sandy floor, slow drifting bubbles, gentle current sway on kelp, looping, seamless` | 5s |
 | Pause screen — slow rain | `ltx` | `window pane with continuous gentle rain drops, blurred warm interior glow behind, looping, seamless, ambient` | 5s |
-| Title — anime sky | `minimax` | `anime style cumulus clouds drifting slowly across a pastel sunset sky, soft, painterly, looping, seamless, Ghibli` | 5s |
+| Title — anime sky | `ltx` | `anime style cumulus clouds drifting slowly across a pastel sunset sky, soft, painterly, looping, seamless, Ghibli` | 5s |
 | Premium splash centerpiece | `kling` | `dragon silhouette breathing in profile against a vast sunset sky, only the chest rising and falling and clouds drifting, looping, seamless` | 5s |
 
 ### Bad prompts and why
@@ -177,7 +177,7 @@ Pattern: `<subject> + <ambient loopable motion> + <constant lighting> + "looping
 ## Anti-patterns
 
 - **Asking the model for a 10s loop.** Past ~6s, identity drifts and the seam shows. `duration=5` is both the floor and the right answer; 10 is the only other value the API accepts.
-- **Treating `summer_generate_video` as synchronous.** It returns `{ queued: true, jobId }` and no URL. Poll `summer_check_job` before claiming a clip exists.
+- **Treating `assets.generate_video` as finished.** It answers `{ status: "running", job }` and no URL. Wait with `jobs.wait` before claiming a clip exists.
 - **Using `kling` for a loop.** `ltx` is almost always right; short ambient motion is what it does best.
 - **Prompting narrative motion.** "Hero draws sword" doesn't loop. Use ambient verbs.
 - **Forgetting `loop=true` on the `VideoStreamPlayer`.** The clip will play once and freeze on the last frame.
@@ -221,4 +221,4 @@ Once the loop is wired:
 - `music-track` — score the menu.
 - `ui-graphics` — logo, menu buttons, HUD that sits over the loop.
 - `concept-art` — produce the reference still that anchors the loop.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_video` parameter schema and error codes.
+- `../../references/mcp-tools-reference/mcp-tools-reference.md` — how to call `assets.generate_video`; `summer_search` returns its exact input.

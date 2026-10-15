@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: animation
 user-invocable: false
-allowed-tools: Read Grep summer_search_assets summer_inspect_resource summer_generate_motion summer_get_scene_tree summer_set_resource_property summer_save_scene
+allowed-tools: Read Grep summer_search_assets summer_inspect_resource summer_assets_generate_motion summer_get_scene_tree summer_set_resource_property summer_save_scene summer_jobs_wait summer_call
 paths: ["**/*.tscn", "**/*.tres"]
 ---
 
@@ -22,7 +22,7 @@ Two real paths exist. Pick by whether the target rig is Meshy-rigged.
 
 | Situation | Path |
 |---|---|
-| Target is Meshy-rigged and the clip name is on the curated list | Re-run `summer_generate_motion` against the target's `rigAssetId`. Same clip, ~30s, uses credits. |
+| Target is Meshy-rigged and the clip name is on the curated list | Re-run `assets.generate_motion` against the target's `rigAssetId`. Same clip, ~30s, uses credits. |
 | Target is not Meshy-rigged, or the clip is hand-authored / Mixamo / bought | In-engine retargeting: `BoneMap` + `SkeletonProfileHumanoid` + `RetargetModifier3D`. No credits, no network, but you configure the bone mapping. |
 
 The rest of this skill covers both.
@@ -45,7 +45,7 @@ The rest of this skill covers both.
 ## Path A — regenerate on the target rig (Meshy-rigged targets)
 
 This is the path for the common case: several characters that all came out of
-`summer_generate_3d(... rig: true)`.
+`assets.generate_3d({ ..., rig: true })`.
 
 ### 1. Find the source clip names
 
@@ -63,29 +63,30 @@ summer_search_assets(query: "<target character>", assetType: "3d_model", source:
 ```
 
 Confirm a `rigAssetId` is present. If it is null the model was never rigged —
-stop and propose `summer_generate_3d({ kind: "image-to-3d", imageUrl: "...", rig: true })`
+stop and propose `assets.generate_3d({ kind: "image-to-3d", imageUrl: "...", rig: true })`
 first, or route to `asset-strategy`.
 
 ### 3. Confirm with user before spending
 
-Regeneration is a real generation per clip per character, and each one uses credits. Say the total count.
+Regeneration is a real generation per clip per character, and each one uses credits. Say the total count; `dryRun: true` on the call below gives the credits for all its clips at once.
 
 > I'm about to generate 12 clips (idle, walk, run, attack, ...) on `orc_rigged`.
 > That is 12 generations, a few minutes total. OK?
 
-### 4. Loop the generation calls
+### 4. One generation call for all the clips
 
 ```
-for name in source_clip_names:
-  summer_generate_motion(
-    rigAssetId: "<target_rigAssetId>",
-    backend: "meshy-library",
-    motionName: name          // exact curated name — see generate-motion's list
-  )
-  // returns animationAssetId in the job result
+assets.generate_motion({
+  rigAssetId: "<target_rigAssetId>",
+  backend: "meshy-library",
+  motionNames: source_clip_names   // exact curated names — see generate-motion's list
+})
+jobs.wait({ jobId: "<job.id>", timeoutSeconds: 50 })   // again until finished
 ```
 
-Save the returned IDs as a map `{ name: animationAssetId }` for the target.
+`motionNames` takes up to 12 names in one call. The finished job's `result` holds
+the new clips' asset ids; when the target already has every clip, the answer is
+`done` at once with `reused` and nothing is charged. Save the IDs as a map `{ name: animationAssetId }` for the target.
 
 ### 5. Attach to the target's AnimationPlayer
 
@@ -187,7 +188,7 @@ same rigged `.glb`, nothing needs retargeting — instance the scene.
   to re-author per character.
 - **Target rig is a different Meshy skeleton generation.** Symptom: bone-count
   mismatch even though both are Meshy. Re-rig the target with a fresh
-  `summer_generate_3d({ kind: "image-to-3d", rig: true })` call.
+  `assets.generate_3d({ kind: "image-to-3d", imageUrl: "...", rig: true })` call.
 - **The clip the user wants is not on the curated list.** Path A cannot produce
   it. Either hand-author it, or import a Mixamo clip and take Path B.
 

@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 3d-assets
 user-invocable: true
-allowed-tools: Read Grep summer_search_assets summer_list_my_assets summer_get_asset summer_import_asset_by_id summer_generate_3d summer_generate_image summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_get_scene_tree summer_save_scene
+allowed-tools: Read Grep summer_search_assets summer_list_my_assets summer_get_asset summer_import_asset_by_id summer_assets_generate_3d summer_assets_generate_image summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_get_scene_tree summer_save_scene summer_jobs_wait summer_call
 paths: ["assets/kits/**", "assets/models/**", "**/*.tscn", "**/*.gd"]
 ---
 
@@ -13,7 +13,7 @@ paths: ["assets/kits/**", "assets/models/**", "**/*.tscn", "**/*.gd"]
 
 A kit is a *family* of meshes — wall, floor, door, pillar, corner, arch — that the level designer snaps together to build interiors and exteriors. The skill exists to solve **one specific failure mode**: generating each piece with a fresh prompt produces six pieces that look like they came from six different games. The fix is the **style anchor pattern** — generate one piece first, lock its prompt suffix, and reuse that exact suffix for every subsequent piece.
 
-The backing tool is `summer_generate_3d`, called once per piece. A 6-piece kit is six generations and about 5 minutes. Generation uses credits, so confirm scope before starting.
+The backing operation is `assets.generate_3d`, called once per piece; each call answers with a job that `jobs.wait` follows. A 6-piece kit is six generations and about 5 minutes. Generation uses credits, so confirm scope before starting (`dryRun: true` on one piece's call gives its credits).
 
 ## When to use
 
@@ -63,7 +63,7 @@ Kit pieces only feel modular if they snap to a fixed grid. Pick the grid before 
 | **2m** | Standard interiors (homes, taverns, offices) | Wall = 2×3×0.3m. Floor = 2×2m. Halves piece count. |
 | **4m** | Exteriors and large halls (temples, warehouses, throne rooms) | Wall = 4×4×0.4m. Floor = 4×4m. Quarter the piece count for the same area. |
 
-**Critical:** include the dimensions in the prompt. `summer_generate_3d` doesn't enforce them, but Hunyuan respects scale cues — `2 meter tall wall section` produces a mesh that imports near 2m tall. Then verify with `summer_inspect_resource` and scale-correct in the editor if needed.
+**Critical:** include the dimensions in the prompt. `assets.generate_3d` doesn't enforce them, but Hunyuan respects scale cues — `2 meter tall wall section` produces a mesh that imports near 2m tall. Then verify with `summer_inspect_resource` and scale-correct in the editor if needed.
 
 ## Steps
 
@@ -76,12 +76,12 @@ Kit pieces only feel modular if they snap to a fixed grid. Pick the grid before 
 Use the prop-style prompt with explicit dimensions:
 
 ```
-summer_generate_3d(
-  prompt="A 2 meter wide by 3 meter tall stone dungeon wall section, mossy granite blocks with iron reinforcements, torch-bracket sconce, weathered surface. Game asset, centered, stylized low-poly game art, warm torchlight palette, white background, isolated object.",
-  model="hunyuan",
-  options={ target_polycount: 1500 },
-  wait=true
-)
+assets.generate_3d({
+  prompt: "A 2 meter wide by 3 meter tall stone dungeon wall section, mossy granite blocks with iron reinforcements, torch-bracket sconce, weathered surface. Game asset, centered, stylized low-poly game art, warm torchlight palette, white background, isolated object.",
+  model: "hunyuan",
+  targetPolycount: 1500
+})
+jobs.wait({ jobId: "<job.id>", timeoutSeconds: 50 })   // again until finished; result.assetId
 summer_get_asset(assetId="<assetId>")
 summer_import_asset_by_id(assetId="<assetId>", path="res://assets/kits/dungeon/wall.glb")
 ```
@@ -90,19 +90,19 @@ Show the result to the user. **Iterate the anchor until approved** — every oth
 
 ### 3. Lock the suffix and generate the remaining pieces
 
-Once the user says "yes, that's the look", store the locked suffix and crank through the rest. Same model, same polycount, same `options`. Only the object description changes.
+Once the user says "yes, that's the look", store the locked suffix and crank through the rest. Same model, same `targetPolycount` scale. Only the object description changes. Start every piece first, then wait on the jobs: they run side by side.
 
 ```
 # Floor
-summer_generate_3d(prompt="A 2 by 2 meter square stone dungeon floor tile, mossy granite blocks with iron reinforcements, weathered surface. Game asset, centered, stylized low-poly game art, warm torchlight palette, white background, isolated object.", model="hunyuan", options={ target_polycount: 800 })
+assets.generate_3d({ prompt: "A 2 by 2 meter square stone dungeon floor tile, mossy granite blocks with iron reinforcements, weathered surface. Game asset, centered, stylized low-poly game art, warm torchlight palette, white background, isolated object.", model: "hunyuan", targetPolycount: 800 })
 
 # Pillar
-summer_generate_3d(prompt="A 3 meter tall stone dungeon pillar, square base, fluted shaft, mossy granite blocks with iron reinforcements, weathered surface. Game asset, ...", model="hunyuan", options={ target_polycount: 1500 })
+assets.generate_3d({ prompt: "A 3 meter tall stone dungeon pillar, square base, fluted shaft, mossy granite blocks with iron reinforcements, weathered surface. Game asset, ...", model: "hunyuan", targetPolycount: 1500 })
 
-# Door, Corner, Arch — same pattern.
+# Door, Corner, Arch — same pattern. Then jobs.wait on each job id.
 ```
 
-For each completed generation, capture the returned `assetId`, then import that
+For each finished job, capture the returned `assetId`, then import that
 exact ID with `summer_import_asset_by_id`. Do not search for generated pieces by
 name after creating them; exact IDs are the production path.
 

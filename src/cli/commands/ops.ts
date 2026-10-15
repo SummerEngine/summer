@@ -21,8 +21,9 @@ import { dispatchTool, EngineUnavailableError, ToolResultError } from "../../cor
 
 /** Areas with operations today; CLI command words stay out of this list. */
 export const CLI_AREAS = [
-  "team", "docs", "assets", "makers", "jobs", "projects", "plans", "games", "store", "jams", "pricing",
-  "analytics", "experiments", "marketing", "players", "economy", "inbox", "apps", "studio", "engine", "account",
+  "team", "profile", "docs", "assets", "makers", "jobs", "projects", "plans", "games", "store", "jams", "pricing",
+  "analytics", "experiments", "marketing", "players", "economy", "inbox", "apps", "studio", "chats", "stories",
+  "plugins", "engine", "account",
 ] as const;
 
 type JsonSchema = { type?: string | string[]; properties?: Record<string, JsonSchema>; items?: JsonSchema };

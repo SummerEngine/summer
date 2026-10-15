@@ -7,6 +7,7 @@ import { errorAnswer, isLocalOp, legacyNames, localToolsFor, mcpNameOf, resolveO
 import { ENGINE_SPLIT_OPS, engineOpDef, isSplitOp, renderOpRefs, splitToolArgs, type EngineSplitDef } from "../core/ops/engine.js";
 import { answerOfEngineResult, engineFailure, textsOf } from "../core/ops/engine-answer.js";
 import { loadLibraryIndex } from "../core/library-search.js";
+import { FOOTER_SUFFIX } from "../core/library-read.js";
 
 /**
  * The v4 surface of the local MCP (`summer mcp --surface v4`, SUMMER_SURFACE=v4):
@@ -58,6 +59,26 @@ const DOCS_ALIASES: ReadonlyArray<[string, string]> = [
   ["summer_docs_search", "summer_search_library"],
   ["summer_docs_read", "summer_read_library"],
 ];
+
+/** Listed with the engine tools although its operation is docs.engine_api: the offline engine class reference. */
+const ENGINE_REFERENCE = "summer_api_docs";
+
+/** The read footer in this surface's words: feedback goes through summer_call (docs.feedback is not listed). */
+export const V4_FOOTER_SUFFIX = 'If this entry is wrong, stale, or you deviate from it, report via summer_call {"op":"docs.feedback"}.';
+
+/** A library read's result with the v4 footer (and the v4 names in its description of the footer). */
+function withV4Footer(result: unknown): unknown {
+  const record = result as { content?: Array<{ type?: string; text?: unknown }> } | null;
+  if (!record || !Array.isArray(record.content)) return result;
+  return {
+    ...record,
+    content: record.content.map((part) =>
+      part.type === "text" && typeof part.text === "string" ? { ...part, text: part.text.split(FOOTER_SUFFIX).join(V4_FOOTER_SUFFIX) } : part
+    ),
+  };
+}
+
+const LIBRARY_READS = new Set(["summer_read_library", "summer_get_agent_playbook"]);
 
 /** The answer as tool content: compact JSON text (plus any image the tool returned) and structured content. */
 function toolResult(answer: Answer, raw?: unknown) {
@@ -133,7 +154,7 @@ const V4_NAMES: ReadonlyArray<[RegExp, string]> = [
   [/summer_camera_bookmark(?: \(list them with action:"list"\))?/g, "summer_engine_save_camera_bookmark (list: summer_engine_list_camera_bookmarks)"],
   [/summer_read_library/g, "summer_docs_read"],
   [/summer_search_library/g, "summer_docs_search"],
-  [/summer_library_feedback/g, "summer_call docs.feedback"],
+  [/summer_library_feedback/g, 'summer_call {"op":"docs.feedback"}'],
 ];
 
 export function v4Text(text: string): string {
@@ -169,8 +190,10 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
     const tool = tools[original];
     if (!tool || tools[alias]) continue;
     const shape = (tool.inputSchema as { shape?: Shape } | undefined)?.shape ?? {};
-    server.tool(alias, v4Text(tool.description ?? ""), shape, tool.annotations ?? {}, (async (args: Record<string, unknown>, extra: unknown) =>
-      (tool.handler as Handler)(args, extra)) as never);
+    server.tool(alias, v4Text(tool.description ?? ""), shape, tool.annotations ?? {}, (async (args: Record<string, unknown>, extra: unknown) => {
+      const result = await (tool.handler as Handler)(args, extra);
+      return LIBRARY_READS.has(original) ? withV4Footer(result) : result;
+    }) as never);
   }
 
   // Engine tools (and the operations split out of the two mixed ones) are listed with the v4 shape.
@@ -188,6 +211,7 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
       engineTools.add(mcpNameOf(op));
       listed.add(mcpNameOf(op));
     }
+    if (tools[ENGINE_REFERENCE]) listed.add(ENGINE_REFERENCE);
   }
 
   /** The tool that runs an operation in this session, for summaries that name it. */
@@ -324,7 +348,8 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
       };
     }
     const handler = rawHandlers.get(toolName) ?? (tools[toolName].handler as Handler);
-    const raw = checked.data === undefined ? await handler(extra) : await handler(checked.data, extra);
+    const result = checked.data === undefined ? await handler(extra) : await handler(checked.data, extra);
+    const raw = LIBRARY_READS.has(toolName) ? withV4Footer(result) : result;
     const def = engineOpDef(op);
     return def ? answerOfEngineResult(raw, op, { effect: def.effect, guide: guideOf(toolName) }) : answerOfLocal(raw, op, entry?.effect === "read" ? "read" : "write");
   }
@@ -373,6 +398,12 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
             ? { ok: true, status: "done", result: { operation: wire } }
             : errorAnswer("not_found", `No operation is named "${args.name}".`, { next: { op: "ops.search", input: { query: args.name } } })
         );
+      }
+      // A 3.x name this server registers runs its 3.x tool unchanged (local
+      // options such as summer_app_publish's dir keep working), wherever its
+      // 4.0 operation runs.
+      if (names[name] && tools[name] && name !== SUMMER_CALL && name !== SUMMER_SEARCH && !isLocalOp(resolved)) {
+        return toolResult(await runLocal(resolved, { tool: name, args }, extra, dryRun === true, args));
       }
       if (isLocalOp(resolved)) {
         const call = localCall(name, resolved, args);

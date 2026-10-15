@@ -91,6 +91,22 @@ describe("v4, engine profile", () => {
     }
   });
 
+  it("lists the offline engine class reference, and ends library reads with the v4 feedback footer", async () => {
+    const { client, close } = await session("engine", "v4");
+    try {
+      const names = (await client.listTools()).tools.map((tool) => tool.name);
+      expect(names).toContain("summer_api_docs");
+      const read = await client.callTool({ name: "summer_docs_read", arguments: { id: "skill/multiplayer" } });
+      const text = (read as { content: Array<{ text: string }> }).content.map((part) => part.text).join("\n");
+      expect(text).toContain('report via summer_call {"op":"docs.feedback"}.');
+      expect(text).not.toContain("summer_library_feedback");
+      const viaCall = answerOf(await client.callTool({ name: "summer_call", arguments: { op: "docs.read", input: { id: "skill/multiplayer" } } }));
+      expect(JSON.stringify(viaCall)).toContain("docs.feedback");
+    } finally {
+      await close();
+    }
+  });
+
   it("names a bad input of a docs operation and points at ops.describe", async () => {
     const { client, close } = await session("engine", "v4");
     try {
@@ -106,6 +122,17 @@ describe("v4, engine profile", () => {
     try {
       const answer = answerOf(await client.callTool({ name: "summer_call", arguments: { op: "engine.get_scene_tree", input: {} } }));
       expect(answer).toMatchObject({ ok: false, error: { code: "engine_not_running", retry: "safe" } });
+    } finally {
+      await close();
+    }
+  });
+
+  it("runs a 3.x name this server registers with its local tool, even when its operation is cloud", async () => {
+    const { client, cloud, close } = await session("engine", "v4");
+    try {
+      const answer = answerOf(await client.callTool({ name: "summer_call", arguments: { op: "summer_list_my_assets", input: {} } }));
+      expect(cloud.call).not.toHaveBeenCalled();
+      expect(answer.ok).toBe(false);
     } finally {
       await close();
     }
@@ -157,6 +184,7 @@ describe("v4, assets profile", () => {
       const names = (await client.listTools()).tools.map((tool) => tool.name);
       expect(names).toEqual(expect.arrayContaining(["summer_docs_search", "summer_search", "summer_call"]));
       expect(names).not.toContain("summer_set_prop");
+      expect(names).not.toContain("summer_api_docs");
     } finally {
       await close();
     }
@@ -176,7 +204,8 @@ describe("v4 engine operations", () => {
       expect(tools.get("summer_get_scene_tree")!.annotations).toMatchObject({ readOnlyHint: true, idempotentHint: true, openWorldHint: false });
       expect(tools.get("summer_import_from_url")!.annotations).toMatchObject({ readOnlyHint: false, openWorldHint: true });
       for (const [name, tool] of tools) {
-        if (!name.startsWith("summer_") || ["summer_search", "summer_call", "summer_docs_search", "summer_docs_read"].includes(name)) continue;
+        // The executors and the docs area's tools (docs.search, docs.read, docs.engine_api) keep their own descriptions.
+        if (!name.startsWith("summer_") || ["summer_search", "summer_call", "summer_docs_search", "summer_docs_read", "summer_api_docs"].includes(name)) continue;
         const summary = (tool.description ?? "").split("\nGuide: ")[0];
         expect(summary.length, name).toBeLessThanOrEqual(300);
         expect(tool.title, name).toBeTruthy();

@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { parse as parseYaml } from "yaml";
 import { loadLibraryIndex } from "../library-search.js";
 import { PACKAGE_ROOT } from "../package-root.js";
-import { CONTRACT_VERSION, isLocalOp, legacyNames, mcpNameOf, MIN_APPROVAL, type Approval, type Effect, type Provider } from "./contract.js";
+import { CONTRACT_VERSION, isLocalOp, legacyNames, LOCAL_RUNNERS, mcpNameOf, MIN_APPROVAL, type Approval, type Effect, type Provider } from "./contract.js";
 import { ENGINE_SPLIT_OPS, engineOpDef, isSplitOp, splitInputSchema } from "./engine.js";
 
 /**
@@ -77,8 +77,12 @@ export function localEntries(): CatalogEntry[] {
   if (entriesCache) return entriesCache;
   const tools = new Map(loadLibraryIndex().filter((entry) => entry.kind === "tool" && entry.mcp_tool_name).map((entry) => [entry.mcp_tool_name as string, entry]));
   const out = new Map<string, CatalogEntry>();
-  // The tool an operation was renamed from comes before the tools merged into it.
-  const rows = Object.entries(legacyNames()).sort(([, a], [, b]) => Number(a.kind === "merge") - Number(b.kind === "merge"));
+  // The tool an operation was renamed from comes before the tools merged into it;
+  // then the local operations a 3.x tool runs although its 3.x name maps to a cloud one.
+  const rows: Array<[string, { op: string; kind?: string }]> = [
+    ...Object.entries(legacyNames()).sort(([, a], [, b]) => Number(a.kind === "merge") - Number(b.kind === "merge")),
+    ...Object.entries(LOCAL_RUNNERS).map(([op, name]): [string, { op: string }] => [name, { op }]),
+  ];
   for (const [name, row] of rows) {
     if (!isLocalOp(row.op) || out.has(row.op)) continue;
     const toolName = name.split("#")[0];

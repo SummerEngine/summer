@@ -120,7 +120,7 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
     const op = names[name]?.op;
     if (listed.has(name)) continue;
     if (options.engine && name === ENGINE_REFERENCE) {
-      tool.update({ description: ENGINE_REFERENCE_SUMMARY });
+      tool.update({ title: "Look up an engine class", description: ENGINE_REFERENCE_SUMMARY });
       continue;
     }
     if (options.engine && op?.startsWith("engine.")) continue;

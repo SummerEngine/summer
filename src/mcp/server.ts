@@ -406,20 +406,9 @@ export function resolveSurface(value: string | undefined, env: NodeJS.ProcessEnv
   return (value ?? env.SUMMER_SURFACE ?? "").trim().toLowerCase() === "v4" ? "v4" : "v3";
 }
 
-/**
- * `--toolsets` / SUMMER_TOOLSETS without `legacy`, and whether it was there:
- * `legacy` is the v4 toolset of every 3.x name, not a v3 tool group.
- */
-export function splitLegacyToolset(value: string | undefined, env: NodeJS.ProcessEnv = process.env): { legacy: boolean; toolsets: string } {
-  const requested = (value ?? env.SUMMER_TOOLSETS ?? "").split(",").map((name) => name.trim().toLowerCase()).filter(Boolean);
-  return { legacy: requested.includes("legacy"), toolsets: requested.filter((name) => name !== "legacy").join(",") };
-}
-
 export interface CreateMcpServerOptions {
   /** v4: the operation catalog surface (ops-surface.ts). Default v3. */
   surface?: SurfaceVersion;
-  /** v4 with the legacy toolset: the 3.x tools stay listed. */
-  legacy?: boolean;
   /** Where v4 runs cloud operations (the hosted mount's client). */
   cloud?: CloudCaller;
 }
@@ -496,7 +485,7 @@ export function createMcpServer(
     if (authority) tool.update({ annotations: annotationsFor(name, authority) });
   }
 
-  if (surface === "v4") applyOpsSurface(server, { engine, cloud: options.cloud ?? NO_CLOUD, legacy: options.legacy === true });
+  if (surface === "v4") applyOpsSurface(server, { engine, cloud: options.cloud ?? NO_CLOUD });
 
   return { server, getRegisteredToolCount: () => getWrappedToolCount() - removed };
 }
@@ -536,8 +525,7 @@ export async function startMcpServer(
     },
   });
 
-  const { legacy, toolsets } = splitLegacyToolset(options.toolsets);
-  const selection = resolveToolSelection({ profile: options.profile, toolsets }, { ...process.env, SUMMER_TOOLSETS: undefined });
+  const selection = resolveToolSelection({ profile: options.profile, toolsets: options.toolsets });
   if (selection.ignored.length > 0) {
     writeMcpStderr("mcp:unknown_toolsets", {
       ignored: selection.ignored,
@@ -549,7 +537,7 @@ export async function startMcpServer(
   // v4 runs cloud operations through the hosted mount below, once it exists.
   let hostedCall: CloudCaller["call"] | null = null;
   const cloud: CloudCaller = { call: (name, args) => (hostedCall ? hostedCall(name, args) : NO_CLOUD.call(name, args)) };
-  const { server, getRegisteredToolCount } = createMcpServer(selection, { surface, cloud, legacy });
+  const { server, getRegisteredToolCount } = createMcpServer(selection, { surface, cloud });
 
   // Fire-and-forget — never block tool registration on the npm registry.
   void probeBootDrift().catch((error) => {
@@ -564,12 +552,7 @@ export async function startMcpServer(
   // than PROFILE_TOOL_LIMIT.
   // v4 mounts the hosted v4 surface (its direct tools; summer_search and
   // summer_call stay local and forward to it).
-  const hostedV4Url = () => {
-    const url = new URL(v4HostedDependencies.url());
-    if (legacy) url.searchParams.set("toolsets", "legacy");
-    return url.href;
-  };
-  const hosted = prepareHostedMount(server, surface === "v4" ? { ...defaultHostedMountDependencies, url: hostedV4Url } : undefined, {
+  const hosted = prepareHostedMount(server, surface === "v4" ? { ...defaultHostedMountDependencies, url: v4HostedDependencies.url } : undefined, {
     ...(process.env.SUMMER_MCP_DOCTOR === "1" ? { firstListWaitMs: 0 } : {}),
     ...(surface === "v4"
       ? { includeTool: (name: string) => name !== SUMMER_SEARCH && name !== SUMMER_CALL, maxTools: PROFILE_TOOL_LIMIT }

@@ -5,7 +5,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setSummerDirForTests } from "../core/store.js";
-import { createMcpServer, resolveSurface, splitLegacyToolset } from "./server.js";
+import { createMcpServer, resolveSurface } from "./server.js";
 import { resolveToolSelection } from "./tool-surface.js";
 import type { CloudCaller } from "./ops-surface.js";
 
@@ -36,8 +36,8 @@ function fakeCloud(): CloudCaller & { call: ReturnType<typeof vi.fn> } {
   };
 }
 
-async function session(profile: string | undefined, surface: "v3" | "v4", cloud = fakeCloud(), legacy = false) {
-  const { server } = createMcpServer(resolveToolSelection({ profile }, {}), { surface, cloud, legacy });
+async function session(profile: string | undefined, surface: "v3" | "v4", cloud = fakeCloud()) {
+  const { server } = createMcpServer(resolveToolSelection({ profile }, {}), { surface, cloud });
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
   await server.connect(serverSide);
   const client = new Client({ name: "claude-code", version: "2.0.0" });
@@ -48,12 +48,6 @@ async function session(profile: string | undefined, surface: "v3" | "v4", cloud 
 const answerOf = (result: unknown) => JSON.parse((result as { content: Array<{ text: string }> }).content[0].text);
 
 describe("the surface flag", () => {
-  it("takes legacy out of the toolsets: it is the v4 toolset of every 3.x name", () => {
-    expect(splitLegacyToolset("legacy, Board", {})).toEqual({ legacy: true, toolsets: "board" });
-    expect(splitLegacyToolset(undefined, { SUMMER_TOOLSETS: "legacy" })).toEqual({ legacy: true, toolsets: "" });
-    expect(splitLegacyToolset(undefined, {})).toEqual({ legacy: false, toolsets: "" });
-  });
-
   it("defaults to v3 and reads --surface or SUMMER_SURFACE", () => {
     expect(resolveSurface(undefined, {})).toBe("v3");
     expect(resolveSurface("v4", {})).toBe("v4");
@@ -174,22 +168,6 @@ describe("v4, assets profile", () => {
       const names = (await client.listTools()).tools.map((tool) => tool.name);
       expect(names).toEqual(expect.arrayContaining(["summer_docs_search", "summer_search", "summer_call"]));
       expect(names).not.toContain("summer_set_prop");
-    } finally {
-      await close();
-    }
-  });
-});
-
-describe("v4 with the legacy toolset", () => {
-  it("keeps every 3.x tool listed, led by the op that replaces it; engine tools keep their own text", async () => {
-    const { client, close } = await session("engine", "v4", fakeCloud(), true);
-    try {
-      const tools = (await client.listTools()).tools;
-      const byName = new Map(tools.map((tool) => [tool.name, tool]));
-      expect(byName.get("summer_generate_image")?.description).toMatch(/^3\.x name; use assets\.generate_image\. /);
-      expect(byName.get("summer_search_library")?.description).toMatch(/^3\.x name; use docs\.search\./);
-      expect(byName.get("summer_set_prop")?.description).not.toMatch(/^3\.x name/);
-      for (const name of ["summer_docs_search", "summer_docs_read", "summer_search", "summer_call"]) expect(byName.has(name)).toBe(true);
     } finally {
       await close();
     }

@@ -35,17 +35,6 @@ export interface OpsSurfaceOptions {
   /** Keep the engine operations listed (profiles with engine tools). */
   engine: boolean;
   cloud: CloudCaller;
-  /**
-   * The `legacy` toolset (`--toolsets legacy`): every 3.x tool of the
-   * profile stays listed, its description led by the op that replaces it.
-   */
-  legacy?: boolean;
-}
-
-/** "3.x name; use pricing.get, pricing.set_base." from legacy-names.json. */
-export function legacyLead(toolName: string): string {
-  const ops = [...new Set(Object.entries(legacyNames()).filter(([name]) => name === toolName || name.startsWith(`${toolName}#`)).map(([, row]) => row.op))];
-  return ops.length ? `3.x name; use ${ops.join(", ")}.` : "3.x name; find its operation with summer_search.";
 }
 
 type Registry = { _registeredTools: Record<string, RegisteredTool> };
@@ -97,15 +86,13 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
       (tool.handler as (a: unknown, e: unknown) => Promise<unknown>)(args, extra)) as never);
   }
 
-  // Listed: engine operations (when the profile has them) and the docs aliases.
-  // The rest stay callable; with the legacy toolset they stay listed too.
+  // Listed: engine operations (when the profile has them) and the docs aliases. The rest stay callable.
   const listed = new Set<string>(DOCS_ALIASES.map(([alias]) => alias));
   for (const [name, tool] of Object.entries(tools)) {
     const op = names[name]?.op;
     if (listed.has(name)) continue;
     if (options.engine && op?.startsWith("engine.")) continue;
-    if (options.legacy) tool.update({ description: `${legacyLead(name)} ${tool.description ?? ""}`.trim() });
-    else tool.disable();
+    tool.disable();
   }
 
   async function runLocal(toolName: string, args: Record<string, unknown>, extra: unknown): Promise<Answer> {

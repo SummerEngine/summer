@@ -2,7 +2,9 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [3.9.1] - 2026-10-15
+
+3.9.0 was not published to npm; 3.9.1 is the first release with everything in 3.9.0 below, plus these changes.
 
 The Claude Code plugin gets a first-run guide and Summer's hosted server, and passes `claude plugin validate --strict`.
 

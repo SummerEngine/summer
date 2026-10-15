@@ -36,8 +36,14 @@ function hostedSummerEngine() {
     server.registerResource("store-art", "summer://skills/store-art", { mimeType: "text/markdown" }, async (uri) => ({ contents: [{ uri: uri.href, mimeType: "text/markdown", text: "# Store art" }] }));
     return server;
   };
+  const requestHeaders: Array<{ tool?: string; host?: string; client?: string }> = [];
   const http: Server = createServer(async (req, res) => {
     const authorization = req.headers.authorization;
+    requestHeaders.push({
+      tool: req.headers["x-summer-mcp-tool"] as string | undefined,
+      host: req.headers["x-summer-agent-host"] as string | undefined,
+      client: req.headers["x-summer-client"] as string | undefined,
+    });
     if (authorization !== `Bearer ${TOKEN}`) {
       res.writeHead(401, { "content-type": "application/json" }).end(JSON.stringify({ error: "invalid_token" }));
       return;
@@ -54,7 +60,7 @@ function hostedSummerEngine() {
     await server.connect(transport);
     await transport.handleRequest(req, res, body);
   });
-  return { http, seen };
+  return { http, seen, requestHeaders };
 }
 
 let hosted: ReturnType<typeof hostedSummerEngine>;
@@ -126,6 +132,8 @@ describe("one Summer Engine MCP: hosted tools mounted locally", () => {
       const result = await client.callTool({ name: "summer_store_submit", arguments: { gameId: "g1", priceUsdCents: 499 } });
       expect(JSON.parse((result.content as Array<{ text: string }>)[0].text).status).toBe("awaiting_owner_approval");
       expect(hosted.seen).toEqual([{ tool: "summer_store_submit", args: { gameId: "g1", priceUsdCents: 499 }, authorization: `Bearer ${TOKEN}` }]);
+      // The call names its tool and the agent app (the local client is "agent").
+      expect(hosted.requestHeaders).toContainEqual({ tool: "summer_store_submit", host: "other.agent", client: "summer-cli" });
     } finally {
       await client.close();
       await server.close();

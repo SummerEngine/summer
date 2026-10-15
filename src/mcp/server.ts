@@ -54,6 +54,7 @@ import {
 } from "./tool-surface.js";
 import { shapeToolResult, singleEditCounter } from "./tool-results.js";
 import { recordLocalToolCall } from "../core/telemetry.js";
+import { registerMcpClientSource, runWithToolContext } from "../core/agent-host.js";
 import {
   buildBootDriftNotice,
   fetchLatestRegistryVersion,
@@ -277,7 +278,8 @@ function installToolCallWrapper(server: McpServer): () => number {
       const startedAt = Date.now();
       let result: unknown;
       try {
-        result = await (handler as (...a: unknown[]) => unknown)(...handlerArgs);
+        // Every Summer request the tool makes names it (core/agent-host.ts).
+        result = await runWithToolContext(name, "mcp", () => (handler as (...a: unknown[]) => unknown)(...handlerArgs));
       } catch (error) {
         // A handler THROW never produced a result to classify; record it as
         // ok:false / exception so the stream does not silently skip failures,
@@ -403,6 +405,8 @@ export function createMcpServer(selection: ToolSelection = FULL_SELECTION): {
   );
 
   const getWrappedToolCount = installToolCallWrapper(server);
+  // Requests to Summer's servers name the agent app from the initialize handshake.
+  registerMcpClientSource(() => server.server.getClientVersion());
 
   registerSceneTools(server);
   registerDebugTools(server);

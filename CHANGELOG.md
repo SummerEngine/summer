@@ -2,6 +2,10 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+- **Summer sees which agent app made each request.** Every request to Summer's servers (generation, jobs, assets, Summer Apps, the store upload, the hosted Summer Engine MCP, library search and the usage line) now carries the agent app's id (`X-Summer-Agent-Host`, for example `claude-code`), the name and version the app sent in the MCP handshake, and the tool that made the request (`X-Summer-MCP-Tool`). Before, the app was never sent. Outside an MCP session (`summer tool`, `summer login`) the id comes from the agent's environment; `SUMMER_AGENT_HOST` overrides it. `SUMMER_NO_TELEMETRY=1` or `DO_NOT_TRACK=1` removes these headers and keeps only the CLI's own name and version.
+
 ## [3.9.0] - 2026-10-14
 
 One sign-in for every Summer tool, tool profiles that fit every agent, and shorter tool results.

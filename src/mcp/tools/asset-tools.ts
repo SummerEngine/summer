@@ -9,6 +9,7 @@ import {
   type HdriResolution,
 } from "../../core/capabilities/hdri-import.js";
 import { importResolvedAsset, type GatewayAsset } from "../../core/capabilities/asset-import.js";
+import { summerRequestHeaders } from "../../core/agent-host.js";
 
 async function searchAssetsApi(params: {
   query: string;
@@ -54,7 +55,7 @@ async function searchAssetsApi(params: {
 
   const gatewayUrl = await resolveGatewayUrl();
   const res = await fetch(`${gatewayUrl}/api/mcp/assets?${searchParams}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { ...summerRequestHeaders({ surface: "mcp" }), Authorization: `Bearer ${token}` },
     signal: AbortSignal.timeout(15000),
   });
 
@@ -126,7 +127,7 @@ async function authedGetJson<T>(
 
   const gatewayUrl = await resolveGatewayUrl();
   const res = await fetch(`${gatewayUrl}${endpoint}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { ...summerRequestHeaders({ surface: "mcp" }), Authorization: `Bearer ${token}` },
     signal: AbortSignal.timeout(timeoutMs),
   });
   const data = (await res.json()) as T & ApiErrorBody;

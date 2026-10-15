@@ -91,6 +91,10 @@ export function hostedCallFailure(error: unknown, call: { op: string; dryRun?: b
   const cause = known ? error.message.replace(` ${error.recovery}`, "") : error instanceof Error ? error.message : String(error);
   const status = httpStatusOf(error);
   const details = { was: error instanceof OAuthError ? error.code : error instanceof HostedUnreachableError ? "unreachable" : status !== undefined ? `http_${status}` : causeCode(error) ?? "no_answer" };
+  // A bad SUMMER_MCP_RESOURCE: nothing was sent, and signing in again would not help.
+  if (error instanceof OAuthError && error.code === "oauth_resource_invalid") {
+    return errorAnswer("unavailable", cause, { retry: "no", next: { say: error.recovery.replace(/^Recovery:\s*/, "") }, details });
+  }
   if (status === 401 || (error instanceof OAuthError && !OAUTH_UNREACHABLE.has(error.code) && error.code !== "store_access_denied") || (!known && /invalid_token/.test(cause))) {
     // A missing store sign-in needs a sign-in; an expired or refused one needs a fresh store sign-in.
     const fresh = !(error instanceof OAuthError && error.code === "store_login_required");

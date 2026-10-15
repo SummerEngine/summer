@@ -223,6 +223,12 @@ describe("v4, a hosted call that fails", () => {
     expect(answer).toMatchObject({ ok: false, error: { code: "forbidden", retry: "no" } });
   });
 
+  it("points a bad SUMMER_MCP_RESOURCE at the setting, not at signing in", async () => {
+    const bad = new OAuthError("oauth_resource_invalid", "SUMMER_MCP_RESOURCE must be an https URL (http only for localhost).", "Recovery: unset SUMMER_MCP_RESOURCE to use https://mcp.summerengine.com/mcp.");
+    const answer = await callWith(failing(bad), { op: "games.list" });
+    expect(answer).toMatchObject({ ok: false, error: { code: "unavailable", retry: "no", next: { say: "unset SUMMER_MCP_RESOURCE to use https://mcp.summerengine.com/mcp." } } });
+  });
+
   it("says unavailable when nothing was sent: no connection, refused, the sign-in server down, a 503", async () => {
     for (const error of [
       new HostedUnreachableError("The hosted Summer Engine MCP did not answer: fetch failed.", "Recovery: check the network."),

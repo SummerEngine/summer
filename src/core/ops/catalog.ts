@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { parse as parseYaml } from "yaml";
 import { loadLibraryIndex } from "../library-search.js";
 import { PACKAGE_ROOT } from "../package-root.js";
-import { isLocalOp, legacyNames, MIN_APPROVAL, type Approval, type Effect, type Provider } from "./contract.js";
+import { isLocalOp, legacyNames, LOCAL_RUNNERS, MIN_APPROVAL, type Approval, type Effect, type Provider } from "./contract.js";
 
 /**
  * One searchable row per operation, the same shape the hosted server's
@@ -51,8 +51,13 @@ export function localEntries(): CatalogEntry[] {
   if (entriesCache) return entriesCache;
   const tools = new Map(loadLibraryIndex().filter((entry) => entry.kind === "tool" && entry.mcp_tool_name).map((entry) => [entry.mcp_tool_name as string, entry]));
   const out = new Map<string, CatalogEntry>();
-  for (const [name, row] of Object.entries(legacyNames())) {
-    if (name.includes("#") || !isLocalOp(row.op) || out.has(row.op)) continue;
+  const rows: Array<[string, string]> = [
+    ...Object.entries(legacyNames()).filter(([name, row]) => !name.includes("#") && isLocalOp(row.op)).map(([name, row]): [string, string] => [name, row.op]),
+    ...Object.entries(LOCAL_RUNNERS).map(([op, name]): [string, string] => [name, op]),
+  ];
+  for (const [name, op] of rows) {
+    const row = { op };
+    if (out.has(row.op)) continue;
     const tool = tools.get(name);
     if (!tool) continue;
     const effect = effectOf(tool.authority as Authority | undefined);

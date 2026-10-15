@@ -121,7 +121,14 @@ export function resolveOpName(name: string): string {
  * page or an editor surface, docking an App in the editor, and uploading a
  * local export. Everything else runs on the hosted server.
  */
-const LOCAL_OPS = new Set(["docs.search", "docs.read", "docs.feedback", "docs.plan", "docs.engine_api", "studio.open", "apps.dock", "store.upload_file"]);
+const LOCAL_OPS = new Set(["docs.search", "docs.read", "docs.feedback", "docs.plan", "docs.engine_api", "studio.open", "apps.dock", "apps.publish_folder", "store.upload_file"]);
+
+/**
+ * Local operations a 3.x tool runs although legacy-names.json maps that
+ * tool to a cloud operation: the local-only input is its own operation
+ * (apps.publish_folder reads a folder on disk; apps.publish takes files).
+ */
+export const LOCAL_RUNNERS: Readonly<Record<string, string>> = { "apps.publish_folder": "summer_app_publish" };
 
 export function isLocalOp(op: string): boolean {
   return op.startsWith("engine.") || LOCAL_OPS.has(op);
@@ -132,6 +139,7 @@ export function isLocalOp(op: string): boolean {
  * tool the op was renamed from before the tools merged into it.
  */
 export function localToolsFor(op: string): string[] {
+  if (LOCAL_RUNNERS[op]) return [LOCAL_RUNNERS[op]];
   const rank = (row: LegacyRow) => (row.kind === "merge" ? 1 : 0);
   return Object.entries(legacyNames())
     .filter(([name, row]) => row.op === op && !name.includes("#"))

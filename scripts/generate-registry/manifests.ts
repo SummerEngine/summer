@@ -266,10 +266,11 @@ function buildGeminiExtension(i: ManifestInputs): string {
 /**
  * The official MCP Registry's name for Summer. It must equal `mcpName` in
  * package.json: the registry checks the published npm package for it. The
- * io.github namespace needs only a GitHub sign-in by an org member to
- * publish; com.summerengine/* would need a DNS record.
+ * io.github namespace needs a GitHub sign-in by an Owner of the SummerEngine
+ * org, and the registry matches it against the org's login case-sensitively
+ * (`io.github.SummerEngine/*`); com.summerengine/* would need a DNS record.
  */
-export const MCP_REGISTRY_NAME = "io.github.summerengine/summer";
+export const MCP_REGISTRY_NAME = "io.github.SummerEngine/summer";
 
 /** server.json for the official MCP Registry: the npm package and the hosted server under one name. */
 function buildMcpRegistryServer(i: ManifestInputs): string {

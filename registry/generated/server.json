@@ -1,9 +1,9 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.summerengine/summer",
+  "name": "io.github.SummerEngine/summer",
   "title": "Summer Engine",
   "description": "The game engine built for AI. Any agent makes a multiplayer game and publishes it.",
-  "version": "3.9.1",
+  "version": "4.0.0",
   "websiteUrl": "https://summerengine.com",
   "repository": {
     "url": "https://github.com/summerengine/summer",
@@ -13,7 +13,7 @@
     {
       "registryType": "npm",
       "identifier": "summer-engine",
-      "version": "3.9.1",
+      "version": "4.0.0",
       "transport": {
         "type": "stdio"
       },

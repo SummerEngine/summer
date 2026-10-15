@@ -15,6 +15,7 @@ import { manifestBanner } from "./shared.ts";
 import { checkRegistry } from "./check.ts";
 import { checkCountClaims, collectCountClaimFiles, CLAIM_PATTERN } from "./count-claims.ts";
 import { MANIFEST_TARGETS, allTargets } from "./targets.ts";
+import { MCP_REGISTRY_NAME } from "./manifests.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "..", "..");
@@ -249,6 +250,14 @@ describe("generateRegistry: catalog outputs", () => {
 });
 
 describe("generateRegistry: manifests (golden shapes)", () => {
+  it("server.json names the server as package.json's mcpName, in the GitHub org's own case", () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8"));
+    expect(pkg.mcpName).toBe(MCP_REGISTRY_NAME);
+    // The registry grants io.github.<org login>/* and compares case-sensitively; the login is SummerEngine.
+    expect(MCP_REGISTRY_NAME.startsWith("io.github.SummerEngine/")).toBe(true);
+    expect(parse(gen(basicRoot).files, "server.json").name).toBe(MCP_REGISTRY_NAME);
+  });
+
   it("plugin.claude.json keeps the current field order, stamps the version and carries both MCP servers", () => {
     const result = gen(basicRoot);
     const manifest = parse(result.files, "plugin.claude.json");

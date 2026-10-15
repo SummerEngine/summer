@@ -92,7 +92,7 @@ test "$(cd "$VERIFY_DIR" && npm exec --yes --cache "$VERIFY_CACHE" --package="su
 
 Use a fresh npm cache so a pre-publish registry response cannot produce a false failure. Run the CLI smoke test outside the package checkout so npm links the published binary instead of resolving an older global `summer` command.
 
-Keep the terminal output with the release record. The temporary clone can be deleted after verification.
+Keep the terminal output with the release record. Keep the clone until step 8: steps 7 and 8 read `CHANGELOG.md` and `server.json` from it.
 
 ## 6. Point `next` at the new release
 
@@ -116,3 +116,19 @@ gh release create "v$PACKAGE_VERSION" --repo summerengine/summer --target "$(git
 ```
 
 `gh release create` makes the tag on GitHub, so nothing is pushed from this clone. For a release on `next`, add `--prerelease` and drop it when you promote (`gh release edit "v$PACKAGE_VERSION" --prerelease=false`).
+
+## 8. List the release in the official MCP Registry
+
+`server.json` (generated from `package.json`) lists the npm package and the hosted server under `io.github.SummerEngine/summer`. The registry checks that npm's `summer-engine@<version>` carries the same `mcpName`, so run this after step 5 passes. Sign in with a GitHub account that is an Owner of the SummerEngine org: the registry grants `io.github.SummerEngine/*` only to org Owners, and matches the name's case exactly. Install the publisher once with `brew install mcp-publisher`.
+
+```bash
+test "$(node -p 'require("./server.json").version')" = "$PACKAGE_VERSION"
+mcp-publisher validate
+mcp-publisher login github
+mcp-publisher publish
+curl -fsS "https://registry.modelcontextprotocol.io/v0/servers/io.github.SummerEngine%2Fsummer/versions/latest" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const v=JSON.parse(d).server.version;if(v!==process.argv[1]){console.error("STOP: registry has "+v);process.exit(1)}console.log("registry",v)})' "$PACKAGE_VERSION"
+```
+
+The last command prints `registry <version>`. If `publish` answers with a permission error although you are an Owner, the SummerEngine org may restrict third-party OAuth apps: approve the MCP Registry app for the org, then `mcp-publisher login github` again.
+
+The temporary clone can be deleted now.

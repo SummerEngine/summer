@@ -7,17 +7,26 @@ import { scoreEntry, searchEntries } from "./search.js";
 /**
  * The hosted Summer server's v4 surface: the same address with `?surface=v4`
  * (it keeps serving 3.x tools to every request that does not ask). Cloud
- * operations run there with the person's sign-in (summer login).
+ * operations run there with the person's sign-in (summer login). The assets
+ * profile also asks for its own direct tools (`profile=assets`: the asset
+ * reads and generators, jobs and whoami); every other profile gets the
+ * hosted set.
  */
-export function withV4Surface(url: string): string {
+export function withV4Surface(url: string, profile?: string): string {
   const parsed = new URL(url);
   parsed.searchParams.set("surface", "v4");
+  if (profile === "assets") parsed.searchParams.set("profile", "assets");
   return parsed.href;
+}
+
+/** Where a profile's v4 session mounts the hosted server. */
+export function v4HostedUrl(profile?: string): () => string {
+  return () => withV4Surface(resolveMcpResourceUrl(), profile);
 }
 
 export const v4HostedDependencies: HostedConnectDependencies = {
   ...defaultHostedConnectDependencies,
-  url: () => withV4Surface(resolveMcpResourceUrl()),
+  url: v4HostedUrl(),
 };
 
 /** One call to a tool on the hosted v4 surface (the CLI's path; the MCP uses its mounted client). */

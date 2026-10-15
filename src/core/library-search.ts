@@ -27,6 +27,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
+import { summerRequestHeaders } from "./agent-host.js";
 import { getAuthToken } from "./auth.js";
 import { resolveGatewayUrl } from "./config.js";
 import {
@@ -260,7 +261,7 @@ export async function embedQueryWithConfiguredProvider(
     } catch {
       token = null;
     }
-    const provider = createEmbedProvider({ url, token, timeoutMs: QUERY_EMBED_TIMEOUT_MS });
+    const provider = createEmbedProvider({ url, token, timeoutMs: QUERY_EMBED_TIMEOUT_MS, headers: summerRequestHeaders() });
     return (await provider(query)).vector;
   } catch {
     return null;

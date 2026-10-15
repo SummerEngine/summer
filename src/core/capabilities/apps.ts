@@ -3,7 +3,7 @@ import path from "node:path";
 import { z } from "zod";
 import { getAuthToken } from "../auth.js";
 import { resolveGatewayUrl } from "../config.js";
-import { TOOLKIT_VERSION } from "../version.js";
+import { summerRequestHeaders } from "../agent-host.js";
 
 /**
  * Summer Apps (summer_app_*): tools a game team uses inside Summer Studio,
@@ -186,12 +186,9 @@ export function appsGateway(surface: "mcp" | "cli", tool: string): AppsDeps["req
       response = await fetch(`${gateway}${endpoint}${suffix}`, {
         method,
         headers: {
+          ...summerRequestHeaders({ tool, surface }),
           Authorization: `Bearer ${token}`,
-          "X-Summer-Client": "summer-cli",
-          "X-Summer-Client-Version": TOOLKIT_VERSION,
-          "X-Summer-Client-Surface": surface,
           "X-Summer-MCP-Endpoint": endpoint,
-          "X-Summer-MCP-Tool": tool,
           ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
         },
         ...(body !== undefined ? { body: JSON.stringify(body) } : {}),

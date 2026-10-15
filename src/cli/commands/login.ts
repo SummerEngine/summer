@@ -6,6 +6,7 @@ import {
   saveLoginSession,
   type LoginSession,
 } from "../../core/auth.js";
+import { summerRequestHeaders } from "../../core/agent-host.js";
 import { resolveGatewayUrl } from "../../core/config.js";
 import { readStoredOAuthToken, runStoreLogin } from "../../core/oauth.js";
 
@@ -175,6 +176,7 @@ export async function runLogin(
     let completed: LoginSession | null = null;
     try {
       const res = await deps.fetch(pollUrl, {
+        headers: summerRequestHeaders({ surface: "cli" }),
         signal: AbortSignal.timeout(5000),
       });
 

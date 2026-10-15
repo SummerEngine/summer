@@ -11,8 +11,11 @@
  * The endpoint always returns allowed:true and never gates; the response is
  * ignored.
  */
+import { isTelemetryDisabled, summerRequestHeaders } from "./agent-host.js";
 import { getAuthToken } from "./auth.js";
 import { resolveGatewayUrl } from "./config.js";
+
+export { isTelemetryDisabled };
 
 const TELEMETRY_PATH = "/api/mcp/log-local-call";
 const TIMEOUT_MS = 5000;
@@ -20,11 +23,6 @@ const TIMEOUT_MS = 5000;
 const TOOL_NAME = /^summer_[a-z0-9_]{1,64}$/;
 
 let pinged = false;
-
-/** The opt-out switches, the same two the library feedback mailbox honors. */
-export function isTelemetryDisabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.SUMMER_NO_TELEMETRY === "1" || env.DO_NOT_TRACK === "1";
-}
 
 /**
  * Ping the telemetry endpoint once per MCP server lifetime.
@@ -79,6 +77,7 @@ function send(body: Record<string, unknown>): void {
           method: "POST",
           signal: ctrl.signal,
           headers: {
+            ...summerRequestHeaders(),
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },

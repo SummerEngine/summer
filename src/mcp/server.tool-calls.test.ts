@@ -114,3 +114,31 @@ describe("local tool call reports", () => {
     expect(await callAndCollect()).toEqual([]);
   });
 });
+
+describe("requests to Summer's servers", () => {
+  it("carry the agent app's name and version from the handshake and the tool that made them", async () => {
+    const requests: Array<{ url: string; headers: Record<string, string> }> = [];
+    vi.stubGlobal("fetch", async (input: unknown, init?: { headers?: Record<string, string> }) => {
+      requests.push({ url: String(input), headers: { ...(init?.headers ?? {}) } });
+      return new Response(JSON.stringify({ status: "running" }), { status: 200 });
+    });
+    await saveAuthToken("file-token");
+    const { client, close } = await session();
+    try {
+      await client.callTool({ name: "summer_check_job", arguments: { jobId: "job-1" } });
+    } finally {
+      await close();
+    }
+    const job = requests.find((request) => request.url.includes("/api/mcp/jobs/job-1"))!;
+    expect(job.headers).toMatchObject({
+      "X-Summer-Client": "summer-cli",
+      "X-Summer-Client-Surface": "mcp",
+      "X-Summer-Agent-Host": "claude-code",
+      "X-Summer-Agent-Host-Source": "mcp-client",
+      "X-Summer-Agent-Host-Name": "claude-code",
+      "X-Summer-Agent-Host-Version": "2.0.0",
+      "X-Summer-MCP-Tool": "summer_check_job",
+    });
+  });
+});
+

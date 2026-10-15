@@ -5625,7 +5625,7 @@
       "id": "tool/add-node",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "7e0cfd6870d89b063d76ae5231852430dbf958f64a658d3fb6d13db2d95c8d50",
+      "content_hash": "d9ca4203d9ccc0f041d578b89c2da644b89eff4c5782692c5fb611c51edc5016",
       "summary": "Add a node of any Godot type to an exact scene, which does not need to be the active editor tab.",
       "use_when": [
         "building out scene structure node by node",
@@ -5659,7 +5659,7 @@
       "id": "tool/align-distribute-3d",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "9323fc85f7fc846bef217f369f417d048a408767bbe2173613f09b0120d3bb02",
+      "content_hash": "61bfc19c91dbe8b2e91e49caee6df5ca4794abe5a621a0a1d02a9ad6fbe120c4",
       "summary": "Align (min/center/max) or equal-space (centers/gaps) 2-16 ordered 3D subjects along one world axis from their visible AABBs, then save the scene.",
       "use_when": [
         "lining up props, stalls, pillars, or lights along one axis",
@@ -6289,7 +6289,7 @@
       "id": "tool/attach-to-surface",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "e2207bbdab1a86f499382d89314fc48ea501080d814f15ffdfb9d06b47f047db",
+      "content_hash": "2909a46fb55a7a64373a6a7464e5f97fbbd2a68c0a8ba0c1803134effad273ed",
       "summary": "Mount a piece on a wall, ceiling or floor — turn its measured back into the surface found by a ray, keep it upright, seat it at a standoff. Saves the scene.",
       "use_when": [
         "mounting a downpipe, gutter, lamp, AC unit, sign or fire escape on a facade",
@@ -6339,7 +6339,7 @@
       "id": "tool/batch",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "ec6fa446a214a15c5562061ba0f39072f698ea69243e4326e4931683bc62f286",
+      "content_hash": "0ba437873ed75942b3ac5199b2dcc4c2b0bbd73f015b38414fa4106b5f995ba3",
       "summary": "Run engine ops in one call, verbatim; one undo step unless single-only ops split it. ReparentNode keeps and verifies its subtree; raw ConnectSignal is refused.",
       "use_when": [
         "multi-node builds that should undo as one step (no single-only ops in the list)",
@@ -6373,7 +6373,7 @@
       "id": "tool/camera-bookmark",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "42c4dfe31c6634c1b583a8e831a040d3d4b5b6bbdfe97ed71a2d7810a5b39891",
+      "content_hash": "fd351b49f70ac366fb61f4f4de7d8a32f1e9badbf0175cc19e4bc8a238398d10",
       "summary": "Save, list, or delete named camera viewpoints stored in the project, so before/after screenshots are taken from exactly the same pose.",
       "use_when": [
         "\"save this camera angle\" / \"remember this viewpoint\" so later screenshots line up with it",
@@ -6421,7 +6421,7 @@
       "id": "tool/capture-gameplay",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "f40a9891d98ae4e05d45c422b1f551bcc19dac19985d39a0bdcca62adfb36ed0",
+      "content_hash": "7bc43a3580dbab1ec3c726c9738597334164e15fdc69c0c3dd977cf1b100bd53",
       "summary": "Capture real gameplay PNGs (HUD included) offscreen without a running editor; game flags and player steps (press, key, click) get past the title screen.",
       "use_when": [
         "\"take gameplay screenshots for my store page\"",
@@ -6492,7 +6492,7 @@
       "id": "tool/clear-console",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "5d96c1b758bcb0521a2ba2f291fc5b3929487df9222b735238eb97d7a645077c",
+      "content_hash": "9c9505a048c77cb19991a7e736c343190909f584f4a875f6b814e871460bb815",
       "summary": "Clear the editor's Output panel for a clean slate before running the game.",
       "use_when": [
         "before a play session whose console output you want isolated",
@@ -6526,7 +6526,7 @@
       "id": "tool/connect-ports",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "d3423ce431ff8bde3f0f288d5b4bf47788fca541694390168f0b31baff40a45a",
+      "content_hash": "1018251fb6ed05da7397988cde9ee05498601c48331c0d765b3abb645a85cac1",
       "summary": "Join one piece's port (a Marker3D, or an open pipe end id such as '+Y') to another's, facing it; refuses joins that tilt the piece. Saves the scene.",
       "use_when": [
         "joining a pipe, duct or gutter section end to end with the previous one",
@@ -6574,7 +6574,7 @@
       "id": "tool/connect-signal",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "d37c9147743f97b9cd6f3acd1e287ef2af7df20b273c48dca05bb6cb427d236f",
+      "content_hash": "bd6c59df3479e5d60c0dac5f61dee6cde3da59054122add68bd344ffe4bc167e",
       "summary": "Connect a signal between two nodes so the saved scene keeps it (CONNECT_PERSIST, verified from the saved .tscn); the receiver should define the target method.",
       "use_when": [
         "wiring events like body_entered, pressed, or timeout",
@@ -6608,7 +6608,7 @@
       "id": "tool/create-debug-report",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "b950bca3f72f732d102142d9e233a4b27ffac33dd8a75515f0e71648742405a8",
+      "content_hash": "003ad4650cc4055b187ce8ee77a98c2a1da72a5b74fb2e0faf89fbf6ab6a4094",
       "summary": "Create a support-ready Markdown debug report: doctor checks, engine health, diagnostics, console, and debugger output.",
       "use_when": [
         "the user wants to send Summer a bug report",
@@ -6642,7 +6642,7 @@
       "id": "tool/create-scene",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "cfb55fc92129fca8a2c50819242e2961f69542773822118aa04c0aa599f13dae",
+      "content_hash": "8a8d28ab4feebc5cbbc9169f6320c64688ab74f950d4ad4c3fc7c089288bf21d",
       "summary": "Create a new minimal .tscn on disk with a create-only guard and read-back verification; never touches the open scene.",
       "use_when": [
         "starting a new level, prefab, or UI scene file",
@@ -6676,7 +6676,7 @@
       "id": "tool/debug-views",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "deb767453ff63dcacf4b92208baa69b49b1b15b7d3d557b1c23f839a3d45c9f8",
+      "content_hash": "0fcb49a5d34ec6e1f97837a9f10c217dc5b65de667fb3e4e68484ab9b36e8f2e",
       "summary": "One pose as a grid of beauty, lighting-only, unshaded/albedo, world normals, overdraw and wireframe views.",
       "use_when": [
         "understanding WHY a shot reads badly: light direction and pools, texture/value balance, normal seams, overdraw hot spots, triangle density",
@@ -6725,7 +6725,7 @@
       "id": "tool/enable-plugin",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "e4785bfe2cf063958bc9c665873f0c38d4079a5127d46dd9310957ffcbfd20c4",
+      "content_hash": "aaad358162df6f1c206ae1b6e80694f35551544074250120f3afb3ae2889873a",
       "summary": "Enable an editor plugin (res://addons/<name>/) and report the real load result, or that an older engine only queued it.",
       "use_when": [
         "an agent wrote or installed an editor plugin and needs it running",
@@ -6764,7 +6764,7 @@
       "id": "tool/export-game",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "a5248abcad904b37a361e45d7010516cbab3b82427f5896878b29afd5fed5703",
+      "content_hash": "29e356f43dee1d9239b1955ffcb32e397f27a8c6c49014993f67fbf4fbaa8f6b",
       "summary": "Export the game in the exact file the Summer Games store takes per platform (iPhone, Android, macOS, Windows bundle; web build; desktop download), headless.",
       "use_when": [
         "\"export my game for summer.games\"",
@@ -6802,7 +6802,7 @@
       "id": "tool/export-templates",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "df384233563daadc6ed0c1edef6169f63fc7aea0307f53df4b3ae75aaef1c2ea",
+      "content_hash": "347b3d0ed648ee65c250050fd8b56f7b90792192fea02cd889365f193e24448a",
       "summary": "List and install Summer Engine export templates (Summer's WebGPU Forward+ web template, macOS, Windows) from Summer's CDN, sha256-checked.",
       "use_when": [
         "\"install the web export template\"",
@@ -6837,7 +6837,7 @@
       "id": "tool/fabricate-3d",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "a81490caa6d84592309e7d06848186916263f18b7e1d98877672767ff9fa83a0",
+      "content_hash": "9d8e01e15bd6e446a729b2c8e533835d85646ca277f36f62b10100db87289e17",
       "summary": "Fabricate a mesh with a bpy script in the user's own Blender (headless, engine-supervised), import the .glb into res://, optionally instantiate it.",
       "use_when": [
         "a modular kit with exact dimensions and snapping — walls, pipes, fences, rails — where generation cannot hold size and style across many pieces",
@@ -6898,7 +6898,7 @@
       "id": "tool/frame-nodes",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "4a6c94a6ad6dc741d4283434dbdd6d46a8c356793694007623ed0556024eba1b",
+      "content_hash": "53477d1a8603c18a7a5ec1c7a9ccf59000c2361fb0a4c4fbb8d2ad800c2d5857",
       "summary": "Frame nodes by their world bounds and render with the scene's REAL environment and lights (optionally save the pose as a bookmark).",
       "use_when": [
         "\"show me the houses/props with the real lighting\" — fit a camera to one or more nodes and render it with the scene's WorldEnvironment",
@@ -6948,7 +6948,7 @@
       "id": "tool/frame-shot",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "896345ba57bd0d99d3d3fd2c721ee05866686c3450f9f8ec61bad24157c15cd3",
+      "content_hash": "0698f5fe6cfcb89703b54caeaf06c39f649f6938f9d23be34bb3e975ea8c7bbf",
       "summary": "Smart framing: find, score and bookmark camera poses for a shot type (establishing, eye level, low-angle, detail, corridor) with in-engine visibility tests.",
       "use_when": [
         "\"find a good view of X\" / \"frame an establishing shot\" / \"show it from the player's eye\" / \"look down the street\"",
@@ -6999,7 +6999,7 @@
       "id": "tool/game-control",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "7e8656dbb2760a9a8d4952a6aeab127f54c1e26d9c2041fd19b7924c54414027",
+      "content_hash": "93125d0c5bbc515930739cfe69ffc622b43f57e2b35d88a232e118a68fb236a2",
       "summary": "Pause the running game, resume it, step exactly N physics or process frames, set the time scale, or list the live game instances.",
       "use_when": [
         "pausing the running game and stepping one physics frame at a time to make exact frame-by-frame assertions",
@@ -7051,7 +7051,7 @@
       "id": "tool/game-input",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "8b66540c3f42f8eb040ee6fe6483ad59687db16c59334b737618f447132b1e53",
+      "content_hash": "0023e9be570189273a214c3b64932436d2fc76be59d93822aa2c0462cd35a9b8",
       "summary": "Drive the running game's input — script timed synthetic events, or record the real inputs and replay them deterministically on a seeded instance.",
       "use_when": [
         "scripting a timed input sequence against the running game (walk right for 500 ms, jump at frame 30, click a button)",
@@ -7102,7 +7102,7 @@
       "id": "tool/game-probe",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "23e31a31694a3b656a674c81589534d526f4f47b5a0dcd05ef5686f4536098f5",
+      "content_hash": "b57502fdab6416856f5ca079a8b81bbfde74146addc8b8397f52118c9a62b62e",
       "summary": "State AND pixels of one frame of the RUNNING game, atomically — live tree, property reads, and a screenshot stamped with the same frame counters.",
       "use_when": [
         "proving what the running game is actually doing before and after an action — the evidence read of every playtest loop",
@@ -7541,7 +7541,7 @@
       "id": "tool/get-console",
       "kind": "tool",
       "version": "1.0.3",
-      "content_hash": "0652921bcb40d2104e71c1fff9a045cf4e45bd38e84abb895cb13e1f76cce84c",
+      "content_hash": "b956953bb799948c57488b7940cbd3666772a5b0685f5c713a235da8d75777bc",
       "summary": "Read recent editor Output panel messages, deduplicated and filterable by level, type, or substring. Editor console only - never the post-play verdict.",
       "use_when": [
         "diagnostics report console issues and you need the message bodies",
@@ -7575,7 +7575,7 @@
       "id": "tool/get-debugger-errors",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "78cae0282223e4af28467f8fb20e4e3ae38e2e2650182d41e667740db89513c6",
+      "content_hash": "e1c7f166cb7316022f9a5ddc8444292a67e0e3f60d54e9e8c148a8070282715b",
       "summary": "Read deduplicated runtime errors from the debugger, distinct from console prints; optional stack traces.",
       "use_when": [
         "the running game hit failures like null references or missing nodes",
@@ -7609,7 +7609,7 @@
       "id": "tool/get-debugger-warnings",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "7fd59850f0592e2a64e784df0fa4a7c0d7ca4aa618867051961740d6fccaaed5",
+      "content_hash": "ec703ca6d5112f16da7ff3be41911fa4b0ee3de8aa12076c77e2c4ae2d880d78",
       "summary": "Read runtime warnings from the debugger panel as structured entries with file, line, and callstack.",
       "use_when": [
         "diagnostics show a non-zero debugger warning count",
@@ -7643,7 +7643,7 @@
       "id": "tool/get-diagnostics",
       "kind": "tool",
       "version": "1.0.3",
-      "content_hash": "0e5a87fcb41bf8116a1fb33e5f3ba56a057854d873e04b0ec4e4709b6a68618a",
+      "content_hash": "9b7a0053c4c8584168ad2f1ec790ddf75503f2ed856e725aaed13b273acea0b2",
       "summary": "Prioritized overview of editor console, runtime debugger, and script errors and warnings, with complete counts and a trimmed noise tail.",
       "use_when": [
         "first stop after any change, before targeted console or debugger reads",
@@ -7677,7 +7677,7 @@
       "id": "tool/get-project-context",
       "kind": "tool",
       "version": "2.0.0",
-      "content_hash": "c8cde53eababe6b12b5e8ca07a189673b09a84d51eea0a844815f7e648465f6e",
+      "content_hash": "d1a8fbd23967b000f87e8f6b9f320597a28c5b5169afb799259fd512670c3b40",
       "summary": "Bind to the open project and return a compact context (project, current and main scene, health summary, template pin, memory, warnings); tree on request.",
       "use_when": [
         "first call in every fresh session, to avoid guessing scene filenames",
@@ -7711,7 +7711,7 @@
       "id": "tool/get-runtime-tree",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "e106ed1c9265e6048214cf8bd8207936b5f41a8e452eedaeae3d1a01ce1a2112",
+      "content_hash": "5ea5e8841b9261ab86c3068b4696fe28a13e262bc041030fbdcbc5b3dd2d53bf",
       "summary": "Scene tree of the RUNNING game — spawned enemies, autoloads, pooled nodes — live state the editor reads can never show.",
       "use_when": [
         "inspecting what actually spawned during a playtest without stopping the game",
@@ -7759,7 +7759,7 @@
       "id": "tool/get-scene-tree",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "8130e2517fe81bb9ab87c29aa1cbf3fce18221d135ff59c16f105622e606c277",
+      "content_hash": "54a13cbd2e420b5da4b7ff6352eadd70ee290278490776cc5888849091c2f811",
       "summary": "Read a scene's node tree, with explicit depth and limit to avoid the engine's silent default truncation.",
       "use_when": [
         "inspecting scene structure before or after mutations",
@@ -7793,7 +7793,7 @@
       "id": "tool/get-script-errors",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "e61ba4e1e1033d821073f96be0fbdc959ccb57739465d8f581b2f2d186531ae5",
+      "content_hash": "b157eb54ad6acd2761833e9b162e6e7bb738d7f06ae19d98e6924aa6352cd8ab",
       "summary": "Check one GDScript file for parse and compile errors without running the game.",
       "use_when": [
         "after writing or editing a .gd file, to verify it compiles",
@@ -7861,7 +7861,7 @@
       "id": "tool/grep",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "57676c00eaf3003becb56c41ed837102cc29f82822d52d52d4389e9dba77115f",
+      "content_hash": "a03d678632dbb4478703734b9350283693dda36f03f3b8dcaede2ea9cb1982d0",
       "summary": "Search project files with a regex (ripgrep through the engine) and get file, line and text per match, with optional context lines and a result cap.",
       "use_when": [
         "finding where something is in big project files without reading them whole",
@@ -7900,7 +7900,7 @@
       "id": "tool/import-asset",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "9cec560d2c7951bbe699a917ecb6865be50e718bee67b81b06801a0ac0eae9c2",
+      "content_hash": "5dc47df734f7da8f1ca91d97d0b7750b46cd2aec93dd93be20341468ecedac0a",
       "summary": "Search the asset library and import the best match into the project in one step, optionally adding 3D models to a scene.",
       "use_when": [
         "the user asks to add a kind of asset, like 'add a tree to the scene'",
@@ -7934,7 +7934,7 @@
       "id": "tool/import-asset-by-id",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "b38644fa3c91e9f0eb31864d7e092c3210a7cd2dd2bbe3a692bf4a5685a57d35",
+      "content_hash": "39881bd336a3e43820a9b43040f679602e5b9ebd5067594d52f2e0f272c43788",
       "summary": "Import an exact Summer asset id into the open project via the engine's import pipeline; optionally instantiate 3D models into a scene.",
       "use_when": [
         "importing a just-generated or searched asset without guessing",
@@ -7967,7 +7967,7 @@
       "id": "tool/import-from-url",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "627132fc78ac795d7298f52e5b4abe5447bcfacb1f38b2fe4f1d0ef3c1e0be9a",
+      "content_hash": "bfdfd497aba3d2513e041391028294510d2959bed94a4ad379c9246b6e0ad663",
       "summary": "Download one file from a URL and run Godot's full import pipeline so the asset is immediately usable.",
       "use_when": [
         "importing a model, texture, or audio file from an external URL",
@@ -8001,7 +8001,7 @@
       "id": "tool/import-from-url-batch",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "cbf45604d03606c044a13831156581f54f210ab0c5fe5955f5cc044f234aa805",
+      "content_hash": "f9537f4cc763cda04468622de95449b9eba54b54d7b06b600eed8c27e707ed53",
       "summary": "Download multiple files by URL in one operation with a single filesystem scan afterwards.",
       "use_when": [
         "importing several related files, like a model plus its textures",
@@ -8035,7 +8035,7 @@
       "id": "tool/import-hdri",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "908a64ab271dffc9b8b4fa3f34218cafd9873235b9fe8f1d0007ca3a3f1248a9",
+      "content_hash": "2f395b49c2f1c62077e1d7d0690ffdf91caee908b75072a942f0f0d0e6d51a0d",
       "summary": "Search Poly Haven's CC0 HDRI library and import one into res://sky/ as environment lighting, with the exact run-script snippet that wires the sky.",
       "use_when": [
         "a 3D scene needs real environment lighting and reflections — the cheapest whole-scene visual upgrade",
@@ -8085,7 +8085,7 @@
       "id": "tool/input-map-bind",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "b8bd70a01434e41d6108d05f2e0d31b2cc442d0fccd1c494b368ace40b7c6283",
+      "content_hash": "dfdbed8111b9656cdab2a74293a96905ba8612d42907e1c9d8c25cf4eba21ab1",
       "summary": "Create an input action if needed and bind keyboard or mouse events to it.",
       "use_when": [
         "setting up player controls like jump, move, or interact",
@@ -8119,7 +8119,7 @@
       "id": "tool/inspect-asset",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "50cdfd84a3dfa9495a7ef3d257eb85b64add29d6c0879fe2a0448d22fbd02330",
+      "content_hash": "44f5e9a36efc013f26f1685fb7fa74096d75e7a41f8e498b2ded2f5a1e281848",
       "summary": "Measure a 3D asset file without adding it to a scene — AABB, origin, meshes, largest planar faces, open pipe ends, Marker3D anchors, collision shapes.",
       "use_when": [
         "learning a kit piece's real size, origin and which way it faces before placing it",
@@ -8169,7 +8169,7 @@
       "id": "tool/inspect-node",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "f2ec953c36be937406b313f35ce8e43d81dd5414947cf7e5d017603ffea1eb2c",
+      "content_hash": "87b7fa642d6b613c2e4ffc37054b8911fe1f08fe60dea881795c15e42f6869e2",
       "summary": "A node's editable properties with values, Variant types and resources, or only named fields plus derived transform, global_transform, scene_file_path.",
       "use_when": [
         "before modifying a node, to understand its current state",
@@ -8204,7 +8204,7 @@
       "id": "tool/inspect-resource",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "066947910e7c0810bfeed6dc003b633a9774434514a424fa7bb0fd9b021b3cf3",
+      "content_hash": "b362399fba15095ce7f7c0f8714833b19ceedc1dc066278425538e13b4364cde",
       "summary": "Read a resource file (a mesh's AABB, surfaces and materials; a scene's nodes; any resource's non-default properties) or a resource a node holds.",
       "use_when": [
         "reading sub-properties that the node inspector only names",
@@ -8239,7 +8239,7 @@
       "id": "tool/inspect-runtime-node",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "db79ff1e6f70b8623b3bedcdaa0a4cee77c1eaed3ca33b3266fa4c99b1941804",
+      "content_hash": "aaa22341f08b2ebb2ed1ac99872ab9a4a4b1b97ca9efbee1b963c46618e66f26",
       "summary": "Live properties of one node in the RUNNING game — actual stats, position, flags — without stopping the game and losing the state.",
       "use_when": [
         "answering \"where IS the player\" or \"what are this enemy's stats right now\" during a playtest",
@@ -8285,7 +8285,7 @@
       "id": "tool/instantiate-scene",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "f53c8c4d2df1ae52eb8d47518f780c16c910b17e9b9b443e33bc4030b7a8b039",
+      "content_hash": "7b1a511fbe9f6ec3ebcfb3b6af752e65505fd7ab2caa18220397e8bc8dbe0d0d",
       "summary": "Add an existing scene or 3D model file as a child node, optionally placed in the same call (position, rotation_degrees, scale or transform).",
       "use_when": [
         "placing a .tscn prefab or imported 3D model into a scene",
@@ -8320,7 +8320,7 @@
       "id": "tool/is-running",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "d159960b358cb01ecdde97f2fa23cd5cab3e50a4aa77b9a5183d2a92e774046d",
+      "content_hash": "69d9b505487c755c1ad3ff49c9d99ab9c05a0b5a164d17e7625ae4f63925bb68",
       "summary": "Check whether the game is running; returns the active scene path when it is.",
       "use_when": [
         "deciding whether to boot, restart, or capture the running game",
@@ -8420,7 +8420,7 @@
       "id": "tool/measure",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "d6104d4b6e3ace9f0397b65ffdb2f2da2c541422ba02e776d7eab0fed5400094",
+      "content_hash": "6cf4decb8cc695922546875eb8e32c80746e033af939a6e350c1d793998ad089",
       "summary": "Gap or overlap per axis between two placed nodes, or whether one face of many nodes is coplanar — catches facade gaps and modules standing proud. Read-only.",
       "use_when": [
         "checking that two facade modules meet edge to edge, or how far apart or overlapping two pieces are on each axis",
@@ -8469,7 +8469,7 @@
       "id": "tool/navigation-probe",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "19a82a58187922eb9307e65d2d81fabd7c98487e1939af14b2a4cdf3985d6d9b",
+      "content_hash": "0bd442a60d422fcc164f37cf5f0a4893b76823bf6c79eba14a45ceb710a61227",
       "summary": "Read-only reachability between two world points on the scene's Godot navigation map — readiness, snapped endpoints, route length, up to 16 route points.",
       "use_when": [
         "placing an NPC, pickup, portal, or encounter anchor whose route from spawn matters",
@@ -8574,7 +8574,7 @@
       "id": "tool/open-main-scene",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "ee8c6ba7f7e0fac6bdfb4a5aa3f4afb2930840c9204c88cb956e2d8080e55900",
+      "content_hash": "a737d0fa2cd6f92f8bc08e6e19846f158a2f3311772ac9fd1c328b0055dc5ba6",
       "summary": "Open the project's configured main scene from project settings instead of guessing scene filenames.",
       "use_when": [
         "any tool reports that no scene is open",
@@ -8608,7 +8608,7 @@
       "id": "tool/open-scene",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "1e0bebc35369eae6c894b02603963829bc75a5b4e2db42ae5c1b1bd92827d363",
+      "content_hash": "39d8ac4fd72cd3844777da47afbf536020b4418cf8cceee54bd5aa9e59163aab",
       "summary": "Open a scene file in the editor to switch tabs.",
       "use_when": [
         "switching the editor to an explicitly known scene path",
@@ -8642,7 +8642,7 @@
       "id": "tool/place-adjacent",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "891191f1947f53ad9803922be0075636554b4279914e5a6c4e9f064c1c7f3f25",
+      "content_hash": "4b06271d1a3f354e872bfb9d870109b309b14c5e121af910474d9b1358d7df96",
       "summary": "Move one node so its bounds face sits against another's along an axis, lining up the other axes — facade modules edge to edge, storeys stacked. Saves the scene.",
       "use_when": [
         "laying facade or wall modules edge to edge along a street line",
@@ -8692,7 +8692,7 @@
       "id": "tool/play",
       "kind": "tool",
       "version": "1.3.0",
-      "content_hash": "847dc3ae4e1602479d2198e6cfa39f31e7b6285d05f97731ffd424830f708afd",
+      "content_hash": "8907087f8f29d2324d92ed9d656c74dfc7530dd55743b0de7c4768c3d3c42753",
       "summary": "Start the game quietly (editor keeps tab and focus) — main or a given scene, embedded or offscreen, with pins, or a local multiplayer session (players).",
       "use_when": [
         "runtime verification after edits",
@@ -8744,7 +8744,7 @@
       "id": "tool/project-setting",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "d5942df90e058a5536fc524629c6e34b572c4b36617aaf5246c32732dafa34f6",
+      "content_hash": "6e4518f2563c690a25bf24a4801f11176cfec67dfe63b9cc3baa4776c771ff67",
       "summary": "Set one project.godot setting, like main scene, window size, renderer, or gravity.",
       "use_when": [
         "configuring project-level behavior",
@@ -8816,7 +8816,7 @@
       "id": "tool/raycast",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "c1b0a03e470031d6c0adfaeccab2c2c8eb386cb08fec980bcfa4c0f43ea5af8e",
+      "content_hash": "ebd29435c93b0650d712a35f2f1def29708a032dddb629207f9132d1f586e91a",
       "summary": "Cast one ray from any point in an open scene — hit node, point and normal; physics first, visual AABB fallback declared. Read-only.",
       "use_when": [
         "finding the wall, floor or ceiling in front of a point and its normal before anything is placed there",
@@ -8864,7 +8864,7 @@
       "id": "tool/read-file",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "a17383c044d72243bd190c4d0f4e45f16fba35ad741796a3d68d9ffb495b7f8d",
+      "content_hash": "638ac6a5db54ba05762c846ca5f135ff5c775d8fde57b100be6fe56e0300dca4",
       "summary": "Read a project text file, a line or byte window of it, or the entries of a .json picked by json_path/keys, with the full-file sha256 receipt.",
       "use_when": [
         "reading project files through the engine",
@@ -8956,7 +8956,7 @@
       "id": "tool/recent-events",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "f8f9c7fba524b0f43f8ff0af45cdaef01fa6ed4710b1c78b3f45d4de1462fed0",
+      "content_hash": "4b31ef694f4acd58c9a671ea1893bfda05c65b10109bb19ad4f31311e298a89c",
       "summary": "Read the newest engine events (saves, plays, op receipts, script errors, imports) in one zero-wait poll — and the next_seq cursor to wait from.",
       "use_when": [
         "\"what just happened in the engine?\" / \"show me the recent events\" — the last saves, plays, op receipts, script errors, imports",
@@ -9007,7 +9007,7 @@
       "id": "tool/remove-node",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "5089297f1c5f4f63acba875e158f4e48ee2c84264a2ec43e9aba665bcc0c5fbf",
+      "content_hash": "d7e2917a1fd9b9323f0e5272535fa43f032e691a1da17e592e319629a815a50e",
       "summary": "Remove a node and all its children from a scene; undoable, but destructive.",
       "use_when": [
         "deleting scene content the user asked to remove",
@@ -9041,7 +9041,7 @@
       "id": "tool/repeat-along",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "0f8df6a49ce6ea622343627bbf71ef997831da8830251bf6828bb5e3dcfc619e",
+      "content_hash": "288d19a98e7618cb4662d4bcc740fde3fe6d67415f3117bfc24f836854b1ac2b",
       "summary": "Instance copies of one scene along a line in one call — clamps every 0.45 m, braces, fence posts, window rows — and get the created node paths back.",
       "use_when": [
         "placing wall clamps, gutter braces or duct braces at a fixed spacing along a run",
@@ -9090,7 +9090,7 @@
       "id": "tool/replace-node",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "73ffc0dc80960e12daee3ec03cdf2a92014d259c1092fb23e60b19ef680f6549",
+      "content_hash": "0fb4ae84243f7d860bf9965add882f0e013445f27649abee91ffcc4681856de5",
       "summary": "Replace a node with another scene or type, keeping its parent, index, name, transform and children, and verify the saved scene holds it.",
       "use_when": [
         "swapping a placeholder for a prefab or changing a body type",
@@ -9132,7 +9132,7 @@
       "id": "tool/replace-text",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "f003a37d04d610539c822a9ad7ad22e70452683f29872545e9f29eb2bbefbdf3",
+      "content_hash": "59d1f6c0200833d00053713600ab7f2c201b277b3481bcdbe0357dc272071f54",
       "summary": "Safely replace text in an existing project file: unique match required by default, then a sha256-guarded write.",
       "use_when": [
         "targeted edits to scripts, scenes, or config without resending the whole file",
@@ -9166,7 +9166,7 @@
       "id": "tool/run-editor-script",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "7cdf3b2dfcd8d1ed571484fc27347dc44ddc0165b4fc5102ace50a1071155e21",
+      "content_hash": "1b5fb64108c247c1d1d4a362ab53d1c78aa83cf70e1588ce173b8253be489a93",
       "summary": "Run an EditorScript `func _run():` in a fresh headless child editor against the on-disk project — the cold path for batch and project-wide jobs.",
       "use_when": [
         "re-saving many scenes, sweeping resources, mass import fixes, generating .tres assets, long bakes that should not block the live editor",
@@ -9211,9 +9211,9 @@
     {
       "id": "tool/run-script",
       "kind": "tool",
-      "version": "1.0.1",
-      "content_hash": "048c174e32beef498a5a47a08580f369b1a0be94be2d3aeb33db41ad9a9a7278",
-      "summary": "Run a GDScript `func run(ctx):` inside the live editor against the open scene — one script instead of a chain of add-node/set-prop calls.",
+      "version": "1.1.0",
+      "content_hash": "ea06ccc917c1e4fc53944a59d14b443c9565b17e262f50bec15b13709f2ed610",
+      "summary": "Run a GDScript `func run(ctx):` inside the live editor against scenePath — one script instead of a chain of add-node/set-prop calls.",
       "use_when": [
         "a change needs 3+ related ops or any computed placement (scatter, grids, procedural meshes, bulk edits)",
         "the ctx helpers (add_node, add_mesh, grid, scatter, light rig, environment) fit the job"
@@ -9246,7 +9246,7 @@
           "skill/verifying-scenes"
         ]
       },
-      "status": "preview",
+      "status": "stable",
       "mcp_tool_name": "summer_run_script",
       "remote": false,
       "authority": {
@@ -9261,7 +9261,7 @@
       "id": "tool/runtime-animate",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "58caceb2d272f504d60e6c203ecf7288f64cde10472f402438c7740c3024b1dc",
+      "content_hash": "2f89196429056b127ba70a27877345f69e7c7ad35fde711b8ecc827a77506541",
       "summary": "Drive and read animation in the RUNNING game — AnimationPlayer clips, AnimationTree state machines, and live Skeleton3D bone poses.",
       "use_when": [
         "checking which clip or state-machine state is actually playing in the running game, then driving it (play, seek, travel, set a blend parameter)",
@@ -9314,7 +9314,7 @@
       "id": "tool/runtime-call",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "4cf5cd33f6353ee9a11b889a1aa3ca4a2d24f8eb67cae42ca2f2600615d028a3",
+      "content_hash": "de484153bf675702706fee051adf6e2b7f104852afc344781318693838a3e53a",
       "summary": "Call one method on a node in the RUNNING game and get its return value — trigger gameplay code directly instead of waiting for input or timers.",
       "use_when": [
         "triggering gameplay code in the running game and reading its answer — take_damage, start_wave, get_velocity",
@@ -9366,7 +9366,7 @@
       "id": "tool/runtime-set",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "19be16f4a367ab9e3aba7403c54231fb7475798972a31946c67dc9d80ba03ff5",
+      "content_hash": "e590a3e770692bde55c467e118c29b720f851c2cc4493aae4e75c1bfed4c9759",
       "summary": "Set one property on a node in the RUNNING game — the live object, never the scene file — and read back whether it applied.",
       "use_when": [
         "putting the running game into a test state without playing there by hand — teleport the player, set health to 1, flip a flag, toggle visibility",
@@ -9418,7 +9418,7 @@
       "id": "tool/runtime-spawn",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "3c64559d9b9a5c41b66b6f86c0de97ed7771975e5f8b330ac44e686f68c981e7",
+      "content_hash": "28df6f67219f42d92abe956925c43c4c890948d35cf12dee7f873620e67da34d",
       "summary": "Spawn a PackedScene into the RUNNING game (action spawn) or free a live node (action free) — stage a test in seconds without touching the scene file.",
       "use_when": [
         "staging a runtime test — place three goblins under the spawner, add a pickup next to the player, remove the boss to test the empty-arena path",
@@ -9470,7 +9470,7 @@
       "id": "tool/save-scene",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "fefc2489e16634edd4ed29780930e9daad8e002e6fb0d61e48913620a29bc585",
+      "content_hash": "b73c2e7fb78245c5e5a039988b8b280eb4968f804ffa20cb08d3f2aba6132981",
       "summary": "Save an explicit scene to disk, for standalone saves or save-as.",
       "use_when": [
         "a standalone save or save-as is needed",
@@ -9504,7 +9504,7 @@
       "id": "tool/scene-audit",
       "kind": "tool",
       "version": "1.3.0",
-      "content_hash": "474abfec07fd4dc9a955bbaf7894bc5bea743f81842646b847bf091611ed2e37",
+      "content_hash": "b4210d50ea13edb1ac413759b5670ebff3795cb87cb25561424223183d221436",
       "summary": "Read-only pass over any 3D scene, from geometry and materials: see-through holes, exposed edges, open pipe ends, floor gaps, clipping props.",
       "use_when": [
         "after each build stage of a 3D level or kit-built street: \"what is wrong with this scene and where exactly?\"",
@@ -9562,7 +9562,7 @@
       "id": "tool/screenshot",
       "kind": "tool",
       "version": "1.2.0",
-      "content_hash": "1b3955c9e46ce009b49de86f00418b60d10f55fff0f9804cea7586bcdfc1b551",
+      "content_hash": "c421909fa8ea62c3be65cbbe2863ddffa1599be5b372b5b378a37e0eb435abe3",
       "summary": "Capture a frame from the editor viewport, an offscreen scene render (fixed or bookmarked pose, numbered labels), or the running game, as an actual image.",
       "use_when": [
         "visually verifying layout, scale, framing, or runtime state",
@@ -9694,7 +9694,7 @@
       "id": "tool/select-node",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "2ef5adab532c432601cf4ed7a318f3af1123edcbc9ff6298d65f0779d77857f7",
+      "content_hash": "29e08a3ba3e8c523cce8311685f933f9639445e2515f6ef8de7ce6c1385df477",
       "summary": "Select a node in the editor scene tree and show it in the inspector.",
       "use_when": [
         "focusing the user's editor on a specific node",
@@ -9728,7 +9728,7 @@
       "id": "tool/set-prop",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "8cede86cfad08b52b99b72a14f6118af168f5ca05856599f0053bff9af8f5d76",
+      "content_hash": "7322a8ec389c209d41c7fe0b56f47c8e8b42616d19044d9b070d7ff6721ab5f9",
       "summary": "Set a node property using Godot string syntax for vectors, colors, transforms, and resource class names.",
       "use_when": [
         "configuring nodes after adding them",
@@ -9762,7 +9762,7 @@
       "id": "tool/set-resource-property",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "1d34d2a35dd857909754857b1a5de8696ab88aacfc4a034b5e52a021b282e155",
+      "content_hash": "540bb40211a70992df7971380c4fb61d3563473e90ddc9d4c2dc19791c8fc36e",
       "summary": "Set a nested property on a resource attached to a node, like a collision shape size or material color.",
       "use_when": [
         "modifying sub-properties of meshes, materials, or shapes",
@@ -9796,7 +9796,7 @@
       "id": "tool/shot-sheet",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "45db27ac2ad936e72212fc8172bc6facaddc4e8ee7eee723b9decf88f3629dbf",
+      "content_hash": "9e9dddf23e353637b51db1a6ae82e0be981c0c3bbe3274262194a644e9e2a004",
       "summary": "Render N bookmarks and/or poses into one labelled grid image with real lighting; compare each bookmark with its previous render (difference map).",
       "use_when": [
         "seeing every hero view of an environment at once after a change, in one image",
@@ -9880,7 +9880,7 @@
       "id": "tool/snap-to-surface",
       "kind": "tool",
       "version": "1.2.0",
-      "content_hash": "b7c9d59e4c42872f02689437a4e091d0429733b4dbf93850aac3fe8e363c93f0",
+      "content_hash": "be7dfce006254a9c8b01a7d4e6402e6f4bccf16c33c88ef4a0828208aeeeaf49",
       "summary": "Move one 3D subject along a world ray until it sits at the requested gap from the first surface (floor, ramp, shelf, table), then save the scene.",
       "use_when": [
         "seating a prop on a floor, ramp, table, or shelf instead of hand-tuning its Y position",
@@ -9931,7 +9931,7 @@
       "id": "tool/snapshot-diff",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "500b39603410e8dd9dc7af2526671d58efb341ceff5556f0038f831b5dbcc2b5",
+      "content_hash": "996761994942d2099ccfa3e5352a59fe3eb9cc3c8637a5c1f1718625dcbe657d",
       "summary": "Diff two world snapshots into added/removed/changed nodes and count deltas — the structural receipt that a mutation did exactly what was intended.",
       "use_when": [
         "verifying a mutation batch against the snapshot_id taken before it",
@@ -9978,7 +9978,7 @@
       "id": "tool/starcast",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "149de44b173e1bc315fd87bf42d713fb4fa9eba3d7979942293ef6bf200cd222",
+      "content_hash": "d60064e9567a356dbe7c2e0d36e178c0f6eb26feef100e7edf6a941f83e820d1",
       "summary": "Read-only 3D placement rundown for one node — 26 directional clearance casts, contact-or-overlap evidence, grounding, nearby geometry. Never moves or saves.",
       "use_when": [
         "learning what surrounds a placed prop before and after a correction — which direction is blocked, by what, and at what distance",
@@ -10065,7 +10065,7 @@
       "id": "tool/stop",
       "kind": "tool",
       "version": "1.1.1",
-      "content_hash": "9b6590d40c5badbd71497513aea70aaa5bb382fee833c3c1fac6af7dc9e73a0a",
+      "content_hash": "4aaebbc1a8692a0d03a1d33bf92b1d3f5ff4adff8e73e075a1aeb3449f03e0af",
       "summary": "Stop the running game (or one named offscreen instance). Does not revert scene edits, undo anything, or save — the editor state is left exactly as it is.",
       "use_when": [
         "runtime verification is finished",
@@ -10106,7 +10106,7 @@
       "id": "tool/test-placement",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "4c1ad515f5ae70d1f256b86fb44f3c81984e3f59b8e482c55967c54c58d0e2af",
+      "content_hash": "ecdf39562cc5c5250bf6fd14c092159d8ba66a7f37489b5efd7739a738a253c1",
       "summary": "Ghost-test one 3D node at a candidate global pose without moving it — overlap evidence, grounded state, signed floor gap. Read-only.",
       "use_when": [
         "deciding whether a prop fits in a shelf, cubby, doorway, platform, or dense set before committing the transform",
@@ -10155,7 +10155,7 @@
       "id": "tool/ui-actions",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "52cad0fa683ffde23b6c3b5be24ef6e87765b1d67d63c6e646860a77a4072cb5",
+      "content_hash": "ff6998c3ce39f8c0fbfb94daf65e2aec7839265a6ac6b50f27017edafa85f94f",
       "summary": "List the editor's named actions or invoke one by name exactly as its menu item / shortcut would — open Project Settings, switch screens, toggle panels.",
       "use_when": [
         "\"open project settings in the editor\" / \"open the Import dock\" / \"toggle the animation bottom panel\" — an editor-workflow step a human would do with the mouse, driven by its stable action name",
@@ -10207,7 +10207,7 @@
       "id": "tool/ui-activate",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "6ef1ca9999070dd2ca3b054f3c20983b83bb4e836a73b960d3a0ca642f4941b6",
+      "content_hash": "8bf16171089ebe5d92367d0357c53e6714f4855dc3ea8399d4aad46b3098120e",
       "summary": "Activate one editor control by tree path — press, toggle, focus, select a tab, type text, dial a value — or dismiss a blocking dialog; state is read back.",
       "use_when": [
         "\"dismiss the dialog that is blocking the editor\" / \"close that popup\" — action dismiss_dialog with the path or title from summer_ui_tree root dialogs",
@@ -10256,7 +10256,7 @@
       "id": "tool/ui-screenshot",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "b29c5f4908a6a816425d6281448cf0cd3830b3df91a32a62d86b2da7cebd3c51",
+      "content_hash": "b8e24c872aea905d24154f1b267ab4905c006a576c40962c77bdc66ed1129319",
       "summary": "PNG of the editor window or one dock/dialog/control as an image — the pixels-last fallback for looking at the editor UI, never for picking click coordinates.",
       "use_when": [
         "\"show me what the editor looks like right now\" / \"screenshot the Inspector dock\" — seeing layout or an unfamiliar panel after summer_ui_tree has described it",
@@ -10305,7 +10305,7 @@
       "id": "tool/ui-tree",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "83f9f8f61e441eccd050f09a9fb0e12bf4884a5f2a12a0df6102f1f9108ec9d0",
+      "content_hash": "33b17290e03042ae187ea83a60b37547b7a2e7fd57d694ee088e47424210f3c8",
       "summary": "Structured tree of the live editor UI (controls, paths, text, state) or every visible dialog with its blocking flag — the cheap alternative to a screenshot.",
       "use_when": [
         "\"is a dialog blocking the editor\" / \"what does the Inspector dock show\" / \"which main screen is active\" — read editor UI state as structure instead of pixels",
@@ -10355,7 +10355,7 @@
       "id": "tool/wait-for-event",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "670da1a0f9820e969ae6f72dac6dd8e253be5c5bb204e92abfb6648482ad42df",
+      "content_hash": "7009939c00649bac528ed87e907fbb2cc9c22d9f4db4d7f810c5ae6ffe36d09e",
       "summary": "Wait for an engine event — the game starting, an op finishing, a script error, a save — instead of sleeping and re-polling; honest timeout.",
       "use_when": [
         "\"wait for the game to start\" — right after summer_play, wait for play.started instead of guessing how long boot takes",
@@ -10408,7 +10408,7 @@
       "id": "tool/world-snapshot",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "09d31f36f56fb04eefcd8d4c7b875e320a7525e75659f4a022ca8c5782982d58",
+      "content_hash": "8f8dab1d735156630961e3bbef0b5e8985eb7f9e8e933a173aae163c56fbe9e1",
       "summary": "Structured scene snapshot (paths, transforms, world AABBs, fingerprints, counts), filterable by subtree, class and field; the read around every mutation.",
       "use_when": [
         "taking a diffable baseline before a mutation batch, or verifying transforms/AABBs/fingerprints after one",
@@ -10460,7 +10460,7 @@
       "id": "tool/write-file",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "0b2f2d341b256697ac8375e8fe501af6984c9fdf521ea431d5de34b30839ea32",
+      "content_hash": "a4b39712bf00552b3729956397a16c729fdfd477e8798b88b8fdaaad01b7c761",
       "summary": "Create or safely overwrite one complete text file through the identity-bound engine; exactly one guard is required, so writes fail closed.",
       "use_when": [
         "creating a new project file with the create-only guard",
@@ -10493,7 +10493,7 @@
       "id": "tool/zoom",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "89aa4303b4c395883ffbc34ca9aa9896fd7bbc75ed23f9d3993550c17ab725ea",
+      "content_hash": "a6cb76ca44426871caaf3e9a27d4d048ef57bd58c483effbff80d17f997a2b56",
       "summary": "High-resolution close-up of exactly a frame region or of mark N, rendered as the exact sub-frustum at full resolution (real detail, not upscaled pixels).",
       "use_when": [
         "checking seams, gaps, floating pieces, texture resolution or tiling up close",

@@ -263,4 +263,24 @@ describe("one Summer Engine MCP: hosted tools mounted locally", () => {
     expect(state.overLimit).toEqual(["summer_store_submit"]);
     await server.close();
   });
+
+  it("counts only the tools a client lists against the limit (v4 keeps 3.x tools registered, unlisted)", async () => {
+    const { server } = createMcpServer(resolveToolSelection({ profile: "full" }, {}), { surface: "v4" });
+    const registered = Object.values((server as unknown as { _registeredTools: Record<string, { enabled: boolean }> })._registeredTools);
+    const listed = registered.filter((tool) => tool.enabled).length;
+    expect(registered.length).toBeGreaterThan(listed);
+    const mount = prepareHostedMount(server, deps(), { maxTools: listed + 1 });
+    expect((await mount.mount()).tools).toEqual(["summer_store_submit"]);
+    await server.close();
+  });
+
+  it("gives mounted tools the description a surface asks for and says when it mounted", async () => {
+    const { server } = createMcpServer();
+    let mounted = 0;
+    const mount = prepareHostedMount(server, deps(), { describe: (tool) => `3.x name; ${tool.name}`, onMounted: () => (mounted += 1) });
+    await mount.mount();
+    expect((server as unknown as { _registeredTools: Record<string, { description?: string }> })._registeredTools.summer_store_submit.description).toBe("3.x name; summer_store_submit");
+    expect(mounted).toBe(1);
+    await server.close();
+  });
 });

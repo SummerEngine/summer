@@ -1,6 +1,6 @@
 ---
 name: remote-deploy
-description: "Run or test the game on a real device — phone, tablet, another computer — via the Remote Deploy button, runnable export presets, and on-device debugging."
+description: "Run or test the game on a real phone, tablet or computer with Remote Deploy and on-device debugging."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: deployment

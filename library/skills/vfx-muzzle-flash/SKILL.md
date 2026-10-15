@@ -1,6 +1,6 @@
 ---
 name: vfx-muzzle-flash
-description: "Muzzle-flash effect — a one-shot ~80 ms burst at a gun barrel built with a particle one-shot or a flashing quad with a star-burst shader."
+description: "Muzzle-flash effect: a one-shot ~80 ms burst at a gun barrel, from particles or a star-burst quad."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects
@@ -201,19 +201,27 @@ Node3D ("MuzzleFlash") [script: muzzle_flash.gd]
 
 Place the node at the **barrel tip** of the weapon. If your gun model has a `BarrelTip` Marker3D, parent there directly.
 
-Every scene-mutating call takes an explicit `scenePath`. `summer_set_prop` uses `key`
-(not `property`) and only accepts a string, number, or boolean.
+Write the two files, then mount the flash with ONE `summer_run_script` call with
+an explicit `scenePath` — one transactional run, and mounting a flash on every
+weapon in the scene is a loop instead of a chain of calls per gun:
 
 ```
 summer_write_file(path="res://addons/vfx/muzzle-flash/muzzle_flash.gdshader", content="<section 2>", create_only=true)
 summer_write_file(path="res://addons/vfx/muzzle-flash/muzzle_flash.gd", content="<section 3>", create_only=true)
 
-summer_add_node(scenePath="res://main.tscn", parent="./Player/Weapon/BarrelTip", type="Node3D", name="MuzzleFlash")
-summer_set_prop(scenePath="res://main.tscn", path="./Player/Weapon/BarrelTip/MuzzleFlash", key="script", value="res://addons/vfx/muzzle-flash/muzzle_flash.gd")
-summer_set_prop(scenePath="res://main.tscn", path="./Player/Weapon/BarrelTip/MuzzleFlash", key="flash_size", value=0.6)
-summer_set_prop(scenePath="res://main.tscn", path="./Player/Weapon/BarrelTip/MuzzleFlash", key="flash_duration", value=0.08)
-summer_set_prop(scenePath="res://main.tscn", path="./Player/Weapon/BarrelTip/MuzzleFlash", key="light_energy", value=4.0)
-summer_save_scene(scenePath="res://main.tscn")
+summer_run_script(scenePath="res://main.tscn", source="""
+func run(ctx):
+    var tip = ctx.find("BarrelTip")
+    var flash = ctx.add_node("Node3D", "MuzzleFlash", tip)
+    flash.set_script(load("res://addons/vfx/muzzle-flash/muzzle_flash.gd"))
+    flash.set("flash_size", 0.6)
+    flash.set("flash_duration", 0.08)
+    flash.set("light_energy", 4.0)
+    var weapon = ctx.find("Weapon")
+    weapon.connect("fired", Callable(flash, "fire"), CONNECT_PERSIST)
+    # CONNECT_PERSIST is required: a bare connect() works live but is NOT saved
+    ctx.save_scene()
+""")
 ```
 
 Then in your weapon script, on `fire()`:
@@ -222,33 +230,10 @@ Then in your weapon script, on `fire()`:
 $BarrelTip/MuzzleFlash.fire()
 ```
 
-Or connect the weapon's `fired` signal in the scene:
+The script above already connects the weapon's `fired` signal to the flash; the
+one-call form is `summer_connect_signal(scenePath="res://main.tscn", emitter="./Player/Weapon", signal="fired", receiver="./Player/Weapon/BarrelTip/MuzzleFlash", method="fire")`.
 
-```
-summer_connect_signal(scenePath="res://main.tscn", emitter="./Player/Weapon", signal="fired", receiver="./Player/Weapon/BarrelTip/MuzzleFlash", method="fire")
-```
-
-### 5a. One-script wiring (summer_run_script)
-
-On engines with `summer_run_script` (see `scene-scripting`), the node calls
-above are ONE transactional ctx script — and mounting a flash on every weapon in the
-scene becomes a loop instead of a CRUD chain per gun:
-
-```gdscript
-func run(ctx):
-    var tip := ctx.find("BarrelTip")
-    var flash := ctx.add_node("Node3D", "MuzzleFlash", tip)
-    flash.set_script(load("res://addons/vfx/muzzle-flash/muzzle_flash.gd"))
-    flash.set("flash_size", 0.6)
-    flash.set("flash_duration", 0.08)
-    flash.set("light_energy", 4.0)
-    var weapon := ctx.find("Weapon")
-    weapon.connect("fired", Callable(flash, "fire"), CONNECT_PERSIST)
-    # CONNECT_PERSIST is required — a bare connect() works live but is NOT saved
-    ctx.save_scene()
-```
-
-### 5b. Verify
+### 5a. Verify
 
 `muzzle_flash.gd` `preload`s its own shader, so a shader that failed to write takes
 the script down at parse time. Check before firing a shot.

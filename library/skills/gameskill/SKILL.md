@@ -1,6 +1,6 @@
 ---
 name: gameskill
-description: "Capture what a game-dev session just learned as a reusable skill (project, user or Summer library) so the next session starts smarter."
+description: "Capture what a game-dev session learned as a reusable skill (project, user or Summer library) for next time."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: workflow

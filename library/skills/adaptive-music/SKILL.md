@@ -1,11 +1,11 @@
 ---
 name: adaptive-music
-description: "Wire music stems to game state — combat/explore/boss/tension crossfades on a shared bus, paired with a state machine and AudioBus structure."
+description: "Wire music stems to game state: combat, explore, boss and tension crossfades on a shared bus."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_generate_audio summer_search_assets summer_import_from_url summer_add_node summer_set_prop summer_connect_signal summer_inspect_node summer_get_scene_tree summer_project_setting
+allowed-tools: Read Grep Glob Write Edit summer_generate_audio summer_search_assets summer_import_from_url summer_run_script summer_add_node summer_set_prop summer_connect_signal summer_inspect_node summer_get_scene_tree summer_project_setting
 paths: ["audio/music/**", "scripts/audio/**", "**/*.tscn", "default_bus_layout.tres"]
 ---
 
@@ -97,29 +97,25 @@ For ducking, add a sidechain compressor on the `Music` bus with the `Voice` bus 
 
 ### 5. Build the player rig
 
-For horizontal sequencing, instantiate one `AudioStreamPlayer` per state, all on the Music bus, all autoplay, all looping, all starting at `-60 dB` except the active state:
+For horizontal sequencing, instantiate one `AudioStreamPlayer` per state, all on the Music bus, all autoplay, all looping, all starting at `-60 dB` except the active state. One script builds the whole rig (`scenePath` is the exact scene to change; `ctx.save_scene()` writes it):
 
 ```
-summer_add_node(scenePath="res://main.tscn", parent="./Music", type="AudioStreamPlayer", name="Calm")
-summer_set_prop(scenePath="res://main.tscn", path="./Music/Calm", key="stream", value="res://audio/music/calm.mp3")
-summer_set_prop(scenePath="res://main.tscn", path="./Music/Calm", key="bus", value="Music")
-summer_set_prop(scenePath="res://main.tscn", path="./Music/Calm", key="volume_db", value=0.0)
-summer_set_prop(scenePath="res://main.tscn", path="./Music/Calm", key="autoplay", value=true)
-
-summer_add_node(scenePath="res://main.tscn", parent="./Music", type="AudioStreamPlayer", name="Tension")
-summer_set_prop(scenePath="res://main.tscn", path="./Music/Tension", key="stream", value="res://audio/music/tension.mp3")
-summer_set_prop(scenePath="res://main.tscn", path="./Music/Tension", key="bus", value="Music")
-summer_set_prop(scenePath="res://main.tscn", path="./Music/Tension", key="volume_db", value=-60.0)
-summer_set_prop(scenePath="res://main.tscn", path="./Music/Tension", key="autoplay", value=true)
-
-summer_add_node(scenePath="res://main.tscn", parent="./Music", type="AudioStreamPlayer", name="Combat")
-summer_set_prop(scenePath="res://main.tscn", path="./Music/Combat", key="stream", value="res://audio/music/combat.mp3")
-summer_set_prop(scenePath="res://main.tscn", path="./Music/Combat", key="bus", value="Music")
-summer_set_prop(scenePath="res://main.tscn", path="./Music/Combat", key="volume_db", value=-60.0)
-summer_set_prop(scenePath="res://main.tscn", path="./Music/Combat", key="autoplay", value=true)
+summer_run_script(scenePath="res://main.tscn", source="""
+func run(ctx):
+    var music = ctx.get_or_create("Node", "Music")
+    var states := {"Calm": 0.0, "Tension": -60.0, "Combat": -60.0}   # only the active state is audible
+    for state in states:
+        ctx.add_node("AudioStreamPlayer", state, music, {
+            "stream": load("res://audio/music/%s.mp3" % state.to_lower()),
+            "bus": "Music",
+            "volume_db": states[state],
+            "autoplay": true,
+        })
+    ctx.save_scene()
+""")
 ```
 
-Every scene-mutating tool takes an explicit `scenePath`; node paths are relative to that scene's root (`./`), not absolute `/root/...` runtime paths; and the property argument is named `key`, not `property`.
+A fourth state (Boss) is one more entry in `states`, not five more calls. Loop the streams on the imported files (`loop` in the import settings, or `AudioStreamMP3.loop`), not on the player.
 
 All three play simultaneously, in sync, but only one is audible. State transitions tween volumes — the music never restarts, only fades.
 
@@ -326,5 +322,5 @@ in Summer Engine.
 - `audio-direction` — defines the dynamic music plan and bus layout
 - `music-track` — generates the stems
 - `voice-line` — the voice bus that triggers ducking
-- `../../references/godot-version/godot-version.md` — Summer compatibility for AudioServer
+- `summer_read_library` id `reference/godot-version` — Summer compatibility for AudioServer
   and Tween APIs

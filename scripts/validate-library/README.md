@@ -90,6 +90,21 @@ What it checks:
    exit code is unaffected; the line exists so authors decide deliberately.
    Only skill<->skill pairs are checked.
 
+10. Skill description budget: the SKILL.md descriptions of every skill a bulk
+    install takes (not `bundled: false`, not deprecated) add up to at most
+    `SKILL_DESCRIPTION_BUDGET` (12,000) characters. Hosts inject every
+    installed description into every session and truncate past their own
+    budget. The CLI prints the total on every run.
+11. No path out of a skill folder: `summer setup` copies each skill folder
+    alone, so a `../` path in any skill `.md` (markdown link, inline code or
+    prose; fenced code is skipped) that resolves outside the folder fails
+    (`skill-links.ts`).
+12. Call examples: every `summer_x(…)` / `summer_x {…}` example in a skill
+    `.md` passes each required `input_schema` argument of its tool's
+    descriptor and no argument the tool does not take
+    (`call-examples.ts`). Examples with `...` and forms that do not parse are
+    skipped and counted; tools without a descriptor are skipped.
+
 Exit codes: 0 clean (including when `library/` does not exist), 1 on any
 violation; `WARN` lines never change the exit code. Requires Node >= 22.18
 (native TypeScript type stripping).

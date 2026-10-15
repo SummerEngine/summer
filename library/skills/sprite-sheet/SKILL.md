@@ -1,6 +1,6 @@
 ---
 name: sprite-sheet
-description: "Generate animated 2D character sprites laid out as a sprite sheet — walk cycle, attack, idle, death — wired into AnimatedSprite2D / SpriteFrames."
+description: "Generate animated 2D character sprite sheets (walk, attack, idle, death) for AnimatedSprite2D."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
@@ -212,6 +212,10 @@ func _physics_process(delta):
 - **User wants a turn-around (rotating in place over 8 frames).** Same as 8-direction; generate single-frame per angle as anchor, accept that AI rotation won't be perfectly consistent.
 - **Animation needs to loop seamlessly.** Make frame N+1 explicitly bridge back to frame 1 in your prompt. Or generate one extra "bridge" frame and drop it.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-3 and skip steps 4-6 (import, `AnimatedSprite2D`, trigger code). Pass `out` to `summer_generate_image` for each frame, or slice a sheet with `summer_slice_asset_sheet` and get each piece with `summer_get_asset_download_url`. Tell the person the frame order and the frame rate you planned.
+
 ## Fallback (no MCP)
 
 Print the per-frame call sequence:
@@ -241,4 +245,4 @@ After the animation is wired:
 - `character-portrait` — base portrait for higher-res characters.
 - `generate-motion` — 3D-skeletal counterpart.
 - `sound-effect` — frame-synced SFX.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_image` schema.
+- `summer_read_library` id `reference/mcp-tools-reference` — `summer_generate_image` schema.

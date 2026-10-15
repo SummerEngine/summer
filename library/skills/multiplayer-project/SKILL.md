@@ -1,6 +1,6 @@
 ---
 name: multiplayer-project
-description: "Set up a Summer multiplayer project: both entry scenes, World and queue files, joining, and a first Local Play run."
+description: "Set up a Summer multiplayer project: entry scenes, World and queue files, joining, a first Local Play."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: multiplayer-and-networking

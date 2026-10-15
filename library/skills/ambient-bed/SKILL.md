@@ -1,6 +1,6 @@
 ---
 name: ambient-bed
-description: "Generate a long looping location ambience — forest, dungeon, city, spaceship, cave — a looping AudioStreamPlayer on the Ambient bus with a seamless loop."
+description: "Generate a long looping location ambience (forest, dungeon, city, cave) on the Ambient bus."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio
@@ -196,11 +196,16 @@ This eliminates the click and adds variation through phase-overlap (the loop ove
 For most beds, non-positional is correct (the player is *in* the place; the bed isn't an emitter):
 
 ```
-summer_add_node(scenePath="res://levels/level_01.tscn", parent="./Level", type="AudioStreamPlayer", name="AmbientBed")
-summer_set_prop(scenePath="res://levels/level_01.tscn", path="./Level/AmbientBed", key="stream", value="res://audio/ambient/forest_dawn.wav")
-summer_set_prop(scenePath="res://levels/level_01.tscn", path="./Level/AmbientBed", key="bus", value="Ambient")
-summer_set_prop(scenePath="res://levels/level_01.tscn", path="./Level/AmbientBed", key="volume_db", value=-12.0)
-summer_set_prop(scenePath="res://levels/level_01.tscn", path="./Level/AmbientBed", key="autoplay", value=true)
+summer_run_script(scenePath="res://levels/level_01.tscn", source="""
+func run(ctx):
+    ctx.add_node("AudioStreamPlayer", "AmbientBed", ctx.find("Level"), {
+        "stream": load("res://audio/ambient/forest_dawn.wav"),
+        "bus": "Ambient",
+        "volume_db": -12.0,
+        "autoplay": true,
+    })
+    ctx.save_scene()
+""")
 ```
 
 Or attach the script in step 7 to a Node, set its `stream` to the imported audio, and skip the `AudioStreamPlayer` node — the script provides its own.
@@ -264,6 +269,10 @@ Boss arena:         vast stone arena, low ominous drone, distant rumble,
 - **Loop click after import dock setup.** Use the crossfade script (step 7).
 - **Need positional bed (a campfire crackle).** Use `AudioStreamPlayer3D` with `max_distance` matching the campfire's reasonable hearing radius (4–8m typical).
 - **Multi-room transitions.** Use Areas; on player enter, fade in destination bed and fade out source bed over 1.5s.
+
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-5 and stop when the bed exists. Skip steps 6-9: the loop point, the crossfade script and the `AudioStreamPlayer` are Summer Engine work. Get the file with `summer_get_asset_download_url` on the returned asset id, save it where the person asked, and tell them the path and format. Tell the person it is a long bed made to loop: their engine either loops it with a short crossfade or plays two copies that overlap.
 
 ## Fallback (no MCP)
 

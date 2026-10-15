@@ -197,4 +197,4 @@ After the asset is wired:
 - `sprite-sheet` — animated pixel frames.
 - `character-portrait` — high-res counterpart.
 - `asset-strategy` — meta-router.
-- `summer_read_library` id `reference/mcp-tools-reference` — how to call `assets.generate_image`.
+- `summer_docs_read` id `reference/mcp-tools-reference` — how to call `assets.generate_image`.

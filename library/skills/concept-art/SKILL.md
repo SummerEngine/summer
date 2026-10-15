@@ -154,4 +154,4 @@ Once the user picks a direction:
 
 - `asset-strategy` — meta-router that delegates here vs other 2d-assets skills.
 - `character-portrait` — the polished single-image counterpart.
-- `summer_read_library` id `reference/mcp-tools-reference` — how to call `assets.generate_image`.
+- `summer_docs_read` id `reference/mcp-tools-reference` — how to call `assets.generate_image`.

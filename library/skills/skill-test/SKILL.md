@@ -23,7 +23,7 @@ For a single skill at `library/skills/<slug>/`, run these checks:
 4. **Collaborative protocol.** If the skill triggers user-visible writes, body must contain at least one of: `May I`, `I'm about to`, `Continue?`, `OK?`, `Proceed?`. Skills that only inspect/read are exempt.
 5. **Template-id resolved.** If the skill's frontmatter declares `template-id: <id>`, that id must exist in the template registry: `library/templates/<id>/resource.yaml` (see `library/templates/README.md`).
 6. **Behavioral spec.** If the skill has a spec (`evals/skills/specs/<slug>.md` or `tests/spec.md` in the skill folder), it has at least one `## Case` heading. A missing spec is a WARN, not a FAIL.
-7. **Links stay inside the skill folder.** Every relative link (`](./references/...)`, `](./examples/...)`) must point at an existing file in the skill's own folder (FAIL if broken). `summer setup` copies each skill folder alone, so a path that climbs out of it (`../`) breaks after install: name a shared reference by its library id (`summer_read_library` id `reference/<slug>`) and another skill by its bare slug (`design-mechanic`).
+7. **Links stay inside the skill folder.** Every relative link (`](./references/...)`, `](./examples/...)`) must point at an existing file in the skill's own folder (FAIL if broken). `summer setup` copies each skill folder alone, so a path that climbs out of it (`../`) breaks after install: name a shared reference by its library id (`summer_docs_read` id `reference/<slug>`) and another skill by its bare slug (`design-mechanic`).
 
 Output:
 
@@ -80,7 +80,7 @@ This skill is **read-only**. It never writes. No "May I" needed.
 
 ## See also
 
-- `summer_read_library` id `reference/collaborative-protocol`
+- `summer_docs_read` id `reference/collaborative-protocol`
 - the template registry: `library/templates/<id>/resource.yaml` (see `library/templates/README.md`)
 - `tests/runner.md`
 - `evals/skills/specs/` — per-skill behavioral specs

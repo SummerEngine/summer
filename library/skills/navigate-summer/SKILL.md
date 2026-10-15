@@ -13,7 +13,7 @@ paths: ["**/project.godot", "**/*.tscn", "**/.summer/**"]
 
 ## Overview
 
-Summer has two surfaces the user looks at: **summerengine.com** (Studio, games, billing, templates, guides, docs) and the **Summer Engine editor** (scenes, nodes, docks). `studio.open` — the same behavior as `summer open <target>` in a shell, run by the Summer MCP on this computer — takes an intent ("billing", "my games", "the scene I'm editing", "res://player.gd") and opens the exact page or panel, or prints the URL / engine op so you can hand it over. The **product map** reference (`summer_read_library` id `reference/product-map`) is the full table of destinations with their intent phrases, required context, and what the user will see.
+Summer has two surfaces the user looks at: **summerengine.com** (Studio, games, billing, templates, guides, docs) and the **Summer Engine editor** (scenes, nodes, docks). `studio.open` — the same behavior as `summer open <target>` in a shell, run by the Summer MCP on this computer — takes an intent ("billing", "my games", "the scene I'm editing", "res://player.gd") and opens the exact page or panel, or prints the URL / engine op so you can hand it over. The **product map** reference (`summer_docs_read` id `reference/product-map`) is the full table of destinations with their intent phrases, required context, and what the user will see.
 
 A call written `studio.open({...})` is `summer_call({ op: "studio.open", input: {...} })` (3.x name: `summer_open`). The fields below are in the answer's `result`.
 

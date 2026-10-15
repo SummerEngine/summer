@@ -55,7 +55,7 @@ Same as above minus the platformer edge-lock urgency. Zoom out to show the field
 ## 3D first-person camera
 
 Camera is a child of a `Head` node on the player. Body yaws, Head pitches. See
-the `character-movement` skill (its 3D movement reference: `summer_read_library` id `skill/character-movement/references/movement-3d.md`) or
+the `character-movement` skill (its 3D movement reference: `summer_docs_read` id `skill/character-movement/references/movement-3d.md`) or
 `fps-controller` for the look script. FOV 70-75, near 0.05.
 
 ```

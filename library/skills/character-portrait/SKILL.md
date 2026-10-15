@@ -203,4 +203,4 @@ After the portrait is wired:
 - `concept-art` — explore the look first if not yet locked.
 - `asset-strategy` — meta-router and the 3D pipeline.
 - `scene-composition` — wiring the portrait into a dialogue UI scene.
-- `summer_read_library` id `reference/mcp-tools-reference` — how to call `assets.generate_image`.
+- `summer_docs_read` id `reference/mcp-tools-reference` — how to call `assets.generate_image`.

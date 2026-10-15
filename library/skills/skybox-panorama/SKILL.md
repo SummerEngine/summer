@@ -204,4 +204,4 @@ After the sky is wired:
 - `tileable-texture` — ground/floor counterpart.
 - `scene-composition` — WorldEnvironment placement and configuration.
 - `asset-strategy` — meta-router.
-- `summer_read_library` id `reference/mcp-tools-reference` — how to call `assets.generate_image`.
+- `summer_docs_read` id `reference/mcp-tools-reference` — how to call `assets.generate_image`.

@@ -17,7 +17,7 @@ Summer resolves skills in this order: the game project, then the user's agent sk
 
 1. **The game project** (default). Write `SKILL.md` into the project-scoped skills directory of the agent you are running in: `.claude/skills/<slug>/` for Claude Code, `.agents/skills/<slug>/` for Codex, Cursor, Devin Desktop and the other agents that read the shared folder. `summer skills install --scope project` shows the exact path for the current agent. Commit it with the game.
 2. **The user's agent skills directory** when the lesson applies to every project on this machine (`~/.claude/skills/<slug>/`, `~/.agents/skills/<slug>/`). Do not edit skills that Summer installed there; they are overwritten on the next `summer setup`.
-3. **The Summer library** when the lesson is general enough for every Summer user. Only possible inside a checkout of the `summerengine/summer` repository: add `library/skills/<slug>/resource.yaml` and `library/skills/<slug>/SKILL.md` (flat slugs, no category folders), then run `npm run generate:registry` and `npm run validate:library`. Everything under `registry/generated/` and every plugin manifest is generated from `library/`; never hand-edit them. Outside that checkout, send the lesson through `summer_library_feedback` (or `summer tool library-feedback`) with the id of the closest existing skill so the maintainers can fold it in.
+3. **The Summer library** when the lesson is general enough for every Summer user. Only possible inside a checkout of the `summerengine/summer` repository: add `library/skills/<slug>/resource.yaml` and `library/skills/<slug>/SKILL.md` (flat slugs, no category folders), then run `npm run generate:registry` and `npm run validate:library`. Everything under `registry/generated/` and every plugin manifest is generated from `library/`; never hand-edit them. Outside that checkout, send the lesson through `summer_call` `{"op":"docs.feedback"}` (or `summer tool library-feedback`) with the id of the closest existing skill so the maintainers can fold it in.
 
 Read the current project as ground truth. Working code from the real project beats invented examples.
 
@@ -25,7 +25,7 @@ Read the current project as ground truth. Working code from the real project bea
 
 1. One short sentence to the user: "Capturing learnings from this session into a skill." No plan dump.
 
-2. Probe. Check which skills directories exist for this agent and project, and search the bundled library first (`summer_search_library "<topic>"`, or `summer skills list`) so you extend an existing skill instead of duplicating it.
+2. Probe. Check which skills directories exist for this agent and project, and search the bundled library first (`summer_docs_search "<topic>"`, or `summer skills list`) so you extend an existing skill instead of duplicating it.
 
 3. Recap the session. Pull out learnings that are non-obvious AND general, things a future agent could not derive from reading the codebase. Examples that count:
    - A working shader (the actual code)
@@ -36,7 +36,7 @@ Read the current project as ground truth. Working code from the real project bea
    - A spawning, AI or enemy pattern that worked
    - A performance fix with measured before and after
    - An asset workflow that beat the alternatives
-   - A Summer tool that steered you wrong: report that with `summer_library_feedback` on the tool's id, in addition to any skill
+   - A Summer tool that steered you wrong: report that with `summer_call` `{"op":"docs.feedback"}` on the tool's id, in addition to any skill
 
    Examples that do NOT count: one-off code with no general lesson, things already documented in an existing skill or the project's agent instructions, personal preferences without reasoning, anything manufactured to fill space.
 

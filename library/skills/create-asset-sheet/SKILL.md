@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_get_studio_workflow summer_assets_generate_image summer_assets_slice_sheet summer_assets_search summer_import_asset_by_id summer_import_from_url summer_import_from_url_batch summer_call
+allowed-tools: Read Grep Glob Write Edit summer_assets_generate_image summer_assets_slice_sheet summer_assets_search summer_import_asset_by_id summer_import_from_url summer_import_from_url_batch summer_call
 paths: ["assets/**", "art/**", "sprites/**"]
 ---
 
@@ -58,7 +58,7 @@ calls the same server-side slicer as the Studio wizard.
 ## Programmatic path (chat / agent driving the engine)
 
 1. **Load the exact current recipe.** Call
-   `summer_get_studio_workflow({workflowId: "asset-pack"})`. Follow its ordered
+   `summer_call({op: "docs.workflows", input: {workflowId: "asset-pack"}})`. Follow its ordered
    steps and report any `manual` handoff instead of pretending it ran.
 
 2. **Generate the sheet.** Call `assets.generate_image` with a prompt like:

@@ -21,8 +21,10 @@ What is called what. **Do not deviate without updating this file first.**
 | A skill loaded through the plugin marketplace | `/summer:<slug>` | Only under the `.claude-plugin` install. Never write this form in skills or in general docs — the bare slug resolves under both installs. Docs about the Claude Code plugin itself (README "Claude Code: the Summer plugin", `docs/CLAUDE_CODE.md`) may use it. |
 | Shipped slash commands | `/summer <request>`, `/gameskill`, `/summer:start` | `commands/summer.md` (the game-dev router persona), `commands/gameskill.md`, and `commands/start.md` (the plugin's first-run guide, `/summer:start` under the plugin). |
 | Retired v2 forms | `summer:<category>/<name>`, `<category>/<name>`, `skills/<category>/<name>` | Categories are gone (`library/skills/` is flat). Recorded as aliases; nothing resolves them at runtime. Do not write them. |
-| MCP tools | `summer_<verb>_<noun>` | e.g. `summer_get_scene_tree`. The `surfaces.mcp.tool_name` in each `library/tools/<slug>/resource.yaml`. |
+| Operations | `<area>.<action>` | e.g. `assets.generate_image`, `store.publish`. Areas are user words (`plans`, not boards). The contract: `registry/schemas/operation.schema.json`; every 3.x tool name maps to one in `registry/operations/legacy-names.json`. |
+| MCP tools | `summer_` + the operation name, `.` as `_` | e.g. `summer_games_list` for `games.list`. Engine tools keep their 3.x names (`summer_get_scene_tree`: the `surfaces.mcp.tool_name` in each `library/tools/<slug>/resource.yaml`); makers keep `summer_tool_<slug>`. `summer_search` and `summer_call` reach every other operation. |
 | The same tool from the shell | `summer tool <slug> --args '<json>'` | Slug = the `library/tools/<slug>` directory name (`get-scene-tree`). |
+| An operation from the shell | `summer <area> <action> --<field> <value>` | Kebab-case: `summer assets generate-image --aspect-ratio 16:9`. |
 | Library ids | `<kind>/<slug>` | `skill/fps-controller`, `template/3d-basic`, `tool/get-scene-tree`. Permanent. |
 
 ## Manifest identifiers (generated — edit `integrations/`, not the files)

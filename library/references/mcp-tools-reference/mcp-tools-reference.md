@@ -247,10 +247,10 @@ Each spends the person's credits. `dryRun: true` returns `preview.estimate` (`cr
 
 | Tool | Use |
 |---|---|
-| `summer_start_game_task` | Route a user goal into the right workflow, skills, MCP tool groups, asset policy, gates, and verification path. |
-| `summer_get_studio_workflow` | Discover Summer Studio's guided workflow recipes (starter prompts, ordered steps, required tools) for a goal. |
+| `summer_call` `{"op":"docs.plan"}` | Route a user goal into the right workflow, skills, MCP tool groups, asset policy, gates, and verification path. Shell: `summer plan "<goal>"`. (3.x: `summer_start_game_task`.) |
+| `summer_call` `{"op":"docs.workflows"}` | Discover Summer Studio's guided workflow recipes (starter prompts, ordered steps, required tools) for a goal. (3.x: `summer_get_studio_workflow`.) |
 | `summer_get_project_context` | Project, scene, and `.summer` memory summary — call at start of session. Binds the session to the open project and surfaces a `capabilitySkewWarning` when the engine build and CLI have drifted; tools whose op the engine provably lacks return a structured `engine_lacks_op` result instead of running. Compact by default (a few KB: `sceneSummary`, scalar `health` with capability counts); `include:['scene_tree','capabilities','settings']` adds the heavy blocks, `omitted` says how. |
-| `summer_get_agent_playbook` | Daily operating contract (observe-first loop, content routing, invariants, verification ritual) — call at start of session. Also served natively as the `summer_agent_playbook` MCP prompt. |
+| `summer_call` `{"op":"summer_get_agent_playbook"}` | Daily operating contract (observe-first loop, content routing, invariants, verification ritual) — read at start of session. Also served natively as the `summer_agent_playbook` MCP prompt. |
 | `plans.get` (3.x `summer_get_board`) | Read the person's game plan (look, characters, place, storyboard, picks): every item with its id, picture URL and revision, to compare screenshots against. `projects.get({ projectId })` gives the project's `planId` from the project id in the build brief; works without the engine. |
 
 ### Creator platform (4)
@@ -269,20 +269,20 @@ These come from the hosted Summer server (the one ChatGPT and Claude connect to)
 - **Store page:** `summer_store_list_games`, `summer_store_create_game`, `summer_store_get_listing` (the page, the checklist and `availableTags`), `summer_store_update_listing` (text, tags, long description, support contact, release date, content rating), `summer_store_set_art`, `summer_store_set_trailer`, `summer_store_set_sound`, `summer_store_preview_link`, `summer_store_jams` and `summer_store_enter_jam`.
 - **Builds and release:** `summer_build_begin_upload` / `_sign_parts` / `_complete_upload` / `_status` (the local `summer_publish_build` does these from disk), `summer_store_version_*` for web and native downloads, `summer_store_submit` (one approval link for the owner), `summer_store_cancel_submission`, `summer_store_review`, `summer_store_releases`, `summer_build_release`.
 - **Grow:** `summer_grow_overview` and `summer_grow_analytics` (store page views, launches, play sessions, play time, custom events), `summer_grow_event_catalog`, `summer_grow_event_trend`, `summer_grow_event_funnel`, `summer_grow_members`, `summer_grow_ab_tests`, `summer_grow_prices`, `summer_grow_event_limit`, `summer_grow_apply` and `summer_grow_applications`.
-- **Guides:** the `publish-your-game`, `store-listing`, `store-art` and `grow-analytics` skills (`summer_read_library`).
+- **Guides:** the `publish-your-game`, `store-listing`, `store-art` and `grow-analytics` skills (`summer_docs_read`).
 
 ### Library search (2)
 
 | Tool | Use |
 |---|---|
-| `summer_search_library` | Search the library (skills, tools, templates, references, examples, collections) by describing the task in plain words; ranked ids with `matched_by` (lexical / semantic). The first move for any task; works without the engine. |
-| `summer_read_library` | Load one entry by id: a skill's SKILL.md plus metadata, a tool's call recipe, a template's pin, a reference's body. A body ends with its relative links and the id that loads each; a linked file loads by `<entry id>/<link as written>` (e.g. `skill/spatial-placement/references/kit-placement-tools.md`). The last line is the `entry_id` footer to report through `summer_library_feedback`. |
+| `summer_docs_search` | Search the library (skills, tools, templates, references, examples, collections) by describing the task in plain words; ranked ids with `matched_by` (lexical / semantic). The first move for any task; works without the engine. |
+| `summer_docs_read` | Load one entry by id: a skill's SKILL.md plus metadata, a tool's call recipe, a template's pin, a reference's body. A body ends with its relative links and the id that loads each; a linked file loads by `<entry id>/<link as written>` (e.g. `skill/spatial-placement/references/kit-placement-tools.md`). The last line is the `entry_id` footer to report through `docs.feedback`. |
 
 ### Library feedback (1)
 
 | Tool | Use |
 |---|---|
-| `summer_library_feedback` | Report library-entry outcomes (worked/wrong/outdated/...) so entries get fixed and re-ranked. Fire-and-forget with a 1s cap; enum-first schema with no field for project files, chat content, or code; honors `SUMMER_NO_TELEMETRY=1` and `DO_NOT_TRACK=1`. |
+| `summer_call` `{"op":"docs.feedback"}` | Report library-entry outcomes (worked/wrong/outdated/...) so entries get fixed and re-ranked. Fire-and-forget with a 1s cap; enum-first schema with no field for project files, chat content, or code; honors `SUMMER_NO_TELEMETRY=1` and `DO_NOT_TRACK=1`. |
 
 ### Summer Apps
 
@@ -314,9 +314,9 @@ Team tools inside Summer Studio that agents build: shared, live on the team's da
 
 Every scene-touching skill should follow this loop:
 
-1. `summer_start_game_task` — route the goal into skills/tools/gates.
+1. `summer_call` `{"op":"docs.plan","input":{"goal":"..."}}` — route the goal into skills/tools/gates.
 2. `summer_get_project_context` — orient.
-3. `summer_get_agent_playbook` — read the rules.
+3. `summer_call` `{"op":"summer_get_agent_playbook"}` — read the rules.
 4. Resolve the exact `res://` scene path; open it only for an intentional current-tab read/UI action.
 5. Pass that `scenePath` to mutations (`summer_add_node`, `summer_set_prop`, `summer_connect_signal`, ...).
 6. Mutation tools append one final `SaveScene`; use `summer_save_scene` directly only for a standalone save/save-as.

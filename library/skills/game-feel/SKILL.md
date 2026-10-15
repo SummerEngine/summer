@@ -117,7 +117,7 @@ func flash() -> void:
 
 **Tunable knobs:** `duration` 0.06–0.12s — under 0.06 reads as a flicker, over 0.12 looks slow. `emission_energy_multiplier` 1.5–3.0.
 
-> Note: `summer_set_prop(scenePath="res://levels/world.tscn", path="./World/Enemy/Mesh", key="material_override", value="StandardMaterial3D")` creates an inline `StandardMaterial3D` sub_resource that `summer_set_resource_property(scenePath="res://levels/world.tscn", nodePath="./World/Enemy/Mesh", resourceProperty="material_override", subProperty="albedo_color", value="Color(r, g, b, a)")` then edits and `summer_save_scene` persists — so the inline route, the script above, and a saved `materials/flash.tres` are all valid. What breaks is the value *shape*: a JSON object instead of a Godot literal string, a misspelled `key`/`subProperty`, or a wrong-typed value returns `ok:true` yet silently no-ops or destructively coerces on current engines (dict → material cleared; dict → `Color(0,0,0,1)`; newer engines reject these with `unknown_property` / `bad_value_shape` / `type_mismatch`). Always pass class names and `Color(...)`/`Vector3(...)` strings, and confirm the result in the saved `.tscn` or a snapshot diff — never from `ok` alone. See `summer_read_library` id `reference/mcp-tools-reference`.
+> Note: `summer_set_prop(scenePath="res://levels/world.tscn", path="./World/Enemy/Mesh", key="material_override", value="StandardMaterial3D")` creates an inline `StandardMaterial3D` sub_resource that `summer_set_resource_property(scenePath="res://levels/world.tscn", nodePath="./World/Enemy/Mesh", resourceProperty="material_override", subProperty="albedo_color", value="Color(r, g, b, a)")` then edits and `summer_save_scene` persists — so the inline route, the script above, and a saved `materials/flash.tres` are all valid. What breaks is the value *shape*: a JSON object instead of a Godot literal string, a misspelled `key`/`subProperty`, or a wrong-typed value returns `ok:true` yet silently no-ops or destructively coerces on current engines (dict → material cleared; dict → `Color(0,0,0,1)`; newer engines reject these with `unknown_property` / `bad_value_shape` / `type_mismatch`). Always pass class names and `Color(...)`/`Vector3(...)` strings, and confirm the result in the saved `.tscn` or a snapshot diff — never from `ok` alone. See `summer_docs_read` id `reference/mcp-tools-reference`.
 
 ## Step 5 — Install Section 2 (Trauma Camera Shake)
 
@@ -375,7 +375,7 @@ Tune one knob at a time:
 
 ## Collaborative protocol
 
-This skill writes 3 GDScript files and adds 1 node + 1 autoload entry. Always ask before each section is applied. Group related writes into one ask: "I'm about to add HitFlash + CameraShake + AudioDucker autoload, wire one signal. OK?" See `summer_read_library` id `reference/collaborative-protocol`.
+This skill writes 3 GDScript files and adds 1 node + 1 autoload entry. Always ask before each section is applied. Group related writes into one ask: "I'm about to add HitFlash + CameraShake + AudioDucker autoload, wire one signal. OK?" See `summer_docs_read` id `reference/collaborative-protocol`.
 
 ## When NOT to use this skill
 
@@ -386,11 +386,11 @@ This skill writes 3 GDScript files and adds 1 node + 1 autoload entry. Always as
 
 ## See also
 
-- `summer_read_library` id `reference/mcp-tools-reference` — full MCP tool list, especially `summer_set_resource_property` on inline sub_resources and which failures are loud vs. silent
-- `summer_read_library` id `reference/godot-version` — Summer compatibility and
+- `summer_docs_read` id `reference/mcp-tools-reference` — full MCP tool list, especially `summer_set_resource_property` on inline sub_resources and which failures are loud vs. silent
+- `summer_docs_read` id `reference/godot-version` — Summer compatibility and
   version-sensitive API notes
-- `summer_read_library` id `reference/collaborative-protocol` — "May I write" pattern
-- `summer_read_library` id `reference/gd-style` — typed GDScript conventions
+- `summer_docs_read` id `reference/collaborative-protocol` — "May I write" pattern
+- `summer_docs_read` id `reference/gd-style` — typed GDScript conventions
 - `audio-direction` — bus layout setup (prerequisite for ducking)
 - `vfx-hit-spark` — particles to layer on top of the trio
 - `debugging-game-feel` — when the trio is installed and it still feels wrong

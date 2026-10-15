@@ -213,4 +213,4 @@ Once the shots are generated:
 - `music-track` — trailer score.
 - `sound-effect` — cut SFX (whooshes, impacts, stingers).
 - `concept-art` — generate the reference image axis when no asset exists yet.
-- `summer_read_library` id `reference/mcp-tools-reference` — how to call `assets.generate_video`; `summer_search` returns its exact input.
+- `summer_docs_read` id `reference/mcp-tools-reference` — how to call `assets.generate_video`; `summer_search` returns its exact input.

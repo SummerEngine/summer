@@ -67,7 +67,7 @@ frames_budget_exceeded() -> bool
 
 `props` apply via `set()` per key; unknown keys are collected into a `prop_warnings` report entry, never silently dropped — read it. On an **older engine** a missing helper is a plain GDScript error (`Invalid call to method 'add_mesh'…`): fall back to the manual form, which works everywhere.
 
-Newer engines add three more tiers. Their frozen signatures, conventions and fallbacks are in `references/ctx-api.md` (read it with `summer_read_library` id `skill/scene-scripting/references/ctx-api.md`):
+Newer engines add three more tiers. Their frozen signatures, conventions and fallbacks are in `references/ctx-api.md` (read it with `summer_docs_read` id `skill/scene-scripting/references/ctx-api.md`):
 
 - **Geometry:** `boolean`, `extrude_polygon`, `lathe`, `sweep`, `terrain`, `set_smooth`, `decimate`, `convex_collision`, `uv_planar` / `uv_box`, `mirror`, `animate`, `make_shader`; `add_mesh` also takes `torus` and `text`.
 - **Animation:** `animate_method`, `anim_state_machine`, `bone_pose`, `look_at_modifier` (the full recipe lives in `character-animation-wiring`).

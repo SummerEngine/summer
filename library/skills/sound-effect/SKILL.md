@@ -175,4 +175,4 @@ Print the prompt, the length and the target path (`res://audio/sfx/<name>.wav`),
 - `ambient-bed` — long looping textures
 - `music-track` — music
 - `voice-line` — speech
-- `summer_read_library` id `reference/mcp-tools-reference`
+- `summer_docs_read` id `reference/mcp-tools-reference`

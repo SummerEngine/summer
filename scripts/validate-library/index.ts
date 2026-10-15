@@ -144,6 +144,20 @@ function walkMarkdownFiles(dir: string): string[] {
 /** Where MCP tools are registered; scanned for `server.tool("summer_*")` calls. */
 export const MCP_SOURCE_DIR = "src/mcp";
 
+/**
+ * 3.x docs-area tools and their 4.0 form (SPEC-operations §11, docs area). The
+ * 4.0 local MCP lists summer_docs_search and summer_docs_read; the rest run
+ * through summer_call.
+ */
+export const RETIRED_DOCS_TOOLS: Readonly<Record<string, string>> = {
+  summer_search_library: "summer_docs_search",
+  summer_read_library: "summer_docs_read",
+  summer_library_feedback: 'summer_call {"op":"docs.feedback"}',
+  summer_start_game_task: 'summer_call {"op":"docs.plan"} (shell: summer plan "<goal>")',
+  summer_get_studio_workflow: 'summer_call {"op":"docs.workflows"}',
+  summer_get_agent_playbook: 'summer_call {"op":"summer_get_agent_playbook"}',
+};
+
 const MCP_REGISTRATION_RE = /\.(?:tool|registerTool)\(\s*["'](summer_[a-z0-9_]+)["']/g;
 
 /**
@@ -597,7 +611,7 @@ export function runValidation(rootDir: string, options?: { schemasDir?: string }
       const mdRel = path.relative(res.absDir, mdAbs);
       for (const target of escapingSkillPaths(fs.readFileSync(mdAbs, "utf8"), mdRel)) {
         errors.push(
-          `library/${res.relDir}/${mdRel}: "${target}" leaves the skill folder, so it breaks once summer setup copies the folder alone. Name a reference as \`summer_read_library\` id \`reference/<slug>\`, another skill by its bare slug, a file of another entry as \`<entry id>/<path>\``,
+          `library/${res.relDir}/${mdRel}: "${target}" leaves the skill folder, so it breaks once summer setup copies the folder alone. Name a reference as \`summer_docs_read\` id \`reference/<slug>\`, another skill by its bare slug, a file of another entry as \`<entry id>/<path>\``,
         );
       }
     }
@@ -652,6 +666,24 @@ export function runValidation(rootDir: string, options?: { schemasDir?: string }
             : `library/${res.relDir}/${mdRel}:${problem.line}: \`var x := ctx.…\` does not compile: the run script's ctx is untyped, so the type cannot be inferred. Write \`var x = ctx.…\``,
         );
       }
+    }
+  }
+
+  // --- 4.0 tool names: the 3.x docs-area tools the 4.0 MCP server no longer lists ---
+  // Skills and references name what an agent can call in 4.0. Tool descriptors
+  // (kind tool) describe the 3.x tools themselves and are skipped. A line may
+  // keep a 3.x name to explain it ("3.x: ...") or to call it through
+  // summer_call ("op":"summer_...").
+  for (const res of resources) {
+    if (res.data.kind === "tool") continue;
+    for (const mdAbs of walkMarkdownFiles(res.absDir)) {
+      const lines = fs.readFileSync(mdAbs, "utf8").split("\n");
+      lines.forEach((line, i) => {
+        for (const [old, now] of Object.entries(RETIRED_DOCS_TOOLS)) {
+          if (!line.includes(old) || /3\.x/.test(line) || new RegExp(`op"?:\\s*"${old}"`).test(line)) continue;
+          errors.push(`library/${res.relDir}/${path.relative(res.absDir, mdAbs)}:${i + 1}: "${old}" is a 3.x tool name the 4.0 MCP server does not list; write ${now}`);
+        }
+      });
     }
   }
 

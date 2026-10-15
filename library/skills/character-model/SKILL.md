@@ -256,4 +256,4 @@ After the rigged character is wired:
 - `asset-strategy` — meta-router; this skill is the canonical drill-down of its "Image-to-3D for characters" path.
 - `prop-model` — for non-character props.
 - `scene-composition` — for the CharacterBody3D + Mesh + Collider parent pattern.
-- `summer_read_library` id `reference/mcp-tools-reference` — how to call `assets.generate_3d`, `assets.generate_image` and `assets.generate_motion`; `summer_search` returns each one's exact input.
+- `summer_docs_read` id `reference/mcp-tools-reference` — how to call `assets.generate_3d`, `assets.generate_image` and `assets.generate_motion`; `summer_search` returns each one's exact input.

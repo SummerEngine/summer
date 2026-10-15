@@ -59,7 +59,7 @@ Once you have read an entry, acting depends on the kind:
 - **reference** → the read is the body; nothing else to load.
 - **tool** → call `mcp_tool_name` over MCP with arguments matching its `input_schema`. If your session does not list that tool (4.0 lists the engine tools and the common jobs), call it through `summer_call`: it accepts the 3.x name. From a shell, `summer tool <slug> --args '<json>'` (`summer tool --list` prints every slug). If `remote` is `false` the engine must be running. Check `authority` before calling anything that mutates or publishes.
 
-Every read ends with one footer line — `— entry_id: <id>@<content-hash>. If this entry is wrong, stale, or you deviate from it, report via summer_library_feedback.` — and that `entry_id` is the exact value to report with (section 4, "Reporting outcomes").
+Every read ends with one footer line — `— entry_id: <id>@<content-hash>. If this entry is wrong, stale, or you deviate from it, report via summer_library_feedback.` — and that `entry_id` is the exact value to report with (section 4, "Reporting outcomes"). On the 4.0 server the footer ends `report via summer_call {"op":"docs.feedback"}.` instead.
 
 ## 4. Work: rules, verification, memory
 

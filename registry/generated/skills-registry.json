@@ -794,7 +794,7 @@
     {
       "id": "skill/navigate-summer",
       "name": "navigate-summer",
-      "description": "Open a Summer web page or editor surface for the user (billing, their games, a scene) with summer_open.",
+      "description": "Open a Summer web page or editor surface for the user (billing, their games, a scene) with studio.open.",
       "clients": "all",
       "recommended": true,
       "status": "stable",

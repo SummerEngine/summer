@@ -425,7 +425,8 @@ describe("v4, asset generation runs on the hosted server", () => {
 });
 
 describe("v4, generated files on this machine", () => {
-  const made = { ok: true, status: "done", result: { assets: [{ assetId: "a1", title: "Barrel", fileUrl: "https://cdn.example.com/a1.png", thumbnailUrl: null }], model: "m", aspectRatio: "1:1" } };
+  // The file URL names an address, not a host name: no DNS in tests.
+  const made = { ok: true, status: "done", result: { assets: [{ assetId: "a1", title: "Barrel", fileUrl: "https://93.184.215.14/a1.png", thumbnailUrl: null }], model: "m", aspectRatio: "1:1" } };
 
   afterEach(() => {
     vi.unstubAllGlobals();

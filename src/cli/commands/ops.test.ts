@@ -147,7 +147,7 @@ describe("generated files", () => {
         .mockResolvedValueOnce(envelope({ ok: true, status: "running", job: { id: "gen:7", state: "queued" } }))
         .mockResolvedValueOnce(envelope({ ok: true, status: "done", result: { job: { id: "gen:7", kind: "gen", state: "done", result: { assetId: "m1", fileUrl: "https://cdn.example.com/m1.glb" } }, finished: true } }));
       const fetch = vi.fn(async () => new Response("glb bytes", { status: 200 })) as unknown as typeof globalThis.fetch;
-      const d = { ...deps(hosted), files: new FileSaver({ saveByDefault: false, cwd: () => root, fetch }) };
+      const d = { ...deps(hosted), files: new FileSaver({ saveByDefault: false, cwd: () => root, fetch, lookup: async () => [{ address: "93.184.215.14" }] }) };
       expect(await runOpFromCli("assets.generate_3d", ["--prompt", "tree", "--out", "models", "--wait", "--json"], d)).toBe(0);
       expect(hosted).toHaveBeenNthCalledWith(2, "summer_call", { op: "assets.generate_3d", input: { prompt: "tree" } });
       expect(JSON.parse(d.out[0]).result.localPath).toBe(join(root, "models", "m1.glb"));
@@ -155,5 +155,29 @@ describe("generated files", () => {
     } finally {
       await rm(root, { recursive: true, force: true });
     }
+  });
+
+  it("follows an approved generation into its job and saves there", async () => {
+    const root = await mkdtemp(join(tmpdir(), "summer-ops-cli-out-"));
+    try {
+      const hosted = vi
+        .fn()
+        .mockResolvedValueOnce(envelope({ ok: true, status: "needs_approval", approval: { id: "op1", url: "https://www.summerengine.com/studio/approvals/op1", who: "person", summary: "Spend credits" }, job: { id: "apr:op1", state: "awaiting_approval" } }))
+        .mockResolvedValueOnce(envelope({ ok: true, status: "done", result: { job: { id: "apr:op1", kind: "apr", state: "done", result: { status: "running", job: { id: "gen:9", state: "queued" } } }, finished: true } }))
+        .mockResolvedValueOnce(envelope({ ok: true, status: "done", result: { job: { id: "gen:9", kind: "gen", state: "done", result: { assetId: "m9", fileUrl: "https://cdn.example.com/m9.glb" } }, finished: true } }));
+      const fetch = vi.fn(async () => new Response("glb bytes", { status: 200 })) as unknown as typeof globalThis.fetch;
+      const d = { ...deps(hosted), files: new FileSaver({ saveByDefault: false, cwd: () => root, fetch, lookup: async () => [{ address: "93.184.215.14" }] }) };
+      expect(await runOpFromCli("assets.generate_3d", ["--input", '{"prompt":"tree","out":"models"}', "--wait", "--json"], d)).toBe(0);
+      expect(hosted).toHaveBeenLastCalledWith("summer_call", { op: "jobs.wait", input: { jobId: "gen:9", timeoutSeconds: 50 } });
+      expect(JSON.parse(d.out[0]).result.localPath).toBe(join(root, "models", "m9.glb"));
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps --out in the wait command it prints", () => {
+    const running = { ok: true as const, status: "running" as const, job: { id: "gen:1", state: "queued" as const } };
+    expect(formatAnswer(running, "Assets/My Art")).toBe('Started: job gen:1. Wait for it: summer jobs wait --job-id gen:1 --out "Assets/My Art"');
+    expect(formatAnswer(running, "models")).toBe("Started: job gen:1. Wait for it: summer jobs wait --job-id gen:1 --out models");
   });
 });

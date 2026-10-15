@@ -1,7 +1,7 @@
 import { Command } from "commander";
 import { localEntries, localInputSchema, localWireForm, missingInput } from "../../core/ops/catalog.js";
 import { answerOfHosted, callHostedV4, searchEverywhere, type HostedCall } from "../../core/ops/cloud.js";
-import { errorAnswer, isLocalOp, localToolsFor, opFromCli, OP_NAME, type Answer } from "../../core/ops/contract.js";
+import { errorAnswer, isLocalOp, localToolsFor, opFromCli, OP_NAME, type Answer, type JobRef } from "../../core/ops/contract.js";
 import { ENGINE_SPLIT_OPS, engineOpDef, splitToolArgs } from "../../core/ops/engine.js";
 import { engineFailure, engineNotRunning } from "../../core/ops/engine-answer.js";
 import { loadLibraryIndex } from "../../core/library-search.js";
@@ -173,13 +173,24 @@ async function waitFor(answer: Answer, deps: OpsCliDeps): Promise<Answer> {
     if (!waited.ok || waited.status !== "done") return waited;
     const result = waited.result as { job: { state: string; result?: unknown; error?: { code: string; message: string } }; finished: boolean };
     if (!result.finished) continue;
+    // An approved generation runs on as its own job: follow that job.
+    const chained = result.job.result as { status?: string; job?: JobRef } | undefined;
+    if (result.job.state === "done" && chained?.status === "running" && chained.job?.id) {
+      current = { ok: true, status: "running", job: chained.job };
+      continue;
+    }
     if (result.job.state === "done") return { ok: true, status: "done", result: result.job.result ?? {} };
     return errorAnswer(result.job.state === "failed" ? "invalid_input" : "conflict", result.job.error?.message ?? `The job ended: ${result.job.state}.`, { details: { job } });
   }
   return current;
 }
 
-export function formatAnswer(answer: Answer): string {
+/** A value as one shell word. */
+const shellWord = (value: string) => (/^[\w./:@+=-]+$/.test(value) ? value : JSON.stringify(value));
+
+/** The answer for a person; `out` is the --out to keep in the printed wait command. */
+export function formatAnswer(answer: Answer, out?: string): string {
+  const waitFlags = (id: string) => `summer jobs wait --job-id ${id}${out ? ` --out ${shellWord(out)}` : ""}`;
   if (!answer.ok) {
     const next = answer.error.next;
     const step = !next ? "" : "op" in next ? `\nNext: ${next.op}` : "url" in next ? `\nNext: ${next.label}: ${next.url}` : `\nNext: ${next.say}`;
@@ -189,9 +200,9 @@ export function formatAnswer(answer: Answer): string {
     case "done":
       return JSON.stringify(answer.result, null, 2);
     case "running":
-      return `Started: job ${answer.job.id}. Wait for it: summer jobs wait --job-id ${answer.job.id}`;
+      return `Started: job ${answer.job.id}. Wait for it: ${waitFlags(answer.job.id)}`;
     case "needs_approval":
-      return `Needs approval (${answer.approval.who}): ${answer.approval.summary}\n${answer.approval.url}\nNothing changes until they approve. Follow it: summer jobs wait --job-id ${answer.job.id}`;
+      return `Needs approval (${answer.approval.who}): ${answer.approval.summary}\n${answer.approval.url}\nNothing changes until they approve. Follow it: ${waitFlags(answer.job.id)}`;
     case "dry_run":
       return `Dry run: ${String(answer.preview.summary ?? "")}\n${JSON.stringify(answer.preview, null, 2)}`;
   }
@@ -212,18 +223,21 @@ export async function runOpFromCli(op: string, argv: readonly string[], deps: Op
     return 1;
   }
   let answer: Answer;
+  let out: string | undefined;
   if (isLocalOp(op)) {
     answer = await runLocal(op, call, deps);
     if (call.wait) answer = await waitFor(answer, deps);
   } else {
     // --out stays here: the files save on this machine once the answer (or the waited job) names them.
     const files = deps.files ?? new FileSaver({ saveByDefault: true });
-    const { input, out } = files.take(op, call.input);
-    answer = await runCloud(op, { ...call, input }, deps);
+    const taken = files.take(op, call.input);
+    out = taken.out;
+    answer = await runCloud(op, { ...call, input: taken.input }, deps);
     if (call.wait) answer = await waitFor(answer, deps);
     answer = await files.finish(op, answer, out);
   }
-  (answer.ok ? deps.print : deps.printError)(call.json ? JSON.stringify(answer) : formatAnswer(answer));
+  (answer.ok ? deps.print : deps.printError)(call.json ? JSON.stringify(answer) : formatAnswer(answer, out));
+  if (!call.json && answer.ok) for (const warning of answer.warnings ?? []) deps.printError(`Warning: ${warning}`);
   return answer.ok ? 0 : 1;
 }
 

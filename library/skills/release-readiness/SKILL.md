@@ -1,6 +1,6 @@
 ---
 name: release-readiness
-description: "Before releasing a Summer game version, prove players can play it: server scene, online join, progress, Game ID, released Summer, packed files, app version."
+description: "Before releasing a Summer game version, prove players can play it: server, online join, progress, files."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: deployment

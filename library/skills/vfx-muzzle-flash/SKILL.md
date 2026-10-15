@@ -1,6 +1,6 @@
 ---
 name: vfx-muzzle-flash
-description: "Muzzle-flash effect — a one-shot ~80 ms burst at a gun barrel built with a particle one-shot or a flashing quad with a star-burst shader."
+description: "Muzzle-flash effect: a one-shot ~80 ms burst at a gun barrel, from particles or a star-burst quad."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects

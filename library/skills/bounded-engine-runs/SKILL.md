@@ -1,6 +1,6 @@
 ---
 name: bounded-engine-runs
-description: "Run Summer headless or offscreen safely from an agent: time limits, one engine per project, muted runs, import passes, tests that fail on crashes."
+description: "Run Summer headless or offscreen safely: time limits, one engine per project, import passes, crash checks."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: workflow

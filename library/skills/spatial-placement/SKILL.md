@@ -1,6 +1,6 @@
 ---
 name: spatial-placement
-description: "Place 3D objects and modular kit pieces from measured geometry — inspect, place, starcast, measure, correct; floor, wall, facade, pipe and alcove recipes."
+description: "Place 3D objects and modular kit pieces from measured geometry: floors, walls, facades, pipes, alcoves."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: scene-and-project

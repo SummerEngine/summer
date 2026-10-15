@@ -1,6 +1,6 @@
 ---
 name: vehicle-model
-description: "Generate a hard-surface vehicle — car, spaceship, mech, boat, tank — static mesh with optional detail-texture pass, wired as VehicleBody3D or MeshInstance3D."
+description: "Generate a hard-surface vehicle (car, spaceship, mech, boat, tank) as a static or VehicleBody3D mesh."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 3d-assets
@@ -190,6 +190,10 @@ summer_save_scene(scenePath="res://main.tscn")
 - **Open-top vehicle (convertible, jeep).** Specify "open top, no roof" — defaults often add a roof.
 - **The user wants the cockpit interior visible.** Generate exterior here, then a separate `prop-model` for the interior, and switch meshes when the camera enters first-person view.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-6 and skip step 7 (scene wiring, `VehicleWheel3D`). Get the file with `summer_get_asset_download_url` on the returned asset id, save it where the person asked, and tell them the path and format. The file is GLB and not at real-world size: give the person the target length (a car about 4.5 m) and tell them where the wheels are, so they can set up their engine's vehicle physics.
+
 ## Fallback (no MCP)
 
 1. Generate the multi-angle reference at the Summer dashboard (or Midjourney / nano-banana web).
@@ -212,4 +216,4 @@ After the vehicle is wired:
 - `character-model` — for the driver/pilot.
 - `prop-model` — for separable parts (rotors, decals as decals, modular kit pieces).
 - `asset-strategy` — meta-router.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_3d` schema, including `kind: "texture"` for the secondary detail pass.
+- `summer_read_library` id `reference/mcp-tools-reference` — `summer_generate_3d` schema, including `kind: "texture"` for the secondary detail pass.

@@ -1,6 +1,6 @@
 ---
 name: ui-graphics
-description: "Generate game-UI elements — icons, buttons, panels, frames, HUD widgets, badges — flat design, transparent background, wired via TextureRect/NinePatchRect."
+description: "Generate game UI art (icons, buttons, panels, frames, HUD widgets) flat, on a transparent background."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
@@ -190,6 +190,10 @@ If you generate a 4×4 grid of icons in one image, each icon becomes an `AtlasTe
 - **Transparency comes back as a checkerboard pattern in the image.** The model rendered the checkerboard literally because the prompt asked for transparency. Remove every mention of transparency from the prompt, generate on a plain background, and pass `removeBackground: true` to cut the alpha server-side.
 - **Icons need to read at very small size (16-24px in a packed bar).** Bias prompts toward bold silhouette + minimal interior detail. Ornate detail is invisible at 16px and adds noise.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-5 and skip steps 6-7 (import, scene wiring). Pass `out` to `summer_generate_image` so each PNG lands in the person's folder; keep `removeBackground: true` for icons and buttons that need transparency.
+
 ## Fallback (no MCP)
 
 Print the call:
@@ -221,4 +225,4 @@ After the UI graphic is wired:
 - `character-portrait` — for in-UI character images.
 - `pixel-art` — pixel-style UI.
 - `scene-composition` — Theme and Control hierarchy.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_image` schema.
+- `summer_read_library` id `reference/mcp-tools-reference` — `summer_generate_image` schema.

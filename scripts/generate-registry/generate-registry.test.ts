@@ -220,6 +220,25 @@ describe("generateRegistry: catalog outputs", () => {
     ]);
   });
 
+  it("a library-only skill (bundled: false) stays in the index but leaves bulk installs and every manifest", () => {
+    const root = copyBasicFixture();
+    const yamlPath = path.join(root, "library", "skills", "beta-skill", "resource.yaml");
+    fs.writeFileSync(yamlPath, `${fs.readFileSync(yamlPath, "utf8").trimEnd()}\nbundled: false\n`);
+    const result = gen(root);
+    const index = parse(result.files, "index.json").resources as Array<{ id: string }>;
+    expect(index.map((entry) => entry.id)).toContain("skill/beta-skill");
+    const skills = parse(result.files, "skills-registry.json").skills as Array<Record<string, unknown>>;
+    expect(skills.find((skill) => skill.name === "beta-skill")?.bundled).toBe(false);
+    expect(skills.find((skill) => skill.name === "alpha-skill")).not.toHaveProperty("bundled");
+    expect(result.files.get("skills-index.md")).toMatch(/\| \[\*beta-skill\*\]\(\.\/beta-skill\/SKILL\.md\) \(preview\) \(library only\) \|/);
+    for (const name of ["plugin.claude.json", "plugin.codex.json", "gemini-extension.json"]) {
+      const manifest = JSON.parse(result.files.get(name)!) as { skills?: string[] };
+      if (!manifest.skills) continue;
+      expect(manifest.skills, name).toContain("./library/skills/alpha-skill/");
+      expect(manifest.skills, name).not.toContain("./library/skills/beta-skill/");
+    }
+  });
+
   it("every generated file ends with exactly one trailing newline", () => {
     const result = gen(basicRoot);
     for (const [, content] of result.files) {

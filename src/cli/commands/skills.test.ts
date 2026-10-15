@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { PACKAGE_ROOT } from "../../core/package-root.js";
@@ -5,17 +7,18 @@ import { skillsCommand } from "./skills.js";
 
 vi.mock("../../core/skills-registry.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../core/skills-registry.js")>();
-  const entry = (name: string, status: string, recommended: boolean) => ({
+  const entry = (name: string, status: string, recommended: boolean, domains: string[] = []) => ({
     id: `skill/${name}`,
     name,
     description: `${name} description`,
     recommended,
     status,
     path: "library/skills/3d-lighting/",
+    domains,
   });
   return {
     ...actual,
-    getSkillRegistry: () => [entry("stable-skill", "stable", true), entry("intake-skill", "preview", false)],
+    getSkillRegistry: () => [entry("stable-skill", "stable", true, ["assets"]), entry("intake-skill", "preview", false)],
     // Every fixture entry resolves to a real skill dir so the SKILL.md check passes.
     resolveSkillDir: () => join(PACKAGE_ROOT, "library", "skills", "3d-lighting"),
   };
@@ -47,5 +50,31 @@ describe("summer skills: preview skills", () => {
     expect(install.options.find((option) => option.long === "--include-preview")?.hidden).toBe(true);
     expect(install.helpInformation()).toContain("--stable-only");
     expect(install.helpInformation()).not.toContain("--include-preview");
+  });
+});
+
+describe("summer skills install: Claude Code slash commands", () => {
+  const commands = () => join(homedir(), ".claude", "commands");
+  const quietly = async (args: string[]) => {
+    // commander keeps option values between parses of the same command.
+    const install = skillsCommand.commands.find((command) => command.name() === "install")!;
+    for (const option of install.options) install.setOptionValue(option.attributeName(), undefined);
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      await skillsCommand.parseAsync(["install", ...args], { from: "user" });
+    } finally {
+      log.mockRestore();
+    }
+  };
+
+  it("--assets leaves out the engine commands (/start, /summer, /gameskill)", async () => {
+    await quietly(["--assets", "--agent", "claude-code"]);
+    expect(existsSync(join(homedir(), ".claude", "skills", "stable-skill", "SKILL.md"))).toBe(true);
+    expect(existsSync(join(commands(), "start.md"))).toBe(false);
+  });
+
+  it("--all installs them", async () => {
+    await quietly(["--all", "--agent", "claude-code"]);
+    expect(existsSync(join(commands(), "start.md"))).toBe(true);
   });
 });

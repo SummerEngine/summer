@@ -260,6 +260,11 @@ function errorResult(message: string, extra?: Record<string, any>, coded?: Pick<
   };
 }
 
+/** The step after a generation job starts (the hosted tools answer the same way). */
+function checkJobNext(jobId: string): string {
+  return `The job runs on Summer's servers. Poll summer_check_job({ jobId: "${jobId}" }) every 15-30 seconds until status is "completed".`;
+}
+
 function successResult(data: any) {
   return {
     content: [
@@ -653,8 +658,9 @@ For a complete animated humanoid package, pass rig=true plus animationNames or
 actionIds. This routes through the shared character pipeline instead of a
 one-off mesh job.
 
-By default, waits for completion (up to 10 min) and returns the result directly.
-Set wait=false to get the jobId immediately and poll manually with summer_check_job.
+Returns a jobId within seconds. Poll summer_check_job with it until status is
+"completed" (most models take 1-5 minutes; tell the user it is running and keep
+working meanwhile). wait=true blocks up to 10 minutes instead.
 
 Cloud tool — runs on Summer's servers and works WITHOUT the Summer Engine app open.
 Requires authentication: run 'npx -y summer-engine@latest login' first.`,
@@ -710,8 +716,8 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
         .describe("Character height used by auto-rigging"),
       wait: z
         .boolean()
-        .default(true)
-        .describe("Wait for completion (default true, up to 10 min). Set false to get jobId immediately."),
+        .default(false)
+        .describe("Block until the job finishes (up to 10 min) and return the result. Default false returns the jobId at once; poll summer_check_job."),
       options: z
         .record(z.any())
         .optional()
@@ -760,12 +766,12 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
 
       const jobId = result.data?.jobId;
 
-      // If not waiting or no jobId, return immediately
+      // The job runs on Summer's servers; the agent polls summer_check_job.
       if (!wait || !jobId) {
-        return successResult(result.data);
+        return successResult(jobId ? { ...result.data, next: checkJobNext(jobId) } : result.data);
       }
 
-      // Auto-poll until done
+      // wait=true: block until done
       const pollResult = await pollJob(jobId);
 
       if (pollResult.error) {
@@ -853,9 +859,10 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     "summer_check_job",
     `Check the status of an async generation job.
 
-Use this when you called summer_generate_3d with wait=false, or need to re-check
-a job that timed out. Most of the time you won't need this — summer_generate_3d
-waits automatically.
+summer_generate_3d and summer_generate_motion return a jobId; call this with it
+every 15-30 seconds until status is "completed" or "failed". A completed job
+carries the result: assetId (3D), rigAssetId (rig=true), animationAssetId or
+result.assets (motion), with file URLs. Import with summer_import_asset_by_id.
 
 Status values: waiting, active, completed, failed, delayed, unknown.
 
@@ -926,9 +933,9 @@ Each clip (meshy: each motion; text-to-motion: each prompt x take) is billed.
 State the clip list and estimated cost and confirm with the user before
 spending.
 
-By default, waits for completion (up to 10 min) and returns the result directly.
-Set wait=false to get the jobId immediately and poll with summer_check_job.
-Import finished clips with summer_import_asset_by_id.
+Returns a jobId within seconds. Poll summer_check_job with it until status is
+"completed" (wait=true blocks up to 10 minutes instead). Import finished clips
+with summer_import_asset_by_id.
 
 Errors: backend_unavailable means text-to-motion is not enabled on this server
 yet — use meshy-library for humanoids and do not retry. Job failures starting
@@ -955,7 +962,7 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
       const jobId = result.data?.jobId;
 
       if (!args.wait || !jobId) {
-        return successResult(result.data);
+        return successResult(jobId ? { ...result.data, next: checkJobNext(jobId) } : result.data);
       }
 
       const pollResult = await pollJob(jobId);

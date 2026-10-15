@@ -26,6 +26,7 @@ All notable changes to summer-engine will be documented here. Following [Keep a 
 - **The engine-down answer works.** It told agents to run `npx -y summer-engine@latest run`, which fails without a project path. It now says to open the project in Summer Engine or run `summer run <project-path>`, and no longer shows token-file details. `summer tool` prints the same fields as JSON (exit 1) instead of saying "not running" twice.
 - **Network errors keep their cause.** "fetch failed" now says why, for example `connect ECONNREFUSED 127.0.0.1:443`, in the message and in `details.cause`.
 - `summer_list_my_assets` no longer says "Asset search requires an account" when you are not signed in.
+- **3D and motion generation return a job id at once.** `summer_generate_3d` and `summer_generate_motion` used to hold the agent for up to 10 minutes while the job ran. They now return the `jobId` within seconds, the same as Summer's hosted server, with a `next` line that says to poll `summer_check_job` until the status is `completed`. `wait: true` still blocks for scripts that cannot poll. `summer tool generate-3d` and `summer tool generate-motion` work the same way.
 
 ## [3.9.1] - 2026-10-15
 

@@ -768,6 +768,29 @@ describe("summer_generate_motion across MCP and CLI", () => {
     });
   }
 
+  it("3D and motion return the jobId at once by default on both faces, like the hosted tools", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ jobId: "job_now" }), { status: 200 }));
+    globalThis.fetch = fetchMock;
+    const { server, tools } = createFakeServer();
+    registerGenerateTools(server as any);
+    const gen3d = getTool(tools, "summer_generate_3d");
+    const motion = getTool(tools, "summer_generate_motion");
+
+    const results = [
+      parseResult(await gen3d.handler(z.object(gen3d.schema).parse({ prompt: "a crate" }))),
+      parseResult(await motion.handler(z.object(motion.schema).parse({ rigAssetId: "rig_123", motionName: "walk" }))),
+      (await dispatchTool("generate-3d", { prompt: "a crate" }, noEngine)) as Record<string, unknown>,
+      (await dispatchTool("generate-motion", { rigAssetId: "rig_123", motionName: "walk" }, noEngine)) as Record<string, unknown>,
+    ];
+    for (const result of results) {
+      expect(result.jobId).toBe("job_now");
+      expect(String(result.next)).toMatch(/check[-_]job/);
+    }
+    // One POST per call, never a poll of /api/mcp/jobs/.
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    for (const [url] of fetchMock.mock.calls as unknown as [string][]) expect(url).not.toContain("/api/mcp/jobs/");
+  });
+
   it("cli rejects meshy-library without motionName and text-to-motion without a prompt before contacting the gateway", async () => {
     await expect(dispatchTool("generate-motion", { rigAssetId: "rig_123", wait: false }, noEngine)).rejects.toThrow(
       /motionName is required/

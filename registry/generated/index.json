@@ -6364,10 +6364,10 @@
       "id": "tool/check-job",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "a17e889099781c54902facf3abcbbdd8c10c0018333fdceb40d48f24dc01f183",
+      "content_hash": "6212245eb252683666471ab80d880eedecfff561525f240be4af1311052b5340",
       "summary": "Check the status of an async generation job by id.",
       "use_when": [
-        "a generation ran without waiting, or timed out, and needs re-checking",
+        "a generation timed out and needs re-checking",
         "\"is my 3D model / video done yet?\"",
         "a generate_* call returned a job id instead of a finished asset"
       ],
@@ -7064,8 +7064,8 @@
       "id": "tool/generate-3d",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "62fccc4762a54c16d1c64da056ee21188a6a4be311fa43cc8fbe3e9be7977c85",
-      "summary": "Generate a 3D model from text or images via Summer Studio, with optional auto-rig and animation pipeline; waits or returns a job id.",
+      "content_hash": "6668e5ca70c44f1ae291e7368a64396ce3eaf8412343f45e0b44e1899981006f",
+      "summary": "Generate a 3D model from text or images via Summer Studio, with optional auto-rig and animation pipeline; returns a job id to poll with summer_check_job.",
       "use_when": [
         "creating a 3D asset or character from a prompt or reference image",
         "\"make me a low-poly tree / a sci-fi crate / a goblin for my game\"",
@@ -7165,7 +7165,7 @@
       "id": "tool/generate-motion",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "717ddb290afa9515ba84e041371c78eb5e26a875bda5c9914235fb4751f5b6ef",
+      "content_hash": "e9353fcbb021788c09bf22ca0d6d0934015fd16637b831df268d40c0331f162f",
       "summary": "Generate animation clips for a rigged model — curated humanoid mocap by name, or text-to-motion on any of your own rigs; costs credits, so confirm first.",
       "use_when": [
         "adding idle, walk, run, or combat clips to a rigged character",

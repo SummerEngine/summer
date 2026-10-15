@@ -587,8 +587,18 @@ async function pollGenerationJob(
     interval = Math.min(interval * 1.2, 15_000);
   }
   throw new ToolDispatchError(
-    `Timed out after ${maxWaitMs / 1000}s. Re-check later with: summer tool check-job --json '{"jobId":"${jobId}"}'`
+    `Timed out after ${maxWaitMs / 1000}s. Re-check later with: ${cliCheckJobCommand(jobId)}`
   );
+}
+
+function cliCheckJobCommand(jobId: string): string {
+  return `summer tool check-job --args '{"jobId":"${jobId}"}'`;
+}
+
+/** generate-3d / generate-motion return the job at once, like the MCP face;
+ *  `--args '{"wait":true,…}'` blocks instead. */
+function cliCheckJobNext(jobId: string): string {
+  return `The job runs on Summer's servers. Check it with: ${cliCheckJobCommand(jobId)}`;
 }
 
 async function searchAssetsGateway(params: {
@@ -1282,7 +1292,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
       options,
     });
     const jobId = typeof result.jobId === "string" ? result.jobId : undefined;
-    if (args.wait === false || !jobId) return result;
+    if (args.wait !== true || !jobId) return jobId ? { ...result, next: cliCheckJobNext(jobId) } : result;
     const final = await pollGenerationJob(jobId);
     return { ...final, jobId };
   }),
@@ -1305,7 +1315,7 @@ export const TOOL_DISPATCH: readonly ToolDispatchEntry[] = [
     if ("error" in built) throw new ToolDispatchError(built.error);
     const result = await gatewayPost("/api/mcp/generate/motion", built.body);
     const jobId = typeof result.jobId === "string" ? result.jobId : undefined;
-    if (!parsed.wait || !jobId) return result;
+    if (!parsed.wait || !jobId) return jobId ? { ...result, next: cliCheckJobNext(jobId) } : result;
     const final = await pollGenerationJob(jobId, 600_000);
     return { ...final, jobId };
   }),

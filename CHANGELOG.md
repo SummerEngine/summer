@@ -2,6 +2,10 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+- **3D and motion generation return a job id at once.** `summer_generate_3d` and `summer_generate_motion` used to hold the agent for up to 10 minutes while the job ran. They now return the `jobId` within seconds, the same as Summer's hosted server, with a `next` line that says to poll `summer_check_job` until the status is `completed`. `wait: true` still blocks for scripts that cannot poll. `summer tool generate-3d` and `summer tool generate-motion` work the same way.
+
 ## [3.9.1] - 2026-10-15
 
 3.9.0 was not published to npm; 3.9.1 is the first release with everything in 3.9.0 below, plus these changes.

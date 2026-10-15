@@ -182,3 +182,13 @@ describe("generated files", () => {
     expect(formatAnswer(running, "models")).toBe("Started: job gen:1. Wait for it: summer jobs wait --job-id gen:1 --out models");
   });
 });
+
+describe("cloud call failures from the command line", () => {
+  it("names the cause instead of always asking to sign in", async () => {
+    const offline = deps(vi.fn(async () => {
+      throw new TypeError("fetch failed");
+    }));
+    expect(await runOpFromCli("games.list", ["--json"], offline)).toBe(1);
+    expect(JSON.parse(offline.err[0])).toMatchObject({ ok: false, error: { code: "unavailable" } });
+  });
+});

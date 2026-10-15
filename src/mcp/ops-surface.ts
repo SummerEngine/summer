@@ -3,6 +3,7 @@ import { ListToolsRequestSchema, type Tool, type ToolAnnotations } from "@modelc
 import { z } from "zod";
 import { localEntries, localInputSchema, localWireForm, missingInput, type CatalogEntry } from "../core/ops/catalog.js";
 import { answerOfHosted, searchEverywhere } from "../core/ops/cloud.js";
+import { hostedFailure } from "../core/ops/hosted-failure.js";
 import { errorAnswer, isLocalOp, legacyNames, localToolsFor, mcpNameOf, resolveOpName, type Answer } from "../core/ops/contract.js";
 import { ENGINE_SPLIT_OPS, engineOpDef, isSplitOp, renderOpRefs, splitToolArgs, type EngineSplitDef } from "../core/ops/engine.js";
 import { answerOfEngineResult, engineFailure, textsOf } from "../core/ops/engine-answer.js";
@@ -435,7 +436,7 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
         const answer = answerOfHosted(await options.cloud.call(SUMMER_CALL, { op: name, ...(input ? { input: sent } : {}), ...(dryRun ? { dryRun } : {}), ...(idempotencyKey ? { idempotencyKey } : {}) }));
         return toolResult(await options.files.finish(resolved, answer, out));
       } catch (error) {
-        return toolResult(errorAnswer("not_signed_in", `Cloud operations need the Summer sign-in: ${error instanceof Error ? error.message : String(error)}`, { next: { say: "Run: npx -y summer-engine login" } }));
+        return toolResult(hostedFailure(error));
       }
     }) as never
   );

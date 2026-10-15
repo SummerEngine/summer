@@ -175,6 +175,8 @@ describe("one Summer Engine MCP: hosted tools mounted locally", () => {
       const result = await client.callTool({ name: STORE_TOOLS_STATUS, arguments: {} });
       expect(result.isError).toBe(true);
       expect((result.content as Array<{ text: string }>)[0].text).toContain("summer login --store");
+      // A call through the mount (the v4 summer_call) keeps the sign-in code.
+      await expect(mount.call("summer_call", { op: "games.list" })).rejects.toMatchObject({ name: "HostedCallError", code: "store_login_required" });
     } finally {
       await client.close();
       await server.close();

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { connectHostedMcp, withV3Surface, type HostedClient, type HostedConnectDependencies } from "../core/hosted-mcp.js";
 import { getStoreAccessToken, OAuthError, resolveMcpResourceUrl } from "../core/oauth.js";
 import { appendMcpLogEvent } from "../core/mcp-log.js";
+import { HostedCallError } from "../core/ops/hosted-failure.js";
 import { providerSafeSchema } from "./provider-safe-schema.js";
 
 export type { HostedClient };
@@ -319,7 +320,8 @@ export function prepareHostedMount(
     const after = await mount();
     if (!connected) {
       const error = after.error ?? { code: "store_tools_unavailable", message: "The hosted Summer server is not connected.", recovery: 'Recovery: run "summer login".' };
-      throw new Error(`${error.message} ${error.recovery}`);
+      // The mount's code travels with it: a missing sign-in is not a network problem (core/ops/hosted-failure.ts).
+      throw new HostedCallError(error.code, error.message, error.recovery);
     }
     return connected.callTool({ name, arguments: args });
   }

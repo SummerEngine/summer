@@ -5,6 +5,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setSummerDirForTests } from "../core/store.js";
+import { HostedCallError } from "../core/ops/hosted-failure.js";
 import { createMcpServer, resolveSurface } from "./server.js";
 import { resolveToolSelection } from "./tool-surface.js";
 import { hostedFileTools, type CloudCaller } from "./ops-surface.js";
@@ -169,7 +170,11 @@ describe("v4, engine profile", () => {
   });
 
   it("still searches the local operations when the hosted server is not reachable", async () => {
-    const offline: CloudCaller & { call: ReturnType<typeof vi.fn> } = { call: vi.fn(async () => { throw new Error("not signed in"); }) };
+    const offline: CloudCaller & { call: ReturnType<typeof vi.fn> } = {
+      call: vi.fn(async () => {
+        throw new HostedCallError("store_login_required", "not signed in", 'Recovery: run "summer login".');
+      }),
+    };
     const { client, close } = await session("engine", "v4", offline);
     try {
       const answer = answerOf(await client.callTool({ name: "summer_search", arguments: { query: "add a node" } }));
@@ -480,5 +485,24 @@ describe("v4, generated files on this machine", () => {
     } finally {
       await close();
     }
+  });
+});
+
+describe("v4 cloud call failures keep their cause", () => {
+  const failing = (error: unknown): CloudCaller & { call: ReturnType<typeof vi.fn> } => ({ call: vi.fn(async () => { throw error; }) });
+  const callGames = async (error: unknown) => {
+    const { client, close } = await session("engine", "v4", failing(error));
+    try {
+      return answerOf(await client.callTool({ name: "summer_call", arguments: { op: "games.list", input: {} } }));
+    } finally {
+      await close();
+    }
+  };
+
+  it("says to sign in only when the sign-in is the problem", async () => {
+    expect(await callGames(new HostedCallError("store_login_required", "Not signed in to the Summer store.", 'Recovery: run "summer login".'))).toMatchObject({ ok: false, error: { code: "not_signed_in", next: { say: expect.stringContaining("login") } } });
+    expect(await callGames(new HostedCallError("store_tools_unreachable", "The hosted Summer Engine MCP did not answer: fetch failed.", "Recovery: check the network."))).toMatchObject({ ok: false, error: { code: "unavailable", retry: "after", message: expect.stringContaining("fetch failed") } });
+    expect(await callGames(new Error("Request timed out"))).toMatchObject({ ok: false, error: { code: "outcome_unknown", retry: "same_key" } });
+    expect(await callGames(new Error("Error POSTing to endpoint (HTTP 503)"))).toMatchObject({ ok: false, error: { code: "unavailable" } });
   });
 });

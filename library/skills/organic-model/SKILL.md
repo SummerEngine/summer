@@ -199,4 +199,4 @@ After the organic models are scattered:
 - `environment-kit` — pair with this skill: kit pieces give the architecture, organic gives the natural softness.
 - `asset-strategy` — meta-router; ground textures and skyboxes go to Pipeline 2 / panoramic gen.
 - `scene-composition` — MultiMeshInstance3D scatter pattern.
-- `summer_read_library` id `reference/mcp-tools-reference` — how to call `assets.generate_3d`; `summer_search` returns its exact input.
+- `summer_docs_read` id `reference/mcp-tools-reference` — how to call `assets.generate_3d`; `summer_search` returns its exact input.

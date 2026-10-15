@@ -322,5 +322,5 @@ in Summer Engine.
 - `audio-direction` — defines the dynamic music plan and bus layout
 - `music-track` — generates the stems
 - `voice-line` — the voice bus that triggers ducking
-- `summer_read_library` id `reference/godot-version` — Summer compatibility for AudioServer
+- `summer_docs_read` id `reference/godot-version` — Summer compatibility for AudioServer
   and Tween APIs

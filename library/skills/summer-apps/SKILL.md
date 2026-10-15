@@ -29,7 +29,7 @@ Build an app only when the need is real and Summer lacks it, or as a Scratch thr
 quick asset review, a UI prototype) that you call throwaway when you make it, and archive
 when it is done (`apps.update({ appId, status: "archived" })`). When
 something is missing natively, report it with `apps.report_gap` (and
-`summer_library_feedback` when a library entry fell short), so Summer can build it for
+`summer_call` with `docs.feedback` when a library entry fell short), so Summer can build it for
 everyone.
 
 | Ask | Do |

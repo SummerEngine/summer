@@ -230,4 +230,4 @@ After the UI graphic is wired:
 - `character-portrait` — for in-UI character images.
 - `pixel-art` — pixel-style UI.
 - `scene-composition` — Theme and Control hierarchy.
-- `summer_read_library` id `reference/mcp-tools-reference` — how to call `assets.generate_image`.
+- `summer_docs_read` id `reference/mcp-tools-reference` — how to call `assets.generate_image`.

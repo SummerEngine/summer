@@ -335,3 +335,11 @@ describe("config file shapes", () => {
     expect(mcpEntry("json-copilot", server).tools).toEqual(["*"]);
   });
 });
+
+describe("Codex config follows CODEX_HOME", () => {
+  it("writes $CODEX_HOME/config.toml when set, ~/.codex/config.toml otherwise", () => {
+    const codex = agentSpec("codex");
+    expect(resolveMcpPath(codex, "user", ctx("linux", { CODEX_HOME: "/srv/codex" })).path).toBe(join("/srv/codex", "config.toml"));
+    expect(resolveMcpPath(codex, "user", ctx("linux")).path).toBe(join("/home/dev", ".codex", "config.toml"));
+  });
+});

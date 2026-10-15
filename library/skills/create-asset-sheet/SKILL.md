@@ -1,6 +1,6 @@
 ---
 name: create-asset-sheet
-description: "Generate a pack of 2D game assets from one prompt — tile sheet, UI kit, character pack, or biome set — sliced, classified, and saved as one pack ArtAsset."
+description: "Generate a pack of 2D assets from one prompt (tile sheet, UI kit, character pack, biome), sliced."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets

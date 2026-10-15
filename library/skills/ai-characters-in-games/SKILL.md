@@ -1,6 +1,6 @@
 ---
 name: ai-characters-in-games
-description: "Safe AI characters in published games: no keys in the build, replies via Summer's player AI gateway, moderation, spend caps, offline brain and a report button."
+description: "Safe AI characters in published games: no keys in the build, Summer's player AI gateway, moderation, caps."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: ai-and-npcs

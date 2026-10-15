@@ -1,6 +1,6 @@
 ---
 name: music-track
-description: "Generate a looped or cinematic music track — loops authored at >=30s with a marked loop point, cinematic tracks at >=60s linear."
+description: "Generate a music track: game loops of 30s or more with a loop point, or linear cinematic cues."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio

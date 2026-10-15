@@ -1,6 +1,6 @@
 ---
 name: 3d-lighting
-description: "Set up 3D scene lighting — DirectionalLight3D vs Omni vs Spot, WorldEnvironment, sky, shadow tuning, ambient — per current Summer conventions."
+description: "Light a 3D scene: sun, omni and spot lights, WorldEnvironment, sky, shadows and ambient."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: rendering-and-lighting
@@ -25,16 +25,16 @@ Outdoor and indoor lighting setups for 3D scenes.
 
 ### 1. Directional Light (Sun)
 
-Every tool below also takes a **required** `scenePath` (the exact `res://` scene
-to mutate — get it from `summer_get_project_context`). It is elided in these
-snippets for readability; a real call without it is rejected by the tool schema.
+Every tool below takes a **required** `scenePath`: the exact `res://` scene to
+mutate (get it from `summer_get_project_context`). The snippets use
+`res://main.tscn`; a call without `scenePath` is rejected by the tool schema.
 
 ```
 summer_add_node(scenePath="res://main.tscn", parent="./World", type="DirectionalLight3D", name="Sun")
 summer_set_prop(scenePath="res://main.tscn", path="./World/Sun", key="rotation_degrees", value="Vector3(-45, 30, 0)")
-summer_set_prop(path="./World/Sun", key="light_energy", value="1.0")
-summer_set_prop(path="./World/Sun", key="shadow_enabled", value="true")
-summer_set_prop(path="./World/Sun", key="light_color", value="Color(1, 0.95, 0.9, 1)")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Sun", key="light_energy", value="1.0")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Sun", key="shadow_enabled", value="true")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Sun", key="light_color", value="Color(1, 0.95, 0.9, 1)")
 ```
 
 Warm sunlight: `Color(1, 0.95, 0.9, 1)`. Cool moonlight: `Color(0.8, 0.85, 1, 1)`.
@@ -42,8 +42,8 @@ Warm sunlight: `Color(1, 0.95, 0.9, 1)`. Cool moonlight: `Color(0.8, 0.85, 1, 1)
 ### 2. WorldEnvironment (Sky + Ambient)
 
 ```
-summer_add_node(parent="./World", type="WorldEnvironment", name="WorldEnvironment")
-summer_set_prop(path="./World/WorldEnvironment", key="environment", value="Environment")
+summer_add_node(scenePath="res://main.tscn", parent="./World", type="WorldEnvironment", name="WorldEnvironment")
+summer_set_prop(scenePath="res://main.tscn", path="./World/WorldEnvironment", key="environment", value="Environment")
 ```
 
 Then configure the Environment's sub-properties. The Environment resource has:
@@ -56,7 +56,7 @@ Then configure the Environment's sub-properties. The Environment resource has:
 For a simple procedural sky:
 
 ```
-summer_set_resource_property(nodePath="./World/WorldEnvironment", resourceProperty="environment", subProperty="background_mode", value="2")
+summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/WorldEnvironment", resourceProperty="environment", subProperty="background_mode", value="2")
 ```
 
 A sky is a `Sky` resource in `environment.sky`, with a `ProceduralSkyMaterial` (or `PhysicalSkyMaterial`) in its `sky_material`. `summer_set_resource_property` only sets properties on a resource that already exists, so create the `Sky` and its material in one `summer_run_script` call.
@@ -68,21 +68,21 @@ A sky is a `Sky` resource in `environment.sky`, with a `ProceduralSkyMaterial` (
 A second, weaker directional or omni for shadow fill:
 
 ```
-summer_add_node(parent="./World", type="DirectionalLight3D", name="FillLight")
-summer_set_prop(path="./World/FillLight", key="rotation_degrees", value="Vector3(-30, -120, 0)")
-summer_set_prop(path="./World/FillLight", key="light_energy", value="0.3")
-summer_set_prop(path="./World/FillLight", key="shadow_enabled", value="false")
-summer_set_prop(path="./World/FillLight", key="light_color", value="Color(0.7, 0.8, 1, 1)")
+summer_add_node(scenePath="res://main.tscn", parent="./World", type="DirectionalLight3D", name="FillLight")
+summer_set_prop(scenePath="res://main.tscn", path="./World/FillLight", key="rotation_degrees", value="Vector3(-30, -120, 0)")
+summer_set_prop(scenePath="res://main.tscn", path="./World/FillLight", key="light_energy", value="0.3")
+summer_set_prop(scenePath="res://main.tscn", path="./World/FillLight", key="shadow_enabled", value="false")
+summer_set_prop(scenePath="res://main.tscn", path="./World/FillLight", key="light_color", value="Color(0.7, 0.8, 1, 1)")
 ```
 
 ## Indoor / Point Lights
 
 ```
-summer_add_node(parent="./World", type="OmniLight3D", name="Lamp")
-summer_set_prop(path="./World/Lamp", key="position", value="Vector3(2, 3, 2)")
-summer_set_prop(path="./World/Lamp", key="light_energy", value="0.8")
-summer_set_prop(path="./World/Lamp", key="light_color", value="Color(1, 0.9, 0.7, 1)")
-summer_set_prop(path="./World/Lamp", key="omni_range", value="8")
+summer_add_node(scenePath="res://main.tscn", parent="./World", type="OmniLight3D", name="Lamp")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Lamp", key="position", value="Vector3(2, 3, 2)")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Lamp", key="light_energy", value="0.8")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Lamp", key="light_color", value="Color(1, 0.9, 0.7, 1)")
+summer_set_prop(scenePath="res://main.tscn", path="./World/Lamp", key="omni_range", value="8")
 ```
 
 ## Property Reference

@@ -1,6 +1,6 @@
 ---
 name: web-and-touch-input
-description: "Input for the browser and phones: the first-click rule for sound and mouse capture, focus, and touch buttons or a virtual stick on the same actions."
+description: "Browser and phone input: the first-click rule for sound and mouse capture, focus, touch buttons, a stick."
 license: MIT
 compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode]
 category: scene-and-project

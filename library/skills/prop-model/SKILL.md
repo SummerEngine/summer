@@ -1,6 +1,6 @@
 ---
 name: prop-model
-description: "Generate a single static 3D prop — sword, barrel, chest, lantern, throne, statue — one isolated object, no rigging, wired as a MeshInstance3D."
+description: "Generate one static 3D prop (sword, barrel, chest, lantern, statue): one object, no rig, a MeshInstance3D."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 3d-assets
@@ -148,4 +148,4 @@ After the prop is wired:
 - `asset-strategy` — the meta-router that decides between this skill and Pipeline 2 (textures).
 - `character-model` — for humanoids.
 - `environment-kit` — for style-locked sets.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_3d` parameter schema.
+- `summer_read_library` id `reference/mcp-tools-reference` — `summer_generate_3d` parameter schema.

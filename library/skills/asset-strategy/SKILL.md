@@ -1,6 +1,6 @@
 ---
 name: asset-strategy
-description: "Route any 'I need a [thing]' asset request to the right specialist skill — disambiguates 2D / 3D / audio / video / VFX / animation pipelines."
+description: "Route any 'I need a [thing]' asset request to the right skill: 2D, 3D, audio, video, VFX or animation."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: asset-pipeline

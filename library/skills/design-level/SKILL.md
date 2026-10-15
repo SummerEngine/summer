@@ -1,6 +1,6 @@
 ---
 name: design-level
-description: "Design a single level — layout, pacing, encounters, secrets, reward gating — outputs a level design doc and a node-tree skeleton for summer_create_scene."
+description: "Design one level (layout, pacing, encounters, secrets) as a design doc plus a node-tree skeleton."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: level-design
@@ -164,27 +164,26 @@ is already `Node3D`, or fix the root afterwards in the editor.
 ```
 summer_create_scene(path="res://levels/level_01.tscn", rootName="World", allow_temporary_scene_mutation=true)
 summer_add_node(scenePath="res://levels/level_01.tscn", parent="./World", type="Node3D", name="Geometry")
-summer_add_node(parent="./World/Geometry", type="Node3D", name="IntroAtrium")
-summer_add_node(parent="./World/Geometry", type="Node3D", name="Corridor")
-summer_add_node(parent="./World/Geometry", type="Node3D", name="PeakArena")
-summer_add_node(parent="./World/Geometry", type="Node3D", name="BossChamber")
-summer_add_node(parent="./World", type="Node3D", name="Spawns")
-summer_add_node(parent="./World/Spawns", type="Node3D", name="PlayerSpawn")
-summer_add_node(parent="./World/Spawns", type="Node3D", name="E1_Spawn")
+summer_add_node(scenePath="res://levels/level_01.tscn", parent="./World/Geometry", type="Node3D", name="IntroAtrium")
+summer_add_node(scenePath="res://levels/level_01.tscn", parent="./World/Geometry", type="Node3D", name="Corridor")
+summer_add_node(scenePath="res://levels/level_01.tscn", parent="./World/Geometry", type="Node3D", name="PeakArena")
+summer_add_node(scenePath="res://levels/level_01.tscn", parent="./World/Geometry", type="Node3D", name="BossChamber")
+summer_add_node(scenePath="res://levels/level_01.tscn", parent="./World", type="Node3D", name="Spawns")
+summer_add_node(scenePath="res://levels/level_01.tscn", parent="./World/Spawns", type="Node3D", name="PlayerSpawn")
+summer_add_node(scenePath="res://levels/level_01.tscn", parent="./World/Spawns", type="Node3D", name="E1_Spawn")
 # ... and so on
-summer_add_node(parent="./World", type="Node3D", name="Triggers")
-summer_add_node(parent="./World/Triggers", type="Area3D", name="E2_GateTrigger")
+summer_add_node(scenePath="res://levels/level_01.tscn", parent="./World", type="Node3D", name="Triggers")
+summer_add_node(scenePath="res://levels/level_01.tscn", parent="./World/Triggers", type="Area3D", name="E2_GateTrigger")
 # ... etc.
-summer_add_node(parent="./World", type="Node3D", name="Lighting")
-summer_add_node(parent="./World/Lighting", type="WorldEnvironment", name="WorldEnvironment")
-summer_add_node(parent="./World/Lighting", type="DirectionalLight3D", name="Sun")
+summer_add_node(scenePath="res://levels/level_01.tscn", parent="./World", type="Node3D", name="Lighting")
+summer_add_node(scenePath="res://levels/level_01.tscn", parent="./World/Lighting", type="WorldEnvironment", name="WorldEnvironment")
+summer_add_node(scenePath="res://levels/level_01.tscn", parent="./World/Lighting", type="DirectionalLight3D", name="Sun")
 summer_save_scene(scenePath="res://levels/level_01.tscn")
 ```
 
 Every `summer_add_node` above takes the same required
-`scenePath="res://levels/level_01.tscn"`; it is elided after the first line only
-to keep the tree readable. A call without `scenePath` is rejected by the tool
-schema. Better still, send the whole block as one `summer_batch(scenePath=...,
+`scenePath="res://levels/level_01.tscn"`; a call without it is rejected by the
+tool schema. Better still, send the whole block as one `summer_batch(scenePath=...,
 ops=[...])` so the user can undo the skeleton with a single Ctrl+Z.
 
 This is a **skeleton, not playable geometry**. Markers and Area3Ds, no meshes, no enemy scripts. Implementation in subsequent sessions / templates.

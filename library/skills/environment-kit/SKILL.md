@@ -1,6 +1,6 @@
 ---
 name: environment-kit
-description: "Generate a modular environment kit — wall pieces, floor tiles, pillars, doors, arches, corners — snap-together meshes sharing one visual style."
+description: "Generate a modular environment kit: walls, floor tiles, pillars, doors, arches in one visual style."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 3d-assets

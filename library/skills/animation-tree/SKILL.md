@@ -1,6 +1,6 @@
 ---
 name: animation-tree
-description: "Design and wire AnimationTree state machines and blend trees so clips respond to gameplay — locomotion blends, attack interrupts, hit reactions."
+description: "Wire AnimationTree state machines and blend trees: locomotion blends, attack interrupts, hit reactions."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: animation

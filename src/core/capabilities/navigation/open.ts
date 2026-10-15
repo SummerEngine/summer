@@ -21,6 +21,7 @@
 import { z } from "zod";
 import type { EngineCapabilities } from "../../capability-skew.js";
 import { extractOpError } from "../engine-receipt.js";
+import { RECOVERY, type SummerErrorCode } from "../../error-codes.js";
 import {
   NAV_TARGETS,
   WEB_CATALOG,
@@ -118,6 +119,9 @@ export interface OpenResult {
   receipt?: unknown;
   /** Structured failure class for ok:false results (engine_lacks_op, …). */
   failure_reason?: string;
+  /** The shared code (core/error-codes.ts) when the engine is not running. */
+  code?: SummerErrorCode;
+  recovery?: string;
   matches?: OpenMatch[];
   targets?: OpenTargetSummary[];
   hint?: string;
@@ -624,6 +628,8 @@ export async function runOpen(args: OpenArgs, deps: OpenDeps): Promise<OpenResul
     return {
       ok: false,
       action: "engine_not_running",
+      code: "engine_not_running",
+      recovery: RECOVERY.engine_not_running,
       target: summary,
       op: navigateOp,
       engine: { running: false, error: message },

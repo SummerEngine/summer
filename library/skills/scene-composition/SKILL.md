@@ -1,6 +1,6 @@
 ---
 name: scene-composition
-description: "Scene structure conventions — node hierarchy, when to extract sub-scenes, reusable prefab patterns, and instance-versus-add-node decisions."
+description: "Scene structure: node hierarchy, when to extract sub-scenes, reusable prefabs, instance vs add node."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: scene-and-project

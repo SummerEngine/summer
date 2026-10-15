@@ -1,6 +1,6 @@
 ---
 name: skybox-panorama
-description: "Generate a 360-degree equirectangular sky panorama and wire it as a PanoramaSkyMaterial Sky resource on WorldEnvironment in a 3D scene."
+description: "Generate a 360-degree sky panorama and wire it as a PanoramaSkyMaterial Sky resource on WorldEnvironment."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
@@ -202,4 +202,4 @@ After the sky is wired:
 - `tileable-texture` — ground/floor counterpart.
 - `scene-composition` — WorldEnvironment placement and configuration.
 - `asset-strategy` — meta-router.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_image` schema.
+- `summer_read_library` id `reference/mcp-tools-reference` — `summer_generate_image` schema.

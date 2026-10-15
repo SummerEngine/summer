@@ -1,6 +1,6 @@
 ---
 name: play
-description: "Run the project in Summer Engine, wait briefly, then report what's happening — clean run, errors, or warnings."
+description: "Run the project in Summer Engine, wait briefly, then report a clean run, errors or warnings."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: scene-and-project

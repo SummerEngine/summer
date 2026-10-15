@@ -1,6 +1,6 @@
 ---
 name: sound-effect
-description: "Make SFX one-shots and timed sequences (swings, hits, whooshes, reloads, UI) - offer three model versions to pick from, then wire them as AudioStreamPlayers."
+description: "Make sound effects (swings, hits, whooshes, reloads, UI): three versions to pick from, then wire them."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio
@@ -170,4 +170,4 @@ Print the prompt, the length and the target path (`res://audio/sfx/<name>.wav`),
 - `ambient-bed` — long looping textures
 - `music-track` — music
 - `voice-line` — speech
-- `../../references/mcp-tools-reference/mcp-tools-reference.md`
+- `summer_read_library` id `reference/mcp-tools-reference`

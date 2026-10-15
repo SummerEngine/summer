@@ -1,6 +1,6 @@
 ---
 name: trailer-shot
-description: "Generate marketing or trailer footage — slow-mo combat, establishing shots, hero beats, splash screens, pitch-deck B-roll — max punch in 5-10 seconds."
+description: "Generate trailer footage: slow-mo combat, establishing shots, hero beats, splash screens, 5-10 seconds."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: video
@@ -213,4 +213,4 @@ Once the shots are generated:
 - `music-track` — trailer score.
 - `sound-effect` — cut SFX (whooshes, impacts, stingers).
 - `concept-art` — generate the reference image axis when no asset exists yet.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_video` parameter schema and error codes.
+- `summer_read_library` id `reference/mcp-tools-reference` — `summer_generate_video` parameter schema and error codes.

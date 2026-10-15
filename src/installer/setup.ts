@@ -117,6 +117,7 @@ export function setupSkills(
   const subset = assetsOnly ? "asset " : recommended ? "recommended " : "";
 
   if (options.dryRun || !options.yes) {
+    const where = destination ?? "the agent's skills directory";
     return {
       status: "planned",
       command: invocation.display,
@@ -124,7 +125,9 @@ export function setupSkills(
       previewIncluded,
       previewSkipped,
       destination,
-      message: `Would install ${count} ${subset}skills${note ? ` (${note})` : ""} to ${destination ?? "the agent's skills directory"} with: ${invocation.display.join(" ")}`,
+      message: options.dryRun
+        ? `Would install ${count} ${subset}skills${note ? ` (${note})` : ""} to ${where} with: ${invocation.display.join(" ")}`
+        : `Not installed. Run the same setup command again with --yes to install ${count} ${subset}skills${note ? ` (${note})` : ""} to ${where}.`,
     };
   }
 

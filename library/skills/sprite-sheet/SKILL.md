@@ -1,6 +1,6 @@
 ---
 name: sprite-sheet
-description: "Generate animated 2D character sprites laid out as a sprite sheet — walk cycle, attack, idle, death — wired into AnimatedSprite2D / SpriteFrames."
+description: "Generate animated 2D character sprite sheets (walk, attack, idle, death) for AnimatedSprite2D."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
@@ -245,4 +245,4 @@ After the animation is wired:
 - `character-portrait` — base portrait for higher-res characters.
 - `generate-motion` — 3D-skeletal counterpart.
 - `sound-effect` — frame-synced SFX.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_image` schema.
+- `summer_read_library` id `reference/mcp-tools-reference` — `summer_generate_image` schema.

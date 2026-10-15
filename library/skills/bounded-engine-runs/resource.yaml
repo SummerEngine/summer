@@ -1,7 +1,7 @@
 id: skill/bounded-engine-runs
 kind: skill
 version: 1.0.0
-summary: "Run Summer headless or offscreen safely from an agent: time limits, one engine per project, muted runs, import passes, tests that fail on crashes."
+summary: "Run Summer headless or offscreen safely: time limits, one engine per project, import passes, crash checks."
 use_when:
   - running the engine from a shell or agent for tests, imports, captures or bots
   - several agents or processes share one project

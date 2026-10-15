@@ -1,6 +1,6 @@
 ---
 name: debugging-game-feel
-description: "Debug features that work but feel wrong — floaty jumps, mushy combat, sluggish camera — subjective bugs living in tuning, timing, and feedback layers."
+description: "Debug features that work but feel wrong: floaty jumps, mushy combat, sluggish camera."
 ---
 
 # Debugging Game Feel

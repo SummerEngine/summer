@@ -1,6 +1,6 @@
 ---
 name: multiplayer-state
-description: "Authority-owned game state in Summer multiplayer: shared and private State groups, validated Commands, and Events."
+description: "Authority-owned state in Summer multiplayer: shared and private State groups, Commands, Events."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: multiplayer-and-networking

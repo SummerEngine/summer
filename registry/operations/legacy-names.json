@@ -242,9 +242,19 @@
       "op": "store.status"
     },
     "summer_camera_bookmark": {
-      "kind": "keep",
-      "note": "save, list and delete in one tool",
-      "op": "engine.camera_bookmark"
+      "kind": "split",
+      "note": "list; save and delete move to the ops below",
+      "op": "engine.list_camera_bookmarks"
+    },
+    "summer_camera_bookmark#delete": {
+      "kind": "split",
+      "note": "",
+      "op": "engine.delete_camera_bookmark"
+    },
+    "summer_camera_bookmark#save": {
+      "kind": "split",
+      "note": "",
+      "op": "engine.save_camera_bookmark"
     },
     "summer_capture_gameplay": {
       "kind": "keep",
@@ -1132,9 +1142,14 @@
       "op": "makers.transition_morph"
     },
     "summer_ui_actions": {
-      "kind": "keep",
-      "note": "list and invoke in one tool",
-      "op": "engine.ui_actions"
+      "kind": "split",
+      "note": "list; invoking moves to engine.invoke_ui_action",
+      "op": "engine.list_ui_actions"
+    },
+    "summer_ui_actions#invoke": {
+      "kind": "split",
+      "note": "",
+      "op": "engine.invoke_ui_action"
     },
     "summer_ui_activate": {
       "kind": "keep",

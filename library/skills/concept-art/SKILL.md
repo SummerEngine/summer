@@ -1,6 +1,6 @@
 ---
 name: concept-art
-description: "Explore art direction with 3-4 rough concept variants of a character, environment, or prop to pick a vibe before committing to a final asset."
+description: "Explore art direction with 3-4 rough concept variants of a character, environment or prop."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
@@ -124,6 +124,10 @@ The structure: **subject + axis variant + "concept art" + lighting/atmosphere**.
 - **Subject is a fully described scene, not an asset.** You're producing key art, not asset reference. Pass `aspectRatio: "16:9"` (or `width: 1920, height: 1080` for store key art) and bias toward atmospheric.
 - **User wants the final to be 3D.** After they pick a direction, route to `asset-strategy` — concept-art images are not 3D-ready references (they have backgrounds, scene context, dramatic lighting baked in). The 3D pipeline needs its own clean white-background reference.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), every step works. Pass `out` to `summer_generate_image` with the person's folder so the batch lands there, and skip `summer_import_from_url`.
+
 ## Fallback (no MCP)
 
 Print the 4 prompts and the call for each:
@@ -150,4 +154,4 @@ Once the user picks a direction:
 
 - `asset-strategy` — meta-router that delegates here vs other 2d-assets skills.
 - `character-portrait` — the polished single-image counterpart.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_image` parameter schema.
+- `summer_read_library` id `reference/mcp-tools-reference` — `summer_generate_image` parameter schema.

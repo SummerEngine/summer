@@ -1,6 +1,6 @@
 ---
 name: vfx-fire
-description: "Fire effect — animated flames built with a particle shader, GPUParticles3D, and a noise-based color ramp — torches, campfires, candles."
+description: "Fire effect: animated flames from GPUParticles3D, a particle shader and a noise color ramp."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects
@@ -285,50 +285,21 @@ apply here — a draw pass mesh carries its material in `Mesh.material`.
 
 Add an OmniLight3D as a sibling (parented to the same anchor as the GPUParticles3D, NOT under it) for proper light cast. Recommended: `light_color = Color(1.0, 0.6, 0.25)`, `light_energy = 1.6`, `omni_range = 6.0`. Pulse it lightly via the controller for free atmosphere.
 
-### 6. Wire it in (MCP calls)
+### 6. Wire it in
 
-Every scene-mutating call takes an explicit `scenePath`. `summer_set_prop` uses `key`
-(not `property`) and only accepts a string, number, or boolean.
+Write the three files, then wire everything in ONE `summer_run_script` call with
+an explicit `scenePath` — transactional (rollback on a mid-script error), no
+`.tres` sidecar files needed because the script builds the resources directly:
 
 ```
 summer_write_file(path="res://addons/vfx/_building-blocks/noise-3d-fbm.gdshaderinc", content="<from this skill>", create_only=true)
 summer_write_file(path="res://addons/vfx/fire/fire.gdshader", content="<section 2>", create_only=true)
 summer_write_file(path="res://addons/vfx/fire/fire_controller.gd", content="<section 4>", create_only=true)
 
-summer_add_node(scenePath="res://main.tscn", parent="./World/Torch", type="GPUParticles3D", name="Fire")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Torch/Fire", key="script", value="res://addons/vfx/fire/fire_controller.gd")
-
-# ParticleProcessMaterial is a Material, not a Node — you cannot summer_add_node it.
-# Assign the resource by path; the controller configures it on _ready().
-summer_set_prop(scenePath="res://main.tscn", path="./World/Torch/Fire", key="process_material", value="res://addons/vfx/fire/process_mat.tres")
-
-summer_set_prop(scenePath="res://main.tscn", path="./World/Torch/Fire", key="draw_pass_1", value="res://addons/vfx/fire/quad.tres")
-# quad.tres is a QuadMesh with size (1,1) and material = fire_material.tres (ShaderMaterial wrapping fire.gdshader)
-summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/Torch/Fire", resourceProperty="draw_pass_1", subProperty="size", value="Vector2(1, 1)")
-
-summer_set_prop(scenePath="res://main.tscn", path="./World/Torch/Fire", key="flame_height", value=1.2)
-summer_set_prop(scenePath="res://main.tscn", path="./World/Torch/Fire", key="flame_radius", value=0.35)
-summer_set_prop(scenePath="res://main.tscn", path="./World/Torch/Fire", key="particle_count", value=96)
-
-summer_add_node(scenePath="res://main.tscn", parent="./World/Torch", type="OmniLight3D", name="FireLight")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Torch/FireLight", key="light_color", value="Color(1.0, 0.6, 0.25)")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Torch/FireLight", key="light_energy", value=1.6)
-summer_set_prop(scenePath="res://main.tscn", path="./World/Torch/FireLight", key="omni_range", value=6.0)
-
-summer_save_scene(scenePath="res://main.tscn")
-```
-
-### 6a. One-script wiring (summer_run_script)
-
-On engines with `summer_run_script` (see `scene-scripting`), everything after
-the `summer_write_file` calls above is ONE ctx script — transactional (rollback on a
-mid-script error), no `.tres` sidecar files needed because the script builds the
-resources directly:
-
-```gdscript
+summer_run_script(scenePath="res://main.tscn", source="""
 func run(ctx):
-    var anchor := ctx.find("Torch")
-    var fire := ctx.add_node("GPUParticles3D", "Fire", anchor)
+    var anchor = ctx.find("Torch")
+    var fire = ctx.add_node("GPUParticles3D", "Fire", anchor)
     fire.set_script(load("res://addons/vfx/fire/fire_controller.gd"))
     fire.process_material = ParticleProcessMaterial.new()   # controller configures it on _ready
     var quad := QuadMesh.new()
@@ -343,13 +314,16 @@ func run(ctx):
     ctx.add_node("OmniLight3D", "FireLight", anchor, {
         "light_color": Color(1.0, 0.6, 0.25), "light_energy": 1.6, "omni_range": 6.0})
     ctx.save_scene()
+""")
 ```
 
-`ctx.add_node` sets owners for you. Take a `summer_world_snapshot` before, and verify
-after with `summer_snapshot_diff` (exactly `Fire` + `FireLight` added) plus a
-`summer_screenshot` — flames are pixels, judge them as pixels.
+`ParticleProcessMaterial` is a Material, not a Node: the script assigns it to
+`process_material`, it is never a child. `ctx.add_node` sets owners for you. Take
+a `summer_world_snapshot` before, and verify after with `summer_snapshot_diff`
+(exactly `Fire` + `FireLight` added) plus a `summer_screenshot` — flames are
+pixels, judge them as pixels.
 
-### 6b. Verify
+### 6a. Verify
 
 Every file this recipe writes is compiled code. Check it before claiming the fire works.
 

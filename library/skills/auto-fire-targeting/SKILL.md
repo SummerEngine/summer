@@ -1,6 +1,6 @@
 ---
 name: auto-fire-targeting
-description: "Design or fix auto-fire weapon targeting (survivors, top-down ARPG, tower defense) — the pending-damage pattern that prevents over-commit and overkill."
+description: "Fix auto-fire targeting (survivors, ARPG, tower defense) with pending damage to stop overkill."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: gameplay-mechanics

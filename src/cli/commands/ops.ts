@@ -1,7 +1,10 @@
 import { Command } from "commander";
-import { localEntries, localInputSchema } from "../../core/ops/catalog.js";
+import { localEntries, localInputSchema, localWireForm, missingInput } from "../../core/ops/catalog.js";
 import { answerOfHosted, callHostedV4, searchEverywhere, type HostedCall } from "../../core/ops/cloud.js";
 import { errorAnswer, isLocalOp, localToolsFor, opFromCli, OP_NAME, type Answer } from "../../core/ops/contract.js";
+import { ENGINE_SPLIT_OPS, engineOpDef, splitToolArgs } from "../../core/ops/engine.js";
+import { engineFailure, engineNotRunning } from "../../core/ops/engine-answer.js";
+import { loadLibraryIndex } from "../../core/library-search.js";
 import { dispatchTool, EngineUnavailableError, ToolResultError } from "../../core/capabilities/tool-dispatch.js";
 
 /**
@@ -27,6 +30,12 @@ type JsonSchema = { type?: string | string[]; properties?: Record<string, JsonSc
 
 const RESERVED_FLAGS = new Set(["json", "dry-run", "wait", "idempotency-key", "input"]);
 const camel = (flag: string) => flag.replace(/-([a-z0-9])/g, (_match, letter: string) => letter.toUpperCase());
+
+/** A flag's field: camelCase (`--scene-path` is scenePath), or snake_case when the schema names it so (`--look-at` is look_at). */
+function fieldName(flag: string, schema: JsonSchema | null): string {
+  const snake = flag.replace(/-/g, "_");
+  return snake !== flag && schema?.properties?.[snake] && !schema.properties[camel(flag)] ? snake : camel(flag);
+}
 
 function coerce(value: string | true, schema: JsonSchema | undefined): unknown {
   const type = Array.isArray(schema?.type) ? schema?.type[0] : schema?.type;
@@ -72,9 +81,9 @@ export function parseCallFlags(argv: readonly string[], schema: JsonSchema | nul
         Object.assign(out.input, parsed);
       } else out.idempotencyKey = value;
     } else if (rawName.startsWith("no-") && !RESERVED_FLAGS.has(rawName)) {
-      fields[camel(rawName.slice(3))] = false;
+      fields[fieldName(rawName.slice(3), schema)] = false;
     } else {
-      const name = camel(rawName);
+      const name = fieldName(rawName, schema);
       const next = argv[index + 1];
       const value: string | true = inline ?? (next !== undefined && !next.startsWith("--") ? (index++, next) : true);
       const property = schema?.properties?.[name];
@@ -101,16 +110,35 @@ export const defaultOpsCliDeps: OpsCliDeps = {
   printError: (text) => process.stderr.write(`${text}\n`),
 };
 
+/** The docs.read id of a local tool's guide (tool/<slug>). */
+function guideOf(toolName: string): string | undefined {
+  const entry = loadLibraryIndex().find((candidate) => candidate.kind === "tool" && candidate.mcp_tool_name === toolName);
+  return entry?.id;
+}
+
 async function runLocal(op: string, call: ParsedCall, deps: OpsCliDeps): Promise<Answer> {
-  if (call.dryRun) return errorAnswer("unsupported", `${op} runs in Summer Engine and has no dry run yet.`);
-  const tool = localToolsFor(op)[0];
+  // A split operation runs its 3.x tool with the action fixed (core/ops/engine.ts).
+  const split = ENGINE_SPLIT_OPS[op];
+  const entry = localEntries().find((candidate) => candidate.name === op);
+  const tool = split?.tool ?? entry?.mcpTool ?? localToolsFor(op)[0];
   if (!tool) return errorAnswer("not_found", `No operation is named "${op}".`, { next: { op: "ops.search", input: { query: op } } });
+  const args = split ? splitToolArgs(split, call.input) : call.input;
+  const def = engineOpDef(op);
+  const guide = guideOf(tool);
+  const describe = guide && def ? { op: "docs.read", input: { id: guide } } : { op: "ops.describe", input: { name: op } };
+  const missing = missingInput(localInputSchema(op), call.input);
+  if (missing) return errorAnswer("invalid_input", missing, { next: describe });
+  if (call.dryRun) {
+    return { ok: true, status: "dry_run", preview: { summary: `${entry?.title ?? op}: the input is valid. Nothing was done.`, changes: [], approval: entry?.approval ?? "none", estimate: null, valid: true } };
+  }
   try {
-    return { ok: true, status: "done", result: await deps.dispatch(tool, call.input) };
+    return { ok: true, status: "done", result: await deps.dispatch(tool, args) };
   } catch (error) {
-    if (error instanceof EngineUnavailableError) return errorAnswer("engine_not_running", "Summer Engine is not running, or no project is open.", { next: { say: "Open the project in Summer Engine, then try again." } });
-    if (error instanceof ToolResultError) return errorAnswer("invalid_input", error.message, { details: { tool: error.result } });
-    return errorAnswer("invalid_input", error instanceof Error ? error.message : String(error));
+    if (error instanceof EngineUnavailableError) return engineNotRunning();
+    if (error instanceof ToolResultError) {
+      return def ? engineFailure(JSON.stringify(error.result), op, { effect: def.effect, guide }) : errorAnswer("invalid_input", error.message, { details: { tool: error.result } });
+    }
+    return errorAnswer("invalid_input", error instanceof Error ? error.message : String(error), { next: describe });
   }
 }
 
@@ -226,9 +254,9 @@ export function opsCliCommands(): Command[] {
     .command("describe <op>")
     .description("Show one operation with its exact input")
     .action(async (op: string) => {
-      const local = localEntries().find((entry) => entry.name === op);
+      const local = localWireForm(op);
       if (local) {
-        defaultOpsCliDeps.print(JSON.stringify({ ...local, input: localInputSchema(op) }, null, 2));
+        defaultOpsCliDeps.print(JSON.stringify(local, null, 2));
         return;
       }
       process.exitCode = await runOpFromCli("ops.describe", ["--name", op]);

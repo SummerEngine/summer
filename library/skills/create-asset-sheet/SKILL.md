@@ -1,6 +1,6 @@
 ---
 name: create-asset-sheet
-description: "Generate a pack of 2D game assets from one prompt — tile sheet, UI kit, character pack, or biome set — sliced, classified, and saved as one pack ArtAsset."
+description: "Generate a pack of 2D assets from one prompt (tile sheet, UI kit, character pack, biome), sliced."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
@@ -42,7 +42,7 @@ Categories the classifier outputs (used to route into downstream pipelines):
 
 ## The cleanest path: the studio wizard
 
-The most reliable way to run this flow is the **Create Asset Sheet** wizard in Summer Studio's guided workflows. Open it for the user with `summer open workflows` (or `summer_open`) if they're working in the browser. The wizard:
+The most reliable way to run this flow is the **Create Asset Sheet** wizard in Summer Studio's guided workflows. Open it for the user with `summer open workflows` (or `studio.open`) if they're working in the browser. The wizard:
 
 - Offers a 2D / 3D mode toggle (2D is the slice flow described here; 3D is a soft pointer to `concept-art` + per-asset image-to-3D for now)
 - Surfaces six prompt templates (tile sheet, UI kit, menu, character pack, biome, freeform)
@@ -136,6 +136,10 @@ calls the same server-side slicer as the Studio wizard.
 | Slice has a sliver of neighbor in it | Vision bbox is off by 5–15px | Expected. The slicer pads but doesn't snap-to-content yet. Live with it or upscale the slice (upscaling often cleans the edge) |
 | Upscaled slice looks invented | Source was too small / too ambiguous | Don't upscale slices below ~32×32. Or accept the hallucination and edit |
 | Detection returns wrong category | Model misjudged context | User can override in the review step; not a blocker |
+
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), the studio wizard path works as written. On the programmatic path, stop after `summer_slice_asset_sheet` and skip `summer_import_asset_by_id`: get each piece with `summer_get_asset_download_url`, save the pieces where the person asked, and tell them the paths.
 
 ## What this skill does NOT do (yet)
 

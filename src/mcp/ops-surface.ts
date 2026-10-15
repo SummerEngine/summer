@@ -139,6 +139,13 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
     (async ({ op, input, dryRun, idempotencyKey }: { op: string; input?: Record<string, unknown>; dryRun?: boolean; idempotencyKey?: string }, extra: unknown) => {
       const name = op.trim();
       const resolved = resolveOpName(name);
+      // A 3.x name this server registers runs its 3.x tool unchanged (local
+      // options such as summer_app_publish's dir keep working), wherever its
+      // 4.0 operation runs.
+      if (names[name] && tools[name] && name !== SUMMER_CALL && name !== SUMMER_SEARCH) {
+        if (dryRun) return text(errorAnswer("unsupported", `${name} is a 3.x tool and has no dry run. Use its 4.0 operation ${resolved} when it is available.`));
+        return text(await runLocal(name, input ?? {}, extra));
+      }
       if (isLocalOp(resolved)) {
         if (dryRun) return text(errorAnswer("unsupported", `${resolved} runs in Summer Engine and has no dry run yet. Read the scene first (engine.get_scene_tree), then call it.`));
         const toolName = tools[name] ? name : localToolsFor(resolved).find((candidate) => tools[candidate]);

@@ -111,6 +111,17 @@ describe("v4, engine profile", () => {
     }
   });
 
+  it("runs a 3.x name this server registers with its local tool, even when its operation is cloud", async () => {
+    const { client, cloud, close } = await session("engine", "v4");
+    try {
+      const answer = answerOf(await client.callTool({ name: "summer_call", arguments: { op: "summer_list_my_assets", input: {} } }));
+      expect(cloud.call).not.toHaveBeenCalled();
+      expect(answer.ok).toBe(false);
+    } finally {
+      await close();
+    }
+  });
+
   it("forwards cloud operations to the hosted summer_call unchanged", async () => {
     const { client, cloud, close } = await session("engine", "v4");
     try {

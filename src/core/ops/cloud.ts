@@ -101,7 +101,7 @@ export function hostedCallFailure(error: unknown, call: { op: string; dryRun?: b
     return errorAnswer("not_signed_in", `Cloud operations need the Summer sign-in: ${cause}`, { next: { say: fresh ? "Run: npx -y summer-engine login --store --force" : "Run: npx -y summer-engine login" }, details });
   }
   if (status === 403 || (error instanceof OAuthError && error.code === "store_access_denied")) {
-    return errorAnswer("forbidden", `Summer's hosted server refused this account: ${cause}`, { next: { say: "Check the account in Summer Studio (for example confirm the email), then try again." }, details });
+    return errorAnswer("forbidden", error instanceof OAuthError ? cause : `Summer's hosted server refused this account: ${cause}`, { next: { say: "Check the account in Summer Studio (for example confirm the email), then try again." }, details });
   }
   if (status === 429) {
     return errorAnswer("rate_limited", `Summer's hosted server asked to slow down: ${cause}`, { next: { say: "Wait a minute, then call it again." }, details });
@@ -111,7 +111,7 @@ export function hostedCallFailure(error: unknown, call: { op: string; dryRun?: b
     const rejected = status !== undefined && status >= 400 && status < 500;
     return errorAnswer("unavailable", `Summer's hosted server did not run ${call.op}: ${cause}`, {
       retry: rejected ? "no" : "after",
-      next: { say: rejected ? "Update Summer: npx -y summer-engine@latest, then try again." : "Try again in a minute. If it repeats, check the network." },
+      next: { say: rejected ? "Summer's hosted server refused the request. If it repeats, report it to Summer with this message." : "Try again in a minute. If it repeats, check the network." },
       details,
     });
   }

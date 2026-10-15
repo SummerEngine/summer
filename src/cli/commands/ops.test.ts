@@ -137,6 +137,17 @@ describe("a hosted call that fails", () => {
     const d = deps(hosted);
     expect(await runOpFromCli("assets.generate_3d", ["--input", '{"prompt":"tree"}', "--wait", "--json"], d)).toBe(1);
     expect(JSON.parse(d.err[d.err.length - 1])).toMatchObject({ ok: false, error: { code: "unavailable", next: { op: "jobs.wait", input: { jobId: "gen:8" } }, details: { job: "gen:8" } } });
+
+    // A sign-in that lapses mid-wait keeps its own step, and still names the job.
+    const lapsed = vi
+      .fn()
+      .mockResolvedValueOnce(envelope({ ok: true, status: "running", job: { id: "gen:9", state: "queued" } }))
+      .mockRejectedValueOnce(new StreamableHTTPError(401, 'Error POSTing to endpoint: {"error":"invalid_token"}'));
+    const e = deps(lapsed);
+    expect(await runOpFromCli("assets.generate_3d", ["--input", '{"prompt":"tree"}', "--wait", "--json"], e)).toBe(1);
+    const answer = JSON.parse(e.err[e.err.length - 1]);
+    expect(answer).toMatchObject({ ok: false, error: { code: "not_signed_in", next: { say: "Run: npx -y summer-engine login --store --force" }, details: { job: "gen:9" } } });
+    expect(answer.error.message).toContain("gen:9");
   });
 });
 

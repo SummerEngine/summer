@@ -221,7 +221,7 @@ Compare: was the metric movement at least 50% of what was promised? If yes, ship
 
 ## Collaborative protocol
 
-This skill makes scene/resource/code changes. Always ask before each fix is applied. See `summer_read_library` id `reference/collaborative-protocol`.
+This skill makes scene/resource/code changes. Always ask before each fix is applied. See `summer_docs_read` id `reference/collaborative-protocol`.
 
 ## Want a working starter?
 
@@ -229,10 +229,10 @@ No template — this is a workflow. Performance tuning is project-specific by de
 
 ## See also
 
-- `summer_read_library` id `reference/mcp-tools-reference` — full MCP tool list
-- `summer_read_library` id `reference/godot-version` — renderer API churn notes (Compositor, RenderSceneBuffers)
-- `summer_read_library` id `reference/collaborative-protocol` — "May I write" pattern
-- `summer_read_library` id `reference/gd-style` — GDScript conventions (avoid bare types, use `:=`)
+- `summer_docs_read` id `reference/mcp-tools-reference` — full MCP tool list
+- `summer_docs_read` id `reference/godot-version` — renderer API churn notes (Compositor, RenderSceneBuffers)
+- `summer_docs_read` id `reference/collaborative-protocol` — "May I write" pattern
+- `summer_docs_read` id `reference/gd-style` — GDScript conventions (avoid bare types, use `:=`)
 - `debug` — bug triage (related but different)
 - `diagnosing-perf-regressions` — when it *got* slow rather than always was
 - `3d-lighting` — light setup and bake decisions

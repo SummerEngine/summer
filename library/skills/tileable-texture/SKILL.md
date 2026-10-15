@@ -212,4 +212,4 @@ After the texture is wired:
 - `asset-strategy` — meta-router and 3D pipeline.
 - `skybox-panorama` — sky/environment counterpart.
 - `scene-composition` — applying textures to CSG and MeshInstance3D.
-- `summer_read_library` id `reference/mcp-tools-reference` — how to call `assets.generate_image`.
+- `summer_docs_read` id `reference/mcp-tools-reference` — how to call `assets.generate_image`.

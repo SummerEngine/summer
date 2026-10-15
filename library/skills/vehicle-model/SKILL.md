@@ -220,4 +220,4 @@ After the vehicle is wired:
 - `character-model` — for the driver/pilot.
 - `prop-model` — for separable parts (rotors, decals as decals, modular kit pieces).
 - `asset-strategy` — meta-router.
-- `summer_read_library` id `reference/mcp-tools-reference` — how to call `assets.generate_3d`; `summer_search` returns its exact input.
+- `summer_docs_read` id `reference/mcp-tools-reference` — how to call `assets.generate_3d`; `summer_search` returns its exact input.

@@ -358,7 +358,7 @@ Use this as a one-shot grep before any export:
 
 ## Collaborative protocol
 
-This skill produces release artifacts. Always ask before each build is invoked. Group platforms — "I'm about to build Windows + Mac + Linux release configs into `build/`. OK?". See `summer_read_library` id `reference/collaborative-protocol`.
+This skill produces release artifacts. Always ask before each build is invoked. Group platforms — "I'm about to build Windows + Mac + Linux release configs into `build/`. OK?". See `summer_docs_read` id `reference/collaborative-protocol`.
 
 ## Want a working starter?
 
@@ -366,9 +366,9 @@ No template — this is a workflow. Each project's export config and store asset
 
 ## See also
 
-- `summer_read_library` id `reference/mcp-tools-reference` — full MCP tool list
-- `summer_read_library` id `reference/godot-version` — Summer compatibility and
+- `summer_docs_read` id `reference/mcp-tools-reference` — full MCP tool list
+- `summer_docs_read` id `reference/godot-version` — Summer compatibility and
   export-template versioning
-- `summer_read_library` id `reference/collaborative-protocol` — "May I write" pattern
+- `summer_docs_read` id `reference/collaborative-protocol` — "May I write" pattern
 - `headless-scripting` — the headless CLI pattern the export command follows
 - `tune-performance` — pre-ship performance pass

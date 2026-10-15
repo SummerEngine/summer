@@ -249,4 +249,4 @@ Once the cutscene is generated and wired:
 - `music-track` — score the cutscene.
 - `concept-art` — generate the reference image axis if no character reference exists yet.
 - `character-portrait` — produce a high-fidelity locked character portrait for use as `imageUrl`.
-- `summer_read_library` id `reference/mcp-tools-reference` — how to call `assets.generate_video`; `summer_search` returns its exact input.
+- `summer_docs_read` id `reference/mcp-tools-reference` — how to call `assets.generate_video`; `summer_search` returns its exact input.

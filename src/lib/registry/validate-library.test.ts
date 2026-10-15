@@ -361,7 +361,7 @@ describe("validate-library: skills as installed (budget, links, call examples)",
   it("rejects a path that climbs out of the skill folder, and accepts a library id", () => {
     const bad = withSkillBody("See `../../references/gd-style/gd-style.md` and [the kit](../other-skill/SKILL.md).");
     expect(bad.errors.filter((e) => /leaves the skill folder/.test(e))).toHaveLength(2);
-    const good = withSkillBody("See `summer_read_library` id `reference/gd-style`.");
+    const good = withSkillBody("See `summer_docs_read` id `reference/gd-style`.");
     expect(good.errors).toEqual([]);
   });
 
@@ -447,5 +447,27 @@ describe("call examples: argument names", () => {
       { tool: "summer_add_node", line: 1, missing: ["scenePath"], unknown: [] },
       { tool: "summer_app_screenshot", line: 3, missing: ["appId"], unknown: [] },
     ]);
+  });
+});
+
+describe("validate-library: 3.x docs-area tool names", () => {
+  const result = run("retired-tool-names");
+
+  it("fails overall", () => {
+    expect(result.ok).toBe(false);
+  });
+
+  it.each([
+    ["summer_search_library", 3, /write summer_docs_search$/],
+    ["summer_read_library", 3, /write summer_docs_read$/],
+    ["summer_library_feedback", 5, /write summer_call \{"op":"docs\.feedback"\}$/],
+  ])("names %s on its line with the 4.0 form", (name, line, fix) => {
+    const hit = result.errors.find((e) => e.includes(`body.md:${line}: "${name}"`));
+    expect(hit).toMatch(fix);
+  });
+
+  it("allows a 3.x name called through summer_call or explained as 3.x", () => {
+    expect(result.errors.filter((e) => /body\.md:(7|9):/.test(e))).toEqual([]);
+    expect(result.errors).toHaveLength(3);
   });
 });

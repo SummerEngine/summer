@@ -17,7 +17,7 @@ A call written `area.action({...})` is one operation: use the tool `summer_area_
 
 | Job | Operations |
 |---|---|
-| Find how to do it | `summer_search_library`, then `summer_read_library` the skill |
+| Find how to do it | `summer_docs_search`, then `summer_docs_read` the skill |
 | Find an existing asset | `assets.search({ query, scope })` (`scope`: `library` (default), `mine` for the person's own, `all`), then `assets.get({ assetId })` |
 | Make a new asset | `assets.generate_image`, `assets.generate_3d`, `assets.generate_audio`, `assets.generate_sfx_choices` with `assets.choices`, `assets.generate_video`, `assets.generate_motion`, `assets.slice_sheet` |
 | Wait for a job | `jobs.wait({ jobId, timeoutSeconds: 50 })` with the `job.id` a generation returned |

@@ -230,4 +230,4 @@ Once the loop is wired:
 - `music-track` — score the menu.
 - `ui-graphics` — logo, menu buttons, HUD that sits over the loop.
 - `concept-art` — produce the reference still that anchors the loop.
-- `summer_read_library` id `reference/mcp-tools-reference` — how to call `assets.generate_video`; `summer_search` returns its exact input.
+- `summer_docs_read` id `reference/mcp-tools-reference` — how to call `assets.generate_video`; `summer_search` returns its exact input.

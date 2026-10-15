@@ -150,4 +150,4 @@ After the prop is wired:
 - `asset-strategy` — the meta-router that decides between this skill and Pipeline 2 (textures).
 - `character-model` — for humanoids.
 - `environment-kit` — for style-locked sets.
-- `summer_read_library` id `reference/mcp-tools-reference` — how to call `assets.generate_3d`; `summer_search` returns its exact input.
+- `summer_docs_read` id `reference/mcp-tools-reference` — how to call `assets.generate_3d`; `summer_search` returns its exact input.

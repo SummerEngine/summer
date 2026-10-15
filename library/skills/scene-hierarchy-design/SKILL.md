@@ -74,7 +74,7 @@ Rules of thumb:
 
 Follow the canonical scene loop from the Summer MCP reference: route → orient → read rules → resolve `scenePath` → mutate → verify.
 
-1. **Orient.** `summer_start_game_task` to route the goal; `summer_get_project_context`; `summer_get_agent_playbook`.
+1. **Orient.** `summer_call` `{"op":"docs.plan"}` to route the goal; `summer_get_project_context`; `summer_call` `{"op":"summer_get_agent_playbook"}`.
 2. **Read before writing.** `summer_get_scene_tree` on the exact `res://...tscn`. Never mutate blind, and never edit `.tscn` text while the engine is running — use the MCP tools.
 3. **Pick the access pattern.** For each planned cluster decide: operated as a subtree (→ wrapper parent), queried by type across the scene (→ flat siblings + group), or unique (→ inline under root container).
 4. **Build asset hierarchies first.** For reusable setups create the sub-scene (`summer_create_scene` / build inline then `summer_save_scene(scenePath="res://main.tscn", path="res://scenes/<name>.tscn")`), then bring them in with `summer_instantiate_scene(scenePath="res://main.tscn", parent="./<Wrapper>", scene="res://scenes/<name>.tscn", name="<Role>_01")`.

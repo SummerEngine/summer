@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_assets_generate_image summer_assets_slice_sheet summer_get_studio_workflow summer_assets_search summer_import_from_url summer_import_from_url_batch summer_import_asset_by_id summer_set_resource_property summer_write_file summer_add_node summer_set_prop summer_save_scene summer_call
+allowed-tools: Read Grep Glob Write Edit summer_assets_generate_image summer_assets_slice_sheet summer_assets_search summer_import_from_url summer_import_from_url_batch summer_import_asset_by_id summer_set_resource_property summer_write_file summer_add_node summer_set_prop summer_save_scene summer_call
 paths: ["assets/**", "sprites/**", "art/sprites/**"]
 ---
 
@@ -21,7 +21,7 @@ This skill therefore offers **three paths**, ranked by reliability:
 2. **Single-call sheet + auto-slice** (fast; sheet coherence is the gamble, not the cutting) — one prompt asks for the grid, then `assets.slice_sheet` cuts it into individual frames server-side. Worth trying once for short cycles (4 frames or fewer) before falling back to (1).
 3. **Manual authoring** (most reliable, slowest) — hand-author in **Aseprite** or **Piskel**. For pixel art at 32×32, this is often faster than fixing AI generations.
 
-There is no single "generate a sprite sheet" operation, but there **is** a shared two-step sheet pipeline, and it is the same one Studio's Guided "sprite-sheet" workflow runs: `assets.generate_image` produces one sheet, then `assets.slice_sheet({ assetId })` runs the server-side vision slicer that removes the background, detects each frame's bounding box, crops, and uploads every frame as its own image (one URL per slice). Call `summer_get_studio_workflow({ workflowId: "sprite-sheet" })` for the current ordered recipe and its stated limitations. Only Studio's frame-preview and visual timing-review UI is unreachable from MCP — the generation and the slicing both are reachable.
+There is no single "generate a sprite sheet" operation, but there **is** a shared two-step sheet pipeline, and it is the same one Studio's Guided "sprite-sheet" workflow runs: `assets.generate_image` produces one sheet, then `assets.slice_sheet({ assetId })` runs the server-side vision slicer that removes the background, detects each frame's bounding box, crops, and uploads every frame as its own image (one URL per slice). Call `summer_call({ op: "docs.workflows", input: { workflowId: "sprite-sheet" } })` for the current ordered recipe and its stated limitations. Only Studio's frame-preview and visual timing-review UI is unreachable from MCP — the generation and the slicing both are reachable.
 
 So do not tell the user to cut a generated sheet by hand or in ImageMagick. The cutting is automated; what is unreliable is inter-frame *consistency* inside the generated sheet.
 
@@ -246,4 +246,4 @@ After the animation is wired:
 - `character-portrait` — base portrait for higher-res characters.
 - `generate-motion` — 3D-skeletal counterpart.
 - `sound-effect` — frame-synced SFX.
-- `summer_read_library` id `reference/mcp-tools-reference` — how to call `assets.generate_image`.
+- `summer_docs_read` id `reference/mcp-tools-reference` — how to call `assets.generate_image`.

@@ -228,7 +228,7 @@ Pack has a composite parent `settings_panel` (filtered out) plus three children:
 
 After this, hand `panel_bg` and `apply_button` to `use-widget-asset` to set `patch_margin_*` from their `widget.frameMargins`.
 
-Note the ops format: `position` is the **engine variant string** `"Vector2(0, 0)"`, not a JSON object. `z_index` is a bare integer. This is the format Summer Engine expects — see `summer_read_library` id `reference/mcp-tools-reference`.
+Note the ops format: `position` is the **engine variant string** `"Vector2(0, 0)"`, not a JSON object. `z_index` is a bare integer. This is the format Summer Engine expects — see `summer_docs_read` id `reference/mcp-tools-reference`.
 
 ## Failure modes
 

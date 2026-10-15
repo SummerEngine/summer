@@ -1,6 +1,6 @@
 ---
 name: summer-apps-design
-description: "How a Summer App should look - page layout, Summer UI kit components, tables, charts, media, boards, states and a pre-ship checklist."
+description: "How a Summer App should look: layout, Summer UI kit components, tables, charts, states, pre-ship check."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: tools

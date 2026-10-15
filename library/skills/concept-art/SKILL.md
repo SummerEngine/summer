@@ -1,6 +1,6 @@
 ---
 name: concept-art
-description: "Explore art direction with 3-4 rough concept variants of a character, environment, or prop to pick a vibe before committing to a final asset."
+description: "Explore art direction with 3-4 rough concept variants of a character, environment or prop."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
@@ -150,4 +150,4 @@ Once the user picks a direction:
 
 - `asset-strategy` — meta-router that delegates here vs other 2d-assets skills.
 - `character-portrait` — the polished single-image counterpart.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_image` parameter schema.
+- `summer_read_library` id `reference/mcp-tools-reference` — `summer_generate_image` parameter schema.

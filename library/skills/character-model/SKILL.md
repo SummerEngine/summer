@@ -1,6 +1,6 @@
 ---
 name: character-model
-description: "Generate a rigged humanoid — player, NPC, enemy, boss — via T-pose reference, user-gated preview, and Meshy auto-rig, wired as CharacterBody3D or Node3D."
+description: "Generate a rigged humanoid (player, NPC, enemy, boss) from a T-pose reference, previewed before rigging."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 3d-assets
@@ -248,4 +248,4 @@ After the rigged character is wired:
 - `asset-strategy` — meta-router; this skill is the canonical drill-down of its "Image-to-3D for characters" path.
 - `prop-model` — for non-character props.
 - `scene-composition` — for the CharacterBody3D + Mesh + Collider parent pattern.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — full parameter schemas for `summer_generate_3d`, `summer_generate_image`, and `summer_generate_motion`.
+- `summer_read_library` id `reference/mcp-tools-reference` — full parameter schemas for `summer_generate_3d`, `summer_generate_image`, and `summer_generate_motion`.

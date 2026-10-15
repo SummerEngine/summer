@@ -1,6 +1,6 @@
 ---
 name: headless-scripting
-description: "Run a GDScript file against Summer Engine from the shell for operations no MCP tool exposes — navmesh baking, collision shapes, TileSets, re-imports."
+description: "Run a GDScript file against Summer Engine from the shell for what no MCP tool does: navmesh, TileSets."
 ---
 
 # Headless Scripting

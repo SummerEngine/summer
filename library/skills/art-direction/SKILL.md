@@ -1,6 +1,6 @@
 ---
 name: art-direction
-description: "Define the game's visual style — references, palette, mood, lighting plan, post-processing, do/don't list — output as an art bible at .summer/art-bible.md."
+description: "Define the game's visual style (palette, mood, lighting, post) as an art bible in .summer/art-bible.md."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: rendering-and-lighting
@@ -185,7 +185,7 @@ If a `WorldEnvironment` node is in the main scene, set its environment defaults 
 
 ```
 summer_inspect_node(path="./World/WorldEnvironment")
-summer_set_prop(path="./World/WorldEnvironment/...", key="...", value="...")
+summer_set_prop(scenePath="res://main.tscn", path="./World/WorldEnvironment/...", key="...", value="...")
 ```
 
 Ask before each:

@@ -1,6 +1,6 @@
 ---
 name: voice-line
-description: "Generate TTS voice lines — NPC barks, narrator, dialogue — with voice-id sourcing, a character-to-voice decision tree, and multi-line dialogue support."
+description: "Generate voice lines (NPC barks, narrator, dialogue) with a character-to-voice choice and multi-line support."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio

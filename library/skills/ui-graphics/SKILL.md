@@ -1,6 +1,6 @@
 ---
 name: ui-graphics
-description: "Generate game-UI elements — icons, buttons, panels, frames, HUD widgets, badges — flat design, transparent background, wired via TextureRect/NinePatchRect."
+description: "Generate game UI art (icons, buttons, panels, frames, HUD widgets) flat, on a transparent background."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
@@ -221,4 +221,4 @@ After the UI graphic is wired:
 - `character-portrait` — for in-UI character images.
 - `pixel-art` — pixel-style UI.
 - `scene-composition` — Theme and Control hierarchy.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_image` schema.
+- `summer_read_library` id `reference/mcp-tools-reference` — `summer_generate_image` schema.

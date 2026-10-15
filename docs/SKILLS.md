@@ -56,7 +56,10 @@ Per-skill metadata lives in `resource.yaml` (schema:
 `registry/generated/aliases.json`), `status`
 (`stable` and `preview` both install in bulk — `preview` marks work not yet
 exercised in-engine, carried in the skill's own guidance, and `--stable-only`
-skips it; `deprecated` installs only by name), `version`.
+skips it; `deprecated` installs only by name), `bundled` (`false` keeps a
+library-author tool or research digest in the library, readable with
+`summer_read_library` and installable by name, but out of bulk installs and
+the plugin manifests), `version`.
 
 ## Authoring rules
 
@@ -66,13 +69,25 @@ skips it; `deprecated` installs only by name), `version`.
   15k characters for all skills together. The whole library only fits when
   each description is one short line. Put trigger phrases and examples in the
   skill body, not the description. `npm run validate:library` enforces the match.
+- **The descriptions of every installed skill share one budget**
+  (`SKILL_DESCRIPTION_BUDGET` in `scripts/validate-library/index.ts`, 12,000
+  characters across the skills a bulk install takes). Aim for about 100
+  characters; `npm run validate:library` prints the total and fails over it.
+- **A skill folder is copied alone**, so no path in it climbs out with `../`.
+  Name a shared reference by its library id (`summer_read_library` id
+  `reference/<slug>`), another skill by its bare slug, a file of another entry
+  as `<entry id>/<path>`. `validate:library` rejects the rest.
+- **Call examples are complete calls.** `validate:library` checks every
+  `summer_*(…)` and `summer_* {…}` example in a skill against the tool's
+  `input_schema`: every required argument (`scenePath` on scene mutations),
+  no unknown ones. Elide on purpose with `...`.
 
 1. **Specialist skills:** narrow technical knowledge. Set `user-invocable: false`.
 2. **Workflow skills:** action-verb names (`/debug`, `/play`), open with one clarifying question, orchestrate specialists. Set `user-invocable: true`.
 3. SKILL.md <= 500 lines. Push shared detail into `library/references/`.
 4. Show the Summer MCP path plus an explicit offline/manual fallback in every code-touching skill.
 5. Teach identity-bound file mutation for `.tscn`/`.tres`: use `summer_read_file` plus guarded `summer_replace_text`/`summer_write_file`, and use scene tools for live hierarchy/inspector work.
-6. "May I write this change?" before any user-visible mutation. See `library/references/collaborative-protocol/collaborative-protocol.md`.
+6. "May I write this change?" before any user-visible mutation. See `summer_read_library` id `reference/collaborative-protocol`.
 7. A skill may ship `tests/spec.md` with Test Cases; `library/skills/skill-test/SKILL.md` runs the structural checks every skill must pass (frontmatter, `resource.yaml` schema, routing metadata).
 
 ## Standard

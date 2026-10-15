@@ -1,6 +1,6 @@
 ---
 name: tileable-texture
-description: "Generate a seamless tileable texture for walls, floors, or terrain — repeats cleanly on all four edges, wired as a StandardMaterial3D albedo."
+description: "Generate a seamless tileable texture for walls, floors or terrain, wired as a StandardMaterial3D albedo."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
@@ -208,4 +208,4 @@ After the texture is wired:
 - `asset-strategy` — meta-router and 3D pipeline.
 - `skybox-panorama` — sky/environment counterpart.
 - `scene-composition` — applying textures to CSG and MeshInstance3D.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_image` schema.
+- `summer_read_library` id `reference/mcp-tools-reference` — `summer_generate_image` schema.

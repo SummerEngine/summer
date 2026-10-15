@@ -1,6 +1,6 @@
 ---
 name: cinematic-cutscene
-description: "Generate a non-interactive cutscene — reference-locked look, a 5-10s image-to-video shot, optional TTS dialogue — wired as a fading VideoStreamPlayer."
+description: "Generate a non-interactive cutscene: a reference-locked 5-10s video shot with optional voiced dialogue."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: video
@@ -237,4 +237,4 @@ Once the cutscene is generated and wired:
 - `music-track` — score the cutscene.
 - `concept-art` — generate the reference image axis if no character reference exists yet.
 - `character-portrait` — produce a high-fidelity locked character portrait for use as `imageUrl`.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_video` parameter schema and error codes.
+- `summer_read_library` id `reference/mcp-tools-reference` — `summer_generate_video` parameter schema and error codes.

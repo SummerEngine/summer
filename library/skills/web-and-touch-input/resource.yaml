@@ -1,7 +1,7 @@
 id: skill/web-and-touch-input
 kind: skill
 version: 1.0.0
-summary: "Input for the browser and phones: the first-click rule for sound and mouse capture, focus, and touch buttons or a virtual stick on the same actions."
+summary: "Browser and phone input: the first-click rule for sound and mouse capture, focus, touch buttons, a stick."
 use_when:
   - the game plays in the browser and sound, mouse capture or keys do not work until something is clicked
   - the game should be playable on a phone or tablet with touch controls

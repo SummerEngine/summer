@@ -1,7 +1,7 @@
 id: skill/combat-basics
 kind: skill
 version: 1.0.0
-summary: "Damage in Summer Engine: hitbox and hurtbox Areas on opposing layers, a reusable Health component, damage signals, knockback, hit feedback, projectiles."
+summary: "Damage: hitbox and hurtbox Areas, a reusable Health component, damage signals, knockback, projectiles."
 use_when:
   - adding attacks, health and damage, or enemies that can be hit and hit back
   - adding projectiles or bullets — homing, piercing, area-of-effect, or pooling hundreds of them

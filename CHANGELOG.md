@@ -2,14 +2,11 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
-
-- **Summer sees which agent app made each request.** Every request to Summer's servers (generation, jobs, assets, Summer Apps, the store upload, the hosted Summer Engine MCP, library search and the usage line) now carries the agent app's id (`X-Summer-Agent-Host`, for example `claude-code`), the name and version the app sent in the MCP handshake, and the tool that made the request (`X-Summer-MCP-Tool`). Before, the app was never sent. Outside an MCP session (`summer tool`, `summer login`) the id comes from the agent's environment; `SUMMER_AGENT_HOST` overrides it. `SUMMER_NO_TELEMETRY=1` or `DO_NOT_TRACK=1` removes these headers and keeps only the CLI's own name and version.
-
 ## [3.9.0] - 2026-10-14
 
-One sign-in for every Summer tool, tool profiles that fit every agent, and shorter tool results.
+One sign-in for every Summer tool, tool profiles that fit every agent, shorter tool results, and Summer sees which agent app made each request.
 
+- **Summer sees which agent app made each request.** Every request to Summer's servers (generation, jobs, assets, Summer Apps, the store upload, the hosted Summer Engine MCP, library search and the usage line) now carries the agent app's id (`X-Summer-Agent-Host`, for example `claude-code`), the name and version the app sent in the MCP handshake, and the tool that made the request (`X-Summer-MCP-Tool`). Before, the app was never sent. Outside an MCP session (`summer tool`, `summer login`) the id comes from the agent's environment; `SUMMER_AGENT_HOST` overrides it. `SUMMER_NO_TELEMETRY=1` or `DO_NOT_TRACK=1` removes these headers and keeps only the CLI's own name and version.
 - **One sign-in.** `summer login` now signs you in to your Summer account and then, in the same browser, to the store, publishing and Grow tools: one Allow click, or none if this machine was approved before. Before, that took a second `summer login --store`. If the store step does not finish within 3 minutes, your account sign-in is kept and `summer login --store` adds the store later. `summer login --no-store` skips the store step; `summer login --store` still runs it alone.
 - **Every tool says what it does.** Each local MCP tool now carries `readOnlyHint`, `destructiveHint`, `idempotentHint` and `openWorldHint`, mapped from its `authority` in the library. Agents and apps that ask before a change can let reads run and still ask before an edit, a generation that costs credits, or a publish. A test fails when a tool has no hints.
 - **Agents script runs of scene edits.** The MCP instructions now say: more than 3 scene edits, write one `summer_run_script` (snapshot, script, diff, screenshot). After the 4th single edit in a row (`summer_set_prop`, `summer_add_node`, `summer_remove_node`, ...), the result adds one line that points to `summer_run_script`, then again every 6th.

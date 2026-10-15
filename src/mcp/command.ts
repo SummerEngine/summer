@@ -26,12 +26,17 @@ export const mcpCommand = new Command("mcp")
     "--toolsets <list>",
     `Comma-separated toolsets to add (alone: core plus these): ${TOOLSETS.join(", ")}, or all. Env: SUMMER_TOOLSETS`
   )
-  .action(async (opts: { project?: string; instance?: string; profile?: string; toolsets?: string }) => {
+  .addOption(
+    // The 4.0 operation catalog surface, off until it passes its eval.
+    new Option("--surface <surface>", "Tool surface: v3 (default) or v4 (the operation catalog: summer_search and summer_call). Env: SUMMER_SURFACE").hideHelp()
+  )
+  .action(async (opts: { project?: string; instance?: string; profile?: string; toolsets?: string; surface?: string }) => {
     await startMcpServer({
       projectPath: opts.project,
       instanceId: opts.instance,
       profile: opts.profile,
       toolsets: opts.toolsets,
+      surface: opts.surface,
     });
   });
 

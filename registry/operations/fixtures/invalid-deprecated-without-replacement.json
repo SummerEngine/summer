@@ -1,0 +1,60 @@
+{
+  "contract": 1,
+  "name": "games.list",
+  "title": "List my games",
+  "summary": "List the person's games on Summer Games: game id, name, status, targets and store link, newest change first. Next: store.get_listing.",
+  "effect": "read",
+  "approval": "none",
+  "provider": "cloud",
+  "auth": "account",
+  "input": {
+    "type": "object",
+    "properties": {
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 50,
+        "default": 20
+      }
+    },
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      },
+      "nextCursor": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "required": [
+      "items",
+      "nextCursor"
+    ]
+  },
+  "backend": {
+    "service": "platform",
+    "operationId": "listGames"
+  },
+  "legacy": [
+    "summer_store_list_games"
+  ],
+  "status": "deprecated",
+  "since": "4.0",
+  "examples": [
+    {
+      "input": {
+        "limit": 20
+      },
+      "note": "Which games does this person have?"
+    }
+  ]
+}

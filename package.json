@@ -2,6 +2,7 @@
   "name": "summer-engine",
   "version": "3.9.1",
   "description": "MCP server, CLI and skills for Summer Engine, the game engine built for AI. Connect Claude Code, Cursor, Codex and other agents to build, test and publish full games to summer.games.",
+  "mcpName": "io.github.summerengine/summer",
   "keywords": [
     "summer-engine",
     "summer-cli",
@@ -43,6 +44,7 @@
     "library/",
     "registry/generated/",
     "registry/schemas/",
+    "registry/operations/",
     "integrations/",
     "commands/",
     "hooks/",

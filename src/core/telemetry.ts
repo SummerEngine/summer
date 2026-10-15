@@ -3,9 +3,10 @@
  *
  * - One session ping per MCP server lifetime (mcp_session_start), on the
  *   first tool call, with the host app's name from the MCP handshake.
- * - One line per local tool call (mcp_tool_call): the tool name, success,
- *   duration and the host app's name from the MCP handshake. Nothing else:
- *   no arguments, no results, no project or file names.
+ * - One line per local tool call (mcp_tool_call): the tool name, the
+ *   Summer operation it ran, success, duration, the host app's name from the
+ *   MCP handshake, and the tool surface and profile. Nothing else: no
+ *   arguments, no results, no project or file names.
  *
  * Both go to /api/mcp/log-local-call, only when signed in (the account token
  * attributes them), and never when SUMMER_NO_TELEMETRY=1 or DO_NOT_TRACK=1.
@@ -46,6 +47,12 @@ export interface LocalToolCall {
   durationMs: number;
   /** The host app's name from the MCP handshake (clientInfo.name). */
   mcpClient?: string;
+  /** The Summer operation the call ran (core/ops/contract.ts opForToolCall). */
+  op?: string | null;
+  /** The tool surface: v3 (3.x names) or v4 (the operation catalog). */
+  surfaceVersion?: "v3" | "v4";
+  /** The MCP profile: full, engine, assets or custom. */
+  profile?: string;
 }
 
 /** Report one local tool call: tool name, success, duration, host app name. */
@@ -56,6 +63,9 @@ export function recordLocalToolCall(call: LocalToolCall): void {
     event: "mcp_tool_call",
     ...(call.mcpClient ? { mcpClient: call.mcpClient.slice(0, 64) } : {}),
     tool: call.tool,
+    ...(call.op ? { op: call.op } : {}),
+    ...(call.surfaceVersion ? { surfaceVersion: call.surfaceVersion } : {}),
+    ...(call.profile ? { profile: call.profile } : {}),
     ok: call.ok,
     durationMs: Math.max(0, Math.round(call.durationMs)),
   });

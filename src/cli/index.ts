@@ -16,6 +16,7 @@ import { debugCommand } from "./commands/debug.js";
 import { configCommand } from "./commands/config.js";
 import { eventsCommand } from "./commands/events.js";
 import { toolCommand } from "./commands/tool.js";
+import { opsCliCommands } from "./commands/ops.js";
 import { getBanner } from "./banner.js";
 import { runRootAction } from "./root-action.js";
 import { c, sym } from "../core/format.js";
@@ -55,6 +56,10 @@ export function runCli(mcpCommand: Command): void {
   program.addCommand(configCommand);
   program.addCommand(eventsCommand);
   program.addCommand(toolCommand);
+  // The 4.0 operation catalog (`summer <area> <action>`), off until it passes its eval.
+  if ((process.env.SUMMER_SURFACE ?? "").trim().toLowerCase() === "v4") {
+    for (const command of opsCliCommands()) program.addCommand(command);
+  }
 
   program.parseAsync().catch((err) => {
     console.error(err instanceof Error ? err.message : String(err));

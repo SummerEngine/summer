@@ -3,6 +3,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import { getStoreAccessToken, OAuthError, readStoredOAuthToken, resolveMcpResourceUrl } from "./oauth.js";
 import { TOOLKIT_VERSION } from "./version.js";
+import { summerRequestHeaders } from "./agent-host.js";
 
 /**
  * A client for the hosted Summer Engine MCP (mcp.summerengine.com), signed in
@@ -37,6 +38,7 @@ export async function connectHostedMcp(url: string, token: () => Promise<string>
     // A fresh (refreshed when near expiry) token on every request.
     fetch: async (input, init) => {
       const headers = new Headers(init?.headers);
+      for (const [name, value] of Object.entries(summerRequestHeaders({ tool: calledTool(init?.body), surface: "mcp" }))) headers.set(name, value);
       headers.set("authorization", `Bearer ${await token()}`);
       return fetch(input, { ...init, headers });
     },
@@ -208,5 +210,16 @@ export async function callHostedToolForCli(
   } catch (error) {
     if (error instanceof OAuthError && error.code === "store_login_required") return { status: "not_signed_in" };
     return { status: "unavailable", message: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+/** The tool a tools/call JSON-RPC body names, for the X-Summer-MCP-Tool header. */
+export function calledTool(body: unknown): string | undefined {
+  if (typeof body !== "string" || !body.includes('"tools/call"')) return undefined;
+  try {
+    const message = JSON.parse(body) as { method?: string; params?: { name?: unknown } };
+    return message.method === "tools/call" && typeof message.params?.name === "string" ? message.params.name : undefined;
+  } catch {
+    return undefined;
   }
 }

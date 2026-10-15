@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { open } from "node:fs/promises";
 import { extname, resolve } from "node:path";
+import { summerRequestHeaders } from "../agent-host.js";
 import { resolveGatewayUrl } from "../config.js";
 import { getStoreAccessToken, OAuthError } from "../oauth.js";
 import { appendStoreJsonLine } from "../store.js";
@@ -139,6 +140,7 @@ export function createStore(baseUrl: string, token: string, deps: PublishBuildDe
         response = await deps.fetch(`${baseUrl}${STORE_PROXY_PATH}/${path}`, {
           method,
           headers: {
+            ...summerRequestHeaders(),
             accept: "application/json",
             authorization: `Bearer ${token}`,
             ...(options.body === undefined ? {} : { "content-type": "application/json" }),

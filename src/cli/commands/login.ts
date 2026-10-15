@@ -6,6 +6,7 @@ import {
   saveLoginSession,
   type LoginSession,
 } from "../../core/auth.js";
+import { summerRequestHeaders } from "../../core/agent-host.js";
 import { resolveGatewayUrl } from "../../core/config.js";
 import { readStoredOAuthToken, runStoreLogin } from "../../core/oauth.js";
 
@@ -19,35 +20,95 @@ const POLL_TIMEOUT_MS = 900000;
 const HEARTBEAT_MS = 30000;
 
 export const loginCommand = new Command("login")
-  .description("Sign in to Summer Engine via your browser")
+  .description(
+    "Sign in to Summer in your browser: your Summer account, then the store, publishing and Grow tools in the same browser"
+  )
   .option(
     "--store",
-    "Sign in to the Summer store so agents can upload builds (summer_publish_build)"
+    "Only the store sign-in (summer_publish_build, the store, publishing, board and Grow tools); plain summer login does it too"
   )
+  .option("--no-store", "Only the Summer account sign-in; skip the store sign-in")
   .option("--force", "Force re-authentication even if already logged in")
   .action(async (opts: { store?: boolean; force?: boolean }) => {
-    if (opts.store) {
-      if ((await readStoredOAuthToken()) && !opts.force) {
-        console.log(
-          "Already signed in to the Summer store. Use --store --force to sign in again."
-        );
-        return;
-      }
-      // --force also registers a new client, the way back if this machine's was removed.
-      await runStoreLogin({ fetch, now: Date.now, openUrl: open, log: console.log, newClient: Boolean(opts.force) });
-      console.log(
-        "Signed in to the Summer store. Your core Summer login was not changed."
-      );
-      return;
-    }
-    const existing = await getAuthToken();
-    if (existing && !opts.force) {
-      console.log("Already logged in. Use --force to re-authenticate.");
-      return;
-    }
-
-    await runLogin();
+    await runLoginCommand(opts);
   });
+
+/** How long `summer login` waits for the store's Allow click after the account sign-in. */
+export const STORE_STEP_TIMEOUT_MS = 3 * 60_000;
+
+export interface LoginCommandDependencies {
+  hasAuthToken: () => Promise<boolean>;
+  hasStoreSignIn: () => Promise<boolean>;
+  login: () => Promise<void>;
+  storeLogin: (options: { newClient: boolean; timeoutMs?: number }) => Promise<unknown>;
+  log: (message: string) => void;
+}
+
+const defaultCommandDependencies: LoginCommandDependencies = {
+  hasAuthToken: async () => Boolean(await getAuthToken()),
+  hasStoreSignIn: async () => Boolean(await readStoredOAuthToken()),
+  login: () => runLogin(),
+  storeLogin: ({ newClient, timeoutMs }) =>
+    runStoreLogin({ fetch, now: Date.now, openUrl: open, log: console.log, newClient, ...(timeoutMs ? { timeoutMs } : {}) }),
+  log: console.log,
+};
+
+/**
+ * One `summer login`, one browser: the Summer account sign-in (the CLI token
+ * for the engine, generation and asset tools), then right away the store
+ * sign-in (an OAuth grant for the hosted Summer Engine MCP: store,
+ * publishing, board, Grow). The browser is signed in by then, so the second
+ * step is one Allow click, or none when this machine was approved before.
+ * The two are separate credentials on the server, so a failed store step
+ * keeps the account sign-in and says how to finish later.
+ *
+ * --store: only the store step (as before). --no-store: only the account.
+ */
+export async function runLoginCommand(
+  opts: { store?: boolean; force?: boolean },
+  overrides: Partial<LoginCommandDependencies> = {}
+): Promise<void> {
+  const deps = { ...defaultCommandDependencies, ...overrides };
+  const force = Boolean(opts.force);
+
+  if (opts.store === true) {
+    if ((await deps.hasStoreSignIn()) && !force) {
+      deps.log("Already signed in to the Summer store. Use --store --force to sign in again.");
+      return;
+    }
+    // --force also registers a new client, the way back if this machine's was removed.
+    await deps.storeLogin({ newClient: force });
+    deps.log("Signed in to the Summer store. Your core Summer login was not changed.");
+    return;
+  }
+
+  const signedIn = (await deps.hasAuthToken()) && !force;
+  const storeNeeded = opts.store !== false && (force || !(await deps.hasStoreSignIn()));
+  if (signedIn) {
+    deps.log(
+      storeNeeded
+        ? "Already logged in to Summer. Connecting the store, publishing and Grow tools next."
+        : "Already logged in. Use --force to re-authenticate."
+    );
+  } else {
+    await deps.login();
+    deps.log(
+      "Signed-in MCP sessions report each tool call to Summer (tool name, success, duration, agent app name); SUMMER_NO_TELEMETRY=1 turns that off."
+    );
+  }
+  if (!storeNeeded) return;
+
+  deps.log("");
+  deps.log("Next, the store, publishing and Grow tools: approve Summer CLI in the same browser.");
+  try {
+    await deps.storeLogin({ newClient: false, timeoutMs: STORE_STEP_TIMEOUT_MS });
+    deps.log("Signed in to the Summer store too. One sign-in covers every Summer tool on this machine.");
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    deps.log(`The store sign-in did not finish: ${reason}`);
+    deps.log('Your Summer login is saved. To add the store, publishing and Grow tools later, run "summer login --store".');
+  }
+}
 
 /** The gateway answered with a terminal 4xx — retrying the same URL cannot help. */
 class LoginRejectedError extends Error {}
@@ -115,6 +176,7 @@ export async function runLogin(
     let completed: LoginSession | null = null;
     try {
       const res = await deps.fetch(pollUrl, {
+        headers: summerRequestHeaders({ surface: "cli" }),
         signal: AbortSignal.timeout(5000),
       });
 

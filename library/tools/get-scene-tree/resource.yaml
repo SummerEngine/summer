@@ -43,6 +43,11 @@ input_schema:
       type: integer
       exclusiveMinimum: 0
       description: Maximum number of nodes to return. Engine default is 200.
+    maxCharacters:
+      type: integer
+      minimum: 500
+      maximum: 1000000
+      description: Most characters of text to return (default 8000). A longer result is cut and says so.
   additionalProperties: false
 authority:
   filesystem: false

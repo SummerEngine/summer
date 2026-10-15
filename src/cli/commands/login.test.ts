@@ -7,7 +7,8 @@ import {
   getUserInfo,
 } from "../../core/auth.js";
 import { setSummerDirForTests } from "../../core/store.js";
-import { runLogin } from "./login.js";
+import { Command } from "commander";
+import { STORE_STEP_TIMEOUT_MS, runLogin, runLoginCommand } from "./login.js";
 
 let root = "";
 const originalGateway = process.env.SUMMER_GATEWAY_URL;
@@ -168,5 +169,87 @@ describe("runLogin failure handling", () => {
     const heartbeats = logs.filter((line) => line.startsWith("Still waiting"));
     expect(heartbeats.length).toBeGreaterThan(0);
     expect(heartbeats.at(-1)).toContain("last error: The login service is unavailable");
+  });
+});
+
+describe("summer login: one browser for the account and the store", () => {
+  function fakes(state: { token: boolean; store: boolean; storeFails?: boolean }) {
+    const calls: string[] = [];
+    const lines: string[] = [];
+    return {
+      calls,
+      lines,
+      deps: {
+        hasAuthToken: async () => state.token,
+        hasStoreSignIn: async () => state.store,
+        login: async () => {
+          calls.push("login");
+          state.token = true;
+        },
+        storeLogin: async (options: { newClient: boolean; timeoutMs?: number }) => {
+          calls.push(`store:${options.newClient ? "new-client" : "reuse"}:${options.timeoutMs ?? "default"}`);
+          if (state.storeFails) throw new Error("Sign-in did not finish within 3 minutes.");
+          state.store = true;
+        },
+        log: (line: string) => lines.push(line),
+      },
+    };
+  }
+
+  it("signs in to the account, then the store, in one command", async () => {
+    const { calls, lines, deps } = fakes({ token: false, store: false });
+    await runLoginCommand({}, deps);
+    expect(calls).toEqual(["login", `store:reuse:${STORE_STEP_TIMEOUT_MS}`]);
+    expect(lines.join("\n")).toMatch(/One sign-in covers every Summer tool/);
+    expect(lines.join("\n")).toMatch(/SUMMER_NO_TELEMETRY=1/);
+  });
+
+  it("adds only the store when the account is already signed in", async () => {
+    const { calls, deps } = fakes({ token: true, store: false });
+    await runLoginCommand({}, deps);
+    expect(calls).toEqual([`store:reuse:${STORE_STEP_TIMEOUT_MS}`]);
+  });
+
+  it("does nothing when both are signed in, and redoes both with --force", async () => {
+    const both = fakes({ token: true, store: true });
+    await runLoginCommand({}, both.deps);
+    expect(both.calls).toEqual([]);
+    expect(both.lines).toEqual(["Already logged in. Use --force to re-authenticate."]);
+
+    const forced = fakes({ token: true, store: true });
+    await runLoginCommand({ force: true }, forced.deps);
+    expect(forced.calls).toEqual(["login", `store:reuse:${STORE_STEP_TIMEOUT_MS}`]);
+  });
+
+  it("keeps the account sign-in when the store step fails, and says how to finish", async () => {
+    const { calls, lines, deps } = fakes({ token: false, store: false, storeFails: true });
+    await expect(runLoginCommand({}, deps)).resolves.toBeUndefined();
+    expect(calls[0]).toBe("login");
+    expect(lines.join("\n")).toMatch(/Your Summer login is saved\. .*summer login --store/);
+  });
+
+  it("--store is the store step alone (new client with --force); --no-store skips it", async () => {
+    const store = fakes({ token: false, store: false });
+    await runLoginCommand({ store: true }, store.deps);
+    expect(store.calls).toEqual(["store:reuse:default"]);
+
+    const storeForce = fakes({ token: true, store: true });
+    await runLoginCommand({ store: true, force: true }, storeForce.deps);
+    expect(storeForce.calls).toEqual(["store:new-client:default"]);
+
+    const noStore = fakes({ token: false, store: false });
+    await runLoginCommand({ store: false }, noStore.deps);
+    expect(noStore.calls).toEqual(["login"]);
+  });
+
+  it("parses --store and --no-store into true, false, or unset", async () => {
+    const parse = (argv: string[]) => {
+      const command = new Command("login").option("--store").option("--no-store").exitOverride();
+      command.parse(argv, { from: "user" });
+      return command.opts().store as boolean | undefined;
+    };
+    expect(parse([])).toBeUndefined();
+    expect(parse(["--store"])).toBe(true);
+    expect(parse(["--no-store"])).toBe(false);
   });
 });

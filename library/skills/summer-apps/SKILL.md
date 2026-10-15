@@ -76,7 +76,7 @@ the first call, and reach data only through `summer.data.collection(name)`.
 
 ## The loop
 
-1. `summer_app_guide` (whole once per session; later one `section`). Load the
+1. `summer_app_guide` (overview first, then `examples` and the sections the app needs). Load the
    `summer-apps-design` skill for how it must look.
 2. `summer_app_create {name, purpose, format}`. The person's Studio tab opens it.
 3. Write the files in a local folder, then `summer_app_publish {appId, dir, manifest, note}`
@@ -84,7 +84,9 @@ the first call, and reach data only through `summer.data.collection(name)`.
    error names the file or rule: fix it and publish again.
 4. Seed starter data with `summer_app_data` (`ops` plus `"as": "seed"`) when the app should
    start full. Seed rows belong to the team and show no author.
-5. Look at it: `summer_app_screenshot {appId}`, then `width: 390` (phone) and `theme: "dark"`.
+5. Look at it: `summer_app_screenshot {appId}`, then `width: 390` (phone) and `theme: "dark"`;
+   `steps: [{click: "#edit"}]` or `[{press: "<action id>"}]` shows a dialog or a second state.
+   Fix the publish `warnings` too.
    Fix every error and console line it reports, publish again, look again. It is read-only:
    writes, sends and paid calls are refused there and work in Studio.
 6. `summer_app_events {appId, after}` waits for what the app sends you

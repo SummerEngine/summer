@@ -64,9 +64,15 @@ function cloud<S extends z.ZodObject<z.ZodRawShape>>(
 export function registerAppTools(server: McpServer) {
   server.tool(
     "summer_app_guide",
-    `Read this before building or changing a Summer App (a tool for the person's team inside Summer Studio, live on their assets, game data and engine): when to build one, Layout vs code, the build loop, manifest schema, SDK reference, UI kit, layout format, design rules and four worked examples. section returns one part.\n\n${CLOUD}`,
+    `Read this before building or changing a Summer App (a tool for the person's team inside Summer Studio). Start with the default section overview (when to build one, Layout vs code, the build loop, the rules), then read what the app needs: examples (a complete working app to copy), sdk, manifest, kit, design, layout, types (exact SDK TypeScript types).\n\n${CLOUD}`,
     appGuideArgsSchema.shape,
-    cloud("summer_app_guide", appGuideArgsSchema, appGuide)
+    async (args: unknown) => {
+      const parsed = appGuideArgsSchema.safeParse(args ?? {});
+      if (!parsed.success) return result({ ok: false, code: "invalid", error: parsed.error.issues[0]?.message ?? "Invalid arguments" });
+      const guide = await appGuide(parsed.data, { request: appsGateway("mcp", "summer_app_guide") });
+      // The guide reads as Markdown, not as one escaped JSON line.
+      return guide.ok === true && typeof guide.markdown === "string" ? { content: [{ type: "text" as const, text: guide.markdown }] } : result(guide);
+    }
   );
   server.tool(
     "summer_app_list",
@@ -112,7 +118,7 @@ export function registerAppTools(server: McpServer) {
   );
   server.tool(
     "summer_app_screenshot",
-    `See a Summer App without the person: Summer renders its current version (or version) headless with the person's data and returns the picture plus what to fix: console lines, uncaught errors, refused calls, whether the SDK connected and rendered, and the fields, buttons and agent tools it declared. Read-only: writes, sends and paid calls are refused, nothing changes. width 390 for a phone, theme dark, fullPage for the whole scroll; out also saves the PNG. Use it after every publish.\n\n${CLOUD}`,
+    `See a Summer App without the person: Summer renders its current version (or version) headless with the person's data and returns the picture plus what to fix: console lines, uncaught errors, refused calls, whether the SDK connected and rendered, and the fields, buttons and agent tools it declared. Read-only: writes, sends and paid calls are refused, nothing changes. width 390 for a phone, theme dark, fullPage for the whole scroll, steps to click or press something first (a dialog, a second state); out also saves the PNG. It waits until the app's calls settle. Use it after every publish.\n\n${CLOUD}`,
     appScreenshotArgsSchema.shape,
     async (args: unknown) => {
       const parsed = appScreenshotArgsSchema.safeParse(args ?? {});

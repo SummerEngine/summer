@@ -23,7 +23,7 @@ import { getAuthToken } from "../../core/auth.js";
 import { resolveGatewayUrl } from "../../core/config.js";
 import { readJsonResponse } from "../../core/util/http.js";
 import { asRecord, stringFrom } from "../../core/util/json.js";
-import { TOOLKIT_VERSION as CLI_VERSION } from "../../core/version.js";
+import { summerRequestHeaders } from "../../core/agent-host.js";
 
 const TOOL_BY_ENDPOINT: Record<string, string> = {
   "/api/mcp/generate/image": "summer_generate_image",
@@ -121,13 +121,10 @@ async function mcpGenerate(
     res = await fetch(`${gatewayUrl}${endpoint}`, {
       method: "POST",
       headers: {
+        ...summerRequestHeaders({ tool: TOOL_BY_ENDPOINT[endpoint], surface: "mcp" }),
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
-        "X-Summer-Client": "summer-cli",
-        "X-Summer-Client-Version": CLI_VERSION,
-        "X-Summer-Client-Surface": "mcp",
         "X-Summer-MCP-Endpoint": endpoint,
-        "X-Summer-MCP-Tool": TOOL_BY_ENDPOINT[endpoint] ?? "unknown",
       },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(timeoutMs),
@@ -142,9 +139,9 @@ async function mcpGenerate(
     let message = formattedApiErrorMessage(res.status, data);
 
     if (res.status === 402) {
-      message =
-        (data.message || "Insufficient credits.") +
-        "\nTop up at: https://www.summerengine.com/dashboard\nOr upgrade your plan at: https://www.summerengine.com/pricing";
+      // One link: the Add credits step in Studio (no plan needed). Newer servers already put it in the message.
+      const base = String(data.message || "Not enough credits.");
+      message = base.includes("/studio/credits") ? base : `${base}\nAdd credits: https://summerengine.com/studio/credits`;
     }
     if (res.status === 401) {
       message =
@@ -169,12 +166,9 @@ async function mcpGet(
   try {
     res = await fetch(`${gatewayUrl}${endpoint}${suffix}`, {
       headers: {
+        ...summerRequestHeaders({ tool: TOOL_BY_ENDPOINT[endpoint], surface: "mcp" }),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        "X-Summer-Client": "summer-cli",
-        "X-Summer-Client-Version": CLI_VERSION,
-        "X-Summer-Client-Surface": "mcp",
         "X-Summer-MCP-Endpoint": endpoint,
-        "X-Summer-MCP-Tool": TOOL_BY_ENDPOINT[endpoint] ?? "unknown",
       },
       signal: AbortSignal.timeout(timeoutMs),
     });
@@ -214,7 +208,7 @@ async function pollJob(
       const res = await fetch(
         `${gatewayUrl}/api/mcp/jobs/${encodeURIComponent(jobId)}`,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { ...summerRequestHeaders({ surface: "mcp" }), Authorization: `Bearer ${token}` },
           signal: AbortSignal.timeout(15_000),
         }
       );
@@ -868,7 +862,7 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
       try {
         const gatewayUrl = await resolveGatewayUrl();
         const res = await fetch(`${gatewayUrl}/api/mcp/jobs/${encodeURIComponent(jobId)}`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { ...summerRequestHeaders({ surface: "mcp" }), Authorization: `Bearer ${token}` },
           signal: AbortSignal.timeout(15_000),
         });
 

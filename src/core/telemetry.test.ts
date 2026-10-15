@@ -71,3 +71,23 @@ describe("recordMcpSession gateway resolution", () => {
     expect(seen).toEqual(["https://gateway.example/api/mcp/log-local-call"]);
   });
 });
+
+describe("telemetry opt-out", () => {
+  it("sends no session ping under SUMMER_NO_TELEMETRY=1", async () => {
+    const seen: string[] = [];
+    vi.stubGlobal("fetch", async (input: unknown) => {
+      seen.push(String(input));
+      return new Response("{}", { status: 200 });
+    });
+    await saveAuthToken("file-token");
+    process.env.SUMMER_NO_TELEMETRY = "1";
+    try {
+      recordMcpSession();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(seen).toEqual([]);
+    } finally {
+      delete process.env.SUMMER_NO_TELEMETRY;
+    }
+  });
+});
+

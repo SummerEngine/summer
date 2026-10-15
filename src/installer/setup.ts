@@ -44,6 +44,8 @@ export interface SkillSetupOptions {
   /** Skip `status: preview` skills. By default they install like any other
    *  skill — preview is a label carried in the skill's guidance, not a gate. */
   stableOnly?: boolean;
+  /** Install only the asset skills (`setup --assets-only`). */
+  assetsOnly?: boolean;
 }
 
 /**
@@ -86,11 +88,13 @@ export function setupSkills(
   const scope = options.scope ?? "user";
   const recommended = Boolean(options.recommended);
   const stableOnly = Boolean(options.stableOnly);
+  const assetsOnly = Boolean(options.assetsOnly);
   const invocation = skillInstallInvocation(agent, {
     force: options.force,
     scope,
     recommended,
     stableOnly,
+    assetsOnly,
   });
 
   if (!invocation) {
@@ -103,14 +107,14 @@ export function setupSkills(
 
   const { selected, previewIncluded, previewSkipped } = selectSkillsForBulkInstall(
     getSkillRegistry(),
-    { recommended, stableOnly }
+    { recommended, stableOnly, assetsOnly }
   );
   const count = selected.length;
   const note = previewNote({ previewIncluded, previewSkipped });
   const destination = isAgentClient(agent)
     ? describeInstallLocation(resolveInstallLocation(agent, scope))
     : undefined;
-  const subset = recommended ? "recommended " : "";
+  const subset = assetsOnly ? "asset " : recommended ? "recommended " : "";
 
   if (options.dryRun || !options.yes) {
     return {
@@ -190,7 +194,7 @@ export function tallyInstallOutput(stdout: string): {
 
 function skillInstallInvocation(
   agent: SupportedAgent,
-  opts: { force: boolean; scope: "user" | "project"; recommended: boolean; stableOnly: boolean }
+  opts: { force: boolean; scope: "user" | "project"; recommended: boolean; stableOnly: boolean; assetsOnly: boolean }
 ): SkillInstallInvocation | null {
   const cliPath = process.argv[1];
   if (!cliPath) return null;
@@ -201,7 +205,7 @@ function skillInstallInvocation(
   const baseArgs = [
     "skills",
     "install",
-    opts.recommended ? "--recommended" : "--all",
+    opts.assetsOnly ? "--assets" : opts.recommended ? "--recommended" : "--all",
     "--agent",
     agent,
     "--scope",

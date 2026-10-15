@@ -1,4 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer, type RegisteredTool } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { EngineApiClient } from "../core/api-client.js";
 import type { EngineSelection } from "../core/engine.js";
@@ -41,6 +41,21 @@ import { appendMcpLogEvent } from "../core/mcp-log.js";
 import { prepareHostedMount } from "./hosted-mount.js";
 import { serveProviderSafeToolSchemas } from "./provider-safe-schema.js";
 import {
+  OUTPUT_CAPS,
+  PROFILE_TOOL_LIMIT,
+  PROFILES,
+  TOOLSETS,
+  annotationsFor,
+  registryAuthorities,
+  resolveToolSelection,
+  selectionIncludes,
+  withMaxCharactersArg,
+  type ToolSelection,
+} from "./tool-surface.js";
+import { shapeToolResult, singleEditCounter } from "./tool-results.js";
+import { recordLocalToolCall } from "../core/telemetry.js";
+import { registerMcpClientSource, runWithToolContext } from "../core/agent-host.js";
+import {
   buildBootDriftNotice,
   fetchLatestRegistryVersion,
 } from "../installer/version-check.js";
@@ -49,26 +64,37 @@ import { TOOLKIT_VERSION as version } from "../core/version.js";
 
 let processDiagnosticsInstalled = false;
 
+const FULL_SELECTION: ToolSelection = { profile: "full", toolsets: null, ignored: [] };
+
 export const getCachedBootDriftNotice = getCachedNotice;
 
 /**
  * Server `instructions` in the MCP initialize response (SDK ServerOptions,
  * @modelcontextprotocol/sdk >= 1.x). Hosts hand this to the model once per
- * session, before any tool call — the place for the five habits an end-to-end run
- * showed an agent needs on the first
- * turn and would otherwise learn the hard way. Kept under 600 characters so
- * it costs a few hundred tokens once; the full operating guide stays in the
- * summer_agent_playbook prompt / summer_get_agent_playbook tool. The last
- * sentence names the publishing path, the owner-approval rule and where
- * review feedback is read.
+ * session, before any tool call — the place for the habits end-to-end runs
+ * showed an agent needs on the first turn and would otherwise learn the hard
+ * way, including scripting a run of scene edits instead of hundreds of single
+ * calls. Kept under 600 characters so it costs a few hundred tokens once; the
+ * full operating guide stays in the summer_agent_playbook prompt /
+ * summer_get_agent_playbook tool. The last sentence names the publishing path,
+ * the owner-approval rule and where review feedback is read.
  */
 export const SUMMER_MCP_INSTRUCTIONS =
-  "Summer Engine MCP. Call summer_get_project_context first: it binds the open project, returns mainScene, projectMemory, any capabilitySkewWarning. " +
-  "Before building or fixing, summer_search_library then summer_read_library the hit. " +
-  "After play, read summer_get_diagnostics, not summer_get_console alone. " +
-  "An all-black screenshot means no redraw yet: recapture. " +
+  "Summer Engine MCP. Call summer_get_project_context first: it binds the open project. " +
+  "Before building or fixing: summer_search_library, then summer_read_library the hit. " +
+  "More than 3 scene edits: one summer_run_script (snapshot, script, diff, screenshot). " +
+  "After play: summer_get_diagnostics, not only summer_get_console. " +
+  "All-black screenshot: no redraw yet, recapture. " +
   "Report verified entries via summer_library_feedback. " +
-  "Publishing: summer_export_game, summer_publish_build, summer_store_*; agents never publish alone: summer_store_submit returns the owner's approval link; summer_store_review, feedback to fix.";
+  "Publish: summer_export_game, summer_publish_build, summer_store_*; never alone: summer_store_submit returns the owner's approval link, summer_store_review the feedback.";
+
+/** The same first-turn habits for a profile without engine tools (`--profile assets`). */
+export const SUMMER_MCP_ASSETS_INSTRUCTIONS =
+  "Summer MCP, assets profile: generation and the Summer asset library, no engine tools. " +
+  "Before making an asset, summer_search_library then summer_read_library its skill (sound-effect, music-track, concept-art, prop-model). " +
+  "Generation costs credits: confirm with the person first. A long job returns a jobId: summer_check_job. " +
+  "Every asset lands in the person's Summer library: summer_list_my_assets, summer_get_asset_download_url. " +
+  "Report verified entries via summer_library_feedback.";
 
 /**
  * Fire-and-forget probe of the npm registry on MCP boot. Caches the result for
@@ -144,16 +170,6 @@ export function resetClient(): void {
   cachedClient = null;
 }
 
-/**
- * Passive result-size observability. Monkey-patches server.tool() so every
- * registered handler's serialized text payload is measured and logged to
- * stderr in the existing `[summer-mcp]` JSON shape. The result itself is
- * never modified — external coding agents (Claude Code, Cursor, Codex)
- * manage their own context budgets, and silently truncating their tool
- * results is the wrong shape (see #102 revert). If a specific tool turns
- * out to produce pathological payloads in practice, the right fix is
- * adding range/depth/filter parameters to that tool — not a blanket cap.
- */
 function errorDetails(error: unknown): Record<string, unknown> {
   if (error instanceof Error) {
     return {
@@ -208,67 +224,106 @@ function installMcpProcessDiagnostics(): void {
   });
 }
 
-function installResultSizeLogger(server: {
-  tool: (...args: unknown[]) => unknown;
-}): () => number {
-  const original = server.tool.bind(server);
-  let registeredToolCount = 0;
-  server.tool = function patchedTool(...args: unknown[]) {
-    if (args.length < 2) return original(...args);
-    const name = args[0];
-    if (typeof name !== "string") return original(...args);
+/** Index of the zod raw shape among server.tool()'s middle arguments, or -1. */
+function rawShapeIndex(args: readonly unknown[]): number {
+  for (let index = 1; index < args.length - 1; index++) {
+    const candidate = args[index];
+    if (!candidate || typeof candidate !== "object" || "_def" in candidate) continue;
+    const values = Object.values(candidate as Record<string, unknown>);
+    if (values.length > 0 && values.every((value) => !!value && typeof value === "object" && "_def" in value)) return index;
+  }
+  return -1;
+}
 
-    const lastIdx = args.length - 1;
-    const handler = args[lastIdx];
-    if (typeof handler !== "function") return original(...args);
+/**
+ * Every local tool registers through server.tool(); this wraps each handler
+ * once, so the rules hold for all of them:
+ * - results leave as compact JSON; capped tools (OUTPUT_CAPS) take a
+ *   maxCharacters argument and say when they cut the text;
+ * - a run of single scene edits gets one line pointing at summer_run_script;
+ * - each call is recorded: the opt-in trajectory, a stderr line on failure
+ *   (every call under SUMMER_MCP_DEBUG=1), and, when signed in and not opted
+ *   out, the tool name, success, duration and host app name (telemetry.ts).
+ */
+function installToolCallWrapper(server: McpServer): () => number {
+  const target = server as unknown as { tool: (...args: unknown[]) => unknown };
+  const original = target.tool.bind(server);
+  const singleEdits = singleEditCounter();
+  const hostApp = () => server.server.getClientVersion()?.name;
+  let registeredToolCount = 0;
+  target.tool = function patchedTool(...registration: unknown[]) {
+    if (registration.length < 2) return original(...registration);
+    const name = registration[0];
+    if (typeof name !== "string") return original(...registration);
+
+    const lastIdx = registration.length - 1;
+    const handler = registration[lastIdx];
+    if (typeof handler !== "function") return original(...registration);
     registeredToolCount += 1;
+    const args = [...registration];
+    const cap = OUTPUT_CAPS.get(name);
+    const shapeAt = cap === undefined ? -1 : rawShapeIndex(args);
+    if (shapeAt > 0) args[shapeAt] = withMaxCharactersArg(name, args[shapeAt] as Record<string, never>);
     // Schema-less tools receive only the SDK's `extra` — never record that as
     // the tool's arguments (see registrationHasInputSchema).
     const hasInputSchema = registrationHasInputSchema(args);
 
-    const wrapped = async (...handlerArgs: unknown[]) => {
+    args[lastIdx] = async (...handlerArgs: unknown[]) => {
+      let maxCharacters = cap;
+      if (shapeAt > 0 && handlerArgs[0] && typeof handlerArgs[0] === "object") {
+        const { maxCharacters: requested, ...rest } = handlerArgs[0] as Record<string, unknown>;
+        if (typeof requested === "number") maxCharacters = requested;
+        handlerArgs = [rest, ...handlerArgs.slice(1)];
+      }
       const startedAt = Date.now();
       let result: unknown;
       try {
-        result = await (handler as (...a: unknown[]) => unknown)(...handlerArgs);
+        // Every Summer request the tool makes names it (core/agent-host.ts).
+        result = await runWithToolContext(name, "mcp", () => (handler as (...a: unknown[]) => unknown)(...handlerArgs));
       } catch (error) {
         // A handler THROW never produced a result to classify; record it as
         // ok:false / exception so the stream does not silently skip failures,
         // then let the SDK turn it into the protocol error it always did.
+        const durationMs = Date.now() - startedAt;
         recordToolCall({
           tool: name,
           args: trajectoryArgsFor(hasInputSchema, handlerArgs),
           exception: error instanceof Error ? error.message : String(error),
-          durationMs: Date.now() - startedAt,
+          durationMs,
         });
+        recordLocalToolCall({ tool: name, ok: false, durationMs, mcpClient: hostApp() });
         throw error;
       }
       const durationMs = Date.now() - startedAt;
+      const record = result && typeof result === "object" ? (result as Record<PropertyKey, unknown> & { isError?: boolean }) : null;
+      const isError = record?.isError === true;
+      // withEngine stamps failure classifiers + retried + bound hash on a
+      // non-enumerable symbol so we can log them here without every tool
+      // threading its own name through withEngine.
+      const meta = record ? (record[WITH_ENGINE_META] as WithEngineMeta | undefined) : undefined;
       try {
+        const hint = singleEdits(name, isError);
+        result = shapeToolResult(result, { maxCharacters, hint });
+      } catch {
+        // Shaping must never break the tool call; the raw result goes out.
+      }
+      try {
+        recordLocalToolCall({ tool: name, ok: !isError, durationMs, mcpClient: hostApp() });
         // Opt-in local trajectory capture: one JSONL line per tool call when
         // SUMMER_TRAJECTORY_DIR is set. recordToolCall never throws and is a
         // no-op when the env var is unset.
-        {
-          const record = result as
-            | (Record<PropertyKey, unknown> & { isError?: boolean })
-            | null;
-          const callMeta =
-            record && typeof record === "object"
-              ? (record[WITH_ENGINE_META] as WithEngineMeta | undefined)
-              : undefined;
-          recordToolCall({
-            tool: name,
-            args: trajectoryArgsFor(hasInputSchema, handlerArgs),
-            isError: record?.isError === true,
-            terminalState: callMeta?.terminalState,
-            errorClass: callMeta?.errorClass,
-            failureReason: callMeta?.failureReason,
-            durationMs,
-            // Read only under SUMMER_TRAJECTORY_EVAL=1 (bounded summary); the
-            // default redacted stream ignores it.
-            result,
-          });
-        }
+        recordToolCall({
+          tool: name,
+          args: trajectoryArgsFor(hasInputSchema, handlerArgs),
+          isError,
+          terminalState: meta?.terminalState,
+          errorClass: meta?.errorClass,
+          failureReason: meta?.failureReason,
+          durationMs,
+          // Read only under SUMMER_TRAJECTORY_EVAL=1 (bounded summary); the
+          // default redacted stream ignores it.
+          result,
+        });
         if (
           result &&
           typeof result === "object" &&
@@ -276,13 +331,6 @@ function installResultSizeLogger(server: {
           Array.isArray((result as { content: unknown }).content)
         ) {
           const debug = process.env.SUMMER_MCP_DEBUG === "1";
-          const isError = (result as { isError?: boolean }).isError === true;
-          // withEngine stamps failure classifiers + retried + bound hash on a
-          // non-enumerable symbol so we can log them here without every tool
-          // threading its own name through withEngine.
-          const meta = (result as Record<PropertyKey, unknown>)[WITH_ENGINE_META] as
-            | WithEngineMeta
-            | undefined;
 
           // Structured per-call line. Verbose behind SUMMER_MCP_DEBUG=1; when the
           // flag is off, log ONLY failures — the success path stays quiet.
@@ -305,20 +353,11 @@ function installResultSizeLogger(server: {
           }
 
           if (debug) {
-            let chars = 0;
-            for (const entry of (result as { content: Array<{ type?: string; text?: unknown }> })
-              .content) {
-              if (entry && entry.type === "text" && typeof entry.text === "string") {
-                chars += entry.text.length;
-              }
-            }
-            const bytes = Buffer.byteLength(
-              (result as { content: Array<{ type?: string; text?: unknown }> }).content
-                .filter((e) => e && e.type === "text" && typeof e.text === "string")
-                .map((e) => e.text as string)
-                .join(""),
-              "utf8"
-            );
+            const texts = (result as { content: Array<{ type?: string; text?: unknown }> }).content
+              .filter((e) => e && e.type === "text" && typeof e.text === "string")
+              .map((e) => e.text as string);
+            const chars = texts.reduce((sum, text) => sum + text.length, 0);
+            const bytes = Buffer.byteLength(texts.join(""), "utf8");
             const line = JSON.stringify({
               event: "mcp:result_size",
               tool_name: name,
@@ -339,19 +378,18 @@ function installResultSizeLogger(server: {
       return result;
     };
 
-    const newArgs = [...args];
-    newArgs[lastIdx] = wrapped;
-    return original(...newArgs);
-  } as typeof server.tool;
+    return original(...args);
+  };
   return () => registeredToolCount;
 }
 
 /**
- * Build the MCP server with every Summer tool registered, without connecting
- * a transport. startMcpServer() uses this; tests use it to count the live
- * tool surface against registry/generated/counts.json.
+ * Build the MCP server with every Summer tool of the selected profile
+ * registered, without connecting a transport. startMcpServer() uses this;
+ * tests use it to count the live tool surface against
+ * registry/generated/counts.json. Without a selection: the full profile.
  */
-export function createMcpServer(): {
+export function createMcpServer(selection: ToolSelection = FULL_SELECTION): {
   server: McpServer;
   getRegisteredToolCount: () => number;
 } {
@@ -360,14 +398,15 @@ export function createMcpServer(): {
       name: "summer-engine",
       version,
     },
-    { instructions: SUMMER_MCP_INSTRUCTIONS }
+    {
+      instructions:
+        selection.toolsets && !selection.toolsets.has("engine") ? SUMMER_MCP_ASSETS_INSTRUCTIONS : SUMMER_MCP_INSTRUCTIONS,
+    }
   );
 
-  // Passive observability: log result-size to stderr but do not modify
-  // results. See installResultSizeLogger above.
-  const getRegisteredToolCount = installResultSizeLogger(
-    server as unknown as { tool: (...args: unknown[]) => unknown }
-  );
+  const getWrappedToolCount = installToolCallWrapper(server);
+  // Requests to Summer's servers name the agent app from the initialize handshake.
+  registerMcpClientSource(() => server.server.getClientVersion());
 
   registerSceneTools(server);
   registerDebugTools(server);
@@ -397,13 +436,32 @@ export function createMcpServer(): {
   // Strict providers (Kimi, OpenAI strict) reject tuple and $ref schemas.
   serveProviderSafeToolSchemas(server);
 
-  return { server, getRegisteredToolCount };
+  // Effect hints from each tool's registry authority, then the profile:
+  // tools outside it are removed before any client lists them.
+  const registered = (server as unknown as { _registeredTools: Record<string, RegisteredTool> })._registeredTools;
+  const authorities = registryAuthorities();
+  let removed = 0;
+  for (const [name, tool] of Object.entries(registered)) {
+    if (!selectionIncludes(selection, name, true)) {
+      tool.remove();
+      removed += 1;
+      continue;
+    }
+    const authority = authorities.get(name);
+    if (authority) tool.update({ annotations: annotationsFor(name, authority) });
+  }
+
+  return { server, getRegisteredToolCount: () => getWrappedToolCount() - removed };
 }
 
 export interface StartMcpServerOptions {
   projectPath?: string;
   instanceId?: string;
   cwd?: string;
+  /** --profile / SUMMER_PROFILE (full, engine, assets). */
+  profile?: string;
+  /** --toolsets / SUMMER_TOOLSETS (comma list; added to the profile). */
+  toolsets?: string;
 }
 
 export async function startMcpServer(
@@ -429,7 +487,15 @@ export async function startMcpServer(
     },
   });
 
-  const { server, getRegisteredToolCount } = createMcpServer();
+  const selection = resolveToolSelection({ profile: options.profile, toolsets: options.toolsets });
+  if (selection.ignored.length > 0) {
+    writeMcpStderr("mcp:unknown_toolsets", {
+      ignored: selection.ignored,
+      profiles: Object.keys(PROFILES),
+      toolsets: TOOLSETS,
+    });
+  }
+  const { server, getRegisteredToolCount } = createMcpServer(selection);
 
   // Fire-and-forget — never block tool registration on the npm registry.
   void probeBootDrift().catch((error) => {
@@ -440,7 +506,14 @@ export async function startMcpServer(
   // Hosted Summer Engine MCP tools (store, publishing, board, Grow): ready
   // before connect, mounted after it. The first tools/list waits a few
   // seconds for the mount (not under summer doctor, which times the list).
-  const hosted = prepareHostedMount(server, undefined, process.env.SUMMER_MCP_DOCTOR === "1" ? { firstListWaitMs: 0 } : {});
+  // A profile mounts only its hosted toolsets, and never more tools in total
+  // than PROFILE_TOOL_LIMIT.
+  const hosted = prepareHostedMount(server, undefined, {
+    ...(process.env.SUMMER_MCP_DOCTOR === "1" ? { firstListWaitMs: 0 } : {}),
+    ...(selection.toolsets === null
+      ? {}
+      : { includeTool: (name: string) => selectionIncludes(selection, name, false), maxTools: PROFILE_TOOL_LIMIT }),
+  });
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
@@ -448,6 +521,7 @@ export async function startMcpServer(
   appendMcpLogEvent("mcp:ready", {
     version,
     pid: process.pid,
+    profile: selection.profile,
     toolCount: getRegisteredToolCount(),
   });
   process.stderr.write(`[summer-mcp] MCP server running v${version}.\n`);

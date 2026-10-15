@@ -6,6 +6,7 @@ import {
   supportedAgents,
 } from "../installer/agent-config.js";
 import { startMcpServer } from "./server.js";
+import { TOOLSETS } from "./tool-surface.js";
 
 export const mcpCommand = new Command("mcp")
   .description("Start the MCP server for AI tool integration (Cursor, Claude Code, etc.)")
@@ -17,10 +18,20 @@ export const mcpCommand = new Command("mcp")
     "--instance <id>",
     "Bind local engine tools to one exact Summer editor instance"
   )
-  .action(async (opts: { project?: string; instance?: string }) => {
+  .option(
+    "--profile <profile>",
+    "Tool profile: full (every tool, the default), engine (engine, generation and the store; under 128 tools), assets (generation and the asset library, no engine). Env: SUMMER_PROFILE"
+  )
+  .option(
+    "--toolsets <list>",
+    `Comma-separated toolsets to add (alone: core plus these): ${TOOLSETS.join(", ")}, or all. Env: SUMMER_TOOLSETS`
+  )
+  .action(async (opts: { project?: string; instance?: string; profile?: string; toolsets?: string }) => {
     await startMcpServer({
       projectPath: opts.project,
       instanceId: opts.instance,
+      profile: opts.profile,
+      toolsets: opts.toolsets,
     });
   });
 

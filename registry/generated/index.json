@@ -3690,7 +3690,7 @@
       "id": "skill/summer-apps",
       "kind": "skill",
       "version": "0.1.0",
-      "content_hash": "9f6a38561db1bd8be5e63032d81de52dae805e19426f0027064a6eb6126b4177",
+      "content_hash": "5086545f051a3ef2e8219fe8c379cf7870ab161f23887dcdab56dbcbe76d57c0",
       "summary": "Build a Summer App, a team tool inside Summer Studio (balance table, quest editor, tracker, pick grid): build loop, Layout vs code, data as API, agent tools.",
       "use_when": [
         "the person asks for a tool for their team (\"build us a loot balance tool\", \"a board to track creatures\")",
@@ -5887,7 +5887,7 @@
       "id": "tool/app-guide",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "4648e830cef1a162e9df85ab0423dc4fbe099409682d375e325dde085521e5e3",
+      "content_hash": "f8c8dad7c576c3b8bdd4d9feaade4e7ce0dabf9627dfcf54396a81351d66f820",
       "summary": "Read the Summer Apps build guide: when to build an app, Layout vs code, build loop, manifest, SDK, UI kit, layout format, design rules and worked examples.",
       "use_when": [
         "before building or changing a Summer App",
@@ -6078,7 +6078,7 @@
       "id": "tool/app-screenshot",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "e2c089afcb531ea86b85ef8a3db5c99db23a7ada23a3056085f7d7e048df6fe6",
+      "content_hash": "dadfd3b5178c0f132cd0773acd4becb5130da5ec06d0960cc1e195b609736edc",
       "summary": "See a Summer App without the person - a headless, read-only render (PNG) with its console, errors, refused calls and declared page.",
       "use_when": [
         "right after every summer_app_publish, to check the app renders with real data",
@@ -7447,7 +7447,7 @@
       "id": "tool/get-console",
       "kind": "tool",
       "version": "1.0.3",
-      "content_hash": "99bdf65dbbef0a834967d7149567addddcb8a1ffb35ca0c77786ec038b1cfbe2",
+      "content_hash": "0652921bcb40d2104e71c1fff9a045cf4e45bd38e84abb895cb13e1f76cce84c",
       "summary": "Read recent editor Output panel messages, deduplicated and filterable by level, type, or substring. Editor console only - never the post-play verdict.",
       "use_when": [
         "diagnostics report console issues and you need the message bodies",
@@ -7481,7 +7481,7 @@
       "id": "tool/get-debugger-errors",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "86fa42010ffb8e2291a7b71ac2e33eb00cc08124da7b943b4ad4c7a4421b423b",
+      "content_hash": "78cae0282223e4af28467f8fb20e4e3ae38e2e2650182d41e667740db89513c6",
       "summary": "Read deduplicated runtime errors from the debugger, distinct from console prints; optional stack traces.",
       "use_when": [
         "the running game hit failures like null references or missing nodes",
@@ -7515,7 +7515,7 @@
       "id": "tool/get-debugger-warnings",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "dc4de3ffbd4b58ea0abe2461d3787b7914f978e22073369923c8c27ceba07bf3",
+      "content_hash": "7fd59850f0592e2a64e784df0fa4a7c0d7ca4aa618867051961740d6fccaaed5",
       "summary": "Read runtime warnings from the debugger panel as structured entries with file, line, and callstack.",
       "use_when": [
         "diagnostics show a non-zero debugger warning count",
@@ -7617,7 +7617,7 @@
       "id": "tool/get-runtime-tree",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "65939a49b44d072bde0dac9b005aa32c6d173182254167f94304233bca51adfc",
+      "content_hash": "e106ed1c9265e6048214cf8bd8207936b5f41a8e452eedaeae3d1a01ce1a2112",
       "summary": "Scene tree of the RUNNING game — spawned enemies, autoloads, pooled nodes — live state the editor reads can never show.",
       "use_when": [
         "inspecting what actually spawned during a playtest without stopping the game",
@@ -7665,7 +7665,7 @@
       "id": "tool/get-scene-tree",
       "kind": "tool",
       "version": "1.0.2",
-      "content_hash": "51749172f527c332e49c070c202f2d19afd3ce1e9dc49ef10c4cb332d7c687b6",
+      "content_hash": "8130e2517fe81bb9ab87c29aa1cbf3fce18221d135ff59c16f105622e606c277",
       "summary": "Read a scene's node tree, with explicit depth and limit to avoid the engine's silent default truncation.",
       "use_when": [
         "inspecting scene structure before or after mutations",
@@ -8025,7 +8025,7 @@
       "id": "tool/inspect-asset",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "f40a87d891da6193cf9efeb91a0cc6f4d831fd536fbfcad4d02d67ea7444d38d",
+      "content_hash": "50cdfd84a3dfa9495a7ef3d257eb85b64add29d6c0879fe2a0448d22fbd02330",
       "summary": "Measure a 3D asset file without adding it to a scene — AABB, origin, meshes, largest planar faces, open pipe ends, Marker3D anchors, collision shapes.",
       "use_when": [
         "learning a kit piece's real size, origin and which way it faces before placing it",
@@ -8075,7 +8075,7 @@
       "id": "tool/inspect-node",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "8016dc147b6eac09b87b75f7806b4f996bc80dd8204d29f9e701f40a1d9d75fd",
+      "content_hash": "f2ec953c36be937406b313f35ce8e43d81dd5414947cf7e5d017603ffea1eb2c",
       "summary": "A node's editable properties with values, Variant types and resources, or only named fields plus derived transform, global_transform, scene_file_path.",
       "use_when": [
         "before modifying a node, to understand its current state",
@@ -8110,7 +8110,7 @@
       "id": "tool/inspect-resource",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "410f1d81c41b6b22a0bf754acf6d347b01313ee4fc0c546ba64852f951f1b5ed",
+      "content_hash": "066947910e7c0810bfeed6dc003b633a9774434514a424fa7bb0fd9b021b3cf3",
       "summary": "Read a resource file (a mesh's AABB, surfaces and materials; a scene's nodes; any resource's non-default properties) or a resource a node holds.",
       "use_when": [
         "reading sub-properties that the node inspector only names",
@@ -8145,7 +8145,7 @@
       "id": "tool/inspect-runtime-node",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "32557c8048ccd5af1d95a0d71d3d12df48ccc9802aea6b978954e3031ac8e785",
+      "content_hash": "db79ff1e6f70b8623b3bedcdaa0a4cee77c1eaed3ca33b3266fa4c99b1941804",
       "summary": "Live properties of one node in the RUNNING game — actual stats, position, flags — without stopping the game and losing the state.",
       "use_when": [
         "answering \"where IS the player\" or \"what are this enemy's stats right now\" during a playtest",
@@ -8812,7 +8812,7 @@
       "id": "tool/read-library",
       "kind": "tool",
       "version": "1.1.0",
-      "content_hash": "ded3e95871d25d27a9a53b4f7bc70433587c9d62b81387409505a3e97fb3e2e3",
+      "content_hash": "050fa0a40a40cd54bda86d283c7168863508d5ba9e6142ed57f2f8315f5e54c5",
       "summary": "Load one library entry by id — a skill's body and metadata, a tool's call recipe, a template's pin, a reference's text — ending in the feedback footer.",
       "use_when": [
         "summer_search_library returned an id and you need the entry itself before acting",

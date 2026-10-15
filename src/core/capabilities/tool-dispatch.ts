@@ -207,7 +207,7 @@ import {
 import { readLibraryEntry, readLibraryInputSchema } from "../library-read.js";
 import { runSearchLibrary, searchLibraryInputSchema } from "../library-search.js";
 
-import { TOOLKIT_VERSION as CLI_VERSION } from "../version.js";
+import { runWithToolContext, summerRequestHeaders } from "../agent-host.js";
 import {
   APP_DOCK_FALLBACK,
   appCall,
@@ -474,10 +474,8 @@ async function requireToken(): Promise<string> {
 
 function gatewayHeaders(token: string, endpoint: string): Record<string, string> {
   return {
+    ...summerRequestHeaders({ surface: "cli" }),
     Authorization: `Bearer ${token}`,
-    "X-Summer-Client": "summer-cli",
-    "X-Summer-Client-Version": CLI_VERSION,
-    "X-Summer-Client-Surface": "cli",
     "X-Summer-MCP-Endpoint": endpoint,
   };
 }
@@ -2142,5 +2140,7 @@ export async function dispatchTool(
   // The one gate every result passes, mirroring withEngine on the MCP face:
   // whatever the MCP face would mark isError is a ToolResultError here, so the
   // CLI exit code says what the receipt says — for every tool, not per handler.
-  return requireEngineSuccess(await dispatchEntry.handler(args, ctx));
+  // Summer requests made for this call name the tool (core/agent-host.ts); the
+  // MCP face sets the same context in its call wrapper.
+  return requireEngineSuccess(await runWithToolContext(dispatchEntry.name, "cli", () => dispatchEntry.handler(args, ctx)));
 }

@@ -4,6 +4,7 @@ import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { Document, isMap, parseDocument } from "yaml";
 import { PACKAGE_ROOT } from "../core/package-root.js";
+import type { Profile } from "../core/tool-profiles.js";
 import {
   agentAliasMap,
   agentSpec,
@@ -35,6 +36,8 @@ export interface AgentConfigOptions {
   /** npm dist-tag the generated MCP entry runs (`npx -y summer-engine@<channel> mcp`).
    *  Default "latest"; "next" while a release soaks on the next tag. Ignored with localDev. */
   channel?: string;
+  /** MCP tool profile written as SUMMER_PROFILE; default the agent's own (full for most). */
+  profile?: Profile;
   cwd?: string;
   env?: NodeJS.ProcessEnv;
 }
@@ -54,6 +57,8 @@ export interface AgentConfigResult {
   localDev: boolean;
   /** The dist-tag the written entry runs ("latest" unless --channel / SUMMER_CHANNEL). */
   channel: string;
+  /** The MCP tool profile the entry runs (full = every tool, no SUMMER_PROFILE written). */
+  profile: Profile;
   warnings: string[];
   nextSteps: string[];
 }
@@ -107,8 +112,9 @@ export async function configureAgentMcp(
   const env = options.env ?? process.env;
   const cwd = resolve(options.cwd ?? process.cwd());
   const channel = normalizeChannel(options.channel);
-  const server = createSummerMcpServerConfig(Boolean(options.localDev), process.platform, channel);
   const spec = agentSpec(options.agent);
+  const profile = options.profile ?? spec.mcpProfile ?? "full";
+  const server = withProfile(createSummerMcpServerConfig(Boolean(options.localDev), process.platform, channel), profile);
   const target = resolveConfigTarget(spec, options.scope, cwd, env);
   const snippet = renderConfigSnippet(options.agent, server);
   const dryRun = Boolean(options.dryRun);
@@ -133,6 +139,7 @@ export async function configureAgentMcp(
     print,
     localDev: Boolean(options.localDev),
     channel,
+    profile,
     warnings: target.warnings,
     nextSteps: [`Updated ${target.path}.`, spec.restart],
   };
@@ -355,6 +362,15 @@ export function normalizeChannel(channel: string | undefined): string {
     );
   }
   return value;
+}
+
+/**
+ * The profile rides in the entry's env, not its args: an older summer-engine
+ * that an agent still runs ignores the variable and serves every tool, where
+ * an unknown --profile flag would stop it from starting.
+ */
+export function withProfile(server: StdioMcpServerConfig, profile: Profile): StdioMcpServerConfig {
+  return profile === "full" ? server : { ...server, env: { ...server.env, SUMMER_PROFILE: profile } };
 }
 
 export function createSummerMcpServerConfig(

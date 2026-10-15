@@ -12,6 +12,7 @@
  */
 import { join } from "path";
 import { homedir, platform } from "os";
+import type { Profile } from "../core/tool-profiles.js";
 
 /** Ids `summer setup <agent>` accepts. Legacy ids stay so old commands and
  *  configs keep resolving, but they are hidden from help and warn on use. */
@@ -138,6 +139,8 @@ export interface AgentSpec {
   /** Env var that overrides the MCP config path (tests, unusual installs). */
   envOverride: string;
   format: McpFormat;
+  /** MCP tool profile setup writes without --profile (default full: every tool). */
+  mcpProfile?: Profile;
   /**
    * The Summer Games player MCP (a remote server that signs in with OAuth on
    * its own) in this agent's file, under the same key as summer-engine.
@@ -444,6 +447,8 @@ const SPECS: readonly AgentSpec[] = [
     status: "active",
     envOverride: "SUMMER_VSCODE_COPILOT_CONFIG_FILE",
     format: "json-vscode",
+    // VS Code Copilot sends at most 128 tools per request; the full surface is over that.
+    mcpProfile: "engine",
     remoteMcp: {
       entry: (url) => ({ type: "http", url }),
       signIn: (name) => `In VS Code, click Allow when ${name} asks to authenticate, then sign in on summer.games.`,

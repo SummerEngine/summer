@@ -1,7 +1,8 @@
 /**
  * Usage beacons for the local MCP server. Fire-and-forget, never blocks, never throws.
  *
- * - One session ping per MCP server lifetime (mcp_session_start).
+ * - One session ping per MCP server lifetime (mcp_session_start), on the
+ *   first tool call, with the host app's name from the MCP handshake.
  * - One line per local tool call (mcp_tool_call): the tool name, success,
  *   duration and the host app's name from the MCP handshake. Nothing else:
  *   no arguments, no results, no project or file names.
@@ -11,7 +12,7 @@
  * The endpoint always returns allowed:true and never gates; the response is
  * ignored.
  */
-import { isTelemetryDisabled, summerRequestHeaders } from "./agent-host.js";
+import { currentMcpClient, isTelemetryDisabled, summerRequestHeaders } from "./agent-host.js";
 import { getAuthToken } from "./auth.js";
 import { resolveGatewayUrl } from "./config.js";
 
@@ -35,7 +36,8 @@ let pinged = false;
 export function recordMcpSession(): void {
   if (pinged || isTelemetryDisabled()) return;
   pinged = true;
-  send({ client: "summer-cli", event: "mcp_session_start" });
+  const mcpClient = currentMcpClient()?.name;
+  send({ client: "summer-cli", event: "mcp_session_start", ...(mcpClient ? { mcpClient: mcpClient.slice(0, 64) } : {}) });
 }
 
 export interface LocalToolCall {

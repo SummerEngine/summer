@@ -8,6 +8,7 @@ import { setSummerDirForTests } from "../core/store.js";
 import { createMcpServer, resolveSurface } from "./server.js";
 import { resolveToolSelection } from "./tool-surface.js";
 import type { CloudCaller } from "./ops-surface.js";
+import { withV4Surface } from "../core/ops/cloud.js";
 
 let root = "";
 
@@ -157,6 +158,51 @@ describe("v4, assets profile", () => {
       const names = (await client.listTools()).tools.map((tool) => tool.name);
       expect(names).toEqual(expect.arrayContaining(["summer_docs_search", "summer_search", "summer_call"]));
       expect(names).not.toContain("summer_set_prop");
+    } finally {
+      await close();
+    }
+  });
+});
+
+describe("v4, asset generation runs on the hosted server", () => {
+  const running = { ok: true, status: "running", job: { id: "gen:4821", op: "assets.generate_3d", state: "queued", pollAfterSeconds: 30 } };
+
+  function hostedJobs(): CloudCaller & { call: ReturnType<typeof vi.fn> } {
+    return { call: vi.fn(async () => envelope(running)) };
+  }
+
+  it("asks the hosted server for the assets profile's own direct tools", () => {
+    expect(withV4Surface("https://mcp.summerengine.com/mcp", "assets")).toBe("https://mcp.summerengine.com/mcp?surface=v4&profile=assets");
+    expect(withV4Surface("https://mcp.summerengine.com/mcp", "engine")).toBe("https://mcp.summerengine.com/mcp?surface=v4");
+    expect(withV4Surface("https://mcp.summerengine.com/mcp")).toBe("https://mcp.summerengine.com/mcp?surface=v4");
+  });
+
+  it("forwards a generator by its 4.0 name and passes the job back unchanged", async () => {
+    const { client, cloud, close } = await session("assets", "v4", hostedJobs());
+    try {
+      const answer = answerOf(await client.callTool({ name: "summer_call", arguments: { op: "assets.generate_3d", input: { prompt: "a chest" } } }));
+      expect(cloud.call).toHaveBeenCalledWith("summer_call", { op: "assets.generate_3d", input: { prompt: "a chest" } });
+      expect(answer).toEqual(running);
+    } finally {
+      await close();
+    }
+  });
+
+  it("forwards a 3.x generation name to the hosted server instead of the local tool", async () => {
+    const { client, cloud, close } = await session("engine", "v4", hostedJobs());
+    try {
+      await client.callTool({ name: "summer_call", arguments: { op: "summer_generate_3d", input: { prompt: "a chest" } } });
+      expect(cloud.call).toHaveBeenCalledWith("summer_call", { op: "summer_generate_3d", input: { prompt: "a chest" } });
+    } finally {
+      await close();
+    }
+  });
+
+  it("forwards a dry run, so the estimate comes from the hosted server", async () => {
+    const { client, cloud, close } = await session("assets", "v4", hostedJobs());
+    try {
+      await client.callTool({ name: "summer_call", arguments: { op: "assets.generate_video", input: { prompt: "rain" }, dryRun: true } });
+      expect(cloud.call).toHaveBeenCalledWith("summer_call", { op: "assets.generate_video", input: { prompt: "rain" }, dryRun: true });
     } finally {
       await close();
     }

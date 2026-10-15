@@ -79,6 +79,14 @@ function errorText(error: { code: string; message: string; recovery: string }) {
  * reports each mounted tool's own JSON Schema rather than the passthrough one.
  * Returns mount(), which callers run after connect without awaiting it.
  */
+/** Fields and handling this package adds around a hosted tool (the v4 surface saves generated files here). */
+export interface HostedLocalHook {
+  /** The input schema a client lists for the tool. */
+  inputSchema(tool: Tool): Tool["inputSchema"];
+  /** Runs the call; `forward` sends arguments on to the hosted tool. */
+  call(name: string, args: Record<string, unknown>, forward: (args: Record<string, unknown>) => Promise<Record<string, unknown>>): Promise<Record<string, unknown>>;
+}
+
 export interface HostedMountOptions {
   firstListWaitMs?: number;
   /** The profile's filter: false leaves a hosted tool out. Default: every tool. */
@@ -92,6 +100,8 @@ export interface HostedMountOptions {
   /** What summer_store_tools calls the hosted tools this profile mounts.
    *  Default: the full profile's store, publishing, board and Grow tools. */
   hostedToolsLabel?: string;
+  /** Local fields and handling around each mounted tool. Default: none. */
+  local?: HostedLocalHook;
 }
 
 export function prepareHostedMount(
@@ -123,7 +133,7 @@ export function prepareHostedMount(
         ...result,
         tools: result.tools.map((tool) => {
           const hosted = schemas.get(tool.name);
-          return hosted ? { ...tool, inputSchema: providerSafeSchema(hosted.inputSchema), ...(hosted.annotations ? { annotations: hosted.annotations } : {}), ...(hosted.title ? { title: hosted.title } : {}) } : tool;
+          return hosted ? { ...tool, inputSchema: providerSafeSchema(options.local ? options.local.inputSchema(hosted) : hosted.inputSchema), ...(hosted.annotations ? { annotations: hosted.annotations } : {}), ...(hosted.title ? { title: hosted.title } : {}) } : tool;
         }),
       };
     });
@@ -223,7 +233,8 @@ export function prepareHostedMount(
         { description: options.describe ? options.describe(tool) : (tool.description ?? ""), inputSchema: passthroughArgs, ...(tool.annotations ? { annotations: tool.annotations } : {}) },
         async (args: Record<string, unknown>) => {
           try {
-            return (await client.callTool({ name: tool.name, arguments: args })) as never;
+            const forward = (sent: Record<string, unknown>) => client.callTool({ name: tool.name, arguments: sent }) as Promise<Record<string, unknown>>;
+            return (options.local ? await options.local.call(tool.name, args, forward) : await forward(args)) as never;
           } catch (error) {
             return errorText({
               code: "store_tool_failed",

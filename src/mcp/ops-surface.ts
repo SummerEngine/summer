@@ -6,8 +6,10 @@ import { answerOfHosted, searchEverywhere } from "../core/ops/cloud.js";
 import { errorAnswer, isLocalOp, legacyNames, localToolsFor, mcpNameOf, resolveOpName, type Answer } from "../core/ops/contract.js";
 import { ENGINE_SPLIT_OPS, engineOpDef, isSplitOp, renderOpRefs, splitToolArgs, type EngineSplitDef } from "../core/ops/engine.js";
 import { answerOfEngineResult, engineFailure, textsOf } from "../core/ops/engine-answer.js";
+import { TAKES_OUT, withOutField, type FileSaver } from "../core/ops/save-files.js";
 import { loadLibraryIndex } from "../core/library-search.js";
 import { FOOTER_SUFFIX } from "../core/library-read.js";
+import type { HostedLocalHook } from "./hosted-mount.js";
 
 /**
  * The v4 surface of the local MCP (`summer mcp --surface v4`, SUMMER_SURFACE=v4):
@@ -43,7 +45,8 @@ export const OPS_MCP_ASSETS_INSTRUCTIONS =
   "Summer MCP, assets profile, operation catalog: generation and the Summer asset library, no engine tools. " +
   "Read skill/summer-assets with summer_docs_read, then the asset's skill: stop at the file, skip its engine steps. " +
   "For a job no listed tool does, summer_search returns the operation and its exact input, then summer_call runs it. " +
-  "Generation costs credits: confirm first (dryRun shows the estimate). Long work answers with a job: jobs.wait. Hand over files with assets.get.";
+  "Generation costs credits: confirm first (dryRun shows the estimate). Long work answers with a job: jobs.wait. " +
+  "Files save into the project's asset folder, or the folder in out; the answer gives localPath.";
 
 /** Runs a tool on the hosted server's v4 surface (hosted-mount.ts). */
 export interface CloudCaller {
@@ -56,6 +59,8 @@ export interface OpsSurfaceOptions {
   cloud: CloudCaller;
   /** The legacy toolset: list every local 3.x name too, each running as it did in 3.x. */
   legacy?: boolean;
+  /** Saves generated files on this machine (`out`, localPath); shared with the mounted hosted tools. */
+  files: FileSaver;
 }
 
 type Handler = (...args: unknown[]) => Promise<unknown>;
@@ -425,7 +430,10 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
         return toolResult(await runLocal(resolved, call, extra, dryRun === true, args));
       }
       try {
-        return toolResult(answerOfHosted(await options.cloud.call(SUMMER_CALL, { op: name, ...(input ? { input } : {}), ...(dryRun ? { dryRun } : {}), ...(idempotencyKey ? { idempotencyKey } : {}) })));
+        // `out` stays here: this package saves the files (core/ops/save-files.ts).
+        const { input: sent, out } = options.files.take(resolved, args);
+        const answer = answerOfHosted(await options.cloud.call(SUMMER_CALL, { op: name, ...(input ? { input: sent } : {}), ...(dryRun ? { dryRun } : {}), ...(idempotencyKey ? { idempotencyKey } : {}) }));
+        return toolResult(await options.files.finish(resolved, answer, out));
       } catch (error) {
         return toolResult(errorAnswer("not_signed_in", `Cloud operations need the Summer sign-in: ${error instanceof Error ? error.message : String(error)}`, { next: { say: "Run: npx -y summer-engine login" } }));
       }
@@ -442,4 +450,30 @@ function splitShape(def: EngineSplitDef, base: Shape): Shape {
     shape[field] = def.required?.includes(field) && type instanceof z.ZodOptional ? (type.unwrap() as z.ZodTypeAny).describe(type.description ?? "") : type;
   }
   return shape;
+}
+
+/**
+ * The hosted direct tools that take `out` (summer_assets_generate_image,
+ * summer_assets_get, summer_jobs_wait, ...): their listed input shows it, and
+ * a call keeps it here and saves the files the answer names.
+ */
+export function hostedFileTools(files: FileSaver): HostedLocalHook {
+  const ops = new Map([...TAKES_OUT].map((op) => [mcpNameOf(op), op]));
+  return {
+    inputSchema: (tool) => {
+      const op = ops.get(tool.name);
+      return op ? (withOutField(op, tool.inputSchema) as Tool["inputSchema"]) : tool.inputSchema;
+    },
+    call: async (name, args, forward) => {
+      const op = ops.get(name);
+      if (!op) return forward(args);
+      const { input, out } = files.take(op, args);
+      const raw = await forward(input);
+      const answer = answerOfHosted(raw);
+      const saved = await files.finish(op, answer, out);
+      if (saved === answer) return raw;
+      const content = Array.isArray(raw.content) ? (raw.content as Array<{ type?: string }>) : [];
+      return { ...raw, content: [{ type: "text", text: JSON.stringify(saved) }, ...content.filter((part) => part.type !== "text")], ...(raw.structuredContent ? { structuredContent: saved } : {}) };
+    },
+  };
 }

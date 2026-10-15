@@ -1,0 +1,31 @@
+name: Bug report
+description: The CLI, the MCP server or setup does something wrong.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you ran or asked your agent to do, what you expected, and what you got. Paste the exact command and its output.
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `npx -y summer-engine@latest doctor --json`
+      description: Run it in the same terminal or agent. It shows versions, sign-in state and the engine connection, never your tokens.
+      render: json
+    validations:
+      required: true
+  - type: input
+    id: agent
+    attributes:
+      label: Agent and version
+      placeholder: Claude Code 2.1, Codex, Cursor, VS Code Copilot, ...
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: macOS 15, Windows 11, Ubuntu 24.04, ...

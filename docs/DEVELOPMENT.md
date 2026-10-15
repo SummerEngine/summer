@@ -2,7 +2,7 @@
 
 This repo (npm: `summer-engine`, GitHub: `summerengine/summer`) is **MIT, open source**. Treat all commits and code comments as public.
 
-When committing, don't attribute Cursor, Claude, or any AI tool. Don't reference internal pricing, revenue, or private endpoints. Don't commit secrets. Auth tokens are read from `~/.summer/` at runtime, never hard-coded.
+Commits may carry a `Co-Authored-By:` line for the AI agent that wrote them; nothing else in a commit or comment should name the tool. Don't reference internal pricing, revenue, or private endpoints. Don't commit secrets. Auth tokens are read from `~/.summer/` at runtime, never hard-coded.
 
 If you're an AI agent or developer with zero context: read [`AGENTS.md`](../AGENTS.md) for how the system is *used*, [`docs/design/CONTRACT.md`](design/CONTRACT.md) for the rules everything here is built against, then this file for how to *change* it.
 
@@ -84,7 +84,7 @@ The suite needs Node 22 or newer (`.nvmrc`; CI uses 22): vitest 3 does not run o
 
 ### CLI command reference
 
-`summer --help` is the source of truth; this is its current shape (20 commands plus `help`).
+`summer --help` is the source of truth; this is its current shape (every command plus `help`).
 
 | Command | Does |
 |---|---|
@@ -104,8 +104,6 @@ The suite needs Node 22 or newer (`.nvmrc`; CI uses 22): vitest 3 does not run o
 | `summer debug [issue…]` | Support-ready Markdown debug report. |
 | `summer plan <goal…>` | Route a goal to skills / tools / gates. |
 | `summer config [get \| set \| unset \| path]` | Shared non-secret `~/.summer/config.json` (`gateway.url`, …). |
-| `summer publish [project] --artifact <pck> --version <v> [--confirm]` | Deprecated confirmed `.pck` release to the legacy creator API; use `summer tool export-game` and `summer tool publish-build`. |
-| `summer releases [--cursor <c>]` | Creator release history. |
 | `summer events [--follow] [--kinds <csv>] [--since <seq>] [--limit <n>] [--json]` | Engine events channel: the newest events, or `--follow` to stream them live (long-poll over `/api/events/poll`, one line per event, JSON when piped). Builds without the channel print a structured `engine_lacks_events` receipt and exit 1. |
 | `summer tool [name] [--args '<json>'] [--list]` | Run any tool with the MCP implementation; `--list` prints every slug. With a store sign-in it also lists and runs the hosted store and publishing tools (`summer tool summer_store_list_games`). |
 | `summer help [command]` | Commander's built-in help. |
@@ -192,7 +190,7 @@ Summer Engine app (LocalApiServer -> OpsExecutor)
 
 - **Lazy connect** (`src/mcp/server.ts`): the MCP server starts without a running engine, registers tools immediately, and connects on first call; if the engine restarts, the next call retries.
 - **Multi-editor discovery**: each live editor publishes `~/.summer/instances/<id>.json`; the MCP walks up from CWD to find `project.godot` and binds to the matching instance, failing closed when ambiguous. Explicit `--project` / `--instance` override.
-- **Shared `~/.summer/` store** (`src/core/store.ts`): `0700` dir, `0600` files, atomic replacement, symlink refusal. Filenames (`api-token`, `auth-token`, `creator-token` (legacy; only removed, by logout), `user.json`, `config.json`, `credential-metadata.json`, `creator-audit.jsonl`) are shared with the desktop engine — do not rename them.
+- **Shared `~/.summer/` store** (`src/core/store.ts`): `0700` dir, `0600` files, atomic replacement, symlink refusal. Filenames (`api-token`, `auth-token`, `oauth-token` and `oauth-client` (the store sign-in, `src/core/oauth.ts`), `creator-token` (legacy; only removed, by logout), `user.json`, `config.json`, `credential-metadata.json`, `creator-audit.jsonl`) are shared with the desktop engine — do not rename them.
 - **Ops values are engine variant strings** (`"Vector3(0, 10, 0)"`, `"Color(1, 0.9, 0.8)"`), never JSON objects. This crosses both repos; coordinate changes.
 
 No environment variables are required for normal use. Optional: `SUMMER_GATEWAY_URL` (gateway override; `gateway.url` in `~/.summer/config.json` does the same for every gateway caller), `SUMMER_TOKEN` (auth token override for CI/cloud sessions), `SUMMER_CHANNEL` (npm dist-tag `summer setup` writes into the agent's MCP entry; default `latest` — same as `--channel`), `SUMMER_BIN` (engine executable to launch/probe — the flag form is `summer run --bin`; on macOS the in-bundle `…/Summer.app/Contents/MacOS/Summer`, never the `.app`), `SUMMER_ENGINE_BINARY` (alias of `SUMMER_BIN`), `SUMMER_ENGINE_PROJECT` / `SUMMER_ENGINE_INSTANCE_ID` (pin the editor for the CLI face, same names `summer mcp` reads; without them the CLI uses the global api-token pointer, then the instance registry), `SUMMER_MCP_DEBUG=1` (structured stderr line per tool call), `SUMMER_NO_TELEMETRY=1` / `DO_NOT_TRACK=1` (disable the feedback mailbox, the agent-app and tool headers on requests to Summer's servers, and the signed-in usage lines: one per MCP session and one per tool call, with tool name, success, duration and host app name; `src/core/telemetry.ts`), `SUMMER_AGENT_HOST` (override the agent app id sent as `X-Summer-Agent-Host` on requests to Summer's servers; otherwise the MCP handshake's clientInfo, then the agent's environment; `src/core/agent-host.ts`), `SUMMER_PROFILE` / `SUMMER_TOOLSETS` (the `summer mcp --profile` / `--toolsets` tool selection; `src/core/tool-profiles.ts`, `src/mcp/tool-surface.ts`), `SUMMER_CAPABILITY_PREFLIGHT=off` (send every call even when the engine lacks the op), `SUMMER_HEADLESS_ROUTING=1` (headless worker routing — needs an engine build with worker mode), `SUMMER_TRAJECTORY_DIR` (opt-in per-tool-call JSONL capture, redacted), `SUMMER_TRAJECTORY_EVAL=1` (with the directory set: additionally writes an unredacted `trajectory.full.jsonl` with a bounded result summary — for eval fixtures only, never a default; `summer_get_project_context` reports `trajectory_eval_mode: true` while it is on), `SUMMER_PRE_COMMIT_DOCTOR=1` (the opt-in pre-commit hook), `SUMMER_EMBED_URL` (embedding endpoint for semantic library search and `generate-registry --embed`, default `<gateway>/api/mcp/embed`; `off` forces lexical-only search), `SUMMER_FETCH_TIMEOUT_S` (seconds before `summer create` kills a hanging template fetch; default 120), `SUMMER_ENGINE_URL` (artifact URL `summer install` downloads instead of the release feed: a `.tar.gz`, `.zip`, or raw executable), `SUMMER_SKILLS_DIR` (directory `summer skills install` / `summer setup` write skills into, overriding the per-agent default; for Cursor, Windsurf and Cline it is the rules directory), `SUMMER_ENGINE_REPO` (tests only, above), `SUMMER_E2E=1` (tests only: opt into the network test that fetches a real pinned template repository), `SUMMER_EDITOR_BIN` (outcome evals: the editor binary to boot).

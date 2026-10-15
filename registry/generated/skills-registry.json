@@ -725,7 +725,7 @@
       "description": "Ship a hosted Summer multiplayer game: the summer.games bundle, server preset, pre-upload checks, and a new Build.",
       "clients": "all",
       "recommended": false,
-      "status": "preview",
+      "status": "stable",
       "path": "library/skills/multiplayer-publish/",
       "domains": [
         "multiplayer",
@@ -1180,7 +1180,7 @@
       "description": "Send game events to Summer analytics from the authority or client: fire-and-forget, never blocking gameplay.",
       "clients": "all",
       "recommended": false,
-      "status": "preview",
+      "status": "stable",
       "path": "library/skills/summer-analytics/",
       "domains": [
         "multiplayer",

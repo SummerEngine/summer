@@ -6,7 +6,7 @@ use_when:
   - '"take gameplay screenshots for my store page"'
   - '"I need screenshots but the editor is not open"'
   - '"capture a 1920x1080 frame of my game"'
-  - collecting real gameplay screenshots for summer_store_set_art desktop.screenshots or mobile.screenshots
+  - collecting real gameplay screenshots for store.set_art desktop.screenshots or mobile.screenshots
   - every capture shows the title screen — pass the game's flags in args or steps like press Play
 do_not_use_when:
   - the editor is open and the game is running — tool/screenshot with target game shows the live game

@@ -41,7 +41,7 @@ import { appendMcpLogEvent } from "../core/mcp-log.js";
 import { defaultHostedMountDependencies, prepareHostedMount } from "./hosted-mount.js";
 import { applyOpsSurface, OPS_MCP_INSTRUCTIONS, SUMMER_CALL, SUMMER_SEARCH, type CloudCaller } from "./ops-surface.js";
 import { opForToolCall } from "../core/ops/contract.js";
-import { v4HostedDependencies } from "../core/ops/cloud.js";
+import { v4HostedUrl } from "../core/ops/cloud.js";
 import { serveProviderSafeToolSchemas } from "./provider-safe-schema.js";
 import { legacyHostedDescription, resolveLegacy, takeLegacyToolset } from "./legacy-toolset.js";
 import {
@@ -575,11 +575,11 @@ export async function startMcpServer(
   // seconds for the mount (not under summer doctor, which times the list).
   // A profile mounts only its hosted toolsets, and never more tools in total
   // than PROFILE_TOOL_LIMIT.
-  // v4 mounts the hosted v4 surface (its direct tools; summer_search and
-  // summer_call stay local and forward to it).
+  // v4 mounts the hosted v4 surface (its direct tools for this profile;
+  // summer_search and summer_call stay local and forward to it).
   // The legacy toolset (below) mounts after this mount, and again after a retry of it.
   let legacyHosted: ReturnType<typeof prepareHostedMount> | null = null;
-  const hosted = prepareHostedMount(server, surface === "v4" ? { ...defaultHostedMountDependencies, url: v4HostedDependencies.url } : undefined, {
+  const hosted = prepareHostedMount(server, surface === "v4" ? { ...defaultHostedMountDependencies, url: v4HostedUrl(selection.profile) } : undefined, {
     ...(process.env.SUMMER_MCP_DOCTOR === "1" ? { firstListWaitMs: 0 } : {}),
     onMounted: () => void legacyHosted?.mount(),
     ...(surface === "v4"

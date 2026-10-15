@@ -5,6 +5,7 @@ import { errorAnswer, isLocalOp, localToolsFor, opFromCli, OP_NAME, type Answer 
 import { ENGINE_SPLIT_OPS, engineOpDef, splitToolArgs } from "../../core/ops/engine.js";
 import { engineFailure, engineNotRunning } from "../../core/ops/engine-answer.js";
 import { loadLibraryIndex } from "../../core/library-search.js";
+import { FileSaver, withOutField } from "../../core/ops/save-files.js";
 import { dispatchTool, EngineUnavailableError, ToolResultError } from "../../core/capabilities/tool-dispatch.js";
 
 /**
@@ -101,6 +102,8 @@ export interface OpsCliDeps {
   dispatch: typeof dispatchTool;
   print: (text: string) => void;
   printError: (text: string) => void;
+  /** Saves generated files (`--out`, else the project's asset folder). Default: a new FileSaver per run. */
+  files?: FileSaver;
 }
 
 export const defaultOpsCliDeps: OpsCliDeps = {
@@ -156,7 +159,8 @@ async function runCloud(op: string, call: ParsedCall, deps: OpsCliDeps): Promise
 async function schemaFor(op: string, deps: OpsCliDeps): Promise<JsonSchema | null> {
   if (isLocalOp(op)) return localInputSchema(op);
   const answer = await runCloud("ops.describe", { input: { name: op }, json: true, dryRun: false, wait: false }, deps);
-  return answer.ok && answer.status === "done" ? ((answer.result as { operation?: { input?: JsonSchema } }).operation?.input ?? null) : null;
+  const input = answer.ok && answer.status === "done" ? (answer.result as { operation?: { input?: JsonSchema } }).operation?.input : undefined;
+  return input ? (withOutField(op, input) as JsonSchema) : null;
 }
 
 /** Follow a running job or an approval until it ends (jobs.wait, at most 50 s per call). */
@@ -207,8 +211,18 @@ export async function runOpFromCli(op: string, argv: readonly string[], deps: Op
     deps.printError(formatAnswer(errorAnswer("invalid_input", error instanceof Error ? error.message : String(error))));
     return 1;
   }
-  let answer = isLocalOp(op) ? await runLocal(op, call, deps) : await runCloud(op, call, deps);
-  if (call.wait) answer = await waitFor(answer, deps);
+  let answer: Answer;
+  if (isLocalOp(op)) {
+    answer = await runLocal(op, call, deps);
+    if (call.wait) answer = await waitFor(answer, deps);
+  } else {
+    // --out stays here: the files save on this machine once the answer (or the waited job) names them.
+    const files = deps.files ?? new FileSaver({ saveByDefault: true });
+    const { input, out } = files.take(op, call.input);
+    answer = await runCloud(op, { ...call, input }, deps);
+    if (call.wait) answer = await waitFor(answer, deps);
+    answer = await files.finish(op, answer, out);
+  }
   (answer.ok ? deps.print : deps.printError)(call.json ? JSON.stringify(answer) : formatAnswer(answer));
   return answer.ok ? 0 : 1;
 }

@@ -1,6 +1,10 @@
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { EngineUnavailableError, ToolResultError } from "../../core/capabilities/tool-dispatch.js";
 import { formatAnswer, parseCallFlags, runOpFromCli, type OpsCliDeps } from "./ops.js";
+import { FileSaver } from "../../core/ops/save-files.js";
 
 const envelope = (value: unknown) => ({ content: [{ type: "text", text: JSON.stringify(value) }] });
 
@@ -130,5 +134,26 @@ describe("summer engine <action>", () => {
 describe("human output", () => {
   it("says how to follow a running job", () => {
     expect(formatAnswer({ ok: true, status: "running", job: { id: "gen:1", state: "queued" } })).toBe("Started: job gen:1. Wait for it: summer jobs wait --job-id gen:1");
+  });
+});
+
+describe("generated files", () => {
+  it("saves a waited job's files where --out says, and never sends --out", async () => {
+    const root = await mkdtemp(join(tmpdir(), "summer-ops-cli-out-"));
+    try {
+      const hosted = vi
+        .fn()
+        .mockResolvedValueOnce(envelope({ ok: true, status: "done", result: { operation: { name: "assets.generate_3d", input: { type: "object", properties: { prompt: { type: "string" } } } } } }))
+        .mockResolvedValueOnce(envelope({ ok: true, status: "running", job: { id: "gen:7", state: "queued" } }))
+        .mockResolvedValueOnce(envelope({ ok: true, status: "done", result: { job: { id: "gen:7", kind: "gen", state: "done", result: { assetId: "m1", fileUrl: "https://cdn.example.com/m1.glb" } }, finished: true } }));
+      const fetch = vi.fn(async () => new Response("glb bytes", { status: 200 })) as unknown as typeof globalThis.fetch;
+      const d = { ...deps(hosted), files: new FileSaver({ saveByDefault: false, cwd: () => root, fetch }) };
+      expect(await runOpFromCli("assets.generate_3d", ["--prompt", "tree", "--out", "models", "--wait", "--json"], d)).toBe(0);
+      expect(hosted).toHaveBeenNthCalledWith(2, "summer_call", { op: "assets.generate_3d", input: { prompt: "tree" } });
+      expect(JSON.parse(d.out[0]).result.localPath).toBe(join(root, "models", "m1.glb"));
+      expect(await readFile(join(root, "models", "m1.glb"), "utf8")).toBe("glb bytes");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 });

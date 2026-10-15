@@ -2,6 +2,7 @@ import { defaultHostedConnectDependencies, withHostedMcp, type HostedConnectDepe
 import { resolveMcpResourceUrl } from "../oauth.js";
 import { localEntries, localInputSchema, type CatalogEntry } from "./catalog.js";
 import { errorAnswer, isLocalOp, type Answer } from "./contract.js";
+import { withOutField } from "./save-files.js";
 import { scoreEntry, searchEntries } from "./search.js";
 
 /**
@@ -77,7 +78,12 @@ export async function searchEverywhere(
   let warning: string | null = null;
   try {
     const answer = answerOfHosted(await call("summer_search", { query, ...(filters.area ? { area: filters.area } : {}), limit: filters.limit }));
-    if (answer.ok && answer.status === "done") cloud = ((answer.result as { items?: CatalogEntry[] }).items ?? []).filter((entry) => !isLocalOp(entry.name));
+    // The operations that save files take `out` here (save-files.ts), so their input shows it.
+    if (answer.ok && answer.status === "done") {
+      cloud = ((answer.result as { items?: CatalogEntry[] }).items ?? [])
+        .filter((entry) => !isLocalOp(entry.name))
+        .map((entry) => (entry.input ? { ...entry, input: withOutField(entry.name, entry.input) as Record<string, unknown> } : entry));
+    }
     else if (!answer.ok) warning = `Cloud operations were not searched: ${answer.error.message}`;
   } catch (error) {
     warning = `Cloud operations were not searched: ${error instanceof Error ? error.message : String(error)}`;

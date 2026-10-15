@@ -39,7 +39,8 @@ import {
 } from "./boot-notice.js";
 import { appendMcpLogEvent } from "../core/mcp-log.js";
 import { defaultHostedMountDependencies, prepareHostedMount } from "./hosted-mount.js";
-import { applyOpsSurface, OPS_MCP_INSTRUCTIONS, SUMMER_CALL, SUMMER_SEARCH, type CloudCaller } from "./ops-surface.js";
+import { applyOpsSurface, hostedFileTools, OPS_MCP_INSTRUCTIONS, SUMMER_CALL, SUMMER_SEARCH, type CloudCaller } from "./ops-surface.js";
+import { FileSaver } from "../core/ops/save-files.js";
 import { opForToolCall } from "../core/ops/contract.js";
 import { v4HostedUrl } from "../core/ops/cloud.js";
 import { serveProviderSafeToolSchemas } from "./provider-safe-schema.js";
@@ -438,6 +439,8 @@ export function createMcpServer(
 ): {
   server: McpServer;
   getRegisteredToolCount: () => number;
+  /** v4: saves generated files on this machine (the mounted hosted tools share it). */
+  files: FileSaver;
 } {
   const surface = options.surface ?? "v3";
   // A profile without engine tools (assets) gets the no-engine instructions,
@@ -500,9 +503,11 @@ export function createMcpServer(
     if (authority) tool.update({ annotations: annotationsFor(name, authority) });
   }
 
-  if (surface === "v4") applyOpsSurface(server, { engine, cloud: options.cloud ?? NO_CLOUD, legacy: options.legacy === true });
+  // Without engine tools nothing imports a file into a project, so files save into it by default.
+  const files = new FileSaver({ saveByDefault: !engine });
+  if (surface === "v4") applyOpsSurface(server, { engine, cloud: options.cloud ?? NO_CLOUD, legacy: options.legacy === true, files });
 
-  return { server, getRegisteredToolCount: () => getWrappedToolCount() - removed };
+  return { server, getRegisteredToolCount: () => getWrappedToolCount() - removed, files };
 }
 
 /** What the hosted tools a profile mounts are, for summer_store_tools. */
@@ -562,7 +567,7 @@ export async function startMcpServer(
   // v4 runs cloud operations through the hosted mount below, once it exists.
   let hostedCall: CloudCaller["call"] | null = null;
   const cloud: CloudCaller = { call: (name, args) => (hostedCall ? hostedCall(name, args) : NO_CLOUD.call(name, args)) };
-  const { server, getRegisteredToolCount } = createMcpServer(selection, { surface, cloud, legacy: legacy.on });
+  const { server, getRegisteredToolCount, files } = createMcpServer(selection, { surface, cloud, legacy: legacy.on });
 
   // Fire-and-forget — never block tool registration on the npm registry.
   void probeBootDrift().catch((error) => {
@@ -583,7 +588,7 @@ export async function startMcpServer(
     ...(process.env.SUMMER_MCP_DOCTOR === "1" ? { firstListWaitMs: 0 } : {}),
     onMounted: () => void legacyHosted?.mount(),
     ...(surface === "v4"
-      ? { includeTool: (name: string) => name !== SUMMER_SEARCH && name !== SUMMER_CALL, maxTools: PROFILE_TOOL_LIMIT }
+      ? { includeTool: (name: string) => name !== SUMMER_SEARCH && name !== SUMMER_CALL, maxTools: PROFILE_TOOL_LIMIT, local: hostedFileTools(files) }
       : selection.toolsets === null
         ? {}
         : {

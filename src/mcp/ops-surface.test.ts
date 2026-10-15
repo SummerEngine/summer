@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -7,7 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setSummerDirForTests } from "../core/store.js";
 import { createMcpServer, resolveSurface } from "./server.js";
 import { resolveToolSelection } from "./tool-surface.js";
-import type { CloudCaller } from "./ops-surface.js";
+import { hostedFileTools, type CloudCaller } from "./ops-surface.js";
+import { FileSaver } from "../core/ops/save-files.js";
 import { withV4Surface } from "../core/ops/cloud.js";
 
 let root = "";
@@ -416,6 +417,64 @@ describe("v4, asset generation runs on the hosted server", () => {
     try {
       await client.callTool({ name: "summer_call", arguments: { op: "assets.generate_video", input: { prompt: "rain" }, dryRun: true } });
       expect(cloud.call).toHaveBeenCalledWith("summer_call", { op: "assets.generate_video", input: { prompt: "rain" }, dryRun: true });
+    } finally {
+      await close();
+    }
+  });
+});
+
+describe("v4, generated files on this machine", () => {
+  const made = { ok: true, status: "done", result: { assets: [{ assetId: "a1", title: "Barrel", fileUrl: "https://cdn.example.com/a1.png", thumbnailUrl: null }], model: "m", aspectRatio: "1:1" } };
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("keeps out from the hosted server, saves the file there and adds localPath", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("png bytes", { status: 200 })));
+    const cloud = { call: vi.fn(async () => envelope(made)) };
+    const { client, close } = await session("assets", "v4", cloud);
+    try {
+      const out = join(root, "art");
+      const answer = answerOf(await client.callTool({ name: "summer_call", arguments: { op: "assets.generate_image", input: { prompt: "a barrel", out } } }));
+      expect(cloud.call).toHaveBeenCalledWith("summer_call", { op: "assets.generate_image", input: { prompt: "a barrel" } });
+      expect(answer.result.assets[0].localPath).toBe(join(out, "barrel.png"));
+      expect(await readFile(join(out, "barrel.png"), "utf8")).toBe("png bytes");
+    } finally {
+      await close();
+    }
+  });
+
+  it("shows out on the hosted direct tools that take it and saves through them", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("png bytes", { status: 200 })));
+    const files = new FileSaver({ saveByDefault: false });
+    const hook = hostedFileTools(files);
+    const tool = (name: string) => ({ name, inputSchema: { type: "object" as const, properties: { prompt: { type: "string" } } } });
+    expect(hook.inputSchema(tool("summer_assets_generate_image")).properties).toHaveProperty("out");
+    expect(hook.inputSchema(tool("summer_jobs_wait")).properties).toHaveProperty("out");
+    expect(hook.inputSchema(tool("summer_games_list")).properties).not.toHaveProperty("out");
+
+    const forward = vi.fn(async () => envelope(made));
+    const out = join(root, "direct");
+    const raw = await hook.call("summer_assets_generate_image", { prompt: "a barrel", out }, forward);
+    expect(forward).toHaveBeenCalledWith({ prompt: "a barrel" });
+    expect(answerOf(raw).result.assets[0].localPath).toBe(join(out, "barrel.png"));
+
+    const untouched = envelope({ ok: true, status: "done", result: { items: [] } });
+    expect(await hook.call("summer_games_list", { limit: 3 }, async () => untouched)).toBe(untouched);
+  });
+
+  it("lists out in the input summer_search returns for those operations", async () => {
+    const cloud = {
+      call: vi.fn(async () =>
+        envelope({ ok: true, status: "done", result: { items: [{ name: "assets.generate_image", title: "Generate an image", summary: "Draw an image.", effect: "spend", approval: "none", provider: "cloud", status: "stable", available: true, input: { type: "object", properties: { prompt: { type: "string" } } } }] } })
+      ),
+    };
+    const { client, close } = await session("assets", "v4", cloud);
+    try {
+      const answer = answerOf(await client.callTool({ name: "summer_search", arguments: { query: "make an image", area: "assets" } }));
+      const hit = answer.result.items.find((item: { name: string }) => item.name === "assets.generate_image");
+      expect(hit.input.properties).toHaveProperty("out");
     } finally {
       await close();
     }

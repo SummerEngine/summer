@@ -38,6 +38,13 @@ export const OPS_MCP_INSTRUCTIONS =
   "More than 3 scene edits: one summer_run_script with scenePath. Each engine tool's full guide: summer_docs_read. Long work answers with a job: jobs.wait. " +
   "Publishing, prices and other live changes answer needs_approval with a link: give it to the person; nothing changes until they approve.";
 
+/** The assets profile's version: no engine tools, so it names none. */
+export const OPS_MCP_ASSETS_INSTRUCTIONS =
+  "Summer MCP, assets profile, operation catalog: generation and the Summer asset library, no engine tools. " +
+  "Read skill/summer-assets with summer_docs_read, then the asset's skill: stop at the file, skip its engine steps. " +
+  "For a job no listed tool does, summer_search returns the operation and its exact input, then summer_call runs it. " +
+  "Generation costs credits: confirm first (dryRun shows the estimate). Long work answers with a job: jobs.wait. Hand over files with assets.get.";
+
 /** Runs a tool on the hosted server's v4 surface (hosted-mount.ts). */
 export interface CloudCaller {
   call(name: string, args: Record<string, unknown>): Promise<Record<string, unknown>>;

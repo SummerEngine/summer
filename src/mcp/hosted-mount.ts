@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CallToolRequestSchema, ListToolsRequestSchema, type Tool } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { connectHostedMcp, type HostedClient, type HostedConnectDependencies } from "../core/hosted-mcp.js";
+import { connectHostedMcp, withV3Surface, type HostedClient, type HostedConnectDependencies } from "../core/hosted-mcp.js";
 import { getStoreAccessToken, OAuthError, resolveMcpResourceUrl } from "../core/oauth.js";
 import { appendMcpLogEvent } from "../core/mcp-log.js";
 import { providerSafeSchema } from "./provider-safe-schema.js";
@@ -34,7 +34,7 @@ const passthroughArgs = z.object({}).passthrough();
 export type HostedMountDependencies = HostedConnectDependencies;
 
 export const defaultHostedMountDependencies: HostedMountDependencies = {
-  url: () => resolveMcpResourceUrl(),
+  url: () => withV3Surface(resolveMcpResourceUrl()),
   token: () => getStoreAccessToken(),
   connect: connectHostedMcp,
 };

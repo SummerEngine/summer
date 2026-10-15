@@ -57,8 +57,19 @@ export async function connectHostedMcp(url: string, token: () => Promise<string>
   };
 }
 
+/**
+ * The hosted server's 3.x surface: the same address with `?surface=v3`. Once
+ * the hosted server serves 4.0 to every request that does not ask, only 3.x
+ * npm releases keep 3.x without asking, so the 3.x tool names here ask.
+ */
+export function withV3Surface(url: string): string {
+  const parsed = new URL(url);
+  parsed.searchParams.set("surface", "v3");
+  return parsed.href;
+}
+
 export const defaultHostedConnectDependencies: HostedConnectDependencies = {
-  url: () => resolveMcpResourceUrl(),
+  url: () => withV3Surface(resolveMcpResourceUrl()),
   token: () => getStoreAccessToken(),
   connect: connectHostedMcp,
 };

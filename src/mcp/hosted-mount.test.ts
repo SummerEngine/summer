@@ -101,6 +101,10 @@ const deps = (overrides: Partial<HostedMountDependencies> = {}): HostedMountDepe
 });
 
 describe("one Summer Engine MCP: hosted tools mounted locally", () => {
+  it("mounts the hosted 3.x tools from the hosted 3.x surface, asked for by name", () => {
+    expect(new URL(defaultHostedMountDependencies.url()).searchParams.get("surface")).toBe("v3");
+  });
+
   it("lists the hosted publishing tools with their own schema next to the engine tools", async () => {
     const { client, mount, server } = await localSession(deps());
     try {

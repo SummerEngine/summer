@@ -89,9 +89,14 @@ export function resolveAgentSelection(
     throw new Error("Specify the agent either positionally or with --agent, not both.");
   }
 
-  const parsed = parseAgent(agentOpt ?? agentArg);
+  const name = agentOpt ?? agentArg;
+  const parsed = parseAgent(name);
   if (!parsed) {
-    throw new Error(`Specify an agent: ${supportedAgents.join(", ")}`);
+    throw new Error(
+      name
+        ? `Unknown agent "${name}". Supported: ${supportedAgents.join(", ")}`
+        : `Specify an agent: ${supportedAgents.join(", ")}`
+    );
   }
 
   return parsed;

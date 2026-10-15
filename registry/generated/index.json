@@ -8424,7 +8424,7 @@
       "id": "tool/open",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "c1087ddd07caf7bca466f5545aa8f15c3e28dd6d4cedd41eddb28f466025ff02",
+      "content_hash": "622d775be937ec0db3286a5d934ad9ff0b2097e62e53a64256e120b7b5758f60",
       "summary": "Open the exact summerengine.com page or editor surface by intent name — billing, my games, an MCP guide, a scene, a node, a dock — or print the URL/op.",
       "use_when": [
         "the user wants to SEE or DECIDE something on the website — \"open my billing page\", \"show me my published games\", \"take me to pricing\", \"open the MCP setup guide for Cursor\"",
@@ -8471,7 +8471,7 @@
       "authority": {
         "filesystem": false,
         "editor_mutation": false,
-        "network": false,
+        "network": true,
         "credentials": false,
         "publish": false
       }

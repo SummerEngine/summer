@@ -2,6 +2,15 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+- The `summer` banner no longer prints colour codes when `NO_COLOR` is set or the output is not a terminal (a log, a pipe, an agent's shell).
+- `summer setup notanagent` now says the agent name is unknown and lists the supported ones.
+- `summer setup codex` writes the MCP entry to `$CODEX_HOME/config.toml` when `CODEX_HOME` is set, where Codex reads it.
+- `summer setup <agent>` without `--yes` says to run it again with `--yes` to install the skills, instead of printing an internal command.
+- `summer setup` prints the first few installed skill names and how many more, not every name; `--json` still lists them all.
+- `summer_open` is marked as reaching outside the machine (`openWorldHint`), because it opens summerengine.com pages in the browser.
+
 ## [3.9.1] - 2026-10-15
 
 3.9.0 was not published to npm; 3.9.1 is the first release with everything in 3.9.0 below, plus these changes.

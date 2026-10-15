@@ -149,6 +149,10 @@ Check the AABB. If the wall is 1.85m tall when you asked for 3m, scale it in the
 - **Sci-fi kit (corridors, doors, terminals).** The style suffix becomes critical — `clean panels, soft cyan emissive trim, brushed metal, white background, isolated object`. Hard surfaces drift more than organic ones; review every piece.
 - **The user wants to add a piece later.** The locked suffix lives in the kit's notes (drop it in `assets/kits/dungeon/STYLE.md` if the user wants persistence). Reuse it verbatim for any addition — never re-derive.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-3 and skip steps 4-5 (staging in a kit scene). Get the file with `summer_get_asset_download_url` on the returned asset id, save it where the person asked, and tell them the path and format. Tell the person the grid from step 1, so they can check scale and pivots in their own engine.
+
 ## Fallback (no MCP)
 
 1. Run each prompt at the Summer dashboard (or Hunyuan / Trellis web UIs), keeping the locked suffix.

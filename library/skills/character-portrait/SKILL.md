@@ -173,6 +173,10 @@ summer_generate_image(
 - **Cast of 12+ characters.** Anchor discipline gets harder as fatigue sets in. Print the anchor as a header in your generation script and don't write any prompt without it.
 - **User wants the portrait to "read at small size" (32×32 in a portrait list).** That's pixel-art territory; route to `pixel-art`.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-4 and 6, and skip step 5 (import and UI wiring). Pass `out` to `summer_generate_image` with the person's folder so the PNG lands there, and tell them the path.
+
 ## Fallback (no MCP)
 
 Print the prompt and the call:

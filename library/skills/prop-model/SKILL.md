@@ -123,6 +123,10 @@ the parent-shape pattern.
 - **Concave interior (open chest, hollow vase).** Specify "lid open" or "hollow inside" — Hunyuan defaults to closed solids.
 - **Symmetrical prop comes back asymmetric.** Add `symmetric, mirrored` to the prompt and regenerate.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-4 and skip step 5 (import and wiring). Get the file with `summer_get_asset_download_url` on the returned asset id, save it where the person asked, and tell them the path and format. The file is GLB. Generated models are not at real-world size, so give the person the target size (a chair about 1 m, a door about 2 m) to scale it to.
+
 ## Fallback (no MCP)
 
 The user can run the same prompt in the Summer dashboard or a supported

@@ -130,6 +130,10 @@ VFX is **code, not generative** — recipes are shader + GDScript + node setup, 
 - **Inventing skill names.** Only dispatch to skills listed above. If nothing fits, ask the user to clarify.
 - **Routing rigged-humanoid requests to `prop-model`.** Anything that needs animation always goes to `character-model`.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), the routing tables still pick the skill. Leave out every step that imports (`summer_import_asset_by_id`, `summer_import_from_url`): deliver the file with `summer_get_asset_download_url` instead.
+
 ## Fallback (no MCP)
 
 The router still works without MCP — classification is text-only. It hands off to the specialist, which surfaces its own no-MCP fallback (typically: run the same generation in the Summer dashboard, then `summer_import_from_url` once MCP is back).

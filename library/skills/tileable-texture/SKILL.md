@@ -178,6 +178,10 @@ Then attach the same material with `uv1_scale` tuned to wall dimensions.
 - **User wants animated water / lava texture.** Generate a still tileable texture and use a `ShaderMaterial` with UV scrolling to animate. Don't try to generate frames.
 - **Visible seam after generation.** Run through GIMP `Filters → Map → Make Seamless` or open in Aseprite, set Tiled mode, paint over the seam manually. AI-generated tileables often need a 5-minute touch-up.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-3 and the seam check in step 5 by eye on the image (tile it 2x2 in an image viewer); skip step 4 and step 6 (import, wiring onto geometry). Pass `out` to `summer_generate_image` so the PNG lands in the person's folder, and tell them to set the texture to repeat.
+
 ## Fallback (no MCP)
 
 Print the call:

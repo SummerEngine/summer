@@ -2,6 +2,15 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+- **The assets profile no longer points at engine tools.** With `--profile assets` (and `summer setup --assets-only`), `summer_get_agent_playbook`, the `summer_agent_playbook` prompt and `summer_start_game_task` told the agent to call `summer_get_project_context`, add nodes, play and take screenshots, none of which that profile has. They now answer with a no-engine version: ask what the asset is for, reuse before generating, confirm the spend, wait for the job, check the preview, and hand the file over with `summer_get_asset_download_url` (or `out` on `summer_generate_image`). The plan only names tools and skills the profile has, and says when a task needs the full setup instead.
+- **A session skill for the assets path.** The new `summer-assets` skill replaces `using-summer` in the assets-only install: what the session has, the loop, the file formats, and when an asset is done. `store-art` (Summer Games store art) left that install too.
+- **Every asset skill says what to do without Summer Engine.** The 23 skills in the assets-only install each have a short "Without Summer Engine" section: which steps to keep, which import and scene steps to skip, and how to hand the file over. A test fails when an asset skill has none.
+- `summer skills install --assets` (and `setup --assets-only`) no longer copies the Claude Code commands `/start`, `/summer` and `/gameskill`, which start and route engine work.
+- `summer_store_tools` names the tools it loads in the current profile (the Tool Factory and asset editing tools in `assets`, the store and publishing tools in `engine`) and carries its own tool hints and title.
+- `generate-motion` and `text-to-motion` no longer say `wait: true` is the default.
+
 ## [3.9.1] - 2026-10-15
 
 3.9.0 was not published to npm; 3.9.1 is the first release with everything in 3.9.0 below, plus these changes.

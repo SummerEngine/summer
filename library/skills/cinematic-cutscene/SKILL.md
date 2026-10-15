@@ -208,6 +208,10 @@ Pattern: `<subject> + <action> + <camera move> + <lighting> + <stylistic anchor>
 - **Cutscene needs to play and the player isn't looking.** Pause the gameplay timer, push a `Control` overlay with the `VideoStreamPlayer`, restore on finish.
 - **Multi-shot continuity.** Use the same reference image as `imageUrl` across all shots. If lighting differs by shot, generate one reference per lighting setup, not one per shot.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-6 and skip step 7 (`VideoStreamPlayer`). Skip the soul-file read in step 1 when the project has no `.summer/` folder. Get the file with `summer_get_asset_download_url` on the returned asset id, save it where the person asked, and tell them the path and format. Each shot is an MP4 and each dialogue line an audio file; the person cuts them together in their own editor.
+
 ## Fallback (no MCP)
 
 If the MCP server isn't running, the user can do all of this in the Summer dashboard:

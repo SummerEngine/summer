@@ -123,24 +123,28 @@ export function parseSkillRegistry(json: unknown): SkillRegistryEntry[] {
     }));
 }
 
-/** Skills that need the engine even though they handle assets (they wire assets into a scene). */
-const ENGINE_ASSET_SKILLS = new Set([
+/** Skills that handle assets but need more than the assets profile: they wire
+ *  assets into a scene, or (store-art) make art for a Summer Games listing. */
+const NOT_ASSETS_ONLY_SKILLS = new Set([
   "instantiate-asset-pack",
   "use-widget-asset",
   "skintokens-auto-rigging",
   "fabricating-assets",
   "lumera-single-image-scene-reconstruction",
+  "store-art",
 ]);
 
 /**
  * The assets-only install (`summer setup --assets-only`, `skills install
  * --assets`): skills that make sounds, music, voices, images, models,
- * animation and video on Summer's servers, plus the session skill
- * `using-summer`. Skills that wire assets into a running engine stay out.
+ * animation and video on Summer's servers, plus `summer-assets`, the session
+ * skill for that profile. Each says what to do without Summer Engine. The
+ * engine session skill `using-summer` and skills that wire assets into a
+ * running engine stay out.
  */
 export function isAssetSkill(skill: Pick<SkillRegistryEntry, "name" | "domains">): boolean {
-  if (skill.name === "using-summer" || skill.name === "generate-motion") return true;
-  if (ENGINE_ASSET_SKILLS.has(skill.name)) return false;
+  if (skill.name === "generate-motion") return true;
+  if (NOT_ASSETS_ONLY_SKILLS.has(skill.name)) return false;
   const domains = skill.domains ?? [];
   return domains.includes("assets") || domains.includes("generate");
 }

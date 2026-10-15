@@ -168,6 +168,10 @@ In a 200-tree forest, only the ~10 closest trees need to be real meshes; the oth
 - **Crystal/glass organic.** Mesh comes back opaque. Generate the geometry, then assign a `StandardMaterial3D` with `transparency = ALPHA` and emissive in the editor.
 - **Bones, skulls, dead trees.** All work; organic forgives them more than props would. Add `weathered, sun-bleached` for desert / tundra feel.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-4 and skip steps 5-6 (scene wiring, LOD). Get the file with `summer_get_asset_download_url` on the returned asset id, save it where the person asked, and tell them the path and format. The file is GLB; level of detail and billboards are the person's engine's job.
+
 ## Fallback (no MCP)
 
 1. Run prompts at the Summer dashboard or any 3D-gen web playground (Hunyuan, Trellis, Meshy).

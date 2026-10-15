@@ -167,6 +167,10 @@ Then `summer_play` and look around. Sun in the right place? Seam invisible? Top/
 - **Indoor scene.** Skyboxes are wasted indoors — use `BG_COLOR` or a flat black background. Don't generate a sky for a windowless dungeon.
 - **Visible vertical seam after generation.** Fix in Photoshop/GIMP: `Filter → Other → Offset` by 50% horizontally → the seam moves to the center → heal with content-aware fill or clone stamp → offset back to 0. Or regenerate with seed bump and `seamless horizontal wrap, no visible seam at left and right edges` repeated twice in the prompt.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-4 and skip steps 5-7 (import, `WorldEnvironment`, scene check). Pass `out` to `summer_generate_image` so the image lands in the person's folder. Tell them it is a 2:1 equirectangular panorama, the shape most engines take for a sky.
+
 ## Fallback (no MCP)
 
 Print the call:

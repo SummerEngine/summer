@@ -1215,6 +1215,19 @@
       ]
     },
     {
+      "id": "skill/summer-assets",
+      "name": "summer-assets",
+      "description": "Make game assets with Summer without Summer Engine: find, generate and download 3D models, images, audio and video for any engine or web app.",
+      "clients": "all",
+      "recommended": false,
+      "status": "stable",
+      "path": "library/skills/summer-assets/",
+      "domains": [
+        "assets",
+        "agent-workflow"
+      ]
+    },
+    {
       "id": "skill/summer-friends",
       "name": "summer-friends",
       "description": "Summer friends in a game: a consented friends list, profile and chat screens, direct messages. Hosted only.",

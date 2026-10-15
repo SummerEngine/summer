@@ -265,6 +265,10 @@ Boss arena:         vast stone arena, low ominous drone, distant rumble,
 - **Need positional bed (a campfire crackle).** Use `AudioStreamPlayer3D` with `max_distance` matching the campfire's reasonable hearing radius (4–8m typical).
 - **Multi-room transitions.** Use Areas; on player enter, fade in destination bed and fade out source bed over 1.5s.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-5 and stop when the bed exists. Skip steps 6-9: the loop point, the crossfade script and the `AudioStreamPlayer` are Summer Engine work. Get the file with `summer_get_asset_download_url` on the returned asset id, save it where the person asked, and tell them the path and format. Tell the person it is a long bed made to loop: their engine either loops it with a short crossfade or plays two copies that overlap.
+
 ## Fallback (no MCP)
 
 Print the SFX prompt and the import dock settings. User runs via the Summer dashboard and imports manually.

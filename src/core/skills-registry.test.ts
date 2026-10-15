@@ -1,7 +1,10 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   getSkillRegistry,
   parseSkillRegistry,
+  resolveSkillDir,
   selectSkillsForBulkInstall,
   type SkillRegistryEntry,
   type SkillStatus,
@@ -69,13 +72,22 @@ describe("parseSkillRegistry", () => {
 });
 
 describe("assets-only skills", () => {
-  it("takes the asset-making skills and the session skill, not engine work", () => {
+  it("takes the asset-making skills and the assets session skill, not engine or store work", () => {
     const { selected } = selectSkillsForBulkInstall(getSkillRegistry(), { assetsOnly: true });
     const names = selected.map((skill) => skill.name);
-    expect(names).toEqual(expect.arrayContaining(["using-summer", "sound-effect", "music-track", "voice-line", "concept-art", "prop-model", "generate-motion", "store-art"]));
-    for (const engineSkill of ["make-game", "fps-controller", "instantiate-asset-pack", "fabricating-assets", "multiplayer", "debug"]) {
-      expect(names).not.toContain(engineSkill);
+    expect(names).toEqual(expect.arrayContaining(["summer-assets", "sound-effect", "music-track", "voice-line", "concept-art", "prop-model", "generate-motion"]));
+    for (const notAssets of ["using-summer", "store-art", "make-game", "fps-controller", "instantiate-asset-pack", "fabricating-assets", "multiplayer", "debug"]) {
+      expect(names).not.toContain(notAssets);
     }
     expect(names.length).toBeLessThan(getSkillRegistry().length / 3);
+  });
+
+  it("every asset skill says what to do without Summer Engine", () => {
+    const { selected } = selectSkillsForBulkInstall(getSkillRegistry(), { assetsOnly: true });
+    const missing = selected
+      .filter((skill) => skill.name !== "summer-assets")
+      .filter((skill) => !readFileSync(join(resolveSkillDir(skill), "SKILL.md"), "utf-8").includes("\n## Without Summer Engine\n"))
+      .map((skill) => skill.name);
+    expect(missing).toEqual([]);
   });
 });

@@ -181,6 +181,10 @@ Pattern: `<archetype framing> + <subject> + <action verb> + <camera move> + <lig
 - **Subject is a UGC environment the player built.** Take a screenshot of the in-engine view, run it through `summer_generate_image` as `referenceImageUrl` to "upgrade" the look, then use that as the video reference. The model can stylize a screenshot; it can't invent the user's level.
 - **Logo splash with motion graphics.** Generate a static logo card in `summer_generate_image` (or use the user's existing logo PNG), then prompt video as `static composition of <logo>, only background particles drifting, cinematic, room for title text` — keep the foreground motionless.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-5 and 7 and skip step 6 (import for archive). Get the file with `summer_get_asset_download_url` on the returned asset id, save it where the person asked, and tell them the path and format. The MP4 goes straight into the person's video editor.
+
 ## Fallback (no MCP)
 
 If the Studio MCP server isn't running, route the user to the Studio web dashboard:

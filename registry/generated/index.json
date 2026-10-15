@@ -430,7 +430,7 @@
       "id": "skill/ambient-bed",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "019312cde595bc12813c1fe6787cd0127f37e4933985930039214c58acbbdb45",
+      "content_hash": "95b21b1b3f0dee9340c4fe785ac5882c1827eb7b9776bdd8aa4972c6ba707904",
       "summary": "Generate a long looping location ambience — forest, dungeon, city, spaceship, cave — a looping AudioStreamPlayer on the Ambient bus with a seamless loop.",
       "use_when": [
         "generating a long looping location ambience — forest at dawn, dungeon air, city street, spaceship hum, cave drip — non-melodic and low-energy",
@@ -459,7 +459,7 @@
       "id": "skill/animated-loop",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "f94e9340295a16fd7fe8a3293d0dab2ea89f6f42e3334fa39346faa070c5a2fe",
+      "content_hash": "75f5e6340265b115861b11b2b917ec712095ca1899cef24ef499504d32446812",
       "summary": "Generate a short seamlessly-looping video clip — splash background, animated logo backdrop, idle title-screen footage — wired as a looping VideoStreamPlayer.",
       "use_when": [
         "generating a short looping video clip — splash screen background, animated logo backdrop, idle title-screen footage, looping environment ambience",
@@ -569,7 +569,7 @@
       "id": "skill/asset-strategy",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "50357a6e850c4930e7f621c983a03aa93fb9088f937d08a215d1d3a7e5f523b6",
+      "content_hash": "e47b8aa6c4dda4e46409e925565e95cb1074ec4e4f9405ae2f8ebf26979fe102",
       "summary": "Route any 'I need a [thing]' asset request to the right specialist skill — disambiguates 2D / 3D / audio / video / VFX / animation pipelines.",
       "use_when": [
         "planning asset creation, picking an asset pipeline, or routing an 'I need a [thing]' request to the right specialist skill",
@@ -593,6 +593,7 @@
       },
       "related": {
         "skills": [
+          "skill/summer-assets",
           "skill/character-portrait",
           "skill/concept-art",
           "skill/pixel-art",
@@ -960,7 +961,7 @@
       "id": "skill/character-model",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "0175a47a39e6d3cfd30abd703783a9acb48811b67a5aecdcfe9b3ad5f0d5d328",
+      "content_hash": "76f1e2a618fc951515335073ef795a21371927db669a9ead125cf471bc091df2",
       "summary": "Generate a rigged humanoid — player, NPC, enemy, boss — via T-pose reference, user-gated preview, and Meshy auto-rig, wired as CharacterBody3D or Node3D.",
       "use_when": [
         "generating a humanoid character ready for animation — player avatar, NPC, enemy, boss, companion",
@@ -1049,7 +1050,7 @@
       "id": "skill/character-portrait",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "9584c7d4a920b2813fa7677fddff728489a3548c0fbb1043d6246883d730871e",
+      "content_hash": "e6633785340140d10e173b5a616d5a74b2f9037c4e8bb39b548acc3d63869871",
       "summary": "Generate a single polished character bust for dialogue UI, character select, lore cards, or codex entries. One character, locked composition, VN-style.",
       "use_when": [
         "generating a single polished bust/portrait of a character for dialogue UI, character-select screens, lore cards, or codex entries",
@@ -1086,7 +1087,7 @@
       "id": "skill/cinematic-cutscene",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "a2a499d2c483b07ff3d034280387caf3ffef7c48a99ad37761e931353adbe48c",
+      "content_hash": "9284a2c9083b72b76c34d172a44fd1e507f8b28093605d370cb2379f76f2b870",
       "summary": "Generate a non-interactive cutscene — reference-locked look, a 5-10s image-to-video shot, optional TTS dialogue — wired as a fading VideoStreamPlayer.",
       "use_when": [
         "generating a non-interactive cutscene clip — opening scene, story beat, character intro, ending",
@@ -1199,7 +1200,7 @@
       "id": "skill/concept-art",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "605c7ada815fb013d448f43349c12b2961159041e77568cf228daa1d9420a540",
+      "content_hash": "cd41cda5b4ecbd443a175484f5a56fef339ed2026d4566964149fca86f7a9a9c",
       "summary": "Explore art direction with 3-4 rough concept variants of a character, environment, or prop to pick a vibe before committing to a final asset.",
       "use_when": [
         "exploring art direction with rough variants before committing to a final asset",
@@ -1238,7 +1239,7 @@
       "id": "skill/create-asset-sheet",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "1c4120f049dcacfa25737164312d1e9dbd409b96f06817ca4eb00986fddcd6fa",
+      "content_hash": "79832b513168e01d5099f54038b46184305342291ff6a3ecfc1bdb157df21af7",
       "summary": "Generate a pack of 2D game assets from one prompt — tile sheet, UI kit, character pack, or biome set — sliced, classified, and saved as one pack ArtAsset.",
       "use_when": [
         "generating a pack of 2D game assets from a single prompt — a tile sheet, UI kit, menu screen, character pack, or biome set",
@@ -1563,7 +1564,7 @@
       "id": "skill/environment-kit",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "7589bfcd29aa233962c8747ab33218bbf42ec695f97efb506dca1a99209aa15d",
+      "content_hash": "8c78f6f4792085b21d54ac345db68000779dac6613eb02fb2cdc59de2869c5fe",
       "summary": "Generate a modular environment kit — wall pieces, floor tiles, pillars, doors, arches, corners — snap-together meshes sharing one visual style.",
       "use_when": [
         "generating a modular environment kit of snap-together pieces that form a level — dungeon kit, modular walls, interior pieces",
@@ -1858,7 +1859,7 @@
       "id": "skill/generate-motion",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "342ca77d9ff7982a2544d19ab0047abe5222a26aefdb39fd605180ba3ce9477e",
+      "content_hash": "22fc4e830d0cee5d847ad601b740fa44cd716c31626237b4991fa578c3a5203f",
       "summary": "Attach an animation clip to a rigged character from the curated Meshy motion library — idle, walk, run, attack — wired via AnimationPlayer.",
       "use_when": [
         "the user needs an animation clip on a rigged character — idle/walk/run/attack from the curated Meshy library",
@@ -2452,7 +2453,7 @@
       "id": "skill/music-track",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "f31b8aae49f483c6d1da9b15fc084fae19a41d1f5e45b770c037a619a65de738",
+      "content_hash": "9f621d1c1ceebe88d7ad6097707317bc55f00645e4b0bc4fe38b8b8dfa4e8b15",
       "summary": "Generate a looped or cinematic music track — loops authored at >=30s with a marked loop point, cinematic tracks at >=60s linear.",
       "use_when": [
         "generating a looped or cinematic music track — main theme, boss music, title screen, exploration loop, combat track",
@@ -2563,7 +2564,7 @@
       "id": "skill/organic-model",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "1ff008d9c308835e3b72ad7956d5614b9f655dec780860b36addaaf5141dea24",
+      "content_hash": "99d77bdb7e72ceece4d2b51cf429b13323ad4ceed2eaac0b7e2ca3afff5ea255",
       "summary": "Generate organic 3D shapes — trees, rocks, mushrooms, coral, plants, vines, crystals — where AI artifacts read as natural irregularity.",
       "use_when": [
         "generating organic shapes — trees, rocks, mushrooms, coral, bushes, alien plants, vines, crystals, fruit, bones",
@@ -2602,7 +2603,7 @@
       "id": "skill/pixel-art",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "c61e867cba2cbeebf5d3de182f7813a72c14f3fff442c322c4c13ab31b252ed7",
+      "content_hash": "53047615ec56fda344a401980a4aa44787df8587d43837921f7d045ab79c6424",
       "summary": "Generate pixel-art assets — sprites, items, tiles, portraits — at a specific resolution with pixel-perfect grid, limited palette, retro feel.",
       "use_when": [
         "generating pixel-art assets — sprites, items, tiles, portraits — in a pixel style at a specific resolution (32x32, 64x64, 128x128)",
@@ -2752,7 +2753,7 @@
       "id": "skill/prop-model",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "dc899d46afde43f3a8df3fa78de1c87b27444f9ab482bf9b798a42e83272435d",
+      "content_hash": "16c26b5a2a8f7f8d83d1bd17f78fe2197008a87294bc9fe3280e450c8b06081c",
       "summary": "Generate a single static 3D prop — sword, barrel, chest, lantern, throne, statue — one isolated object, no rigging, wired as a MeshInstance3D.",
       "use_when": [
         "generating a single static 3D prop — sword, barrel, chest, lantern, throne, statue, crate, key, potion, banner",
@@ -3405,7 +3406,7 @@
       "id": "skill/skybox-panorama",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "2fa5eb148d8907b64368769738de5dfb2baed0165eb1a0c3ee761a8594092cda",
+      "content_hash": "6a73054a3e0c80e5c8d15a48d5662555a8e16f243f11fff9c3c52030d5900095",
       "summary": "Generate a 360-degree equirectangular sky panorama and wire it as a PanoramaSkyMaterial Sky resource on WorldEnvironment in a 3D scene.",
       "use_when": [
         "generating a 360-degree panoramic sky image for use as a Sky resource (PanoramaSkyMaterial) in a 3D scene",
@@ -3440,7 +3441,7 @@
       "id": "skill/sound-effect",
       "kind": "skill",
       "version": "1.1.0",
-      "content_hash": "a02073249416a329b4d40848af7d5ba7df9b294d9bf7e9a4d856a6af846f2aad",
+      "content_hash": "3fd04bd81e967c79e2f46c88f6e7d5353bce08cfca6240eea0e0b9f822836663",
       "summary": "Make SFX one-shots and timed sequences (swings, hits, whooshes, reloads, UI) - offer three model versions to pick from, then wire them as AudioStreamPlayers.",
       "use_when": [
         "generating short SFX one-shots — footsteps, weapon swings, UI clicks, hit impacts, environmental cues",
@@ -3541,7 +3542,7 @@
       "id": "skill/sprite-sheet",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "bb135a8fc2e5a3044ec68582696c7ea956339daa7fa3ffedb10c3e7f67baff8c",
+      "content_hash": "4f7d51b67e7d05aa7a6bfe68d1d15ff4be5ad8cf00d15f7621903b912462151c",
       "summary": "Generate animated 2D character sprites laid out as a sprite sheet — walk cycle, attack, idle, death — wired into AnimatedSprite2D / SpriteFrames.",
       "use_when": [
         "generating animated 2D character sprites laid out as a grid of frames — walk cycle, attack frames, idle bob, death sequence",
@@ -3762,6 +3763,50 @@
       },
       "status": "preview",
       "recommended": true
+    },
+    {
+      "id": "skill/summer-assets",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "f633ddf25562df3009615ff210551d9d97cb98a071335be29ec1f37f57d8c05e",
+      "summary": "Make game assets with Summer without Summer Engine: find, generate and download 3D models, images, audio and video for any engine or web app.",
+      "use_when": [
+        "starting a session that has the Summer assets profile (generation tools, no engine tools)",
+        "the person wants assets for their own engine or web app, not a game built in Summer Engine",
+        "an asset skill ends with Summer Engine steps that this session cannot run"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "assets",
+          "agent-workflow"
+        ],
+        "modalities": [
+          "3d-models",
+          "images",
+          "audio",
+          "video"
+        ]
+      },
+      "related": {
+        "tools": [
+          "tool/search-assets",
+          "tool/list-my-assets",
+          "tool/check-job",
+          "tool/get-asset",
+          "tool/get-asset-download-url"
+        ],
+        "skills": [
+          "skill/asset-strategy",
+          "skill/sound-effect",
+          "skill/prop-model",
+          "skill/concept-art"
+        ]
+      },
+      "status": "stable",
+      "recommended": false
     },
     {
       "id": "skill/summer-friends",
@@ -4118,7 +4163,7 @@
       "id": "skill/text-to-motion",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "a53e8434cc60354b9d56e87de63bce8d4806b4250be10c20392f42599ded4203",
+      "content_hash": "ee6d03336bfbec838403f60bf239c5adec95b26b365e086241fab1d71c4d6941",
       "summary": "Custom 2-second animation clips from text prompts on any of the user's own rigged models — humanoids, animals, creatures, cartoon plants, props.",
       "use_when": [
         "a custom action the curated motion library lacks — nod, bow, shrug, wave with a specific arm, an emotional gesture",
@@ -4162,7 +4207,7 @@
       "id": "skill/tileable-texture",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "8785dadfd93093c2bd2370474704cd8865721a694a2b4406b4556f4bca8b835c",
+      "content_hash": "3b47666dca5d4cc48d58f6b5907c77983fc417181d15ee400417a2dd95a12d2d",
       "summary": "Generate a seamless tileable texture for walls, floors, or terrain — repeats cleanly on all four edges, wired as a StandardMaterial3D albedo.",
       "use_when": [
         "generating a seamless tileable texture for walls, floors, terrain, or ceilings — a square tile that repeats cleanly on all four edges",
@@ -4200,7 +4245,7 @@
       "id": "skill/trailer-shot",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "5a52a9b984a63acc6435b7f82bc64d12402b764f784b389ca4dd8f04ee2b405e",
+      "content_hash": "6aa73adea2c230129ff19e0f931981685a0ce916736653b0f2240ba6eccdc5a7",
       "summary": "Generate marketing or trailer footage — slow-mo combat, establishing shots, hero beats, splash screens, pitch-deck B-roll — max punch in 5-10 seconds.",
       "use_when": [
         "generating marketing or trailer footage — slow-mo combat, dramatic establishing shots, hero beats, splash screens, pitch-deck B-roll",
@@ -4302,7 +4347,7 @@
       "id": "skill/ui-graphics",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "12b228e15fb4d145b88387a5c1cb5195c271b6a7aaa1ac7071b500716605d817",
+      "content_hash": "78f5b93d7531a85c0451c3c03babdb1d5c622aec54de02a23d3e7e961cfcae23",
       "summary": "Generate game-UI elements — icons, buttons, panels, frames, HUD widgets, badges — flat design, transparent background, wired via TextureRect/NinePatchRect.",
       "use_when": [
         "generating UI elements — icons, buttons, panels, frames, HUD widgets, badges — in flat-design, transparent-background game-UI style",
@@ -4422,7 +4467,7 @@
       "id": "skill/vehicle-model",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "e025a4a073a0d26fb4a92f91ad25c0321daf921bd10acc82e0e3c2c82ac3db38",
+      "content_hash": "b34c646341be51819375ba200f18193efa65bf80009b03e14ed35b28a6c3fc4a",
       "summary": "Generate a hard-surface vehicle — car, spaceship, mech, boat, tank — static mesh with optional detail-texture pass, wired as VehicleBody3D or MeshInstance3D.",
       "use_when": [
         "generating a hard-surface vehicle — car, motorcycle, spaceship, hover bike, boat, mech, tank, helicopter",
@@ -4865,7 +4910,7 @@
       "id": "skill/voice-line",
       "kind": "skill",
       "version": "1.0.2",
-      "content_hash": "15a8ec556f8304a100c80dbb631787d2ec1e475de33aac69e8da84572a23d2da",
+      "content_hash": "d5f40703e71790ede3d4d0eaa66235fdfa314323a4a5bf7abde3c2349365adaf",
       "summary": "Generate TTS voice lines — NPC barks, narrator, dialogue — with voice-id sourcing, a character-to-voice decision tree, and multi-line dialogue support.",
       "use_when": [
         "\"the NPC needs a greeting / a bark / a narrator intro read aloud\"",

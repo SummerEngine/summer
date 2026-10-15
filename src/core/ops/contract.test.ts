@@ -49,6 +49,9 @@ describe("3.x names (registry/operations/legacy-names.json)", () => {
     expect(isLocalOp("docs.workflows")).toBe(false);
     expect(isLocalOp("games.list")).toBe(false);
     expect(localToolsFor("docs.read")).toEqual(["summer_read_library", "summer_get_agent_playbook"]);
+    expect(isLocalOp("apps.publish_folder")).toBe(true);
+    expect(isLocalOp("apps.publish")).toBe(false);
+    expect(localToolsFor("apps.publish_folder")).toEqual(["summer_app_publish"]);
   });
 
   it("names tools, CLI words and job ids the same way the hosted server does", () => {
@@ -76,6 +79,7 @@ describe("the local catalog", () => {
     expect(entries.find((entry) => entry.name === "engine.set_prop")).toMatchObject({ provider: "engine", mcpTool: "summer_set_prop", effect: "write", approval: "none" });
     expect(entries.find((entry) => entry.name === "docs.search")).toMatchObject({ provider: "local", effect: "read" });
     expect(entries.some((entry) => !isLocalOp(entry.name))).toBe(false);
+    expect(entries.find((entry) => entry.name === "apps.publish_folder")).toMatchObject({ provider: "local", mcpTool: "summer_app_publish" });
   });
 
   it("reads an operation's exact input from its library descriptor", () => {

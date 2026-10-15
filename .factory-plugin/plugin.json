@@ -43,6 +43,7 @@
     "./library/skills/combat-basics/",
     "./library/skills/compatibility-renderer-traps/",
     "./library/skills/concept-art/",
+    "./library/skills/concept-to-level/",
     "./library/skills/create-asset-sheet/",
     "./library/skills/debug/",
     "./library/skills/debugging-game-feel/",

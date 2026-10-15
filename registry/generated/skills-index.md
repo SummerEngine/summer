@@ -1,6 +1,6 @@
 # Summer skills
 
-> 125 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
+> 126 skills, grouped by their primary domain. **Generated** by `npm run generate:registry` from each skill's `resource.yaml`; `--check` fails when this file and the library disagree. Do not edit by hand.
 
 The folder is flat on purpose (`docs/design/DECISIONS.md`, D3): a skill usually belongs to several domains, so categories live in each skill's `facets.domains` and this index is rendered from them. The first domain listed is the primary one. `summer skills list --by-domain` prints the same grouping; `summer skills info <slug>` shows one skill.
 
@@ -21,7 +21,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 - [deployment](#deployment) (3)
 - [editor](#editor) (1)
 - [gameplay](#gameplay) (6)
-- [level-design](#level-design) (2)
+- [level-design](#level-design) (3)
 - [multiplayer](#multiplayer) (16)
 - [navigation](#navigation) (1)
 - [performance](#performance) (1)
@@ -172,6 +172,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 
 | skill | when to use | also |
 |---|---|---|
+| [*concept-to-level*](./concept-to-level/SKILL.md) (preview) | Take a 3D map from concept art to a polished, shippable level, with the questions to ask the user, owned lanes, render checks and collision kept in step. | 3d, world-building, agent-workflow |
 | [design-level](./design-level/SKILL.md) ★ | Design one level (layout, pacing, encounters, secrets) as a design doc plus a node-tree skeleton. | game-design |
 | [scene-to-level](./scene-to-level/SKILL.md) | Turn a reference image or concept art into a playable scene: concept, asset pack, terrain, assembly. | game-design |
 

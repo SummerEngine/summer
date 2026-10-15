@@ -1235,6 +1235,55 @@
       "recommended": true
     },
     {
+      "id": "skill/concept-to-level",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "2720ecf08ad885c42682f3e947ffd2dff13faafde9bcd13382b4ce2185ffc583",
+      "summary": "Take a 3D map from concept art to a polished, shippable level, with the questions to ask the user, owned lanes, render checks and collision kept in step.",
+      "use_when": [
+        "polishing a 3D map or arena from concept art to shipping quality, with real materials, props, sky and effects",
+        "reworking a level's theme and art while keeping its gameplay layout, with several agents working on one map",
+        "deciding which questions to ask the user before building or polishing a level"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "level-design",
+          "3d",
+          "world-building",
+          "agent-workflow"
+        ],
+        "modalities": [
+          "scenes",
+          "assets",
+          "shaders",
+          "docs"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/concept-art",
+          "skill/art-direction",
+          "skill/design-level",
+          "skill/scene-to-level",
+          "skill/environment-kit",
+          "skill/fabricating-assets",
+          "skill/headless-scripting",
+          "skill/bounded-engine-runs",
+          "skill/verifying-scenes",
+          "skill/tune-performance",
+          "skill/dispatching-parallel-agents"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
       "id": "skill/create-asset-sheet",
       "kind": "skill",
       "version": "1.0.3",

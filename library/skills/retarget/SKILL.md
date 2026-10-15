@@ -1,6 +1,6 @@
 ---
 name: retarget
-description: "Apply existing animation clips from one rigged character to a different rigged character — same library, multiple models, no regeneration."
+description: "Apply animation clips from one rigged character to another: one clip library, many models."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: animation

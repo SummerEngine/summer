@@ -1,6 +1,6 @@
 ---
 name: character-model
-description: "Generate a rigged humanoid — player, NPC, enemy, boss — via T-pose reference, user-gated preview, and Meshy auto-rig, wired as CharacterBody3D or Node3D."
+description: "Generate a rigged humanoid (player, NPC, enemy, boss) from a T-pose reference, previewed before rigging."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 3d-assets
@@ -165,27 +165,28 @@ No programmatic workaround is known. Tell the user, wait, then continue.
 | Pure-visual character (background extra, dialogue head) | `Node3D` | Same as above |
 | Ragdoll-on-death enemy | `CharacterBody3D` while alive, swap to `RigidBody3D` skeleton on death | Two-mode rig; see `procedural-animation` |
 
-Four things the call shapes below encode:
+Three things the call shapes below encode:
 
-- **Every scene-mutating tool takes an explicit `scenePath`** and the scene need not be the active editor tab.
-- **Node paths are relative to that scene's root (`./`)**, not absolute `/root/...` runtime paths.
-- **`summer_set_prop`'s property argument is named `key`**, not `property`.
-- **A `.glb` is instantiated, not assigned.** There is no `scene` property on `Node3D`, and an imported `.glb` is a scene rather than a `Mesh` — on the shipped 4.6.1 binary `ResourceLoader.get_recognized_extensions_for_type("Mesh")` returns `["tres", "mesh", "res"]`, with no `glb`. Use `summer_instantiate_scene`.
+- **Every scene tool, `summer_run_script` included, takes an explicit `scenePath`**, and the scene need not be the active editor tab.
+- **A character is several nodes: build it in one `summer_run_script`**, not a chain of single calls.
+- **A `.glb` is instantiated, not assigned.** There is no `scene` property on `Node3D`, and an imported `.glb` is a scene rather than a `Mesh` — on the shipped 4.6.1 binary `ResourceLoader.get_recognized_extensions_for_type("Mesh")` returns `["tres", "mesh", "res"]`, with no `glb`. Use `ctx.instance_scene` in a script, or `summer_instantiate_scene` for one model.
 
 **CharacterBody3D wiring (player / enemy):**
 
 ```
-summer_add_node(scenePath="res://main.tscn", parent="./World", type="CharacterBody3D", name="Knight")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Knight", key="position", value="Vector3(0, 0, 0)")
-summer_instantiate_scene(scenePath="res://main.tscn", parent="./World/Knight", scene="res://assets/characters/knight.glb", name="Mesh")
-summer_add_node(scenePath="res://main.tscn", parent="./World/Knight", type="CollisionShape3D", name="Collider")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Knight/Collider", key="shape", value="CapsuleShape3D")
-summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/Knight/Collider", resourceProperty="shape", subProperty="height", value=1.7)
-summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/Knight/Collider", resourceProperty="shape", subProperty="radius", value=0.4)
-summer_save_scene(scenePath="res://main.tscn")
+summer_run_script(scenePath="res://main.tscn", source="""
+func run(ctx):
+    var knight = ctx.add_node("CharacterBody3D", "Knight", ctx.find("World"), {"position": Vector3(0, 0, 0)})
+    ctx.instance_scene("res://assets/characters/knight.glb", knight, "Mesh")
+    var capsule := CapsuleShape3D.new()
+    capsule.height = 1.7
+    capsule.radius = 0.4
+    ctx.add_node("CollisionShape3D", "Collider", knight, {"shape": capsule})
+    ctx.save_scene()
+""")
 ```
 
-Assigning a bare class name like `"CapsuleShape3D"` to a resource property auto-instantiates it, which is how you get a shape you can then size. `summer_set_resource_property` needs all five of `scenePath`, `nodePath`, `resourceProperty`, `subProperty`, `value`.
+Build the shape as a real resource and size it before you assign it. Later, one size change on that shape is one `summer_set_resource_property` (`nodePath`, `resourceProperty="shape"`, `subProperty`, `value`, plus `scenePath`).
 
 **Node3D wiring (cinematic NPC):**
 
@@ -223,6 +224,10 @@ The imported `.glb` includes its own `Skeleton3D` and `AnimationPlayer` (empty l
 - **First-person hands-only character.** Generate just hands + forearms in T-pose; rig pass still works. See `fps-controller` for first-person wiring.
 - **Stylized non-human (goblin, orc, halfling).** Works fine as long as the silhouette is bipedal with two arms, two legs, one head. Quadrupeds and centaurs do not.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-4, including the review gate, and stop when the rig pass finishes. Skip steps 5-6 (editor restart, scene wiring). Get the rigged GLB with `assets.get` on `rigAssetId` (its `downloadUrl`) (the unrigged mesh is `assetId`), save it where the person asked, and tell them the path. Step 7 still applies: `generate-motion` runs without the engine.
+
 ## Fallback (no MCP)
 
 1. Generate the T-pose reference in the Summer dashboard.
@@ -251,4 +256,4 @@ After the rigged character is wired:
 - `asset-strategy` — meta-router; this skill is the canonical drill-down of its "Image-to-3D for characters" path.
 - `prop-model` — for non-character props.
 - `scene-composition` — for the CharacterBody3D + Mesh + Collider parent pattern.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — how to call `assets.generate_3d`, `assets.generate_image` and `assets.generate_motion`; `summer_search` returns each one's exact input.
+- `summer_read_library` id `reference/mcp-tools-reference` — how to call `assets.generate_3d`, `assets.generate_image` and `assets.generate_motion`; `summer_search` returns each one's exact input.

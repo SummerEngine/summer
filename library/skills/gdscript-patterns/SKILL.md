@@ -1,6 +1,6 @@
 ---
 name: gdscript-patterns
-description: "GDScript conventions — type hints, signals, exports, onready, lifecycle methods, get_node vs $NodePath, naming."
+description: "GDScript conventions: type hints, signals, exports, onready, lifecycle methods, node paths, naming."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: scripting-patterns

@@ -1,7 +1,7 @@
 id: skill/text-to-motion
 kind: skill
 version: 1.0.0
-summary: "Custom 2-second animation clips from text prompts on any of the user's own rigged models — humanoids, animals, creatures, cartoon plants, props."
+summary: "Make custom 2-second animation clips from text on the user's own rigged models: people, animals, props."
 use_when:
   - a custom action the curated motion library lacks — nod, bow, shrug, wave with a specific arm, an emotional gesture
   - animating a non-humanoid rig — a talking flower, animal, creature, turret or prop

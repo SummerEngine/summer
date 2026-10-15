@@ -1,6 +1,6 @@
 ---
 name: prop-model
-description: "Generate a single static 3D prop — sword, barrel, chest, lantern, throne, statue — one isolated object, no rigging, wired as a MeshInstance3D."
+description: "Generate one static 3D prop (sword, barrel, chest, lantern, statue): one object, no rig, a MeshInstance3D."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 3d-assets
@@ -125,6 +125,10 @@ the parent-shape pattern.
 - **Concave interior (open chest, hollow vase).** Specify "lid open" or "hollow inside" — Hunyuan defaults to closed solids.
 - **Symmetrical prop comes back asymmetric.** Add `symmetric, mirrored` to the prompt and regenerate.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-4 and skip step 5 (import and wiring). Get the file with `assets.get` on the returned asset id (its `downloadUrl`), save it where the person asked, and tell them the path and format. The file is GLB. Generated models are not at real-world size, so give the person the target size (a chair about 1 m, a door about 2 m) to scale it to.
+
 ## Fallback (no MCP)
 
 The user can run the same prompt in the Summer dashboard or a supported
@@ -146,4 +150,4 @@ After the prop is wired:
 - `asset-strategy` — the meta-router that decides between this skill and Pipeline 2 (textures).
 - `character-model` — for humanoids.
 - `environment-kit` — for style-locked sets.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — how to call `assets.generate_3d`; `summer_search` returns its exact input.
+- `summer_read_library` id `reference/mcp-tools-reference` — how to call `assets.generate_3d`; `summer_search` returns its exact input.

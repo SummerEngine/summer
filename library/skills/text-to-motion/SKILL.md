@@ -1,6 +1,6 @@
 ---
 name: text-to-motion
-description: "Custom 2-second animation clips from text prompts on any of the user's own rigged models — humanoids, animals, creatures, cartoon plants, props."
+description: "Make custom 2-second animation clips from text on the user's own rigged models: people, animals, props."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: animation
@@ -94,6 +94,10 @@ Refusals answer the one error shape: `error.code` with one `next` step, and
 | `not_found` / `rig_asset_not_found` | Not the caller's asset | Find the user's own asset id |
 | `invalid_input` / `rig_asset_invalid` | Not a rigged GLB/FBX `3d_model` | Rig it first |
 | `no_credits` | Not enough credits | Fewer prompts/takes, or the person adds credits (`next` has the link) |
+
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), follow the order up to the review in step 5 and skip the import. Get the file with `assets.get` on the returned asset id (its `downloadUrl`), save it where the person asked, and tell them the path and format. Keep the good takes and name each file after its prompt.
 
 ## Do not stop early
 

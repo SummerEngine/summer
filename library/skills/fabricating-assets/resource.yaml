@@ -1,7 +1,7 @@
 id: skill/fabricating-assets
 kind: skill
 version: 1.0.0
-summary: Fabricate meshes with a bpy script in the user's own Blender (summer_fabricate_3d) — kits with exact dimensions, VFX meshes, post-processing generated models.
+summary: "Fabricate meshes with a Blender script (summer_fabricate_3d): exact-size kits, VFX meshes, post-processing."
 use_when:
   - writing a Blender Python (bpy) script for summer_fabricate_3d and deciding whether fabrication, generation, or the free library is the right route for an asset
   - a parametric hard-surface set with exact dimensions, booleans, bevels, and shared materials that must stay consistent across many pieces

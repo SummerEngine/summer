@@ -1,6 +1,6 @@
 ---
 name: running-in-the-cloud
-description: "Run Summer Engine on a Linux box with no display — install it, launch headless, know when xvfb + software GL are needed, authenticate without a browser."
+description: "Run Summer Engine on a Linux box with no display: install, launch headless, xvfb, sign in without a browser."
 ---
 
 # Running in the Cloud

@@ -1,6 +1,6 @@
 ---
 name: character-portrait
-description: "Generate a single polished character bust for dialogue UI, character select, lore cards, or codex entries. One character, locked composition, VN-style."
+description: "Generate one polished character bust for dialogue UI, character select, lore cards or codex entries."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
@@ -174,6 +174,10 @@ assets.generate_image({
 - **Cast of 12+ characters.** Anchor discipline gets harder as fatigue sets in. Print the anchor as a header in your generation script and don't write any prompt without it.
 - **User wants the portrait to "read at small size" (32×32 in a portrait list).** That's pixel-art territory; route to `pixel-art`.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-4 and 6, and skip step 5 (import and UI wiring). Get the PNG with `assets.get` on the returned asset id (its `downloadUrl`), save it in the person's folder, and tell them the path.
+
 ## Fallback (no MCP)
 
 Print the prompt and the call:
@@ -199,4 +203,4 @@ After the portrait is wired:
 - `concept-art` — explore the look first if not yet locked.
 - `asset-strategy` — meta-router and the 3D pipeline.
 - `scene-composition` — wiring the portrait into a dialogue UI scene.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — how to call `assets.generate_image`.
+- `summer_read_library` id `reference/mcp-tools-reference` — how to call `assets.generate_image`.

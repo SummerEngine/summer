@@ -1,11 +1,11 @@
 ---
 name: make-game
-description: "Orchestration spine for 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship — delegates to specialist skills."
+description: "Orchestrate 'make me a game': brainstorm, plan, scaffold, mechanics, art, audio, polish, verify, ship."
 license: MIT
 compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode]
 category: scene-and-project
 user-invocable: true
-allowed-tools: Read Edit Write Bash Skill summer_get_project_context summer_get_scene_tree summer_create_scene summer_add_node summer_set_prop summer_save_scene summer_play summer_stop summer_get_diagnostics summer_get_script_errors
+allowed-tools: Read Edit Write Bash Skill summer_get_project_context summer_get_scene_tree summer_create_scene summer_run_script summer_add_node summer_set_prop summer_save_scene summer_play summer_stop summer_get_diagnostics summer_get_script_errors
 paths: [".summer/**", "project.godot", "**/*.gd", "**/*.tscn"]
 ---
 
@@ -162,7 +162,7 @@ World (Node3D)
 └── GameManager (Node)  # autoload-style, holds win/lose state
 ```
 
-Save the scene. Run `summer_play` once to verify the empty scaffold opens cleanly. If it crashes, run `debug` immediately — do NOT continue building on a broken base.
+Build that hierarchy in one `summer_run_script` with the scene's `scenePath` (see `scene-scripting`), not node by node, and end the script with `ctx.save_scene()`. Run `summer_play` once to verify the empty scaffold opens cleanly. If it crashes, run `debug` immediately — do NOT continue building on a broken base.
 
 **Checkpoint before continuing:**
 
@@ -181,7 +181,7 @@ For each mechanic in the plan, **in order**:
    Outputs the mechanic spec: input, response, feedback, failure modes, depth, tunables, GDScript stub.
 
 2. **Implement**:
-   - Add the nodes via `summer_add_node` / `summer_set_prop`. Use `scene-composition` if the structure is non-trivial.
+   - Add the nodes: 3 or more scene edits are one `summer_run_script` with `scenePath` (snapshot, script, diff, screenshot); a single tweak is one `summer_set_prop`. Use `scene-composition` if the structure is non-trivial.
    - For movement-class mechanics, prefer the matching pre-built skill: `character-movement`, `fps-controller`, `multiplayer-movement`, etc. Follow the genre playbook's build order when one applies.
    - Write GDScript with `gdscript-patterns` open.
 

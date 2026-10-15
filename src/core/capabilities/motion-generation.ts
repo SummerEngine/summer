@@ -61,8 +61,8 @@ export const motionGenerationArgsSchema = z.object({
     .describe("Stable retry key so the same logical request is not billed or queued twice"),
   wait: z
     .boolean()
-    .default(true)
-    .describe("Wait for completion (default true, up to 10 min). Set false to get jobId immediately."),
+    .default(false)
+    .describe("Block until the job finishes (up to 10 min) and return the result. Default false returns the jobId at once; poll summer_check_job."),
   options: z
     .record(z.any())
     .optional()

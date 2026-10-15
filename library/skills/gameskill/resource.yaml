@@ -1,7 +1,7 @@
 id: skill/gameskill
 kind: skill
 version: 1.0.2
-summary: Capture what a game-dev session just learned as a reusable skill (project, user or Summer library) so the next session starts smarter.
+summary: "Capture what a game-dev session learned as a reusable skill (project, user or Summer library) for next time."
 use_when:
   - finishing a game-development session with learnings worth capturing as a reusable skill
   - a session found a technique, workaround, or convention worth reusing across Summer sessions

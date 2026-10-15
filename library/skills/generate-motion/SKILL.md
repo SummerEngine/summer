@@ -1,6 +1,6 @@
 ---
 name: generate-motion
-description: "Attach an animation clip to a rigged character from the curated Meshy motion library — idle, walk, run, attack — wired via AnimationPlayer."
+description: "Attach a library animation clip (idle, walk, run, attack) to a rigged character via AnimationPlayer."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: animation
@@ -149,6 +149,10 @@ have actually seen, or route to the manual-authoring fallback.
 - **Quadruped rig.** Meshy library is humanoid-only. For quadrupeds and other non-humanoid rigs use `text-to-motion`, or hand-author / import an external library.
 - **Character is < 1m tall (child / dwarf).** Library clips assume a ~1.8m humanoid. Apply the clip; the proportions retarget but stride length looks long. Either accept it or tune `playback_speed` on the AnimationPlayer track.
 - **Character has wings / tail.** The library ignores the extra bones — they sag. Hand-author additive overlays for the extra bones, or accept the visual hit.
+
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-3 and skip step 4 (the `AnimationPlayer`). Get the file with `assets.get` on `animationAssetId` (its `downloadUrl`), save it where the person asked, and tell them the path and format.
 
 ## Fallback (no MCP)
 

@@ -1,7 +1,7 @@
 id: skill/publish-your-game
 kind: skill
 version: 1.0.0
-summary: "Publish a Summer game on Summer Games through MCP: store page, art, build upload, submit, and one approval link for the owner."
+summary: "Publish a game on Summer Games through MCP: store page, art, build upload, submit, owner approval link."
 use_when:
   - "the user says 'publish my game', 'put it on summer.games', 'launch it on the store' or 'submit it for review'"
   - "taking a built Summer game to a submitted store page: listing text, art, build upload, summer_store_submit and the owner's approval link"

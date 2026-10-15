@@ -1,6 +1,6 @@
 ---
 name: voice-line
-description: "Generate TTS voice lines — NPC barks, narrator, dialogue — with voice-id sourcing, a character-to-voice decision tree, and multi-line dialogue support."
+description: "Generate voice lines (NPC barks, narrator, dialogue) with a character-to-voice choice and multi-line support."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio
@@ -223,14 +223,19 @@ assets.generate_audio({
 
 ### 9. Wire the line as `AudioStreamPlayer` on the Voice bus
 
-Every scene-mutating tool takes an explicit `scenePath`, node paths are relative to the scene root (`./`), and the property argument is named `key`, not `property`:
+One script adds the player with its settings; `scenePath` is the exact scene to change:
 
 ```
-summer_add_node(scenePath="res://main.tscn", parent="./NPC", type="AudioStreamPlayer", name="VoiceLine")
-summer_set_prop(scenePath="res://main.tscn", path="./NPC/VoiceLine", key="stream", value="res://audio/voice/hodge_hold_the_line.mp3")
-summer_set_prop(scenePath="res://main.tscn", path="./NPC/VoiceLine", key="bus", value="Voice")
-summer_set_prop(scenePath="res://main.tscn", path="./NPC/VoiceLine", key="volume_db", value=0.0)
-summer_set_prop(scenePath="res://main.tscn", path="./NPC/VoiceLine", key="autoplay", value=false)
+summer_run_script(scenePath="res://main.tscn", source="""
+func run(ctx):
+    ctx.add_node("AudioStreamPlayer", "VoiceLine", ctx.find("NPC"), {
+        "stream": load("res://audio/voice/hodge_hold_the_line.mp3"),
+        "bus": "Voice",
+        "volume_db": 0.0,
+        "autoplay": false,
+    })
+    ctx.save_scene()
+""")
 ```
 
 For positional NPCs, `AudioStreamPlayer3D` with `max_distance=15.0` so distant NPCs aren't audible.
@@ -278,6 +283,10 @@ Narrator intimate:        warmer mid pitch, lower stability for breath
 - **Need a non-English line.** `eleven_multilingual_v2` supports 29 languages. Just write in the target language; the same voice id works.
 - **User wants the line shorter on regen.** Edit the text first; don't try to compress with `speed` past 1.15 (artifacts).
 - **NPC bark variants.** Generate 3–5 variants of the same intent (`"They're at the gate!"`, `"Enemy approaching!"`, `"Look out!"`) and pick at random in code so the bark doesn't repeat.
+
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-8 and skip step 9 (`AudioStreamPlayer`). Step 10 still applies when the project has a `.summer/` folder; otherwise give the person the voice id with the files. Get the file with `assets.get` on the returned asset id (its `downloadUrl`), save it where the person asked, and tell them the path and format.
 
 ## Fallback (no MCP)
 

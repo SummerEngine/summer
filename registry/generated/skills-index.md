@@ -183,10 +183,10 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [multiplayer](./multiplayer/SKILL.md) ★ | Start here for Summer multiplayer: how the authority, clients, Worlds and Sessions fit, and which skill comes next. | project |
 | [multiplayer-movement](./multiplayer-movement/SKILL.md) | Client-side movement in Summer multiplayer: owners move instantly, others glide, the authority checks each pose. | character-controller, scripting |
 | [multiplayer-project](./multiplayer-project/SKILL.md) | Set up a Summer multiplayer project: both entry scenes, World and queue files, joining, and a first Local Play run. | project, scripting |
-| [*multiplayer-publish*](./multiplayer-publish/SKILL.md) (preview) | Ship a hosted Summer multiplayer game: the summer.games bundle, server preset, pre-upload checks, and a new Build. | deployment |
+| [multiplayer-publish](./multiplayer-publish/SKILL.md) | Ship a hosted Summer multiplayer game: the summer.games bundle, server preset, pre-upload checks, and a new Build. | deployment |
 | [multiplayer-state](./multiplayer-state/SKILL.md) | Authority-owned game state in Summer multiplayer: shared and private State groups, validated Commands, and Events. | game-design, scripting |
 | [multiplayer-testing](./multiplayer-testing/SKILL.md) | Test a Summer multiplayer game with Local Play: several players, a bad network, bots, and what a passing run shows. | playtest, verification |
-| [*summer-analytics*](./summer-analytics/SKILL.md) (preview) | Send game events to Summer analytics from the authority or client: fire-and-forget, never blocking gameplay. | scripting |
+| [summer-analytics](./summer-analytics/SKILL.md) | Send game events to Summer analytics from the authority or client: fire-and-forget, never blocking gameplay. | scripting |
 | [*summer-friends*](./summer-friends/SKILL.md) (preview) | Summer friends in a game: a consented friends list, profile and chat screens, direct messages. Hosted only. | ui |
 | [*summer-leaderboards*](./summer-leaderboards/SKILL.md) (preview) | Leaderboards in a Summer game: queue ratings from matches, and Game rankings your authority scores. | ui |
 | [summer-match-results](./summer-match-results/SKILL.md) | End a Summer match: report each player's win, loss or draw, show results on clients, then close the World. | gameplay |

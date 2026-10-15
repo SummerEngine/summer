@@ -91,14 +91,18 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
   return result;
 }
 
-function checkNodeVersion(): DoctorCheck {
-  const major = Number(process.versions.node.split(".")[0]);
-  if (Number.isFinite(major) && major >= 18) {
+/** The oldest Node major the package supports: `engines.node` in package.json. */
+export const MIN_NODE_MAJOR = 20;
+
+export function checkNodeVersion(nodeVersion: string = process.versions.node): DoctorCheck {
+  const major = Number(nodeVersion.split(".")[0]);
+  const shown = `v${nodeVersion.replace(/^v/, "")}`;
+  if (Number.isFinite(major) && major >= MIN_NODE_MAJOR) {
     return {
       id: "node-version",
       label: "Node.js",
       status: "ok",
-      message: process.version,
+      message: shown,
     };
   }
 
@@ -106,7 +110,7 @@ function checkNodeVersion(): DoctorCheck {
     id: "node-version",
     label: "Node.js",
     status: "fail",
-    message: `${process.version} (need 18+)`,
+    message: `${shown} (need ${MIN_NODE_MAJOR}+)`,
   };
 }
 

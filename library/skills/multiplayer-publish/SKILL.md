@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: multiplayer-and-networking
 user-invocable: true
-allowed-tools: Read Grep Glob Edit Write summer_read_file summer_write_file summer_project_setting summer_open
+allowed-tools: Read Grep Glob Edit Write summer_read_file summer_write_file summer_project_setting summer_call
 paths: ["export_presets.cfg", "summer.build.json", "world.json", "source-domains.json", "runtime-manifest.json", "project.godot"]
 ---
 
@@ -246,7 +246,7 @@ empty window. Re-export with the current Summer release.
    `summer.build.json` must be its id. The export leaves `gameId` out of the
    bundle, and the game code calls `Summer.initialize()` with no ID: a
    literal or fallback ID fails hosted with `game_identity_mismatch`.
-2. Open the game's Builds page: `summer_open` with target `game`,
+2. Open the game's Builds page: `studio.open` with target `game`,
    `gameId` and section `builds`, or summerengine.com → Studio → your game →
    Builds.
 3. Upload the `.zip` as a new Build. Summer checks it again: unknown fields,

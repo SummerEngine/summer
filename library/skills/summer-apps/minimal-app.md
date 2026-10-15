@@ -6,9 +6,9 @@ the host, shared data (list, put, live changes), who changed a row (person or ag
 an edit flow (dialog + form with setValues), status badges, an error with Try again, the
 page declaration, an agent event, an agent tool and frame-move state.
 
-Publish it with `summer_app_publish {appId, dir, manifest, note}` where `dir` holds
-`index.html` and `app.js`, or pass the same two as `files`. The page, sections, inputs,
-table, notice and empty text are kit components (`summer_app_guide` section `kit`, or
+Publish it with `apps.publish({ appId, files, manifest, note })` where `files` holds
+`index.html` and `app.js` as `{ path, content }`. The page, sections, inputs,
+table, notice and empty text are kit components (`apps.guide({ section: "kit" })`, or
 `/summer-ui/v1/catalog.json` on the app host); no app CSS is needed.
 
 ## The manifest (send it as `manifest`)
@@ -145,7 +145,7 @@ form.addEventListener("submit", async (event) => {
 // Live: every change by a teammate or an agent arrives as { revision, actor, ops } (or { reset: true }).
 notes.subscribe(() => load());
 
-// Agent tool: summer_app_call { appId, tool: "add_note", input: { text, level } } runs this while the app is open.
+// Agent tool: apps.call({ appId, tool: "add_note", input: { text, level } }) runs this while the app is open.
 // Its writes are recorded as the calling agent's (actor.kind "agent", via "agent-tool").
 summer.agent.tool("add_note", async ({ text, level }, { agent }) => {
   const id = crypto.randomUUID();
@@ -153,7 +153,7 @@ summer.agent.tool("add_note", async ({ text, level }, { agent }) => {
   return { id };
 });
 
-// What agents can read and use with summer_app_page.
+// What agents can read with apps.page and use with apps.use_page.
 summer.page.declare({ actions: [{ id: "add", label: "Add note", run: () => openEditor(null) }] });
 
 // Frame moves: Studio moves an idle app to a fresh frame every few minutes. Shared data survives on
@@ -178,6 +178,6 @@ source's `onended`.
 { "appId": "<id>", "ops": [{ "op": "put", "collection": "notes", "recordId": "n-1", "data": { "text": "Boss fight too long", "level": "boss", "status": "open", "author": "agent" } }] }
 ```
 
-That is a `summer_app_data` write: it works with the app closed, and the open app shows it
-through `notes.subscribe`. `summer_app_tools` and `summer_app_data` reads return the
+That is an `apps.write_data` input: it works with the app closed, and the open app shows it
+through `notes.subscribe`. `apps.tools` and `apps.read_data` return the
 `collections` above, so an agent knows the record shape.

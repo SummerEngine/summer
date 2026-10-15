@@ -202,7 +202,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 
 | skill | when to use | also |
 |---|---|---|
-| [navigate-summer](./navigate-summer/SKILL.md) ★ | Open a Summer web page or editor surface for the user (billing, their games, a scene) with summer_open. | agent-workflow, meta |
+| [navigate-summer](./navigate-summer/SKILL.md) ★ | Open a Summer web page or editor surface for the user (billing, their games, a scene) with studio.open. | agent-workflow, meta |
 
 ## performance
 

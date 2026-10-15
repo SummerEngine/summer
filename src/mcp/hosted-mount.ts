@@ -136,6 +136,7 @@ export function prepareHostedMount(
 
   let statusTool: { remove(): void } | null = null;
   let running: Promise<HostedMountState> | null = null;
+  let connected: HostedClient | null = null;
 
   /** Wait for a mount in progress, at most ms; returns at once when none runs. */
   async function waitForMount(ms: number): Promise<void> {
@@ -252,6 +253,7 @@ export function prepareHostedMount(
 
     statusTool?.remove();
     statusTool = null;
+    connected = client;
     state.status = "mounted";
     delete state.error;
     appendMcpLogEvent("mcp:hosted_mounted", {
@@ -283,5 +285,18 @@ export function prepareHostedMount(
     return running;
   }
 
-  return { mount, state };
+  /**
+   * Call a hosted tool whether or not it is listed here (the v4 surface's
+   * summer_search and summer_call stay local and forward through this).
+   */
+  async function call(name: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const after = await mount();
+    if (!connected) {
+      const error = after.error ?? { code: "store_tools_unavailable", message: "The hosted Summer server is not connected.", recovery: 'Recovery: run "summer login".' };
+      throw new Error(`${error.message} ${error.recovery}`);
+    }
+    return connected.callTool({ name, arguments: args });
+  }
+
+  return { mount, state, call };
 }

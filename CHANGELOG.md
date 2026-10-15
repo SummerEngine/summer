@@ -2,6 +2,16 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+The base of Summer 4.0's agent surface: one catalog of Summer operations, named `area.action`, with one answer shape. Off by default; nothing changes unless you ask for it.
+
+- **The operation contract.** `registry/schemas/operation.schema.json` describes an operation (name, effect, approval, input, output), and `registry/operations/legacy-names.json` maps every 3.x tool name to its operation (`summer_set_prop` is `engine.set_prop`, `summer_store_submit` is `store.publish`). Conformance fixtures sit next to it.
+- **`summer mcp --surface v4`** (or `SUMMER_SURFACE=v4`). It lists the engine tools under their 3.x names, `summer_docs_search` and `summer_docs_read`, and two new tools: `summer_search` finds any operation, local or cloud, with its exact input, and `summer_call` runs it. Engine operations run here. Cloud operations run on Summer's hosted server, with the same approvals. Every 3.x tool can still be called through `summer_call`, by its old name too.
+- **`SUMMER_SURFACE=v4 summer <area> <action> --field value`.** The CLI view of the same catalog, with `--dry-run`, `--wait` (follows a job or an approval to the end) and `--json`. It also adds `summer whoami`, `summer ops search <words>` and `summer ops describe <op>`.
+- **Official MCP Registry.** `package.json` names the server `io.github.summerengine/summer` (`mcpName`), and the generated `server.json` lists the npm package and the hosted server.
+- The per-call usage line also says which operation the call ran, the surface (`v3` or `v4`) and the profile. It never sends arguments or results.
+
 ## [3.9.1] - 2026-10-15
 
 3.9.0 was not published to npm; 3.9.1 is the first release with everything in 3.9.0 below, plus these changes.

@@ -93,17 +93,20 @@ describe("local tool call reports", () => {
     return posts;
   }
 
-  it("sends the tool name, success, duration and the host app name, nothing else", async () => {
+  it("sends the tool name, its operation, success, duration, the host app name and the surface, nothing else", async () => {
     const posts = await callAndCollect();
     const calls = posts.filter((post) => post.body.event === "mcp_tool_call");
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe("https://gateway.example/api/mcp/log-local-call");
-    expect(Object.keys(calls[0].body).sort()).toEqual(["client", "durationMs", "event", "mcpClient", "ok", "tool"]);
+    expect(Object.keys(calls[0].body).sort()).toEqual(["client", "durationMs", "event", "mcpClient", "ok", "op", "profile", "surfaceVersion", "tool"]);
     expect(calls[0].body).toMatchObject({
       client: "summer-cli",
       event: "mcp_tool_call",
       mcpClient: "claude-code",
       tool: "summer_get_agent_playbook",
+      op: "docs.read",
+      surfaceVersion: "v3",
+      profile: "full",
       ok: true,
     });
     expect(typeof calls[0].body.durationMs).toBe("number");

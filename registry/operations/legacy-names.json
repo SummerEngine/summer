@@ -1,0 +1,1176 @@
+{
+  "contract": 1,
+  "names": {
+    "summer_account": {
+      "kind": "same",
+      "note": "identity, plan, credits, auto top-up state",
+      "op": "whoami"
+    },
+    "summer_add_node": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.add_node"
+    },
+    "summer_align_distribute_3d": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.align_distribute_3d"
+    },
+    "summer_api_docs": {
+      "kind": "keep",
+      "note": "offline engine class reference",
+      "op": "docs.engine_api"
+    },
+    "summer_app_call": {
+      "kind": "same",
+      "note": "generic executor: legacy and /mcp only, never in store profiles",
+      "op": "apps.call"
+    },
+    "summer_app_create": {
+      "kind": "same",
+      "note": "",
+      "op": "apps.create"
+    },
+    "summer_app_data": {
+      "kind": "split",
+      "note": "",
+      "op": "apps.read_data"
+    },
+    "summer_app_data#write": {
+      "kind": "split",
+      "note": "",
+      "op": "apps.write_data"
+    },
+    "summer_app_dock": {
+      "kind": "same",
+      "note": "local editor panel",
+      "op": "apps.dock"
+    },
+    "summer_app_events": {
+      "kind": "same",
+      "note": "",
+      "op": "apps.events"
+    },
+    "summer_app_get": {
+      "kind": "same",
+      "note": "",
+      "op": "apps.get"
+    },
+    "summer_app_guide": {
+      "kind": "same",
+      "note": "",
+      "op": "apps.guide"
+    },
+    "summer_app_list": {
+      "kind": "same",
+      "note": "",
+      "op": "apps.list"
+    },
+    "summer_app_page": {
+      "kind": "split",
+      "note": "read; pressing moves to apps.use_page",
+      "op": "apps.page"
+    },
+    "summer_app_page#use": {
+      "kind": "split",
+      "note": "",
+      "op": "apps.use_page"
+    },
+    "summer_app_publish": {
+      "kind": "same",
+      "note": "a new version for the person's team",
+      "op": "apps.publish"
+    },
+    "summer_app_report_gap": {
+      "kind": "same",
+      "note": "",
+      "op": "apps.report_gap"
+    },
+    "summer_app_screenshot": {
+      "kind": "same",
+      "note": "",
+      "op": "apps.screenshot"
+    },
+    "summer_app_tools": {
+      "kind": "same",
+      "note": "",
+      "op": "apps.tools"
+    },
+    "summer_app_update": {
+      "kind": "same",
+      "note": "",
+      "op": "apps.update"
+    },
+    "summer_attach_to_surface": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.attach_to_surface"
+    },
+    "summer_batch": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.batch"
+    },
+    "summer_board_agent_cancel": {
+      "kind": "merge",
+      "note": "",
+      "op": "jobs.cancel"
+    },
+    "summer_board_agent_run": {
+      "kind": "same",
+      "note": "spend; returns a job",
+      "op": "plans.ask_agent"
+    },
+    "summer_board_agent_task": {
+      "kind": "merge",
+      "note": "job id plan:<taskId>",
+      "op": "jobs.get"
+    },
+    "summer_board_agent_tasks": {
+      "kind": "merge",
+      "note": "jobs.list {planId}",
+      "op": "jobs.list"
+    },
+    "summer_board_build": {
+      "kind": "same",
+      "note": "paid cloud build; returns a job",
+      "op": "projects.build"
+    },
+    "summer_board_build_cancel": {
+      "kind": "merge",
+      "note": "",
+      "op": "jobs.cancel"
+    },
+    "summer_board_build_status": {
+      "kind": "merge",
+      "note": "job id build:<buildId>",
+      "op": "jobs.get"
+    },
+    "summer_board_builds": {
+      "kind": "same",
+      "note": "",
+      "op": "projects.builds"
+    },
+    "summer_board_conversation": {
+      "kind": "same",
+      "note": "",
+      "op": "plans.chat"
+    },
+    "summer_board_create": {
+      "kind": "same",
+      "note": "",
+      "op": "plans.create"
+    },
+    "summer_board_edit": {
+      "kind": "same",
+      "note": "",
+      "op": "plans.edit"
+    },
+    "summer_board_enable_collaboration": {
+      "kind": "same",
+      "note": "",
+      "op": "plans.enable_sharing"
+    },
+    "summer_board_events": {
+      "kind": "same",
+      "note": "",
+      "op": "plans.changes"
+    },
+    "summer_board_game_soul": {
+      "kind": "same",
+      "note": "saved directions (Game Soul versions)",
+      "op": "plans.directions"
+    },
+    "summer_board_link_project": {
+      "kind": "same",
+      "note": "",
+      "op": "plans.link_project"
+    },
+    "summer_board_list": {
+      "kind": "same",
+      "note": "",
+      "op": "plans.list"
+    },
+    "summer_board_presence": {
+      "kind": "same",
+      "note": "",
+      "op": "plans.presence"
+    },
+    "summer_board_project_links": {
+      "kind": "same",
+      "note": "",
+      "op": "plans.links"
+    },
+    "summer_board_read": {
+      "kind": "same",
+      "note": "",
+      "op": "plans.get"
+    },
+    "summer_board_save_direction": {
+      "kind": "same",
+      "note": "",
+      "op": "plans.save_direction"
+    },
+    "summer_build_begin_upload": {
+      "kind": "merge",
+      "note": "store.upload_begin {kind: bundle}",
+      "op": "store.upload_begin"
+    },
+    "summer_build_complete_upload": {
+      "kind": "merge",
+      "note": "",
+      "op": "store.upload_complete"
+    },
+    "summer_build_game": {
+      "kind": "keep",
+      "note": "ChatGPT panel name; returns the engine download and the build steps",
+      "op": "projects.open_in_engine"
+    },
+    "summer_build_release": {
+      "kind": "same",
+      "note": "bound to an approved publish",
+      "op": "store.release"
+    },
+    "summer_build_sign_parts": {
+      "kind": "merge",
+      "note": "",
+      "op": "store.upload_sign_parts"
+    },
+    "summer_build_status": {
+      "kind": "merge",
+      "note": "",
+      "op": "store.status"
+    },
+    "summer_camera_bookmark": {
+      "kind": "keep",
+      "note": "save, list and delete in one tool",
+      "op": "engine.camera_bookmark"
+    },
+    "summer_capture_gameplay": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.capture_gameplay"
+    },
+    "summer_check_job": {
+      "kind": "same",
+      "note": "",
+      "op": "jobs.get"
+    },
+    "summer_clear_console": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.clear_console"
+    },
+    "summer_connect_ports": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.connect_ports"
+    },
+    "summer_connect_signal": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.connect_signal"
+    },
+    "summer_create_debug_report": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.create_debug_report"
+    },
+    "summer_create_scene": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.create_scene"
+    },
+    "summer_debug_views": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.debug_views"
+    },
+    "summer_delete_asset": {
+      "kind": "same",
+      "note": "confirm in Studio",
+      "op": "assets.delete"
+    },
+    "summer_enable_plugin": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.enable_plugin"
+    },
+    "summer_export_game": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.export_game"
+    },
+    "summer_export_templates": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.export_templates"
+    },
+    "summer_fabricate_3d": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.fabricate_3d"
+    },
+    "summer_frame_nodes": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.frame_nodes"
+    },
+    "summer_frame_shot": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.frame_shot"
+    },
+    "summer_game": {
+      "kind": "keep",
+      "note": "ChatGPT panel name, frozen in /chatgpt",
+      "op": "plans.show"
+    },
+    "summer_game_choose_look": {
+      "kind": "keep",
+      "note": "ChatGPT panel name",
+      "op": "plans.choose_look"
+    },
+    "summer_game_control": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.game_control"
+    },
+    "summer_game_edit_card": {
+      "kind": "keep",
+      "note": "ChatGPT panel name",
+      "op": "plans.edit_card"
+    },
+    "summer_game_input": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.game_input"
+    },
+    "summer_game_message": {
+      "kind": "keep",
+      "note": "ChatGPT panel name",
+      "op": "plans.message"
+    },
+    "summer_game_probe": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.game_probe"
+    },
+    "summer_generate_3d": {
+      "kind": "same",
+      "note": "always returns a job",
+      "op": "assets.generate_3d"
+    },
+    "summer_generate_audio": {
+      "kind": "same",
+      "note": "",
+      "op": "assets.generate_audio"
+    },
+    "summer_generate_image": {
+      "kind": "same",
+      "note": "",
+      "op": "assets.generate_image"
+    },
+    "summer_generate_motion": {
+      "kind": "same",
+      "note": "always returns a job",
+      "op": "assets.generate_motion"
+    },
+    "summer_generate_sfx_choices": {
+      "kind": "same",
+      "note": "",
+      "op": "assets.generate_sfx_choices"
+    },
+    "summer_generate_video": {
+      "kind": "same",
+      "note": "always returns a job",
+      "op": "assets.generate_video"
+    },
+    "summer_get_agent_playbook": {
+      "kind": "merge",
+      "note": "docs.read {id: reference/agent-playbook}",
+      "op": "docs.read"
+    },
+    "summer_get_asset": {
+      "kind": "same",
+      "note": "",
+      "op": "assets.get"
+    },
+    "summer_get_asset_download_url": {
+      "kind": "merge",
+      "note": "assets.get returns downloadUrl",
+      "op": "assets.get"
+    },
+    "summer_get_board": {
+      "kind": "merge",
+      "note": "local tool; same read",
+      "op": "plans.get"
+    },
+    "summer_get_choices": {
+      "kind": "same",
+      "note": "",
+      "op": "assets.choices"
+    },
+    "summer_get_console": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.get_console"
+    },
+    "summer_get_debugger_errors": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.get_debugger_errors"
+    },
+    "summer_get_debugger_warnings": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.get_debugger_warnings"
+    },
+    "summer_get_diagnostics": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.get_diagnostics"
+    },
+    "summer_get_project": {
+      "kind": "same",
+      "note": "",
+      "op": "projects.get"
+    },
+    "summer_get_project_context": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.get_project_context"
+    },
+    "summer_get_runtime_tree": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.get_runtime_tree"
+    },
+    "summer_get_scene_tree": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.get_scene_tree"
+    },
+    "summer_get_script_errors": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.get_script_errors"
+    },
+    "summer_get_studio_workflow": {
+      "kind": "same",
+      "note": "",
+      "op": "docs.workflows"
+    },
+    "summer_grep": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.grep"
+    },
+    "summer_grow_ab_tests": {
+      "kind": "split",
+      "note": "list",
+      "op": "experiments.list"
+    },
+    "summer_grow_ab_tests#create": {
+      "kind": "split",
+      "note": "a draft; changes nothing players see",
+      "op": "experiments.create"
+    },
+    "summer_grow_ab_tests#results": {
+      "kind": "split",
+      "note": "",
+      "op": "experiments.results"
+    },
+    "summer_grow_ab_tests#start": {
+      "kind": "split",
+      "note": "owner approval",
+      "op": "experiments.start"
+    },
+    "summer_grow_ab_tests#stop": {
+      "kind": "split",
+      "note": "owner approval (with or without a winner)",
+      "op": "experiments.stop"
+    },
+    "summer_grow_analytics": {
+      "kind": "same",
+      "note": "",
+      "op": "analytics.summary"
+    },
+    "summer_grow_applications": {
+      "kind": "same",
+      "note": "",
+      "op": "marketing.applications"
+    },
+    "summer_grow_apply": {
+      "kind": "same",
+      "note": "",
+      "op": "marketing.apply"
+    },
+    "summer_grow_event_catalog": {
+      "kind": "same",
+      "note": "",
+      "op": "analytics.events"
+    },
+    "summer_grow_event_funnel": {
+      "kind": "same",
+      "note": "",
+      "op": "analytics.funnel"
+    },
+    "summer_grow_event_limit": {
+      "kind": "split",
+      "note": "read",
+      "op": "analytics.event_limit"
+    },
+    "summer_grow_event_limit#set": {
+      "kind": "split",
+      "note": "owner approval",
+      "op": "analytics.set_event_limit"
+    },
+    "summer_grow_event_trend": {
+      "kind": "same",
+      "note": "",
+      "op": "analytics.trend"
+    },
+    "summer_grow_members": {
+      "kind": "split",
+      "note": "list; changes move to the ops below",
+      "op": "games.members"
+    },
+    "summer_grow_members#invite": {
+      "kind": "split",
+      "note": "confirm in Studio",
+      "op": "games.invite_member"
+    },
+    "summer_grow_members#leave": {
+      "kind": "split",
+      "note": "confirm in Studio",
+      "op": "games.leave"
+    },
+    "summer_grow_members#remove": {
+      "kind": "split",
+      "note": "confirm in Studio",
+      "op": "games.remove_member"
+    },
+    "summer_grow_members#set_role": {
+      "kind": "split",
+      "note": "owner approval",
+      "op": "games.set_member_role"
+    },
+    "summer_grow_members#withdraw": {
+      "kind": "split",
+      "note": "confirm in Studio",
+      "op": "games.withdraw_invite"
+    },
+    "summer_grow_overview": {
+      "kind": "same",
+      "note": "",
+      "op": "analytics.overview"
+    },
+    "summer_grow_prices": {
+      "kind": "split",
+      "note": "read",
+      "op": "pricing.get"
+    },
+    "summer_grow_prices#clear_country": {
+      "kind": "split",
+      "note": "owner approval",
+      "op": "pricing.clear_country"
+    },
+    "summer_grow_prices#set_base": {
+      "kind": "split",
+      "note": "owner approval",
+      "op": "pricing.set_base"
+    },
+    "summer_grow_prices#set_country": {
+      "kind": "split",
+      "note": "owner approval",
+      "op": "pricing.set_country"
+    },
+    "summer_import_asset": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.import_asset"
+    },
+    "summer_import_asset_by_id": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.import_asset_by_id"
+    },
+    "summer_import_from_url": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.import_from_url"
+    },
+    "summer_import_from_url_batch": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.import_from_url_batch"
+    },
+    "summer_import_hdri": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.import_hdri"
+    },
+    "summer_input_map_bind": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.input_map_bind"
+    },
+    "summer_inspect_asset": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.inspect_asset"
+    },
+    "summer_inspect_node": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.inspect_node"
+    },
+    "summer_inspect_resource": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.inspect_resource"
+    },
+    "summer_inspect_runtime_node": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.inspect_runtime_node"
+    },
+    "summer_instantiate_scene": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.instantiate_scene"
+    },
+    "summer_is_running": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.is_running"
+    },
+    "summer_library_feedback": {
+      "kind": "same",
+      "note": "",
+      "op": "docs.feedback"
+    },
+    "summer_list_games": {
+      "kind": "keep",
+      "note": "ChatGPT panel name, frozen in /chatgpt",
+      "op": "projects.list"
+    },
+    "summer_list_my_assets": {
+      "kind": "merge",
+      "note": "assets.search {scope: mine}",
+      "op": "assets.search"
+    },
+    "summer_list_projects": {
+      "kind": "same",
+      "note": "",
+      "op": "projects.list"
+    },
+    "summer_make_game": {
+      "kind": "keep",
+      "note": "ChatGPT panel name, frozen in /chatgpt",
+      "op": "projects.create"
+    },
+    "summer_measure": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.measure"
+    },
+    "summer_navigation_probe": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.navigation_probe"
+    },
+    "summer_open": {
+      "kind": "merge",
+      "note": "web page or editor surface",
+      "op": "studio.open"
+    },
+    "summer_open_main_scene": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.open_main_scene"
+    },
+    "summer_open_scene": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.open_scene"
+    },
+    "summer_place_adjacent": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.place_adjacent"
+    },
+    "summer_play": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.play"
+    },
+    "summer_project_setting": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.project_setting"
+    },
+    "summer_publish_build": {
+      "kind": "same",
+      "note": "local: begin, PUT parts and complete from a path",
+      "op": "store.upload_file"
+    },
+    "summer_raycast": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.raycast"
+    },
+    "summer_read_file": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.read_file"
+    },
+    "summer_read_library": {
+      "kind": "same",
+      "note": "",
+      "op": "docs.read"
+    },
+    "summer_recent_events": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.recent_events"
+    },
+    "summer_remove_background": {
+      "kind": "same",
+      "note": "",
+      "op": "assets.remove_background"
+    },
+    "summer_remove_node": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.remove_node"
+    },
+    "summer_repeat_along": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.repeat_along"
+    },
+    "summer_replace_node": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.replace_node"
+    },
+    "summer_replace_text": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.replace_text"
+    },
+    "summer_run_editor_script": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.run_editor_script"
+    },
+    "summer_run_script": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.run_script"
+    },
+    "summer_runtime_animate": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.runtime_animate"
+    },
+    "summer_runtime_call": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.runtime_call"
+    },
+    "summer_runtime_set": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.runtime_set"
+    },
+    "summer_runtime_spawn": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.runtime_spawn"
+    },
+    "summer_save_scene": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.save_scene"
+    },
+    "summer_scene_audit": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.scene_audit"
+    },
+    "summer_screenshot": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.screenshot"
+    },
+    "summer_search_assets": {
+      "kind": "same",
+      "note": "",
+      "op": "assets.search"
+    },
+    "summer_search_library": {
+      "kind": "same",
+      "note": "",
+      "op": "docs.search"
+    },
+    "summer_select_node": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.select_node"
+    },
+    "summer_set_prop": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.set_prop"
+    },
+    "summer_set_resource_property": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.set_resource_property"
+    },
+    "summer_shot_sheet": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.shot_sheet"
+    },
+    "summer_slice_asset_sheet": {
+      "kind": "same",
+      "note": "",
+      "op": "assets.slice_sheet"
+    },
+    "summer_snap_to_surface": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.snap_to_surface"
+    },
+    "summer_snapshot_diff": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.snapshot_diff"
+    },
+    "summer_starcast": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.starcast"
+    },
+    "summer_start_game_task": {
+      "kind": "same",
+      "note": "plan for a goal; same as `summer plan`",
+      "op": "docs.plan"
+    },
+    "summer_stop": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.stop"
+    },
+    "summer_store_cancel_submission": {
+      "kind": "same",
+      "note": "",
+      "op": "store.cancel_publish"
+    },
+    "summer_store_create_game": {
+      "kind": "same",
+      "note": "",
+      "op": "games.create"
+    },
+    "summer_store_enter_jam": {
+      "kind": "split",
+      "note": "withdraw: true moves to jams.withdraw",
+      "op": "jams.enter"
+    },
+    "summer_store_enter_jam#withdraw": {
+      "kind": "split",
+      "note": "",
+      "op": "jams.withdraw"
+    },
+    "summer_store_get_listing": {
+      "kind": "same",
+      "note": "",
+      "op": "store.get_listing"
+    },
+    "summer_store_jams": {
+      "kind": "same",
+      "note": "",
+      "op": "jams.list"
+    },
+    "summer_store_list_games": {
+      "kind": "same",
+      "note": "",
+      "op": "games.list"
+    },
+    "summer_store_preview_link": {
+      "kind": "same",
+      "note": "",
+      "op": "store.preview_link"
+    },
+    "summer_store_releases": {
+      "kind": "merge",
+      "note": "",
+      "op": "store.status"
+    },
+    "summer_store_review": {
+      "kind": "merge",
+      "note": "",
+      "op": "store.status"
+    },
+    "summer_store_set_art": {
+      "kind": "same",
+      "note": "",
+      "op": "store.set_art"
+    },
+    "summer_store_set_sound": {
+      "kind": "same",
+      "note": "",
+      "op": "store.set_sound"
+    },
+    "summer_store_set_trailer": {
+      "kind": "same",
+      "note": "",
+      "op": "store.set_trailer"
+    },
+    "summer_store_submit": {
+      "kind": "same",
+      "note": "owner approval; never publishes alone",
+      "op": "store.publish"
+    },
+    "summer_store_update_listing": {
+      "kind": "same",
+      "note": "",
+      "op": "store.update_listing"
+    },
+    "summer_store_version_begin_upload": {
+      "kind": "merge",
+      "note": "store.upload_begin {kind: web|download}",
+      "op": "store.upload_begin"
+    },
+    "summer_store_version_complete": {
+      "kind": "merge",
+      "note": "",
+      "op": "store.upload_complete"
+    },
+    "summer_store_version_sign_parts": {
+      "kind": "merge",
+      "note": "",
+      "op": "store.upload_sign_parts"
+    },
+    "summer_store_version_status": {
+      "kind": "merge",
+      "note": "",
+      "op": "store.status"
+    },
+    "summer_studio_map": {
+      "kind": "same",
+      "note": "",
+      "op": "studio.map"
+    },
+    "summer_studio_open": {
+      "kind": "merge",
+      "note": "",
+      "op": "studio.open"
+    },
+    "summer_studio_page": {
+      "kind": "same",
+      "note": "",
+      "op": "studio.page"
+    },
+    "summer_studio_read_form": {
+      "kind": "same",
+      "note": "replaced by ops.describe once a form's buttons are ops",
+      "op": "studio.read_form"
+    },
+    "summer_studio_submit_form": {
+      "kind": "same",
+      "note": "generic form executor: legacy only; each form button becomes its own op",
+      "op": "studio.submit_form"
+    },
+    "summer_studio_use_page": {
+      "kind": "same",
+      "note": "generic page executor: legacy only, never in store profiles",
+      "op": "studio.use_page"
+    },
+    "summer_team": {
+      "kind": "split",
+      "note": "list teams; invites move to team.invite (confirm)",
+      "op": "team.list"
+    },
+    "summer_team#invite": {
+      "kind": "split",
+      "note": "confirm in Studio",
+      "op": "team.invite"
+    },
+    "summer_test_placement": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.test_placement"
+    },
+    "summer_tool_bankai_motion": {
+      "kind": "keep",
+      "note": "",
+      "op": "makers.bankai_motion"
+    },
+    "summer_tool_bankai_swap": {
+      "kind": "keep",
+      "note": "",
+      "op": "makers.bankai_swap"
+    },
+    "summer_tool_bankai_ultra": {
+      "kind": "keep",
+      "note": "",
+      "op": "makers.bankai_ultra"
+    },
+    "summer_tool_camera_moves": {
+      "kind": "keep",
+      "note": "",
+      "op": "makers.camera_moves"
+    },
+    "summer_tool_capsule_kit": {
+      "kind": "keep",
+      "note": "",
+      "op": "makers.capsule_kit"
+    },
+    "summer_tool_character_turnaround": {
+      "kind": "keep",
+      "note": "",
+      "op": "makers.character_turnaround"
+    },
+    "summer_tool_cinematic_shot": {
+      "kind": "keep",
+      "note": "",
+      "op": "makers.cinematic_shot"
+    },
+    "summer_tool_game_ad_maker": {
+      "kind": "keep",
+      "note": "",
+      "op": "makers.game_ad_maker"
+    },
+    "summer_tool_game_score": {
+      "kind": "keep",
+      "note": "",
+      "op": "makers.game_score"
+    },
+    "summer_tool_lipsync_anything": {
+      "kind": "keep",
+      "note": "",
+      "op": "makers.lipsync_anything"
+    },
+    "summer_tool_npc_voice": {
+      "kind": "keep",
+      "note": "",
+      "op": "makers.npc_voice"
+    },
+    "summer_tool_pixel_forge": {
+      "kind": "keep",
+      "note": "",
+      "op": "makers.pixel_forge"
+    },
+    "summer_tool_product_ad": {
+      "kind": "keep",
+      "note": "",
+      "op": "makers.product_ad"
+    },
+    "summer_tool_sfx_maker": {
+      "kind": "keep",
+      "note": "",
+      "op": "makers.sfx_maker"
+    },
+    "summer_tool_sprite_sheet_forge": {
+      "kind": "keep",
+      "note": "",
+      "op": "makers.sprite_sheet_forge"
+    },
+    "summer_tool_style_frame": {
+      "kind": "keep",
+      "note": "",
+      "op": "makers.style_frame"
+    },
+    "summer_tool_style_swap": {
+      "kind": "keep",
+      "note": "",
+      "op": "makers.style_swap"
+    },
+    "summer_tool_talking_character": {
+      "kind": "keep",
+      "note": "",
+      "op": "makers.talking_character"
+    },
+    "summer_tool_texture_forge": {
+      "kind": "keep",
+      "note": "",
+      "op": "makers.texture_forge"
+    },
+    "summer_tool_thumbnail_maker": {
+      "kind": "keep",
+      "note": "",
+      "op": "makers.thumbnail_maker"
+    },
+    "summer_tool_trailer_forge": {
+      "kind": "keep",
+      "note": "",
+      "op": "makers.trailer_forge"
+    },
+    "summer_tool_transition_morph": {
+      "kind": "keep",
+      "note": "",
+      "op": "makers.transition_morph"
+    },
+    "summer_ui_actions": {
+      "kind": "keep",
+      "note": "list and invoke in one tool",
+      "op": "engine.ui_actions"
+    },
+    "summer_ui_activate": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.ui_activate"
+    },
+    "summer_ui_screenshot": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.ui_screenshot"
+    },
+    "summer_ui_tree": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.ui_tree"
+    },
+    "summer_update_asset": {
+      "kind": "same",
+      "note": "",
+      "op": "assets.update"
+    },
+    "summer_upload_image_begin": {
+      "kind": "same",
+      "note": "",
+      "op": "assets.upload_begin"
+    },
+    "summer_upload_image_complete": {
+      "kind": "same",
+      "note": "",
+      "op": "assets.upload_complete"
+    },
+    "summer_wait_for_event": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.wait_for_event"
+    },
+    "summer_world_snapshot": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.world_snapshot"
+    },
+    "summer_write_file": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.write_file"
+    },
+    "summer_zoom": {
+      "kind": "keep",
+      "note": "",
+      "op": "engine.zoom"
+    }
+  },
+  "source": "summer-engine 3.9.1 tools/list, signed in (217 tools)"
+}

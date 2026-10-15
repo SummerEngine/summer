@@ -60,6 +60,7 @@ describe("generateRegistry: catalog outputs", () => {
       "plugin.codex.json",
       "plugin.cursor.json",
       "plugin.factory.json",
+      "server.json",
       "skills-index.md",
       "skills-registry.json",
       "templates-registry.json",

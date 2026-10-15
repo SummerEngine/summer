@@ -1021,7 +1021,7 @@
       "description": "Build scenes, levels, HUDs and wiring with one editor GDScript (summer_run_script) instead of call chains.",
       "clients": "all",
       "recommended": true,
-      "status": "preview",
+      "status": "stable",
       "path": "library/skills/scene-scripting/",
       "domains": [
         "scenes",

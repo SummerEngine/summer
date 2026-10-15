@@ -225,7 +225,7 @@ export function buildAgentPlaybook(
       "summer_get_project_context",
       "Choose the exact res:// scenePath. OpenScene is a user-visible tab action, not a mutation prerequisite.",
       "summer_world_snapshot (keep the snapshot_id) — or summer_get_scene_tree with scenePath for the hierarchy view.",
-      "summer_add_node / summer_set_prop / summer_set_resource_property with scenePath — or one summer_run_script for anything computed.",
+      "3 or more scene edits: one summer_run_script with scenePath (snapshot, script, diff, screenshot). A single tweak: summer_set_prop / summer_set_resource_property with scenePath.",
       "Mutation tools append one final SaveScene; use summer_save_scene only for a standalone save/save-as.",
       "summer_snapshot_diff from_id:<the id> + summer_screenshot — then summer_get_diagnostics.",
     ],
@@ -247,7 +247,7 @@ export function buildAgentPlaybook(
     ],
     // Scene scripting: when one GDScript beats a chain of CRUD ops.
     scripting: [
-      "Single property tweak -> summer_set_prop. Composition or ANY computed placement (3+ related ops, scatter/grids/rings, procedural meshes, bulk edits) -> summer_run_script: one GDScript `func run(ctx):` executed in the LIVE editor against the OPEN scene, with ctx.get_scene_root() / ctx.report(key, value) / print capture.",
+      "Single property tweak -> summer_set_prop. Composition or ANY computed placement (3+ related ops, scatter/grids/rings, procedural meshes, bulk edits) -> summer_run_script: one GDScript `func run(ctx):` executed in the LIVE editor against its scenePath (opened first when needed), with ctx.get_scene_root() / ctx.report(key, value) / print capture.",
       "OWNERSHIP in scripts: call ctx.set_owner_recursive(node) AFTER add_child on every created subtree (manual form: node.owner = root on the node AND each descendant), or the nodes silently vanish on save. The ctx creation helpers (ctx.add_node, ctx.add_mesh, ctx.instance_scene, ...) set the owner for you — prefer them.",
       "Cold batch/project-wide jobs (re-save every scene, resource sweeps, long bakes) -> summer_run_editor_script: a fresh HEADLESS child editor against the ON-DISK project. Unsaved live edits are invisible to it; it has no renderer, so it can never screenshot.",
       "Property/method/signal lookup -> summer_api_docs (offline class reference, stamped with the engine technical base it was generated from). Verify names before scripting instead of guessing; entries list declared members only, so walk `inherits` for inherited ones.",

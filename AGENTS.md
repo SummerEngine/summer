@@ -71,9 +71,10 @@ You are building a **Summer game** in **Summer Engine** — the editor, scene gr
 3. **Read the actual error before grepping the project.** `summer_get_script_errors` first.
 4. **Don't edit `.tscn` files directly while the engine is running.** Use the `summer_*` MCP tools — direct edits get overwritten when the editor saves.
 5. **`summer_set_resource_property` needs a resource to exist first.** If the property is still empty you get an explicit `resource is null` error, not a silent drop — assign it via `summer_set_prop` with a class-name string (`"BoxMesh"`), then set sub-properties. Inline `sub_resource` targets work.
-6. **Every scene mutation names its target.** Pass the exact `res://...tscn` as `scenePath` to add/set/remove/replace/connect/instantiate/save tools and mutation batches. `summer_open_scene` is a user-visible tab action, not a prerequisite or target selector.
+6. **Every scene mutation names its target.** Pass the exact `res://...tscn` as `scenePath` to add/set/remove/replace/connect/instantiate/save tools, mutation batches and `summer_run_script`. `summer_open_scene` is a user-visible tab action, not a prerequisite or target selector.
 7. **Never mix `OpenScene` with scene mutations in one batch.** Send the UI action separately; `scenePath` already selects the mutation target.
-8. **Save once at the transaction boundary.** Dedicated scene mutation tools and `summer_batch` append one final `SaveScene`. Raw engine batches must include one final `SaveScene` themselves.
+8. **Save once at the transaction boundary.** Dedicated scene mutation tools and `summer_batch` append one final `SaveScene`. Raw engine batches must include one final `SaveScene` themselves; a `summer_run_script` ends with `ctx.save_scene()`.
+9. **3 or more scene edits: one `summer_run_script` with `scenePath`** (snapshot, script, diff, screenshot). A chain of single `summer_add_node` / `summer_set_prop` calls is slower, is many undo steps, and can stop half-applied. The `scene-scripting` skill has the contract and recipes.
 
 ### Operation values are engine variant strings, not JSON
 

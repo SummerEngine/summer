@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getAuthToken } from "../auth.js";
 import { resolveGatewayUrl } from "../config.js";
 import { summerRequestHeaders } from "../agent-host.js";
-import { codedFailure, describeNetworkError, NOT_SIGNED_IN, SIGN_IN_AGAIN_RECOVERY } from "../error-codes.js";
+import { codedFailure, describeNetworkError, networkDetails, NOT_SIGNED_IN, SIGN_IN_AGAIN_RECOVERY } from "../error-codes.js";
 
 /**
  * Summer Apps (summer_app_*): tools a game team uses inside Summer Studio,
@@ -196,7 +196,7 @@ export function appsGateway(surface: "mcp" | "cli", tool: string): AppsDeps["req
         signal: AbortSignal.timeout(timeoutMs),
       });
     } catch (error) {
-      return { ok: false, status: 0, data: { error: { code: "unavailable", message: `Request failed: ${describeNetworkError(error)}` } } };
+      return { ok: false, status: 0, data: { error: { code: "unavailable", message: `Request failed: ${describeNetworkError(error)}`, ...networkDetails(error) } } };
     }
     const text = await response.text().catch(() => "");
     let data: Record<string, unknown> = {};
@@ -219,10 +219,10 @@ function failure(reply: AppsReply): Record<string, unknown> {
   const message = typeof record.message === "string" ? record.message : typeof reply.data.message === "string" ? reply.data.message : `Request failed (${reply.status})`;
   const { error: _error, message: _message, ...rest } = reply.data;
   const extra = { status: reply.status, ...rest, ...(record.details ? { details: record.details } : {}) };
-  if (code === "not_signed_in") return codedFailure("AUTH_REQUIRED", message, extra);
-  if (code === "unauthorized" || reply.status === 401) return codedFailure("AUTH_REQUIRED", message, extra, SIGN_IN_AGAIN_RECOVERY);
-  if (reply.status === 402) return codedFailure("NO_CREDITS", message, extra);
-  if (reply.status === 0) return codedFailure("NETWORK_ERROR", message, extra);
+  if (code === "not_signed_in") return codedFailure("not_signed_in", message, extra);
+  if (code === "unauthorized" || reply.status === 401) return codedFailure("not_signed_in", message, extra, SIGN_IN_AGAIN_RECOVERY);
+  if (reply.status === 402) return codedFailure("no_credits", message, extra);
+  if (reply.status === 0) return codedFailure("unavailable", message, extra);
   const hints: Record<string, string> = {
     not_found: "Summer Apps is not available for this account yet, or the app id is wrong: summer_app_list shows the person's apps.",
     app_not_open: "Use summer_app_data, or ask the person to open the app in Summer Studio.",

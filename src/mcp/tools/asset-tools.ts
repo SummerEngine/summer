@@ -14,6 +14,7 @@ import {
   codedFailure,
   describeNetworkError,
   EngineNotRunningError,
+  networkDetails,
   NOT_SIGNED_IN,
   SIGN_IN_AGAIN_RECOVERY,
   type SummerErrorCode,
@@ -21,10 +22,10 @@ import {
 import { engineNotRunningResult } from "./with-engine.js";
 
 /** The shared-failure fields a lookup can carry (core/error-codes.ts). */
-type Coded = { code?: SummerErrorCode; recovery?: string };
+type Coded = { code?: SummerErrorCode; recovery?: string; details?: { cause: string } };
 
 /** No Summer account token: the same failure for every asset tool. */
-const notSignedIn = { error: "not_logged_in", message: NOT_SIGNED_IN, code: "AUTH_REQUIRED" } as const;
+const notSignedIn = { error: "not_logged_in", message: NOT_SIGNED_IN, code: "not_signed_in" } as const;
 
 async function searchAssetsApi(params: {
   query: string;
@@ -70,7 +71,7 @@ async function searchAssetsApi(params: {
       signal: AbortSignal.timeout(15000),
     });
   } catch (err) {
-    return { error: "network_error", message: `Asset request failed: ${describeNetworkError(err)}`, code: "NETWORK_ERROR" };
+    return { error: "network_error", message: `Asset request failed: ${describeNetworkError(err)}`, code: "unavailable", ...networkDetails(err) };
   }
 
   const data = (await res.json()) as {
@@ -87,7 +88,7 @@ async function searchAssetsApi(params: {
       return {
         error: "unauthorized",
         message: data.message || "Auth token expired.",
-        code: "AUTH_REQUIRED",
+        code: "not_signed_in",
         recovery: SIGN_IN_AGAIN_RECOVERY,
       };
     }
@@ -140,7 +141,7 @@ async function authedGetJson<T>(
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (err) {
-    return { status: 0, error: "network_error", message: `Asset request failed: ${describeNetworkError(err)}`, code: "NETWORK_ERROR" };
+    return { status: 0, error: "network_error", message: `Asset request failed: ${describeNetworkError(err)}`, code: "unavailable", ...networkDetails(err) };
   }
   const data = (await res.json()) as T & ApiErrorBody;
   if (!res.ok) {
@@ -149,7 +150,7 @@ async function authedGetJson<T>(
       data,
       error: data?.error || "request_failed",
       message: data?.message || "Request failed",
-      ...(res.status === 401 ? { code: "AUTH_REQUIRED" as const, recovery: SIGN_IN_AGAIN_RECOVERY } : {}),
+      ...(res.status === 401 ? { code: "not_signed_in" as const, recovery: SIGN_IN_AGAIN_RECOVERY } : {}),
     };
   }
   return { status: res.status, data };
@@ -164,7 +165,7 @@ async function getAssetApi(assetId: string): Promise<{
     `/api/mcp/assets/${encodeURIComponent(assetId)}`
   );
   if (result.error) {
-    return { error: result.error, message: result.message, code: result.code, recovery: result.recovery };
+    return { error: result.error, message: result.message, code: result.code, recovery: result.recovery, details: result.details };
   }
   return { asset: result.data?.asset };
 }
@@ -177,7 +178,7 @@ async function getAssetDownloadUrlApi(
     `/api/mcp/assets/${encodeURIComponent(assetId)}/download-url?role=${encodeURIComponent(role)}`
   );
   if (result.error) {
-    return { error: result.error, message: result.message, code: result.code, recovery: result.recovery };
+    return { error: result.error, message: result.message, code: result.code, recovery: result.recovery, details: result.details };
   }
   return { data: result.data };
 }
@@ -198,7 +199,7 @@ function jsonSuccess(data: unknown) {
 function failureBody(result: { error?: string; message?: string } & Coded, fallback: { error: string; message: string }) {
   const message = result.message || fallback.message;
   return result.code
-    ? codedFailure(result.code, message, { message }, result.recovery)
+    ? codedFailure(result.code, message, { message, ...(result.details ? { details: result.details } : {}) }, result.recovery)
     : { error: result.error || fallback.error, message };
 }
 

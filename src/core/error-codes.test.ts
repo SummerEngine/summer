@@ -4,27 +4,28 @@ import {
   codeForStatus,
   describeNetworkError,
   engineNotRunningFromConnectError,
+  networkDetails,
   RECOVERY,
 } from "./error-codes.js";
 import { engineNotRunningError } from "./engine.js";
 
 describe("codedFailure", () => {
   it("puts ok, code, error and recovery first and keeps the tool's other fields", () => {
-    const body = codedFailure("AUTH_REQUIRED", "Not signed in to Summer.", { message: "Not signed in to Summer.", error: true, status: 401 });
+    const body = codedFailure("not_signed_in", "Not signed in to Summer.", { message: "Not signed in to Summer.", error: true, status: 401 });
     expect(Object.keys(body).slice(0, 4)).toEqual(["ok", "code", "error", "recovery"]);
-    expect(body).toMatchObject({ ok: false, code: "AUTH_REQUIRED", error: "Not signed in to Summer.", status: 401 });
-    expect(body.recovery).toBe(RECOVERY.AUTH_REQUIRED);
+    expect(body).toMatchObject({ ok: false, code: "not_signed_in", error: "Not signed in to Summer.", status: 401 });
+    expect(body.recovery).toBe(RECOVERY.not_signed_in);
   });
 
   it("takes a tool's own recovery", () => {
-    expect(codedFailure("NO_CREDITS", "Not enough credits.", {}, "Add credits.").recovery).toBe("Add credits.");
+    expect(codedFailure("no_credits", "Not enough credits.", {}, "Add credits.").recovery).toBe("Add credits.");
   });
 });
 
 describe("codeForStatus", () => {
   it("maps 401 and 402 to the shared codes and nothing else", () => {
-    expect(codeForStatus(401)).toBe("AUTH_REQUIRED");
-    expect(codeForStatus(402)).toBe("NO_CREDITS");
+    expect(codeForStatus(401)).toBe("not_signed_in");
+    expect(codeForStatus(402)).toBe("no_credits");
     expect(codeForStatus(404)).toBeNull();
     expect(codeForStatus(500)).toBeNull();
   });
@@ -39,13 +40,18 @@ describe("describeNetworkError", () => {
   it("returns the message alone when there is no cause", () => {
     expect(describeNetworkError(new Error("The operation was aborted due to timeout"))).toBe("The operation was aborted due to timeout");
   });
+
+  it("puts the cause alone in details.cause", () => {
+    const error = new TypeError("fetch failed", { cause: new Error("getaddrinfo ENOTFOUND www.summerengine.com") });
+    expect(networkDetails(error)).toEqual({ details: { cause: "getaddrinfo ENOTFOUND www.summerengine.com" } });
+  });
 });
 
 describe("engineNotRunningFromConnectError", () => {
   it("words the no-editor case for the person, without token or registry paths", () => {
     const reason = engineNotRunningError({ port: 6550, token: null }, "/home/x/.summer").message;
     const error = engineNotRunningFromConnectError(reason);
-    expect(error?.code).toBe("ENGINE_NOT_RUNNING");
+    expect(error?.code).toBe("engine_not_running");
     expect(error?.message).toBe("Summer Engine is not running.");
     expect(error?.message).not.toMatch(/api-token/);
     expect(error?.reason).toBe(reason);
@@ -68,6 +74,6 @@ describe("engineNotRunningFromConnectError", () => {
   });
 
   it("recommends a run command that names the project path", () => {
-    expect(RECOVERY.ENGINE_NOT_RUNNING).toMatch(/run <project-path>/);
+    expect(RECOVERY.engine_not_running).toMatch(/run <project-path>/);
   });
 });

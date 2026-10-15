@@ -628,8 +628,8 @@ export async function runOpen(args: OpenArgs, deps: OpenDeps): Promise<OpenResul
     return {
       ok: false,
       action: "engine_not_running",
-      code: "ENGINE_NOT_RUNNING",
-      recovery: RECOVERY.ENGINE_NOT_RUNNING,
+      code: "engine_not_running",
+      recovery: RECOVERY.engine_not_running,
       target: summary,
       op: navigateOp,
       engine: { running: false, error: message },

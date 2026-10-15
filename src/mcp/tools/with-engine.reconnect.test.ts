@@ -73,7 +73,7 @@ describe("withEngine — safe retry only where nothing could have applied", () =
     expect(resultText(res)).toContain("7");
   });
 
-  it("answers ENGINE_NOT_RUNNING as JSON when no editor is reachable, without the token jargon", async () => {
+  it("answers engine_not_running as JSON when no editor is reachable, without the token jargon", async () => {
     mockGetClient.mockRejectedValue(
       new EngineNotRunningError("Summer Engine is not running.", "Summer Engine is not running (no api-token found, …)")
     );
@@ -83,7 +83,7 @@ describe("withEngine — safe retry only where nothing could have applied", () =
     expect(mockGetClient).toHaveBeenCalledTimes(2); // the usual single pre-submission retry
     expect(res.isError).toBe(true);
     const body = JSON.parse(resultText(res));
-    expect(body).toMatchObject({ ok: false, code: "ENGINE_NOT_RUNNING", error: "Summer Engine is not running." });
+    expect(body).toMatchObject({ ok: false, code: "engine_not_running", error: "Summer Engine is not running." });
     expect(body.recovery).toMatch(/summer-engine@latest run <project-path>/);
     expect(body.hint).toMatch(/summer_search_library/);
     expect(resultText(res)).not.toMatch(/api-token/);

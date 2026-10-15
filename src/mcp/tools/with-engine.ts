@@ -217,7 +217,7 @@ export async function withEngine<T>(
   );
 }
 
-/** No editor reachable: `{ok:false, code:"ENGINE_NOT_RUNNING", error,
+/** No editor reachable: `{ok:false, code:"engine_not_running", error,
  *  recovery, hint}` as JSON, so agents branch on the code instead of
  *  scraping the sentence. Exported for the tools that call getClient()
  *  outside withEngine. */

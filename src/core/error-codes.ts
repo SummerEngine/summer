@@ -8,9 +8,11 @@
  * The store sign-in keeps its own code, `store_login_required`
  * (core/oauth.ts): it is a second grant with its own recovery
  * (`summer login --store`).
+ *
+ * The codes are the ones the 4.0 tools use: the closed list in SPEC-operations section 5.5 (Errors).
  */
 
-export type SummerErrorCode = "ENGINE_NOT_RUNNING" | "AUTH_REQUIRED" | "NO_CREDITS" | "NETWORK_ERROR";
+export type SummerErrorCode = "engine_not_running" | "not_signed_in" | "no_credits" | "unavailable";
 
 export const SIGN_IN_COMMAND = "npx -y summer-engine@latest login";
 export const CREDITS_URL = "https://summerengine.com/studio/credits";
@@ -24,18 +26,18 @@ export const SIGN_IN_AGAIN_RECOVERY = `Ask the person to sign in again: ${SIGN_I
 /** The one next step per code, as the MCP face words it (the agent may not
  *  have `summer` on PATH, so commands go through npx). */
 export const RECOVERY: Record<SummerErrorCode, string> = {
-  ENGINE_NOT_RUNNING:
+  engine_not_running:
     "Open the project in Summer Engine, or run: npx -y summer-engine@latest run <project-path> (the folder that holds project.godot).",
-  AUTH_REQUIRED: `Ask the person to sign in: ${SIGN_IN_COMMAND}`,
-  NO_CREDITS: `Ask the person to add credits: ${CREDITS_URL}`,
-  NETWORK_ERROR: "Check the network connection, then retry.",
+  not_signed_in: `Ask the person to sign in: ${SIGN_IN_COMMAND}`,
+  no_credits: `Ask the person to add credits: ${CREDITS_URL}`,
+  unavailable: "Check the network connection, then retry.",
 };
 
 /** The same steps for `summer tool` in a shell, where `summer` is the CLI. */
 export const CLI_RECOVERY: Record<SummerErrorCode, string> = {
   ...RECOVERY,
-  ENGINE_NOT_RUNNING: "Open the project in Summer Engine, or run: summer run <project-path> (the folder that holds project.godot).",
-  AUTH_REQUIRED: "Run: summer login",
+  engine_not_running: "Open the project in Summer Engine, or run: summer run <project-path> (the folder that holds project.godot).",
+  not_signed_in: "Run: summer login",
 };
 
 export interface CodedFailure {
@@ -61,25 +63,36 @@ export function codedFailure(
 /** The code for a failed Summer web request by HTTP status, when it is one
  *  of the shared ones. */
 export function codeForStatus(status: number): SummerErrorCode | null {
-  if (status === 401) return "AUTH_REQUIRED";
-  if (status === 402) return "NO_CREDITS";
+  if (status === 401) return "not_signed_in";
+  if (status === 402) return "no_credits";
   return null;
 }
 
 /** `fetch failed` says nothing; Node puts the real reason on `cause`
  *  (`connect ECONNREFUSED 127.0.0.1:443`, `getaddrinfo ENOTFOUND …`). */
-export function describeNetworkError(error: unknown): string {
+function networkCause(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   const cause = error instanceof Error ? (error as Error & { cause?: unknown }).cause : undefined;
-  const causeMessage = cause instanceof Error ? cause.message : typeof cause === "string" ? cause : "";
-  return causeMessage && !message.includes(causeMessage) ? `${message} (${causeMessage})` : message;
+  return cause instanceof Error ? cause.message : typeof cause === "string" ? cause : message;
+}
+
+/** The message for a failed request, with the real cause in it. */
+export function describeNetworkError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  const cause = networkCause(error);
+  return message.includes(cause) ? message : `${message} (${cause})`;
+}
+
+/** `details.cause` for an `unavailable` answer. */
+export function networkDetails(error: unknown): { details: { cause: string } } {
+  return { details: { cause: networkCause(error) } };
 }
 
 /** The engine connect failure that means "nothing is running for this
  *  project", worded for the person; the raw reason (token files, instance
  *  registry paths) stays in the logs, not in the line the agent repeats. */
 export class EngineNotRunningError extends Error {
-  readonly code = "ENGINE_NOT_RUNNING" as const;
+  readonly code = "engine_not_running" as const;
   constructor(message: string, readonly reason: string) {
     super(message);
     this.name = "EngineNotRunningError";

@@ -158,7 +158,7 @@ export async function getClient(): Promise<EngineApiClient> {
         ? error.message
         : "Summer Engine is not running.";
     // Nothing reachable: a coded error withEngine renders as JSON
-    // (ENGINE_NOT_RUNNING). Anything else (several editors open, …) already
+    // (engine_not_running). Anything else (several editors open, …) already
     // says how to pick one.
     const notRunning = engineNotRunningFromConnectError(reason);
     if (notRunning) throw notRunning;

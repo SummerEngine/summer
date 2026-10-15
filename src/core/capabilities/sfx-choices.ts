@@ -81,7 +81,8 @@ export interface GatewayReply {
 
 /** A failed reply as a tool result; coded when the reply carries a code. */
 function replyFailure(reply: GatewayReply): Record<string, unknown> {
-  const details = reply.data ? { details: reply.data } : {};
+  // An unavailable reply's data is already `{details: {cause}}`.
+  const details = reply.code === "unavailable" ? reply.data ?? {} : reply.data ? { details: reply.data } : {};
   return reply.code
     ? codedFailure(reply.code, reply.error ?? "Request failed", details, reply.recovery)
     : { ok: false, error: reply.error, ...details };

@@ -26,6 +26,7 @@ import {
   codeForStatus,
   describeNetworkError,
   engineNotRunningFromConnectError,
+  networkDetails,
   NOT_SIGNED_IN,
   type SummerErrorCode,
 } from "../error-codes.js";
@@ -301,10 +302,10 @@ export class CodedToolError extends ToolResultError {
 }
 
 /** The local engine is not reachable — a clean state, not a crash. Prints
- *  `{ok:false, code:"ENGINE_NOT_RUNNING", error, recovery, hint}`. */
+ *  `{ok:false, code:"engine_not_running", error, recovery, hint}`. */
 export class EngineUnavailableError extends CodedToolError {
   constructor(message: string) {
-    super("ENGINE_NOT_RUNNING", message, {
+    super("engine_not_running", message, {
       hint: "Engine-free tools (generate-*, asset search/list/get, library search/read, plan) work without it.",
     });
   }
@@ -322,7 +323,7 @@ export function createDefaultDispatchContext(): ToolDispatchContext {
         const reason =
           error instanceof Error ? error.message : String(error);
         // Several editors open (or another selection problem) already says
-        // how to pick one; only "nothing reachable" is ENGINE_NOT_RUNNING.
+        // how to pick one; only "nothing reachable" is engine_not_running.
         const notRunning = engineNotRunningFromConnectError(reason);
         if (!notRunning) throw new ToolDispatchError(reason);
         throw new EngineUnavailableError(notRunning.message);
@@ -489,7 +490,7 @@ async function dispatchUiOp(ctx: ToolDispatchContext, built: BuiltUiOp): Promise
 // ---------------------------------------------------------------------------
 async function requireToken(): Promise<string> {
   const token = await getAuthToken();
-  if (!token) throw new CodedToolError("AUTH_REQUIRED", NOT_SIGNED_IN);
+  if (!token) throw new CodedToolError("not_signed_in", NOT_SIGNED_IN);
   return token;
 }
 
@@ -497,7 +498,7 @@ async function requireToken(): Promise<string> {
 function gatewayFailure(status: number, data: DispatchArgs): ToolDispatchError {
   const message = String(data.message || data.error || `Request failed (${status})`);
   const code = codeForStatus(status);
-  if (code === "AUTH_REQUIRED") return new CodedToolError(code, message, { status }, "Run: summer login --force");
+  if (code === "not_signed_in") return new CodedToolError(code, message, { status }, "Run: summer login --force");
   if (code) return new CodedToolError(code, message, { status });
   return new ToolDispatchError(message);
 }
@@ -538,7 +539,7 @@ async function gatewayGet(
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (err) {
-    throw new CodedToolError("NETWORK_ERROR", `Request failed: ${describeNetworkError(err)}`);
+    throw new CodedToolError("unavailable", `Request failed: ${describeNetworkError(err)}`, networkDetails(err));
   }
   const data = await readJsonBody(res);
   if (!res.ok) throw gatewayFailure(res.status, data);
@@ -564,7 +565,7 @@ async function gatewayPost(
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (err) {
-    throw new CodedToolError("NETWORK_ERROR", `Generation request failed: ${describeNetworkError(err)}`);
+    throw new CodedToolError("unavailable", `Generation request failed: ${describeNetworkError(err)}`, networkDetails(err));
   }
   const data = await readJsonBody(res);
   if (!res.ok) throw gatewayFailure(res.status, data);
@@ -591,7 +592,7 @@ async function pollGenerationJob(
         }
       );
     } catch (err) {
-      throw new CodedToolError("NETWORK_ERROR", `Job poll failed: ${describeNetworkError(err)}`, { jobId });
+      throw new CodedToolError("unavailable", `Job poll failed: ${describeNetworkError(err)}`, { jobId, ...networkDetails(err) });
     }
     const data = await readJsonBody(res);
     if (!res.ok) throw gatewayFailure(res.status, { message: "Job poll failed", ...data });

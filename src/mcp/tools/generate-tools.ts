@@ -28,6 +28,7 @@ import {
   codedFailure,
   codeForStatus,
   describeNetworkError,
+  networkDetails,
   NOT_SIGNED_IN,
   SIGN_IN_AGAIN_RECOVERY,
   type SummerErrorCode,
@@ -118,7 +119,7 @@ type GatewayResult = { data?: any; error?: string; status: number; code?: Summer
 function statusFailure(status: number): Pick<GatewayResult, "code" | "recovery"> {
   const code = codeForStatus(status);
   if (!code) return {};
-  return code === "AUTH_REQUIRED" ? { code, recovery: SIGN_IN_AGAIN_RECOVERY } : { code };
+  return code === "not_signed_in" ? { code, recovery: SIGN_IN_AGAIN_RECOVERY } : { code };
 }
 
 async function mcpGenerate(
@@ -128,7 +129,7 @@ async function mcpGenerate(
 ): Promise<GatewayResult> {
   const token = await getAuthToken();
   if (!token) {
-    return { error: NOT_SIGNED_IN, status: 401, code: "AUTH_REQUIRED" };
+    return { error: NOT_SIGNED_IN, status: 401, code: "not_signed_in" };
   }
 
   const gatewayUrl = await resolveGatewayUrl();
@@ -146,7 +147,7 @@ async function mcpGenerate(
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (err) {
-    return { error: `Generation request failed: ${describeNetworkError(err)}`, status: 0, code: "NETWORK_ERROR" };
+    return { error: `Generation request failed: ${describeNetworkError(err)}`, status: 0, code: "unavailable", data: networkDetails(err) };
   }
 
   const data = await readLenientJson(res);
@@ -179,7 +180,7 @@ async function mcpGet(
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (err) {
-    return { error: `Request failed: ${describeNetworkError(err)}`, status: 0, code: "NETWORK_ERROR" };
+    return { error: `Request failed: ${describeNetworkError(err)}`, status: 0, code: "unavailable", data: networkDetails(err) };
   }
 
   const data = await readLenientJson(res);
@@ -189,7 +190,7 @@ async function mcpGet(
       data: { ...data, status: res.status },
       status: res.status,
       // Without a token a 401 means "sign in", not "sign in again".
-      ...(!token && res.status === 401 ? { code: "AUTH_REQUIRED" as const } : statusFailure(res.status)),
+      ...(!token && res.status === 401 ? { code: "not_signed_in" as const } : statusFailure(res.status)),
     };
   }
   return { data, status: res.status };
@@ -205,7 +206,7 @@ async function pollJob(
   intervalMs = 5_000
 ): Promise<Omit<GatewayResult, "status">> {
   const token = await getAuthToken();
-  if (!token) return { error: NOT_SIGNED_IN, code: "AUTH_REQUIRED" };
+  if (!token) return { error: NOT_SIGNED_IN, code: "not_signed_in" };
 
   const gatewayUrl = await resolveGatewayUrl();
   const deadline = Date.now() + maxWaitMs;
@@ -234,7 +235,7 @@ async function pollJob(
         intervalMs = Math.min(intervalMs * 1.2, 15_000);
       }
     } catch (err) {
-      return { error: `Poll error: ${describeNetworkError(err)}`, code: "NETWORK_ERROR" };
+      return { error: `Poll error: ${describeNetworkError(err)}`, code: "unavailable", data: networkDetails(err) };
     }
   }
 
@@ -866,7 +867,7 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
     async ({ jobId }) => {
       const token = await getAuthToken();
       if (!token) {
-        return errorResult(NOT_SIGNED_IN, undefined, { code: "AUTH_REQUIRED" });
+        return errorResult(NOT_SIGNED_IN, undefined, { code: "not_signed_in" });
       }
 
       let res: Response;
@@ -877,7 +878,7 @@ Requires authentication: run 'npx -y summer-engine@latest login' first.`,
           signal: AbortSignal.timeout(15_000),
         });
       } catch (err) {
-        return errorResult(`Job status check failed: ${describeNetworkError(err)}`, undefined, { code: "NETWORK_ERROR" });
+        return errorResult(`Job status check failed: ${describeNetworkError(err)}`, networkDetails(err), { code: "unavailable" });
       }
 
       const data = await readLenientJson(res);

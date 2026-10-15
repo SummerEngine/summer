@@ -139,7 +139,7 @@ describe("repo-lint: tool-dispatch registry", () => {
     );
   });
 
-  it("prints engine-down as {ok:false, code:ENGINE_NOT_RUNNING} with the shell's run command", async () => {
+  it("prints engine-down as {ok:false, code:engine_not_running} with the shell's run command", async () => {
     const engine = async () => {
       throw new EngineUnavailableError("Summer Engine is not running.");
     };
@@ -147,7 +147,7 @@ describe("repo-lint: tool-dispatch registry", () => {
     expect(error).toBeInstanceOf(ToolResultError);
     expect((error as ToolResultError).result).toMatchObject({
       ok: false,
-      code: "ENGINE_NOT_RUNNING",
+      code: "engine_not_running",
       error: "Summer Engine is not running.",
       recovery: expect.stringContaining("summer run <project-path>"),
     });

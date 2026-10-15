@@ -2,7 +2,7 @@ import type { McpServer, RegisteredTool } from "@modelcontextprotocol/sdk/server
 import { ListToolsRequestSchema, type Tool, type ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { localEntries, localInputSchema, localWireForm, missingInput, type CatalogEntry } from "../core/ops/catalog.js";
-import { answerOfHosted, searchEverywhere } from "../core/ops/cloud.js";
+import { answerOfHosted, hostedCallFailure, searchEverywhere } from "../core/ops/cloud.js";
 import { errorAnswer, isLocalOp, legacyNames, localToolsFor, mcpNameOf, resolveOpName, type Answer } from "../core/ops/contract.js";
 import { ENGINE_SPLIT_OPS, engineOpDef, isSplitOp, renderOpRefs, splitToolArgs, type EngineSplitDef } from "../core/ops/engine.js";
 import { answerOfEngineResult, engineFailure, textsOf } from "../core/ops/engine-answer.js";
@@ -429,14 +429,15 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
         if (!call) return toolResult(errorAnswer("not_in_profile", `${resolved} is not served by this profile.`, { next: { say: "Run the MCP with --profile engine." } }));
         return toolResult(await runLocal(resolved, call, extra, dryRun === true, args));
       }
+      // `out` stays here: this package saves the files (core/ops/save-files.ts).
+      const { input: sent, out } = options.files.take(resolved, args);
+      let raw: Record<string, unknown>;
       try {
-        // `out` stays here: this package saves the files (core/ops/save-files.ts).
-        const { input: sent, out } = options.files.take(resolved, args);
-        const answer = answerOfHosted(await options.cloud.call(SUMMER_CALL, { op: name, ...(input ? { input: sent } : {}), ...(dryRun ? { dryRun } : {}), ...(idempotencyKey ? { idempotencyKey } : {}) }));
-        return toolResult(await options.files.finish(resolved, answer, out));
+        raw = await options.cloud.call(SUMMER_CALL, { op: name, ...(input ? { input: sent } : {}), ...(dryRun ? { dryRun } : {}), ...(idempotencyKey ? { idempotencyKey } : {}) });
       } catch (error) {
-        return toolResult(errorAnswer("not_signed_in", `Cloud operations need the Summer sign-in: ${error instanceof Error ? error.message : String(error)}`, { next: { say: "Run: npx -y summer-engine login" } }));
+        return toolResult(hostedCallFailure(error, { op: resolved, dryRun: dryRun === true, idempotencyKey }));
       }
+      return toolResult(await options.files.finish(resolved, answerOfHosted(raw), out));
     }) as never
   );
 }
@@ -453,22 +454,37 @@ function splitShape(def: EngineSplitDef, base: Shape): Shape {
 }
 
 /**
- * The hosted direct tools that take `out` (summer_assets_generate_image,
- * summer_assets_get, summer_jobs_wait, ...): their listed input shows it, and
- * a call keeps it here and saves the files the answer names.
+ * The hosted direct tools on the v4 surface. Those that take `out`
+ * (summer_assets_generate_image, summer_assets_get, summer_jobs_wait, ...)
+ * show it in their listed input, and a call keeps it here and saves the files
+ * the answer names. A call that throws answers in the one shape too
+ * (hostedCallFailure), never with a plain "retry".
  */
 export function hostedFileTools(files: FileSaver): HostedLocalHook {
   const ops = new Map([...TAKES_OUT].map((op) => [mcpNameOf(op), op]));
+  const sent = async (tool: Tool, args: Record<string, unknown>, forward: (args: Record<string, unknown>) => Promise<Record<string, unknown>>) => {
+    try {
+      return await forward(args);
+    } catch (error) {
+      const failure = hostedCallFailure(error, {
+        op: ops.get(tool.name) ?? tool.name,
+        dryRun: args.dryRun === true,
+        idempotencyKey: typeof args.idempotencyKey === "string" ? args.idempotencyKey : undefined,
+        read: tool.annotations?.readOnlyHint === true,
+      });
+      return toolResult(failure) as Record<string, unknown>;
+    }
+  };
   return {
     inputSchema: (tool) => {
       const op = ops.get(tool.name);
       return op ? (withOutField(op, tool.inputSchema) as Tool["inputSchema"]) : tool.inputSchema;
     },
-    call: async (name, args, forward) => {
+    call: async (name, args, forward, tool) => {
       const op = ops.get(name);
-      if (!op) return forward(args);
+      if (!op) return sent(tool, args, forward);
       const { input, out } = files.take(op, args);
-      const raw = await forward(input);
+      const raw = await sent(tool, input, forward);
       const answer = answerOfHosted(raw);
       const saved = await files.finish(op, answer, out);
       if (saved === answer) return raw;

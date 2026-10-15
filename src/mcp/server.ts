@@ -68,6 +68,7 @@ import {
 import { TOOLKIT_VERSION as version } from "../core/version.js";
 import { ENGINE_FREE_NOTE, engineNotRunningFromConnectError } from "../core/error-codes.js";
 import { resolveSurface, type SurfaceVersion } from "../core/tool-profiles.js";
+import { OAuthError } from "../core/oauth.js";
 
 let processDiagnosticsInstalled = false;
 
@@ -425,7 +426,7 @@ export interface CreateMcpServerOptions {
 
 const NO_CLOUD: CloudCaller = {
   call: async () => {
-    throw new Error('The hosted Summer server is not connected. Run "summer login".');
+    throw new OAuthError("store_login_required", "The hosted Summer server is not connected.", 'Recovery: run "summer login".');
   },
 };
 

@@ -1,7 +1,7 @@
 import { Command } from "commander";
 import { localEntries, localInputSchema, localWireForm, missingInput } from "../../core/ops/catalog.js";
-import { answerOfHosted, callHostedV4, searchEverywhere, type HostedCall } from "../../core/ops/cloud.js";
-import { errorAnswer, isLocalOp, localToolsFor, opFromCli, OP_NAME, type Answer, type JobRef } from "../../core/ops/contract.js";
+import { answerOfHosted, callHostedV4, hostedCallFailure, searchEverywhere, type HostedCall } from "../../core/ops/cloud.js";
+import { errorAnswer, isLocalOp, localToolsFor, opFromCli, OP_NAME, type Answer, type ErrorCode, type JobRef } from "../../core/ops/contract.js";
 import { ENGINE_SPLIT_OPS, engineOpDef, splitToolArgs } from "../../core/ops/engine.js";
 import { engineFailure, engineNotRunning } from "../../core/ops/engine-answer.js";
 import { loadLibraryIndex } from "../../core/library-search.js";
@@ -151,7 +151,7 @@ async function runCloud(op: string, call: ParsedCall, deps: OpsCliDeps): Promise
       await deps.hosted("summer_call", { op, input: call.input, ...(call.dryRun ? { dryRun: true } : {}), ...(call.idempotencyKey ? { idempotencyKey: call.idempotencyKey } : {}) })
     );
   } catch (error) {
-    return errorAnswer("not_signed_in", `Cloud operations need the Summer sign-in: ${error instanceof Error ? error.message : String(error)}`, { next: { say: "Run: npx -y summer-engine login" } });
+    return hostedCallFailure(error, { op, dryRun: call.dryRun, idempotencyKey: call.idempotencyKey });
   }
 }
 
@@ -163,6 +163,9 @@ async function schemaFor(op: string, deps: OpsCliDeps): Promise<JsonSchema | nul
   return input ? (withOutField(op, input) as JsonSchema) : null;
 }
 
+/** Failed waits the job itself does not cause: the call to Summer did not get through. */
+const WAIT_DID_NOT_GET_THROUGH: ReadonlySet<ErrorCode> = new Set<ErrorCode>(["unavailable", "outcome_unknown", "not_signed_in", "forbidden", "rate_limited"]);
+
 /** Follow a running job or an approval until it ends (jobs.wait, at most 50 s per call). */
 async function waitFor(answer: Answer, deps: OpsCliDeps): Promise<Answer> {
   let current = answer;
@@ -170,6 +173,16 @@ async function waitFor(answer: Answer, deps: OpsCliDeps): Promise<Answer> {
   for (let round = 0; round < 120 && current.ok && (current.status === "running" || current.status === "needs_approval"); round++) {
     const job = current.job.id;
     const waited = await runCloud("jobs.wait", { input: { jobId: job, timeoutSeconds: 50 }, json: true, dryRun: false, wait: false }, deps);
+    // The job runs on whatever the wait answered: a failed wait names it, so the job is waited on, not started again.
+    // One that did not get through says to wait again; any other keeps its own next step (sign in, slow down).
+    if (!waited.ok && WAIT_DID_NOT_GET_THROUGH.has(waited.error.code)) {
+      const { code, message, retry, next, details } = waited.error;
+      return errorAnswer(code, `${message} Job ${job} is still on Summer's server.`, {
+        retry,
+        next: code === "unavailable" ? { op: "jobs.wait", input: { jobId: job } } : next,
+        details: { ...details, job },
+      });
+    }
     if (!waited.ok || waited.status !== "done") return waited;
     const result = waited.result as { job: { state: string; result?: unknown; error?: { code: string; message: string } }; finished: boolean };
     if (!result.finished) continue;

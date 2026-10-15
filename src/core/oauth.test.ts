@@ -138,6 +138,16 @@ describe("store OAuth sign-in", () => {
     expect(await readStoredOAuthToken()).toBeNull();
   });
 
+  it("tells a sign-in server that failed (5xx) from a sign-in it refused", async () => {
+    const auth = fakeAuthServer();
+    let clock = Date.parse("2026-10-09T00:00:00Z");
+    await runStoreLogin({ fetch: auth.fetch, now: () => clock, openUrl: auth.openUrl, log: () => undefined, ports });
+    clock += 3600_000;
+    const down = (async (input: Parameters<typeof globalThis.fetch>[0], init?: RequestInit) =>
+      String(input) === `${ISSUER}/oauth/token` ? new Response(JSON.stringify({ error: "server_error" }), { status: 503, headers: { "content-type": "application/json" } }) : auth.fetch(input, init)) as typeof globalThis.fetch;
+    await expect(getStoreAccessToken({ fetch: down, now: () => clock })).rejects.toMatchObject({ code: "oauth_server_failed" });
+  });
+
   it("fails clearly when access is denied or no sign-in exists", async () => {
     const auth = fakeAuthServer({ redirectError: "access_denied" });
     await expect(runStoreLogin({ fetch: auth.fetch, now: Date.now, openUrl: auth.openUrl, log: () => undefined, ports })).rejects.toMatchObject({

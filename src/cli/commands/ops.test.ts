@@ -5,6 +5,10 @@ import { describe, expect, it, vi } from "vitest";
 import { EngineUnavailableError, ToolResultError } from "../../core/capabilities/tool-dispatch.js";
 import { formatAnswer, parseCallFlags, runOpFromCli, type OpsCliDeps } from "./ops.js";
 import { FileSaver } from "../../core/ops/save-files.js";
+import { callHostedV4 } from "../../core/ops/cloud.js";
+import { HostedUnreachableError, type HostedClient } from "../../core/hosted-mcp.js";
+import { OAuthError } from "../../core/oauth.js";
+import { StreamableHTTPError } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
 const envelope = (value: unknown) => ({ content: [{ type: "text", text: JSON.stringify(value) }] });
 
@@ -90,6 +94,60 @@ describe("summer <area> <action>", () => {
   it("refuses a name that is not an operation", async () => {
     const d = deps();
     expect(await runOpFromCli("Games.List", [], d)).toBe(1);
+  });
+});
+
+describe("a hosted call that fails", () => {
+  const failing = (error: unknown) =>
+    deps(
+      vi.fn(async () => {
+        throw error;
+      })
+    );
+  const answerOf = async (error: unknown, args: string[]) => {
+    const d = failing(error);
+    expect(await runOpFromCli("assets.generate_image", [...args, "--json"], d)).not.toBe(0);
+    return JSON.parse(d.err[d.err.length - 1]);
+  };
+
+  it("says not_signed_in for a sign-in problem, unavailable when nothing was sent, outcome_unknown when cut off", async () => {
+    expect((await answerOf(new OAuthError("store_login_required", "Not signed in.", 'Recovery: run "summer login".'), ["--prompt", "a barrel"])).error.code).toBe("not_signed_in");
+    expect((await answerOf(new HostedUnreachableError("Summer's hosted server did not answer: fetch failed.", "Recovery: check the network."), ["--prompt", "a barrel"])).error).toMatchObject({ code: "unavailable", retry: "after" });
+    expect((await answerOf(new Error("Request timed out"), ["--prompt", "a barrel", "--idempotency-key", "k1"])).error).toMatchObject({ code: "outcome_unknown", retry: "same_key" });
+    expect((await answerOf(new Error("Request timed out"), ["--prompt", "a barrel"])).error).toMatchObject({ code: "outcome_unknown", retry: "no" });
+  });
+
+  it("callHostedV4 tells a connection that never opened from a call cut off after it was sent", async () => {
+    const base = { url: () => "https://mcp.example.com/mcp?surface=v4", token: async () => "t" };
+    await expect(callHostedV4("summer_call", {}, { ...base, connect: async () => { throw new TypeError("fetch failed"); } })).rejects.toBeInstanceOf(HostedUnreachableError);
+    const signIn = new OAuthError("store_login_required", "Not signed in.", 'Recovery: run "summer login".');
+    await expect(callHostedV4("summer_call", {}, { ...base, token: async () => { throw signIn; }, connect: async () => ({}) as HostedClient })).rejects.toBe(signIn);
+    const cutOff = new Error("Request timed out");
+    const client = { callTool: async () => { throw cutOff; }, close: async () => undefined } as unknown as HostedClient;
+    await expect(callHostedV4("summer_call", {}, { ...base, connect: async () => client })).rejects.toBe(cutOff);
+    const revoked = new StreamableHTTPError(401, 'Error POSTing to endpoint: {"error":"invalid_token"}');
+    await expect(callHostedV4("summer_call", {}, { ...base, connect: async () => { throw revoked; } })).rejects.toMatchObject({ name: "OAuthError", code: "oauth_token_invalid" });
+  });
+
+  it("--wait keeps the job when a wait does not get through, so the paid job is not started again", async () => {
+    const hosted = vi
+      .fn()
+      .mockResolvedValueOnce(envelope({ ok: true, status: "running", job: { id: "gen:8", state: "queued" } }))
+      .mockRejectedValueOnce(new Error("MCP error -32001: Request timed out"));
+    const d = deps(hosted);
+    expect(await runOpFromCli("assets.generate_3d", ["--input", '{"prompt":"tree"}', "--wait", "--json"], d)).toBe(1);
+    expect(JSON.parse(d.err[d.err.length - 1])).toMatchObject({ ok: false, error: { code: "unavailable", next: { op: "jobs.wait", input: { jobId: "gen:8" } }, details: { job: "gen:8" } } });
+
+    // A sign-in that lapses mid-wait keeps its own step, and still names the job.
+    const lapsed = vi
+      .fn()
+      .mockResolvedValueOnce(envelope({ ok: true, status: "running", job: { id: "gen:9", state: "queued" } }))
+      .mockRejectedValueOnce(new StreamableHTTPError(401, 'Error POSTing to endpoint: {"error":"invalid_token"}'));
+    const e = deps(lapsed);
+    expect(await runOpFromCli("assets.generate_3d", ["--input", '{"prompt":"tree"}', "--wait", "--json"], e)).toBe(1);
+    const answer = JSON.parse(e.err[e.err.length - 1]);
+    expect(answer).toMatchObject({ ok: false, error: { code: "not_signed_in", next: { say: "Run: npx -y summer-engine login --store --force" }, details: { job: "gen:9" } } });
+    expect(answer.error.message).toContain("gen:9");
   });
 });
 

@@ -1235,6 +1235,55 @@
       "recommended": true
     },
     {
+      "id": "skill/concept-to-level",
+      "kind": "skill",
+      "version": "1.0.0",
+      "content_hash": "2720ecf08ad885c42682f3e947ffd2dff13faafde9bcd13382b4ce2185ffc583",
+      "summary": "Take a 3D map from concept art to a polished, shippable level, with the questions to ask the user, owned lanes, render checks and collision kept in step.",
+      "use_when": [
+        "polishing a 3D map or arena from concept art to shipping quality, with real materials, props, sky and effects",
+        "reworking a level's theme and art while keeping its gameplay layout, with several agents working on one map",
+        "deciding which questions to ask the user before building or polishing a level"
+      ],
+      "facets": {
+        "lifecycle": [
+          "build"
+        ],
+        "domains": [
+          "level-design",
+          "3d",
+          "world-building",
+          "agent-workflow"
+        ],
+        "modalities": [
+          "scenes",
+          "assets",
+          "shaders",
+          "docs"
+        ]
+      },
+      "compatibility": {
+        "engine": ">=4.6"
+      },
+      "related": {
+        "skills": [
+          "skill/concept-art",
+          "skill/art-direction",
+          "skill/design-level",
+          "skill/scene-to-level",
+          "skill/environment-kit",
+          "skill/fabricating-assets",
+          "skill/headless-scripting",
+          "skill/bounded-engine-runs",
+          "skill/verifying-scenes",
+          "skill/tune-performance",
+          "skill/dispatching-parallel-agents"
+        ]
+      },
+      "status": "preview",
+      "recommended": false
+    },
+    {
       "id": "skill/create-asset-sheet",
       "kind": "skill",
       "version": "1.0.3",
@@ -8424,7 +8473,7 @@
       "id": "tool/open",
       "kind": "tool",
       "version": "1.0.1",
-      "content_hash": "c1087ddd07caf7bca466f5545aa8f15c3e28dd6d4cedd41eddb28f466025ff02",
+      "content_hash": "622d775be937ec0db3286a5d934ad9ff0b2097e62e53a64256e120b7b5758f60",
       "summary": "Open the exact summerengine.com page or editor surface by intent name — billing, my games, an MCP guide, a scene, a node, a dock — or print the URL/op.",
       "use_when": [
         "the user wants to SEE or DECIDE something on the website — \"open my billing page\", \"show me my published games\", \"take me to pricing\", \"open the MCP setup guide for Cursor\"",
@@ -8471,7 +8520,7 @@
       "authority": {
         "filesystem": false,
         "editor_mutation": false,
-        "network": false,
+        "network": true,
         "credentials": false,
         "publish": false
       }

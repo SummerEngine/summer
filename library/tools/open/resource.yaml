@@ -73,7 +73,7 @@ input_schema:
 authority:
   filesystem: false
   editor_mutation: false
-  network: false
+  network: true
   credentials: false
   publish: false
 evidence_checks:

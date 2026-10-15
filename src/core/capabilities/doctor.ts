@@ -20,6 +20,7 @@ import {
   defaultSkillMarkerCandidates,
   detectRecordedInstall,
   fetchLatestRegistryVersion,
+  fetchRegistryDistTags,
 } from "../../installer/version-check.js";
 
 import { TOOLKIT_VERSION as version } from "../version.js";
@@ -133,12 +134,12 @@ async function checkCliVersionCurrent(): Promise<DoctorCheck> {
  *  recorded by `summer setup`: a `--local-dev` link gets the local-dev form
  *  so the fix does not replace the checkout with the published package. */
 async function checkSkillsVersion(): Promise<DoctorCheck> {
-  const registry = await fetchLatestRegistryVersion();
+  const registry = await fetchRegistryDistTags();
   const result = await buildSkillsVersionCheck({
     installedCliVersion: version,
     candidates: defaultSkillMarkerCandidates(),
     recordedInstall: detectRecordedInstall,
-    ...(registry.ok ? { latestRegistryVersion: registry.version } : {}),
+    ...(registry.ok ? { latestRegistryVersion: registry.tags.latest, nextRegistryVersion: registry.tags.next } : {}),
   });
   return {
     id: "skills-version-stale",

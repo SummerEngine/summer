@@ -335,6 +335,21 @@
       ]
     },
     {
+      "id": "skill/concept-to-level",
+      "name": "concept-to-level",
+      "description": "Take a 3D map from concept art to a polished, shippable level, with the questions to ask the user, owned lanes, render checks and collision kept in step.",
+      "clients": "all",
+      "recommended": false,
+      "status": "preview",
+      "path": "library/skills/concept-to-level/",
+      "domains": [
+        "level-design",
+        "3d",
+        "world-building",
+        "agent-workflow"
+      ]
+    },
+    {
       "id": "skill/create-asset-sheet",
       "name": "create-asset-sheet",
       "description": "Generate a pack of 2D game assets from one prompt — tile sheet, UI kit, character pack, or biome set — sliced, classified, and saved as one pack ArtAsset.",

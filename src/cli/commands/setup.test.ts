@@ -35,7 +35,7 @@ afterEach(() => {
   else process.env.SUMMER_DEV = originalSummerDev;
 });
 
-async function printedSnippet(args: string[]): Promise<{ command: string; args: string[] }> {
+async function printedSnippet(args: string[]): Promise<{ command: string; args: string[]; env?: Record<string, string> }> {
   const lines: string[] = [];
   const log = vi.spyOn(console, "log").mockImplementation((line: unknown) => {
     lines.push(String(line));
@@ -44,12 +44,14 @@ async function printedSnippet(args: string[]): Promise<{ command: string; args: 
     // commander keeps parsed option values on the shared command object; reset
     // the flag under test so each case sees only its own argv.
     setupCommand.setOptionValue("localDev", undefined);
+    setupCommand.setOptionValue("profile", undefined);
+    setupCommand.setOptionValue("assetsOnly", undefined);
     await setupCommand.parseAsync(args, { from: "user" });
   } finally {
     log.mockRestore();
   }
   const snippet = JSON.parse(lines.join("\n")) as {
-    mcpServers: Record<string, { command: string; args: string[] }>;
+    mcpServers: Record<string, { command: string; args: string[]; env?: Record<string, string> }>;
   };
   return snippet.mcpServers["summer-engine"]!;
 }
@@ -102,5 +104,22 @@ describe("summer setup --local-dev", () => {
     const server = await printedSnippet(["claude-code", "--print"]);
     expect(server.command).toBe("npx");
     expect(server.args).toEqual(["-y", "summer-engine@latest", "mcp"]);
+  });
+});
+
+describe("summer setup tool profiles", () => {
+  it("writes no profile by default, so the agent gets every tool", async () => {
+    const server = await printedSnippet(["claude-code", "--print"]);
+    expect(server.env).toBeUndefined();
+  });
+
+  it("--profile and --assets-only write SUMMER_PROFILE into the entry", async () => {
+    expect((await printedSnippet(["claude-code", "--profile", "engine", "--print"])).env).toEqual({ SUMMER_PROFILE: "engine" });
+    expect((await printedSnippet(["claude-code", "--assets-only", "--print"])).env).toEqual({ SUMMER_PROFILE: "assets" });
+  });
+
+  it("refuses an unknown profile and a profile that contradicts --assets-only", async () => {
+    await expect(printedSnippet(["claude-code", "--profile", "tiny", "--print"])).rejects.toThrow(/Unknown --profile "tiny"/);
+    await expect(printedSnippet(["claude-code", "--assets-only", "--profile", "engine", "--print"])).rejects.toThrow(/--assets-only uses the assets profile/);
   });
 });

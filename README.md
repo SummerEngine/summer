@@ -75,7 +75,7 @@ The agent installs the skills and the MCP config and signs you in. It does not d
 
 You are an AI coding agent. The user told you to install Summer Engine. **Run this playbook via your shell**: Bash on macOS/Linux or PowerShell on Windows. Detection first, then only install what's missing. (Once installed, your working guide is [`AGENTS.md`](AGENTS.md).)
 
-**Assets only.** If the user only wants assets (sound effects, music, voices, images, 3D models, video), not a game built in Summer Engine, or tells you to skip the engine: run Step -1, Step 0, Step 1 with `--no-games` added (Summer Games is for playing with friends, and leaving it out saves a second sign-in), and Step 3, then stop installing. Skip Step 2 (the engine download), Step 5 and Step 6. On this path the doctor warnings for `engine-install` and `local-api` are expected; leave them. The asset tools (`summer_generate_audio`, `summer_generate_sfx_choices`, `summer_generate_image`, `summer_generate_3d`, `summer_generate_video`, `summer_search_assets`) run on Summer's servers and need only the login. Most agents load a new MCP server only after a restart. Until then, call the same tool from the shell: `npx -y summer-engine@latest tool <slug> --args '<json>'` (`summer tool --list` prints the slugs). For example, three versions of one sound for the user to pick from: `npx -y summer-engine@latest tool generate-sfx-choices --args '{"text":"sword clash"}'`. Each asset lands in the user's Summer library.
+**Assets only.** If the user only wants assets (sound effects, music, voices, images, 3D models, video), not a game built in Summer Engine, or tells you to skip the engine: run Step -1, Step 0, Step 1 with `--assets-only` added, and Step 3, then stop installing. `--assets-only` writes the `assets` tool profile (generation and asset tools, no engine tools), installs only the asset skills, and leaves out Summer Games (it is for playing with friends, and leaving it out saves a sign-in). Skip Step 2 (the engine download), Step 5 and Step 6. On this path the doctor warnings for `engine-install` and `local-api` are expected; leave them. The asset tools (`summer_generate_audio`, `summer_generate_sfx_choices`, `summer_generate_image`, `summer_generate_3d`, `summer_generate_video`, `summer_search_assets`) run on Summer's servers and need only the login. Most agents load a new MCP server only after a restart. Until then, call the same tool from the shell: `npx -y summer-engine@latest tool <slug> --args '<json>'` (`summer tool --list` prints the slugs). For example, three versions of one sound for the user to pick from: `npx -y summer-engine@latest tool generate-sfx-choices --args '{"text":"sword clash"}'`. Each asset lands in the user's Summer library.
 
 **Windows PowerShell: type `npx.cmd` wherever this playbook says `npx`.** Plain `npx` in PowerShell runs `npx.ps1`, which Windows blocks by default ("running scripts is disabled on this system"). `npx.cmd` is the same command without that block. Never change the execution policy or turn off Windows Defender to work around it. Bash (including Git Bash on Windows) can use plain `npx`.
 
@@ -159,7 +159,7 @@ npx -y summer-engine@latest install
 npx -y summer-engine@latest login
 ```
 
-This opens the user's default browser. **Tell the user**: "Your browser is opening now. Click sign-in once and come back to this terminal." The CLI waits up to 120 seconds for the sign-in, checks the returned identity, and stores the session in `~/.summer/`, which the engine shares. **If the user takes longer than 120 seconds, re-run `npx -y summer-engine@latest login` once and tell them to come back to the terminal quickly.** Don't loop.
+This opens the user's default browser for one sign-in that covers every Summer tool: first the Summer account ("Yes, Sign In"), then, in the same browser, a "Welcome to Summer CLI" page for the store, publishing and Grow tools (one Allow click; none if this machine was approved before). **Tell the user**: "Your browser is opening now. Sign in, click Yes, Sign In, then Allow on the next page, and come back to this terminal." The CLI checks the returned identity and stores the session in `~/.summer/`, which the engine shares. If the store step does not finish within 3 minutes, the account sign-in is still saved; `summer login --store` adds the store later. Don't loop.
 
 ### Step 4: Re-run doctor to confirm
 
@@ -240,7 +240,7 @@ If the user wants `summer` on their `PATH` for everyday terminal use, a global n
 |---|---|---|
 | **Create** | Available | Scaffold from a pinned template, build scenes and scripts through MCP, generate 2D/3D/audio/video assets, guided by the library. |
 | **Test** | Available | The verification ladder: compile checks, screenshots, live play with debugger reads, and input-driven probes (`RunVerification`) that press real keys and assert on real frames. |
-| **Publish** | Preview | `summer_export_game` exports the game with the installed engine (headless); `summer_publish_build` uploads it to your game's summer.games store listing after you confirm the exact game, file and version (sign in once with `summer login --store`). Nothing is submitted silently. |
+| **Publish** | Preview | `summer_export_game` exports the game with the installed engine (headless); `summer_publish_build` uploads it to your game's summer.games store listing after you confirm the exact game, file and version (`summer login` signs you in to the store too). Nothing is submitted silently. |
 | **Grow** | Planned | Analytics, retention and live-ops tooling will arrive as new library entries. Not part of this package yet. |
 
 ## What's in this repo
@@ -332,13 +332,13 @@ We tell you before we touch your disk.
 | `summer-engine` npm package (CLI + MCP + library) | ~2 MB download, ~6 MB unpacked | first `npx -y summer-engine@latest ...` call | [npmjs.com/package/summer-engine](https://www.npmjs.com/package/summer-engine) |
 | Summer Engine app | ~1 GB (engine + bundled Git/runtime tools) | `npx -y summer-engine@latest install` | Summer's signed releases |
 | Auth token | ~1 KB | `npx -y summer-engine@latest login` | Browser to `~/.summer/auth-token` |
-| Store sign-in | ~2 KB | only when you run `summer login --store` | Browser OAuth (PKCE, loopback port 47615-47617) to `~/.summer/oauth-token` with its refresh token, plus this machine's public client id in `~/.summer/oauth-client`; never replaces the auth token |
+| Store sign-in | ~2 KB | `summer login` (right after the account sign-in), or `summer login --store` alone | Browser OAuth (PKCE, loopback port 47615-47617) to `~/.summer/oauth-token` with its refresh token, plus this machine's public client id in `~/.summer/oauth-client`; never replaces the auth token |
 | Skill files | small, bundled | in the npm package | no extra network call |
 | Generated assets (3D / image / audio / video) | varies | only on explicit `summer_generate_*` calls when that provider route is enabled for the account | Summer Engine Studio |
 | URL imports | varies | only on explicit `summer_import_from_url` calls | the URL you provide |
 
 Not downloaded, not collected:
-- No background telemetry. Diagnostics stay local. The only network report is the opt-out library feedback mailbox described above.
+- No background telemetry. Diagnostics stay local. Two network reports exist, both off with `SUMMER_NO_TELEMETRY=1` or `DO_NOT_TRACK=1`: the library feedback mailbox described above, and, only when you are signed in, a usage line when an MCP session starts and one per tool call (the tool name, success, duration and your agent app's name; never arguments, results, code or file names) with your account token, so Summer can see which tools work in which agents.
 - No silent engine updates. `summer install` checks the installed version and asks before replacing it (or needs `--yes`); nothing updates the engine behind your back.
 - No model weights. AI generation runs in Summer Engine Studio (cloud), never on your machine.
 
@@ -359,8 +359,8 @@ matchmaking are not promised by this package.
 | Command | What it does |
 |---|---|
 | `summer install [--yes]` | Download Summer Engine. Prints URL and size first; never replaces an installed engine without confirmation. |
-| `summer login` | Browser-based core Summer sign-in. |
-| `summer login --store` | Browser sign-in to the Summer store so agents can upload builds (`summer_publish_build`). |
+| `summer login` | One browser sign-in for every Summer tool: your Summer account, then the store, publishing and Grow tools in the same browser. `--no-store` skips the store step. |
+| `summer login --store` | Only the store sign-in (`summer_publish_build`, the store, publishing, board and Grow tools). |
 | `summer logout` | Clear auth tokens. |
 | `summer config [get\|set\|unset]` | Read or update the shared non-secret `~/.summer/config.json`. |
 | `summer status` | Engine state, port, auth. |
@@ -376,11 +376,11 @@ matchmaking are not promised by this package.
 | `summer debug [issue…]` | Support-ready Markdown debug report. |
 | `summer skills list` | Show all skills (`--by-domain` groups them; the same grouping is in [`library/skills/README.md`](library/skills/README.md)). |
 | `summer skills install <name>` | Install one. |
-| `summer skills install --all --agent <agent>` / `--recommended` [`--stable-only`] | Install every skill (preview included and labelled), or only the recommended subset; `--stable-only` skips preview skills. |
+| `summer skills install --all --agent <agent>` / `--recommended` / `--assets` [`--stable-only`] | Install every skill (preview included and labelled), only the recommended subset, or only the asset skills; `--stable-only` skips preview skills. |
 | `summer tool <name> --args '<json>'` | Run any Summer tool from the shell — the same implementation the MCP tool uses. `summer tool --list` prints them all. |
-| `summer mcp [--project <path> \| --instance <id>]` | Start MCP; normally auto-binds from the agent's project directory. |
+| `summer mcp [--project <path> \| --instance <id>] [--profile <p>] [--toolsets <list>]` | Start MCP; normally auto-binds from the agent's project directory. `--profile` (env `SUMMER_PROFILE`): `full` (every tool, the default), `engine` (engine, generation and store tools; fits the per-request tool cap of clients such as VS Code Copilot, which is 128), `assets` (generation and asset tools, no engine tools). `--toolsets` (env `SUMMER_TOOLSETS`) adds toolsets by name: `core`, `assets`, `tools`, `engine`, `ui`, `ship`, `uploads`, `apps`, `board`, `grow`, `studio`, `cloud`, `other`, or `all`. |
 | `summer mcp setup <agent>` | Deprecated alias of `summer setup <agent>`. |
-| `summer setup <agent> [--yes] [--force] [--recommended] [--stable-only] [--no-games]` | One shot: MCP config + all skills, preview included (`--recommended` for the subset, `--stable-only` to skip preview) + doctor. Idempotent. For most agents (not Claude Desktop, Visual Studio, Qoder, Rovo Dev, LM Studio or the legacy targets) it also adds `summer-games` (`https://mcp.summer.games/mcp`: friends, parties and messages as you) unless the same URL is already listed; you sign in once through summer.games. `--no-games` skips it. |
+| `summer setup <agent> [--yes] [--force] [--recommended] [--stable-only] [--no-games] [--profile <p>] [--assets-only]` | One shot: MCP config + all skills, preview included (`--recommended` for the subset, `--stable-only` to skip preview) + doctor. Idempotent. `--profile` writes a tool profile into the agent's MCP entry (`SUMMER_PROFILE`); `vscode-copilot` gets `engine` unless you pass `--profile full`, every other agent gets every tool. `--assets-only` is the assets path: the `assets` profile, only the asset skills, no Summer Games. For most agents (not Claude Desktop, Visual Studio, Qoder, Rovo Dev, LM Studio or the legacy targets) it also adds `summer-games` (`https://mcp.summer.games/mcp`: friends, parties and messages as you) unless the same URL is already listed; you sign in once through summer.games. `--no-games` skips it. |
 
 Agents: `claude-code`, `claude-desktop`, `codex`, `cursor`, `windsurf`, `antigravity`, `cline`, `cline-cli`, `kilo-code`, `github-copilot`, `vscode-copilot`, `visual-studio`, `copilot-jetbrains`, `opencode`, `zed`, `kiro`, `goose`, `hermes`, `trae`, `qwen-code`, `kimi-code`, `crush`, `amp`, `factory`, `junie`, `warp`, `rovo-dev`, `qoder`, `grok-build`, `mistral-vibe`, `lm-studio`. Legacy (still accepted, warn on use): `gemini`, `roo-code`. Aliases: `devin`/`devin-desktop` → `windsurf`, `agy` → `antigravity`, `droid` → `factory`, `copilot` → `github-copilot`, `vscode` → `vscode-copilot`, `kilo` → `kilo-code`, `qwen` → `qwen-code`, `kimi` → `kimi-code`. Scopes: `--scope user` (default), `--scope project`.
 

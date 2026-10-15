@@ -14,6 +14,13 @@ import { brandLine, c, sym, tildeify } from "../../core/format.js";
 import { TOOLKIT_VERSION as cliVersion } from "../../core/version.js";
 import { resolveDefaultChannel } from "../../installer/version-check.js";
 import { agentLabel } from "../../installer/agent-table.js";
+import { PROFILES, parseProfile, type Profile } from "../../core/tool-profiles.js";
+
+const PROFILE_NOTES: Record<Profile, string> = {
+  full: "Every Summer tool.",
+  engine: "Engine, generation and store tools. Every tool: summer setup <agent> --profile full",
+  assets: "Generation and asset tools, no engine tools. Every tool: summer setup <agent> --profile full",
+};
 
 interface SetupCommandOptions {
   agent?: string;
@@ -26,6 +33,8 @@ interface SetupCommandOptions {
   json?: boolean;
   /** false with --no-games: link the engine only. */
   games?: boolean;
+  profile?: string;
+  assetsOnly?: boolean;
   force?: boolean;
   recommended?: boolean;
   stableOnly?: boolean;
@@ -55,6 +64,14 @@ export const setupCommand = new Command("setup")
     "--no-games",
     "Do not add the Summer Games MCP (summer-games: friends, parties and messages as you, signed in through summer.games)"
   )
+  .option(
+    "--profile <profile>",
+    "MCP tool profile: full (every tool, the default), engine (engine, generation and the store; under 128 tools; the default for VS Code Copilot), assets (generation and the asset library, no engine tools)"
+  )
+  .option(
+    "--assets-only",
+    "Set up for making assets without Summer Engine: the assets profile, only the asset skills, and no Summer Games"
+  )
   .option("--json", "Print setup result as JSON")
   .option(
     "--force",
@@ -73,6 +90,7 @@ export const setupCommand = new Command("setup")
   .action(async (agentArg: string | undefined, opts: SetupCommandOptions) => {
     const agent = resolveAgentSelection(agentArg, opts.agent);
     const scope = resolveConfigScope(opts.scope);
+    const profile = resolveSetupProfile(opts);
 
     const defaultChannel = await resolveDefaultChannel(cliVersion);
     const config = await configureAgentMcp({
@@ -82,9 +100,10 @@ export const setupCommand = new Command("setup")
       print: opts.print,
       localDev: Boolean(opts.localDev) || process.env.SUMMER_DEV === "1",
       channel: opts.channel ?? process.env.SUMMER_CHANNEL ?? defaultChannel.channel,
+      profile,
     });
     const games =
-      opts.games === false || opts.print
+      opts.games === false || opts.assetsOnly || opts.print
         ? null
         : await configureSummerGamesMcp({ agent, scope, dryRun: opts.dryRun });
     if (!opts.channel && !process.env.SUMMER_CHANNEL && defaultChannel.note && !opts.print) {
@@ -98,6 +117,7 @@ export const setupCommand = new Command("setup")
       scope,
       recommended: Boolean(opts.recommended),
       stableOnly: Boolean(opts.stableOnly),
+      assetsOnly: Boolean(opts.assetsOnly),
     });
 
     const doctor = await runDoctor({ quiet: true });
@@ -124,6 +144,19 @@ export const setupCommand = new Command("setup")
       process.exit(1);
     }
   });
+
+/** --assets-only means the assets profile; --profile must name a profile and agree with it. */
+function resolveSetupProfile(opts: SetupCommandOptions): Profile | undefined {
+  const profile = opts.profile === undefined ? undefined : parseProfile(opts.profile);
+  if (profile === null) {
+    throw new Error(`Unknown --profile "${opts.profile}". Use one of: ${Object.keys(PROFILES).join(", ")}.`);
+  }
+  if (opts.assetsOnly) {
+    if (profile && profile !== "assets") throw new Error("--assets-only uses the assets profile; leave out --profile.");
+    return "assets";
+  }
+  return profile;
+}
 
 function printSetupResult(
   config: Awaited<ReturnType<typeof configureAgentMcp>>,
@@ -157,6 +190,9 @@ function printSetupResult(
     console.log(
       `  ${c.dim(`(channel ${config.channel})`)}  MCP server command: ${c.dim(`${config.server.command} ${config.server.args.join(" ")}`)}`
     );
+  }
+  if (config.profile !== "full") {
+    console.log(`  ${c.dim(`(profile ${config.profile})`)}  ${c.dim(PROFILE_NOTES[config.profile])}`);
   }
 
   if (games) {
@@ -216,9 +252,8 @@ function printSetupResult(
 
   if (doctor.ok && skills.status !== "failed" && !config.dryRun) {
     console.log("");
-    console.log(
-      `${c.dim("Try it:")} open ${label} and ask: ${c.bold("\"add a DirectionalLight3D and Camera3D to my scene\"")}`
-    );
+    const ask = config.profile === "assets" ? "make a sword clash sound effect" : "add a DirectionalLight3D and Camera3D to my scene";
+    console.log(`${c.dim("Try it:")} open ${label} and ask: ${c.bold(`"${ask}"`)}`);
   }
 }
 

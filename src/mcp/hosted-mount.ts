@@ -46,6 +46,8 @@ export interface HostedMountState {
   resources: string[];
   /** Hosted names the local MCP already defines (kept local). */
   collisions: string[];
+  /** Hosted tools left out because the server's tool limit was reached. */
+  overLimit: string[];
   error?: { code: string; message: string; recovery: string };
 }
 
@@ -77,14 +79,22 @@ function errorText(error: { code: string; message: string; recovery: string }) {
  * reports each mounted tool's own JSON Schema rather than the passthrough one.
  * Returns mount(), which callers run after connect without awaiting it.
  */
+export interface HostedMountOptions {
+  firstListWaitMs?: number;
+  /** The profile's filter: false leaves a hosted tool out. Default: every tool. */
+  includeTool?: (name: string) => boolean;
+  /** Mount no tool once the server has this many. Default: no limit. */
+  maxTools?: number;
+}
+
 export function prepareHostedMount(
   server: McpServer,
   deps: HostedMountDependencies = defaultHostedMountDependencies,
-  options: { firstListWaitMs?: number } = {}
+  options: HostedMountOptions = {}
 ) {
   const firstListWaitMs = options.firstListWaitMs ?? FIRST_LIST_WAIT_MS;
   let listed = false;
-  const state: HostedMountState = { status: "idle", tools: [], prompts: [], resources: [], collisions: [] };
+  const state: HostedMountState = { status: "idle", tools: [], prompts: [], resources: [], collisions: [], overLimit: [] };
   const schemas = new Map<string, Tool>();
   const registries = server as unknown as Registries;
 
@@ -187,6 +197,11 @@ export function prepareHostedMount(
         continue;
       }
       if (schemas.has(tool.name)) continue;
+      if (options.includeTool && !options.includeTool(tool.name)) continue;
+      if (options.maxTools !== undefined && Object.keys(registries._registeredTools).length >= options.maxTools) {
+        if (!state.overLimit.includes(tool.name)) state.overLimit.push(tool.name);
+        continue;
+      }
       schemas.set(tool.name, tool);
       server.registerTool(
         tool.name,
@@ -239,7 +254,13 @@ export function prepareHostedMount(
     statusTool = null;
     state.status = "mounted";
     delete state.error;
-    appendMcpLogEvent("mcp:hosted_mounted", { tools: state.tools.length, prompts: state.prompts.length, resources: state.resources.length, collisions: state.collisions.length });
+    appendMcpLogEvent("mcp:hosted_mounted", {
+      tools: state.tools.length,
+      prompts: state.prompts.length,
+      resources: state.resources.length,
+      collisions: state.collisions.length,
+      ...(state.overLimit.length ? { overLimit: state.overLimit } : {}),
+    });
     return state;
   }
 

@@ -57,6 +57,7 @@ import { registerFabricateTools } from "./fabricate-tools.js";
 import { registerUiTools } from "./ui-tools.js";
 import { registerRuntimeTools } from "./runtime-tools.js";
 import { registerAppTools } from "./app-tools.js";
+import { withMaxCharactersArg } from "../tool-surface.js";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const toolsDir = join(packageRoot, "library", "tools");
@@ -256,7 +257,8 @@ function collectRegisteredTools(): RegisteredTool[] {
       let shape: Shape;
       if (!raw) shape = { type: "object", properties: {}, required: [] };
       else if (isZod(raw)) shape = zodToShape(raw, name);
-      else shape = objectShape(raw, name);
+      // server.ts adds maxCharacters to capped tools at registration.
+      else shape = objectShape(withMaxCharactersArg(name, raw), name);
       registered.push({ name, shape });
       return { name };
     },

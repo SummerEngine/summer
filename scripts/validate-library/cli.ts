@@ -14,7 +14,8 @@
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import { runValidation } from "./index.ts";
+import { runValidation, SKILL_DESCRIPTION_BUDGET } from "./index.ts";
+import { SINGLE_EDIT_CHAIN_LIMIT } from "./scene-edits.ts";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const defaultRoot = path.resolve(scriptDir, "..", "..");
@@ -53,6 +54,21 @@ if (result.ok) {
       result.warnings.length > 0 ? `${result.warnings.length} warning(s)` : "",
     ].filter(Boolean);
     console.log(`validate-library: ${result.resourceCount} resource(s) valid, 0 errors${extras.length > 0 ? `, ${extras.join(", ")}` : ""}.`);
+    if (result.callExamples) {
+      console.log(
+        `validate-library: ${result.callExamples.checked} skill call example(s) match their tool's input_schema (${result.callExamples.skipped} elided or unparsable ones skipped).`,
+      );
+    }
+    if (result.sceneEditBlocks !== undefined) {
+      console.log(
+        `validate-library: ${result.sceneEditBlocks} code block(s) checked: none chains ${SINGLE_EDIT_CHAIN_LIMIT}+ single scene edits or infers a type from ctx.`,
+      );
+    }
+    if (result.skillDescriptionChars !== undefined) {
+      console.log(
+        `validate-library: installed skill descriptions total ${result.skillDescriptionChars} of ${SKILL_DESCRIPTION_BUDGET} characters.`,
+      );
+    }
   }
   process.exit(0);
 } else {

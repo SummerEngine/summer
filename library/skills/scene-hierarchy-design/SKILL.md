@@ -1,6 +1,6 @@
 ---
 name: scene-hierarchy-design
-description: "Structure Summer Engine scenes by access pattern — asset vs live hierarchies, wrapper nodes per operation, sub-scenes for reuse, path-agnostic logic."
+description: "Structure scenes by access pattern: asset vs live hierarchies, wrapper nodes, sub-scenes, path-agnostic code."
 license: MIT
 category: workflow
 tags:

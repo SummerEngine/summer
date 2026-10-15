@@ -1,21 +1,21 @@
 ---
 name: facial-and-lipsync
-description: "Make a character's mouth move with a voice-over — phoneme extraction from audio, viseme blendshape mapping, and emotional facial expressions."
+description: "Make a character's mouth move with a voice-over: phonemes, viseme blendshapes, facial expressions."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: animation
 user-invocable: false
-allowed-tools: Read Grep Edit Write summer_search_assets summer_inspect_resource summer_inspect_node summer_generate_audio summer_generate_motion summer_run_script summer_add_node summer_set_prop summer_set_resource_property summer_save_scene summer_get_script_errors
+allowed-tools: Read Grep Edit Write summer_assets_search summer_inspect_resource summer_inspect_node summer_assets_generate_audio summer_assets_generate_motion summer_run_script summer_add_node summer_set_prop summer_set_resource_property summer_save_scene summer_get_script_errors summer_jobs_wait summer_call
 paths: ["**/*.gd", "**/*.tscn", "**/*.tres"]
 ---
 
 # Facial Animation & Lipsync
 
-Half generative, half authored. The *generative* half: an audio file (TTS via `summer_generate_audio` with `capability: "text_to_speech"`) goes through a phoneme-extraction tool (Summer does NOT wrap one — you run it externally), out comes a viseme timeline — a list of `{ phoneme, start_time, duration }` triples. The *authored* half: the character's face mesh must have BlendShapes named for the standard viseme set, or the timeline has nothing to drive. Without both halves, you get a talking robot.
+Half generative, half authored. The *generative* half: an audio file (TTS via `assets.generate_audio` with `capability: "text_to_speech"`) goes through a phoneme-extraction tool (Summer does NOT wrap one — you run it externally), out comes a viseme timeline — a list of `{ phoneme, start_time, duration }` triples. The *authored* half: the character's face mesh must have BlendShapes named for the standard viseme set, or the timeline has nothing to drive. Without both halves, you get a talking robot.
 
 The pipeline:
 
-1. **Audio in** — `.wav`/`.mp3` from `summer_generate_audio({capability: "text_to_speech", ...})` or imported VO.
+1. **Audio in** — `.wav`/`.mp3` from `assets.generate_audio({ capability: "text_to_speech", ... })` or imported VO.
 2. **Phoneme extraction** — done OUTSIDE Summer. Recommended: **Rhubarb Lip Sync** (open source, widely used for game lipsync; outputs JSON with mouth-shape cues over time). Alternatives: gentle, allosaurus, or a Whisper-phoneme model on Replicate / Hugging Face. There is no `summer_*` MCP for this in the current engine.
 3. **Viseme mapping** — phonemes / Rhubarb cues → Oculus / Apple ARKit viseme set (15 standard shapes covers English).
 4. **BlendShape driver** — at runtime, lerp the mesh's BlendShape weights along the timeline, synced to audio playback.
@@ -32,7 +32,7 @@ The pipeline:
 ## When NOT to use this skill
 
 - Character has no face / no BlendShapes (helmeted soldier, robot, mascot). Hard-skip to body language via `generate-motion`.
-- The dialogue is written but not yet voiced — generate audio first via `summer_generate_audio({capability: "text_to_speech", ...})`. Lipsync without audio has nothing to sync to.
+- The dialogue is written but not yet voiced — generate audio first via `assets.generate_audio({ capability: "text_to_speech", ... })`. Lipsync without audio has nothing to sync to.
 - Pre-rendered cinematic from external DCC. Lipsync is in the rendered video, not the engine.
 
 ## Steps
@@ -47,27 +47,26 @@ Look for `mesh.blend_shape_count` > 0 and a list of names. An ARKit-52 head has 
 
 If the head has zero BlendShapes, stop. Tell the user: "This head mesh has no BlendShapes — facial animation needs shape keys on the mesh. Options: use an emotional body-language overlay instead, author shape keys in Blender and re-import, or hand the character to a 3D artist." Don't proceed.
 
-Do **not** promise a `face_blendshapes` generation option. `summer_generate_3d`
-has no such parameter and nothing in the Summer generation pipeline handles one
-— `options` is an untyped passthrough, so a bogus key is accepted by the schema
-and then silently ignored by the backend. Regenerating will not add BlendShapes.
+Do **not** promise a `face_blendshapes` generation option. `assets.generate_3d`
+has no such field and nothing in the Summer generation pipeline handles one; a
+field the operation does not list does nothing. Regenerating will not add BlendShapes.
 Shape keys come from the mesh author (Blender / an ARKit-52 source mesh), not
 from a rig pass.
 
 ### 2. Get the audio
 
-If the user has VO already, use it. If not, generate via TTS. The `voiceId` is an ElevenLabs voice ID — the user has to pick one from the ElevenLabs voice library (https://elevenlabs.io/app/voice-library) or upload/clone their own. There is no "voice name" string; it's always an ID like `21m00Tcm4TlvDq8ikWAM` (Rachel) or a custom-cloned ID.
+If the user has VO already, use it. If not, generate via TTS. On the ElevenLabs models the `voiceId` must be one of Summer's game-cast voices (the `voice-line` skill lists them with their ids); any other id is refused. There is no "voice name" string; it's always an ID like `IKne3meq5aSn9XLyUdCD` (Charlie, the hero).
 
 ```
-summer_generate_audio({
+assets.generate_audio({
   capability: "text_to_speech",
   text: "Welcome to the village, traveler.",
-  voiceId: "<elevenlabs_voice_id>"
+  voiceId: "<cast voice id>"
 })
-// returns { jobId, ... } — poll with summer_check_job for the audio asset
+// answers at once with asset: { assetId, fileUrl, durationSeconds }
 ```
 
-If the user hasn't picked a voice yet, stop and ask: "Which ElevenLabs voice ID should I use? You can browse the library at elevenlabs.io/app/voice-library and copy the ID, or paste a custom-clone ID from your account."
+If the user hasn't picked a voice yet, stop and ask which cast voice fits the character (see `voice-line`).
 
 ### 3. Extract phonemes (the generative step — runs OUTSIDE Summer)
 
@@ -296,7 +295,7 @@ production speech recognition or photoreal lip sync.
 
 ## Handoff
 
-- For voice generation upstream, `voice-line` (which wraps `summer_generate_audio({capability: "text_to_speech", ...})`).
+- For voice generation upstream, `voice-line` (which wraps `assets.generate_audio({ capability: "text_to_speech", ... })`).
 - For dialogue scripts and conversation flow, `design-npc`.
 - For the AnimationTree this layer composes into, `animation-tree`.
 - For idle blinks, saccades, and head-tracking that complement lipsync, `procedural-animation`.

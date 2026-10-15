@@ -1,7 +1,7 @@
 id: skill/agent-playtesting
 kind: skill
 version: 1.0.0
-summary: Playtest by driving the LIVE game — deterministic launch, frame-stamped probes before/after each action, exact frame steps, scripted or recorded input.
+summary: "Playtest by driving the live game: deterministic launch, frame-stamped probes, scripted or recorded input."
 use_when:
   - proving a gameplay feature works by driving the running game frame by frame with the runtime tools (summer_game_probe, summer_game_input, summer_game_control, summer_runtime_set/call/spawn/animate)
   - a bug repro or an A/B needs a deterministic launch (seed, fixed frame rate, offscreen instance), a recorded input replay, or two instances side by side

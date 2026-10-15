@@ -42,7 +42,7 @@ proves nothing.
 | Local Play | `unavailable` | Works from a fixture: empty unless `.summer/test-users.json` lists item templates (step 5) |
 | Guests, older Summer apps | Readiness reports `unavailable` | Readiness reports `unavailable` |
 
-Items and offers are created in your game's Studio pages (`summer_open` target
+Items and offers are created in your game's Studio pages (`studio.open` target
 `game`). Code never creates items.
 
 This skill extends the Courtyard game from `multiplayer-project` and

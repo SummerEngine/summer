@@ -1,6 +1,6 @@
 ---
 name: camera-rigs
-description: "Camera rigs for 2D and 3D: Camera2D follow with limits, first-person head camera, SpringArm3D third-person, orthographic top-down, FOV guidance."
+description: "Camera rigs: Camera2D follow with limits, first-person head, SpringArm3D third-person, top-down, FOV."
 license: MIT
 compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode]
 category: scene-and-project
@@ -55,7 +55,7 @@ Same as above minus the platformer edge-lock urgency. Zoom out to show the field
 ## 3D first-person camera
 
 Camera is a child of a `Head` node on the player. Body yaws, Head pitches. See
-the `character-movement` skill (its `../character-movement/references/movement-3d.md`) or
+the `character-movement` skill (its 3D movement reference: `summer_docs_read` id `skill/character-movement/references/movement-3d.md`) or
 `fps-controller` for the look script. FOV 70-75, near 0.05.
 
 ```

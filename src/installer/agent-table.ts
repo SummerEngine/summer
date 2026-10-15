@@ -259,7 +259,7 @@ const SPECS: readonly AgentSpec[] = [
     restart: "Quit and reopen Claude Desktop; the summer-engine tools appear under the tools menu in a new chat.",
     skills: null,
     noSkillsNote:
-      "Claude Desktop has no skills folder. The MCP server ships summer_get_agent_playbook, so the model can pull Summer guidance in-chat.",
+      "Claude Desktop has no skills folder. The MCP server ships summer_docs_search and summer_docs_read, so the model can pull Summer guidance in-chat.",
   },
   {
     id: "codex",
@@ -273,7 +273,8 @@ const SPECS: readonly AgentSpec[] = [
       signIn: (name) => `In Codex, run /mcp login ${name} (or \`codex mcp login ${name}\` in a terminal) and sign in.`,
     },
     mcp: {
-      user: home(".codex", "config.toml"),
+      // Codex reads its config from $CODEX_HOME (default ~/.codex).
+      user: (ctx) => join(ctx.env.CODEX_HOME || join(ctx.home, ".codex"), "config.toml"),
       project: project(".codex", "config.toml"),
       projectNote: "Codex only loads project .codex/config.toml from trusted projects.",
     },
@@ -468,7 +469,7 @@ const SPECS: readonly AgentSpec[] = [
     mcp: { user: home(".mcp.json"), project: project(".mcp.json") },
     restart: "Restart Visual Studio, open Copilot Chat in Agent mode, and enable summer-engine in the tools picker.",
     skills: null,
-    noSkillsNote: "Visual Studio's Copilot has no skills folder yet; the MCP server ships summer_get_agent_playbook for in-chat guidance.",
+    noSkillsNote: "Visual Studio's Copilot has no skills folder yet; the MCP server ships summer_docs_search and summer_docs_read for in-chat guidance.",
   },
   {
     id: "copilot-jetbrains",
@@ -487,7 +488,7 @@ const SPECS: readonly AgentSpec[] = [
     },
     restart: "Restart the JetBrains IDE and open Copilot Chat in Agent mode; summer-engine shows in the tools list.",
     skills: null,
-    noSkillsNote: "Copilot in JetBrains documents no skills folder; the MCP server ships summer_get_agent_playbook for in-chat guidance.",
+    noSkillsNote: "Copilot in JetBrains documents no skills folder; the MCP server ships summer_docs_search and summer_docs_read for in-chat guidance.",
   },
   {
     id: "opencode",
@@ -610,7 +611,7 @@ const SPECS: readonly AgentSpec[] = [
     },
     restart: "Restart Trae and open the MCP settings; summer-engine should show as connected.",
     skills: null,
-    noSkillsNote: "Trae documents no skills folder; the MCP server ships summer_get_agent_playbook for in-chat guidance.",
+    noSkillsNote: "Trae documents no skills folder; the MCP server ships summer_docs_search and summer_docs_read for in-chat guidance.",
   },
   {
     id: "qwen-code",
@@ -704,7 +705,7 @@ const SPECS: readonly AgentSpec[] = [
     mcp: { user: home(".junie", "mcp", "mcp.json"), project: project(".junie", "mcp", "mcp.json") },
     restart: "Restart the JetBrains IDE so Junie reloads its MCP config.",
     skills: null,
-    noSkillsNote: "Junie has no skills folder; put project guidance in .junie/guidelines.md. The MCP server ships summer_get_agent_playbook for in-chat guidance.",
+    noSkillsNote: "Junie has no skills folder; put project guidance in .junie/guidelines.md. The MCP server ships summer_docs_search and summer_docs_read for in-chat guidance.",
   },
   {
     id: "warp",
@@ -788,7 +789,7 @@ const SPECS: readonly AgentSpec[] = [
       "Open LM Studio, toggle on the summer-engine MCP server in the Program tab, and raise the loaded model's context length to 32k or higher.",
     skills: null,
     noSkillsNote:
-      "LM Studio has no rules or skills folder. The MCP server ships summer_get_agent_playbook, so the model can pull Summer guidance in-chat.",
+      "LM Studio has no rules or skills folder. The MCP server ships summer_docs_search and summer_docs_read, so the model can pull Summer guidance in-chat.",
   },
 ];
 

@@ -1,6 +1,6 @@
 ---
 name: instantiate-asset-pack
-description: "Import a whole create-asset-sheet pack into the scene: groups composites, sorts paint order, emits Sprite2D/Node2D/NinePatchRect ops to lay it out."
+description: "Lay out a whole create-asset-sheet pack in the scene: composites, paint order, Sprite2D and NinePatch."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
@@ -228,7 +228,7 @@ Pack has a composite parent `settings_panel` (filtered out) plus three children:
 
 After this, hand `panel_bg` and `apply_button` to `use-widget-asset` to set `patch_margin_*` from their `widget.frameMargins`.
 
-Note the ops format: `position` is the **engine variant string** `"Vector2(0, 0)"`, not a JSON object. `z_index` is a bare integer. This is the format Summer Engine expects — see `../../references/mcp-tools-reference/mcp-tools-reference.md`.
+Note the ops format: `position` is the **engine variant string** `"Vector2(0, 0)"`, not a JSON object. `z_index` is a bare integer. This is the format Summer Engine expects — see `summer_docs_read` id `reference/mcp-tools-reference`.
 
 ## Failure modes
 

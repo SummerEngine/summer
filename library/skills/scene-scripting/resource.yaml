@@ -1,7 +1,7 @@
 id: skill/scene-scripting
 kind: skill
-version: 1.1.1
-summary: One GDScript in the live editor (summer_run_script) builds scenes, 2D levels, HUDs and gameplay wiring instead of CRUD chains; verify with diff + screenshot.
+version: 1.2.0
+summary: "Build scenes, levels, HUDs and wiring with one editor GDScript (summer_run_script) instead of call chains."
 use_when:
   - a scene change needs 3+ related ops or any computed placement — scattering, grids, rings, procedural meshes, geometry helpers, terrain, lighting rigs, keyframe animation, shader FX
   - a 2D level (tilemap paint, bodies, camera limits, parallax), an animated sprite, a HUD or Control tree, a persisted signal connection, an attached script, a prefab, input actions, an autoload, or the main scene should be built in one script
@@ -11,7 +11,7 @@ do_not_use_when:
   - a single property tweak — summer_set_prop is cheaper
   - one signal, one input binding, or one project setting — summer_connect_signal, summer_input_map_bind, summer_project_setting are one call each and ship today
   - "the engine build lacks RunSceneScript (Summer Engine 0.5.66 or newer; older engines return engine_lacks_op) — RunEditorScript and RunVerification DO ship today, so fall back to summer_run_editor_script or the scene tools"
-  - "the 2D/UI/gameplay-code ctx helpers (Summer Engine 0.5.66 or newer) are missing on the engine — the skill's fallback table names what works everywhere"
+  - "the 2D/UI/gameplay-code ctx helpers (Summer Engine 0.5.66 or newer) are missing on the engine — the fallback table in its references/ctx-api.md names what works everywhere"
 facets:
   lifecycle:
     - build
@@ -52,7 +52,7 @@ related:
     - template/2d-platformer
 source: official
 license: MIT
-status: preview
+status: stable
 recommended: true
 aliases:
   - skills/workflow/scene-scripting

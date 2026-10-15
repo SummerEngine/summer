@@ -1,6 +1,6 @@
 id: tool/export-game
 kind: tool
-version: 1.0.0
+version: 1.0.1
 summary: Export the game in the exact file the Summer Games store takes per platform (iPhone, Android, macOS, Windows bundle; web build; desktop download), headless.
 use_when:
   - '"export my game for summer.games"'
@@ -8,7 +8,7 @@ use_when:
   - '"export my game for iPhone and Android on Summer Games"'
   - '"make a web build of my game for summer.games"'
   - '"export a Mac or Windows download for my store page"'
-  - preparing the bundle that summer_publish_build uploads
+  - preparing the bundle that store.upload_file uploads
 do_not_use_when:
   - exporting for Steam, itch.io, the App Store, Google Play or other stores — skill/export-and-ship
   - the game is still being built; export when the user wants a Build
@@ -23,7 +23,7 @@ compatibility:
   engine: ">=4.6"
 source: official
 license: MIT
-status: preview
+status: stable
 aliases:
   - summer_export_game
 implementation:

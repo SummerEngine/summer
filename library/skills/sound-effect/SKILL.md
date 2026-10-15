@@ -1,11 +1,11 @@
 ---
 name: sound-effect
-description: "Make SFX one-shots and timed sequences (swings, hits, whooshes, reloads, UI) - offer three model versions to pick from, then wire them as AudioStreamPlayers."
+description: "Make sound effects (swings, hits, whooshes, reloads, UI): three versions to pick from, then wire them."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_generate_sfx_choices summer_get_choices summer_generate_audio summer_search_assets summer_import_from_url summer_import_asset_by_id summer_add_node summer_set_prop summer_instantiate_scene summer_inspect_node summer_get_scene_tree
+allowed-tools: Read Grep Glob Write Edit summer_assets_generate_sfx_choices summer_assets_choices summer_assets_generate_audio summer_assets_search summer_import_from_url summer_import_asset_by_id summer_add_node summer_set_prop summer_instantiate_scene summer_inspect_node summer_get_scene_tree summer_call
 paths: ["audio/sfx/**", "scripts/**", "**/*.tscn"]
 ---
 
@@ -17,8 +17,8 @@ paths: ["audio/sfx/**", "scripts/**", "**/*.tscn"]
 >
 > Say why in one plain line: the best model changes a lot from one sound to the next, so picking by ear gives a better result.
 >
-> - **Yes** → `summer_generate_sfx_choices`, tell them the returned `say` text, then `summer_get_choices` until they decide. Import the approved clips and wire them. The model they approve becomes their default.
-> - **No** → `summer_generate_audio` with `capability: "sound_effects"` and **no** `modelId` (it uses their approved default, else ElevenLabs).
+> - **Yes** → `assets.generate_sfx_choices`, tell them where to listen (their Studio tab opens the page, else `reviewUrl`), then `assets.choices` until they decide. Import the approved clips and wire them. The model they approve becomes their default.
+> - **No** → `assets.generate_audio` with `capability: "sound_effects"` and **no** `modelId` (it uses their approved default, else ElevenLabs).
 >
 > Ask once per chat. After they answer, do not ask again in the same chat; follow their answer for the rest of it.
 
@@ -38,7 +38,7 @@ Read `.summer/audio-bible.md` if it exists and map the request to one of its SFX
 
 ### 2. Reuse before you generate
 
-Generation costs credits. `summer_search_assets(query="<subject>", assetType="audio", source="all")`; if a clip fits, ask whether to use it.
+Generation costs credits (`dryRun: true` on the generate call shows how many). `assets.search({ query: "<subject>", assetType: "audio", scope: "all" })`; if a clip fits, ask whether to use it.
 
 ### 3. Write the prompt
 
@@ -60,7 +60,7 @@ Foley one-shot: <physical event with materials>, <transient + tail described>, c
 Foley sequence, exactly 2 seconds, three distinct mechanical sounds: at 0.2 s the empty magazine is released and pulled out with a metal click; at 1.0 s a full magazine is slammed in with a solid clack; at 1.6 s the charging handle is pulled back and released with a sharp metallic snap. Close-mic, dry, no gunshot, no music.
 ```
 
-**Loops:** write `seamless loop` in the text and pass `loop: true`. Only ElevenLabs SFX v2 makes loops: use `summer_generate_audio` with `modelId: "eleven_text_to_sound_v2"`, or include it in a choice set.
+**Loops:** write `seamless loop` in the text and pass `loop: true`. Only ElevenLabs SFX v2 makes loops: use `assets.generate_audio` with `modelId: "eleven_text_to_sound_v2"`, or include it in a choice set.
 
 Avoid: vibe words (`epic`, `cool`, `realistic`), several unrelated events in one prompt (split them, unless it is a timed sequence), and no length.
 
@@ -87,34 +87,34 @@ Show the prompt and the length before you call; every version is a billed genera
 **Choice set (the person said yes):**
 
 ```
-summer_generate_sfx_choices(text: "<prompt>", durationSeconds: 1.0)
+assets.generate_sfx_choices({ text: "<prompt>", durationSeconds: 1.0 })
 ```
 
-The page opens in their open Summer Studio tab, else in the browser. Tell them the returned `say` text; if `shown` is `not_opened`, give them `reviewUrl`. Do not pick for them. Then:
+The answer has `choiceSetId`, `reviewUrl`, the `clips` and `studioTabOpened`. The page opens in their open Summer Studio tab; if `studioTabOpened` is false, give them `reviewUrl`. Do not pick for them. Then:
 
 ```
-summer_get_choices(choiceSetId: "<id>", waitSeconds: 50)
+assets.choices({ choiceSetId: "<id>", waitSeconds: 50 })
 ```
 
-Call it again while `status` is `pending`. When it is `decided`, each entry in `approved` has `audioUrl`, `assetId`, `fileExtension` and the person's `note`. If they approved none, ask what to change and make a new set.
+Call it again while `status` is `pending`. When it is `decided`, each clip with `approved: true` has `audioUrl`, `assetId` and the person's `note`. If they approved none, ask what to change and make a new set.
 
 **One version (the person said no, or later sounds after a decided set):**
 
 ```
-summer_generate_audio(capability: "sound_effects", text: "<prompt>", durationSeconds: 1.0)
+assets.generate_audio({ capability: "sound_effects", text: "<prompt>", durationSeconds: 1.0 })
 ```
 
-Leave out `modelId` so their approved default runs. The description goes in `text`, not `prompt` (`prompt` gives a 400 `text_required` here).
+Leave out `modelId` so their approved default runs. The description goes in `text`, not `prompt` (without `text` the call is refused: `text_required`). The answer's `asset` has `assetId`, `fileUrl` and `durationSeconds`.
 
 No Summer project (an asset-only request, or the engine is not installed or not running): stop here. The clips are in the person's Summer library; give them the `audioUrl` of each approved version and skip steps 7 and 8.
 
 ### 7. Import
 
 ```
-summer_import_from_url(url: "<audioUrl>", path: "res://audio/sfx/sword_clash_01.<fileExtension>")
+summer_import_from_url(url: "<audioUrl>", path: "res://audio/sfx/sword_clash_01.<ext>")
 ```
 
-or `summer_import_asset_by_id(assetId: "<assetId>", path: "res://audio/sfx/sword_clash_01.<fileExtension>")`. Keep the extension of the file you got. When the person approved several versions, import each one (`_01`, `_02`, …) and play a random one per event for variety.
+or `summer_import_asset_by_id(assetId: "<assetId>", path: "res://audio/sfx/sword_clash_01.<ext>")`. Keep the extension of the file you got (the end of `audioUrl` or `fileUrl`). When the person approved several versions, import each one (`_01`, `_02`, …) and play a random one per event for variety.
 
 One-shots keep loop OFF in the Import dock; looping a one-shot clicks. For a loop: WAV uses Edit > Loop Mode = Forward; OGG/MP3 use Loop = on.
 
@@ -126,13 +126,18 @@ One-shots keep loop OFF in the Import dock; looping a one-shot clicks. For a loo
 | `AudioStreamPlayer2D` | 2D positional |
 | `AudioStreamPlayer3D` | 3D positional (weapon swing in the world, footstep) |
 
-Every scene-mutating tool takes an explicit `scenePath`, node paths are relative to the scene root (`./`), and the property argument is `key`:
+One script adds the player with its settings; `scenePath` is the exact scene to change:
 
 ```
-summer_add_node(scenePath="res://main.tscn", parent="./Player", type="AudioStreamPlayer3D", name="SwingSFX")
-summer_set_prop(scenePath="res://main.tscn", path="./Player/SwingSFX", key="stream", value="res://audio/sfx/sword_swing_01.wav")
-summer_set_prop(scenePath="res://main.tscn", path="./Player/SwingSFX", key="bus", value="SFX")
-summer_set_prop(scenePath="res://main.tscn", path="./Player/SwingSFX", key="max_distance", value=25.0)
+summer_run_script(scenePath="res://main.tscn", source="""
+func run(ctx):
+    ctx.add_node("AudioStreamPlayer3D", "SwingSFX", ctx.find("Player"), {
+        "stream": load("res://audio/sfx/sword_swing_01.wav"),
+        "bus": "SFX",
+        "max_distance": 25.0,
+    })
+    ctx.save_scene()
+""")
 ```
 
 The bus must match the bible (`SFX`, `UI`, `Ambient`, …); the default bus is `Master`. If the bus does not exist, run `/audio-direction`.
@@ -156,6 +161,10 @@ Save it as a `.tscn` and instantiate it per event in GDScript (`preload(...).ins
 
 `summer_inspect_node(path="Player/SwingSFX")`: verify `stream`, `bus`, `volume_db`. Too quiet: raise `volume_db` (+3 to +9, never past +12), else regenerate with a heavier description. Too long: `stop()` on a timer.
 
+## Without Summer Engine
+
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-6 and skip steps 7-9 (import, wiring, scene check). With `assets.generate_sfx_choices`, the person picks in the page; then get each approved clip from its `audioUrl` in `assets.choices` or with `assets.get` (its `downloadUrl`), save it where the person asked, and tell them the path and format.
+
 ## Fallback (no MCP)
 
 Print the prompt, the length and the target path (`res://audio/sfx/<name>.wav`), and tell the person to make it in Summer Studio, then import it.
@@ -166,4 +175,4 @@ Print the prompt, the length and the target path (`res://audio/sfx/<name>.wav`),
 - `ambient-bed` — long looping textures
 - `music-track` — music
 - `voice-line` — speech
-- `../../references/mcp-tools-reference/mcp-tools-reference.md`
+- `summer_docs_read` id `reference/mcp-tools-reference`

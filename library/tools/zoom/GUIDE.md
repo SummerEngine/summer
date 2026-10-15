@@ -1,0 +1,5 @@
+# summer_zoom
+
+High-resolution close look at part of a frame: region [x, y, w, h] (fractions of the frame) or mark N from a marks render of the same pose. The camera renders the EXACT sub-frustum of that region at full output resolution, so you see real texture detail, seams, gaps and floating pieces, not upscaled pixels. A region is honoured exactly (no pad by default, never widened to an aspect ratio: the image takes the region's own aspect, with dark bars only for extreme shapes); a mark gets pad 0.15.
+
+Use after a sheet or debug view shows something suspicious. view picks beauty or a debug view. Returns the zoomed image + caption (the real zoom factor, the rendered region, widened_because when it is larger than asked, mark -> node path and a warning when that node is hidden). Read-only: the scene file, the open tab and the undo history are never touched (the render is an offscreen copy of the SAVED scene). The image arrives inline; the caption carries poses, labels and numbers. Failures are structured (failure_reason), never a silent fallback.

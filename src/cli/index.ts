@@ -20,6 +20,7 @@ import { opsCliCommands } from "./commands/ops.js";
 import { getBanner } from "./banner.js";
 import { runRootAction } from "./root-action.js";
 import { c, sym } from "../core/format.js";
+import { resolveSurface } from "../core/tool-profiles.js";
 
 import { TOOLKIT_VERSION as version } from "../core/version.js";
 
@@ -56,8 +57,8 @@ export function runCli(mcpCommand: Command): void {
   program.addCommand(configCommand);
   program.addCommand(eventsCommand);
   program.addCommand(toolCommand);
-  // The 4.0 operation catalog (`summer <area> <action>`), off until it passes its eval.
-  if ((process.env.SUMMER_SURFACE ?? "").trim().toLowerCase() === "v4") {
+  // The 4.0 operation catalog (`summer <area> <action>`); SUMMER_SURFACE=v3 leaves it out.
+  if (resolveSurface(undefined) === "v4") {
     for (const command of opsCliCommands()) program.addCommand(command);
   }
 

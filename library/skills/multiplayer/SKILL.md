@@ -1,6 +1,6 @@
 ---
 name: multiplayer
-description: "Start here for Summer multiplayer: how the authority, clients, Worlds and Sessions fit, and which skill comes next."
+description: "Start here for Summer multiplayer: how authority, clients, Worlds and Sessions fit, and what comes next."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: multiplayer-and-networking

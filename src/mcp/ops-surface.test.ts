@@ -94,8 +94,10 @@ describe("v4, engine profile", () => {
   it("lists the offline engine class reference, and ends library reads with the v4 feedback footer", async () => {
     const { client, close } = await session("engine", "v4");
     try {
-      const names = (await client.listTools()).tools.map((tool) => tool.name);
+      const tools = (await client.listTools()).tools;
+      const names = tools.map((tool) => tool.name);
       expect(names).toContain("summer_api_docs");
+      expect(tools.find((tool) => tool.name === "summer_api_docs")!.description!.length).toBeLessThanOrEqual(300);
       const read = await client.callTool({ name: "summer_docs_read", arguments: { id: "skill/multiplayer" } });
       const text = (read as { content: Array<{ text: string }> }).content.map((part) => part.text).join("\n");
       expect(text).toContain('report via summer_call {"op":"docs.feedback"}.');
@@ -204,8 +206,8 @@ describe("v4 engine operations", () => {
       expect(tools.get("summer_get_scene_tree")!.annotations).toMatchObject({ readOnlyHint: true, idempotentHint: true, openWorldHint: false });
       expect(tools.get("summer_import_from_url")!.annotations).toMatchObject({ readOnlyHint: false, openWorldHint: true });
       for (const [name, tool] of tools) {
-        // The executors and the docs area's tools (docs.search, docs.read, docs.engine_api) keep their own descriptions.
-        if (!name.startsWith("summer_") || ["summer_search", "summer_call", "summer_docs_search", "summer_docs_read", "summer_api_docs"].includes(name)) continue;
+        // The executors and the docs aliases keep their own descriptions.
+        if (!name.startsWith("summer_") || ["summer_search", "summer_call", "summer_docs_search", "summer_docs_read"].includes(name)) continue;
         const summary = (tool.description ?? "").split("\nGuide: ")[0];
         expect(summary.length, name).toBeLessThanOrEqual(300);
         expect(tool.title, name).toBeTruthy();

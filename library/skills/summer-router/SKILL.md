@@ -42,7 +42,8 @@ Not for scripted dialogue trees (`design-npc`) or pre-recorded voice lines (`voi
 ## The flow (agent, one shot)
 
 Run these from the project folder (the one with `project.godot`). Every command prints one JSON object when an
-agent runs it; exit 0 is success, 1 a failure with `error.code` and `error.fix`, 2 a usage error.
+agent runs it; exit 0 is success, 1 a failure with `error.code` and `error.fix`, 2 a usage error. If the `summer`
+command is not installed, use `npx -y summer-engine@latest` in its place.
 
 ```bash
 npx -y summer-engine@latest router setup --yes      # summer-engine MCP + this skill for Claude Code / Codex

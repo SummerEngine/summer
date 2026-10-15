@@ -91,6 +91,22 @@ describe("v4, engine profile", () => {
     }
   });
 
+  it("lists the offline engine class reference, and ends library reads with the v4 feedback footer", async () => {
+    const { client, close } = await session("engine", "v4");
+    try {
+      const names = (await client.listTools()).tools.map((tool) => tool.name);
+      expect(names).toContain("summer_api_docs");
+      const read = await client.callTool({ name: "summer_docs_read", arguments: { id: "skill/multiplayer" } });
+      const text = (read as { content: Array<{ text: string }> }).content.map((part) => part.text).join("\n");
+      expect(text).toContain('report via summer_call {"op":"docs.feedback"}.');
+      expect(text).not.toContain("summer_library_feedback");
+      const viaCall = answerOf(await client.callTool({ name: "summer_call", arguments: { op: "docs.read", input: { id: "skill/multiplayer" } } }));
+      expect(JSON.stringify(viaCall)).toContain("docs.feedback");
+    } finally {
+      await close();
+    }
+  });
+
   it("names a bad input and points at ops.describe", async () => {
     const { client, close } = await session("engine", "v4");
     try {
@@ -168,6 +184,7 @@ describe("v4, assets profile", () => {
       const names = (await client.listTools()).tools.map((tool) => tool.name);
       expect(names).toEqual(expect.arrayContaining(["summer_docs_search", "summer_search", "summer_call"]));
       expect(names).not.toContain("summer_set_prop");
+      expect(names).not.toContain("summer_api_docs");
     } finally {
       await close();
     }

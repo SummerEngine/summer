@@ -1,6 +1,7 @@
 import type { McpServer, RegisteredTool } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { answerOfHosted, searchEverywhere } from "../core/ops/cloud.js";
+import { FOOTER_SUFFIX } from "../core/library-read.js";
 import { errorAnswer, isLocalOp, legacyNames, localToolsFor, resolveOpName, type Answer } from "../core/ops/contract.js";
 
 /**
@@ -44,6 +45,26 @@ const DOCS_ALIASES: ReadonlyArray<[string, string]> = [
   ["summer_docs_read", "summer_read_library"],
 ];
 
+/** Listed with the engine tools although its operation is docs.engine_api: the offline engine class reference. */
+const ENGINE_REFERENCE = "summer_api_docs";
+
+/** The read footer in this surface's words: feedback goes through summer_call (docs.feedback is not listed). */
+export const V4_FOOTER_SUFFIX = 'If this entry is wrong, stale, or you deviate from it, report via summer_call {"op":"docs.feedback"}.';
+
+/** A library read's result with the v4 footer (and the v4 names in its description of the footer). */
+function withV4Footer(result: unknown): unknown {
+  const record = result as { content?: Array<{ type?: string; text?: unknown }> } | null;
+  if (!record || !Array.isArray(record.content)) return result;
+  return {
+    ...record,
+    content: record.content.map((part) =>
+      part.type === "text" && typeof part.text === "string" ? { ...part, text: part.text.split(FOOTER_SUFFIX).join(V4_FOOTER_SUFFIX) } : part
+    ),
+  };
+}
+
+const LIBRARY_READS = new Set(["summer_read_library", "summer_get_agent_playbook"]);
+
 function text(answer: Answer) {
   return { content: [{ type: "text" as const, text: JSON.stringify(answer) }], ...(answer.ok ? {} : { isError: true }) };
 }
@@ -82,8 +103,11 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
     const tool = tools[original];
     if (!tool || tools[alias]) continue;
     const shape = (tool.inputSchema as { shape?: Record<string, z.ZodTypeAny> } | undefined)?.shape ?? {};
-    server.tool(alias, tool.description ?? "", shape, tool.annotations ?? {}, (async (args: Record<string, unknown>, extra: unknown) =>
-      (tool.handler as (a: unknown, e: unknown) => Promise<unknown>)(args, extra)) as never);
+    const description = (tool.description ?? "").replace(/summer_library_feedback/g, 'summer_call {"op":"docs.feedback"}').replace(/summer_read_library/g, "summer_docs_read").replace(/summer_search_library/g, "summer_docs_search");
+    server.tool(alias, description, shape, tool.annotations ?? {}, (async (args: Record<string, unknown>, extra: unknown) => {
+      const result = await (tool.handler as (a: unknown, e: unknown) => Promise<unknown>)(args, extra);
+      return LIBRARY_READS.has(original) ? withV4Footer(result) : result;
+    }) as never);
   }
 
   // Listed: engine operations (when the profile has them) and the docs aliases. The rest stay callable.
@@ -91,7 +115,7 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
   for (const [name, tool] of Object.entries(tools)) {
     const op = names[name]?.op;
     if (listed.has(name)) continue;
-    if (options.engine && op?.startsWith("engine.")) continue;
+    if (options.engine && (op?.startsWith("engine.") || name === ENGINE_REFERENCE)) continue;
     tool.disable();
   }
 
@@ -106,7 +130,8 @@ export function applyOpsSurface(server: McpServer, options: OpsSurfaceOptions): 
         const path = issue?.path.join(".") || "(input)";
         return errorAnswer("invalid_input", `${path}: ${issue?.message ?? "invalid value"}.`, { details: { path }, next: { op: "ops.describe", input: { name: resolveOpName(toolName) } } });
       }
-      return answerOfLocal(await (tool.handler as (a: unknown, e: unknown) => Promise<unknown>)(parsed.data, extra));
+      const result = await (tool.handler as (a: unknown, e: unknown) => Promise<unknown>)(parsed.data, extra);
+      return answerOfLocal(LIBRARY_READS.has(toolName) ? withV4Footer(result) : result);
     }
     return answerOfLocal(await (tool.handler as (e: unknown) => Promise<unknown>)(extra));
   }

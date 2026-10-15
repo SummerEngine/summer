@@ -13,6 +13,10 @@
     "recommended": {
       "type": "boolean",
       "description": "Installed by `summer skills install --recommended` (and `summer setup`). Omitted means false."
+    },
+    "bundled": {
+      "type": "boolean",
+      "description": "Installed by bulk installs (`summer setup`, `summer skills install --all/--recommended/--assets`) and listed in the plugin manifests. Omitted means true. false keeps the skill in the library (search, summer_read_library, install by name) without putting its description in every session: for library-author tools and research digests."
     }
   },
   "unevaluatedProperties": false

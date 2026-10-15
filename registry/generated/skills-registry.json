@@ -225,7 +225,8 @@
         "gameplay",
         "character-controller",
         "game-design"
-      ]
+      ],
+      "bundled": false
     },
     {
       "id": "skill/character-animation-wiring",
@@ -582,7 +583,8 @@
       "domains": [
         "agent-workflow",
         "verification"
-      ]
+      ],
+      "bundled": false
     },
     {
       "id": "skill/grow-analytics",
@@ -663,7 +665,8 @@
         "pipeline",
         "3d",
         "scenes"
-      ]
+      ],
+      "bundled": false
     },
     {
       "id": "skill/make-game",
@@ -889,7 +892,8 @@
       "domains": [
         "rendering",
         "3d"
-      ]
+      ],
+      "bundled": false
     },
     {
       "id": "skill/publish-your-game",
@@ -915,7 +919,8 @@
       "domains": [
         "rendering",
         "vfx"
-      ]
+      ],
+      "bundled": false
     },
     {
       "id": "skill/release-readiness",
@@ -1050,7 +1055,8 @@
       "domains": [
         "agent-workflow",
         "meta"
-      ]
+      ],
+      "bundled": false
     },
     {
       "id": "skill/skill-improve",
@@ -1063,7 +1069,8 @@
       "domains": [
         "agent-workflow",
         "meta"
-      ]
+      ],
+      "bundled": false
     },
     {
       "id": "skill/skill-test",
@@ -1076,7 +1083,8 @@
       "domains": [
         "agent-workflow",
         "meta"
-      ]
+      ],
+      "bundled": false
     },
     {
       "id": "skill/skintokens-auto-rigging",
@@ -1091,7 +1099,8 @@
         "pipeline",
         "3d",
         "animation"
-      ]
+      ],
+      "bundled": false
     },
     {
       "id": "skill/skybox-panorama",
@@ -1660,7 +1669,8 @@
       "domains": [
         "agent-workflow",
         "meta"
-      ]
+      ],
+      "bundled": false
     }
   ]
 }

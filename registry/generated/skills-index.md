@@ -4,7 +4,7 @@
 
 The folder is flat on purpose (`docs/design/DECISIONS.md`, D3): a skill usually belongs to several domains, so categories live in each skill's `facets.domains` and this index is rendered from them. The first domain listed is the primary one. `summer skills list --by-domain` prints the same grouping; `summer skills info <slug>` shows one skill.
 
-Status: **stable** unless marked; *preview* = not yet exercised in-engine by the Summer team; ~~deprecated~~ installs only by name. ★ = installed by `--recommended`.
+Status: **stable** unless marked; *preview* = not yet exercised in-engine by the Summer team; ~~deprecated~~ installs only by name. ★ = installed by `--recommended`. (library only) = not installed in bulk or by the plugins; read it with `summer_read_library` or install it by name.
 
 ## Domains
 
@@ -70,18 +70,18 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [diagnosing-perf-regressions](./diagnosing-perf-regressions/SKILL.md) | Find why frame rate, frame time, or load time got worse since a known-good state — regression hunting, not general performance tuning. | performance |
 | [dispatching-parallel-agents](./dispatching-parallel-agents/SKILL.md) | Work 2+ independent tasks in parallel when they share no state and have no sequential dependencies. | meta |
 | [gameskill](./gameskill/SKILL.md) | Capture what a game-dev session just learned as a reusable skill (project, user or Summer library) so the next session starts smarter. | meta |
-| [*godogen-visual-proof-game-generation*](./godogen-visual-proof-game-generation/SKILL.md) (preview) | Godogen-style game generation with a visual QC loop — capture frames from the running game, self-verify against the brief, bounded fix rounds, proof clip. | verification |
+| [*godogen-visual-proof-game-generation*](./godogen-visual-proof-game-generation/SKILL.md) (preview) (library only) | Godogen-style game generation with a visual QC loop — capture frames from the running game, self-verify against the brief, bounded fix rounds, proof clip. | verification |
 | [headless-scripting](./headless-scripting/SKILL.md) ★ | Run a GDScript file against Summer Engine from the shell for operations no MCP tool exposes — navmesh baking, collision shapes, TileSets, re-imports. | headless |
 | [investigating-bugs](./investigating-bugs/SKILL.md) ★ | Systematic investigation of any bug, test failure, or unexpected behavior before proposing fixes. | debug |
 | [playtesting-a-feature](./playtesting-a-feature/SKILL.md) ★ | Before claiming a gameplay feature done: actually run the game and walk through the feature. Static diagnostics and type checks do not count. | verification |
 | [running-in-the-cloud](./running-in-the-cloud/SKILL.md) | Run Summer Engine on a Linux box with no display — install it, launch headless, know when xvfb + software GL are needed, authenticate without a browser. | project |
-| [skill-create](./skill-create/SKILL.md) | Bootstrap a new Summer library skill (library/skills/<slug>/ with resource.yaml and SKILL.md), frontmatter, and stub sections. | meta |
-| [skill-improve](./skill-improve/SKILL.md) | Upgrade an underperforming Summer skill — run it against a behavioral spec with and without changes via a parallel-eval harness; ship the winner. | meta |
-| [skill-test](./skill-test/SKILL.md) | Lint a Summer skill before commit, audit the whole library, or check a behavioral spec assertion — static structural rules plus behavioral specs. | meta |
+| [skill-create](./skill-create/SKILL.md) (library only) | Bootstrap a new Summer library skill (library/skills/<slug>/ with resource.yaml and SKILL.md), frontmatter, and stub sections. | meta |
+| [skill-improve](./skill-improve/SKILL.md) (library only) | Upgrade an underperforming Summer skill — run it against a behavioral spec with and without changes via a parallel-eval harness; ship the winner. | meta |
+| [skill-test](./skill-test/SKILL.md) (library only) | Lint a Summer skill before commit, audit the whole library, or check a behavioral spec assertion — static structural rules plus behavioral specs. | meta |
 | [using-summer](./using-summer/SKILL.md) | Session bootstrap for Summer projects — establishes how to find and use Summer skills and the summer-engine MCP before any response. | meta |
 | [verification-before-completion](./verification-before-completion/SKILL.md) ★ | Run verification commands and confirm output before claiming work complete, fixed, or passing — evidence before assertions, always. | verification |
 | [writing-plans](./writing-plans/SKILL.md) | Turn a spec or requirements for a multi-step task into a written implementation plan before touching code. | meta |
-| [writing-skills](./writing-skills/SKILL.md) | Create, edit, and verify agent skills — format, structure, testing with subagents, and best practices. | meta |
+| [writing-skills](./writing-skills/SKILL.md) (library only) | Create, edit, and verify agent skills — format, structure, testing with subagents, and best practices. | meta |
 
 ## ai
 
@@ -107,8 +107,8 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | skill | when to use | also |
 |---|---|---|
 | [asset-strategy](./asset-strategy/SKILL.md) ★ | Route any 'I need a [thing]' asset request to the right specialist skill — disambiguates 2D / 3D / audio / video / VFX / animation pipelines. | pipeline |
-| [*lumera-single-image-scene-reconstruction*](./lumera-single-image-scene-reconstruction/SKILL.md) (preview) | Lumera-style single image to editable 3D scene — VLM-parsed object boxes and parametric lights, per-object meshes, HDR probe, .tscn assembly, refinement loop. | pipeline, 3d, scenes |
-| [*skintokens-auto-rigging*](./skintokens-auto-rigging/SKILL.md) (preview) | Offline auto-rigging with skin-tokens.cpp (GGML SkinTokens/TokenRig port) — skeleton and skin weights from a static GLB mesh on CPU/Vulkan, into Summer Engine. | pipeline, 3d, animation |
+| [*lumera-single-image-scene-reconstruction*](./lumera-single-image-scene-reconstruction/SKILL.md) (preview) (library only) | Lumera-style single image to editable 3D scene — VLM-parsed object boxes and parametric lights, per-object meshes, HDR probe, .tscn assembly, refinement loop. | pipeline, 3d, scenes |
+| [*skintokens-auto-rigging*](./skintokens-auto-rigging/SKILL.md) (preview) (library only) | Offline auto-rigging with skin-tokens.cpp (GGML SkinTokens/TokenRig port) — skeleton and skin weights from a static GLB mesh on CPU/Vulkan, into Summer Engine. | pipeline, 3d, animation |
 
 ## audio
 
@@ -162,7 +162,7 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | skill | when to use | also |
 |---|---|---|
 | [auto-fire-targeting](./auto-fire-targeting/SKILL.md) | Design or fix auto-fire weapon targeting (survivors, top-down ARPG, tower defense) — the pending-damage pattern that prevents over-commit and overkill. | game-design |
-| [*celeste-momentum-platforming*](./celeste-momentum-platforming/SKILL.md) (preview) | Celeste-style 2D precision platformer movement — momentum running, coyote time, variable jumps, dash, wall jump/slide, climb stamina, pixel corner correction. | character-controller, game-design |
+| [*celeste-momentum-platforming*](./celeste-momentum-platforming/SKILL.md) (preview) (library only) | Celeste-style 2D precision platformer movement — momentum running, coyote time, variable jumps, dash, wall jump/slide, climb stamina, pixel corner correction. | character-controller, game-design |
 | [*combat-basics*](./combat-basics/SKILL.md) (preview) | Damage in Summer Engine: hitbox and hurtbox Areas on opposing layers, a reusable Health component, damage signals, knockback, hit feedback, projectiles. | scripting, game-design |
 | [design-mechanic](./design-mechanic/SKILL.md) ★ | Design one game mechanic in detail — input, response, feedback, failure modes, depth, tunables — outputs a design doc, node-graph sketch, GDScript stub. | game-design |
 | [*in-game-purchases*](./in-game-purchases/SKILL.md) (preview) | Sell items for Sparks in a game shop via the Summer purchase sheet: checkout, results, not enough Sparks, inventory unlocks, authority grants, store policy. | scripting, game-design |
@@ -215,8 +215,8 @@ Status: **stable** unless marked; *preview* = not yet exercised in-engine by the
 | [3d-lighting](./3d-lighting/SKILL.md) ★ | Set up 3D scene lighting — DirectionalLight3D vs Omni vs Spot, WorldEnvironment, sky, shadow tuning, ambient — per current Summer conventions. | lighting |
 | [art-direction](./art-direction/SKILL.md) ★ | Define the game's visual style — references, palette, mood, lighting plan, post-processing, do/don't list — output as an art bible at .summer/art-bible.md. | lighting |
 | [*compatibility-renderer-traps*](./compatibility-renderer-traps/SKILL.md) ★ (preview) | Make a Forward+ Summer game also look right on the Compatibility renderer: instance-uniform budget, black MultiMesh colors, sRGB vertex colors. | performance |
-| [*psx-retro-rendering*](./psx-retro-rendering/SKILL.md) (preview) | PlayStation 1 rendering in Summer Engine — low-res output, RGB5 and exact dither, affine textures, vertex snapping, blend modes, fog; limits named. | 3d |
-| [*realtime-wet-surfaces*](./realtime-wet-surfaces/SKILL.md) (preview) | Real-time wetness on existing materials without losing their values — value-copying wet shader, geometry-driven wet mask, instance-uniform wet amount. | vfx |
+| [*psx-retro-rendering*](./psx-retro-rendering/SKILL.md) (preview) (library only) | PlayStation 1 rendering in Summer Engine — low-res output, RGB5 and exact dither, affine textures, vertex snapping, blend modes, fog; limits named. | 3d |
+| [*realtime-wet-surfaces*](./realtime-wet-surfaces/SKILL.md) (preview) (library only) | Real-time wetness on existing materials without losing their values — value-copying wet shader, geometry-driven wet mask, instance-uniform wet amount. | vfx |
 | [*web-compatibility-look*](./web-compatibility-look/SKILL.md) ★ (preview) | Make a web or browser game look high-end in the Compatibility renderer (WebGL 2): what works, what to avoid, 2D and 3D recipes, web performance. | 2d, 3d |
 
 ## runtime

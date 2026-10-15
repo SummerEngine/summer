@@ -874,7 +874,7 @@
       "id": "skill/celeste-momentum-platforming",
       "kind": "skill",
       "version": "0.1.1",
-      "content_hash": "8de0a20f2c75831147c5282b86267f1caa3ca4381c753f186ffe95eb720f929f",
+      "content_hash": "9f0101c592bb02a6b3b9acabd2fca32ed8cea258eb4e2593657bbd8587f4ae30",
       "summary": "Celeste-style 2D precision platformer movement — momentum running, coyote time, variable jumps, dash, wall jump/slide, climb stamina, pixel corner correction.",
       "use_when": [
         "make the platformer movement feel like Celeste",
@@ -1900,7 +1900,7 @@
       "id": "skill/godogen-visual-proof-game-generation",
       "kind": "skill",
       "version": "0.1.1",
-      "content_hash": "a4ab7a5cb7948dba0d26a3a5227d56b703de49f75f13b5ad30ec5dceee712ded",
+      "content_hash": "cfcca8bdfe79582dd3402b60a75c0b0b73bc643201d76d791c395f027625c97d",
       "summary": "Godogen-style game generation with a visual QC loop — capture frames from the running game, self-verify against the brief, bounded fix rounds, proof clip.",
       "use_when": [
         "generate a whole small game from a short brief and prove it actually runs",
@@ -2106,7 +2106,7 @@
       "id": "skill/lumera-single-image-scene-reconstruction",
       "kind": "skill",
       "version": "0.1.1",
-      "content_hash": "0aaaaf86253645a5b4d2c40b3cdbb2af41ac225218a3fcee18f1d62d2bde345f",
+      "content_hash": "2ee6894c02b7a23a58ac12fc81134f399bffa6534719f8ba04d58a747c293d04",
       "summary": "Lumera-style single image to editable 3D scene — VLM-parsed object boxes and parametric lights, per-object meshes, HDR probe, .tscn assembly, refinement loop.",
       "use_when": [
         "turn this concept art or screenshot into an editable 3D scene with separate objects and lights",
@@ -2790,7 +2790,7 @@
       "id": "skill/psx-retro-rendering",
       "kind": "skill",
       "version": "0.1.1",
-      "content_hash": "35ee63024c9a795005f872d97cc28d30de40956bf49502369ab7d8b111c26ec3",
+      "content_hash": "0c3ed03806961d6dfdcd9f3d541bb260c85500262b1408712d068e4844c2bc55",
       "summary": "PlayStation 1 rendering in Summer Engine — low-res output, RGB5 and exact dither, affine textures, vertex snapping, blend modes, fog; limits named.",
       "use_when": [
         "make my game render like a PlayStation 1 game, with texture warping, vertex wobble, and dithering",
@@ -2863,7 +2863,7 @@
       "id": "skill/realtime-wet-surfaces",
       "kind": "skill",
       "version": "0.1.1",
-      "content_hash": "975781c2da63e650f89125455559847347e56a2741547db7cd77db0143536db4",
+      "content_hash": "a6027d8277919a5e19571101dd451aac8018e69faf2acced6ac97cb943084c0d",
       "summary": "Real-time wetness on existing materials without losing their values — value-copying wet shader, geometry-driven wet mask, instance-uniform wet amount.",
       "use_when": [
         "make surfaces look wet when it rains and dry off afterwards",
@@ -3266,7 +3266,7 @@
       "id": "skill/skill-create",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "1b33e1b26d2611d3402270584da4c56f9ba15abe694b9941d4016aad3995d341",
+      "content_hash": "80588283f761fc20a46ee6129d42c204d33ef3276c73ec7d7649fac63ca5a214",
       "summary": "Bootstrap a new Summer library skill (library/skills/<slug>/ with resource.yaml and SKILL.md), frontmatter, and stub sections.",
       "use_when": [
         "a contributor wants to add a new skill to the Summer library",
@@ -3299,7 +3299,7 @@
       "id": "skill/skill-improve",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "b650b10657506ffad2b47915da66dd68406c4aa2dc2d372d9a2eda9197daefe5",
+      "content_hash": "83ab327f35e16952df167e8b1b51dd924e26c199aa3dec2e4efc5334d12a0a44",
       "summary": "Upgrade an underperforming Summer skill — run it against a behavioral spec with and without changes via a parallel-eval harness; ship the winner.",
       "use_when": [
         "a contributor wants to upgrade a Summer skill that is underperforming or to fix a regression",
@@ -3332,7 +3332,7 @@
       "id": "skill/skill-test",
       "kind": "skill",
       "version": "1.0.4",
-      "content_hash": "178c147318078a7278242ee68b0e3e95c1e5884758bbb0c96f2e47fd75dbe53f",
+      "content_hash": "57b597845d5b711c1d96e26b57f40a36c8dc27364ab777ad8281ba600fa13e01",
       "summary": "Lint a Summer skill before commit, audit the whole library, or check a behavioral spec assertion — static structural rules plus behavioral specs.",
       "use_when": [
         "a contributor wants to lint a Summer skill before commit, audit the whole library, or check a behavioral spec assertion",
@@ -3366,7 +3366,7 @@
       "id": "skill/skintokens-auto-rigging",
       "kind": "skill",
       "version": "0.1.1",
-      "content_hash": "2a9a8cf21dfa35fefc735496ad0dd96f07115d2f23c2e7642f8a1f681096e610",
+      "content_hash": "ae61c1f76bed428a73412e25b9fcc0795b59b1129236c8dfa7abbc93acb9df03",
       "summary": "Offline auto-rigging with skin-tokens.cpp (GGML SkinTokens/TokenRig port) — skeleton and skin weights from a static GLB mesh on CPU/Vulkan, into Summer Engine.",
       "use_when": [
         "auto-rig this static GLB mesh so I can animate it",
@@ -5049,7 +5049,7 @@
       "id": "skill/writing-skills",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "2669bbbf0d912f86deb9c03fee04f53d80f2d69cebb5e508039c18225f72f30f",
+      "content_hash": "1cbc07d632d281f725f471de3f1d63b28c10b95e862b6d929fce4f985ef60713",
       "summary": "Create, edit, and verify agent skills — format, structure, testing with subagents, and best practices.",
       "use_when": [
         "creating new skills, editing existing skills, or verifying skills work before deployment",

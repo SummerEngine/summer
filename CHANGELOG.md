@@ -2,6 +2,13 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+- **Fewer skills in every session.** The library-author skills (`skill-create`, `skill-improve`, `skill-test`, `writing-skills`) and the six research digests (`celeste-momentum-platforming`, `godogen-visual-proof-game-generation`, `lumera-single-image-scene-reconstruction`, `realtime-wet-surfaces`, `psx-retro-rendering`, `skintokens-auto-rigging`) no longer install with `summer setup` or the plugins. They stay in the library: `summer_search_library` finds them, `summer_read_library` reads them, and `summer skills install <name>` still installs one. Copies from an earlier setup stay until you delete them. A new `bundled: false` field in a skill's `resource.yaml` does this.
+- **Skill descriptions fit the hosts again.** Hosts put every installed skill's description into every session and cut what does not fit. The installed descriptions now total about 11,500 characters, down from about 17,300, and `npm run validate:library` fails when they pass 12,000. Library search ranks the same on the routing eval.
+- **Skill links work after install.** `summer setup` copies each skill folder alone, so 40 links like `../../references/mcp-tools-reference/mcp-tools-reference.md` (and 4 links into other skills' folders) were dead in the default install. They now name the library id to read (`summer_read_library` id `reference/mcp-tools-reference`), and `validate:library` rejects any path that climbs out of a skill folder.
+- **Call examples are complete.** 65 call examples in ui-basics, 3d-lighting, design-level, design-npc, game-feel, art-direction and summer-apps left out a required argument, mostly `scenePath`, which the tool rejects. Each now passes it. `validate:library` checks every `summer_*` call example in the skills against the tool's `input_schema` (required arguments present, no unknown ones) and prints how many it checked.
+
 ## [3.9.1] - 2026-10-15
 
 3.9.0 was not published to npm; 3.9.1 is the first release with everything in 3.9.0 below, plus these changes.

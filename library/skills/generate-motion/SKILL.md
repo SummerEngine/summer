@@ -1,6 +1,6 @@
 ---
 name: generate-motion
-description: "Attach an animation clip to a rigged character from the curated Meshy motion library — idle, walk, run, attack — wired via AnimationPlayer."
+description: "Attach a library animation clip (idle, walk, run, attack) to a rigged character via AnimationPlayer."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: animation

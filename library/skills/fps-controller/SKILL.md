@@ -1,6 +1,6 @@
 ---
 name: fps-controller
-description: "Production-quality first-person controller — WASD, mouse look, jump, coyote time, jump buffering, air control, and external-velocity handling."
+description: "First-person controller: WASD, mouse look, jump, coyote time, jump buffering, air control."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: character-controllers

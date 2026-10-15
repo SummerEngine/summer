@@ -1,6 +1,6 @@
 ---
 name: browse-templates
-description: "List available Summer Engine project templates, present the choices, and create a project from the chosen one via summer create."
+description: "List Summer Engine project templates, present the choices, and create a project from the chosen one."
 license: MIT
 compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode]
 category: scene-and-project

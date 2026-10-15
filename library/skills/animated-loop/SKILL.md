@@ -1,6 +1,6 @@
 ---
 name: animated-loop
-description: "Generate a short seamlessly-looping video clip — splash background, animated logo backdrop, idle title-screen footage — wired as a looping VideoStreamPlayer."
+description: "Generate a short seamless video loop: splash background, animated logo backdrop, idle title screen."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: video
@@ -221,4 +221,4 @@ Once the loop is wired:
 - `music-track` — score the menu.
 - `ui-graphics` — logo, menu buttons, HUD that sits over the loop.
 - `concept-art` — produce the reference still that anchors the loop.
-- `../../references/mcp-tools-reference/mcp-tools-reference.md` — `summer_generate_video` parameter schema and error codes.
+- `summer_read_library` id `reference/mcp-tools-reference` — `summer_generate_video` parameter schema and error codes.

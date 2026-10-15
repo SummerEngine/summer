@@ -3,7 +3,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { runValidation, MEDIA_SIZE_LIMIT_BYTES } from "../../../scripts/validate-library/index.ts";
+import { runValidation, MEDIA_SIZE_LIMIT_BYTES, SKILL_DESCRIPTION_BUDGET } from "../../../scripts/validate-library/index.ts";
+import { argumentNames, checkCallExamples, type ToolSignature } from "../../../scripts/validate-library/call-examples.ts";
+import { escapingSkillPaths } from "../../../scripts/validate-library/skill-links.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "..", "..", "..");
@@ -327,5 +329,91 @@ describe("validate-library: capability lint", () => {
     expect(excepted.exceptions).toHaveLength(1);
     expect(excepted.exceptions[0]).toContain('LINT EXCEPTION "url-allowlist"');
     expect(excepted.exceptions[0]).toContain("Asset licenses require linking the original author pages.");
+  });
+});
+
+describe("validate-library: skills as installed (budget, links, call examples)", () => {
+  function withSkillBody(body: string) {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "vl-skill-body-"));
+    fs.cpSync(path.join(fixtures, "valid"), tmp, { recursive: true });
+    const skillMd = path.join(tmp, "library", "skills", "create-environment-kit", "SKILL.md");
+    fs.writeFileSync(skillMd, `${fs.readFileSync(skillMd, "utf8")}\n${body}\n`);
+    try {
+      return runValidation(tmp, { schemasDir });
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  }
+
+  it("sums the installed skills' descriptions against the budget", () => {
+    const result = run("valid");
+    expect(result.skillDescriptionChars).toBe("Build a coherent, reusable environment kit for a scene.".length);
+    expect(result.skillDescriptionChars!).toBeLessThanOrEqual(SKILL_DESCRIPTION_BUDGET);
+  });
+
+  it("the shipped library fits the budget", () => {
+    const result = runValidation(repoRoot, { schemasDir });
+    expect(result.skillDescriptionChars!).toBeLessThanOrEqual(SKILL_DESCRIPTION_BUDGET);
+    expect(result.errors.filter((e) => /skill descriptions total/.test(e))).toEqual([]);
+  });
+
+  it("rejects a path that climbs out of the skill folder, and accepts a library id", () => {
+    const bad = withSkillBody("See `../../references/gd-style/gd-style.md` and [the kit](../other-skill/SKILL.md).");
+    expect(bad.errors.filter((e) => /leaves the skill folder/.test(e))).toHaveLength(2);
+    const good = withSkillBody("See `summer_read_library` id `reference/gd-style`.");
+    expect(good.errors).toEqual([]);
+  });
+
+  it("rejects a call example without a required argument or with one the tool does not take", () => {
+    const bad = withSkillBody('```\nsummer_set_prop(node_path="./A")\nsummer_set_prop(node_path="./A", value="1", colour="red")\n```');
+    expect(bad.errors.some((e) => /summer_set_prop example leaves out required value/.test(e))).toBe(true);
+    expect(bad.errors.some((e) => /summer_set_prop example passes colour, which the tool does not take/.test(e))).toBe(true);
+    const good = withSkillBody('```\nsummer_set_prop(node_path="./A", value="1")\nsummer_set_prop(node_path="./A", ...)\n```');
+    expect(good.errors).toEqual([]);
+    expect(good.callExamples).toEqual({ checked: 1, skipped: 1 });
+  });
+});
+
+describe("skill links: what counts as leaving the folder", () => {
+  it("flags ../ escapes from SKILL.md and from references/, keeps paths inside and NodePaths", () => {
+    expect(escapingSkillPaths("`../../references/a/a.md` and `../other/SKILL.md`", "SKILL.md")).toEqual([
+      "../../references/a/a.md",
+      "../other/SKILL.md",
+    ]);
+    expect(escapingSkillPaths("[back](../SKILL.md) and `../../x/references/y.md`", "references/notes.md")).toEqual(["../../x/references/y.md"]);
+    expect(escapingSkillPaths("anim_player is `../AnimationPlayer` from a sibling", "SKILL.md")).toEqual([]);
+    expect(escapingSkillPaths('```\nNodePath("../World")\nsee ../../references/a/a.md\n```', "SKILL.md")).toEqual([]);
+    expect(escapingSkillPaths("read ../../references/a/a.md first", "SKILL.md")).toEqual(["../../references/a/a.md"]);
+  });
+});
+
+describe("call examples: argument names", () => {
+  const tools = new Map<string, ToolSignature>([
+    ["summer_add_node", { required: ["scenePath", "parent", "type"], properties: ["scenePath", "parent", "type", "name"] }],
+    ["summer_app_screenshot", { required: ["appId"], properties: ["appId", "width", "theme"] }],
+  ]);
+
+  it("reads keyword, positional-name, JSON and shorthand-object forms", () => {
+    expect(argumentNames('scenePath="res://a.tscn", parent="./", type="Node3D"')).toEqual(["scenePath", "parent", "type"]);
+    expect(argumentNames("scenePath, parent, type")).toEqual(["scenePath", "parent", "type"]);
+    expect(argumentNames('{"appId": "a", "width": 390}')).toEqual(["appId", "width"]);
+    expect(argumentNames('{ appId, theme: "dark", nested: { a: 1, b } }')).toEqual(["appId", "theme", "nested"]);
+    expect(argumentNames('scenePath="res://a.tscn", ...')).toBeNull();
+    expect(argumentNames('"res://a.tscn"')).toBeNull();
+  });
+
+  it("checks both written forms against the signature and skips unknown tools", () => {
+    const text = [
+      'summer_add_node(parent="./", type="Node3D")',
+      'summer_add_node(scenePath="res://a.tscn", parent="./", type="Node3D", name="A")',
+      "`summer_app_screenshot {width: 390}`",
+      "summer_store_submit(gameId)",
+    ].join("\n");
+    const result = checkCallExamples(text, tools);
+    expect(result.checked).toBe(3);
+    expect(result.problems).toEqual([
+      { tool: "summer_add_node", line: 1, missing: ["scenePath"], unknown: [] },
+      { tool: "summer_app_screenshot", line: 3, missing: ["appId"], unknown: [] },
+    ]);
   });
 });

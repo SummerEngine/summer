@@ -1,7 +1,7 @@
 id: skill/summer-apps
 kind: skill
 version: 0.1.0
-summary: "Build a Summer App, a team tool inside Summer Studio (balance table, quest editor, tracker, pick grid): build loop, Layout vs code, data as API, agent tools."
+summary: "Build a Summer App, a team tool inside Summer Studio (balance table, quest editor, tracker), data and tools."
 use_when:
   - the person asks for a tool for their team ("build us a loot balance tool", "a board to track creatures")
   - the person needs a UI to decide, rate or edit something they will come back to

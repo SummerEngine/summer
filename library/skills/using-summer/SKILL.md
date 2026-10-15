@@ -1,6 +1,6 @@
 ---
 name: using-summer
-description: "Session bootstrap for Summer projects — establishes how to find and use Summer skills and the summer-engine MCP before any response."
+description: "Session bootstrap: how to find and use Summer skills and the summer-engine MCP before any response."
 license: MIT
 compatibility: [Cursor, Claude Code, Codex, Windsurf, Gemini, OpenCode, Factory, Copilot]
 category: _meta

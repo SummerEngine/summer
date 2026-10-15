@@ -1,6 +1,6 @@
 ---
 name: vfx-dissolve
-description: "Dissolve effect — a mesh disintegrating with a glowing burning edge, driven by a noise-threshold ShaderMaterial overriding the target's material."
+description: "Dissolve effect: a mesh burns away with a glowing edge, from a noise-threshold ShaderMaterial."
 license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: visual-effects

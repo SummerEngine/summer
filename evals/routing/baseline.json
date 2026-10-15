@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-14",
+  "generated_at": "2026-10-15",
   "corpus_source": "registry/generated/index.json",
-  "corpus_size": 272,
-  "query_count": 135,
+  "corpus_size": 273,
+  "query_count": 137,
   "gap_count": 11,
   "mean_recall_at_5": 1,
-  "mean_recall_at_1": 0.8259,
-  "mrr_at_5": 0.9317,
+  "mean_recall_at_1": 0.8285,
+  "mrr_at_5": 0.9327,
   "per_kind": {
     "reference": {
       "expected": 1,
@@ -14,8 +14,8 @@
       "recall_at_5": 1
     },
     "skill": {
-      "expected": 112,
-      "hit": 112,
+      "expected": 114,
+      "hit": 114,
       "recall_at_5": 1
     },
     "tool": {
@@ -67,6 +67,8 @@
     "make an enemy that patrols and attacks when it sees the player": 1,
     "my auto-fire weapon keeps overkilling enemies that are already dead": 1,
     "turn this concept art into a playable level": 1,
+    "polish our 3D arena map to shipping quality, it should match the concept art": 1,
+    "what should I ask before we start building out this level's art": 1,
     "add a shop where players can buy a skin for Sparks": 1,
     "player does not have enough sparks, let them buy more without leaving the game": 1,
     "make an FPS": 1,

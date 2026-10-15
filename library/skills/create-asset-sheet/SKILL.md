@@ -141,7 +141,7 @@ calls the same server-side slicer as the Studio wizard.
 
 ## Without Summer Engine
 
-In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), the studio wizard path works as written. On the programmatic path, stop after `assets.slice_sheet` and skip `summer_import_asset_by_id`: get each piece with `assets.get` (its `downloadUrl`), save the pieces where the person asked, and tell them the paths.
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), the studio wizard path works as written. On the programmatic path, stop after `assets.slice_sheet` and skip `summer_import_asset_by_id`: save each piece where the person asked with `assets.get` and `out` (the `summer-assets` skill says how), and tell them the paths.
 
 ## What this skill does NOT do (yet)
 

@@ -170,7 +170,7 @@ Then `summer_play` and look around. Sun in the right place? Seam invisible? Top/
 
 ## Without Summer Engine
 
-In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-4 and skip steps 5-7 (import, `WorldEnvironment`, scene check). Get the image with `assets.get` on the returned asset id (its `downloadUrl`) and save it in the person's folder. Tell them it is a 2:1 equirectangular panorama, the shape most engines take for a sky.
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-4 and skip steps 5-7 (import, `WorldEnvironment`, scene check). Pass `out` with the person's folder so the image lands there (the `summer-assets` skill says how). Tell them it is a 2:1 equirectangular panorama, the shape most engines take for a sky.
 
 ## Fallback (no MCP)
 

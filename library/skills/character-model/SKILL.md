@@ -226,7 +226,7 @@ The imported `.glb` includes its own `Skeleton3D` and `AnimationPlayer` (empty l
 
 ## Without Summer Engine
 
-In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-4, including the review gate, and stop when the rig pass finishes. Skip steps 5-6 (editor restart, scene wiring). Get the rigged GLB with `assets.get` on `rigAssetId` (its `downloadUrl`) (the unrigged mesh is `assetId`), save it where the person asked, and tell them the path. Step 7 still applies: `generate-motion` runs without the engine.
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-4, including the review gate, and stop when the rig pass finishes. Skip steps 5-6 (editor restart, scene wiring). Save the rigged GLB (`rigAssetId`; the unrigged mesh is `assetId`) where the person asked with `out` on `jobs.wait` or `assets.get` (the `summer-assets` skill says how), and tell them the path. Step 7 still applies: `generate-motion` runs without the engine.
 
 ## Fallback (no MCP)
 

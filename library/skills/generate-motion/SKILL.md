@@ -152,7 +152,7 @@ have actually seen, or route to the manual-authoring fallback.
 
 ## Without Summer Engine
 
-In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-3 and skip step 4 (the `AnimationPlayer`). Get the file with `assets.get` on `animationAssetId` (its `downloadUrl`), save it where the person asked, and tell them the path and format.
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-3 and skip step 4 (the `AnimationPlayer`). Save the clip where the person asked with `out` on `jobs.wait` (the `summer-assets` skill says how), and tell them the path and format.
 
 ## Fallback (no MCP)
 

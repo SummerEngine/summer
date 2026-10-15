@@ -172,7 +172,7 @@ In a 200-tree forest, only the ~10 closest trees need to be real meshes; the oth
 
 ## Without Summer Engine
 
-In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-4 and skip steps 5-6 (scene wiring, LOD). Get the file with `assets.get` on the returned asset id (its `downloadUrl`), save it where the person asked, and tell them the path and format. The file is GLB; level of detail and billboards are the person's engine's job.
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-4 and skip steps 5-6 (scene wiring, LOD). Save the file where the person asked with `out` (the `summer-assets` skill says how), and tell them the path and format. The file is GLB; level of detail and billboards are the person's engine's job.
 
 ## Fallback (no MCP)
 

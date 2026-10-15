@@ -163,7 +163,7 @@ Save it as a `.tscn` and instantiate it per event in GDScript (`preload(...).ins
 
 ## Without Summer Engine
 
-In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-6 and skip steps 7-9 (import, wiring, scene check). With `assets.generate_sfx_choices`, the person picks in the page; then get each approved clip from its `audioUrl` in `assets.choices` or with `assets.get` (its `downloadUrl`), save it where the person asked, and tell them the path and format.
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-6 and skip steps 7-9 (import, wiring, scene check). With `assets.generate_sfx_choices`, the person picks in the page; then save each approved clip where the person asked with `assets.get` and `out` (the `summer-assets` skill says how), and tell them the path and format.
 
 ## Fallback (no MCP)
 

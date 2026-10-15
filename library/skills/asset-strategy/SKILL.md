@@ -121,6 +121,7 @@ The specialists name Summer's asset work by operation. A call written `area.acti
 - **Find and read:** `assets.search({ query, scope })` (`scope`: `library` (default), `mine` for their own, `all`), then `assets.get({ assetId })` for the file, `downloadUrl` and `viewerUrl`. Reuse before generating.
 - **Generate:** `assets.generate_image`, `assets.generate_3d`, `assets.generate_audio`, `assets.generate_video`, `assets.generate_motion`, `assets.generate_sfx_choices` (then `assets.choices` for the person's picks). They spend the person's credits; `dryRun: true` returns the estimate (`credits`, `balance`, `enough`) and makes nothing.
 - **Wait:** 3D, video and animation answer at once with a job; `jobs.wait({ jobId, timeoutSeconds: 50 })` until `finished`, and the finished job's `result` holds the asset ids.
+- **Save on this machine:** with the local Summer MCP or the CLI, `out` (a folder or a file path) on a generate call, `jobs.wait` or `assets.get` saves the file there, and the answer adds `localPath`.
 - **Edit their assets:** `assets.remove_background`, `assets.slice_sheet`, `assets.update` (title, description, tags, private or team), `assets.make_public` (lists one for everyone in Summer's asset store), `assets.delete` (deletes for good; asks the person unless they let their agent delete, and then nothing is deleted until they confirm).
 - **Permissions:** The person decides once what their agent may do: publishing (including `assets.make_public`), spending and building run at once by default, and deleting for good asks. An operation whose group they have not granted answers `needs_approval` with a link: give the link to the person, then `jobs.wait` on the `apr:` job.
 - **Upload an image from disk:** `assets.upload_begin`, then `assets.upload_complete`.
@@ -144,7 +145,7 @@ The specialists name Summer's asset work by operation. A call written `area.acti
 
 ## Without Summer Engine
 
-In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), the routing tables still pick the skill. Leave out every step that imports (`summer_import_asset_by_id`, `summer_import_from_url`): deliver the file with `assets.get` (its `downloadUrl`) instead.
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), the routing tables still pick the skill. Leave out every step that imports (`summer_import_asset_by_id`, `summer_import_from_url`): deliver the file with `out` instead (the `summer-assets` skill says how).
 
 ## Fallback (no MCP)
 

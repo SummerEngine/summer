@@ -21,7 +21,7 @@ A call written `area.action({...})` is one operation: use the tool `summer_area_
 | Find an existing asset | `assets.search({ query, scope })` (`scope`: `library` (default), `mine` for the person's own, `all`), then `assets.get({ assetId })` |
 | Make a new asset | `assets.generate_image`, `assets.generate_3d`, `assets.generate_audio`, `assets.generate_sfx_choices` with `assets.choices`, `assets.generate_video`, `assets.generate_motion`, `assets.slice_sheet` |
 | Wait for a job | `jobs.wait({ jobId, timeoutSeconds: 50 })` with the `job.id` a generation returned |
-| Get the file | `assets.get({ assetId })`: `downloadUrl` is the file, `thumbnailUrl` the preview |
+| Get the file | `out` on the generate call, `jobs.wait` or `assets.get`: the file is saved there and the answer gives `localPath` |
 | More generators | `makers.<tool>` (for example `makers.npc_voice`, `makers.trailer_forge`); `summer_search` lists them |
 
 ## The loop
@@ -33,7 +33,7 @@ A call written `area.action({...})` is one operation: use the tool `summer_area_
 5. **Generate, then wait.** 3D, video and animation answer at once with `{ status: "running", job }`: call `jobs.wait` until `finished` is true. Never continue on a running job.
 6. **Use the returned id.** `assets.get` with the asset id the finished job's `result` holds. Do not search by name right after a generation.
 7. **Check it.** Look at the preview image or thumbnail you received. For audio, the person listens. Describe only what you actually received.
-8. **Hand it over.** Download `downloadUrl` from `assets.get` with your own shell into the folder the person named, keep a clear file name, and tell them the path and format.
+8. **Hand it over.** Pass `out` with the folder the person named (or a file path): on the generate call, on `jobs.wait` for 3D, video and animation, or on `assets.get` for an asset you already have. The file is saved there and the answer gives `localPath`. Without `out`, a file made in a game project lands in its asset folder (Godot `assets/`, Unity `Assets/Summer`, Unreal `Content/Summer`, three.js `public/assets`). Tell the person the path and format. Connected only to Summer's hosted server, there is no `out`: download `downloadUrl` from `assets.get` with your own shell.
 
 ## Formats
 
@@ -51,6 +51,6 @@ Each asset is a normal file in the person's Summer library: GLB for 3D models, P
 |---|---|
 | Following an asset skill into its scene steps (`summer_import_asset_by_id`, `summer_add_node`, `AudioStreamPlayer`, `MeshInstance3D`) | Stop at the file. Those tools are not in this session. |
 | Generating before you checked the person's own assets | `assets.search({ scope: "mine" })` first |
-| Generating the same asset again to get the file | `assets.get` on the asset you already have; its `downloadUrl` is the file |
+| Generating the same asset again to get the file | `assets.get` with `out` on the asset you already have |
 | Telling the person the asset looks right without a preview | Say what you received, or that no preview came back |
 | The person wants a whole game, not assets | Say that this needs Summer Engine and the full setup: `npx -y summer-engine@latest setup <agent> --yes` |

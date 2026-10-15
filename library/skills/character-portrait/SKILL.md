@@ -176,7 +176,7 @@ assets.generate_image({
 
 ## Without Summer Engine
 
-In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-4 and 6, and skip step 5 (import and UI wiring). Get the PNG with `assets.get` on the returned asset id (its `downloadUrl`), save it in the person's folder, and tell them the path.
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-4 and 6, and skip step 5 (import and UI wiring). Pass `out` with the person's folder so the PNG lands there (the `summer-assets` skill says how), and tell them the path.
 
 ## Fallback (no MCP)
 

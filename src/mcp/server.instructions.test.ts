@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { SUMMER_MCP_ASSETS_INSTRUCTIONS, SUMMER_MCP_INSTRUCTIONS, createMcpServer } from "./server.js";
 import { getSkillRegistry, selectSkillsForBulkInstall } from "../core/skills-registry.js";
 import { resolveToolSelection } from "./tool-surface.js";
+import { OPS_MCP_ASSETS_INSTRUCTIONS } from "./ops-surface.js";
 
 describe("MCP server instructions (initialize response)", () => {
   it("is one tight paragraph naming the five first-turn habits", () => {
@@ -53,6 +54,24 @@ describe("MCP server instructions (initialize response)", () => {
       expect(client.getInstructions()).toBe(SUMMER_MCP_ASSETS_INSTRUCTIONS);
       const names = new Set((await client.listTools()).tools.map((tool) => tool.name));
       const named = SUMMER_MCP_ASSETS_INSTRUCTIONS.match(/summer_[a-z0-9_]+/g) ?? [];
+      expect(named.filter((name) => !names.has(name))).toEqual([]);
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
+  it("gives the v4 assets profile instructions that name only tools it has", async () => {
+    expect(OPS_MCP_ASSETS_INSTRUCTIONS.length).toBeLessThanOrEqual(600);
+    const { server } = createMcpServer(resolveToolSelection({ profile: "assets" }, {}), { surface: "v4" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: "summer-instructions-test", version: "1.0.0" });
+    await server.connect(serverTransport);
+    try {
+      await client.connect(clientTransport);
+      expect(client.getInstructions()).toBe(OPS_MCP_ASSETS_INSTRUCTIONS);
+      const names = new Set((await client.listTools()).tools.map((tool) => tool.name));
+      const named = OPS_MCP_ASSETS_INSTRUCTIONS.match(/summer_[a-z0-9_]+/g) ?? [];
       expect(named.filter((name) => !names.has(name))).toEqual([]);
     } finally {
       await client.close();

@@ -50,10 +50,11 @@ async function session(profile: string | undefined, surface: "v3" | "v4", cloud 
 const answerOf = (result: unknown) => JSON.parse((result as { content: Array<{ text: string }> }).content[0].text);
 
 describe("the surface flag", () => {
-  it("defaults to v3 and reads --surface or SUMMER_SURFACE", () => {
-    expect(resolveSurface(undefined, {})).toBe("v3");
-    expect(resolveSurface("v4", {})).toBe("v4");
-    expect(resolveSurface(undefined, { SUMMER_SURFACE: "V4" })).toBe("v4");
+  it("defaults to v4 and reads --surface or SUMMER_SURFACE", () => {
+    expect(resolveSurface(undefined, {})).toBe("v4");
+    expect(resolveSurface("v3", {})).toBe("v3");
+    expect(resolveSurface(undefined, { SUMMER_SURFACE: "V3" })).toBe("v3");
+    expect(resolveSurface("v4", { SUMMER_SURFACE: "v3" })).toBe("v4");
   });
 
   it("leaves the 3.x surface exactly as it was", async () => {

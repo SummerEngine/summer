@@ -22,10 +22,10 @@ Three facts shape every use:
 | Asset class | First route | Second | Why |
 |---|---|---|---|
 | Blockout / placeholder | `scene-scripting` primitives or CSG | fabricate | Must be instant and in-scene; no process spawn is justified |
-| Generic hard-surface prop ("a barrel") | `summer_search_assets` → `summer_import_asset` (`prop-model`) | `summer_generate_3d` | The free library plus `target_size` beats paid generation and a 2-minute wait, in a consistent style |
-| Bespoke prop ("the artifact from our GDD") | `summer_generate_3d` | fabricate | Image-to-3D is exactly what generation is for; fabricate when exact dimensions or parametric variants matter |
+| Generic hard-surface prop ("a barrel") | `assets.search` → `summer_import_asset` (`prop-model`) | `assets.generate_3d` | The free library plus `target_size` beats paid generation and a 2-minute wait, in a consistent style |
+| Bespoke prop ("the artifact from our GDD") | `assets.generate_3d` | fabricate | Image-to-3D is exactly what generation is for; fabricate when exact dimensions or parametric variants matter |
 | **Modular kit** (walls, pipes, fences, rails that snap) | **fabricate** | generated kit (`environment-kit`) | Generation cannot hold dimensions and style across 30 pieces; array + boolean + bevel + one material is the classic kit workflow |
-| Characters (rigged, animated) | `summer_generate_3d` (`character-model`) | library | Scripted organic modelling is the documented failure mode; fabrication has no path to competitive organics blind |
+| Characters (rigged, animated) | `assets.generate_3d` (`character-model`) | library | Scripted organic modelling is the documented failure mode; fabrication has no path to competitive organics blind |
 | Environments / terrain | in-engine terrain + library set dressing | generation for landmarks | Terrain wants interactive tools; dressing wants scatter |
 | Materials / textures / skies | library (`summer_import_hdri`, texture packs) | generation | Fabricate only to bake a procedural material to images |
 | **VFX meshes** (shatter pieces, trails, sweeps, LOD chains) | **fabricate** | in-engine | Bisect/fracture, curve sweeps, decimate are one-liners in bpy and absent in the engine |
@@ -146,7 +146,7 @@ Factory startup disables add-ons, so cell-fracture operators are not available. 
 
 | `failure_reason` | What happened | Do |
 |---|---|---|
-| `engine_lacks_op` | This engine build predates FabricateMesh (nothing was sent) | Route to `summer_generate_3d`, `summer_search_assets` / `summer_import_asset`, or `summer_run_script` blockout geometry; tell the user an engine update enables fabrication |
+| `engine_lacks_op` | This engine build predates FabricateMesh (nothing was sent) | Route to `assets.generate_3d`, `assets.search` / `summer_import_asset`, or `summer_run_script` blockout geometry; tell the user an engine update enables fabrication |
 | `blender_not_found` | No usable Blender executable (see `tried`) | Relay the one-line decision above; never guess a path or install anything |
 | `blender_launch_failed` | The executable exists but did not start (permissions, broken install, wrong architecture) | Show the `error` and `output` tail to the user; a different `blender_path` or a reinstall is their call |
 | `script_error` | Your bpy raised (`traceback_tail`, `script_line`, `blender_version`) | Fix the named line against the reported version; `script_line` maps to your `source` |
@@ -169,14 +169,14 @@ Every failure leaves the project untouched except `import_failed` / `instantiate
 - **Output is unencumbered.** Meshes made with Blender belong to the user; the `.glb` in their project carries no Blender licence obligation.
 - **Scripts you write here are created on the user's machine and never distributed by Summer.** If you adapt a bpy snippet from elsewhere, respect its licence — prefer your own code or CC0 sources, and record the origin in `.summer/memory/decisions/` when it matters for the project.
 - **Trademark.** "Blender" is a trademark of the Blender Foundation. Refer to it factually as the dependency ("requires Blender"); never describe the feature as powered by, built on, or branded with Blender, and never use its logo. Summer's name for this capability is *mesh fabrication*.
-- Imported library assets keep their own licences (`summer_search_assets` results carry `licenseType`); fabrication does not change that.
+- Imported library assets keep their own licences (`assets.search` results carry `license`); fabrication does not change that.
 
 ## Red Flags — STOP
 
 | Red flag | Reality |
 |---|---|
 | Fabricating a barrel, a crate, a chair | Library first, generation second. Fabricate is for kits, VFX meshes, and post-processing |
-| Fabricating a character or creature | Scripted organic modelling is the documented failure mode; `summer_generate_3d` with rigging |
+| Fabricating a character or creature | Scripted organic modelling is the documented failure mode; `assets.generate_3d` with rigging |
 | A script that calls `export_scene.gltf`, saves, or quits | Breaks the contract; the bootstrap exports |
 | A material that is not a Principled BSDF | Exports grey; the `warnings` list said so |
 | Procedural roughness or normal maps left unbaked | Not baked automatically — set constants or bake in the script |

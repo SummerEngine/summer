@@ -2,6 +2,8 @@
 
 > Which Summer MCP tool to call. Skills reference tool names exactly as written here.
 
+**Operations.** Summer's cloud work is named by operation (`area.action`): `assets.generate_3d`, `jobs.wait`. A call written `area.action({...})` is one operation: use the tool `summer_area_action` when your client lists it, else `summer_call({ op: "area.action", input: {...} })`. `summer_search` finds any operation and its exact input. Engine tools keep their `summer_*` names below. Every answer has one shape: `done` with a `result`, `running` with a `job`, `needs_approval` with a link for the person, `dry_run` with a `preview`, or an `error` with a `code` and one `next` step. The person decides once what their agent may do: publishing (including `assets.make_public`), spending and building run at once by default, and deleting for good asks. An operation whose group they have not granted answers `needs_approval` with a link: give the link to the person, then `jobs.wait` on the `apr:` job.
+
 ## When to use Summer MCP vs. host tools
 
 **Use Summer MCP for** anything that needs the live editor or the engine's import pipeline:
@@ -198,36 +200,47 @@ Preview. One fast, read-only call that walks every node of a 3D scene and lists 
 | `summer_get_debugger_warnings` | Runtime warnings from the debugger panel. |
 | `summer_get_script_errors` | Script compilation errors. |
 
-### Asset library (8)
+### Asset library (6)
 
-| Tool | Use |
+| Tool or operation | Use |
 |---|---|
-| `summer_search_assets` | Free public asset search (community library + user's own). Sources: `library`, `community`, `my_assets`, `all`. `style` keeps one art direction (realistic, stylized-lowpoly, toon, pixel, hand-painted, voxel); `preview` returns a numbered picture of the first 9 results; curated packs first unless `includeCommunity`. |
-| `summer_list_my_assets` | List/search the signed-in user's generated and uploaded assets. Empty query lists recent assets. |
-| `summer_get_asset` | Fetch one exact asset by ID with file URL, download URL, viewer URL, metadata, license, and visibility. |
-| `summer_get_asset_download_url` | Get the primary or thumbnail download URL for a specific asset. Stable shape for future signed URLs. |
+| `assets.search` | Free asset search: `query`, `scope` (`library` = the public Summer library, the default; `mine` = the person's own generated and uploaded assets, where an empty query lists the newest; `all`), `assetType` (`2d_image`, `animation`, `3d_model`, `audio`, `music`, `all`), `style` (realistic, stylized-lowpoly, toon, pixel, hand-painted, voxel: keeps one art direction), `limit` (at most 20), `cursor`. Answers `items` (`assetId`, `title`, `type`, `source`, `fileUrl`, `thumbnailUrl`, `format`, `license`) and `nextCursor`. There is no picture preview of the results and no community toggle. |
+| `assets.get` | One exact asset by `assetId`: `fileUrl`, `downloadUrl`, `viewerUrl`, `status` (`expired`: regenerate it), file name, type and size, visibility, license, tags and `parentAssetId`. |
 | `summer_import_asset` | Search, choose the top match, download, run the engine import, and optionally instantiate 3D models. |
 | `summer_import_asset_by_id` | Import one exact Summer asset ID. Use after generation jobs or when the user selects a specific asset. |
 | `summer_import_hdri` | Search Poly Haven's CC0 HDRIs (public API, no Summer login), import the `.hdr`/`.exr` into `res://sky/`, and get the exact `summer_run_script` snippet that wires it as the WorldEnvironment sky. |
-| `summer_slice_asset_sheet` | Detect and crop every distinct asset from a generated sheet image into named individual assets (works without the engine; import the results afterwards). |
+| `assets.slice_sheet` | Detect and crop every distinct item of a sheet image the person owns: `slices` with `url`, `name`, `category`, `bbox` (works without the engine; import the URLs afterwards with `summer_import_from_url_batch`). Spends credits. |
 
-### Asset generation (7 — metered)
+### Asset generation (metered)
+
+Each spends the person's credits. `dryRun: true` returns `preview.estimate` (`credits`, `balance`, `enough`) and makes nothing; never quote prices. Model lists are the enums in each operation's input (`summer_search` returns it).
+
+| Operation | Use |
+|---|---|
+| `assets.generate_image` | Draw or edit an image: `prompt`, `model`, `style`, `aspectRatio`, `width` + `height` (minimum size), `numImages`, `referenceImageUrl` (edit), `removeBackground`, `seed`. Answers `assets` (`assetId`, `fileUrl`, real `width`/`height`). |
+| `assets.generate_3d` | Text-, image- or multi-view-to-3D, optionally rigged and animated: `kind`, `prompt`, `imageUrl` / `imageUrls`, `model`, `rig`, `animationNames`, `targetPolycount`, `topology`. **Always a job.** |
+| `assets.generate_audio` | Speech, sound effect, music or dialogue: `capability`, `text` / `prompt` / `inputs`, `voiceId` (a game-cast voice), `modelId`, `durationSeconds`, `loop`, `voiceSettings`. Sound effects without `modelId` use the person's approved default. |
+| `assets.generate_sfx_choices` | One sound effect from 2-4 models, shown on a Summer Studio page where the person approves one or more. Answers `choiceSetId` and `reviewUrl`. |
+| `assets.choices` | Read the person's picks for a choice set (`approved`, `note`, `audioUrl`, `assetId`); `waitSeconds` waits for them. Free. |
+| `assets.generate_video` | Text- or image-to-video: `prompt`, `imageUrl`, `model`, `duration`, `aspectRatio`, `resolution`, `negativePrompt`. **Always a job.** |
+| `assets.generate_motion` | Animate a rigged model: `rigAssetId`, `backend`, `motionNames` (library) or `prompts` (text to motion). **Always a job**, except clips the rig already has (`reused`). |
+| `makers.<tool>` | One-shot recipes (MCP names `summer_tool_<tool>`): `makers.npc_voice`, `makers.trailer_forge`, ... `summer_search` lists them with their input. |
+
+### Your assets
+
+| Operation | Use |
+|---|---|
+| `assets.remove_background` | Transparent copies of up to 8 of the person's images (originals stay). Spends credits. |
+| `assets.update` | Title, description, tags, and `private` or `team` visibility. To list an asset for everyone, `assets.make_public`. |
+| `assets.make_public` | Lists one of the person's assets for everyone in Summer's asset store (publishing). Runs at once when the person lets their agent publish (the default), else answers `needs_approval` with a link. |
+| `assets.delete` | Deletes one of their assets for good. Asks the person unless they let their agent delete: it answers `needs_approval` with a link, and nothing is deleted until they confirm. |
+| `assets.upload_begin` → `assets.upload_complete` | Upload a PNG/JPEG/WebP from disk: a signed form to POST the file to, then the confirm step that makes the asset. |
+
+### Jobs and batches
 
 | Tool | Use |
 |---|---|
-| `summer_generate_image` | AI image gen. |
-| `summer_generate_3d` | Image-to-3D. |
-| `summer_generate_audio` | SFX / music gen. Sound effects: `modelId` picks ElevenLabs SFX v2, Sonilo SFX 1.1 or Stable Audio 3 SFX; omitted = the person's approved default. |
-| `summer_generate_sfx_choices` | One sound effect from several models, shown on a Summer Studio page where the person approves one or more. |
-| `summer_get_choices` | Read which sound-effect versions the person approved (audioUrl, assetId, note). |
-| `summer_generate_video` | Video gen. |
-| `summer_generate_motion` | Generate/apply 3D skeletal motion from a rigged asset. |
-
-### Job tracking (2)
-
-| Tool | Use |
-|---|---|
-| `summer_check_job` | Poll a generation job. |
+| `jobs.wait` | Wait up to `timeoutSeconds` (at most 50) for a job from any operation that answered `running` or `needs_approval`; call again until `finished`. The finished job's `result` holds the asset ids. `jobs.get` reads it once. |
 | `summer_batch` | Run multiple ops as a transaction. `InstantiateScene` ops may carry `position` / `rotation_degrees` / `scale` / `transform`; `receipt: "summary"` returns counts, failures with op index and created paths under 5 KB. A `ReparentNode` keeps the moved node's scene-owned children and grandchildren (the engine op drops them from the saved file) and is verified from the saved `.tscn` (`persisted:true` / `verified:true`, else `failure_reason: not_persisted`); a raw `ConnectSignal` is refused — use `summer_connect_signal`. `scenePersistence.saved` only means the SaveScene ran. |
 
 ### Meta (5)
@@ -319,12 +332,14 @@ Read big things in parts, never whole:
 
 Every asset-generation skill should follow this loop:
 
-1. `summer_search_assets` or `summer_list_my_assets` — reuse before generating when reasonable.
-2. `summer_generate_image` / `summer_generate_3d` / `summer_generate_audio` — metered creation.
-3. `summer_check_job` if the generation was async.
-4. `summer_get_asset` — resolve the returned `assetId`, `rigAssetId`, or `animationAssetId`.
+1. `assets.search` (`scope: "all"`, or `"mine"` for the person's own) — reuse before generating when reasonable.
+2. `assets.generate_image` / `assets.generate_3d` / `assets.generate_audio` — metered creation (`dryRun: true` first when the person should see the credits).
+3. `jobs.wait` when the answer was `running` (3D, video, animation), until the job is finished.
+4. `assets.get` — resolve the returned `assetId`, `rigAssetId`, or `animationAssetId`.
 5. `summer_import_asset_by_id` — import the exact result through the engine's import pipeline.
-6. `summer_get_asset_download_url` — only when the user explicitly wants a downloadable file/link.
+6. The `downloadUrl` from `assets.get` — only when the user explicitly wants a downloadable file/link.
+
+`whoami()` shows the signed-in account: plan, `credits` (their balance) and whether generation is unlocked.
 
 ## summer_set_resource_property — nested properties
 

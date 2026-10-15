@@ -11,7 +11,7 @@ paths: ["**/*.gd", "**/*.tscn", "**/*.glb"]
 
 # Character Animation Wiring — Rigged GLB to Living Character
 
-The game-critical path: a rigged, animated character lands in the scene — from `summer_generate_3d({options:{rig:true}})` + `summer_generate_motion`, or an imported GLB — and nothing moves yet. This skill wires it end to end: inspect what actually arrived, build locomotion, fire gameplay events off animation frames, add poses and head tracking, key the face, and handle root motion. Then **prove it in a playtest** — a wired tree that was never played is a claim, not a result.
+The game-critical path: a rigged, animated character lands in the scene — from `assets.generate_3d({ ..., rig: true })` + `assets.generate_motion`, or an imported GLB — and nothing moves yet. This skill wires it end to end: inspect what actually arrived, build locomotion, fire gameplay events off animation frames, add poses and head tracking, key the face, and handle root motion. Then **prove it in a playtest** — a wired tree that was never played is a claim, not a result.
 
 Two lanes throughout:
 

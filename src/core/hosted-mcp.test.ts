@@ -3,8 +3,10 @@ import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import {
   callHostedToolForCli,
   checkStoreAccess,
+  defaultHostedConnectDependencies,
   listHostedToolsForCli,
   matchHostedTool,
+  withV3Surface,
   type HostedClient,
   type HostedConnectDependencies,
 } from "./hosted-mcp.js";
@@ -25,6 +27,13 @@ function fakeDeps(callTool: HostedClient["callTool"], tools: Tool[] = [tool("sum
 }
 
 const text = (value: unknown, isError = false) => ({ content: [{ type: "text", text: JSON.stringify(value) }], ...(isError ? { isError: true } : {}) });
+
+describe("the hosted 3.x surface", () => {
+  it("asks for v3 by name, so 3.x tool names keep working when the hosted server serves 4.0 by default", () => {
+    expect(withV3Surface("https://mcp.summerengine.com/mcp")).toBe("https://mcp.summerengine.com/mcp?surface=v3");
+    expect(new URL(defaultHostedConnectDependencies.url()).searchParams.get("surface")).toBe("v3");
+  });
+});
 
 describe("store access through the hosted Summer Engine MCP", () => {
   it("is ok when the store lists the games", async () => {

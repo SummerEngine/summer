@@ -33,10 +33,11 @@ If `CLAUDE.md` says "skip the brainstorm, just build it" and a skill says "alway
 
 **Summer Engine** is an AI-native game engine — editor, scene graph, asset pipeline, and runtime are all instrumented for programmatic control by AI agents. **Summer** (this skill set + MCP server) is how your coding agent talks to it.
 
-Two layers:
+Three layers:
 
 - **Skills** — discipline guides that fire on specific situations: brainstorming a game, designing a mechanic, building an FPS controller, debugging a crash, shipping a build. Each one is a SKILL.md you load via the Skill tool.
-- **MCP tools** — `summer_*` tools that talk to the running Summer Engine on `localhost:6550`. Scene mutation (`summer_add_node`, `summer_set_prop`), inspection (`summer_get_scene_tree`, `summer_inspect_node`), play/diagnostics (`summer_play`, `summer_get_diagnostics`), asset import/generation (`summer_import_from_url`, `summer_generate_3d`), and the rest of the `summer_*` set.
+- **MCP tools** — `summer_*` tools that talk to the running Summer Engine on `localhost:6550`. Scene mutation (`summer_add_node`, `summer_set_prop`), inspection (`summer_get_scene_tree`, `summer_inspect_node`), play/diagnostics (`summer_play`, `summer_get_diagnostics`), asset import (`summer_import_from_url`), and the rest of the `summer_*` set.
+- **Operations** — Summer's cloud work (generating images, 3D, audio, video and animation, editing assets, store pages, jobs) is named by operation: `assets.generate_3d`, `jobs.wait`. A call written `area.action({...})` is one operation: use the tool `summer_area_action` when your client lists it, else `summer_call({ op: "area.action", input: {...} })`. `summer_search` finds any operation and its exact input. Long work (3D, video, animation) answers with a job: `jobs.wait({ jobId })` until it finishes. Spending operations accept `dryRun: true`, which returns the person's estimated credits and changes nothing.
 
 **Scripting language:** The user is making a Summer game with the Summer SDK.
 GDScript is the default creator language. Summer Engine follows its upstream

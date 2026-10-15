@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 2d-assets
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_generate_image summer_search_assets summer_import_from_url
+allowed-tools: Read Grep Glob Write Edit summer_assets_generate_image summer_assets_search summer_import_from_url summer_call
 paths: ["assets/**", "art/**", "concepts/**"]
 ---
 
@@ -44,7 +44,7 @@ If "final" → hand off to `character-portrait`. If "explore" → continue.
 ### 2. Search for prior concepts
 
 ```
-summer_search_assets(query="<subject> concept", assetType="2d_image", source="all")
+assets.search({ query: "<subject> concept", assetType: "2d_image", scope: "all" })
 ```
 
 If something already exists, ask if the user wants to riff on it (img2img via `referenceImageUrl`) or start fresh.
@@ -68,16 +68,16 @@ State the axis to the user before generating: "I'll vary on **stylization** — 
 Issue 3-4 calls in parallel, one per variant. Use the same subject phrasing across all four; only the style-modifier changes.
 
 ```
-summer_generate_image(
-  prompt="<subject>. <axis variant 1>. concept art, evocative, rough painterly, atmospheric lighting, wide cinematic framing",
-  model="nano-banana-2",
-  style="none"
-)
+assets.generate_image({
+  prompt: "<subject>. <axis variant 1>. concept art, evocative, rough painterly, atmospheric lighting, wide cinematic framing",
+  model: "nano-banana-2",
+  style: "none"
+})
 ```
 
 `style: "none"` is intentional: only `cartoon` and `anime` append anything to the prompt, `realistic` and `none` append nothing, and any other value is coerced to `none`. So the preset cannot override the prompt's stylistic direction — it just contributes nothing, which is what concept art wants. All four variants' divergence has to come from the prompt.
 
-For a shape other than square, pass `aspectRatio` (`"16:9"`, `"9:16"`, ...) or `width` + `height`; the result reports the real width and height and the model that ran. Exploration images are thrown away, so square is usually fine. Background removal is the top-level `removeBackground` argument, not an `options` key.
+For a shape other than square, pass `aspectRatio` (`"16:9"`, `"9:16"`, ...) or `width` + `height`; the result reports the real width and height and the model that ran. Exploration images are thrown away, so square is usually fine. Background removal is the `removeBackground` argument (there is no `options` object). Four variants are four charges: `dryRun: true` on one call shows its credits.
 
 ### 5. Present the batch
 
@@ -126,15 +126,15 @@ The structure: **subject + axis variant + "concept art" + lighting/atmosphere**.
 
 ## Without Summer Engine
 
-In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), every step works. Pass `out` to `summer_generate_image` with the person's folder so the batch lands there, and skip `summer_import_from_url`.
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), every step works. Get each image with `assets.get` on the returned asset ids (its `downloadUrl`), save the batch in the person's folder, and skip `summer_import_from_url`.
 
 ## Fallback (no MCP)
 
 Print the 4 prompts and the call for each:
 
 ```
-summer_generate_image(prompt="<variant 1>", model="nano-banana-2", style="none")
-summer_generate_image(prompt="<variant 2>", ...)
+assets.generate_image({ prompt: "<variant 1>", model: "nano-banana-2", style: "none" })
+assets.generate_image({ prompt: "<variant 2>", ... })
 ...
 ```
 
@@ -154,4 +154,4 @@ Once the user picks a direction:
 
 - `asset-strategy` — meta-router that delegates here vs other 2d-assets skills.
 - `character-portrait` — the polished single-image counterpart.
-- `summer_read_library` id `reference/mcp-tools-reference` — `summer_generate_image` parameter schema.
+- `summer_read_library` id `reference/mcp-tools-reference` — how to call `assets.generate_image`.

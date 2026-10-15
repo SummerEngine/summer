@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: level-design
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit Bash summer_generate_image summer_generate_3d summer_screenshot summer_get_scene_tree summer_inspect_node summer_set_prop summer_save_scene summer_get_diagnostics summer_get_script_errors
+allowed-tools: Read Grep Glob Write Edit Bash summer_assets_generate_image summer_assets_generate_3d summer_jobs_wait summer_call summer_screenshot summer_get_scene_tree summer_inspect_node summer_set_prop summer_save_scene summer_get_diagnostics summer_get_script_errors
 paths: ["**/*.tscn", "**/*.gdshader", "**/*.gdshaderinc", "level/**", "levels/**", "docs/**", ".summer/**"]
 ---
 
@@ -93,7 +93,7 @@ asked.
 
 ### 1. Frames first
 
-Generate several cheap options with `summer_generate_image` (see
+Generate several cheap options with `assets.generate_image` (see
 `concept-art`): an aerial overview, eye level, one per hero element. Get a
 pick. Save the picked frames in the repo next to the design doc and check
 every lane's renders against them. When a lane stalls on taste, generate

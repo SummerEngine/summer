@@ -5,15 +5,15 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: 3d-assets
 user-invocable: true
-allowed-tools: Read Grep summer_search_assets summer_list_my_assets summer_get_asset summer_import_asset_by_id summer_generate_3d summer_generate_image summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_inspect_resource summer_get_scene_tree summer_save_scene
+allowed-tools: Read Grep summer_assets_search summer_assets_get summer_import_asset_by_id summer_assets_generate_3d summer_assets_generate_image summer_import_from_url summer_add_node summer_set_prop summer_inspect_node summer_inspect_resource summer_get_scene_tree summer_save_scene summer_jobs_wait summer_call
 paths: ["assets/vehicles/**", "assets/models/**", "**/*.tscn", "**/*.gd"]
 ---
 
 # Vehicle Model — Hard-Surface 3D Generation
 
-Vehicles are the hardest 3D-gen category. Hard surfaces (flat panels, sharp edges, symmetrical bodies) expose every flaw the AI mesher has — smoothing-group artifacts on flat panels, asymmetric headlights, melted door seams. This skill exists to push the success rate up by giving the model **multi-angle reference**, picking the right backend, and using a **secondary detail-texture pass** to recover crispness on the body panels.
+Vehicles are the hardest 3D-gen category. Hard surfaces (flat panels, sharp edges, symmetrical bodies) expose every flaw the AI mesher has — smoothing-group artifacts on flat panels, asymmetric headlights, melted door seams. This skill exists to push the success rate up by giving the model **multi-angle reference**, picking the right backend, and using a **secondary detail pass** (decals) to recover crispness on the body panels.
 
-Backing tool: `summer_generate_3d`. Default model is `hunyuan` (best general quality). For pure hard-surface (clean spaceship, F1 car), try `trellis` first — it tends to preserve panel edges better.
+Backing operation: `assets.generate_3d` (it answers with a job: `jobs.wait` until it finishes). Default model is `hunyuan` (best general quality). For pure hard-surface (clean spaceship, F1 car), try `trellis` first — it tends to preserve panel edges better.
 
 ## When to use
 
@@ -34,10 +34,10 @@ Backing tool: `summer_generate_3d`. Default model is `hunyuan` (best general qua
 
 | Use case | Tris | Pass via |
 |---|---|---|
-| Player vehicle (close camera, lots of screen time) | 15k–30k | `target_polycount: 25000` |
-| Hero showpiece (cinematic, garage view) | 30k–60k | `target_polycount: 50000` |
-| Background traffic (mid-range, multiple onscreen) | 2k–5k | `target_polycount: 4000` |
-| Distant flyby / parked scenery | 1k–2k | `target_polycount: 1500` |
+| Player vehicle (close camera, lots of screen time) | 15k–30k | `targetPolycount: 25000` |
+| Hero showpiece (cinematic, garage view) | 30k–60k | `targetPolycount: 50000` |
+| Background traffic (mid-range, multiple onscreen) | 2k–5k | `targetPolycount: 4000` |
+| Distant flyby / parked scenery | 1k–2k | `targetPolycount: 1500` |
 
 Vehicles benefit more from polycount than props — flat panels need edge density to look right. Don't go below 2k for anything the camera will get close to.
 
@@ -45,30 +45,31 @@ Vehicles benefit more from polycount than props — flat panels need edge densit
 
 Vehicles are highly view-dependent. A front-only reference produces a mesh with great front detail and a melted rear. There are two ways to give the mesher more than one angle, and they are not the same thing:
 
-**(a) A real multi-image request — prefer this.** `summer_generate_3d` takes an `imageUrls` array of up to four views. These are passed through as separate views, not fused into one picture.
+**(a) A real multi-image request — prefer this.** `assets.generate_3d` takes an `imageUrls` array of two to four views. These are passed through as separate views, not fused into one picture. Several views run on Meshy (`meshy` or `meshy-7.1`; any other model is switched to Meshy).
 
 ```
-summer_generate_3d(
-  kind="image-to-3d",
-  imageUrls=["<front url>", "<3/4 rear-side url>", "<profile url>"],
-  model="hunyuan",
-  options={ target_polycount: 25000 }
-)
+assets.generate_3d({
+  kind: "image-to-3d",
+  imageUrls: ["<front url>", "<3/4 rear-side url>", "<profile url>"],
+  model: "meshy",
+  targetPolycount: 25000
+})
 ```
 
 **(b) A composite reference image**, when you only have one slot to work with:
 
 ```
-summer_generate_image(
-  prompt="A sleek red sports car, front view AND 3/4 rear-side view side by side, two angles in one image, white background, studio lighting, clean references for 3D modeling, isolated, no scenery."
-)
+assets.generate_image({
+  prompt: "A sleek red sports car, front view AND 3/4 rear-side view side by side, two angles in one image, white background, studio lighting, clean references for 3D modeling, isolated, no scenery.",
+  aspectRatio: "16:9"
+})
 
-summer_generate_3d(
-  kind="image-to-3d",
-  imageUrl="<composite reference url>",
-  model="hunyuan",
-  options={ target_polycount: 25000 }
-)
+assets.generate_3d({
+  kind: "image-to-3d",
+  imageUrl: "<composite reference url>",
+  model: "hunyuan",
+  targetPolycount: 25000
+})
 ```
 
 If the user has reference images already (concept art, photos), pass them straight to `imageUrls` — do not composite them down into one image first; that throws away the multi-view path.
@@ -78,7 +79,7 @@ If the user has reference images already (concept art, photos), pass them straig
 ### 1. Search before generating
 
 ```
-summer_search_assets(query="<vehicle type>", assetType="3d_model", source="all")
+assets.search({ query: "<vehicle type>", assetType: "3d_model", scope: "all" })
 ```
 
 ### 2. Pick model and polycount
@@ -97,20 +98,22 @@ Pattern: `<vehicle type> + <silhouette / era / style> + <materials> + <surface s
 | Mech | `A 4 meter tall bipedal combat mech, blocky armored torso, articulated arms with rifle and missile pod, thick legs with hydraulic pistons, painted olive drab with hazard stripes. Front and 3/4 side views. Game asset, hard-surface stylized, white background, isolated vehicle.` |
 | Background sedan | `A generic 90s civilian sedan, four doors, beige paint, slightly worn. Front and 3/4 side views. Game asset, low-detail stylized, white background, isolated vehicle.` |
 
-Nothing in the prompt text "triggers" multi-view. The phrase `front and 3/4 side views` only shapes what the *image* model draws; the 3D tool has no prompt-sniffing and sees whatever pixels you hand it. Multi-view comes from the `imageUrls` array, nothing else.
+Nothing in the prompt text "triggers" multi-view. The phrase `front and 3/4 side views` only shapes what the *image* model draws; the 3D operation has no prompt-sniffing and sees whatever pixels you hand it. Multi-view comes from the `imageUrls` array, nothing else.
 
 ### 4. Confirm and call
 
 > About to generate `red_race_car` via `hunyuan`, target ~25k tris, multi-angle ref. Uses credits, ~90s. OK?
 
+The same call with `dryRun: true` first gives the credits for the confirmation (`estimate.credits`, and `enough` against their balance).
+
 ```
-summer_generate_3d(
-  prompt="A sleek modern Formula 1 race car, ...",
-  model="hunyuan",
-  options={ target_polycount: 25000 },
-  wait=true
-)
-summer_get_asset(assetId="<assetId>")
+assets.generate_3d({
+  prompt: "A sleek modern Formula 1 race car, ...",
+  model: "hunyuan",
+  targetPolycount: 25000
+})
+jobs.wait({ jobId: "<job.id>", timeoutSeconds: 50 })   // again until finished; result.assetId
+assets.get({ assetId: "<assetId>" })
 summer_import_asset_by_id(assetId="<assetId>", path="res://assets/vehicles/race_car.glb")
 ```
 
@@ -121,24 +124,24 @@ summer_inspect_resource(path="res://assets/vehicles/race_car.glb")
 ```
 
 Open the import preview. Look for:
-- **Smoothing-group artifacts on flat panels** (visible as banding under light) → fix in step 6 with a detail texture, or re-import with `Generate Tangents = on` and a custom shader.
+- **Smoothing-group artifacts on flat panels** (visible as banding under light) → cover with step 6's detail decals, or re-import with `Generate Tangents = on` and a custom shader.
 - **Asymmetric headlights / wheels** → regenerate with `symmetric, mirrored bilateral` added to the prompt.
-- **Melted door seams / panel gaps** → run the detail-texture pass (step 6).
+- **Melted door seams / panel gaps** → regenerate from a cleaner multi-view reference, or paint the seams back with step 6's decals.
 
-### 6. Optional: secondary detail-texture pass
+### 6. Optional: secondary detail pass
 
-For hero vehicles, run a texture-only pass to recover panel-line crispness without re-meshing:
+There is no texture-only 3D pass among the asset operations (`assets.generate_3d` takes `text-to-3d` or `image-to-3d`). For hero vehicles, recover panel-line crispness without re-meshing by drawing the detail as images and laying it on the mesh:
 
 ```
-summer_generate_3d(
-  kind="texture",
-  imageUrl="<original front-view reference>",
-  model="hunyuan",
-  options={ target_polycount: 25000 }  // matched to existing mesh
-)
+assets.generate_image({
+  prompt: "Flat orthographic livery and panel-line decal for a red Formula 1 car side, crisp seams, sponsor stripes, transparent background",
+  referenceImageUrl: "<original front-view reference>",
+  aspectRatio: "16:9",
+  removeBackground: true
+})
 ```
 
-This re-textures the existing mesh with sharper detail — panel lines, decals, weathering. Cheaper than re-meshing. Apply via material override in the editor.
+Import it and apply it with `Decal` nodes or as a detail texture in a material override in the editor. Cheaper than re-meshing.
 
 ### 7. Wire into the scene
 
@@ -179,7 +182,7 @@ summer_save_scene(scenePath="res://main.tscn")
 - **Expecting the prompt to request multi-view.** It cannot. `imageUrls` is the only multi-view mechanism.
 - **Flat-shaded prompt for hard surfaces.** "Smooth shading", "rounded edges" → loses the panel-line crispness that defines vehicles. Prefer "hard-surface", "panel-lined", "crisp edges".
 - **Skipping symmetry callouts.** Vehicles are bilaterally symmetric — without `symmetric, mirrored` you get one headlight bigger than the other 30% of the time.
-- **Asking the mesh pass to invent decals / liveries.** It can't — the mesh has the silhouette but the decals get geometry-baked weirdly. Use the texture pass for liveries.
+- **Asking the mesh pass to invent decals / liveries.** It can't — the mesh has the silhouette but the decals get geometry-baked weirdly. Use step 6's decals for liveries.
 - **Wrapping a background sedan in VehicleBody3D.** Wastes physics for a parked car. Use MeshInstance3D under Node3D.
 - **Picking `meshy` (legacy).** Worse hard-surface fidelity than hunyuan or trellis.
 
@@ -193,7 +196,7 @@ summer_save_scene(scenePath="res://main.tscn")
 
 ## Without Summer Engine
 
-In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-6 and skip step 7 (scene wiring, `VehicleWheel3D`). Get the file with `summer_get_asset_download_url` on the returned asset id, save it where the person asked, and tell them the path and format. The file is GLB and not at real-world size: give the person the target length (a car about 4.5 m) and tell them where the wheels are, so they can set up their engine's vehicle physics.
+In a session without Summer Engine tools (the assets profile; the `summer-assets` skill has the whole loop), do steps 1-6 and skip step 7 (scene wiring, `VehicleWheel3D`). Get the file with `assets.get` on the returned asset id (its `downloadUrl`), save it where the person asked, and tell them the path and format. The file is GLB and not at real-world size: give the person the target length (a car about 4.5 m) and tell them where the wheels are, so they can set up their engine's vehicle physics.
 
 ## Fallback (no MCP)
 
@@ -217,4 +220,4 @@ After the vehicle is wired:
 - `character-model` — for the driver/pilot.
 - `prop-model` — for separable parts (rotors, decals as decals, modular kit pieces).
 - `asset-strategy` — meta-router.
-- `summer_read_library` id `reference/mcp-tools-reference` — `summer_generate_3d` schema, including `kind: "texture"` for the secondary detail pass.
+- `summer_read_library` id `reference/mcp-tools-reference` — how to call `assets.generate_3d`; `summer_search` returns its exact input.

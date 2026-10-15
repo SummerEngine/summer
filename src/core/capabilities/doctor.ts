@@ -24,12 +24,13 @@ import {
 } from "../../installer/version-check.js";
 
 import { TOOLKIT_VERSION as version } from "../version.js";
+import { resolveSurface, type SurfaceVersion } from "../tool-profiles.js";
 const MIN_EXPECTED_MCP_TOOLS = 50;
-const REQUIRED_MCP_TOOLS = [
-  "summer_get_project_context",
-  "summer_generate_image",
-  "summer_create_debug_report",
-];
+/** Per surface: the spawned `summer mcp` reads SUMMER_SURFACE from this process's env. */
+const REQUIRED_MCP_TOOLS: Record<SurfaceVersion, string[]> = {
+  v3: ["summer_get_project_context", "summer_generate_image", "summer_create_debug_report"],
+  v4: ["summer_get_project_context", "summer_search", "summer_call", "summer_create_debug_report"],
+};
 
 export type DoctorStatus = "ok" | "warning" | "fail";
 
@@ -466,11 +467,12 @@ async function checkMcpToolsList(): Promise<DoctorCheck> {
     await client.connect(transport, { timeout: 5000 });
     const listed = await client.listTools(undefined, { timeout: 5000 });
     const toolNames = listed.tools.map((tool) => tool.name).sort();
-    const missing = REQUIRED_MCP_TOOLS.filter((tool) => !toolNames.includes(tool));
+    const requiredTools = REQUIRED_MCP_TOOLS[resolveSurface(undefined)];
+    const missing = requiredTools.filter((tool) => !toolNames.includes(tool));
     const details = {
       ...resolved,
       toolCount: toolNames.length,
-      requiredTools: REQUIRED_MCP_TOOLS,
+      requiredTools,
       missing,
       server: client.getServerVersion(),
       stderr: stderr.trim().slice(-1000),

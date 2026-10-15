@@ -50,7 +50,7 @@ export function answerOfHosted(result: Record<string, unknown>): Answer {
     // not an answer: fall through
   }
   if (/summer_(call|search)\b.*(not found|disabled)/i.test(first)) {
-    return errorAnswer("unavailable", "The Summer server's operation catalog is not switched on yet.", { next: { say: "Use the 3.x tools (no --surface v4) for now." } });
+    return errorAnswer("unavailable", "The Summer server's operation catalog is not switched on yet.", { next: { say: "Use the 3.x tools for now: summer mcp --surface v3 (or SUMMER_SURFACE=v3)." } });
   }
   return result.isError === true ? errorAnswer("unavailable", first.slice(0, 300) || "The Summer server did not answer.") : { ok: true, status: "done", result: { text: first } };
 }

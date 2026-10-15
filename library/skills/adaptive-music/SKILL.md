@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_generate_audio summer_search_assets summer_import_from_url summer_run_script summer_add_node summer_set_prop summer_connect_signal summer_inspect_node summer_get_scene_tree summer_project_setting
+allowed-tools: Read Grep Glob Write Edit summer_assets_generate_audio summer_assets_search summer_import_from_url summer_run_script summer_add_node summer_set_prop summer_connect_signal summer_inspect_node summer_get_scene_tree summer_project_setting summer_call
 paths: ["audio/music/**", "scripts/audio/**", "**/*.tscn", "default_bus_layout.tres"]
 ---
 
@@ -56,7 +56,7 @@ For most games, **horizontal sequencing** is right. It is cheaper to author and 
 ### 3. Confirm stems exist (or generate them)
 
 ```
-summer_search_assets(query="music", assetType="music", source="all")
+assets.search({ query: "music", assetType: "music", scope: "all" })
 ```
 
 You need (typical case):

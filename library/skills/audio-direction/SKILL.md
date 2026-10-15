@@ -5,7 +5,7 @@ license: MIT
 compatibility: [Cursor, Claude Code, Windsurf, Codex]
 category: audio
 user-invocable: true
-allowed-tools: Read Grep Glob Write Edit summer_get_project_context summer_get_scene_tree summer_inspect_node summer_add_node summer_project_setting summer_generate_audio
+allowed-tools: Read Grep Glob Write Edit summer_get_project_context summer_get_scene_tree summer_inspect_node summer_add_node summer_project_setting summer_assets_generate_audio summer_call
 paths: [".summer/**", "project.godot", "**/*.tscn", "audio/**"]
 ---
 
@@ -206,9 +206,9 @@ Ask:
 If the user wants to start generating, propose 3-5 SFX seeds aligned with the vocabulary. These are starting points, not finals. Generate them with the `sound-effect` skill: the first sound effect in a chat starts with its question (three versions from three models, picked by ear in Summer Studio), and its prompt shape is the one that tested well.
 
 ```
-summer_generate_audio(capability="sound_effects", text="Foley one-shot: a fingertip taps a small wooden button, soft woody click, no tail, close-mic, dry, no reverb, no music, no voices.", durationSeconds=0.5)
-summer_generate_audio(capability="sound_effects", text="Foley one-shot: a small gold coin drops onto a wooden table, bright metallic ting with a short ring, close-mic, dry, no music, no voices.", durationSeconds=0.5)
-summer_generate_audio(capability="sound_effects", text="Foley one-shot: a fist hits a padded leather vest, low-mid thump, no tail, close-mic, dry, no reverb, no music, no voices.", durationSeconds=0.5)
+assets.generate_audio({ capability: "sound_effects", text: "Foley one-shot: a fingertip taps a small wooden button, soft woody click, no tail, close-mic, dry, no reverb, no music, no voices.", durationSeconds: 0.5 })
+assets.generate_audio({ capability: "sound_effects", text: "Foley one-shot: a small gold coin drops onto a wooden table, bright metallic ting with a short ring, close-mic, dry, no music, no voices.", durationSeconds: 0.5 })
+assets.generate_audio({ capability: "sound_effects", text: "Foley one-shot: a fist hits a padded leather vest, low-mid thump, no tail, close-mic, dry, no reverb, no music, no voices.", durationSeconds: 0.5 })
 ```
 
 `capability` is required; `sound_effects` reads from `text` (not `prompt`), and the length argument is `durationSeconds` (not `duration`) with a floor of 0.5 s (1 s for Stable Audio 3 SFX). Leave out `modelId` so the person's approved default model runs. Ask for the character you want inside the text and let the player only use the front of the clip — you cannot request 80 ms.

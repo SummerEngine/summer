@@ -39,7 +39,7 @@ import {
 } from "./boot-notice.js";
 import { appendMcpLogEvent } from "../core/mcp-log.js";
 import { defaultHostedMountDependencies, prepareHostedMount } from "./hosted-mount.js";
-import { applyOpsSurface, hostedFileTools, OPS_MCP_INSTRUCTIONS, SUMMER_CALL, SUMMER_SEARCH, type CloudCaller } from "./ops-surface.js";
+import { applyOpsSurface, hostedFileTools, OPS_MCP_ASSETS_INSTRUCTIONS, OPS_MCP_INSTRUCTIONS, SUMMER_CALL, SUMMER_SEARCH, type CloudCaller } from "./ops-surface.js";
 import { FileSaver } from "../core/ops/save-files.js";
 import { opForToolCall } from "../core/ops/contract.js";
 import { v4HostedUrl } from "../core/ops/cloud.js";
@@ -67,6 +67,7 @@ import {
 
 import { TOOLKIT_VERSION as version } from "../core/version.js";
 import { ENGINE_FREE_NOTE, engineNotRunningFromConnectError } from "../core/error-codes.js";
+import { resolveSurface, type SurfaceVersion } from "../core/tool-profiles.js";
 
 let processDiagnosticsInstalled = false;
 
@@ -411,15 +412,10 @@ function installToolCallWrapper(server: McpServer, surfaceMeta: SurfaceMeta): ()
  * tests use it to count the live tool surface against
  * registry/generated/counts.json. Without a selection: the full profile.
  */
-export type SurfaceVersion = "v3" | "v4";
-
-/** `--surface` / SUMMER_SURFACE: v4 serves the operation catalog; anything else keeps the 3.x tools. */
-export function resolveSurface(value: string | undefined, env: NodeJS.ProcessEnv = process.env): SurfaceVersion {
-  return (value ?? env.SUMMER_SURFACE ?? "").trim().toLowerCase() === "v4" ? "v4" : "v3";
-}
+export { resolveSurface, type SurfaceVersion };
 
 export interface CreateMcpServerOptions {
-  /** v4: the operation catalog surface (ops-surface.ts). Default v3. */
+  /** v4: the operation catalog surface (ops-surface.ts). Default v3 here; startMcpServer resolves v4 by default. */
   surface?: SurfaceVersion;
   /** Where v4 runs cloud operations (the hosted mount's client). */
   cloud?: CloudCaller;
@@ -452,7 +448,10 @@ export function createMcpServer(
       version,
     },
     {
-      instructions: surface === "v4" ? OPS_MCP_INSTRUCTIONS : engine ? SUMMER_MCP_INSTRUCTIONS : SUMMER_MCP_ASSETS_INSTRUCTIONS,
+      instructions:
+        surface === "v4"
+          ? engine ? OPS_MCP_INSTRUCTIONS : OPS_MCP_ASSETS_INSTRUCTIONS
+          : engine ? SUMMER_MCP_INSTRUCTIONS : SUMMER_MCP_ASSETS_INSTRUCTIONS,
     }
   );
 
@@ -525,7 +524,7 @@ export interface StartMcpServerOptions {
   profile?: string;
   /** --toolsets / SUMMER_TOOLSETS (comma list; added to the profile). */
   toolsets?: string;
-  /** --surface / SUMMER_SURFACE: v4 serves the operation catalog. */
+  /** --surface / SUMMER_SURFACE: v4 (default) serves the operation catalog; v3 the 3.x tools. */
   surface?: string;
 }
 

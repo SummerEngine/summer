@@ -193,6 +193,16 @@ describe("safety", () => {
     expect(isPrivateAddress("172.20.1.1")).toBe(true);
     expect(isPrivateAddress("::ffff:192.168.1.4")).toBe(true);
     expect(isPrivateAddress("8.8.8.8")).toBe(false);
+    expect(isPrivateAddress("2606:4700:4700::1111")).toBe(false);
+  });
+
+  it("refuses IPv4-mapped IPv6 in hex and NAT64 forms of private addresses", async () => {
+    // The URL parser writes [::ffff:127.0.0.1] as [::ffff:7f00:1].
+    for (const address of ["::ffff:7f00:1", "::ffff:a00:1", "64:ff9b::7f00:1", "::7f00:1"]) expect(isPrivateAddress(address), address).toBe(true);
+    const fetch = fakeFetch();
+    const answer = await saver({ fetch }).finish("assets.generate_image", done({ assets: [{ assetId: "a1", fileUrl: "https://[::ffff:127.0.0.1]/a.png" }] }), "art");
+    expect(warningsOf(answer)[0]).toContain("is a private or local address");
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("writes only media and model file types", async () => {
@@ -278,6 +288,19 @@ describe("jobs", () => {
 
     const approval = waited("apr:a1", "apr", { fileUrl: "https://cdn.example.com/key-art.png" });
     expect(await files.finish("jobs.wait", approval)).toBe(approval);
+  });
+
+  it("reuse a default save when the same finished job is waited on again", async () => {
+    const fetch = fakeFetch();
+    const files = saver({ saveByDefault: true, fetch });
+    await writeFile(join(root, "project.godot"), "");
+    const model = { assetId: "m1", fileUrl: "https://cdn.example.com/m1.glb" };
+    const pathOf = (answer: Answer) => (answer as { result: { job: { result: { localPath: string } } } }).result.job.result.localPath;
+    const first = await files.finish("jobs.wait", waited("gen:4", "gen", model));
+    const again = await files.finish("jobs.wait", waited("gen:4", "gen", model));
+    expect(pathOf(again)).toBe(pathOf(first));
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(await readdir(join(root, "assets"))).toEqual(["m1.glb"]);
   });
 });
 

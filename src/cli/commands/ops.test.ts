@@ -177,7 +177,8 @@ describe("generated files", () => {
 
   it("keeps --out in the wait command it prints", () => {
     const running = { ok: true as const, status: "running" as const, job: { id: "gen:1", state: "queued" as const } };
-    expect(formatAnswer(running, "Assets/My Art")).toBe('Started: job gen:1. Wait for it: summer jobs wait --job-id gen:1 --out "Assets/My Art"');
+    expect(formatAnswer(running, "Assets/My Art")).toBe("Started: job gen:1. Wait for it: summer jobs wait --job-id gen:1 --out 'Assets/My Art'");
+    expect(formatAnswer(running, "it's $HOME")).toBe("Started: job gen:1. Wait for it: summer jobs wait --job-id gen:1 --out 'it'\\''s $HOME'");
     expect(formatAnswer(running, "models")).toBe("Started: job gen:1. Wait for it: summer jobs wait --job-id gen:1 --out models");
   });
 });

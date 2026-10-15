@@ -148,7 +148,7 @@
       "id": "reference/mcp-tools-reference",
       "kind": "reference",
       "version": "1.4.1",
-      "content_hash": "572d526eaf371d4790fa52e050fe8d779ef26bd86af5677775f9a1814a1ab372",
+      "content_hash": "9d3431e8afee624c034e6c502f33ae8a65d4bdbddd5dd4b6997a6d75468eb34a",
       "summary": "Canonical reference for which Summer MCP tool to call — skills should reference tool names exactly as written here.",
       "use_when": [
         "choosing between Summer MCP tools and host tools for an operation",
@@ -172,11 +172,11 @@
       "id": "reference/product-map",
       "kind": "reference",
       "version": "1.0.0",
-      "content_hash": "70a87d76241b98836e3d2b6979d35b953e7a934d156452417f1e731b7b9306ed",
+      "content_hash": "7834e717920def6e56cb3c0b67dcc56108f69522c6c2cd8df496877f9e9ab99e",
       "summary": "The product map — every summerengine.com page and editor surface an agent can open for the user, with intent phrases, URL or op, required context, and status.",
       "use_when": [
         "resolving where a user intent lives — \"where do I change my plan\", \"where are my published games\", \"how do I get to the MCP guide for Codex\"",
-        "deciding whether a destination needs login, a running engine, or a parameter (gameId, path, node) before calling summer_open",
+        "deciding whether a destination needs login, a running engine, or a parameter (gameId, path, node) before calling studio.open (3.x `summer_open`)",
         "checking whether an editor surface (assistant dock, project settings, 2D/3D switch) can be opened on this engine build or is still planned"
       ],
       "facets": {
@@ -1238,7 +1238,7 @@
       "id": "skill/create-asset-sheet",
       "kind": "skill",
       "version": "1.0.3",
-      "content_hash": "1c4120f049dcacfa25737164312d1e9dbd409b96f06817ca4eb00986fddcd6fa",
+      "content_hash": "6b146ca7419477431cbbf1b9ca5a837a1055ed454227c9bd673f7828a3e219c0",
       "summary": "Generate a pack of 2D game assets from one prompt — tile sheet, UI kit, character pack, or biome set — sliced, classified, and saved as one pack ArtAsset.",
       "use_when": [
         "generating a pack of 2D game assets from a single prompt — a tile sheet, UI kit, menu screen, character pack, or biome set",
@@ -2321,7 +2321,7 @@
       "id": "skill/multiplayer-publish",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "e0624b497dc1e45bbe9e529817502a4e05c829189402391d0882fc0b007e8766",
+      "content_hash": "90ed694a7f86f30579dc95560b1100275cf7390b50207cfecdfc95631eaef915",
       "summary": "Ship a hosted Summer multiplayer game: the summer.games bundle, server preset, pre-upload checks, and a new Build.",
       "use_when": [
         "publishing a hosted Summer multiplayer game online so other players can join it",
@@ -2487,8 +2487,8 @@
       "id": "skill/navigate-summer",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "261e7a6fc82faab880e61723cf39459596a7edaeabb90059c43c1d97c2fca079",
-      "summary": "When to open a Summer web page or editor surface FOR the user (billing, their games, the scene just built) versus acting through the API, using summer_open.",
+      "content_hash": "7739fd6dcc18693ba11e16a447015cc4a8d552abcac652d7ec8deed4e64d3414",
+      "summary": "When to open a Summer web page or editor surface FOR the user (billing, their games, the scene just built) versus acting through the API, using studio.open.",
       "use_when": [
         "the user asks to see, check, or decide something — \"show me my billing\", \"where do I change my plan\", \"open my games\", \"let me look at the scene\", \"take me to the MCP guide for Cursor\"",
         "deciding whether to open a surface for the user or to do the work through Summer tools",
@@ -3652,7 +3652,7 @@
       "id": "skill/summer-analytics",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "175f19b54e39a94350342e5c72255c286a7e067ba215bbf7c3de54b03cfda2d0",
+      "content_hash": "b9178f89c71f5c5caebe1e33c026344b8a1e5c5d37d7517f837b26038097bb7b",
       "summary": "Send game events to Summer analytics from the authority or client: fire-and-forget, never blocking gameplay.",
       "use_when": [
         "adding analytics, telemetry or event tracking to a Summer game: level completed, coin collected, tutorial funnel",
@@ -3690,7 +3690,7 @@
       "id": "skill/summer-apps",
       "kind": "skill",
       "version": "0.1.0",
-      "content_hash": "5086545f051a3ef2e8219fe8c379cf7870ab161f23887dcdab56dbcbe76d57c0",
+      "content_hash": "09e195c103527b96e91989eb9c9f4dd292c5243e27c9d9c6c901df063490733b",
       "summary": "Build a Summer App, a team tool inside Summer Studio (balance table, quest editor, tracker, pick grid): build loop, Layout vs code, data as API, agent tools.",
       "use_when": [
         "the person asks for a tool for their team (\"build us a loot balance tool\", \"a board to track creatures\")",
@@ -4003,7 +4003,7 @@
       "id": "skill/summer-store",
       "kind": "skill",
       "version": "1.0.0",
-      "content_hash": "39259d53de1975ddfa53322c6237c05117e01acd3a105af69e01e4d708c4ea71",
+      "content_hash": "f9b117c35283d1dfa293bb050232f7f585a65b4e3f696a4b800c5bb13d73010e",
       "summary": "Sell Summer items for Sparks in a multiplayer game: shop, checkout, owned items, authority entitlement checks.",
       "use_when": [
         "adding a shop, in-game purchases, cosmetics or skins sold for Sparks to a Summer game",
@@ -5658,7 +5658,7 @@
       "id": "tool/app-call",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "489fb7d31ffe77b2ec9e403b7c51f2c2f1e486274e7e488797490209bab57ab2",
+      "content_hash": "590d3d36a5e234a39269e104fcc5cb7ad0a2a0ce940a56f11af28e1aef566712",
       "summary": "Run one of a Summer App's agent tools inside the person's open app.",
       "use_when": [
         "\"nerf the bow using the balance formula in our app\"",
@@ -5964,7 +5964,7 @@
       "id": "tool/app-page",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "4e3a2feb1c87ca57cebded9808fb7da24e46ca66c058b29ed1e3f2f15a07592e",
+      "content_hash": "bf782b7bfd2f8e97f4e2734b9dabdf7819694a84141aabae9427bd9e9093fd80",
       "summary": "Read or use the fields and buttons an open Summer App declared (fill values, press actions).",
       "use_when": [
         "\"set the budget to 60 in the balance app\"",
@@ -6078,10 +6078,10 @@
       "id": "tool/app-screenshot",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "dadfd3b5178c0f132cd0773acd4becb5130da5ec06d0960cc1e195b609736edc",
+      "content_hash": "4a32498bfb47bf69c7b67c8e9c90ae409d33c5deceddf0217cf6712eb4e300e0",
       "summary": "See a Summer App without the person - a headless, read-only render (PNG) with its console, errors, refused calls and declared page.",
       "use_when": [
-        "right after every summer_app_publish, to check the app renders with real data",
+        "right after every apps.publish, to check the app renders with real data",
         "\"does my app look right on a phone / in dark mode\"",
         "finding why an app shows nothing (SDK not connected, script errors)"
       ],
@@ -6118,10 +6118,10 @@
       "id": "tool/app-tools",
       "kind": "tool",
       "version": "1.0.0",
-      "content_hash": "f9fda7b5271107ff4c1a057749fb2c213b50b187506b38f43a994794abb0d5a5",
+      "content_hash": "86ed720b987f72a0dc3ececdf9c3039ef7a898dc34b5327fafb860df463a73e5",
       "summary": "List the agent tools a Summer App declares.",
       "use_when": [
-        "before calling app logic with summer_app_call",
+        "before calling app logic with apps.call",
         "\"what can our balance app do for me\""
       ],
       "facets": {

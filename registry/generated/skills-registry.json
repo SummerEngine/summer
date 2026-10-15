@@ -776,7 +776,7 @@
     {
       "id": "skill/navigate-summer",
       "name": "navigate-summer",
-      "description": "When to open a Summer web page or editor surface FOR the user (billing, their games, the scene just built) versus acting through the API, using summer_open.",
+      "description": "When to open a Summer web page or editor surface FOR the user (billing, their games, the scene just built) versus acting through the API, using studio.open.",
       "clients": "all",
       "recommended": true,
       "status": "stable",

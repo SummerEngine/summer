@@ -2,7 +2,9 @@
 
 All notable changes to summer-engine will be documented here. Following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [3.9.0] - 2026-10-14
+
+One sign-in for every Summer tool, tool profiles that fit every agent, and shorter tool results.
 
 - **One sign-in.** `summer login` now signs you in to your Summer account and then, in the same browser, to the store, publishing and Grow tools: one Allow click, or none if this machine was approved before. Before, that took a second `summer login --store`. If the store step does not finish within 3 minutes, your account sign-in is kept and `summer login --store` adds the store later. `summer login --no-store` skips the store step; `summer login --store` still runs it alone.
 - **Every tool says what it does.** Each local MCP tool now carries `readOnlyHint`, `destructiveHint`, `idempotentHint` and `openWorldHint`, mapped from its `authority` in the library. Agents and apps that ask before a change can let reads run and still ask before an edit, a generation that costs credits, or a publish. A test fails when a tool has no hints.

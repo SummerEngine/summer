@@ -94,8 +94,10 @@ describe("v4, engine profile", () => {
   it("lists the offline engine class reference, and ends library reads with the v4 feedback footer", async () => {
     const { client, close } = await session("engine", "v4");
     try {
-      const names = (await client.listTools()).tools.map((tool) => tool.name);
+      const tools = (await client.listTools()).tools;
+      const names = tools.map((tool) => tool.name);
       expect(names).toContain("summer_api_docs");
+      expect(tools.find((tool) => tool.name === "summer_api_docs")!.description!.length).toBeLessThanOrEqual(300);
       const read = await client.callTool({ name: "summer_docs_read", arguments: { id: "skill/multiplayer" } });
       const text = (read as { content: Array<{ text: string }> }).content.map((part) => part.text).join("\n");
       expect(text).toContain('report via summer_call {"op":"docs.feedback"}.');

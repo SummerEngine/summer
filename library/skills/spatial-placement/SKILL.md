@@ -108,17 +108,25 @@ with its back `-z` and open loops at both ends; `wall_lamp` has its back `-z`;
 `wall_clamp` is small with its back `-z`. Scene `res://facade_test.tscn` with a
 `Facade` Node3D at the origin.
 
+Place every piece at a rough pose in one `summer_batch`, then let the measured
+tools seat each one:
+
 ```text
-summer_instantiate_scene {scenePath:"res://facade_test.tscn", parent:"./Facade",
-  scene:"res://kit/wall_double.tscn", name:"G1", position:[0,0,0]}
-summer_instantiate_scene {..., scene:"res://kit/window_double.tscn", name:"G2", position:[2,0,0]}
+summer_batch {scenePath:"res://facade_test.tscn", receipt:"summary", ops:[
+  {op:"InstantiateScene", parent:"./Facade", scene:"res://kit/wall_double.tscn", name:"G1", position:[0,0,0]},
+  {op:"InstantiateScene", parent:"./Facade", scene:"res://kit/window_double.tscn", name:"G2", position:[2,0,0]},
+  {op:"InstantiateScene", parent:"./Facade", scene:"res://kit/window_double.tscn", name:"U1", position:[0,3,0]},
+  {op:"InstantiateScene", parent:"./Facade", scene:"res://kit/window_double.tscn", name:"U2", position:[2,3,0]},
+  {op:"InstantiateScene", parent:"./Facade", scene:"res://kit/gutter_section.tscn", name:"Pipe_1", position:[2.15,0.1,0.5]},
+  {op:"InstantiateScene", parent:"./Facade", scene:"res://kit/gutter_section.tscn", name:"Pipe_2", position:[2.15,1.1,0.1]},
+  {op:"InstantiateScene", parent:"./Facade", scene:"res://kit/wall_lamp.tscn", name:"Lamp", position:[1,2.6,0.5]}]}
+    -> one compact receipt: the seven nodes and their poses
+
 summer_place_adjacent {scenePath:"res://facade_test.tscn", subject:"./Facade/G2",
   reference:"./Facade/G1", axis:"x", side:"max", alignOtherAxes:{y:"min", z:"max"}}
     -> verify {gap:0, residuals:{y:0, z:0}}
-summer_instantiate_scene {..., scene:"res://kit/window_double.tscn", name:"U1", position:[0,3,0]}
 summer_place_adjacent {..., subject:"./Facade/U1", reference:"./Facade/G1",
   axis:"y", side:"max", alignOtherAxes:{x:"min", z:"max"}}
-summer_instantiate_scene {..., scene:"res://kit/window_double.tscn", name:"U2", position:[2,3,0]}
 summer_place_adjacent {..., subject:"./Facade/U2", reference:"./Facade/U1",
   axis:"x", side:"max", alignOtherAxes:{y:"min", z:"max"}}
 summer_measure {scenePath:"res://facade_test.tscn", mode:"plane",
@@ -127,11 +135,9 @@ summer_measure {scenePath:"res://facade_test.tscn", mode:"plane",
 
 summer_raycast {scenePath:"res://facade_test.tscn", origin:[2.15,0.5,1], direction:[0,0,-1]}
     -> hit ./Facade/G2, normal [0,0,1]: the wall front, by physics
-summer_instantiate_scene {..., scene:"res://kit/gutter_section.tscn", name:"Pipe_1", position:[2.15,0.1,0.5]}
 summer_attach_to_surface {scenePath:"res://facade_test.tscn", subject:"./Facade/Pipe_1",
   ray:{origin:[2.15,0.5,1], direction:[0,0,-1]}, backAxis:"-z", upAxis:"+y", standoff:0.02}
     -> seated_on "Facade/G2", final_gap 0.02, back_face_gap 0.02; the pipe keeps y 0.1
-summer_instantiate_scene {..., scene:"res://kit/gutter_section.tscn", name:"Pipe_2", position:[2.15,1.1,0.1]}
 summer_connect_ports {scenePath:"res://facade_test.tscn", subject:"./Facade/Pipe_2", subjectPort:"-Y",
   target:"./Facade/Pipe_1", targetPort:"+Y"}
     -> tilt_degrees 0, verify {distance:0, angle_degrees:0}, other_ports [{id:"+Y", direction:[0,1,0]}]
@@ -139,7 +145,6 @@ summer_repeat_along {scenePath:"res://facade_test.tscn", template:"res://kit/wal
   parent:"./Facade", start:[2.15,0.3,0.02], end:[2.15,1.9,0.02], spacing:0.45}
     -> count 4, created ["Facade/wall_clamp_1", ...]
 
-summer_instantiate_scene {..., scene:"res://kit/wall_lamp.tscn", name:"Lamp", position:[1,2.6,0.5]}
 summer_attach_to_surface {scenePath:"res://facade_test.tscn", subject:"./Facade/Lamp",
   surface:"./Facade/G1", backAxis:"-z", standoff:0}
 summer_starcast {scenePath:"res://facade_test.tscn", path:"./Facade/Lamp", directionSpace:"local"}

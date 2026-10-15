@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { runValidation, MEDIA_SIZE_LIMIT_BYTES, SKILL_DESCRIPTION_BUDGET } from "../../../scripts/validate-library/index.ts";
 import { argumentNames, checkCallExamples, type ToolSignature } from "../../../scripts/validate-library/call-examples.ts";
 import { escapingSkillPaths } from "../../../scripts/validate-library/skill-links.ts";
+import { checkSceneEditExamples } from "../../../scripts/validate-library/scene-edits.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "..", "..", "..");
@@ -371,6 +372,37 @@ describe("validate-library: skills as installed (budget, links, call examples)",
     const good = withSkillBody('```\nsummer_set_prop(node_path="./A", value="1")\nsummer_set_prop(node_path="./A", ...)\n```');
     expect(good.errors).toEqual([]);
     expect(good.callExamples).toEqual({ checked: 1, skipped: 1 });
+  });
+
+  it("rejects a chain of 4 single scene edits unless the line before the fence says why", () => {
+    const calls = Array.from({ length: 4 }, () => 'summer_set_prop(node_path="./A", value="1")').join("\n");
+    const bad = withSkillBody(`\`\`\`\n${calls}\n\`\`\``);
+    expect(bad.errors.filter((e) => /chains 4 single scene edits/.test(e))).toHaveLength(1);
+    const marked = withSkillBody(`<!-- single-edits-ok: the before picture -->\n\`\`\`\n${calls}\n\`\`\``);
+    expect(marked.errors).toEqual([]);
+    expect(marked.sceneEditBlocks).toBeGreaterThan(0);
+  });
+});
+
+describe("scene-edit examples: one script, not a chain", () => {
+  const chain = (n: number) =>
+    Array.from({ length: n }, (_, i) => `summer_set_prop(scenePath="res://a.tscn", path="./A", key="k${i}", value="1")`).join("\n");
+
+  it("flags a block of 4 single scene edits and keeps one of 3", () => {
+    expect(checkSceneEditExamples(`\`\`\`\n${chain(4)}\n\`\`\``)).toEqual({ blocks: 1, problems: [{ line: 1, kind: "chain", calls: 4 }] });
+    expect(checkSceneEditExamples(`\`\`\`\n${chain(3)}\n\`\`\``)).toEqual({ blocks: 1, problems: [] });
+  });
+
+  it("accepts a chain the line before the fence explains, and counts across tools", () => {
+    expect(checkSceneEditExamples(`<!-- single-edits-ok: shows what the script replaces -->\n\`\`\`\n${chain(5)}\n\`\`\``).problems).toEqual([]);
+    const mixed = "```\nsummer_add_node(a)\nsummer_set_prop(b)\nsummer_connect_signal(c)\nsummer_instantiate_scene(d)\n```";
+    expect(checkSceneEditExamples(mixed).problems).toEqual([{ line: 1, kind: "chain", calls: 4 }]);
+  });
+
+  it("ignores prose outside fences and names untyped inference from ctx", () => {
+    expect(checkSceneEditExamples(`${chain(6)}\n`).problems).toEqual([]);
+    const script = "Intro\n```\nfunc run(ctx):\n    var a := ctx.add_node(\"Node3D\", \"A\")\n    var b = ctx.find(\"B\")\n    var c := Vector3.ZERO\n```";
+    expect(checkSceneEditExamples(script)).toEqual({ blocks: 1, problems: [{ line: 4, kind: "untyped_ctx" }] });
   });
 });
 

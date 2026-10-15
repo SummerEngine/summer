@@ -120,25 +120,30 @@ Verify in the import dock: `Mipmaps: off` (UI shouldn't mipmap), `Filter: Linear
 
 ### 7. Wire into the scene
 
-Every scene-mutating tool takes an explicit `scenePath`, node paths are relative to that scene's root (`./`) rather than absolute `/root/...` runtime paths, and the property argument is named `key`, not `property`.
+One `summer_run_script` call wires each graphic with its settings; `scenePath` is the exact scene to change.
 
 **Icon as TextureRect:**
 ```
-summer_add_node(scenePath="res://ui/hud.tscn", parent="./AbilityBar", type="TextureRect", name="FireSpellIcon")
-summer_set_prop(scenePath="res://ui/hud.tscn", path="./AbilityBar/FireSpellIcon", key="texture", value="res://ui/icons/fire_spell.png")
-summer_set_prop(scenePath="res://ui/hud.tscn", path="./AbilityBar/FireSpellIcon", key="expand_mode", value=1)  # EXPAND_IGNORE_SIZE
-summer_set_prop(scenePath="res://ui/hud.tscn", path="./AbilityBar/FireSpellIcon", key="stretch_mode", value=5)  # STRETCH_KEEP_ASPECT_CENTERED
+summer_run_script(scenePath="res://ui/hud.tscn", source="""
+func run(ctx):
+    ctx.add_node("TextureRect", "FireSpellIcon", ctx.find("AbilityBar"), {
+        "texture": load("res://ui/icons/fire_spell.png"),
+        "expand_mode": TextureRect.EXPAND_IGNORE_SIZE,
+        "stretch_mode": TextureRect.STRETCH_KEEP_ASPECT_CENTERED,
+    })
+    ctx.save_scene()
+""")
 ```
 
 **Panel as NinePatchRect:**
 ```
-summer_add_node(scenePath="res://ui/hud.tscn", parent=".", type="NinePatchRect", name="InventoryPanel")
-summer_set_prop(scenePath="res://ui/hud.tscn", path="./InventoryPanel", key="texture", value="res://ui/panels/parchment.png")
-summer_set_prop(scenePath="res://ui/hud.tscn", path="./InventoryPanel", key="patch_margin_left", value=24)
-summer_set_prop(scenePath="res://ui/hud.tscn", path="./InventoryPanel", key="patch_margin_right", value=24)
-summer_set_prop(scenePath="res://ui/hud.tscn", path="./InventoryPanel", key="patch_margin_top", value=24)
-summer_set_prop(scenePath="res://ui/hud.tscn", path="./InventoryPanel", key="patch_margin_bottom", value=24)
-summer_save_scene(scenePath="res://ui/hud.tscn")
+summer_run_script(scenePath="res://ui/hud.tscn", source="""
+func run(ctx):
+    var panel = ctx.add_node("NinePatchRect", "InventoryPanel", null, {"texture": load("res://ui/panels/parchment.png")})
+    for side in ["patch_margin_left", "patch_margin_right", "patch_margin_top", "patch_margin_bottom"]:
+        panel.set(side, 24)
+    ctx.save_scene()
+""")
 ```
 
 Tune patch margins to match the actual border width in the generated texture. Open the texture in the editor's NinePatch preview to verify.

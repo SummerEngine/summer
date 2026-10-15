@@ -146,18 +146,26 @@ Then:
 summer_import_from_url(url="<hosted .ogv url>", path="res://assets/video/cinematics/intro_shot_01.ogv")
 ```
 
-Build a controller scene at `res://cinematics/Intro.tscn`. Every scene-mutating tool takes an explicit `scenePath`, and `summer_set_prop`'s property argument is named `key`, not `property`:
+Build a controller scene at `res://cinematics/Intro.tscn`: create it, then build its nodes in one script (`scenePath` names the new scene; the editor's open tab comes back afterwards):
 
 ```
-summer_create_scene(path="res://cinematics/Intro.tscn", rootName="Intro", allow_temporary_scene_mutation=true)
-summer_add_node(scenePath="res://cinematics/Intro.tscn", parent=".", type="ColorRect", name="Fade")   # black, alpha 1.0 → 0.0
-summer_add_node(scenePath="res://cinematics/Intro.tscn", parent=".", type="VideoStreamPlayer", name="Video")
-summer_set_prop(scenePath="res://cinematics/Intro.tscn", path="./Video", key="stream", value="res://assets/video/cinematics/intro_shot_01.ogv")
-summer_set_prop(scenePath="res://cinematics/Intro.tscn", path="./Video", key="autoplay", value=true)
-summer_set_prop(scenePath="res://cinematics/Intro.tscn", path="./Video", key="expand", value=true)
-summer_set_prop(scenePath="res://cinematics/Intro.tscn", path="./Fade", key="anchors_preset", value=15)
-summer_save_scene(scenePath="res://cinematics/Intro.tscn")
+summer_create_scene(path="res://cinematics/Intro.tscn", rootName="Intro", rootType="Control")
+summer_run_script(scenePath="res://cinematics/Intro.tscn", source="""
+func run(ctx):
+    var video = ctx.add_node("VideoStreamPlayer", "Video", null, {
+        "stream": load("res://assets/video/cinematics/intro_shot_01.ogv"),
+        "autoplay": true,
+        "expand": true,
+    })
+    video.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    var fade = ctx.add_node("ColorRect", "Fade", null, {"color": Color(0, 0, 0, 1)})   # black, alpha 1.0 -> 0.0
+    fade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    ctx.save_scene()
+""")
 ```
+
+`Fade` comes after `Video` in the tree, so it draws on top of it.
 
 Attach a `Tween` script that fades the `ColorRect` from black to clear over 0.5s on `_ready`, then back to black when `Video.finished` fires, then `queue_free()`s the scene. For multi-shot cutscenes, queue the next `VideoStreamPlayer` in the `finished` signal handler.
 

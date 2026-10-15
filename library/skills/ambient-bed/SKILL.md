@@ -196,11 +196,16 @@ This eliminates the click and adds variation through phase-overlap (the loop ove
 For most beds, non-positional is correct (the player is *in* the place; the bed isn't an emitter):
 
 ```
-summer_add_node(scenePath="res://levels/level_01.tscn", parent="./Level", type="AudioStreamPlayer", name="AmbientBed")
-summer_set_prop(scenePath="res://levels/level_01.tscn", path="./Level/AmbientBed", key="stream", value="res://audio/ambient/forest_dawn.wav")
-summer_set_prop(scenePath="res://levels/level_01.tscn", path="./Level/AmbientBed", key="bus", value="Ambient")
-summer_set_prop(scenePath="res://levels/level_01.tscn", path="./Level/AmbientBed", key="volume_db", value=-12.0)
-summer_set_prop(scenePath="res://levels/level_01.tscn", path="./Level/AmbientBed", key="autoplay", value=true)
+summer_run_script(scenePath="res://levels/level_01.tscn", source="""
+func run(ctx):
+    ctx.add_node("AudioStreamPlayer", "AmbientBed", ctx.find("Level"), {
+        "stream": load("res://audio/ambient/forest_dawn.wav"),
+        "bus": "Ambient",
+        "volume_db": -12.0,
+        "autoplay": true,
+    })
+    ctx.save_scene()
+""")
 ```
 
 Or attach the script in step 7 to a Node, set its `stream` to the imported audio, and skip the `AudioStreamPlayer` node — the script provides its own.

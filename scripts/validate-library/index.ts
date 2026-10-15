@@ -25,6 +25,7 @@ import {
 } from "./capability-lint.ts";
 import { checkCallExamples, type ToolSignature } from "./call-examples.ts";
 import { escapingSkillPaths } from "./skill-links.ts";
+import { checkSceneEditExamples, SINGLE_EDIT_CHAIN_LIMIT } from "./scene-edits.ts";
 
 export const MEDIA_SIZE_LIMIT_BYTES = 200 * 1024;
 
@@ -81,6 +82,8 @@ export interface ValidationResult {
   callExamples?: { checked: number; skipped: number };
   /** Description characters of the skills a bulk install takes, against SKILL_DESCRIPTION_BUDGET. */
   skillDescriptionChars?: number;
+  /** Fenced code blocks in skills and references checked for chains of single scene edits. */
+  sceneEditBlocks?: number;
 }
 
 interface LoadedResource {
@@ -633,6 +636,25 @@ export function runValidation(rootDir: string, options?: { schemasDir?: string }
     }
   }
 
+  // (j) Code blocks teach one summer_run_script, not chains of single scene
+  //     edits, and never `var x := ctx.…` (an untyped ctx cannot infer a type).
+  let sceneEditBlocks = 0;
+  for (const res of resources) {
+    if (res.data.kind !== "skill" && res.data.kind !== "reference") continue;
+    for (const mdAbs of walkMarkdownFiles(res.absDir)) {
+      const mdRel = path.relative(res.absDir, mdAbs);
+      const result = checkSceneEditExamples(fs.readFileSync(mdAbs, "utf8"));
+      sceneEditBlocks += result.blocks;
+      for (const problem of result.problems) {
+        errors.push(
+          problem.kind === "chain"
+            ? `library/${res.relDir}/${mdRel}:${problem.line}: code block chains ${problem.calls} single scene edits (${SINGLE_EDIT_CHAIN_LIMIT} or more). Agents copy examples: write one summer_run_script with scenePath, or put <!-- single-edits-ok: <reason> --> on the line before the fence`
+            : `library/${res.relDir}/${mdRel}:${problem.line}: \`var x := ctx.…\` does not compile: the run script's ctx is untyped, so the type cannot be inferred. Write \`var x = ctx.…\``,
+        );
+      }
+    }
+  }
+
   // --- Evidence media: in-repo files must exist, stay inside the resource dir, and be <=200KB ---
   for (const res of resources) {
     const evidence = res.data.evidence;
@@ -717,5 +739,6 @@ export function runValidation(rootDir: string, options?: { schemasDir?: string }
     resourceCount: resources.length,
     callExamples,
     skillDescriptionChars,
+    sceneEditBlocks,
   };
 }

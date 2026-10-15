@@ -201,14 +201,19 @@ summer_generate_audio(
 
 ### 9. Wire the line as `AudioStreamPlayer` on the Voice bus
 
-Every scene-mutating tool takes an explicit `scenePath`, node paths are relative to the scene root (`./`), and the property argument is named `key`, not `property`:
+One script adds the player with its settings; `scenePath` is the exact scene to change:
 
 ```
-summer_add_node(scenePath="res://main.tscn", parent="./NPC", type="AudioStreamPlayer", name="VoiceLine")
-summer_set_prop(scenePath="res://main.tscn", path="./NPC/VoiceLine", key="stream", value="res://audio/voice/hodge_hold_the_line.mp3")
-summer_set_prop(scenePath="res://main.tscn", path="./NPC/VoiceLine", key="bus", value="Voice")
-summer_set_prop(scenePath="res://main.tscn", path="./NPC/VoiceLine", key="volume_db", value=0.0)
-summer_set_prop(scenePath="res://main.tscn", path="./NPC/VoiceLine", key="autoplay", value=false)
+summer_run_script(scenePath="res://main.tscn", source="""
+func run(ctx):
+    ctx.add_node("AudioStreamPlayer", "VoiceLine", ctx.find("NPC"), {
+        "stream": load("res://audio/voice/hodge_hold_the_line.mp3"),
+        "bus": "Voice",
+        "volume_db": 0.0,
+        "autoplay": false,
+    })
+    ctx.save_scene()
+""")
 ```
 
 For positional NPCs, `AudioStreamPlayer3D` with `max_distance=15.0` so distant NPCs aren't audible.

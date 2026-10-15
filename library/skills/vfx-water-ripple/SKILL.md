@@ -221,54 +221,35 @@ MeshInstance3D ("Water") [script: water_ripple_surface.gd]
 
 ### 5. Wire it in (MCP calls)
 
-Every scene-mutating call takes an explicit `scenePath`. `summer_set_prop` uses `key`
-(not `property`); `summer_set_resource_property` always needs a `subProperty` and is
-for reaching *into* a resource, not for assigning one.
+Write the two files, then wire the surface with ONE `summer_run_script` call
+with an explicit `scenePath` — transactional, and it builds the subdivided
+PlaneMesh directly, so no `plane.tres` sidecar is needed:
 
 ```
 summer_write_file(path="res://addons/vfx/water-ripple/water_ripple.gdshader", content="<section 2>", create_only=true)
 summer_write_file(path="res://addons/vfx/water-ripple/water_ripple_surface.gd", content="<section 3>", create_only=true)
 
-summer_add_node(scenePath="res://main.tscn", parent="./World", type="MeshInstance3D", name="Puddle")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Puddle", key="script", value="res://addons/vfx/water-ripple/water_ripple_surface.gd")
-summer_set_prop(scenePath="res://main.tscn", path="./World/Puddle", key="position", value="Vector3(0, 0.01, 0)")
-
-# Whole resources are assigned by path with summer_set_prop.
-summer_set_prop(scenePath="res://main.tscn", path="./World/Puddle", key="mesh", value="res://addons/vfx/water-ripple/plane.tres")
-# `normal_texture` is an exported script property on the controller, not a
-# MeshInstance3D property — MeshInstance3D has no `normal_texture`.
-summer_set_prop(scenePath="res://main.tscn", path="./World/Puddle", key="normal_texture", value="res://addons/vfx/water-ripple/water_normals.png")
-
-# subProperty is required — this is how you reach into the PlaneMesh itself.
-summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/Puddle", resourceProperty="mesh", subProperty="subdivide_width", value=32)
-summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/Puddle", resourceProperty="mesh", subProperty="subdivide_depth", value=32)
-
-summer_save_scene(scenePath="res://main.tscn")
-```
-
-### 5a. One-script wiring (summer_run_script)
-
-On engines with `summer_run_script` (see `scene-scripting`), the node and
-resource wiring is ONE transactional ctx script — and it builds the subdivided
-PlaneMesh directly, so the `plane.tres` sidecar disappears:
-
-```gdscript
+summer_run_script(scenePath="res://main.tscn", source="""
 func run(ctx):
-    var puddle := ctx.add_node("MeshInstance3D", "Puddle", null)
+    var puddle = ctx.add_node("MeshInstance3D", "Puddle", ctx.find("World"))
     var plane := PlaneMesh.new()
     plane.subdivide_width = 32
     plane.subdivide_depth = 32
     puddle.mesh = plane
     puddle.position = Vector3(0, 0.01, 0)
     puddle.set_script(load("res://addons/vfx/water-ripple/water_ripple_surface.gd"))
+    # normal_texture is an exported property of the controller script, not of MeshInstance3D
     puddle.set("normal_texture", load("res://addons/vfx/water-ripple/water_normals.png"))
     ctx.save_scene()
+""")
 ```
 
 Set the mesh BEFORE the script if the controller reads it in `_ready`; either way,
-`ctx.add_node` has already owned the node, so it survives the save.
+`ctx.add_node` has already owned the node, so it survives the save. Tuning one
+mesh value later is one `summer_set_resource_property` call (`resourceProperty="mesh"`,
+`subProperty="subdivide_width"`): it reaches into a resource, it never assigns one.
 
-### 5b. Verify
+### 5a. Verify
 
 The shader and the controller are compiled code, and the controller `preload`s the
 shader — a shader that failed to write takes the script down at parse time.

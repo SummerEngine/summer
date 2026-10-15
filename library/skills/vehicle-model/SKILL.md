@@ -149,21 +149,22 @@ This re-textures the existing mesh with sharper detail — panel lines, decals, 
 | Background scenery (parked, flyby) | `MeshInstance3D` under a `Node3D` | No physics, no collision needed for distant traffic |
 | Background traffic (moving but not interactive) | `Node3D` + `AnimationPlayer` driving the position | Cheap, no physics overhead |
 
-**Player car wiring:**
+**Player car wiring** (one `summer_run_script`; `scenePath` is the exact scene to change):
 
 ```
-summer_add_node(scenePath="res://main.tscn", parent="./World", type="VehicleBody3D", name="RaceCar")
-summer_instantiate_scene(scenePath="res://main.tscn", parent="./World/RaceCar", scene="res://assets/vehicles/race_car.glb", name="Body")
-summer_add_node(scenePath="res://main.tscn", parent="./World/RaceCar", type="CollisionShape3D", name="Collider")
-summer_set_prop(scenePath="res://main.tscn", path="./World/RaceCar/Collider", key="shape", value="BoxShape3D")
-summer_set_resource_property(scenePath="res://main.tscn", nodePath="./World/RaceCar/Collider", resourceProperty="shape", subProperty="size", value="Vector3(4.5, 1.1, 1.9)")
-# Add VehicleWheel3D children at each wheel position
-summer_save_scene(scenePath="res://main.tscn")
+summer_run_script(scenePath="res://main.tscn", source="""
+func run(ctx):
+    var car = ctx.add_node("VehicleBody3D", "RaceCar", ctx.find("World"))
+    ctx.instance_scene("res://assets/vehicles/race_car.glb", car, "Body")
+    var box = BoxShape3D.new()
+    box.size = Vector3(4.5, 1.1, 1.9)
+    ctx.add_node("CollisionShape3D", "Collider", car, {"shape": box})
+    # Add one VehicleWheel3D per wheel here, at the hub positions summer_inspect_asset measured on the model.
+    ctx.save_scene()
+""")
 ```
 
-A `.glb` cannot be assigned to `MeshInstance3D.mesh` — an imported `.glb` is a scene, not a `Mesh` (`ResourceLoader.get_recognized_extensions_for_type("Mesh")` on the shipped engine returns `["tres", "mesh", "res"]`, no `glb`). Instantiate it. Assigning a bare class name like `"BoxShape3D"` to a resource property auto-instantiates it, which is how you get a shape you can then size.
-
-Every scene-mutating tool takes an explicit `scenePath`; node paths are relative to that scene's root (`./`); `summer_set_prop`'s property argument is `key`; and `summer_set_resource_property` needs all five of `scenePath`, `nodePath`, `resourceProperty`, `subProperty`, `value`.
+A `.glb` cannot be assigned to `MeshInstance3D.mesh` — an imported `.glb` is a scene, not a `Mesh` (`ResourceLoader.get_recognized_extensions_for_type("Mesh")` on the shipped engine returns `["tres", "mesh", "res"]`, no `glb`). Instantiate it (`ctx.instance_scene` in a script, `summer_instantiate_scene` for one model). Build and size the collision shape before you assign it.
 
 **Background scenery wiring:**
 

@@ -161,14 +161,19 @@ For seamless looping, the cleaner option is to ask the model to generate a cell 
 
 ### 8. Wire it as `AudioStreamPlayer` on the `Music` bus
 
-Every scene-mutating tool takes an explicit `scenePath`, node paths are relative to the scene root (`./`), and the property argument is named `key`, not `property`:
+One script adds the player with its settings; `scenePath` is the exact scene to change:
 
 ```
-summer_add_node(scenePath="res://main.tscn", parent=".", type="AudioStreamPlayer", name="MusicCalm")
-summer_set_prop(scenePath="res://main.tscn", path="./MusicCalm", key="stream", value="res://audio/music/calm_exploration.mp3")
-summer_set_prop(scenePath="res://main.tscn", path="./MusicCalm", key="bus", value="Music")
-summer_set_prop(scenePath="res://main.tscn", path="./MusicCalm", key="volume_db", value=-8.0)
-summer_set_prop(scenePath="res://main.tscn", path="./MusicCalm", key="autoplay", value=true)
+summer_run_script(scenePath="res://main.tscn", source="""
+func run(ctx):
+    ctx.add_node("AudioStreamPlayer", "MusicCalm", null, {
+        "stream": load("res://audio/music/calm_exploration.mp3"),
+        "bus": "Music",
+        "volume_db": -8.0,
+        "autoplay": true,
+    })
+    ctx.save_scene()
+""")
 ```
 
 Music is `AudioStreamPlayer` (not 2D / 3D) — non-positional. The bible's `Music -8 dB` mix sits the music behind SFX where it belongs.

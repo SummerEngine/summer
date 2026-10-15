@@ -103,6 +103,8 @@ jobs:
       - name: Doctor
         run: node dist/bin/summer.js doctor --json
 
-      - name: Installer tests (config paths and formats per platform)
-        if: matrix.node == 22
+      # macOS only: these tests expect a POSIX host (Windows writes
+      # `cmd.exe /c npx` entries and backslash paths on purpose).
+      - name: Installer tests (config paths and formats)
+        if: matrix.os == 'macos-latest'
         run: npx vitest run src/installer/agent-config.test.ts src/installer/agent-table.test.ts

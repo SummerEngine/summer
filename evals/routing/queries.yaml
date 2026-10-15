@@ -118,6 +118,10 @@ queries:
     expected: [skill/auto-fire-targeting]
   - query: "turn this concept art into a playable level"
     expected: [skill/scene-to-level]
+  - query: "polish our 3D arena map to shipping quality, it should match the concept art"
+    expected: [skill/concept-to-level]
+  - query: "what should I ask before we start building out this level's art"
+    expected: [skill/concept-to-level]
 
   - query: "add a shop where players can buy a skin for Sparks"
     expected: [skill/in-game-purchases]
